@@ -1,0 +1,132 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Operator Queue | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Кабинет оператора</h1>
+  <p class="muted">Оператор валидирует спорные RFQ-позиции, управляет Manual OEM и принимает риск-решения с аудитом.</p>
+</section>
+
+<section class="grid metrics" style="margin-bottom: 16px;">
+  <article class="card card-body">
+    <p class="muted">Needs Review</p>
+    <p class="price">{{ metrics.needs_review_count }}</p>
+  </article>
+  <article class="card card-body">
+    <p class="muted">Manual OEM</p>
+    <p class="price">{{ metrics.manual_oem_count }}</p>
+  </article>
+  <article class="card card-body">
+    <p class="muted">Risky Candidates</p>
+    <p class="price">{{ metrics.risky_candidates_count }}</p>
+  </article>
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <div class="chips">
+    <a class="chip {% if active_tab == 'queue' %}chip-ok{% endif %}" href="{% url 'operator_queue' %}?tab=queue">Очередь проверок</a>
+    <a class="chip {% if active_tab == 'manual' %}chip-ok{% endif %}" href="{% url 'operator_queue' %}?tab=manual">Manual OEM</a>
+    <a class="chip {% if active_tab == 'risky' %}chip-ok{% endif %}" href="{% url 'operator_queue' %}?tab=risky">Риски и эскалации</a>
+  </div>
+</section>
+
+{% if active_tab == 'manual' %}
+  <div class="list">
+    {% for item in manual_rows %}
+      <section class="panel">
+        <h3>RFQ #{{ item.rfq.id }} • {{ item.query }} × {{ item.quantity }}</h3>
+        <p class="muted">State: {{ item.get_state_display }}</p>
+        <p class="muted">{{ item.decision_reason|default:"Ожидается ручной OEM-поиск и подтверждение оператора." }}</p>
+        <div class="card-actions">
+          <a class="btn btn-secondary" href="{% url 'rfq_detail' item.rfq.id %}">Открыть RFQ</a>
+        </div>
+      </section>
+    {% empty %}
+      <section class="panel"><p class="muted">Нет позиций в Manual OEM.</p></section>
+    {% endfor %}
+  </div>
+{% elif active_tab == 'risky' %}
+  <div class="list">
+    {% for row in risky_rows %}
+      <section class="panel">
+        <h3>RFQ #{{ row.rfq.id }} • {{ row.item.query }} × {{ row.item.quantity }}</h3>
+        <p class="muted">Только вручную с двойным подтверждением. Клиенту risky не показывается.</p>
+        <article class="panel">
+          <h4>Risky (Operator Only)</h4>
+          {% for p in row.risky %}
+            <form method="post" action="{% url 'operator_assign_supplier' row.item.id %}" class="list">
+              {% csrf_token %}
+              <input type="hidden" name="part_id" value="{{ p.id }}" />
+              <p class="muted">{{ p.seller.username|default:"supplier" }} • {{ p.title }} • ${{ p.price }}</p>
+              <label class="checkbox-inline"><input type="checkbox" name="risky_confirm" value="1" /> Подтверждаю выбор Risky</label>
+              <label class="checkbox-inline"><input type="checkbox" name="risky_double_confirm" value="1" /> Дополнительное подтверждение</label>
+              <button class="btn btn-danger" type="submit">Назначить Risky</button>
+            </form>
+          {% empty %}
+            <p class="muted">Нет risky предложений</p>
+          {% endfor %}
+        </article>
+      </section>
+    {% empty %}
+      <section class="panel"><p class="muted">Рисковых кандидатов нет.</p></section>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="list">
+    {% for row in queue_rows %}
+      <section class="panel">
+        <h3>RFQ #{{ row.rfq.id }} • {{ row.item.query }} × {{ row.item.quantity }}</h3>
+        {% if row.item.confidence %}
+          <p class="muted">Confidence: {{ row.item.confidence }}%</p>
+        {% endif %}
+        {% if row.item.decision_reason %}
+          <p class="muted">{{ row.item.decision_reason }}</p>
+        {% endif %}
+
+        <div class="grid">
+          <article class="panel">
+            <h4>Trusted</h4>
+            {% for p in row.trusted %}
+              <form method="post" action="{% url 'operator_assign_supplier' row.item.id %}" class="list">
+                {% csrf_token %}
+                <input type="hidden" name="part_id" value="{{ p.id }}" />
+                <p class="muted">{{ p.seller.username|default:"supplier" }} • {{ p.title }} • ${{ p.price }}</p>
+                <button class="btn" type="submit">Назначить</button>
+              </form>
+            {% empty %}
+              <p class="muted">Нет trusted предложений</p>
+            {% endfor %}
+          </article>
+
+          <article class="panel">
+            <h4>Sandbox</h4>
+            {% for p in row.sandbox %}
+              <form method="post" action="{% url 'operator_assign_supplier' row.item.id %}" class="list">
+                {% csrf_token %}
+                <input type="hidden" name="part_id" value="{{ p.id }}" />
+                <p class="muted">{{ p.seller.username|default:"supplier" }} • {{ p.title }} • ${{ p.price }}</p>
+                <label class="checkbox-inline"><input type="checkbox" name="sandbox_confirm" value="1" /> Подтверждаю выбор Sandbox</label>
+                <button class="btn" type="submit">Назначить Sandbox</button>
+              </form>
+            {% empty %}
+              <p class="muted">Нет sandbox предложений</p>
+            {% endfor %}
+          </article>
+        </div>
+
+        <article class="panel" style="margin-top: 12px;">
+          <h4>Ручной OEM-поиск</h4>
+          <form method="post" action="{% url 'operator_escalate_manual_oem' row.item.id %}" class="list">
+            {% csrf_token %}
+            <textarea name="manual_reason" rows="2" placeholder="Причина перевода в ручной OEM-поиск (обязательно)"></textarea>
+            <button class="btn btn-danger" type="submit">Перевести в Manual OEM</button>
+          </form>
+        </article>
+      </section>
+    {% empty %}
+      <section class="panel">
+        <p class="muted">Очередь пуста. Нет позиций в NEEDS REVIEW.</p>
+      </section>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

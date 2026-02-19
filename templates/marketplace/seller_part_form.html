@@ -1,0 +1,16 @@
+{% extends "marketplace/base.html" %}
+{% block title %}{% if mode == 'create' %}Новый товар{% else %}Редактирование товара{% endif %}{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>{% if mode == 'create' %}Новый товар{% else %}Редактирование товара{% endif %}</h1>
+</section>
+
+<div class="card card-form">
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn" type="submit">Сохранить</button>
+  </form>
+</div>
+{% endblock %}
+

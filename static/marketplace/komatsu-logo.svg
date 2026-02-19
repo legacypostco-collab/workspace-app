@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-label="Komatsu">
+  <rect width="1200" height="800" fill="#07152d" />
+  <rect x="110" y="220" width="980" height="360" rx="42" fill="#f0f2f7" />
+  <text
+    x="600"
+    y="450"
+    text-anchor="middle"
+    font-family="Arial Black, Arial, Helvetica, sans-serif"
+    font-size="175"
+    letter-spacing="1"
+    fill="#38479f"
+  >
+    KOMATSU
+  </text>
+</svg>

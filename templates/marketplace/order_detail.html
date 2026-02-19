@@ -1,0 +1,179 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Заказ #{{ order.id }} | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Заказ #{{ order.id }}</h1>
+  <p class="muted">
+    Статус: {{ order.get_status_display }} • SLA: {{ order.sla_status }}
+    {% if order.sla_breaches_count %}• breaches: {{ order.sla_breaches_count }}{% endif %}
+  </p>
+  <p class="muted">Оплата: {{ order.get_payment_status_display }}</p>
+  <div class="card-actions">
+    <a class="btn btn-secondary" href="{% url 'order_invoice' order.id %}">Открыть Invoice</a>
+    {% if is_buyer and order.status == 'delivered' and order.payment_status == 'paid' %}
+      <form method="post" action="{% url 'order_confirm_quality' order.id %}">
+        {% csrf_token %}
+        <button class="btn" type="submit">Подтвердить качество и закрыть заказ</button>
+      </form>
+    {% endif %}
+  </div>
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <div class="grid">
+    <article class="card card-body">
+      <p class="muted">Клиент</p>
+      <p><strong>{{ order.customer_name }}</strong></p>
+      <p class="muted">{{ order.customer_email }}</p>
+    </article>
+    <article class="card card-body">
+      <p class="muted">Сумма</p>
+      <p class="price">${{ order.total_amount }}</p>
+      <p class="muted">Логистика: ${{ order.logistics_cost }} {{ order.logistics_currency }} ({{ order.logistics_provider }})</p>
+      <p class="muted">Резерв 10%: ${{ order.reserve_amount }} • Оплата: {{ order.get_payment_status_display }}</p>
+      <p class="muted">Создан: {{ order.created_at }}</p>
+    </article>
+    <article class="card card-body">
+      <p class="muted">SLA дедлайны</p>
+      <p class="muted">Подтверждение: {{ order.supplier_confirm_deadline|default:"—" }}</p>
+      <p class="muted">Отгрузка: {{ order.ship_deadline|default:"—" }}</p>
+    </article>
+  </div>
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <h2>Позиции заказа</h2>
+  <div class="list">
+    {% for item in order.items.all %}
+      <article class="list-row">
+        <div>
+          <h3>{{ item.part.title }}</h3>
+          <p class="muted">OEM {{ item.part.oem_number }} • qty {{ item.quantity }}</p>
+        </div>
+        <div class="list-actions">
+          <p class="price">${{ item.unit_price }}</p>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <h2>Документы заказа</h2>
+  <div class="list">
+    {% for doc in documents %}
+      <article class="list-row">
+        <div>
+          <h3>{{ doc.title }}</h3>
+          <p class="muted">Тип: {{ doc.get_doc_type_display }}{% if doc.uploaded_by %} • {{ doc.uploaded_by.username }}{% endif %}</p>
+        </div>
+        <div class="list-actions">
+          {% if doc.file_obj %}
+            <a class="btn btn-secondary" href="{{ doc.file_obj.url }}" target="_blank" rel="noopener">Открыть</a>
+          {% elif doc.file_url %}
+            <a class="btn btn-secondary" href="{{ doc.file_url }}" target="_blank" rel="noopener">Открыть</a>
+          {% endif %}
+          <p class="muted">{{ doc.created_at }}</p>
+        </div>
+      </article>
+    {% empty %}
+      <p class="muted">Документы пока не добавлены.</p>
+    {% endfor %}
+  </div>
+
+  {% if can_upload_docs %}
+    <form method="post" action="{% url 'order_add_document' order.id %}" enctype="multipart/form-data" class="card-form" style="margin-top: 14px;">
+      {% csrf_token %}
+      <div class="grid">
+        <label>Тип документа
+          <select name="doc_type">
+            {% for value,label in document_type_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Название
+          <input type="text" name="title" placeholder="Invoice / Packing list / Certificate" required />
+        </label>
+        <label>Файл
+          <input type="file" name="file_obj" />
+        </label>
+        <label>или URL файла
+          <input type="url" name="file_url" placeholder="https://..." />
+        </label>
+      </div>
+      <div class="card-actions">
+        <button class="btn" type="submit">Добавить документ</button>
+      </div>
+    </form>
+  {% endif %}
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <h2>Рекламации</h2>
+  <div class="list">
+    {% for claim in claims %}
+      <article class="list-row">
+        <div>
+          <h3>#{{ claim.id }} · {{ claim.title }}</h3>
+          <p class="muted">Статус: {{ claim.get_status_display }} • Открыл: {{ claim.opened_by.username|default:"system" }}</p>
+          <p class="muted">{{ claim.description }}</p>
+        </div>
+        <div class="list-actions">
+          <p class="muted">{{ claim.created_at }}</p>
+          {% if can_manage_claims %}
+            <form method="post" action="{% url 'order_update_claim_status' claim.id %}" class="status-form">
+              {% csrf_token %}
+              <select name="status">
+                {% for value,label in claim_status_choices %}
+                  <option value="{{ value }}" {% if claim.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-secondary" type="submit">Обновить</button>
+            </form>
+          {% endif %}
+        </div>
+      </article>
+    {% empty %}
+      <p class="muted">Рекламаций пока нет.</p>
+    {% endfor %}
+  </div>
+
+  {% if can_open_claim %}
+    <form method="post" action="{% url 'order_open_claim' order.id %}" class="card-form" style="margin-top: 14px;">
+      {% csrf_token %}
+      <label>Тема рекламации
+        <input type="text" name="title" required />
+      </label>
+      <label>Описание
+        <textarea name="description" rows="3" required></textarea>
+      </label>
+      <div class="card-actions">
+        <button class="btn" type="submit">Открыть рекламацию</button>
+      </div>
+    </form>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Таймлайн событий</h2>
+  <div class="list">
+    {% for event in events %}
+      <article class="list-row">
+        <div>
+          <h3>{{ event.get_event_type_display }}</h3>
+          <p class="muted">Источник: {{ event.source }}{% if event.actor %} • {{ event.actor.username }}{% endif %}</p>
+          {% if event.meta %}
+            <p class="muted">{{ event.meta }}</p>
+          {% endif %}
+        </div>
+        <div class="list-actions">
+          <p class="muted">{{ event.created_at }}</p>
+        </div>
+      </article>
+    {% empty %}
+      <p class="muted">Событий пока нет.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "marketplace/base.html" %}
+{% block title %}KPI Reports | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>KPI Reports</h1>
+  <p class="muted">Операционная аналитика по заказам, SLA и рекламациям.</p>
+  <div class="card-actions">
+    <a class="btn btn-secondary" href="{% url 'kpi_reports_export_csv' %}">Export Orders CSV</a>
+    <a class="btn btn-secondary" href="{% url 'claims_export_csv' %}">Export Claims CSV</a>
+  </div>
+</section>
+
+<section class="grid metrics">
+  {% for card in cards %}
+    <article class="card card-body">
+      <p class="muted">{{ card.label }}</p>
+      <p class="price">{{ card.value }}</p>
+    </article>
+  {% endfor %}
+</section>
+
+{% if role == 'seller' %}
+  <section class="panel" style="margin-top: 16px;">
+    <h2>Инвентарь поставщика</h2>
+    <p class="muted">Активных позиций в кабинете: <strong>{{ parts_count }}</strong></p>
+  </section>
+{% endif %}
+
+<section class="panel" style="margin-top: 16px;">
+  <h2>Последние заказы</h2>
+  <div class="list">
+    {% for order in recent_orders %}
+      <article class="list-row">
+        <div>
+          <h3>Order #{{ order.id }}</h3>
+          <p class="muted">Статус: {{ order.get_status_display }} • Оплата: {{ order.get_payment_status_display }}</p>
+          <p class="muted">SLA: {{ order.sla_status }}</p>
+        </div>
+        <div class="list-actions">
+          <p class="price">${{ order.total_amount }}</p>
+          <a class="btn btn-secondary" href="{% url 'order_detail' order.id %}">Открыть</a>
+        </div>
+      </article>
+    {% empty %}
+      <p class="muted">Заказов нет.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

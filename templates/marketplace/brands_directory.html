@@ -1,0 +1,32 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Справочник брендов | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Справочник брендов</h1>
+  <p class="muted">Матрица брендов по регионам и производителям компонентов</p>
+</section>
+
+<form method="get" class="filters panel" style="grid-template-columns: 1fr auto;">
+  <input type="text" name="q" value="{{ query }}" placeholder="Поиск бренда..." />
+  <button type="submit" class="btn">Найти</button>
+</form>
+
+<div class="grid">
+  {% for group in groups %}
+    <section class="panel">
+      <h2>{{ group.title }} <span class="muted">({{ group.count }})</span></h2>
+      <div class="chips">
+        {% for brand in group.brands %}
+          <a class="chip" href="{% url 'catalog' %}?brand={{ brand.slug }}">{{ brand.name }} ({{ brand.parts_count }})</a>
+        {% empty %}
+          <span class="muted">Нет брендов</span>
+        {% endfor %}
+      </div>
+    </section>
+  {% empty %}
+    <section class="panel">
+      <p class="muted">По вашему запросу бренды не найдены.</p>
+    </section>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Корзина | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Корзина</h1>
+</section>
+
+{% if rows %}
+  <div class="list">
+    {% for row in rows %}
+      <article class="list-row">
+        <div>
+          <h3>{{ row.part.title }}</h3>
+          <p class="muted">OEM {{ row.part.oem_number }} • {{ row.quantity }} шт</p>
+        </div>
+        <div class="list-actions">
+          <p class="price">${{ row.line_total }}</p>
+          <form method="post" action="{% url 'cart_remove' row.part.id %}">
+            {% csrf_token %}
+            <button class="btn btn-danger" type="submit">Удалить</button>
+          </form>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+  <div class="checkout-box">
+    <p>Итого: <strong>${{ total }}</strong></p>
+    <a class="btn" href="{% url 'checkout' %}">Перейти к оформлению</a>
+  </div>
+{% else %}
+  <p>Корзина пустая. <a href="{% url 'catalog' %}">Перейти в каталог</a></p>
+{% endif %}
+{% endblock %}
+

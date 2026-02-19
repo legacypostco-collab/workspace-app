@@ -1,0 +1,197 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Seller кабинет | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Seller кабинет</h1>
+  <a class="btn" href="{% url 'seller_part_create' %}">Добавить товар</a>
+</section>
+{% if profile %}
+<section class="panel" style="margin-bottom: 16px;">
+  <h2>Доступы команды</h2>
+  <p class="muted">
+    Отдел: <strong>{{ profile.get_department_display }}</strong>
+    • Роль: <strong>{{ profile.get_role_display }}</strong>
+    • Компания: <strong>{{ profile.company_name|default:"—" }}</strong>
+  </p>
+  <div class="chips">
+    {% if profile.can_manage_assortment %}<span class="chip chip-ok">Ассортимент: edit</span>{% else %}<span class="chip chip-warn">Ассортимент: read-only</span>{% endif %}
+    {% if profile.can_manage_pricing %}<span class="chip chip-ok">Цены: edit</span>{% else %}<span class="chip chip-warn">Цены: no access</span>{% endif %}
+    {% if profile.can_manage_orders %}<span class="chip chip-ok">Заказы: edit</span>{% else %}<span class="chip chip-warn">Заказы: no access</span>{% endif %}
+    {% if profile.can_manage_drawings %}<span class="chip chip-ok">Чертежи: edit</span>{% else %}<span class="chip chip-warn">Чертежи: no access</span>{% endif %}
+    {% if profile.can_view_analytics %}<span class="chip chip-ok">Аналитика: view</span>{% else %}<span class="chip chip-warn">Аналитика: no access</span>{% endif %}
+  </div>
+</section>
+{% endif %}
+
+<section class="panel">
+  <h2>Модульная карта системы</h2>
+  <div class="grid">
+    {% for m in module_cards %}
+      <article class="card card-body">
+        <p>
+          {% if m.status == 'done' %}
+            <span class="chip">Done</span>
+          {% elif m.status == 'partial' %}
+            <span class="chip">In Progress</span>
+          {% else %}
+            <span class="chip">Planned</span>
+          {% endif %}
+        </p>
+        <h3>{{ m.title }}</h3>
+        <p class="muted">{{ m.note }}</p>
+      </article>
+    {% endfor %}
+  </div>
+  <p class="muted" style="margin-top: 10px;">
+    Документы: <code>docs/supplier-cabinet-master-spec-ru.md</code> и <code>docs/supplier-cabinet-acceptance-checklist.md</code>
+  </p>
+</section>
+
+<section class="panel upload-panel">
+  <h2>Bulk Upload (CSV)</h2>
+  <p class="muted">Формат колонок: <code>Part Number, Description, Unitprice</code></p>
+  <p><a class="chip" href="{% url 'seller_csv_template' %}">Скачать шаблон CSV</a></p>
+  <form method="post" action="{% url 'seller_bulk_upload' %}" enctype="multipart/form-data" class="upload-form" id="bulk-upload-form">
+    {% csrf_token %}
+    {{ bulk_form.as_p }}
+    <div class="card-actions">
+      <button class="btn btn-secondary" type="submit" name="import_mode" value="preview" id="bulk-upload-preview-btn">Проверить файл</button>
+      <button class="btn" type="submit" name="import_mode" value="apply" id="bulk-upload-btn">Применить импорт</button>
+    </div>
+    <div class="upload-progress" id="upload-progress" aria-hidden="true">
+      <div class="upload-progress-bar" id="upload-progress-bar"></div>
+    </div>
+    <p class="muted" id="upload-progress-text"></p>
+  </form>
+</section>
+{% if upload_report %}
+  <section class="panel" style="margin-bottom: 16px;">
+    <h2>Отчет загрузки ({{ upload_report.mode }})</h2>
+    <div class="chips">
+      <span class="chip chip-ok">Создано: {{ upload_report.created }}</span>
+      <span class="chip chip-ok">Обновлено: {{ upload_report.updated }}</span>
+      <span class="chip chip-warn">Без цены: {{ upload_report.skipped_no_price }}</span>
+      <span class="chip chip-warn">Ошибки: {{ upload_report.skipped_invalid }}</span>
+    </div>
+    {% if upload_report.errors %}
+      <div style="margin-top: 10px;">
+        <p class="muted">Первые ошибки (до 100 строк):</p>
+        <div class="list">
+          {% for err in upload_report.errors %}
+            <div class="list-row">
+              <div>
+                <strong>Строка {{ err.row }}</strong>
+                <p class="muted">{{ err.reason }}</p>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </section>
+{% endif %}
+
+<div class="list">
+  {% for part in parts %}
+    <article class="list-row">
+      <div>
+        <h3>{{ part.title }}</h3>
+        <p class="muted">{% if part.brand %}{{ part.brand.name }} • {% endif %}OEM {{ part.oem_number }} • {{ part.get_condition_display }} • stock: {{ part.stock_quantity }}</p>
+        <p>
+          {% if part.is_mandatory_complete %}
+            <span class="chip chip-ok">AUTO READY</span>
+          {% else %}
+            <span class="chip chip-warn">NEEDS DATA</span>
+          {% endif %}
+          <span class="chip">Status: {{ part.availability_status }}</span>
+          <span class="chip">{{ part.currency }} / {{ part.incoterm }}</span>
+        </p>
+        {% if not part.is_mandatory_complete %}
+          <p class="muted">Нет данных: {{ part.mandatory_missing_fields|join:", " }}</p>
+        {% endif %}
+      </div>
+      <div class="list-actions">
+        <p class="price">${{ part.price }}</p>
+        <a class="btn btn-secondary" href="{% url 'seller_part_edit' part.id %}">Редактировать</a>
+      </div>
+    </article>
+  {% empty %}
+    <p>У вас пока нет товаров.</p>
+  {% endfor %}
+</div>
+
+<script>
+  (function () {
+    const form = document.getElementById("bulk-upload-form");
+    if (!form) return;
+
+    const btn = document.getElementById("bulk-upload-btn");
+    const previewBtn = document.getElementById("bulk-upload-preview-btn");
+    const progressWrap = document.getElementById("upload-progress");
+    const progressBar = document.getElementById("upload-progress-bar");
+    const progressText = document.getElementById("upload-progress-text");
+    const csrfInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+    const csrfToken = csrfInput ? csrfInput.value : "";
+
+    form.addEventListener("submit", function (event) {
+      if (!window.XMLHttpRequest || !window.FormData) {
+        return;
+      }
+
+      const data = new FormData(form);
+      const file = data.get("file");
+      if (!file || !file.size) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (!csrfToken) {
+        form.submit();
+        return;
+      }
+
+      btn.disabled = true;
+      if (previewBtn) previewBtn.disabled = true;
+      btn.textContent = "Загружаем...";
+      progressWrap.style.display = "block";
+      progressBar.style.width = "0%";
+      progressText.textContent = "Загрузка: 0%";
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", form.action, true);
+      xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+      xhr.setRequestHeader("X-CSRFToken", csrfToken);
+
+      xhr.upload.addEventListener("progress", function (e) {
+        if (!e.lengthComputable) return;
+        const percent = Math.min(100, Math.round((e.loaded / e.total) * 100));
+        progressBar.style.width = percent + "%";
+        progressText.textContent = "Загрузка: " + percent + "%";
+      });
+
+      xhr.addEventListener("load", function () {
+        if (xhr.status < 200 || xhr.status >= 400) {
+          btn.disabled = false;
+          if (previewBtn) previewBtn.disabled = false;
+          btn.textContent = "Применить импорт";
+          progressText.textContent = "Ошибка импорта (" + xhr.status + ").";
+          return;
+        }
+        progressBar.style.width = "100%";
+        progressText.textContent = "Файл загружен. Импортируем данные...";
+        window.location.reload();
+      });
+
+      xhr.addEventListener("error", function () {
+        btn.disabled = false;
+        if (previewBtn) previewBtn.disabled = false;
+        btn.textContent = "Применить импорт";
+        progressText.textContent = "Ошибка загрузки. Попробуйте снова.";
+      });
+
+      xhr.send(data);
+    });
+  })();
+</script>
+{% endblock %}

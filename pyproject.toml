@@ -1,0 +1,21 @@
+[tool.black]
+line-length = 100
+target-version = ["py313"]
+extend-exclude = '''
+(
+  migrations
+)
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

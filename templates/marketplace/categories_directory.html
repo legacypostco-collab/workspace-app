@@ -1,0 +1,19 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Справочник категорий | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Справочник категорий</h1>
+  <p class="muted">Все категории запчастей с количеством позиций в каталоге</p>
+</section>
+
+<section class="panel">
+  <h2>Всего позиций: <span class="muted">{{ total_parts }}</span></h2>
+  <div class="chips">
+    {% for category in categories %}
+      <a class="chip" href="{% url 'catalog' %}?category={{ category.slug }}">{{ category.name }} ({{ category.parts_count }})</a>
+    {% empty %}
+      <span class="muted">Категории пока не добавлены</span>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

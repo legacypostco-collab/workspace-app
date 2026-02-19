@@ -1,0 +1,26 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Checkout | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Оформление заказа</h1>
+</section>
+
+<div class="checkout-layout">
+  <div class="card card-form panel">
+    <h2>Данные клиента</h2>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="btn">Подтвердить заказ</button>
+    </form>
+  </div>
+  <div class="card panel card-form">
+    <h2>Состав заказа</h2>
+    {% for row in rows %}
+      <p>{{ row.part.title }} × {{ row.quantity }} = ${{ row.line_total }}</p>
+    {% endfor %}
+    <hr />
+    <p><strong>Итого: ${{ total }}</strong></p>
+  </div>
+</div>
+{% endblock %}

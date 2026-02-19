@@ -1,0 +1,16 @@
+{% extends "marketplace/base.html" %}
+{% load static %}
+{% block title %}Вход | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head"><h1>Вход</h1></section>
+<div class="card card-form">
+  <div class="auth-logo-wrap">
+    <img src="{% static 'marketplace/consolidator-logo.svg' %}" alt="Consolidator Parts" class="auth-logo" />
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn" type="submit">Войти</button>
+  </form>
+</div>
+{% endblock %}

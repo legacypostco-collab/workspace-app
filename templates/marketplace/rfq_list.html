@@ -1,0 +1,27 @@
+{% extends "marketplace/base.html" %}
+{% block title %}RFQ | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>RFQ</h1>
+  <p class="muted">Запросы котировок и статус обработки.</p>
+  <a class="btn" href="{% url 'rfq_new' %}">Новый RFQ</a>
+</section>
+
+<div class="list">
+  {% for rfq in rfqs %}
+    <article class="list-row">
+      <div>
+        <h3>RFQ #{{ rfq.id }}</h3>
+        <p class="muted">{{ rfq.company_name|default:rfq.customer_name }} • {{ rfq.created_at }}</p>
+        <p class="muted">Mode: {{ rfq.get_mode_display }} • Status: {{ rfq.get_status_display }} • Items: {{ rfq.items.count }}</p>
+      </div>
+      <div class="list-actions">
+        <p class="price">${{ rfq.estimated_total }}</p>
+        <a class="btn btn-secondary" href="{% url 'rfq_detail' rfq.id %}">Открыть</a>
+      </div>
+    </article>
+  {% empty %}
+    <p>RFQ пока нет.</p>
+  {% endfor %}
+</div>
+{% endblock %}

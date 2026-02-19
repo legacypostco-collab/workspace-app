@@ -1,0 +1,37 @@
+{% extends "marketplace/base.html" %}
+{% block title %}{{ part.title }} | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="part-layout">
+  <img class="part-image" src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
+  <div class="panel">
+    <p class="muted">{{ part.category.name }} • OEM {{ part.oem_number }}</p>
+    <h1>{{ part.title }}</h1>
+    <p>{{ part.description }}</p>
+    <p><span class="chip">{{ part.get_condition_display }}</span></p>
+    <p class="price">${{ part.price }}</p>
+    <p class="muted">Остаток: {{ part.stock_quantity }} шт</p>
+    <form method="post" action="{% url 'cart_add' part.id %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{% url 'part_detail' part.slug %}" />
+      <button class="btn" type="submit">Добавить в корзину</button>
+    </form>
+  </div>
+</section>
+
+{% if related %}
+<section>
+  <div class="section-head"><h2>Похожие позиции</h2></div>
+  <div class="grid">
+    {% for item in related %}
+      <article class="card">
+        <img src="{{ item.image_url }}" alt="{{ item.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
+        <div class="card-body">
+          <h3><a href="{% url 'part_detail' item.slug %}">{{ item.title }}</a></h3>
+          <p class="price">${{ item.price }}</p>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

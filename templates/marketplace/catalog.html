@@ -1,0 +1,94 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Каталог | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Каталог запчастей</h1>
+</section>
+
+<form method="get" class="filters panel">
+  <input type="text" name="q" value="{{ query }}" placeholder="Поиск по названию или OEM..." />
+  <select name="brand">
+    <option value="">Все бренды</option>
+    {% for brand in brands %}
+      <option value="{{ brand.slug }}" {% if selected_brand == brand.slug %}selected{% endif %}>
+        {{ brand.name }}
+      </option>
+    {% endfor %}
+  </select>
+  <select name="category">
+    <option value="">Все категории</option>
+    {% for category in categories %}
+      <option value="{{ category.slug }}" {% if selected_category == category.slug %}selected{% endif %}>
+        {{ category.name }}
+      </option>
+    {% endfor %}
+  </select>
+  <select name="condition">
+    <option value="">Любое состояние</option>
+    <option value="oem" {% if selected_condition == 'oem' %}selected{% endif %}>OEM</option>
+    <option value="aftermarket" {% if selected_condition == 'aftermarket' %}selected{% endif %}>Aftermarket</option>
+    <option value="reman" {% if selected_condition == 'reman' %}selected{% endif %}>REMAN</option>
+  </select>
+  <input type="number" step="0.01" min="0" name="min_price" value="{{ selected_min_price }}" placeholder="Цена от" />
+  <input type="number" step="0.01" min="0" name="max_price" value="{{ selected_max_price }}" placeholder="Цена до" />
+  <select name="sort">
+    <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Сначала новые</option>
+    <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Цена по возрастанию</option>
+    <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Цена по убыванию</option>
+    <option value="stock_desc" {% if selected_sort == 'stock_desc' %}selected{% endif %}>Больше на складе</option>
+  </select>
+  <label class="checkbox-inline">
+    <input type="checkbox" name="in_stock" value="1" {% if selected_in_stock %}checked{% endif %} />
+    Только в наличии
+  </label>
+  <button type="submit" class="btn">Применить</button>
+</form>
+
+<div class="grid">
+  {% for part in parts %}
+    <article class="card">
+      <img src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
+      <div class="card-body">
+        <p class="muted">{% if part.brand %}{{ part.brand.name }} • {% endif %}{{ part.category.name }} • OEM {{ part.oem_number }}</p>
+        <h3><a href="{% url 'part_detail' part.slug %}">{{ part.title }}</a></h3>
+        <p><span class="chip">{{ part.get_condition_display }}</span></p>
+        <p class="price">${{ part.price }}</p>
+        <div class="card-actions">
+          <form method="post" action="{% url 'cart_add' part.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'catalog' %}" />
+            <button class="btn btn-secondary" type="submit">В корзину</button>
+          </form>
+          {% if part.id in compare_ids %}
+            <form method="post" action="{% url 'compare_remove' part.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'catalog' %}" />
+              <button class="btn" type="submit">Убрать</button>
+            </form>
+          {% else %}
+            <form method="post" action="{% url 'compare_add' part.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'catalog' %}" />
+              <button class="btn" type="submit">Сравнить</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </article>
+  {% empty %}
+    <p>Ничего не найдено.</p>
+  {% endfor %}
+</div>
+
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+  <div class="pagination">
+    {% if page_obj.has_previous %}
+      <a class="btn" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}">Назад</a>
+    {% endif %}
+    <span class="muted">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a class="btn" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}">Далее</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

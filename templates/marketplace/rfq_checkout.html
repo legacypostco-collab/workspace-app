@@ -1,0 +1,42 @@
+{% extends "marketplace/base.html" %}
+{% block title %}RFQ Checkout | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Оформление из RFQ #{{ rfq.id }}</h1>
+  <p class="muted">Подтвердите контактные данные и адрес доставки.</p>
+</section>
+
+<section class="checkout-layout">
+  <div class="panel">
+    <h2>Позиции RFQ</h2>
+    <div class="list">
+      {% for row in rows %}
+        <article class="list-row">
+          <div>
+            <h3>{{ row.part.title }}</h3>
+            <p class="muted">OEM {{ row.part.oem_number }} • Qty: {{ row.quantity }}</p>
+          </div>
+          <p class="price">${{ row.line_total }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="panel card-form">
+    <h2>Данные заказа</h2>
+    <form method="post" class="list">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="checkout-box">
+        <div>
+          <p class="muted">Итого</p>
+          <p class="price">${{ total }}</p>
+        </div>
+      </div>
+      <div>
+        <button class="btn" type="submit">Создать заказ</button>
+        <a class="btn btn-secondary" href="{% url 'rfq_detail' rfq.id %}">Назад в RFQ</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

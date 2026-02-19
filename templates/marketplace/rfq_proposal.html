@@ -1,0 +1,172 @@
+{% extends "marketplace/base.html" %}
+{% load static %}
+{% block title %}КП по RFQ #{{ rfq.id }} | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head invoice-toolbar">
+  <div>
+    <h1>Коммерческое предложение</h1>
+    <p class="muted">RFQ #{{ rfq.id }} • {{ rfq.company_name|default:rfq.customer_name }}</p>
+  </div>
+  <div class="card-actions">
+    <a class="btn btn-secondary" href="{% url 'rfq_proposal_pdf' rfq.id %}">Скачать PDF</a>
+    <button class="btn" onclick="window.print()">Печать</button>
+  </div>
+</section>
+
+<section class="invoice-sheet">
+  <header class="invoice-top">
+    <div>
+      <img src="{% static 'marketplace/consolidator-logo.svg' %}" alt="Consolidator Parts" class="invoice-logo-print" />
+      <p class="invoice-company">Consolidator Parts LLC</p>
+      <p class="invoice-meta">Коммерческое предложение на поставку запчастей</p>
+      <p class="invoice-meta">Email: sales@consolidator.parts</p>
+    </div>
+    <div class="invoice-number-box">
+      <p class="invoice-title">COMMERCIAL PROPOSAL</p>
+      <p><strong>No:</strong> KP-{{ rfq.created_at|date:"Ymd" }}-{{ rfq.id }}</p>
+      <p><strong>Date:</strong> {{ rfq.created_at|date:"d.m.Y" }}</p>
+      <p><strong>Mode:</strong> {{ rfq.get_mode_display }}</p>
+    </div>
+  </header>
+
+  <section class="invoice-parties">
+    <div class="invoice-party">
+      <p class="invoice-label">Поставщик</p>
+      <p><strong>Consolidator Parts LLC</strong></p>
+      <p>B2B procurement operator</p>
+    </div>
+    <div class="invoice-party">
+      <p class="invoice-label">Клиент</p>
+      <p><strong>{{ rfq.customer_name }}</strong></p>
+      <p>{{ rfq.customer_email }}</p>
+      <p>{{ rfq.company_name|default:"—" }}</p>
+    </div>
+  </section>
+
+  <section>
+    <table class="invoice-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Наименование</th>
+          <th>OEM</th>
+          <th>Qty</th>
+          <th>Срок</th>
+          <th>Цена</th>
+          <th>Сумма</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ row.part.title }}</td>
+            <td>{{ row.part.oem_number }}</td>
+            <td>{{ row.quantity }}</td>
+            <td>{{ row.part.production_lead_days|default:0 }} дн.</td>
+            <td>${{ row.part.price }}</td>
+            <td>${{ row.line_total }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="invoice-summary">
+    <div class="invoice-note">
+      <p class="invoice-label">Условия</p>
+      <p>Базис поставки и финальные условия подтверждаются на этапе заказа.</p>
+      <p>КП сформировано автоматически по актуальным офферам поставщиков.</p>
+    </div>
+    <div class="invoice-total-box">
+      <p><span>Subtotal</span><strong>${{ total }}</strong></p>
+      <p><span>Service</span><strong>Included</strong></p>
+      <p class="invoice-grand"><span>Total</span><strong>${{ total }}</strong></p>
+    </div>
+  </section>
+</section>
+
+<section class="panel" style="margin-top: 16px;">
+  <h2>Расчет логистики (API)</h2>
+  <form id="logistics-form" class="card-form" style="margin-bottom: 16px;">
+    {% csrf_token %}
+    <div class="grid">
+      <label>Откуда<input type="text" name="origin" value="Shanghai, CN" /></label>
+      <label>Куда<input type="text" name="destination" value="Moscow, RU" /></label>
+      <label>Mode
+        <select name="mode">
+          <option value="sea">Sea</option>
+          <option value="rail">Rail</option>
+          <option value="road">Road</option>
+          <option value="air">Air</option>
+        </select>
+      </label>
+      <label>Incoterm
+        <select name="incoterm">
+          <option value="FOB">FOB</option>
+          <option value="CIF">CIF</option>
+          <option value="DDP">DDP</option>
+        </select>
+      </label>
+      <label>Weight (kg)<input type="number" min="0" step="0.01" name="weight_kg" value="120" /></label>
+      <label>Volume (m3)<input type="number" min="0" step="0.01" name="volume_m3" value="1.8" /></label>
+    </div>
+    <div class="card-actions">
+      <button class="btn btn-secondary" type="submit">Рассчитать логистику</button>
+    </div>
+    <p id="logistics-result" class="muted"></p>
+  </form>
+
+  <h2>Принять КП и купить</h2>
+  <form method="post" class="card-form" id="proposal-accept-form">
+    {% csrf_token %}
+    <input type="hidden" name="logistics_cost" id="logistics-cost-input" value="0.00" />
+    {{ form.as_p }}
+    <p class="muted" id="proposal-total-note">Итог к оплате: ${{ total }}</p>
+    <div class="card-actions">
+      <button class="btn" type="submit">Принять КП и оформить заказ</button>
+      <a class="btn btn-secondary" href="{% url 'rfq_detail' rfq.id %}">Назад к RFQ</a>
+    </div>
+  </form>
+</section>
+<script>
+  (function () {
+    const form = document.getElementById("logistics-form");
+    const resultEl = document.getElementById("logistics-result");
+    const costInput = document.getElementById("logistics-cost-input");
+    const totalNote = document.getElementById("proposal-total-note");
+    if (!form || !resultEl || !costInput || !totalNote) return;
+    const baseTotal = Number("{{ total|floatformat:2 }}");
+
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      resultEl.textContent = "Считаем...";
+      const data = new FormData(form);
+      try {
+        const resp = await fetch("{% url 'rfq_logistics_estimate' rfq.id %}", {
+          method: "POST",
+          body: data,
+          credentials: "same-origin",
+          headers: {
+            "X-Requested-With": "XMLHttpRequest"
+          }
+        });
+        const json = await resp.json();
+        if (!json.ok) {
+          resultEl.textContent = `Ошибка расчета логистики: ${json.error || "service error"}`;
+          return;
+        }
+        const r = json.result || {};
+        const cost = Number(r.cost || 0);
+        costInput.value = cost.toFixed(2);
+        const grand = baseTotal + cost;
+        resultEl.textContent = `Логистика: ${r.cost} ${r.currency || "USD"} (${r.provider})`;
+        if (r.warning) resultEl.textContent += ` · ${r.warning}`;
+        totalNote.textContent = `Итог к оплате: $${grand.toFixed(2)} (товар $${baseTotal.toFixed(2)} + логистика $${cost.toFixed(2)})`;
+      } catch (err) {
+        resultEl.textContent = "Сервис логистики недоступен.";
+      }
+    });
+  })();
+</script>
+{% endblock %}

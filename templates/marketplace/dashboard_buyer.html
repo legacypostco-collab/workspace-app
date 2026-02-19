@@ -1,0 +1,48 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Buyer Dashboard | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Buyer Dashboard</h1>
+  <p class="muted">Роль: {{ role|default:"buyer" }}</p>
+  <a class="btn" href="{% url 'rfq_new' %}">Создать RFQ</a>
+  {% if created_order_id %}
+    <p class="success">Заказ #{{ created_order_id }} успешно создан.</p>
+  {% endif %}
+</section>
+
+<section class="grid metrics">
+  <article class="card card-body">
+    <p class="muted">Заказов</p>
+    <p class="price">{{ orders_count }}</p>
+  </article>
+  <article class="card card-body">
+    <p class="muted">Сумма закупок</p>
+    <p class="price">${{ total_spent }}</p>
+  </article>
+  <article class="card card-body">
+    <p class="muted">RFQ</p>
+    <p class="price">{{ rfqs_count }}</p>
+  </article>
+</section>
+
+<div class="list">
+  {% for order in orders %}
+    <article class="list-row">
+      <div>
+        <h3>Заказ #{{ order.id }}</h3>
+        <p class="muted">{{ order.customer_name }} • {{ order.created_at }}</p>
+        <p class="muted">Статус: {{ order.get_status_display }}</p>
+        <p class="muted">Оплата: {{ order.get_payment_status_display }} • Резерв: ${{ order.reserve_amount }}</p>
+        <p class="muted">SLA: {{ order.sla_status }}{% if order.sla_breaches_count %} • breaches: {{ order.sla_breaches_count }}{% endif %}</p>
+      </div>
+      <div class="list-actions">
+        <p class="price">${{ order.total_amount }}</p>
+        <a class="btn btn-secondary" href="{% url 'order_detail' order.id %}">Детали</a>
+        <a class="btn btn-secondary" href="{% url 'order_invoice' order.id %}">Invoice</a>
+      </div>
+    </article>
+  {% empty %}
+    <p>Заказов пока нет.</p>
+  {% endfor %}
+</div>
+{% endblock %}

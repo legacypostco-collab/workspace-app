@@ -1,0 +1,79 @@
+{% extends "marketplace/base.html" %}
+{% block title %}RFQ #{{ rfq.id }} | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>RFQ #{{ rfq.id }}</h1>
+  <p class="muted">{{ rfq.company_name|default:rfq.customer_name }} • {{ rfq.created_at }}</p>
+  <p class="muted">Mode: {{ rfq.get_mode_display }} • Urgency: {{ rfq.get_urgency_display }} • Status: {{ rfq.get_status_display }}</p>
+  {% if rfq.notes %}
+    <p class="muted">{{ rfq.notes }}</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Позиции</h2>
+  <div class="list">
+    {% for card in item_cards %}
+      {% with item=card.item %}
+      <article class="list-row">
+        <div>
+          <h3>{{ item.query }} × {{ item.quantity }}</h3>
+          <p class="muted">State: {{ item.get_state_display }}</p>
+          {% if item.confidence %}
+            <p class="muted">Confidence: {{ item.confidence }}%</p>
+          {% endif %}
+          {% if item.decision_reason %}
+            <p class="muted">{{ item.decision_reason }}</p>
+          {% endif %}
+          {% if item.recommended_supplier_status %}
+            <p class="muted">Recommended status: {{ item.recommended_supplier_status|upper }}</p>
+          {% endif %}
+          {% if item.matched_part %}
+            <p class="muted">
+              Match:
+              <a href="{% url 'part_detail' item.matched_part.slug %}">{{ item.matched_part.title }}</a>
+              {% if item.matched_part.brand %} • {{ item.matched_part.brand.name }}{% endif %}
+            </p>
+          {% else %}
+            <p class="muted">Совпадение не найдено, требуется проверка оператором.</p>
+          {% endif %}
+          {% if card.trusted %}
+            <p class="muted">Trusted: {% for p in card.trusted %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>
+          {% endif %}
+          {% if card.sandbox %}
+            <p class="muted">Sandbox: {% for p in card.sandbox %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>
+          {% endif %}
+          {% if card.risky %}
+            <p class="muted">Risky (operator only): {% for p in card.risky %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>
+          {% endif %}
+        </div>
+        <div class="list-actions">
+          {% if item.matched_part %}
+            <p class="price">${{ item.estimated_line_total }}</p>
+          {% else %}
+            <p class="muted">N/A</p>
+          {% endif %}
+        </div>
+      </article>
+      {% endwith %}
+    {% endfor %}
+  </div>
+</section>
+
+<section class="checkout-box">
+  <div>
+    <p class="muted">Оценочный итог по найденным позициям</p>
+    <p class="price">${{ total }}</p>
+  </div>
+  <div>
+    <a class="btn btn-secondary" href="{% url 'rfq_list' %}">К списку RFQ</a>
+    {% if role != 'seller' and rows %}
+      <a class="btn btn-secondary" href="{% url 'rfq_proposal' rfq.id %}">КП + логистика + покупка</a>
+    {% endif %}
+    {% if role != 'seller' and rows %}
+      <a class="btn" href="{% url 'rfq_checkout' rfq.id %}">Создать заказ из RFQ</a>
+    {% endif %}
+    <a class="btn" href="{% url 'rfq_new' %}">Создать новый RFQ</a>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Кабинет | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Личный кабинет</h1>
+  <p class="muted">Роль: {{ role|default:"buyer" }}</p>
+  {% if created_order_id %}
+    <p class="success">Заказ #{{ created_order_id }} успешно создан.</p>
+  {% endif %}
+</section>
+
+<div class="list">
+  {% for order in orders %}
+    <article class="list-row">
+      <div>
+        <h3>Заказ #{{ order.id }}</h3>
+        <p class="muted">{{ order.customer_name }} • {{ order.created_at }}</p>
+        <p class="muted">Статус: {{ order.get_status_display }}</p>
+      </div>
+      <div class="list-actions">
+        <p class="price">${{ order.total_amount }}</p>
+      </div>
+    </article>
+  {% empty %}
+    <p>Заказов пока нет.</p>
+  {% endfor %}
+</div>
+{% endblock %}

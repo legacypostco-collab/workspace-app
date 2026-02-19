@@ -1,0 +1,79 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Consolidator Parts | Главная{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">Consolidator Parts Platform</p>
+  <h1>Procurement Control Center<br />for Industrial Parts</h1>
+  <p class="sub">Каталог OEM/аналогов, seller marketplace и заказный контур в одном защищенном интерфейсе.</p>
+  <div class="hero-actions">
+    <a href="{% url 'catalog' %}" class="btn">Открыть каталог</a>
+    <a href="{% url 'register' %}" class="btn btn-secondary">Стать поставщиком</a>
+    <a href="{% url 'demo_center' %}" class="btn btn-secondary">Demo Center</a>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="grid metrics">
+    <article class="card card-body">
+      <p class="muted">SKU в работе</p>
+      <p class="price">10M+</p>
+    </article>
+    <article class="card card-body">
+      <p class="muted">SLA исполнение</p>
+      <p class="price">95%</p>
+    </article>
+    <article class="card card-body">
+      <p class="muted">RFQ скорость</p>
+      <p class="price">≤ 15 min</p>
+    </article>
+  </div>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Категории</h2>
+  </div>
+  <section class="panel">
+    <div class="chips">
+      {% for category in top_categories %}
+        <a class="chip" href="{% url 'catalog' %}?category={{ category.slug }}">{{ category.name }} ({{ category.parts_count }})</a>
+      {% empty %}
+        <span class="muted">Категории пока пустые</span>
+      {% endfor %}
+    </div>
+  </section>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Бренды</h2>
+  </div>
+  <section class="panel">
+    <div class="chips">
+      {% for brand in top_brands %}
+        <a class="chip" href="{% url 'catalog' %}?brand={{ brand.slug }}">{{ brand.name }} ({{ brand.parts_count }})</a>
+      {% empty %}
+        <span class="muted">Бренды пока пустые</span>
+      {% endfor %}
+    </div>
+  </section>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Популярные позиции</h2>
+  </div>
+  <div class="grid">
+    {% for part in featured %}
+      <article class="card">
+        <img src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
+        <div class="card-body">
+          <p class="muted">{{ part.category.name }}</p>
+          <h3><a href="{% url 'part_detail' part.slug %}">{{ part.title }}</a></h3>
+          <p class="price">${{ part.price }}</p>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

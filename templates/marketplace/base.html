@@ -1,0 +1,129 @@
+{% load static %}
+<!doctype html>
+<html lang="{{ language_code|default:'ru' }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Consolidator Parts{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}" />
+    <link rel="stylesheet" href="{% static 'marketplace/styles.css' %}" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a href="/" class="brand brand-side">
+          <img src="{% static 'marketplace/consolidator-logo.svg' %}" alt="Consolidator Parts" class="brand-logo-side" />
+          <span class="brand-tagline">Efficiency & Performance</span>
+        </a>
+
+        <nav class="sidebar-nav">
+          <a href="{% url 'home' %}" class="{% if request.path == '/' %}active{% endif %}">{{ ui.home }}</a>
+
+          <details class="menu-group" open>
+            <summary>{{ ui.navigation }}</summary>
+            <a href="{% url 'catalog' %}" class="{% if '/catalog' in request.path %}active{% endif %}">{{ ui.catalog }}</a>
+            <a href="{% url 'brands_directory' %}" class="{% if '/directory/brands' in request.path %}active{% endif %}">{{ ui.brands }}</a>
+            <a href="{% url 'categories_directory' %}" class="{% if '/directory/categories' in request.path %}active{% endif %}">{{ ui.categories }}</a>
+            <a href="{% url 'compare' %}" class="{% if '/compare/' in request.path %}active{% endif %}">{{ ui.compare }}</a>
+          </details>
+
+          <details class="menu-group" open>
+            <summary>{{ ui.sales }}</summary>
+            <a href="{% url 'rfq_new' %}" class="{% if '/rfq/new' in request.path %}active{% endif %}">{{ ui.new_rfq }}</a>
+            <a href="{% url 'rfq_list' %}" class="{% if '/rfq/' in request.path and '/rfq/new' not in request.path %}active{% endif %}">{{ ui.rfq_quotes }}</a>
+            <a href="{% url 'demo_center' %}" class="{% if '/demo-center/' in request.path %}active{% endif %}">{{ ui.demo_center }}</a>
+            <a href="{% url 'cart' %}" class="{% if '/cart/' in request.path or '/checkout/' in request.path %}active{% endif %}">{{ ui.cart }}</a>
+          </details>
+
+          {% if current_role == 'seller' %}
+            <details class="menu-group" {% if '/seller/' in request.path or '/operator/' in request.path %}open{% endif %}>
+              <summary>{{ ui.supplier }}{% if seller_department %} · {{ seller_department|upper }}{% endif %}</summary>
+              <a href="{% url 'seller_dashboard' %}" class="{% if '/seller/' in request.path %}active{% endif %}">{{ ui.seller_cabinet }}</a>
+              {% if seller_permissions.can_manage_orders %}
+                <a href="{% url 'dashboard_seller' %}" class="{% if '/dashboard/seller/' in request.path %}active{% endif %}">{{ ui.seller_orders }}</a>
+                <a href="{% url 'operator_queue' %}" class="{% if '/operator/queue' in request.path %}active{% endif %}">{{ ui.operator_queue }}</a>
+                <a href="{% url 'operator_webhooks' %}" class="{% if '/operator/webhooks' in request.path %}active{% endif %}">{{ ui.operator_webhooks }}</a>
+              {% endif %}
+            </details>
+
+            {% if seller_permissions.can_manage_drawings %}
+              <details class="menu-group">
+                <summary>{{ ui.engineering }}</summary>
+                <a href="{% url 'seller_dashboard' %}#drawings">{{ ui.drawings_docs }}</a>
+              </details>
+            {% endif %}
+
+            {% if seller_permissions.can_manage_pricing %}
+              <details class="menu-group">
+                <summary>{{ ui.finance }}</summary>
+                <a href="{% url 'seller_dashboard' %}#pricing">{{ ui.prices_discounts }}</a>
+                <a href="{% url 'seller_dashboard' %}#payouts">{{ ui.payouts }}</a>
+              </details>
+            {% endif %}
+
+            {% if seller_permissions.can_view_analytics %}
+              <details class="menu-group">
+                <summary>{{ ui.analytics }}</summary>
+                <a href="{% url 'kpi_reports' %}" class="{% if '/reports/kpi/' in request.path %}active{% endif %}">{{ ui.reports_kpi }}</a>
+              </details>
+            {% endif %}
+          {% else %}
+            {% if user.is_authenticated %}
+              <details class="menu-group" open>
+                <summary>{{ ui.my_cabinet }}</summary>
+                <a href="{% url 'dashboard_buyer' %}" class="{% if '/dashboard/buyer/' in request.path %}active{% endif %}">{{ ui.buyer_orders }}</a>
+                <a href="{% url 'kpi_reports' %}" class="{% if '/reports/kpi/' in request.path %}active{% endif %}">{{ ui.reports_kpi }}</a>
+                <a href="{% url 'dashboard' %}" class="{% if '/dashboard/' in request.path and '/dashboard/buyer/' not in request.path %}active{% endif %}">{{ ui.overview }}</a>
+              </details>
+            {% endif %}
+          {% endif %}
+        </nav>
+
+        <div class="sidebar-foot">
+          <a href="#" class="side-btn">{{ ui.callback }}</a>
+          <form action="/i18n/setlang/" method="post" class="side-lang-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <select name="language" class="side-lang-select" onchange="this.form.submit()">
+              <option value="ru" {% if language_code == 'ru' %}selected{% endif %}>RU</option>
+              <option value="en" {% if language_code == 'en' %}selected{% endif %}>EN</option>
+              <option value="zh-hans" {% if language_code == 'zh' %}selected{% endif %}>中文</option>
+            </select>
+          </form>
+        </div>
+      </aside>
+
+      <section class="app-content">
+        <header class="topbar">
+          <div class="topbar-left">
+            {% if user.is_authenticated %}
+              <span class="muted">{{ ui.you_logged_as }}: <strong>{{ user.username }}</strong></span>
+            {% endif %}
+          </div>
+          <div class="topbar-actions">
+            <a href="{% url 'rfq_new' %}" class="btn btn-top">{{ ui.new_rfq }}</a>
+            <a href="{% url 'compare' %}" class="btn btn-top btn-secondary">{{ ui.compare }} ({{ compare_count }})</a>
+            {% if user.is_authenticated %}
+              <a href="{% url 'dashboard' %}" class="btn btn-top btn-outline">{{ ui.cabinet }}</a>
+              <a href="{% url 'logout' %}" class="btn btn-top btn-outline">{{ ui.logout }}</a>
+            {% else %}
+              <a href="{% url 'register' %}" class="btn btn-top">{{ ui.register }}</a>
+              <a href="{% url 'login' %}" class="btn btn-top btn-outline">{{ ui.login }}</a>
+            {% endif %}
+          </div>
+        </header>
+
+        <main class="container">
+          {% if messages %}
+            <div class="messages">
+              {% for message in messages %}
+                <p class="message">{{ message }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+          {% block content %}{% endblock %}
+        </main>
+      </section>
+    </div>
+  </body>
+</html>
