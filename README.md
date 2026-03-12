@@ -1,6 +1,8 @@
-# django-marketplace
+# hybrid-marketplace
 
-Django MVP for Consolidator Parts marketplace.
+Hybrid platform based on two codebases:
+- fast MVP workflow from `django-marketplace`
+- operational hardening patterns inspired by `PnPartsPublic`
 
 ## Stack
 - Python 3.13
@@ -14,9 +16,18 @@ Django MVP for Consolidator Parts marketplace.
 - `templates/marketplace/` HTML templates
 - `static/marketplace/` static assets (styles, logos)
 
+## Hybrid additions
+- `GET /api/v1/health/` simple liveness probe
+- `GET /api/v1/readiness/` DB readiness probe
+- `GET /api/v1/analytics/hybrid/?days=30` role-aware operational analytics
+- `GET /api/v1/analytics/funnel/?days=30` conversion funnel (RFQ → Order → Delivery/Claims)
+- `python manage.py check_deploy_readiness` production readiness checks
+- safer CSV import matching by OEM key in `marketplace/services/imports.py`
+- production env template in `.env.production.example`
+
 ## Quick start
 ```bash
-cd "/Users/konastantinverveyn/Documents/Проект/django_marketplace"
+cd "/Users/konastantinverveyn/Documents/Проект/hybrid_marketplace"
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -32,6 +43,7 @@ make check
 make test
 make run
 make migrate
+python manage.py check_deploy_readiness --allow-no-tls
 ```
 
 ## Code style

@@ -3,6 +3,8 @@ from functools import wraps
 import csv
 import io
 import json
+import logging
+import os
 from datetime import timedelta
 from uuid import uuid4
 from urllib.parse import urlencode
@@ -42,7 +44,9 @@ from .models import (
     WebhookDeliveryLog,
 )
 from .rules import AutoModeInputs, decide_auto_mode
+from .services.imports import UploadLimitError, process_seller_csv_upload
 from .services.logistics import logistics_estimate
+from .services.observability import Timer, log_api_error, metric_inc
 
 CART_SESSION_KEY = "cart"
 COMPARE_SESSION_KEY = "compare_parts"
@@ -57,6 +61,8 @@ ORDER_TRANSITIONS = {
     "completed": set(),
     "cancelled": set(),
 }
+
+logger = logging.getLogger("marketplace")
 
 
 def _get_cart(request: HttpRequest) -> dict[str, int]:
@@ -1996,238 +2002,63 @@ def seller_bulk_upload(request: HttpRequest) -> HttpResponse:
         import_mode = "apply"
 
     upload = form.cleaned_data["file"]
-    filename = upload.name.lower()
-    if not filename.endswith(".csv"):
-        messages.error(request, "Поддерживается только CSV (UTF-8).")
-        return redirect("seller_dashboard")
-
-    raw = upload.read()
+    metric_inc("import_attempts_total")
+    timer = Timer()
     try:
-        text = raw.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        messages.error(request, "CSV должен быть в кодировке UTF-8.")
-        return redirect("seller_dashboard")
-
-    sample = text[:4096]
-    try:
-        dialect = csv.Sniffer().sniff(sample, delimiters=",;|\t")
-        delimiter = dialect.delimiter
-    except Exception:
-        delimiter = ","
-
-    reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
-    if not reader.fieldnames:
-        messages.error(request, "CSV не содержит заголовок.")
-        return redirect("seller_dashboard")
-
-    def normalize_header(value: str) -> str:
-        return "".join(ch for ch in value.lower() if ch.isalnum())
-
-    normalized_to_original = {normalize_header(h): h for h in reader.fieldnames if h}
-
-    def first_of(*variants: str):
-        for key in variants:
-            if key in normalized_to_original:
-                return normalized_to_original[key]
-        return None
-
-    part_col = first_of("partnumber", "partno", "partnum", "part#", "number", "sku", "article", "artikul")
-    desc_col = first_of("description", "descriptionenglisch", "name", "title", "productname")
-    price_col = first_of("unitprice", "price", "priceusd", "unitcost", "cost")
-    currency_col = first_of("currency", "curr")
-    stock_col = first_of("stock", "stockqty", "qty", "quantity")
-    oem_col = first_of("oem", "oemnumber", "oemno")
-
-    if not (part_col and desc_col and price_col):
-        messages.error(
-            request,
-            "CSV должен содержать колонки для Part Number, Description и Unitprice "
-            "(поддерживаются варианты: Partnumber/Part Number, Description, Unitprice/Price).",
-        )
-        return redirect("seller_dashboard")
-
-    category_name = form.cleaned_data["category"].strip() or "Epiroc"
-    category_slug = slugify(category_name)[:140] or "epiroc"
-    category, _ = Category.objects.get_or_create(slug=category_slug, defaults={"name": category_name})
-    if category.name != category_name:
-        category.name = category_name
-        category.save(update_fields=["name"])
-
-    default_stock = form.cleaned_data["default_stock"]
-    created = 0
-    updated = 0
-    skipped_no_price = 0
-    skipped_invalid = 0
-    batch_size = 1000
-    errors: list[dict[str, str | int]] = []
-
-    existing_parts = Part.objects.filter(seller=request.user).only("id", "oem_number")
-    existing_by_oem = {p.oem_number: p.id for p in existing_parts}
-    pending_new_by_oem: dict[str, Part] = {}
-    to_create: list[Part] = []
-    to_update: list[Part] = []
-
-    def parse_price(raw: str) -> Decimal | None:
-        cleaned = (raw or "").strip()
-        cleaned = cleaned.replace("€", "").replace("$", "").replace("₽", "").strip()
-        cleaned = cleaned.replace(" ", "")
-        if "," in cleaned and "." in cleaned:
-            cleaned = cleaned.replace(",", "")
-        elif "," in cleaned and "." not in cleaned:
-            cleaned = cleaned.replace(",", ".")
-        try:
-            value = Decimal(cleaned).quantize(Decimal("0.01"))
-            return value if value > 0 else None
-        except Exception:
-            return None
-
-    def flush_updates():
-        nonlocal updated
-        if not to_update:
-            return
-        with transaction.atomic():
-            Part.objects.bulk_update(
-                to_update,
-                ["title", "description", "price", "stock_quantity", "condition", "category", "brand", "image_url", "is_active"],
-                batch_size=batch_size,
-            )
-        updated += len(to_update)
-        to_update.clear()
-
-    def flush_creates():
-        nonlocal created
-        if not to_create:
-            return
-        with transaction.atomic():
-            Part.objects.bulk_create(to_create, batch_size=batch_size)
-        created += len(to_create)
-        to_create.clear()
-        pending_new_by_oem.clear()
-
-    for row_num, row in enumerate(reader, start=2):
-        part_number = (row.get(part_col) or "").strip()
-        description = (row.get(desc_col) or "").strip()
-        price_raw = (row.get(price_col) or "").strip()
-        if not part_number:
-            skipped_invalid += 1
-            if len(errors) < 100:
-                errors.append({"row": row_num, "reason": "Пустой Part Number"})
-            continue
-
-        price = parse_price(price_raw)
-        if price is None:
-            skipped_no_price += 1
-            if len(errors) < 100:
-                errors.append({"row": row_num, "reason": f"Некорректная цена: {price_raw or 'empty'}"})
-            continue
-        title = description if description else f"Part {part_number}"
-
-        stock_value = default_stock
-        if stock_col:
-            raw_stock = (row.get(stock_col) or "").strip()
-            if raw_stock:
-                try:
-                    stock_value = max(0, int(float(raw_stock.replace(",", "."))))
-                except Exception:
-                    stock_value = default_stock
-
-        currency_value = "USD"
-        if currency_col:
-            raw_currency = (row.get(currency_col) or "").strip().upper()
-            if raw_currency in {"USD", "EUR", "RUB", "CNY"}:
-                currency_value = raw_currency
-
-        oem_number_value = (row.get(oem_col) or "").strip() if oem_col else part_number
-        if not oem_number_value:
-            oem_number_value = part_number
-
-        if import_mode == "preview":
-            if existing_by_oem.get(part_number):
-                updated += 1
-            else:
-                created += 1
-            continue
-
-        existing_id = existing_by_oem.get(part_number)
-        if existing_id:
-            obj = Part(
-                id=existing_id,
-                seller=request.user,
-                title=title[:255],
-                oem_number=oem_number_value,
-                description=description,
-                price=price,
-                stock_quantity=stock_value,
-                condition="oem",
-                image_url="/static/marketplace/epiroc-logo.webp",
-                category=category,
-                brand=Brand.objects.filter(name__iexact=category_name).first(),
-                currency=currency_value,
-                is_active=True,
-            )
-            to_update.append(obj)
-            if len(to_update) >= batch_size:
-                flush_updates()
-            continue
-
-        if part_number in pending_new_by_oem:
-            obj = pending_new_by_oem[part_number]
-            obj.title = title[:255]
-            obj.description = description
-            obj.price = price
-            continue
-
-        base = slugify(f"{part_number}-{title}")[:220] or "part"
-        new_part = Part(
+        report = process_seller_csv_upload(
             seller=request.user,
-            title=title[:255],
-            slug=f"{base}-{uuid4().hex[:8]}",
-            oem_number=oem_number_value,
-            description=description,
-            price=price,
-            stock_quantity=stock_value,
-            condition="oem",
-            image_url="/static/marketplace/epiroc-logo.webp",
-            category=category,
-            brand=Brand.objects.filter(name__iexact=category_name).first(),
-            currency=currency_value,
-            is_active=True,
+            upload=upload,
+            category_name=form.cleaned_data["category"].strip() or "Epiroc",
+            default_stock=form.cleaned_data["default_stock"],
+            import_mode=import_mode,
         )
-        to_create.append(new_part)
-        pending_new_by_oem[part_number] = new_part
-        if len(to_create) >= batch_size:
-            flush_creates()
-
-    if import_mode == "preview":
-        request.session["seller_upload_report"] = {
-            "mode": "preview",
-            "created": created,
-            "updated": updated,
-            "skipped_no_price": skipped_no_price,
-            "skipped_invalid": skipped_invalid,
-            "errors": errors,
-        }
-        messages.info(
-            request,
-            f"Предпросмотр: создастся {created}, обновится {updated}, пропущено без цены {skipped_no_price}, пропущено по ошибкам {skipped_invalid}.",
+    except UploadLimitError as exc:
+        metric_inc("import_limits_triggered_total")
+        logger.warning(
+            "import_limit_exceeded",
+            extra={"seller_id": request.user.id, "status": exc.status_code, "reason": str(exc)},
         )
-        return redirect("seller_dashboard")
-
-    flush_updates()
-    flush_creates()
+        return JsonResponse({"error": str(exc)}, status=exc.status_code)
+    except ValueError as exc:
+        metric_inc("import_validation_errors_total")
+        logger.warning("import_validation_error", extra={"seller_id": request.user.id, "reason": str(exc)})
+        return JsonResponse({"error": str(exc)}, status=400)
+    except Exception:
+        metric_inc("import_internal_errors_total")
+        logger.exception("import_internal_error", extra={"seller_id": request.user.id})
+        return JsonResponse({"error": "Ошибка обработки импорта."}, status=500)
 
     request.session["seller_upload_report"] = {
-        "mode": "apply",
-        "created": created,
-        "updated": updated,
-        "skipped_no_price": skipped_no_price,
-        "skipped_invalid": skipped_invalid,
-        "errors": errors,
+        "mode": report.mode,
+        "created": report.created,
+        "updated": report.updated,
+        "skipped_no_price": report.skipped_no_price,
+        "skipped_invalid": report.skipped_invalid,
+        "errors": report.errors,
     }
-    messages.success(
-        request,
-        f"Импорт завершен. Создано: {created}, обновлено: {updated}, пропущено без цены: {skipped_no_price}, пропущено по ошибкам: {skipped_invalid}.",
+    metric_inc("import_success_total")
+    logger.info(
+        "import_finished",
+        extra={
+            "seller_id": request.user.id,
+            "mode": report.mode,
+            "created": report.created,
+            "updated": report.updated,
+            "skipped_no_price": report.skipped_no_price,
+            "skipped_invalid": report.skipped_invalid,
+            "latency_ms": timer.elapsed_ms(),
+        },
     )
+    if import_mode == "preview":
+        messages.info(
+            request,
+            f"Предпросмотр: создастся {report.created}, обновится {report.updated}, пропущено без цены {report.skipped_no_price}, пропущено по ошибкам {report.skipped_invalid}.",
+        )
+    else:
+        messages.success(
+            request,
+            f"Импорт завершен. Создано: {report.created}, обновлено: {report.updated}, пропущено без цены: {report.skipped_no_price}, пропущено по ошибкам: {report.skipped_invalid}.",
+        )
     return redirect("seller_dashboard")
 
 
@@ -2645,6 +2476,31 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
     file_url = (request.POST.get("file_url") or "").strip()
     file_obj = request.FILES.get("file_obj")
     allowed_doc_types = {key for key, _ in OrderDocument.DOC_TYPE_CHOICES}
+    blocked_extensions = {
+        ".exe",
+        ".sh",
+        ".bat",
+        ".cmd",
+        ".msi",
+        ".php",
+        ".js",
+        ".jar",
+        ".com",
+        ".scr",
+    }
+    allowed_extensions = {
+        ".pdf",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".txt",
+        ".csv",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+    }
 
     if doc_type not in allowed_doc_types:
         messages.error(request, "Некорректный тип документа.")
@@ -2655,6 +2511,17 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
     if not file_url and not file_obj:
         messages.error(request, "Добавьте файл или ссылку на документ.")
         return redirect("order_detail", order_id=order.id)
+    if file_obj:
+        ext = os.path.splitext(file_obj.name or "")[1].lower()
+        if ext in blocked_extensions or ext not in allowed_extensions:
+            messages.error(request, "Тип файла не разрешен.")
+            return redirect("order_detail", order_id=order.id)
+        if int(file_obj.size or 0) > int(settings.MAX_ORDER_DOCUMENT_BYTES):
+            messages.error(request, f"Файл слишком большой (макс. {settings.MAX_ORDER_DOCUMENT_BYTES} байт).")
+            return redirect("order_detail", order_id=order.id)
+        # Normalize filename for storage.
+        safe_name = slugify(os.path.splitext(file_obj.name)[0]) or "document"
+        file_obj.name = f"{safe_name}{ext}"
 
     doc = OrderDocument.objects.create(
         order=order,
