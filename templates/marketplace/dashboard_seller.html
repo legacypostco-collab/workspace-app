@@ -5,7 +5,7 @@
   <h1>Seller Dashboard</h1>
   <p class="muted">Роль: {{ role }}</p>
   <a class="btn" href="{% url 'seller_dashboard' %}">Управление товарами</a>
-  <a class="btn btn-secondary" href="{% url 'rfq_list' %}">Входящие RFQ</a>
+  <a class="btn btn-secondary" href="{% url 'seller_rfq_inbox' %}">Входящие RFQ</a>
 </section>
 
 <section class="grid metrics">
@@ -16,6 +16,10 @@
   <article class="card card-body">
     <p class="muted">Заказов по вашим товарам</p>
     <p class="price">{{ orders_count }}</p>
+  </article>
+  <article class="card card-body">
+    <p class="muted">RFQ по вашим товарам</p>
+    <p class="price">{{ rfqs_count }}</p>
   </article>
 </section>
 

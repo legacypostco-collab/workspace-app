@@ -1,0 +1,178 @@
+{% load static %}
+<aside class="seller-sidebar" style="width:280px;background:#1F1F1F;border-right:1px solid rgba(255,255,255,0.055);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:auto;padding:0;">
+
+  <!-- Logo -->
+  <div style="padding:18px 20px 14px;">
+    <a href="{% url 'seller_dashboard' %}" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+      <div style="width:30px;height:30px;flex-shrink:0;">
+        <svg width="30" height="30" viewBox="0 0 74.1 74.1" fill="#fff">
+          <polygon points="5.38 46.64 2.24 54.63 17.29 69.68 17.3 69.69 21.44 66.22 24.75 42.14 5.38 46.64"/>
+          <polygon points="21.44 66.22 24.87 74.1 46.16 74.1 46.64 68.72 31.95 49.35 21.44 66.22"/>
+          <polygon points="46.64 68.72 54.63 71.86 69.69 56.8 66.22 52.66 42.14 49.35 46.64 68.72"/>
+          <polygon points="68.71 27.45 71.86 19.47 56.8 4.41 52.65 7.87 49.35 31.95 68.71 27.45"/>
+          <polygon points="74.1 27.94 68.71 27.45 49.35 42.14 66.22 52.66 74.1 49.23 74.1 27.94"/>
+          <polygon points="52.65 7.87 49.23 0 27.93 0 27.45 5.38 42.14 24.75 52.65 7.87"/>
+          <polygon points="27.45 5.38 19.47 2.24 4.41 17.3 7.87 21.44 31.95 24.75 27.45 5.38"/>
+          <polygon points="7.87 21.44 0 24.87 0 46.16 5.38 46.64 24.75 31.95 7.87 21.44"/>
+        </svg>
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;line-height:1;letter-spacing:-0.01em;">Consolidator</div>
+        <div style="font-size:11px;color:#919191;margin-top:3px;letter-spacing:0.04em;">PARTS &middot; SUPPLIER</div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Status card -->
+  <div style="margin:0 12px 6px;padding:14px 16px;background:#242424;border-radius:10px;border:1px solid rgba(255,255,255,0.055);">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="position:relative;width:36px;height:36px;">
+        <svg width="36" height="36" viewBox="0 0 36 36" style="transform:rotate(-90deg)">
+          <circle cx="18" cy="18" r="15" fill="none" stroke="#2C2C2C" stroke-width="2.5"/>
+          <circle cx="18" cy="18" r="15" fill="none" stroke="#64B5F6" stroke-width="2.5"
+            stroke-linecap="round" stroke-dasharray="94.25" stroke-dashoffset="13.99"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:11px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ seller_rating_score|default:"4.3" }}</span>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:600;color:#ECECEC;">{{ seller_status_label|default:"Надёжный" }}</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;white-space:nowrap;">Рейтинг поставщика</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:13px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;white-space:nowrap;">$4.0M</div>
+        <div style="font-size:11px;font-weight:600;color:#64B5F6;">+28.7%</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:1px;margin-bottom:10px;">
+      <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:6px 0 0 6px;">
+        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">95.2%</div>
+        <div style="font-size:11px;color:#919191;margin-top:2px;">SLA</div>
+      </div>
+      <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;">
+        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">68%</div>
+        <div style="font-size:11px;color:#919191;margin-top:2px;">Конверсия</div>
+      </div>
+      <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:0 6px 6px 0;">
+        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">4.26</div>
+        <div style="font-size:11px;color:#919191;margin-top:2px;">Оценка</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav label -->
+  <div style="padding:10px 22px 4px;">
+    <span style="font-size:11px;color:#6A6A6A;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;">Меню</span>
+  </div>
+
+  <!-- Nav -->
+  <nav style="flex:1;padding:2px 12px;display:flex;flex-direction:column;gap:1px;">
+    {% for item in seller_nav_items %}
+      {% if item.enabled and item.url_name %}
+        <a href="{% url item.url_name %}" class="seller-nav-link{% if seller_active_nav == item.key %} active{% endif %}" style="display:flex;align-items:center;width:100%;text-decoration:none;border-radius:10px;gap:10px;position:relative;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;border:none;{% if seller_active_nav == item.key %}background:rgba(100,181,246,0.06);color:#ECECEC;font-weight:600;{% else %}background:transparent;color:#919191;font-weight:400;{% endif %}">
+          {% if seller_active_nav == item.key %}
+            <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:18px;border-radius:2px;background:#64B5F6;"></div>
+          {% endif %}
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:{% if seller_active_nav == item.key %}1{% else %}0.45{% endif %};">
+            {% if item.key == "dashboard" %}
+              <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.2"/><rect x="9" y="1.5" width="5.5" height="3.5" rx="1.2"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.2"/><rect x="9" y="7" width="5.5" height="7.5" rx="1.2"/>
+            {% elif item.key == "products" %}
+              <path d="M8 10V2M5 5l3-3 3 3"/><path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2"/>
+            {% elif item.key == "drawings" %}
+              <path d="M3 13.5h10"/><path d="M11.5 2.5l1.5 1.5-7 7-2.5.5.5-2.5 7-7z"/>
+            {% elif item.key == "requests" %}
+              <rect x="2" y="3" width="12" height="10.5" rx="1.5"/><path d="M5.5 1v3M10.5 1v3"/><path d="M5.5 7.5h5" stroke-width="1.5"/>
+            {% elif item.key == "orders" %}
+              <path d="M4 3.5h8l-.8 7H4.8L4 3.5z"/><circle cx="6" cy="13" r="1.2"/><circle cx="11" cy="13" r="1.2"/><path d="M2 1.5h2"/>
+            {% elif item.key == "sla" %}
+              <circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v4l2.5 1.5"/>
+            {% elif item.key == "discounts" %}
+              <circle cx="8" cy="8" r="6.5"/><path d="M8 4v8"/><path d="M5.8 6.2c0-.8 1-1.4 2.2-1.4s2.2.6 2.2 1.4-1 1.3-2.2 1.3S5.8 8.2 5.8 9s1 1.5 2.2 1.5 2.2-.4 2.2-1.2"/>
+            {% elif item.key == "qr" %}
+              <rect x="2" y="2" width="5" height="5" rx="0.5"/><rect x="9" y="2" width="5" height="5" rx="0.5"/><rect x="2" y="9" width="5" height="5" rx="0.5"/><rect x="10" y="10" width="3" height="3" rx="0.3"/>
+            {% elif item.key == "finance" %}
+              <circle cx="8" cy="8" r="6.5"/><path d="M8 4v8"/><path d="M5.8 6.2c0-.8 1-1.4 2.2-1.4s2.2.6 2.2 1.4-1 1.3-2.2 1.3S5.8 8.2 5.8 9s1 1.5 2.2 1.5 2.2-.4 2.2-1.2"/>
+            {% elif item.key == "rating" %}
+              <path d="M8 1l2 4.5 5 .7-3.6 3.5.9 5L8 12.2 3.7 14.7l.9-5L1 6.2l5-.7z"/>
+            {% elif item.key == "analytics" %}
+              <path d="M2.5 13.5V9M5.5 13.5V6M8.5 13.5V8M11.5 13.5V3.5" stroke-width="1.8" stroke-linecap="round"/>
+            {% elif item.key == "team" %}
+              <circle cx="6" cy="5.5" r="2.2"/><circle cx="11.5" cy="6" r="1.7"/><path d="M1.5 13.5c0-2.5 2-4.2 4.5-4.2s4.5 1.7 4.5 4.2"/><path d="M10.5 13.5c0-1.8 1-3 2.5-3s2 1 2 3"/>
+            {% elif item.key == "integrations" %}
+              <path d="M6 2v4l-4 2v4l4 2 4-2v-4l-4-2z"/><path d="M10 2v4l-4 2"/><path d="M10 6l4-2"/>
+            {% else %}
+              <circle cx="8" cy="8" r="6.5"/>
+            {% endif %}
+          </svg>
+          <span style="flex:1;font-size:13px;">{{ item.label }}</span>
+          {% if item.badge is not None %}
+            <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;{% if item.key == 'requests' %}background:rgba(232,92,13,0.10);color:#E85C0D;{% else %}background:#2C2C2C;color:#919191;{% endif %}font-variant-numeric:tabular-nums;">{{ item.badge }}</span>
+          {% endif %}
+        </a>
+      {% else %}
+        <span style="display:flex;align-items:center;width:100%;border-radius:10px;gap:10px;position:relative;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;background:transparent;color:#919191;font-weight:400;opacity:0.4;cursor:default;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:0.45;">
+            {% if item.key == "drawings" %}
+              <path d="M3 13.5h10"/><path d="M11.5 2.5l1.5 1.5-7 7-2.5.5.5-2.5 7-7z"/>
+            {% elif item.key == "discounts" %}
+              <circle cx="8" cy="8" r="6.5"/><path d="M8 4v8"/><path d="M5.8 6.2c0-.8 1-1.4 2.2-1.4s2.2.6 2.2 1.4-1 1.3-2.2 1.3S5.8 8.2 5.8 9s1 1.5 2.2 1.5 2.2-.4 2.2-1.2"/>
+            {% elif item.key == "qr" %}
+              <rect x="2" y="2" width="5" height="5" rx="0.5"/><rect x="9" y="2" width="5" height="5" rx="0.5"/><rect x="2" y="9" width="5" height="5" rx="0.5"/><rect x="10" y="10" width="3" height="3" rx="0.3"/>
+            {% elif item.key == "finance" %}
+              <circle cx="8" cy="8" r="6.5"/><path d="M8 4v8"/><path d="M5.8 6.2c0-.8 1-1.4 2.2-1.4s2.2.6 2.2 1.4-1 1.3-2.2 1.3S5.8 8.2 5.8 9s1 1.5 2.2 1.5 2.2-.4 2.2-1.2"/>
+            {% elif item.key == "rating" %}
+              <path d="M8 1l2 4.5 5 .7-3.6 3.5.9 5L8 12.2 3.7 14.7l.9-5L1 6.2l5-.7z"/>
+            {% elif item.key == "analytics" %}
+              <path d="M2.5 13.5V9M5.5 13.5V6M8.5 13.5V8M11.5 13.5V3.5" stroke-width="1.8" stroke-linecap="round"/>
+            {% elif item.key == "team" %}
+              <circle cx="6" cy="5.5" r="2.2"/><circle cx="11.5" cy="6" r="1.7"/><path d="M1.5 13.5c0-2.5 2-4.2 4.5-4.2s4.5 1.7 4.5 4.2"/><path d="M10.5 13.5c0-1.8 1-3 2.5-3s2 1 2 3"/>
+            {% elif item.key == "integrations" %}
+              <path d="M6 2v4l-4 2v4l4 2 4-2v-4l-4-2z"/><path d="M10 2v4l-4 2"/><path d="M10 6l4-2"/>
+            {% else %}
+              <circle cx="8" cy="8" r="6.5"/>
+            {% endif %}
+          </svg>
+          <span style="flex:1;font-size:13px;">{{ item.label }}</span>
+          <span style="font-size:10px;padding:2px 6px;border-radius:999px;background:#2C2C2C;color:#484848;">скоро</span>
+        </span>
+      {% endif %}
+    {% endfor %}
+  </nav>
+
+  <!-- Quick stats -->
+  <div style="margin:0 12px 8px;padding:10px 14px;background:#242424;border-radius:10px;border:1px solid rgba(255,255,255,0.055);">
+    <div style="font-size:11px;color:#6A6A6A;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">Сегодня</div>
+    <div style="display:flex;justify-content:space-between;">
+      <div style="text-align:left;flex:1;">
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ seller_badge_requests|default:0 }}</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;">Запроса</div>
+      </div>
+      <div style="text-align:center;flex:1;">
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ seller_badge_orders_action|default:0 }}</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;">Заказов</div>
+      </div>
+      <div style="text-align:right;flex:1;">
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">$4.0M</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;">Выручка</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile -->
+  <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,0.055);">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="position:relative;">
+        <div style="width:34px;height:34px;border-radius:10px;background:#2C2C2C;border:1px solid rgba(255,255,255,0.055);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#ECECEC;flex-shrink:0;">{{ seller_company_name|default:user.username|slice:":2"|upper }}</div>
+        <div style="position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:#FF9F0A;border:2px solid #1F1F1F;"></div>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:#ECECEC;">{{ seller_company_name|default:user.username }}</div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:3px;">
+          <span style="font-size:11px;font-weight:600;color:#ECECEC;background:#2C2C2C;padding:1px 6px;border-radius:4px;letter-spacing:0.03em;">{{ seller_team_department|default:"ДИРЕКТОР" }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</aside>

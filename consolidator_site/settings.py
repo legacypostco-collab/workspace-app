@@ -3,6 +3,21 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+def _load_env_file(env_path: Path) -> None:
+    if not env_path.exists():
+        return
+
+    for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+_load_env_file(BASE_DIR / ".env")
+
 def _env_list(name: str, default: str = "") -> list[str]:
     raw = (os.getenv(name, default) or "").strip()
     if not raw:
@@ -38,6 +53,12 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "files",
+    "catalog",
+    "offers",
+    "imports",
+    "projections",
+    "dashboard",
     "marketplace",
 ]
 
@@ -65,6 +86,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "marketplace.context_processors.auth_meta",
+                "marketplace.context_processors.seller_context",
             ],
         },
     },
@@ -175,3 +197,8 @@ MAX_QUOTE_ITEMS = int(os.getenv("MAX_QUOTE_ITEMS", "50"))
 MAX_ORDER_DOCUMENT_BYTES = int(os.getenv("MAX_ORDER_DOCUMENT_BYTES", str(10 * 1024 * 1024)))
 LEGAL_LOOKUP_TIMEOUT_SEC = float(os.getenv("LEGAL_LOOKUP_TIMEOUT_SEC", "2"))
 LEGAL_LOOKUP_CIRCUIT_SECONDS = int(os.getenv("LEGAL_LOOKUP_CIRCUIT_SECONDS", "30"))
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0").strip()
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL).strip()
+CELERY_TASK_ALWAYS_EAGER = _env_bool("CELERY_TASK_ALWAYS_EAGER", False)
+CELERY_TASK_EAGER_PROPAGATES = _env_bool("CELERY_TASK_EAGER_PROPAGATES", True)

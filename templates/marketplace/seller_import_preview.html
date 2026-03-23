@@ -1,0 +1,73 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Подтверждение маппинга | Seller кабинет{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Подтверждение маппинга</h1>
+  <a class="btn btn-secondary" href="{% url 'seller_dashboard' %}">Назад в кабинет</a>
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <h2>Источник</h2>
+  <p class="muted">
+    Preview #{{ preview.id }} • Статус: <strong>{{ preview.status }}</strong>
+    {% if preview.source_file %} • Файл: <strong>{{ preview.source_file.original_name|default:"(без имени)" }}</strong>{% endif %}
+  </p>
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <h2>Маппинг колонок</h2>
+  <p class="muted">Проверьте соответствие полей. Для запуска обязательны: <code>oem</code>, <code>warehouse_address</code> и хотя бы одна из цен <code>price_exw/price_fob_sea/price_fob_air</code>.</p>
+  <form method="post" action="{% url 'seller_import_preview_confirm' preview.id %}" class="upload-form">
+    {% csrf_token %}
+    {% for field_key, field_label in mapping_fields %}
+      <p>
+        <label for="id_mapping__{{ field_key }}">{{ field_label }} ({{ field_key }})</label>
+        <select id="id_mapping__{{ field_key }}" name="mapping__{{ field_key }}">
+          <option value="">— не выбрано —</option>
+          {% for header in header_options %}
+            <option value="{{ header }}" {% if current_mapping[field_key] == header %}selected{% endif %}>{{ header }}</option>
+          {% endfor %}
+        </select>
+      </p>
+    {% endfor %}
+    <div class="card-actions">
+      <button class="btn btn-secondary" type="submit">Подтвердить маппинг</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <h2>Превью первых строк</h2>
+  {% if preview.sample_rows %}
+    <div style="overflow:auto;">
+      <table>
+        <thead>
+          <tr>
+            {% for header in header_options %}
+              <th>{{ header }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row_values in preview_rows_matrix %}
+            <tr>
+              {% for cell in row_values %}
+                <td>{{ cell }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">Нет данных для preview.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <form method="post" action="{% url 'seller_import_preview_start' preview.id %}">
+    {% csrf_token %}
+    <button class="btn" type="submit">Запустить импорт</button>
+  </form>
+</section>
+{% endblock %}

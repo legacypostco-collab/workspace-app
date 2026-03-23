@@ -18,7 +18,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, F, Q
+from django.db.models import Count, F, Q, Sum
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -27,7 +27,12 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from .forms import CheckoutForm, LoginForm, RegisterForm, RFQCreateForm, SellerBulkUploadForm, SellerPartForm
+from files.models import StoredFile
+from files.storage import read_stored_file_bytes, store_import_source_file
+from imports.models import ImportJob, ImportPreviewSession
+from imports.services import ColumnMappingResolver, ImportParser
+from imports.tasks import process_import_job
+from .forms import BulkPriceLookupForm, CheckoutForm, LoginForm, RegisterForm, RFQCreateForm, SellerBulkUploadForm, SellerPartForm
 from .models import (
     Brand,
     Category,
@@ -39,6 +44,7 @@ from .models import (
     Part,
     RFQ,
     RFQItem,
+    SellerImportRun,
     SupplierRatingEvent,
     UserProfile,
     WebhookDeliveryLog,
@@ -47,6 +53,9 @@ from .rules import AutoModeInputs, decide_auto_mode
 from .services.imports import UploadLimitError, process_seller_csv_upload
 from .services.logistics import logistics_estimate
 from .services.observability import Timer, log_api_error, metric_inc
+from projections.models import DashboardProjection
+from projections.services import refresh_supplier_dashboard_projection
+from dashboard.services import DashboardProjectionBuilder
 
 CART_SESSION_KEY = "cart"
 COMPARE_SESSION_KEY = "compare_parts"
@@ -63,6 +72,26 @@ ORDER_TRANSITIONS = {
 }
 
 logger = logging.getLogger("marketplace")
+
+
+SELLER_IMPORT_MAPPING_FIELDS: list[tuple[str, str]] = [
+    ("oem", "PartNumber"),
+    ("warehouse_address", "WarehouseAddress"),
+    ("price_exw", "Price_EXW"),
+    ("price_fob_sea", "Price_FOB_SEA"),
+    ("price_fob_air", "Price_FOB_AIR"),
+    ("brand", "Brand"),
+    ("cross_number", "CrossNumber"),
+    ("name", "Name"),
+    ("quantity", "Quantity"),
+    ("condition", "Condition"),
+    ("sea_port", "SeaPort"),
+    ("air_port", "AirPort"),
+    ("weight", "Weight"),
+    ("length", "Length"),
+    ("width", "Width"),
+    ("height", "Height"),
+]
 
 
 def _get_cart(request: HttpRequest) -> dict[str, int]:
@@ -484,6 +513,72 @@ def _apply_seller_brand_scope(user: User, qs):
     return qs
 
 
+def _seller_rfqs_qs(user: User):
+    return (
+        RFQ.objects.filter(items__matched_part__seller=user)
+        .distinct()
+        .prefetch_related("items__matched_part__brand", "items__matched_part__category")
+        .order_by("-created_at")
+    )
+
+
+def _part_stale_snapshot(part: Part) -> dict[str, object]:
+    updated_at = part.data_updated_at or part.updated_at or timezone.now()
+    age_days = max(0, (timezone.now() - updated_at).days)
+    if age_days > 180:
+        state = "blocked"
+        label = "Blocked"
+    elif age_days > 90:
+        state = "limited"
+        label = "Limited"
+    else:
+        state = "fresh"
+        label = "Fresh"
+    return {
+        "days": age_days,
+        "state": state,
+        "label": label,
+        "is_stale": age_days > 90,
+    }
+
+
+def _part_price_history(part: Part) -> list[dict[str, object]]:
+    points: list[dict[str, object]] = []
+    order_items = (
+        OrderItem.objects.filter(part=part)
+        .select_related("order")
+        .order_by("order__created_at")[:24]
+    )
+    for item in order_items:
+        points.append(
+            {
+                "date": item.order.created_at,
+                "price": item.unit_price,
+                "source": f"order#{item.order_id}",
+            }
+        )
+    current_point = {
+        "date": part.data_updated_at or part.updated_at or timezone.now(),
+        "price": part.price,
+        "source": "current_catalog",
+    }
+    if not points or points[-1]["price"] != current_point["price"]:
+        points.append(current_point)
+    return points
+
+
+def _part_demand_stats(part: Part) -> dict[str, int]:
+    rfq_items = RFQItem.objects.filter(matched_part=part)
+    order_items = OrderItem.objects.filter(part=part).select_related("order")
+    return {
+        "rfq_count": rfq_items.count(),
+        "quoted_count": rfq_items.exclude(rfq__status="new").count(),
+        "orders_count": order_items.values("order_id").distinct().count(),
+        "ordered_units": order_items.aggregate(total=Sum("quantity"))["total"] or 0,
+        "delivered_orders": order_items.filter(order__status__in=["delivered", "completed"]).values("order_id").distinct().count(),
+    }
+
+
 def seller_required(view):
     @wraps(view)
     def wrapped(request: HttpRequest, *args, **kwargs):
@@ -576,7 +671,12 @@ def _seed_if_empty() -> None:
 
 
 def _mixed_featured_parts(limit: int = 12):
-    base_qs = Part.objects.filter(is_active=True, price__gt=0).select_related("category", "brand")
+    base_qs = (
+        Part.objects.filter(is_active=True, price__gt=0)
+        .exclude(title__icontains="pc220rock bucket1")
+        .exclude(title__istartswith="Komatsu Pc")
+        .select_related("category", "brand")
+    )
     brands = (
         Brand.objects.annotate(parts_count=Count("parts", filter=Q(parts__is_active=True, parts__price__gt=0)))
         .filter(parts_count__gt=0)
@@ -602,9 +702,262 @@ def _mixed_featured_parts(limit: int = 12):
     return featured
 
 
+def _parse_bulk_lookup_lines(raw_text: str, limit: int = 1000) -> list[str]:
+    seen = set()
+    out = []
+    for raw_line in (raw_text or "").splitlines():
+        normalized = raw_line.strip().strip(",;")
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        out.append(normalized)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _parse_lookup_request_line(raw_line: str) -> tuple[str, int]:
+    line = (raw_line or "").strip()
+    if not line:
+        return "", 1
+    for separator in (";", "\t", ","):
+        if separator in line:
+            left, right = line.rsplit(separator, 1)
+            left = left.strip()
+            right = right.strip()
+            try:
+                return left, max(1, int(right))
+            except Exception:
+                pass
+    if " " in line:
+        left, right = line.rsplit(" ", 1)
+        left = left.strip()
+        right = right.strip()
+        try:
+            return left, max(1, int(right))
+        except Exception:
+            pass
+    return line, 1
+
+
+def _normalize_article_value(raw: str) -> str:
+    value = (raw or "").strip()
+    if not value:
+        return ""
+    for src, dst in {
+        "–": "-",
+        "—": "-",
+        "−": "-",
+        "‑": "-",
+        "\u00a0": " ",
+        "\u200b": "",
+        "\u200c": "",
+        "\u200d": "",
+        "\ufeff": "",
+    }.items():
+        value = value.replace(src, dst)
+    value = " ".join(value.split())
+    value = value.replace(" / ", "/").replace(" - ", "-")
+    return value.upper()
+
+
+def _article_input_hint(raw: str, normalized: str) -> str:
+    original = (raw or "").strip()
+    if not original:
+        return ""
+    if len(normalized) < 5:
+        return "Too short for exact article lookup"
+    if not any(ch.isdigit() for ch in normalized):
+        return "Looks like a name, not an article"
+    if " " in normalized:
+        return "Contains internal spaces; verify article formatting"
+    if original != normalized:
+        return "Normalized input before exact lookup"
+    return "No exact match in catalog"
+
+
+def _parse_bulk_lookup_requests(raw_text: str, limit: int = 1000) -> list[tuple[str, str, int]]:
+    seen = set()
+    out = []
+    for raw_line in (raw_text or "").splitlines():
+        query, quantity = _parse_lookup_request_line(raw_line)
+        normalized_query = _normalize_article_value(query)
+        if not normalized_query or normalized_query in seen:
+            continue
+        seen.add(normalized_query)
+        out.append((query, normalized_query, quantity))
+        if len(out) >= limit:
+            break
+    return out
+
+
+def _resolve_bulk_lookup_match(base_qs, normalized_query: str, quantity: int) -> tuple[Part | None, str, int]:
+    if not normalized_query:
+        return None, normalized_query, quantity
+
+    part = base_qs.filter(oem_number__iexact=normalized_query).first()
+    if part:
+        return part, normalized_query, quantity
+
+    hyphen_qty_match = normalized_query.rsplit("-", 1)
+    if len(hyphen_qty_match) == 2:
+        candidate_article, trailing_qty = hyphen_qty_match
+        try:
+            inferred_qty = max(1, int(trailing_qty))
+        except Exception:
+            inferred_qty = None
+        if inferred_qty and candidate_article:
+            candidate_part = base_qs.filter(oem_number__iexact=candidate_article).first()
+            if candidate_part:
+                return candidate_part, candidate_article, inferred_qty
+
+    return None, normalized_query, quantity
+
+
+def _bulk_lookup_rows(queries: list[tuple[str, str, int]]) -> list[dict]:
+    rows = []
+    base_qs = _eligible_parts_qs().select_related("brand", "category")
+    for original_query, normalized_query, quantity in queries:
+        part, matched_query, resolved_quantity = _resolve_bulk_lookup_match(base_qs, normalized_query, quantity)
+        match_type = "exact" if part else "missing"
+        review_flag = False
+        stock_label = "-"
+        input_hint = ""
+        if part:
+            stock_qty = max(0, int(part.stock_quantity or 0))
+            if stock_qty > 0:
+                stock_label = f"In stock: {stock_qty}"
+            else:
+                stock_label = "Backorder / check"
+            review_flag = part.price >= Decimal("10000.00") or stock_qty == 0
+        else:
+            input_hint = _article_input_hint(original_query, normalized_query)
+        if part and review_flag:
+            next_step_label = "Check"
+            next_step_tone = "warn"
+        elif part:
+            next_step_label = "Ready"
+            next_step_tone = "ok"
+        else:
+            next_step_label = "Manual quote"
+            next_step_tone = "warn"
+        rows.append(
+            {
+                "query": original_query,
+                "normalized_query": matched_query,
+                "quantity": resolved_quantity,
+                "found": bool(part),
+                "part": part,
+                "match_type": match_type,
+                "line_total": (part.price * resolved_quantity).quantize(Decimal("0.01")) if part else None,
+                "stock_label": stock_label,
+                "review_flag": review_flag,
+                "input_hint": input_hint,
+                "next_step_label": next_step_label,
+                "next_step_tone": next_step_tone,
+            }
+        )
+    return rows
+
+
+def _bulk_lookup_csv_response(rows: list[dict]) -> HttpResponse:
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["Request", "Corrected Article", "Quantity", "Match Status", "Part Number", "Part Name", "Brand", "Price", "Line Total", "Availability", "Review", "Hint"])
+    for row in rows:
+        part = row["part"]
+        writer.writerow(
+            [
+                row["query"],
+                row["normalized_query"] if row["normalized_query"] != row["query"] else "",
+                row["quantity"],
+                "EXACT" if row["found"] else "NOT_FOUND",
+                part.oem_number if part else "",
+                part.title if part else "",
+                part.brand.name if part and part.brand else "",
+                part.price if part else "",
+                row["line_total"] if row["line_total"] is not None else "",
+                row["stock_label"],
+                "review" if row["review_flag"] else "",
+                row["input_hint"],
+            ]
+        )
+    response = HttpResponse(buffer.getvalue(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="bulk-price-lookup.csv"'
+    return response
+
+
+def _bulk_lookup_to_rfq_lines(rows: list[dict]) -> str:
+    lines = []
+    for row in rows:
+        article = row["normalized_query"] or row["query"]
+        if article:
+            lines.append(f"{article};{row['quantity']}")
+    return "\n".join(lines)
+
+
 def home(request: HttpRequest) -> HttpResponse:
     _seed_if_empty()
     featured = _mixed_featured_parts(limit=12)
+    bulk_form = BulkPriceLookupForm(request.POST or None)
+    bulk_results = []
+    bulk_total = 0
+    bulk_found = 0
+    bulk_missing = 0
+    bulk_amount = Decimal("0.00")
+    bulk_requested_units = 0
+    bulk_found_units = 0
+    bulk_missing_units = 0
+    if request.method == "POST" and bulk_form.is_valid():
+        requests_data = _parse_bulk_lookup_requests(bulk_form.cleaned_data["items_text"])
+        bulk_results = _bulk_lookup_rows(requests_data)
+        bulk_total = len(bulk_results)
+        bulk_found = sum(1 for row in bulk_results if row["found"])
+        bulk_missing = bulk_total - bulk_found
+        bulk_amount = sum((row["line_total"] or Decimal("0.00")) for row in bulk_results)
+        bulk_requested_units = sum(int(row["quantity"]) for row in bulk_results)
+        bulk_found_units = sum(int(row["quantity"]) for row in bulk_results if row["found"])
+        bulk_missing_units = bulk_requested_units - bulk_found_units
+        action = request.POST.get("action")
+        if action == "export":
+            return _bulk_lookup_csv_response(bulk_results)
+        if action == "cart":
+            cart = _get_cart(request)
+            added_positions = 0
+            added_units = 0
+            skipped_positions = 0
+            for row in bulk_results:
+                if not row["found"] or not row["part"]:
+                    skipped_positions += 1
+                    continue
+                part = row["part"]
+                current = int(cart.get(str(part.id), 0))
+                qty = max(1, int(row["quantity"]))
+                target_qty = current + qty
+                if part.stock_quantity > 0:
+                    target_qty = min(part.stock_quantity, target_qty)
+                cart[str(part.id)] = target_qty
+                added_positions += 1
+                added_units += max(0, target_qty - current)
+            _set_cart(request, cart)
+            if added_positions:
+                messages.success(
+                    request,
+                    f"Added {added_positions} positions ({added_units} units) to cart."
+                    + (f" Skipped {skipped_positions} not found." if skipped_positions else ""),
+                )
+            else:
+                messages.warning(request, "Nothing was added to cart. Exact matches were not found.")
+            return redirect("cart")
+        if action == "rfq":
+            request.session["rfq_prefill_items_text"] = _bulk_lookup_to_rfq_lines(bulk_results)
+            request.session.modified = True
+            messages.success(
+                request,
+                f"RFQ draft prepared for {bulk_total} positions."
+                + (f" {bulk_missing} will need manual quote review." if bulk_missing else ""),
+            )
+            return redirect("rfq_new")
     top_categories = (
         Category.objects.annotate(parts_count=Count("parts", filter=Q(parts__is_active=True, parts__price__gt=0)))
         .filter(parts_count__gt=0)
@@ -618,7 +971,20 @@ def home(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "marketplace/home.html",
-        {"featured": featured, "top_categories": top_categories, "top_brands": top_brands},
+        {
+            "featured": featured,
+            "top_categories": top_categories,
+            "top_brands": top_brands,
+            "bulk_form": bulk_form,
+            "bulk_results": bulk_results,
+            "bulk_total": bulk_total,
+            "bulk_found": bulk_found,
+            "bulk_missing": bulk_missing,
+            "bulk_amount": bulk_amount,
+            "bulk_requested_units": bulk_requested_units,
+            "bulk_found_units": bulk_found_units,
+            "bulk_missing_units": bulk_missing_units,
+        },
     )
 
 
@@ -1026,6 +1392,7 @@ def dashboard_seller(request: HttpRequest) -> HttpResponse:
     for order in orders:
         _recalc_order_sla(order)
     parts_count = scoped_parts.count()
+    rfqs_count = _seller_rfqs_qs(request.user).count()
     return render(
         request,
         "marketplace/dashboard_seller.html",
@@ -1035,40 +1402,567 @@ def dashboard_seller(request: HttpRequest) -> HttpResponse:
             "role": role,
             "orders_count": len(orders),
             "parts_count": parts_count,
+            "rfqs_count": rfqs_count,
         },
     )
 
 
 @seller_required
-def seller_dashboard(request: HttpRequest) -> HttpResponse:
-    parts = _apply_seller_brand_scope(
+def _build_seller_catalog_context(request: HttpRequest) -> dict:
+    parts_qs = _apply_seller_brand_scope(
         request.user,
         Part.objects.filter(seller=request.user).select_related("category", "brand"),
     )
+    successful_import_statuses = {ImportJob.Status.COMPLETED, ImportJob.Status.PARTIAL_SUCCESS}
+    latest_successful_import = (
+        ImportJob.objects.filter(supplier=request.user, status__in=successful_import_statuses)
+        .select_related("source_file")
+        .order_by("-created_at")
+        .first()
+    )
+    query = (request.GET.get("q") or "").strip()
+    recent_only = (request.GET.get("recent") or "").strip().lower() in {"1", "true", "yes", "24h"}
+    last_import_only = (request.GET.get("last_import") or "").strip().lower() in {"1", "true", "yes", "latest"}
+    import_run_id_raw = (request.GET.get("import_run") or "").strip()
+    preview_id_raw = (request.GET.get("preview_id") or "").strip()
+    selected_import_run = None
+    active_preview = None
+    if import_run_id_raw.isdigit():
+        selected_import_run = (
+            ImportJob.objects.filter(supplier=request.user, id=int(import_run_id_raw))
+            .select_related("source_file")
+            .first()
+        )
+    if preview_id_raw.isdigit():
+        active_preview = ImportPreviewSession.objects.filter(supplier=request.user, id=int(preview_id_raw)).first()
+    if selected_import_run:
+        import_started = selected_import_run.started_at or selected_import_run.created_at
+        import_finished = selected_import_run.finished_at or selected_import_run.updated_at
+        import_window_start = import_started - timedelta(minutes=10)
+        import_window_end = import_finished + timedelta(minutes=10)
+        parts_qs = parts_qs.filter(data_updated_at__gte=import_window_start, data_updated_at__lte=import_window_end)
+    if last_import_only and latest_successful_import:
+        import_started = latest_successful_import.started_at or latest_successful_import.created_at
+        import_finished = latest_successful_import.finished_at or latest_successful_import.updated_at
+        import_window_start = import_started - timedelta(minutes=10)
+        import_window_end = import_finished + timedelta(minutes=10)
+        parts_qs = parts_qs.filter(data_updated_at__gte=import_window_start, data_updated_at__lte=import_window_end)
+    if recent_only:
+        parts_qs = parts_qs.filter(data_updated_at__gte=timezone.now() - timedelta(hours=24))
+    if query:
+        parts_qs = parts_qs.filter(Q(title__icontains=query) | Q(oem_number__icontains=query) | Q(brand__name__icontains=query))
+    parts_qs = parts_qs.order_by("-data_updated_at", "-id")
+    paginator = Paginator(parts_qs, 50)
+    page_number = request.GET.get("page") or 1
+    parts_page = paginator.get_page(page_number)
+    for part in parts_page.object_list:
+        stale_snapshot = _part_stale_snapshot(part)
+        part.stale_days = stale_snapshot["days"]
+        part.stale_state = stale_snapshot["state"]
+        part.stale_label = stale_snapshot["label"]
+        part.is_stale = stale_snapshot["is_stale"]
     bulk_form = SellerBulkUploadForm()
     profile = _profile_for(request.user)
-    module_cards = [
-        {"title": "Учетные записи и права", "status": "partial", "note": "Базовые роли готовы, детальный RBAC — следующий этап"},
-        {"title": "Ассортимент и прайс-листы", "status": "done", "note": "CSV/XLSX импорт и управление позициями"},
-        {"title": "RFQ / Подбор / Котировки", "status": "done", "note": "AUTO/SEMI/MANUAL + матрица статусов"},
-        {"title": "Operator Queue", "status": "done", "note": "Подтверждения sandbox/risky, Manual OEM"},
-        {"title": "Рейтинг поставщиков", "status": "done", "note": "Формула 60/40 + авто-статусы"},
-        {"title": "Заказы / Invoice", "status": "done", "note": "Order flow и документный invoice"},
-        {"title": "SLA / События", "status": "done", "note": "События, таймлайн и SLA-контроль включены"},
-        {"title": "Документы и рекламации", "status": "done", "note": "Документы заказа и claim workflow в карточке заказа"},
-        {"title": "Логистика / Финансы / KPI", "status": "done", "note": "Логистика на заказе, платежный график, KPI-отчеты"},
-    ]
-    return render(
+    import_runs = (
+        ImportJob.objects.filter(supplier=request.user)
+        .select_related("source_file")
+        .order_by("-created_at")[:10]
+    )
+    projection = DashboardProjection.objects.filter(supplier=request.user).first()
+    if projection is None:
+        projection = refresh_supplier_dashboard_projection(request.user)
+    seller_rfqs_count = _seller_rfqs_qs(request.user).count()
+    seller_orders_count = Order.objects.filter(items__part__seller=request.user).distinct().count()
+    recent_updates_count = _apply_seller_brand_scope(
+        request.user,
+        Part.objects.filter(seller=request.user),
+    ).filter(data_updated_at__gte=timezone.now() - timedelta(hours=24)).count()
+    preview_header_options: list[str] = []
+    preview_rows_matrix: list[list[str]] = []
+    preview_mapping = {}
+    mapping_rows: list[dict[str, object]] = []
+    if active_preview:
+        preview_header_options = list(
+            dict.fromkeys(
+                (list(active_preview.sample_rows[0].keys()) if active_preview.sample_rows else [])
+                + list(active_preview.detected_columns.values())
+            )
+        )
+        preview_rows_matrix = [[row.get(header, "") for header in preview_header_options] for row in (active_preview.sample_rows or [])]
+        preview_mapping = active_preview.column_mapping or active_preview.detected_columns or {}
+    for field_key, field_label in SELLER_IMPORT_MAPPING_FIELDS:
+        mapping_rows.append(
+            {
+                "key": field_key,
+                "label": field_label,
+                "selected": preview_mapping.get(field_key, ""),
+            }
+        )
+    return {
+        "parts": parts_page,
+        "parts_total": paginator.count,
+        "query": query,
+        "recent_only": recent_only,
+        "last_import_only": last_import_only,
+        "selected_import_run": selected_import_run,
+        "active_preview": active_preview,
+        "preview_header_options": preview_header_options,
+        "preview_rows_matrix": preview_rows_matrix,
+        "preview_mapping": preview_mapping,
+        "mapping_fields": SELLER_IMPORT_MAPPING_FIELDS,
+        "mapping_rows": mapping_rows,
+        "bulk_form": bulk_form,
+        "profile": profile,
+        "upload_report": request.session.get("seller_upload_report"),
+        "import_runs": import_runs,
+        "latest_successful_import": latest_successful_import,
+        "dashboard_projection": projection,
+        "seller_rfqs_count": seller_rfqs_count,
+        "seller_orders_count": seller_orders_count,
+        "recent_updates_count": recent_updates_count,
+        "return_qs": request.GET.urlencode(),
+    }
+
+
+@seller_required
+def seller_dashboard(request: HttpRequest) -> HttpResponse:
+    # Avoid rebuilding a heavy dashboard projection on every request.
+    # Keep it consistent with the API behavior (refresh if stale).
+    from dashboard.models import DashboardProjection as SupplierDashboardProjection
+
+    stale_after = timedelta(minutes=5)
+    projection = SupplierDashboardProjection.objects.filter(supplier=request.user, user=request.user).first()
+    is_stale = True
+    if projection and projection.updated_at:
+        is_stale = projection.updated_at < (timezone.now() - stale_after)
+    if projection is None or is_stale:
+        projection = DashboardProjectionBuilder().build(supplier=request.user, user=request.user)
+    dashboard_payload = DashboardProjectionBuilder().payload(projection)
+    response = render(
         request,
-        "marketplace/seller_dashboard.html",
+        "seller/dashboard/index.html",
         {
-            "parts": parts,
-            "bulk_form": bulk_form,
-            "module_cards": module_cards,
-            "profile": profile,
-            "upload_report": request.session.get("seller_upload_report"),
+            "dashboard_payload": dashboard_payload,
+            "seller_page_title": "Кабинет поставщика",
+            "seller_page_subtitle": "Главная рабочая панель: что требует внимания сейчас и куда перейти дальше.",
+            "seller_active_nav": "dashboard",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+            ],
         },
     )
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    return response
+
+
+@seller_required
+def seller_product_list(request: HttpRequest) -> HttpResponse:
+    return render(
+        request,
+        "seller/products/catalog.html",
+        {
+            **_build_seller_catalog_context(request),
+            "seller_page_title": "Товары и прайсы",
+            "seller_page_subtitle": "Загрузка прайсов, preview, история импортов, каталог и массовые действия в одном модуле.",
+            "seller_active_nav": "products",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+            ],
+        },
+    )
+
+
+
+@seller_required
+def seller_orders(request: HttpRequest) -> HttpResponse:
+    if not _has_seller_permission(request.user, "can_manage_orders"):
+        messages.error(request, "Нет прав на работу с заказами.")
+        return redirect("seller_dashboard")
+
+    orders_qs = (
+        Order.objects.filter(items__part__seller=request.user)
+        .distinct()
+        .prefetch_related("items__part", "documents", "claims")
+        .order_by("-created_at")
+    )
+    query = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "").strip()
+    allowed_statuses = {code for code, _ in Order.STATUS_CHOICES}
+    if status and status in allowed_statuses:
+        orders_qs = orders_qs.filter(status=status)
+    if query:
+        filter_q = (
+            Q(customer_name__icontains=query)
+            | Q(customer_email__icontains=query)
+            | Q(items__part__oem_number__icontains=query)
+            | Q(items__part__title__icontains=query)
+        )
+        if query.isdigit():
+            filter_q = filter_q | Q(id=int(query))
+        orders_qs = orders_qs.filter(filter_q).distinct()
+
+    paginator = Paginator(orders_qs, 30)
+    page_number = request.GET.get("page") or 1
+    orders_page = paginator.get_page(page_number)
+
+    rows = []
+    for order in orders_page:
+        seller_items = [item for item in order.items.all() if item.part and item.part.seller_id == request.user.id]
+        if not seller_items:
+            continue
+        open_claims = sum(1 for claim in order.claims.all() if claim.status in {"open", "in_review"})
+        rows.append(
+            {
+                "order": order,
+                "items_count": len(seller_items),
+                "units_total": sum(int(item.quantity) for item in seller_items),
+                "documents_count": len(order.documents.all()),
+                "open_claims_count": open_claims,
+            }
+        )
+
+    return render(
+        request,
+        "seller/orders/list.html",
+        {
+            "rows": rows,
+            "orders": orders_page,
+            "orders_total": paginator.count,
+            "query": query,
+            "status": status,
+            "status_choices": Order.STATUS_CHOICES,
+            "seller_page_title": "Заказы",
+            "seller_page_subtitle": "Список заказов по вашим товарам, фильтры, статусы и переход в карточку заказа.",
+            "seller_active_nav": "orders",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Заказы", "url": reverse("seller_orders")},
+            ],
+        },
+    )
+
+
+@seller_required
+def seller_sla(request: HttpRequest) -> HttpResponse:
+    if not _has_seller_permission(request.user, "can_manage_orders"):
+        messages.error(request, "Нет прав на просмотр SLA.")
+        return redirect("seller_dashboard")
+
+    orders_qs = Order.objects.filter(
+        items__part__seller=request.user
+    ).distinct().prefetch_related("items__part").order_by("-created_at")
+
+    # Recalc SLA
+    for order in orders_qs[:100]:
+        _recalc_order_sla(order)
+
+    # Kanban columns
+    kanban_statuses = [
+        ("pending", "Ожидает"),
+        ("confirmed", "Подтверждён"),
+        ("in_production", "В производстве"),
+        ("ready_to_ship", "Готов к отгрузке"),
+        ("shipped", "Отгружен"),
+        ("delivered", "Доставлен"),
+    ]
+
+    columns = []
+    for status_key, status_label in kanban_statuses:
+        status_orders = []
+        for order in orders_qs.filter(status=status_key):
+            seller_items = [item for item in order.items.all() if item.part and item.part.seller_id == request.user.id]
+            status_orders.append({
+                "order": order,
+                "items_count": len(seller_items),
+                "units_total": sum(int(item.quantity) for item in seller_items),
+            })
+        columns.append({
+            "key": status_key,
+            "label": status_label,
+            "orders": status_orders,
+            "count": len(status_orders),
+        })
+
+    # Timeline data — all orders with step index
+    status_order = [s[0] for s in kanban_statuses]
+    timeline_orders = []
+    for col in columns:
+        for row in col["orders"]:
+            current_idx = status_order.index(row["order"].status) if row["order"].status in status_order else -1
+            timeline_orders.append({
+                "order": row["order"],
+                "items_count": row["items_count"],
+                "current_step": current_idx,
+            })
+
+    # SLA KPI metrics
+    all_orders = list(orders_qs)
+    sla_on_track = sum(1 for o in all_orders if o.sla_status == "on_track")
+    sla_at_risk = sum(1 for o in all_orders if o.sla_status == "at_risk")
+    sla_breached = sum(1 for o in all_orders if o.sla_status == "breached")
+
+    # Average time per stage (in hours, from events)
+    from django.utils import timezone as tz
+    now = tz.now()
+    avg_confirm_hours = 0
+    avg_production_hours = 0
+    avg_ship_hours = 0
+    confirmed_orders = [o for o in all_orders if o.status not in ("pending",)]
+    if confirmed_orders:
+        total_h = sum(
+            ((o.supplier_confirm_deadline - o.created_at).total_seconds() / 3600 if o.supplier_confirm_deadline else 24)
+            for o in confirmed_orders
+        )
+        avg_confirm_hours = round(total_h / len(confirmed_orders))
+    shipped_orders = [o for o in all_orders if o.status in ("shipped", "delivered", "completed")]
+    if shipped_orders:
+        total_h = sum(
+            ((o.ship_deadline - o.created_at).total_seconds() / 3600 if o.ship_deadline else 72)
+            for o in shipped_orders
+        )
+        avg_ship_hours = round(total_h / len(shipped_orders))
+    production_orders = [o for o in all_orders if o.status in ("in_production", "ready_to_ship", "shipped", "delivered")]
+    if production_orders:
+        avg_production_hours = round((avg_ship_hours + avg_confirm_hours) / 2) if avg_ship_hours else 48
+
+    return render(
+        request,
+        "seller/sla/list.html",
+        {
+            "columns": columns,
+            "kanban_statuses": kanban_statuses,
+            "timeline_orders": timeline_orders,
+            "orders_total": orders_qs.count(),
+            "sla_on_track": sla_on_track,
+            "sla_at_risk": sla_at_risk,
+            "sla_breached": sla_breached,
+            "avg_confirm_hours": avg_confirm_hours,
+            "avg_production_hours": avg_production_hours,
+            "avg_ship_hours": avg_ship_hours,
+            "seller_page_title": "Контроль SLA",
+            "seller_page_subtitle": "Канбан-доска поставок — перетаскивайте карточки между этапами.",
+            "seller_active_nav": "sla",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Контроль SLA", "url": reverse("seller_sla")},
+            ],
+        },
+    )
+
+
+@seller_required
+def seller_order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
+    if not _has_seller_permission(request.user, "can_manage_orders"):
+        messages.error(request, "Нет прав на работу с заказами.")
+        return redirect("seller_dashboard")
+
+    order = get_object_or_404(
+        Order.objects.prefetch_related("items__part", "events", "documents", "claims"),
+        id=order_id,
+    )
+    has_access = order.items.filter(part__seller=request.user).exists()
+    if not has_access:
+        messages.error(request, "Нет доступа к этому заказу.")
+        return redirect("seller_orders")
+
+    _recalc_order_sla(order)
+    seller_items = [item for item in order.items.all() if item.part and item.part.seller_id == request.user.id]
+    open_claims = [claim for claim in order.claims.all() if claim.status in {"open", "in_review"}]
+    events = order.events.all()[:100]
+    documents = order.documents.all()[:100]
+    allowed_statuses = {"confirmed", "in_production", "ready_to_ship", "shipped", "delivered", "cancelled"}
+    status_choices = [(value, label) for value, label in Order.STATUS_CHOICES if value in allowed_statuses]
+    return render(
+        request,
+        "seller/orders/detail.html",
+        {
+            "order": order,
+            "seller_items": seller_items,
+            "events": events,
+            "documents": documents,
+            "claims": order.claims.all()[:100],
+            "open_claims": open_claims,
+            "status_choices": status_choices,
+            "seller_page_title": f"Заказ #{order.id}",
+            "seller_page_subtitle": "Карточка заказа, события, документы и действия поставщика.",
+            "seller_active_nav": "orders",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Заказы и SLA", "url": reverse("seller_orders")},
+                {"label": f"Заказ #{order.id}", "url": reverse("seller_order_detail", args=[order.id])},
+            ],
+        },
+    )
+
+
+@seller_required
+def seller_request_list(request: HttpRequest) -> HttpResponse:
+    rfqs_qs = _seller_rfqs_qs(request.user)
+    query = (request.GET.get("q") or "").strip()
+    status = (request.GET.get("status") or "").strip()
+    if status:
+        rfqs_qs = rfqs_qs.filter(status=status)
+    if query:
+        rfqs_qs = rfqs_qs.filter(
+            Q(customer_name__icontains=query)
+            | Q(company_name__icontains=query)
+            | Q(customer_email__icontains=query)
+            | Q(items__query__icontains=query)
+            | Q(items__matched_part__oem_number__icontains=query)
+            | Q(items__matched_part__title__icontains=query)
+        ).distinct()
+
+    rfq_rows = []
+    for rfq in rfqs_qs[:100]:
+        seller_items = [item for item in rfq.items.all() if item.matched_part and item.matched_part.seller_id == request.user.id]
+        if not seller_items:
+            continue
+        total_qty = sum(item.quantity for item in seller_items)
+        rfq_rows.append(
+            {
+                "rfq": rfq,
+                "seller_items_count": len(seller_items),
+                "total_qty": total_qty,
+                "sample_items": seller_items[:3],
+                "estimated_total": sum(item.estimated_line_total for item in seller_items),
+            }
+        )
+
+    return render(
+        request,
+        "seller/requests/list.html",
+        {
+            "rfq_rows": rfq_rows,
+            "query": query,
+            "status": status,
+            "status_choices": RFQ.STATUS_CHOICES,
+            "seller_page_title": "Запросы клиентов",
+            "seller_page_subtitle": "Все RFQ, где уже найдены позиции по вашему ассортименту и требуется ответ поставщика.",
+            "seller_active_nav": "requests",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Запросы клиентов", "url": reverse("seller_request_list")},
+            ],
+        },
+    )
+
+
+@seller_required
+def seller_request_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
+    rfq = get_object_or_404(_seller_rfqs_qs(request.user), id=rfq_id)
+    seller_items = [item for item in rfq.items.all() if item.matched_part and item.matched_part.seller_id == request.user.id]
+    total_qty = sum(item.quantity for item in seller_items)
+    estimated_total = sum(item.estimated_line_total for item in seller_items)
+
+    # Расчёт итоговой скидки
+    from decimal import Decimal
+    total_discount_amount = Decimal("0.00")
+    for item in seller_items:
+        line = item.estimated_line_total
+        item_discount = Decimal("0.00")
+        if item.discount_percent:
+            item_discount += line * item.discount_percent / 100
+        if item.discount_fixed:
+            item_discount += item.discount_fixed * item.quantity
+        item.discount_amount = item_discount.quantize(Decimal("0.01"))
+        total_discount_amount += item_discount
+    if rfq.discount_percent:
+        total_discount_amount += estimated_total * rfq.discount_percent / 100
+    total_after_discount = estimated_total - total_discount_amount
+
+    return render(
+        request,
+        "seller/requests/detail.html",
+        {
+            "rfq": rfq,
+            "seller_items": seller_items,
+            "seller_items_count": len(seller_items),
+            "total_qty": total_qty,
+            "estimated_total": estimated_total,
+            "total_discount_amount": total_discount_amount.quantize(Decimal("0.01")),
+            "total_after_discount": total_after_discount.quantize(Decimal("0.01")),
+            "seller_page_title": f"RFQ #{rfq.id}",
+            "seller_page_subtitle": "Карточка входящего запроса по вашему ассортименту.",
+            "seller_active_nav": "requests",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Запросы клиентов", "url": reverse("seller_request_list")},
+                {"label": f"RFQ #{rfq.id}", "url": reverse("seller_request_detail", args=[rfq.id])},
+            ],
+        },
+    )
+
+
+@seller_required
+def seller_rfq_inbox(request: HttpRequest) -> HttpResponse:
+    return seller_request_list(request)
+
+
+@seller_required
+@require_POST
+def seller_parts_bulk_action(request: HttpRequest) -> HttpResponse:
+    if not _has_seller_permission(request.user, "can_manage_assortment"):
+        messages.error(request, "Нет прав на массовое управление ассортиментом.")
+        return redirect("seller_product_list")
+
+    return_qs = (request.POST.get("return_qs") or "").strip()
+    action = (request.POST.get("action") or "").strip()
+    selected_ids: list[int] = []
+    for raw_id in request.POST.getlist("part_ids"):
+        try:
+            selected_ids.append(int(raw_id))
+        except (TypeError, ValueError):
+            continue
+    selected_ids = list(dict.fromkeys(selected_ids))
+
+    scoped_parts = _apply_seller_brand_scope(
+        request.user,
+        Part.objects.filter(seller=request.user),
+    )
+    if selected_ids:
+        scoped_parts = scoped_parts.filter(id__in=selected_ids)
+    else:
+        messages.warning(request, "Выберите хотя бы одну позицию.")
+        if return_qs:
+            return redirect(f"{reverse('seller_product_list')}?{return_qs}")
+        return redirect("seller_product_list")
+
+    now = timezone.now()
+    if action == "hide":
+        updated_count = scoped_parts.update(is_active=False, data_updated_at=now)
+        messages.success(request, f"Скрыто позиций: {updated_count}.")
+    elif action == "unhide":
+        updated_count = scoped_parts.update(is_active=True, data_updated_at=now)
+        messages.success(request, f"Активировано позиций: {updated_count}.")
+    elif action == "status":
+        status_value = (request.POST.get("availability_status") or "").strip()
+        allowed_statuses = {code for code, _ in Part.AVAILABILITY_STATUS_CHOICES}
+        if status_value not in allowed_statuses:
+            messages.error(request, "Неверный статус доступности.")
+        else:
+            updated_count = scoped_parts.update(availability_status=status_value, data_updated_at=now)
+            messages.success(request, f"Статус обновлен у {updated_count} позиций.")
+    elif action == "stock":
+        if not _has_seller_permission(request.user, "can_manage_pricing"):
+            messages.error(request, "Нет прав на массовое обновление остатков.")
+        else:
+            try:
+                stock_value = int(request.POST.get("stock_quantity"))
+                if stock_value < 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                messages.error(request, "Остаток должен быть целым числом >= 0.")
+            else:
+                updated_count = scoped_parts.update(stock_quantity=stock_value, data_updated_at=now)
+                messages.success(request, f"Остаток обновлен у {updated_count} позиций.")
+    else:
+        messages.error(request, "Неизвестное массовое действие.")
+
+    if return_qs:
+        return redirect(f"{reverse('seller_product_list')}?{return_qs}")
+    return redirect("seller_product_list")
 
 
 def brands_directory(request: HttpRequest) -> HttpResponse:
@@ -1345,6 +2239,9 @@ def rfq_new(request: HttpRequest) -> HttpResponse:
             "customer_name": full_name or request.user.username,
             "customer_email": request.user.email,
         }
+    prefill_items_text = request.session.pop("rfq_prefill_items_text", "").strip()
+    if prefill_items_text:
+        initial["items_text"] = prefill_items_text
 
     if request.method == "POST":
         form = RFQCreateForm(request.POST)
@@ -1938,13 +2835,57 @@ def operator_escalate_manual_oem(request: HttpRequest, rfq_item_id: int) -> Http
 
 
 @seller_required
+def seller_product_detail(request: HttpRequest, part_id: int) -> HttpResponse:
+    part = get_object_or_404(
+        _apply_seller_brand_scope(request.user, Part.objects.select_related("brand", "category")),
+        id=part_id,
+        seller=request.user,
+    )
+    missing_fields = part.mandatory_missing_fields()
+    completeness_total = 8
+    completeness_done = max(0, completeness_total - len(missing_fields))
+    completeness_percent = int(round((completeness_done / completeness_total) * 100)) if completeness_total else 0
+    stale_snapshot = _part_stale_snapshot(part)
+    price_history = _part_price_history(part)
+    demand_stats = _part_demand_stats(part)
+    related_parts = (
+        _apply_seller_brand_scope(
+            request.user,
+            Part.objects.filter(seller=request.user, brand=part.brand).exclude(id=part.id).select_related("brand", "category"),
+        )
+        .order_by("-data_updated_at", "-id")[:6]
+    )
+    return render(
+        request,
+        "seller/products/detail.html",
+        {
+            "part": part,
+            "missing_fields": missing_fields,
+            "completeness_percent": completeness_percent,
+            "stale_snapshot": stale_snapshot,
+            "price_history": price_history,
+            "demand_stats": demand_stats,
+            "related_parts": related_parts,
+            "seller_page_title": part.title,
+            "seller_page_subtitle": "Карточка товара поставщика: данные, логистика, полнота и быстрые действия.",
+            "seller_active_nav": "products",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": part.title, "url": reverse("seller_product_detail", args=[part.id])},
+            ],
+        },
+    )
+
+
+@seller_required
 def seller_part_create(request: HttpRequest) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
         messages.error(request, "Нет прав на управление ассортиментом.")
-        return redirect("seller_dashboard")
+        return redirect("seller_product_list")
     if not _has_seller_permission(request.user, "can_manage_pricing"):
         messages.error(request, "Нет прав на создание позиций с ценой.")
-        return redirect("seller_dashboard")
+        return redirect("seller_product_list")
 
     if request.method == "POST":
         form = SellerPartForm(request.POST)
@@ -1955,17 +2896,32 @@ def seller_part_create(request: HttpRequest) -> HttpResponse:
             part.seller = request.user
             part.save()
             messages.success(request, "Товар создан.")
-            return redirect("seller_dashboard")
+            return redirect("seller_product_list")
     else:
         form = SellerPartForm()
-    return render(request, "marketplace/seller_part_form.html", {"form": form, "mode": "create"})
+    return render(
+        request,
+        "marketplace/seller_part_form.html",
+        {
+            "form": form,
+            "mode": "create",
+            "seller_page_title": "Новый товар",
+            "seller_page_subtitle": "Создание новой позиции вручную.",
+            "seller_active_nav": "products",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": "Новый товар", "url": reverse("seller_part_create")},
+            ],
+        },
+    )
 
 
 @seller_required
 def seller_part_edit(request: HttpRequest, part_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
         messages.error(request, "Нет прав на редактирование ассортимента.")
-        return redirect("seller_dashboard")
+        return redirect("seller_product_list")
 
     part = get_object_or_404(_apply_seller_brand_scope(request.user, Part.objects.all()), id=part_id, seller=request.user)
     if request.method == "POST":
@@ -1977,10 +2933,152 @@ def seller_part_edit(request: HttpRequest, part_id: int) -> HttpResponse:
                 updated.price = old_price
             updated.save()
             messages.success(request, "Товар обновлен.")
-            return redirect("seller_dashboard")
+            return redirect("seller_product_list")
     else:
         form = SellerPartForm(instance=part)
-    return render(request, "marketplace/seller_part_form.html", {"form": form, "mode": "edit", "part": part})
+    return render(
+        request,
+        "marketplace/seller_part_form.html",
+        {
+            "form": form,
+            "mode": "edit",
+            "part": part,
+            "seller_page_title": f"Редактирование: {part.title}",
+            "seller_page_subtitle": "Обновление данных позиции, цены и логистики.",
+            "seller_active_nav": "products",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": part.title, "url": reverse("seller_product_detail", args=[part.id])},
+                {"label": "Редактирование", "url": reverse("seller_part_edit", args=[part.id])},
+            ],
+        },
+    )
+
+
+@seller_required
+def seller_import_preview(request: HttpRequest, preview_id: int) -> HttpResponse:
+    if not _has_seller_permission(request.user, "can_manage_assortment"):
+        messages.error(request, "Нет прав на загрузку ассортимента.")
+        return redirect("seller_product_list")
+    preview = get_object_or_404(ImportPreviewSession, id=preview_id, supplier=request.user)
+    if preview.source_type != ImportPreviewSession.SourceType.CSV or not preview.source_file_id:
+        messages.error(request, "Для этого источника preview пока не поддерживается в UI.")
+        return redirect("seller_product_list")
+
+    header_options = list(dict.fromkeys((preview.sample_rows[0].keys() if preview.sample_rows else []) + list(preview.detected_columns.values())))
+    preview_rows_matrix = [[row.get(header, "") for header in header_options] for row in (preview.sample_rows or [])]
+    current_mapping = preview.column_mapping or preview.detected_columns or {}
+    return render(
+        request,
+        "marketplace/seller_import_preview.html",
+        {
+            "preview": preview,
+            "header_options": header_options,
+            "preview_rows_matrix": preview_rows_matrix,
+            "mapping_fields": SELLER_IMPORT_MAPPING_FIELDS,
+            "current_mapping": current_mapping,
+        },
+    )
+
+
+@seller_required
+@require_POST
+def seller_import_preview_confirm(request: HttpRequest, preview_id: int) -> HttpResponse:
+    if not _has_seller_permission(request.user, "can_manage_assortment"):
+        messages.error(request, "Нет прав на загрузку ассортимента.")
+        return redirect("seller_product_list")
+    preview = get_object_or_404(ImportPreviewSession, id=preview_id, supplier=request.user)
+    mapping = {key: (request.POST.get(f"mapping__{key}") or "").strip() for key, _ in SELLER_IMPORT_MAPPING_FIELDS}
+
+    header_options = list(dict.fromkeys((preview.sample_rows[0].keys() if preview.sample_rows else []) + list(preview.detected_columns.values())))
+    ok, reason = ColumnMappingResolver().validate_mapping(mapping, header_options)
+    if not ok:
+        messages.error(request, reason)
+        return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}")
+
+    preview.column_mapping = mapping
+    preview.status = ImportPreviewSession.Status.MAPPING_CONFIRMED
+    preview.save(update_fields=["column_mapping", "status", "updated_at"])
+    messages.success(request, "Маппинг колонок подтвержден. Можно запускать импорт.")
+    return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}")
+
+
+@seller_required
+@require_POST
+def seller_import_preview_start(request: HttpRequest, preview_id: int) -> HttpResponse:
+    if not _has_seller_permission(request.user, "can_manage_assortment"):
+        messages.error(request, "Нет прав на загрузку ассортимента.")
+        return redirect("seller_product_list")
+    preview = get_object_or_404(ImportPreviewSession, id=preview_id, supplier=request.user)
+    if preview.status != ImportPreviewSession.Status.MAPPING_CONFIRMED:
+        messages.error(request, "Сначала подтвердите маппинг колонок.")
+        return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}")
+
+    idempotency_key = preview.source_file.checksum_sha256 if preview.source_file_id else ""
+    job = ImportJob.objects.create(
+        supplier=request.user,
+        source_type=preview.source_type,
+        source_file=preview.source_file,
+        source_url=preview.source_url,
+        preview_session=preview,
+        column_mapping_json=preview.column_mapping or {},
+        status=ImportJob.Status.QUEUED,
+        idempotency_key=idempotency_key,
+    )
+    try:
+        process_import_job.delay(job.id)
+    except Exception as exc:
+        logger.warning(
+            "import_job_enqueue_failed_from_preview",
+            extra={"job_id": job.id, "supplier_id": request.user.id, "error": str(exc)},
+        )
+        messages.error(request, "Не удалось поставить импорт в очередь.")
+        return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}")
+
+    messages.success(request, f"Импорт запущен (job #{job.id}). Можно следить за статусом на экране результата.")
+    return redirect("seller_import_result", import_id=job.id)
+
+
+@seller_required
+def seller_import_result(request: HttpRequest, import_id: int) -> HttpResponse:
+    if not _has_seller_permission(request.user, "can_manage_assortment"):
+        messages.error(request, "Нет прав на просмотр результатов импорта.")
+        return redirect("seller_product_list")
+
+    job = get_object_or_404(
+        ImportJob.objects.select_related("source_file", "error_report__file"),
+        id=import_id,
+        supplier=request.user,
+    )
+    rows = list(
+        job.rows.filter(status=ImportRow.Status.INVALID)
+        .order_by("row_no")
+        .values(
+            "row_no",
+            "part_number_raw",
+            "error_code",
+            "error_message",
+            "error_hint",
+            "raw_payload",
+        )[:100]
+    )
+    return render(
+        request,
+        "seller/products/import_result.html",
+        {
+            "import_job": job,
+            "error_rows_preview": rows,
+            "seller_page_title": f"Результат импорта #{job.id}",
+            "seller_page_subtitle": "Статус обработки, итоговые счетчики и ошибки по строкам.",
+            "seller_active_nav": "products",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": f"Импорт #{job.id}", "url": reverse("seller_import_result", args=[job.id])},
+            ],
+        },
+    )
 
 
 @seller_required
@@ -1988,20 +3086,62 @@ def seller_part_edit(request: HttpRequest, part_id: int) -> HttpResponse:
 def seller_bulk_upload(request: HttpRequest) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
         messages.error(request, "Нет прав на bulk upload.")
-        return redirect("seller_dashboard")
+        return redirect("seller_product_list")
     if not _has_seller_permission(request.user, "can_manage_pricing"):
         messages.error(request, "Нет прав на bulk upload цен.")
-        return redirect("seller_dashboard")
+        return redirect("seller_product_list")
+
+    def _humanize_import_error(raw_message: str) -> str:
+        message = (raw_message or "").strip()
+        if "Превышен лимит строк" in message:
+            return f"{message} Разбейте файл на несколько частей и загрузите по очереди."
+        if "Файл слишком большой" in message:
+            return f"{message} Сожмите файл или разделите его на несколько файлов."
+        if "Файл должен содержать колонки" in message:
+            return "Не найдены обязательные колонки. Нужны PartNumber/Part Number, WarehouseAddress и хотя бы одна цена Price_FOB_SEA/Price_FOB_AIR."
+        return message or "Ошибка обработки импорта."
 
     form = SellerBulkUploadForm(request.POST, request.FILES)
     if not form.is_valid():
         messages.error(request, "Некорректная форма загрузки.")
-        return redirect("seller_dashboard")
+        return redirect("seller_product_list")
     import_mode = (request.POST.get("import_mode") or "apply").strip().lower()
     if import_mode not in {"preview", "apply"}:
         import_mode = "apply"
 
     upload = form.cleaned_data["file"]
+    upload_name = getattr(upload, "name", "") or ""
+    if import_mode == "preview":
+        try:
+            stored = store_import_source_file(upload)
+            stored_file = StoredFile.objects.create(
+                supplier=request.user,
+                source_type=StoredFile.SourceType.IMPORT_CSV,
+                storage_key=stored.storage_key,
+                original_name=stored.original_name,
+                content_type=stored.content_type,
+                size_bytes=stored.size_bytes,
+                checksum_sha256=stored.checksum_sha256,
+            )
+            preview = ImportPreviewSession.objects.create(
+                supplier=request.user,
+                source_type=ImportPreviewSession.SourceType.CSV,
+                source_file=stored_file,
+                status=ImportPreviewSession.Status.DRAFT,
+            )
+            preview_result = ImportParser().build_preview(stored_file.storage_key)
+            preview.detected_columns = preview_result.detected_columns
+            preview.sample_rows = preview_result.sample_rows
+            preview.column_mapping = preview_result.detected_columns
+            preview.save(update_fields=["detected_columns", "sample_rows", "column_mapping", "updated_at"])
+            target_url = f"{reverse('seller_product_list')}?preview_id={preview.id}"
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return JsonResponse({"redirect_url": target_url}, status=200)
+            return redirect(target_url)
+        except Exception:
+            logger.exception("seller_import_preview_build_failed", extra={"seller_id": request.user.id, "filename": upload_name})
+            return JsonResponse({"error": "Не удалось построить preview импорта."}, status=400)
+
     metric_inc("import_attempts_total")
     timer = Timer()
     try:
@@ -2013,17 +3153,49 @@ def seller_bulk_upload(request: HttpRequest) -> HttpResponse:
             import_mode=import_mode,
         )
     except UploadLimitError as exc:
+        error_message = _humanize_import_error(str(exc))
+        SellerImportRun.objects.create(
+            seller=request.user,
+            filename=upload_name,
+            mode=import_mode,
+            status="failed",
+            skipped_invalid_count=1,
+            error_count=1,
+            errors=[{"row": 0, "reason": error_message}],
+        )
+        refresh_supplier_dashboard_projection(request.user)
         metric_inc("import_limits_triggered_total")
         logger.warning(
             "import_limit_exceeded",
-            extra={"seller_id": request.user.id, "status": exc.status_code, "reason": str(exc)},
+            extra={"seller_id": request.user.id, "status": exc.status_code, "reason": error_message},
         )
-        return JsonResponse({"error": str(exc)}, status=exc.status_code)
+        return JsonResponse({"error": error_message}, status=exc.status_code)
     except ValueError as exc:
+        error_message = _humanize_import_error(str(exc))
+        SellerImportRun.objects.create(
+            seller=request.user,
+            filename=upload_name,
+            mode=import_mode,
+            status="failed",
+            skipped_invalid_count=1,
+            error_count=1,
+            errors=[{"row": 0, "reason": error_message}],
+        )
+        refresh_supplier_dashboard_projection(request.user)
         metric_inc("import_validation_errors_total")
-        logger.warning("import_validation_error", extra={"seller_id": request.user.id, "reason": str(exc)})
-        return JsonResponse({"error": str(exc)}, status=400)
+        logger.warning("import_validation_error", extra={"seller_id": request.user.id, "reason": error_message})
+        return JsonResponse({"error": error_message}, status=400)
     except Exception:
+        SellerImportRun.objects.create(
+            seller=request.user,
+            filename=upload_name,
+            mode=import_mode,
+            status="failed",
+            skipped_invalid_count=1,
+            error_count=1,
+            errors=[{"row": 0, "reason": "Ошибка обработки импорта."}],
+        )
+        refresh_supplier_dashboard_projection(request.user)
         metric_inc("import_internal_errors_total")
         logger.exception("import_internal_error", extra={"seller_id": request.user.id})
         return JsonResponse({"error": "Ошибка обработки импорта."}, status=500)
@@ -2034,8 +3206,25 @@ def seller_bulk_upload(request: HttpRequest) -> HttpResponse:
         "updated": report.updated,
         "skipped_no_price": report.skipped_no_price,
         "skipped_invalid": report.skipped_invalid,
+        "total_rows": report.total_rows,
+        "processed_rows": report.processed_rows,
+        "failed_rows": report.failed_rows,
+        "success_rate": report.success_rate,
         "errors": report.errors,
     }
+    SellerImportRun.objects.create(
+        seller=request.user,
+        filename=upload_name,
+        mode=report.mode,
+        status="success",
+        created_count=report.created,
+        updated_count=report.updated,
+        skipped_no_price_count=report.skipped_no_price,
+        skipped_invalid_count=report.skipped_invalid,
+        error_count=len(report.errors),
+        errors=report.errors,
+    )
+    refresh_supplier_dashboard_projection(request.user)
     metric_inc("import_success_total")
     logger.info(
         "import_finished",
@@ -2052,21 +3241,92 @@ def seller_bulk_upload(request: HttpRequest) -> HttpResponse:
     if import_mode == "preview":
         messages.info(
             request,
-            f"Предпросмотр: создастся {report.created}, обновится {report.updated}, пропущено без цены {report.skipped_no_price}, пропущено по ошибкам {report.skipped_invalid}.",
+            f"Предпросмотр: всего строк {report.total_rows}, успешно {report.processed_rows} ({report.success_rate}%), ошибок {report.failed_rows}.",
         )
     else:
         messages.success(
             request,
-            f"Импорт завершен. Создано: {report.created}, обновлено: {report.updated}, пропущено без цены: {report.skipped_no_price}, пропущено по ошибкам: {report.skipped_invalid}.",
+            f"Импорт завершен: успешно {report.processed_rows} из {report.total_rows} строк ({report.success_rate}%).",
         )
-    return redirect("seller_dashboard")
+    return redirect("seller_product_list")
 
 
 @seller_required
 def seller_csv_template(request: HttpRequest) -> HttpResponse:
-    content = "Part Number,Description,Unitprice,Currency,Stock,OEM\nRE48786,MAIN SWITCH,295.00,USD,10,RE48786\n"
+    content = (
+        "PartNumber,CrossNumber,Brand,Name,Quantity,Condition,WarehouseAddress,Price_EXW,Price_FOB_SEA,Price_FOB_AIR,Weight,Length,Width,Height,MOQ,LeadTime_days\n"
+        "RE48786,RE48786A,John Deere,MAIN SWITCH,10,OEM,Shanghai CN,250.00,295.00,330.00,1.1,12,8,6,1,7\n"
+    )
     response = HttpResponse(content, content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename="consolidator_template.csv"'
+    return response
+
+
+@seller_required
+def seller_price_export(request: HttpRequest) -> HttpResponse:
+    if not _has_seller_permission(request.user, "can_manage_assortment"):
+        messages.error(request, "Нет прав на выгрузку прайса.")
+        return redirect("seller_product_list")
+
+    parts = (
+        _apply_seller_brand_scope(request.user, Part.objects.filter(seller=request.user))
+        .select_related("brand", "category")
+        .order_by("oem_number", "title")
+    )
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="supplier_prices_{timezone.now():%Y%m%d_%H%M}.csv"'
+    writer = csv.writer(response)
+    writer.writerow(["Part Number", "Description", "Unitprice", "Currency", "Stock", "OEM", "Brand", "Category", "Active"])
+    for part in parts:
+        writer.writerow(
+            [
+                part.title,
+                part.description or "",
+                str(part.price),
+                part.currency,
+                part.stock_quantity,
+                part.oem_number,
+                part.brand.name if part.brand else "",
+                part.category.name if part.category else "",
+                "1" if part.is_active else "0",
+            ]
+        )
+    return response
+
+
+@seller_required
+def seller_import_errors_csv(request: HttpRequest, run_id: int) -> HttpResponse:
+    if not _has_seller_permission(request.user, "can_manage_assortment"):
+        messages.error(request, "Нет прав на просмотр ошибок импорта.")
+        return redirect("seller_product_list")
+
+    job = (
+        ImportJob.objects.select_related("error_report__file")
+        .filter(id=run_id, supplier=request.user)
+        .first()
+    )
+    if job and getattr(job, "error_report", None) and job.error_report.file_id:
+        content = read_stored_file_bytes(job.error_report.file.storage_key)
+        response = HttpResponse(content, content_type=job.error_report.file.content_type or "text/csv")
+        filename = job.error_report.file.original_name or f"import_errors_{job.id}.csv"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
+    run = get_object_or_404(SellerImportRun, id=run_id, seller=request.user)
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f'attachment; filename="import_errors_{run.id}.csv"'
+    writer = csv.writer(response)
+    writer.writerow(["row_number", "original_data", "error_type", "error_message", "fix_suggestion"])
+    for err in run.errors or []:
+        writer.writerow(
+            [
+                err.get("row", ""),
+                json.dumps(err.get("original_data", {}), ensure_ascii=False),
+                err.get("error_type") or err.get("code", ""),
+                err.get("reason", ""),
+                err.get("hint", ""),
+            ]
+        )
     return response
 
 
@@ -2075,30 +3335,32 @@ def seller_csv_template(request: HttpRequest) -> HttpResponse:
 def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_orders"):
         messages.error(request, "Нет прав на управление заказами.")
-        return redirect("dashboard_seller")
+        return redirect("seller_orders")
+
+    next_url = (request.POST.get("next") or "").strip()
 
     order = get_object_or_404(Order, id=order_id)
     has_access = order.items.filter(part__seller=request.user).exists()
     if not has_access:
         messages.error(request, "Вы не можете менять этот заказ.")
-        return redirect("dashboard_seller")
+        return redirect("seller_orders")
 
     allowed = {key for key, _ in Order.STATUS_CHOICES}
     status = (request.POST.get("status") or "").strip()
     if status not in allowed:
         messages.error(request, "Неверный статус.")
-        return redirect("dashboard_seller")
+        return redirect(next_url or "seller_orders")
     seller_allowed_statuses = {"confirmed", "in_production", "ready_to_ship", "shipped", "delivered", "cancelled"}
     if status not in seller_allowed_statuses:
         messages.error(request, "Этот статус может быть изменен только клиентом или системой.")
-        return redirect("dashboard_seller")
+        return redirect(next_url or "seller_orders")
 
     current = order.status
     if status != current:
         next_allowed = ORDER_TRANSITIONS.get(current, set())
         if status not in next_allowed:
             messages.error(request, f"Недопустимый переход статуса: {current} -> {status}")
-            return redirect("dashboard_seller")
+            return redirect(next_url or "seller_orders")
 
     update_fields = ["status"]
     order.status = status
@@ -2142,7 +3404,9 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
                 meta={"order_id": order.id, "deadline": order.ship_deadline.isoformat()},
             )
     messages.success(request, f"Статус заказа #{order.id} обновлен: {order.get_status_display()}")
-    return redirect("dashboard_seller")
+    if next_url:
+        return redirect(next_url)
+    return redirect("seller_orders")
 
 
 @login_required

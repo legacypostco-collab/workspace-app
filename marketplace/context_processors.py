@@ -1,4 +1,5 @@
 from django.utils import translation
+from .models import Order, Part, RFQ, SellerImportRun
 
 
 def auth_meta(request):
@@ -158,4 +159,77 @@ def auth_meta(request):
         "seller_department": seller_department,
         "language_code": lang_key,
         "ui": ui,
+    }
+
+
+def seller_context(request):
+    if not request.user.is_authenticated:
+        return {}
+
+    profile = getattr(request.user, "profile", None)
+    if not profile or profile.role != "seller":
+        return {}
+
+    seller = request.user
+    seller_products_active = Part.objects.filter(seller=seller, is_active=True).count()
+    seller_requests_new = RFQ.objects.filter(items__matched_part__seller=seller).distinct().count()
+    seller_orders_action = Order.objects.filter(items__part__seller=seller).distinct().filter(
+        status__in=["confirmed", "in_production", "ready_to_ship"]
+    ).count()
+    seller_sla_alert = Order.objects.filter(items__part__seller=seller).distinct().filter(
+        sla_status__in=["at_risk", "breached"]
+    ).count()
+    seller_imports_total = SellerImportRun.objects.filter(seller=seller).count()
+
+    seller_nav_items = [
+        {"key": "dashboard", "label": "Дашборд", "url_name": "seller_dashboard", "badge": None, "enabled": True},
+        {
+            "key": "products",
+            "label": "Товары и прайсы",
+            "url_name": "seller_product_list",
+            "badge": seller_products_active,
+            "enabled": True,
+        },
+        {"key": "drawings", "label": "Чертежи", "url_name": None, "badge": None, "enabled": False},
+        {
+            "key": "requests",
+            "label": "Запросы клиентов",
+            "url_name": "seller_request_list",
+            "badge": seller_requests_new,
+            "enabled": True,
+        },
+        {
+            "key": "orders",
+            "label": "Заказы",
+            "url_name": "seller_orders",
+            "badge": seller_orders_action,
+            "enabled": True,
+        },
+        {
+            "key": "sla",
+            "label": "Контроль SLA",
+            "url_name": "seller_sla",
+            "badge": seller_sla_alert,
+            "enabled": True,
+        },
+        {"key": "discounts", "label": "Скидки", "url_name": None, "badge": None, "enabled": False},
+        {"key": "qr", "label": "QR-контроль", "url_name": None, "badge": None, "enabled": False},
+        {"key": "finance", "label": "Финансы", "url_name": None, "badge": None, "enabled": False},
+        {"key": "rating", "label": "Рейтинг", "url_name": None, "badge": None, "enabled": False},
+        {"key": "analytics", "label": "Аналитика", "url_name": None, "badge": None, "enabled": False},
+        {"key": "team", "label": "Команда", "url_name": None, "badge": None, "enabled": False},
+        {"key": "integrations", "label": "Интеграции", "url_name": None, "badge": None, "enabled": False},
+    ]
+
+    return {
+        "seller_supplier": seller,
+        "seller_nav_items": seller_nav_items,
+        "seller_badge_requests": seller_requests_new,
+        "seller_badge_orders_action": seller_orders_action,
+        "seller_badge_products_active": seller_products_active,
+        "seller_badge_imports_total": seller_imports_total,
+        "seller_rating_score": profile.rating_score,
+        "seller_status_label": profile.get_supplier_status_display(),
+        "seller_company_name": profile.company_name,
+        "seller_team_department": profile.get_department_display(),
     }

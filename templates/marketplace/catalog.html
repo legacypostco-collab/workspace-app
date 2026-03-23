@@ -49,9 +49,15 @@
     <article class="card">
       <img src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
       <div class="card-body">
-        <p class="muted">{% if part.brand %}{{ part.brand.name }} • {% endif %}{{ part.category.name }} • OEM {{ part.oem_number }}</p>
-        <h3><a href="{% url 'part_detail' part.slug %}">{{ part.title }}</a></h3>
-        <p><span class="chip">{{ part.get_condition_display }}</span></p>
+        <div class="card-meta">
+          <span class="chip chip-soft">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
+          <span class="chip chip-soft">{{ part.category.name }}</span>
+          <span class="chip">{{ part.get_condition_display }}</span>
+        </div>
+        <p class="field-label">Part Number</p>
+        <h3 class="part-number"><a href="{% url 'part_detail' part.slug %}">{{ part.oem_number }}</a></h3>
+        <p class="field-label">Part Name</p>
+        <p class="part-name">{{ part.title }}</p>
         <p class="price">${{ part.price }}</p>
         <div class="card-actions">
           <form method="post" action="{% url 'cart_add' part.id %}">

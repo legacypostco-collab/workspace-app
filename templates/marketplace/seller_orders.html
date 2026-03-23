@@ -1,0 +1,84 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Заказы поставщика | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Заказы поставщика</h1>
+  <a class="btn btn-secondary" href="{% url 'seller_dashboard' %}">← В кабинет</a>
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <h2>Фильтры</h2>
+  <p class="muted">Всего заказов: {{ orders_total }}</p>
+  <form method="get" action="{% url 'seller_orders' %}" class="upload-form">
+    <p>
+      <label for="id_q">Поиск по ID / клиенту / OEM / позиции</label>
+      <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Например, 1048 или RE48786" />
+    </p>
+    <p>
+      <label for="id_status">Статус</label>
+      <select id="id_status" name="status">
+        <option value="">Все</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </p>
+    <div class="card-actions">
+      <button class="btn btn-secondary" type="submit">Применить</button>
+      {% if query or status %}
+        <a class="btn" href="{% url 'seller_orders' %}">Сбросить</a>
+      {% endif %}
+    </div>
+  </form>
+</section>
+
+<div class="list">
+  {% for row in rows %}
+    <article class="list-row">
+      <div>
+        <h3>Заказ #{{ row.order.id }} • {{ row.order.customer_name }}</h3>
+        <p class="muted">{{ row.order.customer_email }} • {{ row.order.created_at|date:"Y-m-d H:i" }}</p>
+        <p>
+          <span class="chip">Status: {{ row.order.status }}</span>
+          <span class="chip">Payment: {{ row.order.payment_status }}</span>
+          <span class="chip">SLA: {{ row.order.sla_status }}</span>
+        </p>
+        <p class="muted">
+          Позиции поставщика: {{ row.items_count }} • Штук: {{ row.units_total }} • Документы: {{ row.documents_count }} • Open claims: {{ row.open_claims_count }}
+        </p>
+      </div>
+      <div class="list-actions">
+        <p class="price">${{ row.order.total_amount }}</p>
+        <a class="btn btn-secondary" href="{% url 'order_detail' row.order.id %}">Открыть заказ</a>
+        <a class="btn btn-secondary" href="{% url 'order_invoice' row.order.id %}">Invoice</a>
+        <form method="post" action="{% url 'seller_order_status_update' row.order.id %}" class="status-form">
+          {% csrf_token %}
+          <label for="status-{{ row.order.id }}">Статус</label>
+          <select id="status-{{ row.order.id }}" name="status">
+            {% for value, label in status_choices %}
+              <option value="{{ value }}" {% if row.order.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-secondary" type="submit">Сменить</button>
+        </form>
+      </div>
+    </article>
+  {% empty %}
+    <p>Заказы не найдены.</p>
+  {% endfor %}
+</div>
+
+{% if orders.has_other_pages %}
+  <section class="panel" style="margin-top: 16px;">
+    <div class="card-actions">
+      {% if orders.has_previous %}
+        <a class="btn btn-secondary" href="?page={{ orders.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">← Назад</a>
+      {% endif %}
+      <span class="chip">Страница {{ orders.number }} из {{ orders.paginator.num_pages }}</span>
+      {% if orders.has_next %}
+        <a class="btn btn-secondary" href="?page={{ orders.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">Вперед →</a>
+      {% endif %}
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

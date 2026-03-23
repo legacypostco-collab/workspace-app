@@ -27,7 +27,7 @@ Hybrid platform based on two codebases:
 
 ## Quick start
 ```bash
-cd "/Users/konastantinverveyn/Documents/Проект/hybrid_marketplace"
+cd "/path/to/workspace-app"
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt

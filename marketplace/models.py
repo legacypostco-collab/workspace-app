@@ -183,6 +183,8 @@ class RFQ(models.Model):
     urgency = models.CharField(max_length=20, choices=URGENCY_CHOICES, default="standard")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="new")
     notes = models.TextField(blank=True)
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Общая скидка на весь RFQ (%)")
+    discount_note = models.CharField(max_length=255, blank=True, help_text="Комментарий к скидке")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -212,6 +214,8 @@ class RFQItem(models.Model):
     confidence = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     decision_reason = models.TextField(blank=True)
     recommended_supplier_status = models.CharField(max_length=20, blank=True)
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Скидка на позицию (%)")
+    discount_fixed = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Фиксированная скидка ($)")
 
     def __str__(self) -> str:
         return f"{self.query} x{self.quantity}"
@@ -225,27 +229,27 @@ class RFQItem(models.Model):
 
 class Order(models.Model):
     STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("reserve_paid", "Reserve Paid"),
-        ("confirmed", "Confirmed"),
-        ("in_production", "In Production"),
-        ("ready_to_ship", "Ready to Ship"),
-        ("shipped", "Shipped"),
-        ("delivered", "Delivered"),
-        ("completed", "Completed"),
-        ("cancelled", "Cancelled"),
+        ("pending", "Ожидает"),
+        ("reserve_paid", "Резерв оплачен"),
+        ("confirmed", "Подтверждён"),
+        ("in_production", "В производстве"),
+        ("ready_to_ship", "Готов к отгрузке"),
+        ("shipped", "Отгружен"),
+        ("delivered", "Доставлен"),
+        ("completed", "Завершён"),
+        ("cancelled", "Отменён"),
     ]
     PAYMENT_STATUS_CHOICES = [
-        ("awaiting_reserve", "Awaiting Reserve"),
-        ("reserve_paid", "Reserve Paid"),
-        ("paid", "Paid"),
-        ("refund_pending", "Refund Pending"),
-        ("refunded", "Refunded"),
+        ("awaiting_reserve", "Ожидает резерва"),
+        ("reserve_paid", "Резерв оплачен"),
+        ("paid", "Оплачен"),
+        ("refund_pending", "Возврат в обработке"),
+        ("refunded", "Возвращён"),
     ]
     SLA_STATUS_CHOICES = [
-        ("on_track", "On Track"),
-        ("at_risk", "At Risk"),
-        ("breached", "Breached"),
+        ("on_track", "В норме"),
+        ("at_risk", "Под угрозой"),
+        ("breached", "Нарушен"),
     ]
 
     customer_name = models.CharField(max_length=180)
@@ -505,3 +509,32 @@ class SupplierRatingEvent(models.Model):
 
     def __str__(self):
         return f"{self.supplier_id}:{self.event_type}:{self.impact_score}"
+
+
+class SellerImportRun(models.Model):
+    MODE_CHOICES = [
+        ("preview", "Preview"),
+        ("apply", "Apply"),
+    ]
+    STATUS_CHOICES = [
+        ("success", "Success"),
+        ("failed", "Failed"),
+    ]
+
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name="import_runs")
+    filename = models.CharField(max_length=255, blank=True, default="")
+    mode = models.CharField(max_length=20, choices=MODE_CHOICES, default="apply")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="success")
+    created_count = models.PositiveIntegerField(default=0)
+    updated_count = models.PositiveIntegerField(default=0)
+    skipped_no_price_count = models.PositiveIntegerField(default=0)
+    skipped_invalid_count = models.PositiveIntegerField(default=0)
+    error_count = models.PositiveIntegerField(default=0)
+    errors = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.seller_id}:{self.filename}:{self.status}:{self.created_at.isoformat()}"
