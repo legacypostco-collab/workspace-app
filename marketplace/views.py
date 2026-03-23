@@ -64,7 +64,11 @@ ORDER_TRANSITIONS = {
     "reserve_paid": {"confirmed", "cancelled"},
     "confirmed": {"in_production", "cancelled"},
     "in_production": {"ready_to_ship", "cancelled"},
-    "ready_to_ship": {"shipped", "cancelled"},
+    "ready_to_ship": {"transit_abroad", "shipped", "cancelled"},
+    "transit_abroad": {"customs", "cancelled"},
+    "customs": {"transit_rf", "cancelled"},
+    "transit_rf": {"issuing", "cancelled"},
+    "issuing": {"shipped", "cancelled"},
     "shipped": {"delivered", "cancelled"},
     "delivered": {"completed"},
     "completed": set(),
@@ -130,20 +134,45 @@ def _log_order_event(order: Order, event_type: str, source: str = "system", acto
     _emit_webhooks_for_order_event(event)
 
 
+# SLA нормативы по этапам (в часах) из таблицы "Этапы ЛК"
+SLA_STAGE_NORMS: dict[str, int] = {
+    "pending": 48,          # Ожидание оплаты: ≤ 48 ч
+    "reserve_paid": 48,
+    "confirmed": 168,       # Формирование заказа: ≤ 7 дн (2+5)
+    "in_production": 168,
+    "ready_to_ship": 48,
+    "transit_abroad": 240,  # Транзит (авто, КНР): ≤ 10 дн
+    "customs": 48,          # Таможня: ≤ 2 рабочих дня
+    "transit_rf": 24,       # Транзит РФ: ≤ 1 рабочий день
+    "issuing": 24,          # Выдача: ≤ 1 рабочий день
+    "shipped": 24,
+    "delivered": 72,        # Приёмка: ≤ 3 рабочих дня
+}
+
+
 def _recalc_order_sla(order: Order):
     previous = order.sla_status
     now = timezone.now()
     status = "on_track"
 
-    if order.status == "pending" and order.supplier_confirm_deadline:
-        if now > order.supplier_confirm_deadline:
+    norm_hours = SLA_STAGE_NORMS.get(order.status)
+    if norm_hours:
+        # Определяем, когда заказ вошёл в текущий статус
+        last_event = (
+            OrderEvent.objects.filter(
+                order=order,
+                event_type="status_changed",
+                meta__to=order.status,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+        entered_at = last_event.created_at if last_event else order.created_at
+        elapsed_hours = (now - entered_at).total_seconds() / 3600
+
+        if elapsed_hours >= norm_hours:
             status = "breached"
-        elif (order.supplier_confirm_deadline - now) <= timedelta(hours=4):
-            status = "at_risk"
-    elif order.status == "confirmed" and order.ship_deadline:
-        if now > order.ship_deadline:
-            status = "breached"
-        elif (order.ship_deadline - now) <= timedelta(hours=12):
+        elif elapsed_hours >= norm_hours * 0.75:
             status = "at_risk"
 
     if status != previous:
@@ -1658,20 +1687,59 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
     for order in orders_qs[:100]:
         _recalc_order_sla(order)
 
-    # Kanban columns
-    kanban_statuses = [
-        ("pending", "Ожидает"),
-        ("confirmed", "Подтверждён"),
-        ("in_production", "В производстве"),
-        ("ready_to_ship", "Готов к отгрузке"),
-        ("shipped", "Отгружен"),
-        ("delivered", "Доставлен"),
+    # Kanban columns — новые этапы из таблицы "Этапы ЛК"
+    # statuses: список DB-статусов, попадающих в эту колонку
+    # drop_status: статус, выставляемый при drag-and-drop в эту колонку
+    kanban_columns_cfg = [
+        {
+            "key": "pending",
+            "label": "Ожидание оплаты",
+            "statuses": ["pending"],
+            "sla_hours": 48,
+        },
+        {
+            "key": "confirmed",
+            "label": "Формирование заказа",
+            "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"],
+            "sla_hours": 168,
+        },
+        {
+            "key": "transit_abroad",
+            "label": "Транзит (Зарубеж)",
+            "statuses": ["transit_abroad"],
+            "sla_hours": 240,
+        },
+        {
+            "key": "customs",
+            "label": "Таможня",
+            "statuses": ["customs"],
+            "sla_hours": 48,
+        },
+        {
+            "key": "transit_rf",
+            "label": "Транзит (РФ)",
+            "statuses": ["transit_rf"],
+            "sla_hours": 24,
+        },
+        {
+            "key": "issuing",
+            "label": "Выдача",
+            "statuses": ["issuing", "shipped"],
+            "sla_hours": 24,
+        },
+        {
+            "key": "delivered",
+            "label": "Доставлен",
+            "statuses": ["delivered", "completed"],
+            "sla_hours": 72,
+        },
     ]
+    kanban_statuses = [(col["key"], col["label"]) for col in kanban_columns_cfg]
 
     columns = []
-    for status_key, status_label in kanban_statuses:
+    for col_cfg in kanban_columns_cfg:
         status_orders = []
-        for order in orders_qs.filter(status=status_key):
+        for order in orders_qs.filter(status__in=col_cfg["statuses"]):
             seller_items = [item for item in order.items.all() if item.part and item.part.seller_id == request.user.id]
             status_orders.append({
                 "order": order,
@@ -1679,18 +1747,23 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
                 "units_total": sum(int(item.quantity) for item in seller_items),
             })
         columns.append({
-            "key": status_key,
-            "label": status_label,
+            "key": col_cfg["key"],
+            "label": col_cfg["label"],
             "orders": status_orders,
             "count": len(status_orders),
+            "sla_hours": col_cfg["sla_hours"],
         })
 
-    # Timeline data — all orders with step index
-    status_order = [s[0] for s in kanban_statuses]
+    # Timeline data — current_step по индексу колонки канбана
+    status_to_col_idx = {}
+    for idx, col_cfg in enumerate(kanban_columns_cfg):
+        for s in col_cfg["statuses"]:
+            status_to_col_idx[s] = idx
+
     timeline_orders = []
     for col in columns:
         for row in col["orders"]:
-            current_idx = status_order.index(row["order"].status) if row["order"].status in status_order else -1
+            current_idx = status_to_col_idx.get(row["order"].status, -1)
             timeline_orders.append({
                 "order": row["order"],
                 "items_count": row["items_count"],
@@ -1727,6 +1800,59 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
     if production_orders:
         avg_production_hours = round((avg_ship_hours + avg_confirm_hours) / 2) if avg_ship_hours else 48
 
+    # Stage time analytics — time each order spent at each stage
+    from collections import defaultdict
+    order_ids = [o.id for o in all_orders]
+    stage_events = OrderEvent.objects.filter(
+        order_id__in=order_ids,
+        event_type="status_changed",
+    ).order_by("order_id", "created_at").values("order_id", "meta", "created_at")
+
+    events_by_order = defaultdict(list)
+    for ev in stage_events:
+        events_by_order[ev["order_id"]].append(ev)
+
+    status_order_list = [s[0] for s in kanban_statuses]
+    stage_analytics = []
+    for order in all_orders:
+        evs = events_by_order.get(order.id, [])
+        # Map: status key → datetime when order entered that status
+        status_start = {"pending": order.created_at}
+        for ev in evs:
+            to_s = (ev["meta"] or {}).get("to")
+            if to_s and to_s in status_order_list:
+                if to_s not in status_start:
+                    status_start[to_s] = ev["created_at"]
+
+        stage_times = []
+        for i, (sk, sl) in enumerate(kanban_statuses):
+            if sk not in status_start:
+                stage_times.append(None)
+                continue
+            start = status_start[sk]
+            # end = when moved to next kanban status
+            end = None
+            for j in range(i + 1, len(kanban_statuses)):
+                next_sk = kanban_statuses[j][0]
+                if next_sk in status_start:
+                    end = status_start[next_sk]
+                    break
+            if end is None and order.status == sk:
+                end = now
+            if start and end:
+                hours = round((end - start).total_seconds() / 3600, 1)
+                stage_times.append(hours)
+            else:
+                stage_times.append(None)
+
+        total_hours = sum(h for h in stage_times if h is not None)
+        stage_analytics.append({
+            "order": order,
+            "stage_times": stage_times,
+            "total_hours": round(total_hours, 1),
+            "current_stage_idx": status_order_list.index(order.status) if order.status in status_order_list else -1,
+        })
+
     return render(
         request,
         "seller/sla/list.html",
@@ -1741,6 +1867,7 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
             "avg_confirm_hours": avg_confirm_hours,
             "avg_production_hours": avg_production_hours,
             "avg_ship_hours": avg_ship_hours,
+            "stage_analytics": stage_analytics,
             "seller_page_title": "Контроль SLA",
             "seller_page_subtitle": "Канбан-доска поставок — перетаскивайте карточки между этапами.",
             "seller_active_nav": "sla",
@@ -3350,7 +3477,7 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
     if status not in allowed:
         messages.error(request, "Неверный статус.")
         return redirect(next_url or "seller_orders")
-    seller_allowed_statuses = {"confirmed", "in_production", "ready_to_ship", "shipped", "delivered", "cancelled"}
+    seller_allowed_statuses = {"confirmed", "in_production", "ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "shipped", "delivered", "cancelled"}
     if status not in seller_allowed_statuses:
         messages.error(request, "Этот статус может быть изменен только клиентом или системой.")
         return redirect(next_url or "seller_orders")

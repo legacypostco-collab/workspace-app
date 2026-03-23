@@ -229,11 +229,15 @@ class RFQItem(models.Model):
 
 class Order(models.Model):
     STATUS_CHOICES = [
-        ("pending", "Ожидает"),
+        ("pending", "Ожидание оплаты"),
         ("reserve_paid", "Резерв оплачен"),
-        ("confirmed", "Подтверждён"),
+        ("confirmed", "Формирование заказа"),
         ("in_production", "В производстве"),
         ("ready_to_ship", "Готов к отгрузке"),
+        ("transit_abroad", "Транзит (Зарубеж)"),
+        ("customs", "Таможня"),
+        ("transit_rf", "Транзит (РФ)"),
+        ("issuing", "Выдача"),
         ("shipped", "Отгружен"),
         ("delivered", "Доставлен"),
         ("completed", "Завершён"),

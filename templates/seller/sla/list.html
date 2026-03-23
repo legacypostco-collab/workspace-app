@@ -1,10 +1,14 @@
 {% extends "seller/base_seller.html" %}
-{% load static %}
+{% load static seller_filters %}
 {% block title %}Контроль SLA{% endblock %}
 {% block content %}
 
 <p class="muted" style="margin-bottom:12px;">Всего заказов: {{ orders_total }}</p>
 
+<div id="sla-blocks">
+
+<div class="sla-block" data-block-id="kanban">
+  <div class="sla-block-handle" title="Переместить блок">⠿</div>
 <div class="kanban-board">
   {% for col in columns %}
     <div class="kanban-col" data-status="{{ col.key }}"
@@ -48,9 +52,11 @@
     </div>
   {% endfor %}
 </div>
+</div>{# /block kanban #}
 
-{# Таймлайн доставки #}
-<section class="panel" style="margin-top:16px;">
+<div class="sla-block" data-block-id="timeline" style="margin-top:12px;">
+  <div class="sla-block-handle" title="Переместить блок">⠿</div>
+<section class="panel" style="margin-top:0;">
   <h2 style="margin-bottom:16px;">Таймлайн доставки</h2>
   {% for tl in timeline_orders %}
     <div style="margin-bottom:16px;padding-bottom:16px;{% if not forloop.last %}border-bottom:1px solid rgba(255,255,255,0.045);{% endif %}">
@@ -58,12 +64,12 @@
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;">Заказ #{{ tl.order.id }}</span>
           <span style="font-size:12px;color:#6A6A6A;">{{ tl.order.customer_name }}</span>
-          {% if tl.order.sla_status == "on_track" %}
-            <span style="font-size:10px;color:#28C840;">● В норме</span>
-          {% elif tl.order.sla_status == "at_risk" %}
-            <span style="font-size:10px;color:#FEBC2E;">● Под угрозой</span>
-          {% elif tl.order.sla_status == "breached" %}
-            <span style="font-size:10px;color:#FF5F57;">● Нарушен</span>
+          {% if tl.order.sla_status == "breached" %}
+            <span style="font-size:10px;color:#FF8C42;">{{ tl.order.get_sla_status_display }}</span>
+          {% elif tl.order.sla_status == "on_track" %}
+            <span style="font-size:10px;color:#64B5F6;">{{ tl.order.get_sla_status_display }}</span>
+          {% else %}
+            <span style="font-size:10px;color:#6A6A6A;">{{ tl.order.get_sla_status_display }}</span>
           {% endif %}
         </div>
         <span style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:800;color:#ECECEC;">${{ tl.order.total_amount }}</span>
@@ -72,111 +78,169 @@
         {% for sk, sl in kanban_statuses %}
           <div style="flex:1;display:flex;flex-direction:column;align-items:center;position:relative;">
             {% if not forloop.first %}
-              <div style="position:absolute;top:5px;right:50%;width:100%;height:2px;background:{% if forloop.counter0 <= tl.current_step %}#64B5F6{% else %}#2C2C2C{% endif %};z-index:0;"></div>
+              <div style="position:absolute;top:5px;right:50%;width:100%;height:2px;background:{% if forloop.counter0 <= tl.current_step %}#919191{% else %}#2C2C2C{% endif %};z-index:0;"></div>
             {% endif %}
-            <div style="width:12px;height:12px;border-radius:50%;z-index:1;{% if forloop.counter0 == tl.current_step %}background:#64B5F6;box-shadow:0 0 6px rgba(100,181,246,0.4);{% elif forloop.counter0 < tl.current_step %}background:#64B5F6;{% else %}background:#2C2C2C;border:1px solid #484848;{% endif %}"></div>
-            <div style="font-size:9px;margin-top:5px;{% if forloop.counter0 == tl.current_step %}color:#ECECEC;font-weight:600;{% elif forloop.counter0 < tl.current_step %}color:#64B5F6;{% else %}color:#484848;{% endif %}">{{ sl }}</div>
+            <div style="width:12px;height:12px;border-radius:50%;z-index:1;{% if forloop.counter0 == tl.current_step %}background:#ECECEC;{% elif forloop.counter0 < tl.current_step %}background:#919191;{% else %}background:#2C2C2C;border:1px solid #484848;{% endif %}"></div>
+            <div style="font-size:9px;margin-top:5px;{% if forloop.counter0 == tl.current_step %}color:#ECECEC;font-weight:600;{% elif forloop.counter0 < tl.current_step %}color:#919191;{% else %}color:#484848;{% endif %}">{{ sl }}</div>
           </div>
         {% endfor %}
       </div>
     </div>
   {% endfor %}
 </section>
+</div>{# /block timeline #}
 
-{# Дашборд SLA #}
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
-
-  {# KPI карточки #}
-  <section class="panel">
-    <h2 style="margin-bottom:14px;">SLA метрики</h2>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;">
-      <div style="padding:12px 14px;border-right:1px solid rgba(255,255,255,0.045);text-align:center;">
-        <div style="font-size:9px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Всего</div>
-        <div style="font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;color:#ECECEC;">{{ orders_total }}</div>
-        <div style="font-size:10px;color:#6A6A6A;margin-top:3px;">заказов</div>
-      </div>
-      <div style="padding:12px 14px;border-right:1px solid rgba(255,255,255,0.045);text-align:center;">
-        <div style="font-size:9px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">В норме</div>
-        <div style="font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;color:#28C840;">{{ sla_on_track }}</div>
-        <div style="font-size:10px;color:#6A6A6A;margin-top:3px;">on track</div>
-      </div>
-      <div style="padding:12px 14px;border-right:1px solid rgba(255,255,255,0.045);text-align:center;">
-        <div style="font-size:9px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Под угрозой</div>
-        <div style="font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;color:#FEBC2E;">{{ sla_at_risk }}</div>
-        <div style="font-size:10px;color:#6A6A6A;margin-top:3px;">at risk</div>
-      </div>
-      <div style="padding:12px 14px;text-align:center;">
-        <div style="font-size:9px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Нарушен</div>
-        <div style="font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;color:#FF5F57;">{{ sla_breached }}</div>
-        <div style="font-size:10px;color:#6A6A6A;margin-top:3px;">breached</div>
-      </div>
+<div class="sla-block" data-block-id="kpi" style="margin-top:12px;">
+  <div class="sla-block-handle" title="Переместить блок">⠿</div>
+{# ─── KPI метрики ─── #}
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+  <div style="background:#242424;padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.055);">
+    <div style="font-size:11px;color:#919191;margin-bottom:3px;">Активные заказы</div>
+    <div style="display:flex;align-items:baseline;gap:6px;">
+      <span style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">{{ orders_total }}</span>
     </div>
-  </section>
-
-  {# Среднее время по этапам #}
-  <section class="panel">
-    <h2 style="margin-bottom:14px;">Среднее время по этапам</h2>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;">
-      <div style="padding:12px 14px;border-right:1px solid rgba(255,255,255,0.045);text-align:center;">
-        <div style="font-size:9px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Подтверждение</div>
-        <div style="font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;color:#ECECEC;">{{ avg_confirm_hours }}ч</div>
-        <div style="font-size:10px;color:#6A6A6A;margin-top:3px;">среднее</div>
-      </div>
-      <div style="padding:12px 14px;border-right:1px solid rgba(255,255,255,0.045);text-align:center;">
-        <div style="font-size:9px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Производство</div>
-        <div style="font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;color:#ECECEC;">{{ avg_production_hours }}ч</div>
-        <div style="font-size:10px;color:#6A6A6A;margin-top:3px;">среднее</div>
-      </div>
-      <div style="padding:12px 14px;text-align:center;">
-        <div style="font-size:9px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">До отгрузки</div>
-        <div style="font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;color:#ECECEC;">{{ avg_ship_hours }}ч</div>
-        <div style="font-size:10px;color:#6A6A6A;margin-top:3px;">среднее</div>
-      </div>
+    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">на контроле</div>
+  </div>
+  <div style="background:#242424;padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.055);">
+    <div style="font-size:11px;color:#919191;margin-bottom:3px;">Исполнение SLA</div>
+    <div style="display:flex;align-items:baseline;gap:6px;">
+      <span style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">{% widthratio sla_on_track orders_total 100 %}%</span>
+      <span style="font-size:10px;font-weight:600;color:#919191;">on track</span>
     </div>
-  </section>
-
+    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">норматив: 90%</div>
+  </div>
+  <div style="background:#242424;padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.055);">
+    <div style="font-size:11px;color:#919191;margin-bottom:3px;">Под угрозой</div>
+    <div style="display:flex;align-items:baseline;gap:6px;">
+      <span style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">{{ sla_at_risk }}</span>
+      <span style="font-size:10px;font-weight:600;color:#919191;">at risk</span>
+    </div>
+    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">требуют внимания</div>
+  </div>
+  <div style="background:#242424;padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.055);">
+    <div style="font-size:11px;color:#919191;margin-bottom:3px;">Нарушения SLA</div>
+    <div style="display:flex;align-items:baseline;gap:6px;">
+      <span style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">{{ sla_breached }}</span>
+      <span style="font-size:10px;font-weight:600;color:#919191;">breached</span>
+    </div>
+    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">просрочены</div>
+  </div>
 </div>
+</div>{# /block kpi #}
 
-{# Графики #}
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+<div class="sla-block" data-block-id="charts" style="margin-top:12px;">
+  <div class="sla-block-handle" title="Переместить блок">⠿</div>
+{# ─── Графики ─── #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
 
-  {# Распределение по этапам — horizontal bar chart #}
-  <section class="panel">
-    <h2 style="margin-bottom:14px;">Распределение по этапам</h2>
-    <div style="display:flex;flex-direction:column;gap:8px;">
+  {# Распределение по этапам #}
+  <div style="background:#242424;padding:20px 22px 18px;border-radius:14px;border:1px solid rgba(255,255,255,0.055);">
+    <div style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:16px;">Распределение по этапам</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
       {% for col in columns %}
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:110px;font-size:11px;color:#919191;text-align:right;flex-shrink:0;">{{ col.label }}</div>
-          <div style="flex:1;height:20px;background:#2C2C2C;border-radius:4px;overflow:hidden;position:relative;">
+          <div style="flex:1;height:18px;background:#1A1A1A;border-radius:4px;overflow:hidden;">
             {% if col.count %}
-              <div style="height:100%;width:{% widthratio col.count orders_total 100 %}%;background:#64B5F6;border-radius:4px;transition:width .3s;"></div>
+              <div style="height:100%;width:{% widthratio col.count orders_total 100 %}%;background:#64B5F6;border-radius:4px;"></div>
             {% endif %}
           </div>
-          <div style="width:24px;font-size:12px;font-weight:700;color:#ECECEC;text-align:center;">{{ col.count }}</div>
+          <div style="width:20px;font-size:12px;font-weight:700;color:#ECECEC;text-align:center;">{{ col.count }}</div>
         </div>
       {% endfor %}
     </div>
-  </section>
+  </div>
 
-  {# Нарушения SLA за 7 дней — vertical bar chart (static demo) #}
-  <section class="panel">
-    <h2 style="margin-bottom:14px;">Нарушения SLA за 7 дней</h2>
-    <div style="display:flex;align-items:flex-end;gap:6px;height:120px;padding-top:8px;">
-      {% for day_label in "ПНВТСРЧТПТСБВС" %}
-        {% cycle 0 1 0 0 1 0 0 as val silent %}
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;">
-          <div style="width:100%;max-width:28px;background:{% if val %}#FF5F57{% else %}rgba(255,255,255,0.04){% endif %};border-radius:3px;min-height:4px;height:{% if val %}40%{% else %}4px{% endif %};transition:height .3s;"></div>
+  {# Нормативы SLA по этапам #}
+  <div style="background:#242424;padding:20px 22px 18px;border-radius:14px;border:1px solid rgba(255,255,255,0.055);">
+    <div style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:16px;">Нормативы SLA по этапам</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      {% for col in columns %}
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:12px;color:#919191;">{{ col.label }}</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#6A6A6A;">
+            {{ col.sla_hours|hours_to_dh }}
+          </span>
         </div>
+        {% if not forloop.last %}<div style="height:1px;background:rgba(255,255,255,0.03);"></div>{% endif %}
       {% endfor %}
     </div>
-    <div style="display:flex;gap:6px;margin-top:6px;">
-      {% for day in "ПН,ВТ,СР,ЧТ,ПТ,СБ,ВС" %}
-        <div style="flex:1;text-align:center;font-size:9px;color:#6A6A6A;">{{ day }}</div>
-      {% endfor %}
-    </div>
-  </section>
+  </div>
 
 </div>
+</div>{# /block charts #}
+
+<div class="sla-block" data-block-id="analytics" style="margin-top:12px;">
+  <div class="sla-block-handle" title="Переместить блок">⠿</div>
+{# ─── Аналитика времени по этапам ─── #}
+<section style="margin-top:0;">
+  <div style="background:#242424;border-radius:14px;border:1px solid rgba(255,255,255,0.055);overflow:hidden;">
+    <div style="padding:18px 22px 14px;border-bottom:1px solid rgba(255,255,255,0.045);display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:14px;font-weight:600;color:#ECECEC;">Время на каждом этапе</div>
+      <div style="font-size:11px;color:#6A6A6A;">в часах · текущий этап выделен</div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.045);">
+            <th style="text-align:left;padding:10px 16px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;min-width:110px;">Заказ</th>
+            <th style="text-align:left;padding:10px 12px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;">Клиент</th>
+            {% for sk, sl in kanban_statuses %}
+              <th style="text-align:center;padding:10px 12px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;">{{ sl }}</th>
+            {% endfor %}
+            <th style="text-align:right;padding:10px 16px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;">Итого</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in stage_analytics %}
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.03);{% if not forloop.last %}{% endif %}"
+                onclick="window.location='{% url 'seller_order_detail' row.order.id %}'"
+                style="cursor:pointer;">
+              <td style="padding:10px 16px;white-space:nowrap;">
+                <span style="font-family:'Golos Text',sans-serif;font-weight:800;color:#ECECEC;">#{{ row.order.id }}</span>
+                {% if row.order.sla_status == "breached" %}
+                  <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#FF5F57;margin-left:5px;vertical-align:middle;"></span>
+                {% elif row.order.sla_status == "at_risk" %}
+                  <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#FEBC2E;margin-left:5px;vertical-align:middle;"></span>
+                {% elif row.order.sla_status == "on_track" %}
+                  <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#28C840;margin-left:5px;vertical-align:middle;"></span>
+                {% endif %}
+              </td>
+              <td style="padding:10px 12px;color:#919191;white-space:nowrap;max-width:140px;overflow:hidden;text-overflow:ellipsis;">{{ row.order.customer_name }}</td>
+              {% for hours in row.stage_times %}
+                {% with forloop.counter0 as idx %}
+                  <td style="text-align:center;padding:10px 12px;
+                    {% if hours != None %}
+                      {% if idx == row.current_stage_idx %}
+                        color:#ECECEC;font-weight:700;background:rgba(255,255,255,0.04);
+                      {% else %}
+                        color:#6A6A6A;
+                      {% endif %}
+                    {% else %}
+                      color:#2C2C2C;
+                    {% endif %}
+                    white-space:nowrap;">
+                    {{ hours|hours_to_dh }}
+                  </td>
+                {% endwith %}
+              {% endfor %}
+              <td style="text-align:right;padding:10px 16px;font-family:'Golos Text',sans-serif;font-weight:800;color:#ECECEC;white-space:nowrap;">
+                {{ row.total_hours|hours_to_dh }}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="9" style="text-align:center;padding:24px;color:#484848;">Нет данных</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+</div>{# /block analytics #}
+
+</div>{# /sla-blocks #}
 
 {% endblock %}
 
@@ -186,25 +250,147 @@ function kanbanDrop(e, col) {
   e.preventDefault();
   col.classList.remove('kanban-col--over');
   var orderId = e.dataTransfer.getData('order_id');
+  if (!orderId) return;
   var newStatus = col.dataset.status;
   var csrfToken = '{{ csrf_token }}';
-
   fetch('/seller/orders/' + orderId + '/status/', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'X-CSRFToken': csrfToken
-    },
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
     body: 'status=' + newStatus + '&next=' + encodeURIComponent(window.location.pathname)
-  }).then(function() {
-    window.location.reload();
-  });
+  }).then(function() { window.location.reload(); });
 }
+
+// ─── Block drag-and-drop ───
+(function() {
+  var STORAGE_KEY = 'sla_block_order_v1';
+  var container = document.getElementById('sla-blocks');
+  var dragSrc = null;
+
+  function getBlocks() {
+    return Array.prototype.slice.call(container.querySelectorAll(':scope > .sla-block'));
+  }
+
+  function saveOrder() {
+    var order = getBlocks().map(function(b) { return b.dataset.blockId; });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(order)); } catch(e) {}
+  }
+
+  function restoreOrder() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+      if (!saved || !Array.isArray(saved)) return;
+      var byId = {};
+      getBlocks().forEach(function(b) { byId[b.dataset.blockId] = b; });
+      saved.forEach(function(id) { if (byId[id]) container.appendChild(byId[id]); });
+    } catch(e) {}
+  }
+
+  getBlocks().forEach(function(block) {
+    var handle = block.querySelector('.sla-block-handle');
+    if (!handle) return;
+
+    handle.addEventListener('mousedown', function() {
+      block.setAttribute('draggable', 'true');
+    });
+    handle.addEventListener('mouseup', function() {
+      block.setAttribute('draggable', 'false');
+    });
+
+    block.addEventListener('dragstart', function(e) {
+      if (block.getAttribute('draggable') !== 'true') { e.preventDefault(); return; }
+      dragSrc = block;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('block_id', block.dataset.blockId);
+      setTimeout(function() { block.classList.add('sla-block--dragging'); }, 0);
+    });
+
+    block.addEventListener('dragend', function() {
+      block.setAttribute('draggable', 'false');
+      block.classList.remove('sla-block--dragging');
+      getBlocks().forEach(function(b) { b.classList.remove('sla-block--over'); });
+      dragSrc = null;
+      saveOrder();
+    });
+
+    block.addEventListener('dragover', function(e) {
+      if (!dragSrc || dragSrc === block) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      getBlocks().forEach(function(b) { b.classList.remove('sla-block--over'); });
+      block.classList.add('sla-block--over');
+    });
+
+    block.addEventListener('dragleave', function(e) {
+      if (!block.contains(e.relatedTarget)) block.classList.remove('sla-block--over');
+    });
+
+    block.addEventListener('drop', function(e) {
+      if (!dragSrc || dragSrc === block) return;
+      e.preventDefault();
+      e.stopPropagation();
+      block.classList.remove('sla-block--over');
+      var blocks = getBlocks();
+      var si = blocks.indexOf(dragSrc), ti = blocks.indexOf(block);
+      if (si < ti) block.after(dragSrc); else block.before(dragSrc);
+      saveOrder();
+    });
+  });
+
+  restoreOrder();
+})();
 </script>
 {% endblock %}
 
 {% block extra_css %}
 <style>
+/* ─── Block drag ─── */
+#sla-blocks {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+.sla-block {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+.sla-block--dragging {
+  opacity: 0.35;
+}
+.sla-block--over {
+  outline: 2px dashed rgba(100,181,246,0.35);
+  outline-offset: 5px;
+  border-radius: 14px;
+}
+.sla-block-handle {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 20;
+  cursor: grab;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.055);
+  font-size: 15px;
+  color: #6A6A6A;
+  line-height: 1;
+  user-select: none;
+  transition: background .15s, color .15s;
+}
+.sla-block:hover .sla-block-handle {
+  display: flex;
+  align-items: center;
+}
+.sla-block-handle:hover {
+  background: rgba(255,255,255,0.1);
+  color: #ECECEC;
+}
+.sla-block-handle:active {
+  cursor: grabbing;
+}
+
+/* ─── Kanban board ─── */
 .kanban-board {
   display: flex;
   gap: 10px;
