@@ -36,6 +36,7 @@ from .forms import BulkPriceLookupForm, CheckoutForm, LoginForm, RegisterForm, R
 from .models import (
     Brand,
     Category,
+    Drawing,
     Order,
     OrderClaim,
     OrderDocument,
@@ -61,19 +62,39 @@ CART_SESSION_KEY = "cart"
 COMPARE_SESSION_KEY = "compare_parts"
 ORDER_TRANSITIONS = {
     "pending": {"reserve_paid", "cancelled"},
-    "reserve_paid": {"confirmed", "cancelled"},
-    "confirmed": {"in_production", "cancelled"},
-    "in_production": {"ready_to_ship", "cancelled"},
-    "ready_to_ship": {"transit_abroad", "shipped", "cancelled"},
-    "transit_abroad": {"customs", "cancelled"},
-    "customs": {"transit_rf", "cancelled"},
-    "transit_rf": {"issuing", "cancelled"},
-    "issuing": {"shipped", "cancelled"},
-    "shipped": {"delivered", "cancelled"},
-    "delivered": {"completed"},
+    "reserve_paid": {"pending", "confirmed", "cancelled"},
+    "confirmed": {"reserve_paid", "in_production", "cancelled"},
+    "in_production": {"confirmed", "ready_to_ship", "cancelled"},
+    "ready_to_ship": {"in_production", "transit_abroad", "shipped", "cancelled"},
+    "transit_abroad": {"ready_to_ship", "customs", "cancelled"},
+    "customs": {"transit_abroad", "transit_rf", "cancelled"},
+    "transit_rf": {"customs", "issuing", "cancelled"},
+    "issuing": {"transit_rf", "shipped", "cancelled"},
+    "shipped": {"issuing", "delivered", "cancelled"},
+    "delivered": {"shipped", "completed"},
     "completed": set(),
     "cancelled": set(),
 }
+
+
+def _find_status_path(current: str, target: str, _max_depth: int = 15) -> list[str] | None:
+    """BFS to find shortest path from current to target through ORDER_TRANSITIONS."""
+    if current == target:
+        return []
+    from collections import deque
+    queue: deque[tuple[str, list[str]]] = deque([(current, [])])
+    visited = {current}
+    while queue and len(visited) < _max_depth:
+        node, path = queue.popleft()
+        for nxt in ORDER_TRANSITIONS.get(node, set()):
+            if nxt == "cancelled":
+                continue
+            if nxt == target:
+                return path + [nxt]
+            if nxt not in visited:
+                visited.add(nxt)
+                queue.append((nxt, path + [nxt]))
+    return None
 
 logger = logging.getLogger("marketplace")
 
@@ -243,6 +264,17 @@ def _create_order_from_rows(
     grand_total = (total + logistics_cost).quantize(Decimal("0.01"))
     reserve_amount = ((grand_total * reserve_percent) / Decimal("100")).quantize(Decimal("0.01"))
 
+    # Определяем схему оплаты
+    payment_scheme = request.POST.get("payment_scheme", "simple")
+    if payment_scheme not in ("simple", "staged"):
+        payment_scheme = "simple"
+
+    mid_payment_amount = Decimal("0.00")
+    customs_payment_amount = Decimal("0.00")
+    if payment_scheme == "staged":
+        mid_payment_amount = (grand_total * Decimal("0.50")).quantize(Decimal("0.01"))
+        customs_payment_amount = (grand_total * Decimal("0.40")).quantize(Decimal("0.01"))
+
     with transaction.atomic():
         order = Order.objects.create(
             customer_name=customer_name,
@@ -259,6 +291,9 @@ def _create_order_from_rows(
             logistics_meta=logistics_result,
             reserve_percent=reserve_percent,
             reserve_amount=reserve_amount,
+            payment_scheme=payment_scheme,
+            mid_payment_amount=mid_payment_amount,
+            customs_payment_amount=customs_payment_amount,
             payment_status="awaiting_reserve",
             )
         order.invoice_number = f"INV-{timezone.now():%Y%m%d}-{order.id}"
@@ -1696,42 +1731,80 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
             "label": "Ожидание оплаты",
             "statuses": ["pending"],
             "sla_hours": 48,
+            "trigger": "Счёт сформирован",
+            "action": "Кнопка «Отправить счёт покупателю»",
+            "action_type": "Кнопка",
+            "who": "Продавец / система",
         },
         {
             "key": "confirmed",
             "label": "Формирование заказа",
             "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"],
             "sla_hours": 168,
+            "trigger": "Предоплата поступила → Груз готов к отгрузке",
+            "action": "Фиксация оплаты → Кнопка «Передано в логистику»",
+            "action_type": "Автомат / Кнопка",
+            "who": "Фингрид / Поставщик",
         },
         {
             "key": "transit_abroad",
-            "label": "Транзит (Зарубеж)",
+            "label": "Логистика (Зарубеж)",
             "statuses": ["transit_abroad"],
             "sla_hours": 240,
+            "trigger": "Фактическая передача перевозчику",
+            "action": "Сканирование QR-кода отгрузки",
+            "action_type": "QR-скан",
+            "who": "Зарубежный логист",
         },
         {
             "key": "customs",
-            "label": "Таможня",
+            "label": "Таможенное оформление",
             "statuses": ["customs"],
             "sla_hours": 48,
+            "trigger": "Таможня завершена",
+            "action": "Кнопка «Груз растаможен» + декларация",
+            "action_type": "Кнопка + документ",
+            "who": "Таможенный брокер",
         },
         {
             "key": "transit_rf",
-            "label": "Транзит (РФ)",
+            "label": "Логистика (РФ)",
             "statuses": ["transit_rf"],
             "sla_hours": 24,
+            "trigger": "Передача в логистику РФ",
+            "action": "Сканирование QR-кода передачи",
+            "action_type": "QR-скан",
+            "who": "РФ-логист",
         },
         {
             "key": "issuing",
             "label": "Выдача",
             "statuses": ["issuing", "shipped"],
             "sla_hours": 24,
+            "trigger": "Передача на приёмку",
+            "action": "Сканирование QR-кода выдачи",
+            "action_type": "QR-скан",
+            "who": "Оператор платформы",
         },
         {
             "key": "delivered",
             "label": "Доставлен",
-            "statuses": ["delivered", "completed"],
+            "statuses": ["delivered"],
             "sla_hours": 72,
+            "trigger": "Фактическая приёмка груза",
+            "action": "QR-код / документы / видеоприёмка",
+            "action_type": "QR / документ / видео",
+            "who": "Заказчик / оператор",
+        },
+        {
+            "key": "completed",
+            "label": "Заказ закрыт",
+            "statuses": ["completed"],
+            "sla_hours": 1,
+            "trigger": "Документы приняты",
+            "action": "Автоматическое закрытие",
+            "action_type": "Автомат",
+            "who": "Система",
         },
     ]
     kanban_statuses = [(col["key"], col["label"]) for col in kanban_columns_cfg]
@@ -1752,6 +1825,10 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
             "orders": status_orders,
             "count": len(status_orders),
             "sla_hours": col_cfg["sla_hours"],
+            "trigger": col_cfg.get("trigger", ""),
+            "action": col_cfg.get("action", ""),
+            "action_type": col_cfg.get("action_type", ""),
+            "who": col_cfg.get("who", ""),
         })
 
     # Timeline data — current_step по индексу колонки канбана
@@ -1874,6 +1951,471 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
             "seller_breadcrumbs": [
                 {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
                 {"label": "Контроль SLA", "url": reverse("seller_sla")},
+            ],
+        },
+    )
+
+
+@seller_required
+def seller_qr_control(request: HttpRequest) -> HttpResponse:
+    """Страница QR-контроля: генерация кодов, история сканирований."""
+    seller = request.user
+
+    # Заказы продавца (активные)
+    active_orders = Order.objects.filter(
+        items__part__seller=seller,
+    ).distinct().exclude(status__in=["cancelled", "completed"]).order_by("-created_at")
+
+    # История сканирований QR — события с qr_code в meta
+    qr_base = (
+        OrderEvent.objects.filter(
+            order__items__part__seller=seller,
+            event_type="status_changed",
+        )
+        .exclude(meta__qr_code=None)
+        .exclude(meta__qr_code="")
+    )
+
+    # Статистика
+    total_scans = qr_base.count()
+    from django.utils import timezone as tz
+    today_start = tz.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    scans_today = qr_base.filter(created_at__gte=today_start).count()
+    orders_with_qr = qr_base.values("order_id").distinct().count()
+
+    qr_scan_events = (
+        qr_base.select_related("order", "actor").order_by("-created_at")[:50]
+    )
+
+    # Статусы которые используют QR по бизнес-логике
+    QR_STAGES = {
+        "transit_abroad": {
+            "label": "Логистика (Зарубеж)",
+            "action": "Сканирование QR-кода отгрузки",
+            # самолёт
+            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 19-7z"/></svg>',
+        },
+        "transit_rf": {
+            "label": "Логистика (РФ)",
+            "action": "Сканирование при приёме груза",
+            # грузовик
+            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
+        },
+        "issuing": {
+            "label": "Выдача",
+            "action": "QR-скан при получении заказа",
+            # коробка с рукой / выдача
+            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+        },
+        "delivered": {
+            "label": "Доставлен",
+            "action": "Подтверждение доставки",
+            # локация / точка назначения
+            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+        },
+    }
+
+    # Timeline data — те же этапы что и в канбане SLA
+    kanban_columns_cfg = [
+        {"key": "pending", "label": "Ожидание", "statuses": ["pending"]},
+        {"key": "confirmed", "label": "Формирование", "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"]},
+        {"key": "transit_abroad", "label": "Зарубеж", "statuses": ["transit_abroad"]},
+        {"key": "customs", "label": "Таможня", "statuses": ["customs"]},
+        {"key": "transit_rf", "label": "РФ", "statuses": ["transit_rf"]},
+        {"key": "issuing", "label": "Выдача", "statuses": ["issuing", "shipped"]},
+        {"key": "delivered", "label": "Доставлен", "statuses": ["delivered"]},
+        {"key": "completed", "label": "Закрыт", "statuses": ["completed"]},
+    ]
+    kanban_statuses = [(col["key"], col["label"]) for col in kanban_columns_cfg]
+
+    status_to_col_idx = {}
+    for idx, col_cfg in enumerate(kanban_columns_cfg):
+        for s in col_cfg["statuses"]:
+            status_to_col_idx[s] = idx
+
+    # Все заказы продавца (включая completed для таймлайна)
+    all_seller_orders = Order.objects.filter(
+        items__part__seller=seller,
+    ).distinct().exclude(status="cancelled").order_by("-created_at")
+
+    timeline_orders = []
+    for order in all_seller_orders:
+        current_idx = status_to_col_idx.get(order.status, -1)
+        timeline_orders.append({
+            "order": order,
+            "current_step": current_idx,
+        })
+
+    return render(
+        request,
+        "seller/qr/list.html",
+        {
+            "active_orders": active_orders,
+            "qr_scan_events": qr_scan_events,
+            "total_scans": total_scans,
+            "scans_today": scans_today,
+            "orders_with_qr": orders_with_qr,
+            "active_orders_count": active_orders.count(),
+            "qr_stages": QR_STAGES,
+            "timeline_orders": timeline_orders,
+            "kanban_statuses": kanban_statuses,
+            "seller_page_title": "QR-контроль",
+            "seller_page_subtitle": "Генерация QR-кодов и отслеживание заказов",
+            "seller_active_nav": "qr",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "QR-контроль", "url": reverse("seller_qr_control")},
+            ],
+        },
+    )
+
+
+@seller_required
+def seller_rating(request: HttpRequest) -> HttpResponse:
+    """Рейтинг поставщика: разбивка, метрики, предупреждения, советы."""
+    from datetime import timedelta
+    from decimal import Decimal
+
+    seller = request.user
+    profile = seller.profile
+
+    # Rating breakdown
+    rating_score = float(profile.rating_score)
+    external_score = float(profile.external_score)
+    behavioral_score = float(profile.behavioral_score)
+    supplier_status = profile.supplier_status
+    status_display = profile.get_supplier_status_display()
+
+    # Orders for metrics
+    now = timezone.now()
+    d30_ago = now - timedelta(days=30)
+    d60_ago = now - timedelta(days=60)
+
+    seller_orders = Order.objects.filter(items__part__seller=seller).distinct()
+    orders_30d = seller_orders.filter(created_at__gte=d30_ago)
+    orders_prev = seller_orders.filter(created_at__gte=d60_ago, created_at__lt=d30_ago)
+
+    # SLA
+    orders_30d_list = list(orders_30d.only("sla_status", "sla_breaches_count", "status"))
+    total_30d = len(orders_30d_list)
+    on_track_30d = sum(1 for o in orders_30d_list if o.sla_status == "on_track")
+    at_risk_30d = sum(1 for o in orders_30d_list if o.sla_status == "at_risk")
+    breached_30d = sum(1 for o in orders_30d_list if o.sla_status == "breached")
+    sla_pct = round((on_track_30d / total_30d * 100) if total_30d else 100, 1)
+
+    orders_prev_list = list(orders_prev.only("sla_status"))
+    total_prev = len(orders_prev_list)
+    on_track_prev = sum(1 for o in orders_prev_list if o.sla_status == "on_track")
+    sla_pct_prev = round((on_track_prev / total_prev * 100) if total_prev else 100, 1)
+    sla_trend = round(sla_pct - sla_pct_prev, 1)
+
+    # Conversion (RFQ → Order)
+    from marketplace.models import RFQ
+    rfqs_30d = RFQ.objects.filter(created_at__gte=d30_ago).count()
+    orders_created_30d = orders_30d.count()
+    conversion_pct = round((orders_created_30d / rfqs_30d * 100) if rfqs_30d else 0, 1)
+
+    rfqs_prev = RFQ.objects.filter(created_at__gte=d60_ago, created_at__lt=d30_ago).count()
+    orders_created_prev = orders_prev.count()
+    conv_prev = round((orders_created_prev / rfqs_prev * 100) if rfqs_prev else 0, 1)
+    conv_trend = round(conversion_pct - conv_prev, 1)
+
+    # Claims
+    seller_order_ids = list(seller_orders.values_list("id", flat=True)[:500])
+    open_claims = OrderClaim.objects.filter(order_id__in=seller_order_ids, status__in=["open", "in_review"]).count()
+    total_claims = OrderClaim.objects.filter(order_id__in=seller_order_ids).count()
+
+    # Cancellations
+    cancelled_30d = orders_30d.filter(status="cancelled").count()
+
+    # Total SLA breaches
+    sla_breaches_total = sum(o.sla_breaches_count for o in orders_30d_list)
+
+    # Rating events
+    rating_events = list(
+        SupplierRatingEvent.objects.filter(supplier=seller).order_by("-created_at")[:20]
+    )
+
+    # Warnings / action items
+    warnings = []
+    if breached_30d > 0:
+        warnings.append({
+            "level": "critical",
+            "title": f"{breached_30d} нарушений SLA",
+            "text": "Каждое нарушение снижает поведенческий рейтинг на ~2 балла. Ускорьте обработку заказов.",
+            "icon": "alert",
+        })
+    if open_claims > 0:
+        warnings.append({
+            "level": "critical",
+            "title": f"{open_claims} открытых рекламаций",
+            "text": "Нерешённые рекламации снижают внешний рейтинг. Решите их как можно скорее.",
+            "icon": "claim",
+        })
+    if at_risk_30d > 0:
+        warnings.append({
+            "level": "warning",
+            "title": f"{at_risk_30d} заказов под угрозой SLA",
+            "text": "Эти заказы скоро выйдут за пределы SLA. Примите меры сейчас.",
+            "icon": "clock",
+        })
+    if conversion_pct < 50 and rfqs_30d > 0:
+        warnings.append({
+            "level": "warning",
+            "title": f"Конверсия {conversion_pct}% ниже нормы",
+            "text": "Проверьте цены и наличие товара. Целевой показатель — выше 50%.",
+            "icon": "trend",
+        })
+    if rating_score < 80:
+        warnings.append({
+            "level": "warning",
+            "title": "Рейтинг ниже порога «Надёжный»",
+            "text": f"Текущий рейтинг {rating_score:.1f}. Нужно 80+ для статуса «Надёжный».",
+            "icon": "star",
+        })
+    if cancelled_30d > 0:
+        warnings.append({
+            "level": "info",
+            "title": f"{cancelled_30d} отмен за 30 дней",
+            "text": "Отмены негативно влияют на поведенческий рейтинг.",
+            "icon": "cancel",
+        })
+    if not warnings:
+        warnings.append({
+            "level": "success",
+            "title": "Всё в порядке",
+            "text": "Показатели в норме. Продолжайте поддерживать высокий уровень сервиса.",
+            "icon": "check",
+        })
+
+    # Event type labels
+    event_labels = dict(SupplierRatingEvent.EVENT_CHOICES)
+
+    return render(
+        request,
+        "seller/rating/list.html",
+        {
+            "rating_score": rating_score,
+            "external_score": external_score,
+            "behavioral_score": behavioral_score,
+            "supplier_status": supplier_status,
+            "status_display": status_display,
+            "sla_pct": sla_pct,
+            "sla_trend": sla_trend,
+            "conversion_pct": conversion_pct,
+            "conv_trend": conv_trend,
+            "open_claims": open_claims,
+            "total_claims": total_claims,
+            "cancelled_30d": cancelled_30d,
+            "breached_30d": breached_30d,
+            "at_risk_30d": at_risk_30d,
+            "sla_breaches_total": sla_breaches_total,
+            "rating_events": rating_events,
+            "event_labels": event_labels,
+            "warnings": warnings,
+            "seller_page_title": "Рейтинг",
+            "seller_page_subtitle": "Подробная разбивка рейтинга и рекомендации",
+            "seller_active_nav": "rating",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Рейтинг", "url": reverse("seller_rating")},
+            ],
+        },
+    )
+
+
+@seller_required
+@seller_required
+def seller_negotiations(request: HttpRequest) -> HttpResponse:
+    """Согласование: уровни скидок, лояльность, переторжка, чертежи."""
+    return render(request, "seller/negotiations/list.html", {})
+
+
+def seller_finance(request: HttpRequest) -> HttpResponse:
+    """Финансовый кабинет поставщика: оплаты, документы, таймлайн."""
+    from decimal import Decimal
+
+    seller = request.user
+
+    orders_qs = (
+        Order.objects.filter(items__part__seller=seller)
+        .distinct()
+        .select_related("buyer")
+        .prefetch_related("documents", "events", "items")
+        .order_by("-created_at")
+    )
+
+    # Фильтр по статусу оплаты
+    payment_filter = request.GET.get("payment", "")
+    if payment_filter and payment_filter in dict(Order.PAYMENT_STATUS_CHOICES):
+        orders_qs = orders_qs.filter(payment_status=payment_filter)
+
+    # Поиск по номеру заказа
+    search_q = request.GET.get("q", "").strip()
+    if search_q:
+        orders_qs = orders_qs.filter(id__icontains=search_q)
+
+    orders_list = list(orders_qs[:100])
+
+    # Метрики (считаем по всем заказам, без фильтра)
+    all_orders = list(
+        Order.objects.filter(items__part__seller=seller)
+        .distinct()
+        .only("total_amount", "reserve_amount", "payment_status", "reserve_paid_at")
+    )
+    total_revenue = sum((o.total_amount for o in all_orders), Decimal("0.00"))
+    paid_revenue = sum(
+        (o.total_amount for o in all_orders if o.payment_status == "paid"),
+        Decimal("0.00"),
+    )
+    awaiting_revenue = sum(
+        (
+            o.total_amount
+            for o in all_orders
+            if o.payment_status in ("awaiting_reserve", "reserve_paid")
+        ),
+        Decimal("0.00"),
+    )
+    reserves_collected = sum(
+        (o.reserve_amount for o in all_orders if o.reserve_paid_at),
+        Decimal("0.00"),
+    )
+
+    # Канбан-этапы для таймлайна в drawer
+    kanban_columns_cfg = [
+        {"key": "pending", "label": "Ожидание", "statuses": ["pending"]},
+        {"key": "confirmed", "label": "Формирование", "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"]},
+        {"key": "transit_abroad", "label": "Зарубеж", "statuses": ["transit_abroad"]},
+        {"key": "customs", "label": "Таможня", "statuses": ["customs"]},
+        {"key": "transit_rf", "label": "РФ", "statuses": ["transit_rf"]},
+        {"key": "issuing", "label": "Выдача", "statuses": ["issuing", "shipped"]},
+        {"key": "delivered", "label": "Доставлен", "statuses": ["delivered"]},
+        {"key": "completed", "label": "Закрыт", "statuses": ["completed"]},
+    ]
+    kanban_statuses = [(col["key"], col["label"]) for col in kanban_columns_cfg]
+
+    status_to_col_idx = {}
+    for idx, col_cfg in enumerate(kanban_columns_cfg):
+        for s in col_cfg["statuses"]:
+            status_to_col_idx[s] = idx
+
+    # Собираем данные по каждому заказу
+    finance_rows = []
+    for order in orders_list:
+        docs = list(order.documents.all())
+        events = list(order.events.all())
+        invoice_event = next(
+            (e for e in events if e.event_type == "invoice_opened"), None
+        )
+        reserve_event = next(
+            (e for e in events if e.event_type == "reserve_paid"), None
+        )
+        final_event = next(
+            (e for e in events if e.event_type == "final_payment_paid"), None
+        )
+        mid_event = next(
+            (e for e in events if e.event_type == "mid_payment_paid"), None
+        )
+        customs_event = next(
+            (e for e in events if e.event_type == "customs_payment_paid"), None
+        )
+        current_step = status_to_col_idx.get(order.status, -1)
+
+        finance_rows.append(
+            {
+                "order": order,
+                "docs": docs,
+                "docs_count": len(docs),
+                "invoice_event": invoice_event,
+                "reserve_event": reserve_event,
+                "mid_event": mid_event,
+                "customs_event": customs_event,
+                "final_event": final_event,
+                "current_step": current_step,
+            }
+        )
+
+    return render(
+        request,
+        "seller/finance/list.html",
+        {
+            "finance_rows": finance_rows,
+            "kanban_statuses": kanban_statuses,
+            "total_revenue": total_revenue,
+            "paid_revenue": paid_revenue,
+            "awaiting_revenue": awaiting_revenue,
+            "reserves_collected": reserves_collected,
+            "payment_filter": payment_filter,
+            "search_q": search_q,
+            "payment_choices": Order.PAYMENT_STATUS_CHOICES,
+            "seller_page_title": "Финансы",
+            "seller_page_subtitle": "Оплаты, документы и финансовый контроль",
+            "seller_active_nav": "finance",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Финансы", "url": reverse("seller_finance")},
+            ],
+        },
+    )
+
+
+@seller_required
+def seller_drawings(request: HttpRequest) -> HttpResponse:
+    """Страница управления чертежами поставщика."""
+    seller = request.user
+    drawings = Drawing.objects.filter(seller=seller)
+
+    # Статистика
+    total = drawings.count()
+    drafts = drawings.filter(status="draft").count()
+    on_review = drawings.filter(status="on_review").count()
+    approved = drawings.filter(status="approved").count()
+    rejected = drawings.filter(status="rejected").count()
+    archived = drawings.filter(status="archived").count()
+
+    # Фильтрация
+    status_filter = request.GET.get("status", "")
+    format_filter = request.GET.get("format", "")
+    search_q = request.GET.get("q", "").strip()
+
+    qs = drawings.exclude(status="archived") if not status_filter else drawings
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if format_filter:
+        qs = qs.filter(file_format=format_filter)
+    if search_q:
+        qs = qs.filter(
+            models.Q(title__icontains=search_q)
+            | models.Q(oem_number__icontains=search_q)
+            | models.Q(description__icontains=search_q)
+        )
+
+    # Форматы для фильтра
+    formats_used = (
+        drawings.values_list("file_format", flat=True).distinct().order_by("file_format")
+    )
+
+    return render(
+        request,
+        "seller/drawings/list.html",
+        {
+            "drawings": qs,
+            "total": total,
+            "drafts": drafts,
+            "on_review": on_review,
+            "approved": approved,
+            "rejected": rejected,
+            "archived": archived,
+            "formats_used": list(formats_used),
+            "status_filter": status_filter,
+            "format_filter": format_filter,
+            "search_q": search_q,
+            "seller_page_title": "Чертежи",
+            "seller_page_subtitle": "Управление чертежами и CAD-файлами",
+            "seller_active_nav": "drawings",
+            "seller_breadcrumbs": [
+                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": "Чертежи", "url": reverse("seller_drawings")},
             ],
         },
     )
@@ -3477,32 +4019,66 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
     if status not in allowed:
         messages.error(request, "Неверный статус.")
         return redirect(next_url or "seller_orders")
-    seller_allowed_statuses = {"confirmed", "in_production", "ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "shipped", "delivered", "cancelled"}
+    seller_allowed_statuses = {"pending", "reserve_paid", "confirmed", "in_production", "ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "shipped", "delivered", "completed", "cancelled"}
     if status not in seller_allowed_statuses:
         messages.error(request, "Этот статус может быть изменен только клиентом или системой.")
         return redirect(next_url or "seller_orders")
 
     current = order.status
     if status != current:
-        next_allowed = ORDER_TRANSITIONS.get(current, set())
-        if status not in next_allowed:
+        # Build path through intermediate statuses
+        path = _find_status_path(current, status)
+        if path is None:
             messages.error(request, f"Недопустимый переход статуса: {current} -> {status}")
             return redirect(next_url or "seller_orders")
 
-    update_fields = ["status"]
-    order.status = status
-    if status == "confirmed" and not order.ship_deadline:
-        order.ship_deadline = timezone.now() + timedelta(days=5)
-        update_fields.append("ship_deadline")
-    order.save(update_fields=update_fields)
-    _log_order_event(
-        order,
-        "status_changed",
-        source="seller",
-        actor=request.user,
-        meta={"from": current, "to": status},
-    )
-    _recalc_order_sla(order)
+        # Advance through each intermediate status, logging events
+        for step_status in path:
+            prev = order.status
+            order.status = step_status
+            update_fields = ["status"]
+            if step_status == "confirmed" and not order.ship_deadline:
+                order.ship_deadline = timezone.now() + timedelta(days=5)
+                update_fields.append("ship_deadline")
+            order.save(update_fields=update_fields)
+            _log_order_event(
+                order,
+                "status_changed",
+                source="seller",
+                actor=request.user,
+                meta={"from": prev, "to": step_status},
+            )
+        _recalc_order_sla(order)
+
+        # Handle QR code scan
+        qr_code = request.POST.get("qr_code", "").strip()
+        if qr_code:
+            _log_order_event(
+                order,
+                "status_changed",
+                source="seller",
+                actor=request.user,
+                meta={"qr_code": qr_code, "status": status},
+            )
+
+        # Handle document upload (e.g. customs declaration)
+        doc_file = request.FILES.get("document")
+        if doc_file:
+            doc_type = "customs" if status == "customs" else "other"
+            OrderDocument.objects.create(
+                order=order,
+                doc_type=doc_type,
+                title=doc_file.name,
+                file_obj=doc_file,
+                uploaded_by=request.user,
+            )
+            _log_order_event(
+                order,
+                "document_uploaded",
+                source="seller",
+                actor=request.user,
+                meta={"doc_type": doc_type, "filename": doc_file.name},
+            )
 
     if status == "cancelled":
         seller_ids = (
@@ -3811,15 +4387,75 @@ def order_mark_final_paid(request: HttpRequest, order_id: int) -> HttpResponse:
     if order.payment_status == "paid":
         messages.info(request, "Финальная оплата уже зафиксирована.")
         return redirect("order_invoice", order_id=order.id)
-    if order.payment_status != "reserve_paid":
-        messages.error(request, "Сначала нужно зафиксировать резерв 10%.")
-        return redirect("order_invoice", order_id=order.id)
+    # Для simple: reserve_paid → paid; для staged: customs_paid → paid
+    if order.payment_scheme == "staged":
+        if order.payment_status != "customs_paid":
+            messages.error(request, "Для поэтапной схемы все промежуточные платежи должны быть зафиксированы.")
+            return redirect("order_invoice", order_id=order.id)
+    else:
+        if order.payment_status != "reserve_paid":
+            messages.error(request, "Сначала нужно зафиксировать резерв 10%.")
+            return redirect("order_invoice", order_id=order.id)
 
     order.payment_status = "paid"
     order.final_paid_at = timezone.now()
     order.save(update_fields=["payment_status", "final_paid_at"])
     _log_order_event(order, "final_payment_paid", source="buyer", actor=request.user, meta={"total_amount": str(order.total_amount)})
     messages.success(request, "Финальная оплата зафиксирована.")
+    return redirect("order_invoice", order_id=order.id)
+
+
+@login_required
+@require_POST
+def order_mark_mid_paid(request: HttpRequest, order_id: int) -> HttpResponse:
+    """Подтверждение 50% после подтверждения заказа (staged scheme)."""
+    order = get_object_or_404(Order, id=order_id)
+    role = _role_for(request.user)
+    if order.buyer_id != request.user.id and not request.user.is_superuser:
+        messages.error(request, "Только клиент заказа может подтверждать оплату.")
+        return redirect("order_invoice", order_id=order.id)
+    if not _has_order_access(request.user, order, role):
+        messages.error(request, "Нет доступа к заказу.")
+        return redirect("dashboard")
+    if order.payment_scheme != "staged":
+        messages.error(request, "Промежуточный платёж доступен только для поэтапной схемы.")
+        return redirect("order_invoice", order_id=order.id)
+    if order.payment_status != "reserve_paid":
+        messages.error(request, "Сначала нужно зафиксировать резерв 10%.")
+        return redirect("order_invoice", order_id=order.id)
+
+    order.payment_status = "mid_paid"
+    order.mid_paid_at = timezone.now()
+    order.save(update_fields=["payment_status", "mid_paid_at"])
+    _log_order_event(order, "mid_payment_paid", source="buyer", actor=request.user, meta={"mid_payment_amount": str(order.mid_payment_amount)})
+    messages.success(request, f"Промежуточная оплата 50% (${order.mid_payment_amount}) зафиксирована.")
+    return redirect("order_invoice", order_id=order.id)
+
+
+@login_required
+@require_POST
+def order_mark_customs_paid(request: HttpRequest, order_id: int) -> HttpResponse:
+    """Подтверждение 40% после прохождения таможни (staged scheme)."""
+    order = get_object_or_404(Order, id=order_id)
+    role = _role_for(request.user)
+    if order.buyer_id != request.user.id and not request.user.is_superuser:
+        messages.error(request, "Только клиент заказа может подтверждать оплату.")
+        return redirect("order_invoice", order_id=order.id)
+    if not _has_order_access(request.user, order, role):
+        messages.error(request, "Нет доступа к заказу.")
+        return redirect("dashboard")
+    if order.payment_scheme != "staged":
+        messages.error(request, "Таможенный платёж доступен только для поэтапной схемы.")
+        return redirect("order_invoice", order_id=order.id)
+    if order.payment_status != "mid_paid":
+        messages.error(request, "Сначала нужно зафиксировать промежуточный платёж 50%.")
+        return redirect("order_invoice", order_id=order.id)
+
+    order.payment_status = "customs_paid"
+    order.customs_paid_at = timezone.now()
+    order.save(update_fields=["payment_status", "customs_paid_at"])
+    _log_order_event(order, "customs_payment_paid", source="buyer", actor=request.user, meta={"customs_payment_amount": str(order.customs_payment_amount)})
+    messages.success(request, f"Таможенная оплата 40% (${order.customs_payment_amount}) зафиксирована.")
     return redirect("order_invoice", order_id=order.id)
 
 
@@ -3991,6 +4627,24 @@ def payment_callback(request: HttpRequest) -> HttpResponse:
             _log_order_event(order, "status_changed", source="system", meta={"from": prev_status, "to": order.status, **meta})
         order.save(update_fields=list(set(changed_fields)))
         _log_order_event(order, "reserve_paid", source="system", meta=meta)
+    elif callback_status in {"mid_paid", "mid_payment", "confirmation_paid"}:
+        if order.payment_scheme == "staged" and order.payment_status not in {"mid_paid", "customs_paid", "paid"}:
+            order.payment_status = "mid_paid"
+            changed_fields.append("payment_status")
+        if not order.mid_paid_at:
+            order.mid_paid_at = timezone.now()
+            changed_fields.append("mid_paid_at")
+        order.save(update_fields=list(set(changed_fields)))
+        _log_order_event(order, "mid_payment_paid", source="system", meta=meta)
+    elif callback_status in {"customs_paid", "customs_payment"}:
+        if order.payment_scheme == "staged" and order.payment_status not in {"customs_paid", "paid"}:
+            order.payment_status = "customs_paid"
+            changed_fields.append("payment_status")
+        if not order.customs_paid_at:
+            order.customs_paid_at = timezone.now()
+            changed_fields.append("customs_paid_at")
+        order.save(update_fields=list(set(changed_fields)))
+        _log_order_event(order, "customs_payment_paid", source="system", meta=meta)
     elif callback_status in {"paid", "success", "final_paid", "full_paid"}:
         if order.payment_status != "paid":
             order.payment_status = "paid"

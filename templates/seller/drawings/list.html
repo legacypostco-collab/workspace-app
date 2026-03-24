@@ -1,0 +1,572 @@
+{% extends "seller/base_seller.html" %}
+{% block title %}Чертежи{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ─── Drawings page ─── */
+.drw-hero {
+  background:#242424;border:1px solid rgba(255,255,255,0.055);border-radius:16px;overflow:hidden;margin-bottom:16px;
+}
+.drw-hero-top {
+  display:flex;justify-content:space-between;align-items:center;gap:16px;padding:10px 16px;
+  border-bottom:1px solid rgba(255,255,255,0.045);
+}
+.drw-hero-title {
+  font-family:'Golos Text',sans-serif;font-size:14px;font-weight:800;color:#ECECEC;letter-spacing:-0.01em;line-height:1;
+}
+.drw-hero-sub { font-size:12px;color:#6A6A6A;margin-top:3px; }
+.drw-metrics {
+  display:grid;grid-template-columns:repeat(5,1fr);gap:0;
+}
+.drw-metric {
+  padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);
+}
+.drw-metric:last-child { border-right:none; }
+.drw-metric[data-filter] { cursor:pointer;transition:background .15s; }
+.drw-metric[data-filter]:hover { background:rgba(255,255,255,0.03); }
+.drw-metric[data-filter].drw-metric--active { background:rgba(100,181,246,0.07);border-radius:0; }
+.drw-metric-label {
+  font-size:10px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;
+}
+.drw-metric-val {
+  font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;color:#ECECEC;
+  font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
+}
+.drw-metric-hint { font-size:11px;margin-top:4px;font-weight:400;color:#ECECEC; }
+
+/* ─── Toolbar ─── */
+.drw-toolbar {
+  display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;
+}
+.drw-search {
+  flex:1;min-width:180px;padding:7px 12px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.06);
+  border-radius:10px;color:#ECECEC;font-size:13px;outline:none;
+}
+.drw-search::placeholder { color:#5E5E5E; }
+.drw-search:focus { border-color:rgba(100,181,246,0.35); }
+.drw-select {
+  padding:7px 10px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.06);
+  border-radius:10px;color:#ECECEC;font-size:12px;outline:none;cursor:pointer;
+}
+.drw-select option { background:#1A1A1A; }
+
+/* ─── Table ─── */
+.drw-table-wrap {
+  background:#242424;border:1px solid rgba(255,255,255,0.055);border-radius:14px;overflow:hidden;
+}
+.drw-table {
+  width:100%;border-collapse:collapse;
+}
+.drw-table th {
+  text-align:left;padding:10px 14px;font-size:10px;font-weight:600;color:#8A8A8A;
+  text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid rgba(255,255,255,0.045);
+  background:#242424;position:sticky;top:0;
+}
+.drw-table td {
+  padding:11px 14px;font-size:13px;color:#ECECEC;border-bottom:1px solid rgba(255,255,255,0.035);
+  vertical-align:middle;
+}
+.drw-table tr:last-child td { border-bottom:none; }
+.drw-table tr:hover td { background:rgba(255,255,255,0.02); }
+
+/* Status badges — muted */
+.drw-badge {
+  display:inline-flex;align-items:center;gap:5px;padding:3px 10px;
+  border-radius:20px;font-size:11px;font-weight:500;color:#8A8A8A;
+}
+.drw-badge--draft { background:rgba(255,255,255,0.04); }
+.drw-badge--on_review { background:rgba(255,255,255,0.04); }
+.drw-badge--approved { background:rgba(255,255,255,0.04); }
+.drw-badge--rejected { background:rgba(255,255,255,0.04); }
+.drw-badge--archived { background:rgba(255,255,255,0.03);color:#5A5A5A; }
+.drw-badge-dot {
+  width:6px;height:6px;border-radius:50%;
+}
+.drw-badge--draft .drw-badge-dot { background:#5A5A5A; }
+.drw-badge--on_review .drw-badge-dot { background:#64B5F6; }
+.drw-badge--approved .drw-badge-dot { background:#64B5F6; }
+.drw-badge--rejected .drw-badge-dot { background:#FF8C42; }
+.drw-badge--archived .drw-badge-dot { background:#3A3A3A; }
+
+/* Format badge */
+.drw-format {
+  display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:700;
+  text-transform:uppercase;background:rgba(255,255,255,0.06);color:#8A8A8A;letter-spacing:0.05em;
+}
+
+/* File size */
+.drw-size { color:#8A8A8A;font-size:12px; }
+
+/* OEM link */
+.drw-oem { color:#8A8A8A;font-size:12px; }
+
+/* Actions */
+.drw-actions { display:flex;gap:4px; }
+.drw-action-btn {
+  padding:4px 8px;border-radius:6px;font-size:11px;background:rgba(255,255,255,0.04);
+  color:#919191;cursor:pointer;border:none;transition:background .15s,color .15s;
+}
+.drw-action-btn:hover { background:rgba(100,181,246,0.08);color:#64B5F6; }
+
+/* Upload area */
+.drw-upload-area {
+  border:2px dashed rgba(255,255,255,0.08);border-radius:14px;padding:32px;text-align:center;
+  margin-bottom:16px;cursor:pointer;transition:border-color .2s,background .2s;
+}
+.drw-upload-area:hover {
+  border-color:rgba(100,181,246,0.35);background:rgba(100,181,246,0.03);
+}
+.drw-upload-icon { font-size:28px;margin-bottom:8px; }
+.drw-upload-text { font-size:13px;color:#919191; }
+.drw-upload-hint { font-size:11px;color:#5A5A5A;margin-top:4px; }
+
+/* Empty state */
+.drw-empty {
+  text-align:center;padding:48px 24px;
+}
+.drw-empty-icon { font-size:40px;margin-bottom:12px; }
+.drw-empty-title { font-size:15px;color:#ECECEC;font-weight:600;margin-bottom:6px; }
+.drw-empty-desc { font-size:12px;color:#5A5A5A; }
+
+/* ─── Upload Modal ─── */
+.drw-modal-overlay {
+  display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);
+  backdrop-filter:blur(4px);align-items:center;justify-content:center;
+}
+.drw-modal-overlay.active { display:flex; }
+.drw-modal {
+  background:#2A2A2A;border:1px solid rgba(255,255,255,0.08);border-radius:16px;
+  padding:24px;width:420px;max-width:90vw;color:#ECECEC;
+}
+.drw-modal h3 { font-size:16px;font-weight:700;margin:0 0 16px; }
+.drw-modal-field { margin-bottom:12px; }
+.drw-modal-field label {
+  display:block;font-size:11px;color:#919191;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;
+}
+.drw-modal-field input,
+.drw-modal-field select,
+.drw-modal-field textarea {
+  width:100%;padding:8px 12px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);
+  border-radius:8px;color:#ECECEC;font-size:13px;outline:none;
+}
+.drw-modal-field textarea { resize:vertical;min-height:60px; }
+.drw-modal-field input:focus,
+.drw-modal-field select:focus,
+.drw-modal-field textarea:focus { border-color:rgba(100,181,246,0.4); }
+.drw-modal-btns { display:flex;gap:8px;justify-content:flex-end;margin-top:18px; }
+.drw-modal-btn {
+  padding:8px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;
+}
+.drw-modal-btn--cancel { background:rgba(255,255,255,0.06);color:#919191; }
+.drw-modal-btn--cancel:hover { background:rgba(255,255,255,0.1); }
+.drw-modal-btn--save { background:#64B5F6;color:#111; }
+.drw-modal-btn--save:hover { background:#7ec4f7; }
+
+.drw-modal-upload-zone {
+  border:2px dashed rgba(255,255,255,0.1);border-radius:10px;padding:20px;text-align:center;
+  cursor:pointer;transition:border-color .2s;
+}
+.drw-modal-upload-zone:hover { border-color:rgba(100,181,246,0.4); }
+.drw-modal-upload-zone input[type="file"] { display:none; }
+.drw-modal-file-name { font-size:12px;color:#64B5F6;margin-top:6px; }
+
+/* ─── Row hover ─── */
+.drw-row:hover td { background:rgba(100,181,246,0.04); }
+.drw-row.active td { background:rgba(100,181,246,0.07); }
+
+/* ─── Drawer ─── */
+.drw-drawer-overlay {
+  display:none;position:fixed;inset:0;z-index:800;
+}
+.drw-drawer-overlay.active { display:block; }
+.drw-drawer {
+  position:fixed;top:0;right:0;bottom:0;width:340px;z-index:801;
+  background:#242424;border-left:1px solid rgba(255,255,255,0.07);
+  display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+}
+.drw-drawer.active { transform:translateX(0); }
+.drw-drawer-head {
+  display:flex;justify-content:space-between;align-items:flex-start;
+  padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.drw-drawer-title { font-size:15px;font-weight:700;color:#ECECEC;line-height:1.3;margin-right:12px; }
+.drw-drawer-close {
+  flex-shrink:0;width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.05);
+  border:none;color:#919191;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;
+}
+.drw-drawer-close:hover { background:rgba(255,255,255,0.1);color:#ECECEC; }
+.drw-drawer-body { flex:1;overflow-y:auto;padding:16px 20px; }
+.drw-drawer-meta {
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;
+}
+.drw-drawer-meta-item { }
+.drw-drawer-meta-label { font-size:10px;font-weight:600;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px; }
+.drw-drawer-meta-val { font-size:13px;color:#ECECEC; }
+.drw-drawer-desc {
+  font-size:12px;color:#8A8A8A;line-height:1.6;margin-bottom:16px;
+  padding:10px 12px;background:rgba(255,255,255,0.03);border-radius:8px;
+}
+.drw-drawer-files { }
+.drw-drawer-files-title { font-size:11px;font-weight:600;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px; }
+.drw-drawer-file {
+  display:flex;align-items:center;gap:12px;padding:10px 12px;
+  background:rgba(255,255,255,0.03);border-radius:10px;margin-bottom:8px;
+  border:1px solid rgba(255,255,255,0.05);
+}
+.drw-drawer-file-icon {
+  width:36px;height:36px;border-radius:8px;background:rgba(100,181,246,0.1);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  font-size:11px;font-weight:700;color:#64B5F6;
+}
+.drw-drawer-file-info { flex:1;min-width:0; }
+.drw-drawer-file-name { font-size:13px;color:#ECECEC;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.drw-drawer-file-size { font-size:11px;color:#6A6A6A;margin-top:2px; }
+.drw-drawer-file-dl {
+  padding:5px 10px;border-radius:7px;background:rgba(100,181,246,0.1);
+  color:#64B5F6;font-size:12px;font-weight:600;text-decoration:none;flex-shrink:0;
+  border:none;cursor:pointer;
+}
+.drw-drawer-file-dl:hover { background:rgba(100,181,246,0.2); }
+.drw-drawer-no-file {
+  text-align:center;padding:24px;border:2px dashed rgba(255,255,255,0.06);
+  border-radius:10px;color:#5A5A5A;font-size:12px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ═══ HERO — метрики ═══ #}
+<section class="drw-hero">
+  <div class="drw-hero-top">
+    <div>
+      <div class="drw-hero-title">Чертежи и CAD-файлы</div>
+      <div class="drw-hero-sub">Загружай чертежи · связывай с деталями · отслеживай ревизии</div>
+    </div>
+    <div style="display:flex;gap:6px;flex-shrink:0;">
+      <button class="btn ghost" id="drw-upload-btn" style="padding:7px 16px;font-size:13px;display:flex;align-items:center;gap:6px;color:#64B5F6;border-color:rgba(100,181,246,0.3);">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1.5a.5.5 0 00.5.5h11a.5.5 0 00.5-.5V12"/></svg>
+        Загрузить чертёж
+      </button>
+    </div>
+  </div>
+
+  <div class="drw-metrics">
+    <div class="drw-metric" data-filter="">
+      <div class="drw-metric-label">Всего</div>
+      <div class="drw-metric-val">{{ total }}</div>
+      <div class="drw-metric-hint">чертежей</div>
+    </div>
+    <div class="drw-metric" data-filter="draft">
+      <div class="drw-metric-label">Черновики</div>
+      <div class="drw-metric-val">{{ drafts }}</div>
+      <div class="drw-metric-hint">draft</div>
+    </div>
+    <div class="drw-metric" data-filter="on_review">
+      <div class="drw-metric-label">На проверке</div>
+      <div class="drw-metric-val">{{ on_review }}</div>
+      <div class="drw-metric-hint">review</div>
+    </div>
+    <div class="drw-metric" data-filter="approved">
+      <div class="drw-metric-label">Утверждены</div>
+      <div class="drw-metric-val">{{ approved }}</div>
+      <div class="drw-metric-hint" style="color:#64B5F6;">approved</div>
+    </div>
+    <div class="drw-metric" data-filter="rejected">
+      <div class="drw-metric-label">Отклонены</div>
+      <div class="drw-metric-val">{{ rejected }}</div>
+      <div class="drw-metric-hint" style="color:#FF8C42;">rejected</div>
+    </div>
+  </div>
+</section>
+
+{# ═══ Toolbar — поиск + фильтры ═══ #}
+<div class="drw-toolbar">
+  <form method="get" style="display:contents;" id="drw-filter-form">
+    <input class="drw-search" type="text" name="q" value="{{ search_q }}" placeholder="Поиск по названию, OEM, описанию…" />
+    <select class="drw-select" name="status" onchange="this.form.submit()">
+      <option value="">Все статусы</option>
+      <option value="draft" {% if status_filter == "draft" %}selected{% endif %}>Черновик</option>
+      <option value="on_review" {% if status_filter == "on_review" %}selected{% endif %}>На проверке</option>
+      <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>Утверждён</option>
+      <option value="rejected" {% if status_filter == "rejected" %}selected{% endif %}>Отклонён</option>
+      <option value="archived" {% if status_filter == "archived" %}selected{% endif %}>Архив</option>
+    </select>
+    <select class="drw-select" name="format" onchange="this.form.submit()">
+      <option value="">Все форматы</option>
+      {% for fmt in formats_used %}
+      <option value="{{ fmt }}" {% if format_filter == fmt %}selected{% endif %}>{{ fmt|upper }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+{# ═══ Таблица чертежей ═══ #}
+{% if drawings %}
+<div class="drw-table-wrap">
+  <table class="drw-table">
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th>Формат</th>
+        <th>Ревизия</th>
+        <th>OEM</th>
+        <th>Размер</th>
+        <th>Статус</th>
+        <th>Обновлён</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in drawings %}
+      <tr class="drw-row" style="cursor:pointer;"
+          data-id="{{ d.id }}"
+          data-title="{{ d.title }}"
+          data-format="{{ d.file_format|upper }}"
+          data-revision="{{ d.revision }}"
+          data-oem="{{ d.oem_number|default:'' }}"
+          data-size="{% if d.file_size_kb >= 1024 %}{{ d.file_size_kb }} KB{% else %}{{ d.file_size_kb }} KB{% endif %}"
+          data-status="{{ d.status }}"
+          data-status-label="{{ d.get_status_display }}"
+          data-desc="{{ d.description }}"
+          data-file-url="{{ d.file_url }}"
+          data-file-name="{{ d.file_name }}"
+          data-updated="{{ d.updated_at|date:'d.m.Y H:i' }}">
+        <td style="font-weight:600;">{{ d.title }}</td>
+        <td><span class="drw-format">{{ d.file_format|upper }}</span></td>
+        <td style="color:#8A8A8A;">{{ d.revision }}</td>
+        <td><span class="drw-oem">{{ d.oem_number|default:"—" }}</span></td>
+        <td><span class="drw-size">{{ d.file_size_kb }} KB</span></td>
+        <td>
+          <span class="drw-badge drw-badge--{{ d.status }}">
+            <span class="drw-badge-dot"></span>
+            {{ d.get_status_display }}
+          </span>
+        </td>
+        <td style="font-size:12px;color:#8A8A8A;">{{ d.updated_at|date:"d.m.Y H:i" }}</td>
+        <td>
+          <div class="drw-actions">
+            {% if d.file_url %}
+            <a href="{{ d.file_url }}" target="_blank" class="drw-action-btn" title="Скачать" onclick="event.stopPropagation()">↓</a>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="drw-empty">
+  <div class="drw-empty-icon">📐</div>
+  <div class="drw-empty-title">Нет чертежей</div>
+  <div class="drw-empty-desc">Загрузите первый чертёж — нажмите кнопку «Загрузить чертёж» выше</div>
+</div>
+{% endif %}
+
+{# ═══ Drawer: Детали чертежа ═══ #}
+<div class="drw-drawer-overlay" id="drw-drawer-overlay"></div>
+<div class="drw-drawer" id="drw-drawer">
+  <div class="drw-drawer-head">
+    <div class="drw-drawer-title" id="drw-drawer-title">—</div>
+    <button class="drw-drawer-close" id="drw-drawer-close">✕</button>
+  </div>
+  <div class="drw-drawer-body">
+    <div class="drw-drawer-meta" id="drw-drawer-meta"></div>
+    <div class="drw-drawer-desc" id="drw-drawer-desc" style="display:none;"></div>
+    <div class="drw-drawer-files">
+      <div class="drw-drawer-files-title">Файлы</div>
+      <div id="drw-drawer-files-list"></div>
+    </div>
+  </div>
+</div>
+
+{# ═══ Modal: Загрузка чертежа ═══ #}
+<div class="drw-modal-overlay" id="drw-modal">
+  <div class="drw-modal">
+    <h3>Загрузить чертёж</h3>
+    <form method="post" enctype="multipart/form-data" id="drw-upload-form">
+      {% csrf_token %}
+      <div class="drw-modal-field">
+        <label>Файл</label>
+        <div class="drw-modal-upload-zone" id="drw-drop-zone">
+          <div style="font-size:22px;margin-bottom:6px;">📎</div>
+          <div style="font-size:12px;color:#919191;">Перетащите файл или нажмите для выбора</div>
+          <div style="font-size:10px;color:#5A5A5A;margin-top:4px;">PDF, DWG, DXF, STEP, IGES, STL, PNG, JPG · до 50 МБ</div>
+          <input type="file" name="file" id="drw-file-input" accept=".pdf,.dwg,.dxf,.step,.stp,.iges,.igs,.stl,.png,.jpg,.jpeg" />
+          <div class="drw-modal-file-name" id="drw-file-name"></div>
+        </div>
+      </div>
+      <div class="drw-modal-field">
+        <label>Название</label>
+        <input type="text" name="title" placeholder="Например: Корпус насоса PN-4500" required />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="drw-modal-field">
+          <label>OEM-номер</label>
+          <input type="text" name="oem_number" placeholder="PN-4500-A" />
+        </div>
+        <div class="drw-modal-field">
+          <label>Ревизия</label>
+          <input type="text" name="revision" value="A" />
+        </div>
+      </div>
+      <div class="drw-modal-field">
+        <label>Описание</label>
+        <textarea name="description" placeholder="Дополнительная информация о чертеже…"></textarea>
+      </div>
+      <div class="drw-modal-btns">
+        <button type="button" class="drw-modal-btn drw-modal-btn--cancel" id="drw-modal-cancel">Отмена</button>
+        <button type="submit" class="drw-modal-btn drw-modal-btn--save">Загрузить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  // ─── Drawer ───
+  var drawer = document.getElementById('drw-drawer');
+  var drawerOverlay = document.getElementById('drw-drawer-overlay');
+  var drawerClose = document.getElementById('drw-drawer-close');
+  var activeRow = null;
+
+  function openDrawer(row) {
+    if (activeRow) activeRow.classList.remove('active');
+    activeRow = row;
+    row.classList.add('active');
+
+    var d = row.dataset;
+    document.getElementById('drw-drawer-title').textContent = d.title;
+
+    // Meta grid
+    var statusColors = { draft:'#8A8A8A', on_review:'#64B5F6', approved:'#64B5F6', rejected:'#FF8C42', archived:'#5A5A5A' };
+    var meta = document.getElementById('drw-drawer-meta');
+    meta.innerHTML = [
+      ['Формат', '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.06);color:#8A8A8A;">' + d.format + '</span>'],
+      ['Ревизия', d.revision || '—'],
+      ['OEM', d.oem || '—'],
+      ['Размер', d.size || '—'],
+      ['Статус', '<span style="color:' + (statusColors[d.status] || '#8A8A8A') + '">' + d.statusLabel + '</span>'],
+      ['Обновлён', d.updated],
+    ].map(function(pair) {
+      return '<div class="drw-drawer-meta-item"><div class="drw-drawer-meta-label">' + pair[0] + '</div><div class="drw-drawer-meta-val">' + pair[1] + '</div></div>';
+    }).join('');
+
+    // Description
+    var descEl = document.getElementById('drw-drawer-desc');
+    if (d.desc) { descEl.textContent = d.desc; descEl.style.display = ''; }
+    else { descEl.style.display = 'none'; }
+
+    // Files
+    var filesEl = document.getElementById('drw-drawer-files-list');
+    if (d.fileUrl) {
+      filesEl.innerHTML =
+        '<div class="drw-drawer-file">' +
+          '<div class="drw-drawer-file-icon">' + d.format + '</div>' +
+          '<div class="drw-drawer-file-info">' +
+            '<div class="drw-drawer-file-name">' + (d.fileName || d.title + '.' + d.format.toLowerCase()) + '</div>' +
+            '<div class="drw-drawer-file-size">' + d.size + '</div>' +
+          '</div>' +
+          '<a href="' + d.fileUrl + '" target="_blank" class="drw-drawer-file-dl">↓ Скачать</a>' +
+        '</div>';
+    } else {
+      filesEl.innerHTML =
+        '<div class="drw-drawer-no-file">' +
+          '<div style="font-size:22px;margin-bottom:6px;">📎</div>' +
+          'Файл не загружен<br>Нажмите «Загрузить чертёж» чтобы добавить файл' +
+        '</div>';
+    }
+
+    drawer.classList.add('active');
+    drawerOverlay.classList.add('active');
+  }
+
+  function closeDrawer() {
+    drawer.classList.remove('active');
+    drawerOverlay.classList.remove('active');
+    if (activeRow) { activeRow.classList.remove('active'); activeRow = null; }
+  }
+
+  document.querySelectorAll('.drw-row').forEach(function(row) {
+    row.addEventListener('click', function() { openDrawer(row); });
+  });
+
+  drawerClose.addEventListener('click', closeDrawer);
+  drawerOverlay.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeDrawer(); });
+
+  // ─── Metric filter ───
+  var allRows = Array.prototype.slice.call(document.querySelectorAll('.drw-row'));
+  document.querySelectorAll('.drw-metric[data-filter]').forEach(function(metric) {
+    metric.addEventListener('click', function() {
+      var filter = metric.dataset.filter;
+      // Toggle active
+      document.querySelectorAll('.drw-metric[data-filter]').forEach(function(m) { m.classList.remove('drw-metric--active'); });
+      metric.classList.add('drw-metric--active');
+      // Filter rows
+      allRows.forEach(function(row) {
+        row.style.display = (!filter || row.dataset.status === filter) ? '' : 'none';
+      });
+      // Sync select
+      var sel = document.querySelector('.drw-select[name="status"]');
+      if (sel) sel.value = filter;
+      closeDrawer();
+    });
+  });
+
+  // Mark active metric on load based on select value
+  var initStatus = document.querySelector('.drw-select[name="status"]');
+  if (initStatus && initStatus.value) {
+    var m = document.querySelector('.drw-metric[data-filter="' + initStatus.value + '"]');
+    if (m) m.classList.add('drw-metric--active');
+  } else {
+    var allMetric = document.querySelector('.drw-metric[data-filter=""]');
+    if (allMetric) allMetric.classList.add('drw-metric--active');
+  }
+
+  // ─── Upload Modal ───
+  var modal = document.getElementById('drw-modal');
+  var uploadBtn = document.getElementById('drw-upload-btn');
+  var cancelBtn = document.getElementById('drw-modal-cancel');
+  var dropZone = document.getElementById('drw-drop-zone');
+  var fileInput = document.getElementById('drw-file-input');
+  var fileName = document.getElementById('drw-file-name');
+
+  if (uploadBtn) uploadBtn.addEventListener('click', function() { modal.classList.add('active'); });
+  if (cancelBtn) cancelBtn.addEventListener('click', function() { modal.classList.remove('active'); });
+  modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('active'); });
+
+  if (dropZone) {
+    dropZone.addEventListener('click', function() { fileInput.click(); });
+    dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.style.borderColor = 'rgba(100,181,246,0.5)'; });
+    dropZone.addEventListener('dragleave', function() { dropZone.style.borderColor = ''; });
+    dropZone.addEventListener('drop', function(e) {
+      e.preventDefault();
+      dropZone.style.borderColor = '';
+      if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        fileName.textContent = e.dataTransfer.files[0].name;
+      }
+    });
+  }
+  if (fileInput) {
+    fileInput.addEventListener('change', function() {
+      fileName.textContent = fileInput.files.length ? fileInput.files[0].name : '';
+    });
+  }
+
+  // Search on enter
+  var searchInput = document.querySelector('.drw-search');
+  if (searchInput) {
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') document.getElementById('drw-filter-form').submit();
+    });
+  }
+})();
+</script>
+{% endblock %}

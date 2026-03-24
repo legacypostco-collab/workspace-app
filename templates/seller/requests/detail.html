@@ -37,14 +37,14 @@
 <section class="panel" style="margin-bottom:16px;">
   <div style="display:flex;align-items:center;gap:14px;">
     <div style="width:40px;height:40px;border-radius:10px;background:var(--s-el);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-      <span style="font-size:18px;color:#64B5F6;">%</span>
+      <span style="font-size:18px;color:#66BB6A;">%</span>
     </div>
     <div style="flex:1;">
       <div style="font-size:13px;font-weight:600;color:#ECECEC;">Запрос скидки от клиента</div>
       {% if rfq.discount_note %}<div style="font-size:12px;color:#6A6A6A;margin-top:1px;">{{ rfq.discount_note }}</div>{% endif %}
     </div>
     <div style="text-align:right;">
-      {% if rfq.discount_percent %}<div style="font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#64B5F6;">−{{ rfq.discount_percent }}%</div>{% endif %}
+      {% if rfq.discount_percent %}<div style="font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#66BB6A;">−{{ rfq.discount_percent }}%</div>{% endif %}
       <div style="font-size:13px;color:#919191;">−${{ total_discount_amount }}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#ECECEC;margin-top:3px;">Итого: ${{ total_after_discount }}</div>
     </div>

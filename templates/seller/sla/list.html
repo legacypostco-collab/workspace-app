@@ -11,7 +11,9 @@
   <div class="sla-block-handle" title="Переместить блок">⠿</div>
 <div class="kanban-board">
   {% for col in columns %}
-    <div class="kanban-col" data-status="{{ col.key }}"
+    <div class="kanban-col" data-status="{{ col.key }}" data-label="{{ col.label }}"
+         data-trigger="{{ col.trigger }}" data-action="{{ col.action }}"
+         data-action-type="{{ col.action_type }}" data-who="{{ col.who }}"
          ondragover="event.preventDefault();this.classList.add('kanban-col--over')"
          ondragleave="this.classList.remove('kanban-col--over')"
          ondrop="kanbanDrop(event,this)">
@@ -19,6 +21,11 @@
         <span class="kanban-col-title">{{ col.label }}</span>
         <span class="kanban-col-count">{{ col.count }}</span>
       </div>
+      {% if col.trigger %}
+        <div style="padding:0 10px 6px;font-size:9px;color:#484848;line-height:1.3;">
+          <span style="color:#6A6A6A;">{{ col.action_type }}</span> · {{ col.trigger }}
+        </div>
+      {% endif %}
       <div class="kanban-col-body">
         {% for row in col.orders %}
           <div class="kanban-card" draggable="true" data-order-id="{{ row.order.id }}"
@@ -252,12 +259,186 @@ function kanbanDrop(e, col) {
   var orderId = e.dataTransfer.getData('order_id');
   if (!orderId) return;
   var newStatus = col.dataset.status;
-  var csrfToken = '{{ csrf_token }}';
-  fetch('/seller/orders/' + orderId + '/status/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
-    body: 'status=' + newStatus + '&next=' + encodeURIComponent(window.location.pathname)
-  }).then(function() { window.location.reload(); });
+  var colLabel = col.dataset.label || newStatus;
+  var trigger = col.dataset.trigger || '';
+  var action = col.dataset.action || '';
+  var actionType = col.dataset.actionType || '';
+  var who = col.dataset.who || '';
+
+  // Показываем модальное подтверждение
+  var needsDoc = actionType.indexOf('документ') !== -1;
+  var needsQR = actionType.indexOf('QR') !== -1;
+  var triggerBlock = '';
+  if (trigger) {
+    triggerBlock =
+      '<div class="kanban-confirm-meta">' +
+        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">Триггер:</span> ' + trigger + '</div>' +
+        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">Действие:</span> ' + action + '</div>' +
+        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">Тип:</span> ' + actionType + '</div>' +
+        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">Исполнитель:</span> ' + who + '</div>' +
+      '</div>';
+  }
+  var uploadBlock = '';
+  if (needsDoc) {
+    uploadBlock =
+      '<div class="kanban-confirm-upload">' +
+        '<label class="kanban-confirm-upload-label" for="kanban-doc-file">' +
+          '<span class="kanban-confirm-upload-icon">📎</span>' +
+          '<span class="kanban-confirm-upload-text">Загрузить документ</span>' +
+          '<span class="kanban-confirm-upload-hint">PDF, JPG, PNG · до 10 МБ</span>' +
+        '</label>' +
+        '<input type="file" id="kanban-doc-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none;" />' +
+        '<div class="kanban-confirm-upload-name" id="kanban-doc-name"></div>' +
+      '</div>';
+  }
+  var qrBlock = '';
+  if (needsQR) {
+    qrBlock =
+      '<div class="kanban-confirm-qr">' +
+        '<div class="kanban-confirm-qr-toggle" id="kanban-qr-toggle">' +
+          '<span class="kanban-confirm-upload-icon">📷</span>' +
+          '<span class="kanban-confirm-upload-text">Сканировать QR-код</span>' +
+          '<span class="kanban-confirm-upload-hint">Откройте камеру для сканирования</span>' +
+        '</div>' +
+        '<div class="kanban-confirm-qr-area" id="kanban-qr-area" style="display:none;">' +
+          '<video id="kanban-qr-video" autoplay playsinline style="width:100%;border-radius:8px;background:#000;"></video>' +
+          '<div class="kanban-confirm-qr-result" id="kanban-qr-result"></div>' +
+        '</div>' +
+        '<div style="margin-top:6px;text-align:center;">' +
+          '<input type="text" id="kanban-qr-manual" placeholder="или введите код вручную" ' +
+            'style="width:100%;padding:8px 12px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);' +
+            'border-radius:8px;color:#ECECEC;font-size:13px;outline:none;" />' +
+        '</div>' +
+      '</div>';
+  }
+
+  var overlay = document.createElement('div');
+  overlay.className = 'kanban-confirm-overlay';
+  overlay.innerHTML =
+    '<div class="kanban-confirm">' +
+      '<div class="kanban-confirm-title">Перемещение заказа</div>' +
+      '<div class="kanban-confirm-text">Перевести заказ <strong>#' + orderId + '</strong> на этап<br><span class="kanban-confirm-stage">' + colLabel + '</span>?</div>' +
+      triggerBlock +
+      uploadBlock +
+      qrBlock +
+      '<div class="kanban-confirm-hint">Будет создано событие смены статуса</div>' +
+      '<div class="kanban-confirm-actions">' +
+        '<button class="btn btn-secondary kanban-confirm-no">Отмена</button>' +
+        '<button class="btn kanban-confirm-yes">Подтвердить</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  requestAnimationFrame(function() { overlay.classList.add('kanban-confirm-overlay--visible'); });
+
+  // QR scan handler
+  if (needsQR) {
+    var qrToggle = overlay.querySelector('#kanban-qr-toggle');
+    var qrArea = overlay.querySelector('#kanban-qr-area');
+    var qrVideo = overlay.querySelector('#kanban-qr-video');
+    var qrResult = overlay.querySelector('#kanban-qr-result');
+    var qrManual = overlay.querySelector('#kanban-qr-manual');
+    var qrStream = null;
+    var qrScanInterval = null;
+
+    qrToggle.addEventListener('click', function() {
+      if (qrArea.style.display === 'none') {
+        qrArea.style.display = 'block';
+        qrToggle.querySelector('.kanban-confirm-upload-text').textContent = 'Камера активна…';
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+          .then(function(stream) {
+            qrStream = stream;
+            qrVideo.srcObject = stream;
+            // Try BarcodeDetector API if available
+            if ('BarcodeDetector' in window) {
+              var detector = new BarcodeDetector({ formats: ['qr_code'] });
+              qrScanInterval = setInterval(function() {
+                if (qrVideo.readyState >= 2) {
+                  detector.detect(qrVideo).then(function(codes) {
+                    if (codes.length > 0) {
+                      qrManual.value = codes[0].rawValue;
+                      qrResult.textContent = 'QR: ' + codes[0].rawValue;
+                      qrResult.style.color = '#64B5F6';
+                      stopQR();
+                    }
+                  }).catch(function() {});
+                }
+              }, 500);
+            }
+          })
+          .catch(function() {
+            qrResult.textContent = 'Камера недоступна — введите код вручную';
+            qrResult.style.color = '#FF8C42';
+            qrArea.style.display = 'none';
+            qrToggle.querySelector('.kanban-confirm-upload-text').textContent = 'Камера недоступна';
+          });
+      } else {
+        stopQR();
+      }
+    });
+
+    function stopQR() {
+      if (qrScanInterval) { clearInterval(qrScanInterval); qrScanInterval = null; }
+      if (qrStream) { qrStream.getTracks().forEach(function(t) { t.stop(); }); qrStream = null; }
+      qrArea.style.display = 'none';
+      qrToggle.querySelector('.kanban-confirm-upload-text').textContent = qrManual.value ? 'QR отсканирован ✓' : 'Сканировать QR-код';
+      if (qrManual.value) qrToggle.classList.add('kanban-confirm-upload-label--filled');
+    }
+
+    // Stop camera on modal close
+    var origClose = overlay.querySelector('.kanban-confirm-no').onclick;
+    overlay.querySelector('.kanban-confirm-no').onclick = function() { stopQR(); origClose(); };
+  }
+
+  // File upload handler
+  if (needsDoc) {
+    var fileInput = overlay.querySelector('#kanban-doc-file');
+    var uploadLabel = overlay.querySelector('.kanban-confirm-upload-label');
+    var docName = overlay.querySelector('#kanban-doc-name');
+    uploadLabel.addEventListener('click', function() { fileInput.click(); });
+    fileInput.addEventListener('change', function() {
+      if (fileInput.files.length) {
+        docName.textContent = fileInput.files[0].name;
+        uploadLabel.classList.add('kanban-confirm-upload-label--filled');
+      } else {
+        docName.textContent = '';
+        uploadLabel.classList.remove('kanban-confirm-upload-label--filled');
+      }
+    });
+  }
+
+  overlay.querySelector('.kanban-confirm-no').onclick = function() {
+    overlay.classList.remove('kanban-confirm-overlay--visible');
+    setTimeout(function() { overlay.remove(); }, 200);
+  };
+  overlay.addEventListener('click', function(ev) {
+    if (ev.target === overlay) {
+      overlay.classList.remove('kanban-confirm-overlay--visible');
+      setTimeout(function() { overlay.remove(); }, 200);
+    }
+  });
+  overlay.querySelector('.kanban-confirm-yes').onclick = function() {
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Сохраняю…';
+    var csrfToken = '{{ csrf_token }}';
+    var fd = new FormData();
+    fd.append('status', newStatus);
+    fd.append('next', window.location.pathname);
+    if (needsDoc) {
+      var fi = overlay.querySelector('#kanban-doc-file');
+      if (fi && fi.files.length) fd.append('document', fi.files[0]);
+    }
+    if (needsQR) {
+      var qrVal = overlay.querySelector('#kanban-qr-manual');
+      if (qrVal && qrVal.value) fd.append('qr_code', qrVal.value);
+      if (typeof stopQR === 'function') stopQR();
+    }
+    fetch('/seller/orders/' + orderId + '/status/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken },
+      body: fd
+    }).then(function() { window.location.reload(); });
+  };
 }
 
 // ─── Block drag-and-drop ───
@@ -297,7 +478,7 @@ function kanbanDrop(e, col) {
     });
 
     block.addEventListener('dragstart', function(e) {
-      if (block.getAttribute('draggable') !== 'true') { e.preventDefault(); return; }
+      if (block.getAttribute('draggable') !== 'true') return;
       dragSrc = block;
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('block_id', block.dataset.blockId);
@@ -343,6 +524,82 @@ function kanbanDrop(e, col) {
 
 {% block extra_css %}
 <style>
+/* ─── Confirm modal ─── */
+.kanban-confirm-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.55);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .2s;
+}
+.kanban-confirm-overlay--visible { opacity: 1; }
+.kanban-confirm {
+  background: #242424; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px; padding: 28px 32px; max-width: 380px; width: 90%;
+  text-align: center;
+}
+.kanban-confirm-title {
+  font-family: 'Golos Text', sans-serif; font-size: 16px; font-weight: 800;
+  color: #ECECEC; margin-bottom: 12px;
+}
+.kanban-confirm-text {
+  font-size: 14px; color: #919191; line-height: 1.5; margin-bottom: 8px;
+}
+.kanban-confirm-stage {
+  display: inline-block; margin-top: 4px; padding: 3px 12px;
+  background: rgba(100,181,246,0.1); border: 1px solid rgba(100,181,246,0.25);
+  border-radius: 6px; font-size: 13px; font-weight: 700; color: #64B5F6;
+}
+.kanban-confirm-meta {
+  text-align: left; margin: 12px 0 8px;
+  background: rgba(255,255,255,0.03); border-radius: 8px;
+  padding: 10px 14px; font-size: 12px; line-height: 1.6;
+}
+.kanban-confirm-meta-row { color: #919191; }
+.kanban-confirm-meta-label { color: #6A6A6A; font-weight: 600; }
+.kanban-confirm-upload {
+  margin: 12px 0 8px;
+}
+.kanban-confirm-upload-label {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 14px; border: 2px dashed rgba(255,255,255,0.1); border-radius: 10px;
+  cursor: pointer; transition: border-color .2s, background .2s;
+}
+.kanban-confirm-upload-label:hover {
+  border-color: rgba(100,181,246,0.4); background: rgba(100,181,246,0.04);
+}
+.kanban-confirm-upload-label--filled {
+  border-color: rgba(100,181,246,0.5); background: rgba(100,181,246,0.06);
+}
+.kanban-confirm-upload-icon { font-size: 20px; }
+.kanban-confirm-upload-text { font-size: 13px; font-weight: 600; color: #919191; }
+.kanban-confirm-upload-hint { font-size: 10px; color: #484848; }
+.kanban-confirm-upload-name {
+  margin-top: 6px; font-size: 12px; color: #64B5F6; text-align: center;
+  word-break: break-all;
+}
+.kanban-confirm-qr { margin: 12px 0 8px; }
+.kanban-confirm-qr-toggle {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 14px; border: 2px dashed rgba(255,255,255,0.1); border-radius: 10px;
+  cursor: pointer; transition: border-color .2s, background .2s;
+}
+.kanban-confirm-qr-toggle:hover {
+  border-color: rgba(100,181,246,0.4); background: rgba(100,181,246,0.04);
+}
+.kanban-confirm-qr-area { margin-top: 10px; }
+.kanban-confirm-qr-result {
+  margin-top: 6px; font-size: 12px; text-align: center; min-height: 16px;
+}
+.kanban-confirm-hint {
+  font-size: 11px; color: #6A6A6A; margin-bottom: 20px;
+}
+.kanban-confirm-actions {
+  display: flex; gap: 10px; justify-content: center;
+}
+.kanban-confirm-actions .btn {
+  min-width: 120px; padding: 8px 20px; font-size: 13px;
+}
+
 /* ─── Block drag ─── */
 #sla-blocks {
   width: 100%;
