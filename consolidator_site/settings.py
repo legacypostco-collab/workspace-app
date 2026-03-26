@@ -87,6 +87,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "marketplace.context_processors.auth_meta",
                 "marketplace.context_processors.seller_context",
+                "marketplace.context_processors.buyer_context",
             ],
         },
     },

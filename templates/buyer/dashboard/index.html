@@ -1,7 +1,7 @@
-{% extends "seller/base_seller.html" %}
+{% extends "buyer/base_buyer.html" %}
 {% load static %}
 
-{% block title %}Дашборд — Кабинет поставщика{% endblock %}
+{% block title %}Дашборд — Кабинет покупателя{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -41,17 +41,17 @@
 {% block content %}
 {{ dashboard_payload|json_script:"dashboard-data" }}
 <script>
-  window.__SELLER_NAME__ = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
-  window.__SELLER_INITIALS__ = "{{ request.user.get_full_name|default:request.user.username|slice:'2'|upper|escapejs }}";
+  window.__BUYER_NAME__ = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
+  window.__BUYER_INITIALS__ = "{{ request.user.get_full_name|default:request.user.username|slice:'2'|upper|escapejs }}";
   // Shared currency state between DashboardContent and DashboardPanel
   window.__dash = { cur: 'USD', subs: [] };
   window.__dash.set = function(c) { this.cur = c; this.subs.forEach(function(f){ f(c); }); };
 </script>
-<div id="seller-dash-content" style="min-height:100%;"></div>
+<div id="buyer-dash-content" style="min-height:100%;"></div>
 {% endblock %}
 
 {% block right_panel %}
-<div id="seller-dash-panel" class="seller-right-panel"></div>
+<div id="buyer-dash-panel" class="seller-right-panel"></div>
 {% endblock %}
 
 {% block extra_js %}
@@ -185,35 +185,34 @@
     return `${c.symbol}${val.toFixed(0)}`;
   }
 
-  /* ── DATA ── */
-  const revenue = [
-    { m: "Окт", val: 7, p: 5 }, { m: "Ноя", val: 10, p: 8 }, { m: "Дек", val: 12, p: 11 },
-    { m: "Янв", val: 14, p: 10 }, { m: "Фев", val: 25, p: 18 }, { m: "Мар", val: 28, p: 22 },
+  /* ── DATA (base values in USD) ── */
+  const purchases = [
+    { m: "Окт", val: 5, p: 4 }, { m: "Ноя", val: 8, p: 6 }, { m: "Дек", val: 10, p: 9 },
+    { m: "Янв", val: 12, p: 8 }, { m: "Фев", val: 18, p: 14 }, { m: "Мар", val: 21, p: 16 },
   ];
-  const sla = [
-    { m: "Окт", v: 94 }, { m: "Ноя", v: 91 }, { m: "Дек", v: 96 },
-    { m: "Янв", v: 93 }, { m: "Фев", v: 97 }, { m: "Мар", v: 95 },
+  const savings = [
+    { m: "Окт", v: 5 }, { m: "Ноя", v: 7 }, { m: "Дек", v: 8 },
+    { m: "Янв", v: 9 }, { m: "Фев", v: 10 }, { m: "Мар", v: 12 },
   ];
-  const heroLine = [3,4,5,4,6,5,8,7,9,8,12,10,11,15,13,14,18,16,17,20,19,22,21,24,23,25,24,26,25,28,27,28].map(v=>({v}));
+  const heroLine = [2,3,4,3,5,4,6,5,7,6,8,7,9,8,10,9,12,11,13,12,14,13,16,15,17,16,18,17,19,18,20,21].map(v=>({v}));
   const statuses = [
-    { name: "Производство", count: 3 },
-    { name: "К отгрузке", count: 0 },
-    { name: "Отгружено", count: 0 },
-    { name: "Доставлено", count: 3 },
-    { name: "Ожидает резерв", count: 3 },
+    { name: "Ожидает отгрузки", count: 2 },
+    { name: "В пути", count: 3 },
+    { name: "На таможне", count: 1 },
+    { name: "Доставлено", count: 15 },
+    { name: "Ожидает оплаты", count: 3 },
   ];
-  const requests = [
-    { id: "RQ-4821", part: "Гидроцилиндр 707-01-0K930", client: "Полюс Золото", type: "Срочный", time: "12м", brand: "Komatsu", usd: 115862 },
-    { id: "RQ-4819", part: "Турбокомпрессор 6505-67-5030", client: "СУЭК", type: "Стандартный", time: "48м", brand: "Komatsu", usd: 173793 },
-    { id: "RQ-4817", part: "Насос гидравлический", client: "Норникель", type: "По чертежу", time: "1.5ч", brand: "Hitachi", usd: 289655 },
-    { id: "RQ-4815", part: "Фильтр 600-185-4100", client: "Евраз", type: "Стандартный", time: "2ч", brand: "Komatsu", usd: 17241 },
+  const rfqs = [
+    { id: "RFQ-1204", part: "Гидроцилиндр 707-01-0K930", supplier: "Поставщик #1042", type: "Срочный", time: "15м", brand: "Komatsu", usd: 115862 },
+    { id: "RFQ-1201", part: "Турбокомпрессор 6505-67-5030", supplier: "Поставщик #2087", type: "Стандартный", time: "2ч", brand: "Komatsu", usd: 173793 },
+    { id: "RFQ-1198", part: "Насос гидравлический", supplier: "Поставщик #3155", type: "По чертежу", time: "5ч", brand: "Hitachi", usd: 289655 },
   ];
   const eventsBase = [
-    { text: "Заказ #3847 отгружен", detail: "PC800 → Полюс Золото", time: "09:14", dot: "#28C840" },
-    { text: "SLA: дедлайн по #3832", detail: "Проверка качества — 4ч", time: "08:51", dot: "#FEBC2E" },
-    { text: (c) => `Резерв ${fmtCur(322759, c)} получен`, detail: "#ORD-3851 подтверждён", time: "08:30", dot: "#64B5F6" },
-    { text: "Рейтинг → 4.74", detail: "#ORD-3829 · отзыв 5★", time: "08:12", dot: "#64B5F6" },
-    { text: "Запрос: Норникель", detail: (c) => `Насос по чертежу · ${fmtCur(289655, c)}`, time: "07:45", dot: "#E85C0D" },
+    { text: "Заказ ORD-2041 отгружен", detail: "Поставщик #1042 → Склад приёмки", time: "09:14", dot: "#28C840" },
+    { text: "SLA: дедлайн по RFQ-1204", detail: "Ответ поставщика — 4ч", time: "08:51", dot: "#FEBC2E" },
+    { text: (c) => `Оплата ${fmtCur(322759, c)} подтверждена`, detail: "ORD-2038 · Поставщик #2087", time: "08:30", dot: "#64B5F6" },
+    { text: "Рейтинг поставщика обновлён", detail: "Поставщик #1042 · 4.8★", time: "08:12", dot: "#64B5F6" },
+    { text: "Новая котировка по RFQ-1198", detail: (c) => `Поставщик #3155 · ${fmtCur(289655, c)}`, time: "07:45", dot: "#E85C0D" },
   ];
   const tyC = { "Срочный": "#E85C0D", "Стандартный": "#64B5F6", "По чертежу": "#7A8494" };
 
@@ -223,6 +222,7 @@
   const ora = "#E85C0D";
   const oraDim = "rgba(232,92,13,";
   const apple = { red: "#FF5F57", yellow: "#FEBC2E", green: "#28C840", orange: "#FF9F0A" };
+
   const P = {
     bg: "#1A1A1A", side: "#1F1F1F", card: "#242424", el: "#2C2C2C",
     brd: "rgba(255,255,255,0.055)", sep: "rgba(255,255,255,0.035)",
@@ -239,11 +239,10 @@
       desc: "Очередь задач",
       render: ({ dismiss, cur: c = "USD" }) => {
         const items = [
-          { id: "a1", icon: "↩", label: "Ответить на запрос", detail: "RQ-4821 · Полюс Золото · Гидроцилиндр", time: "12м" },
-          { id: "a2", icon: "↩", label: "Ответить на запрос", detail: "RQ-4817 · Норникель · Насос по чертежу", time: "1.5ч" },
-          { id: "a3", icon: "✓", label: "Подтвердить отгрузку", detail: `ORD-3851 · 4 позиции · ${fmtCur(322759, c)}`, time: "Ожидает" },
-          { id: "a4", icon: "↑", label: "Загрузить сертификат", detail: "ORD-3847 · Отчёт проверки качества", time: "Требуется" },
-          { id: "a5", icon: "$", label: "Обновить 14 цен", detail: "Устаревшие цены (>30 дней)", time: "Рекоменд." },
+          { id: "a1", icon: "$", label: "Оплатить счёт", detail: `ORD-2041 · Поставщик #1042 · ${fmtCur(322759, c)}`, time: "Срочно" },
+          { id: "a2", icon: "✓", label: "Подтвердить приёмку", detail: "ORD-2038 · 6 позиций · Склад", time: "Ожидает" },
+          { id: "a3", icon: "↩", label: "Проверить котировку", detail: "RFQ-1204 · Поставщик #1042 · Гидроцилиндр", time: "15м" },
+          { id: "a4", icon: "↩", label: "Ответить на переторжку", detail: "Поставщик #2087 · Турбокомпрессор", time: "2ч" },
         ];
         return items.filter(a => !dismiss.includes(a.id)).map((a, i) => (
           <div key={a.id} className="wi-row">
@@ -259,14 +258,15 @@
         ));
       },
     },
+
     sla_timers: {
-      title: "SLA дедлайны",
+      title: "SLA поставщиков",
       desc: "Обратный отсчёт",
       render: () => {
         const alerts = [
-          { order: "#3832", stage: "Проверка качества", h: 3, m: 47, severity: apple.red },
-          { order: "#3845", stage: "Подтверждение заказа", h: 7, m: 12, severity: null },
-          { order: "#3851", stage: "Подготовка к отгрузке", h: 18, m: 30, severity: null },
+          { order: "Поставщик #1042", stage: "Ответ на RFQ-1204", h: 4, m: 15, severity: apple.red },
+          { order: "Поставщик #2087", stage: "Отгрузка ORD-2039", h: 11, m: 30, severity: null },
+          { order: "Поставщик #3155", stage: "Котировка RFQ-1198", h: 48, m: 0, severity: null },
         ];
         return alerts.map((s, i) => (
           <div key={i} className="wi-row">
@@ -285,20 +285,21 @@
         ));
       },
     },
+
     payments: {
       title: "Ожидают оплаты",
-      desc: "Входящие платежи",
+      desc: "Исходящие платежи",
       render: ({ cur: c = "USD" }) => {
         const items = [
-          { order: "#3851", usd: 322759, type: "Резерв 10%", status: "В обработке", dot: null },
-          { order: "#3847", usd: 843448, type: "Основная", status: "Подтверждено", dot: apple.green },
-          { order: "#3829", usd: 144828, type: "Возврат удержания", status: "К выплате", dot: null },
+          { order: "#2041", usd: 322759, type: "Основная", status: "К оплате", dot: null },
+          { order: "#2038", usd: 843448, type: "Финальная", status: "Подтверждено", dot: apple.green },
+          { order: "#2035", usd: 52000, type: "Аванс 10%", status: "В обработке", dot: null },
         ];
         return (
           <React.Fragment>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "0 0 8px", borderBottom: `1px solid ${P.sep}`, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: P.t1 }}>Итого к получению</span>
-              <span style={{ fontSize: 14, fontWeight: 800, fontFamily: "'Golos Text', sans-serif", color: sky }}>{fmtCur(1311035, c)}</span>
+              <span style={{ fontSize: 11, color: P.t1 }}>Итого к оплате</span>
+              <span style={{ fontSize: 14, fontWeight: 800, fontFamily: "'Golos Text', sans-serif", color: ora }}>{fmtCur(1218207, c)}</span>
             </div>
             {items.map((p, i) => (
               <div key={i} className="wi-row">
@@ -311,7 +312,7 @@
                     <span style={{ fontSize: 12, fontWeight: 500, color: P.t0 }}>{p.order} · {p.type}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Golos Text', sans-serif", color: P.t0, fontVariantNumeric: "tabular-nums" }}>{fmtCur(p.usd, c)}</span>
                   </div>
-                  <div style={{ marginTop: 3 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
                     <span style={{ fontSize: 11, color: P.t1 }}>{p.status}</span>
                   </div>
                 </div>
@@ -321,13 +322,14 @@
         );
       },
     },
+
     rebid: {
       title: "Переторжка",
       desc: "Активные переторжки",
       render: ({ cur: c = "USD" }) => {
         const items = [
-          { client: "Полюс Золото", part: "Гидроцилиндр", currentUsd: 115862, targetUsd: 107586, delta: "-7%" },
-          { client: "СУЭК", part: "Турбокомпрессор", currentUsd: 173793, targetUsd: 162759, delta: "-6%" },
+          { client: "Поставщик #1042", part: "Гидроцилиндр", currentUsd: 115862, targetUsd: 107586, delta: "-7%" },
+          { client: "Поставщик #2087", part: "Турбокомпрессор", currentUsd: 173793, targetUsd: 162759, delta: "-6%" },
         ];
         return items.map((r, i) => (
           <div key={i} className="wi-row">
@@ -344,32 +346,14 @@
         ));
       },
     },
-    drawings_queue: {
-      title: "Чертежи",
-      desc: "Согласование и запросы",
-      render: () => {
-        const items = [
-          { name: "Насос гидравлич. (допуски)", client: "Норникель", status: "Ждёт согласования" },
-          { name: "Корпус фильтра 1-13610", client: "Евраз", status: "Требует корректировки" },
-          { name: "Кронштейн 20Y-54", client: "—", status: "Используется" },
-        ];
-        return items.map((d, i) => (
-          <div key={i} className="wi-row">
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 500, color: P.t0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name}</div>
-              <div style={{ fontSize: 11, color: P.t1, marginTop: 2 }}>{d.client} · {d.status}</div>
-            </div>
-          </div>
-        ));
-      },
-    },
+
     claims: {
       title: "Рекламации",
       desc: "Открытые претензии",
       render: () => {
         const items = [
-          { order: "#3801", issue: "Просрочка +2 дня", status: "На рассмотрении", dot: apple.red },
-          { order: "#3788", issue: "Несоответствие чертежу", status: "Ждёт решения", dot: null },
+          { order: "#2025", issue: "Просрочка поставки +3 дня", status: "На рассмотрении", dot: apple.red },
+          { order: "#2018", issue: "Несоответствие спецификации", status: "Ждёт решения", dot: null },
         ];
         return items.length === 0 ? (
           <div style={{ fontSize: 12, color: P.t1, padding: "8px 0", textAlign: "center" }}>Нет открытых рекламаций</div>
@@ -390,49 +374,6 @@
         ));
       },
     },
-    qr_scans: {
-      title: "QR-контроль",
-      desc: "Последние сканирования",
-      render: () => {
-        const items = [
-          { code: "ORD-3847-P1", event: "Приёмка завершена", time: "09:14" },
-          { code: "ORD-3851-P3", event: "Проверка качества", time: "08:40" },
-          { code: "ORD-3845-P1", event: "Отгрузка", time: "08:12" },
-        ];
-        return items.map((q, i) => (
-          <div key={i} className="wi-row">
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: P.t0, fontVariantNumeric: "tabular-nums" }}>{q.code}</span>
-                <span style={{ fontSize: 11, color: P.t1, fontVariantNumeric: "tabular-nums" }}>{q.time}</span>
-              </div>
-              <div style={{ fontSize: 11, color: P.t1, marginTop: 2 }}>{q.event}</div>
-            </div>
-          </div>
-        ));
-      },
-    },
-    stale_prices: {
-      title: "Устаревшие цены",
-      desc: "Требуют обновления",
-      render: () => (
-        <React.Fragment>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "0 0 6px" }}>
-            <span style={{ fontSize: 11, color: P.t1 }}>Старше 30 дней</span>
-            <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Golos Text', sans-serif", color: P.t0 }}>14</span>
-          </div>
-          {[{ brand: "Komatsu", count: 8 }, { brand: "Hitachi", count: 4 }, { brand: "Volvo", count: 2 }].map((b, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4px 0" }}>
-              <span style={{ fontSize: 12, color: P.t0 }}>{b.brand}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: Math.round((b.count / 14) * 60), height: 3, background: `${skyDim}0.3)`, borderRadius: 1 }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: P.t0, fontFamily: "'Golos Text', sans-serif", fontVariantNumeric: "tabular-nums", width: 16, textAlign: "right" }}>{b.count}</span>
-              </div>
-            </div>
-          ))}
-        </React.Fragment>
-      ),
-    },
   };
 
   const WIDGET_IDS = Object.keys(WIDGETS);
@@ -446,15 +387,15 @@
     const [m, setM] = useState(false);
     const [period, setPeriod] = useState("6М");
     const ALL_BLOCKS = ["hero","metrics","charts","status","work"];
-    const BLOCK_NAMES = { hero: "График выручки", metrics: "Ключевые метрики", charts: "Выручка и SLA", status: "Рейтинг и заказы", work: "Запросы и события" };
+    const BLOCK_NAMES = { hero: "График закупок", metrics: "Ключевые метрики", charts: "Закупки и экономия", status: "Рейтинг и заказы", work: "RFQ и события" };
     const [blocks, setBlocks] = useState(ALL_BLOCKS);
     const [hiddenBlocks, setHiddenBlocks] = useState([]);
     const [dragBlock, setDragBlock] = useState(null);
     const [showBlockPicker, setShowBlockPicker] = useState(false);
-    const [metricOrder, setMetricOrder] = useState(["m_orders","m_sla","m_conv","m_rating"]);
+    const [metricOrder, setMetricOrder] = useState(["m_orders","m_suppliers","m_savings","m_rfq"]);
     const [hiddenMetrics, setHiddenMetrics] = useState([]);
     const [dragMetric, setDragMetric] = useState(null);
-    const [chartsOrder, setChartsOrder] = useState(["revenue","sla"]);
+    const [chartsOrder, setChartsOrder] = useState(["purchases","savings_chart"]);
     const [statusOrder, setStatusOrder] = useState(["rating","orders"]);
     const [workOrder, setWorkOrder] = useState(["requests","events"]);
     const [dragInner, setDragInner] = useState(null);
@@ -495,7 +436,7 @@
     };
 
     useEffect(() => { setTimeout(() => setM(true), 100); }, []);
-    const circ = 2*Math.PI*34, score=4.26, off=circ-(score/5)*circ;
+    const circ = 2*Math.PI*34, score=4.8, off=circ-(score/5)*circ;
 
     return (
       <div style={{ padding: "24px 36px 48px", maxWidth: 1080, margin: "0 auto", fontFamily: "Geist, Inter, -apple-system, sans-serif" }}>
@@ -503,11 +444,11 @@
         {/* ── HEADER ROW ── */}
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 4 }}>
-            <span style={{ fontSize: 36, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif", letterSpacing: "-0.03em", lineHeight: 1 }}>{fmtCur(3958621, cur)}</span>
-            <span style={{ fontSize: 14, fontWeight: 600, color: sky }}>+28.7%</span>
+            <span style={{ fontSize: 36, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif", letterSpacing: "-0.03em", lineHeight: 1 }}>{fmtCur(2100000, cur)}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: sky }}>+18.4%</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
-            <span style={{ fontSize: 13, color: P.t1 }}>Общая выручка · vs {fmtCur(3075862, cur)} фев</span>
+            <span style={{ fontSize: 13, color: P.t1 }}>Объём закупок · vs {fmtCur(1800000, cur)} фев</span>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {hiddenBlocks.length > 0 && (
                 <div style={{ position: "relative" }}>
@@ -524,7 +465,7 @@
                       {hiddenBlocks.map(id => (
                         <div key={id} onClick={() => { restoreBlock(id); setShowBlockPicker(false); }} style={{
                           padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontSize: 12, color: P.t0,
-                          display: "flex", alignItems: "center", gap: 8,
+                          display: "flex", alignItems: "center", gap: 8, transition: "background .12s",
                         }} onMouseEnter={e => e.currentTarget.style.background = P.hov} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                           <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke={sky} strokeWidth="1.5" strokeLinecap="round"><path d="M6 2v8M2 6h8"/></svg>
                           {BLOCK_NAMES[id]}
@@ -583,10 +524,10 @@
 
           if (blockId === "metrics") {
             const allM = [
-              { id: "m_orders", l: "Активные заказы", v: "45", t: "+12%", up: true, ctx: "за 30 дней" },
-              { id: "m_sla", l: "Исполнение SLA", v: "95.2%", t: "+2.1%", up: true, ctx: "норматив: 90%" },
-              { id: "m_conv", l: "Конверсия запросов", v: "68%", t: "-3%", up: false, ctx: "запрос → заказ" },
-              { id: "m_rating", l: "Рейтинг поставщика", v: "4.26", t: "+0.02", up: true, ctx: "из 5.0" },
+              { id: "m_orders", l: "Заказов", v: "24", t: "+12%", up: true, ctx: "за 30 дней" },
+              { id: "m_suppliers", l: "Поставщиков", v: "8", t: "+2", up: true, ctx: "активных" },
+              { id: "m_savings", l: "Экономия", v: "12%", t: "+3%", up: true, ctx: "переторжка" },
+              { id: "m_rfq", l: "Активных RFQ", v: "3", t: "", up: true, ctx: "ожидают ответа", pill: "новых" },
             ];
             const vis = metricOrder.filter(id => !hiddenMetrics.includes(id));
             return wrap(<div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(vis.length,1)}, 1fr)`, gap: 12 }}>
@@ -601,29 +542,30 @@
                   <div style={{ fontSize: 11, color: P.t1, marginBottom: 8, height: 14, whiteSpace: "nowrap" }}>{s.l}</div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, flex: 1 }}>
                     <span style={{ fontSize: 20, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif", letterSpacing: "-0.02em" }}>{s.v}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: s.up?sky:ora, background: s.up?`${skyDim}0.08)`:`${oraDim}0.08)`, padding: "2px 6px", borderRadius: 4 }}>{s.t}</span>
+                    {s.t && <span style={{ fontSize: 11, fontWeight: 600, color: s.up?sky:ora, background: s.up?`${skyDim}0.08)`:`${oraDim}0.08)`, padding: "2px 6px", borderRadius: 4 }}>{s.t}</span>}
+                    {s.pill && <span style={{ fontSize: 11, fontWeight: 600, color: ora, background: `${oraDim}0.08)`, padding: "2px 6px", borderRadius: 4 }}>{s.pill}</span>}
                   </div>
                   <div style={{ fontSize: 11, color: P.t1, marginTop: "auto" }}>{s.ctx}</div>
                 </div>); })}
-              {hiddenMetrics.length > 0 && <div onClick={()=>{setHiddenMetrics([]);setMetricOrder(["m_orders","m_sla","m_conv","m_rating"]);}} style={{ background: P.el, borderRadius: 14, border: `1px dashed ${P.brd}`, padding: 18, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", minHeight: 100 }}><span style={{ fontSize: 12, color: P.t1 }}>+ {hiddenMetrics.length} скрыто</span></div>}
+              {hiddenMetrics.length > 0 && <div onClick={()=>{setHiddenMetrics([]);setMetricOrder(["m_orders","m_suppliers","m_savings","m_rfq"]);}} style={{ background: P.el, borderRadius: 14, border: `1px dashed ${P.brd}`, padding: 18, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", minHeight: 100 }}><span style={{ fontSize: 12, color: P.t1 }}>+ {hiddenMetrics.length} скрыто</span></div>}
             </div>, { marginBottom: 20 });
           }
 
           if (blockId === "charts") {
             const chartCards = {
-              revenue: <div style={{ background: P.card, padding: "20px 22px 18px", borderRadius: 14, border: `1px solid ${P.brd}` }}>
+              purchases: <div style={{ background: P.card, padding: "20px 22px 18px", borderRadius: 14, border: `1px solid ${P.brd}` }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: P.t0 }}>Выручка по месяцам</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: P.t0 }}>Закупки по месяцам</div>
                   <div style={{ display: "flex", gap: 14 }}>{[{l:"2026",c:sky},{l:"2025",c:P.t3}].map((x,i)=>(<div key={i} style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,color:P.t1 }}><div style={{ width:8,height:3,borderRadius:1,background:x.c }}/>{x.l}</div>))}</div>
                 </div>
-                <SvgBar data={revenue} keyA="val" keyB="p" colorA={sky} colorB={P.t3} />
+                <SvgBar data={purchases} keyA="val" keyB="p" colorA={sky} colorB={P.t3} />
               </div>,
-              sla: <div style={{ background: P.card, padding: "20px 22px 18px", borderRadius: 14, border: `1px solid ${P.brd}` }}>
+              savings_chart: <div style={{ background: P.card, padding: "20px 22px 18px", borderRadius: 14, border: `1px solid ${P.brd}` }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: P.t0 }}>Исполнение SLA</div>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: sky, fontFamily: "'Golos Text', sans-serif" }}>95.2%</span>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: P.t0 }}>Экономия (переторжка)</div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: sky, fontFamily: "'Golos Text', sans-serif" }}>12%</span>
                 </div>
-                <SvgAreaMonth data={sla} dataKey="v" color={sky} yMin={85} yMax={100} />
+                <SvgAreaMonth data={savings} dataKey="v" color={sky} yMin={0} yMax={15} />
               </div>,
             };
             return wrap(<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -638,15 +580,15 @@
                   <svg width="80" height="80" viewBox="0 0 80 80" style={{ transform: "rotate(-90deg)" }}><circle cx="40" cy="40" r="34" fill="none" stroke={P.el} strokeWidth="3.5"/><circle cx="40" cy="40" r="34" fill="none" stroke={sky} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={m?off:circ} style={{ transition: "stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1)" }}/></svg>
                   <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 20, fontWeight: 800, color: P.t0, fontFamily: "'Golos Text', sans-serif" }}>{score}</span><span style={{ fontSize: 11, color: P.t2 }}>из 5</span></div>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: P.t1, marginBottom: 4 }}>Рейтинг поставщика</div>
-                <div style={{ fontSize: 11, color: P.t1, marginBottom: 8 }}>Внешняя 60% + поведение 40%</div>
-                <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>{[{l:"Внешняя 60%",v:"4.3"},{l:"Поведение 40%",v:"4.2"}].map((r,i)=>(<div key={i} style={{ textAlign:"center" }}><div style={{ fontSize:11,color:P.t1 }}>{r.l}</div><div style={{ fontSize:15,fontWeight:700,color:P.t0,fontFamily:"'Golos Text', sans-serif" }}>{r.v}</div></div>))}</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: P.t1, marginBottom: 4 }}>Рейтинг покупателя</div>
+                <div style={{ fontSize: 11, color: P.t1, marginBottom: 8 }}>Кредитный скоринг</div>
+                <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>{[{l:"Оплаты",v:"4.9"},{l:"Объём",v:"4.6"}].map((r,i)=>(<div key={i} style={{ textAlign:"center" }}><div style={{ fontSize:11,color:P.t1 }}>{r.l}</div><div style={{ fontSize:15,fontWeight:700,color:P.t0,fontFamily:"'Golos Text', sans-serif" }}>{r.v}</div></div>))}</div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: P.t0, background: `${skyDim}0.08)`, display: "inline-block", padding: "2px 8px", borderRadius: 4 }}>Надёжный</div>
               </div>,
               orders: <div style={{ background: P.card, padding: "24px 26px", borderRadius: 14, border: `1px solid ${P.brd}`, height: "100%" }}>
-                <div style={{ marginBottom: 16 }}><div style={{ fontSize: 11, color: P.t1, fontWeight: 500, marginBottom: 6 }}>Заказы по статусам</div><div style={{ display: "flex", alignItems: "baseline", gap: 8 }}><span style={{ fontSize: 18, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif" }}>9</span><span style={{ fontSize: 11, color: P.t1 }}>активных</span></div></div>
-                <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", marginBottom: 16, gap: 2 }}><div style={{ flex:1,background:sky,borderRadius:2 }}/><div style={{ flex:1,background:`${skyDim}0.5)`,borderRadius:2 }}/><div style={{ flex:1,background:ora,borderRadius:2,opacity:0.7 }}/></div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>{statuses.map((s,i)=>{const colors=[sky,P.t2,P.t2,`${skyDim}0.5)`,ora];return(<div key={i} style={{ display:"flex",alignItems:"center",gap:6,padding:"3px 0" }}><div style={{ width:5,height:5,borderRadius:1.5,background:colors[i],flexShrink:0 }}/><span style={{ fontSize:11,color:s.count>0?P.t0:P.t2,flex:1 }}>{s.name}</span><span style={{ fontSize:12,fontWeight:600,color:s.count>0?P.t0:P.t2,fontFamily:"'Golos Text', sans-serif",fontVariantNumeric:"tabular-nums" }}>{s.count}</span></div>);})}</div>
+                <div style={{ marginBottom: 16 }}><div style={{ fontSize: 11, color: P.t1, fontWeight: 500, marginBottom: 6 }}>Заказы по статусам</div><div style={{ display: "flex", alignItems: "baseline", gap: 8 }}><span style={{ fontSize: 18, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif" }}>24</span><span style={{ fontSize: 11, color: P.t1 }}>всего</span></div></div>
+                <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", marginBottom: 16, gap: 2 }}><div style={{ flex:2,background:sky,borderRadius:2 }}/><div style={{ flex:3,background:`${skyDim}0.5)`,borderRadius:2 }}/><div style={{ flex:1,background:ora,borderRadius:2,opacity:0.7 }}/></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>{statuses.map((s,i)=>{const colors=[sky,`${skyDim}0.5)`,ora,P.t2,ora];return(<div key={i} style={{ display:"flex",alignItems:"center",gap:6,padding:"3px 0" }}><div style={{ width:5,height:5,borderRadius:1.5,background:colors[i],flexShrink:0 }}/><span style={{ fontSize:11,color:s.count>0?P.t0:P.t2,flex:1 }}>{s.name}</span><span style={{ fontSize:12,fontWeight:600,color:s.count>0?P.t0:P.t2,fontFamily:"'Golos Text', sans-serif",fontVariantNumeric:"tabular-nums" }}>{s.count}</span></div>);})}</div>
               </div>,
             };
             const cols = statusOrder[0] === "rating" ? "260px 1fr" : "1fr 260px";
@@ -659,20 +601,20 @@
             const workCards = {
               requests: <div style={{ background: P.card, borderRadius: 14, border: `1px solid ${P.brd}`, overflow: "hidden", height: "100%" }}>
                 <div style={{ padding: "18px 22px", borderBottom: `1px solid ${P.sep}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div><div style={{ display:"flex",alignItems:"center",gap:8 }}><span style={{ fontSize:14,fontWeight:700,color:P.t0 }}>Входящие запросы</span><span style={{ fontSize:11,fontWeight:600,color:ora,background:`${oraDim}0.08)`,padding:"2px 7px",borderRadius:4 }}>4 новых</span></div><div style={{ fontSize:11,color:P.t1,marginTop:3 }}>Запросы клиентов на расценку</div></div>
-                  <a href="/seller/requests/" style={{ fontSize:11,color:P.t2,textDecoration:"none" }}>Все →</a>
+                  <div><div style={{ display:"flex",alignItems:"center",gap:8 }}><span style={{ fontSize:14,fontWeight:700,color:P.t0 }}>Активные RFQ</span><span style={{ fontSize:11,fontWeight:600,color:ora,background:`${oraDim}0.08)`,padding:"2px 7px",borderRadius:4 }}>3 активных</span></div><div style={{ fontSize:11,color:P.t1,marginTop:3 }}>Исходящие запросы на расценку</div></div>
+                  <span style={{ fontSize:11,color:P.t2,cursor:"pointer" }}>Все →</span>
                 </div>
-                <div style={{ display:"grid",gridTemplateColumns:"76px 1.5fr 1fr 80px",gap:10,padding:"10px 22px",borderBottom:`1px solid ${P.sep}` }}>{["ID","Деталь","Клиент","Сумма"].map((h,i)=>(<span key={i} style={{ fontSize:11,color:P.t1,fontWeight:600,letterSpacing:"0.06em",textAlign:i===3?"right":"left" }}>{h}</span>))}</div>
-                {requests.map((req,i)=>(<div key={i} className="rw" style={{ display:"grid",gridTemplateColumns:"76px 1.5fr 1fr 80px",gap:12,padding:"16px 24px",alignItems:"center",borderBottom:i<requests.length-1?`1px solid ${P.sep}`:"none" }}>
+                <div style={{ display:"grid",gridTemplateColumns:"80px 1.5fr 1fr 80px",gap:10,padding:"10px 22px",borderBottom:`1px solid ${P.sep}` }}>{["ID","Деталь","Поставщик","Сумма"].map((h,i)=>(<span key={i} style={{ fontSize:11,color:P.t1,fontWeight:600,letterSpacing:"0.06em",textAlign:i===3?"right":"left" }}>{h}</span>))}</div>
+                {rfqs.map((req,i)=>(<div key={i} className="rw" style={{ display:"grid",gridTemplateColumns:"80px 1.5fr 1fr 80px",gap:12,padding:"16px 24px",alignItems:"center",borderBottom:i<rfqs.length-1?`1px solid ${P.sep}`:"none" }}>
                   <div style={{ display:"flex",alignItems:"center",gap:5 }}><div style={{ width:4,height:4,borderRadius:1,background:tyC[req.type],flexShrink:0 }}/><span style={{ fontSize:12,fontWeight:500,color:P.t1,fontVariantNumeric:"tabular-nums" }}>{req.id}</span></div>
                   <div style={{ minWidth:0 }}><div style={{ fontSize:13,fontWeight:500,color:P.t0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{req.part}</div><div style={{ fontSize:11,color:P.t1,marginTop:2 }}>{req.brand} · {req.time}</div></div>
-                  <span style={{ fontSize:12,color:P.t1 }}>{req.client}</span>
+                  <span style={{ fontSize:12,color:P.t1 }}>{req.supplier}</span>
                   <span style={{ fontSize:13,fontWeight:600,color:P.t0,textAlign:"right",fontFamily:"'Golos Text', sans-serif",fontVariantNumeric:"tabular-nums" }}>{fmtCur(req.usd,cur)}</span>
                 </div>))}
               </div>,
               events: <div style={{ background: P.card, borderRadius: 14, border: `1px solid ${P.brd}`, overflow: "hidden", height: "100%" }}>
                 <div style={{ padding: "18px 18px", borderBottom: `1px solid ${P.sep}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div><span style={{ fontSize:14,fontWeight:700,color:P.t0 }}>Лента событий</span><div style={{ fontSize:11,color:P.t1,marginTop:3 }}>Заказы, SLA, платежи</div></div>
+                  <div><span style={{ fontSize:14,fontWeight:700,color:P.t0 }}>Лента событий</span><div style={{ fontSize:11,color:P.t1,marginTop:3 }}>Заказы, поставки, платежи</div></div>
                   <span style={{ fontSize:11,color:P.t2,cursor:"pointer" }}>Все →</span>
                 </div>
                 {eventsBase.map((ev,i)=>(<div key={i} className="rw" style={{ padding:"15px 20px",borderBottom:i<eventsBase.length-1?`1px solid ${P.sep}`:"none",display:"flex",gap:10,alignItems:"flex-start" }}>
@@ -813,8 +755,8 @@
   }
 
   /* ── Mount both roots ── */
-  const contentEl = document.getElementById("seller-dash-content");
-  const panelEl   = document.getElementById("seller-dash-panel");
+  const contentEl = document.getElementById("buyer-dash-content");
+  const panelEl   = document.getElementById("buyer-dash-panel");
   if (contentEl) ReactDOM.createRoot(contentEl).render(<DashboardContent />);
   if (panelEl)   ReactDOM.createRoot(panelEl).render(<DashboardPanel />);
 

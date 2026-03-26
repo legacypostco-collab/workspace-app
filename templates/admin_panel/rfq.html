@@ -1,0 +1,60 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}RFQ{% endblock %}
+{% block topbar_title %}RFQ{% endblock %}
+
+{% block content %}
+<div class="ap-stats">
+  <div class="ap-stat"><div class="ap-stat-value">892</div><div class="ap-stat-label">Всего RFQ</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">34</div><div class="ap-stat-label">Активных</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">28</div><div class="ap-stat-label">С котировками</div></div>
+  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">6</div><div class="ap-stat-label">Без ответа</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">68%</div><div class="ap-stat-label">Конверсия</div></div>
+</div>
+
+<div class="ap-card">
+  <div class="ap-tabs">
+    <button class="ap-tab active" data-tab-group="rfq" data-tab-key="all" onclick="apSwitchTab('rfq','all');filterRfq()">Все</button>
+    <button class="ap-tab" data-tab-group="rfq" data-tab-key="active" onclick="apSwitchTab('rfq','active');filterRfq()">Активные</button>
+    <button class="ap-tab" data-tab-group="rfq" data-tab-key="noquote" onclick="apSwitchTab('rfq','noquote');filterRfq()">Без ответа</button>
+    <button class="ap-tab" data-tab-group="rfq" data-tab-key="done" onclick="apSwitchTab('rfq','done');filterRfq()">Завершённые</button>
+  </div>
+
+  <table class="ap-table" id="rfqTable">
+    <thead>
+      <tr><th>RFQ ID</th><th>Покупатель</th><th>Позиций</th><th>Дата создания</th><th>Котировок</th><th>Статус</th><th>Действия</th></tr>
+    </thead>
+    <tbody>
+      <tr data-status="active" data-quotes="3"><td>RFQ-0097</td><td class="text-secondary">#1051</td><td>4</td><td class="text-secondary">25.03.2026</td><td>3</td><td><span class="ap-badge ap-badge-gray">Активный</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0097')">Детали</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Напоминание отправлено')">Напомнить</button></td></tr>
+      <tr data-status="active" data-quotes="2"><td>RFQ-0096</td><td class="text-secondary">#1048</td><td>6</td><td class="text-secondary">24.03.2026</td><td>2</td><td><span class="ap-badge ap-badge-gray">Активный</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0096')">Детали</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Напоминание отправлено')">Напомнить</button></td></tr>
+      <tr data-status="active" data-quotes="0"><td>RFQ-0095</td><td class="text-secondary">#1045</td><td>2</td><td class="text-secondary">24.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0095')">Детали</button></td></tr>
+      <tr data-status="active" data-quotes="5"><td>RFQ-0094</td><td class="text-secondary">#1042</td><td>8</td><td class="text-secondary">23.03.2026</td><td>5</td><td><span class="ap-badge ap-badge-gray">Активный</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0094')">Детали</button></td></tr>
+      <tr data-status="active" data-quotes="0"><td>RFQ-0093</td><td class="text-secondary">#1040</td><td>3</td><td class="text-secondary">22.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0093')">Детали</button></td></tr>
+      <tr data-status="active" data-quotes="1"><td>RFQ-0092</td><td class="text-secondary">#1038</td><td>5</td><td class="text-secondary">22.03.2026</td><td>1</td><td><span class="ap-badge ap-badge-gray">Активный</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0092')">Детали</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Напоминание отправлено')">Напомнить</button></td></tr>
+      <tr data-status="active" data-quotes="0"><td>RFQ-0091</td><td class="text-secondary">#1035</td><td>1</td><td class="text-secondary">21.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0091')">Детали</button></td></tr>
+      <tr data-status="done" data-quotes="4"><td>RFQ-0090</td><td class="text-secondary">#1033</td><td>7</td><td class="text-secondary">20.03.2026</td><td>4</td><td><span class="ap-badge ap-badge-gray">Завершён</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0090')">Детали</button></td></tr>
+      <tr data-status="done" data-quotes="3"><td>RFQ-0089</td><td class="text-secondary">#1030</td><td>5</td><td class="text-secondary">19.03.2026</td><td>3</td><td><span class="ap-badge ap-badge-gray">Завершён</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0089')">Детали</button></td></tr>
+      <tr data-status="active" data-quotes="0"><td>RFQ-0088</td><td class="text-secondary">#1028</td><td>2</td><td class="text-secondary">18.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0088')">Детали</button></td></tr>
+      <tr data-status="done" data-quotes="6"><td>RFQ-0087</td><td class="text-secondary">#1025</td><td>10</td><td class="text-secondary">17.03.2026</td><td>6</td><td><span class="ap-badge ap-badge-gray">Завершён</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0087')">Детали</button></td></tr>
+      <tr data-status="active" data-quotes="0"><td>RFQ-0086</td><td class="text-secondary">#1022</td><td>4</td><td class="text-secondary">16.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0086')">Детали</button></td></tr>
+      <tr data-status="active" data-quotes="0"><td>RFQ-0085</td><td class="text-secondary">#1020</td><td>3</td><td class="text-secondary">15.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0085')">Детали</button></td></tr>
+      <tr data-status="done" data-quotes="2"><td>RFQ-0084</td><td class="text-secondary">#1018</td><td>6</td><td class="text-secondary">14.03.2026</td><td>2</td><td><span class="ap-badge ap-badge-gray">Завершён</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0084')">Детали</button></td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterRfq() {
+  var tab = document.querySelector('.ap-tab.active[data-tab-group="rfq"]').dataset.tabKey;
+  var rows = document.querySelectorAll('#rfqTable tbody tr');
+  rows.forEach(function(row) {
+    var show = true;
+    if (tab === 'active' && row.dataset.status !== 'active') show = false;
+    if (tab === 'noquote' && row.dataset.quotes !== '0') show = false;
+    if (tab === 'done' && row.dataset.status !== 'done') show = false;
+    row.style.display = show ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

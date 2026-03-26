@@ -100,23 +100,54 @@ logger = logging.getLogger("marketplace")
 
 
 SELLER_IMPORT_MAPPING_FIELDS: list[tuple[str, str]] = [
-    ("oem", "PartNumber"),
-    ("warehouse_address", "WarehouseAddress"),
-    ("price_exw", "Price_EXW"),
-    ("price_fob_sea", "Price_FOB_SEA"),
-    ("price_fob_air", "Price_FOB_AIR"),
-    ("brand", "Brand"),
-    ("cross_number", "CrossNumber"),
-    ("name", "Name"),
-    ("quantity", "Quantity"),
-    ("condition", "Condition"),
-    ("sea_port", "SeaPort"),
-    ("air_port", "AirPort"),
-    ("weight", "Weight"),
-    ("length", "Length"),
-    ("width", "Width"),
-    ("height", "Height"),
+    ("oem", "Артикул (Part Number)"),
+    ("name", "Название"),
+    ("brand", "Бренд"),
+    ("price_exw", "Цена EXW"),
+    ("price_fob_sea", "Цена FOB Море"),
+    ("price_fob_air", "Цена FOB Авиа"),
+    ("quantity", "Остаток"),
+    ("condition", "Состояние"),
+    ("warehouse_address", "Склад"),
+    ("cross_number", "Кросс-номер"),
+    ("sea_port", "Морской порт"),
+    ("air_port", "Авиа-порт"),
+    ("weight", "Вес (кг)"),
+    ("length", "Длина (см)"),
+    ("width", "Ширина (см)"),
+    ("height", "Высота (см)"),
 ]
+
+# Auto-mapping: common header synonyms → field key
+_AUTO_MAP_SYNONYMS: dict[str, list[str]] = {
+    "oem": ["partnumber", "part_number", "part number", "oem", "артикул", "номер", "pn", "p/n", "каталожный"],
+    "name": ["name", "title", "description", "наименование", "название", "описание"],
+    "brand": ["brand", "manufacturer", "бренд", "производитель", "марка"],
+    "price_exw": ["price", "price_exw", "цена", "цена exw", "price exw", "стоимость"],
+    "price_fob_sea": ["price_fob_sea", "fob sea", "цена fob море"],
+    "price_fob_air": ["price_fob_air", "fob air", "цена fob авиа"],
+    "quantity": ["qty", "quantity", "stock", "остаток", "количество", "кол-во", "наличие"],
+    "condition": ["condition", "состояние", "new/used"],
+    "warehouse_address": ["warehouse", "warehouseaddress", "склад", "адрес склада", "location"],
+    "cross_number": ["crossnumber", "cross", "кросс", "cross_number", "аналог"],
+    "weight": ["weight", "вес", "масса"],
+}
+
+
+def _auto_map_columns(headers: list[str]) -> dict[str, str]:
+    """Try to match spreadsheet headers to our import fields."""
+    mapping: dict[str, str] = {}
+    used: set[str] = set()
+    for field_key, synonyms in _AUTO_MAP_SYNONYMS.items():
+        for header in headers:
+            if header in used:
+                continue
+            h_low = header.lower().strip()
+            if h_low in synonyms or any(s in h_low for s in synonyms):
+                mapping[field_key] = header
+                used.add(header)
+                break
+    return mapping
 
 
 def _get_cart(request: HttpRequest) -> dict[str, int]:
@@ -961,6 +992,12 @@ def _bulk_lookup_to_rfq_lines(rows: list[dict]) -> str:
 
 
 def home(request: HttpRequest) -> HttpResponse:
+    # Always show the landing page — authenticated users can navigate to their cabinet via sidebar
+    return render(request, "landing.html")
+
+
+def home_marketplace(request: HttpRequest) -> HttpResponse:
+    """Original marketplace home page (kept for internal use)."""
     _seed_if_empty()
     featured = _mixed_featured_parts(limit=12)
     bulk_form = BulkPriceLookupForm(request.POST or None)
@@ -1112,9 +1149,14 @@ def login_view(request: HttpRequest) -> HttpResponse:
                 data["username"] = user.username
         form = LoginForm(request, data=data)
         if form.is_valid():
-            login(request, form.get_user())
-            messages.success(request, "Вы вошли в систему.")
-            return redirect("dashboard")
+            user = form.get_user()
+            login(request, user)
+            role = _role_for(user)
+            if role == "operator":
+                return redirect("operator_dashboard")
+            if role == "seller":
+                return redirect("seller_dashboard")
+            return redirect("buyer_dashboard")
     else:
         form = LoginForm(request)
     return render(request, "marketplace/login.html", {"form": form})
@@ -1124,6 +1166,27 @@ def logout_view(request: HttpRequest) -> HttpResponse:
     logout(request)
     messages.info(request, "Вы вышли из системы.")
     return redirect("home")
+
+
+def demo_login(request: HttpRequest) -> HttpResponse:
+    """Быстрый вход в демо-кабинет по роли."""
+    from django.contrib.auth import authenticate
+
+    DEMO_USERS = {
+        "seller": ("demo_seller", "seller_dashboard"),
+        "buyer": ("demo_buyer", "buyer_dashboard"),
+        "operator": ("demo_operator", "operator_dashboard"),
+    }
+    role = request.GET.get("role", "")
+    entry = DEMO_USERS.get(role)
+    if not entry:
+        return redirect("login")
+    username, redirect_to = entry
+    user = authenticate(request, username=username, password="demo12345")
+    if user is None:
+        return redirect("login")
+    login(request, user)
+    return redirect(redirect_to)
 
 
 def catalog(request: HttpRequest) -> HttpResponse:
@@ -1309,6 +1372,8 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     role = _role_for(request.user)
     if role == "seller":
         return redirect("dashboard_seller")
+    if role == "operator":
+        return redirect("operator_dashboard")
     return redirect("dashboard_buyer")
 
 
@@ -1424,51 +1489,12 @@ def claims_export_csv(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def dashboard_buyer(request: HttpRequest) -> HttpResponse:
-    role = _role_for(request.user)
-    orders = list(Order.objects.filter(buyer=request.user).prefetch_related("items__part")[:20])
-    for order in orders:
-        _recalc_order_sla(order)
-    rfqs_count = RFQ.objects.filter(created_by=request.user).count()
-    total_spent = sum((o.total_amount for o in orders), Decimal("0.00"))
-    return render(
-        request,
-        "marketplace/dashboard_buyer.html",
-        {
-            "orders": orders,
-            "created_order_id": request.GET.get("order_created"),
-            "role": role,
-            "orders_count": len(orders),
-            "rfqs_count": rfqs_count,
-            "total_spent": total_spent,
-        },
-    )
+    return redirect("buyer_dashboard")
 
 
 @seller_required
 def dashboard_seller(request: HttpRequest) -> HttpResponse:
-    role = _role_for(request.user)
-    scoped_parts = _apply_seller_brand_scope(request.user, Part.objects.filter(seller=request.user))
-    orders = list(
-        Order.objects.filter(items__part__seller=request.user)
-        .distinct()
-        .prefetch_related("items__part")[:20]
-    )
-    for order in orders:
-        _recalc_order_sla(order)
-    parts_count = scoped_parts.count()
-    rfqs_count = _seller_rfqs_qs(request.user).count()
-    return render(
-        request,
-        "marketplace/dashboard_seller.html",
-        {
-            "orders": orders,
-            "created_order_id": request.GET.get("order_created"),
-            "role": role,
-            "orders_count": len(orders),
-            "parts_count": parts_count,
-            "rfqs_count": rfqs_count,
-        },
-    )
+    return redirect("seller_dashboard")
 
 
 @seller_required
@@ -1515,6 +1541,20 @@ def _build_seller_catalog_context(request: HttpRequest) -> dict:
         parts_qs = parts_qs.filter(data_updated_at__gte=timezone.now() - timedelta(hours=24))
     if query:
         parts_qs = parts_qs.filter(Q(title__icontains=query) | Q(oem_number__icontains=query) | Q(brand__name__icontains=query))
+    brand_filter = (request.GET.get("brand") or "").strip()
+    status_filter = (request.GET.get("status") or "").strip()
+    if brand_filter:
+        parts_qs = parts_qs.filter(brand__id=brand_filter)
+    if status_filter:
+        parts_qs = parts_qs.filter(availability_status=status_filter)
+    # Brand list for filter dropdown
+    brand_list = (
+        _apply_seller_brand_scope(request.user, Part.objects.filter(seller=request.user))
+        .values_list("brand__id", "brand__name")
+        .distinct()
+        .order_by("brand__name")
+    )
+    brand_list = [{"id": bid, "name": bname} for bid, bname in brand_list if bname]
     parts_qs = parts_qs.order_by("-data_updated_at", "-id")
     paginator = Paginator(parts_qs, 50)
     page_number = request.GET.get("page") or 1
@@ -1585,6 +1625,9 @@ def _build_seller_catalog_context(request: HttpRequest) -> dict:
         "seller_orders_count": seller_orders_count,
         "recent_updates_count": recent_updates_count,
         "return_qs": request.GET.urlencode(),
+        "brand_list": brand_list,
+        "brand_filter": brand_filter,
+        "status_filter": status_filter,
     }
 
 
@@ -2231,6 +2274,69 @@ def seller_negotiations(request: HttpRequest) -> HttpResponse:
     return render(request, "seller/negotiations/list.html", {})
 
 
+def seller_analytics(request: HttpRequest) -> HttpResponse:
+    """Аналитика: отчёты, интеграции, рассылка, API."""
+    return render(request, "seller/analytics/list.html", {})
+
+
+def seller_team(request: HttpRequest) -> HttpResponse:
+    """Команда: орг-схема, права, чат, задачи, активность, рейтинги."""
+    return render(request, "seller/team/list.html", {})
+
+
+def seller_integrations(request: HttpRequest) -> HttpResponse:
+    """Интеграции: 1С, ТОИР, ERP, Битрикс24, индивидуальная."""
+    return render(request, "seller/integrations/list.html", {})
+
+
+def seller_logistics(request: HttpRequest) -> HttpResponse:
+    """Логистика: карта, терминалы, отслеживание, калькулятор, аукцион."""
+    return render(request, "seller/logistics/list.html", {})
+
+
+def seller_reports(request: HttpRequest) -> HttpResponse:
+    """Отчёты: сводные, продажи, финансовые, операционные, экспорт, расписание."""
+    return render(request, "seller/reports/list.html", {
+        "seller_active_nav": "reports",
+        "history_reports": [],
+    })
+
+
+# ═══════════════════════════════════════════════════════════════════
+# BUYER CABINET
+# ═══════════════════════════════════════════════════════════════════
+
+def buyer_dashboard(request: HttpRequest) -> HttpResponse:
+    return render(request, "buyer/dashboard/index.html", {})
+
+def buyer_catalog(request: HttpRequest) -> HttpResponse:
+    return render(request, "buyer/catalog/list.html", {})
+
+def buyer_rfq_list(request: HttpRequest) -> HttpResponse:
+    return render(request, "buyer/rfq/list.html", {})
+
+def buyer_orders(request: HttpRequest) -> HttpResponse:
+    return render(request, "buyer/orders/list.html", {})
+
+def buyer_shipments(request: HttpRequest) -> HttpResponse:
+    return render(request, "buyer/shipments/list.html", {})
+
+def buyer_claims(request: HttpRequest) -> HttpResponse:
+    return render(request, "buyer/claims/list.html", {})
+
+def buyer_suppliers(request: HttpRequest) -> HttpResponse:
+    return render(request, "buyer/suppliers/list.html", {})
+
+def buyer_negotiations(request: HttpRequest) -> HttpResponse:
+    return render(request, "buyer/negotiations/list.html", {})
+
+def buyer_finance(request: HttpRequest) -> HttpResponse:
+    return render(request, "buyer/finance/list.html", {})
+
+def buyer_analytics(request: HttpRequest) -> HttpResponse:
+    return render(request, "buyer/analytics/list.html", {})
+
+
 def seller_finance(request: HttpRequest) -> HttpResponse:
     """Финансовый кабинет поставщика: оплаты, документы, таймлайн."""
     from decimal import Decimal
@@ -2632,6 +2738,60 @@ def seller_parts_bulk_action(request: HttpRequest) -> HttpResponse:
     if return_qs:
         return redirect(f"{reverse('seller_product_list')}?{return_qs}")
     return redirect("seller_product_list")
+
+
+@seller_required
+@require_POST
+@csrf_exempt
+def seller_part_inline_update(request: HttpRequest, part_id: int) -> JsonResponse:
+    """AJAX inline-edit for a single Part field."""
+    import json as _json
+    try:
+        body = _json.loads(request.body)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    field = body.get("field", "")
+    value = body.get("value", "")
+
+    ALLOWED_FIELDS = {
+        "price": "can_manage_pricing",
+        "stock_quantity": "can_manage_pricing",
+        "condition": "can_manage_assortment",
+        "availability_status": "can_manage_assortment",
+        "is_active": "can_manage_assortment",
+    }
+    if field not in ALLOWED_FIELDS:
+        return JsonResponse({"ok": False, "error": f"Field '{field}' not allowed"}, status=400)
+
+    perm = ALLOWED_FIELDS[field]
+    if not _has_seller_permission(request.user, perm):
+        return JsonResponse({"ok": False, "error": "Permission denied"}, status=403)
+
+    part = Part.objects.filter(id=part_id, seller=request.user).first()
+    if not part:
+        return JsonResponse({"ok": False, "error": "Not found"}, status=404)
+
+    try:
+        if field == "price":
+            from decimal import Decimal, InvalidOperation
+            part.price = Decimal(str(value)).quantize(Decimal("0.01"))
+        elif field == "stock_quantity":
+            part.stock_quantity = max(0, int(value))
+        elif field == "condition":
+            if value in ("oem", "aftermarket", "reman"):
+                part.condition = value
+        elif field == "availability_status":
+            if value in ("active", "limited", "made_to_order", "discontinued", "blocked"):
+                part.availability_status = value
+        elif field == "is_active":
+            part.is_active = str(value).lower() in ("true", "1")
+
+        part.data_updated_at = timezone.now()
+        part.save()
+        return JsonResponse({"ok": True, "value": str(getattr(part, field))})
+    except Exception as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
 
 
 def brands_directory(request: HttpRequest) -> HttpResponse:
@@ -3626,16 +3786,81 @@ def seller_part_edit(request: HttpRequest, part_id: int) -> HttpResponse:
 
 
 @seller_required
+@require_POST
+def seller_import_google_sheet(request: HttpRequest) -> HttpResponse:
+    """Import from a public Google Sheets URL."""
+    import re as _re
+    import urllib.request as _urllib_request
+
+    sheet_url = (request.POST.get("sheet_url") or "").strip()
+    if "docs.google.com/spreadsheets" not in sheet_url:
+        messages.error(request, "Нужна корректная ссылка Google Sheets.")
+        return redirect("seller_product_list")
+
+    # Extract sheet ID
+    match = _re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", sheet_url)
+    if not match:
+        messages.error(request, "Не удалось извлечь ID таблицы из ссылки.")
+        return redirect("seller_product_list")
+
+    sheet_id = match.group(1)
+    csv_export_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
+
+    try:
+        req = _urllib_request.Request(csv_export_url, headers={"User-Agent": "ConsolidatorParts/1.0"})
+        with _urllib_request.urlopen(req, timeout=15) as resp:
+            raw = resp.read()
+    except Exception:
+        messages.error(request, "Не удалось загрузить Google-таблицу. Убедитесь, что таблица открыта для чтения (доступ по ссылке).")
+        return redirect("seller_product_list")
+
+    try:
+        from marketplace.services.imports import _csv_rows
+        headers, rows = _csv_rows(raw)
+    except Exception as exc:
+        messages.error(request, f"Ошибка парсинга таблицы: {exc}")
+        return redirect("seller_product_list")
+
+    sample = [row_dict for _, row_dict in rows[:10]]
+    detected = {h: h for h in headers}
+    auto_mapping = _auto_map_columns(headers)
+
+    # If key columns are mapped, auto-confirm and start import
+    has_key_cols = auto_mapping.get("oem") and auto_mapping.get("price_exw")
+    initial_status = (
+        ImportPreviewSession.Status.MAPPING_CONFIRMED if has_key_cols
+        else ImportPreviewSession.Status.DRAFT
+    )
+
+    preview = ImportPreviewSession.objects.create(
+        supplier=request.user,
+        source_type=ImportPreviewSession.SourceType.GOOGLE_SHEET,
+        source_url=sheet_url,
+        status=initial_status,
+        detected_columns=detected,
+        sample_rows=sample,
+        column_mapping=auto_mapping,
+    )
+
+    total = len(rows)
+    mapped = len(auto_mapping)
+    return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}&gs_imported=1&gs_rows={total}&gs_cols={mapped}")
+
+
+@seller_required
 def seller_import_preview(request: HttpRequest, preview_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
         messages.error(request, "Нет прав на загрузку ассортимента.")
         return redirect("seller_product_list")
     preview = get_object_or_404(ImportPreviewSession, id=preview_id, supplier=request.user)
-    if preview.source_type != ImportPreviewSession.SourceType.CSV or not preview.source_file_id:
+    if preview.source_type not in (ImportPreviewSession.SourceType.CSV, ImportPreviewSession.SourceType.GOOGLE_SHEET):
         messages.error(request, "Для этого источника preview пока не поддерживается в UI.")
         return redirect("seller_product_list")
+    if preview.source_type == ImportPreviewSession.SourceType.CSV and not preview.source_file_id:
+        messages.error(request, "Файл источника не найден.")
+        return redirect("seller_product_list")
 
-    header_options = list(dict.fromkeys((preview.sample_rows[0].keys() if preview.sample_rows else []) + list(preview.detected_columns.values())))
+    header_options = list(dict.fromkeys(list(preview.sample_rows[0].keys() if preview.sample_rows else []) + list(preview.detected_columns.values())))
     preview_rows_matrix = [[row.get(header, "") for header in header_options] for row in (preview.sample_rows or [])]
     current_mapping = preview.column_mapping or preview.detected_columns or {}
     return render(
@@ -3660,7 +3885,7 @@ def seller_import_preview_confirm(request: HttpRequest, preview_id: int) -> Http
     preview = get_object_or_404(ImportPreviewSession, id=preview_id, supplier=request.user)
     mapping = {key: (request.POST.get(f"mapping__{key}") or "").strip() for key, _ in SELLER_IMPORT_MAPPING_FIELDS}
 
-    header_options = list(dict.fromkeys((preview.sample_rows[0].keys() if preview.sample_rows else []) + list(preview.detected_columns.values())))
+    header_options = list(dict.fromkeys(list(preview.sample_rows[0].keys() if preview.sample_rows else []) + list(preview.detected_columns.values())))
     ok, reason = ColumnMappingResolver().validate_mapping(mapping, header_options)
     if not ok:
         messages.error(request, reason)
@@ -3928,6 +4153,108 @@ def seller_csv_template(request: HttpRequest) -> HttpResponse:
     )
     response = HttpResponse(content, content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename="consolidator_template.csv"'
+    return response
+
+
+@seller_required
+def seller_gsheet_template(request: HttpRequest) -> HttpResponse:
+    """Generate XLSX template for Google Sheets import."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    wb = Workbook()
+
+    # ── Sheet 1: Data ──
+    ws = wb.active
+    ws.title = "Данные"
+
+    headers = [
+        "PartNumber", "Name", "Brand", "Price_EXW", "Price_FOB_SEA",
+        "Price_FOB_AIR", "Quantity", "Condition", "WarehouseAddress",
+        "CrossNumber", "SeaPort", "AirPort", "Weight", "Length", "Width", "Height",
+    ]
+    header_ru = [
+        "Артикул", "Название", "Бренд", "Цена EXW ($)", "Цена FOB Море ($)",
+        "Цена FOB Авиа ($)", "Остаток (шт)", "Состояние", "Адрес склада",
+        "Кросс-номер", "Морской порт", "Авиа-порт", "Вес (кг)", "Длина (см)", "Ширина (см)", "Высота (см)",
+    ]
+
+    # Row 1: Russian hints
+    hint_fill = PatternFill(start_color="2C2C2C", end_color="2C2C2C", fill_type="solid")
+    hint_font = Font(size=9, color="919191", italic=True)
+    for col_idx, label in enumerate(header_ru, 1):
+        cell = ws.cell(row=1, column=col_idx, value=label)
+        cell.fill = hint_fill
+        cell.font = hint_font
+        cell.alignment = Alignment(horizontal="center")
+
+    # Row 2: English headers (for import matching)
+    header_fill = PatternFill(start_color="1F1F1F", end_color="1F1F1F", fill_type="solid")
+    header_font = Font(size=10, bold=True, color="ECECEC")
+    thin_border = Border(bottom=Side(style="thin", color="3A3A3A"))
+    for col_idx, header in enumerate(headers, 1):
+        cell = ws.cell(row=2, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal="center")
+        ws.column_dimensions[cell.column_letter].width = max(16, len(header) + 4)
+
+    # Sample rows
+    samples = [
+        ["RE48786", "Гидроцилиндр RE48786", "John Deere", 250.00, 295.00, 330.00, 10, "OEM", "Shanghai, CN", "RE48786A", "Shanghai", "PVG", 1.1, 12, 8, 6],
+        ["7C-4190", "Фильтр масляный", "Caterpillar", 18.50, 22.00, 28.00, 150, "New", "Guangzhou, CN", "", "Ningbo", "CAN", 0.3, 8, 8, 10],
+    ]
+    data_font = Font(size=10, color="ECECEC")
+    for row_idx, row_data in enumerate(samples, 3):
+        for col_idx, value in enumerate(row_data, 1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=value)
+            cell.font = data_font
+
+    # ── Sheet 2: Instructions ──
+    wi = wb.create_sheet("Инструкция")
+    wi.sheet_properties.tabColor = "64B5F6"
+    wi.column_dimensions["A"].width = 80
+
+    instructions = [
+        ("Как подключить Google Sheets к Consolidator Parts", True, 14),
+        ("", False, 10),
+        ("1. Заполните лист \"Данные\" по образцу", False, 11),
+        ("   - Строка 1 (серая) — подсказки на русском, НЕ удаляйте", False, 10),
+        ("   - Строка 2 (тёмная) — названия колонок для импорта", False, 10),
+        ("   - Строки 3+ — ваши данные", False, 10),
+        ("", False, 10),
+        ("2. Обязательные колонки:", True, 11),
+        ("   PartNumber — артикул / каталожный номер детали", False, 10),
+        ("   Name — название / описание", False, 10),
+        ("   Price_EXW — цена EXW в долларах", False, 10),
+        ("   Quantity — остаток на складе", False, 10),
+        ("", False, 10),
+        ("3. Загрузите файл на Google Drive", False, 11),
+        ("   Google Drive → Создать → Загрузить файл → выберите этот .xlsx", False, 10),
+        ("", False, 10),
+        ("4. Откройте как Google Таблицу", False, 11),
+        ("   Правой кнопкой → Открыть с помощью → Google Таблицы", False, 10),
+        ("", False, 10),
+        ("5. Откройте доступ по ссылке", False, 11),
+        ("   Поделиться → Все, у кого есть ссылка → Читатель → Копировать ссылку", False, 10),
+        ("", False, 10),
+        ("6. Вставьте ссылку на сайте", False, 11),
+        ("   Товары и прайсы → Google Sheets → Вставьте ссылку → Подключить", False, 10),
+        ("", False, 10),
+        ("Поддержка: support@consolidator.com", False, 10),
+    ]
+    for row_idx, (text, bold, size) in enumerate(instructions, 1):
+        cell = wi.cell(row=row_idx, column=1, value=text)
+        cell.font = Font(size=size, bold=bold, color="212647")
+
+    # Write to response
+    import io as _io
+    buf = _io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    response = HttpResponse(buf.read(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="consolidator_price_template.xlsx"'
     return response
 
 
@@ -4747,3 +5074,152 @@ def order_update_claim_status(request: HttpRequest, claim_id: int) -> HttpRespon
 
     messages.success(request, "Статус рекламации обновлён.")
     return redirect("order_detail", order_id=order.id)
+
+
+# ═══ Operator cabinet views ═══
+
+
+def operator_select_role(request):
+    return render(request, "operator/select_role.html", {})
+
+
+def operator_logist_dashboard(request):
+    return render(request, "operator/logist/dashboard.html", {"operator_role": "logist", "operator_active_nav": "dashboard"})
+
+
+def operator_logist_shipments(request):
+    return render(request, "operator/logist/shipments.html", {"operator_role": "logist", "operator_active_nav": "shipments"})
+
+
+def operator_logist_routes(request):
+    return render(request, "operator/logist/routes.html", {"operator_role": "logist", "operator_active_nav": "routes"})
+
+
+def operator_customs_dashboard(request):
+    return render(request, "operator/customs/dashboard.html", {"operator_role": "customs", "operator_active_nav": "dashboard"})
+
+
+def operator_customs_declarations(request):
+    return render(request, "operator/customs/declarations.html", {"operator_role": "customs", "operator_active_nav": "declarations"})
+
+
+def operator_customs_tariffs(request):
+    return render(request, "operator/customs/tariffs.html", {"operator_role": "customs", "operator_active_nav": "tariffs"})
+
+
+def operator_payments_dashboard(request):
+    return render(request, "operator/payments/dashboard.html", {"operator_role": "payments", "operator_active_nav": "dashboard"})
+
+
+def operator_payments_invoices(request):
+    return render(request, "operator/payments/invoices.html", {"operator_role": "payments", "operator_active_nav": "invoices"})
+
+
+def operator_payments_escrow(request):
+    return render(request, "operator/payments/escrow.html", {"operator_role": "payments", "operator_active_nav": "escrow"})
+
+
+def operator_manager_dashboard(request):
+    return render(request, "operator/manager/dashboard.html", {"operator_role": "manager", "operator_active_nav": "dashboard"})
+
+
+def operator_manager_orders(request):
+    return render(request, "operator/manager/orders.html", {"operator_role": "manager", "operator_active_nav": "orders"})
+
+
+def operator_manager_clients(request):
+    return render(request, "operator/manager/clients.html", {"operator_role": "manager", "operator_active_nav": "clients"})
+
+
+def operator_logist_ports(request):
+    return render(request, "operator/logist/ports.html", {"operator_role": "logist", "operator_active_nav": "ports"})
+
+
+def operator_logist_documents(request):
+    return render(request, "operator/logist/documents.html", {"operator_role": "logist", "operator_active_nav": "documents"})
+
+
+def operator_logist_analytics(request):
+    return render(request, "operator/logist/analytics.html", {"operator_role": "logist", "operator_active_nav": "analytics"})
+
+
+def operator_customs_documents(request):
+    return render(request, "operator/customs/documents.html", {"operator_role": "customs", "operator_active_nav": "documents"})
+
+
+def operator_customs_requests(request):
+    return render(request, "operator/customs/requests.html", {"operator_role": "customs", "operator_active_nav": "requests"})
+
+
+def operator_customs_analytics(request):
+    return render(request, "operator/customs/analytics.html", {"operator_role": "customs", "operator_active_nav": "analytics"})
+
+
+def operator_payments_reconciliation(request):
+    return render(request, "operator/payments/reconciliation.html", {"operator_role": "payments", "operator_active_nav": "reconciliation"})
+
+
+def operator_payments_analytics(request):
+    return render(request, "operator/payments/analytics.html", {"operator_role": "payments", "operator_active_nav": "analytics"})
+
+
+def operator_manager_shipments(request):
+    return render(request, "operator/manager/shipments.html", {"operator_role": "manager", "operator_active_nav": "shipments_mgr"})
+
+
+def operator_manager_negotiations(request):
+    return render(request, "operator/manager/negotiations.html", {"operator_role": "manager", "operator_active_nav": "negotiations"})
+
+
+def operator_manager_analytics(request):
+    return render(request, "operator/manager/analytics.html", {"operator_role": "manager", "operator_active_nav": "analytics"})
+
+
+# ═══ Admin panel ═══
+
+def admin_panel_dashboard(request):
+    return render(request, "admin_panel/dashboard.html", {"admin_active_nav": "dashboard"})
+
+
+def admin_panel_users(request):
+    return render(request, "admin_panel/users.html", {"admin_active_nav": "users"})
+
+
+def admin_panel_orders(request):
+    return render(request, "admin_panel/orders.html", {"admin_active_nav": "orders"})
+
+
+def admin_panel_rfq(request):
+    return render(request, "admin_panel/rfq.html", {"admin_active_nav": "rfq"})
+
+
+def admin_panel_finance(request):
+    return render(request, "admin_panel/finance.html", {"admin_active_nav": "finance"})
+
+
+def admin_panel_catalog(request):
+    return render(request, "admin_panel/catalog.html", {"admin_active_nav": "catalog"})
+
+
+def admin_panel_moderation(request):
+    return render(request, "admin_panel/moderation.html", {"admin_active_nav": "moderation"})
+
+
+def admin_panel_settings(request):
+    return render(request, "admin_panel/settings.html", {"admin_active_nav": "settings"})
+
+
+def admin_panel_analytics(request):
+    return render(request, "admin_panel/analytics.html", {"admin_active_nav": "analytics"})
+
+
+def admin_panel_logs(request):
+    return render(request, "admin_panel/logs.html", {"admin_active_nav": "logs"})
+
+
+def admin_panel_tariffs(request):
+    return render(request, "admin_panel/tariffs.html", {"admin_active_nav": "tariffs"})
+
+
+def admin_panel_support(request):
+    return render(request, "admin_panel/support.html", {"admin_active_nav": "support"})

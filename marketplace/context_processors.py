@@ -216,9 +216,10 @@ def seller_context(request):
         {"key": "qr", "label": "QR-контроль", "url_name": "seller_qr_control", "badge": None, "enabled": True},
         {"key": "finance", "label": "Финансы", "url_name": "seller_finance", "badge": None, "enabled": True},
         {"key": "rating", "label": "Рейтинг", "url_name": "seller_rating", "badge": None, "enabled": True},
-        {"key": "analytics", "label": "Аналитика", "url_name": None, "badge": None, "enabled": False},
-        {"key": "team", "label": "Команда", "url_name": None, "badge": None, "enabled": False},
-        {"key": "integrations", "label": "Интеграции", "url_name": None, "badge": None, "enabled": False},
+        {"key": "analytics", "label": "Аналитика", "url_name": "seller_analytics", "badge": None, "enabled": True},
+        {"key": "team", "label": "Команда", "url_name": "seller_team", "badge": None, "enabled": True},
+        {"key": "integrations", "label": "Интеграции", "url_name": "seller_integrations", "badge": None, "enabled": True},
+        {"key": "logistics", "label": "Логистика", "url_name": "seller_logistics", "badge": None, "enabled": True},
     ]
 
     return {
@@ -232,4 +233,45 @@ def seller_context(request):
         "seller_status_label": profile.get_supplier_status_display(),
         "seller_company_name": profile.company_name,
         "seller_team_department": profile.get_department_display(),
+    }
+
+
+def buyer_context(request):
+    if not request.user.is_authenticated:
+        return {}
+
+    profile = getattr(request.user, "profile", None)
+    if not profile or profile.role != "buyer":
+        return {}
+
+    buyer = request.user
+    buyer_orders_count = Order.objects.filter(buyer=buyer).count()
+    buyer_active_orders = Order.objects.filter(buyer=buyer).exclude(
+        status__in=["delivered", "completed", "cancelled"]
+    ).count()
+    buyer_rfq_count = RFQ.objects.filter(created_by=buyer).count()
+    buyer_active_rfq = RFQ.objects.filter(created_by=buyer).exclude(
+        status__in=["cancelled"]
+    ).count()
+
+    buyer_nav_items = [
+        {"key": "dashboard", "label": "Дашборд", "url_name": "buyer_dashboard", "badge": None, "enabled": True},
+        {"key": "catalog", "label": "Избранное", "url_name": "buyer_catalog", "badge": None, "enabled": True},
+        {"key": "rfq", "label": "Запросы RFQ", "url_name": "buyer_rfq_list", "badge": buyer_active_rfq or None, "enabled": True},
+        {"key": "orders", "label": "Заказы", "url_name": "buyer_orders", "badge": buyer_active_orders or None, "enabled": True},
+        {"key": "shipments", "label": "Отгрузки", "url_name": "buyer_shipments", "badge": None, "enabled": True},
+        {"key": "claims", "label": "Рекламации", "url_name": "buyer_claims", "badge": None, "enabled": True},
+        {"key": "suppliers", "label": "Поставщики", "url_name": "buyer_suppliers", "badge": None, "enabled": True},
+        {"key": "negotiations", "label": "Переторжка", "url_name": "buyer_negotiations", "badge": None, "enabled": True},
+        {"key": "finance", "label": "Финансы", "url_name": "buyer_finance", "badge": None, "enabled": True},
+        {"key": "analytics", "label": "Аналитика", "url_name": "buyer_analytics", "badge": None, "enabled": True},
+    ]
+
+    return {
+        "buyer_nav_items": buyer_nav_items,
+        "buyer_orders_count": buyer_orders_count,
+        "buyer_active_orders": buyer_active_orders,
+        "buyer_rfq_count": buyer_rfq_count,
+        "buyer_active_rfq": buyer_active_rfq,
+        "buyer_company_name": profile.company_name,
     }

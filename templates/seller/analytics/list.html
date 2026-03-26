@@ -1,0 +1,1418 @@
+{% extends "seller/base_seller.html" %}
+
+{% block extra_css %}
+<style>
+/* ══ Analytics page ══ */
+.an-tabs { display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:0; }
+.an-tab {
+  padding:8px 16px;font-size:12px;font-weight:600;color:#6A6A6A;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap;
+}
+.an-tab:hover { color:#8A8A8A; }
+.an-tab.active { color:#64B5F6;border-bottom-color:#64B5F6; }
+.an-panel { display:none; }
+.an-panel.active { display:block; }
+
+/* Section */
+.an-section { margin-bottom:20px; }
+.an-section-title { font-size:13px;font-weight:700;color:#ECECEC;margin-bottom:4px; }
+.an-section-sub { font-size:12px;color:#6A6A6A;margin-bottom:14px; }
+
+/* Report cards list */
+.an-reports-grid {
+  display:flex;flex-direction:column;gap:8px;
+}
+.an-report-card {
+  background:#1A1A1A;border-radius:10px;padding:12px 16px;
+  border:1px solid rgba(255,255,255,0.04);cursor:pointer;transition:all .2s;
+  position:relative;display:grid;grid-template-columns:32px 1fr 70px 200px;align-items:center;gap:12px;
+}
+.an-report-card:hover { border-color:rgba(100,181,246,0.2); }
+.an-report-card.selected { border-color:rgba(100,181,246,0.4);background:rgba(100,181,246,0.04); }
+.an-report-left { min-width:0; }
+.an-report-right { display:contents; }
+.an-report-view {
+  padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;
+  color:#64B5F6;background:transparent;border:1px solid rgba(100,181,246,0.3);
+  cursor:pointer;transition:all .2s;white-space:nowrap;text-align:center;
+  justify-self:center;
+}
+.an-report-view:hover { background:rgba(100,181,246,0.08); }
+.an-report-num {
+  font-size:10px;font-weight:700;color:#6A6A6A;margin-bottom:4px;
+  text-transform:uppercase;letter-spacing:0.05em;
+  display:flex;align-items:center;gap:6px;
+}
+.an-report-icon {
+  width:28px;height:28px;border-radius:7px;display:flex;
+  align-items:center;justify-content:center;flex-shrink:0;margin-right:4px;
+}
+.an-report-name { font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:4px; }
+.an-report-desc { font-size:11px;color:#6A6A6A;line-height:1.5; }
+.an-report-tag {
+  display:inline-block;font-size:9px;font-weight:600;padding:2px 6px;
+  border-radius:3px;margin-left:6px;text-transform:uppercase;letter-spacing:0.03em;
+}
+.an-report-metrics {
+  display:flex;gap:16px;align-items:center;justify-content:flex-end;
+}
+.an-metric-mini { text-align:right;min-width:48px; }
+.an-metric-mini-val { font-size:14px;font-weight:700;color:#ECECEC; }
+.an-metric-mini-label { font-size:9px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em; }
+.an-report-check {
+  position:absolute;top:10px;right:12px;width:18px;height:18px;border-radius:4px;
+  border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:transparent;transition:all .2s;
+}
+.an-report-card.selected .an-report-check {
+  background:rgba(100,181,246,0.15);border-color:rgba(100,181,246,0.4);color:#64B5F6;
+}
+
+/* Period selector */
+.an-period-bar {
+  display:flex;align-items:center;gap:8px;margin-bottom:16px;
+  flex-wrap:wrap;
+}
+.an-period-btn {
+  padding:5px 12px;border-radius:6px;font-size:11px;font-weight:600;
+  color:#6A6A6A;background:transparent;border:1px solid rgba(255,255,255,0.06);
+  cursor:pointer;transition:all .2s;
+}
+.an-period-btn:hover { color:#8A8A8A;border-color:rgba(255,255,255,0.12); }
+.an-period-btn.active { color:#ECECEC;background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.12); }
+
+/* Action bar */
+.an-action-bar {
+  display:flex;align-items:center;justify-content:space-between;
+  background:#1A1A1A;border-radius:10px;padding:12px 16px;
+  border:1px solid rgba(255,255,255,0.04);margin-top:16px;
+}
+.an-action-left { display:flex;align-items:center;gap:10px; }
+.an-action-right { display:flex;align-items:center;gap:8px; }
+
+/* Buttons */
+.an-btn {
+  padding:6px 14px;border-radius:7px;font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .2s;border:1px solid transparent;
+}
+.an-btn--primary { background:rgba(100,181,246,0.12);border-color:rgba(100,181,246,0.3);color:#64B5F6; }
+.an-btn--primary:hover { background:rgba(100,181,246,0.2); }
+.an-btn--secondary { background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);color:#8A8A8A; }
+.an-btn--secondary:hover { background:rgba(255,255,255,0.08);color:#ECECEC; }
+.an-btn--green { background:transparent;border-color:rgba(102,187,106,0.4);color:#66BB6A; }
+.an-btn--green:hover { background:rgba(102,187,106,0.08); }
+
+/* Style selector */
+.an-style-toggle {
+  display:flex;background:#111;border-radius:7px;overflow:hidden;
+  border:1px solid rgba(255,255,255,0.06);
+}
+.an-style-opt {
+  padding:5px 14px;font-size:11px;font-weight:600;color:#6A6A6A;
+  cursor:pointer;transition:all .2s;
+}
+.an-style-opt:hover { color:#8A8A8A; }
+.an-style-opt.active { color:#ECECEC;background:rgba(255,255,255,0.06); }
+
+/* Integration cards */
+.an-int-grid { display:grid;grid-template-columns:repeat(2,1fr);gap:10px; }
+.an-int-card {
+  background:#1A1A1A;border-radius:10px;padding:14px 16px;
+  border:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:12px;
+}
+.an-int-icon {
+  width:40px;height:40px;border-radius:10px;display:flex;
+  align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+}
+.an-int-info { flex:1;min-width:0; }
+.an-int-name { font-size:13px;font-weight:600;color:#ECECEC; }
+.an-int-desc { font-size:11px;color:#6A6A6A;margin-top:2px; }
+.an-int-status {
+  font-size:10px;font-weight:600;padding:3px 8px;border-radius:5px;
+}
+.an-int-status--on { background:rgba(102,187,106,0.1);color:#66BB6A; }
+.an-int-status--off { background:rgba(255,255,255,0.05);color:#6A6A6A; }
+
+/* Distribution form */
+.an-dist-row {
+  display:flex;align-items:center;gap:10px;padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.an-dist-row:last-child { border-bottom:none; }
+.an-dist-email { font-size:13px;color:#ECECEC;flex:1; }
+.an-dist-sched { font-size:11px;color:#8A8A8A; }
+.an-dist-remove {
+  width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.04);
+  border:none;color:#6A6A6A;cursor:pointer;font-size:12px;
+  display:flex;align-items:center;justify-content:center;
+}
+.an-dist-remove:hover { background:rgba(224,85,85,0.1);color:#E05555; }
+
+/* Input fields */
+.an-input {
+  background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:7px;
+  padding:7px 10px;font-size:12px;color:#ECECEC;outline:none;width:100%;
+}
+.an-input:focus { border-color:rgba(100,181,246,0.3); }
+.an-select {
+  background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:7px;
+  padding:7px 10px;font-size:12px;color:#ECECEC;outline:none;
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236A6A6A' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+  padding-right:28px;
+}
+
+/* Preview panel */
+.an-preview {
+  background:#1A1A1A;border-radius:12px;padding:20px;
+  border:1px solid rgba(255,255,255,0.04);margin-top:16px;
+  display:none;
+}
+.an-preview.open { display:block; }
+.an-preview-head {
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:16px;padding-bottom:12px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.an-preview-title { font-size:14px;font-weight:700;color:#ECECEC; }
+.an-preview-close {
+  width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,0.04);
+  border:none;color:#6A6A6A;cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+}
+.an-preview-close:hover { color:#ECECEC; }
+
+/* Chart placeholders */
+.an-chart {
+  background:#111;border-radius:8px;padding:20px;text-align:center;
+  border:1px solid rgba(255,255,255,0.04);margin-bottom:12px;
+}
+.an-chart-bars {
+  display:flex;align-items:flex-end;justify-content:center;gap:6px;
+  height:120px;margin-bottom:10px;
+}
+.an-chart-bar {
+  width:24px;border-radius:3px 3px 0 0;
+  background:rgba(100,181,246,0.25);transition:height .5s;
+}
+.an-chart-label { font-size:10px;color:#6A6A6A; }
+.an-chart-title { font-size:11px;color:#8A8A8A;margin-top:8px; }
+
+/* KPI row in preview */
+.an-kpi-row { display:flex;gap:10px;margin-bottom:16px; }
+.an-kpi-item {
+  flex:1;background:#111;border-radius:8px;padding:12px;text-align:center;
+  border:1px solid rgba(255,255,255,0.04);
+}
+.an-kpi-val { font-size:18px;font-weight:700;color:#ECECEC; }
+.an-kpi-label { font-size:10px;color:#6A6A6A;margin-top:2px;text-transform:uppercase;letter-spacing:0.04em; }
+.an-kpi-trend { font-size:10px;margin-top:4px; }
+.an-kpi-trend--up { color:#66BB6A; }
+.an-kpi-trend--down { color:#E05555; }
+
+/* Webhook / API section */
+.an-api-block {
+  background:#111;border-radius:8px;padding:12px 14px;
+  border:1px solid rgba(255,255,255,0.04);margin-bottom:8px;
+  font-family:monospace;
+}
+.an-api-url { font-size:12px;color:#64B5F6;word-break:break-all; }
+.an-api-method { font-size:10px;color:#66BB6A;font-weight:700;margin-right:8px; }
+.an-api-desc { font-size:11px;color:#6A6A6A;margin-top:4px; }
+
+/* Toast */
+.an-toast {
+  position:fixed;bottom:24px;right:24px;background:#1A1A1A;
+  border:1px solid rgba(102,187,106,0.3);border-radius:10px;
+  padding:12px 18px;font-size:13px;color:#66BB6A;font-weight:600;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;
+  transform:translateY(80px);opacity:0;transition:all .3s;
+}
+.an-toast.show { transform:translateY(0);opacity:1; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="an-tabs">
+  <div class="an-tab active" onclick="anTab(this,'reports')">Отчёты</div>
+  <div class="an-tab" onclick="anTab(this,'export')">Экспорт</div>
+  <div class="an-tab" onclick="anTab(this,'integrations')">Интеграции</div>
+  <div class="an-tab" onclick="anTab(this,'distribution')">Рассылка</div>
+  <div class="an-tab" onclick="anTab(this,'api')">API</div>
+</div>
+
+{# ═══ TAB 1: Отчёты ═══ #}
+<div class="an-panel active" id="panel-reports">
+  <div class="an-section">
+    <div class="an-section-title">Центр отчётности</div>
+    <div class="an-section-sub">Выберите отчёты, настройте период и формат. Данные формируются в реальном времени</div>
+  </div>
+
+  {# Period selector #}
+  <div class="an-period-bar">
+    <span style="font-size:11px;color:#6A6A6A;margin-right:4px;">Период:</span>
+    <button class="an-period-btn" onclick="setPeriod(this)">Сегодня</button>
+    <button class="an-period-btn" onclick="setPeriod(this)">7 дней</button>
+    <button class="an-period-btn active" onclick="setPeriod(this)">30 дней</button>
+    <button class="an-period-btn" onclick="setPeriod(this)">90 дней</button>
+    <button class="an-period-btn" onclick="setPeriod(this)">6 месяцев</button>
+    <button class="an-period-btn" onclick="setPeriod(this)">1 год</button>
+    <button class="an-period-btn" onclick="setPeriod(this)">Всё время</button>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+      <span style="font-size:11px;color:#6A6A6A;">Стиль:</span>
+      <div class="an-style-toggle">
+        <div class="an-style-opt active" onclick="setStyle(this,'official')">Официальный</div>
+        <div class="an-style-opt" onclick="setStyle(this,'informal')">Неофициальный</div>
+      </div>
+    </div>
+  </div>
+
+  {# Reports list #}
+  <div class="an-reports-grid">
+
+    <div class="an-report-card selected" onclick="toggleReport(this)" data-report="sales">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Продажи и выручка <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">Ключевой</span></div>
+        <div class="an-report-desc">Объём продаж, средний чек, динамика выручки по дням/неделям</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">$4.0M</div><div class="an-metric-mini-label">Выручка</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">1 247</div><div class="an-metric-mini-label">Заказов</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">$3 208</div><div class="an-metric-mini-label">Ср. чек</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="sla">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">SLA и сроки доставки <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">3 нарушения</span></div>
+        <div class="an-report-desc">Соблюдение SLA, среднее время обработки, нарушения по этапам</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">95.2%</div><div class="an-metric-mini-label">SLA</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">2.1д</div><div class="an-metric-mini-label">Среднее</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="conversion">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Конверсия RFQ &rarr; Заказ</div>
+        <div class="an-report-desc">Воронка продаж, конверсия по этапам, причины отказов</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">68%</div><div class="an-metric-mini-label">Конверсия</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">84</div><div class="an-metric-mini-label">RFQ</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">57</div><div class="an-metric-mini-label">Заказов</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="products">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Товары и ассортимент</div>
+        <div class="an-report-desc">Активные позиции, топ-продаваемые, мёртвые остатки, ценообразование</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">918K</div><div class="an-metric-mini-label">Товаров</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">Top 50</div><div class="an-metric-mini-label">Продажи</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="claims">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Рекламации и возвраты <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">2 открытых</span></div>
+        <div class="an-report-desc">Открытые рекламации, решённые споры, причины возвратов, влияние на рейтинг</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">98.4%</div><div class="an-metric-mini-label">Без проблем</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="rating">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Рейтинг и качество</div>
+        <div class="an-report-desc">Динамика рейтинга, внешний/поведенческий, факторы влияния</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">85.2</div><div class="an-metric-mini-label">Рейтинг</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">4.26</div><div class="an-metric-mini-label">Оценка</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="customers">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Клиенты и география</div>
+        <div class="an-report-desc">Сегментация, география заказов, LTV, повторные покупки</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">342</div><div class="an-metric-mini-label">Клиентов</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">14</div><div class="an-metric-mini-label">Стран</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="negotiations">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Переторжка и скидки <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">73% принято</span></div>
+        <div class="an-report-desc">Средняя скидка, принятые/отклонённые, встречные предложения</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">4.2%</div><div class="an-metric-mini-label">Ср. скидка</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="finance">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Финансовый отчёт <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">P&L</span></div>
+        <div class="an-report-desc">Дебиторка, выплаты, удержания, комиссия платформы, баланс</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">$3.8M</div><div class="an-metric-mini-label">Выплачено</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">$42K</div><div class="an-metric-mini-label">Задолж.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="drawings">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Чертежи и документация</div>
+        <div class="an-report-desc">Загруженные чертежи, запросы покупателей, время ответа</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">28</div><div class="an-metric-mini-label">Файлов</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">3</div><div class="an-metric-mini-label">Запросов</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="logistics">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Логистика и отгрузки</div>
+        <div class="an-report-desc">Этапы отгрузки, таможня, время в пути, стоимость доставки</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">12.4д</div><div class="an-metric-mini-label">Ср. путь</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">$340</div><div class="an-metric-mini-label">Доставка</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="an-report-card" onclick="toggleReport(this)" data-report="forecast">
+      <div class="an-report-check">&#10003;</div>
+      <div class="an-report-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      </div>
+      <div class="an-report-left">
+        <div class="an-report-name">Прогноз и тренды <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">+28%</span></div>
+        <div class="an-report-desc">Прогноз спроса, тренды по категориям, сезонность, рекомендации</div>
+      </div>
+      <div class="an-report-right">
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <div class="an-report-metrics">
+          <div class="an-metric-mini"><div class="an-metric-mini-val">Q2</div><div class="an-metric-mini-label">Пик сезон</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  {# Action bar #}
+  <div class="an-action-bar">
+    <div class="an-action-left">
+      <span style="font-size:12px;color:#8A8A8A;">Выбрано: <strong style="color:#ECECEC;" id="selectedCount">1</strong> отчёт</span>
+      <span style="font-size:11px;color:#6A6A6A;">·</span>
+      <span style="font-size:12px;color:#8A8A8A;">Формат:</span>
+      <select class="an-select" style="width:auto;" id="exportFormat">
+        <option>PDF</option>
+        <option>Excel (.xlsx)</option>
+        <option>CSV</option>
+        <option>Google Sheets</option>
+        <option>JSON</option>
+      </select>
+    </div>
+    <div class="an-action-right">
+      <button class="an-btn an-btn--secondary" onclick="previewReport()">Предпросмотр</button>
+      <button class="an-btn an-btn--secondary" onclick="selectAll()">Выбрать все</button>
+      <button class="an-btn an-btn--green" onclick="generateReport()">Сформировать отчёт</button>
+    </div>
+  </div>
+
+  {# Preview panel — filled dynamically by JS #}
+  <div class="an-preview" id="reportPreview">
+    <div class="an-preview-head">
+      <div class="an-preview-title" id="previewTitle">Предпросмотр</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="an-btn an-btn--primary" onclick="downloadReport()" style="padding:4px 12px;font-size:11px;">
+          <span style="margin-right:4px;">&#8615;</span> Скачать отчёт
+        </button>
+        <button class="an-preview-close" onclick="closePreview()">&times;</button>
+      </div>
+    </div>
+    <div id="previewKPI" class="an-kpi-row"></div>
+    <div id="previewChart" class="an-chart"></div>
+    <div id="previewTable" style="display:none;"></div>
+  </div>
+</div>
+
+{# ═══ TAB 2: Экспорт ═══ #}
+<div class="an-panel" id="panel-export">
+  <div class="an-section">
+    <div class="an-section-title">Быстрый экспорт</div>
+    <div class="an-section-sub">Выгрузка данных в удобном формате одним кликом</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+
+    <div class="an-report-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;grid-template-columns:none;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:8px;background:rgba(102,187,106,0.12);display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#66BB6A" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 8h6M5 5.5h4M5 10.5h3"/></svg>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">Прайс-лист</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Все активные товары с ценами, остатками и сроками поставки</div>
+      <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(102,187,106,0.14);color:#66BB6A;margin-top:auto;">XLSX</span>
+    </div>
+
+    <div class="an-report-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;grid-template-columns:none;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:8px;background:rgba(100,181,246,0.12);display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#64B5F6" stroke-width="1.4" stroke-linecap="round"><path d="M4 3.5h8l-.8 7H4.8L4 3.5z"/><circle cx="6" cy="13" r="1.2"/><circle cx="11" cy="13" r="1.2"/></svg>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">История заказов</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Все заказы с деталями, статусами и суммами за выбранный период</div>
+      <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(100,181,246,0.14);color:#64B5F6;margin-top:auto;">CSV</span>
+    </div>
+
+    <div class="an-report-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;grid-template-columns:none;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:8px;background:rgba(239,83,80,0.12);display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#EF5350" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4v8"/><path d="M5.8 6.2c0-.8 1-1.4 2.2-1.4s2.2.6 2.2 1.4-1 1.3-2.2 1.3S5.8 8.2 5.8 9s1 1.5 2.2 1.5 2.2-.4 2.2-1.2"/></svg>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">Финансовый отчёт</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Сводный PDF с платежами, актами и балансом за месяц</div>
+      <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(239,83,80,0.14);color:#EF5350;margin-top:auto;">PDF</span>
+    </div>
+
+    <div class="an-report-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;grid-template-columns:none;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,159,10,0.12);display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#FF9F0A" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v4l2.5 1.5"/></svg>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">SLA-отчёт</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Исполнение сроков по каждому заказу, нарушения и причины</div>
+      <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(102,187,106,0.14);color:#66BB6A;margin-top:auto;">XLSX</span>
+    </div>
+
+    <div class="an-report-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;grid-template-columns:none;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:8px;background:rgba(171,71,188,0.12);display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#AB47BC" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 13.5V9M5.5 13.5V6M8.5 13.5V8M11.5 13.5V3.5" stroke-width="1.8"/></svg>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">Аналитика спроса</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Популярные позиции, частота запросов, тренды по категориям</div>
+      <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(102,187,106,0.14);color:#66BB6A;margin-top:auto;">XLSX</span>
+    </div>
+
+    <div class="an-report-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;grid-template-columns:none;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:8px;background:rgba(100,181,246,0.12);display:flex;align-items:center;justify-content:center;">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#64B5F6" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="3" width="12" height="10.5" rx="1.5"/><path d="M5.5 1v3M10.5 1v3"/><path d="M5.5 7.5h5" stroke-width="1.5"/></svg>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">Запросы клиентов</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Все RFQ с позициями, статусами и историей ответов</div>
+      <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(100,181,246,0.14);color:#64B5F6;margin-top:auto;">CSV</span>
+    </div>
+
+  </div>
+</div>
+
+{# ═══ TAB 3: Интеграции ═══ #}
+<div class="an-panel" id="panel-integrations">
+  <div class="an-section">
+    <div class="an-section-title">Интеграции с мессенджерами и системами</div>
+    <div class="an-section-sub">Подключите каналы для автоматической отправки отчётов и уведомлений</div>
+  </div>
+
+  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Мессенджеры</div>
+  <div class="an-int-grid" style="margin-bottom:20px;">
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(38,166,224,0.1);font-size:22px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#26A6E0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">Telegram</div>
+        <div class="an-int-desc">Bot API · Отчёты в чат или канал</div>
+      </div>
+      <span class="an-int-status an-int-status--on">Подключён</span>
+    </div>
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(37,211,102,0.1);font-size:22px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">WhatsApp Business</div>
+        <div class="an-int-desc">Business API · PDF отчёты в диалог</div>
+      </div>
+      <span class="an-int-status an-int-status--off">Не подключён</span>
+    </div>
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(124,77,255,0.1);font-size:22px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#7C4DFF"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1.5 14.5v-9l7 4.5-7 4.5z"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">Viber</div>
+        <div class="an-int-desc">Viber Bot · Уведомления и сводки</div>
+      </div>
+      <span class="an-int-status an-int-status--off">Не подключён</span>
+    </div>
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(255,140,66,0.1);font-size:22px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">WeChat</div>
+        <div class="an-int-desc">Official Account · Отчёты для партнёров КНР</div>
+      </div>
+      <span class="an-int-status an-int-status--off">Не подключён</span>
+    </div>
+  </div>
+
+  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">CRM / ERP системы</div>
+  <div class="an-int-grid" style="margin-bottom:20px;">
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">Битрикс24</div>
+        <div class="an-int-desc">CRM · Синхронизация сделок и контактов</div>
+      </div>
+      <span class="an-int-status an-int-status--on">Подключён</span>
+    </div>
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6.36 3.64"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">AmoCRM</div>
+        <div class="an-int-desc">CRM · Воронка продаж, аналитика сделок</div>
+      </div>
+      <span class="an-int-status an-int-status--off">Не подключён</span>
+    </div>
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">1С:Предприятие</div>
+        <div class="an-int-desc">ERP · Выгрузка накладных, сверка остатков</div>
+      </div>
+      <span class="an-int-status an-int-status--on">Подключён</span>
+    </div>
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">SAP Business One</div>
+        <div class="an-int-desc">ERP · Управление цепочкой поставок</div>
+      </div>
+      <span class="an-int-status an-int-status--off">Не подключён</span>
+    </div>
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">Salesforce</div>
+        <div class="an-int-desc">CRM · Глобальная аналитика продаж</div>
+      </div>
+      <span class="an-int-status an-int-status--off">Не подключён</span>
+    </div>
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">Мой Склад</div>
+        <div class="an-int-desc">ERP · Учёт товаров, складских остатков</div>
+      </div>
+      <span class="an-int-status an-int-status--off">Не подключён</span>
+    </div>
+  </div>
+
+  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Дополнительно</div>
+  <div class="an-int-grid">
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">Google Sheets</div>
+        <div class="an-int-desc">Автоматическая выгрузка в таблицы</div>
+      </div>
+      <span class="an-int-status an-int-status--on">Подключён</span>
+    </div>
+    <div class="an-int-card">
+      <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      <div class="an-int-info">
+        <div class="an-int-name">Webhook</div>
+        <div class="an-int-desc">HTTP callback при генерации отчёта</div>
+      </div>
+      <span class="an-int-status an-int-status--on">Подключён</span>
+    </div>
+  </div>
+</div>
+
+{# ═══ TAB 3: Рассылка ═══ #}
+<div class="an-panel" id="panel-distribution">
+  <div class="an-section">
+    <div class="an-section-title">Автоматическая рассылка отчётов</div>
+    <div class="an-section-sub">Настройте расписание отправки отчётов на email. Поддерживаются Gmail, Mail.ru, Яндекс и другие</div>
+  </div>
+
+  {# Style selector for emails #}
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+    <div>
+      <span style="font-size:11px;color:#6A6A6A;">Стиль писем:</span>
+      <div class="an-style-toggle" style="margin-top:6px;">
+        <div class="an-style-opt active" onclick="setEmailStyle(this,'official')">Официальный</div>
+        <div class="an-style-opt" onclick="setEmailStyle(this,'informal')">Неофициальный</div>
+      </div>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:11px;color:#6A6A6A;margin-bottom:6px;">Описание стиля:</div>
+      <div id="styleDesc" style="font-size:12px;color:#8A8A8A;line-height:1.5;">
+        Фирменный бланк с логотипом, полная таблица данных, подпись компании, юридические реквизиты
+      </div>
+    </div>
+  </div>
+
+  {# Active subscriptions #}
+  <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);margin-bottom:16px;">
+    <div style="font-size:12px;font-weight:600;color:#ECECEC;margin-bottom:12px;">Активные подписки</div>
+
+    <div class="an-dist-row">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/></svg>
+        <div class="an-dist-email">director@consolidator.parts</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">Gmail</span>
+        <div class="an-dist-sched">Пн-Пт, 09:00</div>
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(102,187,106,0.1);color:#66BB6A;">Все отчёты</span>
+        <button class="an-dist-remove" title="Удалить">&times;</button>
+      </div>
+    </div>
+
+    <div class="an-dist-row">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/></svg>
+        <div class="an-dist-email">logistics@company.ru</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">Mail.ru</span>
+        <div class="an-dist-sched">Пн, 08:00</div>
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">SLA, Логистика</span>
+        <button class="an-dist-remove" title="Удалить">&times;</button>
+      </div>
+    </div>
+
+    <div class="an-dist-row">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/></svg>
+        <div class="an-dist-email">ceo@company.ru</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">Яндекс</span>
+        <div class="an-dist-sched">1 числа, 10:00</div>
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">Финансовый</span>
+        <button class="an-dist-remove" title="Удалить">&times;</button>
+      </div>
+    </div>
+  </div>
+
+  {# Add new subscription #}
+  <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);">
+    <div style="font-size:12px;font-weight:600;color:#ECECEC;margin-bottom:12px;">Добавить получателя</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;">
+      <div>
+        <label style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px;">Email</label>
+        <input class="an-input" type="email" placeholder="name@company.com" id="newEmail" />
+      </div>
+      <div>
+        <label style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px;">Расписание</label>
+        <select class="an-select" style="width:100%;" id="newSchedule">
+          <option>Ежедневно, 09:00</option>
+          <option>Пн-Пт, 09:00</option>
+          <option>Понедельник, 08:00</option>
+          <option>1 числа, 10:00</option>
+          <option>Пятница, 17:00</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px;">Отчёты</label>
+        <select class="an-select" style="width:100%;" id="newReports">
+          <option>Все отчёты</option>
+          <option>Продажи и выручка</option>
+          <option>SLA и сроки</option>
+          <option>Конверсия RFQ</option>
+          <option>Финансовый</option>
+          <option>Рейтинг</option>
+          <option>Логистика</option>
+        </select>
+      </div>
+      <button class="an-btn an-btn--primary" onclick="addSubscription()" style="margin-bottom:1px;">Добавить</button>
+    </div>
+
+    <div style="margin-top:12px;font-size:11px;color:#6A6A6A;line-height:1.6;">
+      Поддерживаемые почтовые сервисы: <strong style="color:#8A8A8A;">Gmail</strong>, <strong style="color:#8A8A8A;">Mail.ru</strong>, <strong style="color:#8A8A8A;">Яндекс</strong>, <strong style="color:#8A8A8A;">Outlook</strong>, <strong style="color:#8A8A8A;">iCloud</strong> и любые SMTP/IMAP серверы.
+      Письма отправляются от имени <strong style="color:#8A8A8A;">noreply@consolidator.parts</strong>
+    </div>
+  </div>
+
+  {# Telegram notifications #}
+  <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);margin-top:12px;">
+    <div style="font-size:12px;font-weight:600;color:#ECECEC;margin-bottom:12px;">Рассылка в мессенджеры</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:16px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#26A6E0"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+          </span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#ECECEC;">Telegram</div>
+            <div style="font-size:10px;color:#6A6A6A;">@consolidator_reports_bot</div>
+          </div>
+        </div>
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(102,187,106,0.1);color:#66BB6A;">Активен</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:16px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+          </span>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#ECECEC;">WhatsApp</div>
+            <div style="font-size:10px;color:#6A6A6A;">Не настроен</div>
+          </div>
+        </div>
+        <button class="an-btn an-btn--secondary" style="padding:3px 10px;font-size:10px;">Подключить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ═══ TAB 4: API ═══ #}
+<div class="an-panel" id="panel-api">
+  <div class="an-section">
+    <div class="an-section-title">API для интеграций</div>
+    <div class="an-section-sub">REST API для получения отчётов, метрик и уведомлений в ваших системах</div>
+  </div>
+
+  <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:600;color:#ECECEC;">API ключ</div>
+      <button class="an-btn an-btn--secondary" style="padding:3px 10px;font-size:10px;" onclick="regenerateKey()">Перегенерировать</button>
+    </div>
+    <div class="an-api-block">
+      <code style="font-size:12px;color:#ECECEC;">sk-cons-4f8a2b1c9d7e6f3a5b0c8d2e1f4a7b3c</code>
+    </div>
+    <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">Используйте этот ключ в заголовке <code style="color:#8A8A8A;">Authorization: Bearer &lt;key&gt;</code></div>
+  </div>
+
+  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Эндпоинты</div>
+
+  <div class="an-api-block">
+    <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/sales</span></div>
+    <div class="an-api-desc">Отчёт по продажам и выручке. Параметры: period, format (json/csv/pdf)</div>
+  </div>
+  <div class="an-api-block">
+    <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/sla</span></div>
+    <div class="an-api-desc">SLA метрики и нарушения. Параметры: period, include_details</div>
+  </div>
+  <div class="an-api-block">
+    <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/conversion</span></div>
+    <div class="an-api-desc">Воронка конверсии RFQ → Заказ. Параметры: period, group_by</div>
+  </div>
+  <div class="an-api-block">
+    <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/finance</span></div>
+    <div class="an-api-desc">Финансовый отчёт P&L. Параметры: period, currency, include_debtors</div>
+  </div>
+  <div class="an-api-block">
+    <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/rating</span></div>
+    <div class="an-api-desc">Рейтинг и история событий. Параметры: period, include_events</div>
+  </div>
+  <div class="an-api-block">
+    <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/logistics</span></div>
+    <div class="an-api-desc">Логистика и отгрузки. Параметры: period, destination_country</div>
+  </div>
+  <div class="an-api-block">
+    <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/metrics/dashboard</span></div>
+    <div class="an-api-desc">Сводка ключевых метрик дашборда в реальном времени</div>
+  </div>
+  <div class="an-api-block">
+    <div><span class="an-api-method">POST</span><span class="an-api-url">/api/v1/reports/generate</span></div>
+    <div class="an-api-desc">Генерация пакетного отчёта. Body: { reports: [...], period, format, style }</div>
+  </div>
+  <div class="an-api-block">
+    <div><span class="an-api-method">POST</span><span class="an-api-url">/api/v1/webhooks/subscribe</span></div>
+    <div class="an-api-desc">Подписка на webhook уведомления. Body: { url, events: [...] }</div>
+  </div>
+  <div class="an-api-block">
+    <div><span class="an-api-method">POST</span><span class="an-api-url">/api/v1/notifications/send</span></div>
+    <div class="an-api-desc">Отправка отчёта в Telegram/WhatsApp. Body: { channel, report_id, chat_id }</div>
+  </div>
+
+  <div style="background:rgba(100,181,246,0.04);border:1px solid rgba(100,181,246,0.1);border-radius:10px;padding:12px 14px;margin-top:16px;font-size:12px;color:#8A8A8A;line-height:1.6;">
+    Документация API доступна по адресу <strong style="color:#64B5F6;">docs.consolidator.parts/api/v1</strong>.
+    Rate limit: 100 запросов/минуту. Формат ответа: JSON. Поддерживается пагинация, фильтрация и сортировка.
+  </div>
+</div>
+
+{# Toast notification #}
+<div class="an-toast" id="anToast"></div>
+
+<script>
+function anTab(el, panel) {
+  document.querySelectorAll('.an-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.an-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + panel).classList.add('active');
+}
+
+function setPeriod(btn) {
+  document.querySelectorAll('.an-period-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setStyle(el, style) {
+  el.parentElement.querySelectorAll('.an-style-opt').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function setEmailStyle(el, style) {
+  el.parentElement.querySelectorAll('.an-style-opt').forEach(o => o.classList.remove('active'));
+  el.classList.add('active');
+  const desc = document.getElementById('styleDesc');
+  if (style === 'official') {
+    desc.textContent = 'Фирменный бланк с логотипом, полная таблица данных, подпись компании, юридические реквизиты';
+  } else {
+    desc.textContent = 'Краткая сводка ключевых метрик, без юридических данных, дружелюбный тон, эмодзи-акценты';
+  }
+}
+
+function toggleReport(card) {
+  card.classList.toggle('selected');
+  updateCount();
+}
+
+function selectAll() {
+  const cards = document.querySelectorAll('.an-report-card');
+  const allSelected = [...cards].every(c => c.classList.contains('selected'));
+  cards.forEach(c => {
+    if (allSelected) c.classList.remove('selected');
+    else c.classList.add('selected');
+  });
+  updateCount();
+}
+
+function updateCount() {
+  const count = document.querySelectorAll('.an-report-card.selected').length;
+  const el = document.getElementById('selectedCount');
+  el.textContent = count;
+}
+
+const reportData = {
+  sales: {
+    title: 'Продажи и выручка',
+    kpis: [
+      {val:'$4.0M', label:'Общая выручка', trend:'+28.7%', up:true},
+      {val:'1 247', label:'Заказов', trend:'+15.3%', up:true},
+      {val:'$3 208', label:'Средний чек', trend:'+11.6%', up:true},
+      {val:'342', label:'Клиентов', trend:'-2.1%', up:false},
+    ],
+    chart: {type:'bars', title:'Выручка по дням (30 дней)', vals:[65,80,45,90,70,55,85,75,60,95,50,88,72,68,82,77,90,65,78,85,92,58,74,80,86,70,95,88,76,82]},
+  },
+  sla: {
+    title: 'SLA и сроки доставки',
+    kpis: [
+      {val:'95.2%', label:'SLA соблюдение', trend:'+1.8%', up:true},
+      {val:'2.1д', label:'Среднее время', trend:'-0.3д', up:true},
+      {val:'3', label:'Нарушений', trend:'+1', up:false},
+      {val:'12', label:'Под угрозой', trend:'-4', up:true},
+    ],
+    chart: {type:'bars', title:'SLA по неделям', vals:[92,94,96,91,95,97,93,95,98,94,96,95]},
+  },
+  conversion: {
+    title: 'Конверсия RFQ → Заказ',
+    kpis: [
+      {val:'68%', label:'Конверсия', trend:'+4.2%', up:true},
+      {val:'84', label:'Всего RFQ', trend:'+12', up:true},
+      {val:'57', label:'Стали заказами', trend:'+9', up:true},
+      {val:'27', label:'Отклонены', trend:'-3', up:true},
+    ],
+    chart: {type:'funnel', title:'Воронка: RFQ → Котировка → Заказ → Оплата', vals:[84,72,57,51]},
+  },
+  products: {
+    title: 'Товары и ассортимент',
+    kpis: [
+      {val:'918 759', label:'Активных', trend:'+2 140', up:true},
+      {val:'12 430', label:'Без продаж 90д', trend:'+840', up:false},
+      {val:'Top 50', label:'80% выручки', trend:'', up:true},
+      {val:'$48.20', label:'Ср. цена', trend:'+$2.10', up:true},
+    ],
+    chart: {type:'hbars', title:'Топ-5 категорий по выручке', items:[
+      {name:'Гидравлика', val:85}, {name:'Фильтры', val:72}, {name:'Электрика', val:58}, {name:'Двигатели', val:45}, {name:'Трансмиссия', val:38}
+    ]},
+  },
+  claims: {
+    title: 'Рекламации и возвраты',
+    kpis: [
+      {val:'2', label:'Открытых', trend:'-1', up:true},
+      {val:'14', label:'За 90 дней', trend:'-3', up:true},
+      {val:'98.4%', label:'Без проблем', trend:'+0.6%', up:true},
+      {val:'3.2д', label:'Ср. решение', trend:'-0.8д', up:true},
+    ],
+    chart: {type:'hbars', title:'Причины рекламаций', items:[
+      {name:'Повреждение при доставке', val:40}, {name:'Несоответствие описанию', val:30}, {name:'Некомплект', val:20}, {name:'Заводской брак', val:10}
+    ]},
+  },
+  rating: {
+    title: 'Рейтинг и качество',
+    kpis: [
+      {val:'85.2', label:'Общий рейтинг', trend:'+3.4', up:true},
+      {val:'88.0', label:'Внешний (60%)', trend:'+2.1', up:true},
+      {val:'81.0', label:'Поведенческий (40%)', trend:'+5.2', up:true},
+      {val:'4.26', label:'Оценка /5', trend:'+0.18', up:true},
+    ],
+    chart: {type:'bars', title:'Рейтинг по месяцам', vals:[78,79,80,82,81,83,82,84,83,85,84,85]},
+  },
+  customers: {
+    title: 'Клиенты и география',
+    kpis: [
+      {val:'342', label:'Всего клиентов', trend:'+28', up:true},
+      {val:'14', label:'Стран', trend:'+2', up:true},
+      {val:'$11.7K', label:'Ср. LTV', trend:'+$1.2K', up:true},
+      {val:'34%', label:'Повторные', trend:'+5%', up:true},
+    ],
+    chart: {type:'hbars', title:'Топ-5 стран по заказам', items:[
+      {name:'Россия', val:65}, {name:'Казахстан', val:48}, {name:'Беларусь', val:35}, {name:'Узбекистан', val:22}, {name:'Китай', val:18}
+    ]},
+  },
+  negotiations: {
+    title: 'Переторжка и скидки',
+    kpis: [
+      {val:'4.2%', label:'Средняя скидка', trend:'-0.3%', up:true},
+      {val:'73%', label:'Принятых', trend:'+8%', up:true},
+      {val:'15%', label:'Встречных', trend:'-2%', up:true},
+      {val:'12%', label:'Отклонённых', trend:'-6%', up:true},
+    ],
+    chart: {type:'bars', title:'Скидки по неделям (%)', vals:[5,4,6,3,5,4,3,5,4,3,4,5]},
+  },
+  finance: {
+    title: 'Финансовый отчёт',
+    kpis: [
+      {val:'$3.8M', label:'Выплачено', trend:'+$420K', up:true},
+      {val:'$42K', label:'Дебиторка', trend:'-$8K', up:true},
+      {val:'$156K', label:'Удержания', trend:'+$12K', up:false},
+      {val:'3.9%', label:'Комиссия', trend:'0%', up:true},
+    ],
+    chart: {type:'hbars', title:'Структура расходов', items:[
+      {name:'Выплаты поставщику', val:92}, {name:'Комиссия платформы', val:45}, {name:'Удержания/штрафы', val:18}, {name:'Возвраты', val:8}
+    ]},
+  },
+  drawings: {
+    title: 'Чертежи и документация',
+    kpis: [
+      {val:'28', label:'Загружено', trend:'+6', up:true},
+      {val:'3', label:'Запросов', trend:'+1', up:false},
+      {val:'4.2ч', label:'Ср. ответ', trend:'-1.8ч', up:true},
+      {val:'92%', label:'Передано', trend:'+4%', up:true},
+    ],
+    chart: {type:'bars', title:'Загрузки по неделям', vals:[3,5,2,4,6,3,5,4,2,6,4,5]},
+  },
+  logistics: {
+    title: 'Логистика и отгрузки',
+    kpis: [
+      {val:'12.4д', label:'Ср. путь', trend:'-1.2д', up:true},
+      {val:'$340', label:'Ср. доставка', trend:'-$28', up:true},
+      {val:'96%', label:'В срок', trend:'+2%', up:true},
+      {val:'4', label:'На таможне', trend:'-1', up:true},
+    ],
+    chart: {type:'hbars', title:'Время по этапам (дни)', items:[
+      {name:'Производство', val:70}, {name:'Упаковка', val:15}, {name:'Транспорт', val:55}, {name:'Таможня', val:40}, {name:'Последняя миля', val:20}
+    ]},
+  },
+  forecast: {
+    title: 'Прогноз и тренды',
+    kpis: [
+      {val:'+28%', label:'Тренд роста', trend:'vs 2025', up:true},
+      {val:'Q2', label:'Пик сезон', trend:'апр-июн', up:true},
+      {val:'$5.1M', label:'Прогноз Q2', trend:'+$1.1M', up:true},
+      {val:'Гидравлика', label:'Топ категория', trend:'+34%', up:true},
+    ],
+    chart: {type:'bars', title:'Прогноз выручки по месяцам (2026)', vals:[80,85,92,110,115,108,95,88,90,98,105,112]},
+  },
+};
+
+function openReportView(btn) {
+  const card = btn.closest('.an-report-card');
+  currentReportKey = card.dataset.report;
+  const data = reportData[currentReportKey];
+  if (!data) return;
+  renderPreview(data);
+  const preview = document.getElementById('reportPreview');
+  preview.classList.add('open');
+  preview.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function previewReport() {
+  const selected = document.querySelector('.an-report-card.selected');
+  if (!selected) return;
+  currentReportKey = selected.dataset.report;
+  const data = reportData[currentReportKey];
+  if (!data) return;
+  const preview = document.getElementById('reportPreview');
+  renderPreview(data);
+  preview.classList.toggle('open');
+}
+
+function renderPreview(data) {
+  document.getElementById('previewTitle').textContent = data.title;
+
+  // KPIs
+  const kpiEl = document.getElementById('previewKPI');
+  kpiEl.innerHTML = data.kpis.map(k =>
+    `<div class="an-kpi-item">
+      <div class="an-kpi-val">${k.val}</div>
+      <div class="an-kpi-label">${k.label}</div>
+      ${k.trend ? `<div class="an-kpi-trend ${k.up ? 'an-kpi-trend--up' : 'an-kpi-trend--down'}">${k.trend}</div>` : ''}
+    </div>`
+  ).join('');
+
+  // Chart
+  const chartEl = document.getElementById('previewChart');
+  const tableEl = document.getElementById('previewTable');
+  chartEl.style.display = 'block';
+  tableEl.style.display = 'none';
+
+  if (data.chart.type === 'bars') {
+    const max = Math.max(...data.chart.vals);
+    chartEl.innerHTML = `<div class="an-chart-bars" style="height:120px;display:flex;align-items:flex-end;justify-content:center;gap:${data.chart.vals.length > 20 ? 3 : 8}px;">`
+      + data.chart.vals.map(v =>
+        `<div class="an-chart-bar" style="height:${(v/max)*110}px;width:${data.chart.vals.length > 20 ? 14 : 24}px;"></div>`
+      ).join('')
+      + `</div><div class="an-chart-title">${data.chart.title}</div>`;
+  }
+  else if (data.chart.type === 'funnel') {
+    const max = data.chart.vals[0];
+    const labels = ['RFQ получено','Котировка','Заказ','Оплата'];
+    chartEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;">`
+      + data.chart.vals.map((v,i) => {
+        const pct = (v/max)*100;
+        return `<div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:11px;color:#8A8A8A;width:100px;text-align:right;">${labels[i]}</span>
+          <div style="flex:1;background:#1A1A1A;border-radius:4px;height:24px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:rgba(100,181,246,${0.15 + i*0.08});border-radius:4px;display:flex;align-items:center;padding-left:8px;">
+              <span style="font-size:11px;font-weight:600;color:#ECECEC;">${v}</span>
+            </div>
+          </div>
+          <span style="font-size:10px;color:#6A6A6A;width:36px;">${Math.round(pct)}%</span>
+        </div>`;
+      }).join('')
+      + `</div><div class="an-chart-title">${data.chart.title}</div>`;
+  }
+  else if (data.chart.type === 'hbars') {
+    const max = Math.max(...data.chart.items.map(i => i.val));
+    chartEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:8px;padding:10px 0;">`
+      + data.chart.items.map(item =>
+        `<div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:11px;color:#8A8A8A;width:160px;text-align:right;flex-shrink:0;">${item.name}</span>
+          <div style="flex:1;background:#1A1A1A;border-radius:4px;height:20px;overflow:hidden;">
+            <div style="width:${(item.val/max)*100}%;height:100%;background:rgba(100,181,246,0.2);border-radius:4px;"></div>
+          </div>
+          <span style="font-size:11px;font-weight:600;color:#ECECEC;width:30px;">${item.val}%</span>
+        </div>`
+      ).join('')
+      + `</div><div class="an-chart-title">${data.chart.title}</div>`;
+  }
+}
+
+function closePreview() {
+  document.getElementById('reportPreview').classList.remove('open');
+}
+
+let currentReportKey = 'sales';
+
+function downloadReport() {
+  const format = document.getElementById('exportFormat').value;
+  const styleEl = document.querySelectorAll('.an-style-opt');
+  const isOfficial = styleEl[0]?.classList.contains('active');
+  const data = reportData[currentReportKey];
+  if (!data) return;
+
+  if (format === 'CSV') {
+    downloadCSV(data);
+  } else {
+    downloadHTML(data, isOfficial, format);
+  }
+}
+
+function downloadCSV(data) {
+  let csv = 'Метрика,Значение,Тренд\n';
+  data.kpis.forEach(k => {
+    csv += `"${k.label}","${k.val}","${k.trend}"\n`;
+  });
+  if (data.chart.items) {
+    csv += '\nКатегория,Значение\n';
+    data.chart.items.forEach(i => { csv += `"${i.name}",${i.val}\n`; });
+  }
+  const blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = data.title.replace(/\s+/g, '_') + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV скачан: ' + data.title);
+}
+
+function downloadHTML(data, official, format) {
+  const date = new Date().toLocaleDateString('ru-RU', {day:'2-digit',month:'long',year:'numeric'});
+  const period = document.querySelector('.an-period-btn.active')?.textContent || '30 дней';
+
+  // Build chart HTML
+  let chartHTML = '';
+  if (data.chart.type === 'bars') {
+    const max = Math.max(...data.chart.vals);
+    chartHTML = `<div style="display:flex;align-items:flex-end;gap:${data.chart.vals.length > 20 ? 4 : 8}px;height:140px;margin:20px 0;padding:10px;background:#f8f9fa;border-radius:8px;">` +
+      data.chart.vals.map(v =>
+        `<div style="width:${data.chart.vals.length > 20 ? 16 : 24}px;height:${(v/max)*120}px;background:#3b82f6;border-radius:3px 3px 0 0;"></div>`
+      ).join('') + `</div><p style="text-align:center;color:#666;font-size:12px;">${data.chart.title}</p>`;
+  } else if (data.chart.type === 'funnel') {
+    const max = data.chart.vals[0];
+    const labels = ['RFQ получено','Котировка','Заказ','Оплата'];
+    chartHTML = '<div style="margin:20px 0;">' + data.chart.vals.map((v,i) => {
+      const pct = (v/max)*100;
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="width:120px;text-align:right;font-size:13px;color:#555;">${labels[i]}</span>
+        <div style="flex:1;background:#e5e7eb;border-radius:4px;height:28px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${['#3b82f6','#60a5fa','#93c5fd','#bfdbfe'][i]};border-radius:4px;display:flex;align-items:center;padding-left:10px;">
+            <span style="font-size:12px;font-weight:600;">${v}</span>
+          </div>
+        </div>
+        <span style="width:40px;font-size:12px;color:#888;">${Math.round(pct)}%</span>
+      </div>`;
+    }).join('') + `</div><p style="text-align:center;color:#666;font-size:12px;">${data.chart.title}</p>`;
+  } else if (data.chart.type === 'hbars') {
+    const max = Math.max(...data.chart.items.map(i => i.val));
+    chartHTML = '<div style="margin:20px 0;">' + data.chart.items.map(item =>
+      `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="width:160px;text-align:right;font-size:13px;color:#555;">${item.name}</span>
+        <div style="flex:1;background:#e5e7eb;border-radius:4px;height:22px;overflow:hidden;">
+          <div style="width:${(item.val/max)*100}%;height:100%;background:#3b82f6;border-radius:4px;"></div>
+        </div>
+        <span style="width:40px;font-size:12px;font-weight:600;">${item.val}%</span>
+      </div>`
+    ).join('') + `</div><p style="text-align:center;color:#666;font-size:12px;">${data.chart.title}</p>`;
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8"><title>${data.title} — Consolidator Parts</title>
+<style>
+  * { margin:0;padding:0;box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;padding:40px;max-width:900px;margin:0 auto;line-height:1.6; }
+  @media print { body { padding:20px; } .no-print { display:none!important; } }
+  .header { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;padding-bottom:20px;border-bottom:2px solid #1a1a1a; }
+  .logo { font-size:20px;font-weight:800;letter-spacing:-0.5px; }
+  .logo span { color:#3b82f6; }
+  .meta { text-align:right;font-size:12px;color:#666; }
+  h1 { font-size:22px;margin-bottom:6px;font-weight:700; }
+  .subtitle { font-size:13px;color:#666;margin-bottom:24px; }
+  .kpi-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px; }
+  .kpi-card { background:#f8f9fa;border-radius:8px;padding:16px;text-align:center;border:1px solid #e5e7eb; }
+  .kpi-val { font-size:24px;font-weight:700;color:#1a1a1a; }
+  .kpi-label { font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.04em;margin-top:4px; }
+  .kpi-trend { font-size:11px;margin-top:4px; }
+  .kpi-trend.up { color:#16a34a; }
+  .kpi-trend.down { color:#dc2626; }
+  .section-title { font-size:14px;font-weight:600;margin:24px 0 12px;color:#333; }
+  table { width:100%;border-collapse:collapse;margin:16px 0; }
+  th { background:#f1f5f9;text-align:left;padding:8px 12px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#555;border-bottom:2px solid #e2e8f0; }
+  td { padding:8px 12px;font-size:13px;border-bottom:1px solid #f1f5f9; }
+  .footer { margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;font-size:11px;color:#999;display:flex;justify-content:space-between; }
+  ${official ? '' : '.header { border-bottom-color:#3b82f6;border-bottom-width:3px; } .kpi-card { border:none;background:#f0f7ff; }'}
+  .print-btn { position:fixed;top:20px;right:20px;padding:10px 20px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer; }
+  .print-btn:hover { background:#2563eb; }
+</style></head>
+<body>
+  <button class="print-btn no-print" onclick="window.print()">&#128424; Печать / Сохранить PDF</button>
+  <div class="header">
+    <div>
+      <div class="logo">Consolidator<span>Parts</span></div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">${official ? 'Официальный отчёт' : 'Сводный отчёт'}</div>
+    </div>
+    <div class="meta">
+      <div>${date}</div>
+      <div>Период: ${period}</div>
+      <div>Поставщик: Consolidator Supplier</div>
+      ${official ? '<div>ИНН: 7701234567 / КПП: 770101001</div>' : ''}
+    </div>
+  </div>
+
+  <h1>${data.title}</h1>
+  <div class="subtitle">${official ? 'Детализированный отчёт за выбранный период. Данные актуальны на момент формирования.' : 'Краткая сводка ключевых показателей за выбранный период.'}</div>
+
+  <div class="kpi-grid">
+    ${data.kpis.map(k => `<div class="kpi-card">
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-label">${k.label}</div>
+      ${k.trend ? `<div class="kpi-trend ${k.up ? 'up' : 'down'}">${k.trend}</div>` : ''}
+    </div>`).join('')}
+  </div>
+
+  ${chartHTML}
+
+  ${data.chart.items ? `
+  <div class="section-title">Детализация</div>
+  <table>
+    <thead><tr><th>Показатель</th><th style="text-align:right;">Значение</th></tr></thead>
+    <tbody>${data.chart.items.map(i => `<tr><td>${i.name}</td><td style="text-align:right;font-weight:600;">${i.val}%</td></tr>`).join('')}</tbody>
+  </table>` : `
+  <div class="section-title">Данные по периоду</div>
+  <table>
+    <thead><tr><th>Метрика</th><th style="text-align:right;">Значение</th><th style="text-align:right;">Изменение</th></tr></thead>
+    <tbody>${data.kpis.map(k => `<tr><td>${k.label}</td><td style="text-align:right;font-weight:600;">${k.val}</td><td style="text-align:right;color:${k.up ? '#16a34a' : '#dc2626'};">${k.trend}</td></tr>`).join('')}</tbody>
+  </table>`}
+
+  <div class="footer">
+    <div>${official ? '© 2026 Consolidator Parts. Все права защищены. Документ сформирован автоматически.' : 'Consolidator Parts · Автоотчёт'}</div>
+    <div>Стр. 1 из 1</div>
+  </div>
+</body></html>`;
+
+  const blob = new Blob([html], {type:'text/html;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+
+  if (format.includes('Excel')) {
+    // For Excel — download as HTML with .xls extension (opens in Excel)
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.title.replace(/\s+/g, '_') + '.xls';
+    a.click();
+    showToast('Excel скачан: ' + data.title);
+  } else {
+    // Open in new tab for PDF print
+    const w = window.open(url, '_blank');
+    showToast('Документ открыт — нажмите «Печать / Сохранить PDF»');
+  }
+  URL.revokeObjectURL(url);
+}
+
+function generateReport() {
+  const count = document.querySelectorAll('.an-report-card.selected').length;
+  if (count === 0) {
+    showToast('Выберите хотя бы один отчёт');
+    return;
+  }
+  const format = document.getElementById('exportFormat').value;
+  showToast('Формируется ' + count + ' отчёт(ов) в формате ' + format + '...');
+  setTimeout(() => {
+    showToast('Отчёт сформирован и готов к скачиванию');
+  }, 2000);
+}
+
+function addSubscription() {
+  const email = document.getElementById('newEmail').value;
+  if (!email || !email.includes('@')) {
+    document.getElementById('newEmail').style.borderColor = 'rgba(224,85,85,0.5)';
+    document.getElementById('newEmail').focus();
+    return;
+  }
+  showToast('Подписка добавлена: ' + email);
+  document.getElementById('newEmail').value = '';
+  document.getElementById('newEmail').style.borderColor = '';
+}
+
+function regenerateKey() {
+  showToast('API ключ перегенерирован');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('anToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+{% endblock %}

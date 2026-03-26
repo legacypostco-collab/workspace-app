@@ -157,6 +157,48 @@ class Part(models.Model):
         return self.is_mandatory_complete
 
 
+class Drawing(models.Model):
+    """Чертёж / CAD-файл, привязанный к детали поставщика."""
+
+    FORMAT_CHOICES = [
+        ("pdf", "PDF"),
+        ("dwg", "DWG"),
+        ("dxf", "DXF"),
+        ("step", "STEP"),
+        ("iges", "IGES"),
+        ("stl", "STL"),
+        ("png", "PNG"),
+        ("jpg", "JPG"),
+    ]
+    STATUS_CHOICES = [
+        ("draft", "Черновик"),
+        ("on_review", "На проверке"),
+        ("approved", "Утверждён"),
+        ("rejected", "Отклонён"),
+        ("archived", "Архив"),
+    ]
+
+    title = models.CharField(max_length=255)
+    part = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="drawings", null=True, blank=True)
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name="drawings")
+    file_format = models.CharField(max_length=10, choices=FORMAT_CHOICES, default="pdf")
+    file_url = models.URLField(blank=True)
+    file_name = models.CharField(max_length=255, blank=True)
+    file_size_kb = models.PositiveIntegerField(default=0)
+    revision = models.CharField(max_length=20, default="A")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    description = models.TextField(blank=True)
+    oem_number = models.CharField(max_length=100, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self) -> str:
+        return f"{self.title} (rev {self.revision})"
+
+
 class RFQ(models.Model):
     MODE_CHOICES = [
         ("auto", "AUTO"),
@@ -246,9 +288,15 @@ class Order(models.Model):
     PAYMENT_STATUS_CHOICES = [
         ("awaiting_reserve", "Ожидает резерва"),
         ("reserve_paid", "Резерв оплачен"),
+        ("mid_paid", "Подтверждение оплачено"),
+        ("customs_paid", "Таможня оплачена"),
         ("paid", "Оплачен"),
         ("refund_pending", "Возврат в обработке"),
         ("refunded", "Возвращён"),
+    ]
+    PAYMENT_SCHEME_CHOICES = [
+        ("simple", "10% + 90%"),
+        ("staged", "10% + 50% + 40%"),
     ]
     SLA_STATUS_CHOICES = [
         ("on_track", "В норме"),
@@ -272,9 +320,14 @@ class Order(models.Model):
     logistics_meta = models.JSONField(default=dict, blank=True)
     invoice_number = models.CharField(max_length=80, blank=True)
     payment_status = models.CharField(max_length=30, choices=PAYMENT_STATUS_CHOICES, default="awaiting_reserve")
+    payment_scheme = models.CharField(max_length=20, choices=PAYMENT_SCHEME_CHOICES, default="simple")
     reserve_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("10.00"))
     reserve_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     reserve_paid_at = models.DateTimeField(null=True, blank=True)
+    mid_payment_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    mid_paid_at = models.DateTimeField(null=True, blank=True)
+    customs_payment_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    customs_paid_at = models.DateTimeField(null=True, blank=True)
     final_paid_at = models.DateTimeField(null=True, blank=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -304,6 +357,8 @@ class OrderEvent(models.Model):
         ("sla_status_changed", "SLA Status Changed"),
         ("invoice_opened", "Invoice Opened"),
         ("reserve_paid", "Reserve Paid"),
+        ("mid_payment_paid", "Mid Payment Paid"),
+        ("customs_payment_paid", "Customs Payment Paid"),
         ("final_payment_paid", "Final Payment Paid"),
         ("quality_confirmed", "Quality Confirmed"),
         ("document_uploaded", "Document Uploaded"),

@@ -208,10 +208,9 @@
       </div>
 
       <!-- Google Sheets -->
-      <div style="padding:14px 16px;background:#242424;border-radius:10px;cursor:pointer;transition:border-color .15s;border:1px solid rgba(255,255,255,0.055);" onmouseover="this.style.borderColor='rgba(100,181,246,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.055)'">
+      <div style="padding:14px 16px;background:#242424;border-radius:10px;transition:border-color .15s;border:1px solid rgba(255,255,255,0.055);">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
           <div style="width:36px;height:36px;border-radius:8px;background:var(--s-el);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <!-- Google Sheets icon -->
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" fill="#34A853"/>
               <path d="M14 2v6h6" fill="#87CEAC"/>
@@ -221,10 +220,31 @@
           </div>
           <div>
             <div style="font-size:13px;font-weight:600;color:#ECECEC;">Google Sheets</div>
-            <div style="font-size:11px;color:#E85C0D;margin-top:2px;">Скоро</div>
+            <div style="font-size:11px;color:#64B5F6;margin-top:2px;">Активно</div>
           </div>
         </div>
-        <p style="font-size:12px;color:#919191;line-height:1.5;margin:0;">Подключи Google-таблицу — цены будут синхронизироваться автоматически по расписанию.</p>
+        <p style="font-size:12px;color:#919191;line-height:1.5;margin:0 0 10px;">Подключи Google-таблицу — цены будут синхронизироваться автоматически по расписанию.</p>
+        <div style="margin-bottom:10px;">
+          <a href="https://docs.google.com/spreadsheets/d/1U57TKZqkQyekuynLrHnPUqZ1r5jd_U-dNdf6HeEaG6s/copy" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1px solid rgba(52,168,83,0.3);background:rgba(52,168,83,0.08);color:#34A853;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s;"
+            onmouseover="this.style.background='rgba(52,168,83,0.15)'" onmouseout="this.style.background='rgba(52,168,83,0.08)'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" fill="#34A853"/>
+              <path d="M14 2v6h6" fill="#87CEAC"/>
+              <rect x="7" y="11" width="10" height="8" rx="0.5" fill="white" opacity="0.9"/>
+              <path d="M7 14h10M7 17h10M12 11v8" stroke="#0F9D58" stroke-width="0.8"/>
+            </svg>
+            Создать копию шаблона
+          </a>
+          <span style="font-size:11px;color:#5E5E5E;margin-left:8px;">Заполните → откройте доступ → вставьте ссылку ниже</span>
+        </div>
+        <form method="post" action="{% url 'seller_import_google_sheet' %}" style="display:flex;gap:8px;">
+          {% csrf_token %}
+          <input type="url" name="sheet_url" placeholder="Вставьте ссылку на Google-таблицу..." required
+            style="flex:1;padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:#1A1A1A;color:#ECECEC;font-size:12px;font-family:inherit;outline:none;"
+            onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
+          <button type="submit" style="padding:7px 16px;border-radius:8px;border:1px solid rgba(52,168,83,0.3);background:rgba(52,168,83,0.1);color:#34A853;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;"
+            onmouseover="this.style.background='rgba(52,168,83,0.18)'" onmouseout="this.style.background='rgba(52,168,83,0.1)'">Подключить</button>
+        </form>
       </div>
 
       <!-- API -->
@@ -251,15 +271,26 @@
     <div class="upload-preview-shell">
       <div class="upload-preview-head">
         <div>
-          <div class="upload-step-label">Шаг 2</div>
-          <h3>Предпросмотр и mapping</h3>
-          <p class="muted">
-            Preview #{{ active_preview.id }} • Статус: <strong>{{ active_preview.status }}</strong>
-            {% if active_preview.source_file %} • Файл: <strong>{{ active_preview.source_file.original_name|default:"(без имени)" }}</strong>{% endif %}
-          </p>
+          {% if active_preview.source_type == "google_sheet" %}
+            <div class="upload-step-label" style="color:#34A853;">Google Sheets</div>
+            <h3>Таблица загружена</h3>
+            <p class="muted">
+              Preview #{{ active_preview.id }} • Статус: <strong>{{ active_preview.status }}</strong>
+              {% if active_preview.source_url %} • <a href="{{ active_preview.source_url }}" target="_blank" style="color:#64B5F6;">Открыть таблицу</a>{% endif %}
+            </p>
+          {% else %}
+            <div class="upload-step-label">Шаг 2</div>
+            <h3>Предпросмотр и mapping</h3>
+            <p class="muted">
+              Preview #{{ active_preview.id }} • Статус: <strong>{{ active_preview.status }}</strong>
+              {% if active_preview.source_file %} • Файл: <strong>{{ active_preview.source_file.original_name|default:"(без имени)" }}</strong>{% endif %}
+            </p>
+          {% endif %}
         </div>
         <a class="chip" href="{% url 'seller_product_list' %}">Скрыть preview</a>
       </div>
+
+      {% if active_preview.source_type != "google_sheet" %}
       <form method="post" action="{% url 'seller_import_preview_confirm' active_preview.id %}" class="upload-form">
         {% csrf_token %}
         <div class="upload-mapping-grid">
@@ -282,13 +313,19 @@
           {% endif %}
         </div>
       </form>
+      {% endif %}
+
       {% if active_preview.status == "mapping_confirmed" %}
         <form method="post" action="{% url 'seller_import_preview_start' active_preview.id %}" class="upload-inline-form">
           {% csrf_token %}
           <div class="upload-preview-actions upload-preview-actions-start">
             <div>
-              <div class="upload-step-label">Шаг 3</div>
-              <p class="muted">Маппинг подтвержден. Теперь можно запускать импорт в каталог.</p>
+              {% if active_preview.source_type == "google_sheet" %}
+                <p class="muted">Колонки определены автоматически. Можно запустить импорт.</p>
+              {% else %}
+                <div class="upload-step-label">Шаг 3</div>
+                <p class="muted">Маппинг подтвержден. Теперь можно запускать импорт в каталог.</p>
+              {% endif %}
             </div>
             <button class="btn" type="submit">Запустить импорт</button>
           </div>
@@ -397,129 +434,184 @@
   {% endif %}
 </section>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <h2>Ассортимент</h2>
-  <p class="muted">Всего позиций: {{ parts_total }}</p>
-  <form method="get" action="{% url 'seller_product_list' %}" class="upload-form" style="margin-top: 8px;">
-    <p>
-      <label for="id_q">Поиск по OEM / названию / бренду</label>
-      <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Например, RE48786" />
-    </p>
-    <p>
-      <label>
-        <input type="checkbox" name="recent" value="1" {% if recent_only %}checked{% endif %} />
-        Показать только позиции, обновленные за последние 24 часа
-      </label>
-    </p>
-    <p>
-      <label>
-        <input type="checkbox" name="last_import" value="1" {% if last_import_only %}checked{% endif %} />
-        Показать только позиции из последнего успешного импорта
-      </label>
-    </p>
-    {% if selected_import_run %}
-      <p>
-        <label>
-          <input type="checkbox" checked disabled />
-          Фильтр по импорту #{{ selected_import_run.id }} ({{ selected_import_run.created_at|date:"Y-m-d H:i" }})
-        </label>
-      </p>
-      <input type="hidden" name="import_run" value="{{ selected_import_run.id }}" />
-    {% endif %}
-    <div class="card-actions">
-      <button class="btn btn-secondary" type="submit">Найти</button>
-      {% if query or recent_only or last_import_only or selected_import_run %}
-        <a class="btn" href="{% url 'seller_product_list' %}">Сбросить</a>
+<!-- ═══ ТАБЛИЧНЫЙ РЕДАКТОР КАТАЛОГА ═══ -->
+<style>
+.cat-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
+.cat-filter{padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:#1A1A1A;color:#ECECEC;font-size:12px;font-family:inherit;outline:none;min-width:140px;}
+.cat-filter:focus{border-color:rgba(100,181,246,0.4);}
+.cat-search{flex:1;min-width:180px;max-width:300px;}
+.cat-count{font-size:12px;color:#5E5E5E;margin-left:auto;}
+
+.cat-table{width:100%;border-collapse:collapse;font-size:12px;}
+.cat-table thead th{text-align:left;padding:8px 10px;color:#5E5E5E;font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid rgba(255,255,255,0.06);position:sticky;top:0;background:#1F1F1F;z-index:1;white-space:nowrap;}
+.cat-table tbody tr{border-bottom:1px solid rgba(255,255,255,0.03);transition:background .12s;}
+.cat-table tbody tr:hover{background:rgba(255,255,255,0.02);}
+.cat-table tbody td{padding:6px 10px;color:#ECECEC;vertical-align:middle;}
+.cat-table .td-muted{color:#919191;}
+.cat-table .td-oem{font-family:'Golos Text',sans-serif;font-weight:600;font-size:12px;white-space:nowrap;}
+
+.cat-edit-cell{background:transparent;border:1px solid transparent;border-radius:6px;padding:3px 6px;color:#ECECEC;font-size:12px;font-family:inherit;width:80px;text-align:right;outline:none;transition:all .15s;}
+.cat-edit-cell:hover{border-color:rgba(255,255,255,0.1);}
+.cat-edit-cell:focus{border-color:rgba(100,181,246,0.5);background:#1A1A1A;}
+.cat-edit-cell.saved{animation:catSaved .6s ease-out;}
+@keyframes catSaved{0%{background:rgba(40,200,64,0.15);}100%{background:transparent;}}
+
+.cat-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:5px;white-space:nowrap;}
+.cat-badge-ok{background:rgba(100,181,246,0.08);color:#64B5F6;}
+.cat-badge-warn{background:rgba(232,92,13,0.08);color:#E85C0D;}
+.cat-badge-gray{background:rgba(255,255,255,0.04);color:#919191;}
+.cat-badge-green{background:rgba(40,200,64,0.08);color:#28C840;}
+
+.cat-check{width:14px;height:14px;accent-color:#64B5F6;cursor:pointer;}
+
+.cat-bulk-bar{display:none;align-items:center;gap:12px;padding:10px 16px;background:#242424;border-radius:10px;border:1px solid rgba(100,181,246,0.15);margin-bottom:12px;flex-wrap:wrap;}
+.cat-bulk-bar.show{display:flex;}
+.cat-bulk-count{font-size:12px;font-weight:600;color:#64B5F6;}
+.cat-bulk-btn{padding:5px 14px;border-radius:7px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#919191;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .12s;}
+.cat-bulk-btn:hover{color:#ECECEC;background:rgba(255,255,255,0.04);}
+.cat-bulk-btn--warn{border-color:rgba(232,92,13,0.2);color:#E85C0D;}
+.cat-bulk-btn--warn:hover{background:rgba(232,92,13,0.06);}
+
+.cat-pager{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:16px;}
+.cat-pager a,.cat-pager span{padding:6px 14px;border-radius:8px;font-size:12px;text-decoration:none;color:#919191;border:1px solid rgba(255,255,255,0.06);}
+.cat-pager a:hover{color:#ECECEC;background:rgba(255,255,255,0.04);}
+.cat-pager .active{color:#64B5F6;border-color:rgba(100,181,246,0.25);background:rgba(100,181,246,0.06);}
+</style>
+
+<div style="background:#242424;border-radius:14px;border:1px solid rgba(255,255,255,0.04);padding:16px 18px;">
+  <!-- Toolbar -->
+  <form method="get" action="{% url 'seller_product_list' %}" id="catFilterForm">
+    <div class="cat-toolbar">
+      <input class="cat-filter cat-search" type="text" name="q" value="{{ query }}" placeholder="Поиск по артикулу, названию, бренду..." onchange="this.form.submit()">
+      <select class="cat-filter" name="brand" onchange="this.form.submit()">
+        <option value="">Все бренды</option>
+        {% for b in brand_list %}
+          <option value="{{ b.id }}" {% if brand_filter == b.id|stringformat:"d" %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+      <select class="cat-filter" name="status" onchange="this.form.submit()">
+        <option value="">Все статусы</option>
+        <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
+        <option value="limited" {% if status_filter == "limited" %}selected{% endif %}>Limited</option>
+        <option value="discontinued" {% if status_filter == "discontinued" %}selected{% endif %}>Discontinued</option>
+        <option value="blocked" {% if status_filter == "blocked" %}selected{% endif %}>Blocked</option>
+      </select>
+      {% if query or brand_filter or status_filter %}
+        <a href="{% url 'seller_product_list' %}" style="font-size:11px;color:#64B5F6;text-decoration:none;">Сбросить</a>
       {% endif %}
+      <span class="cat-count">{{ parts.paginator.count }} позиций</span>
     </div>
   </form>
-</section>
 
-<form method="post" action="{% url 'seller_parts_bulk_action' %}" id="seller-bulk-action-form">
-  {% csrf_token %}
-  <input type="hidden" name="return_qs" value="{{ return_qs }}" />
-  <section class="panel" style="margin-bottom: 16px;">
-    <h2>Массовые действия</h2>
-    <div class="card-actions">
-      <label>
-        <input type="checkbox" id="select-all-parts" />
-        Выбрать все на странице
-      </label>
-      <select name="action" id="bulk-action-select">
-        <option value="hide">Скрыть выбранные</option>
-        <option value="unhide">Показать выбранные</option>
-        <option value="status">Изменить статус</option>
-        <option value="stock">Установить остаток</option>
-      </select>
-      <select name="availability_status" id="bulk-status-select">
-        <option value="active">active</option>
-        <option value="limited">limited</option>
-        <option value="made_to_order">made_to_order</option>
-        <option value="discontinued">discontinued</option>
-        <option value="blocked">blocked</option>
-      </select>
-      <input type="number" name="stock_quantity" id="bulk-stock-input" min="0" placeholder="Остаток" />
-      <button class="btn btn-secondary" type="submit">Применить к выбранным</button>
+  <!-- Bulk action bar -->
+  <form method="post" action="{% url 'seller_parts_bulk_action' %}" id="bulkForm">
+    {% csrf_token %}
+    <input type="hidden" name="return_qs" value="{{ return_qs }}">
+    <div class="cat-bulk-bar" id="bulkBar">
+      <span class="cat-bulk-count" id="bulkCount">0 выбрано</span>
+      <button type="submit" name="action" value="hide" class="cat-bulk-btn cat-bulk-btn--warn">Скрыть</button>
+      <button type="submit" name="action" value="unhide" class="cat-bulk-btn">Показать</button>
+      <button type="button" class="cat-bulk-btn" onclick="bulkPricePrompt(1)">Цена +%</button>
+      <button type="button" class="cat-bulk-btn" onclick="bulkPricePrompt(-1)">Цена -%</button>
     </div>
-  </section>
 
-  <div class="list">
-    {% for part in parts %}
-      <article class="list-row">
-        <div>
-          <p>
-            <label>
-              <input type="checkbox" name="part_ids" value="{{ part.id }}" class="part-checkbox" />
-              Выбрать позицию
-            </label>
-          </p>
-          <h3>{{ part.title }}</h3>
-          <p class="muted">{% if part.brand %}{{ part.brand.name }} • {% endif %}OEM {{ part.oem_number }} • {{ part.get_condition_display }} • stock: {{ part.stock_quantity }}</p>
-          <p class="muted">Обновлено в каталоге: {{ part.data_updated_at|date:"Y-m-d H:i" }}</p>
-          <p>
-            {% if part.is_mandatory_complete %}
-              <span class="chip chip-ok">AUTO READY</span>
-            {% else %}
-              <span class="chip chip-warn">NEEDS DATA</span>
-            {% endif %}
-            <span class="chip">Status: {{ part.availability_status }}</span>
-            <span class="chip">{{ part.currency }} / {{ part.incoterm }}</span>
-            {% if part.stale_state == "blocked" %}
-              <span class="chip chip-warn">Stale: {{ part.stale_days }}d / blocked</span>
-            {% elif part.stale_state == "limited" %}
-              <span class="chip chip-warn">Stale: {{ part.stale_days }}d / limited</span>
-            {% else %}
-              <span class="chip chip-ok">Fresh: {{ part.stale_days }}d</span>
-            {% endif %}
-          </p>
-          {% if not part.is_mandatory_complete %}
-            <p class="muted">Нет данных: {{ part.mandatory_missing_fields|join:", " }}</p>
-          {% endif %}
-        </div>
-        <div class="list-actions">
-          <p class="price">${{ part.price }}</p>
-          <a class="btn btn-secondary" href="{% url 'seller_product_detail' part.id %}">Открыть</a>
-          <a class="btn btn-secondary" href="{% url 'seller_part_edit' part.id %}">Редактировать</a>
-        </div>
-      </article>
-    {% empty %}
-      {% include "seller/components/_empty_state.html" with title="У вас пока нет товаров" message="Загрузи прайс или добавь первую позицию вручную." action_url="/seller/products/" action_label="Вернуться к загрузке" %}
-    {% endfor %}
+  <!-- Table -->
+  <div style="overflow-x:auto;max-height:65vh;overflow-y:auto;">
+    <table class="cat-table">
+      <thead>
+        <tr>
+          <th style="width:30px;"><input type="checkbox" class="cat-check" id="checkAll" onclick="toggleAll(this)"></th>
+          <th>Артикул</th>
+          <th>Название</th>
+          <th>Бренд</th>
+          <th style="text-align:right;">Цена $</th>
+          <th style="text-align:right;">Остаток</th>
+          <th>Состояние</th>
+          <th>Статус</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for part in parts %}
+          <tr data-id="{{ part.id }}">
+            <td><input type="checkbox" class="cat-check part-cb" name="part_ids" value="{{ part.id }}" onchange="updateBulk()"></td>
+            <td class="td-oem">{{ part.oem_number }}</td>
+            <td>{{ part.title|truncatechars:40 }}</td>
+            <td class="td-muted">{% if part.brand %}{{ part.brand.name }}{% endif %}</td>
+            <td style="text-align:right;"><input class="cat-edit-cell" type="number" step="0.01" value="{{ part.price }}" data-id="{{ part.id }}" data-field="price" onchange="inlineUpdate(this)"></td>
+            <td style="text-align:right;"><input class="cat-edit-cell" type="number" step="1" min="0" value="{{ part.stock_quantity }}" data-id="{{ part.id }}" data-field="stock_quantity" onchange="inlineUpdate(this)" style="width:60px;"></td>
+            <td><span class="cat-badge cat-badge-gray">{{ part.get_condition_display }}</span></td>
+            <td>
+              {% if part.availability_status == "active" %}<span class="cat-badge cat-badge-green">Active</span>
+              {% elif part.availability_status == "limited" %}<span class="cat-badge cat-badge-ok">Limited</span>
+              {% elif part.availability_status == "discontinued" %}<span class="cat-badge cat-badge-warn">Discontinued</span>
+              {% else %}<span class="cat-badge cat-badge-gray">{{ part.availability_status }}</span>{% endif %}
+            </td>
+            <td><a href="{% url 'seller_part_edit' part.id %}" style="color:#5E5E5E;text-decoration:none;font-size:11px;" title="Редактировать">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M11 2l3 3-8 8H3v-3l8-8z"/></svg>
+            </a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="9" style="text-align:center;padding:40px;color:#5E5E5E;">Нет позиций. Загрузите прайс или добавьте товар вручную.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-</form>
-{% if parts.has_other_pages %}
-  <section class="panel" style="margin-top: 16px;">
-    <div class="card-actions">
+  </form>
+
+  <!-- Pagination -->
+  {% if parts.has_other_pages %}
+    <div class="cat-pager">
       {% if parts.has_previous %}
-        <a class="btn btn-secondary" href="?page={{ parts.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if recent_only %}&recent=1{% endif %}{% if last_import_only %}&last_import=1{% endif %}{% if selected_import_run %}&import_run={{ selected_import_run.id }}{% endif %}">← Назад</a>
+        <a href="?page={{ parts.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if brand_filter %}&brand={{ brand_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">&#8592; Назад</a>
       {% endif %}
-      <span class="chip">Страница {{ parts.number }} из {{ parts.paginator.num_pages }}</span>
+      <span class="active">{{ parts.number }} / {{ parts.paginator.num_pages }}</span>
       {% if parts.has_next %}
-        <a class="btn btn-secondary" href="?page={{ parts.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if recent_only %}&recent=1{% endif %}{% if last_import_only %}&last_import=1{% endif %}{% if selected_import_run %}&import_run={{ selected_import_run.id }}{% endif %}">Вперед →</a>
+        <a href="?page={{ parts.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if brand_filter %}&brand={{ brand_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Вперед &#8594;</a>
       {% endif %}
     </div>
-  </section>
-{% endif %}
+  {% endif %}
+</div>
+
+<script>
+function inlineUpdate(el) {
+  var id = el.dataset.id, field = el.dataset.field, value = el.value;
+  fetch('/seller/parts/' + id + '/inline-update/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value},
+    body: JSON.stringify({field: field, value: value})
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if(d.ok){ el.classList.add('saved'); setTimeout(function(){ el.classList.remove('saved'); }, 600); }
+    else { el.style.borderColor='#E85C0D'; setTimeout(function(){ el.style.borderColor=''; },1500); }
+  });
+}
+
+function toggleAll(el) {
+  document.querySelectorAll('.part-cb').forEach(function(cb){ cb.checked = el.checked; });
+  updateBulk();
+}
+
+function updateBulk() {
+  var checked = document.querySelectorAll('.part-cb:checked').length;
+  var bar = document.getElementById('bulkBar');
+  document.getElementById('bulkCount').textContent = checked + ' выбрано';
+  bar.classList.toggle('show', checked > 0);
+}
+
+function bulkPricePrompt(direction) {
+  var pct = prompt(direction > 0 ? 'На сколько % увеличить цену?' : 'На сколько % уменьшить цену?', '5');
+  if(!pct) return;
+  var mult = direction > 0 ? (1 + parseFloat(pct)/100) : (1 - parseFloat(pct)/100);
+  document.querySelectorAll('.part-cb:checked').forEach(function(cb){
+    var row = cb.closest('tr');
+    var priceInput = row.querySelector('[data-field="price"]');
+    if(priceInput) {
+      priceInput.value = (parseFloat(priceInput.value) * mult).toFixed(2);
+      inlineUpdate(priceInput);
+    }
+  });
+}
+</script>
 
 <script>
   (function () {

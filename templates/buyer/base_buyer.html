@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}Кабинет поставщика{% endblock %} — Consolidator</title>
+    <title>{% block title %}Кабинет покупателя{% endblock %} — Consolidator</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,15 +13,15 @@
     {% block extra_css %}{% endblock %}
   </head>
   <body class="seller-shell">
-    {% include "seller/components/_sidebar.html" %}
+    {% include "buyer/components/_sidebar.html" %}
     <main class="seller-main">
-      {% include "seller/components/_topbar.html" %}
+      {% include "buyer/components/_topbar.html" %}
       <div class="seller-content">
         <div style="display:none;" aria-hidden="true">{% for message in messages %}{{ message }}{% endfor %}</div>
         {% block content %}{% endblock %}
       </div>
     </main>
-    {% block right_panel %}{% include "seller/components/_right_panel.html" %}{% endblock %}
+    {% block right_panel %}{% include "buyer/components/_right_panel.html" %}{% endblock %}
     {% block extra_js %}{% endblock %}
   </body>
 </html>

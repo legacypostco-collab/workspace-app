@@ -1,0 +1,395 @@
+{% extends "buyer/base_buyer.html" %}
+
+{% block title %}Рекламации{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════ Claims page ══════════ */
+
+.clm-hero { margin-bottom:16px; }
+.clm-hero-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px; }
+.clm-hero-title {
+  font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC;
+}
+.clm-hero-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
+
+.clm-create-btn {
+  padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;
+  background:rgba(224,85,85,0.12);color:#E05555;
+  border:1px solid rgba(224,85,85,0.25);cursor:pointer;transition:all .15s;
+  text-decoration:none;
+}
+.clm-create-btn:hover { background:rgba(224,85,85,0.2); }
+
+/* Stats */
+.clm-stats {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;
+}
+.clm-stat {
+  background:#1A1A1A;border-radius:12px;padding:14px 16px;
+  border:1px solid rgba(255,255,255,0.04);
+}
+.clm-stat-label {
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+  color:#919191;margin-bottom:6px;
+}
+.clm-stat-val {
+  font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;
+  color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
+}
+
+/* Claims list */
+.clm-list { display:flex;flex-direction:column;gap:10px; }
+
+.clm-card {
+  background:#1A1A1A;border-radius:14px;
+  border:1px solid rgba(255,255,255,0.04);
+  overflow:hidden;transition:border-color .15s;
+}
+.clm-card:hover { border-color:rgba(255,255,255,0.08); }
+
+.clm-card-head {
+  display:flex;justify-content:space-between;align-items:center;
+  padding:16px 20px;cursor:pointer;
+}
+.clm-card-left { display:flex;align-items:center;gap:14px; }
+.clm-card-id {
+  font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#E05555;
+}
+.clm-card-order { font-size:12px;color:#919191; }
+.clm-card-right { display:flex;align-items:center;gap:12px; }
+
+/* Type badge */
+.clm-type-badge {
+  display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;
+  font-weight:600;letter-spacing:0.02em;
+}
+.clm-type--damage { background:rgba(224,85,85,0.12);color:#E05555; }
+.clm-type--mismatch { background:rgba(232,92,13,0.12);color:#E85C0D; }
+.clm-type--incomplete { background:rgba(138,138,138,0.15);color:#919191; }
+
+/* Status badge */
+.clm-status-badge {
+  display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;
+  font-weight:600;letter-spacing:0.02em;
+}
+.clm-status--open { background:rgba(224,85,85,0.12);color:#E05555; }
+.clm-status--progress { background:rgba(232,92,13,0.12);color:#E85C0D; }
+.clm-status--resolved { background:rgba(255,255,255,0.06);color:#919191; }
+
+.clm-date { font-size:11px;color:#6A6A6A; }
+
+.clm-toggle {
+  width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+  color:#6A6A6A;transition:transform .2s;
+}
+.clm-card.expanded .clm-toggle { transform:rotate(180deg); }
+
+/* Expandable body */
+.clm-card-body {
+  display:none;padding:0 20px 18px;
+  border-top:1px solid rgba(255,255,255,0.04);
+}
+.clm-card.expanded .clm-card-body { display:block;padding-top:16px; }
+
+.clm-detail-grid {
+  display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin-bottom:14px;
+}
+.clm-detail-label { font-size:10px;color:#6A6A6A;margin-bottom:2px; }
+.clm-detail-val { font-size:12px;color:#ECECEC;font-weight:500; }
+
+.clm-description {
+  font-size:12px;color:#919191;line-height:1.5;
+  background:rgba(255,255,255,0.02);border-radius:8px;padding:12px;
+  margin-bottom:14px;
+}
+
+.clm-actions { display:flex;gap:8px; }
+.clm-action-btn {
+  padding:6px 14px;border-radius:8px;font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .15s;text-decoration:none;
+}
+.clm-action-btn--primary {
+  background:rgba(100,181,246,0.12);color:#64B5F6;
+  border:1px solid rgba(100,181,246,0.25);
+}
+.clm-action-btn--primary:hover { background:rgba(100,181,246,0.2); }
+.clm-action-btn--secondary {
+  background:rgba(255,255,255,0.04);color:#ECECEC;
+  border:1px solid rgba(255,255,255,0.08);
+}
+.clm-action-btn--secondary:hover { background:rgba(255,255,255,0.08); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="clm-hero">
+  <div class="clm-hero-top">
+    <div>
+      <div class="clm-hero-title">Рекламации</div>
+      <div class="clm-hero-sub">Претензии по качеству, комплектности и соответствию</div>
+    </div>
+    <a href="#" class="clm-create-btn">+ Открыть рекламацию</a>
+  </div>
+</section>
+
+<!-- Stats -->
+<div class="clm-stats">
+  <div class="clm-stat">
+    <div class="clm-stat-label">Всего рекламаций</div>
+    <div class="clm-stat-val">7</div>
+  </div>
+  <div class="clm-stat">
+    <div class="clm-stat-label">Открыта</div>
+    <div class="clm-stat-val" style="color:#E05555;">1</div>
+  </div>
+  <div class="clm-stat">
+    <div class="clm-stat-label">В работе</div>
+    <div class="clm-stat-val" style="color:#E85C0D;">2</div>
+  </div>
+  <div class="clm-stat">
+    <div class="clm-stat-label">Решена</div>
+    <div class="clm-stat-val" style="color:#64B5F6;">4</div>
+  </div>
+</div>
+
+<!-- Claims list -->
+<div class="clm-list">
+
+  <!-- Claim 1 -->
+  <div class="clm-card" id="clm-1">
+    <div class="clm-card-head" onclick="toggleClaim('clm-1')">
+      <div class="clm-card-left">
+        <div>
+          <div class="clm-card-id">CLM-2026-0019</div>
+          <div class="clm-card-order">Заказ ORD-2026-0125 &middot; Поставщик #4291</div>
+        </div>
+      </div>
+      <div class="clm-card-right">
+        <span class="clm-type-badge clm-type--damage">Повреждение</span>
+        <span class="clm-status-badge clm-status--open">Открыта</span>
+        <span class="clm-date">24.03.2026</span>
+        <div class="clm-toggle">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="clm-card-body">
+      <div class="clm-detail-grid">
+        <div>
+          <div class="clm-detail-label">Позиция</div>
+          <div class="clm-detail-val">Диск тормозной 421-22-31520 (3 шт.)</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Сумма претензии</div>
+          <div class="clm-detail-val" style="color:#E05555;">$567.00</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Дата обнаружения</div>
+          <div class="clm-detail-val">12.03.2026</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Ответственный</div>
+          <div class="clm-detail-val">Иванов А.С.</div>
+        </div>
+      </div>
+      <div class="clm-description">
+        При вскрытии упаковки обнаружены механические повреждения на 3 из 20 дисков. Трещины на рабочей поверхности, не пригодны к установке. Фото повреждений приложены к заявке.
+      </div>
+      <div class="clm-actions">
+        <a href="#" class="clm-action-btn clm-action-btn--primary">Переписка</a>
+        <a href="#" class="clm-action-btn clm-action-btn--secondary">Фото (4)</a>
+        <a href="#" class="clm-action-btn clm-action-btn--secondary">Документы</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Claim 2 -->
+  <div class="clm-card" id="clm-2">
+    <div class="clm-card-head" onclick="toggleClaim('clm-2')">
+      <div class="clm-card-left">
+        <div>
+          <div class="clm-card-id">CLM-2026-0016</div>
+          <div class="clm-card-order">Заказ ORD-2026-0118 &middot; Поставщик #5673</div>
+        </div>
+      </div>
+      <div class="clm-card-right">
+        <span class="clm-type-badge clm-type--mismatch">Несоответствие</span>
+        <span class="clm-status-badge clm-status--progress">В работе</span>
+        <span class="clm-date">15.03.2026</span>
+        <div class="clm-toggle">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="clm-card-body">
+      <div class="clm-detail-grid">
+        <div>
+          <div class="clm-detail-label">Позиция</div>
+          <div class="clm-detail-val">Помпа водяная 6212-61-1440 (2 шт.)</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Сумма претензии</div>
+          <div class="clm-detail-val" style="color:#E05555;">$930.00</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Дата обнаружения</div>
+          <div class="clm-detail-val">01.03.2026</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Ответственный</div>
+          <div class="clm-detail-val">Петров К.В.</div>
+        </div>
+      </div>
+      <div class="clm-description">
+        Поставлены помпы с другим посадочным размером шкива. OEM-номер на этикетке совпадает, но фактические размеры отличаются от спецификации. Ожидается замена от поставщика.
+      </div>
+      <div class="clm-actions">
+        <a href="#" class="clm-action-btn clm-action-btn--primary">Переписка</a>
+        <a href="#" class="clm-action-btn clm-action-btn--secondary">Фото (2)</a>
+        <a href="#" class="clm-action-btn clm-action-btn--secondary">Замерочный лист</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Claim 3 -->
+  <div class="clm-card" id="clm-3">
+    <div class="clm-card-head" onclick="toggleClaim('clm-3')">
+      <div class="clm-card-left">
+        <div>
+          <div class="clm-card-id">CLM-2026-0012</div>
+          <div class="clm-card-order">Заказ ORD-2026-0110 &middot; TurboTech Asia</div>
+        </div>
+      </div>
+      <div class="clm-card-right">
+        <span class="clm-type-badge clm-type--incomplete">Некомплект</span>
+        <span class="clm-status-badge clm-status--progress">В работе</span>
+        <span class="clm-date">08.03.2026</span>
+        <div class="clm-toggle">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="clm-card-body">
+      <div class="clm-detail-grid">
+        <div>
+          <div class="clm-detail-label">Позиция</div>
+          <div class="clm-detail-val">Турбокомпрессор 7C-2297 (1 шт.)</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Сумма претензии</div>
+          <div class="clm-detail-val" style="color:#E05555;">$1,250.00</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Дата обнаружения</div>
+          <div class="clm-detail-val">05.03.2026</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Ответственный</div>
+          <div class="clm-detail-val">Сидоров Д.М.</div>
+        </div>
+      </div>
+      <div class="clm-description">
+        В комплекте отсутствует прокладка выпускного коллектора и комплект крепежа. Турбина без прокладки не может быть установлена. Поставщик подтвердил досылку недостающих компонентов.
+      </div>
+      <div class="clm-actions">
+        <a href="#" class="clm-action-btn clm-action-btn--primary">Переписка</a>
+        <a href="#" class="clm-action-btn clm-action-btn--secondary">Акт некомплекта</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Claim 4 -->
+  <div class="clm-card" id="clm-4">
+    <div class="clm-card-head" onclick="toggleClaim('clm-4')">
+      <div class="clm-card-left">
+        <div>
+          <div class="clm-card-id">CLM-2026-0008</div>
+          <div class="clm-card-order">Заказ ORD-2026-0098 &middot; Поставщик #1042</div>
+        </div>
+      </div>
+      <div class="clm-card-right">
+        <span class="clm-type-badge clm-type--damage">Повреждение</span>
+        <span class="clm-status-badge clm-status--resolved">Решена</span>
+        <span class="clm-date">18.02.2026</span>
+        <div class="clm-toggle">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="clm-card-body">
+      <div class="clm-detail-grid">
+        <div>
+          <div class="clm-detail-label">Позиция</div>
+          <div class="clm-detail-val">Гидроцилиндр стрелы LH-9989363 (1 шт.)</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Компенсация</div>
+          <div class="clm-detail-val" style="color:#64B5F6;">$2,840.00 (возврат)</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Дата решения</div>
+          <div class="clm-detail-val">10.03.2026</div>
+        </div>
+        <div>
+          <div class="clm-detail-label">Решение</div>
+          <div class="clm-detail-val">Полный возврат + пересылка</div>
+        </div>
+      </div>
+      <div class="clm-description">
+        Гидроцилиндр прибыл с повреждённым штоком (вмятина при транспортировке). Поставщик признал вину перевозчика, оформлен полный возврат средств и отправлена замена за свой счёт.
+      </div>
+      <div class="clm-actions">
+        <a href="#" class="clm-action-btn clm-action-btn--secondary">Переписка</a>
+        <a href="#" class="clm-action-btn clm-action-btn--secondary">Акт приёмки</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+
+<script>
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.transform = 'translateY(0)';
+  t.style.opacity = '1';
+  setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
+}
+
+function toggleClaim(id) {
+  var card = document.getElementById(id);
+  if (card) {
+    card.classList.toggle('expanded');
+    var clmId = card.querySelector('.clm-card-id');
+    if (clmId && card.classList.contains('expanded')) {
+      showToast('Открыта рекламация ' + clmId.textContent);
+    }
+  }
+}
+
+// Create claim button
+var createBtn = document.querySelector('.clm-create-btn');
+if (createBtn) {
+  createBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+    showToast('Форма рекламации');
+  });
+}
+
+// Action buttons in claim cards
+document.querySelector('.clm-list').addEventListener('click', function(e) {
+  var btn = e.target.closest('.clm-action-btn');
+  if (!btn) return;
+  e.preventDefault();
+  var card = btn.closest('.clm-card');
+  var clmId = card ? card.querySelector('.clm-card-id') : null;
+  var id = clmId ? clmId.textContent : '';
+  showToast(btn.textContent.trim() + ' — ' + id);
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,281 @@
+{% extends "buyer/base_buyer.html" %}
+
+{% block title %}Финансы{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════ Buyer Finance page ══════════ */
+
+.bfin-hero { margin-bottom:16px; }
+.bfin-hero-title {
+  font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC;
+}
+.bfin-hero-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
+
+/* KPI row */
+.bfin-kpis {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;
+}
+.bfin-kpi {
+  background:#1A1A1A;border-radius:12px;padding:14px 16px;
+  border:1px solid rgba(255,255,255,0.04);
+}
+.bfin-kpi-label {
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+  color:#919191;margin-bottom:6px;
+}
+.bfin-kpi-val {
+  font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;
+  font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
+}
+.bfin-kpi-hint { font-size:11px;margin-top:4px;font-weight:400; }
+
+/* Section title */
+.bfin-section-title {
+  font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;
+  color:#ECECEC;margin-bottom:12px;
+}
+
+/* Table */
+.bfin-table-wrap {
+  background:#1A1A1A;border-radius:14px;border:1px solid rgba(255,255,255,0.04);
+  overflow:hidden;margin-bottom:20px;
+}
+.bfin-table { width:100%;border-collapse:collapse; }
+.bfin-table th {
+  text-align:left;padding:8px 12px;font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.05em;color:#919191;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.bfin-table td {
+  padding:12px;font-size:13px;color:#ECECEC;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  vertical-align:middle;
+}
+.bfin-table tbody tr { transition:background .12s; }
+.bfin-table tbody tr:hover { background:rgba(255,255,255,0.03); }
+
+.bfin-id { font-family:'Golos Text',sans-serif;font-weight:700;color:#64B5F6; }
+.bfin-muted { color:#6A6A6A;font-size:11px; }
+.bfin-amount {
+  font-family:'Golos Text',sans-serif;font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Payment status badge */
+.bfin-badge {
+  display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;
+  font-weight:600;letter-spacing:0.02em;
+}
+.bfin-badge--paid { background:rgba(255,255,255,0.06);color:#919191; }
+.bfin-badge--pending { background:rgba(232,92,13,0.12);color:#E85C0D; }
+.bfin-badge--overdue { background:rgba(224,85,85,0.12);color:#E05555; }
+
+/* Schedule cards */
+.bfin-schedule {
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;
+}
+.bfin-sched-card {
+  background:#1A1A1A;border-radius:12px;padding:16px;
+  border:1px solid rgba(255,255,255,0.04);
+}
+.bfin-sched-date {
+  font-size:11px;color:#919191;font-weight:600;margin-bottom:6px;
+}
+.bfin-sched-desc {
+  font-size:12px;color:#ECECEC;font-weight:500;margin-bottom:4px;
+}
+.bfin-sched-amount {
+  font-family:'Golos Text',sans-serif;font-size:16px;font-weight:800;
+  font-variant-numeric:tabular-nums;
+}
+.bfin-sched-supplier { font-size:11px;color:#6A6A6A;margin-top:4px; }
+
+/* Pay button */
+.bfin-pay-btn {
+  margin-top:8px;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:600;
+  background:rgba(100,181,246,0.12);color:#64B5F6;
+  border:1px solid rgba(100,181,246,0.25);cursor:pointer;transition:all .15s;
+}
+.bfin-pay-btn:hover { background:rgba(100,181,246,0.2); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="bfin-hero">
+  <div class="bfin-hero-title">Финансы</div>
+  <div class="bfin-hero-sub">Оплаты, счета, задолженность и бюджет закупок</div>
+</section>
+
+<!-- KPI row -->
+<div class="bfin-kpis">
+  <div class="bfin-kpi">
+    <div class="bfin-kpi-label">Оплачено</div>
+    <div class="bfin-kpi-val" style="color:#64B5F6;">$98,420</div>
+    <div class="bfin-kpi-hint" style="color:#64B5F6;">за Q1 2026</div>
+  </div>
+  <div class="bfin-kpi">
+    <div class="bfin-kpi-label">Задолженность</div>
+    <div class="bfin-kpi-val" style="color:#E05555;">$18,640</div>
+    <div class="bfin-kpi-hint" style="color:#E05555;">3 счёта</div>
+  </div>
+  <div class="bfin-kpi">
+    <div class="bfin-kpi-label">Бюджет остаток</div>
+    <div class="bfin-kpi-val" style="color:#64B5F6;">$81,580</div>
+    <div class="bfin-kpi-hint" style="color:#64B5F6;">из $180,000</div>
+  </div>
+  <div class="bfin-kpi">
+    <div class="bfin-kpi-label">Экономия</div>
+    <div class="bfin-kpi-val" style="color:#64B5F6;">$12,340</div>
+    <div class="bfin-kpi-hint" style="color:#64B5F6;">переторжка + объём</div>
+  </div>
+</div>
+
+<!-- Recent payments / invoices -->
+<div class="bfin-section-title">Счета и платежи</div>
+
+<div class="bfin-table-wrap">
+  <table class="bfin-table">
+    <thead>
+      <tr>
+        <th>Счёт</th>
+        <th>Поставщик</th>
+        <th>Сумма</th>
+        <th>Дата выставления</th>
+        <th>Срок оплаты</th>
+        <th>Статус</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="bfin-id">INV-2026-0341</span><br><span class="bfin-muted">ORD-2026-0142</span></td>
+        <td>Поставщик #1042<br><span class="bfin-muted">Резерв 10%</span></td>
+        <td class="bfin-amount">$1,120.00</td>
+        <td>22.03.2026</td>
+        <td>25.03.2026</td>
+        <td><span class="bfin-badge bfin-badge--paid">Оплачен</span></td>
+      </tr>
+      <tr>
+        <td><span class="bfin-id">INV-2026-0338</span><br><span class="bfin-muted">ORD-2026-0138</span></td>
+        <td>Поставщик #2087<br><span class="bfin-muted">Этап 2 (50%)</span></td>
+        <td class="bfin-amount">$2,260.00</td>
+        <td>18.03.2026</td>
+        <td>28.03.2026</td>
+        <td><span class="bfin-badge bfin-badge--pending">Ожидает</span></td>
+      </tr>
+      <tr>
+        <td><span class="bfin-id">INV-2026-0335</span><br><span class="bfin-muted">ORD-2026-0131</span></td>
+        <td>Поставщик #3156<br><span class="bfin-muted">Таможня (40%)</span></td>
+        <td class="bfin-amount">$872.00</td>
+        <td>15.03.2026</td>
+        <td>22.03.2026</td>
+        <td><span class="bfin-badge bfin-badge--overdue">Просрочен</span></td>
+      </tr>
+      <tr>
+        <td><span class="bfin-id">INV-2026-0330</span><br><span class="bfin-muted">ORD-2026-0125</span></td>
+        <td>Поставщик #4291<br><span class="bfin-muted">Финальная оплата</span></td>
+        <td class="bfin-amount">$5,670.00</td>
+        <td>10.03.2026</td>
+        <td>15.03.2026</td>
+        <td><span class="bfin-badge bfin-badge--paid">Оплачен</span></td>
+      </tr>
+      <tr>
+        <td><span class="bfin-id">INV-2026-0322</span><br><span class="bfin-muted">ORD-2026-0118</span></td>
+        <td>Поставщик #5673<br><span class="bfin-muted">Полная оплата</span></td>
+        <td class="bfin-amount">$1,420.00</td>
+        <td>05.03.2026</td>
+        <td>10.03.2026</td>
+        <td><span class="bfin-badge bfin-badge--paid">Оплачен</span></td>
+      </tr>
+      <tr>
+        <td><span class="bfin-id">INV-2026-0315</span><br><span class="bfin-muted">ORD-2026-0110</span></td>
+        <td>TurboTech Asia<br><span class="bfin-muted">Этап 1 (резерв)</span></td>
+        <td class="bfin-amount">$1,890.00</td>
+        <td>20.02.2026</td>
+        <td>25.02.2026</td>
+        <td><span class="bfin-badge bfin-badge--paid">Оплачен</span></td>
+      </tr>
+      <tr>
+        <td><span class="bfin-id">INV-2026-0310</span><br><span class="bfin-muted">ORD-2026-0110</span></td>
+        <td>TurboTech Asia<br><span class="bfin-muted">Этап 2 (50%)</span></td>
+        <td class="bfin-amount">$9,450.00</td>
+        <td>01.03.2026</td>
+        <td>26.03.2026</td>
+        <td><span class="bfin-badge bfin-badge--pending">Ожидает</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Payment schedule -->
+<div class="bfin-section-title">График ближайших платежей</div>
+
+<div class="bfin-schedule">
+  <div class="bfin-sched-card">
+    <div class="bfin-sched-date" style="color:#E05555;">Просрочен &middot; 22.03.2026</div>
+    <div class="bfin-sched-desc">Таможенный платёж (40%)</div>
+    <div class="bfin-sched-amount" style="color:#E05555;">$872.00</div>
+    <div class="bfin-sched-supplier">Поставщик #3156 &middot; ORD-0131</div>
+    <button class="bfin-pay-btn">Оплатить сейчас</button>
+  </div>
+  <div class="bfin-sched-card">
+    <div class="bfin-sched-date" style="color:#E85C0D;">Срок &middot; 26.03.2026</div>
+    <div class="bfin-sched-desc">Подтверждение 50%</div>
+    <div class="bfin-sched-amount" style="color:#E85C0D;">$9,450.00</div>
+    <div class="bfin-sched-supplier">TurboTech Asia &middot; ORD-0110</div>
+    <button class="bfin-pay-btn">Оплатить</button>
+  </div>
+  <div class="bfin-sched-card">
+    <div class="bfin-sched-date" style="color:#E85C0D;">Срок &middot; 28.03.2026</div>
+    <div class="bfin-sched-desc">Этап 2 (50%)</div>
+    <div class="bfin-sched-amount" style="color:#E85C0D;">$2,260.00</div>
+    <div class="bfin-sched-supplier">Поставщик #2087 &middot; ORD-0138</div>
+    <button class="bfin-pay-btn">Оплатить</button>
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+
+<script>
+(function(){
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.transform = 'translateY(0)';
+    t.style.opacity = '1';
+    setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
+  }
+
+  // Pay buttons in schedule cards
+  document.querySelectorAll('.bfin-pay-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var card = btn.closest('.bfin-sched-card');
+      var supplier = card ? card.querySelector('.bfin-sched-supplier') : null;
+      var supplierText = supplier ? supplier.textContent : '';
+      var amount = card ? card.querySelector('.bfin-sched-amount') : null;
+      var amountText = amount ? amount.textContent : '';
+      showToast('Переход к оплате ' + amountText + ' — ' + supplierText);
+    });
+  });
+
+  // Invoice table rows - click on pending/overdue rows
+  var tableWrap = document.querySelector('.bfin-table-wrap');
+  if (tableWrap) {
+    tableWrap.addEventListener('click', function(e) {
+      var row = e.target.closest('tr');
+      if (!row || row.closest('thead')) return;
+      var idEl = row.querySelector('.bfin-id');
+      var id = idEl ? idEl.textContent : '';
+      var badge = row.querySelector('.bfin-badge');
+      if (badge && (badge.classList.contains('bfin-badge--pending') || badge.classList.contains('bfin-badge--overdue'))) {
+        showToast('Переход к оплате ' + id);
+      } else {
+        showToast('Счёт ' + id);
+      }
+    });
+  }
+})();
+</script>
+
+{% endblock %}

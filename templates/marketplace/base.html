@@ -114,13 +114,7 @@
         </header>
 
         <main class="container">
-          {% if messages %}
-            <div class="messages">
-              {% for message in messages %}
-                <p class="message">{{ message }}</p>
-              {% endfor %}
-            </div>
-          {% endif %}
+          <div style="display:none;" aria-hidden="true">{% for message in messages %}{{ message }}{% endfor %}</div>
           {% block content %}{% endblock %}
         </main>
       </section>

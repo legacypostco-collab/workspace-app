@@ -1,0 +1,182 @@
+{% extends "operator/base_operator.html" %}
+{% block title %}Платежи — Сверка{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="op-stats">
+  <div class="op-stat">
+    <div class="op-stat-value">24</div>
+    <div class="op-stat-label">Сверок за месяц</div>
+  </div>
+  <div class="op-stat op-stat-warn">
+    <div class="op-stat-value">3</div>
+    <div class="op-stat-label">Расхождения</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">$1.2M</div>
+    <div class="op-stat-label">Общая сумма</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">21</div>
+    <div class="op-stat-label">Подтверждено</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="op-tabs">
+  <button class="op-tab active" data-rec-tab="all" onclick="switchRecTab('all')">Все</button>
+  <button class="op-tab" data-rec-tab="discrepancy" onclick="switchRecTab('discrepancy')">Расхождения</button>
+  <button class="op-tab" data-rec-tab="confirmed" onclick="switchRecTab('confirmed')">Подтверждённые</button>
+</div>
+
+<div class="op-card">
+  <table class="op-table" id="rec-table">
+    <thead>
+      <tr>
+        <th>Период</th>
+        <th>Покупатель</th>
+        <th>Поставщик</th>
+        <th>Начислено</th>
+        <th>Оплачено</th>
+        <th>Расхождение</th>
+        <th>Статус</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-status="discrepancy" style="border-left:3px solid rgba(232,92,13,0.4);" onclick="opToast('Сверка: Покупатель #1042 / Поставщик #301, расхождение $340')">
+        <td class="text-secondary">1-15 мар</td>
+        <td style="font-weight:600;">Покупатель #1042</td>
+        <td class="text-secondary">Поставщик #301</td>
+        <td style="font-family:'Golos Text',sans-serif;">$24,500</td>
+        <td style="font-family:'Golos Text',sans-serif;">$24,160</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;font-weight:700;">-$340</td>
+        <td><span class="op-badge op-badge-orange">Расхождение</span></td>
+        <td>
+          <div style="display:flex;gap:6px;">
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Разбор расхождения: Покупатель #1042')">Разобрать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос выписки')">Выписка</button>
+          </div>
+        </td>
+      </tr>
+      <tr data-status="confirmed" onclick="opToast('Сверка: Покупатель #1038 / Поставщик #305')">
+        <td class="text-secondary">1-15 мар</td>
+        <td style="font-weight:600;">Покупатель #1038</td>
+        <td class="text-secondary">Поставщик #305</td>
+        <td style="font-family:'Golos Text',sans-serif;">$18,200</td>
+        <td style="font-family:'Golos Text',sans-serif;">$18,200</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
+        <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали сверки')">Детали</button></td>
+      </tr>
+      <tr data-status="confirmed" onclick="opToast('Сверка: Покупатель #1045 / Поставщик #308')">
+        <td class="text-secondary">1-15 мар</td>
+        <td style="font-weight:600;">Покупатель #1045</td>
+        <td class="text-secondary">Поставщик #308</td>
+        <td style="font-family:'Golos Text',sans-serif;">$42,800</td>
+        <td style="font-family:'Golos Text',sans-serif;">$42,800</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
+        <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали сверки')">Детали</button></td>
+      </tr>
+      <tr data-status="discrepancy" style="border-left:3px solid rgba(232,92,13,0.4);" onclick="opToast('Сверка: Покупатель #1051 / Поставщик #312, расхождение $1,200')">
+        <td class="text-secondary">1-15 мар</td>
+        <td style="font-weight:600;">Покупатель #1051</td>
+        <td class="text-secondary">Поставщик #312</td>
+        <td style="font-family:'Golos Text',sans-serif;">$56,400</td>
+        <td style="font-family:'Golos Text',sans-serif;">$55,200</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;font-weight:700;">-$1,200</td>
+        <td><span class="op-badge op-badge-orange">Расхождение</span></td>
+        <td>
+          <div style="display:flex;gap:6px;">
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Разбор расхождения: Покупатель #1051')">Разобрать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос выписки')">Выписка</button>
+          </div>
+        </td>
+      </tr>
+      <tr data-status="checking" onclick="opToast('Сверка: Покупатель #1033 / Поставщик #298')">
+        <td class="text-secondary">1-15 мар</td>
+        <td style="font-weight:600;">Покупатель #1033</td>
+        <td class="text-secondary">Поставщик #298</td>
+        <td style="font-family:'Golos Text',sans-serif;">$31,600</td>
+        <td style="font-family:'Golos Text',sans-serif;">$31,600</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
+        <td><span class="op-badge op-badge-gray">На проверке</span></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Подтверждение сверки')">Подтвердить</button></td>
+      </tr>
+      <tr data-status="confirmed" onclick="opToast('Сверка: Покупатель #1029 / Поставщик #315')">
+        <td class="text-secondary">16-28 фев</td>
+        <td style="font-weight:600;">Покупатель #1029</td>
+        <td class="text-secondary">Поставщик #315</td>
+        <td style="font-family:'Golos Text',sans-serif;">$67,100</td>
+        <td style="font-family:'Golos Text',sans-serif;">$67,100</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
+        <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали сверки')">Детали</button></td>
+      </tr>
+      <tr data-status="confirmed" onclick="opToast('Сверка: Покупатель #1042 / Поставщик #301')">
+        <td class="text-secondary">16-28 фев</td>
+        <td style="font-weight:600;">Покупатель #1042</td>
+        <td class="text-secondary">Поставщик #301</td>
+        <td style="font-family:'Golos Text',sans-serif;">$22,800</td>
+        <td style="font-family:'Golos Text',sans-serif;">$22,800</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
+        <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали сверки')">Детали</button></td>
+      </tr>
+      <tr data-status="discrepancy" style="border-left:3px solid rgba(232,92,13,0.4);" onclick="opToast('Сверка: Покупатель #1055 / Поставщик #320, расхождение $85')">
+        <td class="text-secondary">16-28 фев</td>
+        <td style="font-weight:600;">Покупатель #1055</td>
+        <td class="text-secondary">Поставщик #320</td>
+        <td style="font-family:'Golos Text',sans-serif;">$9,885</td>
+        <td style="font-family:'Golos Text',sans-serif;">$9,800</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;font-weight:700;">-$85</td>
+        <td><span class="op-badge op-badge-orange">Расхождение</span></td>
+        <td>
+          <div style="display:flex;gap:6px;">
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Разбор расхождения: Покупатель #1055')">Разобрать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос выписки')">Выписка</button>
+          </div>
+        </td>
+      </tr>
+      <tr data-status="confirmed" onclick="opToast('Сверка: Покупатель #1038 / Поставщик #305')">
+        <td class="text-secondary">16-28 фев</td>
+        <td style="font-weight:600;">Покупатель #1038</td>
+        <td class="text-secondary">Поставщик #305</td>
+        <td style="font-family:'Golos Text',sans-serif;">$15,400</td>
+        <td style="font-family:'Golos Text',sans-serif;">$15,400</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
+        <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали сверки')">Детали</button></td>
+      </tr>
+      <tr data-status="confirmed" onclick="opToast('Сверка: Покупатель #1060 / Поставщик #322')">
+        <td class="text-secondary">16-28 фев</td>
+        <td style="font-weight:600;">Покупатель #1060</td>
+        <td class="text-secondary">Поставщик #322</td>
+        <td style="font-family:'Golos Text',sans-serif;">$38,200</td>
+        <td style="font-family:'Golos Text',sans-serif;">$38,200</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
+        <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали сверки')">Детали</button></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  window.switchRecTab = function(tab){
+    document.querySelectorAll('[data-rec-tab]').forEach(function(btn){
+      btn.classList.toggle('active', btn.getAttribute('data-rec-tab') === tab);
+    });
+    document.querySelectorAll('#rec-table tbody tr').forEach(function(row){
+      if(tab === 'all'){row.style.display='';return;}
+      var s = row.getAttribute('data-status');
+      row.style.display = s === tab ? '' : 'none';
+    });
+  };
+})();
+</script>
+{% endblock %}

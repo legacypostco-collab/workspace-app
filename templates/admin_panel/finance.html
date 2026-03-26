@@ -1,0 +1,99 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}Финансы{% endblock %}
+{% block topbar_title %}Финансы{% endblock %}
+
+{% block content %}
+<div class="ap-stats">
+  <div class="ap-stat"><div class="ap-stat-value">$4.8M</div><div class="ap-stat-label">Оборот</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">$384K</div><div class="ap-stat-label">Комиссия платформы</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">$42K</div><div class="ap-stat-label">К выплате</div></div>
+  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">$8,200</div><div class="ap-stat-label">Просрочено</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">$186K</div><div class="ap-stat-label">Баланс</div></div>
+</div>
+
+<div class="ap-card">
+  <div class="ap-tabs">
+    <button class="ap-tab active" data-tab-group="fin" data-tab-key="transactions" onclick="apSwitchTab('fin','transactions')">Транзакции</button>
+    <button class="ap-tab" data-tab-group="fin" data-tab-key="commissions" onclick="apSwitchTab('fin','commissions')">Комиссии</button>
+    <button class="ap-tab" data-tab-group="fin" data-tab-key="payouts" onclick="apSwitchTab('fin','payouts')">Выплаты</button>
+    <button class="ap-tab" data-tab-group="fin" data-tab-key="reconciliation" onclick="apSwitchTab('fin','reconciliation')">Сверка</button>
+  </div>
+
+  <!-- Transactions -->
+  <div data-panel-group="fin" data-panel-key="transactions">
+    <table class="ap-table">
+      <thead><tr><th>ID</th><th>Тип</th><th>Покупатель</th><th>Поставщик</th><th>Сумма</th><th>Валюта</th><th>Дата</th><th>Статус</th></tr></thead>
+      <tbody>
+        <tr><td>TXN-8901</td><td>Оплата заказа</td><td class="text-secondary">#1042</td><td class="text-secondary">#3156</td><td>$11,200</td><td>USD</td><td class="text-secondary">25.03.2026</td><td><span class="ap-badge ap-badge-gray">Проведена</span></td></tr>
+        <tr><td>TXN-8900</td><td>Комиссия</td><td class="text-secondary">--</td><td class="text-secondary">#3156</td><td>$896</td><td>USD</td><td class="text-secondary">25.03.2026</td><td><span class="ap-badge ap-badge-gray">Списана</span></td></tr>
+        <tr><td>TXN-8899</td><td>Выплата</td><td class="text-secondary">--</td><td class="text-secondary">#3142</td><td>$14,800</td><td>USD</td><td class="text-secondary">25.03.2026</td><td><span class="ap-badge ap-badge-gray">Отправлена</span></td></tr>
+        <tr><td>TXN-8898</td><td>Оплата заказа</td><td class="text-secondary">#1038</td><td class="text-secondary">#3151</td><td>$3,900</td><td>USD</td><td class="text-secondary">24.03.2026</td><td><span class="ap-badge ap-badge-gray">Проведена</span></td></tr>
+        <tr><td>TXN-8897</td><td>Возврат</td><td class="text-secondary">#1033</td><td class="text-secondary">#3148</td><td>$1,240</td><td>USD</td><td class="text-secondary">24.03.2026</td><td><span class="ap-badge ap-badge-orange">В обработке</span></td></tr>
+        <tr><td>TXN-8896</td><td>Оплата заказа</td><td class="text-secondary">#1040</td><td class="text-secondary">#3002</td><td>$12,300</td><td>USD</td><td class="text-secondary">23.03.2026</td><td><span class="ap-badge ap-badge-gray">Проведена</span></td></tr>
+        <tr><td>TXN-8895</td><td>Комиссия</td><td class="text-secondary">--</td><td class="text-secondary">#3002</td><td>$984</td><td>USD</td><td class="text-secondary">23.03.2026</td><td><span class="ap-badge ap-badge-gray">Списана</span></td></tr>
+        <tr><td>TXN-8894</td><td>Оплата заказа</td><td class="text-secondary">#1035</td><td class="text-secondary">#3001</td><td>$9,800</td><td>USD</td><td class="text-secondary">22.03.2026</td><td><span class="ap-badge ap-badge-gray">Проведена</span></td></tr>
+        <tr><td>TXN-8893</td><td>Выплата</td><td class="text-secondary">--</td><td class="text-secondary">#3003</td><td>$18,500</td><td>USD</td><td class="text-secondary">22.03.2026</td><td><span class="ap-badge ap-badge-gray">Отправлена</span></td></tr>
+        <tr><td>TXN-8892</td><td>Оплата заказа</td><td class="text-secondary">#1028</td><td class="text-secondary">#3142</td><td>$8,340</td><td>USD</td><td class="text-secondary">21.03.2026</td><td><span class="ap-badge ap-badge-gray">Проведена</span></td></tr>
+        <tr><td>TXN-8891</td><td>Комиссия</td><td class="text-secondary">--</td><td class="text-secondary">#3142</td><td>$667</td><td>USD</td><td class="text-secondary">21.03.2026</td><td><span class="ap-badge ap-badge-gray">Списана</span></td></tr>
+        <tr><td>TXN-8890</td><td>Оплата заказа</td><td class="text-secondary">#1022</td><td class="text-secondary">#3003</td><td>$18,500</td><td>USD</td><td class="text-secondary">20.03.2026</td><td><span class="ap-badge ap-badge-gray">Проведена</span></td></tr>
+        <tr><td>TXN-8889</td><td>Выплата</td><td class="text-secondary">--</td><td class="text-secondary">#3151</td><td>$22,400</td><td>USD</td><td class="text-secondary">19.03.2026</td><td><span class="ap-badge ap-badge-gray">Отправлена</span></td></tr>
+        <tr><td>TXN-8888</td><td>Оплата заказа</td><td class="text-secondary">#1018</td><td class="text-secondary">#3156</td><td>$15,400</td><td>USD</td><td class="text-secondary">18.03.2026</td><td><span class="ap-badge ap-badge-gray">Проведена</span></td></tr>
+        <tr><td>TXN-8887</td><td>Возврат</td><td class="text-secondary">#1025</td><td class="text-secondary">#3140</td><td>$2,100</td><td>USD</td><td class="text-secondary">17.03.2026</td><td><span class="ap-badge ap-badge-gray">Завершён</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Commissions -->
+  <div data-panel-group="fin" data-panel-key="commissions" style="display:none;">
+    <table class="ap-table">
+      <thead><tr><th>Заказ</th><th>Поставщик</th><th>Сумма заказа</th><th>Ставка</th><th>Комиссия</th><th>Дата</th><th>Статус</th></tr></thead>
+      <tbody>
+        <tr><td>ORD-4521</td><td class="text-secondary">#3156</td><td>$11,200</td><td>8%</td><td>$896</td><td class="text-secondary">25.03.2026</td><td><span class="ap-badge ap-badge-gray">Списана</span></td></tr>
+        <tr><td>ORD-4518</td><td class="text-secondary">#3002</td><td>$24,600</td><td>8%</td><td>$1,968</td><td class="text-secondary">22.03.2026</td><td><span class="ap-badge ap-badge-gray">Списана</span></td></tr>
+        <tr><td>ORD-4515</td><td class="text-secondary">#3001</td><td>$9,800</td><td>8%</td><td>$784</td><td class="text-secondary">20.03.2026</td><td><span class="ap-badge ap-badge-gray">Списана</span></td></tr>
+        <tr><td>ORD-4498</td><td class="text-secondary">#3142</td><td>$8,340</td><td>8%</td><td>$667</td><td class="text-secondary">18.03.2026</td><td><span class="ap-badge ap-badge-gray">Списана</span></td></tr>
+        <tr><td>ORD-4490</td><td class="text-secondary">#3003</td><td>$18,500</td><td>8%</td><td>$1,480</td><td class="text-secondary">14.03.2026</td><td><span class="ap-badge ap-badge-gray">Списана</span></td></tr>
+        <tr><td>ORD-4485</td><td class="text-secondary">#3156</td><td>$15,400</td><td>8%</td><td>$1,232</td><td class="text-secondary">10.03.2026</td><td><span class="ap-badge ap-badge-gray">Списана</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Payouts -->
+  <div data-panel-group="fin" data-panel-key="payouts" style="display:none;">
+    <table class="ap-table">
+      <thead><tr><th>ID</th><th>Поставщик</th><th>Сумма</th><th>Заказов</th><th>Дата выплаты</th><th>Метод</th><th>Статус</th></tr></thead>
+      <tbody>
+        <tr><td>PAY-301</td><td class="text-secondary">#3142</td><td>$14,800</td><td>2</td><td class="text-secondary">25.03.2026</td><td class="text-secondary">Wire</td><td><span class="ap-badge ap-badge-gray">Отправлена</span></td></tr>
+        <tr><td>PAY-300</td><td class="text-secondary">#3003</td><td>$18,500</td><td>1</td><td class="text-secondary">22.03.2026</td><td class="text-secondary">Wire</td><td><span class="ap-badge ap-badge-gray">Отправлена</span></td></tr>
+        <tr><td>PAY-299</td><td class="text-secondary">#3151</td><td>$22,400</td><td>3</td><td class="text-secondary">19.03.2026</td><td class="text-secondary">Wire</td><td><span class="ap-badge ap-badge-gray">Отправлена</span></td></tr>
+        <tr><td>PAY-298</td><td class="text-secondary">#3001</td><td>$42,000</td><td>5</td><td class="text-secondary">28.03.2026</td><td class="text-secondary">Wire</td><td><span class="ap-badge ap-badge-gray">Запланирована</span></td></tr>
+        <tr><td>PAY-297</td><td class="text-secondary">#3156</td><td>$28,600</td><td>3</td><td class="text-secondary">28.03.2026</td><td class="text-secondary">Wire</td><td><span class="ap-badge ap-badge-gray">Запланирована</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Reconciliation -->
+  <div data-panel-group="fin" data-panel-key="reconciliation" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <div class="ap-card-elevated">
+        <div class="ap-section-sub">Входящие платежи</div>
+        <div class="ap-stat-value" style="font-size:22px;">$4,812,400</div>
+        <div class="ap-stat-label">За весь период</div>
+      </div>
+      <div class="ap-card-elevated">
+        <div class="ap-section-sub">Исходящие выплаты</div>
+        <div class="ap-stat-value" style="font-size:22px;">$4,386,200</div>
+        <div class="ap-stat-label">За весь период</div>
+      </div>
+    </div>
+    <table class="ap-table">
+      <thead><tr><th>Период</th><th>Входящие</th><th>Комиссия</th><th>Выплаты</th><th>Возвраты</th><th>Баланс</th><th>Статус</th></tr></thead>
+      <tbody>
+        <tr><td>Март 2026</td><td>$842,000</td><td>$67,360</td><td>$756,200</td><td>$3,340</td><td>$82,460</td><td><span class="ap-badge ap-badge-gray">В процессе</span></td></tr>
+        <tr><td>Февраль 2026</td><td>$1,124,000</td><td>$89,920</td><td>$1,018,400</td><td>$5,200</td><td>$100,400</td><td><span class="ap-badge ap-badge-gray">Сверен</span></td></tr>
+        <tr><td>Январь 2026</td><td>$986,000</td><td>$78,880</td><td>$892,100</td><td>$8,400</td><td>$85,500</td><td><span class="ap-badge ap-badge-gray">Сверен</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

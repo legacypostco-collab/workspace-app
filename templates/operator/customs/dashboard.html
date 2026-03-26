@@ -1,0 +1,148 @@
+{% extends "operator/base_operator.html" %}
+{% block title %}Таможенный брокер — Дашборд{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="op-stats">
+  <div class="op-stat">
+    <div class="op-stat-value">7</div>
+    <div class="op-stat-label">Деклараций в работе</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">3</div>
+    <div class="op-stat-label">Ожидают оформления</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">142</div>
+    <div class="op-stat-label">Оформлены</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">2.3 дн.</div>
+    <div class="op-stat-label">Среднее время</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">0</div>
+    <div class="op-stat-label">Отказов</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:16px;">
+  <!-- Active declarations -->
+  <div class="op-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="op-section-title">Активные декларации</div>
+      <a href="/operator/customs/declarations/" class="op-btn op-btn-primary">Все декларации</a>
+    </div>
+    <table class="op-table">
+      <thead>
+        <tr>
+          <th>Номер</th>
+          <th>Заказ</th>
+          <th>Товар</th>
+          <th>Стоимость</th>
+          <th>Код ТН ВЭД</th>
+          <th>Статус</th>
+          <th>Дата подачи</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr onclick="opToast('Декларация ДТ-2024-0847: автозапчасти, на рассмотрении')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0847</td>
+          <td>ORD-4521</td>
+          <td>Автозапчасти</td>
+          <td style="font-family:'Golos Text',sans-serif;">$18,400</td>
+          <td style="font-family:'Golos Text',sans-serif;color:#919191;">8708 99</td>
+          <td><span class="op-badge op-badge-gray">На рассмотрении</span></td>
+          <td class="text-secondary">22 мар</td>
+        </tr>
+        <tr onclick="opToast('Декларация ДТ-2024-0845: подшипники, подготовка')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0845</td>
+          <td>ORD-4518</td>
+          <td>Подшипники</td>
+          <td style="font-family:'Golos Text',sans-serif;">$6,200</td>
+          <td style="font-family:'Golos Text',sans-serif;color:#919191;">8482 10</td>
+          <td><span class="op-badge op-badge-gray">Подготовка</span></td>
+          <td class="text-secondary">--</td>
+        </tr>
+        <tr onclick="opToast('Декларация ДТ-2024-0843: фильтры, на рассмотрении')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0843</td>
+          <td>ORD-4515</td>
+          <td>Фильтры масляные</td>
+          <td style="font-family:'Golos Text',sans-serif;">$4,100</td>
+          <td style="font-family:'Golos Text',sans-serif;color:#919191;">8421 23</td>
+          <td><span class="op-badge op-badge-gray">На рассмотрении</span></td>
+          <td class="text-secondary">20 мар</td>
+        </tr>
+        <tr onclick="opToast('Декларация ДТ-2024-0841: тормозные колодки, подготовка')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0841</td>
+          <td>ORD-4512</td>
+          <td>Тормозные колодки</td>
+          <td style="font-family:'Golos Text',sans-serif;">$12,800</td>
+          <td style="font-family:'Golos Text',sans-serif;color:#919191;">6813 81</td>
+          <td><span class="op-badge op-badge-gray">Подготовка</span></td>
+          <td class="text-secondary">--</td>
+        </tr>
+        <tr onclick="opToast('Декларация ДТ-2024-0839: амортизаторы, оформлена')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0839</td>
+          <td>ORD-4505</td>
+          <td>Амортизаторы</td>
+          <td style="font-family:'Golos Text',sans-serif;">$9,300</td>
+          <td style="font-family:'Golos Text',sans-serif;color:#919191;">8708 80</td>
+          <td><span class="op-badge op-badge-gray">Оформлена</span></td>
+          <td class="text-secondary">18 мар</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Right panel -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <!-- Documents queue -->
+    <div class="op-card">
+      <div class="op-section-title" style="display:flex;align-items:center;gap:8px;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="1.3" stroke-linecap="round"><path d="M4 1.5h6l3 3v9.5a1 1 0 01-1 1H4a1 1 0 01-1-1V2.5a1 1 0 011-1z"/><path d="M10 1.5v3h3"/></svg>
+        Очередь документов
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Открыта заявка на инвойс ORD-4518')">
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Инвойс</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4518 - ожидает загрузки</div>
+          <span class="op-badge op-badge-orange" style="margin-top:6px;">Срочно</span>
+        </div>
+        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Открыта заявка на сертификат ORD-4515')">
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Сертификат происхождения</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4515 - запрошен у поставщика</div>
+        </div>
+        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Открыта заявка на упаковочный лист ORD-4521')">
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Упаковочный лист</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4521 - на проверке</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tariff alerts -->
+    <div class="op-card">
+      <div class="op-section-title" style="display:flex;align-items:center;gap:8px;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#E85C0D" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v5M8 11v.5"/><circle cx="8" cy="8" r="7"/></svg>
+        Изменения тарифов
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+        <div class="op-card-elevated" style="padding:12px 14px;">
+          <div style="display:flex;justify-content:space-between;">
+            <div style="font-size:13px;font-weight:600;color:#ECECEC;">8708 99</div>
+            <span class="op-badge op-badge-orange">+2%</span>
+          </div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">Пошлина увеличена с 01.04</div>
+        </div>
+        <div class="op-card-elevated" style="padding:12px 14px;">
+          <div style="display:flex;justify-content:space-between;">
+            <div style="font-size:13px;font-weight:600;color:#ECECEC;">8421 23</div>
+            <span class="op-badge op-badge-gray">0%</span>
+          </div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">Временная отмена пошлины</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
