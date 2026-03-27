@@ -369,6 +369,21 @@ def _role_for(user: User | None) -> str | None:
     return profile.role if profile else "buyer"
 
 
+def _is_demo_user(user) -> bool:
+    """Check if user is a demo account."""
+    return getattr(user, "username", "").startswith("demo_")
+
+
+def _tpl(user, path: str) -> str:
+    """Return real/ or demo template path based on user type."""
+    if _is_demo_user(user):
+        return path
+    for prefix in ("buyer/", "seller/"):
+        if prefix in path:
+            return path.replace(prefix, f"real/{prefix}", 1)
+    return path
+
+
 def _profile_for(user: User | None):
     if not user or not user.is_authenticated:
         return None
@@ -1647,7 +1662,7 @@ def seller_dashboard(request: HttpRequest) -> HttpResponse:
     dashboard_payload = DashboardProjectionBuilder().payload(projection)
     response = render(
         request,
-        "seller/dashboard/index.html",
+        _tpl(request.user, "seller/dashboard/index.html"),
         {
             "dashboard_payload": dashboard_payload,
             "seller_page_title": "Кабинет поставщика",
@@ -1667,7 +1682,7 @@ def seller_dashboard(request: HttpRequest) -> HttpResponse:
 def seller_product_list(request: HttpRequest) -> HttpResponse:
     return render(
         request,
-        "seller/products/catalog.html",
+        _tpl(request.user, "seller/products/catalog.html"),
         {
             **_build_seller_catalog_context(request),
             "seller_page_title": "Товары и прайсы",
@@ -1732,7 +1747,7 @@ def seller_orders(request: HttpRequest) -> HttpResponse:
 
     return render(
         request,
-        "seller/orders/list.html",
+        _tpl(request.user, "seller/orders/list.html"),
         {
             "rows": rows,
             "orders": orders_page,
@@ -2291,7 +2306,7 @@ def seller_integrations(request: HttpRequest) -> HttpResponse:
 
 def seller_logistics(request: HttpRequest) -> HttpResponse:
     """Логистика: карта, терминалы, отслеживание, калькулятор, аукцион."""
-    return render(request, "seller/logistics/list.html", {})
+    return render(request, _tpl(request.user, "seller/logistics/list.html"), {})
 
 
 def seller_reports(request: HttpRequest) -> HttpResponse:
@@ -2307,19 +2322,19 @@ def seller_reports(request: HttpRequest) -> HttpResponse:
 # ═══════════════════════════════════════════════════════════════════
 
 def buyer_dashboard(request: HttpRequest) -> HttpResponse:
-    return render(request, "buyer/dashboard/index.html", {})
+    return render(request, _tpl(request.user, "buyer/dashboard/index.html"), {})
 
 def buyer_catalog(request: HttpRequest) -> HttpResponse:
-    return render(request, "buyer/catalog/list.html", {})
+    return render(request, _tpl(request.user, "buyer/catalog/list.html"), {})
 
 def buyer_rfq_list(request: HttpRequest) -> HttpResponse:
-    return render(request, "buyer/rfq/list.html", {})
+    return render(request, _tpl(request.user, "buyer/rfq/list.html"), {})
 
 def buyer_orders(request: HttpRequest) -> HttpResponse:
-    return render(request, "buyer/orders/list.html", {})
+    return render(request, _tpl(request.user, "buyer/orders/list.html"), {})
 
 def buyer_shipments(request: HttpRequest) -> HttpResponse:
-    return render(request, "buyer/shipments/list.html", {})
+    return render(request, _tpl(request.user, "buyer/shipments/list.html"), {})
 
 def buyer_claims(request: HttpRequest) -> HttpResponse:
     return render(request, "buyer/claims/list.html", {})
@@ -2607,7 +2622,7 @@ def seller_request_list(request: HttpRequest) -> HttpResponse:
 
     return render(
         request,
-        "seller/requests/list.html",
+        _tpl(request.user, "seller/requests/list.html"),
         {
             "rfq_rows": rfq_rows,
             "query": query,

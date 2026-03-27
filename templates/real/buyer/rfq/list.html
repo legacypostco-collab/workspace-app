@@ -1,0 +1,75 @@
+{% extends "buyer/base_buyer.html" %}
+
+{% block title %}RFQ Requests{% endblock %}
+
+{% block extra_css %}
+<style>
+.mvp-page { padding: 32px 40px; }
+.mvp-title { font-size: 28px; font-weight: 800; color: #192A4D; margin: 0 0 24px; letter-spacing: -0.02em; }
+.mvp-btn { display: inline-flex; align-items: center; gap: 8px; background: #4568F3; color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.mvp-btn:hover { background: #3455DE; }
+.mvp-btn--outline { background: transparent; color: #4568F3; border: 1px solid #4568F3; }
+.mvp-btn--sm { padding: 6px 14px; font-size: 13px; }
+.mvp-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.mvp-table th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 700; color: #8896A8; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid rgba(25,42,77,0.08); }
+.mvp-table td { padding: 14px 16px; font-size: 14px; color: #415080; border-bottom: 1px solid rgba(25,42,77,0.04); }
+.mvp-table tr:hover td { background: #F8FAFF; }
+.mvp-empty { text-align: center; padding: 64px 24px; color: #8896A8; font-size: 15px; }
+.mvp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.mvp-header .mvp-title { margin: 0; }
+.mvp-panel { background: #fff; border: 1px solid rgba(25,42,77,0.08); border-radius: 16px; padding: 24px; }
+.mvp-status { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.mvp-status--draft { background: #F0F1F5; color: #8896A8; }
+.mvp-status--active { background: #E8F5E9; color: #2E7D32; }
+.mvp-status--closed { background: #FFF3E0; color: #E65100; }
+.mvp-status--completed { background: #E3F2FD; color: #1565C0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mvp-page">
+  <div class="mvp-header">
+    <h1 class="mvp-title">RFQ Requests</h1>
+    <a href="#" class="mvp-btn">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Create New RFQ
+    </a>
+  </div>
+
+  <div class="mvp-panel">
+    {% if rfqs %}
+      <table class="mvp-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Part Numbers</th>
+            <th>Qty</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rfq in rfqs %}
+          <tr>
+            <td style="font-weight: 600; color: #192A4D;">{{ rfq.id }}</td>
+            <td>{{ rfq.part_numbers }}</td>
+            <td>{{ rfq.quantity }}</td>
+            <td>
+              <span class="mvp-status mvp-status--{{ rfq.status|lower }}">{{ rfq.status }}</span>
+            </td>
+            <td>{{ rfq.created_at|date:"d.m.Y" }}</td>
+            <td><a href="#" class="mvp-btn mvp-btn--outline mvp-btn--sm">View</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="mvp-empty">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="margin-bottom: 16px;"><rect x="8" y="6" width="32" height="36" rx="4" stroke="#C8D0E0" stroke-width="2"/><path d="M16 16h16M16 24h10" stroke="#C8D0E0" stroke-width="2" stroke-linecap="round"/></svg><br>
+        No RFQ requests yet. Create your first request to get quotes from suppliers.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

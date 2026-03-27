@@ -1,0 +1,60 @@
+{% extends "buyer/base_buyer.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+.mvp-page { padding: 32px 40px; }
+.mvp-title { font-size: 28px; font-weight: 800; color: #192A4D; margin: 0 0 24px; letter-spacing: -0.02em; }
+.mvp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 32px; }
+.mvp-card { background: #fff; border: 1px solid rgba(25,42,77,0.08); border-radius: 16px; padding: 24px; }
+.mvp-card__value { font-size: 36px; font-weight: 800; color: #192A4D; }
+.mvp-card__label { font-size: 13px; color: #8896A8; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
+.mvp-btn { display: inline-flex; align-items: center; gap: 8px; background: #4568F3; color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.mvp-btn:hover { background: #3455DE; }
+.mvp-btn--outline { background: transparent; color: #4568F3; border: 1px solid #4568F3; }
+.mvp-empty { text-align: center; padding: 64px 24px; color: #8896A8; font-size: 15px; }
+.mvp-actions { display: flex; gap: 12px; margin-bottom: 32px; }
+.mvp-section-title { font-size: 18px; font-weight: 700; color: #192A4D; margin: 0 0 16px; }
+.mvp-activity { background: #fff; border: 1px solid rgba(25,42,77,0.08); border-radius: 16px; padding: 24px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mvp-page">
+  <h1 class="mvp-title">Dashboard</h1>
+
+  <div class="mvp-cards">
+    <div class="mvp-card">
+      <div class="mvp-card__value">{{ buyer_active_orders|default:"0" }}</div>
+      <div class="mvp-card__label">Active Orders</div>
+    </div>
+    <div class="mvp-card">
+      <div class="mvp-card__value">{{ buyer_active_rfq|default:"0" }}</div>
+      <div class="mvp-card__label">Active RFQ</div>
+    </div>
+    <div class="mvp-card">
+      <div class="mvp-card__value">{{ buyer_orders_count|default:"0" }}</div>
+      <div class="mvp-card__label">Total Orders</div>
+    </div>
+  </div>
+
+  <div class="mvp-actions">
+    <a href="{% url 'buyer_catalog' %}" class="mvp-btn">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5.5" stroke="#fff" stroke-width="1.8"/><path d="M11 11l3.5 3.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Search Parts
+    </a>
+    <a href="{% url 'buyer_rfq_list' %}" class="mvp-btn mvp-btn--outline">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Create RFQ
+    </a>
+  </div>
+
+  <div class="mvp-activity">
+    <h2 class="mvp-section-title">Recent Activity</h2>
+    <div class="mvp-empty">
+      No recent activity yet. Start by searching for spare parts or creating an RFQ request.
+    </div>
+  </div>
+</div>
+{% endblock %}
