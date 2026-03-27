@@ -6413,7 +6413,7 @@ html.theme-light .industry-card, html.theme-light .industry-card__desc { backgro
 html.theme-light .industry-card__title, html.theme-light .industry-card h3 { color: #212647 !important; }
 html.theme-light .industry-card p, html.theme-light .industry-card__text { color: #415080 !important; }
 html.theme-light .industry-card svg { color: #4568F3 !important; stroke: #4568F3 !important; }
-html.theme-light .service-card, html.theme-light .feature-card, html.theme-light [class*="-card"]:not(.strategy-card):not(.cases-card) { background: #FFFFFF !important; border-color: rgba(25,42,77,0.08) !important; }
+html.theme-light .service-card, html.theme-light .feature-card, html.theme-light [class*="-card"]:not(.strategy-card):not(.cases-card):not([class*="__"]) { background: #FFFFFF !important; border-color: rgba(25,42,77,0.08) !important; }
 html.theme-light .site-footer { background: #1A2744 !important; }
 html.theme-light .site-footer * { border-color: rgba(255,255,255,0.08) !important; }
 html.theme-light .stats-section, html.theme-light .hero-stats, html.theme-light [class*="stats"] { background: #F0F4F9 !important; }
@@ -6750,7 +6750,7 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="fb-strategy-grid">
 
 <a href="/login/" class="fb-strategy-card">
-  <div class="fb-strategy-card__visual" style="background:radial-gradient(ellipse 140% 180% at 0% 0%, #8899ff 0%, #5b4fcf 25%, #2d1f6e 50%, #0c0a2e 100%);aspect-ratio:648/539;"></div>
+  <div class="fb-strategy-card__visual"><img src="{% static 'marketplace/img/wave-blue.png' %}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
   <div class="fb-strategy-card__overlay">
     <div class="fb-strategy-card__bubble">
       <p class="fb-strategy-card__bubble-text" data-strat-desc="1">Единый доступ к производителям и складам по всему миру. Быстрый поиск, расчёт цены и сроков за секунды.</p>
@@ -6765,7 +6765,7 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 </a>
 
 <a href="/login/" class="fb-strategy-card">
-  <div class="fb-strategy-card__visual" style="background:radial-gradient(ellipse 130% 190% at 0% 0%, #f0c040 0%, #c8881a 30%, #7a520e 55%, #2a1d05 100%);aspect-ratio:648/539;"></div>
+  <div class="fb-strategy-card__visual"><img src="{% static 'marketplace/img/wave-gold.png' %}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
   <div class="fb-strategy-card__overlay">
     <div class="fb-strategy-card__bubble">
       <p class="fb-strategy-card__bubble-text" data-strat-desc="2">Прямой канал к корпоративным заказчикам и сервисным сетям. Интеграция прайсов, управление заявками.</p>
