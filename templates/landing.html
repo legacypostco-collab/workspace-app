@@ -2015,28 +2015,30 @@ tbody tr.row-unknown:hover td{
   display:flex;
   align-items:flex-start;
   justify-content:space-between;
-  gap:64px;
+  gap:48px;
+  padding:48px 0;
 }
 
 .stat-item{
   flex:1 1 0;
-  text-align:center;
+  text-align:left;
 }
 
 .stat-value{
-  font-size:90px;
+  font-size:clamp(64px, 7vw, 100px);
   font-weight:800;
   letter-spacing:-.03em;
   color:var(--ink);
-  line-height:1.05;
+  line-height:1.0;
+  font-family:'Figtree','Manrope','Inter',sans-serif;
 }
 
 .stat-label{
-  margin-top:12px;
-  font-size:13px;
+  margin-top:8px;
+  font-size:12px;
   font-weight:600;
   text-transform:uppercase;
-  letter-spacing:.16em;
+  letter-spacing:.22em;
   color:var(--accent);
 }
 
@@ -6468,9 +6470,9 @@ html.theme-light .industry-icon svg { fill: #4568F3 !important; }
 
 /* ---- Stats section ---- */
 html.theme-light .stats-section { background: #FFFFFF !important; border-top: 1px solid rgba(25,42,77,0.06); border-bottom: 1px solid rgba(25,42,77,0.06); }
-html.theme-light .stat-value { color: #212647 !important; }
-html.theme-light .stat-label { color: #6B7390 !important; }
-html.theme-light .stat-item { border-color: rgba(25,42,77,0.06) !important; }
+html.theme-light .stat-value { color: #192A4D !important; }
+html.theme-light .stat-label { color: #8896A8 !important; letter-spacing: .22em !important; }
+html.theme-light .stat-item { border-color: transparent !important; }
 
 /* ---- Calculator form in light theme ---- */
 html.theme-light .main_block h1 { color: #212647 !important; }
