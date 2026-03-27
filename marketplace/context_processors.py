@@ -209,6 +209,7 @@ def seller_context(request):
             {"key": "products", "label": "Каталог", "url_name": "seller_product_list", "badge": seller_products_active, "enabled": True},
             {"key": "requests", "label": "Запросы", "url_name": "seller_request_list", "badge": seller_requests_new, "enabled": True},
             {"key": "orders", "label": "Заказы", "url_name": "seller_orders", "badge": seller_orders_action, "enabled": True},
+            {"key": "sla", "label": "Контроль SLA", "url_name": "seller_sla", "badge": seller_sla_alert, "enabled": True},
             {"key": "logistics", "label": "Логистика", "url_name": "seller_logistics", "badge": None, "enabled": True},
         ]
 
