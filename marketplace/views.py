@@ -375,12 +375,7 @@ def _is_demo_user(user) -> bool:
 
 
 def _tpl(user, path: str) -> str:
-    """Return real/ or demo template path based on user type."""
-    if _is_demo_user(user):
-        return path
-    for prefix in ("buyer/", "seller/"):
-        if prefix in path:
-            return path.replace(prefix, f"real/{prefix}", 1)
+    """Return template path. Same templates for all users; sidebar is filtered by context_processors."""
     return path
 
 
