@@ -2396,10 +2396,11 @@ def buyer_rfq_list(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def buyer_orders(request: HttpRequest) -> HttpResponse:
-    orders = Order.objects.filter(buyer=request.user).prefetch_related("items__part").order_by("-created_at")
+    orders = list(Order.objects.filter(buyer=request.user).prefetch_related("items__part").order_by("-created_at"))
     for o in orders:
         _recalc_order_sla(o)
-    return render(request, _tpl(request.user, "buyer/orders/list.html"), {"orders": orders})
+    total_spent = sum((o.total_amount for o in orders), Decimal("0.00"))
+    return render(request, _tpl(request.user, "buyer/orders/list.html"), {"orders": orders, "total_spent": total_spent})
 
 @login_required
 def buyer_shipments(request: HttpRequest) -> HttpResponse:

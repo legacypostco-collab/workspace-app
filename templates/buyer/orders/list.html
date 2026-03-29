@@ -1,285 +1,157 @@
 {% extends "buyer/base_buyer.html" %}
 
-{% block title %}Заказы{% endblock %}
+{% block title %}Заказы — Кабинет покупателя{% endblock %}
 
 {% block extra_css %}
 <style>
-/* ══════════ Orders page ══════════ */
-
-.ord-hero { margin-bottom:16px; }
-.ord-hero-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px; }
-.ord-hero-title {
-  font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC;
-}
+.ord-hero-title { font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC; }
 .ord-hero-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
-
-/* Stats */
-.ord-stats {
-  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;
-}
-.ord-stat {
-  background:#1A1A1A;border-radius:12px;padding:14px 16px;
-  border:1px solid rgba(255,255,255,0.04);
-}
-.ord-stat-label {
-  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
-  color:#919191;margin-bottom:6px;
-}
-.ord-stat-val {
-  font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;
-  color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
-}
-
-/* Filter bar */
-.ord-toolbar {
-  display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;
-}
-.ord-search {
-  flex:1;min-width:180px;padding:8px 12px;background:#111;
-  border:1px solid rgba(255,255,255,0.07);border-radius:10px;
-  color:#ECECEC;font-size:13px;outline:none;
-}
-.ord-search::placeholder { color:#6A6A6A; }
-.ord-search:focus { border-color:rgba(100,181,246,0.4); }
-.ord-select {
-  padding:8px 12px;background:#111;
-  border:1px solid rgba(255,255,255,0.07);border-radius:10px;
-  color:#ECECEC;font-size:12px;outline:none;
-  -webkit-appearance:none;appearance:none;
-  background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236A6A6A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 10px center;
-  padding-right:28px;
-}
-
-/* Table */
-.ord-table-wrap {
-  background:#1A1A1A;border-radius:14px;border:1px solid rgba(255,255,255,0.04);overflow:hidden;
-}
-.ord-table { width:100%;border-collapse:collapse; }
-.ord-table th {
-  text-align:left;padding:8px 12px;font-size:10px;font-weight:600;
-  text-transform:uppercase;letter-spacing:0.05em;color:#919191;
-  border-bottom:1px solid rgba(255,255,255,0.06);
-}
-.ord-table td {
-  padding:12px;font-size:13px;color:#ECECEC;
-  border-bottom:1px solid rgba(255,255,255,0.03);
-  vertical-align:middle;
-}
-.ord-table tbody tr { transition:background .12s; }
-.ord-table tbody tr:hover { background:rgba(255,255,255,0.03); }
-
-.ord-id {
-  font-family:'Golos Text',sans-serif;font-weight:700;color:#64B5F6;
-}
-.ord-muted { color:#6A6A6A;font-size:11px; }
-.ord-amount {
-  font-family:'Golos Text',sans-serif;font-weight:700;
-  font-variant-numeric:tabular-nums;
-}
-
-/* Order status badge */
-.ord-badge {
-  display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;
-  font-weight:600;letter-spacing:0.02em;
-}
-.ord-badge--production { background:rgba(232,92,13,0.12);color:#E85C0D; }
-.ord-badge--transit { background:rgba(100,181,246,0.12);color:#64B5F6; }
-.ord-badge--customs { background:rgba(138,138,138,0.15);color:#919191; }
-.ord-badge--delivered { background:rgba(255,255,255,0.06);color:#919191; }
-.ord-badge--cancelled { background:rgba(224,85,85,0.12);color:#E05555; }
-
-/* Payment badge */
-.ord-pay-badge {
-  display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;
-  font-weight:600;letter-spacing:0.02em;
-}
-.ord-pay--paid { background:rgba(255,255,255,0.06);color:#919191; }
-.ord-pay--partial { background:rgba(232,92,13,0.12);color:#E85C0D; }
-.ord-pay--pending { background:rgba(138,138,138,0.15);color:#919191; }
-
-/* Detail button */
-.ord-detail-btn {
-  padding:5px 14px;border-radius:7px;font-size:11px;font-weight:600;
-  background:rgba(255,255,255,0.04);color:#ECECEC;
-  border:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all .15s;
-  text-decoration:none;
-}
-.ord-detail-btn:hover { background:rgba(255,255,255,0.08); }
+.ord-stats { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px; }
+.ord-stat { background:#242424;border:1px solid rgba(255,255,255,0.055);border-radius:10px;padding:14px 16px;text-align:center; }
+.ord-stat-val { font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC; }
+.ord-stat-label { font-size:11px;color:#6A6A6A;margin-top:2px;text-transform:uppercase;letter-spacing:0.04em; }
+.ord-filters { display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap; }
+.ord-search { flex:1;min-width:200px;padding:8px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#ECECEC;font-size:13px;outline:none; }
+.ord-search:focus { border-color:#64B5F6; }
+.ord-select { padding:8px 12px;background:#242424;border:1px solid rgba(255,255,255,0.07);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;cursor:pointer; }
+.ord-table { width:100%;border-collapse:collapse;font-size:13px; }
+.ord-table th { text-align:left;padding:8px 12px;color:#6A6A6A;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid rgba(255,255,255,0.07); }
+.ord-table td { padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle; }
+.ord-table tr:hover td { background:rgba(255,255,255,0.02); }
+.ord-id { font-weight:700;color:#64B5F6; }
+.ord-muted { font-size:11px;color:#5E5E5E; }
+.ord-amount { font-weight:700;font-family:'Golos Text',sans-serif; }
+.ord-badge { display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600; }
+.ord-badge--pending { background:rgba(255,160,0,0.12);color:#FFA000; }
+.ord-badge--confirmed,.ord-badge--production { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.ord-badge--shipped,.ord-badge--transit { background:rgba(40,200,64,0.12);color:#28C840; }
+.ord-badge--delivered,.ord-badge--completed { background:rgba(40,200,64,0.15);color:#28C840; }
+.ord-badge--cancelled { background:rgba(232,92,13,0.12);color:#E85C0D; }
+.ord-pay--awaiting { background:rgba(255,160,0,0.1);color:#FFA000; }
+.ord-pay--reserve { background:rgba(100,181,246,0.1);color:#64B5F6; }
+.ord-pay--paid { background:rgba(40,200,64,0.12);color:#28C840; }
+.ord-detail-btn { color:#64B5F6;text-decoration:none;font-weight:600;font-size:12px; }
+.ord-detail-btn:hover { text-decoration:underline; }
+.ord-empty { text-align:center;padding:60px 20px;color:#5E5E5E; }
+.ord-empty-icon { font-size:40px;margin-bottom:12px;opacity:0.5; }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="ord-hero-title">Заказы</div>
+<div class="ord-hero-sub">Управление заказами и отслеживание поставок</div>
 
-<section class="ord-hero">
-  <div class="ord-hero-top">
-    <div>
-      <div class="ord-hero-title">Заказы</div>
-      <div class="ord-hero-sub">Управление заказами и отслеживание поставок</div>
-    </div>
-  </div>
-</section>
-
-<!-- Stats -->
-<div class="ord-stats">
+<div class="ord-stats" style="margin-top:16px;">
   <div class="ord-stat">
     <div class="ord-stat-label">Всего заказов</div>
-    <div class="ord-stat-val">24</div>
+    <div class="ord-stat-val">{{ orders|length }}</div>
   </div>
   <div class="ord-stat">
     <div class="ord-stat-label">В работе</div>
-    <div class="ord-stat-val" style="color:#E85C0D;">6</div>
+    <div class="ord-stat-val" style="color:#FFA000;">{% with active=0 %}{% for o in orders %}{% if o.status != "delivered" and o.status != "completed" and o.status != "cancelled" %}{% with active=active|add:"1" %}{% endwith %}{% endif %}{% endfor %}{{ active }}{% endwith %}</div>
   </div>
   <div class="ord-stat">
     <div class="ord-stat-label">Доставлено</div>
-    <div class="ord-stat-val" style="color:#64B5F6;">16</div>
+    <div class="ord-stat-val" style="color:#28C840;">{% with delivered=0 %}{% for o in orders %}{% if o.status == "delivered" or o.status == "completed" %}{% with delivered=delivered|add:"1" %}{% endwith %}{% endif %}{% endfor %}{{ delivered }}{% endwith %}</div>
   </div>
   <div class="ord-stat">
     <div class="ord-stat-label">Общая сумма</div>
-    <div class="ord-stat-val">$142,800</div>
+    <div class="ord-stat-val">${{ total_spent|default:"0" }}</div>
   </div>
 </div>
 
-<!-- Filters -->
-<div class="ord-toolbar">
-  <input type="text" class="ord-search" placeholder="Поиск по номеру заказа или поставщику..." />
-  <select class="ord-select">
+<div class="ord-filters">
+  <input type="text" class="ord-search" placeholder="Поиск по номеру заказа или поставщику..." id="orderSearch" oninput="filterOrders()">
+  <select class="ord-select" id="statusFilter" onchange="filterOrders()">
     <option value="">Все статусы</option>
-    <option value="production">В производстве</option>
-    <option value="transit">В пути</option>
-    <option value="customs">На таможне</option>
+    <option value="pending">Ожидание оплаты</option>
+    <option value="reserve_paid">Резерв оплачен</option>
+    <option value="confirmed">Подтверждён</option>
+    <option value="in_production">В производстве</option>
+    <option value="ready_to_ship">Готов к отгрузке</option>
+    <option value="shipped">Отгружен</option>
     <option value="delivered">Доставлен</option>
+    <option value="completed">Завершён</option>
     <option value="cancelled">Отменён</option>
   </select>
-  <select class="ord-select">
+  <select class="ord-select" id="payFilter" onchange="filterOrders()">
     <option value="">Все оплаты</option>
+    <option value="awaiting_reserve">Ожидает резерва</option>
+    <option value="reserve_paid">Резерв оплачен</option>
     <option value="paid">Оплачен</option>
-    <option value="partial">Частичная</option>
-    <option value="pending">Ожидает</option>
   </select>
 </div>
 
-<!-- Orders table -->
-<div class="ord-table-wrap">
-  <table class="ord-table">
-    <thead>
-      <tr>
-        <th>Заказ</th>
-        <th>Поставщик</th>
-        <th>Позиции</th>
-        <th>Сумма</th>
-        <th>Статус</th>
-        <th>Дата</th>
-        <th>Оплата</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><span class="ord-id">ORD-2026-0142</span><br><span class="ord-muted">RFQ-0087</span></td>
-        <td>Поставщик #1042<br><span class="ord-muted">Китай</span></td>
-        <td>4 позиции</td>
-        <td class="ord-amount">$11,200</td>
-        <td><span class="ord-badge ord-badge--production">В производстве</span></td>
-        <td>22.03.2026<br><span class="ord-muted">ETA: 18.04</span></td>
-        <td><span class="ord-pay-badge ord-pay--partial">Резерв 10%</span></td>
-        <td><a href="javascript:void(0)" onclick="alert('Откройте заказ через Заказы → Детали')" class="ord-detail-btn">Детали</a></td>
-      </tr>
-      <tr>
-        <td><span class="ord-id">ORD-2026-0138</span><br><span class="ord-muted">RFQ-0071</span></td>
-        <td>Поставщик #2087<br><span class="ord-muted">Китай</span></td>
-        <td>3 позиции</td>
-        <td class="ord-amount">$4,520</td>
-        <td><span class="ord-badge ord-badge--transit">В пути</span></td>
-        <td>05.03.2026<br><span class="ord-muted">ETA: 28.03</span></td>
-        <td><span class="ord-pay-badge ord-pay--partial">50% оплачено</span></td>
-        <td><a href="javascript:void(0)" onclick="alert('Откройте заказ через Заказы → Детали')" class="ord-detail-btn">Детали</a></td>
-      </tr>
-      <tr>
-        <td><span class="ord-id">ORD-2026-0131</span><br><span class="ord-muted">RFQ-0065</span></td>
-        <td>Поставщик #3156<br><span class="ord-muted">Китай</span></td>
-        <td>5 позиций</td>
-        <td class="ord-amount">$2,180</td>
-        <td><span class="ord-badge ord-badge--customs">На таможне</span></td>
-        <td>28.02.2026<br><span class="ord-muted">ETA: 26.03</span></td>
-        <td><span class="ord-pay-badge ord-pay--partial">90% оплачено</span></td>
-        <td><a href="javascript:void(0)" onclick="alert('Откройте заказ через Заказы → Детали')" class="ord-detail-btn">Детали</a></td>
-      </tr>
-      <tr>
-        <td><span class="ord-id">ORD-2026-0125</span><br><span class="ord-muted">RFQ-0052</span></td>
-        <td>Поставщик #4291<br><span class="ord-muted">Япония</span></td>
-        <td>20 позиций</td>
-        <td class="ord-amount">$6,300</td>
-        <td><span class="ord-badge ord-badge--delivered">Доставлен</span></td>
-        <td>14.02.2026<br><span class="ord-muted">Доставлен: 10.03</span></td>
-        <td><span class="ord-pay-badge ord-pay--paid">Оплачен</span></td>
-        <td><a href="javascript:void(0)" onclick="alert('Откройте заказ через Заказы → Детали')" class="ord-detail-btn">Детали</a></td>
-      </tr>
-      <tr>
-        <td><span class="ord-id">ORD-2026-0118</span><br><span class="ord-muted">RFQ-0044</span></td>
-        <td>Поставщик #5673<br><span class="ord-muted">Китай</span></td>
-        <td>15 позиций</td>
-        <td class="ord-amount">$1,420</td>
-        <td><span class="ord-badge ord-badge--delivered">Доставлен</span></td>
-        <td>05.02.2026<br><span class="ord-muted">Доставлен: 28.02</span></td>
-        <td><span class="ord-pay-badge ord-pay--paid">Оплачен</span></td>
-        <td><a href="javascript:void(0)" onclick="alert('Откройте заказ через Заказы → Детали')" class="ord-detail-btn">Детали</a></td>
-      </tr>
-      <tr>
-        <td><span class="ord-id">ORD-2026-0110</span><br><span class="ord-muted">RFQ-0030</span></td>
-        <td>TurboTech Asia<br><span class="ord-muted">Тайбэй, Тайвань</span></td>
-        <td>8 позиций</td>
-        <td class="ord-amount">$18,900</td>
-        <td><span class="ord-badge ord-badge--transit">В пути</span></td>
-        <td>20.01.2026<br><span class="ord-muted">ETA: 30.03</span></td>
-        <td><span class="ord-pay-badge ord-pay--pending">Ожидает</span></td>
-        <td><a href="javascript:void(0)" onclick="alert('Откройте заказ через Заказы → Детали')" class="ord-detail-btn">Детали</a></td>
-      </tr>
-    </tbody>
-  </table>
+{% if orders %}
+<table class="ord-table" id="ordersTable">
+  <thead>
+    <tr>
+      <th>Заказ</th>
+      <th>Поставщик</th>
+      <th>Позиции</th>
+      <th>Сумма</th>
+      <th>Статус</th>
+      <th>Дата</th>
+      <th>Оплата</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for order in orders %}
+    <tr class="ord-row" data-status="{{ order.status }}" data-pay="{{ order.payment_status }}" data-search="{{ order.id }} {{ order.customer_name|lower }}">
+      <td>
+        <span class="ord-id">#{{ order.id }}</span>
+        <br><span class="ord-muted">{{ order.customer_name|truncatechars:20 }}</span>
+      </td>
+      <td>
+        {% for item in order.items.all %}
+          {% if forloop.first and item.part and item.part.seller %}
+            {{ item.part.seller.get_full_name|default:item.part.seller.username }}
+          {% endif %}
+        {% endfor %}
+      </td>
+      <td>{{ order.items.count }} поз.</td>
+      <td class="ord-amount">${{ order.total_amount }}</td>
+      <td>
+        <span class="ord-badge {% if order.status == 'pending' or order.status == 'reserve_paid' %}ord-badge--pending{% elif order.status == 'confirmed' or order.status == 'in_production' or order.status == 'ready_to_ship' %}ord-badge--production{% elif order.status == 'shipped' %}ord-badge--transit{% elif order.status == 'delivered' or order.status == 'completed' %}ord-badge--completed{% elif order.status == 'cancelled' %}ord-badge--cancelled{% endif %}">
+          {{ order.get_status_display|default:order.status }}
+        </span>
+      </td>
+      <td>
+        {{ order.created_at|date:"d.m.Y" }}
+        <br><span class="ord-muted">SLA: {{ order.sla_status|default:"—" }}</span>
+      </td>
+      <td>
+        <span class="ord-badge {% if order.payment_status == 'paid' %}ord-pay--paid{% elif order.payment_status == 'reserve_paid' %}ord-pay--reserve{% else %}ord-pay--awaiting{% endif %}">
+          {{ order.get_payment_status_display|default:order.payment_status }}
+        </span>
+      </td>
+      <td><a href="{% url 'order_detail' order.id %}" class="ord-detail-btn">Детали</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="ord-empty">
+  <div class="ord-empty-icon">📦</div>
+  <div>У вас пока нет заказов</div>
+  <div style="margin-top:8px;font-size:13px;">Создайте <a href="{% url 'rfq_new' %}" style="color:#64B5F6;">запрос RFQ</a> чтобы начать</div>
 </div>
+{% endif %}
+{% endblock %}
 
-<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
-
+{% block extra_js %}
 <script>
-(function(){
-  function showToast(msg) {
-    var t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.transform = 'translateY(0)';
-    t.style.opacity = '1';
-    setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
-  }
-
-  // Filter dropdowns
-  document.querySelectorAll('.ord-select').forEach(function(sel) {
-    sel.addEventListener('change', function() {
-      showToast('Фильтр применён');
-    });
+function filterOrders() {
+  var search = document.getElementById('orderSearch').value.toLowerCase();
+  var status = document.getElementById('statusFilter').value;
+  var pay = document.getElementById('payFilter').value;
+  document.querySelectorAll('.ord-row').forEach(function(row) {
+    var matchSearch = !search || row.dataset.search.includes(search);
+    var matchStatus = !status || row.dataset.status === status;
+    var matchPay = !pay || row.dataset.pay === pay;
+    row.style.display = (matchSearch && matchStatus && matchPay) ? '' : 'none';
   });
-
-  // Detail buttons via delegation
-  document.querySelector('.ord-table-wrap').addEventListener('click', function(e) {
-    var btn = e.target.closest('.ord-detail-btn');
-    if (!btn) return;
-    e.preventDefault();
-    var row = btn.closest('tr');
-    var idEl = row ? row.querySelector('.ord-id') : null;
-    var id = idEl ? idEl.textContent : '';
-    showToast('Открыт заказ ' + id);
-  });
-
-  // Pay buttons (on rows with pending payment)
-  document.querySelectorAll('.ord-pay--pending').forEach(function(badge) {
-    badge.style.cursor = 'pointer';
-    badge.addEventListener('click', function() {
-      var row = this.closest('tr');
-      var idEl = row ? row.querySelector('.ord-id') : null;
-      var id = idEl ? idEl.textContent : '';
-      showToast('Переход к оплате ' + id);
-    });
-  });
-})();
+}
 </script>
-
 {% endblock %}

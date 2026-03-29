@@ -1,340 +1,68 @@
 {% extends "buyer/base_buyer.html" %}
 
-{% block title %}Запросы RFQ{% endblock %}
+{% block title %}Запросы RFQ — Кабинет покупателя{% endblock %}
 
 {% block extra_css %}
 <style>
-/* ══════════ RFQ page ══════════ */
-
-.rfq-hero { margin-bottom:16px; }
-.rfq-hero-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px; }
-.rfq-hero-title {
-  font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC;
-}
-.rfq-hero-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
-
-.rfq-create-btn {
-  padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;
-  background:rgba(100,181,246,0.12);color:#64B5F6;
-  border:1px solid rgba(100,181,246,0.25);cursor:pointer;transition:all .15s;
-  text-decoration:none;
-}
-.rfq-create-btn:hover { background:rgba(100,181,246,0.22); }
-
-/* Tabs */
-.rfq-tabs {
-  display:flex;gap:4px;margin-bottom:16px;
-  border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:0;
-}
-.rfq-tab {
-  padding:8px 18px;font-size:13px;font-weight:600;color:#6A6A6A;
-  cursor:pointer;border:none;background:none;
-  border-bottom:2px solid transparent;transition:all .15s;
-  margin-bottom:-1px;
-}
-.rfq-tab:hover { color:#919191; }
-.rfq-tab.active {
-  color:#64B5F6;border-bottom-color:#64B5F6;
-}
-
-/* Stats row */
-.rfq-stats {
-  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;
-}
-.rfq-stat {
-  background:#1A1A1A;border-radius:12px;padding:14px 16px;
-  border:1px solid rgba(255,255,255,0.04);
-}
-.rfq-stat-label {
-  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
-  color:#919191;margin-bottom:6px;
-}
-.rfq-stat-val {
-  font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;
-  color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
-}
-
-/* Table */
-.rfq-table-wrap {
-  background:#1A1A1A;border-radius:14px;border:1px solid rgba(255,255,255,0.04);overflow:hidden;
-}
-.rfq-table { width:100%;border-collapse:collapse; }
-.rfq-table th {
-  text-align:left;padding:8px 12px;font-size:10px;font-weight:600;
-  text-transform:uppercase;letter-spacing:0.05em;color:#919191;
-  border-bottom:1px solid rgba(255,255,255,0.06);
-}
-.rfq-table td {
-  padding:12px;font-size:13px;color:#ECECEC;
-  border-bottom:1px solid rgba(255,255,255,0.03);
-  vertical-align:middle;
-}
-.rfq-table tbody tr { cursor:pointer;transition:background .12s; }
-.rfq-table tbody tr:hover { background:rgba(255,255,255,0.03); }
-
-.rfq-id {
-  font-family:'Golos Text',sans-serif;font-weight:700;color:#64B5F6;
-}
-.rfq-muted { color:#6A6A6A;font-size:11px; }
-.rfq-amount {
-  font-family:'Golos Text',sans-serif;font-weight:700;
-  font-variant-numeric:tabular-nums;
-}
-
-/* Status badge */
-.rfq-badge {
-  display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;
-  font-weight:600;letter-spacing:0.02em;
-}
-.rfq-badge--waiting { background:rgba(232,92,13,0.12);color:#E85C0D; }
-.rfq-badge--quoted { background:rgba(100,181,246,0.12);color:#64B5F6; }
-.rfq-badge--ordered { background:rgba(255,255,255,0.06);color:#919191; }
-.rfq-badge--expired { background:rgba(138,138,138,0.15);color:#919191; }
-.rfq-badge--declined { background:rgba(224,85,85,0.12);color:#E05555; }
-
-/* Open button */
-.rfq-open-btn {
-  padding:5px 14px;border-radius:7px;font-size:11px;font-weight:600;
-  background:rgba(255,255,255,0.04);color:#ECECEC;
-  border:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all .15s;
-}
-.rfq-open-btn:hover { background:rgba(255,255,255,0.08); }
-
-/* Panel: tab content */
-.rfq-panel { display:none; }
-.rfq-panel.active { display:block; }
+.rfq-title { font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC; }
+.rfq-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
+.rfq-actions { display:flex;justify-content:space-between;align-items:center;margin:16px 0; }
+.rfq-create-btn { display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#64B5F6;color:#fff;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600; }
+.rfq-create-btn:hover { background:#5BA5E0; }
+.rfq-card { background:#242424;border:1px solid rgba(255,255,255,0.055);border-radius:10px;padding:16px 18px;margin-bottom:10px;transition:border-color .15s; }
+.rfq-card:hover { border-color:rgba(100,181,246,0.2); }
+.rfq-card-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px; }
+.rfq-card-id { font-weight:700;color:#64B5F6;font-size:14px; }
+.rfq-badge { display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600; }
+.rfq-badge--quoted { background:rgba(40,200,64,0.12);color:#28C840; }
+.rfq-badge--review { background:rgba(255,160,0,0.12);color:#FFA000; }
+.rfq-badge--mode { background:rgba(100,181,246,0.1);color:#64B5F6; }
+.rfq-btn { padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;border:none;cursor:pointer; }
+.rfq-btn--view { background:rgba(100,181,246,0.1);color:#64B5F6; }
+.rfq-btn--order { background:#64B5F6;color:#fff; }
+.rfq-empty { text-align:center;padding:60px 20px;color:#5E5E5E; }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="rfq-title">Запросы RFQ</div>
+<div class="rfq-sub">Список запросов цен и предложений от поставщиков</div>
 
-<section class="rfq-hero">
-  <div class="rfq-hero-top">
-    <div>
-      <div class="rfq-hero-title">Запросы RFQ</div>
-      <div class="rfq-hero-sub">Запросы коммерческих предложений от поставщиков</div>
+<div class="rfq-actions">
+  <a href="{% url 'rfq_new' %}" class="rfq-create-btn">+ Создать RFQ</a>
+  <span style="font-size:12px;color:#6A6A6A;">Всего: {{ rfqs|length }}</span>
+</div>
+
+{% if rfqs %}
+  {% for rfq in rfqs %}
+  <div class="rfq-card">
+    <div class="rfq-card-top">
+      <div>
+        <span class="rfq-card-id">RFQ #{{ rfq.id }}</span>
+        <span style="margin-left:8px;font-size:12px;color:#919191;">{{ rfq.company_name|default:"" }}</span>
+      </div>
+      <span style="font-size:11px;color:#5E5E5E;">{{ rfq.created_at|date:"d.m.Y H:i" }}</span>
     </div>
-    <a href="{% url 'rfq_new' %}" class="rfq-create-btn">+ Создать RFQ</a>
+    <div style="font-size:13px;color:#ECECEC;margin-bottom:6px;">{{ rfq.customer_name }}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <span class="rfq-badge rfq-badge--mode">{{ rfq.mode|upper }}</span>
+      <span class="rfq-badge {% if rfq.status == 'quoted' %}rfq-badge--quoted{% else %}rfq-badge--review{% endif %}">{{ rfq.status }}</span>
+      <span class="rfq-badge" style="background:rgba(255,255,255,0.05);color:#919191;">{{ rfq.urgency }}</span>
+    </div>
+    <div style="font-size:12px;color:#919191;margin-top:6px;">Позиций: {{ rfq.items.count }}</div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <a href="{% url 'rfq_detail' rfq.id %}" class="rfq-btn rfq-btn--view">Подробнее</a>
+      {% if rfq.status != 'quoted' and rfq.status != 'cancelled' %}
+      <a href="{% url 'rfq_checkout' rfq.id %}" class="rfq-btn rfq-btn--order">Оформить заказ</a>
+      {% endif %}
+    </div>
   </div>
-</section>
-
-<!-- Stats -->
-<div class="rfq-stats">
-  <div class="rfq-stat">
-    <div class="rfq-stat-label">Всего RFQ</div>
-    <div class="rfq-stat-val">12</div>
+  {% endfor %}
+{% else %}
+  <div class="rfq-empty">
+    <div style="font-size:40px;margin-bottom:12px;opacity:0.5;">📋</div>
+    <div>У вас пока нет запросов</div>
+    <div style="margin-top:8px;font-size:13px;"><a href="{% url 'rfq_new' %}" style="color:#64B5F6;">Создать первый запрос</a></div>
   </div>
-  <div class="rfq-stat">
-    <div class="rfq-stat-label">Ожидает котировки</div>
-    <div class="rfq-stat-val" style="color:#E85C0D;">3</div>
-  </div>
-  <div class="rfq-stat">
-    <div class="rfq-stat-label">Котировка готова</div>
-    <div class="rfq-stat-val" style="color:#64B5F6;">2</div>
-  </div>
-  <div class="rfq-stat">
-    <div class="rfq-stat-label">Заказ оформлен</div>
-    <div class="rfq-stat-val" style="color:#64B5F6;">7</div>
-  </div>
-</div>
-
-<!-- Tabs -->
-<div class="rfq-tabs">
-  <button class="rfq-tab active" data-tab="active">Активные (5)</button>
-  <button class="rfq-tab" data-tab="history">История (7)</button>
-</div>
-
-<!-- Active RFQs -->
-<div class="rfq-panel active" id="panel-active">
-  <div class="rfq-table-wrap">
-    <table class="rfq-table">
-      <thead>
-        <tr>
-          <th>RFQ</th>
-          <th>Дата</th>
-          <th>Позиции</th>
-          <th>Статус</th>
-          <th>Оценка</th>
-          <th>Поставщики</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0087</span><br><span class="rfq-muted">Гидроцилиндры CAT 320D</span></td>
-          <td>22.03.2026<br><span class="rfq-muted">14:30</span></td>
-          <td>4 позиции</td>
-          <td><span class="rfq-badge rfq-badge--waiting">Ожидает котировки</span></td>
-          <td class="rfq-amount">$11,200</td>
-          <td><span class="rfq-muted">3 поставщика</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0085</span><br><span class="rfq-muted">Фильтры Komatsu PC200</span></td>
-          <td>20.03.2026<br><span class="rfq-muted">09:15</span></td>
-          <td>8 позиций</td>
-          <td><span class="rfq-badge rfq-badge--quoted">Котировка готова</span></td>
-          <td class="rfq-amount">$3,640</td>
-          <td><span class="rfq-muted">2 поставщика</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0082</span><br><span class="rfq-muted">Турбина 7C-2297</span></td>
-          <td>18.03.2026<br><span class="rfq-muted">11:45</span></td>
-          <td>1 позиция</td>
-          <td><span class="rfq-badge rfq-badge--quoted">Котировка готова</span></td>
-          <td class="rfq-amount">$1,250</td>
-          <td><span class="rfq-muted">4 поставщика</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0079</span><br><span class="rfq-muted">Диски тормозные WA380</span></td>
-          <td>15.03.2026<br><span class="rfq-muted">16:20</span></td>
-          <td>6 позиций</td>
-          <td><span class="rfq-badge rfq-badge--waiting">Ожидает котировки</span></td>
-          <td class="rfq-amount">$1,890</td>
-          <td><span class="rfq-muted">2 поставщика</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0076</span><br><span class="rfq-muted">Водяная помпа Volvo</span></td>
-          <td>12.03.2026<br><span class="rfq-muted">10:00</span></td>
-          <td>2 позиции</td>
-          <td><span class="rfq-badge rfq-badge--waiting">Ожидает котировки</span></td>
-          <td class="rfq-amount">$980</td>
-          <td><span class="rfq-muted">5 поставщиков</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- History -->
-<div class="rfq-panel" id="panel-history">
-  <div class="rfq-table-wrap">
-    <table class="rfq-table">
-      <thead>
-        <tr>
-          <th>RFQ</th>
-          <th>Дата</th>
-          <th>Позиции</th>
-          <th>Статус</th>
-          <th>Итого</th>
-          <th>Поставщик</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0071</span><br><span class="rfq-muted">Ремкомплект гидромотора</span></td>
-          <td>05.03.2026</td>
-          <td>3 позиции</td>
-          <td><span class="rfq-badge rfq-badge--ordered">Заказ оформлен</span></td>
-          <td class="rfq-amount">$4,520</td>
-          <td>Поставщик #1042</td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0065</span><br><span class="rfq-muted">Электрика CAT D6R</span></td>
-          <td>28.02.2026</td>
-          <td>5 позиций</td>
-          <td><span class="rfq-badge rfq-badge--ordered">Заказ оформлен</span></td>
-          <td class="rfq-amount">$2,180</td>
-          <td>Поставщик #2087</td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0058</span><br><span class="rfq-muted">Подшипники Volvo EC240</span></td>
-          <td>20.02.2026</td>
-          <td>12 позиций</td>
-          <td><span class="rfq-badge rfq-badge--expired">Истёк</span></td>
-          <td class="rfq-amount">$890</td>
-          <td><span class="rfq-muted">--</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0052</span><br><span class="rfq-muted">Коронки ковша JD 350G</span></td>
-          <td>14.02.2026</td>
-          <td>20 позиций</td>
-          <td><span class="rfq-badge rfq-badge--ordered">Заказ оформлен</span></td>
-          <td class="rfq-amount">$6,300</td>
-          <td>Поставщик #3156</td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0044</span><br><span class="rfq-muted">Фильтры масляные пакет</span></td>
-          <td>05.02.2026</td>
-          <td>15 позиций</td>
-          <td><span class="rfq-badge rfq-badge--ordered">Заказ оформлен</span></td>
-          <td class="rfq-amount">$1,420</td>
-          <td>Поставщик #5673</td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0037</span><br><span class="rfq-muted">ТНВД Komatsu</span></td>
-          <td>28.01.2026</td>
-          <td>1 позиция</td>
-          <td><span class="rfq-badge rfq-badge--declined">Отклонён</span></td>
-          <td class="rfq-amount">$3,800</td>
-          <td><span class="rfq-muted">--</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-        <tr>
-          <td><span class="rfq-id">RFQ-2026-0030</span><br><span class="rfq-muted">Ходовая часть PC300</span></td>
-          <td>20.01.2026</td>
-          <td>8 позиций</td>
-          <td><span class="rfq-badge rfq-badge--ordered">Заказ оформлен</span></td>
-          <td class="rfq-amount">$18,900</td>
-          <td>Поставщик #4291</td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
-
-<script>
-(function(){
-  function showToast(msg) {
-    var t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.transform = 'translateY(0)';
-    t.style.opacity = '1';
-    setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
-  }
-
-  // Tab switching
-  document.querySelectorAll('.rfq-tab').forEach(function(tab){
-    tab.addEventListener('click', function(){
-      document.querySelectorAll('.rfq-tab').forEach(function(t){ t.classList.remove('active'); });
-      document.querySelectorAll('.rfq-panel').forEach(function(p){ p.classList.remove('active'); });
-      this.classList.add('active');
-      document.getElementById('panel-' + this.dataset.tab).classList.add('active');
-    });
-  });
-
-  // Create RFQ button
-  var createBtn = document.querySelector('.rfq-create-btn');
-  if (createBtn) {
-    createBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      showToast('Форма создания RFQ');
-    });
-  }
-
-  // Open buttons via delegation
-  document.addEventListener('click', function(e) {
-    var btn = e.target.closest('.rfq-open-btn');
-    if (!btn) return;
-    var row = btn.closest('tr');
-    var idEl = row ? row.querySelector('.rfq-id') : null;
-    var id = idEl ? idEl.textContent : '';
-    showToast('Открыт ' + id);
-  });
-})();
-</script>
-
+{% endif %}
 {% endblock %}
