@@ -5159,151 +5159,202 @@ def order_update_claim_status(request: HttpRequest, claim_id: int) -> HttpRespon
 # ═══ Operator cabinet views ═══
 
 
+@login_required
 def operator_select_role(request):
     return render(request, "operator/select_role.html", {})
 
 
+@login_required
 def operator_logist_dashboard(request):
     return render(request, "operator/logist/dashboard.html", {"operator_role": "logist", "operator_active_nav": "dashboard"})
 
 
+@login_required
 def operator_logist_shipments(request):
     return render(request, "operator/logist/shipments.html", {"operator_role": "logist", "operator_active_nav": "shipments"})
 
 
+@login_required
 def operator_logist_routes(request):
     return render(request, "operator/logist/routes.html", {"operator_role": "logist", "operator_active_nav": "routes"})
 
 
+@login_required
 def operator_logist_quotes(request):
     return render(request, "operator/logist/quotes.html", {"operator_role": "logist", "operator_active_nav": "quotes"})
 
 
+@login_required
 def operator_customs_dashboard(request):
     return render(request, "operator/customs/dashboard.html", {"operator_role": "customs", "operator_active_nav": "dashboard"})
 
 
+@login_required
 def operator_customs_declarations(request):
     return render(request, "operator/customs/declarations.html", {"operator_role": "customs", "operator_active_nav": "declarations"})
 
 
+@login_required
 def operator_customs_tariffs(request):
     return render(request, "operator/customs/tariffs.html", {"operator_role": "customs", "operator_active_nav": "tariffs"})
 
 
+@login_required
 def operator_payments_dashboard(request):
     return render(request, "operator/payments/dashboard.html", {"operator_role": "payments", "operator_active_nav": "dashboard"})
 
 
+@login_required
 def operator_payments_invoices(request):
     return render(request, "operator/payments/invoices.html", {"operator_role": "payments", "operator_active_nav": "invoices"})
 
 
+@login_required
 def operator_payments_escrow(request):
     return render(request, "operator/payments/escrow.html", {"operator_role": "payments", "operator_active_nav": "escrow"})
 
 
+@login_required
 def operator_manager_dashboard(request):
     return render(request, "operator/manager/dashboard.html", {"operator_role": "manager", "operator_active_nav": "dashboard"})
 
 
+@login_required
 def operator_manager_orders(request):
     return render(request, "operator/manager/orders.html", {"operator_role": "manager", "operator_active_nav": "orders"})
 
 
+@login_required
 def operator_manager_clients(request):
     return render(request, "operator/manager/clients.html", {"operator_role": "manager", "operator_active_nav": "clients"})
 
 
+@login_required
 def operator_logist_ports(request):
     return render(request, "operator/logist/ports.html", {"operator_role": "logist", "operator_active_nav": "ports"})
 
 
+@login_required
 def operator_logist_documents(request):
     return render(request, "operator/logist/documents.html", {"operator_role": "logist", "operator_active_nav": "documents"})
 
 
+@login_required
 def operator_logist_analytics(request):
     return render(request, "operator/logist/analytics.html", {"operator_role": "logist", "operator_active_nav": "analytics"})
 
 
+@login_required
 def operator_customs_documents(request):
     return render(request, "operator/customs/documents.html", {"operator_role": "customs", "operator_active_nav": "documents"})
 
 
+@login_required
 def operator_customs_requests(request):
     return render(request, "operator/customs/requests.html", {"operator_role": "customs", "operator_active_nav": "requests"})
 
 
+@login_required
 def operator_customs_analytics(request):
     return render(request, "operator/customs/analytics.html", {"operator_role": "customs", "operator_active_nav": "analytics"})
 
 
+@login_required
 def operator_payments_reconciliation(request):
     return render(request, "operator/payments/reconciliation.html", {"operator_role": "payments", "operator_active_nav": "reconciliation"})
 
 
+@login_required
 def operator_payments_analytics(request):
     return render(request, "operator/payments/analytics.html", {"operator_role": "payments", "operator_active_nav": "analytics"})
 
 
+@login_required
 def operator_manager_shipments(request):
     return render(request, "operator/manager/shipments.html", {"operator_role": "manager", "operator_active_nav": "shipments_mgr"})
 
 
+@login_required
 def operator_manager_negotiations(request):
     return render(request, "operator/manager/negotiations.html", {"operator_role": "manager", "operator_active_nav": "negotiations"})
 
 
+@login_required
 def operator_manager_analytics(request):
     return render(request, "operator/manager/analytics.html", {"operator_role": "manager", "operator_active_nav": "analytics"})
 
 
 # ═══ Admin panel ═══
 
+
+def _staff_required(view):
+    """Only superusers and staff can access admin panel."""
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect("login")
+        if not (request.user.is_staff or request.user.is_superuser):
+            messages.error(request, "Доступ только для администраторов.")
+            return redirect("dashboard")
+        return view(request, *args, **kwargs)
+    return wrapped
+
+
+@_staff_required
 def admin_panel_dashboard(request):
     return render(request, "admin_panel/dashboard.html", {"admin_active_nav": "dashboard"})
 
 
+@_staff_required
 def admin_panel_users(request):
     return render(request, "admin_panel/users.html", {"admin_active_nav": "users"})
 
 
+@_staff_required
 def admin_panel_orders(request):
     return render(request, "admin_panel/orders.html", {"admin_active_nav": "orders"})
 
 
+@_staff_required
 def admin_panel_rfq(request):
     return render(request, "admin_panel/rfq.html", {"admin_active_nav": "rfq"})
 
 
+@_staff_required
 def admin_panel_finance(request):
     return render(request, "admin_panel/finance.html", {"admin_active_nav": "finance"})
 
 
+@_staff_required
 def admin_panel_catalog(request):
     return render(request, "admin_panel/catalog.html", {"admin_active_nav": "catalog"})
 
 
+@_staff_required
 def admin_panel_moderation(request):
     return render(request, "admin_panel/moderation.html", {"admin_active_nav": "moderation"})
 
 
+@_staff_required
 def admin_panel_settings(request):
     return render(request, "admin_panel/settings.html", {"admin_active_nav": "settings"})
 
 
+@_staff_required
 def admin_panel_analytics(request):
     return render(request, "admin_panel/analytics.html", {"admin_active_nav": "analytics"})
 
 
+@_staff_required
 def admin_panel_logs(request):
     return render(request, "admin_panel/logs.html", {"admin_active_nav": "logs"})
 
 
+@_staff_required
 def admin_panel_tariffs(request):
     return render(request, "admin_panel/tariffs.html", {"admin_active_nav": "tariffs"})
 
 
+@_staff_required
 def admin_panel_support(request):
     return render(request, "admin_panel/support.html", {"admin_active_nav": "support"})
