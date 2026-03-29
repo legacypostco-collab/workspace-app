@@ -1,26 +1,34 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Checkout | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Оформление заказа</h1>
-</section>
+<div class="cp-breadcrumbs">
+  <a href="{% url 'cart' %}">Корзина</a> / <span>Оформление</span>
+</div>
 
-<div class="checkout-layout">
-  <div class="card card-form panel">
-    <h2>Данные клиента</h2>
+<div class="cp-section">
+  <h1 class="cp-card__title">Оформление заказа</h1>
+</div>
+
+<div class="cp-grid cp-grid--2">
+  <div class="cp-card">
+    <h2 class="cp-card__title">Данные клиента</h2>
     <form method="post">
       {% csrf_token %}
       {{ form.as_p }}
-      <button type="submit" class="btn">Подтвердить заказ</button>
+      <button type="submit" class="cp-btn cp-btn--primary" style="margin-top:12px;">Подтвердить заказ</button>
     </form>
   </div>
-  <div class="card panel card-form">
-    <h2>Состав заказа</h2>
+  <div class="cp-card">
+    <h2 class="cp-card__title">Состав заказа</h2>
     {% for row in rows %}
-      <p>{{ row.part.title }} × {{ row.quantity }} = ${{ row.line_total }}</p>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">
+        <span>{{ row.part.title }} &times; {{ row.quantity }}</span>
+        <span style="font-weight:600;">${{ row.line_total }}</span>
+      </div>
     {% endfor %}
-    <hr />
-    <p><strong>Итого: ${{ total }}</strong></p>
+    <div style="margin-top:12px;font-size:16px;">
+      <strong>Итого: <span style="color:var(--accent);">${{ total }}</span></strong>
+    </div>
   </div>
 </div>
 {% endblock %}

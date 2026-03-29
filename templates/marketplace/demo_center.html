@@ -1,67 +1,74 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Demo Center | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Demo Center</h1>
-  <p class="muted">Готовый стенд для сквозного теста продукта без ручной подготовки.</p>
-</section>
+<div class="cp-section">
+  <h1 class="cp-card__title">Demo Center</h1>
+  <p class="cp-card__subtitle">Готовый стенд для сквозного теста продукта без ручной подготовки.</p>
+</div>
 
-<section class="grid metrics">
-  <article class="card card-body">
-    <p class="muted">Buyer</p>
-    <p><strong>demo_buyer</strong></p>
-    <p class="muted">Пароль: demo12345</p>
-  </article>
-  <article class="card card-body">
-    <p class="muted">Seller</p>
-    <p><strong>demo_seller</strong></p>
-    <p class="muted">Пароль: demo12345</p>
-  </article>
-  <article class="card card-body">
-    <p class="muted">Operator</p>
-    <p><strong>demo_operator</strong></p>
-    <p class="muted">Пароль: demo12345</p>
-  </article>
-</section>
+<div class="cp-grid cp-grid--3" style="margin-bottom:24px;">
+  <div class="cp-card" style="text-align:center;">
+    <p class="cp-stat__label">Buyer</p>
+    <p class="cp-stat__value" style="font-size:18px;">demo_buyer</p>
+    <p style="font-size:13px;color:var(--muted);">Пароль: demo12345</p>
+  </div>
+  <div class="cp-card" style="text-align:center;">
+    <p class="cp-stat__label">Seller</p>
+    <p class="cp-stat__value" style="font-size:18px;">demo_seller</p>
+    <p style="font-size:13px;color:var(--muted);">Пароль: demo12345</p>
+  </div>
+  <div class="cp-card" style="text-align:center;">
+    <p class="cp-stat__label">Operator</p>
+    <p class="cp-stat__value" style="font-size:18px;">demo_operator</p>
+    <p style="font-size:13px;color:var(--muted);">Пароль: demo12345</p>
+  </div>
+</div>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <h2>Сценарий 1: RFQ -> КП -> Invoice -> Оплата</h2>
-  <div class="card-actions">
+<div class="cp-card">
+  <h2 class="cp-card__title">Сценарий 1: RFQ -> КП -> Invoice -> Оплата</h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
     {% if demo_rfq %}
-      <a class="btn btn-secondary" href="{% url 'rfq_detail' demo_rfq.id %}">Открыть RFQ</a>
-      <a class="btn btn-secondary" href="{% url 'rfq_proposal' demo_rfq.id %}">Открыть КП</a>
+      <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_detail' demo_rfq.id %}">Открыть RFQ</a>
+      <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_proposal' demo_rfq.id %}">Открыть КП</a>
     {% else %}
-      <p class="muted">RFQ не найден. Запусти bootstrap команду.</p>
+      <p style="font-size:13px;color:var(--muted);">RFQ не найден. Запусти bootstrap команду.</p>
     {% endif %}
-    <a class="btn" href="{% url 'rfq_new' %}">Создать новый RFQ</a>
+    <a class="cp-btn cp-btn--primary" href="{% url 'rfq_new' %}">Создать новый RFQ</a>
   </div>
-</section>
+</div>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <h2>Сценарий 1.1: Работа оператора</h2>
-  <p class="muted">Оператор обрабатывает спорные позиции: подтверждает Sandbox/Risky или уводит в Manual OEM.</p>
-  <div class="card-actions">
-    <a class="btn btn-secondary" href="{% url 'operator_queue' %}">Открыть кабинет оператора</a>
+<div class="cp-card">
+  <h2 class="cp-card__title">Сценарий 1.1: Работа оператора</h2>
+  <p class="cp-card__subtitle">Оператор обрабатывает спорные позиции: подтверждает Sandbox/Risky или уводит в Manual OEM.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+    <a class="cp-btn cp-btn--secondary" href="{% url 'operator_queue' %}">Открыть кабинет оператора</a>
   </div>
-</section>
+</div>
 
-<section class="panel">
-  <h2>Сценарий 2: Заказы в разных стадиях</h2>
-  <div class="list">
-    {% for order in demo_orders %}
-      <article class="list-row">
-        <div>
-          <h3>Order #{{ order.id }}</h3>
-          <p class="muted">Статус: {{ order.get_status_display }} • Оплата: {{ order.get_payment_status_display }}</p>
-        </div>
-        <div class="list-actions">
-          <a class="btn btn-secondary" href="{% url 'order_detail' order.id %}">Карточка</a>
-          <a class="btn" href="{% url 'order_invoice' order.id %}">Invoice</a>
-        </div>
-      </article>
-    {% empty %}
-      <p class="muted">Заказов нет. Запусти bootstrap команду.</p>
-    {% endfor %}
-  </div>
-</section>
+<div class="cp-card">
+  <h2 class="cp-card__title">Сценарий 2: Заказы в разных стадиях</h2>
+  <table class="cp-table">
+    <thead>
+      <tr>
+        <th>Заказ</th>
+        <th>Статус</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for order in demo_orders %}
+        <tr>
+          <td><strong>Order #{{ order.id }}</strong></td>
+          <td>{{ order.get_status_display }} • {{ order.get_payment_status_display }}</td>
+          <td style="text-align:right;">
+            <a class="cp-btn cp-btn--secondary cp-btn--sm" href="{% url 'order_detail' order.id %}">Карточка</a>
+            <a class="cp-btn cp-btn--primary cp-btn--sm" href="{% url 'order_invoice' order.id %}">Invoice</a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3" class="cp-empty__text">Заказов нет. Запусти bootstrap команду.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

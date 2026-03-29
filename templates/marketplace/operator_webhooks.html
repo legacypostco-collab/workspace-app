@@ -1,117 +1,113 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Webhook Logs | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Webhook Logs</h1>
-  <p class="muted">Контроль доставок, ошибок и ручной ретрай из кабинета оператора.</p>
-</section>
+<div class="cp-section">
+  <h1 class="cp-card__title">Webhook Logs</h1>
+  <p class="cp-card__subtitle">Контроль доставок, ошибок и ручной ретрай из кабинета оператора.</p>
+</div>
 
-<section class="grid metrics" style="margin-bottom: 16px;">
-  <article class="card card-body">
-    <p class="muted">Всего</p>
-    <p class="price">{{ metrics.total }}</p>
-  </article>
-  <article class="card card-body">
-    <p class="muted">Успешно</p>
-    <p class="price">{{ metrics.success }}</p>
-  </article>
-  <article class="card card-body">
-    <p class="muted">Ошибки</p>
-    <p class="price">{{ metrics.failed }}</p>
-  </article>
-</section>
+<div class="cp-grid cp-grid--3" style="margin-bottom:24px;">
+  <div class="cp-card" style="text-align:center;">
+    <p class="cp-stat__label">Всего</p>
+    <p class="cp-stat__value">{{ metrics.total }}</p>
+  </div>
+  <div class="cp-card" style="text-align:center;">
+    <p class="cp-stat__label">Успешно</p>
+    <p class="cp-stat__value">{{ metrics.success }}</p>
+  </div>
+  <div class="cp-card" style="text-align:center;">
+    <p class="cp-stat__label">Ошибки</p>
+    <p class="cp-stat__value">{{ metrics.failed }}</p>
+  </div>
+</div>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <form method="get" class="card-form" style="margin-bottom: 12px;">
-    <div class="grid">
-      <label>Состояние
-        <select name="state">
+<div class="cp-card">
+  <form method="get" style="margin-bottom:16px;">
+    <div class="cp-grid cp-grid--2">
+      <div class="cp-field">
+        <label class="cp-label">Состояние</label>
+        <select name="state" class="cp-input">
           <option value="failed" {% if state == "failed" %}selected{% endif %}>Ошибки</option>
           <option value="success" {% if state == "success" %}selected{% endif %}>Успешные</option>
           <option value="all" {% if state == "all" %}selected{% endif %}>Все</option>
         </select>
-      </label>
-      <label>Endpoint содержит
-        <input type="text" name="endpoint" value="{{ endpoint_filter }}" placeholder="https://..." />
-      </label>
+      </div>
+      <div class="cp-field">
+        <label class="cp-label">Endpoint содержит</label>
+        <input type="text" name="endpoint" value="{{ endpoint_filter }}" class="cp-input" placeholder="https://..." />
+      </div>
     </div>
-    <div class="card-actions">
-      <button class="btn btn-secondary" type="submit">Применить</button>
-    </div>
+    <button class="cp-btn cp-btn--secondary" type="submit">Применить</button>
   </form>
 
-  <form method="post" action="{% url 'operator_retry_failed_webhooks' %}" class="card-form">
+  <form method="post" action="{% url 'operator_retry_failed_webhooks' %}">
     {% csrf_token %}
-    <div class="grid">
-      <label>Ретрай ошибок (лимит)
-        <input type="number" min="1" max="200" name="limit" value="30" />
-      </label>
-      <label>Максимум попыток
-        <input type="text" value="{{ max_attempts }}" disabled />
-      </label>
+    <div class="cp-grid cp-grid--2">
+      <div class="cp-field">
+        <label class="cp-label">Ретрай ошибок (лимит)</label>
+        <input type="number" min="1" max="200" name="limit" value="30" class="cp-input" />
+      </div>
+      <div class="cp-field">
+        <label class="cp-label">Максимум попыток</label>
+        <input type="text" value="{{ max_attempts }}" class="cp-input" disabled />
+      </div>
     </div>
-    <div class="card-actions">
-      <button class="btn" type="submit">Retry Failed</button>
-    </div>
+    <button class="cp-btn cp-btn--primary" type="submit">Retry Failed</button>
   </form>
-</section>
+</div>
 
-<section class="panel">
-  <div class="list">
-    {% for log in page_obj.object_list %}
-      <article class="list-row">
-        <div>
-          <h3>
-            Order #{{ log.order_id }} • {{ log.endpoint }}
-          </h3>
-          <p class="muted">
-            Attempt {{ log.attempt }} • status_code {{ log.status_code|default:"—" }} •
-            {% if log.success %}OK{% else %}ERROR{% endif %}
-          </p>
-          {% if log.error %}
-            <p class="muted">{{ log.error }}</p>
-          {% endif %}
-          <details style="margin-top:8px;">
-            <summary class="muted" style="cursor:pointer;">Показать payload / response</summary>
-            <div class="panel" style="margin-top:8px;">
-              <p class="muted"><strong>Request payload</strong></p>
-              <pre style="white-space:pre-wrap; word-break:break-word; font-size:12px;">{{ log.request_payload }}</pre>
-              {% if log.response_body %}
-                <p class="muted" style="margin-top:10px;"><strong>Response body</strong></p>
-                <pre style="white-space:pre-wrap; word-break:break-word; font-size:12px;">{{ log.response_body }}</pre>
-              {% endif %}
-              {% if log.error %}
-                <p class="muted" style="margin-top:10px;"><strong>Error</strong></p>
-                <pre style="white-space:pre-wrap; word-break:break-word; font-size:12px;">{{ log.error }}</pre>
-              {% endif %}
-            </div>
-          </details>
-        </div>
-        <div class="list-actions">
-          <p class="muted">{{ log.created_at }}</p>
-          {% if not log.success and log.attempt < max_attempts %}
-            <form method="post" action="{% url 'operator_retry_webhook' log.id %}">
-              {% csrf_token %}
-              <button class="btn btn-secondary" type="submit">Retry</button>
-            </form>
-          {% endif %}
-        </div>
-      </article>
-    {% empty %}
-      <p class="muted">Логи не найдены.</p>
-    {% endfor %}
-  </div>
+<div class="cp-card">
+  {% for log in page_obj.object_list %}
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;">
+        <strong>Order #{{ log.order_id }} • {{ log.endpoint }}</strong>
+        <p style="font-size:13px;color:var(--muted);">
+          Attempt {{ log.attempt }} • status_code {{ log.status_code|default:"—" }} •
+          {% if log.success %}<span class="cp-badge cp-badge--green">OK</span>{% else %}<span class="cp-badge cp-badge--red">ERROR</span>{% endif %}
+        </p>
+        {% if log.error %}
+          <p style="font-size:13px;color:var(--muted);">{{ log.error }}</p>
+        {% endif %}
+        <details style="margin-top:8px;">
+          <summary style="cursor:pointer;font-size:13px;color:var(--muted);">Показать payload / response</summary>
+          <div style="background:var(--card-2);border-radius:var(--radius);padding:12px;margin-top:8px;">
+            <p style="font-size:12px;color:var(--muted);font-weight:600;">Request payload</p>
+            <pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;color:var(--ink);">{{ log.request_payload }}</pre>
+            {% if log.response_body %}
+              <p style="font-size:12px;color:var(--muted);font-weight:600;margin-top:10px;">Response body</p>
+              <pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;color:var(--ink);">{{ log.response_body }}</pre>
+            {% endif %}
+            {% if log.error %}
+              <p style="font-size:12px;color:var(--muted);font-weight:600;margin-top:10px;">Error</p>
+              <pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;color:var(--ink);">{{ log.error }}</pre>
+            {% endif %}
+          </div>
+        </details>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;margin-left:12px;">
+        <span style="font-size:12px;color:var(--muted);">{{ log.created_at }}</span>
+        {% if not log.success and log.attempt < max_attempts %}
+          <form method="post" action="{% url 'operator_retry_webhook' log.id %}">
+            {% csrf_token %}
+            <button class="cp-btn cp-btn--secondary cp-btn--sm" type="submit">Retry</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <p class="cp-empty__text">Логи не найдены.</p>
+  {% endfor %}
 
   {% if page_obj.paginator.num_pages > 1 %}
-    <div class="chips" style="margin-top: 14px;">
+    <div style="display:flex;gap:6px;margin-top:14px;align-items:center;">
       {% if page_obj.has_previous %}
-        <a class="chip" href="?state={{ state }}&endpoint={{ endpoint_filter|urlencode }}&page={{ page_obj.previous_page_number }}">← Prev</a>
+        <a class="cp-btn cp-btn--secondary cp-btn--sm" href="?state={{ state }}&endpoint={{ endpoint_filter|urlencode }}&page={{ page_obj.previous_page_number }}">← Prev</a>
       {% endif %}
-      <span class="chip chip-ok">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      <span class="cp-badge cp-badge--blue">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
       {% if page_obj.has_next %}
-        <a class="chip" href="?state={{ state }}&endpoint={{ endpoint_filter|urlencode }}&page={{ page_obj.next_page_number }}">Next →</a>
+        <a class="cp-btn cp-btn--secondary cp-btn--sm" href="?state={{ state }}&endpoint={{ endpoint_filter|urlencode }}&page={{ page_obj.next_page_number }}">Next →</a>
       {% endif %}
     </div>
   {% endif %}
-</section>
+</div>
 {% endblock %}

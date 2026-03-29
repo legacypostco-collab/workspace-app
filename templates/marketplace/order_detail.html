@@ -1,179 +1,180 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Заказ #{{ order.id }} | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Заказ #{{ order.id }}</h1>
-  <p class="muted">
+<div class="cp-section">
+  <h1 class="cp-card__title">Заказ #{{ order.id }}</h1>
+  <p class="cp-card__subtitle">
     Статус: {{ order.get_status_display }} • SLA: {{ order.sla_status }}
     {% if order.sla_breaches_count %}• breaches: {{ order.sla_breaches_count }}{% endif %}
   </p>
-  <p class="muted">Оплата: {{ order.get_payment_status_display }}</p>
-  <div class="card-actions">
-    <a class="btn btn-secondary" href="{% url 'order_invoice' order.id %}">Открыть Invoice</a>
+  <p class="cp-card__subtitle">Оплата: {{ order.get_payment_status_display }}</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+    <a class="cp-btn cp-btn--secondary" href="{% url 'order_invoice' order.id %}">Открыть Invoice</a>
     {% if is_buyer and order.status == 'delivered' and order.payment_status == 'paid' %}
       <form method="post" action="{% url 'order_confirm_quality' order.id %}">
         {% csrf_token %}
-        <button class="btn" type="submit">Подтвердить качество и закрыть заказ</button>
+        <button class="cp-btn cp-btn--primary" type="submit">Подтвердить качество и закрыть заказ</button>
       </form>
     {% endif %}
   </div>
-</section>
+</div>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <div class="grid">
-    <article class="card card-body">
-      <p class="muted">Клиент</p>
+<div class="cp-card">
+  <div class="cp-grid cp-grid--3">
+    <div>
+      <p class="cp-card__subtitle">Клиент</p>
       <p><strong>{{ order.customer_name }}</strong></p>
-      <p class="muted">{{ order.customer_email }}</p>
-    </article>
-    <article class="card card-body">
-      <p class="muted">Сумма</p>
-      <p class="price">${{ order.total_amount }}</p>
-      <p class="muted">Логистика: ${{ order.logistics_cost }} {{ order.logistics_currency }} ({{ order.logistics_provider }})</p>
-      <p class="muted">Резерв 10%: ${{ order.reserve_amount }} • Оплата: {{ order.get_payment_status_display }}</p>
-      <p class="muted">Создан: {{ order.created_at }}</p>
-    </article>
-    <article class="card card-body">
-      <p class="muted">SLA дедлайны</p>
-      <p class="muted">Подтверждение: {{ order.supplier_confirm_deadline|default:"—" }}</p>
-      <p class="muted">Отгрузка: {{ order.ship_deadline|default:"—" }}</p>
-    </article>
+      <p style="font-size:13px;color:var(--muted);">{{ order.customer_email }}</p>
+    </div>
+    <div>
+      <p class="cp-card__subtitle">Сумма</p>
+      <p class="cp-stat__value" style="font-size:22px;">${{ order.total_amount }}</p>
+      <p style="font-size:13px;color:var(--muted);">Логистика: ${{ order.logistics_cost }} {{ order.logistics_currency }} ({{ order.logistics_provider }})</p>
+      <p style="font-size:13px;color:var(--muted);">Резерв 10%: ${{ order.reserve_amount }} • Оплата: {{ order.get_payment_status_display }}</p>
+      <p style="font-size:13px;color:var(--muted);">Создан: {{ order.created_at }}</p>
+    </div>
+    <div>
+      <p class="cp-card__subtitle">SLA дедлайны</p>
+      <p style="font-size:13px;color:var(--muted);">Подтверждение: {{ order.supplier_confirm_deadline|default:"—" }}</p>
+      <p style="font-size:13px;color:var(--muted);">Отгрузка: {{ order.ship_deadline|default:"—" }}</p>
+    </div>
   </div>
-</section>
+</div>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <h2>Позиции заказа</h2>
-  <div class="list">
-    {% for item in order.items.all %}
-      <article class="list-row">
-        <div>
-          <h3>{{ item.part.title }}</h3>
-          <p class="muted">OEM {{ item.part.oem_number }} • qty {{ item.quantity }}</p>
-        </div>
-        <div class="list-actions">
-          <p class="price">${{ item.unit_price }}</p>
-        </div>
-      </article>
-    {% endfor %}
-  </div>
-</section>
+<div class="cp-card">
+  <h2 class="cp-card__title">Позиции заказа</h2>
+  <table class="cp-table">
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th>OEM / Qty</th>
+        <th style="text-align:right;">Цена</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in order.items.all %}
+        <tr>
+          <td>{{ item.part.title }}</td>
+          <td>{{ item.part.oem_number }} • qty {{ item.quantity }}</td>
+          <td style="text-align:right;">${{ item.unit_price }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <h2>Документы заказа</h2>
-  <div class="list">
-    {% for doc in documents %}
-      <article class="list-row">
-        <div>
-          <h3>{{ doc.title }}</h3>
-          <p class="muted">Тип: {{ doc.get_doc_type_display }}{% if doc.uploaded_by %} • {{ doc.uploaded_by.username }}{% endif %}</p>
-        </div>
-        <div class="list-actions">
-          {% if doc.file_obj %}
-            <a class="btn btn-secondary" href="{{ doc.file_obj.url }}" target="_blank" rel="noopener">Открыть</a>
-          {% elif doc.file_url %}
-            <a class="btn btn-secondary" href="{{ doc.file_url }}" target="_blank" rel="noopener">Открыть</a>
-          {% endif %}
-          <p class="muted">{{ doc.created_at }}</p>
-        </div>
-      </article>
-    {% empty %}
-      <p class="muted">Документы пока не добавлены.</p>
-    {% endfor %}
-  </div>
+<div class="cp-card">
+  <h2 class="cp-card__title">Документы заказа</h2>
+  {% for doc in documents %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <strong>{{ doc.title }}</strong>
+        <p style="font-size:13px;color:var(--muted);">Тип: {{ doc.get_doc_type_display }}{% if doc.uploaded_by %} • {{ doc.uploaded_by.username }}{% endif %}</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        {% if doc.file_obj %}
+          <a class="cp-btn cp-btn--secondary cp-btn--sm" href="{{ doc.file_obj.url }}" target="_blank" rel="noopener">Открыть</a>
+        {% elif doc.file_url %}
+          <a class="cp-btn cp-btn--secondary cp-btn--sm" href="{{ doc.file_url }}" target="_blank" rel="noopener">Открыть</a>
+        {% endif %}
+        <span style="font-size:12px;color:var(--muted);">{{ doc.created_at }}</span>
+      </div>
+    </div>
+  {% empty %}
+    <p class="cp-empty__text">Документы пока не добавлены.</p>
+  {% endfor %}
 
   {% if can_upload_docs %}
-    <form method="post" action="{% url 'order_add_document' order.id %}" enctype="multipart/form-data" class="card-form" style="margin-top: 14px;">
+    <form method="post" action="{% url 'order_add_document' order.id %}" enctype="multipart/form-data" style="margin-top:16px;">
       {% csrf_token %}
-      <div class="grid">
-        <label>Тип документа
-          <select name="doc_type">
+      <div class="cp-grid cp-grid--2">
+        <div class="cp-field">
+          <label class="cp-label">Тип документа</label>
+          <select name="doc_type" class="cp-input">
             {% for value,label in document_type_choices %}
               <option value="{{ value }}">{{ label }}</option>
             {% endfor %}
           </select>
-        </label>
-        <label>Название
-          <input type="text" name="title" placeholder="Invoice / Packing list / Certificate" required />
-        </label>
-        <label>Файл
-          <input type="file" name="file_obj" />
-        </label>
-        <label>или URL файла
-          <input type="url" name="file_url" placeholder="https://..." />
-        </label>
+        </div>
+        <div class="cp-field">
+          <label class="cp-label">Название</label>
+          <input type="text" name="title" class="cp-input" placeholder="Invoice / Packing list / Certificate" required />
+        </div>
+        <div class="cp-field">
+          <label class="cp-label">Файл</label>
+          <input type="file" name="file_obj" class="cp-input" />
+        </div>
+        <div class="cp-field">
+          <label class="cp-label">или URL файла</label>
+          <input type="url" name="file_url" class="cp-input" placeholder="https://..." />
+        </div>
       </div>
-      <div class="card-actions">
-        <button class="btn" type="submit">Добавить документ</button>
+      <div style="margin-top:8px;">
+        <button class="cp-btn cp-btn--primary" type="submit">Добавить документ</button>
       </div>
     </form>
   {% endif %}
-</section>
+</div>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <h2>Рекламации</h2>
-  <div class="list">
-    {% for claim in claims %}
-      <article class="list-row">
-        <div>
-          <h3>#{{ claim.id }} · {{ claim.title }}</h3>
-          <p class="muted">Статус: {{ claim.get_status_display }} • Открыл: {{ claim.opened_by.username|default:"system" }}</p>
-          <p class="muted">{{ claim.description }}</p>
-        </div>
-        <div class="list-actions">
-          <p class="muted">{{ claim.created_at }}</p>
-          {% if can_manage_claims %}
-            <form method="post" action="{% url 'order_update_claim_status' claim.id %}" class="status-form">
-              {% csrf_token %}
-              <select name="status">
-                {% for value,label in claim_status_choices %}
-                  <option value="{{ value }}" {% if claim.status == value %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-              </select>
-              <button class="btn btn-secondary" type="submit">Обновить</button>
-            </form>
-          {% endif %}
-        </div>
-      </article>
-    {% empty %}
-      <p class="muted">Рекламаций пока нет.</p>
-    {% endfor %}
-  </div>
+<div class="cp-card">
+  <h2 class="cp-card__title">Рекламации</h2>
+  {% for claim in claims %}
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <strong>#{{ claim.id }} · {{ claim.title }}</strong>
+        <p style="font-size:13px;color:var(--muted);">Статус: {{ claim.get_status_display }} • Открыл: {{ claim.opened_by.username|default:"system" }}</p>
+        <p style="font-size:13px;color:var(--muted);">{{ claim.description }}</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:12px;color:var(--muted);">{{ claim.created_at }}</span>
+        {% if can_manage_claims %}
+          <form method="post" action="{% url 'order_update_claim_status' claim.id %}" style="display:flex;gap:6px;align-items:center;">
+            {% csrf_token %}
+            <select name="status" class="cp-input" style="width:auto;">
+              {% for value,label in claim_status_choices %}
+                <option value="{{ value }}" {% if claim.status == value %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <button class="cp-btn cp-btn--secondary cp-btn--sm" type="submit">Обновить</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <p class="cp-empty__text">Рекламаций пока нет.</p>
+  {% endfor %}
 
   {% if can_open_claim %}
-    <form method="post" action="{% url 'order_open_claim' order.id %}" class="card-form" style="margin-top: 14px;">
+    <form method="post" action="{% url 'order_open_claim' order.id %}" style="margin-top:16px;">
       {% csrf_token %}
-      <label>Тема рекламации
-        <input type="text" name="title" required />
-      </label>
-      <label>Описание
-        <textarea name="description" rows="3" required></textarea>
-      </label>
-      <div class="card-actions">
-        <button class="btn" type="submit">Открыть рекламацию</button>
+      <div class="cp-field">
+        <label class="cp-label">Тема рекламации</label>
+        <input type="text" name="title" class="cp-input" required />
       </div>
+      <div class="cp-field">
+        <label class="cp-label">Описание</label>
+        <textarea name="description" rows="3" class="cp-input" required></textarea>
+      </div>
+      <button class="cp-btn cp-btn--primary" type="submit">Открыть рекламацию</button>
     </form>
   {% endif %}
-</section>
+</div>
 
-<section class="panel">
-  <h2>Таймлайн событий</h2>
-  <div class="list">
-    {% for event in events %}
-      <article class="list-row">
-        <div>
-          <h3>{{ event.get_event_type_display }}</h3>
-          <p class="muted">Источник: {{ event.source }}{% if event.actor %} • {{ event.actor.username }}{% endif %}</p>
-          {% if event.meta %}
-            <p class="muted">{{ event.meta }}</p>
-          {% endif %}
-        </div>
-        <div class="list-actions">
-          <p class="muted">{{ event.created_at }}</p>
-        </div>
-      </article>
-    {% empty %}
-      <p class="muted">Событий пока нет.</p>
-    {% endfor %}
-  </div>
-</section>
+<div class="cp-card">
+  <h2 class="cp-card__title">Таймлайн событий</h2>
+  {% for event in events %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <strong>{{ event.get_event_type_display }}</strong>
+        <p style="font-size:13px;color:var(--muted);">Источник: {{ event.source }}{% if event.actor %} • {{ event.actor.username }}{% endif %}</p>
+        {% if event.meta %}
+          <p style="font-size:13px;color:var(--muted);">{{ event.meta }}</p>
+        {% endif %}
+      </div>
+      <span style="font-size:12px;color:var(--muted);">{{ event.created_at }}</span>
+    </div>
+  {% empty %}
+    <p class="cp-empty__text">Событий пока нет.</p>
+  {% endfor %}
+</div>
 {% endblock %}

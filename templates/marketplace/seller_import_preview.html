@@ -1,46 +1,48 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Подтверждение маппинга | Seller кабинет{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Подтверждение маппинга</h1>
-  <a class="btn btn-secondary" href="{% url 'seller_dashboard' %}">Назад в кабинет</a>
-</section>
+<div class="cp-section" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+  <h1 class="cp-card__title">Подтверждение маппинга</h1>
+  <a class="cp-btn cp-btn--secondary" href="{% url 'seller_dashboard' %}">Назад в кабинет</a>
+</div>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <h2>Источник</h2>
-  <p class="muted">
+<div class="cp-card">
+  <h2 class="cp-card__title">Источник</h2>
+  <p style="font-size:13px;color:var(--muted);">
     Preview #{{ preview.id }} • Статус: <strong>{{ preview.status }}</strong>
     {% if preview.source_file %} • Файл: <strong>{{ preview.source_file.original_name|default:"(без имени)" }}</strong>{% endif %}
   </p>
-</section>
+</div>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <h2>Маппинг колонок</h2>
-  <p class="muted">Проверьте соответствие полей. Для запуска обязательны: <code>oem</code>, <code>warehouse_address</code> и хотя бы одна из цен <code>price_exw/price_fob_sea/price_fob_air</code>.</p>
-  <form method="post" action="{% url 'seller_import_preview_confirm' preview.id %}" class="upload-form">
+<div class="cp-card">
+  <h2 class="cp-card__title">Маппинг колонок</h2>
+  <p class="cp-card__subtitle">Проверьте соответствие полей. Для запуска обязательны: <code>oem</code>, <code>warehouse_address</code> и хотя бы одна из цен <code>price_exw/price_fob_sea/price_fob_air</code>.</p>
+  <form method="post" action="{% url 'seller_import_preview_confirm' preview.id %}">
     {% csrf_token %}
-    {% for field_key, field_label in mapping_fields %}
-      <p>
-        <label for="id_mapping__{{ field_key }}">{{ field_label }} ({{ field_key }})</label>
-        <select id="id_mapping__{{ field_key }}" name="mapping__{{ field_key }}">
-          <option value="">— не выбрано —</option>
-          {% for header in header_options %}
-            <option value="{{ header }}" {% if current_mapping[field_key] == header %}selected{% endif %}>{{ header }}</option>
-          {% endfor %}
-        </select>
-      </p>
-    {% endfor %}
-    <div class="card-actions">
-      <button class="btn btn-secondary" type="submit">Подтвердить маппинг</button>
+    <div class="cp-grid cp-grid--2">
+      {% for field_key, field_label in mapping_fields %}
+        <div class="cp-field">
+          <label class="cp-label" for="id_mapping__{{ field_key }}">{{ field_label }} ({{ field_key }})</label>
+          <select id="id_mapping__{{ field_key }}" name="mapping__{{ field_key }}" class="cp-input">
+            <option value="">— не выбрано —</option>
+            {% for header in header_options %}
+              <option value="{{ header }}" {% if current_mapping[field_key] == header %}selected{% endif %}>{{ header }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top:8px;">
+      <button class="cp-btn cp-btn--secondary" type="submit">Подтвердить маппинг</button>
     </div>
   </form>
-</section>
+</div>
 
-<section class="panel" style="margin-bottom: 16px;">
-  <h2>Превью первых строк</h2>
+<div class="cp-card">
+  <h2 class="cp-card__title">Превью первых строк</h2>
   {% if preview.sample_rows %}
     <div style="overflow:auto;">
-      <table>
+      <table class="cp-table">
         <thead>
           <tr>
             {% for header in header_options %}
@@ -60,14 +62,14 @@
       </table>
     </div>
   {% else %}
-    <p class="muted">Нет данных для preview.</p>
+    <p class="cp-empty__text">Нет данных для preview.</p>
   {% endif %}
-</section>
+</div>
 
-<section class="panel">
+<div class="cp-card">
   <form method="post" action="{% url 'seller_import_preview_start' preview.id %}">
     {% csrf_token %}
-    <button class="btn" type="submit">Запустить импорт</button>
+    <button class="cp-btn cp-btn--primary" type="submit">Запустить импорт</button>
   </form>
-</section>
+</div>
 {% endblock %}

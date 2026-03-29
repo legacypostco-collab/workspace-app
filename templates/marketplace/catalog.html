@@ -1,99 +1,122 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Каталог | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Каталог запчастей</h1>
-</section>
+<div class="cp-section">
+  <h1 class="cp-card__title">Каталог запчастей</h1>
+</div>
 
-<form method="get" class="filters panel">
-  <input type="text" name="q" value="{{ query }}" placeholder="Поиск по названию или OEM..." />
-  <select name="brand">
-    <option value="">Все бренды</option>
-    {% for brand in brands %}
-      <option value="{{ brand.slug }}" {% if selected_brand == brand.slug %}selected{% endif %}>
-        {{ brand.name }}
-      </option>
-    {% endfor %}
-  </select>
-  <select name="category">
-    <option value="">Все категории</option>
-    {% for category in categories %}
-      <option value="{{ category.slug }}" {% if selected_category == category.slug %}selected{% endif %}>
-        {{ category.name }}
-      </option>
-    {% endfor %}
-  </select>
-  <select name="condition">
-    <option value="">Любое состояние</option>
-    <option value="oem" {% if selected_condition == 'oem' %}selected{% endif %}>OEM</option>
-    <option value="aftermarket" {% if selected_condition == 'aftermarket' %}selected{% endif %}>Aftermarket</option>
-    <option value="reman" {% if selected_condition == 'reman' %}selected{% endif %}>REMAN</option>
-  </select>
-  <input type="number" step="0.01" min="0" name="min_price" value="{{ selected_min_price }}" placeholder="Цена от" />
-  <input type="number" step="0.01" min="0" name="max_price" value="{{ selected_max_price }}" placeholder="Цена до" />
-  <select name="sort">
-    <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Сначала новые</option>
-    <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Цена по возрастанию</option>
-    <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Цена по убыванию</option>
-    <option value="stock_desc" {% if selected_sort == 'stock_desc' %}selected{% endif %}>Больше на складе</option>
-  </select>
-  <label class="checkbox-inline">
+<form method="get" class="cp-card" style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;">
+  <div class="cp-field" style="flex:1;min-width:180px;">
+    <label class="cp-label">Поиск</label>
+    <input type="text" name="q" value="{{ query }}" placeholder="Поиск по названию или OEM..." class="cp-input" />
+  </div>
+  <div class="cp-field" style="min-width:140px;">
+    <label class="cp-label">Бренд</label>
+    <select name="brand" class="cp-input">
+      <option value="">Все бренды</option>
+      {% for brand in brands %}
+        <option value="{{ brand.slug }}" {% if selected_brand == brand.slug %}selected{% endif %}>
+          {{ brand.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="cp-field" style="min-width:140px;">
+    <label class="cp-label">Категория</label>
+    <select name="category" class="cp-input">
+      <option value="">Все категории</option>
+      {% for category in categories %}
+        <option value="{{ category.slug }}" {% if selected_category == category.slug %}selected{% endif %}>
+          {{ category.name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="cp-field" style="min-width:140px;">
+    <label class="cp-label">Состояние</label>
+    <select name="condition" class="cp-input">
+      <option value="">Любое состояние</option>
+      <option value="oem" {% if selected_condition == 'oem' %}selected{% endif %}>OEM</option>
+      <option value="aftermarket" {% if selected_condition == 'aftermarket' %}selected{% endif %}>Aftermarket</option>
+      <option value="reman" {% if selected_condition == 'reman' %}selected{% endif %}>REMAN</option>
+    </select>
+  </div>
+  <div class="cp-field" style="min-width:100px;">
+    <label class="cp-label">Цена от</label>
+    <input type="number" step="0.01" min="0" name="min_price" value="{{ selected_min_price }}" placeholder="0" class="cp-input" />
+  </div>
+  <div class="cp-field" style="min-width:100px;">
+    <label class="cp-label">Цена до</label>
+    <input type="number" step="0.01" min="0" name="max_price" value="{{ selected_max_price }}" placeholder="∞" class="cp-input" />
+  </div>
+  <div class="cp-field" style="min-width:140px;">
+    <label class="cp-label">Сортировка</label>
+    <select name="sort" class="cp-input">
+      <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Сначала новые</option>
+      <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Цена по возрастанию</option>
+      <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Цена по убыванию</option>
+      <option value="stock_desc" {% if selected_sort == 'stock_desc' %}selected{% endif %}>Больше на складе</option>
+    </select>
+  </div>
+  <div class="cp-field" style="display:flex;align-items:center;gap:6px;">
     <input type="checkbox" name="in_stock" value="1" {% if selected_in_stock %}checked{% endif %} />
-    Только в наличии
-  </label>
-  <button type="submit" class="btn">Применить</button>
+    <label class="cp-label" style="margin-bottom:0;">Только в наличии</label>
+  </div>
+  <button type="submit" class="cp-btn cp-btn--primary">Применить</button>
 </form>
 
-<div class="grid">
+<div class="cp-grid cp-grid--3">
   {% for part in parts %}
-    <article class="card">
-      <img src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
-      <div class="card-body">
-        <div class="card-meta">
-          <span class="chip chip-soft">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
-          <span class="chip chip-soft">{{ part.category.name }}</span>
-          <span class="chip">{{ part.get_condition_display }}</span>
+    <article class="cp-card">
+      <img src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" style="width:100%;border-radius:8px;margin-bottom:12px;" />
+      <div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+          <span class="cp-badge cp-badge--gray">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
+          <span class="cp-badge cp-badge--gray">{{ part.category.name }}</span>
+          <span class="cp-badge cp-badge--blue">{{ part.get_condition_display }}</span>
         </div>
-        <p class="field-label">Part Number</p>
-        <h3 class="part-number"><a href="{% url 'part_detail' part.slug %}">{{ part.oem_number }}</a></h3>
-        <p class="field-label">Part Name</p>
-        <p class="part-name">{{ part.title }}</p>
-        <p class="price">${{ part.price }}</p>
-        <div class="card-actions">
+        <div class="cp-label">Part Number</div>
+        <h3 style="margin-bottom:4px;"><a href="{% url 'part_detail' part.slug %}" style="color:var(--ink);text-decoration:none;">{{ part.oem_number }}</a></h3>
+        <div class="cp-label">Part Name</div>
+        <p style="margin-bottom:8px;">{{ part.title }}</p>
+        <p style="font-size:18px;font-weight:700;color:var(--accent);margin-bottom:12px;">${{ part.price }}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <form method="post" action="{% url 'cart_add' part.id %}">
             {% csrf_token %}
             <input type="hidden" name="next" value="{% url 'catalog' %}" />
-            <button class="btn btn-secondary" type="submit">В корзину</button>
+            <button class="cp-btn cp-btn--primary cp-btn--sm" type="submit">В корзину</button>
           </form>
           {% if part.id in compare_ids %}
             <form method="post" action="{% url 'compare_remove' part.id %}">
               {% csrf_token %}
               <input type="hidden" name="next" value="{% url 'catalog' %}" />
-              <button class="btn" type="submit">Убрать</button>
+              <button class="cp-btn cp-btn--secondary cp-btn--sm" type="submit">Убрать</button>
             </form>
           {% else %}
             <form method="post" action="{% url 'compare_add' part.id %}">
               {% csrf_token %}
               <input type="hidden" name="next" value="{% url 'catalog' %}" />
-              <button class="btn" type="submit">Сравнить</button>
+              <button class="cp-btn cp-btn--secondary cp-btn--sm" type="submit">Сравнить</button>
             </form>
           {% endif %}
         </div>
       </div>
     </article>
   {% empty %}
-    <p>Ничего не найдено.</p>
+    <div class="cp-empty">
+      <div class="cp-empty__text">Ничего не найдено.</div>
+    </div>
   {% endfor %}
 </div>
 
 {% if page_obj and page_obj.paginator.num_pages > 1 %}
-  <div class="pagination">
+  <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:24px;">
     {% if page_obj.has_previous %}
-      <a class="btn" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}">Назад</a>
+      <a class="cp-btn cp-btn--secondary" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}">Назад</a>
     {% endif %}
-    <span class="muted">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+    <span style="color:var(--muted);font-size:13px;">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
     {% if page_obj.has_next %}
-      <a class="btn" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}">Далее</a>
+      <a class="cp-btn cp-btn--secondary" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}">Далее</a>
     {% endif %}
   </div>
 {% endif %}

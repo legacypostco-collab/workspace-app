@@ -1,19 +1,19 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Справочник категорий | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Справочник категорий</h1>
-  <p class="muted">Все категории запчастей с количеством позиций в каталоге</p>
-</section>
+<div class="cp-section">
+  <h1 class="cp-card__title">Справочник категорий</h1>
+  <p class="cp-card__subtitle">Все категории запчастей с количеством позиций в каталоге</p>
+</div>
 
-<section class="panel">
-  <h2>Всего позиций: <span class="muted">{{ total_parts }}</span></h2>
-  <div class="chips">
+<div class="cp-card">
+  <h2 class="cp-card__title">Всего позиций: <span style="color:var(--muted);">{{ total_parts }}</span></h2>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;">
     {% for category in categories %}
-      <a class="chip" href="{% url 'catalog' %}?category={{ category.slug }}">{{ category.name }} ({{ category.parts_count }})</a>
+      <a class="cp-badge cp-badge--blue" href="{% url 'catalog' %}?category={{ category.slug }}" style="text-decoration:none;">{{ category.name }} ({{ category.parts_count }})</a>
     {% empty %}
-      <span class="muted">Категории пока не добавлены</span>
+      <span style="font-size:13px;color:var(--muted);">Категории пока не добавлены</span>
     {% endfor %}
   </div>
-</section>
+</div>
 {% endblock %}

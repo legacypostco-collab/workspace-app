@@ -1,127 +1,125 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% load static %}
 {% block title %}Invoice #{{ order.id }} | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head invoice-toolbar">
+<div class="cp-section" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
   <div>
-    <h1>Счёт / Invoice</h1>
-    <p class="muted">Документ по заказу #{{ order.id }}</p>
+    <h1 class="cp-card__title">Счёт / Invoice</h1>
+    <p class="cp-card__subtitle">Документ по заказу #{{ order.id }}</p>
   </div>
-  <div class="card-actions">
-    <a class="btn" href="{% url 'order_invoice_pdf' order.id %}">Скачать PDF</a>
-    <button class="btn btn-secondary" onclick="window.print()">Печать / PDF</button>
-    <a class="btn" href="{% url 'order_detail' order.id %}">Карточка заказа</a>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a class="cp-btn cp-btn--primary" href="{% url 'order_invoice_pdf' order.id %}">Скачать PDF</a>
+    <button class="cp-btn cp-btn--secondary" onclick="window.print()">Печать / PDF</button>
+    <a class="cp-btn cp-btn--secondary" href="{% url 'order_detail' order.id %}">Карточка заказа</a>
   </div>
-</section>
+</div>
 
-<section class="invoice-sheet">
-  <header class="invoice-top">
+<div class="cp-card">
+  <header style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px;">
     <div>
-      <img src="{% static 'marketplace/consolidator-logo.svg' %}" alt="Consolidator Parts" class="invoice-logo-print" />
-      <p class="invoice-company">Consolidator Parts LLC</p>
-      <p class="invoice-meta">B2B Spare Parts Marketplace</p>
-      <p class="invoice-meta">Email: sales@consolidator.parts</p>
-      <p class="invoice-meta">Phone: +1 (000) 000-00-00</p>
+      <img src="{% static 'marketplace/consolidator-logo.svg' %}" alt="Consolidator Parts" style="height:40px;margin-bottom:8px;" />
+      <p style="font-weight:700;">Consolidator Parts LLC</p>
+      <p style="font-size:13px;color:var(--muted);">B2B Spare Parts Marketplace</p>
+      <p style="font-size:13px;color:var(--muted);">Email: sales@consolidator.parts</p>
+      <p style="font-size:13px;color:var(--muted);">Phone: +1 (000) 000-00-00</p>
     </div>
-    <div class="invoice-number-box">
-      <p class="invoice-title">INVOICE</p>
-      <p><strong>No:</strong> {% if order.invoice_number %}{{ order.invoice_number }}{% else %}INV-{{ order.created_at|date:"Ymd" }}-{{ order.id }}{% endif %}</p>
-      <p><strong>Date:</strong> {{ order.created_at|date:"d.m.Y" }}</p>
-      <p><strong>Status:</strong> {{ order.get_status_display }}</p>
-      <p><strong>Payment:</strong> {{ order.get_payment_status_display }}</p>
+    <div style="text-align:right;">
+      <p style="font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px;">INVOICE</p>
+      <p style="font-size:13px;"><strong>No:</strong> {% if order.invoice_number %}{{ order.invoice_number }}{% else %}INV-{{ order.created_at|date:"Ymd" }}-{{ order.id }}{% endif %}</p>
+      <p style="font-size:13px;"><strong>Date:</strong> {{ order.created_at|date:"d.m.Y" }}</p>
+      <p style="font-size:13px;"><strong>Status:</strong> {{ order.get_status_display }}</p>
+      <p style="font-size:13px;"><strong>Payment:</strong> {{ order.get_payment_status_display }}</p>
     </div>
   </header>
 
-  <section class="invoice-parties">
-    <div class="invoice-party">
-      <p class="invoice-label">Поставщик / Seller</p>
+  <div class="cp-grid cp-grid--2" style="margin-bottom:24px;">
+    <div>
+      <p class="cp-label">Поставщик / Seller</p>
       <p><strong>Consolidator Parts LLC</strong></p>
-      <p>Industrial procurement operations</p>
+      <p style="font-size:13px;color:var(--muted);">Industrial procurement operations</p>
     </div>
-    <div class="invoice-party">
-      <p class="invoice-label">Покупатель / Buyer</p>
+    <div>
+      <p class="cp-label">Покупатель / Buyer</p>
       <p><strong>{{ order.customer_name }}</strong></p>
-      <p>{{ order.customer_email }}</p>
-      <p>{{ order.customer_phone }}</p>
-      <p>{{ order.delivery_address }}</p>
+      <p style="font-size:13px;color:var(--muted);">{{ order.customer_email }}</p>
+      <p style="font-size:13px;color:var(--muted);">{{ order.customer_phone }}</p>
+      <p style="font-size:13px;color:var(--muted);">{{ order.delivery_address }}</p>
     </div>
-  </section>
+  </div>
 
-  <section>
-    <table class="invoice-table">
-      <thead>
+  <table class="cp-table" style="margin-bottom:24px;">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Наименование</th>
+        <th>OEM</th>
+        <th>Qty</th>
+        <th>Цена</th>
+        <th style="text-align:right;">Сумма</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in order.items.all %}
         <tr>
-          <th>#</th>
-          <th>Наименование</th>
-          <th>OEM</th>
-          <th>Qty</th>
-          <th>Цена</th>
-          <th>Сумма</th>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ item.part.title }}</td>
+          <td>{{ item.part.oem_number }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>${{ item.unit_price }}</td>
+          <td style="text-align:right;">${{ item.total_price }}</td>
         </tr>
-      </thead>
-      <tbody>
-        {% for item in order.items.all %}
-          <tr>
-            <td>{{ forloop.counter }}</td>
-            <td>{{ item.part.title }}</td>
-            <td>{{ item.part.oem_number }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>${{ item.unit_price }}</td>
-            <td>${{ item.total_price }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </section>
+      {% endfor %}
+    </tbody>
+  </table>
 
-  <section class="invoice-summary">
-    <div class="invoice-note">
-      <p class="invoice-label">Примечание</p>
-      <p>Счёт сформирован автоматически на основании подтверждённого заказа.</p>
-    </div>
-    <div class="invoice-total-box">
-      <p><span>Items subtotal</span><strong>${{ subtotal }}</strong></p>
-      <p><span>Logistics ({{ order.logistics_provider }})</span><strong>${{ order.logistics_cost }} {{ order.logistics_currency }}</strong></p>
-      <p><span>Reserve ({{ order.reserve_percent }}%)</span><strong>${{ reserve_due }}</strong></p>
-      <p><span>Final payment (90%)</span><strong>${{ final_due }}</strong></p>
-      <p class="invoice-grand"><span>Total</span><strong>${{ order.total_amount }}</strong></p>
-    </div>
-  </section>
-
-  <footer class="invoice-signatures">
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px;">
     <div>
-      <p class="invoice-label">Поставщик</p>
-      <p>_________________________</p>
-      <p>Authorized Signature</p>
+      <p class="cp-label">Примечание</p>
+      <p style="font-size:13px;color:var(--muted);">Счёт сформирован автоматически на основании подтверждённого заказа.</p>
+    </div>
+    <div style="min-width:280px;">
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--muted);">Items subtotal</span><strong>${{ subtotal }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--muted);">Logistics ({{ order.logistics_provider }})</span><strong>${{ order.logistics_cost }} {{ order.logistics_currency }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--muted);">Reserve ({{ order.reserve_percent }}%)</span><strong>${{ reserve_due }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;"><span style="color:var(--muted);">Final payment (90%)</span><strong>${{ final_due }}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:16px;border-top:1px solid var(--border);margin-top:4px;"><span style="color:var(--muted);">Total</span><strong>${{ order.total_amount }}</strong></div>
+    </div>
+  </div>
+
+  <footer class="cp-grid cp-grid--2" style="padding-top:24px;border-top:1px solid var(--border);">
+    <div>
+      <p class="cp-label">Поставщик</p>
+      <p style="color:var(--muted);">_________________________</p>
+      <p style="font-size:12px;color:var(--muted);">Authorized Signature</p>
     </div>
     <div>
-      <p class="invoice-label">Покупатель</p>
-      <p>_________________________</p>
-      <p>Authorized Signature</p>
+      <p class="cp-label">Покупатель</p>
+      <p style="color:var(--muted);">_________________________</p>
+      <p style="font-size:12px;color:var(--muted);">Authorized Signature</p>
     </div>
   </footer>
-</section>
+</div>
 
 {% if is_buyer %}
-  <section class="panel" style="margin-top:16px;">
-    <h2>Оплата по заказу</h2>
-    <p class="muted">Шаг 1: резерв 10% • Шаг 2: финальная оплата • Шаг 3: подтверждение качества после доставки.</p>
-    <p class="muted">Платежная ссылка (ref: {{ payment_ref }}): <a href="{{ payment_url }}" target="_blank" rel="noopener">Открыть оплату</a></p>
-    <div class="card-actions">
+  <div class="cp-card">
+    <h2 class="cp-card__title">Оплата по заказу</h2>
+    <p class="cp-card__subtitle">Шаг 1: резерв 10% • Шаг 2: финальная оплата • Шаг 3: подтверждение качества после доставки.</p>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">Платежная ссылка (ref: {{ payment_ref }}): <a href="{{ payment_url }}" target="_blank" rel="noopener" style="color:var(--accent);">Открыть оплату</a></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
       {% if order.payment_status == 'awaiting_reserve' %}
         <form method="post" action="{% url 'order_mark_reserve_paid' order.id %}">
           {% csrf_token %}
-          <button class="btn" type="submit">Я оплатил резерв 10% (${{ reserve_due }})</button>
+          <button class="cp-btn cp-btn--primary" type="submit">Я оплатил резерв 10% (${{ reserve_due }})</button>
         </form>
       {% elif order.payment_status == 'reserve_paid' %}
         <form method="post" action="{% url 'order_mark_final_paid' order.id %}">
           {% csrf_token %}
-          <button class="btn" type="submit">Я оплатил финальные 90% (${{ final_due }})</button>
+          <button class="cp-btn cp-btn--primary" type="submit">Я оплатил финальные 90% (${{ final_due }})</button>
         </form>
       {% else %}
-        <p class="muted">Оплата полностью зафиксирована.</p>
+        <p style="font-size:13px;color:var(--muted);">Оплата полностью зафиксирована.</p>
       {% endif %}
     </div>
-  </section>
+  </div>
 {% endif %}
 {% endblock %}

@@ -1,46 +1,52 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}{{ part.title }} | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="part-layout">
-  <img class="part-image" src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
-  <div class="panel">
-    <div class="card-meta">
-      <span class="chip chip-soft">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
-      <span class="chip chip-soft">{{ part.category.name }}</span>
-      <span class="chip">{{ part.get_condition_display }}</span>
+<div class="cp-breadcrumbs">
+  <a href="{% url 'catalog' %}">Каталог</a> / <span>{{ part.oem_number }}</span>
+</div>
+
+<div class="cp-grid cp-grid--2">
+  <div>
+    <img src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" style="width:100%;border-radius:var(--radius);" />
+  </div>
+  <div class="cp-card">
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
+      <span class="cp-badge cp-badge--gray">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
+      <span class="cp-badge cp-badge--gray">{{ part.category.name }}</span>
+      <span class="cp-badge cp-badge--blue">{{ part.get_condition_display }}</span>
     </div>
-    <p class="field-label">Part Number</p>
-    <h1 class="detail-part-number">{{ part.oem_number }}</h1>
-    <p class="field-label">Part Name</p>
-    <p class="detail-part-name">{{ part.title }}</p>
-    <p>{{ part.description }}</p>
-    <p class="price">${{ part.price }}</p>
-    <p class="muted">Остаток: {{ part.stock_quantity }} шт</p>
+    <div class="cp-label">Part Number</div>
+    <h1 style="font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;margin-bottom:8px;">{{ part.oem_number }}</h1>
+    <div class="cp-label">Part Name</div>
+    <p style="margin-bottom:8px;">{{ part.title }}</p>
+    <p style="margin-bottom:12px;color:var(--muted);font-size:13px;">{{ part.description }}</p>
+    <p style="font-size:22px;font-weight:700;color:var(--accent);margin-bottom:4px;">${{ part.price }}</p>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Остаток: {{ part.stock_quantity }} шт</p>
     <form method="post" action="{% url 'cart_add' part.id %}">
       {% csrf_token %}
       <input type="hidden" name="next" value="{% url 'part_detail' part.slug %}" />
-      <button class="btn" type="submit">Добавить в корзину</button>
+      <button class="cp-btn cp-btn--primary" type="submit">Добавить в корзину</button>
     </form>
   </div>
-</section>
+</div>
 
 {% if related %}
-<section>
-  <div class="section-head"><h2>Похожие позиции</h2></div>
-    <div class="grid">
+<div class="cp-section" style="margin-top:32px;">
+  <h2 class="cp-section__title">Похожие позиции</h2>
+  <div class="cp-grid cp-grid--3">
     {% for item in related %}
-      <article class="card">
-        <img src="{{ item.image_url }}" alt="{{ item.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
-        <div class="card-body">
-          <p class="field-label">Part Number</p>
-          <h3 class="part-number"><a href="{% url 'part_detail' item.slug %}">{{ item.oem_number }}</a></h3>
-          <p class="field-label">Part Name</p>
-          <p class="part-name">{{ item.title }}</p>
-          <p class="price">${{ item.price }}</p>
+      <article class="cp-card">
+        <img src="{{ item.image_url }}" alt="{{ item.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" style="width:100%;border-radius:8px;margin-bottom:12px;" />
+        <div>
+          <div class="cp-label">Part Number</div>
+          <h3 style="margin-bottom:4px;"><a href="{% url 'part_detail' item.slug %}" style="color:var(--ink);text-decoration:none;">{{ item.oem_number }}</a></h3>
+          <div class="cp-label">Part Name</div>
+          <p style="margin-bottom:8px;">{{ item.title }}</p>
+          <p style="font-size:18px;font-weight:700;color:var(--accent);">${{ item.price }}</p>
         </div>
       </article>
     {% endfor %}
   </div>
-</section>
+</div>
 {% endif %}
 {% endblock %}

@@ -1,17 +1,41 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% load static %}
 {% block title %}КП по RFQ #{{ rfq.id }} | Consolidator Parts{% endblock %}
+{% block extra_css %}
+<style>
+.invoice-sheet{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:32px;margin-bottom:16px;}
+.invoice-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+.invoice-logo-print{height:36px;margin-bottom:8px;}
+.invoice-company{font-family:'Golos Text',sans-serif;font-size:16px;font-weight:700;}
+.invoice-meta{font-size:12px;color:var(--muted);}
+.invoice-number-box{text-align:right;font-size:13px;}
+.invoice-title{font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;}
+.invoice-parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;}
+.invoice-party{font-size:13px;}
+.invoice-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;}
+.invoice-summary{display:flex;justify-content:space-between;align-items:flex-start;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
+.invoice-note{font-size:12px;color:var(--muted);max-width:50%;}
+.invoice-total-box{text-align:right;font-size:14px;}
+.invoice-total-box p{display:flex;justify-content:space-between;gap:24px;margin-bottom:4px;}
+.invoice-grand{font-size:18px;font-weight:700;border-top:1px solid var(--border);padding-top:8px;margin-top:8px;}
+@media print{.app-header,.cp-breadcrumbs,.no-print{display:none!important;}.invoice-sheet{border:none;padding:0;}}
+</style>
+{% endblock %}
 {% block content %}
-<section class="section-head invoice-toolbar">
+<nav class="cp-breadcrumbs no-print">
+  <a href="{% url 'rfq_list' %}">RFQ</a> / <a href="{% url 'rfq_detail' rfq.id %}">#{{ rfq.id }}</a> / <span>КП</span>
+</nav>
+
+<div class="cp-section no-print" style="display:flex;align-items:center;justify-content:space-between;">
   <div>
-    <h1>Коммерческое предложение</h1>
-    <p class="muted">RFQ #{{ rfq.id }} • {{ rfq.company_name|default:rfq.customer_name }}</p>
+    <h1 class="cp-card__title">Коммерческое предложение</h1>
+    <p class="cp-card__subtitle">RFQ #{{ rfq.id }} &bull; {{ rfq.company_name|default:rfq.customer_name }}</p>
   </div>
-  <div class="card-actions">
-    <a class="btn btn-secondary" href="{% url 'rfq_proposal_pdf' rfq.id %}">Скачать PDF</a>
-    <button class="btn" onclick="window.print()">Печать</button>
+  <div style="display:flex;gap:8px;">
+    <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_proposal_pdf' rfq.id %}">Скачать PDF</a>
+    <button class="cp-btn cp-btn--primary" onclick="window.print()">Печать</button>
   </div>
-</section>
+</div>
 
 <section class="invoice-sheet">
   <header class="invoice-top">
@@ -44,7 +68,7 @@
   </section>
 
   <section>
-    <table class="invoice-table">
+    <table class="cp-table">
       <thead>
         <tr>
           <th>#</th>
@@ -52,8 +76,8 @@
           <th>OEM</th>
           <th>Qty</th>
           <th>Срок</th>
-          <th>Цена</th>
-          <th>Сумма</th>
+          <th style="text-align:right;">Цена</th>
+          <th style="text-align:right;">Сумма</th>
         </tr>
       </thead>
       <tbody>
@@ -64,8 +88,8 @@
             <td>{{ row.part.oem_number }}</td>
             <td>{{ row.quantity }}</td>
             <td>{{ row.part.production_lead_days|default:0 }} дн.</td>
-            <td>${{ row.part.price }}</td>
-            <td>${{ row.line_total }}</td>
+            <td style="text-align:right;">${{ row.part.price }}</td>
+            <td style="text-align:right;font-weight:700;">${{ row.line_total }}</td>
           </tr>
         {% endfor %}
       </tbody>
@@ -86,49 +110,63 @@
   </section>
 </section>
 
-<section class="panel" style="margin-top: 16px;">
-  <h2>Расчет логистики (API)</h2>
-  <form id="logistics-form" class="card-form" style="margin-bottom: 16px;">
+<div class="cp-card no-print">
+  <h2 class="cp-card__title">Расчет логистики (API)</h2>
+  <form id="logistics-form" style="margin-bottom:16px;">
     {% csrf_token %}
-    <div class="grid">
-      <label>Откуда<input type="text" name="origin" value="Shanghai, CN" /></label>
-      <label>Куда<input type="text" name="destination" value="Moscow, RU" /></label>
-      <label>Mode
-        <select name="mode">
+    <div class="cp-grid cp-grid--3">
+      <div class="cp-field">
+        <label class="cp-label">Откуда</label>
+        <input class="cp-input" type="text" name="origin" value="Shanghai, CN" />
+      </div>
+      <div class="cp-field">
+        <label class="cp-label">Куда</label>
+        <input class="cp-input" type="text" name="destination" value="Moscow, RU" />
+      </div>
+      <div class="cp-field">
+        <label class="cp-label">Mode</label>
+        <select class="cp-input" name="mode">
           <option value="sea">Sea</option>
           <option value="rail">Rail</option>
           <option value="road">Road</option>
           <option value="air">Air</option>
         </select>
-      </label>
-      <label>Incoterm
-        <select name="incoterm">
+      </div>
+      <div class="cp-field">
+        <label class="cp-label">Incoterm</label>
+        <select class="cp-input" name="incoterm">
           <option value="FOB">FOB</option>
           <option value="CIF">CIF</option>
           <option value="DDP">DDP</option>
         </select>
-      </label>
-      <label>Weight (kg)<input type="number" min="0" step="0.01" name="weight_kg" value="120" /></label>
-      <label>Volume (m3)<input type="number" min="0" step="0.01" name="volume_m3" value="1.8" /></label>
+      </div>
+      <div class="cp-field">
+        <label class="cp-label">Weight (kg)</label>
+        <input class="cp-input" type="number" min="0" step="0.01" name="weight_kg" value="120" />
+      </div>
+      <div class="cp-field">
+        <label class="cp-label">Volume (m3)</label>
+        <input class="cp-input" type="number" min="0" step="0.01" name="volume_m3" value="1.8" />
+      </div>
     </div>
-    <div class="card-actions">
-      <button class="btn btn-secondary" type="submit">Рассчитать логистику</button>
+    <div style="margin-top:8px;">
+      <button class="cp-btn cp-btn--secondary" type="submit">Рассчитать логистику</button>
     </div>
-    <p id="logistics-result" class="muted"></p>
+    <p id="logistics-result" style="color:var(--muted);font-size:13px;margin-top:8px;"></p>
   </form>
 
-  <h2>Принять КП и купить</h2>
-  <form method="post" class="card-form" id="proposal-accept-form">
+  <h2 class="cp-card__title" style="margin-top:20px;">Принять КП и купить</h2>
+  <form method="post" id="proposal-accept-form">
     {% csrf_token %}
     <input type="hidden" name="logistics_cost" id="logistics-cost-input" value="0.00" />
     {{ form.as_p }}
-    <p class="muted" id="proposal-total-note">Итог к оплате: ${{ total }}</p>
-    <div class="card-actions">
-      <button class="btn" type="submit">Принять КП и оформить заказ</button>
-      <a class="btn btn-secondary" href="{% url 'rfq_detail' rfq.id %}">Назад к RFQ</a>
+    <p id="proposal-total-note" style="color:var(--muted);font-size:13px;margin:8px 0;">Итог к оплате: ${{ total }}</p>
+    <div style="display:flex;gap:8px;">
+      <button class="cp-btn cp-btn--primary" type="submit">Принять КП и оформить заказ</button>
+      <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_detail' rfq.id %}">Назад к RFQ</a>
     </div>
   </form>
-</section>
+</div>
 <script>
   (function () {
     const form = document.getElementById("logistics-form");

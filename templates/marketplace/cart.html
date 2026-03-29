@@ -1,34 +1,48 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Корзина | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Корзина</h1>
-</section>
+<div class="cp-section">
+  <h1 class="cp-card__title">Корзина</h1>
+</div>
 
 {% if rows %}
-  <div class="list">
-    {% for row in rows %}
-      <article class="list-row">
-        <div>
-          <h3>{{ row.part.title }}</h3>
-          <p class="muted">OEM {{ row.part.oem_number }} • {{ row.quantity }} шт</p>
-        </div>
-        <div class="list-actions">
-          <p class="price">${{ row.line_total }}</p>
-          <form method="post" action="{% url 'cart_remove' row.part.id %}">
-            {% csrf_token %}
-            <button class="btn btn-danger" type="submit">Удалить</button>
-          </form>
-        </div>
-      </article>
-    {% endfor %}
+  <div class="cp-card">
+    <table class="cp-table">
+      <thead>
+        <tr>
+          <th>Товар</th>
+          <th>Кол-во</th>
+          <th>Сумма</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>
+              <strong>{{ row.part.title }}</strong>
+              <div style="color:var(--muted);font-size:12px;">OEM {{ row.part.oem_number }}</div>
+            </td>
+            <td>{{ row.quantity }} шт</td>
+            <td style="font-weight:600;color:var(--accent);">${{ row.line_total }}</td>
+            <td>
+              <form method="post" action="{% url 'cart_remove' row.part.id %}">
+                {% csrf_token %}
+                <button class="cp-btn cp-btn--sm" style="background:rgba(232,92,13,0.12);color:var(--err);" type="submit">Удалить</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-  <div class="checkout-box">
-    <p>Итого: <strong>${{ total }}</strong></p>
-    <a class="btn" href="{% url 'checkout' %}">Перейти к оформлению</a>
+  <div class="cp-card" style="display:flex;align-items:center;justify-content:space-between;">
+    <p style="font-size:16px;">Итого: <strong style="font-size:20px;color:var(--accent);">${{ total }}</strong></p>
+    <a class="cp-btn cp-btn--primary" href="{% url 'checkout' %}">Перейти к оформлению</a>
   </div>
 {% else %}
-  <p>Корзина пустая. <a href="{% url 'catalog' %}">Перейти в каталог</a></p>
+  <div class="cp-empty">
+    <div class="cp-empty__text">Корзина пустая. <a href="{% url 'catalog' %}" style="color:var(--accent);">Перейти в каталог</a></div>
+  </div>
 {% endif %}
 {% endblock %}
-

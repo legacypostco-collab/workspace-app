@@ -1,27 +1,27 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Сравнение | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Сравнение позиций</h1>
-  <p class="muted">Сравнивай до 4 товаров по ключевым параметрам.</p>
-</section>
+<div class="cp-section">
+  <h1 class="cp-card__title">Сравнение позиций</h1>
+  <p style="color:var(--muted);font-size:13px;">Сравнивай до 4 товаров по ключевым параметрам.</p>
+</div>
 
 {% if has_items %}
-  <div class="compare-toolbar">
+  <div style="margin-bottom:16px;">
     <form method="post" action="{% url 'compare_clear' %}">
       {% csrf_token %}
-      <button class="btn btn-danger" type="submit">Очистить сравнение</button>
+      <button class="cp-btn cp-btn--sm" style="background:rgba(232,92,13,0.12);color:var(--err);" type="submit">Очистить сравнение</button>
     </form>
   </div>
 
-  <div class="panel compare-wrap">
-    <table class="compare-table">
+  <div class="cp-card" style="overflow-x:auto;">
+    <table class="cp-table">
       <thead>
         <tr>
           <th>Параметр</th>
           {% for part in parts %}
             <th>
-              <a href="{% url 'part_detail' part.slug %}">{{ part.title }}</a>
+              <a href="{% url 'part_detail' part.slug %}" style="color:var(--accent);text-decoration:none;">{{ part.title }}</a>
             </th>
           {% endfor %}
         </tr>
@@ -30,7 +30,7 @@
         <tr>
           <td>Фото</td>
           {% for part in parts %}
-            <td><img class="compare-image" src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" /></td>
+            <td><img src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" style="width:80px;border-radius:6px;" /></td>
           {% endfor %}
         </tr>
         <tr>
@@ -60,7 +60,7 @@
         <tr>
           <td>Цена</td>
           {% for part in parts %}
-            <td class="price">${{ part.price }}</td>
+            <td style="font-weight:600;color:var(--accent);">${{ part.price }}</td>
           {% endfor %}
         </tr>
         <tr>
@@ -73,16 +73,16 @@
           <td>Действие</td>
           {% for part in parts %}
             <td>
-              <div class="card-actions">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <form method="post" action="{% url 'cart_add' part.id %}">
                   {% csrf_token %}
                   <input type="hidden" name="next" value="{% url 'compare' %}" />
-                  <button class="btn btn-secondary" type="submit">В корзину</button>
+                  <button class="cp-btn cp-btn--primary cp-btn--sm" type="submit">В корзину</button>
                 </form>
                 <form method="post" action="{% url 'compare_remove' part.id %}">
                   {% csrf_token %}
                   <input type="hidden" name="next" value="{% url 'compare' %}" />
-                  <button class="btn" type="submit">Убрать</button>
+                  <button class="cp-btn cp-btn--secondary cp-btn--sm" type="submit">Убрать</button>
                 </form>
               </div>
             </td>
@@ -92,9 +92,9 @@
     </table>
   </div>
 {% else %}
-  <section class="panel">
-    <p class="muted">Пока нет выбранных позиций для сравнения.</p>
-    <a class="btn" href="{% url 'catalog' %}">Выбрать в каталоге</a>
-  </section>
+  <div class="cp-empty">
+    <div class="cp-empty__text">Пока нет выбранных позиций для сравнения.</div>
+    <a class="cp-btn cp-btn--primary" href="{% url 'catalog' %}" style="margin-top:16px;">Выбрать в каталоге</a>
+  </div>
 {% endif %}
 {% endblock %}

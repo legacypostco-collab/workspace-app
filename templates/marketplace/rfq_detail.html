@@ -1,79 +1,103 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}RFQ #{{ rfq.id }} | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>RFQ #{{ rfq.id }}</h1>
-  <p class="muted">{{ rfq.company_name|default:rfq.customer_name }} • {{ rfq.created_at }}</p>
-  <p class="muted">Mode: {{ rfq.get_mode_display }} • Urgency: {{ rfq.get_urgency_display }} • Status: {{ rfq.get_status_display }}</p>
+<nav class="cp-breadcrumbs">
+  <a href="{% url 'rfq_list' %}">RFQ</a> / <span>#{{ rfq.id }}</span>
+</nav>
+
+<div class="cp-section">
+  <h1 class="cp-card__title">RFQ #{{ rfq.id }}</h1>
+  <p class="cp-card__subtitle" style="margin-bottom:4px;">{{ rfq.company_name|default:rfq.customer_name }} &bull; {{ rfq.created_at }}</p>
+  <p class="cp-card__subtitle" style="margin-bottom:4px;">
+    <span class="cp-badge cp-badge--blue">{{ rfq.get_mode_display }}</span>
+    <span class="cp-badge cp-badge--yellow">{{ rfq.get_urgency_display }}</span>
+    <span class="cp-badge cp-badge--gray">{{ rfq.get_status_display }}</span>
+  </p>
   {% if rfq.notes %}
-    <p class="muted">{{ rfq.notes }}</p>
+    <p class="cp-card__subtitle">{{ rfq.notes }}</p>
   {% endif %}
-</section>
+</div>
 
-<section class="panel">
-  <h2>Позиции</h2>
-  <div class="list">
-    {% for card in item_cards %}
-      {% with item=card.item %}
-      <article class="list-row">
-        <div>
-          <h3>{{ item.query }} × {{ item.quantity }}</h3>
-          <p class="muted">State: {{ item.get_state_display }}</p>
-          {% if item.confidence %}
-            <p class="muted">Confidence: {{ item.confidence }}%</p>
-          {% endif %}
-          {% if item.decision_reason %}
-            <p class="muted">{{ item.decision_reason }}</p>
-          {% endif %}
-          {% if item.recommended_supplier_status %}
-            <p class="muted">Recommended status: {{ item.recommended_supplier_status|upper }}</p>
-          {% endif %}
-          {% if item.matched_part %}
-            <p class="muted">
-              Match:
-              <a href="{% url 'part_detail' item.matched_part.slug %}">{{ item.matched_part.title }}</a>
-              {% if item.matched_part.brand %} • {{ item.matched_part.brand.name }}{% endif %}
-            </p>
-          {% else %}
-            <p class="muted">Совпадение не найдено, требуется проверка оператором.</p>
-          {% endif %}
-          {% if card.trusted %}
-            <p class="muted">Trusted: {% for p in card.trusted %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>
-          {% endif %}
-          {% if card.sandbox %}
-            <p class="muted">Sandbox: {% for p in card.sandbox %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>
-          {% endif %}
-          {% if card.risky %}
-            <p class="muted">Risky (operator only): {% for p in card.risky %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>
-          {% endif %}
-        </div>
-        <div class="list-actions">
-          {% if item.matched_part %}
-            <p class="price">${{ item.estimated_line_total }}</p>
-          {% else %}
-            <p class="muted">N/A</p>
-          {% endif %}
-        </div>
-      </article>
-      {% endwith %}
-    {% endfor %}
-  </div>
-</section>
+<div class="cp-card">
+  <h2 class="cp-card__title">Позиции</h2>
+  <table class="cp-table">
+    <thead>
+      <tr>
+        <th>Запрос</th>
+        <th>Qty</th>
+        <th>State</th>
+        <th>Match</th>
+        <th>Suppliers</th>
+        <th style="text-align:right;">Сумма</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for card in item_cards %}
+        {% with item=card.item %}
+        <tr>
+          <td>
+            <strong>{{ item.query }}</strong>
+            {% if item.confidence %}
+              <span class="cp-badge cp-badge--blue" style="margin-left:4px;">{{ item.confidence }}%</span>
+            {% endif %}
+            {% if item.decision_reason %}
+              <br><small style="color:var(--muted);">{{ item.decision_reason }}</small>
+            {% endif %}
+          </td>
+          <td>{{ item.quantity }}</td>
+          <td>
+            <span class="cp-badge cp-badge--gray">{{ item.get_state_display }}</span>
+            {% if item.recommended_supplier_status %}
+              <span class="cp-badge cp-badge--yellow">{{ item.recommended_supplier_status|upper }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.matched_part %}
+              <a href="{% url 'part_detail' item.matched_part.slug %}" style="color:var(--accent);text-decoration:none;">{{ item.matched_part.title }}</a>
+              {% if item.matched_part.brand %}<br><small style="color:var(--muted);">{{ item.matched_part.brand.name }}</small>{% endif %}
+            {% else %}
+              <span style="color:var(--muted);">Совпадение не найдено</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if card.trusted %}
+              <div style="margin-bottom:2px;"><span class="cp-badge cp-badge--green">Trusted</span> {% for p in card.trusted %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>
+            {% endif %}
+            {% if card.sandbox %}
+              <div style="margin-bottom:2px;"><span class="cp-badge cp-badge--yellow">Sandbox</span> {% for p in card.sandbox %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>
+            {% endif %}
+            {% if card.risky %}
+              <div><span class="cp-badge cp-badge--red">Risky</span> {% for p in card.risky %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>
+            {% endif %}
+          </td>
+          <td style="text-align:right;font-weight:700;">
+            {% if item.matched_part %}
+              ${{ item.estimated_line_total }}
+            {% else %}
+              <span style="color:var(--muted);">N/A</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 
-<section class="checkout-box">
+<div class="cp-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
   <div>
-    <p class="muted">Оценочный итог по найденным позициям</p>
-    <p class="price">${{ total }}</p>
+    <p class="cp-card__subtitle" style="margin-bottom:2px;">Оценочный итог по найденным позициям</p>
+    <span style="font-size:22px;font-weight:700;">${{ total }}</span>
   </div>
-  <div>
-    <a class="btn btn-secondary" href="{% url 'rfq_list' %}">К списку RFQ</a>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_list' %}">К списку RFQ</a>
     {% if role != 'seller' and rows %}
-      <a class="btn btn-secondary" href="{% url 'rfq_proposal' rfq.id %}">КП + логистика + покупка</a>
+      <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_proposal' rfq.id %}">КП + логистика + покупка</a>
     {% endif %}
     {% if role != 'seller' and rows %}
-      <a class="btn" href="{% url 'rfq_checkout' rfq.id %}">Создать заказ из RFQ</a>
+      <a class="cp-btn cp-btn--primary" href="{% url 'rfq_checkout' rfq.id %}">Создать заказ из RFQ</a>
     {% endif %}
-    <a class="btn" href="{% url 'rfq_new' %}">Создать новый RFQ</a>
+    <a class="cp-btn cp-btn--primary" href="{% url 'rfq_new' %}">Создать новый RFQ</a>
   </div>
-</section>
+</div>
 {% endblock %}

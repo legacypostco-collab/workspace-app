@@ -5,745 +5,134 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Вход | Consolidator Parts</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Golos+Text:wght@500;600;700;800&display=swap" rel="stylesheet">
   <style>
-@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap");
-
-/* ====== ПАЛИТРА (Dark theme) ====== */
 :root {
-  --ink: #ECECEC;
-  --muted: #919191;
-  --accent: #64B5F6;
-  --accent-600: #5BA5E0;
-  --accent-700: #4D94CA;
-
-  --bg: #1A1A1A;
-  --on-dark: #ECECEC;
-  --card: #242424;
-  --card-2: #2C2C2C;
-
-  --color-text-secondary: #919191;
-  --color-text-muted: #5E5E5E;
-  --color-primary-light: #64B5F6;
-  --color-bg-section: #1F1F1F;
-  --color-bg-card: #242424;
-  --color-bg-card-hover: #2C2C2C;
-  --color-border: rgba(255,255,255,0.055);
-  --color-border-light: rgba(255,255,255,0.035);
-  --color-success: #28C840;
-
-  --ok: #28C840;
-  --err: #E85C0D;
-  --info: #5E5E5E;
-
-  --radius: 20px;
-  --shadow: 0 12px 40px rgba(0,0,0,0.4);
-  --ring: 0 0 0 3px rgba(100,181,246,0.15);
-
-  --scroll-size: 12px;
-  --scroll-thumb: linear-gradient(180deg, rgba(100,181,246,.35), rgba(100,181,246,.2));
-  --scroll-thumb-hover: linear-gradient(180deg, rgba(100,181,246,.55), rgba(100,181,246,.35));
-  --scroll-track: rgba(255,255,255,.03);
-
-  --page-scroll-size: 16px;
-  --container: 1280px;
-  --header-h: 72px;
-  --sidebar-w: 256px;
+  --ink:#ECECEC;--muted:#919191;--accent:#64B5F6;--accent-hover:#5BA5E0;
+  --bg:#1A1A1A;--card:#242424;--card-2:#2C2C2C;
+  --border:rgba(255,255,255,0.07);--radius:20px;
+  --shadow:0 12px 40px rgba(0,0,0,0.4);
+  --ok:#28C840;--err:#E85C0D;--warn:#FFA000;
 }
+*{box-sizing:border-box;}
+html{min-height:100%;background:var(--bg);}
+body{min-height:100vh;margin:0;color:var(--ink);font-family:'Figtree','Manrope',sans-serif;line-height:1.55;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:40px 20px;}
+.login-card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:36px 32px;box-shadow:var(--shadow);}
+.login-card__logo{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:28px;text-decoration:none;}
+.login-card__logo-name{font-family:'Golos Text','Inter',sans-serif;font-size:18px;font-weight:800;color:var(--ink);}
+.login-card__logo-sub{font-size:10px;color:var(--muted);letter-spacing:0.06em;margin-top:2px;}
+.login-card__title{font-size:22px;font-weight:700;margin:0 0 6px;font-family:'Golos Text','Inter',sans-serif;text-align:center;}
+.login-card__subtitle{font-size:13px;color:var(--muted);margin:0 0 24px;text-align:center;}
+.login-form label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:5px;}
+.login-form input{width:100%;padding:10px 14px;font-size:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--ink);outline:none;font-family:inherit;transition:border-color .15s;}
+.login-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(100,181,246,0.12);}
+.login-form p{margin-bottom:14px;}
+.login-form .errorlist{list-style:none;padding:0;margin:4px 0 0;font-size:12px;color:var(--err);}
+.login-submit{width:100%;padding:12px;font-size:15px;font-weight:600;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:8px;font-family:inherit;transition:background .15s;}
+.login-submit:hover{background:var(--accent-hover);}
+.login-footer{text-align:center;margin-top:18px;font-size:13px;color:var(--muted);}
+.login-footer a{color:var(--accent);text-decoration:none;font-weight:500;}
+.login-footer a:hover{text-decoration:underline;}
 
-/* ====== БАЗА ====== */
-* { box-sizing: border-box; }
+/* Demo section */
+.demo-section{margin-top:24px;padding-top:20px;border-top:1px solid var(--border);}
+.demo-section__label{font-size:11px;font-weight:600;letter-spacing:0.08em;color:#5E5E5E;text-transform:uppercase;text-align:center;margin-bottom:12px;}
+.demo-btns{display:flex;flex-direction:column;gap:8px;}
+.demo-btn{display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;background:var(--card-2);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s;text-align:left;color:inherit;font-family:inherit;font-size:inherit;}
+.demo-btn:hover{background:#343434;border-color:rgba(100,181,246,0.25);}
+.demo-btn__icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.demo-btn__icon--seller{background:rgba(100,181,246,0.15);color:#64B5F6;}
+.demo-btn__icon--buyer{background:rgba(40,200,64,0.12);color:#28C840;}
+.demo-btn__icon--operator{background:rgba(255,160,0,0.12);color:#FFA000;}
+.demo-btn__info{flex:1;min-width:0;}
+.demo-btn__role{font-size:13px;font-weight:600;color:var(--ink);line-height:1.2;}
+.demo-btn__login{font-size:11px;color:#5E5E5E;margin-top:1px;}
+.demo-btn__arrow{color:#5E5E5E;font-size:14px;}
 
-html {
-  min-height: 100%;
-  background: var(--bg);
-  scrollbar-color: rgba(69,104,243,.45) transparent;
-  scrollbar-width: auto;
-}
-
-body {
-  min-height: 100vh;
-  margin: 0;
-  color: var(--ink);
-  font-family: "Figtree", "Manrope", "Segoe UI", Arial, sans-serif;
-  line-height: 1.55;
-  padding: 0;
-  scrollbar-gutter: stable both-edges;
-  scrollbar-color: rgba(69,104,243,.45) transparent;
-  scrollbar-width: auto;
-  background: var(--bg);
-}
-
-.app-shell {
-  display: grid;
-  grid-template-columns: minmax(220px, var(--sidebar-w)) minmax(0, 1fr);
-  min-height: 100vh;
-}
-
-/* ====== HEADER (сайдбар) ====== */
-.site-header {
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  z-index: 2000;
-
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at 0 0, rgba(100,181,246,.07), transparent 60%),
-    #1F1F1F;
-  border-right: 1px solid rgba(255,255,255,0.055);
-
-  padding: 24px 18px;
-  display: flex;
-}
-
-.header-inner {
-  max-width: 100%;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  width: 100%;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-  padding: 0;
-  border-radius: 0;
-}
-
-.brand-name { color: #ECECEC; }
-.brand-sub { color: #919191; }
-.brand-icon { fill: #ECECEC; }
-
-/* ====== THEME TOGGLE BUTTON ====== */
-.theme-toggle-btn {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.08);
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.04);
-}
-.theme-toggle-btn:hover {
-  background: rgba(100,181,246,0.08);
-  border-color: rgba(100,181,246,0.25);
-  color: #64B5F6;
-  transform: rotate(20deg);
-}
-
-/* ====== NAV ====== */
-.side-nav {
-  margin-top: 28px;
-  width: 100%;
-}
-
-.side-nav__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.side-nav__link {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  min-height: 40px;
-
-  padding: 10px 18px 10px 20px;
-  border-radius: 14px;
-  text-decoration: none;
-
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: .16em;
-  text-transform: uppercase;
-
-  color: #919191;
-  background: transparent;
-  transition:
-    background .16s ease,
-    color .16s ease,
-    box-shadow .16s ease,
-    transform .12s ease;
-}
-
-.side-nav__link:hover,
-.side-nav__link:focus-visible {
-  background: rgba(100,181,246,0.06);
-  color: #ECECEC;
-  outline: none;
-}
-
-.side-nav__link--active {
-  position: relative;
-  margin-left: -18px;
-  padding-left: 38px;
-  border-radius: 0 16px 16px 0;
-
-  background: rgba(100,181,246,0.12);
-  color: #64B5F6;
-  box-shadow: none;
-}
-
-.side-nav__link--active:hover,
-.side-nav__link--active:focus-visible {
-  background: rgba(100,181,246,0.16);
-  color: #64B5F6;
-  box-shadow: none;
-}
-
-.side-nav__link--disabled {
-  opacity: .45;
-  pointer-events: none;
-  cursor: default;
-}
-
-/* ====== AUTH BUTTONS ====== */
-.header-auth {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-}
-
-.header-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  width: 100%;
-}
-
-.auth-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  padding: 8px 16px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  text-decoration: none;
-
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition:
-    background .18s,
-    border-color .18s,
-    color .18s,
-    transform .18s,
-    box-shadow .18s;
-}
-
-.auth-btn--primary {
-  background: transparent;
-  color: #64B5F6;
-  border: 1px solid rgba(100,181,246,0.3);
-  box-shadow: none;
-}
-
-.auth-btn--primary:hover,
-.auth-btn--primary:focus-visible {
-  background: rgba(100,181,246,0.08);
-  border-color: rgba(100,181,246,0.5);
-  box-shadow: none;
-  outline: none;
-}
-
-.auth-btn--ghost {
-  background: transparent;
-  color: #919191;
-  border: 1px solid rgba(255,255,255,0.08);
-}
-
-.auth-btn--ghost:hover,
-.auth-btn--ghost:focus-visible {
-  background: rgba(255,255,255,0.04);
-  color: #ECECEC;
-  outline: none;
-}
-
-/* ====== CALLBACK BUTTON ====== */
-.header-cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 18px;
-  border-radius: 12px;
-  background: transparent;
-  color: #919191;
-  border: 1px solid rgba(255,255,255,0.08);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: none;
-  transition: transform .12s, box-shadow .18s, border-color .18s, background .18s, color .18s;
-}
-
-.header-cta:hover,
-.header-cta:focus-visible {
-  background: rgba(255,255,255,0.04);
-  color: #ECECEC;
-  outline: none;
-}
-
-/* ====== LANG BUTTON ====== */
-.header-lang {
-  margin-top: auto;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255,255,255,0.055);
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-}
-
-.lang-btn {
-  background: #2C2C2C;
-  border: 1px solid rgba(255,255,255,0.06);
-  padding: 9px 16px;
-  margin: 0;
-  min-width: 0;
-  height: auto;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-
-  width: 100%;
-  border-radius: 999px;
-  box-shadow: none;
-
-  cursor: pointer;
-  transition:
-    transform .18s ease,
-    box-shadow .18s ease,
-    background .18s ease,
-    border-color .18s ease,
-    color .18s ease;
-}
-
-.lang-btn:hover,
-.lang-btn:focus-visible {
-  background: rgba(255,255,255,0.06);
-  color: #ECECEC;
-  outline: none;
-}
-
-.lang-text {
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: .18em;
-  color: #919191;
-  line-height: 1;
-}
-
-.lang-flag-img {
-  display: block;
-  width: 18px;
-  height: 13px;
-  border-radius: 3px;
-  overflow: hidden;
-  flex-shrink: 0;
-  object-fit: cover;
-  transform: translateY(0.5px);
-}
-
-/* ====== MAIN CONTENT (login area) ====== */
-.login-main {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 40px 24px;
-}
-
-.login-card {
-  background: var(--card);
-  border-radius: 16px;
-  padding: 40px;
-  max-width: 400px;
-  width: 100%;
-  border: 1px solid rgba(255,255,255,0.055);
-}
-
-.login-card__title {
-  font-size: 24px;
-  font-weight: 800;
-  color: #ECECEC;
-  margin: 0 0 8px;
-  line-height: 1.2;
-}
-
-.login-card__subtitle {
-  font-size: 14px;
-  color: #919191;
-  margin: 0 0 28px;
-}
-
-.login-form p {
-  margin: 0 0 16px;
-}
-
-.login-form label {
-  display: block;
-  font-size: 13px;
-  color: #919191;
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.login-form input[type="text"],
-.login-form input[type="email"],
-.login-form input[type="password"],
-.login-form input:not([type="submit"]):not([type="checkbox"]):not([type="radio"]) {
-  display: block;
-  width: 100%;
-  background: #2C2C2C;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 8px;
-  color: #ECECEC;
-  padding: 10px 14px;
-  font-size: 14px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color .16s ease, box-shadow .16s ease;
-}
-
-.login-form input[type="text"]:focus,
-.login-form input[type="email"]:focus,
-.login-form input[type="password"]:focus,
-.login-form input:not([type="submit"]):not([type="checkbox"]):not([type="radio"]):focus {
-  border-color: #64B5F6;
-  box-shadow: var(--ring);
-}
-
-.login-form input::placeholder {
-  color: #5E5E5E;
-}
-
-.login-submit {
-  display: block;
-  width: 100%;
-  height: 44px;
-  background: #64B5F6;
-  color: #0A0A0A;
-  border: none;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  margin-top: 24px;
-  transition: background .18s ease, transform .12s ease, box-shadow .18s ease;
-}
-
-.login-submit:hover,
-.login-submit:focus-visible {
-  background: #5BA5E0;
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(100,181,246,0.25);
-  outline: none;
-}
-
-.login-submit:active {
-  transform: none;
-  background: #4D94CA;
-}
-
-.login-card__register {
-  margin-top: 20px;
-  text-align: center;
-  font-size: 13px;
-  color: #919191;
-}
-
-.login-card__register a {
-  color: #64B5F6;
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.login-card__register a:hover {
-  text-decoration: underline;
-}
-
-/* ====== LIGHT THEME OVERRIDES ====== */
-html.theme-light {
-  --ink: #212647;
-  --muted: #415080;
-  --accent: #4568F3;
-  --accent-600: #3455DE;
-  --bg: #FFFFFF;
-  --on-dark: #FFFFFF;
-  --card: #FFFFFF;
-  --card-2: #FFFFFF;
-  --color-text-secondary: #415080;
-  --color-text-muted: #989BAC;
-  --color-primary-light: #678BFF;
-  --color-bg-section: #F0F4F9;
-  --color-bg-card: #EEF2F8;
-  --color-bg-card-hover: #E4EAF5;
-  --color-border: #DDE3EF;
-  --color-border-light: #EEF2F8;
-  --shadow: 0 12px 40px rgba(33,38,71,0.10);
-  --ring: 0 0 0 3px rgba(69,104,243,0.12);
-}
-html.theme-light body { background: #FFFFFF !important; color: #212647 !important; }
-html.theme-light .site-header { background: radial-gradient(circle at 0 0, rgba(69,104,243,.14), transparent 60%), #FFFFFF !important; border-right: 1px solid rgba(25,42,77,.06) !important; }
-html.theme-light .brand-name { color: #212647 !important; }
-html.theme-light .brand div div:first-child { color: #212647 !important; }
-html.theme-light .brand-sub { color: #6B7390 !important; }
-html.theme-light .brand-icon { fill: #212647 !important; }
-html.theme-light .side-nav__link { color: #415080 !important; }
-html.theme-light .side-nav__link:hover { background: rgba(69,104,243,0.08) !important; color: #212647 !important; }
-html.theme-light .side-nav__link--active { background: #4568F3 !important; color: #fff !important; box-shadow: 0 4px 12px rgba(69,104,243,.25) !important; }
-html.theme-light .auth-btn--primary { background: #4568F3 !important; color: #fff !important; border-color: #4568F3 !important; }
-html.theme-light .auth-btn--primary:hover { background: #3455DE !important; border-color: #3455DE !important; }
-html.theme-light .auth-btn--ghost { background: #fff !important; color: #678BFF !important; border: 1.5px solid #678BFF !important; }
-html.theme-light .header-cta { background: #fff !important; color: #415080 !important; border: 1px solid rgba(25,42,77,.1) !important; }
-html.theme-light .lang-btn { background: rgba(255,255,255,.96) !important; border-color: rgba(15,23,42,.06) !important; color: #415080 !important; }
-html.theme-light .header-lang { border-top-color: rgba(25,42,77,.08) !important; }
-html.theme-light .theme-toggle-btn { background: rgba(69,104,243,0.08) !important; border-color: rgba(69,104,243,0.3) !important; color: #4568F3 !important; box-shadow: none !important; }
-html.theme-light .theme-toggle-btn:hover { background: rgba(69,104,243,0.15) !important; border-color: rgba(69,104,243,0.5) !important; color: #3455DE !important; }
-html.theme-light .login-card { background: #FFFFFF !important; border-color: rgba(25,42,77,0.08) !important; box-shadow: 0 12px 40px rgba(33,38,71,.10) !important; }
-html.theme-light .login-card__title { color: #212647 !important; }
-html.theme-light .login-card__subtitle { color: #415080 !important; }
-html.theme-light .login-form label { color: #415080 !important; }
-html.theme-light .login-form input[type="text"],
-html.theme-light .login-form input[type="email"],
-html.theme-light .login-form input[type="password"],
-html.theme-light .login-form input:not([type="submit"]):not([type="checkbox"]):not([type="radio"]) {
-  background: #F0F4F9 !important;
-  border-color: #DDE3EF !important;
-  color: #212647 !important;
-}
-html.theme-light .login-submit { background: #4568F3 !important; color: #fff !important; }
-html.theme-light .login-submit:hover { background: #3455DE !important; }
-html.theme-light .login-card__register { color: #415080 !important; }
-html.theme-light .login-card__register a { color: #4568F3 !important; }
-html.theme-light .lang-text { color: #415080 !important; }
-
-/* ---- Demo login buttons ---- */
-.demo-section {
-  margin-top: 28px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255,255,255,0.07);
-}
-.demo-section__label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: #5E5E5E;
-  text-transform: uppercase;
-  text-align: center;
-  margin-bottom: 12px;
-}
-.demo-btns {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.demo-btn {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 14px;
-  background: #2C2C2C;
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-align: left;
-}
-.demo-btn:hover {
-  background: #343434;
-  border-color: rgba(100,181,246,0.25);
-}
-.demo-btn__icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-.demo-btn__icon--seller  { background: rgba(100,181,246,0.15); color: #64B5F6; }
-.demo-btn__icon--buyer   { background: rgba(40,200,64,0.12);  color: #28C840; }
-.demo-btn__icon--operator{ background: rgba(255,160,0,0.12);  color: #FFA000; }
-.demo-btn__info { flex: 1; min-width: 0; }
-.demo-btn__role {
-  font-size: 13px;
-  font-weight: 600;
-  color: #ECECEC;
-  line-height: 1.2;
-}
-.demo-btn__login {
-  font-size: 11px;
-  color: #5E5E5E;
-  margin-top: 1px;
-}
-.demo-btn__arrow {
-  color: #5E5E5E;
-  font-size: 14px;
-}
-html.theme-light .demo-section { border-top-color: rgba(25,42,77,0.10) !important; }
-html.theme-light .demo-btn { background: #F0F4F9 !important; border-color: rgba(25,42,77,0.08) !important; }
-html.theme-light .demo-btn:hover { background: #E4EAF5 !important; }
-html.theme-light .demo-btn__role { color: #212647 !important; }
-html.theme-light .demo-btn__login { color: #8892A4 !important; }
+/* Light theme */
+html.theme-light{--bg:#F5F7FA;--ink:#212647;--muted:#8892A4;--card:#FFFFFF;--card-2:#F0F4F9;--border:rgba(25,42,77,0.08);}
+html.theme-light .login-card{box-shadow:0 12px 40px rgba(33,38,71,.10);}
+html.theme-light .login-form input{background:#F0F4F9;border-color:rgba(25,42,77,0.12);color:#212647;}
+html.theme-light .login-submit{background:#4568F3;}
+html.theme-light .demo-btn{background:#F0F4F9;border-color:rgba(25,42,77,0.08);}
+html.theme-light .demo-btn:hover{background:#E4EAF5;}
+html.theme-light .demo-btn__role{color:#212647;}
   </style>
 </head>
 <body>
 
-<div class="app-shell">
+<div class="login-card">
+  <a href="{% url 'home' %}" class="login-card__logo">
+    <svg width="32" height="32" viewBox="0 0 74.1 74.1" fill="currentColor">
+      <polygon points="5.38 46.64 2.24 54.63 17.29 69.68 17.3 69.69 21.44 66.22 24.75 42.14"/>
+      <polygon points="21.44 66.22 24.87 74.1 46.16 74.1 46.64 68.72 31.95 49.35"/>
+      <polygon points="46.64 68.72 54.63 71.86 69.69 56.8 66.22 52.66 42.14 49.35"/>
+      <polygon points="68.71 27.45 71.86 19.47 56.8 4.41 52.65 7.87 49.35 31.95"/>
+      <polygon points="74.1 27.94 68.71 27.45 49.35 42.14 66.22 52.66 74.1 49.23"/>
+      <polygon points="52.65 7.87 49.23 0 27.93 0 27.45 5.38 42.14 24.75"/>
+      <polygon points="27.45 5.38 19.47 2.24 4.41 17.3 7.87 21.44 31.95 24.75"/>
+      <polygon points="7.87 21.44 0 24.87 0 46.16 5.38 46.64 24.75 31.95"/>
+    </svg>
+    <div>
+      <div class="login-card__logo-name">Consolidator</div>
+      <div class="login-card__logo-sub">PARTS</div>
+    </div>
+  </a>
 
-<header class="site-header" role="banner">
-<div class="header-inner">
+  <h1 class="login-card__title">Войти в систему</h1>
+  <p class="login-card__subtitle">Введите данные вашего аккаунта</p>
 
-<div style="position:relative;width:100%;">
-<a href="{% url 'home' %}" class="brand" aria-label="Consolidator Parts" style="display:flex;align-items:center;gap:10px;text-decoration:none;padding:0 4px;padding-right:44px;">
-<svg width="32" height="32" viewBox="0 0 74.1 74.1" style="flex-shrink:0;" class="brand-icon">
-  <polygon points="5.38 46.64 2.24 54.63 17.29 69.68 17.3 69.69 21.44 66.22 24.75 42.14 5.38 46.64"/>
-  <polygon points="21.44 66.22 24.87 74.1 46.16 74.1 46.64 68.72 31.95 49.35 21.44 66.22"/>
-  <polygon points="46.64 68.72 54.63 71.86 69.69 56.8 66.22 52.66 42.14 49.35 46.64 68.72"/>
-  <polygon points="68.71 27.45 71.86 19.47 56.8 4.41 52.65 7.87 49.35 31.95 68.71 27.45"/>
-  <polygon points="74.1 27.94 68.71 27.45 49.35 42.14 66.22 52.66 74.1 49.23 74.1 27.94"/>
-  <polygon points="52.65 7.87 49.23 0 27.93 0 27.45 5.38 42.14 24.75 52.65 7.87"/>
-  <polygon points="27.45 5.38 19.47 2.24 4.41 17.3 7.87 21.44 31.95 24.75 27.45 5.38"/>
-  <polygon points="7.87 21.44 0 24.87 0 46.16 5.38 46.64 24.75 31.95 7.87 21.44"/>
-</svg>
-<div>
-  <div class="brand-name" style="font-family:'Golos Text','Inter',sans-serif;font-size:15px;font-weight:800;line-height:1;letter-spacing:-0.01em;">Consolidator</div>
-  <div class="brand-sub" style="font-size:10px;margin-top:2px;letter-spacing:0.06em;font-weight:500;">PARTS</div>
-</div>
-</a>
-<button type="button" class="theme-toggle-btn js-theme-toggle" aria-label="Переключить тему" title="Переключить тему" style="position:absolute;top:50%;right:0;transform:translateY(-50%);">
-  <span class="theme-icon theme-icon--moon" style="font-size:18px;line-height:1;display:block;">&#9790;</span>
-  <span class="theme-icon theme-icon--sun" style="font-size:18px;line-height:1;display:none;">&#9728;</span>
-</button>
-</div>
+  <form method="post" class="login-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="login-submit">Войти</button>
+  </form>
 
-<nav class="side-nav" aria-label="Основная навигация">
-<ul class="side-nav__list">
-<li><a href="{% url 'home' %}" class="side-nav__link">Главная</a></li>
-<li><a href="{% url 'home' %}#buyers" class="side-nav__link">Покупателям</a></li>
-<li><a href="{% url 'home' %}#suppliers" class="side-nav__link">Поставщикам</a></li>
-<li><a href="{% url 'home' %}#calc_anchor" class="side-nav__link">Расчёты</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link side-nav__link--active">Заказы</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Скидки</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Интеграции</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Логистика</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Платежи</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Бонусы</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Аналитика</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Поддержка</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Настройки</a></li>
-</ul>
-</nav>
+  <p class="login-footer">
+    Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a>
+  </p>
 
-<div class="header-actions">
-<div class="header-auth">
-<a href="{% url 'register' %}" class="auth-btn auth-btn--primary">Регистрация</a>
-<a href="{% url 'login' %}" class="auth-btn auth-btn--ghost">Войти</a>
-</div>
-<button type="button" class="header-cta">Обратный звонок</button>
-<div class="header-lang">
-<button type="button" class="lang-btn js-lang-toggle" data-next-lang="en">
-<svg class="lang-flag-img" style="width:18px;height:13px;border-radius:3px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 -4 28 28"><g clip-path="url(#a)"><rect width="28" height="20" fill="#fff" rx="2"/><mask id="b" width="28" height="20" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><rect width="28" height="20" fill="#fff" rx="2"/></mask><g mask="url(#b)"><path fill="#D02F44" fill-rule="evenodd" d="M28 0H0v1.333h28V0Zm0 2.667H0V4h28V2.667ZM0 5.333h28v1.334H0V5.333ZM28 8H0v1.333h28V8ZM0 10.667h28V12H0v-1.333Zm28 2.666H0v1.334h28v-1.334ZM0 16h28v1.333H0V16Zm28 2.667H0V20h28v-1.333Z" clip-rule="evenodd"/><path fill="#46467F" d="M0 0h12v9.333H0z"/><g filter="url(#c)"><path fill="url(#d)" fill-rule="evenodd" d="M2.667 2a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Zm2.666 0A.667.667 0 1 1 4 2a.667.667 0 0 1 1.333 0Zm2 .667a.667.667 0 1 0 0-1.334.667.667 0 0 0 0 1.334ZM10.667 2a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0ZM3.333 4a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm3.334-.667a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Zm2 .667a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm2 .667a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Zm-3.334.666a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm-2-.666a.667.667 0 1 1-1.333 0 .667.667 0 0 1 1.333 0ZM2 5.333A.667.667 0 1 0 2 4a.667.667 0 0 0 0 1.333ZM4 6a.667.667 0 1 1-1.333 0A.667.667 0 0 1 4 6Zm2 .667a.667.667 0 1 0 0-1.334.667.667 0 0 0 0 1.334ZM9.333 6A.667.667 0 1 1 8 6a.667.667 0 0 1 1.333 0ZM10 8a.667.667 0 1 0 0-1.333A.667.667 0 0 0 10 8Zm-2-.667a.667.667 0 1 1-1.333 0 .667.667 0 0 1 1.333 0ZM4.667 8a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm-2-.667a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Z" clip-rule="evenodd"/></g></g></g><defs><linearGradient id="d" x1="1.333" x2="1.333" y1="1.333" y2="8" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#F0F0F0"/></linearGradient><clipPath id="a"><rect width="28" height="20" fill="#fff" rx="2"/></clipPath><filter id="c" width="9.333" height="7.667" x="1.333" y="1.333" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" result="hardAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/><feOffset dy="1"/><feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0"/><feBlend in2="BackgroundImageFix" result="effect1_dropShadow_503_3486"/><feBlend in="SourceGraphic" in2="effect1_dropShadow_503_3486" result="shape"/></filter></defs></svg>
-<span class="lang-text">EN</span>
-</button>
-</div>
-</div>
-
-</div>
-</header>
-
-<!-- Main content -->
-<main class="login-main">
-  <div class="login-card">
-    <h1 class="login-card__title">Войти в систему</h1>
-    <p class="login-card__subtitle">Введите данные вашего аккаунта</p>
-
-    <form method="post" class="login-form">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button type="submit" class="login-submit">Войти</button>
-    </form>
-
-    <p class="login-card__register">
-      Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a>
-    </p>
-
-    <div class="demo-section">
-      <div class="demo-section__label">Быстрый вход · Демо</div>
-      <div class="demo-btns">
-        <button type="button" class="demo-btn" onclick="demoLogin('demo_seller')">
-          <div class="demo-btn__icon demo-btn__icon--seller">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-          </div>
-          <div class="demo-btn__info">
-            <div class="demo-btn__role">Поставщик</div>
-            <div class="demo-btn__login">demo_seller</div>
-          </div>
-          <span class="demo-btn__arrow">→</span>
-        </button>
-        <button type="button" class="demo-btn" onclick="demoLogin('demo_buyer')">
-          <div class="demo-btn__icon demo-btn__icon--buyer">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-          </div>
-          <div class="demo-btn__info">
-            <div class="demo-btn__role">Покупатель</div>
-            <div class="demo-btn__login">demo_buyer</div>
-          </div>
-          <span class="demo-btn__arrow">→</span>
-        </button>
-        <button type="button" class="demo-btn" onclick="demoLogin('demo_operator')">
-          <div class="demo-btn__icon demo-btn__icon--operator">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-          </div>
-          <div class="demo-btn__info">
-            <div class="demo-btn__role">Оператор</div>
-            <div class="demo-btn__login">demo_operator</div>
-          </div>
-          <span class="demo-btn__arrow">→</span>
-        </button>
-      </div>
+  <div class="demo-section">
+    <div class="demo-section__label">Быстрый вход · Демо</div>
+    <div class="demo-btns">
+      <button type="button" class="demo-btn" onclick="demoLogin('demo_seller')">
+        <div class="demo-btn__icon demo-btn__icon--seller">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        </div>
+        <div class="demo-btn__info">
+          <div class="demo-btn__role">Поставщик</div>
+          <div class="demo-btn__login">demo_seller</div>
+        </div>
+        <span class="demo-btn__arrow">→</span>
+      </button>
+      <button type="button" class="demo-btn" onclick="demoLogin('demo_buyer')">
+        <div class="demo-btn__icon demo-btn__icon--buyer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        </div>
+        <div class="demo-btn__info">
+          <div class="demo-btn__role">Покупатель</div>
+          <div class="demo-btn__login">demo_buyer</div>
+        </div>
+        <span class="demo-btn__arrow">→</span>
+      </button>
+      <button type="button" class="demo-btn" onclick="demoLogin('demo_operator')">
+        <div class="demo-btn__icon demo-btn__icon--operator">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        </div>
+        <div class="demo-btn__info">
+          <div class="demo-btn__role">Оператор</div>
+          <div class="demo-btn__login">demo_operator</div>
+        </div>
+        <span class="demo-btn__arrow">→</span>
+      </button>
     </div>
   </div>
-</main>
-
-</div><!-- /.app-shell -->
+</div>
 
 <script>
-// ====== DEMO LOGIN ======
 function demoLogin(username) {
   var form = document.querySelector('.login-form');
   var userField = form.querySelector('input[name="username"]') || form.querySelector('input[type="text"]');
@@ -752,36 +141,10 @@ function demoLogin(username) {
   if (passField) passField.value = 'demo12345';
   form.submit();
 }
-
-// ====== THEME TOGGLE ======
 (function(){
-  var savedTheme = localStorage.getItem('cp_theme') || 'dark';
-
-  function applyTheme(theme) {
-    if (theme === 'light') {
-      document.documentElement.classList.add('theme-light');
-    } else {
-      document.documentElement.classList.remove('theme-light');
-    }
-    document.querySelectorAll('.js-theme-toggle').forEach(function(btn) {
-      var moon = btn.querySelector('.theme-icon--moon');
-      var sun  = btn.querySelector('.theme-icon--sun');
-      if (moon) moon.style.display = theme === 'dark' ? '' : 'none';
-      if (sun)  sun.style.display  = theme === 'light' ? '' : 'none';
-    });
-    localStorage.setItem('cp_theme', theme);
-  }
-
-  document.querySelectorAll('.js-theme-toggle').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var current = localStorage.getItem('cp_theme') || 'dark';
-      applyTheme(current === 'dark' ? 'light' : 'dark');
-    });
-  });
-
-  applyTheme(savedTheme);
+  var t = localStorage.getItem('cp_theme') || 'dark';
+  if (t === 'light') document.documentElement.classList.add('theme-light');
 })();
 </script>
-
 </body>
 </html>

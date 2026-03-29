@@ -1,0 +1,167 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{% block title %}Consolidator Parts{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --ink:#ECECEC;--muted:#919191;--accent:#64B5F6;--accent-hover:#5BA5E0;
+  --bg:#1A1A1A;--bg-2:#1F1F1F;--card:#242424;--card-2:#2C2C2C;
+  --border:rgba(255,255,255,0.07);--radius:12px;
+  --ok:#28C840;--err:#E85C0D;--warn:#FFA000;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{min-height:100%;background:var(--bg);}
+body{min-height:100vh;color:var(--ink);font-family:'Figtree','Inter',sans-serif;line-height:1.5;background:var(--bg);}
+
+/* Header */
+.app-header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--bg-2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.app-header__brand{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--ink);}
+.app-header__brand svg{width:24px;height:24px;fill:currentColor;}
+.app-header__brand-name{font-family:'Golos Text',sans-serif;font-size:15px;font-weight:800;}
+.app-header__brand-sub{font-size:9px;color:var(--muted);letter-spacing:0.06em;margin-top:1px;}
+.app-header__nav{display:flex;align-items:center;gap:6px;}
+.app-header__link{color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;padding:6px 12px;border-radius:6px;transition:all .15s;}
+.app-header__link:hover{color:var(--ink);background:rgba(255,255,255,0.05);}
+.app-header__link--active{color:var(--accent);background:rgba(100,181,246,0.08);}
+.app-header__user{display:flex;align-items:center;gap:12px;font-size:13px;}
+.app-header__user-name{color:var(--muted);}
+.app-header__btn{padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;text-decoration:none;border:none;cursor:pointer;font-family:inherit;transition:all .15s;}
+.app-header__btn--primary{background:var(--accent);color:#fff;}
+.app-header__btn--primary:hover{background:var(--accent-hover);}
+.app-header__btn--ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.app-header__btn--ghost:hover{color:var(--ink);border-color:rgba(255,255,255,0.15);}
+
+/* Main */
+.app-main{max-width:1100px;margin:0 auto;padding:24px;}
+
+/* Cards */
+.cp-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+.cp-card__title{font-family:'Golos Text',sans-serif;font-size:18px;font-weight:700;margin-bottom:12px;}
+.cp-card__subtitle{font-size:13px;color:var(--muted);margin-bottom:16px;}
+
+/* Badges */
+.cp-badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:0.02em;}
+.cp-badge--green{background:rgba(40,200,64,0.12);color:#28C840;}
+.cp-badge--yellow{background:rgba(255,160,0,0.12);color:#FFA000;}
+.cp-badge--red{background:rgba(232,92,13,0.12);color:#E85C0D;}
+.cp-badge--blue{background:rgba(100,181,246,0.12);color:#64B5F6;}
+.cp-badge--gray{background:rgba(255,255,255,0.06);color:#919191;}
+
+/* Tables */
+.cp-table{width:100%;border-collapse:collapse;font-size:13px;}
+.cp-table th{text-align:left;padding:8px 12px;color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid var(--border);}
+.cp-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.cp-table tr:hover td{background:rgba(255,255,255,0.02);}
+
+/* Buttons */
+.cp-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;border:none;cursor:pointer;font-family:inherit;transition:all .15s;}
+.cp-btn--primary{background:var(--accent);color:#fff;}
+.cp-btn--primary:hover{background:var(--accent-hover);}
+.cp-btn--secondary{background:rgba(255,255,255,0.06);color:var(--ink);border:1px solid var(--border);}
+.cp-btn--secondary:hover{background:rgba(255,255,255,0.1);}
+.cp-btn--sm{padding:5px 10px;font-size:12px;}
+
+/* Forms */
+.cp-input{width:100%;padding:8px 12px;font-size:14px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;color:var(--ink);outline:none;font-family:inherit;}
+.cp-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(100,181,246,0.12);}
+.cp-label{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:4px;}
+.cp-field{margin-bottom:14px;}
+
+/* Grid */
+.cp-grid{display:grid;gap:16px;}
+.cp-grid--2{grid-template-columns:repeat(auto-fill,minmax(320px,1fr));}
+.cp-grid--3{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));}
+.cp-grid--4{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));}
+
+/* Stats */
+.cp-stat{text-align:center;padding:16px;}
+.cp-stat__value{font-family:'Golos Text',sans-serif;font-size:28px;font-weight:800;line-height:1;}
+.cp-stat__label{font-size:12px;color:var(--muted);margin-top:4px;}
+
+/* Section */
+.cp-section{margin-bottom:24px;}
+.cp-section__title{font-family:'Golos Text',sans-serif;font-size:16px;font-weight:700;margin-bottom:12px;}
+
+/* Breadcrumbs */
+.cp-breadcrumbs{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-bottom:16px;}
+.cp-breadcrumbs a{color:var(--muted);text-decoration:none;}
+.cp-breadcrumbs a:hover{color:var(--ink);}
+.cp-breadcrumbs span{color:var(--ink);}
+
+/* Messages */
+.cp-messages{margin-bottom:16px;}
+.cp-msg{padding:10px 16px;border-radius:8px;font-size:13px;margin-bottom:8px;}
+.cp-msg--success{background:rgba(40,200,64,0.1);color:#28C840;border:1px solid rgba(40,200,64,0.2);}
+.cp-msg--error{background:rgba(232,92,13,0.1);color:#E85C0D;border:1px solid rgba(232,92,13,0.2);}
+.cp-msg--info{background:rgba(100,181,246,0.1);color:#64B5F6;border:1px solid rgba(100,181,246,0.2);}
+
+/* Empty state */
+.cp-empty{text-align:center;padding:40px 20px;color:var(--muted);}
+.cp-empty__icon{font-size:40px;margin-bottom:12px;opacity:0.5;}
+.cp-empty__text{font-size:14px;}
+
+/* Light theme */
+html.theme-light{--bg:#F5F7FA;--bg-2:#FFFFFF;--ink:#212647;--muted:#8892A4;--card:#FFFFFF;--card-2:#F0F4F9;--border:rgba(25,42,77,0.08);}
+html.theme-light .cp-table th{border-bottom-color:rgba(25,42,77,0.1);}
+html.theme-light .cp-table td{border-bottom-color:rgba(25,42,77,0.05);}
+html.theme-light .cp-input{background:#F0F4F9;border-color:rgba(25,42,77,0.12);color:#212647;}
+
+{% block extra_css %}{% endblock %}
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <a href="{% url 'home' %}" class="app-header__brand">
+    <svg viewBox="0 0 74.1 74.1"><polygon points="5.38 46.64 2.24 54.63 17.29 69.68 17.3 69.69 21.44 66.22 24.75 42.14"/><polygon points="21.44 66.22 24.87 74.1 46.16 74.1 46.64 68.72 31.95 49.35"/><polygon points="46.64 68.72 54.63 71.86 69.69 56.8 66.22 52.66 42.14 49.35"/><polygon points="68.71 27.45 71.86 19.47 56.8 4.41 52.65 7.87 49.35 31.95"/><polygon points="74.1 27.94 68.71 27.45 49.35 42.14 66.22 52.66 74.1 49.23"/><polygon points="52.65 7.87 49.23 0 27.93 0 27.45 5.38 42.14 24.75"/><polygon points="27.45 5.38 19.47 2.24 4.41 17.3 7.87 21.44 31.95 24.75"/><polygon points="7.87 21.44 0 24.87 0 46.16 5.38 46.64 24.75 31.95"/></svg>
+    <div>
+      <div class="app-header__brand-name">Consolidator</div>
+      <div class="app-header__brand-sub">PARTS</div>
+    </div>
+  </a>
+  <nav class="app-header__nav">
+    <a href="{% url 'catalog' %}" class="app-header__link {% if '/catalog' in request.path %}app-header__link--active{% endif %}">Каталог</a>
+    <a href="{% url 'rfq_new' %}" class="app-header__link {% if '/rfq/new' in request.path %}app-header__link--active{% endif %}">Новый RFQ</a>
+    <a href="{% url 'rfq_list' %}" class="app-header__link {% if '/rfq/' in request.path and '/rfq/new' not in request.path %}app-header__link--active{% endif %}">Мои RFQ</a>
+    <a href="{% url 'cart' %}" class="app-header__link {% if '/cart/' in request.path %}app-header__link--active{% endif %}">Корзина</a>
+  </nav>
+  <div class="app-header__user">
+    {% if user.is_authenticated %}
+      <span class="app-header__user-name">{{ user.get_full_name|default:user.username }}</span>
+      <a href="{% url 'dashboard' %}" class="app-header__btn app-header__btn--ghost">Кабинет</a>
+      <a href="{% url 'logout' %}" class="app-header__btn app-header__btn--ghost">Выйти</a>
+    {% else %}
+      <a href="{% url 'login' %}" class="app-header__btn app-header__btn--ghost">Войти</a>
+      <a href="{% url 'register' %}" class="app-header__btn app-header__btn--primary">Регистрация</a>
+    {% endif %}
+  </div>
+</header>
+
+<main class="app-main">
+  {% if messages %}
+  <div class="cp-messages">
+    {% for message in messages %}
+    <div class="cp-msg cp-msg--{{ message.tags|default:'info' }}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script>
+(function(){
+  var t = localStorage.getItem('cp_theme') || 'dark';
+  if (t === 'light') document.documentElement.classList.add('theme-light');
+})();
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

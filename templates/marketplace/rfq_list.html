@@ -1,27 +1,34 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}RFQ | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>RFQ</h1>
-  <p class="muted">Запросы котировок и статус обработки.</p>
-  <a class="btn" href="{% url 'rfq_new' %}">Новый RFQ</a>
-</section>
-
-<div class="list">
-  {% for rfq in rfqs %}
-    <article class="list-row">
-      <div>
-        <h3>RFQ #{{ rfq.id }}</h3>
-        <p class="muted">{{ rfq.company_name|default:rfq.customer_name }} • {{ rfq.created_at }}</p>
-        <p class="muted">Mode: {{ rfq.get_mode_display }} • Status: {{ rfq.get_status_display }} • Items: {{ rfq.items.count }}</p>
-      </div>
-      <div class="list-actions">
-        <p class="price">${{ rfq.estimated_total }}</p>
-        <a class="btn btn-secondary" href="{% url 'rfq_detail' rfq.id %}">Открыть</a>
-      </div>
-    </article>
-  {% empty %}
-    <p>RFQ пока нет.</p>
-  {% endfor %}
+<div class="cp-section" style="display:flex;align-items:center;justify-content:space-between;">
+  <div>
+    <h1 class="cp-card__title">RFQ</h1>
+    <p class="cp-card__subtitle">Запросы котировок и статус обработки.</p>
+  </div>
+  <a class="cp-btn cp-btn--primary" href="{% url 'rfq_new' %}">Новый RFQ</a>
 </div>
+
+{% for rfq in rfqs %}
+  <div class="cp-card" style="display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <h3 class="cp-card__title" style="margin-bottom:4px;">RFQ #{{ rfq.id }}</h3>
+      <p class="cp-card__subtitle" style="margin-bottom:2px;">{{ rfq.company_name|default:rfq.customer_name }} &bull; {{ rfq.created_at }}</p>
+      <p class="cp-card__subtitle" style="margin-bottom:0;">
+        <span class="cp-badge cp-badge--blue">{{ rfq.get_mode_display }}</span>
+        <span class="cp-badge cp-badge--gray">{{ rfq.get_status_display }}</span>
+        Items: {{ rfq.items.count }}
+      </p>
+    </div>
+    <div style="text-align:right;display:flex;align-items:center;gap:12px;">
+      <span style="font-size:18px;font-weight:700;">${{ rfq.estimated_total }}</span>
+      <a class="cp-btn cp-btn--secondary cp-btn--sm" href="{% url 'rfq_detail' rfq.id %}">Открыть</a>
+    </div>
+  </div>
+{% empty %}
+  <div class="cp-empty">
+    <div class="cp-empty__icon">&#128203;</div>
+    <p class="cp-empty__text">RFQ пока нет.</p>
+  </div>
+{% endfor %}
 {% endblock %}

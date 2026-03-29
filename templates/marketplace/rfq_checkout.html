@@ -1,42 +1,43 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}RFQ Checkout | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Оформление из RFQ #{{ rfq.id }}</h1>
-  <p class="muted">Подтвердите контактные данные и адрес доставки.</p>
-</section>
+<nav class="cp-breadcrumbs">
+  <a href="{% url 'rfq_list' %}">RFQ</a> / <a href="{% url 'rfq_detail' rfq.id %}">#{{ rfq.id }}</a> / <span>Checkout</span>
+</nav>
 
-<section class="checkout-layout">
-  <div class="panel">
-    <h2>Позиции RFQ</h2>
-    <div class="list">
-      {% for row in rows %}
-        <article class="list-row">
-          <div>
-            <h3>{{ row.part.title }}</h3>
-            <p class="muted">OEM {{ row.part.oem_number }} • Qty: {{ row.quantity }}</p>
-          </div>
-          <p class="price">${{ row.line_total }}</p>
-        </article>
-      {% endfor %}
+<div class="cp-section">
+  <h1 class="cp-card__title">Оформление из RFQ #{{ rfq.id }}</h1>
+  <p class="cp-card__subtitle">Подтвердите контактные данные и адрес доставки.</p>
+</div>
+
+<div class="cp-grid cp-grid--2">
+  <div class="cp-card">
+    <h2 class="cp-card__title">Позиции RFQ</h2>
+    {% for row in rows %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <strong>{{ row.part.title }}</strong>
+          <p style="font-size:12px;color:var(--muted);">OEM {{ row.part.oem_number }} &bull; Qty: {{ row.quantity }}</p>
+        </div>
+        <span style="font-weight:700;">${{ row.line_total }}</span>
+      </div>
+    {% endfor %}
+    <div style="display:flex;justify-content:space-between;padding-top:12px;margin-top:4px;">
+      <span style="color:var(--muted);">Итого</span>
+      <span style="font-size:18px;font-weight:700;">${{ total }}</span>
     </div>
   </div>
-  <div class="panel card-form">
-    <h2>Данные заказа</h2>
-    <form method="post" class="list">
+
+  <div class="cp-card">
+    <h2 class="cp-card__title">Данные заказа</h2>
+    <form method="post">
       {% csrf_token %}
       {{ form.as_p }}
-      <div class="checkout-box">
-        <div>
-          <p class="muted">Итого</p>
-          <p class="price">${{ total }}</p>
-        </div>
-      </div>
-      <div>
-        <button class="btn" type="submit">Создать заказ</button>
-        <a class="btn btn-secondary" href="{% url 'rfq_detail' rfq.id %}">Назад в RFQ</a>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="cp-btn cp-btn--primary" type="submit">Создать заказ</button>
+        <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_detail' rfq.id %}">Назад в RFQ</a>
       </div>
     </form>
   </div>
-</section>
+</div>
 {% endblock %}

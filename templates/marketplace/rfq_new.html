@@ -1,19 +1,23 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Новый RFQ | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Новый RFQ</h1>
-  <p class="muted">Отправьте список позиций, система сразу подберет совпадения по каталогу.</p>
-</section>
+<nav class="cp-breadcrumbs">
+  <a href="{% url 'rfq_list' %}">RFQ</a> / <span>Новый</span>
+</nav>
 
-<section class="panel card-form">
-  <form method="post" class="list">
+<div class="cp-section">
+  <h1 class="cp-card__title">Новый RFQ</h1>
+  <p class="cp-card__subtitle">Отправьте список позиций, система сразу подберет совпадения по каталогу.</p>
+</div>
+
+<div class="cp-card">
+  <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
-    <div>
-      <button class="btn" type="submit">Создать RFQ</button>
-      <a class="btn btn-secondary" href="{% url 'rfq_list' %}">К списку RFQ</a>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="cp-btn cp-btn--primary" type="submit">Создать RFQ</button>
+      <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_list' %}">К списку RFQ</a>
     </div>
   </form>
-</section>
+</div>
 {% endblock %}

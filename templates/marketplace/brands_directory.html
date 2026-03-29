@@ -1,32 +1,34 @@
-{% extends "marketplace/base.html" %}
+{% extends "marketplace/base_app.html" %}
 {% block title %}Справочник брендов | Consolidator Parts{% endblock %}
 {% block content %}
-<section class="section-head">
-  <h1>Справочник брендов</h1>
-  <p class="muted">Матрица брендов по регионам и производителям компонентов</p>
-</section>
+<div class="cp-section">
+  <h1 class="cp-card__title">Справочник брендов</h1>
+  <p class="cp-card__subtitle">Матрица брендов по регионам и производителям компонентов</p>
+</div>
 
-<form method="get" class="filters panel" style="grid-template-columns: 1fr auto;">
-  <input type="text" name="q" value="{{ query }}" placeholder="Поиск бренда..." />
-  <button type="submit" class="btn">Найти</button>
+<form method="get" class="cp-card" style="display:flex;gap:12px;align-items:flex-end;">
+  <div class="cp-field" style="flex:1;margin-bottom:0;">
+    <input type="text" name="q" value="{{ query }}" class="cp-input" placeholder="Поиск бренда..." />
+  </div>
+  <button type="submit" class="cp-btn cp-btn--primary">Найти</button>
 </form>
 
-<div class="grid">
+<div class="cp-grid cp-grid--2">
   {% for group in groups %}
-    <section class="panel">
-      <h2>{{ group.title }} <span class="muted">({{ group.count }})</span></h2>
-      <div class="chips">
+    <div class="cp-card">
+      <h2 class="cp-card__title">{{ group.title }} <span style="color:var(--muted);font-size:14px;">({{ group.count }})</span></h2>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
         {% for brand in group.brands %}
-          <a class="chip" href="{% url 'catalog' %}?brand={{ brand.slug }}">{{ brand.name }} ({{ brand.parts_count }})</a>
+          <a class="cp-badge cp-badge--blue" href="{% url 'catalog' %}?brand={{ brand.slug }}" style="text-decoration:none;">{{ brand.name }} ({{ brand.parts_count }})</a>
         {% empty %}
-          <span class="muted">Нет брендов</span>
+          <span style="font-size:13px;color:var(--muted);">Нет брендов</span>
         {% endfor %}
       </div>
-    </section>
+    </div>
   {% empty %}
-    <section class="panel">
-      <p class="muted">По вашему запросу бренды не найдены.</p>
-    </section>
+    <div class="cp-card">
+      <p class="cp-empty__text">По вашему запросу бренды не найдены.</p>
+    </div>
   {% endfor %}
 </div>
 {% endblock %}
