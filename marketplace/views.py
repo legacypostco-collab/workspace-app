@@ -2359,11 +2359,23 @@ def buyer_dashboard(request: HttpRequest) -> HttpResponse:
     rfqs = RFQ.objects.filter(created_by=request.user).order_by("-created_at")[:10]
     total_orders = Order.objects.filter(buyer=request.user).count()
     active_orders = Order.objects.filter(buyer=request.user).exclude(status__in=["delivered", "completed", "cancelled"]).count()
+    delivered_orders = Order.objects.filter(buyer=request.user, status__in=["delivered", "completed"]).count()
     total_spent = sum((o.total_amount for o in orders), Decimal("0.00"))
+    supplier_count = Order.objects.filter(buyer=request.user).values_list("items__part__seller", flat=True).distinct().count()
+    rfq_count = RFQ.objects.filter(created_by=request.user).count()
+    import json
+    dashboard_payload = json.dumps({
+        "total_orders": total_orders,
+        "active_orders": active_orders,
+        "delivered_orders": delivered_orders,
+        "total_spent": str(total_spent),
+        "supplier_count": supplier_count,
+        "rfq_count": rfq_count,
+    })
     return render(request, _tpl(request.user, "buyer/dashboard/index.html"), {
         "orders": orders, "rfqs": rfqs,
         "total_orders": total_orders, "active_orders": active_orders,
-        "total_spent": total_spent,
+        "total_spent": total_spent, "dashboard_payload": dashboard_payload,
     })
 
 @login_required

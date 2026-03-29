@@ -41,6 +41,7 @@
 {% block content %}
 {{ dashboard_payload|json_script:"dashboard-data" }}
 <script>
+  window.__buyerData = JSON.parse(document.getElementById('dashboard-data')?.textContent || '{}');
   window.__BUYER_NAME__ = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
   window.__BUYER_INITIALS__ = "{{ request.user.get_full_name|default:request.user.username|slice:'2'|upper|escapejs }}";
   // Shared currency state between DashboardContent and DashboardPanel
@@ -523,11 +524,12 @@
           );
 
           if (blockId === "metrics") {
+            const _d = window.__buyerData || {};
             const allM = [
-              { id: "m_orders", l: "Заказов", v: "24", t: "+12%", up: true, ctx: "за 30 дней" },
-              { id: "m_suppliers", l: "Поставщиков", v: "8", t: "+2", up: true, ctx: "активных" },
-              { id: "m_savings", l: "Экономия", v: "12%", t: "+3%", up: true, ctx: "переторжка" },
-              { id: "m_rfq", l: "Активных RFQ", v: "3", t: "", up: true, ctx: "ожидают ответа", pill: "новых" },
+              { id: "m_orders", l: "Заказов", v: String(_d.total_orders || 0), t: "", up: true, ctx: "всего" },
+              { id: "m_suppliers", l: "Поставщиков", v: String(_d.supplier_count || 0), t: "", up: true, ctx: "активных" },
+              { id: "m_savings", l: "В работе", v: String(_d.active_orders || 0), t: "", up: true, ctx: "заказов" },
+              { id: "m_rfq", l: "Запросов RFQ", v: String(_d.rfq_count || 0), t: "", up: true, ctx: "создано" },
             ];
             const vis = metricOrder.filter(id => !hiddenMetrics.includes(id));
             return wrap(<div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(vis.length,1)}, 1fr)`, gap: 12 }}>

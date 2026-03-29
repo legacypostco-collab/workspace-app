@@ -41,22 +41,22 @@
         <div style="font-size:11px;color:#919191;margin-top:1px;white-space:nowrap;">Кредитный рейтинг</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:13px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;white-space:nowrap;">$2.1M</div>
-        <div style="font-size:11px;font-weight:600;color:#64B5F6;">+18.4%</div>
+        <div style="font-size:13px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;white-space:nowrap;">${{ total_spent|default:"0" }}</div>
+        <div style="font-size:11px;font-weight:600;color:#64B5F6;"></div>
       </div>
     </div>
     <div style="display:flex;gap:1px;margin-bottom:10px;">
       <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:6px 0 0 6px;">
-        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">24</div>
+        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ buyer_orders_count|default:"0" }}</div>
         <div style="font-size:11px;color:#919191;margin-top:2px;">Заказов</div>
       </div>
       <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;">
-        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">8</div>
-        <div style="font-size:11px;color:#919191;margin-top:2px;">Поставщиков</div>
+        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ buyer_active_orders|default:"0" }}</div>
+        <div style="font-size:11px;color:#919191;margin-top:2px;">В работе</div>
       </div>
       <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:0 6px 6px 0;">
-        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">12%</div>
-        <div style="font-size:11px;color:#919191;margin-top:2px;">Экономия</div>
+        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ buyer_rfq_count|default:"0" }}</div>
+        <div style="font-size:11px;color:#919191;margin-top:2px;">RFQ</div>
       </div>
     </div>
   </div>
@@ -121,7 +121,7 @@
         <div style="font-size:11px;color:#919191;margin-top:1px;">В пути</div>
       </div>
       <div style="text-align:right;flex:1;">
-        <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">$2.1M</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">${{ total_spent|default:"0" }}</div>
         <div style="font-size:11px;color:#919191;margin-top:1px;">Закупки</div>
       </div>
     </div>
