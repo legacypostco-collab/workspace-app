@@ -43,6 +43,18 @@ class Command(BaseCommand):
         seller_profile.can_manage_orders = True
         seller_profile.save()
 
+        # Operator
+        operator, _ = User.objects.get_or_create(
+            username="demo_operator",
+            defaults={"email": "operator@demo.com", "first_name": "Demo", "last_name": "Operator"},
+        )
+        operator.set_password("demo12345")
+        operator.save(update_fields=["password"])
+        UserProfile.objects.get_or_create(
+            user=operator,
+            defaults={"role": "operator", "company_name": "Consolidator Ops"},
+        )
+
         # Taxonomy
         brand = Brand.objects.filter(name__iexact="Komatsu").first()
         if not brand:
@@ -155,5 +167,6 @@ class Command(BaseCommand):
         self.stdout.write("Credentials:")
         self.stdout.write("  buyer: demo_buyer / demo12345")
         self.stdout.write("  seller: demo_seller / demo12345")
+        self.stdout.write("  operator: demo_operator / demo12345")
         self.stdout.write(f"Open RFQ: /rfq/{rfq.id}/")
         self.stdout.write(f"Open Proposal: /rfq/{rfq.id}/proposal/")
