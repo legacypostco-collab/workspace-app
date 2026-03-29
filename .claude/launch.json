@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Django Dev Server",
+      "runtimeExecutable": "/Users/kosta/Dev/workspace-app/.venv/bin/python",
+      "runtimeArgs": ["manage.py", "runserver", "127.0.0.1:8001", "--noreload"],
+      "port": 8001
+    },
+    {
+      "name": "Celery Worker",
+      "runtimeExecutable": "celery",
+      "runtimeArgs": ["-A", "consolidator_site", "worker", "-l", "info"],
+      "port": null
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}Заказы{% endblock %}
+{% block topbar_title %}Заказы{% endblock %}
+
+{% block extra_css %}
+<style>
+.ap-order-timeline{display:none;padding:12px 20px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.03);}
+.ap-order-timeline.open{display:block;}
+.ap-timeline-step{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px;color:#919191;}
+.ap-timeline-dot{width:8px;height:8px;border-radius:50%;background:#2C2C2C;border:1px solid #5E5E5E;flex-shrink:0;}
+.ap-timeline-dot.done{background:#5E5E5E;border-color:#5E5E5E;}
+.ap-timeline-dot.current{background:#64B5F6;border-color:#64B5F6;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ap-stats">
+  <div class="ap-stat"><div class="ap-stat-value">487</div><div class="ap-stat-label">Всего заказов</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">156</div><div class="ap-stat-label">Активных</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">298</div><div class="ap-stat-label">Завершено</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">33</div><div class="ap-stat-label">Отменено</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">$4.8M</div><div class="ap-stat-label">Общая сумма</div></div>
+</div>
+
+<div class="ap-card">
+  <div class="ap-tabs">
+    <button class="ap-tab active" data-tab-group="orders" data-tab-key="all" onclick="apSwitchTab('orders','all');filterOrders()">Все</button>
+    <button class="ap-tab" data-tab-group="orders" data-tab-key="active" onclick="apSwitchTab('orders','active');filterOrders()">Активные</button>
+    <button class="ap-tab" data-tab-group="orders" data-tab-key="completed" onclick="apSwitchTab('orders','completed');filterOrders()">Завершённые</button>
+    <button class="ap-tab" data-tab-group="orders" data-tab-key="problem" onclick="apSwitchTab('orders','problem');filterOrders()">Проблемные</button>
+    <button class="ap-tab" data-tab-group="orders" data-tab-key="cancelled" onclick="apSwitchTab('orders','cancelled');filterOrders()">Отменённые</button>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+    <input type="text" class="ap-input" placeholder="Поиск по ORD ID..." style="max-width:180px;" id="orderSearch" oninput="filterOrders()"/>
+    <input type="text" class="ap-input" placeholder="Покупатель #..." style="max-width:140px;" id="orderBuyer" oninput="filterOrders()"/>
+    <input type="text" class="ap-input" placeholder="Поставщик #..." style="max-width:140px;" id="orderSupplier" oninput="filterOrders()"/>
+    <select class="ap-select" id="orderStatusFilter" onchange="filterOrders()">
+      <option value="">Все статусы</option>
+      <option value="in_progress">В работе</option>
+      <option value="shipping">В пути</option>
+      <option value="delivered">Доставлен</option>
+      <option value="cancelled">Отменён</option>
+      <option value="claim">Рекламация</option>
+    </select>
+  </div>
+
+  <table class="ap-table" id="ordersTable">
+    <thead>
+      <tr><th>ORD ID</th><th>Покупатель</th><th>Поставщик</th><th>Позиций</th><th>Сумма</th><th>Статус</th><th>Оплата</th><th>Дата</th><th>Действия</th></tr>
+    </thead>
+    <tbody>
+      <tr data-status="in_progress" data-type="active" onclick="toggleTimeline(this)"><td>ORD-4521</td><td class="text-secondary">#1042</td><td class="text-secondary">#3156</td><td>6</td><td>$11,200</td><td><span class="ap-badge ap-badge-gray">В работе</span></td><td>30%</td><td class="text-secondary">25.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4521')">Детали</button> <button class="ap-btn ap-btn-warn" onclick="event.stopPropagation();apToast('Эскалация ORD-4521')">Эскалировать</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Заказ создан — 25.03.2026 10:40</div><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Оплата 30% получена — 25.03.2026 11:15</div><div class="ap-timeline-step"><div class="ap-timeline-dot current"></div>В обработке у поставщика</div><div class="ap-timeline-step"><div class="ap-timeline-dot"></div>Отгрузка</div><div class="ap-timeline-step"><div class="ap-timeline-dot"></div>Доставка</div></td></tr>
+
+      <tr data-status="shipping" data-type="active" onclick="toggleTimeline(this)"><td>ORD-4519</td><td class="text-secondary">#1038</td><td class="text-secondary">#3151</td><td>4</td><td>$3,900</td><td><span class="ap-badge ap-badge-gray">В пути</span></td><td>100%</td><td class="text-secondary">23.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4519')">Детали</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Заметка добавлена')">Заметка</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Заказ создан — 23.03.2026</div><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Оплата 100%</div><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Отгружен — 24.03.2026</div><div class="ap-timeline-step"><div class="ap-timeline-dot current"></div>В пути — ETA 28.03.2026</div><div class="ap-timeline-step"><div class="ap-timeline-dot"></div>Доставка</div></td></tr>
+
+      <tr data-status="delivered" data-type="completed" onclick="toggleTimeline(this)"><td>ORD-4498</td><td class="text-secondary">#1028</td><td class="text-secondary">#3142</td><td>8</td><td>$8,340</td><td><span class="ap-badge ap-badge-gray">Доставлен</span></td><td>100%</td><td class="text-secondary">18.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4498')">Детали</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Завершён — все этапы пройдены</div></td></tr>
+
+      <tr data-status="claim" data-type="problem" onclick="toggleTimeline(this)"><td>ORD-4501</td><td class="text-secondary">#1033</td><td class="text-secondary">#3148</td><td>3</td><td>$6,200</td><td><span class="ap-badge ap-badge-orange">Рекламация</span></td><td>100%</td><td class="text-secondary">19.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4501')">Детали</button> <button class="ap-btn ap-btn-warn" onclick="event.stopPropagation();apToast('Эскалация ORD-4501')">Эскалировать</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Доставлен — 20.03.2026</div><div class="ap-timeline-step"><div class="ap-timeline-dot current" style="background:#E85C0D;border-color:#E85C0D;"></div>Рекламация открыта — несоответствие 2 позиций</div></td></tr>
+
+      <tr data-status="cancelled" data-type="cancelled" onclick="toggleTimeline(this)"><td>ORD-4480</td><td class="text-secondary">#1025</td><td class="text-secondary">#3140</td><td>2</td><td>$2,100</td><td><span class="ap-badge ap-badge-gray">Отменён</span></td><td>0%</td><td class="text-secondary">15.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4480')">Детали</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Отменён покупателем — 16.03.2026</div></td></tr>
+
+      <tr data-status="in_progress" data-type="active" onclick="toggleTimeline(this)"><td>ORD-4518</td><td class="text-secondary">#1040</td><td class="text-secondary">#3002</td><td>12</td><td>$24,600</td><td><span class="ap-badge ap-badge-gray">В работе</span></td><td>50%</td><td class="text-secondary">22.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4518')">Детали</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Заметка добавлена')">Заметка</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Оплата 50% получена</div><div class="ap-timeline-step"><div class="ap-timeline-dot current"></div>Комплектация</div></td></tr>
+
+      <tr data-status="shipping" data-type="active" onclick="toggleTimeline(this)"><td>ORD-4515</td><td class="text-secondary">#1035</td><td class="text-secondary">#3001</td><td>5</td><td>$9,800</td><td><span class="ap-badge ap-badge-gray">В пути</span></td><td>100%</td><td class="text-secondary">20.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4515')">Детали</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>В пути — ETA 27.03.2026</div></td></tr>
+
+      <tr data-status="delivered" data-type="completed" onclick="toggleTimeline(this)"><td>ORD-4490</td><td class="text-secondary">#1022</td><td class="text-secondary">#3003</td><td>10</td><td>$18,500</td><td><span class="ap-badge ap-badge-gray">Доставлен</span></td><td>100%</td><td class="text-secondary">14.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4490')">Детали</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Завершён</div></td></tr>
+
+      <tr data-status="in_progress" data-type="active" onclick="toggleTimeline(this)"><td>ORD-4520</td><td class="text-secondary">#1041</td><td class="text-secondary">#3002</td><td>3</td><td>$4,200</td><td><span class="ap-badge ap-badge-gray">В работе</span></td><td>30%</td><td class="text-secondary">24.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4520')">Детали</button> <button class="ap-btn ap-btn-warn" onclick="event.stopPropagation();apToast('Эскалация')">Эскалировать</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot current"></div>Ожидание подтверждения поставщика</div></td></tr>
+
+      <tr data-status="cancelled" data-type="cancelled" onclick="toggleTimeline(this)"><td>ORD-4475</td><td class="text-secondary">#1020</td><td class="text-secondary">#3001</td><td>1</td><td>$800</td><td><span class="ap-badge ap-badge-gray">Отменён</span></td><td>0%</td><td class="text-secondary">12.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4475')">Детали</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Отменён — товар недоступен</div></td></tr>
+
+      <tr data-status="delivered" data-type="completed" onclick="toggleTimeline(this)"><td>ORD-4485</td><td class="text-secondary">#1018</td><td class="text-secondary">#3156</td><td>7</td><td>$15,400</td><td><span class="ap-badge ap-badge-gray">Доставлен</span></td><td>100%</td><td class="text-secondary">10.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4485')">Детали</button></td></tr>
+      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Завершён</div></td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleTimeline(row) {
+  var next = row.nextElementSibling;
+  if (next && next.classList.contains('ap-order-timeline')) {
+    next.classList.toggle('open');
+  }
+}
+function filterOrders() {
+  var search = document.getElementById('orderSearch').value.toLowerCase();
+  var buyer = document.getElementById('orderBuyer').value.toLowerCase();
+  var supplier = document.getElementById('orderSupplier').value.toLowerCase();
+  var status = document.getElementById('orderStatusFilter').value;
+  var tab = document.querySelector('.ap-tab.active[data-tab-group="orders"]').dataset.tabKey;
+  var rows = document.querySelectorAll('#ordersTable tbody tr:not(.ap-order-timeline)');
+  rows.forEach(function(row) {
+    var show = true;
+    var text = row.textContent.toLowerCase();
+    if (search && text.indexOf(search) === -1) show = false;
+    if (buyer && !row.children[1].textContent.toLowerCase().includes(buyer)) show = false;
+    if (supplier && !row.children[2].textContent.toLowerCase().includes(supplier)) show = false;
+    if (status && row.dataset.status !== status) show = false;
+    if (tab === 'active' && row.dataset.type !== 'active') show = false;
+    if (tab === 'completed' && row.dataset.type !== 'completed') show = false;
+    if (tab === 'problem' && row.dataset.type !== 'problem') show = false;
+    if (tab === 'cancelled' && row.dataset.type !== 'cancelled') show = false;
+    row.style.display = show ? '' : 'none';
+    var next = row.nextElementSibling;
+    if (next && next.classList.contains('ap-order-timeline')) {
+      if (!show) next.classList.remove('open');
+    }
+  });
+}
+</script>
+{% endblock %}

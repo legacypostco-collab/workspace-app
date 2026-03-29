@@ -1,0 +1,21 @@
+<header class="seller-topbar">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="seller-nav-arrows">
+        <a href="javascript:history.back()" class="seller-nav-arrow" title="Назад">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <a href="javascript:history.forward()" class="seller-nav-arrow" title="Вперёд">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+      <h1 class="seller-page-title">{{ buyer_page_title|default:"Кабинет покупателя" }}</h1>
+    </div>
+  </div>
+  <div class="seller-topbar-meta">
+    <div class="seller-topbar-chip">
+      <span class="muted">Закупки</span>
+      <strong>$2.1M</strong>
+    </div>
+  </div>
+</header>

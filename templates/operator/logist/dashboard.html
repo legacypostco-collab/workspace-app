@@ -1,0 +1,209 @@
+{% extends "operator/base_operator.html" %}
+{% block title %}Логист — Дашборд{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="op-stats">
+  <div class="op-stat">
+    <div class="op-stat-value">14</div>
+    <div class="op-stat-label">Активных отгрузок</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">8</div>
+    <div class="op-stat-label">В пути</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">3</div>
+    <div class="op-stat-label">На таможне</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">2</div>
+    <div class="op-stat-label">Доставлено сегодня</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">18 дн.</div>
+    <div class="op-stat-label">Средний срок</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:16px;">
+  <!-- Active shipments table -->
+  <div class="op-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="op-section-title">Активные отгрузки</div>
+      <a href="/operator/logist/shipments/" class="op-btn op-btn-primary">Все отгрузки</a>
+    </div>
+    <table class="op-table" id="logist-shipments-table">
+      <thead>
+        <tr>
+          <th>ID заказа</th>
+          <th>Маршрут</th>
+          <th>Способ</th>
+          <th>Этап</th>
+          <th>ETA</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-order="ORD-4521" onclick="opToast('Отгрузка ORD-4521: Шанхай - Москва, Море, ETA 12 апр')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
+          <td>Шанхай <span class="text-muted" style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Москва</td>
+          <td><span class="op-badge op-badge-gray">Море</span></td>
+          <td style="min-width:160px;">
+            <div style="font-size:11px;color:#919191;margin-bottom:4px;">В пути</div>
+            <div class="op-progress">
+              <div class="op-progress-step done"></div>
+              <div class="op-progress-step current"></div>
+              <div class="op-progress-step"></div>
+              <div class="op-progress-step"></div>
+              <div class="op-progress-step"></div>
+            </div>
+          </td>
+          <td style="font-family:'Golos Text',sans-serif;">12 апр</td>
+          <td><span class="op-badge op-badge-gray">В пути</span></td>
+        </tr>
+        <tr data-order="ORD-4518" onclick="opToast('Отгрузка ORD-4518: Стамбул - Москва, Авто, ETA 28 мар')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
+          <td>Стамбул <span style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Москва</td>
+          <td><span class="op-badge op-badge-gray">Авто</span></td>
+          <td style="min-width:160px;">
+            <div style="font-size:11px;color:#919191;margin-bottom:4px;">Таможня</div>
+            <div class="op-progress">
+              <div class="op-progress-step done"></div>
+              <div class="op-progress-step done"></div>
+              <div class="op-progress-step current"></div>
+              <div class="op-progress-step"></div>
+              <div class="op-progress-step"></div>
+            </div>
+          </td>
+          <td style="font-family:'Golos Text',sans-serif;">28 мар</td>
+          <td><span class="op-badge op-badge-orange">На таможне</span></td>
+        </tr>
+        <tr data-order="ORD-4515" onclick="opToast('Отгрузка ORD-4515: Гуанчжоу - Владивосток, ЖД, ETA 5 апр')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
+          <td>Гуанчжоу <span style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Владивосток</td>
+          <td><span class="op-badge op-badge-gray">ЖД</span></td>
+          <td style="min-width:160px;">
+            <div style="font-size:11px;color:#919191;margin-bottom:4px;">В пути</div>
+            <div class="op-progress">
+              <div class="op-progress-step done"></div>
+              <div class="op-progress-step current"></div>
+              <div class="op-progress-step"></div>
+              <div class="op-progress-step"></div>
+              <div class="op-progress-step"></div>
+            </div>
+          </td>
+          <td style="font-family:'Golos Text',sans-serif;">5 апр</td>
+          <td><span class="op-badge op-badge-gray">В пути</span></td>
+        </tr>
+        <tr data-order="ORD-4512" onclick="opToast('Отгрузка ORD-4512: Дубай - Москва, Авиа, ETA 26 мар')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
+          <td>Дубай <span style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Москва</td>
+          <td><span class="op-badge op-badge-gray">Авиа</span></td>
+          <td style="min-width:160px;">
+            <div style="font-size:11px;color:#919191;margin-bottom:4px;">Доставка</div>
+            <div class="op-progress">
+              <div class="op-progress-step done"></div>
+              <div class="op-progress-step done"></div>
+              <div class="op-progress-step done"></div>
+              <div class="op-progress-step current"></div>
+              <div class="op-progress-step"></div>
+            </div>
+          </td>
+          <td style="font-family:'Golos Text',sans-serif;">26 мар</td>
+          <td><span class="op-badge op-badge-gray">Доставка</span></td>
+        </tr>
+        <tr data-order="ORD-4508" onclick="opToast('Отгрузка ORD-4508: Шанхай - Новосибирск, Море, ETA 18 апр')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
+          <td>Шанхай <span style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Новосибирск</td>
+          <td><span class="op-badge op-badge-gray">Море</span></td>
+          <td style="min-width:160px;">
+            <div style="font-size:11px;color:#919191;margin-bottom:4px;">Погрузка</div>
+            <div class="op-progress">
+              <div class="op-progress-step current"></div>
+              <div class="op-progress-step"></div>
+              <div class="op-progress-step"></div>
+              <div class="op-progress-step"></div>
+              <div class="op-progress-step"></div>
+            </div>
+          </td>
+          <td style="font-family:'Golos Text',sans-serif;">18 апр</td>
+          <td><span class="op-badge op-badge-gray">Погрузка</span></td>
+        </tr>
+        <tr data-order="ORD-4505" onclick="opToast('Отгрузка ORD-4505: Стамбул - Екатеринбург, Авто, ETA 1 апр')">
+          <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4505</td>
+          <td>Стамбул <span style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Екатеринбург</td>
+          <td><span class="op-badge op-badge-gray">Авто</span></td>
+          <td style="min-width:160px;">
+            <div style="font-size:11px;color:#919191;margin-bottom:4px;">В пути</div>
+            <div class="op-progress">
+              <div class="op-progress-step done"></div>
+              <div class="op-progress-step current"></div>
+              <div class="op-progress-step"></div>
+              <div class="op-progress-step"></div>
+              <div class="op-progress-step"></div>
+            </div>
+          </td>
+          <td style="font-family:'Golos Text',sans-serif;">1 апр</td>
+          <td><span class="op-badge op-badge-gray">В пути</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Right panel -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <!-- SLA violations -->
+    <div class="op-card">
+      <div class="op-section-title" style="display:flex;align-items:center;gap:8px;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#E85C0D" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v5M8 11v.5"/><circle cx="8" cy="8" r="7"/></svg>
+        SLA нарушения
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+        <div class="op-card-elevated" style="padding:12px 14px;">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#ECECEC;">ORD-4501</div>
+              <div style="font-size:12px;color:#919191;margin-top:2px;">Шанхай &#8594; Москва</div>
+            </div>
+            <span class="op-badge op-badge-orange">+3 дн.</span>
+          </div>
+          <div style="font-size:11px;color:#E85C0D;margin-top:6px;">Задержка на таможне</div>
+        </div>
+        <div class="op-card-elevated" style="padding:12px 14px;">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div>
+              <div style="font-size:13px;font-weight:600;color:#ECECEC;">ORD-4497</div>
+              <div style="font-size:12px;color:#919191;margin-top:2px;">Гуанчжоу &#8594; Москва</div>
+            </div>
+            <span class="op-badge op-badge-orange">+1 дн.</span>
+          </div>
+          <div style="font-size:11px;color:#E85C0D;margin-top:6px;">Порт перегружен</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action required -->
+    <div class="op-card">
+      <div class="op-section-title" style="display:flex;align-items:center;gap:8px;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="1.5" stroke-linecap="round"><path d="M8 1v6l4 2"/><circle cx="8" cy="8" r="7"/></svg>
+        Требуют действия
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Открытие деталей ORD-4518')">
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Подтвердить получение</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4518 - ожидает подтверждения</div>
+        </div>
+        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Открытие документов ORD-4521')">
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Загрузить CMR</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4521 - документ не загружен</div>
+        </div>
+        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Обновление маршрута ORD-4508')">
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Обновить маршрут</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4508 - изменение порта</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

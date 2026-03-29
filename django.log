@@ -1,0 +1,50 @@
+Watching for file changes with StatReloader
+[12/Mar/2026 15:18:58] "GET / HTTP/1.1" 200 6217
+[12/Mar/2026 15:18:58] "GET /static/marketplace/styles.css HTTP/1.1" 304 0
+[12/Mar/2026 15:18:58] "GET /static/marketplace/consolidator-logo.svg HTTP/1.1" 304 0
+[12/Mar/2026 15:19:00] "GET / HTTP/1.1" 200 6217
+[12/Mar/2026 15:19:09] "GET /static/marketplace/epiroc-logo.webp HTTP/1.1" 304 0
+[12/Mar/2026 15:19:10] "GET / HTTP/1.1" 200 6217
+[12/Mar/2026 15:19:17] "GET /catalog/ HTTP/1.1" 200 11551
+[12/Mar/2026 15:19:18] "GET /catalog/ HTTP/1.1" 200 11551
+[12/Mar/2026 15:19:19] "GET /directory/brands/ HTTP/1.1" 200 4134
+[12/Mar/2026 15:19:19] "GET /directory/categories/ HTTP/1.1" 200 3595
+[12/Mar/2026 15:19:20] "GET /compare/ HTTP/1.1" 200 3381
+[12/Mar/2026 15:19:23] "GET /rfq/new/ HTTP/1.1" 302 0
+[12/Mar/2026 15:19:23] "GET /login/?next=/rfq/new/ HTTP/1.1" 200 3773
+[12/Mar/2026 15:19:25] "GET /rfq/ HTTP/1.1" 302 0
+[12/Mar/2026 15:19:25] "GET /login/?next=/rfq/ HTTP/1.1" 200 3769
+[12/Mar/2026 15:19:25] "GET /demo-center/ HTTP/1.1" 200 4760
+[12/Mar/2026 15:19:27] "GET /cart/ HTTP/1.1" 200 3126
+[12/Mar/2026 15:19:29] "GET /catalog/ HTTP/1.1" 200 11551
+[12/Mar/2026 15:19:31] "POST /cart/add/3/ HTTP/1.1" 302 0
+[12/Mar/2026 15:19:31] "GET /catalog/ HTTP/1.1" 200 11551
+[12/Mar/2026 15:19:34] "POST /cart/add/3/ HTTP/1.1" 302 0
+[12/Mar/2026 15:19:34] "GET /catalog/ HTTP/1.1" 200 11551
+[12/Mar/2026 15:19:36] "POST /cart/add/3/ HTTP/1.1" 302 0
+[12/Mar/2026 15:19:36] "GET /catalog/ HTTP/1.1" 200 11551
+[12/Mar/2026 15:19:42] "GET /login/ HTTP/1.1" 200 3758
+Not Found: /demo
+[12/Mar/2026 15:33:11] "GET /demo HTTP/1.1" 404 17280
+Not Found: /favicon.ico
+[12/Mar/2026 15:33:11] "GET /favicon.ico HTTP/1.1" 404 17301
+[12/Mar/2026 15:33:38] "GET /demo-center/ HTTP/1.1" 200 5886
+[12/Mar/2026 15:33:38] "GET /static/marketplace/styles.css HTTP/1.1" 304 0
+[12/Mar/2026 15:33:38] "GET /static/marketplace/consolidator-logo.svg HTTP/1.1" 304 0
+[12/Mar/2026 15:33:47] "GET /orders/2/ HTTP/1.1" 302 0
+[12/Mar/2026 15:33:47] "GET /login/?next=/orders/2/ HTTP/1.1" 200 3774
+[12/Mar/2026 15:33:53] "GET /orders/1/invoice/ HTTP/1.1" 302 0
+[12/Mar/2026 15:33:53] "GET /login/?next=/orders/1/invoice/ HTTP/1.1" 200 3782
+[12/Mar/2026 15:33:55] "GET / HTTP/1.1" 200 9523
+[12/Mar/2026 15:33:55] "GET /static/marketplace/epiroc-logo.webp HTTP/1.1" 304 0
+[12/Mar/2026 15:33:55] "GET /static/marketplace/komatsu-logo.svg HTTP/1.1" 200 461
+[12/Mar/2026 15:33:55] "GET /static/marketplace/liebherr-logo.svg HTTP/1.1" 200 463
+[12/Mar/2026 15:33:59] "GET / HTTP/1.1" 200 9523
+Performing system checks...
+
+System check identified no issues (0 silenced).
+March 12, 2026 - 15:17:43
+Django version 5.1.6, using settings 'consolidator_site.settings'
+Starting development server at http://127.0.0.1:8000/
+Quit the server with CONTROL-C.
+

@@ -89,7 +89,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--xlsx", required=True, help="Absolute path to xlsx file")
-        parser.add_argument("--seller", default="Kosta", help="Seller username/email")
+        parser.add_argument("--seller", default="seller", help="Seller username/email")
         parser.add_argument("--category", default="Рабочее оборудование", help="Target category")
         parser.add_argument("--batch-size", type=int, default=1000, help="Batch size")
         parser.add_argument("--default-stock", type=int, default=20, help="Default stock")

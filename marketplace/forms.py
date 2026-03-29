@@ -68,9 +68,23 @@ class SellerPartForm(forms.ModelForm):
 
 
 class SellerBulkUploadForm(forms.Form):
-    file = forms.FileField(label="CSV file")
-    category = forms.CharField(max_length=120, required=False, initial="Epiroc")
-    default_stock = forms.IntegerField(min_value=0, initial=20)
+    file = forms.FileField(
+        label="Файл прайса (.csv или .xlsx)",
+        help_text="Обязательные колонки: PartNumber/Part Number, WarehouseAddress и хотя бы одна цена Price_FOB_SEA/Price_FOB_AIR.",
+    )
+    category = forms.CharField(
+        max_length=120,
+        required=False,
+        initial="Epiroc",
+        label="Бренд / категория по умолчанию",
+        help_text="Используется, если в файле нет отдельного бренда.",
+    )
+    default_stock = forms.IntegerField(
+        min_value=0,
+        initial=20,
+        label="Остаток по умолчанию",
+        help_text="Применяется только для строк без значения Stock.",
+    )
 
 
 class RFQCreateForm(forms.Form):
@@ -109,4 +123,17 @@ class RFQCreateForm(forms.Form):
         label="Комментарий",
         required=False,
         widget=forms.Textarea(attrs={"rows": 3}),
+    )
+
+
+class BulkPriceLookupForm(forms.Form):
+    items_text = forms.CharField(
+        label="Part numbers",
+        widget=forms.Textarea(
+            attrs={
+                "rows": 8,
+                "placeholder": "Paste one part number per line\nRE48786\n12544660\n0-01258-300-0KF",
+            }
+        ),
+        help_text="Paste up to 1000 lines. One part number or search query per line.",
     )

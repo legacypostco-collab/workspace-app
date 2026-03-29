@@ -1,0 +1,56 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Seller RFQ Inbox | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Seller RFQ Inbox</h1>
+  <p class="muted">RFQ, где уже найдены позиции по вашему ассортименту.</p>
+  <a class="btn btn-secondary" href="{% url 'seller_dashboard' %}">Назад в кабинет</a>
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <form method="get" action="{% url 'seller_rfq_inbox' %}" class="upload-form">
+    <p>
+      <label for="id_q">Поиск по клиенту / RFQ / OEM</label>
+      <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Например, Demo Fleet или RE48786" />
+    </p>
+    <p>
+      <label for="id_status">Статус RFQ</label>
+      <select id="id_status" name="status">
+        <option value="">Все</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </p>
+    <div class="card-actions">
+      <button class="btn" type="submit">Применить фильтры</button>
+      {% if query or status %}
+        <a class="btn btn-secondary" href="{% url 'seller_rfq_inbox' %}">Сбросить</a>
+      {% endif %}
+    </div>
+  </form>
+</section>
+
+<div class="list">
+  {% for row in rfq_rows %}
+    <article class="list-row">
+      <div>
+        <h3>RFQ #{{ row.rfq.id }}</h3>
+        <p class="muted">{{ row.rfq.company_name|default:row.rfq.customer_name }} • {{ row.rfq.created_at|date:"Y-m-d H:i" }}</p>
+        <p class="muted">Статус: {{ row.rfq.get_status_display }} • Ваших позиций: {{ row.seller_items_count }} • Общее количество: {{ row.total_qty }}</p>
+        <p class="muted">
+          {% for item in row.sample_items %}
+            {{ item.query }} × {{ item.quantity }}{% if not forloop.last %} • {% endif %}
+          {% endfor %}
+        </p>
+      </div>
+      <div class="list-actions">
+        <a class="btn btn-secondary" href="{% url 'rfq_detail' row.rfq.id %}">Открыть RFQ</a>
+      </div>
+    </article>
+  {% empty %}
+    <p class="muted">По вашему ассортименту пока нет входящих RFQ.</p>
+  {% endfor %}
+</div>
+{% endblock %}
+

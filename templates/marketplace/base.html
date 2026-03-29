@@ -80,7 +80,7 @@
         </nav>
 
         <div class="sidebar-foot">
-          <a href="#" class="side-btn">{{ ui.callback }}</a>
+          <a href="javascript:void(0)" class="side-btn" onclick="alert('Callback request sent! We will contact you shortly.')">{{ ui.callback }}</a>
           <form action="/i18n/setlang/" method="post" class="side-lang-form">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ request.get_full_path }}">
@@ -114,13 +114,7 @@
         </header>
 
         <main class="container">
-          {% if messages %}
-            <div class="messages">
-              {% for message in messages %}
-                <p class="message">{{ message }}</p>
-              {% endfor %}
-            </div>
-          {% endif %}
+          <div style="display:none;" aria-hidden="true">{% for message in messages %}{{ message }}{% endfor %}</div>
           {% block content %}{% endblock %}
         </main>
       </section>

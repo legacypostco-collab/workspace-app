@@ -1,0 +1,203 @@
+{% extends "operator/base_operator.html" %}
+{% block title %}Менеджер — Переторжка{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="op-stats">
+  <div class="op-stat">
+    <div class="op-stat-value">8</div>
+    <div class="op-stat-label">Активных переторжек</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">34</div>
+    <div class="op-stat-label">Согласовано</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">$12,400</div>
+    <div class="op-stat-label">Экономия за месяц</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">7.2%</div>
+    <div class="op-stat-label">Средняя скидка</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="op-tabs">
+  <button class="op-tab active" data-neg-tab="active" onclick="switchNegTab('active')">Активные</button>
+  <button class="op-tab" data-neg-tab="agreed" onclick="switchNegTab('agreed')">Согласованные</button>
+  <button class="op-tab" data-neg-tab="rejected" onclick="switchNegTab('rejected')">Отклонённые</button>
+</div>
+
+<div class="op-card">
+  <table class="op-table" id="neg-table">
+    <thead>
+      <tr>
+        <th>Товар (OEM)</th>
+        <th>Покупатель</th>
+        <th>Поставщик</th>
+        <th>Базовая цена</th>
+        <th>Запрос</th>
+        <th>Встречная</th>
+        <th>Статус</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr data-status="active" onclick="opToast('Переторжка: Фильтр масляный 90915-YZZD4')">
+        <td style="font-weight:600;">Фильтр масляный<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">90915-YZZD4</div></td>
+        <td>Покупатель #1042</td>
+        <td class="text-secondary">Поставщик #301</td>
+        <td style="font-family:'Golos Text',sans-serif;">$4.20</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-12%</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">-7%</td>
+        <td><span class="op-badge op-badge-gray">Ожидает ответа</span></td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Посредничество по фильтру 90915-YZZD4')">Посредничать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showCompromise(this)">Компромисс</button>
+          </div>
+        </td>
+      </tr>
+      <tr data-status="active" onclick="opToast('Переторжка: Колодки тормозные 04465-33471')">
+        <td style="font-weight:600;">Колодки тормозные<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">04465-33471</div></td>
+        <td>Покупатель #1038</td>
+        <td class="text-secondary">Поставщик #305</td>
+        <td style="font-family:'Golos Text',sans-serif;">$18.50</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-15%</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">-5%</td>
+        <td><span class="op-badge op-badge-gray">Переговоры</span></td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Посредничество по колодкам 04465-33471')">Посредничать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showCompromise(this)">Компромисс</button>
+          </div>
+        </td>
+      </tr>
+      <tr data-status="active" onclick="opToast('Переторжка: Ремень ГРМ 13568-09131')">
+        <td style="font-weight:600;">Ремень ГРМ<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">13568-09131</div></td>
+        <td>Покупатель #1045</td>
+        <td class="text-secondary">Поставщик #308</td>
+        <td style="font-family:'Golos Text',sans-serif;">$32.00</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-10%</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">&#8212;</td>
+        <td><span class="op-badge op-badge-gray">Новая</span></td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Посредничество по ремню 13568-09131')">Посредничать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showCompromise(this)">Компромисс</button>
+          </div>
+        </td>
+      </tr>
+      <tr data-status="active" onclick="opToast('Переторжка: Амортизатор 48531-80583')">
+        <td style="font-weight:600;">Амортизатор<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">48531-80583</div></td>
+        <td>Покупатель #1051</td>
+        <td class="text-secondary">Поставщик #312</td>
+        <td style="font-family:'Golos Text',sans-serif;">$45.00</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-8%</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">-4%</td>
+        <td><span class="op-badge op-badge-gray">Переговоры</span></td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Посредничество по амортизатору')">Посредничать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showCompromise(this)">Компромисс</button>
+          </div>
+        </td>
+      </tr>
+      <tr data-status="agreed" onclick="opToast('Переторжка согласована: Свеча зажигания 90919-01253')">
+        <td style="font-weight:600;">Свеча зажигания<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">90919-01253</div></td>
+        <td>Покупатель #1033</td>
+        <td class="text-secondary">Поставщик #298</td>
+        <td style="font-family:'Golos Text',sans-serif;">$8.40</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-10%</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-8%</td>
+        <td><span class="op-badge op-badge-gray">Согласовано</span></td>
+        <td><span class="text-secondary" style="font-size:12px;">Скидка 8%</span></td>
+      </tr>
+      <tr data-status="agreed" onclick="opToast('Переторжка согласована: Радиатор 16400-0T030')">
+        <td style="font-weight:600;">Радиатор<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">16400-0T030</div></td>
+        <td>Покупатель #1042</td>
+        <td class="text-secondary">Поставщик #315</td>
+        <td style="font-family:'Golos Text',sans-serif;">$120.00</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-12%</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-9%</td>
+        <td><span class="op-badge op-badge-gray">Согласовано</span></td>
+        <td><span class="text-secondary" style="font-size:12px;">Скидка 9%</span></td>
+      </tr>
+      <tr data-status="rejected" onclick="opToast('Переторжка отклонена: Генератор 27060-0T140')">
+        <td style="font-weight:600;">Генератор<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">27060-0T140</div></td>
+        <td>Покупатель #1055</td>
+        <td class="text-secondary">Поставщик #320</td>
+        <td style="font-family:'Golos Text',sans-serif;">$280.00</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-20%</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">-3%</td>
+        <td><span class="op-badge op-badge-gray">Отклонено</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Закрытие переторжки')">Закрыть</button></td>
+      </tr>
+      <tr data-status="active" onclick="opToast('Переторжка: Стартер 28100-0T060')">
+        <td style="font-weight:600;">Стартер<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">28100-0T060</div></td>
+        <td>Покупатель #1060</td>
+        <td class="text-secondary">Поставщик #322</td>
+        <td style="font-family:'Golos Text',sans-serif;">$195.00</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-10%</td>
+        <td style="font-family:'Golos Text',sans-serif;color:#919191;">&#8212;</td>
+        <td><span class="op-badge op-badge-gray">Новая</span></td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Посредничество по стартеру')">Посредничать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showCompromise(this)">Компромисс</button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  window.switchNegTab = function(tab){
+    document.querySelectorAll('[data-neg-tab]').forEach(function(btn){
+      btn.classList.toggle('active', btn.getAttribute('data-neg-tab') === tab);
+    });
+    document.querySelectorAll('#neg-table tbody tr').forEach(function(row){
+      if(tab === 'active' && document.querySelector('[data-neg-tab="active"]').classList.contains('active')){
+        // show all when "active" tab but we want active only
+      }
+      row.style.display = (tab === 'active' && row.getAttribute('data-status')==='active') ||
+                          (tab === 'agreed' && row.getAttribute('data-status')==='agreed') ||
+                          (tab === 'rejected' && row.getAttribute('data-status')==='rejected') ? '' : 'none';
+    });
+    // Default: show all for first load - but tabs filter
+    if(!tab) document.querySelectorAll('#neg-table tbody tr').forEach(function(r){r.style.display='';});
+  };
+  // Show all initially
+  // (active tab is selected by default, so filter to active)
+  switchNegTab('active');
+
+  window.showCompromise = function(btn){
+    var td = btn.closest('td');
+    if(td.querySelector('.op-input')) return;
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;gap:6px;margin-top:6px;align-items:center;';
+    var inp = document.createElement('input');
+    inp.className = 'op-input';
+    inp.placeholder = 'Скидка %';
+    inp.style.cssText = 'width:80px;';
+    var send = document.createElement('button');
+    send.className = 'op-btn op-btn-primary';
+    send.textContent = 'Отправить';
+    send.onclick = function(e){
+      e.stopPropagation();
+      opToast('Предложен компромисс: ' + inp.value + '%');
+      wrap.remove();
+    };
+    wrap.appendChild(inp);
+    wrap.appendChild(send);
+    td.appendChild(wrap);
+    inp.focus();
+  };
+})();
+</script>
+{% endblock %}

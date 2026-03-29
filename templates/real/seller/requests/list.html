@@ -1,0 +1,89 @@
+{% extends "seller/base_seller.html" %}
+
+{% block title %}Requests{% endblock %}
+
+{% block extra_css %}
+<style>
+.mvp-page { padding: 32px 40px; }
+.mvp-title { font-size: 28px; font-weight: 800; color: #192A4D; margin: 0 0 24px; letter-spacing: -0.02em; }
+.mvp-table-wrap { background: #fff; border: 1px solid rgba(25,42,77,0.08); border-radius: 16px; overflow: hidden; }
+.mvp-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.mvp-table th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 700; color: #8896A8; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid rgba(25,42,77,0.08); background: #FAFBFD; }
+.mvp-table td { padding: 14px 16px; font-size: 14px; color: #415080; border-bottom: 1px solid rgba(25,42,77,0.04); }
+.mvp-table tr:last-child td { border-bottom: none; }
+.mvp-table tr:hover td { background: #F8FAFF; }
+.mvp-badge { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+.mvp-badge--green { background: #E8F8EA; color: #1B8C2A; }
+.mvp-badge--yellow { background: #FFF8E1; color: #B8860B; }
+.mvp-badge--blue { background: #EEF2FF; color: #4568F3; }
+.mvp-badge--red { background: #FFF0F0; color: #C0392B; }
+.mvp-btn { display: inline-flex; align-items: center; gap: 8px; background: #4568F3; color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.mvp-btn:hover { background: #3455DE; }
+.mvp-btn--sm { padding: 6px 14px; font-size: 13px; border-radius: 8px; }
+.mvp-btn--outline { background: transparent; color: #4568F3; border: 1px solid #4568F3; }
+.mvp-btn--outline:hover { background: #F0F4FF; }
+.mvp-empty { text-align: center; padding: 64px 24px; color: #8896A8; font-size: 15px; }
+.mvp-empty svg { display: block; margin: 0 auto 16px; }
+.mvp-id { font-weight: 600; color: #192A4D; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mvp-page">
+  <h1 class="mvp-title">Requests</h1>
+
+  {% if requests %}
+  <div class="mvp-table-wrap">
+    <table class="mvp-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Buyer</th>
+          <th>Part Number</th>
+          <th>Qty</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rfq in requests %}
+        <tr>
+          <td class="mvp-id">{{ rfq.id }}</td>
+          <td>{{ rfq.buyer_company|default:"—" }}</td>
+          <td>{{ rfq.part_number|default:"—" }}</td>
+          <td>{{ rfq.quantity|default:"—" }}</td>
+          <td>{{ rfq.created_at|date:"d M Y" }}</td>
+          <td>
+            {% if rfq.status == "new" %}
+              <span class="mvp-badge mvp-badge--blue">New</span>
+            {% elif rfq.status == "quoted" %}
+              <span class="mvp-badge mvp-badge--yellow">Quoted</span>
+            {% elif rfq.status == "accepted" %}
+              <span class="mvp-badge mvp-badge--green">Accepted</span>
+            {% elif rfq.status == "rejected" %}
+              <span class="mvp-badge mvp-badge--red">Rejected</span>
+            {% else %}
+              <span class="mvp-badge mvp-badge--blue">{{ rfq.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if rfq.status == "new" %}
+              <a href="{% url 'seller_request_detail' rfq.id %}" class="mvp-btn mvp-btn--sm">Respond</a>
+            {% else %}
+              <a href="{% url 'seller_request_detail' rfq.id %}" class="mvp-btn mvp-btn--sm mvp-btn--outline">View</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="mvp-empty">
+    <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><path d="M12 16h24M12 24h18M12 32h22" stroke="#C5CEE0" stroke-width="2" stroke-linecap="round"/><rect x="6" y="8" width="36" height="32" rx="4" stroke="#C5CEE0" stroke-width="2"/></svg>
+    No requests yet. When buyers send RFQs for your products, they will appear here.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

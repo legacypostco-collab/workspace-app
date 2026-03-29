@@ -1,0 +1,110 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}Аналитика{% endblock %}
+{% block topbar_title %}Аналитика{% endblock %}
+
+{% block content %}
+<!-- Period selector -->
+<div style="display:flex;gap:2px;background:#1F1F1F;border-radius:10px;padding:3px;border:1px solid rgba(255,255,255,0.055);margin-bottom:20px;width:fit-content;">
+  <button class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;" onclick="selectPeriod(this)">7д</button>
+  <button class="ap-tab active" style="border-bottom:none;padding:6px 14px;border-radius:8px;background:#242424;" onclick="selectPeriod(this)">30д</button>
+  <button class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;" onclick="selectPeriod(this)">90д</button>
+  <button class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;" onclick="selectPeriod(this)">1 год</button>
+  <button class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;" onclick="selectPeriod(this)">Все время</button>
+</div>
+
+<!-- KPI row -->
+<div class="ap-stats">
+  <div class="ap-stat"><div class="ap-stat-value">$4.8M</div><div class="ap-stat-label">GMV</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">487</div><div class="ap-stat-label">Заказов</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">342</div><div class="ap-stat-label">Пользователей</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">$3,200</div><div class="ap-stat-label">Средний чек</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">68%</div><div class="ap-stat-label">RFQ -> Заказ</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">78</div><div class="ap-stat-label">NPS</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+  <!-- By categories -->
+  <div class="ap-card">
+    <div class="ap-section-title">По категориям</div>
+    <table class="ap-table">
+      <thead><tr><th>Категория</th><th>Заказов</th><th>GMV</th><th>Доля %</th><th>Средний чек</th></tr></thead>
+      <tbody>
+        <tr><td>Фильтры</td><td>124</td><td>$820K</td><td>17.1%</td><td>$6,600</td></tr>
+        <tr><td>Тормоза</td><td>98</td><td>$680K</td><td>14.2%</td><td>$6,900</td></tr>
+        <tr><td>Подвеска</td><td>78</td><td>$540K</td><td>11.3%</td><td>$6,900</td></tr>
+        <tr><td>Электрика</td><td>65</td><td>$480K</td><td>10.0%</td><td>$7,400</td></tr>
+        <tr><td>Зажигание</td><td>56</td><td>$320K</td><td>6.7%</td><td>$5,700</td></tr>
+        <tr><td>Привод</td><td>42</td><td>$280K</td><td>5.8%</td><td>$6,700</td></tr>
+        <tr><td>Охлаждение</td><td>24</td><td>$180K</td><td>3.8%</td><td>$7,500</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- By geography -->
+  <div class="ap-card">
+    <div class="ap-section-title">По географии</div>
+    <table class="ap-table">
+      <thead><tr><th>Страна</th><th>Покупателей</th><th>Поставщиков</th><th>Оборот</th><th>Доля %</th></tr></thead>
+      <tbody>
+        <tr><td>Россия</td><td>98</td><td>12</td><td>$1.8M</td><td>37.5%</td></tr>
+        <tr><td>Казахстан</td><td>34</td><td>4</td><td>$620K</td><td>12.9%</td></tr>
+        <tr><td>Китай</td><td>8</td><td>82</td><td>$1.2M</td><td>25.0%</td></tr>
+        <tr><td>ОАЭ</td><td>22</td><td>8</td><td>$480K</td><td>10.0%</td></tr>
+        <tr><td>Турция</td><td>14</td><td>10</td><td>$340K</td><td>7.1%</td></tr>
+        <tr><td>Другие</td><td>10</td><td>8</td><td>$360K</td><td>7.5%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Top buyers -->
+  <div class="ap-card">
+    <div class="ap-section-title">Топ покупатели</div>
+    <table class="ap-table">
+      <thead><tr><th>#ID</th><th>Заказов</th><th>Оборот</th><th>Средний чек</th></tr></thead>
+      <tbody>
+        <tr><td>#1001</td><td>42</td><td>$186,400</td><td>$4,438</td></tr>
+        <tr><td>#1003</td><td>28</td><td>$92,100</td><td>$3,289</td></tr>
+        <tr><td>#1005</td><td>31</td><td>$78,500</td><td>$2,532</td></tr>
+        <tr><td>#1008</td><td>19</td><td>$56,300</td><td>$2,963</td></tr>
+        <tr><td>#1002</td><td>15</td><td>$34,200</td><td>$2,280</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Top suppliers -->
+  <div class="ap-card">
+    <div class="ap-section-title">Топ поставщики</div>
+    <table class="ap-table">
+      <thead><tr><th>#ID</th><th>Заказов</th><th>Выручка</th><th>Рейтинг</th><th>SLA %</th></tr></thead>
+      <tbody>
+        <tr><td>#3002</td><td>124</td><td>$680,500</td><td>4.8</td><td>96%</td></tr>
+        <tr><td>#3001</td><td>89</td><td>$412,000</td><td>4.6</td><td>94%</td></tr>
+        <tr><td>#3003</td><td>56</td><td>$298,000</td><td>4.7</td><td>98%</td></tr>
+        <tr><td>#3156</td><td>48</td><td>$245,000</td><td>4.5</td><td>92%</td></tr>
+        <tr><td>#3151</td><td>38</td><td>$198,000</td><td>4.4</td><td>90%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div style="margin-top:16px;display:flex;justify-content:flex-end;">
+  <button class="ap-btn ap-btn-ghost" onclick="apToast('Экспорт аналитики подготовлен')">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M2 11v2h12v-2"/></svg>
+    Экспорт
+  </button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selectPeriod(btn) {
+  btn.parentElement.querySelectorAll('.ap-tab').forEach(function(b) {
+    b.classList.remove('active');
+    b.style.background = '';
+  });
+  btn.classList.add('active');
+  btn.style.background = '#242424';
+  apToast('Период изменён: ' + btn.textContent);
+}
+</script>
+{% endblock %}

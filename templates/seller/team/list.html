@@ -1,0 +1,710 @@
+{% extends "seller/base_seller.html" %}
+
+{% block extra_css %}
+<style>
+/* ══ Team page ══ */
+.tm-tabs { display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:0; }
+.tm-tab {
+  padding:8px 16px;font-size:12px;font-weight:600;color:#6A6A6A;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap;
+}
+.tm-tab:hover { color:#8A8A8A; }
+.tm-tab.active { color:#64B5F6;border-bottom-color:#64B5F6; }
+.tm-panel { display:none; }
+.tm-panel.active { display:block; }
+
+/* Section */
+.tm-section { margin-bottom:20px; }
+.tm-section-title { font-size:13px;font-weight:700;color:#ECECEC;margin-bottom:4px; }
+.tm-section-sub { font-size:12px;color:#6A6A6A;margin-bottom:14px; }
+
+/* Org chart */
+.tm-org { display:flex;flex-direction:column;align-items:center;gap:0; }
+.tm-org-level { display:flex;justify-content:center;gap:16px;position:relative; }
+.tm-org-line { width:1px;height:20px;background:rgba(255,255,255,0.08);margin:0 auto; }
+.tm-org-hline { position:absolute;top:0;height:1px;background:rgba(255,255,255,0.08); }
+.tm-member {
+  background:#1A1A1A;border-radius:10px;padding:14px 16px;
+  border:1px solid rgba(255,255,255,0.04);text-align:center;min-width:160px;
+  transition:all .2s;cursor:pointer;
+}
+.tm-member:hover { border-color:rgba(100,181,246,0.2); }
+.tm-member-avatar {
+  width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 8px;
+  font-size:14px;font-weight:700;color:#8A8A8A;
+}
+.tm-member-name { font-size:13px;font-weight:600;color:#ECECEC; }
+.tm-member-role { font-size:10px;color:#6A6A6A;margin-top:2px; }
+.tm-member-rating {
+  display:inline-block;margin-top:6px;font-size:11px;font-weight:600;
+  padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;
+}
+.tm-member--online .tm-member-avatar::after {
+  content:'';display:block;width:8px;height:8px;border-radius:50%;
+  background:#66BB6A;position:absolute;bottom:2px;right:2px;
+}
+.tm-member-avatar { position:relative; }
+
+/* Team list */
+.tm-list { display:flex;flex-direction:column;gap:6px; }
+.tm-list-row {
+  background:#1A1A1A;border-radius:10px;padding:12px 16px;
+  border:1px solid rgba(255,255,255,0.04);
+  display:grid;grid-template-columns:40px 1fr 100px 90px 100px 80px;align-items:center;gap:12px;
+}
+.tm-list-row:hover { border-color:rgba(100,181,246,0.15); }
+.tm-list-avatar {
+  width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.06);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:#8A8A8A;
+}
+.tm-list-name { font-size:13px;font-weight:600;color:#ECECEC; }
+.tm-list-email { font-size:10px;color:#6A6A6A;margin-top:1px; }
+.tm-list-role {
+  font-size:11px;font-weight:600;padding:3px 8px;border-radius:5px;
+  background:rgba(255,255,255,0.05);color:#8A8A8A;text-align:center;
+}
+.tm-list-status { font-size:11px;text-align:center; }
+.tm-list-status--on { color:#66BB6A; }
+.tm-list-status--off { color:#6A6A6A; }
+.tm-list-rating { font-size:13px;font-weight:700;color:#ECECEC;text-align:center; }
+.tm-list-actions { display:flex;gap:4px;justify-content:flex-end; }
+.tm-list-btn {
+  padding:4px 8px;border-radius:5px;font-size:10px;font-weight:600;
+  background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+  color:#8A8A8A;cursor:pointer;transition:all .2s;
+}
+.tm-list-btn:hover { color:#ECECEC;border-color:rgba(255,255,255,0.15); }
+
+/* Permissions */
+.tm-perm-grid {
+  display:grid;grid-template-columns:180px repeat(6,1fr);gap:0;
+  background:#1A1A1A;border-radius:10px;border:1px solid rgba(255,255,255,0.04);overflow:hidden;
+}
+.tm-perm-header {
+  padding:8px 12px;font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:0.04em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);
+  text-align:center;
+}
+.tm-perm-header:first-child { text-align:left; }
+.tm-perm-name {
+  padding:10px 12px;font-size:12px;font-weight:600;color:#ECECEC;
+  border-bottom:1px solid rgba(255,255,255,0.03);display:flex;align-items:center;
+}
+.tm-perm-cell {
+  padding:10px 12px;text-align:center;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.tm-perm-check {
+  width:18px;height:18px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:all .2s;font-size:11px;color:transparent;
+}
+.tm-perm-check.on { background:rgba(100,181,246,0.15);border-color:rgba(100,181,246,0.4);color:#64B5F6; }
+
+/* Chat */
+.tm-chat-container { display:grid;grid-template-columns:240px 1fr;gap:0;height:400px;background:#1A1A1A;border-radius:12px;border:1px solid rgba(255,255,255,0.04);overflow:hidden; }
+.tm-chat-sidebar { border-right:1px solid rgba(255,255,255,0.06);overflow-y:auto; }
+.tm-chat-channel {
+  padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.03);
+  transition:background .2s;
+}
+.tm-chat-channel:hover { background:rgba(255,255,255,0.02); }
+.tm-chat-channel.active { background:rgba(100,181,246,0.06);border-left:2px solid #64B5F6; }
+.tm-chat-ch-name { font-size:12px;font-weight:600;color:#ECECEC; }
+.tm-chat-ch-preview { font-size:10px;color:#6A6A6A;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+.tm-chat-main { display:flex;flex-direction:column; }
+.tm-chat-messages { flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px; }
+.tm-chat-msg { display:flex;gap:8px;max-width:80%; }
+.tm-chat-msg--me { align-self:flex-end;flex-direction:row-reverse; }
+.tm-chat-msg-ava {
+  width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.06);
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;
+  color:#6A6A6A;flex-shrink:0;
+}
+.tm-chat-msg-body {
+  background:#111;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;line-height:1.5;
+}
+.tm-chat-msg--me .tm-chat-msg-body { background:rgba(100,181,246,0.08); }
+.tm-chat-msg-time { font-size:9px;color:#6A6A6A;margin-top:3px; }
+.tm-chat-input {
+  padding:10px 12px;border-top:1px solid rgba(255,255,255,0.06);
+  display:flex;gap:8px;
+}
+.tm-chat-input input {
+  flex:1;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;
+  padding:8px 12px;font-size:12px;color:#ECECEC;outline:none;
+}
+.tm-chat-input input:focus { border-color:rgba(100,181,246,0.3); }
+.tm-chat-send {
+  padding:8px 14px;background:rgba(100,181,246,0.1);border:1px solid rgba(100,181,246,0.25);
+  border-radius:8px;font-size:12px;font-weight:600;color:#64B5F6;cursor:pointer;
+}
+
+/* Tasks */
+.tm-task-list { display:flex;flex-direction:column;gap:6px; }
+.tm-task {
+  background:#1A1A1A;border-radius:10px;padding:12px 16px;
+  border:1px solid rgba(255,255,255,0.04);
+  display:grid;grid-template-columns:24px 1fr 100px 80px 70px;align-items:center;gap:12px;
+}
+.tm-task-check {
+  width:20px;height:20px;border-radius:5px;border:1px solid rgba(255,255,255,0.12);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:transparent;
+}
+.tm-task-check.done { background:rgba(102,187,106,0.15);border-color:rgba(102,187,106,0.4);color:#66BB6A; }
+.tm-task-title { font-size:13px;color:#ECECEC; }
+.tm-task-title.done { text-decoration:line-through;color:#6A6A6A; }
+.tm-task-assignee { font-size:11px;color:#8A8A8A;text-align:center; }
+.tm-task-due { font-size:11px;text-align:center; }
+.tm-task-due--ok { color:#6A6A6A; }
+.tm-task-due--soon { color:#FF8C42; }
+.tm-task-due--late { color:#E05555; }
+.tm-task-prio { font-size:10px;font-weight:600;text-align:center;padding:2px 6px;border-radius:4px; }
+.tm-task-prio--high { background:rgba(224,85,85,0.1);color:#E05555; }
+.tm-task-prio--med { background:rgba(255,140,66,0.1);color:#FF8C42; }
+.tm-task-prio--low { background:rgba(255,255,255,0.05);color:#6A6A6A; }
+
+/* Activity */
+.tm-activity-row {
+  display:grid;grid-template-columns:36px 1fr 120px 80px;align-items:center;gap:12px;
+  padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.tm-activity-row:last-child { border-bottom:none; }
+.tm-act-ava {
+  width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.06);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#8A8A8A;
+}
+.tm-act-text { font-size:12px;color:#ECECEC; }
+.tm-act-text span { color:#6A6A6A; }
+.tm-act-time { font-size:11px;color:#6A6A6A;text-align:right; }
+.tm-act-score { font-size:12px;font-weight:600;text-align:right; }
+
+/* Rating card */
+.tm-rating-card {
+  background:#1A1A1A;border-radius:12px;padding:20px;
+  border:1px solid rgba(255,255,255,0.04);margin-bottom:16px;
+}
+.tm-rating-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:16px; }
+.tm-rating-score { font-size:32px;font-weight:800;color:#ECECEC; }
+.tm-rating-label { font-size:12px;color:#6A6A6A; }
+.tm-rating-bar-wrap { margin-bottom:10px; }
+.tm-rating-bar-label { display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px; }
+.tm-rating-bar-name { color:#8A8A8A; }
+.tm-rating-bar-val { color:#ECECEC;font-weight:600; }
+.tm-rating-bar { height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden; }
+.tm-rating-bar-fill { height:100%;border-radius:3px;background:rgba(100,181,246,0.4); }
+
+/* Btn */
+.tm-btn {
+  padding:6px 14px;border-radius:7px;font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .2s;border:1px solid transparent;
+}
+.tm-btn--primary { background:rgba(100,181,246,0.1);border-color:rgba(100,181,246,0.25);color:#64B5F6; }
+.tm-btn--primary:hover { background:rgba(100,181,246,0.18); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="tm-tabs">
+  <div class="tm-tab active" onclick="tmTab(this,'team')">Команда</div>
+  <div class="tm-tab" onclick="tmTab(this,'permissions')">Права доступа</div>
+  <div class="tm-tab" onclick="tmTab(this,'chat')">Чат</div>
+  <div class="tm-tab" onclick="tmTab(this,'tasks')">Задачи</div>
+  <div class="tm-tab" onclick="tmTab(this,'activity')">Активность</div>
+  <div class="tm-tab" onclick="tmTab(this,'ratings')">Рейтинги</div>
+</div>
+
+{# ═══ TAB 1: Команда и орг-схема ═══ #}
+<div class="tm-panel active" id="panel-team">
+  <div class="tm-section">
+    <div class="tm-section-title">Организационная структура</div>
+    <div class="tm-section-sub">Управляйте командой поставщика. Каждый участник влияет на общий рейтинг компании</div>
+  </div>
+
+  {# Org chart #}
+  <div class="tm-org" style="margin-bottom:24px;">
+    <div class="tm-org-level">
+      <div class="tm-member" onclick="selectMember(this,'director')">
+        <div class="tm-member-avatar">АК</div>
+        <div class="tm-member-name">Алексей Козлов</div>
+        <div class="tm-member-role">Директор</div>
+        <div class="tm-member-rating">92.4</div>
+      </div>
+    </div>
+    <div class="tm-org-line"></div>
+    <div class="tm-org-level">
+      <div class="tm-member" onclick="selectMember(this,'sales_head')">
+        <div class="tm-member-avatar">МД</div>
+        <div class="tm-member-name">Мария Демина</div>
+        <div class="tm-member-role">Руководитель продаж</div>
+        <div class="tm-member-rating">88.1</div>
+      </div>
+      <div class="tm-member" onclick="selectMember(this,'logistics_head')">
+        <div class="tm-member-avatar">ИП</div>
+        <div class="tm-member-name">Игорь Петров</div>
+        <div class="tm-member-role">Логистика</div>
+        <div class="tm-member-rating">84.7</div>
+      </div>
+      <div class="tm-member" onclick="selectMember(this,'engineer')">
+        <div class="tm-member-avatar">ОС</div>
+        <div class="tm-member-name">Ольга Смирнова</div>
+        <div class="tm-member-role">Инженер</div>
+        <div class="tm-member-rating">91.0</div>
+      </div>
+    </div>
+    <div class="tm-org-line"></div>
+    <div class="tm-org-level">
+      <div class="tm-member" onclick="selectMember(this,'sales1')">
+        <div class="tm-member-avatar">ДВ</div>
+        <div class="tm-member-name">Дмитрий Волков</div>
+        <div class="tm-member-role">Менеджер</div>
+        <div class="tm-member-rating">79.3</div>
+      </div>
+      <div class="tm-member" onclick="selectMember(this,'sales2')">
+        <div class="tm-member-avatar">ЕК</div>
+        <div class="tm-member-name">Елена Кузнецова</div>
+        <div class="tm-member-role">Менеджер</div>
+        <div class="tm-member-rating">86.5</div>
+      </div>
+      <div class="tm-member" onclick="selectMember(this,'warehouse')">
+        <div class="tm-member-avatar">СН</div>
+        <div class="tm-member-name">Сергей Новиков</div>
+        <div class="tm-member-role">Склад</div>
+        <div class="tm-member-rating">82.0</div>
+      </div>
+      <div class="tm-member" onclick="selectMember(this,'tech')">
+        <div class="tm-member-avatar">АЛ</div>
+        <div class="tm-member-name">Анна Лебедева</div>
+        <div class="tm-member-role">Тех. документация</div>
+        <div class="tm-member-rating">90.2</div>
+      </div>
+    </div>
+  </div>
+
+  {# Team list #}
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <div style="font-size:12px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;">Список команды</div>
+    <button class="tm-btn tm-btn--primary" onclick="showToast('Приглашение отправлено')">+ Пригласить</button>
+  </div>
+
+  <div class="tm-list">
+    <div class="tm-list-row" style="background:transparent;border:none;">
+      <div></div>
+      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;">Сотрудник</div>
+      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;text-align:center;">Роль</div>
+      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;text-align:center;">Статус</div>
+      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;text-align:center;">Рейтинг</div>
+      <div></div>
+    </div>
+    <div class="tm-list-row">
+      <div class="tm-list-avatar">АК</div>
+      <div><div class="tm-list-name">Алексей Козлов</div><div class="tm-list-email">a.kozlov@company.ru</div></div>
+      <div class="tm-list-role">Директор</div>
+      <div class="tm-list-status tm-list-status--on">&#9679; Онлайн</div>
+      <div class="tm-list-rating">92.4</div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+    </div>
+    <div class="tm-list-row">
+      <div class="tm-list-avatar">МД</div>
+      <div><div class="tm-list-name">Мария Демина</div><div class="tm-list-email">m.demina@company.ru</div></div>
+      <div class="tm-list-role">Продажи</div>
+      <div class="tm-list-status tm-list-status--on">&#9679; Онлайн</div>
+      <div class="tm-list-rating">88.1</div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+    </div>
+    <div class="tm-list-row">
+      <div class="tm-list-avatar">ИП</div>
+      <div><div class="tm-list-name">Игорь Петров</div><div class="tm-list-email">i.petrov@company.ru</div></div>
+      <div class="tm-list-role">Логистика</div>
+      <div class="tm-list-status tm-list-status--off">&#9679; Офлайн</div>
+      <div class="tm-list-rating">84.7</div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+    </div>
+    <div class="tm-list-row">
+      <div class="tm-list-avatar">ОС</div>
+      <div><div class="tm-list-name">Ольга Смирнова</div><div class="tm-list-email">o.smirnova@company.ru</div></div>
+      <div class="tm-list-role">Инженер</div>
+      <div class="tm-list-status tm-list-status--on">&#9679; Онлайн</div>
+      <div class="tm-list-rating">91.0</div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+    </div>
+    <div class="tm-list-row">
+      <div class="tm-list-avatar">ДВ</div>
+      <div><div class="tm-list-name">Дмитрий Волков</div><div class="tm-list-email">d.volkov@company.ru</div></div>
+      <div class="tm-list-role">Менеджер</div>
+      <div class="tm-list-status tm-list-status--on">&#9679; Онлайн</div>
+      <div class="tm-list-rating">79.3</div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+    </div>
+    <div class="tm-list-row">
+      <div class="tm-list-avatar">ЕК</div>
+      <div><div class="tm-list-name">Елена Кузнецова</div><div class="tm-list-email">e.kuznetsova@company.ru</div></div>
+      <div class="tm-list-role">Менеджер</div>
+      <div class="tm-list-status tm-list-status--off">&#9679; Офлайн</div>
+      <div class="tm-list-rating">86.5</div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+    </div>
+    <div class="tm-list-row">
+      <div class="tm-list-avatar">СН</div>
+      <div><div class="tm-list-name">Сергей Новиков</div><div class="tm-list-email">s.novikov@company.ru</div></div>
+      <div class="tm-list-role">Склад</div>
+      <div class="tm-list-status tm-list-status--off">&#9679; Офлайн</div>
+      <div class="tm-list-rating">82.0</div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+    </div>
+    <div class="tm-list-row">
+      <div class="tm-list-avatar">АЛ</div>
+      <div><div class="tm-list-name">Анна Лебедева</div><div class="tm-list-email">a.lebedeva@company.ru</div></div>
+      <div class="tm-list-role">Тех. док.</div>
+      <div class="tm-list-status tm-list-status--on">&#9679; Онлайн</div>
+      <div class="tm-list-rating">90.2</div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+    </div>
+  </div>
+</div>
+
+{# ═══ TAB 2: Права доступа ═══ #}
+<div class="tm-panel" id="panel-permissions">
+  <div class="tm-section">
+    <div class="tm-section-title">Матрица прав доступа</div>
+    <div class="tm-section-sub">Настройте, кто из команды имеет доступ к каким разделам платформы</div>
+  </div>
+
+  <div class="tm-perm-grid">
+    <div class="tm-perm-header">Сотрудник</div>
+    <div class="tm-perm-header">Ассортимент</div>
+    <div class="tm-perm-header">Цены</div>
+    <div class="tm-perm-header">Заказы</div>
+    <div class="tm-perm-header">Чертежи</div>
+    <div class="tm-perm-header">Аналитика</div>
+    <div class="tm-perm-header">Команда</div>
+
+    <div class="tm-perm-name">Алексей Козлов</div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+
+    <div class="tm-perm-name">Мария Демина</div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+
+    <div class="tm-perm-name">Игорь Петров</div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+
+    <div class="tm-perm-name">Ольга Смирнова</div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+
+    <div class="tm-perm-name">Дмитрий Волков</div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+
+    <div class="tm-perm-name">Елена Кузнецова</div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+
+    <div class="tm-perm-name">Сергей Новиков</div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+
+    <div class="tm-perm-name">Анна Лебедева</div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+  </div>
+
+  <div style="margin-top:12px;display:flex;justify-content:flex-end;">
+    <button class="tm-btn tm-btn--primary" onclick="showToast('Права сохранены')">Сохранить права</button>
+  </div>
+</div>
+
+{# ═══ TAB 3: Чат ═══ #}
+<div class="tm-panel" id="panel-chat">
+  <div class="tm-chat-container">
+    <div class="tm-chat-sidebar">
+      <div class="tm-chat-channel active"><div class="tm-chat-ch-name"># общий</div><div class="tm-chat-ch-preview">Мария: Новый RFQ от клиента...</div></div>
+      <div class="tm-chat-channel"><div class="tm-chat-ch-name"># продажи</div><div class="tm-chat-ch-preview">Дмитрий: Котировка готова</div></div>
+      <div class="tm-chat-channel"><div class="tm-chat-ch-name"># логистика</div><div class="tm-chat-ch-preview">Игорь: Таможня пройдена</div></div>
+      <div class="tm-chat-channel"><div class="tm-chat-ch-name"># чертежи</div><div class="tm-chat-ch-preview">Ольга: Обновила спецификацию</div></div>
+      <div class="tm-chat-channel"><div class="tm-chat-ch-name"># срочное</div><div class="tm-chat-ch-preview">Алексей: SLA нарушение по #3851</div></div>
+    </div>
+    <div class="tm-chat-main">
+      <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;font-weight:600;color:#ECECEC;"># общий</div>
+      <div class="tm-chat-messages">
+        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">МД</div><div><div class="tm-chat-msg-body">Новый RFQ от клиента Demo Fleet — 5 позиций, гидравлика. Кто берёт?</div><div class="tm-chat-msg-time">10:32</div></div></div>
+        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">ДВ</div><div><div class="tm-chat-msg-body">Я возьму, сейчас подготовлю котировку. RE48786 есть на складе?</div><div class="tm-chat-msg-time">10:35</div></div></div>
+        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">СН</div><div><div class="tm-chat-msg-body">RE48786 — 3 шт. на складе, готов к отгрузке. LH-9989363 под заказ, 5-7 дней.</div><div class="tm-chat-msg-time">10:38</div></div></div>
+        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">ОС</div><div><div class="tm-chat-msg-body">По RE48786 есть обновлённый чертёж, загрузила в систему. Клиенту передать?</div><div class="tm-chat-msg-time">10:42</div></div></div>
+        <div class="tm-chat-msg tm-chat-msg--me"><div class="tm-chat-msg-ava">АК</div><div><div class="tm-chat-msg-body">Да, передайте. Дмитрий, котировку до 12:00, SLA тикает.</div><div class="tm-chat-msg-time">10:45</div></div></div>
+        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">ДВ</div><div><div class="tm-chat-msg-body">Понял, будет готово через 30 минут.</div><div class="tm-chat-msg-time">10:46</div></div></div>
+      </div>
+      <div class="tm-chat-input">
+        <input type="text" placeholder="Введите сообщение..." id="chatInput" onkeydown="if(event.key==='Enter')sendMsg()" />
+        <button class="tm-chat-send" onclick="sendMsg()">Отправить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ═══ TAB 4: Задачи ═══ #}
+<div class="tm-panel" id="panel-tasks">
+  <div class="tm-section">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="tm-section-title">Задачи команды</div>
+        <div class="tm-section-sub" style="margin-bottom:0;">Отслеживайте выполнение задач в реальном времени</div>
+      </div>
+      <button class="tm-btn tm-btn--primary" onclick="showToast('Форма новой задачи')">+ Новая задача</button>
+    </div>
+  </div>
+
+  <div class="tm-task-list">
+    <div class="tm-task">
+      <div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>
+      <div class="tm-task-title">Подготовить котировку по RFQ #1 — Demo Fleet</div>
+      <div class="tm-task-assignee">Дмитрий В.</div>
+      <div class="tm-task-due tm-task-due--soon">сегодня 12:00</div>
+      <div class="tm-task-prio tm-task-prio--high">Срочно</div>
+    </div>
+    <div class="tm-task">
+      <div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>
+      <div class="tm-task-title">Загрузить чертёж KM-21W-60-41112</div>
+      <div class="tm-task-assignee">Ольга С.</div>
+      <div class="tm-task-due tm-task-due--soon">сегодня 18:00</div>
+      <div class="tm-task-prio tm-task-prio--med">Средне</div>
+    </div>
+    <div class="tm-task">
+      <div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>
+      <div class="tm-task-title">Подтвердить отгрузку ORD-3851 (4 позиции)</div>
+      <div class="tm-task-assignee">Сергей Н.</div>
+      <div class="tm-task-due tm-task-due--late">вчера!</div>
+      <div class="tm-task-prio tm-task-prio--high">Срочно</div>
+    </div>
+    <div class="tm-task">
+      <div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>
+      <div class="tm-task-title">Обновить прайс-лист — категория «Фильтры»</div>
+      <div class="tm-task-assignee">Елена К.</div>
+      <div class="tm-task-due tm-task-due--ok">26 мар</div>
+      <div class="tm-task-prio tm-task-prio--med">Средне</div>
+    </div>
+    <div class="tm-task">
+      <div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>
+      <div class="tm-task-title">Согласовать логистику для заказа #3847</div>
+      <div class="tm-task-assignee">Игорь П.</div>
+      <div class="tm-task-due tm-task-due--ok">27 мар</div>
+      <div class="tm-task-prio tm-task-prio--low">Обычно</div>
+    </div>
+    <div class="tm-task">
+      <div class="tm-task-check done" onclick="toggleTask(this)">&#10003;</div>
+      <div class="tm-task-title done">Ответить на рекламацию CLM-0042</div>
+      <div class="tm-task-assignee">Мария Д.</div>
+      <div class="tm-task-due tm-task-due--ok">выполнено</div>
+      <div class="tm-task-prio tm-task-prio--low">Готово</div>
+    </div>
+    <div class="tm-task">
+      <div class="tm-task-check done" onclick="toggleTask(this)">&#10003;</div>
+      <div class="tm-task-title done">Загрузить сертификат качества для ORD-3847</div>
+      <div class="tm-task-assignee">Анна Л.</div>
+      <div class="tm-task-due tm-task-due--ok">выполнено</div>
+      <div class="tm-task-prio tm-task-prio--low">Готово</div>
+    </div>
+  </div>
+</div>
+
+{# ═══ TAB 5: Активность ═══ #}
+<div class="tm-panel" id="panel-activity">
+  <div class="tm-section">
+    <div class="tm-section-title">Активность на платформе</div>
+    <div class="tm-section-sub">Лог действий всех участников команды за последние 7 дней</div>
+  </div>
+
+  <div style="background:#1A1A1A;border-radius:10px;border:1px solid rgba(255,255,255,0.04);overflow:hidden;">
+    <div class="tm-activity-row"><div class="tm-act-ava">ДВ</div><div class="tm-act-text">Дмитрий Волков <span>отправил котировку по RFQ #1</span></div><div class="tm-act-time">сегодня, 11:20</div><div class="tm-act-score" style="color:#66BB6A;">+2.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">ОС</div><div class="tm-act-text">Ольга Смирнова <span>загрузила чертёж RE48786</span></div><div class="tm-act-time">сегодня, 10:42</div><div class="tm-act-score" style="color:#66BB6A;">+1.5</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">СН</div><div class="tm-act-text">Сергей Новиков <span>подтвердил наличие на складе</span></div><div class="tm-act-time">сегодня, 10:38</div><div class="tm-act-score" style="color:#66BB6A;">+1.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">МД</div><div class="tm-act-text">Мария Демина <span>приняла RFQ в работу</span></div><div class="tm-act-time">сегодня, 10:32</div><div class="tm-act-score" style="color:#66BB6A;">+1.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">АК</div><div class="tm-act-text">Алексей Козлов <span>одобрил скидку 5% для переторжки</span></div><div class="tm-act-time">сегодня, 09:15</div><div class="tm-act-score" style="color:#8A8A8A;">0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">ЕК</div><div class="tm-act-text">Елена Кузнецова <span>обновила 142 позиции прайс-листа</span></div><div class="tm-act-time">вчера, 17:40</div><div class="tm-act-score" style="color:#66BB6A;">+3.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">ИП</div><div class="tm-act-text">Игорь Петров <span>оформил отгрузку ORD-3845</span></div><div class="tm-act-time">вчера, 15:20</div><div class="tm-act-score" style="color:#66BB6A;">+2.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">СН</div><div class="tm-act-text">Сергей Новиков <span>просрочил отгрузку ORD-3851</span></div><div class="tm-act-time">вчера, 14:00</div><div class="tm-act-score" style="color:#E05555;">-3.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">АЛ</div><div class="tm-act-text">Анна Лебедева <span>загрузила сертификат качества</span></div><div class="tm-act-time">вчера, 11:30</div><div class="tm-act-score" style="color:#66BB6A;">+1.5</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">МД</div><div class="tm-act-text">Мария Демина <span>решила рекламацию CLM-0042</span></div><div class="tm-act-time">вчера, 09:45</div><div class="tm-act-score" style="color:#66BB6A;">+2.5</div></div>
+  </div>
+</div>
+
+{# ═══ TAB 6: Рейтинги ═══ #}
+<div class="tm-panel" id="panel-ratings">
+  <div class="tm-section">
+    <div class="tm-section-title">Рейтинги команды</div>
+    <div class="tm-section-sub">Рейтинг каждого сотрудника складывается из активности, SLA, качества и скорости. Средний рейтинг команды = рейтинг юр. лица</div>
+  </div>
+
+  {# Company rating #}
+  <div class="tm-rating-card">
+    <div class="tm-rating-head">
+      <div>
+        <div style="font-size:12px;color:#6A6A6A;margin-bottom:4px;">Рейтинг юридического лица</div>
+        <div class="tm-rating-score">85.20 <span style="font-size:14px;color:#6A6A6A;font-weight:400;">/ 100</span></div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:#6A6A6A;">Формула: среднее рейтингов команды</div>
+        <div style="font-size:12px;color:#8A8A8A;margin-top:2px;">(92.4 + 88.1 + 84.7 + 91.0 + 79.3 + 86.5 + 82.0 + 90.2) / 8 = <strong style="color:#ECECEC;">85.20</strong></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+      <div style="text-align:center;padding:10px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
+        <div style="font-size:18px;font-weight:700;color:#ECECEC;">95.2%</div>
+        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">SLA команды</div>
+      </div>
+      <div style="text-align:center;padding:10px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
+        <div style="font-size:18px;font-weight:700;color:#ECECEC;">1.8ч</div>
+        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">Ср. ответ</div>
+      </div>
+      <div style="text-align:center;padding:10px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
+        <div style="font-size:18px;font-weight:700;color:#ECECEC;">98.4%</div>
+        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">Без рекламаций</div>
+      </div>
+      <div style="text-align:center;padding:10px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
+        <div style="font-size:18px;font-weight:700;color:#ECECEC;">4.26</div>
+        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">Оценка /5</div>
+      </div>
+    </div>
+  </div>
+
+  {# Individual ratings #}
+  <div style="font-size:12px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Рейтинг по сотрудникам</div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    <div class="tm-rating-card" style="padding:14px 16px;margin-bottom:0;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">АК</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">Алексей Козлов</div><div style="font-size:10px;color:#6A6A6A;">Директор</div></div>
+        <div style="font-size:20px;font-weight:800;color:#ECECEC;">92.4</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">SLA</span><span class="tm-rating-bar-val">98%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:98%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Скорость</span><span class="tm-rating-bar-val">90%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:90%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Качество</span><span class="tm-rating-bar-val">95%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:95%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Активность</span><span class="tm-rating-bar-val">86%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:86%;"></div></div></div>
+      </div>
+    </div>
+
+    <div class="tm-rating-card" style="padding:14px 16px;margin-bottom:0;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">ОС</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">Ольга Смирнова</div><div style="font-size:10px;color:#6A6A6A;">Инженер</div></div>
+        <div style="font-size:20px;font-weight:800;color:#ECECEC;">91.0</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">SLA</span><span class="tm-rating-bar-val">96%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:96%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Скорость</span><span class="tm-rating-bar-val">88%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:88%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Качество</span><span class="tm-rating-bar-val">94%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:94%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Активность</span><span class="tm-rating-bar-val">86%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:86%;"></div></div></div>
+      </div>
+    </div>
+
+    <div class="tm-rating-card" style="padding:14px 16px;margin-bottom:0;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">МД</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">Мария Демина</div><div style="font-size:10px;color:#6A6A6A;">Руководитель продаж</div></div>
+        <div style="font-size:20px;font-weight:800;color:#ECECEC;">88.1</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">SLA</span><span class="tm-rating-bar-val">94%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:94%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Скорость</span><span class="tm-rating-bar-val">92%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:92%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Качество</span><span class="tm-rating-bar-val">85%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:85%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Активность</span><span class="tm-rating-bar-val">82%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:82%;"></div></div></div>
+      </div>
+    </div>
+
+    <div class="tm-rating-card" style="padding:14px 16px;margin-bottom:0;">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">ДВ</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">Дмитрий Волков</div><div style="font-size:10px;color:#6A6A6A;">Менеджер</div></div>
+        <div style="font-size:20px;font-weight:800;color:#ECECEC;">79.3</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">SLA</span><span class="tm-rating-bar-val">82%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:82%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Скорость</span><span class="tm-rating-bar-val">76%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:76%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Качество</span><span class="tm-rating-bar-val">80%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:80%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Активность</span><span class="tm-rating-bar-val">79%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:79%;"></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="an-toast" id="anToast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(102,187,106,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#66BB6A;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+
+<script>
+function tmTab(el, panel) {
+  document.querySelectorAll('.tm-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tm-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + panel).classList.add('active');
+}
+
+function togglePerm(el) { el.classList.toggle('on'); }
+
+function toggleTask(el) {
+  el.classList.toggle('done');
+  const title = el.parentElement.querySelector('.tm-task-title');
+  title.classList.toggle('done');
+}
+
+function selectMember(el, key) {
+  document.querySelectorAll('.tm-member').forEach(m => m.style.borderColor = '');
+  el.style.borderColor = 'rgba(100,181,246,0.4)';
+}
+
+function sendMsg() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const container = document.querySelector('.tm-chat-messages');
+  container.innerHTML += `<div class="tm-chat-msg tm-chat-msg--me"><div class="tm-chat-msg-ava">АК</div><div><div class="tm-chat-msg-body">${text}</div><div class="tm-chat-msg-time">сейчас</div></div></div>`;
+  input.value = '';
+  container.scrollTop = container.scrollHeight;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('anToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,35 @@
+<header class="seller-topbar">
+  <div>
+    {% if seller_breadcrumbs %}
+      <nav class="seller-breadcrumbs" aria-label="breadcrumbs">
+        {% for crumb in seller_breadcrumbs %}
+          {% if crumb.url and not forloop.last %}
+            <a href="{{ crumb.url }}">{{ crumb.label }}</a><span class="seller-breadcrumb-sep">→</span>
+          {% else %}
+            <span style="color:var(--s-t1)">{{ crumb.label }}</span>
+          {% endif %}
+        {% endfor %}
+      </nav>
+    {% endif %}
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div class="seller-nav-arrows">
+        <a href="javascript:history.back()" class="seller-nav-arrow" title="Назад">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <a href="javascript:history.forward()" class="seller-nav-arrow" title="Вперёд">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+      <h1 class="seller-page-title">{{ seller_page_title|default:"Кабинет поставщика" }}</h1>
+    </div>
+    {% if seller_page_subtitle %}
+      <p class="seller-page-subtitle">{{ seller_page_subtitle }}</p>
+    {% endif %}
+  </div>
+  <div class="seller-topbar-meta">
+    <div class="seller-topbar-chip">
+      <span class="muted">Рейтинг</span>
+      <strong>{{ seller_rating_score|default:"—" }}</strong>
+    </div>
+  </div>
+</header>

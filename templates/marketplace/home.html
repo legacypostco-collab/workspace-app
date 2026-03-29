@@ -1,29 +1,172 @@
 {% extends "marketplace/base.html" %}
-{% block title %}Consolidator Parts | Главная{% endblock %}
+{% load marketplace_tags %}
+{% block title %}Consolidator Parts | Home{% endblock %}
 {% block content %}
 <section class="hero">
   <p class="eyebrow">Consolidator Parts Platform</p>
   <h1>Procurement Control Center<br />for Industrial Parts</h1>
-  <p class="sub">Каталог OEM/аналогов, seller marketplace и заказный контур в одном защищенном интерфейсе.</p>
+  <p class="sub">OEM catalog, supplier marketplace, and order operations in one secure workspace.</p>
   <div class="hero-actions">
-    <a href="{% url 'catalog' %}" class="btn">Открыть каталог</a>
-    <a href="{% url 'register' %}" class="btn btn-secondary">Стать поставщиком</a>
+    <a href="{% url 'catalog' %}" class="btn">Open Catalog</a>
+    <a href="{% url 'register' %}" class="btn btn-secondary">Become a Supplier</a>
     <a href="{% url 'demo_center' %}" class="btn btn-secondary">Demo Center</a>
   </div>
+</section>
+
+<section class="lookup-hero panel">
+  <div class="section-head">
+    <h2>Bulk Price Lookup</h2>
+  </div>
+  <p class="sub">Copy and paste part numbers. Quantity is optional. We return only exact matches from the catalog.</p>
+  <form method="post" class="bulk-lookup-form">
+    {% csrf_token %}
+    <div class="lookup-composer">
+      <div class="lookup-input-panel">
+        <label class="lookup-label" for="id_items_text">Batch Import</label>
+        {{ bulk_form.items_text }}
+        <div class="lookup-tools">
+          <span class="muted" id="bulk-line-count">0 lines</span>
+          <span class="lookup-divider"></span>
+          <span class="muted">Up to 1000 rows</span>
+        </div>
+        <p class="muted">{{ bulk_form.items_text.help_text }}</p>
+      </div>
+      <aside class="lookup-help-card">
+        <p class="lookup-help-title">Copy and paste part numbers.</p>
+        <p class="lookup-help-copy">One line per item. Quantity can be added after a space, semicolon, comma, or trailing hyphen.</p>
+        <div class="lookup-example-block">
+          <p class="lookup-example-title">Examples</p>
+          <code>1661495</code>
+          <code>2W1223 2</code>
+          <code>1R0750 2</code>
+          <code>RE48786;4</code>
+        </div>
+        <div class="lookup-note">
+          Exact article lookup only. If a part number is not found exactly, it stays <strong>Not found</strong>.
+        </div>
+      </aside>
+    </div>
+    <div class="lookup-actions">
+      <button type="submit" name="action" value="lookup" class="btn btn-lookup-primary">Find Prices</button>
+      <div class="lookup-secondary-actions">
+        <button type="submit" name="action" value="export" class="btn btn-secondary">Export CSV</button>
+        <button type="submit" name="action" value="cart" class="btn btn-secondary">Add Found to Cart</button>
+        <button type="submit" name="action" value="rfq" class="btn btn-secondary">Open as RFQ</button>
+      </div>
+    </div>
+  </form>
+
+  {% if bulk_total %}
+    <div class="lookup-sticky-bar">
+      <div class="lookup-summary">
+        <span class="chip chip-ok">Found: {{ bulk_found }}</span>
+        <span class="chip chip-soft">Requested: {{ bulk_total }}</span>
+        <span class="chip chip-soft">Missing: {{ bulk_missing }}</span>
+        <span class="chip chip-soft">Units: {{ bulk_requested_units }}</span>
+        <span class="chip chip-soft">Found Units: {{ bulk_found_units }}</span>
+        {% if bulk_missing_units %}
+          <span class="chip chip-warn">Manual Review Units: {{ bulk_missing_units }}</span>
+        {% endif %}
+        <span class="chip chip-soft">Total: {{ bulk_amount|money_usd }}</span>
+      </div>
+      <div class="lookup-summary-actions">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="items_text" value="{{ bulk_form.items_text.value|default:'' }}">
+          <button type="submit" name="action" value="export" class="btn btn-secondary">Export CSV</button>
+        </form>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="items_text" value="{{ bulk_form.items_text.value|default:'' }}">
+          <button type="submit" name="action" value="cart" class="btn btn-secondary">Add Found to Cart</button>
+        </form>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="items_text" value="{{ bulk_form.items_text.value|default:'' }}">
+          <button type="submit" name="action" value="rfq" class="btn btn-secondary">Open as RFQ</button>
+        </form>
+      </div>
+    </div>
+    <div class="lookup-table-wrap">
+      <table class="lookup-table">
+        <thead>
+          <tr>
+            <th>Stock</th>
+            <th>#</th>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Brand</th>
+            <th>Condition</th>
+            <th>Price</th>
+            <th>Qty</th>
+            <th>Weight</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in bulk_results %}
+            <tr class="{% if row.review_flag %}lookup-row-review{% endif %}">
+              <td>
+                {% if row.found and row.part.stock_quantity > 0 %}
+                  <span class="chip chip-ok">{{ row.stock_label }}</span>
+                {% elif row.found %}
+                  <span class="chip chip-warn">{{ row.stock_label }}</span>
+                {% else %}
+                  <span class="chip chip-warn">Not found</span>
+                {% endif %}
+              </td>
+              <td>{{ forloop.counter }}</td>
+              <td>
+                {% if row.found %}
+                  <a href="{% url 'part_detail' row.part.slug %}">{{ row.part.oem_number }}</a>
+                {% else %}
+                  <span class="lookup-request">{{ row.normalized_query|default:row.query }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if row.found %}
+                  <span class="lookup-request">{{ row.part.title }}</span>
+                {% else %}
+                  <span class="lookup-subtle">No exact match in catalog</span>
+                  {% if row.normalized_query != row.query %}
+                    <span class="lookup-subtle">Used for lookup: {{ row.normalized_query }}</span>
+                  {% elif row.input_hint %}
+                    <span class="lookup-subtle">{{ row.input_hint }}</span>
+                  {% endif %}
+                {% endif %}
+              </td>
+              {% if row.found %}
+                <td>{% if row.part.brand %}{{ row.part.brand.name }}{% endif %}</td>
+                <td>{{ row.part.get_condition_display }}</td>
+                <td>{{ row.part.price|money_usd }}</td>
+                <td>{{ row.quantity }}</td>
+                <td>{{ row.part.gross_weight_kg }} kg</td>
+              {% else %}
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>{{ row.quantity }}</td>
+                <td>-</td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
 </section>
 
 <section class="panel">
   <div class="grid metrics">
     <article class="card card-body">
-      <p class="muted">SKU в работе</p>
+      <p class="muted">Active SKUs</p>
       <p class="price">10M+</p>
     </article>
     <article class="card card-body">
-      <p class="muted">SLA исполнение</p>
+      <p class="muted">SLA Compliance</p>
       <p class="price">95%</p>
     </article>
     <article class="card card-body">
-      <p class="muted">RFQ скорость</p>
+      <p class="muted">RFQ Speed</p>
       <p class="price">≤ 15 min</p>
     </article>
   </div>
@@ -31,14 +174,14 @@
 
 <section>
   <div class="section-head">
-    <h2>Категории</h2>
+    <h2>Categories</h2>
   </div>
   <section class="panel">
     <div class="chips">
       {% for category in top_categories %}
         <a class="chip" href="{% url 'catalog' %}?category={{ category.slug }}">{{ category.name }} ({{ category.parts_count }})</a>
       {% empty %}
-        <span class="muted">Категории пока пустые</span>
+        <span class="muted">No categories yet</span>
       {% endfor %}
     </div>
   </section>
@@ -46,14 +189,14 @@
 
 <section>
   <div class="section-head">
-    <h2>Бренды</h2>
+    <h2>Brands</h2>
   </div>
   <section class="panel">
     <div class="chips">
       {% for brand in top_brands %}
         <a class="chip" href="{% url 'catalog' %}?brand={{ brand.slug }}">{{ brand.name }} ({{ brand.parts_count }})</a>
       {% empty %}
-        <span class="muted">Бренды пока пустые</span>
+        <span class="muted">No brands yet</span>
       {% endfor %}
     </div>
   </section>
@@ -61,19 +204,87 @@
 
 <section>
   <div class="section-head">
-    <h2>Популярные позиции</h2>
+    <h2>Featured Parts</h2>
   </div>
   <div class="grid">
     {% for part in featured %}
       <article class="card">
         <img src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
         <div class="card-body">
-          <p class="muted">{{ part.category.name }}</p>
-          <h3><a href="{% url 'part_detail' part.slug %}">{{ part.title }}</a></h3>
+          <div class="card-meta">
+            <span class="chip chip-soft">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
+            <span class="chip chip-soft">{{ part.category.name }}</span>
+          </div>
+          <p class="field-label">Part Number</p>
+          <h3 class="part-number"><a href="{% url 'part_detail' part.slug %}">{{ part.oem_number }}</a></h3>
+          <p class="field-label">Part Name</p>
+          <p class="part-name">{{ part.title }}</p>
           <p class="price">${{ part.price }}</p>
         </div>
       </article>
     {% endfor %}
   </div>
 </section>
+<script>
+  (() => {
+    const textarea = document.getElementById("id_items_text");
+    const lineCount = document.getElementById("bulk-line-count");
+    if (!textarea || !lineCount) return;
+
+    const normalizeArticle = (raw) => {
+      let value = (raw || "").trim();
+      if (!value) return "";
+      const replacements = {
+        "–": "-",
+        "—": "-",
+        "−": "-",
+        "‑": "-",
+        "\u00A0": " ",
+        "\u200B": "",
+        "\u200C": "",
+        "\u200D": "",
+        "\uFEFF": "",
+      };
+      for (const [src, dst] of Object.entries(replacements)) {
+        value = value.split(src).join(dst);
+      }
+      value = value.replace(/\s+/g, " ").replace(/ \/ /g, "/").replace(/ - /g, "-");
+      return value.toUpperCase();
+    };
+
+    const parseLine = (raw) => {
+      const line = (raw || "").trim();
+      if (!line) return null;
+      for (const separator of [";", "\t", ","]) {
+        if (line.includes(separator)) {
+          const idx = line.lastIndexOf(separator);
+          const left = line.slice(0, idx).trim();
+          const right = line.slice(idx + 1).trim();
+          const qty = Number.parseInt(right, 10);
+          if (left && Number.isFinite(qty) && qty > 0) {
+            return `${normalizeArticle(left)};${qty}`;
+          }
+        }
+      }
+      const qtyMatch = line.match(/^(.*\S)\s+(\d+)$/);
+      if (qtyMatch) {
+        return `${normalizeArticle(qtyMatch[1])};${Number.parseInt(qtyMatch[2], 10)}`;
+      }
+      const hyphenQtyMatch = line.match(/^(.*\S)-(\d+)$/);
+      if (hyphenQtyMatch) {
+        return `${normalizeArticle(hyphenQtyMatch[1])};${Number.parseInt(hyphenQtyMatch[2], 10)}`;
+      }
+      return normalizeArticle(line);
+    };
+
+    const refreshPreview = () => {
+      const rawRows = textarea.value.split("\n");
+      const rows = rawRows.map(parseLine).filter(Boolean);
+      lineCount.textContent = `${rows.length} lines`;
+    };
+
+    textarea.addEventListener("input", refreshPreview);
+    refreshPreview();
+  })();
+</script>
 {% endblock %}

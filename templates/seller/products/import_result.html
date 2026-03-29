@@ -1,0 +1,340 @@
+{% extends "seller/base_seller.html" %}
+{% block title %}Результат импорта{% endblock %}
+{% block content %}
+<section class="section-head">
+  <a class="btn btn-secondary" href="{% url 'seller_product_list' %}">← Назад к товарам</a>
+  <a class="btn" href="{% url 'seller_product_list' %}?import_run={{ import_job.id }}">Показать товары из этого импорта</a>
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <h2>Импорт #{{ import_job.id }}</h2>
+  <p class="muted">
+    Статус: <strong id="import-status">{{ import_job.status }}</strong> •
+    Запуск: <span id="import-started">{{ import_job.started_at|default:import_job.created_at|date:"Y-m-d H:i:s" }}</span> •
+    Завершение: <span id="import-finished">{{ import_job.finished_at|default:"—" }}</span>
+  </p>
+  <div class="upload-progress" style="display:block; margin-top:10px;">
+    <div class="upload-progress-bar" id="import-progress-bar" style="width:{% widthratio import_job.processed_rows|default:0 import_job.total_rows|default:1 100 %}%;"></div>
+  </div>
+  <p class="muted" id="import-progress-text" style="margin-top:6px;">Обработано: {{ import_job.processed_rows|default:0 }} / {{ import_job.total_rows|default:import_job.rows_total }}</p>
+  <div class="chips">
+    <span class="chip">Всего строк: <strong id="import-total">{{ import_job.total_rows|default:import_job.rows_total }}</strong></span>
+    <span class="chip chip-ok">Успешно: <strong id="import-valid">{{ import_job.valid_rows }}</strong></span>
+    <span class="chip chip-warn">Ошибок: <strong id="import-errors">{{ import_job.error_rows }}</strong></span>
+    <span class="chip">Создано товаров: <strong id="import-created-products">{{ import_job.created_products|default:import_job.rows_created_products }}</strong></span>
+    <span class="chip">Обновлено офферов: <strong id="import-updated-offers">{{ import_job.updated_offers|default:import_job.rows_updated_offers }}</strong></span>
+    <span class="chip">Обновлено цен: <strong id="import-updated-prices">{{ import_job.rows_updated_prices }}</strong></span>
+  </div>
+  {% if import_job.error_rows %}
+    <div class="card-actions" style="margin-top: 12px;" id="import-errors-actions">
+      <a class="chip" href="{% url 'seller_import_errors_csv' import_job.id %}" id="import-errors-link">Скачать ошибки CSV</a>
+    </div>
+  {% else %}
+    <div class="card-actions" style="margin-top: 12px; display:none;" id="import-errors-actions">
+      <a class="chip" href="{% url 'seller_import_errors_csv' import_job.id %}" id="import-errors-link">Скачать ошибки CSV</a>
+    </div>
+  {% endif %}
+  {% if import_job.error_message %}
+    <p class="muted" style="margin-top: 12px;" id="import-error-message">{{ import_job.error_message }}</p>
+  {% else %}
+    <p class="muted" style="margin-top: 12px; display:none;" id="import-error-message"></p>
+  {% endif %}
+</section>
+
+<section class="panel" style="margin-bottom: 16px;">
+  <h2>Откат импорта</h2>
+  <p class="muted">Мягкий откат деактивирует офферы, затронутые этим импортом, и скрывает их из каталога. История изменений сохраняется.</p>
+  <form id="import-rollback-form">
+    {% csrf_token %}
+    <div class="card-actions">
+      <button
+        class="btn btn-secondary"
+        type="button"
+        id="import-rollback-btn"
+        {% if import_job.status != "completed" and import_job.status != "partial_success" %}disabled{% endif %}
+      >
+        Откатить импорт
+      </button>
+      <span class="chip" id="import-rollback-status">
+        {% if import_job.summary_json.rollback %}
+          Откат уже выполнен ({{ import_job.summary_json.rollback.rolled_back_offer_count }} офферов)
+        {% elif import_job.status == "completed" or import_job.status == "partial_success" %}
+          Доступно для этого импорта
+        {% else %}
+          Доступно только после завершения импорта
+        {% endif %}
+      </span>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Строки импорта</h2>
+  <p class="muted">Показываем первые 500 строк с фильтрами. Это быстрый разбор, почему строки прошли или упали.</p>
+  <form id="import-rows-filter-form" class="upload-form" style="margin-top:8px;">
+    <div class="card-actions">
+      <select id="rows-row-status" name="row_status">
+        <option value="">row status: все</option>
+        <option value="pending">pending</option>
+        <option value="valid">valid</option>
+        <option value="upserted">upserted</option>
+        <option value="invalid">invalid</option>
+      </select>
+      <select id="rows-validation-status" name="validation_status">
+        <option value="">validation: все</option>
+        <option value="pending">pending</option>
+        <option value="valid">valid</option>
+        <option value="invalid">invalid</option>
+      </select>
+      <select id="rows-match-status" name="match_status">
+        <option value="">match: все</option>
+        <option value="not_processed">not_processed</option>
+        <option value="matched">matched</option>
+        <option value="matched_by_cross">matched_by_cross</option>
+        <option value="created_new_product">created_new_product</option>
+        <option value="ambiguous">ambiguous</option>
+        <option value="failed">failed</option>
+      </select>
+      <label>
+        <input type="checkbox" id="rows-only-errors" />
+        Только ошибки
+      </label>
+      <button type="button" class="btn btn-secondary" id="rows-apply-filters">Применить</button>
+    </div>
+  </form>
+  <p class="muted" id="rows-summary" style="margin-top:8px;">
+    {% if error_rows_preview %}
+      Показано строк: {{ error_rows_preview|length }} (предварительно загружены ошибки)
+    {% else %}
+      Данных пока нет
+    {% endif %}
+  </p>
+  <div style="overflow:auto; margin-top:10px;">
+    <table class="upload-preview-table" id="import-rows-table">
+      <thead>
+        <tr>
+          <th>Row</th>
+          <th>Part</th>
+          <th>Status</th>
+          <th>Validation</th>
+          <th>Match</th>
+          <th>Error</th>
+          <th>Hint</th>
+        </tr>
+      </thead>
+      <tbody id="import-rows-body">
+        {% for row in error_rows_preview %}
+          <tr>
+            <td>{{ row.row_no }}</td>
+            <td>{{ row.part_number_raw|default:"—" }}</td>
+            <td>invalid</td>
+            <td>invalid</td>
+            <td>failed</td>
+            <td>{{ row.error_message|default:"—" }}</td>
+            <td>{{ row.error_hint|default:"—" }}</td>
+          </tr>
+        {% empty %}
+          <tr id="import-rows-empty">
+            <td colspan="7">Строки еще не загружены. Нажмите «Применить» или дождитесь завершения импорта.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<script>
+  (function () {
+    const jobId = {{ import_job.id }};
+    let status = "{{ import_job.status }}";
+    const terminalStatuses = new Set(["completed", "partial_success", "failed"]);
+    const shouldPoll = !terminalStatuses.has(status);
+
+    const statusNode = document.getElementById("import-status");
+    const startedNode = document.getElementById("import-started");
+    const finishedNode = document.getElementById("import-finished");
+    const progressBar = document.getElementById("import-progress-bar");
+    const progressText = document.getElementById("import-progress-text");
+    const totalNode = document.getElementById("import-total");
+    const validNode = document.getElementById("import-valid");
+    const errorsNode = document.getElementById("import-errors");
+    const createdProductsNode = document.getElementById("import-created-products");
+    const updatedOffersNode = document.getElementById("import-updated-offers");
+    const updatedPricesNode = document.getElementById("import-updated-prices");
+    const errorsActions = document.getElementById("import-errors-actions");
+    const errorMessageNode = document.getElementById("import-error-message");
+    const rollbackBtn = document.getElementById("import-rollback-btn");
+    const rollbackStatus = document.getElementById("import-rollback-status");
+    const rollbackForm = document.getElementById("import-rollback-form");
+    const csrfNode = rollbackForm ? rollbackForm.querySelector("input[name='csrfmiddlewaretoken']") : null;
+    const csrfToken = csrfNode ? csrfNode.value : "";
+    const rowsBody = document.getElementById("import-rows-body");
+    const rowsSummary = document.getElementById("rows-summary");
+    const rowsApplyBtn = document.getElementById("rows-apply-filters");
+    const rowsRowStatus = document.getElementById("rows-row-status");
+    const rowsValidationStatus = document.getElementById("rows-validation-status");
+    const rowsMatchStatus = document.getElementById("rows-match-status");
+    const rowsOnlyErrors = document.getElementById("rows-only-errors");
+    let timer = null;
+
+    const escapeHtml = function (value) {
+      const s = String(value == null ? "" : value);
+      return s
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    };
+
+    const renderRows = function (items) {
+      if (!rowsBody) return;
+      if (!items || !items.length) {
+        rowsBody.innerHTML = '<tr><td colspan="7">По выбранным фильтрам строк не найдено.</td></tr>';
+        if (rowsSummary) rowsSummary.textContent = "Показано строк: 0";
+        return;
+      }
+      const html = items.map(function (row) {
+        return (
+          "<tr>" +
+          "<td>" + escapeHtml(row.row_no) + "</td>" +
+          "<td>" + escapeHtml(row.part_number_raw || row.normalized_oem || "—") + "</td>" +
+          "<td>" + escapeHtml(row.status || "—") + "</td>" +
+          "<td>" + escapeHtml(row.validation_status || "—") + "</td>" +
+          "<td>" + escapeHtml(row.match_status || "—") + "</td>" +
+          "<td>" + escapeHtml(row.error_message || "—") + "</td>" +
+          "<td>" + escapeHtml(row.error_hint || "—") + "</td>" +
+          "</tr>"
+        );
+      }).join("");
+      rowsBody.innerHTML = html;
+      if (rowsSummary) rowsSummary.textContent = "Показано строк: " + String(items.length);
+    };
+
+    const loadRows = function () {
+      const params = new URLSearchParams();
+      if (rowsOnlyErrors && rowsOnlyErrors.checked) {
+        params.set("row_status", "invalid");
+      } else {
+        if (rowsRowStatus && rowsRowStatus.value) params.set("row_status", rowsRowStatus.value);
+        if (rowsValidationStatus && rowsValidationStatus.value) params.set("validation_status", rowsValidationStatus.value);
+        if (rowsMatchStatus && rowsMatchStatus.value) params.set("match_status", rowsMatchStatus.value);
+      }
+      fetch("/api/v1/seller/imports/" + jobId + "/rows?" + params.toString(), { credentials: "same-origin" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("rows_failed");
+          return response.json();
+        })
+        .then(function (data) {
+          renderRows(data.items || []);
+        })
+        .catch(function () {
+          if (rowsSummary) rowsSummary.textContent = "Не удалось загрузить строки импорта";
+        });
+    };
+
+    const syncUi = function (data) {
+      if (statusNode) statusNode.textContent = data.status || "processing";
+      if (startedNode && data.started_at) startedNode.textContent = data.started_at;
+      if (finishedNode) finishedNode.textContent = data.finished_at || "—";
+      if (totalNode) totalNode.textContent = String(data.total_rows || 0);
+      if (validNode) validNode.textContent = String(data.valid_rows || 0);
+      if (errorsNode) errorsNode.textContent = String(data.error_rows || 0);
+      if (createdProductsNode) createdProductsNode.textContent = String(data.created_products || 0);
+      if (updatedOffersNode) updatedOffersNode.textContent = String(data.updated_offers || 0);
+      if (updatedPricesNode) updatedPricesNode.textContent = String(data.rows_updated_prices || 0);
+      if (progressBar) progressBar.style.width = Math.max(0, Math.min(100, Number(data.progress_percent || 0))) + "%";
+      if (progressText) progressText.textContent = "Обработано: " + String(data.processed_rows || 0) + " / " + String(data.total_rows || 0);
+      if (errorsActions) errorsActions.style.display = (Number(data.error_rows || 0) > 0) ? "flex" : "none";
+      if (errorMessageNode) {
+        if (data.error_message) {
+          errorMessageNode.textContent = data.error_message;
+          errorMessageNode.style.display = "block";
+        } else {
+          errorMessageNode.style.display = "none";
+        }
+      }
+      if (rollbackBtn) {
+        rollbackBtn.disabled = !(data.status === "completed" || data.status === "partial_success");
+      }
+    };
+
+    if (rollbackBtn && csrfToken) {
+      rollbackBtn.addEventListener("click", function () {
+        if (!window.confirm("Подтвердить откат этого импорта? Затронутые офферы будут деактивированы.")) {
+          return;
+        }
+        rollbackBtn.disabled = true;
+        rollbackBtn.textContent = "Откатываем...";
+        fetch("/api/v1/seller/imports/" + jobId + "/rollback", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrfToken,
+            "X-Requested-With": "XMLHttpRequest",
+          },
+          credentials: "same-origin",
+        })
+          .then(function (response) {
+            return response.json().then(function (body) {
+              return { ok: response.ok, body: body };
+            });
+          })
+          .then(function (payload) {
+            if (!payload.ok) {
+              rollbackBtn.disabled = false;
+              rollbackBtn.textContent = "Откатить импорт";
+              if (rollbackStatus) rollbackStatus.textContent = payload.body.error || "Не удалось выполнить откат";
+              return;
+            }
+            const count = Number(payload.body.rolled_back_offer_count || 0);
+            rollbackBtn.textContent = "Откат выполнен";
+            if (rollbackStatus) rollbackStatus.textContent = "Откат выполнен: деактивировано офферов " + String(count);
+            window.setTimeout(function () {
+              window.location.href = "/seller/products/";
+            }, 900);
+          })
+          .catch(function () {
+            rollbackBtn.disabled = false;
+            rollbackBtn.textContent = "Откатить импорт";
+            if (rollbackStatus) rollbackStatus.textContent = "Ошибка сети при откате";
+          });
+      });
+    }
+
+    if (rowsApplyBtn) {
+      rowsApplyBtn.addEventListener("click", loadRows);
+    }
+    if (rowsOnlyErrors) {
+      rowsOnlyErrors.addEventListener("change", function () {
+        loadRows();
+      });
+    }
+
+    const tick = function () {
+      fetch("/api/v1/seller/imports/" + jobId + "/progress", { credentials: "same-origin" })
+        .then(function (response) {
+          if (!response.ok) throw new Error("request_failed");
+          return response.json();
+        })
+        .then(function (data) {
+          syncUi(data);
+          status = data.status || status;
+          if (terminalStatuses.has(status) || data.is_finished) {
+            if (timer) clearInterval(timer);
+            if (status === "partial_success" || status === "failed") {
+              window.setTimeout(function () { window.location.reload(); }, 1200);
+            }
+          }
+        })
+        .catch(function () {
+          // Keep polling; transient error should not stop updates.
+        });
+    };
+
+    loadRows();
+    if (shouldPoll) {
+      tick();
+      timer = window.setInterval(tick, 3000);
+    }
+  })();
+</script>
+{% endblock %}

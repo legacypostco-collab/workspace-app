@@ -1,0 +1,27 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Кабинет покупателя{% endblock %} — Consolidator</title>
+    <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/seller.css' %}?v=20260323_01" />
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body class="seller-shell">
+    {% include "buyer/components/_sidebar.html" %}
+    <main class="seller-main">
+      {% include "buyer/components/_topbar.html" %}
+      <div class="seller-content">
+        <div style="display:none;" aria-hidden="true">{% for message in messages %}{{ message }}{% endfor %}</div>
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+    {% block right_panel %}{% include "buyer/components/_right_panel.html" %}{% endblock %}
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

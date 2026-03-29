@@ -1,0 +1,381 @@
+{% extends "buyer/base_buyer.html" %}
+
+{% block title %}Поставщики{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════ Suppliers page ══════════ */
+
+.sup-hero { margin-bottom:16px; }
+.sup-hero-title {
+  font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC;
+}
+.sup-hero-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
+
+/* Supplier cards grid */
+.sup-grid {
+  display:grid;grid-template-columns:repeat(2,1fr);gap:12px;
+}
+@media(max-width:800px){ .sup-grid { grid-template-columns:1fr; } }
+
+.sup-card {
+  background:#1A1A1A;border-radius:14px;padding:20px;
+  border:1px solid rgba(255,255,255,0.04);
+  transition:border-color .15s;
+}
+.sup-card:hover { border-color:rgba(255,255,255,0.08); }
+
+.sup-card-head {
+  display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;
+}
+.sup-card-name {
+  font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;
+}
+.sup-card-location { font-size:11px;color:#6A6A6A;margin-top:2px; }
+
+.sup-rating-badge {
+  display:flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:8px;
+  font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;
+}
+.sup-rating--high { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.sup-rating--mid { background:rgba(232,92,13,0.12);color:#E85C0D; }
+.sup-star { font-size:12px; }
+
+/* KPI row */
+.sup-kpis {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;
+}
+.sup-kpi {
+  text-align:center;
+}
+.sup-kpi-val {
+  font-family:'Golos Text',sans-serif;font-size:16px;font-weight:800;
+  color:#ECECEC;font-variant-numeric:tabular-nums;line-height:1;
+}
+.sup-kpi-label {
+  font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;
+  color:#6A6A6A;margin-top:4px;
+}
+
+/* Progress bars */
+.sup-bars { margin-bottom:16px; }
+.sup-bar-row {
+  display:flex;align-items:center;gap:10px;margin-bottom:8px;
+}
+.sup-bar-label {
+  font-size:11px;color:#919191;width:70px;flex-shrink:0;
+}
+.sup-bar-track {
+  flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;
+  overflow:hidden;
+}
+.sup-bar-fill {
+  height:100%;border-radius:3px;transition:width .3s;
+}
+.sup-bar-fill--green { background:#64B5F6; }
+.sup-bar-fill--blue { background:#64B5F6; }
+.sup-bar-fill--orange { background:#E85C0D; }
+.sup-bar-val {
+  font-size:11px;color:#ECECEC;font-weight:600;width:32px;text-align:right;flex-shrink:0;
+}
+
+/* Actions */
+.sup-actions { display:flex;gap:8px; }
+.sup-action-btn {
+  flex:1;padding:8px 0;border-radius:8px;font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .15s;text-align:center;text-decoration:none;
+}
+.sup-action-btn--compare {
+  background:rgba(100,181,246,0.12);color:#64B5F6;
+  border:1px solid rgba(100,181,246,0.25);
+}
+.sup-action-btn--compare:hover { background:rgba(100,181,246,0.2); }
+.sup-action-btn--history {
+  background:rgba(255,255,255,0.04);color:#ECECEC;
+  border:1px solid rgba(255,255,255,0.08);
+}
+.sup-action-btn--history:hover { background:rgba(255,255,255,0.08); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="sup-hero">
+  <div class="sup-hero-title">Поставщики</div>
+  <div class="sup-hero-sub">Рейтинг, KPI и история работы с поставщиками</div>
+</section>
+
+<div class="sup-grid">
+
+  <!-- Supplier 1 -->
+  <div class="sup-card">
+    <div class="sup-card-head">
+      <div>
+        <div class="sup-card-name">Поставщик #1042</div>
+        <div class="sup-card-location">Шанхай, Китай &middot; с 2024 года</div>
+      </div>
+      <div class="sup-rating-badge sup-rating--high">
+        <span class="sup-star">&#9733;</span> 4.8
+      </div>
+    </div>
+    <div class="sup-kpis">
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">14</div>
+        <div class="sup-kpi-label">Заказов</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">$68,400</div>
+        <div class="sup-kpi-label">Оборот</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">96%</div>
+        <div class="sup-kpi-label">SLA</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">18 дн.</div>
+        <div class="sup-kpi-label">Ср. доставка</div>
+      </div>
+    </div>
+    <div class="sup-bars">
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Качество</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--green" style="width:95%"></div></div>
+        <span class="sup-bar-val">95%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Скорость</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--blue" style="width:88%"></div></div>
+        <span class="sup-bar-val">88%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">SLA</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--green" style="width:96%"></div></div>
+        <span class="sup-bar-val">96%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Цены</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--blue" style="width:82%"></div></div>
+        <span class="sup-bar-val">82%</span>
+      </div>
+    </div>
+    <div class="sup-actions">
+      <a href="#" class="sup-action-btn sup-action-btn--compare">Сравнить</a>
+      <a href="#" class="sup-action-btn sup-action-btn--history">История</a>
+    </div>
+  </div>
+
+  <!-- Supplier 2 -->
+  <div class="sup-card">
+    <div class="sup-card-head">
+      <div>
+        <div class="sup-card-name">Поставщик #2087</div>
+        <div class="sup-card-location">Гуанчжоу, Китай &middot; с 2023 года</div>
+      </div>
+      <div class="sup-rating-badge sup-rating--high">
+        <span class="sup-star">&#9733;</span> 4.6
+      </div>
+    </div>
+    <div class="sup-kpis">
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">9</div>
+        <div class="sup-kpi-label">Заказов</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">$42,100</div>
+        <div class="sup-kpi-label">Оборот</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">91%</div>
+        <div class="sup-kpi-label">SLA</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">14 дн.</div>
+        <div class="sup-kpi-label">Ср. доставка</div>
+      </div>
+    </div>
+    <div class="sup-bars">
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Качество</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--green" style="width:90%"></div></div>
+        <span class="sup-bar-val">90%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Скорость</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--green" style="width:92%"></div></div>
+        <span class="sup-bar-val">92%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">SLA</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--blue" style="width:91%"></div></div>
+        <span class="sup-bar-val">91%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Цены</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--green" style="width:90%"></div></div>
+        <span class="sup-bar-val">90%</span>
+      </div>
+    </div>
+    <div class="sup-actions">
+      <a href="#" class="sup-action-btn sup-action-btn--compare">Сравнить</a>
+      <a href="#" class="sup-action-btn sup-action-btn--history">История</a>
+    </div>
+  </div>
+
+  <!-- Supplier 3 -->
+  <div class="sup-card">
+    <div class="sup-card-head">
+      <div>
+        <div class="sup-card-name">Поставщик #3156</div>
+        <div class="sup-card-location">Шэньчжэнь, Китай &middot; с 2024 года</div>
+      </div>
+      <div class="sup-rating-badge sup-rating--mid">
+        <span class="sup-star">&#9733;</span> 4.2
+      </div>
+    </div>
+    <div class="sup-kpis">
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">6</div>
+        <div class="sup-kpi-label">Заказов</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">$18,600</div>
+        <div class="sup-kpi-label">Оборот</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">84%</div>
+        <div class="sup-kpi-label">SLA</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">22 дн.</div>
+        <div class="sup-kpi-label">Ср. доставка</div>
+      </div>
+    </div>
+    <div class="sup-bars">
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Качество</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--blue" style="width:85%"></div></div>
+        <span class="sup-bar-val">85%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Скорость</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--orange" style="width:72%"></div></div>
+        <span class="sup-bar-val">72%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">SLA</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--orange" style="width:84%"></div></div>
+        <span class="sup-bar-val">84%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Цены</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--green" style="width:94%"></div></div>
+        <span class="sup-bar-val">94%</span>
+      </div>
+    </div>
+    <div class="sup-actions">
+      <a href="#" class="sup-action-btn sup-action-btn--compare">Сравнить</a>
+      <a href="#" class="sup-action-btn sup-action-btn--history">История</a>
+    </div>
+  </div>
+
+  <!-- Supplier 4 -->
+  <div class="sup-card">
+    <div class="sup-card-head">
+      <div>
+        <div class="sup-card-name">Поставщик #4291</div>
+        <div class="sup-card-location">Осака, Япония &middot; с 2025 года</div>
+      </div>
+      <div class="sup-rating-badge sup-rating--high">
+        <span class="sup-star">&#9733;</span> 4.9
+      </div>
+    </div>
+    <div class="sup-kpis">
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">4</div>
+        <div class="sup-kpi-label">Заказов</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">$31,200</div>
+        <div class="sup-kpi-label">Оборот</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">100%</div>
+        <div class="sup-kpi-label">SLA</div>
+      </div>
+      <div class="sup-kpi">
+        <div class="sup-kpi-val">12 дн.</div>
+        <div class="sup-kpi-label">Ср. доставка</div>
+      </div>
+    </div>
+    <div class="sup-bars">
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Качество</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--green" style="width:98%"></div></div>
+        <span class="sup-bar-val">98%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Скорость</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--green" style="width:96%"></div></div>
+        <span class="sup-bar-val">96%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">SLA</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--green" style="width:100%"></div></div>
+        <span class="sup-bar-val">100%</span>
+      </div>
+      <div class="sup-bar-row">
+        <span class="sup-bar-label">Цены</span>
+        <div class="sup-bar-track"><div class="sup-bar-fill sup-bar-fill--orange" style="width:68%"></div></div>
+        <span class="sup-bar-val">68%</span>
+      </div>
+    </div>
+    <div class="sup-actions">
+      <a href="#" class="sup-action-btn sup-action-btn--compare">Сравнить</a>
+      <a href="#" class="sup-action-btn sup-action-btn--history">История</a>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+
+<script>
+(function(){
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.transform = 'translateY(0)';
+    t.style.opacity = '1';
+    setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
+  }
+
+  // Compare and History buttons via delegation
+  document.querySelector('.sup-grid').addEventListener('click', function(e) {
+    var btn = e.target.closest('.sup-action-btn');
+    if (!btn) return;
+    e.preventDefault();
+    var card = btn.closest('.sup-card');
+    var nameEl = card ? card.querySelector('.sup-card-name') : null;
+    var name = nameEl ? nameEl.textContent : '';
+
+    if (btn.classList.contains('sup-action-btn--compare')) {
+      if (btn.dataset.selected === '1') {
+        btn.dataset.selected = '';
+        btn.style.background = '';
+        btn.textContent = 'Сравнить';
+        showToast('Убран из сравнения: ' + name);
+      } else {
+        btn.dataset.selected = '1';
+        btn.style.background = 'rgba(100,181,246,0.3)';
+        btn.textContent = '\u2713 В сравнении';
+        showToast('Добавлен к сравнению: ' + name);
+      }
+    } else if (btn.classList.contains('sup-action-btn--history')) {
+      showToast('История работы с ' + name);
+    }
+  });
+})();
+</script>
+
+{% endblock %}

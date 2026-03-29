@@ -4,10 +4,16 @@
 <section class="part-layout">
   <img class="part-image" src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
   <div class="panel">
-    <p class="muted">{{ part.category.name }} • OEM {{ part.oem_number }}</p>
-    <h1>{{ part.title }}</h1>
+    <div class="card-meta">
+      <span class="chip chip-soft">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
+      <span class="chip chip-soft">{{ part.category.name }}</span>
+      <span class="chip">{{ part.get_condition_display }}</span>
+    </div>
+    <p class="field-label">Part Number</p>
+    <h1 class="detail-part-number">{{ part.oem_number }}</h1>
+    <p class="field-label">Part Name</p>
+    <p class="detail-part-name">{{ part.title }}</p>
     <p>{{ part.description }}</p>
-    <p><span class="chip">{{ part.get_condition_display }}</span></p>
     <p class="price">${{ part.price }}</p>
     <p class="muted">Остаток: {{ part.stock_quantity }} шт</p>
     <form method="post" action="{% url 'cart_add' part.id %}">
@@ -21,12 +27,15 @@
 {% if related %}
 <section>
   <div class="section-head"><h2>Похожие позиции</h2></div>
-  <div class="grid">
+    <div class="grid">
     {% for item in related %}
       <article class="card">
         <img src="{{ item.image_url }}" alt="{{ item.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
         <div class="card-body">
-          <h3><a href="{% url 'part_detail' item.slug %}">{{ item.title }}</a></h3>
+          <p class="field-label">Part Number</p>
+          <h3 class="part-number"><a href="{% url 'part_detail' item.slug %}">{{ item.oem_number }}</a></h3>
+          <p class="field-label">Part Name</p>
+          <p class="part-name">{{ item.title }}</p>
           <p class="price">${{ item.price }}</p>
         </div>
       </article>
