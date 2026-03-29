@@ -296,9 +296,7 @@ def _create_order_from_rows(
     reserve_amount = ((grand_total * reserve_percent) / Decimal("100")).quantize(Decimal("0.01"))
 
     # Определяем схему оплаты
-    payment_scheme = request.POST.get("payment_scheme", "simple")
-    if payment_scheme not in ("simple", "staged"):
-        payment_scheme = "simple"
+    payment_scheme = "simple"
 
     mid_payment_amount = Decimal("0.00")
     customs_payment_amount = Decimal("0.00")
