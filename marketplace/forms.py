@@ -12,11 +12,11 @@ class RegisterForm(UserCreationForm):
         ("operator", "Оператор"),
     ]
 
-    email = forms.EmailField(required=True)
-    first_name = forms.CharField(max_length=150, required=False)
-    last_name = forms.CharField(max_length=150, required=False)
-    role = forms.ChoiceField(choices=ROLE_CHOICES, required=True)
-    company_name = forms.CharField(max_length=255, required=False)
+    email = forms.EmailField(required=True, label="Email")
+    first_name = forms.CharField(max_length=150, required=False, label="Имя")
+    last_name = forms.CharField(max_length=150, required=False, label="Фамилия")
+    role = forms.ChoiceField(choices=ROLE_CHOICES, required=True, label="Роль")
+    company_name = forms.CharField(max_length=255, required=False, label="Компания")
 
     class Meta(UserCreationForm.Meta):
         model = User
@@ -24,7 +24,7 @@ class RegisterForm(UserCreationForm):
 
 
 class LoginForm(AuthenticationForm):
-    username = forms.CharField(label="Username or email")
+    username = forms.CharField(label="Логин или email")
 
 
 class CheckoutForm(forms.Form):

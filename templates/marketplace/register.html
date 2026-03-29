@@ -9,8 +9,25 @@
   </div>
   <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% if form.errors %}
+    <div class="form-errors" style="background:#3a1c1c;border:1px solid #ff4444;padding:12px;border-radius:8px;margin-bottom:16px;font-size:13px;color:#ff8888;">
+      {% for field, errors in form.errors.items %}
+        {% for error in errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    <p><label for="id_username">Имя пользователя:</label>{{ form.username }}<span style="font-size:12px;color:#888;">Латиница, цифры и символы @/./+/-/_</span></p>
+    <p><label for="id_email">{{ form.email.label }}:</label>{{ form.email }}</p>
+    <p><label for="id_first_name">{{ form.first_name.label }}:</label>{{ form.first_name }}</p>
+    <p><label for="id_last_name">{{ form.last_name.label }}:</label>{{ form.last_name }}</p>
+    <p><label for="id_role">{{ form.role.label }}:</label>{{ form.role }}</p>
+    <p><label for="id_company_name">{{ form.company_name.label }}:</label>{{ form.company_name }}</p>
+    <p><label for="id_password1">Пароль:</label>{{ form.password1 }}</p>
+    <p><label for="id_password2">Подтверждение пароля:</label>{{ form.password2 }}</p>
     <button class="btn" type="submit">Создать аккаунт</button>
   </form>
+  <p style="text-align:center;margin-top:16px;font-size:14px;">Уже есть аккаунт? <a href="{% url 'login' %}" style="color:#4da6ff;">Войти</a></p>
 </div>
 {% endblock %}

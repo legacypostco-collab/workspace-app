@@ -33,6 +33,10 @@ from imports.models import ImportJob, ImportPreviewSession
 from imports.services import ColumnMappingResolver, ImportParser
 from imports.tasks import process_import_job
 from .forms import BulkPriceLookupForm, CheckoutForm, LoginForm, RegisterForm, RFQCreateForm, SellerBulkUploadForm, SellerPartForm
+from .services.notifications import (
+    notify_registration, notify_order_created, notify_order_status_changed,
+    notify_payment_received, notify_seller_new_order, notify_claim_opened,
+)
 from .models import (
     Brand,
     Category,
@@ -355,6 +359,18 @@ def _create_order_from_rows(
                 "source_id": source_id,
             },
         )
+        notify_order_created(order)
+        # Notify sellers
+        seller_ids = set()
+        for oi in order_items:
+            if oi.part and oi.part.seller_id:
+                seller_ids.add(oi.part.seller_id)
+        for sid in seller_ids:
+            try:
+                from django.contrib.auth.models import User as _U
+                notify_seller_new_order(_U.objects.get(id=sid), order)
+            except Exception:
+                pass
         return order
 
 
@@ -1140,6 +1156,7 @@ def register_view(request: HttpRequest) -> HttpResponse:
                 company_name=form.cleaned_data["company_name"],
             )
             login(request, user)
+            notify_registration(user)
             messages.success(request, "Регистрация завершена.")
             return redirect("dashboard")
     else:
@@ -4456,6 +4473,7 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
                 meta={"from": prev, "to": step_status},
             )
         _recalc_order_sla(order)
+        notify_order_status_changed(order, current, order.status)
 
         # Handle QR code scan
         qr_code = request.POST.get("qr_code", "").strip()
@@ -4773,6 +4791,7 @@ def order_mark_reserve_paid(request: HttpRequest, order_id: int) -> HttpResponse
     _log_order_event(order, "reserve_paid", source="buyer", actor=request.user, meta={"reserve_amount": str(order.reserve_amount)})
     if previous != order.status:
         _log_order_event(order, "status_changed", source="buyer", actor=request.user, meta={"from": previous, "to": order.status})
+    notify_payment_received(order, "reserve", order.reserve_paid_amount if hasattr(order, 'reserve_paid_amount') else order.total_amount * Decimal("0.10"))
     messages.success(request, "Резерв 10% зафиксирован.")
     return redirect("order_invoice", order_id=order.id)
 
@@ -5107,6 +5126,7 @@ def order_open_claim(request: HttpRequest, order_id: int) -> HttpResponse:
         actor=request.user,
         meta={"claim_id": claim.id, "title": title},
     )
+    notify_claim_opened(order, claim)
     messages.success(request, "Рекламация открыта.")
     return redirect("order_detail", order_id=order.id)
 
