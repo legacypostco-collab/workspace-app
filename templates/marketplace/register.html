@@ -1,33 +1,175 @@
-{% extends "marketplace/base.html" %}
 {% load static %}
-{% block title %}Регистрация | Consolidator Parts{% endblock %}
-{% block content %}
-<section class="section-head"><h1>Регистрация</h1></section>
-<div class="card card-form">
-  <div class="auth-logo-wrap">
-    <img src="{% static 'marketplace/consolidator-logo.svg' %}" alt="Consolidator Parts" class="auth-logo" />
-  </div>
-  <form method="post">
-    {% csrf_token %}
-    {% if form.errors %}
-    <div class="form-errors" style="background:#3a1c1c;border:1px solid #ff4444;padding:12px;border-radius:8px;margin-bottom:16px;font-size:13px;color:#ff8888;">
-      {% for field, errors in form.errors.items %}
-        {% for error in errors %}
-          <p>{{ error }}</p>
-        {% endfor %}
-      {% endfor %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Регистрация | Consolidator Parts</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+:root {
+  --ink: #ECECEC; --muted: #919191; --accent: #64B5F6;
+  --bg: #1A1A1A; --card: #242424; --card-2: #2C2C2C;
+  --radius: 20px;
+  --shadow: 0 12px 40px rgba(0,0,0,0.4);
+}
+* { box-sizing: border-box; }
+html { min-height: 100%; background: var(--bg); }
+body {
+  min-height: 100vh; margin: 0; color: var(--ink);
+  font-family: "Figtree", "Manrope", sans-serif;
+  line-height: 1.55; background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px 20px;
+}
+.reg-card {
+  width: 100%; max-width: 440px;
+  background: var(--card); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: var(--radius); padding: 36px 32px;
+  box-shadow: var(--shadow);
+}
+.reg-card__logo {
+  display: flex; align-items: center; gap: 10px;
+  justify-content: center; margin-bottom: 28px; text-decoration: none;
+}
+.reg-card__logo-name { font-family: 'Golos Text','Inter',sans-serif; font-size: 18px; font-weight: 800; color: var(--ink); }
+.reg-card__logo-sub { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; margin-top: 2px; }
+.reg-card__title {
+  font-size: 22px; font-weight: 700; margin: 0 0 6px;
+  font-family: 'Golos Text','Inter',sans-serif; text-align: center;
+}
+.reg-card__subtitle { font-size: 13px; color: var(--muted); margin: 0 0 24px; text-align: center; }
+.reg-form label {
+  display: block; font-size: 12px; font-weight: 500;
+  color: var(--muted); margin-bottom: 5px; letter-spacing: 0.02em;
+}
+.reg-form input, .reg-form select {
+  width: 100%; padding: 10px 14px; font-size: 14px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; color: var(--ink); outline: none;
+  font-family: inherit; transition: border-color 0.15s;
+}
+.reg-form input:focus, .reg-form select:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(100,181,246,0.12);
+}
+.reg-form select { appearance: none; cursor: pointer; }
+.reg-form .field { margin-bottom: 14px; }
+.reg-form .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.reg-form .field-hint { font-size: 11px; color: #5E5E5E; margin-top: 3px; }
+.reg-submit {
+  width: 100%; padding: 12px; font-size: 15px; font-weight: 600;
+  background: var(--accent); color: #fff; border: none; border-radius: 10px;
+  cursor: pointer; margin-top: 8px; font-family: inherit;
+  transition: background 0.15s;
+}
+.reg-submit:hover { background: #5BA5E0; }
+.reg-footer {
+  text-align: center; margin-top: 18px; font-size: 13px; color: var(--muted);
+}
+.reg-footer a { color: var(--accent); text-decoration: none; font-weight: 500; }
+.reg-footer a:hover { text-decoration: underline; }
+.reg-errors {
+  background: rgba(232,92,13,0.1); border: 1px solid rgba(232,92,13,0.3);
+  border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;
+  font-size: 13px; color: #ff8888;
+}
+.reg-errors p { margin: 2px 0; }
+/* Light theme */
+html.theme-light { --bg: #F5F7FA; --ink: #212647; --muted: #8892A4; --card: #FFFFFF; --card-2: #F0F4F9; }
+html.theme-light .reg-card { border-color: rgba(25,42,77,0.08); box-shadow: 0 12px 40px rgba(33,38,71,.10); }
+html.theme-light .reg-form input, html.theme-light .reg-form select {
+  background: #F0F4F9; border-color: rgba(25,42,77,0.12); color: #212647;
+}
+html.theme-light .reg-submit { background: #4568F3; }
+  </style>
+</head>
+<body>
+<div class="reg-card">
+  <a href="{% url 'home' %}" class="reg-card__logo">
+    <svg width="32" height="32" viewBox="0 0 74.1 74.1" fill="currentColor">
+      <polygon points="5.38 46.64 2.24 54.63 17.29 69.68 17.3 69.69 21.44 66.22 24.75 42.14 5.38 46.64"/>
+      <polygon points="21.44 66.22 24.87 74.1 46.16 74.1 46.64 68.72 31.95 49.35 21.44 66.22"/>
+      <polygon points="46.64 68.72 54.63 71.86 69.69 56.8 66.22 52.66 42.14 49.35 46.64 68.72"/>
+      <polygon points="68.71 27.45 71.86 19.47 56.8 4.41 52.65 7.87 49.35 31.95 68.71 27.45"/>
+      <polygon points="74.1 27.94 68.71 27.45 49.35 42.14 66.22 52.66 74.1 49.23 74.1 27.94"/>
+      <polygon points="52.65 7.87 49.23 0 27.93 0 27.45 5.38 42.14 24.75 52.65 7.87"/>
+      <polygon points="27.45 5.38 19.47 2.24 4.41 17.3 7.87 21.44 31.95 24.75 27.45 5.38"/>
+      <polygon points="7.87 21.44 0 24.87 0 46.16 5.38 46.64 24.75 31.95 7.87 21.44"/>
+    </svg>
+    <div>
+      <div class="reg-card__logo-name">Consolidator</div>
+      <div class="reg-card__logo-sub">PARTS</div>
     </div>
-    {% endif %}
-    <p><label for="id_username">Имя пользователя:</label>{{ form.username }}<span style="font-size:12px;color:#888;">Латиница, цифры и символы @/./+/-/_</span></p>
-    <p><label for="id_email">{{ form.email.label }}:</label>{{ form.email }}</p>
-    <p><label for="id_first_name">{{ form.first_name.label }}:</label>{{ form.first_name }}</p>
-    <p><label for="id_last_name">{{ form.last_name.label }}:</label>{{ form.last_name }}</p>
-    <p><label for="id_role">{{ form.role.label }}:</label>{{ form.role }}</p>
-    <p><label for="id_company_name">{{ form.company_name.label }}:</label>{{ form.company_name }}</p>
-    <p><label for="id_password1">Пароль:</label>{{ form.password1 }}</p>
-    <p><label for="id_password2">Подтверждение пароля:</label>{{ form.password2 }}</p>
-    <button class="btn" type="submit">Создать аккаунт</button>
+  </a>
+
+  <h1 class="reg-card__title">Создать аккаунт</h1>
+  <p class="reg-card__subtitle">Заполните форму для регистрации</p>
+
+  {% if form.errors %}
+  <div class="reg-errors">
+    {% for field, errors in form.errors.items %}
+      {% for error in errors %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <form method="post" class="reg-form">
+    {% csrf_token %}
+    <div class="field">
+      <label for="id_username">Имя пользователя</label>
+      {{ form.username }}
+      <div class="field-hint">Латиница, цифры и @/./+/-/_</div>
+    </div>
+    <div class="field">
+      <label for="id_email">Email</label>
+      {{ form.email }}
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="id_first_name">Имя</label>
+        {{ form.first_name }}
+      </div>
+      <div class="field">
+        <label for="id_last_name">Фамилия</label>
+        {{ form.last_name }}
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="id_role">Роль</label>
+        {{ form.role }}
+      </div>
+      <div class="field">
+        <label for="id_company_name">Компания</label>
+        {{ form.company_name }}
+      </div>
+    </div>
+    <div class="field">
+      <label for="id_password1">Пароль</label>
+      {{ form.password1 }}
+    </div>
+    <div class="field">
+      <label for="id_password2">Подтверждение пароля</label>
+      {{ form.password2 }}
+    </div>
+    <button type="submit" class="reg-submit">Создать аккаунт</button>
   </form>
-  <p style="text-align:center;margin-top:16px;font-size:14px;">Уже есть аккаунт? <a href="{% url 'login' %}" style="color:#4da6ff;">Войти</a></p>
+
+  <div class="reg-footer">
+    Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a>
+  </div>
 </div>
-{% endblock %}
+
+<script>
+(function(){
+  var t = localStorage.getItem('cp_theme') || 'dark';
+  if (t === 'light') document.documentElement.classList.add('theme-light');
+})();
+</script>
+</body>
+</html>
