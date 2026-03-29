@@ -458,8 +458,9 @@ class WebhookDeliveryLog(models.Model):
 
 class UserProfile(models.Model):
     ROLE_CHOICES = [
-        ("buyer", "Buyer"),
-        ("seller", "Seller"),
+        ("buyer", "Покупатель"),
+        ("seller", "Поставщик"),
+        ("operator", "Оператор"),
     ]
     SUPPLIER_STATUS_CHOICES = [
         ("trusted", "Надёжный"),

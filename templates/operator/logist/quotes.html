@@ -1,0 +1,125 @@
+{% extends "operator/base_operator.html" %}
+{% block title %}Логист — Ставки на заказы{% endblock %}
+
+{% block content %}
+<div class="op-section-title" style="margin-bottom:16px;">Ставки на заказы</div>
+
+<!-- Tabs -->
+<div style="display:flex;gap:8px;margin-bottom:20px;">
+  <button class="op-tab active" onclick="showTab(this,'tab-new')">Новые запросы <span class="op-badge op-badge-yellow">3</span></button>
+  <button class="op-tab" onclick="showTab(this,'tab-sent')">Ставки отправлены <span class="op-badge op-badge-gray">5</span></button>
+  <button class="op-tab" onclick="showTab(this,'tab-won')">Выигранные <span class="op-badge op-badge-green">2</span></button>
+  <button class="op-tab" onclick="showTab(this,'tab-lost')">Проигранные <span class="op-badge op-badge-gray">1</span></button>
+</div>
+
+<!-- Tab: New requests -->
+<div id="tab-new">
+  <div class="op-card" style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Заказ #1042</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">ООО «ТехМашСервис» &bull; Москва</div>
+      </div>
+      <span class="op-badge op-badge-yellow">Ожидает ставку</span>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:12px;color:#919191;margin-bottom:6px;cursor:pointer;" onclick="toggleItems(this)">&#9660; 8 позиций &bull; Общий вес: 342 кг</div>
+      <table style="display:none;width:100%;font-size:12px;color:#C0C0C0;border-collapse:collapse;">
+        <tr style="border-bottom:1px solid #2a2a2a;color:#919191;"><th style="text-align:left;padding:4px;">#</th><th style="text-align:left;padding:4px;">Наименование</th><th style="text-align:right;padding:4px;">Кол-во</th><th style="text-align:right;padding:4px;">Вес/шт</th><th style="text-align:right;padding:4px;">Габариты</th><th style="text-align:right;padding:4px;">Итого вес</th></tr>
+        <tr style="border-bottom:1px solid #1a1a1a;"><td style="padding:4px;">1</td><td style="padding:4px;">Гидроцилиндр RE48786</td><td style="text-align:right;padding:4px;">2</td><td style="text-align:right;padding:4px;">45 кг</td><td style="text-align:right;padding:4px;">80x30x25</td><td style="text-align:right;padding:4px;">90 кг</td></tr>
+        <tr style="border-bottom:1px solid #1a1a1a;"><td style="padding:4px;">2</td><td style="padding:4px;">Фильтр масляный AT365870</td><td style="text-align:right;padding:4px;">5</td><td style="text-align:right;padding:4px;">2.5 кг</td><td style="text-align:right;padding:4px;">20x15x15</td><td style="text-align:right;padding:4px;">12.5 кг</td></tr>
+        <tr style="border-bottom:1px solid #1a1a1a;"><td style="padding:4px;">3</td><td style="padding:4px;">Насос гидравлический</td><td style="text-align:right;padding:4px;">1</td><td style="text-align:right;padding:4px;">85 кг</td><td style="text-align:right;padding:4px;">60x40x35</td><td style="text-align:right;padding:4px;">85 кг</td></tr>
+      </table>
+    </div>
+    <div style="display:flex;gap:12px;align-items:end;">
+      <div><label style="font-size:11px;color:#919191;">Стоимость доставки, $</label><input type="number" class="op-input" style="width:120px;" placeholder="0.00"></div>
+      <div><label style="font-size:11px;color:#919191;">Срок, дней</label><input type="number" class="op-input" style="width:80px;" placeholder="14"></div>
+      <div><label style="font-size:11px;color:#919191;">Способ</label>
+        <select class="op-input" style="width:120px;"><option>Море</option><option>Авто</option><option>ЖД</option><option>Авиа</option></select>
+      </div>
+      <button class="op-btn op-btn-primary" onclick="opToast('Ставка отправлена')">Отправить ставку</button>
+      <button class="op-btn" onclick="opToast('Пропущено')">Пропустить</button>
+    </div>
+  </div>
+
+  <div class="op-card" style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Заказ #1038</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">ЗАО «ГорноТех» &bull; Кемерово</div>
+      </div>
+      <span class="op-badge op-badge-yellow">Ожидает ставку</span>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:12px;color:#919191;margin-bottom:6px;cursor:pointer;" onclick="toggleItems(this)">&#9660; 3 позиции &bull; Общий вес: 1,250 кг</div>
+      <table style="display:none;width:100%;font-size:12px;color:#C0C0C0;border-collapse:collapse;">
+        <tr style="border-bottom:1px solid #2a2a2a;color:#919191;"><th style="text-align:left;padding:4px;">#</th><th style="text-align:left;padding:4px;">Наименование</th><th style="text-align:right;padding:4px;">Кол-во</th><th style="text-align:right;padding:4px;">Вес/шт</th><th style="text-align:right;padding:4px;">Габариты</th><th style="text-align:right;padding:4px;">Итого вес</th></tr>
+        <tr style="border-bottom:1px solid #1a1a1a;"><td style="padding:4px;">1</td><td style="padding:4px;">Ковш экскаватора 1.5м³</td><td style="text-align:right;padding:4px;">1</td><td style="text-align:right;padding:4px;">850 кг</td><td style="text-align:right;padding:4px;">200x150x100</td><td style="text-align:right;padding:4px;">850 кг</td></tr>
+        <tr style="border-bottom:1px solid #1a1a1a;"><td style="padding:4px;">2</td><td style="padding:4px;">Палец ковша</td><td style="text-align:right;padding:4px;">4</td><td style="text-align:right;padding:4px;">25 кг</td><td style="text-align:right;padding:4px;">40x8x8</td><td style="text-align:right;padding:4px;">100 кг</td></tr>
+        <tr style="border-bottom:1px solid #1a1a1a;"><td style="padding:4px;">3</td><td style="padding:4px;">Коронки зубья</td><td style="text-align:right;padding:4px;">10</td><td style="text-align:right;padding:4px;">30 кг</td><td style="text-align:right;padding:4px;">35x12x10</td><td style="text-align:right;padding:4px;">300 кг</td></tr>
+      </table>
+    </div>
+    <div style="display:flex;gap:12px;align-items:end;">
+      <div><label style="font-size:11px;color:#919191;">Стоимость доставки, $</label><input type="number" class="op-input" style="width:120px;" placeholder="0.00"></div>
+      <div><label style="font-size:11px;color:#919191;">Срок, дней</label><input type="number" class="op-input" style="width:80px;" placeholder="14"></div>
+      <div><label style="font-size:11px;color:#919191;">Способ</label>
+        <select class="op-input" style="width:120px;"><option>Море</option><option>Авто</option><option>ЖД</option><option>Авиа</option></select>
+      </div>
+      <button class="op-btn op-btn-primary" onclick="opToast('Ставка отправлена')">Отправить ставку</button>
+      <button class="op-btn" onclick="opToast('Пропущено')">Пропустить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Sent -->
+<div id="tab-sent" style="display:none;">
+  <div class="op-card" style="margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Заказ #1035</div>
+        <div style="font-size:12px;color:#919191;">ООО «СибМаш» &bull; Ставка: $3,200 &bull; 12 дней &bull; Море</div>
+      </div>
+      <span class="op-badge op-badge-gray">Ожидает решения</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Won -->
+<div id="tab-won" style="display:none;">
+  <div class="op-card" style="margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Заказ #1029</div>
+        <div style="font-size:12px;color:#919191;">АО «МеталлТранс» &bull; $4,800 &bull; 18 дней &bull; ЖД</div>
+      </div>
+      <span class="op-badge op-badge-green">Выиграна</span>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Lost -->
+<div id="tab-lost" style="display:none;">
+  <div class="op-card" style="margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Заказ #1020</div>
+        <div style="font-size:12px;color:#919191;">ООО «ТрансГруз» &bull; $5,100 &bull; Конкурент: $4,200</div>
+      </div>
+      <span class="op-badge op-badge-gray">Проиграна</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(btn, tabId) {
+  document.querySelectorAll('[id^="tab-"]').forEach(function(t){ t.style.display = 'none'; });
+  document.querySelectorAll('.op-tab').forEach(function(b){ b.classList.remove('active'); });
+  document.getElementById(tabId).style.display = '';
+  btn.classList.add('active');
+}
+function toggleItems(el) {
+  var table = el.nextElementSibling;
+  table.style.display = table.style.display === 'none' ? '' : 'none';
+}
+</script>
+{% endblock %}

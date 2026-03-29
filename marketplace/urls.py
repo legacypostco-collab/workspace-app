@@ -104,6 +104,7 @@ urlpatterns = [
     path("operator/logist/", views.operator_logist_dashboard, name="operator_logist_dashboard"),
     path("operator/logist/shipments/", views.operator_logist_shipments, name="operator_logist_shipments"),
     path("operator/logist/routes/", views.operator_logist_routes, name="operator_logist_routes"),
+    path("operator/logist/quotes/", views.operator_logist_quotes, name="operator_logist_quotes"),
     path("operator/customs/", views.operator_customs_dashboard, name="operator_customs_dashboard"),
     path("operator/customs/declarations/", views.operator_customs_declarations, name="operator_customs_declarations"),
     path("operator/customs/tariffs/", views.operator_customs_tariffs, name="operator_customs_tariffs"),

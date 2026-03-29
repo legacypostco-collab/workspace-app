@@ -2278,32 +2278,52 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
 
 
 @seller_required
-@seller_required
 def seller_negotiations(request: HttpRequest) -> HttpResponse:
     """Согласование: уровни скидок, лояльность, переторжка, чертежи."""
     return render(request, "seller/negotiations/list.html", {})
 
 
+@seller_required
 def seller_analytics(request: HttpRequest) -> HttpResponse:
     """Аналитика: отчёты, интеграции, рассылка, API."""
-    return render(request, "seller/analytics/list.html", {})
+    orders = Order.objects.filter(items__part__seller=request.user).distinct()
+    total = orders.count()
+    completed = orders.filter(status="completed").count()
+    cancelled = orders.filter(status="cancelled").count()
+    revenue = sum((o.total_amount for o in orders[:500]), Decimal("0.00"))
+    parts_count = Part.objects.filter(seller=request.user, is_active=True).count()
+    return render(request, "seller/analytics/list.html", {
+        "total_orders": total, "completed_orders": completed,
+        "cancelled_orders": cancelled, "revenue": revenue,
+        "parts_count": parts_count,
+    })
 
 
+@seller_required
 def seller_team(request: HttpRequest) -> HttpResponse:
     """Команда: орг-схема, права, чат, задачи, активность, рейтинги."""
     return render(request, "seller/team/list.html", {})
 
 
+@seller_required
 def seller_integrations(request: HttpRequest) -> HttpResponse:
     """Интеграции: 1С, ТОИР, ERP, Битрикс24, индивидуальная."""
     return render(request, "seller/integrations/list.html", {})
 
 
+@seller_required
 def seller_logistics(request: HttpRequest) -> HttpResponse:
     """Логистика: карта, терминалы, отслеживание, калькулятор, аукцион."""
-    return render(request, _tpl(request.user, "seller/logistics/list.html"), {})
+    shipped_statuses = ["shipped", "transit_abroad", "customs", "transit_rf", "issuing", "ready_to_ship"]
+    orders = Order.objects.filter(
+        items__part__seller=request.user, status__in=shipped_statuses
+    ).distinct().prefetch_related("items__part").order_by("-created_at")[:50]
+    for o in orders:
+        _recalc_order_sla(o)
+    return render(request, _tpl(request.user, "seller/logistics/list.html"), {"orders": orders})
 
 
+@seller_required
 def seller_reports(request: HttpRequest) -> HttpResponse:
     """Отчёты: сводные, продажи, финансовые, операционные, экспорт, расписание."""
     return render(request, "seller/reports/list.html", {
@@ -2316,37 +2336,89 @@ def seller_reports(request: HttpRequest) -> HttpResponse:
 # BUYER CABINET
 # ═══════════════════════════════════════════════════════════════════
 
+@login_required
 def buyer_dashboard(request: HttpRequest) -> HttpResponse:
-    return render(request, _tpl(request.user, "buyer/dashboard/index.html"), {})
+    orders = Order.objects.filter(buyer=request.user).prefetch_related("items__part").order_by("-created_at")[:20]
+    for o in orders:
+        _recalc_order_sla(o)
+    rfqs = RFQ.objects.filter(created_by=request.user).order_by("-created_at")[:10]
+    total_orders = Order.objects.filter(buyer=request.user).count()
+    active_orders = Order.objects.filter(buyer=request.user).exclude(status__in=["delivered", "completed", "cancelled"]).count()
+    total_spent = sum((o.total_amount for o in orders), Decimal("0.00"))
+    return render(request, _tpl(request.user, "buyer/dashboard/index.html"), {
+        "orders": orders, "rfqs": rfqs,
+        "total_orders": total_orders, "active_orders": active_orders,
+        "total_spent": total_spent,
+    })
 
+@login_required
 def buyer_catalog(request: HttpRequest) -> HttpResponse:
-    return render(request, _tpl(request.user, "buyer/catalog/list.html"), {})
+    q = request.GET.get("q", "").strip()
+    parts = Part.objects.filter(is_active=True).select_related("brand", "category")
+    if q:
+        parts = parts.filter(
+            models.Q(title__icontains=q) | models.Q(oem_number__icontains=q) | models.Q(cross_numbers__icontains=q)
+        )
+    parts = parts.order_by("-created_at")[:100]
+    return render(request, _tpl(request.user, "buyer/catalog/list.html"), {"parts": parts, "q": q})
 
+@login_required
 def buyer_rfq_list(request: HttpRequest) -> HttpResponse:
-    return render(request, _tpl(request.user, "buyer/rfq/list.html"), {})
+    rfqs = RFQ.objects.filter(created_by=request.user).prefetch_related("items").order_by("-created_at")
+    return render(request, _tpl(request.user, "buyer/rfq/list.html"), {"rfqs": rfqs})
 
+@login_required
 def buyer_orders(request: HttpRequest) -> HttpResponse:
-    return render(request, _tpl(request.user, "buyer/orders/list.html"), {})
+    orders = Order.objects.filter(buyer=request.user).prefetch_related("items__part").order_by("-created_at")
+    for o in orders:
+        _recalc_order_sla(o)
+    return render(request, _tpl(request.user, "buyer/orders/list.html"), {"orders": orders})
 
+@login_required
 def buyer_shipments(request: HttpRequest) -> HttpResponse:
-    return render(request, _tpl(request.user, "buyer/shipments/list.html"), {})
+    shipped_statuses = ["shipped", "transit_abroad", "customs", "transit_rf", "issuing", "delivered"]
+    orders = Order.objects.filter(buyer=request.user, status__in=shipped_statuses).prefetch_related("items__part").order_by("-created_at")
+    for o in orders:
+        _recalc_order_sla(o)
+    return render(request, _tpl(request.user, "buyer/shipments/list.html"), {"orders": orders})
 
+@login_required
 def buyer_claims(request: HttpRequest) -> HttpResponse:
-    return render(request, "buyer/claims/list.html", {})
+    claims = OrderClaim.objects.filter(order__buyer=request.user).select_related("order").order_by("-created_at")
+    return render(request, "buyer/claims/list.html", {"claims": claims})
 
+@login_required
 def buyer_suppliers(request: HttpRequest) -> HttpResponse:
-    return render(request, "buyer/suppliers/list.html", {})
+    supplier_ids = Order.objects.filter(buyer=request.user).values_list("items__part__seller", flat=True).distinct()
+    suppliers = User.objects.filter(id__in=supplier_ids).select_related("userprofile")
+    return render(request, "buyer/suppliers/list.html", {"suppliers": suppliers})
 
+@login_required
 def buyer_negotiations(request: HttpRequest) -> HttpResponse:
-    return render(request, "buyer/negotiations/list.html", {})
+    rfqs = RFQ.objects.filter(created_by=request.user, discount_percent__gt=0).order_by("-created_at")
+    return render(request, "buyer/negotiations/list.html", {"rfqs": rfqs})
 
+@login_required
 def buyer_finance(request: HttpRequest) -> HttpResponse:
-    return render(request, "buyer/finance/list.html", {})
+    orders = Order.objects.filter(buyer=request.user).order_by("-created_at")[:50]
+    total_paid = sum((o.total_amount for o in orders if o.payment_status == "paid"), Decimal("0.00"))
+    total_pending = sum((o.total_amount for o in orders if o.payment_status not in ("paid", "refunded")), Decimal("0.00"))
+    return render(request, "buyer/finance/list.html", {"orders": orders, "total_paid": total_paid, "total_pending": total_pending})
 
+@login_required
 def buyer_analytics(request: HttpRequest) -> HttpResponse:
-    return render(request, "buyer/analytics/list.html", {})
+    orders = Order.objects.filter(buyer=request.user)
+    total = orders.count()
+    completed = orders.filter(status="completed").count()
+    cancelled = orders.filter(status="cancelled").count()
+    total_spent = sum((o.total_amount for o in orders[:500]), Decimal("0.00"))
+    return render(request, "buyer/analytics/list.html", {
+        "total_orders": total, "completed_orders": completed,
+        "cancelled_orders": cancelled, "total_spent": total_spent,
+    })
 
 
+@seller_required
 def seller_finance(request: HttpRequest) -> HttpResponse:
     """Финансовый кабинет поставщика: оплаты, документы, таймлайн."""
     from decimal import Decimal
@@ -5103,6 +5175,10 @@ def operator_logist_shipments(request):
 
 def operator_logist_routes(request):
     return render(request, "operator/logist/routes.html", {"operator_role": "logist", "operator_active_nav": "routes"})
+
+
+def operator_logist_quotes(request):
+    return render(request, "operator/logist/quotes.html", {"operator_role": "logist", "operator_active_nav": "quotes"})
 
 
 def operator_customs_dashboard(request):

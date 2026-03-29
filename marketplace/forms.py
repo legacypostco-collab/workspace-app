@@ -7,8 +7,9 @@ from .models import Part
 
 class RegisterForm(UserCreationForm):
     ROLE_CHOICES = [
-        ("buyer", "Buyer"),
-        ("seller", "Seller"),
+        ("buyer", "Покупатель"),
+        ("seller", "Поставщик"),
+        ("operator", "Оператор"),
     ]
 
     email = forms.EmailField(required=True)
