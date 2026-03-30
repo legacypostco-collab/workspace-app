@@ -445,11 +445,10 @@
         {/* ── HEADER ROW ── */}
         <div style={{ marginBottom: 32 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 4 }}>
-            <span style={{ fontSize: 36, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif", letterSpacing: "-0.03em", lineHeight: 1 }}>{fmtCur(2100000, cur)}</span>
-            <span style={{ fontSize: 14, fontWeight: 600, color: sky }}>+18.4%</span>
+            <span style={{ fontSize: 36, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif", letterSpacing: "-0.03em", lineHeight: 1 }}>{fmtCur(parseFloat(window.__buyerData.total_spent) || 0, cur)}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
-            <span style={{ fontSize: 13, color: P.t1 }}>Объём закупок · vs {fmtCur(1800000, cur)} фев</span>
+            <span style={{ fontSize: 13, color: P.t1 }}>Объём закупок</span>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               {hiddenBlocks.length > 0 && (
                 <div style={{ position: "relative" }}>

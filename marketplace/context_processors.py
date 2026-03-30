@@ -244,6 +244,11 @@ def buyer_context(request):
     buyer_active_rfq = RFQ.objects.filter(created_by=buyer).exclude(
         status__in=["cancelled"]
     ).count()
+    from decimal import Decimal
+    buyer_total_spent = sum(
+        (o.total_amount for o in Order.objects.filter(buyer=buyer, payment_status="paid")),
+        Decimal("0"),
+    )
 
     is_demo = buyer.username.startswith("demo_")
 
@@ -276,6 +281,7 @@ def buyer_context(request):
         "buyer_rfq_count": buyer_rfq_count,
         "buyer_active_rfq": buyer_active_rfq,
         "buyer_company_name": profile.company_name,
+        "buyer_total_spent": buyer_total_spent,
     }
 
 
@@ -391,4 +397,5 @@ def buyer_context(request):
         "buyer_rfq_count": buyer_rfq_count,
         "buyer_active_rfq": buyer_active_rfq,
         "buyer_company_name": profile.company_name,
+        "buyer_total_spent": buyer_total_spent,
     }
