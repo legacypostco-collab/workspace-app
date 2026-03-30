@@ -5252,21 +5252,33 @@ def operator_payments_escrow(request):
 
 @login_required
 def operator_manager_dashboard(request):
-    from django.db.models import Sum, Count, Q
+    from django.db.models import Sum, F
     orders = Order.objects.all()
     total_orders = orders.count()
     active_orders = orders.filter(status__in=["confirmed", "in_production", "ready_to_ship", "shipped"]).count()
     total_revenue = orders.filter(payment_status="paid").aggregate(s=Sum("total_amount"))["s"] or Decimal("0")
-    commission_pct = Decimal("5")
-    commission_earned = (total_revenue * commission_pct / 100).quantize(Decimal("0.01"))
-    completed_orders = orders.filter(status__in=["delivered", "completed"]).count()
+    # Прибыль = сумма (price - cost_price) * quantity по всем оплаченным заказам
+    from marketplace.models import OrderItem
+    paid_items = OrderItem.objects.filter(
+        order__payment_status="paid",
+        part__cost_price__isnull=False,
+    ).select_related("part")
+    total_profit = sum(
+        (item.unit_price - item.part.cost_price) * item.quantity
+        for item in paid_items
+        if item.part and item.part.cost_price is not None
+    )
+    if not isinstance(total_profit, Decimal):
+        total_profit = Decimal(str(total_profit))
+    commission_pct = Decimal("15")
+    commission_earned = (total_profit * commission_pct / 100).quantize(Decimal("0.01"))
     pending_payment = orders.filter(payment_status="awaiting_reserve").count()
     recent_orders = orders.order_by("-created_at")[:10]
     ctx = {
         "operator_role": "manager", "operator_active_nav": "dashboard",
         "total_orders": total_orders, "active_orders": active_orders,
-        "total_revenue": total_revenue, "commission_pct": commission_pct,
-        "commission_earned": commission_earned, "completed_orders": completed_orders,
+        "total_revenue": total_revenue, "total_profit": total_profit,
+        "commission_pct": commission_pct, "commission_earned": commission_earned,
         "pending_payment": pending_payment, "recent_orders": recent_orders,
     }
     return render(request, "operator/manager/dashboard.html", ctx)

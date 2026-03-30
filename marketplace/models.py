@@ -74,6 +74,7 @@ class Part(models.Model):
     oem_number = models.CharField(max_length=100, db_index=True)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=12, decimal_places=2)
+    cost_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Закупочная цена")
     stock_quantity = models.PositiveIntegerField(default=0)
     condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default="oem")
     image_url = models.URLField(blank=True)

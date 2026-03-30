@@ -16,9 +16,13 @@
     <div class="op-stat-value">${{ total_revenue }}</div>
     <div class="op-stat-label">Выручка (оплачено)</div>
   </div>
+  <div class="op-stat">
+    <div class="op-stat-value">${{ total_profit }}</div>
+    <div class="op-stat-label">Прибыль</div>
+  </div>
   <div class="op-stat" style="border-color:rgba(40,200,64,0.2);">
     <div class="op-stat-value" style="color:#28C840;">${{ commission_earned }}</div>
-    <div class="op-stat-label">Комиссия ({{ commission_pct }}%)</div>
+    <div class="op-stat-label">Комиссия ({{ commission_pct }}% от прибыли)</div>
   </div>
   <div class="op-stat">
     <div class="op-stat-value">{{ pending_payment }}</div>
