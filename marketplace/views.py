@@ -18,7 +18,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Avg, Count, F, Q, Sum
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -1016,8 +1016,9 @@ def _bulk_lookup_to_rfq_lines(rows: list[dict]) -> str:
 
 
 def home(request: HttpRequest) -> HttpResponse:
-    # Always show the landing page — authenticated users can navigate to their cabinet via sidebar
-    return render(request, "landing.html")
+    parts_count = Part.objects.filter(is_active=True).count()
+    sellers_count = UserProfile.objects.filter(role="seller").count()
+    return render(request, "landing.html", {"parts_count": parts_count, "sellers_count": sellers_count})
 
 
 def home_marketplace(request: HttpRequest) -> HttpResponse:
@@ -2294,8 +2295,16 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
 
 @seller_required
 def seller_negotiations(request: HttpRequest) -> HttpResponse:
-    """Согласование: уровни скидок, лояльность, переторжка, чертежи."""
-    return render(request, "seller/negotiations/list.html", {})
+    """Согласование: входящие запросы на скидку, переторжка."""
+    discount_rfqs = list(RFQ.objects.filter(
+        discount_percent__gt=0,
+        items__matched_part__seller=request.user,
+    ).distinct().prefetch_related("items__matched_part").order_by("-created_at")[:50])
+    active_negotiations = sum(1 for r in discount_rfqs if r.status in ("new", "needs_review"))
+    return render(request, "seller/negotiations/list.html", {
+        "rfqs": discount_rfqs,
+        "active_negotiations": active_negotiations,
+    })
 
 
 @seller_required
@@ -2413,18 +2422,30 @@ def buyer_shipments(request: HttpRequest) -> HttpResponse:
 @login_required
 def buyer_claims(request: HttpRequest) -> HttpResponse:
     claims = OrderClaim.objects.filter(order__buyer=request.user).select_related("order").order_by("-created_at")
-    return render(request, "buyer/claims/list.html", {"claims": claims})
+    stats = {
+        "open": claims.filter(status="open").count(),
+        "in_review": claims.filter(status="in_review").count(),
+        "approved": claims.filter(status="approved").count(),
+        "rejected_closed": claims.filter(status__in=["rejected", "closed"]).count(),
+    }
+    return render(request, "buyer/claims/list.html", {"claims": claims, "stats": stats})
 
 @login_required
 def buyer_suppliers(request: HttpRequest) -> HttpResponse:
     supplier_ids = Order.objects.filter(buyer=request.user).values_list("items__part__seller", flat=True).distinct()
-    suppliers = User.objects.filter(id__in=supplier_ids).select_related("userprofile")
+    suppliers = (
+        User.objects.filter(id__in=supplier_ids)
+        .select_related("profile")
+        .annotate(orders_count=Count("parts__orderitem__order", filter=Q(parts__orderitem__order__buyer=request.user), distinct=True))
+    )
     return render(request, "buyer/suppliers/list.html", {"suppliers": suppliers})
 
 @login_required
 def buyer_negotiations(request: HttpRequest) -> HttpResponse:
-    rfqs = RFQ.objects.filter(created_by=request.user, discount_percent__gt=0).order_by("-created_at")
-    return render(request, "buyer/negotiations/list.html", {"rfqs": rfqs})
+    rfqs = RFQ.objects.filter(created_by=request.user, discount_percent__gt=0).prefetch_related("items").order_by("-created_at")
+    active_count = rfqs.filter(status__in=["draft", "submitted"]).count()
+    avg_discount = rfqs.aggregate(avg=Avg("discount_percent"))["avg"] or 0
+    return render(request, "buyer/negotiations/list.html", {"rfqs": rfqs, "active_count": active_count, "avg_discount": avg_discount})
 
 @login_required
 def buyer_finance(request: HttpRequest) -> HttpResponse:
