@@ -3,256 +3,54 @@
 
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-  <div class="op-section-title" style="margin-bottom:0;">Управление заказами</div>
-  <div style="display:flex;gap:8px;">
-    <select class="op-select" id="filter-ord-status" onchange="filterOrders()">
-      <option value="">Все статусы</option>
-      <option value="new">Новый</option>
-      <option value="work">В работе</option>
-      <option value="customs">На таможне</option>
-      <option value="delivery">Доставка</option>
-      <option value="payment">Оплата</option>
-      <option value="done">Завершён</option>
-    </select>
-    <input type="text" class="op-input" id="filter-ord-search" placeholder="Поиск по ID..." oninput="filterOrders()" style="width:160px;"/>
-  </div>
+  <div class="op-section-title">Все заказы</div>
+  <span style="font-size:12px;color:#6A6A6A;">Всего: {{ orders|length }}</span>
 </div>
 
-<div class="op-card">
-  <table class="op-table" id="orders-table">
-    <thead>
-      <tr>
-        <th></th>
-        <th>ORD ID</th>
-        <th>Покупатель</th>
-        <th>Поставщик</th>
-        <th>Сумма</th>
-        <th>Статус</th>
-        <th>Дата</th>
-        <th>Действия</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr data-ord-status="work" data-ord-id="ORD-4521">
-        <td style="cursor:pointer;width:24px;" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="2" stroke-linecap="round" class="expand-icon"><path d="M6 4l4 4-4 4"/></svg>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
-        <td class="text-secondary">#1042</td>
-        <td class="text-secondary">#2087</td>
-        <td style="font-family:'Golos Text',sans-serif;">$18,400</td>
-        <td><span class="op-badge op-badge-gray">В работе</span></td>
-        <td class="text-secondary">24 мар</td>
-        <td>
-          <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4521')">Запросить информацию</button>
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('ORD-4521 эскалирован')">Эскалировать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка к ORD-4521')">Заметка</button>
-          </div>
-        </td>
-      </tr>
-      <tr class="order-timeline" style="display:none;">
-        <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">
-          <div class="op-section-sub">Таймлайн событий</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <div style="display:flex;gap:12px;align-items:start;">
-              <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Заказ создан</div><div style="font-size:11px;color:#5E5E5E;">24 мар, 11:15</div></div>
-            </div>
-            <div style="display:flex;gap:12px;align-items:start;">
-              <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Поставщик подтвердил</div><div style="font-size:11px;color:#5E5E5E;">24 мар, 12:30</div></div>
-            </div>
-            <div style="display:flex;gap:12px;align-items:start;">
-              <div style="width:6px;height:6px;border-radius:50%;background:#E85C0D;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Ожидает оплаты аванса</div><div style="font-size:11px;color:#5E5E5E;">24 мар, 14:00</div></div>
-            </div>
-          </div>
-          <div class="inline-info-request" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);">
-            <div class="op-section-sub">Запрос информации</div>
-            <div style="display:flex;gap:8px;margin-top:4px;">
-              <input type="text" class="op-input" placeholder="Введите текст запроса..." style="flex:1;"/>
-              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен: '+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
-            </div>
-          </div>
-        </td>
-      </tr>
-
-      <tr data-ord-status="customs" data-ord-id="ORD-4518">
-        <td style="cursor:pointer;width:24px;" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="2" stroke-linecap="round" class="expand-icon"><path d="M6 4l4 4-4 4"/></svg>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
-        <td class="text-secondary">#1038</td>
-        <td class="text-secondary">#2091</td>
-        <td style="font-family:'Golos Text',sans-serif;">$6,200</td>
-        <td><span class="op-badge op-badge-orange">На таможне</span></td>
-        <td class="text-secondary">23 мар</td>
-        <td>
-          <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4518')">Запросить информацию</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка к ORD-4518')">Заметка</button>
-          </div>
-        </td>
-      </tr>
-      <tr class="order-timeline" style="display:none;">
-        <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">
-          <div class="op-section-sub">Таймлайн событий</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <div style="display:flex;gap:12px;align-items:start;">
-              <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Заказ создан</div><div style="font-size:11px;color:#5E5E5E;">20 мар, 09:00</div></div>
-            </div>
-            <div style="display:flex;gap:12px;align-items:start;">
-              <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Аванс оплачен</div><div style="font-size:11px;color:#5E5E5E;">20 мар, 14:30</div></div>
-            </div>
-            <div style="display:flex;gap:12px;align-items:start;">
-              <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Отгружен из Стамбула</div><div style="font-size:11px;color:#5E5E5E;">21 мар, 08:00</div></div>
-            </div>
-            <div style="display:flex;gap:12px;align-items:start;">
-              <div style="width:6px;height:6px;border-radius:50%;background:#E85C0D;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">На таможне (ожидание)</div><div style="font-size:11px;color:#5E5E5E;">23 мар, 16:00</div></div>
-            </div>
-          </div>
-          <div class="inline-info-request" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);">
-            <div class="op-section-sub">Запрос информации</div>
-            <div style="display:flex;gap:8px;margin-top:4px;">
-              <input type="text" class="op-input" placeholder="Введите текст запроса..." style="flex:1;"/>
-              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен: '+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
-            </div>
-          </div>
-        </td>
-      </tr>
-
-      <tr data-ord-status="delivery" data-ord-id="ORD-4515">
-        <td style="cursor:pointer;width:24px;" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="2" stroke-linecap="round" class="expand-icon"><path d="M6 4l4 4-4 4"/></svg>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
-        <td class="text-secondary">#1051</td>
-        <td class="text-secondary">#2075</td>
-        <td style="font-family:'Golos Text',sans-serif;">$4,100</td>
-        <td><span class="op-badge op-badge-gray">Доставка</span></td>
-        <td class="text-secondary">22 мар</td>
-        <td>
-          <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4515')">Детали</button>
-          </div>
-        </td>
-      </tr>
-      <tr class="order-timeline" style="display:none;">
-        <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">
-          <div class="op-section-sub">Таймлайн событий</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Заказ создан</div><div style="font-size:11px;color:#5E5E5E;">18 мар</div></div></div>
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Оплачен полностью</div><div style="font-size:11px;color:#5E5E5E;">19 мар</div></div></div>
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Таможня пройдена</div><div style="font-size:11px;color:#5E5E5E;">21 мар</div></div></div>
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">На доставке</div><div style="font-size:11px;color:#5E5E5E;">22 мар</div></div></div>
-          </div>
-        </td>
-      </tr>
-
-      <tr data-ord-status="payment" data-ord-id="ORD-4512">
-        <td style="cursor:pointer;width:24px;" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="2" stroke-linecap="round" class="expand-icon"><path d="M6 4l4 4-4 4"/></svg>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
-        <td class="text-secondary">#1029</td>
-        <td class="text-secondary">#2063</td>
-        <td style="font-family:'Golos Text',sans-serif;">$12,800</td>
-        <td><span class="op-badge op-badge-gray">Оплата</span></td>
-        <td class="text-secondary">20 мар</td>
-        <td>
-          <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4512')">Запросить информацию</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка к ORD-4512')">Заметка</button>
-          </div>
-        </td>
-      </tr>
-      <tr class="order-timeline" style="display:none;">
-        <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">
-          <div class="op-section-sub">Таймлайн событий</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Заказ создан</div><div style="font-size:11px;color:#5E5E5E;">15 мар</div></div></div>
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#E85C0D;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Ожидает оплаты аванса</div><div style="font-size:11px;color:#5E5E5E;">20 мар</div></div></div>
-          </div>
-          <div class="inline-info-request" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);">
-            <div class="op-section-sub">Запрос информации</div>
-            <div style="display:flex;gap:8px;margin-top:4px;">
-              <input type="text" class="op-input" placeholder="Введите текст запроса..." style="flex:1;"/>
-              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен: '+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
-            </div>
-          </div>
-        </td>
-      </tr>
-
-      <tr data-ord-status="done" data-ord-id="ORD-4505">
-        <td style="cursor:pointer;width:24px;" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="2" stroke-linecap="round" class="expand-icon"><path d="M6 4l4 4-4 4"/></svg>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4505</td>
-        <td class="text-secondary">#1033</td>
-        <td class="text-secondary">#2051</td>
-        <td style="font-family:'Golos Text',sans-serif;">$9,300</td>
-        <td><span class="op-badge op-badge-gray">Завершён</span></td>
-        <td class="text-secondary">18 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4505')">Детали</button></td>
-      </tr>
-      <tr class="order-timeline" style="display:none;">
-        <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">
-          <div class="op-section-sub">Таймлайн событий</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Завершён</div><div style="font-size:11px;color:#5E5E5E;">24 мар</div></div></div>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+{% if orders %}
+<div class="op-card" style="padding:0;overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:13px;">
+  <thead>
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.07);">
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">ID</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Клиент</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Поз.</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Сумма</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Статус</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">SLA</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Оплата</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Дата</th>
+      <th style="padding:10px 14px;"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for order in orders %}
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;" onclick="window.location='{% url 'order_detail' order.id %}'">
+      <td style="padding:10px 14px;font-weight:700;color:#64B5F6;">#{{ order.id }}</td>
+      <td style="padding:10px 14px;">{{ order.customer_name|truncatechars:25 }}</td>
+      <td style="padding:10px 14px;">{{ order.items.count }}</td>
+      <td style="padding:10px 14px;font-weight:700;">${{ order.total_amount }}</td>
+      <td style="padding:10px 14px;">
+        <span class="op-badge {% if order.status == 'delivered' or order.status == 'completed' %}op-badge-green{% elif order.status == 'cancelled' %}op-badge-orange{% else %}op-badge-blue{% endif %}">{{ order.get_status_display|default:order.status }}</span>
+      </td>
+      <td style="padding:10px 14px;">
+        {% if order.sla_status == 'breached' %}<span style="color:#E85C0D;font-weight:600;">Нарушен</span>
+        {% elif order.sla_status == 'at_risk' %}<span style="color:#FFA000;">Под угрозой</span>
+        {% else %}<span style="color:#28C840;">OK</span>{% endif %}
+      </td>
+      <td style="padding:10px 14px;">
+        <span class="op-badge {% if order.payment_status == 'paid' %}op-badge-green{% elif order.payment_status == 'reserve_paid' %}op-badge-blue{% else %}op-badge-orange{% endif %}">{{ order.get_payment_status_display|default:order.payment_status }}</span>
+      </td>
+      <td style="padding:10px 14px;font-size:11px;color:#5E5E5E;">{{ order.created_at|date:"d.m.Y" }}</td>
+      <td style="padding:10px 14px;"><a href="{% url 'order_detail' order.id %}" style="color:#64B5F6;font-size:11px;font-weight:600;text-decoration:none;">Детали</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-function filterOrders() {
-  var status = document.getElementById('filter-ord-status').value;
-  var search = document.getElementById('filter-ord-search').value.toUpperCase();
-  var rows = document.querySelectorAll('#orders-table tbody tr:not(.order-timeline)');
-  rows.forEach(function(row) {
-    var timeline = row.nextElementSibling;
-    var show = true;
-    if (status && row.dataset.ordStatus !== status) show = false;
-    if (search && row.dataset.ordId.indexOf(search) < 0) show = false;
-    row.style.display = show ? '' : 'none';
-    if (!show && timeline) timeline.style.display = 'none';
-  });
-}
-
-function toggleOrderRow(row) {
-  var timeline = row.nextElementSibling;
-  if (!timeline || !timeline.classList.contains('order-timeline')) return;
-  var visible = timeline.style.display !== 'none';
-  timeline.style.display = visible ? 'none' : 'table-row';
-  var icon = row.querySelector('.expand-icon');
-  icon.style.transform = visible ? '' : 'rotate(90deg)';
-  icon.style.transition = 'transform 0.15s';
-}
-
-function showInlineInfoRequest(btn, ordId) {
-  var row = btn.closest('tr');
-  var timeline = row.nextElementSibling;
-  if (timeline && timeline.classList.contains('order-timeline')) {
-    timeline.style.display = 'table-row';
-    var icon = row.querySelector('.expand-icon');
-    icon.style.transform = 'rotate(90deg)';
-    icon.style.transition = 'transform 0.15s';
-    var infoArea = timeline.querySelector('.inline-info-request');
-    if (infoArea) {
-      infoArea.style.display = 'block';
-      infoArea.querySelector('input').focus();
-    }
-  }
-}
-</script>
+{% else %}
+<div class="op-card" style="text-align:center;padding:40px;color:#5E5E5E;">
+  Нет заказов
+</div>
+{% endif %}
 {% endblock %}

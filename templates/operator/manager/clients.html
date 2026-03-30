@@ -2,283 +2,37 @@
 {% block title %}Менеджер — Клиенты{% endblock %}
 
 {% block content %}
-<div class="op-section-title" style="margin-bottom:16px;">Обзор клиентов</div>
+<div class="op-section-title" style="margin-bottom:16px;">Клиенты</div>
 
-<!-- Tabs: Buyers / Suppliers -->
-<div class="op-tabs" id="client-tabs">
-  <button class="op-tab active" data-tab="buyers" onclick="switchClientTab('buyers')">Покупатели</button>
-  <button class="op-tab" data-tab="suppliers" onclick="switchClientTab('suppliers')">Поставщики</button>
-</div>
-
-<!-- Buyers table -->
-<div class="op-card" id="buyers-section">
-  <table class="op-table" id="buyers-table">
-    <thead>
-      <tr>
-        <th>#ID</th>
-        <th>Тип</th>
-        <th>Заказов</th>
-        <th>Оборот</th>
-        <th>Рейтинг</th>
-        <th>SLA</th>
-        <th>Последняя активность</th>
-        <th>Действия</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr onclick="showClientProfile(this,'buyer','#1042',8,'$142,800','4.8','98%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#1042</td>
-        <td><span class="op-badge op-badge-gray">Покупатель</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">8</td>
-        <td style="font-family:'Golos Text',sans-serif;">$142,800</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#919191" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">4.8</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">98%</td>
-        <td class="text-secondary">Сегодня</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #1042')">Профиль</button></td>
-      </tr>
-      <tr onclick="showClientProfile(this,'buyer','#1038',5,'$68,400','4.5','95%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#1038</td>
-        <td><span class="op-badge op-badge-gray">Покупатель</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">5</td>
-        <td style="font-family:'Golos Text',sans-serif;">$68,400</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#919191" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">4.5</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">95%</td>
-        <td class="text-secondary">Вчера</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #1038')">Профиль</button></td>
-      </tr>
-      <tr onclick="showClientProfile(this,'buyer','#1051',3,'$24,100','4.2','90%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#1051</td>
-        <td><span class="op-badge op-badge-gray">Покупатель</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">3</td>
-        <td style="font-family:'Golos Text',sans-serif;">$24,100</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#919191" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">4.2</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">90%</td>
-        <td class="text-secondary">22 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #1051')">Профиль</button></td>
-      </tr>
-      <tr onclick="showClientProfile(this,'buyer','#1029',12,'$248,000','4.9','99%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#1029</td>
-        <td><span class="op-badge op-badge-gray">Покупатель</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">12</td>
-        <td style="font-family:'Golos Text',sans-serif;">$248,000</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#919191" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">4.9</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">99%</td>
-        <td class="text-secondary">20 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #1029')">Профиль</button></td>
-      </tr>
-      <tr onclick="showClientProfile(this,'buyer','#1033',6,'$85,200','3.8','82%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#1033</td>
-        <td><span class="op-badge op-badge-gray">Покупатель</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">6</td>
-        <td style="font-family:'Golos Text',sans-serif;">$85,200</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#E85C0D" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">3.8</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">82%</td>
-        <td class="text-secondary">18 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #1033')">Профиль</button></td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<!-- Suppliers table -->
-<div class="op-card" id="suppliers-section" style="display:none;">
-  <table class="op-table" id="suppliers-table">
-    <thead>
-      <tr>
-        <th>#ID</th>
-        <th>Тип</th>
-        <th>Заказов</th>
-        <th>Оборот</th>
-        <th>Рейтинг</th>
-        <th>SLA</th>
-        <th>Последняя активность</th>
-        <th>Действия</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr onclick="showClientProfile(this,'supplier','#2087',12,'$320,000','4.7','96%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2087</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">12</td>
-        <td style="font-family:'Golos Text',sans-serif;">$320,000</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#919191" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">4.7</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">96%</td>
-        <td class="text-secondary">Сегодня</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #2087')">Профиль</button></td>
-      </tr>
-      <tr onclick="showClientProfile(this,'supplier','#2091',8,'$185,400','4.4','93%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2091</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">8</td>
-        <td style="font-family:'Golos Text',sans-serif;">$185,400</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#919191" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">4.4</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">93%</td>
-        <td class="text-secondary">Вчера</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #2091')">Профиль</button></td>
-      </tr>
-      <tr onclick="showClientProfile(this,'supplier','#2075',15,'$412,000','4.9','99%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2075</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">15</td>
-        <td style="font-family:'Golos Text',sans-serif;">$412,000</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#919191" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">4.9</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">99%</td>
-        <td class="text-secondary">22 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #2075')">Профиль</button></td>
-      </tr>
-      <tr onclick="showClientProfile(this,'supplier','#2063',6,'$98,400','4.1','88%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2063</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">6</td>
-        <td style="font-family:'Golos Text',sans-serif;">$98,400</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#919191" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">4.1</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">88%</td>
-        <td class="text-secondary">20 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #2063')">Профиль</button></td>
-      </tr>
-      <tr onclick="showClientProfile(this,'supplier','#2044',20,'$580,000','4.8','97%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2044</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">20</td>
-        <td style="font-family:'Golos Text',sans-serif;">$580,000</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#919191" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">4.8</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">97%</td>
-        <td class="text-secondary">18 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #2044')">Профиль</button></td>
-      </tr>
-      <tr onclick="showClientProfile(this,'supplier','#2051',4,'$42,000','3.6','78%')">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2051</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
-        <td style="font-family:'Golos Text',sans-serif;">4</td>
-        <td style="font-family:'Golos Text',sans-serif;">$42,000</td>
-        <td>
-          <div style="display:flex;align-items:center;gap:4px;">
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="#E85C0D" stroke="none"><path d="M8 1.5l1.9 3.8 4.2.6-3 2.9.7 4.2L8 11l-3.8 2 .7-4.2-3-2.9 4.2-.6z"/></svg>
-            <span style="font-family:'Golos Text',sans-serif;font-weight:700;">3.6</span>
-          </div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">78%</td>
-        <td class="text-secondary">15 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Профиль #2051')">Профиль</button></td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<!-- Client profile popup -->
-<div id="client-profile" style="display:none;position:fixed;top:0;right:0;width:380px;height:100vh;background:#242424;border-left:1px solid rgba(255,255,255,0.055);z-index:1000;padding:24px;overflow:auto;box-shadow:-4px 0 24px rgba(0,0,0,0.3);">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-    <div class="op-section-title" style="margin-bottom:0;" id="profile-title">--</div>
-    <button class="op-btn op-btn-ghost" onclick="document.getElementById('client-profile').style.display='none'" style="padding:4px 8px;">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
-    </button>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+  <div class="op-card">
+    <div style="font-size:14px;font-weight:700;color:#ECECEC;margin-bottom:12px;">Покупатели ({{ buyers|length }})</div>
+    {% for bp in buyers %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#ECECEC;">{{ bp.company_name|default:bp.user.get_full_name|default:bp.user.username }}</div>
+        <div style="font-size:11px;color:#5E5E5E;">{{ bp.user.email|default:"—" }} · {{ bp.user.date_joined|date:"d.m.Y" }}</div>
+      </div>
+      <span class="op-badge op-badge-green">Buyer</span>
+    </div>
+    {% empty %}
+    <div style="color:#5E5E5E;font-size:13px;">Нет покупателей</div>
+    {% endfor %}
   </div>
-  <div id="profile-content"></div>
+
+  <div class="op-card">
+    <div style="font-size:14px;font-weight:700;color:#ECECEC;margin-bottom:12px;">Поставщики ({{ sellers|length }})</div>
+    {% for sp in sellers %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#ECECEC;">{{ sp.company_name|default:sp.user.get_full_name|default:sp.user.username }}</div>
+        <div style="font-size:11px;color:#5E5E5E;">{{ sp.user.email|default:"—" }} · Рейтинг: {{ sp.rating_score }}</div>
+      </div>
+      <span class="op-badge op-badge-blue">{{ sp.supplier_status|default:"sandbox" }}</span>
+    </div>
+    {% empty %}
+    <div style="color:#5E5E5E;font-size:13px;">Нет поставщиков</div>
+    {% endfor %}
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-function switchClientTab(tab) {
-  document.querySelectorAll('#client-tabs .op-tab').forEach(function(t) {
-    t.classList.toggle('active', t.dataset.tab === tab);
-  });
-  document.getElementById('buyers-section').style.display = tab === 'buyers' ? '' : 'none';
-  document.getElementById('suppliers-section').style.display = tab === 'suppliers' ? '' : 'none';
-}
-
-function showClientProfile(row, type, id, orders, revenue, rating, sla) {
-  var profile = document.getElementById('client-profile');
-  document.getElementById('profile-title').textContent = (type === 'buyer' ? 'Покупатель ' : 'Поставщик ') + id;
-  var content = document.getElementById('profile-content');
-  content.innerHTML =
-    '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">' +
-      '<div style="width:48px;height:48px;border-radius:12px;background:#2C2C2C;border:1px solid rgba(255,255,255,0.055);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">' + id.slice(1,3) + '</div>' +
-      '<div>' +
-        '<div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">' + id + '</div>' +
-        '<div style="font-size:12px;color:#919191;margin-top:2px;">' + (type === 'buyer' ? 'Покупатель' : 'Поставщик') + '</div>' +
-      '</div>' +
-    '</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">' +
-      '<div class="op-card-elevated" style="text-align:center;">' +
-        '<div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">' + orders + '</div>' +
-        '<div style="font-size:11px;color:#919191;margin-top:2px;">Заказов</div>' +
-      '</div>' +
-      '<div class="op-card-elevated" style="text-align:center;">' +
-        '<div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">' + revenue + '</div>' +
-        '<div style="font-size:11px;color:#919191;margin-top:2px;">Оборот</div>' +
-      '</div>' +
-      '<div class="op-card-elevated" style="text-align:center;">' +
-        '<div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">' + rating + '</div>' +
-        '<div style="font-size:11px;color:#919191;margin-top:2px;">Рейтинг</div>' +
-      '</div>' +
-      '<div class="op-card-elevated" style="text-align:center;">' +
-        '<div style="font-size:20px;font-weight:800;color:' + (parseFloat(sla) >= 90 ? '#ECECEC' : '#E85C0D') + ';font-family:\'Golos Text\',sans-serif;">' + sla + '</div>' +
-        '<div style="font-size:11px;color:#919191;margin-top:2px;">SLA</div>' +
-      '</div>' +
-    '</div>' +
-    '<div class="op-section-sub">Последние заказы</div>' +
-    '<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">' +
-      '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:#1F1F1F;border-radius:8px;">' +
-        '<span style="font-size:13px;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">ORD-4521</span>' +
-        '<span class="op-badge op-badge-gray">В работе</span>' +
-      '</div>' +
-      '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:#1F1F1F;border-radius:8px;">' +
-        '<span style="font-size:13px;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">ORD-4505</span>' +
-        '<span class="op-badge op-badge-gray">Завершён</span>' +
-      '</div>' +
-    '</div>';
-  profile.style.display = 'block';
-}
-</script>
 {% endblock %}

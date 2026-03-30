@@ -599,3 +599,18 @@ class SellerImportRun(models.Model):
 
     def __str__(self) -> str:
         return f"{self.seller_id}:{self.filename}:{self.status}:{self.created_at.isoformat()}"
+
+
+class Favorite(models.Model):
+    """Buyer's favorite/watched parts."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="favorites")
+    part = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="favorited_by")
+    target_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Целевая цена")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "part")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user.username} → {self.part.oem_number}"

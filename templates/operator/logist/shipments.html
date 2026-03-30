@@ -3,275 +3,44 @@
 
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-  <div class="op-section-title" style="margin-bottom:0;">Управление отгрузками</div>
-  <div style="display:flex;gap:8px;">
-    <select class="op-select" id="filter-route" onchange="filterShipments()">
-      <option value="">Все маршруты</option>
-      <option value="Шанхай">Шанхай</option>
-      <option value="Стамбул">Стамбул</option>
-      <option value="Гуанчжоу">Гуанчжоу</option>
-      <option value="Дубай">Дубай</option>
-    </select>
-    <select class="op-select" id="filter-method" onchange="filterShipments()">
-      <option value="">Все способы</option>
-      <option value="Море">Море</option>
-      <option value="Авиа">Авиа</option>
-      <option value="ЖД">ЖД</option>
-      <option value="Авто">Авто</option>
-    </select>
-    <select class="op-select" id="filter-status" onchange="filterShipments()">
-      <option value="">Все статусы</option>
-      <option value="Погрузка">Погрузка</option>
-      <option value="В пути">В пути</option>
-      <option value="Таможня">Таможня</option>
-      <option value="Доставка">Доставка</option>
-      <option value="Получено">Получено</option>
-    </select>
-  </div>
+  <div class="op-section-title">Отгрузки</div>
+  <span style="font-size:12px;color:#6A6A6A;">Всего: {{ orders|length }}</span>
 </div>
 
-<!-- Tabs -->
-<div class="op-tabs" id="shipment-tabs">
-  <button class="op-tab active" data-tab="all" onclick="switchShipmentTab('all')">Все</button>
-  <button class="op-tab" data-tab="transit" onclick="switchShipmentTab('transit')">В пути</button>
-  <button class="op-tab" data-tab="customs" onclick="switchShipmentTab('customs')">На таможне</button>
-  <button class="op-tab" data-tab="problem" onclick="switchShipmentTab('problem')">Проблемные</button>
+{% if orders %}
+<div class="op-card" style="padding:0;overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;font-size:13px;">
+  <thead>
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.07);">
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Заказ</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Клиент</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Сумма</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Статус</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Логистика</th>
+      <th style="padding:10px 14px;text-align:left;color:#6A6A6A;font-size:10px;text-transform:uppercase;">Адрес</th>
+      <th style="padding:10px 14px;"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for order in orders %}
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+      <td style="padding:10px 14px;font-weight:700;color:#64B5F6;">#{{ order.id }}</td>
+      <td style="padding:10px 14px;">{{ order.customer_name|truncatechars:20 }}</td>
+      <td style="padding:10px 14px;font-weight:700;">${{ order.total_amount }}</td>
+      <td style="padding:10px 14px;">
+        <span class="op-badge {% if order.status == 'delivered' %}op-badge-green{% elif order.status == 'customs' %}op-badge-orange{% else %}op-badge-blue{% endif %}">{{ order.get_status_display|default:order.status }}</span>
+      </td>
+      <td style="padding:10px 14px;font-size:11px;color:#919191;">${{ order.logistics_cost }} {{ order.logistics_provider|default:"—" }}</td>
+      <td style="padding:10px 14px;font-size:11px;color:#5E5E5E;">{{ order.delivery_address|truncatechars:30|default:"—" }}</td>
+      <td style="padding:10px 14px;"><a href="{% url 'order_detail' order.id %}" style="color:#64B5F6;font-size:11px;font-weight:600;text-decoration:none;">Детали</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 </div>
-
-<div class="op-card">
-  <table class="op-table" id="shipments-full-table">
-    <thead>
-      <tr>
-        <th>ORD ID</th>
-        <th>Покупатель</th>
-        <th>Поставщик</th>
-        <th>Маршрут</th>
-        <th>Способ</th>
-        <th>Этап</th>
-        <th>ETA</th>
-        <th>Стоимость</th>
-        <th>Действия</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr data-route="Шанхай" data-method="Море" data-status="В пути" data-tab="transit" data-problem="">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
-        <td class="text-secondary">#1042</td>
-        <td class="text-secondary">#2087</td>
-        <td>Шанхай <span style="color:#5E5E5E;">&#8594;</span> Москва</td>
-        <td><span class="op-badge op-badge-gray">Море</span></td>
-        <td>
-          <div style="font-size:11px;color:#919191;margin-bottom:3px;" class="status-text">В пути</div>
-          <div class="op-progress"><div class="op-progress-step done"></div><div class="op-progress-step current"></div><div class="op-progress-step"></div><div class="op-progress-step"></div><div class="op-progress-step"></div></div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;">12 апр</td>
-        <td style="font-family:'Golos Text',sans-serif;">$2,400</td>
-        <td>
-          <div style="display:flex;gap:6px;position:relative;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();toggleStatusDropdown(this)">Обновить статус</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4521')">Детали</button>
-            <div class="status-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:#2C2C2C;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:4px;z-index:100;min-width:140px;">
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Погрузка')">Погрузка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'В пути')">В пути</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Таможня')">Таможня</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Доставка')">Доставка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Получено')">Получено</div>
-            </div>
-          </div>
-        </td>
-      </tr>
-      <tr data-route="Стамбул" data-method="Авто" data-status="Таможня" data-tab="customs" data-problem="">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
-        <td class="text-secondary">#1038</td>
-        <td class="text-secondary">#2091</td>
-        <td>Стамбул <span style="color:#5E5E5E;">&#8594;</span> Москва</td>
-        <td><span class="op-badge op-badge-gray">Авто</span></td>
-        <td>
-          <div style="font-size:11px;color:#919191;margin-bottom:3px;" class="status-text">Таможня</div>
-          <div class="op-progress"><div class="op-progress-step done"></div><div class="op-progress-step done"></div><div class="op-progress-step current"></div><div class="op-progress-step"></div><div class="op-progress-step"></div></div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;">28 мар</td>
-        <td style="font-family:'Golos Text',sans-serif;">$1,200</td>
-        <td>
-          <div style="display:flex;gap:6px;position:relative;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();toggleStatusDropdown(this)">Обновить статус</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4518')">Детали</button>
-            <div class="status-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:#2C2C2C;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:4px;z-index:100;min-width:140px;">
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Погрузка')">Погрузка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'В пути')">В пути</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Таможня')">Таможня</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Доставка')">Доставка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Получено')">Получено</div>
-            </div>
-          </div>
-        </td>
-      </tr>
-      <tr data-route="Гуанчжоу" data-method="ЖД" data-status="В пути" data-tab="transit" data-problem="">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
-        <td class="text-secondary">#1051</td>
-        <td class="text-secondary">#2075</td>
-        <td>Гуанчжоу <span style="color:#5E5E5E;">&#8594;</span> Владивосток</td>
-        <td><span class="op-badge op-badge-gray">ЖД</span></td>
-        <td>
-          <div style="font-size:11px;color:#919191;margin-bottom:3px;" class="status-text">В пути</div>
-          <div class="op-progress"><div class="op-progress-step done"></div><div class="op-progress-step current"></div><div class="op-progress-step"></div><div class="op-progress-step"></div><div class="op-progress-step"></div></div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;">5 апр</td>
-        <td style="font-family:'Golos Text',sans-serif;">$1,800</td>
-        <td>
-          <div style="display:flex;gap:6px;position:relative;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();toggleStatusDropdown(this)">Обновить статус</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4515')">Детали</button>
-            <div class="status-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:#2C2C2C;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:4px;z-index:100;min-width:140px;">
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Погрузка')">Погрузка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'В пути')">В пути</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Таможня')">Таможня</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Доставка')">Доставка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Получено')">Получено</div>
-            </div>
-          </div>
-        </td>
-      </tr>
-      <tr data-route="Дубай" data-method="Авиа" data-status="Доставка" data-tab="transit" data-problem="">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
-        <td class="text-secondary">#1029</td>
-        <td class="text-secondary">#2063</td>
-        <td>Дубай <span style="color:#5E5E5E;">&#8594;</span> Москва</td>
-        <td><span class="op-badge op-badge-gray">Авиа</span></td>
-        <td>
-          <div style="font-size:11px;color:#919191;margin-bottom:3px;" class="status-text">Доставка</div>
-          <div class="op-progress"><div class="op-progress-step done"></div><div class="op-progress-step done"></div><div class="op-progress-step done"></div><div class="op-progress-step current"></div><div class="op-progress-step"></div></div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;">26 мар</td>
-        <td style="font-family:'Golos Text',sans-serif;">$3,600</td>
-        <td>
-          <div style="display:flex;gap:6px;position:relative;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();toggleStatusDropdown(this)">Обновить статус</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4512')">Детали</button>
-            <div class="status-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:#2C2C2C;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:4px;z-index:100;min-width:140px;">
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Погрузка')">Погрузка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'В пути')">В пути</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Таможня')">Таможня</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Доставка')">Доставка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Получено')">Получено</div>
-            </div>
-          </div>
-        </td>
-      </tr>
-      <tr data-route="Шанхай" data-method="Море" data-status="Погрузка" data-tab="all" data-problem="">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
-        <td class="text-secondary">#1055</td>
-        <td class="text-secondary">#2044</td>
-        <td>Шанхай <span style="color:#5E5E5E;">&#8594;</span> Новосибирск</td>
-        <td><span class="op-badge op-badge-gray">Море</span></td>
-        <td>
-          <div style="font-size:11px;color:#919191;margin-bottom:3px;" class="status-text">Погрузка</div>
-          <div class="op-progress"><div class="op-progress-step current"></div><div class="op-progress-step"></div><div class="op-progress-step"></div><div class="op-progress-step"></div><div class="op-progress-step"></div></div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;">18 апр</td>
-        <td style="font-family:'Golos Text',sans-serif;">$2,100</td>
-        <td>
-          <div style="display:flex;gap:6px;position:relative;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();toggleStatusDropdown(this)">Обновить статус</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4508')">Детали</button>
-            <div class="status-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:#2C2C2C;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:4px;z-index:100;min-width:140px;">
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Погрузка')">Погрузка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'В пути')">В пути</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Таможня')">Таможня</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Доставка')">Доставка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Получено')">Получено</div>
-            </div>
-          </div>
-        </td>
-      </tr>
-      <tr data-route="Шанхай" data-method="Море" data-status="В пути" data-tab="transit" data-problem="problem">
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4501</td>
-        <td class="text-secondary">#1033</td>
-        <td class="text-secondary">#2051</td>
-        <td>Шанхай <span style="color:#5E5E5E;">&#8594;</span> Москва</td>
-        <td><span class="op-badge op-badge-gray">Море</span></td>
-        <td>
-          <div style="font-size:11px;color:#E85C0D;margin-bottom:3px;" class="status-text">Задержка +3 дн.</div>
-          <div class="op-progress"><div class="op-progress-step done"></div><div class="op-progress-step done"></div><div class="op-progress-step current" style="background:#E85C0D;"></div><div class="op-progress-step"></div><div class="op-progress-step"></div></div>
-        </td>
-        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">Просрочено</td>
-        <td style="font-family:'Golos Text',sans-serif;">$2,400</td>
-        <td>
-          <div style="display:flex;gap:6px;position:relative;">
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();toggleStatusDropdown(this)">Обновить статус</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4501')">Детали</button>
-            <div class="status-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:#2C2C2C;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:4px;z-index:100;min-width:140px;">
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Погрузка')">Погрузка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'В пути')">В пути</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Таможня')">Таможня</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Доставка')">Доставка</div>
-              <div class="status-option" style="padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#ECECEC;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''" onclick="event.stopPropagation();updateStatus(this,'Получено')">Получено</div>
-            </div>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+{% else %}
+<div class="op-card" style="text-align:center;padding:40px;color:#5E5E5E;">
+  Нет активных отгрузок
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-var currentTab = 'all';
-
-function switchShipmentTab(tab) {
-  currentTab = tab;
-  document.querySelectorAll('#shipment-tabs .op-tab').forEach(function(t) {
-    t.classList.toggle('active', t.dataset.tab === tab);
-  });
-  filterShipments();
-}
-
-function filterShipments() {
-  var route = document.getElementById('filter-route').value;
-  var method = document.getElementById('filter-method').value;
-  var status = document.getElementById('filter-status').value;
-  var rows = document.querySelectorAll('#shipments-full-table tbody tr');
-  rows.forEach(function(row) {
-    var show = true;
-    if (route && row.dataset.route !== route) show = false;
-    if (method && row.dataset.method !== method) show = false;
-    if (status && row.dataset.status !== status) show = false;
-    if (currentTab === 'transit' && row.dataset.tab !== 'transit') show = false;
-    if (currentTab === 'customs' && row.dataset.tab !== 'customs') show = false;
-    if (currentTab === 'problem' && row.dataset.problem !== 'problem') show = false;
-    row.style.display = show ? '' : 'none';
-  });
-}
-
-function toggleStatusDropdown(btn) {
-  var dd = btn.parentElement.querySelector('.status-dropdown');
-  var isVisible = dd.style.display !== 'none';
-  document.querySelectorAll('.status-dropdown').forEach(function(d) { d.style.display = 'none'; });
-  if (!isVisible) dd.style.display = 'block';
-}
-
-function updateStatus(option, newStatus) {
-  var row = option.closest('tr');
-  var statusText = row.querySelector('.status-text');
-  statusText.textContent = newStatus;
-  statusText.style.color = '#919191';
-  row.dataset.status = newStatus;
-  var stages = ['Погрузка','В пути','Таможня','Доставка','Получено'];
-  var idx = stages.indexOf(newStatus);
-  var steps = row.querySelectorAll('.op-progress-step');
-  steps.forEach(function(s, i) {
-    s.className = 'op-progress-step';
-    if (i < idx) s.classList.add('done');
-    if (i === idx) s.classList.add('current');
-  });
-  option.closest('.status-dropdown').style.display = 'none';
-  var ordId = row.querySelector('td').textContent;
-  opToast('Статус ' + ordId + ' обновлён: ' + newStatus);
-}
-
-document.addEventListener('click', function() {
-  document.querySelectorAll('.status-dropdown').forEach(function(d) { d.style.display = 'none'; });
-});
-</script>
+{% endif %}
 {% endblock %}

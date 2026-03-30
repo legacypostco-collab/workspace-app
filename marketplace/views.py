@@ -49,6 +49,7 @@ from .models import (
     Part,
     RFQ,
     RFQItem,
+    Favorite,
     SellerImportRun,
     SupplierRatingEvent,
     UserProfile,
@@ -2389,14 +2390,19 @@ def buyer_dashboard(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def buyer_catalog(request: HttpRequest) -> HttpResponse:
-    q = request.GET.get("q", "").strip()
-    parts = Part.objects.filter(is_active=True).select_related("brand", "category")
-    if q:
-        parts = parts.filter(
-            models.Q(title__icontains=q) | models.Q(oem_number__icontains=q) | models.Q(cross_numbers__icontains=q)
-        )
-    parts = parts.order_by("-created_at")[:100]
-    return render(request, _tpl(request.user, "buyer/catalog/list.html"), {"parts": parts, "q": q})
+    favorites = Favorite.objects.filter(user=request.user).select_related("part__brand", "part__category", "part__seller").order_by("-created_at")
+    return render(request, _tpl(request.user, "buyer/catalog/list.html"), {"favorites": favorites, "favorites_count": favorites.count()})
+
+
+@login_required
+@require_POST
+def buyer_toggle_favorite(request: HttpRequest, part_id: int) -> JsonResponse:
+    part = get_object_or_404(Part, id=part_id)
+    fav, created = Favorite.objects.get_or_create(user=request.user, part=part)
+    if not created:
+        fav.delete()
+        return JsonResponse({"ok": True, "action": "removed"})
+    return JsonResponse({"ok": True, "action": "added"})
 
 @login_required
 def buyer_rfq_list(request: HttpRequest) -> HttpResponse:
@@ -5223,12 +5229,21 @@ def operator_select_role(request):
 
 @login_required
 def operator_logist_dashboard(request):
-    return render(request, "operator/logist/dashboard.html", {"operator_role": "logist", "operator_active_nav": "dashboard"})
+    all_orders = Order.objects.all()
+    shipped = all_orders.filter(status__in=["shipped", "transit_abroad", "customs", "transit_rf", "issuing"]).count()
+    delivered = all_orders.filter(status__in=["delivered", "completed"]).count()
+    pending_ship = all_orders.filter(status="ready_to_ship").count()
+    return render(request, "operator/logist/dashboard.html", {
+        "operator_role": "logist", "operator_active_nav": "dashboard",
+        "shipped": shipped, "delivered": delivered, "pending_ship": pending_ship,
+    })
 
 
 @login_required
 def operator_logist_shipments(request):
-    return render(request, "operator/logist/shipments.html", {"operator_role": "logist", "operator_active_nav": "shipments"})
+    shipped_statuses = ["shipped", "transit_abroad", "customs", "transit_rf", "issuing", "delivered"]
+    orders = Order.objects.filter(status__in=shipped_statuses).prefetch_related("items__part").order_by("-created_at")[:100]
+    return render(request, "operator/logist/shipments.html", {"operator_role": "logist", "operator_active_nav": "shipments", "orders": orders})
 
 
 @login_required
@@ -5307,12 +5322,20 @@ def operator_manager_dashboard(request):
 
 @login_required
 def operator_manager_orders(request):
-    return render(request, "operator/manager/orders.html", {"operator_role": "manager", "operator_active_nav": "orders"})
+    orders = Order.objects.all().prefetch_related("items__part").order_by("-created_at")[:100]
+    for o in orders:
+        _recalc_order_sla(o)
+    return render(request, "operator/manager/orders.html", {"operator_role": "manager", "operator_active_nav": "orders", "orders": orders})
 
 
 @login_required
 def operator_manager_clients(request):
-    return render(request, "operator/manager/clients.html", {"operator_role": "manager", "operator_active_nav": "clients"})
+    buyers = UserProfile.objects.filter(role="buyer").select_related("user").order_by("-user__date_joined")[:100]
+    sellers = UserProfile.objects.filter(role="seller").select_related("user").order_by("-user__date_joined")[:100]
+    return render(request, "operator/manager/clients.html", {
+        "operator_role": "manager", "operator_active_nav": "clients",
+        "buyers": buyers, "sellers": sellers,
+    })
 
 
 @login_required

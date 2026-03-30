@@ -141,6 +141,7 @@ urlpatterns = [
     # ═══ Buyer cabinet ═══
     path("buyer/", views.buyer_dashboard, name="buyer_dashboard"),
     path("buyer/catalog/", views.buyer_catalog, name="buyer_catalog"),
+    path("buyer/favorite/<int:part_id>/toggle/", views.buyer_toggle_favorite, name="buyer_toggle_favorite"),
     path("buyer/rfq/", views.buyer_rfq_list, name="buyer_rfq_list"),
     path("buyer/orders/", views.buyer_orders, name="buyer_orders"),
     path("buyer/shipments/", views.buyer_shipments, name="buyer_shipments"),
