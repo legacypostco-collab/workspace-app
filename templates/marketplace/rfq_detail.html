@@ -1,5 +1,26 @@
 {% extends "marketplace/base_app.html" %}
 {% block title %}RFQ #{{ rfq.id }} | Consolidator Parts{% endblock %}
+{% block extra_css %}
+<style>
+.rfq-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.rfq-sum-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center;}
+.rfq-sum-val{font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:var(--ink);}
+.rfq-sum-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;}
+.rfq-items-table{width:100%;border-collapse:collapse;font-size:13px;}
+.rfq-items-table th{text-align:left;padding:8px 12px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02);}
+.rfq-items-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle;}
+.rfq-items-table tr:hover td{background:rgba(255,255,255,0.015);}
+.rfq-items-table .text-right{text-align:right;}
+.rfq-part-name{font-weight:600;color:var(--ink);}
+.rfq-part-oem{font-size:11px;color:var(--accent);font-family:monospace;}
+.rfq-part-brand{font-size:11px;color:var(--muted);}
+.rfq-stock-badge{display:inline-block;padding:2px 6px;border-radius:3px;font-size:10px;font-weight:600;}
+.rfq-stock--available{background:rgba(40,200,64,0.12);color:#28C840;}
+.rfq-stock--order{background:rgba(255,160,0,0.12);color:#FFA000;}
+.rfq-stock--none{background:rgba(232,92,13,0.1);color:#E85C0D;}
+.rfq-total-row td{font-weight:700;font-size:14px;border-top:2px solid var(--border);background:rgba(255,255,255,0.02);}
+</style>
+{% endblock %}
 {% block content %}
 <nav class="cp-breadcrumbs">
   <a href="{% url 'rfq_list' %}">RFQ</a> / <span>#{{ rfq.id }}</span>
@@ -7,97 +28,119 @@
 
 <div class="cp-section">
   <h1 class="cp-card__title">RFQ #{{ rfq.id }}</h1>
-  <p class="cp-card__subtitle" style="margin-bottom:4px;">{{ rfq.company_name|default:rfq.customer_name }} &bull; {{ rfq.created_at }}</p>
+  <p class="cp-card__subtitle" style="margin-bottom:4px;">{{ rfq.company_name|default:rfq.customer_name }} &bull; {{ rfq.created_at|date:"d.m.Y H:i" }}</p>
   <p class="cp-card__subtitle" style="margin-bottom:4px;">
-    <span class="cp-badge cp-badge--blue">{{ rfq.get_mode_display }}</span>
+    Статус: <span class="cp-badge cp-badge--blue">{{ rfq.get_mode_display }}</span>
     <span class="cp-badge cp-badge--yellow">{{ rfq.get_urgency_display }}</span>
     <span class="cp-badge cp-badge--gray">{{ rfq.get_status_display }}</span>
   </p>
-  {% if rfq.notes %}
-    <p class="cp-card__subtitle">{{ rfq.notes }}</p>
-  {% endif %}
+  {% if rfq.notes %}<p class="cp-card__subtitle">{{ rfq.notes }}</p>{% endif %}
+</div>
+
+<div class="rfq-summary">
+  <div class="rfq-sum-card">
+    <div class="rfq-sum-label">Всего позиций</div>
+    <div class="rfq-sum-val">{{ rfq.items.count }}</div>
+  </div>
+  <div class="rfq-sum-card">
+    <div class="rfq-sum-label">Совпадения найдены</div>
+    <div class="rfq-sum-val">{{ matched_count }}</div>
+  </div>
+  <div class="rfq-sum-card">
+    <div class="rfq-sum-label">Оценочная сумма</div>
+    <div class="rfq-sum-val">${{ total }}</div>
+  </div>
 </div>
 
 <div class="cp-card">
-  <h2 class="cp-card__title">Позиции</h2>
-  <table class="cp-table">
+  <h2 class="cp-card__title" style="margin-bottom:12px;">Позиции по вашему ассортименту</h2>
+  <div style="overflow-x:auto;">
+  <table class="rfq-items-table">
     <thead>
       <tr>
-        <th>Запрос</th>
-        <th>Qty</th>
-        <th>State</th>
-        <th>Match</th>
-        <th>Suppliers</th>
-        <th style="text-align:right;">Сумма</th>
+        <th>#</th>
+        <th>Наименование</th>
+        <th>Бренд</th>
+        <th>Наличие</th>
+        <th class="text-right">Кол-во</th>
+        <th class="text-right">Цена</th>
+        <th class="text-right">Сумма</th>
       </tr>
     </thead>
     <tbody>
       {% for card in item_cards %}
         {% with item=card.item %}
         <tr>
+          <td>{{ forloop.counter }}</td>
           <td>
-            <strong>{{ item.query }}</strong>
-            {% if item.confidence %}
-              <span class="cp-badge cp-badge--blue" style="margin-left:4px;">{{ item.confidence }}%</span>
-            {% endif %}
-            {% if item.decision_reason %}
-              <br><small style="color:var(--muted);">{{ item.decision_reason }}</small>
+            {% if item.matched_part %}
+              <div class="rfq-part-name">{{ item.matched_part.title }}</div>
+              <div class="rfq-part-oem">{{ item.matched_part.oem_number }}</div>
+              {% if item.query != item.matched_part.oem_number %}
+                <div style="font-size:10px;color:var(--muted);">Запрос: {{ item.query }}</div>
+              {% endif %}
+            {% else %}
+              <div class="rfq-part-name" style="color:var(--muted);">{{ item.query }}</div>
+              <div style="font-size:10px;color:#E85C0D;">Совпадение не найдено</div>
             {% endif %}
           </td>
-          <td>{{ item.quantity }}</td>
           <td>
-            <span class="cp-badge cp-badge--gray">{{ item.get_state_display }}</span>
-            {% if item.recommended_supplier_status %}
-              <span class="cp-badge cp-badge--yellow">{{ item.recommended_supplier_status|upper }}</span>
+            {% if item.matched_part and item.matched_part.brand %}
+              <span class="rfq-part-brand">{{ item.matched_part.brand.name }}</span>
+            {% else %}
+              <span style="color:var(--muted);">—</span>
             {% endif %}
           </td>
           <td>
             {% if item.matched_part %}
-              <a href="{% url 'part_detail' item.matched_part.slug %}" style="color:var(--accent);text-decoration:none;">{{ item.matched_part.title }}</a>
-              {% if item.matched_part.brand %}<br><small style="color:var(--muted);">{{ item.matched_part.brand.name }}</small>{% endif %}
+              {% if item.matched_part.stock_quantity > 0 %}
+                <span class="rfq-stock-badge rfq-stock--available">В наличии ({{ item.matched_part.stock_quantity }})</span>
+              {% elif item.matched_part.availability == 'on_order' %}
+                <span class="rfq-stock-badge rfq-stock--order">Под заказ</span>
+              {% else %}
+                <span class="rfq-stock-badge rfq-stock--none">Нет</span>
+              {% endif %}
             {% else %}
-              <span style="color:var(--muted);">Совпадение не найдено</span>
+              <span style="color:var(--muted);">—</span>
             {% endif %}
           </td>
-          <td>
-            {% if card.trusted %}
-              <div style="margin-bottom:2px;"><span class="cp-badge cp-badge--green">Trusted</span> {% for p in card.trusted %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>
-            {% endif %}
-            {% if card.sandbox %}
-              <div style="margin-bottom:2px;"><span class="cp-badge cp-badge--yellow">Sandbox</span> {% for p in card.sandbox %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>
-            {% endif %}
-            {% if card.risky %}
-              <div><span class="cp-badge cp-badge--red">Risky</span> {% for p in card.risky %}{{ p.seller.username|default:"supplier" }} (${{ p.price }}){% if not forloop.last %}, {% endif %}{% endfor %}</div>
+          <td class="text-right">{{ item.quantity }}</td>
+          <td class="text-right">
+            {% if item.matched_part %}
+              ${{ item.matched_part.price }}
+            {% else %}
+              <span style="color:var(--muted);">—</span>
             {% endif %}
           </td>
-          <td style="text-align:right;font-weight:700;">
+          <td class="text-right" style="font-weight:700;">
             {% if item.matched_part %}
               ${{ item.estimated_line_total }}
             {% else %}
-              <span style="color:var(--muted);">N/A</span>
+              <span style="color:var(--muted);">—</span>
             {% endif %}
           </td>
         </tr>
         {% endwith %}
       {% endfor %}
+      <tr class="rfq-total-row">
+        <td colspan="6" class="text-right">Итого:</td>
+        <td class="text-right">${{ total }}</td>
+      </tr>
     </tbody>
   </table>
+  </div>
 </div>
 
 <div class="cp-card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-  <div>
-    <p class="cp-card__subtitle" style="margin-bottom:2px;">Оценочный итог по найденным позициям</p>
-    <span style="font-size:22px;font-weight:700;">${{ total }}</span>
-  </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_list' %}">К списку RFQ</a>
     {% if role != 'seller' and rows %}
-      <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_proposal' rfq.id %}">КП + логистика + покупка</a>
+      <a class="cp-btn cp-btn--secondary" href="{% url 'rfq_proposal' rfq.id %}">Создать КП</a>
     {% endif %}
     {% if role != 'seller' and rows %}
-      <a class="cp-btn cp-btn--primary" href="{% url 'rfq_checkout' rfq.id %}">Создать заказ из RFQ</a>
+      <a class="cp-btn cp-btn--primary" href="{% url 'rfq_checkout' rfq.id %}">Оформить заказ</a>
     {% endif %}
-    <a class="cp-btn cp-btn--primary" href="{% url 'rfq_new' %}">Создать новый RFQ</a>
+    <a class="cp-btn cp-btn--primary" href="{% url 'rfq_new' %}">Новый RFQ</a>
   </div>
 </div>
 {% endblock %}

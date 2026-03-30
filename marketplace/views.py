@@ -3266,10 +3266,11 @@ def rfq_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
                 "risky": decision["offers"]["risky"][:3],
             }
         )
+    matched_count = sum(1 for item in rfq.items.all() if item.matched_part_id)
     return render(
         request,
         "marketplace/rfq_detail.html",
-        {"rfq": rfq, "role": role, "rows": rows, "total": total, "item_cards": item_cards},
+        {"rfq": rfq, "role": role, "rows": rows, "total": total, "item_cards": item_cards, "matched_count": matched_count},
     )
 
 
@@ -3337,10 +3338,12 @@ def rfq_proposal(request: HttpRequest, rfq_id: int) -> HttpResponse:
     else:
         form = CheckoutForm(initial=initial)
 
+    max_lead_days = max((r["part"].production_lead_days or 0 for r in rows), default=7) or 7
+    total_weight = sum((r["part"].gross_weight_kg or 0) * r["quantity"] for r in rows)
     return render(
         request,
         "marketplace/rfq_proposal.html",
-        {"rfq": rfq, "rows": rows, "total": total, "form": form},
+        {"rfq": rfq, "rows": rows, "total": total, "form": form, "max_lead_days": max_lead_days, "total_weight": total_weight},
     )
 
 
@@ -5249,7 +5252,24 @@ def operator_payments_escrow(request):
 
 @login_required
 def operator_manager_dashboard(request):
-    return render(request, "operator/manager/dashboard.html", {"operator_role": "manager", "operator_active_nav": "dashboard"})
+    from django.db.models import Sum, Count, Q
+    orders = Order.objects.all()
+    total_orders = orders.count()
+    active_orders = orders.filter(status__in=["confirmed", "in_production", "ready_to_ship", "shipped"]).count()
+    total_revenue = orders.filter(payment_status="paid").aggregate(s=Sum("total_amount"))["s"] or Decimal("0")
+    commission_pct = Decimal("5")
+    commission_earned = (total_revenue * commission_pct / 100).quantize(Decimal("0.01"))
+    completed_orders = orders.filter(status__in=["delivered", "completed"]).count()
+    pending_payment = orders.filter(payment_status="awaiting_reserve").count()
+    recent_orders = orders.order_by("-created_at")[:10]
+    ctx = {
+        "operator_role": "manager", "operator_active_nav": "dashboard",
+        "total_orders": total_orders, "active_orders": active_orders,
+        "total_revenue": total_revenue, "commission_pct": commission_pct,
+        "commission_earned": commission_earned, "completed_orders": completed_orders,
+        "pending_payment": pending_payment, "recent_orders": recent_orders,
+    }
+    return render(request, "operator/manager/dashboard.html", ctx)
 
 
 @login_required

@@ -5,24 +5,24 @@
 <!-- Stats -->
 <div class="op-stats">
   <div class="op-stat">
-    <div class="op-stat-value">24</div>
-    <div class="op-stat-label">Активных заказов</div>
+    <div class="op-stat-value">{{ total_orders }}</div>
+    <div class="op-stat-label">Всего заказов</div>
   </div>
   <div class="op-stat op-stat-warn">
-    <div class="op-stat-value">4</div>
-    <div class="op-stat-label">Требуют внимания</div>
+    <div class="op-stat-value">{{ active_orders }}</div>
+    <div class="op-stat-label">Активных</div>
   </div>
   <div class="op-stat">
-    <div class="op-stat-value">$1.2M</div>
-    <div class="op-stat-label">Выручка за месяц</div>
+    <div class="op-stat-value">${{ total_revenue }}</div>
+    <div class="op-stat-label">Выручка (оплачено)</div>
+  </div>
+  <div class="op-stat" style="border-color:rgba(40,200,64,0.2);">
+    <div class="op-stat-value" style="color:#28C840;">${{ commission_earned }}</div>
+    <div class="op-stat-label">Комиссия ({{ commission_pct }}%)</div>
   </div>
   <div class="op-stat">
-    <div class="op-stat-value">68%</div>
-    <div class="op-stat-label">Конверсия</div>
-  </div>
-  <div class="op-stat">
-    <div class="op-stat-value">$3,200</div>
-    <div class="op-stat-label">Средний чек</div>
+    <div class="op-stat-value">{{ pending_payment }}</div>
+    <div class="op-stat-label">Ожидают оплаты</div>
   </div>
 </div>
 

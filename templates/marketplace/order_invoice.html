@@ -86,16 +86,43 @@
     </div>
   </div>
 
+  <section style="padding-top:24px;border-top:1px solid var(--border);margin-bottom:24px;">
+    <p class="cp-label" style="margin-bottom:8px;">Реквизиты для оплаты</p>
+    <div class="cp-grid cp-grid--2" style="font-size:13px;">
+      <div>
+        <p style="margin-bottom:4px;"><strong>Получатель:</strong> Consolidator Parts LLC</p>
+        <p style="margin-bottom:4px;"><strong>Банк:</strong> First International Bank</p>
+        <p style="margin-bottom:4px;"><strong>SWIFT:</strong> FIBIXXXXXX</p>
+        <p style="margin-bottom:4px;"><strong>Счёт (USD):</strong> 40702840000000012345</p>
+        <p style="margin-bottom:4px;"><strong>Корр. счёт:</strong> 30101810400000000225</p>
+      </div>
+      <div>
+        <p style="margin-bottom:4px;"><strong>ИНН:</strong> 7712345678</p>
+        <p style="margin-bottom:4px;"><strong>КПП:</strong> 771201001</p>
+        <p style="margin-bottom:4px;"><strong>ОГРН:</strong> 1027700123456</p>
+        <p style="margin-bottom:4px;"><strong>Назначение платежа:</strong></p>
+        <p style="color:var(--muted);">Оплата по счёту INV-{{ order.created_at|date:"Ymd" }}-{{ order.id }} от {{ order.created_at|date:"d.m.Y" }}</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding:16px;background:rgba(100,181,246,0.05);border:1px solid rgba(100,181,246,0.15);border-radius:8px;margin-bottom:24px;font-size:12px;color:var(--muted);">
+    <p class="cp-label" style="margin-bottom:6px;">Договор-оферта</p>
+    <p style="margin-bottom:4px;">Оплачивая данный счёт, Покупатель принимает условия публичной оферты (договор поставки), размещённой на сайте consolidator.parts/oferta.</p>
+    <p style="margin-bottom:4px;">Счёт действителен в течение 5 рабочих дней с даты выставления. Оплата счёта является акцептом оферты.</p>
+    <p>Условия поставки: FCA склад поставщика. Оплата: 10% резерв при оформлении + 90% после подтверждения отгрузки.</p>
+  </section>
+
   <footer class="cp-grid cp-grid--2" style="padding-top:24px;border-top:1px solid var(--border);">
     <div>
       <p class="cp-label">Поставщик</p>
       <p style="color:var(--muted);">_________________________</p>
-      <p style="font-size:12px;color:var(--muted);">Authorized Signature</p>
+      <p style="font-size:12px;color:var(--muted);">Подпись / Печать</p>
     </div>
     <div>
       <p class="cp-label">Покупатель</p>
       <p style="color:var(--muted);">_________________________</p>
-      <p style="font-size:12px;color:var(--muted);">Authorized Signature</p>
+      <p style="font-size:12px;color:var(--muted);">Подпись / Печать</p>
     </div>
   </footer>
 </div>
