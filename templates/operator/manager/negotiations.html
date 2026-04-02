@@ -1,203 +1,380 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Менеджер — Переторжка{% endblock %}
+{% block title %}Менеджер — Воронка сделок{% endblock %}
 
 {% block content %}
-<!-- Stats -->
 <div class="op-stats">
   <div class="op-stat">
-    <div class="op-stat-value">8</div>
-    <div class="op-stat-label">Активных переторжек</div>
+    <div class="op-stat-value">18</div>
+    <div class="op-stat-label">В воронке</div>
   </div>
   <div class="op-stat">
-    <div class="op-stat-value">34</div>
-    <div class="op-stat-label">Согласовано</div>
+    <div class="op-stat-value">5</div>
+    <div class="op-stat-label">Переторжка</div>
+  </div>
+  <div class="op-stat op-stat-warn">
+    <div class="op-stat-value">4</div>
+    <div class="op-stat-label">Под угрозой</div>
   </div>
   <div class="op-stat">
-    <div class="op-stat-value">$12,400</div>
-    <div class="op-stat-label">Экономия за месяц</div>
+    <div class="op-stat-value">3</div>
+    <div class="op-stat-label">Сорвались</div>
   </div>
   <div class="op-stat">
-    <div class="op-stat-value">7.2%</div>
-    <div class="op-stat-label">Средняя скидка</div>
+    <div class="op-stat-value">72%</div>
+    <div class="op-stat-label">Конверсия</div>
   </div>
 </div>
 
 <!-- Tabs -->
-<div class="op-tabs">
-  <button class="op-tab active" data-neg-tab="active" onclick="switchNegTab('active')">Активные</button>
-  <button class="op-tab" data-neg-tab="agreed" onclick="switchNegTab('agreed')">Согласованные</button>
-  <button class="op-tab" data-neg-tab="rejected" onclick="switchNegTab('rejected')">Отклонённые</button>
+<div style="display:flex;gap:2px;background:#1F1F1F;border-radius:10px;padding:3px;border:1px solid rgba(255,255,255,0.055);margin-bottom:16px;width:fit-content;">
+  <button class="dl-tab active" onclick="dlTab('risk')">Под угрозой <span style="font-size:10px;background:rgba(232,92,13,0.15);color:#E85C0D;padding:2px 7px;border-radius:10px;margin-left:4px;font-weight:700;">4</span></button>
+  <button class="dl-tab" onclick="dlTab('active')">Активные переторжки</button>
+  <button class="dl-tab" onclick="dlTab('lost')">Сорвавшиеся</button>
+  <button class="dl-tab" onclick="dlTab('won')">Закрытые</button>
 </div>
 
-<div class="op-card">
-  <table class="op-table" id="neg-table">
+<!-- Panel: At risk -->
+<div class="dl-panel" id="panel-risk">
+
+  <div class="op-card" style="margin-bottom:12px;border-left:3px solid #E85C0D;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#ECECEC;">RFQ-2026-0087 · Fleet Corp</div>
+        <div style="font-size:12px;color:#919191;margin-top:2px;">Гидроцилиндры CAT 320D · 8 позиций · $11 200</div>
+      </div>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">3-й раунд</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Покупатель просит</div>
+        <div style="font-size:14px;font-weight:700;color:#E85C0D;">-7%</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Поставщик даёт</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">-4%</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Разрыв</div>
+        <div style="font-size:14px;font-weight:700;color:#E85C0D;">$336</div>
+      </div>
+    </div>
+
+    <div style="background:#1F1F1F;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+      <div style="font-size:11px;color:#6A6A6A;margin-bottom:4px;">Хронология</div>
+      <div style="font-size:12px;color:#919191;line-height:1.8;">
+        <span style="color:#64B5F6;">22.03</span> Покупатель запросил -7% → <span style="color:#64B5F6;">22.03</span> Поставщик предложил -3% → <span style="color:#64B5F6;">23.03</span> Покупатель настаивает -7% → <span style="color:#E85C0D;">24.03</span> Поставщик поднял до -4% · <strong style="color:#ECECEC;">Тишина 4 дня</strong>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button onclick="dealAction(this,'call_buyer')" class="dl-btn dl-btn--primary">Позвонить покупателю</button>
+      <button onclick="dealAction(this,'call_seller')" class="dl-btn dl-btn--secondary">Позвонить поставщику</button>
+      <button onclick="dealAction(this,'platform_discount')" class="dl-btn dl-btn--accent">Предложить бонус платформы</button>
+    </div>
+  </div>
+
+  <div class="op-card" style="margin-bottom:12px;border-left:3px solid #E85C0D;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#ECECEC;">RFQ-2026-0082 · Mining Solutions</div>
+        <div style="font-size:12px;color:#919191;margin-top:2px;">Турбина 7C-2297 · 1 позиция · $1 250</div>
+      </div>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">Без ответа 5 дн.</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Покупатель просит</div>
+        <div style="font-size:14px;font-weight:700;color:#E85C0D;">-10%</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Поставщик</div>
+        <div style="font-size:14px;font-weight:700;color:#919191;">Не ответил</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Сумма сделки</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">$1 250</div>
+      </div>
+    </div>
+
+    <div style="background:#1F1F1F;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+      <div style="font-size:11px;color:#6A6A6A;margin-bottom:4px;">Риск</div>
+      <div style="font-size:12px;color:#E85C0D;">Поставщик не отвечает 5 дней. Покупатель может уйти к конкуренту.</div>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button onclick="dealAction(this,'remind_seller')" class="dl-btn dl-btn--primary">Напомнить поставщику</button>
+      <button onclick="dealAction(this,'find_alt')" class="dl-btn dl-btn--secondary">Найти альтернативу</button>
+    </div>
+  </div>
+
+  <div class="op-card" style="margin-bottom:12px;border-left:3px solid #E85C0D;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#ECECEC;">RFQ-2026-0079 · Agro Holding</div>
+        <div style="font-size:12px;color:#919191;margin-top:2px;">Диски тормозные WA380 · 6 позиций · $1 890</div>
+      </div>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">Покупатель уходит</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Покупатель просит</div>
+        <div style="font-size:14px;font-weight:700;color:#E85C0D;">-12%</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Поставщик даёт</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">-5%</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Разрыв</div>
+        <div style="font-size:14px;font-weight:700;color:#E85C0D;">$132</div>
+      </div>
+    </div>
+
+    <div style="background:#1F1F1F;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+      <div style="font-size:11px;color:#6A6A6A;margin-bottom:4px;">Риск</div>
+      <div style="font-size:12px;color:#E85C0D;">Покупатель получил альтернативное предложение. Разрыв $132 — можно закрыть бонусом платформы.</div>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button onclick="dealAction(this,'platform_discount')" class="dl-btn dl-btn--accent">Дать бонус -3% от платформы</button>
+      <button onclick="dealAction(this,'call_buyer')" class="dl-btn dl-btn--secondary">Позвонить покупателю</button>
+    </div>
+  </div>
+
+  <div class="op-card" style="margin-bottom:12px;border-left:3px solid #E85C0D;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#ECECEC;">RFQ-2026-0076 · Transport Ltd</div>
+        <div style="font-size:12px;color:#919191;margin-top:2px;">Водяная помпа Volvo · 3 позиции · $2 400</div>
+      </div>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">Срок SLA</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Поставщик</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Котировка готова</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Покупатель</div>
+        <div style="font-size:14px;font-weight:700;color:#919191;">Не подтвердил 6 дн.</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Истекает через</div>
+        <div style="font-size:14px;font-weight:700;color:#E85C0D;">2 дня</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button onclick="dealAction(this,'call_buyer')" class="dl-btn dl-btn--primary">Позвонить покупателю</button>
+      <button onclick="dealAction(this,'extend')" class="dl-btn dl-btn--secondary">Продлить срок</button>
+    </div>
+  </div>
+</div>
+
+<!-- Panel: Active negotiations -->
+<div class="dl-panel" id="panel-active" style="display:none;">
+  <table class="op-table" style="width:100%;">
     <thead>
-      <tr>
-        <th>Товар (OEM)</th>
-        <th>Покупатель</th>
-        <th>Поставщик</th>
-        <th>Базовая цена</th>
-        <th>Запрос</th>
-        <th>Встречная</th>
-        <th>Статус</th>
-        <th>Действия</th>
-      </tr>
+      <tr><th>RFQ</th><th>Покупатель</th><th>Поставщик</th><th>Сумма</th><th>Раунд</th><th>Покупатель</th><th>Поставщик</th><th>Статус</th></tr>
     </thead>
     <tbody>
-      <tr data-status="active" onclick="opToast('Переторжка: Фильтр масляный 90915-YZZD4')">
-        <td style="font-weight:600;">Фильтр масляный<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">90915-YZZD4</div></td>
-        <td>Покупатель #1042</td>
-        <td class="text-secondary">Поставщик #301</td>
-        <td style="font-family:'Golos Text',sans-serif;">$4.20</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-12%</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">-7%</td>
-        <td><span class="op-badge op-badge-gray">Ожидает ответа</span></td>
-        <td>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Посредничество по фильтру 90915-YZZD4')">Посредничать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showCompromise(this)">Компромисс</button>
-          </div>
-        </td>
+      <tr>
+        <td style="font-weight:600;">#0092</td>
+        <td>Global Mining</td>
+        <td>Parts Direct</td>
+        <td style="font-weight:700;">$8 200</td>
+        <td>1</td>
+        <td style="color:#E85C0D;">-5%</td>
+        <td style="color:#64B5F6;">-3%</td>
+        <td><span class="op-badge op-badge-blue">В процессе</span></td>
       </tr>
-      <tr data-status="active" onclick="opToast('Переторжка: Колодки тормозные 04465-33471')">
-        <td style="font-weight:600;">Колодки тормозные<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">04465-33471</div></td>
-        <td>Покупатель #1038</td>
-        <td class="text-secondary">Поставщик #305</td>
-        <td style="font-family:'Golos Text',sans-serif;">$18.50</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-15%</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">-5%</td>
-        <td><span class="op-badge op-badge-gray">Переговоры</span></td>
-        <td>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Посредничество по колодкам 04465-33471')">Посредничать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showCompromise(this)">Компромисс</button>
-          </div>
-        </td>
+      <tr>
+        <td style="font-weight:600;">#0090</td>
+        <td>Fleet Corp</td>
+        <td>CAT Parts KZ</td>
+        <td style="font-weight:700;">$4 500</td>
+        <td>2</td>
+        <td style="color:#E85C0D;">-8%</td>
+        <td style="color:#64B5F6;">-6%</td>
+        <td><span class="op-badge op-badge-blue">В процессе</span></td>
       </tr>
-      <tr data-status="active" onclick="opToast('Переторжка: Ремень ГРМ 13568-09131')">
-        <td style="font-weight:600;">Ремень ГРМ<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">13568-09131</div></td>
-        <td>Покупатель #1045</td>
-        <td class="text-secondary">Поставщик #308</td>
-        <td style="font-family:'Golos Text',sans-serif;">$32.00</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-10%</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">&#8212;</td>
-        <td><span class="op-badge op-badge-gray">Новая</span></td>
-        <td>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Посредничество по ремню 13568-09131')">Посредничать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showCompromise(this)">Компромисс</button>
-          </div>
-        </td>
+      <tr>
+        <td style="font-weight:600;">#0088</td>
+        <td>Agro Solutions</td>
+        <td>Komatsu Direct</td>
+        <td style="font-weight:700;">$15 600</td>
+        <td>1</td>
+        <td style="color:#E85C0D;">-4%</td>
+        <td style="color:#919191;">Ожидает</td>
+        <td><span class="op-badge op-badge-yellow">Ожидает ответа</span></td>
       </tr>
-      <tr data-status="active" onclick="opToast('Переторжка: Амортизатор 48531-80583')">
-        <td style="font-weight:600;">Амортизатор<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">48531-80583</div></td>
-        <td>Покупатель #1051</td>
-        <td class="text-secondary">Поставщик #312</td>
-        <td style="font-family:'Golos Text',sans-serif;">$45.00</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-8%</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">-4%</td>
-        <td><span class="op-badge op-badge-gray">Переговоры</span></td>
-        <td>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Посредничество по амортизатору')">Посредничать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showCompromise(this)">Компромисс</button>
-          </div>
-        </td>
+      <tr>
+        <td style="font-weight:600;">#0086</td>
+        <td>Mining Corp</td>
+        <td>Volvo Parts</td>
+        <td style="font-weight:700;">$22 000</td>
+        <td>1</td>
+        <td style="color:#E85C0D;">-6%</td>
+        <td style="color:#919191;">Ожидает</td>
+        <td><span class="op-badge op-badge-yellow">Ожидает ответа</span></td>
       </tr>
-      <tr data-status="agreed" onclick="opToast('Переторжка согласована: Свеча зажигания 90919-01253')">
-        <td style="font-weight:600;">Свеча зажигания<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">90919-01253</div></td>
-        <td>Покупатель #1033</td>
-        <td class="text-secondary">Поставщик #298</td>
-        <td style="font-family:'Golos Text',sans-serif;">$8.40</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-10%</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-8%</td>
-        <td><span class="op-badge op-badge-gray">Согласовано</span></td>
-        <td><span class="text-secondary" style="font-size:12px;">Скидка 8%</span></td>
-      </tr>
-      <tr data-status="agreed" onclick="opToast('Переторжка согласована: Радиатор 16400-0T030')">
-        <td style="font-weight:600;">Радиатор<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">16400-0T030</div></td>
-        <td>Покупатель #1042</td>
-        <td class="text-secondary">Поставщик #315</td>
-        <td style="font-family:'Golos Text',sans-serif;">$120.00</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-12%</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-9%</td>
-        <td><span class="op-badge op-badge-gray">Согласовано</span></td>
-        <td><span class="text-secondary" style="font-size:12px;">Скидка 9%</span></td>
-      </tr>
-      <tr data-status="rejected" onclick="opToast('Переторжка отклонена: Генератор 27060-0T140')">
-        <td style="font-weight:600;">Генератор<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">27060-0T140</div></td>
-        <td>Покупатель #1055</td>
-        <td class="text-secondary">Поставщик #320</td>
-        <td style="font-family:'Golos Text',sans-serif;">$280.00</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-20%</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">-3%</td>
-        <td><span class="op-badge op-badge-gray">Отклонено</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Закрытие переторжки')">Закрыть</button></td>
-      </tr>
-      <tr data-status="active" onclick="opToast('Переторжка: Стартер 28100-0T060')">
-        <td style="font-weight:600;">Стартер<div style="font-size:11px;color:#5E5E5E;margin-top:2px;">28100-0T060</div></td>
-        <td>Покупатель #1060</td>
-        <td class="text-secondary">Поставщик #322</td>
-        <td style="font-family:'Golos Text',sans-serif;">$195.00</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">-10%</td>
-        <td style="font-family:'Golos Text',sans-serif;color:#919191;">&#8212;</td>
-        <td><span class="op-badge op-badge-gray">Новая</span></td>
-        <td>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Посредничество по стартеру')">Посредничать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showCompromise(this)">Компромисс</button>
-          </div>
-        </td>
+      <tr>
+        <td style="font-weight:600;">#0084</td>
+        <td>Transport Ltd</td>
+        <td>Diesel Parts</td>
+        <td style="font-weight:700;">$6 800</td>
+        <td>2</td>
+        <td style="color:#E85C0D;">-7%</td>
+        <td style="color:#64B5F6;">-5%</td>
+        <td><span class="op-badge op-badge-blue">В процессе</span></td>
       </tr>
     </tbody>
   </table>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- Panel: Lost deals -->
+<div class="dl-panel" id="panel-lost" style="display:none;">
+  <table class="op-table" style="width:100%;">
+    <thead>
+      <tr><th>RFQ</th><th>Покупатель</th><th>Сумма</th><th>Причина</th><th>Разрыв</th><th>Дата</th><th></th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="font-weight:600;">#0071</td>
+        <td>Heavy Machines LLC</td>
+        <td style="font-weight:700;">$14 200</td>
+        <td><span style="color:#E85C0D;">Цена не устроила</span> — покупатель нашёл дешевле на 8%</td>
+        <td style="color:#E85C0D;font-weight:600;">$1 136</td>
+        <td style="color:#919191;">18.03</td>
+        <td><button onclick="dealAction(this,'reopen')" class="dl-btn dl-btn--secondary" style="padding:4px 12px;font-size:11px;">Вернуть</button></td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#0068</td>
+        <td>Agro Holding</td>
+        <td style="font-weight:700;">$3 400</td>
+        <td><span style="color:#E85C0D;">Поставщик отказал</span> — нет на складе, срок 45 дней</td>
+        <td style="color:#919191;">—</td>
+        <td style="color:#919191;">15.03</td>
+        <td><button onclick="dealAction(this,'find_alt')" class="dl-btn dl-btn--secondary" style="padding:4px 12px;font-size:11px;">Найти другого</button></td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#0065</td>
+        <td>Transport Ltd</td>
+        <td style="font-weight:700;">$7 800</td>
+        <td><span style="color:#E85C0D;">Сроки не подошли</span> — покупателю нужно за 10 дней, поставщик даёт 30</td>
+        <td style="color:#919191;">—</td>
+        <td style="color:#919191;">12.03</td>
+        <td><button onclick="dealAction(this,'find_alt')" class="dl-btn dl-btn--secondary" style="padding:4px 12px;font-size:11px;">Найти другого</button></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Panel: Won deals -->
+<div class="dl-panel" id="panel-won" style="display:none;">
+  <table class="op-table" style="width:100%;">
+    <thead>
+      <tr><th>RFQ</th><th>Покупатель</th><th>Поставщик</th><th>Сумма</th><th>Скидка</th><th>Раундов</th><th>Дата закрытия</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="font-weight:600;">#0080</td>
+        <td>Fleet Corp</td>
+        <td>Parts Direct</td>
+        <td style="font-weight:700;">$9 400</td>
+        <td style="color:#64B5F6;">-5%</td>
+        <td>2</td>
+        <td style="color:#919191;">25.03</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#0078</td>
+        <td>Mining Solutions</td>
+        <td>CAT Parts KZ</td>
+        <td style="font-weight:700;">$18 600</td>
+        <td style="color:#64B5F6;">-3%</td>
+        <td>1</td>
+        <td style="color:#919191;">24.03</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#0075</td>
+        <td>Global Mining</td>
+        <td>Volvo Parts</td>
+        <td style="font-weight:700;">$5 200</td>
+        <td style="color:#64B5F6;">-6%</td>
+        <td>3</td>
+        <td style="color:#919191;">22.03</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#0072</td>
+        <td>Agro Solutions</td>
+        <td>Diesel Parts</td>
+        <td style="font-weight:700;">$12 000</td>
+        <td style="color:#64B5F6;">-4%</td>
+        <td>2</td>
+        <td style="color:#919191;">20.03</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#0069</td>
+        <td>Transport Ltd</td>
+        <td>Komatsu Direct</td>
+        <td style="font-weight:700;">$8 900</td>
+        <td style="color:#64B5F6;">-7%</td>
+        <td>3</td>
+        <td style="color:#919191;">18.03</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .dl-tab{padding:8px 18px;border-radius:8px;border:none;background:transparent;color:#919191;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;transition:all 0.15s;}
+  .dl-tab:hover{color:#ECECEC;background:rgba(255,255,255,0.03);}
+  .dl-tab.active{background:#242424;color:#ECECEC;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.3);}
+  .dl-btn{padding:8px 16px;border-radius:8px;border:none;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:all 0.15s;}
+  .dl-btn--primary{background:#4568F3;color:#fff;}
+  .dl-btn--primary:hover{background:#3a5ad9;}
+  .dl-btn--secondary{background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.08);}
+  .dl-btn--secondary:hover{color:#ECECEC;border-color:rgba(255,255,255,0.15);}
+  .dl-btn--accent{background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.2);}
+  .dl-btn--accent:hover{background:rgba(100,181,246,0.2);}
+  .op-badge-yellow{background:rgba(255,193,7,0.12);color:#FFC107;}
+</style>
+
 <script>
-(function(){
-  window.switchNegTab = function(tab){
-    document.querySelectorAll('[data-neg-tab]').forEach(function(btn){
-      btn.classList.toggle('active', btn.getAttribute('data-neg-tab') === tab);
-    });
-    document.querySelectorAll('#neg-table tbody tr').forEach(function(row){
-      if(tab === 'active' && document.querySelector('[data-neg-tab="active"]').classList.contains('active')){
-        // show all when "active" tab but we want active only
-      }
-      row.style.display = (tab === 'active' && row.getAttribute('data-status')==='active') ||
-                          (tab === 'agreed' && row.getAttribute('data-status')==='agreed') ||
-                          (tab === 'rejected' && row.getAttribute('data-status')==='rejected') ? '' : 'none';
-    });
-    // Default: show all for first load - but tabs filter
-    if(!tab) document.querySelectorAll('#neg-table tbody tr').forEach(function(r){r.style.display='';});
-  };
-  // Show all initially
-  // (active tab is selected by default, so filter to active)
-  switchNegTab('active');
+function dlTab(tab) {
+  document.querySelectorAll('.dl-panel').forEach(function(p){ p.style.display='none'; });
+  document.querySelectorAll('.dl-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById('panel-' + tab).style.display = '';
+  event.target.closest('.dl-tab').classList.add('active');
+}
 
-  window.showCompromise = function(btn){
-    var td = btn.closest('td');
-    if(td.querySelector('.op-input')) return;
-    var wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;gap:6px;margin-top:6px;align-items:center;';
-    var inp = document.createElement('input');
-    inp.className = 'op-input';
-    inp.placeholder = 'Скидка %';
-    inp.style.cssText = 'width:80px;';
-    var send = document.createElement('button');
-    send.className = 'op-btn op-btn-primary';
-    send.textContent = 'Отправить';
-    send.onclick = function(e){
-      e.stopPropagation();
-      opToast('Предложен компромисс: ' + inp.value + '%');
-      wrap.remove();
-    };
-    wrap.appendChild(inp);
-    wrap.appendChild(send);
-    td.appendChild(wrap);
-    inp.focus();
+function dealAction(btn, action) {
+  var labels = {
+    'call_buyer': 'Звонок покупателю запланирован',
+    'call_seller': 'Звонок поставщику запланирован',
+    'platform_discount': 'Бонус платформы отправлен покупателю',
+    'remind_seller': 'Напоминание отправлено поставщику',
+    'find_alt': 'Поиск альтернативного поставщика запущен',
+    'extend': 'Срок котировки продлён на 7 дней',
+    'reopen': 'Сделка возвращена в работу'
   };
-})();
+  btn.style.opacity = '0.5';
+  btn.style.pointerEvents = 'none';
+  btn.textContent = '✓ ' + (labels[action] || 'Выполнено');
+  btn.style.color = '#64B5F6';
+  opToast(labels[action] || 'Действие выполнено');
+}
+
+function opToast(msg) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#333;color:#fff;padding:12px 24px;border-radius:8px;font-size:13px;z-index:9999;';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 3000);
+}
 </script>
 {% endblock %}

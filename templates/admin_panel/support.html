@@ -2,141 +2,67 @@
 {% block title %}Поддержка{% endblock %}
 {% block topbar_title %}Поддержка{% endblock %}
 
-{% block extra_css %}
-<style>
-.ap-ticket-thread{display:none;padding:16px 20px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.03);}
-.ap-ticket-thread.open{display:block;}
-.ap-thread-msg{padding:10px 14px;border-radius:10px;margin-bottom:8px;font-size:13px;max-width:80%;}
-.ap-thread-msg.user{background:#2C2C2C;color:#ECECEC;}
-.ap-thread-msg.support{background:rgba(100,181,246,0.08);color:#ECECEC;margin-left:auto;}
-.ap-thread-meta{font-size:11px;color:#5E5E5E;margin-bottom:4px;}
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">156</div><div class="ap-stat-label">Всего тикетов</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">5</div><div class="ap-stat-label">Открыто</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">8</div><div class="ap-stat-label">В работе</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">143</div><div class="ap-stat-label">Решено</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">4.2ч</div><div class="ap-stat-label">Среднее время</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ total_claims }}</div><div class="ap-stat-label">Всего рекламаций</div></div>
+  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ open_count }}</div><div class="ap-stat-label">Открытых</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ resolved_count }}</div><div class="ap-stat-label">Закрытых</div></div>
+</div>
+
+<div class="ap-card" style="margin-bottom:16px;">
+  <div class="ap-section-title">Открытые рекламации</div>
+  {% if open_claims %}
+  <table class="ap-table">
+    <thead><tr><th>ID</th><th>Заказ</th><th>Тема</th><th>Описание</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+    <tbody>
+      {% for claim in open_claims %}
+      <tr>
+        <td>#{{ claim.id }}</td>
+        <td><a href="/admin-panel/orders/{{ claim.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ claim.order_id }}</a></td>
+        <td>{{ claim.title|truncatechars:30 }}</td>
+        <td class="text-secondary">{{ claim.description|truncatechars:40 }}</td>
+        <td><span class="ap-badge ap-badge-orange">{{ claim.get_status_display }}</span></td>
+        <td class="text-secondary">{{ claim.created_at|date:"d.m.Y" }}</td>
+        <td>
+          <form method="post" style="display:inline-flex;gap:4px;">
+            {% csrf_token %}
+            <input type="hidden" name="claim_id" value="{{ claim.id }}"/>
+            <select name="new_status" class="ap-select" style="min-width:100px;">
+              {% for val, label in status_choices %}
+              <option value="{{ val }}" {% if claim.status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="ap-btn ap-btn-primary">Применить</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#919191;font-size:13px;">Нет открытых рекламаций</p>
+  {% endif %}
 </div>
 
 <div class="ap-card">
-  <div class="ap-tabs">
-    <button class="ap-tab active" data-tab-group="support" data-tab-key="open" onclick="apSwitchTab('support','open');filterSupport()">Открытые</button>
-    <button class="ap-tab" data-tab-group="support" data-tab-key="in_progress" onclick="apSwitchTab('support','in_progress');filterSupport()">В работе</button>
-    <button class="ap-tab" data-tab-group="support" data-tab-key="resolved" onclick="apSwitchTab('support','resolved');filterSupport()">Решённые</button>
-  </div>
-
-  <table class="ap-table" id="supportTable">
-    <thead><tr><th>Тикет #</th><th>Пользователь</th><th>Тема</th><th>Приоритет</th><th>Статус</th><th>Создан</th><th>Обновлён</th><th>Действия</th></tr></thead>
+  <div class="ap-section-title">Закрытые рекламации</div>
+  {% if resolved_claims %}
+  <table class="ap-table">
+    <thead><tr><th>ID</th><th>Заказ</th><th>Тема</th><th>Статус</th><th>Дата</th></tr></thead>
     <tbody>
-      <tr data-status="open" onclick="toggleThread(this)"><td>SUP-156</td><td class="text-secondary">#1042</td><td>Не могу оплатить заказ ORD-4521</td><td><span class="ap-badge ap-badge-orange">Высокий</span></td><td><span class="ap-badge ap-badge-gray">Открыт</span></td><td class="text-secondary">25.03 14:30</td><td class="text-secondary">25.03 14:30</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Назначен оператору')">Назначить</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1042 / 25.03 14:30</div>При попытке оплаты заказа ORD-4521 возникает ошибка "Payment gateway timeout". Пробовал 3 раза, результат тот же.</div>
-      </td></tr>
-
-      <tr data-status="open" onclick="toggleThread(this)"><td>SUP-155</td><td class="text-secondary">#1035</td><td>Вопрос по доставке ORD-4515</td><td><span class="ap-badge ap-badge-gray">Средний</span></td><td><span class="ap-badge ap-badge-gray">Открыт</span></td><td class="text-secondary">25.03 12:10</td><td class="text-secondary">25.03 12:10</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Назначен оператору')">Назначить</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1035 / 25.03 12:10</div>Когда ожидается доставка заказа ORD-4515? Трекинг не обновлялся 2 дня.</div>
-      </td></tr>
-
-      <tr data-status="open" onclick="toggleThread(this)"><td>SUP-154</td><td class="text-secondary">#3003</td><td>Проблема с загрузкой каталога</td><td><span class="ap-badge ap-badge-gray">Низкий</span></td><td><span class="ap-badge ap-badge-gray">Открыт</span></td><td class="text-secondary">25.03 10:45</td><td class="text-secondary">25.03 10:45</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Назначен оператору')">Назначить</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#3003 / 25.03 10:45</div>CSV загрузка обрывается на строке 1500. Файл 2400 строк. Ошибки нет, просто останавливается.</div>
-      </td></tr>
-
-      <tr data-status="open" onclick="toggleThread(this)"><td>SUP-153</td><td class="text-secondary">#1028</td><td>Рекламация — нет ответа 3 дня</td><td><span class="ap-badge ap-badge-orange">Критичный</span></td><td><span class="ap-badge ap-badge-gray">Открыт</span></td><td class="text-secondary">24.03 16:20</td><td class="text-secondary">24.03 16:20</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Назначен оператору')">Назначить</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1028 / 24.03 16:20</div>Открыл рекламацию по заказу 3 дня назад, до сих пор нет ответа. Прошу ускорить рассмотрение.</div>
-      </td></tr>
-
-      <tr data-status="open" onclick="toggleThread(this)"><td>SUP-152</td><td class="text-secondary">#1051</td><td>Как изменить email аккаунта?</td><td><span class="ap-badge ap-badge-gray">Низкий</span></td><td><span class="ap-badge ap-badge-gray">Открыт</span></td><td class="text-secondary">24.03 11:05</td><td class="text-secondary">24.03 11:05</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Назначен оператору')">Назначить</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1051 / 24.03 11:05</div>Подскажите, как изменить email аккаунта? В настройках не нашёл такой опции.</div>
-      </td></tr>
-
-      <!-- In progress -->
-      <tr data-status="in_progress" onclick="toggleThread(this)"><td>SUP-151</td><td class="text-secondary">#1040</td><td>Ошибка в счёте INV-8835</td><td><span class="ap-badge ap-badge-gray">Средний</span></td><td><span class="ap-badge ap-badge-blue">В работе</span></td><td class="text-secondary">23.03 15:40</td><td class="text-secondary">24.03 10:20</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Тикет закрыт')">Закрыть</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1040 / 23.03 15:40</div>В счёте INV-8835 неправильно указана сумма. Должно быть $12,300, а указано $12,030.</div>
-        <div class="ap-thread-msg support"><div class="ap-thread-meta">Поддержка / 24.03 10:20</div>Спасибо за обращение. Передали в финансовый отдел для корректировки. Исправленный счёт будет отправлен в течение 24 часов.</div>
-      </td></tr>
-
-      <tr data-status="in_progress" onclick="toggleThread(this)"><td>SUP-150</td><td class="text-secondary">#3156</td><td>API: ошибка 429 при обновлении цен</td><td><span class="ap-badge ap-badge-orange">Высокий</span></td><td><span class="ap-badge ap-badge-blue">В работе</span></td><td class="text-secondary">23.03 11:15</td><td class="text-secondary">24.03 09:00</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Тикет закрыт')">Закрыть</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#3156 / 23.03 11:15</div>При массовом обновлении цен через API получаю ошибку 429 Too Many Requests после 50 запросов.</div>
-        <div class="ap-thread-msg support"><div class="ap-thread-meta">Поддержка / 24.03 09:00</div>Текущий лимит — 100 запросов/минуту. Рекомендуем использовать batch endpoint для массовых обновлений. Документация обновлена.</div>
-      </td></tr>
-
-      <tr data-status="in_progress" onclick="toggleThread(this)"><td>SUP-149</td><td class="text-secondary">#1033</td><td>Возврат средств по ORD-4501</td><td><span class="ap-badge ap-badge-orange">Высокий</span></td><td><span class="ap-badge ap-badge-blue">В работе</span></td><td class="text-secondary">22.03 14:50</td><td class="text-secondary">24.03 08:30</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Тикет закрыт')">Закрыть</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1033 / 22.03 14:50</div>Когда будет возврат средств по заказу ORD-4501? Рекламация одобрена 3 дня назад.</div>
-        <div class="ap-thread-msg support"><div class="ap-thread-meta">Поддержка / 23.03 09:15</div>Возврат в обработке. Средства будут зачислены в течение 3-5 рабочих дней.</div>
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1033 / 24.03 08:30</div>Спасибо, жду.</div>
-      </td></tr>
-
-      <tr data-status="in_progress" onclick="toggleThread(this)"><td>SUP-148</td><td class="text-secondary">#1022</td><td>Неверный трекинг номер</td><td><span class="ap-badge ap-badge-gray">Средний</span></td><td><span class="ap-badge ap-badge-blue">В работе</span></td><td class="text-secondary">22.03 10:30</td><td class="text-secondary">23.03 16:45</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Тикет закрыт')">Закрыть</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1022 / 22.03 10:30</div>Трекинг номер по заказу ORD-4490 не отслеживается. Проверьте, пожалуйста.</div>
-        <div class="ap-thread-msg support"><div class="ap-thread-meta">Поддержка / 23.03 16:45</div>Связались с перевозчиком, трекинг обновлён. Новый номер отправлен на вашу почту.</div>
-      </td></tr>
-
-      <tr data-status="in_progress" onclick="toggleThread(this)"><td>SUP-147</td><td class="text-secondary">#3002</td><td>Запрос на повышение лимита API</td><td><span class="ap-badge ap-badge-gray">Низкий</span></td><td><span class="ap-badge ap-badge-blue">В работе</span></td><td class="text-secondary">21.03 09:20</td><td class="text-secondary">22.03 14:10</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Тикет закрыт')">Закрыть</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#3002 / 21.03 09:20</div>Наш каталог 50,000+ товаров. Текущий API лимит недостаточен. Возможно повышение?</div>
-        <div class="ap-thread-msg support"><div class="ap-thread-meta">Поддержка / 22.03 14:10</div>Рассмотрим ваш запрос. Для корпоративных тарифов доступны расширенные лимиты. Направил запрос менеджеру.</div>
-      </td></tr>
-
-      <tr data-status="in_progress" onclick="toggleThread(this)"><td>SUP-146</td><td class="text-secondary">#1038</td><td>Проблема с выставлением RFQ</td><td><span class="ap-badge ap-badge-gray">Средний</span></td><td><span class="ap-badge ap-badge-blue">В работе</span></td><td class="text-secondary">20.03 16:00</td><td class="text-secondary">21.03 11:30</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Тикет закрыт')">Закрыть</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1038 / 20.03 16:00</div>Форма RFQ не принимает файл с чертежом. Формат .dwg, размер 8MB.</div>
-        <div class="ap-thread-msg support"><div class="ap-thread-meta">Поддержка / 21.03 11:30</div>Максимальный размер файла 5MB. Конвертируйте в PDF или свяжитесь для увеличения лимита.</div>
-      </td></tr>
-
-      <tr data-status="in_progress" onclick="toggleThread(this)"><td>SUP-145</td><td class="text-secondary">#1025</td><td>Запрос инвойса за прошлый месяц</td><td><span class="ap-badge ap-badge-gray">Низкий</span></td><td><span class="ap-badge ap-badge-blue">В работе</span></td><td class="text-secondary">20.03 10:10</td><td class="text-secondary">20.03 15:40</td><td><button class="ap-btn ap-btn-primary" onclick="event.stopPropagation();apToast('Ответ отправлен')">Ответить</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Тикет закрыт')">Закрыть</button></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1025 / 20.03 10:10</div>Нужен инвойс за февраль для бухгалтерии. В кабинете доступен только текущий месяц.</div>
-        <div class="ap-thread-msg support"><div class="ap-thread-meta">Поддержка / 20.03 15:40</div>Инвойс за февраль отправлен на ваш email. Архивные документы также доступны в разделе "Финансы".</div>
-      </td></tr>
-
-      <!-- Resolved (sample) -->
-      <tr data-status="resolved" onclick="toggleThread(this)"><td>SUP-144</td><td class="text-secondary">#1018</td><td>Ошибка при регистрации</td><td><span class="ap-badge ap-badge-gray">Средний</span></td><td><span class="ap-badge ap-badge-gray">Решён</span></td><td class="text-secondary">19.03 14:20</td><td class="text-secondary">19.03 16:40</td><td><span class="text-secondary" style="font-size:12px;">Закрыт</span></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#1018 / 19.03 14:20</div>Не могу зарегистрировать новый аккаунт, ошибка "email already exists".</div>
-        <div class="ap-thread-msg support"><div class="ap-thread-meta">Поддержка / 19.03 16:40</div>Аккаунт с этим email уже существует. Отправили ссылку для сброса пароля. Тикет закрыт.</div>
-      </td></tr>
-
-      <tr data-status="resolved" onclick="toggleThread(this)"><td>SUP-143</td><td class="text-secondary">#3001</td><td>Обновление банковских реквизитов</td><td><span class="ap-badge ap-badge-gray">Низкий</span></td><td><span class="ap-badge ap-badge-gray">Решён</span></td><td class="text-secondary">18.03 09:00</td><td class="text-secondary">18.03 14:00</td><td><span class="text-secondary" style="font-size:12px;">Закрыт</span></td></tr>
-      <tr class="ap-ticket-thread"><td colspan="8">
-        <div class="ap-thread-msg user"><div class="ap-thread-meta">#3001 / 18.03 09:00</div>Нужно обновить банковские реквизиты для выплат.</div>
-        <div class="ap-thread-msg support"><div class="ap-thread-meta">Поддержка / 18.03 14:00</div>Реквизиты обновлены. Следующая выплата будет направлена по новым данным.</div>
-      </td></tr>
+      {% for claim in resolved_claims %}
+      <tr>
+        <td>#{{ claim.id }}</td>
+        <td><a href="/admin-panel/orders/{{ claim.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ claim.order_id }}</a></td>
+        <td>{{ claim.title|truncatechars:30 }}</td>
+        <td><span class="ap-badge ap-badge-green">{{ claim.get_status_display }}</span></td>
+        <td class="text-secondary">{{ claim.created_at|date:"d.m.Y" }}</td>
+      </tr>
+      {% endfor %}
     </tbody>
   </table>
+  {% else %}
+  <p style="color:#919191;font-size:13px;">Нет закрытых рекламаций</p>
+  {% endif %}
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-function toggleThread(row) {
-  var next = row.nextElementSibling;
-  if (next && next.classList.contains('ap-ticket-thread')) {
-    next.classList.toggle('open');
-  }
-}
-function filterSupport() {
-  var tab = document.querySelector('.ap-tab.active[data-tab-group="support"]').dataset.tabKey;
-  var rows = document.querySelectorAll('#supportTable tbody tr:not(.ap-ticket-thread)');
-  rows.forEach(function(row) {
-    var show = row.dataset.status === tab;
-    row.style.display = show ? '' : 'none';
-    var next = row.nextElementSibling;
-    if (next && next.classList.contains('ap-ticket-thread')) {
-      if (!show) next.classList.remove('open');
-    }
-  });
-}
-</script>
 {% endblock %}

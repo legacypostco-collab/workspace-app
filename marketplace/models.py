@@ -99,6 +99,9 @@ class Part(models.Model):
     supplier_part_uid = models.CharField(max_length=80, blank=True)
     data_updated_at = models.DateTimeField(default=timezone.now)
     is_active = models.BooleanField(default=True)
+    admin_note = models.TextField(blank=True, help_text="Комментарий администратора (причина блокировки и т.д.)")
+    moderated_at = models.DateTimeField(null=True, blank=True)
+    moderated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="moderated_parts")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -501,6 +504,7 @@ class UserProfile(models.Model):
     bankruptcy_flag = models.BooleanField(default=False)
     liquidation_flag = models.BooleanField(default=False)
     last_rating_recalculated_at = models.DateTimeField(null=True, blank=True, editable=False)
+    admin_note = models.TextField(blank=True, help_text="Заметка администратора о поставщике")
 
     @staticmethod
     def _clamp_score(value: Decimal) -> Decimal:

@@ -866,5 +866,39 @@ function rpFilter(el, type) {
     if (type === 'recent') { c.style.display = ''; return; }
   });
 }
+/* Enable all disabled download buttons and attach real download URLs */
+var reportMap = {
+  'Сводка по заказам': 'orders',
+  'Топ запчастей': 'parts',
+  'SLA': 'sla',
+  'Средний чек': 'analytics',
+  'Сравнение периодов': 'analytics',
+  'Детализация по покупателям': 'orders',
+  'Конверсия': 'analytics',
+  'По категориям': 'analytics',
+  'Платёжный отчёт': 'finance',
+  'Задолженности': 'finance',
+  'Комиссии платформы': 'finance',
+  'Складская': 'stock',
+  'Поставки': 'orders',
+  'Возвраты': 'orders',
+};
+document.querySelectorAll('.rp-btn--ghost').forEach(function(btn) {
+  if (btn.textContent.trim() === 'Скачать') {
+    btn.removeAttribute('disabled');
+    btn.style.opacity = '1';
+    var card = btn.closest('.rp-card') || btn.closest('tr');
+    var name = card ? (card.querySelector('.rp-card-name') || card.querySelector('td')) : null;
+    var nameText = name ? name.textContent : '';
+    var reportType = 'orders';
+    for (var key in reportMap) {
+      if (nameText.indexOf(key) !== -1) { reportType = reportMap[key]; break; }
+    }
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      window.location.href = '/seller/reports/export/' + reportType + '/';
+    };
+  }
+});
 </script>
 {% endblock %}

@@ -18,7 +18,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Avg, Count, F, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -33,10 +33,6 @@ from imports.models import ImportJob, ImportPreviewSession
 from imports.services import ColumnMappingResolver, ImportParser
 from imports.tasks import process_import_job
 from .forms import BulkPriceLookupForm, CheckoutForm, LoginForm, RegisterForm, RFQCreateForm, SellerBulkUploadForm, SellerPartForm
-from .services.notifications import (
-    notify_registration, notify_order_created, notify_order_status_changed,
-    notify_payment_received, notify_seller_new_order, notify_claim_opened,
-)
 from .models import (
     Brand,
     Category,
@@ -49,7 +45,6 @@ from .models import (
     Part,
     RFQ,
     RFQItem,
-    Favorite,
     SellerImportRun,
     SupplierRatingEvent,
     UserProfile,
@@ -301,7 +296,9 @@ def _create_order_from_rows(
     reserve_amount = ((grand_total * reserve_percent) / Decimal("100")).quantize(Decimal("0.01"))
 
     # Определяем схему оплаты
-    payment_scheme = "simple"
+    payment_scheme = request.POST.get("payment_scheme", "simple")
+    if payment_scheme not in ("simple", "staged"):
+        payment_scheme = "simple"
 
     mid_payment_amount = Decimal("0.00")
     customs_payment_amount = Decimal("0.00")
@@ -360,18 +357,6 @@ def _create_order_from_rows(
                 "source_id": source_id,
             },
         )
-        notify_order_created(order)
-        # Notify sellers
-        seller_ids = set()
-        for oi in order_items:
-            if oi.part and oi.part.seller_id:
-                seller_ids.add(oi.part.seller_id)
-        for sid in seller_ids:
-            try:
-                from django.contrib.auth.models import User as _U
-                notify_seller_new_order(_U.objects.get(id=sid), order)
-            except Exception:
-                pass
         return order
 
 
@@ -726,6 +711,19 @@ def operator_required(view):
     return wrapped
 
 
+def admin_required(view):
+    @wraps(view)
+    def wrapped(request: HttpRequest, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect("login")
+        if not request.user.is_superuser:
+            messages.error(request, "Доступно только администратору.")
+            return redirect("dashboard")
+        return view(request, *args, **kwargs)
+
+    return wrapped
+
+
 def _cart_rows(request: HttpRequest):
     cart = _get_cart(request)
     if not cart:
@@ -1017,9 +1015,8 @@ def _bulk_lookup_to_rfq_lines(rows: list[dict]) -> str:
 
 
 def home(request: HttpRequest) -> HttpResponse:
-    parts_count = Part.objects.filter(is_active=True).count()
-    sellers_count = UserProfile.objects.filter(role="seller").count()
-    return render(request, "landing.html", {"parts_count": parts_count, "sellers_count": sellers_count})
+    # Always show the landing page — authenticated users can navigate to their cabinet via sidebar
+    return render(request, "landing.html")
 
 
 def home_marketplace(request: HttpRequest) -> HttpResponse:
@@ -1158,7 +1155,6 @@ def register_view(request: HttpRequest) -> HttpResponse:
                 company_name=form.cleaned_data["company_name"],
             )
             login(request, user)
-            notify_registration(user)
             messages.success(request, "Регистрация завершена.")
             return redirect("dashboard")
     else:
@@ -1178,6 +1174,8 @@ def login_view(request: HttpRequest) -> HttpResponse:
         if form.is_valid():
             user = form.get_user()
             login(request, user)
+            if user.is_superuser:
+                return redirect("admin_panel_dashboard")
             role = _role_for(user)
             if role == "operator":
                 return redirect("operator_dashboard")
@@ -1205,6 +1203,15 @@ def demo_login(request: HttpRequest) -> HttpResponse:
         "operator": ("demo_operator", "operator_dashboard"),
     }
     role = request.GET.get("role", "")
+
+    # Admin demo login — use the superuser account
+    if role == "admin":
+        admin_user = User.objects.filter(is_superuser=True).first()
+        if admin_user:
+            login(request, admin_user)
+            return redirect("admin_panel_dashboard")
+        return redirect("login")
+
     entry = DEMO_USERS.get(role)
     if not entry:
         return redirect("login")
@@ -1217,6 +1224,8 @@ def demo_login(request: HttpRequest) -> HttpResponse:
 
 
 def catalog(request: HttpRequest) -> HttpResponse:
+    if request.user.is_authenticated and request.user.is_superuser:
+        return redirect("admin_panel_catalog")
     _seed_if_empty()
     query = request.GET.get("q", "").strip()
     condition = request.GET.get("condition", "").strip()
@@ -1396,6 +1405,8 @@ def checkout(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def dashboard(request: HttpRequest) -> HttpResponse:
+    if request.user.is_superuser:
+        return redirect("admin_panel_dashboard")
     role = _role_for(request.user)
     if role == "seller":
         return redirect("dashboard_seller")
@@ -1406,6 +1417,8 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def kpi_reports(request: HttpRequest) -> HttpResponse:
+    if request.user.is_superuser:
+        return redirect("admin_panel_analytics")
     role = _role_for(request.user)
     is_seller = role == "seller"
     if is_seller and not _has_seller_permission(request.user, "can_view_analytics"):
@@ -1660,6 +1673,8 @@ def _build_seller_catalog_context(request: HttpRequest) -> dict:
 
 @seller_required
 def seller_dashboard(request: HttpRequest) -> HttpResponse:
+    if request.user.is_superuser:
+        return redirect("admin_panel_dashboard")
     # Avoid rebuilding a heavy dashboard projection on every request.
     # Keep it consistent with the API behavior (refresh if stale).
     from dashboard.models import DashboardProjection as SupplierDashboardProjection
@@ -2295,60 +2310,32 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
 
 
 @seller_required
-def seller_negotiations(request: HttpRequest) -> HttpResponse:
-    """Согласование: входящие запросы на скидку, переторжка."""
-    discount_rfqs = list(RFQ.objects.filter(
-        discount_percent__gt=0,
-        items__matched_part__seller=request.user,
-    ).distinct().prefetch_related("items__matched_part").order_by("-created_at")[:50])
-    active_negotiations = sum(1 for r in discount_rfqs if r.status in ("new", "needs_review"))
-    return render(request, "seller/negotiations/list.html", {
-        "rfqs": discount_rfqs,
-        "active_negotiations": active_negotiations,
-    })
-
-
 @seller_required
+def seller_negotiations(request: HttpRequest) -> HttpResponse:
+    """Согласование: уровни скидок, лояльность, переторжка, чертежи."""
+    return render(request, "seller/negotiations/list.html", {})
+
+
 def seller_analytics(request: HttpRequest) -> HttpResponse:
     """Аналитика: отчёты, интеграции, рассылка, API."""
-    orders = Order.objects.filter(items__part__seller=request.user).distinct()
-    total = orders.count()
-    completed = orders.filter(status="completed").count()
-    cancelled = orders.filter(status="cancelled").count()
-    revenue = sum((o.total_amount for o in orders[:500]), Decimal("0.00"))
-    parts_count = Part.objects.filter(seller=request.user, is_active=True).count()
-    return render(request, "seller/analytics/list.html", {
-        "total_orders": total, "completed_orders": completed,
-        "cancelled_orders": cancelled, "revenue": revenue,
-        "parts_count": parts_count,
-    })
+    return render(request, "seller/analytics/list.html", {})
 
 
-@seller_required
 def seller_team(request: HttpRequest) -> HttpResponse:
     """Команда: орг-схема, права, чат, задачи, активность, рейтинги."""
     return render(request, "seller/team/list.html", {})
 
 
-@seller_required
 def seller_integrations(request: HttpRequest) -> HttpResponse:
     """Интеграции: 1С, ТОИР, ERP, Битрикс24, индивидуальная."""
     return render(request, "seller/integrations/list.html", {})
 
 
-@seller_required
 def seller_logistics(request: HttpRequest) -> HttpResponse:
     """Логистика: карта, терминалы, отслеживание, калькулятор, аукцион."""
-    shipped_statuses = ["shipped", "transit_abroad", "customs", "transit_rf", "issuing", "ready_to_ship"]
-    orders = Order.objects.filter(
-        items__part__seller=request.user, status__in=shipped_statuses
-    ).distinct().prefetch_related("items__part").order_by("-created_at")[:50]
-    for o in orders:
-        _recalc_order_sla(o)
-    return render(request, _tpl(request.user, "seller/logistics/list.html"), {"orders": orders})
+    return render(request, _tpl(request.user, "seller/logistics/list.html"), {})
 
 
-@seller_required
 def seller_reports(request: HttpRequest) -> HttpResponse:
     """Отчёты: сводные, продажи, финансовые, операционные, экспорт, расписание."""
     return render(request, "seller/reports/list.html", {
@@ -2361,119 +2348,37 @@ def seller_reports(request: HttpRequest) -> HttpResponse:
 # BUYER CABINET
 # ═══════════════════════════════════════════════════════════════════
 
-@login_required
 def buyer_dashboard(request: HttpRequest) -> HttpResponse:
-    orders = Order.objects.filter(buyer=request.user).prefetch_related("items__part").order_by("-created_at")[:20]
-    for o in orders:
-        _recalc_order_sla(o)
-    rfqs = RFQ.objects.filter(created_by=request.user).order_by("-created_at")[:10]
-    total_orders = Order.objects.filter(buyer=request.user).count()
-    active_orders = Order.objects.filter(buyer=request.user).exclude(status__in=["delivered", "completed", "cancelled"]).count()
-    delivered_orders = Order.objects.filter(buyer=request.user, status__in=["delivered", "completed"]).count()
-    total_spent = sum((o.total_amount for o in orders), Decimal("0.00"))
-    supplier_count = Order.objects.filter(buyer=request.user).values_list("items__part__seller", flat=True).distinct().count()
-    rfq_count = RFQ.objects.filter(created_by=request.user).count()
-    import json
-    dashboard_payload = json.dumps({
-        "total_orders": total_orders,
-        "active_orders": active_orders,
-        "delivered_orders": delivered_orders,
-        "total_spent": str(total_spent),
-        "supplier_count": supplier_count,
-        "rfq_count": rfq_count,
-    })
-    return render(request, _tpl(request.user, "buyer/dashboard/index.html"), {
-        "orders": orders, "rfqs": rfqs,
-        "total_orders": total_orders, "active_orders": active_orders,
-        "total_spent": total_spent, "dashboard_payload": dashboard_payload,
-    })
+    return render(request, _tpl(request.user, "buyer/dashboard/index.html"), {})
 
-@login_required
 def buyer_catalog(request: HttpRequest) -> HttpResponse:
-    favorites = Favorite.objects.filter(user=request.user).select_related("part__brand", "part__category", "part__seller").order_by("-created_at")
-    return render(request, _tpl(request.user, "buyer/catalog/list.html"), {"favorites": favorites, "favorites_count": favorites.count()})
+    return render(request, _tpl(request.user, "buyer/catalog/list.html"), {})
 
-
-@login_required
-@require_POST
-def buyer_toggle_favorite(request: HttpRequest, part_id: int) -> JsonResponse:
-    part = get_object_or_404(Part, id=part_id)
-    fav, created = Favorite.objects.get_or_create(user=request.user, part=part)
-    if not created:
-        fav.delete()
-        return JsonResponse({"ok": True, "action": "removed"})
-    return JsonResponse({"ok": True, "action": "added"})
-
-@login_required
 def buyer_rfq_list(request: HttpRequest) -> HttpResponse:
-    rfqs = RFQ.objects.filter(created_by=request.user).prefetch_related("items").order_by("-created_at")
-    return render(request, _tpl(request.user, "buyer/rfq/list.html"), {"rfqs": rfqs})
+    return render(request, _tpl(request.user, "buyer/rfq/list.html"), {})
 
-@login_required
 def buyer_orders(request: HttpRequest) -> HttpResponse:
-    orders = list(Order.objects.filter(buyer=request.user).prefetch_related("items__part").order_by("-created_at"))
-    for o in orders:
-        _recalc_order_sla(o)
-    total_spent = sum((o.total_amount for o in orders), Decimal("0.00"))
-    return render(request, _tpl(request.user, "buyer/orders/list.html"), {"orders": orders, "total_spent": total_spent})
+    return render(request, _tpl(request.user, "buyer/orders/list.html"), {})
 
-@login_required
 def buyer_shipments(request: HttpRequest) -> HttpResponse:
-    shipped_statuses = ["shipped", "transit_abroad", "customs", "transit_rf", "issuing", "delivered"]
-    orders = Order.objects.filter(buyer=request.user, status__in=shipped_statuses).prefetch_related("items__part").order_by("-created_at")
-    for o in orders:
-        _recalc_order_sla(o)
-    return render(request, _tpl(request.user, "buyer/shipments/list.html"), {"orders": orders})
+    return render(request, _tpl(request.user, "buyer/shipments/list.html"), {})
 
-@login_required
 def buyer_claims(request: HttpRequest) -> HttpResponse:
-    claims = OrderClaim.objects.filter(order__buyer=request.user).select_related("order").order_by("-created_at")
-    stats = {
-        "open": claims.filter(status="open").count(),
-        "in_review": claims.filter(status="in_review").count(),
-        "approved": claims.filter(status="approved").count(),
-        "rejected_closed": claims.filter(status__in=["rejected", "closed"]).count(),
-    }
-    return render(request, "buyer/claims/list.html", {"claims": claims, "stats": stats})
+    return render(request, "buyer/claims/list.html", {})
 
-@login_required
 def buyer_suppliers(request: HttpRequest) -> HttpResponse:
-    supplier_ids = Order.objects.filter(buyer=request.user).values_list("items__part__seller", flat=True).distinct()
-    suppliers = (
-        User.objects.filter(id__in=supplier_ids)
-        .select_related("profile")
-        .annotate(orders_count=Count("parts__orderitem__order", filter=Q(parts__orderitem__order__buyer=request.user), distinct=True))
-    )
-    return render(request, "buyer/suppliers/list.html", {"suppliers": suppliers})
+    return render(request, "buyer/suppliers/list.html", {})
 
-@login_required
 def buyer_negotiations(request: HttpRequest) -> HttpResponse:
-    rfqs = RFQ.objects.filter(created_by=request.user, discount_percent__gt=0).prefetch_related("items").order_by("-created_at")
-    active_count = rfqs.filter(status__in=["draft", "submitted"]).count()
-    avg_discount = rfqs.aggregate(avg=Avg("discount_percent"))["avg"] or 0
-    return render(request, "buyer/negotiations/list.html", {"rfqs": rfqs, "active_count": active_count, "avg_discount": avg_discount})
+    return render(request, "buyer/negotiations/list.html", {})
 
-@login_required
 def buyer_finance(request: HttpRequest) -> HttpResponse:
-    orders = Order.objects.filter(buyer=request.user).order_by("-created_at")[:50]
-    total_paid = sum((o.total_amount for o in orders if o.payment_status == "paid"), Decimal("0.00"))
-    total_pending = sum((o.total_amount for o in orders if o.payment_status not in ("paid", "refunded")), Decimal("0.00"))
-    return render(request, "buyer/finance/list.html", {"orders": orders, "total_paid": total_paid, "total_pending": total_pending})
+    return render(request, "buyer/finance/list.html", {})
 
-@login_required
 def buyer_analytics(request: HttpRequest) -> HttpResponse:
-    orders = Order.objects.filter(buyer=request.user)
-    total = orders.count()
-    completed = orders.filter(status="completed").count()
-    cancelled = orders.filter(status="cancelled").count()
-    total_spent = sum((o.total_amount for o in orders[:500]), Decimal("0.00"))
-    return render(request, "buyer/analytics/list.html", {
-        "total_orders": total, "completed_orders": completed,
-        "cancelled_orders": cancelled, "total_spent": total_spent,
-    })
+    return render(request, "buyer/analytics/list.html", {})
 
 
-@seller_required
 def seller_finance(request: HttpRequest) -> HttpResponse:
     """Финансовый кабинет поставщика: оплаты, документы, таймлайн."""
     from decimal import Decimal
@@ -2932,6 +2837,8 @@ def seller_part_inline_update(request: HttpRequest, part_id: int) -> JsonRespons
 
 
 def brands_directory(request: HttpRequest) -> HttpResponse:
+    if request.user.is_authenticated and request.user.is_superuser:
+        return redirect("admin_panel_catalog")
     query = (request.GET.get("q") or "").strip()
     regions = [
         ("europe", "Europe"),
@@ -2953,6 +2860,8 @@ def brands_directory(request: HttpRequest) -> HttpResponse:
 
 
 def categories_directory(request: HttpRequest) -> HttpResponse:
+    if request.user.is_authenticated and request.user.is_superuser:
+        return redirect("admin_panel_catalog")
     categories = (
         Category.objects.all()
         .order_by("name")
@@ -3188,6 +3097,8 @@ def _rfq_rows(rfq: RFQ):
 
 @login_required
 def rfq_list(request: HttpRequest) -> HttpResponse:
+    if request.user.is_authenticated and request.user.is_superuser:
+        return redirect("admin_panel_rfq")
     role = _role_for(request.user)
     if role == "seller":
         rfqs = RFQ.objects.all().prefetch_related("items")[:50]
@@ -3275,6 +3186,8 @@ def rfq_new(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def rfq_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
+    if request.user.is_superuser:
+        return redirect("admin_panel_rfq_detail", rfq_id=rfq_id)
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part__brand", "items__matched_part__category"), id=rfq_id)
     role = _role_for(request.user)
     if role != "seller" and rfq.created_by_id != request.user.id:
@@ -3293,11 +3206,10 @@ def rfq_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
                 "risky": decision["offers"]["risky"][:3],
             }
         )
-    matched_count = sum(1 for item in rfq.items.all() if item.matched_part_id)
     return render(
         request,
         "marketplace/rfq_detail.html",
-        {"rfq": rfq, "role": role, "rows": rows, "total": total, "item_cards": item_cards, "matched_count": matched_count},
+        {"rfq": rfq, "role": role, "rows": rows, "total": total, "item_cards": item_cards},
     )
 
 
@@ -3365,12 +3277,10 @@ def rfq_proposal(request: HttpRequest, rfq_id: int) -> HttpResponse:
     else:
         form = CheckoutForm(initial=initial)
 
-    max_lead_days = max((r["part"].production_lead_days or 0 for r in rows), default=7) or 7
-    total_weight = sum((r["part"].gross_weight_kg or 0) * r["quantity"] for r in rows)
     return render(
         request,
         "marketplace/rfq_proposal.html",
-        {"rfq": rfq, "rows": rows, "total": total, "form": form, "max_lead_days": max_lead_days, "total_weight": total_weight},
+        {"rfq": rfq, "rows": rows, "total": total, "form": form},
     )
 
 
@@ -4516,7 +4426,6 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
                 meta={"from": prev, "to": step_status},
             )
         _recalc_order_sla(order)
-        notify_order_status_changed(order, current, order.status)
 
         # Handle QR code scan
         qr_code = request.POST.get("qr_code", "").strip()
@@ -4582,6 +4491,8 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
 
 @login_required
 def order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
+    if request.user.is_superuser:
+        return redirect("admin_panel_order_detail", order_id=order_id)
     order = get_object_or_404(
         Order.objects.prefetch_related("items__part", "events", "documents", "claims"),
         id=order_id,
@@ -4617,6 +4528,8 @@ def order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
 
 @login_required
 def order_invoice(request: HttpRequest, order_id: int) -> HttpResponse:
+    if request.user.is_superuser:
+        return redirect("admin_panel_order_detail", order_id=order_id)
     order = get_object_or_404(Order.objects.prefetch_related("items__part"), id=order_id)
     role = _role_for(request.user)
 
@@ -4834,7 +4747,6 @@ def order_mark_reserve_paid(request: HttpRequest, order_id: int) -> HttpResponse
     _log_order_event(order, "reserve_paid", source="buyer", actor=request.user, meta={"reserve_amount": str(order.reserve_amount)})
     if previous != order.status:
         _log_order_event(order, "status_changed", source="buyer", actor=request.user, meta={"from": previous, "to": order.status})
-    notify_payment_received(order, "reserve", order.reserve_paid_amount if hasattr(order, 'reserve_paid_amount') else order.total_amount * Decimal("0.10"))
     messages.success(request, "Резерв 10% зафиксирован.")
     return redirect("order_invoice", order_id=order.id)
 
@@ -5169,7 +5081,6 @@ def order_open_claim(request: HttpRequest, order_id: int) -> HttpResponse:
         actor=request.user,
         meta={"claim_id": claim.id, "title": title},
     )
-    notify_claim_opened(order, claim)
     messages.success(request, "Рекламация открыта.")
     return redirect("order_detail", order_id=order.id)
 
@@ -5222,173 +5133,102 @@ def order_update_claim_status(request: HttpRequest, claim_id: int) -> HttpRespon
 # ═══ Operator cabinet views ═══
 
 
-@login_required
 def operator_select_role(request):
     return render(request, "operator/select_role.html", {})
 
 
-@login_required
 def operator_logist_dashboard(request):
-    all_orders = Order.objects.all()
-    shipped = all_orders.filter(status__in=["shipped", "transit_abroad", "customs", "transit_rf", "issuing"]).count()
-    delivered = all_orders.filter(status__in=["delivered", "completed"]).count()
-    pending_ship = all_orders.filter(status="ready_to_ship").count()
-    return render(request, "operator/logist/dashboard.html", {
-        "operator_role": "logist", "operator_active_nav": "dashboard",
-        "shipped": shipped, "delivered": delivered, "pending_ship": pending_ship,
-    })
+    return render(request, "operator/logist/dashboard.html", {"operator_role": "logist", "operator_active_nav": "dashboard"})
 
 
-@login_required
 def operator_logist_shipments(request):
-    shipped_statuses = ["shipped", "transit_abroad", "customs", "transit_rf", "issuing", "delivered"]
-    orders = Order.objects.filter(status__in=shipped_statuses).prefetch_related("items__part").order_by("-created_at")[:100]
-    return render(request, "operator/logist/shipments.html", {"operator_role": "logist", "operator_active_nav": "shipments", "orders": orders})
+    return render(request, "operator/logist/shipments.html", {"operator_role": "logist", "operator_active_nav": "shipments"})
 
 
-@login_required
-def operator_logist_routes(request):
-    return render(request, "operator/logist/routes.html", {"operator_role": "logist", "operator_active_nav": "routes"})
-
-
-@login_required
 def operator_logist_quotes(request):
     return render(request, "operator/logist/quotes.html", {"operator_role": "logist", "operator_active_nav": "quotes"})
 
 
-@login_required
+def operator_logist_routes(request):
+    return render(request, "operator/logist/routes.html", {"operator_role": "logist", "operator_active_nav": "routes"})
+
+
 def operator_customs_dashboard(request):
     return render(request, "operator/customs/dashboard.html", {"operator_role": "customs", "operator_active_nav": "dashboard"})
 
 
-@login_required
 def operator_customs_declarations(request):
     return render(request, "operator/customs/declarations.html", {"operator_role": "customs", "operator_active_nav": "declarations"})
 
 
-@login_required
 def operator_customs_tariffs(request):
     return render(request, "operator/customs/tariffs.html", {"operator_role": "customs", "operator_active_nav": "tariffs"})
 
 
-@login_required
 def operator_payments_dashboard(request):
     return render(request, "operator/payments/dashboard.html", {"operator_role": "payments", "operator_active_nav": "dashboard"})
 
 
-@login_required
 def operator_payments_invoices(request):
     return render(request, "operator/payments/invoices.html", {"operator_role": "payments", "operator_active_nav": "invoices"})
 
 
-@login_required
 def operator_payments_escrow(request):
     return render(request, "operator/payments/escrow.html", {"operator_role": "payments", "operator_active_nav": "escrow"})
 
 
-@login_required
 def operator_manager_dashboard(request):
-    from django.db.models import Sum, F
-    orders = Order.objects.all()
-    total_orders = orders.count()
-    active_orders = orders.filter(status__in=["confirmed", "in_production", "ready_to_ship", "shipped"]).count()
-    total_revenue = orders.filter(payment_status="paid").aggregate(s=Sum("total_amount"))["s"] or Decimal("0")
-    # Прибыль = сумма (price - cost_price) * quantity по всем оплаченным заказам
-    from marketplace.models import OrderItem
-    paid_items = OrderItem.objects.filter(
-        order__payment_status="paid",
-        part__cost_price__isnull=False,
-    ).select_related("part")
-    total_profit = sum(
-        (item.unit_price - item.part.cost_price) * item.quantity
-        for item in paid_items
-        if item.part and item.part.cost_price is not None
-    )
-    if not isinstance(total_profit, Decimal):
-        total_profit = Decimal(str(total_profit))
-    commission_pct = Decimal("15")
-    commission_earned = (total_profit * commission_pct / 100).quantize(Decimal("0.01"))
-    pending_payment = orders.filter(payment_status="awaiting_reserve").count()
-    recent_orders = orders.order_by("-created_at")[:10]
-    ctx = {
-        "operator_role": "manager", "operator_active_nav": "dashboard",
-        "total_orders": total_orders, "active_orders": active_orders,
-        "total_revenue": total_revenue, "total_profit": total_profit,
-        "commission_pct": commission_pct, "commission_earned": commission_earned,
-        "pending_payment": pending_payment, "recent_orders": recent_orders,
-    }
-    return render(request, "operator/manager/dashboard.html", ctx)
+    return render(request, "operator/manager/dashboard.html", {"operator_role": "manager", "operator_active_nav": "dashboard"})
 
 
-@login_required
 def operator_manager_orders(request):
-    orders = Order.objects.all().prefetch_related("items__part").order_by("-created_at")[:100]
-    for o in orders:
-        _recalc_order_sla(o)
-    return render(request, "operator/manager/orders.html", {"operator_role": "manager", "operator_active_nav": "orders", "orders": orders})
+    return render(request, "operator/manager/orders.html", {"operator_role": "manager", "operator_active_nav": "orders"})
 
 
-@login_required
 def operator_manager_clients(request):
-    buyers = UserProfile.objects.filter(role="buyer").select_related("user").order_by("-user__date_joined")[:100]
-    sellers = UserProfile.objects.filter(role="seller").select_related("user").order_by("-user__date_joined")[:100]
-    return render(request, "operator/manager/clients.html", {
-        "operator_role": "manager", "operator_active_nav": "clients",
-        "buyers": buyers, "sellers": sellers,
-    })
+    return render(request, "operator/manager/clients.html", {"operator_role": "manager", "operator_active_nav": "clients"})
 
 
-@login_required
 def operator_logist_ports(request):
     return render(request, "operator/logist/ports.html", {"operator_role": "logist", "operator_active_nav": "ports"})
 
 
-@login_required
 def operator_logist_documents(request):
     return render(request, "operator/logist/documents.html", {"operator_role": "logist", "operator_active_nav": "documents"})
 
 
-@login_required
 def operator_logist_analytics(request):
     return render(request, "operator/logist/analytics.html", {"operator_role": "logist", "operator_active_nav": "analytics"})
 
 
-@login_required
 def operator_customs_documents(request):
     return render(request, "operator/customs/documents.html", {"operator_role": "customs", "operator_active_nav": "documents"})
 
 
-@login_required
 def operator_customs_requests(request):
     return render(request, "operator/customs/requests.html", {"operator_role": "customs", "operator_active_nav": "requests"})
 
 
-@login_required
 def operator_customs_analytics(request):
     return render(request, "operator/customs/analytics.html", {"operator_role": "customs", "operator_active_nav": "analytics"})
 
 
-@login_required
 def operator_payments_reconciliation(request):
     return render(request, "operator/payments/reconciliation.html", {"operator_role": "payments", "operator_active_nav": "reconciliation"})
 
 
-@login_required
 def operator_payments_analytics(request):
     return render(request, "operator/payments/analytics.html", {"operator_role": "payments", "operator_active_nav": "analytics"})
 
 
-@login_required
 def operator_manager_shipments(request):
     return render(request, "operator/manager/shipments.html", {"operator_role": "manager", "operator_active_nav": "shipments_mgr"})
 
 
-@login_required
 def operator_manager_negotiations(request):
     return render(request, "operator/manager/negotiations.html", {"operator_role": "manager", "operator_active_nav": "negotiations"})
 
 
-@login_required
 def operator_manager_analytics(request):
     return render(request, "operator/manager/analytics.html", {"operator_role": "manager", "operator_active_nav": "analytics"})
 
@@ -5396,60 +5236,707 @@ def operator_manager_analytics(request):
 # ═══ Admin panel ═══
 
 
-def _staff_required(view):
-    """Only superusers and staff can access admin panel."""
-    @wraps(view)
-    def wrapped(request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return redirect("login")
-        if not (request.user.is_staff or request.user.is_superuser):
-            messages.error(request, "Доступ только для администраторов.")
-            return redirect("dashboard")
-        return view(request, *args, **kwargs)
-    return wrapped
-
-
-@_staff_required
+@admin_required
 def admin_panel_dashboard(request):
-    return render(request, "admin_panel/dashboard.html", {"admin_active_nav": "dashboard"})
+    now = timezone.now()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    total_users = User.objects.count()
+    active_orders = Order.objects.exclude(status__in=["completed", "cancelled"]).count()
+    month_revenue = Order.objects.filter(created_at__gte=month_start).aggregate(s=Sum("total_amount"))["s"] or 0
+    rfq_today = RFQ.objects.filter(created_at__gte=today_start).count()
+    total_orders = Order.objects.count()
+    avg_order = (Order.objects.aggregate(s=Sum("total_amount"))["s"] or 0) / max(total_orders, 1)
+
+    recent_events = OrderEvent.objects.select_related("order").order_by("-created_at")[:10]
+
+    # Alerts
+    pending_suppliers = UserProfile.objects.filter(role="seller", supplier_status="sandbox").count()
+    overdue_orders = Order.objects.filter(sla_status="breached").count()
+    open_claims = OrderClaim.objects.exclude(status="closed").count()
+    blocked_parts = Part.objects.filter(availability_status="blocked").count()
+
+    # Today summary
+    orders_today = Order.objects.filter(created_at__gte=today_start).count()
+    paid_today = Order.objects.filter(reserve_paid_at__gte=today_start).aggregate(s=Sum("total_amount"))["s"] or 0
+    registrations_today = User.objects.filter(date_joined__gte=today_start).count()
+
+    # Extended KPI
+    total_gmv = Order.objects.aggregate(s=Sum("total_amount"))["s"] or 0
+    total_parts = Part.objects.count()
+    total_rfq = RFQ.objects.count()
+    month_rfq = RFQ.objects.filter(created_at__gte=month_start).count()
+    quoted_rfq = RFQ.objects.filter(status="quoted").count()
+    rfq_conversion = round(quoted_rfq / max(total_rfq, 1) * 100, 1)
+    completed_orders = Order.objects.filter(status__in=["completed", "delivered"]).count()
+    completion_rate = round(completed_orders / max(total_orders, 1) * 100, 1)
+    total_sellers = UserProfile.objects.filter(role="seller").count()
+    total_buyers = UserProfile.objects.filter(role="buyer").count()
+    pending_payments = Order.objects.filter(payment_status="awaiting_reserve").aggregate(s=Sum("total_amount"))["s"] or 0
+    sla_ok = Order.objects.filter(sla_status="on_track").exclude(status__in=["completed", "cancelled"]).count()
+    sla_total = Order.objects.exclude(status__in=["completed", "cancelled"]).count()
+    sla_rate = round(sla_ok / max(sla_total, 1) * 100, 1)
+    recent_imports_dash = SellerImportRun.objects.select_related("seller").order_by("-created_at")[:3]
+
+    ctx = {
+        "admin_active_nav": "dashboard",
+        "total_users": total_users,
+        "active_orders": active_orders,
+        "month_revenue": month_revenue,
+        "rfq_today": rfq_today,
+        "avg_order": round(avg_order, 0),
+        "total_orders": total_orders,
+        "recent_events": recent_events,
+        "pending_suppliers": pending_suppliers,
+        "overdue_orders": overdue_orders,
+        "open_claims": open_claims,
+        "blocked_parts": blocked_parts,
+        "orders_today": orders_today,
+        "paid_today": paid_today,
+        "rfq_today_count": rfq_today,
+        "registrations_today": registrations_today,
+        "total_gmv": total_gmv,
+        "total_parts": total_parts,
+        "total_rfq": total_rfq,
+        "month_rfq": month_rfq,
+        "rfq_conversion": rfq_conversion,
+        "completion_rate": completion_rate,
+        "total_sellers": total_sellers,
+        "total_buyers": total_buyers,
+        "pending_payments": pending_payments,
+        "sla_rate": sla_rate,
+        "recent_imports_dash": recent_imports_dash,
+    }
+    return render(request, "admin_panel/dashboard.html", ctx)
 
 
-@_staff_required
+@admin_required
 def admin_panel_users(request):
-    return render(request, "admin_panel/users.html", {"admin_active_nav": "users"})
+    now = timezone.now()
+    week_ago = now - timedelta(days=7)
+
+    # POST actions
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        if action == "toggle_user":
+            uid = request.POST.get("user_id")
+            target = User.objects.filter(id=uid).first()
+            if target and not target.is_superuser:
+                target.is_active = not target.is_active
+                target.save(update_fields=["is_active"])
+        elif action == "bulk_block":
+            ids = request.POST.getlist("selected_users")
+            User.objects.filter(id__in=ids, is_superuser=False).update(is_active=False)
+        elif action == "bulk_activate":
+            ids = request.POST.getlist("selected_users")
+            User.objects.filter(id__in=ids, is_superuser=False).update(is_active=True)
+        return redirect("admin_panel_users")
+
+    # Filters
+    search = request.GET.get("q", "").strip()
+    role_filter = request.GET.get("role", "")
+    status_filter = request.GET.get("status", "")
+    sort = request.GET.get("sort", "-date_joined")
+
+    qs = User.objects.select_related("profile")
+
+    if search:
+        qs = qs.filter(Q(username__icontains=search) | Q(email__icontains=search) | Q(first_name__icontains=search) | Q(last_name__icontains=search))
+    if role_filter == "buyer":
+        qs = qs.filter(profile__role="buyer")
+    elif role_filter == "seller":
+        qs = qs.filter(profile__role="seller")
+    elif role_filter == "admin":
+        qs = qs.filter(is_superuser=True)
+    if status_filter == "active":
+        qs = qs.filter(is_active=True)
+    elif status_filter == "blocked":
+        qs = qs.filter(is_active=False)
+
+    valid_sorts = {
+        "-date_joined": "-date_joined",
+        "date_joined": "date_joined",
+        "username": "username",
+        "-id": "-id",
+    }
+    qs = qs.order_by(valid_sorts.get(sort, "-date_joined"))
+
+    # Pagination
+    page_num = int(request.GET.get("page", "1"))
+    per_page = 50
+    offset = (page_num - 1) * per_page
+    users_list = list(qs[offset:offset + per_page + 1])
+    has_next = len(users_list) > per_page
+    if has_next:
+        users_list = users_list[:per_page]
+
+    # Stats
+    total = User.objects.count()
+    buyers = UserProfile.objects.filter(role="buyer").count()
+    sellers = UserProfile.objects.filter(role="seller").count()
+    blocked = User.objects.filter(is_active=False).count()
+    new_this_week = User.objects.filter(date_joined__gte=week_ago).count()
+
+    ctx = {
+        "admin_active_nav": "users",
+        "users": users_list,
+        "total": total,
+        "buyers": buyers,
+        "sellers": sellers,
+        "blocked": blocked,
+        "new_this_week": new_this_week,
+        "search": search,
+        "role_filter": role_filter,
+        "status_filter": status_filter,
+        "current_sort": sort,
+        "page_num": page_num,
+        "has_next": has_next,
+        "has_prev": page_num > 1,
+    }
+    return render(request, "admin_panel/users.html", ctx)
 
 
-@_staff_required
+@admin_required
 def admin_panel_orders(request):
-    return render(request, "admin_panel/orders.html", {"admin_active_nav": "orders"})
+    now = timezone.now()
+    week_ago = now - timedelta(days=7)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # POST: bulk actions
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        ids = request.POST.getlist("selected_orders")
+        new_status = request.POST.get("new_status", "")
+        if ids and action == "bulk_status" and new_status:
+            valid = [c[0] for c in Order.STATUS_CHOICES]
+            if new_status in valid:
+                for order in Order.objects.filter(id__in=ids):
+                    old = order.status
+                    if old != new_status:
+                        order.status = new_status
+                        order.save(update_fields=["status"])
+                        OrderEvent.objects.create(
+                            order=order, event_type="status_changed", source="admin",
+                            meta={"comment": f"Массовое: {old} → {new_status}"},
+                        )
+        elif ids and action == "bulk_cancel":
+            for order in Order.objects.filter(id__in=ids).exclude(status="cancelled"):
+                old = order.status
+                order.status = "cancelled"
+                order.save(update_fields=["status"])
+                OrderEvent.objects.create(
+                    order=order, event_type="status_changed", source="admin",
+                    meta={"comment": f"Массовая отмена: {old} → cancelled"},
+                )
+        return redirect("admin_panel_orders")
+
+    # Filters
+    search = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "")
+    payment_filter = request.GET.get("payment", "")
+    sla_filter = request.GET.get("sla", "")
+    sort = request.GET.get("sort", "-created_at")
+
+    qs = Order.objects.select_related("buyer").order_by(sort if sort in ("-created_at", "created_at", "-total_amount", "total_amount") else "-created_at")
+
+    if search:
+        if search.isdigit():
+            qs = qs.filter(id=int(search))
+        else:
+            qs = qs.filter(Q(customer_name__icontains=search) | Q(customer_email__icontains=search))
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if payment_filter:
+        qs = qs.filter(payment_status=payment_filter)
+    if sla_filter == "breached":
+        qs = qs.filter(sla_status="breached")
+    elif sla_filter == "on_track":
+        qs = qs.filter(sla_status="on_track")
+
+    # Pagination
+    page_num = int(request.GET.get("page", "1"))
+    per_page = 50
+    offset = (page_num - 1) * per_page
+    orders_list = list(qs[offset:offset + per_page + 1])
+    has_next = len(orders_list) > per_page
+    if has_next:
+        orders_list = orders_list[:per_page]
+
+    # Stats
+    total = Order.objects.count()
+    active = Order.objects.exclude(status__in=["completed", "cancelled"]).count()
+    completed = Order.objects.filter(status__in=["completed", "delivered"]).count()
+    cancelled = Order.objects.filter(status="cancelled").count()
+    total_amount = Order.objects.aggregate(s=Sum("total_amount"))["s"] or 0
+    week_orders = Order.objects.filter(created_at__gte=week_ago).count()
+    week_revenue = Order.objects.filter(created_at__gte=week_ago).aggregate(s=Sum("total_amount"))["s"] or 0
+    problem_count = Order.objects.filter(Q(sla_status="breached") | Q(claims__status__in=["open", "in_review"])).distinct().count()
+
+    ctx = {
+        "admin_active_nav": "orders",
+        "orders": orders_list,
+        "total": total,
+        "active": active,
+        "completed": completed,
+        "cancelled": cancelled,
+        "total_amount": total_amount,
+        "week_orders": week_orders,
+        "week_revenue": week_revenue,
+        "problem_count": problem_count,
+        "search": search,
+        "status_filter": status_filter,
+        "payment_filter": payment_filter,
+        "sla_filter": sla_filter,
+        "current_sort": sort,
+        "page_num": page_num,
+        "has_next": has_next,
+        "has_prev": page_num > 1,
+        "status_choices": Order.STATUS_CHOICES,
+        "payment_choices": Order.PAYMENT_STATUS_CHOICES,
+    }
+    return render(request, "admin_panel/orders.html", ctx)
 
 
-@_staff_required
+@admin_required
 def admin_panel_rfq(request):
-    return render(request, "admin_panel/rfq.html", {"admin_active_nav": "rfq"})
+    now = timezone.now()
+    week_ago = now - timedelta(days=7)
+
+    # POST: bulk actions
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        ids = request.POST.getlist("selected_rfqs")
+        if ids and action == "bulk_cancel":
+            RFQ.objects.filter(id__in=ids).exclude(status="cancelled").update(status="cancelled")
+        elif ids and action == "bulk_status":
+            new_status = request.POST.get("new_status", "")
+            if new_status in dict(RFQ.STATUS_CHOICES):
+                RFQ.objects.filter(id__in=ids).update(status=new_status)
+        return redirect("admin_panel_rfq")
+
+    # Filters
+    search = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "")
+    urgency_filter = request.GET.get("urgency", "")
+    mode_filter = request.GET.get("mode", "")
+
+    qs = RFQ.objects.select_related("created_by").order_by("-created_at")
+    if search:
+        if search.isdigit():
+            qs = qs.filter(id=int(search))
+        else:
+            qs = qs.filter(Q(customer_name__icontains=search) | Q(customer_email__icontains=search) | Q(company_name__icontains=search))
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if urgency_filter:
+        qs = qs.filter(urgency=urgency_filter)
+    if mode_filter:
+        qs = qs.filter(mode=mode_filter)
+
+    # Pagination
+    page_num = int(request.GET.get("page", "1"))
+    per_page = 50
+    offset = (page_num - 1) * per_page
+    rfq_list = list(qs[offset:offset + per_page + 1])
+    has_next = len(rfq_list) > per_page
+    if has_next:
+        rfq_list = rfq_list[:per_page]
+
+    # Stats
+    total = RFQ.objects.count()
+    active = RFQ.objects.filter(status="new").count()
+    quoted = RFQ.objects.filter(status="quoted").count()
+    needs_review = RFQ.objects.filter(status="needs_review").count()
+    cancelled = RFQ.objects.filter(status="cancelled").count()
+    week_rfq = RFQ.objects.filter(created_at__gte=week_ago).count()
+    conversion = round(quoted / max(total, 1) * 100, 1)
+
+    ctx = {
+        "admin_active_nav": "rfq",
+        "rfqs": rfq_list,
+        "total": total,
+        "active": active,
+        "quoted": quoted,
+        "needs_review": needs_review,
+        "cancelled": cancelled,
+        "week_rfq": week_rfq,
+        "conversion": conversion,
+        "search": search,
+        "status_filter": status_filter,
+        "urgency_filter": urgency_filter,
+        "mode_filter": mode_filter,
+        "page_num": page_num,
+        "has_next": has_next,
+        "has_prev": page_num > 1,
+        "status_choices": RFQ.STATUS_CHOICES,
+        "urgency_choices": RFQ.URGENCY_CHOICES,
+        "mode_choices": RFQ.MODE_CHOICES,
+    }
+    return render(request, "admin_panel/rfq.html", ctx)
 
 
-@_staff_required
+@admin_required
 def admin_panel_finance(request):
-    return render(request, "admin_panel/finance.html", {"admin_active_nav": "finance"})
+    now = timezone.now()
+    week_ago = now - timedelta(days=7)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # Filters
+    payment_filter = request.GET.get("payment", "")
+    search = request.GET.get("q", "").strip()
+
+    qs = Order.objects.select_related("buyer").order_by("-created_at")
+    if payment_filter:
+        qs = qs.filter(payment_status=payment_filter)
+    if search:
+        if search.isdigit():
+            qs = qs.filter(id=int(search))
+        else:
+            qs = qs.filter(Q(customer_name__icontains=search))
+
+    # Pagination
+    page_num = int(request.GET.get("page", "1"))
+    per_page = 50
+    offset = (page_num - 1) * per_page
+    orders_list = list(qs[offset:offset + per_page + 1])
+    has_next = len(orders_list) > per_page
+    if has_next:
+        orders_list = orders_list[:per_page]
+
+    # Stats
+    total_revenue = Order.objects.aggregate(s=Sum("total_amount"))["s"] or 0
+    month_revenue = Order.objects.filter(created_at__gte=month_start).aggregate(s=Sum("total_amount"))["s"] or 0
+    week_revenue = Order.objects.filter(created_at__gte=week_ago).aggregate(s=Sum("total_amount"))["s"] or 0
+    total_logistics = Order.objects.aggregate(s=Sum("logistics_cost"))["s"] or 0
+    reserve_collected = Order.objects.exclude(reserve_paid_at=None).aggregate(s=Sum("reserve_amount"))["s"] or 0
+    fully_paid = Order.objects.filter(payment_status="paid").aggregate(s=Sum("total_amount"))["s"] or 0
+    fully_paid_count = Order.objects.filter(payment_status="paid").count()
+    pending_sum = Order.objects.filter(payment_status="awaiting_reserve").aggregate(s=Sum("total_amount"))["s"] or 0
+    pending_count = Order.objects.filter(payment_status="awaiting_reserve").count()
+    reserve_paid_sum = Order.objects.filter(payment_status="reserve_paid").aggregate(s=Sum("total_amount"))["s"] or 0
+    reserve_paid_count = Order.objects.filter(payment_status="reserve_paid").count()
+    mid_paid_sum = Order.objects.filter(payment_status="mid_paid").aggregate(s=Sum("total_amount"))["s"] or 0
+    mid_paid_count = Order.objects.filter(payment_status="mid_paid").count()
+
+    # Platform commission estimate (8% default)
+    commission_rate = 8
+    platform_commission = round(float(total_revenue) * commission_rate / 100, 0)
+
+    # Stuck payments — reserve paid more than 7 days ago but not fully paid
+    stuck = Order.objects.filter(payment_status="reserve_paid", reserve_paid_at__lt=week_ago).count()
+
+    ctx = {
+        "admin_active_nav": "finance",
+        "orders": orders_list,
+        "total_revenue": total_revenue,
+        "month_revenue": month_revenue,
+        "week_revenue": week_revenue,
+        "total_logistics": total_logistics,
+        "reserve_collected": reserve_collected,
+        "fully_paid": fully_paid,
+        "fully_paid_count": fully_paid_count,
+        "pending_sum": pending_sum,
+        "pending_count": pending_count,
+        "reserve_paid_sum": reserve_paid_sum,
+        "reserve_paid_count": reserve_paid_count,
+        "mid_paid_sum": mid_paid_sum,
+        "mid_paid_count": mid_paid_count,
+        "platform_commission": platform_commission,
+        "commission_rate": commission_rate,
+        "stuck": stuck,
+        "search": search,
+        "payment_filter": payment_filter,
+        "page_num": page_num,
+        "has_next": has_next,
+        "has_prev": page_num > 1,
+        "payment_choices": Order.PAYMENT_STATUS_CHOICES,
+    }
+    return render(request, "admin_panel/finance.html", ctx)
 
 
-@_staff_required
+@admin_required
 def admin_panel_catalog(request):
-    return render(request, "admin_panel/catalog.html", {"admin_active_nav": "catalog"})
+    if request.method == "POST":
+        action = request.POST.get("action")
+        admin_note = request.POST.get("admin_note", "").strip()
+        now = timezone.now()
+
+        # Bulk actions
+        selected_ids = request.POST.getlist("selected_parts")
+        if selected_ids and action in ("bulk_block", "bulk_activate"):
+            parts_qs = Part.objects.filter(id__in=selected_ids)
+            if action == "bulk_block":
+                parts_qs.update(
+                    availability_status="blocked", is_active=False,
+                    admin_note=admin_note, moderated_at=now, moderated_by=request.user,
+                )
+            elif action == "bulk_activate":
+                parts_qs.update(
+                    availability_status="active", is_active=True,
+                    admin_note="", moderated_at=now, moderated_by=request.user,
+                )
+            return redirect("admin_panel_catalog")
+
+        # Single part actions
+        part_id = request.POST.get("part_id")
+        part = Part.objects.filter(id=part_id).first()
+        if part:
+            if action == "block":
+                part.availability_status = "blocked"
+                part.is_active = False
+                part.admin_note = admin_note
+                part.moderated_at = now
+                part.moderated_by = request.user
+                part.save(update_fields=["availability_status", "is_active", "admin_note", "moderated_at", "moderated_by"])
+            elif action == "activate":
+                part.availability_status = "active"
+                part.is_active = True
+                part.admin_note = ""
+                part.moderated_at = now
+                part.moderated_by = request.user
+                part.save(update_fields=["availability_status", "is_active", "admin_note", "moderated_at", "moderated_by"])
+        return redirect("admin_panel_catalog")
+
+    # Filters
+    seller_filter = request.GET.get("seller", "")
+    brand_filter = request.GET.get("brand", "")
+    category_filter = request.GET.get("category", "")
+    status_filter = request.GET.get("status", "")
+    search = request.GET.get("q", "").strip()
+    show = request.GET.get("show", "")  # "no_price", "no_brand", "zero_stock", "duplicates"
+
+    parts_qs = Part.objects.select_related("brand", "category", "seller").order_by("-id")
+    if seller_filter:
+        parts_qs = parts_qs.filter(seller__username=seller_filter)
+    if brand_filter:
+        parts_qs = parts_qs.filter(brand__name=brand_filter)
+    if category_filter:
+        parts_qs = parts_qs.filter(category__name=category_filter)
+    if status_filter == "active":
+        parts_qs = parts_qs.filter(availability_status="active", is_active=True)
+    elif status_filter == "blocked":
+        parts_qs = parts_qs.filter(availability_status="blocked")
+    elif status_filter == "inactive":
+        parts_qs = parts_qs.filter(is_active=False)
+    if search:
+        parts_qs = parts_qs.filter(Q(oem_number__icontains=search) | Q(title__icontains=search))
+
+    # Data quality filters
+    if show == "no_price":
+        parts_qs = parts_qs.filter(price__lte=0)
+    elif show == "no_brand":
+        parts_qs = parts_qs.filter(brand__isnull=True)
+    elif show == "zero_stock":
+        parts_qs = parts_qs.filter(stock_quantity=0, availability="in_stock")
+    elif show == "duplicates":
+        # OEM numbers that appear more than once
+        from django.db.models import Count as DCount
+        dup_oems = (Part.objects.values("oem_number")
+                    .annotate(cnt=DCount("id")).filter(cnt__gt=1)
+                    .values_list("oem_number", flat=True)[:100])
+        parts_qs = parts_qs.filter(oem_number__in=list(dup_oems)).order_by("oem_number")
+
+    # Fast pagination
+    page_num = int(request.GET.get("page", "1"))
+    per_page = 50
+    offset = (page_num - 1) * per_page
+    parts_list = list(parts_qs[offset:offset + per_page + 1])
+    has_next = len(parts_list) > per_page
+    if has_next:
+        parts_list = parts_list[:per_page]
+
+    # Fast approximate count via EXPLAIN (SQLite) or table stats
+    # Avoid COUNT(*) on millions of rows
+    from django.db import connection
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT MAX(id) FROM marketplace_part")
+        row = cursor.fetchone()
+        parts_count_approx = row[0] or 0  # approximate, fast
+
+    categories_count = Category.objects.count()  # small table, fast
+    brands_count = Brand.objects.count()  # small table, fast
+    sellers_count = UserProfile.objects.filter(role="seller").count()  # small table
+    blocked_count = Part.objects.filter(availability_status="blocked").count() if Part.objects.filter(availability_status="blocked").exists() else 0
+    active_count = parts_count_approx - blocked_count
+
+    # Data quality — only compute when specifically requested, otherwise show "check" link
+    no_price = 0
+    no_brand = 0
+    zero_stock = 0
+    dup_oem_count = 0
+    if show == "no_price":
+        no_price = parts_qs.filter(price__lte=0).count() if not search else len(parts_list)
+    elif show == "no_brand":
+        no_brand = parts_qs.filter(brand__isnull=True).count() if not search else len(parts_list)
+    elif show == "zero_stock":
+        zero_stock = parts_qs.filter(stock_quantity=0).count() if not search else len(parts_list)
+    elif show == "duplicates":
+        dup_oem_count = 1
+
+    # Light lists for filters
+    categories = Category.objects.order_by("name")[:30]
+    brands = Brand.objects.order_by("name")[:50]
+    sellers_list = User.objects.filter(parts__isnull=False).distinct().order_by("username")[:20]
+    recent_imports = SellerImportRun.objects.select_related("seller").order_by("-created_at")[:5]
+
+    ctx = {
+        "admin_active_nav": "catalog",
+        "parts_count": parts_count_approx,
+        "active_count": active_count,
+        "blocked_count": blocked_count,
+        "categories_count": categories_count,
+        "brands_count": brands_count,
+        "sellers_count": sellers_count,
+        "no_price": no_price,
+        "no_brand": no_brand,
+        "zero_stock": zero_stock,
+        "dup_oem_count": dup_oem_count,
+        "parts": parts_list,
+        "page_num": page_num,
+        "has_next": has_next,
+        "has_prev": page_num > 1,
+        "next_page": page_num + 1,
+        "prev_page": page_num - 1,
+        "categories": categories,
+        "brands": brands,
+        "sellers_list": sellers_list,
+        "current_seller": seller_filter,
+        "current_brand": brand_filter,
+        "current_category": category_filter,
+        "status_filter": status_filter,
+        "search": search,
+        "show": show,
+        "recent_imports": recent_imports,
+    }
+    return render(request, "admin_panel/catalog.html", ctx)
 
 
-@_staff_required
+@admin_required
 def admin_panel_moderation(request):
-    return render(request, "admin_panel/moderation.html", {"admin_active_nav": "moderation"})
+    now = timezone.now()
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        # Supplier moderation
+        if action in ("approve_supplier", "reject_supplier"):
+            profile_id = request.POST.get("profile_id")
+            profile = UserProfile.objects.filter(id=profile_id).first()
+            if profile:
+                old_status = profile.supplier_status
+                profile.supplier_status = "trusted" if action == "approve_supplier" else "rejected"
+                profile.save(update_fields=["supplier_status"])
+                # Log
+                SupplierRatingEvent.objects.create(
+                    supplier=profile.user,
+                    event_type="manual_override",
+                    score_impact=Decimal("0"),
+                    reason=f"Модерация: {old_status} → {profile.supplier_status} (админ: {request.user.username})",
+                )
+        # Part moderation
+        elif action == "activate_part":
+            part_id = request.POST.get("part_id")
+            part = Part.objects.filter(id=part_id).first()
+            if part:
+                part.availability_status = "active"
+                part.is_active = True
+                part.admin_note = ""
+                part.moderated_at = now
+                part.moderated_by = request.user
+                part.save(update_fields=["availability_status", "is_active", "admin_note", "moderated_at", "moderated_by"])
+        # Claim moderation
+        elif action in ("close_claim", "approve_claim", "reject_claim"):
+            claim_id = request.POST.get("claim_id")
+            claim = OrderClaim.objects.filter(id=claim_id).first()
+            if claim:
+                if action == "close_claim":
+                    claim.status = "closed"
+                elif action == "approve_claim":
+                    claim.status = "approved"
+                elif action == "reject_claim":
+                    claim.status = "rejected"
+                claim.resolved_by = request.user
+                claim.save(update_fields=["status", "resolved_by"])
+        return redirect("admin_panel_moderation")
+
+    # Tab filter
+    tab = request.GET.get("tab", "all")
+
+    sandbox_suppliers = UserProfile.objects.filter(role="seller", supplier_status="sandbox").select_related("user")
+    blocked_parts = Part.objects.filter(availability_status="blocked").select_related("brand", "seller").order_by("-updated_at")[:50]
+    open_claims = OrderClaim.objects.exclude(status="closed").select_related("order").order_by("-created_at")[:50]
+    sla_breached = Order.objects.filter(sla_status="breached").exclude(status__in=["completed", "cancelled"]).select_related("buyer").order_by("-created_at")[:20]
+
+    # Recent moderation history
+    recent_moderated = Part.objects.filter(moderated_at__isnull=False).select_related("moderated_by", "seller", "brand").order_by("-moderated_at")[:10]
+    recent_supplier_events = SupplierRatingEvent.objects.filter(event_type="manual_override").select_related("supplier").order_by("-created_at")[:10]
+
+    total_pending = sandbox_suppliers.count() + open_claims.count() + sla_breached.count()
+    if blocked_parts.exists():
+        total_pending += blocked_parts.count()
+
+    ctx = {
+        "admin_active_nav": "moderation",
+        "tab": tab,
+        "sandbox_suppliers": sandbox_suppliers,
+        "blocked_parts": blocked_parts,
+        "open_claims": open_claims,
+        "sla_breached": sla_breached,
+        "total_pending": total_pending,
+        "supplier_count": sandbox_suppliers.count(),
+        "parts_count": blocked_parts.count(),
+        "claims_count": open_claims.count(),
+        "sla_count": sla_breached.count(),
+        "recent_moderated": recent_moderated,
+        "recent_supplier_events": recent_supplier_events,
+    }
+    return render(request, "admin_panel/moderation.html", ctx)
 
 
-@_staff_required
+@admin_required
 def admin_panel_settings(request):
-    return render(request, "admin_panel/settings.html", {"admin_active_nav": "settings"})
+    settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")
+    saved = False
+
+    # Load existing settings
+    platform_cfg = {
+        "platform_name": "Consolidator Parts",
+        "support_email": "support@consolidator.com",
+        "maintenance_mode": False,
+        "default_commission": 8,
+        "rfq_response_hours": 24,
+        "max_delivery_days": 14,
+        "sla_penalty_percent": 2,
+        "claim_response_hours": 48,
+    }
+    if os.path.exists(settings_path):
+        with open(settings_path, "r") as f:
+            platform_cfg.update(json.load(f))
+
+    if request.method == "POST":
+        tab = request.POST.get("tab", "general")
+        if tab == "general":
+            platform_cfg["platform_name"] = request.POST.get("platform_name", platform_cfg["platform_name"])
+            platform_cfg["support_email"] = request.POST.get("support_email", platform_cfg["support_email"])
+            platform_cfg["maintenance_mode"] = "maintenance_mode" in request.POST
+        elif tab == "sla":
+            platform_cfg["rfq_response_hours"] = int(request.POST.get("rfq_response_hours", 24))
+            platform_cfg["max_delivery_days"] = int(request.POST.get("max_delivery_days", 14))
+            platform_cfg["sla_penalty_percent"] = int(request.POST.get("sla_penalty_percent", 2))
+            platform_cfg["claim_response_hours"] = int(request.POST.get("claim_response_hours", 48))
+        with open(settings_path, "w") as f:
+            json.dump(platform_cfg, f, indent=2)
+        saved = True
+
+    ctx = {
+        "admin_active_nav": "settings",
+        "cfg": platform_cfg,
+        "saved": saved,
+    }
+    return render(request, "admin_panel/settings.html", ctx)
 
 
-@_staff_required
+@admin_required
 def admin_panel_analytics(request):
     now = timezone.now()
 
@@ -5481,6 +5968,7 @@ def admin_panel_analytics(request):
         prev_end = period_start
         period_label = "За месяц"
 
+    # Current period
     orders_qs = Order.objects.all()
     rfq_qs = RFQ.objects.all()
     if period_start:
@@ -5496,15 +5984,17 @@ def admin_panel_analytics(request):
     completed = orders_qs.filter(status__in=["completed", "delivered"]).count()
     completion_rate = round(completed / max(orders_count, 1) * 100, 1)
     new_users = User.objects.filter(date_joined__gte=period_start).count() if period_start else User.objects.count()
-    total_users = User.objects.count()
 
     # Previous period for comparison
     prev_gmv = 0
     prev_orders = 0
+    prev_rfq = 0
     if prev_start and prev_end:
         prev_gmv = Order.objects.filter(created_at__gte=prev_start, created_at__lt=prev_end).aggregate(s=Sum("total_amount"))["s"] or 0
         prev_orders = Order.objects.filter(created_at__gte=prev_start, created_at__lt=prev_end).count()
+        prev_rfq = RFQ.objects.filter(created_at__gte=prev_start, created_at__lt=prev_end).count()
 
+    # Deltas
     gmv_delta = round(float(gmv - prev_gmv) / max(float(prev_gmv), 1) * 100, 1) if prev_gmv else 0
     orders_delta = round((orders_count - prev_orders) / max(prev_orders, 1) * 100, 1) if prev_orders else 0
 
@@ -5524,7 +6014,10 @@ def admin_panel_analytics(request):
         .order_by("-parts_count")[:10]
     )
 
+    # By category (light — no heavy joins)
     by_category = Category.objects.annotate(parts_count=Count("parts")).order_by("-parts_count")[:10]
+
+    # By brand
     by_brand = Brand.objects.annotate(parts_count=Count("parts")).order_by("-parts_count")[:10]
 
     ctx = {
@@ -5538,7 +6031,6 @@ def admin_panel_analytics(request):
         "rfq_conversion": rfq_conversion,
         "completion_rate": completion_rate,
         "new_users": new_users,
-        "total_users": total_users,
         "gmv_delta": gmv_delta,
         "orders_delta": orders_delta,
         "top_buyers": top_buyers,
@@ -5549,16 +6041,366 @@ def admin_panel_analytics(request):
     return render(request, "admin_panel/analytics.html", ctx)
 
 
-@_staff_required
+@admin_required
 def admin_panel_logs(request):
-    return render(request, "admin_panel/logs.html", {"admin_active_nav": "logs"})
+    qs = OrderEvent.objects.select_related("order").order_by("-created_at")
+    event_type = request.GET.get("type", "")
+    if event_type:
+        qs = qs.filter(event_type=event_type)
+    total_events = OrderEvent.objects.count()
+    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_events = OrderEvent.objects.filter(created_at__gte=today_start).count()
+    events = qs[:200]
+    event_type_choices = OrderEvent.EVENT_CHOICES
+
+    ctx = {
+        "admin_active_nav": "logs",
+        "events": events,
+        "total_events": total_events,
+        "today_events": today_events,
+        "event_type_choices": event_type_choices,
+        "current_type": event_type,
+    }
+    return render(request, "admin_panel/logs.html", ctx)
 
 
-@_staff_required
+@admin_required
 def admin_panel_tariffs(request):
     return render(request, "admin_panel/tariffs.html", {"admin_active_nav": "tariffs"})
 
 
-@_staff_required
+@admin_required
 def admin_panel_support(request):
-    return render(request, "admin_panel/support.html", {"admin_active_nav": "support"})
+    if request.method == "POST":
+        claim_id = request.POST.get("claim_id")
+        new_status = request.POST.get("new_status")
+        claim = OrderClaim.objects.filter(id=claim_id).first()
+        if claim and new_status in dict(OrderClaim.STATUS_CHOICES):
+            claim.status = new_status
+            if new_status in ("closed", "approved", "rejected"):
+                claim.resolved_by = request.user
+            claim.save(update_fields=["status", "resolved_by"])
+        return redirect("admin_panel_support")
+
+    open_claims = OrderClaim.objects.exclude(status="closed").select_related("order").order_by("-created_at")
+    resolved_claims = OrderClaim.objects.filter(status="closed").select_related("order").order_by("-created_at")[:20]
+
+    ctx = {
+        "admin_active_nav": "support",
+        "open_claims": open_claims,
+        "resolved_claims": resolved_claims,
+        "total_claims": OrderClaim.objects.count(),
+        "open_count": open_claims.count(),
+        "resolved_count": OrderClaim.objects.filter(status="closed").count(),
+        "status_choices": OrderClaim.STATUS_CHOICES,
+    }
+    return render(request, "admin_panel/support.html", ctx)
+
+
+@admin_required
+def admin_panel_order_detail(request, order_id):
+    order = get_object_or_404(Order.objects.select_related("buyer"), id=order_id)
+    items = order.items.select_related("part", "part__brand")
+    events = OrderEvent.objects.filter(order=order).order_by("-created_at")[:20]
+    documents = OrderDocument.objects.filter(order=order)
+    claims = OrderClaim.objects.filter(order=order)
+
+    if request.method == "POST":
+        if "new_status" in request.POST:
+            new_status = request.POST["new_status"]
+            valid = [c[0] for c in Order.STATUS_CHOICES]
+            if new_status in valid and new_status != order.status:
+                old = order.status
+                order.status = new_status
+                order.save(update_fields=["status"])
+                OrderEvent.objects.create(
+                    order=order, event_type="status_changed", source="admin",
+                    meta={"comment": f"Админ: {old} → {new_status}"},
+                )
+        elif "new_payment_status" in request.POST:
+            new_ps = request.POST["new_payment_status"]
+            valid_ps = [c[0] for c in Order.PAYMENT_STATUS_CHOICES]
+            if new_ps in valid_ps and new_ps != order.payment_status:
+                old_ps = order.payment_status
+                order.payment_status = new_ps
+                if new_ps == "reserve_paid" and not order.reserve_paid_at:
+                    order.reserve_paid_at = timezone.now()
+                elif new_ps == "paid" and not order.final_paid_at:
+                    order.final_paid_at = timezone.now()
+                order.save(update_fields=["payment_status", "reserve_paid_at", "final_paid_at"])
+                OrderEvent.objects.create(
+                    order=order, event_type="status_changed", source="admin",
+                    meta={"comment": f"Админ оплата: {old_ps} → {new_ps}"},
+                )
+        return redirect("admin_panel_order_detail", order_id=order.id)
+
+    # Timeline step
+    status_order = ["pending", "reserve_paid", "confirmed", "in_production", "ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "shipped", "delivered", "completed"]
+    current_step = status_order.index(order.status) + 1 if order.status in status_order else 0
+
+    ctx = {
+        "admin_active_nav": "orders",
+        "order": order,
+        "items": items,
+        "events": events,
+        "documents": documents,
+        "claims": claims,
+        "status_choices": Order.STATUS_CHOICES,
+        "payment_status_choices": Order.PAYMENT_STATUS_CHOICES,
+        "current_step": current_step,
+        "total_steps": len(status_order),
+    }
+    return render(request, "admin_panel/order_detail.html", ctx)
+
+
+@admin_required
+def admin_panel_rfq_detail(request, rfq_id):
+    rfq = get_object_or_404(RFQ.objects.select_related("created_by"), id=rfq_id)
+    items = RFQItem.objects.filter(rfq=rfq).select_related("matched_part", "matched_part__brand")
+
+    if request.method == "POST":
+        new_status = request.POST.get("new_status", "")
+        if new_status in dict(RFQ.STATUS_CHOICES):
+            rfq.status = new_status
+            rfq.save(update_fields=["status"])
+        return redirect("admin_panel_rfq_detail", rfq_id=rfq.id)
+
+    ctx = {
+        "admin_active_nav": "rfq",
+        "rfq": rfq,
+        "items": items,
+        "status_choices": RFQ.STATUS_CHOICES,
+    }
+    return render(request, "admin_panel/rfq_detail.html", ctx)
+
+
+@admin_required
+def admin_panel_user_detail(request, user_id):
+    target = get_object_or_404(User.objects.select_related("profile"), id=user_id)
+    user_orders = Order.objects.filter(buyer=target).order_by("-created_at")[:20]
+    seller_orders = Order.objects.filter(items__part__seller=target).distinct().order_by("-created_at")[:20]
+    user_parts = Part.objects.filter(seller=target).order_by("-created_at")[:20]
+    user_rfqs = RFQ.objects.filter(created_by=target).order_by("-created_at")[:20]
+    user_imports = SellerImportRun.objects.filter(seller=target).order_by("-created_at")[:20]
+    recent_parts = Part.objects.filter(seller=target, updated_at__gte=timezone.now() - timedelta(days=7)).order_by("-updated_at")[:30]
+
+    # Supplier metrics
+    total_parts_count = Part.objects.filter(seller=target).count()
+    active_parts_count = Part.objects.filter(seller=target, is_active=True).count()
+    seller_revenue = Order.objects.filter(items__part__seller=target).distinct().aggregate(s=Sum("total_amount"))["s"] or 0
+    seller_order_count = Order.objects.filter(items__part__seller=target).distinct().count()
+    buyer_order_count = Order.objects.filter(buyer=target).count()
+    buyer_spent = Order.objects.filter(buyer=target).aggregate(s=Sum("total_amount"))["s"] or 0
+    rating = target.profile.rating_score if hasattr(target, "profile") else 0
+
+    if request.method == "POST":
+        action = request.POST.get("action", "toggle_active")
+        if action == "toggle_active" and not target.is_superuser:
+            target.is_active = not target.is_active
+            target.save(update_fields=["is_active"])
+        elif action == "block_new_parts":
+            Part.objects.filter(seller=target, updated_at__gte=timezone.now() - timedelta(days=7)).update(availability_status="blocked", is_active=False)
+        elif action == "approve_new_parts":
+            Part.objects.filter(seller=target, availability_status="blocked").update(availability_status="active", is_active=True)
+        elif action == "save_admin_note" and hasattr(target, "profile"):
+            target.profile.admin_note = request.POST.get("admin_note", "")
+            target.profile.save(update_fields=["admin_note"])
+        elif action == "update_profile" and hasattr(target, "profile"):
+            profile = target.profile
+            new_role = request.POST.get("role")
+            if new_role in ("buyer", "seller"):
+                profile.role = new_role
+            profile.company_name = request.POST.get("company_name", profile.company_name)
+            new_dept = request.POST.get("department")
+            if new_dept in dict(UserProfile.DEPARTMENT_CHOICES):
+                profile.department = new_dept
+            profile.can_manage_assortment = "can_manage_assortment" in request.POST
+            profile.can_manage_pricing = "can_manage_pricing" in request.POST
+            profile.can_manage_orders = "can_manage_orders" in request.POST
+            profile.can_manage_drawings = "can_manage_drawings" in request.POST
+            profile.can_view_analytics = "can_view_analytics" in request.POST
+            profile.can_manage_team = "can_manage_team" in request.POST
+            new_status = request.POST.get("supplier_status")
+            if new_status in dict(UserProfile.SUPPLIER_STATUS_CHOICES):
+                profile.supplier_status = new_status
+            profile.save()
+        return redirect("admin_panel_user_detail", user_id=target.id)
+
+    ctx = {
+        "admin_active_nav": "users",
+        "target_user": target,
+        "user_orders": user_orders,
+        "seller_orders": seller_orders,
+        "user_parts": user_parts,
+        "user_rfqs": user_rfqs,
+        "user_imports": user_imports,
+        "recent_parts": recent_parts,
+        "total_parts_count": total_parts_count,
+        "active_parts_count": active_parts_count,
+        "seller_revenue": seller_revenue,
+        "seller_order_count": seller_order_count,
+        "buyer_order_count": buyer_order_count,
+        "buyer_spent": buyer_spent,
+        "rating": rating,
+    }
+    return render(request, "admin_panel/user_detail.html", ctx)
+
+
+@admin_required
+def admin_panel_imports(request):
+    seller_filter = request.GET.get("seller", "")
+    qs = SellerImportRun.objects.select_related("seller").order_by("-created_at")
+    if seller_filter:
+        qs = qs.filter(seller__username=seller_filter)
+    imports = qs[:200]
+    sellers_list = User.objects.filter(import_runs__isnull=False).distinct().order_by("username")
+    total_imports = SellerImportRun.objects.count()
+    total_created = sum(i.created_count for i in imports)
+    total_updated = sum(i.updated_count for i in imports)
+    total_errors = sum(i.error_count for i in imports)
+
+    ctx = {
+        "admin_active_nav": "imports",
+        "imports": imports,
+        "sellers_list": sellers_list,
+        "current_seller": seller_filter,
+        "total_imports": total_imports,
+        "total_created": total_created,
+        "total_updated": total_updated,
+        "total_errors": total_errors,
+    }
+    return render(request, "admin_panel/imports.html", ctx)
+
+
+@admin_required
+def admin_panel_import_detail(request, import_id):
+    imp = get_object_or_404(SellerImportRun.objects.select_related("seller"), id=import_id)
+
+    # Find parts updated around the time of this import (±2 minutes)
+    time_from = imp.created_at - timedelta(minutes=2)
+    time_to = imp.created_at + timedelta(minutes=2)
+    parts = Part.objects.filter(
+        seller=imp.seller,
+        data_updated_at__gte=time_from,
+        data_updated_at__lte=time_to,
+    ).select_related("brand", "category").order_by("-updated_at")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        admin_note = request.POST.get("admin_note", "").strip()
+        now = timezone.now()
+        selected_ids = request.POST.getlist("selected_parts")
+
+        if selected_ids:
+            parts_qs = Part.objects.filter(id__in=selected_ids)
+            if action == "bulk_activate":
+                parts_qs.update(availability_status="active", is_active=True, admin_note="", moderated_at=now, moderated_by=request.user)
+            elif action == "bulk_block":
+                parts_qs.update(availability_status="blocked", is_active=False, admin_note=admin_note, moderated_at=now, moderated_by=request.user)
+        elif action == "activate_all":
+            parts.update(availability_status="active", is_active=True, admin_note="", moderated_at=now, moderated_by=request.user)
+        elif action == "block_all":
+            parts.update(availability_status="blocked", is_active=False, admin_note=admin_note, moderated_at=now, moderated_by=request.user)
+
+        return redirect("admin_panel_import_detail", import_id=imp.id)
+
+    ctx = {
+        "admin_active_nav": "imports",
+        "imp": imp,
+        "parts": parts,
+        "parts_count": parts.count(),
+    }
+    return render(request, "admin_panel/import_detail.html", ctx)
+
+
+@admin_required
+def admin_panel_export_csv(request, report_type):
+    """Universal admin CSV export."""
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response.write("\ufeff")  # BOM for Excel
+    writer = csv.writer(response)
+
+    if report_type == "users":
+        response["Content-Disposition"] = 'attachment; filename="users_export.csv"'
+        writer.writerow(["id", "username", "email", "role", "company", "is_active", "date_joined"])
+        for u in User.objects.select_related("profile").order_by("-date_joined"):
+            role = u.profile.role if hasattr(u, "profile") else "buyer"
+            company = u.profile.company_name if hasattr(u, "profile") else ""
+            writer.writerow([u.id, u.username, u.email, role, company, u.is_active, u.date_joined.strftime("%Y-%m-%d")])
+    elif report_type == "orders":
+        response["Content-Disposition"] = 'attachment; filename="orders_export.csv"'
+        writer.writerow(["id", "customer_name", "buyer", "status", "payment_status", "total_amount", "logistics_cost", "sla_status", "created_at"])
+        for o in Order.objects.select_related("buyer").order_by("-created_at"):
+            writer.writerow([o.id, o.customer_name, o.buyer.username if o.buyer else "", o.status, o.payment_status, o.total_amount, o.logistics_cost, o.sla_status, o.created_at.strftime("%Y-%m-%d")])
+    elif report_type == "rfq":
+        response["Content-Disposition"] = 'attachment; filename="rfq_export.csv"'
+        writer.writerow(["id", "customer_name", "company", "mode", "urgency", "status", "created_at"])
+        for r in RFQ.objects.order_by("-created_at"):
+            writer.writerow([r.id, r.customer_name, r.company_name, r.mode, r.urgency, r.status, r.created_at.strftime("%Y-%m-%d")])
+    elif report_type == "parts":
+        response["Content-Disposition"] = 'attachment; filename="catalog_export.csv"'
+        writer.writerow(["id", "oem_number", "title", "brand", "category", "seller", "price", "currency", "stock", "status"])
+        for p in Part.objects.select_related("brand", "category", "seller").order_by("-created_at")[:5000]:
+            writer.writerow([p.id, p.oem_number, p.title, p.brand.name if p.brand else "", p.category.name if p.category else "", p.seller.username if p.seller else "", p.price, p.currency, p.stock_quantity, p.availability_status])
+    elif report_type == "finance":
+        response["Content-Disposition"] = 'attachment; filename="finance_export.csv"'
+        writer.writerow(["order_id", "customer_name", "total_amount", "reserve_amount", "logistics_cost", "payment_status", "payment_scheme", "created_at"])
+        for o in Order.objects.order_by("-created_at"):
+            writer.writerow([o.id, o.customer_name, o.total_amount, o.reserve_amount, o.logistics_cost, o.payment_status, o.payment_scheme, o.created_at.strftime("%Y-%m-%d")])
+    elif report_type == "events":
+        response["Content-Disposition"] = 'attachment; filename="events_export.csv"'
+        writer.writerow(["id", "order_id", "event_type", "source", "meta", "created_at"])
+        for e in OrderEvent.objects.order_by("-created_at")[:5000]:
+            writer.writerow([e.id, e.order_id, e.event_type, e.source, json.dumps(e.meta) if e.meta else "", e.created_at.strftime("%Y-%m-%d %H:%M")])
+    else:
+        return HttpResponse("Unknown report type", status=404)
+
+    return response
+
+
+@seller_required
+def seller_report_export_csv(request, report_type):
+    """Universal seller CSV export."""
+    user = request.user
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response.write("\ufeff")
+    writer = csv.writer(response)
+
+    if report_type == "orders":
+        response["Content-Disposition"] = 'attachment; filename="seller_orders.csv"'
+        writer.writerow(["order_id", "customer", "status", "payment_status", "total_amount", "sla_status", "created_at"])
+        orders = Order.objects.filter(items__part__seller=user).distinct().order_by("-created_at")
+        for o in orders:
+            writer.writerow([o.id, o.customer_name, o.status, o.payment_status, o.total_amount, o.sla_status, o.created_at.strftime("%Y-%m-%d")])
+    elif report_type == "parts":
+        response["Content-Disposition"] = 'attachment; filename="seller_parts.csv"'
+        writer.writerow(["oem_number", "title", "brand", "category", "price", "currency", "stock", "condition", "status"])
+        for p in Part.objects.filter(seller=user).select_related("brand", "category").order_by("-created_at"):
+            writer.writerow([p.oem_number, p.title, p.brand.name if p.brand else "", p.category.name if p.category else "", p.price, p.currency, p.stock_quantity, p.condition, p.availability_status])
+    elif report_type == "sla":
+        response["Content-Disposition"] = 'attachment; filename="seller_sla.csv"'
+        writer.writerow(["order_id", "customer", "status", "sla_status", "breaches", "confirm_deadline", "ship_deadline", "created_at"])
+        orders = Order.objects.filter(items__part__seller=user).distinct().order_by("-created_at")
+        for o in orders:
+            writer.writerow([o.id, o.customer_name, o.status, o.sla_status, o.sla_breaches_count, o.supplier_confirm_deadline or "", o.ship_deadline or "", o.created_at.strftime("%Y-%m-%d")])
+    elif report_type == "finance":
+        response["Content-Disposition"] = 'attachment; filename="seller_finance.csv"'
+        writer.writerow(["order_id", "customer", "total_amount", "reserve_amount", "logistics_cost", "payment_status", "payment_scheme", "created_at"])
+        orders = Order.objects.filter(items__part__seller=user).distinct().order_by("-created_at")
+        for o in orders:
+            writer.writerow([o.id, o.customer_name, o.total_amount, o.reserve_amount, o.logistics_cost, o.payment_status, o.payment_scheme, o.created_at.strftime("%Y-%m-%d")])
+    elif report_type == "stock":
+        response["Content-Disposition"] = 'attachment; filename="seller_stock.csv"'
+        writer.writerow(["oem_number", "title", "brand", "stock_quantity", "price", "availability", "availability_status", "updated_at"])
+        for p in Part.objects.filter(seller=user).select_related("brand").order_by("-updated_at"):
+            writer.writerow([p.oem_number, p.title, p.brand.name if p.brand else "", p.stock_quantity, p.price, p.availability, p.availability_status, p.updated_at.strftime("%Y-%m-%d")])
+    elif report_type == "analytics":
+        response["Content-Disposition"] = 'attachment; filename="seller_analytics.csv"'
+        writer.writerow(["order_id", "customer", "total_amount", "status", "payment_status", "sla_status", "created_at"])
+        orders = Order.objects.filter(items__part__seller=user).distinct().order_by("-created_at")
+        for o in orders:
+            writer.writerow([o.id, o.customer_name, o.total_amount, o.status, o.payment_status, o.sla_status, o.created_at.strftime("%Y-%m-%d")])
+    else:
+        return HttpResponse("Unknown report type", status=404)
+
+    return response

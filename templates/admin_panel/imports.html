@@ -1,0 +1,82 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}Импорты{% endblock %}
+{% block topbar_title %}Импорты поставщиков{% endblock %}
+
+{% block content %}
+<div class="ap-stats">
+  <div class="ap-stat"><div class="ap-stat-value">{{ total_imports }}</div><div class="ap-stat-label">Всего импортов</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ total_created }}</div><div class="ap-stat-label">Создано позиций</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ total_updated }}</div><div class="ap-stat-label">Обновлено</div></div>
+  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ total_errors }}</div><div class="ap-stat-label">Ошибок</div></div>
+</div>
+
+<div class="ap-card">
+  <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
+    <select class="ap-select" onchange="window.location.href='/admin-panel/imports/' + (this.value ? '?seller=' + encodeURIComponent(this.value) : '')">
+      <option value="">Все поставщики</option>
+      {% for s in sellers_list %}
+      <option value="{{ s.username }}" {% if current_seller == s.username %}selected{% endif %}>{{ s.username }}</option>
+      {% endfor %}
+    </select>
+    {% if current_seller %}
+    <a href="/admin-panel/imports/" class="ap-btn ap-btn-warn" style="text-decoration:none;">Сбросить</a>
+    {% endif %}
+  </div>
+
+  <table class="ap-table">
+    <thead>
+      <tr>
+        <th>Дата</th>
+        <th>Поставщик</th>
+        <th>Файл</th>
+        <th>Создано</th>
+        <th>Обновлено</th>
+        <th>Ошибок</th>
+        <th>Статус</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for imp in imports %}
+      <tr>
+        <td class="text-secondary"><a href="/admin-panel/imports/{{ imp.id }}/" style="color:#64B5F6;text-decoration:none;">{{ imp.created_at|date:"d.m.Y H:i" }}</a></td>
+        <td>
+          <a href="/admin-panel/users/{{ imp.seller_id }}/" style="color:#64B5F6;text-decoration:none;">{{ imp.seller.username }}</a>
+        </td>
+        <td class="text-secondary">{{ imp.filename|truncatechars:30 }}</td>
+        <td>
+          {% if imp.created_count %}
+            <span style="color:#4CAF50;font-weight:600;">+{{ imp.created_count }}</span>
+          {% else %}0{% endif %}
+        </td>
+        <td>
+          {% if imp.updated_count %}
+            <span style="color:#64B5F6;font-weight:600;">{{ imp.updated_count }}</span>
+          {% else %}0{% endif %}
+        </td>
+        <td>
+          {% if imp.error_count %}
+            <span style="color:#E85C0D;font-weight:600;">{{ imp.error_count }}</span>
+          {% else %}
+            <span class="text-secondary">0</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if imp.status == 'success' %}
+            <span class="ap-badge ap-badge-green">OK</span>
+          {% else %}
+            <span class="ap-badge ap-badge-orange">Ошибка</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="/admin-panel/imports/{{ imp.id }}/" class="ap-btn ap-btn-primary" style="margin-right:4px;">Позиции</a>
+          <a href="/admin-panel/users/{{ imp.seller_id }}/" class="ap-btn ap-btn-ghost">Поставщик</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" style="text-align:center;color:#919191;">Нет импортов</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

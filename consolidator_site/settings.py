@@ -18,6 +18,11 @@ def _load_env_file(env_path: Path) -> None:
 
 _load_env_file(BASE_DIR / ".env")
 
+
+def _env(name: str, default: str = "") -> str:
+    return (os.getenv(name, default) or "").strip()
+
+
 def _env_list(name: str, default: str = "") -> list[str]:
     raw = (os.getenv(name, default) or "").strip()
     if not raw:
@@ -32,8 +37,13 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-DEBUG = _env_bool("DEBUG_MODE", True)
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production")
+DEBUG = _env_bool("DEBUG_MODE", False)
+SECRET_KEY = _env("SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "dev-secret-change-in-production"
+    else:
+        raise RuntimeError("SECRET_KEY is required")
 
 
 ALLOWED_HOSTS = _env_list(
@@ -64,6 +74,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -95,17 +106,43 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "consolidator_site.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-        "OPTIONS": {
-            "timeout": 60,
-        },
-    }
-}
+DB_ENGINE = _env("DB_ENGINE", "django.db.backends.postgresql")
+DB_NAME = _env("DB_NAME", "")
+DB_USER = _env("DB_USER", "")
+DB_PASSWORD = _env("DB_PASSWORD", "")
+DB_HOST = _env("DB_HOST", "127.0.0.1")
+DB_PORT = _env("DB_PORT", "5432")
 
-AUTH_PASSWORD_VALIDATORS = []
+if DB_NAME:
+    DATABASES = {
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": DB_NAME,
+            "USER": DB_USER,
+            "PASSWORD": DB_PASSWORD,
+            "HOST": DB_HOST,
+            "PORT": DB_PORT,
+            "CONN_MAX_AGE": int(_env("DB_CONN_MAX_AGE", "60")),
+            "OPTIONS": {"connect_timeout": int(_env("DB_CONNECT_TIMEOUT", "5"))},
+        }
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+            "OPTIONS": {
+                "timeout": 60,
+            },
+        }
+    }
+
+AUTH_PASSWORD_VALIDATORS = [
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
 
 LANGUAGE_CODE = "ru-ru"
 LANGUAGES = [
@@ -119,8 +156,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+SERVE_MEDIA = _env_bool("SERVE_MEDIA", DEBUG)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/login/"
@@ -137,9 +176,14 @@ SECURE_CONTENT_TYPE_NOSNIFF = _env_bool("SECURE_CONTENT_TYPE_NOSNIFF", True)
 SECURE_REFERRER_POLICY = os.getenv("SECURE_REFERRER_POLICY", "same-origin")
 X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")
 
+BEHIND_PROXY = _env_bool("BEHIND_PROXY", False)
+if BEHIND_PROXY:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    USE_X_FORWARDED_HOST = True
+
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
@@ -156,6 +200,19 @@ REST_FRAMEWORK = {
         "import": "10/min",
         "lookup": "10/min",
     },
+}
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    }
+}
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": os.getenv("LOG_LEVEL", "INFO")},
 }
 
 TEUSTAT_API_URL = os.getenv("TEUSTAT_API_URL", "").strip()

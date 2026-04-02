@@ -10,5 +10,5 @@ urlpatterns = [
     path("", include("marketplace.urls")),
 ]
 
-if settings.DEBUG:
+if getattr(settings, "SERVE_MEDIA", False):
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

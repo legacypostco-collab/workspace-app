@@ -114,7 +114,7 @@
       <div class="rfq-hero-title">Запросы RFQ</div>
       <div class="rfq-hero-sub">Запросы коммерческих предложений от поставщиков</div>
     </div>
-    <a href="#" class="rfq-create-btn">+ Создать RFQ</a>
+    <a href="{% url 'rfq_new' %}" class="rfq-create-btn">+ Создать RFQ</a>
   </div>
 </section>
 
@@ -315,15 +315,6 @@
       document.getElementById('panel-' + this.dataset.tab).classList.add('active');
     });
   });
-
-  // Create RFQ button
-  var createBtn = document.querySelector('.rfq-create-btn');
-  if (createBtn) {
-    createBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      showToast('Форма создания RFQ');
-    });
-  }
 
   // Open buttons via delegation
   document.addEventListener('click', function(e) {

@@ -3,10 +3,15 @@
 {% block topbar_title %}Настройки платформы{% endblock %}
 
 {% block content %}
+{% if saved %}
+<div class="ap-card-elevated" style="margin-bottom:16px;padding:12px 18px;border-left:3px solid #4CAF50;">
+  <span style="font-size:13px;color:#4CAF50;">Настройки сохранены</span>
+</div>
+{% endif %}
+
 <div class="ap-card">
   <div class="ap-tabs">
     <button class="ap-tab active" data-tab-group="settings" data-tab-key="general" onclick="apSwitchTab('settings','general')">Общие</button>
-    <button class="ap-tab" data-tab-group="settings" data-tab-key="commissions" onclick="apSwitchTab('settings','commissions')">Комиссии</button>
     <button class="ap-tab" data-tab-group="settings" data-tab-key="sla" onclick="apSwitchTab('settings','sla')">SLA</button>
     <button class="ap-tab" data-tab-group="settings" data-tab-key="currencies" onclick="apSwitchTab('settings','currencies')">Валюты</button>
     <button class="ap-tab" data-tab-group="settings" data-tab-key="notifications" onclick="apSwitchTab('settings','notifications')">Уведомления</button>
@@ -14,140 +19,96 @@
 
   <!-- General -->
   <div data-panel-group="settings" data-panel-key="general">
-    <div style="max-width:600px;display:flex;flex-direction:column;gap:16px;">
+    <form method="post" style="max-width:600px;display:flex;flex-direction:column;gap:16px;">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="general"/>
       <div>
         <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Название платформы</label>
-        <input type="text" class="ap-input" value="Consolidator Parts"/>
+        <input type="text" name="platform_name" class="ap-input" value="{{ cfg.platform_name }}"/>
       </div>
       <div>
         <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Email поддержки</label>
-        <input type="text" class="ap-input" value="support@consolidator.com"/>
-      </div>
-      <div>
-        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Логотип</label>
-        <div style="width:200px;height:80px;border:2px dashed rgba(255,255,255,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#5E5E5E;font-size:12px;cursor:pointer;" onclick="apToast('Загрузка файла')">
-          <svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.2" stroke-linecap="round" style="margin-right:6px;"><path d="M8 12V4M5 7l3-3 3 3"/><path d="M2 10v3h12v-3"/></svg>
-          Загрузить логотип
-        </div>
+        <input type="text" name="support_email" class="ap-input" value="{{ cfg.support_email }}"/>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
         <label class="ap-toggle">
-          <input type="checkbox"/>
+          <input type="checkbox" name="maintenance_mode" {% if cfg.maintenance_mode %}checked{% endif %}/>
           <span class="ap-toggle-slider"></span>
         </label>
         <span style="font-size:13px;">Режим обслуживания (Maintenance mode)</span>
       </div>
       <div style="margin-top:8px;">
-        <button class="ap-btn ap-btn-primary" onclick="apToast('Настройки сохранены')">Сохранить</button>
+        <button type="submit" class="ap-btn ap-btn-primary">Сохранить</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Commissions -->
-  <div data-panel-group="settings" data-panel-key="commissions" style="display:none;">
-    <div style="max-width:600px;display:flex;flex-direction:column;gap:12px;">
-      <div style="font-size:13px;color:#919191;margin-bottom:4px;">Комиссия по умолчанию: <strong style="color:#ECECEC;">8%</strong></div>
-      <table class="ap-table">
-        <thead><tr><th>Категория</th><th>Ставка %</th></tr></thead>
-        <tbody>
-          <tr><td>Фильтры</td><td><input type="text" class="ap-input" value="8" style="width:80px;"/></td></tr>
-          <tr><td>Тормоза</td><td><input type="text" class="ap-input" value="8" style="width:80px;"/></td></tr>
-          <tr><td>Зажигание</td><td><input type="text" class="ap-input" value="7" style="width:80px;"/></td></tr>
-          <tr><td>Подвеска</td><td><input type="text" class="ap-input" value="8" style="width:80px;"/></td></tr>
-          <tr><td>Электрика</td><td><input type="text" class="ap-input" value="9" style="width:80px;"/></td></tr>
-          <tr><td>Привод</td><td><input type="text" class="ap-input" value="8" style="width:80px;"/></td></tr>
-          <tr><td>Охлаждение</td><td><input type="text" class="ap-input" value="7" style="width:80px;"/></td></tr>
-          <tr><td>Кузов</td><td><input type="text" class="ap-input" value="10" style="width:80px;"/></td></tr>
-          <tr><td>Трансмиссия</td><td><input type="text" class="ap-input" value="9" style="width:80px;"/></td></tr>
-          <tr><td>Выхлоп</td><td><input type="text" class="ap-input" value="8" style="width:80px;"/></td></tr>
-        </tbody>
-      </table>
-      <div style="margin-top:8px;">
-        <button class="ap-btn ap-btn-primary" onclick="apToast('Комиссии сохранены')">Сохранить</button>
-      </div>
-    </div>
+    </form>
   </div>
 
   <!-- SLA -->
   <div data-panel-group="settings" data-panel-key="sla" style="display:none;">
-    <div style="max-width:600px;display:flex;flex-direction:column;gap:16px;">
+    <form method="post" style="max-width:600px;display:flex;flex-direction:column;gap:16px;">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="sla"/>
       <div>
         <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Максимальное время ответа на RFQ (часы)</label>
-        <input type="text" class="ap-input" value="24" style="width:120px;"/>
+        <input type="number" name="rfq_response_hours" class="ap-input" value="{{ cfg.rfq_response_hours }}" style="width:120px;"/>
       </div>
       <div>
         <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Максимальное время доставки (дни)</label>
-        <input type="text" class="ap-input" value="14" style="width:120px;"/>
+        <input type="number" name="max_delivery_days" class="ap-input" value="{{ cfg.max_delivery_days }}" style="width:120px;"/>
       </div>
       <div>
         <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Штраф за просрочку SLA (% от суммы заказа)</label>
-        <input type="text" class="ap-input" value="2" style="width:120px;"/>
+        <input type="number" name="sla_penalty_percent" class="ap-input" value="{{ cfg.sla_penalty_percent }}" style="width:120px;"/>
       </div>
       <div>
         <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Максимальное время обработки рекламации (часы)</label>
-        <input type="text" class="ap-input" value="48" style="width:120px;"/>
+        <input type="number" name="claim_response_hours" class="ap-input" value="{{ cfg.claim_response_hours }}" style="width:120px;"/>
       </div>
       <div style="margin-top:8px;">
-        <button class="ap-btn ap-btn-primary" onclick="apToast('SLA настройки сохранены')">Сохранить</button>
+        <button type="submit" class="ap-btn ap-btn-primary">Сохранить</button>
       </div>
-    </div>
+    </form>
   </div>
 
-  <!-- Currencies -->
+  <!-- Currencies (info panel) -->
   <div data-panel-group="settings" data-panel-key="currencies" style="display:none;">
     <div style="max-width:600px;">
+      <p style="font-size:12px;color:#919191;margin-bottom:12px;">Поддерживаемые валюты платформы</p>
       <table class="ap-table">
-        <thead><tr><th>Валюта</th><th>Код</th><th>Курс к USD</th><th>Активна</th></tr></thead>
+        <thead><tr><th>Валюта</th><th>Код</th><th>Статус</th></tr></thead>
         <tbody>
-          <tr><td>US Dollar</td><td>USD</td><td><input type="text" class="ap-input" value="1.0000" style="width:100px;"/></td><td><label class="ap-toggle"><input type="checkbox" checked/><span class="ap-toggle-slider"></span></label></td></tr>
-          <tr><td>Chinese Yuan</td><td>CNY</td><td><input type="text" class="ap-input" value="7.2450" style="width:100px;"/></td><td><label class="ap-toggle"><input type="checkbox" checked/><span class="ap-toggle-slider"></span></label></td></tr>
-          <tr><td>Euro</td><td>EUR</td><td><input type="text" class="ap-input" value="0.9180" style="width:100px;"/></td><td><label class="ap-toggle"><input type="checkbox" checked/><span class="ap-toggle-slider"></span></label></td></tr>
-          <tr><td>Russian Ruble</td><td>RUB</td><td><input type="text" class="ap-input" value="92.50" style="width:100px;"/></td><td><label class="ap-toggle"><input type="checkbox" checked/><span class="ap-toggle-slider"></span></label></td></tr>
+          <tr><td>US Dollar</td><td>USD</td><td><span class="ap-badge ap-badge-green">Активна</span></td></tr>
+          <tr><td>Chinese Yuan</td><td>CNY</td><td><span class="ap-badge ap-badge-green">Активна</span></td></tr>
+          <tr><td>Euro</td><td>EUR</td><td><span class="ap-badge ap-badge-green">Активна</span></td></tr>
+          <tr><td>Russian Ruble</td><td>RUB</td><td><span class="ap-badge ap-badge-green">Активна</span></td></tr>
         </tbody>
       </table>
-      <div style="margin-top:16px;">
-        <button class="ap-btn ap-btn-primary" onclick="apToast('Валюты сохранены')">Сохранить</button>
-      </div>
     </div>
   </div>
 
-  <!-- Notifications -->
+  <!-- Notifications (info panel) -->
   <div data-panel-group="settings" data-panel-key="notifications" style="display:none;">
     <div style="max-width:600px;display:flex;flex-direction:column;gap:14px;">
+      <p style="font-size:12px;color:#919191;">Уведомления настраиваются через webhook-endpoint'ы в Django settings</p>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <span style="font-size:13px;">Новый заказ</span>
-        <label class="ap-toggle"><input type="checkbox" checked/><span class="ap-toggle-slider"></span></label>
+        <span class="ap-badge ap-badge-green">Включено</span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <span style="font-size:13px;">Новый RFQ</span>
-        <label class="ap-toggle"><input type="checkbox" checked/><span class="ap-toggle-slider"></span></label>
+        <span class="ap-badge ap-badge-green">Включено</span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <span style="font-size:13px;">Оплата получена</span>
-        <label class="ap-toggle"><input type="checkbox" checked/><span class="ap-toggle-slider"></span></label>
+        <span class="ap-badge ap-badge-green">Включено</span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <span style="font-size:13px;">Рекламация открыта</span>
-        <label class="ap-toggle"><input type="checkbox" checked/><span class="ap-toggle-slider"></span></label>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:13px;">Новый пользователь</span>
-        <label class="ap-toggle"><input type="checkbox"/><span class="ap-toggle-slider"></span></label>
+        <span class="ap-badge ap-badge-green">Включено</span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <span style="font-size:13px;">SLA нарушение</span>
-        <label class="ap-toggle"><input type="checkbox" checked/><span class="ap-toggle-slider"></span></label>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:13px;">Тикет поддержки</span>
-        <label class="ap-toggle"><input type="checkbox" checked/><span class="ap-toggle-slider"></span></label>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:13px;">Выплата поставщику</span>
-        <label class="ap-toggle"><input type="checkbox"/><span class="ap-toggle-slider"></span></label>
-      </div>
-      <div style="margin-top:8px;">
-        <button class="ap-btn ap-btn-primary" onclick="apToast('Уведомления сохранены')">Сохранить</button>
+        <span class="ap-badge ap-badge-green">Включено</span>
       </div>
     </div>
   </div>

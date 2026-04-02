@@ -4,57 +4,127 @@
 
 {% block content %}
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">892</div><div class="ap-stat-label">Всего RFQ</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">34</div><div class="ap-stat-label">Активных</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">28</div><div class="ap-stat-label">С котировками</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">6</div><div class="ap-stat-label">Без ответа</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">68%</div><div class="ap-stat-label">Конверсия</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">Новых</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ quoted }}</div><div class="ap-stat-label">С котировками</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ needs_review }}</div><div class="ap-stat-label">На проверке</div></div>
+  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">Отменённых</div></div>
+  <div class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_rfq }}</div><div class="ap-stat-label">За неделю</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ conversion }}%</div><div class="ap-stat-label">Конверсия</div></div>
 </div>
+
+<form method="post" id="rfqForm">
+{% csrf_token %}
+<input type="hidden" name="action" id="rfqAction" value=""/>
+<input type="hidden" name="new_status" id="rfqBulkStatus" value=""/>
 
 <div class="ap-card">
-  <div class="ap-tabs">
-    <button class="ap-tab active" data-tab-group="rfq" data-tab-key="all" onclick="apSwitchTab('rfq','all');filterRfq()">Все</button>
-    <button class="ap-tab" data-tab-group="rfq" data-tab-key="active" onclick="apSwitchTab('rfq','active');filterRfq()">Активные</button>
-    <button class="ap-tab" data-tab-group="rfq" data-tab-key="noquote" onclick="apSwitchTab('rfq','noquote');filterRfq()">Без ответа</button>
-    <button class="ap-tab" data-tab-group="rfq" data-tab-key="done" onclick="apSwitchTab('rfq','done');filterRfq()">Завершённые</button>
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+    <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;">
+      <input type="text" name="q" class="ap-input" placeholder="Поиск по ID, имени, email..." style="max-width:220px;" value="{{ search }}"/>
+      <select name="status" class="ap-select" onchange="this.form.submit()">
+        <option value="">Все статусы</option>
+        {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="urgency" class="ap-select" onchange="this.form.submit()">
+        <option value="">Все срочности</option>
+        {% for val, label in urgency_choices %}
+        <option value="{{ val }}" {% if urgency_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="mode" class="ap-select" onchange="this.form.submit()">
+        <option value="">Все режимы</option>
+        {% for val, label in mode_choices %}
+        <option value="{{ val }}" {% if mode_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+      {% if search or status_filter or urgency_filter or mode_filter %}
+      <a href="/admin-panel/rfq/" class="ap-btn ap-btn-warn" style="text-decoration:none;">Сбросить</a>
+      {% endif %}
+    </form>
+    <a href="/admin-panel/export/rfq/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Экспорт CSV</a>
   </div>
 
-  <table class="ap-table" id="rfqTable">
+  <table class="ap-table">
     <thead>
-      <tr><th>RFQ ID</th><th>Покупатель</th><th>Позиций</th><th>Дата создания</th><th>Котировок</th><th>Статус</th><th>Действия</th></tr>
+      <tr>
+        <th style="width:30px;"><input type="checkbox" id="selectAllRfq" onchange="toggleAllRfq(this)"/></th>
+        <th>RFQ</th>
+        <th>Покупатель</th>
+        <th>Компания</th>
+        <th>Режим</th>
+        <th>Срочность</th>
+        <th>Статус</th>
+        <th>Дата</th>
+        <th></th>
+      </tr>
     </thead>
     <tbody>
-      <tr data-status="active" data-quotes="3"><td>RFQ-0097</td><td class="text-secondary">#1051</td><td>4</td><td class="text-secondary">25.03.2026</td><td>3</td><td><span class="ap-badge ap-badge-gray">Активный</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0097')">Детали</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Напоминание отправлено')">Напомнить</button></td></tr>
-      <tr data-status="active" data-quotes="2"><td>RFQ-0096</td><td class="text-secondary">#1048</td><td>6</td><td class="text-secondary">24.03.2026</td><td>2</td><td><span class="ap-badge ap-badge-gray">Активный</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0096')">Детали</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Напоминание отправлено')">Напомнить</button></td></tr>
-      <tr data-status="active" data-quotes="0"><td>RFQ-0095</td><td class="text-secondary">#1045</td><td>2</td><td class="text-secondary">24.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0095')">Детали</button></td></tr>
-      <tr data-status="active" data-quotes="5"><td>RFQ-0094</td><td class="text-secondary">#1042</td><td>8</td><td class="text-secondary">23.03.2026</td><td>5</td><td><span class="ap-badge ap-badge-gray">Активный</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0094')">Детали</button></td></tr>
-      <tr data-status="active" data-quotes="0"><td>RFQ-0093</td><td class="text-secondary">#1040</td><td>3</td><td class="text-secondary">22.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0093')">Детали</button></td></tr>
-      <tr data-status="active" data-quotes="1"><td>RFQ-0092</td><td class="text-secondary">#1038</td><td>5</td><td class="text-secondary">22.03.2026</td><td>1</td><td><span class="ap-badge ap-badge-gray">Активный</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0092')">Детали</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Напоминание отправлено')">Напомнить</button></td></tr>
-      <tr data-status="active" data-quotes="0"><td>RFQ-0091</td><td class="text-secondary">#1035</td><td>1</td><td class="text-secondary">21.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0091')">Детали</button></td></tr>
-      <tr data-status="done" data-quotes="4"><td>RFQ-0090</td><td class="text-secondary">#1033</td><td>7</td><td class="text-secondary">20.03.2026</td><td>4</td><td><span class="ap-badge ap-badge-gray">Завершён</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0090')">Детали</button></td></tr>
-      <tr data-status="done" data-quotes="3"><td>RFQ-0089</td><td class="text-secondary">#1030</td><td>5</td><td class="text-secondary">19.03.2026</td><td>3</td><td><span class="ap-badge ap-badge-gray">Завершён</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0089')">Детали</button></td></tr>
-      <tr data-status="active" data-quotes="0"><td>RFQ-0088</td><td class="text-secondary">#1028</td><td>2</td><td class="text-secondary">18.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0088')">Детали</button></td></tr>
-      <tr data-status="done" data-quotes="6"><td>RFQ-0087</td><td class="text-secondary">#1025</td><td>10</td><td class="text-secondary">17.03.2026</td><td>6</td><td><span class="ap-badge ap-badge-gray">Завершён</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0087')">Детали</button></td></tr>
-      <tr data-status="active" data-quotes="0"><td>RFQ-0086</td><td class="text-secondary">#1022</td><td>4</td><td class="text-secondary">16.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0086')">Детали</button></td></tr>
-      <tr data-status="active" data-quotes="0"><td>RFQ-0085</td><td class="text-secondary">#1020</td><td>3</td><td class="text-secondary">15.03.2026</td><td>0</td><td><span class="ap-badge ap-badge-orange">Без ответа</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Назначение поставщика')">Назначить поставщика</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0085')">Детали</button></td></tr>
-      <tr data-status="done" data-quotes="2"><td>RFQ-0084</td><td class="text-secondary">#1018</td><td>6</td><td class="text-secondary">14.03.2026</td><td>2</td><td><span class="ap-badge ap-badge-gray">Завершён</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Детали RFQ-0084')">Детали</button></td></tr>
+      {% for rfq in rfqs %}
+      <tr {% if rfq.urgency == 'critical' %}style="border-left:3px solid #E85C0D;"{% elif rfq.status == 'cancelled' %}style="opacity:0.5;"{% endif %}>
+        <td><input type="checkbox" name="selected_rfqs" value="{{ rfq.id }}" class="rfq-cb" onchange="updateRfqBar()"/></td>
+        <td><a href="/admin-panel/rfq/{{ rfq.id }}/" style="color:#64B5F6;text-decoration:none;">RFQ-{{ rfq.id }}</a></td>
+        <td>{{ rfq.customer_name|truncatechars:20 }}</td>
+        <td class="text-secondary">{{ rfq.company_name|default:"—" }}</td>
+        <td>
+          {% if rfq.mode == 'auto' %}<span class="ap-badge ap-badge-green">AUTO</span>
+          {% elif rfq.mode == 'semi' %}<span class="ap-badge ap-badge-blue">SEMI</span>
+          {% else %}<span class="ap-badge ap-badge-orange">MANUAL</span>{% endif %}
+        </td>
+        <td>
+          {% if rfq.urgency == 'critical' %}<span style="color:#E85C0D;font-weight:600;">Critical</span>
+          {% elif rfq.urgency == 'urgent' %}<span style="color:#64B5F6;">Urgent</span>
+          {% else %}<span class="text-secondary">Standard</span>{% endif %}
+        </td>
+        <td>
+          {% if rfq.status == 'new' %}<span class="ap-badge ap-badge-blue">Новый</span>
+          {% elif rfq.status == 'quoted' %}<span class="ap-badge ap-badge-green">Котировка</span>
+          {% elif rfq.status == 'needs_review' %}<span class="ap-badge ap-badge-orange">На проверке</span>
+          {% elif rfq.status == 'cancelled' %}<span class="ap-badge ap-badge-gray">Отменён</span>
+          {% else %}<span class="ap-badge ap-badge-gray">{{ rfq.get_status_display }}</span>{% endif %}
+        </td>
+        <td class="text-secondary">{{ rfq.created_at|date:"d.m.Y H:i" }}</td>
+        <td><a href="/admin-panel/rfq/{{ rfq.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">Детали</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" style="text-align:center;color:#919191;">Нет RFQ</td></tr>
+      {% endfor %}
     </tbody>
   </table>
+
+  {% if has_prev or has_next %}
+  <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;align-items:center;">
+    {% if has_prev %}<a href="?page={{ page_num|add:"-1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if urgency_filter %}&urgency={{ urgency_filter }}{% endif %}{% if mode_filter %}&mode={{ mode_filter }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Назад</a>{% endif %}
+    <span style="font-size:13px;color:#919191;">Стр. {{ page_num }}</span>
+    {% if has_next %}<a href="?page={{ page_num|add:"1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if urgency_filter %}&urgency={{ urgency_filter }}{% endif %}{% if mode_filter %}&mode={{ mode_filter }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &rarr;</a>{% endif %}
+  </div>
+  {% endif %}
 </div>
+
+<!-- Bulk bar -->
+<div id="rfqBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
+  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="rfqSelectedCount">0 выбрано</span>
+  <select class="ap-select" id="rfqBulkStatusSelect">
+    {% for val, label in status_choices %}
+    <option value="{{ val }}">{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button type="button" class="ap-btn ap-btn-primary" onclick="bulkRfqStatus()">Сменить статус</button>
+  <button type="button" class="ap-btn ap-btn-warn" onclick="bulkRfqCancel()">Отменить</button>
+  <button type="button" class="ap-btn ap-btn-ghost" onclick="clearRfqSelection()">Снять</button>
+</div>
+</form>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function filterRfq() {
-  var tab = document.querySelector('.ap-tab.active[data-tab-group="rfq"]').dataset.tabKey;
-  var rows = document.querySelectorAll('#rfqTable tbody tr');
-  rows.forEach(function(row) {
-    var show = true;
-    if (tab === 'active' && row.dataset.status !== 'active') show = false;
-    if (tab === 'noquote' && row.dataset.quotes !== '0') show = false;
-    if (tab === 'done' && row.dataset.status !== 'done') show = false;
-    row.style.display = show ? '' : 'none';
-  });
-}
+function toggleAllRfq(m) { document.querySelectorAll('.rfq-cb').forEach(function(cb){cb.checked=m.checked;}); updateRfqBar(); }
+function updateRfqBar() { var c=document.querySelectorAll('.rfq-cb:checked').length; document.getElementById('rfqBulkBar').style.display=c>0?'flex':'none'; document.getElementById('rfqSelectedCount').textContent=c+' выбрано'; }
+function clearRfqSelection() { document.querySelectorAll('.rfq-cb').forEach(function(cb){cb.checked=false;}); document.getElementById('selectAllRfq').checked=false; updateRfqBar(); }
+function bulkRfqStatus() { document.getElementById('rfqAction').value='bulk_status'; document.getElementById('rfqBulkStatus').value=document.getElementById('rfqBulkStatusSelect').value; document.getElementById('rfqForm').submit(); }
+function bulkRfqCancel() { if(confirm('Отменить выбранные RFQ?')){document.getElementById('rfqAction').value='bulk_cancel'; document.getElementById('rfqForm').submit();} }
 </script>
 {% endblock %}

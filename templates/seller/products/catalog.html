@@ -544,6 +544,7 @@
             <td>
               {% if part.availability_status == "active" %}<span class="cat-badge cat-badge-green">Active</span>
               {% elif part.availability_status == "limited" %}<span class="cat-badge cat-badge-ok">Limited</span>
+              {% elif part.availability_status == "blocked" %}<span class="cat-badge cat-badge-warn">Blocked</span>{% if part.admin_note %}<div style="font-size:10px;color:#E85C0D;margin-top:2px;">{{ part.admin_note|truncatechars:50 }}</div>{% endif %}
               {% elif part.availability_status == "discontinued" %}<span class="cat-badge cat-badge-warn">Discontinued</span>
               {% else %}<span class="cat-badge cat-badge-gray">{{ part.availability_status }}</span>{% endif %}
             </td>

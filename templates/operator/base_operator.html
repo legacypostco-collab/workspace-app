@@ -193,6 +193,7 @@
       label: 'Логистика',
       items: [
         {key:'dashboard', label:'Дашборд', href:'/operator/logist/', icon:'<rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.2"/><rect x="9" y="1.5" width="5.5" height="3.5" rx="1.2"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.2"/><rect x="9" y="7" width="5.5" height="7.5" rx="1.2"/>'},
+        {key:'quotes', label:'Ставки на заказы', href:'/operator/logist/quotes/', icon:'<circle cx="8" cy="8" r="6.5"/><path d="M8 4v8"/><path d="M5.8 6.2c0-.8 1-1.4 2.2-1.4s2.2.6 2.2 1.4-1 1.3-2.2 1.3S5.8 8.2 5.8 9s1 1.5 2.2 1.5 2.2-.4 2.2-1.2"/>'},
         {key:'shipments', label:'Отгрузки', href:'/operator/logist/shipments/', icon:'<rect x="1" y="3" width="10" height="8" rx="1"/><polygon points="11 6 14.5 6 15.5 8.5 15.5 11 11 11 11 6"/><circle cx="4.5" cy="12.5" r="1.3"/><circle cx="13" cy="12.5" r="1.3"/>'},
         {key:'routes', label:'Маршруты', href:'/operator/logist/routes/', icon:'<path d="M3 13.5c0-4 4-4 4-8s4-4 4 0" stroke-width="1.5"/><circle cx="3" cy="13.5" r="1.3"/><circle cx="11" cy="5.5" r="1.3"/>'},
         {key:'ports', label:'Порты и терминалы', href:'/operator/logist/ports/', icon:'<rect x="2" y="8" width="12" height="5" rx="1"/><path d="M4 8V5a2 2 0 014 0v3M10 8V6"/><line x1="2" y1="10.5" x2="14" y2="10.5"/>'},
@@ -228,7 +229,7 @@
         {key:'orders', label:'Заказы', href:'/operator/manager/orders/', icon:'<path d="M4 3.5h8l-.8 7H4.8L4 3.5z"/><circle cx="6" cy="13" r="1.2"/><circle cx="11" cy="13" r="1.2"/><path d="M2 1.5h2"/>'},
         {key:'shipments_mgr', label:'Отгрузки', href:'/operator/manager/shipments/', icon:'<rect x="1" y="3" width="10" height="8" rx="1"/><polygon points="11 6 14.5 6 15.5 8.5 15.5 11 11 11 11 6"/><circle cx="4.5" cy="12.5" r="1.3"/><circle cx="13" cy="12.5" r="1.3"/>'},
         {key:'clients', label:'Клиенты', href:'/operator/manager/clients/', icon:'<circle cx="6" cy="5.5" r="2.2"/><circle cx="11.5" cy="6" r="1.7"/><path d="M1.5 13.5c0-2.5 2-4.2 4.5-4.2s4.5 1.7 4.5 4.2"/>'},
-        {key:'negotiations', label:'Переторжка', href:'/operator/manager/negotiations/', icon:'<circle cx="8" cy="8" r="6.5"/><path d="M8 4v8"/><path d="M5.8 6.2c0-.8 1-1.4 2.2-1.4s2.2.6 2.2 1.4-1 1.3-2.2 1.3S5.8 8.2 5.8 9s1 1.5 2.2 1.5 2.2-.4 2.2-1.2"/>'},
+        {key:'deals', label:'Воронка сделок', href:'/operator/manager/negotiations/', icon:'<path d="M2 3h12l-3 5v4l-2 2V8L2 3z"/>'},
         {key:'analytics', label:'Аналитика', href:'/operator/manager/analytics/', icon:'<path d="M2.5 13.5V9M5.5 13.5V6M8.5 13.5V8M11.5 13.5V3.5" stroke-width="1.8" stroke-linecap="round"/>'}
       ]
     }
@@ -262,7 +263,8 @@
     var container = document.getElementById('op-toast-container');
     var t = document.createElement('div');
     t.className = 'op-toast';
-    t.textContent = msg;
+    t.textContent = msg + ' — функция в разработке';
+    t.style.borderLeft = '3px solid #E85C0D';
     container.appendChild(t);
     setTimeout(function() {
       t.classList.add('hiding');

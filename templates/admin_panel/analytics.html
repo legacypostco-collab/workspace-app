@@ -3,16 +3,17 @@
 {% block topbar_title %}Аналитика{% endblock %}
 
 {% block content %}
-<!-- Period selector -->
-<div style="display:flex;gap:2px;background:#1F1F1F;border-radius:10px;padding:3px;border:1px solid rgba(255,255,255,0.055);margin-bottom:20px;width:fit-content;">
-  <a href="?period=week" class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;text-decoration:none;{% if period == 'week' %}background:#242424;{% endif %}">7д</a>
-  <a href="?period=month" class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;text-decoration:none;{% if period == 'month' %}background:#242424;{% endif %}">30д</a>
-  <a href="?period=quarter" class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;text-decoration:none;{% if period == 'quarter' %}background:#242424;{% endif %}">90д</a>
-  <a href="?period=year" class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;text-decoration:none;{% if period == 'year' %}background:#242424;{% endif %}">1 год</a>
-  <a href="?period=all" class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;text-decoration:none;{% if period == 'all' %}background:#242424;{% endif %}">Все время</a>
+<!-- Period filter -->
+<div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;">
+  <span style="font-size:12px;color:#919191;margin-right:4px;">Период:</span>
+  <a href="?period=week" class="ap-btn {% if period == 'week' %}ap-btn-primary{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;font-size:12px;padding:5px 12px;">Неделя</a>
+  <a href="?period=month" class="ap-btn {% if period == 'month' %}ap-btn-primary{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;font-size:12px;padding:5px 12px;">Месяц</a>
+  <a href="?period=quarter" class="ap-btn {% if period == 'quarter' %}ap-btn-primary{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;font-size:12px;padding:5px 12px;">Квартал</a>
+  <a href="?period=year" class="ap-btn {% if period == 'year' %}ap-btn-primary{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;font-size:12px;padding:5px 12px;">Год</a>
+  <a href="?period=all" class="ap-btn {% if period == 'all' %}ap-btn-primary{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;font-size:12px;padding:5px 12px;">Всё время</a>
 </div>
 
-<!-- KPI row -->
+<!-- Key metrics with deltas -->
 <div class="ap-stats">
   <div class="ap-stat">
     <div class="ap-stat-value">${{ gmv|floatformat:0 }}</div>
@@ -20,6 +21,7 @@
     {% if gmv_delta %}
     <div style="margin-top:4px;font-size:11px;font-weight:600;color:{% if gmv_delta > 0 %}#4CAF50{% elif gmv_delta < 0 %}#E85C0D{% else %}#919191{% endif %};">
       {% if gmv_delta > 0 %}&#9650; +{{ gmv_delta }}%{% elif gmv_delta < 0 %}&#9660; {{ gmv_delta }}%{% else %}—{% endif %}
+      <span style="color:#5E5E5E;font-weight:400;"> vs пред. период</span>
     </div>
     {% endif %}
   </div>
@@ -29,14 +31,8 @@
     {% if orders_delta %}
     <div style="margin-top:4px;font-size:11px;font-weight:600;color:{% if orders_delta > 0 %}#4CAF50{% elif orders_delta < 0 %}#E85C0D{% else %}#919191{% endif %};">
       {% if orders_delta > 0 %}&#9650; +{{ orders_delta }}%{% elif orders_delta < 0 %}&#9660; {{ orders_delta }}%{% else %}—{% endif %}
+      <span style="color:#5E5E5E;font-weight:400;"> vs пред. период</span>
     </div>
-    {% endif %}
-  </div>
-  <div class="ap-stat">
-    <div class="ap-stat-value">{{ total_users }}</div>
-    <div class="ap-stat-label">Пользователей</div>
-    {% if new_users %}
-    <div style="margin-top:4px;font-size:11px;color:#4CAF50;font-weight:600;">+{{ new_users }} новых</div>
     {% endif %}
   </div>
   <div class="ap-stat">
@@ -45,97 +41,109 @@
   </div>
   <div class="ap-stat">
     <div class="ap-stat-value">{{ rfq_conversion }}%</div>
-    <div class="ap-stat-label">RFQ &#8594; Заказ</div>
+    <div class="ap-stat-label">Конверсия RFQ</div>
     <div style="margin-top:4px;font-size:11px;color:#5E5E5E;">{{ rfq_count }} запросов</div>
   </div>
+</div>
+
+<div class="ap-stats">
   <div class="ap-stat">
     <div class="ap-stat-value">{{ completion_rate }}%</div>
-    <div class="ap-stat-label">Завершённость</div>
+    <div class="ap-stat-label">Завершённость заказов</div>
+  </div>
+  <div class="ap-stat">
+    <div class="ap-stat-value">{{ new_users }}</div>
+    <div class="ap-stat-label">Новые пользователи</div>
   </div>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-  <!-- By categories -->
-  <div class="ap-card">
-    <div class="ap-section-title">По категориям</div>
-    <table class="ap-table">
-      <thead><tr><th>Категория</th><th>Запчастей</th></tr></thead>
-      <tbody>
-        {% for cat in by_category %}
-        <tr>
-          <td>{{ cat.name }}</td>
-          <td>{{ cat.parts_count }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="2" style="text-align:center;color:#919191;">Нет данных</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<!-- Tabs -->
+<div class="ap-card" style="margin-bottom:16px;">
+  <div class="ap-tabs">
+    <button class="ap-tab active" data-tab-group="anlt" data-tab-key="top" onclick="apSwitchTab('anlt','top')">Топ участников</button>
+    <button class="ap-tab" data-tab-group="anlt" data-tab-key="categories" onclick="apSwitchTab('anlt','categories')">Категории и бренды</button>
   </div>
 
-  <!-- By brands -->
-  <div class="ap-card">
-    <div class="ap-section-title">По брендам</div>
-    <table class="ap-table">
-      <thead><tr><th>Бренд</th><th>Регион</th><th>Запчастей</th></tr></thead>
-      <tbody>
-        {% for brand in by_brand %}
-        <tr>
-          <td>{{ brand.name }}</td>
-          <td class="text-secondary">{{ brand.region|default:"—" }}</td>
-          <td>{{ brand.parts_count }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="3" style="text-align:center;color:#919191;">Нет данных</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <!-- Top participants -->
+  <div data-panel-group="anlt" data-panel-key="top">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="ap-section-title">Топ покупателей</div>
+        <table class="ap-table">
+          <thead><tr><th>#</th><th>Покупатель</th><th>Заказов</th><th>Сумма</th></tr></thead>
+          <tbody>
+            {% for buyer in top_buyers %}
+            <tr>
+              <td class="text-secondary">{{ forloop.counter }}</td>
+              <td><a href="/admin-panel/users/{{ buyer.id }}/" style="color:#64B5F6;text-decoration:none;">{{ buyer.get_full_name|default:buyer.username }}</a></td>
+              <td>{{ buyer.order_count }}</td>
+              <td>${{ buyer.total_spent|floatformat:0 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="text-align:center;color:#919191;">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <div class="ap-section-title">Топ поставщиков</div>
+        <table class="ap-table">
+          <thead><tr><th>#</th><th>Поставщик</th><th>Запчастей</th></tr></thead>
+          <tbody>
+            {% for seller in top_sellers %}
+            <tr>
+              <td class="text-secondary">{{ forloop.counter }}</td>
+              <td><a href="/admin-panel/users/{{ seller.id }}/" style="color:#64B5F6;text-decoration:none;">{{ seller.get_full_name|default:seller.username }}</a></td>
+              <td>{{ seller.parts_count }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" style="text-align:center;color:#919191;">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
-  <!-- Top buyers -->
-  <div class="ap-card">
-    <div class="ap-section-title">Топ покупатели</div>
-    <table class="ap-table">
-      <thead><tr><th>#</th><th>Покупатель</th><th>Заказов</th><th>Сумма</th></tr></thead>
-      <tbody>
-        {% for buyer in top_buyers %}
-        <tr>
-          <td class="text-secondary">{{ forloop.counter }}</td>
-          <td><a href="/admin-panel/users/{{ buyer.id }}/" style="color:#64B5F6;text-decoration:none;">{{ buyer.get_full_name|default:buyer.username }}</a></td>
-          <td>{{ buyer.order_count }}</td>
-          <td>${{ buyer.total_spent|floatformat:0 }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="4" style="text-align:center;color:#919191;">Нет данных</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  <!-- Categories & brands -->
+  <div data-panel-group="anlt" data-panel-key="categories" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="ap-section-title">По категориям</div>
+        <table class="ap-table">
+          <thead><tr><th>Категория</th><th>Запчастей</th></tr></thead>
+          <tbody>
+            {% for cat in by_category %}
+            <tr>
+              <td>{{ cat.name }}</td>
+              <td>{{ cat.parts_count }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="2" style="text-align:center;color:#919191;">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
 
-  <!-- Top suppliers -->
-  <div class="ap-card">
-    <div class="ap-section-title">Топ поставщики</div>
-    <table class="ap-table">
-      <thead><tr><th>#</th><th>Поставщик</th><th>Запчастей</th></tr></thead>
-      <tbody>
-        {% for seller in top_sellers %}
-        <tr>
-          <td class="text-secondary">{{ forloop.counter }}</td>
-          <td><a href="/admin-panel/users/{{ seller.id }}/" style="color:#64B5F6;text-decoration:none;">{{ seller.get_full_name|default:seller.username }}</a></td>
-          <td>{{ seller.parts_count }}</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="3" style="text-align:center;color:#919191;">Нет данных</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+      <div>
+        <div class="ap-section-title">По брендам</div>
+        <table class="ap-table">
+          <thead><tr><th>Бренд</th><th>Регион</th><th>Запчастей</th></tr></thead>
+          <tbody>
+            {% for brand in by_brand %}
+            <tr>
+              <td>{{ brand.name }}</td>
+              <td class="text-secondary">{{ brand.region|default:"—" }}</td>
+              <td>{{ brand.parts_count }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" style="text-align:center;color:#919191;">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
-</div>
-
-<div style="margin-top:16px;display:flex;justify-content:flex-end;">
-  <a href="/admin-panel/export/analytics/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M2 11v2h12v-2"/></svg>
-    Экспорт
-  </a>
 </div>
 {% endblock %}

@@ -30,7 +30,7 @@
 <div class="mvp-page">
   <div class="mvp-header">
     <h1 class="mvp-title">RFQ Requests</h1>
-    <a href="#" class="mvp-btn">
+    <a href="{% url 'rfq_new' %}" class="mvp-btn">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>
       Create New RFQ
     </a>
@@ -59,7 +59,7 @@
               <span class="mvp-status mvp-status--{{ rfq.status|lower }}">{{ rfq.status }}</span>
             </td>
             <td>{{ rfq.created_at|date:"d.m.Y" }}</td>
-            <td><a href="#" class="mvp-btn mvp-btn--outline mvp-btn--sm">View</a></td>
+            <td><a href="javascript:void(0)" onclick="showToast('RFQ detail view coming soon')" class="mvp-btn mvp-btn--outline mvp-btn--sm">View</a></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -72,4 +72,8 @@
     {% endif %}
   </div>
 </div>
+
+<script>
+function showToast(msg){ var t=document.createElement('div'); t.textContent=msg; t.style.cssText='position:fixed;bottom:24px;right:24px;background:#333;color:#fff;padding:12px 24px;border-radius:8px;font-size:13px;z-index:9999;'; document.body.appendChild(t); setTimeout(function(){t.remove();},3000); }
+</script>
 {% endblock %}

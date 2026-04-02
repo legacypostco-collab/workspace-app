@@ -1,0 +1,233 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}Заказ #{{ order.id }}{% endblock %}
+{% block topbar_title %}Заказ #{{ order.id }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:16px;">
+  <a href="/admin-panel/orders/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Все заказы</a>
+</div>
+
+<!-- Timeline -->
+{% if order.status != 'cancelled' %}
+<div class="ap-card" style="margin-bottom:16px;padding:18px 24px;">
+  <div style="display:flex;align-items:center;gap:0;">
+    <script>
+    (function(){
+      var stages = [
+        {key:'pending',label:'Ожидание'},
+        {key:'reserve_paid',label:'Резерв'},
+        {key:'confirmed',label:'Подтверждён'},
+        {key:'in_production',label:'Производство'},
+        {key:'ready_to_ship',label:'Готов'},
+        {key:'transit_abroad',label:'Транзит'},
+        {key:'customs',label:'Таможня'},
+        {key:'transit_rf',label:'Транзит РФ'},
+        {key:'shipped',label:'Отгружен'},
+        {key:'delivered',label:'Доставлен'},
+        {key:'completed',label:'Завершён'}
+      ];
+      var current = {{ current_step }};
+      var html = '<div style="display:flex;align-items:center;width:100%;gap:0;">';
+      stages.forEach(function(s, i) {
+        var step = i + 1;
+        var color = step < current ? '#5E5E5E' : step === current ? '#64B5F6' : '#2C2C2C';
+        var border = step > current ? 'border:1.5px solid #3A3A3A;' : '';
+        var shadow = step === current ? 'box-shadow:0 0 8px rgba(100,181,246,0.4);' : '';
+        var size = step === current ? '12' : '8';
+        html += '<div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;">';
+        html += '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+color+';'+border+shadow+'"></div>';
+        if (step === current) html += '<div style="font-size:9px;color:#64B5F6;margin-top:4px;white-space:nowrap;font-weight:600;">'+s.label+'</div>';
+        html += '</div>';
+        if (i < stages.length - 1) {
+          var lineColor = step < current ? '#5E5E5E' : '#2C2C2C';
+          html += '<div style="flex:1;height:2px;background:'+lineColor+';min-width:8px;"></div>';
+        }
+      });
+      html += '</div>';
+      document.currentScript.parentElement.innerHTML = html;
+    })();
+    </script>
+  </div>
+</div>
+{% endif %}
+
+<!-- Order header -->
+<div class="ap-stats">
+  <div class="ap-stat">
+    <div class="ap-stat-value">ORD-{{ order.id }}</div>
+    <div class="ap-stat-label">Номер заказа</div>
+  </div>
+  <div class="ap-stat">
+    <div class="ap-stat-value">${{ order.total_amount|floatformat:0 }}</div>
+    <div class="ap-stat-label">Сумма</div>
+  </div>
+  <div class="ap-stat">
+    <div class="ap-stat-value">
+      {% if order.status == 'completed' or order.status == 'delivered' %}
+        <span style="color:#4CAF50;">{{ order.get_status_display }}</span>
+      {% elif order.status == 'cancelled' %}
+        <span style="color:#E85C0D;">{{ order.get_status_display }}</span>
+      {% else %}
+        {{ order.get_status_display }}
+      {% endif %}
+    </div>
+    <div class="ap-stat-label">Статус</div>
+  </div>
+  <div class="ap-stat">
+    <div class="ap-stat-value">{{ order.get_payment_status_display }}</div>
+    <div class="ap-stat-label">Оплата</div>
+  </div>
+  <div class="ap-stat">
+    <div class="ap-stat-value">
+      {% if order.sla_status == 'breached' %}
+        <span style="color:#E85C0D;">Нарушен</span>
+      {% else %}
+        В норме
+      {% endif %}
+    </div>
+    <div class="ap-stat-label">SLA</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:16px;">
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <!-- Client info -->
+    <div class="ap-card">
+      <div class="ap-section-title">Клиент</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
+        <div><span style="color:#919191;">Имя:</span> {{ order.customer_name }}</div>
+        <div><span style="color:#919191;">Email:</span> {{ order.customer_email }}</div>
+        <div><span style="color:#919191;">Телефон:</span> {{ order.customer_phone }}</div>
+        <div><span style="color:#919191;">Аккаунт:</span>
+          {% if order.buyer %}
+            <a href="/admin-panel/users/{{ order.buyer.id }}/" style="color:#64B5F6;text-decoration:none;">{{ order.buyer.username }}</a>
+          {% else %}—{% endif %}
+        </div>
+        <div style="grid-column:1/-1;"><span style="color:#919191;">Адрес:</span> {{ order.delivery_address }}</div>
+      </div>
+    </div>
+
+    <!-- Order items -->
+    <div class="ap-card">
+      <div class="ap-section-title">Позиции заказа</div>
+      <table class="ap-table">
+        <thead><tr><th>OEM</th><th>Название</th><th>Бренд</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td><span style="color:#64B5F6;">{{ item.part.oem_number }}</span></td>
+            <td>{{ item.part.name|truncatechars:35 }}</td>
+            <td class="text-secondary">{{ item.part.brand.name|default:"—" }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>${{ item.unit_price|floatformat:2 }}</td>
+            <td>${{ item.total_price|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" style="text-align:center;color:#919191;">Нет позиций</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Payment info -->
+    <div class="ap-card">
+      <div class="ap-section-title">Финансы</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:13px;">
+        <div><span style="color:#919191;">Схема:</span> {{ order.get_payment_scheme_display }}</div>
+        <div><span style="color:#919191;">Резерв ({{ order.reserve_percent }}%):</span> ${{ order.reserve_amount|floatformat:2 }}</div>
+        <div><span style="color:#919191;">Логистика:</span> ${{ order.logistics_cost|floatformat:2 }} {{ order.logistics_currency }}</div>
+        <div><span style="color:#919191;">Резерв оплачен:</span> {{ order.reserve_paid_at|date:"d.m.Y H:i"|default:"—" }}</div>
+        <div><span style="color:#919191;">Финальная оплата:</span> {{ order.final_paid_at|date:"d.m.Y H:i"|default:"—" }}</div>
+        <div><span style="color:#919191;">Провайдер:</span> {{ order.logistics_provider }}</div>
+      </div>
+    </div>
+
+    <!-- Events -->
+    <div class="ap-card">
+      <div class="ap-section-title">История событий</div>
+      {% if events %}
+      <table class="ap-table">
+        <thead><tr><th>Время</th><th>Событие</th><th>Источник</th><th>Комментарий</th></tr></thead>
+        <tbody>
+          {% for event in events %}
+          <tr>
+            <td class="text-secondary">{{ event.created_at|date:"d.m.Y H:i" }}</td>
+            <td>{{ event.get_event_type_display }}</td>
+            <td class="text-secondary">{{ event.source }}</td>
+            <td class="text-secondary">{{ event.meta.comment|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="color:#919191;font-size:13px;">Нет событий</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Right panel: Actions -->
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <!-- Change status -->
+    <div class="ap-card">
+      <div class="ap-section-title">Изменить статус</div>
+      <form method="post">
+        {% csrf_token %}
+        <select name="new_status" class="ap-select" style="width:100%;margin-bottom:10px;">
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if order.status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">Применить</button>
+      </form>
+    </div>
+
+    <!-- Change payment status -->
+    <div class="ap-card">
+      <div class="ap-section-title">Изменить статус оплаты</div>
+      <form method="post">
+        {% csrf_token %}
+        <select name="new_payment_status" class="ap-select" style="width:100%;margin-bottom:10px;">
+          {% for val, label in payment_status_choices %}
+          <option value="{{ val }}" {% if order.payment_status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">Применить</button>
+      </form>
+    </div>
+
+    <!-- Documents -->
+    <div class="ap-card">
+      <div class="ap-section-title">Документы</div>
+      {% if documents %}
+        {% for doc in documents %}
+        <div class="ap-card-elevated" style="margin-bottom:6px;font-size:13px;">
+          {{ doc.get_doc_type_display|default:doc.doc_type }} <span class="text-secondary">{{ doc.uploaded_at|date:"d.m.Y" }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:#919191;font-size:13px;">Нет документов</p>
+      {% endif %}
+    </div>
+
+    <!-- Claims -->
+    <div class="ap-card">
+      <div class="ap-section-title">Рекламации</div>
+      {% if claims %}
+        {% for claim in claims %}
+        <div class="ap-card-elevated" style="margin-bottom:6px;font-size:13px;">
+          {{ claim.title }}
+          <span class="ap-badge ap-badge-{% if claim.status == 'closed' %}green{% else %}orange{% endif %}" style="margin-left:6px;">{{ claim.get_status_display|default:claim.status }}</span>
+        </div>
+        {% endfor %}
+      {% else %}
+        <p style="color:#919191;font-size:13px;">Нет рекламаций</p>
+      {% endif %}
+    </div>
+
+    <div class="ap-card">
+      <div class="ap-section-title">Дата создания</div>
+      <p style="font-size:13px;">{{ order.created_at|date:"d.m.Y H:i" }}</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

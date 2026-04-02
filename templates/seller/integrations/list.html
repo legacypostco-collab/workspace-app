@@ -358,7 +358,7 @@ function openRequestForm() {
 function closeRequestForm() { document.getElementById('requestForm').classList.remove('open'); }
 function submitRequest() {
   closeRequestForm();
-  showToast('Запрос на интеграцию ERP отправлен. Менеджер свяжется в течение 1 рабочего дня');
+  showToast('Запрос на интеграцию отправлен — функция в разработке, менеджер свяжется по email');
 }
 
 function openContactForm() {
@@ -368,7 +368,7 @@ function openContactForm() {
 function closeContactForm() { document.getElementById('contactForm').classList.remove('open'); }
 function submitContact() {
   closeContactForm();
-  showToast('Заявка отправлена. Персональный менеджер свяжется с вами в ближайшее время');
+  showToast('Заявка отправлена — функция в разработке, менеджер свяжется по email');
 }
 
 function showToast(msg) {

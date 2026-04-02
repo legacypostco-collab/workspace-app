@@ -53,7 +53,7 @@
             <td>{{ item.description }}</td>
             <td>{{ item.brand }}</td>
             <td>{{ item.supplier_count }}</td>
-            <td><a href="#" class="mvp-btn" style="padding: 6px 14px; font-size: 13px;">Request Quote</a></td>
+            <td><a href="{% url 'rfq_new' %}" class="mvp-btn" style="padding: 6px 14px; font-size: 13px;">Request Quote</a></td>
           </tr>
           {% endfor %}
         </tbody>

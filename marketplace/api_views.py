@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import timedelta
 
 from django.conf import settings
@@ -11,7 +13,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from django.http import HttpResponse
 
-from .models import Category, Order, OrderClaim, Part, RFQ, RFQItem, WebhookDeliveryLog
+from .models import Category, Order, OrderClaim, OrderEvent, Part, RFQ, RFQItem, WebhookDeliveryLog
 from .serializers import CategorySerializer, OrderSerializer, PartSerializer
 from .views import (
     ORDER_TRANSITIONS,
