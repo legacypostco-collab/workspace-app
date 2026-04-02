@@ -1,0 +1,627 @@
+{% extends "seller/base_seller.html" %}
+
+{% block extra_css %}
+<style>
+/* ══ Negotiations page ══ */
+.neg-tabs { display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:0; }
+.neg-tab {
+  padding:8px 16px;font-size:12px;font-weight:600;color:#6A6A6A;cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap;
+}
+.neg-tab:hover { color:#8A8A8A; }
+.neg-tab.active { color:#64B5F6;border-bottom-color:#64B5F6; }
+
+.neg-panel { display:none; }
+.neg-panel.active { display:block; }
+
+/* Section header */
+.neg-section-head {
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:14px;
+}
+.neg-section-title { font-size:13px;font-weight:700;color:#ECECEC; }
+.neg-section-sub { font-size:11px;color:#6A6A6A;margin-top:2px; }
+
+/* Discount tiers */
+.tier-table { width:100%;border-collapse:collapse; }
+.tier-table th {
+  text-align:left;padding:8px 12px;font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.tier-table td {
+  padding:10px 12px;font-size:13px;color:#ECECEC;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.tier-table tr:last-child td { border-bottom:none; }
+.tier-badge {
+  display:inline-block;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;
+  background:rgba(138,138,138,0.12);color:#8A8A8A;text-transform:uppercase;letter-spacing:0.04em;
+}
+
+/* Toggle switch */
+.toggle-wrap { display:flex;align-items:center;gap:10px; }
+.toggle {
+  position:relative;width:40px;height:22px;cursor:pointer;flex-shrink:0;
+}
+.toggle input { opacity:0;width:0;height:0; }
+.toggle-slider {
+  position:absolute;inset:0;background:#2C2C2C;border-radius:11px;transition:.3s;
+}
+.toggle-slider:before {
+  content:"";position:absolute;height:16px;width:16px;left:3px;bottom:3px;
+  background:#6A6A6A;border-radius:50%;transition:.3s;
+}
+.toggle input:checked + .toggle-slider { background:rgba(100,181,246,0.25); }
+.toggle input:checked + .toggle-slider:before { transform:translateX(18px);background:#64B5F6; }
+
+/* Loyalty tiers */
+.loyalty-card {
+  background:#1A1A1A;border-radius:12px;padding:16px;
+  border:1px solid rgba(255,255,255,0.04);margin-bottom:10px;
+}
+.loyalty-card-head { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px; }
+.loyalty-name { font-size:13px;font-weight:700;color:#ECECEC; }
+.loyalty-desc { font-size:11px;color:#6A6A6A;margin-top:2px; }
+.loyalty-fields { display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px; }
+.loyalty-field label { font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px; }
+.loyalty-field input, .loyalty-field select {
+  width:100%;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:7px;
+  padding:7px 10px;font-size:13px;color:#ECECEC;outline:none;
+}
+.loyalty-field input:focus, .loyalty-field select:focus { border-color:rgba(100,181,246,0.4); }
+
+/* Consent block */
+.consent-box {
+  background:rgba(100,181,246,0.04);border:1px solid rgba(100,181,246,0.12);
+  border-radius:10px;padding:14px 16px;margin-top:14px;
+}
+.consent-box p { font-size:12px;color:#8A8A8A;line-height:1.6;margin-bottom:10px; }
+.consent-check { display:flex;align-items:flex-start;gap:10px;cursor:pointer; }
+.consent-check input[type=checkbox] { margin-top:2px;accent-color:#64B5F6; }
+.consent-check span { font-size:12px;color:#8A8A8A;line-height:1.5; }
+
+/* Negotiation chats */
+.neg-rfq-list { display:flex;flex-direction:column;gap:8px; }
+.neg-rfq-row {
+  background:#1A1A1A;border-radius:10px;padding:14px 16px;
+  border:1px solid rgba(255,255,255,0.04);cursor:pointer;
+  transition:border-color .2s;
+}
+.neg-rfq-row:hover { border-color:rgba(100,181,246,0.2); }
+.neg-rfq-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:6px; }
+.neg-rfq-id { font-size:12px;font-weight:700;color:#64B5F6; }
+.neg-rfq-status { font-size:12px;padding:3px 10px;border-radius:5px;font-weight:600; }
+.neg-rfq-status--open { background:rgba(255,255,255,0.07);color:#ECECEC; }
+.neg-rfq-status--agreed { background:rgba(255,255,255,0.07);color:#ECECEC; }
+.neg-rfq-status--closed { background:rgba(255,255,255,0.04);color:#6A6A6A; }
+.neg-rfq-meta { font-size:11px;color:#6A6A6A; }
+.neg-rfq-last { font-size:11px;color:#8A8A8A;margin-top:4px;font-style:italic; }
+.neg-unread {
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:#FF8C42;margin-left:6px;vertical-align:middle;
+}
+
+/* Chat area */
+.neg-chat { display:none;background:#111;border-radius:12px;border:1px solid rgba(255,255,255,0.06);overflow:hidden; }
+.neg-chat.open { display:flex;flex-direction:column;height:420px; }
+.neg-chat-header {
+  padding:12px 16px;background:#1A1A1A;border-bottom:1px solid rgba(255,255,255,0.06);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.neg-chat-title { font-size:13px;font-weight:700;color:#ECECEC; }
+.neg-chat-warning { font-size:10px;color:#FF8C42;display:flex;align-items:center;gap:4px; }
+.neg-chat-messages { flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px; }
+.neg-msg { max-width:75%;padding:9px 12px;border-radius:10px;font-size:12px;line-height:1.5; }
+.neg-msg--them { background:#1E1E1E;color:#ECECEC;border-bottom-left-radius:3px;align-self:flex-start; }
+.neg-msg--me { background:rgba(100,181,246,0.12);color:#ECECEC;border-bottom-right-radius:3px;align-self:flex-end; }
+.neg-msg-time { font-size:10px;color:#6A6A6A;margin-top:3px; }
+.neg-chat-input {
+  padding:10px 12px;background:#1A1A1A;border-top:1px solid rgba(255,255,255,0.06);
+  display:flex;gap:8px;align-items:flex-end;
+}
+.neg-chat-input textarea {
+  flex:1;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;
+  padding:8px 10px;font-size:12px;color:#ECECEC;resize:none;outline:none;height:36px;max-height:80px;
+}
+.neg-chat-input textarea:focus { border-color:rgba(100,181,246,0.3); }
+.neg-attach-btn {
+  width:34px;height:34px;border-radius:8px;background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:#6A6A6A;flex-shrink:0;
+}
+.neg-attach-btn:hover { color:#8A8A8A;border-color:rgba(255,255,255,0.12); }
+
+/* Drawings */
+.drawing-row {
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:#1A1A1A;border-radius:10px;border:1px solid rgba(255,255,255,0.04);margin-bottom:8px;
+}
+.drawing-icon {
+  width:36px;height:36px;border-radius:8px;background:rgba(100,181,246,0.08);
+  display:flex;align-items:center;justify-content:center;color:#64B5F6;flex-shrink:0;
+}
+.drawing-name { font-size:12px;font-weight:600;color:#ECECEC; }
+.drawing-meta { font-size:11px;color:#6A6A6A;margin-top:1px; }
+.drawing-badge { font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600; }
+.drawing-badge--pending { background:rgba(255,140,66,0.1);color:#FF8C42; }
+.drawing-badge--approved { background:rgba(100,181,246,0.1);color:#64B5F6; }
+
+/* Empty state */
+.neg-empty { text-align:center;padding:40px 20px;color:#6A6A6A; }
+.neg-empty svg { opacity:.3;margin-bottom:10px; }
+.neg-empty p { font-size:12px; }
+
+/* Add button */
+.btn-add {
+  display:inline-flex;align-items:center;gap:6px;padding:7px 14px;
+  background:rgba(100,181,246,0.08);border:1px solid rgba(100,181,246,0.2);
+  border-radius:8px;font-size:12px;font-weight:600;color:#64B5F6;cursor:pointer;
+  transition:all .2s;
+}
+.btn-add:hover { background:rgba(100,181,246,0.14); }
+
+/* Action buttons in auction table */
+.btn-accept {
+  display:inline-flex;align-items:center;padding:5px 12px;
+  background:transparent;border:1px solid rgba(102,187,106,0.5);
+  border-radius:7px;font-size:12px;font-weight:600;color:#66BB6A;cursor:pointer;
+  transition:all .2s;
+}
+.btn-accept:hover { background:rgba(102,187,106,0.08); }
+.btn-counter {
+  display:inline-flex;align-items:center;padding:5px 12px;
+  background:transparent;border:1px solid rgba(100,181,246,0.45);
+  border-radius:7px;font-size:12px;font-weight:600;color:#64B5F6;cursor:pointer;
+  transition:all .2s;
+}
+.btn-counter:hover { background:rgba(100,181,246,0.08); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="neg-tabs">
+  <div class="neg-tab active" onclick="negTab(this,'tiers')">Уровни скидок</div>
+  <div class="neg-tab" onclick="negTab(this,'loyalty')">Программа лояльности</div>
+  <div class="neg-tab" onclick="negTab(this,'chats')">Переторжка</div>
+  <div class="neg-tab" onclick="negTab(this,'drawings')">Чертежи и тех. параметры</div>
+</div>
+
+{# ═══ TAB 1: Уровни скидок ═══ #}
+<div class="neg-panel active" id="panel-tiers">
+  <div class="neg-section-head">
+    <div>
+      <div class="neg-section-title">Автоматические скидки крупным покупателям</div>
+      <div class="neg-section-sub" style="font-size:13px;">Покупатели платформы с большим оборотом закупок получают скидку автоматически. Вы даёте согласие на каждый уровень отдельно</div>
+    </div>
+  </div>
+
+  {# Tier 1: >$1M #}
+  <div class="loyalty-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:#ECECEC;">Оборот свыше $1 000 000</div>
+      <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+    <div style="font-size:13px;color:#8A8A8A;margin-bottom:12px;">Покупатели с совокупным оборотом закупок на платформе более $1 млн</div>
+    <div class="loyalty-fields" style="grid-template-columns:1fr 1fr;">
+      <div class="loyalty-field">
+        <label>Скидка</label>
+        <input type="text" value="3%" />
+      </div>
+      <div class="loyalty-field">
+        <label>Применяется к</label>
+        <select>
+          <option>Всем товарам</option>
+          <option>Только избранным категориям</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:#6A6A6A;">
+      <span style="color:#64B5F6;">● Активен</span> · 918 759 товаров
+    </div>
+  </div>
+
+  {# Tier 2: >$3M #}
+  <div class="loyalty-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:#ECECEC;">Оборот свыше $3 000 000</div>
+      <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+    </div>
+    <div style="font-size:13px;color:#8A8A8A;margin-bottom:12px;">Постоянные клиенты платформы с оборотом более $3 млн — ключевые покупатели</div>
+    <div class="loyalty-fields" style="grid-template-columns:1fr 1fr;">
+      <div class="loyalty-field">
+        <label>Скидка</label>
+        <input type="text" value="5%" />
+      </div>
+      <div class="loyalty-field">
+        <label>Применяется к</label>
+        <select>
+          <option>Всем товарам</option>
+          <option>Только избранным категориям</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:#6A6A6A;">
+      <span style="color:#64B5F6;">● Активен</span> · 918 759 товаров
+    </div>
+  </div>
+
+  {# Tier 3: >$5M #}
+  <div class="loyalty-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:#ECECEC;">Оборот свыше $5 000 000</div>
+      <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+    </div>
+    <div style="font-size:13px;color:#8A8A8A;margin-bottom:12px;">Стратегические партнёры платформы с максимальным оборотом</div>
+    <div class="loyalty-fields" style="grid-template-columns:1fr 1fr;">
+      <div class="loyalty-field">
+        <label>Скидка</label>
+        <input type="text" value="8%" />
+      </div>
+      <div class="loyalty-field">
+        <label>Применяется к</label>
+        <select>
+          <option>Всем товарам</option>
+          <option>Только избранным категориям</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:#6A6A6A;">
+      <span style="color:#FF8C42;">● Не активен</span> · Включите для применения
+    </div>
+  </div>
+
+  <div class="consent-box" style="margin-top:14px;">
+    <p>
+      Скидки применяются <strong style="color:#ECECEC;">автоматически</strong> при оформлении заказа. Платформа определяет уровень покупателя по его совокупному обороту закупок. Персональные данные покупателя не раскрываются — вы видите только уровень и применённую скидку.<br>
+      Вы можете отключить любой уровень в любой момент — скидка перестанет действовать для новых заказов.
+    </p>
+  </div>
+
+  <div style="margin-top:14px;display:flex;justify-content:flex-end;">
+    <button class="btn" style="padding:8px 20px;font-size:13px;">Сохранить настройки</button>
+  </div>
+</div>
+
+{# ═══ TAB 2: Программа лояльности ═══ #}
+<div class="neg-panel" id="panel-loyalty">
+  <div class="neg-section-head">
+    <div>
+      <div class="neg-section-title">Автоматические скидки постоянным покупателям</div>
+      <div class="neg-section-sub">Покупатели с историей крупных закупок получают персональную скидку платформы</div>
+    </div>
+    <div class="toggle-wrap">
+      <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+      <span style="font-size:12px;color:#8A8A8A;">Программа активна</span>
+    </div>
+  </div>
+
+  <div class="loyalty-card">
+    <div class="loyalty-card-head">
+      <div>
+        <div class="loyalty-name">Постоянный покупатель</div>
+        <div class="loyalty-desc">Присваивается автоматически при соответствии условиям</div>
+      </div>
+      <span class="tier-badge">Базовый</span>
+    </div>
+    <div class="loyalty-fields">
+      <div class="loyalty-field">
+        <label>Мин. оборот за 6 мес.</label>
+        <input type="text" value="$50 000" />
+      </div>
+      <div class="loyalty-field">
+        <label>Мин. кол-во заказов</label>
+        <input type="number" value="3" />
+      </div>
+      <div class="loyalty-field">
+        <label>Скидка</label>
+        <input type="text" value="3%" />
+      </div>
+    </div>
+  </div>
+
+  <div class="loyalty-card">
+    <div class="loyalty-card-head">
+      <div>
+        <div class="loyalty-name">VIP покупатель</div>
+        <div class="loyalty-desc">Повышенная скидка для крупнооптовых клиентов</div>
+      </div>
+      <span class="tier-badge tier-badge">VIP</span>
+    </div>
+    <div class="loyalty-fields">
+      <div class="loyalty-field">
+        <label>Мин. оборот за 6 мес.</label>
+        <input type="text" value="$200 000" />
+      </div>
+      <div class="loyalty-field">
+        <label>Мин. кол-во заказов</label>
+        <input type="number" value="10" />
+      </div>
+      <div class="loyalty-field">
+        <label>Скидка</label>
+        <input type="text" value="5%" />
+      </div>
+    </div>
+  </div>
+
+  <div class="consent-box">
+    <p>
+      Давая согласие на программу лояльности, вы подтверждаете, что скидки будут применяться <strong style="color:#ECECEC;">автоматически</strong> ко всем заказам покупателей, соответствующих условиям, без вашего ручного подтверждения каждого случая.<br>
+      Платформа не передаёт поставщику персональные данные покупателя — скидка присваивается анонимно по внутренним метрикам.
+    </p>
+    <label class="consent-check">
+      <input type="checkbox" checked>
+      <span>Я даю согласие на автоматическое применение скидок в рамках программы лояльности платформы Consolidator Parts</span>
+    </label>
+  </div>
+
+  <div style="margin-top:14px;display:flex;justify-content:flex-end;">
+    <button class="btn" style="padding:8px 20px;font-size:13px;">Сохранить условия</button>
+  </div>
+</div>
+
+{# ═══ TAB 3: Переторжка ═══ #}
+<div class="neg-panel" id="panel-chats">
+  {# Активные позиции #}
+  <div style="margin-bottom:14px;">
+    <div style="font-size:12px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Активные позиции</div>
+    <div style="font-size:12px;color:#6A6A6A;">Активный аукцион — предоставьте скидку или согласитесь в течение 48 часов</div>
+  </div>
+
+  {# Auction item 1 #}
+  <div style="background:#1A1A1A;border-radius:12px;border:1px solid rgba(255,255,255,0.04);padding:16px;margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Гидроцилиндр RE48786</div>
+        <div style="font-size:12px;color:#6A6A6A;margin-top:2px;">RFQ #1 · 1 шт. · Стартовая цена: <span style="color:#ECECEC;">$3 795,00</span></div>
+      </div>
+      <span class="neg-rfq-status neg-rfq-status--open">Торги открыты</span>
+    </div>
+
+    {# Bids table #}
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Покупатель</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Запрос скидки</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Цена с учётом</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Кол-во</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Дата</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Статус</th>
+          <th style="padding:7px 10px;border-bottom:1px solid rgba(255,255,255,0.06);"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <td style="padding:10px;font-size:13px;color:#ECECEC;">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#1</span>
+            Покупатель #4821
+          </td>
+          <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−7%</td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">$3 529,35</td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">1 шт.</td>
+          <td style="padding:10px;font-size:12px;color:#6A6A6A;">вчера, 14:22</td>
+          <td style="padding:10px;"><span style="font-size:11px;color:#8A8A8A;">Ожидает ответа</span></td>
+          <td style="padding:10px;text-align:right;">
+            <button class="btn-accept" style="margin-right:6px;" onclick="auctionAccept(this)">Принять</button>
+            <button class="btn-counter" onclick="auctionCounter(this)">Встречная</button>
+          </td>
+        </tr>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+          <td style="padding:10px;font-size:13px;color:#ECECEC;">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#2</span>
+            Покупатель #4817
+          </td>
+          <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−5%</td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">$3 605,25</td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">2 шт.</td>
+          <td style="padding:10px;font-size:12px;color:#6A6A6A;">сегодня, 09:14</td>
+          <td style="padding:10px;"><span style="font-size:11px;color:#8A8A8A;">Встречная: 3%</span></td>
+          <td style="padding:10px;text-align:right;">
+            <span style="font-size:11px;color:#6A6A6A;">Ожидает покупателя</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:10px;font-size:13px;color:#ECECEC;">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#3</span>
+            Покупатель #4830
+          </td>
+          <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−10%</td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">$3 415,50</td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">5 шт.</td>
+          <td style="padding:10px;font-size:12px;color:#6A6A6A;">сегодня, 11:40</td>
+          <td style="padding:10px;"><span style="font-size:11px;color:#8A8A8A;">Ожидает ответа</span></td>
+          <td style="padding:10px;text-align:right;">
+            <button class="btn-accept" style="margin-right:6px;" onclick="auctionAccept(this)">Принять</button>
+            <button class="btn-counter" onclick="auctionCounter(this)">Встречная</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  {# Auction item 2 #}
+  <div style="background:#1A1A1A;border-radius:12px;border:1px solid rgba(255,255,255,0.04);padding:16px;margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">MAIN SWITCH LH-9989363</div>
+        <div style="font-size:12px;color:#6A6A6A;margin-top:2px;">RFQ #1 · 2 шт. · Стартовая цена: <span style="color:#ECECEC;">$1 240,00</span></div>
+      </div>
+      <span class="neg-rfq-status neg-rfq-status--agreed">Согласовано</span>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Покупатель</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Скидка</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Итого</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Кол-во</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:10px;font-size:13px;color:#ECECEC;">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#1</span>
+            Покупатель #4821
+          </td>
+          <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−3%</td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">$2 405,60</td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">2 шт.</td>
+          <td style="padding:10px;"><span style="font-size:11px;color:#66BB6A;">● Принято</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="background:rgba(255,255,255,0.02);border-radius:10px;padding:12px 14px;font-size:12px;color:#6A6A6A;line-height:1.6;">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6A6A6A" stroke-width="2" style="vertical-align:middle;margin-right:5px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Покупатели обезличены — вы видите только номер. Платформа гарантирует, что стороны не могут обменяться контактными данными. Обмен возможен только скидками и чертежами через форму платформы.
+  </div>
+</div>
+
+{# ═══ TAB 4: Чертежи и тех. параметры ═══ #}
+<div class="neg-panel" id="panel-drawings">
+  <div class="neg-section-head">
+    <div>
+      <div class="neg-section-title">Обмен чертежами и тех. документацией</div>
+      <div class="neg-section-sub">Файлы передаются только через платформу. Личные данные сторон не раскрываются</div>
+    </div>
+    <button class="btn-add">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Загрузить файл
+    </button>
+  </div>
+
+  <div style="background:rgba(100,181,246,0.04);border:1px solid rgba(100,181,246,0.1);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#8A8A8A;line-height:1.6;">
+    Чертежи и технические документы передаются покупателю в обезличенном виде — без логотипов, реквизитов и контактных данных.
+    Платформа автоматически удаляет метаданные файла перед передачей.
+  </div>
+
+  <div class="drawing-row">
+    <div class="drawing-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div class="drawing-name">Гидроцилиндр RE48786 — сборочный чертёж</div>
+      <div class="drawing-meta">PDF · 2.4 MB · загружен 22.03.2026 · RFQ #1</div>
+    </div>
+    <span class="drawing-badge drawing-badge--approved">Передан</span>
+  </div>
+  <div class="drawing-row">
+    <div class="drawing-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <div style="flex:1;min-width:0;">
+      <div class="drawing-name">Технические параметры — LH-9989363</div>
+      <div class="drawing-meta">DWG · 890 KB · загружен сегодня · RFQ #1</div>
+    </div>
+    <span class="drawing-badge drawing-badge--pending">Ожидает</span>
+  </div>
+
+  <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.04);padding-top:16px;">
+    <div class="neg-section-title" style="margin-bottom:10px;">Запросы от покупателей</div>
+    <div class="drawing-row">
+      <div class="drawing-icon" style="background:rgba(255,140,66,0.08);color:#FF8C42;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div class="drawing-name">Запрос тех. документации на KM-21W-60-41112</div>
+        <div class="drawing-meta">Запрошено покупателем · сегодня, 10:32 · RFQ #1</div>
+      </div>
+      <button class="btn-add" style="padding:5px 12px;font-size:11px;">Загрузить файл</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function negTab(el, panel) {
+  document.querySelectorAll('.neg-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.neg-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + panel).classList.add('active');
+}
+
+function openNegChat(row, rfqId, title, status) {
+  document.querySelectorAll('.neg-rfq-row').forEach(r => r.style.borderColor = '');
+  row.style.borderColor = 'rgba(100,181,246,0.3)';
+  const chat = document.getElementById('neg-chat');
+  document.getElementById('neg-chat-title').textContent = rfqId + ' · ' + title;
+  chat.classList.add('open');
+}
+
+// ── Auction actions ──────────────────────────────────────────────
+function auctionAccept(btn) {
+  const row = btn.closest('tr');
+  const statusCell = row.querySelector('td:nth-child(6)');
+  const actionsCell = row.querySelector('td:last-child');
+
+  // Animate button
+  btn.disabled = true;
+  btn.textContent = '✓ Принято';
+  btn.style.opacity = '0.7';
+
+  setTimeout(() => {
+    statusCell.innerHTML = '<span style="font-size:12px;color:#66BB6A;font-weight:600;">● Принято</span>';
+    actionsCell.innerHTML = '';
+    row.style.opacity = '0.7';
+  }, 300);
+}
+
+function auctionCounter(btn) {
+  const row = btn.closest('tr');
+  const actionsCell = row.querySelector('td:last-child');
+  const statusCell = row.querySelector('td:nth-child(6)');
+
+  // Already showing form — skip
+  if (actionsCell.querySelector('.counter-form')) return;
+
+  actionsCell.innerHTML = `
+    <div class="counter-form" style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">
+      <span style="font-size:11px;color:#8A8A8A;">Встречная:</span>
+      <input type="number" min="0" max="30" step="0.5" placeholder="%" style="
+        width:56px;background:#111;border:1px solid rgba(100,181,246,0.3);border-radius:6px;
+        padding:4px 8px;font-size:12px;color:#ECECEC;outline:none;text-align:center;
+      " />
+      <button onclick="submitCounter(this)" style="
+        padding:4px 10px;background:rgba(100,181,246,0.15);border:1px solid rgba(100,181,246,0.35);
+        border-radius:6px;font-size:11px;font-weight:600;color:#64B5F6;cursor:pointer;
+      ">Отправить</button>
+      <button onclick="cancelCounter(this)" style="
+        padding:4px 8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);
+        border-radius:6px;font-size:11px;color:#6A6A6A;cursor:pointer;
+      ">✕</button>
+    </div>`;
+
+  actionsCell.querySelector('input').focus();
+}
+
+function submitCounter(btn) {
+  const form = btn.closest('.counter-form');
+  const row = btn.closest('tr');
+  const input = form.querySelector('input');
+  const val = parseFloat(input.value);
+  const statusCell = row.querySelector('td:nth-child(6)');
+  const actionsCell = row.querySelector('td:last-child');
+
+  if (!val || val <= 0) {
+    input.style.borderColor = 'rgba(224,85,85,0.5)';
+    input.focus();
+    return;
+  }
+
+  statusCell.innerHTML = `<span style="font-size:11px;color:#8A8A8A;">Встречная: ${val}%</span>`;
+  actionsCell.innerHTML = '<span style="font-size:11px;color:#6A6A6A;">Ожидает покупателя</span>';
+}
+
+function cancelCounter(btn) {
+  const row = btn.closest('tr');
+  const actionsCell = row.querySelector('td:last-child');
+  actionsCell.innerHTML = `
+    <button class="btn-accept" style="margin-right:6px;" onclick="auctionAccept(this)">Принять</button>
+    <button class="btn-counter" onclick="auctionCounter(this)">Встречная</button>`;
+}
+</script>
+{% endblock %}

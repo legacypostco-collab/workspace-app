@@ -1,0 +1,838 @@
+{% extends "seller/base_seller.html" %}
+{% block title %}QR-контроль{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ═══ QR Control Page ═══ */
+
+/* Hero */
+.qr-hero {
+  background:#242424;border:1px solid rgba(255,255,255,0.055);
+  border-radius:16px;overflow:hidden;margin-bottom:16px;
+}
+.qr-hero-top {
+  display:flex;justify-content:space-between;align-items:center;
+  padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.045);
+}
+.qr-hero-title {
+  font-family:'Golos Text',sans-serif;font-size:14px;font-weight:800;
+  color:#ECECEC;letter-spacing:-0.01em;
+}
+.qr-hero-sub { font-size:11px;color:#6A6A6A;margin-top:2px; }
+.qr-metrics {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+}
+.qr-metric {
+  padding:12px 16px;border-right:1px solid rgba(255,255,255,0.045);
+}
+.qr-metric:last-child { border-right:none; }
+.qr-metric-label {
+  font-size:10px;font-weight:600;color:#8A8A8A;
+  text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;
+}
+.qr-metric-val {
+  font-family:'Golos Text',sans-serif;font-size:24px;font-weight:800;
+  color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
+}
+.qr-metric-hint { font-size:11px;margin-top:4px;font-weight:400;color:#ECECEC; }
+.qr-metric--clickable {
+  cursor:pointer;
+  transition:background .2s;
+}
+.qr-metric--clickable:hover {
+  background:rgba(100,181,246,0.06);
+}
+.qr-metric--clickable .qr-metric-toggle {
+  display:inline-block;
+  transition:transform .25s ease;
+}
+.qr-metric--clickable.active .qr-metric-toggle {
+  transform:rotate(180deg);
+}
+.qr-metric--clickable .qr-metric-val {
+  color:#64B5F6;
+}
+.qr-metric--clickable .qr-metric-hint {
+  color:#64B5F6;
+}
+
+/* Timeline section */
+.qr-timeline-section { margin-bottom:16px; }
+
+/* Two-column layout */
+.qr-layout {
+  display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;
+}
+.qr-panel {
+  background:#242424;border:1px solid rgba(255,255,255,0.055);
+  border-radius:14px;overflow:hidden;
+}
+.qr-panel-head {
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.qr-panel-title {
+  font-size:12px;font-weight:700;color:#ECECEC;
+}
+.qr-panel-body { padding:14px; }
+
+/* QR Generator */
+.qr-gen-select {
+  width:100%;padding:10px 14px;background:#1A1A1A;
+  border:1.5px solid rgba(100,181,246,0.45);border-radius:10px;
+  color:#ECECEC;font-size:13px;font-weight:500;outline:none;margin-bottom:12px;
+  box-shadow: 0 0 0 3px rgba(100,181,246,0.08), 0 2px 8px rgba(0,0,0,0.25);
+  transition: border-color .18s, box-shadow .18s;
+}
+.qr-gen-select:focus {
+  border-color: rgba(100,181,246,0.75);
+  box-shadow: 0 0 0 4px rgba(100,181,246,0.15), 0 2px 8px rgba(0,0,0,0.25);
+}
+.qr-gen-select:hover {
+  border-color: rgba(100,181,246,0.6);
+}
+.qr-gen-canvas-wrap {
+  display:flex;justify-content:center;align-items:center;
+  background:#1A1A1A;border-radius:12px;padding:20px;
+  margin-bottom:12px;min-height:180px;position:relative;
+}
+#qr-canvas { display:none; }
+.qr-gen-placeholder {
+  text-align:center;color:#5A5A5A;
+}
+.qr-gen-placeholder-icon { font-size:32px;margin-bottom:8px; }
+.qr-gen-placeholder-text { font-size:12px; }
+.qr-gen-actions { display:flex;gap:8px; }
+.qr-btn {
+  flex:1;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;
+  cursor:pointer;border:none;transition:all .18s ease;text-align:center;
+}
+.qr-btn--primary {
+  background: linear-gradient(135deg, #64B5F6 0%, #42A5F5 100%);
+  color: #0a0a0a;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  padding: 10px 16px;
+  box-shadow: 0 2px 12px rgba(100,181,246,0.4), 0 1px 3px rgba(0,0,0,0.3);
+  flex: 1.4;
+}
+.qr-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #7ec4f7 0%, #64B5F6 100%);
+  box-shadow: 0 4px 20px rgba(100,181,246,0.55), 0 1px 4px rgba(0,0,0,0.3);
+  transform: translateY(-1px);
+}
+.qr-btn--ghost {
+  background:rgba(255,255,255,0.05);color:#8A8A8A;
+  border:1px solid rgba(255,255,255,0.07);
+}
+.qr-btn--ghost:hover { background:rgba(255,255,255,0.08);color:#ECECEC; }
+.qr-btn:disabled { opacity:0.35;cursor:not-allowed; }
+
+/* QR Scanner */
+.qr-scanner-area {
+  background:#1A1A1A;border-radius:12px;overflow:hidden;
+  position:relative;margin-bottom:12px;min-height:160px;
+}
+#qr-scanner-video {
+  width:100%;display:none;border-radius:12px;
+}
+.qr-scanner-idle {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:28px;text-align:center;
+}
+.qr-scanner-idle-icon { font-size:28px;margin-bottom:8px; }
+.qr-scanner-idle-text { font-size:12px;color:#6A6A6A; }
+.qr-scanner-corner {
+  position:absolute;width:20px;height:20px;border-color:#64B5F6;border-style:solid;border-width:0;
+}
+.qr-scanner-corner--tl { top:8px;left:8px;border-top-width:2px;border-left-width:2px;border-radius:2px 0 0 0; }
+.qr-scanner-corner--tr { top:8px;right:8px;border-top-width:2px;border-right-width:2px;border-radius:0 2px 0 0; }
+.qr-scanner-corner--bl { bottom:8px;left:8px;border-bottom-width:2px;border-left-width:2px;border-radius:0 0 0 2px; }
+.qr-scanner-corner--br { bottom:8px;right:8px;border-bottom-width:2px;border-right-width:2px;border-radius:0 0 2px 0; }
+.qr-scanner-result {
+  padding:10px 12px;background:rgba(100,181,246,0.08);border-radius:8px;
+  font-size:12px;color:#64B5F6;margin-bottom:10px;display:none;word-break:break-all;
+}
+.qr-manual-input {
+  width:100%;padding:8px 12px;background:#1A1A1A;
+  border:1px solid rgba(255,255,255,0.07);border-radius:10px;
+  color:#ECECEC;font-size:13px;outline:none;margin-bottom:10px;
+}
+.qr-manual-input:focus { border-color:rgba(100,181,246,0.4); }
+.qr-manual-input::placeholder { color:#5A5A5A; }
+
+/* Order info card (after scan) */
+.qr-order-info {
+  background:#1E1E1E;border:1px solid rgba(100,181,246,0.15);
+  border-radius:10px;padding:12px 14px;margin-bottom:10px;display:none;
+}
+.qr-order-info-id { font-size:11px;color:#8A8A8A;margin-bottom:4px; }
+.qr-order-info-status { font-size:13px;font-weight:600;color:#ECECEC; }
+.qr-order-info-meta { font-size:11px;color:#8A8A8A;margin-top:4px; }
+
+/* Workflow stages */
+.qr-stages { margin-bottom:14px; }
+.qr-stage {
+  display:flex;align-items:flex-start;gap:12px;
+  padding:12px 14px;
+  background:#242424;border:1px solid rgba(255,255,255,0.05);
+  border-radius:12px;margin-bottom:8px;
+}
+.qr-stage-icon {
+  width:36px;height:36px;border-radius:10px;
+  background:rgba(100,181,246,0.08);display:flex;align-items:center;
+  justify-content:center;font-size:16px;flex-shrink:0;
+}
+.qr-stage-info { flex:1; }
+.qr-stage-label { font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:2px; }
+.qr-stage-action { font-size:11px;color:#8A8A8A; }
+.qr-stage-type {
+  font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;
+  background:rgba(100,181,246,0.1);color:#64B5F6;flex-shrink:0;
+  align-self:center;
+}
+
+/* History table */
+.qr-history-wrap {
+  background:#242424;border:1px solid rgba(255,255,255,0.055);
+  border-radius:14px;overflow:hidden;
+}
+.qr-history-head {
+  padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.qr-history-title { font-size:12px;font-weight:700;color:#ECECEC; }
+.qr-table { width:100%;border-collapse:collapse; }
+.qr-table th {
+  text-align:left;padding:9px 14px;font-size:10px;font-weight:600;
+  color:#8A8A8A;text-transform:uppercase;letter-spacing:0.06em;
+  border-bottom:1px solid rgba(255,255,255,0.04);background:#242424;
+}
+.qr-table td {
+  padding:10px 14px;font-size:13px;color:#ECECEC;
+  border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle;
+}
+.qr-table tr:last-child td { border-bottom:none; }
+.qr-table tr:hover td { background:rgba(255,255,255,0.02); }
+.qr-code-val {
+  font-family:monospace;font-size:11px;color:#8A8A8A;
+  background:rgba(255,255,255,0.04);padding:2px 7px;border-radius:5px;
+}
+.qr-empty {
+  text-align:center;padding:40px;color:#5A5A5A;
+}
+.qr-empty-icon { font-size:32px;margin-bottom:8px; }
+.qr-empty-text { font-size:12px; }
+
+/* Instructions */
+.qr-instructions {
+  background:#242424;border:1px solid rgba(255,255,255,0.055);
+  border-radius:14px;margin-bottom:14px;overflow:hidden;
+}
+.qr-instr-head {
+  padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);
+  cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+}
+.qr-instr-title { font-size:12px;font-weight:700;color:#ECECEC; }
+.qr-instr-toggle { font-size:16px;color:#8A8A8A;transition:transform .2s; }
+.qr-instr-body { padding:14px;display:none; }
+.qr-instr-step {
+  display:flex;gap:12px;padding:10px 0;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.qr-instr-step:last-child { border-bottom:none; }
+.qr-instr-num {
+  width:24px;height:24px;border-radius:50%;
+  background:rgba(100,181,246,0.12);color:#64B5F6;
+  font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.qr-instr-step-title { font-size:13px;color:#ECECEC;font-weight:600;margin-bottom:2px; }
+.qr-instr-step-desc { font-size:11px;color:#8A8A8A;line-height:1.6; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ═══ HERO ═══ #}
+<section class="qr-hero">
+  <div class="qr-hero-top">
+    <div>
+      <div class="qr-hero-title">QR-контроль поставок</div>
+      <div class="qr-hero-sub">Генерация кодов · сканирование · отслеживание этапов</div>
+    </div>
+  </div>
+  <div class="qr-metrics">
+    <div class="qr-metric qr-metric--clickable" id="qr-metric-active" title="Показать таймлайн заказов">
+      <div class="qr-metric-label">Активных заказов</div>
+      <div class="qr-metric-val">{{ active_orders_count }}</div>
+      <div class="qr-metric-hint">на контроле <span class="qr-metric-toggle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+    </div>
+    <div class="qr-metric">
+      <div class="qr-metric-label">Всего сканирований</div>
+      <div class="qr-metric-val">{{ total_scans }}</div>
+      <div class="qr-metric-hint">за всё время</div>
+    </div>
+    <div class="qr-metric">
+      <div class="qr-metric-label">Сегодня</div>
+      <div class="qr-metric-val">{{ scans_today }}</div>
+      <div class="qr-metric-hint" style="color:#64B5F6;">сканирований</div>
+    </div>
+    <div class="qr-metric">
+      <div class="qr-metric-label">Заказов с QR</div>
+      <div class="qr-metric-val">{{ orders_with_qr }}</div>
+      <div class="qr-metric-hint" style="color:#64B5F6;">зарегистрировано</div>
+    </div>
+  </div>
+</section>
+
+{# ═══ Таймлайн заказов (скрыт по умолчанию) ═══ #}
+<section class="qr-timeline-section" id="qr-timeline-section" style="display:none;">
+  <div class="qr-panel" style="width:100%;">
+    <div class="qr-panel-head">
+      <div class="qr-panel-title">Таймлайн доставки</div>
+      <button class="qr-btn qr-btn--ghost" id="qr-timeline-close" style="padding:4px 12px;flex:none;width:auto;font-size:12px;">✕ Свернуть</button>
+    </div>
+    <div class="qr-panel-body" style="padding:10px 14px;">
+      {% for tl in timeline_orders %}
+      <div class="qr-tl-row" style="margin-bottom:14px;padding-bottom:14px;{% if not forloop.last %}border-bottom:1px solid rgba(255,255,255,0.04);{% endif %}">
+        {# Заголовок: заказ, клиент, SLA, сумма #}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <a href="{% url 'seller_order_detail' tl.order.id %}" style="font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#ECECEC;text-decoration:none;">Заказ #{{ tl.order.id }}</a>
+            <span style="font-size:11px;color:#6A6A6A;">{{ tl.order.customer_name }}</span>
+            {% if tl.order.sla_status == "breached" %}
+              <span style="font-size:10px;color:#FF8C42;font-weight:600;">{{ tl.order.get_sla_status_display }}</span>
+            {% elif tl.order.sla_status == "on_track" %}
+              <span style="font-size:10px;color:#64B5F6;">{{ tl.order.get_sla_status_display }}</span>
+            {% else %}
+              <span style="font-size:10px;color:#6A6A6A;">{{ tl.order.get_sla_status_display }}</span>
+            {% endif %}
+          </div>
+          <span style="font-family:'Golos Text',sans-serif;font-size:13px;font-weight:800;color:#ECECEC;">${{ tl.order.total_amount }}</span>
+        </div>
+        {# Визуальный таймлайн #}
+        <div style="display:flex;align-items:center;gap:0;position:relative;">
+          {% for sk, sl in kanban_statuses %}
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;position:relative;">
+            {% if not forloop.first %}
+            <div style="position:absolute;top:5px;right:50%;width:100%;height:2px;background:{% if forloop.counter0 <= tl.current_step %}#919191{% else %}#2C2C2C{% endif %};z-index:0;"></div>
+            {% endif %}
+            <div style="width:10px;height:10px;border-radius:50%;z-index:1;{% if forloop.counter0 == tl.current_step %}background:#ECECEC;box-shadow:0 0 6px rgba(236,236,236,0.4);{% elif forloop.counter0 < tl.current_step %}background:#919191;{% else %}background:#2C2C2C;border:1px solid #484848;{% endif %}"></div>
+            <div style="font-size:8px;margin-top:4px;white-space:nowrap;{% if forloop.counter0 == tl.current_step %}color:#ECECEC;font-weight:600;{% elif forloop.counter0 < tl.current_step %}color:#919191;{% else %}color:#484848;{% endif %}">{{ sl }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% empty %}
+      <div style="text-align:center;color:#6A6A6A;padding:20px;font-size:13px;">Нет заказов для отображения</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ═══ Генератор + Сканер ═══ #}
+<div class="qr-layout">
+
+  {# ── Генератор QR ── #}
+  <div class="qr-panel">
+    <div class="qr-panel-head">
+      <div class="qr-panel-title">Сгенерировать QR-код</div>
+    </div>
+    <div class="qr-panel-body">
+      <select class="qr-gen-select" id="qr-order-select">
+        <option value="">— Выберите заказ —</option>
+        {% for order in active_orders %}
+        <option value="{{ order.id }}"
+                data-num="{{ order.id }}"
+                data-status="{{ order.get_status_display }}"
+                data-raw-status="{{ order.status }}"
+                data-url="{% url 'seller_order_detail' order.id %}">
+          Заказ #{{ order.id }} · {{ order.get_status_display }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <div class="qr-gen-canvas-wrap" id="qr-gen-wrap">
+        <div class="qr-gen-placeholder" id="qr-placeholder">
+          <div class="qr-gen-placeholder-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><rect x="19" y="14" width="2" height="2"/><rect x="14" y="19" width="2" height="2"/><rect x="19" y="19" width="2" height="2"/></svg></div>
+          <div class="qr-gen-placeholder-text">Выберите заказ для генерации QR</div>
+        </div>
+        <div id="qr-canvas-container" style="display:none;text-align:center;">
+          <div id="qr-code-display"></div>
+          <div style="margin-top:8px;font-size:11px;color:#8A8A8A;" id="qr-label"></div>
+        </div>
+      </div>
+
+      <div class="qr-gen-actions">
+        <button class="qr-btn qr-btn--ghost" id="qr-print-btn" disabled>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Печать
+        </button>
+        <button class="qr-btn qr-btn--primary" id="qr-download-btn" disabled>
+          ↓ Скачать PNG
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {# ── Сканер QR ── #}
+  <div class="qr-panel">
+    <div class="qr-panel-head">
+      <div class="qr-panel-title">Сканировать QR-код</div>
+      <button class="qr-btn qr-btn--ghost" id="qr-cam-btn" style="padding:7px 16px;flex:none;width:auto;display:flex;align-items:center;gap:6px;font-size:13px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Камера
+      </button>
+    </div>
+    <div class="qr-panel-body">
+      <div class="qr-scanner-area" id="qr-scanner-area">
+        <div class="qr-scanner-idle" id="qr-scanner-idle">
+          <div class="qr-scanner-idle-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M8 12h8"/></svg></div>
+          <div class="qr-scanner-idle-text">Нажмите «Камера» чтобы начать сканирование<br>или введите код вручную ниже</div>
+        </div>
+        <video id="qr-scanner-video" autoplay playsinline></video>
+        <div class="qr-scanner-corner qr-scanner-corner--tl" id="qr-corner-tl" style="display:none;"></div>
+        <div class="qr-scanner-corner qr-scanner-corner--tr" id="qr-corner-tr" style="display:none;"></div>
+        <div class="qr-scanner-corner qr-scanner-corner--bl" id="qr-corner-bl" style="display:none;"></div>
+        <div class="qr-scanner-corner qr-scanner-corner--br" id="qr-corner-br" style="display:none;"></div>
+      </div>
+
+      <div class="qr-scanner-result" id="qr-scan-result"></div>
+
+      <input type="text" class="qr-manual-input" id="qr-manual-input"
+             placeholder="Введите QR-код или номер заказа…" />
+
+      <div class="qr-order-info" id="qr-order-info">
+        <div class="qr-order-info-id" id="qr-info-id"></div>
+        <div class="qr-order-info-status" id="qr-info-status"></div>
+        <div class="qr-order-info-next" id="qr-info-next" style="display:none;margin-top:4px;font-size:12px;color:#64B5F6;font-weight:600;"></div>
+        <div class="qr-order-info-meta" id="qr-info-meta"></div>
+        <a id="qr-info-kanban-link" href="{% url 'seller_sla' %}" style="display:none;margin-top:6px;font-size:11px;color:#64B5F6;text-decoration:none;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Открыть на канбане SLA
+        </a>
+      </div>
+
+      <div class="qr-gen-actions">
+        <button class="qr-btn qr-btn--ghost" id="qr-scan-clear" style="display:none;">✕ Сбросить</button>
+        <button class="qr-btn qr-btn--primary" id="qr-scan-confirm" disabled>Подтвердить этап</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ═══ Этапы с QR ═══ #}
+<section class="qr-instructions" id="qr-stages-section">
+  <div class="qr-instr-head" onclick="toggleSection('qr-stages-body', this)">
+    <div class="qr-instr-title">Этапы с QR-сканированием</div>
+    <span class="qr-instr-toggle">▾</span>
+  </div>
+  <div class="qr-instr-body" id="qr-stages-body" style="display:block;">
+    <div class="qr-stages">
+      {% for key, stage in qr_stages.items %}
+      <div class="qr-stage">
+        <div class="qr-stage-icon">{{ stage.svg|safe }}</div>
+        <div class="qr-stage-info">
+          <div class="qr-stage-label">{{ stage.label }}</div>
+          <div class="qr-stage-action">{{ stage.action }}</div>
+        </div>
+        <div class="qr-stage-type">QR-скан</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ═══ Инструкция ═══ #}
+<section class="qr-instructions">
+  <div class="qr-instr-head" onclick="toggleSection('qr-instr-body', this)">
+    <div class="qr-instr-title">Инструкция по работе с QR</div>
+    <span class="qr-instr-toggle">▾</span>
+  </div>
+  <div class="qr-instr-body" id="qr-instr-body">
+    {% for step in steps %}
+    <div class="qr-instr-step">
+      <div class="qr-instr-num">{{ forloop.counter }}</div>
+      <div>
+        <div class="qr-instr-step-title">{{ step.title }}</div>
+        <div class="qr-instr-step-desc">{{ step.desc }}</div>
+      </div>
+    </div>
+    {% endfor %}
+    <div class="qr-instr-step">
+      <div class="qr-instr-num">1</div>
+      <div>
+        <div class="qr-instr-step-title">Генерация кода</div>
+        <div class="qr-instr-step-desc">Выберите заказ в блоке «Сгенерировать QR-код». QR автоматически привязывается к заказу и содержит его идентификатор.</div>
+      </div>
+    </div>
+    <div class="qr-instr-step">
+      <div class="qr-instr-num">2</div>
+      <div>
+        <div class="qr-instr-step-title">Распечатать и прикрепить</div>
+        <div class="qr-instr-step-desc">Распечатайте QR-код и прикрепите к упаковке товара перед отправкой. Используйте кнопку «Печать» или скачайте PNG.</div>
+      </div>
+    </div>
+    <div class="qr-instr-step">
+      <div class="qr-instr-num">3</div>
+      <div>
+        <div class="qr-instr-step-title">Сканирование на этапе</div>
+        <div class="qr-instr-step-desc">На каждом ключевом этапе (отгрузка, таможня, выдача) ответственное лицо сканирует QR-код. Событие фиксируется в системе автоматически.</div>
+      </div>
+    </div>
+    <div class="qr-instr-step">
+      <div class="qr-instr-num">4</div>
+      <div>
+        <div class="qr-instr-step-title">Отслеживание истории</div>
+        <div class="qr-instr-step-desc">Все сканирования отображаются в таблице ниже. История позволяет отследить каждый этап движения заказа и проверить SLA.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ═══ История сканирований ═══ #}
+<div class="qr-history-wrap">
+  <div class="qr-history-head">
+    <div class="qr-history-title">История сканирований</div>
+    <div style="font-size:11px;color:#6A6A6A;">последние 50 событий</div>
+  </div>
+  {% if qr_scan_events %}
+  <table class="qr-table">
+    <thead>
+      <tr>
+        <th>Заказ</th>
+        <th>QR-код</th>
+        <th>Этап</th>
+        <th>Исполнитель</th>
+        <th>Дата</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ev in qr_scan_events %}
+      <tr>
+        <td>
+          <a href="{% url 'seller_order_detail' ev.order.id %}"
+             style="color:#64B5F6;text-decoration:none;">
+            #{{ ev.order.id }}
+          </a>
+        </td>
+        <td><span class="qr-code-val">{{ ev.meta.qr_code|truncatechars:24 }}</span></td>
+        <td style="color:#8A8A8A;">{{ ev.meta.status|default:"—" }}</td>
+        <td style="font-size:12px;color:#8A8A8A;">{{ ev.actor.username|default:"—" }}</td>
+        <td style="font-size:12px;color:#8A8A8A;">{{ ev.created_at|date:"d.m.Y H:i" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="qr-empty">
+    <div class="qr-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+    <div class="qr-empty-text">Сканирований пока нет.<br>Начните с генерации QR-кода для заказа.</div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{# QRCode.js — генерация QR на клиенте #}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function() {
+
+  // ─── Timeline toggle from metric card ───
+  var metricActive = document.getElementById('qr-metric-active');
+  var timelineSection = document.getElementById('qr-timeline-section');
+  var timelineClose = document.getElementById('qr-timeline-close');
+
+  if (metricActive && timelineSection) {
+    metricActive.addEventListener('click', function() {
+      var isOpen = timelineSection.style.display !== 'none';
+      timelineSection.style.display = isOpen ? 'none' : 'block';
+      metricActive.classList.toggle('active', !isOpen);
+    });
+    timelineClose.addEventListener('click', function() {
+      timelineSection.style.display = 'none';
+      metricActive.classList.remove('active');
+    });
+  }
+
+  // ─── Toggle sections ───
+  window.toggleSection = function(bodyId, head) {
+    var body = document.getElementById(bodyId);
+    var icon = head.querySelector('.qr-instr-toggle');
+    var open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    if (icon) icon.style.transform = open ? 'rotate(-90deg)' : '';
+  };
+
+  // ─── QR Generator ───
+  var orderSelect = document.getElementById('qr-order-select');
+  var placeholder = document.getElementById('qr-placeholder');
+  var canvasContainer = document.getElementById('qr-canvas-container');
+  var qrLabel = document.getElementById('qr-label');
+  var qrDisplay = document.getElementById('qr-code-display');
+  var downloadBtn = document.getElementById('qr-download-btn');
+  var printBtn = document.getElementById('qr-print-btn');
+  var qrInstance = null;
+
+  orderSelect.addEventListener('change', function() {
+    var opt = orderSelect.options[orderSelect.selectedIndex];
+    if (!opt.value) {
+      placeholder.style.display = '';
+      canvasContainer.style.display = 'none';
+      downloadBtn.disabled = true;
+      printBtn.disabled = true;
+      return;
+    }
+    var orderId = opt.value;
+    var orderUrl = window.location.origin + opt.dataset.url;
+    var qrData = 'ORDER:' + orderId + ':' + orderUrl;
+    placeholder.style.display = 'none';
+    canvasContainer.style.display = 'block';
+    qrLabel.textContent = 'Заказ #' + orderId + ' · ' + opt.dataset.status;
+    qrDisplay.innerHTML = '';
+    qrInstance = new QRCode(qrDisplay, {
+      text: qrData,
+      width: 160,
+      height: 160,
+      colorDark: '#ECECEC',
+      colorLight: '#1A1A1A',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    downloadBtn.disabled = false;
+    printBtn.disabled = false;
+  });
+
+  downloadBtn.addEventListener('click', function() {
+    var img = qrDisplay.querySelector('img');
+    var canvas = qrDisplay.querySelector('canvas');
+    var src = img ? img.src : (canvas ? canvas.toDataURL() : null);
+    if (!src) return;
+    var a = document.createElement('a');
+    a.href = src;
+    var opt = orderSelect.options[orderSelect.selectedIndex];
+    a.download = 'qr-order-' + opt.value + '.png';
+    a.click();
+  });
+
+  printBtn.addEventListener('click', function() {
+    var img = qrDisplay.querySelector('img');
+    var canvas = qrDisplay.querySelector('canvas');
+    var src = img ? img.src : (canvas ? canvas.toDataURL() : null);
+    if (!src) return;
+    var opt = orderSelect.options[orderSelect.selectedIndex];
+    var win = window.open('', '_blank');
+    win.document.write(
+      '<html><body style="text-align:center;font-family:sans-serif;background:#fff;">' +
+      '<h2 style="color:#111;">Заказ #' + opt.value + '</h2>' +
+      '<img src="' + src + '" style="width:220px;height:220px;" />' +
+      '<p style="color:#555;font-size:13px;">' + opt.dataset.status + '</p>' +
+      '<script>window.onload=function(){window.print();}<\/script>' +
+      '</body></html>'
+    );
+    win.document.close();
+  });
+
+  // ─── QR Scanner ───
+  var camBtn = document.getElementById('qr-cam-btn');
+  var scannerIdle = document.getElementById('qr-scanner-idle');
+  var scannerVideo = document.getElementById('qr-scanner-video');
+  var corners = ['tl','tr','bl','br'].map(function(c) { return document.getElementById('qr-corner-' + c); });
+  var scanResult = document.getElementById('qr-scan-result');
+  var manualInput = document.getElementById('qr-manual-input');
+  var orderInfo = document.getElementById('qr-order-info');
+  var confirmBtn = document.getElementById('qr-scan-confirm');
+  var clearBtn = document.getElementById('qr-scan-clear');
+  var stream = null;
+  var scanInterval = null;
+  var scannedValue = '';
+
+  // Build order lookup from select options
+  var orderMap = {};
+  Array.prototype.forEach.call(orderSelect.options, function(opt) {
+    if (opt.value) orderMap[opt.value] = opt;
+  });
+
+  // QR stage transition map: current → next
+  var QR_NEXT = {
+    'ready_to_ship': 'transit_abroad',
+    'transit_abroad': 'customs',
+    'customs': 'transit_rf',
+    'transit_rf': 'issuing',
+    'issuing': 'delivered',
+    'delivered': 'completed'
+  };
+
+  // Human-readable status labels
+  var STATUS_LABELS = {
+    'pending': 'Ожидание оплаты',
+    'reserve_paid': 'Резерв оплачен',
+    'confirmed': 'Формирование заказа',
+    'in_production': 'В производстве',
+    'ready_to_ship': 'Готов к отгрузке',
+    'transit_abroad': 'Транзит Зарубеж',
+    'customs': 'Таможня',
+    'transit_rf': 'Транзит РФ',
+    'issuing': 'Выдача',
+    'shipped': 'Отгружен',
+    'delivered': 'Доставлен',
+    'completed': 'Завершён',
+    'cancelled': 'Отменён'
+  };
+
+  camBtn.addEventListener('click', function() {
+    if (stream) {
+      stopCamera();
+      camBtn.textContent = '📷 Камера';
+    } else {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function(s) {
+          stream = s;
+          scannerVideo.srcObject = s;
+          scannerVideo.style.display = 'block';
+          scannerIdle.style.display = 'none';
+          corners.forEach(function(c) { c.style.display = 'block'; });
+          camBtn.textContent = '■ Стоп';
+
+          if ('BarcodeDetector' in window) {
+            var detector = new BarcodeDetector({ formats: ['qr_code'] });
+            scanInterval = setInterval(function() {
+              if (scannerVideo.readyState >= 2) {
+                detector.detect(scannerVideo).then(function(codes) {
+                  if (codes.length > 0) {
+                    processQR(codes[0].rawValue);
+                    stopCamera();
+                  }
+                }).catch(function() {});
+              }
+            }, 500);
+          }
+        })
+        .catch(function() {
+          scannerIdle.querySelector('.qr-scanner-idle-text').textContent = 'Камера недоступна — введите код вручную';
+        });
+    }
+  });
+
+  function stopCamera() {
+    if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+    if (stream) { stream.getTracks().forEach(function(t) { t.stop(); }); stream = null; }
+    scannerVideo.style.display = 'none';
+    scannerIdle.style.display = '';
+    corners.forEach(function(c) { c.style.display = 'none'; });
+    camBtn.textContent = '📷 Камера';
+  }
+
+  function processQR(value) {
+    scannedValue = value;
+    scanResult.textContent = '✓ Считан: ' + value;
+    scanResult.style.display = 'block';
+
+    // Parse ORDER:id:url format
+    var orderId = null;
+    if (value.indexOf('ORDER:') === 0) {
+      orderId = value.split(':')[1];
+    } else if (/^\d+$/.test(value.trim())) {
+      orderId = value.trim();
+    }
+
+    var nextEl = document.getElementById('qr-info-next');
+    var kanbanLink = document.getElementById('qr-info-kanban-link');
+
+    if (orderId && orderMap[orderId]) {
+      var opt = orderMap[orderId];
+      var rawStatus = opt.dataset.rawStatus;
+      var nextStatus = QR_NEXT[rawStatus];
+
+      document.getElementById('qr-info-id').textContent = 'Заказ #' + orderId;
+      document.getElementById('qr-info-status').textContent = 'Текущий этап: ' + (STATUS_LABELS[rawStatus] || opt.dataset.status);
+
+      if (nextStatus) {
+        nextEl.textContent = '→ Следующий этап: ' + (STATUS_LABELS[nextStatus] || nextStatus);
+        nextEl.style.display = 'block';
+        document.getElementById('qr-info-meta').textContent = 'Нажмите «Подтвердить» для перевода заказа';
+        document.getElementById('qr-info-meta').style.color = '#8A8A8A';
+        confirmBtn.disabled = false;
+        confirmBtn.dataset.orderId = orderId;
+        confirmBtn.dataset.nextStatus = nextStatus;
+        confirmBtn.dataset.rawStatus = rawStatus;
+      } else {
+        nextEl.textContent = 'Нет доступного QR-перехода для этого этапа';
+        nextEl.style.display = 'block';
+        nextEl.style.color = '#8A8A8A';
+        document.getElementById('qr-info-meta').textContent = '';
+        confirmBtn.disabled = true;
+      }
+
+      kanbanLink.style.display = 'block';
+      orderInfo.style.display = 'block';
+    } else {
+      document.getElementById('qr-info-id').textContent = 'Код: ' + value;
+      document.getElementById('qr-info-status').textContent = orderId ? 'Заказ не найден в текущем списке' : 'Неизвестный формат';
+      nextEl.style.display = 'none';
+      document.getElementById('qr-info-meta').textContent = '';
+      kanbanLink.style.display = 'none';
+      orderInfo.style.display = 'block';
+      confirmBtn.disabled = true;
+    }
+    clearBtn.style.display = '';
+  }
+
+  manualInput.addEventListener('input', function() {
+    var v = manualInput.value.trim();
+    if (v.length >= 1) processQR(v);
+  });
+
+  clearBtn.addEventListener('click', function() {
+    scannedValue = '';
+    scanResult.style.display = 'none';
+    orderInfo.style.display = 'none';
+    document.getElementById('qr-info-next').style.display = 'none';
+    document.getElementById('qr-info-kanban-link').style.display = 'none';
+    confirmBtn.disabled = true;
+    clearBtn.style.display = 'none';
+    manualInput.value = '';
+  });
+
+  confirmBtn.addEventListener('click', function() {
+    var orderId = confirmBtn.dataset.orderId;
+    var nextStatus = confirmBtn.dataset.nextStatus;
+    if (!orderId || !nextStatus) return;
+
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Отправка…';
+
+    var url = '/seller/orders/' + orderId + '/status/';
+    var csrf = document.cookie.match(/csrftoken=([^;]+)/);
+    var fd = new FormData();
+    fd.append('csrfmiddlewaretoken', csrf ? csrf[1] : '');
+    fd.append('qr_code', scannedValue);
+    fd.append('status', nextStatus);
+    fetch(url, { method: 'POST', body: fd })
+      .then(function(resp) {
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        var label = STATUS_LABELS[nextStatus] || nextStatus;
+        document.getElementById('qr-info-meta').innerHTML =
+          '<span style="color:#64B5F6;font-weight:600;">✓ Заказ #' + orderId + ' переведён на этап: ' + label + '</span>';
+        document.getElementById('qr-info-next').textContent = '';
+        confirmBtn.textContent = 'Подтвердить этап';
+
+        // Update option data so re-scan shows correct status
+        if (orderMap[orderId]) {
+          orderMap[orderId].dataset.rawStatus = nextStatus;
+          orderMap[orderId].dataset.status = label;
+          orderMap[orderId].textContent = 'Заказ #' + orderId + ' · ' + label;
+        }
+
+        setTimeout(function() { location.reload(); }, 1500);
+      })
+      .catch(function() {
+        document.getElementById('qr-info-meta').textContent = 'Ошибка сети, попробуйте снова';
+        document.getElementById('qr-info-meta').style.color = '#FF8C42';
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Подтвердить этап';
+      });
+  });
+
+})();
+</script>
+{% endblock %}

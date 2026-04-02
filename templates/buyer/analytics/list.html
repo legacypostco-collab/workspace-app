@@ -1,0 +1,535 @@
+{% extends "buyer/base_buyer.html" %}
+
+{% block title %}Аналитика{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════ Buyer Analytics page ══════════ */
+
+.ban-hero { margin-bottom:16px; }
+.ban-hero-title {
+  font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC;
+}
+.ban-hero-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
+
+/* Tabs */
+.ban-tabs {
+  display:flex;gap:4px;margin-bottom:18px;
+  border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:0;
+}
+.ban-tab {
+  padding:8px 18px;font-size:13px;font-weight:600;color:#6A6A6A;
+  cursor:pointer;border:none;background:none;
+  border-bottom:2px solid transparent;transition:all .15s;
+  margin-bottom:-1px;
+}
+.ban-tab:hover { color:#919191; }
+.ban-tab.active {
+  color:#64B5F6;border-bottom-color:#64B5F6;
+}
+
+/* Panel */
+.ban-panel { display:none; }
+.ban-panel.active { display:block; }
+
+/* Reports grid */
+.ban-reports-grid {
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+}
+@media(max-width:800px){ .ban-reports-grid { grid-template-columns:repeat(2,1fr); } }
+
+.ban-report-card {
+  background:#1A1A1A;border-radius:14px;padding:18px;
+  border:1px solid rgba(255,255,255,0.04);
+  cursor:pointer;transition:all .15s;
+}
+.ban-report-card:hover { border-color:rgba(100,181,246,0.15); }
+
+.ban-report-icon {
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:12px;font-size:16px;
+}
+.ban-report-icon--blue { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.ban-report-icon--green { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.ban-report-icon--orange { background:rgba(232,92,13,0.12);color:#E85C0D; }
+.ban-report-icon--red { background:rgba(224,85,85,0.12);color:#E05555; }
+
+.ban-report-name {
+  font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;
+  color:#ECECEC;margin-bottom:4px;
+}
+.ban-report-desc { font-size:11px;color:#6A6A6A;line-height:1.4; }
+.ban-report-meta {
+  margin-top:10px;display:flex;justify-content:space-between;align-items:center;
+  font-size:10px;
+}
+.ban-report-period { color:#919191; }
+.ban-report-link {
+  color:#64B5F6;font-weight:600;text-decoration:none;
+}
+.ban-report-link:hover { text-decoration:underline; }
+
+/* Economy section */
+.ban-econ-cards {
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;
+}
+.ban-econ-card {
+  background:#1A1A1A;border-radius:12px;padding:16px;
+  border:1px solid rgba(255,255,255,0.04);
+}
+.ban-econ-label {
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+  color:#919191;margin-bottom:6px;
+}
+.ban-econ-val {
+  font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;
+  font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
+}
+.ban-econ-hint { font-size:11px;margin-top:4px;font-weight:400; }
+
+/* Economy breakdown table */
+.ban-econ-table-wrap {
+  background:#1A1A1A;border-radius:14px;border:1px solid rgba(255,255,255,0.04);
+  overflow:hidden;
+}
+.ban-table { width:100%;border-collapse:collapse; }
+.ban-table th {
+  text-align:left;padding:8px 12px;font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.05em;color:#919191;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.ban-table td {
+  padding:12px;font-size:13px;color:#ECECEC;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  vertical-align:middle;
+}
+.ban-table tbody tr { transition:background .12s; }
+.ban-table tbody tr:hover { background:rgba(255,255,255,0.03); }
+.ban-muted { color:#6A6A6A;font-size:11px; }
+.ban-amount {
+  font-family:'Golos Text',sans-serif;font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+
+/* KPI comparison table */
+.ban-kpi-table-wrap {
+  background:#1A1A1A;border-radius:14px;border:1px solid rgba(255,255,255,0.04);
+  overflow:hidden;
+}
+
+/* Progress bar inline */
+.ban-prog-track {
+  width:80px;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;
+  overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px;
+}
+.ban-prog-fill {
+  height:100%;border-radius:3px;
+}
+.ban-prog-fill--green { background:#64B5F6; }
+.ban-prog-fill--blue { background:#64B5F6; }
+.ban-prog-fill--orange { background:#E85C0D; }
+.ban-prog-fill--red { background:#E05555; }
+
+.ban-kpi-val {
+  font-size:12px;font-weight:600;display:inline-block;vertical-align:middle;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="ban-hero">
+  <div class="ban-hero-title">Аналитика</div>
+  <div class="ban-hero-sub">Отчёты, экономия и KPI поставщиков</div>
+</section>
+
+<!-- Tabs -->
+<div class="ban-tabs">
+  <button class="ban-tab active" data-tab="reports">Отчёты</button>
+  <button class="ban-tab" data-tab="economy">Экономия</button>
+  <button class="ban-tab" data-tab="kpi">KPI поставщиков</button>
+</div>
+
+<!-- ═══ Reports tab ═══ -->
+<div class="ban-panel active" id="panel-reports">
+  <div class="ban-reports-grid">
+
+    <div class="ban-report-card">
+      <div class="ban-report-icon ban-report-icon--blue">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+      </div>
+      <div class="ban-report-name">Закупки</div>
+      <div class="ban-report-desc">Объём закупок по категориям, поставщикам и периодам. Динамика расходов.</div>
+      <div class="ban-report-meta">
+        <span class="ban-report-period">Q1 2026</span>
+        <a href="#" class="ban-report-link">Открыть</a>
+      </div>
+    </div>
+
+    <div class="ban-report-card">
+      <div class="ban-report-icon ban-report-icon--green">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      </div>
+      <div class="ban-report-name">Бюджет</div>
+      <div class="ban-report-desc">Исполнение бюджета, план-факт анализ, прогноз расходов до конца квартала.</div>
+      <div class="ban-report-meta">
+        <span class="ban-report-period">Q1 2026</span>
+        <a href="#" class="ban-report-link">Открыть</a>
+      </div>
+    </div>
+
+    <div class="ban-report-card">
+      <div class="ban-report-icon ban-report-icon--orange">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      </div>
+      <div class="ban-report-name">Поставщики</div>
+      <div class="ban-report-desc">Сравнительный анализ поставщиков: цены, сроки, качество, надёжность.</div>
+      <div class="ban-report-meta">
+        <span class="ban-report-period">Март 2026</span>
+        <a href="#" class="ban-report-link">Открыть</a>
+      </div>
+    </div>
+
+    <div class="ban-report-card">
+      <div class="ban-report-icon ban-report-icon--blue">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13"/><polygon points="23 7 16 12 16 7 23 7"/><line x1="1" y1="20" x2="23" y2="20"/></svg>
+      </div>
+      <div class="ban-report-name">Логистика</div>
+      <div class="ban-report-desc">Сроки доставки, маршруты, стоимость логистики, задержки на таможне.</div>
+      <div class="ban-report-meta">
+        <span class="ban-report-period">Q1 2026</span>
+        <a href="#" class="ban-report-link">Открыть</a>
+      </div>
+    </div>
+
+    <div class="ban-report-card">
+      <div class="ban-report-icon ban-report-icon--green">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      </div>
+      <div class="ban-report-name">Экономия переторжки</div>
+      <div class="ban-report-desc">Эффективность переговоров: запрошенные и полученные скидки, ROI переторжки.</div>
+      <div class="ban-report-meta">
+        <span class="ban-report-period">2026</span>
+        <a href="#" class="ban-report-link">Открыть</a>
+      </div>
+    </div>
+
+    <div class="ban-report-card">
+      <div class="ban-report-icon ban-report-icon--red">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div class="ban-report-name">Рекламации</div>
+      <div class="ban-report-desc">Статистика претензий по типам, поставщикам. Среднее время решения и компенсации.</div>
+      <div class="ban-report-meta">
+        <span class="ban-report-period">2026</span>
+        <a href="#" class="ban-report-link">Открыть</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ Economy tab ═══ -->
+<div class="ban-panel" id="panel-economy">
+
+  <div class="ban-econ-cards">
+    <div class="ban-econ-card">
+      <div class="ban-econ-label">Экономия переторжкой</div>
+      <div class="ban-econ-val" style="color:#64B5F6;">$8,520</div>
+      <div class="ban-econ-hint" style="color:#64B5F6;">11 сделок в Q1</div>
+    </div>
+    <div class="ban-econ-card">
+      <div class="ban-econ-label">Объёмные скидки</div>
+      <div class="ban-econ-val" style="color:#64B5F6;">$3,820</div>
+      <div class="ban-econ-hint" style="color:#64B5F6;">пакетные заказы</div>
+    </div>
+    <div class="ban-econ-card">
+      <div class="ban-econ-label">Общая экономия Q1</div>
+      <div class="ban-econ-val" style="color:#64B5F6;">$12,340</div>
+      <div class="ban-econ-hint" style="color:#919191;">8.6% от оборота</div>
+    </div>
+  </div>
+
+  <div class="ban-econ-table-wrap">
+    <table class="ban-table">
+      <thead>
+        <tr>
+          <th>Источник экономии</th>
+          <th>Поставщик</th>
+          <th>Базовая сумма</th>
+          <th>Финальная сумма</th>
+          <th>Экономия</th>
+          <th>%</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Переторжка<br><span class="ban-muted">Ходовая часть PC300</span></td>
+          <td>Поставщик #4291</td>
+          <td class="ban-amount">$21,000</td>
+          <td class="ban-amount">$18,900</td>
+          <td class="ban-amount" style="color:#64B5F6;">$2,100</td>
+          <td style="color:#64B5F6;font-weight:700;">10%</td>
+        </tr>
+        <tr>
+          <td>Переторжка<br><span class="ban-muted">Коронки ковша</span></td>
+          <td>Поставщик #3156</td>
+          <td class="ban-amount">$6,300</td>
+          <td class="ban-amount">$5,670</td>
+          <td class="ban-amount" style="color:#64B5F6;">$630</td>
+          <td style="color:#64B5F6;font-weight:700;">10%</td>
+        </tr>
+        <tr>
+          <td>Переторжка<br><span class="ban-muted">Электрика CAT D6R</span></td>
+          <td>Поставщик #2087</td>
+          <td class="ban-amount">$2,450</td>
+          <td class="ban-amount">$2,180</td>
+          <td class="ban-amount" style="color:#64B5F6;">$270</td>
+          <td style="color:#64B5F6;font-weight:700;">11%</td>
+        </tr>
+        <tr>
+          <td>Объёмная скидка<br><span class="ban-muted">Фильтры пакет (50 шт.)</span></td>
+          <td>Поставщик #1042</td>
+          <td class="ban-amount">$2,125</td>
+          <td class="ban-amount">$1,700</td>
+          <td class="ban-amount" style="color:#64B5F6;">$425</td>
+          <td style="color:#64B5F6;font-weight:700;">20%</td>
+        </tr>
+        <tr>
+          <td>Объёмная скидка<br><span class="ban-muted">Масляные фильтры (30 шт.)</span></td>
+          <td>Поставщик #5673</td>
+          <td class="ban-amount">$1,650</td>
+          <td class="ban-amount">$1,420</td>
+          <td class="ban-amount" style="color:#64B5F6;">$230</td>
+          <td style="color:#64B5F6;font-weight:700;">14%</td>
+        </tr>
+        <tr>
+          <td>Переторжка<br><span class="ban-muted">Ремкомплект гидромотора</span></td>
+          <td>Поставщик #1042</td>
+          <td class="ban-amount">$1,680</td>
+          <td class="ban-amount">$1,428</td>
+          <td class="ban-amount" style="color:#64B5F6;">$252</td>
+          <td style="color:#64B5F6;font-weight:700;">15%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ═══ KPI tab ═══ -->
+<div class="ban-panel" id="panel-kpi">
+
+  <div class="ban-kpi-table-wrap">
+    <table class="ban-table">
+      <thead>
+        <tr>
+          <th>Поставщик</th>
+          <th>Качество</th>
+          <th>Скорость доставки</th>
+          <th>SLA</th>
+          <th>Цены</th>
+          <th>Рейтинг</th>
+          <th>Заказов</th>
+          <th>Рекламации</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <div style="font-weight:600;">Поставщик #1042</div>
+            <div class="ban-muted">Китай</div>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--green" style="width:95%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">95%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--blue" style="width:88%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">88%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--green" style="width:96%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">96%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--blue" style="width:82%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">82%</span>
+          </td>
+          <td><span style="color:#E85C0D;">&#9733;</span> <strong>4.8</strong></td>
+          <td>14</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>
+            <div style="font-weight:600;">Поставщик #4291</div>
+            <div class="ban-muted">Япония</div>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--green" style="width:98%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">98%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--green" style="width:96%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">96%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--green" style="width:100%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">100%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--orange" style="width:68%"></div></div>
+            <span class="ban-kpi-val" style="color:#E85C0D;">68%</span>
+          </td>
+          <td><span style="color:#E85C0D;">&#9733;</span> <strong>4.9</strong></td>
+          <td>4</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>
+            <div style="font-weight:600;">Поставщик #2087</div>
+            <div class="ban-muted">Китай</div>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--green" style="width:90%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">90%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--green" style="width:92%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">92%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--blue" style="width:91%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">91%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--green" style="width:90%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">90%</span>
+          </td>
+          <td><span style="color:#E85C0D;">&#9733;</span> <strong>4.6</strong></td>
+          <td>9</td>
+          <td>0</td>
+        </tr>
+        <tr>
+          <td>
+            <div style="font-weight:600;">Поставщик #3156</div>
+            <div class="ban-muted">Китай</div>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--blue" style="width:85%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">85%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--orange" style="width:72%"></div></div>
+            <span class="ban-kpi-val" style="color:#E85C0D;">72%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--orange" style="width:84%"></div></div>
+            <span class="ban-kpi-val" style="color:#E85C0D;">84%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--green" style="width:94%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">94%</span>
+          </td>
+          <td><span style="color:#E85C0D;">&#9733;</span> <strong>4.2</strong></td>
+          <td>6</td>
+          <td>0</td>
+        </tr>
+        <tr>
+          <td>
+            <div style="font-weight:600;">Поставщик #5673</div>
+            <div class="ban-muted">Китай</div>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--blue" style="width:87%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">87%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--blue" style="width:85%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">85%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--blue" style="width:89%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">89%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--blue" style="width:88%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">88%</span>
+          </td>
+          <td><span style="color:#E85C0D;">&#9733;</span> <strong>4.4</strong></td>
+          <td>3</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>
+            <div style="font-weight:600;">TurboTech Asia</div>
+            <div class="ban-muted">Тайбэй, Тайвань</div>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--green" style="width:93%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">93%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--orange" style="width:78%"></div></div>
+            <span class="ban-kpi-val" style="color:#E85C0D;">78%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--blue" style="width:86%"></div></div>
+            <span class="ban-kpi-val" style="color:#64B5F6;">86%</span>
+          </td>
+          <td>
+            <div class="ban-prog-track"><div class="ban-prog-fill ban-prog-fill--orange" style="width:75%"></div></div>
+            <span class="ban-kpi-val" style="color:#E85C0D;">75%</span>
+          </td>
+          <td><span style="color:#E85C0D;">&#9733;</span> <strong>4.7</strong></td>
+          <td>2</td>
+          <td>1</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+
+<script>
+(function(){
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.transform = 'translateY(0)';
+    t.style.opacity = '1';
+    setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
+  }
+
+  // Tab switching
+  document.querySelectorAll('.ban-tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.ban-tab').forEach(function(t){ t.classList.remove('active'); });
+      document.querySelectorAll('.ban-panel').forEach(function(p){ p.classList.remove('active'); });
+      this.classList.add('active');
+      var panelId = 'panel-' + this.dataset.tab;
+      document.getElementById(panelId).classList.add('active');
+      showToast('Раздел: ' + this.textContent.trim());
+    });
+  });
+
+  // Report cards clickable
+  document.querySelectorAll('.ban-report-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.closest('.ban-report-link')) {
+        e.preventDefault();
+      }
+      var name = card.querySelector('.ban-report-name');
+      var period = card.querySelector('.ban-report-period');
+      var nameText = name ? name.textContent : '';
+      var periodText = period ? period.textContent : '';
+      showToast('Генерация отчёта: ' + nameText + ' (' + periodText + ')');
+    });
+  });
+})();
+</script>
+
+{% endblock %}

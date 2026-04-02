@@ -1,0 +1,196 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}Модерация{% endblock %}
+{% block topbar_title %}Модерация{% endblock %}
+
+{% block content %}
+<div class="ap-stats">
+  <div class="ap-stat"><div class="ap-stat-value">18</div><div class="ap-stat-label">В очереди</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">2</div><div class="ap-stat-label">Новые поставщики</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">12</div><div class="ap-stat-label">Товары</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">4</div><div class="ap-stat-label">Рекламации</div></div>
+</div>
+
+<div class="ap-card">
+  <div class="ap-tabs">
+    <button class="ap-tab active" data-tab-group="mod" data-tab-key="all" onclick="apSwitchTab('mod','all');filterMod()">Все</button>
+    <button class="ap-tab" data-tab-group="mod" data-tab-key="suppliers" onclick="apSwitchTab('mod','suppliers');filterMod()">Поставщики</button>
+    <button class="ap-tab" data-tab-group="mod" data-tab-key="products" onclick="apSwitchTab('mod','products');filterMod()">Товары</button>
+    <button class="ap-tab" data-tab-group="mod" data-tab-key="claims" onclick="apSwitchTab('mod','claims');filterMod()">Рекламации</button>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:12px;" id="modCards">
+    <!-- Suppliers -->
+    <div class="ap-card-elevated mod-card" data-type="suppliers" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="ap-badge ap-badge-blue">Поставщик</span>
+          <span class="ap-badge ap-badge-gray">Обычный</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Foshan Metal Works — верификация нового поставщика</div>
+        <div style="font-size:12px;color:#919191;">Подал: Foshan Metal Works (info@foshanmetal.com) / 22.03.2026</div>
+        <div style="font-size:12px;color:#5E5E5E;margin-top:4px;">Документы загружены: бизнес-лицензия, сертификат ISO 9001</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Поставщик одобрен')">Одобрить</button>
+        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Поставщик отклонён')">Отклонить</button>
+        <button class="ap-btn ap-btn-ghost" onclick="apToast('Запрос отправлен')">Запросить доп. информацию</button>
+      </div>
+    </div>
+
+    <div class="ap-card-elevated mod-card" data-type="suppliers" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="ap-badge ap-badge-blue">Поставщик</span>
+          <span class="ap-badge ap-badge-orange">Высокий</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Dongguan Auto Comp. — верификация нового поставщика</div>
+        <div style="font-size:12px;color:#919191;">Подал: Dongguan Auto Comp. (dg@autocomp.cn) / 24.03.2026</div>
+        <div style="font-size:12px;color:#5E5E5E;margin-top:4px;">Документы: бизнес-лицензия, каталог, прайс-лист (2400 позиций)</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Поставщик одобрен')">Одобрить</button>
+        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Поставщик отклонён')">Отклонить</button>
+        <button class="ap-btn ap-btn-ghost" onclick="apToast('Запрос отправлен')">Запросить доп. информацию</button>
+      </div>
+    </div>
+
+    <!-- Products -->
+    <div class="ap-card-elevated mod-card" data-type="products" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="ap-badge ap-badge-gray">Товар</span>
+          <span class="ap-badge ap-badge-gray">Обычный</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">DG-184 Генератор Denso — новый товар</div>
+        <div style="font-size:12px;color:#919191;">Поставщик #3003 / 23.03.2026</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Товар одобрен')">Одобрить</button>
+        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Товар отклонён')">Отклонить</button>
+      </div>
+    </div>
+
+    <div class="ap-card-elevated mod-card" data-type="products" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="ap-badge ap-badge-gray">Товар</span>
+          <span class="ap-badge ap-badge-gray">Обычный</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">CT1092 Ремень ГРМ Continental — новый товар</div>
+        <div style="font-size:12px;color:#919191;">Поставщик #3156 / 22.03.2026</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Товар одобрен')">Одобрить</button>
+        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Товар отклонён')">Отклонить</button>
+      </div>
+    </div>
+
+    <div class="ap-card-elevated mod-card" data-type="products" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="ap-badge ap-badge-gray">Товар</span>
+          <span class="ap-badge ap-badge-gray">Обычный</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">CT2045 Натяжитель ремня Continental — новый товар</div>
+        <div style="font-size:12px;color:#919191;">Поставщик #3156 / 21.03.2026</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Товар одобрен')">Одобрить</button>
+        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Товар отклонён')">Отклонить</button>
+      </div>
+    </div>
+
+    <div class="ap-card-elevated mod-card" data-type="products" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="ap-badge ap-badge-gray">Товар</span>
+          <span class="ap-badge ap-badge-gray">Обычный</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Batch: 8 товаров от поставщика #3002 — массовая загрузка</div>
+        <div style="font-size:12px;color:#919191;">Поставщик #3002 / 20.03.2026</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('8 товаров одобрены')">Одобрить все</button>
+        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Отклонено')">Отклонить</button>
+        <button class="ap-btn ap-btn-ghost" onclick="apToast('Просмотр деталей')">Детали</button>
+      </div>
+    </div>
+
+    <!-- Claims -->
+    <div class="ap-card-elevated mod-card" data-type="claims" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="ap-badge ap-badge-orange">Рекламация</span>
+          <span class="ap-badge ap-badge-orange">Высокий</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">ORD-4501 — несоответствие 2 позиций спецификации</div>
+        <div style="font-size:12px;color:#919191;">Покупатель #1033 / 24.03.2026</div>
+        <div style="font-size:12px;color:#5E5E5E;margin-top:4px;">Поставщик #3148, сумма $6,200. Фото несоответствия загружены.</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="ap-btn ap-btn-primary" onclick="apToast('Возврат оформлен')">Возврат</button>
+        <button class="ap-btn ap-btn-ghost" onclick="apToast('Запрос отправлен поставщику')">Запросить доп. информацию</button>
+      </div>
+    </div>
+
+    <div class="ap-card-elevated mod-card" data-type="claims" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="ap-badge ap-badge-orange">Рекламация</span>
+          <span class="ap-badge ap-badge-gray">Обычный</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">ORD-4488 — повреждение упаковки при доставке</div>
+        <div style="font-size:12px;color:#919191;">Покупатель #1020 / 22.03.2026</div>
+        <div style="font-size:12px;color:#5E5E5E;margin-top:4px;">Поставщик #3001, товар исправен, упаковка повреждена.</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Компенсация оформлена')">Компенсация</button>
+        <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали')">Детали</button>
+      </div>
+    </div>
+
+    <div class="ap-card-elevated mod-card" data-type="claims" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="ap-badge ap-badge-orange">Рекламация</span>
+          <span class="ap-badge ap-badge-gray">Обычный</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">ORD-4476 — задержка доставки 5 дней</div>
+        <div style="font-size:12px;color:#919191;">Покупатель #1018 / 20.03.2026</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Решение принято')">Компенсация</button>
+        <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали')">Детали</button>
+      </div>
+    </div>
+
+    <div class="ap-card-elevated mod-card" data-type="claims" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span class="ap-badge ap-badge-orange">Рекламация</span>
+          <span class="ap-badge ap-badge-orange">Высокий</span>
+        </div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">ORD-4462 — подмена бренда (Fake vs OEM)</div>
+        <div style="font-size:12px;color:#919191;">Покупатель #1015 / 18.03.2026</div>
+        <div style="font-size:12px;color:#5E5E5E;margin-top:4px;">Поставщик #3140. Требуется экспертиза.</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="ap-btn ap-btn-warn" onclick="apToast('Эскалация отправлена')">Эскалировать</button>
+        <button class="ap-btn ap-btn-ghost" onclick="apToast('Запрос отправлен')">Запросить доп. информацию</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterMod() {
+  var tab = document.querySelector('.ap-tab.active[data-tab-group="mod"]').dataset.tabKey;
+  document.querySelectorAll('.mod-card').forEach(function(card) {
+    if (tab === 'all') { card.style.display = ''; return; }
+    card.style.display = card.dataset.type === tab ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

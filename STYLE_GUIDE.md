@@ -3,7 +3,7 @@
 ## Посмотреть библиотеки
 
 ```bash
-cd "/Users/konastantinverveyn/Documents/Проект/django_marketplace"
+cd "/path/to/workspace-app"
 source .venv/bin/activate
 make libs
 ```

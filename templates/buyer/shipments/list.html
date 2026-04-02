@@ -1,0 +1,396 @@
+{% extends "buyer/base_buyer.html" %}
+
+{% block title %}Отгрузки{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════ Shipments page ══════════ */
+
+.shp-hero { margin-bottom:16px; }
+.shp-hero-title {
+  font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC;
+}
+.shp-hero-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
+
+/* Summary stats */
+.shp-summary {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;
+}
+.shp-summary-card {
+  background:#1A1A1A;border-radius:12px;padding:14px 16px;
+  border:1px solid rgba(255,255,255,0.04);
+}
+.shp-summary-label {
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+  color:#919191;margin-bottom:6px;
+}
+.shp-summary-val {
+  font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;
+  font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
+}
+
+/* Shipment cards */
+.shp-cards { display:flex;flex-direction:column;gap:12px; }
+
+.shp-card {
+  background:#1A1A1A;border-radius:14px;padding:20px;
+  border:1px solid rgba(255,255,255,0.04);
+}
+.shp-card-head {
+  display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;
+}
+.shp-card-id {
+  font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#64B5F6;
+}
+.shp-card-order { font-size:11px;color:#6A6A6A;margin-top:2px; }
+.shp-card-eta {
+  text-align:right;
+}
+.shp-eta-label { font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.05em; }
+.shp-eta-val {
+  font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;
+}
+
+/* Info grid */
+.shp-info {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;
+}
+.shp-info-item {}
+.shp-info-label { font-size:10px;color:#6A6A6A;margin-bottom:3px; }
+.shp-info-val { font-size:12px;color:#ECECEC;font-weight:500; }
+
+/* Timeline */
+.shp-timeline {
+  display:flex;align-items:flex-start;position:relative;padding:0 8px;
+}
+.shp-step {
+  flex:1;display:flex;flex-direction:column;align-items:center;position:relative;
+}
+.shp-step-dot {
+  width:14px;height:14px;border-radius:50%;z-index:2;
+  border:2px solid transparent;
+  display:flex;align-items:center;justify-content:center;
+}
+.shp-step--done .shp-step-dot {
+  background:#28C840;border-color:#28C840;
+}
+.shp-step--active .shp-step-dot {
+  background:#64B5F6;border-color:#64B5F6;
+  box-shadow:0 0 8px rgba(100,181,246,0.4);
+}
+.shp-step--pending .shp-step-dot {
+  background:#2C2C2C;border-color:#484848;
+}
+.shp-step-line {
+  position:absolute;top:7px;left:calc(50% + 7px);right:calc(-50% + 7px);
+  height:2px;z-index:1;
+}
+.shp-step--done .shp-step-line { background:#28C840; }
+.shp-step--active .shp-step-line { background:linear-gradient(90deg,#64B5F6,#2C2C2C); }
+.shp-step--pending .shp-step-line { background:#2C2C2C; }
+.shp-step:last-child .shp-step-line { display:none; }
+
+.shp-step-label {
+  font-size:10px;font-weight:600;margin-top:6px;text-align:center;
+  line-height:1.2;
+}
+.shp-step--done .shp-step-label { color:#28C840; }
+.shp-step--active .shp-step-label { color:#64B5F6; }
+.shp-step--pending .shp-step-label { color:#484848; }
+
+.shp-step-date {
+  font-size:9px;color:#6A6A6A;margin-top:2px;text-align:center;
+}
+
+/* Check icon */
+.shp-check {
+  width:8px;height:8px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="shp-hero">
+  <div class="shp-hero-title">Отгрузки</div>
+  <div class="shp-hero-sub">Отслеживание грузов и логистика доставки</div>
+</section>
+
+<!-- Summary -->
+<div class="shp-summary">
+  <div class="shp-summary-card">
+    <div class="shp-summary-label">Всего отгрузок</div>
+    <div class="shp-summary-val" style="color:#ECECEC;">11</div>
+  </div>
+  <div class="shp-summary-card">
+    <div class="shp-summary-label">В пути</div>
+    <div class="shp-summary-val" style="color:#64B5F6;">2</div>
+  </div>
+  <div class="shp-summary-card">
+    <div class="shp-summary-label">На таможне</div>
+    <div class="shp-summary-val" style="color:#E85C0D;">1</div>
+  </div>
+  <div class="shp-summary-card">
+    <div class="shp-summary-label">Доставлено за месяц</div>
+    <div class="shp-summary-val" style="color:#28C840;">8</div>
+  </div>
+</div>
+
+<!-- Shipment cards -->
+<div class="shp-cards">
+
+  <!-- Shipment 1: In transit (early stage) -->
+  <div class="shp-card">
+    <div class="shp-card-head">
+      <div>
+        <div class="shp-card-id">SHP-2026-0089</div>
+        <div class="shp-card-order">Заказ ORD-2026-0142 &middot; Поставщик #1042</div>
+      </div>
+      <div class="shp-card-eta">
+        <div class="shp-eta-label">Ожидаемая доставка</div>
+        <div class="shp-eta-val">18 апреля 2026</div>
+      </div>
+    </div>
+    <div class="shp-info">
+      <div class="shp-info-item">
+        <div class="shp-info-label">Маршрут</div>
+        <div class="shp-info-val">Шанхай &rarr; Владивосток</div>
+      </div>
+      <div class="shp-info-item">
+        <div class="shp-info-label">Перевозчик</div>
+        <div class="shp-info-val">COSCO Shipping</div>
+      </div>
+      <div class="shp-info-item">
+        <div class="shp-info-label">Контейнер</div>
+        <div class="shp-info-val">CSLU2184537</div>
+      </div>
+      <div class="shp-info-item">
+        <div class="shp-info-label">Вес / Объём</div>
+        <div class="shp-info-val">1,240 кг / 2.8 CBM</div>
+      </div>
+    </div>
+    <div class="shp-timeline">
+      <div class="shp-step shp-step--done">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot">
+          <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="shp-step-label">Забор<br>груза</div>
+        <div class="shp-step-date">20.03</div>
+      </div>
+      <div class="shp-step shp-step--active">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot"></div>
+        <div class="shp-step-label">В пути<br>(морем)</div>
+        <div class="shp-step-date">22.03 &mdash;</div>
+      </div>
+      <div class="shp-step shp-step--pending">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot"></div>
+        <div class="shp-step-label">Порт<br>прибытия</div>
+        <div class="shp-step-date">~10.04</div>
+      </div>
+      <div class="shp-step shp-step--pending">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot"></div>
+        <div class="shp-step-label">Таможня</div>
+        <div class="shp-step-date">~13.04</div>
+      </div>
+      <div class="shp-step shp-step--pending">
+        <div class="shp-step-dot"></div>
+        <div class="shp-step-label">Доставка</div>
+        <div class="shp-step-date">~18.04</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shipment 2: Customs -->
+  <div class="shp-card">
+    <div class="shp-card-head">
+      <div>
+        <div class="shp-card-id">SHP-2026-0074</div>
+        <div class="shp-card-order">Заказ ORD-2026-0131 &middot; Поставщик #3156</div>
+      </div>
+      <div class="shp-card-eta">
+        <div class="shp-eta-label">Ожидаемая доставка</div>
+        <div class="shp-eta-val">26 марта 2026</div>
+      </div>
+    </div>
+    <div class="shp-info">
+      <div class="shp-info-item">
+        <div class="shp-info-label">Маршрут</div>
+        <div class="shp-info-val">Циндао &rarr; Новороссийск</div>
+      </div>
+      <div class="shp-info-item">
+        <div class="shp-info-label">Перевозчик</div>
+        <div class="shp-info-val">Maersk Line</div>
+      </div>
+      <div class="shp-info-item">
+        <div class="shp-info-label">Контейнер</div>
+        <div class="shp-info-val">MAEU7291045</div>
+      </div>
+      <div class="shp-info-item">
+        <div class="shp-info-label">Вес / Объём</div>
+        <div class="shp-info-val">380 кг / 0.9 CBM</div>
+      </div>
+    </div>
+    <div class="shp-timeline">
+      <div class="shp-step shp-step--done">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot">
+          <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="shp-step-label">Забор<br>груза</div>
+        <div class="shp-step-date">01.03</div>
+      </div>
+      <div class="shp-step shp-step--done">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot">
+          <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="shp-step-label">В пути<br>(морем)</div>
+        <div class="shp-step-date">03.03 &mdash; 18.03</div>
+      </div>
+      <div class="shp-step shp-step--done">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot">
+          <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="shp-step-label">Порт<br>прибытия</div>
+        <div class="shp-step-date">19.03</div>
+      </div>
+      <div class="shp-step shp-step--active">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot"></div>
+        <div class="shp-step-label">Таможня</div>
+        <div class="shp-step-date">20.03 &mdash;</div>
+      </div>
+      <div class="shp-step shp-step--pending">
+        <div class="shp-step-dot"></div>
+        <div class="shp-step-label">Доставка</div>
+        <div class="shp-step-date">~26.03</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shipment 3: In transit (late stage) -->
+  <div class="shp-card">
+    <div class="shp-card-head">
+      <div>
+        <div class="shp-card-id">SHP-2026-0081</div>
+        <div class="shp-card-order">Заказ ORD-2026-0138 &middot; Поставщик #2087</div>
+      </div>
+      <div class="shp-card-eta">
+        <div class="shp-eta-label">Ожидаемая доставка</div>
+        <div class="shp-eta-val">28 марта 2026</div>
+      </div>
+    </div>
+    <div class="shp-info">
+      <div class="shp-info-item">
+        <div class="shp-info-label">Маршрут</div>
+        <div class="shp-info-val">Гуанчжоу &rarr; Москва (авиа)</div>
+      </div>
+      <div class="shp-info-item">
+        <div class="shp-info-label">Перевозчик</div>
+        <div class="shp-info-val">Cainiao Logistics</div>
+      </div>
+      <div class="shp-info-item">
+        <div class="shp-info-label">Трекинг</div>
+        <div class="shp-info-val">CN902847561RU</div>
+      </div>
+      <div class="shp-info-item">
+        <div class="shp-info-label">Вес / Объём</div>
+        <div class="shp-info-val">86 кг / 0.3 CBM</div>
+      </div>
+    </div>
+    <div class="shp-timeline">
+      <div class="shp-step shp-step--done">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot">
+          <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="shp-step-label">Забор<br>груза</div>
+        <div class="shp-step-date">08.03</div>
+      </div>
+      <div class="shp-step shp-step--done">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot">
+          <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="shp-step-label">Вылет<br>(авиа)</div>
+        <div class="shp-step-date">10.03</div>
+      </div>
+      <div class="shp-step shp-step--done">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot">
+          <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="shp-step-label">Прибытие<br>в аэропорт</div>
+        <div class="shp-step-date">12.03</div>
+      </div>
+      <div class="shp-step shp-step--done">
+        <div class="shp-step-line"></div>
+        <div class="shp-step-dot">
+          <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="shp-step-label">Таможня</div>
+        <div class="shp-step-date">13.03 &mdash; 24.03</div>
+      </div>
+      <div class="shp-step shp-step--active">
+        <div class="shp-step-dot"></div>
+        <div class="shp-step-label">Доставка<br>курьером</div>
+        <div class="shp-step-date">~28.03</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+
+<script>
+(function(){
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.transform = 'translateY(0)';
+    t.style.opacity = '1';
+    setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
+  }
+
+  // Timeline steps: click to show detail
+  document.querySelectorAll('.shp-card').forEach(function(card) {
+    var id = card.querySelector('.shp-card-id');
+    var idText = id ? id.textContent : '';
+
+    // Click on card header to show shipment info
+    var head = card.querySelector('.shp-card-head');
+    if (head) {
+      head.style.cursor = 'pointer';
+      head.addEventListener('click', function() {
+        var eta = card.querySelector('.shp-eta-val');
+        var etaText = eta ? eta.textContent : '';
+        var route = card.querySelector('.shp-info-val');
+        var routeText = route ? route.textContent : '';
+        showToast(idText + ' | ' + routeText + ' | ETA: ' + etaText);
+      });
+    }
+
+    // Timeline steps clickable
+    card.querySelectorAll('.shp-step').forEach(function(step) {
+      step.style.cursor = 'pointer';
+      step.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var label = step.querySelector('.shp-step-label');
+        var date = step.querySelector('.shp-step-date');
+        var labelText = label ? label.textContent.replace(/\n/g, ' ').replace(/<br\s*\/?>/gi, ' ') : '';
+        var dateText = date ? date.textContent : '';
+        var status = step.classList.contains('shp-step--done') ? 'Завершён' : step.classList.contains('shp-step--active') ? 'В процессе' : 'Ожидается';
+        showToast(idText + ': ' + labelText.trim() + ' (' + dateText + ') — ' + status);
+      });
+    });
+  });
+})();
+</script>
+
+{% endblock %}

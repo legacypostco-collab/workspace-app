@@ -1,0 +1,52 @@
+{% extends "seller/base_seller.html" %}
+{% block title %}Запросы клиентов{% endblock %}
+{% block content %}
+<section class="panel" style="margin-bottom: 16px;">
+  <form method="get" action="{% url 'seller_request_list' %}" class="upload-form">
+    <p>
+      <label for="id_q">Поиск по клиенту / RFQ / OEM</label>
+      <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Например, Demo Fleet или RE48786" />
+    </p>
+    <p>
+      <label for="id_status">Статус RFQ</label>
+      <select id="id_status" name="status">
+        <option value="">Все</option>
+        {% for value, label in status_choices %}
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </p>
+    <div class="card-actions">
+      <button class="btn" type="submit">Применить фильтры</button>
+      {% if query or status %}
+        <a class="btn btn-secondary" href="{% url 'seller_request_list' %}">Сбросить</a>
+      {% endif %}
+    </div>
+  </form>
+</section>
+
+<div class="list">
+  {% for row in rfq_rows %}
+    <article class="list-row">
+      <div>
+        <h3>RFQ #{{ row.rfq.id }}</h3>
+        <p class="muted">{{ row.rfq.company_name|default:row.rfq.customer_name }} • {{ row.rfq.created_at|date:"Y-m-d H:i" }}</p>
+        <p class="muted">Статус: {{ row.rfq.get_status_display }} • Ваших позиций: {{ row.seller_items_count }} • Общее количество: {{ row.total_qty }}</p>
+        <p class="muted">Оценка по вашим позициям: <strong>${{ row.estimated_total }}</strong>
+          {% if row.rfq.discount_percent %} <span class="chip" style="padding:2px 8px;font-size:11px;"><span style="color:#66BB6A;">−{{ row.rfq.discount_percent }}%</span> запрос скидки</span>{% endif %}
+        </p>
+        <p class="muted">
+          {% for item in row.sample_items %}
+            {{ item.query }} × {{ item.quantity }}{% if not forloop.last %} • {% endif %}
+          {% endfor %}
+        </p>
+      </div>
+      <div class="list-actions">
+        <a class="btn btn-secondary" href="{% url 'seller_request_detail' row.rfq.id %}">Открыть в кабинете</a>
+      </div>
+    </article>
+  {% empty %}
+    {% include "seller/components/_empty_state.html" with title="По вашему ассортименту пока нет входящих RFQ" message="Как только клиентские запросы совпадут с вашими позициями, они появятся здесь." %}
+  {% endfor %}
+</div>
+{% endblock %}

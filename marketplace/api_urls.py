@@ -1,5 +1,6 @@
-from django.urls import path
+from django.urls import include, path
 
+from dashboard.api import SupplierDashboardAPIView
 from . import api_views
 
 urlpatterns = [
@@ -9,9 +10,30 @@ urlpatterns = [
     path("parts/", api_views.api_parts, name="api_parts"),
     path("parts/<int:part_id>/", api_views.api_part_detail, name="api_part_detail"),
     path("orders/my/", api_views.api_my_orders, name="api_my_orders"),
+    path("seller/products/", api_views.api_seller_parts, name="api_seller_products"),
+    path("seller/products/bulk-action/", api_views.api_seller_product_bulk_update, name="api_seller_products_bulk_action"),
+    path("seller/products/export/", api_views.api_seller_product_export, name="api_seller_products_export"),
+    path("seller/products/<int:part_id>/", api_views.api_seller_part_detail, name="api_seller_product_detail"),
+    path("seller/products/<int:part_id>/price-history/", api_views.api_seller_part_price_history, name="api_seller_product_price_history"),
+    path("seller/products/<int:part_id>/demand/", api_views.api_seller_part_demand, name="api_seller_product_demand"),
+    path("seller/requests/", api_views.api_seller_requests, name="api_seller_requests"),
+    path("seller/requests/<int:rfq_id>/", api_views.api_seller_request_detail, name="api_seller_request_detail"),
+    path("seller/requests/<int:rfq_id>/quote/", api_views.api_seller_request_quote, name="api_seller_request_quote"),
+    path("seller/requests/<int:rfq_id>/decline/", api_views.api_seller_request_decline, name="api_seller_request_decline"),
+    path("seller/requests/<int:rfq_id>/renegotiate/", api_views.api_seller_request_renegotiate, name="api_seller_request_renegotiate"),
+    path("seller/orders/", api_views.api_seller_orders, name="api_seller_orders"),
+    path("seller/orders/<int:order_id>/", api_views.api_seller_order_detail, name="api_seller_order_detail"),
+    path("seller/orders/<int:order_id>/timeline/", api_views.api_seller_order_timeline, name="api_seller_order_timeline"),
+    path("seller/orders/<int:order_id>/action/", api_views.api_seller_order_action, name="api_seller_order_action"),
+    path("seller/orders/claims/", api_views.api_seller_claims, name="api_seller_claims"),
+    path("seller/orders/claims/<int:claim_id>/respond/", api_views.api_seller_claim_respond, name="api_seller_claim_respond"),
     path("seller/parts/", api_views.api_seller_parts, name="api_seller_parts"),
+    path("seller/parts/<int:part_id>/", api_views.api_seller_part_detail, name="api_seller_part_detail"),
+    path("seller/parts/<int:part_id>/price-history/", api_views.api_seller_part_price_history, name="api_seller_part_price_history"),
+    path("seller/parts/<int:part_id>/demand/", api_views.api_seller_part_demand, name="api_seller_part_demand"),
     path("dashboard/summary/", api_views.api_dashboard_summary, name="api_dashboard_summary"),
-    path("quote/preview/", api_views.api_quote_preview, name="api_quote_preview"),
-    path("template/update/", api_views.api_update_template, name="api_update_template"),
-    path("legal-entity/lookup/", api_views.api_legal_entity_lookup, name="api_legal_entity_lookup"),
+    path("supplier/dashboard", SupplierDashboardAPIView.as_view(), name="api_supplier_dashboard"),
+    path("analytics/hybrid/", api_views.api_hybrid_analytics, name="api_hybrid_analytics"),
+    path("analytics/funnel/", api_views.api_hybrid_funnel, name="api_hybrid_funnel"),
+    path("", include("imports.api_urls")),
 ]

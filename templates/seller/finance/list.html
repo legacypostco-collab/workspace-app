@@ -1,0 +1,511 @@
+{% extends "seller/base_seller.html" %}
+{% load seller_filters %}
+
+{% block extra_css %}
+<style>
+/* ══════════ Finance page ══════════ */
+
+/* Hero */
+.fin-hero { margin-bottom:16px; }
+.fin-hero-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px; }
+.fin-hero-title {
+  font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC;
+}
+.fin-hero-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
+.fin-metrics {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+}
+.fin-metric {
+  background:#1A1A1A;border-radius:12px;padding:14px 16px;
+  border:1px solid rgba(255,255,255,0.04);
+}
+.fin-metric-label {
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+  color:#8A8A8A;margin-bottom:6px;
+}
+.fin-metric-val {
+  font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;
+  color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
+}
+.fin-metric-hint { font-size:11px;margin-top:4px;font-weight:400;color:#ECECEC; }
+
+/* Toolbar */
+.fin-toolbar {
+  display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap;
+}
+.fin-search {
+  flex:1;min-width:180px;padding:8px 12px;background:#1A1A1A;
+  border:1px solid rgba(255,255,255,0.07);border-radius:10px;
+  color:#ECECEC;font-size:13px;outline:none;
+}
+.fin-search:focus { border-color:rgba(100,181,246,0.4); }
+.fin-filter-btn {
+  padding:6px 14px;border-radius:8px;font-size:12px;font-weight:500;
+  cursor:pointer;border:1px solid rgba(255,255,255,0.07);
+  background:rgba(255,255,255,0.03);color:#8A8A8A;
+  text-decoration:none;transition:all .15s;
+}
+.fin-filter-btn:hover { background:rgba(255,255,255,0.06);color:#ECECEC; }
+.fin-filter-btn.active {
+  background:rgba(100,181,246,0.12);color:#64B5F6;
+  border-color:rgba(100,181,246,0.3);
+}
+
+/* Table */
+.fin-table { width:100%;border-collapse:collapse; }
+.fin-table th {
+  text-align:left;padding:8px 10px;font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.05em;color:#8A8A8A;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.fin-table td {
+  padding:10px;font-size:13px;color:#ECECEC;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  vertical-align:middle;
+}
+.fin-table tr { cursor:pointer;transition:background .12s; }
+.fin-table tbody tr:hover { background:rgba(255,255,255,0.03); }
+.fin-table .fin-amount {
+  font-family:'Golos Text',sans-serif;font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.fin-table .fin-muted { color:#6A6A6A;font-size:11px; }
+
+/* Payment badge */
+.fin-pay-badge {
+  display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;
+  font-weight:600;letter-spacing:0.02em;
+}
+.fin-pay-badge--awaiting_reserve { background:rgba(138,138,138,0.15);color:#8A8A8A; }
+.fin-pay-badge--reserve_paid { background:rgba(255,140,66,0.12);color:#FF8C42; }
+.fin-pay-badge--paid { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.fin-pay-badge--refund_pending { background:rgba(255,140,66,0.12);color:#FF8C42; }
+.fin-pay-badge--refunded { background:rgba(220,80,80,0.12);color:#E05555; }
+.fin-pay-badge--mid_paid { background:rgba(100,181,246,0.08);color:#7DC4F8; }
+.fin-pay-badge--customs_paid { background:rgba(100,181,246,0.12);color:#64B5F6; }
+
+/* Scheme badge */
+.fin-scheme-badge {
+  display:inline-block;padding:3px 8px;border-radius:5px;font-size:10px;
+  font-weight:600;letter-spacing:0.02em;
+}
+.fin-scheme--simple { background:rgba(236,236,236,0.08);color:#ECECEC; }
+.fin-scheme--staged { background:rgba(100,181,246,0.14);color:#64B5F6; }
+
+/* SLA badge */
+.fin-sla-badge { font-size:10px;font-weight:500; }
+.fin-sla--on_track { color:#64B5F6; }
+.fin-sla--at_risk { color:#8A8A8A; }
+.fin-sla--breached { color:#FF8C42; }
+
+/* Drawer */
+.fin-drawer-overlay {
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9990;
+}
+.fin-drawer {
+  position:fixed;top:0;right:-520px;width:500px;height:100%;
+  background:#141414;z-index:9999;overflow-y:auto;
+  transition:right .28s cubic-bezier(.4,0,.2,1);
+  border-left:1px solid rgba(255,255,255,0.06);
+  padding:0;
+}
+.fin-drawer.open { right:0; }
+.fin-drawer-head {
+  display:flex;justify-content:space-between;align-items:center;
+  padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);
+  position:sticky;top:0;background:#141414;z-index:2;
+}
+.fin-drawer-title {
+  font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;
+}
+.fin-drawer-close {
+  background:none;border:none;color:#6A6A6A;font-size:18px;cursor:pointer;
+  padding:4px 8px;border-radius:6px;
+}
+.fin-drawer-close:hover { color:#ECECEC;background:rgba(255,255,255,0.06); }
+.fin-drawer-body { padding:20px; }
+
+/* Drawer sections */
+.fin-section { margin-bottom:20px; }
+.fin-section-title {
+  font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+  color:#8A8A8A;margin-bottom:10px;
+}
+
+/* Payment timeline */
+.fin-pay-tl { display:flex;flex-direction:column;gap:0;position:relative;padding-left:20px; }
+.fin-pay-tl::before {
+  content:'';position:absolute;left:5px;top:6px;bottom:6px;
+  width:2px;background:#2C2C2C;
+}
+.fin-pay-step {
+  position:relative;padding:8px 0;padding-left:16px;
+}
+.fin-pay-step::before {
+  content:'';position:absolute;left:-15px;top:12px;
+  width:10px;height:10px;border-radius:50%;
+  background:#2C2C2C;border:1px solid #484848;z-index:1;
+}
+.fin-pay-step.done::before { background:#919191;border-color:#919191; }
+.fin-pay-step.current::before { background:#ECECEC;box-shadow:0 0 6px rgba(236,236,236,0.4);border-color:#ECECEC; }
+.fin-pay-step-label { font-size:12px;color:#ECECEC;font-weight:500; }
+.fin-pay-step-meta { font-size:11px;color:#6A6A6A;margin-top:2px; }
+.fin-pay-step-amount { font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#64B5F6;margin-top:2px; }
+
+/* Documents list */
+.fin-doc-row {
+  display:flex;align-items:center;gap:10px;padding:8px 0;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.fin-doc-icon { color:#64B5F6;flex-shrink:0; }
+.fin-doc-info { flex:1;min-width:0; }
+.fin-doc-name { font-size:12px;color:#ECECEC;font-weight:500; }
+.fin-doc-type { font-size:10px;color:#6A6A6A; }
+.fin-doc-date { font-size:10px;color:#6A6A6A;flex-shrink:0; }
+.fin-doc-link {
+  font-size:11px;color:#64B5F6;text-decoration:none;flex-shrink:0;
+}
+.fin-doc-link:hover { text-decoration:underline; }
+
+/* Order timeline (mini) */
+.fin-order-tl {
+  display:flex;align-items:center;gap:0;position:relative;margin-top:6px;
+}
+
+/* Invoice button */
+.fin-invoice-btn {
+  display:inline-flex;align-items:center;gap:5px;
+  padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;
+  background:rgba(100,181,246,0.1);color:#64B5F6;
+  border:1px solid rgba(100,181,246,0.2);
+  text-decoration:none;transition:all .15s;
+}
+.fin-invoice-btn:hover {
+  background:rgba(100,181,246,0.18);
+}
+
+/* Empty state */
+.fin-empty {
+  text-align:center;color:#6A6A6A;padding:40px;font-size:14px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+
+{# ═══ HERO ═══ #}
+<section class="fin-hero">
+  <div class="fin-hero-top">
+    <div>
+      <div class="fin-hero-title">Финансовый контроль</div>
+      <div class="fin-hero-sub">Оплаты · документы · счета · таймлайн поступлений</div>
+    </div>
+  </div>
+  <div class="fin-metrics">
+    <div class="fin-metric">
+      <div class="fin-metric-label">Общий оборот</div>
+      <div class="fin-metric-val">${{ total_revenue|floatformat:0 }}</div>
+      <div class="fin-metric-hint">все заказы</div>
+    </div>
+    <div class="fin-metric">
+      <div class="fin-metric-label">Получено</div>
+      <div class="fin-metric-val" style="color:#64B5F6;">${{ paid_revenue|floatformat:0 }}</div>
+      <div class="fin-metric-hint" style="color:#64B5F6;">полная оплата</div>
+    </div>
+    <div class="fin-metric">
+      <div class="fin-metric-label">Ожидает оплаты</div>
+      <div class="fin-metric-val" style="color:#FF8C42;">${{ awaiting_revenue|floatformat:0 }}</div>
+      <div class="fin-metric-hint" style="color:#FF8C42;">в процессе</div>
+    </div>
+    <div class="fin-metric">
+      <div class="fin-metric-label">Резервов внесено</div>
+      <div class="fin-metric-val">${{ reserves_collected|floatformat:0 }}</div>
+      <div class="fin-metric-hint">предоплата</div>
+    </div>
+  </div>
+</section>
+
+{# ═══ Фильтры ═══ #}
+<div class="fin-toolbar">
+  <form method="get" style="display:contents;">
+    <input type="text" class="fin-search" name="q" value="{{ search_q }}"
+           placeholder="Поиск по номеру заказа…" />
+    {% if payment_filter %}
+    <input type="hidden" name="payment" value="{{ payment_filter }}" />
+    {% endif %}
+  </form>
+  <a href="{% url 'seller_finance' %}" class="fin-filter-btn {% if not payment_filter %}active{% endif %}">Все</a>
+  {% for val, label in payment_choices %}
+  <a href="{% url 'seller_finance' %}?payment={{ val }}{% if search_q %}&q={{ search_q }}{% endif %}"
+     class="fin-filter-btn {% if payment_filter == val %}active{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{# ═══ Таблица заказов ═══ #}
+<div style="background:#1A1A1A;border-radius:14px;border:1px solid rgba(255,255,255,0.04);overflow:hidden;">
+{% if finance_rows %}
+<table class="fin-table">
+  <thead>
+    <tr>
+      <th>Заказ</th>
+      <th>Клиент</th>
+      <th>Сумма</th>
+      <th>Резерв</th>
+      <th>Оплата</th>
+      <th>Схема</th>
+      <th>Этап</th>
+      <th>SLA</th>
+      <th>Документы</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in finance_rows %}
+    <tr class="fin-row" data-idx="{{ forloop.counter0 }}" onclick="window._finOpen({{ forloop.counter0 }})">
+      <td>
+        <span style="font-weight:700;">#{{ row.order.id }}</span>
+        {% if row.order.invoice_number %}
+        <br><span class="fin-muted">{{ row.order.invoice_number }}</span>
+        {% endif %}
+      </td>
+      <td>
+        {{ row.order.customer_name }}
+        <br><span class="fin-muted">{{ row.order.customer_email }}</span>
+      </td>
+      <td class="fin-amount">${{ row.order.total_amount|floatformat:2 }}</td>
+      <td>
+        <span class="fin-amount">${{ row.order.reserve_amount|floatformat:2 }}</span>
+        <br><span class="fin-muted">{{ row.order.reserve_percent }}%</span>
+      </td>
+      <td>
+        <span class="fin-pay-badge fin-pay-badge--{{ row.order.payment_status }}">
+          {{ row.order.get_payment_status_display }}
+        </span>
+      </td>
+      <td>
+        <span class="fin-scheme-badge fin-scheme--{{ row.order.payment_scheme }}">
+          {{ row.order.get_payment_scheme_display }}
+        </span>
+      </td>
+      <td>
+        <span style="font-size:12px;">{{ row.order.get_status_display }}</span>
+      </td>
+      <td>
+        <span class="fin-sla-badge fin-sla--{{ row.order.sla_status }}">
+          {{ row.order.get_sla_status_display }}
+        </span>
+      </td>
+      <td style="text-align:center;">
+        {% if row.docs_count > 0 %}
+        <span style="color:#64B5F6;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          {{ row.docs_count }}
+        </span>
+        {% else %}
+        <span style="color:#484848;">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="fin-empty">Заказов по выбранному фильтру не найдено</div>
+{% endif %}
+</div>
+
+{# ═══ Drawer ═══ #}
+<div class="fin-drawer-overlay" id="fin-overlay" onclick="window._finClose()"></div>
+<div class="fin-drawer" id="fin-drawer">
+  <div class="fin-drawer-head">
+    <div class="fin-drawer-title" id="fin-drawer-title">Заказ</div>
+    <button class="fin-drawer-close" id="fin-drawer-close" onclick="window._finClose()">&times;</button>
+  </div>
+  <div class="fin-drawer-body" id="fin-drawer-body"></div>
+</div>
+
+{# ═══ Hidden data for drawer ═══ #}
+{% for row in finance_rows %}
+<template id="fin-data-{{ forloop.counter0 }}">
+  <div class="fin-section">
+    <div class="fin-section-title">Таймлайн оплаты
+      <span class="fin-scheme-badge fin-scheme--{{ row.order.payment_scheme }}" style="margin-left:8px;">
+        {{ row.order.get_payment_scheme_display }}
+      </span>
+    </div>
+    <div class="fin-pay-tl">
+      {# 1. Счёт выставлен #}
+      <div class="fin-pay-step {% if row.invoice_event %}done{% endif %}">
+        <div class="fin-pay-step-label">Счёт выставлен</div>
+        {% if row.invoice_event %}
+        <div class="fin-pay-step-meta">{{ row.invoice_event.created_at|date:"d.m.Y H:i" }}</div>
+        {% else %}
+        <div class="fin-pay-step-meta">Ожидает</div>
+        {% endif %}
+        <div class="fin-pay-step-amount">${{ row.order.total_amount|floatformat:2 }}</div>
+      </div>
+
+      {# 2. Резерв 10% #}
+      <div class="fin-pay-step {% if row.order.reserve_paid_at %}done{% elif row.order.payment_status == 'awaiting_reserve' %}current{% endif %}">
+        <div class="fin-pay-step-label">Резерв {{ row.order.reserve_percent }}% оплачен</div>
+        {% if row.order.reserve_paid_at %}
+        <div class="fin-pay-step-meta">{{ row.order.reserve_paid_at|date:"d.m.Y H:i" }}</div>
+        {% else %}
+        <div class="fin-pay-step-meta">Ожидает</div>
+        {% endif %}
+        <div class="fin-pay-step-amount">${{ row.order.reserve_amount|floatformat:2 }}</div>
+      </div>
+
+      {% if row.order.payment_scheme == "staged" %}
+      {# 3. Подтверждение 50% (только staged) #}
+      <div class="fin-pay-step {% if row.order.mid_paid_at %}done{% elif row.order.payment_status == 'reserve_paid' %}current{% endif %}">
+        <div class="fin-pay-step-label">Подтверждение 50%</div>
+        {% if row.order.mid_paid_at %}
+        <div class="fin-pay-step-meta">{{ row.order.mid_paid_at|date:"d.m.Y H:i" }}</div>
+        {% else %}
+        <div class="fin-pay-step-meta">После подтверждения заказа</div>
+        {% endif %}
+        <div class="fin-pay-step-amount">${{ row.order.mid_payment_amount|floatformat:2 }}</div>
+      </div>
+
+      {# 4. Таможня 40% (только staged) #}
+      <div class="fin-pay-step {% if row.order.customs_paid_at %}done{% elif row.order.payment_status == 'mid_paid' %}current{% endif %}">
+        <div class="fin-pay-step-label">Таможня 40%</div>
+        {% if row.order.customs_paid_at %}
+        <div class="fin-pay-step-meta">{{ row.order.customs_paid_at|date:"d.m.Y H:i" }}</div>
+        {% else %}
+        <div class="fin-pay-step-meta">После прохождения таможни</div>
+        {% endif %}
+        <div class="fin-pay-step-amount">${{ row.order.customs_payment_amount|floatformat:2 }}</div>
+      </div>
+      {% else %}
+      {# 3. Финальная оплата 90% (simple) #}
+      <div class="fin-pay-step {% if row.order.final_paid_at %}done{% elif row.order.payment_status == 'reserve_paid' %}current{% endif %}">
+        <div class="fin-pay-step-label">Финальная оплата 90%</div>
+        {% if row.order.final_paid_at %}
+        <div class="fin-pay-step-meta">{{ row.order.final_paid_at|date:"d.m.Y H:i" }}</div>
+        {% else %}
+        <div class="fin-pay-step-meta">Ожидает</div>
+        {% endif %}
+        <div class="fin-pay-step-amount">${{ row.order.total_amount|floatformat:2 }}</div>
+      </div>
+      {% endif %}
+
+      {# Закрыт — для обеих схем #}
+      <div class="fin-pay-step {% if row.order.payment_status == 'paid' %}done{% endif %}">
+        <div class="fin-pay-step-label">Полностью оплачен</div>
+        {% if row.order.final_paid_at %}
+        <div class="fin-pay-step-meta">{{ row.order.final_paid_at|date:"d.m.Y H:i" }}</div>
+        {% else %}
+        <div class="fin-pay-step-meta">—</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# SLA и статус #}
+  <div class="fin-section">
+    <div class="fin-section-title">Статус заказа и SLA</div>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;">
+      <span class="fin-pay-badge fin-pay-badge--{{ row.order.payment_status }}">{{ row.order.get_payment_status_display }}</span>
+      <span class="fin-sla-badge fin-sla--{{ row.order.sla_status }}">SLA: {{ row.order.get_sla_status_display }}</span>
+      <span style="font-size:11px;color:#6A6A6A;">{{ row.order.get_status_display }}</span>
+    </div>
+    {# Mini timeline #}
+    <div class="fin-order-tl">
+      {% for sk, sl in kanban_statuses %}
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;position:relative;">
+        {% if not forloop.first %}
+        <div style="position:absolute;top:5px;right:50%;width:100%;height:2px;background:{% if forloop.counter0 <= row.current_step %}#919191{% else %}#2C2C2C{% endif %};z-index:0;"></div>
+        {% endif %}
+        <div style="width:8px;height:8px;border-radius:50%;z-index:1;{% if forloop.counter0 == row.current_step %}background:#ECECEC;box-shadow:0 0 4px rgba(236,236,236,0.4);{% elif forloop.counter0 < row.current_step %}background:#919191;{% else %}background:#2C2C2C;border:1px solid #484848;{% endif %}"></div>
+        <div style="font-size:7px;margin-top:3px;white-space:nowrap;{% if forloop.counter0 == row.current_step %}color:#ECECEC;font-weight:600;{% elif forloop.counter0 < row.current_step %}color:#6A6A6A;{% else %}color:#484848;{% endif %}">{{ sl }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Документы #}
+  <div class="fin-section">
+    <div class="fin-section-title">Документы ({{ row.docs_count }})</div>
+    {% if row.docs %}
+    {% for doc in row.docs %}
+    <div class="fin-doc-row">
+      <div class="fin-doc-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      </div>
+      <div class="fin-doc-info">
+        <div class="fin-doc-name">{{ doc.title }}</div>
+        <div class="fin-doc-type">{{ doc.get_doc_type_display }}</div>
+      </div>
+      <div class="fin-doc-date">{{ doc.created_at|date:"d.m.Y" }}</div>
+      {% if doc.file_url %}
+      <a href="{{ doc.file_url }}" class="fin-doc-link" target="_blank">Открыть</a>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div style="color:#484848;font-size:12px;">Нет загруженных документов</div>
+    {% endif %}
+
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <a href="{% url 'order_invoice' row.order.id %}" class="fin-invoice-btn" target="_blank">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Счёт-фактура
+      </a>
+      <a href="{% url 'order_invoice_pdf' row.order.id %}" class="fin-invoice-btn" target="_blank">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Скачать PDF
+      </a>
+    </div>
+  </div>
+
+  {# Детали #}
+  <div class="fin-section">
+    <div class="fin-section-title">Детали</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+      <div><span style="color:#6A6A6A;">Клиент:</span></div>
+      <div style="color:#ECECEC;">{{ row.order.customer_name }}</div>
+      <div><span style="color:#6A6A6A;">Email:</span></div>
+      <div style="color:#ECECEC;">{{ row.order.customer_email }}</div>
+      <div><span style="color:#6A6A6A;">Логистика:</span></div>
+      <div style="color:#ECECEC;">${{ row.order.logistics_cost|floatformat:2 }} {{ row.order.logistics_currency }}</div>
+      <div><span style="color:#6A6A6A;">Создан:</span></div>
+      <div style="color:#ECECEC;">{{ row.order.created_at|date:"d.m.Y H:i" }}</div>
+      {% if row.order.invoice_number %}
+      <div><span style="color:#6A6A6A;">Счёт №:</span></div>
+      <div style="color:#ECECEC;">{{ row.order.invoice_number }}</div>
+      {% endif %}
+    </div>
+  </div>
+</template>
+{% endfor %}
+
+<script>
+(function() {
+  /* Move drawer to body so it's not clipped by parent containers */
+  var drawer = document.getElementById('fin-drawer');
+  var overlay = document.getElementById('fin-overlay');
+  if (drawer) document.body.appendChild(drawer);
+  if (overlay) document.body.appendChild(overlay);
+
+  window._finOpen = function(idx) {
+    var tpl = document.getElementById('fin-data-' + idx);
+    if (!tpl || !drawer) return;
+    var row = document.querySelectorAll('.fin-row')[idx];
+    var orderNum = row ? row.querySelector('td span[style]').textContent : '';
+    document.getElementById('fin-drawer-title').textContent = 'Заказ ' + orderNum;
+    document.getElementById('fin-drawer-body').innerHTML = tpl.innerHTML;
+    overlay.style.display = 'block';
+    requestAnimationFrame(function() { drawer.classList.add('open'); });
+  };
+  window._finClose = function() {
+    drawer.classList.remove('open');
+    setTimeout(function() { overlay.style.display = 'none'; }, 280);
+  };
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && drawer.classList.contains('open')) window._finClose();
+  });
+})();
+</script>
+
+{% endblock %}

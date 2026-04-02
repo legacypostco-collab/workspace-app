@@ -1,0 +1,394 @@
+{% extends "buyer/base_buyer.html" %}
+
+{% block title %}Переторжка{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════ Negotiations page ══════════ */
+
+.neg-hero { margin-bottom:16px; }
+.neg-hero-title {
+  font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC;
+}
+.neg-hero-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
+
+/* Stats */
+.neg-stats {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;
+}
+.neg-stat {
+  background:#1A1A1A;border-radius:12px;padding:14px 16px;
+  border:1px solid rgba(255,255,255,0.04);
+}
+.neg-stat-label {
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+  color:#919191;margin-bottom:6px;
+}
+.neg-stat-val {
+  font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;
+  color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
+}
+
+/* Section title */
+.neg-section-title {
+  font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;
+  color:#ECECEC;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.neg-section-badge {
+  font-size:10px;font-weight:600;padding:2px 8px;border-radius:5px;
+}
+.neg-section-badge--active { background:rgba(232,92,13,0.12);color:#E85C0D; }
+.neg-section-badge--done { background:rgba(100,181,246,0.12);color:#64B5F6; }
+
+/* Table */
+.neg-table-wrap {
+  background:#1A1A1A;border-radius:14px;border:1px solid rgba(255,255,255,0.04);
+  overflow:hidden;margin-bottom:20px;
+}
+.neg-table { width:100%;border-collapse:collapse; }
+.neg-table th {
+  text-align:left;padding:8px 12px;font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.05em;color:#919191;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.neg-table td {
+  padding:12px;font-size:13px;color:#ECECEC;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  vertical-align:middle;
+}
+.neg-table tbody tr { transition:background .12s; }
+.neg-table tbody tr:hover { background:rgba(255,255,255,0.03); }
+
+.neg-product-name { font-weight:600; }
+.neg-oem { font-size:11px;color:#64B5F6;font-weight:600; }
+.neg-muted { color:#6A6A6A;font-size:11px; }
+.neg-amount {
+  font-family:'Golos Text',sans-serif;font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.neg-old-price {
+  text-decoration:line-through;color:#6A6A6A;font-size:11px;
+}
+.neg-new-price { color:#64B5F6; }
+.neg-discount {
+  font-family:'Golos Text',sans-serif;font-weight:700;color:#64B5F6;
+}
+
+/* Response status */
+.neg-response-badge {
+  display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;
+  font-weight:600;letter-spacing:0.02em;
+}
+.neg-resp--waiting { background:rgba(232,92,13,0.12);color:#E85C0D; }
+.neg-resp--counter { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.neg-resp--accepted { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.neg-resp--rejected { background:rgba(224,85,85,0.12);color:#E05555; }
+
+/* Buttons */
+.neg-btn {
+  padding:5px 12px;border-radius:7px;font-size:11px;font-weight:600;
+  cursor:pointer;transition:all .15s;border:1px solid transparent;
+}
+.neg-btn--request {
+  background:rgba(232,92,13,0.12);color:#E85C0D;
+  border-color:rgba(232,92,13,0.25);
+}
+.neg-btn--request:hover { background:rgba(232,92,13,0.2); }
+.neg-btn--accept {
+  background:rgba(100,181,246,0.12);color:#64B5F6;
+  border-color:rgba(100,181,246,0.25);
+}
+.neg-btn--accept:hover { background:rgba(100,181,246,0.2); }
+.neg-btn--secondary {
+  background:rgba(255,255,255,0.04);color:#ECECEC;
+  border-color:rgba(255,255,255,0.08);
+}
+.neg-btn--secondary:hover { background:rgba(255,255,255,0.08); }
+
+/* Inline discount input */
+.neg-discount-input {
+  width:60px;padding:4px 8px;background:#111;
+  border:1px solid rgba(232,92,13,0.3);border-radius:6px;
+  color:#E85C0D;font-size:12px;font-weight:600;
+  text-align:center;outline:none;
+}
+.neg-discount-input::placeholder { color:#6A6A6A; }
+.neg-discount-input:focus { border-color:#E85C0D; }
+
+/* Agreed deal row highlight */
+.neg-agreed td { opacity:0.7; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="neg-hero">
+  <div class="neg-hero-title">Переторжка</div>
+  <div class="neg-hero-sub">Запрос скидок и переговоры по ценам с поставщиками</div>
+</section>
+
+<!-- Stats -->
+<div class="neg-stats">
+  <div class="neg-stat">
+    <div class="neg-stat-label">Активных переторжек</div>
+    <div class="neg-stat-val" style="color:#E85C0D;">3</div>
+  </div>
+  <div class="neg-stat">
+    <div class="neg-stat-label">Согласованных сделок</div>
+    <div class="neg-stat-val" style="color:#64B5F6;">8</div>
+  </div>
+  <div class="neg-stat">
+    <div class="neg-stat-label">Средняя скидка</div>
+    <div class="neg-stat-val">12%</div>
+  </div>
+  <div class="neg-stat">
+    <div class="neg-stat-label">Экономия за месяц</div>
+    <div class="neg-stat-val" style="color:#64B5F6;">$4,280</div>
+  </div>
+</div>
+
+<!-- Active negotiations -->
+<div class="neg-section-title">
+  Активные переторжки
+  <span class="neg-section-badge neg-section-badge--active">3 позиции</span>
+</div>
+
+<div class="neg-table-wrap">
+  <table class="neg-table">
+    <thead>
+      <tr>
+        <th>Товар</th>
+        <th>Поставщик</th>
+        <th>Базовая цена</th>
+        <th>Запрошена скидка</th>
+        <th>Ответ поставщика</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="neg-product-name">Гидроцилиндр стрелы</div>
+          <div class="neg-oem">LH-9989363</div>
+          <div class="neg-muted">CAT 320D &middot; 2 шт.</div>
+        </td>
+        <td>Поставщик #1042</td>
+        <td class="neg-amount">$2,840.00</td>
+        <td>
+          <span style="color:#E85C0D;font-weight:700;">15%</span>
+          <br><span class="neg-muted">запрошено 20.03</span>
+        </td>
+        <td>
+          <span class="neg-response-badge neg-resp--counter">Контрпредложение</span>
+          <br><span class="neg-muted" style="margin-top:4px;display:inline-block;">10% ($2,556.00)</span>
+        </td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="neg-btn neg-btn--accept">Принять 10%</button>
+            <button class="neg-btn neg-btn--request" onclick="this.style.display='none';this.nextElementSibling.style.display='flex';">Ещё скидку</button>
+            <div style="display:none;gap:4px;align-items:center;">
+              <input type="text" class="neg-discount-input" placeholder="12%" />
+              <button class="neg-btn neg-btn--request">OK</button>
+            </div>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="neg-product-name">Турбокомпрессор</div>
+          <div class="neg-oem">7C-2297</div>
+          <div class="neg-muted">CAT 3306 &middot; 1 шт.</div>
+        </td>
+        <td>TurboTech Asia<br><span class="neg-muted">Тайбэй</span></td>
+        <td class="neg-amount">$1,250.00</td>
+        <td>
+          <span style="color:#E85C0D;font-weight:700;">8%</span>
+          <br><span class="neg-muted">запрошено 22.03</span>
+        </td>
+        <td>
+          <span class="neg-response-badge neg-resp--waiting">Ожидает ответа</span>
+          <br><span class="neg-muted">отправлено 22.03</span>
+        </td>
+        <td>
+          <button class="neg-btn neg-btn--secondary">Напомнить</button>
+        </td>
+      </tr>
+      <tr>
+        <td>
+          <div class="neg-product-name">Фильтр топливный (пакет 20 шт.)</div>
+          <div class="neg-oem">600-311-8331</div>
+          <div class="neg-muted">Komatsu PC200 &middot; 20 шт.</div>
+        </td>
+        <td>Поставщик #4291</td>
+        <td class="neg-amount">$38.50 / шт</td>
+        <td>
+          <div style="display:flex;gap:4px;align-items:center;">
+            <input type="text" class="neg-discount-input" placeholder="%" />
+            <button class="neg-btn neg-btn--request">Запросить</button>
+          </div>
+        </td>
+        <td>
+          <span class="neg-muted">Скидка не запрошена</span>
+        </td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Agreed deals -->
+<div class="neg-section-title">
+  Согласованные сделки
+  <span class="neg-section-badge neg-section-badge--done">8 позиций</span>
+</div>
+
+<div class="neg-table-wrap">
+  <table class="neg-table">
+    <thead>
+      <tr>
+        <th>Товар</th>
+        <th>Поставщик</th>
+        <th>Базовая цена</th>
+        <th>Финальная цена</th>
+        <th>Скидка</th>
+        <th>Экономия</th>
+        <th>Дата</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="neg-agreed">
+        <td>
+          <div class="neg-product-name">Ремкомплект гидромотора</div>
+          <div class="neg-oem">RE505980</div>
+        </td>
+        <td>Поставщик #1042</td>
+        <td class="neg-amount"><span class="neg-old-price">$1,680.00</span></td>
+        <td class="neg-amount neg-new-price">$1,428.00</td>
+        <td class="neg-discount">15%</td>
+        <td class="neg-amount" style="color:#64B5F6;">$252.00</td>
+        <td class="neg-muted">05.03.2026</td>
+      </tr>
+      <tr class="neg-agreed">
+        <td>
+          <div class="neg-product-name">Коронки ковша (20 шт.)</div>
+          <div class="neg-oem">T66203</div>
+        </td>
+        <td>Поставщик #3156</td>
+        <td class="neg-amount"><span class="neg-old-price">$6,300.00</span></td>
+        <td class="neg-amount neg-new-price">$5,670.00</td>
+        <td class="neg-discount">10%</td>
+        <td class="neg-amount" style="color:#64B5F6;">$630.00</td>
+        <td class="neg-muted">14.02.2026</td>
+      </tr>
+      <tr class="neg-agreed">
+        <td>
+          <div class="neg-product-name">Электрика CAT D6R (пакет)</div>
+          <div class="neg-oem">3T-5760</div>
+        </td>
+        <td>Поставщик #2087</td>
+        <td class="neg-amount"><span class="neg-old-price">$2,450.00</span></td>
+        <td class="neg-amount neg-new-price">$2,180.00</td>
+        <td class="neg-discount">11%</td>
+        <td class="neg-amount" style="color:#64B5F6;">$270.00</td>
+        <td class="neg-muted">28.02.2026</td>
+      </tr>
+      <tr class="neg-agreed">
+        <td>
+          <div class="neg-product-name">Ходовая часть PC300 (комплект)</div>
+          <div class="neg-oem">PC300-7</div>
+        </td>
+        <td>Поставщик #4291</td>
+        <td class="neg-amount"><span class="neg-old-price">$21,000.00</span></td>
+        <td class="neg-amount neg-new-price">$18,900.00</td>
+        <td class="neg-discount">10%</td>
+        <td class="neg-amount" style="color:#64B5F6;">$2,100.00</td>
+        <td class="neg-muted">20.01.2026</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+
+<script>
+(function(){
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.transform = 'translateY(0)';
+    t.style.opacity = '1';
+    setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
+  }
+
+  // Event delegation on active negotiations table
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.neg-btn');
+    if (!btn) return;
+
+    var row = btn.closest('tr');
+    var oemEl = row ? row.querySelector('.neg-oem') : null;
+    var oem = oemEl ? oemEl.textContent : '';
+    var nameEl = row ? row.querySelector('.neg-product-name') : null;
+    var name = nameEl ? nameEl.textContent : '';
+
+    // "Принять" button
+    if (btn.classList.contains('neg-btn--accept')) {
+      var actionsCell = btn.closest('td');
+      if (actionsCell) actionsCell.innerHTML = '<span class="neg-response-badge neg-resp--accepted">\u25CF Принято</span>';
+      // Update status cell
+      var cells = row.querySelectorAll('td');
+      if (cells[4]) {
+        cells[4].innerHTML = '<span class="neg-response-badge neg-resp--accepted">\u25CF Принято</span>';
+      }
+      showToast('Цена принята: ' + name + ' (' + oem + ')');
+      return;
+    }
+
+    // "Запросить" button (discount request)
+    if (btn.classList.contains('neg-btn--request') && btn.textContent.trim() === 'Запросить') {
+      var input = btn.previousElementSibling || btn.closest('div').querySelector('.neg-discount-input');
+      if (input && input.value) {
+        var pct = input.value.replace('%', '');
+        var cells = row.querySelectorAll('td');
+        if (cells[3]) {
+          cells[3].innerHTML = '<span style="color:#E85C0D;font-weight:700;">' + pct + '%</span><br><span class="neg-muted">запрошено сейчас</span>';
+        }
+        if (cells[4]) {
+          cells[4].innerHTML = '<span class="neg-response-badge neg-resp--waiting">Ожидает ответа</span><br><span class="neg-muted">отправлено сейчас</span>';
+        }
+        showToast('Скидка ' + pct + '% запрошена для ' + oem);
+      } else {
+        showToast('Введите процент скидки');
+      }
+      return;
+    }
+
+    // Inline "OK" for counter-offer
+    if (btn.classList.contains('neg-btn--request') && btn.textContent.trim() === 'OK') {
+      var input = btn.closest('div').querySelector('.neg-discount-input');
+      if (input && input.value) {
+        var pct = input.value.replace('%', '');
+        var cells = row.querySelectorAll('td');
+        if (cells[4]) {
+          cells[4].innerHTML = '<span class="neg-response-badge neg-resp--counter">Встречная: ' + pct + '%</span><br><span class="neg-muted">отправлено сейчас</span>';
+        }
+        btn.closest('div').style.display = 'none';
+        showToast('Встречное предложение ' + pct + '% отправлено');
+      }
+      return;
+    }
+
+    // "Напомнить" button
+    if (btn.classList.contains('neg-btn--secondary') && btn.textContent.trim() === 'Напомнить') {
+      btn.textContent = '\u2713 Отправлено';
+      btn.disabled = true;
+      btn.style.opacity = '0.6';
+      showToast('Напоминание отправлено поставщику');
+      return;
+    }
+  });
+})();
+</script>
+
+{% endblock %}

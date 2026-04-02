@@ -1,0 +1,285 @@
+{% extends "buyer/base_buyer.html" %}
+
+{% block title %}Заказы{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════ Orders page ══════════ */
+
+.ord-hero { margin-bottom:16px; }
+.ord-hero-top { display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px; }
+.ord-hero-title {
+  font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#ECECEC;
+}
+.ord-hero-sub { font-size:12px;color:#6A6A6A;margin-top:2px; }
+
+/* Stats */
+.ord-stats {
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;
+}
+.ord-stat {
+  background:#1A1A1A;border-radius:12px;padding:14px 16px;
+  border:1px solid rgba(255,255,255,0.04);
+}
+.ord-stat-label {
+  font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
+  color:#919191;margin-bottom:6px;
+}
+.ord-stat-val {
+  font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;
+  color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;
+}
+
+/* Filter bar */
+.ord-toolbar {
+  display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;
+}
+.ord-search {
+  flex:1;min-width:180px;padding:8px 12px;background:#111;
+  border:1px solid rgba(255,255,255,0.07);border-radius:10px;
+  color:#ECECEC;font-size:13px;outline:none;
+}
+.ord-search::placeholder { color:#6A6A6A; }
+.ord-search:focus { border-color:rgba(100,181,246,0.4); }
+.ord-select {
+  padding:8px 12px;background:#111;
+  border:1px solid rgba(255,255,255,0.07);border-radius:10px;
+  color:#ECECEC;font-size:12px;outline:none;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236A6A6A' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 10px center;
+  padding-right:28px;
+}
+
+/* Table */
+.ord-table-wrap {
+  background:#1A1A1A;border-radius:14px;border:1px solid rgba(255,255,255,0.04);overflow:hidden;
+}
+.ord-table { width:100%;border-collapse:collapse; }
+.ord-table th {
+  text-align:left;padding:8px 12px;font-size:10px;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.05em;color:#919191;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+}
+.ord-table td {
+  padding:12px;font-size:13px;color:#ECECEC;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  vertical-align:middle;
+}
+.ord-table tbody tr { transition:background .12s; }
+.ord-table tbody tr:hover { background:rgba(255,255,255,0.03); }
+
+.ord-id {
+  font-family:'Golos Text',sans-serif;font-weight:700;color:#64B5F6;
+}
+.ord-muted { color:#6A6A6A;font-size:11px; }
+.ord-amount {
+  font-family:'Golos Text',sans-serif;font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Order status badge */
+.ord-badge {
+  display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;
+  font-weight:600;letter-spacing:0.02em;
+}
+.ord-badge--production { background:rgba(232,92,13,0.12);color:#E85C0D; }
+.ord-badge--transit { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.ord-badge--customs { background:rgba(138,138,138,0.15);color:#919191; }
+.ord-badge--delivered { background:rgba(255,255,255,0.06);color:#919191; }
+.ord-badge--cancelled { background:rgba(224,85,85,0.12);color:#E05555; }
+
+/* Payment badge */
+.ord-pay-badge {
+  display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;
+  font-weight:600;letter-spacing:0.02em;
+}
+.ord-pay--paid { background:rgba(255,255,255,0.06);color:#919191; }
+.ord-pay--partial { background:rgba(232,92,13,0.12);color:#E85C0D; }
+.ord-pay--pending { background:rgba(138,138,138,0.15);color:#919191; }
+
+/* Detail button */
+.ord-detail-btn {
+  padding:5px 14px;border-radius:7px;font-size:11px;font-weight:600;
+  background:rgba(255,255,255,0.04);color:#ECECEC;
+  border:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all .15s;
+  text-decoration:none;
+}
+.ord-detail-btn:hover { background:rgba(255,255,255,0.08); }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<section class="ord-hero">
+  <div class="ord-hero-top">
+    <div>
+      <div class="ord-hero-title">Заказы</div>
+      <div class="ord-hero-sub">Управление заказами и отслеживание поставок</div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<div class="ord-stats">
+  <div class="ord-stat">
+    <div class="ord-stat-label">Всего заказов</div>
+    <div class="ord-stat-val">24</div>
+  </div>
+  <div class="ord-stat">
+    <div class="ord-stat-label">В работе</div>
+    <div class="ord-stat-val" style="color:#E85C0D;">6</div>
+  </div>
+  <div class="ord-stat">
+    <div class="ord-stat-label">Доставлено</div>
+    <div class="ord-stat-val" style="color:#64B5F6;">16</div>
+  </div>
+  <div class="ord-stat">
+    <div class="ord-stat-label">Общая сумма</div>
+    <div class="ord-stat-val">$142,800</div>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="ord-toolbar">
+  <input type="text" class="ord-search" placeholder="Поиск по номеру заказа или поставщику..." />
+  <select class="ord-select">
+    <option value="">Все статусы</option>
+    <option value="production">В производстве</option>
+    <option value="transit">В пути</option>
+    <option value="customs">На таможне</option>
+    <option value="delivered">Доставлен</option>
+    <option value="cancelled">Отменён</option>
+  </select>
+  <select class="ord-select">
+    <option value="">Все оплаты</option>
+    <option value="paid">Оплачен</option>
+    <option value="partial">Частичная</option>
+    <option value="pending">Ожидает</option>
+  </select>
+</div>
+
+<!-- Orders table -->
+<div class="ord-table-wrap">
+  <table class="ord-table">
+    <thead>
+      <tr>
+        <th>Заказ</th>
+        <th>Поставщик</th>
+        <th>Позиции</th>
+        <th>Сумма</th>
+        <th>Статус</th>
+        <th>Дата</th>
+        <th>Оплата</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="ord-id">ORD-2026-0142</span><br><span class="ord-muted">RFQ-0087</span></td>
+        <td>Поставщик #1042<br><span class="ord-muted">Китай</span></td>
+        <td>4 позиции</td>
+        <td class="ord-amount">$11,200</td>
+        <td><span class="ord-badge ord-badge--production">В производстве</span></td>
+        <td>22.03.2026<br><span class="ord-muted">ETA: 18.04</span></td>
+        <td><span class="ord-pay-badge ord-pay--partial">Резерв 10%</span></td>
+        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+      </tr>
+      <tr>
+        <td><span class="ord-id">ORD-2026-0138</span><br><span class="ord-muted">RFQ-0071</span></td>
+        <td>Поставщик #2087<br><span class="ord-muted">Китай</span></td>
+        <td>3 позиции</td>
+        <td class="ord-amount">$4,520</td>
+        <td><span class="ord-badge ord-badge--transit">В пути</span></td>
+        <td>05.03.2026<br><span class="ord-muted">ETA: 28.03</span></td>
+        <td><span class="ord-pay-badge ord-pay--partial">50% оплачено</span></td>
+        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+      </tr>
+      <tr>
+        <td><span class="ord-id">ORD-2026-0131</span><br><span class="ord-muted">RFQ-0065</span></td>
+        <td>Поставщик #3156<br><span class="ord-muted">Китай</span></td>
+        <td>5 позиций</td>
+        <td class="ord-amount">$2,180</td>
+        <td><span class="ord-badge ord-badge--customs">На таможне</span></td>
+        <td>28.02.2026<br><span class="ord-muted">ETA: 26.03</span></td>
+        <td><span class="ord-pay-badge ord-pay--partial">90% оплачено</span></td>
+        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+      </tr>
+      <tr>
+        <td><span class="ord-id">ORD-2026-0125</span><br><span class="ord-muted">RFQ-0052</span></td>
+        <td>Поставщик #4291<br><span class="ord-muted">Япония</span></td>
+        <td>20 позиций</td>
+        <td class="ord-amount">$6,300</td>
+        <td><span class="ord-badge ord-badge--delivered">Доставлен</span></td>
+        <td>14.02.2026<br><span class="ord-muted">Доставлен: 10.03</span></td>
+        <td><span class="ord-pay-badge ord-pay--paid">Оплачен</span></td>
+        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+      </tr>
+      <tr>
+        <td><span class="ord-id">ORD-2026-0118</span><br><span class="ord-muted">RFQ-0044</span></td>
+        <td>Поставщик #5673<br><span class="ord-muted">Китай</span></td>
+        <td>15 позиций</td>
+        <td class="ord-amount">$1,420</td>
+        <td><span class="ord-badge ord-badge--delivered">Доставлен</span></td>
+        <td>05.02.2026<br><span class="ord-muted">Доставлен: 28.02</span></td>
+        <td><span class="ord-pay-badge ord-pay--paid">Оплачен</span></td>
+        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+      </tr>
+      <tr>
+        <td><span class="ord-id">ORD-2026-0110</span><br><span class="ord-muted">RFQ-0030</span></td>
+        <td>TurboTech Asia<br><span class="ord-muted">Тайбэй, Тайвань</span></td>
+        <td>8 позиций</td>
+        <td class="ord-amount">$18,900</td>
+        <td><span class="ord-badge ord-badge--transit">В пути</span></td>
+        <td>20.01.2026<br><span class="ord-muted">ETA: 30.03</span></td>
+        <td><span class="ord-pay-badge ord-pay--pending">Ожидает</span></td>
+        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+
+<script>
+(function(){
+  function showToast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.transform = 'translateY(0)';
+    t.style.opacity = '1';
+    setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
+  }
+
+  // Filter dropdowns
+  document.querySelectorAll('.ord-select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      showToast('Фильтр применён');
+    });
+  });
+
+  // Detail buttons via delegation
+  document.querySelector('.ord-table-wrap').addEventListener('click', function(e) {
+    var btn = e.target.closest('.ord-detail-btn');
+    if (!btn) return;
+    e.preventDefault();
+    var row = btn.closest('tr');
+    var idEl = row ? row.querySelector('.ord-id') : null;
+    var id = idEl ? idEl.textContent : '';
+    showToast('Открыт заказ ' + id);
+  });
+
+  // Pay buttons (on rows with pending payment)
+  document.querySelectorAll('.ord-pay--pending').forEach(function(badge) {
+    badge.style.cursor = 'pointer';
+    badge.addEventListener('click', function() {
+      var row = this.closest('tr');
+      var idEl = row ? row.querySelector('.ord-id') : null;
+      var id = idEl ? idEl.textContent : '';
+      showToast('Переход к оплате ' + id);
+    });
+  });
+})();
+</script>
+
+{% endblock %}

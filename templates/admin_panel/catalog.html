@@ -1,0 +1,113 @@
+{% extends "admin_panel/base_admin.html" %}
+{% block title %}Каталог{% endblock %}
+{% block topbar_title %}Каталог{% endblock %}
+
+{% block content %}
+<div class="ap-stats">
+  <div class="ap-stat"><div class="ap-stat-value">918K</div><div class="ap-stat-label">Позиций</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">24</div><div class="ap-stat-label">Категорий</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">86</div><div class="ap-stat-label">Брендов</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">98</div><div class="ap-stat-label">Поставщиков с товарами</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">12</div><div class="ap-stat-label">На модерации</div></div>
+</div>
+
+<div class="ap-card">
+  <div class="ap-tabs">
+    <button class="ap-tab active" data-tab-group="cat" data-tab-key="products" onclick="apSwitchTab('cat','products')">Товары</button>
+    <button class="ap-tab" data-tab-group="cat" data-tab-key="categories" onclick="apSwitchTab('cat','categories')">Категории</button>
+    <button class="ap-tab" data-tab-group="cat" data-tab-key="brands" onclick="apSwitchTab('cat','brands')">Бренды</button>
+  </div>
+
+  <!-- Products -->
+  <div data-panel-group="cat" data-panel-key="products">
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+      <input type="text" class="ap-input" placeholder="Поиск по OEM..." style="max-width:200px;" id="catSearch" oninput="filterCatalog()"/>
+      <select class="ap-select" id="catBrand" onchange="filterCatalog()">
+        <option value="">Все бренды</option>
+        <option value="Toyota">Toyota</option>
+        <option value="Honda">Honda</option>
+        <option value="Bosch">Bosch</option>
+        <option value="Denso">Denso</option>
+        <option value="Continental">Continental</option>
+      </select>
+      <select class="ap-select" id="catStatus" onchange="filterCatalog()">
+        <option value="">Все статусы</option>
+        <option value="active">Активен</option>
+        <option value="moderation">На модерации</option>
+        <option value="rejected">Отклонён</option>
+      </select>
+    </div>
+    <table class="ap-table" id="catTable">
+      <thead><tr><th>OEM</th><th>Название</th><th>Бренд</th><th>Категория</th><th>Поставщик</th><th>Цена</th><th>Наличие</th><th>Статус</th><th>Действия</th></tr></thead>
+      <tbody>
+        <tr data-brand="Toyota" data-status="active"><td>90915-YZZD1</td><td>Масляный фильтр</td><td>Toyota</td><td class="text-secondary">Фильтры</td><td class="text-secondary">#3001</td><td>$4.20</td><td>1,200</td><td><span class="ap-badge ap-badge-gray">Активен</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Редактирование')">Редактировать</button></td></tr>
+        <tr data-brand="Bosch" data-status="active"><td>0 242 235 663</td><td>Свеча зажигания</td><td>Bosch</td><td class="text-secondary">Зажигание</td><td class="text-secondary">#3002</td><td>$2.80</td><td>5,400</td><td><span class="ap-badge ap-badge-gray">Активен</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Редактирование')">Редактировать</button></td></tr>
+        <tr data-brand="Denso" data-status="moderation"><td>DG-184</td><td>Генератор</td><td>Denso</td><td class="text-secondary">Электрика</td><td class="text-secondary">#3003</td><td>$128.00</td><td>45</td><td><span class="ap-badge ap-badge-gray">На модерации</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Товар одобрен')">Одобрить</button> <button class="ap-btn ap-btn-warn" onclick="apToast('Товар отклонён')">Отклонить</button></td></tr>
+        <tr data-brand="Honda" data-status="active"><td>17220-5A2-A00</td><td>Воздушный фильтр</td><td>Honda</td><td class="text-secondary">Фильтры</td><td class="text-secondary">#3001</td><td>$12.50</td><td>800</td><td><span class="ap-badge ap-badge-gray">Активен</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Редактирование')">Редактировать</button></td></tr>
+        <tr data-brand="Continental" data-status="moderation"><td>CT1092</td><td>Ремень ГРМ</td><td>Continental</td><td class="text-secondary">Привод</td><td class="text-secondary">#3156</td><td>$34.00</td><td>220</td><td><span class="ap-badge ap-badge-gray">На модерации</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Товар одобрен')">Одобрить</button> <button class="ap-btn ap-btn-warn" onclick="apToast('Товар отклонён')">Отклонить</button></td></tr>
+        <tr data-brand="Bosch" data-status="active"><td>0 986 479 331</td><td>Тормозной диск</td><td>Bosch</td><td class="text-secondary">Тормоза</td><td class="text-secondary">#3002</td><td>$42.00</td><td>340</td><td><span class="ap-badge ap-badge-gray">Активен</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Редактирование')">Редактировать</button></td></tr>
+        <tr data-brand="Toyota" data-status="active"><td>04465-33471</td><td>Тормозные колодки</td><td>Toyota</td><td class="text-secondary">Тормоза</td><td class="text-secondary">#3001</td><td>$28.00</td><td>650</td><td><span class="ap-badge ap-badge-gray">Активен</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Редактирование')">Редактировать</button></td></tr>
+        <tr data-brand="Denso" data-status="rejected"><td>DG-201</td><td>Стартер</td><td>Denso</td><td class="text-secondary">Электрика</td><td class="text-secondary">#3003</td><td>$95.00</td><td>0</td><td><span class="ap-badge ap-badge-orange">Отклонён</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Редактирование')">Редактировать</button> <button class="ap-btn ap-btn-ghost" onclick="apToast('Скрыт')">Скрыть</button></td></tr>
+        <tr data-brand="Continental" data-status="moderation"><td>CT2045</td><td>Натяжитель ремня</td><td>Continental</td><td class="text-secondary">Привод</td><td class="text-secondary">#3156</td><td>$18.50</td><td>180</td><td><span class="ap-badge ap-badge-gray">На модерации</span></td><td><button class="ap-btn ap-btn-primary" onclick="apToast('Товар одобрен')">Одобрить</button> <button class="ap-btn ap-btn-warn" onclick="apToast('Товар отклонён')">Отклонить</button></td></tr>
+        <tr data-brand="Honda" data-status="active"><td>51350-SZA-A01</td><td>Рычаг подвески</td><td>Honda</td><td class="text-secondary">Подвеска</td><td class="text-secondary">#3001</td><td>$64.00</td><td>120</td><td><span class="ap-badge ap-badge-gray">Активен</span></td><td><button class="ap-btn ap-btn-ghost" onclick="apToast('Редактирование')">Редактировать</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Categories -->
+  <div data-panel-group="cat" data-panel-key="categories" style="display:none;">
+    <table class="ap-table">
+      <thead><tr><th>Категория</th><th>Товаров</th><th>Поставщиков</th><th>Средняя цена</th></tr></thead>
+      <tbody>
+        <tr><td>Фильтры</td><td>124,500</td><td>42</td><td>$8.40</td></tr>
+        <tr><td>Тормоза</td><td>98,200</td><td>38</td><td>$35.00</td></tr>
+        <tr><td>Зажигание</td><td>86,400</td><td>35</td><td>$6.20</td></tr>
+        <tr><td>Подвеска</td><td>78,100</td><td>31</td><td>$42.00</td></tr>
+        <tr><td>Электрика</td><td>65,300</td><td>28</td><td>$68.00</td></tr>
+        <tr><td>Привод</td><td>54,800</td><td>25</td><td>$24.50</td></tr>
+        <tr><td>Охлаждение</td><td>48,200</td><td>22</td><td>$18.00</td></tr>
+        <tr><td>Кузов</td><td>42,600</td><td>20</td><td>$52.00</td></tr>
+        <tr><td>Трансмиссия</td><td>38,400</td><td>18</td><td>$86.00</td></tr>
+        <tr><td>Выхлоп</td><td>32,100</td><td>15</td><td>$45.00</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Brands -->
+  <div data-panel-group="cat" data-panel-key="brands" style="display:none;">
+    <table class="ap-table">
+      <thead><tr><th>Бренд</th><th>Товаров</th><th>Поставщиков</th><th>Средняя цена</th></tr></thead>
+      <tbody>
+        <tr><td>Toyota</td><td>142,000</td><td>45</td><td>$22.00</td></tr>
+        <tr><td>Honda</td><td>118,000</td><td>38</td><td>$28.00</td></tr>
+        <tr><td>Bosch</td><td>96,000</td><td>52</td><td>$18.50</td></tr>
+        <tr><td>Denso</td><td>84,000</td><td>34</td><td>$32.00</td></tr>
+        <tr><td>Continental</td><td>68,000</td><td>28</td><td>$24.00</td></tr>
+        <tr><td>Nissan</td><td>62,000</td><td>30</td><td>$26.00</td></tr>
+        <tr><td>NGK</td><td>54,000</td><td>22</td><td>$5.80</td></tr>
+        <tr><td>Aisin</td><td>48,000</td><td>18</td><td>$42.00</td></tr>
+        <tr><td>KYB</td><td>42,000</td><td>20</td><td>$38.00</td></tr>
+        <tr><td>Hyundai/Kia</td><td>38,000</td><td>25</td><td>$20.00</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterCatalog() {
+  var search = document.getElementById('catSearch').value.toLowerCase();
+  var brand = document.getElementById('catBrand').value;
+  var status = document.getElementById('catStatus').value;
+  var rows = document.querySelectorAll('#catTable tbody tr');
+  rows.forEach(function(row) {
+    var show = true;
+    if (search && row.textContent.toLowerCase().indexOf(search) === -1) show = false;
+    if (brand && row.dataset.brand !== brand) show = false;
+    if (status && row.dataset.status !== status) show = false;
+    row.style.display = show ? '' : 'none';
+  });
+}
+</script>
+{% endblock %}

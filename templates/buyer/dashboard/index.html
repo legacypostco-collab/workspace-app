@@ -1,0 +1,764 @@
+{% extends "buyer/base_buyer.html" %}
+{% load static %}
+
+{% block title %}Дашборд — Кабинет покупателя{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Override seller-content to remove padding — dashboard handles its own */
+  .seller-content { padding: 0 !important; overflow: auto; }
+
+  @font-face{font-family:'Geist';src:url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Regular.woff2') format('woff2');font-weight:400}
+  @font-face{font-family:'Geist';src:url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Medium.woff2') format('woff2');font-weight:500}
+  @font-face{font-family:'Geist';src:url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-SemiBold.woff2') format('woff2');font-weight:600}
+  @font-face{font-family:'Geist';src:url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Bold.woff2') format('woff2');font-weight:700}
+
+  @keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .fi{animation:fi .45s cubic-bezier(.22,1,.36,1) both}
+  .rw{transition:background .12s;cursor:pointer}
+  .rw:hover{background:rgba(100,181,246,0.04)}
+  .blk{position:relative;transition:opacity .2s}
+  .blk.dragging{opacity:0.35}
+  .blk-ctrl{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity .15s;z-index:2}
+  .blk:hover .blk-ctrl{opacity:1}
+  .mc{pointer-events:none}
+  *:hover>.mc{opacity:1!important;pointer-events:auto}
+  .wi-row{display:flex;gap:8px;padding:7px 8px;border-radius:7px;transition:background .12s;cursor:pointer;align-items:flex-start}
+  .wi-row:hover{background:rgba(100,181,246,0.04)}
+  .wi-card{background:#242424;border:1px solid rgba(255,255,255,0.055);border-radius:10px;overflow:hidden;transition:transform .15s}
+  .wi-card:hover{transform:translateY(-1px)}
+  .wi-card.dragging{opacity:0.4}
+  .wp-row{padding:6px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .12s;font-size:11px}
+  .wp-row:hover{background:rgba(100,181,246,0.04)}
+
+  /* Currency switcher in topbar meta area */
+  .dash-cur-switcher { display:flex; gap:1px; background:#2C2C2C; border-radius:7px; padding:2px; border:1px solid rgba(255,255,255,0.055); }
+  .dash-cur-btn { padding:5px 8px; border-radius:5px; border:none; background:transparent; color:#6A6A6A; font-size:11px; font-weight:400; cursor:pointer; font-family:'Inter',sans-serif; transition:all .15s; }
+  .dash-cur-btn.active { background:#1F1F1F; color:#ECECEC; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block content %}
+{{ dashboard_payload|json_script:"dashboard-data" }}
+<script>
+  window.__BUYER_NAME__ = "{{ request.user.get_full_name|default:request.user.username|escapejs }}";
+  window.__BUYER_INITIALS__ = "{{ request.user.get_full_name|default:request.user.username|slice:'2'|upper|escapejs }}";
+  // Shared currency state between DashboardContent and DashboardPanel
+  window.__dash = { cur: 'USD', subs: [] };
+  window.__dash.set = function(c) { this.cur = c; this.subs.forEach(function(f){ f(c); }); };
+</script>
+<div id="buyer-dash-content" style="min-height:100%;"></div>
+{% endblock %}
+
+{% block right_panel %}
+<div id="buyer-dash-panel" class="seller-right-panel"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.10/babel.min.js"></script>
+{% verbatim %}<script type="text/babel" data-presets="react">
+  const { useState, useEffect, useCallback } = React;
+
+  /* ── Shared currency hook ── */
+  function useDashCur() {
+    const [cur, setCurLocal] = useState(window.__dash.cur);
+    useEffect(() => {
+      const h = (c) => setCurLocal(c);
+      window.__dash.subs.push(h);
+      return () => { window.__dash.subs = window.__dash.subs.filter(x => x !== h); };
+    }, []);
+    const setCur = (c) => window.__dash.set(c);
+    return [cur, setCur];
+  }
+
+  /* ── PURE SVG CHARTS ── */
+  function SvgArea({ data, color, height = 76 }) {
+    const w = 600, h = height;
+    const min = Math.min(...data.map(d => d.v));
+    const max = Math.max(...data.map(d => d.v));
+    const range = max - min || 1;
+    const pts = data.map((d, i) => ({
+      x: (i / (data.length - 1)) * w,
+      y: h - ((d.v - min) / range) * (h * 0.85) - h * 0.05,
+    }));
+    const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+    const area = `${line} L${w},${h} L0,${h} Z`;
+    const id = `ag${Math.random().toString(36).slice(2)}`;
+    return (
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" width="100%" height={h} style={{ display: 'block' }}>
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.15"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d={area} fill={`url(#${id})`}/>
+        <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    );
+  }
+
+  function SvgAreaMonth({ data, dataKey, color, yMin, yMax }) {
+    const W = 400, H = 180, PAD = { t: 10, r: 8, b: 28, l: 28 };
+    const cw = W - PAD.l - PAD.r, ch = H - PAD.t - PAD.b;
+    const lo = yMin ?? Math.min(...data.map(d => d[dataKey]));
+    const hi = yMax ?? Math.max(...data.map(d => d[dataKey]));
+    const range = hi - lo || 1;
+    const xs = data.map((_, i) => PAD.l + (i / (data.length - 1)) * cw);
+    const ys = data.map(d => PAD.t + ch - ((d[dataKey] - lo) / range) * ch);
+    const line = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x},${ys[i]}`).join(' ');
+    const area = `${line} L${xs[xs.length-1]},${PAD.t+ch} L${xs[0]},${PAD.t+ch} Z`;
+    const id = `sa${Math.random().toString(36).slice(2)}`;
+    const ticks = [lo, Math.round((lo+hi)/2), hi];
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: 'block', overflow: 'visible' }}>
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.15"/>
+            <stop offset="100%" stopColor={color} stopOpacity="0"/>
+          </linearGradient>
+        </defs>
+        {ticks.map((t, i) => {
+          const y = PAD.t + ch - ((t - lo) / range) * ch;
+          return <line key={i} x1={PAD.l} x2={PAD.l + cw} y1={y} y2={y} stroke="rgba(255,255,255,0.035)" strokeWidth="1"/>;
+        })}
+        {ticks.map((t, i) => {
+          const y = PAD.t + ch - ((t - lo) / range) * ch;
+          return <text key={i} x={PAD.l - 4} y={y + 4} textAnchor="end" fontSize="9" fill="#484848">{t}</text>;
+        })}
+        {data.map((d, i) => (
+          <text key={i} x={xs[i]} y={H - 6} textAnchor="middle" fontSize="9" fill="#6A6A6A">{d.m}</text>
+        ))}
+        <path d={area} fill={`url(#${id})`}/>
+        <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        {xs.map((x, i) => (
+          <circle key={i} cx={x} cy={ys[i]} r="2.5" fill="#242424" stroke={color} strokeWidth="1.5"/>
+        ))}
+      </svg>
+    );
+  }
+
+  function SvgBar({ data, keyA, keyB, colorA, colorB }) {
+    const W = 400, H = 180, PAD = { t: 10, r: 8, b: 28, l: 28 };
+    const cw = W - PAD.l - PAD.r, ch = H - PAD.t - PAD.b;
+    const maxV = Math.max(...data.map(d => Math.max(d[keyA], d[keyB])));
+    const bw = 12, gap = 4;
+    const slotW = cw / data.length;
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} style={{ display: 'block', overflow: 'visible' }}>
+        {[0, Math.round(maxV/2), maxV].map((t, i) => {
+          const y = PAD.t + ch - (t / maxV) * ch;
+          return <g key={i}>
+            <line x1={PAD.l} x2={PAD.l+cw} y1={y} y2={y} stroke="rgba(255,255,255,0.035)" strokeWidth="1"/>
+            <text x={PAD.l-4} y={y+4} textAnchor="end" fontSize="9" fill="#484848">{t}</text>
+          </g>;
+        })}
+        {data.map((d, i) => {
+          const cx = PAD.l + i * slotW + slotW / 2;
+          const hA = (d[keyA] / maxV) * ch;
+          const hB = (d[keyB] / maxV) * ch;
+          return <g key={i}>
+            <rect x={cx - gap/2 - bw} y={PAD.t + ch - hB} width={bw} height={hB} fill="rgba(58,58,58,0.4)" rx="2"/>
+            <rect x={cx + gap/2} y={PAD.t + ch - hA} width={bw} height={hA} fill={i >= data.length - 2 ? colorA : `rgba(100,181,246,${0.3+i*0.08})`} rx="2"/>
+            <text x={cx} y={H-6} textAnchor="middle" fontSize="9" fill="#6A6A6A">{d.m}</text>
+          </g>;
+        })}
+      </svg>
+    );
+  }
+
+  /* ── CURRENCY ── */
+  const CURRENCIES = {
+    USD: { symbol: "$", rate: 1, label: "USD" },
+    CNY: { symbol: "¥", rate: 7.25, label: "CNY" },
+    RUB: { symbol: "₽", rate: 92.5, label: "RUB" },
+    EUR: { symbol: "€", rate: 0.92, label: "EUR" },
+  };
+
+  function fmtCur(usd, cur) {
+    const c = CURRENCIES[cur];
+    const val = usd * c.rate;
+    if (val >= 1e6) return `${c.symbol}${(val / 1e6).toFixed(1)}M`;
+    if (val >= 1e3) return `${c.symbol}${(val / 1e3).toFixed(0)}K`;
+    return `${c.symbol}${val.toFixed(0)}`;
+  }
+
+  /* ── DATA (base values in USD) ── */
+  const purchases = [
+    { m: "Окт", val: 5, p: 4 }, { m: "Ноя", val: 8, p: 6 }, { m: "Дек", val: 10, p: 9 },
+    { m: "Янв", val: 12, p: 8 }, { m: "Фев", val: 18, p: 14 }, { m: "Мар", val: 21, p: 16 },
+  ];
+  const savings = [
+    { m: "Окт", v: 5 }, { m: "Ноя", v: 7 }, { m: "Дек", v: 8 },
+    { m: "Янв", v: 9 }, { m: "Фев", v: 10 }, { m: "Мар", v: 12 },
+  ];
+  const heroLine = [2,3,4,3,5,4,6,5,7,6,8,7,9,8,10,9,12,11,13,12,14,13,16,15,17,16,18,17,19,18,20,21].map(v=>({v}));
+  const statuses = [
+    { name: "Ожидает отгрузки", count: 2 },
+    { name: "В пути", count: 3 },
+    { name: "На таможне", count: 1 },
+    { name: "Доставлено", count: 15 },
+    { name: "Ожидает оплаты", count: 3 },
+  ];
+  const rfqs = [
+    { id: "RFQ-1204", part: "Гидроцилиндр 707-01-0K930", supplier: "Поставщик #1042", type: "Срочный", time: "15м", brand: "Komatsu", usd: 115862 },
+    { id: "RFQ-1201", part: "Турбокомпрессор 6505-67-5030", supplier: "Поставщик #2087", type: "Стандартный", time: "2ч", brand: "Komatsu", usd: 173793 },
+    { id: "RFQ-1198", part: "Насос гидравлический", supplier: "Поставщик #3155", type: "По чертежу", time: "5ч", brand: "Hitachi", usd: 289655 },
+  ];
+  const eventsBase = [
+    { text: "Заказ ORD-2041 отгружен", detail: "Поставщик #1042 → Склад приёмки", time: "09:14", dot: "#28C840" },
+    { text: "SLA: дедлайн по RFQ-1204", detail: "Ответ поставщика — 4ч", time: "08:51", dot: "#FEBC2E" },
+    { text: (c) => `Оплата ${fmtCur(322759, c)} подтверждена`, detail: "ORD-2038 · Поставщик #2087", time: "08:30", dot: "#64B5F6" },
+    { text: "Рейтинг поставщика обновлён", detail: "Поставщик #1042 · 4.8★", time: "08:12", dot: "#64B5F6" },
+    { text: "Новая котировка по RFQ-1198", detail: (c) => `Поставщик #3155 · ${fmtCur(289655, c)}`, time: "07:45", dot: "#E85C0D" },
+  ];
+  const tyC = { "Срочный": "#E85C0D", "Стандартный": "#64B5F6", "По чертежу": "#7A8494" };
+
+  /* ── PALETTE ── */
+  const sky = "#64B5F6";
+  const skyDim = "rgba(100,181,246,";
+  const ora = "#E85C0D";
+  const oraDim = "rgba(232,92,13,";
+  const apple = { red: "#FF5F57", yellow: "#FEBC2E", green: "#28C840", orange: "#FF9F0A" };
+
+  const P = {
+    bg: "#1A1A1A", side: "#1F1F1F", card: "#242424", el: "#2C2C2C",
+    brd: "rgba(255,255,255,0.055)", sep: "rgba(255,255,255,0.035)",
+    hov: "rgba(100,181,246,0.04)",
+    t0: "#ECECEC", t1: "#919191", t2: "#6A6A6A", t3: "#484848",
+  };
+
+  /* ══════════════════════════════════════════════
+     RIGHT PANEL — WIDGET REGISTRY
+     ══════════════════════════════════════════════ */
+  const WIDGETS = {
+    actions: {
+      title: "Требует действия",
+      desc: "Очередь задач",
+      render: ({ dismiss, cur: c = "USD" }) => {
+        const items = [
+          { id: "a1", icon: "$", label: "Оплатить счёт", detail: `ORD-2041 · Поставщик #1042 · ${fmtCur(322759, c)}`, time: "Срочно" },
+          { id: "a2", icon: "✓", label: "Подтвердить приёмку", detail: "ORD-2038 · 6 позиций · Склад", time: "Ожидает" },
+          { id: "a3", icon: "↩", label: "Проверить котировку", detail: "RFQ-1204 · Поставщик #1042 · Гидроцилиндр", time: "15м" },
+          { id: "a4", icon: "↩", label: "Ответить на переторжку", detail: "Поставщик #2087 · Турбокомпрессор", time: "2ч" },
+        ];
+        return items.filter(a => !dismiss.includes(a.id)).map((a, i) => (
+          <div key={a.id} className="wi-row">
+            <div style={{ width: 22, height: 22, borderRadius: 5, background: P.el, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: P.t0, flexShrink: 0 }}>{a.icon}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: P.t0 }}>{a.label}</span>
+                <span style={{ fontSize: 11, color: P.t1, flexShrink: 0 }}>{a.time}</span>
+              </div>
+              <div style={{ fontSize: 11, color: P.t1, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.detail}</div>
+            </div>
+          </div>
+        ));
+      },
+    },
+
+    sla_timers: {
+      title: "SLA поставщиков",
+      desc: "Обратный отсчёт",
+      render: () => {
+        const alerts = [
+          { order: "Поставщик #1042", stage: "Ответ на RFQ-1204", h: 4, m: 15, severity: apple.red },
+          { order: "Поставщик #2087", stage: "Отгрузка ORD-2039", h: 11, m: 30, severity: null },
+          { order: "Поставщик #3155", stage: "Котировка RFQ-1198", h: 48, m: 0, severity: null },
+        ];
+        return alerts.map((s, i) => (
+          <div key={i} className="wi-row">
+            {s.severity
+              ? <div style={{ width: 5, height: 5, borderRadius: "50%", background: s.severity, flexShrink: 0, marginTop: 6 }} />
+              : <div style={{ width: 5, flexShrink: 0 }} />
+            }
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: P.t0 }}>{s.order}</span>
+                <span style={{ fontFamily: "'Golos Text', sans-serif", fontWeight: 700, fontSize: 13, color: P.t0, fontVariantNumeric: "tabular-nums" }}>{s.h}ч {String(s.m).padStart(2, "0")}м</span>
+              </div>
+              <div style={{ fontSize: 11, color: P.t1, marginTop: 2 }}>{s.stage}</div>
+            </div>
+          </div>
+        ));
+      },
+    },
+
+    payments: {
+      title: "Ожидают оплаты",
+      desc: "Исходящие платежи",
+      render: ({ cur: c = "USD" }) => {
+        const items = [
+          { order: "#2041", usd: 322759, type: "Основная", status: "К оплате", dot: null },
+          { order: "#2038", usd: 843448, type: "Финальная", status: "Подтверждено", dot: apple.green },
+          { order: "#2035", usd: 52000, type: "Аванс 10%", status: "В обработке", dot: null },
+        ];
+        return (
+          <React.Fragment>
+            <div style={{ display: "flex", justifyContent: "space-between", padding: "0 0 8px", borderBottom: `1px solid ${P.sep}`, marginBottom: 6 }}>
+              <span style={{ fontSize: 11, color: P.t1 }}>Итого к оплате</span>
+              <span style={{ fontSize: 14, fontWeight: 800, fontFamily: "'Golos Text', sans-serif", color: ora }}>{fmtCur(1218207, c)}</span>
+            </div>
+            {items.map((p, i) => (
+              <div key={i} className="wi-row">
+                {p.dot
+                  ? <div style={{ width: 5, height: 5, borderRadius: "50%", background: p.dot, flexShrink: 0, marginTop: 6 }} />
+                  : <div style={{ width: 5, flexShrink: 0 }} />
+                }
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 12, fontWeight: 500, color: P.t0 }}>{p.order} · {p.type}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Golos Text', sans-serif", color: P.t0, fontVariantNumeric: "tabular-nums" }}>{fmtCur(p.usd, c)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
+                    <span style={{ fontSize: 11, color: P.t1 }}>{p.status}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </React.Fragment>
+        );
+      },
+    },
+
+    rebid: {
+      title: "Переторжка",
+      desc: "Активные переторжки",
+      render: ({ cur: c = "USD" }) => {
+        const items = [
+          { client: "Поставщик #1042", part: "Гидроцилиндр", currentUsd: 115862, targetUsd: 107586, delta: "-7%" },
+          { client: "Поставщик #2087", part: "Турбокомпрессор", currentUsd: 173793, targetUsd: 162759, delta: "-6%" },
+        ];
+        return items.map((r, i) => (
+          <div key={i} className="wi-row">
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: P.t0 }}>{r.client} · {r.part}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                <span style={{ fontSize: 11, color: P.t1 }}>{fmtCur(r.currentUsd, c)}</span>
+                <span style={{ fontSize: 11, color: P.t1 }}>→</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: P.t0, fontFamily: "'Golos Text', sans-serif" }}>{fmtCur(r.targetUsd, c)}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: P.t0, background: P.el, padding: "1px 5px", borderRadius: 3 }}>{r.delta}</span>
+              </div>
+            </div>
+          </div>
+        ));
+      },
+    },
+
+    claims: {
+      title: "Рекламации",
+      desc: "Открытые претензии",
+      render: () => {
+        const items = [
+          { order: "#2025", issue: "Просрочка поставки +3 дня", status: "На рассмотрении", dot: apple.red },
+          { order: "#2018", issue: "Несоответствие спецификации", status: "Ждёт решения", dot: null },
+        ];
+        return items.length === 0 ? (
+          <div style={{ fontSize: 12, color: P.t1, padding: "8px 0", textAlign: "center" }}>Нет открытых рекламаций</div>
+        ) : items.map((c, i) => (
+          <div key={i} className="wi-row">
+            {c.dot
+              ? <div style={{ width: 5, height: 5, borderRadius: "50%", background: c.dot, flexShrink: 0, marginTop: 6 }} />
+              : <div style={{ width: 5, flexShrink: 0 }} />
+            }
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ fontSize: 12, fontWeight: 500, color: P.t0 }}>Заказ {c.order}</span>
+                <span style={{ fontSize: 11, color: P.t1 }}>{c.status}</span>
+              </div>
+              <div style={{ fontSize: 11, color: P.t1, marginTop: 2 }}>{c.issue}</div>
+            </div>
+          </div>
+        ));
+      },
+    },
+  };
+
+  const WIDGET_IDS = Object.keys(WIDGETS);
+  const DEFAULT_PINNED = ["actions", "sla_timers", "payments", "rebid", "claims"];
+
+  /* ══════════════════════════════════════════════
+     DASHBOARD CONTENT COMPONENT
+     ══════════════════════════════════════════════ */
+  function DashboardContent() {
+    const [cur, setCur] = useDashCur();
+    const [m, setM] = useState(false);
+    const [period, setPeriod] = useState("6М");
+    const ALL_BLOCKS = ["hero","metrics","charts","status","work"];
+    const BLOCK_NAMES = { hero: "График закупок", metrics: "Ключевые метрики", charts: "Закупки и экономия", status: "Рейтинг и заказы", work: "RFQ и события" };
+    const [blocks, setBlocks] = useState(ALL_BLOCKS);
+    const [hiddenBlocks, setHiddenBlocks] = useState([]);
+    const [dragBlock, setDragBlock] = useState(null);
+    const [showBlockPicker, setShowBlockPicker] = useState(false);
+    const [metricOrder, setMetricOrder] = useState(["m_orders","m_suppliers","m_savings","m_rfq"]);
+    const [hiddenMetrics, setHiddenMetrics] = useState([]);
+    const [dragMetric, setDragMetric] = useState(null);
+    const [chartsOrder, setChartsOrder] = useState(["purchases","savings_chart"]);
+    const [statusOrder, setStatusOrder] = useState(["rating","orders"]);
+    const [workOrder, setWorkOrder] = useState(["requests","events"]);
+    const [dragInner, setDragInner] = useState(null);
+
+    const onInnerDragStart = (e, id) => { e.stopPropagation(); setDragInner(id); e.dataTransfer.effectAllowed = "move"; };
+    const makeInnerDragOver = (setter) => (e, targetId) => {
+      e.preventDefault(); e.stopPropagation();
+      if (!dragInner || dragInner === targetId) return;
+      setter(prev => {
+        const a = [...prev], fi = a.indexOf(dragInner), ti = a.indexOf(targetId);
+        if (fi === -1 || ti === -1) return prev;
+        a.splice(fi, 1); a.splice(ti, 0, dragInner); return a;
+      });
+    };
+    const hideBlock = (id) => { setBlocks(p => p.filter(x => x !== id)); setHiddenBlocks(p => [...p, id]); };
+    const restoreBlock = (id) => {
+      setHiddenBlocks(p => p.filter(x => x !== id));
+      setBlocks(p => {
+        const a = [...p];
+        const origIdx = ALL_BLOCKS.indexOf(id);
+        let insertAt = a.length;
+        for (let i = 0; i < a.length; i++) {
+          if (ALL_BLOCKS.indexOf(a[i]) > origIdx) { insertAt = i; break; }
+        }
+        a.splice(insertAt, 0, id);
+        return a;
+      });
+    };
+    const onBlockDragStart = (e, id) => { setDragBlock(id); e.dataTransfer.effectAllowed = "move"; };
+    const onBlockDragOver = (e, targetId) => {
+      e.preventDefault();
+      if (!dragBlock || dragBlock === targetId) return;
+      setBlocks(prev => {
+        const a = [...prev], fi = a.indexOf(dragBlock), ti = a.indexOf(targetId);
+        if (fi === -1 || ti === -1) return prev;
+        a.splice(fi, 1); a.splice(ti, 0, dragBlock); return a;
+      });
+    };
+
+    useEffect(() => { setTimeout(() => setM(true), 100); }, []);
+    const circ = 2*Math.PI*34, score=4.8, off=circ-(score/5)*circ;
+
+    return (
+      <div style={{ padding: "24px 36px 48px", maxWidth: 1080, margin: "0 auto", fontFamily: "Geist, Inter, -apple-system, sans-serif" }}>
+
+        {/* ── HEADER ROW ── */}
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 4 }}>
+            <span style={{ fontSize: 36, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif", letterSpacing: "-0.03em", lineHeight: 1 }}>{fmtCur(2100000, cur)}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: sky }}>+18.4%</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
+            <span style={{ fontSize: 13, color: P.t1 }}>Объём закупок · vs {fmtCur(1800000, cur)} фев</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {hiddenBlocks.length > 0 && (
+                <div style={{ position: "relative" }}>
+                  <button onClick={() => setShowBlockPicker(!showBlockPicker)} style={{
+                    background: showBlockPicker ? P.el : "transparent", border: `1px solid ${P.brd}`,
+                    borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 11, color: P.t0,
+                    fontFamily: "Geist, Inter, sans-serif", display: "flex", alignItems: "center", gap: 4,
+                  }}>
+                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 2v8M2 6h8"/></svg>
+                    {hiddenBlocks.length} скрыто
+                  </button>
+                  {showBlockPicker && (
+                    <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, background: P.card, border: `1px solid ${P.brd}`, borderRadius: 10, padding: 6, width: 200, zIndex: 20, boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}>
+                      {hiddenBlocks.map(id => (
+                        <div key={id} onClick={() => { restoreBlock(id); setShowBlockPicker(false); }} style={{
+                          padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontSize: 12, color: P.t0,
+                          display: "flex", alignItems: "center", gap: 8, transition: "background .12s",
+                        }} onMouseEnter={e => e.currentTarget.style.background = P.hov} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                          <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke={sky} strokeWidth="1.5" strokeLinecap="round"><path d="M6 2v8M2 6h8"/></svg>
+                          {BLOCK_NAMES[id]}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Period filter */}
+              <div style={{ display: "flex", gap: 1, background: P.card, borderRadius: 7, padding: 2, border: `1px solid ${P.brd}` }}>
+                {["1М","3М","6М","1Г","Всё"].map(p=>(
+                  <button key={p} onClick={()=>setPeriod(p)} style={{
+                    padding: "4px 10px", borderRadius: 5, border: "none",
+                    background: period===p ? P.el : "transparent",
+                    color: period===p ? P.t0 : P.t1,
+                    fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "Geist, Inter, sans-serif",
+                  }}>{p}</button>
+                ))}
+              </div>
+              {/* Currency switcher */}
+              <div style={{ display: "flex", gap: 1, background: P.el, borderRadius: 7, padding: 2 }}>
+                {Object.keys(CURRENCIES).map(k => (
+                  <button key={k} onClick={() => setCur(k)} style={{
+                    padding: "4px 8px", borderRadius: 5, border: "none",
+                    background: cur === k ? P.card : "transparent",
+                    color: cur === k ? P.t0 : P.t2,
+                    fontSize: 11, fontWeight: cur === k ? 600 : 400,
+                    cursor: "pointer", fontFamily: "Geist, Inter, sans-serif",
+                  }}>{CURRENCIES[k].symbol} {k}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── BLOCKS ── */}
+        {blocks.map(blockId => {
+          const wrap = (ch, st = {}) => (
+            <div key={blockId} className={`blk${dragBlock === blockId ? " dragging" : ""}`}
+              draggable onDragStart={e => onBlockDragStart(e, blockId)}
+              onDragOver={e => onBlockDragOver(e, blockId)} onDragEnd={() => setDragBlock(null)}
+              style={{ position: "relative", cursor: "grab", marginBottom: 12, ...st }}>
+              <div className="blk-ctrl">
+                <div onClick={() => hideBlock(blockId)} style={{ cursor: "pointer", padding: "2px 5px", borderRadius: 4, background: P.el, color: P.t2, fontSize: 10, lineHeight: 1 }}>✕</div>
+              </div>
+              {ch}
+            </div>
+          );
+
+          if (blockId === "hero") return wrap(
+            <div style={{ height: 120 }}>
+              <SvgArea data={heroLine} color={sky} height={120} />
+            </div>, { marginBottom: 20 }
+          );
+
+          if (blockId === "metrics") {
+            const allM = [
+              { id: "m_orders", l: "Заказов", v: "24", t: "+12%", up: true, ctx: "за 30 дней" },
+              { id: "m_suppliers", l: "Поставщиков", v: "8", t: "+2", up: true, ctx: "активных" },
+              { id: "m_savings", l: "Экономия", v: "12%", t: "+3%", up: true, ctx: "переторжка" },
+              { id: "m_rfq", l: "Активных RFQ", v: "3", t: "", up: true, ctx: "ожидают ответа", pill: "новых" },
+            ];
+            const vis = metricOrder.filter(id => !hiddenMetrics.includes(id));
+            return wrap(<div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(vis.length,1)}, 1fr)`, gap: 12 }}>
+              {vis.map(mid => { const s = allM.find(x => x.id === mid); if (!s) return null; return (
+                <div key={mid} draggable onDragStart={e => { e.stopPropagation(); setDragMetric(mid); e.dataTransfer.effectAllowed="move"; }}
+                  onDragOver={e => { e.preventDefault(); e.stopPropagation(); if(!dragMetric||dragMetric===mid) return; setMetricOrder(p=>{const a=[...p],fi=a.indexOf(dragMetric),ti=a.indexOf(mid);if(fi===-1||ti===-1)return p;a.splice(fi,1);a.splice(ti,0,dragMetric);return a;}); }}
+                  onDragEnd={()=>setDragMetric(null)}
+                  style={{ background: P.card, borderRadius: 14, border: `1px solid ${P.brd}`, padding: "14px 18px", display: "flex", flexDirection: "column", minHeight: 82, position: "relative", cursor: "grab", opacity: dragMetric===mid?0.35:1 }}>
+                  <div className="mc" style={{ position: "absolute", top: 6, right: 6, opacity: 0, transition: "opacity .15s" }}>
+                    <div onClick={e=>{e.stopPropagation();setHiddenMetrics(p=>[...p,mid]);}} style={{ cursor:"pointer",padding:"2px 5px",borderRadius:4,background:P.el,color:P.t2,fontSize:10,lineHeight:1 }}>✕</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: P.t1, marginBottom: 8, height: 14, whiteSpace: "nowrap" }}>{s.l}</div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, flex: 1 }}>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif", letterSpacing: "-0.02em" }}>{s.v}</span>
+                    {s.t && <span style={{ fontSize: 11, fontWeight: 600, color: s.up?sky:ora, background: s.up?`${skyDim}0.08)`:`${oraDim}0.08)`, padding: "2px 6px", borderRadius: 4 }}>{s.t}</span>}
+                    {s.pill && <span style={{ fontSize: 11, fontWeight: 600, color: ora, background: `${oraDim}0.08)`, padding: "2px 6px", borderRadius: 4 }}>{s.pill}</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: P.t1, marginTop: "auto" }}>{s.ctx}</div>
+                </div>); })}
+              {hiddenMetrics.length > 0 && <div onClick={()=>{setHiddenMetrics([]);setMetricOrder(["m_orders","m_suppliers","m_savings","m_rfq"]);}} style={{ background: P.el, borderRadius: 14, border: `1px dashed ${P.brd}`, padding: 18, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", minHeight: 100 }}><span style={{ fontSize: 12, color: P.t1 }}>+ {hiddenMetrics.length} скрыто</span></div>}
+            </div>, { marginBottom: 20 });
+          }
+
+          if (blockId === "charts") {
+            const chartCards = {
+              purchases: <div style={{ background: P.card, padding: "20px 22px 18px", borderRadius: 14, border: `1px solid ${P.brd}` }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: P.t0 }}>Закупки по месяцам</div>
+                  <div style={{ display: "flex", gap: 14 }}>{[{l:"2026",c:sky},{l:"2025",c:P.t3}].map((x,i)=>(<div key={i} style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,color:P.t1 }}><div style={{ width:8,height:3,borderRadius:1,background:x.c }}/>{x.l}</div>))}</div>
+                </div>
+                <SvgBar data={purchases} keyA="val" keyB="p" colorA={sky} colorB={P.t3} />
+              </div>,
+              savings_chart: <div style={{ background: P.card, padding: "20px 22px 18px", borderRadius: 14, border: `1px solid ${P.brd}` }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: P.t0 }}>Экономия (переторжка)</div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: sky, fontFamily: "'Golos Text', sans-serif" }}>12%</span>
+                </div>
+                <SvgAreaMonth data={savings} dataKey="v" color={sky} yMin={0} yMax={15} />
+              </div>,
+            };
+            return wrap(<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {chartsOrder.map(cid => <div key={cid} draggable onDragStart={e=>onInnerDragStart(e,cid)} onDragOver={e=>makeInnerDragOver(setChartsOrder)(e,cid)} onDragEnd={()=>setDragInner(null)} style={{ cursor:"grab", opacity:dragInner===cid?0.35:1, transition:"opacity .2s" }}>{chartCards[cid]}</div>)}
+            </div>);
+          }
+
+          if (blockId === "status") {
+            const statusCards = {
+              rating: <div style={{ background: P.card, padding: "24px 20px", borderRadius: 14, border: `1px solid ${P.brd}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%" }}>
+                <div style={{ position: "relative", width: 80, height: 80, marginBottom: 10 }}>
+                  <svg width="80" height="80" viewBox="0 0 80 80" style={{ transform: "rotate(-90deg)" }}><circle cx="40" cy="40" r="34" fill="none" stroke={P.el} strokeWidth="3.5"/><circle cx="40" cy="40" r="34" fill="none" stroke={sky} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={m?off:circ} style={{ transition: "stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1)" }}/></svg>
+                  <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 20, fontWeight: 800, color: P.t0, fontFamily: "'Golos Text', sans-serif" }}>{score}</span><span style={{ fontSize: 11, color: P.t2 }}>из 5</span></div>
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: P.t1, marginBottom: 4 }}>Рейтинг покупателя</div>
+                <div style={{ fontSize: 11, color: P.t1, marginBottom: 8 }}>Кредитный скоринг</div>
+                <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>{[{l:"Оплаты",v:"4.9"},{l:"Объём",v:"4.6"}].map((r,i)=>(<div key={i} style={{ textAlign:"center" }}><div style={{ fontSize:11,color:P.t1 }}>{r.l}</div><div style={{ fontSize:15,fontWeight:700,color:P.t0,fontFamily:"'Golos Text', sans-serif" }}>{r.v}</div></div>))}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: P.t0, background: `${skyDim}0.08)`, display: "inline-block", padding: "2px 8px", borderRadius: 4 }}>Надёжный</div>
+              </div>,
+              orders: <div style={{ background: P.card, padding: "24px 26px", borderRadius: 14, border: `1px solid ${P.brd}`, height: "100%" }}>
+                <div style={{ marginBottom: 16 }}><div style={{ fontSize: 11, color: P.t1, fontWeight: 500, marginBottom: 6 }}>Заказы по статусам</div><div style={{ display: "flex", alignItems: "baseline", gap: 8 }}><span style={{ fontSize: 18, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif" }}>24</span><span style={{ fontSize: 11, color: P.t1 }}>всего</span></div></div>
+                <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", marginBottom: 16, gap: 2 }}><div style={{ flex:2,background:sky,borderRadius:2 }}/><div style={{ flex:3,background:`${skyDim}0.5)`,borderRadius:2 }}/><div style={{ flex:1,background:ora,borderRadius:2,opacity:0.7 }}/></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>{statuses.map((s,i)=>{const colors=[sky,`${skyDim}0.5)`,ora,P.t2,ora];return(<div key={i} style={{ display:"flex",alignItems:"center",gap:6,padding:"3px 0" }}><div style={{ width:5,height:5,borderRadius:1.5,background:colors[i],flexShrink:0 }}/><span style={{ fontSize:11,color:s.count>0?P.t0:P.t2,flex:1 }}>{s.name}</span><span style={{ fontSize:12,fontWeight:600,color:s.count>0?P.t0:P.t2,fontFamily:"'Golos Text', sans-serif",fontVariantNumeric:"tabular-nums" }}>{s.count}</span></div>);})}</div>
+              </div>,
+            };
+            const cols = statusOrder[0] === "rating" ? "260px 1fr" : "1fr 260px";
+            return wrap(<div style={{ display: "grid", gridTemplateColumns: cols, gap: 12 }}>
+              {statusOrder.map(sid => <div key={sid} draggable onDragStart={e=>onInnerDragStart(e,sid)} onDragOver={e=>makeInnerDragOver(setStatusOrder)(e,sid)} onDragEnd={()=>setDragInner(null)} style={{ cursor:"grab", opacity:dragInner===sid?0.35:1, transition:"opacity .2s" }}>{statusCards[sid]}</div>)}
+            </div>);
+          }
+
+          if (blockId === "work") {
+            const workCards = {
+              requests: <div style={{ background: P.card, borderRadius: 14, border: `1px solid ${P.brd}`, overflow: "hidden", height: "100%" }}>
+                <div style={{ padding: "18px 22px", borderBottom: `1px solid ${P.sep}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div><div style={{ display:"flex",alignItems:"center",gap:8 }}><span style={{ fontSize:14,fontWeight:700,color:P.t0 }}>Активные RFQ</span><span style={{ fontSize:11,fontWeight:600,color:ora,background:`${oraDim}0.08)`,padding:"2px 7px",borderRadius:4 }}>3 активных</span></div><div style={{ fontSize:11,color:P.t1,marginTop:3 }}>Исходящие запросы на расценку</div></div>
+                  <span style={{ fontSize:11,color:P.t2,cursor:"pointer" }}>Все →</span>
+                </div>
+                <div style={{ display:"grid",gridTemplateColumns:"80px 1.5fr 1fr 80px",gap:10,padding:"10px 22px",borderBottom:`1px solid ${P.sep}` }}>{["ID","Деталь","Поставщик","Сумма"].map((h,i)=>(<span key={i} style={{ fontSize:11,color:P.t1,fontWeight:600,letterSpacing:"0.06em",textAlign:i===3?"right":"left" }}>{h}</span>))}</div>
+                {rfqs.map((req,i)=>(<div key={i} className="rw" style={{ display:"grid",gridTemplateColumns:"80px 1.5fr 1fr 80px",gap:12,padding:"16px 24px",alignItems:"center",borderBottom:i<rfqs.length-1?`1px solid ${P.sep}`:"none" }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:5 }}><div style={{ width:4,height:4,borderRadius:1,background:tyC[req.type],flexShrink:0 }}/><span style={{ fontSize:12,fontWeight:500,color:P.t1,fontVariantNumeric:"tabular-nums" }}>{req.id}</span></div>
+                  <div style={{ minWidth:0 }}><div style={{ fontSize:13,fontWeight:500,color:P.t0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{req.part}</div><div style={{ fontSize:11,color:P.t1,marginTop:2 }}>{req.brand} · {req.time}</div></div>
+                  <span style={{ fontSize:12,color:P.t1 }}>{req.supplier}</span>
+                  <span style={{ fontSize:13,fontWeight:600,color:P.t0,textAlign:"right",fontFamily:"'Golos Text', sans-serif",fontVariantNumeric:"tabular-nums" }}>{fmtCur(req.usd,cur)}</span>
+                </div>))}
+              </div>,
+              events: <div style={{ background: P.card, borderRadius: 14, border: `1px solid ${P.brd}`, overflow: "hidden", height: "100%" }}>
+                <div style={{ padding: "18px 18px", borderBottom: `1px solid ${P.sep}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div><span style={{ fontSize:14,fontWeight:700,color:P.t0 }}>Лента событий</span><div style={{ fontSize:11,color:P.t1,marginTop:3 }}>Заказы, поставки, платежи</div></div>
+                  <span style={{ fontSize:11,color:P.t2,cursor:"pointer" }}>Все →</span>
+                </div>
+                {eventsBase.map((ev,i)=>(<div key={i} className="rw" style={{ padding:"15px 20px",borderBottom:i<eventsBase.length-1?`1px solid ${P.sep}`:"none",display:"flex",gap:10,alignItems:"flex-start" }}>
+                  <div style={{ width:5,height:5,borderRadius:"50%",background:ev.dot,marginTop:6,flexShrink:0 }}/>
+                  <div style={{ flex:1,minWidth:0 }}>
+                    <div style={{ display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:8 }}><span style={{ fontSize:12,fontWeight:500,color:P.t0,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{typeof ev.text==="function"?ev.text(cur):ev.text}</span><span style={{ fontSize:11,color:P.t1,flexShrink:0,fontVariantNumeric:"tabular-nums" }}>{ev.time}</span></div>
+                    <div style={{ fontSize:11,color:P.t1,marginTop:3 }}>{typeof ev.detail==="function"?ev.detail(cur):ev.detail}</div>
+                  </div>
+                </div>))}
+              </div>,
+            };
+            const wCols = workOrder[0] === "requests" ? "1.5fr 1fr" : "1fr 1.5fr";
+            return wrap(<div style={{ display: "grid", gridTemplateColumns: wCols, gap: 12 }}>
+              {workOrder.map(wid => <div key={wid} draggable onDragStart={e=>onInnerDragStart(e,wid)} onDragOver={e=>makeInnerDragOver(setWorkOrder)(e,wid)} onDragEnd={()=>setDragInner(null)} style={{ cursor:"grab", opacity:dragInner===wid?0.35:1, transition:"opacity .2s" }}>{workCards[wid]}</div>)}
+            </div>);
+          }
+
+          return null;
+        })}
+      </div>
+    );
+  }
+
+  /* ══════════════════════════════════════════════
+     DASHBOARD PANEL COMPONENT (right panel)
+     ══════════════════════════════════════════════ */
+  function DashboardPanel() {
+    const [cur] = useDashCur();
+    const [pinned, setPinned] = useState(DEFAULT_PINNED);
+    const [dismissed, setDismissed] = useState([]);
+    const [dragId, setDragId] = useState(null);
+    const [showPicker, setShowPicker] = useState(false);
+
+    const togglePin = useCallback((id) => {
+      setPinned(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    }, []);
+    const onDragStart = (e, id) => { setDragId(id); e.dataTransfer.effectAllowed = "move"; };
+    const onDragOver = (e, targetId) => {
+      e.preventDefault();
+      if (!dragId || dragId === targetId) return;
+      setPinned(prev => {
+        const a = [...prev], fi = a.indexOf(dragId), ti = a.indexOf(targetId);
+        if (fi === -1 || ti === -1) return prev;
+        a.splice(fi, 1); a.splice(ti, 0, dragId); return a;
+      });
+    };
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", fontFamily: "Geist, Inter, -apple-system, sans-serif" }}>
+        {/* Panel header */}
+        <div style={{ padding: "14px 16px 10px", borderBottom: `1px solid ${P.brd}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 11, color: P.t1, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase" }}>Панель</span>
+          <div style={{ position: "relative" }}>
+            <button onClick={() => setShowPicker(!showPicker)} style={{
+              background: showPicker ? P.el : "transparent",
+              border: showPicker ? `1px solid ${P.brd}` : "1px solid transparent",
+              borderRadius: 5, padding: "3px 8px", cursor: "pointer", fontSize: 11, color: P.t0,
+              fontFamily: "Geist, Inter, sans-serif", display: "flex", alignItems: "center", gap: 4, transition: "all .15s",
+            }}>
+              <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 2v8M2 6h8"/></svg>
+              Виджеты
+            </button>
+            {showPicker && (
+              <div style={{
+                position: "absolute", top: "100%", right: 0, marginTop: 4, width: 220,
+                background: P.card, border: `1px solid ${P.brd}`, borderRadius: 10,
+                padding: 6, boxShadow: "0 12px 40px rgba(0,0,0,0.6)", zIndex: 50,
+              }}>
+                <div style={{ fontSize: 11, color: P.t1, padding: "4px 10px 6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>Закрепить виджеты</div>
+                {WIDGET_IDS.map(id => {
+                  const w = WIDGETS[id];
+                  const on = pinned.includes(id);
+                  return (
+                    <div key={id} className="wp-row" onClick={() => togglePin(id)}>
+                      <div style={{
+                        width: 13, height: 13, borderRadius: 3,
+                        border: `1.5px solid ${on ? sky : P.t2}`,
+                        background: on ? `${skyDim}0.12)` : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}>
+                        {on && <svg width="7" height="7" viewBox="0 0 10 10" fill="none" stroke={sky} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 5l2.5 2.5L8 3"/></svg>}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: on ? P.t0 : P.t1, fontWeight: on ? 500 : 400 }}>{w.title}</div>
+                        <div style={{ fontSize: 11, color: P.t1 }}>{w.desc}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Widgets */}
+        <div style={{ flex: 1, overflow: "auto", padding: "8px 8px 20px" }}>
+          {pinned.length === 0 && (
+            <div style={{ textAlign: "center", padding: "40px 12px", color: P.t1, fontSize: 12 }}>
+              Нажмите «Виджеты» чтобы<br/>закрепить нужные блоки
+            </div>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {pinned.map((id, idx) => {
+              const w = WIDGETS[id];
+              if (!w) return null;
+              return (
+                <div
+                  key={id}
+                  className={`wi-card fi ${dragId === id ? "dragging" : ""}`}
+                  style={{ animationDelay: `${0.04 + idx * 0.03}s` }}
+                  draggable
+                  onDragStart={e => onDragStart(e, id)}
+                  onDragOver={e => onDragOver(e, id)}
+                  onDragEnd={() => setDragId(null)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px 6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ cursor: "grab", fontSize: 11, color: P.t2, lineHeight: 1 }}>⠿</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: P.t0 }}>{w.title}</span>
+                    </div>
+                    <button onClick={() => togglePin(id)} style={{
+                      background: "none", border: "none", cursor: "pointer", padding: 2,
+                      color: P.t1, fontSize: 11, opacity: 0.8, lineHeight: 1,
+                    }} title="Открепить">
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M2 2l8 8M2 10l8-8"/></svg>
+                    </button>
+                  </div>
+                  <div style={{ padding: "0 12px 10px" }}>
+                    {w.render({ dismiss: dismissed, setDismiss: setDismissed, cur })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Mount both roots ── */
+  const contentEl = document.getElementById("buyer-dash-content");
+  const panelEl   = document.getElementById("buyer-dash-panel");
+  if (contentEl) ReactDOM.createRoot(contentEl).render(<DashboardContent />);
+  if (panelEl)   ReactDOM.createRoot(panelEl).render(<DashboardPanel />);
+
+</script>{% endverbatim %}
+{% endblock %}

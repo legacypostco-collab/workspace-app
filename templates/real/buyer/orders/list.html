@@ -1,0 +1,68 @@
+{% extends "buyer/base_buyer.html" %}
+
+{% block title %}Orders{% endblock %}
+
+{% block extra_css %}
+<style>
+.mvp-page { padding: 32px 40px; }
+.mvp-title { font-size: 28px; font-weight: 800; color: #192A4D; margin: 0 0 24px; letter-spacing: -0.02em; }
+.mvp-btn { display: inline-flex; align-items: center; gap: 8px; background: #4568F3; color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.mvp-btn:hover { background: #3455DE; }
+.mvp-btn--outline { background: transparent; color: #4568F3; border: 1px solid #4568F3; }
+.mvp-btn--sm { padding: 6px 14px; font-size: 13px; }
+.mvp-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.mvp-table th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 700; color: #8896A8; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid rgba(25,42,77,0.08); }
+.mvp-table td { padding: 14px 16px; font-size: 14px; color: #415080; border-bottom: 1px solid rgba(25,42,77,0.04); }
+.mvp-table tr:hover td { background: #F8FAFF; }
+.mvp-empty { text-align: center; padding: 64px 24px; color: #8896A8; font-size: 15px; }
+.mvp-panel { background: #fff; border: 1px solid rgba(25,42,77,0.08); border-radius: 16px; padding: 24px; }
+.mvp-status { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.mvp-status--new { background: #E3F2FD; color: #1565C0; }
+.mvp-status--confirmed { background: #E8F5E9; color: #2E7D32; }
+.mvp-status--shipped { background: #FFF3E0; color: #E65100; }
+.mvp-status--delivered { background: #F3E5F5; color: #7B1FA2; }
+.mvp-status--cancelled { background: #FFEBEE; color: #C62828; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mvp-page">
+  <h1 class="mvp-title">Orders</h1>
+
+  <div class="mvp-panel">
+    {% if orders %}
+      <table class="mvp-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Supplier</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+          <tr>
+            <td style="font-weight: 600; color: #192A4D;">{{ order.number }}</td>
+            <td>{{ order.supplier_name }}</td>
+            <td>{{ order.items_count }} item{{ order.items_count|pluralize }}</td>
+            <td style="font-weight: 600;">{{ order.total|floatformat:2 }} {{ order.currency }}</td>
+            <td>
+              <span class="mvp-status mvp-status--{{ order.status|lower }}">{{ order.status }}</span>
+            </td>
+            <td>{{ order.created_at|date:"d.m.Y" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="mvp-empty">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="margin-bottom: 16px;"><rect x="6" y="12" width="36" height="28" rx="4" stroke="#C8D0E0" stroke-width="2"/><path d="M6 20h36" stroke="#C8D0E0" stroke-width="2"/><path d="M20 6l4 6 4-6" stroke="#C8D0E0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><br>
+        No orders yet. Orders will appear here once you accept quotes from suppliers.
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

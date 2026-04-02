@@ -7,8 +7,28 @@ from marketplace.models import Part
 
 
 CJK_RE = re.compile(r"[\u4e00-\u9fff]")
+ORIGINAL_CN_RE = re.compile(r"Original CN:\s*(.+?)\.")
 
 REPLACEMENTS = [
+    ("软管", "hose"),
+    ("螺栓", "bolt"),
+    ("螺母", "nut"),
+    ("垫圈", "washer"),
+    ("接头", "connector"),
+    ("密封", "seal"),
+    ("密封圈", "seal ring"),
+    ("滤芯", "filter element"),
+    ("过滤器", "filter"),
+    ("轴承", "bearing"),
+    ("衬套", "bushing"),
+    ("销", "pin"),
+    ("管夹", "pipe clamp"),
+    ("阀", "valve"),
+    ("传感器", "sensor"),
+    ("开关", "switch"),
+    ("皮带", "belt"),
+    ("齿轮", "gear"),
+    ("油封", "oil seal"),
     ("铲斗唇板护块", "bucket lip shroud"),
     ("横斗齿销", "tooth pin"),
     ("横销斗齿", "tooth pin"),
@@ -27,6 +47,20 @@ REPLACEMENTS = [
     ("立方", "m3"),
 ]
 
+DIRECT_MAP = {
+    "MBOLT": "Komatsu Bolt",
+    "M BOLT": "Komatsu Bolt",
+    "BOLT": "Komatsu Bolt",
+    "HOSE": "Komatsu Hose",
+    "NUT": "Komatsu Nut",
+    "WASHER": "Komatsu Washer",
+    "VALVE": "Komatsu Valve",
+    "SENSOR": "Komatsu Sensor",
+    "SWITCH": "Komatsu Switch",
+    "BEARING": "Komatsu Bearing",
+    "SEAL": "Komatsu Seal",
+}
+
 
 def normalize_title(oem: str, title: str) -> str:
     text = (title or "").strip()
@@ -34,6 +68,7 @@ def normalize_title(oem: str, title: str) -> str:
         return f"Komatsu Part {oem}"
 
     text = text.replace("（", "(").replace("）", ")")
+    text = text.replace("MBOLT", "BOLT").replace("M BOLT", "BOLT")
     for src, dst in REPLACEMENTS:
         text = text.replace(src, dst)
 
@@ -43,8 +78,12 @@ def normalize_title(oem: str, title: str) -> str:
 
     if not text:
         return f"Komatsu Part {oem}"
+    upper_text = text.upper()
+    if upper_text in DIRECT_MAP:
+        return DIRECT_MAP[upper_text]
     if not text.lower().startswith("komatsu"):
         text = f"Komatsu {text}"
+    text = " ".join(word.capitalize() if word.lower() != "komatsu" else "Komatsu" for word in text.split())
     return text[:255]
 
 
@@ -73,11 +112,16 @@ class Command(BaseCommand):
 
         for p in qs.iterator(chunk_size=5000):
             scanned += 1
-            if not CJK_RE.search(p.title or ""):
-                continue
-
             old_title = p.title or ""
-            new_title = normalize_title(p.oem_number, old_title)
+            source_title = old_title
+            if not CJK_RE.search(source_title):
+                match = ORIGINAL_CN_RE.search(p.description or "")
+                if match:
+                    source_title = match.group(1).strip()
+                else:
+                    continue
+
+            new_title = normalize_title(p.oem_number, source_title)
             if new_title == old_title:
                 continue
 

@@ -1,0 +1,174 @@
+{% extends "operator/base_operator.html" %}
+{% block title %}Логист — Маршруты{% endblock %}
+
+{% block content %}
+<div class="op-section-title" style="margin-bottom:16px;">Маршруты</div>
+
+<!-- Popular routes -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px;">
+  <div class="op-card" style="cursor:pointer;" onclick="opToast('Маршрут Шанхай - Москва: 14 дн., 6 активных отгрузок')">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Шанхай <span style="color:#5E5E5E;">&#8594;</span> Москва</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">Море / ЖД</div>
+      </div>
+      <span class="op-badge op-badge-gray">6 отгрузок</span>
+    </div>
+    <div style="display:flex;gap:16px;">
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">14</div><div style="font-size:11px;color:#919191;">дней</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$2,400</div><div style="font-size:11px;color:#919191;">средняя стоимость</div></div>
+    </div>
+  </div>
+  <div class="op-card" style="cursor:pointer;" onclick="opToast('Маршрут Стамбул - Москва: 7 дн., 4 активных отгрузки')">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Стамбул <span style="color:#5E5E5E;">&#8594;</span> Москва</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">Авто</div>
+      </div>
+      <span class="op-badge op-badge-gray">4 отгрузки</span>
+    </div>
+    <div style="display:flex;gap:16px;">
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">7</div><div style="font-size:11px;color:#919191;">дней</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,200</div><div style="font-size:11px;color:#919191;">средняя стоимость</div></div>
+    </div>
+  </div>
+  <div class="op-card" style="cursor:pointer;" onclick="opToast('Маршрут Гуанчжоу - Владивосток: 12 дн., 2 активных отгрузки')">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Гуанчжоу <span style="color:#5E5E5E;">&#8594;</span> Владивосток</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">ЖД</div>
+      </div>
+      <span class="op-badge op-badge-gray">2 отгрузки</span>
+    </div>
+    <div style="display:flex;gap:16px;">
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">12</div><div style="font-size:11px;color:#919191;">дней</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,800</div><div style="font-size:11px;color:#919191;">средняя стоимость</div></div>
+    </div>
+  </div>
+  <div class="op-card" style="cursor:pointer;" onclick="opToast('Маршрут Дубай - Москва: 5 дн., 2 активных отгрузки')">
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Дубай <span style="color:#5E5E5E;">&#8594;</span> Москва</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">Авиа / Авто</div>
+      </div>
+      <span class="op-badge op-badge-gray">2 отгрузки</span>
+    </div>
+    <div style="display:flex;gap:16px;">
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">5</div><div style="font-size:11px;color:#919191;">дней</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$3,600</div><div style="font-size:11px;color:#919191;">средняя стоимость</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Route calculator -->
+<div class="op-card">
+  <div class="op-section-title" style="margin-bottom:14px;">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="8" cy="8" r="6.5"/><path d="M5 8h6M8 5v6"/></svg>
+    Калькулятор маршрута
+  </div>
+  <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
+    <div style="flex:1;min-width:160px;">
+      <div class="op-section-sub">Откуда</div>
+      <select class="op-select" id="calc-origin" style="width:100%;">
+        <option value="">Выберите город</option>
+        <option value="shanghai">Шанхай</option>
+        <option value="guangzhou">Гуанчжоу</option>
+        <option value="istanbul">Стамбул</option>
+        <option value="dubai">Дубай</option>
+        <option value="seoul">Сеул</option>
+      </select>
+    </div>
+    <div style="flex:1;min-width:160px;">
+      <div class="op-section-sub">Куда</div>
+      <select class="op-select" id="calc-dest" style="width:100%;">
+        <option value="">Выберите город</option>
+        <option value="moscow">Москва</option>
+        <option value="vladivostok">Владивосток</option>
+        <option value="novosibirsk">Новосибирск</option>
+        <option value="ekaterinburg">Екатеринбург</option>
+      </select>
+    </div>
+    <div style="flex:1;min-width:140px;">
+      <div class="op-section-sub">Способ</div>
+      <select class="op-select" id="calc-method" style="width:100%;">
+        <option value="">Выберите</option>
+        <option value="sea">Море</option>
+        <option value="air">Авиа</option>
+        <option value="rail">ЖД</option>
+        <option value="road">Авто</option>
+      </select>
+    </div>
+    <button class="op-btn op-btn-primary" onclick="calculateRoute()" style="padding:8px 20px;">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M5 8h6M8 5v6"/></svg>
+      Рассчитать
+    </button>
+  </div>
+  <div id="calc-result" style="display:none;margin-top:16px;padding:16px;background:#1F1F1F;border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
+    <div style="display:flex;gap:24px;">
+      <div>
+        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Срок</div>
+        <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;" id="calc-days">--</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Стоимость</div>
+        <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;" id="calc-cost">--</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Маршрут</div>
+        <div style="font-size:14px;font-weight:600;color:#ECECEC;" id="calc-route">--</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var ROUTES = {
+  'shanghai-moscow-sea': {days:14,cost:'$2,400'},
+  'shanghai-moscow-rail': {days:18,cost:'$1,900'},
+  'shanghai-vladivostok-sea': {days:7,cost:'$1,200'},
+  'shanghai-vladivostok-rail': {days:10,cost:'$1,500'},
+  'shanghai-novosibirsk-sea': {days:20,cost:'$2,800'},
+  'shanghai-novosibirsk-rail': {days:14,cost:'$2,100'},
+  'guangzhou-moscow-sea': {days:16,cost:'$2,600'},
+  'guangzhou-moscow-rail': {days:20,cost:'$2,200'},
+  'guangzhou-vladivostok-sea': {days:8,cost:'$1,400'},
+  'guangzhou-vladivostok-rail': {days:12,cost:'$1,800'},
+  'istanbul-moscow-road': {days:7,cost:'$1,200'},
+  'istanbul-moscow-air': {days:2,cost:'$4,800'},
+  'istanbul-ekaterinburg-road': {days:9,cost:'$1,500'},
+  'dubai-moscow-air': {days:3,cost:'$3,600'},
+  'dubai-moscow-sea': {days:22,cost:'$1,800'},
+  'seoul-moscow-air': {days:2,cost:'$5,200'},
+  'seoul-vladivostok-sea': {days:4,cost:'$800'},
+};
+var CITY_NAMES = {
+  shanghai:'Шанхай',guangzhou:'Гуанчжоу',istanbul:'Стамбул',dubai:'Дубай',seoul:'Сеул',
+  moscow:'Москва',vladivostok:'Владивосток',novosibirsk:'Новосибирск',ekaterinburg:'Екатеринбург'
+};
+var METHOD_NAMES = {sea:'Море',air:'Авиа',rail:'ЖД',road:'Авто'};
+
+function calculateRoute() {
+  var o = document.getElementById('calc-origin').value;
+  var d = document.getElementById('calc-dest').value;
+  var m = document.getElementById('calc-method').value;
+  if (!o||!d||!m) { opToast('Заполните все поля'); return; }
+  var key = o+'-'+d+'-'+m;
+  var r = ROUTES[key];
+  var result = document.getElementById('calc-result');
+  if (r) {
+    document.getElementById('calc-days').textContent = r.days + ' дн.';
+    document.getElementById('calc-cost').textContent = r.cost;
+    document.getElementById('calc-route').textContent = CITY_NAMES[o]+' \u2192 '+CITY_NAMES[d]+' ('+METHOD_NAMES[m]+')';
+    result.style.display = 'block';
+  } else {
+    document.getElementById('calc-days').textContent = '--';
+    document.getElementById('calc-cost').textContent = '--';
+    document.getElementById('calc-route').textContent = CITY_NAMES[o]+' \u2192 '+CITY_NAMES[d];
+    result.style.display = 'block';
+    opToast('Маршрут не найден. Попробуйте другой способ доставки.');
+  }
+}
+</script>
+{% endblock %}
