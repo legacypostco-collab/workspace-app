@@ -7,62 +7,135 @@
   <div class="ap-stat"><div class="ap-stat-value">{{ total_claims }}</div><div class="ap-stat-label">Всего рекламаций</div></div>
   <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ open_count }}</div><div class="ap-stat-label">Открытых</div></div>
   <div class="ap-stat"><div class="ap-stat-value">{{ resolved_count }}</div><div class="ap-stat-label">Закрытых</div></div>
-</div>
-
-<div class="ap-card" style="margin-bottom:16px;">
-  <div class="ap-section-title">Открытые рекламации</div>
-  {% if open_claims %}
-  <table class="ap-table">
-    <thead><tr><th>ID</th><th>Заказ</th><th>Тема</th><th>Описание</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
-    <tbody>
-      {% for claim in open_claims %}
-      <tr>
-        <td>#{{ claim.id }}</td>
-        <td><a href="/admin-panel/orders/{{ claim.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ claim.order_id }}</a></td>
-        <td>{{ claim.title|truncatechars:30 }}</td>
-        <td class="text-secondary">{{ claim.description|truncatechars:40 }}</td>
-        <td><span class="ap-badge ap-badge-orange">{{ claim.get_status_display }}</span></td>
-        <td class="text-secondary">{{ claim.created_at|date:"d.m.Y" }}</td>
-        <td>
-          <form method="post" style="display:inline-flex;gap:4px;">
-            {% csrf_token %}
-            <input type="hidden" name="claim_id" value="{{ claim.id }}"/>
-            <select name="new_status" class="ap-select" style="min-width:100px;">
-              {% for val, label in status_choices %}
-              <option value="{{ val }}" {% if claim.status == val %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-            <button type="submit" class="ap-btn ap-btn-primary">Применить</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p style="color:#919191;font-size:13px;">Нет открытых рекламаций</p>
-  {% endif %}
+  {% if overdue_count %}<div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ overdue_count }}</div><div class="ap-stat-label">Просрочено (&gt;{{ sla_hours }}ч)</div></div>{% endif %}
 </div>
 
 <div class="ap-card">
-  <div class="ap-section-title">Закрытые рекламации</div>
-  {% if resolved_claims %}
-  <table class="ap-table">
-    <thead><tr><th>ID</th><th>Заказ</th><th>Тема</th><th>Статус</th><th>Дата</th></tr></thead>
-    <tbody>
-      {% for claim in resolved_claims %}
-      <tr>
-        <td>#{{ claim.id }}</td>
-        <td><a href="/admin-panel/orders/{{ claim.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ claim.order_id }}</a></td>
-        <td>{{ claim.title|truncatechars:30 }}</td>
-        <td><span class="ap-badge ap-badge-green">{{ claim.get_status_display }}</span></td>
-        <td class="text-secondary">{{ claim.created_at|date:"d.m.Y" }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-  <p style="color:#919191;font-size:13px;">Нет закрытых рекламаций</p>
+  <!-- Status tabs -->
+  <div class="ap-tabs" style="margin-bottom:16px;">
+    <a href="?status=open&q={{ q }}" class="ap-tab {% if status_filter == 'open' %}active{% endif %}" style="text-decoration:none;">Открытые ({{ open_count }})</a>
+    <a href="?status=in_review&q={{ q }}" class="ap-tab {% if status_filter == 'in_review' %}active{% endif %}" style="text-decoration:none;">В работе</a>
+    <a href="?status=all&q={{ q }}" class="ap-tab {% if status_filter == 'all' %}active{% endif %}" style="text-decoration:none;">Все</a>
+    <a href="?status=closed&q={{ q }}" class="ap-tab {% if status_filter == 'closed' %}active{% endif %}" style="text-decoration:none;">Закрытые ({{ resolved_count }})</a>
+  </div>
+
+  <!-- Search -->
+  <form method="get" style="display:flex;gap:8px;margin-bottom:16px;align-items:flex-end;">
+    <input type="hidden" name="status" value="{{ status_filter }}"/>
+    <input type="text" name="q" class="ap-input" placeholder="Поиск по теме, заказу или описанию..." value="{{ q }}" style="width:300px;"/>
+    <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+  </form>
+
+  <!-- Bulk actions form -->
+  <form method="post" id="bulk-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="bulk_status"/>
+
+    <!-- Bulk bar (hidden by default) -->
+    <div id="bulk-bar" style="display:none;background:#2C2C2C;border-radius:8px;padding:10px 14px;margin-bottom:12px;align-items:center;gap:10px;">
+      <span style="font-size:12px;color:#919191;" id="bulk-count">0 выбрано</span>
+      <select name="bulk_new_status" class="ap-select" style="min-width:120px;">
+        {% for val, label in status_choices %}
+        <option value="{{ val }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" name="admin_note" class="ap-input" placeholder="Комментарий (опц.)" style="width:200px;"/>
+      <button type="submit" class="ap-btn ap-btn-primary" style="font-size:12px;">Применить</button>
+    </div>
+
+    <table class="ap-table">
+      <thead>
+        <tr>
+          <th style="width:30px;"><input type="checkbox" id="select-all"/></th>
+          <th>ID</th>
+          <th>Заказ</th>
+          <th>Тема</th>
+          <th>Статус</th>
+          <th>Возраст</th>
+          <th>Кем открыто</th>
+          <th>Дата</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for claim in claims %}
+        <tr>
+          <td><input type="checkbox" name="claim_ids" value="{{ claim.id }}" class="row-cb"/></td>
+          <td>#{{ claim.id }}</td>
+          <td><a href="/admin-panel/orders/{{ claim.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ claim.order_id }}</a></td>
+          <td>{{ claim.title|truncatechars:35 }}</td>
+          <td>
+            {% if claim.status == 'open' %}<span class="ap-badge ap-badge-orange">Open</span>
+            {% elif claim.status == 'in_review' %}<span class="ap-badge ap-badge-blue">In Review</span>
+            {% elif claim.status == 'approved' %}<span class="ap-badge ap-badge-green">Approved</span>
+            {% elif claim.status == 'rejected' %}<span class="ap-badge ap-badge-gray">Rejected</span>
+            {% elif claim.status == 'closed' %}<span class="ap-badge ap-badge-green">Closed</span>
+            {% endif %}
+          </td>
+          <td>
+            <span style="font-size:12px;font-weight:600;color:{% if claim.is_overdue %}#E85C0D{% elif claim.hours_open > 24 %}#FFB74D{% else %}#919191{% endif %};">
+              {{ claim.hours_open }}ч
+            </span>
+            {% if claim.is_overdue %}<span style="font-size:10px;color:#E85C0D;margin-left:4px;">SLA</span>{% endif %}
+          </td>
+          <td class="text-secondary">{{ claim.opened_by.username|default:"—" }}</td>
+          <td class="text-secondary">{{ claim.created_at|date:"d.m.Y" }}</td>
+          <td>
+            <div style="display:inline-flex;gap:4px;">
+              <select name="new_status" class="ap-select" style="min-width:90px;font-size:11px;" form="single-{{ claim.id }}">
+                {% for val, label in status_choices %}
+                <option value="{{ val }}" {% if claim.status == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="ap-btn ap-btn-primary" style="font-size:11px;padding:4px 8px;" form="single-{{ claim.id }}">OK</button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" style="text-align:center;color:#919191;">Нет рекламаций</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </form>
+
+  <!-- Individual claim forms -->
+  {% for claim in claims %}
+  <form method="post" id="single-{{ claim.id }}" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="claim_id" value="{{ claim.id }}"/>
+  </form>
+  {% endfor %}
+
+  <!-- Pagination -->
+  {% if has_prev or has_next %}
+  <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;">
+    {% if has_prev %}<a href="?status={{ status_filter }}&q={{ q }}&page={{ page_num|add:"-1" }}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&#8592; Назад</a>{% endif %}
+    <span style="font-size:13px;color:#919191;padding:6px 12px;">Стр. {{ page_num }}</span>
+    {% if has_next %}<a href="?status={{ status_filter }}&q={{ q }}&page={{ page_num|add:"1" }}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &#8594;</a>{% endif %}
+  </div>
   {% endif %}
 </div>
+
+<script>
+(function(){
+  var selectAll = document.getElementById('select-all');
+  var bulkBar = document.getElementById('bulk-bar');
+  var bulkCount = document.getElementById('bulk-count');
+  var cbs = document.querySelectorAll('.row-cb');
+
+  function update() {
+    var checked = document.querySelectorAll('.row-cb:checked').length;
+    bulkBar.style.display = checked > 0 ? 'flex' : 'none';
+    bulkCount.textContent = checked + ' выбрано';
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      cbs.forEach(function(cb) { cb.checked = selectAll.checked; });
+      update();
+    });
+  }
+  cbs.forEach(function(cb) { cb.addEventListener('change', update); });
+})();
+</script>
 {% endblock %}

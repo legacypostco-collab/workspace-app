@@ -5924,13 +5924,51 @@ def admin_panel_settings(request):
             platform_cfg["max_delivery_days"] = int(request.POST.get("max_delivery_days", 14))
             platform_cfg["sla_penalty_percent"] = int(request.POST.get("sla_penalty_percent", 2))
             platform_cfg["claim_response_hours"] = int(request.POST.get("claim_response_hours", 48))
+        elif tab == "currencies":
+            currencies = platform_cfg.get("currencies", [
+                {"code": "USD", "name": "US Dollar", "is_active": True},
+                {"code": "CNY", "name": "Chinese Yuan", "is_active": True},
+                {"code": "EUR", "name": "Euro", "is_active": True},
+                {"code": "RUB", "name": "Russian Ruble", "is_active": True},
+            ])
+            for cur in currencies:
+                cur["is_active"] = f"cur_{cur['code']}" in request.POST
+            new_code = request.POST.get("new_code", "").strip().upper()
+            new_name = request.POST.get("new_name", "").strip()
+            if new_code and new_name and not any(c["code"] == new_code for c in currencies):
+                currencies.append({"code": new_code, "name": new_name, "is_active": True})
+            platform_cfg["currencies"] = currencies
+        elif tab == "notifications":
+            notif_keys = ["order_created", "new_rfq", "payment_received", "claim_opened", "sla_breach"]
+            notifications = {}
+            for key in notif_keys:
+                notifications[key] = f"notif_{key}" in request.POST
+            platform_cfg["notifications"] = notifications
         with open(settings_path, "w") as f:
             json.dump(platform_cfg, f, indent=2)
         saved = True
 
+    currencies = platform_cfg.get("currencies", [
+        {"code": "USD", "name": "US Dollar", "is_active": True},
+        {"code": "CNY", "name": "Chinese Yuan", "is_active": True},
+        {"code": "EUR", "name": "Euro", "is_active": True},
+        {"code": "RUB", "name": "Russian Ruble", "is_active": True},
+    ])
+    notifications = platform_cfg.get("notifications", {
+        "order_created": True, "new_rfq": True, "payment_received": True,
+        "claim_opened": True, "sla_breach": True,
+    })
+    notif_labels = {
+        "order_created": "Новый заказ", "new_rfq": "Новый RFQ",
+        "payment_received": "Оплата получена", "claim_opened": "Рекламация открыта",
+        "sla_breach": "SLA нарушение",
+    }
     ctx = {
         "admin_active_nav": "settings",
         "cfg": platform_cfg,
+        "currencies": currencies,
+        "notifications": notifications,
+        "notif_labels": notif_labels,
         "saved": saved,
     }
     return render(request, "admin_panel/settings.html", ctx)
@@ -5941,8 +5979,20 @@ def admin_panel_analytics(request):
     now = timezone.now()
 
     # Period filter
+    date_from = request.GET.get("date_from", "")
+    date_to = request.GET.get("date_to", "")
     period = request.GET.get("period", "month")
-    if period == "week":
+
+    if date_from and date_to:
+        from datetime import datetime as _dt
+        period = "custom"
+        period_start = timezone.make_aware(_dt.strptime(date_from, "%Y-%m-%d"))
+        period_end = timezone.make_aware(_dt.strptime(date_to, "%Y-%m-%d")) + timedelta(days=1)
+        duration = period_end - period_start
+        prev_end = period_start
+        prev_start = period_start - duration
+        period_label = f"{date_from} — {date_to}"
+    elif period == "week":
         period_start = now - timedelta(days=7)
         prev_start = now - timedelta(days=14)
         prev_end = period_start
@@ -6020,10 +6070,27 @@ def admin_panel_analytics(request):
     # By brand
     by_brand = Brand.objects.annotate(parts_count=Count("parts")).order_by("-parts_count")[:10]
 
+    # Status breakdown
+    by_status = list(orders_qs.values("status").annotate(count=Count("id")).order_by("-count"))
+    status_labels = dict(Order.STATUS_CHOICES)
+    for item in by_status:
+        item["label"] = status_labels.get(item["status"], item["status"])
+
+    by_payment = list(orders_qs.values("payment_status").annotate(
+        count=Count("id"), total=Sum("total_amount")
+    ).order_by("-total"))
+    payment_labels = dict(Order.PAYMENT_STATUS_CHOICES)
+    for item in by_payment:
+        item["label"] = payment_labels.get(item["payment_status"], item["payment_status"])
+
+    total_users = User.objects.count()
+
     ctx = {
         "admin_active_nav": "analytics",
         "period": period,
         "period_label": period_label,
+        "date_from": date_from,
+        "date_to": date_to,
         "gmv": gmv,
         "orders_count": orders_count,
         "avg_order": avg_order,
@@ -6031,68 +6098,287 @@ def admin_panel_analytics(request):
         "rfq_conversion": rfq_conversion,
         "completion_rate": completion_rate,
         "new_users": new_users,
+        "total_users": total_users,
         "gmv_delta": gmv_delta,
         "orders_delta": orders_delta,
         "top_buyers": top_buyers,
         "top_sellers": top_sellers,
         "by_category": by_category,
         "by_brand": by_brand,
+        "by_status": by_status,
+        "by_payment": by_payment,
     }
     return render(request, "admin_panel/analytics.html", ctx)
 
 
 @admin_required
 def admin_panel_logs(request):
+    now = timezone.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    tab = request.GET.get("tab", "events")
+
+    if tab == "webhooks":
+        wh_qs = WebhookDeliveryLog.objects.select_related("order").order_by("-created_at")
+        wh_success = request.GET.get("success", "")
+        wh_q = request.GET.get("q", "").strip()
+        if wh_success == "1":
+            wh_qs = wh_qs.filter(success=True)
+        elif wh_success == "0":
+            wh_qs = wh_qs.filter(success=False)
+        if wh_q:
+            wh_qs = wh_qs.filter(endpoint__icontains=wh_q) if not wh_q.isdigit() else wh_qs.filter(order_id=int(wh_q))
+        per_page = 50
+        page_num = int(request.GET.get("page", 1))
+        offset = (page_num - 1) * per_page
+        webhooks = list(wh_qs[offset:offset + per_page + 1])
+        has_next = len(webhooks) > per_page
+        if has_next:
+            webhooks = webhooks[:per_page]
+        total_wh = WebhookDeliveryLog.objects.count()
+        failed_wh = WebhookDeliveryLog.objects.filter(success=False).count()
+        ctx = {
+            "admin_active_nav": "logs", "tab": "webhooks",
+            "webhooks": webhooks, "total_wh": total_wh, "failed_wh": failed_wh,
+            "success_rate": round((total_wh - failed_wh) / max(total_wh, 1) * 100, 1),
+            "wh_success": wh_success, "wh_q": wh_q,
+            "page_num": page_num, "has_next": has_next, "has_prev": page_num > 1,
+        }
+        return render(request, "admin_panel/logs.html", ctx)
+
+    # Events tab
     qs = OrderEvent.objects.select_related("order").order_by("-created_at")
     event_type = request.GET.get("type", "")
+    source = request.GET.get("source", "")
+    q = request.GET.get("q", "").strip()
+    date_from = request.GET.get("date_from", "")
+    date_to = request.GET.get("date_to", "")
     if event_type:
         qs = qs.filter(event_type=event_type)
+    if source:
+        qs = qs.filter(source=source)
+    if q:
+        if q.isdigit():
+            qs = qs.filter(order_id=int(q))
+        else:
+            qs = qs.filter(Q(order__customer_name__icontains=q) | Q(meta__comment__icontains=q))
+    if date_from:
+        qs = qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(created_at__date__lte=date_to)
+
+    per_page = 50
+    page_num = int(request.GET.get("page", 1))
+    offset = (page_num - 1) * per_page
+    events = list(qs[offset:offset + per_page + 1])
+    has_next = len(events) > per_page
+    if has_next:
+        events = events[:per_page]
+
     total_events = OrderEvent.objects.count()
-    today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
     today_events = OrderEvent.objects.filter(created_at__gte=today_start).count()
-    events = qs[:200]
-    event_type_choices = OrderEvent.EVENT_CHOICES
+    week_events = OrderEvent.objects.filter(created_at__gte=now - timedelta(days=7)).count()
 
     ctx = {
-        "admin_active_nav": "logs",
-        "events": events,
-        "total_events": total_events,
-        "today_events": today_events,
-        "event_type_choices": event_type_choices,
-        "current_type": event_type,
+        "admin_active_nav": "logs", "tab": "events",
+        "events": events, "total_events": total_events,
+        "today_events": today_events, "week_events": week_events,
+        "event_type_choices": OrderEvent.EVENT_CHOICES,
+        "source_choices": OrderEvent.SOURCE_CHOICES,
+        "current_type": event_type, "current_source": source,
+        "q": q, "date_from": date_from, "date_to": date_to,
+        "page_num": page_num, "has_next": has_next, "has_prev": page_num > 1,
     }
     return render(request, "admin_panel/logs.html", ctx)
 
 
 @admin_required
 def admin_panel_tariffs(request):
-    return render(request, "admin_panel/tariffs.html", {"admin_active_nav": "tariffs"})
+    settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")
+    platform_cfg = {}
+    if os.path.exists(settings_path):
+        with open(settings_path, "r") as f:
+            platform_cfg = json.load(f)
+
+    # Defaults
+    default_plans = [
+        {"id": "basic", "name": "Базовый", "price": 0, "commission": 10, "max_products": 100, "is_active": True},
+        {"id": "professional", "name": "Профессиональный", "price": 99, "commission": 8, "max_products": 10000, "is_active": True},
+        {"id": "corporate", "name": "Корпоративный", "price": 499, "commission": 5, "max_products": 0, "is_active": True},
+    ]
+    tariff_plans = platform_cfg.get("tariff_plans", default_plans)
+    category_commissions = platform_cfg.get("category_commissions", {})
+    discounts = platform_cfg.get("discounts", [])
+
+    saved = False
+    if request.method == "POST":
+        tab = request.POST.get("tab", "plans")
+        if tab == "plans":
+            for plan in tariff_plans:
+                plan["price"] = int(request.POST.get(f"price_{plan['id']}", plan["price"]))
+                plan["commission"] = int(request.POST.get(f"commission_{plan['id']}", plan["commission"]))
+                plan["max_products"] = int(request.POST.get(f"max_{plan['id']}", plan["max_products"]))
+                plan["is_active"] = f"active_{plan['id']}" in request.POST
+        elif tab == "categories":
+            for cat in Category.objects.all():
+                cid = str(cat.id)
+                pct = request.POST.get(f"pct_{cid}", "8")
+                min_a = request.POST.get(f"min_{cid}", "0")
+                max_a = request.POST.get(f"max_{cid}", "1000")
+                category_commissions[cid] = {
+                    "percent": float(pct), "min_amount": float(min_a), "max_amount": float(max_a),
+                }
+        elif tab == "discounts":
+            action = request.POST.get("action", "")
+            if action == "add_discount":
+                discounts.append({
+                    "name": request.POST.get("new_name", ""),
+                    "type": request.POST.get("new_type", "commission"),
+                    "value": request.POST.get("new_value", "0"),
+                    "period": request.POST.get("new_period", ""),
+                    "is_active": True,
+                })
+            elif action == "save_discounts":
+                for i, d in enumerate(discounts):
+                    d["is_active"] = f"active_{i}" in request.POST
+
+        platform_cfg["tariff_plans"] = tariff_plans
+        platform_cfg["category_commissions"] = category_commissions
+        platform_cfg["discounts"] = discounts
+        with open(settings_path, "w") as f:
+            json.dump(platform_cfg, f, indent=2, ensure_ascii=False)
+        saved = True
+
+    # Count suppliers per tier
+    from django.db.models import Count as _Count
+    seller_parts = (
+        User.objects.filter(parts__isnull=False)
+        .annotate(pc=_Count("parts"))
+        .values_list("pc", flat=True)
+    )
+    tier_counts = {"basic": 0, "professional": 0, "corporate": 0}
+    for pc in seller_parts:
+        if pc > 10000:
+            tier_counts["corporate"] += 1
+        elif pc > 100:
+            tier_counts["professional"] += 1
+        else:
+            tier_counts["basic"] += 1
+
+    categories = Category.objects.annotate(parts_count=Count("parts")).order_by("name")
+
+    ctx = {
+        "admin_active_nav": "tariffs",
+        "tariff_plans": tariff_plans,
+        "category_commissions": category_commissions,
+        "discounts": discounts,
+        "tier_counts": tier_counts,
+        "categories": categories,
+        "saved": saved,
+        "total_sellers": UserProfile.objects.filter(role="seller").count(),
+    }
+    return render(request, "admin_panel/tariffs.html", ctx)
 
 
 @admin_required
 def admin_panel_support(request):
-    if request.method == "POST":
-        claim_id = request.POST.get("claim_id")
-        new_status = request.POST.get("new_status")
-        claim = OrderClaim.objects.filter(id=claim_id).first()
-        if claim and new_status in dict(OrderClaim.STATUS_CHOICES):
-            claim.status = new_status
-            if new_status in ("closed", "approved", "rejected"):
-                claim.resolved_by = request.user
-            claim.save(update_fields=["status", "resolved_by"])
-        return redirect("admin_panel_support")
+    now = timezone.now()
 
-    open_claims = OrderClaim.objects.exclude(status="closed").select_related("order").order_by("-created_at")
-    resolved_claims = OrderClaim.objects.filter(status="closed").select_related("order").order_by("-created_at")[:20]
+    # Load SLA threshold
+    settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")
+    sla_hours = 48
+    if os.path.exists(settings_path):
+        with open(settings_path, "r") as f:
+            sla_hours = json.load(f).get("claim_response_hours", 48)
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+        if action == "bulk_status":
+            ids = request.POST.getlist("claim_ids")
+            new_status = request.POST.get("bulk_new_status", "")
+            if ids and new_status in dict(OrderClaim.STATUS_CHOICES):
+                claims = OrderClaim.objects.filter(id__in=ids)
+                for claim in claims:
+                    claim.status = new_status
+                    if new_status in ("closed", "approved", "rejected"):
+                        claim.resolved_by = request.user
+                    claim.save(update_fields=["status", "resolved_by"])
+                    note = request.POST.get("admin_note", "").strip()
+                    if note:
+                        OrderEvent.objects.create(
+                            order=claim.order, event_type="claim_status_changed",
+                            source="admin", actor=request.user,
+                            meta={"comment": note, "new_status": new_status, "claim_id": claim.id},
+                        )
+        else:
+            claim_id = request.POST.get("claim_id")
+            new_status = request.POST.get("new_status")
+            claim = OrderClaim.objects.filter(id=claim_id).first()
+            if claim and new_status in dict(OrderClaim.STATUS_CHOICES):
+                claim.status = new_status
+                if new_status in ("closed", "approved", "rejected"):
+                    claim.resolved_by = request.user
+                claim.save(update_fields=["status", "resolved_by"])
+                note = request.POST.get("admin_note", "").strip()
+                if note:
+                    OrderEvent.objects.create(
+                        order=claim.order, event_type="claim_status_changed",
+                        source="admin", actor=request.user,
+                        meta={"comment": note, "new_status": new_status, "claim_id": claim.id},
+                    )
+        return redirect(f"/admin-panel/support/?status={request.GET.get('status', '')}&q={request.GET.get('q', '')}")
+
+    # Filters
+    status_filter = request.GET.get("status", "open")
+    q = request.GET.get("q", "").strip()
+
+    qs = OrderClaim.objects.select_related("order", "opened_by").order_by("-created_at")
+    if status_filter == "open":
+        qs = qs.exclude(status="closed")
+    elif status_filter in ("in_review", "approved", "rejected", "closed"):
+        qs = qs.filter(status=status_filter)
+    # else "all"
+
+    if q:
+        if q.isdigit():
+            qs = qs.filter(Q(order_id=int(q)) | Q(id=int(q)))
+        else:
+            qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q) | Q(order__customer_name__icontains=q))
+
+    # Pagination
+    per_page = 50
+    page_num = int(request.GET.get("page", 1))
+    offset = (page_num - 1) * per_page
+    claims_list = list(qs[offset:offset + per_page + 1])
+    has_next = len(claims_list) > per_page
+    if has_next:
+        claims_list = claims_list[:per_page]
+
+    # Compute age and overdue for each claim
+    sla_threshold = timedelta(hours=sla_hours)
+    for claim in claims_list:
+        age = now - claim.created_at
+        claim.hours_open = int(age.total_seconds() / 3600)
+        claim.is_overdue = claim.status not in ("closed", "approved", "rejected") and age > sla_threshold
+
+    total_claims = OrderClaim.objects.count()
+    open_count = OrderClaim.objects.exclude(status="closed").count()
+    resolved_count = OrderClaim.objects.filter(status="closed").count()
+    overdue_count = OrderClaim.objects.exclude(
+        status__in=("closed", "approved", "rejected")
+    ).filter(created_at__lt=now - sla_threshold).count()
 
     ctx = {
         "admin_active_nav": "support",
-        "open_claims": open_claims,
-        "resolved_claims": resolved_claims,
-        "total_claims": OrderClaim.objects.count(),
-        "open_count": open_claims.count(),
-        "resolved_count": OrderClaim.objects.filter(status="closed").count(),
+        "claims": claims_list,
+        "total_claims": total_claims,
+        "open_count": open_count,
+        "resolved_count": resolved_count,
+        "overdue_count": overdue_count,
+        "sla_hours": sla_hours,
         "status_choices": OrderClaim.STATUS_CHOICES,
+        "status_filter": status_filter,
+        "q": q,
+        "page_num": page_num, "has_next": has_next, "has_prev": page_num > 1,
     }
     return render(request, "admin_panel/support.html", ctx)
 

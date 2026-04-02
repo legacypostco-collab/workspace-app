@@ -4,40 +4,89 @@
 
 {% block content %}
 <div class="ap-stats">
+  {% if tab == 'webhooks' %}
+  <div class="ap-stat"><div class="ap-stat-value">{{ total_wh }}</div><div class="ap-stat-label">Всего вебхуков</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ success_rate }}%</div><div class="ap-stat-label">Успешных</div></div>
+  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ failed_wh }}</div><div class="ap-stat-label">Ошибок</div></div>
+  {% else %}
   <div class="ap-stat"><div class="ap-stat-value">{{ total_events }}</div><div class="ap-stat-label">Всего событий</div></div>
   <div class="ap-stat"><div class="ap-stat-value">{{ today_events }}</div><div class="ap-stat-label">За сегодня</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ week_events }}</div><div class="ap-stat-label">За неделю</div></div>
+  {% endif %}
 </div>
 
 <div class="ap-card">
-  <div class="ap-section-title">Фильтр по типу</div>
-  <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
-    <a href="/admin-panel/logs/" class="ap-btn {% if not current_type %}ap-btn-primary{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;">Все</a>
-    {% for val, label in event_type_choices %}
-    <a href="/admin-panel/logs/?type={{ val }}" class="ap-btn {% if current_type == val %}ap-btn-primary{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;">{{ label }}</a>
-    {% endfor %}
+  <div class="ap-tabs" style="margin-bottom:16px;">
+    <a href="?tab=events" class="ap-tab {% if tab == 'events' %}active{% endif %}" style="text-decoration:none;">События</a>
+    <a href="?tab=webhooks" class="ap-tab {% if tab == 'webhooks' %}active{% endif %}" style="text-decoration:none;">Вебхуки</a>
   </div>
 
+  {% if tab == 'webhooks' %}
+  <form method="get" style="display:flex;gap:8px;margin-bottom:16px;align-items:flex-end;flex-wrap:wrap;">
+    <input type="hidden" name="tab" value="webhooks"/>
+    <input type="text" name="q" class="ap-input" placeholder="Endpoint или order ID..." value="{{ wh_q }}" style="width:240px;"/>
+    <select name="success" class="ap-select" style="min-width:120px;">
+      <option value="">Все</option>
+      <option value="1" {% if wh_success == '1' %}selected{% endif %}>Успешные</option>
+      <option value="0" {% if wh_success == '0' %}selected{% endif %}>Ошибки</option>
+    </select>
+    <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+  </form>
   <table class="ap-table">
-    <thead>
-      <tr><th>Время</th><th>Заказ</th><th>Тип</th><th>Источник</th><th>Комментарий</th></tr>
-    </thead>
+    <thead><tr><th>Время</th><th>Заказ</th><th>Endpoint</th><th>Статус</th><th>Код</th><th>Попытка</th></tr></thead>
+    <tbody>
+      {% for wh in webhooks %}
+      <tr>
+        <td class="text-secondary">{{ wh.created_at|date:"d.m.Y H:i:s" }}</td>
+        <td><a href="/admin-panel/orders/{{ wh.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ wh.order_id }}</a></td>
+        <td class="text-secondary" style="font-size:11px;">{{ wh.endpoint|truncatechars:50 }}</td>
+        <td>{% if wh.success %}<span class="ap-badge ap-badge-green">OK</span>{% else %}<span class="ap-badge ap-badge-orange">Ошибка</span>{% endif %}</td>
+        <td class="text-secondary">{{ wh.status_code|default:"—" }}</td>
+        <td class="text-secondary">{{ wh.attempt }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" style="text-align:center;color:#919191;">Нет вебхуков</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <form method="get" style="display:flex;gap:8px;margin-bottom:16px;align-items:flex-end;flex-wrap:wrap;">
+    <input type="hidden" name="tab" value="events"/>
+    <input type="text" name="q" class="ap-input" placeholder="Заказ или текст..." value="{{ q }}" style="width:180px;"/>
+    <select name="type" class="ap-select" style="min-width:130px;">
+      <option value="">Все типы</option>
+      {% for val, label in event_type_choices %}
+      <option value="{{ val }}" {% if current_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="source" class="ap-select" style="min-width:100px;">
+      <option value="">Источник</option>
+      {% for val, label in source_choices %}
+      <option value="{{ val }}" {% if current_source == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <input type="date" name="date_from" class="ap-input" value="{{ date_from }}" style="width:130px;"/>
+    <span style="color:#5E5E5E;">—</span>
+    <input type="date" name="date_to" class="ap-input" value="{{ date_to }}" style="width:130px;"/>
+    <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+    <a href="/admin-panel/export/events/" class="ap-btn ap-btn-ghost" style="text-decoration:none;margin-left:auto;">Экспорт CSV</a>
+  </form>
+
+  <table class="ap-table">
+    <thead><tr><th>Время</th><th>Заказ</th><th>Тип</th><th>Источник</th><th>Комментарий</th></tr></thead>
     <tbody>
       {% for event in events %}
       <tr>
         <td class="text-secondary">{{ event.created_at|date:"d.m.Y H:i:s" }}</td>
         <td><a href="/admin-panel/orders/{{ event.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ event.order_id }}</a></td>
         <td>
-          {% if event.event_type == 'status_changed' %}
-            <span class="ap-badge ap-badge-blue">Статус</span>
-          {% elif event.event_type == 'order_created' %}
-            <span class="ap-badge ap-badge-green">Создан</span>
-          {% elif event.event_type == 'sla_status_changed' %}
-            <span class="ap-badge ap-badge-orange">SLA</span>
-          {% elif event.event_type == 'reserve_paid' %}
-            <span class="ap-badge ap-badge-blue">Резерв</span>
-          {% else %}
-            <span class="ap-badge ap-badge-gray">{{ event.get_event_type_display }}</span>
-          {% endif %}
+          {% if event.event_type == 'status_changed' %}<span class="ap-badge ap-badge-blue">Статус</span>
+          {% elif event.event_type == 'order_created' %}<span class="ap-badge ap-badge-green">Создан</span>
+          {% elif event.event_type == 'sla_status_changed' %}<span class="ap-badge ap-badge-orange">SLA</span>
+          {% elif event.event_type == 'reserve_paid' %}<span class="ap-badge ap-badge-blue">Резерв</span>
+          {% elif event.event_type == 'claim_status_changed' %}<span class="ap-badge ap-badge-orange">Рекламация</span>
+          {% elif event.event_type == 'document_uploaded' %}<span class="ap-badge ap-badge-gray">Документ</span>
+          {% else %}<span class="ap-badge ap-badge-gray">{{ event.get_event_type_display }}</span>{% endif %}
         </td>
         <td class="text-secondary">{{ event.source }}</td>
         <td class="text-secondary">{{ event.meta.comment|default:"—"|truncatechars:80 }}</td>
@@ -47,5 +96,14 @@
       {% endfor %}
     </tbody>
   </table>
+  {% endif %}
+
+  {% if has_prev or has_next %}
+  <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;">
+    {% if has_prev %}<a href="?tab={{ tab }}&page={{ page_num|add:"-1" }}&type={{ current_type }}&source={{ current_source }}&q={{ q }}&date_from={{ date_from }}&date_to={{ date_to }}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&#8592; Назад</a>{% endif %}
+    <span style="font-size:13px;color:#919191;padding:6px 12px;">Стр. {{ page_num }}</span>
+    {% if has_next %}<a href="?tab={{ tab }}&page={{ page_num|add:"1" }}&type={{ current_type }}&source={{ current_source }}&q={{ q }}&date_from={{ date_from }}&date_to={{ date_to }}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &#8594;</a>{% endif %}
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
