@@ -5,58 +5,58 @@
 {% block content %}
 <!-- Row 1: Key financial metrics -->
 <div class="ap-stats">
-  <div class="ap-stat">
+  <a href="/admin-panel/analytics/?period=all" class="ap-stat">
     <div class="ap-stat-value">${{ total_gmv|floatformat:0 }}</div>
     <div class="ap-stat-label">GMV (всего)</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/analytics/?period=month" class="ap-stat">
     <div class="ap-stat-value">${{ month_revenue|floatformat:0 }}</div>
     <div class="ap-stat-label">Выручка за месяц</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/orders/" class="ap-stat">
     <div class="ap-stat-value">{{ total_orders }}</div>
     <div class="ap-stat-label">Заказов</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/analytics/" class="ap-stat">
     <div class="ap-stat-value">${{ avg_order|floatformat:0 }}</div>
     <div class="ap-stat-label">Средний чек</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/analytics/" class="ap-stat">
     <div class="ap-stat-value">{{ rfq_conversion }}%</div>
     <div class="ap-stat-label">Конверсия RFQ</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/orders/?status=completed" class="ap-stat">
     <div class="ap-stat-value">{{ completion_rate }}%</div>
     <div class="ap-stat-label">Завершённость</div>
-  </div>
+  </a>
 </div>
 
 <!-- Row 2: Platform health -->
 <div class="ap-stats">
-  <div class="ap-stat">
+  <a href="/admin-panel/catalog/" class="ap-stat">
     <div class="ap-stat-value">{{ total_parts }}</div>
     <div class="ap-stat-label">Запчастей в каталоге</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat">
     <div class="ap-stat-value">{{ total_sellers }}</div>
     <div class="ap-stat-label">Поставщиков</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/users/?role=buyer" class="ap-stat">
     <div class="ap-stat-value">{{ total_buyers }}</div>
     <div class="ap-stat-label">Покупателей</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/orders/?sla=on_track" class="ap-stat">
     <div class="ap-stat-value">{{ sla_rate }}%</div>
     <div class="ap-stat-label">SLA в норме</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/orders/" class="ap-stat">
     <div class="ap-stat-value">{{ active_orders }}</div>
     <div class="ap-stat-label">Активных заказов</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/analytics/" class="ap-stat">
     <div class="ap-stat-value">{{ total_rfq }}</div>
     <div class="ap-stat-label">Всего RFQ</div>
-  </div>
+  </a>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
@@ -72,7 +72,7 @@
         </div>
         <span class="ap-badge ap-badge-{% if pending_suppliers %}orange{% else %}gray{% endif %}">Модерация</span>
       </a>
-      <a href="/admin-panel/orders/" class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
+      <a href="/admin-panel/orders/?sla=breached" class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
         <span style="font-size:20px;width:36px;text-align:center;{% if overdue_orders %}color:#E85C0D{% else %}color:#5E5E5E{% endif %};">{{ overdue_orders }}</span>
         <div style="flex:1;">
           <div style="font-size:13px;color:#ECECEC;">SLA нарушения</div>
@@ -80,7 +80,7 @@
         </div>
         <span class="ap-badge ap-badge-{% if overdue_orders %}orange{% else %}gray{% endif %}">SLA</span>
       </a>
-      <a href="/admin-panel/support/" class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
+      <a href="/admin-panel/support/?status=open" class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
         <span style="font-size:20px;width:36px;text-align:center;{% if open_claims %}color:#E85C0D{% else %}color:#5E5E5E{% endif %};">{{ open_claims }}</span>
         <div style="flex:1;">
           <div style="font-size:13px;color:#ECECEC;">Открытые рекламации</div>
@@ -88,7 +88,7 @@
         </div>
         <span class="ap-badge ap-badge-{% if open_claims %}orange{% else %}gray{% endif %}">Поддержка</span>
       </a>
-      <a href="/admin-panel/catalog/" class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
+      <a href="/admin-panel/catalog/?status=blocked" class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
         <span style="font-size:20px;width:36px;text-align:center;{% if blocked_parts %}color:#E85C0D{% else %}color:#5E5E5E{% endif %};">{{ blocked_parts }}</span>
         <div style="flex:1;">
           <div style="font-size:13px;color:#ECECEC;">Заблокированные позиции</div>
@@ -96,7 +96,7 @@
         </div>
         <span class="ap-badge ap-badge-{% if blocked_parts %}orange{% else %}gray{% endif %}">Каталог</span>
       </a>
-      <a href="/admin-panel/finance/" class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
+      <a href="/admin-panel/orders/?payment=awaiting_reserve" class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
         <span style="font-size:16px;width:36px;text-align:center;{% if pending_payments %}color:#E85C0D{% else %}color:#5E5E5E{% endif %};">${{ pending_payments|floatformat:0 }}</span>
         <div style="flex:1;">
           <div style="font-size:13px;color:#ECECEC;">Ожидают оплаты</div>
@@ -112,22 +112,22 @@
     <div class="ap-card">
       <div class="ap-section-title">Сегодня</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div class="ap-card-elevated" style="text-align:center;padding:14px;">
-          <div style="font-size:24px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ orders_today }}</div>
-          <div style="font-size:11px;color:#919191;margin-top:4px;">Новых заказов</div>
-        </div>
-        <div class="ap-card-elevated" style="text-align:center;padding:14px;">
-          <div style="font-size:24px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">${{ paid_today|floatformat:0 }}</div>
-          <div style="font-size:11px;color:#919191;margin-top:4px;">Оплачено</div>
-        </div>
-        <div class="ap-card-elevated" style="text-align:center;padding:14px;">
-          <div style="font-size:24px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ rfq_today_count }}</div>
-          <div style="font-size:11px;color:#919191;margin-top:4px;">Новых RFQ</div>
-        </div>
-        <div class="ap-card-elevated" style="text-align:center;padding:14px;">
-          <div style="font-size:24px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ registrations_today }}</div>
-          <div style="font-size:11px;color:#919191;margin-top:4px;">Регистраций</div>
-        </div>
+        <a href="/admin-panel/orders/" class="ap-today-card">
+          <div class="ap-today-val">{{ orders_today }}</div>
+          <div class="ap-today-lbl">Новых заказов</div>
+        </a>
+        <a href="/admin-panel/orders/?payment=paid" class="ap-today-card">
+          <div class="ap-today-val">${{ paid_today|floatformat:0 }}</div>
+          <div class="ap-today-lbl">Оплачено</div>
+        </a>
+        <a href="/admin-panel/analytics/" class="ap-today-card">
+          <div class="ap-today-val">{{ rfq_today_count }}</div>
+          <div class="ap-today-lbl">Новых RFQ</div>
+        </a>
+        <a href="/admin-panel/users/" class="ap-today-card">
+          <div class="ap-today-val">{{ registrations_today }}</div>
+          <div class="ap-today-lbl">Регистраций</div>
+        </a>
       </div>
     </div>
 
