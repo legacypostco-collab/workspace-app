@@ -4,10 +4,10 @@
 
 {% block content %}
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">{{ total_claims }}</div><div class="ap-stat-label">Всего рекламаций</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ open_count }}</div><div class="ap-stat-label">Открытых</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ resolved_count }}</div><div class="ap-stat-label">Закрытых</div></div>
-  {% if overdue_count %}<div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ overdue_count }}</div><div class="ap-stat-label">Просрочено (&gt;{{ sla_hours }}ч)</div></div>{% endif %}
+  <a href="?status=all" class="ap-stat"><div class="ap-stat-value">{{ total_claims }}</div><div class="ap-stat-label">Всего рекламаций</div></a>
+  <a href="?status=open" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ open_count }}</div><div class="ap-stat-label">Открытых</div></a>
+  <a href="?status=closed" class="ap-stat"><div class="ap-stat-value">{{ resolved_count }}</div><div class="ap-stat-label">Закрытых</div></a>
+  {% if overdue_count %}<a href="?status=open" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ overdue_count }}</div><div class="ap-stat-label">Просрочено (&gt;{{ sla_hours }}ч)</div></a>{% endif %}
 </div>
 
 <div class="ap-card">

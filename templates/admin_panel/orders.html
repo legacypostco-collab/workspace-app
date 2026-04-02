@@ -4,13 +4,13 @@
 
 {% block content %}
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">Активных</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ completed }}</div><div class="ap-stat-label">Завершённых</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">Отменённых</div></div>
-  <div class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_orders }}</div><div class="ap-stat-label">За неделю</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">Выручка за неделю</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ problem_count }}</div><div class="ap-stat-label">Проблемных</div></div>
+  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></a>
+  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">Активных</div></a>
+  <a href="/admin-panel/orders/?status=completed" class="ap-stat"><div class="ap-stat-value">{{ completed }}</div><div class="ap-stat-label">Завершённых</div></a>
+  <a href="/admin-panel/orders/?status=cancelled" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">Отменённых</div></a>
+  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_orders }}</div><div class="ap-stat-label">За неделю</div></a>
+  <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">Выручка за неделю</div></a>
+  <a href="/admin-panel/orders/?sla=breached" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ problem_count }}</div><div class="ap-stat-label">Проблемных</div></a>
 </div>
 
 <form method="post" id="ordersForm">

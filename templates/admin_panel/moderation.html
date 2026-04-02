@@ -5,11 +5,11 @@
 {% block content %}
 <!-- Stats -->
 <div class="ap-stats">
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ total_pending }}</div><div class="ap-stat-label">Всего в очереди</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ supplier_count }}</div><div class="ap-stat-label">Поставщики</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">Запчасти</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ claims_count }}</div><div class="ap-stat-label">Рекламации</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ sla_count }}</div><div class="ap-stat-label">SLA нарушения</div></div>
+  <a href="?tab=all" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ total_pending }}</div><div class="ap-stat-label">Всего в очереди</div></a>
+  <a href="?tab=suppliers" class="ap-stat"><div class="ap-stat-value">{{ supplier_count }}</div><div class="ap-stat-label">Поставщики</div></a>
+  <a href="?tab=parts" class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">Запчасти</div></a>
+  <a href="?tab=claims" class="ap-stat"><div class="ap-stat-value">{{ claims_count }}</div><div class="ap-stat-label">Рекламации</div></a>
+  <a href="?tab=sla" class="ap-stat"><div class="ap-stat-value">{{ sla_count }}</div><div class="ap-stat-label">SLA нарушения</div></a>
 </div>
 
 <!-- Tabs -->

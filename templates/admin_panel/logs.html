@@ -5,13 +5,13 @@
 {% block content %}
 <div class="ap-stats">
   {% if tab == 'webhooks' %}
-  <div class="ap-stat"><div class="ap-stat-value">{{ total_wh }}</div><div class="ap-stat-label">Всего вебхуков</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ success_rate }}%</div><div class="ap-stat-label">Успешных</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ failed_wh }}</div><div class="ap-stat-label">Ошибок</div></div>
+  <a href="?tab=webhooks" class="ap-stat"><div class="ap-stat-value">{{ total_wh }}</div><div class="ap-stat-label">Всего вебхуков</div></a>
+  <a href="?tab=webhooks&success=1" class="ap-stat"><div class="ap-stat-value">{{ success_rate }}%</div><div class="ap-stat-label">Успешных</div></a>
+  <a href="?tab=webhooks&success=0" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ failed_wh }}</div><div class="ap-stat-label">Ошибок</div></a>
   {% else %}
-  <div class="ap-stat"><div class="ap-stat-value">{{ total_events }}</div><div class="ap-stat-label">Всего событий</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ today_events }}</div><div class="ap-stat-label">За сегодня</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ week_events }}</div><div class="ap-stat-label">За неделю</div></div>
+  <a href="?tab=events" class="ap-stat"><div class="ap-stat-value">{{ total_events }}</div><div class="ap-stat-label">Всего событий</div></a>
+  <a href="?tab=events" class="ap-stat"><div class="ap-stat-value">{{ today_events }}</div><div class="ap-stat-label">За сегодня</div></a>
+  <a href="?tab=events" class="ap-stat"><div class="ap-stat-value">{{ week_events }}</div><div class="ap-stat-label">За неделю</div></a>
   {% endif %}
 </div>
 

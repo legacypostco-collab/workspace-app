@@ -10,10 +10,10 @@
 {% endif %}
 
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">{{ total_sellers }}</div><div class="ap-stat-label">Поставщиков</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ tier_counts.basic }}</div><div class="ap-stat-label">Базовый</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ tier_counts.professional }}</div><div class="ap-stat-label">Профессиональный</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ tier_counts.corporate }}</div><div class="ap-stat-label">Корпоративный</div></div>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ total_sellers }}</div><div class="ap-stat-label">Поставщиков</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.basic }}</div><div class="ap-stat-label">Базовый</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.professional }}</div><div class="ap-stat-label">Профессиональный</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.corporate }}</div><div class="ap-stat-label">Корпоративный</div></a>
 </div>
 
 <div class="ap-card">

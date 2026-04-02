@@ -5,11 +5,11 @@
 {% block content %}
 <!-- Stats -->
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ buyers }}</div><div class="ap-stat-label">Покупатели</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ sellers }}</div><div class="ap-stat-label">Поставщики</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ blocked }}</div><div class="ap-stat-label">Заблокировано</div></div>
-  <div class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ new_this_week }}</div><div class="ap-stat-label">За неделю</div></div>
+  <a href="/admin-panel/users/" class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></a>
+  <a href="/admin-panel/users/?role=buyer" class="ap-stat"><div class="ap-stat-value">{{ buyers }}</div><div class="ap-stat-label">Покупатели</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ sellers }}</div><div class="ap-stat-label">Поставщики</div></a>
+  <a href="/admin-panel/users/?status=blocked" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ blocked }}</div><div class="ap-stat-label">Заблокировано</div></a>
+  <a href="/admin-panel/users/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ new_this_week }}</div><div class="ap-stat-label">За неделю</div></a>
 </div>
 
 <form method="post" id="usersForm">

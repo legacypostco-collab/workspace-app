@@ -5,12 +5,12 @@
 {% block content %}
 <!-- Stats -->
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">Всего запчастей</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ active_count }}</div><div class="ap-stat-label">Активных</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ blocked_count }}</div><div class="ap-stat-label">Заблокированных</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ brands_count }}</div><div class="ap-stat-label">Брендов</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ categories_count }}</div><div class="ap-stat-label">Категорий</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ sellers_count }}</div><div class="ap-stat-label">Поставщиков</div></div>
+  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">Всего запчастей</div></a>
+  <a href="/admin-panel/catalog/?status=active" class="ap-stat"><div class="ap-stat-value">{{ active_count }}</div><div class="ap-stat-label">Активных</div></a>
+  <a href="/admin-panel/catalog/?status=blocked" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ blocked_count }}</div><div class="ap-stat-label">Заблокированных</div></a>
+  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ brands_count }}</div><div class="ap-stat-label">Брендов</div></a>
+  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ categories_count }}</div><div class="ap-stat-label">Категорий</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ sellers_count }}</div><div class="ap-stat-label">Поставщиков</div></a>
 </div>
 
 <!-- Data quality quick filters -->

@@ -4,13 +4,13 @@
 
 {% block content %}
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">Новых</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ quoted }}</div><div class="ap-stat-label">С котировками</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ needs_review }}</div><div class="ap-stat-label">На проверке</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">Отменённых</div></div>
-  <div class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_rfq }}</div><div class="ap-stat-label">За неделю</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ conversion }}%</div><div class="ap-stat-label">Конверсия</div></div>
+  <a href="/admin-panel/rfq/" class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></a>
+  <a href="/admin-panel/rfq/?status=new" class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">Новых</div></a>
+  <a href="/admin-panel/rfq/?status=quoted" class="ap-stat"><div class="ap-stat-value">{{ quoted }}</div><div class="ap-stat-label">С котировками</div></a>
+  <a href="/admin-panel/rfq/?status=needs_review" class="ap-stat"><div class="ap-stat-value">{{ needs_review }}</div><div class="ap-stat-label">На проверке</div></a>
+  <a href="/admin-panel/rfq/?status=cancelled" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">Отменённых</div></a>
+  <a href="/admin-panel/rfq/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_rfq }}</div><div class="ap-stat-label">За неделю</div></a>
+  <a href="/admin-panel/analytics/" class="ap-stat"><div class="ap-stat-value">{{ conversion }}%</div><div class="ap-stat-label">Конверсия</div></a>
 </div>
 
 <form method="post" id="rfqForm">

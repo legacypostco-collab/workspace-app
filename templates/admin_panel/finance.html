@@ -5,11 +5,11 @@
 {% block content %}
 <!-- Key metrics -->
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">${{ total_revenue|floatformat:0 }}</div><div class="ap-stat-label">Общий оборот</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">${{ month_revenue|floatformat:0 }}</div><div class="ap-stat-label">За месяц</div></div>
-  <div class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">За неделю</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">${{ platform_commission|floatformat:0 }}</div><div class="ap-stat-label">Комиссия ({{ commission_rate }}%)</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">${{ total_logistics|floatformat:0 }}</div><div class="ap-stat-label">Логистика</div></div>
+  <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ total_revenue|floatformat:0 }}</div><div class="ap-stat-label">Общий оборот</div></a>
+  <a href="/admin-panel/analytics/?period=month" class="ap-stat"><div class="ap-stat-value">${{ month_revenue|floatformat:0 }}</div><div class="ap-stat-label">За месяц</div></a>
+  <a href="/admin-panel/analytics/?period=week" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">За неделю</div></a>
+  <a href="/admin-panel/tariffs/" class="ap-stat"><div class="ap-stat-value">${{ platform_commission|floatformat:0 }}</div><div class="ap-stat-label">Комиссия ({{ commission_rate }}%)</div></a>
+  <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ total_logistics|floatformat:0 }}</div><div class="ap-stat-label">Логистика</div></a>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:16px;">

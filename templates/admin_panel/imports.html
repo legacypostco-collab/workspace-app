@@ -4,10 +4,10 @@
 
 {% block content %}
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">{{ total_imports }}</div><div class="ap-stat-label">Всего импортов</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ total_created }}</div><div class="ap-stat-label">Создано позиций</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ total_updated }}</div><div class="ap-stat-label">Обновлено</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ total_errors }}</div><div class="ap-stat-label">Ошибок</div></div>
+  <a href="/admin-panel/imports/" class="ap-stat"><div class="ap-stat-value">{{ total_imports }}</div><div class="ap-stat-label">Всего импортов</div></a>
+  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ total_created }}</div><div class="ap-stat-label">Создано позиций</div></a>
+  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ total_updated }}</div><div class="ap-stat-label">Обновлено</div></a>
+  <a href="/admin-panel/imports/" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ total_errors }}</div><div class="ap-stat-label">Ошибок</div></a>
 </div>
 
 <div class="ap-card">
