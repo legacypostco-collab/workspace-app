@@ -8,22 +8,22 @@
     <div class="op-stat-value">6</div>
     <div class="op-stat-label">Ожидают оплаты</div>
   </a>
-  <a class="op-stat" href="/operator/payments/">
+  <div class="op-stat" id="pay-stat-processing" onclick="filterPayQueue('В обработке')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">3</div>
     <div class="op-stat-label">В обработке</div>
-  </a>
-  <a class="op-stat" href="/operator/payments/">
+  </div>
+  <a class="op-stat" href="/operator/payments/analytics/">
     <div class="op-stat-value">87</div>
     <div class="op-stat-label">Выполнено за месяц</div>
   </a>
-  <a class="op-stat" href="/operator/payments/">
+  <a class="op-stat" href="/operator/payments/analytics/">
     <div class="op-stat-value">$428K</div>
     <div class="op-stat-label">Общая сумма</div>
   </a>
-  <a class="op-stat op-stat-warn" href="/operator/payments/">
+  <div class="op-stat op-stat-warn" id="pay-stat-overdue" onclick="filterPayQueue('Просрочено')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">1</div>
     <div class="op-stat-label">Просрочено</div>
-  </a>
+  </div>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;">
@@ -48,7 +48,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr onclick="opToast('Платёж INV-8841: $5,520 аванс, ожидает')">
+        <tr data-status="Ожидает" onclick="opToast('Платёж INV-8841: $5,520 аванс, ожидает')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8841</td>
           <td>ORD-4521</td>
           <td class="text-secondary">#1042</td>
@@ -59,7 +59,7 @@
           <td><span class="op-badge op-badge-orange">Ожидает</span></td>
           <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Подтверждено', 2000, 'success')">Подтвердить</button></td>
         </tr>
-        <tr onclick="opToast('Платёж INV-8839: $12,880 основная оплата, в обработке')">
+        <tr data-status="В обработке" onclick="opToast('Платёж INV-8839: $12,880 основная оплата, в обработке')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8839</td>
           <td>ORD-4518</td>
           <td class="text-secondary">#1038</td>
@@ -70,7 +70,7 @@
           <td><span class="op-badge op-badge-gray">В обработке</span></td>
           <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
         </tr>
-        <tr onclick="opToast('Платёж INV-8837: $1,860 финальная, ожидает')">
+        <tr data-status="Ожидает" onclick="opToast('Платёж INV-8837: $1,860 финальная, ожидает')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8837</td>
           <td>ORD-4515</td>
           <td class="text-secondary">#1051</td>
@@ -81,7 +81,7 @@
           <td><span class="op-badge op-badge-orange">Ожидает</span></td>
           <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Подтверждено', 2000, 'success')">Подтвердить</button></td>
         </tr>
-        <tr onclick="opToast('Платёж INV-8835: $8,200 аванс, просрочено')" style="border-left:2px solid #E85C0D;">
+        <tr data-status="Просрочено" onclick="opToast('Платёж INV-8835: $8,200 аванс, просрочено')" style="border-left:2px solid #E85C0D;">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#E85C0D;">INV-8835</td>
           <td>ORD-4512</td>
           <td class="text-secondary">#1029</td>
@@ -92,7 +92,7 @@
           <td><span class="op-badge op-badge-orange">Просрочено</span></td>
           <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Запрос на доработку отправлен', 2000, 'warn')">Эскалировать</button></td>
         </tr>
-        <tr onclick="opToast('Платёж INV-8833: $3,400 основная, ожидает')">
+        <tr data-status="Ожидает" onclick="opToast('Платёж INV-8833: $3,400 основная, ожидает')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8833</td>
           <td>ORD-4508</td>
           <td class="text-secondary">#1055</td>
@@ -153,4 +153,24 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  var activeStatus = '';
+  window.filterPayQueue = function(status) {
+    activeStatus = (activeStatus === status) ? '' : status;
+    var active = 'rgba(100,181,246,0.35)', inactive = 'rgba(255,255,255,0.04)';
+    document.querySelectorAll('[id^="pay-stat-"]').forEach(function(el){
+      el.style.borderColor = inactive; el.style.background = '';
+    });
+    if (activeStatus === 'В обработке') document.getElementById('pay-stat-processing').style.borderColor = active;
+    if (activeStatus === 'Просрочено') { document.getElementById('pay-stat-overdue').style.borderColor = active; document.getElementById('pay-stat-overdue').style.borderColor = 'rgba(232,92,13,0.5)'; }
+    document.querySelectorAll('.op-table tbody tr[data-status]').forEach(function(row) {
+      row.style.display = (!activeStatus || row.getAttribute('data-status') === activeStatus) ? '' : 'none';
+    });
+  };
+})();
+</script>
 {% endblock %}
