@@ -30,34 +30,34 @@
 
 <!-- KPI row -->
 <div class="ap-stats">
-  <div class="ap-stat">
+  <a href="/admin-panel/finance/" class="ap-stat">
     <div class="ap-stat-value">${{ gmv|floatformat:0 }}</div>
     <div class="ap-stat-label">GMV ({{ period_label|lower }})</div>
     {% if gmv_delta %}<div style="margin-top:4px;font-size:11px;font-weight:600;color:{% if gmv_delta > 0 %}#4CAF50{% elif gmv_delta < 0 %}#E85C0D{% else %}#919191{% endif %};">{% if gmv_delta > 0 %}&#9650; +{{ gmv_delta }}%{% elif gmv_delta < 0 %}&#9660; {{ gmv_delta }}%{% endif %} <span style="color:#5E5E5E;font-weight:400;">vs пред. период</span></div>{% endif %}
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/orders/" class="ap-stat">
     <div class="ap-stat-value">{{ orders_count }}</div>
     <div class="ap-stat-label">Заказов</div>
     {% if orders_delta %}<div style="margin-top:4px;font-size:11px;font-weight:600;color:{% if orders_delta > 0 %}#4CAF50{% elif orders_delta < 0 %}#E85C0D{% else %}#919191{% endif %};">{% if orders_delta > 0 %}&#9650; +{{ orders_delta }}%{% elif orders_delta < 0 %}&#9660; {{ orders_delta }}%{% endif %}</div>{% endif %}
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/users/" class="ap-stat">
     <div class="ap-stat-value">{{ total_users }}</div>
     <div class="ap-stat-label">Пользователей</div>
     {% if new_users %}<div style="margin-top:4px;font-size:11px;color:#4CAF50;font-weight:600;">+{{ new_users }} новых</div>{% endif %}
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/orders/" class="ap-stat">
     <div class="ap-stat-value">${{ avg_order|floatformat:0 }}</div>
     <div class="ap-stat-label">Средний чек</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/rfq/" class="ap-stat">
     <div class="ap-stat-value">{{ rfq_conversion }}%</div>
     <div class="ap-stat-label">RFQ &#8594; Заказ</div>
     <div style="margin-top:4px;font-size:11px;color:#5E5E5E;">{{ rfq_count }} запросов</div>
-  </div>
-  <div class="ap-stat">
+  </a>
+  <a href="/admin-panel/orders/?status=completed" class="ap-stat">
     <div class="ap-stat-value">{{ completion_rate }}%</div>
     <div class="ap-stat-label">Завершённость</div>
-  </div>
+  </a>
 </div>
 
 <!-- Tabs -->
