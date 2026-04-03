@@ -30,6 +30,8 @@
   .wi-card.dragging{opacity:0.4}
   .wp-row{padding:6px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .12s;font-size:11px}
   .wp-row:hover{background:rgba(100,181,246,0.04)}
+  .met-card{transition:border-color .15s,background .15s !important;}
+  .met-card:hover{border-color:rgba(100,181,246,0.35) !important;cursor:pointer !important;}
 
   /* Currency switcher in topbar meta area */
   .dash-cur-switcher { display:flex; gap:1px; background:#2C2C2C; border-radius:7px; padding:2px; border:1px solid rgba(255,255,255,0.055); }
@@ -583,17 +585,18 @@
 
           if (blockId === "metrics") {
             const allM = [
-              { id: "m_orders", l: "Активные заказы", v: "45", t: "+12%", up: true, ctx: "за 30 дней" },
-              { id: "m_sla", l: "Исполнение SLA", v: "95.2%", t: "+2.1%", up: true, ctx: "норматив: 90%" },
-              { id: "m_conv", l: "Конверсия запросов", v: "68%", t: "-3%", up: false, ctx: "запрос → заказ" },
-              { id: "m_rating", l: "Рейтинг поставщика", v: "4.26", t: "+0.02", up: true, ctx: "из 5.0" },
+              { id: "m_orders", l: "Активные заказы", v: "45", t: "+12%", up: true, ctx: "за 30 дней", url: "/seller/orders/" },
+              { id: "m_sla", l: "Исполнение SLA", v: "95.2%", t: "+2.1%", up: true, ctx: "норматив: 90%", url: "/seller/sla/" },
+              { id: "m_conv", l: "Конверсия запросов", v: "68%", t: "-3%", up: false, ctx: "запрос → заказ", url: "/seller/requests/" },
+              { id: "m_rating", l: "Рейтинг поставщика", v: "4.26", t: "+0.02", up: true, ctx: "из 5.0", url: "/seller/rating/" },
             ];
             const vis = metricOrder.filter(id => !hiddenMetrics.includes(id));
             return wrap(<div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(vis.length,1)}, 1fr)`, gap: 12 }}>
               {vis.map(mid => { const s = allM.find(x => x.id === mid); if (!s) return null; return (
-                <div key={mid} draggable onDragStart={e => { e.stopPropagation(); setDragMetric(mid); e.dataTransfer.effectAllowed="move"; }}
+                <div key={mid} className="met-card" draggable onDragStart={e => { e.stopPropagation(); setDragMetric(mid); e.dataTransfer.effectAllowed="move"; }}
                   onDragOver={e => { e.preventDefault(); e.stopPropagation(); if(!dragMetric||dragMetric===mid) return; setMetricOrder(p=>{const a=[...p],fi=a.indexOf(dragMetric),ti=a.indexOf(mid);if(fi===-1||ti===-1)return p;a.splice(fi,1);a.splice(ti,0,dragMetric);return a;}); }}
                   onDragEnd={()=>setDragMetric(null)}
+                  onClick={() => { if(!dragMetric && s.url) window.location.href = s.url; }}
                   style={{ background: P.card, borderRadius: 14, border: `1px solid ${P.brd}`, padding: "14px 18px", display: "flex", flexDirection: "column", minHeight: 82, position: "relative", cursor: "grab", opacity: dragMetric===mid?0.35:1 }}>
                   <div className="mc" style={{ position: "absolute", top: 6, right: 6, opacity: 0, transition: "opacity .15s" }}>
                     <div onClick={e=>{e.stopPropagation();setHiddenMetrics(p=>[...p,mid]);}} style={{ cursor:"pointer",padding:"2px 5px",borderRadius:4,background:P.el,color:P.t2,fontSize:10,lineHeight:1 }}>✕</div>
