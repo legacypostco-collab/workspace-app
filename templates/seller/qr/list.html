@@ -249,6 +249,10 @@
 }
 .qr-instr-step-title { font-size:13px;color:#ECECEC;font-weight:600;margin-bottom:2px; }
 .qr-instr-step-desc { font-size:11px;color:#8A8A8A;line-height:1.6; }
+
+/* Clickable metric links */
+.qr-metric-link { text-decoration:none; display:block; cursor:pointer; }
+.qr-metric-link:hover > .qr-metric { background:rgba(100,181,246,0.05) !important; border-right-color:rgba(100,181,246,0.25) !important; }
 </style>
 {% endblock %}
 
@@ -268,21 +272,27 @@
       <div class="qr-metric-val">{{ active_orders_count }}</div>
       <div class="qr-metric-hint">на контроле <span class="qr-metric-toggle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 12 15 18 9"/></svg></span></div>
     </div>
+    <a href="/seller/qr/" class="qr-metric-link">
     <div class="qr-metric">
       <div class="qr-metric-label">Всего сканирований</div>
       <div class="qr-metric-val">{{ total_scans }}</div>
       <div class="qr-metric-hint">за всё время</div>
     </div>
+    </a>
+    <a href="/seller/qr/" class="qr-metric-link">
     <div class="qr-metric">
       <div class="qr-metric-label">Сегодня</div>
       <div class="qr-metric-val">{{ scans_today }}</div>
       <div class="qr-metric-hint" style="color:#64B5F6;">сканирований</div>
     </div>
+    </a>
+    <a href="/seller/orders/" class="qr-metric-link">
     <div class="qr-metric">
       <div class="qr-metric-label">Заказов с QR</div>
       <div class="qr-metric-val">{{ orders_with_qr }}</div>
       <div class="qr-metric-hint" style="color:#64B5F6;">зарегистрировано</div>
     </div>
+    </a>
   </div>
 </section>
 

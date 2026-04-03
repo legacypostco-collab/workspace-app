@@ -186,6 +186,10 @@
   color:#6A6A6A;font-size:13px;
 }
 .rp-empty-icon { font-size:32px;margin-bottom:10px;opacity:.4; }
+
+/* Clickable metric links */
+.rp-metric-link { text-decoration:none; display:block; cursor:pointer; }
+.rp-metric-link:hover > .rp-metric { border-color:rgba(100,181,246,0.35) !important; background:#242424 !important; }
 </style>
 {% endblock %}
 
@@ -206,26 +210,34 @@
 
     <!-- Metrics -->
     <div class="rp-metrics">
+      <a href="/seller/reports/" class="rp-metric-link">
       <div class="rp-metric">
         <div class="rp-metric-label">Отчётов за месяц</div>
         <div class="rp-metric-val">38</div>
         <div class="rp-metric-hint rp-metric-hint--up">↑ 12 к прошлому месяцу</div>
       </div>
+      </a>
+      <a href="/seller/reports/#schedule" class="rp-metric-link">
       <div class="rp-metric">
         <div class="rp-metric-label">Запланировано</div>
         <div class="rp-metric-val">7</div>
         <div class="rp-metric-hint rp-metric-hint--neutral">Автоотправка</div>
       </div>
+      </a>
+      <a href="/seller/analytics/" class="rp-metric-link">
       <div class="rp-metric">
         <div class="rp-metric-label">Экспортировано</div>
         <div class="rp-metric-val">124</div>
         <div class="rp-metric-hint rp-metric-hint--up">↑ 28% к прошлому</div>
       </div>
+      </a>
+      <a href="/seller/reports/" class="rp-metric-link">
       <div class="rp-metric">
         <div class="rp-metric-label">Последний отчёт</div>
         <div class="rp-metric-val" style="font-size:15px;padding-top:3px;">Сегодня</div>
         <div class="rp-metric-hint rp-metric-hint--neutral">08:00 · Ежедневный сводный</div>
       </div>
+      </a>
     </div>
   </div>
 

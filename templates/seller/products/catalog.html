@@ -1,5 +1,13 @@
 {% extends "seller/base_seller.html" %}
 {% block title %}Товары и прайсы{% endblock %}
+
+{% block extra_css %}
+<style>
+.stat-card-link { text-decoration:none; display:block; cursor:pointer; }
+.stat-card-link:hover > div { border-color:rgba(100,181,246,0.35) !important; background:rgba(100,181,246,0.04) !important; }
+</style>
+{% endblock %}
+
 {% block content %}
 
 {# ═══ HERO — компактный объединённый блок ═══ #}
@@ -24,24 +32,31 @@
   <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;">
 
     {# Строка 1 #}
+    <a href="{% url 'seller_product_list' %}?status=all" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);border-bottom:1px solid rgba(255,255,255,0.045);">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Всего позиций</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ parts_total }}</div>
       <div style="font-size:10px;color:#64B5F6;margin-top:4px;">в каталоге</div>
     </div>
+    </a>
 
+    <a href="{% url 'seller_product_list' %}?status=active" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);border-bottom:1px solid rgba(255,255,255,0.045);">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Активных</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ parts_active_count|default:0 }}</div>
       <div style="font-size:10px;color:#64B5F6;margin-top:4px;">ready</div>
     </div>
+    </a>
 
+    <a href="{% url 'seller_product_list' %}?status=needs_data" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);border-bottom:1px solid rgba(255,255,255,0.045);">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Требуют доработки</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ parts_needs_data_count|default:0 }}</div>
       <div style="font-size:10px;color:#FEBC2E;margin-top:4px;">needs data</div>
     </div>
+    </a>
 
+    <a href="{% url 'seller_product_list' %}" class="stat-card-link">
     <div style="padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.045);">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Заполненность</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ catalog_completeness_pct|default:0 }}%</div>
@@ -49,26 +64,34 @@
         <div style="height:100%;width:{{ catalog_completeness_pct|default:0 }}%;background:#E85C0D;border-radius:2px;"></div>
       </div>
     </div>
+    </a>
 
     {# Строка 2 #}
+    <a href="{% url 'seller_request_list' %}" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Новые RFQ</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ seller_rfqs_count|default:0 }}</div>
       <div style="font-size:10px;color:#919191;margin-top:4px;">входящие запросы</div>
     </div>
+    </a>
 
+    <a href="{% url 'seller_orders' %}" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Заказы по позициям</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ seller_orders_count|default:0 }}</div>
       <div style="font-size:10px;color:#64B5F6;margin-top:4px;">активных</div>
     </div>
+    </a>
 
+    <a href="{% url 'seller_product_list' %}?status=all" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Обновлено за 24ч</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ parts_updated_24h|default:0 }}</div>
       <div style="font-size:10px;color:#919191;margin-top:4px;">позиций</div>
     </div>
+    </a>
 
+    <a href="{% url 'seller_request_list' %}" class="stat-card-link">
     <div style="padding:10px 16px;">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Конверсия RFQ</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">68%</div>
@@ -76,6 +99,7 @@
         <div style="height:100%;width:68%;background:#64B5F6;border-radius:2px;"></div>
       </div>
     </div>
+    </a>
 
   </div>
 </section>
