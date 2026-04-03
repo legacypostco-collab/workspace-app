@@ -188,6 +188,10 @@
 .fin-empty {
   text-align:center;color:#6A6A6A;padding:40px;font-size:14px;
 }
+
+/* Clickable metric links */
+.fin-metric-link { text-decoration:none; display:block; cursor:pointer; }
+.fin-metric-link:hover > .fin-metric { border-color:rgba(100,181,246,0.35) !important; background:#242424 !important; }
 </style>
 {% endblock %}
 
@@ -202,26 +206,34 @@
     </div>
   </div>
   <div class="fin-metrics">
+    <a href="/seller/finance/" class="fin-metric-link">
     <div class="fin-metric">
       <div class="fin-metric-label">Общий оборот</div>
       <div class="fin-metric-val">${{ total_revenue|floatformat:0 }}</div>
       <div class="fin-metric-hint">все заказы</div>
     </div>
+    </a>
+    <a href="/seller/finance/?payment=paid" class="fin-metric-link">
     <div class="fin-metric">
       <div class="fin-metric-label">Получено</div>
       <div class="fin-metric-val" style="color:#64B5F6;">${{ paid_revenue|floatformat:0 }}</div>
       <div class="fin-metric-hint" style="color:#64B5F6;">полная оплата</div>
     </div>
+    </a>
+    <a href="/seller/finance/?payment=awaiting_reserve" class="fin-metric-link">
     <div class="fin-metric">
       <div class="fin-metric-label">Ожидает оплаты</div>
       <div class="fin-metric-val" style="color:#FF8C42;">${{ awaiting_revenue|floatformat:0 }}</div>
       <div class="fin-metric-hint" style="color:#FF8C42;">в процессе</div>
     </div>
+    </a>
+    <a href="/seller/finance/?payment=reserve_paid" class="fin-metric-link">
     <div class="fin-metric">
       <div class="fin-metric-label">Резервов внесено</div>
       <div class="fin-metric-val">${{ reserves_collected|floatformat:0 }}</div>
       <div class="fin-metric-hint">предоплата</div>
     </div>
+    </a>
   </div>
 </section>
 

@@ -3,194 +3,195 @@
 {% block topbar_title %}Модерация{% endblock %}
 
 {% block content %}
+<!-- Stats -->
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">18</div><div class="ap-stat-label">В очереди</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">2</div><div class="ap-stat-label">Новые поставщики</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">12</div><div class="ap-stat-label">Товары</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">4</div><div class="ap-stat-label">Рекламации</div></div>
+  <a href="?tab=all" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ total_pending }}</div><div class="ap-stat-label">Всего в очереди</div></a>
+  <a href="?tab=suppliers" class="ap-stat"><div class="ap-stat-value">{{ supplier_count }}</div><div class="ap-stat-label">Поставщики</div></a>
+  <a href="?tab=parts" class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">Запчасти</div></a>
+  <a href="?tab=claims" class="ap-stat"><div class="ap-stat-value">{{ claims_count }}</div><div class="ap-stat-label">Рекламации</div></a>
+  <a href="?tab=sla" class="ap-stat"><div class="ap-stat-value">{{ sla_count }}</div><div class="ap-stat-label">SLA нарушения</div></a>
 </div>
 
-<div class="ap-card">
+<!-- Tabs -->
+<div class="ap-card" style="margin-bottom:16px;">
   <div class="ap-tabs">
-    <button class="ap-tab active" data-tab-group="mod" data-tab-key="all" onclick="apSwitchTab('mod','all');filterMod()">Все</button>
-    <button class="ap-tab" data-tab-group="mod" data-tab-key="suppliers" onclick="apSwitchTab('mod','suppliers');filterMod()">Поставщики</button>
-    <button class="ap-tab" data-tab-group="mod" data-tab-key="products" onclick="apSwitchTab('mod','products');filterMod()">Товары</button>
-    <button class="ap-tab" data-tab-group="mod" data-tab-key="claims" onclick="apSwitchTab('mod','claims');filterMod()">Рекламации</button>
-  </div>
-
-  <div style="display:flex;flex-direction:column;gap:12px;" id="modCards">
-    <!-- Suppliers -->
-    <div class="ap-card-elevated mod-card" data-type="suppliers" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="ap-badge ap-badge-blue">Поставщик</span>
-          <span class="ap-badge ap-badge-gray">Обычный</span>
-        </div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Foshan Metal Works — верификация нового поставщика</div>
-        <div style="font-size:12px;color:#919191;">Подал: Foshan Metal Works (info@foshanmetal.com) / 22.03.2026</div>
-        <div style="font-size:12px;color:#5E5E5E;margin-top:4px;">Документы загружены: бизнес-лицензия, сертификат ISO 9001</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Поставщик одобрен')">Одобрить</button>
-        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Поставщик отклонён')">Отклонить</button>
-        <button class="ap-btn ap-btn-ghost" onclick="apToast('Запрос отправлен')">Запросить доп. информацию</button>
-      </div>
-    </div>
-
-    <div class="ap-card-elevated mod-card" data-type="suppliers" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="ap-badge ap-badge-blue">Поставщик</span>
-          <span class="ap-badge ap-badge-orange">Высокий</span>
-        </div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Dongguan Auto Comp. — верификация нового поставщика</div>
-        <div style="font-size:12px;color:#919191;">Подал: Dongguan Auto Comp. (dg@autocomp.cn) / 24.03.2026</div>
-        <div style="font-size:12px;color:#5E5E5E;margin-top:4px;">Документы: бизнес-лицензия, каталог, прайс-лист (2400 позиций)</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Поставщик одобрен')">Одобрить</button>
-        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Поставщик отклонён')">Отклонить</button>
-        <button class="ap-btn ap-btn-ghost" onclick="apToast('Запрос отправлен')">Запросить доп. информацию</button>
-      </div>
-    </div>
-
-    <!-- Products -->
-    <div class="ap-card-elevated mod-card" data-type="products" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="ap-badge ap-badge-gray">Товар</span>
-          <span class="ap-badge ap-badge-gray">Обычный</span>
-        </div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">DG-184 Генератор Denso — новый товар</div>
-        <div style="font-size:12px;color:#919191;">Поставщик #3003 / 23.03.2026</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Товар одобрен')">Одобрить</button>
-        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Товар отклонён')">Отклонить</button>
-      </div>
-    </div>
-
-    <div class="ap-card-elevated mod-card" data-type="products" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="ap-badge ap-badge-gray">Товар</span>
-          <span class="ap-badge ap-badge-gray">Обычный</span>
-        </div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">CT1092 Ремень ГРМ Continental — новый товар</div>
-        <div style="font-size:12px;color:#919191;">Поставщик #3156 / 22.03.2026</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Товар одобрен')">Одобрить</button>
-        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Товар отклонён')">Отклонить</button>
-      </div>
-    </div>
-
-    <div class="ap-card-elevated mod-card" data-type="products" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="ap-badge ap-badge-gray">Товар</span>
-          <span class="ap-badge ap-badge-gray">Обычный</span>
-        </div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">CT2045 Натяжитель ремня Continental — новый товар</div>
-        <div style="font-size:12px;color:#919191;">Поставщик #3156 / 21.03.2026</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Товар одобрен')">Одобрить</button>
-        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Товар отклонён')">Отклонить</button>
-      </div>
-    </div>
-
-    <div class="ap-card-elevated mod-card" data-type="products" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="ap-badge ap-badge-gray">Товар</span>
-          <span class="ap-badge ap-badge-gray">Обычный</span>
-        </div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Batch: 8 товаров от поставщика #3002 — массовая загрузка</div>
-        <div style="font-size:12px;color:#919191;">Поставщик #3002 / 20.03.2026</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('8 товаров одобрены')">Одобрить все</button>
-        <button class="ap-btn ap-btn-warn" onclick="this.closest('.mod-card').style.display='none';apToast('Отклонено')">Отклонить</button>
-        <button class="ap-btn ap-btn-ghost" onclick="apToast('Просмотр деталей')">Детали</button>
-      </div>
-    </div>
-
-    <!-- Claims -->
-    <div class="ap-card-elevated mod-card" data-type="claims" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="ap-badge ap-badge-orange">Рекламация</span>
-          <span class="ap-badge ap-badge-orange">Высокий</span>
-        </div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">ORD-4501 — несоответствие 2 позиций спецификации</div>
-        <div style="font-size:12px;color:#919191;">Покупатель #1033 / 24.03.2026</div>
-        <div style="font-size:12px;color:#5E5E5E;margin-top:4px;">Поставщик #3148, сумма $6,200. Фото несоответствия загружены.</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="ap-btn ap-btn-primary" onclick="apToast('Возврат оформлен')">Возврат</button>
-        <button class="ap-btn ap-btn-ghost" onclick="apToast('Запрос отправлен поставщику')">Запросить доп. информацию</button>
-      </div>
-    </div>
-
-    <div class="ap-card-elevated mod-card" data-type="claims" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="ap-badge ap-badge-orange">Рекламация</span>
-          <span class="ap-badge ap-badge-gray">Обычный</span>
-        </div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">ORD-4488 — повреждение упаковки при доставке</div>
-        <div style="font-size:12px;color:#919191;">Покупатель #1020 / 22.03.2026</div>
-        <div style="font-size:12px;color:#5E5E5E;margin-top:4px;">Поставщик #3001, товар исправен, упаковка повреждена.</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Компенсация оформлена')">Компенсация</button>
-        <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали')">Детали</button>
-      </div>
-    </div>
-
-    <div class="ap-card-elevated mod-card" data-type="claims" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="ap-badge ap-badge-orange">Рекламация</span>
-          <span class="ap-badge ap-badge-gray">Обычный</span>
-        </div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">ORD-4476 — задержка доставки 5 дней</div>
-        <div style="font-size:12px;color:#919191;">Покупатель #1018 / 20.03.2026</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="ap-btn ap-btn-primary" onclick="this.closest('.mod-card').style.display='none';apToast('Решение принято')">Компенсация</button>
-        <button class="ap-btn ap-btn-ghost" onclick="apToast('Детали')">Детали</button>
-      </div>
-    </div>
-
-    <div class="ap-card-elevated mod-card" data-type="claims" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
-      <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span class="ap-badge ap-badge-orange">Рекламация</span>
-          <span class="ap-badge ap-badge-orange">Высокий</span>
-        </div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">ORD-4462 — подмена бренда (Fake vs OEM)</div>
-        <div style="font-size:12px;color:#919191;">Покупатель #1015 / 18.03.2026</div>
-        <div style="font-size:12px;color:#5E5E5E;margin-top:4px;">Поставщик #3140. Требуется экспертиза.</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="ap-btn ap-btn-warn" onclick="apToast('Эскалация отправлена')">Эскалировать</button>
-        <button class="ap-btn ap-btn-ghost" onclick="apToast('Запрос отправлен')">Запросить доп. информацию</button>
-      </div>
-    </div>
+    <a href="?tab=all" class="ap-tab {% if tab == 'all' %}active{% endif %}" style="text-decoration:none;">Все ({{ total_pending }})</a>
+    <a href="?tab=suppliers" class="ap-tab {% if tab == 'suppliers' %}active{% endif %}" style="text-decoration:none;">Поставщики ({{ supplier_count }})</a>
+    <a href="?tab=parts" class="ap-tab {% if tab == 'parts' %}active{% endif %}" style="text-decoration:none;">Запчасти ({{ parts_count }})</a>
+    <a href="?tab=claims" class="ap-tab {% if tab == 'claims' %}active{% endif %}" style="text-decoration:none;">Рекламации ({{ claims_count }})</a>
+    <a href="?tab=sla" class="ap-tab {% if tab == 'sla' %}active{% endif %}" style="text-decoration:none;">SLA ({{ sla_count }})</a>
+    <a href="?tab=history" class="ap-tab {% if tab == 'history' %}active{% endif %}" style="text-decoration:none;">История</a>
   </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
-<script>
-function filterMod() {
-  var tab = document.querySelector('.ap-tab.active[data-tab-group="mod"]').dataset.tabKey;
-  document.querySelectorAll('.mod-card').forEach(function(card) {
-    if (tab === 'all') { card.style.display = ''; return; }
-    card.style.display = card.dataset.type === tab ? '' : 'none';
-  });
-}
-</script>
+<!-- Suppliers -->
+{% if tab == 'all' or tab == 'suppliers' %}
+{% if sandbox_suppliers %}
+<div class="ap-card" style="margin-bottom:16px;">
+  <div class="ap-section-title">Поставщики в песочнице ({{ supplier_count }})</div>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+    {% for profile in sandbox_suppliers %}
+    <div class="ap-card-elevated" style="display:flex;align-items:center;gap:16px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:#2C2C2C;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#64B5F6;flex-shrink:0;">
+        {{ profile.user.username|make_list|first|upper }}
+      </div>
+      <div style="flex:1;">
+        <a href="/admin-panel/users/{{ profile.user.id }}/" style="font-size:13px;font-weight:600;color:#64B5F6;text-decoration:none;">{{ profile.user.get_full_name|default:profile.user.username }}</a>
+        <div style="font-size:11px;color:#919191;">{{ profile.company_name|default:profile.user.email }} · Рег. {{ profile.user.date_joined|date:"d.m.Y" }}</div>
+      </div>
+      <form method="post" style="display:flex;gap:6px;">
+        {% csrf_token %}
+        <input type="hidden" name="profile_id" value="{{ profile.id }}"/>
+        <button type="submit" name="action" value="approve_supplier" class="ap-btn ap-btn-primary">Одобрить</button>
+        <button type="submit" name="action" value="reject_supplier" class="ap-btn ap-btn-warn">Отклонить</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Blocked parts -->
+{% if tab == 'all' or tab == 'parts' %}
+{% if blocked_parts %}
+<div class="ap-card" style="margin-bottom:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div class="ap-section-title" style="margin-bottom:0;">Заблокированные запчасти ({{ parts_count }})</div>
+    <a href="/admin-panel/catalog/?status=blocked" class="ap-btn ap-btn-ghost" style="text-decoration:none;font-size:11px;">В каталоге</a>
+  </div>
+  <table class="ap-table">
+    <thead><tr><th>OEM</th><th>Название</th><th>Бренд</th><th>Поставщик</th><th>Причина</th><th>Действия</th></tr></thead>
+    <tbody>
+      {% for part in blocked_parts %}
+      <tr>
+        <td><span style="color:#64B5F6;">{{ part.oem_number }}</span></td>
+        <td>{{ part.title|truncatechars:30 }}</td>
+        <td class="text-secondary">{{ part.brand.name|default:"—" }}</td>
+        <td class="text-secondary">{% if part.seller %}<a href="/admin-panel/users/{{ part.seller.id }}/" style="color:#64B5F6;text-decoration:none;">{{ part.seller.username }}</a>{% else %}—{% endif %}</td>
+        <td class="text-secondary" style="font-size:11px;">{{ part.admin_note|default:"—"|truncatechars:30 }}</td>
+        <td>
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="part_id" value="{{ part.id }}"/>
+            <button type="submit" name="action" value="activate_part" class="ap-btn ap-btn-primary" style="font-size:11px;padding:4px 10px;">Активировать</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Claims -->
+{% if tab == 'all' or tab == 'claims' %}
+{% if open_claims %}
+<div class="ap-card" style="margin-bottom:16px;">
+  <div class="ap-section-title">Открытые рекламации ({{ claims_count }})</div>
+  <table class="ap-table">
+    <thead><tr><th>Заказ</th><th>Тема</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+    <tbody>
+      {% for claim in open_claims %}
+      <tr>
+        <td><a href="/admin-panel/orders/{{ claim.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ claim.order_id }}</a></td>
+        <td>{{ claim.title|truncatechars:35 }}</td>
+        <td><span class="ap-badge ap-badge-orange">{{ claim.get_status_display }}</span></td>
+        <td class="text-secondary">{{ claim.created_at|date:"d.m.Y" }}</td>
+        <td>
+          <form method="post" style="display:inline-flex;gap:4px;">
+            {% csrf_token %}
+            <input type="hidden" name="claim_id" value="{{ claim.id }}"/>
+            <button type="submit" name="action" value="approve_claim" class="ap-btn ap-btn-primary" style="font-size:11px;padding:4px 10px;">Одобрить</button>
+            <button type="submit" name="action" value="reject_claim" class="ap-btn ap-btn-warn" style="font-size:11px;padding:4px 10px;">Отклонить</button>
+            <button type="submit" name="action" value="close_claim" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">Закрыть</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- SLA breached -->
+{% if tab == 'all' or tab == 'sla' %}
+{% if sla_breached %}
+<div class="ap-card" style="margin-bottom:16px;border-left:3px solid #E85C0D;">
+  <div class="ap-section-title" style="color:#E85C0D;">SLA нарушения ({{ sla_count }})</div>
+  <table class="ap-table">
+    <thead><tr><th>Заказ</th><th>Покупатель</th><th>Статус</th><th>Нарушений</th><th>Дедлайн подтв.</th><th>Дедлайн отгр.</th><th></th></tr></thead>
+    <tbody>
+      {% for order in sla_breached %}
+      <tr>
+        <td><a href="/admin-panel/orders/{{ order.id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ order.id }}</a></td>
+        <td>{{ order.customer_name|truncatechars:20 }}</td>
+        <td><span class="ap-badge ap-badge-blue">{{ order.get_status_display }}</span></td>
+        <td><span style="color:#E85C0D;font-weight:600;">{{ order.sla_breaches_count }}</span></td>
+        <td class="text-secondary">{{ order.supplier_confirm_deadline|date:"d.m H:i"|default:"—" }}</td>
+        <td class="text-secondary">{{ order.ship_deadline|date:"d.m H:i"|default:"—" }}</td>
+        <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">Детали</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Empty state -->
+{% if tab != 'history' and not sandbox_suppliers and not blocked_parts and not open_claims and not sla_breached %}
+<div class="ap-card" style="text-align:center;padding:40px;">
+  <div style="font-size:24px;color:#5E5E5E;margin-bottom:8px;">&#10003;</div>
+  <div style="font-size:15px;color:#919191;">Очередь модерации пуста</div>
+</div>
+{% endif %}
+
+<!-- History tab -->
+{% if tab == 'history' %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+  <div class="ap-card">
+    <div class="ap-section-title">Последние модерации запчастей</div>
+    {% if recent_moderated %}
+    <table class="ap-table">
+      <thead><tr><th>OEM</th><th>Поставщик</th><th>Статус</th><th>Модератор</th><th>Дата</th></tr></thead>
+      <tbody>
+        {% for part in recent_moderated %}
+        <tr>
+          <td><span style="color:#64B5F6;">{{ part.oem_number }}</span></td>
+          <td class="text-secondary">{{ part.seller.username|default:"—" }}</td>
+          <td>
+            {% if part.availability_status == 'active' %}<span class="ap-badge ap-badge-green">Одобрена</span>
+            {% else %}<span class="ap-badge ap-badge-orange">{{ part.availability_status }}</span>{% endif %}
+          </td>
+          <td class="text-secondary">{{ part.moderated_by.username|default:"—" }}</td>
+          <td class="text-secondary">{{ part.moderated_at|date:"d.m H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:#919191;font-size:13px;">Нет данных</p>{% endif %}
+  </div>
+
+  <div class="ap-card">
+    <div class="ap-section-title">Последние модерации поставщиков</div>
+    {% if recent_supplier_events %}
+    <table class="ap-table">
+      <thead><tr><th>Поставщик</th><th>Действие</th><th>Дата</th></tr></thead>
+      <tbody>
+        {% for event in recent_supplier_events %}
+        <tr>
+          <td><a href="/admin-panel/users/{{ event.supplier_id }}/" style="color:#64B5F6;text-decoration:none;">{{ event.supplier.username }}</a></td>
+          <td class="text-secondary" style="font-size:11px;">{{ event.reason|truncatechars:50 }}</td>
+          <td class="text-secondary">{{ event.created_at|date:"d.m H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:#919191;font-size:13px;">Нет данных</p>{% endif %}
+  </div>
+</div>
+{% endif %}
 {% endblock %}

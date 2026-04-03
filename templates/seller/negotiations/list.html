@@ -182,14 +182,13 @@
 {% block content %}
 
 <div class="neg-tabs">
-  <div class="neg-tab active" onclick="negTab(this,'tiers')">Уровни скидок</div>
-  <div class="neg-tab" onclick="negTab(this,'loyalty')">Программа лояльности</div>
-  <div class="neg-tab" onclick="negTab(this,'chats')">Переторжка</div>
+  <div class="neg-tab active" onclick="negTab(this,'chats')">Переторжка</div>
   <div class="neg-tab" onclick="negTab(this,'drawings')">Чертежи и тех. параметры</div>
+  <div class="neg-tab" onclick="negTab(this,'tiers')">Скидки и лояльность</div>
 </div>
 
 {# ═══ TAB 1: Уровни скидок ═══ #}
-<div class="neg-panel active" id="panel-tiers">
+<div class="neg-panel" id="panel-tiers">
   <div class="neg-section-head">
     <div>
       <div class="neg-section-title">Автоматические скидки крупным покупателям</div>
@@ -282,87 +281,86 @@
   <div style="margin-top:14px;display:flex;justify-content:flex-end;">
     <button class="btn" style="padding:8px 20px;font-size:13px;">Сохранить настройки</button>
   </div>
-</div>
 
-{# ═══ TAB 2: Программа лояльности ═══ #}
-<div class="neg-panel" id="panel-loyalty">
-  <div class="neg-section-head">
-    <div>
-      <div class="neg-section-title">Автоматические скидки постоянным покупателям</div>
-      <div class="neg-section-sub">Покупатели с историей крупных закупок получают персональную скидку платформы</div>
-    </div>
-    <div class="toggle-wrap">
-      <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
-      <span style="font-size:12px;color:#8A8A8A;">Программа активна</span>
-    </div>
-  </div>
-
-  <div class="loyalty-card">
-    <div class="loyalty-card-head">
+  <div style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);">
+    <div class="neg-section-head">
       <div>
-        <div class="loyalty-name">Постоянный покупатель</div>
-        <div class="loyalty-desc">Присваивается автоматически при соответствии условиям</div>
+        <div class="neg-section-title">Программа лояльности</div>
+        <div class="neg-section-sub">Покупатели с историей крупных закупок получают персональную скидку платформы</div>
       </div>
-      <span class="tier-badge">Базовый</span>
-    </div>
-    <div class="loyalty-fields">
-      <div class="loyalty-field">
-        <label>Мин. оборот за 6 мес.</label>
-        <input type="text" value="$50 000" />
-      </div>
-      <div class="loyalty-field">
-        <label>Мин. кол-во заказов</label>
-        <input type="number" value="3" />
-      </div>
-      <div class="loyalty-field">
-        <label>Скидка</label>
-        <input type="text" value="3%" />
+      <div class="toggle-wrap">
+        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+        <span style="font-size:12px;color:#8A8A8A;">Программа активна</span>
       </div>
     </div>
-  </div>
 
-  <div class="loyalty-card">
-    <div class="loyalty-card-head">
-      <div>
-        <div class="loyalty-name">VIP покупатель</div>
-        <div class="loyalty-desc">Повышенная скидка для крупнооптовых клиентов</div>
+    <div class="loyalty-card">
+      <div class="loyalty-card-head">
+        <div>
+          <div class="loyalty-name">Постоянный покупатель</div>
+          <div class="loyalty-desc">Присваивается автоматически при соответствии условиям</div>
+        </div>
+        <span class="tier-badge">Базовый</span>
       </div>
-      <span class="tier-badge tier-badge">VIP</span>
+      <div class="loyalty-fields">
+        <div class="loyalty-field">
+          <label>Мин. оборот за 6 мес.</label>
+          <input type="text" value="$50 000" />
+        </div>
+        <div class="loyalty-field">
+          <label>Мин. кол-во заказов</label>
+          <input type="number" value="3" />
+        </div>
+        <div class="loyalty-field">
+          <label>Скидка</label>
+          <input type="text" value="3%" />
+        </div>
+      </div>
     </div>
-    <div class="loyalty-fields">
-      <div class="loyalty-field">
-        <label>Мин. оборот за 6 мес.</label>
-        <input type="text" value="$200 000" />
-      </div>
-      <div class="loyalty-field">
-        <label>Мин. кол-во заказов</label>
-        <input type="number" value="10" />
-      </div>
-      <div class="loyalty-field">
-        <label>Скидка</label>
-        <input type="text" value="5%" />
-      </div>
-    </div>
-  </div>
 
-  <div class="consent-box">
-    <p>
-      Давая согласие на программу лояльности, вы подтверждаете, что скидки будут применяться <strong style="color:#ECECEC;">автоматически</strong> ко всем заказам покупателей, соответствующих условиям, без вашего ручного подтверждения каждого случая.<br>
-      Платформа не передаёт поставщику персональные данные покупателя — скидка присваивается анонимно по внутренним метрикам.
-    </p>
-    <label class="consent-check">
-      <input type="checkbox" checked>
-      <span>Я даю согласие на автоматическое применение скидок в рамках программы лояльности платформы Consolidator Parts</span>
-    </label>
+    <div class="loyalty-card">
+      <div class="loyalty-card-head">
+        <div>
+          <div class="loyalty-name">VIP покупатель</div>
+          <div class="loyalty-desc">Повышенная скидка для крупнооптовых клиентов</div>
+        </div>
+        <span class="tier-badge">VIP</span>
+      </div>
+      <div class="loyalty-fields">
+        <div class="loyalty-field">
+          <label>Мин. оборот за 6 мес.</label>
+          <input type="text" value="$200 000" />
+        </div>
+        <div class="loyalty-field">
+          <label>Мин. кол-во заказов</label>
+          <input type="number" value="10" />
+        </div>
+        <div class="loyalty-field">
+          <label>Скидка</label>
+          <input type="text" value="5%" />
+        </div>
+      </div>
+    </div>
+
+    <div class="consent-box">
+      <p>
+        Давая согласие на программу лояльности, вы подтверждаете, что скидки будут применяться <strong style="color:#ECECEC;">автоматически</strong> ко всем заказам покупателей, соответствующих условиям, без вашего ручного подтверждения каждого случая.<br>
+        Платформа не передаёт поставщику персональные данные покупателя — скидка присваивается анонимно по внутренним метрикам.
+      </p>
+      <label class="consent-check">
+        <input type="checkbox" checked>
+        <span>Я даю согласие на автоматическое применение скидок в рамках программы лояльности платформы Consolidator Parts</span>
+      </label>
+    </div>
   </div>
 
   <div style="margin-top:14px;display:flex;justify-content:flex-end;">
-    <button class="btn" style="padding:8px 20px;font-size:13px;">Сохранить условия</button>
+    <button class="btn" style="padding:8px 20px;font-size:13px;">Сохранить все</button>
   </div>
 </div>
 
 {# ═══ TAB 3: Переторжка ═══ #}
-<div class="neg-panel" id="panel-chats">
+<div class="neg-panel active" id="panel-chats">
   {# Активные позиции #}
   <div style="margin-bottom:14px;">
     <div style="font-size:12px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Активные позиции</div>

@@ -46,8 +46,8 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4521')">Запросить информацию</button>
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('ORD-4521 эскалирован')">Эскалировать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка к ORD-4521')">Заметка</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Запрос на доработку отправлен', 2000, 'warn')">Эскалировать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка добавлена', 2000, 'success')">Заметка</button>
           </div>
         </td>
       </tr>
@@ -72,7 +72,7 @@
             <div class="op-section-sub">Запрос информации</div>
             <div style="display:flex;gap:8px;margin-top:4px;">
               <input type="text" class="op-input" placeholder="Введите текст запроса..." style="flex:1;"/>
-              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен: '+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
+              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен', 2000, 'success');inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
             </div>
           </div>
         </td>
@@ -91,7 +91,7 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4518')">Запросить информацию</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка к ORD-4518')">Заметка</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка добавлена', 2000, 'success')">Заметка</button>
           </div>
         </td>
       </tr>
@@ -120,7 +120,7 @@
             <div class="op-section-sub">Запрос информации</div>
             <div style="display:flex;gap:8px;margin-top:4px;">
               <input type="text" class="op-input" placeholder="Введите текст запроса..." style="flex:1;"/>
-              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен: '+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
+              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен', 2000, 'success');inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
             </div>
           </div>
         </td>
@@ -138,7 +138,7 @@
         <td class="text-secondary">22 мар</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4515')">Детали</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button>
           </div>
         </td>
       </tr>
@@ -167,7 +167,7 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4512')">Запросить информацию</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка к ORD-4512')">Заметка</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка добавлена', 2000, 'success')">Заметка</button>
           </div>
         </td>
       </tr>
@@ -182,7 +182,7 @@
             <div class="op-section-sub">Запрос информации</div>
             <div style="display:flex;gap:8px;margin-top:4px;">
               <input type="text" class="op-input" placeholder="Введите текст запроса..." style="flex:1;"/>
-              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен: '+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
+              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен', 2000, 'success');inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
             </div>
           </div>
         </td>
@@ -198,7 +198,7 @@
         <td style="font-family:'Golos Text',sans-serif;">$9,300</td>
         <td><span class="op-badge op-badge-gray">Завершён</span></td>
         <td class="text-secondary">18 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4505')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
       </tr>
       <tr class="order-timeline" style="display:none;">
         <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">

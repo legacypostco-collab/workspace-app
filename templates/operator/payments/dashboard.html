@@ -4,26 +4,26 @@
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
-  <div class="op-stat op-stat-warn">
+  <a class="op-stat op-stat-warn" href="/operator/payments/escrow/">
     <div class="op-stat-value">6</div>
     <div class="op-stat-label">Ожидают оплаты</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/">
     <div class="op-stat-value">3</div>
     <div class="op-stat-label">В обработке</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/">
     <div class="op-stat-value">87</div>
     <div class="op-stat-label">Выполнено за месяц</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/">
     <div class="op-stat-value">$428K</div>
     <div class="op-stat-label">Общая сумма</div>
-  </div>
-  <div class="op-stat op-stat-warn">
+  </a>
+  <a class="op-stat op-stat-warn" href="/operator/payments/">
     <div class="op-stat-value">1</div>
     <div class="op-stat-label">Просрочено</div>
-  </div>
+  </a>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;">
@@ -57,7 +57,7 @@
           <td><span class="op-badge op-badge-gray">Аванс</span></td>
           <td style="font-family:'Golos Text',sans-serif;">27 мар</td>
           <td><span class="op-badge op-badge-orange">Ожидает</span></td>
-          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Подтверждение оплаты INV-8841')">Подтвердить</button></td>
+          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Подтверждено', 2000, 'success')">Подтвердить</button></td>
         </tr>
         <tr onclick="opToast('Платёж INV-8839: $12,880 основная оплата, в обработке')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8839</td>
@@ -68,7 +68,7 @@
           <td><span class="op-badge op-badge-gray">Основная</span></td>
           <td style="font-family:'Golos Text',sans-serif;">25 мар</td>
           <td><span class="op-badge op-badge-gray">В обработке</span></td>
-          <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали INV-8839')">Детали</button></td>
+          <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
         </tr>
         <tr onclick="opToast('Платёж INV-8837: $1,860 финальная, ожидает')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8837</td>
@@ -79,7 +79,7 @@
           <td><span class="op-badge op-badge-gray">Финальная</span></td>
           <td style="font-family:'Golos Text',sans-serif;">28 мар</td>
           <td><span class="op-badge op-badge-orange">Ожидает</span></td>
-          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Подтверждение оплаты INV-8837')">Подтвердить</button></td>
+          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Подтверждено', 2000, 'success')">Подтвердить</button></td>
         </tr>
         <tr onclick="opToast('Платёж INV-8835: $8,200 аванс, просрочено')" style="border-left:2px solid #E85C0D;">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#E85C0D;">INV-8835</td>
@@ -90,7 +90,7 @@
           <td><span class="op-badge op-badge-gray">Аванс</span></td>
           <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">22 мар</td>
           <td><span class="op-badge op-badge-orange">Просрочено</span></td>
-          <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Эскалация INV-8835')">Эскалировать</button></td>
+          <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Запрос на доработку отправлен', 2000, 'warn')">Эскалировать</button></td>
         </tr>
         <tr onclick="opToast('Платёж INV-8833: $3,400 основная, ожидает')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8833</td>
@@ -101,7 +101,7 @@
           <td><span class="op-badge op-badge-gray">Основная</span></td>
           <td style="font-family:'Golos Text',sans-serif;">30 мар</td>
           <td><span class="op-badge op-badge-orange">Ожидает</span></td>
-          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Подтверждение оплаты INV-8833')">Подтвердить</button></td>
+          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Подтверждено', 2000, 'success')">Подтвердить</button></td>
         </tr>
       </tbody>
     </table>
@@ -142,12 +142,12 @@
         <div class="op-card-elevated" style="padding:12px 14px;">
           <div style="font-size:13px;font-weight:600;color:#ECECEC;">Расхождение суммы</div>
           <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4501 - разница $240</div>
-          <button class="op-btn op-btn-ghost" style="margin-top:8px;font-size:11px;" onclick="opToast('Открытие сверки ORD-4501')">Разобрать</button>
+          <button class="op-btn op-btn-ghost" style="margin-top:8px;font-size:11px;" onclick="opToast('Сверка запущена', 2000, 'success')">Разобрать</button>
         </div>
         <div class="op-card-elevated" style="padding:12px 14px;">
           <div style="font-size:13px;font-weight:600;color:#ECECEC;">Дублирующий платёж</div>
           <div style="font-size:12px;color:#919191;margin-top:2px;">INV-8820 - возможный дубль</div>
-          <button class="op-btn op-btn-ghost" style="margin-top:8px;font-size:11px;" onclick="opToast('Проверка дубликата INV-8820')">Проверить</button>
+          <button class="op-btn op-btn-ghost" style="margin-top:8px;font-size:11px;" onclick="opToast('Документ отправлен на проверку', 2000, 'success')">Проверить</button>
         </div>
       </div>
     </div>

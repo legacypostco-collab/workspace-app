@@ -40,6 +40,13 @@
     .ap-stat-label{font-size:12px;color:#919191;margin-top:4px;}
     .ap-stat-accent .ap-stat-value{color:#ECECEC;}
     .ap-stat-warn .ap-stat-value{color:#E85C0D;}
+    a.ap-stat{text-decoration:none;display:block;transition:border-color 0.15s,background 0.15s,transform 0.1s;}
+    a.ap-stat:hover{border-color:rgba(100,181,246,0.35);background:#2C2C2C;transform:translateY(-1px);}
+    a.ap-stat .ap-stat-value{color:#ECECEC;}
+    .ap-today-card{background:#242424;border-radius:12px;border:1px solid rgba(255,255,255,0.04);text-align:center;padding:14px;text-decoration:none;display:block;transition:border-color 0.15s,background 0.15s,transform 0.1s;}
+    .ap-today-card:hover{border-color:rgba(100,181,246,0.35);background:#2C2C2C;transform:translateY(-1px);}
+    .ap-today-card .ap-today-val{font-size:24px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;}
+    .ap-today-card .ap-today-lbl{font-size:11px;color:#919191;margin-top:4px;}
 
     /* Tables */
     .ap-table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -94,6 +101,9 @@
     .ap-input{padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#1F1F1F;color:#ECECEC;font-size:13px;font-family:'Inter',sans-serif;outline:none;width:100%;}
     .ap-input:focus{border-color:rgba(100,181,246,0.3);}
     .ap-input::placeholder{color:#5E5E5E;}
+
+    /* Checkboxes */
+    input[type="checkbox"]{width:16px;height:16px;accent-color:#64B5F6;cursor:pointer;flex-shrink:0;}
 
     /* Section title */
     .ap-section-title{font-size:15px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;margin-bottom:12px;}
@@ -176,6 +186,7 @@
         <div class="ap-nav-indicator"></div>
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:{% if admin_active_nav == 'moderation' %}1{% else %}0.45{% endif %};"><path d="M8 1.5l6.5 3v4c0 3.5-2.8 5.8-6.5 7-3.7-1.2-6.5-3.5-6.5-7v-4L8 1.5z"/><path d="M5.5 8l2 2 3.5-3.5"/></svg>
         <span style="flex:1;font-size:13px;">Модерация</span>
+        {% if admin_moderation_count %}<span style="background:#E85C0D;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px;">{{ admin_moderation_count }}</span>{% endif %}
       </a>
       <a href="/admin-panel/settings/" class="ap-nav-link{% if admin_active_nav == 'settings' %} active{% endif %}">
         <div class="ap-nav-indicator"></div>
@@ -186,6 +197,11 @@
         <div class="ap-nav-indicator"></div>
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:{% if admin_active_nav == 'analytics' %}1{% else %}0.45{% endif %};"><path d="M2.5 13.5V9M5.5 13.5V6M8.5 13.5V8M11.5 13.5V3.5" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span style="flex:1;font-size:13px;">Аналитика</span>
+      </a>
+      <a href="/admin-panel/imports/" class="ap-nav-link{% if admin_active_nav == 'imports' %} active{% endif %}">
+        <div class="ap-nav-indicator"></div>
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:{% if admin_active_nav == 'imports' %}1{% else %}0.45{% endif %};"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M2 12v2h12v-2"/></svg>
+        <span style="flex:1;font-size:13px;">Импорты</span>
       </a>
       <a href="/admin-panel/logs/" class="ap-nav-link{% if admin_active_nav == 'logs' %} active{% endif %}">
         <div class="ap-nav-indicator"></div>

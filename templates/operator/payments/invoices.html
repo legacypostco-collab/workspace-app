@@ -107,7 +107,7 @@
         <td><span class="op-badge op-badge-orange inv-status-badge">Просрочено</span></td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Эскалация INV-8835')">Эскалировать</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Запрос на доработку отправлен', 2000, 'warn')">Эскалировать</button>
           </div>
         </td>
       </tr>
@@ -121,7 +121,7 @@
         <td>EUR</td>
         <td><span class="op-badge op-badge-gray">Аванс</span></td>
         <td><span class="op-badge op-badge-gray inv-status-badge">Оплачено</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали INV-8830')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
       </tr>
       <tr data-inv-status="paid" data-inv-type="main" data-inv-currency="CNY">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8828</td>
@@ -133,7 +133,7 @@
         <td>CNY</td>
         <td><span class="op-badge op-badge-gray">Основная</span></td>
         <td><span class="op-badge op-badge-gray inv-status-badge">Оплачено</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали INV-8828')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
       </tr>
     </tbody>
   </table>
@@ -195,14 +195,14 @@ function confirmPayment(btn) {
   badge.textContent = 'Оплачено';
   row.dataset.invStatus = 'paid';
   var invId = row.querySelector('td').textContent;
-  opToast('Оплата ' + invId + ' подтверждена');
-  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'Детали ' + invId + '\')">Детали</button>';
+  opToast('Подтверждено', 2000, 'success');
+  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button>';
 }
 
 function rejectPayment(btn) {
   var row = btn.closest('tr');
   var invId = row.querySelector('td').textContent;
-  opToast('Оплата ' + invId + ' отклонена');
+  opToast('Отклонено', 2000, 'warn');
 }
 </script>
 {% endblock %}

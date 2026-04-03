@@ -97,6 +97,7 @@
   transform:translateY(80px);opacity:0;transition:all .3s;
 }
 .ig-toast.show { transform:translateY(0);opacity:1; }
+.ig-toast-success { border-color:rgba(102,187,106,0.5);color:#66BB6A; }
 </style>
 {% endblock %}
 
@@ -358,7 +359,7 @@ function openRequestForm() {
 function closeRequestForm() { document.getElementById('requestForm').classList.remove('open'); }
 function submitRequest() {
   closeRequestForm();
-  showToast('Запрос на интеграцию ERP отправлен. Менеджер свяжется в течение 1 рабочего дня');
+  showToast('Запрос отправлен, менеджер свяжется по email', 'success');
 }
 
 function openContactForm() {
@@ -368,13 +369,13 @@ function openContactForm() {
 function closeContactForm() { document.getElementById('contactForm').classList.remove('open'); }
 function submitContact() {
   closeContactForm();
-  showToast('Заявка отправлена. Персональный менеджер свяжется с вами в ближайшее время');
+  showToast('Заявка отправлена, менеджер свяжется по email', 'success');
 }
 
-function showToast(msg) {
+function showToast(msg, type) {
   const t = document.getElementById('igToast');
   t.textContent = msg;
-  t.classList.add('show');
+  t.className = 'ig-toast show' + (type ? ' ig-toast-' + type : '');
   setTimeout(() => t.classList.remove('show'), 3500);
 }
 </script>

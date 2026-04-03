@@ -4,107 +4,173 @@
 
 {% block content %}
 <!-- Period selector -->
-<div style="display:flex;gap:2px;background:#1F1F1F;border-radius:10px;padding:3px;border:1px solid rgba(255,255,255,0.055);margin-bottom:20px;width:fit-content;">
-  <button class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;" onclick="selectPeriod(this)">7д</button>
-  <button class="ap-tab active" style="border-bottom:none;padding:6px 14px;border-radius:8px;background:#242424;" onclick="selectPeriod(this)">30д</button>
-  <button class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;" onclick="selectPeriod(this)">90д</button>
-  <button class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;" onclick="selectPeriod(this)">1 год</button>
-  <button class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;" onclick="selectPeriod(this)">Все время</button>
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+  <div style="display:flex;gap:2px;background:#1F1F1F;border-radius:10px;padding:3px;border:1px solid rgba(255,255,255,0.055);">
+    <a href="?period=week" class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;text-decoration:none;{% if period == 'week' %}background:#242424;{% endif %}">7д</a>
+    <a href="?period=month" class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;text-decoration:none;{% if period == 'month' %}background:#242424;{% endif %}">30д</a>
+    <a href="?period=quarter" class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;text-decoration:none;{% if period == 'quarter' %}background:#242424;{% endif %}">90д</a>
+    <a href="?period=year" class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;text-decoration:none;{% if period == 'year' %}background:#242424;{% endif %}">1 год</a>
+    <a href="?period=all" class="ap-tab" style="border-bottom:none;padding:6px 14px;border-radius:8px;text-decoration:none;{% if period == 'all' %}background:#242424;{% endif %}">Все</a>
+  </div>
+  <form method="get" style="display:flex;gap:6px;align-items:center;margin-left:8px;">
+    <input type="date" name="date_from" class="ap-input" value="{{ date_from }}" style="width:130px;"/>
+    <span style="color:#5E5E5E;">—</span>
+    <input type="date" name="date_to" class="ap-input" value="{{ date_to }}" style="width:130px;"/>
+    <button type="submit" class="ap-btn ap-btn-ghost" style="font-size:12px;">Применить</button>
+  </form>
+  <a href="/admin-panel/export/orders/" class="ap-btn ap-btn-ghost" style="text-decoration:none;margin-left:auto;font-size:12px;">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M2 11v2h12v-2"/></svg>
+    Экспорт
+  </a>
 </div>
+
+{% if period == 'custom' %}
+<div style="font-size:12px;color:#919191;margin-bottom:12px;">Период: {{ period_label }}</div>
+{% endif %}
 
 <!-- KPI row -->
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">$4.8M</div><div class="ap-stat-label">GMV</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">487</div><div class="ap-stat-label">Заказов</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">342</div><div class="ap-stat-label">Пользователей</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">$3,200</div><div class="ap-stat-label">Средний чек</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">68%</div><div class="ap-stat-label">RFQ -> Заказ</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">78</div><div class="ap-stat-label">NPS</div></div>
+  <a href="/admin-panel/finance/" class="ap-stat">
+    <div class="ap-stat-value">${{ gmv|floatformat:0 }}</div>
+    <div class="ap-stat-label">GMV ({{ period_label|lower }})</div>
+    {% if gmv_delta %}<div style="margin-top:4px;font-size:11px;font-weight:600;color:{% if gmv_delta > 0 %}#4CAF50{% elif gmv_delta < 0 %}#E85C0D{% else %}#919191{% endif %};">{% if gmv_delta > 0 %}&#9650; +{{ gmv_delta }}%{% elif gmv_delta < 0 %}&#9660; {{ gmv_delta }}%{% endif %} <span style="color:#5E5E5E;font-weight:400;">vs пред. период</span></div>{% endif %}
+  </a>
+  <a href="/admin-panel/orders/" class="ap-stat">
+    <div class="ap-stat-value">{{ orders_count }}</div>
+    <div class="ap-stat-label">Заказов</div>
+    {% if orders_delta %}<div style="margin-top:4px;font-size:11px;font-weight:600;color:{% if orders_delta > 0 %}#4CAF50{% elif orders_delta < 0 %}#E85C0D{% else %}#919191{% endif %};">{% if orders_delta > 0 %}&#9650; +{{ orders_delta }}%{% elif orders_delta < 0 %}&#9660; {{ orders_delta }}%{% endif %}</div>{% endif %}
+  </a>
+  <a href="/admin-panel/users/" class="ap-stat">
+    <div class="ap-stat-value">{{ total_users }}</div>
+    <div class="ap-stat-label">Пользователей</div>
+    {% if new_users %}<div style="margin-top:4px;font-size:11px;color:#4CAF50;font-weight:600;">+{{ new_users }} новых</div>{% endif %}
+  </a>
+  <a href="/admin-panel/orders/" class="ap-stat">
+    <div class="ap-stat-value">${{ avg_order|floatformat:0 }}</div>
+    <div class="ap-stat-label">Средний чек</div>
+  </a>
+  <a href="/admin-panel/rfq/" class="ap-stat">
+    <div class="ap-stat-value">{{ rfq_conversion }}%</div>
+    <div class="ap-stat-label">RFQ &#8594; Заказ</div>
+    <div style="margin-top:4px;font-size:11px;color:#5E5E5E;">{{ rfq_count }} запросов</div>
+  </a>
+  <a href="/admin-panel/orders/?status=completed" class="ap-stat">
+    <div class="ap-stat-value">{{ completion_rate }}%</div>
+    <div class="ap-stat-label">Завершённость</div>
+  </a>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-  <!-- By categories -->
-  <div class="ap-card">
-    <div class="ap-section-title">По категориям</div>
-    <table class="ap-table">
-      <thead><tr><th>Категория</th><th>Заказов</th><th>GMV</th><th>Доля %</th><th>Средний чек</th></tr></thead>
-      <tbody>
-        <tr><td>Фильтры</td><td>124</td><td>$820K</td><td>17.1%</td><td>$6,600</td></tr>
-        <tr><td>Тормоза</td><td>98</td><td>$680K</td><td>14.2%</td><td>$6,900</td></tr>
-        <tr><td>Подвеска</td><td>78</td><td>$540K</td><td>11.3%</td><td>$6,900</td></tr>
-        <tr><td>Электрика</td><td>65</td><td>$480K</td><td>10.0%</td><td>$7,400</td></tr>
-        <tr><td>Зажигание</td><td>56</td><td>$320K</td><td>6.7%</td><td>$5,700</td></tr>
-        <tr><td>Привод</td><td>42</td><td>$280K</td><td>5.8%</td><td>$6,700</td></tr>
-        <tr><td>Охлаждение</td><td>24</td><td>$180K</td><td>3.8%</td><td>$7,500</td></tr>
-      </tbody>
-    </table>
+<!-- Tabs -->
+<div class="ap-card" style="margin-bottom:16px;">
+  <div class="ap-tabs">
+    <button class="ap-tab active" data-tab-group="anlt" data-tab-key="top" onclick="apSwitchTab('anlt','top')">Топ участников</button>
+    <button class="ap-tab" data-tab-group="anlt" data-tab-key="categories" onclick="apSwitchTab('anlt','categories')">Категории и бренды</button>
+    <button class="ap-tab" data-tab-group="anlt" data-tab-key="statuses" onclick="apSwitchTab('anlt','statuses')">По статусам</button>
   </div>
 
-  <!-- By geography -->
-  <div class="ap-card">
-    <div class="ap-section-title">По географии</div>
-    <table class="ap-table">
-      <thead><tr><th>Страна</th><th>Покупателей</th><th>Поставщиков</th><th>Оборот</th><th>Доля %</th></tr></thead>
-      <tbody>
-        <tr><td>Россия</td><td>98</td><td>12</td><td>$1.8M</td><td>37.5%</td></tr>
-        <tr><td>Казахстан</td><td>34</td><td>4</td><td>$620K</td><td>12.9%</td></tr>
-        <tr><td>Китай</td><td>8</td><td>82</td><td>$1.2M</td><td>25.0%</td></tr>
-        <tr><td>ОАЭ</td><td>22</td><td>8</td><td>$480K</td><td>10.0%</td></tr>
-        <tr><td>Турция</td><td>14</td><td>10</td><td>$340K</td><td>7.1%</td></tr>
-        <tr><td>Другие</td><td>10</td><td>8</td><td>$360K</td><td>7.5%</td></tr>
-      </tbody>
-    </table>
+  <!-- Top participants -->
+  <div data-panel-group="anlt" data-panel-key="top">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="ap-section-title">Топ покупателей</div>
+        <table class="ap-table">
+          <thead><tr><th>#</th><th>Покупатель</th><th>Заказов</th><th>Сумма</th></tr></thead>
+          <tbody>
+            {% for buyer in top_buyers %}
+            <tr>
+              <td class="text-secondary">{{ forloop.counter }}</td>
+              <td><a href="/admin-panel/users/{{ buyer.id }}/" style="color:#64B5F6;text-decoration:none;">{{ buyer.get_full_name|default:buyer.username }}</a></td>
+              <td>{{ buyer.order_count }}</td>
+              <td>${{ buyer.total_spent|floatformat:0 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="text-align:center;color:#919191;">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="ap-section-title">Топ поставщиков</div>
+        <table class="ap-table">
+          <thead><tr><th>#</th><th>Поставщик</th><th>Запчастей</th></tr></thead>
+          <tbody>
+            {% for seller in top_sellers %}
+            <tr>
+              <td class="text-secondary">{{ forloop.counter }}</td>
+              <td><a href="/admin-panel/users/{{ seller.id }}/" style="color:#64B5F6;text-decoration:none;">{{ seller.get_full_name|default:seller.username }}</a></td>
+              <td>{{ seller.parts_count }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" style="text-align:center;color:#919191;">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
-  <!-- Top buyers -->
-  <div class="ap-card">
-    <div class="ap-section-title">Топ покупатели</div>
-    <table class="ap-table">
-      <thead><tr><th>#ID</th><th>Заказов</th><th>Оборот</th><th>Средний чек</th></tr></thead>
-      <tbody>
-        <tr><td>#1001</td><td>42</td><td>$186,400</td><td>$4,438</td></tr>
-        <tr><td>#1003</td><td>28</td><td>$92,100</td><td>$3,289</td></tr>
-        <tr><td>#1005</td><td>31</td><td>$78,500</td><td>$2,532</td></tr>
-        <tr><td>#1008</td><td>19</td><td>$56,300</td><td>$2,963</td></tr>
-        <tr><td>#1002</td><td>15</td><td>$34,200</td><td>$2,280</td></tr>
-      </tbody>
-    </table>
+  <!-- Categories & brands -->
+  <div data-panel-group="anlt" data-panel-key="categories" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="ap-section-title">По категориям</div>
+        <table class="ap-table">
+          <thead><tr><th>Категория</th><th>Запчастей</th></tr></thead>
+          <tbody>
+            {% for cat in by_category %}
+            <tr><td>{{ cat.name }}</td><td>{{ cat.parts_count }}</td></tr>
+            {% empty %}
+            <tr><td colspan="2" style="text-align:center;color:#919191;">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="ap-section-title">По брендам</div>
+        <table class="ap-table">
+          <thead><tr><th>Бренд</th><th>Регион</th><th>Запчастей</th></tr></thead>
+          <tbody>
+            {% for brand in by_brand %}
+            <tr><td>{{ brand.name }}</td><td class="text-secondary">{{ brand.region|default:"—" }}</td><td>{{ brand.parts_count }}</td></tr>
+            {% empty %}
+            <tr><td colspan="3" style="text-align:center;color:#919191;">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
-  <!-- Top suppliers -->
-  <div class="ap-card">
-    <div class="ap-section-title">Топ поставщики</div>
-    <table class="ap-table">
-      <thead><tr><th>#ID</th><th>Заказов</th><th>Выручка</th><th>Рейтинг</th><th>SLA %</th></tr></thead>
-      <tbody>
-        <tr><td>#3002</td><td>124</td><td>$680,500</td><td>4.8</td><td>96%</td></tr>
-        <tr><td>#3001</td><td>89</td><td>$412,000</td><td>4.6</td><td>94%</td></tr>
-        <tr><td>#3003</td><td>56</td><td>$298,000</td><td>4.7</td><td>98%</td></tr>
-        <tr><td>#3156</td><td>48</td><td>$245,000</td><td>4.5</td><td>92%</td></tr>
-        <tr><td>#3151</td><td>38</td><td>$198,000</td><td>4.4</td><td>90%</td></tr>
-      </tbody>
-    </table>
+  <!-- Status breakdowns -->
+  <div data-panel-group="anlt" data-panel-key="statuses" style="display:none;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div>
+        <div class="ap-section-title">По статусу заказа</div>
+        <table class="ap-table">
+          <thead><tr><th>Статус</th><th>Кол-во</th></tr></thead>
+          <tbody>
+            {% for item in by_status %}
+            <tr><td>{{ item.label }}</td><td>{{ item.count }}</td></tr>
+            {% empty %}
+            <tr><td colspan="2" style="text-align:center;color:#919191;">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="ap-section-title">По статусу оплаты</div>
+        <table class="ap-table">
+          <thead><tr><th>Статус</th><th>Кол-во</th><th>Сумма</th></tr></thead>
+          <tbody>
+            {% for item in by_payment %}
+            <tr><td>{{ item.label }}</td><td>{{ item.count }}</td><td>${{ item.total|floatformat:0 }}</td></tr>
+            {% empty %}
+            <tr><td colspan="3" style="text-align:center;color:#919191;">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
-
-<div style="margin-top:16px;display:flex;justify-content:flex-end;">
-  <button class="ap-btn ap-btn-ghost" onclick="apToast('Экспорт аналитики подготовлен')">
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M2 11v2h12v-2"/></svg>
-    Экспорт
-  </button>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-function selectPeriod(btn) {
-  btn.parentElement.querySelectorAll('.ap-tab').forEach(function(b) {
-    b.classList.remove('active');
-    b.style.background = '';
-  });
-  btn.classList.add('active');
-  btn.style.background = '#242424';
-  apToast('Период изменён: ' + btn.textContent);
-}
-</script>
 {% endblock %}

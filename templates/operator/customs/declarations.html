@@ -4,7 +4,7 @@
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
   <div class="op-section-title" style="margin-bottom:0;">Управление декларациями</div>
-  <button class="op-btn op-btn-primary" onclick="opToast('Форма создания декларации (демо)')">
+  <button class="op-btn op-btn-primary" onclick="opToast('Создание декларации', 2000, 'info')">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
     Создать декларацию
   </button>
@@ -45,7 +45,7 @@
         <td style="font-family:'Golos Text',sans-serif;color:#919191;">8708 99</td>
         <td><span class="op-badge op-badge-gray">На рассмотрении</span></td>
         <td class="text-secondary">22 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ДТ-2024-0847')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
       </tr>
       <tr class="decl-detail" style="display:none;">
         <td colspan="9" style="padding:16px 12px;background:#1F1F1F;">
@@ -57,9 +57,9 @@
             </div>
             <div>
               <div class="op-section-sub">Документы</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="opToast('Открытие инвойса')">Инвойс INV-4521</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="opToast('Открытие упаковочного листа')">Упаковочный лист</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="opToast('Открытие сертификата')">Сертификат происхождения</div>
+              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="opToast('Открытие инвойса', 2000, 'info')">Инвойс INV-4521</div>
+              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="opToast('Открытие упаковочного листа', 2000, 'info')">Упаковочный лист</div>
+              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="opToast('Открытие сертификата', 2000, 'info')">Сертификат происхождения</div>
             </div>
             <div>
               <div class="op-section-sub">Пошлины</div>
@@ -81,7 +81,7 @@
         <td style="font-family:'Golos Text',sans-serif;color:#919191;">8482 10</td>
         <td><span class="op-badge op-badge-gray">Подготовка</span></td>
         <td class="text-secondary">--</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ДТ-2024-0845')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
       </tr>
       <tr class="decl-detail" style="display:none;">
         <td colspan="9" style="padding:16px 12px;background:#1F1F1F;">
@@ -115,7 +115,7 @@
         <td style="font-family:'Golos Text',sans-serif;color:#919191;">8421 23</td>
         <td><span class="op-badge op-badge-gray">На рассмотрении</span></td>
         <td class="text-secondary">20 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ДТ-2024-0843')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
       </tr>
       <tr class="decl-detail" style="display:none;">
         <td colspan="9" style="padding:16px 12px;background:#1F1F1F;">
@@ -141,7 +141,7 @@
         <td style="font-family:'Golos Text',sans-serif;color:#919191;">8708 80</td>
         <td><span class="op-badge op-badge-gray">Оформлена</span></td>
         <td class="text-secondary">18 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ДТ-2024-0839')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
       </tr>
       <tr class="decl-detail" style="display:none;">
         <td colspan="9" style="padding:16px 12px;background:#1F1F1F;">
@@ -163,7 +163,7 @@
 <!-- Document upload area -->
 <div class="op-card" style="margin-top:16px;">
   <div class="op-section-title">Загрузка документов</div>
-  <div style="border:2px dashed rgba(255,255,255,0.06);border-radius:12px;padding:40px;text-align:center;cursor:pointer;" onclick="opToast('Загрузка документов (демо-режим)')">
+  <div style="border:2px dashed rgba(255,255,255,0.06);border-radius:12px;padding:40px;text-align:center;cursor:pointer;" onclick="opToast('Загрузка документов', 2000, 'info')">
     <svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1" stroke-linecap="round" style="margin-bottom:8px;"><path d="M8 10V3M5 5l3-3 3 3"/><path d="M2 10v2.5a1 1 0 001 1h10a1 1 0 001-1V10"/></svg>
     <div style="font-size:13px;color:#919191;">Перетащите файлы сюда или нажмите для выбора</div>
     <div style="font-size:11px;color:#5E5E5E;margin-top:4px;">PDF, JPG, PNG до 10 МБ</div>

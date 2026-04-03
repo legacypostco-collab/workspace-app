@@ -2,123 +2,171 @@
 {% block title %}Заказы{% endblock %}
 {% block topbar_title %}Заказы{% endblock %}
 
-{% block extra_css %}
-<style>
-.ap-order-timeline{display:none;padding:12px 20px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.03);}
-.ap-order-timeline.open{display:block;}
-.ap-timeline-step{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px;color:#919191;}
-.ap-timeline-dot{width:8px;height:8px;border-radius:50%;background:#2C2C2C;border:1px solid #5E5E5E;flex-shrink:0;}
-.ap-timeline-dot.done{background:#5E5E5E;border-color:#5E5E5E;}
-.ap-timeline-dot.current{background:#64B5F6;border-color:#64B5F6;}
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">487</div><div class="ap-stat-label">Всего заказов</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">156</div><div class="ap-stat-label">Активных</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">298</div><div class="ap-stat-label">Завершено</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">33</div><div class="ap-stat-label">Отменено</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">$4.8M</div><div class="ap-stat-label">Общая сумма</div></div>
+  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></a>
+  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">Активных</div></a>
+  <a href="/admin-panel/orders/?status=completed" class="ap-stat"><div class="ap-stat-value">{{ completed }}</div><div class="ap-stat-label">Завершённых</div></a>
+  <a href="/admin-panel/orders/?status=cancelled" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">Отменённых</div></a>
+  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_orders }}</div><div class="ap-stat-label">За неделю</div></a>
+  <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">Выручка за неделю</div></a>
+  <a href="/admin-panel/orders/?sla=breached" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ problem_count }}</div><div class="ap-stat-label">Проблемных</div></a>
 </div>
 
-<div class="ap-card">
-  <div class="ap-tabs">
-    <button class="ap-tab active" data-tab-group="orders" data-tab-key="all" onclick="apSwitchTab('orders','all');filterOrders()">Все</button>
-    <button class="ap-tab" data-tab-group="orders" data-tab-key="active" onclick="apSwitchTab('orders','active');filterOrders()">Активные</button>
-    <button class="ap-tab" data-tab-group="orders" data-tab-key="completed" onclick="apSwitchTab('orders','completed');filterOrders()">Завершённые</button>
-    <button class="ap-tab" data-tab-group="orders" data-tab-key="problem" onclick="apSwitchTab('orders','problem');filterOrders()">Проблемные</button>
-    <button class="ap-tab" data-tab-group="orders" data-tab-key="cancelled" onclick="apSwitchTab('orders','cancelled');filterOrders()">Отменённые</button>
-  </div>
+<form method="post" id="ordersForm">
+{% csrf_token %}
+<input type="hidden" name="action" id="ordersAction" value=""/>
+<input type="hidden" name="new_status" id="ordersBulkStatus" value=""/>
 
+<div class="ap-card">
+  <!-- Filters -->
   <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
-    <input type="text" class="ap-input" placeholder="Поиск по ORD ID..." style="max-width:180px;" id="orderSearch" oninput="filterOrders()"/>
-    <input type="text" class="ap-input" placeholder="Покупатель #..." style="max-width:140px;" id="orderBuyer" oninput="filterOrders()"/>
-    <input type="text" class="ap-input" placeholder="Поставщик #..." style="max-width:140px;" id="orderSupplier" oninput="filterOrders()"/>
-    <select class="ap-select" id="orderStatusFilter" onchange="filterOrders()">
-      <option value="">Все статусы</option>
-      <option value="in_progress">В работе</option>
-      <option value="shipping">В пути</option>
-      <option value="delivered">Доставлен</option>
-      <option value="cancelled">Отменён</option>
-      <option value="claim">Рекламация</option>
-    </select>
+    <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;" id="orderFilterForm">
+      <input type="text" name="q" class="ap-input" placeholder="Поиск по ID или покупателю..." style="max-width:220px;" value="{{ search }}"/>
+      <select name="status" class="ap-select" onchange="this.form.submit()">
+        <option value="">Все статусы</option>
+        {% for val, label in status_choices %}
+        <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="payment" class="ap-select" onchange="this.form.submit()">
+        <option value="">Все оплаты</option>
+        {% for val, label in payment_choices %}
+        <option value="{{ val }}" {% if payment_filter == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="sla" class="ap-select" onchange="this.form.submit()">
+        <option value="">SLA: все</option>
+        <option value="on_track" {% if sla_filter == 'on_track' %}selected{% endif %}>В норме</option>
+        <option value="breached" {% if sla_filter == 'breached' %}selected{% endif %}>Нарушен</option>
+      </select>
+      <select name="sort" class="ap-select" onchange="this.form.submit()">
+        <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>Новые первые</option>
+        <option value="created_at" {% if current_sort == 'created_at' %}selected{% endif %}>Старые первые</option>
+        <option value="-total_amount" {% if current_sort == '-total_amount' %}selected{% endif %}>Дорогие первые</option>
+        <option value="total_amount" {% if current_sort == 'total_amount' %}selected{% endif %}>Дешёвые первые</option>
+      </select>
+      <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+      {% if search or status_filter or payment_filter or sla_filter %}
+      <a href="/admin-panel/orders/" class="ap-btn ap-btn-warn" style="text-decoration:none;">Сбросить</a>
+      {% endif %}
+    </form>
+    <a href="/admin-panel/export/orders/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Экспорт CSV</a>
   </div>
 
   <table class="ap-table" id="ordersTable">
     <thead>
-      <tr><th>ORD ID</th><th>Покупатель</th><th>Поставщик</th><th>Позиций</th><th>Сумма</th><th>Статус</th><th>Оплата</th><th>Дата</th><th>Действия</th></tr>
+      <tr>
+        <th style="width:30px;"><input type="checkbox" id="selectAllOrders" onchange="toggleAllOrders(this)"/></th>
+        <th>Заказ</th>
+        <th>Покупатель</th>
+        <th>Статус</th>
+        <th>Оплата</th>
+        <th>Сумма</th>
+        <th>SLA</th>
+        <th>Дата</th>
+        <th></th>
+      </tr>
     </thead>
     <tbody>
-      <tr data-status="in_progress" data-type="active" onclick="toggleTimeline(this)"><td>ORD-4521</td><td class="text-secondary">#1042</td><td class="text-secondary">#3156</td><td>6</td><td>$11,200</td><td><span class="ap-badge ap-badge-gray">В работе</span></td><td>30%</td><td class="text-secondary">25.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4521')">Детали</button> <button class="ap-btn ap-btn-warn" onclick="event.stopPropagation();apToast('Эскалация ORD-4521')">Эскалировать</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Заказ создан — 25.03.2026 10:40</div><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Оплата 30% получена — 25.03.2026 11:15</div><div class="ap-timeline-step"><div class="ap-timeline-dot current"></div>В обработке у поставщика</div><div class="ap-timeline-step"><div class="ap-timeline-dot"></div>Отгрузка</div><div class="ap-timeline-step"><div class="ap-timeline-dot"></div>Доставка</div></td></tr>
-
-      <tr data-status="shipping" data-type="active" onclick="toggleTimeline(this)"><td>ORD-4519</td><td class="text-secondary">#1038</td><td class="text-secondary">#3151</td><td>4</td><td>$3,900</td><td><span class="ap-badge ap-badge-gray">В пути</span></td><td>100%</td><td class="text-secondary">23.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4519')">Детали</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Заметка добавлена')">Заметка</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Заказ создан — 23.03.2026</div><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Оплата 100%</div><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Отгружен — 24.03.2026</div><div class="ap-timeline-step"><div class="ap-timeline-dot current"></div>В пути — ETA 28.03.2026</div><div class="ap-timeline-step"><div class="ap-timeline-dot"></div>Доставка</div></td></tr>
-
-      <tr data-status="delivered" data-type="completed" onclick="toggleTimeline(this)"><td>ORD-4498</td><td class="text-secondary">#1028</td><td class="text-secondary">#3142</td><td>8</td><td>$8,340</td><td><span class="ap-badge ap-badge-gray">Доставлен</span></td><td>100%</td><td class="text-secondary">18.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4498')">Детали</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Завершён — все этапы пройдены</div></td></tr>
-
-      <tr data-status="claim" data-type="problem" onclick="toggleTimeline(this)"><td>ORD-4501</td><td class="text-secondary">#1033</td><td class="text-secondary">#3148</td><td>3</td><td>$6,200</td><td><span class="ap-badge ap-badge-orange">Рекламация</span></td><td>100%</td><td class="text-secondary">19.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4501')">Детали</button> <button class="ap-btn ap-btn-warn" onclick="event.stopPropagation();apToast('Эскалация ORD-4501')">Эскалировать</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Доставлен — 20.03.2026</div><div class="ap-timeline-step"><div class="ap-timeline-dot current" style="background:#E85C0D;border-color:#E85C0D;"></div>Рекламация открыта — несоответствие 2 позиций</div></td></tr>
-
-      <tr data-status="cancelled" data-type="cancelled" onclick="toggleTimeline(this)"><td>ORD-4480</td><td class="text-secondary">#1025</td><td class="text-secondary">#3140</td><td>2</td><td>$2,100</td><td><span class="ap-badge ap-badge-gray">Отменён</span></td><td>0%</td><td class="text-secondary">15.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4480')">Детали</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Отменён покупателем — 16.03.2026</div></td></tr>
-
-      <tr data-status="in_progress" data-type="active" onclick="toggleTimeline(this)"><td>ORD-4518</td><td class="text-secondary">#1040</td><td class="text-secondary">#3002</td><td>12</td><td>$24,600</td><td><span class="ap-badge ap-badge-gray">В работе</span></td><td>50%</td><td class="text-secondary">22.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4518')">Детали</button> <button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Заметка добавлена')">Заметка</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Оплата 50% получена</div><div class="ap-timeline-step"><div class="ap-timeline-dot current"></div>Комплектация</div></td></tr>
-
-      <tr data-status="shipping" data-type="active" onclick="toggleTimeline(this)"><td>ORD-4515</td><td class="text-secondary">#1035</td><td class="text-secondary">#3001</td><td>5</td><td>$9,800</td><td><span class="ap-badge ap-badge-gray">В пути</span></td><td>100%</td><td class="text-secondary">20.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4515')">Детали</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>В пути — ETA 27.03.2026</div></td></tr>
-
-      <tr data-status="delivered" data-type="completed" onclick="toggleTimeline(this)"><td>ORD-4490</td><td class="text-secondary">#1022</td><td class="text-secondary">#3003</td><td>10</td><td>$18,500</td><td><span class="ap-badge ap-badge-gray">Доставлен</span></td><td>100%</td><td class="text-secondary">14.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4490')">Детали</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Завершён</div></td></tr>
-
-      <tr data-status="in_progress" data-type="active" onclick="toggleTimeline(this)"><td>ORD-4520</td><td class="text-secondary">#1041</td><td class="text-secondary">#3002</td><td>3</td><td>$4,200</td><td><span class="ap-badge ap-badge-gray">В работе</span></td><td>30%</td><td class="text-secondary">24.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4520')">Детали</button> <button class="ap-btn ap-btn-warn" onclick="event.stopPropagation();apToast('Эскалация')">Эскалировать</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot current"></div>Ожидание подтверждения поставщика</div></td></tr>
-
-      <tr data-status="cancelled" data-type="cancelled" onclick="toggleTimeline(this)"><td>ORD-4475</td><td class="text-secondary">#1020</td><td class="text-secondary">#3001</td><td>1</td><td>$800</td><td><span class="ap-badge ap-badge-gray">Отменён</span></td><td>0%</td><td class="text-secondary">12.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4475')">Детали</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Отменён — товар недоступен</div></td></tr>
-
-      <tr data-status="delivered" data-type="completed" onclick="toggleTimeline(this)"><td>ORD-4485</td><td class="text-secondary">#1018</td><td class="text-secondary">#3156</td><td>7</td><td>$15,400</td><td><span class="ap-badge ap-badge-gray">Доставлен</span></td><td>100%</td><td class="text-secondary">10.03.2026</td><td><button class="ap-btn ap-btn-ghost" onclick="event.stopPropagation();apToast('Детали ORD-4485')">Детали</button></td></tr>
-      <tr class="ap-order-timeline"><td colspan="9"><div class="ap-timeline-step"><div class="ap-timeline-dot done"></div>Завершён</div></td></tr>
+      {% for order in orders %}
+      <tr {% if order.sla_status == 'breached' %}style="border-left:3px solid #E85C0D;"{% elif order.status == 'cancelled' %}style="opacity:0.5;"{% endif %}>
+        <td><input type="checkbox" name="selected_orders" value="{{ order.id }}" class="order-cb" onchange="updateOrderBar()"/></td>
+        <td><a href="/admin-panel/orders/{{ order.id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ order.id }}</a></td>
+        <td>
+          {{ order.customer_name|truncatechars:20 }}
+          {% if order.buyer %}<div style="font-size:11px;color:#919191;">{{ order.buyer.username }}</div>{% endif %}
+        </td>
+        <td>
+          {% if order.status == 'completed' or order.status == 'delivered' %}
+            <span class="ap-badge ap-badge-green">{{ order.get_status_display }}</span>
+          {% elif order.status == 'cancelled' %}
+            <span class="ap-badge ap-badge-orange">Отменён</span>
+          {% else %}
+            <span class="ap-badge ap-badge-blue">{{ order.get_status_display }}</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if order.payment_status == 'paid' %}
+            <span class="ap-badge ap-badge-green">Оплачен</span>
+          {% elif order.payment_status == 'awaiting_reserve' %}
+            <span class="ap-badge ap-badge-gray">Ожидает</span>
+          {% else %}
+            <span class="ap-badge ap-badge-blue">{{ order.get_payment_status_display }}</span>
+          {% endif %}
+        </td>
+        <td>${{ order.total_amount|floatformat:0 }}</td>
+        <td>
+          {% if order.sla_status == 'breached' %}
+            <span style="color:#E85C0D;font-weight:600;">Нарушен</span>
+          {% else %}
+            <span style="color:#919191;">OK</span>
+          {% endif %}
+        </td>
+        <td class="text-secondary">{{ order.created_at|date:"d.m.Y" }}</td>
+        <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">Детали</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" style="text-align:center;color:#919191;">Нет заказов</td></tr>
+      {% endfor %}
     </tbody>
   </table>
+
+  <!-- Pagination -->
+  {% if has_prev or has_next %}
+  <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;align-items:center;">
+    {% if has_prev %}
+    <a href="?page={{ page_num|add:"-1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if payment_filter %}&payment={{ payment_filter }}{% endif %}{% if sla_filter %}&sla={{ sla_filter }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Назад</a>
+    {% endif %}
+    <span style="font-size:13px;color:#919191;">Стр. {{ page_num }}</span>
+    {% if has_next %}
+    <a href="?page={{ page_num|add:"1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if payment_filter %}&payment={{ payment_filter }}{% endif %}{% if sla_filter %}&sla={{ sla_filter }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &rarr;</a>
+    {% endif %}
+  </div>
+  {% endif %}
 </div>
+
+<!-- Bulk bar -->
+<div id="orderBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
+  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="orderSelectedCount">0 выбрано</span>
+  <select class="ap-select" id="bulkStatusSelect">
+    {% for val, label in status_choices %}
+    <option value="{{ val }}">{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button type="button" class="ap-btn ap-btn-primary" onclick="bulkOrderStatus()">Сменить статус</button>
+  <button type="button" class="ap-btn ap-btn-warn" onclick="bulkOrderCancel()">Отменить</button>
+  <button type="button" class="ap-btn ap-btn-ghost" onclick="clearOrderSelection()">Снять</button>
+</div>
+</form>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function toggleTimeline(row) {
-  var next = row.nextElementSibling;
-  if (next && next.classList.contains('ap-order-timeline')) {
-    next.classList.toggle('open');
-  }
+function toggleAllOrders(m) {
+  document.querySelectorAll('.order-cb').forEach(function(cb) { cb.checked = m.checked; });
+  updateOrderBar();
 }
-function filterOrders() {
-  var search = document.getElementById('orderSearch').value.toLowerCase();
-  var buyer = document.getElementById('orderBuyer').value.toLowerCase();
-  var supplier = document.getElementById('orderSupplier').value.toLowerCase();
-  var status = document.getElementById('orderStatusFilter').value;
-  var tab = document.querySelector('.ap-tab.active[data-tab-group="orders"]').dataset.tabKey;
-  var rows = document.querySelectorAll('#ordersTable tbody tr:not(.ap-order-timeline)');
-  rows.forEach(function(row) {
-    var show = true;
-    var text = row.textContent.toLowerCase();
-    if (search && text.indexOf(search) === -1) show = false;
-    if (buyer && !row.children[1].textContent.toLowerCase().includes(buyer)) show = false;
-    if (supplier && !row.children[2].textContent.toLowerCase().includes(supplier)) show = false;
-    if (status && row.dataset.status !== status) show = false;
-    if (tab === 'active' && row.dataset.type !== 'active') show = false;
-    if (tab === 'completed' && row.dataset.type !== 'completed') show = false;
-    if (tab === 'problem' && row.dataset.type !== 'problem') show = false;
-    if (tab === 'cancelled' && row.dataset.type !== 'cancelled') show = false;
-    row.style.display = show ? '' : 'none';
-    var next = row.nextElementSibling;
-    if (next && next.classList.contains('ap-order-timeline')) {
-      if (!show) next.classList.remove('open');
-    }
-  });
+function updateOrderBar() {
+  var c = document.querySelectorAll('.order-cb:checked').length;
+  document.getElementById('orderBulkBar').style.display = c > 0 ? 'flex' : 'none';
+  document.getElementById('orderSelectedCount').textContent = c + ' выбрано';
+}
+function clearOrderSelection() {
+  document.querySelectorAll('.order-cb').forEach(function(cb) { cb.checked = false; });
+  document.getElementById('selectAllOrders').checked = false;
+  updateOrderBar();
+}
+function bulkOrderStatus() {
+  document.getElementById('ordersAction').value = 'bulk_status';
+  document.getElementById('ordersBulkStatus').value = document.getElementById('bulkStatusSelect').value;
+  document.getElementById('ordersForm').submit();
+}
+function bulkOrderCancel() {
+  if (confirm('Отменить выбранные заказы?')) {
+    document.getElementById('ordersAction').value = 'bulk_cancel';
+    document.getElementById('ordersForm').submit();
+  }
 }
 </script>
 {% endblock %}

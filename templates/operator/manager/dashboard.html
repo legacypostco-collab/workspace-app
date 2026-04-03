@@ -4,26 +4,26 @@
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
-  <div class="op-stat">
+  <a class="op-stat" href="/operator/manager/orders/">
     <div class="op-stat-value">24</div>
     <div class="op-stat-label">Активных заказов</div>
-  </div>
-  <div class="op-stat op-stat-warn">
+  </a>
+  <a class="op-stat op-stat-warn" href="/operator/manager/orders/?status=pending">
     <div class="op-stat-value">4</div>
     <div class="op-stat-label">Требуют внимания</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/manager/">
     <div class="op-stat-value">$1.2M</div>
     <div class="op-stat-label">Выручка за месяц</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/manager/">
     <div class="op-stat-value">68%</div>
     <div class="op-stat-label">Конверсия</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/manager/">
     <div class="op-stat-value">$3,200</div>
     <div class="op-stat-label">Средний чек</div>
-  </div>
+  </a>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;">
@@ -45,7 +45,7 @@
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
             <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">Запросить информацию</button>
-            <button class="op-btn op-btn-warn" onclick="opToast('Заказ ORD-4521 эскалирован')">Эскалировать</button>
+            <button class="op-btn op-btn-warn" onclick="opToast('Запрос на доработку отправлен', 2000, 'warn')">Эскалировать</button>
           </div>
           <div class="info-request-area" style="display:none;margin-top:10px;">
             <input type="text" class="op-input" placeholder="Введите текст запроса..." style="margin-bottom:8px;"/>
@@ -62,7 +62,7 @@
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
             <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">Запросить информацию</button>
-            <button class="op-btn op-btn-warn" onclick="opToast('Заказ ORD-4515 эскалирован')">Эскалировать</button>
+            <button class="op-btn op-btn-warn" onclick="opToast('Запрос на доработку отправлен', 2000, 'warn')">Эскалировать</button>
           </div>
           <div class="info-request-area" style="display:none;margin-top:10px;">
             <input type="text" class="op-input" placeholder="Введите текст запроса..." style="margin-bottom:8px;"/>
@@ -78,8 +78,8 @@
             <span class="op-badge op-badge-gray">Ожидает</span>
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="op-btn op-btn-primary" onclick="opToast('Согласование изменения маршрута ORD-4508')">Согласовать</button>
-            <button class="op-btn op-btn-ghost" onclick="opToast('Отклонение изменения ORD-4508')">Отклонить</button>
+            <button class="op-btn op-btn-primary" onclick="opToast('Согласовано', 2000, 'success')">Согласовать</button>
+            <button class="op-btn op-btn-ghost" onclick="opToast('Отклонено', 2000, 'warn')">Отклонить</button>
           </div>
         </div>
         <div class="op-card-elevated" style="padding:14px 16px;">
@@ -92,7 +92,7 @@
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
             <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">Запросить информацию</button>
-            <button class="op-btn op-btn-ghost" onclick="opToast('Добавление заметки к ORD-4501')">Заметка</button>
+            <button class="op-btn op-btn-ghost" onclick="opToast('Заметка добавлена', 2000, 'success')">Заметка</button>
           </div>
           <div class="info-request-area" style="display:none;margin-top:10px;">
             <input type="text" class="op-input" placeholder="Введите текст запроса..." style="margin-bottom:8px;"/>
@@ -128,7 +128,7 @@
             <td style="font-family:'Golos Text',sans-serif;">$18,400</td>
             <td><span class="op-badge op-badge-gray">В работе</span></td>
             <td class="text-secondary">24 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4521')">Детали</button></td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
           </tr>
           <tr onclick="opToast('Заказ ORD-4518: $6,200, на таможне')">
             <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
@@ -137,7 +137,7 @@
             <td style="font-family:'Golos Text',sans-serif;">$6,200</td>
             <td><span class="op-badge op-badge-orange">На таможне</span></td>
             <td class="text-secondary">23 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4518')">Детали</button></td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
           </tr>
           <tr onclick="opToast('Заказ ORD-4515: $4,100, доставка')">
             <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
@@ -146,7 +146,7 @@
             <td style="font-family:'Golos Text',sans-serif;">$4,100</td>
             <td><span class="op-badge op-badge-gray">Доставка</span></td>
             <td class="text-secondary">22 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4515')">Детали</button></td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
           </tr>
           <tr onclick="opToast('Заказ ORD-4512: $12,800, ожидает оплаты')">
             <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
@@ -155,7 +155,7 @@
             <td style="font-family:'Golos Text',sans-serif;">$12,800</td>
             <td><span class="op-badge op-badge-gray">Оплата</span></td>
             <td class="text-secondary">20 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4512')">Детали</button></td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
           </tr>
         </tbody>
       </table>
@@ -244,7 +244,7 @@ function sendInfoRequest(btn, ordId) {
   var input = btn.previousElementSibling;
   var text = input.value.trim();
   if (!text) { opToast('Введите текст запроса'); return; }
-  opToast('Запрос отправлен по ' + ordId + ': ' + text);
+  opToast('Запрос отправлен', 2000, 'success');
   input.value = '';
   btn.closest('.info-request-area').style.display = 'none';
 }

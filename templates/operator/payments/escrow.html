@@ -6,22 +6,22 @@
 
 <!-- Summary -->
 <div class="op-stats">
-  <div class="op-stat">
+  <a class="op-stat" href="/operator/payments/escrow/">
     <div class="op-stat-value">$142,800</div>
     <div class="op-stat-label">Удержано на счетах</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/escrow/">
     <div class="op-stat-value">$285,200</div>
     <div class="op-stat-label">Выпущено за месяц</div>
-  </div>
-  <div class="op-stat op-stat-warn">
+  </a>
+  <a class="op-stat op-stat-warn" href="/operator/payments/escrow/">
     <div class="op-stat-value">$18,400</div>
     <div class="op-stat-label">Ожидает решения</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/escrow/">
     <div class="op-stat-value">12</div>
     <div class="op-stat-label">Активных счетов</div>
-  </div>
+  </a>
 </div>
 
 <!-- Active escrow accounts -->
@@ -52,7 +52,7 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1201')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Продление удержания ESC-1201')">Продлить</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
           </div>
         </td>
       </tr>
@@ -67,7 +67,7 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1198')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Продление удержания ESC-1198')">Продлить</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
           </div>
         </td>
       </tr>
@@ -81,7 +81,7 @@
         <td class="text-secondary">15 мар</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Открытие спора ESC-1195')">Разобрать</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Запрос на доработку отправлен', 2000, 'warn')">Разобрать</button>
           </div>
         </td>
       </tr>
@@ -96,7 +96,7 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1190')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Продление удержания ESC-1190')">Продлить</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
           </div>
         </td>
       </tr>
@@ -165,8 +165,8 @@ function releaseEscrow(btn, escId) {
   var badge = row.querySelector('.escrow-status');
   badge.className = 'op-badge op-badge-gray escrow-status';
   badge.textContent = 'Выпущено';
-  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'Детали ' + escId + '\')">Детали</button>';
-  opToast('Средства ' + escId + ' выпущены поставщику');
+  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button>';
+  opToast('Эскроу выпущен', 2000, 'success');
 }
 </script>
 {% endblock %}

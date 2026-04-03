@@ -77,10 +77,17 @@
               </details>
             {% endif %}
           {% endif %}
+
+          {% if user.is_superuser %}
+            <details class="menu-group" {% if '/admin-panel/' in request.path %}open{% endif %}>
+              <summary>Администрирование</summary>
+              <a href="{% url 'admin_panel_dashboard' %}" class="{% if '/admin-panel/' in request.path %}active{% endif %}">Панель управления</a>
+            </details>
+          {% endif %}
         </nav>
 
         <div class="sidebar-foot">
-          <a href="#" class="side-btn">{{ ui.callback }}</a>
+          <a href="mailto:support@consolidator.parts" class="side-btn">{{ ui.callback }}</a>
           <form action="/i18n/setlang/" method="post" class="side-lang-form">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ request.get_full_path }}">

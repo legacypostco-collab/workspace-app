@@ -61,6 +61,8 @@
   background:#1A1A1A;border-radius:12px;padding:14px 16px;
   border:1px solid rgba(255,255,255,0.04);
 }
+a.rat-metric{text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .1s;}
+a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2C!important;transform:translateY(-1px);cursor:pointer!important;}
 .rat-metric-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#8A8A8A;margin-bottom:6px;
@@ -208,32 +210,32 @@
 
 {# ═══ Metrics ═══ #}
 <div class="rat-metrics">
-  <div class="rat-metric">
+  <a class="rat-metric" href="/seller/sla/">
     <div class="rat-metric-label">SLA соблюдение</div>
     <div class="rat-metric-val" style="color:#ECECEC;">{{ sla_pct }}%</div>
     <div class="rat-metric-hint" style="color:#6A6A6A;">норматив 90%</div>
     <div class="rat-trend {% if sla_trend > 0 %}rat-trend--up{% elif sla_trend < 0 %}rat-trend--down{% else %}rat-trend--flat{% endif %}">
       {% if sla_trend > 0 %}+{% endif %}{{ sla_trend }}% за 30д
     </div>
-  </div>
-  <div class="rat-metric">
+  </a>
+  <a class="rat-metric" href="/seller/requests/">
     <div class="rat-metric-label">Конверсия RFQ→Заказ</div>
     <div class="rat-metric-val">{{ conversion_pct }}%</div>
     <div class="rat-metric-hint" style="color:#6A6A6A;">целевая &gt; 50%</div>
     <div class="rat-trend {% if conv_trend > 0 %}rat-trend--up{% elif conv_trend < 0 %}rat-trend--down{% else %}rat-trend--flat{% endif %}">
       {% if conv_trend > 0 %}+{% endif %}{{ conv_trend }}% за 30д
     </div>
-  </div>
-  <div class="rat-metric">
+  </a>
+  <a class="rat-metric" href="/seller/claims/">
     <div class="rat-metric-label">Открытые рекламации</div>
     <div class="rat-metric-val" style="color:#ECECEC;">{{ open_claims }}</div>
     <div class="rat-metric-hint" style="color:#FF8C42;">всего {{ total_claims }}</div>
-  </div>
-  <div class="rat-metric">
+  </a>
+  <a class="rat-metric" href="/seller/orders/?status=cancelled">
     <div class="rat-metric-label">Отмены за 30 дней</div>
     <div class="rat-metric-val" style="color:{% if cancelled_30d > 0 %}#FF8C42{% else %}#ECECEC{% endif %};">{{ cancelled_30d }}</div>
     <div class="rat-metric-hint" style="color:#FF8C42;">нарушений SLA: {{ sla_breaches_total }}</div>
-  </div>
+  </a>
 </div>
 
 {# ═══ Warnings ═══ #}

@@ -3,6 +3,19 @@
 {% block topbar_title %}Тарифы и комиссии{% endblock %}
 
 {% block content %}
+{% if saved %}
+<div class="ap-card-elevated" style="margin-bottom:16px;padding:12px 18px;border-left:3px solid #4CAF50;">
+  <span style="font-size:13px;color:#4CAF50;">Настройки сохранены</span>
+</div>
+{% endif %}
+
+<div class="ap-stats">
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ total_sellers }}</div><div class="ap-stat-label">Поставщиков</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.basic }}</div><div class="ap-stat-label">Базовый</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.professional }}</div><div class="ap-stat-label">Профессиональный</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.corporate }}</div><div class="ap-stat-label">Корпоративный</div></a>
+</div>
+
 <div class="ap-card">
   <div class="ap-tabs">
     <button class="ap-tab active" data-tab-group="tariffs" data-tab-key="plans" onclick="apSwitchTab('tariffs','plans')">Тарифные планы</button>
@@ -10,134 +23,137 @@
     <button class="ap-tab" data-tab-group="tariffs" data-tab-key="discounts" onclick="apSwitchTab('tariffs','discounts')">Скидки</button>
   </div>
 
-  <!-- Tariff plans -->
+  <!-- Plans -->
   <div data-panel-group="tariffs" data-panel-key="plans">
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
-      <!-- Basic -->
-      <div class="ap-card-elevated" style="display:flex;flex-direction:column;">
-        <div style="font-size:16px;font-weight:700;font-family:'Golos Text',sans-serif;margin-bottom:4px;">Базовый</div>
-        <div style="font-size:28px;font-weight:800;font-family:'Golos Text',sans-serif;color:#ECECEC;margin-bottom:12px;">$0<span style="font-size:13px;color:#919191;font-weight:400;">/мес</span></div>
-        <div style="display:flex;flex-direction:column;gap:8px;flex:1;">
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            До 100 товаров
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="plans"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+        {% for plan in tariff_plans %}
+        <div class="ap-card-elevated" style="display:flex;flex-direction:column;{% if plan.id == 'professional' %}border-color:rgba(100,181,246,0.2);{% endif %}">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <span style="font-size:16px;font-weight:700;font-family:'Golos Text',sans-serif;">{{ plan.name }}</span>
+            {% if plan.id == 'professional' %}<span class="ap-badge ap-badge-blue">Популярный</span>{% endif %}
           </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Комиссия 10%
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div>
+              <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Цена ($/мес)</label>
+              <input type="number" name="price_{{ plan.id }}" class="ap-input" value="{{ plan.price }}" style="width:100px;"/>
+            </div>
+            <div>
+              <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Комиссия (%)</label>
+              <input type="number" name="commission_{{ plan.id }}" class="ap-input" value="{{ plan.commission }}" style="width:100px;"/>
+            </div>
+            <div>
+              <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Макс. товаров (0 = безлимит)</label>
+              <input type="number" name="max_{{ plan.id }}" class="ap-input" value="{{ plan.max_products }}" style="width:100px;"/>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <label class="ap-toggle">
+                <input type="checkbox" name="active_{{ plan.id }}" {% if plan.is_active %}checked{% endif %}/>
+                <span class="ap-toggle-slider"></span>
+              </label>
+              <span style="font-size:12px;color:#919191;">Активен</span>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Email-поддержка
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Базовая аналитика
+          <div style="margin-top:auto;padding-top:12px;font-size:12px;color:#5E5E5E;">
+            {% if plan.id == 'basic' %}{{ tier_counts.basic }}{% elif plan.id == 'professional' %}{{ tier_counts.professional }}{% else %}{{ tier_counts.corporate }}{% endif %} поставщиков
           </div>
         </div>
-        <div style="margin-top:16px;font-size:12px;color:#5E5E5E;">42 поставщика</div>
+        {% endfor %}
       </div>
-
-      <!-- Professional -->
-      <div class="ap-card-elevated" style="display:flex;flex-direction:column;border-color:rgba(100,181,246,0.2);">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <span style="font-size:16px;font-weight:700;font-family:'Golos Text',sans-serif;">Профессиональный</span>
-          <span class="ap-badge ap-badge-blue">Популярный</span>
-        </div>
-        <div style="font-size:28px;font-weight:800;font-family:'Golos Text',sans-serif;color:#ECECEC;margin-bottom:12px;">$99<span style="font-size:13px;color:#919191;font-weight:400;">/мес</span></div>
-        <div style="display:flex;flex-direction:column;gap:8px;flex:1;">
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            До 10,000 товаров
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Комиссия 8%
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Приоритетная поддержка
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Расширенная аналитика
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            API-доступ
-          </div>
-        </div>
-        <div style="margin-top:16px;font-size:12px;color:#5E5E5E;">58 поставщиков</div>
+      <div style="margin-top:16px;">
+        <button type="submit" class="ap-btn ap-btn-primary">Сохранить планы</button>
       </div>
-
-      <!-- Corporate -->
-      <div class="ap-card-elevated" style="display:flex;flex-direction:column;">
-        <div style="font-size:16px;font-weight:700;font-family:'Golos Text',sans-serif;margin-bottom:4px;">Корпоративный</div>
-        <div style="font-size:28px;font-weight:800;font-family:'Golos Text',sans-serif;color:#ECECEC;margin-bottom:12px;">$499<span style="font-size:13px;color:#919191;font-weight:400;">/мес</span></div>
-        <div style="display:flex;flex-direction:column;gap:8px;flex:1;">
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Без ограничений
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Комиссия 5%
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Персональный менеджер
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Полная аналитика + BI
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            Кастомные интеграции
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#919191;">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round"><path d="M3 8l3 3 7-7"/></svg>
-            SLA гарантия 99.9%
-          </div>
-        </div>
-        <div style="margin-top:16px;font-size:12px;color:#5E5E5E;">24 поставщика</div>
-      </div>
-    </div>
+    </form>
   </div>
 
   <!-- Category commissions -->
   <div data-panel-group="tariffs" data-panel-key="categories" style="display:none;">
-    <table class="ap-table">
-      <thead><tr><th>Категория</th><th>Комиссия %</th><th>Мин. сумма</th><th>Макс. сумма</th></tr></thead>
-      <tbody>
-        <tr><td>Фильтры</td><td><input type="text" class="ap-input" value="8" style="width:80px;"/></td><td><input type="text" class="ap-input" value="$0.50" style="width:100px;"/></td><td><input type="text" class="ap-input" value="$500" style="width:100px;"/></td></tr>
-        <tr><td>Тормоза</td><td><input type="text" class="ap-input" value="8" style="width:80px;"/></td><td><input type="text" class="ap-input" value="$2.00" style="width:100px;"/></td><td><input type="text" class="ap-input" value="$800" style="width:100px;"/></td></tr>
-        <tr><td>Зажигание</td><td><input type="text" class="ap-input" value="7" style="width:80px;"/></td><td><input type="text" class="ap-input" value="$0.30" style="width:100px;"/></td><td><input type="text" class="ap-input" value="$300" style="width:100px;"/></td></tr>
-        <tr><td>Подвеска</td><td><input type="text" class="ap-input" value="8" style="width:80px;"/></td><td><input type="text" class="ap-input" value="$3.00" style="width:100px;"/></td><td><input type="text" class="ap-input" value="$1,000" style="width:100px;"/></td></tr>
-        <tr><td>Электрика</td><td><input type="text" class="ap-input" value="9" style="width:80px;"/></td><td><input type="text" class="ap-input" value="$5.00" style="width:100px;"/></td><td><input type="text" class="ap-input" value="$1,500" style="width:100px;"/></td></tr>
-        <tr><td>Привод</td><td><input type="text" class="ap-input" value="8" style="width:80px;"/></td><td><input type="text" class="ap-input" value="$1.50" style="width:100px;"/></td><td><input type="text" class="ap-input" value="$600" style="width:100px;"/></td></tr>
-        <tr><td>Охлаждение</td><td><input type="text" class="ap-input" value="7" style="width:80px;"/></td><td><input type="text" class="ap-input" value="$1.00" style="width:100px;"/></td><td><input type="text" class="ap-input" value="$400" style="width:100px;"/></td></tr>
-        <tr><td>Кузов</td><td><input type="text" class="ap-input" value="10" style="width:80px;"/></td><td><input type="text" class="ap-input" value="$5.00" style="width:100px;"/></td><td><input type="text" class="ap-input" value="$2,000" style="width:100px;"/></td></tr>
-      </tbody>
-    </table>
-    <div style="margin-top:16px;">
-      <button class="ap-btn ap-btn-primary" onclick="apToast('Комиссии сохранены')">Сохранить изменения</button>
-    </div>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="categories"/>
+      <table class="ap-table">
+        <thead><tr><th>Категория</th><th>Запчастей</th><th>Комиссия %</th><th>Мин. сумма ($)</th><th>Макс. сумма ($)</th></tr></thead>
+        <tbody>
+          {% for cat in categories %}
+          <tr>
+            <td>{{ cat.name }}</td>
+            <td class="text-secondary">{{ cat.parts_count }}</td>
+            <td><input type="number" step="0.1" name="pct_{{ cat.id }}" class="ap-input" value="8" style="width:80px;"/></td>
+            <td><input type="number" step="0.01" name="min_{{ cat.id }}" class="ap-input" value="0.50" style="width:100px;"/></td>
+            <td><input type="number" step="0.01" name="max_{{ cat.id }}" class="ap-input" value="1000" style="width:100px;"/></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" style="text-align:center;color:#919191;">Нет категорий</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="margin-top:16px;">
+        <button type="submit" class="ap-btn ap-btn-primary">Сохранить комиссии</button>
+      </div>
+    </form>
   </div>
 
   <!-- Discounts -->
   <div data-panel-group="tariffs" data-panel-key="discounts" style="display:none;">
-    <table class="ap-table">
-      <thead><tr><th>Название</th><th>Тип</th><th>Размер</th><th>Период</th><th>Поставщиков</th><th>Статус</th></tr></thead>
-      <tbody>
-        <tr><td>Welcome-бонус</td><td>Комиссия</td><td>-2%</td><td class="text-secondary">Первые 3 месяца</td><td>12</td><td><span class="ap-badge ap-badge-gray">Активна</span></td></tr>
-        <tr><td>Объём > $100K</td><td>Комиссия</td><td>-1%</td><td class="text-secondary">Бессрочно</td><td>8</td><td><span class="ap-badge ap-badge-gray">Активна</span></td></tr>
-        <tr><td>Весенняя акция</td><td>Подписка</td><td>-20%</td><td class="text-secondary">01.03 - 31.03.2026</td><td>5</td><td><span class="ap-badge ap-badge-gray">Активна</span></td></tr>
-        <tr><td>Реферальный бонус</td><td>Комиссия</td><td>-1.5%</td><td class="text-secondary">6 месяцев</td><td>3</td><td><span class="ap-badge ap-badge-gray">Активна</span></td></tr>
-      </tbody>
-    </table>
-    <div style="margin-top:16px;">
-      <button class="ap-btn ap-btn-primary" onclick="apToast('Сохранено')">Сохранить изменения</button>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="tab" value="discounts"/>
+      <input type="hidden" name="action" value="save_discounts"/>
+      <table class="ap-table">
+        <thead><tr><th>Название</th><th>Тип</th><th>Размер</th><th>Период</th><th>Активна</th></tr></thead>
+        <tbody>
+          {% for d in discounts %}
+          <tr>
+            <td>{{ d.name }}</td>
+            <td class="text-secondary">{{ d.type }}</td>
+            <td>{{ d.value }}{% if d.type == 'commission' %}%{% endif %}</td>
+            <td class="text-secondary">{{ d.period|default:"Бессрочно" }}</td>
+            <td>
+              <label class="ap-toggle">
+                <input type="checkbox" name="active_{{ forloop.counter0 }}" {% if d.is_active %}checked{% endif %}/>
+                <span class="ap-toggle-slider"></span>
+              </label>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" style="text-align:center;color:#919191;">Нет скидок</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div style="margin-top:16px;">
+        <button type="submit" class="ap-btn ap-btn-primary">Сохранить</button>
+      </div>
+    </form>
+
+    <div class="ap-card-elevated" style="margin-top:16px;padding:16px;">
+      <div class="ap-section-title" style="font-size:13px;">Добавить скидку</div>
+      <form method="post" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+        {% csrf_token %}
+        <input type="hidden" name="tab" value="discounts"/>
+        <input type="hidden" name="action" value="add_discount"/>
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Название</label>
+          <input type="text" name="new_name" class="ap-input" placeholder="Welcome-бонус" required style="width:160px;"/>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Тип</label>
+          <select name="new_type" class="ap-select" style="min-width:120px;">
+            <option value="commission">Комиссия</option>
+            <option value="subscription">Подписка</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Размер</label>
+          <input type="text" name="new_value" class="ap-input" placeholder="-2%" required style="width:80px;"/>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Период</label>
+          <input type="text" name="new_period" class="ap-input" placeholder="3 месяца" style="width:140px;"/>
+        </div>
+        <button type="submit" class="ap-btn ap-btn-primary">Добавить</button>
+      </form>
     </div>
   </div>
 </div>

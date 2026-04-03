@@ -20,7 +20,10 @@
 .ord-stat {
   background:#1A1A1A;border-radius:12px;padding:14px 16px;
   border:1px solid rgba(255,255,255,0.04);
+  transition:border-color .15s,background .15s;cursor:pointer;
 }
+a.ord-stat { text-decoration:none; display:block; }
+a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2C2C2C !important; }
 .ord-stat-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -122,22 +125,22 @@
 
 <!-- Stats -->
 <div class="ord-stats">
-  <div class="ord-stat">
+  <a href="/buyer/orders/" class="ord-stat">
     <div class="ord-stat-label">Всего заказов</div>
     <div class="ord-stat-val">24</div>
-  </div>
-  <div class="ord-stat">
+  </a>
+  <a href="/buyer/orders/?status=active" class="ord-stat">
     <div class="ord-stat-label">В работе</div>
     <div class="ord-stat-val" style="color:#E85C0D;">6</div>
-  </div>
-  <div class="ord-stat">
+  </a>
+  <a href="/buyer/orders/?status=delivered" class="ord-stat">
     <div class="ord-stat-label">Доставлено</div>
     <div class="ord-stat-val" style="color:#64B5F6;">16</div>
-  </div>
-  <div class="ord-stat">
+  </a>
+  <a href="/buyer/finance/" class="ord-stat">
     <div class="ord-stat-label">Общая сумма</div>
     <div class="ord-stat-val">$142,800</div>
-  </div>
+  </a>
 </div>
 
 <!-- Filters -->
@@ -183,7 +186,7 @@
         <td><span class="ord-badge ord-badge--production">В производстве</span></td>
         <td>22.03.2026<br><span class="ord-muted">ETA: 18.04</span></td>
         <td><span class="ord-pay-badge ord-pay--partial">Резерв 10%</span></td>
-        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
       <tr>
         <td><span class="ord-id">ORD-2026-0138</span><br><span class="ord-muted">RFQ-0071</span></td>
@@ -193,7 +196,7 @@
         <td><span class="ord-badge ord-badge--transit">В пути</span></td>
         <td>05.03.2026<br><span class="ord-muted">ETA: 28.03</span></td>
         <td><span class="ord-pay-badge ord-pay--partial">50% оплачено</span></td>
-        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
       <tr>
         <td><span class="ord-id">ORD-2026-0131</span><br><span class="ord-muted">RFQ-0065</span></td>
@@ -203,7 +206,7 @@
         <td><span class="ord-badge ord-badge--customs">На таможне</span></td>
         <td>28.02.2026<br><span class="ord-muted">ETA: 26.03</span></td>
         <td><span class="ord-pay-badge ord-pay--partial">90% оплачено</span></td>
-        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
       <tr>
         <td><span class="ord-id">ORD-2026-0125</span><br><span class="ord-muted">RFQ-0052</span></td>
@@ -213,7 +216,7 @@
         <td><span class="ord-badge ord-badge--delivered">Доставлен</span></td>
         <td>14.02.2026<br><span class="ord-muted">Доставлен: 10.03</span></td>
         <td><span class="ord-pay-badge ord-pay--paid">Оплачен</span></td>
-        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
       <tr>
         <td><span class="ord-id">ORD-2026-0118</span><br><span class="ord-muted">RFQ-0044</span></td>
@@ -223,7 +226,7 @@
         <td><span class="ord-badge ord-badge--delivered">Доставлен</span></td>
         <td>05.02.2026<br><span class="ord-muted">Доставлен: 28.02</span></td>
         <td><span class="ord-pay-badge ord-pay--paid">Оплачен</span></td>
-        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
       <tr>
         <td><span class="ord-id">ORD-2026-0110</span><br><span class="ord-muted">RFQ-0030</span></td>
@@ -233,7 +236,7 @@
         <td><span class="ord-badge ord-badge--transit">В пути</span></td>
         <td>20.01.2026<br><span class="ord-muted">ETA: 30.03</span></td>
         <td><span class="ord-pay-badge ord-pay--pending">Ожидает</span></td>
-        <td><a href="#" class="ord-detail-btn">Детали</a></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
     </tbody>
   </table>

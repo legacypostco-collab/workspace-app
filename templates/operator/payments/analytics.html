@@ -12,26 +12,26 @@
 
 <!-- KPI -->
 <div class="op-stats">
-  <div class="op-stat">
+  <a class="op-stat" href="/operator/payments/">
     <div class="op-stat-value">87</div>
     <div class="op-stat-label">Платежей за период</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/">
     <div class="op-stat-value">$428K</div>
     <div class="op-stat-label">Общая сумма</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/">
     <div class="op-stat-value">$4,920</div>
     <div class="op-stat-label">Средний платёж</div>
-  </div>
-  <div class="op-stat op-stat-warn">
+  </a>
+  <a class="op-stat op-stat-warn" href="/operator/payments/">
     <div class="op-stat-value">1</div>
     <div class="op-stat-label">Просрочено</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/">
     <div class="op-stat-value">1.2 <span style="font-size:14px;font-weight:500;">дн.</span></div>
     <div class="op-stat-label">Средний срок обработки</div>
-  </div>
+  </a>
 </div>
 
 <!-- By payment types -->
@@ -138,7 +138,7 @@
         <td style="font-family:'Golos Text',sans-serif;">$8,400</td>
         <td class="text-secondary">20 мар</td>
         <td><span class="op-badge op-badge-orange">+5 дн.</span></td>
-        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Напоминание отправлено')">Напомнить</button></td>
+        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Напоминание отправлено', 2000, 'success')">Напомнить</button></td>
       </tr>
     </tbody>
   </table>

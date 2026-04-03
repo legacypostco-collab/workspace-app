@@ -28,7 +28,10 @@
 .clm-stat {
   background:#1A1A1A;border-radius:12px;padding:14px 16px;
   border:1px solid rgba(255,255,255,0.04);
+  transition:border-color .15s,background .15s;cursor:pointer;
 }
+a.clm-stat { text-decoration:none; display:block; }
+a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2C2C2C !important; }
 .clm-stat-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -130,28 +133,28 @@
       <div class="clm-hero-title">Рекламации</div>
       <div class="clm-hero-sub">Претензии по качеству, комплектности и соответствию</div>
     </div>
-    <a href="#" class="clm-create-btn">+ Открыть рекламацию</a>
+    <a href="javascript:void(0)" class="clm-create-btn">+ Открыть рекламацию</a>
   </div>
 </section>
 
 <!-- Stats -->
 <div class="clm-stats">
-  <div class="clm-stat">
+  <a href="/buyer/claims/" class="clm-stat">
     <div class="clm-stat-label">Всего рекламаций</div>
     <div class="clm-stat-val">7</div>
-  </div>
-  <div class="clm-stat">
+  </a>
+  <a href="/buyer/claims/?status=open" class="clm-stat">
     <div class="clm-stat-label">Открыта</div>
     <div class="clm-stat-val" style="color:#E05555;">1</div>
-  </div>
-  <div class="clm-stat">
+  </a>
+  <a href="/buyer/claims/?status=progress" class="clm-stat">
     <div class="clm-stat-label">В работе</div>
     <div class="clm-stat-val" style="color:#E85C0D;">2</div>
-  </div>
-  <div class="clm-stat">
+  </a>
+  <a href="/buyer/claims/?status=resolved" class="clm-stat">
     <div class="clm-stat-label">Решена</div>
     <div class="clm-stat-val" style="color:#64B5F6;">4</div>
-  </div>
+  </a>
 </div>
 
 <!-- Claims list -->
@@ -198,9 +201,9 @@
         При вскрытии упаковки обнаружены механические повреждения на 3 из 20 дисков. Трещины на рабочей поверхности, не пригодны к установке. Фото повреждений приложены к заявке.
       </div>
       <div class="clm-actions">
-        <a href="#" class="clm-action-btn clm-action-btn--primary">Переписка</a>
-        <a href="#" class="clm-action-btn clm-action-btn--secondary">Фото (4)</a>
-        <a href="#" class="clm-action-btn clm-action-btn--secondary">Документы</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">Переписка</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Фото (4)</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Документы</a>
       </div>
     </div>
   </div>
@@ -246,9 +249,9 @@
         Поставлены помпы с другим посадочным размером шкива. OEM-номер на этикетке совпадает, но фактические размеры отличаются от спецификации. Ожидается замена от поставщика.
       </div>
       <div class="clm-actions">
-        <a href="#" class="clm-action-btn clm-action-btn--primary">Переписка</a>
-        <a href="#" class="clm-action-btn clm-action-btn--secondary">Фото (2)</a>
-        <a href="#" class="clm-action-btn clm-action-btn--secondary">Замерочный лист</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">Переписка</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Фото (2)</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Замерочный лист</a>
       </div>
     </div>
   </div>
@@ -294,8 +297,8 @@
         В комплекте отсутствует прокладка выпускного коллектора и комплект крепежа. Турбина без прокладки не может быть установлена. Поставщик подтвердил досылку недостающих компонентов.
       </div>
       <div class="clm-actions">
-        <a href="#" class="clm-action-btn clm-action-btn--primary">Переписка</a>
-        <a href="#" class="clm-action-btn clm-action-btn--secondary">Акт некомплекта</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">Переписка</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Акт некомплекта</a>
       </div>
     </div>
   </div>
@@ -341,8 +344,8 @@
         Гидроцилиндр прибыл с повреждённым штоком (вмятина при транспортировке). Поставщик признал вину перевозчика, оформлен полный возврат средств и отправлена замена за свой счёт.
       </div>
       <div class="clm-actions">
-        <a href="#" class="clm-action-btn clm-action-btn--secondary">Переписка</a>
-        <a href="#" class="clm-action-btn clm-action-btn--secondary">Акт приёмки</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Переписка</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Акт приёмки</a>
       </div>
     </div>
   </div>

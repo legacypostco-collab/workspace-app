@@ -4,72 +4,106 @@
 
 {% block content %}
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">1,247</div><div class="ap-stat-label">Событий за сутки</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">186</div><div class="ap-stat-label">Авторизаций</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">3</div><div class="ap-stat-label">Ошибок</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">42</div><div class="ap-stat-label">Действий админов</div></div>
+  {% if tab == 'webhooks' %}
+  <a href="?tab=webhooks" class="ap-stat"><div class="ap-stat-value">{{ total_wh }}</div><div class="ap-stat-label">Всего вебхуков</div></a>
+  <a href="?tab=webhooks&success=1" class="ap-stat"><div class="ap-stat-value">{{ success_rate }}%</div><div class="ap-stat-label">Успешных</div></a>
+  <a href="?tab=webhooks&success=0" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ failed_wh }}</div><div class="ap-stat-label">Ошибок</div></a>
+  {% else %}
+  <a href="?tab=events" class="ap-stat"><div class="ap-stat-value">{{ total_events }}</div><div class="ap-stat-label">Всего событий</div></a>
+  <a href="?tab=events" class="ap-stat"><div class="ap-stat-value">{{ today_events }}</div><div class="ap-stat-label">За сегодня</div></a>
+  <a href="?tab=events" class="ap-stat"><div class="ap-stat-value">{{ week_events }}</div><div class="ap-stat-label">За неделю</div></a>
+  {% endif %}
 </div>
 
 <div class="ap-card">
-  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
-    <select class="ap-select" id="logType" onchange="filterLogs()">
-      <option value="">Все типы</option>
-      <option value="auth">Авторизация</option>
-      <option value="order">Заказы</option>
-      <option value="payment">Платежи</option>
-      <option value="moderation">Модерация</option>
-      <option value="error">Ошибки</option>
-    </select>
-    <input type="text" class="ap-input" placeholder="По пользователю..." style="max-width:180px;" id="logUser" oninput="filterLogs()"/>
-    <div style="flex:1;"></div>
-    <button class="ap-btn ap-btn-ghost" onclick="apToast('Экспорт логов подготовлен')">
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M2 11v2h12v-2"/></svg>
-      Экспорт логов
-    </button>
+  <div class="ap-tabs" style="margin-bottom:16px;">
+    <a href="?tab=events" class="ap-tab {% if tab == 'events' %}active{% endif %}" style="text-decoration:none;">События</a>
+    <a href="?tab=webhooks" class="ap-tab {% if tab == 'webhooks' %}active{% endif %}" style="text-decoration:none;">Вебхуки</a>
   </div>
 
-  <table class="ap-table" id="logsTable">
-    <thead><tr><th>Время</th><th>Пользователь</th><th>IP</th><th>Тип</th><th>Событие</th><th>Результат</th></tr></thead>
+  {% if tab == 'webhooks' %}
+  <form method="get" style="display:flex;gap:8px;margin-bottom:16px;align-items:flex-end;flex-wrap:wrap;">
+    <input type="hidden" name="tab" value="webhooks"/>
+    <input type="text" name="q" class="ap-input" placeholder="Endpoint или order ID..." value="{{ wh_q }}" style="width:240px;"/>
+    <select name="success" class="ap-select" style="min-width:120px;">
+      <option value="">Все</option>
+      <option value="1" {% if wh_success == '1' %}selected{% endif %}>Успешные</option>
+      <option value="0" {% if wh_success == '0' %}selected{% endif %}>Ошибки</option>
+    </select>
+    <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+  </form>
+  <table class="ap-table">
+    <thead><tr><th>Время</th><th>Заказ</th><th>Endpoint</th><th>Статус</th><th>Код</th><th>Попытка</th></tr></thead>
     <tbody>
-      <tr data-type="auth"><td class="text-secondary">14:22:15</td><td>#1042</td><td class="text-muted">185.42.108.22</td><td><span class="ap-badge ap-badge-gray">Авторизация</span></td><td>Вход в систему</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="order"><td class="text-secondary">14:22:08</td><td>#1042</td><td class="text-muted">185.42.108.22</td><td><span class="ap-badge ap-badge-gray">Заказы</span></td><td>Создание заказа ORD-4521</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="payment"><td class="text-secondary">14:20:44</td><td>System</td><td class="text-muted">--</td><td><span class="ap-badge ap-badge-gray">Платежи</span></td><td>Оплата TXN-8901 подтверждена</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="auth"><td class="text-secondary">14:18:32</td><td>#5001</td><td class="text-muted">10.0.1.42</td><td><span class="ap-badge ap-badge-gray">Авторизация</span></td><td>Вход в админ-панель</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="moderation"><td class="text-secondary">14:15:10</td><td>#5001</td><td class="text-muted">10.0.1.42</td><td><span class="ap-badge ap-badge-gray">Модерация</span></td><td>Одобрение товара DG-184</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="error" style="border-left:3px solid #E85C0D;"><td class="text-secondary">14:12:05</td><td>System</td><td class="text-muted">--</td><td><span class="ap-badge ap-badge-orange">Ошибка</span></td><td>Payment gateway timeout — TXN-8897</td><td><span class="ap-badge ap-badge-orange">Ошибка</span></td></tr>
-      <tr data-type="auth"><td class="text-secondary">14:10:22</td><td>#3002</td><td class="text-muted">202.108.22.55</td><td><span class="ap-badge ap-badge-gray">Авторизация</span></td><td>Вход в систему</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="order"><td class="text-secondary">14:08:15</td><td>#3002</td><td class="text-muted">202.108.22.55</td><td><span class="ap-badge ap-badge-gray">Заказы</span></td><td>Обновление статуса ORD-4518</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="auth"><td class="text-secondary">13:55:40</td><td>#1033</td><td class="text-muted">91.215.84.12</td><td><span class="ap-badge ap-badge-gray">Авторизация</span></td><td>Вход в систему</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="order"><td class="text-secondary">13:45:18</td><td>#1033</td><td class="text-muted">91.215.84.12</td><td><span class="ap-badge ap-badge-gray">Заказы</span></td><td>Открытие рекламации ORD-4501</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="auth"><td class="text-secondary">13:30:05</td><td>#1007</td><td class="text-muted">95.181.42.88</td><td><span class="ap-badge ap-badge-gray">Авторизация</span></td><td>Попытка входа (заблокирован)</td><td><span style="color:#E85C0D;font-size:11px;font-weight:600;">Отказ</span></td></tr>
-      <tr data-type="payment"><td class="text-secondary">13:22:14</td><td>System</td><td class="text-muted">--</td><td><span class="ap-badge ap-badge-gray">Платежи</span></td><td>Выплата PAY-301 отправлена</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="auth"><td class="text-secondary">12:58:32</td><td>#3156</td><td class="text-muted">116.228.18.90</td><td><span class="ap-badge ap-badge-gray">Авторизация</span></td><td>Вход в систему</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="order"><td class="text-secondary">12:30:45</td><td>#3156</td><td class="text-muted">116.228.18.90</td><td><span class="ap-badge ap-badge-gray">Заказы</span></td><td>Обновление каталога (+18 позиций)</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="error" style="border-left:3px solid #E85C0D;"><td class="text-secondary">12:15:22</td><td>System</td><td class="text-muted">--</td><td><span class="ap-badge ap-badge-orange">Ошибка</span></td><td>Email delivery failed — support@consolidator.com</td><td><span class="ap-badge ap-badge-orange">Ошибка</span></td></tr>
-      <tr data-type="payment"><td class="text-secondary">11:15:08</td><td>System</td><td class="text-muted">--</td><td><span class="ap-badge ap-badge-gray">Платежи</span></td><td>Оплата TXN-8898 подтверждена</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="auth"><td class="text-secondary">10:45:22</td><td>#1051</td><td class="text-muted">89.108.64.15</td><td><span class="ap-badge ap-badge-gray">Авторизация</span></td><td>Вход в систему</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="order"><td class="text-secondary">10:40:05</td><td>#1051</td><td class="text-muted">89.108.64.15</td><td><span class="ap-badge ap-badge-gray">Заказы</span></td><td>Создание RFQ-0097</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="moderation"><td class="text-secondary">10:22:18</td><td>#5002</td><td class="text-muted">10.0.1.43</td><td><span class="ap-badge ap-badge-gray">Модерация</span></td><td>Блокировка пользователя #1006</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="error" style="border-left:3px solid #E85C0D;"><td class="text-secondary">09:42:11</td><td>System</td><td class="text-muted">--</td><td><span class="ap-badge ap-badge-orange">Ошибка</span></td><td>Database connection pool exhausted (5s)</td><td><span class="ap-badge ap-badge-orange">Предупреждение</span></td></tr>
-      <tr data-type="auth"><td class="text-secondary">09:30:15</td><td>#3142</td><td class="text-muted">58.247.12.30</td><td><span class="ap-badge ap-badge-gray">Авторизация</span></td><td>Вход в систему</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
-      <tr data-type="auth"><td class="text-secondary">09:10:44</td><td>#1038</td><td class="text-muted">188.32.112.8</td><td><span class="ap-badge ap-badge-gray">Авторизация</span></td><td>Вход в систему</td><td><span class="ap-badge ap-badge-gray">Успех</span></td></tr>
+      {% for wh in webhooks %}
+      <tr>
+        <td class="text-secondary">{{ wh.created_at|date:"d.m.Y H:i:s" }}</td>
+        <td><a href="/admin-panel/orders/{{ wh.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ wh.order_id }}</a></td>
+        <td class="text-secondary" style="font-size:11px;">{{ wh.endpoint|truncatechars:50 }}</td>
+        <td>{% if wh.success %}<span class="ap-badge ap-badge-green">OK</span>{% else %}<span class="ap-badge ap-badge-orange">Ошибка</span>{% endif %}</td>
+        <td class="text-secondary">{{ wh.status_code|default:"—" }}</td>
+        <td class="text-secondary">{{ wh.attempt }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" style="text-align:center;color:#919191;">Нет вебхуков</td></tr>
+      {% endfor %}
     </tbody>
   </table>
-</div>
-{% endblock %}
+  {% else %}
+  <form method="get" style="display:flex;gap:8px;margin-bottom:16px;align-items:flex-end;flex-wrap:wrap;">
+    <input type="hidden" name="tab" value="events"/>
+    <input type="text" name="q" class="ap-input" placeholder="Заказ или текст..." value="{{ q }}" style="width:180px;"/>
+    <select name="type" class="ap-select" style="min-width:130px;">
+      <option value="">Все типы</option>
+      {% for val, label in event_type_choices %}
+      <option value="{{ val }}" {% if current_type == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="source" class="ap-select" style="min-width:100px;">
+      <option value="">Источник</option>
+      {% for val, label in source_choices %}
+      <option value="{{ val }}" {% if current_source == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <input type="date" name="date_from" class="ap-input" value="{{ date_from }}" style="width:130px;"/>
+    <span style="color:#5E5E5E;">—</span>
+    <input type="date" name="date_to" class="ap-input" value="{{ date_to }}" style="width:130px;"/>
+    <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+    <a href="/admin-panel/export/events/" class="ap-btn ap-btn-ghost" style="text-decoration:none;margin-left:auto;">Экспорт CSV</a>
+  </form>
 
-{% block extra_js %}
-<script>
-function filterLogs() {
-  var type = document.getElementById('logType').value;
-  var user = document.getElementById('logUser').value.toLowerCase();
-  var rows = document.querySelectorAll('#logsTable tbody tr');
-  rows.forEach(function(row) {
-    var show = true;
-    if (type && row.dataset.type !== type) show = false;
-    if (user && row.children[1].textContent.toLowerCase().indexOf(user) === -1) show = false;
-    row.style.display = show ? '' : 'none';
-  });
-}
-</script>
+  <table class="ap-table">
+    <thead><tr><th>Время</th><th>Заказ</th><th>Тип</th><th>Источник</th><th>Комментарий</th></tr></thead>
+    <tbody>
+      {% for event in events %}
+      <tr>
+        <td class="text-secondary">{{ event.created_at|date:"d.m.Y H:i:s" }}</td>
+        <td><a href="/admin-panel/orders/{{ event.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ event.order_id }}</a></td>
+        <td>
+          {% if event.event_type == 'status_changed' %}<span class="ap-badge ap-badge-blue">Статус</span>
+          {% elif event.event_type == 'order_created' %}<span class="ap-badge ap-badge-green">Создан</span>
+          {% elif event.event_type == 'sla_status_changed' %}<span class="ap-badge ap-badge-orange">SLA</span>
+          {% elif event.event_type == 'reserve_paid' %}<span class="ap-badge ap-badge-blue">Резерв</span>
+          {% elif event.event_type == 'claim_status_changed' %}<span class="ap-badge ap-badge-orange">Рекламация</span>
+          {% elif event.event_type == 'document_uploaded' %}<span class="ap-badge ap-badge-gray">Документ</span>
+          {% else %}<span class="ap-badge ap-badge-gray">{{ event.get_event_type_display }}</span>{% endif %}
+        </td>
+        <td class="text-secondary">{{ event.source }}</td>
+        <td class="text-secondary">{{ event.meta.comment|default:"—"|truncatechars:80 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" style="text-align:center;color:#919191;">Нет событий</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if has_prev or has_next %}
+  <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;">
+    {% if has_prev %}<a href="?tab={{ tab }}&page={{ page_num|add:"-1" }}&type={{ current_type }}&source={{ current_source }}&q={{ q }}&date_from={{ date_from }}&date_to={{ date_to }}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&#8592; Назад</a>{% endif %}
+    <span style="font-size:13px;color:#919191;padding:6px 12px;">Стр. {{ page_num }}</span>
+    {% if has_next %}<a href="?tab={{ tab }}&page={{ page_num|add:"1" }}&type={{ current_type }}&source={{ current_source }}&q={{ q }}&date_from={{ date_from }}&date_to={{ date_to }}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &#8594;</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

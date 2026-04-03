@@ -23,10 +23,10 @@
     </a>
   </div>
 
-  <!-- Status card -->
-  <div style="margin:0 12px 6px;padding:14px 16px;background:#242424;border-radius:10px;border:1px solid rgba(255,255,255,0.055);">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-      <div style="position:relative;width:36px;height:36px;">
+  <!-- Status card (collapsible) -->
+  <div id="status-card" style="margin:0 12px 6px;background:#242424;border-radius:10px;border:1px solid rgba(255,255,255,0.055);overflow:hidden;flex-shrink:0;">
+    <div id="status-toggle" style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;">
+      <div style="position:relative;width:36px;height:36px;flex-shrink:0;">
         <svg width="36" height="36" viewBox="0 0 36 36" style="transform:rotate(-90deg)">
           <circle cx="18" cy="18" r="15" fill="none" stroke="#2C2C2C" stroke-width="2.5"/>
           <circle cx="18" cy="18" r="15" fill="none" stroke="#64B5F6" stroke-width="2.5"
@@ -40,36 +40,45 @@
         <div style="font-size:12px;font-weight:600;color:#ECECEC;">{{ seller_status_label|default:"Надёжный" }}</div>
         <div style="font-size:11px;color:#919191;margin-top:1px;white-space:nowrap;">Рейтинг поставщика</div>
       </div>
-      <div style="text-align:right;">
+      <div style="text-align:right;margin-right:4px;">
         <div style="font-size:13px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;white-space:nowrap;">$4.0M</div>
         <div style="font-size:11px;font-weight:600;color:#64B5F6;">+28.7%</div>
       </div>
+      <svg id="status-chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#6A6A6A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform .2s;transform:rotate(-90deg);"><path d="M4 6l4 4 4-4"/></svg>
     </div>
-    <div style="display:flex;gap:1px;margin-bottom:10px;">
-      <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:6px 0 0 6px;">
-        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">95.2%</div>
-        <div style="font-size:11px;color:#919191;margin-top:2px;">SLA</div>
-      </div>
-      <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;">
-        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">68%</div>
-        <div style="font-size:11px;color:#919191;margin-top:2px;">Конверсия</div>
-      </div>
-      <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:0 6px 6px 0;">
-        <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">4.26</div>
-        <div style="font-size:11px;color:#919191;margin-top:2px;">Оценка</div>
+    <div id="status-details" style="display:none;padding:0 16px 14px;">
+      <div style="display:flex;gap:1px;">
+        <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:6px 0 0 6px;">
+          <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">95.2%</div>
+          <div style="font-size:11px;color:#919191;margin-top:2px;">SLA</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;">
+          <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">68%</div>
+          <div style="font-size:11px;color:#919191;margin-top:2px;">Конверсия</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:0 6px 6px 0;">
+          <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">4.26</div>
+          <div style="font-size:11px;color:#919191;margin-top:2px;">Оценка</div>
+        </div>
       </div>
     </div>
-  </div>
-
-  <!-- Nav label -->
-  <div style="padding:10px 22px 4px;">
-    <span style="font-size:11px;color:#6A6A6A;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;">Меню</span>
   </div>
 
   <!-- Nav -->
   <nav style="flex:1;padding:2px 12px;display:flex;flex-direction:column;gap:1px;">
     {% for item in seller_nav_items %}
-      {% if item.enabled and item.url_name %}
+      {% if item.key == "_group" %}
+        {% if item.collapsible %}
+          <div class="nav-group-header" data-group="{{ item.label }}" onclick="this.classList.toggle('open');var s=this.nextElementSibling;while(s&&!s.classList.contains('nav-group-header')){s.style.display=this.classList.contains('open')?'':'none';s=s.nextElementSibling;}" style="padding:14px 12px 4px;{% if not forloop.first %}margin-top:4px;{% endif %}cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:10px;color:#6A6A6A;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;">{{ item.label }}</span>
+            <svg class="nav-group-chevron" width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#6A6A6A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;"><path d="M4 6l4 4 4-4"/></svg>
+          </div>
+        {% else %}
+          <div style="padding:14px 12px 4px;{% if not forloop.first %}margin-top:4px;{% endif %}">
+            <span style="font-size:10px;color:#6A6A6A;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;">{{ item.label }}</span>
+          </div>
+        {% endif %}
+      {% elif item.enabled and item.url_name %}
         <a href="{% url item.url_name %}" class="seller-nav-link{% if seller_active_nav == item.key %} active{% endif %}" style="display:flex;align-items:center;width:100%;text-decoration:none;border-radius:10px;gap:10px;position:relative;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;border:none;{% if seller_active_nav == item.key %}background:rgba(100,181,246,0.06);color:#ECECEC;font-weight:600;{% else %}background:transparent;color:#919191;font-weight:400;{% endif %}">
           {% if seller_active_nav == item.key %}
             <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:18px;border-radius:2px;background:#64B5F6;"></div>
@@ -141,6 +150,46 @@
       {% endif %}
     {% endfor %}
   </nav>
+
+  <style>
+    .nav-group-header .nav-group-chevron { transform: rotate(-90deg); }
+    .nav-group-header.open .nav-group-chevron { transform: rotate(0deg); }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      // Status card toggle
+      var toggle = document.getElementById('status-toggle');
+      if(toggle){
+        toggle.addEventListener('click', function(){
+          var d = document.getElementById('status-details');
+          var c = document.getElementById('status-chevron');
+          if(d.style.display === 'none'){
+            d.style.display = '';
+            c.style.transform = 'rotate(0deg)';
+          } else {
+            d.style.display = 'none';
+            c.style.transform = 'rotate(-90deg)';
+          }
+        });
+      }
+      // Collapsible nav groups
+      document.querySelectorAll('.nav-group-header[data-group]').forEach(function(h){
+        var s = h.nextElementSibling;
+        while(s && !s.classList.contains('nav-group-header')){
+          if(s.querySelector && s.querySelector('.seller-nav-link.active')){
+            h.classList.add('open');
+            return;
+          }
+          s = s.nextElementSibling;
+        }
+        s = h.nextElementSibling;
+        while(s && !s.classList.contains('nav-group-header')){
+          s.style.display = 'none';
+          s = s.nextElementSibling;
+        }
+      });
+    });
+  </script>
 
   <!-- Quick stats -->
   <div style="margin:0 12px 8px;padding:10px 14px;background:#242424;border-radius:10px;border:1px solid rgba(255,255,255,0.055);">
