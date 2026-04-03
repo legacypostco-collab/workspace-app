@@ -20,6 +20,8 @@
   background:#1A1A1A;border-radius:12px;padding:14px 16px;
   border:1px solid rgba(255,255,255,0.04);
 }
+a.neg-stat{text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .1s;}
+a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2C!important;transform:translateY(-1px);cursor:pointer!important;}
 .neg-stat-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -130,22 +132,22 @@
 
 <!-- Stats -->
 <div class="neg-stats">
-  <div class="neg-stat">
+  <a class="neg-stat" href="/buyer/negotiations/?status=active">
     <div class="neg-stat-label">Активных переторжек</div>
     <div class="neg-stat-val" style="color:#E85C0D;">3</div>
-  </div>
-  <div class="neg-stat">
+  </a>
+  <a class="neg-stat" href="/buyer/negotiations/?status=agreed">
     <div class="neg-stat-label">Согласованных сделок</div>
     <div class="neg-stat-val" style="color:#64B5F6;">8</div>
-  </div>
-  <div class="neg-stat">
+  </a>
+  <a class="neg-stat" href="/buyer/negotiations/">
     <div class="neg-stat-label">Средняя скидка</div>
     <div class="neg-stat-val">12%</div>
-  </div>
-  <div class="neg-stat">
+  </a>
+  <a class="neg-stat" href="/buyer/analytics/">
     <div class="neg-stat-label">Экономия за месяц</div>
     <div class="neg-stat-val" style="color:#64B5F6;">$4,280</div>
-  </div>
+  </a>
 </div>
 
 <!-- Active negotiations -->

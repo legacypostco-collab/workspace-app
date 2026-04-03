@@ -12,63 +12,63 @@
 
 <!-- KPI -->
 <div class="op-stats">
-  <div class="op-stat">
+  <a class="op-stat" href="/operator/payments/invoices/">
     <div class="op-stat-value">87</div>
     <div class="op-stat-label">Платежей за период</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/reconciliation/">
     <div class="op-stat-value">$428K</div>
     <div class="op-stat-label">Общая сумма</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/invoices/">
     <div class="op-stat-value">$4,920</div>
     <div class="op-stat-label">Средний платёж</div>
-  </div>
-  <div class="op-stat op-stat-warn">
+  </a>
+  <a class="op-stat op-stat-warn" href="/operator/payments/escrow/">
     <div class="op-stat-value">1</div>
     <div class="op-stat-label">Просрочено</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <a class="op-stat" href="/operator/payments/reconciliation/">
     <div class="op-stat-value">1.2 <span style="font-size:14px;font-weight:500;">дн.</span></div>
     <div class="op-stat-label">Средний срок обработки</div>
-  </div>
+  </a>
 </div>
 
 <!-- By payment types -->
 <div class="op-section-title" style="margin-top:8px;">По типам платежей</div>
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
-  <div class="op-card">
+  <a href="/operator/payments/invoices/?type=advance" class="op-card" style="text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .1s;cursor:pointer;" onmouseover="this.style.borderColor='rgba(100,181,246,0.35)';this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='';this.style.transform='';">
     <div style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:8px;">Авансы</div>
     <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">$98K</div>
     <div style="display:flex;gap:16px;margin-top:8px;">
       <div><div style="font-size:11px;color:#5E5E5E;">Кол-во</div><div style="font-size:13px;color:#919191;">24</div></div>
       <div><div style="font-size:11px;color:#5E5E5E;">Доля</div><div style="font-size:13px;color:#919191;">22.9%</div></div>
     </div>
-  </div>
-  <div class="op-card">
+  </a>
+  <a href="/operator/payments/invoices/?type=main" class="op-card" style="text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .1s;cursor:pointer;" onmouseover="this.style.borderColor='rgba(100,181,246,0.35)';this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='';this.style.transform='';">
     <div style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:8px;">Основные</div>
     <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">$218K</div>
     <div style="display:flex;gap:16px;margin-top:8px;">
       <div><div style="font-size:11px;color:#5E5E5E;">Кол-во</div><div style="font-size:13px;color:#919191;">32</div></div>
       <div><div style="font-size:11px;color:#5E5E5E;">Доля</div><div style="font-size:13px;color:#919191;">50.9%</div></div>
     </div>
-  </div>
-  <div class="op-card">
+  </a>
+  <a href="/operator/payments/invoices/?type=final" class="op-card" style="text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .1s;cursor:pointer;" onmouseover="this.style.borderColor='rgba(100,181,246,0.35)';this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='';this.style.transform='';">
     <div style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:8px;">Финальные</div>
     <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">$68K</div>
     <div style="display:flex;gap:16px;margin-top:8px;">
       <div><div style="font-size:11px;color:#5E5E5E;">Кол-во</div><div style="font-size:13px;color:#919191;">18</div></div>
       <div><div style="font-size:11px;color:#5E5E5E;">Доля</div><div style="font-size:13px;color:#919191;">15.9%</div></div>
     </div>
-  </div>
-  <div class="op-card">
+  </a>
+  <a href="/operator/payments/invoices/?type=customs" class="op-card" style="text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .1s;cursor:pointer;" onmouseover="this.style.borderColor='rgba(100,181,246,0.35)';this.style.transform='translateY(-1px)';" onmouseout="this.style.borderColor='';this.style.transform='';">
     <div style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:8px;">Таможенные</div>
     <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">$44K</div>
     <div style="display:flex;gap:16px;margin-top:8px;">
       <div><div style="font-size:11px;color:#5E5E5E;">Кол-во</div><div style="font-size:13px;color:#919191;">13</div></div>
       <div><div style="font-size:11px;color:#5E5E5E;">Доля</div><div style="font-size:13px;color:#919191;">10.3%</div></div>
     </div>
-  </div>
+  </a>
 </div>
 
 <!-- By currencies -->
@@ -138,7 +138,7 @@
         <td style="font-family:'Golos Text',sans-serif;">$8,400</td>
         <td class="text-secondary">20 мар</td>
         <td><span class="op-badge op-badge-orange">+5 дн.</span></td>
-        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Напоминание отправлено')">Напомнить</button></td>
+        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Напоминание отправлено', 2000, 'success')">Напомнить</button></td>
       </tr>
     </tbody>
   </table>

@@ -6,19 +6,19 @@
 
 <!-- Summary -->
 <div class="op-stats">
-  <div class="op-stat">
+  <div class="op-stat" id="esc-stat-hold" onclick="filterEscrow('Удержание')" style="cursor:pointer;">
     <div class="op-stat-value">$142,800</div>
     <div class="op-stat-label">Удержано на счетах</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" id="esc-stat-released" onclick="document.getElementById('esc-history').scrollIntoView({behavior:'smooth'})" style="cursor:pointer;">
     <div class="op-stat-value">$285,200</div>
     <div class="op-stat-label">Выпущено за месяц</div>
   </div>
-  <div class="op-stat op-stat-warn">
+  <div class="op-stat op-stat-warn" id="esc-stat-dispute" onclick="filterEscrow('Спор')" style="cursor:pointer;">
     <div class="op-stat-value">$18,400</div>
     <div class="op-stat-label">Ожидает решения</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" id="esc-stat-all" onclick="filterEscrow('')" style="cursor:pointer;border-color:rgba(100,181,246,0.35);">
     <div class="op-stat-value">12</div>
     <div class="op-stat-label">Активных счетов</div>
   </div>
@@ -41,7 +41,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr>
+      <tr data-status="Удержание">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ESC-1201</td>
         <td>ORD-4521</td>
         <td class="text-secondary">#1042</td>
@@ -52,11 +52,11 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1201')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Продление удержания ESC-1201')">Продлить</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
           </div>
         </td>
       </tr>
-      <tr>
+      <tr data-status="Удержание">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ESC-1198</td>
         <td>ORD-4518</td>
         <td class="text-secondary">#1038</td>
@@ -67,11 +67,11 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1198')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Продление удержания ESC-1198')">Продлить</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
           </div>
         </td>
       </tr>
-      <tr>
+      <tr data-status="Спор">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#E85C0D;">ESC-1195</td>
         <td>ORD-4515</td>
         <td class="text-secondary">#1051</td>
@@ -81,11 +81,11 @@
         <td class="text-secondary">15 мар</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Открытие спора ESC-1195')">Разобрать</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Запрос на доработку отправлен', 2000, 'warn')">Разобрать</button>
           </div>
         </td>
       </tr>
-      <tr>
+      <tr data-status="Удержание">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ESC-1190</td>
         <td>ORD-4505</td>
         <td class="text-secondary">#1033</td>
@@ -96,7 +96,7 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1190')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Продление удержания ESC-1190')">Продлить</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
           </div>
         </td>
       </tr>
@@ -105,7 +105,7 @@
 </div>
 
 <!-- Transaction history -->
-<div class="op-card">
+<div class="op-card" id="esc-history">
   <div class="op-section-title" style="margin-bottom:14px;">История транзакций</div>
   <table class="op-table">
     <thead>
@@ -160,13 +160,29 @@
 
 {% block extra_js %}
 <script>
+var activeEscStatus = '';
+window.filterEscrow = function(status) {
+  activeEscStatus = (activeEscStatus === status) ? '' : status;
+  var active = 'rgba(100,181,246,0.35)', inactive = 'rgba(255,255,255,0.04)';
+  var warnActive = 'rgba(232,92,13,0.5)';
+  document.getElementById('esc-stat-hold').style.borderColor = inactive;
+  document.getElementById('esc-stat-dispute').style.borderColor = inactive;
+  document.getElementById('esc-stat-all').style.borderColor = inactive;
+  if (activeEscStatus === 'Удержание') document.getElementById('esc-stat-hold').style.borderColor = active;
+  else if (activeEscStatus === 'Спор') document.getElementById('esc-stat-dispute').style.borderColor = warnActive;
+  else document.getElementById('esc-stat-all').style.borderColor = active;
+  document.querySelectorAll('#escrow-table tbody tr[data-status]').forEach(function(row) {
+    row.style.display = (!activeEscStatus || row.getAttribute('data-status') === activeEscStatus) ? '' : 'none';
+  });
+};
+
 function releaseEscrow(btn, escId) {
   var row = btn.closest('tr');
   var badge = row.querySelector('.escrow-status');
   badge.className = 'op-badge op-badge-gray escrow-status';
   badge.textContent = 'Выпущено';
-  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'Детали ' + escId + '\')">Детали</button>';
-  opToast('Средства ' + escId + ' выпущены поставщику');
+  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'Детали открыты\', 2000, \'success\')">Детали</button>';
+  opToast('Эскроу выпущен', 2000, 'success');
 }
 </script>
 {% endblock %}

@@ -4,19 +4,19 @@
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
-  <div class="op-stat">
+  <div class="op-stat" onclick="switchRecTab('all')" style="cursor:pointer;border-color:rgba(100,181,246,0.35);" id="rec-stat-all">
     <div class="op-stat-value">24</div>
     <div class="op-stat-label">Сверок за месяц</div>
   </div>
-  <div class="op-stat op-stat-warn">
+  <div class="op-stat op-stat-warn" onclick="switchRecTab('discrepancy')" style="cursor:pointer;" id="rec-stat-disc">
     <div class="op-stat-value">3</div>
     <div class="op-stat-label">Расхождения</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" onclick="switchRecTab('all')" style="cursor:pointer;" id="rec-stat-sum">
     <div class="op-stat-value">$1.2M</div>
     <div class="op-stat-label">Общая сумма</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" onclick="switchRecTab('confirmed')" style="cursor:pointer;" id="rec-stat-conf">
     <div class="op-stat-value">21</div>
     <div class="op-stat-label">Подтверждено</div>
   </div>
@@ -176,6 +176,11 @@
       var s = row.getAttribute('data-status');
       row.style.display = s === tab ? '' : 'none';
     });
+    var inactive = 'rgba(255,255,255,0.04)', blue = 'rgba(100,181,246,0.35)', orange = 'rgba(232,92,13,0.5)';
+    document.getElementById('rec-stat-all').style.borderColor = tab === 'all' ? blue : inactive;
+    document.getElementById('rec-stat-disc').style.borderColor = tab === 'discrepancy' ? orange : inactive;
+    document.getElementById('rec-stat-sum').style.borderColor = tab === 'all' ? blue : inactive;
+    document.getElementById('rec-stat-conf').style.borderColor = tab === 'confirmed' ? blue : inactive;
   };
 })();
 </script>

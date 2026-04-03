@@ -4,27 +4,27 @@
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
-  <div class="op-stat">
+  <div class="op-stat" id="cdoc-type-all" onclick="filterByDocType('')" style="cursor:pointer;border-color:rgba(100,181,246,0.35);transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">32</div>
     <div class="op-stat-label">Всего документов</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" id="cdoc-type-invoice" onclick="filterByDocType('Инвойс')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">12</div>
     <div class="op-stat-label">Инвойсы</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" id="cdoc-type-cert" onclick="filterByDocType('Сертификат')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">8</div>
     <div class="op-stat-label">Сертификаты</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" id="cdoc-type-perm" onclick="filterByDocType('Разрешение')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">3</div>
     <div class="op-stat-label">Разрешения</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" id="cdoc-type-conc" onclick="filterByDocType('Заключение')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">5</div>
     <div class="op-stat-label">Заключения</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" id="cdoc-type-other" onclick="filterByDocType('Прочие')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">4</div>
     <div class="op-stat-label">Прочие</div>
   </div>
@@ -39,7 +39,7 @@
 </div>
 
 <!-- Upload area -->
-<div class="op-card" style="margin-bottom:16px;border:2px dashed rgba(255,255,255,0.06);text-align:center;padding:28px 20px;cursor:pointer;" onclick="opToast('Зона загрузки документов (демо)')">
+<div class="op-card" style="margin-bottom:16px;border:2px dashed rgba(255,255,255,0.06);text-align:center;padding:28px 20px;cursor:pointer;" onclick="opToast('Загрузка документов', 2000, 'info')">
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:8px;"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg>
   <div style="font-size:13px;color:#919191;">Перетащите файлы сюда или нажмите для загрузки</div>
   <div style="font-size:11px;color:#5E5E5E;margin-top:4px;">PDF, JPEG, PNG до 10 МБ</div>
@@ -60,113 +60,113 @@
       </tr>
     </thead>
     <tbody>
-      <tr data-dir="in" data-archived="0" onclick="opToast('Документ: Инвойс #INV-2241')">
+      <tr data-dir="in" data-archived="0" data-type="Инвойс" onclick="opToast('Инвойс #INV-2241')">
         <td style="font-weight:600;">Инвойс #INV-2241</td>
         <td class="text-secondary">Инвойс</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78412</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
         <td class="text-secondary">22 мар</td>
         <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание инвойса #INV-2241')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
       </tr>
-      <tr data-dir="in" data-archived="0" onclick="opToast('Документ: Сертификат CN-8841')">
+      <tr data-dir="in" data-archived="0" data-type="Сертификат" onclick="opToast('Сертификат CN-8841')">
         <td style="font-weight:600;">Сертификат CN-8841</td>
         <td class="text-secondary">Сертификат</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78412</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
         <td class="text-secondary">22 мар</td>
         <td><span class="op-badge op-badge-gray">На проверке</span></td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Проверка сертификата CN-8841')">Проверить</button></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Документ отправлен на проверку', 2000, 'success')">Проверить</button></td>
       </tr>
-      <tr data-dir="out" data-archived="0" onclick="opToast('Документ: Разрешение РП-1142')">
+      <tr data-dir="out" data-archived="0" data-type="Разрешение" onclick="opToast('Разрешение РП-1142')">
         <td style="font-weight:600;">Разрешение РП-1142</td>
         <td class="text-secondary">Разрешение</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78415</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
         <td class="text-secondary">21 мар</td>
         <td><span class="op-badge op-badge-orange">Требует доработки</span></td>
-        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Доработка разрешения РП-1142')">Доработать</button></td>
+        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Запрос на доработку отправлен', 2000, 'warn')">Доработать</button></td>
       </tr>
-      <tr data-dir="in" data-archived="0" onclick="opToast('Документ: Инвойс #INV-2238')">
+      <tr data-dir="in" data-archived="0" data-type="Инвойс" onclick="opToast('Инвойс #INV-2238')">
         <td style="font-weight:600;">Инвойс #INV-2238</td>
         <td class="text-secondary">Инвойс</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78415</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
         <td class="text-secondary">20 мар</td>
         <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание инвойса #INV-2238')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
       </tr>
-      <tr data-dir="in" data-archived="0" onclick="opToast('Документ: Заключение ЗК-447')">
+      <tr data-dir="in" data-archived="0" data-type="Заключение" onclick="opToast('Заключение ЗК-447')">
         <td style="font-weight:600;">Заключение ЗК-447</td>
         <td class="text-secondary">Заключение</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78418</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
         <td class="text-secondary">19 мар</td>
         <td><span class="op-badge op-badge-gray">На проверке</span></td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Проверка заключения ЗК-447')">Проверить</button></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Документ отправлен на проверку', 2000, 'success')">Проверить</button></td>
       </tr>
-      <tr data-dir="out" data-archived="0" onclick="opToast('Документ: Сертификат TR-5521')">
+      <tr data-dir="out" data-archived="0" data-type="Сертификат" onclick="opToast('Сертификат TR-5521')">
         <td style="font-weight:600;">Сертификат TR-5521</td>
         <td class="text-secondary">Сертификат</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78418</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
         <td class="text-secondary">19 мар</td>
         <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание сертификата TR-5521')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
       </tr>
-      <tr data-dir="in" data-archived="0" onclick="opToast('Документ: Инвойс #INV-2235')">
+      <tr data-dir="in" data-archived="0" data-type="Инвойс" onclick="opToast('Инвойс #INV-2235')">
         <td style="font-weight:600;">Инвойс #INV-2235</td>
         <td class="text-secondary">Инвойс</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78420</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
         <td class="text-secondary">18 мар</td>
         <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание инвойса #INV-2235')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
       </tr>
-      <tr data-dir="out" data-archived="0" onclick="opToast('Документ: Разрешение РП-1138')">
+      <tr data-dir="out" data-archived="0" data-type="Разрешение" onclick="opToast('Разрешение РП-1138')">
         <td style="font-weight:600;">Разрешение РП-1138</td>
         <td class="text-secondary">Разрешение</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78420</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
         <td class="text-secondary">18 мар</td>
         <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание разрешения РП-1138')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
       </tr>
-      <tr data-dir="in" data-archived="1" onclick="opToast('Документ: Заключение ЗК-441')">
+      <tr data-dir="in" data-archived="1" data-type="Заключение" onclick="opToast('Заключение ЗК-441')">
         <td style="font-weight:600;">Заключение ЗК-441</td>
         <td class="text-secondary">Заключение</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78401</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4498</td>
         <td class="text-secondary">10 мар</td>
         <td><span class="op-badge op-badge-gray">Архив</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание заключения ЗК-441')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
       </tr>
-      <tr data-dir="in" data-archived="0" onclick="opToast('Документ: Сертификат AE-7712')">
+      <tr data-dir="in" data-archived="0" data-type="Сертификат" onclick="opToast('Сертификат AE-7712')">
         <td style="font-weight:600;">Сертификат AE-7712</td>
         <td class="text-secondary">Сертификат</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78422</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
         <td class="text-secondary">17 мар</td>
         <td><span class="op-badge op-badge-gray">На проверке</span></td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Проверка сертификата AE-7712')">Проверить</button></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Документ отправлен на проверку', 2000, 'success')">Проверить</button></td>
       </tr>
-      <tr data-dir="out" data-archived="1" onclick="opToast('Документ: Инвойс #INV-2220')">
+      <tr data-dir="out" data-archived="1" data-type="Инвойс" onclick="opToast('Инвойс #INV-2220')">
         <td style="font-weight:600;">Инвойс #INV-2220</td>
         <td class="text-secondary">Инвойс</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78398</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4495</td>
         <td class="text-secondary">8 мар</td>
         <td><span class="op-badge op-badge-gray">Архив</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание инвойса #INV-2220')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
       </tr>
-      <tr data-dir="in" data-archived="0" onclick="opToast('Документ: Прочий документ ПД-082')">
+      <tr data-dir="in" data-archived="0" data-type="Прочие" onclick="opToast('Прочий документ ПД-082')">
         <td style="font-weight:600;">Прочий документ ПД-082</td>
         <td class="text-secondary">Прочие</td>
         <td style="font-family:'Golos Text',sans-serif;">ДТ-78422</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
         <td class="text-secondary">17 мар</td>
         <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание ПД-082')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
       </tr>
     </tbody>
   </table>
@@ -176,16 +176,41 @@
 {% block extra_js %}
 <script>
 (function(){
+  var activeType = '';
+
   window.switchCDocTab = function(tab){
     document.querySelectorAll('[data-cdoc-tab]').forEach(function(btn){
       btn.classList.toggle('active', btn.getAttribute('data-cdoc-tab') === tab);
     });
-    document.querySelectorAll('#cdocs-table tbody tr').forEach(function(row){
-      if(tab === 'all'){row.style.display='';return;}
-      if(tab === 'archive'){row.style.display = row.getAttribute('data-archived')==='1' ? '' : 'none';return;}
-      row.style.display = (row.getAttribute('data-archived')==='0' && row.getAttribute('data-dir')===tab) ? '' : 'none';
-    });
+    applyFilters(tab, activeType);
   };
+
+  window.filterByDocType = function(type){
+    activeType = (activeType === type) ? '' : type; // toggle
+    var active = 'rgba(100,181,246,0.35)';
+    var inactive = 'rgba(255,255,255,0.04)';
+    document.querySelectorAll('[id^="cdoc-type-"]').forEach(function(el){el.style.borderColor=inactive;el.style.background='';});
+    if(activeType === ''){
+      document.getElementById('cdoc-type-all').style.borderColor = active;
+    } else {
+      var map = {'Инвойс':'cdoc-type-invoice','Сертификат':'cdoc-type-cert','Разрешение':'cdoc-type-perm','Заключение':'cdoc-type-conc','Прочие':'cdoc-type-other'};
+      if(map[activeType]) document.getElementById(map[activeType]).style.borderColor = active;
+    }
+    var currentTab = (document.querySelector('[data-cdoc-tab].active') || {getAttribute:function(){return 'all';}}).getAttribute('data-cdoc-tab');
+    applyFilters(currentTab, activeType);
+  };
+
+  function applyFilters(tab, type){
+    document.querySelectorAll('#cdocs-table tbody tr').forEach(function(row){
+      var dirOk = true, typeOk = true;
+      if(tab !== 'all'){
+        if(tab === 'archive') dirOk = row.getAttribute('data-archived')==='1';
+        else dirOk = row.getAttribute('data-archived')==='0' && row.getAttribute('data-dir')===tab;
+      }
+      if(type) typeOk = row.getAttribute('data-type') === type;
+      row.style.display = (dirOk && typeOk) ? '' : 'none';
+    });
+  }
 })();
 </script>
 {% endblock %}

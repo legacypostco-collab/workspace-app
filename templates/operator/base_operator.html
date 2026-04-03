@@ -104,6 +104,8 @@
     /* Section title */
     .op-section-title{font-size:15px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;margin-bottom:12px;}
     .op-section-sub{font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;font-weight:500;margin-bottom:8px;}
+    a.op-stat{text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .1s;}
+    a.op-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2C!important;transform:translateY(-1px);cursor:pointer!important;}
   </style>
   {% block extra_css %}{% endblock %}
 </head>
@@ -259,17 +261,17 @@
   renderNav();
 
   /* ── Toast system ── */
-  window.opToast = function(msg, duration) {
+  window.opToast = function(msg, duration, type) {
     var container = document.getElementById('op-toast-container');
     var t = document.createElement('div');
     t.className = 'op-toast';
-    t.textContent = msg + ' — функция в разработке';
-    t.style.borderLeft = '3px solid #E85C0D';
+    t.textContent = msg;
+    t.style.borderLeft = type === 'success' ? '3px solid #4CAF50' : type === 'warn' ? '3px solid #E85C0D' : '3px solid #64B5F6';
     container.appendChild(t);
     setTimeout(function() {
       t.classList.add('hiding');
       setTimeout(function() { t.remove(); }, 200);
-    }, duration || 2500);
+    }, duration || 2000);
   };
 })();
 </script>
