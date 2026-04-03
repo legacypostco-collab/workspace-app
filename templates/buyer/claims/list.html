@@ -28,7 +28,10 @@
 .clm-stat {
   background:#1A1A1A;border-radius:12px;padding:14px 16px;
   border:1px solid rgba(255,255,255,0.04);
+  transition:border-color .15s,background .15s;cursor:pointer;
 }
+a.clm-stat { text-decoration:none; display:block; }
+a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2C2C2C !important; }
 .clm-stat-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -136,22 +139,22 @@
 
 <!-- Stats -->
 <div class="clm-stats">
-  <div class="clm-stat">
+  <a href="/buyer/claims/" class="clm-stat">
     <div class="clm-stat-label">Всего рекламаций</div>
     <div class="clm-stat-val">7</div>
-  </div>
-  <div class="clm-stat">
+  </a>
+  <a href="/buyer/claims/?status=open" class="clm-stat">
     <div class="clm-stat-label">Открыта</div>
     <div class="clm-stat-val" style="color:#E05555;">1</div>
-  </div>
-  <div class="clm-stat">
+  </a>
+  <a href="/buyer/claims/?status=progress" class="clm-stat">
     <div class="clm-stat-label">В работе</div>
     <div class="clm-stat-val" style="color:#E85C0D;">2</div>
-  </div>
-  <div class="clm-stat">
+  </a>
+  <a href="/buyer/claims/?status=resolved" class="clm-stat">
     <div class="clm-stat-label">Решена</div>
     <div class="clm-stat-val" style="color:#64B5F6;">4</div>
-  </div>
+  </a>
 </div>
 
 <!-- Claims list -->

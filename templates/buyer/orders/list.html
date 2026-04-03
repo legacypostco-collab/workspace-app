@@ -20,7 +20,10 @@
 .ord-stat {
   background:#1A1A1A;border-radius:12px;padding:14px 16px;
   border:1px solid rgba(255,255,255,0.04);
+  transition:border-color .15s,background .15s;cursor:pointer;
 }
+a.ord-stat { text-decoration:none; display:block; }
+a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2C2C2C !important; }
 .ord-stat-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -122,22 +125,22 @@
 
 <!-- Stats -->
 <div class="ord-stats">
-  <div class="ord-stat">
+  <a href="/buyer/orders/" class="ord-stat">
     <div class="ord-stat-label">Всего заказов</div>
     <div class="ord-stat-val">24</div>
-  </div>
-  <div class="ord-stat">
+  </a>
+  <a href="/buyer/orders/?status=active" class="ord-stat">
     <div class="ord-stat-label">В работе</div>
     <div class="ord-stat-val" style="color:#E85C0D;">6</div>
-  </div>
-  <div class="ord-stat">
+  </a>
+  <a href="/buyer/orders/?status=delivered" class="ord-stat">
     <div class="ord-stat-label">Доставлено</div>
     <div class="ord-stat-val" style="color:#64B5F6;">16</div>
-  </div>
-  <div class="ord-stat">
+  </a>
+  <a href="/buyer/finance/" class="ord-stat">
     <div class="ord-stat-label">Общая сумма</div>
     <div class="ord-stat-val">$142,800</div>
-  </div>
+  </a>
 </div>
 
 <!-- Filters -->

@@ -44,7 +44,10 @@
 .rfq-stat {
   background:#1A1A1A;border-radius:12px;padding:14px 16px;
   border:1px solid rgba(255,255,255,0.04);
+  transition:border-color .15s,background .15s;cursor:pointer;
 }
+a.rfq-stat { text-decoration:none; display:block; }
+a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2C2C2C !important; }
 .rfq-stat-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -120,22 +123,22 @@
 
 <!-- Stats -->
 <div class="rfq-stats">
-  <div class="rfq-stat">
+  <a href="/buyer/rfq/" class="rfq-stat">
     <div class="rfq-stat-label">Всего RFQ</div>
     <div class="rfq-stat-val">12</div>
-  </div>
-  <div class="rfq-stat">
+  </a>
+  <a href="/buyer/rfq/?status=pending" class="rfq-stat">
     <div class="rfq-stat-label">Ожидает котировки</div>
     <div class="rfq-stat-val" style="color:#E85C0D;">3</div>
-  </div>
-  <div class="rfq-stat">
+  </a>
+  <a href="/buyer/rfq/?status=quoted" class="rfq-stat">
     <div class="rfq-stat-label">Котировка готова</div>
     <div class="rfq-stat-val" style="color:#64B5F6;">2</div>
-  </div>
-  <div class="rfq-stat">
+  </a>
+  <a href="/buyer/rfq/?status=ordered" class="rfq-stat">
     <div class="rfq-stat-label">Заказ оформлен</div>
     <div class="rfq-stat-val" style="color:#64B5F6;">7</div>
-  </div>
+  </a>
 </div>
 
 <!-- Tabs -->

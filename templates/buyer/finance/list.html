@@ -19,7 +19,10 @@
 .bfin-kpi {
   background:#1A1A1A;border-radius:12px;padding:14px 16px;
   border:1px solid rgba(255,255,255,0.04);
+  transition:border-color .15s,background .15s;cursor:pointer;
 }
+a.bfin-kpi { text-decoration:none; display:block; }
+a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2C2C2C !important; }
 .bfin-kpi-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -110,26 +113,26 @@
 
 <!-- KPI row -->
 <div class="bfin-kpis">
-  <div class="bfin-kpi">
+  <a href="/buyer/finance/?payment=paid" class="bfin-kpi">
     <div class="bfin-kpi-label">Оплачено</div>
     <div class="bfin-kpi-val" style="color:#64B5F6;">$98,420</div>
     <div class="bfin-kpi-hint" style="color:#64B5F6;">за Q1 2026</div>
-  </div>
-  <div class="bfin-kpi">
+  </a>
+  <a href="/buyer/finance/?payment=overdue" class="bfin-kpi">
     <div class="bfin-kpi-label">Задолженность</div>
     <div class="bfin-kpi-val" style="color:#E05555;">$18,640</div>
     <div class="bfin-kpi-hint" style="color:#E05555;">3 счёта</div>
-  </div>
-  <div class="bfin-kpi">
+  </a>
+  <a href="/buyer/finance/" class="bfin-kpi">
     <div class="bfin-kpi-label">Бюджет остаток</div>
     <div class="bfin-kpi-val" style="color:#64B5F6;">$81,580</div>
     <div class="bfin-kpi-hint" style="color:#64B5F6;">из $180,000</div>
-  </div>
-  <div class="bfin-kpi">
+  </a>
+  <a href="/buyer/analytics/" class="bfin-kpi">
     <div class="bfin-kpi-label">Экономия</div>
     <div class="bfin-kpi-val" style="color:#64B5F6;">$12,340</div>
     <div class="bfin-kpi-hint" style="color:#64B5F6;">переторжка + объём</div>
-  </div>
+  </a>
 </div>
 
 <!-- Recent payments / invoices -->
