@@ -52,7 +52,7 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1201')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();extendEscrow(this,this.closest('tr').querySelector('td').textContent)">Продлить</button>
           </div>
         </td>
       </tr>
@@ -67,7 +67,7 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1198')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();extendEscrow(this,this.closest('tr').querySelector('td').textContent)">Продлить</button>
           </div>
         </td>
       </tr>
@@ -81,7 +81,7 @@
         <td class="text-secondary">15 мар</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Запрос на доработку отправлен', 2000, 'warn')">Разобрать</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();disputeEscrow(this)">Разобрать</button>
           </div>
         </td>
       </tr>
@@ -96,7 +96,7 @@
         <td>
           <div style="display:flex;gap:6px;">
             <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1190')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();extendEscrow(this,this.closest('tr').querySelector('td').textContent)">Продлить</button>
           </div>
         </td>
       </tr>
@@ -175,6 +175,63 @@ window.filterEscrow = function(status) {
     row.style.display = (!activeEscStatus || row.getAttribute('data-status') === activeEscStatus) ? '' : 'none';
   });
 };
+
+function extendEscrow(btn, escId) {
+  var row = btn.closest('tr');
+  var next = row.nextElementSibling;
+  if (next && next.classList.contains('esc-extend-row')) { next.remove(); return; }
+  var d = new Date(); d.setDate(d.getDate() + 14);
+  var dateStr = d.toISOString().split('T')[0];
+  var detail = document.createElement('tr');
+  detail.className = 'esc-extend-row';
+  detail.innerHTML = '<td colspan="8" style="padding:12px 16px;background:#1F1F1F;">'
+    + '<div style="display:flex;align-items:center;gap:10px;font-size:12px;">'
+    + '<span style="color:#919191;white-space:nowrap;">Продлить до:</span>'
+    + '<input type="date" class="op-input" style="width:160px;" value="' + dateStr + '" />'
+    + '<input class="op-input" placeholder="Причина продления..." style="flex:1;" />'
+    + '<button onclick="confirmExtend(this,\'' + escId + '\')" style="padding:7px 14px;border-radius:8px;background:rgba(102,187,106,0.12);color:#66BB6A;border:1px solid rgba(102,187,106,0.2);font-size:12px;cursor:pointer;white-space:nowrap;">✓ Продлить</button>'
+    + '<button onclick="this.closest(\'.esc-extend-row\').remove()" style="padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:12px;cursor:pointer;">Отмена</button>'
+    + '</div></td>';
+  row.parentElement.insertBefore(detail, row.nextSibling);
+  detail.querySelector('input[type="date"]').focus();
+}
+function confirmExtend(btn, escId) {
+  var dateEl = btn.closest('tr').querySelector('input[type="date"]');
+  var dateVal = dateEl ? dateEl.value : '';
+  btn.closest('tr').remove();
+  opToast('Удержание ' + escId + ' продлено до ' + dateVal, 2000, 'success');
+}
+function disputeEscrow(btn) {
+  var row = btn.closest('tr');
+  var next = row.nextElementSibling;
+  if (next && next.classList.contains('esc-dispute-row')) { next.remove(); return; }
+  var escId = row.querySelector('td').textContent;
+  var detail = document.createElement('tr');
+  detail.className = 'esc-dispute-row';
+  detail.innerHTML = '<td colspan="8" style="padding:12px 16px;background:#1F1F1F;">'
+    + '<div style="display:flex;gap:10px;align-items:flex-start;">'
+    + '<select style="padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;">'
+    + '<option>Вернуть покупателю</option><option>Выплатить поставщику</option><option>Разделить между сторонами</option><option>Запросить арбитраж</option>'
+    + '</select>'
+    + '<textarea rows="2" placeholder="Обоснование решения по спору..." style="flex:1;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;font-family:inherit;"></textarea>'
+    + '<button onclick="resolveDispute(this,\'' + escId + '\')" style="padding:8px 14px;border-radius:8px;background:rgba(102,187,106,0.12);color:#66BB6A;border:1px solid rgba(102,187,106,0.2);font-size:12px;cursor:pointer;white-space:nowrap;">✓ Применить</button>'
+    + '</div></td>';
+  row.parentElement.insertBefore(detail, row.nextSibling);
+  detail.querySelector('textarea').focus();
+}
+function resolveDispute(btn, escId) {
+  var select = btn.closest('tr').querySelector('select');
+  var decision = select ? select.value : '';
+  var prevRow = btn.closest('tr').previousElementSibling;
+  btn.closest('tr').remove();
+  if (prevRow) {
+    var badge = prevRow.querySelector('.escrow-status');
+    badge.className = 'op-badge op-badge-gray escrow-status'; badge.textContent = 'Решён';
+    var actionTd = prevRow.querySelector('td:last-child');
+    if (actionTd) actionTd.innerHTML = '<span style="font-size:12px;color:#66BB6A;">✓ ' + decision + '</span>';
+  }
+  opToast(escId + ': спор разобран — ' + decision, 2500, 'success');
+}
 
 function releaseEscrow(btn, escId) {
   var row = btn.closest('tr');

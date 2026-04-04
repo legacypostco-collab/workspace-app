@@ -60,8 +60,8 @@
         <td class="text-secondary">Менеджер #1</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Связь с логистом по ORD-4501')">Логист</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Уведомление покупателю #1042')">Уведомить</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();contactLogist(this,'ORD-4501')">Логист</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();notifyBuyer(this,'Покупатель #1042')">Уведомить</button>
           </div>
         </td>
       </tr>
@@ -79,8 +79,8 @@
         <td class="text-secondary">Менеджер #2</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Связь с логистом по ORD-4497')">Логист</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Уведомление покупателю #1038')">Уведомить</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();contactLogist(this,'ORD-4497')">Логист</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();notifyBuyer(this,'Покупатель #1038')">Уведомить</button>
           </div>
         </td>
       </tr>
@@ -184,6 +184,44 @@
       if(tab === 'all'){row.style.display='';return;}
       row.style.display = row.getAttribute('data-status') === tab ? '' : 'none';
     });
+  };
+
+  window.contactLogist = function(btn, ordId) {
+    var row = btn.closest('tr');
+    var next = row.nextElementSibling;
+    if (next && next.classList.contains('logist-contact-row')) { next.remove(); return; }
+    var detail = document.createElement('tr');
+    detail.className = 'logist-contact-row';
+    detail.innerHTML = '<td colspan="9" style="padding:12px 16px;background:#1F1F1F;">'
+      + '<div style="display:flex;gap:8px;align-items:center;font-size:12px;">'
+      + '<span style="color:#919191;white-space:nowrap;">Связаться с логистом по ' + ordId + ':</span>'
+      + '<button onclick="this.closest(\'tr\').remove();opToast(\'Звонок логисту...\',2000,\'success\')" style="padding:6px 14px;border-radius:8px;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.25);font-size:12px;cursor:pointer;">📞 Позвонить</button>'
+      + '<button onclick="this.closest(\'tr\').remove();opToast(\'Сообщение отправлено логисту\',2000,\'success\')" style="padding:6px 14px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:12px;cursor:pointer;">💬 Написать</button>'
+      + '<button onclick="this.closest(\'tr\').remove()" style="padding:6px 10px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:12px;cursor:pointer;">Отмена</button>'
+      + '</div></td>';
+    row.parentElement.insertBefore(detail, row.nextSibling);
+  };
+  window.notifyBuyer = function(btn, buyerId) {
+    var row = btn.closest('tr');
+    var next = row.nextElementSibling;
+    if (next && next.classList.contains('notify-buyer-row')) { next.remove(); return; }
+    if (next && next.classList.contains('logist-contact-row')) { next.remove(); }
+    var detail = document.createElement('tr');
+    detail.className = 'notify-buyer-row';
+    detail.innerHTML = '<td colspan="9" style="padding:12px 16px;background:#1F1F1F;">'
+      + '<div style="display:flex;gap:10px;align-items:flex-start;">'
+      + '<textarea rows="2" placeholder="Сообщение для ' + buyerId + '..." style="flex:1;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;font-family:inherit;"></textarea>'
+      + '<button onclick="sendBuyerNotif(this,\'' + buyerId + '\')" style="padding:8px 14px;border-radius:8px;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.25);font-size:12px;cursor:pointer;white-space:nowrap;">Отправить</button>'
+      + '<button onclick="this.closest(\'tr\').remove()" style="padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:12px;cursor:pointer;">Отмена</button>'
+      + '</div></td>';
+    row.parentElement.insertBefore(detail, row.nextSibling);
+    detail.querySelector('textarea').focus();
+  };
+  window.sendBuyerNotif = function(btn, buyerId) {
+    var ta = btn.previousElementSibling;
+    if (!ta.value.trim()) { opToast('Введите сообщение'); return; }
+    btn.closest('tr').remove();
+    opToast('Уведомление для ' + buyerId + ' отправлено', 2000, 'success');
   };
 
   window.addNote = function(btn, orderId){

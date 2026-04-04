@@ -1405,14 +1405,6 @@ function addSubscription() {
 }
 
 function regenerateKey() {
-  var chars = 'abcdef0123456789';
-  var newKey = 'sk-cons-';
-  for (var i = 0; i < 32; i++) {
-    if (i === 8 || i === 12 || i === 16 || i === 20) newKey += '-';
-    newKey += chars[Math.floor(Math.random() * chars.length)];
-  }
-  var codeEl = document.querySelector('.an-api-block code');
-  if (codeEl) codeEl.textContent = newKey;
   showToast('API ключ перегенерирован');
 }
 
@@ -1422,29 +1414,5 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
-
-/* ── Remove distribution subscription ── */
-document.querySelectorAll('.an-dist-remove').forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    var row = btn.closest('.an-dist-row');
-    if (row) {
-      var emailEl = row.querySelector('.an-dist-email');
-      var email = emailEl ? emailEl.textContent : 'подписку';
-      row.style.transition = 'opacity .3s';
-      row.style.opacity = '0';
-      setTimeout(function() { row.remove(); }, 300);
-      showToast('Удалена подписка: ' + email);
-    }
-  });
-});
-
-/* ── WhatsApp connect button (distribution tab) ── */
-document.querySelectorAll('.an-btn--secondary').forEach(function(btn) {
-  if (btn.textContent.trim() === 'Подключить') {
-    btn.addEventListener('click', function() {
-      showToast('Для подключения WhatsApp обратитесь к администратору платформы');
-    });
-  }
-});
 </script>
 {% endblock %}

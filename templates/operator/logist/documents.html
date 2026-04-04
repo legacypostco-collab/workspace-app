@@ -77,7 +77,7 @@
         <td><span class="op-badge op-badge-gray">Ожидает</span></td>
         <td class="text-secondary">28 мар</td>
         <td class="text-secondary">Логист #1</td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Загрузка CMR для ORD-4521')">Загрузить</button></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();uploadDoc(this,'CMR','ORD-4521')">Загрузить</button></td>
       </tr>
       <tr data-type="Bill of Lading" data-order="ORD-4521" data-status="В работе" onclick="opToast('Документ: Bill of Lading для ORD-4521')">
         <td style="font-weight:600;">Bill of Lading</td>
@@ -113,7 +113,7 @@
         <td><span class="op-badge op-badge-gray">Ожидает</span></td>
         <td class="text-secondary">29 мар</td>
         <td class="text-secondary">Логист #1</td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Загрузка упаковочного листа для ORD-4518')">Загрузить</button></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();uploadDoc(this,'Упаковочный лист','ORD-4518')">Загрузить</button></td>
       </tr>
       <tr data-type="Сертификат происхождения" data-order="ORD-4515" data-status="В работе" onclick="opToast('Документ: Сертификат для ORD-4515')">
         <td style="font-weight:600;">Сертификат происхождения</td>
@@ -131,7 +131,7 @@
         <td><span class="op-badge op-badge-orange">Просрочен</span></td>
         <td class="text-secondary">20 мар</td>
         <td class="text-secondary">Логист #2</td>
-        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Срочный запрос страхового полиса для ORD-4508')">Загрузить</button></td>
+        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();uploadDoc(this,'Страховой полис','ORD-4508')">Загрузить</button></td>
       </tr>
       <tr data-type="Таможенная декларация" data-order="ORD-4515" data-status="Ожидает" onclick="opToast('Документ: Таможенная декларация для ORD-4515')">
         <td style="font-weight:600;">Таможенная декларация</td>
@@ -140,7 +140,7 @@
         <td><span class="op-badge op-badge-gray">Ожидает</span></td>
         <td class="text-secondary">3 апр</td>
         <td class="text-secondary">Логист #3</td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Загрузка таможенной декларации для ORD-4515')">Загрузить</button></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();uploadDoc(this,'Таможенная декларация','ORD-4515')">Загрузить</button></td>
       </tr>
       <tr data-type="CMR" data-order="ORD-4505" data-status="Готов" onclick="opToast('Документ: CMR для ORD-4505')">
         <td style="font-weight:600;">CMR</td>
@@ -210,6 +210,25 @@
       var show = (!ft || t.indexOf(ft)>=0) && (!fo || o===fo) && (!fs || s===fs);
       row.style.display = show ? '' : 'none';
     });
+  };
+
+  window.uploadDoc = function(btn, docType, orderId) {
+    var input = document.createElement('input');
+    input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png';
+    input.style.display = 'none';
+    input.onchange = function() {
+      if (!input.files.length) { input.remove(); return; }
+      var file = input.files[0];
+      var row = btn.closest('tr');
+      var badge = row ? row.querySelector('.op-badge') : null;
+      if (badge) { badge.className = 'op-badge op-badge-gray'; badge.textContent = 'Готов'; }
+      if (row) row.dataset.status = 'Готов';
+      btn.closest('td').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'⬇ ' + docType + ' — загружается...\',2000,\'success\')">Скачать</button>';
+      opToast('✓ ' + file.name + ' загружен', 2500, 'success');
+      input.remove();
+    };
+    document.body.appendChild(input);
+    input.click();
   };
 
   window.promptRequest = function(btn, msg){

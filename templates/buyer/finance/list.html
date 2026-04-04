@@ -220,21 +220,21 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     <div class="bfin-sched-desc">Таможенный платёж (40%)</div>
     <div class="bfin-sched-amount" style="color:#E05555;">$872.00</div>
     <div class="bfin-sched-supplier">Поставщик #3156 &middot; ORD-0131</div>
-    <button class="bfin-pay-btn">Оплатить сейчас</button>
+    <button class="bfin-pay-btn" onclick="payNow(this)">Оплатить сейчас</button>
   </div>
   <div class="bfin-sched-card">
     <div class="bfin-sched-date" style="color:#E85C0D;">Срок &middot; 26.03.2026</div>
     <div class="bfin-sched-desc">Подтверждение 50%</div>
     <div class="bfin-sched-amount" style="color:#E85C0D;">$9,450.00</div>
     <div class="bfin-sched-supplier">TurboTech Asia &middot; ORD-0110</div>
-    <button class="bfin-pay-btn">Оплатить</button>
+    <button class="bfin-pay-btn" onclick="payNow(this)">Оплатить</button>
   </div>
   <div class="bfin-sched-card">
     <div class="bfin-sched-date" style="color:#E85C0D;">Срок &middot; 28.03.2026</div>
     <div class="bfin-sched-desc">Этап 2 (50%)</div>
     <div class="bfin-sched-amount" style="color:#E85C0D;">$2,260.00</div>
     <div class="bfin-sched-supplier">Поставщик #2087 &middot; ORD-0138</div>
-    <button class="bfin-pay-btn">Оплатить</button>
+    <button class="bfin-pay-btn" onclick="payNow(this)">Оплатить</button>
   </div>
 </div>
 
@@ -250,34 +250,71 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
   }
 
-  // Pay buttons in schedule cards
-  document.querySelectorAll('.bfin-pay-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var card = btn.closest('.bfin-sched-card');
-      var supplier = card ? card.querySelector('.bfin-sched-supplier') : null;
-      var supplierText = supplier ? supplier.textContent : '';
-      var amount = card ? card.querySelector('.bfin-sched-amount') : null;
-      var amountText = amount ? amount.textContent : '';
-      showToast('Переход к оплате ' + amountText + ' — ' + supplierText);
-    });
-  });
+  window.payNow = function(btn) {
+    var card = btn.closest('.bfin-sched-card');
+    var existing = card.querySelector('.pay-confirm');
+    if (existing) { existing.remove(); return; }
+    var amount = card.querySelector('.bfin-sched-amount').textContent;
+    var div = document.createElement('div');
+    div.className = 'pay-confirm';
+    div.style.cssText = 'margin-top:10px;padding:10px;background:#111;border-radius:8px;border:1px solid rgba(100,181,246,0.2);';
+    div.innerHTML = '<div style="font-size:11px;color:#919191;margin-bottom:8px;">Подтвердите оплату ' + amount + '</div>'
+      + '<div style="display:flex;gap:8px;">'
+      + '<button onclick="confirmPayNow(this)" style="flex:1;padding:7px;border-radius:8px;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.25);font-size:11px;cursor:pointer;">✓ Подтвердить</button>'
+      + '<button onclick="this.closest(\'.pay-confirm\').remove()" style="padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:11px;cursor:pointer;">Отмена</button>'
+      + '</div>';
+    card.appendChild(div);
+  };
+  window.confirmPayNow = function(btn) {
+    var card = btn.closest('.bfin-sched-card');
+    var amount = card.querySelector('.bfin-sched-amount').textContent;
+    var dateEl = card.querySelector('.bfin-sched-date');
+    if (dateEl) { dateEl.textContent = 'Оплачено'; dateEl.style.color = '#66BB6A'; }
+    var amountEl = card.querySelector('.bfin-sched-amount');
+    if (amountEl) amountEl.style.color = '#66BB6A';
+    var payBtn = card.querySelector('.bfin-pay-btn');
+    if (payBtn) payBtn.remove();
+    btn.closest('.pay-confirm').remove();
+    showToast('Оплата ' + amount + ' выполнена');
+  };
 
-  // Invoice table rows - click on pending/overdue rows
+  // Invoice table rows - click to expand detail
   var tableWrap = document.querySelector('.bfin-table-wrap');
   if (tableWrap) {
     tableWrap.addEventListener('click', function(e) {
       var row = e.target.closest('tr');
-      if (!row || row.closest('thead')) return;
+      if (!row || row.closest('thead') || row.classList.contains('inv-detail-row')) return;
+      var next = row.nextElementSibling;
+      if (next && next.classList.contains('inv-detail-row')) {
+        next.style.display = next.style.display === 'none' ? 'table-row' : 'none';
+        return;
+      }
       var idEl = row.querySelector('.bfin-id');
       var id = idEl ? idEl.textContent : '';
       var badge = row.querySelector('.bfin-badge');
-      if (badge && (badge.classList.contains('bfin-badge--pending') || badge.classList.contains('bfin-badge--overdue'))) {
-        showToast('Переход к оплате ' + id);
-      } else {
-        showToast('Счёт ' + id);
-      }
+      var isPending = badge && (badge.classList.contains('bfin-badge--pending') || badge.classList.contains('bfin-badge--overdue'));
+      var detail = document.createElement('tr');
+      detail.className = 'inv-detail-row';
+      detail.innerHTML = '<td colspan="6" style="padding:12px 16px;background:#1F1F1F;">'
+        + '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">'
+        + '<div><div style="font-size:11px;color:#5E5E5E;">Способ оплаты</div><div style="font-size:12px;color:#ECECEC;margin-top:2px;">Банковский перевод SWIFT</div></div>'
+        + '<div><div style="font-size:11px;color:#5E5E5E;">Реквизиты</div><div style="font-size:12px;color:#ECECEC;margin-top:2px;">BIC: CITIRUSX · Счёт ****4821</div></div>'
+        + '<div><div style="font-size:11px;color:#5E5E5E;">Назначение</div><div style="font-size:12px;color:#ECECEC;margin-top:2px;">' + id + '</div></div>'
+        + (isPending ? '<button onclick="payInvoiceInline(this,\'' + id + '\')" style="margin-left:auto;padding:7px 16px;border-radius:8px;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.25);font-size:12px;cursor:pointer;">Оплатить →</button>' : '')
+        + '</div></td>';
+      row.parentElement.insertBefore(detail, row.nextSibling);
     });
   }
+  window.payInvoiceInline = function(btn, invId) {
+    var detailRow = btn.closest('tr');
+    var prevRow = detailRow.previousElementSibling;
+    if (prevRow) {
+      var badge = prevRow.querySelector('.bfin-badge');
+      if (badge) { badge.className = 'bfin-badge bfin-badge--paid'; badge.textContent = 'Оплачен'; }
+    }
+    detailRow.remove();
+    showToast('Счёт ' + invId + ' оплачен');
+  };
 })();
 </script>
 

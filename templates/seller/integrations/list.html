@@ -257,6 +257,35 @@
 
 </div>
 
+{# Connect form #}
+<div class="ig-form" id="connectForm">
+  <div id="connect-form-title" class="ig-form-title">Подключение интеграции</div>
+  <div class="ig-form-row">
+    <div class="ig-form-field">
+      <label>URL сервера / хост</label>
+      <input type="text" id="connect-url" placeholder="https://server.company.ru/" />
+    </div>
+    <div class="ig-form-field">
+      <label>Порт</label>
+      <input type="text" placeholder="443" />
+    </div>
+  </div>
+  <div class="ig-form-row">
+    <div class="ig-form-field">
+      <label>Логин API / имя пользователя</label>
+      <input type="text" placeholder="api_user" />
+    </div>
+    <div class="ig-form-field">
+      <label>Ключ / токен API</label>
+      <input type="password" placeholder="••••••••••••" />
+    </div>
+  </div>
+  <div class="ig-form-actions">
+    <button class="ig-btn ig-btn--settings" onclick="closeConnectForm()">Отмена</button>
+    <button class="ig-btn ig-btn--connect" onclick="submitConnect()">Подключить</button>
+  </div>
+</div>
+
 {# Request form #}
 <div class="ig-form" id="requestForm">
   <div class="ig-form-title">Запрос на интеграцию ERP</div>
@@ -347,9 +376,19 @@
 <div class="ig-toast" id="igToast"></div>
 
 <script>
+var _connectName = '';
 function igConnect(name) {
-  showToast('Настройка подключения ' + name + '...');
-  setTimeout(() => showToast(name + ' — отправлен запрос на активацию'), 1500);
+  _connectName = name;
+  document.getElementById('connect-form-title').textContent = 'Подключение: ' + name;
+  document.getElementById('connectForm').classList.add('open');
+  document.getElementById('connectForm').scrollIntoView({behavior:'smooth'});
+}
+function closeConnectForm() { document.getElementById('connectForm').classList.remove('open'); }
+function submitConnect() {
+  var url = document.getElementById('connect-url').value.trim();
+  if (!url) { showToast('Укажите URL сервера'); return; }
+  closeConnectForm();
+  showToast(_connectName + ' — подключение активировано', 'success');
 }
 
 function openRequestForm() {

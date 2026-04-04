@@ -50,9 +50,9 @@
       Таможенный орган запрашивает дополнительные документы, подтверждающие страну происхождения товара. Необходимо предоставить оригинал сертификата Form A и коммерческий инвойс с печатью отправителя.
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Ответ на запрос ЗП-1041')">Ответить</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос документов у поставщика для ЗП-1041')">Запросить у поставщика</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Прикрепление документа к ЗП-1041')">Прикрепить документ</button>
+      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();replyRequest(this,'ЗП-1041')">Ответить</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();requestFromSupplier(this,'ЗП-1041')">Запросить у поставщика</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();attachToRequest(this,'ЗП-1041')">Прикрепить документ</button>
     </div>
   </div>
 
@@ -80,9 +80,9 @@
       Для оформления декларации необходим упаковочный лист с указанием веса нетто/брутто по каждой позиции и фотографии маркировки на упаковке.
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Ответ на запрос ЗП-1040')">Ответить</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос документов у поставщика для ЗП-1040')">Запросить у поставщика</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Прикрепление документа к ЗП-1040')">Прикрепить документ</button>
+      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();replyRequest(this,'ЗП-1040')">Ответить</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();requestFromSupplier(this,'ЗП-1040')">Запросить у поставщика</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();attachToRequest(this,'ЗП-1040')">Прикрепить документ</button>
     </div>
   </div>
 
@@ -110,9 +110,9 @@
       Товар классифицирован как 8708.99, однако по описанию может подпадать под 8409.91. Необходимо получить от поставщика технические характеристики и подтвердить код ТН ВЭД.
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Ответ на запрос ЗП-1039')">Ответить</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос у поставщика для ЗП-1039')">Запросить у поставщика</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Прикрепление документа к ЗП-1039')">Прикрепить документ</button>
+      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();replyRequest(this,'ЗП-1039')">Ответить</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();requestFromSupplier(this,'ЗП-1039')">Запросить у поставщика</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();attachToRequest(this,'ЗП-1039')">Прикрепить документ</button>
     </div>
   </div>
 
@@ -140,9 +140,9 @@
       Для применения преференциального тарифа необходим сертификат соответствия техническому регламенту. Отправлен запрос поставщику через платформу.
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Ответ на запрос ЗП-1038')">Ответить</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос у поставщика для ЗП-1038')">Запросить у поставщика</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Прикрепление документа к ЗП-1038')">Прикрепить документ</button>
+      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();replyRequest(this,'ЗП-1038')">Ответить</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();requestFromSupplier(this,'ЗП-1038')">Запросить у поставщика</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();attachToRequest(this,'ЗП-1038')">Прикрепить документ</button>
     </div>
   </div>
 
@@ -170,9 +170,9 @@
       Таможенный орган запрашивает подтверждение таможенной стоимости. Необходимо предоставить выписку из контракта, калькуляцию стоимости и банковские документы об оплате.
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Ответ на запрос ЗП-1037')">Ответить</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос у поставщика для ЗП-1037')">Запросить у поставщика</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Прикрепление документа к ЗП-1037')">Прикрепить документ</button>
+      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();replyRequest(this,'ЗП-1037')">Ответить</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();requestFromSupplier(this,'ЗП-1037')">Запросить у поставщика</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();attachToRequest(this,'ЗП-1037')">Прикрепить документ</button>
     </div>
   </div>
 </div>
@@ -236,6 +236,70 @@
 {% block extra_js %}
 <script>
 (function(){
+  window.replyRequest = function(btn, reqId) {
+    var card = btn.closest('.op-card');
+    var existing = card.querySelector('.req-reply-panel');
+    if (existing) { existing.remove(); return; }
+    card.querySelectorAll('.req-panel').forEach(function(p){ p.remove(); });
+    var div = document.createElement('div');
+    div.className = 'req-reply-panel req-panel';
+    div.style.cssText = 'margin-top:10px;padding:10px 14px;background:#1F1F1F;border-radius:8px;border:1px solid rgba(100,181,246,0.15);';
+    div.innerHTML = '<div style="font-size:11px;color:#919191;margin-bottom:6px;">Ответ на запрос ' + reqId + '</div>'
+      + '<textarea rows="3" placeholder="Введите текст ответа для таможенного органа..." style="width:100%;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>'
+      + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">'
+      + '<button onclick="this.closest(\'.req-panel\').remove()" style="padding:7px 14px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:12px;cursor:pointer;">Отмена</button>'
+      + '<button onclick="sendReply(this,\'' + reqId + '\')" style="padding:7px 14px;border-radius:8px;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.25);font-size:12px;cursor:pointer;">Отправить ответ</button>'
+      + '</div>';
+    card.appendChild(div);
+    div.querySelector('textarea').focus();
+  };
+  window.sendReply = function(btn, reqId) {
+    var ta = btn.closest('.req-panel').querySelector('textarea');
+    if (!ta.value.trim()) { opToast('Введите текст ответа'); return; }
+    btn.closest('.req-panel').remove();
+    opToast('Ответ на ' + reqId + ' отправлен в таможню', 2000, 'success');
+  };
+  window.requestFromSupplier = function(btn, reqId) {
+    var card = btn.closest('.op-card');
+    var existing = card.querySelector('.req-supplier-panel');
+    if (existing) { existing.remove(); return; }
+    card.querySelectorAll('.req-panel').forEach(function(p){ p.remove(); });
+    var div = document.createElement('div');
+    div.className = 'req-supplier-panel req-panel';
+    div.style.cssText = 'margin-top:10px;padding:10px 14px;background:#1F1F1F;border-radius:8px;border:1px solid rgba(255,255,255,0.06);';
+    div.innerHTML = '<div style="font-size:11px;color:#919191;margin-bottom:6px;">Запрос документов у поставщика по ' + reqId + '</div>'
+      + '<select style="width:100%;margin-bottom:8px;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;">'
+      + '<option>Сертификат происхождения Form A</option><option>Коммерческий инвойс с печатью</option><option>Упаковочный лист</option><option>Технические характеристики</option><option>Фото маркировки</option>'
+      + '</select>'
+      + '<textarea rows="2" placeholder="Дополнительные инструкции поставщику..." style="width:100%;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;font-family:inherit;box-sizing:border-box;"></textarea>'
+      + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">'
+      + '<button onclick="this.closest(\'.req-panel\').remove()" style="padding:7px 14px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:12px;cursor:pointer;">Отмена</button>'
+      + '<button onclick="sendSupplierRequest(this,\'' + reqId + '\')" style="padding:7px 14px;border-radius:8px;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.25);font-size:12px;cursor:pointer;">Отправить запрос</button>'
+      + '</div>';
+    card.appendChild(div);
+  };
+  window.sendSupplierRequest = function(btn, reqId) {
+    var sel = btn.closest('.req-panel').querySelector('select');
+    var doc = sel ? sel.value : '';
+    btn.closest('.req-panel').remove();
+    opToast('Поставщику отправлен запрос: ' + doc, 2500, 'success');
+  };
+  window.attachToRequest = function(btn, reqId) {
+    var input = document.createElement('input');
+    input.type = 'file'; input.multiple = true;
+    input.accept = '.pdf,.jpg,.jpeg,.png,.doc,.docx';
+    input.style.display = 'none';
+    input.onchange = function() {
+      if (input.files.length) {
+        var names = Array.from(input.files).map(function(f){ return f.name; }).join(', ');
+        opToast('Прикреплено к ' + reqId + ': ' + names, 3000, 'success');
+      }
+      input.remove();
+    };
+    document.body.appendChild(input);
+    input.click();
+  };
+
   window.switchReqTab = function(tab){
     document.querySelectorAll('[data-req-tab]').forEach(function(btn){
       btn.classList.toggle('active', btn.getAttribute('data-req-tab') === tab);

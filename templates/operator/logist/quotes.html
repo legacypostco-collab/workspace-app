@@ -1,0 +1,445 @@
+{% extends "operator/base_operator.html" %}
+{% block title %}Логист — Ставки на заказы{% endblock %}
+
+{% block content %}
+<div class="op-stats">
+  <div class="op-stat">
+    <div class="op-stat-value">7</div>
+    <div class="op-stat-label">Новых запросов</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">3</div>
+    <div class="op-stat-label">Ожидают ставки</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">12</div>
+    <div class="op-stat-label">Ставки отправлены</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">5</div>
+    <div class="op-stat-label">Выиграно</div>
+  </div>
+  <div class="op-stat">
+    <div class="op-stat-value">68%</div>
+    <div class="op-stat-label">Конверсия</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div style="display:flex;gap:2px;background:#1F1F1F;border-radius:10px;padding:3px;border:1px solid rgba(255,255,255,0.055);margin-bottom:16px;width:fit-content;">
+  <button class="qt-tab active" onclick="qtSwitchTab('new')">Новые запросы <span class="qt-badge">7</span></button>
+  <button class="qt-tab" onclick="qtSwitchTab('sent')">Ставки отправлены</button>
+  <button class="qt-tab" onclick="qtSwitchTab('won')">Выигранные</button>
+  <button class="qt-tab" onclick="qtSwitchTab('lost')">Проигранные</button>
+</div>
+
+<!-- Tab: New requests -->
+<div class="qt-panel" id="panel-new">
+  <div class="op-card" style="margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#ECECEC;">Заказ #ORD-2026-0341</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">Покупатель: Fleet Corp · 22.03.2026</div>
+      </div>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">Ожидает ставки</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Откуда</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">Шанхай, Китай</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Куда</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">Алматы, Казахстан</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Вес / Объём</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">2 400 кг · 4.2 м³</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Срок доставки</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">до 25 дней</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Товары · <span onclick="this.parentElement.nextElementSibling.style.display=this.parentElement.nextElementSibling.style.display==='none'?'':'none';this.textContent=this.parentElement.nextElementSibling.style.display==='none'?'показать 8 позиций ▸':'свернуть ▾'" style="color:#64B5F6;cursor:pointer;font-size:11px;">показать 8 позиций ▸</span></div>
+        <div style="display:none;margin-top:6px;">
+          <table class="qt-items-table">
+            <thead><tr><th>#</th><th>Наименование</th><th>Кол-во</th><th>Вес/шт</th><th>Габариты (ДxШxВ)</th><th>Общий вес</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>Гидроцилиндр CAT 320D</td><td>4 шт</td><td>85 кг</td><td>120×25×25 см</td><td>340 кг</td></tr>
+              <tr><td>2</td><td>Фильтр масляный 1R-0750</td><td>12 шт</td><td>0.8 кг</td><td>12×12×18 см</td><td>9.6 кг</td></tr>
+              <tr><td>3</td><td>Фильтр топливный 1R-0751</td><td>12 шт</td><td>0.6 кг</td><td>10×10×16 см</td><td>7.2 кг</td></tr>
+              <tr><td>4</td><td>Уплотнение 6V-8398</td><td>8 шт</td><td>0.3 кг</td><td>15×15×2 см</td><td>2.4 кг</td></tr>
+              <tr><td>5</td><td>Палец 8E-5558</td><td>6 шт</td><td>12 кг</td><td>45×8×8 см</td><td>72 кг</td></tr>
+              <tr><td>6</td><td>Втулка 9J-2308</td><td>6 шт</td><td>8 кг</td><td>20×15×15 см</td><td>48 кг</td></tr>
+              <tr><td>7</td><td>Ремень 7M-7456</td><td>4 шт</td><td>0.4 кг</td><td>30×5×3 см</td><td>1.6 кг</td></tr>
+              <tr><td>8</td><td>Прокладка ГБЦ 34F-1142</td><td>2 шт</td><td>1.2 кг</td><td>40×30×2 см</td><td>2.4 кг</td></tr>
+            </tbody>
+            <tfoot><tr><td colspan="5" style="text-align:right;font-weight:600;">Итого:</td><td style="font-weight:700;color:#64B5F6;">483.2 кг</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Условия поставки</div>
+        <div style="font-size:13px;color:#ECECEC;">CIP Алматы · Страхование включено</div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;display:flex;gap:12px;align-items:flex-end;">
+      <div style="flex:1;">
+        <label style="font-size:11px;color:#6A6A6A;display:block;margin-bottom:4px;">Ставка за доставку ($)</label>
+        <input type="number" placeholder="0.00" style="width:100%;background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;color:#ECECEC;font-size:14px;font-weight:600;font-family:'Golos Text',sans-serif;" />
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:11px;color:#6A6A6A;display:block;margin-bottom:4px;">Срок доставки (дней)</label>
+        <input type="number" placeholder="0" style="width:100%;background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;color:#ECECEC;font-size:14px;font-weight:600;font-family:'Golos Text',sans-serif;" />
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:11px;color:#6A6A6A;display:block;margin-bottom:4px;">Способ доставки</label>
+        <select style="width:100%;background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;color:#ECECEC;font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;">
+          <option>Морской</option>
+          <option>Авиа</option>
+          <option>Ж/Д</option>
+          <option>Авто</option>
+          <option>Мультимодальный</option>
+        </select>
+      </div>
+      <button onclick="submitQuote(this)" style="padding:10px 24px;background:#4568F3;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Отправить ставку</button>
+      <button onclick="skipQuote(this)" style="padding:10px 16px;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.08);border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;">Пропустить</button>
+    </div>
+  </div>
+
+  <div class="op-card" style="margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#ECECEC;">Заказ #ORD-2026-0338</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">Покупатель: Mining Solutions · 21.03.2026</div>
+      </div>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">Ожидает ставки</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Откуда</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">Стамбул, Турция</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Куда</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">Ташкент, Узбекистан</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Вес / Объём</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">850 кг · 1.8 м³</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Срок доставки</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">до 15 дней</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Товары · <span onclick="this.parentElement.nextElementSibling.style.display=this.parentElement.nextElementSibling.style.display==='none'?'':'none';this.textContent=this.parentElement.nextElementSibling.style.display==='none'?'показать 7 позиций ▸':'свернуть ▾'" style="color:#64B5F6;cursor:pointer;font-size:11px;">показать 7 позиций ▸</span></div>
+        <div style="display:none;margin-top:6px;">
+          <table class="qt-items-table">
+            <thead><tr><th>#</th><th>Наименование</th><th>Кол-во</th><th>Вес/шт</th><th>Габариты (ДxШxВ)</th><th>Общий вес</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>Турбина 7C-2297</td><td>1 шт</td><td>45 кг</td><td>50×40×40 см</td><td>45 кг</td></tr>
+              <tr><td>2</td><td>Прокладки комплект</td><td>2 шт</td><td>1.5 кг</td><td>35×25×5 см</td><td>3 кг</td></tr>
+              <tr><td>3</td><td>Вкладыши коренные</td><td>1 комп</td><td>2.8 кг</td><td>20×15×10 см</td><td>2.8 кг</td></tr>
+              <tr><td>4</td><td>Вкладыши шатунные</td><td>1 комп</td><td>2.2 кг</td><td>18×12×8 см</td><td>2.2 кг</td></tr>
+              <tr><td>5</td><td>Кольца поршневые</td><td>6 комп</td><td>0.9 кг</td><td>14×14×3 см</td><td>5.4 кг</td></tr>
+              <tr><td>6</td><td>Гильза цилиндра</td><td>6 шт</td><td>18 кг</td><td>30×16×16 см</td><td>108 кг</td></tr>
+              <tr><td>7</td><td>Комплект сальников</td><td>1 шт</td><td>0.6 кг</td><td>25×20×5 см</td><td>0.6 кг</td></tr>
+            </tbody>
+            <tfoot><tr><td colspan="5" style="text-align:right;font-weight:600;">Итого:</td><td style="font-weight:700;color:#64B5F6;">167 кг</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Условия поставки</div>
+        <div style="font-size:13px;color:#ECECEC;">DDP Ташкент · Растаможка включена</div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;display:flex;gap:12px;align-items:flex-end;">
+      <div style="flex:1;">
+        <label style="font-size:11px;color:#6A6A6A;display:block;margin-bottom:4px;">Ставка за доставку ($)</label>
+        <input type="number" placeholder="0.00" style="width:100%;background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;color:#ECECEC;font-size:14px;font-weight:600;font-family:'Golos Text',sans-serif;" />
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:11px;color:#6A6A6A;display:block;margin-bottom:4px;">Срок доставки (дней)</label>
+        <input type="number" placeholder="0" style="width:100%;background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;color:#ECECEC;font-size:14px;font-weight:600;font-family:'Golos Text',sans-serif;" />
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:11px;color:#6A6A6A;display:block;margin-bottom:4px;">Способ доставки</label>
+        <select style="width:100%;background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;color:#ECECEC;font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;">
+          <option>Авто</option>
+          <option>Морской</option>
+          <option>Авиа</option>
+          <option>Ж/Д</option>
+          <option>Мультимодальный</option>
+        </select>
+      </div>
+      <button onclick="submitQuote(this)" style="padding:10px 24px;background:#4568F3;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Отправить ставку</button>
+      <button onclick="skipQuote(this)" style="padding:10px 16px;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.08);border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;">Пропустить</button>
+    </div>
+  </div>
+
+  <div class="op-card" style="margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#ECECEC;">Заказ #ORD-2026-0335</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">Покупатель: Agro Holding · 20.03.2026</div>
+      </div>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">Ожидает ставки</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Откуда</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">Дубай, ОАЭ</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Куда</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">Бишкек, Кыргызстан</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Вес / Объём</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">5 200 кг · 8.1 м³</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Срок доставки</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">до 30 дней</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Товары · <span onclick="this.parentElement.nextElementSibling.style.display=this.parentElement.nextElementSibling.style.display==='none'?'':'none';this.textContent=this.parentElement.nextElementSibling.style.display==='none'?'показать 9 позиций ▸':'свернуть ▾'" style="color:#64B5F6;cursor:pointer;font-size:11px;">показать 9 позиций ▸</span></div>
+        <div style="display:none;margin-top:6px;">
+          <table class="qt-items-table">
+            <thead><tr><th>#</th><th>Наименование</th><th>Кол-во</th><th>Вес/шт</th><th>Габариты (ДxШxВ)</th><th>Общий вес</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>Двигатель Cummins QSB6.7</td><td>1 шт</td><td>520 кг</td><td>110×75×90 см</td><td>520 кг</td></tr>
+              <tr><td>2</td><td>Радиатор охлаждения</td><td>2 шт</td><td>28 кг</td><td>70×55×10 см</td><td>56 кг</td></tr>
+              <tr><td>3</td><td>Патрубок верхний</td><td>3 шт</td><td>0.4 кг</td><td>35×8×8 см</td><td>1.2 кг</td></tr>
+              <tr><td>4</td><td>Патрубок нижний</td><td>3 шт</td><td>0.35 кг</td><td>30×8×8 см</td><td>1.05 кг</td></tr>
+              <tr><td>5</td><td>Термостат</td><td>2 шт</td><td>0.5 кг</td><td>10×10×8 см</td><td>1 кг</td></tr>
+              <tr><td>6</td><td>Помпа водяная</td><td>1 шт</td><td>6.5 кг</td><td>25×20×20 см</td><td>6.5 кг</td></tr>
+              <tr><td>7</td><td>Ремень генератора</td><td>2 шт</td><td>0.3 кг</td><td>25×5×3 см</td><td>0.6 кг</td></tr>
+              <tr><td>8</td><td>Натяжитель ремня</td><td>1 шт</td><td>1.8 кг</td><td>15×10×8 см</td><td>1.8 кг</td></tr>
+              <tr><td>9</td><td>Масляный радиатор</td><td>1 шт</td><td>12 кг</td><td>40×30×8 см</td><td>12 кг</td></tr>
+            </tbody>
+            <tfoot><tr><td colspan="5" style="text-align:right;font-weight:600;">Итого:</td><td style="font-weight:700;color:#64B5F6;">600.15 кг</td></tr></tfoot>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Условия поставки</div>
+        <div style="font-size:13px;color:#ECECEC;">EXW Дубай · Самовывоз со склада</div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;display:flex;gap:12px;align-items:flex-end;">
+      <div style="flex:1;">
+        <label style="font-size:11px;color:#6A6A6A;display:block;margin-bottom:4px;">Ставка за доставку ($)</label>
+        <input type="number" placeholder="0.00" style="width:100%;background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;color:#ECECEC;font-size:14px;font-weight:600;font-family:'Golos Text',sans-serif;" />
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:11px;color:#6A6A6A;display:block;margin-bottom:4px;">Срок доставки (дней)</label>
+        <input type="number" placeholder="0" style="width:100%;background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;color:#ECECEC;font-size:14px;font-weight:600;font-family:'Golos Text',sans-serif;" />
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:11px;color:#6A6A6A;display:block;margin-bottom:4px;">Способ доставки</label>
+        <select style="width:100%;background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;color:#ECECEC;font-size:13px;font-family:'Inter',sans-serif;cursor:pointer;">
+          <option>Авиа</option>
+          <option>Морской</option>
+          <option>Авто</option>
+          <option>Ж/Д</option>
+          <option>Мультимодальный</option>
+        </select>
+      </div>
+      <button onclick="submitQuote(this)" style="padding:10px 24px;background:#4568F3;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">Отправить ставку</button>
+      <button onclick="skipQuote(this)" style="padding:10px 16px;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.08);border-radius:8px;font-size:13px;cursor:pointer;white-space:nowrap;">Пропустить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Sent quotes -->
+<div class="qt-panel" id="panel-sent" style="display:none;">
+  <table class="op-table" style="width:100%;">
+    <thead>
+      <tr><th>Заказ</th><th>Маршрут</th><th>Ставка</th><th>Срок</th><th>Способ</th><th>Статус</th><th>Дата</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="font-weight:600;">#ORD-2026-0330</td>
+        <td>Гуанчжоу → Алматы</td>
+        <td style="font-weight:700;color:#ECECEC;">$3 200</td>
+        <td>22 дн.</td>
+        <td>Морской + Авто</td>
+        <td><span class="op-badge op-badge-blue">На рассмотрении</span></td>
+        <td style="color:#919191;">19.03.2026</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#ORD-2026-0328</td>
+        <td>Стамбул → Бишкек</td>
+        <td style="font-weight:700;color:#ECECEC;">$1 850</td>
+        <td>12 дн.</td>
+        <td>Авто</td>
+        <td><span class="op-badge op-badge-blue">На рассмотрении</span></td>
+        <td style="color:#919191;">18.03.2026</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#ORD-2026-0325</td>
+        <td>Дубай → Ташкент</td>
+        <td style="font-weight:700;color:#ECECEC;">$2 400</td>
+        <td>8 дн.</td>
+        <td>Авиа</td>
+        <td><span class="op-badge op-badge-blue">На рассмотрении</span></td>
+        <td style="color:#919191;">17.03.2026</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Tab: Won -->
+<div class="qt-panel" id="panel-won" style="display:none;">
+  <table class="op-table" style="width:100%;">
+    <thead>
+      <tr><th>Заказ</th><th>Маршрут</th><th>Ставка</th><th>Срок</th><th>Способ</th><th>Выручка</th><th>Дата</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="font-weight:600;">#ORD-2026-0310</td>
+        <td>Шанхай → Алматы</td>
+        <td style="font-weight:700;color:#ECECEC;">$4 100</td>
+        <td>24 дн.</td>
+        <td>Морской</td>
+        <td style="color:#64B5F6;font-weight:600;">+$820</td>
+        <td style="color:#919191;">12.03.2026</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#ORD-2026-0305</td>
+        <td>Стамбул → Алматы</td>
+        <td style="font-weight:700;color:#ECECEC;">$2 700</td>
+        <td>14 дн.</td>
+        <td>Авто</td>
+        <td style="color:#64B5F6;font-weight:600;">+$540</td>
+        <td style="color:#919191;">10.03.2026</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#ORD-2026-0298</td>
+        <td>Дубай → Бишкек</td>
+        <td style="font-weight:700;color:#ECECEC;">$3 500</td>
+        <td>18 дн.</td>
+        <td>Авиа + Авто</td>
+        <td style="color:#64B5F6;font-weight:600;">+$700</td>
+        <td style="color:#919191;">08.03.2026</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#ORD-2026-0290</td>
+        <td>Гуанчжоу → Ташкент</td>
+        <td style="font-weight:700;color:#ECECEC;">$5 200</td>
+        <td>28 дн.</td>
+        <td>Ж/Д</td>
+        <td style="color:#64B5F6;font-weight:600;">+$1 040</td>
+        <td style="color:#919191;">05.03.2026</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#ORD-2026-0282</td>
+        <td>Шанхай → Бишкек</td>
+        <td style="font-weight:700;color:#ECECEC;">$3 800</td>
+        <td>26 дн.</td>
+        <td>Морской + Авто</td>
+        <td style="color:#64B5F6;font-weight:600;">+$760</td>
+        <td style="color:#919191;">02.03.2026</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Tab: Lost -->
+<div class="qt-panel" id="panel-lost" style="display:none;">
+  <table class="op-table" style="width:100%;">
+    <thead>
+      <tr><th>Заказ</th><th>Маршрут</th><th>Ваша ставка</th><th>Победитель</th><th>Разница</th><th>Дата</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="font-weight:600;">#ORD-2026-0320</td>
+        <td>Шанхай → Ташкент</td>
+        <td style="color:#919191;">$4 500</td>
+        <td style="color:#ECECEC;">$3 900</td>
+        <td style="color:#E85C0D;">-$600</td>
+        <td style="color:#919191;">15.03.2026</td>
+      </tr>
+      <tr>
+        <td style="font-weight:600;">#ORD-2026-0315</td>
+        <td>Дубай → Алматы</td>
+        <td style="color:#919191;">$2 800</td>
+        <td style="color:#ECECEC;">$2 350</td>
+        <td style="color:#E85C0D;">-$450</td>
+        <td style="color:#919191;">13.03.2026</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .qt-tab{padding:8px 18px;border-radius:8px;border:none;background:transparent;color:#919191;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;transition:all 0.15s;}
+  .qt-tab:hover{color:#ECECEC;background:rgba(255,255,255,0.03);}
+  .qt-tab.active{background:#242424;color:#ECECEC;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.3);}
+  .qt-badge{font-size:10px;background:rgba(232,92,13,0.15);color:#E85C0D;padding:2px 7px;border-radius:10px;margin-left:4px;font-weight:700;}
+  .qt-items-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .qt-items-table th{text-align:left;color:#6A6A6A;font-weight:500;padding:4px 8px 6px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:10px;text-transform:uppercase;letter-spacing:0.04em;}
+  .qt-items-table td{padding:5px 8px;color:#ECECEC;border-bottom:1px solid rgba(255,255,255,0.03);}
+  .qt-items-table tfoot td{border-bottom:none;padding-top:8px;}
+</style>
+
+<script>
+function qtSwitchTab(tab) {
+  document.querySelectorAll('.qt-panel').forEach(function(p){ p.style.display='none'; });
+  document.querySelectorAll('.qt-tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById('panel-' + tab).style.display = '';
+  event.target.closest('.qt-tab').classList.add('active');
+}
+
+function submitQuote(btn) {
+  var card = btn.closest('.op-card');
+  var price = card.querySelector('input[type="number"]').value;
+  var days = card.querySelectorAll('input[type="number"]')[1].value;
+  if (!price || !days) {
+    opToast('Укажите ставку и срок доставки');
+    return;
+  }
+  card.style.opacity = '0.5';
+  card.style.pointerEvents = 'none';
+  setTimeout(function(){
+    card.innerHTML = '<div style="text-align:center;padding:20px;"><div style="font-size:14px;font-weight:600;color:#64B5F6;margin-bottom:4px;">Ставка отправлена</div><div style="font-size:12px;color:#919191;">$' + price + ' · ' + days + ' дней</div></div>';
+    card.style.opacity = '1';
+  }, 800);
+}
+
+function skipQuote(btn) {
+  var card = btn.closest('.op-card');
+  card.style.transition = 'all 0.3s';
+  card.style.opacity = '0';
+  card.style.transform = 'translateX(30px)';
+  setTimeout(function(){ card.remove(); }, 300);
+}
+
+function opToast(msg) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#333;color:#fff;padding:12px 24px;border-radius:8px;font-size:13px;z-index:9999;';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 3000);
+}
+</script>
+{% endblock %}
