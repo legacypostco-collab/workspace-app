@@ -4,7 +4,7 @@
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
   <div class="op-section-title" style="margin-bottom:0;">Управление декларациями</div>
-  <button class="op-btn op-btn-primary" onclick="opToast('Форма создания декларации (демо)')">
+  <button class="op-btn op-btn-primary" onclick="openDeclModal()">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
     Создать декларацию
   </button>
@@ -57,9 +57,9 @@
             </div>
             <div>
               <div class="op-section-sub">Документы</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="opToast('Открытие инвойса')">Инвойс INV-4521</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="opToast('Открытие упаковочного листа')">Упаковочный лист</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="opToast('Открытие сертификата')">Сертификат происхождения</div>
+              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('Инвойс INV-4521')">Инвойс INV-4521</div>
+              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('Упаковочный лист')">Упаковочный лист</div>
+              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('Сертификат происхождения')">Сертификат происхождения</div>
             </div>
             <div>
               <div class="op-section-sub">Пошлины</div>
@@ -163,15 +163,84 @@
 <!-- Document upload area -->
 <div class="op-card" style="margin-top:16px;">
   <div class="op-section-title">Загрузка документов</div>
-  <div style="border:2px dashed rgba(255,255,255,0.06);border-radius:12px;padding:40px;text-align:center;cursor:pointer;" onclick="opToast('Загрузка документов (демо-режим)')">
+  <div id="upload-zone" style="border:2px dashed rgba(255,255,255,0.06);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('upload-input').click()" onmouseenter="this.style.borderColor='rgba(100,181,246,0.2)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'">
+    <input id="upload-input" type="file" multiple accept=".pdf,.jpg,.png" style="display:none;" onchange="uploadFilesSelected(this)">
     <svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1" stroke-linecap="round" style="margin-bottom:8px;"><path d="M8 10V3M5 5l3-3 3 3"/><path d="M2 10v2.5a1 1 0 001 1h10a1 1 0 001-1V10"/></svg>
     <div style="font-size:13px;color:#919191;">Перетащите файлы сюда или нажмите для выбора</div>
     <div style="font-size:11px;color:#5E5E5E;margin-top:4px;">PDF, JPG, PNG до 10 МБ</div>
   </div>
+  <div id="upload-file-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;"></div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<!-- Modal: Create Declaration -->
+<div id="modal-decl" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
+  <div style="background:#1F1F1F;border-radius:16px;padding:28px;width:480px;max-width:92vw;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 64px rgba(0,0,0,0.5);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">Создать декларацию</div>
+      <button onclick="closeDeclModal()" style="background:none;border:none;color:#6A6A6A;font-size:22px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Номер заказа *</label>
+          <select id="decl-order" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
+            <option>ORD-4521</option>
+            <option>ORD-4518</option>
+            <option>ORD-4515</option>
+            <option>ORD-4512</option>
+            <option>ORD-4508</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Страна происхождения *</label>
+          <select id="decl-country" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
+            <option>Китай</option>
+            <option>Турция</option>
+            <option>Германия</option>
+            <option>Япония</option>
+            <option>США</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">ТН ВЭД код *</label>
+          <input id="decl-tnved" type="text" placeholder="например: 8708 99" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Таможенная стоимость ($) *</label>
+          <input id="decl-value" type="number" placeholder="0.00" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button onclick="closeDeclModal()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.1);cursor:pointer;">Отмена</button>
+      <button onclick="submitDecl()" class="op-btn op-btn-primary">Создать декларацию</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Document Viewer -->
+<div id="modal-doc" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
+  <div style="background:#1F1F1F;border-radius:16px;padding:28px;width:420px;max-width:92vw;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 64px rgba(0,0,0,0.5);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div id="modal-doc-title" style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;"></div>
+      <button onclick="closeDocModal()" style="background:none;border:none;color:#6A6A6A;font-size:22px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="background:#111;border-radius:10px;padding:40px;text-align:center;border:1px solid rgba(255,255,255,0.06);margin-bottom:20px;">
+      <svg width="48" height="48" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="0.8" stroke-linecap="round" style="margin-bottom:10px;"><path d="M4 1.5h6l3 3v9.5a1 1 0 01-1 1H4a1 1 0 01-1-1V2.5a1 1 0 011-1z"/><path d="M10 1.5v3h3"/></svg>
+      <div id="modal-doc-name" style="font-size:13px;color:#919191;margin-top:4px;"></div>
+      <div style="font-size:11px;color:#5E5E5E;margin-top:4px;">PDF · Просмотр документа</div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="closeDocModal()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.1);cursor:pointer;">Закрыть</button>
+      <button onclick="opToast('Скачивание...', 1500, 'success')" class="op-btn op-btn-primary">Скачать</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var currentDeclTab = 'all';
 
@@ -201,6 +270,61 @@ function toggleDeclRow(row) {
   var icon = row.querySelector('.expand-icon');
   icon.style.transform = expanded ? '' : 'rotate(90deg)';
   icon.style.transition = 'transform 0.15s';
+}
+
+function openDeclModal() {
+  document.getElementById('modal-decl').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('decl-tnved').focus(); }, 50);
+}
+function closeDeclModal() {
+  document.getElementById('modal-decl').style.display = 'none';
+  document.getElementById('decl-tnved').value = '';
+  document.getElementById('decl-value').value = '';
+}
+function submitDecl() {
+  var tnved = document.getElementById('decl-tnved').value.trim();
+  var value = document.getElementById('decl-value').value;
+  if (!tnved) {
+    document.getElementById('decl-tnved').style.borderColor = '#E05555';
+    document.getElementById('decl-tnved').focus();
+    return;
+  }
+  if (!value || Number(value) <= 0) {
+    document.getElementById('decl-value').style.borderColor = '#E05555';
+    document.getElementById('decl-value').focus();
+    return;
+  }
+  var order = document.getElementById('decl-order').value;
+  closeDeclModal();
+  opToast('Декларация создана: ' + order + ' · ' + tnved, 2500, 'success');
+}
+document.getElementById('modal-decl').addEventListener('click', function(e){
+  if (e.target === this) closeDeclModal();
+});
+
+function openDocModal(docName) {
+  document.getElementById('modal-doc-title').textContent = docName;
+  document.getElementById('modal-doc-name').textContent = docName;
+  document.getElementById('modal-doc').style.display = 'flex';
+}
+function closeDocModal() {
+  document.getElementById('modal-doc').style.display = 'none';
+}
+document.getElementById('modal-doc').addEventListener('click', function(e){
+  if (e.target === this) closeDocModal();
+});
+
+function uploadFilesSelected(input) {
+  if (!input.files || !input.files.length) return;
+  var list = document.getElementById('upload-file-list');
+  Array.from(input.files).forEach(function(file) {
+    var item = document.createElement('div');
+    item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1A1A1A;border-radius:8px;border:1px solid rgba(102,187,106,0.2);';
+    item.innerHTML = '<span style="font-size:14px;">📄</span><span style="font-size:12px;color:#ECECEC;flex:1;">' + file.name + '</span><span style="font-size:11px;color:#66BB6A;">✓ Загружен</span>';
+    list.appendChild(item);
+  });
+  opToast('Загружено файлов: ' + input.files.length, 2000, 'success');
+  input.value = '';
 }
 </script>
 {% endblock %}

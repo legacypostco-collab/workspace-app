@@ -433,6 +433,57 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 
 </div>
 
+<!-- Modal: New Claim -->
+<div id="modal-claim" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
+  <div style="background:#1F1F1F;border-radius:16px;padding:28px;width:520px;max-width:92vw;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 64px rgba(0,0,0,0.5);max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">Открыть рекламацию</div>
+      <button onclick="closeClaimModal()" style="background:none;border:none;color:#6A6A6A;font-size:22px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Заказ *</label>
+          <select id="claim-order" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
+            <option>ORD-2026-0142</option>
+            <option>ORD-2026-0138</option>
+            <option>ORD-2026-0131</option>
+            <option>ORD-2026-0125</option>
+            <option>ORD-2026-0118</option>
+            <option>ORD-2026-0110</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Тип претензии *</label>
+          <select id="claim-type" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
+            <option value="damage">Повреждение при транспортировке</option>
+            <option value="mismatch">Несоответствие спецификации</option>
+            <option value="shortage">Некомплект</option>
+            <option value="defect">Производственный дефект</option>
+            <option value="delay">Нарушение сроков</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Позиция / артикул</label>
+        <input id="claim-item" type="text" placeholder="например: Диск тормозной 421-22-31520 (3 шт.)" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div>
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Сумма претензии ($)</label>
+        <input id="claim-amount" type="number" placeholder="0.00" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div>
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Описание проблемы *</label>
+        <textarea id="claim-desc" rows="4" placeholder="Опишите подробно что произошло..." style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;resize:vertical;font-family:inherit;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button onclick="closeClaimModal()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.1);cursor:pointer;">Отмена</button>
+      <button onclick="submitClaim()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:rgba(224,85,85,0.12);color:#E05555;border:1px solid rgba(224,85,85,0.25);cursor:pointer;">Открыть рекламацию</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
 
 <script>
@@ -460,9 +511,35 @@ var createBtn = document.querySelector('.clm-create-btn');
 if (createBtn) {
   createBtn.addEventListener('click', function(e) {
     e.preventDefault();
-    showToast('Форма рекламации');
+    openClaimModal();
   });
 }
+
+function openClaimModal() {
+  document.getElementById('modal-claim').style.display = 'flex';
+}
+function closeClaimModal() {
+  document.getElementById('modal-claim').style.display = 'none';
+  document.getElementById('claim-desc').value = '';
+  document.getElementById('claim-item').value = '';
+  document.getElementById('claim-amount').value = '';
+}
+function submitClaim() {
+  var desc = document.getElementById('claim-desc').value.trim();
+  if (!desc) {
+    document.getElementById('claim-desc').style.borderColor = '#E05555';
+    document.getElementById('claim-desc').focus();
+    return;
+  }
+  var order = document.getElementById('claim-order').value;
+  var amount = document.getElementById('claim-amount').value;
+  var amountStr = amount ? ' · $' + Number(amount).toLocaleString() : '';
+  closeClaimModal();
+  showToast('Рекламация открыта: ' + order + amountStr);
+}
+document.getElementById('modal-claim').addEventListener('click', function(e){
+  if (e.target === this) closeClaimModal();
+});
 
 // Action buttons in claim cards
 document.querySelector('.clm-list').addEventListener('click', function(e) {
