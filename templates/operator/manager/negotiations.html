@@ -3,23 +3,23 @@
 
 {% block content %}
 <div class="op-stats">
-  <div class="op-stat">
+  <a class="op-stat" href="/operator/manager/negotiations/" id="neg-stat-all" style="border-color:rgba(100,181,246,0.35);">
     <div class="op-stat-value">18</div>
     <div class="op-stat-label">В воронке</div>
-  </div>
-  <div class="op-stat">
+  </a>
+  <div class="op-stat" id="neg-stat-active" onclick="dlTab('active')" style="cursor:pointer;">
     <div class="op-stat-value">5</div>
     <div class="op-stat-label">Переторжка</div>
   </div>
-  <div class="op-stat op-stat-warn">
+  <div class="op-stat op-stat-warn" id="neg-stat-risk" onclick="dlTab('risk')" style="cursor:pointer;">
     <div class="op-stat-value">4</div>
     <div class="op-stat-label">Под угрозой</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" id="neg-stat-lost" onclick="dlTab('lost')" style="cursor:pointer;">
     <div class="op-stat-value">3</div>
     <div class="op-stat-label">Сорвались</div>
   </div>
-  <div class="op-stat">
+  <div class="op-stat" id="neg-stat-conv" onclick="dlTab('won')" style="cursor:pointer;">
     <div class="op-stat-value">72%</div>
     <div class="op-stat-label">Конверсия</div>
   </div>
@@ -349,7 +349,18 @@ function dlTab(tab) {
   document.querySelectorAll('.dl-panel').forEach(function(p){ p.style.display='none'; });
   document.querySelectorAll('.dl-tab').forEach(function(t){ t.classList.remove('active'); });
   document.getElementById('panel-' + tab).style.display = '';
-  event.target.closest('.dl-tab').classList.add('active');
+  document.querySelectorAll('.dl-tab').forEach(function(t){
+    if (t.getAttribute('onclick') === "dlTab('" + tab + "')") t.classList.add('active');
+  });
+  var inactive = 'rgba(255,255,255,0.04)', blue = 'rgba(100,181,246,0.35)', warn = 'rgba(232,92,13,0.5)';
+  ['neg-stat-active','neg-stat-risk','neg-stat-lost','neg-stat-conv'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el) el.style.borderColor = inactive;
+  });
+  if (tab === 'active') document.getElementById('neg-stat-active').style.borderColor = blue;
+  else if (tab === 'risk') document.getElementById('neg-stat-risk').style.borderColor = warn;
+  else if (tab === 'lost') document.getElementById('neg-stat-lost').style.borderColor = blue;
+  else if (tab === 'won') document.getElementById('neg-stat-conv').style.borderColor = blue;
 }
 
 function dealAction(btn, action) {
