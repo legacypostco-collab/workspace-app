@@ -109,6 +109,20 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   text-decoration:none;
 }
 .ord-detail-btn:hover { background:rgba(255,255,255,0.08); }
+.ord-detail-row td { padding:0 !important; background:#111; }
+.ord-detail-inner { padding:16px 20px;border-bottom:2px solid rgba(100,181,246,0.15); }
+.ord-detail-timeline { display:flex;gap:0;margin-bottom:14px;align-items:center;flex-wrap:wrap;gap:4px; }
+.ord-tl-step { display:flex;align-items:center;gap:6px;font-size:11px; }
+.ord-tl-dot { width:8px;height:8px;border-radius:50%;background:#64B5F6;flex-shrink:0; }
+.ord-tl-dot--done { background:#64B5F6; }
+.ord-tl-dot--active { background:#E85C0D; }
+.ord-tl-dot--future { background:#333; }
+.ord-tl-line { width:20px;height:1px;background:rgba(255,255,255,0.1); }
+.ord-tl-label { color:#919191; }
+.ord-tl-date { color:#6A6A6A;font-size:10px; }
+.ord-items-mini { display:flex;flex-direction:column;gap:6px; }
+.ord-item-row { display:flex;justify-content:space-between;font-size:12px;color:#919191; }
+.ord-item-row span:first-child { color:#ECECEC; }
 </style>
 {% endblock %}
 
@@ -178,7 +192,7 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       </tr>
     </thead>
     <tbody>
-      <tr>
+      <tr data-order-id="ORD-2026-0142">
         <td><span class="ord-id">ORD-2026-0142</span><br><span class="ord-muted">RFQ-0087</span></td>
         <td>Поставщик #1042<br><span class="ord-muted">Китай</span></td>
         <td>4 позиции</td>
@@ -188,7 +202,30 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <td><span class="ord-pay-badge ord-pay--partial">Резерв 10%</span></td>
         <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
-      <tr>
+      <tr class="ord-detail-row" id="detail-ORD-2026-0142" style="display:none;">
+        <td colspan="8">
+          <div class="ord-detail-inner">
+            <div class="ord-detail-timeline">
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">22.03</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Резерв 10%</div><div class="ord-tl-date">23.03</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--active"></div><div><div class="ord-tl-label" style="color:#E85C0D;">В производстве</div><div class="ord-tl-date">с 25.03</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">Отгрузка</div><div class="ord-tl-date">ETA 15.04</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">Доставка</div><div class="ord-tl-date">ETA 18.04</div></div></div>
+            </div>
+            <div class="ord-items-mini">
+              <div class="ord-item-row"><span>Гидроцилиндр CAT 320D (2 шт.)</span><span>$5,800</span></div>
+              <div class="ord-item-row"><span>Уплотнитель ГЦ (8 шт.)</span><span>$1,200</span></div>
+              <div class="ord-item-row"><span>Шток запасной (1 шт.)</span><span>$2,400</span></div>
+              <div class="ord-item-row"><span>Монтажный комплект (1 к-т)</span><span>$1,800</span></div>
+            </div>
+          </div>
+        </td>
+      </tr>
+      <tr data-order-id="ORD-2026-0138">
         <td><span class="ord-id">ORD-2026-0138</span><br><span class="ord-muted">RFQ-0071</span></td>
         <td>Поставщик #2087<br><span class="ord-muted">Китай</span></td>
         <td>3 позиции</td>
@@ -198,7 +235,29 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <td><span class="ord-pay-badge ord-pay--partial">50% оплачено</span></td>
         <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
-      <tr>
+      <tr class="ord-detail-row" id="detail-ORD-2026-0138" style="display:none;">
+        <td colspan="8">
+          <div class="ord-detail-inner">
+            <div class="ord-detail-timeline">
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">05.03</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">50% оплачено</div><div class="ord-tl-date">06.03</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Отгружено</div><div class="ord-tl-date">12.03</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--active"></div><div><div class="ord-tl-label" style="color:#E85C0D;">В пути</div><div class="ord-tl-date">с 14.03</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">Доставка</div><div class="ord-tl-date">ETA 28.03</div></div></div>
+            </div>
+            <div class="ord-items-mini">
+              <div class="ord-item-row"><span>Помпа водяная 6212-61-1440 (2 шт.)</span><span>$1,860</span></div>
+              <div class="ord-item-row"><span>Прокладка головки блока (5 шт.)</span><span>$1,350</span></div>
+              <div class="ord-item-row"><span>Ремень ГРМ (3 шт.)</span><span>$1,310</span></div>
+            </div>
+          </div>
+        </td>
+      </tr>
+      <tr data-order-id="ORD-2026-0131">
         <td><span class="ord-id">ORD-2026-0131</span><br><span class="ord-muted">RFQ-0065</span></td>
         <td>Поставщик #3156<br><span class="ord-muted">Китай</span></td>
         <td>5 позиций</td>
@@ -208,7 +267,31 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <td><span class="ord-pay-badge ord-pay--partial">90% оплачено</span></td>
         <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
-      <tr>
+      <tr class="ord-detail-row" id="detail-ORD-2026-0131" style="display:none;">
+        <td colspan="8">
+          <div class="ord-detail-inner">
+            <div class="ord-detail-timeline">
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">28.02</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Отгружено</div><div class="ord-tl-date">10.03</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Прибыл в РФ</div><div class="ord-tl-date">22.03</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--active"></div><div><div class="ord-tl-label" style="color:#E85C0D;">Таможня</div><div class="ord-tl-date">с 23.03</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">Доставка</div><div class="ord-tl-date">ETA 26.03</div></div></div>
+            </div>
+            <div class="ord-items-mini">
+              <div class="ord-item-row"><span>Фильтр масляный (10 шт.)</span><span>$430</span></div>
+              <div class="ord-item-row"><span>Фильтр воздушный (8 шт.)</span><span>$520</span></div>
+              <div class="ord-item-row"><span>Фильтр топливный (10 шт.)</span><span>$380</span></div>
+              <div class="ord-item-row"><span>Фильтр гидравлики (6 шт.)</span><span>$480</span></div>
+              <div class="ord-item-row"><span>Сепаратор воды (4 шт.)</span><span>$370</span></div>
+            </div>
+          </div>
+        </td>
+      </tr>
+      <tr data-order-id="ORD-2026-0125">
         <td><span class="ord-id">ORD-2026-0125</span><br><span class="ord-muted">RFQ-0052</span></td>
         <td>Поставщик #4291<br><span class="ord-muted">Япония</span></td>
         <td>20 позиций</td>
@@ -218,7 +301,25 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <td><span class="ord-pay-badge ord-pay--paid">Оплачен</span></td>
         <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
-      <tr>
+      <tr class="ord-detail-row" id="detail-ORD-2026-0125" style="display:none;">
+        <td colspan="8">
+          <div class="ord-detail-inner">
+            <div class="ord-detail-timeline">
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">14.02</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Оплачен полностью</div><div class="ord-tl-date">15.02</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Отгружено</div><div class="ord-tl-date">25.02</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label" style="color:#66BB6A;">✓ Доставлен</div><div class="ord-tl-date">10.03</div></div></div>
+            </div>
+            <div class="ord-items-mini">
+              <div class="ord-item-row"><span>Диск тормозной 421-22-31520 (20 шт.)</span><span>$6,300</span></div>
+            </div>
+          </div>
+        </td>
+      </tr>
+      <tr data-order-id="ORD-2026-0118">
         <td><span class="ord-id">ORD-2026-0118</span><br><span class="ord-muted">RFQ-0044</span></td>
         <td>Поставщик #5673<br><span class="ord-muted">Китай</span></td>
         <td>15 позиций</td>
@@ -228,7 +329,25 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <td><span class="ord-pay-badge ord-pay--paid">Оплачен</span></td>
         <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
       </tr>
-      <tr>
+      <tr class="ord-detail-row" id="detail-ORD-2026-0118" style="display:none;">
+        <td colspan="8">
+          <div class="ord-detail-inner">
+            <div class="ord-detail-timeline">
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">05.02</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Оплачен полностью</div><div class="ord-tl-date">06.02</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Отгружено</div><div class="ord-tl-date">14.02</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label" style="color:#66BB6A;">✓ Доставлен</div><div class="ord-tl-date">28.02</div></div></div>
+            </div>
+            <div class="ord-items-mini">
+              <div class="ord-item-row"><span>Прокладка (15 шт.)</span><span>$1,420</span></div>
+            </div>
+          </div>
+        </td>
+      </tr>
+      <tr data-order-id="ORD-2026-0110">
         <td><span class="ord-id">ORD-2026-0110</span><br><span class="ord-muted">RFQ-0030</span></td>
         <td>TurboTech Asia<br><span class="ord-muted">Тайбэй, Тайвань</span></td>
         <td>8 позиций</td>
@@ -237,6 +356,27 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <td>20.01.2026<br><span class="ord-muted">ETA: 30.03</span></td>
         <td><span class="ord-pay-badge ord-pay--pending">Ожидает</span></td>
         <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
+      </tr>
+      <tr class="ord-detail-row" id="detail-ORD-2026-0110" style="display:none;">
+        <td colspan="8">
+          <div class="ord-detail-inner">
+            <div class="ord-detail-timeline">
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">20.01</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Отгружено</div><div class="ord-tl-date">05.02</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--active"></div><div><div class="ord-tl-label" style="color:#E85C0D;">В пути (авиа)</div><div class="ord-tl-date">с 10.02</div></div></div>
+              <div class="ord-tl-line"></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">Доставка</div><div class="ord-tl-date">ETA 30.03</div></div></div>
+            </div>
+            <div class="ord-items-mini">
+              <div class="ord-item-row"><span>Турбина TurboTech TT-4400 (2 шт.)</span><span>$9,200</span></div>
+              <div class="ord-item-row"><span>Ротор компрессора (2 шт.)</span><span>$5,800</span></div>
+              <div class="ord-item-row"><span>Уплотнительный к-т (4 к-т)</span><span>$1,920</span></div>
+              <div class="ord-item-row"><span>Крепёж (1 к-т)</span><span>$1,980</span></div>
+            </div>
+          </div>
+        </td>
       </tr>
     </tbody>
   </table>
@@ -267,9 +407,14 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     if (!btn) return;
     e.preventDefault();
     var row = btn.closest('tr');
-    var idEl = row ? row.querySelector('.ord-id') : null;
-    var id = idEl ? idEl.textContent : '';
-    showToast('Открыт заказ ' + id);
+    var id = row ? row.getAttribute('data-order-id') : '';
+    if (!id) { var idEl = row ? row.querySelector('.ord-id') : null; id = idEl ? idEl.textContent : ''; }
+    var detailRow = document.getElementById('detail-' + id);
+    if (detailRow) {
+      var isOpen = detailRow.style.display !== 'none';
+      detailRow.style.display = isOpen ? 'none' : '';
+      btn.textContent = isOpen ? 'Детали' : 'Скрыть';
+    }
   });
 
   // Pay buttons (on rows with pending payment)

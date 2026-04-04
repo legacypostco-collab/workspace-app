@@ -405,7 +405,7 @@
     </div>
     <div style="display:flex;gap:8px;margin-top:4px;">
       <button class="lg-btn lg-btn--primary" onclick="calcCost()">Рассчитать</button>
-      <button class="lg-btn lg-btn--secondary" onclick="showToast('Запрос на ручную калькуляцию отправлен')">Ручной расчёт менеджером</button>
+      <button class="lg-btn lg-btn--secondary" onclick="requestManualCalc(this)">Ручной расчёт менеджером</button>
     </div>
 
     <div class="lg-calc-result" id="calcResult">
@@ -849,6 +849,29 @@ function cancelLgCounter(btn) {
   actionsCell.innerHTML = `<button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">Принять</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">Встречная</button>`;
 }
 
+function requestManualCalc(btn) {
+  var from = document.getElementById('calcFrom') ? document.getElementById('calcFrom').value : '—';
+  var to = document.getElementById('calcTo') ? document.getElementById('calcTo').value : '—';
+  var mode = document.getElementById('calcMode') ? document.getElementById('calcMode').value : '—';
+  var weight = document.getElementById('calcWeight') ? document.getElementById('calcWeight').value : '—';
+  var volume = document.getElementById('calcVolume') ? document.getElementById('calcVolume').value : '—';
+  var value = document.getElementById('calcValue') ? document.getElementById('calcValue').value : '—';
+
+  btn.disabled = true;
+  btn.style.background = 'rgba(100,181,246,0.12)';
+  btn.style.color = '#64B5F6';
+  btn.style.border = '1px solid rgba(100,181,246,0.25)';
+  btn.textContent = '✓ Запрос отправлен';
+
+  var conf = document.createElement('div');
+  conf.style.cssText = 'margin-top:12px;padding:14px 16px;background:rgba(100,181,246,0.06);border:1px solid rgba(100,181,246,0.18);border-radius:10px;font-size:12px;line-height:1.8;';
+  conf.innerHTML = '<div style="color:#64B5F6;font-weight:700;margin-bottom:8px;font-size:13px;">✓ Запрос передан менеджеру</div>'
+    + '<div style="color:#919191;">Маршрут: <span style="color:#ECECEC;font-weight:600;">' + from + ' → ' + to + '</span></div>'
+    + '<div style="color:#919191;">Способ: <span style="color:#ECECEC;">' + mode + '</span> · Вес: <span style="color:#ECECEC;">' + weight + ' кг</span> · Объём: <span style="color:#ECECEC;">' + volume + ' м³</span></div>'
+    + '<div style="color:#919191;">Стоимость товара: <span style="color:#ECECEC;">$' + Number(value).toLocaleString() + '</span></div>'
+    + '<div style="color:#6A6A6A;margin-top:8px;font-size:11px;">Менеджер свяжется с вами в течение 1 рабочего часа</div>';
+  btn.parentNode.appendChild(conf);
+}
 function showToast(msg) {
   const t = document.getElementById('lgToast');
   t.textContent = msg;

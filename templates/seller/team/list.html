@@ -488,7 +488,7 @@
         <div class="tm-section-title">Задачи команды</div>
         <div class="tm-section-sub" style="margin-bottom:0;">Отслеживайте выполнение задач в реальном времени</div>
       </div>
-      <button class="tm-btn tm-btn--primary" onclick="showToast('Форма новой задачи')">+ Новая задача</button>
+      <button class="tm-btn tm-btn--primary" onclick="openTaskModal()">+ Новая задача</button>
     </div>
   </div>
 
@@ -667,6 +667,52 @@
   </div>
 </div>
 
+<!-- Modal: New Task -->
+<div id="modal-newtask" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
+  <div style="background:#1F1F1F;border-radius:16px;padding:28px;width:460px;max-width:92vw;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 64px rgba(0,0,0,0.5);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">Новая задача</div>
+      <button onclick="closeTaskModal()" style="background:none;border:none;color:#6A6A6A;font-size:22px;cursor:pointer;line-height:1;">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div>
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Название задачи *</label>
+        <input id="task-title" type="text" placeholder="Опишите задачу кратко..." style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Исполнитель</label>
+          <select id="task-assignee" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
+            <option>Дмитрий В.</option>
+            <option>Ольга С.</option>
+            <option>Сергей Н.</option>
+            <option>Елена К.</option>
+            <option>Игорь П.</option>
+            <option>Мария Д.</option>
+            <option>Анна Л.</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Приоритет</label>
+          <select id="task-prio" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
+            <option value="high">Срочно</option>
+            <option value="med" selected>Средне</option>
+            <option value="low">Обычно</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Дедлайн</label>
+        <input id="task-due" type="text" placeholder="например: сегодня 18:00 или 30 апр" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button onclick="closeTaskModal()" class="tm-btn tm-btn--secondary">Отмена</button>
+      <button onclick="submitNewTask()" class="tm-btn tm-btn--primary">Создать задачу</button>
+    </div>
+  </div>
+</div>
+
 <div class="an-toast" id="anToast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(102,187,106,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#66BB6A;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
 
 <script>
@@ -706,5 +752,45 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
+function openTaskModal() {
+  var m = document.getElementById('modal-newtask');
+  m.style.display = 'flex';
+  setTimeout(function(){ document.getElementById('task-title').focus(); }, 50);
+}
+function closeTaskModal() {
+  document.getElementById('modal-newtask').style.display = 'none';
+  document.getElementById('task-title').value = '';
+  document.getElementById('task-due').value = '';
+  document.getElementById('task-title').style.borderColor = 'rgba(255,255,255,0.1)';
+}
+function submitNewTask() {
+  var title = document.getElementById('task-title').value.trim();
+  if (!title) {
+    document.getElementById('task-title').style.borderColor = '#E05555';
+    document.getElementById('task-title').focus();
+    return;
+  }
+  var assignee = document.getElementById('task-assignee').value;
+  var prio = document.getElementById('task-prio').value;
+  var due = document.getElementById('task-due').value.trim() || 'без срока';
+  var prioLabels = { high: ['Срочно','tm-task-prio--high'], med: ['Средне','tm-task-prio--med'], low: ['Обычно','tm-task-prio--low'] };
+  var dueClass = due.indexOf('вчера') !== -1 ? 'tm-task-due--late' : (due.indexOf('сегодня') !== -1 ? 'tm-task-due--soon' : 'tm-task-due--ok');
+  var p = prioLabels[prio];
+  var task = document.createElement('div');
+  task.className = 'tm-task';
+  task.style.cssText = 'animation:fadeIn .2s ease;';
+  task.innerHTML = '<div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>'
+    + '<div class="tm-task-title">' + title + '</div>'
+    + '<div class="tm-task-assignee">' + assignee + '</div>'
+    + '<div class="tm-task-due ' + dueClass + '">' + due + '</div>'
+    + '<div class="tm-task-prio ' + p[1] + '">' + p[0] + '</div>';
+  var list = document.querySelector('.tm-task-list');
+  list.insertBefore(task, list.firstChild);
+  closeTaskModal();
+  showToast('Задача создана: ' + title);
+}
+document.getElementById('modal-newtask').addEventListener('click', function(e) {
+  if (e.target === this) closeTaskModal();
+});
 </script>
 {% endblock %}

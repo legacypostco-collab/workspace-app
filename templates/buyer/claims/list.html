@@ -205,6 +205,32 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Фото (4)</a>
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Документы</a>
       </div>
+      <!-- Sections -->
+      <div class="clm-section" id="sec-chat-1" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Переписка</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Просим предоставить фотографии повреждений в высоком разрешении для оформления страхового акта.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 25.03 14:22</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Фотографии приложены к заявке (4 шт.), повреждения на позициях 1, 2 и 3.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 25.03 16:40</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Документы получены, направлены поставщику. Ожидаем ответа в течение 3 рабочих дней.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 26.03 09:15</div></div></div>
+        </div>
+      </div>
+      <div class="clm-section" id="sec-photo-1" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Фотографии повреждений</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
+          <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
+          <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
+          <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
+        </div>
+        <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">4 фотографии · Загружены 24.03.2026</div>
+      </div>
+      <div class="clm-section" id="sec-docs-1" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Документы</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">Акт о выявленных дефектах</div><div style="font-size:10px;color:#6A6A6A;">PDF · 245 KB · 24.03.2026</div></div></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">Накладная ORD-2026-0125</div><div style="font-size:10px;color:#6A6A6A;">PDF · 180 KB · 14.02.2026</div></div></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -253,6 +279,29 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Фото (2)</a>
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Замерочный лист</a>
       </div>
+      <!-- Sections -->
+      <div class="clm-section" id="sec-chat-2" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Переписка</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Получили вашу заявку. Просим предоставить замерочный лист с указанием фактических размеров шкива.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 16.03 10:05</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Замерочный лист приложен. Фактический диаметр шкива: 82 мм, по спецификации должен быть 75 мм.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 16.03 14:30</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Данные переданы поставщику. Ожидается подтверждение замены в течение 2 дней.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 17.03 09:00</div></div></div>
+        </div>
+      </div>
+      <div class="clm-section" id="sec-photo-2" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Фотографии несоответствия</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
+          <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
+        </div>
+        <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">2 фотографии · Загружены 15.03.2026</div>
+      </div>
+      <div class="clm-section" id="sec-docs-2" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Документы</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">Замерочный лист помпы</div><div style="font-size:10px;color:#6A6A6A;">PDF · 120 KB · 15.03.2026</div></div></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -299,6 +348,23 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-actions">
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">Переписка</a>
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Акт некомплекта</a>
+      </div>
+      <!-- Sections -->
+      <div class="clm-section" id="sec-chat-3" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Переписка</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Заявка принята. Поставщик подтвердил отсутствие прокладки и крепежа в партии. Досылка оформлена.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 09.03 11:20</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Когда ориентировочно придут недостающие компоненты?</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 09.03 13:45</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>ETA досылки: 20–25 марта авиа. Трекинг будет предоставлен отдельно.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 10.03 09:30</div></div></div>
+        </div>
+      </div>
+      <div class="clm-section" id="sec-photo-3" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Фотографии некомплекта</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
+          <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
+        </div>
+        <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">2 фотографии · Загружены 08.03.2026</div>
       </div>
     </div>
   </div>
@@ -347,6 +413,21 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Переписка</a>
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Акт приёмки</a>
       </div>
+      <!-- Sections -->
+      <div class="clm-section" id="sec-chat-4" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Переписка</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Рекламация рассмотрена. Поставщик признал ответственность перевозчика. Полный возврат одобрен.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 05.03 15:10</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Замена уже получена, спасибо за оперативное решение.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 10.03 11:00</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
+        </div>
+      </div>
+      <div class="clm-section" id="sec-docs-4" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Документы</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">Акт приёмки и замены</div><div style="font-size:10px;color:#6A6A6A;">PDF · 310 KB · 10.03.2026</div></div></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">Подтверждение возврата средств</div><div style="font-size:10px;color:#6A6A6A;">PDF · 95 KB · 10.03.2026</div></div></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -389,9 +470,27 @@ document.querySelector('.clm-list').addEventListener('click', function(e) {
   if (!btn) return;
   e.preventDefault();
   var card = btn.closest('.clm-card');
-  var clmId = card ? card.querySelector('.clm-card-id') : null;
-  var id = clmId ? clmId.textContent : '';
-  showToast(btn.textContent.trim() + ' — ' + id);
+  var cardId = card ? card.id.replace('clm-', '') : '';
+  var txt = btn.textContent.trim().toLowerCase();
+  var secId = null;
+  if (txt.indexOf('переписка') !== -1) secId = 'sec-chat-' + cardId;
+  else if (txt.indexOf('фото') !== -1) secId = 'sec-photo-' + cardId;
+  else if (txt.indexOf('документ') !== -1 || txt.indexOf('акт') !== -1 || txt.indexOf('замер') !== -1) secId = 'sec-docs-' + cardId;
+  if (secId) {
+    var sec = document.getElementById(secId);
+    if (sec) {
+      // Close other sections in this card
+      card.querySelectorAll('.clm-section').forEach(function(s) {
+        if (s.id !== secId) s.style.display = 'none';
+      });
+      card.querySelectorAll('.clm-action-btn').forEach(function(b) {
+        if (b !== btn) b.classList.remove('active');
+      });
+      var isOpen = sec.style.display !== 'none';
+      sec.style.display = isOpen ? 'none' : '';
+      btn.classList.toggle('active', !isOpen);
+    }
+  }
 });
 </script>
 
