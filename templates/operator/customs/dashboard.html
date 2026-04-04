@@ -104,18 +104,27 @@
         Очередь документов
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
-        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Открыта заявка на инвойс ORD-4518')">
+        <div class="op-card-elevated" style="padding:12px 14px;">
           <div style="font-size:13px;font-weight:600;color:#ECECEC;">Инвойс</div>
           <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4518 - ожидает загрузки</div>
-          <span class="op-badge op-badge-orange" style="margin-top:6px;">Срочно</span>
+          <span class="op-badge op-badge-orange" style="margin-top:6px;display:inline-block;">Срочно</span>
+          <div style="margin-top:8px;">
+            <button class="op-btn op-btn-ghost" style="font-size:11px;" onclick="requestDoc(this, 'Инвойс')">📎 Загрузить инвойс</button>
+          </div>
         </div>
-        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Открыта заявка на сертификат ORD-4515')">
+        <div class="op-card-elevated" style="padding:12px 14px;">
           <div style="font-size:13px;font-weight:600;color:#ECECEC;">Сертификат происхождения</div>
           <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4515 - запрошен у поставщика</div>
+          <div style="margin-top:8px;">
+            <button class="op-btn op-btn-ghost" style="font-size:11px;" onclick="requestDoc(this, 'Сертификат')">📎 Загрузить сертификат</button>
+          </div>
         </div>
-        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Открыта заявка на упаковочный лист ORD-4521')">
+        <div class="op-card-elevated" style="padding:12px 14px;">
           <div style="font-size:13px;font-weight:600;color:#ECECEC;">Упаковочный лист</div>
           <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4521 - на проверке</div>
+          <div style="margin-top:8px;">
+            <button class="op-btn op-btn-ghost" style="font-size:11px;" onclick="requestDoc(this, 'Упаковочный лист')">📎 Загрузить документ</button>
+          </div>
         </div>
       </div>
     </div>
@@ -145,4 +154,30 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function requestDoc(btn, docType) {
+  var card = btn.closest('.op-card-elevated') || btn.parentElement;
+  var inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = '.pdf,.jpg,.png';
+  inp.style.display = 'none';
+  inp.onchange = function() {
+    if (!this.files || !this.files[0]) return;
+    var name = this.files[0].name;
+    btn.textContent = '✓ ' + name;
+    btn.disabled = true;
+    btn.style.background = 'rgba(102,187,106,0.12)';
+    btn.style.color = '#66BB6A';
+    btn.style.border = '1px solid rgba(102,187,106,0.2)';
+    card.style.borderColor = 'rgba(102,187,106,0.25)';
+    opToast(docType + ' загружен: ' + name, 2000, 'success');
+    document.body.removeChild(inp);
+  };
+  document.body.appendChild(inp);
+  inp.click();
+}
+</script>
 {% endblock %}

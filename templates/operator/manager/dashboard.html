@@ -45,7 +45,7 @@
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
             <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">Запросить информацию</button>
-            <button class="op-btn op-btn-warn" onclick="opToast('Запрос на доработку отправлен', 2000, 'warn')">Эскалировать</button>
+            <button class="op-btn op-btn-warn" onclick="escalate(this)">Эскалировать</button>
           </div>
           <div class="info-request-area" style="display:none;margin-top:10px;">
             <input type="text" class="op-input" placeholder="Введите текст запроса..." style="margin-bottom:8px;"/>
@@ -62,7 +62,7 @@
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
             <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">Запросить информацию</button>
-            <button class="op-btn op-btn-warn" onclick="opToast('Запрос на доработку отправлен', 2000, 'warn')">Эскалировать</button>
+            <button class="op-btn op-btn-warn" onclick="escalate(this)">Эскалировать</button>
           </div>
           <div class="info-request-area" style="display:none;margin-top:10px;">
             <input type="text" class="op-input" placeholder="Введите текст запроса..." style="margin-bottom:8px;"/>
@@ -78,8 +78,8 @@
             <span class="op-badge op-badge-gray">Ожидает</span>
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="op-btn op-btn-primary" onclick="opToast('Согласовано', 2000, 'success')">Согласовать</button>
-            <button class="op-btn op-btn-ghost" onclick="opToast('Отклонено', 2000, 'warn')">Отклонить</button>
+            <button class="op-btn op-btn-primary" onclick="approve(this)">Согласовать</button>
+            <button class="op-btn op-btn-ghost" onclick="reject(this)">Отклонить</button>
           </div>
         </div>
         <div class="op-card-elevated" style="padding:14px 16px;">
@@ -92,7 +92,7 @@
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
             <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">Запросить информацию</button>
-            <button class="op-btn op-btn-ghost" onclick="opToast('Заметка добавлена', 2000, 'success')">Заметка</button>
+            <button class="op-btn op-btn-ghost" onclick="addNote(this)">Заметка</button>
           </div>
           <div class="info-request-area" style="display:none;margin-top:10px;">
             <input type="text" class="op-input" placeholder="Введите текст запроса..." style="margin-bottom:8px;"/>
@@ -121,41 +121,77 @@
           </tr>
         </thead>
         <tbody>
-          <tr onclick="opToast('Заказ ORD-4521: $18,400, в работе')">
+          <tr onclick="toggleOrderRow(this)" style="cursor:pointer;" data-expanded="false">
             <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
             <td class="text-secondary">#1042</td>
             <td class="text-secondary">#2087</td>
             <td style="font-family:'Golos Text',sans-serif;">$18,400</td>
             <td><span class="op-badge op-badge-gray">В работе</span></td>
             <td class="text-secondary">24 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">Детали</button></td>
           </tr>
-          <tr onclick="opToast('Заказ ORD-4518: $6,200, на таможне')">
+          <tr class="order-detail-row" style="display:none;">
+            <td colspan="7" style="padding:12px 16px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px;">
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Товар</div><div style="color:#ECECEC;">Запчасти двигателя x24, Фильтры x48</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Маршрут</div><div style="color:#ECECEC;">Шанхай → Москва · 12 апр ETA</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Оплата</div><div style="color:#E85C0D;">Аванс не оплачен</div></div>
+              </div>
+            </td>
+          </tr>
+          <tr onclick="toggleOrderRow(this)" style="cursor:pointer;" data-expanded="false">
             <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
             <td class="text-secondary">#1038</td>
             <td class="text-secondary">#2091</td>
             <td style="font-family:'Golos Text',sans-serif;">$6,200</td>
             <td><span class="op-badge op-badge-orange">На таможне</span></td>
             <td class="text-secondary">23 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">Детали</button></td>
           </tr>
-          <tr onclick="opToast('Заказ ORD-4515: $4,100, доставка')">
+          <tr class="order-detail-row" style="display:none;">
+            <td colspan="7" style="padding:12px 16px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px;">
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Товар</div><div style="color:#ECECEC;">Подшипники x120</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Маршрут</div><div style="color:#ECECEC;">Стамбул → Москва · 28 мар ETA</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Таможня</div><div style="color:#E85C0D;">На досмотре</div></div>
+              </div>
+            </td>
+          </tr>
+          <tr onclick="toggleOrderRow(this)" style="cursor:pointer;" data-expanded="false">
             <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
             <td class="text-secondary">#1051</td>
             <td class="text-secondary">#2075</td>
             <td style="font-family:'Golos Text',sans-serif;">$4,100</td>
             <td><span class="op-badge op-badge-gray">Доставка</span></td>
             <td class="text-secondary">22 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">Детали</button></td>
           </tr>
-          <tr onclick="opToast('Заказ ORD-4512: $12,800, ожидает оплаты')">
+          <tr class="order-detail-row" style="display:none;">
+            <td colspan="7" style="padding:12px 16px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px;">
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Товар</div><div style="color:#ECECEC;">Фильтры масляные x200</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Маршрут</div><div style="color:#ECECEC;">Гуанчжоу → Владивосток · 5 апр ETA</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Рекламация</div><div style="color:#E85C0D;">CLM открыта</div></div>
+              </div>
+            </td>
+          </tr>
+          <tr onclick="toggleOrderRow(this)" style="cursor:pointer;" data-expanded="false">
             <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
             <td class="text-secondary">#1029</td>
             <td class="text-secondary">#2063</td>
             <td style="font-family:'Golos Text',sans-serif;">$12,800</td>
             <td><span class="op-badge op-badge-gray">Оплата</span></td>
             <td class="text-secondary">20 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">Детали</button></td>
+          </tr>
+          <tr class="order-detail-row" style="display:none;">
+            <td colspan="7" style="padding:12px 16px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.04);">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px;">
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Товар</div><div style="color:#ECECEC;">Тормозные колодки x360</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Маршрут</div><div style="color:#ECECEC;">Дубай → Москва · 26 мар ETA</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Оплата</div><div style="color:#66BB6A;">Ожидает финальной</div></div>
+              </div>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -247,6 +283,68 @@ function sendInfoRequest(btn, ordId) {
   opToast('Запрос отправлен', 2000, 'success');
   input.value = '';
   btn.closest('.info-request-area').style.display = 'none';
+}
+
+function escalate(btn) {
+  var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
+  btn.textContent = '✓ Эскалировано';
+  btn.disabled = true;
+  btn.style.cssText += ';opacity:0.6;';
+  card.style.borderColor = '#E05555';
+  card.style.borderWidth = '1px';
+  opToast('Задача эскалирована руководителю', 2000, 'warn');
+}
+function approve(btn) {
+  var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
+  btn.textContent = '✓ Согласовано';
+  btn.disabled = true;
+  btn.style.background = 'rgba(102,187,106,0.15)';
+  btn.style.color = '#66BB6A';
+  card.style.borderColor = 'rgba(102,187,106,0.3)';
+  var btns = card.querySelectorAll('button');
+  btns.forEach(function(b){ if (b !== btn) b.disabled = true; });
+  opToast('Согласовано', 2000, 'success');
+}
+function reject(btn) {
+  var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
+  btn.textContent = '✗ Отклонено';
+  btn.disabled = true;
+  btn.style.opacity = '0.5';
+  card.style.borderColor = 'rgba(255,255,255,0.1)';
+  var btns = card.querySelectorAll('button');
+  btns.forEach(function(b){ if (b !== btn) b.disabled = true; });
+  opToast('Отклонено', 2000);
+}
+function addNote(btn) {
+  var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
+  var existing = card.querySelector('.inline-note');
+  if (existing) { existing.querySelector('textarea').focus(); return; }
+  var noteDiv = document.createElement('div');
+  noteDiv.className = 'inline-note';
+  noteDiv.style.cssText = 'margin-top:10px;';
+  noteDiv.innerHTML = '<textarea placeholder="Введите заметку..." style="width:100%;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;box-sizing:border-box;font-family:inherit;" rows="2" onkeydown="saveNote(event,this)"></textarea><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Enter — сохранить · Esc — отмена</div>';
+  card.appendChild(noteDiv);
+  noteDiv.querySelector('textarea').focus();
+}
+function saveNote(e, ta) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    var text = ta.value.trim();
+    if (!text) return;
+    var noteDiv = ta.closest('.inline-note');
+    noteDiv.innerHTML = '<div style="font-size:12px;color:#919191;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.06);">📝 ' + text + '</div>';
+    opToast('Заметка сохранена', 1500, 'success');
+  } else if (e.key === 'Escape') {
+    ta.closest('.inline-note').remove();
+  }
+}
+function toggleOrderRow(row) {
+  if (row.classList.contains('order-detail-row')) return;
+  var detail = row.nextElementSibling;
+  if (!detail || !detail.classList.contains('order-detail-row')) return;
+  var expanded = row.dataset.expanded === 'true';
+  row.dataset.expanded = expanded ? 'false' : 'true';
+  detail.style.display = expanded ? 'none' : 'table-row';
 }
 </script>
 {% endblock %}

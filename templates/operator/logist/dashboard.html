@@ -190,20 +190,87 @@
         Требуют действия
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
-        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Детали открыты', 2000, 'info')">
-          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Подтвердить получение</div>
-          <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4518 - ожидает подтверждения</div>
+        <div class="op-card-elevated" style="padding:12px 14px;">
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">ORD-4518 — Подтвердить получение</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">Стамбул → Москва · ожидает подтверждения</div>
+          <div style="margin-top:8px;">
+            <button class="op-btn op-btn-primary" onclick="confirmDelivery(this)">Подтвердить получение</button>
+          </div>
         </div>
-        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Документы открыты', 2000, 'info')">
-          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Загрузить CMR</div>
-          <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4521 - документ не загружен</div>
+        <div class="op-card-elevated" style="padding:12px 14px;">
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">ORD-4521 — Загрузить CMR</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">документ не загружен</div>
+          <div style="margin-top:8px;">
+            <button class="op-btn op-btn-ghost" onclick="uploadCMR(this)">Загрузить CMR</button>
+          </div>
         </div>
-        <div class="op-card-elevated" style="padding:12px 14px;cursor:pointer;" onclick="opToast('Маршрут обновлён', 2000, 'success')">
-          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Обновить маршрут</div>
-          <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4508 - изменение порта</div>
+        <div class="op-card-elevated" style="padding:12px 14px;">
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">ORD-4508 — Обновить маршрут</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">изменение порта назначения</div>
+          <div style="margin-top:8px;">
+            <button class="op-btn op-btn-ghost" onclick="updateRoute(this)">Обновить маршрут</button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelivery(btn) {
+  var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
+  btn.textContent = '✓ Получение подтверждено';
+  btn.disabled = true;
+  btn.style.background = 'rgba(102,187,106,0.15)';
+  btn.style.color = '#66BB6A';
+  btn.style.border = '1px solid rgba(102,187,106,0.25)';
+  card.style.borderColor = 'rgba(102,187,106,0.25)';
+  opToast('Получение подтверждено', 2000, 'success');
+}
+function uploadCMR(btn) {
+  var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
+  var existing = card.querySelector('.cmr-upload');
+  if (existing) { existing.querySelector('input').click(); return; }
+  var div = document.createElement('div');
+  div.className = 'cmr-upload';
+  div.style.cssText = 'margin-top:10px;';
+  div.innerHTML = '<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="cmrFileSelected(this)">'
+    + '<button onclick="this.previousElementSibling.click()" style="padding:8px 16px;border-radius:8px;background:rgba(100,181,246,0.1);color:#64B5F6;border:1px solid rgba(100,181,246,0.2);font-size:12px;cursor:pointer;width:100%;">📎 Выбрать файл CMR (PDF/JPG)</button>';
+  btn.parentElement.insertBefore(div, btn.nextSibling);
+}
+function cmrFileSelected(input) {
+  if (!input.files || !input.files[0]) return;
+  var name = input.files[0].name;
+  var card = input.closest('.op-card-elevated') || input.parentElement.parentElement.parentElement;
+  var div = input.closest('.cmr-upload');
+  div.innerHTML = '<div style="font-size:12px;color:#66BB6A;padding:6px 10px;background:rgba(102,187,106,0.08);border-radius:8px;border:1px solid rgba(102,187,106,0.2);">✓ ' + name + ' загружен</div>';
+  card.style.borderColor = 'rgba(102,187,106,0.25)';
+  opToast('CMR загружен: ' + name, 2000, 'success');
+}
+function updateRoute(btn) {
+  var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
+  var existing = card.querySelector('.route-update');
+  if (existing) { existing.remove(); return; }
+  var div = document.createElement('div');
+  div.className = 'route-update';
+  div.style.cssText = 'margin-top:10px;display:flex;gap:8px;';
+  div.innerHTML = '<select style="flex:1;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;">'
+    + '<option>Шанхай → Владивосток → Москва</option>'
+    + '<option>Шанхай → Забайкальск → Москва</option>'
+    + '<option>Шанхай → Алматы → Москва</option>'
+    + '<option>Гуанчжоу → Владивосток → Екатеринбург</option>'
+    + '</select>'
+    + '<button onclick="applyRoute(this)" style="padding:8px 14px;border-radius:8px;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.2);font-size:12px;cursor:pointer;white-space:nowrap;">Применить</button>';
+  btn.parentElement.insertBefore(div, btn.nextSibling);
+}
+function applyRoute(btn) {
+  var select = btn.previousElementSibling;
+  var route = select.value;
+  var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement.parentElement;
+  btn.closest('.route-update').remove();
+  opToast('Маршрут обновлён: ' + route, 2500, 'success');
+}
+</script>
 {% endblock %}
