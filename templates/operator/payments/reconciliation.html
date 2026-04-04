@@ -4,22 +4,22 @@
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
-  <a class="op-stat" href="/operator/payments/reconciliation/">
+  <div class="op-stat" onclick="switchRecTab('all')" style="cursor:pointer;border-color:rgba(100,181,246,0.35);" id="rec-stat-all">
     <div class="op-stat-value">24</div>
     <div class="op-stat-label">Сверок за месяц</div>
-  </a>
-  <a class="op-stat op-stat-warn" href="/operator/payments/reconciliation/">
+  </div>
+  <div class="op-stat op-stat-warn" onclick="switchRecTab('discrepancy')" style="cursor:pointer;" id="rec-stat-disc">
     <div class="op-stat-value">3</div>
     <div class="op-stat-label">Расхождения</div>
-  </a>
-  <a class="op-stat" href="/operator/payments/reconciliation/">
+  </div>
+  <div class="op-stat" onclick="switchRecTab('all')" style="cursor:pointer;" id="rec-stat-sum">
     <div class="op-stat-value">$1.2M</div>
     <div class="op-stat-label">Общая сумма</div>
-  </a>
-  <a class="op-stat" href="/operator/payments/reconciliation/">
+  </div>
+  <div class="op-stat" onclick="switchRecTab('confirmed')" style="cursor:pointer;" id="rec-stat-conf">
     <div class="op-stat-value">21</div>
     <div class="op-stat-label">Подтверждено</div>
-  </a>
+  </div>
 </div>
 
 <!-- Tabs -->
@@ -54,8 +54,8 @@
         <td><span class="op-badge op-badge-orange">Расхождение</span></td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Сверка запущена', 2000, 'success')">Разобрать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Выписка запрошена', 2000, 'success')">Выписка</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();resolveRec(this)">Разобрать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();requestStatement(this)">Выписка</button>
           </div>
         </td>
       </tr>
@@ -67,7 +67,7 @@
         <td style="font-family:'Golos Text',sans-serif;">$18,200</td>
         <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
         <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showRecDetail(this)">Детали</button></td>
       </tr>
       <tr data-status="confirmed" onclick="opToast('Сверка: Покупатель #1045 / Поставщик #308')">
         <td class="text-secondary">1-15 мар</td>
@@ -77,7 +77,7 @@
         <td style="font-family:'Golos Text',sans-serif;">$42,800</td>
         <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
         <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showRecDetail(this)">Детали</button></td>
       </tr>
       <tr data-status="discrepancy" style="border-left:3px solid rgba(232,92,13,0.4);" onclick="opToast('Сверка: Покупатель #1051 / Поставщик #312, расхождение $1,200')">
         <td class="text-secondary">1-15 мар</td>
@@ -89,8 +89,8 @@
         <td><span class="op-badge op-badge-orange">Расхождение</span></td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Сверка запущена', 2000, 'success')">Разобрать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Выписка запрошена', 2000, 'success')">Выписка</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();resolveRec(this)">Разобрать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();requestStatement(this)">Выписка</button>
           </div>
         </td>
       </tr>
@@ -102,7 +102,7 @@
         <td style="font-family:'Golos Text',sans-serif;">$31,600</td>
         <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
         <td><span class="op-badge op-badge-gray">На проверке</span></td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Подтверждено', 2000, 'success')">Подтвердить</button></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();confirmRec(this)">Подтвердить</button></td>
       </tr>
       <tr data-status="confirmed" onclick="opToast('Сверка: Покупатель #1029 / Поставщик #315')">
         <td class="text-secondary">16-28 фев</td>
@@ -112,7 +112,7 @@
         <td style="font-family:'Golos Text',sans-serif;">$67,100</td>
         <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
         <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showRecDetail(this)">Детали</button></td>
       </tr>
       <tr data-status="confirmed" onclick="opToast('Сверка: Покупатель #1042 / Поставщик #301')">
         <td class="text-secondary">16-28 фев</td>
@@ -122,7 +122,7 @@
         <td style="font-family:'Golos Text',sans-serif;">$22,800</td>
         <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
         <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showRecDetail(this)">Детали</button></td>
       </tr>
       <tr data-status="discrepancy" style="border-left:3px solid rgba(232,92,13,0.4);" onclick="opToast('Сверка: Покупатель #1055 / Поставщик #320, расхождение $85')">
         <td class="text-secondary">16-28 фев</td>
@@ -134,8 +134,8 @@
         <td><span class="op-badge op-badge-orange">Расхождение</span></td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Сверка запущена', 2000, 'success')">Разобрать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Выписка запрошена', 2000, 'success')">Выписка</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();resolveRec(this)">Разобрать</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();requestStatement(this)">Выписка</button>
           </div>
         </td>
       </tr>
@@ -147,7 +147,7 @@
         <td style="font-family:'Golos Text',sans-serif;">$15,400</td>
         <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
         <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showRecDetail(this)">Детали</button></td>
       </tr>
       <tr data-status="confirmed" onclick="opToast('Сверка: Покупатель #1060 / Поставщик #322')">
         <td class="text-secondary">16-28 фев</td>
@@ -157,7 +157,7 @@
         <td style="font-family:'Golos Text',sans-serif;">$38,200</td>
         <td style="font-family:'Golos Text',sans-serif;color:#5E5E5E;">$0</td>
         <td><span class="op-badge op-badge-gray">Подтверждена</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали открыты', 2000, 'info')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showRecDetail(this)">Детали</button></td>
       </tr>
     </tbody>
   </table>
@@ -167,6 +167,67 @@
 {% block extra_js %}
 <script>
 (function(){
+  window.resolveRec = function(btn) {
+    var row = btn.closest('tr');
+    var next = row.nextElementSibling;
+    if (next && next.classList.contains('rec-resolve-row')) { next.remove(); return; }
+    var resolve = document.createElement('tr');
+    resolve.className = 'rec-resolve-row';
+    resolve.innerHTML = '<td colspan="8" style="padding:12px 16px;background:#1F1F1F;">'
+      + '<div style="display:flex;gap:10px;align-items:flex-start;">'
+      + '<select style="padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;">'
+      + '<option>Ошибка суммы</option><option>Банковская комиссия</option><option>Курсовая разница</option><option>Технический сбой</option><option>Прочее</option>'
+      + '</select>'
+      + '<textarea rows="2" placeholder="Комментарий к разбору..." style="flex:1;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;font-family:inherit;"></textarea>'
+      + '<button onclick="closeRecResolve(this)" style="padding:8px 14px;border-radius:8px;background:rgba(102,187,106,0.12);color:#66BB6A;border:1px solid rgba(102,187,106,0.2);font-size:12px;cursor:pointer;white-space:nowrap;">✓ Закрыть</button>'
+      + '</div></td>';
+    row.parentElement.insertBefore(resolve, row.nextSibling);
+    resolve.querySelector('textarea').focus();
+  };
+  window.closeRecResolve = function(btn) {
+    var resolveRow = btn.closest('tr');
+    var prevRow = resolveRow.previousElementSibling;
+    resolveRow.remove();
+    if (prevRow) {
+      var badge = prevRow.querySelector('.op-badge.op-badge-orange');
+      if (badge) { badge.className = 'op-badge op-badge-gray'; badge.textContent = 'Подтверждена'; }
+      var actDiv = prevRow.querySelector('td:last-child div');
+      if (actDiv) actDiv.closest('td').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showRecDetail(this)">Детали</button>';
+    }
+    opToast('Расхождение разобрано', 2000, 'success');
+  };
+  window.requestStatement = function(btn) {
+    btn.disabled = true; btn.textContent = '✓ Запрошена'; btn.style.opacity = '0.7';
+    opToast('Запрос выписки отправлен в банк', 2000, 'success');
+  };
+  window.confirmRec = function(btn) {
+    var row = btn.closest('tr');
+    var badge = row.querySelector('.op-badge');
+    badge.className = 'op-badge op-badge-gray'; badge.textContent = 'Подтверждена';
+    row.dataset.status = 'confirmed';
+    btn.closest('td').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showRecDetail(this)">Детали</button>';
+    opToast('Сверка подтверждена', 2000, 'success');
+  };
+  window.showRecDetail = function(btn) {
+    var row = btn.closest('tr');
+    var next = row.nextElementSibling;
+    if (next && next.classList.contains('rec-detail-row')) {
+      next.style.display = next.style.display === 'none' ? 'table-row' : 'none';
+      return;
+    }
+    var buyer = row.querySelector('td:nth-child(2)').textContent;
+    var detail = document.createElement('tr');
+    detail.className = 'rec-detail-row';
+    detail.innerHTML = '<td colspan="8" style="padding:12px 16px;background:#1F1F1F;font-size:12px;">'
+      + '<div style="display:flex;gap:24px;">'
+      + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Контрагент</div><div style="color:#ECECEC;">' + buyer + '</div></div>'
+      + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Платежей в периоде</div><div style="color:#ECECEC;">4</div></div>'
+      + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Сверка закрыта</div><div style="color:#ECECEC;">16 мар</div></div>'
+      + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Ответственный</div><div style="color:#ECECEC;">Платёжный агент #301</div></div>'
+      + '</div></td>';
+    row.parentElement.insertBefore(detail, row.nextSibling);
+  };
+
   window.switchRecTab = function(tab){
     document.querySelectorAll('[data-rec-tab]').forEach(function(btn){
       btn.classList.toggle('active', btn.getAttribute('data-rec-tab') === tab);
@@ -176,6 +237,11 @@
       var s = row.getAttribute('data-status');
       row.style.display = s === tab ? '' : 'none';
     });
+    var inactive = 'rgba(255,255,255,0.04)', blue = 'rgba(100,181,246,0.35)', orange = 'rgba(232,92,13,0.5)';
+    document.getElementById('rec-stat-all').style.borderColor = tab === 'all' ? blue : inactive;
+    document.getElementById('rec-stat-disc').style.borderColor = tab === 'discrepancy' ? orange : inactive;
+    document.getElementById('rec-stat-sum').style.borderColor = tab === 'all' ? blue : inactive;
+    document.getElementById('rec-stat-conf').style.borderColor = tab === 'confirmed' ? blue : inactive;
   };
 })();
 </script>

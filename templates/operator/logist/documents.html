@@ -4,15 +4,15 @@
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
-  <div class="op-stat" id="ldoc-stat-all" onclick="filterLDocStat('all')" style="cursor:pointer;border-color:rgba(100,181,246,0.35);transition:border-color .15s,background .15s,transform .1s;">
+  <div class="op-stat">
     <div class="op-stat-value">45</div>
     <div class="op-stat-label">Всего документов</div>
   </div>
-  <div class="op-stat" id="ldoc-stat-waiting" onclick="filterLDocStat('waiting')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
+  <div class="op-stat">
     <div class="op-stat-value">6</div>
     <div class="op-stat-label">Ожидают загрузки</div>
   </div>
-  <div class="op-stat op-stat-warn" id="ldoc-stat-overdue" onclick="filterLDocStat('overdue')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
+  <div class="op-stat op-stat-warn">
     <div class="op-stat-value">2</div>
     <div class="op-stat-label">Просрочены</div>
   </div>
@@ -70,16 +70,16 @@
       </tr>
     </thead>
     <tbody>
-      <tr data-type="CMR" data-order="ORD-4521" data-status="Ожидает" onclick="opToast('CMR для ORD-4521')">
+      <tr data-type="CMR" data-order="ORD-4521" data-status="Ожидает" onclick="opToast('Документ: CMR для ORD-4521')">
         <td style="font-weight:600;">CMR</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
         <td class="text-secondary">Шанхай &#8594; Москва</td>
         <td><span class="op-badge op-badge-gray">Ожидает</span></td>
         <td class="text-secondary">28 мар</td>
         <td class="text-secondary">Логист #1</td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Файл загружен', 2000, 'success')">Загрузить</button></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();uploadDoc(this,'CMR','ORD-4521')">Загрузить</button></td>
       </tr>
-      <tr data-type="Bill of Lading" data-order="ORD-4521" data-status="В работе" onclick="opToast('Bill of Lading для ORD-4521')">
+      <tr data-type="Bill of Lading" data-order="ORD-4521" data-status="В работе" onclick="opToast('Документ: Bill of Lading для ORD-4521')">
         <td style="font-weight:600;">Bill of Lading</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
         <td class="text-secondary">Шанхай &#8594; Москва</td>
@@ -88,34 +88,34 @@
         <td class="text-secondary">Логист #1</td>
         <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();promptRequest(this,'Запрос B/L для ORD-4521')">Запросить</button></td>
       </tr>
-      <tr data-type="Air Waybill" data-order="ORD-4512" data-status="Готов" onclick="opToast('Air Waybill для ORD-4512')">
+      <tr data-type="Air Waybill" data-order="ORD-4512" data-status="Готов" onclick="opToast('Документ: Air Waybill для ORD-4512')">
         <td style="font-weight:600;">Air Waybill</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
         <td class="text-secondary">Дубай &#8594; Москва</td>
         <td><span class="op-badge op-badge-gray">Готов</span></td>
         <td class="text-secondary">24 мар</td>
         <td class="text-secondary">Логист #2</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание AWB для ORD-4512')">Скачать</button></td>
       </tr>
-      <tr data-type="Инвойс" data-order="ORD-4518" data-status="Готов" onclick="opToast('Инвойс для ORD-4518')">
+      <tr data-type="Инвойс" data-order="ORD-4518" data-status="Готов" onclick="opToast('Документ: Инвойс для ORD-4518')">
         <td style="font-weight:600;">Инвойс</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
         <td class="text-secondary">Стамбул &#8594; Москва</td>
         <td><span class="op-badge op-badge-gray">Готов</span></td>
         <td class="text-secondary">22 мар</td>
         <td class="text-secondary">Логист #1</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание инвойса для ORD-4518')">Скачать</button></td>
       </tr>
-      <tr data-type="Упаковочный лист" data-order="ORD-4518" data-status="Ожидает" onclick="opToast('Упаковочный лист для ORD-4518')">
+      <tr data-type="Упаковочный лист" data-order="ORD-4518" data-status="Ожидает" onclick="opToast('Документ: Упаковочный лист для ORD-4518')">
         <td style="font-weight:600;">Упаковочный лист</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
         <td class="text-secondary">Стамбул &#8594; Москва</td>
         <td><span class="op-badge op-badge-gray">Ожидает</span></td>
         <td class="text-secondary">29 мар</td>
         <td class="text-secondary">Логист #1</td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Файл загружен', 2000, 'success')">Загрузить</button></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();uploadDoc(this,'Упаковочный лист','ORD-4518')">Загрузить</button></td>
       </tr>
-      <tr data-type="Сертификат происхождения" data-order="ORD-4515" data-status="В работе" onclick="opToast('Сертификат для ORD-4515')">
+      <tr data-type="Сертификат происхождения" data-order="ORD-4515" data-status="В работе" onclick="opToast('Документ: Сертификат для ORD-4515')">
         <td style="font-weight:600;">Сертификат происхождения</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
         <td class="text-secondary">Гуанчжоу &#8594; Владивосток</td>
@@ -124,43 +124,43 @@
         <td class="text-secondary">Логист #3</td>
         <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();promptRequest(this,'Запрос сертификата для ORD-4515')">Запросить</button></td>
       </tr>
-      <tr data-type="Страховой полис" data-order="ORD-4508" data-status="Просрочен" onclick="opToast('Страховой полис для ORD-4508')">
+      <tr data-type="Страховой полис" data-order="ORD-4508" data-status="Просрочен" onclick="opToast('Документ: Страховой полис для ORD-4508')">
         <td style="font-weight:600;">Страховой полис</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
         <td class="text-secondary">Шанхай &#8594; Новосибирск</td>
         <td><span class="op-badge op-badge-orange">Просрочен</span></td>
         <td class="text-secondary">20 мар</td>
         <td class="text-secondary">Логист #2</td>
-        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Срочный запрос отправлен', 2000, 'warn')">Загрузить</button></td>
+        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();uploadDoc(this,'Страховой полис','ORD-4508')">Загрузить</button></td>
       </tr>
-      <tr data-type="Таможенная декларация" data-order="ORD-4515" data-status="Ожидает" onclick="opToast('Таможенная декларация для ORD-4515')">
+      <tr data-type="Таможенная декларация" data-order="ORD-4515" data-status="Ожидает" onclick="opToast('Документ: Таможенная декларация для ORD-4515')">
         <td style="font-weight:600;">Таможенная декларация</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
         <td class="text-secondary">Гуанчжоу &#8594; Владивосток</td>
         <td><span class="op-badge op-badge-gray">Ожидает</span></td>
         <td class="text-secondary">3 апр</td>
         <td class="text-secondary">Логист #3</td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Файл загружен', 2000, 'success')">Загрузить</button></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();uploadDoc(this,'Таможенная декларация','ORD-4515')">Загрузить</button></td>
       </tr>
-      <tr data-type="CMR" data-order="ORD-4505" data-status="Готов" onclick="opToast('CMR для ORD-4505')">
+      <tr data-type="CMR" data-order="ORD-4505" data-status="Готов" onclick="opToast('Документ: CMR для ORD-4505')">
         <td style="font-weight:600;">CMR</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4505</td>
         <td class="text-secondary">Стамбул &#8594; Екатеринбург</td>
         <td><span class="op-badge op-badge-gray">Готов</span></td>
         <td class="text-secondary">18 мар</td>
         <td class="text-secondary">Логист #1</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание CMR для ORD-4505')">Скачать</button></td>
       </tr>
-      <tr data-type="Инвойс" data-order="ORD-4512" data-status="Готов" onclick="opToast('Инвойс для ORD-4512')">
+      <tr data-type="Инвойс" data-order="ORD-4512" data-status="Готов" onclick="opToast('Документ: Инвойс для ORD-4512')">
         <td style="font-weight:600;">Инвойс</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
         <td class="text-secondary">Дубай &#8594; Москва</td>
         <td><span class="op-badge op-badge-gray">Готов</span></td>
         <td class="text-secondary">21 мар</td>
         <td class="text-secondary">Логист #2</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание инвойса для ORD-4512')">Скачать</button></td>
       </tr>
-      <tr data-type="Bill of Lading" data-order="ORD-4508" data-status="Просрочен" onclick="opToast('B/L для ORD-4508')">
+      <tr data-type="Bill of Lading" data-order="ORD-4508" data-status="Просрочен" onclick="opToast('Документ: B/L для ORD-4508')">
         <td style="font-weight:600;">Bill of Lading</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
         <td class="text-secondary">Шанхай &#8594; Новосибирск</td>
@@ -169,14 +169,14 @@
         <td class="text-secondary">Логист #2</td>
         <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();promptRequest(this,'Срочный запрос B/L для ORD-4508')">Запросить</button></td>
       </tr>
-      <tr data-type="Упаковочный лист" data-order="ORD-4505" data-status="Готов" onclick="opToast('Упаковочный лист для ORD-4505')">
+      <tr data-type="Упаковочный лист" data-order="ORD-4505" data-status="Готов" onclick="opToast('Документ: Упаковочный лист для ORD-4505')">
         <td style="font-weight:600;">Упаковочный лист</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4505</td>
         <td class="text-secondary">Стамбул &#8594; Екатеринбург</td>
         <td><span class="op-badge op-badge-gray">Готов</span></td>
         <td class="text-secondary">18 мар</td>
         <td class="text-secondary">Логист #1</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Файл скачан', 2000, 'success')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание упаковочного листа для ORD-4505')">Скачать</button></td>
       </tr>
     </tbody>
   </table>
@@ -187,34 +187,6 @@
 <script>
 (function(){
   var statusMap = {'Ожидает':'waiting','В работе':'progress','Готов':'done','Просрочен':'waiting'};
-  var activeLDocStat = 'all';
-
-  window.filterLDocStat = function(stat){
-    activeLDocStat = (activeLDocStat === stat && stat !== 'all') ? 'all' : stat;
-    var active = 'rgba(100,181,246,0.35)';
-    var inactive = 'rgba(255,255,255,0.04)';
-    ['all','waiting','overdue'].forEach(function(s){
-      var el = document.getElementById('ldoc-stat-' + s);
-      if(el) el.style.borderColor = (activeLDocStat === s) ? active : inactive;
-    });
-    applyLDocFilters();
-  };
-
-  function applyLDocFilters(){
-    var ft = document.getElementById('doc-type-filter').value;
-    var fo = document.getElementById('doc-order-filter').value;
-    var fs = document.getElementById('doc-status-filter').value;
-    document.querySelectorAll('#docs-table tbody tr').forEach(function(row){
-      var t = row.getAttribute('data-type');
-      var o = row.getAttribute('data-order');
-      var s = row.getAttribute('data-status');
-      var statOk = true;
-      if(activeLDocStat === 'waiting') statOk = s === 'Ожидает';
-      else if(activeLDocStat === 'overdue') statOk = s === 'Просрочен';
-      var show = statOk && (!ft || t.indexOf(ft)>=0) && (!fo || o===fo) && (!fs || s===fs);
-      row.style.display = show ? '' : 'none';
-    });
-  }
 
   window.switchDocTab = function(tab){
     document.querySelectorAll('[data-doc-tab]').forEach(function(btn){
@@ -228,7 +200,35 @@
   };
 
   window.filterDocsTable = function(){
-    applyLDocFilters();
+    var ft = document.getElementById('doc-type-filter').value;
+    var fo = document.getElementById('doc-order-filter').value;
+    var fs = document.getElementById('doc-status-filter').value;
+    document.querySelectorAll('#docs-table tbody tr').forEach(function(row){
+      var t = row.getAttribute('data-type');
+      var o = row.getAttribute('data-order');
+      var s = row.getAttribute('data-status');
+      var show = (!ft || t.indexOf(ft)>=0) && (!fo || o===fo) && (!fs || s===fs);
+      row.style.display = show ? '' : 'none';
+    });
+  };
+
+  window.uploadDoc = function(btn, docType, orderId) {
+    var input = document.createElement('input');
+    input.type = 'file'; input.accept = '.pdf,.jpg,.jpeg,.png';
+    input.style.display = 'none';
+    input.onchange = function() {
+      if (!input.files.length) { input.remove(); return; }
+      var file = input.files[0];
+      var row = btn.closest('tr');
+      var badge = row ? row.querySelector('.op-badge') : null;
+      if (badge) { badge.className = 'op-badge op-badge-gray'; badge.textContent = 'Готов'; }
+      if (row) row.dataset.status = 'Готов';
+      btn.closest('td').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'⬇ ' + docType + ' — загружается...\',2000,\'success\')">Скачать</button>';
+      opToast('✓ ' + file.name + ' загружен', 2500, 'success');
+      input.remove();
+    };
+    document.body.appendChild(input);
+    input.click();
   };
 
   window.promptRequest = function(btn, msg){

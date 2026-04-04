@@ -322,11 +322,45 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   // Open buttons via delegation
   document.addEventListener('click', function(e) {
     var btn = e.target.closest('.rfq-open-btn');
-    if (!btn) return;
+    if (!btn || btn.tagName === 'A') return;
+    e.stopPropagation();
     var row = btn.closest('tr');
-    var idEl = row ? row.querySelector('.rfq-id') : null;
+    if (!row) return;
+    var next = row.nextElementSibling;
+    if (next && next.classList.contains('rfq-detail-row')) {
+      var hidden = next.style.display === 'none';
+      next.style.display = hidden ? 'table-row' : 'none';
+      btn.textContent = hidden ? 'Свернуть' : 'Открыть';
+      return;
+    }
+    var idEl = row.querySelector('.rfq-id');
     var id = idEl ? idEl.textContent : '';
-    showToast('Открыт ' + id);
+    var descEl = idEl ? idEl.nextElementSibling : null;
+    var desc = descEl ? descEl.textContent : '';
+    var statusEl = row.querySelector('.rfq-badge');
+    var status = statusEl ? statusEl.textContent : '';
+    var amountEl = row.querySelector('.rfq-amount');
+    var amount = amountEl ? amountEl.textContent : '';
+    var detail = document.createElement('tr');
+    detail.className = 'rfq-detail-row';
+    detail.innerHTML = '<td colspan="7" style="padding:14px 16px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.04);">'
+      + '<div style="display:flex;justify-content:space-between;align-items:start;gap:20px;">'
+      + '<div style="flex:1;">'
+      + '<div style="font-size:12px;font-weight:700;color:#ECECEC;margin-bottom:10px;">' + id + ' · ' + desc + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px;">'
+      + '<div style="display:flex;gap:16px;font-size:12px;"><span style="color:#5E5E5E;min-width:130px;">Статус:</span><span style="color:#ECECEC;">' + status + '</span></div>'
+      + '<div style="display:flex;gap:16px;font-size:12px;"><span style="color:#5E5E5E;min-width:130px;">Оценочная сумма:</span><span style="color:#64B5F6;font-family:\'Golos Text\',sans-serif;font-weight:700;">' + amount + '</span></div>'
+      + '<div style="display:flex;gap:16px;font-size:12px;"><span style="color:#5E5E5E;min-width:130px;">Срок котировки:</span><span style="color:#919191;">30.03.2026</span></div>'
+      + '<div style="display:flex;gap:16px;font-size:12px;"><span style="color:#5E5E5E;min-width:130px;">Мин. предложение:</span><span style="color:#919191;">уточняется</span></div>'
+      + '</div>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">'
+      + '<a href="/buyer/negotiations/" class="rfq-open-btn" style="text-decoration:none;padding:6px 14px;">Перейти к торгам →</a>'
+      + '</div>'
+      + '</div>'
+      + '</td>';
+    row.parentElement.insertBefore(detail, row.nextSibling);
+    btn.textContent = 'Свернуть';
   });
 })();
 </script>
