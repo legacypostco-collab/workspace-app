@@ -95,15 +95,51 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "consolidator_site.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-        "OPTIONS": {
-            "timeout": 60,
-        },
+# ─── Database ─────────────────────────────────────────────────────────────────
+_db_engine = os.getenv("DB_ENGINE", "").strip()
+if _db_engine and "postgresql" in _db_engine:
+    DATABASES = {
+        "default": {
+            "ENGINE": _db_engine,
+            "NAME": os.getenv("DB_NAME", "marketplace"),
+            "USER": os.getenv("DB_USER", "marketplace"),
+            "PASSWORD": os.getenv("DB_PASSWORD", ""),
+            "HOST": os.getenv("DB_HOST", "127.0.0.1"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
+            "OPTIONS": {
+                "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "5")),
+            },
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+            "OPTIONS": {
+                "timeout": 60,
+            },
+        }
+    }
+
+# ─── Cache ────────────────────────────────────────────────────────────────────
+_redis_url = os.getenv("CELERY_BROKER_URL", "").strip()
+if _redis_url.startswith("redis://") or _redis_url.startswith("rediss://"):
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _redis_url,
+            "KEY_PREFIX": "consolidator",
+            "TIMEOUT": 300,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [] if DEBUG else [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -122,8 +158,9 @@ TIME_ZONE = "Europe/Moscow"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -131,16 +168,58 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
+
+# ─── HTTPS / proxy ────────────────────────────────────────────────────────────
 USE_HTTPS = _env_bool("USE_HTTPS", False)
 SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", USE_HTTPS)
 CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", USE_HTTPS)
-SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", USE_HTTPS)
+SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", False)  # nginx handles redirect
 SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
 SECURE_HSTS_PRELOAD = _env_bool("SECURE_HSTS_PRELOAD", False)
 SECURE_CONTENT_TYPE_NOSNIFF = _env_bool("SECURE_CONTENT_TYPE_NOSNIFF", True)
 SECURE_REFERRER_POLICY = os.getenv("SECURE_REFERRER_POLICY", "same-origin")
 X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")
+
+# When running behind nginx proxy (BEHIND_PROXY=1) trust X-Forwarded-Proto
+if _env_bool("BEHIND_PROXY", False):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    USE_X_FORWARDED_HOST = True
+
+# ─── Logging ──────────────────────────────────────────────────────────────────
+_log_level = os.getenv("LOG_LEVEL", "DEBUG" if DEBUG else "INFO").upper()
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{asctime} {levelname} {name} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": _log_level,
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": _log_level,
+            "propagate": False,
+        },
+        "marketplace": {
+            "handlers": ["console"],
+            "level": _log_level,
+            "propagate": False,
+        },
+    },
+}
 
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
@@ -204,7 +283,7 @@ MAX_ORDER_DOCUMENT_BYTES = int(os.getenv("MAX_ORDER_DOCUMENT_BYTES", str(10 * 10
 LEGAL_LOOKUP_TIMEOUT_SEC = float(os.getenv("LEGAL_LOOKUP_TIMEOUT_SEC", "2"))
 LEGAL_LOOKUP_CIRCUIT_SECONDS = int(os.getenv("LEGAL_LOOKUP_CIRCUIT_SECONDS", "30"))
 
-# ─── Email / SMTP ────────────────────────────────────────────────────────────
+# ─── Email / SMTP ─────────────────────────────────────────────────────────────
 _email_host = os.getenv("EMAIL_HOST", "").strip()
 if _email_host:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
