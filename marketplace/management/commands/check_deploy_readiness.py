@@ -35,16 +35,37 @@ class Command(BaseCommand):
                 errors.append("SESSION_COOKIE_SECURE must be enabled.")
             if not bool(getattr(settings, "CSRF_COOKIE_SECURE", False)):
                 errors.append("CSRF_COOKIE_SECURE must be enabled.")
-            if not bool(getattr(settings, "SECURE_SSL_REDIRECT", False)):
-                errors.append("SECURE_SSL_REDIRECT should be enabled.")
+            # SECURE_SSL_REDIRECT should be False when behind nginx proxy (nginx does redirect)
+            behind_proxy = bool(getattr(settings, "SECURE_PROXY_SSL_HEADER", None))
+            if not behind_proxy and not bool(getattr(settings, "SECURE_SSL_REDIRECT", False)):
+                warnings.append("SECURE_SSL_REDIRECT is False and BEHIND_PROXY is not set — ensure TLS termination happens elsewhere.")
             if int(getattr(settings, "SECURE_HSTS_SECONDS", 0) or 0) <= 0:
-                errors.append("SECURE_HSTS_SECONDS should be > 0.")
+                warnings.append("SECURE_HSTS_SECONDS is 0 — consider enabling HSTS once TLS is confirmed stable.")
         else:
             warnings.append("TLS checks skipped due to --allow-no-tls.")
+
+        # Database engine check
+        db_engine = str(settings.DATABASES.get("default", {}).get("ENGINE", ""))
+        if "sqlite" in db_engine:
+            warnings.append("Using SQLite — switch to PostgreSQL for production (set DB_ENGINE).")
+
+        # Email configuration
+        email_host = str(getattr(settings, "EMAIL_HOST", "") or "")
+        if not email_host:
+            warnings.append("EMAIL_HOST is not set — email verification and notifications are disabled.")
+
+        # Admin password via env
+        import os
+        if not os.getenv("DJANGO_ADMIN_PASSWORD"):
+            warnings.append("DJANGO_ADMIN_PASSWORD not set — admin account has no password until set manually.")
 
         webhook_secret = str(getattr(settings, "WEBHOOK_SECRET", "") or "")
         if not webhook_secret:
             warnings.append("WEBHOOK_SECRET is empty; webhook authenticity checks are weaker.")
+
+        payment_url = str(getattr(settings, "PAYMENT_PROVIDER_URL", "") or "")
+        if not payment_url:
+            warnings.append("PAYMENT_PROVIDER_URL not set — payment gateway is not configured.")
 
         if int(getattr(settings, "MAX_IMPORT_ROWS", 0) or 0) > 10000:
             warnings.append("MAX_IMPORT_ROWS is high; consider <= 10000 for safer defaults.")

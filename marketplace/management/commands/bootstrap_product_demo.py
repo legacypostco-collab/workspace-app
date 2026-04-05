@@ -237,7 +237,7 @@ class Command(BaseCommand):
                 role="seller",
                 company="Consolidator Supplier",
             )
-            self._ensure_user(
+            op = self._ensure_user(
                 username="demo_operator",
                 email="operator@demo.com",
                 first_name="Demo",
@@ -245,6 +245,10 @@ class Command(BaseCommand):
                 role="seller",
                 company="Consolidator Ops",
             )
+            # Operator needs is_staff so operator_required decorator passes
+            if not op.is_staff:
+                op.is_staff = True
+                op.save(update_fields=["is_staff"])
 
             if options["reset"]:
                 OrderEvent.objects.filter(order__buyer=buyer).delete()
