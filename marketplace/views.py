@@ -16,7 +16,10 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.conf import settings
+from django.core.cache import cache
+from django.core.mail import send_mail
 from django.core.paginator import Paginator
+from django.core import signing
 from django.db import transaction
 from django.db.models import Count, F, Q, Sum
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -1127,20 +1130,97 @@ def demo_center(request: HttpRequest) -> HttpResponse:
     )
 
 
+# ─── Rate limiting helpers ───────────────────────────────────────────────────
+
+def _client_ip(request: HttpRequest) -> str:
+    xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    return xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR", "0.0.0.0")
+
+
+def _rl_check(request: HttpRequest, prefix: str, max_hits: int, window: int) -> bool:
+    """Return True if request is allowed, False if rate limit exceeded."""
+    key = f"rl:{prefix}:{_client_ip(request)}"
+    hits = cache.get(key, 0)
+    return hits < max_hits
+
+
+def _rl_hit(request: HttpRequest, prefix: str, window: int) -> int:
+    """Increment counter and return new value."""
+    key = f"rl:{prefix}:{_client_ip(request)}"
+    try:
+        return cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, window)
+        return 1
+
+
+def _rl_reset(request: HttpRequest, prefix: str) -> None:
+    cache.delete(f"rl:{prefix}:{_client_ip(request)}")
+
+
+# ─── Email verification helpers ──────────────────────────────────────────────
+
+_EMAIL_VERIFY_SALT = "consolidator-email-verify-v1"
+_EMAIL_VERIFY_MAX_AGE = 86400  # 24 h
+
+
+def _make_verify_token(user_id: int, email: str) -> str:
+    return signing.dumps({"uid": user_id, "email": email}, salt=_EMAIL_VERIFY_SALT)
+
+
+def _decode_verify_token(token: str):
+    """Return (uid, email) or raise signing.BadSignature / signing.SignatureExpired."""
+    data = signing.loads(token, salt=_EMAIL_VERIFY_SALT, max_age=_EMAIL_VERIFY_MAX_AGE)
+    return data["uid"], data["email"]
+
+
+def _send_verification_email(request: HttpRequest, user: User) -> None:
+    token = _make_verify_token(user.id, user.email)
+    verify_url = request.build_absolute_uri(f"/verify-email/{token}/")
+    subject = "Подтвердите email — Consolidator Parts"
+    body = (
+        f"Здравствуйте, {user.first_name or user.username}!\n\n"
+        f"Для завершения регистрации перейдите по ссылке:\n{verify_url}\n\n"
+        f"Ссылка действительна 24 часа.\n\n"
+        f"Если вы не регистрировались на Consolidator Parts — просто игнорируйте это письмо."
+    )
+    try:
+        send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+    except Exception:
+        pass  # console backend or misconfigured SMTP — don't crash registration
+
+
 def register_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
+        # Rate limit: 5 registrations per hour per IP
+        if not _rl_check(request, "register", 5, 3600):
+            messages.error(request, "Слишком много попыток регистрации. Попробуйте через час.")
+            return render(request, "marketplace/register.html", {"form": RegisterForm()})
+
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
             user.email = form.cleaned_data["email"]
             user.first_name = form.cleaned_data["first_name"]
             user.last_name = form.cleaned_data["last_name"]
+
+            # In production (EMAIL_HOST configured) require email verification
+            email_verification_required = bool(getattr(settings, "EMAIL_HOST", "").strip())
+            if email_verification_required:
+                user.is_active = False
+
             user.save()
             UserProfile.objects.create(
                 user=user,
                 role=form.cleaned_data["role"],
                 company_name=form.cleaned_data["company_name"],
             )
+            _rl_hit(request, "register", 3600)
+
+            if email_verification_required:
+                _send_verification_email(request, user)
+                return render(request, "marketplace/email_verification_sent.html", {"email": user.email})
+
             login(request, user)
             messages.success(request, "Регистрация завершена.")
             return redirect("dashboard")
@@ -1149,8 +1229,36 @@ def register_view(request: HttpRequest) -> HttpResponse:
     return render(request, "marketplace/register.html", {"form": form})
 
 
+def verify_email_view(request: HttpRequest, token: str) -> HttpResponse:
+    try:
+        uid, email = _decode_verify_token(token)
+    except signing.SignatureExpired:
+        messages.error(request, "Ссылка подтверждения устарела (24 ч). Зарегистрируйтесь заново.")
+        return redirect("register")
+    except Exception:
+        messages.error(request, "Недействительная ссылка подтверждения.")
+        return redirect("register")
+
+    user = User.objects.filter(id=uid, email=email, is_active=False).first()
+    if not user:
+        # Already activated or doesn't exist
+        messages.info(request, "Email уже подтверждён или аккаунт не найден.")
+        return redirect("login")
+
+    user.is_active = True
+    user.save(update_fields=["is_active"])
+    login(request, user)
+    messages.success(request, "Email подтверждён! Добро пожаловать в Consolidator Parts.")
+    return redirect("dashboard")
+
+
 def login_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
+        # Rate limit: 10 failed attempts per 10 minutes per IP
+        if not _rl_check(request, "login", 10, 600):
+            messages.error(request, "Слишком много попыток входа. Подождите 10 минут.")
+            return render(request, "marketplace/login.html", {"form": LoginForm(request)})
+
         data = request.POST.copy()
         raw_login = data.get("username", "").strip()
         if "@" in raw_login:
@@ -1160,6 +1268,7 @@ def login_view(request: HttpRequest) -> HttpResponse:
         form = LoginForm(request, data=data)
         if form.is_valid():
             user = form.get_user()
+            _rl_reset(request, "login")  # reset counter on success
             login(request, user)
             role = _role_for(user)
             if role == "operator":
@@ -1167,6 +1276,8 @@ def login_view(request: HttpRequest) -> HttpResponse:
             if role == "seller":
                 return redirect("seller_dashboard")
             return redirect("buyer_dashboard")
+        else:
+            _rl_hit(request, "login", 600)  # count failed attempt
     else:
         form = LoginForm(request)
     return render(request, "marketplace/login.html", {"form": form})

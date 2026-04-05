@@ -11,6 +11,7 @@ urlpatterns = [
     path("login/", views.login_view, name="login"),
     path("logout/", views.logout_view, name="logout"),
     path("demo-login/", views.demo_login, name="demo_login"),
+    path("verify-email/<str:token>/", views.verify_email_view, name="verify_email"),
     path("catalog/", views.catalog, name="catalog"),
     path("rfq/", views.rfq_list, name="rfq_list"),
     path("rfq/new/", views.rfq_new, name="rfq_new"),

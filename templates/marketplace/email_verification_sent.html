@@ -1,0 +1,19 @@
+{% extends "marketplace/base.html" %}
+{% load static %}
+{% block title %}Подтвердите email | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head"><h1>Проверьте почту</h1></section>
+<div class="card card-form" style="text-align:center;">
+  <div class="auth-logo-wrap">
+    <img src="{% static 'marketplace/consolidator-logo.svg' %}" alt="Consolidator Parts" class="auth-logo" />
+  </div>
+  <div style="font-size:48px;margin-bottom:16px;">✉️</div>
+  <p style="font-size:16px;font-weight:600;margin-bottom:8px;">Письмо отправлено на <strong>{{ email }}</strong></p>
+  <p style="color:#888;font-size:14px;margin-bottom:24px;">
+    Перейдите по ссылке в письме, чтобы активировать аккаунт.<br>
+    Ссылка действительна 24 часа.
+  </p>
+  <p style="color:#666;font-size:12px;">Не получили письмо? Проверьте папку «Спам».</p>
+  <a href="{% url 'login' %}" style="display:inline-block;margin-top:20px;color:#64B5F6;font-size:14px;text-decoration:none;">← Вернуться к входу</a>
+</div>
+{% endblock %}
