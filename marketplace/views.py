@@ -5216,7 +5216,79 @@ def admin_panel_moderation(request):
 
 
 def admin_panel_settings(request):
-    return render(request, "admin_panel/settings.html", {"admin_active_nav": "settings"})
+    import json as _json_mod
+    settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")
+
+    _CURRENCY_NAMES = {"USD": "US Dollar", "CNY": "Chinese Yuan", "EUR": "Euro", "RUB": "Russian Ruble", "AED": "UAE Dirham"}
+    _NOTIF_META = [
+        {"key": "new_order",    "label": "Новый заказ",        "description": "При создании нового заказа"},
+        {"key": "new_rfq",      "label": "Новый RFQ",          "description": "При подаче нового запроса на котировку"},
+        {"key": "payment",      "label": "Оплата получена",     "description": "При подтверждении платежа"},
+        {"key": "claim",        "label": "Рекламация открыта",  "description": "При создании рекламации покупателем"},
+        {"key": "sla_breach",   "label": "SLA нарушение",      "description": "При превышении установленного времени обработки"},
+        {"key": "new_seller",   "label": "Новый поставщик",    "description": "При регистрации нового поставщика"},
+    ]
+
+    def _load():
+        try:
+            with open(settings_path, encoding="utf-8") as f:
+                return _json_mod.load(f)
+        except Exception:
+            return {}
+
+    def _save(data):
+        with open(settings_path, "w", encoding="utf-8") as f:
+            _json_mod.dump(data, f, ensure_ascii=False, indent=2)
+
+    cfg_data = _load()
+    saved = False
+
+    if request.method == "POST":
+        tab = request.POST.get("tab", "general")
+        if tab == "general":
+            cfg_data["platform_name"] = request.POST.get("platform_name", cfg_data.get("platform_name", ""))
+            cfg_data["support_email"] = request.POST.get("support_email", cfg_data.get("support_email", ""))
+            cfg_data["maintenance_mode"] = "maintenance_mode" in request.POST
+        elif tab == "sla":
+            for key in ("rfq_response_hours", "max_delivery_days", "sla_penalty_percent", "claim_response_hours"):
+                val = request.POST.get(key)
+                if val is not None:
+                    try:
+                        cfg_data[key] = int(val)
+                    except ValueError:
+                        pass
+        elif tab == "currencies":
+            active = {}
+            for code in _CURRENCY_NAMES:
+                active[code] = ("currency_" + code) in request.POST
+            cfg_data["currencies"] = active
+        elif tab == "notifications":
+            notifs = {}
+            for n in _NOTIF_META:
+                notifs[n["key"]] = ("notif_" + n["key"]) in request.POST
+            cfg_data["notifications"] = notifs
+        _save(cfg_data)
+        saved = True
+
+    # Build context objects
+    currency_active = cfg_data.get("currencies", {k: True for k in _CURRENCY_NAMES})
+    currencies = [{"code": c, "name": n, "active": currency_active.get(c, True)} for c, n in _CURRENCY_NAMES.items()]
+
+    notif_active = cfg_data.get("notifications", {n["key"]: True for n in _NOTIF_META})
+    notifications = [{**n, "active": notif_active.get(n["key"], True)} for n in _NOTIF_META]
+
+    class _Cfg:
+        def __getattr__(self, key):
+            return cfg_data.get(key, "")
+    cfg = _Cfg()
+
+    return render(request, "admin_panel/settings.html", {
+        "admin_active_nav": "settings",
+        "cfg": cfg,
+        "currencies": currencies,
+        "notifications": notifications,
+        "saved": saved,
+    })
 
 
 def admin_panel_analytics(request):
