@@ -27,7 +27,7 @@
 <!-- Active request cards -->
 <div id="req-tab-active" style="display:flex;flex-direction:column;gap:14px;">
   <!-- Request 1 -->
-  <div class="op-card" style="cursor:pointer;" onclick="opToast('Запрос ЗП-1041: Дозапрос от таможни')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -57,7 +57,7 @@
   </div>
 
   <!-- Request 2 -->
-  <div class="op-card" style="cursor:pointer;" onclick="opToast('Запрос ЗП-1040: Запрос документов у поставщика')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -87,7 +87,7 @@
   </div>
 
   <!-- Request 3 -->
-  <div class="op-card" style="cursor:pointer;" onclick="opToast('Запрос ЗП-1039: Уточнение классификации')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -117,7 +117,7 @@
   </div>
 
   <!-- Request 4 -->
-  <div class="op-card" style="cursor:pointer;" onclick="opToast('Запрос ЗП-1038: Запрос сертификата')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -147,7 +147,7 @@
   </div>
 
   <!-- Request 5 -->
-  <div class="op-card" style="cursor:pointer;" onclick="opToast('Запрос ЗП-1037: Дозапрос от таможни')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -179,7 +179,7 @@
 
 <!-- Completed requests -->
 <div id="req-tab-done" style="display:none;flex-direction:column;gap:14px;">
-  <div class="op-card" onclick="opToast('Запрос ЗП-1035: Завершён')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -196,7 +196,7 @@
       <div><span style="color:#5E5E5E;">Время ответа:</span> <span style="color:#919191;">1.2 дн.</span></div>
     </div>
   </div>
-  <div class="op-card" onclick="opToast('Запрос ЗП-1033: Завершён')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -213,7 +213,7 @@
       <div><span style="color:#5E5E5E;">Время ответа:</span> <span style="color:#919191;">2.4 дн.</span></div>
     </div>
   </div>
-  <div class="op-card" onclick="opToast('Запрос ЗП-1031: Завершён')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -236,6 +236,19 @@
 {% block extra_js %}
 <script>
 (function(){
+  window.selectCard = function(card) {
+    var isSelected = card.classList.contains('card-selected');
+    document.querySelectorAll('.op-card.card-selected').forEach(function(c){
+      c.classList.remove('card-selected');
+      c.style.outline = '';
+    });
+    if (!isSelected) {
+      card.classList.add('card-selected');
+      card.style.outline = '1px solid rgba(100,181,246,0.3)';
+      card.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+  };
+
   window.replyRequest = function(btn, reqId) {
     var card = btn.closest('.op-card');
     var existing = card.querySelector('.req-reply-panel');
@@ -300,7 +313,7 @@
     input.click();
   };
 
-  window.switchReqTab = function(tab){
+    window.switchReqTab = function(tab){
     document.querySelectorAll('[data-req-tab]').forEach(function(btn){
       btn.classList.toggle('active', btn.getAttribute('data-req-tab') === tab);
     });

@@ -46,7 +46,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr onclick="opToast('Декларация ДТ-2024-0847: автозапчасти, на рассмотрении')">
+        <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0847</td>
           <td>ORD-4521</td>
           <td>Автозапчасти</td>
@@ -55,7 +55,7 @@
           <td><span class="op-badge op-badge-gray">На рассмотрении</span></td>
           <td class="text-secondary">22 мар</td>
         </tr>
-        <tr onclick="opToast('Декларация ДТ-2024-0845: подшипники, подготовка')">
+        <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0845</td>
           <td>ORD-4518</td>
           <td>Подшипники</td>
@@ -64,7 +64,7 @@
           <td><span class="op-badge op-badge-gray">Подготовка</span></td>
           <td class="text-secondary">--</td>
         </tr>
-        <tr onclick="opToast('Декларация ДТ-2024-0843: фильтры, на рассмотрении')">
+        <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0843</td>
           <td>ORD-4515</td>
           <td>Фильтры масляные</td>
@@ -73,7 +73,7 @@
           <td><span class="op-badge op-badge-gray">На рассмотрении</span></td>
           <td class="text-secondary">20 мар</td>
         </tr>
-        <tr onclick="opToast('Декларация ДТ-2024-0841: тормозные колодки, подготовка')">
+        <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0841</td>
           <td>ORD-4512</td>
           <td>Тормозные колодки</td>
@@ -82,7 +82,7 @@
           <td><span class="op-badge op-badge-gray">Подготовка</span></td>
           <td class="text-secondary">--</td>
         </tr>
-        <tr onclick="opToast('Декларация ДТ-2024-0839: амортизаторы, оформлена')">
+        <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0839</td>
           <td>ORD-4505</td>
           <td>Амортизаторы</td>
@@ -179,5 +179,28 @@ function requestDoc(btn, docType) {
   document.body.appendChild(inp);
   inp.click();
 }
+window.toggleRowDetail = function(tr) {
+  var next = tr.nextElementSibling;
+  if (next && next.classList.contains('row-detail-expanded')) {
+    next.remove(); tr.classList.remove('row-detail-active'); return;
+  }
+  tr.closest('tbody').querySelectorAll('.row-detail-expanded').forEach(function(r){ r.remove(); });
+  tr.closest('tbody').querySelectorAll('.row-detail-active').forEach(function(r){ r.classList.remove('row-detail-active'); });
+  var ths = Array.from(tr.closest('table').querySelectorAll('thead th'));
+  var tds = Array.from(tr.querySelectorAll('td'));
+  var items = [];
+  tds.forEach(function(td, i) {
+    var h = ths[i] ? ths[i].textContent.trim() : '';
+    if (!h || td.querySelector('button') || td.querySelector('.op-progress') || td.getAttribute('style') && td.getAttribute('style').indexOf('width:24px') >= 0) return;
+    var val = td.textContent.trim();
+    if (!val) return;
+    items.push('<div><div style="font-size:11px;color:#5E5E5E;margin-bottom:3px;">' + h + '</div><div style="font-size:13px;color:#ECECEC;">' + val + '</div></div>');
+  });
+  var detail = document.createElement('tr');
+  detail.className = 'row-detail-expanded';
+  detail.innerHTML = '<td colspan="' + tds.length + '" style="padding:12px 16px;background:rgba(100,181,246,0.03);border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;gap:20px;flex-wrap:wrap;">' + items.join('') + '</div></td>';
+  tr.classList.add('row-detail-active');
+  tr.parentElement.insertBefore(detail, tr.nextSibling);
+};
 </script>
 {% endblock %}

@@ -48,35 +48,35 @@
       </tr>
     </thead>
     <tbody>
-      <tr onclick="opToast('Категория: Автозапчасти')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Автозапчасти</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">48</td>
         <td style="font-family:'Golos Text',sans-serif;">$820K</td>
         <td class="text-secondary">7.5%</td>
         <td class="text-secondary">2.1 дн.</td>
       </tr>
-      <tr onclick="opToast('Категория: Электроника')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Электроника</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">32</td>
         <td style="font-family:'Golos Text',sans-serif;">$540K</td>
         <td class="text-secondary">5.0%</td>
         <td class="text-secondary">1.8 дн.</td>
       </tr>
-      <tr onclick="opToast('Категория: Промышленное оборудование')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Промышленное оборудование</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">28</td>
         <td style="font-family:'Golos Text',sans-serif;">$1.2M</td>
         <td class="text-secondary">10.2%</td>
         <td class="text-secondary">3.4 дн.</td>
       </tr>
-      <tr onclick="opToast('Категория: Текстиль')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Текстиль</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">18</td>
         <td style="font-family:'Golos Text',sans-serif;">$180K</td>
         <td class="text-secondary">12.0%</td>
         <td class="text-secondary">1.5 дн.</td>
       </tr>
-      <tr onclick="opToast('Категория: Химическая продукция')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Химическая продукция</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">16</td>
         <td style="font-family:'Golos Text',sans-serif;">$290K</td>
@@ -100,37 +100,37 @@
       </tr>
     </thead>
     <tbody>
-      <tr onclick="opToast('Страна: Китай')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Китай</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">68</td>
         <td style="font-family:'Golos Text',sans-serif;">$1.4M</td>
         <td><span class="op-badge op-badge-gray">47.9%</span></td>
       </tr>
-      <tr onclick="opToast('Страна: Турция')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Турция</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">28</td>
         <td style="font-family:'Golos Text',sans-serif;">$420K</td>
         <td><span class="op-badge op-badge-gray">19.7%</span></td>
       </tr>
-      <tr onclick="opToast('Страна: ОАЭ')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">ОАЭ</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">18</td>
         <td style="font-family:'Golos Text',sans-serif;">$380K</td>
         <td><span class="op-badge op-badge-gray">12.7%</span></td>
       </tr>
-      <tr onclick="opToast('Страна: Южная Корея')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Южная Корея</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">12</td>
         <td style="font-family:'Golos Text',sans-serif;">$240K</td>
         <td><span class="op-badge op-badge-gray">8.5%</span></td>
       </tr>
-      <tr onclick="opToast('Страна: Индия')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Индия</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">9</td>
         <td style="font-family:'Golos Text',sans-serif;">$160K</td>
         <td><span class="op-badge op-badge-gray">6.3%</span></td>
       </tr>
-      <tr onclick="opToast('Страна: Прочие')">
+      <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Прочие</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">7</td>
         <td style="font-family:'Golos Text',sans-serif;">$110K</td>
@@ -171,6 +171,30 @@
 {% block extra_js %}
 <script>
 (function(){
+  window.toggleRowDetail = function(tr) {
+    var next = tr.nextElementSibling;
+    if (next && next.classList.contains('row-detail-expanded')) {
+      next.remove(); tr.classList.remove('row-detail-active'); return;
+    }
+    tr.closest('tbody').querySelectorAll('.row-detail-expanded').forEach(function(r){ r.remove(); });
+    tr.closest('tbody').querySelectorAll('.row-detail-active').forEach(function(r){ r.classList.remove('row-detail-active'); });
+    var ths = Array.from(tr.closest('table').querySelectorAll('thead th'));
+    var tds = Array.from(tr.querySelectorAll('td'));
+    var items = [];
+    tds.forEach(function(td, i) {
+      var h = ths[i] ? ths[i].textContent.trim() : '';
+      if (!h || td.querySelector('button') || td.querySelector('.op-progress') || td.getAttribute('style') && td.getAttribute('style').indexOf('width:24px') >= 0) return;
+      var val = td.textContent.trim();
+      if (!val) return;
+      items.push('<div><div style="font-size:11px;color:#5E5E5E;margin-bottom:3px;">' + h + '</div><div style="font-size:13px;color:#ECECEC;">' + val + '</div></div>');
+    });
+    var detail = document.createElement('tr');
+    detail.className = 'row-detail-expanded';
+    detail.innerHTML = '<td colspan="' + tds.length + '" style="padding:12px 16px;background:rgba(100,181,246,0.03);border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;gap:20px;flex-wrap:wrap;">' + items.join('') + '</div></td>';
+    tr.classList.add('row-detail-active');
+    tr.parentElement.insertBefore(detail, tr.nextSibling);
+  };
+
   window.switchPeriod = function(btn){
     btn.parentElement.querySelectorAll('.op-role-btn').forEach(function(b){b.classList.remove('active');});
     btn.classList.add('active');

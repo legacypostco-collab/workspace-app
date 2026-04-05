@@ -70,7 +70,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr data-type="CMR" data-order="ORD-4521" data-status="Ожидает" onclick="opToast('Документ: CMR для ORD-4521')">
+      <tr data-type="CMR" data-order="ORD-4521" data-status="Ожидает" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">CMR</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
         <td class="text-secondary">Шанхай &#8594; Москва</td>
@@ -79,7 +79,7 @@
         <td class="text-secondary">Логист #1</td>
         <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();uploadDoc(this,'CMR','ORD-4521')">Загрузить</button></td>
       </tr>
-      <tr data-type="Bill of Lading" data-order="ORD-4521" data-status="В работе" onclick="opToast('Документ: Bill of Lading для ORD-4521')">
+      <tr data-type="Bill of Lading" data-order="ORD-4521" data-status="В работе" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Bill of Lading</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
         <td class="text-secondary">Шанхай &#8594; Москва</td>
@@ -88,25 +88,25 @@
         <td class="text-secondary">Логист #1</td>
         <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();promptRequest(this,'Запрос B/L для ORD-4521')">Запросить</button></td>
       </tr>
-      <tr data-type="Air Waybill" data-order="ORD-4512" data-status="Готов" onclick="opToast('Документ: Air Waybill для ORD-4512')">
+      <tr data-type="Air Waybill" data-order="ORD-4512" data-status="Готов" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Air Waybill</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
         <td class="text-secondary">Дубай &#8594; Москва</td>
         <td><span class="op-badge op-badge-gray">Готов</span></td>
         <td class="text-secondary">24 мар</td>
         <td class="text-secondary">Логист #2</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание AWB для ORD-4512')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadLogDoc(this)">Скачать</button></td>
       </tr>
-      <tr data-type="Инвойс" data-order="ORD-4518" data-status="Готов" onclick="opToast('Документ: Инвойс для ORD-4518')">
+      <tr data-type="Инвойс" data-order="ORD-4518" data-status="Готов" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Инвойс</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
         <td class="text-secondary">Стамбул &#8594; Москва</td>
         <td><span class="op-badge op-badge-gray">Готов</span></td>
         <td class="text-secondary">22 мар</td>
         <td class="text-secondary">Логист #1</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание инвойса для ORD-4518')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadLogDoc(this)">Скачать</button></td>
       </tr>
-      <tr data-type="Упаковочный лист" data-order="ORD-4518" data-status="Ожидает" onclick="opToast('Документ: Упаковочный лист для ORD-4518')">
+      <tr data-type="Упаковочный лист" data-order="ORD-4518" data-status="Ожидает" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Упаковочный лист</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
         <td class="text-secondary">Стамбул &#8594; Москва</td>
@@ -115,7 +115,7 @@
         <td class="text-secondary">Логист #1</td>
         <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();uploadDoc(this,'Упаковочный лист','ORD-4518')">Загрузить</button></td>
       </tr>
-      <tr data-type="Сертификат происхождения" data-order="ORD-4515" data-status="В работе" onclick="opToast('Документ: Сертификат для ORD-4515')">
+      <tr data-type="Сертификат происхождения" data-order="ORD-4515" data-status="В работе" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Сертификат происхождения</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
         <td class="text-secondary">Гуанчжоу &#8594; Владивосток</td>
@@ -124,7 +124,7 @@
         <td class="text-secondary">Логист #3</td>
         <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();promptRequest(this,'Запрос сертификата для ORD-4515')">Запросить</button></td>
       </tr>
-      <tr data-type="Страховой полис" data-order="ORD-4508" data-status="Просрочен" onclick="opToast('Документ: Страховой полис для ORD-4508')">
+      <tr data-type="Страховой полис" data-order="ORD-4508" data-status="Просрочен" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Страховой полис</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
         <td class="text-secondary">Шанхай &#8594; Новосибирск</td>
@@ -133,7 +133,7 @@
         <td class="text-secondary">Логист #2</td>
         <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();uploadDoc(this,'Страховой полис','ORD-4508')">Загрузить</button></td>
       </tr>
-      <tr data-type="Таможенная декларация" data-order="ORD-4515" data-status="Ожидает" onclick="opToast('Документ: Таможенная декларация для ORD-4515')">
+      <tr data-type="Таможенная декларация" data-order="ORD-4515" data-status="Ожидает" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Таможенная декларация</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
         <td class="text-secondary">Гуанчжоу &#8594; Владивосток</td>
@@ -142,25 +142,25 @@
         <td class="text-secondary">Логист #3</td>
         <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();uploadDoc(this,'Таможенная декларация','ORD-4515')">Загрузить</button></td>
       </tr>
-      <tr data-type="CMR" data-order="ORD-4505" data-status="Готов" onclick="opToast('Документ: CMR для ORD-4505')">
+      <tr data-type="CMR" data-order="ORD-4505" data-status="Готов" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">CMR</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4505</td>
         <td class="text-secondary">Стамбул &#8594; Екатеринбург</td>
         <td><span class="op-badge op-badge-gray">Готов</span></td>
         <td class="text-secondary">18 мар</td>
         <td class="text-secondary">Логист #1</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание CMR для ORD-4505')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadLogDoc(this)">Скачать</button></td>
       </tr>
-      <tr data-type="Инвойс" data-order="ORD-4512" data-status="Готов" onclick="opToast('Документ: Инвойс для ORD-4512')">
+      <tr data-type="Инвойс" data-order="ORD-4512" data-status="Готов" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Инвойс</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
         <td class="text-secondary">Дубай &#8594; Москва</td>
         <td><span class="op-badge op-badge-gray">Готов</span></td>
         <td class="text-secondary">21 мар</td>
         <td class="text-secondary">Логист #2</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание инвойса для ORD-4512')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadLogDoc(this)">Скачать</button></td>
       </tr>
-      <tr data-type="Bill of Lading" data-order="ORD-4508" data-status="Просрочен" onclick="opToast('Документ: B/L для ORD-4508')">
+      <tr data-type="Bill of Lading" data-order="ORD-4508" data-status="Просрочен" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Bill of Lading</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
         <td class="text-secondary">Шанхай &#8594; Новосибирск</td>
@@ -169,14 +169,14 @@
         <td class="text-secondary">Логист #2</td>
         <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();promptRequest(this,'Срочный запрос B/L для ORD-4508')">Запросить</button></td>
       </tr>
-      <tr data-type="Упаковочный лист" data-order="ORD-4505" data-status="Готов" onclick="opToast('Документ: Упаковочный лист для ORD-4505')">
+      <tr data-type="Упаковочный лист" data-order="ORD-4505" data-status="Готов" style="cursor:pointer;" onclick="toggleRowDetail(this)">
         <td style="font-weight:600;">Упаковочный лист</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4505</td>
         <td class="text-secondary">Стамбул &#8594; Екатеринбург</td>
         <td><span class="op-badge op-badge-gray">Готов</span></td>
         <td class="text-secondary">18 мар</td>
         <td class="text-secondary">Логист #1</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Скачивание упаковочного листа для ORD-4505')">Скачать</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadLogDoc(this)">Скачать</button></td>
       </tr>
     </tbody>
   </table>
@@ -188,11 +188,42 @@
 (function(){
   var statusMap = {'Ожидает':'waiting','В работе':'progress','Готов':'done','Просрочен':'waiting'};
 
+
+  window.toggleRowDetail = function(tr) {
+    var next = tr.nextElementSibling;
+    if (next && next.classList.contains('row-detail-expanded')) {
+      next.remove(); tr.classList.remove('row-detail-active'); return;
+    }
+    tr.closest('tbody').querySelectorAll('.row-detail-expanded').forEach(function(r){ r.remove(); });
+    tr.closest('tbody').querySelectorAll('.row-detail-active').forEach(function(r){ r.classList.remove('row-detail-active'); });
+    var ths = Array.from(tr.closest('table').querySelectorAll('thead th'));
+    var tds = Array.from(tr.querySelectorAll('td'));
+    var items = [];
+    tds.forEach(function(td, i) {
+      var h = ths[i] ? ths[i].textContent.trim() : '';
+      if (!h || td.querySelector('button') || td.querySelector('.op-progress')) return;
+      var val = td.textContent.trim();
+      if (!val) return;
+      items.push('<div><div style="font-size:11px;color:#5E5E5E;margin-bottom:3px;">' + h + '</div><div style="font-size:13px;color:#ECECEC;">' + val + '</div></div>');
+    });
+    var detail = document.createElement('tr');
+    detail.className = 'row-detail-expanded';
+    detail.innerHTML = '<td colspan="' + tds.length + '" style="padding:12px 16px;background:rgba(100,181,246,0.03);border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;gap:20px;flex-wrap:wrap;">' + items.join('') + '</div></td>';
+    tr.classList.add('row-detail-active');
+    tr.parentElement.insertBefore(detail, tr.nextSibling);
+  };
+  window.downloadLogDoc = function(btn) {
+    var row = btn.closest('tr');
+    var docName = row ? row.querySelector('td').textContent.trim() : 'документ';
+    var orderId = row ? (row.getAttribute('data-order') || '') : '';
+    opToast('⬇ ' + docName + (orderId ? ' / ' + orderId : '') + ' — загружается...', 2000, 'success');
+  };
+
   window.switchDocTab = function(tab){
     document.querySelectorAll('[data-doc-tab]').forEach(function(btn){
       btn.classList.toggle('active', btn.getAttribute('data-doc-tab') === tab);
     });
-    document.querySelectorAll('#docs-table tbody tr').forEach(function(row){
+    document.querySelectorAll('#docs-table tbody tr:not(.row-detail-expanded)').forEach(function(row){
       if(tab === 'all'){row.style.display='';return;}
       var s = row.getAttribute('data-status');
       row.style.display = statusMap[s] === tab ? '' : 'none';
@@ -203,7 +234,7 @@
     var ft = document.getElementById('doc-type-filter').value;
     var fo = document.getElementById('doc-order-filter').value;
     var fs = document.getElementById('doc-status-filter').value;
-    document.querySelectorAll('#docs-table tbody tr').forEach(function(row){
+    document.querySelectorAll('#docs-table tbody tr:not(.row-detail-expanded)').forEach(function(row){
       var t = row.getAttribute('data-type');
       var o = row.getAttribute('data-order');
       var s = row.getAttribute('data-status');

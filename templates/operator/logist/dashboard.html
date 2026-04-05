@@ -45,7 +45,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr data-order="ORD-4521" onclick="opToast('Отгрузка ORD-4521: Шанхай - Москва, Море, ETA 12 апр')">
+        <tr data-order="ORD-4521" style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
           <td>Шанхай <span class="text-muted" style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Москва</td>
           <td><span class="op-badge op-badge-gray">Море</span></td>
@@ -62,7 +62,7 @@
           <td style="font-family:'Golos Text',sans-serif;">12 апр</td>
           <td><span class="op-badge op-badge-gray">В пути</span></td>
         </tr>
-        <tr data-order="ORD-4518" onclick="opToast('Отгрузка ORD-4518: Стамбул - Москва, Авто, ETA 28 мар')">
+        <tr data-order="ORD-4518" style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
           <td>Стамбул <span style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Москва</td>
           <td><span class="op-badge op-badge-gray">Авто</span></td>
@@ -79,7 +79,7 @@
           <td style="font-family:'Golos Text',sans-serif;">28 мар</td>
           <td><span class="op-badge op-badge-orange">На таможне</span></td>
         </tr>
-        <tr data-order="ORD-4515" onclick="opToast('Отгрузка ORD-4515: Гуанчжоу - Владивосток, ЖД, ETA 5 апр')">
+        <tr data-order="ORD-4515" style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
           <td>Гуанчжоу <span style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Владивосток</td>
           <td><span class="op-badge op-badge-gray">ЖД</span></td>
@@ -96,7 +96,7 @@
           <td style="font-family:'Golos Text',sans-serif;">5 апр</td>
           <td><span class="op-badge op-badge-gray">В пути</span></td>
         </tr>
-        <tr data-order="ORD-4512" onclick="opToast('Отгрузка ORD-4512: Дубай - Москва, Авиа, ETA 26 мар')">
+        <tr data-order="ORD-4512" style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
           <td>Дубай <span style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Москва</td>
           <td><span class="op-badge op-badge-gray">Авиа</span></td>
@@ -113,7 +113,7 @@
           <td style="font-family:'Golos Text',sans-serif;">26 мар</td>
           <td><span class="op-badge op-badge-gray">Доставка</span></td>
         </tr>
-        <tr data-order="ORD-4508" onclick="opToast('Отгрузка ORD-4508: Шанхай - Новосибирск, Море, ETA 18 апр')">
+        <tr data-order="ORD-4508" style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
           <td>Шанхай <span style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Новосибирск</td>
           <td><span class="op-badge op-badge-gray">Море</span></td>
@@ -130,7 +130,7 @@
           <td style="font-family:'Golos Text',sans-serif;">18 апр</td>
           <td><span class="op-badge op-badge-gray">Погрузка</span></td>
         </tr>
-        <tr data-order="ORD-4505" onclick="opToast('Отгрузка ORD-4505: Стамбул - Екатеринбург, Авто, ETA 1 апр')">
+        <tr data-order="ORD-4505" style="cursor:pointer;" onclick="toggleRowDetail(this)">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4505</td>
           <td>Стамбул <span style="color:#5E5E5E;margin:0 4px;">&#8594;</span> Екатеринбург</td>
           <td><span class="op-badge op-badge-gray">Авто</span></td>
@@ -272,5 +272,28 @@ function applyRoute(btn) {
   btn.closest('.route-update').remove();
   opToast('Маршрут обновлён: ' + route, 2500, 'success');
 }
+window.toggleRowDetail = function(tr) {
+  var next = tr.nextElementSibling;
+  if (next && next.classList.contains('row-detail-expanded')) {
+    next.remove(); tr.classList.remove('row-detail-active'); return;
+  }
+  tr.closest('tbody').querySelectorAll('.row-detail-expanded').forEach(function(r){ r.remove(); });
+  tr.closest('tbody').querySelectorAll('.row-detail-active').forEach(function(r){ r.classList.remove('row-detail-active'); });
+  var ths = Array.from(tr.closest('table').querySelectorAll('thead th'));
+  var tds = Array.from(tr.querySelectorAll('td'));
+  var items = [];
+  tds.forEach(function(td, i) {
+    var h = ths[i] ? ths[i].textContent.trim() : '';
+    if (!h || td.querySelector('button') || td.querySelector('.op-progress') || (td.getAttribute('style') && td.getAttribute('style').indexOf('width:24px') >= 0)) return;
+    var val = td.textContent.trim();
+    if (!val) return;
+    items.push('<div><div style="font-size:11px;color:#5E5E5E;margin-bottom:3px;">' + h + '</div><div style="font-size:13px;color:#ECECEC;">' + val + '</div></div>');
+  });
+  var detail = document.createElement('tr');
+  detail.className = 'row-detail-expanded';
+  detail.innerHTML = '<td colspan="' + tds.length + '" style="padding:12px 16px;background:rgba(100,181,246,0.03);border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;gap:20px;flex-wrap:wrap;">' + items.join('') + '</div></td>';
+  tr.classList.add('row-detail-active');
+  tr.parentElement.insertBefore(detail, tr.nextSibling);
+};
 </script>
 {% endblock %}

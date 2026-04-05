@@ -133,7 +133,7 @@
         <td>CNY</td>
         <td><span class="op-badge op-badge-gray">Основная</span></td>
         <td><span class="op-badge op-badge-gray inv-status-badge">Оплачено</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали INV-8828')">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showInvDetail(this)">Детали</button></td>
       </tr>
     </tbody>
   </table>
@@ -196,7 +196,7 @@ function confirmPayment(btn) {
   row.dataset.invStatus = 'paid';
   var invId = row.querySelector('td').textContent;
   opToast('Оплата ' + invId + ' подтверждена');
-  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'Детали ' + invId + '\')">Детали</button>';
+  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showInvDetail(this)">Детали</button>';
 }
 
 function rejectPayment(btn) {
