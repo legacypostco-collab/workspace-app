@@ -212,17 +212,23 @@ def _recalc_order_sla(order: Order):
 
     norm_hours = SLA_STAGE_NORMS.get(order.status)
     if norm_hours:
-        # Определяем, когда заказ вошёл в текущий статус
-        last_event = (
-            OrderEvent.objects.filter(
-                order=order,
-                event_type="status_changed",
-                meta__to=order.status,
+        # Use prefetched events if available, otherwise query DB
+        entered_at = order.created_at
+        try:
+            cached_events = order.events.all()  # uses prefetch cache if set
+            last_event = next(
+                (e for e in cached_events
+                 if e.event_type == "status_changed" and e.meta.get("to") == order.status),
+                None,
             )
-            .order_by("-created_at")
-            .first()
-        )
-        entered_at = last_event.created_at if last_event else order.created_at
+        except Exception:
+            last_event = (
+                OrderEvent.objects.filter(
+                    order=order, event_type="status_changed", meta__to=order.status
+                ).order_by("-created_at").first()
+            )
+        if last_event:
+            entered_at = last_event.created_at
         elapsed_hours = (now - entered_at).total_seconds() / 3600
 
         if elapsed_hours >= norm_hours:
@@ -1668,14 +1674,18 @@ def _build_seller_catalog_context(request: HttpRequest) -> dict:
         parts_qs = parts_qs.filter(brand__id=brand_filter)
     if status_filter:
         parts_qs = parts_qs.filter(availability_status=status_filter)
-    # Brand list for filter dropdown
-    brand_list = (
-        _apply_seller_brand_scope(request.user, Part.objects.filter(seller=request.user))
-        .values_list("brand__id", "brand__name")
-        .distinct()
-        .order_by("brand__name")
-    )
-    brand_list = [{"id": bid, "name": bname} for bid, bname in brand_list if bname]
+    # Brand list for filter dropdown — cache 5 min (changes only after import)
+    _brand_cache_key = f"seller_brand_list_{request.user.id}"
+    brand_list = cache.get(_brand_cache_key)
+    if brand_list is None:
+        _brand_qs = (
+            _apply_seller_brand_scope(request.user, Part.objects.filter(seller=request.user))
+            .values_list("brand__id", "brand__name")
+            .distinct()
+            .order_by("brand__name")
+        )
+        brand_list = [{"id": bid, "name": bname} for bid, bname in _brand_qs if bname]
+        cache.set(_brand_cache_key, brand_list, 300)
     parts_qs = parts_qs.order_by("-data_updated_at", "-id")
     paginator = Paginator(parts_qs, 50)
     page_number = request.GET.get("page") or 1
@@ -1693,9 +1703,8 @@ def _build_seller_catalog_context(request: HttpRequest) -> dict:
         .select_related("source_file")
         .order_by("-created_at")[:10]
     )
+    # Don't rebuild projection here — dashboard handles that. Catalog only reads existing projection.
     projection = DashboardProjection.objects.filter(supplier=request.user).first()
-    if projection is None:
-        projection = refresh_supplier_dashboard_projection(request.user)
     _uid = request.user.id
     seller_rfqs_count = cache.get_or_set(
         f"seller_rfqs_count_{_uid}", lambda: _seller_rfqs_qs(request.user).count(), 60
@@ -1773,9 +1782,10 @@ def seller_dashboard(request: HttpRequest) -> HttpResponse:
     is_stale = True
     if projection and projection.updated_at:
         is_stale = projection.updated_at < (timezone.now() - stale_after)
+    _builder = DashboardProjectionBuilder()
     if projection is None or is_stale:
-        projection = DashboardProjectionBuilder().build(supplier=request.user, user=request.user)
-    dashboard_payload = DashboardProjectionBuilder().payload(projection)
+        projection = _builder.build(supplier=request.user, user=request.user)
+    dashboard_payload = _builder.payload(projection)
     response = render(
         request,
         _tpl(request.user, "seller/dashboard/index.html"),
@@ -1890,10 +1900,11 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
 
     orders_qs = Order.objects.filter(
         items__part__seller=request.user
-    ).distinct().prefetch_related("items__part").order_by("-created_at")
+    ).distinct().prefetch_related("items__part", "events").order_by("-created_at")
 
-    # Recalc SLA
-    for order in orders_qs[:100]:
+    # Recalc SLA — load all orders once, avoid N+1 on OrderEvent
+    all_orders_list = list(orders_qs)
+    for order in all_orders_list[:100]:
         _recalc_order_sla(order)
 
     # Kanban columns — новые этапы из таблицы "Этапы ЛК"
@@ -1983,16 +1994,24 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
     ]
     kanban_statuses = [(col["key"], col["label"]) for col in kanban_columns_cfg]
 
+    # Group all orders by status in Python — avoids 1 SQL query per kanban column
+    _uid = request.user.id
+    from collections import defaultdict
+    _orders_by_status: dict = defaultdict(list)
+    for _order in all_orders_list:
+        _orders_by_status[_order.status].append(_order)
+
     columns = []
     for col_cfg in kanban_columns_cfg:
         status_orders = []
-        for order in orders_qs.filter(status__in=col_cfg["statuses"]):
-            seller_items = [item for item in order.items.all() if item.part and item.part.seller_id == request.user.id]
-            status_orders.append({
-                "order": order,
-                "items_count": len(seller_items),
-                "units_total": sum(int(item.quantity) for item in seller_items),
-            })
+        for _s in col_cfg["statuses"]:
+            for order in _orders_by_status.get(_s, []):
+                seller_items = [item for item in order.items.all() if item.part and item.part.seller_id == _uid]
+                status_orders.append({
+                    "order": order,
+                    "items_count": len(seller_items),
+                    "units_total": sum(int(item.quantity) for item in seller_items),
+                })
         columns.append({
             "key": col_cfg["key"],
             "label": col_cfg["label"],
@@ -2021,11 +2040,10 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
                 "current_step": current_idx,
             })
 
-    # SLA KPI metrics
-    all_orders = list(orders_qs)
-    sla_on_track = sum(1 for o in all_orders if o.sla_status == "on_track")
-    sla_at_risk = sum(1 for o in all_orders if o.sla_status == "at_risk")
-    sla_breached = sum(1 for o in all_orders if o.sla_status == "breached")
+    # SLA KPI metrics — reuse already-fetched list
+    sla_on_track = sum(1 for o in all_orders_list if o.sla_status == "on_track")
+    sla_at_risk = sum(1 for o in all_orders_list if o.sla_status == "at_risk")
+    sla_breached = sum(1 for o in all_orders_list if o.sla_status == "breached")
 
     # Average time per stage (in hours, from events)
     from django.utils import timezone as tz
@@ -2033,27 +2051,27 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
     avg_confirm_hours = 0
     avg_production_hours = 0
     avg_ship_hours = 0
-    confirmed_orders = [o for o in all_orders if o.status not in ("pending",)]
+    confirmed_orders = [o for o in all_orders_list if o.status not in ("pending",)]
     if confirmed_orders:
         total_h = sum(
             ((o.supplier_confirm_deadline - o.created_at).total_seconds() / 3600 if o.supplier_confirm_deadline else 24)
             for o in confirmed_orders
         )
         avg_confirm_hours = round(total_h / len(confirmed_orders))
-    shipped_orders = [o for o in all_orders if o.status in ("shipped", "delivered", "completed")]
+    shipped_orders = [o for o in all_orders_list if o.status in ("shipped", "delivered", "completed")]
     if shipped_orders:
         total_h = sum(
             ((o.ship_deadline - o.created_at).total_seconds() / 3600 if o.ship_deadline else 72)
             for o in shipped_orders
         )
         avg_ship_hours = round(total_h / len(shipped_orders))
-    production_orders = [o for o in all_orders if o.status in ("in_production", "ready_to_ship", "shipped", "delivered")]
+    production_orders = [o for o in all_orders_list if o.status in ("in_production", "ready_to_ship", "shipped", "delivered")]
     if production_orders:
         avg_production_hours = round((avg_ship_hours + avg_confirm_hours) / 2) if avg_ship_hours else 48
 
     # Stage time analytics — time each order spent at each stage
     from collections import defaultdict
-    order_ids = [o.id for o in all_orders]
+    order_ids = [o.id for o in all_orders_list]
     stage_events = OrderEvent.objects.filter(
         order_id__in=order_ids,
         event_type="status_changed",
@@ -2065,7 +2083,7 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
 
     status_order_list = [s[0] for s in kanban_statuses]
     stage_analytics = []
-    for order in all_orders:
+    for order in all_orders_list:
         evs = events_by_order.get(order.id, [])
         # Map: status key → datetime when order entered that status
         status_start = {"pending": order.created_at}
@@ -5488,14 +5506,20 @@ def admin_panel_analytics(request):
         .order_by("-total_spent")[:10]
     )
 
-    top_sellers = (
-        User.objects.filter(parts__isnull=False)
-        .annotate(parts_count=Count("parts", distinct=True))
-        .order_by("-parts_count")[:10]
-    )
-
-    by_category = Category.objects.annotate(parts_count=Count("parts")).order_by("-parts_count")[:10]
-    by_brand = Brand.objects.annotate(parts_count=Count("parts")).order_by("-parts_count")[:10]
+    # These annotate queries join across 900k+ part rows — cache for 5 min
+    _heavy_cache_key = f"admin_analytics_heavy_{period}_{date_from}_{date_to}"
+    _heavy = cache.get(_heavy_cache_key)
+    if _heavy is None:
+        top_sellers = list(
+            User.objects.filter(parts__isnull=False)
+            .annotate(parts_count=Count("parts", distinct=True))
+            .order_by("-parts_count")[:10]
+        )
+        by_category = list(Category.objects.annotate(parts_count=Count("parts")).order_by("-parts_count")[:10])
+        by_brand = list(Brand.objects.annotate(parts_count=Count("parts")).order_by("-parts_count")[:10])
+        cache.set(_heavy_cache_key, (top_sellers, by_category, by_brand), 300)
+    else:
+        top_sellers, by_category, by_brand = _heavy
 
     by_status = list(orders_qs.values("status").annotate(count=Count("id")).order_by("-count"))
     status_labels = dict(Order.STATUS_CHOICES)
@@ -5665,24 +5689,32 @@ def admin_panel_tariffs(request):
             _json.dump(platform_cfg, f, indent=2, ensure_ascii=False)
         saved = True
 
-    # Count sellers per tier
-    seller_parts = (
-        User.objects.filter(parts__isnull=False)
-        .annotate(pc=Count("parts"))
-        .values_list("pc", flat=True)
-    )
-    tier_counts = {"basic": 0, "professional": 0, "corporate": 0}
-    for pc in seller_parts:
-        if pc > 10000:
-            tier_counts["corporate"] += 1
-        elif pc > 100:
-            tier_counts["professional"] += 1
-        else:
-            tier_counts["basic"] += 1
+    # Count sellers per tier — cache 5 min (JOIN across 900k+ part rows)
+    tier_counts = cache.get("admin_tariff_tier_counts")
+    if tier_counts is None:
+        seller_parts = (
+            User.objects.filter(parts__isnull=False)
+            .annotate(pc=Count("parts"))
+            .values_list("pc", flat=True)
+        )
+        tier_counts = {"basic": 0, "professional": 0, "corporate": 0}
+        for pc in seller_parts:
+            if pc > 10000:
+                tier_counts["corporate"] += 1
+            elif pc > 100:
+                tier_counts["professional"] += 1
+            else:
+                tier_counts["basic"] += 1
+        cache.set("admin_tariff_tier_counts", tier_counts, 300)
 
-    # Attach saved commission values to category objects for template
-    categories_raw = list(Category.objects.annotate(parts_count=Count("parts")).order_by("name"))
+    # Attach saved commission values to category objects for template — cache 5 min
+    _cat_counts = cache.get("admin_category_parts_count")
+    if _cat_counts is None:
+        _cat_counts = {c.id: c.parts_count for c in Category.objects.annotate(parts_count=Count("parts"))}
+        cache.set("admin_category_parts_count", _cat_counts, 300)
+    categories_raw = list(Category.objects.order_by("name"))
     for cat in categories_raw:
+        cat.parts_count = _cat_counts.get(cat.id, 0)
         c = category_commissions.get(str(cat.id), {})
         cat.pct = c.get("percent", 8)
         cat.min_fee = c.get("min_amount", 0.50)
