@@ -23,5 +23,66 @@
     </main>
     {% block right_panel %}{% include "buyer/components/_right_panel.html" %}{% endblock %}
     {% block extra_js %}{% endblock %}
+    <script>
+    (function(){
+      var NAV_EN = {
+        dashboard:'Dashboard', catalog:'Favorites', rfq:'RFQ Requests',
+        orders:'Orders', shipments:'Shipments', claims:'Claims',
+        suppliers:'Suppliers', negotiations:'Negotiations',
+        finance:'Finance', analytics:'Analytics'
+      };
+      var PAGE_TITLE_EN = {
+        dashboard:'Buyer Dashboard', catalog:'Favorites', rfq:'RFQ Requests',
+        orders:'Orders', shipments:'Shipments', claims:'Claims',
+        suppliers:'Suppliers', negotiations:'Negotiations',
+        finance:'Finance', analytics:'Analytics'
+      };
+
+      function applyLang(lang) {
+        var isEn = lang === 'en';
+        var btn = document.getElementById('cab-lang-btn');
+        if (btn) btn.textContent = isEn ? 'RU' : 'EN';
+
+        document.querySelectorAll('[data-nav-key]').forEach(function(a){
+          var key = a.getAttribute('data-nav-key');
+          var span = a.querySelector('span');
+          if (!span) return;
+          if (!span.getAttribute('data-ru')) span.setAttribute('data-ru', span.textContent.trim());
+          span.textContent = isEn ? (NAV_EN[key] || span.getAttribute('data-ru')) : span.getAttribute('data-ru');
+        });
+
+        var titleEl = document.getElementById('cab-page-title');
+        if (titleEl) {
+          if (!titleEl.getAttribute('data-ru')) titleEl.setAttribute('data-ru', titleEl.textContent.trim());
+          if (isEn) {
+            var activeLink = document.querySelector('[data-nav-key].active');
+            var key = activeLink ? activeLink.getAttribute('data-nav-key') : '';
+            titleEl.textContent = PAGE_TITLE_EN[key] || titleEl.getAttribute('data-ru');
+          } else {
+            titleEl.textContent = titleEl.getAttribute('data-ru');
+          }
+        }
+
+        document.querySelectorAll('[data-i18n]').forEach(function(el){
+          if (!el.getAttribute('data-ru')) el.setAttribute('data-ru', el.textContent.trim());
+          var key = el.getAttribute('data-i18n');
+          var maps = {'purchases_label': isEn?'Purchases':'Закупки', 'rating_label': isEn?'Rating':'Рейтинг'};
+          if (maps[key] !== undefined) el.textContent = maps[key];
+        });
+      }
+
+      window.cabinetToggleLang = function(){
+        var cur = localStorage.getItem('cp_lang') || 'ru';
+        var next = cur === 'ru' ? 'en' : 'ru';
+        localStorage.setItem('cp_lang', next);
+        applyLang(next);
+      };
+
+      document.addEventListener('DOMContentLoaded', function(){
+        var lang = localStorage.getItem('cp_lang') || 'ru';
+        if (lang === 'en') applyLang('en');
+      });
+    })();
+    </script>
   </body>
 </html>

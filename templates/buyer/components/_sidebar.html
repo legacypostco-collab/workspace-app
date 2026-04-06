@@ -70,7 +70,7 @@
   <nav style="flex:1;padding:2px 12px;display:flex;flex-direction:column;gap:1px;">
     {% for item in buyer_nav_items %}
       {% if item.enabled and item.url_name %}
-        <a href="{% url item.url_name %}" class="seller-nav-link{% if buyer_active_nav == item.key %} active{% endif %}" style="display:flex;align-items:center;width:100%;text-decoration:none;border-radius:10px;gap:10px;position:relative;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;border:none;{% if buyer_active_nav == item.key %}background:rgba(100,181,246,0.06);color:#ECECEC;font-weight:600;{% else %}background:transparent;color:#919191;font-weight:400;{% endif %}">
+        <a href="{% url item.url_name %}" data-nav-key="{{ item.key }}" class="seller-nav-link{% if buyer_active_nav == item.key %} active{% endif %}" style="display:flex;align-items:center;width:100%;text-decoration:none;border-radius:10px;gap:10px;position:relative;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;border:none;{% if buyer_active_nav == item.key %}background:rgba(100,181,246,0.06);color:#ECECEC;font-weight:600;{% else %}background:transparent;color:#919191;font-weight:400;{% endif %}">
           {% if buyer_active_nav == item.key %}
             <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:18px;border-radius:2px;background:#64B5F6;"></div>
           {% endif %}
