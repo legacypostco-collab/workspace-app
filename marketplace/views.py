@@ -1696,12 +1696,22 @@ def _build_seller_catalog_context(request: HttpRequest) -> dict:
     projection = DashboardProjection.objects.filter(supplier=request.user).first()
     if projection is None:
         projection = refresh_supplier_dashboard_projection(request.user)
-    seller_rfqs_count = _seller_rfqs_qs(request.user).count()
-    seller_orders_count = Order.objects.filter(items__part__seller=request.user).distinct().count()
-    recent_updates_count = _apply_seller_brand_scope(
-        request.user,
-        Part.objects.filter(seller=request.user),
-    ).filter(data_updated_at__gte=timezone.now() - timedelta(hours=24)).count()
+    _uid = request.user.id
+    seller_rfqs_count = cache.get_or_set(
+        f"seller_rfqs_count_{_uid}", lambda: _seller_rfqs_qs(request.user).count(), 60
+    )
+    seller_orders_count = cache.get_or_set(
+        f"seller_orders_count_{_uid}",
+        lambda: Order.objects.filter(items__part__seller=request.user).distinct().count(),
+        60,
+    )
+    recent_updates_count = cache.get_or_set(
+        f"seller_recent_count_{_uid}",
+        lambda: _apply_seller_brand_scope(
+            request.user, Part.objects.filter(seller=request.user)
+        ).filter(data_updated_at__gte=timezone.now() - timedelta(hours=24)).count(),
+        60,
+    )
     preview_header_options: list[str] = []
     preview_rows_matrix: list[list[str]] = []
     preview_mapping = {}

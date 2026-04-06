@@ -107,6 +107,10 @@ class Part(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["seller", "-data_updated_at", "-id"], name="part_seller_updated_idx"),
+            models.Index(fields=["seller", "availability_status"], name="part_seller_avail_idx"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.title} ({self.oem_number})"
