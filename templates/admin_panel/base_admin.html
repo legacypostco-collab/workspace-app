@@ -244,6 +244,9 @@
       <span style="font-size:12px;color:#919191;font-weight:500;">
         {% block topbar_title %}Панель администратора{% endblock %}
       </span>
+      <div style="margin-left:auto;">
+        <button id="cab-lang-btn" onclick="window.cabinetToggleLang()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#919191;font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;letter-spacing:0.06em;transition:all .15s;" onmouseover="this.style.color='#ECECEC'" onmouseout="this.style.color='#919191'">EN</button>
+      </div>
     </div>
 
     <!-- Page content -->
@@ -281,5 +284,6 @@
 })();
 </script>
 {% block extra_js %}{% endblock %}
+<script src="{% static 'js/cabinet-i18n.js' %}"></script>
 </body>
 </html>
