@@ -7295,8 +7295,15 @@ function handleCalcSubmit(e){
       ind6: 'Инжиниринговые центры',
       authReg: 'Регистрация',
       authLogin: 'Войти',
+      authCabinet: 'Кабинет',
+      authLogout: 'Выйти',
       callback: 'Обратный звонок',
       langLabel: 'EN',
+      demoLabel: 'Демо-вход',
+      demoSeller: 'Поставщик',
+      demoBuyer: 'Покупатель',
+      demoOperator: 'Оператор',
+      demoAdmin: 'Администратор',
       navItems: ['Главная','Покупателям','Поставщикам','Расчёты','Заказы','Скидки','Интеграции','Логистика','Платежи','Бонусы','Аналитика','Поддержка','Настройки']
     },
     en: {
@@ -7324,8 +7331,15 @@ function handleCalcSubmit(e){
       ind6: 'Engineering Centers',
       authReg: 'Sign up',
       authLogin: 'Log in',
+      authCabinet: 'Dashboard',
+      authLogout: 'Sign out',
       callback: 'Contact us',
       langLabel: 'RU',
+      demoLabel: 'Demo login',
+      demoSeller: 'Supplier',
+      demoBuyer: 'Buyer',
+      demoOperator: 'Operator',
+      demoAdmin: 'Admin',
       navItems: ['Home','For Buyers','For Suppliers','Quotes','Orders','Discounts','Integrations','Logistics','Payments','Bonuses','Analytics','Support','Settings']
     }
   };
@@ -7377,27 +7391,52 @@ function handleCalcSubmit(e){
     var indTexts = [t.ind1, t.ind2, t.ind3, t.ind4, t.ind5, t.ind6];
     indTitles.forEach(function(el, i){ if (indTexts[i]) el.textContent = indTexts[i]; });
 
-    // Auth buttons
-    document.querySelectorAll('.auth-btn--primary').forEach(function(b){ b.textContent = t.authReg; });
-    document.querySelectorAll('.auth-btn--ghost').forEach(function(b){ b.textContent = t.authLogin; });
+    // Auth buttons — translate by context (primary = reg or cabinet, ghost = login or logout)
+    document.querySelectorAll('.auth-btn--primary').forEach(function(b){
+      var href = b.getAttribute('href') || '';
+      if (href.indexOf('/register') !== -1) b.textContent = t.authReg;
+      else if (href.indexOf('/seller') !== -1 || href.indexOf('/buyer') !== -1 || href.indexOf('/operator') !== -1) b.textContent = t.authCabinet;
+      else b.textContent = t.authReg;
+    });
+    document.querySelectorAll('.auth-btn--ghost').forEach(function(b){
+      var href = b.getAttribute('href') || '';
+      if (href.indexOf('/logout') !== -1) b.textContent = t.authLogout;
+      else b.textContent = t.authLogin;
+    });
 
     // Callback
     document.querySelectorAll('.header-cta').forEach(function(b){ b.textContent = t.callback; });
 
-    // Lang button text
+    // Lang button text + data
     document.querySelectorAll('.lang-text').forEach(function(s){ s.textContent = t.langLabel; });
-
-    // Lang button data
     var nextLang = (lang === 'ru') ? 'en' : 'ru';
     document.querySelectorAll('.js-lang-toggle').forEach(function(b){ b.setAttribute('data-next-lang', nextLang); });
 
-    // Sidebar nav
-    var navLinks = document.querySelectorAll('.side-nav__list li');
-    navLinks.forEach(function(li, i){
-      if (t.navItems[i]) {
-        var a = li.querySelector('a') || li.querySelector('span');
-        if (a) a.textContent = t.navItems[i];
-      }
+    // Demo login block
+    var demoLbl = document.querySelector('.demo-quick-login__label');
+    if (demoLbl) demoLbl.textContent = t.demoLabel;
+    document.querySelectorAll('.demo-quick-btn').forEach(function(a){
+      var href = a.getAttribute('href') || '';
+      var svg = a.querySelector('svg');
+      var textNode = null;
+      a.childNodes.forEach(function(n){ if (n.nodeType === 3 && n.textContent.trim()) textNode = n; });
+      var newText = '';
+      if (href.indexOf('role=seller') !== -1) newText = t.demoSeller;
+      else if (href.indexOf('role=buyer') !== -1) newText = t.demoBuyer;
+      else if (href.indexOf('role=operator') !== -1) newText = t.demoOperator;
+      else if (href.indexOf('role=admin') !== -1) newText = t.demoAdmin;
+      if (newText && textNode) textNode.textContent = '\n    ' + newText + '\n  ';
+    });
+
+    // Sidebar nav — translate ALL .side-nav__link by text match (works for desktop + mobile)
+    var NAV_RU = translations['ru'].navItems;
+    var NAV_EN = translations['en'].navItems;
+    var navMap = {};
+    NAV_RU.forEach(function(ru, i){ navMap[ru] = t.navItems[i]; });
+    NAV_EN.forEach(function(en, i){ navMap[en] = t.navItems[i]; });
+    document.querySelectorAll('.side-nav__link').forEach(function(a){
+      var text = a.textContent.trim();
+      if (navMap[text] !== undefined) a.textContent = navMap[text];
     });
 
     // HTML lang attr
