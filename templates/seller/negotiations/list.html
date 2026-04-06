@@ -1,4 +1,5 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 
 {% block extra_css %}
 <style>
@@ -182,137 +183,137 @@
 {% block content %}
 
 <div class="neg-tabs">
-  <div class="neg-tab active" onclick="negTab(this,'chats')">Переторжка</div>
-  <div class="neg-tab" onclick="negTab(this,'drawings')">Чертежи и тех. параметры</div>
-  <div class="neg-tab" onclick="negTab(this,'tiers')">Скидки и лояльность</div>
+  <div class="neg-tab active" onclick="negTab(this,'chats')">{% trans "Переторжка" %}</div>
+  <div class="neg-tab" onclick="negTab(this,'drawings')">{% trans "Чертежи и тех. параметры" %}</div>
+  <div class="neg-tab" onclick="negTab(this,'tiers')">{% trans "Скидки и лояльность" %}</div>
 </div>
 
 {# ═══ TAB 1: Уровни скидок ═══ #}
 <div class="neg-panel" id="panel-tiers">
   <div class="neg-section-head">
     <div>
-      <div class="neg-section-title">Автоматические скидки крупным покупателям</div>
-      <div class="neg-section-sub" style="font-size:13px;">Покупатели платформы с большим оборотом закупок получают скидку автоматически. Вы даёте согласие на каждый уровень отдельно</div>
+      <div class="neg-section-title">{% trans "Автоматические скидки крупным покупателям" %}</div>
+      <div class="neg-section-sub" style="font-size:13px;">{% trans "Покупатели платформы с большим оборотом закупок получают скидку автоматически. Вы даёте согласие на каждый уровень отдельно" %}</div>
     </div>
   </div>
 
   {# Tier 1: >$1M #}
   <div class="loyalty-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div style="font-size:14px;font-weight:700;color:#ECECEC;">Оборот свыше $1 000 000</div>
+      <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Оборот свыше $1 000 000" %}</div>
       <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
     </div>
-    <div style="font-size:13px;color:#8A8A8A;margin-bottom:12px;">Покупатели с совокупным оборотом закупок на платформе более $1 млн</div>
+    <div style="font-size:13px;color:#8A8A8A;margin-bottom:12px;">{% trans "Покупатели с совокупным оборотом закупок на платформе более $1 млн" %}</div>
     <div class="loyalty-fields" style="grid-template-columns:1fr 1fr;">
       <div class="loyalty-field">
-        <label>Скидка</label>
+        <label>{% trans "Скидка" %}</label>
         <input type="text" value="3%" />
       </div>
       <div class="loyalty-field">
-        <label>Применяется к</label>
+        <label>{% trans "Применяется к" %}</label>
         <select>
-          <option>Всем товарам</option>
-          <option>Только избранным категориям</option>
+          <option>{% trans "Всем товарам" %}</option>
+          <option>{% trans "Только избранным категориям" %}</option>
         </select>
       </div>
     </div>
     <div style="margin-top:8px;font-size:11px;color:#6A6A6A;">
-      <span style="color:#64B5F6;">● Активен</span> · 918 759 товаров
+      <span style="color:#64B5F6;">{% trans "● Активен" %}</span>{% trans "· 918 759 товаров" %}
     </div>
   </div>
 
   {# Tier 2: >$3M #}
   <div class="loyalty-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div style="font-size:14px;font-weight:700;color:#ECECEC;">Оборот свыше $3 000 000</div>
+      <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Оборот свыше $3 000 000" %}</div>
       <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
     </div>
-    <div style="font-size:13px;color:#8A8A8A;margin-bottom:12px;">Постоянные клиенты платформы с оборотом более $3 млн — ключевые покупатели</div>
+    <div style="font-size:13px;color:#8A8A8A;margin-bottom:12px;">{% trans "Постоянные клиенты платформы с оборотом более $3 млн — ключевые покупатели" %}</div>
     <div class="loyalty-fields" style="grid-template-columns:1fr 1fr;">
       <div class="loyalty-field">
-        <label>Скидка</label>
+        <label>{% trans "Скидка" %}</label>
         <input type="text" value="5%" />
       </div>
       <div class="loyalty-field">
-        <label>Применяется к</label>
+        <label>{% trans "Применяется к" %}</label>
         <select>
-          <option>Всем товарам</option>
-          <option>Только избранным категориям</option>
+          <option>{% trans "Всем товарам" %}</option>
+          <option>{% trans "Только избранным категориям" %}</option>
         </select>
       </div>
     </div>
     <div style="margin-top:8px;font-size:11px;color:#6A6A6A;">
-      <span style="color:#64B5F6;">● Активен</span> · 918 759 товаров
+      <span style="color:#64B5F6;">{% trans "● Активен" %}</span>{% trans "· 918 759 товаров" %}
     </div>
   </div>
 
   {# Tier 3: >$5M #}
   <div class="loyalty-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div style="font-size:14px;font-weight:700;color:#ECECEC;">Оборот свыше $5 000 000</div>
+      <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Оборот свыше $5 000 000" %}</div>
       <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
     </div>
-    <div style="font-size:13px;color:#8A8A8A;margin-bottom:12px;">Стратегические партнёры платформы с максимальным оборотом</div>
+    <div style="font-size:13px;color:#8A8A8A;margin-bottom:12px;">{% trans "Стратегические партнёры платформы с максимальным оборотом" %}</div>
     <div class="loyalty-fields" style="grid-template-columns:1fr 1fr;">
       <div class="loyalty-field">
-        <label>Скидка</label>
+        <label>{% trans "Скидка" %}</label>
         <input type="text" value="8%" />
       </div>
       <div class="loyalty-field">
-        <label>Применяется к</label>
+        <label>{% trans "Применяется к" %}</label>
         <select>
-          <option>Всем товарам</option>
-          <option>Только избранным категориям</option>
+          <option>{% trans "Всем товарам" %}</option>
+          <option>{% trans "Только избранным категориям" %}</option>
         </select>
       </div>
     </div>
     <div style="margin-top:8px;font-size:11px;color:#6A6A6A;">
-      <span style="color:#FF8C42;">● Не активен</span> · Включите для применения
+      <span style="color:#FF8C42;">{% trans "● Не активен" %}</span>{% trans "· Включите для применения" %}
     </div>
   </div>
 
   <div class="consent-box" style="margin-top:14px;">
     <p>
-      Скидки применяются <strong style="color:#ECECEC;">автоматически</strong> при оформлении заказа. Платформа определяет уровень покупателя по его совокупному обороту закупок. Персональные данные покупателя не раскрываются — вы видите только уровень и применённую скидку.<br>
-      Вы можете отключить любой уровень в любой момент — скидка перестанет действовать для новых заказов.
+      {% trans "Скидки применяются" %} <strong style="color:#ECECEC;">{% trans "автоматически" %}</strong> {% trans "при оформлении заказа. Платформа определяет уровень покупателя по его совокупному обороту закупок. Персональные данные покупателя не раскрываются — вы видите только уровень и применённую скидку." %}<br>
+      {% trans "Вы можете отключить любой уровень в любой момент — скидка перестанет действовать для новых заказов." %}
     </p>
   </div>
 
   <div style="margin-top:14px;display:flex;justify-content:flex-end;">
-    <button class="btn" style="padding:8px 20px;font-size:13px;">Сохранить настройки</button>
+    <button class="btn" style="padding:8px 20px;font-size:13px;">{% trans "Сохранить настройки" %}</button>
   </div>
 
   <div style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);">
     <div class="neg-section-head">
       <div>
-        <div class="neg-section-title">Программа лояльности</div>
-        <div class="neg-section-sub">Покупатели с историей крупных закупок получают персональную скидку платформы</div>
+        <div class="neg-section-title">{% trans "Программа лояльности" %}</div>
+        <div class="neg-section-sub">{% trans "Покупатели с историей крупных закупок получают персональную скидку платформы" %}</div>
       </div>
       <div class="toggle-wrap">
         <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
-        <span style="font-size:12px;color:#8A8A8A;">Программа активна</span>
+        <span style="font-size:12px;color:#8A8A8A;">{% trans "Программа активна" %}</span>
       </div>
     </div>
 
     <div class="loyalty-card">
       <div class="loyalty-card-head">
         <div>
-          <div class="loyalty-name">Постоянный покупатель</div>
-          <div class="loyalty-desc">Присваивается автоматически при соответствии условиям</div>
+          <div class="loyalty-name">{% trans "Постоянный покупатель" %}</div>
+          <div class="loyalty-desc">{% trans "Присваивается автоматически при соответствии условиям" %}</div>
         </div>
-        <span class="tier-badge">Базовый</span>
+        <span class="tier-badge">{% trans "Базовый" %}</span>
       </div>
       <div class="loyalty-fields">
         <div class="loyalty-field">
-          <label>Мин. оборот за 6 мес.</label>
+          <label>{% trans "Мин. оборот за 6 мес." %}</label>
           <input type="text" value="$50 000" />
         </div>
         <div class="loyalty-field">
-          <label>Мин. кол-во заказов</label>
+          <label>{% trans "Мин. кол-во заказов" %}</label>
           <input type="number" value="3" />
         </div>
         <div class="loyalty-field">
-          <label>Скидка</label>
+          <label>{% trans "Скидка" %}</label>
           <input type="text" value="3%" />
         </div>
       </div>
@@ -321,22 +322,22 @@
     <div class="loyalty-card">
       <div class="loyalty-card-head">
         <div>
-          <div class="loyalty-name">VIP покупатель</div>
-          <div class="loyalty-desc">Повышенная скидка для крупнооптовых клиентов</div>
+          <div class="loyalty-name">{% trans "VIP покупатель" %}</div>
+          <div class="loyalty-desc">{% trans "Повышенная скидка для крупнооптовых клиентов" %}</div>
         </div>
         <span class="tier-badge">VIP</span>
       </div>
       <div class="loyalty-fields">
         <div class="loyalty-field">
-          <label>Мин. оборот за 6 мес.</label>
+          <label>{% trans "Мин. оборот за 6 мес." %}</label>
           <input type="text" value="$200 000" />
         </div>
         <div class="loyalty-field">
-          <label>Мин. кол-во заказов</label>
+          <label>{% trans "Мин. кол-во заказов" %}</label>
           <input type="number" value="10" />
         </div>
         <div class="loyalty-field">
-          <label>Скидка</label>
+          <label>{% trans "Скидка" %}</label>
           <input type="text" value="5%" />
         </div>
       </div>
@@ -344,18 +345,18 @@
 
     <div class="consent-box">
       <p>
-        Давая согласие на программу лояльности, вы подтверждаете, что скидки будут применяться <strong style="color:#ECECEC;">автоматически</strong> ко всем заказам покупателей, соответствующих условиям, без вашего ручного подтверждения каждого случая.<br>
-        Платформа не передаёт поставщику персональные данные покупателя — скидка присваивается анонимно по внутренним метрикам.
+        {% trans "Давая согласие на программу лояльности, вы подтверждаете, что скидки будут применяться" %} <strong style="color:#ECECEC;">{% trans "автоматически" %}</strong> {% trans "ко всем заказам покупателей, соответствующих условиям, без вашего ручного подтверждения каждого случая." %}<br>
+        {% trans "Платформа не передаёт поставщику персональные данные покупателя — скидка присваивается анонимно по внутренним метрикам." %}
       </p>
       <label class="consent-check">
         <input type="checkbox" checked>
-        <span>Я даю согласие на автоматическое применение скидок в рамках программы лояльности платформы Consolidator Parts</span>
+        <span>{% trans "Я даю согласие на автоматическое применение скидок в рамках программы лояльности платформы Consolidator Parts" %}</span>
       </label>
     </div>
   </div>
 
   <div style="margin-top:14px;display:flex;justify-content:flex-end;">
-    <button class="btn" style="padding:8px 20px;font-size:13px;">Сохранить все</button>
+    <button class="btn" style="padding:8px 20px;font-size:13px;">{% trans "Сохранить все" %}</button>
   </div>
 </div>
 
@@ -363,30 +364,30 @@
 <div class="neg-panel active" id="panel-chats">
   {# Активные позиции #}
   <div style="margin-bottom:14px;">
-    <div style="font-size:12px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Активные позиции</div>
-    <div style="font-size:12px;color:#6A6A6A;">Активный аукцион — предоставьте скидку или согласитесь в течение 48 часов</div>
+    <div style="font-size:12px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Активные позиции" %}</div>
+    <div style="font-size:12px;color:#6A6A6A;">{% trans "Активный аукцион — предоставьте скидку или согласитесь в течение 48 часов" %}</div>
   </div>
 
   {# Auction item 1 #}
   <div style="background:#1A1A1A;border-radius:12px;border:1px solid rgba(255,255,255,0.04);padding:16px;margin-bottom:12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div>
-        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Гидроцилиндр RE48786</div>
-        <div style="font-size:12px;color:#6A6A6A;margin-top:2px;">RFQ #1 · 1 шт. · Стартовая цена: <span style="color:#ECECEC;">$3 795,00</span></div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Гидроцилиндр RE48786" %}</div>
+        <div style="font-size:12px;color:#6A6A6A;margin-top:2px;">{% trans "RFQ #1 · 1 шт. · Стартовая цена:" %} <span style="color:#ECECEC;">$3 795,00</span></div>
       </div>
-      <span class="neg-rfq-status neg-rfq-status--open">Торги открыты</span>
+      <span class="neg-rfq-status neg-rfq-status--open">{% trans "Торги открыты" %}</span>
     </div>
 
     {# Bids table #}
     <table style="width:100%;border-collapse:collapse;">
       <thead>
         <tr>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Покупатель</th>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Запрос скидки</th>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Цена с учётом</th>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Кол-во</th>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Дата</th>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Статус</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Покупатель" %}</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Запрос скидки" %}</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Цена с учётом" %}</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Кол-во" %}</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Дата" %}</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Статус" %}</th>
           <th style="padding:7px 10px;border-bottom:1px solid rgba(255,255,255,0.06);"></th>
         </tr>
       </thead>
@@ -394,45 +395,45 @@
         <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
           <td style="padding:10px;font-size:13px;color:#ECECEC;">
             <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#1</span>
-            Покупатель #4821
+            {% trans "Покупатель" %} #4821
           </td>
           <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−7%</td>
           <td style="padding:10px;font-size:13px;color:#8A8A8A;">$3 529,35</td>
-          <td style="padding:10px;font-size:13px;color:#8A8A8A;">1 шт.</td>
-          <td style="padding:10px;font-size:12px;color:#6A6A6A;">вчера, 14:22</td>
-          <td style="padding:10px;"><span style="font-size:11px;color:#8A8A8A;">Ожидает ответа</span></td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">{% trans "1 шт." %}</td>
+          <td style="padding:10px;font-size:12px;color:#6A6A6A;">{% trans "вчера, 14:22" %}</td>
+          <td style="padding:10px;"><span style="font-size:11px;color:#8A8A8A;">{% trans "Ожидает ответа" %}</span></td>
           <td style="padding:10px;text-align:right;">
-            <button class="btn-accept" style="margin-right:6px;" onclick="auctionAccept(this)">Принять</button>
-            <button class="btn-counter" onclick="auctionCounter(this)">Встречная</button>
+            <button class="btn-accept" style="margin-right:6px;" onclick="auctionAccept(this)">{% trans "Принять" %}</button>
+            <button class="btn-counter" onclick="auctionCounter(this)">{% trans "Встречная" %}</button>
           </td>
         </tr>
         <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
           <td style="padding:10px;font-size:13px;color:#ECECEC;">
             <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#2</span>
-            Покупатель #4817
+            {% trans "Покупатель" %} #4817
           </td>
           <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−5%</td>
           <td style="padding:10px;font-size:13px;color:#8A8A8A;">$3 605,25</td>
-          <td style="padding:10px;font-size:13px;color:#8A8A8A;">2 шт.</td>
-          <td style="padding:10px;font-size:12px;color:#6A6A6A;">сегодня, 09:14</td>
-          <td style="padding:10px;"><span style="font-size:11px;color:#8A8A8A;">Встречная: 3%</span></td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">{% trans "2 шт." %}</td>
+          <td style="padding:10px;font-size:12px;color:#6A6A6A;">{% trans "сегодня, 09:14" %}</td>
+          <td style="padding:10px;"><span style="font-size:11px;color:#8A8A8A;">{% trans "Встречная: 3%" %}</span></td>
           <td style="padding:10px;text-align:right;">
-            <span style="font-size:11px;color:#6A6A6A;">Ожидает покупателя</span>
+            <span style="font-size:11px;color:#6A6A6A;">{% trans "Ожидает покупателя" %}</span>
           </td>
         </tr>
         <tr>
           <td style="padding:10px;font-size:13px;color:#ECECEC;">
             <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#3</span>
-            Покупатель #4830
+            {% trans "Покупатель" %} #4830
           </td>
           <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−10%</td>
           <td style="padding:10px;font-size:13px;color:#8A8A8A;">$3 415,50</td>
-          <td style="padding:10px;font-size:13px;color:#8A8A8A;">5 шт.</td>
-          <td style="padding:10px;font-size:12px;color:#6A6A6A;">сегодня, 11:40</td>
-          <td style="padding:10px;"><span style="font-size:11px;color:#8A8A8A;">Ожидает ответа</span></td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">{% trans "5 шт." %}</td>
+          <td style="padding:10px;font-size:12px;color:#6A6A6A;">{% trans "сегодня, 11:40" %}</td>
+          <td style="padding:10px;"><span style="font-size:11px;color:#8A8A8A;">{% trans "Ожидает ответа" %}</span></td>
           <td style="padding:10px;text-align:right;">
-            <button class="btn-accept" style="margin-right:6px;" onclick="auctionAccept(this)">Принять</button>
-            <button class="btn-counter" onclick="auctionCounter(this)">Встречная</button>
+            <button class="btn-accept" style="margin-right:6px;" onclick="auctionAccept(this)">{% trans "Принять" %}</button>
+            <button class="btn-counter" onclick="auctionCounter(this)">{% trans "Встречная" %}</button>
           </td>
         </tr>
       </tbody>
@@ -444,31 +445,31 @@
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
       <div>
         <div style="font-size:14px;font-weight:700;color:#ECECEC;">MAIN SWITCH LH-9989363</div>
-        <div style="font-size:12px;color:#6A6A6A;margin-top:2px;">RFQ #1 · 2 шт. · Стартовая цена: <span style="color:#ECECEC;">$1 240,00</span></div>
+        <div style="font-size:12px;color:#6A6A6A;margin-top:2px;">{% trans "RFQ #1 · 2 шт. · Стартовая цена:" %} <span style="color:#ECECEC;">$1 240,00</span></div>
       </div>
-      <span class="neg-rfq-status neg-rfq-status--agreed">Согласовано</span>
+      <span class="neg-rfq-status neg-rfq-status--agreed">{% trans "Согласовано" %}</span>
     </div>
 
     <table style="width:100%;border-collapse:collapse;">
       <thead>
         <tr>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Покупатель</th>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Скидка</th>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Итого</th>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Кол-во</th>
-          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">Статус</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Покупатель" %}</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Скидка" %}</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Итого" %}</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Кол-во" %}</th>
+          <th style="text-align:left;padding:7px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6A6A6A;border-bottom:1px solid rgba(255,255,255,0.06);">{% trans "Статус" %}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td style="padding:10px;font-size:13px;color:#ECECEC;">
             <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#1</span>
-            Покупатель #4821
+            {% trans "Покупатель" %} #4821
           </td>
           <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−3%</td>
           <td style="padding:10px;font-size:13px;color:#8A8A8A;">$2 405,60</td>
-          <td style="padding:10px;font-size:13px;color:#8A8A8A;">2 шт.</td>
-          <td style="padding:10px;"><span style="font-size:11px;color:#66BB6A;">● Принято</span></td>
+          <td style="padding:10px;font-size:13px;color:#8A8A8A;">{% trans "2 шт." %}</td>
+          <td style="padding:10px;"><span style="font-size:11px;color:#66BB6A;">{% trans "● Принято" %}</span></td>
         </tr>
       </tbody>
     </table>
@@ -476,7 +477,7 @@
 
   <div style="background:rgba(255,255,255,0.02);border-radius:10px;padding:12px 14px;font-size:12px;color:#6A6A6A;line-height:1.6;">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6A6A6A" stroke-width="2" style="vertical-align:middle;margin-right:5px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    Покупатели обезличены — вы видите только номер. Платформа гарантирует, что стороны не могут обменяться контактными данными. Обмен возможен только скидками и чертежами через форму платформы.
+    {% trans "Покупатели обезличены — вы видите только номер. Платформа гарантирует, что стороны не могут обменяться контактными данными. Обмен возможен только скидками и чертежами через форму платформы." %}
   </div>
 </div>
 
@@ -484,18 +485,18 @@
 <div class="neg-panel" id="panel-drawings">
   <div class="neg-section-head">
     <div>
-      <div class="neg-section-title">Обмен чертежами и тех. документацией</div>
-      <div class="neg-section-sub">Файлы передаются только через платформу. Личные данные сторон не раскрываются</div>
+      <div class="neg-section-title">{% trans "Обмен чертежами и тех. документацией" %}</div>
+      <div class="neg-section-sub">{% trans "Файлы передаются только через платформу. Личные данные сторон не раскрываются" %}</div>
     </div>
     <button class="btn-add">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Загрузить файл
+      {% trans "Загрузить файл" %}
     </button>
   </div>
 
   <div style="background:rgba(100,181,246,0.04);border:1px solid rgba(100,181,246,0.1);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#8A8A8A;line-height:1.6;">
-    Чертежи и технические документы передаются покупателю в обезличенном виде — без логотипов, реквизитов и контактных данных.
-    Платформа автоматически удаляет метаданные файла перед передачей.
+    {% trans "Чертежи и технические документы передаются покупателю в обезличенном виде — без логотипов, реквизитов и контактных данных." %}
+    {% trans "Платформа автоматически удаляет метаданные файла перед передачей." %}
   </div>
 
   <div class="drawing-row">
@@ -503,33 +504,33 @@
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
     </div>
     <div style="flex:1;min-width:0;">
-      <div class="drawing-name">Гидроцилиндр RE48786 — сборочный чертёж</div>
-      <div class="drawing-meta">PDF · 2.4 MB · загружен 22.03.2026 · RFQ #1</div>
+      <div class="drawing-name">{% trans "Гидроцилиндр RE48786 — сборочный чертёж" %}</div>
+      <div class="drawing-meta">{% trans "PDF · 2.4 MB · загружен 22.03.2026 · RFQ #1" %}</div>
     </div>
-    <span class="drawing-badge drawing-badge--approved">Передан</span>
+    <span class="drawing-badge drawing-badge--approved">{% trans "Передан" %}</span>
   </div>
   <div class="drawing-row">
     <div class="drawing-icon">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
     </div>
     <div style="flex:1;min-width:0;">
-      <div class="drawing-name">Технические параметры — LH-9989363</div>
-      <div class="drawing-meta">DWG · 890 KB · загружен сегодня · RFQ #1</div>
+      <div class="drawing-name">{% trans "Технические параметры — LH-9989363" %}</div>
+      <div class="drawing-meta">{% trans "DWG · 890 KB · загружен сегодня · RFQ #1" %}</div>
     </div>
-    <span class="drawing-badge drawing-badge--pending">Ожидает</span>
+    <span class="drawing-badge drawing-badge--pending">{% trans "Ожидает" %}</span>
   </div>
 
   <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.04);padding-top:16px;">
-    <div class="neg-section-title" style="margin-bottom:10px;">Запросы от покупателей</div>
+    <div class="neg-section-title" style="margin-bottom:10px;">{% trans "Запросы от покупателей" %}</div>
     <div class="drawing-row">
       <div class="drawing-icon" style="background:rgba(255,140,66,0.08);color:#FF8C42;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       </div>
       <div style="flex:1;min-width:0;">
-        <div class="drawing-name">Запрос тех. документации на KM-21W-60-41112</div>
-        <div class="drawing-meta">Запрошено покупателем · сегодня, 10:32 · RFQ #1</div>
+        <div class="drawing-name">{% trans "Запрос тех. документации на KM-21W-60-41112" %}</div>
+        <div class="drawing-meta">{% trans "Запрошено покупателем · сегодня, 10:32 · RFQ #1" %}</div>
       </div>
-      <button class="btn-add" style="padding:5px 12px;font-size:11px;">Загрузить файл</button>
+      <button class="btn-add" style="padding:5px 12px;font-size:11px;">{% trans "Загрузить файл" %}</button>
     </div>
   </div>
 </div>

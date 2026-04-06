@@ -1,14 +1,15 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 {% load static seller_filters %}
-{% block title %}Контроль SLA{% endblock %}
+{% block title %}{% trans "Контроль SLA" %}{% endblock %}
 {% block content %}
 
-<p class="muted" style="margin-bottom:12px;">Всего заказов: {{ orders_total }}</p>
+<p class="muted" style="margin-bottom:12px;">{% blocktrans with total=orders_total %}Всего заказов: {{ total }}{% endblocktrans %}</p>
 
 <div id="sla-blocks">
 
 <div class="sla-block" data-block-id="kanban">
-  <div class="sla-block-handle" title="Переместить блок">⠿</div>
+  <div class="sla-block-handle" title="{% trans 'Переместить блок' %}">⠿</div>
 <div class="kanban-board">
   {% for col in columns %}
     <div class="kanban-col" data-status="{{ col.key }}" data-label="{{ col.label }}"
@@ -43,11 +44,11 @@
             </div>
             <div class="kanban-card-customer">{{ row.order.customer_name }}</div>
             <div class="kanban-card-meta">
-              {{ row.items_count }} поз. · {{ row.units_total }} шт.
+              {% blocktrans with items=row.items_count units=row.units_total %}{{ items }} поз. · {{ units }} шт.{% endblocktrans %}
             </div>
             {% if row.order.ship_deadline %}
               <div class="kanban-card-deadline">
-                Отгрузка: {{ row.order.ship_deadline|date:"d.m" }}
+                {% blocktrans with date=row.order.ship_deadline|date:"d.m" %}Отгрузка: {{ date }}{% endblocktrans %}
               </div>
             {% endif %}
             <div class="kanban-card-amount">${{ row.order.total_amount }}</div>
@@ -62,14 +63,14 @@
 </div>{# /block kanban #}
 
 <div class="sla-block" data-block-id="timeline" style="margin-top:12px;">
-  <div class="sla-block-handle" title="Переместить блок">⠿</div>
+  <div class="sla-block-handle" title="{% trans 'Переместить блок' %}">⠿</div>
 <section class="panel" style="margin-top:0;">
-  <h2 style="margin-bottom:16px;">Таймлайн доставки</h2>
+  <h2 style="margin-bottom:16px;">{% trans "Таймлайн доставки" %}</h2>
   {% for tl in timeline_orders %}
     <div style="margin-bottom:16px;padding-bottom:16px;{% if not forloop.last %}border-bottom:1px solid rgba(255,255,255,0.045);{% endif %}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;">Заказ #{{ tl.order.id }}</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;">{% blocktrans with id=tl.order.id %}Заказ #{{ id }}{% endblocktrans %}</span>
           <span style="font-size:12px;color:#6A6A6A;">{{ tl.order.customer_name }}</span>
           {% if tl.order.sla_status == "breached" %}
             <span style="font-size:10px;color:#FF8C42;">{{ tl.order.get_sla_status_display }}</span>
@@ -98,7 +99,7 @@
 </div>{# /block timeline #}
 
 <div class="sla-block" data-block-id="kpi" style="margin-top:12px;">
-  <div class="sla-block-handle" title="Переместить блок">⠿</div>
+  <div class="sla-block-handle" title="{% trans 'Переместить блок' %}">⠿</div>
 {# ─── KPI метрики ─── #}
 <style>
 .sla-kpi-link { text-decoration:none; display:block; cursor:pointer; }
@@ -107,54 +108,54 @@
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
   <a href="/seller/orders/" class="sla-kpi-link">
   <div style="background:#242424;padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.055);">
-    <div style="font-size:11px;color:#919191;margin-bottom:3px;">Активные заказы</div>
+    <div style="font-size:11px;color:#919191;margin-bottom:3px;">{% trans "Активные заказы" %}</div>
     <div style="display:flex;align-items:baseline;gap:6px;">
       <span style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">{{ orders_total }}</span>
     </div>
-    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">на контроле</div>
+    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">{% trans "на контроле" %}</div>
   </div>
   </a>
   <a href="/seller/sla/" class="sla-kpi-link">
   <div style="background:#242424;padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.055);">
-    <div style="font-size:11px;color:#919191;margin-bottom:3px;">Исполнение SLA</div>
+    <div style="font-size:11px;color:#919191;margin-bottom:3px;">{% trans "Исполнение SLA" %}</div>
     <div style="display:flex;align-items:baseline;gap:6px;">
       <span style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">{% widthratio sla_on_track orders_total 100 %}%</span>
       <span style="font-size:10px;font-weight:600;color:#919191;">on track</span>
     </div>
-    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">норматив: 90%</div>
+    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">{% trans "норматив: 90%" %}</div>
   </div>
   </a>
   <a href="/seller/sla/?status=at_risk" class="sla-kpi-link">
   <div style="background:#242424;padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.055);">
-    <div style="font-size:11px;color:#919191;margin-bottom:3px;">Под угрозой</div>
+    <div style="font-size:11px;color:#919191;margin-bottom:3px;">{% trans "Под угрозой" %}</div>
     <div style="display:flex;align-items:baseline;gap:6px;">
       <span style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">{{ sla_at_risk }}</span>
       <span style="font-size:10px;font-weight:600;color:#919191;">at risk</span>
     </div>
-    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">требуют внимания</div>
+    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">{% trans "требуют внимания" %}</div>
   </div>
   </a>
   <a href="/seller/sla/?status=breached" class="sla-kpi-link">
   <div style="background:#242424;padding:10px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.055);">
-    <div style="font-size:11px;color:#919191;margin-bottom:3px;">Нарушения SLA</div>
+    <div style="font-size:11px;color:#919191;margin-bottom:3px;">{% trans "Нарушения SLA" %}</div>
     <div style="display:flex;align-items:baseline;gap:6px;">
       <span style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;">{{ sla_breached }}</span>
       <span style="font-size:10px;font-weight:600;color:#919191;">breached</span>
     </div>
-    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">просрочены</div>
+    <div style="font-size:10px;color:#6A6A6A;margin-top:2px;">{% trans "просрочены" %}</div>
   </div>
   </a>
 </div>
 </div>{# /block kpi #}
 
 <div class="sla-block" data-block-id="charts" style="margin-top:12px;">
-  <div class="sla-block-handle" title="Переместить блок">⠿</div>
+  <div class="sla-block-handle" title="{% trans 'Переместить блок' %}">⠿</div>
 {# ─── Графики ─── #}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
 
   {# Распределение по этапам #}
   <div style="background:#242424;padding:20px 22px 18px;border-radius:14px;border:1px solid rgba(255,255,255,0.055);">
-    <div style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:16px;">Распределение по этапам</div>
+    <div style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:16px;">{% trans "Распределение по этапам" %}</div>
     <div style="display:flex;flex-direction:column;gap:10px;">
       {% for col in columns %}
         <div style="display:flex;align-items:center;gap:10px;">
@@ -172,7 +173,7 @@
 
   {# Нормативы SLA по этапам #}
   <div style="background:#242424;padding:20px 22px 18px;border-radius:14px;border:1px solid rgba(255,255,255,0.055);">
-    <div style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:16px;">Нормативы SLA по этапам</div>
+    <div style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:16px;">{% trans "Нормативы SLA по этапам" %}</div>
     <div style="display:flex;flex-direction:column;gap:10px;">
       {% for col in columns %}
         <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -190,24 +191,24 @@
 </div>{# /block charts #}
 
 <div class="sla-block" data-block-id="analytics" style="margin-top:12px;">
-  <div class="sla-block-handle" title="Переместить блок">⠿</div>
+  <div class="sla-block-handle" title="{% trans 'Переместить блок' %}">⠿</div>
 {# ─── Аналитика времени по этапам ─── #}
 <section style="margin-top:0;">
   <div style="background:#242424;border-radius:14px;border:1px solid rgba(255,255,255,0.055);overflow:hidden;">
     <div style="padding:18px 22px 14px;border-bottom:1px solid rgba(255,255,255,0.045);display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-size:14px;font-weight:600;color:#ECECEC;">Время на каждом этапе</div>
-      <div style="font-size:11px;color:#6A6A6A;">в часах · текущий этап выделен</div>
+      <div style="font-size:14px;font-weight:600;color:#ECECEC;">{% trans "Время на каждом этапе" %}</div>
+      <div style="font-size:11px;color:#6A6A6A;">{% trans "в часах · текущий этап выделен" %}</div>
     </div>
     <div style="overflow-x:auto;">
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead>
           <tr style="border-bottom:1px solid rgba(255,255,255,0.045);">
-            <th style="text-align:left;padding:10px 16px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;min-width:110px;">Заказ</th>
-            <th style="text-align:left;padding:10px 12px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;">Клиент</th>
+            <th style="text-align:left;padding:10px 16px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;min-width:110px;">{% trans "Заказ" %}</th>
+            <th style="text-align:left;padding:10px 12px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;">{% trans "Клиент" %}</th>
             {% for sk, sl in kanban_statuses %}
               <th style="text-align:center;padding:10px 12px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;">{{ sl }}</th>
             {% endfor %}
-            <th style="text-align:right;padding:10px 16px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;">Итого</th>
+            <th style="text-align:right;padding:10px 16px;font-size:11px;font-weight:600;color:#6A6A6A;white-space:nowrap;">{% trans "Итого" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -249,7 +250,7 @@
             </tr>
           {% empty %}
             <tr>
-              <td colspan="9" style="text-align:center;padding:24px;color:#484848;">Нет данных</td>
+              <td colspan="9" style="text-align:center;padding:24px;color:#484848;">{% trans "Нет данных" %}</td>
             </tr>
           {% endfor %}
         </tbody>

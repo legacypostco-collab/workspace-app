@@ -1,4 +1,5 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 {% load seller_filters %}
 
 {% block extra_css %}
@@ -201,37 +202,37 @@
 <section class="fin-hero">
   <div class="fin-hero-top">
     <div>
-      <div class="fin-hero-title">Финансовый контроль</div>
-      <div class="fin-hero-sub">Оплаты · документы · счета · таймлайн поступлений</div>
+      <div class="fin-hero-title">{% trans "Финансовый контроль" %}</div>
+      <div class="fin-hero-sub">{% trans "Оплаты · документы · счета · таймлайн поступлений" %}</div>
     </div>
   </div>
   <div class="fin-metrics">
     <a href="/seller/finance/" class="fin-metric-link">
     <div class="fin-metric">
-      <div class="fin-metric-label">Общий оборот</div>
+      <div class="fin-metric-label">{% trans "Общий оборот" %}</div>
       <div class="fin-metric-val">${{ total_revenue|floatformat:0 }}</div>
-      <div class="fin-metric-hint">все заказы</div>
+      <div class="fin-metric-hint">{% trans "все заказы" %}</div>
     </div>
     </a>
     <a href="/seller/finance/?payment=paid" class="fin-metric-link">
     <div class="fin-metric">
-      <div class="fin-metric-label">Получено</div>
+      <div class="fin-metric-label">{% trans "Получено" %}</div>
       <div class="fin-metric-val" style="color:#64B5F6;">${{ paid_revenue|floatformat:0 }}</div>
-      <div class="fin-metric-hint" style="color:#64B5F6;">полная оплата</div>
+      <div class="fin-metric-hint" style="color:#64B5F6;">{% trans "полная оплата" %}</div>
     </div>
     </a>
     <a href="/seller/finance/?payment=awaiting_reserve" class="fin-metric-link">
     <div class="fin-metric">
-      <div class="fin-metric-label">Ожидает оплаты</div>
+      <div class="fin-metric-label">{% trans "Ожидает оплаты" %}</div>
       <div class="fin-metric-val" style="color:#FF8C42;">${{ awaiting_revenue|floatformat:0 }}</div>
-      <div class="fin-metric-hint" style="color:#FF8C42;">в процессе</div>
+      <div class="fin-metric-hint" style="color:#FF8C42;">{% trans "в процессе" %}</div>
     </div>
     </a>
     <a href="/seller/finance/?payment=reserve_paid" class="fin-metric-link">
     <div class="fin-metric">
-      <div class="fin-metric-label">Резервов внесено</div>
+      <div class="fin-metric-label">{% trans "Резервов внесено" %}</div>
       <div class="fin-metric-val">${{ reserves_collected|floatformat:0 }}</div>
-      <div class="fin-metric-hint">предоплата</div>
+      <div class="fin-metric-hint">{% trans "предоплата" %}</div>
     </div>
     </a>
   </div>
@@ -241,12 +242,12 @@
 <div class="fin-toolbar">
   <form method="get" style="display:contents;">
     <input type="text" class="fin-search" name="q" value="{{ search_q }}"
-           placeholder="Поиск по номеру заказа…" />
+           placeholder="{% trans 'Поиск по номеру заказа…' %}" />
     {% if payment_filter %}
     <input type="hidden" name="payment" value="{{ payment_filter }}" />
     {% endif %}
   </form>
-  <a href="{% url 'seller_finance' %}" class="fin-filter-btn {% if not payment_filter %}active{% endif %}">Все</a>
+  <a href="{% url 'seller_finance' %}" class="fin-filter-btn {% if not payment_filter %}active{% endif %}">{% trans "Все" %}</a>
   {% for val, label in payment_choices %}
   <a href="{% url 'seller_finance' %}?payment={{ val }}{% if search_q %}&q={{ search_q }}{% endif %}"
      class="fin-filter-btn {% if payment_filter == val %}active{% endif %}">{{ label }}</a>
@@ -259,15 +260,15 @@
 <table class="fin-table">
   <thead>
     <tr>
-      <th>Заказ</th>
-      <th>Клиент</th>
-      <th>Сумма</th>
-      <th>Резерв</th>
-      <th>Оплата</th>
-      <th>Схема</th>
-      <th>Этап</th>
+      <th>{% trans "Заказ" %}</th>
+      <th>{% trans "Клиент" %}</th>
+      <th>{% trans "Сумма" %}</th>
+      <th>{% trans "Резерв" %}</th>
+      <th>{% trans "Оплата" %}</th>
+      <th>{% trans "Схема" %}</th>
+      <th>{% trans "Этап" %}</th>
       <th>SLA</th>
-      <th>Документы</th>
+      <th>{% trans "Документы" %}</th>
     </tr>
   </thead>
   <tbody>
@@ -321,7 +322,7 @@
   </tbody>
 </table>
 {% else %}
-<div class="fin-empty">Заказов по выбранному фильтру не найдено</div>
+<div class="fin-empty">{% trans "Заказов по выбранному фильтру не найдено" %}</div>
 {% endif %}
 </div>
 
@@ -329,7 +330,7 @@
 <div class="fin-drawer-overlay" id="fin-overlay" onclick="window._finClose()"></div>
 <div class="fin-drawer" id="fin-drawer">
   <div class="fin-drawer-head">
-    <div class="fin-drawer-title" id="fin-drawer-title">Заказ</div>
+    <div class="fin-drawer-title" id="fin-drawer-title">{% trans "Заказ" %}</div>
     <button class="fin-drawer-close" id="fin-drawer-close" onclick="window._finClose()">&times;</button>
   </div>
   <div class="fin-drawer-body" id="fin-drawer-body"></div>
@@ -339,7 +340,7 @@
 {% for row in finance_rows %}
 <template id="fin-data-{{ forloop.counter0 }}">
   <div class="fin-section">
-    <div class="fin-section-title">Таймлайн оплаты
+    <div class="fin-section-title">{% trans "Таймлайн оплаты" %}
       <span class="fin-scheme-badge fin-scheme--{{ row.order.payment_scheme }}" style="margin-left:8px;">
         {{ row.order.get_payment_scheme_display }}
       </span>
@@ -347,22 +348,22 @@
     <div class="fin-pay-tl">
       {# 1. Счёт выставлен #}
       <div class="fin-pay-step {% if row.invoice_event %}done{% endif %}">
-        <div class="fin-pay-step-label">Счёт выставлен</div>
+        <div class="fin-pay-step-label">{% trans "Счёт выставлен" %}</div>
         {% if row.invoice_event %}
         <div class="fin-pay-step-meta">{{ row.invoice_event.created_at|date:"d.m.Y H:i" }}</div>
         {% else %}
-        <div class="fin-pay-step-meta">Ожидает</div>
+        <div class="fin-pay-step-meta">{% trans "Ожидает" %}</div>
         {% endif %}
         <div class="fin-pay-step-amount">${{ row.order.total_amount|floatformat:2 }}</div>
       </div>
 
       {# 2. Резерв 10% #}
       <div class="fin-pay-step {% if row.order.reserve_paid_at %}done{% elif row.order.payment_status == 'awaiting_reserve' %}current{% endif %}">
-        <div class="fin-pay-step-label">Резерв {{ row.order.reserve_percent }}% оплачен</div>
+        <div class="fin-pay-step-label">{% blocktrans with pct=row.order.reserve_percent %}Резерв {{ pct }}% оплачен{% endblocktrans %}</div>
         {% if row.order.reserve_paid_at %}
         <div class="fin-pay-step-meta">{{ row.order.reserve_paid_at|date:"d.m.Y H:i" }}</div>
         {% else %}
-        <div class="fin-pay-step-meta">Ожидает</div>
+        <div class="fin-pay-step-meta">{% trans "Ожидает" %}</div>
         {% endif %}
         <div class="fin-pay-step-amount">${{ row.order.reserve_amount|floatformat:2 }}</div>
       </div>
@@ -370,33 +371,33 @@
       {% if row.order.payment_scheme == "staged" %}
       {# 3. Подтверждение 50% (только staged) #}
       <div class="fin-pay-step {% if row.order.mid_paid_at %}done{% elif row.order.payment_status == 'reserve_paid' %}current{% endif %}">
-        <div class="fin-pay-step-label">Подтверждение 50%</div>
+        <div class="fin-pay-step-label">{% trans "Подтверждение 50%" %}</div>
         {% if row.order.mid_paid_at %}
         <div class="fin-pay-step-meta">{{ row.order.mid_paid_at|date:"d.m.Y H:i" }}</div>
         {% else %}
-        <div class="fin-pay-step-meta">После подтверждения заказа</div>
+        <div class="fin-pay-step-meta">{% trans "После подтверждения заказа" %}</div>
         {% endif %}
         <div class="fin-pay-step-amount">${{ row.order.mid_payment_amount|floatformat:2 }}</div>
       </div>
 
       {# 4. Таможня 40% (только staged) #}
       <div class="fin-pay-step {% if row.order.customs_paid_at %}done{% elif row.order.payment_status == 'mid_paid' %}current{% endif %}">
-        <div class="fin-pay-step-label">Таможня 40%</div>
+        <div class="fin-pay-step-label">{% trans "Таможня 40%" %}</div>
         {% if row.order.customs_paid_at %}
         <div class="fin-pay-step-meta">{{ row.order.customs_paid_at|date:"d.m.Y H:i" }}</div>
         {% else %}
-        <div class="fin-pay-step-meta">После прохождения таможни</div>
+        <div class="fin-pay-step-meta">{% trans "После прохождения таможни" %}</div>
         {% endif %}
         <div class="fin-pay-step-amount">${{ row.order.customs_payment_amount|floatformat:2 }}</div>
       </div>
       {% else %}
       {# 3. Финальная оплата 90% (simple) #}
       <div class="fin-pay-step {% if row.order.final_paid_at %}done{% elif row.order.payment_status == 'reserve_paid' %}current{% endif %}">
-        <div class="fin-pay-step-label">Финальная оплата 90%</div>
+        <div class="fin-pay-step-label">{% trans "Финальная оплата 90%" %}</div>
         {% if row.order.final_paid_at %}
         <div class="fin-pay-step-meta">{{ row.order.final_paid_at|date:"d.m.Y H:i" }}</div>
         {% else %}
-        <div class="fin-pay-step-meta">Ожидает</div>
+        <div class="fin-pay-step-meta">{% trans "Ожидает" %}</div>
         {% endif %}
         <div class="fin-pay-step-amount">${{ row.order.total_amount|floatformat:2 }}</div>
       </div>
@@ -404,7 +405,7 @@
 
       {# Закрыт — для обеих схем #}
       <div class="fin-pay-step {% if row.order.payment_status == 'paid' %}done{% endif %}">
-        <div class="fin-pay-step-label">Полностью оплачен</div>
+        <div class="fin-pay-step-label">{% trans "Полностью оплачен" %}</div>
         {% if row.order.final_paid_at %}
         <div class="fin-pay-step-meta">{{ row.order.final_paid_at|date:"d.m.Y H:i" }}</div>
         {% else %}
@@ -416,7 +417,7 @@
 
   {# SLA и статус #}
   <div class="fin-section">
-    <div class="fin-section-title">Статус заказа и SLA</div>
+    <div class="fin-section-title">{% trans "Статус заказа и SLA" %}</div>
     <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;">
       <span class="fin-pay-badge fin-pay-badge--{{ row.order.payment_status }}">{{ row.order.get_payment_status_display }}</span>
       <span class="fin-sla-badge fin-sla--{{ row.order.sla_status }}">SLA: {{ row.order.get_sla_status_display }}</span>
@@ -438,7 +439,7 @@
 
   {# Документы #}
   <div class="fin-section">
-    <div class="fin-section-title">Документы ({{ row.docs_count }})</div>
+    <div class="fin-section-title">{% blocktrans with count=row.docs_count %}Документы ({{ count }}){% endblocktrans %}</div>
     {% if row.docs %}
     {% for doc in row.docs %}
     <div class="fin-doc-row">
@@ -451,40 +452,40 @@
       </div>
       <div class="fin-doc-date">{{ doc.created_at|date:"d.m.Y" }}</div>
       {% if doc.file_url %}
-      <a href="{{ doc.file_url }}" class="fin-doc-link" target="_blank">Открыть</a>
+      <a href="{{ doc.file_url }}" class="fin-doc-link" target="_blank">{% trans "Открыть" %}</a>
       {% endif %}
     </div>
     {% endfor %}
     {% else %}
-    <div style="color:#484848;font-size:12px;">Нет загруженных документов</div>
+    <div style="color:#484848;font-size:12px;">{% trans "Нет загруженных документов" %}</div>
     {% endif %}
 
     <div style="margin-top:12px;display:flex;gap:8px;">
       <a href="{% url 'order_invoice' row.order.id %}" class="fin-invoice-btn" target="_blank">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        Счёт-фактура
+        {% trans "Счёт-фактура" %}
       </a>
       <a href="{% url 'order_invoice_pdf' row.order.id %}" class="fin-invoice-btn" target="_blank">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Скачать PDF
+        {% trans "Скачать PDF" %}
       </a>
     </div>
   </div>
 
   {# Детали #}
   <div class="fin-section">
-    <div class="fin-section-title">Детали</div>
+    <div class="fin-section-title">{% trans "Детали" %}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-      <div><span style="color:#6A6A6A;">Клиент:</span></div>
+      <div><span style="color:#6A6A6A;">{% trans "Клиент:" %}</span></div>
       <div style="color:#ECECEC;">{{ row.order.customer_name }}</div>
       <div><span style="color:#6A6A6A;">Email:</span></div>
       <div style="color:#ECECEC;">{{ row.order.customer_email }}</div>
-      <div><span style="color:#6A6A6A;">Логистика:</span></div>
+      <div><span style="color:#6A6A6A;">{% trans "Логистика:" %}</span></div>
       <div style="color:#ECECEC;">${{ row.order.logistics_cost|floatformat:2 }} {{ row.order.logistics_currency }}</div>
-      <div><span style="color:#6A6A6A;">Создан:</span></div>
+      <div><span style="color:#6A6A6A;">{% trans "Создан:" %}</span></div>
       <div style="color:#ECECEC;">{{ row.order.created_at|date:"d.m.Y H:i" }}</div>
       {% if row.order.invoice_number %}
-      <div><span style="color:#6A6A6A;">Счёт №:</span></div>
+      <div><span style="color:#6A6A6A;">{% trans "Счёт №:" %}</span></div>
       <div style="color:#ECECEC;">{{ row.order.invoice_number }}</div>
       {% endif %}
     </div>

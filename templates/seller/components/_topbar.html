@@ -1,3 +1,4 @@
+{% load i18n %}
 <header class="seller-topbar">
   <div>
     {% if seller_breadcrumbs %}
@@ -13,10 +14,10 @@
     {% endif %}
     <div style="display:flex;align-items:center;gap:10px;">
       <div class="seller-nav-arrows">
-        <a href="javascript:history.back()" class="seller-nav-arrow" title="Назад">
+        <a href="javascript:history.back()" class="seller-nav-arrow" title="{% trans 'Назад' %}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19l-7-7 7-7"/></svg>
         </a>
-        <a href="javascript:history.forward()" class="seller-nav-arrow" title="Вперёд">
+        <a href="javascript:history.forward()" class="seller-nav-arrow" title="{% trans 'Вперёд' %}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
         </a>
       </div>
@@ -28,7 +29,7 @@
   </div>
   <div class="seller-topbar-meta">
     <div class="seller-topbar-chip">
-      <span class="muted" data-i18n="rating_label">Рейтинг</span>
+      <span class="muted" data-i18n="rating_label">{% trans "Рейтинг" %}</span>
       <strong>{{ seller_rating_score|default:"—" }}</strong>
     </div>
     <button id="cab-lang-btn" onclick="window.cabinetToggleLang()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#919191;font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;letter-spacing:0.06em;transition:all .15s;" onmouseover="this.style.color='#ECECEC'" onmouseout="this.style.color='#919191'">EN</button>

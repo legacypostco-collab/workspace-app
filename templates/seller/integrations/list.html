@@ -1,4 +1,5 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 
 {% block extra_css %}
 <style>
@@ -104,8 +105,8 @@
 {% block content %}
 
 <div class="ig-section">
-  <div class="ig-section-title">Интеграции</div>
-  <div class="ig-section-sub">Подключите учётные системы для автоматической синхронизации данных с платформой Consolidator Parts</div>
+  <div class="ig-section-title">{% trans "Интеграции" %}</div>
+  <div class="ig-section-sub">{% trans "Подключите учётные системы для автоматической синхронизации данных с платформой Consolidator Parts" %}</div>
 </div>
 
 <div class="ig-grid">
@@ -117,25 +118,25 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       </div>
       <div class="ig-card-info">
-        <div class="ig-card-name">1С:Предприятие</div>
-        <div class="ig-card-type">Учётная система · Бухгалтерия · Склад · Торговля</div>
+        <div class="ig-card-name">{% trans "1С:Предприятие" %}</div>
+        <div class="ig-card-type">{% trans "Учётная система · Бухгалтерия · Склад · Торговля" %}</div>
       </div>
-      <span class="ig-card-status ig-card-status--available">Доступна</span>
+      <span class="ig-card-status ig-card-status--available">{% trans "Доступна" %}</span>
     </div>
     <div class="ig-card-desc">
-      Двусторонняя синхронизация с 1С:Бухгалтерия, 1С:Управление торговлей, 1С:Комплексная автоматизация. Автоматическая выгрузка накладных, счетов-фактур, актов сверки. Импорт остатков, цен и номенклатуры из 1С на платформу.
+      {% trans "Двусторонняя синхронизация с 1С:Бухгалтерия, 1С:Управление торговлей, 1С:Комплексная автоматизация. Автоматическая выгрузка накладных, счетов-фактур, актов сверки. Импорт остатков, цен и номенклатуры из 1С на платформу." %}
     </div>
     <div class="ig-features">
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Синхронизация номенклатуры</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Выгрузка накладных и УПД</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Импорт остатков и цен</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Акты сверки автоматически</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Счета-фактуры и платежи</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Контрагенты и договоры</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Синхронизация номенклатуры" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Выгрузка накладных и УПД" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Импорт остатков и цен" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Акты сверки автоматически" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Счета-фактуры и платежи" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Контрагенты и договоры" %}</div>
     </div>
     <div class="ig-card-footer">
-      <div class="ig-card-meta">Версии: 8.3+ · Обмен через COM / REST API · Обновления каждые 15 мин</div>
-      <button class="ig-btn ig-btn--connect" onclick="igConnect('1С:Предприятие')">Подключить</button>
+      <div class="ig-card-meta">{% trans "Версии: 8.3+ · Обмен через COM / REST API · Обновления каждые 15 мин" %}</div>
+      <button class="ig-btn ig-btn--connect" onclick="igConnect('1С:Предприятие')">{% trans "Подключить" %}</button>
     </div>
   </div>
 
@@ -146,25 +147,25 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852 1.002 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       </div>
       <div class="ig-card-info">
-        <div class="ig-card-name">1С:ТОИР</div>
-        <div class="ig-card-type">Техобслуживание и ремонт · Управление оборудованием</div>
+        <div class="ig-card-name">{% trans "1С:ТОИР" %}</div>
+        <div class="ig-card-type">{% trans "Техобслуживание и ремонт · Управление оборудованием" %}</div>
       </div>
-      <span class="ig-card-status ig-card-status--available">Доступна</span>
+      <span class="ig-card-status ig-card-status--available">{% trans "Доступна" %}</span>
     </div>
     <div class="ig-card-desc">
-      Интеграция с 1С:ТОИР для управления техническим обслуживанием и ремонтом оборудования. Автоматический заказ запчастей на основании планов ТО, учёт совместимости деталей с оборудованием, отслеживание жизненного цикла компонентов.
+      {% trans "Интеграция с 1С:ТОИР для управления техническим обслуживанием и ремонтом оборудования. Автоматический заказ запчастей на основании планов ТО, учёт совместимости деталей с оборудованием, отслеживание жизненного цикла компонентов." %}
     </div>
     <div class="ig-features">
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Автозаказ по планам ТО</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Каталог совместимости</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>История замен деталей</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Планирование закупок</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Привязка к оборудованию</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Учёт межсервисного интервала</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Автозаказ по планам ТО" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Каталог совместимости" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "История замен деталей" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Планирование закупок" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Привязка к оборудованию" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Учёт межсервисного интервала" %}</div>
     </div>
     <div class="ig-card-footer">
-      <div class="ig-card-meta">1С:ТОИР 2.0+ · Обмен по регламенту или событию · Поддержка GOST</div>
-      <button class="ig-btn ig-btn--connect" onclick="igConnect('1С:ТОИР')">Подключить</button>
+      <div class="ig-card-meta">{% trans "1С:ТОИР 2.0+ · Обмен по регламенту или событию · Поддержка GOST" %}</div>
+      <button class="ig-btn ig-btn--connect" onclick="igConnect('1С:ТОИР')">{% trans "Подключить" %}</button>
     </div>
   </div>
 
@@ -175,25 +176,25 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.5"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       </div>
       <div class="ig-card-info">
-        <div class="ig-card-name">ERP — индивидуальная разработка</div>
-        <div class="ig-card-type">Любая ERP-система · SAP · Oracle · Microsoft Dynamics · Галактика</div>
+        <div class="ig-card-name">{% trans "ERP — индивидуальная разработка" %}</div>
+        <div class="ig-card-type">{% trans "Любая ERP-система · SAP · Oracle · Microsoft Dynamics · Галактика" %}</div>
       </div>
-      <span class="ig-card-status ig-card-status--custom">Индивидуально</span>
+      <span class="ig-card-status ig-card-status--custom">{% trans "Индивидуально" %}</span>
     </div>
     <div class="ig-card-desc">
-      Разработаем коннектор под вашу ERP-систему. Поддерживаем SAP Business One / S4HANA, Oracle NetSuite, Microsoft Dynamics 365, Галактика ERP, Парус и любые кастомные решения. Интеграция через REST API, SOAP, файловый обмен или очереди сообщений.
+      {% trans "Разработаем коннектор под вашу ERP-систему. Поддерживаем SAP Business One / S4HANA, Oracle NetSuite, Microsoft Dynamics 365, Галактика ERP, Парус и любые кастомные решения. Интеграция через REST API, SOAP, файловый обмен или очереди сообщений." %}
     </div>
     <div class="ig-features">
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Любая ERP-система</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Любая ERP-система" %}</div>
       <div class="ig-feature"><span class="ig-feature-dot"></span>REST / SOAP / MQ</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Маппинг полей под вашу структуру</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Двусторонняя синхронизация</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Техническая поддержка 24/7</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>SLA на время интеграции</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Маппинг полей под вашу структуру" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Двусторонняя синхронизация" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Техническая поддержка 24/7" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "SLA на время интеграции" %}</div>
     </div>
     <div class="ig-card-footer">
-      <div class="ig-card-meta">Срок интеграции: от 2 недель · Бесплатная оценка · NDA</div>
-      <button class="ig-btn ig-btn--request" onclick="openRequestForm()">Оставить запрос</button>
+      <div class="ig-card-meta">{% trans "Срок интеграции: от 2 недель · Бесплатная оценка · NDA" %}</div>
+      <button class="ig-btn ig-btn--request" onclick="openRequestForm()">{% trans "Оставить запрос" %}</button>
     </div>
   </div>
 
@@ -204,25 +205,25 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
       </div>
       <div class="ig-card-info">
-        <div class="ig-card-name">Битрикс24</div>
-        <div class="ig-card-type">CRM · Задачи · Коммуникации · Документооборот</div>
+        <div class="ig-card-name">{% trans "Битрикс24" %}</div>
+        <div class="ig-card-type">{% trans "CRM · Задачи · Коммуникации · Документооборот" %}</div>
       </div>
-      <span class="ig-card-status ig-card-status--available">Доступна</span>
+      <span class="ig-card-status ig-card-status--available">{% trans "Доступна" %}</span>
     </div>
     <div class="ig-card-desc">
-      Интеграция с Битрикс24 для синхронизации CRM-сделок, контактов и задач. Автоматическое создание сделок при поступлении RFQ, обновление статусов заказов, уведомления в чат Б24, постановка задач при нарушении SLA.
+      {% trans "Интеграция с Битрикс24 для синхронизации CRM-сделок, контактов и задач. Автоматическое создание сделок при поступлении RFQ, обновление статусов заказов, уведомления в чат Б24, постановка задач при нарушении SLA." %}
     </div>
     <div class="ig-features">
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Синхронизация CRM-сделок</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Авто-создание при RFQ</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Контакты и компании</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Задачи по SLA нарушениям</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Уведомления в чат</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Документы и файлы</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Синхронизация CRM-сделок" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Авто-создание при RFQ" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Контакты и компании" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Задачи по SLA нарушениям" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Уведомления в чат" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Документы и файлы" %}</div>
     </div>
     <div class="ig-card-footer">
-      <div class="ig-card-meta">Облачный и коробочный Б24 · REST API · Вебхуки</div>
-      <button class="ig-btn ig-btn--connect" onclick="igConnect('Битрикс24')">Подключить</button>
+      <div class="ig-card-meta">{% trans "Облачный и коробочный Б24 · REST API · Вебхуки" %}</div>
+      <button class="ig-btn ig-btn--connect" onclick="igConnect('Битрикс24')">{% trans "Подключить" %}</button>
     </div>
   </div>
 
@@ -233,25 +234,25 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
       </div>
       <div class="ig-card-info">
-        <div class="ig-card-name">Ваша индивидуальная интеграция</div>
-        <div class="ig-card-type">Любая система · Любой протокол · Персональный менеджер</div>
+        <div class="ig-card-name">{% trans "Ваша индивидуальная интеграция" %}</div>
+        <div class="ig-card-type">{% trans "Любая система · Любой протокол · Персональный менеджер" %}</div>
       </div>
-      <span class="ig-card-status ig-card-status--custom">На заказ</span>
+      <span class="ig-card-status ig-card-status--custom">{% trans "На заказ" %}</span>
     </div>
     <div class="ig-card-desc">
-      Не нашли нужную интеграцию? Мы разработаем коннектор под вашу систему — от внутренних баз данных до специализированных отраслевых решений. Персональный менеджер проекта, техническое задание, сопровождение после запуска.
+      {% trans "Не нашли нужную интеграцию? Мы разработаем коннектор под вашу систему — от внутренних баз данных до специализированных отраслевых решений. Персональный менеджер проекта, техническое задание, сопровождение после запуска." %}
     </div>
     <div class="ig-features">
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Любая система и протокол</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Персональный менеджер</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Техническое задание бесплатно</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Сопровождение 12 месяцев</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>Гарантия SLA 99.9%</div>
-      <div class="ig-feature"><span class="ig-feature-dot"></span>NDA и безопасность данных</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Любая система и протокол" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Персональный менеджер" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Техническое задание бесплатно" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Сопровождение 12 месяцев" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "Гарантия SLA 99.9%" %}</div>
+      <div class="ig-feature"><span class="ig-feature-dot"></span>{% trans "NDA и безопасность данных" %}</div>
     </div>
     <div class="ig-card-footer">
-      <div class="ig-card-meta">Бесплатная консультация · Оценка за 1 рабочий день · Запуск от 1 недели</div>
-      <button class="ig-btn ig-btn--contact" onclick="openContactForm()">Связаться</button>
+      <div class="ig-card-meta">{% trans "Бесплатная консультация · Оценка за 1 рабочий день · Запуск от 1 недели" %}</div>
+      <button class="ig-btn ig-btn--contact" onclick="openContactForm()">{% trans "Связаться" %}</button>
     </div>
   </div>
 
@@ -259,50 +260,50 @@
 
 {# Connect form #}
 <div class="ig-form" id="connectForm">
-  <div id="connect-form-title" class="ig-form-title">Подключение интеграции</div>
+  <div id="connect-form-title" class="ig-form-title">{% trans "Подключение интеграции" %}</div>
   <div class="ig-form-row">
     <div class="ig-form-field">
-      <label>URL сервера / хост</label>
+      <label>{% trans "URL сервера / хост" %}</label>
       <input type="text" id="connect-url" placeholder="https://server.company.ru/" />
     </div>
     <div class="ig-form-field">
-      <label>Порт</label>
+      <label>{% trans "Порт" %}</label>
       <input type="text" placeholder="443" />
     </div>
   </div>
   <div class="ig-form-row">
     <div class="ig-form-field">
-      <label>Логин API / имя пользователя</label>
+      <label>{% trans "Логин API / имя пользователя" %}</label>
       <input type="text" placeholder="api_user" />
     </div>
     <div class="ig-form-field">
-      <label>Ключ / токен API</label>
+      <label>{% trans "Ключ / токен API" %}</label>
       <input type="password" placeholder="••••••••••••" />
     </div>
   </div>
   <div class="ig-form-actions">
-    <button class="ig-btn ig-btn--settings" onclick="closeConnectForm()">Отмена</button>
-    <button class="ig-btn ig-btn--connect" onclick="submitConnect()">Подключить</button>
+    <button class="ig-btn ig-btn--settings" onclick="closeConnectForm()">{% trans "Отмена" %}</button>
+    <button class="ig-btn ig-btn--connect" onclick="submitConnect()">{% trans "Подключить" %}</button>
   </div>
 </div>
 
 {# Request form #}
 <div class="ig-form" id="requestForm">
-  <div class="ig-form-title">Запрос на интеграцию ERP</div>
+  <div class="ig-form-title">{% trans "Запрос на интеграцию ERP" %}</div>
   <div class="ig-form-row">
     <div class="ig-form-field">
-      <label>Название ERP-системы</label>
-      <input type="text" placeholder="Например, SAP S4/HANA" />
+      <label>{% trans "Название ERP-системы" %}</label>
+      <input type="text" placeholder="{% trans 'Например, SAP S4/HANA' %}" />
     </div>
     <div class="ig-form-field">
-      <label>Версия</label>
-      <input type="text" placeholder="Например, 2023 FP02" />
+      <label>{% trans "Версия" %}</label>
+      <input type="text" placeholder="{% trans 'Например, 2023 FP02' %}" />
     </div>
   </div>
   <div class="ig-form-row">
     <div class="ig-form-field">
-      <label>Контактное лицо</label>
-      <input type="text" placeholder="Имя и должность" />
+      <label>{% trans "Контактное лицо" %}</label>
+      <input type="text" placeholder="{% trans 'Имя и должность' %}" />
     </div>
     <div class="ig-form-field">
       <label>Email</label>
@@ -310,66 +311,66 @@
     </div>
   </div>
   <div class="ig-form-field" style="margin-bottom:10px;">
-    <label>Описание задачи</label>
-    <textarea rows="3" placeholder="Какие данные нужно синхронизировать, какие процессы автоматизировать..."></textarea>
+    <label>{% trans "Описание задачи" %}</label>
+    <textarea rows="3" placeholder="{% trans 'Какие данные нужно синхронизировать, какие процессы автоматизировать...' %}"></textarea>
   </div>
   <div class="ig-form-row">
     <div class="ig-form-field">
-      <label>Протокол обмена</label>
+      <label>{% trans "Протокол обмена" %}</label>
       <select>
         <option>REST API</option>
         <option>SOAP</option>
-        <option>Файловый обмен (XML/JSON/CSV)</option>
-        <option>Очередь сообщений (RabbitMQ/Kafka)</option>
-        <option>Не знаю — нужна консультация</option>
+        <option>{% trans "Файловый обмен (XML/JSON/CSV)" %}</option>
+        <option>{% trans "Очередь сообщений (RabbitMQ/Kafka)" %}</option>
+        <option>{% trans "Не знаю — нужна консультация" %}</option>
       </select>
     </div>
     <div class="ig-form-field">
-      <label>Желаемый срок</label>
+      <label>{% trans "Желаемый срок" %}</label>
       <select>
-        <option>Как можно скорее</option>
-        <option>В течение месяца</option>
-        <option>В течение квартала</option>
-        <option>Пока просто оценка</option>
+        <option>{% trans "Как можно скорее" %}</option>
+        <option>{% trans "В течение месяца" %}</option>
+        <option>{% trans "В течение квартала" %}</option>
+        <option>{% trans "Пока просто оценка" %}</option>
       </select>
     </div>
   </div>
   <div class="ig-form-actions">
-    <button class="ig-btn ig-btn--settings" onclick="closeRequestForm()">Отмена</button>
-    <button class="ig-btn ig-btn--connect" onclick="submitRequest()">Отправить запрос</button>
+    <button class="ig-btn ig-btn--settings" onclick="closeRequestForm()">{% trans "Отмена" %}</button>
+    <button class="ig-btn ig-btn--connect" onclick="submitRequest()">{% trans "Отправить запрос" %}</button>
   </div>
 </div>
 
 {# Contact form #}
 <div class="ig-form" id="contactForm">
-  <div class="ig-form-title">Связаться с нами</div>
+  <div class="ig-form-title">{% trans "Связаться с нами" %}</div>
   <div class="ig-form-row">
     <div class="ig-form-field">
-      <label>Имя</label>
-      <input type="text" placeholder="Ваше имя" />
+      <label>{% trans "Имя" %}</label>
+      <input type="text" placeholder="{% trans 'Ваше имя' %}" />
     </div>
     <div class="ig-form-field">
-      <label>Email или телефон</label>
-      <input type="text" placeholder="+7 (___) ___-__-__ или email" />
+      <label>{% trans "Email или телефон" %}</label>
+      <input type="text" placeholder="{% trans '+7 (___) ___-__-__ или email' %}" />
     </div>
   </div>
   <div class="ig-form-field" style="margin-bottom:10px;">
-    <label>Опишите задачу</label>
-    <textarea rows="3" placeholder="Какую систему нужно интегрировать, какие задачи решить..."></textarea>
+    <label>{% trans "Опишите задачу" %}</label>
+    <textarea rows="3" placeholder="{% trans 'Какую систему нужно интегрировать, какие задачи решить...' %}"></textarea>
   </div>
   <div class="ig-form-field" style="margin-bottom:10px;">
-    <label>Удобный способ связи</label>
+    <label>{% trans "Удобный способ связи" %}</label>
     <select>
       <option>Email</option>
-      <option>Телефон</option>
+      <option>{% trans "Телефон" %}</option>
       <option>Telegram</option>
       <option>WhatsApp</option>
-      <option>Видеозвонок (Zoom/Google Meet)</option>
+      <option>{% trans "Видеозвонок (Zoom/Google Meet)" %}</option>
     </select>
   </div>
   <div class="ig-form-actions">
-    <button class="ig-btn ig-btn--settings" onclick="closeContactForm()">Отмена</button>
-    <button class="ig-btn ig-btn--connect" onclick="submitContact()">Отправить</button>
+    <button class="ig-btn ig-btn--settings" onclick="closeContactForm()">{% trans "Отмена" %}</button>
+    <button class="ig-btn ig-btn--connect" onclick="submitContact()">{% trans "Отправить" %}</button>
   </div>
 </div>
 

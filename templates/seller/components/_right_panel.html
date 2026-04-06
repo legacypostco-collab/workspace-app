@@ -1,11 +1,11 @@
-{% load static %}
+{% load static i18n %}
 <aside class="seller-right-panel">
   <!-- Panel header -->
   <div style="padding:14px 16px 10px;border-bottom:1px solid rgba(255,255,255,0.055);display:flex;align-items:center;justify-content:space-between;">
-    <span style="font-size:11px;color:#919191;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;">Панель</span>
+    <span style="font-size:11px;color:#919191;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;">{% trans "Панель" %}</span>
     <button style="background:transparent;border:1px solid transparent;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px;color:#ECECEC;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:4px;transition:all .15s;">
       <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 2v8M2 6h8"/></svg>
-      Виджеты
+      {% trans "Виджеты" %}
     </button>
   </div>
 
@@ -18,9 +18,9 @@
         <div class="rp-widget-head">
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="cursor:grab;font-size:11px;color:#6A6A6A;line-height:1;">⠿</span>
-            <span style="font-size:12px;font-weight:600;color:#ECECEC;">Требует действия</span>
+            <span style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "Требует действия" %}</span>
           </div>
-          <button class="rp-widget-close" title="Открепить">
+          <button class="rp-widget-close" title="{% trans 'Открепить' %}">
             <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 2l8 8M2 10l8-8"/></svg>
           </button>
         </div>
@@ -41,50 +41,50 @@
             <div class="rp-icon">↩</div>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;justify-content:space-between;gap:4px;">
-                <span style="font-size:12px;font-weight:600;color:#ECECEC;">Ответить на запрос</span>
-                <span style="font-size:11px;color:#919191;flex-shrink:0;">12м</span>
+                <span style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "Ответить на запрос" %}</span>
+                <span style="font-size:11px;color:#919191;flex-shrink:0;">{% trans "12м" %}</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:2px;">RQ-4821 · Полюс Золото · Гидроцилиндр</div>
+              <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "RQ-4821 · Полюс Золото · Гидроцилиндр" %}</div>
             </div>
           </div>
           <div class="rp-row">
             <div class="rp-icon">↩</div>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;justify-content:space-between;gap:4px;">
-                <span style="font-size:12px;font-weight:600;color:#ECECEC;">Ответить на запрос</span>
-                <span style="font-size:11px;color:#919191;flex-shrink:0;">1.5ч</span>
+                <span style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "Ответить на запрос" %}</span>
+                <span style="font-size:11px;color:#919191;flex-shrink:0;">{% trans "1.5ч" %}</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:2px;">RQ-4817 · Норникель · Насос по чертежу</div>
+              <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "RQ-4817 · Норникель · Насос по чертежу" %}</div>
             </div>
           </div>
           <div class="rp-row">
             <div class="rp-icon">✓</div>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;justify-content:space-between;gap:4px;">
-                <span style="font-size:12px;font-weight:600;color:#ECECEC;">Подтвердить отгрузку</span>
-                <span style="font-size:11px;color:#919191;flex-shrink:0;">Ожидает</span>
+                <span style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "Подтвердить отгрузку" %}</span>
+                <span style="font-size:11px;color:#919191;flex-shrink:0;">{% trans "Ожидает" %}</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:2px;">ORD-3851 · 4 позиции · $323K</div>
+              <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "ORD-3851 · 4 позиции · $323K" %}</div>
             </div>
           </div>
           <div class="rp-row">
             <div class="rp-icon">↑</div>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;justify-content:space-between;gap:4px;">
-                <span style="font-size:12px;font-weight:600;color:#ECECEC;">Загрузить сертификат</span>
-                <span style="font-size:11px;color:#919191;flex-shrink:0;">Требуется</span>
+                <span style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "Загрузить сертификат" %}</span>
+                <span style="font-size:11px;color:#919191;flex-shrink:0;">{% trans "Требуется" %}</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:2px;">ORD-3847 · Отчёт проверки качества</div>
+              <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "ORD-3847 · Отчёт проверки качества" %}</div>
             </div>
           </div>
           <div class="rp-row">
             <div class="rp-icon">$</div>
             <div style="flex:1;min-width:0;">
               <div style="display:flex;justify-content:space-between;gap:4px;">
-                <span style="font-size:12px;font-weight:600;color:#ECECEC;">Обновить 14 цен</span>
-                <span style="font-size:11px;color:#919191;flex-shrink:0;">Рекоменд.</span>
+                <span style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "Обновить 14 цен" %}</span>
+                <span style="font-size:11px;color:#919191;flex-shrink:0;">{% trans "Рекоменд." %}</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:2px;">Устаревшие цены (&gt;30 дней)</div>
+              <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "Устаревшие цены (&gt;30 дней)" %}</div>
             </div>
           </div>
           {% endfor %}
@@ -96,9 +96,9 @@
         <div class="rp-widget-head">
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="cursor:grab;font-size:11px;color:#6A6A6A;line-height:1;">⠿</span>
-            <span style="font-size:12px;font-weight:600;color:#ECECEC;">SLA дедлайны</span>
+            <span style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "SLA дедлайны" %}</span>
           </div>
-          <button class="rp-widget-close" title="Открепить">
+          <button class="rp-widget-close" title="{% trans 'Открепить' %}">
             <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 2l8 8M2 10l8-8"/></svg>
           </button>
         </div>
@@ -108,9 +108,9 @@
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;">
                 <span style="font-size:12px;font-weight:500;color:#ECECEC;">#3832</span>
-                <span style="font-family:'Golos Text',sans-serif;font-weight:700;font-size:13px;color:#ECECEC;font-variant-numeric:tabular-nums;">3ч 47м</span>
+                <span style="font-family:'Golos Text',sans-serif;font-weight:700;font-size:13px;color:#ECECEC;font-variant-numeric:tabular-nums;">{% trans "3ч 47м" %}</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:2px;">Проверка качества</div>
+              <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "Проверка качества" %}</div>
             </div>
           </div>
           <div class="rp-row">
@@ -118,9 +118,9 @@
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;">
                 <span style="font-size:12px;font-weight:500;color:#ECECEC;">#3845</span>
-                <span style="font-family:'Golos Text',sans-serif;font-weight:700;font-size:13px;color:#ECECEC;font-variant-numeric:tabular-nums;">7ч 12м</span>
+                <span style="font-family:'Golos Text',sans-serif;font-weight:700;font-size:13px;color:#ECECEC;font-variant-numeric:tabular-nums;">{% trans "7ч 12м" %}</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:2px;">Подтверждение заказа</div>
+              <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "Подтверждение заказа" %}</div>
             </div>
           </div>
           <div class="rp-row">
@@ -128,9 +128,9 @@
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;">
                 <span style="font-size:12px;font-weight:500;color:#ECECEC;">#3851</span>
-                <span style="font-family:'Golos Text',sans-serif;font-weight:700;font-size:13px;color:#ECECEC;font-variant-numeric:tabular-nums;">18ч 30м</span>
+                <span style="font-family:'Golos Text',sans-serif;font-weight:700;font-size:13px;color:#ECECEC;font-variant-numeric:tabular-nums;">{% trans "18ч 30м" %}</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:2px;">Подготовка к отгрузке</div>
+              <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "Подготовка к отгрузке" %}</div>
             </div>
           </div>
         </div>
@@ -141,45 +141,45 @@
         <div class="rp-widget-head">
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="cursor:grab;font-size:11px;color:#6A6A6A;line-height:1;">⠿</span>
-            <span style="font-size:12px;font-weight:600;color:#ECECEC;">Ожидают оплаты</span>
+            <span style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "Ожидают оплаты" %}</span>
           </div>
-          <button class="rp-widget-close" title="Открепить">
+          <button class="rp-widget-close" title="{% trans 'Открепить' %}">
             <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 2l8 8M2 10l8-8"/></svg>
           </button>
         </div>
         <div class="rp-widget-body">
           <div style="display:flex;justify-content:space-between;padding:0 0 8px;border-bottom:1px solid rgba(255,255,255,0.035);margin-bottom:6px;">
-            <span style="font-size:11px;color:#919191;">Итого к получению</span>
+            <span style="font-size:11px;color:#919191;">{% trans "Итого к получению" %}</span>
             <span style="font-size:14px;font-weight:800;font-family:'Golos Text',sans-serif;color:#64B5F6;">$1.3M</span>
           </div>
           <div class="rp-row">
             <div style="width:5px;flex-shrink:0;"></div>
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;">
-                <span style="font-size:12px;font-weight:500;color:#ECECEC;">#3851 · Резерв 10%</span>
+                <span style="font-size:12px;font-weight:500;color:#ECECEC;">{% trans "#3851 · Резерв 10%" %}</span>
                 <span style="font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;color:#ECECEC;font-variant-numeric:tabular-nums;">$323K</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:3px;">В обработке</div>
+              <div style="font-size:11px;color:#919191;margin-top:3px;">{% trans "В обработке" %}</div>
             </div>
           </div>
           <div class="rp-row">
             <div style="width:5px;height:5px;border-radius:50%;background:#28C840;flex-shrink:0;margin-top:6px;"></div>
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;">
-                <span style="font-size:12px;font-weight:500;color:#ECECEC;">#3847 · Основная</span>
+                <span style="font-size:12px;font-weight:500;color:#ECECEC;">{% trans "#3847 · Основная" %}</span>
                 <span style="font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;color:#ECECEC;font-variant-numeric:tabular-nums;">$843K</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:3px;">Подтверждено</div>
+              <div style="font-size:11px;color:#919191;margin-top:3px;">{% trans "Подтверждено" %}</div>
             </div>
           </div>
           <div class="rp-row">
             <div style="width:5px;flex-shrink:0;"></div>
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;">
-                <span style="font-size:12px;font-weight:500;color:#ECECEC;">#3829 · Возврат удержания</span>
+                <span style="font-size:12px;font-weight:500;color:#ECECEC;">{% trans "#3829 · Возврат удержания" %}</span>
                 <span style="font-size:13px;font-weight:700;font-family:'Golos Text',sans-serif;color:#ECECEC;font-variant-numeric:tabular-nums;">$145K</span>
               </div>
-              <div style="font-size:11px;color:#919191;margin-top:3px;">К выплате</div>
+              <div style="font-size:11px;color:#919191;margin-top:3px;">{% trans "К выплате" %}</div>
             </div>
           </div>
         </div>
@@ -190,16 +190,16 @@
         <div class="rp-widget-head">
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="cursor:grab;font-size:11px;color:#6A6A6A;line-height:1;">⠿</span>
-            <span style="font-size:12px;font-weight:600;color:#ECECEC;">Переторжка</span>
+            <span style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "Переторжка" %}</span>
           </div>
-          <button class="rp-widget-close" title="Открепить">
+          <button class="rp-widget-close" title="{% trans 'Открепить' %}">
             <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 2l8 8M2 10l8-8"/></svg>
           </button>
         </div>
         <div class="rp-widget-body">
           <div class="rp-row">
             <div style="flex:1;">
-              <div style="font-size:12px;font-weight:500;color:#ECECEC;">Полюс Золото · Гидроцилиндр</div>
+              <div style="font-size:12px;font-weight:500;color:#ECECEC;">{% trans "Полюс Золото · Гидроцилиндр" %}</div>
               <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
                 <span style="font-size:11px;color:#919191;">$116K</span>
                 <span style="font-size:11px;color:#919191;">→</span>
@@ -210,7 +210,7 @@
           </div>
           <div class="rp-row">
             <div style="flex:1;">
-              <div style="font-size:12px;font-weight:500;color:#ECECEC;">СУЭК · Турбокомпрессор</div>
+              <div style="font-size:12px;font-weight:500;color:#ECECEC;">{% trans "СУЭК · Турбокомпрессор" %}</div>
               <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
                 <span style="font-size:11px;color:#919191;">$174K</span>
                 <span style="font-size:11px;color:#919191;">→</span>

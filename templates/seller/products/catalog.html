@@ -1,5 +1,6 @@
 {% extends "seller/base_seller.html" %}
-{% block title %}Товары и прайсы{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Товары и прайсы" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -16,14 +17,14 @@
   {# Верхняя строка: заголовок + кнопки #}
   <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.045);">
     <div>
-      <div style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:800;color:#ECECEC;letter-spacing:-0.01em;line-height:1;">Ассортимент и прайс-листы</div>
-      <div style="font-size:11px;color:#5A5A5A;margin-top:2px;">Загрузи прайс проверь mapping запусти импорт</div>
+      <div style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:800;color:#ECECEC;letter-spacing:-0.01em;line-height:1;">{% trans "Ассортимент и прайс-листы" %}</div>
+      <div style="font-size:11px;color:#5A5A5A;margin-top:2px;">{% trans "Загрузи прайс проверь mapping запусти импорт" %}</div>
     </div>
     <div style="display:flex;gap:6px;flex-shrink:0;">
-      <a class="btn ghost" href="{% url 'seller_price_export' %}" style="padding:5px 10px;font-size:12px;">Выгрузить прайс</a>
+      <a class="btn ghost" href="{% url 'seller_price_export' %}" style="padding:5px 10px;font-size:12px;">{% trans "Выгрузить прайс" %}</a>
       <a class="btn ghost" href="{% url 'seller_bulk_upload' %}" style="padding:5px 12px;font-size:12px;display:flex;align-items:center;gap:5px;color:#64B5F6;border-color:rgba(100,181,246,0.3);">
         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1.5a.5.5 0 00.5.5h11a.5.5 0 00.5-.5V12"/></svg>
-        Загрузить прайс
+        {% trans "Загрузить прайс" %}
       </a>
     </div>
   </div>
@@ -34,15 +35,15 @@
     {# Строка 1 #}
     <a href="{% url 'seller_product_list' %}?status=all" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);border-bottom:1px solid rgba(255,255,255,0.045);">
-      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Всего позиций</div>
+      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Всего позиций" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ parts_total }}</div>
-      <div style="font-size:10px;color:#64B5F6;margin-top:4px;">в каталоге</div>
+      <div style="font-size:10px;color:#64B5F6;margin-top:4px;">{% trans "в каталоге" %}</div>
     </div>
     </a>
 
     <a href="{% url 'seller_product_list' %}?status=active" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);border-bottom:1px solid rgba(255,255,255,0.045);">
-      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Активных</div>
+      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Активных" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ parts_active_count|default:0 }}</div>
       <div style="font-size:10px;color:#64B5F6;margin-top:4px;">ready</div>
     </div>
@@ -50,7 +51,7 @@
 
     <a href="{% url 'seller_product_list' %}?status=needs_data" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);border-bottom:1px solid rgba(255,255,255,0.045);">
-      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Требуют доработки</div>
+      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Требуют доработки" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ parts_needs_data_count|default:0 }}</div>
       <div style="font-size:10px;color:#FEBC2E;margin-top:4px;">needs data</div>
     </div>
@@ -58,7 +59,7 @@
 
     <a href="{% url 'seller_product_list' %}" class="stat-card-link">
     <div style="padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.045);">
-      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Заполненность</div>
+      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Заполненность" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ catalog_completeness_pct|default:0 }}%</div>
       <div style="height:2px;background:#2C2C2C;border-radius:2px;overflow:hidden;margin-top:6px;">
         <div style="height:100%;width:{{ catalog_completeness_pct|default:0 }}%;background:#E85C0D;border-radius:2px;"></div>
@@ -69,31 +70,31 @@
     {# Строка 2 #}
     <a href="{% url 'seller_request_list' %}" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);">
-      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Новые RFQ</div>
+      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Новые RFQ" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ seller_rfqs_count|default:0 }}</div>
-      <div style="font-size:10px;color:#919191;margin-top:4px;">входящие запросы</div>
+      <div style="font-size:10px;color:#919191;margin-top:4px;">{% trans "входящие запросы" %}</div>
     </div>
     </a>
 
     <a href="{% url 'seller_orders' %}" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);">
-      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Заказы по позициям</div>
+      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Заказы по позициям" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ seller_orders_count|default:0 }}</div>
-      <div style="font-size:10px;color:#64B5F6;margin-top:4px;">активных</div>
+      <div style="font-size:10px;color:#64B5F6;margin-top:4px;">{% trans "активных" %}</div>
     </div>
     </a>
 
     <a href="{% url 'seller_product_list' %}?status=all" class="stat-card-link">
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);">
-      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Обновлено за 24ч</div>
+      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Обновлено за 24ч" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ parts_updated_24h|default:0 }}</div>
-      <div style="font-size:10px;color:#919191;margin-top:4px;">позиций</div>
+      <div style="font-size:10px;color:#919191;margin-top:4px;">{% trans "позиций" %}</div>
     </div>
     </a>
 
     <a href="{% url 'seller_request_list' %}" class="stat-card-link">
     <div style="padding:10px 16px;">
-      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Конверсия RFQ</div>
+      <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Конверсия RFQ" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">68%</div>
       <div style="height:2px;background:#2C2C2C;border-radius:2px;overflow:hidden;margin-top:6px;">
         <div style="height:100%;width:68%;background:#64B5F6;border-radius:2px;"></div>
@@ -109,13 +110,13 @@
   <!-- Header -->
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
     <div>
-      <h2 style="margin-bottom:4px;">Загрузка прайса</h2>
-      <p class="muted" style="font-size:13px;line-height:1.5;max-width:520px;">Загружаем файл → проверяем колонки → подтверждаем маппинг → запускаем импорт.</p>
+      <h2 style="margin-bottom:4px;">{% trans "Загрузка прайса" %}</h2>
+      <p class="muted" style="font-size:13px;line-height:1.5;max-width:520px;">{% trans "Загружаем файл → проверяем колонки → подтверждаем маппинг → запускаем импорт." %}</p>
     </div>
     <div style="display:flex;gap:4px;">
-      <span class="chip" style="padding:6px 12px;">1. Файл</span>
-      <span class="chip" style="padding:6px 12px;">2. Проверка</span>
-      <span class="chip" style="padding:6px 12px;">3. Импорт</span>
+      <span class="chip" style="padding:6px 12px;">{% trans "1. Файл" %}</span>
+      <span class="chip" style="padding:6px 12px;">{% trans "2. Проверка" %}</span>
+      <span class="chip" style="padding:6px 12px;">{% trans "3. Импорт" %}</span>
     </div>
   </div>
 
@@ -124,20 +125,20 @@
     <div style="display:grid;gap:16px;">
       <!-- Step 1 info -->
       <div style="padding:16px 18px;background:#2C2C2C;border-radius:10px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64B5F6;margin-bottom:8px;">Шаг 1</div>
-        <h3 style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;margin:0 0 10px;">Файл прайса</h3>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64B5F6;margin-bottom:8px;">{% trans "Шаг 1" %}</div>
+        <h3 style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;margin:0 0 10px;">{% trans "Файл прайса" %}</h3>
         <p style="font-size:13px;color:#919191;line-height:1.6;margin:0 0 6px;">
-          Обязательные колонки: PartNumber, WarehouseAddress и хотя бы одна цена — Price_FOB_SEA или Price_FOB_AIR.
+          {% trans "Обязательные колонки: PartNumber, WarehouseAddress и хотя бы одна цена — Price_FOB_SEA или Price_FOB_AIR." %}
         </p>
         <p style="font-size:13px;color:#6A6A6A;line-height:1.6;margin:0;">
-          Рекомендуем сразу передавать Brand, CrossNumber, Condition, Price_EXW, вес и габариты.
+          {% trans "Рекомендуем сразу передавать Brand, CrossNumber, Condition, Price_EXW, вес и габариты." %}
         </p>
       </div>
 
       <!-- Quick links -->
       <div style="display:flex;gap:8px;">
-        <a class="chip" href="{% url 'seller_csv_template' %}" style="padding:6px 12px;">Скачать шаблон CSV</a>
-        <a class="chip" href="{% url 'seller_csv_template' %}" style="padding:6px 12px;">Скачать шаблон XLSX</a>
+        <a class="chip" href="{% url 'seller_csv_template' %}" style="padding:6px 12px;">{% trans "Скачать шаблон CSV" %}</a>
+        <a class="chip" href="{% url 'seller_csv_template' %}" style="padding:6px 12px;">{% trans "Скачать шаблон XLSX" %}</a>
       </div>
 
       <!-- Upload form -->
@@ -148,8 +149,8 @@
             <label for="{{ bulk_form.file.id_for_label }}" style="margin-bottom:6px;">{{ bulk_form.file.label }}</label>
             <div style="position:relative;border:2px dashed rgba(255,255,255,0.12);border-radius:10px;padding:20px 16px;text-align:center;cursor:pointer;transition:border-color .15s, background .15s;background:rgba(255,255,255,0.02);" onmouseover="this.style.borderColor='#64B5F6';this.style.background='rgba(100,181,246,0.04)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.background='rgba(255,255,255,0.02)'" onclick="this.querySelector('input').click()">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:8px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <div id="file-label" style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:4px;">Выберите файл прайса</div>
-              <div style="font-size:12px;color:#6A6A6A;">Перетащите или нажмите · .csv, .xlsx</div>
+              <div id="file-label" style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:4px;">{% trans "Выберите файл прайса" %}</div>
+              <div style="font-size:12px;color:#6A6A6A;">{% trans "Перетащите или нажмите · .csv, .xlsx" %}</div>
               <input type="file" name="file" id="{{ bulk_form.file.id_for_label }}" accept=".csv,.xlsx,.xls" style="position:absolute;inset:0;opacity:0;cursor:pointer;" onchange="document.getElementById('file-label').textContent=this.files[0]?.name||'Выберите файл прайса'" />
             </div>
           </div>
@@ -165,10 +166,10 @@
           {% if bulk_form.default_stock.help_text %}<p style="font-size:12px;color:#6A6A6A;margin:6px 0 0;line-height:1.5;">{{ bulk_form.default_stock.help_text }}</p>{% endif %}
         </div>
         <div style="display:flex;align-items:center;gap:10px;padding-top:4px;">
-          <button class="btn ghost" type="submit" name="import_mode" value="preview" id="bulk-upload-preview-btn" style="color:#64B5F6;border-color:rgba(100,181,246,0.3);">Проверить файл</button>
-          <button class="btn ghost" type="submit" name="import_mode" value="apply" id="bulk-upload-btn">Быстрый импорт (без preview)</button>
+          <button class="btn ghost" type="submit" name="import_mode" value="preview" id="bulk-upload-preview-btn" style="color:#64B5F6;border-color:rgba(100,181,246,0.3);">{% trans "Проверить файл" %}</button>
+          <button class="btn ghost" type="submit" name="import_mode" value="apply" id="bulk-upload-btn">{% trans "Быстрый импорт (без preview)" %}</button>
         </div>
-        <p style="font-size:12px;color:#484848;line-height:1.5;margin:0;">Рекомендуемый сценарий: сначала «Проверить файл», затем подтвердить mapping и запустить импорт.</p>
+        <p style="font-size:12px;color:#484848;line-height:1.5;margin:0;">{% trans "Рекомендуемый сценарий: сначала «Проверить файл», затем подтвердить mapping и запустить импорт." %}</p>
         <div class="upload-progress" id="upload-progress" aria-hidden="true">
           <div class="upload-progress-bar" id="upload-progress-bar"></div>
         </div>
@@ -180,35 +181,35 @@
     <div style="display:grid;gap:14px;align-content:start;">
       {% if latest_successful_import %}
         <div style="padding:16px 18px;background:#2C2C2C;border-radius:10px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64B5F6;margin-bottom:8px;">Последний результат</div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64B5F6;margin-bottom:8px;">{% trans "Последний результат" %}</div>
           <h3 style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;margin:0 0 8px;">{{ latest_successful_import.created_at|date:"Y-m-d H:i" }}</h3>
           <p style="font-size:13px;color:#919191;line-height:1.6;margin:0 0 4px;">
-            Источник:
+            {% trans "Источник" %}:
             <strong style="color:#ECECEC;">
               {% if latest_successful_import.source_file %}
                 {{ latest_successful_import.source_file.original_name|default:"(без имени)" }}
               {% elif latest_successful_import.source_url %}
                 Google Sheets
               {% else %}
-                (ручной запуск)
+                {% trans "(ручной запуск)" %}
               {% endif %}
             </strong>
           </p>
           <p style="font-size:13px;color:#919191;line-height:1.6;margin:0 0 10px;">
-            Строк: <strong style="color:#ECECEC;">{{ latest_successful_import.total_rows|default:latest_successful_import.rows_total }}</strong> ·
-            Успешно: <strong style="color:#64B5F6;">{{ latest_successful_import.valid_rows }}</strong> ·
-            Ошибок: <strong style="color:#FEBC2E;">{{ latest_successful_import.error_rows }}</strong>
+            {% trans "Строк" %}: <strong style="color:#ECECEC;">{{ latest_successful_import.total_rows|default:latest_successful_import.rows_total }}</strong> ·
+            {% trans "Успешно" %}: <strong style="color:#64B5F6;">{{ latest_successful_import.valid_rows }}</strong> ·
+            {% trans "Ошибок" %}: <strong style="color:#FEBC2E;">{{ latest_successful_import.error_rows }}</strong>
           </p>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <a class="chip" href="{% url 'seller_import_result' latest_successful_import.id %}" style="padding:5px 10px;">Открыть результат</a>
-            <a class="chip" href="{% url 'seller_product_list' %}?last_import=1" style="padding:5px 10px;">Показать позиции</a>
+            <a class="chip" href="{% url 'seller_import_result' latest_successful_import.id %}" style="padding:5px 10px;">{% trans "Открыть результат" %}</a>
+            <a class="chip" href="{% url 'seller_product_list' %}?last_import=1" style="padding:5px 10px;">{% trans "Показать позиции" %}</a>
             {% if last_import_only %}
-              <a class="chip" href="{% url 'seller_product_list' %}" style="padding:5px 10px;">Сбросить фильтр</a>
+              <a class="chip" href="{% url 'seller_product_list' %}" style="padding:5px 10px;">{% trans "Сбросить фильтр" %}</a>
             {% endif %}
           </div>
         </div>
       {% endif %}
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#6A6A6A;margin-bottom:10px;">Способы интеграции</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#6A6A6A;margin-bottom:10px;">{% trans "Способы интеграции" %}</div>
 
       <!-- CSV / XLSX -->
       <div style="padding:14px 16px;background:#2C2C2C;border-radius:10px;cursor:pointer;transition:border-color .15s;border:1px solid rgba(255,255,255,0.055);" onmouseover="this.style.borderColor='rgba(100,181,246,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.055)'">
@@ -224,11 +225,11 @@
             </svg>
           </div>
           <div>
-            <div style="font-size:13px;font-weight:600;color:#ECECEC;">CSV / XLSX файл</div>
-            <div style="font-size:11px;color:#64B5F6;margin-top:2px;">Активно</div>
+            <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "CSV / XLSX файл" %}</div>
+            <div style="font-size:11px;color:#64B5F6;margin-top:2px;">{% trans "Активно" %}</div>
           </div>
         </div>
-        <p style="font-size:12px;color:#919191;line-height:1.5;margin:0;">Загрузи файл прайса напрямую. Поддерживаем .csv, .xlsx. Автоматический маппинг колонок с preview.</p>
+        <p style="font-size:12px;color:#919191;line-height:1.5;margin:0;">{% trans "Загрузи файл прайса напрямую. Поддерживаем .csv, .xlsx. Автоматический маппинг колонок с preview." %}</p>
       </div>
 
       <!-- Google Sheets -->
@@ -244,10 +245,10 @@
           </div>
           <div>
             <div style="font-size:13px;font-weight:600;color:#ECECEC;">Google Sheets</div>
-            <div style="font-size:11px;color:#64B5F6;margin-top:2px;">Активно</div>
+            <div style="font-size:11px;color:#64B5F6;margin-top:2px;">{% trans "Активно" %}</div>
           </div>
         </div>
-        <p style="font-size:12px;color:#919191;line-height:1.5;margin:0 0 10px;">Подключи Google-таблицу — цены будут синхронизироваться автоматически по расписанию.</p>
+        <p style="font-size:12px;color:#919191;line-height:1.5;margin:0 0 10px;">{% trans "Подключи Google-таблицу — цены будут синхронизироваться автоматически по расписанию." %}</p>
         <div style="margin-bottom:10px;">
           <a href="https://docs.google.com/spreadsheets/d/1U57TKZqkQyekuynLrHnPUqZ1r5jd_U-dNdf6HeEaG6s/copy" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1px solid rgba(52,168,83,0.3);background:rgba(52,168,83,0.08);color:#34A853;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s;"
             onmouseover="this.style.background='rgba(52,168,83,0.15)'" onmouseout="this.style.background='rgba(52,168,83,0.08)'">
@@ -257,17 +258,17 @@
               <rect x="7" y="11" width="10" height="8" rx="0.5" fill="white" opacity="0.9"/>
               <path d="M7 14h10M7 17h10M12 11v8" stroke="#0F9D58" stroke-width="0.8"/>
             </svg>
-            Создать копию шаблона
+            {% trans "Создать копию шаблона" %}
           </a>
-          <span style="font-size:11px;color:#5E5E5E;margin-left:8px;">Заполните → откройте доступ → вставьте ссылку ниже</span>
+          <span style="font-size:11px;color:#5E5E5E;margin-left:8px;">{% trans "Заполните → откройте доступ → вставьте ссылку ниже" %}</span>
         </div>
         <form method="post" action="{% url 'seller_import_google_sheet' %}" style="display:flex;gap:8px;">
           {% csrf_token %}
-          <input type="url" name="sheet_url" placeholder="Вставьте ссылку на Google-таблицу..." required
+          <input type="url" name="sheet_url" placeholder="{% trans 'Вставьте ссылку на Google-таблицу...' %}" required
             style="flex:1;padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:#1A1A1A;color:#ECECEC;font-size:12px;font-family:inherit;outline:none;"
             onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
           <button type="submit" style="padding:7px 16px;border-radius:8px;border:1px solid rgba(52,168,83,0.3);background:rgba(52,168,83,0.1);color:#34A853;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;"
-            onmouseover="this.style.background='rgba(52,168,83,0.18)'" onmouseout="this.style.background='rgba(52,168,83,0.1)'">Подключить</button>
+            onmouseover="this.style.background='rgba(52,168,83,0.18)'" onmouseout="this.style.background='rgba(52,168,83,0.1)'">{% trans "Подключить" %}</button>
         </form>
       </div>
 
@@ -284,10 +285,10 @@
           </div>
           <div>
             <div style="font-size:13px;font-weight:600;color:#ECECEC;">REST API</div>
-            <div style="font-size:11px;color:#E85C0D;margin-top:2px;">Скоро</div>
+            <div style="font-size:11px;color:#E85C0D;margin-top:2px;">{% trans "Скоро" %}</div>
           </div>
         </div>
-        <p style="font-size:12px;color:#919191;line-height:1.5;margin:0;">Интеграция через API — обновляй цены, остатки и статусы напрямую из ERP / 1С / ТОИР.</p>
+        <p style="font-size:12px;color:#919191;line-height:1.5;margin:0;">{% trans "Интеграция через API — обновляй цены, остатки и статусы напрямую из ERP / 1С / ТОИР." %}</p>
       </div>
     </div>
   </div>
@@ -297,21 +298,21 @@
         <div>
           {% if active_preview.source_type == "google_sheet" %}
             <div class="upload-step-label" style="color:#34A853;">Google Sheets</div>
-            <h3>Таблица загружена</h3>
+            <h3>{% trans "Таблица загружена" %}</h3>
             <p class="muted">
-              Preview #{{ active_preview.id }} • Статус: <strong>{{ active_preview.status }}</strong>
-              {% if active_preview.source_url %} • <a href="{{ active_preview.source_url }}" target="_blank" style="color:#64B5F6;">Открыть таблицу</a>{% endif %}
+              {% blocktrans with id=active_preview.id status=active_preview.status %}Preview #{{ id }} • Статус: <strong>{{ status }}</strong>{% endblocktrans %}
+              {% if active_preview.source_url %} • <a href="{{ active_preview.source_url }}" target="_blank" style="color:#64B5F6;">{% trans "Открыть таблицу" %}</a>{% endif %}
             </p>
           {% else %}
-            <div class="upload-step-label">Шаг 2</div>
-            <h3>Предпросмотр и mapping</h3>
+            <div class="upload-step-label">{% trans "Шаг 2" %}</div>
+            <h3>{% trans "Предпросмотр и mapping" %}</h3>
             <p class="muted">
-              Preview #{{ active_preview.id }} • Статус: <strong>{{ active_preview.status }}</strong>
-              {% if active_preview.source_file %} • Файл: <strong>{{ active_preview.source_file.original_name|default:"(без имени)" }}</strong>{% endif %}
+              {% blocktrans with id=active_preview.id status=active_preview.status %}Preview #{{ id }} • Статус: <strong>{{ status }}</strong>{% endblocktrans %}
+              {% if active_preview.source_file %} • {% trans "Файл" %}: <strong>{{ active_preview.source_file.original_name|default:"(без имени)" }}</strong>{% endif %}
             </p>
           {% endif %}
         </div>
-        <a class="chip" href="{% url 'seller_product_list' %}">Скрыть preview</a>
+        <a class="chip" href="{% url 'seller_product_list' %}">{% trans "Скрыть preview" %}</a>
       </div>
 
       {% if active_preview.source_type != "google_sheet" %}
@@ -322,7 +323,7 @@
             <p>
               <label for="id_mapping__{{ row.key }}">{{ row.label }}</label>
               <select id="id_mapping__{{ row.key }}" name="mapping__{{ row.key }}">
-                <option value="">— не выбрано —</option>
+                <option value="">{% trans "— не выбрано —" %}</option>
                 {% for header in preview_header_options %}
                   <option value="{{ header }}" {% if row.selected == header %}selected{% endif %}>{{ header }}</option>
                 {% endfor %}
@@ -331,9 +332,9 @@
           {% endfor %}
         </div>
         <div class="upload-preview-actions">
-          <button class="btn btn-secondary" type="submit">Подтвердить маппинг</button>
+          <button class="btn btn-secondary" type="submit">{% trans "Подтвердить маппинг" %}</button>
           {% if active_preview.status != "mapping_confirmed" %}
-            <span class="chip">Сначала подтвердите mapping</span>
+            <span class="chip">{% trans "Сначала подтвердите mapping" %}</span>
           {% endif %}
         </div>
       </form>
@@ -345,13 +346,13 @@
           <div class="upload-preview-actions upload-preview-actions-start">
             <div>
               {% if active_preview.source_type == "google_sheet" %}
-                <p class="muted">Колонки определены автоматически. Можно запустить импорт.</p>
+                <p class="muted">{% trans "Колонки определены автоматически. Можно запустить импорт." %}</p>
               {% else %}
-                <div class="upload-step-label">Шаг 3</div>
-                <p class="muted">Маппинг подтвержден. Теперь можно запускать импорт в каталог.</p>
+                <div class="upload-step-label">{% trans "Шаг 3" %}</div>
+                <p class="muted">{% trans "Маппинг подтвержден. Теперь можно запускать импорт в каталог." %}</p>
               {% endif %}
             </div>
-            <button class="btn" type="submit">Запустить импорт</button>
+            <button class="btn" type="submit">{% trans "Запустить импорт" %}</button>
           </div>
         </form>
       {% endif %}
@@ -382,30 +383,30 @@
 </section>
 {% if upload_report %}
   <section class="panel" style="margin-bottom: 16px;">
-    <h2>Отчет загрузки ({{ upload_report.mode }})</h2>
+    <h2>{% blocktrans with mode=upload_report.mode %}Отчет загрузки ({{ mode }}){% endblocktrans %}</h2>
     <div class="chips">
-      <span class="chip">Всего строк: {{ upload_report.total_rows }}</span>
-      <span class="chip chip-ok">Успешно: {{ upload_report.processed_rows }}</span>
-      <span class="chip chip-warn">Ошибок: {{ upload_report.failed_rows }}</span>
-      <span class="chip">Успех: {{ upload_report.success_rate }}%</span>
+      <span class="chip">{% blocktrans with total=upload_report.total_rows %}Всего строк: {{ total }}{% endblocktrans %}</span>
+      <span class="chip chip-ok">{% blocktrans with count=upload_report.processed_rows %}Успешно: {{ count }}{% endblocktrans %}</span>
+      <span class="chip chip-warn">{% blocktrans with count=upload_report.failed_rows %}Ошибок: {{ count }}{% endblocktrans %}</span>
+      <span class="chip">{% blocktrans with rate=upload_report.success_rate %}Успех: {{ rate }}%{% endblocktrans %}</span>
     </div>
     <div class="chips">
-      <span class="chip chip-ok">Создано: {{ upload_report.created }}</span>
-      <span class="chip chip-ok">Обновлено: {{ upload_report.updated }}</span>
-      <span class="chip chip-warn">Без цены: {{ upload_report.skipped_no_price }}</span>
-      <span class="chip chip-warn">Ошибки: {{ upload_report.skipped_invalid }}</span>
+      <span class="chip chip-ok">{% blocktrans with count=upload_report.created %}Создано: {{ count }}{% endblocktrans %}</span>
+      <span class="chip chip-ok">{% blocktrans with count=upload_report.updated %}Обновлено: {{ count }}{% endblocktrans %}</span>
+      <span class="chip chip-warn">{% blocktrans with count=upload_report.skipped_no_price %}Без цены: {{ count }}{% endblocktrans %}</span>
+      <span class="chip chip-warn">{% blocktrans with count=upload_report.skipped_invalid %}Ошибки: {{ count }}{% endblocktrans %}</span>
     </div>
     {% if upload_report.errors %}
       <div style="margin-top: 10px;">
-        <p class="muted">Первые ошибки (до 100 строк):</p>
+        <p class="muted">{% trans "Первые ошибки (до 100 строк):" %}</p>
         <div class="list">
           {% for err in upload_report.errors %}
             <div class="list-row">
               <div>
-                <strong>Строка {{ err.row }}</strong>
+                <strong>{% blocktrans with row=err.row %}Строка {{ row }}{% endblocktrans %}</strong>
                 <p class="muted">{{ err.reason }}</p>
                 {% if err.hint %}
-                  <p class="muted">Что исправить: {{ err.hint }}</p>
+                  <p class="muted">{% blocktrans with hint=err.hint %}Что исправить: {{ hint }}{% endblocktrans %}</p>
                 {% endif %}
               </div>
             </div>
@@ -417,7 +418,7 @@
 {% endif %}
 
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>История импортов</h2>
+  <h2>{% trans "История импортов" %}</h2>
   {% if import_runs %}
     <div class="list">
       {% for run in import_runs %}
@@ -425,30 +426,30 @@
           <div>
             <strong>{{ run.created_at|date:"Y-m-d H:i" }}</strong>
             <p class="muted">
-              Источник:
+              {% trans "Источник" %}:
               {% if run.source_file %}
                 {{ run.source_file.original_name|default:"(без имени)" }}
               {% elif run.source_url %}
                 Google Sheets
               {% else %}
-                (ручной запуск)
+                {% trans "(ручной запуск)" %}
               {% endif %}
-              • Тип: {{ run.source_type }} • Статус: {{ run.status }}
+              • {% trans "Тип" %}: {{ run.source_type }} • {% trans "Статус" %}: {{ run.status }}
             </p>
             <p class="muted">
-              Строк: {{ run.total_rows|default:run.rows_total }} • Успешно: {{ run.valid_rows }} • Ошибок: {{ run.error_rows }} •
-              Создано товаров: {{ run.created_products|default:run.rows_created_products }} • Обновлено офферов: {{ run.updated_offers|default:run.rows_updated_offers }}
+              {% trans "Строк" %}: {{ run.total_rows|default:run.rows_total }} • {% trans "Успешно" %}: {{ run.valid_rows }} • {% trans "Ошибок" %}: {{ run.error_rows }} •
+              {% trans "Создано товаров" %}: {{ run.created_products|default:run.rows_created_products }} • {% trans "Обновлено офферов" %}: {{ run.updated_offers|default:run.rows_updated_offers }}
             </p>
             <p>
-              <a class="chip" href="{% url 'seller_import_result' run.id %}">Открыть результат</a>
-              <a class="chip" href="{% url 'seller_product_list' %}?import_run={{ run.id }}">Показать товары из этого импорта</a>
+              <a class="chip" href="{% url 'seller_import_result' run.id %}">{% trans "Открыть результат" %}</a>
+              <a class="chip" href="{% url 'seller_product_list' %}?import_run={{ run.id }}">{% trans "Показать товары из этого импорта" %}</a>
               {% if selected_import_run and selected_import_run.id == run.id %}
-                <a class="chip" href="{% url 'seller_product_list' %}">Сбросить фильтр</a>
+                <a class="chip" href="{% url 'seller_product_list' %}">{% trans "Сбросить фильтр" %}</a>
               {% endif %}
             </p>
           </div>
           {% if run.error_rows %}
-            <a class="chip" href="{% url 'seller_import_errors_csv' run.id %}">Скачать ошибки CSV</a>
+            <a class="chip" href="{% url 'seller_import_errors_csv' run.id %}">{% trans "Скачать ошибки CSV" %}</a>
           {% endif %}
         </div>
       {% endfor %}
@@ -506,24 +507,24 @@
   <!-- Toolbar -->
   <form method="get" action="{% url 'seller_product_list' %}" id="catFilterForm">
     <div class="cat-toolbar">
-      <input class="cat-filter cat-search" type="text" name="q" value="{{ query }}" placeholder="Поиск по артикулу, названию, бренду..." onchange="this.form.submit()">
+      <input class="cat-filter cat-search" type="text" name="q" value="{{ query }}" placeholder="{% trans 'Поиск по артикулу, названию, бренду...' %}" onchange="this.form.submit()">
       <select class="cat-filter" name="brand" onchange="this.form.submit()">
-        <option value="">Все бренды</option>
+        <option value="">{% trans "Все бренды" %}</option>
         {% for b in brand_list %}
           <option value="{{ b.id }}" {% if brand_filter == b.id|stringformat:"d" %}selected{% endif %}>{{ b.name }}</option>
         {% endfor %}
       </select>
       <select class="cat-filter" name="status" onchange="this.form.submit()">
-        <option value="">Все статусы</option>
+        <option value="">{% trans "Все статусы" %}</option>
         <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
         <option value="limited" {% if status_filter == "limited" %}selected{% endif %}>Limited</option>
         <option value="discontinued" {% if status_filter == "discontinued" %}selected{% endif %}>Discontinued</option>
         <option value="blocked" {% if status_filter == "blocked" %}selected{% endif %}>Blocked</option>
       </select>
       {% if query or brand_filter or status_filter %}
-        <a href="{% url 'seller_product_list' %}" style="font-size:11px;color:#64B5F6;text-decoration:none;">Сбросить</a>
+        <a href="{% url 'seller_product_list' %}" style="font-size:11px;color:#64B5F6;text-decoration:none;">{% trans "Сбросить" %}</a>
       {% endif %}
-      <span class="cat-count">{{ parts.paginator.count }} позиций</span>
+      <span class="cat-count">{% blocktrans with count=parts.paginator.count %}{{ count }} позиций{% endblocktrans %}</span>
     </div>
   </form>
 
@@ -532,11 +533,11 @@
     {% csrf_token %}
     <input type="hidden" name="return_qs" value="{{ return_qs }}">
     <div class="cat-bulk-bar" id="bulkBar">
-      <span class="cat-bulk-count" id="bulkCount">0 выбрано</span>
-      <button type="submit" name="action" value="hide" class="cat-bulk-btn cat-bulk-btn--warn">Скрыть</button>
-      <button type="submit" name="action" value="unhide" class="cat-bulk-btn">Показать</button>
-      <button type="button" class="cat-bulk-btn" onclick="bulkPricePrompt(1)">Цена +%</button>
-      <button type="button" class="cat-bulk-btn" onclick="bulkPricePrompt(-1)">Цена -%</button>
+      <span class="cat-bulk-count" id="bulkCount">{% trans "0 выбрано" %}</span>
+      <button type="submit" name="action" value="hide" class="cat-bulk-btn cat-bulk-btn--warn">{% trans "Скрыть" %}</button>
+      <button type="submit" name="action" value="unhide" class="cat-bulk-btn">{% trans "Показать" %}</button>
+      <button type="button" class="cat-bulk-btn" onclick="bulkPricePrompt(1)">{% trans "Цена +%" %}</button>
+      <button type="button" class="cat-bulk-btn" onclick="bulkPricePrompt(-1)">{% trans "Цена -%" %}</button>
     </div>
 
   <!-- Table -->
@@ -545,13 +546,13 @@
       <thead>
         <tr>
           <th style="width:30px;"><input type="checkbox" class="cat-check" id="checkAll" onclick="toggleAll(this)"></th>
-          <th>Артикул</th>
-          <th>Название</th>
-          <th>Бренд</th>
-          <th style="text-align:right;">Цена $</th>
-          <th style="text-align:right;">Остаток</th>
-          <th>Состояние</th>
-          <th>Статус</th>
+          <th>{% trans "Артикул" %}</th>
+          <th>{% trans "Название" %}</th>
+          <th>{% trans "Бренд" %}</th>
+          <th style="text-align:right;">{% trans "Цена $" %}</th>
+          <th style="text-align:right;">{% trans "Остаток" %}</th>
+          <th>{% trans "Состояние" %}</th>
+          <th>{% trans "Статус" %}</th>
           <th></th>
         </tr>
       </thead>
@@ -572,12 +573,12 @@
               {% elif part.availability_status == "discontinued" %}<span class="cat-badge cat-badge-warn">Discontinued</span>
               {% else %}<span class="cat-badge cat-badge-gray">{{ part.availability_status }}</span>{% endif %}
             </td>
-            <td><a href="{% url 'seller_part_edit' part.id %}" style="color:#5E5E5E;text-decoration:none;font-size:11px;" title="Редактировать">
+            <td><a href="{% url 'seller_part_edit' part.id %}" style="color:#5E5E5E;text-decoration:none;font-size:11px;" title="{% trans 'Редактировать' %}">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M11 2l3 3-8 8H3v-3l8-8z"/></svg>
             </a></td>
           </tr>
         {% empty %}
-          <tr><td colspan="9" style="text-align:center;padding:40px;color:#5E5E5E;">Нет позиций. Загрузите прайс или добавьте товар вручную.</td></tr>
+          <tr><td colspan="9" style="text-align:center;padding:40px;color:#5E5E5E;">{% trans "Нет позиций. Загрузите прайс или добавьте товар вручную." %}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -588,11 +589,11 @@
   {% if parts.has_other_pages %}
     <div class="cat-pager">
       {% if parts.has_previous %}
-        <a href="?page={{ parts.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if brand_filter %}&brand={{ brand_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">&#8592; Назад</a>
+        <a href="?page={{ parts.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if brand_filter %}&brand={{ brand_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">{% trans "&#8592; Назад" %}</a>
       {% endif %}
       <span class="active">{{ parts.number }} / {{ parts.paginator.num_pages }}</span>
       {% if parts.has_next %}
-        <a href="?page={{ parts.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if brand_filter %}&brand={{ brand_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">Вперед &#8594;</a>
+        <a href="?page={{ parts.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if brand_filter %}&brand={{ brand_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}">{% trans "Вперед &#8594;" %}</a>
       {% endif %}
     </div>
   {% endif %}

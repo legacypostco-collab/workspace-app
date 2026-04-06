@@ -1,4 +1,4 @@
-{% load static %}
+{% load static i18n %}
 <aside class="seller-sidebar" style="width:280px;background:#1F1F1F;border-right:1px solid rgba(255,255,255,0.055);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:auto;padding:0;">
 
   <!-- Logo -->
@@ -38,7 +38,7 @@
       </div>
       <div style="flex:1;">
         <div style="font-size:12px;font-weight:600;color:#ECECEC;">{{ seller_status_label|default:"Надёжный" }}</div>
-        <div style="font-size:11px;color:#919191;margin-top:1px;white-space:nowrap;">Рейтинг поставщика</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;white-space:nowrap;">{% trans "Рейтинг поставщика" %}</div>
       </div>
       <div style="text-align:right;margin-right:4px;">
         <div style="font-size:13px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;white-space:nowrap;">$4.0M</div>
@@ -54,11 +54,11 @@
         </div>
         <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;">
           <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">68%</div>
-          <div style="font-size:11px;color:#919191;margin-top:2px;">Конверсия</div>
+          <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "Конверсия" %}</div>
         </div>
         <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:0 6px 6px 0;">
           <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">4.26</div>
-          <div style="font-size:11px;color:#919191;margin-top:2px;">Оценка</div>
+          <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "Оценка" %}</div>
         </div>
       </div>
     </div>
@@ -145,7 +145,7 @@
             {% endif %}
           </svg>
           <span style="flex:1;font-size:13px;">{{ item.label }}</span>
-          <span style="font-size:10px;padding:2px 6px;border-radius:999px;background:#2C2C2C;color:#484848;">скоро</span>
+          <span style="font-size:10px;padding:2px 6px;border-radius:999px;background:#2C2C2C;color:#484848;">{% trans "скоро" %}</span>
         </span>
       {% endif %}
     {% endfor %}
@@ -193,19 +193,19 @@
 
   <!-- Quick stats -->
   <div style="margin:0 12px 8px;padding:10px 14px;background:#242424;border-radius:10px;border:1px solid rgba(255,255,255,0.055);">
-    <div style="font-size:11px;color:#6A6A6A;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">Сегодня</div>
+    <div style="font-size:11px;color:#6A6A6A;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">{% trans "Сегодня" %}</div>
     <div style="display:flex;justify-content:space-between;">
       <div style="text-align:left;flex:1;">
         <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ seller_badge_requests|default:0 }}</div>
-        <div style="font-size:11px;color:#919191;margin-top:1px;">Запроса</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;">{% trans "Запроса" %}</div>
       </div>
       <div style="text-align:center;flex:1;">
         <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{{ seller_badge_orders_action|default:0 }}</div>
-        <div style="font-size:11px;color:#919191;margin-top:1px;">Заказов</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;">{% trans "Заказов" %}</div>
       </div>
       <div style="text-align:right;flex:1;">
         <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">$4.0M</div>
-        <div style="font-size:11px;color:#919191;margin-top:1px;">Выручка</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;">{% trans "Выручка" %}</div>
       </div>
     </div>
   </div>

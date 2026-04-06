@@ -1,4 +1,5 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 {% block title %}{{ part.title }}{% endblock %}
 {% block content %}
 <section class="panel" style="margin-bottom: 16px;">
@@ -16,27 +17,27 @@
       </p>
     </div>
     <div class="card-actions">
-      <a class="chip" href="{% url 'seller_product_list' %}">← Ко всем товарам</a>
-      <a class="btn btn-secondary" href="{% url 'seller_part_edit' part.id %}">Редактировать</a>
+      <a class="chip" href="{% url 'seller_product_list' %}">{% trans "← Ко всем товарам" %}</a>
+      <a class="btn btn-secondary" href="{% url 'seller_part_edit' part.id %}">{% trans "Редактировать" %}</a>
     </div>
   </div>
 </section>
 
 <section class="grid metrics" style="margin-bottom: 16px;">
   <article class="card card-body">
-    <p class="muted">Цена</p>
+    <p class="muted">{% trans "Цена" %}</p>
     <p class="price">${{ part.price }}</p>
   </article>
   <article class="card card-body">
-    <p class="muted">Остаток</p>
+    <p class="muted">{% trans "Остаток" %}</p>
     <p class="price">{{ part.stock_quantity }}</p>
   </article>
   <article class="card card-body">
-    <p class="muted">Полнота карточки</p>
+    <p class="muted">{% trans "Полнота карточки" %}</p>
     <p class="price">{{ completeness_percent }}%</p>
   </article>
   <article class="card card-body">
-    <p class="muted">Свежесть данных</p>
+    <p class="muted">{% trans "Свежесть данных" %}</p>
     <p class="price">{{ stale_snapshot.days }}д</p>
     <p>
       {% if stale_snapshot.state == "blocked" %}
@@ -51,25 +52,25 @@
 </section>
 
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>Основная информация</h2>
+  <h2>{% trans "Основная информация" %}</h2>
   <div class="grid">
     <article class="card card-body">
-      <p class="muted">Описание</p>
+      <p class="muted">{% trans "Описание" %}</p>
       <p>{{ part.description|default:"Описание пока не заполнено." }}</p>
     </article>
     <article class="card card-body">
-      <p class="muted">Кросс-номера</p>
+      <p class="muted">{% trans "Кросс-номера" %}</p>
       <p>{{ part.cross_numbers|default:"Не указаны." }}</p>
     </article>
     <article class="card card-body">
-      <p class="muted">Источник</p>
+      <p class="muted">{% trans "Источник" %}</p>
       <p>{{ part.country_of_origin|default:"Не указан." }}</p>
     </article>
   </div>
 </section>
 
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>Логистика и производство</h2>
+  <h2>{% trans "Логистика и производство" %}</h2>
   <div class="grid">
     <article class="card card-body">
       <p class="muted">MOQ</p>
@@ -77,38 +78,38 @@
     </article>
     <article class="card card-body">
       <p class="muted">Production lead</p>
-      <p>{{ part.production_lead_days }} дн.</p>
+      <p>{% blocktrans with days=part.production_lead_days %}{{ days }} дн.{% endblocktrans %}</p>
     </article>
     <article class="card card-body">
       <p class="muted">Prep to ship</p>
-      <p>{{ part.prep_to_ship_days }} дн.</p>
+      <p>{% blocktrans with days=part.prep_to_ship_days %}{{ days }} дн.{% endblocktrans %}</p>
     </article>
     <article class="card card-body">
       <p class="muted">Shipping lead</p>
-      <p>{{ part.shipping_lead_days }} дн.</p>
+      <p>{% blocktrans with days=part.shipping_lead_days %}{{ days }} дн.{% endblocktrans %}</p>
     </article>
     <article class="card card-body">
-      <p class="muted">Вес</p>
-      <p>{{ part.gross_weight_kg }} кг</p>
+      <p class="muted">{% trans "Вес" %}</p>
+      <p>{% blocktrans with weight=part.gross_weight_kg %}{{ weight }} кг{% endblocktrans %}</p>
     </article>
     <article class="card card-body">
-      <p class="muted">Габариты</p>
-      <p>{{ part.length_cm }} × {{ part.width_cm }} × {{ part.height_cm }} см</p>
+      <p class="muted">{% trans "Габариты" %}</p>
+      <p>{% blocktrans with l=part.length_cm w=part.width_cm h=part.height_cm %}{{ l }} × {{ w }} × {{ h }} см{% endblocktrans %}</p>
     </article>
   </div>
 </section>
 
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>Качество карточки</h2>
+  <h2>{% trans "Качество карточки" %}</h2>
   {% if missing_fields %}
-    <p class="muted">Чтобы улучшить полноту карточки, заполни:</p>
+    <p class="muted">{% trans "Чтобы улучшить полноту карточки, заполни:" %}</p>
     <div class="chips">
       {% for field in missing_fields %}
         <span class="chip chip-warn">{{ field }}</span>
       {% endfor %}
     </div>
   {% else %}
-    <p class="muted">Карточка заполнена достаточно хорошо и готова к автоматическому подбору.</p>
+    <p class="muted">{% trans "Карточка заполнена достаточно хорошо и готова к автоматическому подбору." %}</p>
   {% endif %}
 </section>
 
@@ -137,14 +138,14 @@
           </div>
         </div>
       {% empty %}
-        <p class="muted">История цены пока не накоплена.</p>
+        <p class="muted">{% trans "История цены пока не накоплена." %}</p>
       {% endfor %}
     </div>
   </article>
 </section>
 
 <section class="panel">
-  <h2>Похожие позиции этого поставщика</h2>
+  <h2>{% trans "Похожие позиции этого поставщика" %}</h2>
   <div class="list">
     {% for related in related_parts %}
       <article class="list-row">
@@ -154,11 +155,11 @@
         </div>
         <div class="list-actions">
           <p class="price">${{ related.price }}</p>
-          <a class="btn btn-secondary" href="{% url 'seller_product_detail' related.id %}">Открыть</a>
+          <a class="btn btn-secondary" href="{% url 'seller_product_detail' related.id %}">{% trans "Открыть" %}</a>
         </div>
       </article>
     {% empty %}
-      <p class="muted">Других похожих позиций пока нет.</p>
+      <p class="muted">{% trans "Других похожих позиций пока нет." %}</p>
     {% endfor %}
   </div>
 </section>

@@ -1,4 +1,5 @@
 from django.utils import translation
+from django.utils.translation import gettext_lazy as _
 from .models import Order, Part, RFQ, SellerImportRun
 
 
@@ -188,29 +189,29 @@ def seller_context(request):
 
     if is_demo:
         seller_nav_items = [
-            {"key": "dashboard", "label": "Дашборд", "url_name": "seller_dashboard", "badge": None, "enabled": True},
-            {"key": "products", "label": "Товары и прайсы", "url_name": "seller_product_list", "badge": seller_products_active, "enabled": True},
-            {"key": "drawings", "label": "Чертежи", "url_name": "seller_drawings", "badge": None, "enabled": True},
-            {"key": "requests", "label": "Запросы клиентов", "url_name": "seller_request_list", "badge": seller_requests_new, "enabled": True},
-            {"key": "orders", "label": "Заказы", "url_name": "seller_orders", "badge": seller_orders_action, "enabled": True},
-            {"key": "sla", "label": "Контроль SLA", "url_name": "seller_sla", "badge": seller_sla_alert, "enabled": True},
-            {"key": "discounts", "label": "Согласование", "url_name": "seller_negotiations", "badge": None, "enabled": True},
-            {"key": "qr", "label": "QR-контроль", "url_name": "seller_qr_control", "badge": None, "enabled": True},
-            {"key": "finance", "label": "Финансы", "url_name": "seller_finance", "badge": None, "enabled": True},
-            {"key": "rating", "label": "Рейтинг", "url_name": "seller_rating", "badge": None, "enabled": True},
-            {"key": "analytics", "label": "Аналитика", "url_name": "seller_analytics", "badge": None, "enabled": True},
-            {"key": "team", "label": "Команда", "url_name": "seller_team", "badge": None, "enabled": True},
-            {"key": "integrations", "label": "Интеграции", "url_name": "seller_integrations", "badge": None, "enabled": True},
-            {"key": "logistics", "label": "Логистика", "url_name": "seller_logistics", "badge": None, "enabled": True},
+            {"key": "dashboard", "label": _("Дашборд"), "url_name": "seller_dashboard", "badge": None, "enabled": True},
+            {"key": "products", "label": _("Товары и прайсы"), "url_name": "seller_product_list", "badge": seller_products_active, "enabled": True},
+            {"key": "drawings", "label": _("Чертежи"), "url_name": "seller_drawings", "badge": None, "enabled": True},
+            {"key": "requests", "label": _("Запросы клиентов"), "url_name": "seller_request_list", "badge": seller_requests_new, "enabled": True},
+            {"key": "orders", "label": _("Заказы"), "url_name": "seller_orders", "badge": seller_orders_action, "enabled": True},
+            {"key": "sla", "label": _("Контроль SLA"), "url_name": "seller_sla", "badge": seller_sla_alert, "enabled": True},
+            {"key": "discounts", "label": _("Согласование"), "url_name": "seller_negotiations", "badge": None, "enabled": True},
+            {"key": "qr", "label": _("QR-контроль"), "url_name": "seller_qr_control", "badge": None, "enabled": True},
+            {"key": "finance", "label": _("Финансы"), "url_name": "seller_finance", "badge": None, "enabled": True},
+            {"key": "rating", "label": _("Рейтинг"), "url_name": "seller_rating", "badge": None, "enabled": True},
+            {"key": "analytics", "label": _("Аналитика"), "url_name": "seller_analytics", "badge": None, "enabled": True},
+            {"key": "team", "label": _("Команда"), "url_name": "seller_team", "badge": None, "enabled": True},
+            {"key": "integrations", "label": _("Интеграции"), "url_name": "seller_integrations", "badge": None, "enabled": True},
+            {"key": "logistics", "label": _("Логистика"), "url_name": "seller_logistics", "badge": None, "enabled": True},
         ]
     else:
         seller_nav_items = [
-            {"key": "dashboard", "label": "Дашборд", "url_name": "seller_dashboard", "badge": None, "enabled": True},
-            {"key": "products", "label": "Каталог", "url_name": "seller_product_list", "badge": seller_products_active, "enabled": True},
-            {"key": "requests", "label": "Запросы", "url_name": "seller_request_list", "badge": seller_requests_new, "enabled": True},
-            {"key": "orders", "label": "Заказы", "url_name": "seller_orders", "badge": seller_orders_action, "enabled": True},
-            {"key": "sla", "label": "Контроль SLA", "url_name": "seller_sla", "badge": seller_sla_alert, "enabled": True},
-            {"key": "logistics", "label": "Логистика", "url_name": "seller_logistics", "badge": None, "enabled": True},
+            {"key": "dashboard", "label": _("Дашборд"), "url_name": "seller_dashboard", "badge": None, "enabled": True},
+            {"key": "products", "label": _("Каталог"), "url_name": "seller_product_list", "badge": seller_products_active, "enabled": True},
+            {"key": "requests", "label": _("Запросы"), "url_name": "seller_request_list", "badge": seller_requests_new, "enabled": True},
+            {"key": "orders", "label": _("Заказы"), "url_name": "seller_orders", "badge": seller_orders_action, "enabled": True},
+            {"key": "sla", "label": _("Контроль SLA"), "url_name": "seller_sla", "badge": seller_sla_alert, "enabled": True},
+            {"key": "logistics", "label": _("Логистика"), "url_name": "seller_logistics", "badge": None, "enabled": True},
         ]
 
     return {
@@ -249,24 +250,24 @@ def buyer_context(request):
 
     if is_demo:
         buyer_nav_items = [
-            {"key": "dashboard", "label": "Дашборд", "url_name": "buyer_dashboard", "badge": None, "enabled": True},
-            {"key": "catalog", "label": "Избранное", "url_name": "buyer_catalog", "badge": None, "enabled": True},
-            {"key": "rfq", "label": "Запросы RFQ", "url_name": "buyer_rfq_list", "badge": buyer_active_rfq or None, "enabled": True},
-            {"key": "orders", "label": "Заказы", "url_name": "buyer_orders", "badge": buyer_active_orders or None, "enabled": True},
-            {"key": "shipments", "label": "Отгрузки", "url_name": "buyer_shipments", "badge": None, "enabled": True},
-            {"key": "claims", "label": "Рекламации", "url_name": "buyer_claims", "badge": None, "enabled": True},
-            {"key": "suppliers", "label": "Поставщики", "url_name": "buyer_suppliers", "badge": None, "enabled": True},
-            {"key": "negotiations", "label": "Переторжка", "url_name": "buyer_negotiations", "badge": None, "enabled": True},
-            {"key": "finance", "label": "Финансы", "url_name": "buyer_finance", "badge": None, "enabled": True},
-            {"key": "analytics", "label": "Аналитика", "url_name": "buyer_analytics", "badge": None, "enabled": True},
+            {"key": "dashboard", "label": _("Дашборд"), "url_name": "buyer_dashboard", "badge": None, "enabled": True},
+            {"key": "catalog", "label": _("Избранное"), "url_name": "buyer_catalog", "badge": None, "enabled": True},
+            {"key": "rfq", "label": _("Запросы RFQ"), "url_name": "buyer_rfq_list", "badge": buyer_active_rfq or None, "enabled": True},
+            {"key": "orders", "label": _("Заказы"), "url_name": "buyer_orders", "badge": buyer_active_orders or None, "enabled": True},
+            {"key": "shipments", "label": _("Отгрузки"), "url_name": "buyer_shipments", "badge": None, "enabled": True},
+            {"key": "claims", "label": _("Рекламации"), "url_name": "buyer_claims", "badge": None, "enabled": True},
+            {"key": "suppliers", "label": _("Поставщики"), "url_name": "buyer_suppliers", "badge": None, "enabled": True},
+            {"key": "negotiations", "label": _("Переторжка"), "url_name": "buyer_negotiations", "badge": None, "enabled": True},
+            {"key": "finance", "label": _("Финансы"), "url_name": "buyer_finance", "badge": None, "enabled": True},
+            {"key": "analytics", "label": _("Аналитика"), "url_name": "buyer_analytics", "badge": None, "enabled": True},
         ]
     else:
         buyer_nav_items = [
-            {"key": "dashboard", "label": "Дашборд", "url_name": "buyer_dashboard", "badge": None, "enabled": True},
-            {"key": "catalog", "label": "Каталог", "url_name": "buyer_catalog", "badge": None, "enabled": True},
-            {"key": "rfq", "label": "Запросы", "url_name": "buyer_rfq_list", "badge": buyer_active_rfq or None, "enabled": True},
-            {"key": "orders", "label": "Заказы", "url_name": "buyer_orders", "badge": buyer_active_orders or None, "enabled": True},
-            {"key": "shipments", "label": "Поставки", "url_name": "buyer_shipments", "badge": None, "enabled": True},
+            {"key": "dashboard", "label": _("Дашборд"), "url_name": "buyer_dashboard", "badge": None, "enabled": True},
+            {"key": "catalog", "label": _("Каталог"), "url_name": "buyer_catalog", "badge": None, "enabled": True},
+            {"key": "rfq", "label": _("Запросы"), "url_name": "buyer_rfq_list", "badge": buyer_active_rfq or None, "enabled": True},
+            {"key": "orders", "label": _("Заказы"), "url_name": "buyer_orders", "badge": buyer_active_orders or None, "enabled": True},
+            {"key": "shipments", "label": _("Поставки"), "url_name": "buyer_shipments", "badge": None, "enabled": True},
         ]
 
     return {
