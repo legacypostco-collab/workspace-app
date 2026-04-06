@@ -753,6 +753,79 @@ function demoLogin(username) {
   form.submit();
 }
 
+// ====== LANG TOGGLE ======
+(function(){
+  var LANGS = {
+    ru: {
+      label: 'EN', next: 'en',
+      title: 'Войти в систему',
+      subtitle: 'Введите данные вашего аккаунта',
+      submit: 'Войти',
+      register: 'Нет аккаунта?',
+      registerLink: 'Зарегистрироваться',
+      demoLabel: 'Быстрый вход · Демо',
+      roles: ['Поставщик','Покупатель','Оператор'],
+    },
+    en: {
+      label: 'RU', next: 'ru',
+      title: 'Sign in',
+      subtitle: 'Enter your account credentials',
+      submit: 'Sign in',
+      register: 'No account?',
+      registerLink: 'Register',
+      demoLabel: 'Quick login · Demo',
+      roles: ['Supplier','Buyer','Operator'],
+    }
+  };
+
+  var currentLang = localStorage.getItem('cp_lang') || 'ru';
+
+  function applyLang(lang) {
+    var t = LANGS[lang] || LANGS['ru'];
+    currentLang = lang;
+    localStorage.setItem('cp_lang', lang);
+
+    // Button label + next
+    document.querySelectorAll('.js-lang-toggle').forEach(function(b){
+      var span = b.querySelector('.lang-text');
+      if (span) span.textContent = t.label;
+      b.setAttribute('data-next-lang', t.next);
+    });
+
+    // Page text
+    var titleEl = document.querySelector('.login-card__title');
+    if (titleEl) titleEl.textContent = t.title;
+    var subEl = document.querySelector('.login-card__subtitle');
+    if (subEl) subEl.textContent = t.subtitle;
+    var submitEl = document.querySelector('.login-submit');
+    if (submitEl) submitEl.textContent = t.submit;
+    var regEl = document.querySelector('.login-card__register');
+    if (regEl) {
+      var regLink = regEl.querySelector('a');
+      var regText = t.register + ' ';
+      if (regLink) {
+        regLink.textContent = t.registerLink;
+        regEl.childNodes[0].textContent = regText;
+      }
+    }
+    var demoLabelEl = document.querySelector('.demo-section__label');
+    if (demoLabelEl) demoLabelEl.textContent = t.demoLabel;
+    document.querySelectorAll('.demo-btn__role').forEach(function(el, i){
+      if (t.roles[i]) el.textContent = t.roles[i];
+    });
+
+    document.documentElement.lang = lang;
+  }
+
+  document.querySelectorAll('.js-lang-toggle').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      applyLang(this.getAttribute('data-next-lang'));
+    });
+  });
+
+  if (currentLang !== 'ru') applyLang(currentLang);
+})();
+
 // ====== THEME TOGGLE ======
 (function(){
   var savedTheme = localStorage.getItem('cp_theme') || 'dark';
