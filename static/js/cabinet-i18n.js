@@ -309,7 +309,56 @@
     'Запросы на закупку':'Purchase Requests','Всего RFQ':'Total RFQs',
     'Тарифы и комиссии':'Tariffs & Commissions',
     'Все пользователи':'All Users',
-    'Ежедневный':'Daily','Еженедельно':'Weekly','Ежемесячно':'Monthly'
+    'Ежедневный':'Daily','Еженедельно':'Weekly','Ежемесячно':'Monthly',
+
+    // ── Period buttons ──
+    '1М':'1M','3М':'3M','6М':'6M','1Г':'1Y','Всё':'All',
+
+    // ── Dashboard blocks ──
+    'График выручки':'Revenue Chart','Ключевые метрики':'Key Metrics',
+    'Выручка и SLA':'Revenue & SLA','Рейтинг и заказы':'Rating & Orders',
+    'Запросы и события':'Requests & Events','скрыто':'hidden',
+    'Производство':'Production','К отгрузке':'Ready to Ship',
+    'Отгружено':'Shipped','Ожидает резерв':'Awaiting Reserve',
+    'Срочный':'Urgent','Стандартный':'Standard','По чертежу':'By Drawing',
+    'Деталь':'Part','4 новых':'4 new',
+    'Запросы клиентов на расценку':'Customer pricing requests',
+    'Все \u2192':'All \u2192','из 5':'of 5',
+    'Внешняя 60%':'External 60%','Поведение 40%':'Behavioral 40%',
+
+    // ── Widget titles ──
+    'Очередь задач':'Task Queue','Обратный отсчёт':'Countdown',
+    'Входящие платежи':'Incoming Payments','Согласование и запросы':'Approvals & Requests',
+    'Открытые претензии':'Open Claims','Последние сканирования':'Recent Scans',
+    'Устаревшие цены':'Outdated Prices','Требуют обновления':'Need Updating',
+    'Закрепить виджеты':'Pin Widgets','Ждёт согласования':'Awaiting Approval',
+    'Требует корректировки':'Needs Correction','Используется':'In Use',
+    'Просрочка +2 дня':'Overdue +2 days','Несоответствие чертежу':'Drawing Discrepancy',
+    'На рассмотрении':'Under Review','Ждёт решения':'Awaiting Resolution',
+    'Нет открытых рекламаций':'No Open Claims',
+    'Приёмка завершена':'Acceptance Completed','Старше 30 дней':'Older than 30 days',
+    'Отчёт проверки каче...':'Quality inspection re...',
+    'Отчёт проверки качества':'Quality Inspection Report',
+
+    // ── Page subtitles (seller) ──
+    'Главная рабочая панель: что требует внимания сейчас и куда перейти дальше.':'Main dashboard: what needs attention now and where to go next.',
+    'Загрузка прайсов, preview, история импортов, каталог и массовые действия в одном модуле.':'Price uploads, preview, import history, catalog and bulk actions in one module.',
+    'Список заказов по вашим товарам, фильтры, статусы и переход в карточку заказа.':'Orders for your products, filters, statuses and order card navigation.',
+    'Карточка товара поставщика: данные, логистика, полнота и быстрые действия.':'Supplier product card: data, logistics, completeness and quick actions.',
+    'Подробная разбивка \u00b7 метрики \u00b7 рекомендации':'Detailed breakdown \u00b7 metrics \u00b7 recommendations',
+    'Оплаты \u00b7 документы \u00b7 счета \u00b7 таймлайн поступлений':'Payments \u00b7 documents \u00b7 invoices \u00b7 receipt timeline',
+    'Загружай чертежи \u00b7 связывай с деталями \u00b7 отслеживай ревизии':'Upload drawings \u00b7 link to parts \u00b7 track revisions',
+    'Генерация кодов \u00b7 сканирование \u00b7 отслеживание этапов':'Code generation \u00b7 scanning \u00b7 stage tracking',
+    'Запрос скидок и переговоры по ценам с поставщиками':'Discount requests and price negotiations with suppliers',
+
+    // ── Misc missing ──
+    'Вперёд':'Forward','позиции':'items','получен':'received','подтверждён':'confirmed',
+    'Резерв оплачен':'Reserve Paid','Насос по чертежу':'Pump by drawing',
+    'Заказы, SLA, платежи':'Orders, SLA, payments',
+    'Общая выручка \u00b7 vs':'Total revenue \u00b7 vs',
+    'фев':'Feb','мар':'Mar','апр':'Apr','май':'May','июн':'Jun',
+    'июл':'Jul','авг':'Aug','сен':'Sep','окт':'Oct','ноя':'Nov','дек':'Dec','янв':'Jan',
+    'Активных заказов':'Active Orders','Поставщиков':'Suppliers'
   };
 
   // Build reverse map EN→RU
@@ -323,15 +372,40 @@
     // Update html lang attribute
     document.documentElement.lang = isEn ? 'en' : 'ru';
 
+    // Regex patterns for time units, partial strings etc.
+    var rxPatterns = isEn ? [
+      [/(\d+)ч\s*(\d+)м/g, '$1h $2m'],   // 3ч 47м → 3h 47m
+      [/(\d+)ч/g, '$1h'],                  // 4ч → 4h
+      [/(\d+)м\b/g, '$1m'],                // 12м → 12m
+      [/(\d+)\s*дн\./g, '$1 days'],        // 5 дн. → 5 days
+      [/(\d+)\s*позиции/g, '$1 items'],    // 4 позиции → 4 items
+      [/(\d+)\s*позиций/g, '$1 items'],
+    ] : [
+      [/(\d+)h\s*(\d+)m/g, '$1ч $2м'],
+      [/(\d+)h\b/g, '$1ч'],
+      [/(\d+)m\b/g, '$1м'],
+      [/(\d+)\s*days/g, '$1 дн.'],
+      [/(\d+)\s*items/g, '$1 позиций'],
+    ];
+
     // Walk all text nodes
     var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
     var node;
     while (node = walker.nextNode()) {
-      var txt = node.textContent.trim();
-      if (!txt || txt.length < 2 || txt.length > 200) continue;
+      var raw = node.textContent;
+      var txt = raw.trim();
+      if (!txt || txt.length < 1) continue;
+      // Exact match
       if (map[txt]) {
-        node.textContent = node.textContent.replace(txt, map[txt]);
+        node.textContent = raw.replace(txt, map[txt]);
+        continue;
       }
+      // Regex patterns
+      var changed = raw;
+      for (var i = 0; i < rxPatterns.length; i++) {
+        changed = changed.replace(rxPatterns[i][0], rxPatterns[i][1]);
+      }
+      if (changed !== raw) node.textContent = changed;
     }
 
     // Also translate placeholders and titles
