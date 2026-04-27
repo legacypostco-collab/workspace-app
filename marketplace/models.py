@@ -107,6 +107,11 @@ class Part(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["seller", "-data_updated_at", "-id"], name="part_seller_updated_idx"),
+            models.Index(fields=["seller", "availability_status"], name="part_seller_avail_idx"),
+            models.Index(fields=["seller", "is_active"], name="part_seller_active_idx"),
+        ]
 
     def __str__(self) -> str:
         return f"{self.title} ({self.oem_number})"
@@ -337,6 +342,11 @@ class Order(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["buyer", "status"], name="order_buyer_status_idx"),
+            models.Index(fields=["status", "sla_status"], name="order_status_sla_idx"),
+            models.Index(fields=["buyer", "-created_at"], name="order_buyer_created_idx"),
+        ]
 
     def __str__(self) -> str:
         return f"Order #{self.id} - {self.customer_name}"
@@ -384,6 +394,9 @@ class OrderEvent(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["order", "event_type"], name="event_order_type_idx"),
+        ]
 
     def __str__(self) -> str:
         return f"Order #{self.order_id} {self.event_type}"

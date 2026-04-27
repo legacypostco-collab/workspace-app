@@ -1,12 +1,13 @@
+{% load i18n %}
 <header class="seller-topbar">
   <div>
     {% if seller_breadcrumbs %}
-      <nav class="seller-breadcrumbs" aria-label="breadcrumbs">
+      <nav class="seller-breadcrumbs" aria-label="breadcrumbs" id="seller-breadcrumbs">
         {% for crumb in seller_breadcrumbs %}
           {% if crumb.url and not forloop.last %}
-            <a href="{{ crumb.url }}">{{ crumb.label }}</a><span class="seller-breadcrumb-sep">→</span>
+            <a href="{{ crumb.url }}" data-crumb-ru="{{ crumb.label }}">{{ crumb.label }}</a><span class="seller-breadcrumb-sep">→</span>
           {% else %}
-            <span style="color:var(--s-t1)">{{ crumb.label }}</span>
+            <span style="color:var(--s-t1)" data-crumb-ru="{{ crumb.label }}">{{ crumb.label }}</span>
           {% endif %}
         {% endfor %}
       </nav>
@@ -20,16 +21,28 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
         </a>
       </div>
-      <h1 class="seller-page-title">{{ seller_page_title|default:"Кабинет поставщика" }}</h1>
+      <h1 class="seller-page-title" id="cab-page-title">{{ seller_page_title|default:_("Кабинет поставщика") }}</h1>
     </div>
     {% if seller_page_subtitle %}
-      <p class="seller-page-subtitle">{{ seller_page_subtitle }}</p>
+      <p class="seller-page-subtitle" id="cab-page-subtitle">{{ seller_page_subtitle }}</p>
     {% endif %}
   </div>
   <div class="seller-topbar-meta">
     <div class="seller-topbar-chip">
-      <span class="muted">Рейтинг</span>
+      <span class="muted">{% trans "Рейтинг" %}</span>
       <strong>{{ seller_rating_score|default:"—" }}</strong>
     </div>
+    {% load i18n %}{% get_current_language as LANG_CODE %}
+    <form method="post" action="{% url 'set_language' %}" style="display:inline;">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      {% if LANG_CODE == 'ru' %}
+        <input type="hidden" name="language" value="en">
+        <button type="submit" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#919191;font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;letter-spacing:0.06em;transition:all .15s;" onmouseover="this.style.color='#ECECEC'" onmouseout="this.style.color='#919191'">EN</button>
+      {% else %}
+        <input type="hidden" name="language" value="ru">
+        <button type="submit" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#64B5F6;font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;letter-spacing:0.06em;transition:all .15s;" onmouseover="this.style.color='#ECECEC'" onmouseout="this.style.color='#64B5F6'">RU</button>
+      {% endif %}
+    </form>
   </div>
 </header>

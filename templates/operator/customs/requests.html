@@ -1,233 +1,234 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Таможня — Запросы{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Таможня — Запросы" %}{% endblock %}
 
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
   <div class="op-stat">
     <div class="op-stat-value">5</div>
-    <div class="op-stat-label">Активных запросов</div>
+    <div class="op-stat-label">{% trans "Активных запросов" %}</div>
   </div>
   <div class="op-stat op-stat-warn">
     <div class="op-stat-value">1</div>
-    <div class="op-stat-label">Просрочено ответов</div>
+    <div class="op-stat-label">{% trans "Просрочено ответов" %}</div>
   </div>
   <div class="op-stat">
-    <div class="op-stat-value">1.8 <span style="font-size:14px;font-weight:500;">дн.</span></div>
-    <div class="op-stat-label">Среднее время ответа</div>
+    <div class="op-stat-value">1.8 <span style="font-size:14px;font-weight:500;">{% trans "дн." %}</span></div>
+    <div class="op-stat-label">{% trans "Среднее время ответа" %}</div>
   </div>
 </div>
 
 <!-- Tabs -->
 <div class="op-tabs">
-  <button class="op-tab active" data-req-tab="active" onclick="switchReqTab('active')">Активные</button>
-  <button class="op-tab" data-req-tab="done" onclick="switchReqTab('done')">Завершённые</button>
+  <button class="op-tab active" data-req-tab="active" onclick="switchReqTab('active')">{% trans "Активные" %}</button>
+  <button class="op-tab" data-req-tab="done" onclick="switchReqTab('done')">{% trans "Завершённые" %}</button>
 </div>
 
 <!-- Active request cards -->
 <div id="req-tab-active" style="display:flex;flex-direction:column;gap:14px;">
   <!-- Request 1 -->
-  <div class="op-card" style="cursor:pointer;" onclick="opToast('Запрос ЗП-1041: Дозапрос от таможни')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">ЗП-1041</span>
-          <span class="op-badge op-badge-orange">Просрочен</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">{% trans "ЗП-1041" %}</span>
+          <span class="op-badge op-badge-orange">{% trans "Просрочен" %}</span>
         </div>
-        <div style="font-size:12px;color:#919191;margin-top:4px;">Дозапрос от таможни</div>
+        <div style="font-size:12px;color:#919191;margin-top:4px;">{% trans "Дозапрос от таможни" %}</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:11px;color:#5E5E5E;">Срок ответа</div>
-        <div style="font-size:13px;color:#E85C0D;font-weight:600;">23 мар (просрочен)</div>
+        <div style="font-size:11px;color:#5E5E5E;">{% trans "Срок ответа" %}</div>
+        <div style="font-size:13px;color:#E85C0D;font-weight:600;">{% trans "23 мар (просрочен)" %}</div>
       </div>
     </div>
     <div style="display:flex;gap:20px;margin-bottom:10px;font-size:12px;">
-      <div><span style="color:#5E5E5E;">Декларация:</span> <span style="color:#919191;">ДТ-78412</span></div>
-      <div><span style="color:#5E5E5E;">Заказ:</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#ECECEC;">ORD-4521</span></div>
-      <div><span style="color:#5E5E5E;">Ответственный:</span> <span style="color:#919191;">Брокер #1</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Декларация:" %}</span> <span style="color:#919191;">{% trans "ДТ-78412" %}</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Заказ:" %}</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#ECECEC;">ORD-4521</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Ответственный:" %}</span> <span style="color:#919191;">{% trans "Брокер #1" %}</span></div>
     </div>
     <div style="font-size:13px;color:#919191;line-height:1.5;margin-bottom:14px;padding:10px 14px;background:#1F1F1F;border-radius:8px;">
-      Таможенный орган запрашивает дополнительные документы, подтверждающие страну происхождения товара. Необходимо предоставить оригинал сертификата Form A и коммерческий инвойс с печатью отправителя.
+      {% trans "Таможенный орган запрашивает дополнительные документы, подтверждающие страну происхождения товара. Необходимо предоставить оригинал сертификата Form A и коммерческий инвойс с печатью отправителя." %}
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Ответ на запрос ЗП-1041')">Ответить</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос документов у поставщика для ЗП-1041')">Запросить у поставщика</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Прикрепление документа к ЗП-1041')">Прикрепить документ</button>
+      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Ответ на запрос ЗП-1041" %}')">{% trans "Ответить" %}</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Запрос документов у поставщика для ЗП-1041" %}')">{% trans "Запросить у поставщика" %}</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Прикрепление документа к ЗП-1041" %}')">{% trans "Прикрепить документ" %}</button>
     </div>
   </div>
 
   <!-- Request 2 -->
-  <div class="op-card" style="cursor:pointer;" onclick="opToast('Запрос ЗП-1040: Запрос документов у поставщика')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">ЗП-1040</span>
-          <span class="op-badge op-badge-gray">В работе</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">{% trans "ЗП-1040" %}</span>
+          <span class="op-badge op-badge-gray">{% trans "В работе" %}</span>
         </div>
-        <div style="font-size:12px;color:#919191;margin-top:4px;">Запрос документов у поставщика</div>
+        <div style="font-size:12px;color:#919191;margin-top:4px;">{% trans "Запрос документов у поставщика" %}</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:11px;color:#5E5E5E;">Срок ответа</div>
-        <div style="font-size:13px;color:#ECECEC;font-weight:600;">27 мар</div>
+        <div style="font-size:11px;color:#5E5E5E;">{% trans "Срок ответа" %}</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">{% trans "27 мар" %}</div>
       </div>
     </div>
     <div style="display:flex;gap:20px;margin-bottom:10px;font-size:12px;">
-      <div><span style="color:#5E5E5E;">Декларация:</span> <span style="color:#919191;">ДТ-78415</span></div>
-      <div><span style="color:#5E5E5E;">Заказ:</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#ECECEC;">ORD-4518</span></div>
-      <div><span style="color:#5E5E5E;">Ответственный:</span> <span style="color:#919191;">Брокер #2</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Декларация:" %}</span> <span style="color:#919191;">{% trans "ДТ-78415" %}</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Заказ:" %}</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#ECECEC;">ORD-4518</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Ответственный:" %}</span> <span style="color:#919191;">{% trans "Брокер #2" %}</span></div>
     </div>
     <div style="font-size:13px;color:#919191;line-height:1.5;margin-bottom:14px;padding:10px 14px;background:#1F1F1F;border-radius:8px;">
-      Для оформления декларации необходим упаковочный лист с указанием веса нетто/брутто по каждой позиции и фотографии маркировки на упаковке.
+      {% trans "Для оформления декларации необходим упаковочный лист с указанием веса нетто/брутто по каждой позиции и фотографии маркировки на упаковке." %}
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Ответ на запрос ЗП-1040')">Ответить</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос документов у поставщика для ЗП-1040')">Запросить у поставщика</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Прикрепление документа к ЗП-1040')">Прикрепить документ</button>
+      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Ответ на запрос ЗП-1040" %}')">{% trans "Ответить" %}</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Запрос документов у поставщика для ЗП-1040" %}')">{% trans "Запросить у поставщика" %}</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Прикрепление документа к ЗП-1040" %}')">{% trans "Прикрепить документ" %}</button>
     </div>
   </div>
 
   <!-- Request 3 -->
-  <div class="op-card" style="cursor:pointer;" onclick="opToast('Запрос ЗП-1039: Уточнение классификации')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">ЗП-1039</span>
-          <span class="op-badge op-badge-gray">В работе</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">{% trans "ЗП-1039" %}</span>
+          <span class="op-badge op-badge-gray">{% trans "В работе" %}</span>
         </div>
-        <div style="font-size:12px;color:#919191;margin-top:4px;">Уточнение классификации</div>
+        <div style="font-size:12px;color:#919191;margin-top:4px;">{% trans "Уточнение классификации" %}</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:11px;color:#5E5E5E;">Срок ответа</div>
-        <div style="font-size:13px;color:#ECECEC;font-weight:600;">28 мар</div>
+        <div style="font-size:11px;color:#5E5E5E;">{% trans "Срок ответа" %}</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">{% trans "28 мар" %}</div>
       </div>
     </div>
     <div style="display:flex;gap:20px;margin-bottom:10px;font-size:12px;">
-      <div><span style="color:#5E5E5E;">Декларация:</span> <span style="color:#919191;">ДТ-78418</span></div>
-      <div><span style="color:#5E5E5E;">Заказ:</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#ECECEC;">ORD-4515</span></div>
-      <div><span style="color:#5E5E5E;">Ответственный:</span> <span style="color:#919191;">Брокер #1</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Декларация:" %}</span> <span style="color:#919191;">{% trans "ДТ-78418" %}</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Заказ:" %}</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#ECECEC;">ORD-4515</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Ответственный:" %}</span> <span style="color:#919191;">{% trans "Брокер #1" %}</span></div>
     </div>
     <div style="font-size:13px;color:#919191;line-height:1.5;margin-bottom:14px;padding:10px 14px;background:#1F1F1F;border-radius:8px;">
-      Товар классифицирован как 8708.99, однако по описанию может подпадать под 8409.91. Необходимо получить от поставщика технические характеристики и подтвердить код ТН ВЭД.
+      {% trans "Товар классифицирован как 8708.99, однако по описанию может подпадать под 8409.91. Необходимо получить от поставщика технические характеристики и подтвердить код ТН ВЭД." %}
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Ответ на запрос ЗП-1039')">Ответить</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос у поставщика для ЗП-1039')">Запросить у поставщика</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Прикрепление документа к ЗП-1039')">Прикрепить документ</button>
+      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Ответ на запрос ЗП-1039" %}')">{% trans "Ответить" %}</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Запрос у поставщика для ЗП-1039" %}')">{% trans "Запросить у поставщика" %}</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Прикрепление документа к ЗП-1039" %}')">{% trans "Прикрепить документ" %}</button>
     </div>
   </div>
 
   <!-- Request 4 -->
-  <div class="op-card" style="cursor:pointer;" onclick="opToast('Запрос ЗП-1038: Запрос сертификата')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">ЗП-1038</span>
-          <span class="op-badge op-badge-gray">В работе</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">{% trans "ЗП-1038" %}</span>
+          <span class="op-badge op-badge-gray">{% trans "В работе" %}</span>
         </div>
-        <div style="font-size:12px;color:#919191;margin-top:4px;">Запрос сертификата</div>
+        <div style="font-size:12px;color:#919191;margin-top:4px;">{% trans "Запрос сертификата" %}</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:11px;color:#5E5E5E;">Срок ответа</div>
-        <div style="font-size:13px;color:#ECECEC;font-weight:600;">30 мар</div>
+        <div style="font-size:11px;color:#5E5E5E;">{% trans "Срок ответа" %}</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">{% trans "30 мар" %}</div>
       </div>
     </div>
     <div style="display:flex;gap:20px;margin-bottom:10px;font-size:12px;">
-      <div><span style="color:#5E5E5E;">Декларация:</span> <span style="color:#919191;">ДТ-78420</span></div>
-      <div><span style="color:#5E5E5E;">Заказ:</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#ECECEC;">ORD-4512</span></div>
-      <div><span style="color:#5E5E5E;">Ответственный:</span> <span style="color:#919191;">Брокер #2</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Декларация:" %}</span> <span style="color:#919191;">{% trans "ДТ-78420" %}</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Заказ:" %}</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#ECECEC;">ORD-4512</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Ответственный:" %}</span> <span style="color:#919191;">{% trans "Брокер #2" %}</span></div>
     </div>
     <div style="font-size:13px;color:#919191;line-height:1.5;margin-bottom:14px;padding:10px 14px;background:#1F1F1F;border-radius:8px;">
-      Для применения преференциального тарифа необходим сертификат соответствия техническому регламенту. Отправлен запрос поставщику через платформу.
+      {% trans "Для применения преференциального тарифа необходим сертификат соответствия техническому регламенту. Отправлен запрос поставщику через платформу." %}
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Ответ на запрос ЗП-1038')">Ответить</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос у поставщика для ЗП-1038')">Запросить у поставщика</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Прикрепление документа к ЗП-1038')">Прикрепить документ</button>
+      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Ответ на запрос ЗП-1038" %}')">{% trans "Ответить" %}</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Запрос у поставщика для ЗП-1038" %}')">{% trans "Запросить у поставщика" %}</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Прикрепление документа к ЗП-1038" %}')">{% trans "Прикрепить документ" %}</button>
     </div>
   </div>
 
   <!-- Request 5 -->
-  <div class="op-card" style="cursor:pointer;" onclick="opToast('Запрос ЗП-1037: Дозапрос от таможни')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">ЗП-1037</span>
-          <span class="op-badge op-badge-gray">Ожидает</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">{% trans "ЗП-1037" %}</span>
+          <span class="op-badge op-badge-gray">{% trans "Ожидает" %}</span>
         </div>
-        <div style="font-size:12px;color:#919191;margin-top:4px;">Дозапрос от таможни</div>
+        <div style="font-size:12px;color:#919191;margin-top:4px;">{% trans "Дозапрос от таможни" %}</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:11px;color:#5E5E5E;">Срок ответа</div>
-        <div style="font-size:13px;color:#ECECEC;font-weight:600;">1 апр</div>
+        <div style="font-size:11px;color:#5E5E5E;">{% trans "Срок ответа" %}</div>
+        <div style="font-size:13px;color:#ECECEC;font-weight:600;">{% trans "1 апр" %}</div>
       </div>
     </div>
     <div style="display:flex;gap:20px;margin-bottom:10px;font-size:12px;">
-      <div><span style="color:#5E5E5E;">Декларация:</span> <span style="color:#919191;">ДТ-78422</span></div>
-      <div><span style="color:#5E5E5E;">Заказ:</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#ECECEC;">ORD-4508</span></div>
-      <div><span style="color:#5E5E5E;">Ответственный:</span> <span style="color:#919191;">Брокер #1</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Декларация:" %}</span> <span style="color:#919191;">{% trans "ДТ-78422" %}</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Заказ:" %}</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#ECECEC;">ORD-4508</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Ответственный:" %}</span> <span style="color:#919191;">{% trans "Брокер #1" %}</span></div>
     </div>
     <div style="font-size:13px;color:#919191;line-height:1.5;margin-bottom:14px;padding:10px 14px;background:#1F1F1F;border-radius:8px;">
-      Таможенный орган запрашивает подтверждение таможенной стоимости. Необходимо предоставить выписку из контракта, калькуляцию стоимости и банковские документы об оплате.
+      {% trans "Таможенный орган запрашивает подтверждение таможенной стоимости. Необходимо предоставить выписку из контракта, калькуляцию стоимости и банковские документы об оплате." %}
     </div>
     <div style="display:flex;gap:8px;">
-      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('Ответ на запрос ЗП-1037')">Ответить</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Запрос у поставщика для ЗП-1037')">Запросить у поставщика</button>
-      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Прикрепление документа к ЗП-1037')">Прикрепить документ</button>
+      <button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Ответ на запрос ЗП-1037" %}')">{% trans "Ответить" %}</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Запрос у поставщика для ЗП-1037" %}')">{% trans "Запросить у поставщика" %}</button>
+      <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Прикрепление документа к ЗП-1037" %}')">{% trans "Прикрепить документ" %}</button>
     </div>
   </div>
 </div>
 
 <!-- Completed requests -->
 <div id="req-tab-done" style="display:none;flex-direction:column;gap:14px;">
-  <div class="op-card" onclick="opToast('Запрос ЗП-1035: Завершён')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">ЗП-1035</span>
-          <span class="op-badge op-badge-gray">Завершён</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">{% trans "ЗП-1035" %}</span>
+          <span class="op-badge op-badge-gray">{% trans "Завершён" %}</span>
         </div>
-        <div style="font-size:12px;color:#919191;margin-top:4px;">Запрос документов у поставщика</div>
+        <div style="font-size:12px;color:#919191;margin-top:4px;">{% trans "Запрос документов у поставщика" %}</div>
       </div>
-      <div style="font-size:12px;color:#5E5E5E;">Закрыт 15 мар</div>
+      <div style="font-size:12px;color:#5E5E5E;">{% trans "Закрыт 15 мар" %}</div>
     </div>
     <div style="display:flex;gap:20px;font-size:12px;">
-      <div><span style="color:#5E5E5E;">Декларация:</span> <span style="color:#919191;">ДТ-78398</span></div>
-      <div><span style="color:#5E5E5E;">Заказ:</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#919191;">ORD-4495</span></div>
-      <div><span style="color:#5E5E5E;">Время ответа:</span> <span style="color:#919191;">1.2 дн.</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Декларация:" %}</span> <span style="color:#919191;">{% trans "ДТ-78398" %}</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Заказ:" %}</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#919191;">ORD-4495</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Время ответа:" %}</span> <span style="color:#919191;">{% trans "1.2 дн." %}</span></div>
     </div>
   </div>
-  <div class="op-card" onclick="opToast('Запрос ЗП-1033: Завершён')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">ЗП-1033</span>
-          <span class="op-badge op-badge-gray">Завершён</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">{% trans "ЗП-1033" %}</span>
+          <span class="op-badge op-badge-gray">{% trans "Завершён" %}</span>
         </div>
-        <div style="font-size:12px;color:#919191;margin-top:4px;">Уточнение классификации</div>
+        <div style="font-size:12px;color:#919191;margin-top:4px;">{% trans "Уточнение классификации" %}</div>
       </div>
-      <div style="font-size:12px;color:#5E5E5E;">Закрыт 12 мар</div>
+      <div style="font-size:12px;color:#5E5E5E;">{% trans "Закрыт 12 мар" %}</div>
     </div>
     <div style="display:flex;gap:20px;font-size:12px;">
-      <div><span style="color:#5E5E5E;">Декларация:</span> <span style="color:#919191;">ДТ-78395</span></div>
-      <div><span style="color:#5E5E5E;">Заказ:</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#919191;">ORD-4490</span></div>
-      <div><span style="color:#5E5E5E;">Время ответа:</span> <span style="color:#919191;">2.4 дн.</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Декларация:" %}</span> <span style="color:#919191;">{% trans "ДТ-78395" %}</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Заказ:" %}</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#919191;">ORD-4490</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Время ответа:" %}</span> <span style="color:#919191;">{% trans "2.4 дн." %}</span></div>
     </div>
   </div>
-  <div class="op-card" onclick="opToast('Запрос ЗП-1031: Завершён')">
+  <div class="op-card" style="cursor:pointer;" onclick="selectCard(this)">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:10px;">
       <div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">ЗП-1031</span>
-          <span class="op-badge op-badge-gray">Завершён</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;">{% trans "ЗП-1031" %}</span>
+          <span class="op-badge op-badge-gray">{% trans "Завершён" %}</span>
         </div>
-        <div style="font-size:12px;color:#919191;margin-top:4px;">Запрос сертификата</div>
+        <div style="font-size:12px;color:#919191;margin-top:4px;">{% trans "Запрос сертификата" %}</div>
       </div>
-      <div style="font-size:12px;color:#5E5E5E;">Закрыт 10 мар</div>
+      <div style="font-size:12px;color:#5E5E5E;">{% trans "Закрыт 10 мар" %}</div>
     </div>
     <div style="display:flex;gap:20px;font-size:12px;">
-      <div><span style="color:#5E5E5E;">Декларация:</span> <span style="color:#919191;">ДТ-78390</span></div>
-      <div><span style="color:#5E5E5E;">Заказ:</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#919191;">ORD-4487</span></div>
-      <div><span style="color:#5E5E5E;">Время ответа:</span> <span style="color:#919191;">1.5 дн.</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Декларация:" %}</span> <span style="color:#919191;">{% trans "ДТ-78390" %}</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Заказ:" %}</span> <span style="font-family:'Golos Text',sans-serif;font-weight:600;color:#919191;">ORD-4487</span></div>
+      <div><span style="color:#5E5E5E;">{% trans "Время ответа:" %}</span> <span style="color:#919191;">{% trans "1.5 дн." %}</span></div>
     </div>
   </div>
 </div>
@@ -236,6 +237,19 @@
 {% block extra_js %}
 <script>
 (function(){
+  window.selectCard = function(card) {
+    var isSelected = card.classList.contains('card-selected');
+    document.querySelectorAll('.op-card.card-selected').forEach(function(c){
+      c.classList.remove('card-selected');
+      c.style.outline = '';
+    });
+    if (!isSelected) {
+      card.classList.add('card-selected');
+      card.style.outline = '1px solid rgba(100,181,246,0.3)';
+      card.scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+  };
+
   window.switchReqTab = function(tab){
     document.querySelectorAll('[data-req-tab]').forEach(function(btn){
       btn.classList.toggle('active', btn.getAttribute('data-req-tab') === tab);

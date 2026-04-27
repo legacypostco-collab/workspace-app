@@ -1,38 +1,39 @@
 {% extends "admin_panel/base_admin.html" %}
+{% load i18n %}
 {% block title %}RFQ #{{ rfq.id }}{% endblock %}
 {% block topbar_title %}RFQ #{{ rfq.id }}{% endblock %}
 
 {% block content %}
 <div style="margin-bottom:16px;">
-  <a href="/admin-panel/rfq/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Все RFQ</a>
+  <a href="/admin-panel/rfq/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "&larr; Все RFQ" %}</a>
 </div>
 
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">RFQ-{{ rfq.id }}</div><div class="ap-stat-label">Номер</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">RFQ-{{ rfq.id }}</div><div class="ap-stat-label">{% trans "Номер" %}</div></div>
   <div class="ap-stat"><div class="ap-stat-value">
     {% if rfq.status == 'new' %}<span style="color:#64B5F6;">{{ rfq.get_status_display }}</span>
     {% elif rfq.status == 'quoted' %}<span style="color:#4CAF50;">{{ rfq.get_status_display }}</span>
     {% elif rfq.status == 'cancelled' %}<span style="color:#E85C0D;">{{ rfq.get_status_display }}</span>
     {% else %}{{ rfq.get_status_display }}{% endif %}
-  </div><div class="ap-stat-label">Статус</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ rfq.get_mode_display }}</div><div class="ap-stat-label">Режим</div></div>
+  </div><div class="ap-stat-label">{% trans "Статус" %}</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ rfq.get_mode_display }}</div><div class="ap-stat-label">{% trans "Режим" %}</div></div>
   <div class="ap-stat"><div class="ap-stat-value">
     {% if rfq.urgency == 'critical' %}<span style="color:#E85C0D;">{{ rfq.get_urgency_display }}</span>
     {% elif rfq.urgency == 'urgent' %}<span style="color:#64B5F6;">{{ rfq.get_urgency_display }}</span>
     {% else %}{{ rfq.get_urgency_display }}{% endif %}
-  </div><div class="ap-stat-label">Срочность</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ items|length }}</div><div class="ap-stat-label">Позиций</div></div>
+  </div><div class="ap-stat-label">{% trans "Срочность" %}</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ items|length }}</div><div class="ap-stat-label">{% trans "Позиций" %}</div></div>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;">
   <div style="display:flex;flex-direction:column;gap:16px;">
     <div class="ap-card">
-      <div class="ap-section-title">Клиент</div>
+      <div class="ap-section-title">{% trans "Клиент" %}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
-        <div><span style="color:#919191;">Имя:</span> {{ rfq.customer_name }}</div>
+        <div><span style="color:#919191;">{% trans "Имя:" %}</span> {{ rfq.customer_name }}</div>
         <div><span style="color:#919191;">Email:</span> {{ rfq.customer_email }}</div>
-        <div><span style="color:#919191;">Компания:</span> {{ rfq.company_name|default:"—" }}</div>
-        <div><span style="color:#919191;">Аккаунт:</span>
+        <div><span style="color:#919191;">{% trans "Компания:" %}</span> {{ rfq.company_name|default:"—" }}</div>
+        <div><span style="color:#919191;">{% trans "Аккаунт:" %}</span>
           {% if rfq.created_by %}
             <a href="/admin-panel/users/{{ rfq.created_by.id }}/" style="color:#64B5F6;text-decoration:none;">{{ rfq.created_by.username }}</a>
           {% else %}—{% endif %}
@@ -41,9 +42,9 @@
     </div>
 
     <div class="ap-card">
-      <div class="ap-section-title">Позиции</div>
+      <div class="ap-section-title">{% trans "Позиции" %}</div>
       <table class="ap-table">
-        <thead><tr><th>OEM</th><th>Описание</th><th>Кол-во</th><th>Подобранная запчасть</th><th>Цена</th><th>Решение</th></tr></thead>
+        <thead><tr><th>OEM</th><th>{% trans "Описание" %}</th><th>{% trans "Кол-во" %}</th><th>{% trans "Подобранная запчасть" %}</th><th>{% trans "Цена" %}</th><th>{% trans "Решение" %}</th></tr></thead>
         <tbody>
           {% for item in items %}
           <tr>
@@ -54,7 +55,7 @@
               {% if item.matched_part %}
                 {{ item.matched_part.oem_number }} <span class="text-secondary">{{ item.matched_part.brand.name|default:"" }}</span>
               {% else %}
-                <span style="color:#919191;">Не подобрана</span>
+                <span style="color:#919191;">{% trans "Не подобрана" %}</span>
               {% endif %}
             </td>
             <td>
@@ -63,14 +64,14 @@
               {% else %}—{% endif %}
             </td>
             <td>
-              {% if item.decision == 'approved' %}<span class="ap-badge ap-badge-green">Одобрено</span>
-              {% elif item.decision == 'rejected' %}<span class="ap-badge ap-badge-orange">Отклонено</span>
+              {% if item.decision == 'approved' %}<span class="ap-badge ap-badge-green">{% trans "Одобрено" %}</span>
+              {% elif item.decision == 'rejected' %}<span class="ap-badge ap-badge-orange">{% trans "Отклонено" %}</span>
               {% elif item.decision %}<span class="ap-badge ap-badge-gray">{{ item.decision }}</span>
               {% else %}<span class="ap-badge ap-badge-gray">—</span>{% endif %}
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="6" style="text-align:center;color:#919191;">Нет позиций</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:#919191;">{% trans "Нет позиций" %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -80,7 +81,7 @@
   <!-- Right panel -->
   <div style="display:flex;flex-direction:column;gap:16px;">
     <div class="ap-card">
-      <div class="ap-section-title">Изменить статус</div>
+      <div class="ap-section-title">{% trans "Изменить статус" %}</div>
       <form method="post">
         {% csrf_token %}
         <select name="new_status" class="ap-select" style="width:100%;margin-bottom:10px;">
@@ -88,30 +89,30 @@
           <option value="{{ val }}" {% if rfq.status == val %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
-        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">Применить</button>
+        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">{% trans "Применить" %}</button>
       </form>
     </div>
 
     {% if rfq.discount_percent %}
     <div class="ap-card">
-      <div class="ap-section-title">Скидка</div>
+      <div class="ap-section-title">{% trans "Скидка" %}</div>
       <div style="font-size:13px;">{{ rfq.discount_percent }}% <span class="text-secondary">{{ rfq.discount_note }}</span></div>
     </div>
     {% endif %}
 
     {% if rfq.notes %}
     <div class="ap-card">
-      <div class="ap-section-title">Заметки</div>
+      <div class="ap-section-title">{% trans "Заметки" %}</div>
       <p style="font-size:13px;color:#919191;">{{ rfq.notes }}</p>
     </div>
     {% endif %}
 
     <div class="ap-card">
-      <div class="ap-section-title">Информация</div>
+      <div class="ap-section-title">{% trans "Информация" %}</div>
       <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;">
-        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">Создан</span><span>{{ rfq.created_at|date:"d.m.Y H:i" }}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">Режим</span><span>{{ rfq.get_mode_display }}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">Срочность</span><span>{{ rfq.get_urgency_display }}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Создан" %}</span><span>{{ rfq.created_at|date:"d.m.Y H:i" }}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Режим" %}</span><span>{{ rfq.get_mode_display }}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Срочность" %}</span><span>{{ rfq.get_urgency_display }}</span></div>
       </div>
     </div>
   </div>

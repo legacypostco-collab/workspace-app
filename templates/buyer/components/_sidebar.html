@@ -1,4 +1,4 @@
-{% load static %}
+{% load static i18n %}
 <aside class="seller-sidebar" style="width:280px;background:#1F1F1F;border-right:1px solid rgba(255,255,255,0.055);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:auto;padding:0;">
 
   <!-- Logo -->
@@ -37,8 +37,8 @@
         </div>
       </div>
       <div style="flex:1;">
-        <div style="font-size:12px;font-weight:600;color:#ECECEC;">Надёжный покупатель</div>
-        <div style="font-size:11px;color:#919191;margin-top:1px;white-space:nowrap;">Кредитный рейтинг</div>
+        <div style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "Надёжный покупатель" %}</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;white-space:nowrap;">{% trans "Кредитный рейтинг" %}</div>
       </div>
       <div style="text-align:right;">
         <div style="font-size:13px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;white-space:nowrap;">$2.1M</div>
@@ -48,29 +48,29 @@
     <div style="display:flex;gap:1px;margin-bottom:10px;">
       <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:6px 0 0 6px;">
         <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">24</div>
-        <div style="font-size:11px;color:#919191;margin-top:2px;">Заказов</div>
+        <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "Заказов" %}</div>
       </div>
       <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;">
         <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">8</div>
-        <div style="font-size:11px;color:#919191;margin-top:2px;">Поставщиков</div>
+        <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "Поставщиков" %}</div>
       </div>
       <div style="flex:1;text-align:center;padding:7px 0;background:#2C2C2C;border-radius:0 6px 6px 0;">
         <div style="font-size:12px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">12%</div>
-        <div style="font-size:11px;color:#919191;margin-top:2px;">Экономия</div>
+        <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "Экономия" %}</div>
       </div>
     </div>
   </div>
 
   <!-- Nav label -->
   <div style="padding:10px 22px 4px;">
-    <span style="font-size:11px;color:#6A6A6A;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;">Меню</span>
+    <span style="font-size:11px;color:#6A6A6A;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;">{% trans "Меню" %}</span>
   </div>
 
   <!-- Nav -->
   <nav style="flex:1;padding:2px 12px;display:flex;flex-direction:column;gap:1px;">
     {% for item in buyer_nav_items %}
       {% if item.enabled and item.url_name %}
-        <a href="{% url item.url_name %}" class="seller-nav-link{% if buyer_active_nav == item.key %} active{% endif %}" style="display:flex;align-items:center;width:100%;text-decoration:none;border-radius:10px;gap:10px;position:relative;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;border:none;{% if buyer_active_nav == item.key %}background:rgba(100,181,246,0.06);color:#ECECEC;font-weight:600;{% else %}background:transparent;color:#919191;font-weight:400;{% endif %}">
+        <a href="{% url item.url_name %}" data-nav-key="{{ item.key }}" class="seller-nav-link{% if buyer_active_nav == item.key %} active{% endif %}" style="display:flex;align-items:center;width:100%;text-decoration:none;border-radius:10px;gap:10px;position:relative;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;border:none;{% if buyer_active_nav == item.key %}background:rgba(100,181,246,0.06);color:#ECECEC;font-weight:600;{% else %}background:transparent;color:#919191;font-weight:400;{% endif %}">
           {% if buyer_active_nav == item.key %}
             <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:18px;border-radius:2px;background:#64B5F6;"></div>
           {% endif %}
@@ -110,7 +110,7 @@
 
   <!-- Quick stats -->
   <div style="margin:0 12px 8px;padding:10px 14px;background:#242424;border-radius:10px;border:1px solid rgba(255,255,255,0.055);">
-    <div style="font-size:11px;color:#6A6A6A;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">Сегодня</div>
+    <div style="font-size:11px;color:#6A6A6A;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">{% trans "Сегодня" %}</div>
     <div style="display:flex;justify-content:space-between;">
       <div style="text-align:left;flex:1;">
         <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">3</div>
@@ -118,11 +118,11 @@
       </div>
       <div style="text-align:center;flex:1;">
         <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">2</div>
-        <div style="font-size:11px;color:#919191;margin-top:1px;">В пути</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;">{% trans "В пути" %}</div>
       </div>
       <div style="text-align:right;flex:1;">
         <div style="font-size:14px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">$2.1M</div>
-        <div style="font-size:11px;color:#919191;margin-top:1px;">Закупки</div>
+        <div style="font-size:11px;color:#919191;margin-top:1px;">{% trans "Закупки" %}</div>
       </div>
     </div>
   </div>
@@ -137,7 +137,7 @@
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:600;color:#ECECEC;">{{ buyer_company_name|default:user.username }}</div>
         <div style="display:flex;align-items:center;gap:5px;margin-top:3px;">
-          <span style="font-size:11px;font-weight:600;color:#ECECEC;background:#2C2C2C;padding:1px 6px;border-radius:4px;letter-spacing:0.03em;">ПОКУПАТЕЛЬ</span>
+          <span style="font-size:11px;font-weight:600;color:#ECECEC;background:#2C2C2C;padding:1px 6px;border-radius:4px;letter-spacing:0.03em;">{% trans "ПОКУПАТЕЛЬ" %}</span>
         </div>
       </div>
     </div>

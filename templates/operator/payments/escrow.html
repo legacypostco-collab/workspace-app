@@ -1,43 +1,44 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Платёжный агент — Эскроу{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Платёжный агент — Эскроу" %}{% endblock %}
 
 {% block content %}
-<div class="op-section-title" style="margin-bottom:16px;">Управление эскроу</div>
+<div class="op-section-title" style="margin-bottom:16px;">{% trans "Управление эскроу" %}</div>
 
 <!-- Summary -->
 <div class="op-stats">
-  <div class="op-stat" id="esc-stat-hold" onclick="filterEscrow('Удержание')" style="cursor:pointer;">
+  <div class="op-stat" id="esc-stat-hold" onclick="filterEscrow('{% trans "Удержание" %}')" style="cursor:pointer;">
     <div class="op-stat-value">$142,800</div>
-    <div class="op-stat-label">Удержано на счетах</div>
+    <div class="op-stat-label">{% trans "Удержано на счетах" %}</div>
   </div>
   <div class="op-stat" id="esc-stat-released" onclick="document.getElementById('esc-history').scrollIntoView({behavior:'smooth'})" style="cursor:pointer;">
     <div class="op-stat-value">$285,200</div>
-    <div class="op-stat-label">Выпущено за месяц</div>
+    <div class="op-stat-label">{% trans "Выпущено за месяц" %}</div>
   </div>
-  <div class="op-stat op-stat-warn" id="esc-stat-dispute" onclick="filterEscrow('Спор')" style="cursor:pointer;">
+  <div class="op-stat op-stat-warn" id="esc-stat-dispute" onclick="filterEscrow('{% trans "Спор" %}')" style="cursor:pointer;">
     <div class="op-stat-value">$18,400</div>
-    <div class="op-stat-label">Ожидает решения</div>
+    <div class="op-stat-label">{% trans "Ожидает решения" %}</div>
   </div>
   <div class="op-stat" id="esc-stat-all" onclick="filterEscrow('')" style="cursor:pointer;border-color:rgba(100,181,246,0.35);">
     <div class="op-stat-value">12</div>
-    <div class="op-stat-label">Активных счетов</div>
+    <div class="op-stat-label">{% trans "Активных счетов" %}</div>
   </div>
 </div>
 
 <!-- Active escrow accounts -->
 <div class="op-card" style="margin-bottom:20px;">
-  <div class="op-section-title" style="margin-bottom:14px;">Активные эскроу-счета</div>
+  <div class="op-section-title" style="margin-bottom:14px;">{% trans "Активные эскроу-счета" %}</div>
   <table class="op-table" id="escrow-table">
     <thead>
       <tr>
         <th>ID</th>
-        <th>Заказ</th>
-        <th>Покупатель</th>
-        <th>Поставщик</th>
-        <th>Удержано</th>
-        <th>Статус</th>
-        <th>Дата создания</th>
-        <th>Действия</th>
+        <th>{% trans "Заказ" %}</th>
+        <th>{% trans "Покупатель" %}</th>
+        <th>{% trans "Поставщик" %}</th>
+        <th>{% trans "Удержано" %}</th>
+        <th>{% trans "Статус" %}</th>
+        <th>{% trans "Дата создания" %}</th>
+        <th>{% trans "Действия" %}</th>
       </tr>
     </thead>
     <tbody>
@@ -47,12 +48,12 @@
         <td class="text-secondary">#1042</td>
         <td class="text-secondary">#2087</td>
         <td style="font-family:'Golos Text',sans-serif;">$18,400</td>
-        <td><span class="op-badge op-badge-gray escrow-status">Удержание</span></td>
-        <td class="text-secondary">20 мар</td>
+        <td><span class="op-badge op-badge-gray escrow-status">{% trans "Удержание" %}</span></td>
+        <td class="text-secondary">{% trans "20 мар" %}</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1201')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1201')">{% trans "Выпустить" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Удержание продлено" %}', 2000, 'success')">{% trans "Продлить" %}</button>
           </div>
         </td>
       </tr>
@@ -62,12 +63,12 @@
         <td class="text-secondary">#1038</td>
         <td class="text-secondary">#2091</td>
         <td style="font-family:'Golos Text',sans-serif;">$12,880</td>
-        <td><span class="op-badge op-badge-gray escrow-status">Удержание</span></td>
-        <td class="text-secondary">18 мар</td>
+        <td><span class="op-badge op-badge-gray escrow-status">{% trans "Удержание" %}</span></td>
+        <td class="text-secondary">{% trans "18 мар" %}</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1198')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1198')">{% trans "Выпустить" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Удержание продлено" %}', 2000, 'success')">{% trans "Продлить" %}</button>
           </div>
         </td>
       </tr>
@@ -77,11 +78,11 @@
         <td class="text-secondary">#1051</td>
         <td class="text-secondary">#2075</td>
         <td style="font-family:'Golos Text',sans-serif;">$4,100</td>
-        <td><span class="op-badge op-badge-orange escrow-status">Спор</span></td>
-        <td class="text-secondary">15 мар</td>
+        <td><span class="op-badge op-badge-orange escrow-status">{% trans "Спор" %}</span></td>
+        <td class="text-secondary">{% trans "15 мар" %}</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('Запрос на доработку отправлен', 2000, 'warn')">Разобрать</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('{% trans "Запрос на доработку отправлен" %}', 2000, 'warn')">{% trans "Разобрать" %}</button>
           </div>
         </td>
       </tr>
@@ -91,12 +92,12 @@
         <td class="text-secondary">#1033</td>
         <td class="text-secondary">#2051</td>
         <td style="font-family:'Golos Text',sans-serif;">$9,300</td>
-        <td><span class="op-badge op-badge-gray escrow-status">Удержание</span></td>
-        <td class="text-secondary">12 мар</td>
+        <td><span class="op-badge op-badge-gray escrow-status">{% trans "Удержание" %}</span></td>
+        <td class="text-secondary">{% trans "12 мар" %}</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1190')">Выпустить</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Удержание продлено', 2000, 'success')">Продлить</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();releaseEscrow(this,'ESC-1190')">{% trans "Выпустить" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Удержание продлено" %}', 2000, 'success')">{% trans "Продлить" %}</button>
           </div>
         </td>
       </tr>
@@ -106,52 +107,52 @@
 
 <!-- Transaction history -->
 <div class="op-card" id="esc-history">
-  <div class="op-section-title" style="margin-bottom:14px;">История транзакций</div>
+  <div class="op-section-title" style="margin-bottom:14px;">{% trans "История транзакций" %}</div>
   <table class="op-table">
     <thead>
       <tr>
-        <th>Дата</th>
-        <th>Эскроу ID</th>
-        <th>Операция</th>
-        <th>Сумма</th>
-        <th>Инициатор</th>
+        <th>{% trans "Дата" %}</th>
+        <th>{% trans "Эскроу ID" %}</th>
+        <th>{% trans "Операция" %}</th>
+        <th>{% trans "Сумма" %}</th>
+        <th>{% trans "Инициатор" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td class="text-secondary">24 мар 14:22</td>
+        <td class="text-secondary">{% trans "24 мар 14:22" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">ESC-1188</td>
-        <td><span class="op-badge op-badge-gray">Выпущено</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Выпущено" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">$22,400</td>
-        <td class="text-secondary">Оператор #301</td>
+        <td class="text-secondary">{% trans "Оператор #301" %}</td>
       </tr>
       <tr>
-        <td class="text-secondary">23 мар 11:05</td>
+        <td class="text-secondary">{% trans "23 мар 11:05" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">ESC-1185</td>
-        <td><span class="op-badge op-badge-gray">Выпущено</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Выпущено" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">$14,600</td>
-        <td class="text-secondary">Оператор #301</td>
+        <td class="text-secondary">{% trans "Оператор #301" %}</td>
       </tr>
       <tr>
-        <td class="text-secondary">22 мар 16:48</td>
+        <td class="text-secondary">{% trans "22 мар 16:48" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">ESC-1201</td>
-        <td><span class="op-badge op-badge-gray">Создано</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Создано" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">$18,400</td>
-        <td class="text-secondary">Система</td>
+        <td class="text-secondary">{% trans "Система" %}</td>
       </tr>
       <tr>
-        <td class="text-secondary">21 мар 09:30</td>
+        <td class="text-secondary">{% trans "21 мар 09:30" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">ESC-1195</td>
-        <td><span class="op-badge op-badge-orange">Спор открыт</span></td>
+        <td><span class="op-badge op-badge-orange">{% trans "Спор открыт" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">$4,100</td>
-        <td class="text-secondary">Покупатель #1051</td>
+        <td class="text-secondary">{% trans "Покупатель #1051" %}</td>
       </tr>
       <tr>
-        <td class="text-secondary">20 мар 13:15</td>
+        <td class="text-secondary">{% trans "20 мар 13:15" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">ESC-1183</td>
-        <td><span class="op-badge op-badge-gray">Выпущено</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Выпущено" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">$31,200</td>
-        <td class="text-secondary">Оператор #302</td>
+        <td class="text-secondary">{% trans "Оператор #302" %}</td>
       </tr>
     </tbody>
   </table>
@@ -168,8 +169,8 @@ window.filterEscrow = function(status) {
   document.getElementById('esc-stat-hold').style.borderColor = inactive;
   document.getElementById('esc-stat-dispute').style.borderColor = inactive;
   document.getElementById('esc-stat-all').style.borderColor = inactive;
-  if (activeEscStatus === 'Удержание') document.getElementById('esc-stat-hold').style.borderColor = active;
-  else if (activeEscStatus === 'Спор') document.getElementById('esc-stat-dispute').style.borderColor = warnActive;
+  if (activeEscStatus === '{% trans "Удержание" %}') document.getElementById('esc-stat-hold').style.borderColor = active;
+  else if (activeEscStatus === '{% trans "Спор" %}') document.getElementById('esc-stat-dispute').style.borderColor = warnActive;
   else document.getElementById('esc-stat-all').style.borderColor = active;
   document.querySelectorAll('#escrow-table tbody tr[data-status]').forEach(function(row) {
     row.style.display = (!activeEscStatus || row.getAttribute('data-status') === activeEscStatus) ? '' : 'none';
@@ -180,9 +181,9 @@ function releaseEscrow(btn, escId) {
   var row = btn.closest('tr');
   var badge = row.querySelector('.escrow-status');
   badge.className = 'op-badge op-badge-gray escrow-status';
-  badge.textContent = 'Выпущено';
-  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'Детали открыты\', 2000, \'success\')">Детали</button>';
-  opToast('Эскроу выпущен', 2000, 'success');
+  badge.textContent = '{% trans "Выпущено" %}';
+  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'{% trans "Детали открыты\" %}', 2000, \'success\'{% trans ")\">Детали</button>" %}';
+  opToast('{% trans "Эскроу выпущен" %}', 2000, 'success');
 }
 </script>
 {% endblock %}

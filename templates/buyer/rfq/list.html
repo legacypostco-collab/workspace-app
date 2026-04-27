@@ -1,6 +1,7 @@
 {% extends "buyer/base_buyer.html" %}
+{% load i18n %}
 
-{% block title %}Запросы RFQ{% endblock %}
+{% block title %}{% trans "Запросы RFQ" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -114,37 +115,37 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 <section class="rfq-hero">
   <div class="rfq-hero-top">
     <div>
-      <div class="rfq-hero-title">Запросы RFQ</div>
-      <div class="rfq-hero-sub">Запросы коммерческих предложений от поставщиков</div>
+      <div class="rfq-hero-title">{% trans "Запросы RFQ" %}</div>
+      <div class="rfq-hero-sub">{% trans "Запросы коммерческих предложений от поставщиков" %}</div>
     </div>
-    <a href="{% url 'rfq_new' %}" class="rfq-create-btn">+ Создать RFQ</a>
+    <a href="{% url 'rfq_new' %}" class="rfq-create-btn">+ {% trans "Создать RFQ" %}</a>
   </div>
 </section>
 
 <!-- Stats -->
 <div class="rfq-stats">
   <a href="/buyer/rfq/" class="rfq-stat">
-    <div class="rfq-stat-label">Всего RFQ</div>
+    <div class="rfq-stat-label">{% trans "Всего RFQ" %}</div>
     <div class="rfq-stat-val">12</div>
   </a>
   <a href="/buyer/rfq/?status=pending" class="rfq-stat">
-    <div class="rfq-stat-label">Ожидает котировки</div>
+    <div class="rfq-stat-label">{% trans "Ожидает котировки" %}</div>
     <div class="rfq-stat-val" style="color:#E85C0D;">3</div>
   </a>
   <a href="/buyer/rfq/?status=quoted" class="rfq-stat">
-    <div class="rfq-stat-label">Котировка готова</div>
+    <div class="rfq-stat-label">{% trans "Котировка готова" %}</div>
     <div class="rfq-stat-val" style="color:#64B5F6;">2</div>
   </a>
   <a href="/buyer/rfq/?status=ordered" class="rfq-stat">
-    <div class="rfq-stat-label">Заказ оформлен</div>
+    <div class="rfq-stat-label">{% trans "Заказ оформлен" %}</div>
     <div class="rfq-stat-val" style="color:#64B5F6;">7</div>
   </a>
 </div>
 
 <!-- Tabs -->
 <div class="rfq-tabs">
-  <button class="rfq-tab active" data-tab="active">Активные (5)</button>
-  <button class="rfq-tab" data-tab="history">История (7)</button>
+  <button class="rfq-tab active" data-tab="active">{% trans "Активные (5)" %}</button>
+  <button class="rfq-tab" data-tab="history">{% trans "История (7)" %}</button>
 </div>
 
 <!-- Active RFQs -->
@@ -154,11 +155,11 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <thead>
         <tr>
           <th>RFQ</th>
-          <th>Дата</th>
-          <th>Позиции</th>
-          <th>Статус</th>
-          <th>Оценка</th>
-          <th>Поставщики</th>
+          <th>{% trans "Дата" %}</th>
+          <th>{% trans "Позиции" %}</th>
+          <th>{% trans "Статус" %}</th>
+          <th>{% trans "Оценка" %}</th>
+          <th>{% trans "Поставщики" %}</th>
           <th></th>
         </tr>
       </thead>
@@ -166,47 +167,47 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <tr>
           <td><span class="rfq-id">RFQ-2026-0087</span><br><span class="rfq-muted">Гидроцилиндры CAT 320D</span></td>
           <td>22.03.2026<br><span class="rfq-muted">14:30</span></td>
-          <td>4 позиции</td>
-          <td><span class="rfq-badge rfq-badge--waiting">Ожидает котировки</span></td>
+          <td>{% trans "4 позиции" %}</td>
+          <td><span class="rfq-badge rfq-badge--waiting">{% trans "Ожидает котировки" %}</span></td>
           <td class="rfq-amount">$11,200</td>
-          <td><span class="rfq-muted">3 поставщика</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><span class="rfq-muted">{% trans "3 поставщика" %}</span></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
         <tr>
           <td><span class="rfq-id">RFQ-2026-0085</span><br><span class="rfq-muted">Фильтры Komatsu PC200</span></td>
           <td>20.03.2026<br><span class="rfq-muted">09:15</span></td>
-          <td>8 позиций</td>
-          <td><span class="rfq-badge rfq-badge--quoted">Котировка готова</span></td>
+          <td>{% trans "8 позиций" %}</td>
+          <td><span class="rfq-badge rfq-badge--quoted">{% trans "Котировка готова" %}</span></td>
           <td class="rfq-amount">$3,640</td>
-          <td><span class="rfq-muted">2 поставщика</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><span class="rfq-muted">{% trans "2 поставщика" %}</span></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
         <tr>
           <td><span class="rfq-id">RFQ-2026-0082</span><br><span class="rfq-muted">Турбина 7C-2297</span></td>
           <td>18.03.2026<br><span class="rfq-muted">11:45</span></td>
-          <td>1 позиция</td>
-          <td><span class="rfq-badge rfq-badge--quoted">Котировка готова</span></td>
+          <td>{% trans "1 позиция" %}</td>
+          <td><span class="rfq-badge rfq-badge--quoted">{% trans "Котировка готова" %}</span></td>
           <td class="rfq-amount">$1,250</td>
-          <td><span class="rfq-muted">4 поставщика</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><span class="rfq-muted">{% trans "4 поставщика" %}</span></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
         <tr>
           <td><span class="rfq-id">RFQ-2026-0079</span><br><span class="rfq-muted">Диски тормозные WA380</span></td>
           <td>15.03.2026<br><span class="rfq-muted">16:20</span></td>
-          <td>6 позиций</td>
-          <td><span class="rfq-badge rfq-badge--waiting">Ожидает котировки</span></td>
+          <td>{% trans "6 позиций" %}</td>
+          <td><span class="rfq-badge rfq-badge--waiting">{% trans "Ожидает котировки" %}</span></td>
           <td class="rfq-amount">$1,890</td>
-          <td><span class="rfq-muted">2 поставщика</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><span class="rfq-muted">{% trans "2 поставщика" %}</span></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
         <tr>
           <td><span class="rfq-id">RFQ-2026-0076</span><br><span class="rfq-muted">Водяная помпа Volvo</span></td>
           <td>12.03.2026<br><span class="rfq-muted">10:00</span></td>
-          <td>2 позиции</td>
-          <td><span class="rfq-badge rfq-badge--waiting">Ожидает котировки</span></td>
+          <td>{% trans "2 позиции" %}</td>
+          <td><span class="rfq-badge rfq-badge--waiting">{% trans "Ожидает котировки" %}</span></td>
           <td class="rfq-amount">$980</td>
-          <td><span class="rfq-muted">5 поставщиков</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><span class="rfq-muted">{% trans "5 поставщиков" %}</span></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
       </tbody>
     </table>
@@ -220,11 +221,11 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <thead>
         <tr>
           <th>RFQ</th>
-          <th>Дата</th>
-          <th>Позиции</th>
-          <th>Статус</th>
-          <th>Итого</th>
-          <th>Поставщик</th>
+          <th>{% trans "Дата" %}</th>
+          <th>{% trans "Позиции" %}</th>
+          <th>{% trans "Статус" %}</th>
+          <th>{% trans "Итого" %}</th>
+          <th>{% trans "Поставщик" %}</th>
           <th></th>
         </tr>
       </thead>
@@ -232,65 +233,65 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         <tr>
           <td><span class="rfq-id">RFQ-2026-0071</span><br><span class="rfq-muted">Ремкомплект гидромотора</span></td>
           <td>05.03.2026</td>
-          <td>3 позиции</td>
-          <td><span class="rfq-badge rfq-badge--ordered">Заказ оформлен</span></td>
+          <td>{% trans "3 позиции" %}</td>
+          <td><span class="rfq-badge rfq-badge--ordered">{% trans "Заказ оформлен" %}</span></td>
           <td class="rfq-amount">$4,520</td>
           <td>Поставщик #1042</td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
         <tr>
           <td><span class="rfq-id">RFQ-2026-0065</span><br><span class="rfq-muted">Электрика CAT D6R</span></td>
           <td>28.02.2026</td>
-          <td>5 позиций</td>
-          <td><span class="rfq-badge rfq-badge--ordered">Заказ оформлен</span></td>
+          <td>{% trans "5 позиций" %}</td>
+          <td><span class="rfq-badge rfq-badge--ordered">{% trans "Заказ оформлен" %}</span></td>
           <td class="rfq-amount">$2,180</td>
           <td>Поставщик #2087</td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
         <tr>
           <td><span class="rfq-id">RFQ-2026-0058</span><br><span class="rfq-muted">Подшипники Volvo EC240</span></td>
           <td>20.02.2026</td>
-          <td>12 позиций</td>
-          <td><span class="rfq-badge rfq-badge--expired">Истёк</span></td>
+          <td>{% trans "12 позиций" %}</td>
+          <td><span class="rfq-badge rfq-badge--expired">{% trans "Истёк" %}</span></td>
           <td class="rfq-amount">$890</td>
           <td><span class="rfq-muted">--</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
         <tr>
           <td><span class="rfq-id">RFQ-2026-0052</span><br><span class="rfq-muted">Коронки ковша JD 350G</span></td>
           <td>14.02.2026</td>
-          <td>20 позиций</td>
-          <td><span class="rfq-badge rfq-badge--ordered">Заказ оформлен</span></td>
+          <td>{% trans "20 позиций" %}</td>
+          <td><span class="rfq-badge rfq-badge--ordered">{% trans "Заказ оформлен" %}</span></td>
           <td class="rfq-amount">$6,300</td>
           <td>Поставщик #3156</td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
         <tr>
           <td><span class="rfq-id">RFQ-2026-0044</span><br><span class="rfq-muted">Фильтры масляные пакет</span></td>
           <td>05.02.2026</td>
-          <td>15 позиций</td>
-          <td><span class="rfq-badge rfq-badge--ordered">Заказ оформлен</span></td>
+          <td>{% trans "15 позиций" %}</td>
+          <td><span class="rfq-badge rfq-badge--ordered">{% trans "Заказ оформлен" %}</span></td>
           <td class="rfq-amount">$1,420</td>
           <td>Поставщик #5673</td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
         <tr>
           <td><span class="rfq-id">RFQ-2026-0037</span><br><span class="rfq-muted">ТНВД Komatsu</span></td>
           <td>28.01.2026</td>
-          <td>1 позиция</td>
-          <td><span class="rfq-badge rfq-badge--declined">Отклонён</span></td>
+          <td>{% trans "1 позиция" %}</td>
+          <td><span class="rfq-badge rfq-badge--declined">{% trans "Отклонён" %}</span></td>
           <td class="rfq-amount">$3,800</td>
           <td><span class="rfq-muted">--</span></td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
         <tr>
           <td><span class="rfq-id">RFQ-2026-0030</span><br><span class="rfq-muted">Ходовая часть PC300</span></td>
           <td>20.01.2026</td>
-          <td>8 позиций</td>
-          <td><span class="rfq-badge rfq-badge--ordered">Заказ оформлен</span></td>
+          <td>{% trans "8 позиций" %}</td>
+          <td><span class="rfq-badge rfq-badge--ordered">{% trans "Заказ оформлен" %}</span></td>
           <td class="rfq-amount">$18,900</td>
           <td>Поставщик #4291</td>
-          <td><button class="rfq-open-btn">Открыть</button></td>
+          <td><button class="rfq-open-btn">{% trans "Открыть" %}</button></td>
         </tr>
       </tbody>
     </table>

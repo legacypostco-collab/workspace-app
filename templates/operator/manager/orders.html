@@ -1,20 +1,21 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Менеджер — Заказы{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Менеджер — Заказы" %}{% endblock %}
 
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-  <div class="op-section-title" style="margin-bottom:0;">Управление заказами</div>
+  <div class="op-section-title" style="margin-bottom:0;">{% trans "Управление заказами" %}</div>
   <div style="display:flex;gap:8px;">
     <select class="op-select" id="filter-ord-status" onchange="filterOrders()">
-      <option value="">Все статусы</option>
-      <option value="new">Новый</option>
-      <option value="work">В работе</option>
-      <option value="customs">На таможне</option>
-      <option value="delivery">Доставка</option>
-      <option value="payment">Оплата</option>
-      <option value="done">Завершён</option>
+      <option value="">{% trans "Все статусы" %}</option>
+      <option value="new">{% trans "Новый" %}</option>
+      <option value="work">{% trans "В работе" %}</option>
+      <option value="customs">{% trans "На таможне" %}</option>
+      <option value="delivery">{% trans "Доставка" %}</option>
+      <option value="payment">{% trans "Оплата" %}</option>
+      <option value="done">{% trans "Завершён" %}</option>
     </select>
-    <input type="text" class="op-input" id="filter-ord-search" placeholder="Поиск по ID..." oninput="filterOrders()" style="width:160px;"/>
+    <input type="text" class="op-input" id="filter-ord-search" placeholder="{% trans "Поиск по ID..." %}" oninput="filterOrders()" style="width:160px;"/>
   </div>
 </div>
 
@@ -24,12 +25,12 @@
       <tr>
         <th></th>
         <th>ORD ID</th>
-        <th>Покупатель</th>
-        <th>Поставщик</th>
-        <th>Сумма</th>
-        <th>Статус</th>
-        <th>Дата</th>
-        <th>Действия</th>
+        <th>{% trans "Покупатель" %}</th>
+        <th>{% trans "Поставщик" %}</th>
+        <th>{% trans "Сумма" %}</th>
+        <th>{% trans "Статус" %}</th>
+        <th>{% trans "Дата" %}</th>
+        <th>{% trans "Действия" %}</th>
       </tr>
     </thead>
     <tbody>
@@ -41,38 +42,38 @@
         <td class="text-secondary">#1042</td>
         <td class="text-secondary">#2087</td>
         <td style="font-family:'Golos Text',sans-serif;">$18,400</td>
-        <td><span class="op-badge op-badge-gray">В работе</span></td>
-        <td class="text-secondary">24 мар</td>
+        <td><span class="op-badge op-badge-gray">{% trans "В работе" %}</span></td>
+        <td class="text-secondary">{% trans "24 мар" %}</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4521')">Запросить информацию</button>
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('ORD-4521 эскалирован')">Эскалировать</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка к ORD-4521')">Заметка</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4521')">{% trans "Запросить информацию" %}</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('{% trans "ORD-4521 эскалирован" %}')">{% trans "Эскалировать" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Заметка к ORD-4521" %}')">{% trans "Заметка" %}</button>
           </div>
         </td>
       </tr>
       <tr class="order-timeline" style="display:none;">
         <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">
-          <div class="op-section-sub">Таймлайн событий</div>
+          <div class="op-section-sub">{% trans "Таймлайн событий" %}</div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
             <div style="display:flex;gap:12px;align-items:start;">
               <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Заказ создан</div><div style="font-size:11px;color:#5E5E5E;">24 мар, 11:15</div></div>
+              <div><div style="font-size:12px;color:#ECECEC;">{% trans "Заказ создан" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "24 мар, 11:15" %}</div></div>
             </div>
             <div style="display:flex;gap:12px;align-items:start;">
               <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Поставщик подтвердил</div><div style="font-size:11px;color:#5E5E5E;">24 мар, 12:30</div></div>
+              <div><div style="font-size:12px;color:#ECECEC;">{% trans "Поставщик подтвердил" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "24 мар, 12:30" %}</div></div>
             </div>
             <div style="display:flex;gap:12px;align-items:start;">
               <div style="width:6px;height:6px;border-radius:50%;background:#E85C0D;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Ожидает оплаты аванса</div><div style="font-size:11px;color:#5E5E5E;">24 мар, 14:00</div></div>
+              <div><div style="font-size:12px;color:#ECECEC;">{% trans "Ожидает оплаты аванса" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "24 мар, 14:00" %}</div></div>
             </div>
           </div>
           <div class="inline-info-request" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);">
-            <div class="op-section-sub">Запрос информации</div>
+            <div class="op-section-sub">{% trans "Запрос информации" %}</div>
             <div style="display:flex;gap:8px;margin-top:4px;">
-              <input type="text" class="op-input" placeholder="Введите текст запроса..." style="flex:1;"/>
-              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен: '+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
+              <input type="text" class="op-input" placeholder="{% trans "Введите текст запроса..." %}" style="flex:1;"/>
+              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('{% trans "Запрос отправлен: " %}'+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('{% trans "Введите текст" %}');}">{% trans "Отправить" %}</button>
             </div>
           </div>
         </td>
@@ -86,41 +87,41 @@
         <td class="text-secondary">#1038</td>
         <td class="text-secondary">#2091</td>
         <td style="font-family:'Golos Text',sans-serif;">$6,200</td>
-        <td><span class="op-badge op-badge-orange">На таможне</span></td>
-        <td class="text-secondary">23 мар</td>
+        <td><span class="op-badge op-badge-orange">{% trans "На таможне" %}</span></td>
+        <td class="text-secondary">{% trans "23 мар" %}</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4518')">Запросить информацию</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка к ORD-4518')">Заметка</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4518')">{% trans "Запросить информацию" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Заметка к ORD-4518" %}')">{% trans "Заметка" %}</button>
           </div>
         </td>
       </tr>
       <tr class="order-timeline" style="display:none;">
         <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">
-          <div class="op-section-sub">Таймлайн событий</div>
+          <div class="op-section-sub">{% trans "Таймлайн событий" %}</div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
             <div style="display:flex;gap:12px;align-items:start;">
               <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Заказ создан</div><div style="font-size:11px;color:#5E5E5E;">20 мар, 09:00</div></div>
+              <div><div style="font-size:12px;color:#ECECEC;">{% trans "Заказ создан" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "20 мар, 09:00" %}</div></div>
             </div>
             <div style="display:flex;gap:12px;align-items:start;">
               <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Аванс оплачен</div><div style="font-size:11px;color:#5E5E5E;">20 мар, 14:30</div></div>
+              <div><div style="font-size:12px;color:#ECECEC;">{% trans "Аванс оплачен" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "20 мар, 14:30" %}</div></div>
             </div>
             <div style="display:flex;gap:12px;align-items:start;">
               <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">Отгружен из Стамбула</div><div style="font-size:11px;color:#5E5E5E;">21 мар, 08:00</div></div>
+              <div><div style="font-size:12px;color:#ECECEC;">{% trans "Отгружен из Стамбула" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "21 мар, 08:00" %}</div></div>
             </div>
             <div style="display:flex;gap:12px;align-items:start;">
               <div style="width:6px;height:6px;border-radius:50%;background:#E85C0D;margin-top:5px;flex-shrink:0;"></div>
-              <div><div style="font-size:12px;color:#ECECEC;">На таможне (ожидание)</div><div style="font-size:11px;color:#5E5E5E;">23 мар, 16:00</div></div>
+              <div><div style="font-size:12px;color:#ECECEC;">{% trans "На таможне (ожидание)" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "23 мар, 16:00" %}</div></div>
             </div>
           </div>
           <div class="inline-info-request" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);">
-            <div class="op-section-sub">Запрос информации</div>
+            <div class="op-section-sub">{% trans "Запрос информации" %}</div>
             <div style="display:flex;gap:8px;margin-top:4px;">
-              <input type="text" class="op-input" placeholder="Введите текст запроса..." style="flex:1;"/>
-              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен: '+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
+              <input type="text" class="op-input" placeholder="{% trans "Введите текст запроса..." %}" style="flex:1;"/>
+              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('{% trans "Запрос отправлен: " %}'+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('{% trans "Введите текст" %}');}">{% trans "Отправить" %}</button>
             </div>
           </div>
         </td>
@@ -134,22 +135,22 @@
         <td class="text-secondary">#1051</td>
         <td class="text-secondary">#2075</td>
         <td style="font-family:'Golos Text',sans-serif;">$4,100</td>
-        <td><span class="op-badge op-badge-gray">Доставка</span></td>
-        <td class="text-secondary">22 мар</td>
+        <td><span class="op-badge op-badge-gray">{% trans "Доставка" %}</span></td>
+        <td class="text-secondary">{% trans "22 мар" %}</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4515')">Детали</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Детали ORD-4515" %}')">{% trans "Детали" %}</button>
           </div>
         </td>
       </tr>
       <tr class="order-timeline" style="display:none;">
         <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">
-          <div class="op-section-sub">Таймлайн событий</div>
+          <div class="op-section-sub">{% trans "Таймлайн событий" %}</div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Заказ создан</div><div style="font-size:11px;color:#5E5E5E;">18 мар</div></div></div>
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Оплачен полностью</div><div style="font-size:11px;color:#5E5E5E;">19 мар</div></div></div>
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Таможня пройдена</div><div style="font-size:11px;color:#5E5E5E;">21 мар</div></div></div>
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">На доставке</div><div style="font-size:11px;color:#5E5E5E;">22 мар</div></div></div>
+            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">{% trans "Заказ создан" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "18 мар" %}</div></div></div>
+            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">{% trans "Оплачен полностью" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "19 мар" %}</div></div></div>
+            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">{% trans "Таможня пройдена" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "21 мар" %}</div></div></div>
+            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">{% trans "На доставке" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "22 мар" %}</div></div></div>
           </div>
         </td>
       </tr>
@@ -162,27 +163,27 @@
         <td class="text-secondary">#1029</td>
         <td class="text-secondary">#2063</td>
         <td style="font-family:'Golos Text',sans-serif;">$12,800</td>
-        <td><span class="op-badge op-badge-gray">Оплата</span></td>
-        <td class="text-secondary">20 мар</td>
+        <td><span class="op-badge op-badge-gray">{% trans "Оплата" %}</span></td>
+        <td class="text-secondary">{% trans "20 мар" %}</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4512')">Запросить информацию</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Заметка к ORD-4512')">Заметка</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();showInlineInfoRequest(this,'ORD-4512')">{% trans "Запросить информацию" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Заметка к ORD-4512" %}')">{% trans "Заметка" %}</button>
           </div>
         </td>
       </tr>
       <tr class="order-timeline" style="display:none;">
         <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">
-          <div class="op-section-sub">Таймлайн событий</div>
+          <div class="op-section-sub">{% trans "Таймлайн событий" %}</div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Заказ создан</div><div style="font-size:11px;color:#5E5E5E;">15 мар</div></div></div>
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#E85C0D;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Ожидает оплаты аванса</div><div style="font-size:11px;color:#5E5E5E;">20 мар</div></div></div>
+            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">{% trans "Заказ создан" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "15 мар" %}</div></div></div>
+            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#E85C0D;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">{% trans "Ожидает оплаты аванса" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "20 мар" %}</div></div></div>
           </div>
           <div class="inline-info-request" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);">
-            <div class="op-section-sub">Запрос информации</div>
+            <div class="op-section-sub">{% trans "Запрос информации" %}</div>
             <div style="display:flex;gap:8px;margin-top:4px;">
-              <input type="text" class="op-input" placeholder="Введите текст запроса..." style="flex:1;"/>
-              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('Запрос отправлен: '+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('Введите текст');}">Отправить</button>
+              <input type="text" class="op-input" placeholder="{% trans "Введите текст запроса..." %}" style="flex:1;"/>
+              <button class="op-btn op-btn-primary" onclick="var inp=this.previousElementSibling;if(inp.value.trim()){opToast('{% trans "Запрос отправлен: " %}'+inp.value);inp.value='';this.closest('.inline-info-request').style.display='none';}else{opToast('{% trans "Введите текст" %}');}">{% trans "Отправить" %}</button>
             </div>
           </div>
         </td>
@@ -196,15 +197,15 @@
         <td class="text-secondary">#1033</td>
         <td class="text-secondary">#2051</td>
         <td style="font-family:'Golos Text',sans-serif;">$9,300</td>
-        <td><span class="op-badge op-badge-gray">Завершён</span></td>
-        <td class="text-secondary">18 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('Детали ORD-4505')">Детали</button></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Завершён" %}</span></td>
+        <td class="text-secondary">{% trans "18 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Детали ORD-4505" %}')">{% trans "Детали" %}</button></td>
       </tr>
       <tr class="order-timeline" style="display:none;">
         <td colspan="8" style="padding:16px 12px;background:#1F1F1F;">
-          <div class="op-section-sub">Таймлайн событий</div>
+          <div class="op-section-sub">{% trans "Таймлайн событий" %}</div>
           <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
-            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">Завершён</div><div style="font-size:11px;color:#5E5E5E;">24 мар</div></div></div>
+            <div style="display:flex;gap:12px;align-items:start;"><div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:5px;flex-shrink:0;"></div><div><div style="font-size:12px;color:#ECECEC;">{% trans "Завершён" %}</div><div style="font-size:11px;color:#5E5E5E;">{% trans "24 мар" %}</div></div></div>
           </div>
         </td>
       </tr>

@@ -1,10 +1,11 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Заказ #{{ order.id }}{% endblock %}
-{% block topbar_title %}Заказ #{{ order.id }}{% endblock %}
+{% load i18n %}
+{% block title %}{% blocktrans with order_id=order.id %}Заказ #{{ order_id }}{% endblocktrans %}{% endblock %}
+{% block topbar_title %}{% blocktrans with order_id=order.id %}Заказ #{{ order_id }}{% endblocktrans %}{% endblock %}
 
 {% block content %}
 <div style="margin-bottom:16px;">
-  <a href="/admin-panel/orders/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Все заказы</a>
+  <a href="/admin-panel/orders/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "&larr; Все заказы" %}</a>
 </div>
 
 <!-- Timeline -->
@@ -14,17 +15,17 @@
     <script>
     (function(){
       var stages = [
-        {key:'pending',label:'Ожидание'},
-        {key:'reserve_paid',label:'Резерв'},
-        {key:'confirmed',label:'Подтверждён'},
-        {key:'in_production',label:'Производство'},
-        {key:'ready_to_ship',label:'Готов'},
-        {key:'transit_abroad',label:'Транзит'},
-        {key:'customs',label:'Таможня'},
-        {key:'transit_rf',label:'Транзит РФ'},
-        {key:'shipped',label:'Отгружен'},
-        {key:'delivered',label:'Доставлен'},
-        {key:'completed',label:'Завершён'}
+        {key:'pending',label:'{% trans "Ожидание" %}'},
+        {key:'reserve_paid',label:'{% trans "Резерв" %}'},
+        {key:'confirmed',label:'{% trans "Подтверждён" %}'},
+        {key:'in_production',label:'{% trans "Производство" %}'},
+        {key:'ready_to_ship',label:'{% trans "Готов" %}'},
+        {key:'transit_abroad',label:'{% trans "Транзит" %}'},
+        {key:'customs',label:'{% trans "Таможня" %}'},
+        {key:'transit_rf',label:'{% trans "Транзит РФ" %}'},
+        {key:'shipped',label:'{% trans "Отгружен" %}'},
+        {key:'delivered',label:'{% trans "Доставлен" %}'},
+        {key:'completed',label:'{% trans "Завершён" %}'}
       ];
       var current = {{ current_step }};
       var html = '<div style="display:flex;align-items:center;width:100%;gap:0;">';
@@ -55,11 +56,11 @@
 <div class="ap-stats">
   <div class="ap-stat">
     <div class="ap-stat-value">ORD-{{ order.id }}</div>
-    <div class="ap-stat-label">Номер заказа</div>
+    <div class="ap-stat-label">{% trans "Номер заказа" %}</div>
   </div>
   <div class="ap-stat">
     <div class="ap-stat-value">${{ order.total_amount|floatformat:0 }}</div>
-    <div class="ap-stat-label">Сумма</div>
+    <div class="ap-stat-label">{% trans "Сумма" %}</div>
   </div>
   <div class="ap-stat">
     <div class="ap-stat-value">
@@ -71,18 +72,18 @@
         {{ order.get_status_display }}
       {% endif %}
     </div>
-    <div class="ap-stat-label">Статус</div>
+    <div class="ap-stat-label">{% trans "Статус" %}</div>
   </div>
   <div class="ap-stat">
     <div class="ap-stat-value">{{ order.get_payment_status_display }}</div>
-    <div class="ap-stat-label">Оплата</div>
+    <div class="ap-stat-label">{% trans "Оплата" %}</div>
   </div>
   <div class="ap-stat">
     <div class="ap-stat-value">
       {% if order.sla_status == 'breached' %}
-        <span style="color:#E85C0D;">Нарушен</span>
+        <span style="color:#E85C0D;">{% trans "Нарушен" %}</span>
       {% else %}
-        В норме
+        {% trans "В норме" %}
       {% endif %}
     </div>
     <div class="ap-stat-label">SLA</div>
@@ -93,25 +94,25 @@
   <div style="display:flex;flex-direction:column;gap:16px;">
     <!-- Client info -->
     <div class="ap-card">
-      <div class="ap-section-title">Клиент</div>
+      <div class="ap-section-title">{% trans "Клиент" %}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
-        <div><span style="color:#919191;">Имя:</span> {{ order.customer_name }}</div>
+        <div><span style="color:#919191;">{% trans "Имя:" %}</span> {{ order.customer_name }}</div>
         <div><span style="color:#919191;">Email:</span> {{ order.customer_email }}</div>
-        <div><span style="color:#919191;">Телефон:</span> {{ order.customer_phone }}</div>
-        <div><span style="color:#919191;">Аккаунт:</span>
+        <div><span style="color:#919191;">{% trans "Телефон:" %}</span> {{ order.customer_phone }}</div>
+        <div><span style="color:#919191;">{% trans "Аккаунт:" %}</span>
           {% if order.buyer %}
             <a href="/admin-panel/users/{{ order.buyer.id }}/" style="color:#64B5F6;text-decoration:none;">{{ order.buyer.username }}</a>
           {% else %}—{% endif %}
         </div>
-        <div style="grid-column:1/-1;"><span style="color:#919191;">Адрес:</span> {{ order.delivery_address }}</div>
+        <div style="grid-column:1/-1;"><span style="color:#919191;">{% trans "Адрес:" %}</span> {{ order.delivery_address }}</div>
       </div>
     </div>
 
     <!-- Order items -->
     <div class="ap-card">
-      <div class="ap-section-title">Позиции заказа</div>
+      <div class="ap-section-title">{% trans "Позиции заказа" %}</div>
       <table class="ap-table">
-        <thead><tr><th>OEM</th><th>Название</th><th>Бренд</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead>
+        <thead><tr><th>OEM</th><th>{% trans "Название" %}</th><th>{% trans "Бренд" %}</th><th>{% trans "Кол-во" %}</th><th>{% trans "Цена" %}</th><th>{% trans "Сумма" %}</th></tr></thead>
         <tbody>
           {% for item in items %}
           <tr>
@@ -123,7 +124,7 @@
             <td>${{ item.total_price|floatformat:2 }}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="6" style="text-align:center;color:#919191;">Нет позиций</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:#919191;">{% trans "Нет позиций" %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -131,23 +132,23 @@
 
     <!-- Payment info -->
     <div class="ap-card">
-      <div class="ap-section-title">Финансы</div>
+      <div class="ap-section-title">{% trans "Финансы" %}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:13px;">
-        <div><span style="color:#919191;">Схема:</span> {{ order.get_payment_scheme_display }}</div>
-        <div><span style="color:#919191;">Резерв ({{ order.reserve_percent }}%):</span> ${{ order.reserve_amount|floatformat:2 }}</div>
-        <div><span style="color:#919191;">Логистика:</span> ${{ order.logistics_cost|floatformat:2 }} {{ order.logistics_currency }}</div>
-        <div><span style="color:#919191;">Резерв оплачен:</span> {{ order.reserve_paid_at|date:"d.m.Y H:i"|default:"—" }}</div>
-        <div><span style="color:#919191;">Финальная оплата:</span> {{ order.final_paid_at|date:"d.m.Y H:i"|default:"—" }}</div>
-        <div><span style="color:#919191;">Провайдер:</span> {{ order.logistics_provider }}</div>
+        <div><span style="color:#919191;">{% trans "Схема:" %}</span> {{ order.get_payment_scheme_display }}</div>
+        <div><span style="color:#919191;">{% blocktrans with order_reserve_percent=order.reserve_percent %}Резерв ({{ order.reserve_percent }}%):{% endblocktrans %}</span> ${{ order.reserve_amount|floatformat:2 }}</div>
+        <div><span style="color:#919191;">{% trans "Логистика:" %}</span> ${{ order.logistics_cost|floatformat:2 }} {{ order.logistics_currency }}</div>
+        <div><span style="color:#919191;">{% trans "Резерв оплачен:" %}</span> {{ order.reserve_paid_at|date:"d.m.Y H:i"|default:"—" }}</div>
+        <div><span style="color:#919191;">{% trans "Финальная оплата:" %}</span> {{ order.final_paid_at|date:"d.m.Y H:i"|default:"—" }}</div>
+        <div><span style="color:#919191;">{% trans "Провайдер:" %}</span> {{ order.logistics_provider }}</div>
       </div>
     </div>
 
     <!-- Events -->
     <div class="ap-card">
-      <div class="ap-section-title">История событий</div>
+      <div class="ap-section-title">{% trans "История событий" %}</div>
       {% if events %}
       <table class="ap-table">
-        <thead><tr><th>Время</th><th>Событие</th><th>Источник</th><th>Комментарий</th></tr></thead>
+        <thead><tr><th>{% trans "Время" %}</th><th>{% trans "Событие" %}</th><th>{% trans "Источник" %}</th><th>{% trans "Комментарий" %}</th></tr></thead>
         <tbody>
           {% for event in events %}
           <tr>
@@ -160,7 +161,7 @@
         </tbody>
       </table>
       {% else %}
-      <p style="color:#919191;font-size:13px;">Нет событий</p>
+      <p style="color:#919191;font-size:13px;">{% trans "Нет событий" %}</p>
       {% endif %}
     </div>
   </div>
@@ -169,7 +170,7 @@
   <div style="display:flex;flex-direction:column;gap:16px;">
     <!-- Change status -->
     <div class="ap-card">
-      <div class="ap-section-title">Изменить статус</div>
+      <div class="ap-section-title">{% trans "Изменить статус" %}</div>
       <form method="post">
         {% csrf_token %}
         <select name="new_status" class="ap-select" style="width:100%;margin-bottom:10px;">
@@ -177,13 +178,13 @@
           <option value="{{ val }}" {% if order.status == val %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
-        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">Применить</button>
+        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">{% trans "Применить" %}</button>
       </form>
     </div>
 
     <!-- Change payment status -->
     <div class="ap-card">
-      <div class="ap-section-title">Изменить статус оплаты</div>
+      <div class="ap-section-title">{% trans "Изменить статус оплаты" %}</div>
       <form method="post">
         {% csrf_token %}
         <select name="new_payment_status" class="ap-select" style="width:100%;margin-bottom:10px;">
@@ -191,13 +192,13 @@
           <option value="{{ val }}" {% if order.payment_status == val %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
-        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">Применить</button>
+        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">{% trans "Применить" %}</button>
       </form>
     </div>
 
     <!-- Documents -->
     <div class="ap-card">
-      <div class="ap-section-title">Документы</div>
+      <div class="ap-section-title">{% trans "Документы" %}</div>
       {% if documents %}
         {% for doc in documents %}
         <div class="ap-card-elevated" style="margin-bottom:6px;font-size:13px;">
@@ -205,13 +206,13 @@
         </div>
         {% endfor %}
       {% else %}
-        <p style="color:#919191;font-size:13px;">Нет документов</p>
+        <p style="color:#919191;font-size:13px;">{% trans "Нет документов" %}</p>
       {% endif %}
     </div>
 
     <!-- Claims -->
     <div class="ap-card">
-      <div class="ap-section-title">Рекламации</div>
+      <div class="ap-section-title">{% trans "Рекламации" %}</div>
       {% if claims %}
         {% for claim in claims %}
         <div class="ap-card-elevated" style="margin-bottom:6px;font-size:13px;">
@@ -220,12 +221,12 @@
         </div>
         {% endfor %}
       {% else %}
-        <p style="color:#919191;font-size:13px;">Нет рекламаций</p>
+        <p style="color:#919191;font-size:13px;">{% trans "Нет рекламаций" %}</p>
       {% endif %}
     </div>
 
     <div class="ap-card">
-      <div class="ap-section-title">Дата создания</div>
+      <div class="ap-section-title">{% trans "Дата создания" %}</div>
       <p style="font-size:13px;">{{ order.created_at|date:"d.m.Y H:i" }}</p>
     </div>
   </div>

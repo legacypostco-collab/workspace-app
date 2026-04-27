@@ -1,4 +1,4 @@
-{% load static %}
+{% load static i18n %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -6518,7 +6518,7 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
   <div class="brand-sub" style="font-size:10px;margin-top:2px;letter-spacing:0.06em;font-weight:500;">PARTS</div>
 </div>
 </a>
-<button type="button" class="theme-toggle-btn js-theme-toggle" aria-label="Переключить тему" title="Переключить тему" style="position:absolute;top:50%;right:0;transform:translateY(-50%);">
+<button type="button" class="theme-toggle-btn js-theme-toggle" aria-label="{% trans 'Переключить тему' %}" title="{% trans 'Переключить тему' %}" style="position:absolute;top:50%;right:0;transform:translateY(-50%);">
   <span class="theme-icon theme-icon--moon" style="font-size:18px;line-height:1;display:block;">&#9790;</span>
   <span class="theme-icon theme-icon--sun" style="font-size:18px;line-height:1;display:none;">&#9728;</span>
 </button>
@@ -6586,25 +6586,25 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
   </g>
 </svg>
 
-<button type="button" class="header-burger" aria-label="Открыть меню" aria-controls="mobileMenu">
+<button type="button" class="header-burger" aria-label="{% trans 'Открыть меню' %}" aria-controls="mobileMenu">
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu header-burger__icon public-icon" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h16"></path></svg>
 </button>
 
-<nav class="side-nav" aria-label="Основная навигация">
+<nav class="side-nav" aria-label="{% trans 'Основная навигация' %}">
 <ul class="side-nav__list">
-<li><a href="/" class="side-nav__link side-nav__link--active">Главная</a></li>
-<li><a href="#buyers" class="side-nav__link">Покупателям</a></li>
-<li><a href="#suppliers" class="side-nav__link">Поставщикам</a></li>
-<li><a href="#calc_anchor" class="side-nav__link">Расчёты</a></li>
-<li><a href="/login/" class="side-nav__link">Заказы</a></li>
-<li><a href="/login/" class="side-nav__link">Скидки</a></li>
-<li><a href="/login/" class="side-nav__link">Интеграции</a></li>
-<li><a href="/login/" class="side-nav__link">Логистика</a></li>
-<li><a href="/login/" class="side-nav__link">Платежи</a></li>
-<li><a href="/login/" class="side-nav__link">Бонусы</a></li>
-<li><a href="/login/" class="side-nav__link">Аналитика</a></li>
-<li><a href="/login/" class="side-nav__link">Поддержка</a></li>
-<li><a href="/login/" class="side-nav__link">Настройки</a></li>
+<li><a href="/" class="side-nav__link side-nav__link--active">{% trans "Главная" %}</a></li>
+<li><a href="#buyers" class="side-nav__link">{% trans "Покупателям" %}</a></li>
+<li><a href="#suppliers" class="side-nav__link">{% trans "Поставщикам" %}</a></li>
+<li><a href="#calc_anchor" class="side-nav__link">{% trans "Расчёты" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Заказы" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Скидки" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Интеграции" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Логистика" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Платежи" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Бонусы" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Аналитика" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Поддержка" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Настройки" %}</a></li>
 </ul>
 </nav>
 
@@ -6612,45 +6612,53 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="header-auth">
 {% if user.is_authenticated %}
   {% if user.profile.role == 'seller' %}
-    <a href="/seller/" class="auth-btn auth-btn--primary">Кабинет</a>
+    <a href="/seller/" class="auth-btn auth-btn--primary">{% trans "Кабинет" %}</a>
   {% elif user.profile.role == 'buyer' %}
-    <a href="/buyer/" class="auth-btn auth-btn--primary">Кабинет</a>
+    <a href="/buyer/" class="auth-btn auth-btn--primary">{% trans "Кабинет" %}</a>
   {% elif user.profile.role == 'operator' %}
-    <a href="/operator/" class="auth-btn auth-btn--primary">Кабинет</a>
+    <a href="/operator/" class="auth-btn auth-btn--primary">{% trans "Кабинет" %}</a>
   {% else %}
-    <a href="/seller/" class="auth-btn auth-btn--primary">Кабинет</a>
+    <a href="/seller/" class="auth-btn auth-btn--primary">{% trans "Кабинет" %}</a>
   {% endif %}
-  <a href="/logout/" class="auth-btn auth-btn--ghost">Выйти</a>
+  <a href="/logout/" class="auth-btn auth-btn--ghost">{% trans "Выйти" %}</a>
 {% else %}
-  <a href="/register/" class="auth-btn auth-btn--primary">Регистрация</a>
-  <a href="/login/" class="auth-btn auth-btn--ghost">Войти</a>
+  <a href="/register/" class="auth-btn auth-btn--primary">{% trans "Регистрация" %}</a>
+  <a href="/login/" class="auth-btn auth-btn--ghost">{% trans "Войти" %}</a>
 {% endif %}
 </div>
 <div class="demo-quick-login">
-  <div class="demo-quick-login__label">Демо-вход</div>
+  <div class="demo-quick-login__label">{% trans "Демо-вход" %}</div>
   <a href="/demo-login/?role=seller" class="demo-quick-btn demo-quick-btn--seller">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-    Поставщик
+    {% trans "Поставщик" %}
   </a>
   <a href="/demo-login/?role=buyer" class="demo-quick-btn demo-quick-btn--buyer">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-    Покупатель
+    {% trans "Покупатель" %}
   </a>
   <a href="/demo-login/?role=operator" class="demo-quick-btn demo-quick-btn--operator">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-    Оператор
+    {% trans "Оператор" %}
   </a>
   <a href="/demo-login/?role=admin" class="demo-quick-btn" style="border-color:rgba(232,92,13,0.3);color:#E85C0D;">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4"/></svg>
-    Администратор
+    {% trans "Администратор" %}
   </a>
 </div>
-<button type="button" class="soc-btn soc-btn--contact header-cta" id="contactBtn">Обратный звонок</button>
+<button type="button" class="soc-btn soc-btn--contact header-cta" id="contactBtn">{% trans "Обратный звонок" %}</button>
 <div class="header-lang">
-<button type="button" class="lang-btn js-lang-toggle" data-next-lang="en">
-<svg class="lang-flag-img" style="width:18px;height:13px;border-radius:3px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 -4 28 28"><g clip-path="url(#a)"><rect width="28" height="20" fill="#fff" rx="2"/><mask id="b" width="28" height="20" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><rect width="28" height="20" fill="#fff" rx="2"/></mask><g mask="url(#b)"><path fill="#D02F44" fill-rule="evenodd" d="M28 0H0v1.333h28V0Zm0 2.667H0V4h28V2.667ZM0 5.333h28v1.334H0V5.333ZM28 8H0v1.333h28V8ZM0 10.667h28V12H0v-1.333Zm28 2.666H0v1.334h28v-1.334ZM0 16h28v1.333H0V16Zm28 2.667H0V20h28v-1.333Z" clip-rule="evenodd"/><path fill="#46467F" d="M0 0h12v9.333H0z"/><g filter="url(#c)"><path fill="url(#d)" fill-rule="evenodd" d="M2.667 2a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Zm2.666 0A.667.667 0 1 1 4 2a.667.667 0 0 1 1.333 0Zm2 .667a.667.667 0 1 0 0-1.334.667.667 0 0 0 0 1.334ZM10.667 2a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0ZM3.333 4a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm3.334-.667a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Zm2 .667a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm2 .667a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Zm-3.334.666a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm-2-.666a.667.667 0 1 1-1.333 0 .667.667 0 0 1 1.333 0ZM2 5.333A.667.667 0 1 0 2 4a.667.667 0 0 0 0 1.333ZM4 6a.667.667 0 1 1-1.333 0A.667.667 0 0 1 4 6Zm2 .667a.667.667 0 1 0 0-1.334.667.667 0 0 0 0 1.334ZM9.333 6A.667.667 0 1 1 8 6a.667.667 0 0 1 1.333 0ZM10 8a.667.667 0 1 0 0-1.333A.667.667 0 0 0 10 8Zm-2-.667a.667.667 0 1 1-1.333 0 .667.667 0 0 1 1.333 0ZM4.667 8a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm-2-.667a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Z" clip-rule="evenodd"/></g></g></g><defs><linearGradient id="d" x1="1.333" x2="1.333" y1="1.333" y2="8" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#F0F0F0"/></linearGradient><clipPath id="a"><rect width="28" height="20" fill="#fff" rx="2"/></clipPath><filter id="c" width="9.333" height="7.667" x="1.333" y="1.333" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" result="hardAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/><feOffset dy="1"/><feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0"/><feBlend in2="BackgroundImageFix" result="effect1_dropShadow_503_3486"/><feBlend in="SourceGraphic" in2="effect1_dropShadow_503_3486" result="shape"/></filter></defs></svg>
-<span class="lang-text">EN</span>
-</button>
+{% get_current_language as LANGUAGE_CODE %}
+<form method="post" action="{% url 'set_language' %}" style="display:inline;">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  {% if LANGUAGE_CODE == 'ru' %}
+    <input type="hidden" name="language" value="en">
+    <button type="submit" class="lang-btn" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;">EN</button>
+  {% else %}
+    <input type="hidden" name="language" value="ru">
+    <button type="submit" class="lang-btn" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;">RU</button>
+  {% endif %}
+</form>
 </div>
 </div>
 
@@ -6661,32 +6669,41 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="mobile-menu" id="mobileMenu" aria-hidden="true">
 <div class="mobile-menu__overlay" data-burger-close="true"></div>
 <div class="mobile-menu__panel" role="dialog" aria-modal="true">
-<button type="button" class="mobile-menu__back" aria-label="Закрыть меню" data-burger-close="true">
+<button type="button" class="mobile-menu__back" aria-label="{% trans 'Закрыть меню' %}" data-burger-close="true">
 <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-left mobile-menu__back-icon public-icon" aria-hidden="true"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
 </button>
 <div class="mobile-menu__actions">
-<button type="button" class="soc-btn soc-btn--contact header-cta" onclick="document.getElementById('contactModal').setAttribute('aria-hidden','false')">Обратный звонок</button>
+<button type="button" class="soc-btn soc-btn--contact header-cta" onclick="document.getElementById('contactModal').setAttribute('aria-hidden','false')">{% trans "Обратный звонок" %}</button>
 <div class="mobile-menu__lang">
-<button type="button" class="lang-btn js-lang-toggle" data-next-lang="en">
-<span class="lang-text">EN</span>
-</button>
+{% get_current_language as LANGUAGE_CODE %}
+<form method="post" action="{% url 'set_language' %}" style="display:inline;">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  {% if LANGUAGE_CODE == 'ru' %}
+    <input type="hidden" name="language" value="en">
+    <button type="submit" class="lang-btn" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;">EN</button>
+  {% else %}
+    <input type="hidden" name="language" value="ru">
+    <button type="submit" class="lang-btn" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;">RU</button>
+  {% endif %}
+</form>
 </div>
 </div>
-<nav class="mobile-menu__nav" aria-label="Мобильная навигация">
+<nav class="mobile-menu__nav" aria-label="{% trans 'Мобильная навигация' %}">
 <ul class="side-nav__list">
-<li><a href="/" class="side-nav__link side-nav__link--active">Главная</a></li>
-<li><a href="#buyers" class="side-nav__link">Покупателям</a></li>
-<li><a href="#suppliers" class="side-nav__link">Поставщикам</a></li>
-<li><a href="#calc_anchor" class="side-nav__link">Расчёты</a></li>
-<li><a href="/login/" class="side-nav__link">Заказы</a></li>
-<li><a href="/login/" class="side-nav__link">Скидки</a></li>
-<li><a href="/login/" class="side-nav__link">Интеграции</a></li>
-<li><a href="/login/" class="side-nav__link">Логистика</a></li>
-<li><a href="/login/" class="side-nav__link">Платежи</a></li>
-<li><a href="/login/" class="side-nav__link">Бонусы</a></li>
-<li><a href="/login/" class="side-nav__link">Аналитика</a></li>
-<li><a href="/login/" class="side-nav__link">Поддержка</a></li>
-<li><a href="/login/" class="side-nav__link">Настройки</a></li>
+<li><a href="/" class="side-nav__link side-nav__link--active">{% trans "Главная" %}</a></li>
+<li><a href="#buyers" class="side-nav__link">{% trans "Покупателям" %}</a></li>
+<li><a href="#suppliers" class="side-nav__link">{% trans "Поставщикам" %}</a></li>
+<li><a href="#calc_anchor" class="side-nav__link">{% trans "Расчёты" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Заказы" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Скидки" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Интеграции" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Логистика" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Платежи" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Бонусы" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Аналитика" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Поддержка" %}</a></li>
+<li><a href="/login/" class="side-nav__link">{% trans "Настройки" %}</a></li>
 </ul>
 </nav>
 </div>
@@ -6695,12 +6712,12 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <main class="page-main page-main--home">
 
 <!-- ====== HERO SECTION ====== -->
-<section class="hero reveal-on-scroll hero--with-calc is-visible" aria-label="Платформа прямых поставок запчастей" id="calc_anchor" style="opacity:1;transform:none;">
+<section class="hero reveal-on-scroll hero--with-calc is-visible" aria-label="{% trans 'Платформа прямых поставок запчастей' %}" id="calc_anchor" style="opacity:1;transform:none;">
 <div class="hero-inner hero-inner--with-calc">
 <div class="hero-panel" style="opacity:1;transform:none;">
 <div class="hero-copy">
-<h1 class="hero-title">Платформа прямых поставок запчастей</h1>
-<p class="hero-subtitle">Цена за секунды. Прямой канал цен. Контроль поставки на всех этапах.</p>
+<h1 class="hero-title">{% trans "Платформа прямых поставок запчастей" %}</h1>
+<p class="hero-subtitle">{% trans "Цена за секунды. Прямой канал цен. Контроль поставки на всех этапах." %}</p>
 </div>
 <!-- visual removed -->
 </div>
@@ -6710,11 +6727,11 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="hero-calc-bg">
 <div class="main_block" id="multi_block">
 <div class="title-row">
-<h1>Расчёт стоимости <span class="split-heading__accent">для списка артикулов</span></h1>
+<h1>{% trans "Расчёт стоимости" %} <span class="split-heading__accent">{% trans "для списка артикулов" %}</span></h1>
 <form id="file_multi_quote" method="post" enctype="multipart/form-data" class="file-upload-form">
 {% csrf_token %}
 <input id="file_input" class="file-input-hidden" type="file" name="file" accept=".csv, .xlsx, .pdf">
-<label for="file_input" class="file-input-label">Загрузить файл
+<label for="file_input" class="file-input-label">{% trans "Загрузить файл" %}
 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style="margin-left:8px;">
 <path stroke="currentColor" stroke-linecap="round" stroke-width="1.5" d="M17 9.002c2.175.012 3.353.109 4.121.877C22 10.758 22 12.172 22 15v1c0 2.829 0 4.243-.879 5.122C20.243 22 18.828 22 16 22H8c-2.828 0-4.243 0-5.121-.878C2 20.242 2 18.829 2 16v-1c0-2.828 0-4.242.879-5.121.768-.768 1.946-.865 4.121-.877" opacity=".7"></path>
 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15V2m0 0 3 3.5M12 2 9 5.5"></path>
@@ -6726,13 +6743,10 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <form id="multi_form" method="post" onsubmit="return handleCalcSubmit(event)">
 {% csrf_token %}
 <div id="rows_container">
-<textarea id="batch_input" name="batch_input" rows="6" placeholder="Примеры:
-2W1223 1
-1R0750 2
-или: 2W1223, 1R0750 2"></textarea>
+<textarea id="batch_input" name="batch_input" rows="6" placeholder="{% trans 'Примеры:\n2W1223 1\n1R0750 2\nили: 2W1223, 1R0750 2' %}"></textarea>
 </div>
 <br>
-<button class="hero-cta" type="submit">Посчитать</button>
+<button class="hero-cta" type="submit">{% trans "Посчитать" %}</button>
 </form>
 <div id="multi_result" style="margin-top:20px;"></div>
 </div>
@@ -6743,28 +6757,28 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 </section>
 
 <!-- ====== STATS ====== -->
-<section class="stats-section reveal-on-scroll is-visible" id="buyers" aria-label="Основные показатели" style="opacity:1;transform:none;">
+<section class="stats-section reveal-on-scroll is-visible" id="buyers" aria-label="{% trans 'Основные показатели' %}" style="opacity:1;transform:none;">
 <div class="stats-inner">
-<div class="stat-item"><div class="stat-value">122</div><div class="stat-label">ПРЕДПРИЯТИЙ</div></div>
-<div class="stat-item"><div class="stat-value">200 МЛН</div><div class="stat-label">ДОЛЛАРОВ</div></div>
-<div class="stat-item"><div class="stat-value">3,000</div><div class="stat-label">ПОЛЬЗОВАТЕЛЕЙ</div></div>
+<div class="stat-item"><div class="stat-value">122</div><div class="stat-label">{% trans "ПРЕДПРИЯТИЙ" %}</div></div>
+<div class="stat-item"><div class="stat-value">200 МЛН</div><div class="stat-label">{% trans "ДОЛЛАРОВ" %}</div></div>
+<div class="stat-item"><div class="stat-value">3,000</div><div class="stat-label">{% trans "ПОЛЬЗОВАТЕЛЕЙ" %}</div></div>
 </div>
 </section>
 
 <!-- ====== STRATEGY ====== -->
-<section class="strategy-shell reveal-on-scroll is-visible" id="suppliers" aria-label="Выбор инфраструктуры" style="opacity:1;transform:none;">
-<h2 class="split-heading">Ваша стратегия. <span class="split-heading__accent">Ваш выбор.</span></h2>
-<section class="strategy-section" aria-label="Выбор инфраструктуры">
+<section class="strategy-shell reveal-on-scroll is-visible" id="suppliers" aria-label="{% trans 'Выбор инфраструктуры' %}" style="opacity:1;transform:none;">
+<h2 class="split-heading">{% trans "Ваша стратегия." %} <span class="split-heading__accent">{% trans "Ваш выбор." %}</span></h2>
+<section class="strategy-section" aria-label="{% trans 'Выбор инфраструктуры' %}">
 <div class="fb-strategy-grid">
 
 <a href="/login/" class="fb-strategy-card">
   <div class="fb-strategy-card__visual"><img src="{% static 'marketplace/img/wave-blue.png' %}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
   <div class="fb-strategy-card__overlay">
     <div class="fb-strategy-card__bubble">
-      <p class="fb-strategy-card__bubble-text" data-strat-desc="1">Единый доступ к производителям и складам по всему миру. Быстрый поиск, расчёт цены и сроков за секунды.</p>
+      <p class="fb-strategy-card__bubble-text" data-strat-desc="1">{% trans "Единый доступ к производителям и складам по всему миру. Быстрый поиск, расчёт цены и сроков за секунды." %}</p>
     </div>
     <div class="fb-strategy-card__footer">
-      <h3 class="fb-strategy-card__title" data-strat-title="1">Инфраструктура<br>снабжения</h3>
+      <h3 class="fb-strategy-card__title" data-strat-title="1">{% trans "Инфраструктура" %}<br>{% trans "снабжения" %}</h3>
       <span class="fb-strategy-card__arrow" aria-hidden="true">
         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="fb-strategy-arrow-icon"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
       </span>
@@ -6776,10 +6790,10 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
   <div class="fb-strategy-card__visual"><img src="{% static 'marketplace/img/wave-gold.png' %}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;"></div>
   <div class="fb-strategy-card__overlay">
     <div class="fb-strategy-card__bubble">
-      <p class="fb-strategy-card__bubble-text" data-strat-desc="2">Прямой канал к корпоративным заказчикам и сервисным сетям. Интеграция прайсов, управление заявками.</p>
+      <p class="fb-strategy-card__bubble-text" data-strat-desc="2">{% trans "Прямой канал к корпоративным заказчикам и сервисным сетям. Интеграция прайсов, управление заявками." %}</p>
     </div>
     <div class="fb-strategy-card__footer">
-      <h3 class="fb-strategy-card__title" data-strat-title="2">Инфраструктура<br>производителей</h3>
+      <h3 class="fb-strategy-card__title" data-strat-title="2">{% trans "Инфраструктура" %}<br>{% trans "производителей" %}</h3>
       <span class="fb-strategy-card__arrow" aria-hidden="true">
         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="fb-strategy-arrow-icon"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
       </span>
@@ -6792,10 +6806,10 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 </section>
 
 <!-- ====== PRODUCTS ====== -->
-<section class="products-section reveal-on-scroll is-visible" id="products" aria-label="Возможности платформы" style="opacity:1;transform:none;">
+<section class="products-section reveal-on-scroll is-visible" id="products" aria-label="{% trans 'Возможности платформы' %}" style="opacity:1;transform:none;">
 <div class="products-container">
-<h2 class="split-heading">Инфраструктура, <span class="split-heading__accent">ускоряющая поставки</span></h2>
-<p class="products-subtitle">Прямые закупки, прозрачные цены и контроль поставок — в одном окне.</p>
+<h2 class="split-heading">{% trans "Инфраструктура," %} <span class="split-heading__accent">{% trans "ускоряющая поставки" %}</span></h2>
+<p class="products-subtitle">{% trans "Прямые закупки, прозрачные цены и контроль поставок — в одном окне." %}</p>
 
 <div class="products-grid">
 
@@ -6803,79 +6817,79 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
   <div class="product-card__icon">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4568F3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
   </div>
-  <h3 class="product-card__title">Расчёт и закупка</h3>
-  <p class="product-card__desc">Получайте цену и наличие за секунды. OEM и aftermarket — напрямую от производителей.</p>
+  <h3 class="product-card__title">{% trans "Расчёт и закупка" %}</h3>
+  <p class="product-card__desc">{% trans "Получайте цену и наличие за секунды. OEM и aftermarket — напрямую от производителей." %}</p>
 </div>
 
 <div class="product-card">
   <div class="product-card__icon">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4568F3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 22 11 22 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
   </div>
-  <h3 class="product-card__title">Управление поставками</h3>
-  <p class="product-card__desc">Контроль логистики на всех этапах. Отгрузка CIP, DDP, EXW. Отслеживание и документы.</p>
+  <h3 class="product-card__title">{% trans "Управление поставками" %}</h3>
+  <p class="product-card__desc">{% trans "Контроль логистики на всех этапах. Отгрузка CIP, DDP, EXW. Отслеживание и документы." %}</p>
 </div>
 
 <div class="product-card">
   <div class="product-card__icon">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4568F3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>
   </div>
-  <h3 class="product-card__title">Интеграции</h3>
-  <p class="product-card__desc">Интеграция с ERP, ТОИР, EDI и телематикой. API для производственных систем.</p>
+  <h3 class="product-card__title">{% trans "Интеграции" %}</h3>
+  <p class="product-card__desc">{% trans "Интеграция с ERP, ТОИР, EDI и телематикой. API для производственных систем." %}</p>
 </div>
 
 <div class="product-card">
   <div class="product-card__icon">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4568F3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
   </div>
-  <h3 class="product-card__title">Консолидация</h3>
-  <p class="product-card__desc">Международные хабы: ОАЭ, Китай, ЕС. Совместная упаковка и оптимизация маршрутов.</p>
+  <h3 class="product-card__title">{% trans "Консолидация" %}</h3>
+  <p class="product-card__desc">{% trans "Международные хабы: ОАЭ, Китай, ЕС. Совместная упаковка и оптимизация маршрутов." %}</p>
 </div>
 
 <div class="product-card">
   <div class="product-card__icon">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4568F3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
   </div>
-  <h3 class="product-card__title">Платежи</h3>
-  <p class="product-card__desc">Оплата в любой валюте — мгновенно. Банковские и криптоканалы. Автоматическое распределение.</p>
+  <h3 class="product-card__title">{% trans "Платежи" %}</h3>
+  <p class="product-card__desc">{% trans "Оплата в любой валюте — мгновенно. Банковские и криптоканалы. Автоматическое распределение." %}</p>
 </div>
 
 <div class="product-card">
   <div class="product-card__icon">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4568F3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
   </div>
-  <h3 class="product-card__title">Сеть поставщиков</h3>
-  <p class="product-card__desc">Подключайтесь напрямую к экосистеме производителей, логистов и сервисных компаний.</p>
+  <h3 class="product-card__title">{% trans "Сеть поставщиков" %}</h3>
+  <p class="product-card__desc">{% trans "Подключайтесь напрямую к экосистеме производителей, логистов и сервисных компаний." %}</p>
 </div>
 
 <div class="product-card product-card--wide">
   <div class="product-card__icon">
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4568F3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
   </div>
-  <h3 class="product-card__title">Партнёрская инфраструктура</h3>
-  <p class="product-card__desc">Логистика, финансы, ERP, телематика, консолидация. Совместное развитие рынка без посредничества.</p>
+  <h3 class="product-card__title">{% trans "Партнёрская инфраструктура" %}</h3>
+  <p class="product-card__desc">{% trans "Логистика, финансы, ERP, телематика, консолидация. Совместное развитие рынка без посредничества." %}</p>
 </div>
 
 </div>
 
 <div class="products-cta">
-  <a href="/login/" class="products-cta-btn">Посмотреть демо →</a>
+  <a href="/login/" class="products-cta-btn">{% trans "Посмотреть демо" %} →</a>
 </div>
 
 </div>
 </section>
 
 <!-- ====== INDUSTRIES ====== -->
-<section class="industries-section reveal-on-scroll is-visible" aria-label="Кому подходит платформа" style="opacity:1;transform:none;">
-<h2 class="split-heading">Кому мы <span class="split-heading__accent">служим</span></h2>
+<section class="industries-section reveal-on-scroll is-visible" aria-label="{% trans 'Кому подходит платформа' %}" style="opacity:1;transform:none;">
+<h2 class="split-heading">{% trans "Кому мы" %} <span class="split-heading__accent">{% trans "служим" %}</span></h2>
 <div class="industries-grid">
 
 <a href="/login/" class="industry-card">
 <div class="industry-icon"><svg width="40" height="40" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M15.5 16H.5a.5.5 0 0 1-.5-.5V.5A.5.5 0 0 1 .5 0h4a.5.5 0 0 1 .5.5v8.191l5.276-2.638a.5.5 0 0 1 .487.022A.5.5 0 0 1 11 6.5v2.117l4.243-2.546a.5.5 0 0 1 .5-.006A.5.5 0 0 1 16 6.5v9a.5.5 0 0 1-.5.5ZM1 15h14V7.383l-4.243 2.546a.5.5 0 0 1-.5.006A.5.5 0 0 1 10 9.5V7.309L4.724 9.947a.5.5 0 0 1-.487-.022A.5.5 0 0 1 4 9.5V1H1Z" data-name="Path 109"/></svg></div>
 <div class="industry-bottom">
 <div class="industry-content">
-<h3 class="industry-title">Производители и OEM</h3>
-<p class="industry-card__desc">Прямые каналы поставок, интеграция ERP, контроль цен</p>
-<p class="industry-desc">Создавайте прямые каналы поставок и дистрибуции. Интеграция ERP, контроль цен и данных, снижение издержек.</p>
+<h3 class="industry-title">{% trans "Производители и OEM" %}</h3>
+<p class="industry-card__desc">{% trans "Прямые каналы поставок, интеграция ERP, контроль цен" %}</p>
+<p class="industry-desc">{% trans "Создавайте прямые каналы поставок и дистрибуции. Интеграция ERP, контроль цен и данных, снижение издержек." %}</p>
 </div>
 <span class="industry-arrow" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up-right industry-arrow-icon public-icon" aria-hidden="true"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></span>
 </div>
@@ -6885,9 +6899,9 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="industry-icon"><svg width="40" height="40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><g stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path d="M12.905 3.06C12.699 3 12.465 3 12 3c-.466 0-.699 0-.905.06a1.5 1.5 0 0 0-.76.515c-.133.169-.22.385-.392.818a1.265 1.265 0 0 1-1.574.73l-.571-.19c-.405-.135-.608-.203-.806-.214a1.5 1.5 0 0 0-.835.197c-.172.099-.323.25-.625.552-.32.32-.481.48-.583.664a1.5 1.5 0 0 0-.181.884c.021.208.105.418.274.84.264.66.01 1.413-.6 1.778l-.277.167c-.425.255-.637.382-.791.558a1.5 1.5 0 0 0-.303.534C3 11.116 3 11.366 3 11.866c0 .593 0 .89.095 1.143a1.5 1.5 0 0 0 .396.586c.2.182.473.29 1.018.508.556.223.843.841.653 1.41l-.215.645c-.149.447-.223.671-.23.89a1.5 1.5 0 0 0 .179.759c.104.193.27.36.604.693.333.333.5.5.693.604a1.5 1.5 0 0 0 .758.18c.22-.008.444-.082.89-.231l.528-.176a1.265 1.265 0 0 1 1.574.73c.173.433.26.65.392.818a1.5 1.5 0 0 0 .76.515c.206.06.44.06.905.06.466 0 .699 0 .905-.06a1.5 1.5 0 0 0 .76-.515c.133-.169.22-.385.392-.818a1.265 1.265 0 0 1 1.574-.73l.527.176c.447.149.67.223.89.23a1.5 1.5 0 0 0 .758-.179c.194-.104.36-.27.694-.604.333-.333.5-.5.604-.693a1.5 1.5 0 0 0 .179-.758c-.007-.22-.082-.444-.23-.89l-.216-.646a1.133 1.133 0 0 1 .654-1.41c.545-.217.817-.326 1.018-.508a1.5 1.5 0 0 0 .396-.586c.095-.254.095-.55.095-1.143 0-.5 0-.75-.071-.973a1.5 1.5 0 0 0-.302-.534c-.155-.176-.367-.303-.792-.558l-.278-.167a1.447 1.447 0 0 1-.6-1.778c.17-.422.253-.632.275-.84a1.5 1.5 0 0 0-.181-.884c-.102-.183-.263-.344-.583-.664-.302-.302-.453-.453-.625-.552a1.5 1.5 0 0 0-.835-.197c-.199.011-.401.079-.806.214l-.57.19a1.265 1.265 0 0 1-1.575-.73c-.173-.433-.26-.65-.392-.818a1.5 1.5 0 0 0-.76-.515Z"/></g></svg></div>
 <div class="industry-bottom">
 <div class="industry-content">
-<h3 class="industry-title">Дилеры и дистрибьюторы</h3>
-<p class="industry-card__desc">Оптимизация закупок и логистики в одном окне</p>
-<p class="industry-desc">Оптимизируйте закупки и логистику в одном окне. Быстрый доступ к складам производителей и консолидация грузов.</p>
+<h3 class="industry-title">{% trans "Дилеры и дистрибьюторы" %}</h3>
+<p class="industry-card__desc">{% trans "Оптимизация закупок и логистики в одном окне" %}</p>
+<p class="industry-desc">{% trans "Оптимизируйте закупки и логистику в одном окне. Быстрый доступ к складам производителей и консолидация грузов." %}</p>
 </div>
 <span class="industry-arrow" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up-right industry-arrow-icon public-icon" aria-hidden="true"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></span>
 </div>
@@ -6897,9 +6911,9 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="industry-icon"><svg width="40" height="40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8.528 16.826c.007.887-.51 1.69-1.307 2.035a2.096 2.096 0 0 1-2.332-.465 2.23 2.23 0 0 1-.47-2.388 2.135 2.135 0 0 1 1.974-1.356 2.1 2.1 0 0 1 1.507.633c.4.408.626.962.628 1.541v0ZM18.701 16.826c.007.887-.51 1.69-1.307 2.035a2.096 2.096 0 0 1-2.332-.465 2.23 2.23 0 0 1-.47-2.388 2.135 2.135 0 0 1 1.974-1.356 2.1 2.1 0 0 1 1.507.633c.4.408.626.962.628 1.541Z" clip-rule="evenodd"/><path fill="#000" d="M14.18 17.576a.75.75 0 1 0 0-1.5v1.5Zm-5.655-1.5a.75.75 0 0 0 0 1.5v-1.5Zm4.905.75a.75.75 0 1 0 1.5 0h-1.5Zm1.5-5.267a.75.75 0 0 0-1.5 0h1.5Zm-.75 4.517a.75.75 0 0 0 0 1.5v-1.5Zm.25 1.5a.75.75 0 1 0 0-1.5v1.5Zm4.267-1.5a.75.75 0 1 0 .007 1.5l-.007-1.5Zm2.265-1.591.75-.003a.75.75 0 0 0-.011-.13l-.739.133Zm.215-3.058a.75.75 0 1 0-1.476.264l1.476-.264Zm-6.998-5.3a.75.75 0 0 0 0 1.5v-1.5Zm3.58.75v.75h.015l-.015-.75Zm1.62.674.539-.521-.54.52Zm.64 1.667-.749-.021a.743.743 0 0 0 .011.153l.739-.132Zm-.32 2.473a.75.75 0 0 0 1.477-.264l-1.476.264Zm-4.77-4.814a.75.75 0 1 0-1.5 0h1.5Zm-1.5 4.682a.75.75 0 1 0 1.5 0h-1.5Zm0-4.682a.75.75 0 0 0 1.5 0h-1.5Zm.75-.8h.75v-.005l-.75.005ZM13.113 5v.75h.005L13.114 5ZM3.505 5l-.007.75h.007V5Zm-.75.31-.533-.528.532.529Zm-.317.765-.75-.007v.007h.75Zm0 9.675h-.75v.007l.75-.007Zm.316.764.532-.528-.532.528Zm.751.311v-.75h-.007l.007.75Zm.753.75a.75.75 0 1 0 0-1.5v1.5Zm9.922-6.766a.75.75 0 0 0 0 1.5v-1.5Zm6.26 1.5a.75.75 0 1 0 0-1.5v1.5Zm-6.26 3.767H8.525v1.5h5.655v-1.5Zm.75.75v-5.267h-1.5v5.267h1.5Zm-.75.75h.25v-1.5h-.25v1.5Zm4.524 0a2.993 2.993 0 0 0 2.14-.919l-1.079-1.042c-.286.296-.67.46-1.068.461l.007 1.5Zm2.14-.919a3.111 3.111 0 0 0 .868-2.175l-1.5.007c.003.425-.16.83-.447 1.126l1.079 1.042Zm.857-2.304-.524-2.926-1.476.264.523 2.926 1.477-.264Zm-7.522-6.726h3.58v-1.5h-3.58v1.5Zm3.595 0c.395-.008.78.15 1.065.445l1.079-1.042a2.94 2.94 0 0 0-2.175-.903l.03 1.5Zm1.065.445c.285.295.443.701.431 1.125l1.5.042a3.057 3.057 0 0 0-.852-2.21l-1.08 1.043Zm.442 1.278.419 2.341 1.476-.264-.418-2.34-1.477.263Zm-5.853-2.473v4.682h1.5V6.877h-1.5Zm1.5 0v-.8h-1.5v.8h1.5Zm0-.805c-.007-.995-.804-1.829-1.82-1.822l.01 1.5c.153-.001.309.13.31.332l1.5-.01ZM13.114 4.25H3.505v1.5h9.609v-1.5Zm-9.602 0c-.485-.005-.95.19-1.29.532L3.286 5.84c.06-.06.137-.09.212-.089l.014-1.5Zm-1.29.532c-.34.343-.53.806-.534 1.286l1.5.014c0-.095.038-.182.098-.243L2.222 4.782Zm-.534 1.293v9.675h1.5V6.075h-1.5Zm0 9.682c.004.48.194.943.534 1.286l1.064-1.057a.349.349 0 0 1-.099-.243l-1.5.014Zm.534 1.286c.34.343.805.537 1.29.532l-.014-1.5a.294.294 0 0 1-.212-.09l-1.064 1.058Zm1.283.532h.753v-1.5h-.753v1.5Zm10.675-5.266h6.26v-1.5h-6.26v1.5Z"/></svg></div>
 <div class="industry-bottom">
 <div class="industry-content">
-<h3 class="industry-title">Сервисные компании</h3>
-<p class="industry-card__desc">Ускоренный подбор и заказ запчастей от OEM</p>
-<p class="industry-desc">Ускорьте подбор и заказ запчастей. Получайте лучшие цены напрямую от OEM и поставщиков.</p>
+<h3 class="industry-title">{% trans "Сервисные компании" %}</h3>
+<p class="industry-card__desc">{% trans "Ускоренный подбор и заказ запчастей от OEM" %}</p>
+<p class="industry-desc">{% trans "Ускорьте подбор и заказ запчастей. Получайте лучшие цены напрямую от OEM и поставщиков." %}</p>
 </div>
 <span class="industry-arrow" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up-right industry-arrow-icon public-icon" aria-hidden="true"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></span>
 </div>
@@ -6909,9 +6923,9 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="industry-icon"><svg width="40" height="40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.5 7.278 12 12m0 0L3.5 7.278M12 12v9.5m9-5.441V7.942c0-.343 0-.514-.05-.667a1 1 0 0 0-.215-.364c-.109-.119-.258-.202-.558-.368l-7.4-4.111c-.284-.158-.425-.237-.575-.267a1 1 0 0 0-.403 0c-.15.03-.292.11-.576.267l-7.4 4.11c-.3.167-.45.25-.558.369a1 1 0 0 0-.215.364C3 7.428 3 7.599 3 7.942v8.117c0 .342 0 .514.05.666a1 1 0 0 0 .215.364c.109.119.258.202.558.368l7.4 4.111c.284.158.425.237.576.268.133.027.27.027.402 0 .15-.031.292-.11.576-.268l7.4-4.11c.3-.167.45-.25.558-.369a.999.999 0 0 0 .215-.364c.05-.152.05-.324.05-.666Z"/></svg></div>
 <div class="industry-bottom">
 <div class="industry-content">
-<h3 class="industry-title">Эксплуатирующие организации</h3>
-<p class="industry-card__desc">Контроль снабжения техники на объектах</p>
-<p class="industry-desc">Контролируйте снабжение техники на объектах. Единая база позиций, статусы поставок и документация.</p>
+<h3 class="industry-title">{% trans "Эксплуатирующие организации" %}</h3>
+<p class="industry-card__desc">{% trans "Контроль снабжения техники на объектах" %}</p>
+<p class="industry-desc">{% trans "Контролируйте снабжение техники на объектах. Единая база позиций, статусы поставок и документация." %}</p>
 </div>
 <span class="industry-arrow" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up-right industry-arrow-icon public-icon" aria-hidden="true"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></span>
 </div>
@@ -6921,9 +6935,9 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="industry-icon"><svg width="40" height="40" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4 14v2l-4-3 4-3v2h12v2H4zm8-12V0l4 3-4 3V4H0V2h12z"/></svg></div>
 <div class="industry-bottom">
 <div class="industry-content">
-<h3 class="industry-title">Логистические операторы</h3>
-<p class="industry-card__desc">Международные хабы, маршруты, консолидация</p>
-<p class="industry-desc">Интеграция с международными хабами и таможенными системами. Маршруты, консолидация и отслеживание.</p>
+<h3 class="industry-title">{% trans "Логистические операторы" %}</h3>
+<p class="industry-card__desc">{% trans "Международные хабы, маршруты, консолидация" %}</p>
+<p class="industry-desc">{% trans "Интеграция с международными хабами и таможенными системами. Маршруты, консолидация и отслеживание." %}</p>
 </div>
 <span class="industry-arrow" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up-right industry-arrow-icon public-icon" aria-hidden="true"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></span>
 </div>
@@ -6933,9 +6947,9 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="industry-icon"><svg width="40" height="40" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M29.047 12.95c0-5.274-2.781-10.059-7.437-12.799a.999.999 0 1 0-1.014 1.724c4.039 2.376 6.45 6.516 6.45 11.074 0 7.574-5.498 13.072-13.072 13.072-1.694 0-3.337-.317-4.885-.942a1 1 0 1 0-.75 1.854 14.96 14.96 0 0 0 5.635 1.089h.018v1.969h-2.904c-.577 0-1.045.447-1.045.998s.468.998 1.045.998h7.902c.577 0 1.045-.447 1.045-.998s-.468-.998-1.045-.998h-3.012v-2.087c7.681-.892 13.069-6.903 13.069-14.952zm-4.067.09c0-6.083-4.93-11.044-11.012-11.044-6.084 0-11.015 4.961-11.015 11.044s4.931 10.982 11.015 10.982c6.083 0 11.012-4.899 11.012-10.982zm-20.027 0c0-4.97 4.044-9.044 9.014-9.044s9.012 4.074 9.012 9.044-4.043 8.982-9.012 8.982c-4.971 0-9.014-4.012-9.014-8.982z"/></svg></div>
 <div class="industry-bottom">
 <div class="industry-content">
-<h3 class="industry-title">ВЭД и трейдеры</h3>
-<p class="industry-card__desc">Интеграция производственных и сервисных систем</p>
-<p class="industry-desc">Подключайтесь к сети глобальных производителей. Создавайте собственные торговые предложения внутри системы.</p>
+<h3 class="industry-title">{% trans "ВЭД и трейдеры" %}</h3>
+<p class="industry-card__desc">{% trans "Интеграция производственных и сервисных систем" %}</p>
+<p class="industry-desc">{% trans "Подключайтесь к сети глобальных производителей. Создавайте собственные торговые предложения внутри системы." %}</p>
 </div>
 <span class="industry-arrow" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-up-right industry-arrow-icon public-icon" aria-hidden="true"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg></span>
 </div>
@@ -6945,7 +6959,7 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 </section>
 
 <!-- ====== FOOTER ====== -->
-<footer class="site-footer reveal-on-scroll is-visible" aria-label="Подвал сайта" style="opacity:1;transform:none;">
+<footer class="site-footer reveal-on-scroll is-visible" aria-label="{% trans 'Подвал сайта' %}" style="opacity:1;transform:none;">
 <div class="footer-inner">
 <div class="footer-main">
 <div class="footer-brand">
@@ -7013,83 +7027,83 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
   </g>
 </svg>
 </div>
-<p class="footer-text">Consolidator Parts — консолидирующая B2B-платформа для снабжения и цифровой логистики тяжёлой техники. Мы объединяем покупателей, поставщиков, операторов, логистов и финансовые сервисы в единый рабочий контур.</p>
+<p class="footer-text">{% trans "Consolidator Parts — консолидирующая B2B-платформа для снабжения и цифровой логистики тяжёлой техники. Мы объединяем покупателей, поставщиков, операторов, логистов и финансовые сервисы в единый рабочий контур." %}</p>
 <div class="footer-contact"></div>
 <div class="footer-social"></div>
 </div>
 <div class="footer-nav">
 <div class="footer-col">
-<h3 class="footer-title">Продукты</h3>
+<h3 class="footer-title">{% trans "Продукты" %}</h3>
 <ul class="footer-list">
-<li><a href="/login/" class="footer-link">Консолидирующая платформа</a></li>
-<li><a href="/login/" class="footer-link">Мгновенный расчёт и наличие</a></li>
-<li><a href="/login/" class="footer-link">ERP / ТОИР интеграции</a></li>
-<li><a href="/login/" class="footer-link">Консолидация и упаковка</a></li>
-<li><a href="/login/" class="footer-link">Логистика ОАЕ / Китай / ЕС</a></li>
-<li><a href="/login/" class="footer-link">Базисы доставки и самовывоз</a></li>
-<li><a href="/login/" class="footer-link">Финансовые сервисы</a></li>
-<li><a href="/login/" class="footer-link">API / EDI подключение</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Консолидирующая платформа" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Мгновенный расчёт и наличие" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "ERP / ТОИР интеграции" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Консолидация и упаковка" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Логистика ОАЕ / Китай / ЕС" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Базисы доставки и самовывоз" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Финансовые сервисы" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "API / EDI подключение" %}</a></li>
 </ul>
 </div>
 <div class="footer-col">
-<h3 class="footer-title">Индустрии</h3>
+<h3 class="footer-title">{% trans "Индустрии" %}</h3>
 <ul class="footer-list">
-<li><a href="/login/" class="footer-link">Добыча и карьеры</a></li>
-<li><a href="/login/" class="footer-link">Строительство</a></li>
-<li><a href="/login/" class="footer-link">Инфраструктура</a></li>
-<li><a href="/login/" class="footer-link">Сервис и ремонт</a></li>
-<li><a href="/login/" class="footer-link">Производство техники</a></li>
-<li><a href="/login/" class="footer-link">Логистические компании</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Добыча и карьеры" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Строительство" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Инфраструктура" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Сервис и ремонт" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Производство техники" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Логистические компании" %}</a></li>
 </ul>
 </div>
 <div class="footer-col">
-<h3 class="footer-title">Платформа</h3>
+<h3 class="footer-title">{% trans "Платформа" %}</h3>
 <ul class="footer-list">
-<li><a href="/login/" class="footer-link">Безопасность и контроль данных</a></li>
-<li><a href="/login/" class="footer-link">Отслеживание поставок</a></li>
-<li><a href="/login/" class="footer-link">Гибкое развертывание</a></li>
-<li><a href="/login/" class="footer-link">Согласование и документооборот</a></li>
-<li><a href="/login/" class="footer-link">Партнёрские сервисы</a></li>
-<li><a href="/login/" class="footer-link">Запрос на консолидацию</a></li>
-<li><a href="/login/" class="footer-link">Поддержка 24/7</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Безопасность и контроль данных" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Отслеживание поставок" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Гибкое развертывание" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Согласование и документооборот" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Партнёрские сервисы" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Запрос на консолидацию" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Поддержка 24/7" %}</a></li>
 </ul>
 </div>
 <div class="footer-col">
-<h3 class="footer-title">Разработчики</h3>
+<h3 class="footer-title">{% trans "Разработчики" %}</h3>
 <ul class="footer-list">
-<li><a href="/login/" class="footer-link">Документация API</a></li>
-<li><a href="/login/" class="footer-link">Статус интеграции</a></li>
-<li><a href="/login/" class="footer-link">Руководство по ERP / EDI</a></li>
-<li><a href="/login/" class="footer-link">Подключение партнёров</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Документация API" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Статус интеграции" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Руководство по ERP / EDI" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Подключение партнёров" %}</a></li>
 </ul>
 </div>
 <div class="footer-col">
-<h3 class="footer-title">Компания</h3>
+<h3 class="footer-title">{% trans "Компания" %}</h3>
 <ul class="footer-list">
-<li><a href="/login/" class="footer-link">О платформе</a></li>
-<li><a href="/login/" class="footer-link">Архитектура и принципы</a></li>
-<li><a href="/login/" class="footer-link">Команда</a></li>
-<li><a href="/login/" class="footer-link">Карьера</a></li>
-<li><a href="/login/" class="footer-link">Партнёрства</a></li>
-<li><a href="/login/" class="footer-link">Для инвесторов</a></li>
-<li><a href="/login/" class="footer-link">Контакты</a></li>
+<li><a href="/login/" class="footer-link">{% trans "О платформе" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Архитектура и принципы" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Команда" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Карьера" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Партнёрства" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Для инвесторов" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Контакты" %}</a></li>
 </ul>
 </div>
 <div class="footer-col">
-<h3 class="footer-title">Ресурсы</h3>
+<h3 class="footer-title">{% trans "Ресурсы" %}</h3>
 <ul class="footer-list">
-<li><a href="/login/" class="footer-link">Блог</a></li>
-<li><a href="/login/" class="footer-link">Вебинары и материалы</a></li>
-<li><a href="/login/" class="footer-link">Руководства</a></li>
-<li><a href="/login/" class="footer-link">Глоссарий</a></li>
-<li><a href="/login/" class="footer-link">Кейсы и отчёты</a></li>
-<li><a href="/login/" class="footer-link">Центр знаний</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Блог" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Вебинары и материалы" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Руководства" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Глоссарий" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Кейсы и отчёты" %}</a></li>
+<li><a href="/login/" class="footer-link">{% trans "Центр знаний" %}</a></li>
 </ul>
 </div>
 </div>
 </div>
 <div class="footer-bottom">
-<p class="footer-copy">Consolidator Parts &copy; 2025. Все права защищены.</p>
+<p class="footer-copy">{% trans "Consolidator Parts © 2025. Все права защищены." %}</p>
 </div>
 </div>
 </footer>
@@ -7101,32 +7115,32 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="modal" id="contactModal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
 <div class="modal__overlay" onclick="this.closest('.modal').setAttribute('aria-hidden','true')"></div>
 <div class="modal__dialog">
-<button type="button" class="modal__close" aria-label="Закрыть" onclick="this.closest('.modal').setAttribute('aria-hidden','true')">
+<button type="button" class="modal__close" aria-label="{% trans 'Закрыть' %}" onclick="this.closest('.modal').setAttribute('aria-hidden','true')">
 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-close"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
 </button>
-<h2 class="modal__title" id="contactModalTitle">Обратная связь</h2>
+<h2 class="modal__title" id="contactModalTitle">{% trans "Обратная связь" %}</h2>
 <form class="contact-form" method="post" onsubmit="return handleContactSubmit(event)">
 {% csrf_token %}
 <div class="form_row">
-<input type="text" name="first_name" placeholder="Ваше имя" required>
+<input type="text" name="first_name" placeholder="{% trans 'Ваше имя' %}" required>
 </div>
 <div class="form_row">
-<input type="email" name="email" placeholder="Ваш E-mail" required>
+<input type="email" name="email" placeholder="{% trans 'Ваш E-mail' %}" required>
 </div>
 <div class="form_row">
-<input type="tel" name="phone" placeholder="Телефон">
+<input type="tel" name="phone" placeholder="{% trans 'Телефон' %}">
 </div>
 <div class="form_row">
-<textarea name="message" placeholder="Сообщение" rows="4"></textarea>
+<textarea name="message" placeholder="{% trans 'Сообщение' %}" rows="4"></textarea>
 </div>
 <div class="consent_row">
 <label class="consent_label">
 <input type="checkbox" name="consent" required>
 <span class="consent_box"></span>
-<span class="consent_text">Согласен на обработку данных</span>
+<span class="consent_text">{% trans "Согласен на обработку данных" %}</span>
 </label>
 </div>
-<button type="submit" class="btn_submit">Отправить</button>
+<button type="submit" class="btn_submit">{% trans "Отправить" %}</button>
 </form>
 </div>
 </div>

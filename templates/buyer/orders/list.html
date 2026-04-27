@@ -1,6 +1,7 @@
 {% extends "buyer/base_buyer.html" %}
+{% load i18n %}
 
-{% block title %}Заказы{% endblock %}
+{% block title %}{% trans "Заказы" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -131,8 +132,8 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 <section class="ord-hero">
   <div class="ord-hero-top">
     <div>
-      <div class="ord-hero-title">Заказы</div>
-      <div class="ord-hero-sub">Управление заказами и отслеживание поставок</div>
+      <div class="ord-hero-title">{% trans "Заказы" %}</div>
+      <div class="ord-hero-sub">{% trans "Управление заказами и отслеживание поставок" %}</div>
     </div>
   </div>
 </section>
@@ -140,39 +141,39 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 <!-- Stats -->
 <div class="ord-stats">
   <a href="/buyer/orders/" class="ord-stat">
-    <div class="ord-stat-label">Всего заказов</div>
+    <div class="ord-stat-label">{% trans "Всего заказов" %}</div>
     <div class="ord-stat-val">24</div>
   </a>
   <a href="/buyer/orders/?status=active" class="ord-stat">
-    <div class="ord-stat-label">В работе</div>
+    <div class="ord-stat-label">{% trans "В работе" %}</div>
     <div class="ord-stat-val" style="color:#E85C0D;">6</div>
   </a>
   <a href="/buyer/orders/?status=delivered" class="ord-stat">
-    <div class="ord-stat-label">Доставлено</div>
+    <div class="ord-stat-label">{% trans "Доставлено" %}</div>
     <div class="ord-stat-val" style="color:#64B5F6;">16</div>
   </a>
   <a href="/buyer/finance/" class="ord-stat">
-    <div class="ord-stat-label">Общая сумма</div>
+    <div class="ord-stat-label">{% trans "Общая сумма" %}</div>
     <div class="ord-stat-val">$142,800</div>
   </a>
 </div>
 
 <!-- Filters -->
 <div class="ord-toolbar">
-  <input type="text" class="ord-search" placeholder="Поиск по номеру заказа или поставщику..." />
+  <input type="text" class="ord-search" placeholder="{% trans "Поиск по номеру заказа или поставщику..." %}" />
   <select class="ord-select">
-    <option value="">Все статусы</option>
-    <option value="production">В производстве</option>
-    <option value="transit">В пути</option>
-    <option value="customs">На таможне</option>
-    <option value="delivered">Доставлен</option>
-    <option value="cancelled">Отменён</option>
+    <option value="">{% trans "Все статусы" %}</option>
+    <option value="production">{% trans "В производстве" %}</option>
+    <option value="transit">{% trans "В пути" %}</option>
+    <option value="customs">{% trans "На таможне" %}</option>
+    <option value="delivered">{% trans "Доставлен" %}</option>
+    <option value="cancelled">{% trans "Отменён" %}</option>
   </select>
   <select class="ord-select">
-    <option value="">Все оплаты</option>
-    <option value="paid">Оплачен</option>
-    <option value="partial">Частичная</option>
-    <option value="pending">Ожидает</option>
+    <option value="">{% trans "Все оплаты" %}</option>
+    <option value="paid">{% trans "Оплачен" %}</option>
+    <option value="partial">{% trans "Частичная" %}</option>
+    <option value="pending">{% trans "Ожидает" %}</option>
   </select>
 </div>
 
@@ -181,40 +182,40 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   <table class="ord-table">
     <thead>
       <tr>
-        <th>Заказ</th>
-        <th>Поставщик</th>
-        <th>Позиции</th>
-        <th>Сумма</th>
-        <th>Статус</th>
-        <th>Дата</th>
-        <th>Оплата</th>
+        <th>{% trans "Заказ" %}</th>
+        <th>{% trans "Поставщик" %}</th>
+        <th>{% trans "Позиции" %}</th>
+        <th>{% trans "Сумма" %}</th>
+        <th>{% trans "Статус" %}</th>
+        <th>{% trans "Дата" %}</th>
+        <th>{% trans "Оплата" %}</th>
         <th></th>
       </tr>
     </thead>
     <tbody>
       <tr data-order-id="ORD-2026-0142">
         <td><span class="ord-id">ORD-2026-0142</span><br><span class="ord-muted">RFQ-0087</span></td>
-        <td>Поставщик #1042<br><span class="ord-muted">Китай</span></td>
-        <td>4 позиции</td>
+        <td>Поставщик #1042<br><span class="ord-muted">{% trans "Китай" %}</span></td>
+        <td>{% trans "4 позиции" %}</td>
         <td class="ord-amount">$11,200</td>
-        <td><span class="ord-badge ord-badge--production">В производстве</span></td>
+        <td><span class="ord-badge ord-badge--production">{% trans "В производстве" %}</span></td>
         <td>22.03.2026<br><span class="ord-muted">ETA: 18.04</span></td>
-        <td><span class="ord-pay-badge ord-pay--partial">Резерв 10%</span></td>
-        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
+        <td><span class="ord-pay-badge ord-pay--partial">{% trans "Резерв 10%" %}</span></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">{% trans "Детали" %}</a></td>
       </tr>
       <tr class="ord-detail-row" id="detail-ORD-2026-0142" style="display:none;">
         <td colspan="8">
           <div class="ord-detail-inner">
             <div class="ord-detail-timeline">
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">22.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Заказ размещён" %}</div><div class="ord-tl-date">22.03</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Резерв 10%</div><div class="ord-tl-date">23.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Резерв 10%" %}</div><div class="ord-tl-date">23.03</div></div></div>
               <div class="ord-tl-line"></div>
               <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--active"></div><div><div class="ord-tl-label" style="color:#E85C0D;">В производстве</div><div class="ord-tl-date">с 25.03</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">Отгрузка</div><div class="ord-tl-date">ETA 15.04</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">{% trans "Отгрузка" %}</div><div class="ord-tl-date">ETA 15.04</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">Доставка</div><div class="ord-tl-date">ETA 18.04</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">{% trans "Доставка" %}</div><div class="ord-tl-date">ETA 18.04</div></div></div>
             </div>
             <div class="ord-items-mini">
               <div class="ord-item-row"><span>Гидроцилиндр CAT 320D (2 шт.)</span><span>$5,800</span></div>
@@ -227,27 +228,27 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       </tr>
       <tr data-order-id="ORD-2026-0138">
         <td><span class="ord-id">ORD-2026-0138</span><br><span class="ord-muted">RFQ-0071</span></td>
-        <td>Поставщик #2087<br><span class="ord-muted">Китай</span></td>
-        <td>3 позиции</td>
+        <td>Поставщик #2087<br><span class="ord-muted">{% trans "Китай" %}</span></td>
+        <td>{% trans "3 позиции" %}</td>
         <td class="ord-amount">$4,520</td>
-        <td><span class="ord-badge ord-badge--transit">В пути</span></td>
+        <td><span class="ord-badge ord-badge--transit">{% trans "В пути" %}</span></td>
         <td>05.03.2026<br><span class="ord-muted">ETA: 28.03</span></td>
-        <td><span class="ord-pay-badge ord-pay--partial">50% оплачено</span></td>
-        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
+        <td><span class="ord-pay-badge ord-pay--partial">{% trans "50% оплачено" %}</span></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">{% trans "Детали" %}</a></td>
       </tr>
       <tr class="ord-detail-row" id="detail-ORD-2026-0138" style="display:none;">
         <td colspan="8">
           <div class="ord-detail-inner">
             <div class="ord-detail-timeline">
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">05.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Заказ размещён" %}</div><div class="ord-tl-date">05.03</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">50% оплачено</div><div class="ord-tl-date">06.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "50% оплачено" %}</div><div class="ord-tl-date">06.03</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Отгружено</div><div class="ord-tl-date">12.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Отгружено" %}</div><div class="ord-tl-date">12.03</div></div></div>
               <div class="ord-tl-line"></div>
               <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--active"></div><div><div class="ord-tl-label" style="color:#E85C0D;">В пути</div><div class="ord-tl-date">с 14.03</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">Доставка</div><div class="ord-tl-date">ETA 28.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">{% trans "Доставка" %}</div><div class="ord-tl-date">ETA 28.03</div></div></div>
             </div>
             <div class="ord-items-mini">
               <div class="ord-item-row"><span>Помпа водяная 6212-61-1440 (2 шт.)</span><span>$1,860</span></div>
@@ -259,27 +260,27 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       </tr>
       <tr data-order-id="ORD-2026-0131">
         <td><span class="ord-id">ORD-2026-0131</span><br><span class="ord-muted">RFQ-0065</span></td>
-        <td>Поставщик #3156<br><span class="ord-muted">Китай</span></td>
-        <td>5 позиций</td>
+        <td>Поставщик #3156<br><span class="ord-muted">{% trans "Китай" %}</span></td>
+        <td>{% trans "5 позиций" %}</td>
         <td class="ord-amount">$2,180</td>
-        <td><span class="ord-badge ord-badge--customs">На таможне</span></td>
+        <td><span class="ord-badge ord-badge--customs">{% trans "На таможне" %}</span></td>
         <td>28.02.2026<br><span class="ord-muted">ETA: 26.03</span></td>
-        <td><span class="ord-pay-badge ord-pay--partial">90% оплачено</span></td>
-        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
+        <td><span class="ord-pay-badge ord-pay--partial">{% trans "90% оплачено" %}</span></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">{% trans "Детали" %}</a></td>
       </tr>
       <tr class="ord-detail-row" id="detail-ORD-2026-0131" style="display:none;">
         <td colspan="8">
           <div class="ord-detail-inner">
             <div class="ord-detail-timeline">
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">28.02</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Заказ размещён" %}</div><div class="ord-tl-date">28.02</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Отгружено</div><div class="ord-tl-date">10.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Отгружено" %}</div><div class="ord-tl-date">10.03</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Прибыл в РФ</div><div class="ord-tl-date">22.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Прибыл в РФ" %}</div><div class="ord-tl-date">22.03</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--active"></div><div><div class="ord-tl-label" style="color:#E85C0D;">Таможня</div><div class="ord-tl-date">с 23.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--active"></div><div><div class="ord-tl-label" style="color:#E85C0D;">{% trans "Таможня" %}</div><div class="ord-tl-date">с 23.03</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">Доставка</div><div class="ord-tl-date">ETA 26.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">{% trans "Доставка" %}</div><div class="ord-tl-date">ETA 26.03</div></div></div>
             </div>
             <div class="ord-items-mini">
               <div class="ord-item-row"><span>Фильтр масляный (10 шт.)</span><span>$430</span></div>
@@ -293,25 +294,25 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       </tr>
       <tr data-order-id="ORD-2026-0125">
         <td><span class="ord-id">ORD-2026-0125</span><br><span class="ord-muted">RFQ-0052</span></td>
-        <td>Поставщик #4291<br><span class="ord-muted">Япония</span></td>
-        <td>20 позиций</td>
+        <td>Поставщик #4291<br><span class="ord-muted">{% trans "Япония" %}</span></td>
+        <td>{% trans "20 позиций" %}</td>
         <td class="ord-amount">$6,300</td>
-        <td><span class="ord-badge ord-badge--delivered">Доставлен</span></td>
+        <td><span class="ord-badge ord-badge--delivered">{% trans "Доставлен" %}</span></td>
         <td>14.02.2026<br><span class="ord-muted">Доставлен: 10.03</span></td>
-        <td><span class="ord-pay-badge ord-pay--paid">Оплачен</span></td>
-        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
+        <td><span class="ord-pay-badge ord-pay--paid">{% trans "Оплачен" %}</span></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">{% trans "Детали" %}</a></td>
       </tr>
       <tr class="ord-detail-row" id="detail-ORD-2026-0125" style="display:none;">
         <td colspan="8">
           <div class="ord-detail-inner">
             <div class="ord-detail-timeline">
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">14.02</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Заказ размещён" %}</div><div class="ord-tl-date">14.02</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Оплачен полностью</div><div class="ord-tl-date">15.02</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Оплачен полностью" %}</div><div class="ord-tl-date">15.02</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Отгружено</div><div class="ord-tl-date">25.02</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Отгружено" %}</div><div class="ord-tl-date">25.02</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label" style="color:#66BB6A;">✓ Доставлен</div><div class="ord-tl-date">10.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label" style="color:#66BB6A;">{% trans "✓ Доставлен" %}</div><div class="ord-tl-date">10.03</div></div></div>
             </div>
             <div class="ord-items-mini">
               <div class="ord-item-row"><span>Диск тормозной 421-22-31520 (20 шт.)</span><span>$6,300</span></div>
@@ -321,25 +322,25 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       </tr>
       <tr data-order-id="ORD-2026-0118">
         <td><span class="ord-id">ORD-2026-0118</span><br><span class="ord-muted">RFQ-0044</span></td>
-        <td>Поставщик #5673<br><span class="ord-muted">Китай</span></td>
-        <td>15 позиций</td>
+        <td>Поставщик #5673<br><span class="ord-muted">{% trans "Китай" %}</span></td>
+        <td>{% trans "15 позиций" %}</td>
         <td class="ord-amount">$1,420</td>
-        <td><span class="ord-badge ord-badge--delivered">Доставлен</span></td>
+        <td><span class="ord-badge ord-badge--delivered">{% trans "Доставлен" %}</span></td>
         <td>05.02.2026<br><span class="ord-muted">Доставлен: 28.02</span></td>
-        <td><span class="ord-pay-badge ord-pay--paid">Оплачен</span></td>
-        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
+        <td><span class="ord-pay-badge ord-pay--paid">{% trans "Оплачен" %}</span></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">{% trans "Детали" %}</a></td>
       </tr>
       <tr class="ord-detail-row" id="detail-ORD-2026-0118" style="display:none;">
         <td colspan="8">
           <div class="ord-detail-inner">
             <div class="ord-detail-timeline">
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">05.02</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Заказ размещён" %}</div><div class="ord-tl-date">05.02</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Оплачен полностью</div><div class="ord-tl-date">06.02</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Оплачен полностью" %}</div><div class="ord-tl-date">06.02</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Отгружено</div><div class="ord-tl-date">14.02</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Отгружено" %}</div><div class="ord-tl-date">14.02</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label" style="color:#66BB6A;">✓ Доставлен</div><div class="ord-tl-date">28.02</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label" style="color:#66BB6A;">{% trans "✓ Доставлен" %}</div><div class="ord-tl-date">28.02</div></div></div>
             </div>
             <div class="ord-items-mini">
               <div class="ord-item-row"><span>Прокладка (15 шт.)</span><span>$1,420</span></div>
@@ -349,25 +350,25 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       </tr>
       <tr data-order-id="ORD-2026-0110">
         <td><span class="ord-id">ORD-2026-0110</span><br><span class="ord-muted">RFQ-0030</span></td>
-        <td>TurboTech Asia<br><span class="ord-muted">Тайбэй, Тайвань</span></td>
-        <td>8 позиций</td>
+        <td>TurboTech Asia<br><span class="ord-muted">{% trans "Тайбэй, Тайвань" %}</span></td>
+        <td>{% trans "8 позиций" %}</td>
         <td class="ord-amount">$18,900</td>
-        <td><span class="ord-badge ord-badge--transit">В пути</span></td>
+        <td><span class="ord-badge ord-badge--transit">{% trans "В пути" %}</span></td>
         <td>20.01.2026<br><span class="ord-muted">ETA: 30.03</span></td>
-        <td><span class="ord-pay-badge ord-pay--pending">Ожидает</span></td>
-        <td><a href="javascript:void(0)" class="ord-detail-btn">Детали</a></td>
+        <td><span class="ord-pay-badge ord-pay--pending">{% trans "Ожидает" %}</span></td>
+        <td><a href="javascript:void(0)" class="ord-detail-btn">{% trans "Детали" %}</a></td>
       </tr>
       <tr class="ord-detail-row" id="detail-ORD-2026-0110" style="display:none;">
         <td colspan="8">
           <div class="ord-detail-inner">
             <div class="ord-detail-timeline">
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Заказ размещён</div><div class="ord-tl-date">20.01</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Заказ размещён" %}</div><div class="ord-tl-date">20.01</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">Отгружено</div><div class="ord-tl-date">05.02</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--done"></div><div><div class="ord-tl-label">{% trans "Отгружено" %}</div><div class="ord-tl-date">05.02</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--active"></div><div><div class="ord-tl-label" style="color:#E85C0D;">В пути (авиа)</div><div class="ord-tl-date">с 10.02</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--active"></div><div><div class="ord-tl-label" style="color:#E85C0D;">{% trans "В пути (авиа)" %}</div><div class="ord-tl-date">с 10.02</div></div></div>
               <div class="ord-tl-line"></div>
-              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">Доставка</div><div class="ord-tl-date">ETA 30.03</div></div></div>
+              <div class="ord-tl-step"><div class="ord-tl-dot ord-tl-dot--future"></div><div><div class="ord-tl-label">{% trans "Доставка" %}</div><div class="ord-tl-date">ETA 30.03</div></div></div>
             </div>
             <div class="ord-items-mini">
               <div class="ord-item-row"><span>Турбина TurboTech TT-4400 (2 шт.)</span><span>$9,200</span></div>

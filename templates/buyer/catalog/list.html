@@ -1,6 +1,7 @@
 {% extends "buyer/base_buyer.html" %}
+{% load i18n %}
 
-{% block title %}Избранные товары{% endblock %}
+{% block title %}{% trans "Избранные товары" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -102,64 +103,64 @@
 
 {% block content %}
 
-<div class="fav-title">Избранные товары</div>
-<div class="fav-sub">Отслеживание цен, уведомления при изменении стоимости</div>
+<div class="fav-title">{% trans "Избранные товары" %}</div>
+<div class="fav-sub">{% trans "Отслеживание цен, уведомления при изменении стоимости" %}</div>
 
 <div class="fav-summary">
   <div class="fav-stat active" data-filter="">
     <div class="fav-stat-val">12</div>
-    <div class="fav-stat-lbl">В отслеживании</div>
+    <div class="fav-stat-lbl">{% trans "В отслеживании" %}</div>
   </div>
   <div class="fav-stat" data-filter="up">
     <div class="fav-stat-val" style="color:#E85C0D;">4</div>
-    <div class="fav-stat-lbl">Цена выросла</div>
+    <div class="fav-stat-lbl">{% trans "Цена выросла" %}</div>
   </div>
   <div class="fav-stat" data-filter="down">
     <div class="fav-stat-val">3</div>
-    <div class="fav-stat-lbl">Цена снизилась</div>
+    <div class="fav-stat-lbl">{% trans "Цена снизилась" %}</div>
   </div>
   <div class="fav-stat" data-filter="flat">
     <div class="fav-stat-val">5</div>
-    <div class="fav-stat-lbl">Без изменений</div>
+    <div class="fav-stat-lbl">{% trans "Без изменений" %}</div>
   </div>
   <div class="fav-stat" data-filter="alert">
     <div class="fav-stat-val" style="color:#E85C0D;">2</div>
-    <div class="fav-stat-lbl">Достигли порога</div>
+    <div class="fav-stat-lbl">{% trans "Достигли порога" %}</div>
   </div>
 </div>
 
 <div class="fav-alert">
   <span class="fav-alert-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#E85C0D" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.5a2 2 0 01-4 0"/><path d="M4 6.5a4 4 0 018 0c0 4 1.5 5.5 1.5 5.5H2.5S4 10.5 4 6.5z"/></svg></span>
-  <span><b>2 товара</b> достигли целевой цены — RE48786 снизился до $42.80, LH-9989363 снизился до $2,840</span>
+  <span><b>{% trans "2 товара" %}</b> {% trans "достигли целевой цены" %} — RE48786 {% trans "снизился до" %} $42.80, LH-9989363 {% trans "снизился до" %} $2,840</span>
   <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#64B5F6;cursor:pointer;font-size:16px;line-height:1;">×</button>
 </div>
 
 <div class="fav-toolbar">
-  <input type="text" class="fav-search" placeholder="Поиск по OEM или названию..." id="fav-search-inp" />
+  <input type="text" class="fav-search" placeholder="{% trans "Поиск по OEM или названию..." %}" id="fav-search-inp" />
   <select class="fav-select" id="fav-filter-change">
-    <option value="">Все изменения</option>
-    <option value="up">Цена выросла</option>
-    <option value="down">Цена снизилась</option>
-    <option value="flat">Без изменений</option>
-    <option value="alert">Достигли порога</option>
+    <option value="">{% trans "Все изменения" %}</option>
+    <option value="up">{% trans "Цена выросла" %}</option>
+    <option value="down">{% trans "Цена снизилась" %}</option>
+    <option value="flat">{% trans "Без изменений" %}</option>
+    <option value="alert">{% trans "Достигли порога" %}</option>
   </select>
   <select class="fav-select" id="fav-filter-sort">
-    <option value="added">По дате добавления</option>
-    <option value="change-pct">По изменению %</option>
-    <option value="price-asc">Цена ↑</option>
-    <option value="price-desc">Цена ↓</option>
+    <option value="added">{% trans "По дате добавления" %}</option>
+    <option value="change-pct">{% trans "По изменению %" %}</option>
+    <option value="price-asc">{% trans "Цена ↑" %}</option>
+    <option value="price-desc">{% trans "Цена ↓" %}</option>
   </select>
-  <button class="fav-btn-add" id="btn-add-fav">+ Добавить товар</button>
+  <button class="fav-btn-add" id="btn-add-fav">+ {% trans "Добавить товар" %}</button>
 </div>
 
 <div class="fav-head">
-  <span>OEM-номер</span>
-  <span>Название</span>
-  <span>Тек. цена</span>
-  <span>Было</span>
-  <span>Изменение</span>
-  <span>Наличие</span>
-  <span>Действие</span>
+  <span>{% trans "OEM-номер" %}</span>
+  <span>{% trans "Название" %}</span>
+  <span>{% trans "Тек. цена" %}</span>
+  <span>{% trans "Было" %}</span>
+  <span>{% trans "Изменение" %}</span>
+  <span>{% trans "Наличие" %}</span>
+  <span>{% trans "Действие" %}</span>
   <span></span>
 </div>
 
@@ -169,19 +170,19 @@
   <div class="fav-row" data-change="down" data-alert="1">
     <div>
       <div class="fav-oem">RE48786</div>
-      <div class="fav-threshold">Порог: $44 <span class="fav-threshold-btn" data-oem="RE48786">изменить</span></div>
+      <div class="fav-threshold">{% trans "Порог:" %} $44 <span class="fav-threshold-btn" data-oem="RE48786">{% trans "изменить" %}</span></div>
     </div>
     <div>
-      <div class="fav-name">Фильтр топливный (водосепаратор)</div>
-      <div class="fav-name-sub">John Deere · 6068T, 6090H · Поставщик <span class="fav-star">★</span>4.8-#2087</div>
+      <div class="fav-name">{% trans "Фильтр топливный (водосепаратор)" %}</div>
+      <div class="fav-name-sub">John Deere · 6068T, 6090H · {% trans "Поставщик" %} <span class="fav-star">★</span>4.8-#2087</div>
     </div>
     <div>
       <div class="fav-price">$42.80</div>
-      <div class="fav-price-hint">/ шт</div>
+      <div class="fav-price-hint">{% trans "/ шт" %}</div>
     </div>
     <div>
       <div style="font-size:12px;color:#5E5E5E;text-decoration:line-through;">$48.50</div>
-      <div style="font-size:10px;color:#5E5E5E;">30 дней назад</div>
+      <div style="font-size:10px;color:#5E5E5E;">{% trans "30 дней назад" %}</div>
     </div>
     <div>
       <div class="fav-change fav-change--down">↓ −11.7%</div>
@@ -189,12 +190,12 @@
         <span style="height:18px;"></span><span style="height:16px;"></span><span style="height:20px;" class="hi"></span><span style="height:14px;"></span><span style="height:12px;"></span><span style="height:10px;" class="lo"></span>
       </div>
     </div>
-    <div><span class="fav-avail fav-avail--in">В наличии</span></div>
+    <div><span class="fav-avail fav-avail--in">{% trans "В наличии" %}</span></div>
     <div class="fav-actions">
       <button class="fav-act-btn fav-rfq-btn" data-oem="RE48786">RFQ</button>
-      <button class="fav-act-btn fav-cart-btn" data-oem="RE48786">В корзину</button>
+      <button class="fav-act-btn fav-cart-btn" data-oem="RE48786">{% trans "В корзину" %}</button>
     </div>
-    <button class="fav-remove" data-oem="RE48786" title="Убрать из избранного">
+    <button class="fav-remove" data-oem="RE48786" title="{% trans "Убрать из избранного" %}">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 7h10"/><path d="M8 3l4 4-4 4"/></svg>
     </button>
   </div>
@@ -203,19 +204,19 @@
   <div class="fav-row" data-change="up">
     <div>
       <div class="fav-oem">600-311-8331</div>
-      <div class="fav-threshold">Порог: $35 <span class="fav-threshold-btn" data-oem="600-311-8331">изменить</span></div>
+      <div class="fav-threshold">{% trans "Порог:" %} $35 <span class="fav-threshold-btn" data-oem="600-311-8331">{% trans "изменить" %}</span></div>
     </div>
     <div>
-      <div class="fav-name">Фильтр топливный основной</div>
-      <div class="fav-name-sub">Komatsu · PC200-8, PC220-8 · Поставщик <span class="fav-star">★</span>4.6-#3156</div>
+      <div class="fav-name">{% trans "Фильтр топливный основной" %}</div>
+      <div class="fav-name-sub">Komatsu · PC200-8, PC220-8 · {% trans "Поставщик" %} <span class="fav-star">★</span>4.6-#3156</div>
     </div>
     <div>
       <div class="fav-price">$38.50</div>
-      <div class="fav-price-hint">/ шт</div>
+      <div class="fav-price-hint">{% trans "/ шт" %}</div>
     </div>
     <div>
       <div style="font-size:12px;color:#5E5E5E;text-decoration:line-through;">$34.20</div>
-      <div style="font-size:10px;color:#5E5E5E;">14 дней назад</div>
+      <div style="font-size:10px;color:#5E5E5E;">{% trans "14 дней назад" %}</div>
     </div>
     <div>
       <div class="fav-change fav-change--up">↑ +12.6%</div>
@@ -223,12 +224,12 @@
         <span style="height:8px;" class="lo"></span><span style="height:10px;"></span><span style="height:12px;"></span><span style="height:14px;"></span><span style="height:18px;" class="hi"></span>
       </div>
     </div>
-    <div><span class="fav-avail fav-avail--in">В наличии</span></div>
+    <div><span class="fav-avail fav-avail--in">{% trans "В наличии" %}</span></div>
     <div class="fav-actions">
       <button class="fav-act-btn fav-rfq-btn" data-oem="600-311-8331">RFQ</button>
-      <button class="fav-act-btn fav-cart-btn" data-oem="600-311-8331">В корзину</button>
+      <button class="fav-act-btn fav-cart-btn" data-oem="600-311-8331">{% trans "В корзину" %}</button>
     </div>
-    <button class="fav-remove" data-oem="600-311-8331" title="Убрать из избранного">
+    <button class="fav-remove" data-oem="600-311-8331" title="{% trans "Убрать из избранного" %}">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 7h10"/><path d="M8 3l4 4-4 4"/></svg>
     </button>
   </div>
@@ -237,19 +238,19 @@
   <div class="fav-row" data-change="down" data-alert="1">
     <div>
       <div class="fav-oem">LH-9989363</div>
-      <div class="fav-threshold">Порог: $3,000 <span class="fav-threshold-btn" data-oem="LH-9989363">изменить</span></div>
+      <div class="fav-threshold">{% trans "Порог:" %} $3,000 <span class="fav-threshold-btn" data-oem="LH-9989363">{% trans "изменить" %}</span></div>
     </div>
     <div>
-      <div class="fav-name">Гидроцилиндр стрелы (восст.)</div>
-      <div class="fav-name-sub">Caterpillar · CAT 320D, 320E · Поставщик <span class="fav-star">★</span>4.9-#1042</div>
+      <div class="fav-name">{% trans "Гидроцилиндр стрелы (восст.)" %}</div>
+      <div class="fav-name-sub">Caterpillar · CAT 320D, 320E · {% trans "Поставщик" %} <span class="fav-star">★</span>4.9-#1042</div>
     </div>
     <div>
       <div class="fav-price">$2,840</div>
-      <div class="fav-price-hint">/ шт</div>
+      <div class="fav-price-hint">{% trans "/ шт" %}</div>
     </div>
     <div>
       <div style="font-size:12px;color:#5E5E5E;text-decoration:line-through;">$3,200</div>
-      <div style="font-size:10px;color:#5E5E5E;">7 дней назад</div>
+      <div style="font-size:10px;color:#5E5E5E;">{% trans "7 дней назад" %}</div>
     </div>
     <div>
       <div class="fav-change fav-change--down">↓ −11.2%</div>
@@ -257,11 +258,11 @@
         <span style="height:20px;" class="hi"></span><span style="height:18px;"></span><span style="height:16px;"></span><span style="height:14px;"></span><span style="height:10px;" class="lo"></span>
       </div>
     </div>
-    <div><span class="fav-avail fav-avail--order">Под заказ</span></div>
+    <div><span class="fav-avail fav-avail--order">{% trans "Под заказ" %}</span></div>
     <div class="fav-actions">
       <button class="fav-act-btn fav-rfq-btn" data-oem="LH-9989363">RFQ</button>
     </div>
-    <button class="fav-remove" data-oem="LH-9989363" title="Убрать из избранного">
+    <button class="fav-remove" data-oem="LH-9989363" title="{% trans "Убрать из избранного" %}">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 7h10"/><path d="M8 3l4 4-4 4"/></svg>
     </button>
   </div>
@@ -270,19 +271,19 @@
   <div class="fav-row" data-change="flat">
     <div>
       <div class="fav-oem">7C-2297</div>
-      <div class="fav-threshold">Порог: $1,200 <span class="fav-threshold-btn" data-oem="7C-2297">изменить</span></div>
+      <div class="fav-threshold">{% trans "Порог:" %} $1,200 <span class="fav-threshold-btn" data-oem="7C-2297">{% trans "изменить" %}</span></div>
     </div>
     <div>
-      <div class="fav-name">Турбокомпрессор (новый)</div>
-      <div class="fav-name-sub">Caterpillar · CAT 3306, 3406 · Поставщик <span class="fav-star">★</span>4.2-#3156</div>
+      <div class="fav-name">{% trans "Турбокомпрессор (новый)" %}</div>
+      <div class="fav-name-sub">Caterpillar · CAT 3306, 3406 · {% trans "Поставщик" %} <span class="fav-star">★</span>4.2-#3156</div>
     </div>
     <div>
       <div class="fav-price">$1,450</div>
-      <div class="fav-price-hint">/ шт</div>
+      <div class="fav-price-hint">{% trans "/ шт" %}</div>
     </div>
     <div>
       <div style="font-size:12px;color:#5E5E5E;">$1,450</div>
-      <div style="font-size:10px;color:#5E5E5E;">без изменений</div>
+      <div style="font-size:10px;color:#5E5E5E;">{% trans "без изменений" %}</div>
     </div>
     <div>
       <div class="fav-change fav-change--flat">— 0%</div>
@@ -290,12 +291,12 @@
         <span style="height:12px;"></span><span style="height:12px;"></span><span style="height:12px;"></span><span style="height:12px;"></span><span style="height:12px;"></span>
       </div>
     </div>
-    <div><span class="fav-avail fav-avail--in">В наличии</span></div>
+    <div><span class="fav-avail fav-avail--in">{% trans "В наличии" %}</span></div>
     <div class="fav-actions">
       <button class="fav-act-btn fav-rfq-btn" data-oem="7C-2297">RFQ</button>
-      <button class="fav-act-btn fav-cart-btn" data-oem="7C-2297">В корзину</button>
+      <button class="fav-act-btn fav-cart-btn" data-oem="7C-2297">{% trans "В корзину" %}</button>
     </div>
-    <button class="fav-remove" data-oem="7C-2297" title="Убрать из избранного">
+    <button class="fav-remove" data-oem="7C-2297" title="{% trans "Убрать из избранного" %}">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 7h10"/><path d="M8 3l4 4-4 4"/></svg>
     </button>
   </div>
@@ -304,19 +305,19 @@
   <div class="fav-row" data-change="up">
     <div>
       <div class="fav-oem">421-22-31520</div>
-      <div class="fav-threshold">Порог: $290 <span class="fav-threshold-btn" data-oem="421-22-31520">изменить</span></div>
+      <div class="fav-threshold">{% trans "Порог:" %} $290 <span class="fav-threshold-btn" data-oem="421-22-31520">{% trans "изменить" %}</span></div>
     </div>
     <div>
-      <div class="fav-name">Диск тормозной (фрикционный)</div>
-      <div class="fav-name-sub">Komatsu · WA380-6, WA430-6 · Поставщик <span class="fav-star">★</span>4.9-#4291</div>
+      <div class="fav-name">{% trans "Диск тормозной (фрикционный)" %}</div>
+      <div class="fav-name-sub">Komatsu · WA380-6, WA430-6 · {% trans "Поставщик" %} <span class="fav-star">★</span>4.9-#4291</div>
     </div>
     <div>
       <div class="fav-price">$320</div>
-      <div class="fav-price-hint">/ шт</div>
+      <div class="fav-price-hint">{% trans "/ шт" %}</div>
     </div>
     <div>
       <div style="font-size:12px;color:#5E5E5E;text-decoration:line-through;">$285</div>
-      <div style="font-size:10px;color:#5E5E5E;">21 день назад</div>
+      <div style="font-size:10px;color:#5E5E5E;">{% trans "21 день назад" %}</div>
     </div>
     <div>
       <div class="fav-change fav-change--up">↑ +12.3%</div>
@@ -324,12 +325,12 @@
         <span style="height:9px;" class="lo"></span><span style="height:11px;"></span><span style="height:13px;"></span><span style="height:16px;"></span><span style="height:19px;" class="hi"></span>
       </div>
     </div>
-    <div><span class="fav-avail fav-avail--in">В наличии</span></div>
+    <div><span class="fav-avail fav-avail--in">{% trans "В наличии" %}</span></div>
     <div class="fav-actions">
       <button class="fav-act-btn fav-rfq-btn" data-oem="421-22-31520">RFQ</button>
-      <button class="fav-act-btn fav-cart-btn" data-oem="421-22-31520">В корзину</button>
+      <button class="fav-act-btn fav-cart-btn" data-oem="421-22-31520">{% trans "В корзину" %}</button>
     </div>
-    <button class="fav-remove" data-oem="421-22-31520" title="Убрать из избранного">
+    <button class="fav-remove" data-oem="421-22-31520" title="{% trans "Убрать из избранного" %}">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 7h10"/><path d="M8 3l4 4-4 4"/></svg>
     </button>
   </div>
@@ -338,19 +339,19 @@
   <div class="fav-row" data-change="flat">
     <div>
       <div class="fav-oem">6212-61-1440</div>
-      <div class="fav-threshold">Порог: не задан <span class="fav-threshold-btn" data-oem="6212-61-1440">задать</span></div>
+      <div class="fav-threshold">{% trans "Порог: не задан" %} <span class="fav-threshold-btn" data-oem="6212-61-1440">{% trans "задать" %}</span></div>
     </div>
     <div>
-      <div class="fav-name">Помпа водяная в сборе</div>
-      <div class="fav-name-sub">Komatsu · SA6D140E · Поставщик <span class="fav-star">★</span>4.6-#2087</div>
+      <div class="fav-name">{% trans "Помпа водяная в сборе" %}</div>
+      <div class="fav-name-sub">Komatsu · SA6D140E · {% trans "Поставщик" %} <span class="fav-star">★</span>4.6-#2087</div>
     </div>
     <div>
       <div class="fav-price">$580</div>
-      <div class="fav-price-hint">/ шт</div>
+      <div class="fav-price-hint">{% trans "/ шт" %}</div>
     </div>
     <div>
       <div style="font-size:12px;color:#5E5E5E;">$580</div>
-      <div style="font-size:10px;color:#5E5E5E;">без изменений</div>
+      <div style="font-size:10px;color:#5E5E5E;">{% trans "без изменений" %}</div>
     </div>
     <div>
       <div class="fav-change fav-change--flat">— 0%</div>
@@ -358,11 +359,11 @@
         <span style="height:14px;"></span><span style="height:14px;"></span><span style="height:14px;"></span><span style="height:14px;"></span><span style="height:14px;"></span>
       </div>
     </div>
-    <div><span class="fav-avail fav-avail--order">Под заказ (7 дн.)</span></div>
+    <div><span class="fav-avail fav-avail--order">{% trans "Под заказ" %} (7 дн.)</span></div>
     <div class="fav-actions">
       <button class="fav-act-btn fav-rfq-btn" data-oem="6212-61-1440">RFQ</button>
     </div>
-    <button class="fav-remove" data-oem="6212-61-1440" title="Убрать из избранного">
+    <button class="fav-remove" data-oem="6212-61-1440" title="{% trans "Убрать из избранного" %}">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 7h10"/><path d="M8 3l4 4-4 4"/></svg>
     </button>
   </div>
@@ -372,19 +373,19 @@
 <!-- Add item modal -->
 <div id="fav-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center;">
   <div style="background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px;width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-    <div style="font-family:'Golos Text',sans-serif;font-size:16px;font-weight:700;color:#ECECEC;margin-bottom:6px;">Добавить в избранное</div>
-    <div style="font-size:12px;color:#6A6A6A;margin-bottom:18px;">Введите OEM-номер и установите целевую цену</div>
+    <div style="font-family:'Golos Text',sans-serif;font-size:16px;font-weight:700;color:#ECECEC;margin-bottom:6px;">{% trans "Добавить в избранное" %}</div>
+    <div style="font-size:12px;color:#6A6A6A;margin-bottom:18px;">{% trans "Введите OEM-номер и установите целевую цену" %}</div>
     <div style="margin-bottom:12px;">
-      <div style="font-size:11px;color:#919191;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">OEM-номер</div>
-      <input type="text" id="modal-oem" placeholder="Например: RE48786" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;" />
+      <div style="font-size:11px;color:#919191;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">{% trans "OEM-номер" %}</div>
+      <input type="text" id="modal-oem" placeholder="{% trans "Например: RE48786" %}" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;" />
     </div>
     <div style="margin-bottom:18px;">
-      <div style="font-size:11px;color:#919191;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Целевая цена (порог уведомления)</div>
-      <input type="text" id="modal-threshold" placeholder="Например: $100" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;" />
+      <div style="font-size:11px;color:#919191;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Целевая цена (порог уведомления)" %}</div>
+      <input type="text" id="modal-threshold" placeholder="{% trans "Например: $100" %}" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;" />
     </div>
     <div style="display:flex;gap:8px;">
-      <button id="modal-cancel" style="flex:1;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.08);color:#919191;font-size:13px;cursor:pointer;">Отмена</button>
-      <button id="modal-confirm" style="flex:1;padding:10px;border-radius:8px;background:rgba(100,181,246,0.15);border:1px solid rgba(100,181,246,0.3);color:#64B5F6;font-size:13px;font-weight:600;cursor:pointer;">Добавить</button>
+      <button id="modal-cancel" style="flex:1;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.08);color:#919191;font-size:13px;cursor:pointer;">{% trans "Отмена" %}</button>
+      <button id="modal-confirm" style="flex:1;padding:10px;border-radius:8px;background:rgba(100,181,246,0.15);border:1px solid rgba(100,181,246,0.3);color:#64B5F6;font-size:13px;font-weight:600;cursor:pointer;">{% trans "Добавить" %}</button>
     </div>
   </div>
 </div>
@@ -392,13 +393,13 @@
 <!-- Threshold edit modal -->
 <div id="thresh-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:200;align-items:center;justify-content:center;">
   <div style="background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-    <div style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;margin-bottom:4px;">Целевая цена</div>
-    <div style="font-size:12px;color:#6A6A6A;margin-bottom:16px;">Уведомить, когда цена опустится ниже</div>
+    <div style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;margin-bottom:4px;">{% trans "Целевая цена" %}</div>
+    <div style="font-size:12px;color:#6A6A6A;margin-bottom:16px;">{% trans "Уведомить, когда цена опустится ниже" %}</div>
     <div id="thresh-oem-label" style="font-size:12px;font-weight:600;color:#64B5F6;margin-bottom:12px;"></div>
-    <input type="text" id="thresh-value" placeholder="Например: $44.00" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;margin-bottom:16px;" />
+    <input type="text" id="thresh-value" placeholder="{% trans "Например: $44.00" %}" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;margin-bottom:16px;" />
     <div style="display:flex;gap:8px;">
-      <button id="thresh-cancel" style="flex:1;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.08);color:#919191;font-size:13px;cursor:pointer;">Отмена</button>
-      <button id="thresh-confirm" style="flex:1;padding:10px;border-radius:8px;background:rgba(100,181,246,0.15);border:1px solid rgba(100,181,246,0.3);color:#64B5F6;font-size:13px;font-weight:600;cursor:pointer;">Сохранить</button>
+      <button id="thresh-cancel" style="flex:1;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.08);color:#919191;font-size:13px;cursor:pointer;">{% trans "Отмена" %}</button>
+      <button id="thresh-confirm" style="flex:1;padding:10px;border-radius:8px;background:rgba(100,181,246,0.15);border:1px solid rgba(100,181,246,0.3);color:#64B5F6;font-size:13px;font-weight:600;cursor:pointer;">{% trans "Сохранить" %}</button>
     </div>
   </div>
 </div>

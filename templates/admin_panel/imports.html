@@ -1,38 +1,39 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Импорты{% endblock %}
-{% block topbar_title %}Импорты поставщиков{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Импорты" %}{% endblock %}
+{% block topbar_title %}{% trans "Импорты поставщиков" %}{% endblock %}
 
 {% block content %}
 <div class="ap-stats">
-  <a href="/admin-panel/imports/" class="ap-stat"><div class="ap-stat-value">{{ total_imports }}</div><div class="ap-stat-label">Всего импортов</div></a>
-  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ total_created }}</div><div class="ap-stat-label">Создано позиций</div></a>
-  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ total_updated }}</div><div class="ap-stat-label">Обновлено</div></a>
-  <a href="/admin-panel/imports/" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ total_errors }}</div><div class="ap-stat-label">Ошибок</div></a>
+  <a href="/admin-panel/imports/" class="ap-stat"><div class="ap-stat-value">{{ total_imports }}</div><div class="ap-stat-label">{% trans "Всего импортов" %}</div></a>
+  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ total_created }}</div><div class="ap-stat-label">{% trans "Создано позиций" %}</div></a>
+  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ total_updated }}</div><div class="ap-stat-label">{% trans "Обновлено" %}</div></a>
+  <a href="/admin-panel/imports/" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ total_errors }}</div><div class="ap-stat-label">{% trans "Ошибок" %}</div></a>
 </div>
 
 <div class="ap-card">
   <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
     <select class="ap-select" onchange="window.location.href='/admin-panel/imports/' + (this.value ? '?seller=' + encodeURIComponent(this.value) : '')">
-      <option value="">Все поставщики</option>
+      <option value="">{% trans "Все поставщики" %}</option>
       {% for s in sellers_list %}
       <option value="{{ s.username }}" {% if current_seller == s.username %}selected{% endif %}>{{ s.username }}</option>
       {% endfor %}
     </select>
     {% if current_seller %}
-    <a href="/admin-panel/imports/" class="ap-btn ap-btn-warn" style="text-decoration:none;">Сбросить</a>
+    <a href="/admin-panel/imports/" class="ap-btn ap-btn-warn" style="text-decoration:none;">{% trans "Сбросить" %}</a>
     {% endif %}
   </div>
 
   <table class="ap-table">
     <thead>
       <tr>
-        <th>Дата</th>
-        <th>Поставщик</th>
-        <th>Файл</th>
-        <th>Создано</th>
-        <th>Обновлено</th>
-        <th>Ошибок</th>
-        <th>Статус</th>
+        <th>{% trans "Дата" %}</th>
+        <th>{% trans "Поставщик" %}</th>
+        <th>{% trans "Файл" %}</th>
+        <th>{% trans "Создано" %}</th>
+        <th>{% trans "Обновлено" %}</th>
+        <th>{% trans "Ошибок" %}</th>
+        <th>{% trans "Статус" %}</th>
         <th></th>
       </tr>
     </thead>
@@ -65,16 +66,16 @@
           {% if imp.status == 'success' %}
             <span class="ap-badge ap-badge-green">OK</span>
           {% else %}
-            <span class="ap-badge ap-badge-orange">Ошибка</span>
+            <span class="ap-badge ap-badge-orange">{% trans "Ошибка" %}</span>
           {% endif %}
         </td>
         <td>
-          <a href="/admin-panel/imports/{{ imp.id }}/" class="ap-btn ap-btn-primary" style="margin-right:4px;">Позиции</a>
-          <a href="/admin-panel/users/{{ imp.seller_id }}/" class="ap-btn ap-btn-ghost">Поставщик</a>
+          <a href="/admin-panel/imports/{{ imp.id }}/" class="ap-btn ap-btn-primary" style="margin-right:4px;">{% trans "Позиции" %}</a>
+          <a href="/admin-panel/users/{{ imp.seller_id }}/" class="ap-btn ap-btn-ghost">{% trans "Поставщик" %}</a>
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="8" style="text-align:center;color:#919191;">Нет импортов</td></tr>
+      <tr><td colspan="8" style="text-align:center;color:#919191;">{% trans "Нет импортов" %}</td></tr>
       {% endfor %}
     </tbody>
   </table>

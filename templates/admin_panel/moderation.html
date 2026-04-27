@@ -1,26 +1,27 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Модерация{% endblock %}
-{% block topbar_title %}Модерация{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Модерация" %}{% endblock %}
+{% block topbar_title %}{% trans "Модерация" %}{% endblock %}
 
 {% block content %}
 <!-- Stats -->
 <div class="ap-stats">
-  <a href="?tab=all" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ total_pending }}</div><div class="ap-stat-label">Всего в очереди</div></a>
-  <a href="?tab=suppliers" class="ap-stat"><div class="ap-stat-value">{{ supplier_count }}</div><div class="ap-stat-label">Поставщики</div></a>
-  <a href="?tab=parts" class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">Запчасти</div></a>
-  <a href="?tab=claims" class="ap-stat"><div class="ap-stat-value">{{ claims_count }}</div><div class="ap-stat-label">Рекламации</div></a>
-  <a href="?tab=sla" class="ap-stat"><div class="ap-stat-value">{{ sla_count }}</div><div class="ap-stat-label">SLA нарушения</div></a>
+  <a href="?tab=all" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ total_pending }}</div><div class="ap-stat-label">{% trans "Всего в очереди" %}</div></a>
+  <a href="?tab=suppliers" class="ap-stat"><div class="ap-stat-value">{{ supplier_count }}</div><div class="ap-stat-label">{% trans "Поставщики" %}</div></a>
+  <a href="?tab=parts" class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">{% trans "Запчасти" %}</div></a>
+  <a href="?tab=claims" class="ap-stat"><div class="ap-stat-value">{{ claims_count }}</div><div class="ap-stat-label">{% trans "Рекламации" %}</div></a>
+  <a href="?tab=sla" class="ap-stat"><div class="ap-stat-value">{{ sla_count }}</div><div class="ap-stat-label">{% trans "SLA нарушения" %}</div></a>
 </div>
 
 <!-- Tabs -->
 <div class="ap-card" style="margin-bottom:16px;">
   <div class="ap-tabs">
-    <a href="?tab=all" class="ap-tab {% if tab == 'all' %}active{% endif %}" style="text-decoration:none;">Все ({{ total_pending }})</a>
-    <a href="?tab=suppliers" class="ap-tab {% if tab == 'suppliers' %}active{% endif %}" style="text-decoration:none;">Поставщики ({{ supplier_count }})</a>
-    <a href="?tab=parts" class="ap-tab {% if tab == 'parts' %}active{% endif %}" style="text-decoration:none;">Запчасти ({{ parts_count }})</a>
-    <a href="?tab=claims" class="ap-tab {% if tab == 'claims' %}active{% endif %}" style="text-decoration:none;">Рекламации ({{ claims_count }})</a>
+    <a href="?tab=all" class="ap-tab {% if tab == 'all' %}active{% endif %}" style="text-decoration:none;">{% blocktrans with total_pending=total_pending %}Все ({{ total_pending }}){% endblocktrans %}</a>
+    <a href="?tab=suppliers" class="ap-tab {% if tab == 'suppliers' %}active{% endif %}" style="text-decoration:none;">{% blocktrans with supplier_count=supplier_count %}Поставщики ({{ supplier_count }}){% endblocktrans %}</a>
+    <a href="?tab=parts" class="ap-tab {% if tab == 'parts' %}active{% endif %}" style="text-decoration:none;">{% blocktrans with parts_count=parts_count %}Запчасти ({{ parts_count }}){% endblocktrans %}</a>
+    <a href="?tab=claims" class="ap-tab {% if tab == 'claims' %}active{% endif %}" style="text-decoration:none;">{% blocktrans with claims_count=claims_count %}Рекламации ({{ claims_count }}){% endblocktrans %}</a>
     <a href="?tab=sla" class="ap-tab {% if tab == 'sla' %}active{% endif %}" style="text-decoration:none;">SLA ({{ sla_count }})</a>
-    <a href="?tab=history" class="ap-tab {% if tab == 'history' %}active{% endif %}" style="text-decoration:none;">История</a>
+    <a href="?tab=history" class="ap-tab {% if tab == 'history' %}active{% endif %}" style="text-decoration:none;">{% trans "История" %}</a>
   </div>
 </div>
 
@@ -28,7 +29,7 @@
 {% if tab == 'all' or tab == 'suppliers' %}
 {% if sandbox_suppliers %}
 <div class="ap-card" style="margin-bottom:16px;">
-  <div class="ap-section-title">Поставщики в песочнице ({{ supplier_count }})</div>
+  <div class="ap-section-title">{% blocktrans with supplier_count=supplier_count %}Поставщики в песочнице ({{ supplier_count }}){% endblocktrans %}</div>
   <div style="display:flex;flex-direction:column;gap:8px;">
     {% for profile in sandbox_suppliers %}
     <div class="ap-card-elevated" style="display:flex;align-items:center;gap:16px;">
@@ -37,13 +38,13 @@
       </div>
       <div style="flex:1;">
         <a href="/admin-panel/users/{{ profile.user.id }}/" style="font-size:13px;font-weight:600;color:#64B5F6;text-decoration:none;">{{ profile.user.get_full_name|default:profile.user.username }}</a>
-        <div style="font-size:11px;color:#919191;">{{ profile.company_name|default:profile.user.email }} · Рег. {{ profile.user.date_joined|date:"d.m.Y" }}</div>
+        <div style="font-size:11px;color:#919191;">{% blocktrans with profile_company_name_default_profile_user_email=profile.company_name|default:profile.user.email profile_user_date_joined_date_d_m_Y=profile.user.date_joined|date:"d.m.Y" %}{{ profile.company_name|default:profile.user.email }} · Рег. {{ profile.user.date_joined|date:"d.m.Y" }}{% endblocktrans %}</div>
       </div>
       <form method="post" style="display:flex;gap:6px;">
         {% csrf_token %}
         <input type="hidden" name="profile_id" value="{{ profile.id }}"/>
-        <button type="submit" name="action" value="approve_supplier" class="ap-btn ap-btn-primary">Одобрить</button>
-        <button type="submit" name="action" value="reject_supplier" class="ap-btn ap-btn-warn">Отклонить</button>
+        <button type="submit" name="action" value="approve_supplier" class="ap-btn ap-btn-primary">{% trans "Одобрить" %}</button>
+        <button type="submit" name="action" value="reject_supplier" class="ap-btn ap-btn-warn">{% trans "Отклонить" %}</button>
       </form>
     </div>
     {% endfor %}
@@ -57,11 +58,11 @@
 {% if blocked_parts %}
 <div class="ap-card" style="margin-bottom:16px;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-    <div class="ap-section-title" style="margin-bottom:0;">Заблокированные запчасти ({{ parts_count }})</div>
-    <a href="/admin-panel/catalog/?status=blocked" class="ap-btn ap-btn-ghost" style="text-decoration:none;font-size:11px;">В каталоге</a>
+    <div class="ap-section-title" style="margin-bottom:0;">{% blocktrans with parts_count=parts_count %}Заблокированные запчасти ({{ parts_count }}){% endblocktrans %}</div>
+    <a href="/admin-panel/catalog/?status=blocked" class="ap-btn ap-btn-ghost" style="text-decoration:none;font-size:11px;">{% trans "В каталоге" %}</a>
   </div>
   <table class="ap-table">
-    <thead><tr><th>OEM</th><th>Название</th><th>Бренд</th><th>Поставщик</th><th>Причина</th><th>Действия</th></tr></thead>
+    <thead><tr><th>OEM</th><th>{% trans "Название" %}</th><th>{% trans "Бренд" %}</th><th>{% trans "Поставщик" %}</th><th>{% trans "Причина" %}</th><th>{% trans "Действия" %}</th></tr></thead>
     <tbody>
       {% for part in blocked_parts %}
       <tr>
@@ -74,7 +75,7 @@
           <form method="post" style="display:inline;">
             {% csrf_token %}
             <input type="hidden" name="part_id" value="{{ part.id }}"/>
-            <button type="submit" name="action" value="activate_part" class="ap-btn ap-btn-primary" style="font-size:11px;padding:4px 10px;">Активировать</button>
+            <button type="submit" name="action" value="activate_part" class="ap-btn ap-btn-primary" style="font-size:11px;padding:4px 10px;">{% trans "Активировать" %}</button>
           </form>
         </td>
       </tr>
@@ -89,9 +90,9 @@
 {% if tab == 'all' or tab == 'claims' %}
 {% if open_claims %}
 <div class="ap-card" style="margin-bottom:16px;">
-  <div class="ap-section-title">Открытые рекламации ({{ claims_count }})</div>
+  <div class="ap-section-title">{% blocktrans with claims_count=claims_count %}Открытые рекламации ({{ claims_count }}){% endblocktrans %}</div>
   <table class="ap-table">
-    <thead><tr><th>Заказ</th><th>Тема</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+    <thead><tr><th>{% trans "Заказ" %}</th><th>{% trans "Тема" %}</th><th>{% trans "Статус" %}</th><th>{% trans "Дата" %}</th><th>{% trans "Действия" %}</th></tr></thead>
     <tbody>
       {% for claim in open_claims %}
       <tr>
@@ -103,9 +104,9 @@
           <form method="post" style="display:inline-flex;gap:4px;">
             {% csrf_token %}
             <input type="hidden" name="claim_id" value="{{ claim.id }}"/>
-            <button type="submit" name="action" value="approve_claim" class="ap-btn ap-btn-primary" style="font-size:11px;padding:4px 10px;">Одобрить</button>
-            <button type="submit" name="action" value="reject_claim" class="ap-btn ap-btn-warn" style="font-size:11px;padding:4px 10px;">Отклонить</button>
-            <button type="submit" name="action" value="close_claim" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">Закрыть</button>
+            <button type="submit" name="action" value="approve_claim" class="ap-btn ap-btn-primary" style="font-size:11px;padding:4px 10px;">{% trans "Одобрить" %}</button>
+            <button type="submit" name="action" value="reject_claim" class="ap-btn ap-btn-warn" style="font-size:11px;padding:4px 10px;">{% trans "Отклонить" %}</button>
+            <button type="submit" name="action" value="close_claim" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">{% trans "Закрыть" %}</button>
           </form>
         </td>
       </tr>
@@ -120,9 +121,9 @@
 {% if tab == 'all' or tab == 'sla' %}
 {% if sla_breached %}
 <div class="ap-card" style="margin-bottom:16px;border-left:3px solid #E85C0D;">
-  <div class="ap-section-title" style="color:#E85C0D;">SLA нарушения ({{ sla_count }})</div>
+  <div class="ap-section-title" style="color:#E85C0D;">{% blocktrans with sla_count=sla_count %}SLA нарушения ({{ sla_count }}){% endblocktrans %}</div>
   <table class="ap-table">
-    <thead><tr><th>Заказ</th><th>Покупатель</th><th>Статус</th><th>Нарушений</th><th>Дедлайн подтв.</th><th>Дедлайн отгр.</th><th></th></tr></thead>
+    <thead><tr><th>{% trans "Заказ" %}</th><th>{% trans "Покупатель" %}</th><th>{% trans "Статус" %}</th><th>{% trans "Нарушений" %}</th><th>{% trans "Дедлайн подтв." %}</th><th>{% trans "Дедлайн отгр." %}</th><th></th></tr></thead>
     <tbody>
       {% for order in sla_breached %}
       <tr>
@@ -132,7 +133,7 @@
         <td><span style="color:#E85C0D;font-weight:600;">{{ order.sla_breaches_count }}</span></td>
         <td class="text-secondary">{{ order.supplier_confirm_deadline|date:"d.m H:i"|default:"—" }}</td>
         <td class="text-secondary">{{ order.ship_deadline|date:"d.m H:i"|default:"—" }}</td>
-        <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">Детали</a></td>
+        <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">{% trans "Детали" %}</a></td>
       </tr>
       {% endfor %}
     </tbody>
@@ -145,7 +146,7 @@
 {% if tab != 'history' and not sandbox_suppliers and not blocked_parts and not open_claims and not sla_breached %}
 <div class="ap-card" style="text-align:center;padding:40px;">
   <div style="font-size:24px;color:#5E5E5E;margin-bottom:8px;">&#10003;</div>
-  <div style="font-size:15px;color:#919191;">Очередь модерации пуста</div>
+  <div style="font-size:15px;color:#919191;">{% trans "Очередь модерации пуста" %}</div>
 </div>
 {% endif %}
 
@@ -153,17 +154,17 @@
 {% if tab == 'history' %}
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
   <div class="ap-card">
-    <div class="ap-section-title">Последние модерации запчастей</div>
+    <div class="ap-section-title">{% trans "Последние модерации запчастей" %}</div>
     {% if recent_moderated %}
     <table class="ap-table">
-      <thead><tr><th>OEM</th><th>Поставщик</th><th>Статус</th><th>Модератор</th><th>Дата</th></tr></thead>
+      <thead><tr><th>OEM</th><th>{% trans "Поставщик" %}</th><th>{% trans "Статус" %}</th><th>{% trans "Модератор" %}</th><th>{% trans "Дата" %}</th></tr></thead>
       <tbody>
         {% for part in recent_moderated %}
         <tr>
           <td><span style="color:#64B5F6;">{{ part.oem_number }}</span></td>
           <td class="text-secondary">{{ part.seller.username|default:"—" }}</td>
           <td>
-            {% if part.availability_status == 'active' %}<span class="ap-badge ap-badge-green">Одобрена</span>
+            {% if part.availability_status == 'active' %}<span class="ap-badge ap-badge-green">{% trans "Одобрена" %}</span>
             {% else %}<span class="ap-badge ap-badge-orange">{{ part.availability_status }}</span>{% endif %}
           </td>
           <td class="text-secondary">{{ part.moderated_by.username|default:"—" }}</td>
@@ -172,14 +173,14 @@
         {% endfor %}
       </tbody>
     </table>
-    {% else %}<p style="color:#919191;font-size:13px;">Нет данных</p>{% endif %}
+    {% else %}<p style="color:#919191;font-size:13px;">{% trans "Нет данных" %}</p>{% endif %}
   </div>
 
   <div class="ap-card">
-    <div class="ap-section-title">Последние модерации поставщиков</div>
+    <div class="ap-section-title">{% trans "Последние модерации поставщиков" %}</div>
     {% if recent_supplier_events %}
     <table class="ap-table">
-      <thead><tr><th>Поставщик</th><th>Действие</th><th>Дата</th></tr></thead>
+      <thead><tr><th>{% trans "Поставщик" %}</th><th>{% trans "Действие" %}</th><th>{% trans "Дата" %}</th></tr></thead>
       <tbody>
         {% for event in recent_supplier_events %}
         <tr>
@@ -190,7 +191,7 @@
         {% endfor %}
       </tbody>
     </table>
-    {% else %}<p style="color:#919191;font-size:13px;">Нет данных</p>{% endif %}
+    {% else %}<p style="color:#919191;font-size:13px;">{% trans "Нет данных" %}</p>{% endif %}
   </div>
 </div>
 {% endif %}
