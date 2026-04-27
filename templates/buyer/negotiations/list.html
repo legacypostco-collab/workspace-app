@@ -335,7 +335,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
     var nameEl = row ? row.querySelector('.neg-product-name') : null;
     var name = nameEl ? nameEl.textContent : '';
 
-    // "Принять" button
+    // gettext('Принять') button
     if (btn.classList.contains('neg-btn--accept')) {
       var actionsCell = btn.closest('td');
       if (actionsCell) actionsCell.innerHTML = '<span class="neg-response-badge neg-resp--accepted">\u25CF Принято</span>';
@@ -344,12 +344,12 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
       if (cells[4]) {
         cells[4].innerHTML = '<span class="neg-response-badge neg-resp--accepted">\u25CF Принято</span>';
       }
-      showToast('Цена принята: ' + name + ' (' + oem + ')');
+      showToast(gettext("Цена принята: ") + name + ' (' + oem + ')');
       return;
     }
 
-    // "Запросить" button (discount request)
-    if (btn.classList.contains('neg-btn--request') && btn.textContent.trim() === 'Запросить') {
+    // gettext('Запросить') button (discount request)
+    if (btn.classList.contains('neg-btn--request') && btn.textContent.trim() === gettext("Запросить")) {
       var input = btn.previousElementSibling || btn.closest('div').querySelector('.neg-discount-input');
       if (input && input.value) {
         var pct = input.value.replace('%', '');
@@ -360,9 +360,9 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
         if (cells[4]) {
           cells[4].innerHTML = '<span class="neg-response-badge neg-resp--waiting">Ожидает ответа</span><br><span class="neg-muted">отправлено сейчас</span>';
         }
-        showToast('Скидка ' + pct + '% запрошена для ' + oem);
+        showToast(gettext("Скидка ") + pct + gettext("% запрошена для ") + oem);
       } else {
-        showToast('Введите процент скидки');
+        showToast(gettext("Введите процент скидки"));
       }
       return;
     }
@@ -377,17 +377,17 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
           cells[4].innerHTML = '<span class="neg-response-badge neg-resp--counter">Встречная: ' + pct + '%</span><br><span class="neg-muted">отправлено сейчас</span>';
         }
         btn.closest('div').style.display = 'none';
-        showToast('Встречное предложение ' + pct + '% отправлено');
+        showToast(gettext("Встречное предложение ") + pct + gettext("% отправлено"));
       }
       return;
     }
 
-    // "Напомнить" button
-    if (btn.classList.contains('neg-btn--secondary') && btn.textContent.trim() === 'Напомнить') {
+    // gettext('Напомнить') button
+    if (btn.classList.contains('neg-btn--secondary') && btn.textContent.trim() === gettext("Напомнить")) {
       btn.textContent = '\u2713 Отправлено';
       btn.disabled = true;
       btn.style.opacity = '0.6';
-      showToast('Напоминание отправлено поставщику');
+      showToast(gettext("Напоминание отправлено поставщику"));
       return;
     }
   });

@@ -280,41 +280,41 @@ function showInfoRequest(btn) {
 function sendInfoRequest(btn, ordId) {
   var input = btn.previousElementSibling;
   var text = input.value.trim();
-  if (!text) { opToast('{% trans "Введите текст запроса" %}'); return; }
-  opToast('{% trans "Запрос отправлен" %}', 2000, 'success');
+  if (!text) { opToast('{% trans gettext('Введите текст запроса') %}'); return; }
+  opToast('{% trans gettext('Запрос отправлен') %}', 2000, 'success');
   input.value = '';
   btn.closest('.info-request-area').style.display = 'none';
 }
 
 function escalate(btn) {
   var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
-  btn.textContent = '{% trans "✓ Эскалировано" %}';
+  btn.textContent = '{% trans gettext('✓ Эскалировано') %}';
   btn.disabled = true;
   btn.style.cssText += ';opacity:0.6;';
   card.style.borderColor = '#E05555';
   card.style.borderWidth = '1px';
-  opToast('{% trans "Задача эскалирована руководителю" %}', 2000, 'warn');
+  opToast('{% trans gettext('Задача эскалирована руководителю') %}', 2000, 'warn');
 }
 function approve(btn) {
   var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
-  btn.textContent = '{% trans "✓ Согласовано" %}';
+  btn.textContent = '{% trans gettext('✓ Согласовано') %}';
   btn.disabled = true;
   btn.style.background = 'rgba(102,187,106,0.15)';
   btn.style.color = '#66BB6A';
   card.style.borderColor = 'rgba(102,187,106,0.3)';
   var btns = card.querySelectorAll('button');
   btns.forEach(function(b){ if (b !== btn) b.disabled = true; });
-  opToast('{% trans "Согласовано" %}', 2000, 'success');
+  opToast('{% trans gettext('Согласовано') %}', 2000, 'success');
 }
 function reject(btn) {
   var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
-  btn.textContent = '{% trans "✗ Отклонено" %}';
+  btn.textContent = '{% trans gettext('✗ Отклонено') %}';
   btn.disabled = true;
   btn.style.opacity = '0.5';
   card.style.borderColor = 'rgba(255,255,255,0.1)';
   var btns = card.querySelectorAll('button');
   btns.forEach(function(b){ if (b !== btn) b.disabled = true; });
-  opToast('{% trans "Отклонено" %}', 2000);
+  opToast('{% trans gettext('Отклонено') %}', 2000);
 }
 function addNote(btn) {
   var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
@@ -334,7 +334,7 @@ function saveNote(e, ta) {
     if (!text) return;
     var noteDiv = ta.closest('.inline-note');
     noteDiv.innerHTML = '<div style="font-size:12px;color:#919191;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.06);">📝 ' + text + '</div>';
-    opToast('{% trans "Заметка сохранена" %}', 1500, 'success');
+    opToast('{% trans gettext('Заметка сохранена') %}', 1500, 'success');
   } else if (e.key === 'Escape') {
     ta.closest('.inline-note').remove();
   }

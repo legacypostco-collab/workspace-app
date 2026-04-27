@@ -366,19 +366,19 @@ function dlTab(tab) {
 
 function dealAction(btn, action) {
   var labels = {
-    'call_buyer': '{% trans "Звонок покупателю запланирован" %}',
-    'call_seller': '{% trans "Звонок поставщику запланирован" %}',
-    'platform_discount': '{% trans "Бонус платформы отправлен покупателю" %}',
-    'remind_seller': '{% trans "Напоминание отправлено поставщику" %}',
-    'find_alt': '{% trans "Поиск альтернативного поставщика запущен" %}',
-    'extend': '{% trans "Срок котировки продлён на 7 дней" %}',
-    'reopen': '{% trans "Сделка возвращена в работу" %}'
+    'call_buyer': '{% trans gettext('Звонок покупателю запланирован') %}',
+    'call_seller': '{% trans gettext('Звонок поставщику запланирован') %}',
+    'platform_discount': '{% trans gettext('Бонус платформы отправлен покупателю') %}',
+    'remind_seller': '{% trans gettext('Напоминание отправлено поставщику') %}',
+    'find_alt': '{% trans gettext('Поиск альтернативного поставщика запущен') %}',
+    'extend': '{% trans gettext('Срок котировки продлён на 7 дней') %}',
+    'reopen': '{% trans gettext('Сделка возвращена в работу') %}'
   };
   btn.style.opacity = '0.5';
   btn.style.pointerEvents = 'none';
-  btn.textContent = '✓ ' + (labels[action] || '{% trans "Выполнено" %}');
+  btn.textContent = '✓ ' + (labels[action] || '{% trans gettext('Выполнено') %}');
   btn.style.color = '#64B5F6';
-  opToast(labels[action] || '{% trans "Действие выполнено" %}');
+  opToast(labels[action] || '{% trans gettext('Действие выполнено') %}');
 }
 
 function opToast(msg) {

@@ -327,7 +327,7 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     var row = btn.closest('tr');
     var idEl = row ? row.querySelector('.rfq-id') : null;
     var id = idEl ? idEl.textContent : '';
-    showToast('Открыт ' + id);
+    showToast(gettext("Открыт ") + id);
   });
 })();
 </script>

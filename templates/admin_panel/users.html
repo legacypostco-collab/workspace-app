@@ -131,7 +131,7 @@ function toggleAllUsers(master) {
 function updateUserBar() {
   var count = document.querySelectorAll('.user-cb:checked').length;
   document.getElementById('userBulkBar').style.display = count > 0 ? 'flex' : 'none';
-  document.getElementById('userSelectedCount').textContent = count + '{% trans " выбрано" %}';
+  document.getElementById('userSelectedCount').textContent = count + '{% trans gettext(' выбрано') %}';
 }
 function clearUserSelection() {
   document.querySelectorAll('.user-cb').forEach(function(cb) { cb.checked = false; });

@@ -349,8 +349,8 @@
 
 <script>
 function igConnect(name) {
-  showToast('Настройка подключения ' + name + '...');
-  setTimeout(() => showToast(name + ' — отправлен запрос на активацию'), 1500);
+  showToast(gettext("Настройка подключения ") + name + '...');
+  setTimeout(() => showToast(name + gettext(" — отправлен запрос на активацию")), 1500);
 }
 
 function openRequestForm() {
@@ -360,7 +360,7 @@ function openRequestForm() {
 function closeRequestForm() { document.getElementById('requestForm').classList.remove('open'); }
 function submitRequest() {
   closeRequestForm();
-  showToast('Запрос отправлен, менеджер свяжется по email', 'success');
+  showToast(gettext("Запрос отправлен, менеджер свяжется по email"), 'success');
 }
 
 function openContactForm() {
@@ -370,7 +370,7 @@ function openContactForm() {
 function closeContactForm() { document.getElementById('contactForm').classList.remove('open'); }
 function submitContact() {
   closeContactForm();
-  showToast('Заявка отправлена, менеджер свяжется по email', 'success');
+  showToast(gettext("Заявка отправлена, менеджер свяжется по email"), 'success');
 }
 
 function showToast(msg, type) {

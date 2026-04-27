@@ -193,17 +193,17 @@ function confirmPayment(btn) {
   var row = btn.closest('tr');
   var badge = row.querySelector('.inv-status-badge');
   badge.className = 'op-badge op-badge-gray inv-status-badge';
-  badge.textContent = '{% trans "Оплачено" %}';
+  badge.textContent = '{% trans gettext('Оплачено') %}';
   row.dataset.invStatus = 'paid';
   var invId = row.querySelector('td').textContent;
-  opToast('{% trans "Оплата " %}' + invId + '{% trans " подтверждена" %}');
-  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'{% trans "Детали " %}' + invId + '\'{% trans ")\">Детали</button>" %}';
+  opToast('{% trans gettext('Оплата ') %}' + invId + '{% trans gettext(' подтверждена') %}');
+  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'{% trans gettext('Детали ') %}' + invId + '\'{% trans ")\">Детали</button>" %}';
 }
 
 function rejectPayment(btn) {
   var row = btn.closest('tr');
   var invId = row.querySelector('td').textContent;
-  opToast('{% trans "Оплата " %}' + invId + '{% trans " отклонена" %}');
+  opToast('{% trans gettext('Оплата ') %}' + invId + '{% trans gettext(' отклонена') %}');
 }
 </script>
 {% endblock %}

@@ -506,7 +506,7 @@
     if (!tpl || !drawer) return;
     var row = document.querySelectorAll('.fin-row')[idx];
     var orderNum = row ? row.querySelector('td span[style]').textContent : '';
-    document.getElementById('fin-drawer-title').textContent = 'Заказ ' + orderNum;
+    document.getElementById('fin-drawer-title').textContent = gettext("Заказ ") + orderNum;
     document.getElementById('fin-drawer-body').innerHTML = tpl.innerHTML;
     overlay.style.display = 'block';
     requestAnimationFrame(function() { drawer.classList.add('open'); });

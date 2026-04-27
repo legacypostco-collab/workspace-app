@@ -448,12 +448,12 @@
     var statusColors = { draft:'#8A8A8A', on_review:'#64B5F6', approved:'#64B5F6', rejected:'#FF8C42', archived:'#5A5A5A' };
     var meta = document.getElementById('drw-drawer-meta');
     meta.innerHTML = [
-      ['Формат', '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.06);color:#8A8A8A;">' + d.format + '</span>'],
-      ['Ревизия', d.revision || '—'],
+      [gettext("Формат"), '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.06);color:#8A8A8A;">' + d.format + '</span>'],
+      [gettext("Ревизия"), d.revision || '—'],
       ['OEM', d.oem || '—'],
-      ['Размер', d.size || '—'],
-      ['Статус', '<span style="color:' + (statusColors[d.status] || '#8A8A8A') + '">' + d.statusLabel + '</span>'],
-      ['Обновлён', d.updated],
+      [gettext("Размер"), d.size || '—'],
+      [gettext("Статус"), '<span style="color:' + (statusColors[d.status] || '#8A8A8A') + '">' + d.statusLabel + '</span>'],
+      [gettext("Обновлён"), d.updated],
     ].map(function(pair) {
       return '<div class="drw-drawer-meta-item"><div class="drw-drawer-meta-label">' + pair[0] + '</div><div class="drw-drawer-meta-val">' + pair[1] + '</div></div>';
     }).join('');

@@ -398,7 +398,7 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   // Filter dropdowns
   document.querySelectorAll('.ord-select').forEach(function(sel) {
     sel.addEventListener('change', function() {
-      showToast('Фильтр применён');
+      showToast(gettext("Фильтр применён"));
     });
   });
 
@@ -414,7 +414,7 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     if (detailRow) {
       var isOpen = detailRow.style.display !== 'none';
       detailRow.style.display = isOpen ? 'none' : '';
-      btn.textContent = isOpen ? 'Детали' : 'Скрыть';
+      btn.textContent = isOpen ? gettext("Детали") : gettext("Скрыть");
     }
   });
 
@@ -425,7 +425,7 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       var row = this.closest('tr');
       var idEl = row ? row.querySelector('.ord-id') : null;
       var id = idEl ? idEl.textContent : '';
-      showToast('Переход к оплате ' + id);
+      showToast(gettext("Переход к оплате ") + id);
     });
   });
 })();

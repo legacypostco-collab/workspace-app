@@ -187,7 +187,7 @@
 {% block extra_js %}
 <script>
 (function(){
-  var statusMap = {'{% trans "Ожидает" %}':'waiting','{% trans "В работе" %}':'progress','{% trans "Готов" %}':'done','{% trans "Просрочен" %}':'waiting'};
+  var statusMap = {'{% trans gettext('Ожидает') %}':'waiting','{% trans gettext('В работе') %}':'progress','{% trans gettext('Готов') %}':'done','{% trans gettext('Просрочен') %}':'waiting'};
 
   window.switchDocTab = function(tab){
     document.querySelectorAll('[data-doc-tab]').forEach(function(btn){
@@ -217,7 +217,7 @@
     if(btn.parentElement.querySelector('.op-input')) return;
     var inp = document.createElement('input');
     inp.className = 'op-input';
-    inp.placeholder = '{% trans "Комментарий к запросу..." %}';
+    inp.placeholder = '{% trans gettext('Комментарий к запросу...') %}';
     inp.style.cssText = 'width:140px;margin-top:6px;';
     inp.onkeydown = function(e){
       if(e.key==='Enter'){opToast(msg + ': ' + inp.value);inp.remove();}

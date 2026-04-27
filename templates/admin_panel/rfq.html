@@ -123,9 +123,9 @@
 {% block extra_js %}
 <script>
 function toggleAllRfq(m) { document.querySelectorAll('.rfq-cb').forEach(function(cb){cb.checked=m.checked;}); updateRfqBar(); }
-function updateRfqBar() { var c=document.querySelectorAll('.rfq-cb:checked').length; document.getElementById('rfqBulkBar').style.display=c>0?'flex':'none'; document.getElementById('rfqSelectedCount').textContent=c+'{% trans " выбрано" %}'; }
+function updateRfqBar() { var c=document.querySelectorAll('.rfq-cb:checked').length; document.getElementById('rfqBulkBar').style.display=c>0?'flex':'none'; document.getElementById('rfqSelectedCount').textContent=c+'{% trans gettext(' выбрано') %}'; }
 function clearRfqSelection() { document.querySelectorAll('.rfq-cb').forEach(function(cb){cb.checked=false;}); document.getElementById('selectAllRfq').checked=false; updateRfqBar(); }
 function bulkRfqStatus() { document.getElementById('rfqAction').value='bulk_status'; document.getElementById('rfqBulkStatus').value=document.getElementById('rfqBulkStatusSelect').value; document.getElementById('rfqForm').submit(); }
-function bulkRfqCancel() { if(confirm('{% trans "Отменить выбранные RFQ?" %}')){document.getElementById('rfqAction').value='bulk_cancel'; document.getElementById('rfqForm').submit();} }
+function bulkRfqCancel() { if(confirm('{% trans gettext('Отменить выбранные RFQ?') %}')){document.getElementById('rfqAction').value='bulk_cancel'; document.getElementById('rfqForm').submit();} }
 </script>
 {% endblock %}

@@ -963,9 +963,9 @@ function setEmailStyle(el, style) {
   el.classList.add('active');
   const desc = document.getElementById('styleDesc');
   if (style === 'official') {
-    desc.textContent = 'Фирменный бланк с логотипом, полная таблица данных, подпись компании, юридические реквизиты';
+    desc.textContent = gettext("Фирменный бланк с логотипом, полная таблица данных, подпись компании, юридические реквизиты");
   } else {
-    desc.textContent = 'Краткая сводка ключевых метрик, без юридических данных, дружелюбный тон, эмодзи-акценты';
+    desc.textContent = gettext("Краткая сводка ключевых метрик, без юридических данных, дружелюбный тон, эмодзи-акценты");
   }
 }
 
@@ -992,134 +992,134 @@ function updateCount() {
 
 const reportData = {
   sales: {
-    title: '{% trans "Продажи и выручка" %}',
+    title: '{% trans gettext('Продажи и выручка') %}',
     kpis: [
-      {val:'$4.0M', label:'{% trans "Общая выручка" %}', trend:'+28.7%', up:true},
-      {val:'1 247', label:'{% trans "Заказов" %}', trend:'+15.3%', up:true},
-      {val:'$3 208', label:'{% trans "Средний чек" %}', trend:'+11.6%', up:true},
-      {val:'342', label:'{% trans "Клиентов" %}', trend:'-2.1%', up:false},
+      {val:'$4.0M', label:'{% trans gettext('Общая выручка') %}', trend:'+28.7%', up:true},
+      {val:'1 247', label:'{% trans gettext('Заказов') %}', trend:'+15.3%', up:true},
+      {val:'$3 208', label:'{% trans gettext('Средний чек') %}', trend:'+11.6%', up:true},
+      {val:'342', label:'{% trans gettext('Клиентов') %}', trend:'-2.1%', up:false},
     ],
-    chart: {type:'bars', title:'{% trans "Выручка по дням (30 дней)" %}', vals:[65,80,45,90,70,55,85,75,60,95,50,88,72,68,82,77,90,65,78,85,92,58,74,80,86,70,95,88,76,82]},
+    chart: {type:'bars', title:'{% trans gettext('Выручка по дням (30 дней)') %}', vals:[65,80,45,90,70,55,85,75,60,95,50,88,72,68,82,77,90,65,78,85,92,58,74,80,86,70,95,88,76,82]},
   },
   sla: {
-    title: '{% trans "SLA и сроки доставки" %}',
+    title: '{% trans gettext('SLA и сроки доставки') %}',
     kpis: [
-      {val:'95.2%', label:'{% trans "SLA соблюдение" %}', trend:'+1.8%', up:true},
-      {val:'{% trans "2.1д" %}', label:'{% trans "Среднее время" %}', trend:'{% trans "-0.3д" %}', up:true},
-      {val:'3', label:'{% trans "Нарушений" %}', trend:'+1', up:false},
-      {val:'12', label:'{% trans "Под угрозой" %}', trend:'-4', up:true},
+      {val:'95.2%', label:'{% trans gettext('SLA соблюдение') %}', trend:'+1.8%', up:true},
+      {val:'{% trans gettext('2.1д') %}', label:'{% trans gettext('Среднее время') %}', trend:'{% trans gettext('-0.3д') %}', up:true},
+      {val:'3', label:'{% trans gettext('Нарушений') %}', trend:'+1', up:false},
+      {val:'12', label:'{% trans gettext('Под угрозой') %}', trend:'-4', up:true},
     ],
-    chart: {type:'bars', title:'{% trans "SLA по неделям" %}', vals:[92,94,96,91,95,97,93,95,98,94,96,95]},
+    chart: {type:'bars', title:'{% trans gettext('SLA по неделям') %}', vals:[92,94,96,91,95,97,93,95,98,94,96,95]},
   },
   conversion: {
-    title: '{% trans "Конверсия RFQ → Заказ" %}',
+    title: '{% trans gettext('Конверсия RFQ → Заказ') %}',
     kpis: [
-      {val:'68%', label:'{% trans "Конверсия" %}', trend:'+4.2%', up:true},
-      {val:'84', label:'{% trans "Всего RFQ" %}', trend:'+12', up:true},
-      {val:'57', label:'{% trans "Стали заказами" %}', trend:'+9', up:true},
-      {val:'27', label:'{% trans "Отклонены" %}', trend:'-3', up:true},
+      {val:'68%', label:'{% trans gettext('Конверсия') %}', trend:'+4.2%', up:true},
+      {val:'84', label:'{% trans gettext('Всего RFQ') %}', trend:'+12', up:true},
+      {val:'57', label:'{% trans gettext('Стали заказами') %}', trend:'+9', up:true},
+      {val:'27', label:'{% trans gettext('Отклонены') %}', trend:'-3', up:true},
     ],
-    chart: {type:'funnel', title:'{% trans "Воронка: RFQ → Котировка → Заказ → Оплата" %}', vals:[84,72,57,51]},
+    chart: {type:'funnel', title:'{% trans gettext('Воронка: RFQ → Котировка → Заказ → Оплата') %}', vals:[84,72,57,51]},
   },
   products: {
-    title: '{% trans "Товары и ассортимент" %}',
+    title: '{% trans gettext('Товары и ассортимент') %}',
     kpis: [
-      {val:'918 759', label:'{% trans "Активных" %}', trend:'+2 140', up:true},
-      {val:'12 430', label:'{% trans "Без продаж 90д" %}', trend:'+840', up:false},
-      {val:'Top 50', label:'{% trans "80% выручки" %}', trend:'', up:true},
-      {val:'$48.20', label:'{% trans "Ср. цена" %}', trend:'+$2.10', up:true},
+      {val:'918 759', label:'{% trans gettext('Активных') %}', trend:'+2 140', up:true},
+      {val:'12 430', label:'{% trans gettext('Без продаж 90д') %}', trend:'+840', up:false},
+      {val:'Top 50', label:'{% trans gettext('80% выручки') %}', trend:'', up:true},
+      {val:'$48.20', label:'{% trans gettext('Ср. цена') %}', trend:'+$2.10', up:true},
     ],
-    chart: {type:'hbars', title:'{% trans "Топ-5 категорий по выручке" %}', items:[
-      {name:'{% trans "Гидравлика" %}', val:85}, {name:'{% trans "Фильтры" %}', val:72}, {name:'{% trans "Электрика" %}', val:58}, {name:'{% trans "Двигатели" %}', val:45}, {name:'{% trans "Трансмиссия" %}', val:38}
+    chart: {type:'hbars', title:'{% trans gettext('Топ-5 категорий по выручке') %}', items:[
+      {name:'{% trans gettext('Гидравлика') %}', val:85}, {name:'{% trans gettext('Фильтры') %}', val:72}, {name:'{% trans gettext('Электрика') %}', val:58}, {name:'{% trans gettext('Двигатели') %}', val:45}, {name:'{% trans gettext('Трансмиссия') %}', val:38}
     ]},
   },
   claims: {
-    title: '{% trans "Рекламации и возвраты" %}',
+    title: '{% trans gettext('Рекламации и возвраты') %}',
     kpis: [
-      {val:'2', label:'{% trans "Открытых" %}', trend:'-1', up:true},
-      {val:'14', label:'{% trans "За 90 дней" %}', trend:'-3', up:true},
-      {val:'98.4%', label:'{% trans "Без проблем" %}', trend:'+0.6%', up:true},
-      {val:'{% trans "3.2д" %}', label:'{% trans "Ср. решение" %}', trend:'{% trans "-0.8д" %}', up:true},
+      {val:'2', label:'{% trans gettext('Открытых') %}', trend:'-1', up:true},
+      {val:'14', label:'{% trans gettext('За 90 дней') %}', trend:'-3', up:true},
+      {val:'98.4%', label:'{% trans gettext('Без проблем') %}', trend:'+0.6%', up:true},
+      {val:'{% trans gettext('3.2д') %}', label:'{% trans gettext('Ср. решение') %}', trend:'{% trans gettext('-0.8д') %}', up:true},
     ],
-    chart: {type:'hbars', title:'{% trans "Причины рекламаций" %}', items:[
-      {name:'{% trans "Повреждение при доставке" %}', val:40}, {name:'{% trans "Несоответствие описанию" %}', val:30}, {name:'{% trans "Некомплект" %}', val:20}, {name:'{% trans "Заводской брак" %}', val:10}
+    chart: {type:'hbars', title:'{% trans gettext('Причины рекламаций') %}', items:[
+      {name:'{% trans gettext('Повреждение при доставке') %}', val:40}, {name:'{% trans gettext('Несоответствие описанию') %}', val:30}, {name:'{% trans gettext('Некомплект') %}', val:20}, {name:'{% trans gettext('Заводской брак') %}', val:10}
     ]},
   },
   rating: {
-    title: '{% trans "Рейтинг и качество" %}',
+    title: '{% trans gettext('Рейтинг и качество') %}',
     kpis: [
-      {val:'85.2', label:'{% trans "Общий рейтинг" %}', trend:'+3.4', up:true},
-      {val:'88.0', label:'{% trans "Внешний (60%)" %}', trend:'+2.1', up:true},
-      {val:'81.0', label:'{% trans "Поведенческий (40%)" %}', trend:'+5.2', up:true},
-      {val:'4.26', label:'{% trans "Оценка /5" %}', trend:'+0.18', up:true},
+      {val:'85.2', label:'{% trans gettext('Общий рейтинг') %}', trend:'+3.4', up:true},
+      {val:'88.0', label:'{% trans gettext('Внешний (60%)') %}', trend:'+2.1', up:true},
+      {val:'81.0', label:'{% trans gettext('Поведенческий (40%)') %}', trend:'+5.2', up:true},
+      {val:'4.26', label:'{% trans gettext('Оценка /5') %}', trend:'+0.18', up:true},
     ],
-    chart: {type:'bars', title:'{% trans "Рейтинг по месяцам" %}', vals:[78,79,80,82,81,83,82,84,83,85,84,85]},
+    chart: {type:'bars', title:'{% trans gettext('Рейтинг по месяцам') %}', vals:[78,79,80,82,81,83,82,84,83,85,84,85]},
   },
   customers: {
-    title: '{% trans "Клиенты и география" %}',
+    title: '{% trans gettext('Клиенты и география') %}',
     kpis: [
-      {val:'342', label:'{% trans "Всего клиентов" %}', trend:'+28', up:true},
-      {val:'14', label:'{% trans "Стран" %}', trend:'+2', up:true},
-      {val:'$11.7K', label:'{% trans "Ср. LTV" %}', trend:'+$1.2K', up:true},
-      {val:'34%', label:'{% trans "Повторные" %}', trend:'+5%', up:true},
+      {val:'342', label:'{% trans gettext('Всего клиентов') %}', trend:'+28', up:true},
+      {val:'14', label:'{% trans gettext('Стран') %}', trend:'+2', up:true},
+      {val:'$11.7K', label:'{% trans gettext('Ср. LTV') %}', trend:'+$1.2K', up:true},
+      {val:'34%', label:'{% trans gettext('Повторные') %}', trend:'+5%', up:true},
     ],
-    chart: {type:'hbars', title:'{% trans "Топ-5 стран по заказам" %}', items:[
-      {name:'{% trans "Россия" %}', val:65}, {name:'{% trans "Казахстан" %}', val:48}, {name:'{% trans "Беларусь" %}', val:35}, {name:'{% trans "Узбекистан" %}', val:22}, {name:'{% trans "Китай" %}', val:18}
+    chart: {type:'hbars', title:'{% trans gettext('Топ-5 стран по заказам') %}', items:[
+      {name:'{% trans gettext('Россия') %}', val:65}, {name:'{% trans gettext('Казахстан') %}', val:48}, {name:'{% trans gettext('Беларусь') %}', val:35}, {name:'{% trans gettext('Узбекистан') %}', val:22}, {name:'{% trans gettext('Китай') %}', val:18}
     ]},
   },
   negotiations: {
-    title: '{% trans "Переторжка и скидки" %}',
+    title: '{% trans gettext('Переторжка и скидки') %}',
     kpis: [
-      {val:'4.2%', label:'{% trans "Средняя скидка" %}', trend:'-0.3%', up:true},
-      {val:'73%', label:'{% trans "Принятых" %}', trend:'+8%', up:true},
-      {val:'15%', label:'{% trans "Встречных" %}', trend:'-2%', up:true},
-      {val:'12%', label:'{% trans "Отклонённых" %}', trend:'-6%', up:true},
+      {val:'4.2%', label:'{% trans gettext('Средняя скидка') %}', trend:'-0.3%', up:true},
+      {val:'73%', label:'{% trans gettext('Принятых') %}', trend:'+8%', up:true},
+      {val:'15%', label:'{% trans gettext('Встречных') %}', trend:'-2%', up:true},
+      {val:'12%', label:'{% trans gettext('Отклонённых') %}', trend:'-6%', up:true},
     ],
-    chart: {type:'bars', title:'{% trans "Скидки по неделям (%)" %}', vals:[5,4,6,3,5,4,3,5,4,3,4,5]},
+    chart: {type:'bars', title:'{% trans gettext('Скидки по неделям (%)') %}', vals:[5,4,6,3,5,4,3,5,4,3,4,5]},
   },
   finance: {
-    title: '{% trans "Финансовый отчёт" %}',
+    title: '{% trans gettext('Финансовый отчёт') %}',
     kpis: [
-      {val:'$3.8M', label:'{% trans "Выплачено" %}', trend:'+$420K', up:true},
-      {val:'$42K', label:'{% trans "Дебиторка" %}', trend:'-$8K', up:true},
-      {val:'$156K', label:'{% trans "Удержания" %}', trend:'+$12K', up:false},
-      {val:'3.9%', label:'{% trans "Комиссия" %}', trend:'0%', up:true},
+      {val:'$3.8M', label:'{% trans gettext('Выплачено') %}', trend:'+$420K', up:true},
+      {val:'$42K', label:'{% trans gettext('Дебиторка') %}', trend:'-$8K', up:true},
+      {val:'$156K', label:'{% trans gettext('Удержания') %}', trend:'+$12K', up:false},
+      {val:'3.9%', label:'{% trans gettext('Комиссия') %}', trend:'0%', up:true},
     ],
-    chart: {type:'hbars', title:'{% trans "Структура расходов" %}', items:[
-      {name:'{% trans "Выплаты поставщику" %}', val:92}, {name:'{% trans "Комиссия платформы" %}', val:45}, {name:'{% trans "Удержания/штрафы" %}', val:18}, {name:'{% trans "Возвраты" %}', val:8}
+    chart: {type:'hbars', title:'{% trans gettext('Структура расходов') %}', items:[
+      {name:'{% trans gettext('Выплаты поставщику') %}', val:92}, {name:'{% trans gettext('Комиссия платформы') %}', val:45}, {name:'{% trans gettext('Удержания/штрафы') %}', val:18}, {name:'{% trans gettext('Возвраты') %}', val:8}
     ]},
   },
   drawings: {
-    title: '{% trans "Чертежи и документация" %}',
+    title: '{% trans gettext('Чертежи и документация') %}',
     kpis: [
-      {val:'28', label:'{% trans "Загружено" %}', trend:'+6', up:true},
-      {val:'3', label:'{% trans "Запросов" %}', trend:'+1', up:false},
-      {val:'{% trans "4.2ч" %}', label:'{% trans "Ср. ответ" %}', trend:'{% trans "-1.8ч" %}', up:true},
-      {val:'92%', label:'{% trans "Передано" %}', trend:'+4%', up:true},
+      {val:'28', label:'{% trans gettext('Загружено') %}', trend:'+6', up:true},
+      {val:'3', label:'{% trans gettext('Запросов') %}', trend:'+1', up:false},
+      {val:'{% trans gettext('4.2ч') %}', label:'{% trans gettext('Ср. ответ') %}', trend:'{% trans gettext('-1.8ч') %}', up:true},
+      {val:'92%', label:'{% trans gettext('Передано') %}', trend:'+4%', up:true},
     ],
-    chart: {type:'bars', title:'{% trans "Загрузки по неделям" %}', vals:[3,5,2,4,6,3,5,4,2,6,4,5]},
+    chart: {type:'bars', title:'{% trans gettext('Загрузки по неделям') %}', vals:[3,5,2,4,6,3,5,4,2,6,4,5]},
   },
   logistics: {
-    title: '{% trans "Логистика и отгрузки" %}',
+    title: '{% trans gettext('Логистика и отгрузки') %}',
     kpis: [
-      {val:'{% trans "12.4д" %}', label:'{% trans "Ср. путь" %}', trend:'{% trans "-1.2д" %}', up:true},
-      {val:'$340', label:'{% trans "Ср. доставка" %}', trend:'-$28', up:true},
-      {val:'96%', label:'{% trans "В срок" %}', trend:'+2%', up:true},
-      {val:'4', label:'{% trans "На таможне" %}', trend:'-1', up:true},
+      {val:'{% trans gettext('12.4д') %}', label:'{% trans gettext('Ср. путь') %}', trend:'{% trans gettext('-1.2д') %}', up:true},
+      {val:'$340', label:'{% trans gettext('Ср. доставка') %}', trend:'-$28', up:true},
+      {val:'96%', label:'{% trans gettext('В срок') %}', trend:'+2%', up:true},
+      {val:'4', label:'{% trans gettext('На таможне') %}', trend:'-1', up:true},
     ],
-    chart: {type:'hbars', title:'{% trans "Время по этапам (дни)" %}', items:[
-      {name:'{% trans "Производство" %}', val:70}, {name:'{% trans "Упаковка" %}', val:15}, {name:'{% trans "Транспорт" %}', val:55}, {name:'{% trans "Таможня" %}', val:40}, {name:'{% trans "Последняя миля" %}', val:20}
+    chart: {type:'hbars', title:'{% trans gettext('Время по этапам (дни)') %}', items:[
+      {name:'{% trans gettext('Производство') %}', val:70}, {name:'{% trans gettext('Упаковка') %}', val:15}, {name:'{% trans gettext('Транспорт') %}', val:55}, {name:'{% trans gettext('Таможня') %}', val:40}, {name:'{% trans gettext('Последняя миля') %}', val:20}
     ]},
   },
   forecast: {
-    title: '{% trans "Прогноз и тренды" %}',
+    title: '{% trans gettext('Прогноз и тренды') %}',
     kpis: [
-      {val:'+28%', label:'{% trans "Тренд роста" %}', trend:'vs 2025', up:true},
-      {val:'Q2', label:'{% trans "Пик сезон" %}', trend:'{% trans "апр-июн" %}', up:true},
-      {val:'$5.1M', label:'{% trans "Прогноз Q2" %}', trend:'+$1.1M', up:true},
-      {val:'{% trans "Гидравлика" %}', label:'{% trans "Топ категория" %}', trend:'+34%', up:true},
+      {val:'+28%', label:'{% trans gettext('Тренд роста') %}', trend:'vs 2025', up:true},
+      {val:'Q2', label:'{% trans gettext('Пик сезон') %}', trend:'{% trans gettext('апр-июн') %}', up:true},
+      {val:'$5.1M', label:'{% trans gettext('Прогноз Q2') %}', trend:'+$1.1M', up:true},
+      {val:'{% trans gettext('Гидравлика') %}', label:'{% trans gettext('Топ категория') %}', trend:'+34%', up:true},
     ],
-    chart: {type:'bars', title:'{% trans "Прогноз выручки по месяцам (2026)" %}', vals:[80,85,92,110,115,108,95,88,90,98,105,112]},
+    chart: {type:'bars', title:'{% trans gettext('Прогноз выручки по месяцам (2026)') %}', vals:[80,85,92,110,115,108,95,88,90,98,105,112]},
   },
 };
 
@@ -1174,7 +1174,7 @@ function renderPreview(data) {
   }
   else if (data.chart.type === 'funnel') {
     const max = data.chart.vals[0];
-    const labels = ['RFQ получено','Котировка','Заказ','Оплата'];
+    const labels = [gettext("RFQ получено"),gettext("Котировка"),gettext("Заказ"),gettext("Оплата")];
     chartEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;">`
       + data.chart.vals.map((v,i) => {
         const pct = (v/max)*100;
@@ -1242,12 +1242,12 @@ function downloadCSV(data) {
   a.download = data.title.replace(/\s+/g, '_') + '.csv';
   a.click();
   URL.revokeObjectURL(url);
-  showToast('CSV скачан: ' + data.title);
+  showToast(gettext("CSV скачан: ") + data.title);
 }
 
 function downloadHTML(data, official, format) {
   const date = new Date().toLocaleDateString('ru-RU', {day:'2-digit',month:'long',year:'numeric'});
-  const period = document.querySelector('.an-period-btn.active')?.textContent || '30 дней';
+  const period = document.querySelector('.an-period-btn.active')?.textContent || gettext("30 дней");
 
   // Build chart HTML
   let chartHTML = '';
@@ -1259,7 +1259,7 @@ function downloadHTML(data, official, format) {
       ).join('') + `</div><p style="text-align:center;color:#666;font-size:12px;">${data.chart.title}</p>`;
   } else if (data.chart.type === 'funnel') {
     const max = data.chart.vals[0];
-    const labels = ['RFQ получено','Котировка','Заказ','Оплата'];
+    const labels = [gettext("RFQ получено"),gettext("Котировка"),gettext("Заказ"),gettext("Оплата")];
     chartHTML = '<div style="margin:20px 0;">' + data.chart.vals.map((v,i) => {
       const pct = (v/max)*100;
       return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
@@ -1319,7 +1319,7 @@ function downloadHTML(data, official, format) {
   <div class="header">
     <div>
       <div class="logo">Consolidator<span>Parts</span></div>
-      <div style="font-size:11px;color:#888;margin-top:2px;">${official ? 'Официальный отчёт' : 'Сводный отчёт'}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">${official ? gettext("Официальный отчёт") : gettext("Сводный отчёт")}</div>
     </div>
     <div class="meta">
       <div>${date}</div>
@@ -1330,7 +1330,7 @@ function downloadHTML(data, official, format) {
   </div>
 
   <h1>${data.title}</h1>
-  <div class="subtitle">${official ? 'Детализированный отчёт за выбранный период. Данные актуальны на момент формирования.' : 'Краткая сводка ключевых показателей за выбранный период.'}</div>
+  <div class="subtitle">${official ? gettext("Детализированный отчёт за выбранный период. Данные актуальны на момент формирования.") : gettext("Краткая сводка ключевых показателей за выбранный период.")}</div>
 
   <div class="kpi-grid">
     ${data.kpis.map(k => `<div class="kpi-card">
@@ -1355,7 +1355,7 @@ function downloadHTML(data, official, format) {
   </table>`}
 
   <div class="footer">
-    <div>${official ? '© 2026 Consolidator Parts. Все права защищены. Документ сформирован автоматически.' : 'Consolidator Parts · Автоотчёт'}</div>
+    <div>${official ? gettext("© 2026 Consolidator Parts. Все права защищены. Документ сформирован автоматически.") : gettext("Consolidator Parts · Автоотчёт")}</div>
     <div>Стр. 1 из 1</div>
   </div>
 </body></html>`;
@@ -1369,11 +1369,11 @@ function downloadHTML(data, official, format) {
     a.href = url;
     a.download = data.title.replace(/\s+/g, '_') + '.xls';
     a.click();
-    showToast('Excel скачан: ' + data.title);
+    showToast(gettext("Excel скачан: ") + data.title);
   } else {
     // Open in new tab for PDF print
     const w = window.open(url, '_blank');
-    showToast('Документ открыт — нажмите «Печать / Сохранить PDF»');
+    showToast(gettext("Документ открыт — нажмите «Печать / Сохранить PDF»"));
   }
   URL.revokeObjectURL(url);
 }
@@ -1381,13 +1381,13 @@ function downloadHTML(data, official, format) {
 function generateReport() {
   const count = document.querySelectorAll('.an-report-card.selected').length;
   if (count === 0) {
-    showToast('Выберите хотя бы один отчёт');
+    showToast(gettext("Выберите хотя бы один отчёт"));
     return;
   }
   const format = document.getElementById('exportFormat').value;
-  showToast('Формируется ' + count + ' отчёт(ов) в формате ' + format + '...');
+  showToast(gettext("Формируется ") + count + gettext(" отчёт(ов) в формате ") + format + '...');
   setTimeout(() => {
-    showToast('Отчёт сформирован и готов к скачиванию');
+    showToast(gettext("Отчёт сформирован и готов к скачиванию"));
   }, 2000);
 }
 
@@ -1398,7 +1398,7 @@ function addSubscription() {
     document.getElementById('newEmail').focus();
     return;
   }
-  showToast('Подписка добавлена: ' + email);
+  showToast(gettext("Подписка добавлена: ") + email);
   document.getElementById('newEmail').value = '';
   document.getElementById('newEmail').style.borderColor = '';
 }
@@ -1412,7 +1412,7 @@ function regenerateKey() {
   }
   var codeEl = document.querySelector('.an-api-block code');
   if (codeEl) codeEl.textContent = newKey;
-  showToast('API ключ перегенерирован');
+  showToast(gettext("API ключ перегенерирован"));
 }
 
 function showToast(msg) {
@@ -1428,20 +1428,20 @@ document.querySelectorAll('.an-dist-remove').forEach(function(btn) {
     var row = btn.closest('.an-dist-row');
     if (row) {
       var emailEl = row.querySelector('.an-dist-email');
-      var email = emailEl ? emailEl.textContent : '{% trans "подписку" %}';
+      var email = emailEl ? emailEl.textContent : '{% trans gettext('подписку') %}';
       row.style.transition = 'opacity .3s';
       row.style.opacity = '0';
       setTimeout(function() { row.remove(); }, 300);
-      showToast('Удалена подписка: ' + email);
+      showToast(gettext("Удалена подписка: ") + email);
     }
   });
 });
 
 /* ── WhatsApp connect button (distribution tab) ── */
 document.querySelectorAll('.an-btn--secondary').forEach(function(btn) {
-  if (btn.textContent.trim() === 'Подключить') {
+  if (btn.textContent.trim() === gettext("Подключить")) {
     btn.addEventListener('click', function() {
-      showToast('Для подключения WhatsApp обратитесь к администратору платформы');
+      showToast(gettext("Для подключения WhatsApp обратитесь к администратору платформы"));
     });
   }
 });

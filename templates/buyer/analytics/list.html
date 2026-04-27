@@ -574,7 +574,7 @@
       this.classList.add('active');
       var panelId = 'panel-' + this.dataset.tab;
       document.getElementById(panelId).classList.add('active');
-      showToast('Раздел: ' + this.textContent.trim());
+      showToast(gettext("Раздел: ") + this.textContent.trim());
     });
   });
 
@@ -589,7 +589,7 @@
         if (dataDiv) {
           var isOpen = dataDiv.style.display !== 'none';
           dataDiv.style.display = isOpen ? 'none' : '';
-          link.textContent = isOpen ? 'Открыть' : 'Свернуть';
+          link.textContent = isOpen ? gettext("Открыть") : gettext("Свернуть");
         }
       }
     });

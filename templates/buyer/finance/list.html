@@ -259,7 +259,7 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       var supplierText = supplier ? supplier.textContent : '';
       var amount = card ? card.querySelector('.bfin-sched-amount') : null;
       var amountText = amount ? amount.textContent : '';
-      showToast('Переход к оплате ' + amountText + ' — ' + supplierText);
+      showToast(gettext("Переход к оплате ") + amountText + ' — ' + supplierText);
     });
   });
 
@@ -273,9 +273,9 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       var id = idEl ? idEl.textContent : '';
       var badge = row.querySelector('.bfin-badge');
       if (badge && (badge.classList.contains('bfin-badge--pending') || badge.classList.contains('bfin-badge--overdue'))) {
-        showToast('Переход к оплате ' + id);
+        showToast(gettext("Переход к оплате ") + id);
       } else {
-        showToast('Счёт ' + id);
+        showToast(gettext("Счёт ") + id);
       }
     });
   }

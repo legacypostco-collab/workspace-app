@@ -15,17 +15,17 @@
     <script>
     (function(){
       var stages = [
-        {key:'pending',label:'{% trans "Ожидание" %}'},
-        {key:'reserve_paid',label:'{% trans "Резерв" %}'},
-        {key:'confirmed',label:'{% trans "Подтверждён" %}'},
-        {key:'in_production',label:'{% trans "Производство" %}'},
-        {key:'ready_to_ship',label:'{% trans "Готов" %}'},
-        {key:'transit_abroad',label:'{% trans "Транзит" %}'},
-        {key:'customs',label:'{% trans "Таможня" %}'},
-        {key:'transit_rf',label:'{% trans "Транзит РФ" %}'},
-        {key:'shipped',label:'{% trans "Отгружен" %}'},
-        {key:'delivered',label:'{% trans "Доставлен" %}'},
-        {key:'completed',label:'{% trans "Завершён" %}'}
+        {key:'pending',label:'{% trans gettext('Ожидание') %}'},
+        {key:'reserve_paid',label:'{% trans gettext('Резерв') %}'},
+        {key:'confirmed',label:'{% trans gettext('Подтверждён') %}'},
+        {key:'in_production',label:'{% trans gettext('Производство') %}'},
+        {key:'ready_to_ship',label:'{% trans gettext('Готов') %}'},
+        {key:'transit_abroad',label:'{% trans gettext('Транзит') %}'},
+        {key:'customs',label:'{% trans gettext('Таможня') %}'},
+        {key:'transit_rf',label:'{% trans gettext('Транзит РФ') %}'},
+        {key:'shipped',label:'{% trans gettext('Отгружен') %}'},
+        {key:'delivered',label:'{% trans gettext('Доставлен') %}'},
+        {key:'completed',label:'{% trans gettext('Завершён') %}'}
       ];
       var current = {{ current_step }};
       var html = '<div style="display:flex;align-items:center;width:100%;gap:0;">';

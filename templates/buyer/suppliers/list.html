@@ -407,20 +407,20 @@
       if (btn.dataset.selected === '1') {
         btn.dataset.selected = '';
         btn.style.background = '';
-        btn.textContent = 'Сравнить';
-        showToast('Убран из сравнения: ' + name);
+        btn.textContent = gettext("Сравнить");
+        showToast(gettext("Убран из сравнения: ") + name);
       } else {
         btn.dataset.selected = '1';
         btn.style.background = 'rgba(100,181,246,0.3)';
         btn.textContent = '\u2713 В сравнении';
-        showToast('Добавлен к сравнению: ' + name);
+        showToast(gettext("Добавлен к сравнению: ") + name);
       }
     } else if (btn.classList.contains('sup-action-btn--history')) {
       var historyDiv = card.querySelector('.sup-history');
       if (historyDiv) {
         var isOpen = historyDiv.style.display !== 'none';
         historyDiv.style.display = isOpen ? 'none' : '';
-        btn.textContent = isOpen ? 'История' : '▲ История';
+        btn.textContent = isOpen ? gettext("История") : gettext("▲ История");
       }
     }
   });

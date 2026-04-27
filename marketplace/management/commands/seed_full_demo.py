@@ -34,16 +34,16 @@ class Command(BaseCommand):
         # ── Users ──────────────────────────────────────────────
         buyers = []
         buyer_names = [
-            ("Алексей", "Петров", "ООО СтройМаш"),
-            ("Мария", "Иванова", "АО ТехноПарк"),
-            ("Дмитрий", "Козлов", "ИП Козлов"),
-            ("Елена", "Сидорова", "ООО МинералТранс"),
-            ("Игорь", "Васильев", "ЗАО Уралмаш-Сервис"),
-            ("Ольга", "Николаева", "ООО Ромашка"),
-            ("Сергей", "Морозов", "АО Горнодобыча"),
-            ("Наталья", "Кузнецова", "ООО ТехЛайн"),
-            ("Андрей", "Попов", "ИП Попов"),
-            ("Татьяна", "Лебедева", "ООО ЭнергоМир"),
+            ("Alexey", "Petrov", "StroyMash LLC"),
+            ("Maria", "Ivanova", "TechnoPark JSC"),
+            ("Dmitry", "Kozlov", "Kozlov IE"),
+            ("Elena", "Sidorova", "MineralTrans LLC"),
+            ("Igor", "Vasiliev", "Uralmash-Service CJSC"),
+            ("Olga", "Nikolaeva", "Romashka LLC"),
+            ("Sergey", "Morozov", "Mining JSC"),
+            ("Natalia", "Kuznetsova", "TechLine LLC"),
+            ("Andrey", "Popov", "Popov IE"),
+            ("Tatiana", "Lebedeva", "EnergyMir LLC"),
         ]
         for i, (first, last, company) in enumerate(buyer_names, start=1):
             u, _ = User.objects.get_or_create(

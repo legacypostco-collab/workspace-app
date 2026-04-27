@@ -502,7 +502,7 @@ function toggleClaim(id) {
     card.classList.toggle('expanded');
     var clmId = card.querySelector('.clm-card-id');
     if (clmId && card.classList.contains('expanded')) {
-      showToast('Открыта рекламация ' + clmId.textContent);
+      showToast(gettext("Открыта рекламация ") + clmId.textContent);
     }
   }
 }
@@ -536,7 +536,7 @@ function submitClaim() {
   var amount = document.getElementById('claim-amount').value;
   var amountStr = amount ? ' · $' + Number(amount).toLocaleString() : '';
   closeClaimModal();
-  showToast('Рекламация открыта: ' + order + amountStr);
+  showToast(gettext("Рекламация открыта: ") + order + amountStr);
 }
 document.getElementById('modal-claim').addEventListener('click', function(e){
   if (e.target === this) closeClaimModal();
@@ -551,9 +551,9 @@ document.querySelector('.clm-list').addEventListener('click', function(e) {
   var cardId = card ? card.id.replace('clm-', '') : '';
   var txt = btn.textContent.trim().toLowerCase();
   var secId = null;
-  if (txt.indexOf('переписка') !== -1) secId = 'sec-chat-' + cardId;
-  else if (txt.indexOf('фото') !== -1) secId = 'sec-photo-' + cardId;
-  else if (txt.indexOf('документ') !== -1 || txt.indexOf('акт') !== -1 || txt.indexOf('замер') !== -1) secId = 'sec-docs-' + cardId;
+  if (txt.indexOf(gettext("переписка")) !== -1) secId = 'sec-chat-' + cardId;
+  else if (txt.indexOf(gettext("фото")) !== -1) secId = 'sec-photo-' + cardId;
+  else if (txt.indexOf(gettext("документ")) !== -1 || txt.indexOf(gettext("акт")) !== -1 || txt.indexOf(gettext("замер")) !== -1) secId = 'sec-docs-' + cardId;
   if (secId) {
     var sec = document.getElementById(secId);
     if (sec) {

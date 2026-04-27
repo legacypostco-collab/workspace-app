@@ -617,12 +617,12 @@ function toggleAll(el) {
 function updateBulk() {
   var checked = document.querySelectorAll('.part-cb:checked').length;
   var bar = document.getElementById('bulkBar');
-  document.getElementById('bulkCount').textContent = checked + ' выбрано';
+  document.getElementById('bulkCount').textContent = checked + gettext(" выбрано");
   bar.classList.toggle('show', checked > 0);
 }
 
 function bulkPricePrompt(direction) {
-  var pct = prompt(direction > 0 ? 'На сколько % увеличить цену?' : 'На сколько % уменьшить цену?', '5');
+  var pct = prompt(direction > 0 ? gettext("На сколько % увеличить цену?") : gettext("На сколько % уменьшить цену?"), '5');
   if(!pct) return;
   var mult = direction > 0 ? (1 + parseFloat(pct)/100) : (1 - parseFloat(pct)/100);
   document.querySelectorAll('.part-cb:checked').forEach(function(cb){
@@ -669,10 +669,10 @@ function bulkPricePrompt(direction) {
 
       btn.disabled = true;
       if (previewBtn) previewBtn.disabled = true;
-      btn.textContent = "Загружаем...";
+      btn.textContent = gettext('Загружаем...');
       progressWrap.style.display = "block";
       progressBar.style.width = "0%";
-      progressText.textContent = "Загрузка: 0%";
+      progressText.textContent = gettext('Загрузка: 0%');
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", form.action, true);
@@ -683,15 +683,15 @@ function bulkPricePrompt(direction) {
         if (!e.lengthComputable) return;
         const percent = Math.min(100, Math.round((e.loaded / e.total) * 100));
         progressBar.style.width = percent + "%";
-        progressText.textContent = "Загрузка: " + percent + "%";
+        progressText.textContent = gettext('Загрузка: ') + percent + "%";
       });
 
       xhr.addEventListener("load", function () {
         if (xhr.status < 200 || xhr.status >= 400) {
           btn.disabled = false;
           if (previewBtn) previewBtn.disabled = false;
-          btn.textContent = "Быстрый импорт (без preview)";
-          let message = "Ошибка импорта (" + xhr.status + ").";
+          btn.textContent = gettext('Быстрый импорт (без preview)');
+          let message = gettext('Ошибка импорта (') + xhr.status + ").";
           try {
             const body = JSON.parse(xhr.responseText || "{}");
             if (body.error) {
@@ -702,7 +702,7 @@ function bulkPricePrompt(direction) {
           return;
         }
         progressBar.style.width = "100%";
-        progressText.textContent = "Файл загружен. Открываем preview...";
+        progressText.textContent = gettext('Файл загружен. Открываем preview...');
         try {
           const body = JSON.parse(xhr.responseText || "{}");
           if (body.redirect_url) {
@@ -716,8 +716,8 @@ function bulkPricePrompt(direction) {
       xhr.addEventListener("error", function () {
         btn.disabled = false;
         if (previewBtn) previewBtn.disabled = false;
-        btn.textContent = "Быстрый импорт (без preview)";
-        progressText.textContent = "Ошибка загрузки. Попробуйте снова.";
+        btn.textContent = gettext('Быстрый импорт (без preview)');
+        progressText.textContent = gettext('Ошибка загрузки. Попробуйте снова.');
       });
 
       xhr.send(data);

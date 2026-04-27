@@ -279,7 +279,7 @@ function kanbanDrop(e, col) {
   var who = col.dataset.who || '';
 
   // Показываем модальное подтверждение
-  var needsDoc = actionType.indexOf('документ') !== -1;
+  var needsDoc = actionType.indexOf(gettext("документ")) !== -1;
   var needsQR = actionType.indexOf('QR') !== -1;
   var triggerBlock = '';
   if (trigger) {
@@ -318,7 +318,7 @@ function kanbanDrop(e, col) {
           '<div class="kanban-confirm-qr-result" id="kanban-qr-result"></div>' +
         '</div>' +
         '<div style="margin-top:6px;text-align:center;">' +
-          '<input type="text" id="kanban-qr-manual" placeholder="или введите код вручную" ' +
+          '<input type="text" id="kanban-qr-manual" placeholder=gettext('или введите код вручную') ' +
             'style="width:100%;padding:8px 12px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);' +
             'border-radius:8px;color:#ECECEC;font-size:13px;outline:none;" />' +
         '</div>' +
@@ -356,7 +356,7 @@ function kanbanDrop(e, col) {
     qrToggle.addEventListener('click', function() {
       if (qrArea.style.display === 'none') {
         qrArea.style.display = 'block';
-        qrToggle.querySelector('.kanban-confirm-upload-text').textContent = 'Камера активна…';
+        qrToggle.querySelector('.kanban-confirm-upload-text').textContent = gettext("Камера активна…");
         navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
           .then(function(stream) {
             qrStream = stream;
@@ -379,10 +379,10 @@ function kanbanDrop(e, col) {
             }
           })
           .catch(function() {
-            qrResult.textContent = 'Камера недоступна — введите код вручную';
+            qrResult.textContent = gettext("Камера недоступна — введите код вручную");
             qrResult.style.color = '#FF8C42';
             qrArea.style.display = 'none';
-            qrToggle.querySelector('.kanban-confirm-upload-text').textContent = 'Камера недоступна';
+            qrToggle.querySelector('.kanban-confirm-upload-text').textContent = gettext("Камера недоступна");
           });
       } else {
         stopQR();
@@ -393,7 +393,7 @@ function kanbanDrop(e, col) {
       if (qrScanInterval) { clearInterval(qrScanInterval); qrScanInterval = null; }
       if (qrStream) { qrStream.getTracks().forEach(function(t) { t.stop(); }); qrStream = null; }
       qrArea.style.display = 'none';
-      qrToggle.querySelector('.kanban-confirm-upload-text').textContent = qrManual.value ? 'QR отсканирован ✓' : 'Сканировать QR-код';
+      qrToggle.querySelector('.kanban-confirm-upload-text').textContent = qrManual.value ? gettext("QR отсканирован ✓") : gettext("Сканировать QR-код");
       if (qrManual.value) qrToggle.classList.add('kanban-confirm-upload-label--filled');
     }
 
@@ -432,7 +432,7 @@ function kanbanDrop(e, col) {
   overlay.querySelector('.kanban-confirm-yes').onclick = function() {
     var btn = this;
     btn.disabled = true;
-    btn.textContent = 'Сохраняю…';
+    btn.textContent = gettext("Сохраняю…");
     var csrfToken = '{{ csrf_token }}';
     var fd = new FormData();
     fd.append('status', newStatus);

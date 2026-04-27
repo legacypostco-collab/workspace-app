@@ -252,7 +252,7 @@ function updateBulkBar() {
   var count = document.querySelectorAll('.part-cb:checked').length;
   var bar = document.getElementById('bulkBar');
   bar.style.display = count > 0 ? 'flex' : 'none';
-  document.getElementById('selectedCount').textContent = count + '{% trans " выбрано" %}';
+  document.getElementById('selectedCount').textContent = count + '{% trans gettext(' выбрано') %}';
 }
 function clearSelection() {
   document.querySelectorAll('.part-cb').forEach(function(cb) { cb.checked = false; });

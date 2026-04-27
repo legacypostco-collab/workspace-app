@@ -599,7 +599,7 @@
     var qrData = 'ORDER:' + orderId + ':' + orderUrl;
     placeholder.style.display = 'none';
     canvasContainer.style.display = 'block';
-    qrLabel.textContent = 'Заказ #' + orderId + ' · ' + opt.dataset.status;
+    qrLabel.textContent = gettext("Заказ #") + orderId + ' · ' + opt.dataset.status;
     qrDisplay.innerHTML = '';
     qrInstance = new QRCode(qrDisplay, {
       text: qrData,
@@ -675,25 +675,25 @@
 
   // Human-readable status labels
   var STATUS_LABELS = {
-    'pending': 'Ожидание оплаты',
-    'reserve_paid': 'Резерв оплачен',
-    'confirmed': 'Формирование заказа',
-    'in_production': 'В производстве',
-    'ready_to_ship': 'Готов к отгрузке',
-    'transit_abroad': 'Транзит Зарубеж',
-    'customs': 'Таможня',
-    'transit_rf': 'Транзит РФ',
-    'issuing': 'Выдача',
-    'shipped': 'Отгружен',
-    'delivered': 'Доставлен',
-    'completed': 'Завершён',
-    'cancelled': 'Отменён'
+    'pending': gettext("Ожидание оплаты"),
+    'reserve_paid': gettext("Резерв оплачен"),
+    'confirmed': gettext("Формирование заказа"),
+    'in_production': gettext("В производстве"),
+    'ready_to_ship': gettext("Готов к отгрузке"),
+    'transit_abroad': gettext("Транзит Зарубеж"),
+    'customs': gettext("Таможня"),
+    'transit_rf': gettext("Транзит РФ"),
+    'issuing': gettext("Выдача"),
+    'shipped': gettext("Отгружен"),
+    'delivered': gettext("Доставлен"),
+    'completed': gettext("Завершён"),
+    'cancelled': gettext("Отменён")
   };
 
   camBtn.addEventListener('click', function() {
     if (stream) {
       stopCamera();
-      camBtn.textContent = '📷 Камера';
+      camBtn.textContent = gettext("📷 Камера");
     } else {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
         .then(function(s) {
@@ -702,7 +702,7 @@
           scannerVideo.style.display = 'block';
           scannerIdle.style.display = 'none';
           corners.forEach(function(c) { c.style.display = 'block'; });
-          camBtn.textContent = '■ Стоп';
+          camBtn.textContent = gettext("■ Стоп");
 
           if ('BarcodeDetector' in window) {
             var detector = new BarcodeDetector({ formats: ['qr_code'] });
@@ -719,7 +719,7 @@
           }
         })
         .catch(function() {
-          scannerIdle.querySelector('.qr-scanner-idle-text').textContent = 'Камера недоступна — введите код вручную';
+          scannerIdle.querySelector('.qr-scanner-idle-text').textContent = gettext("Камера недоступна — введите код вручную");
         });
     }
   });
@@ -730,12 +730,12 @@
     scannerVideo.style.display = 'none';
     scannerIdle.style.display = '';
     corners.forEach(function(c) { c.style.display = 'none'; });
-    camBtn.textContent = '📷 Камера';
+    camBtn.textContent = gettext("📷 Камера");
   }
 
   function processQR(value) {
     scannedValue = value;
-    scanResult.textContent = '✓ Считан: ' + value;
+    scanResult.textContent = gettext("✓ Считан: ") + value;
     scanResult.style.display = 'block';
 
     // Parse ORDER:id:url format
@@ -754,20 +754,20 @@
       var rawStatus = opt.dataset.rawStatus;
       var nextStatus = QR_NEXT[rawStatus];
 
-      document.getElementById('qr-info-id').textContent = 'Заказ #' + orderId;
-      document.getElementById('qr-info-status').textContent = 'Текущий этап: ' + (STATUS_LABELS[rawStatus] || opt.dataset.status);
+      document.getElementById('qr-info-id').textContent = gettext("Заказ #") + orderId;
+      document.getElementById('qr-info-status').textContent = gettext("Текущий этап: ") + (STATUS_LABELS[rawStatus] || opt.dataset.status);
 
       if (nextStatus) {
-        nextEl.textContent = '→ Следующий этап: ' + (STATUS_LABELS[nextStatus] || nextStatus);
+        nextEl.textContent = gettext("→ Следующий этап: ") + (STATUS_LABELS[nextStatus] || nextStatus);
         nextEl.style.display = 'block';
-        document.getElementById('qr-info-meta').textContent = 'Нажмите «Подтвердить» для перевода заказа';
+        document.getElementById('qr-info-meta').textContent = gettext("Нажмите «Подтвердить» для перевода заказа");
         document.getElementById('qr-info-meta').style.color = '#8A8A8A';
         confirmBtn.disabled = false;
         confirmBtn.dataset.orderId = orderId;
         confirmBtn.dataset.nextStatus = nextStatus;
         confirmBtn.dataset.rawStatus = rawStatus;
       } else {
-        nextEl.textContent = 'Нет доступного QR-перехода для этого этапа';
+        nextEl.textContent = gettext("Нет доступного QR-перехода для этого этапа");
         nextEl.style.display = 'block';
         nextEl.style.color = '#8A8A8A';
         document.getElementById('qr-info-meta').textContent = '';
@@ -777,8 +777,8 @@
       kanbanLink.style.display = 'block';
       orderInfo.style.display = 'block';
     } else {
-      document.getElementById('qr-info-id').textContent = 'Код: ' + value;
-      document.getElementById('qr-info-status').textContent = orderId ? 'Заказ не найден в текущем списке' : 'Неизвестный формат';
+      document.getElementById('qr-info-id').textContent = gettext("Код: ") + value;
+      document.getElementById('qr-info-status').textContent = orderId ? gettext("Заказ не найден в текущем списке") : gettext("Неизвестный формат");
       nextEl.style.display = 'none';
       document.getElementById('qr-info-meta').textContent = '';
       kanbanLink.style.display = 'none';
@@ -810,7 +810,7 @@
     if (!orderId || !nextStatus) return;
 
     confirmBtn.disabled = true;
-    confirmBtn.textContent = 'Отправка…';
+    confirmBtn.textContent = gettext("Отправка…");
 
     var url = '/seller/orders/' + orderId + '/status/';
     var csrf = document.cookie.match(/csrftoken=([^;]+)/);
@@ -823,24 +823,24 @@
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         var label = STATUS_LABELS[nextStatus] || nextStatus;
         document.getElementById('qr-info-meta').innerHTML =
-          '<span style="color:#64B5F6;font-weight:600;">✓ Заказ #' + orderId + ' переведён на этап: ' + label + '</span>';
+          '<span style="color:#64B5F6;font-weight:600;">✓ Заказ #' + orderId + gettext(" переведён на этап: ") + label + '</span>';
         document.getElementById('qr-info-next').textContent = '';
-        confirmBtn.textContent = 'Подтвердить этап';
+        confirmBtn.textContent = gettext("Подтвердить этап");
 
         // Update option data so re-scan shows correct status
         if (orderMap[orderId]) {
           orderMap[orderId].dataset.rawStatus = nextStatus;
           orderMap[orderId].dataset.status = label;
-          orderMap[orderId].textContent = 'Заказ #' + orderId + ' · ' + label;
+          orderMap[orderId].textContent = gettext("Заказ #") + orderId + ' · ' + label;
         }
 
         setTimeout(function() { location.reload(); }, 1500);
       })
       .catch(function() {
-        document.getElementById('qr-info-meta').textContent = 'Ошибка сети, попробуйте снова';
+        document.getElementById('qr-info-meta').textContent = gettext("Ошибка сети, попробуйте снова");
         document.getElementById('qr-info-meta').style.color = '#FF8C42';
         confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Подтвердить этап';
+        confirmBtn.textContent = gettext("Подтвердить этап");
       });
   });
 

@@ -807,9 +807,9 @@ function submitNewTask() {
   }
   var assignee = document.getElementById('task-assignee').value;
   var prio = document.getElementById('task-prio').value;
-  var due = document.getElementById('task-due').value.trim() || 'без срока';
-  var prioLabels = { high: ['Срочно','tm-task-prio--high'], med: ['Средне','tm-task-prio--med'], low: ['Обычно','tm-task-prio--low'] };
-  var dueClass = due.indexOf('вчера') !== -1 ? 'tm-task-due--late' : (due.indexOf('сегодня') !== -1 ? 'tm-task-due--soon' : 'tm-task-due--ok');
+  var due = document.getElementById('task-due').value.trim() || gettext("без срока");
+  var prioLabels = { high: [gettext("Срочно"),'tm-task-prio--high'], med: [gettext("Средне"),'tm-task-prio--med'], low: [gettext("Обычно"),'tm-task-prio--low'] };
+  var dueClass = due.indexOf(gettext("вчера")) !== -1 ? 'tm-task-due--late' : (due.indexOf(gettext("сегодня")) !== -1 ? 'tm-task-due--soon' : 'tm-task-due--ok');
   var p = prioLabels[prio];
   var task = document.createElement('div');
   task.className = 'tm-task';
@@ -822,7 +822,7 @@ function submitNewTask() {
   var list = document.querySelector('.tm-task-list');
   list.insertBefore(task, list.firstChild);
   closeTaskModal();
-  showToast('Задача создана: ' + title);
+  showToast(gettext("Задача создана: ") + title);
 }
 document.getElementById('modal-newtask').addEventListener('click', function(e) {
   if (e.target === this) closeTaskModal();
@@ -848,7 +848,7 @@ function submitInvite() {
   var name = document.getElementById('invite-name').value.trim() || email.split('@')[0];
   var role = document.getElementById('invite-role').value;
   closeInviteModal();
-  showToast('Приглашение отправлено: ' + name + ' (' + role + ')');
+  showToast(gettext("Приглашение отправлено: ") + name + ' (' + role + ')');
 }
 document.getElementById('modal-invite').addEventListener('click', function(e){
   if (e.target === this) closeInviteModal();
@@ -861,17 +861,17 @@ function savePermissions(btn) {
     var label = row.querySelector('td:first-child') || row.querySelector('.tm-perm-name');
     if (label) perms.push(label.textContent.trim());
   });
-  btn.textContent = '✓ Сохранено';
+  btn.textContent = gettext("✓ Сохранено");
   btn.style.background = 'rgba(100,181,246,0.15)';
   btn.style.color = '#64B5F6';
   btn.disabled = true;
   setTimeout(function(){
-    btn.textContent = 'Сохранить права';
+    btn.textContent = gettext("Сохранить права");
     btn.style.background = '';
     btn.style.color = '';
     btn.disabled = false;
   }, 2000);
-  showToast('Права доступа обновлены (' + perms.length + ' разрешений)');
+  showToast(gettext("Права доступа обновлены (") + perms.length + gettext(" разрешений)"));
 }
 </script>
 {% endblock %}

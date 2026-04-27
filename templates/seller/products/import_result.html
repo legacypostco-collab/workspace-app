@@ -189,7 +189,7 @@
       if (!rowsBody) return;
       if (!items || !items.length) {
         rowsBody.innerHTML = '<tr><td colspan="7">По выбранным фильтрам строк не найдено.</td></tr>';
-        if (rowsSummary) rowsSummary.textContent = "Показано строк: 0";
+        if (rowsSummary) rowsSummary.textContent = gettext('Показано строк: 0');
         return;
       }
       const html = items.map(function (row) {
@@ -206,7 +206,7 @@
         );
       }).join("");
       rowsBody.innerHTML = html;
-      if (rowsSummary) rowsSummary.textContent = "Показано строк: " + String(items.length);
+      if (rowsSummary) rowsSummary.textContent = gettext('Показано строк: ') + String(items.length);
     };
 
     const loadRows = function () {
@@ -227,7 +227,7 @@
           renderRows(data.items || []);
         })
         .catch(function () {
-          if (rowsSummary) rowsSummary.textContent = "Не удалось загрузить строки импорта";
+          if (rowsSummary) rowsSummary.textContent = gettext('Не удалось загрузить строки импорта');
         });
     };
 
@@ -242,7 +242,7 @@
       if (updatedOffersNode) updatedOffersNode.textContent = String(data.updated_offers || 0);
       if (updatedPricesNode) updatedPricesNode.textContent = String(data.rows_updated_prices || 0);
       if (progressBar) progressBar.style.width = Math.max(0, Math.min(100, Number(data.progress_percent || 0))) + "%";
-      if (progressText) progressText.textContent = "Обработано: " + String(data.processed_rows || 0) + " / " + String(data.total_rows || 0);
+      if (progressText) progressText.textContent = gettext('Обработано: ') + String(data.processed_rows || 0) + " / " + String(data.total_rows || 0);
       if (errorsActions) errorsActions.style.display = (Number(data.error_rows || 0) > 0) ? "flex" : "none";
       if (errorMessageNode) {
         if (data.error_message) {
@@ -259,11 +259,11 @@
 
     if (rollbackBtn && csrfToken) {
       rollbackBtn.addEventListener("click", function () {
-        if (!window.confirm("Подтвердить откат этого импорта? Затронутые офферы будут деактивированы.")) {
+        if (!window.confirm(gettext('Подтвердить откат этого импорта? Затронутые офферы будут деактивированы.'))) {
           return;
         }
         rollbackBtn.disabled = true;
-        rollbackBtn.textContent = "Откатываем...";
+        rollbackBtn.textContent = gettext('Откатываем...');
         fetch("/api/v1/seller/imports/" + jobId + "/rollback", {
           method: "POST",
           headers: {
@@ -280,21 +280,21 @@
           .then(function (payload) {
             if (!payload.ok) {
               rollbackBtn.disabled = false;
-              rollbackBtn.textContent = "Откатить импорт";
-              if (rollbackStatus) rollbackStatus.textContent = payload.body.error || "Не удалось выполнить откат";
+              rollbackBtn.textContent = gettext('Откатить импорт');
+              if (rollbackStatus) rollbackStatus.textContent = payload.body.error || gettext('Не удалось выполнить откат');
               return;
             }
             const count = Number(payload.body.rolled_back_offer_count || 0);
-            rollbackBtn.textContent = "Откат выполнен";
-            if (rollbackStatus) rollbackStatus.textContent = "Откат выполнен: деактивировано офферов " + String(count);
+            rollbackBtn.textContent = gettext('Откат выполнен');
+            if (rollbackStatus) rollbackStatus.textContent = gettext('Откат выполнен: деактивировано офферов ') + String(count);
             window.setTimeout(function () {
               window.location.href = "/seller/products/";
             }, 900);
           })
           .catch(function () {
             rollbackBtn.disabled = false;
-            rollbackBtn.textContent = "Откатить импорт";
-            if (rollbackStatus) rollbackStatus.textContent = "Ошибка сети при откате";
+            rollbackBtn.textContent = gettext('Откатить импорт');
+            if (rollbackStatus) rollbackStatus.textContent = gettext('Ошибка сети при откате');
           });
       });
     }
