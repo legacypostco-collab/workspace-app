@@ -676,18 +676,7 @@ html.theme-light .demo-btn__login { color: #8892A4 !important; }
 </div>
 <button type="button" class="header-cta">{% trans "Обратный звонок" %}</button>
 <div class="header-lang">
-{% get_current_language as LANGUAGE_CODE %}
-<form method="post" action="{% url 'set_language' %}" style="display:inline;">
-  {% csrf_token %}
-  <input type="hidden" name="next" value="{{ request.get_full_path }}">
-  {% if LANGUAGE_CODE == 'ru' %}
-    <input type="hidden" name="language" value="en">
-    <button type="submit" class="lang-btn" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;">EN</button>
-  {% else %}
-    <input type="hidden" name="language" value="ru">
-    <button type="submit" class="lang-btn" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;">RU</button>
-  {% endif %}
-</form>
+{% include "components/_lang_switcher.html" %}
 </div>
 </div>
 

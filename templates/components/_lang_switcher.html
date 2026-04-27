@@ -1,0 +1,21 @@
+{% load i18n %}{% get_current_language as LANG_CODE %}
+<div class="lang-switcher" style="display:inline-flex;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:2px;gap:0;">
+  <form method="post" action="{% url 'set_language' %}" style="display:inline;margin:0;">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <input type="hidden" name="language" value="ru">
+    <button type="submit" style="background:{% if LANG_CODE == 'ru' %}rgba(100,181,246,0.18){% else %}transparent{% endif %};border:none;border-radius:4px;color:{% if LANG_CODE == 'ru' %}#64B5F6{% else %}#919191{% endif %};font-size:11px;font-weight:600;padding:4px 8px;cursor:pointer;letter-spacing:0.06em;transition:all .15s;" onmouseover="if(this.style.color !== 'rgb(100, 181, 246)') this.style.color='#ECECEC'" onmouseout="if(!this.dataset.active) this.style.color='{% if LANG_CODE == 'ru' %}#64B5F6{% else %}#919191{% endif %}'">RU</button>
+  </form>
+  <form method="post" action="{% url 'set_language' %}" style="display:inline;margin:0;">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <input type="hidden" name="language" value="en">
+    <button type="submit" style="background:{% if LANG_CODE == 'en' %}rgba(100,181,246,0.18){% else %}transparent{% endif %};border:none;border-radius:4px;color:{% if LANG_CODE == 'en' %}#64B5F6{% else %}#919191{% endif %};font-size:11px;font-weight:600;padding:4px 8px;cursor:pointer;letter-spacing:0.06em;transition:all .15s;" onmouseover="if(this.style.color !== 'rgb(100, 181, 246)') this.style.color='#ECECEC'" onmouseout="if(!this.dataset.active) this.style.color='{% if LANG_CODE == 'en' %}#64B5F6{% else %}#919191{% endif %}'">EN</button>
+  </form>
+  <form method="post" action="{% url 'set_language' %}" style="display:inline;margin:0;">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    <input type="hidden" name="language" value="zh-hans">
+    <button type="submit" style="background:{% if LANG_CODE == 'zh-hans' %}rgba(100,181,246,0.18){% else %}transparent{% endif %};border:none;border-radius:4px;color:{% if LANG_CODE == 'zh-hans' %}#64B5F6{% else %}#919191{% endif %};font-size:12px;font-weight:600;padding:4px 8px;cursor:pointer;transition:all .15s;" onmouseover="if(this.style.color !== 'rgb(100, 181, 246)') this.style.color='#ECECEC'" onmouseout="if(!this.dataset.active) this.style.color='{% if LANG_CODE == 'zh-hans' %}#64B5F6{% else %}#919191{% endif %}'">中</button>
+  </form>
+</div>
