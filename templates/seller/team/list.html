@@ -1,4 +1,5 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 
 {% block extra_css %}
 <style>
@@ -209,76 +210,76 @@
 {% block content %}
 
 <div class="tm-tabs">
-  <div class="tm-tab active" onclick="tmTab(this,'team')">Команда</div>
-  <div class="tm-tab" onclick="tmTab(this,'permissions')">Права доступа</div>
-  <div class="tm-tab" onclick="tmTab(this,'chat')">Чат</div>
-  <div class="tm-tab" onclick="tmTab(this,'tasks')">Задачи</div>
-  <div class="tm-tab" onclick="tmTab(this,'activity')">Активность</div>
-  <div class="tm-tab" onclick="tmTab(this,'ratings')">Рейтинги</div>
+  <div class="tm-tab active" onclick="tmTab(this,'team')">{% trans "Команда" %}</div>
+  <div class="tm-tab" onclick="tmTab(this,'permissions')">{% trans "Права доступа" %}</div>
+  <div class="tm-tab" onclick="tmTab(this,'chat')">{% trans "Чат" %}</div>
+  <div class="tm-tab" onclick="tmTab(this,'tasks')">{% trans "Задачи" %}</div>
+  <div class="tm-tab" onclick="tmTab(this,'activity')">{% trans "Активность" %}</div>
+  <div class="tm-tab" onclick="tmTab(this,'ratings')">{% trans "Рейтинги" %}</div>
 </div>
 
 {# ═══ TAB 1: Команда и орг-схема ═══ #}
 <div class="tm-panel active" id="panel-team">
   <div class="tm-section">
-    <div class="tm-section-title">Организационная структура</div>
-    <div class="tm-section-sub">Управляйте командой поставщика. Каждый участник влияет на общий рейтинг компании</div>
+    <div class="tm-section-title">{% trans "Организационная структура" %}</div>
+    <div class="tm-section-sub">{% trans "Управляйте командой поставщика. Каждый участник влияет на общий рейтинг компании" %}</div>
   </div>
 
   {# Org chart #}
   <div class="tm-org" style="margin-bottom:24px;">
     <div class="tm-org-level">
       <div class="tm-member" onclick="selectMember(this,'director')">
-        <div class="tm-member-avatar">АК</div>
-        <div class="tm-member-name">Алексей Козлов</div>
-        <div class="tm-member-role">Директор</div>
+        <div class="tm-member-avatar">{% trans "АК" %}</div>
+        <div class="tm-member-name">{% trans "Алексей Козлов" %}</div>
+        <div class="tm-member-role">{% trans "Директор" %}</div>
         <div class="tm-member-rating">92.4</div>
       </div>
     </div>
     <div class="tm-org-line"></div>
     <div class="tm-org-level">
       <div class="tm-member" onclick="selectMember(this,'sales_head')">
-        <div class="tm-member-avatar">МД</div>
-        <div class="tm-member-name">Мария Демина</div>
-        <div class="tm-member-role">Руководитель продаж</div>
+        <div class="tm-member-avatar">{% trans "МД" %}</div>
+        <div class="tm-member-name">{% trans "Мария Демина" %}</div>
+        <div class="tm-member-role">{% trans "Руководитель продаж" %}</div>
         <div class="tm-member-rating">88.1</div>
       </div>
       <div class="tm-member" onclick="selectMember(this,'logistics_head')">
-        <div class="tm-member-avatar">ИП</div>
-        <div class="tm-member-name">Игорь Петров</div>
-        <div class="tm-member-role">Логистика</div>
+        <div class="tm-member-avatar">{% trans "ИП" %}</div>
+        <div class="tm-member-name">{% trans "Игорь Петров" %}</div>
+        <div class="tm-member-role">{% trans "Логистика" %}</div>
         <div class="tm-member-rating">84.7</div>
       </div>
       <div class="tm-member" onclick="selectMember(this,'engineer')">
-        <div class="tm-member-avatar">ОС</div>
-        <div class="tm-member-name">Ольга Смирнова</div>
-        <div class="tm-member-role">Инженер</div>
+        <div class="tm-member-avatar">{% trans "ОС" %}</div>
+        <div class="tm-member-name">{% trans "Ольга Смирнова" %}</div>
+        <div class="tm-member-role">{% trans "Инженер" %}</div>
         <div class="tm-member-rating">91.0</div>
       </div>
     </div>
     <div class="tm-org-line"></div>
     <div class="tm-org-level">
       <div class="tm-member" onclick="selectMember(this,'sales1')">
-        <div class="tm-member-avatar">ДВ</div>
-        <div class="tm-member-name">Дмитрий Волков</div>
-        <div class="tm-member-role">Менеджер</div>
+        <div class="tm-member-avatar">{% trans "ДВ" %}</div>
+        <div class="tm-member-name">{% trans "Дмитрий Волков" %}</div>
+        <div class="tm-member-role">{% trans "Менеджер" %}</div>
         <div class="tm-member-rating">79.3</div>
       </div>
       <div class="tm-member" onclick="selectMember(this,'sales2')">
-        <div class="tm-member-avatar">ЕК</div>
-        <div class="tm-member-name">Елена Кузнецова</div>
-        <div class="tm-member-role">Менеджер</div>
+        <div class="tm-member-avatar">{% trans "ЕК" %}</div>
+        <div class="tm-member-name">{% trans "Елена Кузнецова" %}</div>
+        <div class="tm-member-role">{% trans "Менеджер" %}</div>
         <div class="tm-member-rating">86.5</div>
       </div>
       <div class="tm-member" onclick="selectMember(this,'warehouse')">
-        <div class="tm-member-avatar">СН</div>
-        <div class="tm-member-name">Сергей Новиков</div>
-        <div class="tm-member-role">Склад</div>
+        <div class="tm-member-avatar">{% trans "СН" %}</div>
+        <div class="tm-member-name">{% trans "Сергей Новиков" %}</div>
+        <div class="tm-member-role">{% trans "Склад" %}</div>
         <div class="tm-member-rating">82.0</div>
       </div>
       <div class="tm-member" onclick="selectMember(this,'tech')">
-        <div class="tm-member-avatar">АЛ</div>
-        <div class="tm-member-name">Анна Лебедева</div>
-        <div class="tm-member-role">Тех. документация</div>
+        <div class="tm-member-avatar">{% trans "АЛ" %}</div>
+        <div class="tm-member-name">{% trans "Анна Лебедева" %}</div>
+        <div class="tm-member-role">{% trans "Тех. документация" %}</div>
         <div class="tm-member-rating">90.2</div>
       </div>
     </div>
@@ -286,82 +287,82 @@
 
   {# Team list #}
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-    <div style="font-size:12px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;">Список команды</div>
-    <button class="tm-btn tm-btn--primary" onclick="openInviteModal()">+ Пригласить</button>
+    <div style="font-size:12px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;">{% trans "Список команды" %}</div>
+    <button class="tm-btn tm-btn--primary" onclick="openInviteModal()">{% trans "+ Пригласить" %}</button>
   </div>
 
   <div class="tm-list">
     <div class="tm-list-row" style="background:transparent;border:none;">
       <div></div>
-      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;">Сотрудник</div>
-      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;text-align:center;">Роль</div>
-      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;text-align:center;">Статус</div>
-      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;text-align:center;">Рейтинг</div>
+      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Сотрудник" %}</div>
+      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;text-align:center;">{% trans "Роль" %}</div>
+      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;text-align:center;">{% trans "Статус" %}</div>
+      <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;text-align:center;">{% trans "Рейтинг" %}</div>
       <div></div>
     </div>
     <div class="tm-list-row">
-      <div class="tm-list-avatar">АК</div>
-      <div><div class="tm-list-name">Алексей Козлов</div><div class="tm-list-email">a.kozlov@company.ru</div></div>
-      <div class="tm-list-role">Директор</div>
-      <div class="tm-list-status tm-list-status--on">&#9679; Онлайн</div>
+      <div class="tm-list-avatar">{% trans "АК" %}</div>
+      <div><div class="tm-list-name">{% trans "Алексей Козлов" %}</div><div class="tm-list-email">a.kozlov@company.ru</div></div>
+      <div class="tm-list-role">{% trans "Директор" %}</div>
+      <div class="tm-list-status tm-list-status--on">{% trans "&#9679; Онлайн" %}</div>
       <div class="tm-list-rating">92.4</div>
-      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="{% trans 'Настройки' %}">&#9881;</button></div>
     </div>
     <div class="tm-list-row">
-      <div class="tm-list-avatar">МД</div>
-      <div><div class="tm-list-name">Мария Демина</div><div class="tm-list-email">m.demina@company.ru</div></div>
-      <div class="tm-list-role">Продажи</div>
-      <div class="tm-list-status tm-list-status--on">&#9679; Онлайн</div>
+      <div class="tm-list-avatar">{% trans "МД" %}</div>
+      <div><div class="tm-list-name">{% trans "Мария Демина" %}</div><div class="tm-list-email">m.demina@company.ru</div></div>
+      <div class="tm-list-role">{% trans "Продажи" %}</div>
+      <div class="tm-list-status tm-list-status--on">{% trans "&#9679; Онлайн" %}</div>
       <div class="tm-list-rating">88.1</div>
-      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="{% trans 'Настройки' %}">&#9881;</button></div>
     </div>
     <div class="tm-list-row">
-      <div class="tm-list-avatar">ИП</div>
-      <div><div class="tm-list-name">Игорь Петров</div><div class="tm-list-email">i.petrov@company.ru</div></div>
-      <div class="tm-list-role">Логистика</div>
-      <div class="tm-list-status tm-list-status--off">&#9679; Офлайн</div>
+      <div class="tm-list-avatar">{% trans "ИП" %}</div>
+      <div><div class="tm-list-name">{% trans "Игорь Петров" %}</div><div class="tm-list-email">i.petrov@company.ru</div></div>
+      <div class="tm-list-role">{% trans "Логистика" %}</div>
+      <div class="tm-list-status tm-list-status--off">{% trans "&#9679; Офлайн" %}</div>
       <div class="tm-list-rating">84.7</div>
-      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="{% trans 'Настройки' %}">&#9881;</button></div>
     </div>
     <div class="tm-list-row">
-      <div class="tm-list-avatar">ОС</div>
-      <div><div class="tm-list-name">Ольга Смирнова</div><div class="tm-list-email">o.smirnova@company.ru</div></div>
-      <div class="tm-list-role">Инженер</div>
-      <div class="tm-list-status tm-list-status--on">&#9679; Онлайн</div>
+      <div class="tm-list-avatar">{% trans "ОС" %}</div>
+      <div><div class="tm-list-name">{% trans "Ольга Смирнова" %}</div><div class="tm-list-email">o.smirnova@company.ru</div></div>
+      <div class="tm-list-role">{% trans "Инженер" %}</div>
+      <div class="tm-list-status tm-list-status--on">{% trans "&#9679; Онлайн" %}</div>
       <div class="tm-list-rating">91.0</div>
-      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="{% trans 'Настройки' %}">&#9881;</button></div>
     </div>
     <div class="tm-list-row">
-      <div class="tm-list-avatar">ДВ</div>
-      <div><div class="tm-list-name">Дмитрий Волков</div><div class="tm-list-email">d.volkov@company.ru</div></div>
-      <div class="tm-list-role">Менеджер</div>
-      <div class="tm-list-status tm-list-status--on">&#9679; Онлайн</div>
+      <div class="tm-list-avatar">{% trans "ДВ" %}</div>
+      <div><div class="tm-list-name">{% trans "Дмитрий Волков" %}</div><div class="tm-list-email">d.volkov@company.ru</div></div>
+      <div class="tm-list-role">{% trans "Менеджер" %}</div>
+      <div class="tm-list-status tm-list-status--on">{% trans "&#9679; Онлайн" %}</div>
       <div class="tm-list-rating">79.3</div>
-      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="{% trans 'Настройки' %}">&#9881;</button></div>
     </div>
     <div class="tm-list-row">
-      <div class="tm-list-avatar">ЕК</div>
-      <div><div class="tm-list-name">Елена Кузнецова</div><div class="tm-list-email">e.kuznetsova@company.ru</div></div>
-      <div class="tm-list-role">Менеджер</div>
-      <div class="tm-list-status tm-list-status--off">&#9679; Офлайн</div>
+      <div class="tm-list-avatar">{% trans "ЕК" %}</div>
+      <div><div class="tm-list-name">{% trans "Елена Кузнецова" %}</div><div class="tm-list-email">e.kuznetsova@company.ru</div></div>
+      <div class="tm-list-role">{% trans "Менеджер" %}</div>
+      <div class="tm-list-status tm-list-status--off">{% trans "&#9679; Офлайн" %}</div>
       <div class="tm-list-rating">86.5</div>
-      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="{% trans 'Настройки' %}">&#9881;</button></div>
     </div>
     <div class="tm-list-row">
-      <div class="tm-list-avatar">СН</div>
-      <div><div class="tm-list-name">Сергей Новиков</div><div class="tm-list-email">s.novikov@company.ru</div></div>
-      <div class="tm-list-role">Склад</div>
-      <div class="tm-list-status tm-list-status--off">&#9679; Офлайн</div>
+      <div class="tm-list-avatar">{% trans "СН" %}</div>
+      <div><div class="tm-list-name">{% trans "Сергей Новиков" %}</div><div class="tm-list-email">s.novikov@company.ru</div></div>
+      <div class="tm-list-role">{% trans "Склад" %}</div>
+      <div class="tm-list-status tm-list-status--off">{% trans "&#9679; Офлайн" %}</div>
       <div class="tm-list-rating">82.0</div>
-      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="{% trans 'Настройки' %}">&#9881;</button></div>
     </div>
     <div class="tm-list-row">
-      <div class="tm-list-avatar">АЛ</div>
-      <div><div class="tm-list-name">Анна Лебедева</div><div class="tm-list-email">a.lebedeva@company.ru</div></div>
-      <div class="tm-list-role">Тех. док.</div>
-      <div class="tm-list-status tm-list-status--on">&#9679; Онлайн</div>
+      <div class="tm-list-avatar">{% trans "АЛ" %}</div>
+      <div><div class="tm-list-name">{% trans "Анна Лебедева" %}</div><div class="tm-list-email">a.lebedeva@company.ru</div></div>
+      <div class="tm-list-role">{% trans "Тех. док." %}</div>
+      <div class="tm-list-status tm-list-status--on">{% trans "&#9679; Онлайн" %}</div>
       <div class="tm-list-rating">90.2</div>
-      <div class="tm-list-actions"><button class="tm-list-btn" title="Настройки">&#9881;</button></div>
+      <div class="tm-list-actions"><button class="tm-list-btn" title="{% trans 'Настройки' %}">&#9881;</button></div>
     </div>
   </div>
 </div>
@@ -369,20 +370,20 @@
 {# ═══ TAB 2: Права доступа ═══ #}
 <div class="tm-panel" id="panel-permissions">
   <div class="tm-section">
-    <div class="tm-section-title">Матрица прав доступа</div>
-    <div class="tm-section-sub">Настройте, кто из команды имеет доступ к каким разделам платформы</div>
+    <div class="tm-section-title">{% trans "Матрица прав доступа" %}</div>
+    <div class="tm-section-sub">{% trans "Настройте, кто из команды имеет доступ к каким разделам платформы" %}</div>
   </div>
 
   <div class="tm-perm-grid">
-    <div class="tm-perm-header">Сотрудник</div>
-    <div class="tm-perm-header">Ассортимент</div>
-    <div class="tm-perm-header">Цены</div>
-    <div class="tm-perm-header">Заказы</div>
-    <div class="tm-perm-header">Чертежи</div>
-    <div class="tm-perm-header">Аналитика</div>
-    <div class="tm-perm-header">Команда</div>
+    <div class="tm-perm-header">{% trans "Сотрудник" %}</div>
+    <div class="tm-perm-header">{% trans "Ассортимент" %}</div>
+    <div class="tm-perm-header">{% trans "Цены" %}</div>
+    <div class="tm-perm-header">{% trans "Заказы" %}</div>
+    <div class="tm-perm-header">{% trans "Чертежи" %}</div>
+    <div class="tm-perm-header">{% trans "Аналитика" %}</div>
+    <div class="tm-perm-header">{% trans "Команда" %}</div>
 
-    <div class="tm-perm-name">Алексей Козлов</div>
+    <div class="tm-perm-name">{% trans "Алексей Козлов" %}</div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
@@ -390,39 +391,31 @@
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
 
-    <div class="tm-perm-name">Мария Демина</div>
+    <div class="tm-perm-name">{% trans "Мария Демина" %}</div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
-    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
-
-    <div class="tm-perm-name">Игорь Петров</div>
-    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
-    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
-    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
-    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
-    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
 
-    <div class="tm-perm-name">Ольга Смирнова</div>
-    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-name">{% trans "Игорь Петров" %}</div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
-    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
-    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
-    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
-
-    <div class="tm-perm-name">Дмитрий Волков</div>
-    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
-    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
 
-    <div class="tm-perm-name">Елена Кузнецова</div>
+    <div class="tm-perm-name">{% trans "Ольга Смирнова" %}</div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+
+    <div class="tm-perm-name">{% trans "Дмитрий Волков" %}</div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
@@ -430,7 +423,15 @@
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
 
-    <div class="tm-perm-name">Сергей Новиков</div>
+    <div class="tm-perm-name">{% trans "Елена Кузнецова" %}</div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+    <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
+
+    <div class="tm-perm-name">{% trans "Сергей Новиков" %}</div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
@@ -438,7 +439,7 @@
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
 
-    <div class="tm-perm-name">Анна Лебедева</div>
+    <div class="tm-perm-name">{% trans "Анна Лебедева" %}</div>
     <div class="tm-perm-cell"><div class="tm-perm-check on" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
     <div class="tm-perm-cell"><div class="tm-perm-check" onclick="togglePerm(this)">&#10003;</div></div>
@@ -448,7 +449,7 @@
   </div>
 
   <div style="margin-top:12px;display:flex;justify-content:flex-end;">
-    <button class="tm-btn tm-btn--primary" onclick="savePermissions(this)">Сохранить права</button>
+    <button class="tm-btn tm-btn--primary" onclick="savePermissions(this)">{% trans "Сохранить права" %}</button>
   </div>
 </div>
 
@@ -456,25 +457,25 @@
 <div class="tm-panel" id="panel-chat">
   <div class="tm-chat-container">
     <div class="tm-chat-sidebar">
-      <div class="tm-chat-channel active"><div class="tm-chat-ch-name"># общий</div><div class="tm-chat-ch-preview">Мария: Новый RFQ от клиента...</div></div>
-      <div class="tm-chat-channel"><div class="tm-chat-ch-name"># продажи</div><div class="tm-chat-ch-preview">Дмитрий: Котировка готова</div></div>
-      <div class="tm-chat-channel"><div class="tm-chat-ch-name"># логистика</div><div class="tm-chat-ch-preview">Игорь: Таможня пройдена</div></div>
-      <div class="tm-chat-channel"><div class="tm-chat-ch-name"># чертежи</div><div class="tm-chat-ch-preview">Ольга: Обновила спецификацию</div></div>
-      <div class="tm-chat-channel"><div class="tm-chat-ch-name"># срочное</div><div class="tm-chat-ch-preview">Алексей: SLA нарушение по #3851</div></div>
+      <div class="tm-chat-channel active"><div class="tm-chat-ch-name">{% trans "# общий" %}</div><div class="tm-chat-ch-preview">{% trans "Мария: Новый RFQ от клиента..." %}</div></div>
+      <div class="tm-chat-channel"><div class="tm-chat-ch-name">{% trans "# продажи" %}</div><div class="tm-chat-ch-preview">{% trans "Дмитрий: Котировка готова" %}</div></div>
+      <div class="tm-chat-channel"><div class="tm-chat-ch-name">{% trans "# логистика" %}</div><div class="tm-chat-ch-preview">{% trans "Игорь: Таможня пройдена" %}</div></div>
+      <div class="tm-chat-channel"><div class="tm-chat-ch-name">{% trans "# чертежи" %}</div><div class="tm-chat-ch-preview">{% trans "Ольга: Обновила спецификацию" %}</div></div>
+      <div class="tm-chat-channel"><div class="tm-chat-ch-name">{% trans "# срочное" %}</div><div class="tm-chat-ch-preview">{% trans "Алексей: SLA нарушение по #3851" %}</div></div>
     </div>
     <div class="tm-chat-main">
-      <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;font-weight:600;color:#ECECEC;"># общий</div>
+      <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;font-weight:600;color:#ECECEC;">{% trans "# общий" %}</div>
       <div class="tm-chat-messages">
-        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">МД</div><div><div class="tm-chat-msg-body">Новый RFQ от клиента Demo Fleet — 5 позиций, гидравлика. Кто берёт?</div><div class="tm-chat-msg-time">10:32</div></div></div>
-        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">ДВ</div><div><div class="tm-chat-msg-body">Я возьму, сейчас подготовлю котировку. RE48786 есть на складе?</div><div class="tm-chat-msg-time">10:35</div></div></div>
-        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">СН</div><div><div class="tm-chat-msg-body">RE48786 — 3 шт. на складе, готов к отгрузке. LH-9989363 под заказ, 5-7 дней.</div><div class="tm-chat-msg-time">10:38</div></div></div>
-        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">ОС</div><div><div class="tm-chat-msg-body">По RE48786 есть обновлённый чертёж, загрузила в систему. Клиенту передать?</div><div class="tm-chat-msg-time">10:42</div></div></div>
-        <div class="tm-chat-msg tm-chat-msg--me"><div class="tm-chat-msg-ava">АК</div><div><div class="tm-chat-msg-body">Да, передайте. Дмитрий, котировку до 12:00, SLA тикает.</div><div class="tm-chat-msg-time">10:45</div></div></div>
-        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">ДВ</div><div><div class="tm-chat-msg-body">Понял, будет готово через 30 минут.</div><div class="tm-chat-msg-time">10:46</div></div></div>
+        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">{% trans "МД" %}</div><div><div class="tm-chat-msg-body">{% trans "Новый RFQ от клиента Demo Fleet — 5 позиций, гидравлика. Кто берёт?" %}</div><div class="tm-chat-msg-time">10:32</div></div></div>
+        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">{% trans "ДВ" %}</div><div><div class="tm-chat-msg-body">{% trans "Я возьму, сейчас подготовлю котировку. RE48786 есть на складе?" %}</div><div class="tm-chat-msg-time">10:35</div></div></div>
+        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">{% trans "СН" %}</div><div><div class="tm-chat-msg-body">{% trans "RE48786 — 3 шт. на складе, готов к отгрузке. LH-9989363 под заказ, 5-7 дней." %}</div><div class="tm-chat-msg-time">10:38</div></div></div>
+        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">{% trans "ОС" %}</div><div><div class="tm-chat-msg-body">{% trans "По RE48786 есть обновлённый чертёж, загрузила в систему. Клиенту передать?" %}</div><div class="tm-chat-msg-time">10:42</div></div></div>
+        <div class="tm-chat-msg tm-chat-msg--me"><div class="tm-chat-msg-ava">{% trans "АК" %}</div><div><div class="tm-chat-msg-body">{% trans "Да, передайте. Дмитрий, котировку до 12:00, SLA тикает." %}</div><div class="tm-chat-msg-time">10:45</div></div></div>
+        <div class="tm-chat-msg"><div class="tm-chat-msg-ava">{% trans "ДВ" %}</div><div><div class="tm-chat-msg-body">{% trans "Понял, будет готово через 30 минут." %}</div><div class="tm-chat-msg-time">10:46</div></div></div>
       </div>
       <div class="tm-chat-input">
-        <input type="text" placeholder="Введите сообщение..." id="chatInput" onkeydown="if(event.key==='Enter')sendMsg()" />
-        <button class="tm-chat-send" onclick="sendMsg()">Отправить</button>
+        <input type="text" placeholder="{% trans 'Введите сообщение...' %}" id="chatInput" onkeydown="if(event.key==='Enter')sendMsg()" />
+        <button class="tm-chat-send" onclick="sendMsg()">{% trans "Отправить" %}</button>
       </div>
     </div>
   </div>
@@ -485,62 +486,62 @@
   <div class="tm-section">
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <div>
-        <div class="tm-section-title">Задачи команды</div>
-        <div class="tm-section-sub" style="margin-bottom:0;">Отслеживайте выполнение задач в реальном времени</div>
+        <div class="tm-section-title">{% trans "Задачи команды" %}</div>
+        <div class="tm-section-sub" style="margin-bottom:0;">{% trans "Отслеживайте выполнение задач в реальном времени" %}</div>
       </div>
-      <button class="tm-btn tm-btn--primary" onclick="openTaskModal()">+ Новая задача</button>
+      <button class="tm-btn tm-btn--primary" onclick="openTaskModal()">{% trans "+ Новая задача" %}</button>
     </div>
   </div>
 
   <div class="tm-task-list">
     <div class="tm-task">
       <div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>
-      <div class="tm-task-title">Подготовить котировку по RFQ #1 — Demo Fleet</div>
-      <div class="tm-task-assignee">Дмитрий В.</div>
-      <div class="tm-task-due tm-task-due--soon">сегодня 12:00</div>
-      <div class="tm-task-prio tm-task-prio--high">Срочно</div>
+      <div class="tm-task-title">{% trans "Подготовить котировку по RFQ #1 — Demo Fleet" %}</div>
+      <div class="tm-task-assignee">{% trans "Дмитрий В." %}</div>
+      <div class="tm-task-due tm-task-due--soon">{% trans "сегодня 12:00" %}</div>
+      <div class="tm-task-prio tm-task-prio--high">{% trans "Срочно" %}</div>
     </div>
     <div class="tm-task">
       <div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>
-      <div class="tm-task-title">Загрузить чертёж KM-21W-60-41112</div>
-      <div class="tm-task-assignee">Ольга С.</div>
-      <div class="tm-task-due tm-task-due--soon">сегодня 18:00</div>
-      <div class="tm-task-prio tm-task-prio--med">Средне</div>
+      <div class="tm-task-title">{% trans "Загрузить чертёж KM-21W-60-41112" %}</div>
+      <div class="tm-task-assignee">{% trans "Ольга С." %}</div>
+      <div class="tm-task-due tm-task-due--soon">{% trans "сегодня 18:00" %}</div>
+      <div class="tm-task-prio tm-task-prio--med">{% trans "Средне" %}</div>
     </div>
     <div class="tm-task">
       <div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>
-      <div class="tm-task-title">Подтвердить отгрузку ORD-3851 (4 позиции)</div>
-      <div class="tm-task-assignee">Сергей Н.</div>
-      <div class="tm-task-due tm-task-due--late">вчера!</div>
-      <div class="tm-task-prio tm-task-prio--high">Срочно</div>
+      <div class="tm-task-title">{% trans "Подтвердить отгрузку ORD-3851 (4 позиции)" %}</div>
+      <div class="tm-task-assignee">{% trans "Сергей Н." %}</div>
+      <div class="tm-task-due tm-task-due--late">{% trans "вчера!" %}</div>
+      <div class="tm-task-prio tm-task-prio--high">{% trans "Срочно" %}</div>
     </div>
     <div class="tm-task">
       <div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>
-      <div class="tm-task-title">Обновить прайс-лист — категория «Фильтры»</div>
-      <div class="tm-task-assignee">Елена К.</div>
-      <div class="tm-task-due tm-task-due--ok">26 мар</div>
-      <div class="tm-task-prio tm-task-prio--med">Средне</div>
+      <div class="tm-task-title">{% trans "Обновить прайс-лист — категория «Фильтры»" %}</div>
+      <div class="tm-task-assignee">{% trans "Елена К." %}</div>
+      <div class="tm-task-due tm-task-due--ok">{% trans "26 мар" %}</div>
+      <div class="tm-task-prio tm-task-prio--med">{% trans "Средне" %}</div>
     </div>
     <div class="tm-task">
       <div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>
-      <div class="tm-task-title">Согласовать логистику для заказа #3847</div>
-      <div class="tm-task-assignee">Игорь П.</div>
-      <div class="tm-task-due tm-task-due--ok">27 мар</div>
-      <div class="tm-task-prio tm-task-prio--low">Обычно</div>
+      <div class="tm-task-title">{% trans "Согласовать логистику для заказа #3847" %}</div>
+      <div class="tm-task-assignee">{% trans "Игорь П." %}</div>
+      <div class="tm-task-due tm-task-due--ok">{% trans "27 мар" %}</div>
+      <div class="tm-task-prio tm-task-prio--low">{% trans "Обычно" %}</div>
     </div>
     <div class="tm-task">
       <div class="tm-task-check done" onclick="toggleTask(this)">&#10003;</div>
-      <div class="tm-task-title done">Ответить на рекламацию CLM-0042</div>
-      <div class="tm-task-assignee">Мария Д.</div>
-      <div class="tm-task-due tm-task-due--ok">выполнено</div>
-      <div class="tm-task-prio tm-task-prio--low">Готово</div>
+      <div class="tm-task-title done">{% trans "Ответить на рекламацию CLM-0042" %}</div>
+      <div class="tm-task-assignee">{% trans "Мария Д." %}</div>
+      <div class="tm-task-due tm-task-due--ok">{% trans "выполнено" %}</div>
+      <div class="tm-task-prio tm-task-prio--low">{% trans "Готово" %}</div>
     </div>
     <div class="tm-task">
       <div class="tm-task-check done" onclick="toggleTask(this)">&#10003;</div>
-      <div class="tm-task-title done">Загрузить сертификат качества для ORD-3847</div>
-      <div class="tm-task-assignee">Анна Л.</div>
-      <div class="tm-task-due tm-task-due--ok">выполнено</div>
-      <div class="tm-task-prio tm-task-prio--low">Готово</div>
+      <div class="tm-task-title done">{% trans "Загрузить сертификат качества для ORD-3847" %}</div>
+      <div class="tm-task-assignee">{% trans "Анна Л." %}</div>
+      <div class="tm-task-due tm-task-due--ok">{% trans "выполнено" %}</div>
+      <div class="tm-task-prio tm-task-prio--low">{% trans "Готово" %}</div>
     </div>
   </div>
 </div>
@@ -548,120 +549,120 @@
 {# ═══ TAB 5: Активность ═══ #}
 <div class="tm-panel" id="panel-activity">
   <div class="tm-section">
-    <div class="tm-section-title">Активность на платформе</div>
-    <div class="tm-section-sub">Лог действий всех участников команды за последние 7 дней</div>
+    <div class="tm-section-title">{% trans "Активность на платформе" %}</div>
+    <div class="tm-section-sub">{% trans "Лог действий всех участников команды за последние 7 дней" %}</div>
   </div>
 
   <div style="background:#1A1A1A;border-radius:10px;border:1px solid rgba(255,255,255,0.04);overflow:hidden;">
-    <div class="tm-activity-row"><div class="tm-act-ava">ДВ</div><div class="tm-act-text">Дмитрий Волков <span>отправил котировку по RFQ #1</span></div><div class="tm-act-time">сегодня, 11:20</div><div class="tm-act-score" style="color:#66BB6A;">+2.0</div></div>
-    <div class="tm-activity-row"><div class="tm-act-ava">ОС</div><div class="tm-act-text">Ольга Смирнова <span>загрузила чертёж RE48786</span></div><div class="tm-act-time">сегодня, 10:42</div><div class="tm-act-score" style="color:#66BB6A;">+1.5</div></div>
-    <div class="tm-activity-row"><div class="tm-act-ava">СН</div><div class="tm-act-text">Сергей Новиков <span>подтвердил наличие на складе</span></div><div class="tm-act-time">сегодня, 10:38</div><div class="tm-act-score" style="color:#66BB6A;">+1.0</div></div>
-    <div class="tm-activity-row"><div class="tm-act-ava">МД</div><div class="tm-act-text">Мария Демина <span>приняла RFQ в работу</span></div><div class="tm-act-time">сегодня, 10:32</div><div class="tm-act-score" style="color:#66BB6A;">+1.0</div></div>
-    <div class="tm-activity-row"><div class="tm-act-ava">АК</div><div class="tm-act-text">Алексей Козлов <span>одобрил скидку 5% для переторжки</span></div><div class="tm-act-time">сегодня, 09:15</div><div class="tm-act-score" style="color:#8A8A8A;">0</div></div>
-    <div class="tm-activity-row"><div class="tm-act-ava">ЕК</div><div class="tm-act-text">Елена Кузнецова <span>обновила 142 позиции прайс-листа</span></div><div class="tm-act-time">вчера, 17:40</div><div class="tm-act-score" style="color:#66BB6A;">+3.0</div></div>
-    <div class="tm-activity-row"><div class="tm-act-ava">ИП</div><div class="tm-act-text">Игорь Петров <span>оформил отгрузку ORD-3845</span></div><div class="tm-act-time">вчера, 15:20</div><div class="tm-act-score" style="color:#66BB6A;">+2.0</div></div>
-    <div class="tm-activity-row"><div class="tm-act-ava">СН</div><div class="tm-act-text">Сергей Новиков <span>просрочил отгрузку ORD-3851</span></div><div class="tm-act-time">вчера, 14:00</div><div class="tm-act-score" style="color:#E05555;">-3.0</div></div>
-    <div class="tm-activity-row"><div class="tm-act-ava">АЛ</div><div class="tm-act-text">Анна Лебедева <span>загрузила сертификат качества</span></div><div class="tm-act-time">вчера, 11:30</div><div class="tm-act-score" style="color:#66BB6A;">+1.5</div></div>
-    <div class="tm-activity-row"><div class="tm-act-ava">МД</div><div class="tm-act-text">Мария Демина <span>решила рекламацию CLM-0042</span></div><div class="tm-act-time">вчера, 09:45</div><div class="tm-act-score" style="color:#66BB6A;">+2.5</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">{% trans "ДВ" %}</div><div class="tm-act-text">{% trans "Дмитрий Волков" %} <span>{% trans "отправил котировку по RFQ #1" %}</span></div><div class="tm-act-time">{% trans "сегодня, 11:20" %}</div><div class="tm-act-score" style="color:#66BB6A;">+2.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">{% trans "ОС" %}</div><div class="tm-act-text">{% trans "Ольга Смирнова" %} <span>{% trans "загрузила чертёж RE48786" %}</span></div><div class="tm-act-time">{% trans "сегодня, 10:42" %}</div><div class="tm-act-score" style="color:#66BB6A;">+1.5</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">{% trans "СН" %}</div><div class="tm-act-text">{% trans "Сергей Новиков" %} <span>{% trans "подтвердил наличие на складе" %}</span></div><div class="tm-act-time">{% trans "сегодня, 10:38" %}</div><div class="tm-act-score" style="color:#66BB6A;">+1.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">{% trans "МД" %}</div><div class="tm-act-text">{% trans "Мария Демина" %} <span>{% trans "приняла RFQ в работу" %}</span></div><div class="tm-act-time">{% trans "сегодня, 10:32" %}</div><div class="tm-act-score" style="color:#66BB6A;">+1.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">{% trans "АК" %}</div><div class="tm-act-text">{% trans "Алексей Козлов" %} <span>{% trans "одобрил скидку 5% для переторжки" %}</span></div><div class="tm-act-time">{% trans "сегодня, 09:15" %}</div><div class="tm-act-score" style="color:#8A8A8A;">0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">{% trans "ЕК" %}</div><div class="tm-act-text">{% trans "Елена Кузнецова" %} <span>{% trans "обновила 142 позиции прайс-листа" %}</span></div><div class="tm-act-time">{% trans "вчера, 17:40" %}</div><div class="tm-act-score" style="color:#66BB6A;">+3.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">{% trans "ИП" %}</div><div class="tm-act-text">{% trans "Игорь Петров" %} <span>{% trans "оформил отгрузку ORD-3845" %}</span></div><div class="tm-act-time">{% trans "вчера, 15:20" %}</div><div class="tm-act-score" style="color:#66BB6A;">+2.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">{% trans "СН" %}</div><div class="tm-act-text">{% trans "Сергей Новиков" %} <span>{% trans "просрочил отгрузку ORD-3851" %}</span></div><div class="tm-act-time">{% trans "вчера, 14:00" %}</div><div class="tm-act-score" style="color:#E05555;">-3.0</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">{% trans "АЛ" %}</div><div class="tm-act-text">{% trans "Анна Лебедева" %} <span>{% trans "загрузила сертификат качества" %}</span></div><div class="tm-act-time">{% trans "вчера, 11:30" %}</div><div class="tm-act-score" style="color:#66BB6A;">+1.5</div></div>
+    <div class="tm-activity-row"><div class="tm-act-ava">{% trans "МД" %}</div><div class="tm-act-text">{% trans "Мария Демина" %} <span>{% trans "решила рекламацию CLM-0042" %}</span></div><div class="tm-act-time">{% trans "вчера, 09:45" %}</div><div class="tm-act-score" style="color:#66BB6A;">+2.5</div></div>
   </div>
 </div>
 
 {# ═══ TAB 6: Рейтинги ═══ #}
 <div class="tm-panel" id="panel-ratings">
   <div class="tm-section">
-    <div class="tm-section-title">Рейтинги команды</div>
-    <div class="tm-section-sub">Рейтинг каждого сотрудника складывается из активности, SLA, качества и скорости. Средний рейтинг команды = рейтинг юр. лица</div>
+    <div class="tm-section-title">{% trans "Рейтинги команды" %}</div>
+    <div class="tm-section-sub">{% trans "Рейтинг каждого сотрудника складывается из активности, SLA, качества и скорости. Средний рейтинг команды = рейтинг юр. лица" %}</div>
   </div>
 
   {# Company rating #}
   <div class="tm-rating-card">
     <div class="tm-rating-head">
       <div>
-        <div style="font-size:12px;color:#6A6A6A;margin-bottom:4px;">Рейтинг юридического лица</div>
+        <div style="font-size:12px;color:#6A6A6A;margin-bottom:4px;">{% trans "Рейтинг юридического лица" %}</div>
         <div class="tm-rating-score">85.20 <span style="font-size:14px;color:#6A6A6A;font-weight:400;">/ 100</span></div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:11px;color:#6A6A6A;">Формула: среднее рейтингов команды</div>
+        <div style="font-size:11px;color:#6A6A6A;">{% trans "Формула: среднее рейтингов команды" %}</div>
         <div style="font-size:12px;color:#8A8A8A;margin-top:2px;">(92.4 + 88.1 + 84.7 + 91.0 + 79.3 + 86.5 + 82.0 + 90.2) / 8 = <strong style="color:#ECECEC;">85.20</strong></div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
       <div style="text-align:center;padding:10px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
         <div style="font-size:18px;font-weight:700;color:#ECECEC;">95.2%</div>
-        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">SLA команды</div>
+        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">{% trans "SLA команды" %}</div>
       </div>
       <div style="text-align:center;padding:10px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
-        <div style="font-size:18px;font-weight:700;color:#ECECEC;">1.8ч</div>
-        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">Ср. ответ</div>
+        <div style="font-size:18px;font-weight:700;color:#ECECEC;">{% trans "1.8ч" %}</div>
+        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">{% trans "Ср. ответ" %}</div>
       </div>
       <div style="text-align:center;padding:10px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
         <div style="font-size:18px;font-weight:700;color:#ECECEC;">98.4%</div>
-        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">Без рекламаций</div>
+        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">{% trans "Без рекламаций" %}</div>
       </div>
       <div style="text-align:center;padding:10px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
         <div style="font-size:18px;font-weight:700;color:#ECECEC;">4.26</div>
-        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">Оценка /5</div>
+        <div style="font-size:10px;color:#6A6A6A;text-transform:uppercase;">{% trans "Оценка /5" %}</div>
       </div>
     </div>
   </div>
 
   {# Individual ratings #}
-  <div style="font-size:12px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Рейтинг по сотрудникам</div>
+  <div style="font-size:12px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">{% trans "Рейтинг по сотрудникам" %}</div>
 
   <div style="display:flex;flex-direction:column;gap:8px;">
     <div class="tm-rating-card" style="padding:14px 16px;margin-bottom:0;">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
-        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">АК</div>
-        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">Алексей Козлов</div><div style="font-size:10px;color:#6A6A6A;">Директор</div></div>
+        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">{% trans "АК" %}</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "Алексей Козлов" %}</div><div style="font-size:10px;color:#6A6A6A;">{% trans "Директор" %}</div></div>
         <div style="font-size:20px;font-weight:800;color:#ECECEC;">92.4</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
         <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">SLA</span><span class="tm-rating-bar-val">98%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:98%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Скорость</span><span class="tm-rating-bar-val">90%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:90%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Качество</span><span class="tm-rating-bar-val">95%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:95%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Активность</span><span class="tm-rating-bar-val">86%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:86%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Скорость" %}</span><span class="tm-rating-bar-val">90%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:90%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Качество" %}</span><span class="tm-rating-bar-val">95%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:95%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Активность" %}</span><span class="tm-rating-bar-val">86%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:86%;"></div></div></div>
       </div>
     </div>
 
     <div class="tm-rating-card" style="padding:14px 16px;margin-bottom:0;">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
-        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">ОС</div>
-        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">Ольга Смирнова</div><div style="font-size:10px;color:#6A6A6A;">Инженер</div></div>
+        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">{% trans "ОС" %}</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "Ольга Смирнова" %}</div><div style="font-size:10px;color:#6A6A6A;">{% trans "Инженер" %}</div></div>
         <div style="font-size:20px;font-weight:800;color:#ECECEC;">91.0</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
         <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">SLA</span><span class="tm-rating-bar-val">96%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:96%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Скорость</span><span class="tm-rating-bar-val">88%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:88%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Качество</span><span class="tm-rating-bar-val">94%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:94%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Активность</span><span class="tm-rating-bar-val">86%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:86%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Скорость" %}</span><span class="tm-rating-bar-val">88%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:88%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Качество" %}</span><span class="tm-rating-bar-val">94%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:94%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Активность" %}</span><span class="tm-rating-bar-val">86%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:86%;"></div></div></div>
       </div>
     </div>
 
     <div class="tm-rating-card" style="padding:14px 16px;margin-bottom:0;">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
-        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">МД</div>
-        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">Мария Демина</div><div style="font-size:10px;color:#6A6A6A;">Руководитель продаж</div></div>
+        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">{% trans "МД" %}</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "Мария Демина" %}</div><div style="font-size:10px;color:#6A6A6A;">{% trans "Руководитель продаж" %}</div></div>
         <div style="font-size:20px;font-weight:800;color:#ECECEC;">88.1</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
         <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">SLA</span><span class="tm-rating-bar-val">94%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:94%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Скорость</span><span class="tm-rating-bar-val">92%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:92%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Качество</span><span class="tm-rating-bar-val">85%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:85%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Активность</span><span class="tm-rating-bar-val">82%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:82%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Скорость" %}</span><span class="tm-rating-bar-val">92%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:92%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Качество" %}</span><span class="tm-rating-bar-val">85%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:85%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Активность" %}</span><span class="tm-rating-bar-val">82%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:82%;"></div></div></div>
       </div>
     </div>
 
     <div class="tm-rating-card" style="padding:14px 16px;margin-bottom:0;">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
-        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">ДВ</div>
-        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">Дмитрий Волков</div><div style="font-size:10px;color:#6A6A6A;">Менеджер</div></div>
+        <div class="tm-list-avatar" style="width:32px;height:32px;font-size:11px;">{% trans "ДВ" %}</div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "Дмитрий Волков" %}</div><div style="font-size:10px;color:#6A6A6A;">{% trans "Менеджер" %}</div></div>
         <div style="font-size:20px;font-weight:800;color:#ECECEC;">79.3</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
         <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">SLA</span><span class="tm-rating-bar-val">82%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:82%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Скорость</span><span class="tm-rating-bar-val">76%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:76%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Качество</span><span class="tm-rating-bar-val">80%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:80%;"></div></div></div>
-        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">Активность</span><span class="tm-rating-bar-val">79%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:79%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Скорость" %}</span><span class="tm-rating-bar-val">76%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:76%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Качество" %}</span><span class="tm-rating-bar-val">80%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:80%;"></div></div></div>
+        <div class="tm-rating-bar-wrap"><div class="tm-rating-bar-label"><span class="tm-rating-bar-name">{% trans "Активность" %}</span><span class="tm-rating-bar-val">79%</span></div><div class="tm-rating-bar"><div class="tm-rating-bar-fill" style="width:79%;"></div></div></div>
       </div>
     </div>
   </div>
@@ -671,44 +672,44 @@
 <div id="modal-newtask" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
   <div style="background:#1F1F1F;border-radius:16px;padding:28px;width:460px;max-width:92vw;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 64px rgba(0,0,0,0.5);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">Новая задача</div>
+      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{% trans "Новая задача" %}</div>
       <button onclick="closeTaskModal()" style="background:none;border:none;color:#6A6A6A;font-size:22px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div>
-        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Название задачи *</label>
-        <input id="task-title" type="text" placeholder="Опишите задачу кратко..." style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Название задачи *" %}</label>
+        <input id="task-title" type="text" placeholder="{% trans 'Опишите задачу кратко...' %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Исполнитель</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Исполнитель" %}</label>
           <select id="task-assignee" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
-            <option>Дмитрий В.</option>
-            <option>Ольга С.</option>
-            <option>Сергей Н.</option>
-            <option>Елена К.</option>
-            <option>Игорь П.</option>
-            <option>Мария Д.</option>
-            <option>Анна Л.</option>
+            <option>{% trans "Дмитрий В." %}</option>
+            <option>{% trans "Ольга С." %}</option>
+            <option>{% trans "Сергей Н." %}</option>
+            <option>{% trans "Елена К." %}</option>
+            <option>{% trans "Игорь П." %}</option>
+            <option>{% trans "Мария Д." %}</option>
+            <option>{% trans "Анна Л." %}</option>
           </select>
         </div>
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Приоритет</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Приоритет" %}</label>
           <select id="task-prio" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
-            <option value="high">Срочно</option>
-            <option value="med" selected>Средне</option>
-            <option value="low">Обычно</option>
+            <option value="high">{% trans "Срочно" %}</option>
+            <option value="med" selected>{% trans "Средне" %}</option>
+            <option value="low">{% trans "Обычно" %}</option>
           </select>
         </div>
       </div>
       <div>
-        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Дедлайн</label>
-        <input id="task-due" type="text" placeholder="например: сегодня 18:00 или 30 апр" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Дедлайн" %}</label>
+        <input id="task-due" type="text" placeholder="{% trans 'например: сегодня 18:00 или 30 апр' %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
-      <button onclick="closeTaskModal()" class="tm-btn tm-btn--secondary">Отмена</button>
-      <button onclick="submitNewTask()" class="tm-btn tm-btn--primary">Создать задачу</button>
+      <button onclick="closeTaskModal()" class="tm-btn tm-btn--secondary">{% trans "Отмена" %}</button>
+      <button onclick="submitNewTask()" class="tm-btn tm-btn--primary">{% trans "Создать задачу" %}</button>
     </div>
   </div>
 </div>
@@ -717,7 +718,7 @@
 <div id="modal-invite" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
   <div style="background:#1F1F1F;border-radius:16px;padding:28px;width:440px;max-width:92vw;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 64px rgba(0,0,0,0.5);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">Пригласить сотрудника</div>
+      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{% trans "Пригласить сотрудника" %}</div>
       <button onclick="closeInviteModal()" style="background:none;border:none;color:#6A6A6A;font-size:22px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;">
@@ -726,23 +727,23 @@
         <input id="invite-email" type="email" placeholder="email@company.com" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
-        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Имя и фамилия</label>
-        <input id="invite-name" type="text" placeholder="Иванов Иван" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Имя и фамилия" %}</label>
+        <input id="invite-name" type="text" placeholder="{% trans 'Иванов Иван' %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
-        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Роль</label>
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Роль" %}</label>
         <select id="invite-role" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
-          <option>Менеджер по продажам</option>
-          <option>Логист</option>
-          <option>Бухгалтер</option>
-          <option>Оператор склада</option>
-          <option>Технический специалист</option>
+          <option>{% trans "Менеджер по продажам" %}</option>
+          <option>{% trans "Логист" %}</option>
+          <option>{% trans "Бухгалтер" %}</option>
+          <option>{% trans "Оператор склада" %}</option>
+          <option>{% trans "Технический специалист" %}</option>
         </select>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
-      <button onclick="closeInviteModal()" class="tm-btn tm-btn--secondary">Отмена</button>
-      <button onclick="submitInvite()" class="tm-btn tm-btn--primary">Отправить приглашение</button>
+      <button onclick="closeInviteModal()" class="tm-btn tm-btn--secondary">{% trans "Отмена" %}</button>
+      <button onclick="submitInvite()" class="tm-btn tm-btn--primary">{% trans "Отправить приглашение" %}</button>
     </div>
   </div>
 </div>

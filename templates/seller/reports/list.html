@@ -1,6 +1,7 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 
-{% block title %}Отчёты — Кабинет поставщика{% endblock %}
+{% block title %}{% trans "Отчёты — Кабинет поставщика" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -200,11 +201,11 @@
   <div class="rp-hero">
     <div class="rp-hero-top">
       <div>
-        <div class="rp-hero-title">Отчёты</div>
-        <div class="rp-hero-sub">Аналитические срезы, расписание рассылок и история генерации</div>
+        <div class="rp-hero-title">{% trans "Отчёты" %}</div>
+        <div class="rp-hero-sub">{% trans "Аналитические срезы, расписание рассылок и история генерации" %}</div>
       </div>
       <button class="rp-btn rp-btn--outline" onclick="document.getElementById('rp-tab-schedule').click()">
-        + Новый отчёт
+        {% trans "+ Новый отчёт" %}
       </button>
     </div>
 
@@ -212,30 +213,30 @@
     <div class="rp-metrics">
       <a href="/seller/reports/" class="rp-metric-link">
       <div class="rp-metric">
-        <div class="rp-metric-label">Отчётов за месяц</div>
+        <div class="rp-metric-label">{% trans "Отчётов за месяц" %}</div>
         <div class="rp-metric-val">38</div>
-        <div class="rp-metric-hint rp-metric-hint--up">↑ 12 к прошлому месяцу</div>
+        <div class="rp-metric-hint rp-metric-hint--up">{% trans "↑ 12 к прошлому месяцу" %}</div>
       </div>
       </a>
       <a href="/seller/reports/#schedule" class="rp-metric-link">
       <div class="rp-metric">
-        <div class="rp-metric-label">Запланировано</div>
+        <div class="rp-metric-label">{% trans "Запланировано" %}</div>
         <div class="rp-metric-val">7</div>
-        <div class="rp-metric-hint rp-metric-hint--neutral">Автоотправка</div>
+        <div class="rp-metric-hint rp-metric-hint--neutral">{% trans "Автоотправка" %}</div>
       </div>
       </a>
       <a href="/seller/analytics/" class="rp-metric-link">
       <div class="rp-metric">
-        <div class="rp-metric-label">Экспортировано</div>
+        <div class="rp-metric-label">{% trans "Экспортировано" %}</div>
         <div class="rp-metric-val">124</div>
-        <div class="rp-metric-hint rp-metric-hint--up">↑ 28% к прошлому</div>
+        <div class="rp-metric-hint rp-metric-hint--up">{% trans "↑ 28% к прошлому" %}</div>
       </div>
       </a>
       <a href="/seller/reports/" class="rp-metric-link">
       <div class="rp-metric">
-        <div class="rp-metric-label">Последний отчёт</div>
-        <div class="rp-metric-val" style="font-size:15px;padding-top:3px;">Сегодня</div>
-        <div class="rp-metric-hint rp-metric-hint--neutral">08:00 · Ежедневный сводный</div>
+        <div class="rp-metric-label">{% trans "Последний отчёт" %}</div>
+        <div class="rp-metric-val" style="font-size:15px;padding-top:3px;">{% trans "Сегодня" %}</div>
+        <div class="rp-metric-hint rp-metric-hint--neutral">{% trans "08:00 · Ежедневный сводный" %}</div>
       </div>
       </a>
     </div>
@@ -243,28 +244,28 @@
 
   <!-- Tabs -->
   <div class="rp-tabs">
-    <div class="rp-tab active" data-panel="summary" id="rp-tab-summary" onclick="rpTab(this,'summary')">Сводные</div>
-    <div class="rp-tab" data-panel="sales" onclick="rpTab(this,'sales')">Продажи</div>
-    <div class="rp-tab" data-panel="financial" onclick="rpTab(this,'financial')">Финансовые</div>
-    <div class="rp-tab" data-panel="ops" onclick="rpTab(this,'ops')">Операционные</div>
-    <div class="rp-tab" data-panel="schedule" id="rp-tab-schedule" onclick="rpTab(this,'schedule')">Расписание</div>
-    <div class="rp-tab" data-panel="history" onclick="rpTab(this,'history')">История</div>
+    <div class="rp-tab active" data-panel="summary" id="rp-tab-summary" onclick="rpTab(this,'summary')">{% trans "Сводные" %}</div>
+    <div class="rp-tab" data-panel="sales" onclick="rpTab(this,'sales')">{% trans "Продажи" %}</div>
+    <div class="rp-tab" data-panel="financial" onclick="rpTab(this,'financial')">{% trans "Финансовые" %}</div>
+    <div class="rp-tab" data-panel="ops" onclick="rpTab(this,'ops')">{% trans "Операционные" %}</div>
+    <div class="rp-tab" data-panel="schedule" id="rp-tab-schedule" onclick="rpTab(this,'schedule')">{% trans "Расписание" %}</div>
+    <div class="rp-tab" data-panel="history" onclick="rpTab(this,'history')">{% trans "История" %}</div>
   </div>
 
   <!-- ═══ PANEL: SUMMARY ═══ -->
   <div class="rp-panel active" id="rp-panel-summary">
     <div class="rp-toolbar">
-      <input class="rp-search" placeholder="Поиск отчёта..." oninput="rpSearch(this)">
-      <button class="rp-filter-btn active" onclick="rpFilter(this,'all')">Все</button>
-      <button class="rp-filter-btn" onclick="rpFilter(this,'favourite')">Избранные</button>
-      <button class="rp-filter-btn" onclick="rpFilter(this,'recent')">Недавние</button>
+      <input class="rp-search" placeholder="{% trans 'Поиск отчёта...' %}" oninput="rpSearch(this)">
+      <button class="rp-filter-btn active" onclick="rpFilter(this,'all')">{% trans "Все" %}</button>
+      <button class="rp-filter-btn" onclick="rpFilter(this,'favourite')">{% trans "Избранные" %}</button>
+      <button class="rp-filter-btn" onclick="rpFilter(this,'recent')">{% trans "Недавние" %}</button>
     </div>
 
     <div class="rp-section">
       <div class="rp-section-head">
         <div>
-          <div class="rp-section-title">Ключевые отчёты</div>
-          <div class="rp-section-sub">Регулярные сводки по основным показателям</div>
+          <div class="rp-section-title">{% trans "Ключевые отчёты" %}</div>
+          <div class="rp-section-sub">{% trans "Регулярные сводки по основным показателям" %}</div>
         </div>
       </div>
       <div class="rp-list">
@@ -276,18 +277,18 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Ежедневный сводный отчёт</div>
+            <div class="rp-card-name">{% trans "Ежедневный сводный отчёт" %}</div>
             <div class="rp-card-meta">
-              <span>Обновлён сегодня в 08:00</span>
-              <span>Авто · Ежедневно</span>
+              <span>{% trans "Обновлён сегодня в 08:00" %}</span>
+              <span>{% trans "Авто · Ежедневно" %}</span>
               <span>PDF + XLSX</span>
             </div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <span class="rp-star on" title="Убрать из избранного" onclick="event.stopPropagation();this.classList.toggle('on')">★</span>
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <span class="rp-star on" title="{% trans 'Убрать из избранного' %}" onclick="event.stopPropagation();this.classList.toggle('on')">★</span>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -298,18 +299,18 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Недельный отчёт по продажам</div>
+            <div class="rp-card-name">{% trans "Недельный отчёт по продажам" %}</div>
             <div class="rp-card-meta">
-              <span>Пн 24 мар · 09:15</span>
-              <span>Авто · Еженедельно</span>
+              <span>{% trans "Пн 24 мар · 09:15" %}</span>
+              <span>{% trans "Авто · Еженедельно" %}</span>
               <span>XLSX</span>
             </div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <span class="rp-star" title="В избранное" onclick="event.stopPropagation();this.classList.toggle('on')">★</span>
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <span class="rp-star" title="{% trans 'В избранное' %}" onclick="event.stopPropagation();this.classList.toggle('on')">★</span>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -320,18 +321,18 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">SLA-отчёт за март 2026</div>
+            <div class="rp-card-name">{% trans "SLA-отчёт за март 2026" %}</div>
             <div class="rp-card-meta">
-              <span>Формируется 26 мар · 08:00</span>
-              <span>Авто · Ежемесячно</span>
+              <span>{% trans "Формируется 26 мар · 08:00" %}</span>
+              <span>{% trans "Авто · Ежемесячно" %}</span>
               <span>PDF</span>
             </div>
           </div>
-          <span class="rp-card-badge rp-card-badge--scheduled">Ожидает</span>
+          <span class="rp-card-badge rp-card-badge--scheduled">{% trans "Ожидает" %}</span>
           <div class="rp-card-actions">
-            <span class="rp-star" title="В избранное" onclick="event.stopPropagation();this.classList.toggle('on')">★</span>
-            <button class="rp-btn rp-btn--ghost" disabled style="opacity:.4">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Предпросмотр</button>
+            <span class="rp-star" title="{% trans 'В избранное' %}" onclick="event.stopPropagation();this.classList.toggle('on')">★</span>
+            <button class="rp-btn rp-btn--ghost" disabled style="opacity:.4">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Предпросмотр" %}</button>
           </div>
         </div>
 
@@ -344,18 +345,18 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Отчёт по команде и производительности</div>
+            <div class="rp-card-name">{% trans "Отчёт по команде и производительности" %}</div>
             <div class="rp-card-meta">
-              <span>Пн 17 мар · 12:00</span>
-              <span>Ручной</span>
+              <span>{% trans "Пн 17 мар · 12:00" %}</span>
+              <span>{% trans "Ручной" %}</span>
               <span>XLSX + PDF</span>
             </div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <span class="rp-star" title="В избранное" onclick="event.stopPropagation();this.classList.toggle('on')">★</span>
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <span class="rp-star" title="{% trans 'В избранное' %}" onclick="event.stopPropagation();this.classList.toggle('on')">★</span>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -368,10 +369,10 @@
     <div class="rp-section">
       <div class="rp-section-head">
         <div>
-          <div class="rp-section-title">Отчёты по продажам</div>
-          <div class="rp-section-sub">Выручка, конверсия, сравнительный анализ</div>
+          <div class="rp-section-title">{% trans "Отчёты по продажам" %}</div>
+          <div class="rp-section-sub">{% trans "Выручка, конверсия, сравнительный анализ" %}</div>
         </div>
-        <button class="rp-section-action">Сформировать новый</button>
+        <button class="rp-section-action">{% trans "Сформировать новый" %}</button>
       </div>
       <div class="rp-list">
 
@@ -382,13 +383,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Выручка по периодам</div>
-            <div class="rp-card-meta"><span>Янв–Мар 2026</span><span>Детализация по неделям</span></div>
+            <div class="rp-card-name">{% trans "Выручка по периодам" %}</div>
+            <div class="rp-card-meta"><span>{% trans "Янв–Мар 2026" %}</span><span>{% trans "Детализация по неделям" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -399,13 +400,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Конверсия запрос → заказ</div>
-            <div class="rp-card-meta"><span>Март 2026</span><span>Воронка</span></div>
+            <div class="rp-card-name">{% trans "Конверсия запрос → заказ" %}</div>
+            <div class="rp-card-meta"><span>{% trans "Март 2026" %}</span><span>{% trans "Воронка" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -416,13 +417,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">ТОП-50 позиций по продажам</div>
-            <div class="rp-card-meta"><span>Q1 2026</span><span>Рейтинг SKU</span></div>
+            <div class="rp-card-name">{% trans "ТОП-50 позиций по продажам" %}</div>
+            <div class="rp-card-meta"><span>Q1 2026</span><span>{% trans "Рейтинг SKU" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -433,13 +434,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Средний чек и маржинальность</div>
-            <div class="rp-card-meta"><span>Янв–Мар 2026</span><span>По схемам оплаты</span></div>
+            <div class="rp-card-name">{% trans "Средний чек и маржинальность" %}</div>
+            <div class="rp-card-meta"><span>{% trans "Янв–Мар 2026" %}</span><span>{% trans "По схемам оплаты" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--new">Новый</span>
+          <span class="rp-card-badge rp-card-badge--new">{% trans "Новый" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost" disabled style="opacity:.4">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Сформировать</button>
+            <button class="rp-btn rp-btn--ghost" disabled style="opacity:.4">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Сформировать" %}</button>
           </div>
         </div>
 
@@ -450,13 +451,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Сравнение периодов: Q1 2026 vs Q1 2025</div>
-            <div class="rp-card-meta"><span>Год к году</span><span>Динамика</span></div>
+            <div class="rp-card-name">{% trans "Сравнение периодов: Q1 2026 vs Q1 2025" %}</div>
+            <div class="rp-card-meta"><span>{% trans "Год к году" %}</span><span>{% trans "Динамика" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--scheduled">Ожидает</span>
+          <span class="rp-card-badge rp-card-badge--scheduled">{% trans "Ожидает" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost" disabled style="opacity:.4">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Предпросмотр</button>
+            <button class="rp-btn rp-btn--ghost" disabled style="opacity:.4">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Предпросмотр" %}</button>
           </div>
         </div>
 
@@ -469,10 +470,10 @@
     <div class="rp-section">
       <div class="rp-section-head">
         <div>
-          <div class="rp-section-title">Финансовые отчёты</div>
-          <div class="rp-section-sub">Платежи, дебиторская задолженность, акты сверки</div>
+          <div class="rp-section-title">{% trans "Финансовые отчёты" %}</div>
+          <div class="rp-section-sub">{% trans "Платежи, дебиторская задолженность, акты сверки" %}</div>
         </div>
-        <button class="rp-section-action">Сформировать</button>
+        <button class="rp-section-action">{% trans "Сформировать" %}</button>
       </div>
       <div class="rp-list">
 
@@ -483,14 +484,14 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Акт сверки за март 2026</div>
-            <div class="rp-card-meta"><span>26 мар 2026</span><span>Подписан контрагентами</span><span>PDF</span></div>
+            <div class="rp-card-name">{% trans "Акт сверки за март 2026" %}</div>
+            <div class="rp-card-meta"><span>{% trans "26 мар 2026" %}</span><span>{% trans "Подписан контрагентами" %}</span><span>PDF</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
             <span class="rp-star on" onclick="event.stopPropagation();this.classList.toggle('on')">★</span>
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -501,13 +502,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Дебиторская задолженность</div>
-            <div class="rp-card-meta"><span>На 26 мар 2026</span><span>Просроченные: 3 шт.</span></div>
+            <div class="rp-card-name">{% trans "Дебиторская задолженность" %}</div>
+            <div class="rp-card-meta"><span>{% trans "На 26 мар 2026" %}</span><span>{% trans "Просроченные: 3 шт." %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -518,13 +519,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Платёжный отчёт Q1 2026</div>
-            <div class="rp-card-meta"><span>Янв–Мар 2026</span><span>По схемам: простая, этапная</span></div>
+            <div class="rp-card-name">{% trans "Платёжный отчёт Q1 2026" %}</div>
+            <div class="rp-card-meta"><span>{% trans "Янв–Мар 2026" %}</span><span>{% trans "По схемам: простая, этапная" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--scheduled">Ожидает</span>
+          <span class="rp-card-badge rp-card-badge--scheduled">{% trans "Ожидает" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost" disabled style="opacity:.4">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Сформировать</button>
+            <button class="rp-btn rp-btn--ghost" disabled style="opacity:.4">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Сформировать" %}</button>
           </div>
         </div>
 
@@ -535,13 +536,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Возвраты и рекламации</div>
-            <div class="rp-card-meta"><span>Март 2026</span><span>Финансовый эффект</span></div>
+            <div class="rp-card-name">{% trans "Возвраты и рекламации" %}</div>
+            <div class="rp-card-meta"><span>{% trans "Март 2026" %}</span><span>{% trans "Финансовый эффект" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -554,10 +555,10 @@
     <div class="rp-section">
       <div class="rp-section-head">
         <div>
-          <div class="rp-section-title">Операционные отчёты</div>
-          <div class="rp-section-sub">Логистика, SLA, загрузка склада, эффективность команды</div>
+          <div class="rp-section-title">{% trans "Операционные отчёты" %}</div>
+          <div class="rp-section-sub">{% trans "Логистика, SLA, загрузка склада, эффективность команды" %}</div>
         </div>
-        <button class="rp-section-action">Сформировать</button>
+        <button class="rp-section-action">{% trans "Сформировать" %}</button>
       </div>
       <div class="rp-list">
 
@@ -568,13 +569,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Исполнение SLA за март 2026</div>
-            <div class="rp-card-meta"><span>95.2% выполнено</span><span>4 нарушения</span></div>
+            <div class="rp-card-name">{% trans "Исполнение SLA за март 2026" %}</div>
+            <div class="rp-card-meta"><span>{% trans "95.2% выполнено" %}</span><span>{% trans "4 нарушения" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -585,13 +586,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Скорость обработки заказов</div>
-            <div class="rp-card-meta"><span>Q1 2026</span><span>Среднее время: 1.4 дня</span></div>
+            <div class="rp-card-name">{% trans "Скорость обработки заказов" %}</div>
+            <div class="rp-card-meta"><span>Q1 2026</span><span>{% trans "Среднее время: 1.4 дня" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -603,13 +604,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">Складская отчётность</div>
-            <div class="rp-card-meta"><span>На 26 мар 2026</span><span>Остатки, оборачиваемость</span></div>
+            <div class="rp-card-name">{% trans "Складская отчётность" %}</div>
+            <div class="rp-card-meta"><span>{% trans "На 26 мар 2026" %}</span><span>{% trans "Остатки, оборачиваемость" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--scheduled">Ожидает</span>
+          <span class="rp-card-badge rp-card-badge--scheduled">{% trans "Ожидает" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost" disabled style="opacity:.4">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Сформировать</button>
+            <button class="rp-btn rp-btn--ghost" disabled style="opacity:.4">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Сформировать" %}</button>
           </div>
         </div>
 
@@ -622,13 +623,13 @@
             </svg>
           </div>
           <div>
-            <div class="rp-card-name">КПЭ команды за март 2026</div>
-            <div class="rp-card-meta"><span>6 сотрудников</span><span>Выполнение планов</span></div>
+            <div class="rp-card-name">{% trans "КПЭ команды за март 2026" %}</div>
+            <div class="rp-card-meta"><span>{% trans "6 сотрудников" %}</span><span>{% trans "Выполнение планов" %}</span></div>
           </div>
-          <span class="rp-card-badge rp-card-badge--ready">Готов</span>
+          <span class="rp-card-badge rp-card-badge--ready">{% trans "Готов" %}</span>
           <div class="rp-card-actions">
-            <button class="rp-btn rp-btn--ghost">Скачать</button>
-            <button class="rp-btn rp-btn--outline">Открыть</button>
+            <button class="rp-btn rp-btn--ghost">{% trans "Скачать" %}</button>
+            <button class="rp-btn rp-btn--outline">{% trans "Открыть" %}</button>
           </div>
         </div>
 
@@ -641,59 +642,59 @@
     <div class="rp-section">
       <div class="rp-section-head">
         <div>
-          <div class="rp-section-title">Расписание отчётов</div>
-          <div class="rp-section-sub">Настройте автоматическую генерацию и отправку на email</div>
+          <div class="rp-section-title">{% trans "Расписание отчётов" %}</div>
+          <div class="rp-section-sub">{% trans "Настройте автоматическую генерацию и отправку на email" %}</div>
         </div>
       </div>
 
       <!-- New schedule form -->
       <div class="rp-schedule-form">
-        <div style="font-size:13px;font-weight:700;color:#ECECEC;margin-bottom:14px;">Новое расписание</div>
+        <div style="font-size:13px;font-weight:700;color:#ECECEC;margin-bottom:14px;">{% trans "Новое расписание" %}</div>
         <div class="rp-schedule-row">
           <div>
-            <div class="rp-field-label">Тип отчёта</div>
+            <div class="rp-field-label">{% trans "Тип отчёта" %}</div>
             <select class="rp-field-select">
-              <option>Ежедневный сводный</option>
-              <option>Продажи</option>
-              <option>SLA-отчёт</option>
-              <option>Финансовый</option>
-              <option>Операционный</option>
+              <option>{% trans "Ежедневный сводный" %}</option>
+              <option>{% trans "Продажи" %}</option>
+              <option>{% trans "SLA-отчёт" %}</option>
+              <option>{% trans "Финансовый" %}</option>
+              <option>{% trans "Операционный" %}</option>
             </select>
           </div>
           <div>
-            <div class="rp-field-label">Периодичность</div>
+            <div class="rp-field-label">{% trans "Периодичность" %}</div>
             <select class="rp-field-select">
-              <option>Ежедневно</option>
-              <option>Еженедельно (пн)</option>
-              <option>Ежемесячно (1-е число)</option>
-              <option>Каждые 2 недели</option>
+              <option>{% trans "Ежедневно" %}</option>
+              <option>{% trans "Еженедельно (пн)" %}</option>
+              <option>{% trans "Ежемесячно (1-е число)" %}</option>
+              <option>{% trans "Каждые 2 недели" %}</option>
             </select>
           </div>
           <div>
-            <div class="rp-field-label">Email для отправки</div>
+            <div class="rp-field-label">{% trans "Email для отправки" %}</div>
             <input class="rp-field-input" type="email" placeholder="email@company.com">
           </div>
           <div>
             <div class="rp-field-label">&nbsp;</div>
-            <button class="rp-btn rp-btn--outline" style="width:100%;padding:8px 12px;">Создать</button>
+            <button class="rp-btn rp-btn--outline" style="width:100%;padding:8px 12px;">{% trans "Создать" %}</button>
           </div>
         </div>
         <div style="margin-top:10px;display:flex;gap:10px;align-items:center;">
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#8A8A8A;cursor:pointer;">
-            <input type="checkbox" checked style="accent-color:#64B5F6;"> Прикрепить PDF
+            <input type="checkbox" checked style="accent-color:#64B5F6;"> {% trans "Прикрепить PDF" %}
           </label>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#8A8A8A;cursor:pointer;">
-            <input type="checkbox" checked style="accent-color:#64B5F6;"> Прикрепить XLSX
+            <input type="checkbox" checked style="accent-color:#64B5F6;"> {% trans "Прикрепить XLSX" %}
           </label>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#8A8A8A;cursor:pointer;">
-            <input type="checkbox" style="accent-color:#64B5F6;"> Уведомление в Telegram
+            <input type="checkbox" style="accent-color:#64B5F6;"> {% trans "Уведомление в Telegram" %}
           </label>
         </div>
       </div>
 
       <!-- Active schedules -->
       <div style="margin-top:20px;">
-        <div class="rp-section-title" style="margin-bottom:10px;">Активные расписания</div>
+        <div class="rp-section-title" style="margin-bottom:10px;">{% trans "Активные расписания" %}</div>
         <div class="rp-list">
 
           <div class="rp-card">
@@ -703,13 +704,13 @@
               </svg>
             </div>
             <div>
-              <div class="rp-card-name">Ежедневный сводный</div>
-              <div class="rp-card-meta"><span>Каждый день в 08:00</span><span>→ report@myco.ru</span><span>PDF + XLSX</span></div>
+              <div class="rp-card-name">{% trans "Ежедневный сводный" %}</div>
+              <div class="rp-card-meta"><span>{% trans "Каждый день в 08:00" %}</span><span>→ report@myco.ru</span><span>PDF + XLSX</span></div>
             </div>
-            <span class="rp-card-badge rp-card-badge--ready">Активно</span>
+            <span class="rp-card-badge rp-card-badge--ready">{% trans "Активно" %}</span>
             <div class="rp-card-actions">
-              <button class="rp-btn rp-btn--ghost">Пауза</button>
-              <button class="rp-btn rp-btn--outline">Изменить</button>
+              <button class="rp-btn rp-btn--ghost">{% trans "Пауза" %}</button>
+              <button class="rp-btn rp-btn--outline">{% trans "Изменить" %}</button>
             </div>
           </div>
 
@@ -720,13 +721,13 @@
               </svg>
             </div>
             <div>
-              <div class="rp-card-name">Еженедельный по продажам</div>
-              <div class="rp-card-meta"><span>Понедельник в 09:00</span><span>→ ceo@myco.ru, sales@myco.ru</span><span>XLSX</span></div>
+              <div class="rp-card-name">{% trans "Еженедельный по продажам" %}</div>
+              <div class="rp-card-meta"><span>{% trans "Понедельник в 09:00" %}</span><span>→ ceo@myco.ru, sales@myco.ru</span><span>XLSX</span></div>
             </div>
-            <span class="rp-card-badge rp-card-badge--ready">Активно</span>
+            <span class="rp-card-badge rp-card-badge--ready">{% trans "Активно" %}</span>
             <div class="rp-card-actions">
-              <button class="rp-btn rp-btn--ghost">Пауза</button>
-              <button class="rp-btn rp-btn--outline">Изменить</button>
+              <button class="rp-btn rp-btn--ghost">{% trans "Пауза" %}</button>
+              <button class="rp-btn rp-btn--outline">{% trans "Изменить" %}</button>
             </div>
           </div>
 
@@ -737,12 +738,12 @@
               </svg>
             </div>
             <div>
-              <div class="rp-card-name">Месячный финансовый</div>
-              <div class="rp-card-meta"><span>1-е число в 07:00</span><span>→ finance@myco.ru</span><span>PDF</span></div>
+              <div class="rp-card-name">{% trans "Месячный финансовый" %}</div>
+              <div class="rp-card-meta"><span>{% trans "1-е число в 07:00" %}</span><span>→ finance@myco.ru</span><span>PDF</span></div>
             </div>
-            <span class="rp-card-badge" style="background:rgba(100,181,246,0.08);color:#8A8A8A;">Пауза</span>
+            <span class="rp-card-badge" style="background:rgba(100,181,246,0.08);color:#8A8A8A;">{% trans "Пауза" %}</span>
             <div class="rp-card-actions">
-              <button class="rp-btn rp-btn--outline">Возобновить</button>
+              <button class="rp-btn rp-btn--outline">{% trans "Возобновить" %}</button>
             </div>
           </div>
 
@@ -756,29 +757,29 @@
     <div class="rp-section">
       <div class="rp-section-head">
         <div>
-          <div class="rp-section-title">История генерации</div>
-          <div class="rp-section-sub">Все сформированные отчёты за последние 90 дней</div>
+          <div class="rp-section-title">{% trans "История генерации" %}</div>
+          <div class="rp-section-sub">{% trans "Все сформированные отчёты за последние 90 дней" %}</div>
         </div>
-        <button class="rp-section-action">Очистить историю</button>
+        <button class="rp-section-action">{% trans "Очистить историю" %}</button>
       </div>
 
       <div class="rp-toolbar">
-        <input class="rp-search" placeholder="Поиск по названию...">
-        <button class="rp-filter-btn active">Все</button>
-        <button class="rp-filter-btn">Авто</button>
-        <button class="rp-filter-btn">Ручные</button>
-        <button class="rp-filter-btn">Ошибки</button>
+        <input class="rp-search" placeholder="{% trans 'Поиск по названию...' %}">
+        <button class="rp-filter-btn active">{% trans "Все" %}</button>
+        <button class="rp-filter-btn">{% trans "Авто" %}</button>
+        <button class="rp-filter-btn">{% trans "Ручные" %}</button>
+        <button class="rp-filter-btn">{% trans "Ошибки" %}</button>
       </div>
 
       <table class="rp-table">
         <thead>
           <tr>
-            <th>Отчёт</th>
-            <th>Тип</th>
-            <th>Дата</th>
-            <th>Статус</th>
-            <th>Размер</th>
-            <th>Формат</th>
+            <th>{% trans "Отчёт" %}</th>
+            <th>{% trans "Тип" %}</th>
+            <th>{% trans "Дата" %}</th>
+            <th>{% trans "Статус" %}</th>
+            <th>{% trans "Размер" %}</th>
+            <th>{% trans "Формат" %}</th>
             <th></th>
           </tr>
         </thead>
@@ -791,62 +792,62 @@
             <td>{{ report.status }}</td>
             <td><span class="rp-muted">{{ report.size }}</span></td>
             <td>{{ report.format }}</td>
-            <td style="text-align:right;"><button class="rp-btn rp-btn--ghost" style="font-size:10px;padding:3px 8px;">Скачать</button></td>
+            <td style="text-align:right;"><button class="rp-btn rp-btn--ghost" style="font-size:10px;padding:3px 8px;">{% trans "Скачать" %}</button></td>
           </tr>
           {% empty %}
           <tr>
             <td colspan="7">
               <div style="text-align:center;padding:30px;color:#4A4A4A;font-size:13px;">
-                Нет истории — сформируйте первый отчёт
+                {% trans "Нет истории — сформируйте первый отчёт" %}
               </div>
             </td>
           </tr>
           {% endfor %}
           <!-- Demo rows -->
           <tr>
-            <td>Ежедневный сводный</td>
-            <td><span class="rp-muted">Авто</span></td>
-            <td><span class="rp-muted">26 мар 2026 · 08:00</span></td>
-            <td><span class="rp-card-badge rp-card-badge--ready" style="display:inline-block;">Готов</span></td>
-            <td><span class="rp-muted">342 КБ</span></td>
+            <td>{% trans "Ежедневный сводный" %}</td>
+            <td><span class="rp-muted">{% trans "Авто" %}</span></td>
+            <td><span class="rp-muted">{% trans "26 мар 2026 · 08:00" %}</span></td>
+            <td><span class="rp-card-badge rp-card-badge--ready" style="display:inline-block;">{% trans "Готов" %}</span></td>
+            <td><span class="rp-muted">{% trans "342 КБ" %}</span></td>
             <td><span class="rp-muted">PDF + XLSX</span></td>
-            <td style="text-align:right;"><button class="rp-btn rp-btn--ghost" style="font-size:10px;padding:3px 8px;">Скачать</button></td>
+            <td style="text-align:right;"><button class="rp-btn rp-btn--ghost" style="font-size:10px;padding:3px 8px;">{% trans "Скачать" %}</button></td>
           </tr>
           <tr>
-            <td>Недельный по продажам</td>
-            <td><span class="rp-muted">Авто</span></td>
-            <td><span class="rp-muted">24 мар 2026 · 09:15</span></td>
-            <td><span class="rp-card-badge rp-card-badge--ready" style="display:inline-block;">Готов</span></td>
-            <td><span class="rp-muted">218 КБ</span></td>
+            <td>{% trans "Недельный по продажам" %}</td>
+            <td><span class="rp-muted">{% trans "Авто" %}</span></td>
+            <td><span class="rp-muted">{% trans "24 мар 2026 · 09:15" %}</span></td>
+            <td><span class="rp-card-badge rp-card-badge--ready" style="display:inline-block;">{% trans "Готов" %}</span></td>
+            <td><span class="rp-muted">{% trans "218 КБ" %}</span></td>
             <td><span class="rp-muted">XLSX</span></td>
-            <td style="text-align:right;"><button class="rp-btn rp-btn--ghost" style="font-size:10px;padding:3px 8px;">Скачать</button></td>
+            <td style="text-align:right;"><button class="rp-btn rp-btn--ghost" style="font-size:10px;padding:3px 8px;">{% trans "Скачать" %}</button></td>
           </tr>
           <tr>
-            <td>Акт сверки февраль 2026</td>
-            <td><span class="rp-muted">Ручной</span></td>
-            <td><span class="rp-muted">01 мар 2026 · 10:30</span></td>
-            <td><span class="rp-card-badge rp-card-badge--ready" style="display:inline-block;">Готов</span></td>
-            <td><span class="rp-muted">156 КБ</span></td>
+            <td>{% trans "Акт сверки февраль 2026" %}</td>
+            <td><span class="rp-muted">{% trans "Ручной" %}</span></td>
+            <td><span class="rp-muted">{% trans "01 мар 2026 · 10:30" %}</span></td>
+            <td><span class="rp-card-badge rp-card-badge--ready" style="display:inline-block;">{% trans "Готов" %}</span></td>
+            <td><span class="rp-muted">{% trans "156 КБ" %}</span></td>
             <td><span class="rp-muted">PDF</span></td>
-            <td style="text-align:right;"><button class="rp-btn rp-btn--ghost" style="font-size:10px;padding:3px 8px;">Скачать</button></td>
+            <td style="text-align:right;"><button class="rp-btn rp-btn--ghost" style="font-size:10px;padding:3px 8px;">{% trans "Скачать" %}</button></td>
           </tr>
           <tr>
-            <td>SLA отчёт февраль 2026</td>
-            <td><span class="rp-muted">Авто</span></td>
-            <td><span class="rp-muted">01 мар 2026 · 07:00</span></td>
-            <td><span class="rp-card-badge" style="display:inline-block;background:rgba(239,83,80,0.12);color:#EF5350;">Ошибка</span></td>
+            <td>{% trans "SLA отчёт февраль 2026" %}</td>
+            <td><span class="rp-muted">{% trans "Авто" %}</span></td>
+            <td><span class="rp-muted">{% trans "01 мар 2026 · 07:00" %}</span></td>
+            <td><span class="rp-card-badge" style="display:inline-block;background:rgba(239,83,80,0.12);color:#EF5350;">{% trans "Ошибка" %}</span></td>
             <td><span class="rp-muted">—</span></td>
             <td><span class="rp-muted">PDF</span></td>
-            <td style="text-align:right;"><button class="rp-btn rp-btn--outline" style="font-size:10px;padding:3px 8px;">Повторить</button></td>
+            <td style="text-align:right;"><button class="rp-btn rp-btn--outline" style="font-size:10px;padding:3px 8px;">{% trans "Повторить" %}</button></td>
           </tr>
           <tr>
-            <td>Финансовый Q4 2025</td>
-            <td><span class="rp-muted">Авто</span></td>
-            <td><span class="rp-muted">01 янв 2026 · 07:00</span></td>
-            <td><span class="rp-card-badge rp-card-badge--ready" style="display:inline-block;">Готов</span></td>
-            <td><span class="rp-muted">489 КБ</span></td>
+            <td>{% trans "Финансовый Q4 2025" %}</td>
+            <td><span class="rp-muted">{% trans "Авто" %}</span></td>
+            <td><span class="rp-muted">{% trans "01 янв 2026 · 07:00" %}</span></td>
+            <td><span class="rp-card-badge rp-card-badge--ready" style="display:inline-block;">{% trans "Готов" %}</span></td>
+            <td><span class="rp-muted">{% trans "489 КБ" %}</span></td>
             <td><span class="rp-muted">PDF + XLSX</span></td>
-            <td style="text-align:right;"><button class="rp-btn rp-btn--ghost" style="font-size:10px;padding:3px 8px;">Скачать</button></td>
+            <td style="text-align:right;"><button class="rp-btn rp-btn--ghost" style="font-size:10px;padding:3px 8px;">{% trans "Скачать" %}</button></td>
           </tr>
         </tbody>
       </table>

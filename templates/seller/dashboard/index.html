@@ -1,7 +1,8 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 {% load static %}
 
-{% block title %}Дашборд — Кабинет поставщика{% endblock %}
+{% block title %}{% trans "Дашборд — Кабинет поставщика" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -189,33 +190,33 @@
 
   /* ── DATA ── */
   const revenue = [
-    { m: "Окт", val: 7, p: 5 }, { m: "Ноя", val: 10, p: 8 }, { m: "Дек", val: 12, p: 11 },
-    { m: "Янв", val: 14, p: 10 }, { m: "Фев", val: 25, p: 18 }, { m: "Мар", val: 28, p: 22 },
+    { m: gettext('Окт'), val: 7, p: 5 }, { m: gettext('Ноя'), val: 10, p: 8 }, { m: gettext('Дек'), val: 12, p: 11 },
+    { m: gettext('Янв'), val: 14, p: 10 }, { m: gettext('Фев'), val: 25, p: 18 }, { m: gettext('Мар'), val: 28, p: 22 },
   ];
   const sla = [
-    { m: "Окт", v: 94 }, { m: "Ноя", v: 91 }, { m: "Дек", v: 96 },
-    { m: "Янв", v: 93 }, { m: "Фев", v: 97 }, { m: "Мар", v: 95 },
+    { m: gettext('Окт'), v: 94 }, { m: gettext('Ноя'), v: 91 }, { m: gettext('Дек'), v: 96 },
+    { m: gettext('Янв'), v: 93 }, { m: gettext('Фев'), v: 97 }, { m: gettext('Мар'), v: 95 },
   ];
   const heroLine = [3,4,5,4,6,5,8,7,9,8,12,10,11,15,13,14,18,16,17,20,19,22,21,24,23,25,24,26,25,28,27,28].map(v=>({v}));
   const statuses = [
-    { name: "Производство", count: 3 },
-    { name: "К отгрузке", count: 0 },
-    { name: "Отгружено", count: 0 },
-    { name: "Доставлено", count: 3 },
-    { name: "Ожидает резерв", count: 3 },
+    { name: gettext('Производство'), count: 3 },
+    { name: gettext('К отгрузке'), count: 0 },
+    { name: gettext('Отгружено'), count: 0 },
+    { name: gettext('Доставлено'), count: 3 },
+    { name: gettext('Ожидает резерв'), count: 3 },
   ];
   const requests = [
-    { id: "RQ-4821", part: "Гидроцилиндр 707-01-0K930", client: "Полюс Золото", type: "Срочный", time: "12м", brand: "Komatsu", usd: 115862 },
-    { id: "RQ-4819", part: "Турбокомпрессор 6505-67-5030", client: "СУЭК", type: "Стандартный", time: "48м", brand: "Komatsu", usd: 173793 },
-    { id: "RQ-4817", part: "Насос гидравлический", client: "Норникель", type: "По чертежу", time: "1.5ч", brand: "Hitachi", usd: 289655 },
-    { id: "RQ-4815", part: "Фильтр 600-185-4100", client: "Евраз", type: "Стандартный", time: "2ч", brand: "Komatsu", usd: 17241 },
+    { id: "RQ-4821", part: gettext('Гидроцилиндр 707-01-0K930'), client: gettext('Полюс Золото'), type: gettext('Срочный'), time: gettext('12м'), brand: "Komatsu", usd: 115862 },
+    { id: "RQ-4819", part: gettext('Турбокомпрессор 6505-67-5030'), client: gettext('СУЭК'), type: gettext('Стандартный'), time: gettext('48м'), brand: "Komatsu", usd: 173793 },
+    { id: "RQ-4817", part: gettext('Насос гидравлический'), client: gettext('Норникель'), type: gettext('По чертежу'), time: gettext('1.5ч'), brand: "Hitachi", usd: 289655 },
+    { id: "RQ-4815", part: gettext('Фильтр 600-185-4100'), client: gettext('Евраз'), type: gettext('Стандартный'), time: gettext('2ч'), brand: "Komatsu", usd: 17241 },
   ];
   const eventsBase = [
-    { text: "Заказ #3847 отгружен", detail: "PC800 → Полюс Золото", time: "09:14", dot: "#28C840" },
-    { text: "SLA: дедлайн по #3832", detail: "Проверка качества — 4ч", time: "08:51", dot: "#FEBC2E" },
-    { text: (c) => `Резерв ${fmtCur(322759, c)} получен`, detail: "#ORD-3851 подтверждён", time: "08:30", dot: "#64B5F6" },
-    { text: "Рейтинг → 4.74", detail: "#ORD-3829 · отзыв 5★", time: "08:12", dot: "#64B5F6" },
-    { text: "Запрос: Норникель", detail: (c) => `Насос по чертежу · ${fmtCur(289655, c)}`, time: "07:45", dot: "#E85C0D" },
+    { text: gettext('Заказ #3847 отгружен'), detail: gettext('PC800 → Полюс Золото'), time: "09:14", dot: "#28C840" },
+    { text: gettext('SLA: дедлайн по #3832'), detail: gettext('Проверка качества — 4ч'), time: "08:51", dot: "#FEBC2E" },
+    { text: (c) => `Резерв ${fmtCur(322759, c)} получен`, detail: gettext('#ORD-3851 подтверждён'), time: "08:30", dot: "#64B5F6" },
+    { text: gettext('Рейтинг → 4.74'), detail: gettext('#ORD-3829 · отзыв 5★'), time: "08:12", dot: "#64B5F6" },
+    { text: gettext('Запрос: Норникель'), detail: (c) => `Насос по чертежу · ${fmtCur(289655, c)}`, time: "07:45", dot: "#E85C0D" },
   ];
   const tyC = { "Срочный": "#E85C0D", "Стандартный": "#64B5F6", "По чертежу": "#7A8494" };
 
@@ -237,15 +238,15 @@
      ══════════════════════════════════════════════ */
   const WIDGETS = {
     actions: {
-      title: "Требует действия",
-      desc: "Очередь задач",
+      title: gettext('Требует действия'),
+      desc: gettext('Очередь задач'),
       render: ({ dismiss, cur: c = "USD" }) => {
         const items = [
-          { id: "a1", icon: "↩", label: "Ответить на запрос", detail: "RQ-4821 · Полюс Золото · Гидроцилиндр", time: "12м" },
-          { id: "a2", icon: "↩", label: "Ответить на запрос", detail: "RQ-4817 · Норникель · Насос по чертежу", time: "1.5ч" },
-          { id: "a3", icon: "✓", label: "Подтвердить отгрузку", detail: `ORD-3851 · 4 позиции · ${fmtCur(322759, c)}`, time: "Ожидает" },
-          { id: "a4", icon: "↑", label: "Загрузить сертификат", detail: "ORD-3847 · Отчёт проверки качества", time: "Требуется" },
-          { id: "a5", icon: "$", label: "Обновить 14 цен", detail: "Устаревшие цены (>30 дней)", time: "Рекоменд." },
+          { id: "a1", icon: "↩", label: gettext('Ответить на запрос'), detail: gettext('RQ-4821 · Полюс Золото · Гидроцилиндр'), time: gettext('12м') },
+          { id: "a2", icon: "↩", label: gettext('Ответить на запрос'), detail: gettext('RQ-4817 · Норникель · Насос по чертежу'), time: gettext('1.5ч') },
+          { id: "a3", icon: "✓", label: gettext('Подтвердить отгрузку'), detail: `ORD-3851 · 4 позиции · ${fmtCur(322759, c)}`, time: gettext('Ожидает') },
+          { id: "a4", icon: "↑", label: gettext('Загрузить сертификат'), detail: gettext('ORD-3847 · Отчёт проверки качества'), time: gettext('Требуется') },
+          { id: "a5", icon: "$", label: gettext('Обновить 14 цен'), detail: "Устаревшие цены (>30 дней)", time: gettext('Рекоменд.') },
         ];
         return items.filter(a => !dismiss.includes(a.id)).map((a, i) => (
           <div key={a.id} className="wi-row">
@@ -262,13 +263,13 @@
       },
     },
     sla_timers: {
-      title: "SLA дедлайны",
-      desc: "Обратный отсчёт",
+      title: gettext('SLA дедлайны'),
+      desc: gettext('Обратный отсчёт'),
       render: () => {
         const alerts = [
-          { order: "#3832", stage: "Проверка качества", h: 3, m: 47, severity: apple.red },
-          { order: "#3845", stage: "Подтверждение заказа", h: 7, m: 12, severity: null },
-          { order: "#3851", stage: "Подготовка к отгрузке", h: 18, m: 30, severity: null },
+          { order: "#3832", stage: gettext('Проверка качества'), h: 3, m: 47, severity: apple.red },
+          { order: "#3845", stage: gettext('Подтверждение заказа'), h: 7, m: 12, severity: null },
+          { order: "#3851", stage: gettext('Подготовка к отгрузке'), h: 18, m: 30, severity: null },
         ];
         return alerts.map((s, i) => (
           <div key={i} className="wi-row">
@@ -288,18 +289,18 @@
       },
     },
     payments: {
-      title: "Ожидают оплаты",
-      desc: "Входящие платежи",
+      title: gettext('Ожидают оплаты'),
+      desc: gettext('Входящие платежи'),
       render: ({ cur: c = "USD" }) => {
         const items = [
-          { order: "#3851", usd: 322759, type: "Резерв 10%", status: "В обработке", dot: null },
-          { order: "#3847", usd: 843448, type: "Основная", status: "Подтверждено", dot: apple.green },
-          { order: "#3829", usd: 144828, type: "Возврат удержания", status: "К выплате", dot: null },
+          { order: "#3851", usd: 322759, type: gettext('Резерв 10%'), status: gettext('В обработке'), dot: null },
+          { order: "#3847", usd: 843448, type: gettext('Основная'), status: gettext('Подтверждено'), dot: apple.green },
+          { order: "#3829", usd: 144828, type: gettext('Возврат удержания'), status: gettext('К выплате'), dot: null },
         ];
         return (
           <React.Fragment>
             <div style={{ display: "flex", justifyContent: "space-between", padding: "0 0 8px", borderBottom: `1px solid ${P.sep}`, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: P.t1 }}>Итого к получению</span>
+              <span style={{ fontSize: 11, color: P.t1 }}>{gettext('Итого к получению')}</span>
               <span style={{ fontSize: 14, fontWeight: 800, fontFamily: "'Golos Text', sans-serif", color: sky }}>{fmtCur(1311035, c)}</span>
             </div>
             {items.map((p, i) => (
@@ -324,12 +325,12 @@
       },
     },
     rebid: {
-      title: "Переторжка",
-      desc: "Активные переторжки",
+      title: gettext('Переторжка'),
+      desc: gettext('Активные переторжки'),
       render: ({ cur: c = "USD" }) => {
         const items = [
-          { client: "Полюс Золото", part: "Гидроцилиндр", currentUsd: 115862, targetUsd: 107586, delta: "-7%" },
-          { client: "СУЭК", part: "Турбокомпрессор", currentUsd: 173793, targetUsd: 162759, delta: "-6%" },
+          { client: gettext('Полюс Золото'), part: gettext('Гидроцилиндр'), currentUsd: 115862, targetUsd: 107586, delta: "-7%" },
+          { client: gettext('СУЭК'), part: gettext('Турбокомпрессор'), currentUsd: 173793, targetUsd: 162759, delta: "-6%" },
         ];
         return items.map((r, i) => (
           <div key={i} className="wi-row">
@@ -347,13 +348,13 @@
       },
     },
     drawings_queue: {
-      title: "Чертежи",
-      desc: "Согласование и запросы",
+      title: gettext('Чертежи'),
+      desc: gettext('Согласование и запросы'),
       render: () => {
         const items = [
-          { name: "Насос гидравлич. (допуски)", client: "Норникель", status: "Ждёт согласования" },
-          { name: "Корпус фильтра 1-13610", client: "Евраз", status: "Требует корректировки" },
-          { name: "Кронштейн 20Y-54", client: "—", status: "Используется" },
+          { name: gettext('Насос гидравлич. (допуски)'), client: gettext('Норникель'), status: gettext('Ждёт согласования') },
+          { name: gettext('Корпус фильтра 1-13610'), client: gettext('Евраз'), status: gettext('Требует корректировки') },
+          { name: gettext('Кронштейн 20Y-54'), client: "—", status: gettext('Используется') },
         ];
         return items.map((d, i) => (
           <div key={i} className="wi-row">
@@ -366,15 +367,15 @@
       },
     },
     claims: {
-      title: "Рекламации",
-      desc: "Открытые претензии",
+      title: gettext('Рекламации'),
+      desc: gettext('Открытые претензии'),
       render: () => {
         const items = [
-          { order: "#3801", issue: "Просрочка +2 дня", status: "На рассмотрении", dot: apple.red },
-          { order: "#3788", issue: "Несоответствие чертежу", status: "Ждёт решения", dot: null },
+          { order: "#3801", issue: gettext('Просрочка +2 дня'), status: gettext('На рассмотрении'), dot: apple.red },
+          { order: "#3788", issue: gettext('Несоответствие чертежу'), status: gettext('Ждёт решения'), dot: null },
         ];
         return items.length === 0 ? (
-          <div style={{ fontSize: 12, color: P.t1, padding: "8px 0", textAlign: "center" }}>Нет открытых рекламаций</div>
+          <div style={{ fontSize: 12, color: P.t1, padding: "8px 0", textAlign: "center" }}>{gettext('Нет открытых рекламаций')}</div>
         ) : items.map((c, i) => (
           <div key={i} className="wi-row">
             {c.dot
@@ -393,13 +394,13 @@
       },
     },
     qr_scans: {
-      title: "QR-контроль",
-      desc: "Последние сканирования",
+      title: gettext('QR-контроль'),
+      desc: gettext('Последние сканирования'),
       render: () => {
         const items = [
-          { code: "ORD-3847-P1", event: "Приёмка завершена", time: "09:14" },
-          { code: "ORD-3851-P3", event: "Проверка качества", time: "08:40" },
-          { code: "ORD-3845-P1", event: "Отгрузка", time: "08:12" },
+          { code: "ORD-3847-P1", event: gettext('Приёмка завершена'), time: "09:14" },
+          { code: "ORD-3851-P3", event: gettext('Проверка качества'), time: "08:40" },
+          { code: "ORD-3845-P1", event: gettext('Отгрузка'), time: "08:12" },
         ];
         return items.map((q, i) => (
           <div key={i} className="wi-row">
@@ -415,12 +416,12 @@
       },
     },
     stale_prices: {
-      title: "Устаревшие цены",
-      desc: "Требуют обновления",
+      title: gettext('Устаревшие цены'),
+      desc: gettext('Требуют обновления'),
       render: () => (
         <React.Fragment>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "0 0 6px" }}>
-            <span style={{ fontSize: 11, color: P.t1 }}>Старше 30 дней</span>
+            <span style={{ fontSize: 11, color: P.t1 }}>{gettext('Старше 30 дней')}</span>
             <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Golos Text', sans-serif", color: P.t0 }}>14</span>
           </div>
           {[{ brand: "Komatsu", count: 8 }, { brand: "Hitachi", count: 4 }, { brand: "Volvo", count: 2 }].map((b, i) => (
@@ -448,7 +449,7 @@
     const [m, setM] = useState(false);
     const [period, setPeriod] = useState("6М");
     const ALL_BLOCKS = ["hero","metrics","charts","status","work"];
-    const BLOCK_NAMES = { hero: "График выручки", metrics: "Ключевые метрики", charts: "Выручка и SLA", status: "Рейтинг и заказы", work: "Запросы и события" };
+    const BLOCK_NAMES = { hero: gettext('График выручки'), metrics: gettext('Ключевые метрики'), charts: gettext('Выручка и SLA'), status: gettext('Рейтинг и заказы'), work: gettext('Запросы и события') };
     const [blocks, setBlocks] = useState(ALL_BLOCKS);
     const [hiddenBlocks, setHiddenBlocks] = useState([]);
     const [dragBlock, setDragBlock] = useState(null);
@@ -585,10 +586,10 @@
 
           if (blockId === "metrics") {
             const allM = [
-              { id: "m_orders", l: "Активные заказы", v: "45", t: "+12%", up: true, ctx: "за 30 дней", url: "/seller/orders/" },
-              { id: "m_sla", l: "Исполнение SLA", v: "95.2%", t: "+2.1%", up: true, ctx: "норматив: 90%", url: "/seller/sla/" },
-              { id: "m_conv", l: "Конверсия запросов", v: "68%", t: "-3%", up: false, ctx: "запрос → заказ", url: "/seller/requests/" },
-              { id: "m_rating", l: "Рейтинг поставщика", v: "4.26", t: "+0.02", up: true, ctx: "из 5.0", url: "/seller/rating/" },
+              { id: "m_orders", l: gettext('Активные заказы'), v: "45", t: "+12%", up: true, ctx: gettext('за 30 дней'), url: "/seller/orders/" },
+              { id: "m_sla", l: gettext('Исполнение SLA'), v: "95.2%", t: "+2.1%", up: true, ctx: gettext('норматив: 90%'), url: "/seller/sla/" },
+              { id: "m_conv", l: gettext('Конверсия запросов'), v: "68%", t: "-3%", up: false, ctx: gettext('запрос → заказ'), url: "/seller/requests/" },
+              { id: "m_rating", l: gettext('Рейтинг поставщика'), v: "4.26", t: "+0.02", up: true, ctx: gettext('из 5.0'), url: "/seller/rating/" },
             ];
             const vis = metricOrder.filter(id => !hiddenMetrics.includes(id));
             return wrap(<div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(vis.length,1)}, 1fr)`, gap: 12 }}>
@@ -616,14 +617,14 @@
             const chartCards = {
               revenue: <div style={{ background: P.card, padding: "20px 22px 18px", borderRadius: 14, border: `1px solid ${P.brd}` }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: P.t0 }}>Выручка по месяцам</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: P.t0 }}>{gettext('Выручка по месяцам')}</div>
                   <div style={{ display: "flex", gap: 14 }}>{[{l:"2026",c:sky},{l:"2025",c:P.t3}].map((x,i)=>(<div key={i} style={{ display:"flex",alignItems:"center",gap:5,fontSize:12,color:P.t1 }}><div style={{ width:8,height:3,borderRadius:1,background:x.c }}/>{x.l}</div>))}</div>
                 </div>
                 <SvgBar data={revenue} keyA="val" keyB="p" colorA={sky} colorB={P.t3} />
               </div>,
               sla: <div style={{ background: P.card, padding: "20px 22px 18px", borderRadius: 14, border: `1px solid ${P.brd}` }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: P.t0 }}>Исполнение SLA</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: P.t0 }}>{gettext('Исполнение SLA')}</div>
                   <span style={{ fontSize: 14, fontWeight: 700, color: sky, fontFamily: "'Golos Text', sans-serif" }}>95.2%</span>
                 </div>
                 <SvgAreaMonth data={sla} dataKey="v" color={sky} yMin={85} yMax={100} />
@@ -639,15 +640,15 @@
               rating: <div style={{ background: P.card, padding: "24px 20px", borderRadius: 14, border: `1px solid ${P.brd}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%" }}>
                 <div style={{ position: "relative", width: 80, height: 80, marginBottom: 10 }}>
                   <svg width="80" height="80" viewBox="0 0 80 80" style={{ transform: "rotate(-90deg)" }}><circle cx="40" cy="40" r="34" fill="none" stroke={P.el} strokeWidth="3.5"/><circle cx="40" cy="40" r="34" fill="none" stroke={sky} strokeWidth="3.5" strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={m?off:circ} style={{ transition: "stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1)" }}/></svg>
-                  <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 20, fontWeight: 800, color: P.t0, fontFamily: "'Golos Text', sans-serif" }}>{score}</span><span style={{ fontSize: 11, color: P.t2 }}>из 5</span></div>
+                  <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 20, fontWeight: 800, color: P.t0, fontFamily: "'Golos Text', sans-serif" }}>{score}</span><span style={{ fontSize: 11, color: P.t2 }}>{gettext('из 5')}</span></div>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: P.t1, marginBottom: 4 }}>Рейтинг поставщика</div>
-                <div style={{ fontSize: 11, color: P.t1, marginBottom: 8 }}>Внешняя 60% + поведение 40%</div>
-                <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>{[{l:"Внешняя 60%",v:"4.3"},{l:"Поведение 40%",v:"4.2"}].map((r,i)=>(<div key={i} style={{ textAlign:"center" }}><div style={{ fontSize:11,color:P.t1 }}>{r.l}</div><div style={{ fontSize:15,fontWeight:700,color:P.t0,fontFamily:"'Golos Text', sans-serif" }}>{r.v}</div></div>))}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: P.t0, background: `${skyDim}0.08)`, display: "inline-block", padding: "2px 8px", borderRadius: 4 }}>Надёжный</div>
+                <div style={{ fontSize: 12, fontWeight: 500, color: P.t1, marginBottom: 4 }}>{gettext('Рейтинг поставщика')}</div>
+                <div style={{ fontSize: 11, color: P.t1, marginBottom: 8 }}>{gettext('Внешняя 60% + поведение 40%')}</div>
+                <div style={{ display: "flex", gap: 12, marginBottom: 8 }}>{[{l:gettext('Внешняя 60%'),v:"4.3"},{l:gettext('Поведение 40%'),v:"4.2"}].map((r,i)=>(<div key={i} style={{ textAlign:"center" }}><div style={{ fontSize:11,color:P.t1 }}>{r.l}</div><div style={{ fontSize:15,fontWeight:700,color:P.t0,fontFamily:"'Golos Text', sans-serif" }}>{r.v}</div></div>))}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: P.t0, background: `${skyDim}0.08)`, display: "inline-block", padding: "2px 8px", borderRadius: 4 }}>{gettext('Надёжный')}</div>
               </div>,
               orders: <div style={{ background: P.card, padding: "24px 26px", borderRadius: 14, border: `1px solid ${P.brd}`, height: "100%" }}>
-                <div style={{ marginBottom: 16 }}><div style={{ fontSize: 11, color: P.t1, fontWeight: 500, marginBottom: 6 }}>Заказы по статусам</div><div style={{ display: "flex", alignItems: "baseline", gap: 8 }}><span style={{ fontSize: 18, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif" }}>9</span><span style={{ fontSize: 11, color: P.t1 }}>активных</span></div></div>
+                <div style={{ marginBottom: 16 }}><div style={{ fontSize: 11, color: P.t1, fontWeight: 500, marginBottom: 6 }}>{gettext('Заказы по статусам')}</div><div style={{ display: "flex", alignItems: "baseline", gap: 8 }}><span style={{ fontSize: 18, fontWeight: 700, color: P.t0, fontFamily: "'Golos Text', sans-serif" }}>9</span><span style={{ fontSize: 11, color: P.t1 }}>{gettext('активных')}</span></div></div>
                 <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", marginBottom: 16, gap: 2 }}><div style={{ flex:1,background:sky,borderRadius:2 }}/><div style={{ flex:1,background:`${skyDim}0.5)`,borderRadius:2 }}/><div style={{ flex:1,background:ora,borderRadius:2,opacity:0.7 }}/></div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 20px" }}>{statuses.map((s,i)=>{const colors=[sky,P.t2,P.t2,`${skyDim}0.5)`,ora];return(<div key={i} style={{ display:"flex",alignItems:"center",gap:6,padding:"3px 0" }}><div style={{ width:5,height:5,borderRadius:1.5,background:colors[i],flexShrink:0 }}/><span style={{ fontSize:11,color:s.count>0?P.t0:P.t2,flex:1 }}>{s.name}</span><span style={{ fontSize:12,fontWeight:600,color:s.count>0?P.t0:P.t2,fontFamily:"'Golos Text', sans-serif",fontVariantNumeric:"tabular-nums" }}>{s.count}</span></div>);})}</div>
               </div>,
@@ -662,8 +663,8 @@
             const workCards = {
               requests: <div style={{ background: P.card, borderRadius: 14, border: `1px solid ${P.brd}`, overflow: "hidden", height: "100%" }}>
                 <div style={{ padding: "18px 22px", borderBottom: `1px solid ${P.sep}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div><div style={{ display:"flex",alignItems:"center",gap:8 }}><span style={{ fontSize:14,fontWeight:700,color:P.t0 }}>Входящие запросы</span><span style={{ fontSize:11,fontWeight:600,color:ora,background:`${oraDim}0.08)`,padding:"2px 7px",borderRadius:4 }}>4 новых</span></div><div style={{ fontSize:11,color:P.t1,marginTop:3 }}>Запросы клиентов на расценку</div></div>
-                  <a href="/seller/requests/" style={{ fontSize:11,color:P.t2,textDecoration:"none" }}>Все →</a>
+                  <div><div style={{ display:"flex",alignItems:"center",gap:8 }}><span style={{ fontSize:14,fontWeight:700,color:P.t0 }}>{gettext('Входящие запросы')}</span><span style={{ fontSize:11,fontWeight:600,color:ora,background:`${oraDim}0.08)`,padding:"2px 7px",borderRadius:4 }}>{gettext('4 новых')}</span></div><div style={{ fontSize:11,color:P.t1,marginTop:3 }}>{gettext('Запросы клиентов на расценку')}</div></div>
+                  <a href="/seller/requests/" style={{ fontSize:11,color:P.t2,textDecoration:"none" }}>{gettext('Все →')}</a>
                 </div>
                 <div style={{ display:"grid",gridTemplateColumns:"76px 1.5fr 1fr 80px",gap:10,padding:"10px 22px",borderBottom:`1px solid ${P.sep}` }}>{["ID","Деталь","Клиент","Сумма"].map((h,i)=>(<span key={i} style={{ fontSize:11,color:P.t1,fontWeight:600,letterSpacing:"0.06em",textAlign:i===3?"right":"left" }}>{h}</span>))}</div>
                 {requests.map((req,i)=>(<div key={i} className="rw" style={{ display:"grid",gridTemplateColumns:"76px 1.5fr 1fr 80px",gap:12,padding:"16px 24px",alignItems:"center",borderBottom:i<requests.length-1?`1px solid ${P.sep}`:"none" }}>
@@ -675,8 +676,8 @@
               </div>,
               events: <div style={{ background: P.card, borderRadius: 14, border: `1px solid ${P.brd}`, overflow: "hidden", height: "100%" }}>
                 <div style={{ padding: "18px 18px", borderBottom: `1px solid ${P.sep}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div><span style={{ fontSize:14,fontWeight:700,color:P.t0 }}>Лента событий</span><div style={{ fontSize:11,color:P.t1,marginTop:3 }}>Заказы, SLA, платежи</div></div>
-                  <span style={{ fontSize:11,color:P.t2,cursor:"pointer" }}>Все →</span>
+                  <div><span style={{ fontSize:14,fontWeight:700,color:P.t0 }}>{gettext('Лента событий')}</span><div style={{ fontSize:11,color:P.t1,marginTop:3 }}>{gettext('Заказы, SLA, платежи')}</div></div>
+                  <span style={{ fontSize:11,color:P.t2,cursor:"pointer" }}>{gettext('Все →')}</span>
                 </div>
                 {eventsBase.map((ev,i)=>(<div key={i} className="rw" style={{ padding:"15px 20px",borderBottom:i<eventsBase.length-1?`1px solid ${P.sep}`:"none",display:"flex",gap:10,alignItems:"flex-start" }}>
                   <div style={{ width:5,height:5,borderRadius:"50%",background:ev.dot,marginTop:6,flexShrink:0 }}/>
@@ -727,7 +728,7 @@
       <div style={{ display: "flex", flexDirection: "column", height: "100%", fontFamily: "Geist, Inter, -apple-system, sans-serif" }}>
         {/* Panel header */}
         <div style={{ padding: "14px 16px 10px", borderBottom: `1px solid ${P.brd}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 11, color: P.t1, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase" }}>Панель</span>
+          <span style={{ fontSize: 11, color: P.t1, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase" }}>{gettext('Панель')}</span>
           <div style={{ position: "relative" }}>
             <button onClick={() => setShowPicker(!showPicker)} style={{
               background: showPicker ? P.el : "transparent",
@@ -736,7 +737,7 @@
               fontFamily: "Geist, Inter, sans-serif", display: "flex", alignItems: "center", gap: 4, transition: "all .15s",
             }}>
               <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 2v8M2 6h8"/></svg>
-              Виджеты
+              {gettext('Виджеты')}
             </button>
             {showPicker && (
               <div style={{
@@ -744,7 +745,7 @@
                 background: P.card, border: `1px solid ${P.brd}`, borderRadius: 10,
                 padding: 6, boxShadow: "0 12px 40px rgba(0,0,0,0.6)", zIndex: 50,
               }}>
-                <div style={{ fontSize: 11, color: P.t1, padding: "4px 10px 6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>Закрепить виджеты</div>
+                <div style={{ fontSize: 11, color: P.t1, padding: "4px 10px 6px", letterSpacing: "0.05em", textTransform: "uppercase" }}>{gettext('Закрепить виджеты')}</div>
                 {WIDGET_IDS.map(id => {
                   const w = WIDGETS[id];
                   const on = pinned.includes(id);
@@ -774,7 +775,7 @@
         <div style={{ flex: 1, overflow: "auto", padding: "8px 8px 20px" }}>
           {pinned.length === 0 && (
             <div style={{ textAlign: "center", padding: "40px 12px", color: P.t1, fontSize: 12 }}>
-              Нажмите «Виджеты» чтобы<br/>закрепить нужные блоки
+              {gettext('Нажмите «Виджеты» чтобы')}<br/>{gettext('закрепить нужные блоки')}
             </div>
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

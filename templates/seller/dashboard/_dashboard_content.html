@@ -1,3 +1,4 @@
+{% load i18n %}
 <section class="dashboard-board">
     <section class="dashboard-windowbar">
       <div class="dashboard-window-controls">
@@ -6,24 +7,24 @@
         <span class="dot green"></span>
       </div>
       <div class="dashboard-window-tabs">
-        <button class="is-active" type="button">Дашборд</button>
-        <button type="button">Каталог</button>
-        <button type="button">Заказы</button>
+        <button class="is-active" type="button">{% trans "Дашборд" %}</button>
+        <button type="button">{% trans "Каталог" %}</button>
+        <button type="button">{% trans "Заказы" %}</button>
       </div>
     </section>
 
     <section class="panel dashboard-hero" id="dashboard-header-panel">
       <div class="dashboard-hero-head">
         <div class="dashboard-hero-meta">
-          <span class="muted">Общая выручка</span>
-          <span class="dashboard-hero-pill">Март 2026</span>
+          <span class="muted">{% trans "Общая выручка" %}</span>
+          <span class="dashboard-hero-pill">{% trans "Март 2026" %}</span>
         </div>
         <div class="dashboard-hero-periods">
-          <button type="button">1М</button>
-          <button type="button">3М</button>
-          <button class="is-active" type="button">6М</button>
-          <button type="button">1Г</button>
-          <button type="button">Всё</button>
+          <button type="button">{% trans "1М" %}</button>
+          <button type="button">{% trans "3М" %}</button>
+          <button class="is-active" type="button">{% trans "6М" %}</button>
+          <button type="button">{% trans "1Г" %}</button>
+          <button type="button">{% trans "Всё" %}</button>
         </div>
       </div>
       <div class="dashboard-hero-value-row">
@@ -40,14 +41,14 @@
     <section class="dashboard-two-col-equal dashboard-section">
       <section class="panel" id="dashboard-rating-panel">
         <div class="dashboard-panel-head">
-          <h3>Рейтинг поставщика</h3>
+          <h3>{% trans "Рейтинг поставщика" %}</h3>
         </div>
         <div id="dashboard-rating"></div>
       </section>
 
       <section class="panel" id="dashboard-orders-by-status-panel">
         <div class="dashboard-panel-head">
-          <h3>Заказы по статусам</h3>
+          <h3>{% trans "Заказы по статусам" %}</h3>
         </div>
         <div id="dashboard-orders-by-status"></div>
       </section>
@@ -56,7 +57,7 @@
     <section class="dashboard-two-col-equal dashboard-section">
       <section class="panel" id="dashboard-revenue-panel">
         <div class="dashboard-panel-head">
-          <h3>Выручка, ¥M</h3>
+          <h3>{% trans "Выручка, ¥M" %}</h3>
         </div>
         <div class="dashboard-mini-chart" id="dashboard-revenue-chart"></div>
       </section>
@@ -73,10 +74,10 @@
       <section class="panel" id="dashboard-incoming-requests-panel">
         <div class="dashboard-panel-head">
           <div class="dashboard-panel-title-row">
-            <h3>Входящие запросы</h3>
-            <span class="dashboard-panel-badge" id="dashboard-incoming-badge" hidden>0 новых</span>
+            <h3>{% trans "Входящие запросы" %}</h3>
+            <span class="dashboard-panel-badge" id="dashboard-incoming-badge" hidden>{% trans "0 новых" %}</span>
           </div>
-          <a class="dashboard-panel-link" href="/seller/requests/">Все запросы →</a>
+          <a class="dashboard-panel-link" href="/seller/requests/">{% trans "Все запросы →" %}</a>
         </div>
         <div class="dashboard-request-list" id="dashboard-incoming-requests"></div>
       </section>
@@ -84,9 +85,9 @@
       <section class="panel" id="dashboard-events-panel">
         <div class="dashboard-panel-head">
           <div class="dashboard-panel-title-row">
-            <h3>Лента событий</h3>
+            <h3>{% trans "Лента событий" %}</h3>
           </div>
-          <a class="dashboard-panel-link" href="/seller/orders/">Все события →</a>
+          <a class="dashboard-panel-link" href="/seller/orders/">{% trans "Все события →" %}</a>
         </div>
         <div class="dashboard-events-list" id="dashboard-events-feed"></div>
       </section>
@@ -95,23 +96,23 @@
     <section class="dashboard-three-col dashboard-section" aria-label="account">
       <section class="panel" id="dashboard-profile-access">
         <div class="dashboard-panel-head">
-          <h3>Профиль и доступы</h3>
+          <h3>{% trans "Профиль и доступы" %}</h3>
         </div>
-        <p class="muted" id="dashboard-profile-line">Загружаем профиль...</p>
+        <p class="muted" id="dashboard-profile-line">{% trans "Загружаем профиль..." %}</p>
         <div class="chips" id="dashboard-profile-tags"></div>
       </section>
 
       <section class="panel" id="dashboard-account-health">
         <div class="dashboard-panel-head">
-          <h3>Состояние аккаунта</h3>
+          <h3>{% trans "Состояние аккаунта" %}</h3>
         </div>
         <div class="dashboard-health-grid" id="dashboard-health-grid"></div>
-        <p class="muted" id="dashboard-health-updated">Загрузка...</p>
+        <p class="muted" id="dashboard-health-updated">{% trans "Загрузка..." %}</p>
       </section>
 
       <section class="panel" id="dashboard-quick-actions">
         <div class="dashboard-panel-head">
-          <h3>Быстрые действия</h3>
+          <h3>{% trans "Быстрые действия" %}</h3>
         </div>
         <div class="dashboard-quick-grid" id="dashboard-quick-actions-grid"></div>
       </section>

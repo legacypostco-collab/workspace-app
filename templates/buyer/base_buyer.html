@@ -22,6 +22,7 @@
       </div>
     </main>
     {% block right_panel %}{% include "buyer/components/_right_panel.html" %}{% endblock %}
+    <script src="{% url 'javascript-catalog' %}"></script>
     {% block extra_js %}{% endblock %}
   </body>
 </html>

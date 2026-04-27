@@ -1,6 +1,7 @@
+{% load i18n %}
 <div class="panel seller-empty-state">
-  <h3>{{ title|default:"Пока ничего нет" }}</h3>
-  <p class="muted">{{ message|default:"Данные появятся после первых действий в кабинете." }}</p>
+  <h3>{{ title|default:"{% trans 'Пока ничего нет' %}" }}</h3>
+  <p class="muted">{{ message|default:"{% trans 'Данные появятся после первых действий в кабинете.' %}" }}</p>
   {% if action_url and action_label %}
     <a class="btn" href="{{ action_url }}">{{ action_label }}</a>
   {% endif %}

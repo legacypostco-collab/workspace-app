@@ -167,7 +167,7 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-card-left">
         <div>
           <div class="clm-card-id">CLM-2026-0019</div>
-          <div class="clm-card-order">Заказ ORD-2026-0125 &middot; Поставщик #4291</div>
+          <div class="clm-card-order">{% trans "Заказ ORD-2026-0125 &middot; Поставщик #4291" %}</div>
         </div>
       </div>
       <div class="clm-card-right">
@@ -183,7 +183,7 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-detail-grid">
         <div>
           <div class="clm-detail-label">{% trans "Позиция" %}</div>
-          <div class="clm-detail-val">Диск тормозной 421-22-31520 (3 шт.)</div>
+          <div class="clm-detail-val">{% trans "Диск тормозной 421-22-31520 (3 шт.)" %}</div>
         </div>
         <div>
           <div class="clm-detail-label">{% trans "Сумма претензии" %}</div>
@@ -195,11 +195,11 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
         <div>
           <div class="clm-detail-label">{% trans "Ответственный" %}</div>
-          <div class="clm-detail-val">Иванов А.С.</div>
+          <div class="clm-detail-val">{% trans "Иванов А.С." %}</div>
         </div>
       </div>
       <div class="clm-description">
-        При вскрытии упаковки обнаружены механические повреждения на 3 из 20 дисков. Трещины на рабочей поверхности, не пригодны к установке. Фото повреждений приложены к заявке.
+        {% trans "При вскрытии упаковки обнаружены механические повреждения на 3 из 20 дисков. Трещины на рабочей поверхности, не пригодны к установке. Фото повреждений приложены к заявке." %}
       </div>
       <div class="clm-actions">
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">{% trans "Переписка" %}</a>
@@ -210,9 +210,9 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-section" id="sec-chat-1" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
         <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Переписка" %}</div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
-          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Просим предоставить фотографии повреждений в высоком разрешении для оформления страхового акта.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 25.03 14:22</div></div></div>
-          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Фотографии приложены к заявке (4 шт.), повреждения на позициях 1, 2 и 3.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 25.03 16:40</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
-          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Документы получены, направлены поставщику. Ожидаем ответа в течение 3 рабочих дней.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 26.03 09:15</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">{% trans "МГ" %}</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "Просим предоставить фотографии повреждений в высоком разрешении для оформления страхового акта." %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Менеджер · 25.03 14:22" %}</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "Фотографии приложены к заявке (4 шт.), повреждения на позициях 1, 2 и 3." %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Вы · 25.03 16:40" %}</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">{% trans "Я" %}</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">{% trans "МГ" %}</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "Документы получены, направлены поставщику. Ожидаем ответа в течение 3 рабочих дней." %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Менеджер · 26.03 09:15" %}</div></div></div>
         </div>
       </div>
       <div class="clm-section" id="sec-photo-1" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
@@ -241,7 +241,7 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-card-left">
         <div>
           <div class="clm-card-id">CLM-2026-0016</div>
-          <div class="clm-card-order">Заказ ORD-2026-0118 &middot; Поставщик #5673</div>
+          <div class="clm-card-order">{% trans "Заказ ORD-2026-0118 &middot; Поставщик #5673" %}</div>
         </div>
       </div>
       <div class="clm-card-right">
@@ -257,7 +257,7 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-detail-grid">
         <div>
           <div class="clm-detail-label">{% trans "Позиция" %}</div>
-          <div class="clm-detail-val">Помпа водяная 6212-61-1440 (2 шт.)</div>
+          <div class="clm-detail-val">{% trans "Помпа водяная 6212-61-1440 (2 шт.)" %}</div>
         </div>
         <div>
           <div class="clm-detail-label">{% trans "Сумма претензии" %}</div>
@@ -269,11 +269,11 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
         <div>
           <div class="clm-detail-label">{% trans "Ответственный" %}</div>
-          <div class="clm-detail-val">Петров К.В.</div>
+          <div class="clm-detail-val">{% trans "Петров К.В." %}</div>
         </div>
       </div>
       <div class="clm-description">
-        Поставлены помпы с другим посадочным размером шкива. OEM-номер на этикетке совпадает, но фактические размеры отличаются от спецификации. Ожидается замена от поставщика.
+        {% trans "Поставлены помпы с другим посадочным размером шкива. OEM-номер на этикетке совпадает, но фактические размеры отличаются от спецификации. Ожидается замена от поставщика." %}
       </div>
       <div class="clm-actions">
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">{% trans "Переписка" %}</a>
@@ -284,9 +284,9 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-section" id="sec-chat-2" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
         <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Переписка" %}</div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
-          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Получили вашу заявку. Просим предоставить замерочный лист с указанием фактических размеров шкива.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 16.03 10:05</div></div></div>
-          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Замерочный лист приложен. Фактический диаметр шкива: 82 мм, по спецификации должен быть 75 мм.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 16.03 14:30</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
-          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Данные переданы поставщику. Ожидается подтверждение замены в течение 2 дней.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 17.03 09:00</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">{% trans "МГ" %}</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "Получили вашу заявку. Просим предоставить замерочный лист с указанием фактических размеров шкива." %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Менеджер · 16.03 10:05" %}</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "Замерочный лист приложен. Фактический диаметр шкива: 82 мм, по спецификации должен быть 75 мм." %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Вы · 16.03 14:30" %}</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">{% trans "Я" %}</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">{% trans "МГ" %}</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "Данные переданы поставщику. Ожидается подтверждение замены в течение 2 дней." %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Менеджер · 17.03 09:00" %}</div></div></div>
         </div>
       </div>
       <div class="clm-section" id="sec-photo-2" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
@@ -312,7 +312,7 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-card-left">
         <div>
           <div class="clm-card-id">CLM-2026-0012</div>
-          <div class="clm-card-order">Заказ ORD-2026-0110 &middot; TurboTech Asia</div>
+          <div class="clm-card-order">{% trans "Заказ ORD-2026-0110 &middot; TurboTech Asia" %}</div>
         </div>
       </div>
       <div class="clm-card-right">
@@ -328,7 +328,7 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-detail-grid">
         <div>
           <div class="clm-detail-label">{% trans "Позиция" %}</div>
-          <div class="clm-detail-val">Турбокомпрессор 7C-2297 (1 шт.)</div>
+          <div class="clm-detail-val">{% trans "Турбокомпрессор 7C-2297 (1 шт.)" %}</div>
         </div>
         <div>
           <div class="clm-detail-label">{% trans "Сумма претензии" %}</div>
@@ -340,11 +340,11 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
         <div>
           <div class="clm-detail-label">{% trans "Ответственный" %}</div>
-          <div class="clm-detail-val">Сидоров Д.М.</div>
+          <div class="clm-detail-val">{% trans "Сидоров Д.М." %}</div>
         </div>
       </div>
       <div class="clm-description">
-        В комплекте отсутствует прокладка выпускного коллектора и комплект крепежа. Турбина без прокладки не может быть установлена. Поставщик подтвердил досылку недостающих компонентов.
+        {% trans "В комплекте отсутствует прокладка выпускного коллектора и комплект крепежа. Турбина без прокладки не может быть установлена. Поставщик подтвердил досылку недостающих компонентов." %}
       </div>
       <div class="clm-actions">
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">{% trans "Переписка" %}</a>
@@ -354,9 +354,9 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-section" id="sec-chat-3" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
         <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Переписка" %}</div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
-          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Заявка принята. Поставщик подтвердил отсутствие прокладки и крепежа в партии. Досылка оформлена.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 09.03 11:20</div></div></div>
-          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Когда ориентировочно придут недостающие компоненты?</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 09.03 13:45</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
-          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>ETA досылки: 20–25 марта авиа. Трекинг будет предоставлен отдельно.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 10.03 09:30</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">{% trans "МГ" %}</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "Заявка принята. Поставщик подтвердил отсутствие прокладки и крепежа в партии. Досылка оформлена." %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Менеджер · 09.03 11:20" %}</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "Когда ориентировочно придут недостающие компоненты?" %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Вы · 09.03 13:45" %}</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">{% trans "Я" %}</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">{% trans "МГ" %}</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "ETA досылки: 20–25 марта авиа. Трекинг будет предоставлен отдельно." %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Менеджер · 10.03 09:30" %}</div></div></div>
         </div>
       </div>
       <div class="clm-section" id="sec-photo-3" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
@@ -376,7 +376,7 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-card-left">
         <div>
           <div class="clm-card-id">CLM-2026-0008</div>
-          <div class="clm-card-order">Заказ ORD-2026-0098 &middot; Поставщик #1042</div>
+          <div class="clm-card-order">{% trans "Заказ ORD-2026-0098 &middot; Поставщик #1042" %}</div>
         </div>
       </div>
       <div class="clm-card-right">
@@ -392,11 +392,11 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-detail-grid">
         <div>
           <div class="clm-detail-label">{% trans "Позиция" %}</div>
-          <div class="clm-detail-val">Гидроцилиндр стрелы LH-9989363 (1 шт.)</div>
+          <div class="clm-detail-val">{% trans "Гидроцилиндр стрелы LH-9989363 (1 шт.)" %}</div>
         </div>
         <div>
           <div class="clm-detail-label">{% trans "Компенсация" %}</div>
-          <div class="clm-detail-val" style="color:#64B5F6;">$2,840.00 (возврат)</div>
+          <div class="clm-detail-val" style="color:#64B5F6;">{% trans "$2,840.00 (возврат)" %}</div>
         </div>
         <div>
           <div class="clm-detail-label">{% trans "Дата решения" %}</div>
@@ -408,7 +408,7 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
       </div>
       <div class="clm-description">
-        Гидроцилиндр прибыл с повреждённым штоком (вмятина при транспортировке). Поставщик признал вину перевозчика, оформлен полный возврат средств и отправлена замена за свой счёт.
+        {% trans "Гидроцилиндр прибыл с повреждённым штоком (вмятина при транспортировке). Поставщик признал вину перевозчика, оформлен полный возврат средств и отправлена замена за свой счёт." %}
       </div>
       <div class="clm-actions">
         <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">{% trans "Переписка" %}</a>
@@ -418,8 +418,8 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
       <div class="clm-section" id="sec-chat-4" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
         <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Переписка" %}</div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
-          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Рекламация рассмотрена. Поставщик признал ответственность перевозчика. Полный возврат одобрен.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 05.03 15:10</div></div></div>
-          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Замена уже получена, спасибо за оперативное решение.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 10.03 11:00</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">{% trans "МГ" %}</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "Рекламация рассмотрена. Поставщик признал ответственность перевозчика. Полный возврат одобрен." %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Менеджер · 05.03 15:10" %}</div></div></div>
+          <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>{% trans "Замена уже получена, спасибо за оперативное решение." %}</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">{% trans "Вы · 10.03 11:00" %}</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">{% trans "Я" %}</div></div>
         </div>
       </div>
       <div class="clm-section" id="sec-docs-4" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">

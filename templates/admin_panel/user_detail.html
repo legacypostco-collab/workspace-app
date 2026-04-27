@@ -33,7 +33,7 @@
         <div><span style="color:#919191;">Email:</span> {{ target_user.email }}</div>
         <div><span style="color:#919191;">{% trans "Имя:" %}</span> {{ target_user.get_full_name|default:"—" }}</div>
         <div><span style="color:#919191;">{% trans "Регистрация:" %}</span> {{ target_user.date_joined|date:"d.m.Y H:i" }}</div>
-        <div><span style="color:#919191;">{% trans "Последний вход:" %}</span> {{ target_user.last_login|date:"d.m.Y H:i"|default:"Никогда" }}</div>
+        <div><span style="color:#919191;">{% trans "Последний вход:" %}</span> {{ target_user.last_login|date:"d.m.Y H:i"|default:"{% trans 'Никогда' %}" }}</div>
         <div><span style="color:#919191;">{% trans "Роль:" %}</span>
           {% if target_user.is_superuser %}<span class="ap-badge ap-badge-orange">{% trans "Администратор" %}</span>
           {% elif target_user.profile and target_user.profile.role == 'seller' %}<span class="ap-badge ap-badge-blue">{% trans "Поставщик" %}</span>

@@ -1,5 +1,6 @@
 {% extends "seller/base_seller.html" %}
-{% block title %}QR-контроль{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "QR-контроль" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -262,35 +263,35 @@
 <section class="qr-hero">
   <div class="qr-hero-top">
     <div>
-      <div class="qr-hero-title">QR-контроль поставок</div>
-      <div class="qr-hero-sub">Генерация кодов · сканирование · отслеживание этапов</div>
+      <div class="qr-hero-title">{% trans "QR-контроль поставок" %}</div>
+      <div class="qr-hero-sub">{% trans "Генерация кодов · сканирование · отслеживание этапов" %}</div>
     </div>
   </div>
   <div class="qr-metrics">
-    <div class="qr-metric qr-metric--clickable" id="qr-metric-active" title="Показать таймлайн заказов">
-      <div class="qr-metric-label">Активных заказов</div>
+    <div class="qr-metric qr-metric--clickable" id="qr-metric-active" title="{% trans 'Показать таймлайн заказов' %}">
+      <div class="qr-metric-label">{% trans "Активных заказов" %}</div>
       <div class="qr-metric-val">{{ active_orders_count }}</div>
-      <div class="qr-metric-hint">на контроле <span class="qr-metric-toggle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+      <div class="qr-metric-hint">{% trans "на контроле" %} <span class="qr-metric-toggle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 12 15 18 9"/></svg></span></div>
     </div>
     <a href="/seller/qr/" class="qr-metric-link">
     <div class="qr-metric">
-      <div class="qr-metric-label">Всего сканирований</div>
+      <div class="qr-metric-label">{% trans "Всего сканирований" %}</div>
       <div class="qr-metric-val">{{ total_scans }}</div>
-      <div class="qr-metric-hint">за всё время</div>
+      <div class="qr-metric-hint">{% trans "за всё время" %}</div>
     </div>
     </a>
     <a href="/seller/qr/" class="qr-metric-link">
     <div class="qr-metric">
-      <div class="qr-metric-label">Сегодня</div>
+      <div class="qr-metric-label">{% trans "Сегодня" %}</div>
       <div class="qr-metric-val">{{ scans_today }}</div>
-      <div class="qr-metric-hint" style="color:#64B5F6;">сканирований</div>
+      <div class="qr-metric-hint" style="color:#64B5F6;">{% trans "сканирований" %}</div>
     </div>
     </a>
     <a href="/seller/orders/" class="qr-metric-link">
     <div class="qr-metric">
-      <div class="qr-metric-label">Заказов с QR</div>
+      <div class="qr-metric-label">{% trans "Заказов с QR" %}</div>
       <div class="qr-metric-val">{{ orders_with_qr }}</div>
-      <div class="qr-metric-hint" style="color:#64B5F6;">зарегистрировано</div>
+      <div class="qr-metric-hint" style="color:#64B5F6;">{% trans "зарегистрировано" %}</div>
     </div>
     </a>
   </div>
@@ -300,8 +301,8 @@
 <section class="qr-timeline-section" id="qr-timeline-section" style="display:none;">
   <div class="qr-panel" style="width:100%;">
     <div class="qr-panel-head">
-      <div class="qr-panel-title">Таймлайн доставки</div>
-      <button class="qr-btn qr-btn--ghost" id="qr-timeline-close" style="padding:4px 12px;flex:none;width:auto;font-size:12px;">✕ Свернуть</button>
+      <div class="qr-panel-title">{% trans "Таймлайн доставки" %}</div>
+      <button class="qr-btn qr-btn--ghost" id="qr-timeline-close" style="padding:4px 12px;flex:none;width:auto;font-size:12px;">{% trans "✕ Свернуть" %}</button>
     </div>
     <div class="qr-panel-body" style="padding:10px 14px;">
       {% for tl in timeline_orders %}
@@ -309,7 +310,7 @@
         {# Заголовок: заказ, клиент, SLA, сумма #}
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <div style="display:flex;align-items:center;gap:8px;">
-            <a href="{% url 'seller_order_detail' tl.order.id %}" style="font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#ECECEC;text-decoration:none;">Заказ #{{ tl.order.id }}</a>
+            <a href="{% url 'seller_order_detail' tl.order.id %}" style="font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#ECECEC;text-decoration:none;">{% trans "Заказ #" %}{{ tl.order.id }}</a>
             <span style="font-size:11px;color:#6A6A6A;">{{ tl.order.customer_name }}</span>
             {% if tl.order.sla_status == "breached" %}
               <span style="font-size:10px;color:#FF8C42;font-weight:600;">{{ tl.order.get_sla_status_display }}</span>
@@ -335,7 +336,7 @@
         </div>
       </div>
       {% empty %}
-      <div style="text-align:center;color:#6A6A6A;padding:20px;font-size:13px;">Нет заказов для отображения</div>
+      <div style="text-align:center;color:#6A6A6A;padding:20px;font-size:13px;">{% trans "Нет заказов для отображения" %}</div>
       {% endfor %}
     </div>
   </div>
@@ -347,18 +348,18 @@
   {# ── Генератор QR ── #}
   <div class="qr-panel">
     <div class="qr-panel-head">
-      <div class="qr-panel-title">Сгенерировать QR-код</div>
+      <div class="qr-panel-title">{% trans "Сгенерировать QR-код" %}</div>
     </div>
     <div class="qr-panel-body">
       <select class="qr-gen-select" id="qr-order-select">
-        <option value="">— Выберите заказ —</option>
+        <option value="">{% trans "— Выберите заказ —" %}</option>
         {% for order in active_orders %}
         <option value="{{ order.id }}"
                 data-num="{{ order.id }}"
                 data-status="{{ order.get_status_display }}"
                 data-raw-status="{{ order.status }}"
                 data-url="{% url 'seller_order_detail' order.id %}">
-          Заказ #{{ order.id }} · {{ order.get_status_display }}
+          {% trans "Заказ #" %}{{ order.id }} · {{ order.get_status_display }}
         </option>
         {% endfor %}
       </select>
@@ -366,7 +367,7 @@
       <div class="qr-gen-canvas-wrap" id="qr-gen-wrap">
         <div class="qr-gen-placeholder" id="qr-placeholder">
           <div class="qr-gen-placeholder-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><rect x="19" y="14" width="2" height="2"/><rect x="14" y="19" width="2" height="2"/><rect x="19" y="19" width="2" height="2"/></svg></div>
-          <div class="qr-gen-placeholder-text">Выберите заказ для генерации QR</div>
+          <div class="qr-gen-placeholder-text">{% trans "Выберите заказ для генерации QR" %}</div>
         </div>
         <div id="qr-canvas-container" style="display:none;text-align:center;">
           <div id="qr-code-display"></div>
@@ -376,10 +377,10 @@
 
       <div class="qr-gen-actions">
         <button class="qr-btn qr-btn--ghost" id="qr-print-btn" disabled>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Печать
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>{% trans "Печать" %}
         </button>
         <button class="qr-btn qr-btn--primary" id="qr-download-btn" disabled>
-          ↓ Скачать PNG
+          {% trans "↓ Скачать PNG" %}
         </button>
       </div>
     </div>
@@ -388,16 +389,16 @@
   {# ── Сканер QR ── #}
   <div class="qr-panel">
     <div class="qr-panel-head">
-      <div class="qr-panel-title">Сканировать QR-код</div>
+      <div class="qr-panel-title">{% trans "Сканировать QR-код" %}</div>
       <button class="qr-btn qr-btn--ghost" id="qr-cam-btn" style="padding:7px 16px;flex:none;width:auto;display:flex;align-items:center;gap:6px;font-size:13px;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>Камера
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>{% trans "Камера" %}
       </button>
     </div>
     <div class="qr-panel-body">
       <div class="qr-scanner-area" id="qr-scanner-area">
         <div class="qr-scanner-idle" id="qr-scanner-idle">
           <div class="qr-scanner-idle-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2M8 12h8"/></svg></div>
-          <div class="qr-scanner-idle-text">Нажмите «Камера» чтобы начать сканирование<br>или введите код вручную ниже</div>
+          <div class="qr-scanner-idle-text">{% trans "Нажмите «Камера» чтобы начать сканирование" %}<br>{% trans "или введите код вручную ниже" %}</div>
         </div>
         <video id="qr-scanner-video" autoplay playsinline></video>
         <div class="qr-scanner-corner qr-scanner-corner--tl" id="qr-corner-tl" style="display:none;"></div>
@@ -409,7 +410,7 @@
       <div class="qr-scanner-result" id="qr-scan-result"></div>
 
       <input type="text" class="qr-manual-input" id="qr-manual-input"
-             placeholder="Введите QR-код или номер заказа…" />
+             placeholder="{% trans 'Введите QR-код или номер заказа…' %}" />
 
       <div class="qr-order-info" id="qr-order-info">
         <div class="qr-order-info-id" id="qr-info-id"></div>
@@ -417,13 +418,13 @@
         <div class="qr-order-info-next" id="qr-info-next" style="display:none;margin-top:4px;font-size:12px;color:#64B5F6;font-weight:600;"></div>
         <div class="qr-order-info-meta" id="qr-info-meta"></div>
         <a id="qr-info-kanban-link" href="{% url 'seller_sla' %}" style="display:none;margin-top:6px;font-size:11px;color:#64B5F6;text-decoration:none;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Открыть на канбане SLA
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>{% trans "Открыть на канбане SLA" %}
         </a>
       </div>
 
       <div class="qr-gen-actions">
-        <button class="qr-btn qr-btn--ghost" id="qr-scan-clear" style="display:none;">✕ Сбросить</button>
-        <button class="qr-btn qr-btn--primary" id="qr-scan-confirm" disabled>Подтвердить этап</button>
+        <button class="qr-btn qr-btn--ghost" id="qr-scan-clear" style="display:none;">{% trans "✕ Сбросить" %}</button>
+        <button class="qr-btn qr-btn--primary" id="qr-scan-confirm" disabled>{% trans "Подтвердить этап" %}</button>
       </div>
     </div>
   </div>
@@ -432,7 +433,7 @@
 {# ═══ Этапы с QR ═══ #}
 <section class="qr-instructions" id="qr-stages-section">
   <div class="qr-instr-head" onclick="toggleSection('qr-stages-body', this)">
-    <div class="qr-instr-title">Этапы с QR-сканированием</div>
+    <div class="qr-instr-title">{% trans "Этапы с QR-сканированием" %}</div>
     <span class="qr-instr-toggle">▾</span>
   </div>
   <div class="qr-instr-body" id="qr-stages-body" style="display:block;">
@@ -444,7 +445,7 @@
           <div class="qr-stage-label">{{ stage.label }}</div>
           <div class="qr-stage-action">{{ stage.action }}</div>
         </div>
-        <div class="qr-stage-type">QR-скан</div>
+        <div class="qr-stage-type">{% trans "QR-скан" %}</div>
       </div>
       {% endfor %}
     </div>
@@ -454,7 +455,7 @@
 {# ═══ Инструкция ═══ #}
 <section class="qr-instructions">
   <div class="qr-instr-head" onclick="toggleSection('qr-instr-body', this)">
-    <div class="qr-instr-title">Инструкция по работе с QR</div>
+    <div class="qr-instr-title">{% trans "Инструкция по работе с QR" %}</div>
     <span class="qr-instr-toggle">▾</span>
   </div>
   <div class="qr-instr-body" id="qr-instr-body">
@@ -470,29 +471,29 @@
     <div class="qr-instr-step">
       <div class="qr-instr-num">1</div>
       <div>
-        <div class="qr-instr-step-title">Генерация кода</div>
-        <div class="qr-instr-step-desc">Выберите заказ в блоке «Сгенерировать QR-код». QR автоматически привязывается к заказу и содержит его идентификатор.</div>
+        <div class="qr-instr-step-title">{% trans "Генерация кода" %}</div>
+        <div class="qr-instr-step-desc">{% trans "Выберите заказ в блоке «Сгенерировать QR-код». QR автоматически привязывается к заказу и содержит его идентификатор." %}</div>
       </div>
     </div>
     <div class="qr-instr-step">
       <div class="qr-instr-num">2</div>
       <div>
-        <div class="qr-instr-step-title">Распечатать и прикрепить</div>
-        <div class="qr-instr-step-desc">Распечатайте QR-код и прикрепите к упаковке товара перед отправкой. Используйте кнопку «Печать» или скачайте PNG.</div>
+        <div class="qr-instr-step-title">{% trans "Распечатать и прикрепить" %}</div>
+        <div class="qr-instr-step-desc">{% trans "Распечатайте QR-код и прикрепите к упаковке товара перед отправкой. Используйте кнопку «Печать» или скачайте PNG." %}</div>
       </div>
     </div>
     <div class="qr-instr-step">
       <div class="qr-instr-num">3</div>
       <div>
-        <div class="qr-instr-step-title">Сканирование на этапе</div>
-        <div class="qr-instr-step-desc">На каждом ключевом этапе (отгрузка, таможня, выдача) ответственное лицо сканирует QR-код. Событие фиксируется в системе автоматически.</div>
+        <div class="qr-instr-step-title">{% trans "Сканирование на этапе" %}</div>
+        <div class="qr-instr-step-desc">{% trans "На каждом ключевом этапе (отгрузка, таможня, выдача) ответственное лицо сканирует QR-код. Событие фиксируется в системе автоматически." %}</div>
       </div>
     </div>
     <div class="qr-instr-step">
       <div class="qr-instr-num">4</div>
       <div>
-        <div class="qr-instr-step-title">Отслеживание истории</div>
-        <div class="qr-instr-step-desc">Все сканирования отображаются в таблице ниже. История позволяет отследить каждый этап движения заказа и проверить SLA.</div>
+        <div class="qr-instr-step-title">{% trans "Отслеживание истории" %}</div>
+        <div class="qr-instr-step-desc">{% trans "Все сканирования отображаются в таблице ниже. История позволяет отследить каждый этап движения заказа и проверить SLA." %}</div>
       </div>
     </div>
   </div>
@@ -501,18 +502,18 @@
 {# ═══ История сканирований ═══ #}
 <div class="qr-history-wrap">
   <div class="qr-history-head">
-    <div class="qr-history-title">История сканирований</div>
-    <div style="font-size:11px;color:#6A6A6A;">последние 50 событий</div>
+    <div class="qr-history-title">{% trans "История сканирований" %}</div>
+    <div style="font-size:11px;color:#6A6A6A;">{% trans "последние 50 событий" %}</div>
   </div>
   {% if qr_scan_events %}
   <table class="qr-table">
     <thead>
       <tr>
-        <th>Заказ</th>
-        <th>QR-код</th>
-        <th>Этап</th>
-        <th>Исполнитель</th>
-        <th>Дата</th>
+        <th>{% trans "Заказ" %}</th>
+        <th>{% trans "QR-код" %}</th>
+        <th>{% trans "Этап" %}</th>
+        <th>{% trans "Исполнитель" %}</th>
+        <th>{% trans "Дата" %}</th>
       </tr>
     </thead>
     <tbody>
@@ -535,7 +536,7 @@
   {% else %}
   <div class="qr-empty">
     <div class="qr-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
-    <div class="qr-empty-text">Сканирований пока нет.<br>Начните с генерации QR-кода для заказа.</div>
+    <div class="qr-empty-text">{% trans "Сканирований пока нет." %}<br>{% trans "Начните с генерации QR-кода для заказа." %}</div>
   </div>
   {% endif %}
 </div>

@@ -1,4 +1,5 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -187,19 +188,19 @@
 {% block content %}
 
 <div class="lg-tabs">
-  <div class="lg-tab active" onclick="lgTab(this,'map')">Карта и терминалы</div>
-  <div class="lg-tab" onclick="lgTab(this,'tracking')">Отслеживание</div>
-  <div class="lg-tab" onclick="lgTab(this,'shipping')">Способы доставки</div>
-  <div class="lg-tab" onclick="lgTab(this,'calculator')">Калькулятор</div>
-  <div class="lg-tab" onclick="lgTab(this,'auction')">Переторжка</div>
+  <div class="lg-tab active" onclick="lgTab(this,'map')">{% trans "Карта и терминалы" %}</div>
+  <div class="lg-tab" onclick="lgTab(this,'tracking')">{% trans "Отслеживание" %}</div>
+  <div class="lg-tab" onclick="lgTab(this,'shipping')">{% trans "Способы доставки" %}</div>
+  <div class="lg-tab" onclick="lgTab(this,'calculator')">{% trans "Калькулятор" %}</div>
+  <div class="lg-tab" onclick="lgTab(this,'auction')">{% trans "Переторжка" %}</div>
 </div>
 
 {# ═══ TAB 1: Карта и терминалы ═══ #}
 <div class="lg-panel active" id="panel-map">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
     <div>
-      <div class="lg-section-title">Грузовые терминалы и порты</div>
-      <div class="lg-section-sub" style="margin-bottom:0;">Интерактивная карта · Морские порты, авиатерминалы, ж/д узлы</div>
+      <div class="lg-section-title">{% trans "Грузовые терминалы и порты" %}</div>
+      <div class="lg-section-sub" style="margin-bottom:0;">{% trans "Интерактивная карта · Морские порты, авиатерминалы, ж/д узлы" %}</div>
     </div>
   </div>
 
@@ -209,35 +210,35 @@
   {# Filters #}
   <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;">
     <div>
-      <label style="font-size:10px;color:#64B5F6;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;display:block;margin-bottom:6px;">Страна</label>
+      <label style="font-size:10px;color:#64B5F6;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;display:block;margin-bottom:6px;">{% trans "Страна" %}</label>
       <select class="lg-select" id="countryFilter" onchange="currentCountry=this.value;renderPorts();">
-        <option value="all">Все страны</option>
-        <option value="ru">Россия</option>
-        <option value="cn">Китай</option>
-        <option value="ae">ОАЭ</option>
-        <option value="tr">Турция</option>
-        <option value="us">США</option>
-        <option value="de">Германия</option>
-        <option value="it">Италия</option>
-        <option value="nl">Нидерланды</option>
-        <option value="uk">Великобритания</option>
-        <option value="jp">Япония</option>
-        <option value="kr">Южная Корея</option>
-        <option value="tw">Тайвань</option>
-        <option value="sea">Юго-Вост. Азия</option>
-        <option value="kz">Казахстан</option>
-        <option value="in">Индия</option>
-        <option value="cis">СНГ</option>
-        <option value="latam">Лат. Америка</option>
+        <option value="all">{% trans "Все страны" %}</option>
+        <option value="ru">{% trans "Россия" %}</option>
+        <option value="cn">{% trans "Китай" %}</option>
+        <option value="ae">{% trans "ОАЭ" %}</option>
+        <option value="tr">{% trans "Турция" %}</option>
+        <option value="us">{% trans "США" %}</option>
+        <option value="de">{% trans "Германия" %}</option>
+        <option value="it">{% trans "Италия" %}</option>
+        <option value="nl">{% trans "Нидерланды" %}</option>
+        <option value="uk">{% trans "Великобритания" %}</option>
+        <option value="jp">{% trans "Япония" %}</option>
+        <option value="kr">{% trans "Южная Корея" %}</option>
+        <option value="tw">{% trans "Тайвань" %}</option>
+        <option value="sea">{% trans "Юго-Вост. Азия" %}</option>
+        <option value="kz">{% trans "Казахстан" %}</option>
+        <option value="in">{% trans "Индия" %}</option>
+        <option value="cis">{% trans "СНГ" %}</option>
+        <option value="latam">{% trans "Лат. Америка" %}</option>
       </select>
     </div>
     <div>
-      <label style="font-size:10px;color:#64B5F6;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;display:block;margin-bottom:6px;">Тип доставки</label>
+      <label style="font-size:10px;color:#64B5F6;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;display:block;margin-bottom:6px;">{% trans "Тип доставки" %}</label>
       <select class="lg-select" id="typeFilter" onchange="currentType=this.value;renderPorts();">
-        <option value="all">Все типы</option>
-        <option value="sea">Морские порты</option>
-        <option value="air">Авиатерминалы</option>
-        <option value="rail">Ж/Д узлы</option>
+        <option value="all">{% trans "Все типы" %}</option>
+        <option value="sea">{% trans "Морские порты" %}</option>
+        <option value="air">{% trans "Авиатерминалы" %}</option>
+        <option value="rail">{% trans "Ж/Д узлы" %}</option>
       </select>
     </div>
   </div>
@@ -249,8 +250,8 @@
 
 {# ═══ TAB 2: Отслеживание ═══ #}
 <div class="lg-panel" id="panel-tracking">
-  <div class="lg-section-title">Отслеживание отгрузок</div>
-  <div class="lg-section-sub">Контроль по этапам доставки с картой маршрута</div>
+  <div class="lg-section-title">{% trans "Отслеживание отгрузок" %}</div>
+  <div class="lg-section-sub">{% trans "Контроль по этапам доставки с картой маршрута" %}</div>
 
   {# Tracking map #}
   <div id="trackingMap" style="height:260px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);margin-bottom:14px;background:#111;"></div>
@@ -259,123 +260,123 @@
   <div style="background:#1A1A1A;border-radius:12px;padding:16px 20px;border:1px solid rgba(255,255,255,0.04);margin-bottom:12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div>
-        <div style="font-size:14px;font-weight:700;color:#ECECEC;">ORD-3851 · Гидроцилиндр RE48786</div>
-        <div style="font-size:11px;color:#6A6A6A;margin-top:2px;">Шанхай → Владивосток → Москва · Море + Ж/Д · 4 позиции · $3 230</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "ORD-3851 · Гидроцилиндр RE48786" %}</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-top:2px;">{% trans "Шанхай → Владивосток → Москва · Море + Ж/Д · 4 позиции · $3 230" %}</div>
       </div>
-      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(100,181,246,0.1);color:#64B5F6;">В пути</span>
+      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(100,181,246,0.1);color:#64B5F6;">{% trans "В пути" %}</span>
     </div>
 
     <div class="lg-timeline">
       <div class="lg-tl-item">
-        <div class="lg-tl-date">12 мар</div>
+        <div class="lg-tl-date">{% trans "12 мар" %}</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--done"></div><div class="lg-tl-line lg-tl-line--done"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">Заказ подтверждён</div><div class="lg-tl-desc">Оплата получена, производство запущено</div></div>
-        <div class="lg-tl-status" style="color:#66BB6A;">Готово</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Заказ подтверждён" %}</div><div class="lg-tl-desc">{% trans "Оплата получена, производство запущено" %}</div></div>
+        <div class="lg-tl-status" style="color:#66BB6A;">{% trans "Готово" %}</div>
         <div class="lg-tl-duration">—</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">15 мар</div>
+        <div class="lg-tl-date">{% trans "15 мар" %}</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--done"></div><div class="lg-tl-line lg-tl-line--done"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">Производство завершено</div><div class="lg-tl-desc">Товар упакован, ОТК пройден, документы готовы</div></div>
-        <div class="lg-tl-status" style="color:#66BB6A;">Готово</div>
-        <div class="lg-tl-duration">3 дня</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Производство завершено" %}</div><div class="lg-tl-desc">{% trans "Товар упакован, ОТК пройден, документы готовы" %}</div></div>
+        <div class="lg-tl-status" style="color:#66BB6A;">{% trans "Готово" %}</div>
+        <div class="lg-tl-duration">{% trans "3 дня" %}</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">16 мар</div>
+        <div class="lg-tl-date">{% trans "16 мар" %}</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--done"></div><div class="lg-tl-line lg-tl-line--done"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">Отгрузка со склада</div><div class="lg-tl-desc">Контейнер MSKU-7284190 загружен, Bill of Lading оформлен</div></div>
-        <div class="lg-tl-status" style="color:#66BB6A;">Готово</div>
-        <div class="lg-tl-duration">1 день</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Отгрузка со склада" %}</div><div class="lg-tl-desc">{% trans "Контейнер MSKU-7284190 загружен, Bill of Lading оформлен" %}</div></div>
+        <div class="lg-tl-status" style="color:#66BB6A;">{% trans "Готово" %}</div>
+        <div class="lg-tl-duration">{% trans "1 день" %}</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">17 мар</div>
+        <div class="lg-tl-date">{% trans "17 мар" %}</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--done"></div><div class="lg-tl-line lg-tl-line--done"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">Порт отправления — Шанхай</div><div class="lg-tl-desc">Контейнер на борту MV Pacific Star. ETA Владивосток: 25 мар</div></div>
-        <div class="lg-tl-status" style="color:#66BB6A;">Готово</div>
-        <div class="lg-tl-duration">1 день</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Порт отправления — Шанхай" %}</div><div class="lg-tl-desc">{% trans "Контейнер на борту MV Pacific Star. ETA Владивосток: 25 мар" %}</div></div>
+        <div class="lg-tl-status" style="color:#66BB6A;">{% trans "Готово" %}</div>
+        <div class="lg-tl-duration">{% trans "1 день" %}</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">25 мар</div>
+        <div class="lg-tl-date">{% trans "25 мар" %}</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--active"></div><div class="lg-tl-line"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">Порт прибытия — Владивосток</div><div class="lg-tl-desc">Судно прибыло, выгрузка и таможенное оформление</div></div>
-        <div class="lg-tl-status" style="color:#64B5F6;">Сейчас</div>
-        <div class="lg-tl-duration">8 дней</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Порт прибытия — Владивосток" %}</div><div class="lg-tl-desc">{% trans "Судно прибыло, выгрузка и таможенное оформление" %}</div></div>
+        <div class="lg-tl-status" style="color:#64B5F6;">{% trans "Сейчас" %}</div>
+        <div class="lg-tl-duration">{% trans "8 дней" %}</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">~27 мар</div>
+        <div class="lg-tl-date">{% trans "~27 мар" %}</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--pending"></div><div class="lg-tl-line"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">Ж/Д перевозка → Москва</div><div class="lg-tl-desc">Контейнерный поезд Владивосток — Москва, ~10 дней</div></div>
-        <div class="lg-tl-status" style="color:#6A6A6A;">Ожидание</div>
-        <div class="lg-tl-duration">~10 дней</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Ж/Д перевозка → Москва" %}</div><div class="lg-tl-desc">{% trans "Контейнерный поезд Владивосток — Москва, ~10 дней" %}</div></div>
+        <div class="lg-tl-status" style="color:#6A6A6A;">{% trans "Ожидание" %}</div>
+        <div class="lg-tl-duration">{% trans "~10 дней" %}</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">~6 апр</div>
+        <div class="lg-tl-date">{% trans "~6 апр" %}</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--pending"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">Доставка получателю</div><div class="lg-tl-desc">Последняя миля, передача товара клиенту</div></div>
-        <div class="lg-tl-status" style="color:#6A6A6A;">Ожидание</div>
-        <div class="lg-tl-duration">~1 день</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Доставка получателю" %}</div><div class="lg-tl-desc">{% trans "Последняя миля, передача товара клиенту" %}</div></div>
+        <div class="lg-tl-status" style="color:#6A6A6A;">{% trans "Ожидание" %}</div>
+        <div class="lg-tl-duration">{% trans "~1 день" %}</div>
       </div>
     </div>
 
     <div style="background:#111;border-radius:8px;padding:12px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px;text-align:center;">
-      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">25 дней</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">Общий срок</div></div>
-      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">13/25</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">Прогресс</div></div>
-      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">$480</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">Доставка</div></div>
-      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">Море+Ж/Д</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">Маршрут</div></div>
-      <div><div style="font-size:14px;font-weight:700;color:#66BB6A;">В норме</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">SLA</div></div>
+      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "25 дней" %}</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">{% trans "Общий срок" %}</div></div>
+      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">13/25</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">{% trans "Прогресс" %}</div></div>
+      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">$480</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">{% trans "Доставка" %}</div></div>
+      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Море+Ж/Д" %}</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">{% trans "Маршрут" %}</div></div>
+      <div><div style="font-size:14px;font-weight:700;color:#66BB6A;">{% trans "В норме" %}</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">SLA</div></div>
     </div>
   </div>
 </div>
 
 {# ═══ TAB 3: Способы доставки ═══ #}
 <div class="lg-panel" id="panel-shipping">
-  <div class="lg-section-title">Способы доставки</div>
-  <div class="lg-section-sub">Доступные виды транспорта для отправки из Китая, Европы и по России</div>
+  <div class="lg-section-title">{% trans "Способы доставки" %}</div>
+  <div class="lg-section-sub">{% trans "Доступные виды транспорта для отправки из Китая, Европы и по России" %}</div>
 
   <div class="lg-modes">
     <div class="lg-mode selected" onclick="selectMode(this)">
       <div class="lg-mode-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 17H2a3 3 0 003 3h14a3 3 0 003-3z"/><path d="M2 17l2-9h16l2 9"/><circle cx="7" cy="13" r="1"/></svg></div>
-      <div class="lg-mode-name">Морем</div>
-      <div class="lg-mode-desc">Контейнерные перевозки FCL/LCL</div>
-      <div class="lg-mode-time">25-40 дней</div>
-      <div class="lg-mode-price">от $800 / контейнер</div>
+      <div class="lg-mode-name">{% trans "Морем" %}</div>
+      <div class="lg-mode-desc">{% trans "Контейнерные перевозки FCL/LCL" %}</div>
+      <div class="lg-mode-time">{% trans "25-40 дней" %}</div>
+      <div class="lg-mode-price">{% trans "от $800 / контейнер" %}</div>
     </div>
     <div class="lg-mode" onclick="selectMode(this)">
       <div class="lg-mode-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
-      <div class="lg-mode-name">Авиа</div>
-      <div class="lg-mode-desc">Грузовые и пассажирские рейсы</div>
-      <div class="lg-mode-time">3-7 дней</div>
-      <div class="lg-mode-price">от $4.50 / кг</div>
+      <div class="lg-mode-name">{% trans "Авиа" %}</div>
+      <div class="lg-mode-desc">{% trans "Грузовые и пассажирские рейсы" %}</div>
+      <div class="lg-mode-time">{% trans "3-7 дней" %}</div>
+      <div class="lg-mode-price">{% trans "от $4.50 / кг" %}</div>
     </div>
     <div class="lg-mode" onclick="selectMode(this)">
       <div class="lg-mode-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
-      <div class="lg-mode-name">Авто</div>
-      <div class="lg-mode-desc">Фуры, тенты, рефрижераторы</div>
-      <div class="lg-mode-time">7-14 дней</div>
-      <div class="lg-mode-price">от $1.20 / км</div>
+      <div class="lg-mode-name">{% trans "Авто" %}</div>
+      <div class="lg-mode-desc">{% trans "Фуры, тенты, рефрижераторы" %}</div>
+      <div class="lg-mode-time">{% trans "7-14 дней" %}</div>
+      <div class="lg-mode-price">{% trans "от $1.20 / км" %}</div>
     </div>
     <div class="lg-mode" onclick="selectMode(this)">
       <div class="lg-mode-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="8" width="20" height="8" rx="1"/><line x1="6" y1="8" x2="6" y2="16"/><line x1="10" y1="8" x2="10" y2="16"/><line x1="14" y1="8" x2="14" y2="16"/><line x1="18" y1="8" x2="18" y2="16"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></div>
-      <div class="lg-mode-name">Ж/Д</div>
-      <div class="lg-mode-desc">Контейнерные поезда, вагоны</div>
-      <div class="lg-mode-time">12-18 дней</div>
-      <div class="lg-mode-price">от $3 500 / контейнер</div>
+      <div class="lg-mode-name">{% trans "Ж/Д" %}</div>
+      <div class="lg-mode-desc">{% trans "Контейнерные поезда, вагоны" %}</div>
+      <div class="lg-mode-time">{% trans "12-18 дней" %}</div>
+      <div class="lg-mode-price">{% trans "от $3 500 / контейнер" %}</div>
     </div>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
     <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);">
-      <div style="font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:10px;">По России</div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:10px;">{% trans "По России" %}</div>
       <div style="font-size:12px;color:#8A8A8A;line-height:1.8;">
-        Москва, Санкт-Петербург, Екатеринбург, Новосибирск, Краснодар, Владивосток, Казань, Самара, Ростов-на-Дону, Нижний Новгород и все регионы РФ.
-        <br>Доставка до двери, до терминала, самовывоз со склада.
+        {% trans "Москва, Санкт-Петербург, Екатеринбург, Новосибирск, Краснодар, Владивосток, Казань, Самара, Ростов-на-Дону, Нижний Новгород и все регионы РФ." %}
+        <br>{% trans "Доставка до двери, до терминала, самовывоз со склада." %}
       </div>
     </div>
     <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);">
-      <div style="font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:10px;">По всему миру</div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:10px;">{% trans "По всему миру" %}</div>
       <div style="font-size:12px;color:#8A8A8A;line-height:1.8;">
-        Китай, Южная Корея, Япония, Турция, ОАЭ, Европа (Германия, Нидерланды, Италия), СНГ (Казахстан, Беларусь, Узбекистан), Юго-Восточная Азия.
-        <br>Мультимодальные маршруты, таможенное оформление под ключ.
+        {% trans "Китай, Южная Корея, Япония, Турция, ОАЭ, Европа (Германия, Нидерланды, Италия), СНГ (Казахстан, Беларусь, Узбекистан), Юго-Восточная Азия." %}
+        <br>{% trans "Мультимодальные маршруты, таможенное оформление под ключ." %}
       </div>
     </div>
   </div>
@@ -383,35 +384,35 @@
 
 {# ═══ TAB 4: Калькулятор ═══ #}
 <div class="lg-panel" id="panel-calculator">
-  <div class="lg-section-title">Калькулятор стоимости доставки</div>
-  <div class="lg-section-sub">Автоматический расчёт или ручной ввод параметров</div>
+  <div class="lg-section-title">{% trans "Калькулятор стоимости доставки" %}</div>
+  <div class="lg-section-sub">{% trans "Автоматический расчёт или ручной ввод параметров" %}</div>
 
   <div class="lg-calc">
     <div class="lg-calc-row">
-      <div class="lg-calc-field"><label>Откуда</label><select id="calcFrom"><option>Шанхай, Китай</option><option>Гуанчжоу, Китай</option><option>Пусан, Корея</option><option>Стамбул, Турция</option><option>Роттердам, Нидерланды</option><option>Дубай, ОАЭ</option></select></div>
-      <div class="lg-calc-field"><label>Куда</label><select id="calcTo"><option>Москва</option><option>Санкт-Петербург</option><option>Екатеринбург</option><option>Новосибирск</option><option>Владивосток</option><option>Краснодар</option><option>Казань</option></select></div>
-      <div class="lg-calc-field"><label>Способ доставки</label><select id="calcMode"><option>Море + Ж/Д</option><option>Море + Авто</option><option>Авиа</option><option>Ж/Д прямой</option><option>Авто прямой</option><option>Мультимодальный</option></select></div>
+      <div class="lg-calc-field"><label>{% trans "Откуда" %}</label><select id="calcFrom"><option>{% trans "Шанхай, Китай" %}</option><option>{% trans "Гуанчжоу, Китай" %}</option><option>{% trans "Пусан, Корея" %}</option><option>{% trans "Стамбул, Турция" %}</option><option>{% trans "Роттердам, Нидерланды" %}</option><option>{% trans "Дубай, ОАЭ" %}</option></select></div>
+      <div class="lg-calc-field"><label>{% trans "Куда" %}</label><select id="calcTo"><option>{% trans "Москва" %}</option><option>{% trans "Санкт-Петербург" %}</option><option>{% trans "Екатеринбург" %}</option><option>{% trans "Новосибирск" %}</option><option>{% trans "Владивосток" %}</option><option>{% trans "Краснодар" %}</option><option>{% trans "Казань" %}</option></select></div>
+      <div class="lg-calc-field"><label>{% trans "Способ доставки" %}</label><select id="calcMode"><option>{% trans "Море + Ж/Д" %}</option><option>{% trans "Море + Авто" %}</option><option>{% trans "Авиа" %}</option><option>{% trans "Ж/Д прямой" %}</option><option>{% trans "Авто прямой" %}</option><option>{% trans "Мультимодальный" %}</option></select></div>
     </div>
     <div class="lg-calc-row">
-      <div class="lg-calc-field"><label>Вес (кг)</label><input type="number" value="450" id="calcWeight" onchange="calcCost()"/></div>
-      <div class="lg-calc-field"><label>Объём (м³)</label><input type="number" value="2.4" step="0.1" id="calcVolume" onchange="calcCost()"/></div>
-      <div class="lg-calc-field"><label>Кол-во мест</label><input type="number" value="4" id="calcPlaces" onchange="calcCost()"/></div>
+      <div class="lg-calc-field"><label>{% trans "Вес (кг)" %}</label><input type="number" value="450" id="calcWeight" onchange="calcCost()"/></div>
+      <div class="lg-calc-field"><label>{% trans "Объём (м³)" %}</label><input type="number" value="2.4" step="0.1" id="calcVolume" onchange="calcCost()"/></div>
+      <div class="lg-calc-field"><label>{% trans "Кол-во мест" %}</label><input type="number" value="4" id="calcPlaces" onchange="calcCost()"/></div>
     </div>
     <div class="lg-calc-row">
-      <div class="lg-calc-field"><label>Стоимость товара ($)</label><input type="number" value="12500" id="calcValue" onchange="calcCost()"/></div>
-      <div class="lg-calc-field"><label>Страхование</label><select id="calcInsurance" onchange="calcCost()"><option value="yes">Да (0.3% от стоимости)</option><option value="no">Нет</option></select></div>
-      <div class="lg-calc-field"><label>Таможенное оформление</label><select id="calcCustoms" onchange="calcCost()"><option value="full">Под ключ</option><option value="self">Самостоятельно</option></select></div>
+      <div class="lg-calc-field"><label>{% trans "Стоимость товара ($)" %}</label><input type="number" value="12500" id="calcValue" onchange="calcCost()"/></div>
+      <div class="lg-calc-field"><label>{% trans "Страхование" %}</label><select id="calcInsurance" onchange="calcCost()"><option value="yes">{% trans "Да (0.3% от стоимости)" %}</option><option value="no">{% trans "Нет" %}</option></select></div>
+      <div class="lg-calc-field"><label>{% trans "Таможенное оформление" %}</label><select id="calcCustoms" onchange="calcCost()"><option value="full">{% trans "Под ключ" %}</option><option value="self">{% trans "Самостоятельно" %}</option></select></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px;">
-      <button class="lg-btn lg-btn--primary" onclick="calcCost()">Рассчитать</button>
-      <button class="lg-btn lg-btn--secondary" onclick="requestManualCalc(this)">Ручной расчёт менеджером</button>
+      <button class="lg-btn lg-btn--primary" onclick="calcCost()">{% trans "Рассчитать" %}</button>
+      <button class="lg-btn lg-btn--secondary" onclick="requestManualCalc(this)">{% trans "Ручной расчёт менеджером" %}</button>
     </div>
 
     <div class="lg-calc-result" id="calcResult">
-      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resDelivery">$480</div><div class="lg-calc-res-label">Доставка</div></div>
-      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resCustoms">$320</div><div class="lg-calc-res-label">Таможня</div></div>
-      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resInsurance">$37</div><div class="lg-calc-res-label">Страховка</div></div>
-      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resTotal">$837</div><div class="lg-calc-res-label">Итого</div></div>
+      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resDelivery">$480</div><div class="lg-calc-res-label">{% trans "Доставка" %}</div></div>
+      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resCustoms">$320</div><div class="lg-calc-res-label">{% trans "Таможня" %}</div></div>
+      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resInsurance">$37</div><div class="lg-calc-res-label">{% trans "Страховка" %}</div></div>
+      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resTotal">$837</div><div class="lg-calc-res-label">{% trans "Итого" %}</div></div>
     </div>
   </div>
 </div>
@@ -419,45 +420,45 @@
 {# ═══ TAB 5: Переторжка на логистику ═══ #}
 <div class="lg-panel" id="panel-auction">
   <div style="margin-bottom:14px;">
-    <div class="lg-section-title">Аукцион на логистику</div>
-    <div class="lg-section-sub">Логистические компании предлагают ставки на ваши отгрузки. Выберите лучшее предложение</div>
+    <div class="lg-section-title">{% trans "Аукцион на логистику" %}</div>
+    <div class="lg-section-sub">{% trans "Логистические компании предлагают ставки на ваши отгрузки. Выберите лучшее предложение" %}</div>
   </div>
 
   {# Auction 1 #}
   <div class="lg-auction-card">
     <div class="lg-auction-head">
       <div>
-        <div class="lg-auction-route">Шанхай → Москва</div>
-        <div class="lg-auction-meta">ORD-3855 · 2 контейнера 20' · 8.4 т · Запчасти для спецтехники</div>
+        <div class="lg-auction-route">{% trans "Шанхай → Москва" %}</div>
+        <div class="lg-auction-meta">{% trans "ORD-3855 · 2 контейнера 20' · 8.4 т · Запчасти для спецтехники" %}</div>
       </div>
-      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#ECECEC;">Торги открыты</span>
+      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#ECECEC;">{% trans "Торги открыты" %}</span>
     </div>
     <table class="lg-auction-table">
-      <thead><tr><th>Перевозчик</th><th>Маршрут</th><th>Срок</th><th>Цена</th><th>Статус</th><th></th></tr></thead>
+      <thead><tr><th>{% trans "Перевозчик" %}</th><th>{% trans "Маршрут" %}</th><th>{% trans "Срок" %}</th><th>{% trans "Цена" %}</th><th>{% trans "Статус" %}</th><th></th></tr></thead>
       <tbody>
         <tr>
-          <td><span class="lg-auction-num">#1</span>Перевозчик #7291</td>
-          <td style="color:#8A8A8A;">Море + Ж/Д через Владивосток</td>
-          <td>28 дней</td>
+          <td><span class="lg-auction-num">#1</span>{% trans "Перевозчик #7291" %}</td>
+          <td style="color:#8A8A8A;">{% trans "Море + Ж/Д через Владивосток" %}</td>
+          <td>{% trans "28 дней" %}</td>
           <td style="font-weight:600;">$1 840</td>
-          <td><span style="font-size:11px;color:#8A8A8A;">Ожидает ответа</span></td>
-          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">Принять</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">Встречная</button></td>
+          <td><span style="font-size:11px;color:#8A8A8A;">{% trans "Ожидает ответа" %}</span></td>
+          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">{% trans "Принять" %}</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">{% trans "Встречная" %}</button></td>
         </tr>
         <tr>
-          <td><span class="lg-auction-num">#2</span>Перевозчик #5034</td>
-          <td style="color:#8A8A8A;">Ж/Д прямой через Забайкальск</td>
-          <td>18 дней</td>
+          <td><span class="lg-auction-num">#2</span>{% trans "Перевозчик #5034" %}</td>
+          <td style="color:#8A8A8A;">{% trans "Ж/Д прямой через Забайкальск" %}</td>
+          <td>{% trans "18 дней" %}</td>
           <td style="font-weight:600;">$2 280</td>
-          <td><span style="font-size:11px;color:#8A8A8A;">Ожидает ответа</span></td>
-          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">Принять</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">Встречная</button></td>
+          <td><span style="font-size:11px;color:#8A8A8A;">{% trans "Ожидает ответа" %}</span></td>
+          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">{% trans "Принять" %}</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">{% trans "Встречная" %}</button></td>
         </tr>
         <tr>
-          <td><span class="lg-auction-num">#3</span>Перевозчик #8817</td>
-          <td style="color:#8A8A8A;">Авиа PEK→SVO + авто</td>
-          <td>5 дней</td>
+          <td><span class="lg-auction-num">#3</span>{% trans "Перевозчик #8817" %}</td>
+          <td style="color:#8A8A8A;">{% trans "Авиа PEK→SVO + авто" %}</td>
+          <td>{% trans "5 дней" %}</td>
           <td style="font-weight:600;">$4 120</td>
-          <td><span style="font-size:11px;color:#8A8A8A;">Ожидает ответа</span></td>
-          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">Принять</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">Встречная</button></td>
+          <td><span style="font-size:11px;color:#8A8A8A;">{% trans "Ожидает ответа" %}</span></td>
+          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">{% trans "Принять" %}</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">{% trans "Встречная" %}</button></td>
         </tr>
       </tbody>
     </table>
@@ -467,27 +468,27 @@
   <div class="lg-auction-card">
     <div class="lg-auction-head">
       <div>
-        <div class="lg-auction-route">Стамбул → Екатеринбург</div>
-        <div class="lg-auction-meta">ORD-3847 · 1 паллета · 1.2 т · Электрооборудование</div>
+        <div class="lg-auction-route">{% trans "Стамбул → Екатеринбург" %}</div>
+        <div class="lg-auction-meta">{% trans "ORD-3847 · 1 паллета · 1.2 т · Электрооборудование" %}</div>
       </div>
-      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#ECECEC;">Согласовано</span>
+      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#ECECEC;">{% trans "Согласовано" %}</span>
     </div>
     <table class="lg-auction-table">
-      <thead><tr><th>Перевозчик</th><th>Маршрут</th><th>Срок</th><th>Цена</th><th>Статус</th></tr></thead>
+      <thead><tr><th>{% trans "Перевозчик" %}</th><th>{% trans "Маршрут" %}</th><th>{% trans "Срок" %}</th><th>{% trans "Цена" %}</th><th>{% trans "Статус" %}</th></tr></thead>
       <tbody>
         <tr>
-          <td><span class="lg-auction-num">#1</span>Перевозчик #4102</td>
-          <td style="color:#8A8A8A;">Авто IST→EKB через Грузию</td>
-          <td>12 дней</td>
+          <td><span class="lg-auction-num">#1</span>{% trans "Перевозчик #4102" %}</td>
+          <td style="color:#8A8A8A;">{% trans "Авто IST→EKB через Грузию" %}</td>
+          <td>{% trans "12 дней" %}</td>
           <td style="font-weight:600;">$920</td>
-          <td><span style="font-size:11px;color:#66BB6A;">● Принято</span></td>
+          <td><span style="font-size:11px;color:#66BB6A;">{% trans "● Принято" %}</span></td>
         </tr>
       </tbody>
     </table>
   </div>
 
   <div style="background:rgba(255,255,255,0.02);border-radius:10px;padding:10px 14px;font-size:12px;color:#6A6A6A;line-height:1.6;margin-top:8px;">
-    Перевозчики обезличены — вы видите только номер. Платформа гарантирует проверку всех логистических компаний. Выбор по цене, сроку и маршруту.
+    {% trans "Перевозчики обезличены — вы видите только номер. Платформа гарантирует проверку всех логистических компаний. Выбор по цене, сроку и маршруту." %}
   </div>
 </div>
 
@@ -509,255 +510,255 @@ function selectMode(el) {
 // ── Ports database ──
 const ports = [
   // ══ РОССИЯ ══
-  {name:'Владивосток (ВМТП)',country:'ru',type:'sea',desc:'Тихоокеанское направление · Контейнеры, генгруз · 700K TEU'},
-  {name:'Новороссийск (НМТП)',country:'ru',type:'sea',desc:'Черноморское · Контейнеры, наливные · Крупнейший в РФ'},
-  {name:'Санкт-Петербург (БПК)',country:'ru',type:'sea',desc:'Балтика · Контейнеры, ro-ro · 2M TEU/год'},
-  {name:'Восточный порт (Находка)',country:'ru',type:'sea',desc:'Уголь, контейнеры · Тихоокеанское направление'},
-  {name:'Калининград',country:'ru',type:'sea',desc:'Балтика · Контейнеры, генгруз · Эксклав'},
-  {name:'Мурманск',country:'ru',type:'sea',desc:'Северный морской путь · Наливные · Незамерзающий'},
-  {name:'Астрахань',country:'ru',type:'sea',desc:'Каспийское море · Генгруз · Транзит Иран/Азербайджан'},
-  {name:'Тамань (ОТЭКО)',country:'ru',type:'sea',desc:'Черное море · Навал, наливные · Новый терминал'},
-  {name:'Ванино',country:'ru',type:'sea',desc:'Хабаровский край · Уголь, лес · Дальний Восток'},
-  {name:'Усть-Луга',country:'ru',type:'sea',desc:'Балтика · Контейнеры, ro-ro, наливные · 100M т/год'},
-  {name:'Махачкала',country:'ru',type:'sea',desc:'Каспий · Генгруз, нефть · Транзит в Иран'},
-  {name:'Москва Шереметьево (SVO)',country:'ru',type:'air',desc:'Грузовой SVO Cargo · 300K т/год'},
-  {name:'Москва Домодедово (DME)',country:'ru',type:'air',desc:'Moscow Cargo · 120K т/год'},
-  {name:'Москва Внуково (VKO)',country:'ru',type:'air',desc:'Почтовые и экспресс-грузы'},
-  {name:'Новосибирск Толмачёво (OVB)',country:'ru',type:'air',desc:'Крупнейший грузовой Сибири · 40K т/год'},
-  {name:'Екатеринбург Кольцово (SVX)',country:'ru',type:'air',desc:'Урал · 25K т/год'},
-  {name:'Красноярск Емельяново (KJA)',country:'ru',type:'air',desc:'Транзит Азия-Европа · 15K т/год'},
-  {name:'Хабаровск Новый (KHV)',country:'ru',type:'air',desc:'Дальний Восток · Грузовой терминал'},
-  {name:'Казань (KZN)',country:'ru',type:'air',desc:'Поволжье · 8K т/год'},
-  {name:'Краснодар Пашковский (KRR)',country:'ru',type:'air',desc:'Юг России · Грузовой терминал'},
-  {name:'Минеральные Воды (MRV)',country:'ru',type:'air',desc:'Северный Кавказ · Грузовой'},
-  {name:'Забайкальск',country:'ru',type:'rail',desc:'Ж/Д переход Россия-Китай · Крупнейший сухопутный'},
-  {name:'Гродеково',country:'ru',type:'rail',desc:'Приморье-Китай · Контейнеры'},
-  {name:'Наушки',country:'ru',type:'rail',desc:'Россия-Монголия · Транзит Китай'},
-  {name:'Москва (Ворсино ТЛЦ)',country:'ru',type:'rail',desc:'Контейнерный хаб · Китай-Европа'},
-  {name:'Москва (Белый Раст ТЛЦ)',country:'ru',type:'rail',desc:'Мультимодальный · Почта России'},
-  {name:'Екатеринбург (Уральский ТЛЦ)',country:'ru',type:'rail',desc:'Урал · Контейнерный терминал'},
-  {name:'Новосибирск (Клещиха)',country:'ru',type:'rail',desc:'Сибирь · Контейнеры Транссиб'},
-  {name:'Калининград (Дзержинская-Новая)',country:'ru',type:'rail',desc:'Эксклав · Транзит ЕС'},
-  {name:'Владивосток (Первая Речка)',country:'ru',type:'rail',desc:'Приморье · Контейнерный терминал'},
+  {name:'{% trans "Владивосток (ВМТП)" %}',country:'ru',type:'sea',desc:'{% trans "Тихоокеанское направление · Контейнеры, генгруз · 700K TEU" %}'},
+  {name:'{% trans "Новороссийск (НМТП)" %}',country:'ru',type:'sea',desc:'{% trans "Черноморское · Контейнеры, наливные · Крупнейший в РФ" %}'},
+  {name:'{% trans "Санкт-Петербург (БПК)" %}',country:'ru',type:'sea',desc:'{% trans "Балтика · Контейнеры, ro-ro · 2M TEU/год" %}'},
+  {name:'{% trans "Восточный порт (Находка)" %}',country:'ru',type:'sea',desc:'{% trans "Уголь, контейнеры · Тихоокеанское направление" %}'},
+  {name:'{% trans "Калининград" %}',country:'ru',type:'sea',desc:'{% trans "Балтика · Контейнеры, генгруз · Эксклав" %}'},
+  {name:'{% trans "Мурманск" %}',country:'ru',type:'sea',desc:'{% trans "Северный морской путь · Наливные · Незамерзающий" %}'},
+  {name:'{% trans "Астрахань" %}',country:'ru',type:'sea',desc:'{% trans "Каспийское море · Генгруз · Транзит Иран/Азербайджан" %}'},
+  {name:'{% trans "Тамань (ОТЭКО)" %}',country:'ru',type:'sea',desc:'{% trans "Черное море · Навал, наливные · Новый терминал" %}'},
+  {name:'{% trans "Ванино" %}',country:'ru',type:'sea',desc:'{% trans "Хабаровский край · Уголь, лес · Дальний Восток" %}'},
+  {name:'{% trans "Усть-Луга" %}',country:'ru',type:'sea',desc:'{% trans "Балтика · Контейнеры, ro-ro, наливные · 100M т/год" %}'},
+  {name:'{% trans "Махачкала" %}',country:'ru',type:'sea',desc:'{% trans "Каспий · Генгруз, нефть · Транзит в Иран" %}'},
+  {name:'{% trans "Москва Шереметьево (SVO)" %}',country:'ru',type:'air',desc:'{% trans "Грузовой SVO Cargo · 300K т/год" %}'},
+  {name:'{% trans "Москва Домодедово (DME)" %}',country:'ru',type:'air',desc:'{% trans "Moscow Cargo · 120K т/год" %}'},
+  {name:'{% trans "Москва Внуково (VKO)" %}',country:'ru',type:'air',desc:'{% trans "Почтовые и экспресс-грузы" %}'},
+  {name:'{% trans "Новосибирск Толмачёво (OVB)" %}',country:'ru',type:'air',desc:'{% trans "Крупнейший грузовой Сибири · 40K т/год" %}'},
+  {name:'{% trans "Екатеринбург Кольцово (SVX)" %}',country:'ru',type:'air',desc:'{% trans "Урал · 25K т/год" %}'},
+  {name:'{% trans "Красноярск Емельяново (KJA)" %}',country:'ru',type:'air',desc:'{% trans "Транзит Азия-Европа · 15K т/год" %}'},
+  {name:'{% trans "Хабаровск Новый (KHV)" %}',country:'ru',type:'air',desc:'{% trans "Дальний Восток · Грузовой терминал" %}'},
+  {name:'{% trans "Казань (KZN)" %}',country:'ru',type:'air',desc:'{% trans "Поволжье · 8K т/год" %}'},
+  {name:'{% trans "Краснодар Пашковский (KRR)" %}',country:'ru',type:'air',desc:'{% trans "Юг России · Грузовой терминал" %}'},
+  {name:'{% trans "Минеральные Воды (MRV)" %}',country:'ru',type:'air',desc:'{% trans "Северный Кавказ · Грузовой" %}'},
+  {name:'{% trans "Забайкальск" %}',country:'ru',type:'rail',desc:'{% trans "Ж/Д переход Россия-Китай · Крупнейший сухопутный" %}'},
+  {name:'{% trans "Гродеково" %}',country:'ru',type:'rail',desc:'{% trans "Приморье-Китай · Контейнеры" %}'},
+  {name:'{% trans "Наушки" %}',country:'ru',type:'rail',desc:'{% trans "Россия-Монголия · Транзит Китай" %}'},
+  {name:'{% trans "Москва (Ворсино ТЛЦ)" %}',country:'ru',type:'rail',desc:'{% trans "Контейнерный хаб · Китай-Европа" %}'},
+  {name:'{% trans "Москва (Белый Раст ТЛЦ)" %}',country:'ru',type:'rail',desc:'{% trans "Мультимодальный · Почта России" %}'},
+  {name:'{% trans "Екатеринбург (Уральский ТЛЦ)" %}',country:'ru',type:'rail',desc:'{% trans "Урал · Контейнерный терминал" %}'},
+  {name:'{% trans "Новосибирск (Клещиха)" %}',country:'ru',type:'rail',desc:'{% trans "Сибирь · Контейнеры Транссиб" %}'},
+  {name:'{% trans "Калининград (Дзержинская-Новая)" %}',country:'ru',type:'rail',desc:'{% trans "Эксклав · Транзит ЕС" %}'},
+  {name:'{% trans "Владивосток (Первая Речка)" %}',country:'ru',type:'rail',desc:'{% trans "Приморье · Контейнерный терминал" %}'},
   // ══ КИТАЙ ══
-  {name:'Shanghai / Шанхай (Yangshan)',country:'cn',type:'sea',desc:'#1 порт мира · 47M TEU/год'},
-  {name:'Shenzhen / Шэньчжэнь (Yantian)',country:'cn',type:'sea',desc:'Южный Китай · 14M TEU · Электроника'},
-  {name:'Ningbo-Zhoushan / Нинбо-Чжоушань',country:'cn',type:'sea',desc:'#2 порт мира · 33M TEU'},
-  {name:'Guangzhou / Гуанчжоу (Nansha)',country:'cn',type:'sea',desc:'Южный · 24M TEU · Промышленный'},
-  {name:'Qingdao / Циндао',country:'cn',type:'sea',desc:'Северный · 25M TEU · Транзит Япония-Корея'},
-  {name:'Tianjin / Тяньцзинь',country:'cn',type:'sea',desc:'Порт Пекина · 21M TEU'},
-  {name:'Dalian / Далянь',country:'cn',type:'sea',desc:'Ляодун · 8M TEU · Ближайший к РФ'},
-  {name:'Xiamen / Сямынь',country:'cn',type:'sea',desc:'Фуцзянь · 12M TEU'},
-  {name:'Zhuhai / Чжухай',country:'cn',type:'sea',desc:'Дельта Жемчужной реки · 4M TEU'},
-  {name:'Lianyungang / Ляньюньган',country:'cn',type:'sea',desc:'Цзянсу · Шёлковый путь (морской) · 5M TEU'},
-  {name:'Fuzhou / Фучжоу',country:'cn',type:'sea',desc:'Фуцзянь · 3.5M TEU · Генгруз'},
-  {name:'Yingkou / Инькоу',country:'cn',type:'sea',desc:'Ляонин · 2.5M TEU · Промышленный'},
-  {name:'Rizhao / Жичжао',country:'cn',type:'sea',desc:'Шаньдун · Руда, уголь · 450M т/год'},
-  {name:'Beijing PEK (Daxing PKX)',country:'cn',type:'air',desc:'Столичный хаб · 1.8M т/год'},
-  {name:'Shanghai PVG (Pudong)',country:'cn',type:'air',desc:'#3 грузовой мира · 3.6M т/год'},
-  {name:'Guangzhou CAN (Baiyun)',country:'cn',type:'air',desc:'Южный · 2M т/год · DHL/FedEx'},
-  {name:'Shenzhen SZX',country:'cn',type:'air',desc:'Электроника · 1.4M т/год'},
-  {name:'Chengdu CTU (Tianfu)',country:'cn',type:'air',desc:'Западный хаб · Авиа в Европу'},
-  {name:'Hangzhou HGH',country:'cn',type:'air',desc:'Alibaba Cainiao Hub · 800K т/год'},
-  {name:'Zhengzhou CGO',country:'cn',type:'air',desc:'Foxconn хаб · iPhone · 600K т/год'},
-  {name:'Маньчжурия (Manzhouli)',country:'cn',type:'rail',desc:'Переход Китай-Россия · Транссиб'},
-  {name:'Эрлянь (Erenhot)',country:'cn',type:'rail',desc:'Переход Китай-Монголия'},
-  {name:'Хоргос (Khorgos)',country:'cn',type:'rail',desc:'Переход Китай-Казахстан · Шёлковый путь'},
-  {name:'Алашанькоу (Alashankou)',country:'cn',type:'rail',desc:'Переход Китай-Казахстан · Контейнерные поезда'},
-  {name:'Чунцин (Chongqing)',country:'cn',type:'rail',desc:'Ю-З Китай · Хаб Китай-Европа · CRE поезда'},
-  {name:'Сиань (Xi\'an)',country:'cn',type:'rail',desc:'Центр · Хаб Шёлкового пути · 4500 поездов/год'},
-  {name:'Чэнду (Chengdu)',country:'cn',type:'rail',desc:'Ю-З · Европейское направление · 2000 поездов/год'},
-  {name:'Иу (Yiwu)',country:'cn',type:'rail',desc:'Чжэцзян · Товары широкого потребления · Испания/UK'},
-  {name:'Dongguan / Дунгуань',country:'cn',type:'rail',desc:'Гуандун · Промышленный хаб · Контейнеры'},
+  {name:'{% trans "Shanghai / Шанхай (Yangshan)" %}',country:'cn',type:'sea',desc:'{% trans "#1 порт мира · 47M TEU/год" %}'},
+  {name:'{% trans "Shenzhen / Шэньчжэнь (Yantian)" %}',country:'cn',type:'sea',desc:'{% trans "Южный Китай · 14M TEU · Электроника" %}'},
+  {name:'{% trans "Ningbo-Zhoushan / Нинбо-Чжоушань" %}',country:'cn',type:'sea',desc:'{% trans "#2 порт мира · 33M TEU" %}'},
+  {name:'{% trans "Guangzhou / Гуанчжоу (Nansha)" %}',country:'cn',type:'sea',desc:'{% trans "Южный · 24M TEU · Промышленный" %}'},
+  {name:'{% trans "Qingdao / Циндао" %}',country:'cn',type:'sea',desc:'{% trans "Северный · 25M TEU · Транзит Япония-Корея" %}'},
+  {name:'{% trans "Tianjin / Тяньцзинь" %}',country:'cn',type:'sea',desc:'{% trans "Порт Пекина · 21M TEU" %}'},
+  {name:'{% trans "Dalian / Далянь" %}',country:'cn',type:'sea',desc:'{% trans "Ляодун · 8M TEU · Ближайший к РФ" %}'},
+  {name:'{% trans "Xiamen / Сямынь" %}',country:'cn',type:'sea',desc:'{% trans "Фуцзянь · 12M TEU" %}'},
+  {name:'{% trans "Zhuhai / Чжухай" %}',country:'cn',type:'sea',desc:'{% trans "Дельта Жемчужной реки · 4M TEU" %}'},
+  {name:'{% trans "Lianyungang / Ляньюньган" %}',country:'cn',type:'sea',desc:'{% trans "Цзянсу · Шёлковый путь (морской) · 5M TEU" %}'},
+  {name:'{% trans "Fuzhou / Фучжоу" %}',country:'cn',type:'sea',desc:'{% trans "Фуцзянь · 3.5M TEU · Генгруз" %}'},
+  {name:'{% trans "Yingkou / Инькоу" %}',country:'cn',type:'sea',desc:'{% trans "Ляонин · 2.5M TEU · Промышленный" %}'},
+  {name:'{% trans "Rizhao / Жичжао" %}',country:'cn',type:'sea',desc:'{% trans "Шаньдун · Руда, уголь · 450M т/год" %}'},
+  {name:'Beijing PEK (Daxing PKX)',country:'cn',type:'air',desc:'{% trans "Столичный хаб · 1.8M т/год" %}'},
+  {name:'Shanghai PVG (Pudong)',country:'cn',type:'air',desc:'{% trans "#3 грузовой мира · 3.6M т/год" %}'},
+  {name:'Guangzhou CAN (Baiyun)',country:'cn',type:'air',desc:'{% trans "Южный · 2M т/год · DHL/FedEx" %}'},
+  {name:'Shenzhen SZX',country:'cn',type:'air',desc:'{% trans "Электроника · 1.4M т/год" %}'},
+  {name:'Chengdu CTU (Tianfu)',country:'cn',type:'air',desc:'{% trans "Западный хаб · Авиа в Европу" %}'},
+  {name:'Hangzhou HGH',country:'cn',type:'air',desc:'{% trans "Alibaba Cainiao Hub · 800K т/год" %}'},
+  {name:'Zhengzhou CGO',country:'cn',type:'air',desc:'{% trans "Foxconn хаб · iPhone · 600K т/год" %}'},
+  {name:'{% trans "Маньчжурия (Manzhouli)" %}',country:'cn',type:'rail',desc:'{% trans "Переход Китай-Россия · Транссиб" %}'},
+  {name:'{% trans "Эрлянь (Erenhot)" %}',country:'cn',type:'rail',desc:'{% trans "Переход Китай-Монголия" %}'},
+  {name:'{% trans "Хоргос (Khorgos)" %}',country:'cn',type:'rail',desc:'{% trans "Переход Китай-Казахстан · Шёлковый путь" %}'},
+  {name:'{% trans "Алашанькоу (Alashankou)" %}',country:'cn',type:'rail',desc:'{% trans "Переход Китай-Казахстан · Контейнерные поезда" %}'},
+  {name:'{% trans "Чунцин (Chongqing)" %}',country:'cn',type:'rail',desc:'{% trans "Ю-З Китай · Хаб Китай-Европа · CRE поезда" %}'},
+  {name:'Сиань (Xi\'an)',country:'cn',type:'rail',desc:'{% trans "Центр · Хаб Шёлкового пути · 4500 поездов/год" %}'},
+  {name:'{% trans "Чэнду (Chengdu)" %}',country:'cn',type:'rail',desc:'{% trans "Ю-З · Европейское направление · 2000 поездов/год" %}'},
+  {name:'{% trans "Иу (Yiwu)" %}',country:'cn',type:'rail',desc:'{% trans "Чжэцзян · Товары широкого потребления · Испания/UK" %}'},
+  {name:'{% trans "Dongguan / Дунгуань" %}',country:'cn',type:'rail',desc:'{% trans "Гуандун · Промышленный хаб · Контейнеры" %}'},
   // ══ ОАЭ ══
-  {name:'Дубай (Jebel Ali)',country:'ae',type:'sea',desc:'Крупнейший на Ближнем Востоке · 14M TEU'},
-  {name:'Абу-Даби (Khalifa Port)',country:'ae',type:'sea',desc:'Автоматизированный · 5M TEU'},
-  {name:'Шарджа (Port Khalid)',country:'ae',type:'sea',desc:'Генгруз, контейнеры'},
-  {name:'Фуджейра',country:'ae',type:'sea',desc:'Индийский океан · Нефть, бункеровка'},
-  {name:'Рас-эль-Хайма (Saqr Port)',country:'ae',type:'sea',desc:'Навалочные · Цемент, щебень'},
-  {name:'Дубай DXB (Al Maktoum DWC)',country:'ae',type:'air',desc:'Крупнейший грузовой мира · 2.7M т · Emirates SkyCargo'},
-  {name:'Абу-Даби AUH',country:'ae',type:'air',desc:'Etihad Cargo · 1M т/год'},
-  {name:'Шарджа SHJ',country:'ae',type:'air',desc:'Грузовой · Air Arabia · 200K т/год'},
-  {name:'Этихад Рейл',country:'ae',type:'rail',desc:'ОАЭ · Новая ж/д сеть · Грузовой коридор GCC'},
+  {name:'{% trans "Дубай (Jebel Ali)" %}',country:'ae',type:'sea',desc:'{% trans "Крупнейший на Ближнем Востоке · 14M TEU" %}'},
+  {name:'{% trans "Абу-Даби (Khalifa Port)" %}',country:'ae',type:'sea',desc:'{% trans "Автоматизированный · 5M TEU" %}'},
+  {name:'{% trans "Шарджа (Port Khalid)" %}',country:'ae',type:'sea',desc:'{% trans "Генгруз, контейнеры" %}'},
+  {name:'{% trans "Фуджейра" %}',country:'ae',type:'sea',desc:'{% trans "Индийский океан · Нефть, бункеровка" %}'},
+  {name:'{% trans "Рас-эль-Хайма (Saqr Port)" %}',country:'ae',type:'sea',desc:'{% trans "Навалочные · Цемент, щебень" %}'},
+  {name:'{% trans "Дубай DXB (Al Maktoum DWC)" %}',country:'ae',type:'air',desc:'{% trans "Крупнейший грузовой мира · 2.7M т · Emirates SkyCargo" %}'},
+  {name:'{% trans "Абу-Даби AUH" %}',country:'ae',type:'air',desc:'{% trans "Etihad Cargo · 1M т/год" %}'},
+  {name:'{% trans "Шарджа SHJ" %}',country:'ae',type:'air',desc:'{% trans "Грузовой · Air Arabia · 200K т/год" %}'},
+  {name:'{% trans "Этихад Рейл" %}',country:'ae',type:'rail',desc:'{% trans "ОАЭ · Новая ж/д сеть · Грузовой коридор GCC" %}'},
   // ══ ТУРЦИЯ ══
-  {name:'Стамбул (Ambarli)',country:'tr',type:'sea',desc:'Крупнейший · 4M TEU · Мраморное море'},
-  {name:'Мерсин (MerPort)',country:'tr',type:'sea',desc:'Средиземное · 2M TEU'},
-  {name:'Измир (Alsancak)',country:'tr',type:'sea',desc:'Эгейское · 800K TEU'},
-  {name:'Трабзон',country:'tr',type:'sea',desc:'Черное море · Генгруз · Ближайший к Кавказу'},
-  {name:'Искендерун',country:'tr',type:'sea',desc:'Юго-восток · Сталь, промышленные грузы'},
-  {name:'Самсун',country:'tr',type:'sea',desc:'Черное море · Генгруз · Центральная Анатолия'},
-  {name:'Гемлик',country:'tr',type:'sea',desc:'Мраморное море · Автозапчасти · 400K TEU'},
-  {name:'Анталья',country:'tr',type:'sea',desc:'Средиземное · Генгруз, туристическое снабжение'},
-  {name:'Стамбул IST',country:'tr',type:'air',desc:'Грузовой хаб · 2.5M т · Turkish Cargo'},
-  {name:'Анталья AYT',country:'tr',type:'air',desc:'Чартерные грузы'},
-  {name:'Анкара ESB',country:'tr',type:'air',desc:'Столичный · 50K т/год'},
-  {name:'Измир ADB',country:'tr',type:'air',desc:'Эгейский хаб · 80K т/год'},
-  {name:'Капыкуле',country:'tr',type:'rail',desc:'Переход Турция-Болгария · Транзит ЕС'},
-  {name:'Карс',country:'tr',type:'rail',desc:'Баку-Тбилиси-Карс · Транзит Кавказ'},
-  {name:'Мерсин (ТЛЦ)',country:'tr',type:'rail',desc:'Контейнерный терминал · Средиземноморский хаб'},
+  {name:'{% trans "Стамбул (Ambarli)" %}',country:'tr',type:'sea',desc:'{% trans "Крупнейший · 4M TEU · Мраморное море" %}'},
+  {name:'{% trans "Мерсин (MerPort)" %}',country:'tr',type:'sea',desc:'{% trans "Средиземное · 2M TEU" %}'},
+  {name:'{% trans "Измир (Alsancak)" %}',country:'tr',type:'sea',desc:'{% trans "Эгейское · 800K TEU" %}'},
+  {name:'{% trans "Трабзон" %}',country:'tr',type:'sea',desc:'{% trans "Черное море · Генгруз · Ближайший к Кавказу" %}'},
+  {name:'{% trans "Искендерун" %}',country:'tr',type:'sea',desc:'{% trans "Юго-восток · Сталь, промышленные грузы" %}'},
+  {name:'{% trans "Самсун" %}',country:'tr',type:'sea',desc:'{% trans "Черное море · Генгруз · Центральная Анатолия" %}'},
+  {name:'{% trans "Гемлик" %}',country:'tr',type:'sea',desc:'{% trans "Мраморное море · Автозапчасти · 400K TEU" %}'},
+  {name:'{% trans "Анталья" %}',country:'tr',type:'sea',desc:'{% trans "Средиземное · Генгруз, туристическое снабжение" %}'},
+  {name:'{% trans "Стамбул IST" %}',country:'tr',type:'air',desc:'{% trans "Грузовой хаб · 2.5M т · Turkish Cargo" %}'},
+  {name:'{% trans "Анталья AYT" %}',country:'tr',type:'air',desc:'{% trans "Чартерные грузы" %}'},
+  {name:'{% trans "Анкара ESB" %}',country:'tr',type:'air',desc:'{% trans "Столичный · 50K т/год" %}'},
+  {name:'{% trans "Измир ADB" %}',country:'tr',type:'air',desc:'{% trans "Эгейский хаб · 80K т/год" %}'},
+  {name:'{% trans "Капыкуле" %}',country:'tr',type:'rail',desc:'{% trans "Переход Турция-Болгария · Транзит ЕС" %}'},
+  {name:'{% trans "Карс" %}',country:'tr',type:'rail',desc:'{% trans "Баку-Тбилиси-Карс · Транзит Кавказ" %}'},
+  {name:'{% trans "Мерсин (ТЛЦ)" %}',country:'tr',type:'rail',desc:'{% trans "Контейнерный терминал · Средиземноморский хаб" %}'},
   // ══ США ══
-  {name:'Лос-Анджелес / Лонг-Бич',country:'us',type:'sea',desc:'Тихий океан · 9M TEU · Ворота Азии'},
-  {name:'Нью-Йорк / Нью-Джерси',country:'us',type:'sea',desc:'Атлантика · 9M TEU'},
-  {name:'Савванна',country:'us',type:'sea',desc:'Юго-восток · 5.6M TEU'},
-  {name:'Хьюстон',country:'us',type:'sea',desc:'Мексиканский залив · Нефтехимия · 3.5M TEU'},
-  {name:'Сиэтл / Такома',country:'us',type:'sea',desc:'Тихоокеанский С-З · Азиатское направление'},
-  {name:'Вирджиния (Norfolk)',country:'us',type:'sea',desc:'Атлантика · 3.7M TEU · Автоматизированный'},
-  {name:'Чарльстон',country:'us',type:'sea',desc:'Юго-восток · 2.8M TEU · BMW/Volvo'},
-  {name:'Окленд',country:'us',type:'sea',desc:'Калифорния · 2.5M TEU · Сельхозэкспорт'},
-  {name:'Майами',country:'us',type:'sea',desc:'Карибское направление · Круизный + грузовой'},
-  {name:'Мемфис MEM',country:'us',type:'air',desc:'#1 грузовой мира · FedEx SuperHub · 4.5M т'},
-  {name:'Луисвилл SDF',country:'us',type:'air',desc:'UPS Worldport · 2.8M т'},
-  {name:'Чикаго ORD',country:'us',type:'air',desc:'Средний Запад · 1.8M т'},
-  {name:'Лос-Анджелес LAX',country:'us',type:'air',desc:'Тихоокеанский · 2.2M т'},
-  {name:'Майами MIA',country:'us',type:'air',desc:'Латиноамериканский хаб · 2.3M т'},
-  {name:'Анкоридж ANC',country:'us',type:'air',desc:'Аляска · Транзит Азия-США · Рефуэлинг'},
-  {name:'Чикаго (Intermodal)',country:'us',type:'rail',desc:'Крупнейший ж/д хаб США · BNSF/UP/CSX'},
-  {name:'Лос-Анджелес (ICTF)',country:'us',type:'rail',desc:'Порт-Ж/Д · Интермодальный терминал'},
+  {name:'{% trans "Лос-Анджелес / Лонг-Бич" %}',country:'us',type:'sea',desc:'{% trans "Тихий океан · 9M TEU · Ворота Азии" %}'},
+  {name:'{% trans "Нью-Йорк / Нью-Джерси" %}',country:'us',type:'sea',desc:'{% trans "Атлантика · 9M TEU" %}'},
+  {name:'{% trans "Савванна" %}',country:'us',type:'sea',desc:'{% trans "Юго-восток · 5.6M TEU" %}'},
+  {name:'{% trans "Хьюстон" %}',country:'us',type:'sea',desc:'{% trans "Мексиканский залив · Нефтехимия · 3.5M TEU" %}'},
+  {name:'{% trans "Сиэтл / Такома" %}',country:'us',type:'sea',desc:'{% trans "Тихоокеанский С-З · Азиатское направление" %}'},
+  {name:'{% trans "Вирджиния (Norfolk)" %}',country:'us',type:'sea',desc:'{% trans "Атлантика · 3.7M TEU · Автоматизированный" %}'},
+  {name:'{% trans "Чарльстон" %}',country:'us',type:'sea',desc:'{% trans "Юго-восток · 2.8M TEU · BMW/Volvo" %}'},
+  {name:'{% trans "Окленд" %}',country:'us',type:'sea',desc:'{% trans "Калифорния · 2.5M TEU · Сельхозэкспорт" %}'},
+  {name:'{% trans "Майами" %}',country:'us',type:'sea',desc:'{% trans "Карибское направление · Круизный + грузовой" %}'},
+  {name:'{% trans "Мемфис MEM" %}',country:'us',type:'air',desc:'{% trans "#1 грузовой мира · FedEx SuperHub · 4.5M т" %}'},
+  {name:'{% trans "Луисвилл SDF" %}',country:'us',type:'air',desc:'{% trans "UPS Worldport · 2.8M т" %}'},
+  {name:'{% trans "Чикаго ORD" %}',country:'us',type:'air',desc:'{% trans "Средний Запад · 1.8M т" %}'},
+  {name:'{% trans "Лос-Анджелес LAX" %}',country:'us',type:'air',desc:'{% trans "Тихоокеанский · 2.2M т" %}'},
+  {name:'{% trans "Майами MIA" %}',country:'us',type:'air',desc:'{% trans "Латиноамериканский хаб · 2.3M т" %}'},
+  {name:'{% trans "Анкоридж ANC" %}',country:'us',type:'air',desc:'{% trans "Аляска · Транзит Азия-США · Рефуэлинг" %}'},
+  {name:'{% trans "Чикаго (Intermodal)" %}',country:'us',type:'rail',desc:'{% trans "Крупнейший ж/д хаб США · BNSF/UP/CSX" %}'},
+  {name:'{% trans "Лос-Анджелес (ICTF)" %}',country:'us',type:'rail',desc:'{% trans "Порт-Ж/Д · Интермодальный терминал" %}'},
   // ══ НИДЕРЛАНДЫ ══
-  {name:'Роттердам (Europoort)',country:'nl',type:'sea',desc:'Крупнейший в Европе · 14M TEU'},
-  {name:'Амстердам',country:'nl',type:'sea',desc:'Какао, нефть, генгруз · 100M т'},
-  {name:'Влиссинген (Zeeland)',country:'nl',type:'sea',desc:'Навалочные, авто · Deep-sea терминал'},
-  {name:'Мурдейк',country:'nl',type:'sea',desc:'Химические грузы · Индустриальный порт'},
-  {name:'Амстердам Схипхол AMS',country:'nl',type:'air',desc:'#3 Европы · 1.7M т · KLM Cargo'},
-  {name:'Маастрихт MST',country:'nl',type:'air',desc:'Чартерные перевозки'},
-  {name:'Роттердам (Rail Service Center)',country:'nl',type:'rail',desc:'Ж/Д хаб · Betuweroute в Германию'},
-  {name:'Венло (GVT Intermodal)',country:'nl',type:'rail',desc:'Ж/Д к-л · Германия/Италия'},
+  {name:'{% trans "Роттердам (Europoort)" %}',country:'nl',type:'sea',desc:'{% trans "Крупнейший в Европе · 14M TEU" %}'},
+  {name:'{% trans "Амстердам" %}',country:'nl',type:'sea',desc:'{% trans "Какао, нефть, генгруз · 100M т" %}'},
+  {name:'{% trans "Влиссинген (Zeeland)" %}',country:'nl',type:'sea',desc:'{% trans "Навалочные, авто · Deep-sea терминал" %}'},
+  {name:'{% trans "Мурдейк" %}',country:'nl',type:'sea',desc:'{% trans "Химические грузы · Индустриальный порт" %}'},
+  {name:'{% trans "Амстердам Схипхол AMS" %}',country:'nl',type:'air',desc:'{% trans "#3 Европы · 1.7M т · KLM Cargo" %}'},
+  {name:'{% trans "Маастрихт MST" %}',country:'nl',type:'air',desc:'{% trans "Чартерные перевозки" %}'},
+  {name:'{% trans "Роттердам (Rail Service Center)" %}',country:'nl',type:'rail',desc:'{% trans "Ж/Д хаб · Betuweroute в Германию" %}'},
+  {name:'{% trans "Венло (GVT Intermodal)" %}',country:'nl',type:'rail',desc:'{% trans "Ж/Д к-л · Германия/Италия" %}'},
   // ══ ЯПОНИЯ ══
-  {name:'Токио / Иокогама',country:'jp',type:'sea',desc:'Крупнейший · 7.5M TEU · Токийский залив'},
-  {name:'Кобе / Осака',country:'jp',type:'sea',desc:'Западная Япония · 5M TEU'},
-  {name:'Нагоя',country:'jp',type:'sea',desc:'Toyota, Mitsubishi · 2.8M TEU'},
-  {name:'Хаката (Фукуока)',country:'jp',type:'sea',desc:'Кюсю · Транзит Корея · 1M TEU'},
-  {name:'Китакюсю',country:'jp',type:'sea',desc:'Кюсю · Промышленный · Авто'},
-  {name:'Симидзу',country:'jp',type:'sea',desc:'Сидзуока · Чай, мотоциклы Suzuki'},
-  {name:'Токио Нарита NRT',country:'jp',type:'air',desc:'Грузовой хаб · 2.1M т · ANA/JAL'},
-  {name:'Осака Кансай KIX',country:'jp',type:'air',desc:'Западная · 800K т'},
-  {name:'Нагоя Чубу NGO',country:'jp',type:'air',desc:'Промышленный · 200K т'},
-  {name:'Токио Ханеда HND',country:'jp',type:'air',desc:'Внутренний + грузовой · ANA Cargo'},
-  {name:'Симоносеки',country:'jp',type:'rail',desc:'Ж/Д тоннель Хонсю-Кюсю · Грузовой'},
+  {name:'{% trans "Токио / Иокогама" %}',country:'jp',type:'sea',desc:'{% trans "Крупнейший · 7.5M TEU · Токийский залив" %}'},
+  {name:'{% trans "Кобе / Осака" %}',country:'jp',type:'sea',desc:'{% trans "Западная Япония · 5M TEU" %}'},
+  {name:'{% trans "Нагоя" %}',country:'jp',type:'sea',desc:'Toyota, Mitsubishi · 2.8M TEU'},
+  {name:'{% trans "Хаката (Фукуока)" %}',country:'jp',type:'sea',desc:'{% trans "Кюсю · Транзит Корея · 1M TEU" %}'},
+  {name:'{% trans "Китакюсю" %}',country:'jp',type:'sea',desc:'{% trans "Кюсю · Промышленный · Авто" %}'},
+  {name:'{% trans "Симидзу" %}',country:'jp',type:'sea',desc:'{% trans "Сидзуока · Чай, мотоциклы Suzuki" %}'},
+  {name:'{% trans "Токио Нарита NRT" %}',country:'jp',type:'air',desc:'{% trans "Грузовой хаб · 2.1M т · ANA/JAL" %}'},
+  {name:'{% trans "Осака Кансай KIX" %}',country:'jp',type:'air',desc:'{% trans "Западная · 800K т" %}'},
+  {name:'{% trans "Нагоя Чубу NGO" %}',country:'jp',type:'air',desc:'{% trans "Промышленный · 200K т" %}'},
+  {name:'{% trans "Токио Ханеда HND" %}',country:'jp',type:'air',desc:'{% trans "Внутренний + грузовой · ANA Cargo" %}'},
+  {name:'{% trans "Симоносеки" %}',country:'jp',type:'rail',desc:'{% trans "Ж/Д тоннель Хонсю-Кюсю · Грузовой" %}'},
   // ══ КОРЕЯ ══
-  {name:'Пусан',country:'kr',type:'sea',desc:'#5 в мире · 22M TEU · Транзитный хаб'},
-  {name:'Инчхон',country:'kr',type:'sea',desc:'Порт Сеула · 3M TEU · Свободная зона'},
-  {name:'Ульсан',country:'kr',type:'sea',desc:'Hyundai · Нефтехимия, авто · 200M т'},
-  {name:'Кванъян',country:'kr',type:'sea',desc:'Южное побережье · 2.7M TEU · POSCO'},
-  {name:'Инчхон ICN',country:'kr',type:'air',desc:'#3 грузовой мира · 2.9M т · Korean Air'},
-  {name:'Пусан PUS (Gimhae)',country:'kr',type:'air',desc:'Южный хаб · 300K т'},
-  {name:'Пусан (Busanjin)',country:'kr',type:'rail',desc:'Ж/Д контейнерный терминал · KR'},
-  {name:'Ыйван (Uiwang ICD)',country:'kr',type:'rail',desc:'Инланд · Крупнейший сухой порт Кореи'},
+  {name:'{% trans "Пусан" %}',country:'kr',type:'sea',desc:'{% trans "#5 в мире · 22M TEU · Транзитный хаб" %}'},
+  {name:'{% trans "Инчхон" %}',country:'kr',type:'sea',desc:'{% trans "Порт Сеула · 3M TEU · Свободная зона" %}'},
+  {name:'{% trans "Ульсан" %}',country:'kr',type:'sea',desc:'{% trans "Hyundai · Нефтехимия, авто · 200M т" %}'},
+  {name:'{% trans "Кванъян" %}',country:'kr',type:'sea',desc:'{% trans "Южное побережье · 2.7M TEU · POSCO" %}'},
+  {name:'{% trans "Инчхон ICN" %}',country:'kr',type:'air',desc:'{% trans "#3 грузовой мира · 2.9M т · Korean Air" %}'},
+  {name:'{% trans "Пусан PUS (Gimhae)" %}',country:'kr',type:'air',desc:'{% trans "Южный хаб · 300K т" %}'},
+  {name:'{% trans "Пусан (Busanjin)" %}',country:'kr',type:'rail',desc:'{% trans "Ж/Д контейнерный терминал · KR" %}'},
+  {name:'{% trans "Ыйван (Uiwang ICD)" %}',country:'kr',type:'rail',desc:'{% trans "Инланд · Крупнейший сухой порт Кореи" %}'},
   // ══ КАЗАХСТАН ══
-  {name:'Актау',country:'kz',type:'sea',desc:'Каспийское море · Нефть, генгруз'},
-  {name:'Курык',country:'kz',type:'sea',desc:'Каспий · Новый порт · Паром Баку'},
-  {name:'Достык / Алтынколь',country:'kz',type:'rail',desc:'Переход Казахстан-Китай · 500K TEU'},
-  {name:'Хоргос (СЗЭЗ)',country:'kz',type:'rail',desc:'Сухой порт · Свободная зона · 200K TEU'},
-  {name:'Алматы (Алтынколь ТЛЦ)',country:'kz',type:'rail',desc:'Хаб Центральной Азии'},
-  {name:'Нур-Султан (ТЛЦ)',country:'kz',type:'rail',desc:'Столичный терминал'},
-  {name:'Сарыагаш',country:'kz',type:'rail',desc:'Переход Казахстан-Узбекистан'},
-  {name:'Болашак',country:'kz',type:'rail',desc:'Переход Казахстан-Туркменистан'},
-  {name:'Алматы ALA',country:'kz',type:'air',desc:'40K т/год · Транзит Азия'},
-  {name:'Нур-Султан NQZ',country:'kz',type:'air',desc:'Столичный · Air Astana Cargo'},
-  {name:'Актау (SCO)',country:'kz',type:'air',desc:'Каспийский · Нефтяной регион'},
+  {name:'{% trans "Актау" %}',country:'kz',type:'sea',desc:'{% trans "Каспийское море · Нефть, генгруз" %}'},
+  {name:'{% trans "Курык" %}',country:'kz',type:'sea',desc:'{% trans "Каспий · Новый порт · Паром Баку" %}'},
+  {name:'{% trans "Достык / Алтынколь" %}',country:'kz',type:'rail',desc:'{% trans "Переход Казахстан-Китай · 500K TEU" %}'},
+  {name:'{% trans "Хоргос (СЗЭЗ)" %}',country:'kz',type:'rail',desc:'{% trans "Сухой порт · Свободная зона · 200K TEU" %}'},
+  {name:'{% trans "Алматы (Алтынколь ТЛЦ)" %}',country:'kz',type:'rail',desc:'{% trans "Хаб Центральной Азии" %}'},
+  {name:'{% trans "Нур-Султан (ТЛЦ)" %}',country:'kz',type:'rail',desc:'{% trans "Столичный терминал" %}'},
+  {name:'{% trans "Сарыагаш" %}',country:'kz',type:'rail',desc:'{% trans "Переход Казахстан-Узбекистан" %}'},
+  {name:'{% trans "Болашак" %}',country:'kz',type:'rail',desc:'{% trans "Переход Казахстан-Туркменистан" %}'},
+  {name:'{% trans "Алматы ALA" %}',country:'kz',type:'air',desc:'{% trans "40K т/год · Транзит Азия" %}'},
+  {name:'{% trans "Нур-Султан NQZ" %}',country:'kz',type:'air',desc:'{% trans "Столичный · Air Astana Cargo" %}'},
+  {name:'{% trans "Актау (SCO)" %}',country:'kz',type:'air',desc:'{% trans "Каспийский · Нефтяной регион" %}'},
   // ══ СНГ ══
-  {name:'Поти',country:'cis',type:'sea',desc:'Грузия · Черное море · APM Terminals · 1M TEU'},
-  {name:'Батуми',country:'cis',type:'sea',desc:'Грузия · Нефть, контейнеры'},
-  {name:'Одесса',country:'cis',type:'sea',desc:'Украина · Черное море · Контейнеры, зерно'},
-  {name:'Ильичевск (Черноморск)',country:'cis',type:'sea',desc:'Украина · Контейнеры · 500K TEU'},
-  {name:'Клайпеда',country:'cis',type:'sea',desc:'Литва · Балтика · 800K TEU · Транзит'},
-  {name:'Рига (Freeport)',country:'cis',type:'sea',desc:'Латвия · Балтика · Генгруз, контейнеры'},
-  {name:'Таллин (Muuga)',country:'cis',type:'sea',desc:'Эстония · Балтика · Транзит'},
-  {name:'Минск MSQ',country:'cis',type:'air',desc:'Беларусь · Belavia Cargo'},
-  {name:'Ташкент TAS',country:'cis',type:'air',desc:'Узбекистан · Uzbekistan Airways Cargo'},
-  {name:'Баку GYD',country:'cis',type:'air',desc:'Азербайджан · Silk Way Airlines'},
-  {name:'Тбилиси TBS',country:'cis',type:'air',desc:'Грузия · Грузовой терминал'},
-  {name:'Ереван EVN',country:'cis',type:'air',desc:'Армения · 15K т/год'},
-  {name:'Бишкек FRU',country:'cis',type:'air',desc:'Кыргызстан · Грузовой терминал'},
-  {name:'Душанбе DYU',country:'cis',type:'air',desc:'Таджикистан · Somon Air Cargo'},
-  {name:'Брест',country:'cis',type:'rail',desc:'Беларусь · Переход ЕС-ЕАЭС · Перегрузка колеи'},
-  {name:'Сарахс',country:'cis',type:'rail',desc:'Туркменистан · Переход Иран'},
-  {name:'Гавриловка',country:'cis',type:'rail',desc:'Молдова · Переход Украина'},
-  {name:'Медининкай',country:'cis',type:'rail',desc:'Литва · Переход Беларусь-ЕС'},
-  {name:'Баку-ТЛЦ (ACSC)',country:'cis',type:'rail',desc:'Азербайджан · Средний коридор'},
+  {name:'{% trans "Поти" %}',country:'cis',type:'sea',desc:'{% trans "Грузия · Черное море · APM Terminals · 1M TEU" %}'},
+  {name:'{% trans "Батуми" %}',country:'cis',type:'sea',desc:'{% trans "Грузия · Нефть, контейнеры" %}'},
+  {name:'{% trans "Одесса" %}',country:'cis',type:'sea',desc:'{% trans "Украина · Черное море · Контейнеры, зерно" %}'},
+  {name:'{% trans "Ильичевск (Черноморск)" %}',country:'cis',type:'sea',desc:'{% trans "Украина · Контейнеры · 500K TEU" %}'},
+  {name:'{% trans "Клайпеда" %}',country:'cis',type:'sea',desc:'{% trans "Литва · Балтика · 800K TEU · Транзит" %}'},
+  {name:'{% trans "Рига (Freeport)" %}',country:'cis',type:'sea',desc:'{% trans "Латвия · Балтика · Генгруз, контейнеры" %}'},
+  {name:'{% trans "Таллин (Muuga)" %}',country:'cis',type:'sea',desc:'{% trans "Эстония · Балтика · Транзит" %}'},
+  {name:'{% trans "Минск MSQ" %}',country:'cis',type:'air',desc:'{% trans "Беларусь · Belavia Cargo" %}'},
+  {name:'{% trans "Ташкент TAS" %}',country:'cis',type:'air',desc:'{% trans "Узбекистан · Uzbekistan Airways Cargo" %}'},
+  {name:'{% trans "Баку GYD" %}',country:'cis',type:'air',desc:'{% trans "Азербайджан · Silk Way Airlines" %}'},
+  {name:'{% trans "Тбилиси TBS" %}',country:'cis',type:'air',desc:'{% trans "Грузия · Грузовой терминал" %}'},
+  {name:'{% trans "Ереван EVN" %}',country:'cis',type:'air',desc:'{% trans "Армения · 15K т/год" %}'},
+  {name:'{% trans "Бишкек FRU" %}',country:'cis',type:'air',desc:'{% trans "Кыргызстан · Грузовой терминал" %}'},
+  {name:'{% trans "Душанбе DYU" %}',country:'cis',type:'air',desc:'{% trans "Таджикистан · Somon Air Cargo" %}'},
+  {name:'{% trans "Брест" %}',country:'cis',type:'rail',desc:'{% trans "Беларусь · Переход ЕС-ЕАЭС · Перегрузка колеи" %}'},
+  {name:'{% trans "Сарахс" %}',country:'cis',type:'rail',desc:'{% trans "Туркменистан · Переход Иран" %}'},
+  {name:'{% trans "Гавриловка" %}',country:'cis',type:'rail',desc:'{% trans "Молдова · Переход Украина" %}'},
+  {name:'{% trans "Медининкай" %}',country:'cis',type:'rail',desc:'{% trans "Литва · Переход Беларусь-ЕС" %}'},
+  {name:'{% trans "Баку-ТЛЦ (ACSC)" %}',country:'cis',type:'rail',desc:'{% trans "Азербайджан · Средний коридор" %}'},
   // ══ ИНДИЯ ══
-  {name:'Мумбаи (Nhava Sheva / JNPT)',country:'in',type:'sea',desc:'Крупнейший · 6M TEU · Западное побережье'},
-  {name:'Мундра (Adani)',country:'in',type:'sea',desc:'Гуджарат · 7M TEU · Быстрорастущий'},
-  {name:'Ченнаи',country:'in',type:'sea',desc:'Восточное побережье · 1.6M TEU'},
-  {name:'Калькутта (Haldia)',country:'in',type:'sea',desc:'Восточная · Генгруз, навалочные'},
-  {name:'Вишакхапатнам',country:'in',type:'sea',desc:'Андхра-Прадеш · Руда, уголь · 70M т'},
-  {name:'Кочин (Cochin)',country:'in',type:'sea',desc:'Керала · Контейнеры · Транзит'},
-  {name:'Кандла / Деэндаял',country:'in',type:'sea',desc:'Гуджарат · Навалочные · Крупнейший по тоннажу'},
-  {name:'Парадип',country:'in',type:'sea',desc:'Одиша · Руда, уголь · 130M т'},
-  {name:'Мангалор (New Mangalore)',country:'in',type:'sea',desc:'Карнатака · Нефтехимия, генгруз'},
-  {name:'Туткорин (Thoothukudi)',country:'in',type:'sea',desc:'Тамилнад · Контейнеры, минералы'},
-  {name:'Дели DEL (Indira Gandhi)',country:'in',type:'air',desc:'Крупнейший Индии · 1M т/год'},
-  {name:'Мумбаи BOM',country:'in',type:'air',desc:'Западный хаб · 900K т'},
-  {name:'Бангалор BLR',country:'in',type:'air',desc:'IT-хаб · 400K т · Электроника'},
-  {name:'Хайдерабад HYD',country:'in',type:'air',desc:'Фармацевтика · 200K т'},
-  {name:'Ченнаи MAA',country:'in',type:'air',desc:'Южный хаб · 350K т'},
-  {name:'Колката CCU',country:'in',type:'air',desc:'Восточный · 150K т'},
-  {name:'Дели (Tughlakabad ICD)',country:'in',type:'rail',desc:'Крупнейший сухой порт · 500K TEU'},
-  {name:'Мундра (Rail Terminal)',country:'in',type:'rail',desc:'Adani · Порт-Ж/Д · Dedicated Freight Corridor'},
-  {name:'Ченнаи (Tondiarpet)',country:'in',type:'rail',desc:'Контейнерный терминал · Южная Индия'},
+  {name:'{% trans "Мумбаи (Nhava Sheva / JNPT)" %}',country:'in',type:'sea',desc:'{% trans "Крупнейший · 6M TEU · Западное побережье" %}'},
+  {name:'{% trans "Мундра (Adani)" %}',country:'in',type:'sea',desc:'{% trans "Гуджарат · 7M TEU · Быстрорастущий" %}'},
+  {name:'{% trans "Ченнаи" %}',country:'in',type:'sea',desc:'{% trans "Восточное побережье · 1.6M TEU" %}'},
+  {name:'{% trans "Калькутта (Haldia)" %}',country:'in',type:'sea',desc:'{% trans "Восточная · Генгруз, навалочные" %}'},
+  {name:'{% trans "Вишакхапатнам" %}',country:'in',type:'sea',desc:'{% trans "Андхра-Прадеш · Руда, уголь · 70M т" %}'},
+  {name:'{% trans "Кочин (Cochin)" %}',country:'in',type:'sea',desc:'{% trans "Керала · Контейнеры · Транзит" %}'},
+  {name:'{% trans "Кандла / Деэндаял" %}',country:'in',type:'sea',desc:'{% trans "Гуджарат · Навалочные · Крупнейший по тоннажу" %}'},
+  {name:'{% trans "Парадип" %}',country:'in',type:'sea',desc:'{% trans "Одиша · Руда, уголь · 130M т" %}'},
+  {name:'{% trans "Мангалор (New Mangalore)" %}',country:'in',type:'sea',desc:'{% trans "Карнатака · Нефтехимия, генгруз" %}'},
+  {name:'{% trans "Туткорин (Thoothukudi)" %}',country:'in',type:'sea',desc:'{% trans "Тамилнад · Контейнеры, минералы" %}'},
+  {name:'{% trans "Дели DEL (Indira Gandhi)" %}',country:'in',type:'air',desc:'{% trans "Крупнейший Индии · 1M т/год" %}'},
+  {name:'{% trans "Мумбаи BOM" %}',country:'in',type:'air',desc:'{% trans "Западный хаб · 900K т" %}'},
+  {name:'{% trans "Бангалор BLR" %}',country:'in',type:'air',desc:'{% trans "IT-хаб · 400K т · Электроника" %}'},
+  {name:'{% trans "Хайдерабад HYD" %}',country:'in',type:'air',desc:'{% trans "Фармацевтика · 200K т" %}'},
+  {name:'{% trans "Ченнаи MAA" %}',country:'in',type:'air',desc:'{% trans "Южный хаб · 350K т" %}'},
+  {name:'{% trans "Колката CCU" %}',country:'in',type:'air',desc:'{% trans "Восточный · 150K т" %}'},
+  {name:'{% trans "Дели (Tughlakabad ICD)" %}',country:'in',type:'rail',desc:'{% trans "Крупнейший сухой порт · 500K TEU" %}'},
+  {name:'{% trans "Мундра (Rail Terminal)" %}',country:'in',type:'rail',desc:'{% trans "Adani · Порт-Ж/Д · Dedicated Freight Corridor" %}'},
+  {name:'{% trans "Ченнаи (Tondiarpet)" %}',country:'in',type:'rail',desc:'{% trans "Контейнерный терминал · Южная Индия" %}'},
   // ══ ГЕРМАНИЯ ══
-  {name:'Гамбург (HHLA)',country:'de',type:'sea',desc:'#3 Европы · 8.7M TEU · Автозапчасти, машиностроение'},
-  {name:'Бремерхафен',country:'de',type:'sea',desc:'Крупнейший авто-терминал Европы · 5M TEU · BMW/Mercedes'},
-  {name:'Вильгельмсхафен (JadeWeserPort)',country:'de',type:'sea',desc:'Deep-water · 2.7M TEU · Maersk хаб'},
-  {name:'Дуйсбург (Duisport)',country:'de',type:'sea',desc:'Крупнейший речной порт мира · Рейн · Интермодальный'},
-  {name:'Франкфурт FRA',country:'de',type:'air',desc:'#1 грузовой Европы · 2.1M т · Lufthansa Cargo'},
-  {name:'Лейпциг LEJ',country:'de',type:'air',desc:'DHL Express Hub · 1.6M т · Ночной хаб'},
-  {name:'Мюнхен MUC',country:'de',type:'air',desc:'Промышленный · 350K т · Автозапчасти'},
-  {name:'Кёльн-Бонн CGN',country:'de',type:'air',desc:'UPS/FedEx · 900K т'},
-  {name:'Дуйсбург (Rail Terminal)',country:'de',type:'rail',desc:'Крупнейший ж/д хаб ЕС · Китай-Европа · 60 поездов/нед'},
-  {name:'Гамбург (Billwerder)',country:'de',type:'rail',desc:'Контейнерный · HHLA Intermodal'},
-  {name:'Мюнхен (Riem)',country:'de',type:'rail',desc:'Южная Германия · Автозапчасти · Италия-транзит'},
+  {name:'{% trans "Гамбург (HHLA)" %}',country:'de',type:'sea',desc:'{% trans "#3 Европы · 8.7M TEU · Автозапчасти, машиностроение" %}'},
+  {name:'{% trans "Бремерхафен" %}',country:'de',type:'sea',desc:'{% trans "Крупнейший авто-терминал Европы · 5M TEU · BMW/Mercedes" %}'},
+  {name:'{% trans "Вильгельмсхафен (JadeWeserPort)" %}',country:'de',type:'sea',desc:'{% trans "Deep-water · 2.7M TEU · Maersk хаб" %}'},
+  {name:'{% trans "Дуйсбург (Duisport)" %}',country:'de',type:'sea',desc:'{% trans "Крупнейший речной порт мира · Рейн · Интермодальный" %}'},
+  {name:'{% trans "Франкфурт FRA" %}',country:'de',type:'air',desc:'{% trans "#1 грузовой Европы · 2.1M т · Lufthansa Cargo" %}'},
+  {name:'{% trans "Лейпциг LEJ" %}',country:'de',type:'air',desc:'{% trans "DHL Express Hub · 1.6M т · Ночной хаб" %}'},
+  {name:'{% trans "Мюнхен MUC" %}',country:'de',type:'air',desc:'{% trans "Промышленный · 350K т · Автозапчасти" %}'},
+  {name:'{% trans "Кёльн-Бонн CGN" %}',country:'de',type:'air',desc:'{% trans "UPS/FedEx · 900K т" %}'},
+  {name:'{% trans "Дуйсбург (Rail Terminal)" %}',country:'de',type:'rail',desc:'{% trans "Крупнейший ж/д хаб ЕС · Китай-Европа · 60 поездов/нед" %}'},
+  {name:'{% trans "Гамбург (Billwerder)" %}',country:'de',type:'rail',desc:'{% trans "Контейнерный · HHLA Intermodal" %}'},
+  {name:'{% trans "Мюнхен (Riem)" %}',country:'de',type:'rail',desc:'{% trans "Южная Германия · Автозапчасти · Италия-транзит" %}'},
   // ══ ИТАЛИЯ ══
-  {name:'Генуя',country:'it',type:'sea',desc:'Крупнейший Италии · 2.7M TEU · Промышленный С-З'},
-  {name:'Ла Специя',country:'it',type:'sea',desc:'Контейнерный · 1.4M TEU · Автозапчасти Fiat'},
-  {name:'Триест',country:'it',type:'sea',desc:'Адриатика · 800K TEU · Ж/Д в Ц. Европу'},
-  {name:'Ливорно',country:'it',type:'sea',desc:'Тоскана · Авто (Piaggio, Ferrari) · Ro-Ro'},
-  {name:'Неаполь',country:'it',type:'sea',desc:'Южная Италия · 700K TEU · Средиземноморье'},
-  {name:'Равенна',country:'it',type:'sea',desc:'Адриатика · Навал, генгруз · Промышленный'},
-  {name:'Милан Мальпенса MXP',country:'it',type:'air',desc:'#2 грузовой Италии · 600K т · Промышленный'},
-  {name:'Рим Фьюмичино FCO',country:'it',type:'air',desc:'350K т/год · Alitalia Cargo'},
-  {name:'Бергамо BGY',country:'it',type:'air',desc:'DHL/UPS · Экспресс-грузы · Северная Италия'},
-  {name:'Верона (Quadrante Europa)',country:'it',type:'rail',desc:'Крупнейший интермодальный Италии · Бреннер-коридор'},
-  {name:'Милан (Melzo)',country:'it',type:'rail',desc:'Хаб Северной Италии · Шёлковый путь'},
+  {name:'{% trans "Генуя" %}',country:'it',type:'sea',desc:'{% trans "Крупнейший Италии · 2.7M TEU · Промышленный С-З" %}'},
+  {name:'{% trans "Ла Специя" %}',country:'it',type:'sea',desc:'{% trans "Контейнерный · 1.4M TEU · Автозапчасти Fiat" %}'},
+  {name:'{% trans "Триест" %}',country:'it',type:'sea',desc:'{% trans "Адриатика · 800K TEU · Ж/Д в Ц. Европу" %}'},
+  {name:'{% trans "Ливорно" %}',country:'it',type:'sea',desc:'{% trans "Тоскана · Авто (Piaggio, Ferrari) · Ro-Ro" %}'},
+  {name:'{% trans "Неаполь" %}',country:'it',type:'sea',desc:'{% trans "Южная Италия · 700K TEU · Средиземноморье" %}'},
+  {name:'{% trans "Равенна" %}',country:'it',type:'sea',desc:'{% trans "Адриатика · Навал, генгруз · Промышленный" %}'},
+  {name:'{% trans "Милан Мальпенса MXP" %}',country:'it',type:'air',desc:'{% trans "#2 грузовой Италии · 600K т · Промышленный" %}'},
+  {name:'{% trans "Рим Фьюмичино FCO" %}',country:'it',type:'air',desc:'{% trans "350K т/год · Alitalia Cargo" %}'},
+  {name:'{% trans "Бергамо BGY" %}',country:'it',type:'air',desc:'{% trans "DHL/UPS · Экспресс-грузы · Северная Италия" %}'},
+  {name:'{% trans "Верона (Quadrante Europa)" %}',country:'it',type:'rail',desc:'{% trans "Крупнейший интермодальный Италии · Бреннер-коридор" %}'},
+  {name:'{% trans "Милан (Melzo)" %}',country:'it',type:'rail',desc:'{% trans "Хаб Северной Италии · Шёлковый путь" %}'},
   // ══ ВЕЛИКОБРИТАНИЯ ══
-  {name:'Феликстоу',country:'uk',type:'sea',desc:'Крупнейший UK · 3.8M TEU · Контейнеры'},
-  {name:'Саутгемптон',country:'uk',type:'sea',desc:'#2 UK · 2M TEU · Авто (Jaguar/Land Rover)'},
-  {name:'Лондон Gateway',country:'uk',type:'sea',desc:'Новый deep-water · DP World · 3.5M TEU'},
-  {name:'Ливерпуль (Peel Ports)',country:'uk',type:'sea',desc:'С-З Англии · 800K TEU · Промышленный'},
-  {name:'Лондон Хитроу LHR',country:'uk',type:'air',desc:'#1 грузовой UK · 1.6M т · IAG Cargo'},
-  {name:'Ист-Мидлендс EMA',country:'uk',type:'air',desc:'DHL/UPS · Экспресс · 370K т'},
-  {name:'Станстед STN',country:'uk',type:'air',desc:'FedEx · 250K т/год'},
-  {name:'Бирмингем (BIFT)',country:'uk',type:'rail',desc:'Интермодальный · Центральная Англия'},
+  {name:'{% trans "Феликстоу" %}',country:'uk',type:'sea',desc:'{% trans "Крупнейший UK · 3.8M TEU · Контейнеры" %}'},
+  {name:'{% trans "Саутгемптон" %}',country:'uk',type:'sea',desc:'{% trans "#2 UK · 2M TEU · Авто (Jaguar/Land Rover)" %}'},
+  {name:'{% trans "Лондон Gateway" %}',country:'uk',type:'sea',desc:'{% trans "Новый deep-water · DP World · 3.5M TEU" %}'},
+  {name:'{% trans "Ливерпуль (Peel Ports)" %}',country:'uk',type:'sea',desc:'{% trans "С-З Англии · 800K TEU · Промышленный" %}'},
+  {name:'{% trans "Лондон Хитроу LHR" %}',country:'uk',type:'air',desc:'{% trans "#1 грузовой UK · 1.6M т · IAG Cargo" %}'},
+  {name:'{% trans "Ист-Мидлендс EMA" %}',country:'uk',type:'air',desc:'{% trans "DHL/UPS · Экспресс · 370K т" %}'},
+  {name:'{% trans "Станстед STN" %}',country:'uk',type:'air',desc:'{% trans "FedEx · 250K т/год" %}'},
+  {name:'{% trans "Бирмингем (BIFT)" %}',country:'uk',type:'rail',desc:'{% trans "Интермодальный · Центральная Англия" %}'},
   // ══ ТАЙВАНЬ ══
-  {name:'Гаосюн',country:'tw',type:'sea',desc:'#15 мира · 9.7M TEU · Электроника, полупроводники'},
-  {name:'Тайчжун',country:'tw',type:'sea',desc:'Центральный · 1.8M TEU · Машиностроение'},
-  {name:'Килун',country:'tw',type:'sea',desc:'Северный · 1.4M TEU · Генгруз'},
-  {name:'Тайбэй Таоюань TPE',country:'tw',type:'air',desc:'#4 грузовой Азии · 2.3M т · China Airlines Cargo · TSMC'},
+  {name:'{% trans "Гаосюн" %}',country:'tw',type:'sea',desc:'{% trans "#15 мира · 9.7M TEU · Электроника, полупроводники" %}'},
+  {name:'{% trans "Тайчжун" %}',country:'tw',type:'sea',desc:'{% trans "Центральный · 1.8M TEU · Машиностроение" %}'},
+  {name:'{% trans "Килун" %}',country:'tw',type:'sea',desc:'{% trans "Северный · 1.4M TEU · Генгруз" %}'},
+  {name:'{% trans "Тайбэй Таоюань TPE" %}',country:'tw',type:'air',desc:'{% trans "#4 грузовой Азии · 2.3M т · China Airlines Cargo · TSMC" %}'},
   // ══ ЮГО-ВОСТОЧНАЯ АЗИЯ ══
-  {name:'Сингапур (PSA)',country:'sea',type:'sea',desc:'#2 мира · 37M TEU · Транзитный мегахаб'},
-  {name:'Порт-Кланг (Малайзия)',country:'sea',type:'sea',desc:'#12 мира · 13M TEU · Proton/Perodua'},
-  {name:'Лаем Чабанг (Таиланд)',country:'sea',type:'sea',desc:'Крупнейший Таиланда · 8M TEU · Toyota/Honda'},
-  {name:'Хайфон (Вьетнам)',country:'sea',type:'sea',desc:'Северный · 6M TEU · Samsung, электроника'},
-  {name:'Хошимин / Кат Лай (Вьетнам)',country:'sea',type:'sea',desc:'Южный · 8M TEU · Промышленный'},
-  {name:'Танджунг Приок (Индонезия)',country:'sea',type:'sea',desc:'Порт Джакарты · 7M TEU'},
-  {name:'Манила (Филиппины)',country:'sea',type:'sea',desc:'6M TEU · Электроника, запчасти'},
-  {name:'Сингапур Чанги SIN',country:'sea',type:'air',desc:'#5 грузовой мира · 1.8M т · SIA Cargo'},
-  {name:'Куала-Лумпур KUL (Малайзия)',country:'sea',type:'air',desc:'MAHB Cargo · 700K т'},
-  {name:'Бангкок BKK (Таиланд)',country:'sea',type:'air',desc:'Thai Cargo · 1.4M т · Автозапчасти'},
-  {name:'Ханой HAN (Вьетнам)',country:'sea',type:'air',desc:'Северный · Samsung factory'},
-  {name:'Хошимин SGN (Вьетнам)',country:'sea',type:'air',desc:'Южный · 600K т'},
-  {name:'Джакарта CGK (Индонезия)',country:'sea',type:'air',desc:'Гаруда Cargo · 500K т'},
-  {name:'Лаем Чабанг (ТЛЦ)',country:'sea',type:'rail',desc:'Таиланд · Порт-Ж/Д · Автозапчасти'},
+  {name:'{% trans "Сингапур (PSA)" %}',country:'sea',type:'sea',desc:'{% trans "#2 мира · 37M TEU · Транзитный мегахаб" %}'},
+  {name:'{% trans "Порт-Кланг (Малайзия)" %}',country:'sea',type:'sea',desc:'{% trans "#12 мира · 13M TEU · Proton/Perodua" %}'},
+  {name:'{% trans "Лаем Чабанг (Таиланд)" %}',country:'sea',type:'sea',desc:'{% trans "Крупнейший Таиланда · 8M TEU · Toyota/Honda" %}'},
+  {name:'{% trans "Хайфон (Вьетнам)" %}',country:'sea',type:'sea',desc:'{% trans "Северный · 6M TEU · Samsung, электроника" %}'},
+  {name:'{% trans "Хошимин / Кат Лай (Вьетнам)" %}',country:'sea',type:'sea',desc:'{% trans "Южный · 8M TEU · Промышленный" %}'},
+  {name:'{% trans "Танджунг Приок (Индонезия)" %}',country:'sea',type:'sea',desc:'{% trans "Порт Джакарты · 7M TEU" %}'},
+  {name:'{% trans "Манила (Филиппины)" %}',country:'sea',type:'sea',desc:'{% trans "6M TEU · Электроника, запчасти" %}'},
+  {name:'{% trans "Сингапур Чанги SIN" %}',country:'sea',type:'air',desc:'{% trans "#5 грузовой мира · 1.8M т · SIA Cargo" %}'},
+  {name:'{% trans "Куала-Лумпур KUL (Малайзия)" %}',country:'sea',type:'air',desc:'{% trans "MAHB Cargo · 700K т" %}'},
+  {name:'{% trans "Бангкок BKK (Таиланд)" %}',country:'sea',type:'air',desc:'{% trans "Thai Cargo · 1.4M т · Автозапчасти" %}'},
+  {name:'{% trans "Ханой HAN (Вьетнам)" %}',country:'sea',type:'air',desc:'{% trans "Северный · Samsung factory" %}'},
+  {name:'{% trans "Хошимин SGN (Вьетнам)" %}',country:'sea',type:'air',desc:'{% trans "Южный · 600K т" %}'},
+  {name:'{% trans "Джакарта CGK (Индонезия)" %}',country:'sea',type:'air',desc:'{% trans "Гаруда Cargo · 500K т" %}'},
+  {name:'{% trans "Лаем Чабанг (ТЛЦ)" %}',country:'sea',type:'rail',desc:'{% trans "Таиланд · Порт-Ж/Д · Автозапчасти" %}'},
   // ══ ЛАТИНСКАЯ АМЕРИКА ══
-  {name:'Сантос (Бразилия)',country:'latam',type:'sea',desc:'Крупнейший Лат. Америки · 4.5M TEU · Caterpillar/Komatsu'},
-  {name:'Манзанильо (Мексика)',country:'latam',type:'sea',desc:'Тихий океан · 3.4M TEU · Автозапчасти'},
-  {name:'Ласаро Карденас (Мексика)',country:'latam',type:'sea',desc:'Тихий океан · 1.8M TEU · Промышленный'},
-  {name:'Веракрус (Мексика)',country:'latam',type:'sea',desc:'Атлантика · 1.2M TEU · VW/Audi запчасти'},
-  {name:'Буэнос-Айрес (Аргентина)',country:'latam',type:'sea',desc:'1.8M TEU · Сельхозтехника'},
-  {name:'Вальпараисо (Чили)',country:'latam',type:'sea',desc:'Тихий · 1M TEU · Горнодобывающее оборудование'},
-  {name:'Мехико MEX',country:'latam',type:'air',desc:'#1 Лат. Америки · 600K т'},
-  {name:'Сан-Паулу GRU (Бразилия)',country:'latam',type:'air',desc:'LATAM Cargo · 500K т'},
-  {name:'Богота BOG (Колумбия)',country:'latam',type:'air',desc:'Avianca Cargo · 700K т'},
+  {name:'{% trans "Сантос (Бразилия)" %}',country:'latam',type:'sea',desc:'{% trans "Крупнейший Лат. Америки · 4.5M TEU · Caterpillar/Komatsu" %}'},
+  {name:'{% trans "Манзанильо (Мексика)" %}',country:'latam',type:'sea',desc:'{% trans "Тихий океан · 3.4M TEU · Автозапчасти" %}'},
+  {name:'{% trans "Ласаро Карденас (Мексика)" %}',country:'latam',type:'sea',desc:'{% trans "Тихий океан · 1.8M TEU · Промышленный" %}'},
+  {name:'{% trans "Веракрус (Мексика)" %}',country:'latam',type:'sea',desc:'{% trans "Атлантика · 1.2M TEU · VW/Audi запчасти" %}'},
+  {name:'{% trans "Буэнос-Айрес (Аргентина)" %}',country:'latam',type:'sea',desc:'{% trans "1.8M TEU · Сельхозтехника" %}'},
+  {name:'{% trans "Вальпараисо (Чили)" %}',country:'latam',type:'sea',desc:'{% trans "Тихий · 1M TEU · Горнодобывающее оборудование" %}'},
+  {name:'{% trans "Мехико MEX" %}',country:'latam',type:'air',desc:'{% trans "#1 Лат. Америки · 600K т" %}'},
+  {name:'{% trans "Сан-Паулу GRU (Бразилия)" %}',country:'latam',type:'air',desc:'{% trans "LATAM Cargo · 500K т" %}'},
+  {name:'{% trans "Богота BOG (Колумбия)" %}',country:'latam',type:'air',desc:'{% trans "Avianca Cargo · 700K т" %}'},
 ];
 
 let currentCountry = 'all';
@@ -771,7 +772,7 @@ function renderPorts() {
     return countryMatch && typeMatch;
   });
 
-  const typeLabels = {sea:'Море',air:'Авиа',rail:'Ж/Д'};
+  const typeLabels = {sea:'{% trans "Море" %}',air:'{% trans "Авиа" %}',rail:'{% trans "Ж/Д" %}'};
   const container = document.getElementById('portsContainer');
   container.innerHTML = filtered.map(p =>
     `<div class="lg-port-card">
@@ -969,7 +970,7 @@ function updateMapMarkers() {
   portsMarkers = [];
 
   const colors = {sea:'#64B5F6', air:'#ECECEC', rail:'#8A8A8A'};
-  const typeLabels = {sea:'Морской порт', air:'Авиатерминал', rail:'Ж/Д узел'};
+  const typeLabels = {sea:'{% trans "Морской порт" %}', air:'{% trans "Авиатерминал" %}', rail:'{% trans "Ж/Д узел" %}'};
   const filtered = ports.filter(p => {
     const cm = currentCountry === 'all' || p.country === currentCountry;
     const tm = currentType === 'all' || p.type === currentType;
@@ -1007,9 +1008,9 @@ function initTrackingMap() {
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19,attribution:''}).addTo(trackingMapObj);
 
   const route = [
-    {pos:[31.23,121.47], label:'Шанхай (отгрузка)', done:true},
-    {pos:[43.12,131.88], label:'Владивосток (сейчас)', done:false, active:true},
-    {pos:[55.75,37.62],  label:'Москва (назначение)', done:false},
+    {pos:[31.23,121.47], label:'{% trans "Шанхай (отгрузка)" %}', done:true},
+    {pos:[43.12,131.88], label:'{% trans "Владивосток (сейчас)" %}', done:false, active:true},
+    {pos:[55.75,37.62],  label:'{% trans "Москва (назначение)" %}', done:false},
   ];
 
   const routeLine = route.map(r => r.pos);

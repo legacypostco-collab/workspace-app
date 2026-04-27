@@ -71,7 +71,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr data-type="CMR" data-order="ORD-4521" data-status="Ожидает" onclick="opToast('{% trans "Документ: CMR для ORD-4521" %}')">
+      <tr data-type="CMR" data-order="ORD-4521" data-status="{% trans 'Ожидает' %}" onclick="opToast('{% trans "Документ: CMR для ORD-4521" %}')">
         <td style="font-weight:600;">CMR</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
         <td class="text-secondary">{% trans "Шанхай &#8594; Москва" %}</td>
@@ -80,7 +80,7 @@
         <td class="text-secondary">{% trans "Логист #1" %}</td>
         <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Загрузка CMR для ORD-4521" %}')">{% trans "Загрузить" %}</button></td>
       </tr>
-      <tr data-type="Bill of Lading" data-order="ORD-4521" data-status="В работе" onclick="opToast('{% trans "Документ: Bill of Lading для ORD-4521" %}')">
+      <tr data-type="Bill of Lading" data-order="ORD-4521" data-status="{% trans 'В работе' %}" onclick="opToast('{% trans "Документ: Bill of Lading для ORD-4521" %}')">
         <td style="font-weight:600;">Bill of Lading</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
         <td class="text-secondary">{% trans "Шанхай &#8594; Москва" %}</td>
@@ -89,7 +89,7 @@
         <td class="text-secondary">{% trans "Логист #1" %}</td>
         <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();promptRequest(this,'{% trans "Запрос B/L для ORD-4521" %}')">{% trans "Запросить" %}</button></td>
       </tr>
-      <tr data-type="Air Waybill" data-order="ORD-4512" data-status="Готов" onclick="opToast('{% trans "Документ: Air Waybill для ORD-4512" %}')">
+      <tr data-type="Air Waybill" data-order="ORD-4512" data-status="{% trans 'Готов' %}" onclick="opToast('{% trans "Документ: Air Waybill для ORD-4512" %}')">
         <td style="font-weight:600;">Air Waybill</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
         <td class="text-secondary">{% trans "Дубай &#8594; Москва" %}</td>
@@ -98,7 +98,7 @@
         <td class="text-secondary">{% trans "Логист #2" %}</td>
         <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Скачивание AWB для ORD-4512" %}')">{% trans "Скачать" %}</button></td>
       </tr>
-      <tr data-type="Инвойс" data-order="ORD-4518" data-status="Готов" onclick="opToast('{% trans "Документ: Инвойс для ORD-4518" %}')">
+      <tr data-type="{% trans 'Инвойс' %}" data-order="ORD-4518" data-status="{% trans 'Готов' %}" onclick="opToast('{% trans "Документ: Инвойс для ORD-4518" %}')">
         <td style="font-weight:600;">{% trans "Инвойс" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
         <td class="text-secondary">{% trans "Стамбул &#8594; Москва" %}</td>
@@ -107,7 +107,7 @@
         <td class="text-secondary">{% trans "Логист #1" %}</td>
         <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Скачивание инвойса для ORD-4518" %}')">{% trans "Скачать" %}</button></td>
       </tr>
-      <tr data-type="Упаковочный лист" data-order="ORD-4518" data-status="Ожидает" onclick="opToast('{% trans "Документ: Упаковочный лист для ORD-4518" %}')">
+      <tr data-type="{% trans 'Упаковочный лист' %}" data-order="ORD-4518" data-status="{% trans 'Ожидает' %}" onclick="opToast('{% trans "Документ: Упаковочный лист для ORD-4518" %}')">
         <td style="font-weight:600;">{% trans "Упаковочный лист" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
         <td class="text-secondary">{% trans "Стамбул &#8594; Москва" %}</td>
@@ -116,7 +116,7 @@
         <td class="text-secondary">{% trans "Логист #1" %}</td>
         <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Загрузка упаковочного листа для ORD-4518" %}')">{% trans "Загрузить" %}</button></td>
       </tr>
-      <tr data-type="Сертификат происхождения" data-order="ORD-4515" data-status="В работе" onclick="opToast('{% trans "Документ: Сертификат для ORD-4515" %}')">
+      <tr data-type="{% trans 'Сертификат происхождения' %}" data-order="ORD-4515" data-status="{% trans 'В работе' %}" onclick="opToast('{% trans "Документ: Сертификат для ORD-4515" %}')">
         <td style="font-weight:600;">{% trans "Сертификат происхождения" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
         <td class="text-secondary">{% trans "Гуанчжоу &#8594; Владивосток" %}</td>
@@ -125,7 +125,7 @@
         <td class="text-secondary">{% trans "Логист #3" %}</td>
         <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();promptRequest(this,'{% trans "Запрос сертификата для ORD-4515" %}')">{% trans "Запросить" %}</button></td>
       </tr>
-      <tr data-type="Страховой полис" data-order="ORD-4508" data-status="Просрочен" onclick="opToast('{% trans "Документ: Страховой полис для ORD-4508" %}')">
+      <tr data-type="{% trans 'Страховой полис' %}" data-order="ORD-4508" data-status="{% trans 'Просрочен' %}" onclick="opToast('{% trans "Документ: Страховой полис для ORD-4508" %}')">
         <td style="font-weight:600;">{% trans "Страховой полис" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
         <td class="text-secondary">{% trans "Шанхай &#8594; Новосибирск" %}</td>
@@ -134,7 +134,7 @@
         <td class="text-secondary">{% trans "Логист #2" %}</td>
         <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('{% trans "Срочный запрос страхового полиса для ORD-4508" %}')">{% trans "Загрузить" %}</button></td>
       </tr>
-      <tr data-type="Таможенная декларация" data-order="ORD-4515" data-status="Ожидает" onclick="opToast('{% trans "Документ: Таможенная декларация для ORD-4515" %}')">
+      <tr data-type="{% trans 'Таможенная декларация' %}" data-order="ORD-4515" data-status="{% trans 'Ожидает' %}" onclick="opToast('{% trans "Документ: Таможенная декларация для ORD-4515" %}')">
         <td style="font-weight:600;">{% trans "Таможенная декларация" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
         <td class="text-secondary">{% trans "Гуанчжоу &#8594; Владивосток" %}</td>
@@ -143,7 +143,7 @@
         <td class="text-secondary">{% trans "Логист #3" %}</td>
         <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Загрузка таможенной декларации для ORD-4515" %}')">{% trans "Загрузить" %}</button></td>
       </tr>
-      <tr data-type="CMR" data-order="ORD-4505" data-status="Готов" onclick="opToast('{% trans "Документ: CMR для ORD-4505" %}')">
+      <tr data-type="CMR" data-order="ORD-4505" data-status="{% trans 'Готов' %}" onclick="opToast('{% trans "Документ: CMR для ORD-4505" %}')">
         <td style="font-weight:600;">CMR</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4505</td>
         <td class="text-secondary">{% trans "Стамбул &#8594; Екатеринбург" %}</td>
@@ -152,7 +152,7 @@
         <td class="text-secondary">{% trans "Логист #1" %}</td>
         <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Скачивание CMR для ORD-4505" %}')">{% trans "Скачать" %}</button></td>
       </tr>
-      <tr data-type="Инвойс" data-order="ORD-4512" data-status="Готов" onclick="opToast('{% trans "Документ: Инвойс для ORD-4512" %}')">
+      <tr data-type="{% trans 'Инвойс' %}" data-order="ORD-4512" data-status="{% trans 'Готов' %}" onclick="opToast('{% trans "Документ: Инвойс для ORD-4512" %}')">
         <td style="font-weight:600;">{% trans "Инвойс" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
         <td class="text-secondary">{% trans "Дубай &#8594; Москва" %}</td>
@@ -161,7 +161,7 @@
         <td class="text-secondary">{% trans "Логист #2" %}</td>
         <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Скачивание инвойса для ORD-4512" %}')">{% trans "Скачать" %}</button></td>
       </tr>
-      <tr data-type="Bill of Lading" data-order="ORD-4508" data-status="Просрочен" onclick="opToast('{% trans "Документ: B/L для ORD-4508" %}')">
+      <tr data-type="Bill of Lading" data-order="ORD-4508" data-status="{% trans 'Просрочен' %}" onclick="opToast('{% trans "Документ: B/L для ORD-4508" %}')">
         <td style="font-weight:600;">Bill of Lading</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
         <td class="text-secondary">{% trans "Шанхай &#8594; Новосибирск" %}</td>
@@ -170,7 +170,7 @@
         <td class="text-secondary">{% trans "Логист #2" %}</td>
         <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();promptRequest(this,'{% trans "Срочный запрос B/L для ORD-4508" %}')">{% trans "Запросить" %}</button></td>
       </tr>
-      <tr data-type="Упаковочный лист" data-order="ORD-4505" data-status="Готов" onclick="opToast('{% trans "Документ: Упаковочный лист для ORD-4505" %}')">
+      <tr data-type="{% trans 'Упаковочный лист' %}" data-order="ORD-4505" data-status="{% trans 'Готов' %}" onclick="opToast('{% trans "Документ: Упаковочный лист для ORD-4505" %}')">
         <td style="font-weight:600;">{% trans "Упаковочный лист" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4505</td>
         <td class="text-secondary">{% trans "Стамбул &#8594; Екатеринбург" %}</td>

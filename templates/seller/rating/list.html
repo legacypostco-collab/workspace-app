@@ -1,4 +1,5 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 
 {% block extra_css %}
 <style>
@@ -144,8 +145,8 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
 <section class="rat-hero">
   <div class="rat-hero-top">
     <div>
-      <div class="rat-hero-title">Рейтинг поставщика</div>
-      <div class="rat-hero-sub">Подробная разбивка · метрики · рекомендации</div>
+      <div class="rat-hero-title">{% trans "Рейтинг поставщика" %}</div>
+      <div class="rat-hero-sub">{% trans "Подробная разбивка · метрики · рекомендации" %}</div>
     </div>
   </div>
 
@@ -162,20 +163,20 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
       </svg>
       <div class="rat-circle-text">
         <div class="rat-circle-val">{{ rating_score|floatformat:1 }}</div>
-        <div class="rat-circle-label">из 100</div>
+        <div class="rat-circle-label">{% trans "из 100" %}</div>
       </div>
     </div>
     <div class="rat-score-info">
       <div class="rat-status-badge rat-status--{{ supplier_status }}">{{ status_display }}</div>
       <div class="rat-score-desc">
         <div style="margin-bottom:10px;font-size:12px;color:#8A8A8A;line-height:1.6;">
-          Итоговый рейтинг складывается из двух компонентов:<br>
-          <span style="color:#ECECEC;font-weight:600;">Внешний (60%)</span> — отзывы клиентов, качество товара, соответствие описанию.<br>
-          <span style="color:#ECECEC;font-weight:600;">Поведенческий (40%)</span> — соблюдение SLA, скорость ответа на запросы, отмены и возвраты.
+          {% trans "Итоговый рейтинг складывается из двух компонентов:" %}<br>
+          <span style="color:#ECECEC;font-weight:600;">{% trans "Внешний (60%)" %}</span> {% trans "— отзывы клиентов, качество товара, соответствие описанию." %}<br>
+          <span style="color:#ECECEC;font-weight:600;">{% trans "Поведенческий (40%)" %}</span> {% trans "— соблюдение SLA, скорость ответа на запросы, отмены и возвраты." %}
         </div>
         <div style="font-size:11px;color:#6A6A6A;line-height:1.7;">
-          <span style="color:#8A8A8A;">Формула:</span> <span style="color:#ECECEC;">Внешний × 0.6 + Поведенческий × 0.4</span><br>
-          <span style="color:#64B5F6;">≥ 80</span> — Надёжный &nbsp;·&nbsp; <span style="color:#FF8C42;">60–79</span> — Песочница &nbsp;·&nbsp; <span style="color:#E05555;">&lt; 60</span> — Рисковый
+          <span style="color:#8A8A8A;">{% trans "Формула:" %}</span> <span style="color:#ECECEC;">{% trans "Внешний × 0.6 + Поведенческий × 0.4" %}</span><br>
+          <span style="color:#64B5F6;">≥ 80</span> {% trans "— Надёжный &nbsp;·&nbsp;" %} <span style="color:#FF8C42;">60–79</span> {% trans "— Песочница &nbsp;·&nbsp;" %} <span style="color:#E05555;">&lt; 60</span> {% trans "— Рисковый" %}
         </div>
       </div>
     </div>
@@ -186,61 +187,61 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
 <div class="rat-breakdown">
   <div class="rat-bd-card">
     <div class="rat-bd-head">
-      <div class="rat-bd-title">Внешний рейтинг</div>
-      <div class="rat-bd-weight">вес 60%</div>
+      <div class="rat-bd-title">{% trans "Внешний рейтинг" %}</div>
+      <div class="rat-bd-weight">{% trans "вес 60%" %}</div>
     </div>
     <div class="rat-bd-score">{{ external_score|floatformat:1 }}</div>
     <div class="rat-bar">
       <div class="rat-bar-fill" style="width:{{ external_score }}%;background:#64B5F6;"></div>
     </div>
-    <div class="rat-bd-hint">Отзывы клиентов · качество товара · соответствие описанию · точность данных</div>
+    <div class="rat-bd-hint">{% trans "Отзывы клиентов · качество товара · соответствие описанию · точность данных" %}</div>
   </div>
   <div class="rat-bd-card">
     <div class="rat-bd-head">
-      <div class="rat-bd-title">Поведенческий рейтинг</div>
-      <div class="rat-bd-weight">вес 40%</div>
+      <div class="rat-bd-title">{% trans "Поведенческий рейтинг" %}</div>
+      <div class="rat-bd-weight">{% trans "вес 40%" %}</div>
     </div>
     <div class="rat-bd-score">{{ behavioral_score|floatformat:1 }}</div>
     <div class="rat-bar">
       <div class="rat-bar-fill" style="width:{{ behavioral_score }}%;background:{% if behavioral_score >= 80 %}#64B5F6{% elif behavioral_score >= 60 %}#FF8C42{% else %}#E05555{% endif %};"></div>
     </div>
-    <div class="rat-bd-hint">SLA соблюдение · скорость ответа на RFQ · возвраты · отмены заказов</div>
+    <div class="rat-bd-hint">{% trans "SLA соблюдение · скорость ответа на RFQ · возвраты · отмены заказов" %}</div>
   </div>
 </div>
 
 {# ═══ Metrics ═══ #}
 <div class="rat-metrics">
   <a class="rat-metric" href="/seller/sla/">
-    <div class="rat-metric-label">SLA соблюдение</div>
+    <div class="rat-metric-label">{% trans "SLA соблюдение" %}</div>
     <div class="rat-metric-val" style="color:#ECECEC;">{{ sla_pct }}%</div>
-    <div class="rat-metric-hint" style="color:#6A6A6A;">норматив 90%</div>
+    <div class="rat-metric-hint" style="color:#6A6A6A;">{% trans "норматив 90%" %}</div>
     <div class="rat-trend {% if sla_trend > 0 %}rat-trend--up{% elif sla_trend < 0 %}rat-trend--down{% else %}rat-trend--flat{% endif %}">
-      {% if sla_trend > 0 %}+{% endif %}{{ sla_trend }}% за 30д
+      {% if sla_trend > 0 %}+{% endif %}{{ sla_trend }}{% trans "% за 30д" %}
     </div>
   </a>
   <a class="rat-metric" href="/seller/requests/">
-    <div class="rat-metric-label">Конверсия RFQ→Заказ</div>
+    <div class="rat-metric-label">{% trans "Конверсия RFQ→Заказ" %}</div>
     <div class="rat-metric-val">{{ conversion_pct }}%</div>
-    <div class="rat-metric-hint" style="color:#6A6A6A;">целевая &gt; 50%</div>
+    <div class="rat-metric-hint" style="color:#6A6A6A;">{% trans "целевая &gt; 50%" %}</div>
     <div class="rat-trend {% if conv_trend > 0 %}rat-trend--up{% elif conv_trend < 0 %}rat-trend--down{% else %}rat-trend--flat{% endif %}">
-      {% if conv_trend > 0 %}+{% endif %}{{ conv_trend }}% за 30д
+      {% if conv_trend > 0 %}+{% endif %}{{ conv_trend }}{% trans "% за 30д" %}
     </div>
   </a>
   <a class="rat-metric" href="/seller/claims/">
-    <div class="rat-metric-label">Открытые рекламации</div>
+    <div class="rat-metric-label">{% trans "Открытые рекламации" %}</div>
     <div class="rat-metric-val" style="color:#ECECEC;">{{ open_claims }}</div>
-    <div class="rat-metric-hint" style="color:#FF8C42;">всего {{ total_claims }}</div>
+    <div class="rat-metric-hint" style="color:#FF8C42;">{% trans "всего" %} {{ total_claims }}</div>
   </a>
   <a class="rat-metric" href="/seller/orders/?status=cancelled">
-    <div class="rat-metric-label">Отмены за 30 дней</div>
+    <div class="rat-metric-label">{% trans "Отмены за 30 дней" %}</div>
     <div class="rat-metric-val" style="color:{% if cancelled_30d > 0 %}#FF8C42{% else %}#ECECEC{% endif %};">{{ cancelled_30d }}</div>
-    <div class="rat-metric-hint" style="color:#FF8C42;">нарушений SLA: {{ sla_breaches_total }}</div>
+    <div class="rat-metric-hint" style="color:#FF8C42;">{% trans "нарушений SLA:" %} {{ sla_breaches_total }}</div>
   </a>
 </div>
 
 {# ═══ Warnings ═══ #}
 <div class="rat-warnings" data-v="2">
-  <div class="rat-warn-title">Предупреждения и рекомендации</div>
+  <div class="rat-warn-title">{% trans "Предупреждения и рекомендации" %}</div>
   <div class="rat-warn-list">
     {% for w in warnings %}
     <div class="rat-warn rat-warn--{{ w.level }}">
@@ -258,14 +259,14 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
 {# ═══ Events ═══ #}
 {% if rating_events %}
 <div class="rat-events">
-  <div class="rat-events-title">История событий рейтинга</div>
+  <div class="rat-events-title">{% trans "История событий рейтинга" %}</div>
   <div style="background:#1A1A1A;border-radius:12px;border:1px solid rgba(255,255,255,0.04);overflow:hidden;">
     <table class="rat-ev-table">
       <thead>
         <tr>
-          <th>Дата</th>
-          <th>Событие</th>
-          <th>Влияние</th>
+          <th>{% trans "Дата" %}</th>
+          <th>{% trans "Событие" %}</th>
+          <th>{% trans "Влияние" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -292,26 +293,26 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
 
 {# ═══ Tips ═══ #}
 <div class="rat-tips">
-  <div class="rat-tips-title">Как улучшить рейтинг</div>
+  <div class="rat-tips-title">{% trans "Как улучшить рейтинг" %}</div>
   <div class="rat-tip">
     <div class="rat-tip-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
-    <div>Отвечайте на RFQ в течение 2 часов — быстрые ответы повышают конверсию и поведенческий рейтинг</div>
+    <div>{% trans "Отвечайте на RFQ в течение 2 часов — быстрые ответы повышают конверсию и поведенческий рейтинг" %}</div>
   </div>
   <div class="rat-tip">
     <div class="rat-tip-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
-    <div>Соблюдайте сроки отгрузки — целевой SLA &gt; 90%. Каждое нарушение снижает рейтинг на ~2 балла</div>
+    <div>{% trans "Соблюдайте сроки отгрузки — целевой SLA &gt; 90%. Каждое нарушение снижает рейтинг на ~2 балла" %}</div>
   </div>
   <div class="rat-tip">
     <div class="rat-tip-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
-    <div>Решайте рекламации оперативно — открытые более 48ч рекламации сильно влияют на внешний рейтинг</div>
+    <div>{% trans "Решайте рекламации оперативно — открытые более 48ч рекламации сильно влияют на внешний рейтинг" %}</div>
   </div>
   <div class="rat-tip">
     <div class="rat-tip-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
-    <div>Поддерживайте актуальные цены и наличие — несоответствие данных фиксируется как data_mismatch</div>
+    <div>{% trans "Поддерживайте актуальные цены и наличие — несоответствие данных фиксируется как data_mismatch" %}</div>
   </div>
   <div class="rat-tip">
     <div class="rat-tip-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
-    <div>Избегайте отмен заказов — каждая отмена фиксируется как order_cancellation и снижает рейтинг</div>
+    <div>{% trans "Избегайте отмен заказов — каждая отмена фиксируется как order_cancellation и снижает рейтинг" %}</div>
   </div>
 </div>
 
