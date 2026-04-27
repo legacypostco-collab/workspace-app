@@ -44,7 +44,7 @@ msgstr "Categories"
 
 #: marketplace/context_processors.py:58
 msgid "Сравнение"
-msgstr "Management"
+msgstr "Comparison"
 
 #: marketplace/context_processors.py:59
 #: templates/seller/analytics/list.html:345
@@ -121,7 +121,7 @@ msgstr "Supplier workspace"
 
 #: marketplace/context_processors.py:66
 msgid "Заказы поставщика"
-msgstr "Supplier workspace"
+msgstr "Supplier orders"
 
 #: marketplace/context_processors.py:67
 msgid "Очередь оператора"
@@ -137,7 +137,7 @@ msgstr "Engineer"
 
 #: marketplace/context_processors.py:70
 msgid "Чертежи и документы"
-msgstr "Document queue"
+msgstr "Drawings & documents"
 
 #: marketplace/context_processors.py:71 marketplace/context_processors.py:213
 #: marketplace/context_processors.py:263 marketplace/views.py:2607
@@ -183,7 +183,7 @@ msgstr "Account"
 
 #: marketplace/context_processors.py:77
 msgid "Заказы покупателя"
-msgstr "Buyer dashboard"
+msgstr "Buyer orders"
 
 #: marketplace/context_processors.py:78
 msgid "Обзор"
@@ -235,14 +235,14 @@ msgstr "Dashboard"
 #: marketplace/views.py:3892 marketplace/views.py:3930
 #: marketplace/views.py:4121 templates/seller/products/catalog.html:3
 msgid "Товары и прайсы"
-msgstr "Webinars and materials"
+msgstr "Products & pricing"
 
 #: marketplace/context_processors.py:204 marketplace/views.py:2766
 #: marketplace/views.py:2771 marketplace/views.py:2816
 #: templates/seller/analytics/list.html:588
 #: templates/seller/requests/list.html:3
 msgid "Запросы клиентов"
-msgstr "Client overview"
+msgstr "Customer requests"
 
 #: marketplace/context_processors.py:205 marketplace/context_processors.py:258
 #: marketplace/context_processors.py:272 marketplace/views.py:1885
@@ -260,12 +260,12 @@ msgstr "Orders"
 
 #: marketplace/context_processors.py:206
 msgid "Согласование"
-msgstr "Approved"
+msgstr "Approval"
 
 #: marketplace/context_processors.py:207 marketplace/views.py:2141
 #: marketplace/views.py:2146 templates/seller/sla/list.html:4
 msgid "Контроль SLA"
-msgstr "Switch role"
+msgstr "SLA control"
 
 #: marketplace/context_processors.py:208 templates/admin_panel/finance.html:13
 #: templates/admin_panel/finance.html:113
@@ -286,7 +286,7 @@ msgstr "Drawings"
 #: marketplace/context_processors.py:210 marketplace/views.py:2255
 #: marketplace/views.py:2260 templates/seller/qr/list.html:3
 msgid "QR-контроль"
-msgstr "Switch role"
+msgstr "QR control"
 
 #: marketplace/context_processors.py:211
 msgid "АНАЛИТИКА"
@@ -3324,7 +3324,7 @@ msgstr "Taipei, Taiwan"
 #: templates/buyer/base_buyer.html:7 templates/buyer/components/_topbar.html:13
 #: templates/buyer/dashboard/index.html:5
 msgid "Кабинет покупателя"
-msgstr "Buyer dashboard"
+msgstr "Buyer workspace"
 
 #: templates/buyer/catalog/list.html:4 templates/buyer/catalog/list.html:106
 msgid "Избранные товары"
@@ -16029,293 +16029,381 @@ msgstr "Specification non-conformance"
 msgid "Отправить приглашение"
 msgstr "Confirm receipt"
 
-#~ msgid "#ORD-3851 подтверждён"
-#~ msgstr "#ORD-3851 confirmed"
+msgid "#ORD-3851 подтверждён"
+msgstr "#ORD-3851 confirmed"
 
-#~ msgid "Ответ поставщика — 4ч"
-#~ msgstr "Supplier response — 4h"
+msgid "Ответ поставщика — 4ч"
+msgstr "Supplier response — 4h"
 
-#~ msgid "СУЭК"
-#~ msgstr "SUEK"
+msgid "СУЭК"
+msgstr "SUEK"
 
-#~ msgid "Насос гидравлический"
-#~ msgstr "Hydraulic pump"
+msgid "Насос гидравлический"
+msgstr "Hydraulic pump"
 
-#~ msgid "Ответ на RFQ-1204"
-#~ msgstr "Response to RFQ-1204"
+msgid "Ответ на RFQ-1204"
+msgstr "Response to RFQ-1204"
 
-#~ msgid "Подтвердить приёмку"
-#~ msgstr "Confirm receipt"
+msgid "Подтвердить приёмку"
+msgstr "Confirm receipt"
 
-#~ msgid "Конверсия запросов"
-#~ msgstr "Request conversion"
+msgid "Конверсия запросов"
+msgstr "Request conversion"
 
-#~ msgid "SLA поставщиков"
-#~ msgstr "Supplier SLA"
+msgid "SLA поставщиков"
+msgstr "Supplier SLA"
 
-#~ msgid "Мар"
-#~ msgstr "Mar"
+msgid "Мар"
+msgstr "Mar"
 
-#~ msgid "Поставщик #1042 → Склад приёмки"
-#~ msgstr "Supplier #1042 → Receiving warehouse"
+msgid "Поставщик #1042 → Склад приёмки"
+msgstr "Supplier #1042 → Receiving warehouse"
 
-#~ msgid "SLA: дедлайн по RFQ-1204"
-#~ msgstr "SLA: deadline for RFQ-1204"
+msgid "SLA: дедлайн по RFQ-1204"
+msgstr "SLA: deadline for RFQ-1204"
 
-#~ msgid "Евраз"
-#~ msgstr "Evraz"
+msgid "Евраз"
+msgstr "Evraz"
 
-#~ msgid "Турбокомпрессор 6505-67-5030"
-#~ msgstr "Turbocharger 6505-67-5030"
+msgid "Турбокомпрессор 6505-67-5030"
+msgstr "Turbocharger 6505-67-5030"
 
-#~ msgid "Ноя"
-#~ msgstr "Nov"
+msgid "Ноя"
+msgstr "Nov"
 
-#~ msgid "Рейтинг поставщика обновлён"
-#~ msgstr "Supplier rating updated"
+msgid "Рейтинг поставщика обновлён"
+msgstr "Supplier rating updated"
 
-#~ msgid "Запрос: Норникель"
-#~ msgstr "Request: Nornickel"
+msgid "Запрос: Норникель"
+msgstr "Request: Nornickel"
 
-#~ msgid "Отгрузка ORD-2039"
-#~ msgstr "Shipment ORD-2039"
+msgid "Отгрузка ORD-2039"
+msgstr "Shipment ORD-2039"
 
-#~ msgid "К отгрузке"
-#~ msgstr "To ship"
+msgid "К отгрузке"
+msgstr "To ship"
 
-#~ msgid "2ч"
-#~ msgstr "2h"
+msgid "2ч"
+msgstr "2h"
 
-#~ msgid "По чертежу"
-#~ msgstr "Per drawing"
+msgid "По чертежу"
+msgstr "Per drawing"
 
-#~ msgid "ожидают ответа"
-#~ msgstr "awaiting response"
+msgid "ожидают ответа"
+msgstr "awaiting response"
 
-#~ msgid "Фев"
-#~ msgstr "Feb"
+msgid "Фев"
+msgstr "Feb"
 
-#~ msgid "Проверить котировку"
-#~ msgstr "Review quote"
+msgid "Проверить котировку"
+msgstr "Review quote"
 
-#~ msgid "Срочный"
-#~ msgstr "Urgent"
+msgid "Срочный"
+msgstr "Urgent"
 
-#~ msgid "15м"
-#~ msgstr "15m"
+msgid "15м"
+msgstr "15m"
 
-#~ msgid "Насос гидравлич. (допуски)"
-#~ msgstr "Hydraulic pump (tolerances)"
+msgid "Насос гидравлич. (допуски)"
+msgstr "Hydraulic pump (tolerances)"
 
-#~ msgid "запрос → заказ"
-#~ msgstr "request → order"
+msgid "запрос → заказ"
+msgstr "request → order"
 
-#~ msgid "Закупки и экономия"
-#~ msgstr "Procurement and savings"
+msgid "Закупки и экономия"
+msgstr "Procurement and savings"
 
-#~ msgid "Исходящие платежи"
-#~ msgstr "Outgoing payments"
+msgid "Исходящие платежи"
+msgstr "Outgoing payments"
 
-#~ msgid "Согласование и запросы"
-#~ msgstr "Approval and requests"
+msgid "Согласование и запросы"
+msgstr "Approval and requests"
 
-#~ msgid "из 5.0"
-#~ msgstr "of 5.0"
+msgid "из 5.0"
+msgstr "of 5.0"
 
-#~ msgid "Требует корректировки"
-#~ msgstr "Requires correction"
+msgid "Требует корректировки"
+msgstr "Requires correction"
 
-#~ msgid "Окт"
-#~ msgstr "Oct"
+msgid "Окт"
+msgstr "Oct"
 
-#~ msgid "переторжка"
-#~ msgstr "rebid"
+msgid "переторжка"
+msgstr "rebid"
 
-#~ msgid "Выручка и SLA"
-#~ msgstr "Revenue and SLA"
+msgid "Выручка и SLA"
+msgstr "Revenue and SLA"
 
-#~ msgid "Внешняя 60%"
-#~ msgstr "External 60%"
+msgid "Внешняя 60%"
+msgstr "External 60%"
 
-#~ msgid "График закупок"
-#~ msgstr "Procurement chart"
+msgid "График закупок"
+msgstr "Procurement chart"
 
-#~ msgid "новых"
-#~ msgstr "new"
+msgid "новых"
+msgstr "new"
 
-#~ msgid "Поставщик #3155"
-#~ msgstr "Supplier #3155"
+msgid "Поставщик #3155"
+msgstr "Supplier #3155"
 
-#~ msgid "за 30 дней"
-#~ msgstr "in 30 days"
+msgid "за 30 дней"
+msgstr "in 30 days"
 
-#~ msgid "Оплатить счёт"
-#~ msgstr "Pay invoice"
+msgid "Оплатить счёт"
+msgstr "Pay invoice"
 
-#~ msgid "Ключевые метрики"
-#~ msgstr "Key metrics"
+msgid "Ключевые метрики"
+msgstr "Key metrics"
 
-#~ msgid "Новая котировка по RFQ-1198"
-#~ msgstr "New quote for RFQ-1198"
+msgid "Новая котировка по RFQ-1198"
+msgstr "New quote for RFQ-1198"
 
-#~ msgid "Последние сканирования"
-#~ msgstr "Recent scans"
+msgid "Последние сканирования"
+msgstr "Recent scans"
 
-#~ msgid "ORD-2038 · Поставщик #2087"
-#~ msgstr "ORD-2038 · Supplier #2087"
+msgid "ORD-2038 · Поставщик #2087"
+msgstr "ORD-2038 · Supplier #2087"
 
-#~ msgid "Просрочка поставки +3 дня"
-#~ msgstr "Delivery overdue +3 days"
+msgid "Просрочка поставки +3 дня"
+msgstr "Delivery overdue +3 days"
 
-#~ msgid "Входящие платежи"
-#~ msgstr "Incoming payments"
+msgid "Входящие платежи"
+msgstr "Incoming payments"
 
-#~ msgid "Гидроцилиндр 707-01-0K930"
-#~ msgstr "Hydraulic cylinder 707-01-0K930"
+msgid "Гидроцилиндр 707-01-0K930"
+msgstr "Hydraulic cylinder 707-01-0K930"
 
-#~ msgid "К оплате"
-#~ msgstr "To pay"
+msgid "К оплате"
+msgstr "To pay"
 
-#~ msgid "Котировка RFQ-1198"
-#~ msgstr "Quote RFQ-1198"
+msgid "Котировка RFQ-1198"
+msgstr "Quote RFQ-1198"
 
-#~ msgid "Кронштейн 20Y-54"
-#~ msgstr "Bracket 20Y-54"
+msgid "Кронштейн 20Y-54"
+msgstr "Bracket 20Y-54"
 
-#~ msgid "Янв"
-#~ msgstr "Jan"
+msgid "Янв"
+msgstr "Jan"
 
-#~ msgid "Обратный отсчёт"
-#~ msgstr "Countdown"
+msgid "Обратный отсчёт"
+msgstr "Countdown"
 
-#~ msgid "Активных RFQ"
-#~ msgstr "Active RFQs"
+msgid "Активных RFQ"
+msgstr "Active RFQs"
 
-#~ msgid "Резерв 10%"
-#~ msgstr "Reserve 10%"
+msgid "Резерв 10%"
+msgstr "Reserve 10%"
 
-#~ msgid "ORD-2038 · 6 позиций · Склад"
-#~ msgstr "ORD-2038 · 6 items · Warehouse"
+msgid "ORD-2038 · 6 позиций · Склад"
+msgstr "ORD-2038 · 6 items · Warehouse"
 
-#~ msgid "Требуют обновления"
-#~ msgstr "Need updating"
+msgid "Требуют обновления"
+msgstr "Need updating"
 
-#~ msgid "Просрочка +2 дня"
-#~ msgstr "Overdue +2 days"
+msgid "Просрочка +2 дня"
+msgstr "Overdue +2 days"
 
-#~ msgid "Открытые претензии"
-#~ msgstr "Open claims"
+msgid "Открытые претензии"
+msgstr "Open claims"
 
-#~ msgid "Полюс Золото"
-#~ msgstr "Polyus Gold"
+msgid "Полюс Золото"
+msgstr "Polyus Gold"
 
-#~ msgid "#ORD-3829 · отзыв 5★"
-#~ msgstr "#ORD-3829 · 5★ review"
+msgid "#ORD-3829 · отзыв 5★"
+msgstr "#ORD-3829 · 5★ review"
 
-#~ msgid "Аванс 10%"
-#~ msgstr "Advance 10%"
+msgid "Аванс 10%"
+msgstr "Advance 10%"
 
-#~ msgid "Очередь задач"
-#~ msgstr "Task queue"
+msgid "Очередь задач"
+msgstr "Task queue"
 
-#~ msgid "RFQ и события"
-#~ msgstr "RFQ and events"
+msgid "RFQ и события"
+msgstr "RFQ and events"
 
-#~ msgid "Ждёт согласования"
-#~ msgstr "Awaiting approval"
+msgid "Ждёт согласования"
+msgstr "Awaiting approval"
 
-#~ msgid "Поставщик #1042 · 4.8★"
-#~ msgstr "Supplier #1042 · 4.8★"
+msgid "Поставщик #1042 · 4.8★"
+msgstr "Supplier #1042 · 4.8★"
 
-#~ msgid "Ожидает резерв"
-#~ msgstr "Awaiting reserve"
+msgid "Ожидает резерв"
+msgstr "Awaiting reserve"
 
-#~ msgid "Рейтинг → 4.74"
-#~ msgstr "Rating → 4.74"
+msgid "Рейтинг → 4.74"
+msgstr "Rating → 4.74"
 
-#~ msgid "Гидроцилиндр"
-#~ msgstr "Hydraulic cylinder"
+msgid "Гидроцилиндр"
+msgstr "Hydraulic cylinder"
 
-#~ msgid "норматив: 90%"
-#~ msgstr "target: 90%"
+msgid "норматив: 90%"
+msgstr "target: 90%"
 
-#~ msgid "Рейтинг и заказы"
-#~ msgstr "Rating and orders"
+msgid "Рейтинг и заказы"
+msgstr "Rating and orders"
 
-#~ msgid "Дек"
-#~ msgstr "Dec"
+msgid "Дек"
+msgstr "Dec"
 
-#~ msgid "Корпус фильтра 1-13610"
-#~ msgstr "Filter housing 1-13610"
+msgid "Корпус фильтра 1-13610"
+msgstr "Filter housing 1-13610"
 
-#~ msgid "Оплаты"
-#~ msgstr "Payments"
+msgid "Оплаты"
+msgstr "Payments"
 
-#~ msgid "Заказ #3847 отгружен"
-#~ msgstr "Order #3847 shipped"
+msgid "Заказ #3847 отгружен"
+msgstr "Order #3847 shipped"
 
-#~ msgid "Заказ ORD-2041 отгружен"
-#~ msgstr "Order ORD-2041 shipped"
+msgid "Заказ ORD-2041 отгружен"
+msgstr "Order ORD-2041 shipped"
 
-#~ msgid "Поставщик #2087 · Турбокомпрессор"
-#~ msgstr "Supplier #2087 · Turbocharger"
+msgid "Поставщик #2087 · Турбокомпрессор"
+msgstr "Supplier #2087 · Turbocharger"
 
-#~ msgid "RFQ-1204 · Поставщик #1042 · Гидроцилиндр"
-#~ msgstr "RFQ-1204 · Supplier #1042 · Hydraulic cylinder"
+msgid "RFQ-1204 · Поставщик #1042 · Гидроцилиндр"
+msgstr "RFQ-1204 · Supplier #1042 · Hydraulic cylinder"
 
-#~ msgid "Объём"
-#~ msgstr "Volume"
+msgid "Объём"
+msgstr "Volume"
 
-#~ msgid "Приёмка завершена"
-#~ msgstr "Receipt completed"
+msgid "Приёмка завершена"
+msgstr "Receipt completed"
 
-#~ msgid "Ожидает отгрузки"
-#~ msgstr "Awaiting shipment"
+msgid "Ожидает отгрузки"
+msgstr "Awaiting shipment"
 
-#~ msgid "5ч"
-#~ msgstr "5h"
+msgid "5ч"
+msgstr "5h"
 
-#~ msgid "Поведение 40%"
-#~ msgstr "Behavior 40%"
+msgid "Поведение 40%"
+msgstr "Behavior 40%"
 
-#~ msgid "График выручки"
-#~ msgstr "Revenue chart"
+msgid "График выручки"
+msgstr "Revenue chart"
 
-#~ msgid "SLA: дедлайн по #3832"
-#~ msgstr "SLA: deadline for #3832"
+msgid "SLA: дедлайн по #3832"
+msgstr "SLA: deadline for #3832"
 
-#~ msgid "Фильтр 600-185-4100"
-#~ msgstr "Filter 600-185-4100"
+msgid "Фильтр 600-185-4100"
+msgstr "Filter 600-185-4100"
 
-#~ msgid "Норникель"
-#~ msgstr "Nornickel"
+msgid "Норникель"
+msgstr "Nornickel"
 
-#~ msgid "Несоответствие чертежу"
-#~ msgstr "Drawing mismatch"
+msgid "Несоответствие чертежу"
+msgstr "Drawing mismatch"
 
-#~ msgid "Ждёт решения"
-#~ msgstr "Awaiting decision"
+msgid "Ждёт решения"
+msgstr "Awaiting decision"
 
-#~ msgid "Ответить на переторжку"
-#~ msgstr "Respond to rebid"
+msgid "Ответить на переторжку"
+msgstr "Respond to rebid"
 
-#~ msgid "Стандартный"
-#~ msgstr "Standard"
+msgid "Стандартный"
+msgstr "Standard"
 
-#~ msgid "Устаревшие цены"
-#~ msgstr "Outdated prices"
+msgid "Устаревшие цены"
+msgstr "Outdated prices"
 
-#~ msgid "Используется"
-#~ msgstr "In use"
+msgid "Используется"
+msgstr "In use"
 
-#~ msgid "48м"
-#~ msgstr "48m"
+msgid "48м"
+msgstr "48m"
 
-#~ msgid "Проверка качества — 4ч"
-#~ msgstr "Quality check — 4h"
+msgid "Проверка качества — 4ч"
+msgstr "Quality check — 4h"
 
-#~ msgid "PC800 → Полюс Золото"
-#~ msgstr "PC800 → Polyus Gold"
+msgid "PC800 → Полюс Золото"
+msgstr "PC800 → Polyus Gold"
 
-#~ msgid "Запросы и события"
-#~ msgstr "Requests and events"
+msgid "Запросы и события"
+msgstr "Requests and events"
+
+#: js-gettext
+msgid "3 активных"
+msgstr "3 active"
+
+#: js-gettext
+msgid "4 новых"
+msgstr "4 new"
+
+#: js-gettext
+msgid "Активные RFQ"
+msgstr "Active RFQ"
+
+#: js-gettext
+msgid "Внешняя 60% + поведение 40%"
+msgstr "External 60% + behavior 40%"
+
+#: js-gettext
+msgid "Возврат удержания"
+msgstr "Reserve refund"
+
+#: js-gettext
+msgid "Все →"
+msgstr "All →"
+
+#: js-gettext
+msgid "Выручка по месяцам"
+msgstr "Monthly revenue"
+
+#: js-gettext
+msgid "Заказы, SLA, платежи"
+msgstr "Orders, SLA, payments"
+
+#: js-gettext
+msgid "Заказы, поставки, платежи"
+msgstr "Orders, deliveries, payments"
+
+#: js-gettext
+msgid "Закрепить виджеты"
+msgstr "Pin widgets"
+
+#: js-gettext
+msgid "Закупки по месяцам"
+msgstr "Monthly purchases"
+
+#: js-gettext
+msgid "Запросы клиентов на расценку"
+msgstr "Customer quote requests"
+
+#: js-gettext
+msgid "Исходящие запросы на расценку"
+msgstr "Outgoing quote requests"
+
+#: js-gettext
+msgid "Кредитный скоринг"
+msgstr "Credit scoring"
+
+#: js-gettext
+msgid "Нажмите «Виджеты» чтобы"
+msgstr "Click 'Widgets' to"
+
+#: js-gettext
+msgid "Нет открытых рекламаций"
+msgstr "No open claims"
+
+#: js-gettext
+msgid "Рейтинг покупателя"
+msgstr "Buyer rating"
+
+#: js-gettext
+msgid "Старше 30 дней"
+msgstr "Older than 30 days"
+
+#: js-gettext
+msgid "Экономия (переторжка)"
+msgstr "Savings (negotiation)"
+
+#: js-gettext
+msgid "закрепить нужные блоки"
+msgstr "pin the desired blocks"
+
+#: js-gettext
+msgid "из 5"
+msgstr "out of 5"
+
+#: js-gettext
+msgid "Деталь"
+msgstr ""
