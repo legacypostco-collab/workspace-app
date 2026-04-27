@@ -6743,7 +6743,7 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <form id="multi_form" method="post" onsubmit="return handleCalcSubmit(event)">
 {% csrf_token %}
 <div id="rows_container">
-<textarea id="batch_input" name="batch_input" rows="6" placeholder="{% trans 'Примеры:\n2W1223 1\n1R0750 2\nили: 2W1223, 1R0750 2' %}"></textarea>
+<textarea id="batch_input" name="batch_input" rows="6" placeholder="{% trans 'Примеры:' %} 2W1223 1, 1R0750 2"></textarea>
 </div>
 <br>
 <button class="hero-cta" type="submit">{% trans "Посчитать" %}</button>
