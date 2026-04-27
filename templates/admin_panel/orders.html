@@ -1,16 +1,17 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Заказы{% endblock %}
-{% block topbar_title %}Заказы{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Заказы" %}{% endblock %}
+{% block topbar_title %}{% trans "Заказы" %}{% endblock %}
 
 {% block content %}
 <div class="ap-stats">
-  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></a>
-  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">Активных</div></a>
-  <a href="/admin-panel/orders/?status=completed" class="ap-stat"><div class="ap-stat-value">{{ completed }}</div><div class="ap-stat-label">Завершённых</div></a>
-  <a href="/admin-panel/orders/?status=cancelled" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">Отменённых</div></a>
-  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_orders }}</div><div class="ap-stat-label">За неделю</div></a>
-  <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">Выручка за неделю</div></a>
-  <a href="/admin-panel/orders/?sla=breached" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ problem_count }}</div><div class="ap-stat-label">Проблемных</div></a>
+  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">{% trans "Всего" %}</div></a>
+  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">{% trans "Активных" %}</div></a>
+  <a href="/admin-panel/orders/?status=completed" class="ap-stat"><div class="ap-stat-value">{{ completed }}</div><div class="ap-stat-label">{% trans "Завершённых" %}</div></a>
+  <a href="/admin-panel/orders/?status=cancelled" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">{% trans "Отменённых" %}</div></a>
+  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_orders }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
+  <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">{% trans "Выручка за неделю" %}</div></a>
+  <a href="/admin-panel/orders/?sla=breached" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ problem_count }}</div><div class="ap-stat-label">{% trans "Проблемных" %}</div></a>
 </div>
 
 <form method="post" id="ordersForm">
@@ -22,49 +23,49 @@
   <!-- Filters -->
   <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
     <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;" id="orderFilterForm">
-      <input type="text" name="q" class="ap-input" placeholder="Поиск по ID или покупателю..." style="max-width:220px;" value="{{ search }}"/>
+      <input type="text" name="q" class="ap-input" placeholder="{% trans "Поиск по ID или покупателю..." %}" style="max-width:220px;" value="{{ search }}"/>
       <select name="status" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все статусы</option>
+        <option value="">{% trans "Все статусы" %}</option>
         {% for val, label in status_choices %}
         <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
       <select name="payment" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все оплаты</option>
+        <option value="">{% trans "Все оплаты" %}</option>
         {% for val, label in payment_choices %}
         <option value="{{ val }}" {% if payment_filter == val %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
       <select name="sla" class="ap-select" onchange="this.form.submit()">
-        <option value="">SLA: все</option>
-        <option value="on_track" {% if sla_filter == 'on_track' %}selected{% endif %}>В норме</option>
-        <option value="breached" {% if sla_filter == 'breached' %}selected{% endif %}>Нарушен</option>
+        <option value="">{% trans "SLA: все" %}</option>
+        <option value="on_track" {% if sla_filter == 'on_track' %}selected{% endif %}>{% trans "В норме" %}</option>
+        <option value="breached" {% if sla_filter == 'breached' %}selected{% endif %}>{% trans "Нарушен" %}</option>
       </select>
       <select name="sort" class="ap-select" onchange="this.form.submit()">
-        <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>Новые первые</option>
-        <option value="created_at" {% if current_sort == 'created_at' %}selected{% endif %}>Старые первые</option>
-        <option value="-total_amount" {% if current_sort == '-total_amount' %}selected{% endif %}>Дорогие первые</option>
-        <option value="total_amount" {% if current_sort == 'total_amount' %}selected{% endif %}>Дешёвые первые</option>
+        <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>{% trans "Новые первые" %}</option>
+        <option value="created_at" {% if current_sort == 'created_at' %}selected{% endif %}>{% trans "Старые первые" %}</option>
+        <option value="-total_amount" {% if current_sort == '-total_amount' %}selected{% endif %}>{% trans "Дорогие первые" %}</option>
+        <option value="total_amount" {% if current_sort == 'total_amount' %}selected{% endif %}>{% trans "Дешёвые первые" %}</option>
       </select>
-      <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+      <button type="submit" class="ap-btn ap-btn-primary">{% trans "Найти" %}</button>
       {% if search or status_filter or payment_filter or sla_filter %}
-      <a href="/admin-panel/orders/" class="ap-btn ap-btn-warn" style="text-decoration:none;">Сбросить</a>
+      <a href="/admin-panel/orders/" class="ap-btn ap-btn-warn" style="text-decoration:none;">{% trans "Сбросить" %}</a>
       {% endif %}
     </form>
-    <a href="/admin-panel/export/orders/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Экспорт CSV</a>
+    <a href="/admin-panel/export/orders/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Экспорт CSV" %}</a>
   </div>
 
   <table class="ap-table" id="ordersTable">
     <thead>
       <tr>
         <th style="width:30px;"><input type="checkbox" id="selectAllOrders" onchange="toggleAllOrders(this)"/></th>
-        <th>Заказ</th>
-        <th>Покупатель</th>
-        <th>Статус</th>
-        <th>Оплата</th>
-        <th>Сумма</th>
+        <th>{% trans "Заказ" %}</th>
+        <th>{% trans "Покупатель" %}</th>
+        <th>{% trans "Статус" %}</th>
+        <th>{% trans "Оплата" %}</th>
+        <th>{% trans "Сумма" %}</th>
         <th>SLA</th>
-        <th>Дата</th>
+        <th>{% trans "Дата" %}</th>
         <th></th>
       </tr>
     </thead>
@@ -81,16 +82,16 @@
           {% if order.status == 'completed' or order.status == 'delivered' %}
             <span class="ap-badge ap-badge-green">{{ order.get_status_display }}</span>
           {% elif order.status == 'cancelled' %}
-            <span class="ap-badge ap-badge-orange">Отменён</span>
+            <span class="ap-badge ap-badge-orange">{% trans "Отменён" %}</span>
           {% else %}
             <span class="ap-badge ap-badge-blue">{{ order.get_status_display }}</span>
           {% endif %}
         </td>
         <td>
           {% if order.payment_status == 'paid' %}
-            <span class="ap-badge ap-badge-green">Оплачен</span>
+            <span class="ap-badge ap-badge-green">{% trans "Оплачен" %}</span>
           {% elif order.payment_status == 'awaiting_reserve' %}
-            <span class="ap-badge ap-badge-gray">Ожидает</span>
+            <span class="ap-badge ap-badge-gray">{% trans "Ожидает" %}</span>
           {% else %}
             <span class="ap-badge ap-badge-blue">{{ order.get_payment_status_display }}</span>
           {% endif %}
@@ -98,16 +99,16 @@
         <td>${{ order.total_amount|floatformat:0 }}</td>
         <td>
           {% if order.sla_status == 'breached' %}
-            <span style="color:#E85C0D;font-weight:600;">Нарушен</span>
+            <span style="color:#E85C0D;font-weight:600;">{% trans "Нарушен" %}</span>
           {% else %}
             <span style="color:#919191;">OK</span>
           {% endif %}
         </td>
         <td class="text-secondary">{{ order.created_at|date:"d.m.Y" }}</td>
-        <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">Детали</a></td>
+        <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">{% trans "Детали" %}</a></td>
       </tr>
       {% empty %}
-      <tr><td colspan="9" style="text-align:center;color:#919191;">Нет заказов</td></tr>
+      <tr><td colspan="9" style="text-align:center;color:#919191;">{% trans "Нет заказов" %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -116,11 +117,11 @@
   {% if has_prev or has_next %}
   <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;align-items:center;">
     {% if has_prev %}
-    <a href="?page={{ page_num|add:"-1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if payment_filter %}&payment={{ payment_filter }}{% endif %}{% if sla_filter %}&sla={{ sla_filter }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Назад</a>
+    <a href="?page={{ page_num|add:"-1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if payment_filter %}&payment={{ payment_filter }}{% endif %}{% if sla_filter %}&sla={{ sla_filter }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "&larr; Назад" %}</a>
     {% endif %}
-    <span style="font-size:13px;color:#919191;">Стр. {{ page_num }}</span>
+    <span style="font-size:13px;color:#919191;">{% blocktrans with page_num=page_num %}Стр. {{ page_num }}{% endblocktrans %}</span>
     {% if has_next %}
-    <a href="?page={{ page_num|add:"1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if payment_filter %}&payment={{ payment_filter }}{% endif %}{% if sla_filter %}&sla={{ sla_filter }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &rarr;</a>
+    <a href="?page={{ page_num|add:"1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if payment_filter %}&payment={{ payment_filter }}{% endif %}{% if sla_filter %}&sla={{ sla_filter }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Далее &rarr;" %}</a>
     {% endif %}
   </div>
   {% endif %}
@@ -128,15 +129,15 @@
 
 <!-- Bulk bar -->
 <div id="orderBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
-  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="orderSelectedCount">0 выбрано</span>
+  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="orderSelectedCount">{% trans "0 выбрано" %}</span>
   <select class="ap-select" id="bulkStatusSelect">
     {% for val, label in status_choices %}
     <option value="{{ val }}">{{ label }}</option>
     {% endfor %}
   </select>
-  <button type="button" class="ap-btn ap-btn-primary" onclick="bulkOrderStatus()">Сменить статус</button>
-  <button type="button" class="ap-btn ap-btn-warn" onclick="bulkOrderCancel()">Отменить</button>
-  <button type="button" class="ap-btn ap-btn-ghost" onclick="clearOrderSelection()">Снять</button>
+  <button type="button" class="ap-btn ap-btn-primary" onclick="bulkOrderStatus()">{% trans "Сменить статус" %}</button>
+  <button type="button" class="ap-btn ap-btn-warn" onclick="bulkOrderCancel()">{% trans "Отменить" %}</button>
+  <button type="button" class="ap-btn ap-btn-ghost" onclick="clearOrderSelection()">{% trans "Снять" %}</button>
 </div>
 </form>
 {% endblock %}
@@ -150,7 +151,7 @@ function toggleAllOrders(m) {
 function updateOrderBar() {
   var c = document.querySelectorAll('.order-cb:checked').length;
   document.getElementById('orderBulkBar').style.display = c > 0 ? 'flex' : 'none';
-  document.getElementById('orderSelectedCount').textContent = c + ' выбрано';
+  document.getElementById('orderSelectedCount').textContent = c + '{% trans " выбрано" %}';
 }
 function clearOrderSelection() {
   document.querySelectorAll('.order-cb').forEach(function(cb) { cb.checked = false; });
@@ -163,7 +164,7 @@ function bulkOrderStatus() {
   document.getElementById('ordersForm').submit();
 }
 function bulkOrderCancel() {
-  if (confirm('Отменить выбранные заказы?')) {
+  if (confirm('{% trans "Отменить выбранные заказы?" %}')) {
     document.getElementById('ordersAction').value = 'bulk_cancel';
     document.getElementById('ordersForm').submit();
   }

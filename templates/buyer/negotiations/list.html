@@ -1,6 +1,7 @@
 {% extends "buyer/base_buyer.html" %}
+{% load i18n %}
 
-{% block title %}Переторжка{% endblock %}
+{% block title %}{% trans "Переторжка" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -126,52 +127,52 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
 {% block content %}
 
 <section class="neg-hero">
-  <div class="neg-hero-title">Переторжка</div>
-  <div class="neg-hero-sub">Запрос скидок и переговоры по ценам с поставщиками</div>
+  <div class="neg-hero-title">{% trans "Переторжка" %}</div>
+  <div class="neg-hero-sub">{% trans "Запрос скидок и переговоры по ценам с поставщиками" %}</div>
 </section>
 
 <!-- Stats -->
 <div class="neg-stats">
   <a class="neg-stat" href="/buyer/negotiations/?status=active">
-    <div class="neg-stat-label">Активных переторжек</div>
+    <div class="neg-stat-label">{% trans "Активных переторжек" %}</div>
     <div class="neg-stat-val" style="color:#E85C0D;">3</div>
   </a>
   <a class="neg-stat" href="/buyer/negotiations/?status=agreed">
-    <div class="neg-stat-label">Согласованных сделок</div>
+    <div class="neg-stat-label">{% trans "Согласованных сделок" %}</div>
     <div class="neg-stat-val" style="color:#64B5F6;">8</div>
   </a>
   <a class="neg-stat" href="/buyer/negotiations/">
-    <div class="neg-stat-label">Средняя скидка</div>
+    <div class="neg-stat-label">{% trans "Средняя скидка" %}</div>
     <div class="neg-stat-val">12%</div>
   </a>
   <a class="neg-stat" href="/buyer/analytics/">
-    <div class="neg-stat-label">Экономия за месяц</div>
+    <div class="neg-stat-label">{% trans "Экономия за месяц" %}</div>
     <div class="neg-stat-val" style="color:#64B5F6;">$4,280</div>
   </a>
 </div>
 
 <!-- Active negotiations -->
 <div class="neg-section-title">
-  Активные переторжки
-  <span class="neg-section-badge neg-section-badge--active">3 позиции</span>
+  {% trans "Активные переторжки" %}
+  <span class="neg-section-badge neg-section-badge--active">{% trans "3 позиции" %}</span>
 </div>
 
 <div class="neg-table-wrap">
   <table class="neg-table">
     <thead>
       <tr>
-        <th>Товар</th>
-        <th>Поставщик</th>
-        <th>Базовая цена</th>
-        <th>Запрошена скидка</th>
-        <th>Ответ поставщика</th>
-        <th>Действия</th>
+        <th>{% trans "Товар" %}</th>
+        <th>{% trans "Поставщик" %}</th>
+        <th>{% trans "Базовая цена" %}</th>
+        <th>{% trans "Запрошена скидка" %}</th>
+        <th>{% trans "Ответ поставщика" %}</th>
+        <th>{% trans "Действия" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td>
-          <div class="neg-product-name">Гидроцилиндр стрелы</div>
+          <div class="neg-product-name">{% trans "Гидроцилиндр стрелы" %}</div>
           <div class="neg-oem">LH-9989363</div>
           <div class="neg-muted">CAT 320D &middot; 2 шт.</div>
         </td>
@@ -179,16 +180,16 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
         <td class="neg-amount">$2,840.00</td>
         <td>
           <span style="color:#E85C0D;font-weight:700;">15%</span>
-          <br><span class="neg-muted">запрошено 20.03</span>
+          <br><span class="neg-muted">{% trans "запрошено 20.03" %}</span>
         </td>
         <td>
-          <span class="neg-response-badge neg-resp--counter">Контрпредложение</span>
+          <span class="neg-response-badge neg-resp--counter">{% trans "Контрпредложение" %}</span>
           <br><span class="neg-muted" style="margin-top:4px;display:inline-block;">10% ($2,556.00)</span>
         </td>
         <td>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="neg-btn neg-btn--accept">Принять 10%</button>
-            <button class="neg-btn neg-btn--request" onclick="this.style.display='none';this.nextElementSibling.style.display='flex';">Ещё скидку</button>
+            <button class="neg-btn neg-btn--accept">{% trans "Принять 10%" %}</button>
+            <button class="neg-btn neg-btn--request" onclick="this.style.display='none';this.nextElementSibling.style.display='flex';">{% trans "Ещё скидку" %}</button>
             <div style="display:none;gap:4px;align-items:center;">
               <input type="text" class="neg-discount-input" placeholder="12%" />
               <button class="neg-btn neg-btn--request">OK</button>
@@ -198,7 +199,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
       </tr>
       <tr>
         <td>
-          <div class="neg-product-name">Турбокомпрессор</div>
+          <div class="neg-product-name">{% trans "Турбокомпрессор" %}</div>
           <div class="neg-oem">7C-2297</div>
           <div class="neg-muted">CAT 3306 &middot; 1 шт.</div>
         </td>
@@ -206,19 +207,19 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
         <td class="neg-amount">$1,250.00</td>
         <td>
           <span style="color:#E85C0D;font-weight:700;">8%</span>
-          <br><span class="neg-muted">запрошено 22.03</span>
+          <br><span class="neg-muted">{% trans "запрошено 22.03" %}</span>
         </td>
         <td>
-          <span class="neg-response-badge neg-resp--waiting">Ожидает ответа</span>
-          <br><span class="neg-muted">отправлено 22.03</span>
+          <span class="neg-response-badge neg-resp--waiting">{% trans "Ожидает ответа" %}</span>
+          <br><span class="neg-muted">{% trans "отправлено 22.03" %}</span>
         </td>
         <td>
-          <button class="neg-btn neg-btn--secondary">Напомнить</button>
+          <button class="neg-btn neg-btn--secondary">{% trans "Напомнить" %}</button>
         </td>
       </tr>
       <tr>
         <td>
-          <div class="neg-product-name">Фильтр топливный (пакет 20 шт.)</div>
+          <div class="neg-product-name">{% trans "Фильтр топливный (пакет 20 шт.)" %}</div>
           <div class="neg-oem">600-311-8331</div>
           <div class="neg-muted">Komatsu PC200 &middot; 20 шт.</div>
         </td>
@@ -227,11 +228,11 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
         <td>
           <div style="display:flex;gap:4px;align-items:center;">
             <input type="text" class="neg-discount-input" placeholder="%" />
-            <button class="neg-btn neg-btn--request">Запросить</button>
+            <button class="neg-btn neg-btn--request">{% trans "Запросить" %}</button>
           </div>
         </td>
         <td>
-          <span class="neg-muted">Скидка не запрошена</span>
+          <span class="neg-muted">{% trans "Скидка не запрошена" %}</span>
         </td>
         <td></td>
       </tr>
@@ -241,27 +242,27 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
 
 <!-- Agreed deals -->
 <div class="neg-section-title">
-  Согласованные сделки
-  <span class="neg-section-badge neg-section-badge--done">8 позиций</span>
+  {% trans "Согласованные сделки" %}
+  <span class="neg-section-badge neg-section-badge--done">{% trans "8 позиций" %}</span>
 </div>
 
 <div class="neg-table-wrap">
   <table class="neg-table">
     <thead>
       <tr>
-        <th>Товар</th>
-        <th>Поставщик</th>
-        <th>Базовая цена</th>
-        <th>Финальная цена</th>
-        <th>Скидка</th>
-        <th>Экономия</th>
-        <th>Дата</th>
+        <th>{% trans "Товар" %}</th>
+        <th>{% trans "Поставщик" %}</th>
+        <th>{% trans "Базовая цена" %}</th>
+        <th>{% trans "Финальная цена" %}</th>
+        <th>{% trans "Скидка" %}</th>
+        <th>{% trans "Экономия" %}</th>
+        <th>{% trans "Дата" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr class="neg-agreed">
         <td>
-          <div class="neg-product-name">Ремкомплект гидромотора</div>
+          <div class="neg-product-name">{% trans "Ремкомплект гидромотора" %}</div>
           <div class="neg-oem">RE505980</div>
         </td>
         <td>Поставщик #1042</td>
@@ -273,7 +274,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
       </tr>
       <tr class="neg-agreed">
         <td>
-          <div class="neg-product-name">Коронки ковша (20 шт.)</div>
+          <div class="neg-product-name">{% trans "Коронки ковша (20 шт.)" %}</div>
           <div class="neg-oem">T66203</div>
         </td>
         <td>Поставщик #3156</td>
@@ -285,7 +286,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
       </tr>
       <tr class="neg-agreed">
         <td>
-          <div class="neg-product-name">Электрика CAT D6R (пакет)</div>
+          <div class="neg-product-name">{% trans "Электрика CAT D6R (пакет)" %}</div>
           <div class="neg-oem">3T-5760</div>
         </td>
         <td>Поставщик #2087</td>
@@ -297,7 +298,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
       </tr>
       <tr class="neg-agreed">
         <td>
-          <div class="neg-product-name">Ходовая часть PC300 (комплект)</div>
+          <div class="neg-product-name">{% trans "Ходовая часть PC300 (комплект)" %}</div>
           <div class="neg-oem">PC300-7</div>
         </td>
         <td>Поставщик #4291</td>

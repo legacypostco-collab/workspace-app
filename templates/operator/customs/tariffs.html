@@ -1,19 +1,20 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Таможенный брокер — Тарифы{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Таможенный брокер — Тарифы" %}{% endblock %}
 
 {% block content %}
-<div class="op-section-title" style="margin-bottom:16px;">Справочник тарифов</div>
+<div class="op-section-title" style="margin-bottom:16px;">{% trans "Справочник тарифов" %}</div>
 
 <!-- Search -->
 <div class="op-card" style="margin-bottom:16px;">
   <div style="display:flex;gap:12px;align-items:end;">
     <div style="flex:1;">
-      <div class="op-section-sub">Поиск по коду или описанию</div>
-      <input type="text" class="op-input" id="tariff-search" placeholder="Введите код ТН ВЭД или название товара..." oninput="filterTariffs()"/>
+      <div class="op-section-sub">{% trans "Поиск по коду или описанию" %}</div>
+      <input type="text" class="op-input" id="tariff-search" placeholder="{% trans "Введите код ТН ВЭД или название товара..." %}" oninput="filterTariffs()"/>
     </div>
     <button class="op-btn op-btn-primary" onclick="filterTariffs()">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
-      Найти
+      {% trans "Найти" %}
     </button>
   </div>
 </div>
@@ -23,26 +24,26 @@
   <table class="op-table" id="tariff-table">
     <thead>
       <tr>
-        <th>Код ТН ВЭД</th>
-        <th>Описание</th>
-        <th>Ставка пошлины %</th>
-        <th>НДС %</th>
-        <th>Акциз</th>
-        <th>Примечание</th>
+        <th>{% trans "Код ТН ВЭД" %}</th>
+        <th>{% trans "Описание" %}</th>
+        <th>{% trans "Ставка пошлины %" %}</th>
+        <th>{% trans "НДС %" %}</th>
+        <th>{% trans "Акциз" %}</th>
+        <th>{% trans "Примечание" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr data-search="8708 99 автозапчасти прочие части и принадлежности">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#ECECEC;">8708 99</td>
-        <td>Автозапчасти: прочие части и принадлежности</td>
+        <td>{% trans "Автозапчасти: прочие части и принадлежности" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">5%</td>
         <td style="font-family:'Golos Text',sans-serif;">20%</td>
         <td class="text-secondary">--</td>
-        <td class="text-secondary" style="font-size:12px;">Увеличение с 01.04</td>
+        <td class="text-secondary" style="font-size:12px;">{% trans "Увеличение с 01.04" %}</td>
       </tr>
       <tr data-search="8482 10 подшипники шариковые">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#ECECEC;">8482 10</td>
-        <td>Подшипники шариковые</td>
+        <td>{% trans "Подшипники шариковые" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">8%</td>
         <td style="font-family:'Golos Text',sans-serif;">20%</td>
         <td class="text-secondary">--</td>
@@ -50,15 +51,15 @@
       </tr>
       <tr data-search="8421 23 фильтры масляные для двигателей">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#ECECEC;">8421 23</td>
-        <td>Фильтры масляные для двигателей внутреннего сгорания</td>
+        <td>{% trans "Фильтры масляные для двигателей внутреннего сгорания" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">0%</td>
         <td style="font-family:'Golos Text',sans-serif;">20%</td>
         <td class="text-secondary">--</td>
-        <td style="font-size:12px;color:#919191;">Временная отмена до 31.12</td>
+        <td style="font-size:12px;color:#919191;">{% trans "Временная отмена до 31.12" %}</td>
       </tr>
       <tr data-search="6813 81 тормозные колодки накладки">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#ECECEC;">6813 81</td>
-        <td>Тормозные колодки и накладки</td>
+        <td>{% trans "Тормозные колодки и накладки" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">10%</td>
         <td style="font-family:'Golos Text',sans-serif;">20%</td>
         <td class="text-secondary">--</td>
@@ -66,7 +67,7 @@
       </tr>
       <tr data-search="8708 80 амортизаторы подвески">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#ECECEC;">8708 80</td>
-        <td>Амортизаторы и системы подвески</td>
+        <td>{% trans "Амортизаторы и системы подвески" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">5%</td>
         <td style="font-family:'Golos Text',sans-serif;">20%</td>
         <td class="text-secondary">--</td>
@@ -74,7 +75,7 @@
       </tr>
       <tr data-search="8409 91 детали двигателей поршни">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#ECECEC;">8409 91</td>
-        <td>Детали двигателей: поршни, кольца, гильзы</td>
+        <td>{% trans "Детали двигателей: поршни, кольца, гильзы" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">3%</td>
         <td style="font-family:'Golos Text',sans-serif;">20%</td>
         <td class="text-secondary">--</td>
@@ -82,7 +83,7 @@
       </tr>
       <tr data-search="8511 30 свечи зажигания">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#ECECEC;">8511 30</td>
-        <td>Свечи зажигания</td>
+        <td>{% trans "Свечи зажигания" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">5%</td>
         <td style="font-family:'Golos Text',sans-serif;">20%</td>
         <td class="text-secondary">--</td>
@@ -90,11 +91,11 @@
       </tr>
       <tr data-search="8507 60 аккумуляторы литий-ионные">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#ECECEC;">8507 60</td>
-        <td>Аккумуляторы литий-ионные</td>
+        <td>{% trans "Аккумуляторы литий-ионные" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">0%</td>
         <td style="font-family:'Golos Text',sans-serif;">20%</td>
         <td class="text-secondary">--</td>
-        <td style="font-size:12px;color:#919191;">Льгота для EV-компонентов</td>
+        <td style="font-size:12px;color:#919191;">{% trans "Льгота для EV-компонентов" %}</td>
       </tr>
     </tbody>
   </table>
@@ -104,35 +105,35 @@
 <div class="op-card">
   <div class="op-section-title" style="margin-bottom:14px;">
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="1.3" stroke-linecap="round" style="vertical-align:-2px;margin-right:6px;"><rect x="2" y="1" width="12" height="14" rx="1.5"/><line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="8" y2="8"/><line x1="5" y1="11" x2="11" y2="11"/></svg>
-    Калькулятор пошлин
+    {% trans "Калькулятор пошлин" %}
   </div>
   <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
     <div style="flex:1;min-width:180px;">
-      <div class="op-section-sub">Таможенная стоимость ($)</div>
-      <input type="number" class="op-input" id="calc-customs-value" placeholder="Введите сумму" value="18400"/>
+      <div class="op-section-sub">{% trans "Таможенная стоимость ($)" %}</div>
+      <input type="number" class="op-input" id="calc-customs-value" placeholder="{% trans "Введите сумму" %}" value="18400"/>
     </div>
     <div style="flex:1;min-width:140px;">
-      <div class="op-section-sub">Ставка пошлины (%)</div>
+      <div class="op-section-sub">{% trans "Ставка пошлины (%)" %}</div>
       <input type="number" class="op-input" id="calc-duty-rate" placeholder="%" value="5"/>
     </div>
     <div style="flex:1;min-width:100px;">
-      <div class="op-section-sub">НДС (%)</div>
+      <div class="op-section-sub">{% trans "НДС (%)" %}</div>
       <input type="number" class="op-input" id="calc-vat-rate" placeholder="%" value="20"/>
     </div>
-    <button class="op-btn op-btn-primary" onclick="calculateDuty()" style="padding:8px 20px;">Рассчитать</button>
+    <button class="op-btn op-btn-primary" onclick="calculateDuty()" style="padding:8px 20px;">{% trans "Рассчитать" %}</button>
   </div>
   <div id="duty-result" style="display:none;margin-top:16px;padding:16px;background:#1F1F1F;border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
     <div style="display:flex;gap:32px;flex-wrap:wrap;">
       <div>
-        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Пошлина</div>
+        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">{% trans "Пошлина" %}</div>
         <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;" id="result-duty">--</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">НДС</div>
+        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">{% trans "НДС" %}</div>
         <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;" id="result-vat">--</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Итого к оплате</div>
+        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">{% trans "Итого к оплате" %}</div>
         <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;" id="result-total">--</div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 {% extends "buyer/base_buyer.html" %}
+{% load i18n %}
 
-{% block title %}Финансы{% endblock %}
+{% block title %}{% trans "Финансы" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -107,134 +108,134 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 {% block content %}
 
 <section class="bfin-hero">
-  <div class="bfin-hero-title">Финансы</div>
-  <div class="bfin-hero-sub">Оплаты, счета, задолженность и бюджет закупок</div>
+  <div class="bfin-hero-title">{% trans "Финансы" %}</div>
+  <div class="bfin-hero-sub">{% trans "Оплаты, счета, задолженность и бюджет закупок" %}</div>
 </section>
 
 <!-- KPI row -->
 <div class="bfin-kpis">
   <a href="/buyer/finance/?payment=paid" class="bfin-kpi">
-    <div class="bfin-kpi-label">Оплачено</div>
+    <div class="bfin-kpi-label">{% trans "Оплачено" %}</div>
     <div class="bfin-kpi-val" style="color:#64B5F6;">$98,420</div>
-    <div class="bfin-kpi-hint" style="color:#64B5F6;">за Q1 2026</div>
+    <div class="bfin-kpi-hint" style="color:#64B5F6;">{% trans "за Q1 2026" %}</div>
   </a>
   <a href="/buyer/finance/?payment=overdue" class="bfin-kpi">
-    <div class="bfin-kpi-label">Задолженность</div>
+    <div class="bfin-kpi-label">{% trans "Задолженность" %}</div>
     <div class="bfin-kpi-val" style="color:#E05555;">$18,640</div>
-    <div class="bfin-kpi-hint" style="color:#E05555;">3 счёта</div>
+    <div class="bfin-kpi-hint" style="color:#E05555;">{% trans "3 счёта" %}</div>
   </a>
   <a href="/buyer/finance/" class="bfin-kpi">
-    <div class="bfin-kpi-label">Бюджет остаток</div>
+    <div class="bfin-kpi-label">{% trans "Бюджет остаток" %}</div>
     <div class="bfin-kpi-val" style="color:#64B5F6;">$81,580</div>
-    <div class="bfin-kpi-hint" style="color:#64B5F6;">из $180,000</div>
+    <div class="bfin-kpi-hint" style="color:#64B5F6;">{% trans "из $180,000" %}</div>
   </a>
   <a href="/buyer/analytics/" class="bfin-kpi">
-    <div class="bfin-kpi-label">Экономия</div>
+    <div class="bfin-kpi-label">{% trans "Экономия" %}</div>
     <div class="bfin-kpi-val" style="color:#64B5F6;">$12,340</div>
-    <div class="bfin-kpi-hint" style="color:#64B5F6;">переторжка + объём</div>
+    <div class="bfin-kpi-hint" style="color:#64B5F6;">{% trans "переторжка + объём" %}</div>
   </a>
 </div>
 
 <!-- Recent payments / invoices -->
-<div class="bfin-section-title">Счета и платежи</div>
+<div class="bfin-section-title">{% trans "Счета и платежи" %}</div>
 
 <div class="bfin-table-wrap">
   <table class="bfin-table">
     <thead>
       <tr>
-        <th>Счёт</th>
-        <th>Поставщик</th>
-        <th>Сумма</th>
-        <th>Дата выставления</th>
-        <th>Срок оплаты</th>
-        <th>Статус</th>
+        <th>{% trans "Счёт" %}</th>
+        <th>{% trans "Поставщик" %}</th>
+        <th>{% trans "Сумма" %}</th>
+        <th>{% trans "Дата выставления" %}</th>
+        <th>{% trans "Срок оплаты" %}</th>
+        <th>{% trans "Статус" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td><span class="bfin-id">INV-2026-0341</span><br><span class="bfin-muted">ORD-2026-0142</span></td>
-        <td>Поставщик #1042<br><span class="bfin-muted">Резерв 10%</span></td>
+        <td>Поставщик #1042<br><span class="bfin-muted">{% trans "Резерв 10%" %}</span></td>
         <td class="bfin-amount">$1,120.00</td>
         <td>22.03.2026</td>
         <td>25.03.2026</td>
-        <td><span class="bfin-badge bfin-badge--paid">Оплачен</span></td>
+        <td><span class="bfin-badge bfin-badge--paid">{% trans "Оплачен" %}</span></td>
       </tr>
       <tr>
         <td><span class="bfin-id">INV-2026-0338</span><br><span class="bfin-muted">ORD-2026-0138</span></td>
-        <td>Поставщик #2087<br><span class="bfin-muted">Этап 2 (50%)</span></td>
+        <td>Поставщик #2087<br><span class="bfin-muted">{% trans "Этап 2 (50%)" %}</span></td>
         <td class="bfin-amount">$2,260.00</td>
         <td>18.03.2026</td>
         <td>28.03.2026</td>
-        <td><span class="bfin-badge bfin-badge--pending">Ожидает</span></td>
+        <td><span class="bfin-badge bfin-badge--pending">{% trans "Ожидает" %}</span></td>
       </tr>
       <tr>
         <td><span class="bfin-id">INV-2026-0335</span><br><span class="bfin-muted">ORD-2026-0131</span></td>
-        <td>Поставщик #3156<br><span class="bfin-muted">Таможня (40%)</span></td>
+        <td>Поставщик #3156<br><span class="bfin-muted">{% trans "Таможня (40%)" %}</span></td>
         <td class="bfin-amount">$872.00</td>
         <td>15.03.2026</td>
         <td>22.03.2026</td>
-        <td><span class="bfin-badge bfin-badge--overdue">Просрочен</span></td>
+        <td><span class="bfin-badge bfin-badge--overdue">{% trans "Просрочен" %}</span></td>
       </tr>
       <tr>
         <td><span class="bfin-id">INV-2026-0330</span><br><span class="bfin-muted">ORD-2026-0125</span></td>
-        <td>Поставщик #4291<br><span class="bfin-muted">Финальная оплата</span></td>
+        <td>Поставщик #4291<br><span class="bfin-muted">{% trans "Финальная оплата" %}</span></td>
         <td class="bfin-amount">$5,670.00</td>
         <td>10.03.2026</td>
         <td>15.03.2026</td>
-        <td><span class="bfin-badge bfin-badge--paid">Оплачен</span></td>
+        <td><span class="bfin-badge bfin-badge--paid">{% trans "Оплачен" %}</span></td>
       </tr>
       <tr>
         <td><span class="bfin-id">INV-2026-0322</span><br><span class="bfin-muted">ORD-2026-0118</span></td>
-        <td>Поставщик #5673<br><span class="bfin-muted">Полная оплата</span></td>
+        <td>Поставщик #5673<br><span class="bfin-muted">{% trans "Полная оплата" %}</span></td>
         <td class="bfin-amount">$1,420.00</td>
         <td>05.03.2026</td>
         <td>10.03.2026</td>
-        <td><span class="bfin-badge bfin-badge--paid">Оплачен</span></td>
+        <td><span class="bfin-badge bfin-badge--paid">{% trans "Оплачен" %}</span></td>
       </tr>
       <tr>
         <td><span class="bfin-id">INV-2026-0315</span><br><span class="bfin-muted">ORD-2026-0110</span></td>
-        <td>TurboTech Asia<br><span class="bfin-muted">Этап 1 (резерв)</span></td>
+        <td>TurboTech Asia<br><span class="bfin-muted">{% trans "Этап 1 (резерв)" %}</span></td>
         <td class="bfin-amount">$1,890.00</td>
         <td>20.02.2026</td>
         <td>25.02.2026</td>
-        <td><span class="bfin-badge bfin-badge--paid">Оплачен</span></td>
+        <td><span class="bfin-badge bfin-badge--paid">{% trans "Оплачен" %}</span></td>
       </tr>
       <tr>
         <td><span class="bfin-id">INV-2026-0310</span><br><span class="bfin-muted">ORD-2026-0110</span></td>
-        <td>TurboTech Asia<br><span class="bfin-muted">Этап 2 (50%)</span></td>
+        <td>TurboTech Asia<br><span class="bfin-muted">{% trans "Этап 2 (50%)" %}</span></td>
         <td class="bfin-amount">$9,450.00</td>
         <td>01.03.2026</td>
         <td>26.03.2026</td>
-        <td><span class="bfin-badge bfin-badge--pending">Ожидает</span></td>
+        <td><span class="bfin-badge bfin-badge--pending">{% trans "Ожидает" %}</span></td>
       </tr>
     </tbody>
   </table>
 </div>
 
 <!-- Payment schedule -->
-<div class="bfin-section-title">График ближайших платежей</div>
+<div class="bfin-section-title">{% trans "График ближайших платежей" %}</div>
 
 <div class="bfin-schedule">
   <div class="bfin-sched-card">
-    <div class="bfin-sched-date" style="color:#E05555;">Просрочен &middot; 22.03.2026</div>
-    <div class="bfin-sched-desc">Таможенный платёж (40%)</div>
+    <div class="bfin-sched-date" style="color:#E05555;">{% trans "Просрочен" %} &middot; 22.03.2026</div>
+    <div class="bfin-sched-desc">{% trans "Таможенный платёж (40%)" %}</div>
     <div class="bfin-sched-amount" style="color:#E05555;">$872.00</div>
     <div class="bfin-sched-supplier">Поставщик #3156 &middot; ORD-0131</div>
-    <button class="bfin-pay-btn" onclick="payNow(this)">Оплатить сейчас</button>
+    <button class="bfin-pay-btn">{% trans "Оплатить сейчас" %}</button>
   </div>
   <div class="bfin-sched-card">
-    <div class="bfin-sched-date" style="color:#E85C0D;">Срок &middot; 26.03.2026</div>
-    <div class="bfin-sched-desc">Подтверждение 50%</div>
+    <div class="bfin-sched-date" style="color:#E85C0D;">{% trans "Срок" %} &middot; 26.03.2026</div>
+    <div class="bfin-sched-desc">{% trans "Подтверждение 50%" %}</div>
     <div class="bfin-sched-amount" style="color:#E85C0D;">$9,450.00</div>
     <div class="bfin-sched-supplier">TurboTech Asia &middot; ORD-0110</div>
-    <button class="bfin-pay-btn" onclick="payNow(this)">Оплатить</button>
+    <button class="bfin-pay-btn">{% trans "Оплатить" %}</button>
   </div>
   <div class="bfin-sched-card">
-    <div class="bfin-sched-date" style="color:#E85C0D;">Срок &middot; 28.03.2026</div>
-    <div class="bfin-sched-desc">Этап 2 (50%)</div>
+    <div class="bfin-sched-date" style="color:#E85C0D;">{% trans "Срок" %} &middot; 28.03.2026</div>
+    <div class="bfin-sched-desc">{% trans "Этап 2 (50%)" %}</div>
     <div class="bfin-sched-amount" style="color:#E85C0D;">$2,260.00</div>
     <div class="bfin-sched-supplier">Поставщик #2087 &middot; ORD-0138</div>
-    <button class="bfin-pay-btn" onclick="payNow(this)">Оплатить</button>
+    <button class="bfin-pay-btn">{% trans "Оплатить" %}</button>
   </div>
 </div>
 
@@ -250,71 +251,34 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);
   }
 
-  window.payNow = function(btn) {
-    var card = btn.closest('.bfin-sched-card');
-    var existing = card.querySelector('.pay-confirm');
-    if (existing) { existing.remove(); return; }
-    var amount = card.querySelector('.bfin-sched-amount').textContent;
-    var div = document.createElement('div');
-    div.className = 'pay-confirm';
-    div.style.cssText = 'margin-top:10px;padding:10px;background:#111;border-radius:8px;border:1px solid rgba(100,181,246,0.2);';
-    div.innerHTML = '<div style="font-size:11px;color:#919191;margin-bottom:8px;">Подтвердите оплату ' + amount + '</div>'
-      + '<div style="display:flex;gap:8px;">'
-      + '<button onclick="confirmPayNow(this)" style="flex:1;padding:7px;border-radius:8px;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.25);font-size:11px;cursor:pointer;">✓ Подтвердить</button>'
-      + '<button onclick="this.closest(\'.pay-confirm\').remove()" style="padding:7px 10px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:11px;cursor:pointer;">Отмена</button>'
-      + '</div>';
-    card.appendChild(div);
-  };
-  window.confirmPayNow = function(btn) {
-    var card = btn.closest('.bfin-sched-card');
-    var amount = card.querySelector('.bfin-sched-amount').textContent;
-    var dateEl = card.querySelector('.bfin-sched-date');
-    if (dateEl) { dateEl.textContent = 'Оплачено'; dateEl.style.color = '#66BB6A'; }
-    var amountEl = card.querySelector('.bfin-sched-amount');
-    if (amountEl) amountEl.style.color = '#66BB6A';
-    var payBtn = card.querySelector('.bfin-pay-btn');
-    if (payBtn) payBtn.remove();
-    btn.closest('.pay-confirm').remove();
-    showToast('Оплата ' + amount + ' выполнена');
-  };
+  // Pay buttons in schedule cards
+  document.querySelectorAll('.bfin-pay-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var card = btn.closest('.bfin-sched-card');
+      var supplier = card ? card.querySelector('.bfin-sched-supplier') : null;
+      var supplierText = supplier ? supplier.textContent : '';
+      var amount = card ? card.querySelector('.bfin-sched-amount') : null;
+      var amountText = amount ? amount.textContent : '';
+      showToast('Переход к оплате ' + amountText + ' — ' + supplierText);
+    });
+  });
 
-  // Invoice table rows - click to expand detail
+  // Invoice table rows - click on pending/overdue rows
   var tableWrap = document.querySelector('.bfin-table-wrap');
   if (tableWrap) {
     tableWrap.addEventListener('click', function(e) {
       var row = e.target.closest('tr');
-      if (!row || row.closest('thead') || row.classList.contains('inv-detail-row')) return;
-      var next = row.nextElementSibling;
-      if (next && next.classList.contains('inv-detail-row')) {
-        next.style.display = next.style.display === 'none' ? 'table-row' : 'none';
-        return;
-      }
+      if (!row || row.closest('thead')) return;
       var idEl = row.querySelector('.bfin-id');
       var id = idEl ? idEl.textContent : '';
       var badge = row.querySelector('.bfin-badge');
-      var isPending = badge && (badge.classList.contains('bfin-badge--pending') || badge.classList.contains('bfin-badge--overdue'));
-      var detail = document.createElement('tr');
-      detail.className = 'inv-detail-row';
-      detail.innerHTML = '<td colspan="6" style="padding:12px 16px;background:#1F1F1F;">'
-        + '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">'
-        + '<div><div style="font-size:11px;color:#5E5E5E;">Способ оплаты</div><div style="font-size:12px;color:#ECECEC;margin-top:2px;">Банковский перевод SWIFT</div></div>'
-        + '<div><div style="font-size:11px;color:#5E5E5E;">Реквизиты</div><div style="font-size:12px;color:#ECECEC;margin-top:2px;">BIC: CITIRUSX · Счёт ****4821</div></div>'
-        + '<div><div style="font-size:11px;color:#5E5E5E;">Назначение</div><div style="font-size:12px;color:#ECECEC;margin-top:2px;">' + id + '</div></div>'
-        + (isPending ? '<button onclick="payInvoiceInline(this,\'' + id + '\')" style="margin-left:auto;padding:7px 16px;border-radius:8px;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.25);font-size:12px;cursor:pointer;">Оплатить →</button>' : '')
-        + '</div></td>';
-      row.parentElement.insertBefore(detail, row.nextSibling);
+      if (badge && (badge.classList.contains('bfin-badge--pending') || badge.classList.contains('bfin-badge--overdue'))) {
+        showToast('Переход к оплате ' + id);
+      } else {
+        showToast('Счёт ' + id);
+      }
     });
   }
-  window.payInvoiceInline = function(btn, invId) {
-    var detailRow = btn.closest('tr');
-    var prevRow = detailRow.previousElementSibling;
-    if (prevRow) {
-      var badge = prevRow.querySelector('.bfin-badge');
-      if (badge) { badge.className = 'bfin-badge bfin-badge--paid'; badge.textContent = 'Оплачен'; }
-    }
-    detailRow.remove();
-    showToast('Счёт ' + invId + ' оплачен');
-  };
 })();
 </script>
 

@@ -1,26 +1,27 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Тарифы{% endblock %}
-{% block topbar_title %}Тарифы и комиссии{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Тарифы" %}{% endblock %}
+{% block topbar_title %}{% trans "Тарифы и комиссии" %}{% endblock %}
 
 {% block content %}
 {% if saved %}
 <div class="ap-card-elevated" style="margin-bottom:16px;padding:12px 18px;border-left:3px solid #4CAF50;">
-  <span style="font-size:13px;color:#4CAF50;">Настройки сохранены</span>
+  <span style="font-size:13px;color:#4CAF50;">{% trans "Настройки сохранены" %}</span>
 </div>
 {% endif %}
 
 <div class="ap-stats">
-  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ total_sellers }}</div><div class="ap-stat-label">Поставщиков</div></a>
-  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.basic }}</div><div class="ap-stat-label">Базовый</div></a>
-  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.professional }}</div><div class="ap-stat-label">Профессиональный</div></a>
-  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.corporate }}</div><div class="ap-stat-label">Корпоративный</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ total_sellers }}</div><div class="ap-stat-label">{% trans "Поставщиков" %}</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.basic }}</div><div class="ap-stat-label">{% trans "Базовый" %}</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.professional }}</div><div class="ap-stat-label">{% trans "Профессиональный" %}</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ tier_counts.corporate }}</div><div class="ap-stat-label">{% trans "Корпоративный" %}</div></a>
 </div>
 
 <div class="ap-card">
   <div class="ap-tabs">
-    <button class="ap-tab active" data-tab-group="tariffs" data-tab-key="plans" onclick="apSwitchTab('tariffs','plans')">Тарифные планы</button>
-    <button class="ap-tab" data-tab-group="tariffs" data-tab-key="categories" onclick="apSwitchTab('tariffs','categories')">Комиссии по категориям</button>
-    <button class="ap-tab" data-tab-group="tariffs" data-tab-key="discounts" onclick="apSwitchTab('tariffs','discounts')">Скидки</button>
+    <button class="ap-tab active" data-tab-group="tariffs" data-tab-key="plans" onclick="apSwitchTab('tariffs','plans')">{% trans "Тарифные планы" %}</button>
+    <button class="ap-tab" data-tab-group="tariffs" data-tab-key="categories" onclick="apSwitchTab('tariffs','categories')">{% trans "Комиссии по категориям" %}</button>
+    <button class="ap-tab" data-tab-group="tariffs" data-tab-key="discounts" onclick="apSwitchTab('tariffs','discounts')">{% trans "Скидки" %}</button>
   </div>
 
   <!-- Plans -->
@@ -33,19 +34,19 @@
         <div class="ap-card-elevated" style="display:flex;flex-direction:column;{% if plan.id == 'professional' %}border-color:rgba(100,181,246,0.2);{% endif %}">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
             <span style="font-size:16px;font-weight:700;font-family:'Golos Text',sans-serif;">{{ plan.name }}</span>
-            {% if plan.id == 'professional' %}<span class="ap-badge ap-badge-blue">Популярный</span>{% endif %}
+            {% if plan.id == 'professional' %}<span class="ap-badge ap-badge-blue">{% trans "Популярный" %}</span>{% endif %}
           </div>
           <div style="display:flex;flex-direction:column;gap:12px;">
             <div>
-              <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Цена ($/мес)</label>
+              <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Цена ($/мес)" %}</label>
               <input type="number" name="price_{{ plan.id }}" class="ap-input" value="{{ plan.price }}" style="width:100px;"/>
             </div>
             <div>
-              <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Комиссия (%)</label>
+              <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Комиссия (%)" %}</label>
               <input type="number" name="commission_{{ plan.id }}" class="ap-input" value="{{ plan.commission }}" style="width:100px;"/>
             </div>
             <div>
-              <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Макс. товаров (0 = безлимит)</label>
+              <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Макс. товаров (0 = безлимит)" %}</label>
               <input type="number" name="max_{{ plan.id }}" class="ap-input" value="{{ plan.max_products }}" style="width:100px;"/>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
@@ -53,17 +54,17 @@
                 <input type="checkbox" name="active_{{ plan.id }}" {% if plan.is_active %}checked{% endif %}/>
                 <span class="ap-toggle-slider"></span>
               </label>
-              <span style="font-size:12px;color:#919191;">Активен</span>
+              <span style="font-size:12px;color:#919191;">{% trans "Активен" %}</span>
             </div>
           </div>
           <div style="margin-top:auto;padding-top:12px;font-size:12px;color:#5E5E5E;">
-            {% if plan.id == 'basic' %}{{ tier_counts.basic }}{% elif plan.id == 'professional' %}{{ tier_counts.professional }}{% else %}{{ tier_counts.corporate }}{% endif %} поставщиков
+            {% if plan.id == 'basic' %}{% blocktrans with count=tier_counts.basic %}{{ count }} поставщиков{% endblocktrans %}{% elif plan.id == 'professional' %}{% blocktrans with count=tier_counts.professional %}{{ count }} поставщиков{% endblocktrans %}{% else %}{% blocktrans with count=tier_counts.corporate %}{{ count }} поставщиков{% endblocktrans %}{% endif %}
           </div>
         </div>
         {% endfor %}
       </div>
       <div style="margin-top:16px;">
-        <button type="submit" class="ap-btn ap-btn-primary">Сохранить планы</button>
+        <button type="submit" class="ap-btn ap-btn-primary">{% trans "Сохранить планы" %}</button>
       </div>
     </form>
   </div>
@@ -74,23 +75,23 @@
       {% csrf_token %}
       <input type="hidden" name="tab" value="categories"/>
       <table class="ap-table">
-        <thead><tr><th>Категория</th><th>Запчастей</th><th>Комиссия %</th><th>Мин. сумма ($)</th><th>Макс. сумма ($)</th></tr></thead>
+        <thead><tr><th>{% trans "Категория" %}</th><th>{% trans "Запчастей" %}</th><th>{% trans "Комиссия %" %}</th><th>{% trans "Мин. сумма ($)" %}</th><th>{% trans "Макс. сумма ($)" %}</th></tr></thead>
         <tbody>
           {% for cat in categories %}
           <tr>
             <td>{{ cat.name }}</td>
             <td class="text-secondary">{{ cat.parts_count }}</td>
-            <td><input type="number" step="0.1" name="pct_{{ cat.id }}" class="ap-input" value="{{ cat.pct|default:'8' }}" style="width:80px;"/></td>
-            <td><input type="number" step="0.01" name="min_{{ cat.id }}" class="ap-input" value="{{ cat.min_fee|default:'0.50' }}" style="width:100px;"/></td>
-            <td><input type="number" step="0.01" name="max_{{ cat.id }}" class="ap-input" value="{{ cat.max_fee|default:'1000' }}" style="width:100px;"/></td>
+            <td><input type="number" step="0.1" name="pct_{{ cat.id }}" class="ap-input" value="8" style="width:80px;"/></td>
+            <td><input type="number" step="0.01" name="min_{{ cat.id }}" class="ap-input" value="0.50" style="width:100px;"/></td>
+            <td><input type="number" step="0.01" name="max_{{ cat.id }}" class="ap-input" value="1000" style="width:100px;"/></td>
           </tr>
           {% empty %}
-          <tr><td colspan="5" style="text-align:center;color:#919191;">Нет категорий</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:#919191;">{% trans "Нет категорий" %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
       <div style="margin-top:16px;">
-        <button type="submit" class="ap-btn ap-btn-primary">Сохранить комиссии</button>
+        <button type="submit" class="ap-btn ap-btn-primary">{% trans "Сохранить комиссии" %}</button>
       </div>
     </form>
   </div>
@@ -102,14 +103,14 @@
       <input type="hidden" name="tab" value="discounts"/>
       <input type="hidden" name="action" value="save_discounts"/>
       <table class="ap-table">
-        <thead><tr><th>Название</th><th>Тип</th><th>Размер</th><th>Период</th><th>Активна</th></tr></thead>
+        <thead><tr><th>{% trans "Название" %}</th><th>{% trans "Тип" %}</th><th>{% trans "Размер" %}</th><th>{% trans "Период" %}</th><th>{% trans "Активна" %}</th></tr></thead>
         <tbody>
           {% for d in discounts %}
           <tr>
             <td>{{ d.name }}</td>
             <td class="text-secondary">{{ d.type }}</td>
             <td>{{ d.value }}{% if d.type == 'commission' %}%{% endif %}</td>
-            <td class="text-secondary">{{ d.period|default:"Бессрочно" }}</td>
+            <td class="text-secondary">{% blocktrans with d_period_default_Бессрочно=d.period|default:"Бессрочно" %}{{ d.period|default:"Бессрочно" }}{% endblocktrans %}</td>
             <td>
               <label class="ap-toggle">
                 <input type="checkbox" name="active_{{ forloop.counter0 }}" {% if d.is_active %}checked{% endif %}/>
@@ -118,41 +119,41 @@
             </td>
           </tr>
           {% empty %}
-          <tr><td colspan="5" style="text-align:center;color:#919191;">Нет скидок</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:#919191;">{% trans "Нет скидок" %}</td></tr>
           {% endfor %}
         </tbody>
       </table>
       <div style="margin-top:16px;">
-        <button type="submit" class="ap-btn ap-btn-primary">Сохранить</button>
+        <button type="submit" class="ap-btn ap-btn-primary">{% trans "Сохранить" %}</button>
       </div>
     </form>
 
     <div class="ap-card-elevated" style="margin-top:16px;padding:16px;">
-      <div class="ap-section-title" style="font-size:13px;">Добавить скидку</div>
+      <div class="ap-section-title" style="font-size:13px;">{% trans "Добавить скидку" %}</div>
       <form method="post" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
         {% csrf_token %}
         <input type="hidden" name="tab" value="discounts"/>
         <input type="hidden" name="action" value="add_discount"/>
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Название</label>
-          <input type="text" name="new_name" class="ap-input" placeholder="Welcome-бонус" required style="width:160px;"/>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Название" %}</label>
+          <input type="text" name="new_name" class="ap-input" placeholder="{% trans "Welcome-бонус" %}" required style="width:160px;"/>
         </div>
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Тип</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Тип" %}</label>
           <select name="new_type" class="ap-select" style="min-width:120px;">
-            <option value="commission">Комиссия</option>
-            <option value="subscription">Подписка</option>
+            <option value="commission">{% trans "Комиссия" %}</option>
+            <option value="subscription">{% trans "Подписка" %}</option>
           </select>
         </div>
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Размер</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Размер" %}</label>
           <input type="text" name="new_value" class="ap-input" placeholder="-2%" required style="width:80px;"/>
         </div>
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Период</label>
-          <input type="text" name="new_period" class="ap-input" placeholder="3 месяца" style="width:140px;"/>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Период" %}</label>
+          <input type="text" name="new_period" class="ap-input" placeholder="{% trans "3 месяца" %}" style="width:140px;"/>
         </div>
-        <button type="submit" class="ap-btn ap-btn-primary">Добавить</button>
+        <button type="submit" class="ap-btn ap-btn-primary">{% trans "Добавить" %}</button>
       </form>
     </div>
   </div>

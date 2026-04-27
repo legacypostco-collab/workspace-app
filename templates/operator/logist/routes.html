@@ -1,61 +1,62 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Логист — Маршруты{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Логист — Маршруты" %}{% endblock %}
 
 {% block content %}
-<div class="op-section-title" style="margin-bottom:16px;">Маршруты</div>
+<div class="op-section-title" style="margin-bottom:16px;">{% trans "Маршруты" %}</div>
 
 <!-- Popular routes -->
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:24px;">
-  <div class="op-card" style="cursor:pointer;" onclick="toggleRouteCard(this)">
+  <div class="op-card" style="cursor:pointer;" onclick="opToast('{% trans "Маршрут Шанхай - Москва: 14 дн., 6 активных отгрузок" %}')">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
       <div>
-        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Шанхай <span style="color:#5E5E5E;">&#8594;</span> Москва</div>
-        <div style="font-size:12px;color:#919191;margin-top:3px;">Море / ЖД</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Шанхай" %} <span style="color:#5E5E5E;">&#8594;</span> {% trans "Москва" %}</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">{% trans "Море / ЖД" %}</div>
       </div>
-      <span class="op-badge op-badge-gray">6 отгрузок</span>
+      <span class="op-badge op-badge-gray">{% trans "6 отгрузок" %}</span>
     </div>
     <div style="display:flex;gap:16px;">
-      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">14</div><div style="font-size:11px;color:#919191;">дней</div></div>
-      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$2,400</div><div style="font-size:11px;color:#919191;">средняя стоимость</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">14</div><div style="font-size:11px;color:#919191;">{% trans "дней" %}</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$2,400</div><div style="font-size:11px;color:#919191;">{% trans "средняя стоимость" %}</div></div>
     </div>
   </div>
-  <div class="op-card" style="cursor:pointer;" onclick="toggleRouteCard(this)">
+  <div class="op-card" style="cursor:pointer;" onclick="opToast('{% trans "Маршрут Стамбул - Москва: 7 дн., 4 активных отгрузки" %}')">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
       <div>
-        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Стамбул <span style="color:#5E5E5E;">&#8594;</span> Москва</div>
-        <div style="font-size:12px;color:#919191;margin-top:3px;">Авто</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Стамбул" %} <span style="color:#5E5E5E;">&#8594;</span> {% trans "Москва" %}</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">{% trans "Авто" %}</div>
       </div>
-      <span class="op-badge op-badge-gray">4 отгрузки</span>
+      <span class="op-badge op-badge-gray">{% trans "4 отгрузки" %}</span>
     </div>
     <div style="display:flex;gap:16px;">
-      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">7</div><div style="font-size:11px;color:#919191;">дней</div></div>
-      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,200</div><div style="font-size:11px;color:#919191;">средняя стоимость</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">7</div><div style="font-size:11px;color:#919191;">{% trans "дней" %}</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,200</div><div style="font-size:11px;color:#919191;">{% trans "средняя стоимость" %}</div></div>
     </div>
   </div>
-  <div class="op-card" style="cursor:pointer;" onclick="toggleRouteCard(this)">
+  <div class="op-card" style="cursor:pointer;" onclick="opToast('{% trans "Маршрут Гуанчжоу - Владивосток: 12 дн., 2 активных отгрузки" %}')">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
       <div>
-        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Гуанчжоу <span style="color:#5E5E5E;">&#8594;</span> Владивосток</div>
-        <div style="font-size:12px;color:#919191;margin-top:3px;">ЖД</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Гуанчжоу" %} <span style="color:#5E5E5E;">&#8594;</span> {% trans "Владивосток" %}</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">{% trans "ЖД" %}</div>
       </div>
-      <span class="op-badge op-badge-gray">2 отгрузки</span>
+      <span class="op-badge op-badge-gray">{% trans "2 отгрузки" %}</span>
     </div>
     <div style="display:flex;gap:16px;">
-      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">12</div><div style="font-size:11px;color:#919191;">дней</div></div>
-      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,800</div><div style="font-size:11px;color:#919191;">средняя стоимость</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">12</div><div style="font-size:11px;color:#919191;">{% trans "дней" %}</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,800</div><div style="font-size:11px;color:#919191;">{% trans "средняя стоимость" %}</div></div>
     </div>
   </div>
-  <div class="op-card" style="cursor:pointer;" onclick="toggleRouteCard(this)">
+  <div class="op-card" style="cursor:pointer;" onclick="opToast('{% trans "Маршрут Дубай - Москва: 5 дн., 2 активных отгрузки" %}')">
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
       <div>
-        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Дубай <span style="color:#5E5E5E;">&#8594;</span> Москва</div>
-        <div style="font-size:12px;color:#919191;margin-top:3px;">Авиа / Авто</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Дубай" %} <span style="color:#5E5E5E;">&#8594;</span> {% trans "Москва" %}</div>
+        <div style="font-size:12px;color:#919191;margin-top:3px;">{% trans "Авиа / Авто" %}</div>
       </div>
-      <span class="op-badge op-badge-gray">2 отгрузки</span>
+      <span class="op-badge op-badge-gray">{% trans "2 отгрузки" %}</span>
     </div>
     <div style="display:flex;gap:16px;">
-      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">5</div><div style="font-size:11px;color:#919191;">дней</div></div>
-      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$3,600</div><div style="font-size:11px;color:#919191;">средняя стоимость</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">5</div><div style="font-size:11px;color:#919191;">{% trans "дней" %}</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$3,600</div><div style="font-size:11px;color:#919191;">{% trans "средняя стоимость" %}</div></div>
     </div>
   </div>
 </div>
@@ -64,57 +65,57 @@
 <div class="op-card">
   <div class="op-section-title" style="margin-bottom:14px;">
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"><circle cx="8" cy="8" r="6.5"/><path d="M5 8h6M8 5v6"/></svg>
-    Калькулятор маршрута
+    {% trans "Калькулятор маршрута" %}
   </div>
   <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
     <div style="flex:1;min-width:160px;">
-      <div class="op-section-sub">Откуда</div>
+      <div class="op-section-sub">{% trans "Откуда" %}</div>
       <select class="op-select" id="calc-origin" style="width:100%;">
-        <option value="">Выберите город</option>
-        <option value="shanghai">Шанхай</option>
-        <option value="guangzhou">Гуанчжоу</option>
-        <option value="istanbul">Стамбул</option>
-        <option value="dubai">Дубай</option>
-        <option value="seoul">Сеул</option>
+        <option value="">{% trans "Выберите город" %}</option>
+        <option value="shanghai">{% trans "Шанхай" %}</option>
+        <option value="guangzhou">{% trans "Гуанчжоу" %}</option>
+        <option value="istanbul">{% trans "Стамбул" %}</option>
+        <option value="dubai">{% trans "Дубай" %}</option>
+        <option value="seoul">{% trans "Сеул" %}</option>
       </select>
     </div>
     <div style="flex:1;min-width:160px;">
-      <div class="op-section-sub">Куда</div>
+      <div class="op-section-sub">{% trans "Куда" %}</div>
       <select class="op-select" id="calc-dest" style="width:100%;">
-        <option value="">Выберите город</option>
-        <option value="moscow">Москва</option>
-        <option value="vladivostok">Владивосток</option>
-        <option value="novosibirsk">Новосибирск</option>
-        <option value="ekaterinburg">Екатеринбург</option>
+        <option value="">{% trans "Выберите город" %}</option>
+        <option value="moscow">{% trans "Москва" %}</option>
+        <option value="vladivostok">{% trans "Владивосток" %}</option>
+        <option value="novosibirsk">{% trans "Новосибирск" %}</option>
+        <option value="ekaterinburg">{% trans "Екатеринбург" %}</option>
       </select>
     </div>
     <div style="flex:1;min-width:140px;">
-      <div class="op-section-sub">Способ</div>
+      <div class="op-section-sub">{% trans "Способ" %}</div>
       <select class="op-select" id="calc-method" style="width:100%;">
-        <option value="">Выберите</option>
-        <option value="sea">Море</option>
-        <option value="air">Авиа</option>
-        <option value="rail">ЖД</option>
-        <option value="road">Авто</option>
+        <option value="">{% trans "Выберите" %}</option>
+        <option value="sea">{% trans "Море" %}</option>
+        <option value="air">{% trans "Авиа" %}</option>
+        <option value="rail">{% trans "ЖД" %}</option>
+        <option value="road">{% trans "Авто" %}</option>
       </select>
     </div>
     <button class="op-btn op-btn-primary" onclick="calculateRoute()" style="padding:8px 20px;">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M5 8h6M8 5v6"/></svg>
-      Рассчитать
+      {% trans "Рассчитать" %}
     </button>
   </div>
   <div id="calc-result" style="display:none;margin-top:16px;padding:16px;background:#1F1F1F;border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
     <div style="display:flex;gap:24px;">
       <div>
-        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Срок</div>
+        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">{% trans "Срок" %}</div>
         <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;" id="calc-days">--</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Стоимость</div>
+        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">{% trans "Стоимость" %}</div>
         <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;" id="calc-cost">--</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Маршрут</div>
+        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">{% trans "Маршрут" %}</div>
         <div style="font-size:14px;font-weight:600;color:#ECECEC;" id="calc-route">--</div>
       </div>
     </div>
@@ -144,46 +145,21 @@ var ROUTES = {
   'seoul-vladivostok-sea': {days:4,cost:'$800'},
 };
 var CITY_NAMES = {
-  shanghai:'Шанхай',guangzhou:'Гуанчжоу',istanbul:'Стамбул',dubai:'Дубай',seoul:'Сеул',
-  moscow:'Москва',vladivostok:'Владивосток',novosibirsk:'Новосибирск',ekaterinburg:'Екатеринбург'
+  shanghai:'{% trans "Шанхай" %}',guangzhou:'{% trans "Гуанчжоу" %}',istanbul:'{% trans "Стамбул" %}',dubai:'{% trans "Дубай" %}',seoul:'{% trans "Сеул" %}',
+  moscow:'{% trans "Москва" %}',vladivostok:'{% trans "Владивосток" %}',novosibirsk:'{% trans "Новосибирск" %}',ekaterinburg:'{% trans "Екатеринбург" %}'
 };
-var METHOD_NAMES = {sea:'Море',air:'Авиа',rail:'ЖД',road:'Авто'};
-
-window.toggleRouteCard = function(card) {
-  var panel = card.querySelector('.route-detail-panel');
-  if (panel) { panel.remove(); card.style.outline = ''; return; }
-  // Get route name and stats from the card
-  var name = card.querySelector('[style*="font-weight:700"]');
-  var routeName = name ? name.textContent.trim() : '';
-  var nums = card.querySelectorAll('[style*="font-size:18px"]');
-  var days = nums[0] ? nums[0].textContent.trim() : '--';
-  var cost = nums[1] ? nums[1].textContent.trim() : '--';
-  var method = card.querySelector('[style*="font-size:12px;color:#919191"]');
-  var methodText = method ? method.textContent.trim() : '--';
-  card.style.outline = '1px solid rgba(100,181,246,0.3)';
-  var div = document.createElement('div');
-  div.className = 'route-detail-panel';
-  div.style.cssText = 'margin-top:12px;padding:12px;background:#1A1A1A;border-radius:8px;border:1px solid rgba(255,255,255,0.06);font-size:12px;';
-  div.innerHTML = '<div style="color:#5E5E5E;margin-bottom:8px;">Детали маршрута</div>'
-    + '<div style="display:flex;gap:16px;flex-wrap:wrap;">'
-    + '<div><span style="color:#5E5E5E;">Способ:</span> <span style="color:#ECECEC;">' + methodText + '</span></div>'
-    + '<div><span style="color:#5E5E5E;">Срок:</span> <span style="color:#ECECEC;">' + days + ' дн.</span></div>'
-    + '<div><span style="color:#5E5E5E;">Стоимость:</span> <span style="color:#ECECEC;">' + cost + '</span></div>'
-    + '</div>'
-    + '<div style="margin-top:10px;"><a href="/operator/logist/documents/" style="font-size:12px;color:#64B5F6;text-decoration:none;">Перейти к документам →</a></div>';
-  card.appendChild(div);
-};
+var METHOD_NAMES = {sea:'{% trans "Море" %}',air:'{% trans "Авиа" %}',rail:'{% trans "ЖД" %}',road:'{% trans "Авто" %}'};
 
 function calculateRoute() {
   var o = document.getElementById('calc-origin').value;
   var d = document.getElementById('calc-dest').value;
   var m = document.getElementById('calc-method').value;
-  if (!o||!d||!m) { opToast('Заполните все поля'); return; }
+  if (!o||!d||!m) { opToast('{% trans "Заполните все поля" %}'); return; }
   var key = o+'-'+d+'-'+m;
   var r = ROUTES[key];
   var result = document.getElementById('calc-result');
   if (r) {
-    document.getElementById('calc-days').textContent = r.days + ' дн.';
+    document.getElementById('calc-days').textContent = r.days + '{% trans " дн." %}';
     document.getElementById('calc-cost').textContent = r.cost;
     document.getElementById('calc-route').textContent = CITY_NAMES[o]+' \u2192 '+CITY_NAMES[d]+' ('+METHOD_NAMES[m]+')';
     result.style.display = 'block';
@@ -192,7 +168,7 @@ function calculateRoute() {
     document.getElementById('calc-cost').textContent = '--';
     document.getElementById('calc-route').textContent = CITY_NAMES[o]+' \u2192 '+CITY_NAMES[d];
     result.style.display = 'block';
-    opToast('Маршрут не найден. Попробуйте другой способ доставки.');
+    opToast('{% trans "Маршрут не найден. Попробуйте другой способ доставки." %}');
   }
 }
 </script>

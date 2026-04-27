@@ -1,6 +1,5 @@
 {% extends "seller/base_seller.html" %}
-{% load i18n %}
-{% block title %}{% trans "Чертежи" %}{% endblock %}
+{% block title %}Чертежи{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -242,40 +241,40 @@
 <section class="drw-hero">
   <div class="drw-hero-top">
     <div>
-      <div class="drw-hero-title">{% trans "Чертежи и CAD-файлы" %}</div>
-      <div class="drw-hero-sub">{% trans "Загружай чертежи · связывай с деталями · отслеживай ревизии" %}</div>
+      <div class="drw-hero-title">Чертежи и CAD-файлы</div>
+      <div class="drw-hero-sub">Загружай чертежи · связывай с деталями · отслеживай ревизии</div>
     </div>
     <div style="display:flex;gap:6px;flex-shrink:0;">
       <button class="btn ghost" id="drw-upload-btn" style="padding:7px 16px;font-size:13px;display:flex;align-items:center;gap:6px;color:#64B5F6;border-color:rgba(100,181,246,0.3);">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1.5a.5.5 0 00.5.5h11a.5.5 0 00.5-.5V12"/></svg>
-        {% trans "Загрузить чертёж" %}
+        Загрузить чертёж
       </button>
     </div>
   </div>
 
   <div class="drw-metrics">
     <div class="drw-metric" data-filter="">
-      <div class="drw-metric-label">{% trans "Всего" %}</div>
+      <div class="drw-metric-label">Всего</div>
       <div class="drw-metric-val">{{ total }}</div>
-      <div class="drw-metric-hint">{% trans "чертежей" %}</div>
+      <div class="drw-metric-hint">чертежей</div>
     </div>
     <div class="drw-metric" data-filter="draft">
-      <div class="drw-metric-label">{% trans "Черновики" %}</div>
+      <div class="drw-metric-label">Черновики</div>
       <div class="drw-metric-val">{{ drafts }}</div>
       <div class="drw-metric-hint">draft</div>
     </div>
     <div class="drw-metric" data-filter="on_review">
-      <div class="drw-metric-label">{% trans "На проверке" %}</div>
+      <div class="drw-metric-label">На проверке</div>
       <div class="drw-metric-val">{{ on_review }}</div>
       <div class="drw-metric-hint">review</div>
     </div>
     <div class="drw-metric" data-filter="approved">
-      <div class="drw-metric-label">{% trans "Утверждены" %}</div>
+      <div class="drw-metric-label">Утверждены</div>
       <div class="drw-metric-val">{{ approved }}</div>
       <div class="drw-metric-hint" style="color:#64B5F6;">approved</div>
     </div>
     <div class="drw-metric" data-filter="rejected">
-      <div class="drw-metric-label">{% trans "Отклонены" %}</div>
+      <div class="drw-metric-label">Отклонены</div>
       <div class="drw-metric-val">{{ rejected }}</div>
       <div class="drw-metric-hint" style="color:#FF8C42;">rejected</div>
     </div>
@@ -285,17 +284,17 @@
 {# ═══ Toolbar — поиск + фильтры ═══ #}
 <div class="drw-toolbar">
   <form method="get" style="display:contents;" id="drw-filter-form">
-    <input class="drw-search" type="text" name="q" value="{{ search_q }}" placeholder="{% trans 'Поиск по названию, OEM, описанию…' %}" />
+    <input class="drw-search" type="text" name="q" value="{{ search_q }}" placeholder="Поиск по названию, OEM, описанию…" />
     <select class="drw-select" name="status" onchange="this.form.submit()">
-      <option value="">{% trans "Все статусы" %}</option>
-      <option value="draft" {% if status_filter == "draft" %}selected{% endif %}>{% trans "Черновик" %}</option>
-      <option value="on_review" {% if status_filter == "on_review" %}selected{% endif %}>{% trans "На проверке" %}</option>
-      <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>{% trans "Утверждён" %}</option>
-      <option value="rejected" {% if status_filter == "rejected" %}selected{% endif %}>{% trans "Отклонён" %}</option>
-      <option value="archived" {% if status_filter == "archived" %}selected{% endif %}>{% trans "Архив" %}</option>
+      <option value="">Все статусы</option>
+      <option value="draft" {% if status_filter == "draft" %}selected{% endif %}>Черновик</option>
+      <option value="on_review" {% if status_filter == "on_review" %}selected{% endif %}>На проверке</option>
+      <option value="approved" {% if status_filter == "approved" %}selected{% endif %}>Утверждён</option>
+      <option value="rejected" {% if status_filter == "rejected" %}selected{% endif %}>Отклонён</option>
+      <option value="archived" {% if status_filter == "archived" %}selected{% endif %}>Архив</option>
     </select>
     <select class="drw-select" name="format" onchange="this.form.submit()">
-      <option value="">{% trans "Все форматы" %}</option>
+      <option value="">Все форматы</option>
       {% for fmt in formats_used %}
       <option value="{{ fmt }}" {% if format_filter == fmt %}selected{% endif %}>{{ fmt|upper }}</option>
       {% endfor %}
@@ -309,13 +308,13 @@
   <table class="drw-table">
     <thead>
       <tr>
-        <th>{% trans "Название" %}</th>
-        <th>{% trans "Формат" %}</th>
-        <th>{% trans "Ревизия" %}</th>
+        <th>Название</th>
+        <th>Формат</th>
+        <th>Ревизия</th>
         <th>OEM</th>
-        <th>{% trans "Размер" %}</th>
-        <th>{% trans "Статус" %}</th>
-        <th>{% trans "Обновлён" %}</th>
+        <th>Размер</th>
+        <th>Статус</th>
+        <th>Обновлён</th>
         <th></th>
       </tr>
     </thead>
@@ -349,7 +348,7 @@
         <td>
           <div class="drw-actions">
             {% if d.file_url %}
-            <a href="{{ d.file_url }}" target="_blank" class="drw-action-btn" title="{% trans 'Скачать' %}" onclick="event.stopPropagation()">↓</a>
+            <a href="{{ d.file_url }}" target="_blank" class="drw-action-btn" title="Скачать" onclick="event.stopPropagation()">↓</a>
             {% endif %}
           </div>
         </td>
@@ -361,8 +360,8 @@
 {% else %}
 <div class="drw-empty">
   <div class="drw-empty-icon">📐</div>
-  <div class="drw-empty-title">{% trans "Нет чертежей" %}</div>
-  <div class="drw-empty-desc">{% trans "Загрузите первый чертёж — нажмите кнопку «Загрузить чертёж» выше" %}</div>
+  <div class="drw-empty-title">Нет чертежей</div>
+  <div class="drw-empty-desc">Загрузите первый чертёж — нажмите кнопку «Загрузить чертёж» выше</div>
 </div>
 {% endif %}
 
@@ -377,7 +376,7 @@
     <div class="drw-drawer-meta" id="drw-drawer-meta"></div>
     <div class="drw-drawer-desc" id="drw-drawer-desc" style="display:none;"></div>
     <div class="drw-drawer-files">
-      <div class="drw-drawer-files-title">{% trans "Файлы" %}</div>
+      <div class="drw-drawer-files-title">Файлы</div>
       <div id="drw-drawer-files-list"></div>
     </div>
   </div>
@@ -386,40 +385,40 @@
 {# ═══ Modal: Загрузка чертежа ═══ #}
 <div class="drw-modal-overlay" id="drw-modal">
   <div class="drw-modal">
-    <h3>{% trans "Загрузить чертёж" %}</h3>
+    <h3>Загрузить чертёж</h3>
     <form method="post" enctype="multipart/form-data" id="drw-upload-form">
       {% csrf_token %}
       <div class="drw-modal-field">
-        <label>{% trans "Файл" %}</label>
+        <label>Файл</label>
         <div class="drw-modal-upload-zone" id="drw-drop-zone">
           <div style="font-size:22px;margin-bottom:6px;">📎</div>
-          <div style="font-size:12px;color:#919191;">{% trans "Перетащите файл или нажмите для выбора" %}</div>
-          <div style="font-size:10px;color:#5A5A5A;margin-top:4px;">{% trans "PDF, DWG, DXF, STEP, IGES, STL, PNG, JPG · до 50 МБ" %}</div>
+          <div style="font-size:12px;color:#919191;">Перетащите файл или нажмите для выбора</div>
+          <div style="font-size:10px;color:#5A5A5A;margin-top:4px;">PDF, DWG, DXF, STEP, IGES, STL, PNG, JPG · до 50 МБ</div>
           <input type="file" name="file" id="drw-file-input" accept=".pdf,.dwg,.dxf,.step,.stp,.iges,.igs,.stl,.png,.jpg,.jpeg" />
           <div class="drw-modal-file-name" id="drw-file-name"></div>
         </div>
       </div>
       <div class="drw-modal-field">
-        <label>{% trans "Название" %}</label>
-        <input type="text" name="title" placeholder="{% trans 'Например: Корпус насоса PN-4500' %}" required />
+        <label>Название</label>
+        <input type="text" name="title" placeholder="Например: Корпус насоса PN-4500" required />
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
         <div class="drw-modal-field">
-          <label>{% trans "OEM-номер" %}</label>
+          <label>OEM-номер</label>
           <input type="text" name="oem_number" placeholder="PN-4500-A" />
         </div>
         <div class="drw-modal-field">
-          <label>{% trans "Ревизия" %}</label>
+          <label>Ревизия</label>
           <input type="text" name="revision" value="A" />
         </div>
       </div>
       <div class="drw-modal-field">
-        <label>{% trans "Описание" %}</label>
-        <textarea name="description" placeholder="{% trans 'Дополнительная информация о чертеже…' %}"></textarea>
+        <label>Описание</label>
+        <textarea name="description" placeholder="Дополнительная информация о чертеже…"></textarea>
       </div>
       <div class="drw-modal-btns">
-        <button type="button" class="drw-modal-btn drw-modal-btn--cancel" id="drw-modal-cancel">{% trans "Отмена" %}</button>
-        <button type="submit" class="drw-modal-btn drw-modal-btn--save">{% trans "Загрузить" %}</button>
+        <button type="button" class="drw-modal-btn drw-modal-btn--cancel" id="drw-modal-cancel">Отмена</button>
+        <button type="submit" class="drw-modal-btn drw-modal-btn--save">Загрузить</button>
       </div>
     </form>
   </div>

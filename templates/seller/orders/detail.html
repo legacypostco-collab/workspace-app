@@ -1,11 +1,10 @@
 {% extends "seller/base_seller.html" %}
-{% load i18n %}
-{% block title %}{% blocktrans with id=order.id %}Заказ #{{ id }}{% endblocktrans %}{% endblock %}
+{% block title %}Заказ #{{ order.id }}{% endblock %}
 {% block content %}
 <section class="panel" style="margin-bottom: 16px;">
   <div class="card-actions" style="justify-content: space-between;">
     <div>
-      <h2 style="margin: 0;">{% blocktrans with id=order.id %}Заказ #{{ id }}{% endblocktrans %}</h2>
+      <h2 style="margin: 0;">Заказ #{{ order.id }}</h2>
       <p class="muted">{{ order.customer_name }} • {{ order.customer_email }} • {{ order.created_at|date:"Y-m-d H:i" }}</p>
       <p>
         <span class="chip">Status: {{ order.status }}</span>
@@ -14,7 +13,7 @@
       </p>
     </div>
     <div class="card-actions">
-      <a class="chip" href="{% url 'seller_orders' %}">{% trans "← Ко всем заказам" %}</a>
+      <a class="chip" href="{% url 'seller_orders' %}">← Ко всем заказам</a>
       <a class="btn btn-secondary" href="{% url 'order_invoice' order.id %}">Invoice</a>
     </div>
   </div>
@@ -22,25 +21,25 @@
 
 <section class="grid metrics" style="margin-bottom: 16px;">
   <article class="card card-body">
-    <p class="muted">{% trans "Позиции поставщика" %}</p>
+    <p class="muted">Позиции поставщика</p>
     <p class="price">{{ seller_items|length }}</p>
   </article>
   <article class="card card-body">
-    <p class="muted">{% trans "Документы" %}</p>
+    <p class="muted">Документы</p>
     <p class="price">{{ documents|length }}</p>
   </article>
   <article class="card card-body">
-    <p class="muted">{% trans "Открытые claims" %}</p>
+    <p class="muted">Открытые claims</p>
     <p class="price">{{ open_claims|length }}</p>
   </article>
 </section>
 
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>{% trans "Действие поставщика" %}</h2>
+  <h2>Действие поставщика</h2>
   <form method="post" action="{% url 'seller_order_status_update' order.id %}" class="status-form">
     {% csrf_token %}
     <input type="hidden" name="next" value="{% url 'seller_order_detail' order.id %}" />
-    <label for="status-main">{% trans "Сменить статус заказа" %}</label>
+    <label for="status-main">Сменить статус заказа</label>
     <select id="status-main" name="status" onchange="this.form.submit()">
       {% for value, label in status_choices %}
         <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
@@ -50,14 +49,14 @@
 </section>
 
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>{% trans "Позиции по вашему ассортименту" %}</h2>
+  <h2>Позиции по вашему ассортименту</h2>
   <div class="list">
     {% for item in seller_items %}
       <article class="list-row" style="cursor:pointer;transition:background .15s;" onclick="window.location='{% url 'seller_product_detail' item.part.id %}'">
         <div>
           <h3>{{ item.part.title }}</h3>
           <p class="muted">OEM {{ item.part.oem_number }}{% if item.part.brand %} • {{ item.part.brand.name }}{% endif %}</p>
-          <p class="muted">{% blocktrans with qty=item.quantity price=item.unit_price %}Количество: {{ qty }} • Цена за единицу: ${{ price }}{% endblocktrans %}</p>
+          <p class="muted">Количество: {{ item.quantity }} • Цена за единицу: ${{ item.unit_price }}</p>
         </div>
         <div class="list-actions">
           <p class="price">${{ item.total_price }}</p>
@@ -68,36 +67,36 @@
 </section>
 
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>{% trans "Документы" %}</h2>
+  <h2>Документы</h2>
   <div class="list">
     {% for document in documents %}
       <article class="list-row">
         <div>
           <h3>{{ document.title }}</h3>
-          <p class="muted">{% blocktrans with dtype=document.get_doc_type_display date=document.created_at|date:"Y-m-d H:i" %}Тип: {{ dtype }} • {{ date }}{% endblocktrans %}</p>
+          <p class="muted">Тип: {{ document.get_doc_type_display }} • {{ document.created_at|date:"Y-m-d H:i" }}</p>
         </div>
       </article>
     {% empty %}
-      <p class="muted">{% trans "Документы пока не добавлены." %}</p>
+      <p class="muted">Документы пока не добавлены.</p>
     {% endfor %}
   </div>
 </section>
 
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>{% trans "События заказа" %}</h2>
+  <h2>События заказа</h2>
   <div class="list">
     {% for event in events %}
       <article class="list-row">
         <div>
           <h3>{{ event.get_event_type_display }}</h3>
-          <p class="muted">{% blocktrans with date=event.created_at|date:"Y-m-d H:i" source=event.get_source_display %}{{ date }} • Источник: {{ source }}{% endblocktrans %}</p>
+          <p class="muted">{{ event.created_at|date:"Y-m-d H:i" }} • Источник: {{ event.get_source_display }}</p>
           {% if event.meta %}
             <p class="muted">{{ event.meta }}</p>
           {% endif %}
         </div>
       </article>
     {% empty %}
-      <p class="muted">{% trans "Событий пока нет." %}</p>
+      <p class="muted">Событий пока нет.</p>
     {% endfor %}
   </div>
 </section>
@@ -109,12 +108,12 @@
       <article class="list-row">
         <div>
           <h3>{{ claim.title }}</h3>
-          <p class="muted">{% blocktrans with status=claim.get_status_display date=claim.created_at|date:"Y-m-d H:i" %}Статус: {{ status }} • {{ date }}{% endblocktrans %}</p>
+          <p class="muted">Статус: {{ claim.get_status_display }} • {{ claim.created_at|date:"Y-m-d H:i" }}</p>
           <p class="muted">{{ claim.description }}</p>
         </div>
       </article>
     {% empty %}
-      <p class="muted">{% trans "Открытых рекламаций по заказу нет." %}</p>
+      <p class="muted">Открытых рекламаций по заказу нет.</p>
     {% endfor %}
   </div>
 </section>

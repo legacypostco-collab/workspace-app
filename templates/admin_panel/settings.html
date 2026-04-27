@@ -1,20 +1,21 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Настройки{% endblock %}
-{% block topbar_title %}Настройки платформы{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Настройки" %}{% endblock %}
+{% block topbar_title %}{% trans "Настройки платформы" %}{% endblock %}
 
 {% block content %}
 {% if saved %}
 <div class="ap-card-elevated" style="margin-bottom:16px;padding:12px 18px;border-left:3px solid #4CAF50;">
-  <span style="font-size:13px;color:#4CAF50;">Настройки сохранены</span>
+  <span style="font-size:13px;color:#4CAF50;">{% trans "Настройки сохранены" %}</span>
 </div>
 {% endif %}
 
 <div class="ap-card">
   <div class="ap-tabs">
-    <button class="ap-tab active" data-tab-group="settings" data-tab-key="general" onclick="apSwitchTab('settings','general')">Общие</button>
+    <button class="ap-tab active" data-tab-group="settings" data-tab-key="general" onclick="apSwitchTab('settings','general')">{% trans "Общие" %}</button>
     <button class="ap-tab" data-tab-group="settings" data-tab-key="sla" onclick="apSwitchTab('settings','sla')">SLA</button>
-    <button class="ap-tab" data-tab-group="settings" data-tab-key="currencies" onclick="apSwitchTab('settings','currencies')">Валюты</button>
-    <button class="ap-tab" data-tab-group="settings" data-tab-key="notifications" onclick="apSwitchTab('settings','notifications')">Уведомления</button>
+    <button class="ap-tab" data-tab-group="settings" data-tab-key="currencies" onclick="apSwitchTab('settings','currencies')">{% trans "Валюты" %}</button>
+    <button class="ap-tab" data-tab-group="settings" data-tab-key="notifications" onclick="apSwitchTab('settings','notifications')">{% trans "Уведомления" %}</button>
   </div>
 
   <!-- General -->
@@ -23,11 +24,11 @@
       {% csrf_token %}
       <input type="hidden" name="tab" value="general"/>
       <div>
-        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Название платформы</label>
+        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">{% trans "Название платформы" %}</label>
         <input type="text" name="platform_name" class="ap-input" value="{{ cfg.platform_name }}"/>
       </div>
       <div>
-        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Email поддержки</label>
+        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">{% trans "Email поддержки" %}</label>
         <input type="text" name="support_email" class="ap-input" value="{{ cfg.support_email }}"/>
       </div>
       <div style="display:flex;align-items:center;gap:12px;">
@@ -35,10 +36,10 @@
           <input type="checkbox" name="maintenance_mode" {% if cfg.maintenance_mode %}checked{% endif %}/>
           <span class="ap-toggle-slider"></span>
         </label>
-        <span style="font-size:13px;">Режим обслуживания (Maintenance mode)</span>
+        <span style="font-size:13px;">{% trans "Режим обслуживания (Maintenance mode)" %}</span>
       </div>
       <div style="margin-top:8px;">
-        <button type="submit" class="ap-btn ap-btn-primary">Сохранить</button>
+        <button type="submit" class="ap-btn ap-btn-primary">{% trans "Сохранить" %}</button>
       </div>
     </form>
   </div>
@@ -49,23 +50,23 @@
       {% csrf_token %}
       <input type="hidden" name="tab" value="sla"/>
       <div>
-        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Максимальное время ответа на RFQ (часы)</label>
+        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">{% trans "Максимальное время ответа на RFQ (часы)" %}</label>
         <input type="number" name="rfq_response_hours" class="ap-input" value="{{ cfg.rfq_response_hours }}" style="width:120px;"/>
       </div>
       <div>
-        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Максимальное время доставки (дни)</label>
+        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">{% trans "Максимальное время доставки (дни)" %}</label>
         <input type="number" name="max_delivery_days" class="ap-input" value="{{ cfg.max_delivery_days }}" style="width:120px;"/>
       </div>
       <div>
-        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Штраф за просрочку SLA (% от суммы заказа)</label>
+        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">{% trans "Штраф за просрочку SLA (% от суммы заказа)" %}</label>
         <input type="number" name="sla_penalty_percent" class="ap-input" value="{{ cfg.sla_penalty_percent }}" style="width:120px;"/>
       </div>
       <div>
-        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">Максимальное время обработки рекламации (часы)</label>
+        <label style="font-size:12px;color:#919191;display:block;margin-bottom:6px;">{% trans "Максимальное время обработки рекламации (часы)" %}</label>
         <input type="number" name="claim_response_hours" class="ap-input" value="{{ cfg.claim_response_hours }}" style="width:120px;"/>
       </div>
       <div style="margin-top:8px;">
-        <button type="submit" class="ap-btn ap-btn-primary">Сохранить</button>
+        <button type="submit" class="ap-btn ap-btn-primary">{% trans "Сохранить" %}</button>
       </div>
     </form>
   </div>
@@ -75,17 +76,17 @@
     <form method="post" style="max-width:600px;">
       {% csrf_token %}
       <input type="hidden" name="tab" value="currencies"/>
-      <p style="font-size:12px;color:#919191;margin-bottom:16px;">Управление поддерживаемыми валютами платформы</p>
-      <table class="ap-table" style="margin-bottom:16px;">
-        <thead><tr><th>Валюта</th><th>Код</th><th>Активна</th></tr></thead>
+      <p style="font-size:12px;color:#919191;margin-bottom:12px;">{% trans "Управление валютами платформы" %}</p>
+      <table class="ap-table">
+        <thead><tr><th>{% trans "Валюта" %}</th><th>{% trans "Код" %}</th><th>{% trans "Активна" %}</th></tr></thead>
         <tbody>
           {% for cur in currencies %}
           <tr>
             <td>{{ cur.name }}</td>
-            <td style="font-family:'Golos Text',sans-serif;font-weight:700;">{{ cur.code }}</td>
+            <td>{{ cur.code }}</td>
             <td>
               <label class="ap-toggle">
-                <input type="checkbox" name="currency_{{ cur.code }}" {% if cur.active %}checked{% endif %}/>
+                <input type="checkbox" name="cur_{{ cur.code }}" {% if cur.is_active %}checked{% endif %}/>
                 <span class="ap-toggle-slider"></span>
               </label>
             </td>
@@ -93,30 +94,41 @@
           {% endfor %}
         </tbody>
       </table>
-      <button type="submit" class="ap-btn ap-btn-primary">Сохранить</button>
+      <div style="display:flex;gap:8px;margin-top:12px;align-items:flex-end;">
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Код" %}</label>
+          <input type="text" name="new_code" class="ap-input" placeholder="GBP" style="width:70px;" maxlength="3"/>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Название" %}</label>
+          <input type="text" name="new_name" class="ap-input" placeholder="British Pound" style="width:160px;"/>
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <button type="submit" class="ap-btn ap-btn-primary">{% trans "Сохранить" %}</button>
+      </div>
     </form>
   </div>
 
   <!-- Notifications -->
   <div data-panel-group="settings" data-panel-key="notifications" style="display:none;">
-    <form method="post" style="max-width:600px;display:flex;flex-direction:column;gap:0;">
+    <form method="post" style="max-width:600px;">
       {% csrf_token %}
       <input type="hidden" name="tab" value="notifications"/>
-      <p style="font-size:12px;color:#919191;margin-bottom:16px;">Управление системными уведомлениями</p>
-      {% for notif in notifications %}
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
-        <div>
-          <div style="font-size:13px;color:#ECECEC;">{{ notif.label }}</div>
-          <div style="font-size:11px;color:#5E5E5E;margin-top:2px;">{{ notif.description }}</div>
+      <p style="font-size:12px;color:#919191;margin-bottom:16px;">{% trans "Включение/выключение уведомлений по типу события" %}</p>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        {% for key, label in notif_labels.items %}
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;">{{ label }}</span>
+          <label class="ap-toggle">
+            <input type="checkbox" name="notif_{{ key }}" {% if key in notifications %}{% if notifications|dictsort:key %}checked{% endif %}{% endif %} checked/>
+            <span class="ap-toggle-slider"></span>
+          </label>
         </div>
-        <label class="ap-toggle">
-          <input type="checkbox" name="notif_{{ notif.key }}" {% if notif.active %}checked{% endif %}/>
-          <span class="ap-toggle-slider"></span>
-        </label>
+        {% endfor %}
       </div>
-      {% endfor %}
       <div style="margin-top:16px;">
-        <button type="submit" class="ap-btn ap-btn-primary">Сохранить</button>
+        <button type="submit" class="ap-btn ap-btn-primary">{% trans "Сохранить" %}</button>
       </div>
     </form>
   </div>

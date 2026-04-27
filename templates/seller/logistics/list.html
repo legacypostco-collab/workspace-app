@@ -1,5 +1,4 @@
 {% extends "seller/base_seller.html" %}
-{% load i18n %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -189,19 +188,19 @@
 {% block content %}
 
 <div class="lg-tabs">
-  <div class="lg-tab active" onclick="lgTab(this,'map')">{% trans "Карта и терминалы" %}</div>
-  <div class="lg-tab" onclick="lgTab(this,'tracking')">{% trans "Отслеживание" %}</div>
-  <div class="lg-tab" onclick="lgTab(this,'shipping')">{% trans "Способы доставки" %}</div>
-  <div class="lg-tab" onclick="lgTab(this,'calculator')">{% trans "Калькулятор" %}</div>
-  <div class="lg-tab" onclick="lgTab(this,'auction')">{% trans "Переторжка" %}</div>
+  <div class="lg-tab active" onclick="lgTab(this,'map')">Карта и терминалы</div>
+  <div class="lg-tab" onclick="lgTab(this,'tracking')">Отслеживание</div>
+  <div class="lg-tab" onclick="lgTab(this,'shipping')">Способы доставки</div>
+  <div class="lg-tab" onclick="lgTab(this,'calculator')">Калькулятор</div>
+  <div class="lg-tab" onclick="lgTab(this,'auction')">Переторжка</div>
 </div>
 
 {# ═══ TAB 1: Карта и терминалы ═══ #}
 <div class="lg-panel active" id="panel-map">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
     <div>
-      <div class="lg-section-title">{% trans "Грузовые терминалы и порты" %}</div>
-      <div class="lg-section-sub" style="margin-bottom:0;">{% trans "Интерактивная карта · Морские порты, авиатерминалы, ж/д узлы" %}</div>
+      <div class="lg-section-title">Грузовые терминалы и порты</div>
+      <div class="lg-section-sub" style="margin-bottom:0;">Интерактивная карта · Морские порты, авиатерминалы, ж/д узлы</div>
     </div>
   </div>
 
@@ -211,35 +210,35 @@
   {# Filters #}
   <div style="display:flex;gap:12px;margin-bottom:12px;align-items:center;">
     <div>
-      <label style="font-size:10px;color:#64B5F6;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;display:block;margin-bottom:6px;">{% trans "Страна" %}</label>
+      <label style="font-size:10px;color:#64B5F6;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;display:block;margin-bottom:6px;">Страна</label>
       <select class="lg-select" id="countryFilter" onchange="currentCountry=this.value;renderPorts();">
-        <option value="all">{% trans "Все страны" %}</option>
-        <option value="ru">{% trans "Россия" %}</option>
-        <option value="cn">{% trans "Китай" %}</option>
-        <option value="ae">{% trans "ОАЭ" %}</option>
-        <option value="tr">{% trans "Турция" %}</option>
-        <option value="us">{% trans "США" %}</option>
-        <option value="de">{% trans "Германия" %}</option>
-        <option value="it">{% trans "Италия" %}</option>
-        <option value="nl">{% trans "Нидерланды" %}</option>
-        <option value="uk">{% trans "Великобритания" %}</option>
-        <option value="jp">{% trans "Япония" %}</option>
-        <option value="kr">{% trans "Южная Корея" %}</option>
-        <option value="tw">{% trans "Тайвань" %}</option>
-        <option value="sea">{% trans "Юго-Вост. Азия" %}</option>
-        <option value="kz">{% trans "Казахстан" %}</option>
-        <option value="in">{% trans "Индия" %}</option>
-        <option value="cis">{% trans "СНГ" %}</option>
-        <option value="latam">{% trans "Лат. Америка" %}</option>
+        <option value="all">Все страны</option>
+        <option value="ru">Россия</option>
+        <option value="cn">Китай</option>
+        <option value="ae">ОАЭ</option>
+        <option value="tr">Турция</option>
+        <option value="us">США</option>
+        <option value="de">Германия</option>
+        <option value="it">Италия</option>
+        <option value="nl">Нидерланды</option>
+        <option value="uk">Великобритания</option>
+        <option value="jp">Япония</option>
+        <option value="kr">Южная Корея</option>
+        <option value="tw">Тайвань</option>
+        <option value="sea">Юго-Вост. Азия</option>
+        <option value="kz">Казахстан</option>
+        <option value="in">Индия</option>
+        <option value="cis">СНГ</option>
+        <option value="latam">Лат. Америка</option>
       </select>
     </div>
     <div>
-      <label style="font-size:10px;color:#64B5F6;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;display:block;margin-bottom:6px;">{% trans "Тип доставки" %}</label>
+      <label style="font-size:10px;color:#64B5F6;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;display:block;margin-bottom:6px;">Тип доставки</label>
       <select class="lg-select" id="typeFilter" onchange="currentType=this.value;renderPorts();">
-        <option value="all">{% trans "Все типы" %}</option>
-        <option value="sea">{% trans "Морские порты" %}</option>
-        <option value="air">{% trans "Авиатерминалы" %}</option>
-        <option value="rail">{% trans "Ж/Д узлы" %}</option>
+        <option value="all">Все типы</option>
+        <option value="sea">Морские порты</option>
+        <option value="air">Авиатерминалы</option>
+        <option value="rail">Ж/Д узлы</option>
       </select>
     </div>
   </div>
@@ -251,8 +250,8 @@
 
 {# ═══ TAB 2: Отслеживание ═══ #}
 <div class="lg-panel" id="panel-tracking">
-  <div class="lg-section-title">{% trans "Отслеживание отгрузок" %}</div>
-  <div class="lg-section-sub">{% trans "Контроль по этапам доставки с картой маршрута" %}</div>
+  <div class="lg-section-title">Отслеживание отгрузок</div>
+  <div class="lg-section-sub">Контроль по этапам доставки с картой маршрута</div>
 
   {# Tracking map #}
   <div id="trackingMap" style="height:260px;border-radius:12px;border:1px solid rgba(255,255,255,0.06);margin-bottom:14px;background:#111;"></div>
@@ -261,123 +260,123 @@
   <div style="background:#1A1A1A;border-radius:12px;padding:16px 20px;border:1px solid rgba(255,255,255,0.04);margin-bottom:12px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
       <div>
-        <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "ORD-3851 · Гидроцилиндр RE48786" %}</div>
-        <div style="font-size:11px;color:#6A6A6A;margin-top:2px;">{% trans "Шанхай → Владивосток → Москва · Море + Ж/Д · 4 позиции · $3 230" %}</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">ORD-3851 · Гидроцилиндр RE48786</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-top:2px;">Шанхай → Владивосток → Москва · Море + Ж/Д · 4 позиции · $3 230</div>
       </div>
-      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(100,181,246,0.1);color:#64B5F6;">{% trans "В пути" %}</span>
+      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(100,181,246,0.1);color:#64B5F6;">В пути</span>
     </div>
 
     <div class="lg-timeline">
       <div class="lg-tl-item">
-        <div class="lg-tl-date">{% trans "12 мар" %}</div>
+        <div class="lg-tl-date">12 мар</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--done"></div><div class="lg-tl-line lg-tl-line--done"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Заказ подтверждён" %}</div><div class="lg-tl-desc">{% trans "Оплата получена, производство запущено" %}</div></div>
-        <div class="lg-tl-status" style="color:#66BB6A;">{% trans "Готово" %}</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">Заказ подтверждён</div><div class="lg-tl-desc">Оплата получена, производство запущено</div></div>
+        <div class="lg-tl-status" style="color:#66BB6A;">Готово</div>
         <div class="lg-tl-duration">—</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">{% trans "15 мар" %}</div>
+        <div class="lg-tl-date">15 мар</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--done"></div><div class="lg-tl-line lg-tl-line--done"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Производство завершено" %}</div><div class="lg-tl-desc">{% trans "Товар упакован, ОТК пройден, документы готовы" %}</div></div>
-        <div class="lg-tl-status" style="color:#66BB6A;">{% trans "Готово" %}</div>
-        <div class="lg-tl-duration">{% trans "3 дня" %}</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">Производство завершено</div><div class="lg-tl-desc">Товар упакован, ОТК пройден, документы готовы</div></div>
+        <div class="lg-tl-status" style="color:#66BB6A;">Готово</div>
+        <div class="lg-tl-duration">3 дня</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">{% trans "16 мар" %}</div>
+        <div class="lg-tl-date">16 мар</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--done"></div><div class="lg-tl-line lg-tl-line--done"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Отгрузка со склада" %}</div><div class="lg-tl-desc">{% trans "Контейнер MSKU-7284190 загружен, Bill of Lading оформлен" %}</div></div>
-        <div class="lg-tl-status" style="color:#66BB6A;">{% trans "Готово" %}</div>
-        <div class="lg-tl-duration">{% trans "1 день" %}</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">Отгрузка со склада</div><div class="lg-tl-desc">Контейнер MSKU-7284190 загружен, Bill of Lading оформлен</div></div>
+        <div class="lg-tl-status" style="color:#66BB6A;">Готово</div>
+        <div class="lg-tl-duration">1 день</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">{% trans "17 мар" %}</div>
+        <div class="lg-tl-date">17 мар</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--done"></div><div class="lg-tl-line lg-tl-line--done"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Порт отправления — Шанхай" %}</div><div class="lg-tl-desc">{% trans "Контейнер на борту MV Pacific Star. ETA Владивосток: 25 мар" %}</div></div>
-        <div class="lg-tl-status" style="color:#66BB6A;">{% trans "Готово" %}</div>
-        <div class="lg-tl-duration">{% trans "1 день" %}</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">Порт отправления — Шанхай</div><div class="lg-tl-desc">Контейнер на борту MV Pacific Star. ETA Владивосток: 25 мар</div></div>
+        <div class="lg-tl-status" style="color:#66BB6A;">Готово</div>
+        <div class="lg-tl-duration">1 день</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">{% trans "25 мар" %}</div>
+        <div class="lg-tl-date">25 мар</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--active"></div><div class="lg-tl-line"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Порт прибытия — Владивосток" %}</div><div class="lg-tl-desc">{% trans "Судно прибыло, выгрузка и таможенное оформление" %}</div></div>
-        <div class="lg-tl-status" style="color:#64B5F6;">{% trans "Сейчас" %}</div>
-        <div class="lg-tl-duration">{% trans "8 дней" %}</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">Порт прибытия — Владивосток</div><div class="lg-tl-desc">Судно прибыло, выгрузка и таможенное оформление</div></div>
+        <div class="lg-tl-status" style="color:#64B5F6;">Сейчас</div>
+        <div class="lg-tl-duration">8 дней</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">{% trans "~27 мар" %}</div>
+        <div class="lg-tl-date">~27 мар</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--pending"></div><div class="lg-tl-line"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Ж/Д перевозка → Москва" %}</div><div class="lg-tl-desc">{% trans "Контейнерный поезд Владивосток — Москва, ~10 дней" %}</div></div>
-        <div class="lg-tl-status" style="color:#6A6A6A;">{% trans "Ожидание" %}</div>
-        <div class="lg-tl-duration">{% trans "~10 дней" %}</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">Ж/Д перевозка → Москва</div><div class="lg-tl-desc">Контейнерный поезд Владивосток — Москва, ~10 дней</div></div>
+        <div class="lg-tl-status" style="color:#6A6A6A;">Ожидание</div>
+        <div class="lg-tl-duration">~10 дней</div>
       </div>
       <div class="lg-tl-item">
-        <div class="lg-tl-date">{% trans "~6 апр" %}</div>
+        <div class="lg-tl-date">~6 апр</div>
         <div class="lg-tl-dot-wrap"><div class="lg-tl-dot lg-tl-dot--pending"></div></div>
-        <div class="lg-tl-content"><div class="lg-tl-title">{% trans "Доставка получателю" %}</div><div class="lg-tl-desc">{% trans "Последняя миля, передача товара клиенту" %}</div></div>
-        <div class="lg-tl-status" style="color:#6A6A6A;">{% trans "Ожидание" %}</div>
-        <div class="lg-tl-duration">{% trans "~1 день" %}</div>
+        <div class="lg-tl-content"><div class="lg-tl-title">Доставка получателю</div><div class="lg-tl-desc">Последняя миля, передача товара клиенту</div></div>
+        <div class="lg-tl-status" style="color:#6A6A6A;">Ожидание</div>
+        <div class="lg-tl-duration">~1 день</div>
       </div>
     </div>
 
     <div style="background:#111;border-radius:8px;padding:12px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px;text-align:center;">
-      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "25 дней" %}</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">{% trans "Общий срок" %}</div></div>
-      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">13/25</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">{% trans "Прогресс" %}</div></div>
-      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">$480</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">{% trans "Доставка" %}</div></div>
-      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Море+Ж/Д" %}</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">{% trans "Маршрут" %}</div></div>
-      <div><div style="font-size:14px;font-weight:700;color:#66BB6A;">{% trans "В норме" %}</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">SLA</div></div>
+      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">25 дней</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">Общий срок</div></div>
+      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">13/25</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">Прогресс</div></div>
+      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">$480</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">Доставка</div></div>
+      <div><div style="font-size:14px;font-weight:700;color:#ECECEC;">Море+Ж/Д</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">Маршрут</div></div>
+      <div><div style="font-size:14px;font-weight:700;color:#66BB6A;">В норме</div><div style="font-size:9px;color:#6A6A6A;text-transform:uppercase;">SLA</div></div>
     </div>
   </div>
 </div>
 
 {# ═══ TAB 3: Способы доставки ═══ #}
 <div class="lg-panel" id="panel-shipping">
-  <div class="lg-section-title">{% trans "Способы доставки" %}</div>
-  <div class="lg-section-sub">{% trans "Доступные виды транспорта для отправки из Китая, Европы и по России" %}</div>
+  <div class="lg-section-title">Способы доставки</div>
+  <div class="lg-section-sub">Доступные виды транспорта для отправки из Китая, Европы и по России</div>
 
   <div class="lg-modes">
     <div class="lg-mode selected" onclick="selectMode(this)">
       <div class="lg-mode-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 17H2a3 3 0 003 3h14a3 3 0 003-3z"/><path d="M2 17l2-9h16l2 9"/><circle cx="7" cy="13" r="1"/></svg></div>
-      <div class="lg-mode-name">{% trans "Морем" %}</div>
-      <div class="lg-mode-desc">{% trans "Контейнерные перевозки FCL/LCL" %}</div>
-      <div class="lg-mode-time">{% trans "25-40 дней" %}</div>
-      <div class="lg-mode-price">{% trans "от $800 / контейнер" %}</div>
+      <div class="lg-mode-name">Морем</div>
+      <div class="lg-mode-desc">Контейнерные перевозки FCL/LCL</div>
+      <div class="lg-mode-time">25-40 дней</div>
+      <div class="lg-mode-price">от $800 / контейнер</div>
     </div>
     <div class="lg-mode" onclick="selectMode(this)">
       <div class="lg-mode-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
-      <div class="lg-mode-name">{% trans "Авиа" %}</div>
-      <div class="lg-mode-desc">{% trans "Грузовые и пассажирские рейсы" %}</div>
-      <div class="lg-mode-time">{% trans "3-7 дней" %}</div>
-      <div class="lg-mode-price">{% trans "от $4.50 / кг" %}</div>
+      <div class="lg-mode-name">Авиа</div>
+      <div class="lg-mode-desc">Грузовые и пассажирские рейсы</div>
+      <div class="lg-mode-time">3-7 дней</div>
+      <div class="lg-mode-price">от $4.50 / кг</div>
     </div>
     <div class="lg-mode" onclick="selectMode(this)">
       <div class="lg-mode-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
-      <div class="lg-mode-name">{% trans "Авто" %}</div>
-      <div class="lg-mode-desc">{% trans "Фуры, тенты, рефрижераторы" %}</div>
-      <div class="lg-mode-time">{% trans "7-14 дней" %}</div>
-      <div class="lg-mode-price">{% trans "от $1.20 / км" %}</div>
+      <div class="lg-mode-name">Авто</div>
+      <div class="lg-mode-desc">Фуры, тенты, рефрижераторы</div>
+      <div class="lg-mode-time">7-14 дней</div>
+      <div class="lg-mode-price">от $1.20 / км</div>
     </div>
     <div class="lg-mode" onclick="selectMode(this)">
       <div class="lg-mode-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="8" width="20" height="8" rx="1"/><line x1="6" y1="8" x2="6" y2="16"/><line x1="10" y1="8" x2="10" y2="16"/><line x1="14" y1="8" x2="14" y2="16"/><line x1="18" y1="8" x2="18" y2="16"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></div>
-      <div class="lg-mode-name">{% trans "Ж/Д" %}</div>
-      <div class="lg-mode-desc">{% trans "Контейнерные поезда, вагоны" %}</div>
-      <div class="lg-mode-time">{% trans "12-18 дней" %}</div>
-      <div class="lg-mode-price">{% trans "от $3 500 / контейнер" %}</div>
+      <div class="lg-mode-name">Ж/Д</div>
+      <div class="lg-mode-desc">Контейнерные поезда, вагоны</div>
+      <div class="lg-mode-time">12-18 дней</div>
+      <div class="lg-mode-price">от $3 500 / контейнер</div>
     </div>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
     <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);">
-      <div style="font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:10px;">{% trans "По России" %}</div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:10px;">По России</div>
       <div style="font-size:12px;color:#8A8A8A;line-height:1.8;">
-        {% trans "Москва, Санкт-Петербург, Екатеринбург, Новосибирск, Краснодар, Владивосток, Казань, Самара, Ростов-на-Дону, Нижний Новгород и все регионы РФ." %}
-        <br>{% trans "Доставка до двери, до терминала, самовывоз со склада." %}
+        Москва, Санкт-Петербург, Екатеринбург, Новосибирск, Краснодар, Владивосток, Казань, Самара, Ростов-на-Дону, Нижний Новгород и все регионы РФ.
+        <br>Доставка до двери, до терминала, самовывоз со склада.
       </div>
     </div>
     <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);">
-      <div style="font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:10px;">{% trans "По всему миру" %}</div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:10px;">По всему миру</div>
       <div style="font-size:12px;color:#8A8A8A;line-height:1.8;">
-        {% trans "Китай, Южная Корея, Япония, Турция, ОАЭ, Европа (Германия, Нидерланды, Италия), СНГ (Казахстан, Беларусь, Узбекистан), Юго-Восточная Азия." %}
-        <br>{% trans "Мультимодальные маршруты, таможенное оформление под ключ." %}
+        Китай, Южная Корея, Япония, Турция, ОАЭ, Европа (Германия, Нидерланды, Италия), СНГ (Казахстан, Беларусь, Узбекистан), Юго-Восточная Азия.
+        <br>Мультимодальные маршруты, таможенное оформление под ключ.
       </div>
     </div>
   </div>
@@ -385,35 +384,35 @@
 
 {# ═══ TAB 4: Калькулятор ═══ #}
 <div class="lg-panel" id="panel-calculator">
-  <div class="lg-section-title">{% trans "Калькулятор стоимости доставки" %}</div>
-  <div class="lg-section-sub">{% trans "Автоматический расчёт или ручной ввод параметров" %}</div>
+  <div class="lg-section-title">Калькулятор стоимости доставки</div>
+  <div class="lg-section-sub">Автоматический расчёт или ручной ввод параметров</div>
 
   <div class="lg-calc">
     <div class="lg-calc-row">
-      <div class="lg-calc-field"><label>{% trans "Откуда" %}</label><select id="calcFrom"><option>{% trans "Шанхай, Китай" %}</option><option>{% trans "Гуанчжоу, Китай" %}</option><option>{% trans "Пусан, Корея" %}</option><option>{% trans "Стамбул, Турция" %}</option><option>{% trans "Роттердам, Нидерланды" %}</option><option>{% trans "Дубай, ОАЭ" %}</option></select></div>
-      <div class="lg-calc-field"><label>{% trans "Куда" %}</label><select id="calcTo"><option>{% trans "Москва" %}</option><option>{% trans "Санкт-Петербург" %}</option><option>{% trans "Екатеринбург" %}</option><option>{% trans "Новосибирск" %}</option><option>{% trans "Владивосток" %}</option><option>{% trans "Краснодар" %}</option><option>{% trans "Казань" %}</option></select></div>
-      <div class="lg-calc-field"><label>{% trans "Способ доставки" %}</label><select id="calcMode"><option>{% trans "Море + Ж/Д" %}</option><option>{% trans "Море + Авто" %}</option><option>{% trans "Авиа" %}</option><option>{% trans "Ж/Д прямой" %}</option><option>{% trans "Авто прямой" %}</option><option>{% trans "Мультимодальный" %}</option></select></div>
+      <div class="lg-calc-field"><label>Откуда</label><select id="calcFrom"><option>Шанхай, Китай</option><option>Гуанчжоу, Китай</option><option>Пусан, Корея</option><option>Стамбул, Турция</option><option>Роттердам, Нидерланды</option><option>Дубай, ОАЭ</option></select></div>
+      <div class="lg-calc-field"><label>Куда</label><select id="calcTo"><option>Москва</option><option>Санкт-Петербург</option><option>Екатеринбург</option><option>Новосибирск</option><option>Владивосток</option><option>Краснодар</option><option>Казань</option></select></div>
+      <div class="lg-calc-field"><label>Способ доставки</label><select id="calcMode"><option>Море + Ж/Д</option><option>Море + Авто</option><option>Авиа</option><option>Ж/Д прямой</option><option>Авто прямой</option><option>Мультимодальный</option></select></div>
     </div>
     <div class="lg-calc-row">
-      <div class="lg-calc-field"><label>{% trans "Вес (кг)" %}</label><input type="number" value="450" id="calcWeight" onchange="calcCost()"/></div>
-      <div class="lg-calc-field"><label>{% trans "Объём (м³)" %}</label><input type="number" value="2.4" step="0.1" id="calcVolume" onchange="calcCost()"/></div>
-      <div class="lg-calc-field"><label>{% trans "Кол-во мест" %}</label><input type="number" value="4" id="calcPlaces" onchange="calcCost()"/></div>
+      <div class="lg-calc-field"><label>Вес (кг)</label><input type="number" value="450" id="calcWeight" onchange="calcCost()"/></div>
+      <div class="lg-calc-field"><label>Объём (м³)</label><input type="number" value="2.4" step="0.1" id="calcVolume" onchange="calcCost()"/></div>
+      <div class="lg-calc-field"><label>Кол-во мест</label><input type="number" value="4" id="calcPlaces" onchange="calcCost()"/></div>
     </div>
     <div class="lg-calc-row">
-      <div class="lg-calc-field"><label>{% trans "Стоимость товара ($)" %}</label><input type="number" value="12500" id="calcValue" onchange="calcCost()"/></div>
-      <div class="lg-calc-field"><label>{% trans "Страхование" %}</label><select id="calcInsurance" onchange="calcCost()"><option value="yes">{% trans "Да (0.3% от стоимости)" %}</option><option value="no">{% trans "Нет" %}</option></select></div>
-      <div class="lg-calc-field"><label>{% trans "Таможенное оформление" %}</label><select id="calcCustoms" onchange="calcCost()"><option value="full">{% trans "Под ключ" %}</option><option value="self">{% trans "Самостоятельно" %}</option></select></div>
+      <div class="lg-calc-field"><label>Стоимость товара ($)</label><input type="number" value="12500" id="calcValue" onchange="calcCost()"/></div>
+      <div class="lg-calc-field"><label>Страхование</label><select id="calcInsurance" onchange="calcCost()"><option value="yes">Да (0.3% от стоимости)</option><option value="no">Нет</option></select></div>
+      <div class="lg-calc-field"><label>Таможенное оформление</label><select id="calcCustoms" onchange="calcCost()"><option value="full">Под ключ</option><option value="self">Самостоятельно</option></select></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px;">
-      <button class="lg-btn lg-btn--primary" onclick="calcCost()">{% trans "Рассчитать" %}</button>
-      <button class="lg-btn lg-btn--secondary" onclick="requestManualCalc(this)">{% trans "Ручной расчёт менеджером" %}</button>
+      <button class="lg-btn lg-btn--primary" onclick="calcCost()">Рассчитать</button>
+      <button class="lg-btn lg-btn--secondary" onclick="requestManualCalc(this)">Ручной расчёт менеджером</button>
     </div>
 
     <div class="lg-calc-result" id="calcResult">
-      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resDelivery">$480</div><div class="lg-calc-res-label">{% trans "Доставка" %}</div></div>
-      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resCustoms">$320</div><div class="lg-calc-res-label">{% trans "Таможня" %}</div></div>
-      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resInsurance">$37</div><div class="lg-calc-res-label">{% trans "Страховка" %}</div></div>
-      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resTotal">$837</div><div class="lg-calc-res-label">{% trans "Итого" %}</div></div>
+      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resDelivery">$480</div><div class="lg-calc-res-label">Доставка</div></div>
+      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resCustoms">$320</div><div class="lg-calc-res-label">Таможня</div></div>
+      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resInsurance">$37</div><div class="lg-calc-res-label">Страховка</div></div>
+      <div class="lg-calc-res-item"><div class="lg-calc-res-val" id="resTotal">$837</div><div class="lg-calc-res-label">Итого</div></div>
     </div>
   </div>
 </div>
@@ -421,45 +420,45 @@
 {# ═══ TAB 5: Переторжка на логистику ═══ #}
 <div class="lg-panel" id="panel-auction">
   <div style="margin-bottom:14px;">
-    <div class="lg-section-title">{% trans "Аукцион на логистику" %}</div>
-    <div class="lg-section-sub">{% trans "Логистические компании предлагают ставки на ваши отгрузки. Выберите лучшее предложение" %}</div>
+    <div class="lg-section-title">Аукцион на логистику</div>
+    <div class="lg-section-sub">Логистические компании предлагают ставки на ваши отгрузки. Выберите лучшее предложение</div>
   </div>
 
   {# Auction 1 #}
   <div class="lg-auction-card">
     <div class="lg-auction-head">
       <div>
-        <div class="lg-auction-route">{% trans "Шанхай → Москва" %}</div>
-        <div class="lg-auction-meta">{% trans "ORD-3855 · 2 контейнера 20' · 8.4 т · Запчасти для спецтехники" %}</div>
+        <div class="lg-auction-route">Шанхай → Москва</div>
+        <div class="lg-auction-meta">ORD-3855 · 2 контейнера 20' · 8.4 т · Запчасти для спецтехники</div>
       </div>
-      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#ECECEC;">{% trans "Торги открыты" %}</span>
+      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#ECECEC;">Торги открыты</span>
     </div>
     <table class="lg-auction-table">
-      <thead><tr><th>{% trans "Перевозчик" %}</th><th>{% trans "Маршрут" %}</th><th>{% trans "Срок" %}</th><th>{% trans "Цена" %}</th><th>{% trans "Статус" %}</th><th></th></tr></thead>
+      <thead><tr><th>Перевозчик</th><th>Маршрут</th><th>Срок</th><th>Цена</th><th>Статус</th><th></th></tr></thead>
       <tbody>
         <tr>
-          <td><span class="lg-auction-num">#1</span>{% trans "Перевозчик #7291" %}</td>
-          <td style="color:#8A8A8A;">{% trans "Море + Ж/Д через Владивосток" %}</td>
-          <td>{% trans "28 дней" %}</td>
+          <td><span class="lg-auction-num">#1</span>Перевозчик #7291</td>
+          <td style="color:#8A8A8A;">Море + Ж/Д через Владивосток</td>
+          <td>28 дней</td>
           <td style="font-weight:600;">$1 840</td>
-          <td><span style="font-size:11px;color:#8A8A8A;">{% trans "Ожидает ответа" %}</span></td>
-          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">{% trans "Принять" %}</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">{% trans "Встречная" %}</button></td>
+          <td><span style="font-size:11px;color:#8A8A8A;">Ожидает ответа</span></td>
+          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">Принять</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">Встречная</button></td>
         </tr>
         <tr>
-          <td><span class="lg-auction-num">#2</span>{% trans "Перевозчик #5034" %}</td>
-          <td style="color:#8A8A8A;">{% trans "Ж/Д прямой через Забайкальск" %}</td>
-          <td>{% trans "18 дней" %}</td>
+          <td><span class="lg-auction-num">#2</span>Перевозчик #5034</td>
+          <td style="color:#8A8A8A;">Ж/Д прямой через Забайкальск</td>
+          <td>18 дней</td>
           <td style="font-weight:600;">$2 280</td>
-          <td><span style="font-size:11px;color:#8A8A8A;">{% trans "Ожидает ответа" %}</span></td>
-          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">{% trans "Принять" %}</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">{% trans "Встречная" %}</button></td>
+          <td><span style="font-size:11px;color:#8A8A8A;">Ожидает ответа</span></td>
+          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">Принять</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">Встречная</button></td>
         </tr>
         <tr>
-          <td><span class="lg-auction-num">#3</span>{% trans "Перевозчик #8817" %}</td>
-          <td style="color:#8A8A8A;">{% trans "Авиа PEK→SVO + авто" %}</td>
-          <td>{% trans "5 дней" %}</td>
+          <td><span class="lg-auction-num">#3</span>Перевозчик #8817</td>
+          <td style="color:#8A8A8A;">Авиа PEK→SVO + авто</td>
+          <td>5 дней</td>
           <td style="font-weight:600;">$4 120</td>
-          <td><span style="font-size:11px;color:#8A8A8A;">{% trans "Ожидает ответа" %}</span></td>
-          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">{% trans "Принять" %}</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">{% trans "Встречная" %}</button></td>
+          <td><span style="font-size:11px;color:#8A8A8A;">Ожидает ответа</span></td>
+          <td style="text-align:right;"><button class="lg-btn lg-btn--accept" style="margin-right:4px;padding:4px 10px;font-size:11px;" onclick="lgAccept(this)">Принять</button><button class="lg-btn lg-btn--counter" style="padding:4px 10px;font-size:11px;" onclick="lgCounter(this)">Встречная</button></td>
         </tr>
       </tbody>
     </table>
@@ -469,27 +468,27 @@
   <div class="lg-auction-card">
     <div class="lg-auction-head">
       <div>
-        <div class="lg-auction-route">{% trans "Стамбул → Екатеринбург" %}</div>
-        <div class="lg-auction-meta">{% trans "ORD-3847 · 1 паллета · 1.2 т · Электрооборудование" %}</div>
+        <div class="lg-auction-route">Стамбул → Екатеринбург</div>
+        <div class="lg-auction-meta">ORD-3847 · 1 паллета · 1.2 т · Электрооборудование</div>
       </div>
-      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#ECECEC;">{% trans "Согласовано" %}</span>
+      <span style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,0.06);color:#ECECEC;">Согласовано</span>
     </div>
     <table class="lg-auction-table">
-      <thead><tr><th>{% trans "Перевозчик" %}</th><th>{% trans "Маршрут" %}</th><th>{% trans "Срок" %}</th><th>{% trans "Цена" %}</th><th>{% trans "Статус" %}</th></tr></thead>
+      <thead><tr><th>Перевозчик</th><th>Маршрут</th><th>Срок</th><th>Цена</th><th>Статус</th></tr></thead>
       <tbody>
         <tr>
-          <td><span class="lg-auction-num">#1</span>{% trans "Перевозчик #4102" %}</td>
-          <td style="color:#8A8A8A;">{% trans "Авто IST→EKB через Грузию" %}</td>
-          <td>{% trans "12 дней" %}</td>
+          <td><span class="lg-auction-num">#1</span>Перевозчик #4102</td>
+          <td style="color:#8A8A8A;">Авто IST→EKB через Грузию</td>
+          <td>12 дней</td>
           <td style="font-weight:600;">$920</td>
-          <td><span style="font-size:11px;color:#66BB6A;">{% trans "● Принято" %}</span></td>
+          <td><span style="font-size:11px;color:#66BB6A;">● Принято</span></td>
         </tr>
       </tbody>
     </table>
   </div>
 
   <div style="background:rgba(255,255,255,0.02);border-radius:10px;padding:10px 14px;font-size:12px;color:#6A6A6A;line-height:1.6;margin-top:8px;">
-    {% trans "Перевозчики обезличены — вы видите только номер. Платформа гарантирует проверку всех логистических компаний. Выбор по цене, сроку и маршруту." %}
+    Перевозчики обезличены — вы видите только номер. Платформа гарантирует проверку всех логистических компаний. Выбор по цене, сроку и маршруту.
   </div>
 </div>
 

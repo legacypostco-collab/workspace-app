@@ -1,10 +1,10 @@
-{% load static i18n %}
+{% load static %}
 <!doctype html>
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}{% trans "Кабинет поставщика" %}{% endblock %} — Consolidator</title>
+    <title>{% block title %}Кабинет поставщика{% endblock %} — Consolidator</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -23,5 +23,91 @@
     </main>
     {% block right_panel %}{% include "seller/components/_right_panel.html" %}{% endblock %}
     {% block extra_js %}{% endblock %}
+    <script>
+    (function(){
+      var NAV_EN = {
+        dashboard:'Dashboard', products:'Products & Pricing', drawings:'Drawings',
+        requests:'Customer Requests', orders:'Orders', sla:'SLA Control',
+        discounts:'Negotiations', qr:'QR Control', finance:'Finance',
+        rating:'Rating', analytics:'Analytics', team:'Team',
+        integrations:'Integrations', logistics:'Logistics', reports:'Reports',
+        catalog:'Catalog'
+      };
+      var PAGE_TITLE_EN = {
+        dashboard:'Supplier Dashboard', products:'Products & Pricing', drawings:'Drawings',
+        requests:'Customer Requests', orders:'Orders', sla:'SLA Control',
+        discounts:'Negotiations', qr:'QR Control', finance:'Finance',
+        rating:'Rating', analytics:'Analytics', team:'Team',
+        integrations:'Integrations', logistics:'Logistics', reports:'Reports'
+      };
+      var STATIC_EN = {
+        'Рейтинг поставщика':'Supplier Rating', 'Надёжный':'Reliable',
+        'Проверенный':'Verified', 'Новый':'New', 'Премиум':'Premium',
+        'Конверсия':'Conversion', 'Оценка':'Score',
+        'Сегодня':'Today', 'Запроса':'Requests', 'Заказов':'Orders',
+        'Выручка':'Revenue', 'скоро':'soon', 'ДИРЕКТОР':'DIRECTOR',
+        'Рейтинг':'Rating', 'Закупки':'Purchases',
+        'Кабинет поставщика':'Supplier Cabinet'
+      };
+
+      function applyLang(lang) {
+        var isEn = lang === 'en';
+        var btn = document.getElementById('cab-lang-btn');
+        if (btn) btn.textContent = isEn ? 'RU' : 'EN';
+
+        // Nav links
+        document.querySelectorAll('[data-nav-key]').forEach(function(a){
+          var key = a.getAttribute('data-nav-key');
+          var span = a.querySelector('span');
+          if (!span) return;
+          if (!span.getAttribute('data-ru')) span.setAttribute('data-ru', span.textContent.trim());
+          span.textContent = isEn ? (NAV_EN[key] || span.getAttribute('data-ru')) : span.getAttribute('data-ru');
+        });
+
+        // Page title
+        var titleEl = document.getElementById('cab-page-title');
+        if (titleEl) {
+          if (!titleEl.getAttribute('data-ru')) titleEl.setAttribute('data-ru', titleEl.textContent.trim());
+          if (isEn) {
+            var activeLink = document.querySelector('[data-nav-key].active');
+            var key = activeLink ? activeLink.getAttribute('data-nav-key') : '';
+            titleEl.textContent = PAGE_TITLE_EN[key] || titleEl.getAttribute('data-ru');
+          } else {
+            titleEl.textContent = titleEl.getAttribute('data-ru');
+          }
+        }
+
+        // Static text by data-i18n
+        document.querySelectorAll('[data-i18n]').forEach(function(el){
+          if (!el.getAttribute('data-ru')) el.setAttribute('data-ru', el.textContent.trim());
+          var key = el.getAttribute('data-i18n');
+          var maps = {'rating_label': isEn?'Rating':'Рейтинг', 'purchases_label': isEn?'Purchases':'Закупки'};
+          if (maps[key] !== undefined) el.textContent = maps[key];
+        });
+
+        // Generic static text map
+        document.querySelectorAll('.seller-sidebar [style]').forEach(function(el){
+          if (el.children.length === 0) {
+            var txt = el.textContent.trim();
+            if (!el.getAttribute('data-ru')) el.setAttribute('data-ru', txt);
+            var ru = el.getAttribute('data-ru');
+            el.textContent = isEn ? (STATIC_EN[ru] || ru) : ru;
+          }
+        });
+      }
+
+      window.cabinetToggleLang = function(){
+        var cur = localStorage.getItem('cp_lang') || 'ru';
+        var next = cur === 'ru' ? 'en' : 'ru';
+        localStorage.setItem('cp_lang', next);
+        applyLang(next);
+      };
+
+      document.addEventListener('DOMContentLoaded', function(){
+        var lang = localStorage.getItem('cp_lang') || 'ru';
+        if (lang === 'en') applyLang('en');
+      });
+    })();
+    </script>
   </body>
 </html>

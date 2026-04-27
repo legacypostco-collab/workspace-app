@@ -1,6 +1,7 @@
 {% extends "buyer/base_buyer.html" %}
+{% load i18n %}
 
-{% block title %}Рекламации{% endblock %}
+{% block title %}{% trans "Рекламации" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -130,29 +131,29 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 <section class="clm-hero">
   <div class="clm-hero-top">
     <div>
-      <div class="clm-hero-title">Рекламации</div>
-      <div class="clm-hero-sub">Претензии по качеству, комплектности и соответствию</div>
+      <div class="clm-hero-title">{% trans "Рекламации" %}</div>
+      <div class="clm-hero-sub">{% trans "Претензии по качеству, комплектности и соответствию" %}</div>
     </div>
-    <a href="javascript:void(0)" class="clm-create-btn">+ Открыть рекламацию</a>
+    <a href="javascript:void(0)" class="clm-create-btn">+ {% trans "Открыть рекламацию" %}</a>
   </div>
 </section>
 
 <!-- Stats -->
 <div class="clm-stats">
   <a href="/buyer/claims/" class="clm-stat">
-    <div class="clm-stat-label">Всего рекламаций</div>
+    <div class="clm-stat-label">{% trans "Всего рекламаций" %}</div>
     <div class="clm-stat-val">7</div>
   </a>
   <a href="/buyer/claims/?status=open" class="clm-stat">
-    <div class="clm-stat-label">Открыта</div>
+    <div class="clm-stat-label">{% trans "Открыта" %}</div>
     <div class="clm-stat-val" style="color:#E05555;">1</div>
   </a>
   <a href="/buyer/claims/?status=progress" class="clm-stat">
-    <div class="clm-stat-label">В работе</div>
+    <div class="clm-stat-label">{% trans "В работе" %}</div>
     <div class="clm-stat-val" style="color:#E85C0D;">2</div>
   </a>
   <a href="/buyer/claims/?status=resolved" class="clm-stat">
-    <div class="clm-stat-label">Решена</div>
+    <div class="clm-stat-label">{% trans "Решена" %}</div>
     <div class="clm-stat-val" style="color:#64B5F6;">4</div>
   </a>
 </div>
@@ -170,8 +171,8 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
       </div>
       <div class="clm-card-right">
-        <span class="clm-type-badge clm-type--damage">Повреждение</span>
-        <span class="clm-status-badge clm-status--open">Открыта</span>
+        <span class="clm-type-badge clm-type--damage">{% trans "Повреждение" %}</span>
+        <span class="clm-status-badge clm-status--open">{% trans "Открыта" %}</span>
         <span class="clm-date">24.03.2026</span>
         <div class="clm-toggle">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -181,19 +182,19 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     <div class="clm-card-body">
       <div class="clm-detail-grid">
         <div>
-          <div class="clm-detail-label">Позиция</div>
+          <div class="clm-detail-label">{% trans "Позиция" %}</div>
           <div class="clm-detail-val">Диск тормозной 421-22-31520 (3 шт.)</div>
         </div>
         <div>
-          <div class="clm-detail-label">Сумма претензии</div>
+          <div class="clm-detail-label">{% trans "Сумма претензии" %}</div>
           <div class="clm-detail-val" style="color:#E05555;">$567.00</div>
         </div>
         <div>
-          <div class="clm-detail-label">Дата обнаружения</div>
+          <div class="clm-detail-label">{% trans "Дата обнаружения" %}</div>
           <div class="clm-detail-val">12.03.2026</div>
         </div>
         <div>
-          <div class="clm-detail-label">Ответственный</div>
+          <div class="clm-detail-label">{% trans "Ответственный" %}</div>
           <div class="clm-detail-val">Иванов А.С.</div>
         </div>
       </div>
@@ -201,13 +202,13 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         При вскрытии упаковки обнаружены механические повреждения на 3 из 20 дисков. Трещины на рабочей поверхности, не пригодны к установке. Фото повреждений приложены к заявке.
       </div>
       <div class="clm-actions">
-        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">Переписка</a>
-        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Фото (4)</a>
-        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Документы</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">{% trans "Переписка" %}</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">{% trans "Фото (4)" %}</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">{% trans "Документы" %}</a>
       </div>
       <!-- Sections -->
       <div class="clm-section" id="sec-chat-1" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
-        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Переписка</div>
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Переписка" %}</div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
           <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Просим предоставить фотографии повреждений в высоком разрешении для оформления страхового акта.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 25.03 14:22</div></div></div>
           <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Фотографии приложены к заявке (4 шт.), повреждения на позициях 1, 2 и 3.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 25.03 16:40</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
@@ -215,20 +216,20 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
       </div>
       <div class="clm-section" id="sec-photo-1" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
-        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Фотографии повреждений</div>
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Фотографии повреждений" %}</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
           <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
           <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
           <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
           <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
         </div>
-        <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">4 фотографии · Загружены 24.03.2026</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">{% trans "4 фотографии" %} · {% trans "Загружены" %} 24.03.2026</div>
       </div>
       <div class="clm-section" id="sec-docs-1" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
-        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Документы</div>
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Документы" %}</div>
         <div style="display:flex;flex-direction:column;gap:6px;">
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">Акт о выявленных дефектах</div><div style="font-size:10px;color:#6A6A6A;">PDF · 245 KB · 24.03.2026</div></div></div>
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">Накладная ORD-2026-0125</div><div style="font-size:10px;color:#6A6A6A;">PDF · 180 KB · 14.02.2026</div></div></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">{% trans "Акт о выявленных дефектах" %}</div><div style="font-size:10px;color:#6A6A6A;">PDF · 245 KB · 24.03.2026</div></div></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">{% trans "Накладная" %} ORD-2026-0125</div><div style="font-size:10px;color:#6A6A6A;">PDF · 180 KB · 14.02.2026</div></div></div>
         </div>
       </div>
     </div>
@@ -244,8 +245,8 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
       </div>
       <div class="clm-card-right">
-        <span class="clm-type-badge clm-type--mismatch">Несоответствие</span>
-        <span class="clm-status-badge clm-status--progress">В работе</span>
+        <span class="clm-type-badge clm-type--mismatch">{% trans "Несоответствие" %}</span>
+        <span class="clm-status-badge clm-status--progress">{% trans "В работе" %}</span>
         <span class="clm-date">15.03.2026</span>
         <div class="clm-toggle">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -255,19 +256,19 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     <div class="clm-card-body">
       <div class="clm-detail-grid">
         <div>
-          <div class="clm-detail-label">Позиция</div>
+          <div class="clm-detail-label">{% trans "Позиция" %}</div>
           <div class="clm-detail-val">Помпа водяная 6212-61-1440 (2 шт.)</div>
         </div>
         <div>
-          <div class="clm-detail-label">Сумма претензии</div>
+          <div class="clm-detail-label">{% trans "Сумма претензии" %}</div>
           <div class="clm-detail-val" style="color:#E05555;">$930.00</div>
         </div>
         <div>
-          <div class="clm-detail-label">Дата обнаружения</div>
+          <div class="clm-detail-label">{% trans "Дата обнаружения" %}</div>
           <div class="clm-detail-val">01.03.2026</div>
         </div>
         <div>
-          <div class="clm-detail-label">Ответственный</div>
+          <div class="clm-detail-label">{% trans "Ответственный" %}</div>
           <div class="clm-detail-val">Петров К.В.</div>
         </div>
       </div>
@@ -275,13 +276,13 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         Поставлены помпы с другим посадочным размером шкива. OEM-номер на этикетке совпадает, но фактические размеры отличаются от спецификации. Ожидается замена от поставщика.
       </div>
       <div class="clm-actions">
-        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">Переписка</a>
-        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Фото (2)</a>
-        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Замерочный лист</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">{% trans "Переписка" %}</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">{% trans "Фото (2)" %}</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">{% trans "Замерочный лист" %}</a>
       </div>
       <!-- Sections -->
       <div class="clm-section" id="sec-chat-2" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
-        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Переписка</div>
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Переписка" %}</div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
           <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Получили вашу заявку. Просим предоставить замерочный лист с указанием фактических размеров шкива.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 16.03 10:05</div></div></div>
           <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Замерочный лист приложен. Фактический диаметр шкива: 82 мм, по спецификации должен быть 75 мм.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 16.03 14:30</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
@@ -289,17 +290,17 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
       </div>
       <div class="clm-section" id="sec-photo-2" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
-        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Фотографии несоответствия</div>
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Фотографии несоответствия" %}</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
           <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
           <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
         </div>
-        <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">2 фотографии · Загружены 15.03.2026</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">{% trans "2 фотографии" %} · {% trans "Загружены" %} 15.03.2026</div>
       </div>
       <div class="clm-section" id="sec-docs-2" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
-        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Документы</div>
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Документы" %}</div>
         <div style="display:flex;flex-direction:column;gap:6px;">
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">Замерочный лист помпы</div><div style="font-size:10px;color:#6A6A6A;">PDF · 120 KB · 15.03.2026</div></div></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">{% trans "Замерочный лист помпы" %}</div><div style="font-size:10px;color:#6A6A6A;">PDF · 120 KB · 15.03.2026</div></div></div>
         </div>
       </div>
     </div>
@@ -315,8 +316,8 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
       </div>
       <div class="clm-card-right">
-        <span class="clm-type-badge clm-type--incomplete">Некомплект</span>
-        <span class="clm-status-badge clm-status--progress">В работе</span>
+        <span class="clm-type-badge clm-type--incomplete">{% trans "Некомплект" %}</span>
+        <span class="clm-status-badge clm-status--progress">{% trans "В работе" %}</span>
         <span class="clm-date">08.03.2026</span>
         <div class="clm-toggle">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -326,19 +327,19 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     <div class="clm-card-body">
       <div class="clm-detail-grid">
         <div>
-          <div class="clm-detail-label">Позиция</div>
+          <div class="clm-detail-label">{% trans "Позиция" %}</div>
           <div class="clm-detail-val">Турбокомпрессор 7C-2297 (1 шт.)</div>
         </div>
         <div>
-          <div class="clm-detail-label">Сумма претензии</div>
+          <div class="clm-detail-label">{% trans "Сумма претензии" %}</div>
           <div class="clm-detail-val" style="color:#E05555;">$1,250.00</div>
         </div>
         <div>
-          <div class="clm-detail-label">Дата обнаружения</div>
+          <div class="clm-detail-label">{% trans "Дата обнаружения" %}</div>
           <div class="clm-detail-val">05.03.2026</div>
         </div>
         <div>
-          <div class="clm-detail-label">Ответственный</div>
+          <div class="clm-detail-label">{% trans "Ответственный" %}</div>
           <div class="clm-detail-val">Сидоров Д.М.</div>
         </div>
       </div>
@@ -346,12 +347,12 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         В комплекте отсутствует прокладка выпускного коллектора и комплект крепежа. Турбина без прокладки не может быть установлена. Поставщик подтвердил досылку недостающих компонентов.
       </div>
       <div class="clm-actions">
-        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">Переписка</a>
-        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Акт некомплекта</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--primary">{% trans "Переписка" %}</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">{% trans "Акт некомплекта" %}</a>
       </div>
       <!-- Sections -->
       <div class="clm-section" id="sec-chat-3" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
-        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Переписка</div>
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Переписка" %}</div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
           <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Заявка принята. Поставщик подтвердил отсутствие прокладки и крепежа в партии. Досылка оформлена.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 09.03 11:20</div></div></div>
           <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Когда ориентировочно придут недостающие компоненты?</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 09.03 13:45</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
@@ -359,12 +360,12 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
       </div>
       <div class="clm-section" id="sec-photo-3" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
-        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Фотографии некомплекта</div>
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Фотографии некомплекта" %}</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
           <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
           <div style="aspect-ratio:1;background:#2C2C2C;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(100,181,246,0.3)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'"><span style="font-size:24px;">📷</span></div>
         </div>
-        <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">2 фотографии · Загружены 08.03.2026</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">{% trans "2 фотографии" %} · {% trans "Загружены" %} 08.03.2026</div>
       </div>
     </div>
   </div>
@@ -379,8 +380,8 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
         </div>
       </div>
       <div class="clm-card-right">
-        <span class="clm-type-badge clm-type--damage">Повреждение</span>
-        <span class="clm-status-badge clm-status--resolved">Решена</span>
+        <span class="clm-type-badge clm-type--damage">{% trans "Повреждение" %}</span>
+        <span class="clm-status-badge clm-status--resolved">{% trans "Решена" %}</span>
         <span class="clm-date">18.02.2026</span>
         <div class="clm-toggle">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 4.5L6 7.5L9 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -390,42 +391,42 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     <div class="clm-card-body">
       <div class="clm-detail-grid">
         <div>
-          <div class="clm-detail-label">Позиция</div>
+          <div class="clm-detail-label">{% trans "Позиция" %}</div>
           <div class="clm-detail-val">Гидроцилиндр стрелы LH-9989363 (1 шт.)</div>
         </div>
         <div>
-          <div class="clm-detail-label">Компенсация</div>
+          <div class="clm-detail-label">{% trans "Компенсация" %}</div>
           <div class="clm-detail-val" style="color:#64B5F6;">$2,840.00 (возврат)</div>
         </div>
         <div>
-          <div class="clm-detail-label">Дата решения</div>
+          <div class="clm-detail-label">{% trans "Дата решения" %}</div>
           <div class="clm-detail-val">10.03.2026</div>
         </div>
         <div>
-          <div class="clm-detail-label">Решение</div>
-          <div class="clm-detail-val">Полный возврат + пересылка</div>
+          <div class="clm-detail-label">{% trans "Решение" %}</div>
+          <div class="clm-detail-val">{% trans "Полный возврат + пересылка" %}</div>
         </div>
       </div>
       <div class="clm-description">
         Гидроцилиндр прибыл с повреждённым штоком (вмятина при транспортировке). Поставщик признал вину перевозчика, оформлен полный возврат средств и отправлена замена за свой счёт.
       </div>
       <div class="clm-actions">
-        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Переписка</a>
-        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">Акт приёмки</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">{% trans "Переписка" %}</a>
+        <a href="javascript:void(0)" class="clm-action-btn clm-action-btn--secondary">{% trans "Акт приёмки" %}</a>
       </div>
       <!-- Sections -->
       <div class="clm-section" id="sec-chat-4" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
-        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Переписка</div>
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Переписка" %}</div>
         <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
           <div style="display:flex;gap:10px;align-items:flex-start;"><div style="width:28px;height:28px;border-radius:50%;background:#2C2C2C;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#919191;">МГ</div><div style="background:#2C2C2C;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Рекламация рассмотрена. Поставщик признал ответственность перевозчика. Полный возврат одобрен.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Менеджер · 05.03 15:10</div></div></div>
           <div style="display:flex;gap:10px;align-items:flex-start;justify-content:flex-end;"><div style="background:rgba(100,181,246,0.1);border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;max-width:80%;"><div>Замена уже получена, спасибо за оперативное решение.</div><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Вы · 10.03 11:00</div></div><div style="width:28px;height:28px;border-radius:50%;background:rgba(100,181,246,0.15);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#64B5F6;">Я</div></div>
         </div>
       </div>
       <div class="clm-section" id="sec-docs-4" style="display:none;border-top:1px solid rgba(255,255,255,0.06);padding:14px 0 4px;">
-        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Документы</div>
+        <div style="font-size:11px;color:#6A6A6A;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">{% trans "Документы" %}</div>
         <div style="display:flex;flex-direction:column;gap:6px;">
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">Акт приёмки и замены</div><div style="font-size:10px;color:#6A6A6A;">PDF · 310 KB · 10.03.2026</div></div></div>
-          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">Подтверждение возврата средств</div><div style="font-size:10px;color:#6A6A6A;">PDF · 95 KB · 10.03.2026</div></div></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">{% trans "Акт приёмки и замены" %}</div><div style="font-size:10px;color:#6A6A6A;">PDF · 310 KB · 10.03.2026</div></div></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#2C2C2C;border-radius:8px;cursor:pointer;transition:background .15s;" onmouseenter="this.style.background='#333'" onmouseleave="this.style.background='#2C2C2C'"><span style="font-size:16px;">📄</span><div style="flex:1;"><div style="font-size:12px;color:#ECECEC;">{% trans "Подтверждение возврата средств" %}</div><div style="font-size:10px;color:#6A6A6A;">PDF · 95 KB · 10.03.2026</div></div></div>
         </div>
       </div>
     </div>
@@ -437,13 +438,13 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 <div id="modal-claim" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
   <div style="background:#1F1F1F;border-radius:16px;padding:28px;width:520px;max-width:92vw;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 64px rgba(0,0,0,0.5);max-height:90vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">Открыть рекламацию</div>
+      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{% trans "Открыть рекламацию" %}</div>
       <button onclick="closeClaimModal()" style="background:none;border:none;color:#6A6A6A;font-size:22px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Заказ *</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Заказ" %} *</label>
           <select id="claim-order" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
             <option>ORD-2026-0142</option>
             <option>ORD-2026-0138</option>
@@ -454,32 +455,32 @@ a.clm-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
           </select>
         </div>
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Тип претензии *</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Тип претензии" %} *</label>
           <select id="claim-type" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
-            <option value="damage">Повреждение при транспортировке</option>
-            <option value="mismatch">Несоответствие спецификации</option>
-            <option value="shortage">Некомплект</option>
-            <option value="defect">Производственный дефект</option>
-            <option value="delay">Нарушение сроков</option>
+            <option value="damage">{% trans "Повреждение при транспортировке" %}</option>
+            <option value="mismatch">{% trans "Несоответствие спецификации" %}</option>
+            <option value="shortage">{% trans "Некомплект" %}</option>
+            <option value="defect">{% trans "Производственный дефект" %}</option>
+            <option value="delay">{% trans "Нарушение сроков" %}</option>
           </select>
         </div>
       </div>
       <div>
-        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Позиция / артикул</label>
-        <input id="claim-item" type="text" placeholder="например: Диск тормозной 421-22-31520 (3 шт.)" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Позиция / артикул" %}</label>
+        <input id="claim-item" type="text" placeholder="{% trans "например: Диск тормозной 421-22-31520 (3 шт.)" %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
-        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Сумма претензии ($)</label>
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Сумма претензии ($)" %}</label>
         <input id="claim-amount" type="number" placeholder="0.00" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
-        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Описание проблемы *</label>
-        <textarea id="claim-desc" rows="4" placeholder="Опишите подробно что произошло..." style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;resize:vertical;font-family:inherit;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"></textarea>
+        <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Описание проблемы" %} *</label>
+        <textarea id="claim-desc" rows="4" placeholder="{% trans "Опишите подробно что произошло..." %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;resize:vertical;font-family:inherit;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'"></textarea>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
-      <button onclick="closeClaimModal()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.1);cursor:pointer;">Отмена</button>
-      <button onclick="submitClaim()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:rgba(224,85,85,0.12);color:#E05555;border:1px solid rgba(224,85,85,0.25);cursor:pointer;">Открыть рекламацию</button>
+      <button onclick="closeClaimModal()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.1);cursor:pointer;">{% trans "Отмена" %}</button>
+      <button onclick="submitClaim()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:rgba(224,85,85,0.12);color:#E05555;border:1px solid rgba(224,85,85,0.25);cursor:pointer;">{% trans "Открыть рекламацию" %}</button>
     </div>
   </div>
 </div>

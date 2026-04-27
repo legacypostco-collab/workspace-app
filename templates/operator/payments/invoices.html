@@ -1,25 +1,26 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Платёжный агент — Счета{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Платёжный агент — Счета" %}{% endblock %}
 
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-  <div class="op-section-title" style="margin-bottom:0;">Управление счетами</div>
+  <div class="op-section-title" style="margin-bottom:0;">{% trans "Управление счетами" %}</div>
   <div style="display:flex;gap:8px;">
     <select class="op-select" id="filter-inv-status" onchange="filterInvoices()">
-      <option value="">Все статусы</option>
-      <option value="pending">Ожидает оплаты</option>
-      <option value="processing">В обработке</option>
-      <option value="paid">Оплачено</option>
-      <option value="overdue">Просрочено</option>
+      <option value="">{% trans "Все статусы" %}</option>
+      <option value="pending">{% trans "Ожидает оплаты" %}</option>
+      <option value="processing">{% trans "В обработке" %}</option>
+      <option value="paid">{% trans "Оплачено" %}</option>
+      <option value="overdue">{% trans "Просрочено" %}</option>
     </select>
     <select class="op-select" id="filter-inv-type" onchange="filterInvoices()">
-      <option value="">Все типы</option>
-      <option value="advance">Аванс</option>
-      <option value="main">Основная</option>
-      <option value="final">Финальная</option>
+      <option value="">{% trans "Все типы" %}</option>
+      <option value="advance">{% trans "Аванс" %}</option>
+      <option value="main">{% trans "Основная" %}</option>
+      <option value="final">{% trans "Финальная" %}</option>
     </select>
     <select class="op-select" id="filter-inv-currency" onchange="filterInvoices()">
-      <option value="">Все валюты</option>
+      <option value="">{% trans "Все валюты" %}</option>
       <option value="USD">USD</option>
       <option value="EUR">EUR</option>
       <option value="CNY">CNY</option>
@@ -31,109 +32,109 @@
   <table class="op-table" id="invoices-table">
     <thead>
       <tr>
-        <th>Номер</th>
-        <th>Дата</th>
-        <th>Заказ</th>
-        <th>Покупатель</th>
-        <th>Поставщик</th>
-        <th>Сумма</th>
-        <th>Валюта</th>
-        <th>Тип</th>
-        <th>Статус оплаты</th>
-        <th>Действия</th>
+        <th>{% trans "Номер" %}</th>
+        <th>{% trans "Дата" %}</th>
+        <th>{% trans "Заказ" %}</th>
+        <th>{% trans "Покупатель" %}</th>
+        <th>{% trans "Поставщик" %}</th>
+        <th>{% trans "Сумма" %}</th>
+        <th>{% trans "Валюта" %}</th>
+        <th>{% trans "Тип" %}</th>
+        <th>{% trans "Статус оплаты" %}</th>
+        <th>{% trans "Действия" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr data-inv-status="pending" data-inv-type="advance" data-inv-currency="USD">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8841</td>
-        <td class="text-secondary">24 мар</td>
+        <td class="text-secondary">{% trans "24 мар" %}</td>
         <td>ORD-4521</td>
         <td class="text-secondary">#1042</td>
         <td class="text-secondary">#2087</td>
         <td style="font-family:'Golos Text',sans-serif;">$5,520</td>
         <td>USD</td>
-        <td><span class="op-badge op-badge-gray">Аванс</span></td>
-        <td><span class="op-badge op-badge-orange inv-status-badge">Ожидает</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Аванс" %}</span></td>
+        <td><span class="op-badge op-badge-orange inv-status-badge">{% trans "Ожидает" %}</span></td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();confirmPayment(this)">Подтвердить оплату</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();rejectPayment(this)">Отклонить</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();confirmPayment(this)">{% trans "Подтвердить оплату" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();rejectPayment(this)">{% trans "Отклонить" %}</button>
           </div>
         </td>
       </tr>
       <tr data-inv-status="processing" data-inv-type="main" data-inv-currency="USD">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8839</td>
-        <td class="text-secondary">23 мар</td>
+        <td class="text-secondary">{% trans "23 мар" %}</td>
         <td>ORD-4518</td>
         <td class="text-secondary">#1038</td>
         <td class="text-secondary">#2091</td>
         <td style="font-family:'Golos Text',sans-serif;">$12,880</td>
         <td>USD</td>
-        <td><span class="op-badge op-badge-gray">Основная</span></td>
-        <td><span class="op-badge op-badge-gray inv-status-badge">В обработке</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Основная" %}</span></td>
+        <td><span class="op-badge op-badge-gray inv-status-badge">{% trans "В обработке" %}</span></td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();confirmPayment(this)">Подтвердить оплату</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();rejectPayment(this)">Отклонить</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();confirmPayment(this)">{% trans "Подтвердить оплату" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();rejectPayment(this)">{% trans "Отклонить" %}</button>
           </div>
         </td>
       </tr>
       <tr data-inv-status="pending" data-inv-type="final" data-inv-currency="USD">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8837</td>
-        <td class="text-secondary">22 мар</td>
+        <td class="text-secondary">{% trans "22 мар" %}</td>
         <td>ORD-4515</td>
         <td class="text-secondary">#1051</td>
         <td class="text-secondary">#2075</td>
         <td style="font-family:'Golos Text',sans-serif;">$1,860</td>
         <td>USD</td>
-        <td><span class="op-badge op-badge-gray">Финальная</span></td>
-        <td><span class="op-badge op-badge-orange inv-status-badge">Ожидает</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Финальная" %}</span></td>
+        <td><span class="op-badge op-badge-orange inv-status-badge">{% trans "Ожидает" %}</span></td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();confirmPayment(this)">Подтвердить оплату</button>
-            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();rejectPayment(this)">Отклонить</button>
+            <button class="op-btn op-btn-primary" onclick="event.stopPropagation();confirmPayment(this)">{% trans "Подтвердить оплату" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="event.stopPropagation();rejectPayment(this)">{% trans "Отклонить" %}</button>
           </div>
         </td>
       </tr>
       <tr data-inv-status="overdue" data-inv-type="advance" data-inv-currency="USD">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#E85C0D;">INV-8835</td>
-        <td class="text-secondary">20 мар</td>
+        <td class="text-secondary">{% trans "20 мар" %}</td>
         <td>ORD-4512</td>
         <td class="text-secondary">#1029</td>
         <td class="text-secondary">#2063</td>
         <td style="font-family:'Golos Text',sans-serif;">$8,200</td>
         <td>USD</td>
-        <td><span class="op-badge op-badge-gray">Аванс</span></td>
-        <td><span class="op-badge op-badge-orange inv-status-badge">Просрочено</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Аванс" %}</span></td>
+        <td><span class="op-badge op-badge-orange inv-status-badge">{% trans "Просрочено" %}</span></td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();escalateInvoice(this,'INV-8835')">Эскалировать</button>
+            <button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('{% trans "Эскалация INV-8835" %}')">{% trans "Эскалировать" %}</button>
           </div>
         </td>
       </tr>
       <tr data-inv-status="paid" data-inv-type="advance" data-inv-currency="EUR">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8830</td>
-        <td class="text-secondary">18 мар</td>
+        <td class="text-secondary">{% trans "18 мар" %}</td>
         <td>ORD-4505</td>
         <td class="text-secondary">#1033</td>
         <td class="text-secondary">#2051</td>
         <td style="font-family:'Golos Text',sans-serif;">&euro;4,100</td>
         <td>EUR</td>
-        <td><span class="op-badge op-badge-gray">Аванс</span></td>
-        <td><span class="op-badge op-badge-gray inv-status-badge">Оплачено</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showInvDetail(this)">Детали</button></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Аванс" %}</span></td>
+        <td><span class="op-badge op-badge-gray inv-status-badge">{% trans "Оплачено" %}</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Детали INV-8830" %}')">{% trans "Детали" %}</button></td>
       </tr>
       <tr data-inv-status="paid" data-inv-type="main" data-inv-currency="CNY">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8828</td>
-        <td class="text-secondary">16 мар</td>
+        <td class="text-secondary">{% trans "16 мар" %}</td>
         <td>ORD-4501</td>
         <td class="text-secondary">#1028</td>
         <td class="text-secondary">#2044</td>
         <td style="font-family:'Golos Text',sans-serif;">&yen;88,000</td>
         <td>CNY</td>
-        <td><span class="op-badge op-badge-gray">Основная</span></td>
-        <td><span class="op-badge op-badge-gray inv-status-badge">Оплачено</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showInvDetail(this)">Детали</button></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Основная" %}</span></td>
+        <td><span class="op-badge op-badge-gray inv-status-badge">{% trans "Оплачено" %}</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Детали INV-8828" %}')">{% trans "Детали" %}</button></td>
       </tr>
     </tbody>
   </table>
@@ -141,32 +142,32 @@
 
 <!-- Payment schedule -->
 <div class="op-card">
-  <div class="op-section-title">График платежей</div>
+  <div class="op-section-title">{% trans "График платежей" %}</div>
   <div style="display:flex;gap:8px;margin-top:12px;">
     <div style="flex:1;text-align:center;padding:14px;background:#1F1F1F;border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-      <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Сегодня</div>
+      <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">{% trans "Сегодня" %}</div>
       <div style="font-size:20px;font-weight:800;color:#E85C0D;font-family:'Golos Text',sans-serif;">$8,200</div>
-      <div style="font-size:11px;color:#919191;margin-top:2px;">1 платёж</div>
+      <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "1 платёж" %}</div>
     </div>
     <div style="flex:1;text-align:center;padding:14px;background:#1F1F1F;border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-      <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Завтра</div>
+      <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">{% trans "Завтра" %}</div>
       <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$0</div>
-      <div style="font-size:11px;color:#919191;margin-top:2px;">0 платежей</div>
+      <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "0 платежей" %}</div>
     </div>
     <div style="flex:1;text-align:center;padding:14px;background:#1F1F1F;border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-      <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">27 мар</div>
+      <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">{% trans "27 мар" %}</div>
       <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$5,520</div>
-      <div style="font-size:11px;color:#919191;margin-top:2px;">1 платёж</div>
+      <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "1 платёж" %}</div>
     </div>
     <div style="flex:1;text-align:center;padding:14px;background:#1F1F1F;border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-      <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">28 мар</div>
+      <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">{% trans "28 мар" %}</div>
       <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,860</div>
-      <div style="font-size:11px;color:#919191;margin-top:2px;">1 платёж</div>
+      <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "1 платёж" %}</div>
     </div>
     <div style="flex:1;text-align:center;padding:14px;background:#1F1F1F;border-radius:10px;border:1px solid rgba(255,255,255,0.04);">
-      <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">30 мар</div>
+      <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">{% trans "30 мар" %}</div>
       <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$3,400</div>
-      <div style="font-size:11px;color:#919191;margin-top:2px;">1 платёж</div>
+      <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "1 платёж" %}</div>
     </div>
   </div>
 </div>
@@ -192,61 +193,17 @@ function confirmPayment(btn) {
   var row = btn.closest('tr');
   var badge = row.querySelector('.inv-status-badge');
   badge.className = 'op-badge op-badge-gray inv-status-badge';
-  badge.textContent = 'Оплачено';
+  badge.textContent = '{% trans "Оплачено" %}';
   row.dataset.invStatus = 'paid';
   var invId = row.querySelector('td').textContent;
-  opToast('Оплата ' + invId + ' подтверждена');
-  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showInvDetail(this)">Детали</button>';
+  opToast('{% trans "Оплата " %}' + invId + '{% trans " подтверждена" %}');
+  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'{% trans "Детали " %}' + invId + '\'{% trans ")\">Детали</button>" %}';
 }
 
 function rejectPayment(btn) {
-  var td = btn.closest('td');
-  if (td.querySelector('.reject-form')) { td.querySelector('.reject-form').remove(); return; }
-  var div = document.createElement('div');
-  div.className = 'reject-form';
-  div.style.cssText = 'margin-top:8px;display:flex;gap:6px;align-items:center;';
-  div.innerHTML = '<input class="op-input" placeholder="Причина отклонения..." style="flex:1;" />'
-    + '<button style="padding:6px 12px;border-radius:8px;background:rgba(224,85,85,0.12);color:#E05555;border:1px solid rgba(224,85,85,0.2);font-size:11px;cursor:pointer;white-space:nowrap;" onclick="confirmReject(this)">Отклонить</button>';
-  td.appendChild(div);
-  div.querySelector('input').focus();
-}
-
-function confirmReject(btn) {
   var row = btn.closest('tr');
-  var badge = row.querySelector('.inv-status-badge');
-  badge.className = 'op-badge op-badge-gray inv-status-badge';
-  badge.textContent = 'Отклонён';
-  row.dataset.invStatus = 'rejected';
   var invId = row.querySelector('td').textContent;
-  opToast('Счёт ' + invId + ' отклонён', 2000, 'warn');
-  btn.closest('td').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();showInvDetail(this)">Детали</button>';
-}
-
-function escalateInvoice(btn, invId) {
-  btn.disabled = true; btn.textContent = '↑ Эскалирован'; btn.style.opacity = '0.6';
-  var row = btn.closest('tr');
-  row.style.outline = '2px solid rgba(232,92,13,0.4)';
-  opToast(invId + ' эскалирован на руководителя', 2000, 'warn');
-}
-
-function showInvDetail(btn) {
-  var row = btn.closest('tr');
-  var next = row.nextElementSibling;
-  if (next && next.classList.contains('inv-detail-row')) {
-    next.style.display = next.style.display === 'none' ? 'table-row' : 'none';
-    return;
-  }
-  var invId = row.querySelector('td').textContent;
-  var detail = document.createElement('tr');
-  detail.className = 'inv-detail-row';
-  detail.innerHTML = '<td colspan="10" style="padding:12px 16px;background:#1F1F1F;font-size:12px;">'
-    + '<div style="display:flex;gap:24px;">'
-    + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Дата оплаты</div><div style="color:#ECECEC;">18 мар 11:30</div></div>'
-    + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Способ оплаты</div><div style="color:#ECECEC;">SWIFT · Банковский перевод</div></div>'
-    + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Референс</div><div style="color:#ECECEC;">' + invId + '-PAY</div></div>'
-    + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Комментарий</div><div style="color:#ECECEC;">Без замечаний</div></div>'
-    + '</div></td>';
-  row.parentElement.insertBefore(detail, row.nextSibling);
+  opToast('{% trans "Оплата " %}' + invId + '{% trans " отклонена" %}');
 }
 </script>
 {% endblock %}

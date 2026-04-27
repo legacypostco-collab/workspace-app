@@ -1,41 +1,42 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Импорт #{{ imp.id }}{% endblock %}
-{% block topbar_title %}Импорт #{{ imp.id }} — {{ imp.seller.username }}{% endblock %}
+{% load i18n %}
+{% block title %}{% blocktrans with imp_id=imp.id %}Импорт #{{ imp_id }}{% endblocktrans %}{% endblock %}
+{% block topbar_title %}{% blocktrans with imp_id=imp.id imp_seller_username=imp.seller.username %}Импорт #{{ imp_id }} — {{ imp_seller_username }}{% endblocktrans %}{% endblock %}
 
 {% block content %}
 <div style="margin-bottom:16px;">
-  <a href="/admin-panel/users/{{ imp.seller_id }}/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Профиль поставщика</a>
-  <a href="/admin-panel/imports/" class="ap-btn ap-btn-ghost" style="text-decoration:none;margin-left:6px;">Все импорты</a>
+  <a href="/admin-panel/users/{{ imp.seller_id }}/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "&larr; Профиль поставщика" %}</a>
+  <a href="/admin-panel/imports/" class="ap-btn ap-btn-ghost" style="text-decoration:none;margin-left:6px;">{% trans "Все импорты" %}</a>
 </div>
 
 <div class="ap-stats">
-  <div class="ap-stat"><div class="ap-stat-value">{{ imp.created_count }}</div><div class="ap-stat-label">Создано</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ imp.updated_count }}</div><div class="ap-stat-label">Обновлено</div></div>
-  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ imp.error_count }}</div><div class="ap-stat-label">Ошибок</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">Позиций найдено</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ imp.created_count }}</div><div class="ap-stat-label">{% trans "Создано" %}</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ imp.updated_count }}</div><div class="ap-stat-label">{% trans "Обновлено" %}</div></div>
+  <div class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ imp.error_count }}</div><div class="ap-stat-label">{% trans "Ошибок" %}</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">{% trans "Позиций найдено" %}</div></div>
   <div class="ap-stat">
     <div class="ap-stat-value">
-      {% if imp.status == 'success' %}<span style="color:#4CAF50;">OK</span>{% else %}<span style="color:#E85C0D;">Ошибка</span>{% endif %}
+      {% if imp.status == 'success' %}<span style="color:#4CAF50;">OK</span>{% else %}<span style="color:#E85C0D;">{% trans "Ошибка" %}</span>{% endif %}
     </div>
-    <div class="ap-stat-label">Статус</div>
+    <div class="ap-stat-label">{% trans "Статус" %}</div>
   </div>
 </div>
 
 <div class="ap-card" style="margin-bottom:12px;">
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:13px;">
-    <div><span style="color:#919191;">Поставщик:</span> <a href="/admin-panel/users/{{ imp.seller_id }}/" style="color:#64B5F6;text-decoration:none;">{{ imp.seller.username }}</a></div>
-    <div><span style="color:#919191;">Файл:</span> {{ imp.filename }}</div>
-    <div><span style="color:#919191;">Дата:</span> {{ imp.created_at|date:"d.m.Y H:i:s" }}</div>
+    <div><span style="color:#919191;">{% trans "Поставщик:" %}</span> <a href="/admin-panel/users/{{ imp.seller_id }}/" style="color:#64B5F6;text-decoration:none;">{{ imp.seller.username }}</a></div>
+    <div><span style="color:#919191;">{% trans "Файл:" %}</span> {{ imp.filename }}</div>
+    <div><span style="color:#919191;">{% trans "Дата:" %}</span> {{ imp.created_at|date:"d.m.Y H:i:s" }}</div>
   </div>
 </div>
 
 {% if imp.errors %}
 <div class="ap-card" style="margin-bottom:12px;border-left:3px solid #E85C0D;">
-  <div class="ap-section-title" style="color:#E85C0D;">Ошибки импорта</div>
+  <div class="ap-section-title" style="color:#E85C0D;">{% trans "Ошибки импорта" %}</div>
   <div style="max-height:200px;overflow:auto;">
     {% for err in imp.errors %}
     <div style="font-size:12px;color:#919191;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
-      <span style="color:#E85C0D;">Строка {{ err.row|default:"?" }}:</span> {{ err.reason|default:err }}
+      <span style="color:#E85C0D;">{% blocktrans with err_row_default_?=err.row|default:"?" %}Строка {{ err.row|default:"?" }}:{% endblocktrans %}</span> {{ err.reason|default:err }}
     </div>
     {% endfor %}
   </div>
@@ -49,10 +50,10 @@
 
 <div class="ap-card">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-    <div class="ap-section-title" style="margin-bottom:0;">Позиции из этого импорта ({{ parts_count }})</div>
+    <div class="ap-section-title" style="margin-bottom:0;">{% blocktrans with parts_count=parts_count %}Позиции из этого импорта ({{ parts_count }}){% endblocktrans %}</div>
     <div style="display:flex;gap:6px;">
-      <button type="submit" name="action" value="activate_all" class="ap-btn ap-btn-primary">Одобрить все</button>
-      <button type="button" class="ap-btn ap-btn-warn" onclick="showImportBlockModal('all')">Отклонить все</button>
+      <button type="submit" name="action" value="activate_all" class="ap-btn ap-btn-primary">{% trans "Одобрить все" %}</button>
+      <button type="button" class="ap-btn ap-btn-warn" onclick="showImportBlockModal('all')">{% trans "Отклонить все" %}</button>
     </div>
   </div>
 
@@ -61,13 +62,13 @@
       <tr>
         <th style="width:30px;"><input type="checkbox" id="selectAllImport" onchange="toggleAllImport(this)"/></th>
         <th>OEM</th>
-        <th>Название</th>
-        <th>Бренд</th>
-        <th>Цена</th>
-        <th>Остаток</th>
-        <th>Статус</th>
-        <th>Комментарий</th>
-        <th>Действия</th>
+        <th>{% trans "Название" %}</th>
+        <th>{% trans "Бренд" %}</th>
+        <th>{% trans "Цена" %}</th>
+        <th>{% trans "Остаток" %}</th>
+        <th>{% trans "Статус" %}</th>
+        <th>{% trans "Комментарий" %}</th>
+        <th>{% trans "Действия" %}</th>
       </tr>
     </thead>
     <tbody>
@@ -81,9 +82,9 @@
         <td>{{ part.stock_quantity }}</td>
         <td>
           {% if part.availability_status == 'active' and part.is_active %}
-            <span class="ap-badge ap-badge-green">Активна</span>
+            <span class="ap-badge ap-badge-green">{% trans "Активна" %}</span>
           {% elif part.availability_status == 'blocked' %}
-            <span class="ap-badge ap-badge-orange">Заблокирована</span>
+            <span class="ap-badge ap-badge-orange">{% trans "Заблокирована" %}</span>
           {% else %}
             <span class="ap-badge ap-badge-gray">{{ part.availability_status }}</span>
           {% endif %}
@@ -91,14 +92,14 @@
         <td class="text-secondary" style="font-size:11px;">{{ part.admin_note|default:"—"|truncatechars:30 }}</td>
         <td style="white-space:nowrap;">
           {% if part.availability_status == 'blocked' or not part.is_active %}
-            <button type="button" class="ap-btn ap-btn-primary" style="font-size:11px;padding:4px 10px;" onclick="singleImportAction('bulk_activate','{{ part.id }}')">Одобрить</button>
+            <button type="button" class="ap-btn ap-btn-primary" style="font-size:11px;padding:4px 10px;" onclick="singleImportAction('bulk_activate','{{ part.id }}')">{% trans "Одобрить" %}</button>
           {% else %}
-            <button type="button" class="ap-btn ap-btn-warn" style="font-size:11px;padding:4px 10px;" onclick="showImportBlockModal('{{ part.id }}')">Отклонить</button>
+            <button type="button" class="ap-btn ap-btn-warn" style="font-size:11px;padding:4px 10px;" onclick="showImportBlockModal('{{ part.id }}')">{% trans "Отклонить" %}</button>
           {% endif %}
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="9" style="text-align:center;color:#919191;">Нет позиций, связанных с этим импортом</td></tr>
+      <tr><td colspan="9" style="text-align:center;color:#919191;">{% trans "Нет позиций, связанных с этим импортом" %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -106,21 +107,21 @@
 
 <!-- Bulk bar -->
 <div id="importBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
-  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="importSelectedCount">0 выбрано</span>
-  <button type="button" class="ap-btn ap-btn-primary" onclick="bulkImportApprove()">Одобрить выбранные</button>
-  <button type="button" class="ap-btn ap-btn-warn" onclick="showImportBlockModal('bulk')">Отклонить выбранные</button>
-  <button type="button" class="ap-btn ap-btn-ghost" onclick="clearImportSelection()">Снять</button>
+  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="importSelectedCount">{% trans "0 выбрано" %}</span>
+  <button type="button" class="ap-btn ap-btn-primary" onclick="bulkImportApprove()">{% trans "Одобрить выбранные" %}</button>
+  <button type="button" class="ap-btn ap-btn-warn" onclick="showImportBlockModal('bulk')">{% trans "Отклонить выбранные" %}</button>
+  <button type="button" class="ap-btn ap-btn-ghost" onclick="clearImportSelection()">{% trans "Снять" %}</button>
 </div>
 </form>
 
 <!-- Block modal -->
 <div id="importBlockModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:#242424;border-radius:14px;border:1px solid rgba(255,255,255,0.06);padding:24px;width:420px;max-width:90vw;">
-    <div style="font-size:15px;font-weight:700;color:#ECECEC;margin-bottom:16px;">Причина отклонения</div>
-    <textarea id="importBlockReason" class="ap-input" rows="3" placeholder="Укажите причину (поставщик увидит)..." style="resize:vertical;margin-bottom:16px;"></textarea>
+    <div style="font-size:15px;font-weight:700;color:#ECECEC;margin-bottom:16px;">{% trans "Причина отклонения" %}</div>
+    <textarea id="importBlockReason" class="ap-input" rows="3" placeholder="{% trans "Укажите причину (поставщик увидит)..." %}" style="resize:vertical;margin-bottom:16px;"></textarea>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button type="button" class="ap-btn ap-btn-ghost" onclick="hideImportBlockModal()">Отмена</button>
-      <button type="button" class="ap-btn ap-btn-warn" onclick="confirmImportBlock()">Отклонить</button>
+      <button type="button" class="ap-btn ap-btn-ghost" onclick="hideImportBlockModal()">{% trans "Отмена" %}</button>
+      <button type="button" class="ap-btn ap-btn-warn" onclick="confirmImportBlock()">{% trans "Отклонить" %}</button>
     </div>
   </div>
 </div>
@@ -137,7 +138,7 @@ function toggleAllImport(master) {
 function updateImportBar() {
   var count = document.querySelectorAll('.imp-cb:checked').length;
   document.getElementById('importBulkBar').style.display = count > 0 ? 'flex' : 'none';
-  document.getElementById('importSelectedCount').textContent = count + ' выбрано';
+  document.getElementById('importSelectedCount').textContent = count + '{% trans " выбрано" %}';
 }
 function clearImportSelection() {
   document.querySelectorAll('.imp-cb').forEach(function(cb) { cb.checked = false; });

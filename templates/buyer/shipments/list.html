@@ -1,6 +1,7 @@
 {% extends "buyer/base_buyer.html" %}
+{% load i18n %}
 
-{% block title %}Отгрузки{% endblock %}
+{% block title %}{% trans "Отгрузки" %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -112,26 +113,26 @@
 {% block content %}
 
 <section class="shp-hero">
-  <div class="shp-hero-title">Отгрузки</div>
-  <div class="shp-hero-sub">Отслеживание грузов и логистика доставки</div>
+  <div class="shp-hero-title">{% trans "Отгрузки" %}</div>
+  <div class="shp-hero-sub">{% trans "Отслеживание грузов и логистика доставки" %}</div>
 </section>
 
 <!-- Summary -->
 <div class="shp-summary">
   <div class="shp-summary-card">
-    <div class="shp-summary-label">Всего отгрузок</div>
+    <div class="shp-summary-label">{% trans "Всего отгрузок" %}</div>
     <div class="shp-summary-val" style="color:#ECECEC;">11</div>
   </div>
   <div class="shp-summary-card">
-    <div class="shp-summary-label">В пути</div>
+    <div class="shp-summary-label">{% trans "В пути" %}</div>
     <div class="shp-summary-val" style="color:#64B5F6;">2</div>
   </div>
   <div class="shp-summary-card">
-    <div class="shp-summary-label">На таможне</div>
+    <div class="shp-summary-label">{% trans "На таможне" %}</div>
     <div class="shp-summary-val" style="color:#E85C0D;">1</div>
   </div>
   <div class="shp-summary-card">
-    <div class="shp-summary-label">Доставлено за месяц</div>
+    <div class="shp-summary-label">{% trans "Доставлено за месяц" %}</div>
     <div class="shp-summary-val" style="color:#28C840;">8</div>
   </div>
 </div>
@@ -144,28 +145,28 @@
     <div class="shp-card-head">
       <div>
         <div class="shp-card-id">SHP-2026-0089</div>
-        <div class="shp-card-order">Заказ ORD-2026-0142 &middot; Поставщик #1042</div>
+        <div class="shp-card-order">{% trans "Заказ" %} ORD-2026-0142 &middot; Поставщик #1042</div>
       </div>
       <div class="shp-card-eta">
-        <div class="shp-eta-label">Ожидаемая доставка</div>
-        <div class="shp-eta-val">18 апреля 2026</div>
+        <div class="shp-eta-label">{% trans "Ожидаемая доставка" %}</div>
+        <div class="shp-eta-val">{% trans "18 апреля 2026" %}</div>
       </div>
     </div>
     <div class="shp-info">
       <div class="shp-info-item">
-        <div class="shp-info-label">Маршрут</div>
+        <div class="shp-info-label">{% trans "Маршрут" %}</div>
         <div class="shp-info-val">Шанхай &rarr; Владивосток</div>
       </div>
       <div class="shp-info-item">
-        <div class="shp-info-label">Перевозчик</div>
+        <div class="shp-info-label">{% trans "Перевозчик" %}</div>
         <div class="shp-info-val">COSCO Shipping</div>
       </div>
       <div class="shp-info-item">
-        <div class="shp-info-label">Контейнер</div>
+        <div class="shp-info-label">{% trans "Контейнер" %}</div>
         <div class="shp-info-val">CSLU2184537</div>
       </div>
       <div class="shp-info-item">
-        <div class="shp-info-label">Вес / Объём</div>
+        <div class="shp-info-label">{% trans "Вес / Объём" %}</div>
         <div class="shp-info-val">1,240 кг / 2.8 CBM</div>
       </div>
     </div>
@@ -175,30 +176,30 @@
         <div class="shp-step-dot">
           <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <div class="shp-step-label">Забор<br>груза</div>
+        <div class="shp-step-label">{% trans "Забор" %}<br>{% trans "груза" %}</div>
         <div class="shp-step-date">20.03</div>
       </div>
       <div class="shp-step shp-step--active">
         <div class="shp-step-line"></div>
         <div class="shp-step-dot"></div>
-        <div class="shp-step-label">В пути<br>(морем)</div>
+        <div class="shp-step-label">{% trans "В пути" %}<br>{% trans "(морем)" %}</div>
         <div class="shp-step-date">22.03 &mdash;</div>
       </div>
       <div class="shp-step shp-step--pending">
         <div class="shp-step-line"></div>
         <div class="shp-step-dot"></div>
-        <div class="shp-step-label">Порт<br>прибытия</div>
+        <div class="shp-step-label">{% trans "Порт" %}<br>{% trans "прибытия" %}</div>
         <div class="shp-step-date">~10.04</div>
       </div>
       <div class="shp-step shp-step--pending">
         <div class="shp-step-line"></div>
         <div class="shp-step-dot"></div>
-        <div class="shp-step-label">Таможня</div>
+        <div class="shp-step-label">{% trans "Таможня" %}</div>
         <div class="shp-step-date">~13.04</div>
       </div>
       <div class="shp-step shp-step--pending">
         <div class="shp-step-dot"></div>
-        <div class="shp-step-label">Доставка</div>
+        <div class="shp-step-label">{% trans "Доставка" %}</div>
         <div class="shp-step-date">~18.04</div>
       </div>
     </div>
@@ -209,28 +210,28 @@
     <div class="shp-card-head">
       <div>
         <div class="shp-card-id">SHP-2026-0074</div>
-        <div class="shp-card-order">Заказ ORD-2026-0131 &middot; Поставщик #3156</div>
+        <div class="shp-card-order">{% trans "Заказ" %} ORD-2026-0131 &middot; Поставщик #3156</div>
       </div>
       <div class="shp-card-eta">
-        <div class="shp-eta-label">Ожидаемая доставка</div>
-        <div class="shp-eta-val">26 марта 2026</div>
+        <div class="shp-eta-label">{% trans "Ожидаемая доставка" %}</div>
+        <div class="shp-eta-val">{% trans "26 марта 2026" %}</div>
       </div>
     </div>
     <div class="shp-info">
       <div class="shp-info-item">
-        <div class="shp-info-label">Маршрут</div>
+        <div class="shp-info-label">{% trans "Маршрут" %}</div>
         <div class="shp-info-val">Циндао &rarr; Новороссийск</div>
       </div>
       <div class="shp-info-item">
-        <div class="shp-info-label">Перевозчик</div>
+        <div class="shp-info-label">{% trans "Перевозчик" %}</div>
         <div class="shp-info-val">Maersk Line</div>
       </div>
       <div class="shp-info-item">
-        <div class="shp-info-label">Контейнер</div>
+        <div class="shp-info-label">{% trans "Контейнер" %}</div>
         <div class="shp-info-val">MAEU7291045</div>
       </div>
       <div class="shp-info-item">
-        <div class="shp-info-label">Вес / Объём</div>
+        <div class="shp-info-label">{% trans "Вес / Объём" %}</div>
         <div class="shp-info-val">380 кг / 0.9 CBM</div>
       </div>
     </div>
@@ -240,7 +241,7 @@
         <div class="shp-step-dot">
           <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <div class="shp-step-label">Забор<br>груза</div>
+        <div class="shp-step-label">{% trans "Забор" %}<br>{% trans "груза" %}</div>
         <div class="shp-step-date">01.03</div>
       </div>
       <div class="shp-step shp-step--done">
@@ -248,7 +249,7 @@
         <div class="shp-step-dot">
           <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <div class="shp-step-label">В пути<br>(морем)</div>
+        <div class="shp-step-label">{% trans "В пути" %}<br>{% trans "(морем)" %}</div>
         <div class="shp-step-date">03.03 &mdash; 18.03</div>
       </div>
       <div class="shp-step shp-step--done">
@@ -256,18 +257,18 @@
         <div class="shp-step-dot">
           <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <div class="shp-step-label">Порт<br>прибытия</div>
+        <div class="shp-step-label">{% trans "Порт" %}<br>{% trans "прибытия" %}</div>
         <div class="shp-step-date">19.03</div>
       </div>
       <div class="shp-step shp-step--active">
         <div class="shp-step-line"></div>
         <div class="shp-step-dot"></div>
-        <div class="shp-step-label">Таможня</div>
+        <div class="shp-step-label">{% trans "Таможня" %}</div>
         <div class="shp-step-date">20.03 &mdash;</div>
       </div>
       <div class="shp-step shp-step--pending">
         <div class="shp-step-dot"></div>
-        <div class="shp-step-label">Доставка</div>
+        <div class="shp-step-label">{% trans "Доставка" %}</div>
         <div class="shp-step-date">~26.03</div>
       </div>
     </div>
@@ -278,28 +279,28 @@
     <div class="shp-card-head">
       <div>
         <div class="shp-card-id">SHP-2026-0081</div>
-        <div class="shp-card-order">Заказ ORD-2026-0138 &middot; Поставщик #2087</div>
+        <div class="shp-card-order">{% trans "Заказ" %} ORD-2026-0138 &middot; Поставщик #2087</div>
       </div>
       <div class="shp-card-eta">
-        <div class="shp-eta-label">Ожидаемая доставка</div>
-        <div class="shp-eta-val">28 марта 2026</div>
+        <div class="shp-eta-label">{% trans "Ожидаемая доставка" %}</div>
+        <div class="shp-eta-val">{% trans "28 марта 2026" %}</div>
       </div>
     </div>
     <div class="shp-info">
       <div class="shp-info-item">
-        <div class="shp-info-label">Маршрут</div>
+        <div class="shp-info-label">{% trans "Маршрут" %}</div>
         <div class="shp-info-val">Гуанчжоу &rarr; Москва (авиа)</div>
       </div>
       <div class="shp-info-item">
-        <div class="shp-info-label">Перевозчик</div>
+        <div class="shp-info-label">{% trans "Перевозчик" %}</div>
         <div class="shp-info-val">Cainiao Logistics</div>
       </div>
       <div class="shp-info-item">
-        <div class="shp-info-label">Трекинг</div>
+        <div class="shp-info-label">{% trans "Трекинг" %}</div>
         <div class="shp-info-val">CN902847561RU</div>
       </div>
       <div class="shp-info-item">
-        <div class="shp-info-label">Вес / Объём</div>
+        <div class="shp-info-label">{% trans "Вес / Объём" %}</div>
         <div class="shp-info-val">86 кг / 0.3 CBM</div>
       </div>
     </div>
@@ -309,7 +310,7 @@
         <div class="shp-step-dot">
           <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <div class="shp-step-label">Забор<br>груза</div>
+        <div class="shp-step-label">{% trans "Забор" %}<br>{% trans "груза" %}</div>
         <div class="shp-step-date">08.03</div>
       </div>
       <div class="shp-step shp-step--done">
@@ -317,7 +318,7 @@
         <div class="shp-step-dot">
           <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <div class="shp-step-label">Вылет<br>(авиа)</div>
+        <div class="shp-step-label">{% trans "Вылет" %}<br>{% trans "(авиа)" %}</div>
         <div class="shp-step-date">10.03</div>
       </div>
       <div class="shp-step shp-step--done">
@@ -325,7 +326,7 @@
         <div class="shp-step-dot">
           <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <div class="shp-step-label">Прибытие<br>в аэропорт</div>
+        <div class="shp-step-label">{% trans "Прибытие" %}<br>{% trans "в аэропорт" %}</div>
         <div class="shp-step-date">12.03</div>
       </div>
       <div class="shp-step shp-step--done">
@@ -333,12 +334,12 @@
         <div class="shp-step-dot">
           <svg class="shp-check" viewBox="0 0 8 8" fill="none"><path d="M1.5 4L3.2 5.7L6.5 2.3" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </div>
-        <div class="shp-step-label">Таможня</div>
+        <div class="shp-step-label">{% trans "Таможня" %}</div>
         <div class="shp-step-date">13.03 &mdash; 24.03</div>
       </div>
       <div class="shp-step shp-step--active">
         <div class="shp-step-dot"></div>
-        <div class="shp-step-label">Доставка<br>курьером</div>
+        <div class="shp-step-label">{% trans "Доставка" %}<br>{% trans "курьером" %}</div>
         <div class="shp-step-date">~28.03</div>
       </div>
     </div>

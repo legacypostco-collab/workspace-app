@@ -1,173 +1,173 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Таможня — Документы{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Таможня — Документы" %}{% endblock %}
 
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
   <div class="op-stat" id="cdoc-type-all" onclick="filterByDocType('')" style="cursor:pointer;border-color:rgba(100,181,246,0.35);transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">32</div>
-    <div class="op-stat-label">Всего документов</div>
+    <div class="op-stat-label">{% trans "Всего документов" %}</div>
   </div>
-  <div class="op-stat" id="cdoc-type-invoice" onclick="filterByDocType('Инвойс')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
+  <div class="op-stat" id="cdoc-type-invoice" onclick="filterByDocType('{% trans "Инвойс" %}')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">12</div>
-    <div class="op-stat-label">Инвойсы</div>
+    <div class="op-stat-label">{% trans "Инвойсы" %}</div>
   </div>
-  <div class="op-stat" id="cdoc-type-cert" onclick="filterByDocType('Сертификат')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
+  <div class="op-stat" id="cdoc-type-cert" onclick="filterByDocType('{% trans "Сертификат" %}')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">8</div>
-    <div class="op-stat-label">Сертификаты</div>
+    <div class="op-stat-label">{% trans "Сертификаты" %}</div>
   </div>
-  <div class="op-stat" id="cdoc-type-perm" onclick="filterByDocType('Разрешение')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
+  <div class="op-stat" id="cdoc-type-perm" onclick="filterByDocType('{% trans "Разрешение" %}')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">3</div>
-    <div class="op-stat-label">Разрешения</div>
+    <div class="op-stat-label">{% trans "Разрешения" %}</div>
   </div>
-  <div class="op-stat" id="cdoc-type-conc" onclick="filterByDocType('Заключение')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
+  <div class="op-stat" id="cdoc-type-conc" onclick="filterByDocType('{% trans "Заключение" %}')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">5</div>
-    <div class="op-stat-label">Заключения</div>
+    <div class="op-stat-label">{% trans "Заключения" %}</div>
   </div>
-  <div class="op-stat" id="cdoc-type-other" onclick="filterByDocType('Прочие')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
+  <div class="op-stat" id="cdoc-type-other" onclick="filterByDocType('{% trans "Прочие" %}')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">4</div>
-    <div class="op-stat-label">Прочие</div>
+    <div class="op-stat-label">{% trans "Прочие" %}</div>
   </div>
 </div>
 
 <!-- Tabs -->
 <div class="op-tabs">
-  <button class="op-tab active" data-cdoc-tab="all" onclick="switchCDocTab('all')">Все</button>
-  <button class="op-tab" data-cdoc-tab="in" onclick="switchCDocTab('in')">Входящие</button>
-  <button class="op-tab" data-cdoc-tab="out" onclick="switchCDocTab('out')">Исходящие</button>
-  <button class="op-tab" data-cdoc-tab="archive" onclick="switchCDocTab('archive')">Архив</button>
+  <button class="op-tab active" data-cdoc-tab="all" onclick="switchCDocTab('all')">{% trans "Все" %}</button>
+  <button class="op-tab" data-cdoc-tab="in" onclick="switchCDocTab('in')">{% trans "Входящие" %}</button>
+  <button class="op-tab" data-cdoc-tab="out" onclick="switchCDocTab('out')">{% trans "Исходящие" %}</button>
+  <button class="op-tab" data-cdoc-tab="archive" onclick="switchCDocTab('archive')">{% trans "Архив" %}</button>
 </div>
 
 <!-- Upload area -->
-<div class="op-card" style="margin-bottom:16px;border:2px dashed rgba(255,255,255,0.06);text-align:center;padding:28px 20px;cursor:pointer;" onclick="document.getElementById('cdoc-upload-input').click()" id="cdoc-upload-zone">
+<div class="op-card" style="margin-bottom:16px;border:2px dashed rgba(255,255,255,0.06);text-align:center;padding:28px 20px;cursor:pointer;" onclick="opToast('{% trans "Загрузка документов" %}', 2000, 'info')">
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5E5E5E" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:8px;"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 17v2a1 1 0 001 1h14a1 1 0 001-1v-2"/></svg>
-  <div style="font-size:13px;color:#919191;" id="cdoc-upload-label">Перетащите файлы сюда или нажмите для загрузки</div>
-  <div style="font-size:11px;color:#5E5E5E;margin-top:4px;">PDF, JPEG, PNG до 10 МБ</div>
+  <div style="font-size:13px;color:#919191;">{% trans "Перетащите файлы сюда или нажмите для загрузки" %}</div>
+  <div style="font-size:11px;color:#5E5E5E;margin-top:4px;">{% trans "PDF, JPEG, PNG до 10 МБ" %}</div>
 </div>
-<input type="file" id="cdoc-upload-input" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="cdocFilesSelected(this)" />
 
 <!-- Documents table -->
 <div class="op-card">
   <table class="op-table" id="cdocs-table">
     <thead>
       <tr>
-        <th>Название</th>
-        <th>Тип</th>
-        <th>Декларация</th>
-        <th>Заказ</th>
-        <th>Дата загрузки</th>
-        <th>Статус</th>
-        <th>Действия</th>
+        <th>{% trans "Название" %}</th>
+        <th>{% trans "Тип" %}</th>
+        <th>{% trans "Декларация" %}</th>
+        <th>{% trans "Заказ" %}</th>
+        <th>{% trans "Дата загрузки" %}</th>
+        <th>{% trans "Статус" %}</th>
+        <th>{% trans "Действия" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr data-dir="in" data-archived="0" data-type="Инвойс" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Инвойс #INV-2241</td>
-        <td class="text-secondary">Инвойс</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78412</td>
+        <td style="font-weight:600;">{% trans "Инвойс #INV-2241" %}</td>
+        <td class="text-secondary">{% trans "Инвойс" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78412" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
-        <td class="text-secondary">22 мар</td>
-        <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadDoc(this)">Скачать</button></td>
+        <td class="text-secondary">{% trans "22 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "Проверен" %}</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Файл скачан" %}', 2000, 'success')">{% trans "Скачать" %}</button></td>
       </tr>
       <tr data-dir="in" data-archived="0" data-type="Сертификат" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Сертификат CN-8841</td>
-        <td class="text-secondary">Сертификат</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78412</td>
+        <td style="font-weight:600;">{% trans "Сертификат CN-8841" %}</td>
+        <td class="text-secondary">{% trans "Сертификат" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78412" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
-        <td class="text-secondary">22 мар</td>
-        <td><span class="op-badge op-badge-gray">На проверке</span></td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();verifyDocument(this)">Проверить</button></td>
+        <td class="text-secondary">{% trans "22 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "На проверке" %}</span></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Документ отправлен на проверку" %}', 2000, 'success')">{% trans "Проверить" %}</button></td>
       </tr>
       <tr data-dir="out" data-archived="0" data-type="Разрешение" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Разрешение РП-1142</td>
-        <td class="text-secondary">Разрешение</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78415</td>
+        <td style="font-weight:600;">{% trans "Разрешение РП-1142" %}</td>
+        <td class="text-secondary">{% trans "Разрешение" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78415" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
-        <td class="text-secondary">21 мар</td>
-        <td><span class="op-badge op-badge-orange">Требует доработки</span></td>
-        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();requestRework(this)">Доработать</button></td>
+        <td class="text-secondary">{% trans "21 мар" %}</td>
+        <td><span class="op-badge op-badge-orange">{% trans "Требует доработки" %}</span></td>
+        <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('{% trans "Запрос на доработку отправлен" %}', 2000, 'warn')">{% trans "Доработать" %}</button></td>
       </tr>
       <tr data-dir="in" data-archived="0" data-type="Инвойс" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Инвойс #INV-2238</td>
-        <td class="text-secondary">Инвойс</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78415</td>
+        <td style="font-weight:600;">{% trans "Инвойс #INV-2238" %}</td>
+        <td class="text-secondary">{% trans "Инвойс" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78415" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
-        <td class="text-secondary">20 мар</td>
-        <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadDoc(this)">Скачать</button></td>
+        <td class="text-secondary">{% trans "20 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "Проверен" %}</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Файл скачан" %}', 2000, 'success')">{% trans "Скачать" %}</button></td>
       </tr>
       <tr data-dir="in" data-archived="0" data-type="Заключение" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Заключение ЗК-447</td>
-        <td class="text-secondary">Заключение</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78418</td>
+        <td style="font-weight:600;">{% trans "Заключение ЗК-447" %}</td>
+        <td class="text-secondary">{% trans "Заключение" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78418" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
-        <td class="text-secondary">19 мар</td>
-        <td><span class="op-badge op-badge-gray">На проверке</span></td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();verifyDocument(this)">Проверить</button></td>
+        <td class="text-secondary">{% trans "19 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "На проверке" %}</span></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Документ отправлен на проверку" %}', 2000, 'success')">{% trans "Проверить" %}</button></td>
       </tr>
       <tr data-dir="out" data-archived="0" data-type="Сертификат" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Сертификат TR-5521</td>
-        <td class="text-secondary">Сертификат</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78418</td>
+        <td style="font-weight:600;">{% trans "Сертификат TR-5521" %}</td>
+        <td class="text-secondary">{% trans "Сертификат" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78418" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
-        <td class="text-secondary">19 мар</td>
-        <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadDoc(this)">Скачать</button></td>
+        <td class="text-secondary">{% trans "19 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "Проверен" %}</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Файл скачан" %}', 2000, 'success')">{% trans "Скачать" %}</button></td>
       </tr>
       <tr data-dir="in" data-archived="0" data-type="Инвойс" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Инвойс #INV-2235</td>
-        <td class="text-secondary">Инвойс</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78420</td>
+        <td style="font-weight:600;">{% trans "Инвойс #INV-2235" %}</td>
+        <td class="text-secondary">{% trans "Инвойс" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78420" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
-        <td class="text-secondary">18 мар</td>
-        <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadDoc(this)">Скачать</button></td>
+        <td class="text-secondary">{% trans "18 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "Проверен" %}</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Файл скачан" %}', 2000, 'success')">{% trans "Скачать" %}</button></td>
       </tr>
       <tr data-dir="out" data-archived="0" data-type="Разрешение" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Разрешение РП-1138</td>
-        <td class="text-secondary">Разрешение</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78420</td>
+        <td style="font-weight:600;">{% trans "Разрешение РП-1138" %}</td>
+        <td class="text-secondary">{% trans "Разрешение" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78420" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
-        <td class="text-secondary">18 мар</td>
-        <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadDoc(this)">Скачать</button></td>
+        <td class="text-secondary">{% trans "18 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "Проверен" %}</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Файл скачан" %}', 2000, 'success')">{% trans "Скачать" %}</button></td>
       </tr>
       <tr data-dir="in" data-archived="1" data-type="Заключение" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Заключение ЗК-441</td>
-        <td class="text-secondary">Заключение</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78401</td>
+        <td style="font-weight:600;">{% trans "Заключение ЗК-441" %}</td>
+        <td class="text-secondary">{% trans "Заключение" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78401" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4498</td>
-        <td class="text-secondary">10 мар</td>
-        <td><span class="op-badge op-badge-gray">Архив</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadDoc(this)">Скачать</button></td>
+        <td class="text-secondary">{% trans "10 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "Архив" %}</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Файл скачан" %}', 2000, 'success')">{% trans "Скачать" %}</button></td>
       </tr>
       <tr data-dir="in" data-archived="0" data-type="Сертификат" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Сертификат AE-7712</td>
-        <td class="text-secondary">Сертификат</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78422</td>
+        <td style="font-weight:600;">{% trans "Сертификат AE-7712" %}</td>
+        <td class="text-secondary">{% trans "Сертификат" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78422" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
-        <td class="text-secondary">17 мар</td>
-        <td><span class="op-badge op-badge-gray">На проверке</span></td>
-        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();verifyDocument(this)">Проверить</button></td>
+        <td class="text-secondary">{% trans "17 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "На проверке" %}</span></td>
+        <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Документ отправлен на проверку" %}', 2000, 'success')">{% trans "Проверить" %}</button></td>
       </tr>
       <tr data-dir="out" data-archived="1" data-type="Инвойс" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Инвойс #INV-2220</td>
-        <td class="text-secondary">Инвойс</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78398</td>
+        <td style="font-weight:600;">{% trans "Инвойс #INV-2220" %}</td>
+        <td class="text-secondary">{% trans "Инвойс" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78398" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4495</td>
-        <td class="text-secondary">8 мар</td>
-        <td><span class="op-badge op-badge-gray">Архив</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadDoc(this)">Скачать</button></td>
+        <td class="text-secondary">{% trans "8 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "Архив" %}</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Файл скачан" %}', 2000, 'success')">{% trans "Скачать" %}</button></td>
       </tr>
       <tr data-dir="in" data-archived="0" data-type="Прочие" style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Прочий документ ПД-082</td>
-        <td class="text-secondary">Прочие</td>
-        <td style="font-family:'Golos Text',sans-serif;">ДТ-78422</td>
+        <td style="font-weight:600;">{% trans "Прочий документ ПД-082" %}</td>
+        <td class="text-secondary">{% trans "Прочие" %}</td>
+        <td style="font-family:'Golos Text',sans-serif;">{% trans "ДТ-78422" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
-        <td class="text-secondary">17 мар</td>
-        <td><span class="op-badge op-badge-gray">Проверен</span></td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadDoc(this)">Скачать</button></td>
+        <td class="text-secondary">{% trans "17 мар" %}</td>
+        <td><span class="op-badge op-badge-gray">{% trans "Проверен" %}</span></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Файл скачан" %}', 2000, 'success')">{% trans "Скачать" %}</button></td>
       </tr>
     </tbody>
   </table>
@@ -194,7 +194,7 @@
     if(activeType === ''){
       document.getElementById('cdoc-type-all').style.borderColor = active;
     } else {
-      var map = {'Инвойс':'cdoc-type-invoice','Сертификат':'cdoc-type-cert','Разрешение':'cdoc-type-perm','Заключение':'cdoc-type-conc','Прочие':'cdoc-type-other'};
+      var map = {'{% trans "Инвойс" %}':'cdoc-type-invoice','{% trans "Сертификат" %}':'cdoc-type-cert','{% trans "Разрешение" %}':'cdoc-type-perm','{% trans "Заключение" %}':'cdoc-type-conc','{% trans "Прочие" %}':'cdoc-type-other'};
       if(map[activeType]) document.getElementById(map[activeType]).style.borderColor = active;
     }
     var currentTab = (document.querySelector('[data-cdoc-tab].active') || {getAttribute:function(){return 'all';}}).getAttribute('data-cdoc-tab');
@@ -225,52 +225,8 @@
     tr.parentElement.insertBefore(detail, tr.nextSibling);
   };
 
-
-  window.cdocFilesSelected = function(input) {
-    if (!input.files.length) return;
-    var names = Array.from(input.files).map(function(f){ return f.name; }).join(', ');
-    document.getElementById('cdoc-upload-label').textContent = '✓ Загружено: ' + names;
-    opToast('Загружено: ' + names, 3000, 'success');
-    setTimeout(function(){ document.getElementById('cdoc-upload-label').textContent = 'Перетащите файлы сюда или нажмите для загрузки'; }, 5000);
-    input.value = '';
-  };
-  window.verifyDocument = function(btn) {
-    var row = btn.closest('tr');
-    var badge = row.querySelector('.op-badge');
-    badge.className = 'op-badge op-badge-gray'; badge.textContent = 'Проверен';
-    btn.closest('td').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();downloadDoc(this)">Скачать</button>';
-    opToast('Документ проверен и принят', 2000, 'success');
-  };
-  window.requestRework = function(btn) {
-    var row = btn.closest('tr');
-    var next = row.nextElementSibling;
-    if (next && next.classList.contains('cdoc-rework-row')) { next.remove(); return; }
-    var docName = row.querySelector('td').textContent;
-    var detail = document.createElement('tr');
-    detail.className = 'cdoc-rework-row';
-    detail.innerHTML = '<td colspan="7" style="padding:12px 16px;background:#1F1F1F;">'
-      + '<div style="display:flex;gap:10px;align-items:flex-start;">'
-      + '<textarea rows="2" placeholder="Укажите, что нужно исправить в «' + docName + '»..." style="flex:1;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;font-family:inherit;"></textarea>'
-      + '<button onclick="submitRework(this)" style="padding:8px 14px;border-radius:8px;background:rgba(232,92,13,0.12);color:#E85C0D;border:1px solid rgba(232,92,13,0.2);font-size:12px;cursor:pointer;white-space:nowrap;">Отправить</button>'
-      + '<button onclick="this.closest(\'.cdoc-rework-row\').remove()" style="padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:12px;cursor:pointer;">Отмена</button>'
-      + '</div></td>';
-    row.parentElement.insertBefore(detail, row.nextSibling);
-    detail.querySelector('textarea').focus();
-  };
-  window.submitRework = function(btn) {
-    var ta = btn.previousElementSibling;
-    if (ta && !ta.value.trim()) { opToast('Опишите, что нужно исправить'); return; }
-    btn.closest('tr').remove();
-    opToast('Запрос на доработку отправлен', 2000, 'warn');
-  };
-  window.downloadDoc = function(btn) {
-    var row = btn.closest('tr');
-    var docName = row ? row.querySelector('td').textContent : 'документ';
-    opToast('⬇ ' + docName.trim() + ' — загружается...', 2000, 'success');
-  };
-
   function applyFilters(tab, type){
-    document.querySelectorAll('#cdocs-table tbody tr:not(.row-detail-expanded):not(.cdoc-rework-row)').forEach(function(row){
+    document.querySelectorAll('#cdocs-table tbody tr').forEach(function(row){
       var dirOk = true, typeOk = true;
       if(tab !== 'all'){
         if(tab === 'archive') dirOk = row.getAttribute('data-archived')==='1';
