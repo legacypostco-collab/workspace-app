@@ -50,38 +50,38 @@ def auth_meta(request):
 
     ui = {
         "ru": {
-            "home": "Главная",
-            "navigation": "Навигация",
-            "catalog": "Каталог",
-            "brands": "Бренды",
-            "categories": "Категории",
-            "compare": "Сравнение",
-            "sales": "Продажи",
-            "new_rfq": "Новый RFQ",
-            "rfq_quotes": "RFQ и котировки",
+            "home": _("Главная"),
+            "navigation": _("Навигация"),
+            "catalog": _("Каталог"),
+            "brands": _("Бренды"),
+            "categories": _("Категории"),
+            "compare": _("Сравнение"),
+            "sales": _("Продажи"),
+            "new_rfq": _("Новый RFQ"),
+            "rfq_quotes": _("RFQ и котировки"),
             "demo_center": "Demo Center",
-            "cart": "Корзина",
-            "supplier": "Поставщик",
-            "seller_cabinet": "Кабинет поставщика",
-            "seller_orders": "Заказы поставщика",
-            "operator_queue": "Очередь оператора",
-            "operator_webhooks": "Webhook логи",
-            "engineering": "Инженерия",
-            "drawings_docs": "Чертежи и документы",
-            "finance": "Финансы",
-            "prices_discounts": "Цены и скидки",
-            "payouts": "Выплаты и удержания",
-            "analytics": "Аналитика",
-            "reports_kpi": "Отчёты и KPI",
-            "my_cabinet": "Мой кабинет",
-            "buyer_orders": "Заказы покупателя",
-            "overview": "Обзор",
-            "callback": "Обратный звонок",
-            "you_logged_as": "Вы вошли как",
-            "cabinet": "Кабинет",
-            "logout": "Выйти",
-            "register": "Зарегистрироваться",
-            "login": "Войти",
+            "cart": _("Корзина"),
+            "supplier": _("Поставщик"),
+            "seller_cabinet": _("Кабинет поставщика"),
+            "seller_orders": _("Заказы поставщика"),
+            "operator_queue": _("Очередь оператора"),
+            "operator_webhooks": _("Webhook логи"),
+            "engineering": _("Инженерия"),
+            "drawings_docs": _("Чертежи и документы"),
+            "finance": _("Финансы"),
+            "prices_discounts": _("Цены и скидки"),
+            "payouts": _("Выплаты и удержания"),
+            "analytics": _("Аналитика"),
+            "reports_kpi": _("Отчёты и KPI"),
+            "my_cabinet": _("Мой кабинет"),
+            "buyer_orders": _("Заказы покупателя"),
+            "overview": _("Обзор"),
+            "callback": _("Обратный звонок"),
+            "you_logged_as": _("Вы вошли как"),
+            "cabinet": _("Кабинет"),
+            "logout": _("Выйти"),
+            "register": _("Зарегистрироваться"),
+            "login": _("Войти"),
         },
         "en": {
             "home": "Home",
@@ -155,6 +155,18 @@ def auth_meta(request):
 
     is_demo = request.user.is_authenticated and request.user.username.startswith("demo_")
 
+    # Admin moderation count
+    admin_moderation_count = 0
+    if request.user.is_authenticated and request.user.is_superuser:
+        from .models import UserProfile, OrderClaim
+        admin_moderation_count = (
+            UserProfile.objects.filter(role="seller", supplier_status="sandbox").count()
+            + OrderClaim.objects.exclude(status="closed").count()
+        )
+        # blocked parts — fast exists check only
+        if Part.objects.filter(availability_status="blocked").exists():
+            admin_moderation_count += 1
+
     return {
         "current_role": role,
         "compare_count": compare_count,
@@ -163,6 +175,7 @@ def auth_meta(request):
         "language_code": lang_key,
         "ui": ui,
         "is_demo": is_demo,
+        "admin_moderation_count": admin_moderation_count,
     }
 
 
@@ -185,34 +198,24 @@ def seller_context(request):
     ).count()
     seller_imports_total = SellerImportRun.objects.filter(seller=seller).count()
 
-    is_demo = seller.username.startswith("demo_")
-
-    if is_demo:
-        seller_nav_items = [
-            {"key": "dashboard", "label": _("Дашборд"), "url_name": "seller_dashboard", "badge": None, "enabled": True},
-            {"key": "products", "label": _("Товары и прайсы"), "url_name": "seller_product_list", "badge": seller_products_active, "enabled": True},
-            {"key": "drawings", "label": _("Чертежи"), "url_name": "seller_drawings", "badge": None, "enabled": True},
-            {"key": "requests", "label": _("Запросы клиентов"), "url_name": "seller_request_list", "badge": seller_requests_new, "enabled": True},
-            {"key": "orders", "label": _("Заказы"), "url_name": "seller_orders", "badge": seller_orders_action, "enabled": True},
-            {"key": "sla", "label": _("Контроль SLA"), "url_name": "seller_sla", "badge": seller_sla_alert, "enabled": True},
-            {"key": "discounts", "label": _("Согласование"), "url_name": "seller_negotiations", "badge": None, "enabled": True},
-            {"key": "qr", "label": _("QR-контроль"), "url_name": "seller_qr_control", "badge": None, "enabled": True},
-            {"key": "finance", "label": _("Финансы"), "url_name": "seller_finance", "badge": None, "enabled": True},
-            {"key": "rating", "label": _("Рейтинг"), "url_name": "seller_rating", "badge": None, "enabled": True},
-            {"key": "analytics", "label": _("Аналитика"), "url_name": "seller_analytics", "badge": None, "enabled": True},
-            {"key": "team", "label": _("Команда"), "url_name": "seller_team", "badge": None, "enabled": True},
-            {"key": "integrations", "label": _("Интеграции"), "url_name": "seller_integrations", "badge": None, "enabled": True},
-            {"key": "logistics", "label": _("Логистика"), "url_name": "seller_logistics", "badge": None, "enabled": True},
-        ]
-    else:
-        seller_nav_items = [
-            {"key": "dashboard", "label": _("Дашборд"), "url_name": "seller_dashboard", "badge": None, "enabled": True},
-            {"key": "products", "label": _("Каталог"), "url_name": "seller_product_list", "badge": seller_products_active, "enabled": True},
-            {"key": "requests", "label": _("Запросы"), "url_name": "seller_request_list", "badge": seller_requests_new, "enabled": True},
-            {"key": "orders", "label": _("Заказы"), "url_name": "seller_orders", "badge": seller_orders_action, "enabled": True},
-            {"key": "sla", "label": _("Контроль SLA"), "url_name": "seller_sla", "badge": seller_sla_alert, "enabled": True},
-            {"key": "logistics", "label": _("Логистика"), "url_name": "seller_logistics", "badge": None, "enabled": True},
-        ]
+    seller_nav_items = [
+        {"key": "dashboard", "label": _("Дашборд"), "url_name": "seller_dashboard", "badge": None, "enabled": True},
+        {"key": "products", "label": _("Товары и прайсы"), "url_name": "seller_product_list", "badge": seller_products_active, "enabled": True},
+        {"key": "requests", "label": _("Запросы клиентов"), "url_name": "seller_request_list", "badge": seller_requests_new, "enabled": True},
+        {"key": "orders", "label": _("Заказы"), "url_name": "seller_orders", "badge": seller_orders_action, "enabled": True},
+        {"key": "discounts", "label": _("Согласование"), "url_name": "seller_negotiations", "badge": None, "enabled": True},
+        {"key": "sla", "label": _("Контроль SLA"), "url_name": "seller_sla", "badge": seller_sla_alert, "enabled": True},
+        {"key": "logistics", "label": _("Логистика"), "url_name": "seller_logistics", "badge": None, "enabled": True},
+        {"key": "drawings", "label": _("Чертежи"), "url_name": "seller_drawings", "badge": None, "enabled": True},
+        {"key": "qr", "label": _("QR-контроль"), "url_name": "seller_qr_control", "badge": None, "enabled": True},
+        {"key": "_group", "label": _("АНАЛИТИКА"), "collapsible": True},
+        {"key": "analytics", "label": _("Аналитика"), "url_name": "seller_analytics", "badge": None, "enabled": True},
+        {"key": "finance", "label": _("Финансы"), "url_name": "seller_finance", "badge": None, "enabled": True},
+        {"key": "rating", "label": _("Рейтинг"), "url_name": "seller_rating", "badge": None, "enabled": True},
+        {"key": "_group", "label": _("НАСТРОЙКИ"), "collapsible": True},
+        {"key": "team", "label": _("Команда"), "url_name": "seller_team", "badge": None, "enabled": True},
+        {"key": "integrations", "label": _("Интеграции"), "url_name": "seller_integrations", "badge": None, "enabled": True},
+    ]
 
     return {
         "seller_supplier": seller,
@@ -251,7 +254,6 @@ def buyer_context(request):
     if is_demo:
         buyer_nav_items = [
             {"key": "dashboard", "label": _("Дашборд"), "url_name": "buyer_dashboard", "badge": None, "enabled": True},
-            {"key": "catalog", "label": _("Избранное"), "url_name": "buyer_catalog", "badge": None, "enabled": True},
             {"key": "rfq", "label": _("Запросы RFQ"), "url_name": "buyer_rfq_list", "badge": buyer_active_rfq or None, "enabled": True},
             {"key": "orders", "label": _("Заказы"), "url_name": "buyer_orders", "badge": buyer_active_orders or None, "enabled": True},
             {"key": "shipments", "label": _("Отгрузки"), "url_name": "buyer_shipments", "badge": None, "enabled": True},
@@ -259,6 +261,7 @@ def buyer_context(request):
             {"key": "suppliers", "label": _("Поставщики"), "url_name": "buyer_suppliers", "badge": None, "enabled": True},
             {"key": "negotiations", "label": _("Переторжка"), "url_name": "buyer_negotiations", "badge": None, "enabled": True},
             {"key": "finance", "label": _("Финансы"), "url_name": "buyer_finance", "badge": None, "enabled": True},
+            {"key": "catalog", "label": _("Избранное"), "url_name": "buyer_catalog", "badge": None, "enabled": True},
             {"key": "analytics", "label": _("Аналитика"), "url_name": "buyer_analytics", "badge": None, "enabled": True},
         ]
     else:

@@ -12,6 +12,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 from django.contrib import messages
+from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -1791,11 +1792,11 @@ def seller_dashboard(request: HttpRequest) -> HttpResponse:
         _tpl(request.user, "seller/dashboard/index.html"),
         {
             "dashboard_payload": dashboard_payload,
-            "seller_page_title": "Кабинет поставщика",
-            "seller_page_subtitle": "Главная рабочая панель: что требует внимания сейчас и куда перейти дальше.",
+            "seller_page_title": _("Кабинет поставщика"),
+            "seller_page_subtitle": _("Главная рабочая панель: что требует внимания сейчас и куда перейти дальше."),
             "seller_active_nav": "dashboard",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
             ],
         },
     )
@@ -1811,12 +1812,12 @@ def seller_product_list(request: HttpRequest) -> HttpResponse:
         _tpl(request.user, "seller/products/catalog.html"),
         {
             **_build_seller_catalog_context(request),
-            "seller_page_title": "Товары и прайсы",
-            "seller_page_subtitle": "Загрузка прайсов, preview, история импортов, каталог и массовые действия в одном модуле.",
+            "seller_page_title": _("Товары и прайсы"),
+            "seller_page_subtitle": _("Загрузка прайсов, preview, история импортов, каталог и массовые действия в одном модуле."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
             ],
         },
     )
@@ -1881,12 +1882,12 @@ def seller_orders(request: HttpRequest) -> HttpResponse:
             "query": query,
             "status": status,
             "status_choices": Order.STATUS_CHOICES,
-            "seller_page_title": "Заказы",
-            "seller_page_subtitle": "Список заказов по вашим товарам, фильтры, статусы и переход в карточку заказа.",
+            "seller_page_title": _("Заказы"),
+            "seller_page_subtitle": _("Список заказов по вашим товарам, фильтры, статусы и переход в карточку заказа."),
             "seller_active_nav": "orders",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Заказы", "url": reverse("seller_orders")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Заказы"), "url": reverse("seller_orders")},
             ],
         },
     )
@@ -1913,7 +1914,7 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
     kanban_columns_cfg = [
         {
             "key": "pending",
-            "label": "Ожидание оплаты",
+            "label": _("Ожидание оплаты"),
             "statuses": ["pending"],
             "sla_hours": 48,
             "trigger": "Счёт сформирован",
@@ -1923,7 +1924,7 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
         },
         {
             "key": "confirmed",
-            "label": "Формирование заказа",
+            "label": _("Формирование заказа"),
             "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"],
             "sla_hours": 168,
             "trigger": "Предоплата поступила → Груз готов к отгрузке",
@@ -1933,7 +1934,7 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
         },
         {
             "key": "transit_abroad",
-            "label": "Логистика (Зарубеж)",
+            "label": _("Логистика (Зарубеж)"),
             "statuses": ["transit_abroad"],
             "sla_hours": 240,
             "trigger": "Фактическая передача перевозчику",
@@ -1943,7 +1944,7 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
         },
         {
             "key": "customs",
-            "label": "Таможенное оформление",
+            "label": _("Таможенное оформление"),
             "statuses": ["customs"],
             "sla_hours": 48,
             "trigger": "Таможня завершена",
@@ -1953,7 +1954,7 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
         },
         {
             "key": "transit_rf",
-            "label": "Логистика (РФ)",
+            "label": _("Логистика (РФ)"),
             "statuses": ["transit_rf"],
             "sla_hours": 24,
             "trigger": "Передача в логистику РФ",
@@ -1963,7 +1964,7 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
         },
         {
             "key": "issuing",
-            "label": "Выдача",
+            "label": _("Выдача"),
             "statuses": ["issuing", "shipped"],
             "sla_hours": 24,
             "trigger": "Передача на приёмку",
@@ -1973,7 +1974,7 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
         },
         {
             "key": "delivered",
-            "label": "Доставлен",
+            "label": _("Доставлен"),
             "statuses": ["delivered"],
             "sla_hours": 72,
             "trigger": "Фактическая приёмка груза",
@@ -1983,7 +1984,7 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
         },
         {
             "key": "completed",
-            "label": "Заказ закрыт",
+            "label": _("Заказ закрыт"),
             "statuses": ["completed"],
             "sla_hours": 1,
             "trigger": "Документы приняты",
@@ -2137,12 +2138,12 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
             "avg_production_hours": avg_production_hours,
             "avg_ship_hours": avg_ship_hours,
             "stage_analytics": stage_analytics,
-            "seller_page_title": "Контроль SLA",
-            "seller_page_subtitle": "Канбан-доска поставок — перетаскивайте карточки между этапами.",
+            "seller_page_title": _("Контроль SLA"),
+            "seller_page_subtitle": _("Канбан-доска поставок — перетаскивайте карточки между этапами."),
             "seller_active_nav": "sla",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Контроль SLA", "url": reverse("seller_sla")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Контроль SLA"), "url": reverse("seller_sla")},
             ],
         },
     )
@@ -2182,25 +2183,25 @@ def seller_qr_control(request: HttpRequest) -> HttpResponse:
     # Статусы которые используют QR по бизнес-логике
     QR_STAGES = {
         "transit_abroad": {
-            "label": "Логистика (Зарубеж)",
+            "label": _("Логистика (Зарубеж)"),
             "action": "Сканирование QR-кода отгрузки",
             # самолёт
             "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 19-7z"/></svg>',
         },
         "transit_rf": {
-            "label": "Логистика (РФ)",
+            "label": _("Логистика (РФ)"),
             "action": "Сканирование при приёме груза",
             # грузовик
             "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
         },
         "issuing": {
-            "label": "Выдача",
+            "label": _("Выдача"),
             "action": "QR-скан при получении заказа",
             # коробка с рукой / выдача
             "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
         },
         "delivered": {
-            "label": "Доставлен",
+            "label": _("Доставлен"),
             "action": "Подтверждение доставки",
             # локация / точка назначения
             "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
@@ -2209,14 +2210,14 @@ def seller_qr_control(request: HttpRequest) -> HttpResponse:
 
     # Timeline data — те же этапы что и в канбане SLA
     kanban_columns_cfg = [
-        {"key": "pending", "label": "Ожидание", "statuses": ["pending"]},
-        {"key": "confirmed", "label": "Формирование", "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"]},
-        {"key": "transit_abroad", "label": "Зарубеж", "statuses": ["transit_abroad"]},
-        {"key": "customs", "label": "Таможня", "statuses": ["customs"]},
-        {"key": "transit_rf", "label": "РФ", "statuses": ["transit_rf"]},
-        {"key": "issuing", "label": "Выдача", "statuses": ["issuing", "shipped"]},
-        {"key": "delivered", "label": "Доставлен", "statuses": ["delivered"]},
-        {"key": "completed", "label": "Закрыт", "statuses": ["completed"]},
+        {"key": "pending", "label": _("Ожидание"), "statuses": ["pending"]},
+        {"key": "confirmed", "label": _("Формирование"), "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"]},
+        {"key": "transit_abroad", "label": _("Зарубеж"), "statuses": ["transit_abroad"]},
+        {"key": "customs", "label": _("Таможня"), "statuses": ["customs"]},
+        {"key": "transit_rf", "label": _("РФ"), "statuses": ["transit_rf"]},
+        {"key": "issuing", "label": _("Выдача"), "statuses": ["issuing", "shipped"]},
+        {"key": "delivered", "label": _("Доставлен"), "statuses": ["delivered"]},
+        {"key": "completed", "label": _("Закрыт"), "statuses": ["completed"]},
     ]
     kanban_statuses = [(col["key"], col["label"]) for col in kanban_columns_cfg]
 
@@ -2251,12 +2252,12 @@ def seller_qr_control(request: HttpRequest) -> HttpResponse:
             "qr_stages": QR_STAGES,
             "timeline_orders": timeline_orders,
             "kanban_statuses": kanban_statuses,
-            "seller_page_title": "QR-контроль",
-            "seller_page_subtitle": "Генерация QR-кодов и отслеживание заказов",
+            "seller_page_title": _("QR-контроль"),
+            "seller_page_subtitle": _("Генерация QR-кодов и отслеживание заказов"),
             "seller_active_nav": "qr",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "QR-контроль", "url": reverse("seller_qr_control")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("QR-контроль"), "url": reverse("seller_qr_control")},
             ],
         },
     )
@@ -2361,7 +2362,7 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
     if rating_score < 80:
         warnings.append({
             "level": "warning",
-            "title": "Рейтинг ниже порога «Надёжный»",
+            "title": _("Рейтинг ниже порога «Надёжный»"),
             "text": f"Текущий рейтинг {rating_score:.1f}. Нужно 80+ для статуса «Надёжный».",
             "icon": "star",
         })
@@ -2375,7 +2376,7 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
     if not warnings:
         warnings.append({
             "level": "success",
-            "title": "Всё в порядке",
+            "title": _("Всё в порядке"),
             "text": "Показатели в норме. Продолжайте поддерживать высокий уровень сервиса.",
             "icon": "check",
         })
@@ -2405,12 +2406,12 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
             "rating_events": rating_events,
             "event_labels": event_labels,
             "warnings": warnings,
-            "seller_page_title": "Рейтинг",
-            "seller_page_subtitle": "Подробная разбивка рейтинга и рекомендации",
+            "seller_page_title": _("Рейтинг"),
+            "seller_page_subtitle": _("Подробная разбивка рейтинга и рекомендации"),
             "seller_active_nav": "rating",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Рейтинг", "url": reverse("seller_rating")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Рейтинг"), "url": reverse("seller_rating")},
             ],
         },
     )
@@ -2538,14 +2539,14 @@ def seller_finance(request: HttpRequest) -> HttpResponse:
 
     # Канбан-этапы для таймлайна в drawer
     kanban_columns_cfg = [
-        {"key": "pending", "label": "Ожидание", "statuses": ["pending"]},
-        {"key": "confirmed", "label": "Формирование", "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"]},
-        {"key": "transit_abroad", "label": "Зарубеж", "statuses": ["transit_abroad"]},
-        {"key": "customs", "label": "Таможня", "statuses": ["customs"]},
-        {"key": "transit_rf", "label": "РФ", "statuses": ["transit_rf"]},
-        {"key": "issuing", "label": "Выдача", "statuses": ["issuing", "shipped"]},
-        {"key": "delivered", "label": "Доставлен", "statuses": ["delivered"]},
-        {"key": "completed", "label": "Закрыт", "statuses": ["completed"]},
+        {"key": "pending", "label": _("Ожидание"), "statuses": ["pending"]},
+        {"key": "confirmed", "label": _("Формирование"), "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"]},
+        {"key": "transit_abroad", "label": _("Зарубеж"), "statuses": ["transit_abroad"]},
+        {"key": "customs", "label": _("Таможня"), "statuses": ["customs"]},
+        {"key": "transit_rf", "label": _("РФ"), "statuses": ["transit_rf"]},
+        {"key": "issuing", "label": _("Выдача"), "statuses": ["issuing", "shipped"]},
+        {"key": "delivered", "label": _("Доставлен"), "statuses": ["delivered"]},
+        {"key": "completed", "label": _("Закрыт"), "statuses": ["completed"]},
     ]
     kanban_statuses = [(col["key"], col["label"]) for col in kanban_columns_cfg]
 
@@ -2603,12 +2604,12 @@ def seller_finance(request: HttpRequest) -> HttpResponse:
             "payment_filter": payment_filter,
             "search_q": search_q,
             "payment_choices": Order.PAYMENT_STATUS_CHOICES,
-            "seller_page_title": "Финансы",
-            "seller_page_subtitle": "Оплаты, документы и финансовый контроль",
+            "seller_page_title": _("Финансы"),
+            "seller_page_subtitle": _("Оплаты, документы и финансовый контроль"),
             "seller_active_nav": "finance",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Финансы", "url": reverse("seller_finance")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Финансы"), "url": reverse("seller_finance")},
             ],
         },
     )
@@ -2665,12 +2666,12 @@ def seller_drawings(request: HttpRequest) -> HttpResponse:
             "status_filter": status_filter,
             "format_filter": format_filter,
             "search_q": search_q,
-            "seller_page_title": "Чертежи",
-            "seller_page_subtitle": "Управление чертежами и CAD-файлами",
+            "seller_page_title": _("Чертежи"),
+            "seller_page_subtitle": _("Управление чертежами и CAD-файлами"),
             "seller_active_nav": "drawings",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Чертежи", "url": reverse("seller_drawings")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Чертежи"), "url": reverse("seller_drawings")},
             ],
         },
     )
@@ -2710,11 +2711,11 @@ def seller_order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
             "open_claims": open_claims,
             "status_choices": status_choices,
             "seller_page_title": f"Заказ #{order.id}",
-            "seller_page_subtitle": "Карточка заказа, события, документы и действия поставщика.",
+            "seller_page_subtitle": _("Карточка заказа, события, документы и действия поставщика."),
             "seller_active_nav": "orders",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Заказы и SLA", "url": reverse("seller_orders")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Заказы и SLA"), "url": reverse("seller_orders")},
                 {"label": f"Заказ #{order.id}", "url": reverse("seller_order_detail", args=[order.id])},
             ],
         },
@@ -2762,12 +2763,12 @@ def seller_request_list(request: HttpRequest) -> HttpResponse:
             "query": query,
             "status": status,
             "status_choices": RFQ.STATUS_CHOICES,
-            "seller_page_title": "Запросы клиентов",
-            "seller_page_subtitle": "Все RFQ, где уже найдены позиции по вашему ассортименту и требуется ответ поставщика.",
+            "seller_page_title": _("Запросы клиентов"),
+            "seller_page_subtitle": _("Все RFQ, где уже найдены позиции по вашему ассортименту и требуется ответ поставщика."),
             "seller_active_nav": "requests",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Запросы клиентов", "url": reverse("seller_request_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Запросы клиентов"), "url": reverse("seller_request_list")},
             ],
         },
     )
@@ -2808,11 +2809,11 @@ def seller_request_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
             "total_discount_amount": total_discount_amount.quantize(Decimal("0.01")),
             "total_after_discount": total_after_discount.quantize(Decimal("0.01")),
             "seller_page_title": f"RFQ #{rfq.id}",
-            "seller_page_subtitle": "Карточка входящего запроса по вашему ассортименту.",
+            "seller_page_subtitle": _("Карточка входящего запроса по вашему ассортименту."),
             "seller_active_nav": "requests",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Запросы клиентов", "url": reverse("seller_request_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Запросы клиентов"), "url": reverse("seller_request_list")},
                 {"label": f"RFQ #{rfq.id}", "url": reverse("seller_request_detail", args=[rfq.id])},
             ],
         },
@@ -3845,11 +3846,11 @@ def seller_product_detail(request: HttpRequest, part_id: int) -> HttpResponse:
             "demand_stats": demand_stats,
             "related_parts": related_parts,
             "seller_page_title": part.title,
-            "seller_page_subtitle": "Карточка товара поставщика: данные, логистика, полнота и быстрые действия.",
+            "seller_page_subtitle": _("Карточка товара поставщика: данные, логистика, полнота и быстрые действия."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
                 {"label": part.title, "url": reverse("seller_product_detail", args=[part.id])},
             ],
         },
@@ -3883,13 +3884,13 @@ def seller_part_create(request: HttpRequest) -> HttpResponse:
         {
             "form": form,
             "mode": "create",
-            "seller_page_title": "Новый товар",
-            "seller_page_subtitle": "Создание новой позиции вручную.",
+            "seller_page_title": _("Новый товар"),
+            "seller_page_subtitle": _("Создание новой позиции вручную."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
-                {"label": "Новый товар", "url": reverse("seller_part_create")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
+                {"label": _("Новый товар"), "url": reverse("seller_part_create")},
             ],
         },
     )
@@ -3922,13 +3923,13 @@ def seller_part_edit(request: HttpRequest, part_id: int) -> HttpResponse:
             "mode": "edit",
             "part": part,
             "seller_page_title": f"Редактирование: {part.title}",
-            "seller_page_subtitle": "Обновление данных позиции, цены и логистики.",
+            "seller_page_subtitle": _("Обновление данных позиции, цены и логистики."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
                 {"label": part.title, "url": reverse("seller_product_detail", args=[part.id])},
-                {"label": "Редактирование", "url": reverse("seller_part_edit", args=[part.id])},
+                {"label": _("Редактирование"), "url": reverse("seller_part_edit", args=[part.id])},
             ],
         },
     )
@@ -4113,11 +4114,11 @@ def seller_import_result(request: HttpRequest, import_id: int) -> HttpResponse:
             "import_job": job,
             "error_rows_preview": rows,
             "seller_page_title": f"Результат импорта #{job.id}",
-            "seller_page_subtitle": "Статус обработки, итоговые счетчики и ошибки по строкам.",
+            "seller_page_subtitle": _("Статус обработки, итоговые счетчики и ошибки по строкам."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
                 {"label": f"Импорт #{job.id}", "url": reverse("seller_import_result", args=[job.id])},
             ],
         },
@@ -5360,12 +5361,12 @@ def admin_panel_settings(request):
 
     _CURRENCY_NAMES = {"USD": "US Dollar", "CNY": "Chinese Yuan", "EUR": "Euro", "RUB": "Russian Ruble", "AED": "UAE Dirham"}
     _NOTIF_META = [
-        {"key": "new_order",    "label": "Новый заказ",        "description": "При создании нового заказа"},
-        {"key": "new_rfq",      "label": "Новый RFQ",          "description": "При подаче нового запроса на котировку"},
-        {"key": "payment",      "label": "Оплата получена",     "description": "При подтверждении платежа"},
-        {"key": "claim",        "label": "Рекламация открыта",  "description": "При создании рекламации покупателем"},
-        {"key": "sla_breach",   "label": "SLA нарушение",      "description": "При превышении установленного времени обработки"},
-        {"key": "new_seller",   "label": "Новый поставщик",    "description": "При регистрации нового поставщика"},
+        {"key": "new_order",    "label": _("Новый заказ"),        "description": "При создании нового заказа"},
+        {"key": "new_rfq",      "label": _("Новый RFQ"),          "description": "При подаче нового запроса на котировку"},
+        {"key": "payment",      "label": _("Оплата получена"),     "description": "При подтверждении платежа"},
+        {"key": "claim",        "label": _("Рекламация открыта"),  "description": "При создании рекламации покупателем"},
+        {"key": "sla_breach",   "label": _("SLA нарушение"),      "description": "При превышении установленного времени обработки"},
+        {"key": "new_seller",   "label": _("Новый поставщик"),    "description": "При регистрации нового поставщика"},
     ]
 
     def _load():
@@ -5635,9 +5636,9 @@ def admin_panel_tariffs(request):
             platform_cfg = _json.load(f)
 
     default_plans = [
-        {"id": "basic", "name": "Базовый", "price": 0, "commission": 10, "max_products": 100, "is_active": True},
-        {"id": "professional", "name": "Профессиональный", "price": 99, "commission": 8, "max_products": 10000, "is_active": True},
-        {"id": "corporate", "name": "Корпоративный", "price": 499, "commission": 5, "max_products": 0, "is_active": True},
+        {"id": "basic", "name": _("Базовый"), "price": 0, "commission": 10, "max_products": 100, "is_active": True},
+        {"id": "professional", "name": _("Профессиональный"), "price": 99, "commission": 8, "max_products": 10000, "is_active": True},
+        {"id": "corporate", "name": _("Корпоративный"), "price": 499, "commission": 5, "max_products": 0, "is_active": True},
     ]
     tariff_plans = platform_cfg.get("tariff_plans", default_plans)
     category_commissions = platform_cfg.get("category_commissions", {})

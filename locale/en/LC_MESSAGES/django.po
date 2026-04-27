@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-27 13:32+0300\n"
+"POT-Creation-Date: 2026-04-27 13:36+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,148 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: templates/admin_panel/analytics.html:3
+#: marketplace/context_processors.py:53 templates/landing.html:6595
+#: templates/landing.html:6672 templates/marketplace/login.html:656
+msgid "Главная"
+msgstr "Home"
+
+#: marketplace/context_processors.py:54
+msgid "Навигация"
+msgstr "Claim"
+
+#: marketplace/context_processors.py:55 marketplace/context_processors.py:270
+#: templates/admin_panel/base_admin.html:183
+#: templates/admin_panel/catalog.html:3 templates/admin_panel/catalog.html:4
+#: templates/admin_panel/dashboard.html:98
+#: templates/seller/dashboard/_dashboard_content.html:11
+msgid "Каталог"
+msgstr "Catalog"
+
+#: marketplace/context_processors.py:56 templates/admin_panel/catalog.html:81
+msgid "Бренды"
+msgstr "Brands"
+
+#: marketplace/context_processors.py:57 templates/admin_panel/catalog.html:80
+msgid "Категории"
+msgstr "Categories"
+
+#: marketplace/context_processors.py:58
+msgid "Сравнение"
+msgstr "Management"
+
+#: marketplace/context_processors.py:59
+#: templates/seller/analytics/list.html:345
+#: templates/seller/reports/list.html:248
+#: templates/seller/reports/list.html:658 templates/seller/team/list.html:314
+msgid "Продажи"
+msgstr "Extend"
+
+#: marketplace/context_processors.py:60 marketplace/views.py:5365
+msgid "Новый RFQ"
+msgstr "New RFQs"
+
+#: marketplace/context_processors.py:61
+msgid "RFQ и котировки"
+msgstr "With quotes"
+
+#: marketplace/context_processors.py:63
+msgid "Корзина"
+msgstr "Add to cart"
+
+#: marketplace/context_processors.py:64 templates/admin_panel/analytics.html:96
+#: templates/admin_panel/catalog.html:137 templates/admin_panel/imports.html:31
+#: templates/admin_panel/imports.html:74
+#: templates/admin_panel/moderation.html:65
+#: templates/admin_panel/moderation.html:160
+#: templates/admin_panel/moderation.html:183
+#: templates/admin_panel/user_detail.html:39
+#: templates/admin_panel/user_detail.html:248
+#: templates/admin_panel/users.html:77 templates/buyer/analytics/list.html:216
+#: templates/buyer/analytics/list.html:321
+#: templates/buyer/analytics/list.html:390
+#: templates/buyer/catalog/list.html:177 templates/buyer/catalog/list.html:211
+#: templates/buyer/catalog/list.html:245 templates/buyer/catalog/list.html:278
+#: templates/buyer/catalog/list.html:312 templates/buyer/catalog/list.html:346
+#: templates/buyer/finance/list.html:147
+#: templates/buyer/negotiations/list.html:165
+#: templates/buyer/negotiations/list.html:254
+#: templates/buyer/orders/list.html:186 templates/buyer/rfq/list.html:228
+#: templates/landing.html:6633 templates/marketplace/login.html:710
+#: templates/operator/logist/shipments.html:48
+#: templates/operator/manager/clients.html:127
+#: templates/operator/manager/clients.html:142
+#: templates/operator/manager/clients.html:157
+#: templates/operator/manager/clients.html:172
+#: templates/operator/manager/clients.html:187
+#: templates/operator/manager/clients.html:202
+#: templates/operator/manager/clients.html:250
+#: templates/operator/manager/dashboard.html:117
+#: templates/operator/manager/negotiations.html:93
+#: templates/operator/manager/negotiations.html:159
+#: templates/operator/manager/negotiations.html:183
+#: templates/operator/manager/negotiations.html:282
+#: templates/operator/manager/orders.html:29
+#: templates/operator/manager/shipments.html:40
+#: templates/operator/payments/dashboard.html:43
+#: templates/operator/payments/escrow.html:37
+#: templates/operator/payments/invoices.html:39
+#: templates/operator/payments/reconciliation.html:39
+msgid "Поставщик"
+msgstr "Supplier"
+
+#: marketplace/context_processors.py:65 marketplace/views.py:1795
+#: marketplace/views.py:1799 marketplace/views.py:1819
+#: marketplace/views.py:1889 marketplace/views.py:2145
+#: marketplace/views.py:2259 marketplace/views.py:2413
+#: marketplace/views.py:2611 marketplace/views.py:2673
+#: marketplace/views.py:2717 marketplace/views.py:2770
+#: marketplace/views.py:2815 marketplace/views.py:3852
+#: marketplace/views.py:3891 marketplace/views.py:3929
+#: marketplace/views.py:4120 templates/seller/base_seller.html:8
+#: templates/seller/components/_topbar.html:24
+msgid "Кабинет поставщика"
+msgstr "Supplier workspace"
+
+#: marketplace/context_processors.py:66
+msgid "Заказы поставщика"
+msgstr "Supplier workspace"
+
+#: marketplace/context_processors.py:67
+msgid "Очередь оператора"
+msgstr "Document queue"
+
+#: marketplace/context_processors.py:68
+msgid "Webhook логи"
+msgstr "Webhook logs"
+
+#: marketplace/context_processors.py:69
+msgid "Инженерия"
+msgstr "Engineer"
+
+#: marketplace/context_processors.py:70
+msgid "Чертежи и документы"
+msgstr "Document queue"
+
+#: marketplace/context_processors.py:71 marketplace/context_processors.py:213
+#: marketplace/context_processors.py:263 marketplace/views.py:2607
+#: marketplace/views.py:2612 templates/admin_panel/base_admin.html:178
+#: templates/admin_panel/dashboard.html:106
+#: templates/admin_panel/finance.html:3 templates/admin_panel/finance.html:4
+#: templates/admin_panel/order_detail.html:135
+#: templates/buyer/finance/list.html:4 templates/buyer/finance/list.html:111
+msgid "Финансы"
+msgstr "Finance"
+
+#: marketplace/context_processors.py:72
+msgid "Цены и скидки"
+msgstr "Volume discounts"
+
+#: marketplace/context_processors.py:73
+msgid "Выплаты и удержания"
+msgstr "Hold refund"
+
+#: marketplace/context_processors.py:74 marketplace/context_processors.py:212
+#: marketplace/context_processors.py:265 templates/admin_panel/analytics.html:3
 #: templates/admin_panel/analytics.html:4
 #: templates/admin_panel/base_admin.html:199
 #: templates/admin_panel/user_detail.html:295
@@ -31,6 +172,419 @@ msgstr ""
 #: templates/seller/team/list.html:383
 msgid "Аналитика"
 msgstr "Analytics"
+
+#: marketplace/context_processors.py:75
+msgid "Отчёты и KPI"
+msgstr "Reports"
+
+#: marketplace/context_processors.py:76
+msgid "Мой кабинет"
+msgstr "Account"
+
+#: marketplace/context_processors.py:77
+msgid "Заказы покупателя"
+msgstr "Buyer dashboard"
+
+#: marketplace/context_processors.py:78
+msgid "Обзор"
+msgstr "Overview"
+
+#: marketplace/context_processors.py:79 templates/landing.html:6648
+#: templates/landing.html:6665 templates/marketplace/login.html:677
+msgid "Обратный звонок"
+msgstr "Callback"
+
+#: marketplace/context_processors.py:80
+msgid "Вы вошли как"
+msgstr "Duty"
+
+#: marketplace/context_processors.py:81 templates/landing.html:6615
+#: templates/landing.html:6617 templates/landing.html:6619
+#: templates/landing.html:6621
+msgid "Кабинет"
+msgstr "Account"
+
+#: marketplace/context_processors.py:82 templates/landing.html:6623
+msgid "Выйти"
+msgstr "Sign out"
+
+#: marketplace/context_processors.py:83 templates/marketplace/login.html:699
+msgid "Зарегистрироваться"
+msgstr "Sign up"
+
+#: marketplace/context_processors.py:84 templates/landing.html:6626
+#: templates/marketplace/login.html:675 templates/marketplace/login.html:695
+msgid "Войти"
+msgstr "Sign in"
+
+#: marketplace/context_processors.py:202 marketplace/context_processors.py:256
+#: marketplace/context_processors.py:269
+#: templates/admin_panel/base_admin.html:158
+#: templates/admin_panel/dashboard.html:3
+#: templates/buyer/dashboard/index.html:5
+#: templates/operator/base_operator.html:200
+#: templates/operator/base_operator.html:212
+#: templates/operator/base_operator.html:223
+#: templates/operator/base_operator.html:233
+#: templates/seller/dashboard/_dashboard_content.html:10
+msgid "Дашборд"
+msgstr "Dashboard"
+
+#: marketplace/context_processors.py:203 marketplace/views.py:1815
+#: marketplace/views.py:1820 marketplace/views.py:3853
+#: marketplace/views.py:3892 marketplace/views.py:3930
+#: marketplace/views.py:4121 templates/seller/products/catalog.html:3
+msgid "Товары и прайсы"
+msgstr "Webinars and materials"
+
+#: marketplace/context_processors.py:204 marketplace/views.py:2766
+#: marketplace/views.py:2771 marketplace/views.py:2816
+#: templates/seller/analytics/list.html:588
+#: templates/seller/requests/list.html:3
+msgid "Запросы клиентов"
+msgstr "Client overview"
+
+#: marketplace/context_processors.py:205 marketplace/context_processors.py:258
+#: marketplace/context_processors.py:272 marketplace/views.py:1885
+#: marketplace/views.py:1890 templates/admin_panel/base_admin.html:168
+#: templates/admin_panel/orders.html:3 templates/admin_panel/orders.html:4
+#: templates/admin_panel/user_detail.html:289
+#: templates/buyer/orders/list.html:4 templates/buyer/orders/list.html:135
+#: templates/landing.html:6599 templates/landing.html:6676
+#: templates/marketplace/login.html:660
+#: templates/operator/base_operator.html:234
+#: templates/seller/dashboard/_dashboard_content.html:12
+#: templates/seller/team/list.html:381
+msgid "Заказы"
+msgstr "Orders"
+
+#: marketplace/context_processors.py:206
+msgid "Согласование"
+msgstr "Approved"
+
+#: marketplace/context_processors.py:207 marketplace/views.py:2141
+#: marketplace/views.py:2146 templates/seller/sla/list.html:4
+msgid "Контроль SLA"
+msgstr "Switch role"
+
+#: marketplace/context_processors.py:208 templates/admin_panel/finance.html:13
+#: templates/admin_panel/finance.html:113
+#: templates/buyer/analytics/list.html:230 templates/landing.html:6602
+#: templates/landing.html:6679 templates/marketplace/login.html:663
+#: templates/operator/base_operator.html:198
+#: templates/seller/analytics/list.html:831 templates/seller/team/list.html:249
+#: templates/seller/team/list.html:322
+msgid "Логистика"
+msgstr "Logistics"
+
+#: marketplace/context_processors.py:209 marketplace/views.py:2669
+#: marketplace/views.py:2674 templates/admin_panel/user_detail.html:292
+#: templates/seller/drawings/list.html:3 templates/seller/team/list.html:382
+msgid "Чертежи"
+msgstr "Drawings"
+
+#: marketplace/context_processors.py:210 marketplace/views.py:2255
+#: marketplace/views.py:2260 templates/seller/qr/list.html:3
+msgid "QR-контроль"
+msgstr "Switch role"
+
+#: marketplace/context_processors.py:211
+msgid "АНАЛИТИКА"
+msgstr "ANALYTICS"
+
+#: marketplace/context_processors.py:214 marketplace/views.py:2409
+#: marketplace/views.py:2414 templates/admin_panel/user_detail.html:18
+#: templates/buyer/analytics/list.html:216
+#: templates/buyer/analytics/list.html:395
+#: templates/operator/manager/analytics.html:74
+#: templates/operator/manager/analytics.html:127
+#: templates/operator/manager/clients.html:23
+#: templates/operator/manager/clients.html:118
+#: templates/seller/analytics/list.html:379
+#: templates/seller/analytics/list.html:830
+#: templates/seller/components/_topbar.html:32
+#: templates/seller/team/list.html:300
+msgid "Рейтинг"
+msgstr "Rating"
+
+#: marketplace/context_processors.py:215
+msgid "НАСТРОЙКИ"
+msgstr "SETTINGS"
+
+#: marketplace/context_processors.py:216
+#: templates/admin_panel/user_detail.html:298 templates/landing.html:7063
+#: templates/seller/team/list.html:213 templates/seller/team/list.html:384
+msgid "Команда"
+msgstr "Team"
+
+#: marketplace/context_processors.py:217 templates/landing.html:6601
+#: templates/landing.html:6678 templates/landing.html:6814
+#: templates/marketplace/login.html:662
+#: templates/seller/analytics/list.html:242
+#: templates/seller/integrations/list.html:108
+msgid "Интеграции"
+msgstr "Integrations"
+
+#: marketplace/context_processors.py:257 templates/buyer/rfq/list.html:4
+#: templates/buyer/rfq/list.html:118
+msgid "Запросы RFQ"
+msgstr "RFQ requests"
+
+#: marketplace/context_processors.py:259 templates/buyer/shipments/list.html:4
+#: templates/buyer/shipments/list.html:116
+#: templates/operator/base_operator.html:202
+#: templates/operator/base_operator.html:235
+msgid "Отгрузки"
+msgstr "Shipments"
+
+#: marketplace/context_processors.py:260
+#: templates/admin_panel/moderation.html:12
+#: templates/admin_panel/order_detail.html:215
+#: templates/buyer/analytics/list.html:274
+#: templates/buyer/analytics/list.html:397 templates/buyer/claims/list.html:4
+#: templates/buyer/claims/list.html:134
+msgid "Рекламации"
+msgstr "Claims"
+
+#: marketplace/context_processors.py:261
+#: templates/admin_panel/moderation.html:10 templates/admin_panel/users.html:11
+#: templates/admin_panel/users.html:28 templates/buyer/analytics/list.html:208
+#: templates/buyer/rfq/list.html:162 templates/buyer/suppliers/list.html:4
+#: templates/buyer/suppliers/list.html:106
+#: templates/operator/manager/clients.html:11
+msgid "Поставщики"
+msgstr "Suppliers"
+
+#: marketplace/context_processors.py:262
+#: templates/buyer/analytics/list.html:330
+#: templates/buyer/analytics/list.html:338
+#: templates/buyer/analytics/list.html:346
+#: templates/buyer/analytics/list.html:370
+#: templates/buyer/negotiations/list.html:4
+#: templates/buyer/negotiations/list.html:130
+#: templates/operator/manager/negotiations.html:13
+#: templates/seller/components/_right_panel.html:194
+#: templates/seller/logistics/list.html:195
+#: templates/seller/negotiations/list.html:186
+msgid "Переторжка"
+msgstr "Renegotiation"
+
+#: marketplace/context_processors.py:264
+msgid "Избранное"
+msgstr "Delayed"
+
+#: marketplace/context_processors.py:271
+#: templates/operator/base_operator.html:216
+msgid "Запросы"
+msgstr "Requests"
+
+#: marketplace/context_processors.py:273
+msgid "Поставки"
+msgstr "Suppliers"
+
+#: marketplace/views.py:1796
+msgid "Главная рабочая панель: что требует внимания сейчас и куда перейти дальше."
+msgstr "Main workspace: what needs attention now and where to go next."
+
+#: marketplace/views.py:1816
+msgid "Загрузка прайсов, preview, история импортов, каталог и массовые действия в одном модуле."
+msgstr "Price list upload, preview, import history, catalog and bulk actions in one module."
+
+#: marketplace/views.py:1886
+msgid "Список заказов по вашим товарам, фильтры, статусы и переход в карточку заказа."
+msgstr "List of orders for your products, filters, statuses, and navigation to order card."
+
+#: marketplace/views.py:1917
+msgid "Ожидание оплаты"
+msgstr "Awaiting payment"
+
+#: marketplace/views.py:1927
+msgid "Формирование заказа"
+msgstr "Confirmation paid"
+
+#: marketplace/views.py:1937 marketplace/views.py:2186
+msgid "Логистика (Зарубеж)"
+msgstr "Logistics (total)"
+
+#: marketplace/views.py:1947 templates/seller/logistics/list.html:404
+msgid "Таможенное оформление"
+msgstr "Industrial equipment"
+
+#: marketplace/views.py:1957 marketplace/views.py:2192
+msgid "Логистика (РФ)"
+msgstr "Logistics"
+
+#: marketplace/views.py:1967 marketplace/views.py:2198
+#: marketplace/views.py:2218 marketplace/views.py:2547
+msgid "Выдача"
+msgstr "Issuance"
+
+#: marketplace/views.py:1977 marketplace/views.py:2204
+#: marketplace/views.py:2219 marketplace/views.py:2548
+#: templates/admin_panel/order_detail.html:27
+#: templates/buyer/orders/list.html:169 templates/buyer/orders/list.html:300
+#: templates/buyer/orders/list.html:328 templates/buyer/suppliers/list.html:173
+#: templates/buyer/suppliers/list.html:174
+#: templates/buyer/suppliers/list.html:241
+#: templates/buyer/suppliers/list.html:242
+#: templates/buyer/suppliers/list.html:309
+#: templates/buyer/suppliers/list.html:375
+#: templates/buyer/suppliers/list.html:376
+#: templates/buyer/suppliers/list.html:377
+msgid "Доставлен"
+msgstr "Delivered"
+
+#: marketplace/views.py:1987
+msgid "Заказ закрыт"
+msgstr "Closing date"
+
+#: marketplace/views.py:2142
+msgid "Канбан-доска поставок — перетаскивайте карточки между этапами."
+msgstr "Supply Kanban board — drag cards between stages."
+
+#: marketplace/views.py:2213 marketplace/views.py:2542
+#: templates/admin_panel/order_detail.html:18
+#: templates/seller/logistics/list.html:309
+#: templates/seller/logistics/list.html:316
+msgid "Ожидание"
+msgstr "Pending"
+
+#: marketplace/views.py:2214 marketplace/views.py:2543
+msgid "Формирование"
+msgstr "✓ Escalated"
+
+#: marketplace/views.py:2215 marketplace/views.py:2544
+msgid "Зарубеж"
+msgstr "International"
+
+#: marketplace/views.py:2216 marketplace/views.py:2545
+#: templates/admin_panel/order_detail.html:24
+#: templates/buyer/orders/list.html:281 templates/buyer/shipments/list.html:197
+#: templates/buyer/shipments/list.html:266
+#: templates/buyer/shipments/list.html:337
+#: templates/operator/base_operator.html:210
+#: templates/operator/logist/dashboard.html:71
+#: templates/operator/logist/shipments.html:27
+#: templates/operator/logist/shipments.html:77
+#: templates/operator/logist/shipments.html:84
+#: templates/operator/logist/shipments.html:91
+#: templates/operator/logist/shipments.html:103
+#: templates/operator/logist/shipments.html:129
+#: templates/operator/logist/shipments.html:155
+#: templates/operator/logist/shipments.html:181
+#: templates/operator/logist/shipments.html:207
+#: templates/operator/logist/shipments.html:261
+#: templates/operator/manager/dashboard.html:157
+#: templates/operator/manager/shipments.html:108
+#: templates/seller/analytics/list.html:1111
+#: templates/seller/logistics/list.html:413
+msgid "Таможня"
+msgstr "Customs"
+
+#: marketplace/views.py:2217 marketplace/views.py:2546
+msgid "РФ"
+msgstr "RF"
+
+#: marketplace/views.py:2220 marketplace/views.py:2549
+msgid "Закрыт"
+msgstr "Close"
+
+#: marketplace/views.py:2256
+msgid "Генерация QR-кодов и отслеживание заказов"
+msgstr "Order management and delivery tracking"
+
+#: marketplace/views.py:2365
+msgid "Рейтинг ниже порога «Надёжный»"
+msgstr "Service companies"
+
+#: marketplace/views.py:2379
+msgid "Всё в порядке"
+msgstr "Total ports"
+
+#: marketplace/views.py:2410
+msgid "Подробная разбивка рейтинга и рекомендации"
+msgstr "Detailed breakdown · metrics · recommendations"
+
+#: marketplace/views.py:2608
+msgid "Оплаты, документы и финансовый контроль"
+msgstr "Financial services"
+
+#: marketplace/views.py:2670
+msgid "Управление чертежами и CAD-файлами"
+msgstr "Order management"
+
+#: marketplace/views.py:2714
+msgid "Карточка заказа, события, документы и действия поставщика."
+msgstr "Request documents from supplier"
+
+#: marketplace/views.py:2718 templates/seller/orders/list.html:3
+msgid "Заказы и SLA"
+msgstr "Orders"
+
+#: marketplace/views.py:2767
+msgid "Все RFQ, где уже найдены позиции по вашему ассортименту и требуется ответ поставщика."
+msgstr "All RFQs where items matching your assortment are found and supplier response is required."
+
+#: marketplace/views.py:2812
+msgid "Карточка входящего запроса по вашему ассортименту."
+msgstr "Commissions by category"
+
+#: marketplace/views.py:3849
+msgid "Карточка товара поставщика: данные, логистика, полнота и быстрые действия."
+msgstr "Supplier product card: data, logistics, completeness, and quick actions."
+
+#: marketplace/views.py:3887 marketplace/views.py:3893
+msgid "Новый товар"
+msgstr "Add item"
+
+#: marketplace/views.py:3888
+msgid "Создание новой позиции вручную."
+msgstr "Items created"
+
+#: marketplace/views.py:3926
+msgid "Обновление данных позиции, цены и логистики."
+msgstr "updated 142 price list items"
+
+#: marketplace/views.py:3932
+msgid "Редактирование"
+msgstr "Edit profile"
+
+#: marketplace/views.py:4117
+msgid "Статус обработки, итоговые счетчики и ошибки по строкам."
+msgstr "Processing status, summary counters, and per-row errors."
+
+#: marketplace/views.py:5364
+msgid "Новый заказ"
+msgstr "New orders"
+
+#: marketplace/views.py:5366
+msgid "Оплата получена"
+msgstr "Payment confirmed"
+
+#: marketplace/views.py:5367 templates/operator/manager/dashboard.html:220
+msgid "Рекламация открыта"
+msgstr "Claim opened"
+
+#: marketplace/views.py:5368 templates/operator/manager/dashboard.html:252
+msgid "SLA нарушение"
+msgstr "SLA breach"
+
+#: marketplace/views.py:5369
+msgid "Новый поставщик"
+msgstr "Top suppliers"
+
+#: marketplace/views.py:5639 templates/admin_panel/tariffs.html:15
+#: templates/seller/negotiations/list.html:304
+msgid "Базовый"
+msgstr "Basic"
+
+#: marketplace/views.py:5640 templates/admin_panel/tariffs.html:16
+msgid "Профессиональный"
+msgstr "Professional"
+
+#: marketplace/views.py:5641 templates/admin_panel/tariffs.html:17
+msgid "Корпоративный"
+msgstr "Enterprise"
 
 #: templates/admin_panel/analytics.html:10
 msgid "7д"
@@ -245,47 +799,6 @@ msgid "Топ поставщиков"
 msgstr "Top suppliers"
 
 #: templates/admin_panel/analytics.html:96
-#: templates/admin_panel/catalog.html:137 templates/admin_panel/imports.html:31
-#: templates/admin_panel/imports.html:74
-#: templates/admin_panel/moderation.html:65
-#: templates/admin_panel/moderation.html:160
-#: templates/admin_panel/moderation.html:183
-#: templates/admin_panel/user_detail.html:39
-#: templates/admin_panel/user_detail.html:248
-#: templates/admin_panel/users.html:77 templates/buyer/analytics/list.html:216
-#: templates/buyer/analytics/list.html:321
-#: templates/buyer/analytics/list.html:390
-#: templates/buyer/catalog/list.html:177 templates/buyer/catalog/list.html:211
-#: templates/buyer/catalog/list.html:245 templates/buyer/catalog/list.html:278
-#: templates/buyer/catalog/list.html:312 templates/buyer/catalog/list.html:346
-#: templates/buyer/finance/list.html:147
-#: templates/buyer/negotiations/list.html:165
-#: templates/buyer/negotiations/list.html:254
-#: templates/buyer/orders/list.html:186 templates/buyer/rfq/list.html:228
-#: templates/landing.html:6633 templates/marketplace/login.html:710
-#: templates/operator/logist/shipments.html:48
-#: templates/operator/manager/clients.html:127
-#: templates/operator/manager/clients.html:142
-#: templates/operator/manager/clients.html:157
-#: templates/operator/manager/clients.html:172
-#: templates/operator/manager/clients.html:187
-#: templates/operator/manager/clients.html:202
-#: templates/operator/manager/clients.html:250
-#: templates/operator/manager/dashboard.html:117
-#: templates/operator/manager/negotiations.html:93
-#: templates/operator/manager/negotiations.html:159
-#: templates/operator/manager/negotiations.html:183
-#: templates/operator/manager/negotiations.html:282
-#: templates/operator/manager/orders.html:29
-#: templates/operator/manager/shipments.html:40
-#: templates/operator/payments/dashboard.html:43
-#: templates/operator/payments/escrow.html:37
-#: templates/operator/payments/invoices.html:39
-#: templates/operator/payments/reconciliation.html:39
-msgid "Поставщик"
-msgstr "Supplier"
-
-#: templates/admin_panel/analytics.html:96
 #: templates/admin_panel/analytics.html:119
 #: templates/admin_panel/analytics.html:132
 #: templates/admin_panel/catalog.html:202
@@ -400,48 +913,10 @@ msgstr "By payment status"
 msgid "Управление"
 msgstr "Management"
 
-#: templates/admin_panel/base_admin.html:158
-#: templates/admin_panel/dashboard.html:3
-#: templates/buyer/dashboard/index.html:5
-#: templates/operator/base_operator.html:200
-#: templates/operator/base_operator.html:212
-#: templates/operator/base_operator.html:223
-#: templates/operator/base_operator.html:233
-#: templates/seller/dashboard/_dashboard_content.html:10
-msgid "Дашборд"
-msgstr "Dashboard"
-
 #: templates/admin_panel/base_admin.html:163 templates/admin_panel/users.html:3
 #: templates/admin_panel/users.html:4
 msgid "Пользователи"
 msgstr "Users"
-
-#: templates/admin_panel/base_admin.html:168
-#: templates/admin_panel/orders.html:3 templates/admin_panel/orders.html:4
-#: templates/admin_panel/user_detail.html:289
-#: templates/buyer/orders/list.html:4 templates/buyer/orders/list.html:135
-#: templates/landing.html:6599 templates/landing.html:6676
-#: templates/marketplace/login.html:660
-#: templates/operator/base_operator.html:234
-#: templates/seller/dashboard/_dashboard_content.html:12
-#: templates/seller/team/list.html:381
-msgid "Заказы"
-msgstr "Orders"
-
-#: templates/admin_panel/base_admin.html:178
-#: templates/admin_panel/dashboard.html:106
-#: templates/admin_panel/finance.html:3 templates/admin_panel/finance.html:4
-#: templates/admin_panel/order_detail.html:135
-#: templates/buyer/finance/list.html:4 templates/buyer/finance/list.html:111
-msgid "Финансы"
-msgstr "Finance"
-
-#: templates/admin_panel/base_admin.html:183
-#: templates/admin_panel/catalog.html:3 templates/admin_panel/catalog.html:4
-#: templates/admin_panel/dashboard.html:98
-#: templates/seller/dashboard/_dashboard_content.html:11
-msgid "Каталог"
-msgstr "Catalog"
 
 #: templates/admin_panel/base_admin.html:188
 #: templates/admin_panel/dashboard.html:74
@@ -581,14 +1056,6 @@ msgstr "Error"
 #: templates/admin_panel/moderation.html:11
 msgid "Запчасти"
 msgstr "Parts"
-
-#: templates/admin_panel/catalog.html:80
-msgid "Категории"
-msgstr "Categories"
-
-#: templates/admin_panel/catalog.html:81
-msgid "Бренды"
-msgstr "Brands"
 
 #: templates/admin_panel/catalog.html:88 templates/buyer/catalog/list.html:139
 msgid "Поиск по OEM или названию..."
@@ -1064,15 +1531,6 @@ msgstr "This week"
 msgid "Комиссия (%(commission_rate)s%%)"
 msgstr "Commission (%(commission_rate)s%%)"
 
-#: templates/admin_panel/finance.html:13 templates/admin_panel/finance.html:113
-#: templates/buyer/analytics/list.html:230 templates/landing.html:6602
-#: templates/landing.html:6679 templates/marketplace/login.html:663
-#: templates/operator/base_operator.html:198
-#: templates/seller/analytics/list.html:831 templates/seller/team/list.html:249
-#: templates/seller/team/list.html:322
-msgid "Логистика"
-msgstr "Logistics"
-
 #: templates/admin_panel/finance.html:19
 msgid "Воронка оплат"
 msgstr "Payment funnel"
@@ -1487,22 +1945,6 @@ msgstr "Next &#8594;"
 msgid "Всего в очереди"
 msgstr "Total in queue"
 
-#: templates/admin_panel/moderation.html:10 templates/admin_panel/users.html:11
-#: templates/admin_panel/users.html:28 templates/buyer/analytics/list.html:208
-#: templates/buyer/rfq/list.html:162 templates/buyer/suppliers/list.html:4
-#: templates/buyer/suppliers/list.html:106
-#: templates/operator/manager/clients.html:11
-msgid "Поставщики"
-msgstr "Suppliers"
-
-#: templates/admin_panel/moderation.html:12
-#: templates/admin_panel/order_detail.html:215
-#: templates/buyer/analytics/list.html:274
-#: templates/buyer/analytics/list.html:397 templates/buyer/claims/list.html:4
-#: templates/buyer/claims/list.html:134
-msgid "Рекламации"
-msgstr "Claims"
-
 #: templates/admin_panel/moderation.html:19
 #, python-format
 msgid "Все (%(total_pending)s)"
@@ -1616,12 +2058,6 @@ msgstr "Order #%(order_id)s"
 msgid "&larr; Все заказы"
 msgstr "&larr; All orders"
 
-#: templates/admin_panel/order_detail.html:18
-#: templates/seller/logistics/list.html:309
-#: templates/seller/logistics/list.html:316
-msgid "Ожидание"
-msgstr "Pending"
-
 #: templates/admin_panel/order_detail.html:20
 msgid "Подтверждён"
 msgstr "Confirmed"
@@ -1667,29 +2103,6 @@ msgstr "Ready"
 msgid "Транзит"
 msgstr "In transit"
 
-#: templates/admin_panel/order_detail.html:24
-#: templates/buyer/orders/list.html:281 templates/buyer/shipments/list.html:197
-#: templates/buyer/shipments/list.html:266
-#: templates/buyer/shipments/list.html:337
-#: templates/operator/base_operator.html:210
-#: templates/operator/logist/dashboard.html:71
-#: templates/operator/logist/shipments.html:27
-#: templates/operator/logist/shipments.html:77
-#: templates/operator/logist/shipments.html:84
-#: templates/operator/logist/shipments.html:91
-#: templates/operator/logist/shipments.html:103
-#: templates/operator/logist/shipments.html:129
-#: templates/operator/logist/shipments.html:155
-#: templates/operator/logist/shipments.html:181
-#: templates/operator/logist/shipments.html:207
-#: templates/operator/logist/shipments.html:261
-#: templates/operator/manager/dashboard.html:157
-#: templates/operator/manager/shipments.html:108
-#: templates/seller/analytics/list.html:1111
-#: templates/seller/logistics/list.html:413
-msgid "Таможня"
-msgstr "Customs"
-
 #: templates/admin_panel/order_detail.html:25
 msgid "Транзит РФ"
 msgstr "Transit Russia"
@@ -1697,19 +2110,6 @@ msgstr "Transit Russia"
 #: templates/admin_panel/order_detail.html:26
 msgid "Отгружен"
 msgstr "Shipped"
-
-#: templates/admin_panel/order_detail.html:27
-#: templates/buyer/orders/list.html:169 templates/buyer/orders/list.html:300
-#: templates/buyer/orders/list.html:328 templates/buyer/suppliers/list.html:173
-#: templates/buyer/suppliers/list.html:174
-#: templates/buyer/suppliers/list.html:241
-#: templates/buyer/suppliers/list.html:242
-#: templates/buyer/suppliers/list.html:309
-#: templates/buyer/suppliers/list.html:375
-#: templates/buyer/suppliers/list.html:376
-#: templates/buyer/suppliers/list.html:377
-msgid "Доставлен"
-msgstr "Delivered"
 
 #: templates/admin_panel/order_detail.html:28
 #: templates/operator/customs/requests.html:188
@@ -2189,19 +2589,6 @@ msgstr "%(hours)sh"
 msgid "Тарифы и комиссии"
 msgstr "Tariffs and commissions"
 
-#: templates/admin_panel/tariffs.html:15
-#: templates/seller/negotiations/list.html:304
-msgid "Базовый"
-msgstr "Basic"
-
-#: templates/admin_panel/tariffs.html:16
-msgid "Профессиональный"
-msgstr "Professional"
-
-#: templates/admin_panel/tariffs.html:17
-msgid "Корпоративный"
-msgstr "Enterprise"
-
 #: templates/admin_panel/tariffs.html:22
 msgid "Тарифные планы"
 msgstr "Tariff plans"
@@ -2329,20 +2716,6 @@ msgstr "Turnover (supplier)"
 #: templates/admin_panel/user_detail.html:15
 msgid "Заказов с его запчастями"
 msgstr "Orders with their parts"
-
-#: templates/admin_panel/user_detail.html:18
-#: templates/buyer/analytics/list.html:216
-#: templates/buyer/analytics/list.html:395
-#: templates/operator/manager/analytics.html:74
-#: templates/operator/manager/analytics.html:127
-#: templates/operator/manager/clients.html:23
-#: templates/operator/manager/clients.html:118
-#: templates/seller/analytics/list.html:379
-#: templates/seller/analytics/list.html:830
-#: templates/seller/components/_topbar.html:32
-#: templates/seller/team/list.html:300
-msgid "Рейтинг"
-msgstr "Rating"
 
 #: templates/admin_panel/user_detail.html:20
 msgid "Потрачено"
@@ -2517,16 +2890,6 @@ msgstr "Assortment"
 #: templates/admin_panel/user_detail.html:286
 msgid "Ценообразование"
 msgstr "Pricing"
-
-#: templates/admin_panel/user_detail.html:292
-#: templates/seller/drawings/list.html:3 templates/seller/team/list.html:382
-msgid "Чертежи"
-msgstr "Drawings"
-
-#: templates/admin_panel/user_detail.html:298 templates/landing.html:7063
-#: templates/seller/team/list.html:213 templates/seller/team/list.html:384
-msgid "Команда"
-msgstr "Team"
 
 #: templates/admin_panel/user_detail.html:303
 msgid "Сохранить изменения"
@@ -2827,19 +3190,6 @@ msgstr "Base amount"
 #: templates/buyer/analytics/list.html:323
 msgid "Финальная сумма"
 msgstr "Final amount"
-
-#: templates/buyer/analytics/list.html:330
-#: templates/buyer/analytics/list.html:338
-#: templates/buyer/analytics/list.html:346
-#: templates/buyer/analytics/list.html:370
-#: templates/buyer/negotiations/list.html:4
-#: templates/buyer/negotiations/list.html:130
-#: templates/operator/manager/negotiations.html:13
-#: templates/seller/components/_right_panel.html:194
-#: templates/seller/logistics/list.html:195
-#: templates/seller/negotiations/list.html:186
-msgid "Переторжка"
-msgstr "Renegotiation"
 
 #: templates/buyer/analytics/list.html:330 templates/buyer/rfq/list.html:288
 msgid "Ходовая часть PC300"
@@ -4102,10 +4452,6 @@ msgstr "Seal kit (4 kits)"
 msgid "Крепёж (1 к-т)"
 msgstr "Fasteners (1 set)"
 
-#: templates/buyer/rfq/list.html:4 templates/buyer/rfq/list.html:118
-msgid "Запросы RFQ"
-msgstr "RFQ requests"
-
 #: templates/buyer/rfq/list.html:119
 msgid "Запросы коммерческих предложений от поставщиков"
 msgstr "Requests for quotation from suppliers"
@@ -4230,13 +4576,6 @@ msgstr "Komatsu fuel injection pump"
 #: templates/buyer/rfq/list.html:282 templates/seller/drawings/list.html:294
 msgid "Отклонён"
 msgstr "Rejected"
-
-#: templates/buyer/shipments/list.html:4
-#: templates/buyer/shipments/list.html:116
-#: templates/operator/base_operator.html:202
-#: templates/operator/base_operator.html:235
-msgid "Отгрузки"
-msgstr "Shipments"
 
 #: templates/buyer/shipments/list.html:117
 msgid "Отслеживание грузов и логистика доставки"
@@ -4494,11 +4833,6 @@ msgstr "Open menu"
 msgid "Основная навигация"
 msgstr "Main navigation"
 
-#: templates/landing.html:6595 templates/landing.html:6672
-#: templates/marketplace/login.html:656
-msgid "Главная"
-msgstr "Home"
-
 #: templates/landing.html:6596 templates/landing.html:6673
 #: templates/marketplace/login.html:657
 msgid "Покупателям"
@@ -4514,13 +4848,6 @@ msgstr "For suppliers"
 msgid "Расчёты"
 msgstr "Quotes"
 
-#: templates/landing.html:6601 templates/landing.html:6678
-#: templates/landing.html:6814 templates/marketplace/login.html:662
-#: templates/seller/analytics/list.html:242
-#: templates/seller/integrations/list.html:108
-msgid "Интеграции"
-msgstr "Integrations"
-
 #: templates/landing.html:6603 templates/landing.html:6680
 #: templates/landing.html:6830 templates/marketplace/login.html:664
 #: templates/operator/base_operator.html:221
@@ -4532,20 +4859,6 @@ msgstr "Payments"
 msgid "Бонусы"
 msgstr "Bonuses"
 
-#: templates/landing.html:6615 templates/landing.html:6617
-#: templates/landing.html:6619 templates/landing.html:6621
-msgid "Кабинет"
-msgstr "Account"
-
-#: templates/landing.html:6623
-msgid "Выйти"
-msgstr "Sign out"
-
-#: templates/landing.html:6626 templates/marketplace/login.html:675
-#: templates/marketplace/login.html:695
-msgid "Войти"
-msgstr "Sign in"
-
 #: templates/landing.html:6630
 msgid "Демо-вход"
 msgstr "Demo login"
@@ -4553,11 +4866,6 @@ msgstr "Demo login"
 #: templates/landing.html:6641 templates/marketplace/login.html:730
 msgid "Оператор"
 msgstr "Operator"
-
-#: templates/landing.html:6648 templates/landing.html:6665
-#: templates/marketplace/login.html:677
-msgid "Обратный звонок"
-msgstr "Callback"
 
 #: templates/landing.html:6661
 msgid "Закрыть меню"
@@ -5024,10 +5332,6 @@ msgstr "Enter your account details"
 msgid "Нет аккаунта?"
 msgstr "No account?"
 
-#: templates/marketplace/login.html:699
-msgid "Зарегистрироваться"
-msgstr "Sign up"
-
 #: templates/marketplace/login.html:703
 msgid "Быстрый вход"
 msgstr "Quick login"
@@ -5074,10 +5378,6 @@ msgstr "Ports and terminals"
 #: templates/operator/base_operator.html:213
 msgid "Декларации"
 msgstr "Declarations"
-
-#: templates/operator/base_operator.html:216
-msgid "Запросы"
-msgstr "Requests"
 
 #: templates/operator/base_operator.html:224
 msgid "Счета"
@@ -8249,10 +8549,6 @@ msgstr "Event feed"
 msgid "Оплата подтверждена"
 msgstr "Payment confirmed"
 
-#: templates/operator/manager/dashboard.html:220
-msgid "Рекламация открыта"
-msgstr "Claim opened"
-
 #: templates/operator/manager/dashboard.html:221
 msgid "ORD-4501 -- Покупатель #1033"
 msgstr "ORD-4501 -- Buyer #1033"
@@ -8277,10 +8573,6 @@ msgstr "Customs cleared"
 #: templates/operator/manager/dashboard.html:245
 msgid "ORD-4505 -- Стамбул-Екатеринбург"
 msgstr "ORD-4505 -- Istanbul-Yekaterinburg"
-
-#: templates/operator/manager/dashboard.html:252
-msgid "SLA нарушение"
-msgstr "SLA breach"
 
 #: templates/operator/manager/dashboard.html:253
 msgid "ORD-4501 -- задержка +3 дн."
@@ -9531,12 +9823,6 @@ msgstr "Active items, top sellers, dead stock, pricing"
 msgid "Товаров"
 msgstr "Item"
 
-#: templates/seller/analytics/list.html:345
-#: templates/seller/reports/list.html:248
-#: templates/seller/reports/list.html:658 templates/seller/team/list.html:314
-msgid "Продажи"
-msgstr "Extend"
-
 #: templates/seller/analytics/list.html:356
 #: templates/seller/analytics/list.html:1037
 msgid "Рекламации и возвраты"
@@ -9737,11 +10023,6 @@ msgstr "Analytics"
 #: templates/seller/analytics/list.html:580
 msgid "Популярные позиции, частота запросов, тренды по категориям"
 msgstr "Popular items, query frequency, category trends"
-
-#: templates/seller/analytics/list.html:588
-#: templates/seller/requests/list.html:3
-msgid "Запросы клиентов"
-msgstr "Client overview"
 
 #: templates/seller/analytics/list.html:589
 msgid "Все RFQ с позициями, статусами и историей ответов"
@@ -10278,11 +10559,6 @@ msgstr "Revenue this month"
 #: templates/seller/analytics/list.html:1431
 msgid "подписку"
 msgstr "Subscription"
-
-#: templates/seller/base_seller.html:8
-#: templates/seller/components/_topbar.html:24
-msgid "Кабинет поставщика"
-msgstr "Supplier workspace"
 
 #: templates/seller/components/_right_panel.html:6
 msgid "Панель"
@@ -11375,10 +11651,6 @@ msgstr "Cost calculation"
 #: templates/seller/logistics/list.html:403
 msgid "Нет"
 msgstr "No RFQs"
-
-#: templates/seller/logistics/list.html:404
-msgid "Таможенное оформление"
-msgstr "Industrial equipment"
 
 #: templates/seller/logistics/list.html:404
 msgid "Под ключ"
@@ -13688,10 +13960,6 @@ msgstr "Event"
 msgid "Открытых рекламаций по заказу нет."
 msgstr "Open claims"
 
-#: templates/seller/orders/list.html:3
-msgid "Заказы и SLA"
-msgstr "Orders"
-
 #: templates/seller/orders/list.html:7 templates/seller/sla/list.html:7
 msgid "Всего заказов:"
 msgstr "Total orders"
@@ -13727,10 +13995,6 @@ msgstr "Type"
 #: templates/seller/orders/list.html:73
 msgid "Вперед →"
 msgstr "Forward"
-
-#: templates/seller/products/catalog.html:3
-msgid "Товары и прайсы"
-msgstr "Webinars and materials"
 
 #: templates/seller/products/catalog.html:20
 msgid "Ассортимент и прайс-листы"
@@ -14295,10 +14559,6 @@ msgstr "Key metrics"
 #: templates/seller/products/import_result.html:137
 msgid "Строки еще не загружены. Нажмите «Применить» или дождитесь завершения импорта."
 msgstr "Rows not yet loaded. Click \"Apply\" or wait for import to complete."
-
-#: templates/seller/qr/list.html:3
-msgid "QR-контроль"
-msgstr "Switch role"
 
 #: templates/seller/qr/list.html:266
 msgid "QR-контроль поставок"
@@ -15199,10 +15459,6 @@ msgstr "Requested discount"
 msgid "Открыть в кабинете"
 msgstr "Open menu"
 
-#: templates/seller/sla/list.html:4
-msgid "Контроль SLA"
-msgstr "Switch role"
-
 #: templates/seller/sla/list.html:12 templates/seller/sla/list.html:66
 #: templates/seller/sla/list.html:102 templates/seller/sla/list.html:152
 #: templates/seller/sla/list.html:194
@@ -15784,9 +16040,6 @@ msgstr "Confirm receipt"
 
 #~ msgid "Насос гидравлический"
 #~ msgstr "Hydraulic pump"
-
-#~ msgid "Возврат удержания"
-#~ msgstr "Hold refund"
 
 #~ msgid "Ответ на RFQ-1204"
 #~ msgstr "Response to RFQ-1204"

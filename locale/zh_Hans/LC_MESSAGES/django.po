@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-27 13:32+0300\n"
+"POT-Creation-Date: 2026-04-27 13:36+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,148 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: templates/admin_panel/analytics.html:3
+#: marketplace/context_processors.py:53 templates/landing.html:6595
+#: templates/landing.html:6672 templates/marketplace/login.html:656
+msgid "Главная"
+msgstr "首页"
+
+#: marketplace/context_processors.py:54
+msgid "Навигация"
+msgstr "索赔"
+
+#: marketplace/context_processors.py:55 marketplace/context_processors.py:270
+#: templates/admin_panel/base_admin.html:183
+#: templates/admin_panel/catalog.html:3 templates/admin_panel/catalog.html:4
+#: templates/admin_panel/dashboard.html:98
+#: templates/seller/dashboard/_dashboard_content.html:11
+msgid "Каталог"
+msgstr "目录"
+
+#: marketplace/context_processors.py:56 templates/admin_panel/catalog.html:81
+msgid "Бренды"
+msgstr "品牌"
+
+#: marketplace/context_processors.py:57 templates/admin_panel/catalog.html:80
+msgid "Категории"
+msgstr "类别"
+
+#: marketplace/context_processors.py:58
+msgid "Сравнение"
+msgstr "管理"
+
+#: marketplace/context_processors.py:59
+#: templates/seller/analytics/list.html:345
+#: templates/seller/reports/list.html:248
+#: templates/seller/reports/list.html:658 templates/seller/team/list.html:314
+msgid "Продажи"
+msgstr "延长"
+
+#: marketplace/context_processors.py:60 marketplace/views.py:5365
+msgid "Новый RFQ"
+msgstr "新询价"
+
+#: marketplace/context_processors.py:61
+msgid "RFQ и котировки"
+msgstr "含报价"
+
+#: marketplace/context_processors.py:63
+msgid "Корзина"
+msgstr "加入购物车"
+
+#: marketplace/context_processors.py:64 templates/admin_panel/analytics.html:96
+#: templates/admin_panel/catalog.html:137 templates/admin_panel/imports.html:31
+#: templates/admin_panel/imports.html:74
+#: templates/admin_panel/moderation.html:65
+#: templates/admin_panel/moderation.html:160
+#: templates/admin_panel/moderation.html:183
+#: templates/admin_panel/user_detail.html:39
+#: templates/admin_panel/user_detail.html:248
+#: templates/admin_panel/users.html:77 templates/buyer/analytics/list.html:216
+#: templates/buyer/analytics/list.html:321
+#: templates/buyer/analytics/list.html:390
+#: templates/buyer/catalog/list.html:177 templates/buyer/catalog/list.html:211
+#: templates/buyer/catalog/list.html:245 templates/buyer/catalog/list.html:278
+#: templates/buyer/catalog/list.html:312 templates/buyer/catalog/list.html:346
+#: templates/buyer/finance/list.html:147
+#: templates/buyer/negotiations/list.html:165
+#: templates/buyer/negotiations/list.html:254
+#: templates/buyer/orders/list.html:186 templates/buyer/rfq/list.html:228
+#: templates/landing.html:6633 templates/marketplace/login.html:710
+#: templates/operator/logist/shipments.html:48
+#: templates/operator/manager/clients.html:127
+#: templates/operator/manager/clients.html:142
+#: templates/operator/manager/clients.html:157
+#: templates/operator/manager/clients.html:172
+#: templates/operator/manager/clients.html:187
+#: templates/operator/manager/clients.html:202
+#: templates/operator/manager/clients.html:250
+#: templates/operator/manager/dashboard.html:117
+#: templates/operator/manager/negotiations.html:93
+#: templates/operator/manager/negotiations.html:159
+#: templates/operator/manager/negotiations.html:183
+#: templates/operator/manager/negotiations.html:282
+#: templates/operator/manager/orders.html:29
+#: templates/operator/manager/shipments.html:40
+#: templates/operator/payments/dashboard.html:43
+#: templates/operator/payments/escrow.html:37
+#: templates/operator/payments/invoices.html:39
+#: templates/operator/payments/reconciliation.html:39
+msgid "Поставщик"
+msgstr "供应商"
+
+#: marketplace/context_processors.py:65 marketplace/views.py:1795
+#: marketplace/views.py:1799 marketplace/views.py:1819
+#: marketplace/views.py:1889 marketplace/views.py:2145
+#: marketplace/views.py:2259 marketplace/views.py:2413
+#: marketplace/views.py:2611 marketplace/views.py:2673
+#: marketplace/views.py:2717 marketplace/views.py:2770
+#: marketplace/views.py:2815 marketplace/views.py:3852
+#: marketplace/views.py:3891 marketplace/views.py:3929
+#: marketplace/views.py:4120 templates/seller/base_seller.html:8
+#: templates/seller/components/_topbar.html:24
+msgid "Кабинет поставщика"
+msgstr "供应商工作台"
+
+#: marketplace/context_processors.py:66
+msgid "Заказы поставщика"
+msgstr "供应商工作台"
+
+#: marketplace/context_processors.py:67
+msgid "Очередь оператора"
+msgstr "文档队列"
+
+#: marketplace/context_processors.py:68
+msgid "Webhook логи"
+msgstr "Webhook 日志"
+
+#: marketplace/context_processors.py:69
+msgid "Инженерия"
+msgstr "工程师"
+
+#: marketplace/context_processors.py:70
+msgid "Чертежи и документы"
+msgstr "文档队列"
+
+#: marketplace/context_processors.py:71 marketplace/context_processors.py:213
+#: marketplace/context_processors.py:263 marketplace/views.py:2607
+#: marketplace/views.py:2612 templates/admin_panel/base_admin.html:178
+#: templates/admin_panel/dashboard.html:106
+#: templates/admin_panel/finance.html:3 templates/admin_panel/finance.html:4
+#: templates/admin_panel/order_detail.html:135
+#: templates/buyer/finance/list.html:4 templates/buyer/finance/list.html:111
+msgid "Финансы"
+msgstr "财务"
+
+#: marketplace/context_processors.py:72
+msgid "Цены и скидки"
+msgstr "批量折扣"
+
+#: marketplace/context_processors.py:73
+msgid "Выплаты и удержания"
+msgstr "保留金退还"
+
+#: marketplace/context_processors.py:74 marketplace/context_processors.py:212
+#: marketplace/context_processors.py:265 templates/admin_panel/analytics.html:3
 #: templates/admin_panel/analytics.html:4
 #: templates/admin_panel/base_admin.html:199
 #: templates/admin_panel/user_detail.html:295
@@ -31,6 +172,419 @@ msgstr ""
 #: templates/seller/team/list.html:383
 msgid "Аналитика"
 msgstr "分析"
+
+#: marketplace/context_processors.py:75
+msgid "Отчёты и KPI"
+msgstr "报告"
+
+#: marketplace/context_processors.py:76
+msgid "Мой кабинет"
+msgstr "个人中心"
+
+#: marketplace/context_processors.py:77
+msgid "Заказы покупателя"
+msgstr "采购商工作台"
+
+#: marketplace/context_processors.py:78
+msgid "Обзор"
+msgstr "概览"
+
+#: marketplace/context_processors.py:79 templates/landing.html:6648
+#: templates/landing.html:6665 templates/marketplace/login.html:677
+msgid "Обратный звонок"
+msgstr "回电"
+
+#: marketplace/context_processors.py:80
+msgid "Вы вошли как"
+msgstr "关税"
+
+#: marketplace/context_processors.py:81 templates/landing.html:6615
+#: templates/landing.html:6617 templates/landing.html:6619
+#: templates/landing.html:6621
+msgid "Кабинет"
+msgstr "个人中心"
+
+#: marketplace/context_processors.py:82 templates/landing.html:6623
+msgid "Выйти"
+msgstr "退出"
+
+#: marketplace/context_processors.py:83 templates/marketplace/login.html:699
+msgid "Зарегистрироваться"
+msgstr "注册"
+
+#: marketplace/context_processors.py:84 templates/landing.html:6626
+#: templates/marketplace/login.html:675 templates/marketplace/login.html:695
+msgid "Войти"
+msgstr "登录"
+
+#: marketplace/context_processors.py:202 marketplace/context_processors.py:256
+#: marketplace/context_processors.py:269
+#: templates/admin_panel/base_admin.html:158
+#: templates/admin_panel/dashboard.html:3
+#: templates/buyer/dashboard/index.html:5
+#: templates/operator/base_operator.html:200
+#: templates/operator/base_operator.html:212
+#: templates/operator/base_operator.html:223
+#: templates/operator/base_operator.html:233
+#: templates/seller/dashboard/_dashboard_content.html:10
+msgid "Дашборд"
+msgstr "仪表板"
+
+#: marketplace/context_processors.py:203 marketplace/views.py:1815
+#: marketplace/views.py:1820 marketplace/views.py:3853
+#: marketplace/views.py:3892 marketplace/views.py:3930
+#: marketplace/views.py:4121 templates/seller/products/catalog.html:3
+msgid "Товары и прайсы"
+msgstr "网络研讨会与资料"
+
+#: marketplace/context_processors.py:204 marketplace/views.py:2766
+#: marketplace/views.py:2771 marketplace/views.py:2816
+#: templates/seller/analytics/list.html:588
+#: templates/seller/requests/list.html:3
+msgid "Запросы клиентов"
+msgstr "客户概览"
+
+#: marketplace/context_processors.py:205 marketplace/context_processors.py:258
+#: marketplace/context_processors.py:272 marketplace/views.py:1885
+#: marketplace/views.py:1890 templates/admin_panel/base_admin.html:168
+#: templates/admin_panel/orders.html:3 templates/admin_panel/orders.html:4
+#: templates/admin_panel/user_detail.html:289
+#: templates/buyer/orders/list.html:4 templates/buyer/orders/list.html:135
+#: templates/landing.html:6599 templates/landing.html:6676
+#: templates/marketplace/login.html:660
+#: templates/operator/base_operator.html:234
+#: templates/seller/dashboard/_dashboard_content.html:12
+#: templates/seller/team/list.html:381
+msgid "Заказы"
+msgstr "订单"
+
+#: marketplace/context_processors.py:206
+msgid "Согласование"
+msgstr "已审批"
+
+#: marketplace/context_processors.py:207 marketplace/views.py:2141
+#: marketplace/views.py:2146 templates/seller/sla/list.html:4
+msgid "Контроль SLA"
+msgstr "切换角色"
+
+#: marketplace/context_processors.py:208 templates/admin_panel/finance.html:13
+#: templates/admin_panel/finance.html:113
+#: templates/buyer/analytics/list.html:230 templates/landing.html:6602
+#: templates/landing.html:6679 templates/marketplace/login.html:663
+#: templates/operator/base_operator.html:198
+#: templates/seller/analytics/list.html:831 templates/seller/team/list.html:249
+#: templates/seller/team/list.html:322
+msgid "Логистика"
+msgstr "物流"
+
+#: marketplace/context_processors.py:209 marketplace/views.py:2669
+#: marketplace/views.py:2674 templates/admin_panel/user_detail.html:292
+#: templates/seller/drawings/list.html:3 templates/seller/team/list.html:382
+msgid "Чертежи"
+msgstr "图纸"
+
+#: marketplace/context_processors.py:210 marketplace/views.py:2255
+#: marketplace/views.py:2260 templates/seller/qr/list.html:3
+msgid "QR-контроль"
+msgstr "切换角色"
+
+#: marketplace/context_processors.py:211
+msgid "АНАЛИТИКА"
+msgstr "分析"
+
+#: marketplace/context_processors.py:214 marketplace/views.py:2409
+#: marketplace/views.py:2414 templates/admin_panel/user_detail.html:18
+#: templates/buyer/analytics/list.html:216
+#: templates/buyer/analytics/list.html:395
+#: templates/operator/manager/analytics.html:74
+#: templates/operator/manager/analytics.html:127
+#: templates/operator/manager/clients.html:23
+#: templates/operator/manager/clients.html:118
+#: templates/seller/analytics/list.html:379
+#: templates/seller/analytics/list.html:830
+#: templates/seller/components/_topbar.html:32
+#: templates/seller/team/list.html:300
+msgid "Рейтинг"
+msgstr "评分"
+
+#: marketplace/context_processors.py:215
+msgid "НАСТРОЙКИ"
+msgstr "设置"
+
+#: marketplace/context_processors.py:216
+#: templates/admin_panel/user_detail.html:298 templates/landing.html:7063
+#: templates/seller/team/list.html:213 templates/seller/team/list.html:384
+msgid "Команда"
+msgstr "团队"
+
+#: marketplace/context_processors.py:217 templates/landing.html:6601
+#: templates/landing.html:6678 templates/landing.html:6814
+#: templates/marketplace/login.html:662
+#: templates/seller/analytics/list.html:242
+#: templates/seller/integrations/list.html:108
+msgid "Интеграции"
+msgstr "集成"
+
+#: marketplace/context_processors.py:257 templates/buyer/rfq/list.html:4
+#: templates/buyer/rfq/list.html:118
+msgid "Запросы RFQ"
+msgstr "询价请求"
+
+#: marketplace/context_processors.py:259 templates/buyer/shipments/list.html:4
+#: templates/buyer/shipments/list.html:116
+#: templates/operator/base_operator.html:202
+#: templates/operator/base_operator.html:235
+msgid "Отгрузки"
+msgstr "发货"
+
+#: marketplace/context_processors.py:260
+#: templates/admin_panel/moderation.html:12
+#: templates/admin_panel/order_detail.html:215
+#: templates/buyer/analytics/list.html:274
+#: templates/buyer/analytics/list.html:397 templates/buyer/claims/list.html:4
+#: templates/buyer/claims/list.html:134
+msgid "Рекламации"
+msgstr "索赔"
+
+#: marketplace/context_processors.py:261
+#: templates/admin_panel/moderation.html:10 templates/admin_panel/users.html:11
+#: templates/admin_panel/users.html:28 templates/buyer/analytics/list.html:208
+#: templates/buyer/rfq/list.html:162 templates/buyer/suppliers/list.html:4
+#: templates/buyer/suppliers/list.html:106
+#: templates/operator/manager/clients.html:11
+msgid "Поставщики"
+msgstr "供应商"
+
+#: marketplace/context_processors.py:262
+#: templates/buyer/analytics/list.html:330
+#: templates/buyer/analytics/list.html:338
+#: templates/buyer/analytics/list.html:346
+#: templates/buyer/analytics/list.html:370
+#: templates/buyer/negotiations/list.html:4
+#: templates/buyer/negotiations/list.html:130
+#: templates/operator/manager/negotiations.html:13
+#: templates/seller/components/_right_panel.html:194
+#: templates/seller/logistics/list.html:195
+#: templates/seller/negotiations/list.html:186
+msgid "Переторжка"
+msgstr "议价"
+
+#: marketplace/context_processors.py:264
+msgid "Избранное"
+msgstr "延迟项"
+
+#: marketplace/context_processors.py:271
+#: templates/operator/base_operator.html:216
+msgid "Запросы"
+msgstr "请求"
+
+#: marketplace/context_processors.py:273
+msgid "Поставки"
+msgstr "供应商"
+
+#: marketplace/views.py:1796
+msgid "Главная рабочая панель: что требует внимания сейчас и куда перейти дальше."
+msgstr "主工作台:目前需要关注的事项以及下一步操作。"
+
+#: marketplace/views.py:1816
+msgid "Загрузка прайсов, preview, история импортов, каталог и массовые действия в одном модуле."
+msgstr "价目表上传、预览、导入历史、目录及批量操作集成于一个模块。"
+
+#: marketplace/views.py:1886
+msgid "Список заказов по вашим товарам, фильтры, статусы и переход в карточку заказа."
+msgstr "您产品的订单列表、过滤器、状态和订单卡片导航。"
+
+#: marketplace/views.py:1917
+msgid "Ожидание оплаты"
+msgstr "等待付款"
+
+#: marketplace/views.py:1927
+msgid "Формирование заказа"
+msgstr "确认已付"
+
+#: marketplace/views.py:1937 marketplace/views.py:2186
+msgid "Логистика (Зарубеж)"
+msgstr "物流（总计）"
+
+#: marketplace/views.py:1947 templates/seller/logistics/list.html:404
+msgid "Таможенное оформление"
+msgstr "工业设备"
+
+#: marketplace/views.py:1957 marketplace/views.py:2192
+msgid "Логистика (РФ)"
+msgstr "物流"
+
+#: marketplace/views.py:1967 marketplace/views.py:2198
+#: marketplace/views.py:2218 marketplace/views.py:2547
+msgid "Выдача"
+msgstr "发放"
+
+#: marketplace/views.py:1977 marketplace/views.py:2204
+#: marketplace/views.py:2219 marketplace/views.py:2548
+#: templates/admin_panel/order_detail.html:27
+#: templates/buyer/orders/list.html:169 templates/buyer/orders/list.html:300
+#: templates/buyer/orders/list.html:328 templates/buyer/suppliers/list.html:173
+#: templates/buyer/suppliers/list.html:174
+#: templates/buyer/suppliers/list.html:241
+#: templates/buyer/suppliers/list.html:242
+#: templates/buyer/suppliers/list.html:309
+#: templates/buyer/suppliers/list.html:375
+#: templates/buyer/suppliers/list.html:376
+#: templates/buyer/suppliers/list.html:377
+msgid "Доставлен"
+msgstr "已送达"
+
+#: marketplace/views.py:1987
+msgid "Заказ закрыт"
+msgstr "关闭日期"
+
+#: marketplace/views.py:2142
+msgid "Канбан-доска поставок — перетаскивайте карточки между этапами."
+msgstr "供应看板 — 在各阶段之间拖动卡片。"
+
+#: marketplace/views.py:2213 marketplace/views.py:2542
+#: templates/admin_panel/order_detail.html:18
+#: templates/seller/logistics/list.html:309
+#: templates/seller/logistics/list.html:316
+msgid "Ожидание"
+msgstr "等待中"
+
+#: marketplace/views.py:2214 marketplace/views.py:2543
+msgid "Формирование"
+msgstr "✓ 已上报"
+
+#: marketplace/views.py:2215 marketplace/views.py:2544
+msgid "Зарубеж"
+msgstr "海外"
+
+#: marketplace/views.py:2216 marketplace/views.py:2545
+#: templates/admin_panel/order_detail.html:24
+#: templates/buyer/orders/list.html:281 templates/buyer/shipments/list.html:197
+#: templates/buyer/shipments/list.html:266
+#: templates/buyer/shipments/list.html:337
+#: templates/operator/base_operator.html:210
+#: templates/operator/logist/dashboard.html:71
+#: templates/operator/logist/shipments.html:27
+#: templates/operator/logist/shipments.html:77
+#: templates/operator/logist/shipments.html:84
+#: templates/operator/logist/shipments.html:91
+#: templates/operator/logist/shipments.html:103
+#: templates/operator/logist/shipments.html:129
+#: templates/operator/logist/shipments.html:155
+#: templates/operator/logist/shipments.html:181
+#: templates/operator/logist/shipments.html:207
+#: templates/operator/logist/shipments.html:261
+#: templates/operator/manager/dashboard.html:157
+#: templates/operator/manager/shipments.html:108
+#: templates/seller/analytics/list.html:1111
+#: templates/seller/logistics/list.html:413
+msgid "Таможня"
+msgstr "海关"
+
+#: marketplace/views.py:2217 marketplace/views.py:2546
+msgid "РФ"
+msgstr "俄罗斯"
+
+#: marketplace/views.py:2220 marketplace/views.py:2549
+msgid "Закрыт"
+msgstr "关闭"
+
+#: marketplace/views.py:2256
+msgid "Генерация QR-кодов и отслеживание заказов"
+msgstr "订单管理和发货跟踪"
+
+#: marketplace/views.py:2365
+msgid "Рейтинг ниже порога «Надёжный»"
+msgstr "服务公司"
+
+#: marketplace/views.py:2379
+msgid "Всё в порядке"
+msgstr "港口总数"
+
+#: marketplace/views.py:2410
+msgid "Подробная разбивка рейтинга и рекомендации"
+msgstr "详细分解 · 指标 · 建议"
+
+#: marketplace/views.py:2608
+msgid "Оплаты, документы и финансовый контроль"
+msgstr "金融服务"
+
+#: marketplace/views.py:2670
+msgid "Управление чертежами и CAD-файлами"
+msgstr "订单管理"
+
+#: marketplace/views.py:2714
+msgid "Карточка заказа, события, документы и действия поставщика."
+msgstr "向供应商索取文档"
+
+#: marketplace/views.py:2718 templates/seller/orders/list.html:3
+msgid "Заказы и SLA"
+msgstr "订单"
+
+#: marketplace/views.py:2767
+msgid "Все RFQ, где уже найдены позиции по вашему ассортименту и требуется ответ поставщика."
+msgstr "所有已找到匹配您库存的零件并需要供应商回复的 RFQ。"
+
+#: marketplace/views.py:2812
+msgid "Карточка входящего запроса по вашему ассортименту."
+msgstr "按类别的佣金"
+
+#: marketplace/views.py:3849
+msgid "Карточка товара поставщика: данные, логистика, полнота и быстрые действия."
+msgstr "供应商产品卡片:数据、物流、完整性和快捷操作。"
+
+#: marketplace/views.py:3887 marketplace/views.py:3893
+msgid "Новый товар"
+msgstr "添加商品"
+
+#: marketplace/views.py:3888
+msgid "Создание новой позиции вручную."
+msgstr "已创建商品"
+
+#: marketplace/views.py:3926
+msgid "Обновление данных позиции, цены и логистики."
+msgstr "更新了 142 个价格表项目"
+
+#: marketplace/views.py:3932
+msgid "Редактирование"
+msgstr "编辑资料"
+
+#: marketplace/views.py:4117
+msgid "Статус обработки, итоговые счетчики и ошибки по строкам."
+msgstr "处理状态、汇总计数和按行错误。"
+
+#: marketplace/views.py:5364
+msgid "Новый заказ"
+msgstr "新订单"
+
+#: marketplace/views.py:5366
+msgid "Оплата получена"
+msgstr "付款已确认"
+
+#: marketplace/views.py:5367 templates/operator/manager/dashboard.html:220
+msgid "Рекламация открыта"
+msgstr "索赔已开启"
+
+#: marketplace/views.py:5368 templates/operator/manager/dashboard.html:252
+msgid "SLA нарушение"
+msgstr "服务级别违规"
+
+#: marketplace/views.py:5369
+msgid "Новый поставщик"
+msgstr "顶级供应商"
+
+#: marketplace/views.py:5639 templates/admin_panel/tariffs.html:15
+#: templates/seller/negotiations/list.html:304
+msgid "Базовый"
+msgstr "基础版"
+
+#: marketplace/views.py:5640 templates/admin_panel/tariffs.html:16
+msgid "Профессиональный"
+msgstr "专业版"
+
+#: marketplace/views.py:5641 templates/admin_panel/tariffs.html:17
+msgid "Корпоративный"
+msgstr "企业版"
 
 #: templates/admin_panel/analytics.html:10
 msgid "7д"
@@ -245,47 +799,6 @@ msgid "Топ поставщиков"
 msgstr "热门供应商"
 
 #: templates/admin_panel/analytics.html:96
-#: templates/admin_panel/catalog.html:137 templates/admin_panel/imports.html:31
-#: templates/admin_panel/imports.html:74
-#: templates/admin_panel/moderation.html:65
-#: templates/admin_panel/moderation.html:160
-#: templates/admin_panel/moderation.html:183
-#: templates/admin_panel/user_detail.html:39
-#: templates/admin_panel/user_detail.html:248
-#: templates/admin_panel/users.html:77 templates/buyer/analytics/list.html:216
-#: templates/buyer/analytics/list.html:321
-#: templates/buyer/analytics/list.html:390
-#: templates/buyer/catalog/list.html:177 templates/buyer/catalog/list.html:211
-#: templates/buyer/catalog/list.html:245 templates/buyer/catalog/list.html:278
-#: templates/buyer/catalog/list.html:312 templates/buyer/catalog/list.html:346
-#: templates/buyer/finance/list.html:147
-#: templates/buyer/negotiations/list.html:165
-#: templates/buyer/negotiations/list.html:254
-#: templates/buyer/orders/list.html:186 templates/buyer/rfq/list.html:228
-#: templates/landing.html:6633 templates/marketplace/login.html:710
-#: templates/operator/logist/shipments.html:48
-#: templates/operator/manager/clients.html:127
-#: templates/operator/manager/clients.html:142
-#: templates/operator/manager/clients.html:157
-#: templates/operator/manager/clients.html:172
-#: templates/operator/manager/clients.html:187
-#: templates/operator/manager/clients.html:202
-#: templates/operator/manager/clients.html:250
-#: templates/operator/manager/dashboard.html:117
-#: templates/operator/manager/negotiations.html:93
-#: templates/operator/manager/negotiations.html:159
-#: templates/operator/manager/negotiations.html:183
-#: templates/operator/manager/negotiations.html:282
-#: templates/operator/manager/orders.html:29
-#: templates/operator/manager/shipments.html:40
-#: templates/operator/payments/dashboard.html:43
-#: templates/operator/payments/escrow.html:37
-#: templates/operator/payments/invoices.html:39
-#: templates/operator/payments/reconciliation.html:39
-msgid "Поставщик"
-msgstr "供应商"
-
-#: templates/admin_panel/analytics.html:96
 #: templates/admin_panel/analytics.html:119
 #: templates/admin_panel/analytics.html:132
 #: templates/admin_panel/catalog.html:202
@@ -400,48 +913,10 @@ msgstr "按付款状态"
 msgid "Управление"
 msgstr "管理"
 
-#: templates/admin_panel/base_admin.html:158
-#: templates/admin_panel/dashboard.html:3
-#: templates/buyer/dashboard/index.html:5
-#: templates/operator/base_operator.html:200
-#: templates/operator/base_operator.html:212
-#: templates/operator/base_operator.html:223
-#: templates/operator/base_operator.html:233
-#: templates/seller/dashboard/_dashboard_content.html:10
-msgid "Дашборд"
-msgstr "仪表板"
-
 #: templates/admin_panel/base_admin.html:163 templates/admin_panel/users.html:3
 #: templates/admin_panel/users.html:4
 msgid "Пользователи"
 msgstr "用户"
-
-#: templates/admin_panel/base_admin.html:168
-#: templates/admin_panel/orders.html:3 templates/admin_panel/orders.html:4
-#: templates/admin_panel/user_detail.html:289
-#: templates/buyer/orders/list.html:4 templates/buyer/orders/list.html:135
-#: templates/landing.html:6599 templates/landing.html:6676
-#: templates/marketplace/login.html:660
-#: templates/operator/base_operator.html:234
-#: templates/seller/dashboard/_dashboard_content.html:12
-#: templates/seller/team/list.html:381
-msgid "Заказы"
-msgstr "订单"
-
-#: templates/admin_panel/base_admin.html:178
-#: templates/admin_panel/dashboard.html:106
-#: templates/admin_panel/finance.html:3 templates/admin_panel/finance.html:4
-#: templates/admin_panel/order_detail.html:135
-#: templates/buyer/finance/list.html:4 templates/buyer/finance/list.html:111
-msgid "Финансы"
-msgstr "财务"
-
-#: templates/admin_panel/base_admin.html:183
-#: templates/admin_panel/catalog.html:3 templates/admin_panel/catalog.html:4
-#: templates/admin_panel/dashboard.html:98
-#: templates/seller/dashboard/_dashboard_content.html:11
-msgid "Каталог"
-msgstr "目录"
 
 #: templates/admin_panel/base_admin.html:188
 #: templates/admin_panel/dashboard.html:74
@@ -581,14 +1056,6 @@ msgstr "错误"
 #: templates/admin_panel/moderation.html:11
 msgid "Запчасти"
 msgstr "零件"
-
-#: templates/admin_panel/catalog.html:80
-msgid "Категории"
-msgstr "类别"
-
-#: templates/admin_panel/catalog.html:81
-msgid "Бренды"
-msgstr "品牌"
 
 #: templates/admin_panel/catalog.html:88 templates/buyer/catalog/list.html:139
 msgid "Поиск по OEM или названию..."
@@ -1064,15 +1531,6 @@ msgstr "本周"
 msgid "Комиссия (%(commission_rate)s%%)"
 msgstr "佣金（%(commission_rate)s%%）"
 
-#: templates/admin_panel/finance.html:13 templates/admin_panel/finance.html:113
-#: templates/buyer/analytics/list.html:230 templates/landing.html:6602
-#: templates/landing.html:6679 templates/marketplace/login.html:663
-#: templates/operator/base_operator.html:198
-#: templates/seller/analytics/list.html:831 templates/seller/team/list.html:249
-#: templates/seller/team/list.html:322
-msgid "Логистика"
-msgstr "物流"
-
 #: templates/admin_panel/finance.html:19
 msgid "Воронка оплат"
 msgstr "付款漏斗"
@@ -1487,22 +1945,6 @@ msgstr "下一页 &#8594;"
 msgid "Всего в очереди"
 msgstr "队列总数"
 
-#: templates/admin_panel/moderation.html:10 templates/admin_panel/users.html:11
-#: templates/admin_panel/users.html:28 templates/buyer/analytics/list.html:208
-#: templates/buyer/rfq/list.html:162 templates/buyer/suppliers/list.html:4
-#: templates/buyer/suppliers/list.html:106
-#: templates/operator/manager/clients.html:11
-msgid "Поставщики"
-msgstr "供应商"
-
-#: templates/admin_panel/moderation.html:12
-#: templates/admin_panel/order_detail.html:215
-#: templates/buyer/analytics/list.html:274
-#: templates/buyer/analytics/list.html:397 templates/buyer/claims/list.html:4
-#: templates/buyer/claims/list.html:134
-msgid "Рекламации"
-msgstr "索赔"
-
 #: templates/admin_panel/moderation.html:19
 #, python-format
 msgid "Все (%(total_pending)s)"
@@ -1616,12 +2058,6 @@ msgstr "订单 #%(order_id)s"
 msgid "&larr; Все заказы"
 msgstr "&larr; 所有订单"
 
-#: templates/admin_panel/order_detail.html:18
-#: templates/seller/logistics/list.html:309
-#: templates/seller/logistics/list.html:316
-msgid "Ожидание"
-msgstr "等待中"
-
 #: templates/admin_panel/order_detail.html:20
 msgid "Подтверждён"
 msgstr "已确认"
@@ -1667,29 +2103,6 @@ msgstr "就绪"
 msgid "Транзит"
 msgstr "运输中"
 
-#: templates/admin_panel/order_detail.html:24
-#: templates/buyer/orders/list.html:281 templates/buyer/shipments/list.html:197
-#: templates/buyer/shipments/list.html:266
-#: templates/buyer/shipments/list.html:337
-#: templates/operator/base_operator.html:210
-#: templates/operator/logist/dashboard.html:71
-#: templates/operator/logist/shipments.html:27
-#: templates/operator/logist/shipments.html:77
-#: templates/operator/logist/shipments.html:84
-#: templates/operator/logist/shipments.html:91
-#: templates/operator/logist/shipments.html:103
-#: templates/operator/logist/shipments.html:129
-#: templates/operator/logist/shipments.html:155
-#: templates/operator/logist/shipments.html:181
-#: templates/operator/logist/shipments.html:207
-#: templates/operator/logist/shipments.html:261
-#: templates/operator/manager/dashboard.html:157
-#: templates/operator/manager/shipments.html:108
-#: templates/seller/analytics/list.html:1111
-#: templates/seller/logistics/list.html:413
-msgid "Таможня"
-msgstr "海关"
-
 #: templates/admin_panel/order_detail.html:25
 msgid "Транзит РФ"
 msgstr "俄罗斯境内运输"
@@ -1697,19 +2110,6 @@ msgstr "俄罗斯境内运输"
 #: templates/admin_panel/order_detail.html:26
 msgid "Отгружен"
 msgstr "已发货"
-
-#: templates/admin_panel/order_detail.html:27
-#: templates/buyer/orders/list.html:169 templates/buyer/orders/list.html:300
-#: templates/buyer/orders/list.html:328 templates/buyer/suppliers/list.html:173
-#: templates/buyer/suppliers/list.html:174
-#: templates/buyer/suppliers/list.html:241
-#: templates/buyer/suppliers/list.html:242
-#: templates/buyer/suppliers/list.html:309
-#: templates/buyer/suppliers/list.html:375
-#: templates/buyer/suppliers/list.html:376
-#: templates/buyer/suppliers/list.html:377
-msgid "Доставлен"
-msgstr "已送达"
 
 #: templates/admin_panel/order_detail.html:28
 #: templates/operator/customs/requests.html:188
@@ -2189,19 +2589,6 @@ msgstr "%(hours)s小时"
 msgid "Тарифы и комиссии"
 msgstr "费率与佣金"
 
-#: templates/admin_panel/tariffs.html:15
-#: templates/seller/negotiations/list.html:304
-msgid "Базовый"
-msgstr "基础版"
-
-#: templates/admin_panel/tariffs.html:16
-msgid "Профессиональный"
-msgstr "专业版"
-
-#: templates/admin_panel/tariffs.html:17
-msgid "Корпоративный"
-msgstr "企业版"
-
 #: templates/admin_panel/tariffs.html:22
 msgid "Тарифные планы"
 msgstr "套餐"
@@ -2329,20 +2716,6 @@ msgstr "营业额(供应商)"
 #: templates/admin_panel/user_detail.html:15
 msgid "Заказов с его запчастями"
 msgstr "包含其零件的订单"
-
-#: templates/admin_panel/user_detail.html:18
-#: templates/buyer/analytics/list.html:216
-#: templates/buyer/analytics/list.html:395
-#: templates/operator/manager/analytics.html:74
-#: templates/operator/manager/analytics.html:127
-#: templates/operator/manager/clients.html:23
-#: templates/operator/manager/clients.html:118
-#: templates/seller/analytics/list.html:379
-#: templates/seller/analytics/list.html:830
-#: templates/seller/components/_topbar.html:32
-#: templates/seller/team/list.html:300
-msgid "Рейтинг"
-msgstr "评分"
 
 #: templates/admin_panel/user_detail.html:20
 msgid "Потрачено"
@@ -2517,16 +2890,6 @@ msgstr "商品库"
 #: templates/admin_panel/user_detail.html:286
 msgid "Ценообразование"
 msgstr "定价"
-
-#: templates/admin_panel/user_detail.html:292
-#: templates/seller/drawings/list.html:3 templates/seller/team/list.html:382
-msgid "Чертежи"
-msgstr "图纸"
-
-#: templates/admin_panel/user_detail.html:298 templates/landing.html:7063
-#: templates/seller/team/list.html:213 templates/seller/team/list.html:384
-msgid "Команда"
-msgstr "团队"
 
 #: templates/admin_panel/user_detail.html:303
 msgid "Сохранить изменения"
@@ -2827,19 +3190,6 @@ msgstr "基础金额"
 #: templates/buyer/analytics/list.html:323
 msgid "Финальная сумма"
 msgstr "最终金额"
-
-#: templates/buyer/analytics/list.html:330
-#: templates/buyer/analytics/list.html:338
-#: templates/buyer/analytics/list.html:346
-#: templates/buyer/analytics/list.html:370
-#: templates/buyer/negotiations/list.html:4
-#: templates/buyer/negotiations/list.html:130
-#: templates/operator/manager/negotiations.html:13
-#: templates/seller/components/_right_panel.html:194
-#: templates/seller/logistics/list.html:195
-#: templates/seller/negotiations/list.html:186
-msgid "Переторжка"
-msgstr "议价"
 
 #: templates/buyer/analytics/list.html:330 templates/buyer/rfq/list.html:288
 msgid "Ходовая часть PC300"
@@ -4102,10 +4452,6 @@ msgstr "密封套件 (4 套)"
 msgid "Крепёж (1 к-т)"
 msgstr "紧固件(1套)"
 
-#: templates/buyer/rfq/list.html:4 templates/buyer/rfq/list.html:118
-msgid "Запросы RFQ"
-msgstr "询价请求"
-
 #: templates/buyer/rfq/list.html:119
 msgid "Запросы коммерческих предложений от поставщиков"
 msgstr "向供应商索取商业报价"
@@ -4230,13 +4576,6 @@ msgstr "小松喷油泵"
 #: templates/buyer/rfq/list.html:282 templates/seller/drawings/list.html:294
 msgid "Отклонён"
 msgstr "已拒绝"
-
-#: templates/buyer/shipments/list.html:4
-#: templates/buyer/shipments/list.html:116
-#: templates/operator/base_operator.html:202
-#: templates/operator/base_operator.html:235
-msgid "Отгрузки"
-msgstr "发货"
 
 #: templates/buyer/shipments/list.html:117
 msgid "Отслеживание грузов и логистика доставки"
@@ -4494,11 +4833,6 @@ msgstr "打开菜单"
 msgid "Основная навигация"
 msgstr "主导航"
 
-#: templates/landing.html:6595 templates/landing.html:6672
-#: templates/marketplace/login.html:656
-msgid "Главная"
-msgstr "首页"
-
 #: templates/landing.html:6596 templates/landing.html:6673
 #: templates/marketplace/login.html:657
 msgid "Покупателям"
@@ -4514,13 +4848,6 @@ msgstr "供应商专区"
 msgid "Расчёты"
 msgstr "报价"
 
-#: templates/landing.html:6601 templates/landing.html:6678
-#: templates/landing.html:6814 templates/marketplace/login.html:662
-#: templates/seller/analytics/list.html:242
-#: templates/seller/integrations/list.html:108
-msgid "Интеграции"
-msgstr "集成"
-
 #: templates/landing.html:6603 templates/landing.html:6680
 #: templates/landing.html:6830 templates/marketplace/login.html:664
 #: templates/operator/base_operator.html:221
@@ -4532,20 +4859,6 @@ msgstr "付款"
 msgid "Бонусы"
 msgstr "奖励"
 
-#: templates/landing.html:6615 templates/landing.html:6617
-#: templates/landing.html:6619 templates/landing.html:6621
-msgid "Кабинет"
-msgstr "个人中心"
-
-#: templates/landing.html:6623
-msgid "Выйти"
-msgstr "退出"
-
-#: templates/landing.html:6626 templates/marketplace/login.html:675
-#: templates/marketplace/login.html:695
-msgid "Войти"
-msgstr "登录"
-
 #: templates/landing.html:6630
 msgid "Демо-вход"
 msgstr "演示登录"
@@ -4553,11 +4866,6 @@ msgstr "演示登录"
 #: templates/landing.html:6641 templates/marketplace/login.html:730
 msgid "Оператор"
 msgstr "操作员"
-
-#: templates/landing.html:6648 templates/landing.html:6665
-#: templates/marketplace/login.html:677
-msgid "Обратный звонок"
-msgstr "回电"
 
 #: templates/landing.html:6661
 msgid "Закрыть меню"
@@ -5024,10 +5332,6 @@ msgstr "请输入您的账户信息"
 msgid "Нет аккаунта?"
 msgstr "没有账户?"
 
-#: templates/marketplace/login.html:699
-msgid "Зарегистрироваться"
-msgstr "注册"
-
 #: templates/marketplace/login.html:703
 msgid "Быстрый вход"
 msgstr "快速登录"
@@ -5074,10 +5378,6 @@ msgstr "港口与码头"
 #: templates/operator/base_operator.html:213
 msgid "Декларации"
 msgstr "报关单"
-
-#: templates/operator/base_operator.html:216
-msgid "Запросы"
-msgstr "请求"
 
 #: templates/operator/base_operator.html:224
 msgid "Счета"
@@ -8249,10 +8549,6 @@ msgstr "事件动态"
 msgid "Оплата подтверждена"
 msgstr "付款已确认"
 
-#: templates/operator/manager/dashboard.html:220
-msgid "Рекламация открыта"
-msgstr "索赔已开启"
-
 #: templates/operator/manager/dashboard.html:221
 msgid "ORD-4501 -- Покупатель #1033"
 msgstr "ORD-4501 -- 采购商 #1033"
@@ -8277,10 +8573,6 @@ msgstr "已清关"
 #: templates/operator/manager/dashboard.html:245
 msgid "ORD-4505 -- Стамбул-Екатеринбург"
 msgstr "ORD-4505 -- 伊斯坦布尔-叶卡捷琳堡"
-
-#: templates/operator/manager/dashboard.html:252
-msgid "SLA нарушение"
-msgstr "服务级别违规"
 
 #: templates/operator/manager/dashboard.html:253
 msgid "ORD-4501 -- задержка +3 дн."
@@ -9531,12 +9823,6 @@ msgstr "在售商品、畅销品、滞销库存、定价"
 msgid "Товаров"
 msgstr "商品"
 
-#: templates/seller/analytics/list.html:345
-#: templates/seller/reports/list.html:248
-#: templates/seller/reports/list.html:658 templates/seller/team/list.html:314
-msgid "Продажи"
-msgstr "延长"
-
 #: templates/seller/analytics/list.html:356
 #: templates/seller/analytics/list.html:1037
 msgid "Рекламации и возвраты"
@@ -9737,11 +10023,6 @@ msgstr "分析"
 #: templates/seller/analytics/list.html:580
 msgid "Популярные позиции, частота запросов, тренды по категориям"
 msgstr "热门项目、查询频率、类别趋势"
-
-#: templates/seller/analytics/list.html:588
-#: templates/seller/requests/list.html:3
-msgid "Запросы клиентов"
-msgstr "客户概览"
 
 #: templates/seller/analytics/list.html:589
 msgid "Все RFQ с позициями, статусами и историей ответов"
@@ -10278,11 +10559,6 @@ msgstr "本月营收"
 #: templates/seller/analytics/list.html:1431
 msgid "подписку"
 msgstr "订阅"
-
-#: templates/seller/base_seller.html:8
-#: templates/seller/components/_topbar.html:24
-msgid "Кабинет поставщика"
-msgstr "供应商工作台"
 
 #: templates/seller/components/_right_panel.html:6
 msgid "Панель"
@@ -11375,10 +11651,6 @@ msgstr "费用计算"
 #: templates/seller/logistics/list.html:403
 msgid "Нет"
 msgstr "无询价单"
-
-#: templates/seller/logistics/list.html:404
-msgid "Таможенное оформление"
-msgstr "工业设备"
 
 #: templates/seller/logistics/list.html:404
 msgid "Под ключ"
@@ -13688,10 +13960,6 @@ msgstr "事件"
 msgid "Открытых рекламаций по заказу нет."
 msgstr "未结索赔"
 
-#: templates/seller/orders/list.html:3
-msgid "Заказы и SLA"
-msgstr "订单"
-
 #: templates/seller/orders/list.html:7 templates/seller/sla/list.html:7
 msgid "Всего заказов:"
 msgstr "订单总数"
@@ -13727,10 +13995,6 @@ msgstr "类型"
 #: templates/seller/orders/list.html:73
 msgid "Вперед →"
 msgstr "前进"
-
-#: templates/seller/products/catalog.html:3
-msgid "Товары и прайсы"
-msgstr "网络研讨会与资料"
 
 #: templates/seller/products/catalog.html:20
 msgid "Ассортимент и прайс-листы"
@@ -14295,10 +14559,6 @@ msgstr "主要指标"
 #: templates/seller/products/import_result.html:137
 msgid "Строки еще не загружены. Нажмите «Применить» или дождитесь завершения импорта."
 msgstr "行尚未加载。点击\"应用\"或等待导入完成。"
-
-#: templates/seller/qr/list.html:3
-msgid "QR-контроль"
-msgstr "切换角色"
 
 #: templates/seller/qr/list.html:266
 msgid "QR-контроль поставок"
@@ -15199,10 +15459,6 @@ msgstr "申请折扣"
 msgid "Открыть в кабинете"
 msgstr "打开菜单"
 
-#: templates/seller/sla/list.html:4
-msgid "Контроль SLA"
-msgstr "切换角色"
-
 #: templates/seller/sla/list.html:12 templates/seller/sla/list.html:66
 #: templates/seller/sla/list.html:102 templates/seller/sla/list.html:152
 #: templates/seller/sla/list.html:194
@@ -15784,9 +16040,6 @@ msgstr "确认收货"
 
 #~ msgid "Насос гидравлический"
 #~ msgstr "液压泵"
-
-#~ msgid "Возврат удержания"
-#~ msgstr "保留金退还"
 
 #~ msgid "Ответ на RFQ-1204"
 #~ msgstr "RFQ-1204 回复"
