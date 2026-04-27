@@ -52,7 +52,7 @@ ALLOWED_HOSTS = _env_list(
 )
 CSRF_TRUSTED_ORIGINS = _env_list(
     "CSRF_TRUSTED_ORIGINS",
-    "http://127.0.0.1,http://localhost,https://*.localhost.run,https://*.lhr.life",
+    "http://127.0.0.1,http://127.0.0.1:8001,http://localhost,http://localhost:8001,https://*.localhost.run,https://*.lhr.life",
 )
 
 INSTALLED_APPS = [

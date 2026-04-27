@@ -960,7 +960,7 @@ function initPortsMap() {
   if (!el || !el.offsetHeight) return;
 
   portsMapObj = L.map('portsMap', {zoomControl:true, attributionControl:false}).setView([30, 60], 2);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:12}).addTo(portsMapObj);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19,attribution:''}).addTo(portsMapObj);
   updateMapMarkers();
 }
 
@@ -1005,7 +1005,7 @@ function initTrackingMap() {
   if (!el || !el.offsetHeight) return;
 
   trackingMapObj = L.map('trackingMap', {zoomControl:true, attributionControl:false}).setView([40, 90], 3);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:12}).addTo(trackingMapObj);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {maxZoom:19,attribution:''}).addTo(trackingMapObj);
 
   const route = [
     {pos:[31.23,121.47], label:'Шанхай (отгрузка)', done:true},
