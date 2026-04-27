@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 
 class Category(models.Model):
@@ -179,11 +180,11 @@ class Drawing(models.Model):
         ("jpg", "JPG"),
     ]
     STATUS_CHOICES = [
-        ("draft", "Черновик"),
-        ("on_review", "На проверке"),
-        ("approved", "Утверждён"),
-        ("rejected", "Отклонён"),
-        ("archived", "Архив"),
+        ("draft", _("Черновик")),
+        ("on_review", _("На проверке")),
+        ("approved", _("Утверждён")),
+        ("rejected", _("Отклонён")),
+        ("archived", _("Архив")),
     ]
 
     title = models.CharField(max_length=255)
@@ -279,37 +280,37 @@ class RFQItem(models.Model):
 
 class Order(models.Model):
     STATUS_CHOICES = [
-        ("pending", "Ожидание оплаты"),
-        ("reserve_paid", "Резерв оплачен"),
-        ("confirmed", "Формирование заказа"),
-        ("in_production", "В производстве"),
-        ("ready_to_ship", "Готов к отгрузке"),
-        ("transit_abroad", "Транзит (Зарубеж)"),
-        ("customs", "Таможня"),
-        ("transit_rf", "Транзит (РФ)"),
-        ("issuing", "Выдача"),
-        ("shipped", "Отгружен"),
-        ("delivered", "Доставлен"),
-        ("completed", "Завершён"),
-        ("cancelled", "Отменён"),
+        ("pending", _("Ожидание оплаты")),
+        ("reserve_paid", _("Резерв оплачен")),
+        ("confirmed", _("Формирование заказа")),
+        ("in_production", _("В производстве")),
+        ("ready_to_ship", _("Готов к отгрузке")),
+        ("transit_abroad", _("Транзит (Зарубеж)")),
+        ("customs", _("Таможня")),
+        ("transit_rf", _("Транзит (РФ)")),
+        ("issuing", _("Выдача")),
+        ("shipped", _("Отгружен")),
+        ("delivered", _("Доставлен")),
+        ("completed", _("Завершён")),
+        ("cancelled", _("Отменён")),
     ]
     PAYMENT_STATUS_CHOICES = [
-        ("awaiting_reserve", "Ожидает резерва"),
-        ("reserve_paid", "Резерв оплачен"),
-        ("mid_paid", "Подтверждение оплачено"),
-        ("customs_paid", "Таможня оплачена"),
-        ("paid", "Оплачен"),
-        ("refund_pending", "Возврат в обработке"),
-        ("refunded", "Возвращён"),
+        ("awaiting_reserve", _("Ожидает резерва")),
+        ("reserve_paid", _("Резерв оплачен")),
+        ("mid_paid", _("Подтверждение оплачено")),
+        ("customs_paid", _("Таможня оплачена")),
+        ("paid", _("Оплачен")),
+        ("refund_pending", _("Возврат в обработке")),
+        ("refunded", _("Возвращён")),
     ]
     PAYMENT_SCHEME_CHOICES = [
         ("simple", "10% + 90%"),
         ("staged", "10% + 50% + 40%"),
     ]
     SLA_STATUS_CHOICES = [
-        ("on_track", "В норме"),
-        ("at_risk", "Под угрозой"),
-        ("breached", "Нарушен"),
+        ("on_track", _("В норме")),
+        ("at_risk", _("Под угрозой")),
+        ("breached", _("Нарушен")),
     ]
 
     customer_name = models.CharField(max_length=180)
@@ -478,10 +479,10 @@ class UserProfile(models.Model):
         ("seller", "Seller"),
     ]
     SUPPLIER_STATUS_CHOICES = [
-        ("trusted", "Надёжный"),
-        ("sandbox", "Песочница"),
-        ("risky", "Рисковый"),
-        ("rejected", "Исключён"),
+        ("trusted", _("Надёжный")),
+        ("sandbox", _("Песочница")),
+        ("risky", _("Рисковый")),
+        ("rejected", _("Исключён")),
     ]
 
     DEPARTMENT_CHOICES = [

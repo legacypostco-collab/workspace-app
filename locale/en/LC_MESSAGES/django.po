@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-27 13:36+0300\n"
+"POT-Creation-Date: 2026-04-27 13:49+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -382,6 +382,199 @@ msgstr "Requests"
 msgid "Поставки"
 msgstr "Suppliers"
 
+#: marketplace/models.py:183 templates/seller/drawings/list.html:291
+msgid "Черновик"
+msgstr "Draft"
+
+#: marketplace/models.py:184 templates/admin_panel/rfq.html:11
+#: templates/admin_panel/rfq.html:86
+#: templates/operator/customs/documents.html:79
+#: templates/operator/customs/documents.html:106
+#: templates/operator/customs/documents.html:151
+#: templates/operator/logist/analytics.html:194
+#: templates/operator/manager/analytics.html:219
+#: templates/operator/payments/reconciliation.html:105
+#: templates/seller/drawings/list.html:268
+#: templates/seller/drawings/list.html:292
+msgid "На проверке"
+msgstr "Under review"
+
+#: marketplace/models.py:185 templates/seller/drawings/list.html:293
+msgid "Утверждён"
+msgstr "Confirmed"
+
+#: marketplace/models.py:186 templates/buyer/rfq/list.html:282
+#: templates/seller/drawings/list.html:294
+msgid "Отклонён"
+msgstr "Rejected"
+
+#: marketplace/models.py:187 templates/operator/customs/documents.html:39
+#: templates/operator/customs/documents.html:142
+#: templates/operator/customs/documents.html:160
+#: templates/seller/drawings/list.html:295
+msgid "Архив"
+msgstr "Archive"
+
+#: marketplace/models.py:283 marketplace/views.py:1917
+msgid "Ожидание оплаты"
+msgstr "Awaiting payment"
+
+#: marketplace/models.py:284 marketplace/models.py:299
+#: templates/admin_panel/finance.html:37
+msgid "Резерв оплачен"
+msgstr "Reserve paid"
+
+#: marketplace/models.py:285 marketplace/views.py:1927
+msgid "Формирование заказа"
+msgstr "Confirmation paid"
+
+#: marketplace/models.py:286 templates/buyer/orders/list.html:166
+#: templates/buyer/orders/list.html:201 templates/buyer/orders/list.html:214
+#: templates/buyer/suppliers/list.html:172
+msgid "В производстве"
+msgstr "In production"
+
+#: marketplace/models.py:287
+msgid "Готов к отгрузке"
+msgstr "Ready to ship"
+
+#: marketplace/models.py:288
+msgid "Транзит (Зарубеж)"
+msgstr "Logistics (total)"
+
+#: marketplace/models.py:289 marketplace/views.py:2216
+#: marketplace/views.py:2545 templates/admin_panel/order_detail.html:24
+#: templates/buyer/orders/list.html:281 templates/buyer/shipments/list.html:197
+#: templates/buyer/shipments/list.html:266
+#: templates/buyer/shipments/list.html:337
+#: templates/operator/base_operator.html:210
+#: templates/operator/logist/dashboard.html:71
+#: templates/operator/logist/shipments.html:27
+#: templates/operator/logist/shipments.html:77
+#: templates/operator/logist/shipments.html:84
+#: templates/operator/logist/shipments.html:91
+#: templates/operator/logist/shipments.html:103
+#: templates/operator/logist/shipments.html:129
+#: templates/operator/logist/shipments.html:155
+#: templates/operator/logist/shipments.html:181
+#: templates/operator/logist/shipments.html:207
+#: templates/operator/logist/shipments.html:261
+#: templates/operator/manager/dashboard.html:157
+#: templates/operator/manager/shipments.html:108
+#: templates/seller/analytics/list.html:1111
+#: templates/seller/logistics/list.html:413
+msgid "Таможня"
+msgstr "Customs"
+
+#: marketplace/models.py:290
+msgid "Транзит (РФ)"
+msgstr "Transit Russia"
+
+#: marketplace/models.py:291 marketplace/views.py:1967
+#: marketplace/views.py:2198 marketplace/views.py:2218
+#: marketplace/views.py:2547
+msgid "Выдача"
+msgstr "Issuance"
+
+#: marketplace/models.py:292 templates/admin_panel/order_detail.html:26
+msgid "Отгружен"
+msgstr "Shipped"
+
+#: marketplace/models.py:293 marketplace/views.py:1977
+#: marketplace/views.py:2204 marketplace/views.py:2219
+#: marketplace/views.py:2548 templates/admin_panel/order_detail.html:27
+#: templates/buyer/orders/list.html:169 templates/buyer/orders/list.html:300
+#: templates/buyer/orders/list.html:328 templates/buyer/suppliers/list.html:173
+#: templates/buyer/suppliers/list.html:174
+#: templates/buyer/suppliers/list.html:241
+#: templates/buyer/suppliers/list.html:242
+#: templates/buyer/suppliers/list.html:309
+#: templates/buyer/suppliers/list.html:375
+#: templates/buyer/suppliers/list.html:376
+#: templates/buyer/suppliers/list.html:377
+msgid "Доставлен"
+msgstr "Delivered"
+
+#: marketplace/models.py:294 templates/admin_panel/order_detail.html:28
+#: templates/operator/customs/requests.html:188
+#: templates/operator/customs/requests.html:205
+#: templates/operator/customs/requests.html:222
+#: templates/operator/manager/orders.html:16
+#: templates/operator/manager/orders.html:200
+#: templates/operator/manager/orders.html:208
+msgid "Завершён"
+msgstr "Completed"
+
+#: marketplace/models.py:295 templates/admin_panel/orders.html:85
+#: templates/admin_panel/rfq.html:87 templates/buyer/orders/list.html:170
+msgid "Отменён"
+msgstr "Cancelled"
+
+#: marketplace/models.py:298
+msgid "Ожидает резерва"
+msgstr "Awaiting reserve"
+
+#: marketplace/models.py:300 templates/admin_panel/finance.html:49
+msgid "Подтверждение оплачено"
+msgstr "Confirmation paid"
+
+#: marketplace/models.py:301
+msgid "Таможня оплачена"
+msgstr "Customs cleared"
+
+#: marketplace/models.py:302 templates/admin_panel/finance.html:124
+#: templates/admin_panel/orders.html:92 templates/buyer/finance/list.html:161
+#: templates/buyer/finance/list.html:185 templates/buyer/finance/list.html:193
+#: templates/buyer/finance/list.html:201 templates/buyer/orders/list.html:174
+#: templates/buyer/orders/list.html:302 templates/buyer/orders/list.html:330
+msgid "Оплачен"
+msgstr "Paid"
+
+#: marketplace/models.py:303
+msgid "Возврат в обработке"
+msgstr "Processing time"
+
+#: marketplace/models.py:304
+msgid "Возвращён"
+msgstr "$2,840.00 (refund)"
+
+#: marketplace/models.py:311 templates/admin_panel/order_detail.html:86
+#: templates/admin_panel/orders.html:41
+#: templates/seller/logistics/list.html:326
+msgid "В норме"
+msgstr "On track"
+
+#: marketplace/models.py:312 templates/operator/manager/negotiations.html:17
+#: templates/operator/manager/negotiations.html:31
+#: templates/seller/analytics/list.html:1010 templates/seller/sla/list.html:130
+msgid "Под угрозой"
+msgstr "At risk"
+
+#: marketplace/models.py:313 templates/admin_panel/order_detail.html:84
+#: templates/admin_panel/orders.html:42 templates/admin_panel/orders.html:102
+msgid "Нарушен"
+msgstr "Violated"
+
+#: marketplace/models.py:482 templates/admin_panel/user_detail.html:50
+#: templates/admin_panel/user_detail.html:272
+msgid "Надёжный"
+msgstr "Trusted"
+
+#: marketplace/models.py:483 templates/admin_panel/user_detail.html:51
+#: templates/admin_panel/user_detail.html:273
+msgid "Песочница"
+msgstr "Sandbox"
+
+#: marketplace/models.py:484 templates/admin_panel/user_detail.html:52
+#: templates/admin_panel/user_detail.html:274
+msgid "Рисковый"
+msgstr "Risky"
+
+#: marketplace/models.py:485 templates/admin_panel/user_detail.html:53
+#: templates/admin_panel/user_detail.html:275
+msgid "Исключён"
+msgstr "Excluded"
+
 #: marketplace/views.py:1796
 msgid "Главная рабочая панель: что требует внимания сейчас и куда перейти дальше."
 msgstr "Main workspace: what needs attention now and where to go next."
@@ -394,14 +587,6 @@ msgstr "Price list upload, preview, import history, catalog and bulk actions in 
 msgid "Список заказов по вашим товарам, фильтры, статусы и переход в карточку заказа."
 msgstr "List of orders for your products, filters, statuses, and navigation to order card."
 
-#: marketplace/views.py:1917
-msgid "Ожидание оплаты"
-msgstr "Awaiting payment"
-
-#: marketplace/views.py:1927
-msgid "Формирование заказа"
-msgstr "Confirmation paid"
-
 #: marketplace/views.py:1937 marketplace/views.py:2186
 msgid "Логистика (Зарубеж)"
 msgstr "Logistics (total)"
@@ -413,26 +598,6 @@ msgstr "Industrial equipment"
 #: marketplace/views.py:1957 marketplace/views.py:2192
 msgid "Логистика (РФ)"
 msgstr "Logistics"
-
-#: marketplace/views.py:1967 marketplace/views.py:2198
-#: marketplace/views.py:2218 marketplace/views.py:2547
-msgid "Выдача"
-msgstr "Issuance"
-
-#: marketplace/views.py:1977 marketplace/views.py:2204
-#: marketplace/views.py:2219 marketplace/views.py:2548
-#: templates/admin_panel/order_detail.html:27
-#: templates/buyer/orders/list.html:169 templates/buyer/orders/list.html:300
-#: templates/buyer/orders/list.html:328 templates/buyer/suppliers/list.html:173
-#: templates/buyer/suppliers/list.html:174
-#: templates/buyer/suppliers/list.html:241
-#: templates/buyer/suppliers/list.html:242
-#: templates/buyer/suppliers/list.html:309
-#: templates/buyer/suppliers/list.html:375
-#: templates/buyer/suppliers/list.html:376
-#: templates/buyer/suppliers/list.html:377
-msgid "Доставлен"
-msgstr "Delivered"
 
 #: marketplace/views.py:1987
 msgid "Заказ закрыт"
@@ -456,30 +621,6 @@ msgstr "✓ Escalated"
 #: marketplace/views.py:2215 marketplace/views.py:2544
 msgid "Зарубеж"
 msgstr "International"
-
-#: marketplace/views.py:2216 marketplace/views.py:2545
-#: templates/admin_panel/order_detail.html:24
-#: templates/buyer/orders/list.html:281 templates/buyer/shipments/list.html:197
-#: templates/buyer/shipments/list.html:266
-#: templates/buyer/shipments/list.html:337
-#: templates/operator/base_operator.html:210
-#: templates/operator/logist/dashboard.html:71
-#: templates/operator/logist/shipments.html:27
-#: templates/operator/logist/shipments.html:77
-#: templates/operator/logist/shipments.html:84
-#: templates/operator/logist/shipments.html:91
-#: templates/operator/logist/shipments.html:103
-#: templates/operator/logist/shipments.html:129
-#: templates/operator/logist/shipments.html:155
-#: templates/operator/logist/shipments.html:181
-#: templates/operator/logist/shipments.html:207
-#: templates/operator/logist/shipments.html:261
-#: templates/operator/manager/dashboard.html:157
-#: templates/operator/manager/shipments.html:108
-#: templates/seller/analytics/list.html:1111
-#: templates/seller/logistics/list.html:413
-msgid "Таможня"
-msgstr "Customs"
 
 #: marketplace/views.py:2217 marketplace/views.py:2546
 msgid "РФ"
@@ -1545,18 +1686,10 @@ msgstr "Awaiting reserve"
 msgid "Показать"
 msgstr "Show"
 
-#: templates/admin_panel/finance.html:37
-msgid "Резерв оплачен"
-msgstr "Reserve paid"
-
 #: templates/admin_panel/finance.html:38
 #, python-format
 msgid "%(stuck)s зависших"
 msgstr "%(stuck)s stuck"
-
-#: templates/admin_panel/finance.html:49
-msgid "Подтверждение оплачено"
-msgstr "Confirmation paid"
 
 #: templates/admin_panel/finance.html:61 templates/admin_panel/finance.html:75
 msgid "Полностью оплачено"
@@ -1655,14 +1788,6 @@ msgstr "Scheme"
 #: templates/seller/reports/list.html:779
 msgid "Дата"
 msgstr "Date"
-
-#: templates/admin_panel/finance.html:124 templates/admin_panel/orders.html:92
-#: templates/buyer/finance/list.html:161 templates/buyer/finance/list.html:185
-#: templates/buyer/finance/list.html:193 templates/buyer/finance/list.html:201
-#: templates/buyer/orders/list.html:174 templates/buyer/orders/list.html:302
-#: templates/buyer/orders/list.html:330
-msgid "Оплачен"
-msgstr "Paid"
 
 #: templates/admin_panel/finance.html:125 templates/admin_panel/orders.html:94
 #: templates/buyer/finance/list.html:169 templates/buyer/finance/list.html:209
@@ -2107,34 +2232,9 @@ msgstr "In transit"
 msgid "Транзит РФ"
 msgstr "Transit Russia"
 
-#: templates/admin_panel/order_detail.html:26
-msgid "Отгружен"
-msgstr "Shipped"
-
-#: templates/admin_panel/order_detail.html:28
-#: templates/operator/customs/requests.html:188
-#: templates/operator/customs/requests.html:205
-#: templates/operator/customs/requests.html:222
-#: templates/operator/manager/orders.html:16
-#: templates/operator/manager/orders.html:200
-#: templates/operator/manager/orders.html:208
-msgid "Завершён"
-msgstr "Completed"
-
 #: templates/admin_panel/order_detail.html:59
 msgid "Номер заказа"
 msgstr "Order number"
-
-#: templates/admin_panel/order_detail.html:84
-#: templates/admin_panel/orders.html:42 templates/admin_panel/orders.html:102
-msgid "Нарушен"
-msgstr "Violated"
-
-#: templates/admin_panel/order_detail.html:86
-#: templates/admin_panel/orders.html:41
-#: templates/seller/logistics/list.html:326
-msgid "В норме"
-msgstr "On track"
 
 #: templates/admin_panel/order_detail.html:97
 #: templates/admin_panel/rfq_detail.html:31
@@ -2279,11 +2379,6 @@ msgstr "Most expensive first"
 msgid "Дешёвые первые"
 msgstr "Cheapest first"
 
-#: templates/admin_panel/orders.html:85 templates/admin_panel/rfq.html:87
-#: templates/buyer/orders/list.html:170
-msgid "Отменён"
-msgstr "Cancelled"
-
 #: templates/admin_panel/orders.html:111
 #: templates/admin_panel/user_detail.html:160
 msgid "Нет заказов"
@@ -2308,18 +2403,6 @@ msgstr "New"
 #: templates/admin_panel/rfq.html:10
 msgid "С котировками"
 msgstr "With quotes"
-
-#: templates/admin_panel/rfq.html:11 templates/admin_panel/rfq.html:86
-#: templates/operator/customs/documents.html:79
-#: templates/operator/customs/documents.html:106
-#: templates/operator/customs/documents.html:151
-#: templates/operator/logist/analytics.html:194
-#: templates/operator/manager/analytics.html:219
-#: templates/operator/payments/reconciliation.html:105
-#: templates/seller/drawings/list.html:268
-#: templates/seller/drawings/list.html:292
-msgid "На проверке"
-msgstr "Under review"
 
 #: templates/admin_panel/rfq.html:14
 #: templates/operator/manager/dashboard.html:22
@@ -2773,26 +2856,6 @@ msgstr "Department:"
 #: templates/admin_panel/user_detail.html:49
 msgid "Статус поставщика:"
 msgstr "Supplier status:"
-
-#: templates/admin_panel/user_detail.html:50
-#: templates/admin_panel/user_detail.html:272
-msgid "Надёжный"
-msgstr "Trusted"
-
-#: templates/admin_panel/user_detail.html:51
-#: templates/admin_panel/user_detail.html:273
-msgid "Песочница"
-msgstr "Sandbox"
-
-#: templates/admin_panel/user_detail.html:52
-#: templates/admin_panel/user_detail.html:274
-msgid "Рисковый"
-msgstr "Risky"
-
-#: templates/admin_panel/user_detail.html:53
-#: templates/admin_panel/user_detail.html:275
-msgid "Исключён"
-msgstr "Excluded"
 
 #: templates/admin_panel/user_detail.html:64
 #, python-format
@@ -4250,11 +4313,6 @@ msgstr "Total amount"
 msgid "Поиск по номеру заказа или поставщику..."
 msgstr "Search by order number or supplier..."
 
-#: templates/buyer/orders/list.html:166 templates/buyer/orders/list.html:201
-#: templates/buyer/orders/list.html:214 templates/buyer/suppliers/list.html:172
-msgid "В производстве"
-msgstr "In production"
-
 #: templates/buyer/orders/list.html:168 templates/buyer/orders/list.html:266
 #: templates/buyer/shipments/list.html:131
 #: templates/buyer/suppliers/list.html:308
@@ -4572,10 +4630,6 @@ msgstr "Oil filters"
 #: templates/buyer/rfq/list.html:279
 msgid "ТНВД Komatsu"
 msgstr "Komatsu fuel injection pump"
-
-#: templates/buyer/rfq/list.html:282 templates/seller/drawings/list.html:294
-msgid "Отклонён"
-msgstr "Rejected"
 
 #: templates/buyer/shipments/list.html:117
 msgid "Отслеживание грузов и логистика доставки"
@@ -6137,13 +6191,6 @@ msgstr "Inbox"
 #: templates/operator/customs/documents.html:38
 msgid "Исходящие"
 msgstr "Outbox"
-
-#: templates/operator/customs/documents.html:39
-#: templates/operator/customs/documents.html:142
-#: templates/operator/customs/documents.html:160
-#: templates/seller/drawings/list.html:295
-msgid "Архив"
-msgstr "Archive"
 
 #: templates/operator/customs/documents.html:45
 msgid "Перетащите файлы сюда или нажмите для загрузки"
@@ -8632,12 +8679,6 @@ msgstr "Manager — Deal funnel"
 msgid "В воронке"
 msgstr "In funnel"
 
-#: templates/operator/manager/negotiations.html:17
-#: templates/operator/manager/negotiations.html:31
-#: templates/seller/analytics/list.html:1010 templates/seller/sla/list.html:130
-msgid "Под угрозой"
-msgstr "At risk"
-
 #: templates/operator/manager/negotiations.html:21
 msgid "Сорвались"
 msgstr "Lost"
@@ -10799,14 +10840,6 @@ msgstr "Confirmed"
 #: templates/seller/drawings/list.html:288
 msgid "Поиск по названию, OEM, описанию…"
 msgstr "Search by code or description"
-
-#: templates/seller/drawings/list.html:291
-msgid "Черновик"
-msgstr "Draft"
-
-#: templates/seller/drawings/list.html:293
-msgid "Утверждён"
-msgstr "Confirmed"
 
 #: templates/seller/drawings/list.html:298
 msgid "Все форматы"
@@ -16029,381 +16062,353 @@ msgstr "Specification non-conformance"
 msgid "Отправить приглашение"
 msgstr "Confirm receipt"
 
-msgid "#ORD-3851 подтверждён"
-msgstr "#ORD-3851 confirmed"
+#~ msgid "#ORD-3851 подтверждён"
+#~ msgstr "#ORD-3851 confirmed"
 
-msgid "Ответ поставщика — 4ч"
-msgstr "Supplier response — 4h"
+#~ msgid "Ответ поставщика — 4ч"
+#~ msgstr "Supplier response — 4h"
 
-msgid "СУЭК"
-msgstr "SUEK"
+#~ msgid "СУЭК"
+#~ msgstr "SUEK"
 
-msgid "Насос гидравлический"
-msgstr "Hydraulic pump"
+#~ msgid "Насос гидравлический"
+#~ msgstr "Hydraulic pump"
 
-msgid "Ответ на RFQ-1204"
-msgstr "Response to RFQ-1204"
+#~ msgid "Ответ на RFQ-1204"
+#~ msgstr "Response to RFQ-1204"
 
-msgid "Подтвердить приёмку"
-msgstr "Confirm receipt"
+#~ msgid "Подтвердить приёмку"
+#~ msgstr "Confirm receipt"
 
-msgid "Конверсия запросов"
-msgstr "Request conversion"
+#~ msgid "Конверсия запросов"
+#~ msgstr "Request conversion"
 
-msgid "SLA поставщиков"
-msgstr "Supplier SLA"
+#~ msgid "SLA поставщиков"
+#~ msgstr "Supplier SLA"
 
-msgid "Мар"
-msgstr "Mar"
+#~ msgid "Мар"
+#~ msgstr "Mar"
 
-msgid "Поставщик #1042 → Склад приёмки"
-msgstr "Supplier #1042 → Receiving warehouse"
+#~ msgid "Поставщик #1042 → Склад приёмки"
+#~ msgstr "Supplier #1042 → Receiving warehouse"
 
-msgid "SLA: дедлайн по RFQ-1204"
-msgstr "SLA: deadline for RFQ-1204"
+#~ msgid "SLA: дедлайн по RFQ-1204"
+#~ msgstr "SLA: deadline for RFQ-1204"
 
-msgid "Евраз"
-msgstr "Evraz"
+#~ msgid "Евраз"
+#~ msgstr "Evraz"
 
-msgid "Турбокомпрессор 6505-67-5030"
-msgstr "Turbocharger 6505-67-5030"
+#~ msgid "Турбокомпрессор 6505-67-5030"
+#~ msgstr "Turbocharger 6505-67-5030"
 
-msgid "Ноя"
-msgstr "Nov"
+#~ msgid "Ноя"
+#~ msgstr "Nov"
 
-msgid "Рейтинг поставщика обновлён"
-msgstr "Supplier rating updated"
+#~ msgid "Рейтинг поставщика обновлён"
+#~ msgstr "Supplier rating updated"
 
-msgid "Запрос: Норникель"
-msgstr "Request: Nornickel"
+#~ msgid "Запрос: Норникель"
+#~ msgstr "Request: Nornickel"
 
-msgid "Отгрузка ORD-2039"
-msgstr "Shipment ORD-2039"
+#~ msgid "Отгрузка ORD-2039"
+#~ msgstr "Shipment ORD-2039"
 
-msgid "К отгрузке"
-msgstr "To ship"
+#~ msgid "К отгрузке"
+#~ msgstr "To ship"
 
-msgid "2ч"
-msgstr "2h"
+#~ msgid "2ч"
+#~ msgstr "2h"
 
-msgid "По чертежу"
-msgstr "Per drawing"
+#~ msgid "По чертежу"
+#~ msgstr "Per drawing"
 
-msgid "ожидают ответа"
-msgstr "awaiting response"
+#~ msgid "ожидают ответа"
+#~ msgstr "awaiting response"
 
-msgid "Фев"
-msgstr "Feb"
+#~ msgid "Фев"
+#~ msgstr "Feb"
 
-msgid "Проверить котировку"
-msgstr "Review quote"
+#~ msgid "Проверить котировку"
+#~ msgstr "Review quote"
 
-msgid "Срочный"
-msgstr "Urgent"
+#~ msgid "Срочный"
+#~ msgstr "Urgent"
 
-msgid "15м"
-msgstr "15m"
+#~ msgid "15м"
+#~ msgstr "15m"
 
-msgid "Насос гидравлич. (допуски)"
-msgstr "Hydraulic pump (tolerances)"
+#~ msgid "Насос гидравлич. (допуски)"
+#~ msgstr "Hydraulic pump (tolerances)"
 
-msgid "запрос → заказ"
-msgstr "request → order"
+#~ msgid "запрос → заказ"
+#~ msgstr "request → order"
 
-msgid "Закупки и экономия"
-msgstr "Procurement and savings"
+#~ msgid "Закупки и экономия"
+#~ msgstr "Procurement and savings"
 
-msgid "Исходящие платежи"
-msgstr "Outgoing payments"
+#~ msgid "Исходящие платежи"
+#~ msgstr "Outgoing payments"
 
-msgid "Согласование и запросы"
-msgstr "Approval and requests"
+#~ msgid "Согласование и запросы"
+#~ msgstr "Approval and requests"
 
-msgid "из 5.0"
-msgstr "of 5.0"
+#~ msgid "из 5.0"
+#~ msgstr "of 5.0"
 
-msgid "Требует корректировки"
-msgstr "Requires correction"
+#~ msgid "Требует корректировки"
+#~ msgstr "Requires correction"
 
-msgid "Окт"
-msgstr "Oct"
+#~ msgid "Окт"
+#~ msgstr "Oct"
 
-msgid "переторжка"
-msgstr "rebid"
+#~ msgid "переторжка"
+#~ msgstr "rebid"
 
-msgid "Выручка и SLA"
-msgstr "Revenue and SLA"
+#~ msgid "Выручка и SLA"
+#~ msgstr "Revenue and SLA"
 
-msgid "Внешняя 60%"
-msgstr "External 60%"
+#~ msgid "Внешняя 60%"
+#~ msgstr "External 60%"
 
-msgid "График закупок"
-msgstr "Procurement chart"
+#~ msgid "График закупок"
+#~ msgstr "Procurement chart"
 
-msgid "новых"
-msgstr "new"
+#~ msgid "новых"
+#~ msgstr "new"
 
-msgid "Поставщик #3155"
-msgstr "Supplier #3155"
+#~ msgid "Поставщик #3155"
+#~ msgstr "Supplier #3155"
 
-msgid "за 30 дней"
-msgstr "in 30 days"
+#~ msgid "за 30 дней"
+#~ msgstr "in 30 days"
 
-msgid "Оплатить счёт"
-msgstr "Pay invoice"
+#~ msgid "Оплатить счёт"
+#~ msgstr "Pay invoice"
 
-msgid "Ключевые метрики"
-msgstr "Key metrics"
+#~ msgid "Ключевые метрики"
+#~ msgstr "Key metrics"
 
-msgid "Новая котировка по RFQ-1198"
-msgstr "New quote for RFQ-1198"
+#~ msgid "Новая котировка по RFQ-1198"
+#~ msgstr "New quote for RFQ-1198"
 
-msgid "Последние сканирования"
-msgstr "Recent scans"
+#~ msgid "Последние сканирования"
+#~ msgstr "Recent scans"
 
-msgid "ORD-2038 · Поставщик #2087"
-msgstr "ORD-2038 · Supplier #2087"
+#~ msgid "ORD-2038 · Поставщик #2087"
+#~ msgstr "ORD-2038 · Supplier #2087"
 
-msgid "Просрочка поставки +3 дня"
-msgstr "Delivery overdue +3 days"
+#~ msgid "Просрочка поставки +3 дня"
+#~ msgstr "Delivery overdue +3 days"
 
-msgid "Входящие платежи"
-msgstr "Incoming payments"
+#~ msgid "Входящие платежи"
+#~ msgstr "Incoming payments"
 
-msgid "Гидроцилиндр 707-01-0K930"
-msgstr "Hydraulic cylinder 707-01-0K930"
+#~ msgid "Гидроцилиндр 707-01-0K930"
+#~ msgstr "Hydraulic cylinder 707-01-0K930"
 
-msgid "К оплате"
-msgstr "To pay"
+#~ msgid "К оплате"
+#~ msgstr "To pay"
 
-msgid "Котировка RFQ-1198"
-msgstr "Quote RFQ-1198"
+#~ msgid "Котировка RFQ-1198"
+#~ msgstr "Quote RFQ-1198"
 
-msgid "Кронштейн 20Y-54"
-msgstr "Bracket 20Y-54"
+#~ msgid "Кронштейн 20Y-54"
+#~ msgstr "Bracket 20Y-54"
 
-msgid "Янв"
-msgstr "Jan"
+#~ msgid "Янв"
+#~ msgstr "Jan"
 
-msgid "Обратный отсчёт"
-msgstr "Countdown"
+#~ msgid "Обратный отсчёт"
+#~ msgstr "Countdown"
 
-msgid "Активных RFQ"
-msgstr "Active RFQs"
+#~ msgid "Активных RFQ"
+#~ msgstr "Active RFQs"
 
-msgid "Резерв 10%"
-msgstr "Reserve 10%"
+#~ msgid "Резерв 10%"
+#~ msgstr "Reserve 10%"
 
-msgid "ORD-2038 · 6 позиций · Склад"
-msgstr "ORD-2038 · 6 items · Warehouse"
+#~ msgid "ORD-2038 · 6 позиций · Склад"
+#~ msgstr "ORD-2038 · 6 items · Warehouse"
 
-msgid "Требуют обновления"
-msgstr "Need updating"
+#~ msgid "Требуют обновления"
+#~ msgstr "Need updating"
 
-msgid "Просрочка +2 дня"
-msgstr "Overdue +2 days"
+#~ msgid "Просрочка +2 дня"
+#~ msgstr "Overdue +2 days"
 
-msgid "Открытые претензии"
-msgstr "Open claims"
+#~ msgid "Открытые претензии"
+#~ msgstr "Open claims"
 
-msgid "Полюс Золото"
-msgstr "Polyus Gold"
+#~ msgid "Полюс Золото"
+#~ msgstr "Polyus Gold"
 
-msgid "#ORD-3829 · отзыв 5★"
-msgstr "#ORD-3829 · 5★ review"
+#~ msgid "#ORD-3829 · отзыв 5★"
+#~ msgstr "#ORD-3829 · 5★ review"
 
-msgid "Аванс 10%"
-msgstr "Advance 10%"
+#~ msgid "Аванс 10%"
+#~ msgstr "Advance 10%"
 
-msgid "Очередь задач"
-msgstr "Task queue"
+#~ msgid "Очередь задач"
+#~ msgstr "Task queue"
 
-msgid "RFQ и события"
-msgstr "RFQ and events"
+#~ msgid "RFQ и события"
+#~ msgstr "RFQ and events"
 
-msgid "Ждёт согласования"
-msgstr "Awaiting approval"
+#~ msgid "Ждёт согласования"
+#~ msgstr "Awaiting approval"
 
-msgid "Поставщик #1042 · 4.8★"
-msgstr "Supplier #1042 · 4.8★"
+#~ msgid "Поставщик #1042 · 4.8★"
+#~ msgstr "Supplier #1042 · 4.8★"
 
-msgid "Ожидает резерв"
-msgstr "Awaiting reserve"
+#~ msgid "Рейтинг → 4.74"
+#~ msgstr "Rating → 4.74"
 
-msgid "Рейтинг → 4.74"
-msgstr "Rating → 4.74"
+#~ msgid "Гидроцилиндр"
+#~ msgstr "Hydraulic cylinder"
 
-msgid "Гидроцилиндр"
-msgstr "Hydraulic cylinder"
+#~ msgid "норматив: 90%"
+#~ msgstr "target: 90%"
 
-msgid "норматив: 90%"
-msgstr "target: 90%"
+#~ msgid "Рейтинг и заказы"
+#~ msgstr "Rating and orders"
 
-msgid "Рейтинг и заказы"
-msgstr "Rating and orders"
+#~ msgid "Дек"
+#~ msgstr "Dec"
 
-msgid "Дек"
-msgstr "Dec"
+#~ msgid "Корпус фильтра 1-13610"
+#~ msgstr "Filter housing 1-13610"
 
-msgid "Корпус фильтра 1-13610"
-msgstr "Filter housing 1-13610"
+#~ msgid "Оплаты"
+#~ msgstr "Payments"
 
-msgid "Оплаты"
-msgstr "Payments"
+#~ msgid "Заказ #3847 отгружен"
+#~ msgstr "Order #3847 shipped"
 
-msgid "Заказ #3847 отгружен"
-msgstr "Order #3847 shipped"
+#~ msgid "Заказ ORD-2041 отгружен"
+#~ msgstr "Order ORD-2041 shipped"
 
-msgid "Заказ ORD-2041 отгружен"
-msgstr "Order ORD-2041 shipped"
+#~ msgid "Поставщик #2087 · Турбокомпрессор"
+#~ msgstr "Supplier #2087 · Turbocharger"
 
-msgid "Поставщик #2087 · Турбокомпрессор"
-msgstr "Supplier #2087 · Turbocharger"
+#~ msgid "RFQ-1204 · Поставщик #1042 · Гидроцилиндр"
+#~ msgstr "RFQ-1204 · Supplier #1042 · Hydraulic cylinder"
 
-msgid "RFQ-1204 · Поставщик #1042 · Гидроцилиндр"
-msgstr "RFQ-1204 · Supplier #1042 · Hydraulic cylinder"
+#~ msgid "Объём"
+#~ msgstr "Volume"
 
-msgid "Объём"
-msgstr "Volume"
+#~ msgid "Приёмка завершена"
+#~ msgstr "Receipt completed"
 
-msgid "Приёмка завершена"
-msgstr "Receipt completed"
+#~ msgid "Ожидает отгрузки"
+#~ msgstr "Awaiting shipment"
 
-msgid "Ожидает отгрузки"
-msgstr "Awaiting shipment"
+#~ msgid "5ч"
+#~ msgstr "5h"
 
-msgid "5ч"
-msgstr "5h"
+#~ msgid "Поведение 40%"
+#~ msgstr "Behavior 40%"
 
-msgid "Поведение 40%"
-msgstr "Behavior 40%"
+#~ msgid "График выручки"
+#~ msgstr "Revenue chart"
 
-msgid "График выручки"
-msgstr "Revenue chart"
+#~ msgid "SLA: дедлайн по #3832"
+#~ msgstr "SLA: deadline for #3832"
 
-msgid "SLA: дедлайн по #3832"
-msgstr "SLA: deadline for #3832"
+#~ msgid "Фильтр 600-185-4100"
+#~ msgstr "Filter 600-185-4100"
 
-msgid "Фильтр 600-185-4100"
-msgstr "Filter 600-185-4100"
+#~ msgid "Норникель"
+#~ msgstr "Nornickel"
 
-msgid "Норникель"
-msgstr "Nornickel"
+#~ msgid "Несоответствие чертежу"
+#~ msgstr "Drawing mismatch"
 
-msgid "Несоответствие чертежу"
-msgstr "Drawing mismatch"
+#~ msgid "Ждёт решения"
+#~ msgstr "Awaiting decision"
 
-msgid "Ждёт решения"
-msgstr "Awaiting decision"
+#~ msgid "Ответить на переторжку"
+#~ msgstr "Respond to rebid"
 
-msgid "Ответить на переторжку"
-msgstr "Respond to rebid"
+#~ msgid "Стандартный"
+#~ msgstr "Standard"
 
-msgid "Стандартный"
-msgstr "Standard"
+#~ msgid "Устаревшие цены"
+#~ msgstr "Outdated prices"
 
-msgid "Устаревшие цены"
-msgstr "Outdated prices"
+#~ msgid "Используется"
+#~ msgstr "In use"
 
-msgid "Используется"
-msgstr "In use"
+#~ msgid "48м"
+#~ msgstr "48m"
 
-msgid "48м"
-msgstr "48m"
+#~ msgid "Проверка качества — 4ч"
+#~ msgstr "Quality check — 4h"
 
-msgid "Проверка качества — 4ч"
-msgstr "Quality check — 4h"
+#~ msgid "PC800 → Полюс Золото"
+#~ msgstr "PC800 → Polyus Gold"
 
-msgid "PC800 → Полюс Золото"
-msgstr "PC800 → Polyus Gold"
+#~ msgid "Запросы и события"
+#~ msgstr "Requests and events"
 
-msgid "Запросы и события"
-msgstr "Requests and events"
+#~ msgid "3 активных"
+#~ msgstr "3 active"
 
-#: js-gettext
-msgid "3 активных"
-msgstr "3 active"
+#~ msgid "4 новых"
+#~ msgstr "4 new"
 
-#: js-gettext
-msgid "4 новых"
-msgstr "4 new"
+#~ msgid "Активные RFQ"
+#~ msgstr "Active RFQ"
 
-#: js-gettext
-msgid "Активные RFQ"
-msgstr "Active RFQ"
+#~ msgid "Внешняя 60% + поведение 40%"
+#~ msgstr "External 60% + behavior 40%"
 
-#: js-gettext
-msgid "Внешняя 60% + поведение 40%"
-msgstr "External 60% + behavior 40%"
+#~ msgid "Возврат удержания"
+#~ msgstr "Reserve refund"
 
-#: js-gettext
-msgid "Возврат удержания"
-msgstr "Reserve refund"
+#~ msgid "Все →"
+#~ msgstr "All →"
 
-#: js-gettext
-msgid "Все →"
-msgstr "All →"
+#~ msgid "Выручка по месяцам"
+#~ msgstr "Monthly revenue"
 
-#: js-gettext
-msgid "Выручка по месяцам"
-msgstr "Monthly revenue"
+#~ msgid "Заказы, SLA, платежи"
+#~ msgstr "Orders, SLA, payments"
 
-#: js-gettext
-msgid "Заказы, SLA, платежи"
-msgstr "Orders, SLA, payments"
+#~ msgid "Заказы, поставки, платежи"
+#~ msgstr "Orders, deliveries, payments"
 
-#: js-gettext
-msgid "Заказы, поставки, платежи"
-msgstr "Orders, deliveries, payments"
+#~ msgid "Закрепить виджеты"
+#~ msgstr "Pin widgets"
 
-#: js-gettext
-msgid "Закрепить виджеты"
-msgstr "Pin widgets"
+#~ msgid "Закупки по месяцам"
+#~ msgstr "Monthly purchases"
 
-#: js-gettext
-msgid "Закупки по месяцам"
-msgstr "Monthly purchases"
+#~ msgid "Запросы клиентов на расценку"
+#~ msgstr "Customer quote requests"
 
-#: js-gettext
-msgid "Запросы клиентов на расценку"
-msgstr "Customer quote requests"
+#~ msgid "Исходящие запросы на расценку"
+#~ msgstr "Outgoing quote requests"
 
-#: js-gettext
-msgid "Исходящие запросы на расценку"
-msgstr "Outgoing quote requests"
+#~ msgid "Кредитный скоринг"
+#~ msgstr "Credit scoring"
 
-#: js-gettext
-msgid "Кредитный скоринг"
-msgstr "Credit scoring"
+#~ msgid "Нажмите «Виджеты» чтобы"
+#~ msgstr "Click 'Widgets' to"
 
-#: js-gettext
-msgid "Нажмите «Виджеты» чтобы"
-msgstr "Click 'Widgets' to"
+#~ msgid "Нет открытых рекламаций"
+#~ msgstr "No open claims"
 
-#: js-gettext
-msgid "Нет открытых рекламаций"
-msgstr "No open claims"
+#~ msgid "Рейтинг покупателя"
+#~ msgstr "Buyer rating"
 
-#: js-gettext
-msgid "Рейтинг покупателя"
-msgstr "Buyer rating"
+#~ msgid "Старше 30 дней"
+#~ msgstr "Older than 30 days"
 
-#: js-gettext
-msgid "Старше 30 дней"
-msgstr "Older than 30 days"
+#~ msgid "Экономия (переторжка)"
+#~ msgstr "Savings (negotiation)"
 
-#: js-gettext
-msgid "Экономия (переторжка)"
-msgstr "Savings (negotiation)"
+#~ msgid "закрепить нужные блоки"
+#~ msgstr "pin the desired blocks"
 
-#: js-gettext
-msgid "закрепить нужные блоки"
-msgstr "pin the desired blocks"
-
-#: js-gettext
-msgid "из 5"
-msgstr "out of 5"
-
-#: js-gettext
-msgid "Деталь"
-msgstr ""
+#~ msgid "из 5"
+#~ msgstr "out of 5"
