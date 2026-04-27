@@ -3,7 +3,6 @@
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
@@ -12,7 +11,7 @@ msgstr ""
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3887,12 +3886,10 @@ msgid "Обратный звонок"
 msgstr "Callback"
 
 #: templates/landing.html:6672
-#, fuzzy
 msgid "Закрыть меню"
 msgstr "Close menu"
 
 #: templates/landing.html:6692
-#, fuzzy
 msgid "Мобильная навигация"
 msgstr "Mobile navigation"
 
@@ -3905,7 +3902,6 @@ msgid "Цена за секунды. Прямой канал цен. Контр�
 msgstr "Price in seconds. Direct pricing channel. Supply control at every stage."
 
 #: templates/landing.html:6730
-#, fuzzy
 msgid "Расчёт стоимости"
 msgstr "Cost calculation"
 
@@ -3914,12 +3910,10 @@ msgid "для списка артикулов"
 msgstr "for a list of part numbers"
 
 #: templates/landing.html:6734
-#, fuzzy
 msgid "Загрузить файл"
 msgstr "Upload file"
 
 #: templates/landing.html:6746
-#, fuzzy
 #| msgid "Применить"
 msgid "Примеры:"
 msgstr "Examples:"
@@ -3929,7 +3923,6 @@ msgid "Посчитать"
 msgstr "Calculate"
 
 #: templates/landing.html:6760
-#, fuzzy
 msgid "Основные показатели"
 msgstr "Key metrics"
 
@@ -3942,7 +3935,6 @@ msgid "ДОЛЛАРОВ"
 msgstr "DOLLARS"
 
 #: templates/landing.html:6764
-#, fuzzy
 msgid "ПОЛЬЗОВАТЕЛЕЙ"
 msgstr "USERS"
 
@@ -3951,7 +3943,6 @@ msgid "Выбор инфраструктуры"
 msgstr "Choose your infrastructure"
 
 #: templates/landing.html:6770
-#, fuzzy
 msgid "Ваша стратегия."
 msgstr "Your strategy."
 
@@ -3969,7 +3960,6 @@ msgid "Инфраструктура"
 msgstr "Infrastructure"
 
 #: templates/landing.html:6781
-#, fuzzy
 msgid "снабжения"
 msgstr "for procurement"
 
@@ -3978,12 +3968,10 @@ msgid "Прямой канал к корпоративным заказчика�
 msgstr "Direct channel to corporate customers and service networks. Price list integration, request management."
 
 #: templates/landing.html:6796
-#, fuzzy
 msgid "производителей"
 msgstr "for manufacturers"
 
 #: templates/landing.html:6809
-#, fuzzy
 msgid "Возможности платформы"
 msgstr "Platform capabilities"
 
@@ -3992,7 +3980,6 @@ msgid "Инфраструктура,"
 msgstr "Infrastructure"
 
 #: templates/landing.html:6811
-#, fuzzy
 msgid "ускоряющая поставки"
 msgstr "that accelerates supply"
 
@@ -4009,7 +3996,6 @@ msgid "Получайте цену и наличие за секунды. OEM и
 msgstr "Get pricing and availability in seconds. OEM and aftermarket — directly from manufacturers."
 
 #: templates/landing.html:6828
-#, fuzzy
 msgid "Управление поставками"
 msgstr "Supply management"
 
@@ -4022,7 +4008,6 @@ msgid "Интеграция с ERP, ТОИР, EDI и телематикой. API
 msgstr "Integration with ERP, EAM, EDI and telematics. API for manufacturing systems."
 
 #: templates/landing.html:6844
-#, fuzzy
 msgid "Консолидация"
 msgstr "Consolidation"
 
@@ -4035,7 +4020,6 @@ msgid "Оплата в любой валюте — мгновенно. Банк�
 msgstr "Payment in any currency — instantly. Banking and crypto channels. Automatic distribution."
 
 #: templates/landing.html:6860
-#, fuzzy
 msgid "Сеть поставщиков"
 msgstr "Supplier network"
 
@@ -4056,7 +4040,6 @@ msgid "Посмотреть демо"
 msgstr "View demo"
 
 #: templates/landing.html:6882
-#, fuzzy
 msgid "Кому подходит платформа"
 msgstr "Who the platform is for"
 
@@ -4069,7 +4052,6 @@ msgid "служим"
 msgstr "serve"
 
 #: templates/landing.html:6890
-#, fuzzy
 msgid "Производители и OEM"
 msgstr "Manufacturers and OEMs"
 
@@ -4082,7 +4064,6 @@ msgid "Создавайте прямые каналы поставок и дис
 msgstr "Build direct supply and distribution channels. ERP integration, price and data control, cost reduction."
 
 #: templates/landing.html:6902
-#, fuzzy
 msgid "Дилеры и дистрибьюторы"
 msgstr "Dealers and distributors"
 
@@ -4095,7 +4076,6 @@ msgid "Оптимизируйте закупки и логистику в одн
 msgstr "Optimize procurement and logistics in a single window. Fast access to manufacturer warehouses and cargo consolidation."
 
 #: templates/landing.html:6914
-#, fuzzy
 msgid "Сервисные компании"
 msgstr "Service companies"
 
@@ -4108,7 +4088,6 @@ msgid "Ускорьте подбор и заказ запчастей. Полу�
 msgstr "Accelerate parts selection and ordering. Get the best prices directly from OEMs and suppliers."
 
 #: templates/landing.html:6926
-#, fuzzy
 msgid "Эксплуатирующие организации"
 msgstr "Operating organizations"
 
@@ -4157,7 +4136,6 @@ msgid "Продукты"
 msgstr "Products"
 
 #: templates/landing.html:7038
-#, fuzzy
 msgid "Консолидирующая платформа"
 msgstr "Consolidating platform"
 
@@ -4166,7 +4144,6 @@ msgid "Мгновенный расчёт и наличие"
 msgstr "Instant pricing and availability"
 
 #: templates/landing.html:7040
-#, fuzzy
 msgid "ERP / ТОИР интеграции"
 msgstr "ERP / EAM integrations"
 
@@ -4187,7 +4164,6 @@ msgid "Финансовые сервисы"
 msgstr "Financial services"
 
 #: templates/landing.html:7045
-#, fuzzy
 msgid "API / EDI подключение"
 msgstr "API / EDI connection"
 
@@ -4200,7 +4176,6 @@ msgid "Добыча и карьеры"
 msgstr "Mining and quarries"
 
 #: templates/landing.html:7052
-#, fuzzy
 msgid "Строительство"
 msgstr "Construction"
 
@@ -4209,17 +4184,14 @@ msgid "Сервис и ремонт"
 msgstr "Service and repair"
 
 #: templates/landing.html:7055
-#, fuzzy
 msgid "Производство техники"
 msgstr "Equipment manufacturing"
 
 #: templates/landing.html:7056
-#, fuzzy
 msgid "Логистические компании"
 msgstr "Logistics companies"
 
 #: templates/landing.html:7060
-#, fuzzy
 msgid "Платформа"
 msgstr "Platform"
 
@@ -4228,7 +4200,6 @@ msgid "Безопасность и контроль данных"
 msgstr "Security and data control"
 
 #: templates/landing.html:7063
-#, fuzzy
 msgid "Отслеживание поставок"
 msgstr "Supply tracking"
 
@@ -4237,7 +4208,6 @@ msgid "Гибкое развертывание"
 msgstr "Flexible deployment"
 
 #: templates/landing.html:7065
-#, fuzzy
 msgid "Согласование и документооборот"
 msgstr "Approval and document flow"
 
@@ -4246,27 +4216,22 @@ msgid "Партнёрские сервисы"
 msgstr "Partner services"
 
 #: templates/landing.html:7067
-#, fuzzy
 msgid "Запрос на консолидацию"
 msgstr "Consolidation request"
 
 #: templates/landing.html:7068
-#, fuzzy
 msgid "Поддержка 24/7"
 msgstr "24/7 support"
 
 #: templates/landing.html:7072
-#, fuzzy
 msgid "Разработчики"
 msgstr "Developers"
 
 #: templates/landing.html:7074
-#, fuzzy
 msgid "Документация API"
 msgstr "API documentation"
 
 #: templates/landing.html:7075
-#, fuzzy
 msgid "Статус интеграции"
 msgstr "Integration status"
 
@@ -4275,12 +4240,10 @@ msgid "Руководство по ERP / EDI"
 msgstr "ERP / EDI guide"
 
 #: templates/landing.html:7077
-#, fuzzy
 msgid "Подключение партнёров"
 msgstr "Partner onboarding"
 
 #: templates/landing.html:7083
-#, fuzzy
 msgid "О платформе"
 msgstr "About the platform"
 
@@ -4301,7 +4264,6 @@ msgid "Для инвесторов"
 msgstr "For investors"
 
 #: templates/landing.html:7089
-#, fuzzy
 msgid "Контакты"
 msgstr "Contacts"
 
@@ -4314,22 +4276,18 @@ msgid "Блог"
 msgstr "Blog"
 
 #: templates/landing.html:7096
-#, fuzzy
 msgid "Вебинары и материалы"
 msgstr "Webinars and materials"
 
 #: templates/landing.html:7097
-#, fuzzy
 msgid "Руководства"
 msgstr "Guides"
 
 #: templates/landing.html:7098
-#, fuzzy
 msgid "Глоссарий"
 msgstr "Glossary"
 
 #: templates/landing.html:7099
-#, fuzzy
 msgid "Кейсы и отчёты"
 msgstr "Case studies and reports"
 
@@ -4342,12 +4300,10 @@ msgid "Consolidator Parts © 2025. Все права защищены."
 msgstr "Consolidator Parts © 2025. All rights reserved."
 
 #: templates/landing.html:7121
-#, fuzzy
 msgid "Обратная связь"
 msgstr "Feedback"
 
 #: templates/landing.html:7125
-#, fuzzy
 msgid "Ваше имя"
 msgstr "Your name"
 
@@ -4360,7 +4316,6 @@ msgid "Телефон"
 msgstr "Phone"
 
 #: templates/landing.html:7134
-#, fuzzy
 msgid "Сообщение"
 msgstr "Message"
 
