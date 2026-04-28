@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_celery_results",
     "channels",
+    "assistant",
     "files",
     "catalog",
     "offers",
@@ -259,6 +260,13 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     }
 }
+
+# ── AI Assistant ──────────────────────────────────────────
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514").strip()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+VOYAGE_API_KEY = os.getenv("VOYAGE_API_KEY", "").strip()
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "auto").strip().lower()  # openai|voyage|stub|auto
 
 # ── Sentry error tracking ─────────────────────────────────
 # Set SENTRY_DSN env var to enable. Auto-captures unhandled exceptions, performance.

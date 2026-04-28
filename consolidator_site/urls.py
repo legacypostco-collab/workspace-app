@@ -12,6 +12,7 @@ urlpatterns = [
     path("i18n/", include("django.conf.urls.i18n")),
     path("jsi18n/", JavaScriptCatalog.as_view(domain="django"), name="javascript-catalog"),
     path("api/v1/", include("marketplace.api_urls")),
+    path("api/assistant/", include("assistant.urls")),
     # API documentation
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

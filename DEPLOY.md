@@ -263,3 +263,44 @@ python3 manage.py loaddata dump.json
 - **Postgres backup** — `pg_dump consolidator | gzip > /backup/$(date +%F).sql.gz` daily via cron, retain 30 days
 - **Logs** — `journalctl -u consolidator -f` (Daphne) and `journalctl -u consolidator-celery -f` (worker)
 - **Flower** (optional) — Celery monitoring UI: `celery -A consolidator_site flower --port=5555`
+
+## 9. AI Assistant (Phase 2)
+
+The `assistant` Django app provides RAG-based chat for buyers/sellers/operators.
+
+### Required env vars
+```bash
+ANTHROPIC_API_KEY=sk-ant-...               # required for LLM responses
+ANTHROPIC_MODEL=claude-sonnet-4-20250514   # optional override
+OPENAI_API_KEY=sk-...                      # for embeddings (recommended)
+# OR
+VOYAGE_API_KEY=...                         # alternative embedding provider
+EMBEDDING_PROVIDER=auto                    # openai | voyage | stub | auto
+```
+
+Without `ANTHROPIC_API_KEY` the assistant runs in stub mode (returns matched chunks
+without LLM synthesis). Without `OPENAI_API_KEY`/`VOYAGE_API_KEY`, embeddings use
+deterministic hash-based fallback (works for keyword-overlap matching only).
+
+### Postgres + pgvector setup
+The assistant uses pgvector for fast cosine similarity search:
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+The migration `assistant/0002_pgvector_setup.py` runs this automatically on Postgres.
+On SQLite it's a no-op and search falls back to in-Python cosine.
+
+### Initial indexing
+After deploy, index existing data:
+```bash
+python3 manage.py reindex_all
+# Or per-source:
+python3 manage.py index_catalog --batch-size 200
+```
+
+Auto-indexing on Part/Order/RFQ save is wired via Django signals → Celery tasks.
+
+### WebSocket endpoint
+`ws://host/ws/assistant/[<conversation_id>/]` — session-auth required, streams
+RAG responses token-by-token. The chat widget (`_assistant_widget.html`) is
+included in all 4 cabinet bases and connects automatically.

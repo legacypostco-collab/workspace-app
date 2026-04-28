@@ -1,0 +1,276 @@
+{% load i18n %}
+{# AI Assistant chat widget — floating button + drawer with WS streaming #}
+<style>
+  .ai-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#64B5F6,#5BA5E0);color:#1A1A1A;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 28px rgba(100,181,246,0.45);z-index:9990;transition:all .2s;}
+  .ai-fab:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(100,181,246,0.55);}
+  .ai-fab svg{width:26px;height:26px;}
+  .ai-fab .dot{position:absolute;top:6px;right:6px;width:10px;height:10px;background:#28C840;border-radius:50%;border:2px solid #1A1A1A;animation:ai-pulse 2s infinite;}
+  @keyframes ai-pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+
+  .ai-drawer{position:fixed;bottom:0;right:0;width:420px;max-width:100vw;height:640px;max-height:100vh;background:#1A1A1A;border:1px solid rgba(100,181,246,0.2);border-radius:16px 16px 0 0;display:none;flex-direction:column;z-index:9991;box-shadow:0 -8px 32px rgba(0,0,0,0.5);font-family:'Inter',sans-serif;color:#ECECEC;}
+  .ai-drawer.open{display:flex;}
+  @media(max-width:600px){.ai-drawer{width:100vw;height:100vh;border-radius:0;}}
+
+  .ai-head{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px;}
+  .ai-head-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#64B5F6,#5BA5E0);display:flex;align-items:center;justify-content:center;font-weight:700;color:#1A1A1A;}
+  .ai-head-info{flex:1;}
+  .ai-head-title{font-family:'Golos Text',sans-serif;font-weight:700;font-size:14px;}
+  .ai-head-status{font-size:11px;color:#919191;}
+  .ai-head-status .live{color:#28C840;}
+  .ai-head-close{background:transparent;border:none;color:#919191;cursor:pointer;font-size:22px;line-height:1;padding:4px 8px;}
+  .ai-head-close:hover{color:#ECECEC;}
+
+  .ai-body{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:14px;}
+  .ai-msg{display:flex;gap:10px;align-items:flex-start;}
+  .ai-msg-bubble{padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.5;max-width:85%;word-wrap:break-word;white-space:pre-wrap;}
+  .ai-msg-user{justify-content:flex-end;}
+  .ai-msg-user .ai-msg-bubble{background:rgba(100,181,246,0.12);color:#ECECEC;border-bottom-right-radius:4px;}
+  .ai-msg-bot .ai-msg-bubble{background:#242424;border:1px solid rgba(255,255,255,0.04);border-bottom-left-radius:4px;}
+  .ai-msg-bot .ai-msg-bubble code{background:#0F0F0F;padding:1px 6px;border-radius:4px;font-size:12px;}
+  .ai-msg-refs{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;}
+  .ai-msg-ref{font-size:10px;background:rgba(100,181,246,0.08);color:#64B5F6;padding:2px 8px;border-radius:8px;}
+  .ai-msg-fb{display:flex;gap:4px;margin-top:6px;}
+  .ai-msg-fb button{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#5E5E5E;padding:2px 8px;border-radius:6px;cursor:pointer;font-size:12px;}
+  .ai-msg-fb button:hover{color:#ECECEC;border-color:rgba(100,181,246,0.3);}
+  .ai-msg-fb button.active{color:#64B5F6;border-color:rgba(100,181,246,0.5);}
+
+  .ai-typing{display:flex;gap:4px;padding:14px;}
+  .ai-typing span{width:6px;height:6px;background:#64B5F6;border-radius:50%;animation:ai-typing 1.4s infinite;}
+  .ai-typing span:nth-child(2){animation-delay:0.2s;}
+  .ai-typing span:nth-child(3){animation-delay:0.4s;}
+  @keyframes ai-typing{0%,60%,100%{opacity:0.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+
+  .ai-suggest{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 12px;}
+  .ai-suggest-chip{font-size:11px;background:rgba(100,181,246,0.06);color:#64B5F6;border:1px solid rgba(100,181,246,0.18);padding:6px 12px;border-radius:14px;cursor:pointer;font-family:inherit;}
+  .ai-suggest-chip:hover{background:rgba(100,181,246,0.12);}
+
+  .ai-input{padding:12px 18px 16px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:8px;align-items:flex-end;}
+  .ai-input textarea{flex:1;background:#242424;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;padding:10px 12px;font-size:13px;font-family:inherit;outline:none;resize:none;max-height:120px;}
+  .ai-input textarea:focus{border-color:rgba(100,181,246,0.4);}
+  .ai-input button{background:#64B5F6;color:#1A1A1A;border:none;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .ai-input button:disabled{opacity:0.4;cursor:wait;}
+
+  .ai-empty{text-align:center;padding:30px 20px;color:#5E5E5E;font-size:13px;}
+  .ai-empty-icon{font-size:42px;margin-bottom:12px;opacity:0.5;}
+</style>
+
+<button id="aiFab" class="ai-fab" title="{% trans 'AI Ассистент' %}" onclick="aiToggle()">
+  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12c0 1.5.4 2.9 1 4.2L2 22l5.8-1c1.3.6 2.7 1 4.2 1 5.5 0 10-4.5 10-10S17.5 2 12 2zm-3 11h-2v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
+  <span class="dot"></span>
+</button>
+
+<div id="aiDrawer" class="ai-drawer">
+  <div class="ai-head">
+    <div class="ai-head-avatar">AI</div>
+    <div class="ai-head-info">
+      <div class="ai-head-title">{% trans "AI Ассистент" %}</div>
+      <div class="ai-head-status"><span id="aiStatus" class="live">●</span> <span id="aiStatusText">{% trans "На связи" %}</span></div>
+    </div>
+    <button class="ai-head-close" onclick="aiToggle()">×</button>
+  </div>
+
+  <div class="ai-body" id="aiBody">
+    <div class="ai-empty" id="aiEmpty">
+      <div class="ai-empty-icon">🤖</div>
+      <div>{% trans "Привет! Я помогу с заказами, RFQ, каталогом и аналитикой." %}</div>
+      <div style="margin-top:8px;font-size:11px;color:#5E5E5E;">{% trans "Задайте вопрос или выберите подсказку." %}</div>
+    </div>
+  </div>
+
+  <div class="ai-suggest" id="aiSuggest"></div>
+
+  <div class="ai-input">
+    <textarea id="aiInput" rows="1" placeholder="{% trans 'Спросите что-нибудь...' %}" onkeydown="aiKey(event)"></textarea>
+    <button id="aiSend" onclick="aiSend()">↑</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var convId = null, ws = null, currentBotMsg = null, isStreaming = false;
+  var STORAGE_OPEN = 'ai_drawer_open';
+
+  function getCsrf(){return document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*=\s*([^;]*).*$)|^.*$/, '$1');}
+  function $(id){return document.getElementById(id);}
+
+  window.aiToggle = function(){
+    var d = $('aiDrawer');
+    var open = !d.classList.contains('open');
+    d.classList.toggle('open', open);
+    localStorage.setItem(STORAGE_OPEN, open ? '1' : '0');
+    if (open) {
+      loadConfig();
+      if (!ws || ws.readyState > 1) connectWS();
+      $('aiInput').focus();
+    }
+  };
+
+  function loadConfig(){
+    fetch('/api/assistant/widget-config/').then(r=>r.json()).then(cfg=>{
+      var s = $('aiSuggest');
+      s.innerHTML = (cfg.suggestions || []).map(q =>
+        '<button class="ai-suggest-chip" onclick="aiAsk(this.textContent)">'+q+'</button>'
+      ).join('');
+      if (cfg.latest_conversation_id) {
+        convId = cfg.latest_conversation_id;
+        loadHistory(convId);
+      }
+    }).catch(()=>{});
+  }
+
+  function loadHistory(id){
+    fetch('/api/assistant/conversations/'+id+'/').then(r=>r.json()).then(d=>{
+      $('aiEmpty').style.display = d.messages && d.messages.length ? 'none' : '';
+      (d.messages || []).forEach(m => addMsg(m.role === 'assistant' ? 'bot' : 'user', m.content, m.context_refs, m.id));
+      scrollBottom();
+    }).catch(()=>{});
+  }
+
+  function connectWS(){
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var path = convId ? '/ws/assistant/'+convId+'/' : '/ws/assistant/';
+    try { ws = new WebSocket(proto+'//'+location.host+path); } catch(e) { return; }
+    ws.onopen = function(){
+      $('aiStatus').className = 'live';
+      $('aiStatusText').textContent = '{% trans "На связи" %}';
+    };
+    ws.onmessage = function(ev){
+      try {
+        var d = JSON.parse(ev.data);
+        if (d.type === 'connected') { convId = d.conversation_id; }
+        else if (d.type === 'thinking') { showTyping(); }
+        else if (d.type === 'context') { /* refs received */ }
+        else if (d.type === 'stream') { appendStream(d.content); }
+        else if (d.type === 'done') {
+          finishStream(d.refs || []);
+          isStreaming = false;
+          $('aiSend').disabled = false;
+        }
+        else if (d.type === 'error') {
+          finishStream([], 'Error: '+d.message);
+          isStreaming = false;
+          $('aiSend').disabled = false;
+        }
+      } catch(e){}
+    };
+    ws.onclose = function(){
+      $('aiStatus').className = '';
+      $('aiStatus').style.color = '#919191';
+      $('aiStatusText').textContent = '{% trans "Переподключение..." %}';
+      setTimeout(connectWS, 2000);
+    };
+  }
+
+  function addMsg(role, text, refs, msgId){
+    $('aiEmpty').style.display = 'none';
+    var div = document.createElement('div');
+    div.className = 'ai-msg ai-msg-'+role;
+    var inner = '<div class="ai-msg-bubble">'+escapeHtml(text);
+    if (refs && refs.length) {
+      inner += '<div class="ai-msg-refs">' + refs.map(r =>
+        '<span class="ai-msg-ref">'+escapeHtml(r.title || r.type)+'</span>'
+      ).join('') + '</div>';
+    }
+    if (role === 'bot' && msgId) {
+      inner += '<div class="ai-msg-fb">' +
+        '<button onclick="aiFb(\''+msgId+'\',1,this)">👍</button>' +
+        '<button onclick="aiFb(\''+msgId+'\',-1,this)">👎</button>' +
+        '</div>';
+    }
+    inner += '</div>';
+    div.innerHTML = inner;
+    $('aiBody').appendChild(div);
+    scrollBottom();
+    return div;
+  }
+
+  function showTyping(){
+    var t = document.createElement('div');
+    t.id = 'aiTyping';
+    t.className = 'ai-msg ai-msg-bot';
+    t.innerHTML = '<div class="ai-msg-bubble"><div class="ai-typing"><span></span><span></span><span></span></div></div>';
+    $('aiBody').appendChild(t);
+    scrollBottom();
+  }
+
+  function appendStream(text){
+    var t = $('aiTyping');
+    if (t) {
+      t.removeAttribute('id');
+      t.querySelector('.ai-typing').remove();
+      currentBotMsg = t.querySelector('.ai-msg-bubble');
+      currentBotMsg.textContent = '';
+    }
+    if (currentBotMsg) {
+      currentBotMsg.textContent += text;
+      scrollBottom();
+    }
+  }
+
+  function finishStream(refs, errorText){
+    if (errorText && currentBotMsg) currentBotMsg.textContent = errorText;
+    if (refs && refs.length && currentBotMsg) {
+      var rd = document.createElement('div');
+      rd.className = 'ai-msg-refs';
+      rd.innerHTML = refs.map(r => '<span class="ai-msg-ref">'+escapeHtml(r.title || r.type)+'</span>').join('');
+      currentBotMsg.appendChild(rd);
+    }
+    currentBotMsg = null;
+    var t = $('aiTyping');
+    if (t) t.remove();
+  }
+
+  window.aiAsk = function(text){
+    $('aiInput').value = text;
+    aiSend();
+  };
+
+  window.aiSend = function(){
+    var input = $('aiInput');
+    var text = input.value.trim();
+    if (!text || isStreaming) return;
+    if (!ws || ws.readyState !== 1) { connectWS(); setTimeout(window.aiSend, 500); return; }
+    addMsg('user', text);
+    input.value = '';
+    input.style.height = 'auto';
+    isStreaming = true;
+    $('aiSend').disabled = true;
+    ws.send(JSON.stringify({type:'message', content:text}));
+  };
+
+  window.aiKey = function(e){
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); aiSend(); }
+  };
+
+  window.aiFb = function(msgId, rating, btn){
+    fetch('/api/assistant/feedback/', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRFToken':getCsrf()},
+      body: JSON.stringify({message_id: msgId, rating: rating}),
+    }).then(()=>{
+      btn.parentNode.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  };
+
+  function scrollBottom(){
+    var b = $('aiBody');
+    setTimeout(()=>{ b.scrollTop = b.scrollHeight; }, 30);
+  }
+
+  function escapeHtml(s){return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+  // Auto-grow textarea
+  document.addEventListener('input', function(e){
+    if (e.target.id === 'aiInput') {
+      e.target.style.height = 'auto';
+      e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+    }
+  });
+
+  // Restore drawer state
+  if (localStorage.getItem(STORAGE_OPEN) === '1') {
+    setTimeout(aiToggle, 500);
+  }
+})();
+</script>

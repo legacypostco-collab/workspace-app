@@ -28,3 +28,9 @@ qrcode==8.2
 
 # Optional: Sentry error tracking
 sentry-sdk==2.16.0
+
+# AI Assistant
+anthropic==0.97.0
+pgvector==0.4.2
+voyageai==0.2.4
+httpx==0.28.1

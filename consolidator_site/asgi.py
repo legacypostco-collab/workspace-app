@@ -18,7 +18,10 @@ from channels.auth import AuthMiddlewareStack  # noqa: E402
 from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
 from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
 
-from marketplace.routing import websocket_urlpatterns  # noqa: E402
+from marketplace.routing import websocket_urlpatterns as marketplace_ws  # noqa: E402
+from assistant.routing import websocket_urlpatterns as assistant_ws  # noqa: E402
+
+websocket_urlpatterns = marketplace_ws + assistant_ws
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
