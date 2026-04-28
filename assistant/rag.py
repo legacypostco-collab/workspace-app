@@ -11,6 +11,8 @@ import os
 
 from django.conf import settings
 
+from . import actions as action_executor
+from .card_renderer import parse_cards_from_text
 from .embeddings import get_embedding, search_similar_chunks
 from .models import Conversation, Message
 from .prompts import get_system_prompt
@@ -102,11 +104,13 @@ def _stub_response(query: str, chunks) -> str:
     return "\n".join(parts)
 
 
-def process_query_sync(conversation: Conversation, user_message: str) -> tuple[str, list[dict]]:
-    """Sync RAG pipeline. Returns (response_text, context_refs).
+def process_query_sync(conversation: Conversation, user_message: str, user=None):
+    """Sync RAG pipeline. Returns dict with text/cards/actions/refs.
 
     Saves user + assistant messages to the conversation.
     """
+    user = user or conversation.user
+
     # 1. Save user message
     Message.objects.create(
         conversation=conversation,
@@ -118,9 +122,9 @@ def process_query_sync(conversation: Conversation, user_message: str) -> tuple[s
     language = _detect_language(user_message)
     context_chunks = _search_context(user_message, conversation.role, language)
     context_refs = _build_context_refs(context_chunks)
-    system_prompt = get_system_prompt(conversation.role, context_chunks)
+    available = action_executor.list_actions(conversation.role)
+    system_prompt = get_system_prompt(conversation.role, context_chunks, available)
     history = _get_history(conversation)
-    # history already includes the user message we just saved
     if history and history[-1]["role"] == "user" and history[-1]["content"] == user_message:
         history.pop()
 
@@ -147,23 +151,109 @@ def process_query_sync(conversation: Conversation, user_message: str) -> tuple[s
             logger.error(f"Anthropic API error: {e}")
             full_response = f"⚠️ Ошибка API: {e}"
     else:
-        full_response = _stub_response(user_message, context_chunks)
+        full_response = _stub_with_action(user_message, context_chunks, conversation.role, user)
 
-    # 4. Save assistant message
+    # 4. Parse cards/actions from AI text
+    clean_text, cards, actions = parse_cards_from_text(full_response)
+
+    # 5. Save assistant message
     Message.objects.create(
         conversation=conversation,
         role=Message.Role.ASSISTANT,
-        content=full_response,
+        content=clean_text or full_response,
+        cards=cards,
+        actions=actions,
         context_refs=context_refs,
         tokens_used=tokens_used,
     )
 
-    # 5. Update conversation title from first user message
+    # 6. Update conversation title
     if not conversation.title:
         conversation.title = user_message[:100]
         conversation.save(update_fields=["title", "updated_at"])
 
-    return full_response, context_refs
+    return {
+        "text": clean_text or full_response,
+        "cards": cards,
+        "actions": actions,
+        "context_refs": context_refs,
+        "tokens_used": tokens_used,
+    }
+
+
+def execute_action(conversation: Conversation, action_name: str, params: dict, user=None):
+    """Execute a chat action (e.g. user clicked a button).
+
+    Saves an "action" message + an assistant message with the result cards.
+    Returns dict with text/cards/actions.
+    """
+    user = user or conversation.user
+
+    # Save user-action message (for history)
+    label = params.get("_label") or action_name
+    Message.objects.create(
+        conversation=conversation,
+        role=Message.Role.ACTION,
+        content=f"▸ {label}",
+        actions=[{"action": action_name, "params": params}],
+    )
+
+    # Execute action
+    result = action_executor.execute(action_name, params, user, conversation.role)
+
+    # Save assistant message with result
+    Message.objects.create(
+        conversation=conversation,
+        role=Message.Role.ASSISTANT,
+        content=result.text,
+        cards=result.cards,
+        actions=result.actions,
+    )
+
+    if not conversation.title:
+        conversation.title = label[:100]
+        conversation.save(update_fields=["title", "updated_at"])
+
+    return {
+        "text": result.text,
+        "cards": result.cards,
+        "actions": result.actions,
+        "suggestions": result.suggestions,
+    }
+
+
+def _stub_with_action(user_message: str, chunks, role: str, user) -> str:
+    """Heuristic: detect intent and call appropriate action when ANTHROPIC_API_KEY missing."""
+    import json as _json
+    msg_lower = user_message.lower()
+    intent_actions = [
+        (["заказ", "order", "订单"], "get_orders"),
+        (["rfq", "котировк"], "get_rfq_status"),
+        (["трекинг", "track", "shipment", "доставк"], "track_shipment"),
+        (["бюджет", "budget"], "get_budget"),
+        (["аналитик", "analytics"], "get_analytics"),
+        (["рекламац", "claim"], "get_claims"),
+        (["sla"], "get_sla_report"),
+    ]
+    matched_action = None
+    for keywords, action in intent_actions:
+        if any(k in msg_lower for k in keywords):
+            matched_action = action
+            break
+    # Default fallback to search
+    if not matched_action and len(user_message) > 3:
+        matched_action = "search_parts"
+
+    if matched_action and action_executor.can_execute(matched_action, role):
+        result = action_executor.execute(matched_action, {"query": user_message}, user, role)
+        # Format cards back into :::blocks for parser
+        text = result.text or ""
+        for c in result.cards:
+            text += f"\n\n:::{c['type']}\n{_json.dumps(c['data'], ensure_ascii=False)}\n:::"
+        if result.actions:
+            text += f"\n\n:::actions\n{_json.dumps(result.actions, ensure_ascii=False)}\n:::"
+        return text or _stub_response(user_message, chunks)
+    return _stub_response(user_message, chunks)
 
 
 def process_query_stream(conversation: Conversation, user_message: str):
@@ -220,15 +310,20 @@ def process_query_stream(conversation: Conversation, user_message: str):
             yield {"type": "token", "text": err}
             full_response = err
     else:
-        # Stub mode — emit response as one chunk
-        full_response = _stub_response(user_message, context_chunks)
+        # Stub mode — try heuristic action call, emit cards in one chunk
+        full_response = _stub_with_action(user_message, context_chunks, conversation.role, conversation.user)
         yield {"type": "token", "text": full_response}
+
+    # Parse cards/actions from final text
+    clean_text, cards, actions = parse_cards_from_text(full_response)
 
     # Save assistant message
     Message.objects.create(
         conversation=conversation,
         role=Message.Role.ASSISTANT,
-        content=full_response,
+        content=clean_text or full_response,
+        cards=cards,
+        actions=actions,
         context_refs=context_refs,
         tokens_used=tokens_used,
     )
@@ -237,4 +332,5 @@ def process_query_stream(conversation: Conversation, user_message: str):
         conversation.title = user_message[:100]
         conversation.save(update_fields=["title", "updated_at"])
 
+    yield {"type": "cards", "cards": cards, "actions": actions}
     yield {"type": "done", "tokens": tokens_used, "refs": context_refs}

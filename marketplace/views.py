@@ -6059,3 +6059,10 @@ def twofa_setup(request):
     return render(request, "components/twofa_setup.html", {
         "twofa": twofa, "qr_url": qr_url, "backup_codes": backup_list,
     })
+
+
+
+@login_required
+def chat_first_view(request):
+    """Chat-First single-page UI."""
+    return render(request, "chat/index.html")

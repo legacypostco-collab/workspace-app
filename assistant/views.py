@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from .models import Conversation, Feedback, Message
 from .permissions import detect_user_role
-from .rag import process_query_sync
+from .rag import execute_action, process_query_sync
 from .serializers import (
     ChatRequestSerializer,
     ConversationListSerializer,
@@ -66,14 +66,48 @@ class ChatView(APIView):
             )
 
         try:
-            response, refs = process_query_sync(conv, ser.validated_data["message"])
+            result = process_query_sync(conv, ser.validated_data["message"], request.user)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({
             "conversation_id": str(conv.id),
-            "response": response,
-            "context_refs": refs,
+            "response": result["text"],
+            "cards": result["cards"],
+            "actions": result["actions"],
+            "context_refs": result["context_refs"],
+        })
+
+
+class ActionView(APIView):
+    """Execute a chat action (button click).
+
+    POST /api/assistant/action/
+    Body: {"conversation_id":"uuid","action":"create_rfq","params":{"product_ids":[...],"_label":"..."}}
+    Resp: {"text":"...","cards":[...],"actions":[...],"suggestions":[...]}
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        conv_id = request.data.get("conversation_id")
+        action = request.data.get("action") or ""
+        params = request.data.get("params") or {}
+        if not action:
+            return Response({"error": "action required"}, status=400)
+
+        if conv_id:
+            conv = get_object_or_404(Conversation, id=conv_id, user=request.user, is_active=True)
+        else:
+            conv = Conversation.objects.create(user=request.user, role=detect_user_role(request.user))
+
+        try:
+            result = execute_action(conv, action, params, request.user)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+        return Response({
+            "conversation_id": str(conv.id),
+            **result,
         })
 
 

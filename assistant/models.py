@@ -61,13 +61,23 @@ class Message(models.Model):
         USER = "user", _("Пользователь")
         ASSISTANT = "assistant", _("Ассистент")
         SYSTEM = "system", _("Системное")
+        ACTION = "action", _("Действие")  # User clicked an action button
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
         Conversation, on_delete=models.CASCADE, related_name="messages"
     )
     role = models.CharField(max_length=10, choices=Role.choices)
-    content = models.TextField()
+    content = models.TextField(help_text="Markdown text + ::: card blocks")
+    # Chat-First TZ: structured cards & action buttons inside messages
+    cards = models.JSONField(
+        default=list, blank=True,
+        help_text='Cards: [{"type":"product","data":{...}}, ...]',
+    )
+    actions = models.JSONField(
+        default=list, blank=True,
+        help_text='Buttons: [{"label":"...","action":"...","params":{...}}]',
+    )
     context_refs = models.JSONField(default=list, blank=True)
     tokens_used = models.IntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now)

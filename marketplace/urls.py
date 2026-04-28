@@ -16,6 +16,7 @@ urlpatterns = [
     path("privacy/", views.privacy_view, name="privacy"),
     path("cookies/", views.cookies_view, name="cookies"),
     path("help/", views.help_view, name="help"),
+    path("chat/", views.chat_first_view, name="chat"),
     path("faq/", views.help_view),  # alias
     path("register/", views.register_view, name="register"),
     path("verify-email/<str:token>/", views.verify_email_view, name="verify_email"),

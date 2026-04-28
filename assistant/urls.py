@@ -9,6 +9,7 @@ router.register(r"conversations", views.ConversationViewSet, basename="conversat
 urlpatterns = [
     path("", include(router.urls)),
     path("chat/", views.ChatView.as_view(), name="assistant-chat"),
+    path("action/", views.ActionView.as_view(), name="assistant-action"),
     path("feedback/", views.FeedbackView.as_view(), name="assistant-feedback"),
     path("suggest/", views.SuggestView.as_view(), name="assistant-suggest"),
     path("widget-config/", views.WidgetConfigView.as_view(), name="assistant-widget-config"),
