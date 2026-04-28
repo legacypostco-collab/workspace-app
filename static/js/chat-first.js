@@ -370,6 +370,108 @@
     ).join('');
   }
 
+  // ── Quick action cards (home page) ───────────────────────
+  const ROLE_ACTIONS = {
+    buyer: [
+      {icon:'🔍', title:'Найти запчасть', desc:'OEM-номер, бренд или название', action:'search_parts', params:{query:''}},
+      {icon:'📋', title:'Создать RFQ', desc:'Запрос котировки поставщикам', action:'create_rfq', params:{quantity:1}},
+      {icon:'📦', title:'Мои заказы', desc:'История и статус', action:'get_orders', params:{}},
+      {icon:'🚢', title:'Трекинг отгрузок', desc:'Где сейчас груз', action:'track_shipment', params:{}},
+      {icon:'💰', title:'Бюджет', desc:'Расходы и остатки', action:'get_budget', params:{}},
+      {icon:'📊', title:'Аналитика', desc:'Сводка по платформе', action:'get_analytics', params:{}},
+    ],
+    seller: [
+      {icon:'📥', title:'Новые RFQ', desc:'Входящие запросы котировок', action:'get_rfq_status', params:{}},
+      {icon:'📦', title:'Мои заказы', desc:'Активные сделки', action:'get_orders', params:{}},
+      {icon:'📈', title:'Аналитика спроса', desc:'Что ищут клиенты', action:'get_demand_report', params:{}},
+      {icon:'⏱', title:'Мой SLA', desc:'KPI скорости ответа', action:'get_sla_report', params:{}},
+      {icon:'💼', title:'Мой каталог', desc:'Управление товарами', action:'search_parts', params:{query:''}},
+      {icon:'📊', title:'Выручка', desc:'Аналитика продаж', action:'get_analytics', params:{}},
+    ],
+    operator_logist: [
+      {icon:'🚢', title:'Отгрузки в пути', desc:'Активный трекинг', action:'track_shipment', params:{}},
+      {icon:'📦', title:'Все заказы', desc:'Статусы и приоритеты', action:'get_orders', params:{}},
+      {icon:'⚠️', title:'SLA нарушения', desc:'Требуют внимания', action:'get_sla_report', params:{}},
+      {icon:'📊', title:'Аналитика', desc:'Метрики логистики', action:'get_analytics', params:{}},
+    ],
+    operator_customs: [
+      {icon:'🛃', title:'На таможне', desc:'Грузы ожидающие растаможки', action:'track_shipment', params:{}},
+      {icon:'📦', title:'Все заказы', desc:'Полный список', action:'get_orders', params:{}},
+      {icon:'📊', title:'Аналитика', desc:'Метрики таможни', action:'get_analytics', params:{}},
+    ],
+    operator_payment: [
+      {icon:'💰', title:'Платежи', desc:'Бюджеты и расходы', action:'get_budget', params:{}},
+      {icon:'📦', title:'Заказы по статусу', desc:'Оплаты в работе', action:'get_orders', params:{}},
+      {icon:'📊', title:'Аналитика', desc:'Финансовая сводка', action:'get_analytics', params:{}},
+    ],
+    operator_manager: [
+      {icon:'📋', title:'Активные RFQ', desc:'Входящие запросы', action:'get_rfq_status', params:{}},
+      {icon:'📦', title:'Все заказы', desc:'Воронка продаж', action:'get_orders', params:{}},
+      {icon:'🏭', title:'Поставщики', desc:'Сравнение и рейтинги', action:'compare_suppliers', params:{}},
+      {icon:'📈', title:'Спрос', desc:'Тренды по категориям', action:'get_demand_report', params:{}},
+      {icon:'⏱', title:'SLA отчёт', desc:'KPI команды', action:'get_sla_report', params:{}},
+      {icon:'📊', title:'Аналитика', desc:'Сводка платформы', action:'get_analytics', params:{}},
+    ],
+    admin: [
+      {icon:'📊', title:'Метрики платформы', desc:'Полная сводка', action:'get_analytics', params:{}},
+      {icon:'📦', title:'Все заказы', desc:'Глобальный список', action:'get_orders', params:{}},
+      {icon:'📋', title:'Все RFQ', desc:'Активные запросы', action:'get_rfq_status', params:{}},
+      {icon:'⏱', title:'SLA нарушения', desc:'Критичные', action:'get_sla_report', params:{}},
+    ],
+  };
+
+  function renderHomeActions(role) {
+    const items = ROLE_ACTIONS[role] || ROLE_ACTIONS.buyer;
+    $('homeActions').innerHTML = items.map(it =>
+      `<button class="home-act" data-act="${esc(it.action)}" data-prm='${esc(JSON.stringify(it.params))}' data-lab="${esc(it.title)}">
+        <div class="home-act-icon">${it.icon}</div>
+        <div class="home-act-title">${esc(it.title)}</div>
+        <div class="home-act-desc">${esc(it.desc)}</div>
+      </button>`
+    ).join('');
+  }
+
+  function renderHomeRecent() {
+    if (!state.convs || !state.convs.length) {
+      $('homeRecent').style.display = 'none';
+      return;
+    }
+    const top = state.convs.slice(0, 4);
+    $('homeRecent').style.display = 'block';
+    $('homeRecentList').innerHTML = top.map(c => {
+      const date = c.updated_at ? new Date(c.updated_at).toLocaleDateString('ru-RU', {day:'2-digit', month:'short'}) : '';
+      return `<div class="home-recent-item" onclick="openConv('${c.id}')">
+        <div class="home-recent-title">${esc(c.title || 'Без названия')}</div>
+        <div class="home-recent-meta">${esc(date)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Click handler for home action cards
+  document.addEventListener('click', async (e) => {
+    const card = e.target.closest('.home-act');
+    if (!card) return;
+    const action = card.dataset.act;
+    const params = JSON.parse(card.dataset.prm || '{}');
+    params._label = card.dataset.lab;
+    addMessage('action', '▸ ' + card.dataset.lab);
+    addTyping();
+    try {
+      const r = await api('/api/assistant/action/', {
+        method:'POST',
+        body: JSON.stringify({conversation_id: state.convId, action, params}),
+      });
+      removeTyping();
+      addMessage('assistant', r.text, r.cards, r.actions);
+      if (r.suggestions) renderConvSuggest(r.suggestions);
+      state.convId = r.conversation_id || state.convId;
+      loadConvList();
+    } catch(err) {
+      removeTyping();
+      addMessage('assistant', '⚠️ ' + err.message);
+    }
+  });
+
   function renderConvSuggest(suggestions) {
     $('convSuggest').innerHTML = (suggestions || []).slice(0, 3).map(s =>
       `<button class="sug" onclick="chatAsk('${esc(s).replace(/'/g,"\\'")}', false)">${esc(s)}</button>`
@@ -389,6 +491,7 @@
       const data = await r.json();
       state.convs = data.results || data;
       renderConvList();
+      renderHomeRecent();
     } catch(e){}
   }
 
@@ -492,11 +595,10 @@
       setGreeting();
       renderHeroSuggest(state.config.suggestions);
       renderConvSuggest(state.config.suggestions);
-      if (state.config.latest_conversation_id) {
-        state.convId = state.config.latest_conversation_id;
-        await openConv(state.convId);
-      }
+      renderHomeActions(state.config.role);
+      // Don't auto-open latest conversation — show home first
       await loadConvList();
+      renderHomeRecent();
     } catch(e) {
       console.warn('Init failed:', e);
     }
