@@ -622,7 +622,7 @@ function updateBulk() {
 }
 
 function bulkPricePrompt(direction) {
-  var pct = prompt(direction > 0 ? gettext("На сколько % увеличить цену?") : gettext("На сколько % уменьшить цену?"), '5');
+  var pct = prompt(direction > 0 ? [gettext("На сколько % увеличить цену?")]: gettext("На сколько % уменьшить цену?"), '5');
   if(!pct) return;
   var mult = direction > 0 ? (1 + parseFloat(pct)/100) : (1 - parseFloat(pct)/100);
   document.querySelectorAll('.part-cb:checked').forEach(function(cb){

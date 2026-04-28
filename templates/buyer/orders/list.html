@@ -414,7 +414,7 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
     if (detailRow) {
       var isOpen = detailRow.style.display !== 'none';
       detailRow.style.display = isOpen ? 'none' : '';
-      btn.textContent = isOpen ? gettext("Детали") : gettext("Скрыть");
+      btn.textContent = isOpen ? [gettext("Детали")]: gettext("Скрыть");
     }
   });
 

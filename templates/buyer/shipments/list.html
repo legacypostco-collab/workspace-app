@@ -386,7 +386,7 @@
         var date = step.querySelector('.shp-step-date');
         var labelText = label ? label.textContent.replace(/\n/g, ' ').replace(/<br\s*\/?>/gi, ' ') : '';
         var dateText = date ? date.textContent : '';
-        var status = step.classList.contains('shp-step--done') ? gettext("Завершён") : step.classList.contains('shp-step--active') ? gettext("В процессе") : gettext("Ожидается");
+        var status = step.classList.contains('shp-step--done') ? [gettext("Завершён")]: step.classList.contains('shp-step--active') ? [gettext("В процессе")]: gettext("Ожидается");
         showToast(idText + ': ' + labelText.trim() + ' (' + dateText + ') — ' + status);
       });
     });

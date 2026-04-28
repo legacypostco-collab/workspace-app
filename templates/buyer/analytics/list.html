@@ -589,7 +589,7 @@
         if (dataDiv) {
           var isOpen = dataDiv.style.display !== 'none';
           dataDiv.style.display = isOpen ? 'none' : '';
-          link.textContent = isOpen ? gettext("Открыть") : gettext("Свернуть");
+          link.textContent = isOpen ? [gettext("Открыть")]: gettext("Свернуть");
         }
       }
     });

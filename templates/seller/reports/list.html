@@ -881,20 +881,20 @@ function rpFilter(el, type) {
 }
 /* Enable all disabled download buttons and attach real download URLs */
 var reportMap = {
-  gettext("Сводка по заказам"): 'orders',
-  gettext("Топ запчастей"): 'parts',
+  [gettext("Сводка по заказам")]: 'orders',
+  [gettext("Топ запчастей")]: 'parts',
   'SLA': 'sla',
-  gettext("Средний чек"): 'analytics',
-  gettext("Сравнение периодов"): 'analytics',
-  gettext("Детализация по покупателям"): 'orders',
-  gettext("Конверсия"): 'analytics',
-  gettext("По категориям"): 'analytics',
-  gettext("Платёжный отчёт"): 'finance',
-  gettext("Задолженности"): 'finance',
-  gettext("Комиссии платформы"): 'finance',
-  gettext("Складская"): 'stock',
-  gettext("Поставки"): 'orders',
-  gettext("Возвраты"): 'orders',
+  [gettext("Средний чек")]: 'analytics',
+  [gettext("Сравнение периодов")]: 'analytics',
+  [gettext("Детализация по покупателям")]: 'orders',
+  [gettext("Конверсия")]: 'analytics',
+  [gettext("По категориям")]: 'analytics',
+  [gettext("Платёжный отчёт")]: 'finance',
+  [gettext("Задолженности")]: 'finance',
+  [gettext("Комиссии платформы")]: 'finance',
+  [gettext("Складская")]: 'stock',
+  [gettext("Поставки")]: 'orders',
+  [gettext("Возвраты")]: 'orders',
 };
 document.querySelectorAll('.rp-btn--ghost').forEach(function(btn) {
   if (btn.textContent.trim() === gettext("Скачать")) {

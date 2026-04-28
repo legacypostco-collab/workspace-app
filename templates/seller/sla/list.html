@@ -393,7 +393,7 @@ function kanbanDrop(e, col) {
       if (qrScanInterval) { clearInterval(qrScanInterval); qrScanInterval = null; }
       if (qrStream) { qrStream.getTracks().forEach(function(t) { t.stop(); }); qrStream = null; }
       qrArea.style.display = 'none';
-      qrToggle.querySelector('.kanban-confirm-upload-text').textContent = qrManual.value ? gettext("QR отсканирован ✓") : gettext("Сканировать QR-код");
+      qrToggle.querySelector('.kanban-confirm-upload-text').textContent = qrManual.value ? [gettext("QR отсканирован ✓")]: gettext("Сканировать QR-код");
       if (qrManual.value) qrToggle.classList.add('kanban-confirm-upload-label--filled');
     }
 

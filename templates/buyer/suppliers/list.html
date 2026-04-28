@@ -420,7 +420,7 @@
       if (historyDiv) {
         var isOpen = historyDiv.style.display !== 'none';
         historyDiv.style.display = isOpen ? 'none' : '';
-        btn.textContent = isOpen ? gettext("История") : gettext("▲ История");
+        btn.textContent = isOpen ? [gettext("История")]: gettext("▲ История");
       }
     }
   });

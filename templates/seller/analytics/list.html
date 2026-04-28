@@ -1319,7 +1319,7 @@ function downloadHTML(data, official, format) {
   <div class="header">
     <div>
       <div class="logo">Consolidator<span>Parts</span></div>
-      <div style="font-size:11px;color:#888;margin-top:2px;">${official ? gettext("Официальный отчёт") : gettext("Сводный отчёт")}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">${official ? [gettext("Официальный отчёт")]: gettext("Сводный отчёт")}</div>
     </div>
     <div class="meta">
       <div>${date}</div>
@@ -1330,7 +1330,7 @@ function downloadHTML(data, official, format) {
   </div>
 
   <h1>${data.title}</h1>
-  <div class="subtitle">${official ? gettext("Детализированный отчёт за выбранный период. Данные актуальны на момент формирования.") : gettext("Краткая сводка ключевых показателей за выбранный период.")}</div>
+  <div class="subtitle">${official ? [gettext("Детализированный отчёт за выбранный период. Данные актуальны на момент формирования.")]: gettext("Краткая сводка ключевых показателей за выбранный период.")}</div>
 
   <div class="kpi-grid">
     ${data.kpis.map(k => `<div class="kpi-card">
@@ -1355,7 +1355,7 @@ function downloadHTML(data, official, format) {
   </table>`}
 
   <div class="footer">
-    <div>${official ? gettext("© 2026 Consolidator Parts. Все права защищены. Документ сформирован автоматически.") : gettext("Consolidator Parts · Автоотчёт")}</div>
+    <div>${official ? [gettext("© 2026 Consolidator Parts. Все права защищены. Документ сформирован автоматически.")]: gettext("Consolidator Parts · Автоотчёт")}</div>
     <div>Стр. 1 из 1</div>
   </div>
 </body></html>`;

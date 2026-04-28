@@ -13473,7 +13473,7 @@ msgstr "Extend deadline"
 
 #: templates/seller/team/list.html:730
 msgid "Имя и фамилия"
-msgstr "Name / Company"
+msgstr "Name and surname"
 
 #: templates/seller/team/list.html:731
 msgid "Иванов Иван"
@@ -15304,7 +15304,7 @@ msgid "Таиланд · Порт-Ж/Д · Автозапчасти"
 msgstr "Orders with their parts"
 
 msgid "Сантос (Бразилия)"
-msgstr "Name / Company"
+msgstr "Santos (Brazil)"
 
 msgid "Крупнейший Лат. Америки · 4.5M TEU · Caterpillar/Komatsu"
 msgstr "Largest in Latin America · 4.5M TEU · Caterpillar/Komatsu"

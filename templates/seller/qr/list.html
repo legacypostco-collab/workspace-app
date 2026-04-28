@@ -778,7 +778,7 @@
       orderInfo.style.display = 'block';
     } else {
       document.getElementById('qr-info-id').textContent = gettext("Код: ") + value;
-      document.getElementById('qr-info-status').textContent = orderId ? gettext("Заказ не найден в текущем списке") : gettext("Неизвестный формат");
+      document.getElementById('qr-info-status').textContent = orderId ? [gettext("Заказ не найден в текущем списке")]: gettext("Неизвестный формат");
       nextEl.style.display = 'none';
       document.getElementById('qr-info-meta').textContent = '';
       kanbanLink.style.display = 'none';
