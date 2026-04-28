@@ -12082,7 +12082,7 @@ msgstr "下载"
 
 #: templates/seller/qr/list.html:392
 msgid "Сканировать QR-код"
-msgstr "升级"
+msgstr "扫描二维码"
 
 #: templates/seller/qr/list.html:394
 msgid "Камера"
@@ -16462,3 +16462,43 @@ msgstr "霍尔果斯"
 #: js-gettext
 msgid "переписка"
 msgstr "通信"
+
+#: js-gettext
+msgid "Триггер:"
+msgstr "触发器:"
+
+#: js-gettext
+msgid "Действие:"
+msgstr "动作:"
+
+#: js-gettext
+msgid "Исполнитель:"
+msgstr "执行者:"
+
+#: js-gettext
+msgid "Загрузить документ"
+msgstr "上传文档"
+
+#: js-gettext
+msgid "PDF, JPG, PNG · до 10 МБ"
+msgstr "PDF、JPG、PNG · 最大 10MB"
+
+#: js-gettext
+msgid "Откройте камеру для сканирования"
+msgstr "打开相机扫描"
+
+#: js-gettext
+msgid "Перемещение заказа"
+msgstr "移动订单"
+
+#: js-gettext
+msgid "Перевести заказ"
+msgstr "将订单"
+
+#: js-gettext
+msgid "на этап"
+msgstr "移至阶段"
+
+#: js-gettext
+msgid "Будет создано событие смены статуса"
+msgstr "将创建状态变更事件"

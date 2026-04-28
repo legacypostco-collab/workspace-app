@@ -12082,7 +12082,7 @@ msgstr "Download"
 
 #: templates/seller/qr/list.html:392
 msgid "Сканировать QR-код"
-msgstr "Escalate"
+msgstr "Scan QR code"
 
 #: templates/seller/qr/list.html:394
 msgid "Камера"
@@ -16462,3 +16462,43 @@ msgstr "Khorgos"
 #: js-gettext
 msgid "переписка"
 msgstr "correspondence"
+
+#: js-gettext
+msgid "Триггер:"
+msgstr "Trigger:"
+
+#: js-gettext
+msgid "Действие:"
+msgstr "Action:"
+
+#: js-gettext
+msgid "Исполнитель:"
+msgstr "Performer:"
+
+#: js-gettext
+msgid "Загрузить документ"
+msgstr "Upload document"
+
+#: js-gettext
+msgid "PDF, JPG, PNG · до 10 МБ"
+msgstr "PDF, JPG, PNG · up to 10 MB"
+
+#: js-gettext
+msgid "Откройте камеру для сканирования"
+msgstr "Open camera to scan"
+
+#: js-gettext
+msgid "Перемещение заказа"
+msgstr "Move order"
+
+#: js-gettext
+msgid "Перевести заказ"
+msgstr "Move order"
+
+#: js-gettext
+msgid "на этап"
+msgstr "to stage"
+
+#: js-gettext
+msgid "Будет создано событие смены статуса"
+msgstr "Status change event will be created"
