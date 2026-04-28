@@ -15,6 +15,8 @@ urlpatterns = [
     path("terms/", views.terms_view, name="terms"),
     path("privacy/", views.privacy_view, name="privacy"),
     path("cookies/", views.cookies_view, name="cookies"),
+    path("help/", views.help_view, name="help"),
+    path("faq/", views.help_view),  # alias
     path("register/", views.register_view, name="register"),
     path("verify-email/<str:token>/", views.verify_email_view, name="verify_email"),
     path("login/", views.login_view, name="login"),
@@ -194,4 +196,7 @@ urlpatterns = [
     # Team management (multi-user company accounts)
     path("team/", views.team_list, name="team_management"),
     path("team/accept/<str:token>/", views.team_accept, name="team_accept"),
+
+    # 2FA
+    path("2fa/", views.twofa_setup, name="twofa_setup"),
 ]

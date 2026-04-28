@@ -711,3 +711,15 @@ class CompanyVerification(models.Model):
 
     def __str__(self) -> str:
         return f"KYB[{self.user_id}]={self.status}"
+
+
+class TwoFactorAuth(models.Model):
+    """TOTP-based 2FA. Stored separately for security."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="twofa")
+    secret = models.CharField(max_length=64, blank=True, help_text="Base32-encoded TOTP secret")
+    enabled = models.BooleanField(default=False)
+    backup_codes = models.TextField(blank=True, help_text="One-time backup codes, comma-separated")
+    enabled_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"2FA[{self.user_id}]={'on' if self.enabled else 'off'}"

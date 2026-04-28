@@ -5967,3 +5967,95 @@ def team_accept(request, token):
         return redirect("dashboard")
     # Otherwise show register/login choice
     return render(request, "components/team_accept.html", {"tm": tm, "token": token})
+
+
+def help_view(request):
+    return render(request, "marketplace/help.html")
+
+
+# ── 2FA (TOTP) ─────────────────────────────────────────────
+import io
+import secrets as _secrets
+from .models import TwoFactorAuth
+
+@login_required
+def twofa_setup(request):
+    """Enable 2FA: shows QR code + verification."""
+    twofa, _ = TwoFactorAuth.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "enable":
+            try:
+                import pyotp
+            except ImportError:
+                messages.error(request, "pyotp library not installed")
+                return redirect("twofa_setup")
+            code = (request.POST.get("code") or "").strip()
+            if twofa.secret and pyotp.TOTP(twofa.secret).verify(code, valid_window=1):
+                twofa.enabled = True
+                twofa.enabled_at = timezone.now()
+                # Generate 8 backup codes
+                twofa.backup_codes = ",".join(_secrets.token_hex(4) for _ in range(8))
+                twofa.save()
+                Notification.objects.create(
+                    user=request.user, kind="system",
+                    title=_("Двухфакторная аутентификация включена"),
+                    body=_("Сохраните резервные коды в безопасном месте."),
+                    url="/2fa/",
+                )
+                messages.success(request, _("2FA включена. Сохраните резервные коды!"))
+                return redirect("twofa_setup")
+            else:
+                messages.error(request, _("Неверный код. Попробуйте ещё раз."))
+        elif action == "disable":
+            twofa.enabled = False
+            twofa.secret = ""
+            twofa.backup_codes = ""
+            twofa.save()
+            messages.success(request, _("2FA отключена"))
+            return redirect("twofa_setup")
+        elif action == "regenerate":
+            try:
+                import pyotp
+                twofa.secret = pyotp.random_base32()
+                twofa.save()
+            except ImportError:
+                pass
+            return redirect("twofa_setup")
+
+    # Generate secret if not exists
+    if not twofa.secret and not twofa.enabled:
+        try:
+            import pyotp
+            twofa.secret = pyotp.random_base32()
+            twofa.save()
+        except ImportError:
+            pass
+
+    qr_url = ""
+    if twofa.secret and not twofa.enabled:
+        try:
+            import pyotp
+            issuer = "Consolidator Parts"
+            uri = pyotp.totp.TOTP(twofa.secret).provisioning_uri(
+                name=request.user.email or request.user.username,
+                issuer_name=issuer,
+            )
+            # Generate QR via qrcode lib
+            try:
+                import qrcode
+                import base64
+                img = qrcode.make(uri, box_size=6, border=2)
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                qr_url = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+            except ImportError:
+                qr_url = ""
+        except ImportError:
+            pass
+
+    backup_list = twofa.backup_codes.split(",") if twofa.backup_codes else []
+    return render(request, "components/twofa_setup.html", {
+        "twofa": twofa, "qr_url": qr_url, "backup_codes": backup_list,
+    })

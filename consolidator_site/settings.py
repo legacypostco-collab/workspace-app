@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
     "files",
     "catalog",
     "offers",
@@ -219,6 +220,16 @@ REST_FRAMEWORK = {
         "import": "10/min",
         "lookup": "10/min",
     },
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Consolidator Parts API",
+    "DESCRIPTION": "B2B marketplace API for industrial spare parts. Endpoints for catalog, RFQ, orders, payments, logistics.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/v1/",
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 STORAGES = {
