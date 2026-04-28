@@ -1,16 +1,88 @@
-{% extends "marketplace/base.html" %}
-{% load static %}
-{% block title %}Регистрация | Consolidator Parts{% endblock %}
-{% block content %}
-<section class="section-head"><h1>Регистрация</h1></section>
-<div class="card card-form">
-  <div class="auth-logo-wrap">
-    <img src="{% static 'marketplace/consolidator-logo.svg' %}" alt="Consolidator Parts" class="auth-logo" />
-  </div>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button class="btn" type="submit">Создать аккаунт</button>
-  </form>
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% trans "Регистрация" %} | Consolidator Parts</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{min-height:100vh;background:#1A1A1A;color:#ECECEC;font-family:'Inter',sans-serif;font-size:14px;}
+    a{color:#64B5F6;text-decoration:none;}
+    a:hover{text-decoration:underline;}
+
+    .reg-page{min-height:100vh;display:flex;flex-direction:column;}
+    .reg-header{padding:18px 32px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:18px;}
+    .reg-logo{display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:800;font-size:16px;color:#ECECEC;text-decoration:none;}
+    .reg-logo svg{width:26px;height:26px;}
+    .reg-nav{display:flex;gap:18px;margin-left:auto;}
+    .reg-nav a{font-size:13px;color:#919191;text-decoration:none;}
+    .reg-nav a:hover{color:#ECECEC;text-decoration:none;}
+    .reg-lang{display:flex;gap:4px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:2px;}
+    .reg-lang form{display:inline;}
+    .reg-lang button{background:transparent;border:none;color:#919191;font-size:11px;font-weight:600;padding:4px 8px;border-radius:4px;cursor:pointer;letter-spacing:0.06em;}
+    .reg-lang button.active{background:rgba(100,181,246,0.18);color:#64B5F6;}
+
+    .reg-main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 24px;}
+    .reg-card{background:#242424;border:1px solid rgba(255,255,255,0.04);border-radius:16px;padding:36px;max-width:440px;width:100%;}
+    .reg-title{font-family:'Golos Text',sans-serif;font-weight:800;font-size:26px;color:#ECECEC;margin-bottom:6px;}
+    .reg-subtitle{color:#919191;font-size:13px;margin-bottom:24px;}
+    .reg-form p{margin-bottom:14px;}
+    .reg-form label{display:block;font-size:12px;font-weight:600;color:#919191;margin-bottom:6px;letter-spacing:0.04em;text-transform:uppercase;}
+    .reg-form input[type="text"],
+    .reg-form input[type="email"],
+    .reg-form input[type="password"],
+    .reg-form input[type="tel"]{width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;}
+    .reg-form input:focus{border-color:rgba(100,181,246,0.5);}
+    .reg-form .helptext{font-size:11px;color:#5E5E5E;margin-top:4px;display:block;}
+    .reg-form .errorlist{list-style:none;padding:0;margin:6px 0;color:#E85C0D;font-size:12px;}
+    .reg-btn{display:block;width:100%;padding:12px;background:#64B5F6;color:#1A1A1A;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;font-family:inherit;transition:background .15s;}
+    .reg-btn:hover{background:#7BC5FA;}
+    .reg-divider{margin:20px 0;text-align:center;font-size:12px;color:#5E5E5E;position:relative;}
+    .reg-divider::before,.reg-divider::after{content:'';position:absolute;top:50%;width:35%;height:1px;background:rgba(255,255,255,0.06);}
+    .reg-divider::before{left:0;}.reg-divider::after{right:0;}
+    .reg-bottom{text-align:center;font-size:13px;color:#919191;margin-top:18px;}
+    .reg-legal{text-align:center;font-size:11px;color:#5E5E5E;margin-top:18px;line-height:1.5;}
+    .reg-legal a{color:#919191;}
+  </style>
+</head>
+<body>
+<div class="reg-page">
+  <header class="reg-header">
+    <a href="/" class="reg-logo">
+      <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="#64B5F6" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="#64B5F6"/></svg>
+      Consolidator
+    </a>
+    <nav class="reg-nav">
+      <a href="/">{% trans "Главная" %}</a>
+      <a href="/login/">{% trans "Войти" %}</a>
+    </nav>
+    {% include "components/_lang_switcher.html" %}
+  </header>
+  <main class="reg-main">
+    <div class="reg-card">
+      <div class="reg-title">{% trans "Создать аккаунт" %}</div>
+      <div class="reg-subtitle">{% trans "Зарегистрируйтесь как покупатель или поставщик" %}</div>
+      <form method="post" class="reg-form">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button class="reg-btn" type="submit">{% trans "Создать аккаунт" %}</button>
+      </form>
+      <div class="reg-bottom">
+        {% trans "Уже есть аккаунт?" %} <a href="/login/">{% trans "Войти" %}</a>
+      </div>
+      <div class="reg-legal">
+        {% trans "Регистрируясь, вы соглашаетесь с" %}
+        <a href="/terms/">{% trans "условиями использования" %}</a> {% trans "и" %}
+        <a href="/privacy/">{% trans "политикой конфиденциальности" %}</a>.
+      </div>
+    </div>
+  </main>
 </div>
-{% endblock %}
+{% include "components/_cookie_banner.html" %}
+</body>
+</html>

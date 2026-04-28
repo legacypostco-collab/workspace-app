@@ -5,8 +5,15 @@ from . import views
 urlpatterns = [
     path("", views.home, name="home"),
     path("demo-center/", views.demo_center, name="demo_center"),
+    path("demo/", views.demo_center),  # alias
     path("directory/brands/", views.brands_directory, name="brands_directory"),
+    path("brands/", views.brands_directory),  # alias
     path("directory/categories/", views.categories_directory, name="categories_directory"),
+    path("categories/", views.categories_directory),  # alias
+    path("comparison/", views.compare_view),  # alias for /compare/
+    path("terms/", views.terms_view, name="terms"),
+    path("privacy/", views.privacy_view, name="privacy"),
+    path("cookies/", views.cookies_view, name="cookies"),
     path("register/", views.register_view, name="register"),
     path("login/", views.login_view, name="login"),
     path("logout/", views.logout_view, name="logout"),

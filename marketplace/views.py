@@ -1016,6 +1016,18 @@ def home(request: HttpRequest) -> HttpResponse:
     return render(request, "landing.html")
 
 
+def terms_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "marketplace/legal.html", {"page_key": "terms"})
+
+
+def privacy_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "marketplace/legal.html", {"page_key": "privacy"})
+
+
+def cookies_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "marketplace/legal.html", {"page_key": "cookies"})
+
+
 def home_marketplace(request: HttpRequest) -> HttpResponse:
     """Original marketplace home page (kept for internal use)."""
     _seed_if_empty()
