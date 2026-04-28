@@ -695,6 +695,10 @@ html.theme-light .demo-btn__login { color: #8892A4 !important; }
       <button type="submit" class="login-submit">{% trans "Войти" %}</button>
     </form>
 
+    <p class="login-card__register" style="text-align:center;margin-top:8px;">
+      <a href="{% url 'password_reset' %}" style="font-size:12px;color:#919191;">{% trans "Забыли пароль?" %}</a>
+    </p>
+
     <p class="login-card__register">
       {% trans "Нет аккаунта?" %} <a href="{% url 'register' %}">{% trans "Зарегистрироваться" %}</a>
     </p>
