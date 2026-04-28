@@ -118,7 +118,8 @@
     .ap-toggle input:checked + .ap-toggle-slider:before{transform:translateX(16px);background:#64B5F6;}
   </style>
   {% block extra_css %}{% endblock %}
-</head>
+    <script src="{% url 'javascript-catalog' %}"></script>
+  </head>
 <body>
 <div class="ap-layout">
   <!-- Sidebar -->
@@ -281,7 +282,6 @@
   };
 })();
 </script>
-<script src="{% url 'javascript-catalog' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -108,7 +108,8 @@
     a.op-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2C!important;transform:translateY(-1px);cursor:pointer!important;}
   </style>
   {% block extra_css %}{% endblock %}
-</head>
+    <script src="{% url 'javascript-catalog' %}"></script>
+  </head>
 <body>
 <div class="op-layout">
   <!-- Sidebar -->
@@ -279,7 +280,6 @@
   };
 })();
 </script>
-<script src="{% url 'javascript-catalog' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
