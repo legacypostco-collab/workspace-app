@@ -5841,3 +5841,129 @@ def admin_panel_support(request):
         "q": q,
         "page_num": page_num, "has_next": has_next, "has_prev": page_num > 1,
     })
+
+
+# ── Notifications API ──────────────────────────────────────
+from .models import Notification, TeamMember, CompanyVerification
+
+@login_required
+def notifications_list(request):
+    """JSON API for notification dropdown."""
+    qs = Notification.objects.filter(user=request.user)[:30]
+    items = [{
+        "id": n.id, "kind": n.kind, "title": n.title, "body": n.body[:120],
+        "url": n.url, "is_read": n.is_read,
+        "created_at": n.created_at.strftime("%d.%m %H:%M"),
+    } for n in qs]
+    unread = Notification.objects.filter(user=request.user, is_read=False).count()
+    return JsonResponse({"items": items, "unread": unread})
+
+
+@login_required
+def notifications_mark_read(request, notif_id=None):
+    if notif_id:
+        Notification.objects.filter(user=request.user, id=notif_id).update(is_read=True)
+    else:
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return JsonResponse({"ok": True})
+
+
+@login_required
+def notifications_page(request):
+    qs = Notification.objects.filter(user=request.user)
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return render(request, "components/notifications_page.html", {"items": qs})
+
+
+# ── KYB Verification ───────────────────────────────────────
+@login_required
+def kyb_view(request):
+    kyb, _ = CompanyVerification.objects.get_or_create(user=request.user)
+    if request.method == "POST" and kyb.status not in ("verified", "pending"):
+        for field in ["legal_name", "inn", "kpp", "ogrn", "legal_address",
+                       "bank_name", "bank_account", "bik", "director_name"]:
+            setattr(kyb, field, request.POST.get(field, "").strip())
+        for fld in ["doc_charter", "doc_egrul", "doc_passport"]:
+            if fld in request.FILES:
+                setattr(kyb, fld, request.FILES[fld])
+        kyb.status = "pending"
+        kyb.submitted_at = timezone.now()
+        kyb.rejection_reason = ""
+        kyb.save()
+        Notification.objects.create(
+            user=request.user, kind="system",
+            title=_("KYB документы отправлены на проверку"),
+            body=_("Мы рассмотрим ваши документы в течение 1-2 рабочих дней."),
+            url="/kyb/",
+        )
+        messages.success(request, _("Документы отправлены на проверку"))
+        return redirect("kyb")
+    return render(request, "components/kyb_form.html", {"kyb": kyb})
+
+
+# ── Team management ────────────────────────────────────────
+@login_required
+def team_list(request):
+    members = TeamMember.objects.filter(owner=request.user).select_related("user")
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "invite":
+            email = (request.POST.get("email") or "").strip().lower()
+            full_name = (request.POST.get("full_name") or "").strip()
+            role = (request.POST.get("role") or "viewer").strip()
+            if email and email != request.user.email:
+                token = signing.dumps({"owner": request.user.id, "email": email}, salt="team-invite")
+                tm, created = TeamMember.objects.get_or_create(
+                    owner=request.user, invited_email=email,
+                    defaults={"full_name": full_name, "role": role,
+                              "invite_token": token, "status": "invited"},
+                )
+                if created:
+                    invite_url = request.build_absolute_uri(f"/team/accept/{token}/")
+                    try:
+                        from django.core.mail import send_mail
+                        send_mail(
+                            subject=str(_("Приглашение в команду на Consolidator Parts")),
+                            message=str(_("Вас пригласили присоединиться к команде. Перейдите по ссылке: ")) + invite_url,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[email],
+                            fail_silently=True,
+                        )
+                    except Exception:
+                        pass
+                    messages.success(request, _("Приглашение отправлено: ") + email)
+                else:
+                    messages.warning(request, _("Уже приглашён: ") + email)
+        elif action == "remove":
+            mid = request.POST.get("member_id")
+            TeamMember.objects.filter(owner=request.user, id=mid).delete()
+            messages.success(request, _("Участник удалён"))
+        elif action == "change_role":
+            mid = request.POST.get("member_id")
+            new_role = request.POST.get("role")
+            TeamMember.objects.filter(owner=request.user, id=mid).update(role=new_role)
+            messages.success(request, _("Роль изменена"))
+        return redirect("team_management")
+    return render(request, "components/team_page.html", {"members": members,
+                                                          "role_choices": TeamMember.ROLE_CHOICES})
+
+
+def team_accept(request, token):
+    try:
+        data = signing.loads(token, salt="team-invite", max_age=60 * 60 * 24 * 14)  # 14 days
+    except Exception:
+        messages.error(request, _("Ссылка приглашения недействительна или истекла"))
+        return redirect("login")
+    tm = TeamMember.objects.filter(invite_token=token, status="invited").first()
+    if not tm:
+        messages.info(request, _("Приглашение уже принято или отозвано"))
+        return redirect("login")
+    if request.user.is_authenticated:
+        tm.user = request.user
+        tm.status = "active"
+        tm.accepted_at = timezone.now()
+        tm.save()
+        messages.success(request, _("Вы присоединились к команде ") + tm.owner.get_full_name())
+        return redirect("dashboard")
+    # Otherwise show register/login choice
+    return render(request, "components/team_accept.html", {"tm": tm, "token": token})

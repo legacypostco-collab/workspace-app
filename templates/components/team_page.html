@@ -1,0 +1,84 @@
+{% extends "seller/base_seller.html" %}
+{% load i18n %}
+{% block title %}{% trans "Команда" %}{% endblock %}
+{% block content %}
+<div style="max-width:880px;">
+  <h1 style="font-family:'Golos Text',sans-serif;font-weight:800;font-size:24px;color:#ECECEC;margin-bottom:6px;">{% trans "Команда" %}</h1>
+  <p style="color:#919191;font-size:13px;margin-bottom:24px;">{% trans "Пригласите коллег для совместной работы под одним аккаунтом компании" %}</p>
+
+  {# Invite form #}
+  <div style="background:#242424;border:1px solid rgba(255,255,255,0.04);border-radius:14px;padding:20px;margin-bottom:20px;">
+    <h2 style="font-size:15px;color:#ECECEC;margin-bottom:14px;">{% trans "Пригласить участника" %}</h2>
+    <form method="post" style="display:grid;grid-template-columns:1fr 1fr 160px auto;gap:10px;align-items:end;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="invite">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;">Email</label>
+        <input type="email" name="email" required placeholder="colleague@company.com" style="width:100%;padding:9px 12px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;">{% trans "Имя" %}</label>
+        <input type="text" name="full_name" placeholder="{% trans 'ФИО (опционально)' %}" style="width:100%;padding:9px 12px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;">{% trans "Роль" %}</label>
+        <select name="role" style="width:100%;padding:9px 12px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;cursor:pointer;">
+          {% for v, label in role_choices %}<option value="{{ v }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <button type="submit" style="background:#64B5F6;color:#1A1A1A;border:none;padding:9px 22px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;height:38px;">{% trans "Пригласить" %}</button>
+    </form>
+  </div>
+
+  {# Members list #}
+  {% if members %}
+    <div style="background:#242424;border:1px solid rgba(255,255,255,0.04);border-radius:14px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="background:#1F1F1F;">
+            <th style="text-align:left;padding:12px 18px;color:#5E5E5E;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">{% trans "Email / Имя" %}</th>
+            <th style="text-align:left;padding:12px 18px;color:#5E5E5E;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">{% trans "Роль" %}</th>
+            <th style="text-align:left;padding:12px 18px;color:#5E5E5E;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">{% trans "Статус" %}</th>
+            <th style="text-align:right;padding:12px 18px;color:#5E5E5E;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">{% trans "Действия" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in members %}
+          <tr style="border-top:1px solid rgba(255,255,255,0.03);">
+            <td style="padding:14px 18px;">
+              <div style="color:#ECECEC;">{{ m.invited_email }}</div>
+              {% if m.full_name %}<div style="color:#5E5E5E;font-size:11px;">{{ m.full_name }}</div>{% endif %}
+            </td>
+            <td style="padding:14px 18px;">
+              <form method="post" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="change_role">
+                <input type="hidden" name="member_id" value="{{ m.id }}">
+                <select name="role" onchange="this.form.submit()" style="padding:5px 8px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:6px;color:#ECECEC;font-size:12px;cursor:pointer;font-family:inherit;">
+                  {% for v, label in role_choices %}<option value="{{ v }}" {% if m.role == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+              </form>
+            </td>
+            <td style="padding:14px 18px;">
+              {% if m.status == 'active' %}<span style="background:rgba(102,187,106,0.1);color:#66BB6A;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;">{% trans "Активен" %}</span>
+              {% elif m.status == 'invited' %}<span style="background:rgba(100,181,246,0.1);color:#64B5F6;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;">{% trans "Приглашён" %}</span>
+              {% else %}<span style="background:#2C2C2C;color:#919191;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;">{% trans "Отключён" %}</span>{% endif %}
+            </td>
+            <td style="padding:14px 18px;text-align:right;">
+              <form method="post" style="display:inline;" onsubmit="return confirm('{% trans "Удалить участника?" %}')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="remove">
+                <input type="hidden" name="member_id" value="{{ m.id }}">
+                <button type="submit" style="background:transparent;border:1px solid rgba(232,92,13,0.25);color:#E85C0D;padding:5px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;">{% trans "Удалить" %}</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    {% include "components/_empty_state.html" with empty_icon="👥" empty_title="Команды пока нет" empty_text="Пригласите первого участника через форму выше" %}
+  {% endif %}
+</div>
+{% endblock %}

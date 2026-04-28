@@ -181,4 +181,17 @@ urlpatterns = [
     path("buyer/negotiations/", views.buyer_negotiations, name="buyer_negotiations"),
     path("buyer/finance/", views.buyer_finance, name="buyer_finance"),
     path("buyer/analytics/", views.buyer_analytics, name="buyer_analytics"),
+
+    # Notifications
+    path("notifications/", views.notifications_page, name="notifications"),
+    path("api/notifications/", views.notifications_list, name="notifications_api"),
+    path("api/notifications/read/", views.notifications_mark_read, name="notifications_mark_all_read"),
+    path("api/notifications/<int:notif_id>/read/", views.notifications_mark_read, name="notifications_mark_read"),
+
+    # KYB verification
+    path("kyb/", views.kyb_view, name="kyb"),
+
+    # Team management (multi-user company accounts)
+    path("team/", views.team_list, name="team_management"),
+    path("team/accept/<str:token>/", views.team_accept, name="team_accept"),
 ]

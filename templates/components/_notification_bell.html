@@ -1,0 +1,74 @@
+{# Notification bell — drop into topbars. Polls /api/notifications/ every 30s. #}
+{% load i18n %}
+<div class="notif-wrap" style="position:relative;display:inline-block;">
+  <button class="notif-bell" id="notifBell" onclick="toggleNotifs(event)" aria-label="{% trans 'Уведомления' %}" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#919191;position:relative;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span class="notif-badge" id="notifBadge" style="display:none;position:absolute;top:-3px;right:-3px;background:#E85C0D;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center;line-height:1.4;">0</span>
+  </button>
+  <div class="notif-dropdown" id="notifDropdown" style="display:none;position:absolute;top:42px;right:0;width:340px;max-height:480px;background:#242424;border:1px solid rgba(255,255,255,0.08);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.5);z-index:1000;overflow:hidden;">
+    <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-weight:700;font-size:13px;color:#ECECEC;">{% trans "Уведомления" %}</span>
+      <button onclick="markAllRead()" style="background:none;border:none;color:#64B5F6;font-size:11px;cursor:pointer;font-family:inherit;">{% trans "Прочитать все" %}</button>
+    </div>
+    <div id="notifList" style="max-height:380px;overflow-y:auto;">
+      <div style="padding:30px;text-align:center;color:#5E5E5E;font-size:12px;">{% trans "Загрузка..." %}</div>
+    </div>
+    <div style="padding:10px 16px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;">
+      <a href="/notifications/" style="color:#64B5F6;font-size:12px;text-decoration:none;">{% trans "Все уведомления" %} →</a>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  function fmtNotif(n) {
+    var icons = {info:'ℹ️',order:'📦',rfq:'📋',payment:'💰',sla:'⏱',claim:'⚠️',system:'🔔'};
+    var unread = n.is_read ? '' : 'background:rgba(100,181,246,0.05);';
+    var click = n.url ? 'onclick="markRead('+n.id+');location.href=\''+n.url+'\'"' : 'onclick="markRead('+n.id+')"';
+    return '<div ' + click + ' style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;display:flex;gap:10px;'+unread+'">' +
+      '<div style="font-size:16px;flex-shrink:0;">'+(icons[n.kind]||'🔔')+'</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:13px;font-weight:'+(n.is_read?'500':'600')+';color:#ECECEC;line-height:1.3;">'+n.title+'</div>' +
+        (n.body ? '<div style="font-size:11px;color:#919191;margin-top:3px;line-height:1.4;">'+n.body+'</div>' : '') +
+        '<div style="font-size:10px;color:#5E5E5E;margin-top:4px;">'+n.created_at+'</div>' +
+      '</div>' +
+    '</div>';
+  }
+  window.refreshNotifs = function() {
+    fetch('/api/notifications/').then(r => r.json()).then(d => {
+      var badge = document.getElementById('notifBadge');
+      if (d.unread > 0) { badge.style.display = 'inline-block'; badge.textContent = d.unread > 99 ? '99+' : d.unread; }
+      else { badge.style.display = 'none'; }
+      var list = document.getElementById('notifList');
+      if (!d.items.length) {
+        list.innerHTML = '<div style="padding:40px;text-align:center;color:#5E5E5E;font-size:12px;">{% trans "Нет уведомлений" %}</div>';
+      } else {
+        list.innerHTML = d.items.map(fmtNotif).join('');
+      }
+    }).catch(()=>{});
+  };
+  window.toggleNotifs = function(e) {
+    e.stopPropagation();
+    var d = document.getElementById('notifDropdown');
+    d.style.display = d.style.display === 'none' ? 'block' : 'none';
+    if (d.style.display === 'block') refreshNotifs();
+  };
+  function getCsrf() { return document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*=\s*([^;]*).*$)|^.*$/, '$1'); }
+  window.markRead = function(id) {
+    fetch('/api/notifications/'+id+'/read/', {method:'POST', headers:{'X-CSRFToken':getCsrf()}}).then(refreshNotifs);
+  };
+  window.markAllRead = function() {
+    fetch('/api/notifications/read/', {method:'POST', headers:{'X-CSRFToken':getCsrf()}}).then(refreshNotifs);
+  };
+  document.addEventListener('click', function(e) {
+    var dd = document.getElementById('notifDropdown');
+    if (dd && !dd.contains(e.target) && !document.getElementById('notifBell').contains(e.target)) {
+      dd.style.display = 'none';
+    }
+  });
+  // initial fetch + poll every 30s
+  document.addEventListener('DOMContentLoaded', function(){
+    refreshNotifs();
+    setInterval(refreshNotifs, 30000);
+  });
+})();
+</script>
