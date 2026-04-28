@@ -3,161 +3,232 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-  <title>Consolidator — {% trans "Чат" %}</title>
+  <title>Consolidator</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap" rel="stylesheet">
   <script src="{% url 'javascript-catalog' %}"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
-    html,body{height:100%;background:#0a0a0a;color:#ECECEC;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
-    a{color:#6366f1;text-decoration:none;}
+    html,body{height:100%;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;color:#1a1a1a;}
+
+    /* ── Gradient background ── */
+    body{
+      background:linear-gradient(180deg,#a8c2e3 0%,#e0a3c6 35%,#f5b894 65%,#f6a965 100%);
+      background-attachment:fixed;
+      overflow:hidden;
+      position:relative;
+    }
+    body::before{
+      content:'';
+      position:fixed;
+      inset:0;
+      background:radial-gradient(ellipse 70% 60% at 50% 75%, rgba(255,140,80,0.55), transparent 60%);
+      pointer-events:none;
+      z-index:0;
+    }
+    body::after{
+      content:'';
+      position:fixed;
+      bottom:-20%;left:50%;transform:translateX(-50%);
+      width:80%;height:60%;
+      background:radial-gradient(ellipse 50% 50% at 50% 100%, rgba(255,100,40,0.7), transparent 60%);
+      pointer-events:none;
+      z-index:0;
+      animation:glow 12s ease-in-out infinite alternate;
+    }
+    @keyframes glow{0%{opacity:0.7;transform:translateX(-50%) scale(1);}100%{opacity:1;transform:translateX(-50%) scale(1.1);}}
+
+    a{color:inherit;text-decoration:none;}
     button{font-family:inherit;cursor:pointer;border:none;background:transparent;color:inherit;}
-    code{background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:4px;font-family:'SF Mono',Menlo,monospace;font-size:12px;}
+    code{background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;font-family:'SF Mono',Menlo,monospace;font-size:12px;}
     ::-webkit-scrollbar{width:6px;height:6px;}
-    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px;}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:3px;}
     ::-webkit-scrollbar-track{background:transparent;}
 
-    /* ── Layout ── */
-    .app{display:grid;grid-template-columns:260px 1fr;height:100vh;}
-    .sidebar{background:#0f0f0f;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;overflow:hidden;}
-    .main{display:flex;flex-direction:column;overflow:hidden;position:relative;}
-    @media(max-width:768px){
-      .app{grid-template-columns:1fr;}
-      .sidebar{position:fixed;left:-280px;top:0;width:280px;height:100vh;z-index:100;transition:left .25s;}
-      .sidebar.open{left:0;}
-    }
+    /* ── App layout ── */
+    .app{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;}
 
-    /* ── Sidebar ── */
-    .side-head{padding:16px 18px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.04);}
-    .side-logo{display:flex;align-items:center;gap:8px;font-family:'Golos Text',sans-serif;font-weight:800;font-size:15px;color:#ECECEC;}
-    .side-logo svg{width:22px;height:22px;}
-    .side-new{margin-left:auto;width:28px;height:28px;border-radius:6px;background:rgba(99,102,241,0.12);color:#818cf8;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;}
-    .side-new:hover{background:rgba(99,102,241,0.22);}
-    .side-search{padding:10px 18px;}
-    .side-search input{width:100%;padding:8px 12px;background:#1a1a1a;border:1px solid rgba(255,255,255,0.06);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;}
-    .side-search input:focus{border-color:rgba(99,102,241,0.4);}
+    /* ── Top bar (floating, minimal) ── */
+    .topbar{position:fixed;top:0;left:0;right:0;padding:18px 24px;display:flex;align-items:center;gap:12px;z-index:50;background:linear-gradient(180deg,rgba(255,255,255,0.3),transparent);backdrop-filter:blur(8px);}
+    .topbar-left{display:flex;align-items:center;gap:10px;}
+    .icon-btn{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,0.4);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;color:#1a1a1a;transition:all .15s;border:1px solid rgba(255,255,255,0.3);}
+    .icon-btn:hover{background:rgba(255,255,255,0.6);}
+    .icon-btn .dot{position:absolute;top:3px;right:3px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid #fff;}
+    .brand{display:flex;align-items:center;gap:8px;font-family:'Golos Text',sans-serif;font-weight:700;font-size:14px;color:#1a1a1a;letter-spacing:-0.01em;}
+    .brand svg{width:20px;height:20px;}
+    .topbar-title{font-size:13px;color:rgba(0,0,0,0.55);font-weight:500;margin-left:4px;}
+    .topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+    .ws-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:rgba(0,0,0,0.55);padding:5px 10px;border-radius:8px;background:rgba(255,255,255,0.4);}
+    .ws-pill .pulse{width:6px;height:6px;border-radius:50%;background:#999;}
+    .ws-pill.live .pulse{background:#22c55e;animation:pulse 2s infinite;}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+    .classic-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.4);backdrop-filter:blur(10px);color:#1a1a1a;font-size:12px;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,0.3);}
+    .classic-btn:hover{background:rgba(255,255,255,0.6);text-decoration:none;}
+    @media(max-width:600px){.classic-btn span,.topbar-title{display:none;}}
+
+    /* ── Sidebar (slide-out, minimal) ── */
+    .sidebar{position:fixed;top:0;left:-320px;bottom:0;width:300px;background:rgba(20,20,30,0.85);backdrop-filter:blur(20px);border-right:1px solid rgba(255,255,255,0.08);transition:left .25s ease;z-index:60;display:flex;flex-direction:column;color:#ECECEC;}
+    .sidebar.open{left:0;}
+    .side-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);z-index:55;display:none;}
+    .side-overlay.open{display:block;}
+    .side-head{padding:18px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);}
+    .side-head .brand{color:#fff;}
+    .side-new{margin-left:auto;width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.06);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;}
+    .side-new:hover{background:rgba(255,255,255,0.12);}
+    .side-search{padding:10px 16px;}
+    .side-search input{width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.06);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;}
+    .side-search input::placeholder{color:rgba(255,255,255,0.35);}
+    .side-search input:focus{border-color:rgba(255,255,255,0.18);}
     .side-list{flex:1;overflow-y:auto;padding:6px 10px 14px;}
-    .side-group{font-size:11px;color:#5a5a5a;padding:14px 8px 6px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;}
-    .side-item{display:block;padding:8px 10px;border-radius:8px;color:#bababa;font-size:13px;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
-    .side-item:hover{background:rgba(255,255,255,0.04);color:#ECECEC;}
-    .side-item.active{background:rgba(99,102,241,0.15);color:#a5b4fc;}
-    .side-foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:10px;}
-    .side-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;}
+    .side-group{font-size:10px;color:rgba(255,255,255,0.35);padding:14px 8px 6px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;}
+    .side-item{display:block;padding:8px 10px;border-radius:8px;color:rgba(255,255,255,0.7);font-size:13px;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
+    .side-item.active{background:rgba(255,255,255,0.12);color:#fff;}
+    .side-foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px;}
+    .side-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#f0abfc);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;}
     .side-user{flex:1;min-width:0;}
-    .side-user-name{font-size:13px;font-weight:600;color:#ECECEC;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
-    .side-user-role{font-size:11px;color:#5a5a5a;text-transform:capitalize;}
+    .side-user-name{font-size:13px;font-weight:600;color:#fff;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-user-role{font-size:11px;color:rgba(255,255,255,0.4);text-transform:capitalize;}
 
-    /* ── Main / Chat area ── */
-    .top-bar{padding:12px 20px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:12px;}
-    .burger{display:none;width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.04);align-items:center;justify-content:center;}
-    @media(max-width:768px){.burger{display:flex;}}
-    .top-title{font-size:14px;color:#aaa;font-weight:500;}
-    .top-actions{margin-left:auto;display:flex;gap:8px;align-items:center;}
-    .icon-btn{width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:center;color:#aaa;position:relative;}
-    .icon-btn:hover{background:rgba(255,255,255,0.08);color:#ECECEC;}
-    .icon-btn .dot{position:absolute;top:3px;right:3px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid #0a0a0a;}
+    /* ── Main content area ── */
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-top:72px;position:relative;z-index:1;}
 
-    /* ── Message stream ── */
-    .stream{flex:1;overflow-y:auto;padding:0;display:flex;flex-direction:column;}
-    .stream-inner{max-width:780px;margin:0 auto;padding:24px;width:100%;}
-    .empty-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;}
-    .empty-logo{font-family:'Golos Text',sans-serif;font-weight:800;font-size:36px;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;}
-    .empty-tag{font-size:14px;color:#777;margin-bottom:32px;}
-    .empty-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;max-width:680px;width:100%;}
-    .empty-card{padding:14px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);border-radius:12px;cursor:pointer;text-align:left;transition:all .15s;}
-    .empty-card:hover{background:rgba(255,255,255,0.06);border-color:rgba(99,102,241,0.3);transform:translateY(-1px);}
-    .empty-card-title{font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:3px;}
-    .empty-card-text{font-size:11px;color:#777;}
+    /* ── Empty state — centered floating input ── */
+    .empty-stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 24px;gap:24px;}
+    .empty-stage.hidden{display:none;}
+    .empty-greeting{text-align:center;}
+    .empty-greeting h1{font-family:'Golos Text',sans-serif;font-weight:700;font-size:32px;color:rgba(0,0,0,0.85);letter-spacing:-0.02em;margin-bottom:8px;}
+    .empty-greeting p{font-size:14px;color:rgba(0,0,0,0.55);}
+
+    /* ── The hero input bar (floating glass) ── */
+    .hero-input{width:100%;max-width:680px;background:rgba(20,20,30,0.85);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:12px 12px 12px 18px;box-shadow:0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08);}
+    .hero-input-row{display:flex;flex-direction:column;gap:10px;}
+    .hero-input-textwrap{display:flex;align-items:flex-end;gap:8px;}
+    .hero-input textarea{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:15px;font-family:inherit;line-height:1.5;resize:none;max-height:200px;padding:8px 0;}
+    .hero-input textarea::placeholder{color:rgba(255,255,255,0.4);}
+    .hero-input-tools{display:flex;align-items:center;gap:4px;padding:0 4px;}
+    .tool{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.5);transition:all .15s;}
+    .tool:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.9);}
+    .tool-divider{width:1px;height:18px;background:rgba(255,255,255,0.1);margin:0 6px;}
+    .tool-spacer{flex:1;}
+    .hero-send{width:36px;height:36px;border-radius:50%;background:#fff;color:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;transition:all .15s;flex-shrink:0;}
+    .hero-send:hover:not(:disabled){background:#f0f0f0;transform:scale(1.05);}
+    .hero-send:disabled{opacity:0.4;}
+
+    /* ── Suggestions under hero input ── */
+    .hero-suggest{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:680px;}
+    .sug{padding:7px 14px;background:rgba(255,255,255,0.4);backdrop-filter:blur(10px);color:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.4);border-radius:20px;font-size:12px;font-weight:500;transition:all .15s;}
+    .sug:hover{background:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.6);}
+
+    /* ── Active conversation: messages + bottom input ── */
+    .conv-stage{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+    .conv-stage.hidden{display:none;}
+    .stream{flex:1;overflow-y:auto;padding:20px 24px 0;}
+    .stream-inner{max-width:780px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:24px;padding-bottom:24px;}
+    .input-dock{padding:16px 24px 24px;}
+    .input-dock-inner{max-width:780px;margin:0 auto;}
+    .conv-suggest{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:10px;}
 
     /* ── Messages ── */
-    .msg{display:flex;gap:14px;margin-bottom:24px;align-items:flex-start;}
-    .msg-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
-    .msg-avatar-user{background:rgba(99,102,241,0.15);color:#a5b4fc;}
-    .msg-avatar-bot{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;}
-    .msg-avatar-act{background:rgba(168,85,247,0.15);color:#c084fc;}
+    .msg{display:flex;gap:14px;align-items:flex-start;}
+    .msg-avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+    .msg-avatar-user{background:rgba(255,255,255,0.5);color:#1a1a1a;}
+    .msg-avatar-bot{background:linear-gradient(135deg,#1a1a2e,#3a3a5c);color:#fff;}
+    .msg-avatar-act{background:rgba(255,255,255,0.3);color:#1a1a1a;}
     .msg-body{flex:1;min-width:0;}
-    .msg-author{font-size:12px;color:#777;margin-bottom:4px;font-weight:600;}
-    .msg-content{color:#ECECEC;font-size:14px;line-height:1.6;white-space:pre-wrap;word-wrap:break-word;}
-    .msg-action-tag{font-size:13px;color:#c084fc;font-style:italic;}
+    .msg-author{font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:5px;font-weight:600;}
+    .msg-content{color:#1a1a1a;font-size:14px;line-height:1.65;white-space:pre-wrap;word-wrap:break-word;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);padding:12px 16px;border-radius:14px;}
+    .msg-user .msg-content{background:rgba(20,20,30,0.85);color:#fff;border-color:rgba(255,255,255,0.08);}
+    .msg-action-tag{font-style:italic;color:rgba(0,0,0,0.6);}
 
     /* ── Cards ── */
     .cards{display:grid;gap:10px;margin-top:12px;}
-    .card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px 16px;}
-    .card:hover{border-color:rgba(255,255,255,0.1);}
+    .card{background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);border-radius:14px;padding:14px 16px;color:#1a1a1a;}
+    .card:hover{background:rgba(255,255,255,0.65);}
     .card-row{display:flex;align-items:center;gap:12px;}
     .card-emoji{font-size:24px;flex-shrink:0;}
     .card-info{flex:1;min-width:0;}
-    .card-title{font-weight:700;color:#ECECEC;font-size:14px;}
-    .card-sub{font-size:12px;color:#999;margin-top:2px;}
+    .card-title{font-weight:700;color:#1a1a1a;font-size:14px;}
+    .card-sub{font-size:12px;color:rgba(0,0,0,0.55);margin-top:2px;}
     .card-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;font-size:11px;}
-    .card-chip{padding:2px 8px;background:rgba(99,102,241,0.1);color:#a5b4fc;border-radius:5px;}
-    .card-chip-green{background:rgba(34,197,94,0.1);color:#86efac;}
-    .card-chip-orange{background:rgba(251,146,60,0.1);color:#fdba74;}
-    .card-chip-gray{background:rgba(255,255,255,0.05);color:#999;}
-    .card-price{font-family:'Golos Text',sans-serif;font-weight:800;font-size:18px;color:#a5b4fc;}
+    .card-chip{padding:2px 8px;background:rgba(20,20,30,0.08);color:rgba(0,0,0,0.7);border-radius:5px;}
+    .card-chip-green{background:rgba(34,197,94,0.18);color:#15803d;}
+    .card-chip-orange{background:rgba(251,146,60,0.18);color:#c2410c;}
+    .card-chip-gray{background:rgba(20,20,30,0.06);color:rgba(0,0,0,0.55);}
+    .card-price{font-family:'Golos Text',sans-serif;font-weight:800;font-size:18px;color:#1a1a1a;}
 
-    /* Stages (shipment) */
     .stages{display:flex;justify-content:space-between;margin-top:12px;gap:4px;}
-    .stage{flex:1;padding:6px 4px;text-align:center;border-radius:6px;background:rgba(255,255,255,0.03);font-size:10px;color:#666;}
-    .stage.done{background:rgba(34,197,94,0.12);color:#86efac;}
+    .stage{flex:1;padding:6px 4px;text-align:center;border-radius:6px;background:rgba(20,20,30,0.06);font-size:10px;color:rgba(0,0,0,0.5);}
+    .stage.done{background:rgba(34,197,94,0.2);color:#15803d;font-weight:600;}
 
-    /* Comparison table */
     .ctable{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
-    .ctable th{text-align:left;color:#888;font-weight:600;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.06);}
-    .ctable td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.03);color:#ECECEC;}
+    .ctable th{text-align:left;color:rgba(0,0,0,0.5);font-weight:600;padding:6px 8px;border-bottom:1px solid rgba(0,0,0,0.08);}
+    .ctable td{padding:8px;border-bottom:1px solid rgba(0,0,0,0.04);color:#1a1a1a;}
 
-    /* Chart */
-    .chart-bars{display:flex;gap:8px;align-items:flex-end;height:80px;margin-top:8px;}
+    .chart-bars{display:flex;gap:8px;align-items:flex-end;height:80px;margin-top:8px;padding-bottom:18px;}
     .chart-bar{flex:1;background:linear-gradient(180deg,#6366f1,#4f46e5);border-radius:4px 4px 0 0;position:relative;}
-    .chart-bar-label{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:10px;color:#888;}
+    .chart-bar-label{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:10px;color:rgba(0,0,0,0.6);}
 
     /* ── Action buttons ── */
     .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
-    .act-btn{padding:8px 14px;background:rgba(99,102,241,0.1);color:#a5b4fc;border:1px solid rgba(99,102,241,0.2);border-radius:8px;font-size:12px;font-weight:600;}
-    .act-btn:hover{background:rgba(99,102,241,0.2);}
-
-    /* ── Suggestions ── */
-    .suggest{display:flex;flex-wrap:wrap;gap:8px;padding:14px 24px;max-width:780px;margin:0 auto;width:100%;}
-    .sug-chip{padding:7px 13px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);color:#bababa;border-radius:14px;font-size:12px;}
-    .sug-chip:hover{background:rgba(99,102,241,0.1);color:#a5b4fc;border-color:rgba(99,102,241,0.2);}
-
-    /* ── Input bar ── */
-    .input-wrap{padding:0 20px 20px;}
-    .input-bar{max-width:780px;margin:0 auto;background:#1a1a1a;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:8px 8px 8px 14px;display:flex;align-items:flex-end;gap:8px;}
-    .input-bar:focus-within{border-color:rgba(99,102,241,0.4);}
-    .input-bar textarea{flex:1;background:transparent;border:none;outline:none;color:#ECECEC;font-size:14px;font-family:inherit;line-height:1.5;resize:none;max-height:200px;padding:8px 0;}
-    .input-bar textarea::placeholder{color:#555;}
-    .input-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#666;}
-    .input-icon:hover{color:#aaa;background:rgba(255,255,255,0.04);}
-    .input-send{width:34px;height:34px;border-radius:8px;background:#6366f1;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;}
-    .input-send:disabled{opacity:0.4;}
-    .input-send:hover:not(:disabled){background:#7c3aed;}
-    .input-foot{max-width:780px;margin:8px auto 0;display:flex;justify-content:space-between;font-size:11px;color:#555;}
-    .lang-switch{display:flex;gap:4px;}
-    .lang-btn{padding:3px 8px;border-radius:4px;color:#777;font-size:11px;}
-    .lang-btn.on{background:rgba(99,102,241,0.15);color:#a5b4fc;}
-    .lang-btn:hover{color:#bbb;}
+    .act-btn{padding:9px 16px;background:rgba(20,20,30,0.85);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:600;backdrop-filter:blur(10px);}
+    .act-btn:hover{background:#1a1a1a;}
 
     /* ── Typing indicator ── */
-    .typing{display:flex;gap:4px;padding:8px 0;}
-    .typing span{width:6px;height:6px;background:#6366f1;border-radius:50%;animation:bouncy 1.4s infinite;}
+    .typing{display:flex;gap:4px;padding:14px 16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);border-radius:14px;width:fit-content;}
+    .typing span{width:6px;height:6px;background:#1a1a1a;border-radius:50%;animation:bouncy 1.4s infinite;}
     .typing span:nth-child(2){animation-delay:0.2s;}
     .typing span:nth-child(3){animation-delay:0.4s;}
     @keyframes bouncy{0%,60%,100%{opacity:0.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
 
-    /* ── Status pill ── */
-    .ws-status{position:absolute;top:14px;right:80px;font-size:11px;color:#5a5a5a;display:flex;align-items:center;gap:5px;}
-    .ws-status .dot{width:6px;height:6px;border-radius:50%;background:#5a5a5a;}
-    .ws-status.live .dot{background:#22c55e;animation:pulse 2s infinite;}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+    /* ── Bottom input (when conversation active) ── */
+    .input-bar{background:rgba(20,20,30,0.85);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:10px 10px 10px 18px;display:flex;align-items:flex-end;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);}
+    .input-bar:focus-within{border-color:rgba(255,255,255,0.18);}
+    .input-bar textarea{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:14px;font-family:inherit;line-height:1.5;resize:none;max-height:200px;padding:6px 0;}
+    .input-bar textarea::placeholder{color:rgba(255,255,255,0.4);}
+    .input-bar .tool{color:rgba(255,255,255,0.5);}
+    .input-bar .tool:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.9);}
+    .input-bar .hero-send{width:32px;height:32px;font-size:15px;}
+
+    /* ── Mobile ── */
+    @media(max-width:600px){
+      .topbar{padding:14px 16px;}
+      .empty-greeting h1{font-size:24px;}
+      .stream{padding:14px 16px 0;}
+      .input-dock{padding:12px 16px 16px;}
+    }
   </style>
 </head>
 <body>
 <div class="app">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="icon-btn" onclick="toggleSidebar()" title="{% trans 'Меню' %}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <a href="/" class="brand">
+        <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="currentColor"/></svg>
+        Consolidator
+      </a>
+      <span class="topbar-title" id="convTitle"></span>
+    </div>
+    <div class="topbar-right">
+      <span class="ws-pill" id="wsStatus"><span class="pulse"></span><span id="wsStatusText">{% trans "Подключение..." %}</span></span>
+      <a href="/dashboard/" class="classic-btn" title="{% trans 'Классический режим' %}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        <span>{% trans "Классический" %}</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="side-overlay" id="sideOverlay" onclick="toggleSidebar()"></div>
   <aside class="sidebar" id="sidebar">
     <div class="side-head">
-      <a class="side-logo" href="/">
-        <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="#6366f1" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="#6366f1"/></svg>
+      <a class="brand" href="/" style="color:#fff;">
+        <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="currentColor"/></svg>
         Consolidator
       </a>
       <button class="side-new" onclick="newChat()" title="{% trans 'Новый чат' %}">＋</button>
@@ -174,60 +245,80 @@
         <div class="side-user-name" id="userName">{% trans "Пользователь" %}</div>
         <div class="side-user-role" id="userRole"></div>
       </div>
-      <a href="/logout/" class="icon-btn" title="{% trans 'Выйти' %}">⤴</a>
+      <a href="/logout/" class="icon-btn" style="background:rgba(255,255,255,0.06);color:#fff;border-color:rgba(255,255,255,0.08);" title="{% trans 'Выйти' %}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </a>
     </div>
   </aside>
 
+  <!-- Main area -->
   <main class="main">
-    <div class="top-bar">
-      <button class="burger" onclick="toggleSidebar()">☰</button>
-      <span class="top-title" id="convTitle">{% trans "Новый диалог" %}</span>
-      <div class="top-actions">
-        <span class="ws-status" id="wsStatus"><span class="dot"></span><span id="wsStatusText">{% trans "Подключение..." %}</span></span>
-        <a href="/dashboard/" class="classic-mode-btn" title="{% trans 'Вернуться в классический интерфейс' %}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          <span>{% trans "Классический режим" %}</span>
-        </a>
+
+    <!-- Empty state: centered hero input -->
+    <div class="empty-stage" id="emptyStage">
+      <div class="empty-greeting">
+        <h1 id="greetingText">{% trans "С чего начнём?" %}</h1>
+        <p>{% trans "Спросите про запчасти, заказы, отгрузки или цены" %}</p>
       </div>
+
+      <div class="hero-input">
+        <div class="hero-input-row">
+          <div class="hero-input-textwrap">
+            <textarea id="heroInput" rows="1" placeholder="{% trans 'Напишите сообщение...' %}" onkeydown="onKey(event, true)"></textarea>
+          </div>
+          <div class="hero-input-tools">
+            <button class="tool" title="{% trans 'Прикрепить файл' %}" onclick="document.getElementById('fileInput').click()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <button class="tool" title="{% trans 'Веб-поиск' %}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+            </button>
+            <div class="tool-divider"></div>
+            <button class="tool" title="{% trans 'Настройки' %}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            </button>
+            <button class="tool" title="{% trans 'История' %}" onclick="toggleSidebar()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/></svg>
+            </button>
+            <div class="tool-spacer"></div>
+            <button class="tool" title="{% trans 'Голос' %}" onclick="toggleVoice()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
+            </button>
+            <button class="hero-send" id="heroSendBtn" onclick="send(true)" title="{% trans 'Отправить' %}">↑</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-suggest" id="heroSuggest"></div>
     </div>
-    <style>
-      .classic-mode-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#aaa;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s;}
-      .classic-mode-btn:hover{background:rgba(255,255,255,0.08);color:#ECECEC;border-color:rgba(255,255,255,0.18);text-decoration:none;}
-      @media(max-width:600px){.classic-mode-btn span{display:none;}}
-    </style>
 
-    <div class="stream" id="stream">
-      <div class="empty-hero" id="emptyHero">
-        <div class="empty-logo">Consolidator</div>
-        <div class="empty-tag">{% trans "B2B запчасти от производителей. Просто напиши что нужно." %}</div>
-        <div class="empty-grid" id="suggestGrid"></div>
+    <!-- Active conversation: messages + bottom input -->
+    <div class="conv-stage hidden" id="convStage">
+      <div class="stream" id="stream">
+        <div class="stream-inner" id="streamInner"></div>
       </div>
-      <div class="stream-inner" id="streamInner" style="display:none;"></div>
-    </div>
-
-    <div class="suggest" id="suggestBar"></div>
-
-    <div class="input-wrap">
-      <div class="input-bar">
-        <button class="input-icon" title="{% trans 'Прикрепить файл' %}" onclick="document.getElementById('fileInput').click()">📎</button>
-        <input type="file" id="fileInput" style="display:none;" accept=".xlsx,.xls,.csv,.pdf">
-        <button class="input-icon" title="{% trans 'Голосовой ввод' %}" onclick="toggleVoice()">🎤</button>
-        <textarea id="input" rows="1" placeholder="{% trans 'Напиши что ищешь...' %}" onkeydown="onKey(event)"></textarea>
-        <button class="input-send" id="sendBtn" onclick="send()" title="{% trans 'Отправить' %}">↑</button>
-      </div>
-      <div class="input-foot">
-        <span>{% trans "Enter — отправить, Shift+Enter — новая строка" %}</span>
-        <div class="lang-switch">
-          {% load i18n %}{% get_current_language as L %}
-          <form method="post" action="{% url 'set_language' %}" style="display:contents;">{% csrf_token %}<input type="hidden" name="next" value="/chat/"><input type="hidden" name="language" value="ru"><button type="submit" class="lang-btn{% if L == 'ru' %} on{% endif %}">RU</button></form>
-          <form method="post" action="{% url 'set_language' %}" style="display:contents;">{% csrf_token %}<input type="hidden" name="next" value="/chat/"><input type="hidden" name="language" value="en"><button type="submit" class="lang-btn{% if L == 'en' %} on{% endif %}">EN</button></form>
-          <form method="post" action="{% url 'set_language' %}" style="display:contents;">{% csrf_token %}<input type="hidden" name="next" value="/chat/"><input type="hidden" name="language" value="zh-hans"><button type="submit" class="lang-btn{% if L == 'zh-hans' %} on{% endif %}">中</button></form>
+      <div class="input-dock">
+        <div class="input-dock-inner">
+          <div class="conv-suggest" id="convSuggest"></div>
+          <div class="input-bar">
+            <button class="tool" title="{% trans 'Прикрепить' %}" onclick="document.getElementById('fileInput').click()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <textarea id="input" rows="1" placeholder="{% trans 'Напишите сообщение...' %}" onkeydown="onKey(event, false)"></textarea>
+            <button class="tool" title="{% trans 'Голос' %}" onclick="toggleVoice()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
+            </button>
+            <button class="hero-send" id="sendBtn" onclick="send(false)" title="{% trans 'Отправить' %}">↑</button>
+          </div>
         </div>
       </div>
     </div>
+
   </main>
 </div>
 
-<script src="{% static 'js/chat-first.js' %}?v=1"></script>
+<input type="file" id="fileInput" style="display:none;" accept=".xlsx,.xls,.csv,.pdf">
+
+<script src="{% static 'js/chat-first.js' %}?v=2"></script>
 </body>
 </html>

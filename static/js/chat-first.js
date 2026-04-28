@@ -1,6 +1,5 @@
-/* Chat-First UI — vanilla JS, no framework.
- * Renders messages with structured cards, manages WebSocket streaming,
- * dispatches action button clicks to backend.
+/* Chat-First UI — minimalist gradient design.
+ * Two states: empty hero (centered floating input) → conv (messages + bottom input)
  */
 (function(){
   'use strict';
@@ -13,6 +12,8 @@
     currentBubble: null,
     config: null,
     convs: [],
+    _lastCards: [],
+    _lastActions: [],
   };
 
   // ── Helpers ──────────────────────────────────────────────
@@ -25,7 +26,6 @@
     return sym + Number(v).toLocaleString('en-US', {maximumFractionDigits:0});
   };
 
-  // ── API ──────────────────────────────────────────────────
   async function api(path, opts={}) {
     const res = await fetch(path, {
       headers: {'Content-Type':'application/json','X-CSRFToken': csrf(), ...(opts.headers||{})},
@@ -55,8 +55,7 @@
       </div>`;
     },
     order(d) {
-      const colors = {pending:'orange', in_production:'', shipped:'', completed:'green', cancelled:'gray'};
-      const cls = colors[d.status_code] || colors[d.status] || '';
+      const cls = ({pending:'orange', shipped:'green', completed:'green', cancelled:'gray'})[d.status_code] || '';
       return `<div class="card">
         <div class="card-row">
           <div class="card-emoji">📦</div>
@@ -155,13 +154,13 @@
 
   function renderActions(actions) {
     if (!actions || !actions.length) return '';
-    return '<div class="actions">' + actions.map((a,i) =>
+    return '<div class="actions">' + actions.map(a =>
       `<button class="act-btn" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(a.label)}">${esc(a.label)}</button>`
     ).join('') + '</div>';
   }
 
   function avatar(role) {
-    if (role === 'user') return '<div class="msg-avatar msg-avatar-user">Вы</div>';
+    if (role === 'user') return '<div class="msg-avatar msg-avatar-user">' + ((state.config && state.config.user_name || 'U')[0].toUpperCase()) + '</div>';
     if (role === 'action') return '<div class="msg-avatar msg-avatar-act">▸</div>';
     return '<div class="msg-avatar msg-avatar-bot">AI</div>';
   }
@@ -172,11 +171,23 @@
     return 'Consolidator AI';
   }
 
+  // ── State transition ────────────────────────────────────
+  function showConv() {
+    $('emptyStage').classList.add('hidden');
+    $('convStage').classList.remove('hidden');
+  }
+
+  function showEmpty() {
+    $('emptyStage').classList.remove('hidden');
+    $('convStage').classList.add('hidden');
+    $('streamInner').innerHTML = '';
+  }
+
   // ── Render messages ──────────────────────────────────────
   function addMessage(role, content, cards=[], actions=[]) {
-    showStream();
+    showConv();
     const wrap = document.createElement('div');
-    wrap.className = 'msg';
+    wrap.className = 'msg msg-' + role;
     wrap.innerHTML = `
       ${avatar(role)}
       <div class="msg-body">
@@ -195,6 +206,7 @@
   }
 
   function addTyping() {
+    showConv();
     const wrap = document.createElement('div');
     wrap.className = 'msg';
     wrap.id = 'typingMsg';
@@ -226,28 +238,20 @@
     removeTyping();
     if (!state.currentBubble) return;
     const text = state.currentBubble.querySelector('.msg-content').textContent;
-    // Strip [card:type] markers from text since cards render below
     state.currentBubble.querySelector('.msg-content').textContent = text.replace(/\[card:\w+\]/g, '').trim();
     state.currentBubble.querySelector('.msg-cards').innerHTML = renderCards(cards);
     state.currentBubble.querySelector('.msg-actions').innerHTML = renderActions(actions);
     state.currentBubble = null;
     state.streaming = false;
     $('sendBtn').disabled = false;
-  }
-
-  function showStream() {
-    $('emptyHero').style.display = 'none';
-    $('streamInner').style.display = 'block';
-  }
-
-  function clearStream() {
-    $('streamInner').innerHTML = '';
-    $('streamInner').style.display = 'none';
-    $('emptyHero').style.display = 'flex';
+    $('heroSendBtn').disabled = false;
   }
 
   function scrollBottom() {
-    setTimeout(() => { $('stream').scrollTop = $('stream').scrollHeight; }, 30);
+    setTimeout(() => {
+      const s = $('stream');
+      if (s) s.scrollTop = s.scrollHeight;
+    }, 30);
   }
 
   // ── WebSocket ────────────────────────────────────────────
@@ -259,7 +263,7 @@
 
     state.ws.onopen = () => {
       state.wsRetry = 0;
-      $('wsStatus').className = 'ws-status live';
+      $('wsStatus').className = 'ws-pill live';
       $('wsStatusText').textContent = 'На связи';
     };
     state.ws.onmessage = (ev) => {
@@ -276,7 +280,7 @@
           state._lastCards = d.cards || [];
           state._lastActions = d.actions || [];
         } else if (d.type === 'done') {
-          finishStream(state._lastCards || [], state._lastActions || []);
+          finishStream(state._lastCards, state._lastActions);
           state._lastCards = []; state._lastActions = [];
         } else if (d.type === 'error') {
           finishStream([], []);
@@ -285,32 +289,37 @@
       } catch(e){ console.error(e); }
     };
     state.ws.onclose = (ev) => {
-      $('wsStatus').className = 'ws-status';
+      $('wsStatus').className = 'ws-pill';
       if (ev.code === 4401) {
         $('wsStatusText').textContent = 'Войдите в систему';
         return;
       }
       state.wsRetry++;
-      $('wsStatusText').textContent = 'Переподключение...';
+      $('wsStatusText').textContent = 'Подключение...';
       const delay = Math.min(1000 * Math.pow(2, state.wsRetry), 30000);
       setTimeout(connectWS, delay);
     };
   }
 
   // ── Send message ─────────────────────────────────────────
-  async function send() {
-    const inp = $('input');
+  async function send(fromHero) {
+    const inp = fromHero ? $('heroInput') : $('input');
     const text = inp.value.trim();
     if (!text || state.streaming) return;
+
     addMessage('user', text);
     inp.value = '';
     inp.style.height = 'auto';
     state.streaming = true;
     $('sendBtn').disabled = true;
+    $('heroSendBtn').disabled = true;
+
+    // Focus the conv input after switching
+    setTimeout(() => $('input').focus(), 100);
+
     if (state.ws && state.ws.readyState === 1) {
       state.ws.send(JSON.stringify({type:'message', content:text}));
     } else {
-      // REST fallback
       try {
         const r = await api('/api/assistant/chat/', {
           method:'POST',
@@ -318,11 +327,15 @@
         });
         state.convId = r.conversation_id;
         addMessage('assistant', r.response, r.cards, r.actions);
-        state.streaming = false; $('sendBtn').disabled = false;
+        state.streaming = false;
+        $('sendBtn').disabled = false;
+        $('heroSendBtn').disabled = false;
         loadConvList();
       } catch(e) {
-        addMessage('assistant', '⚠️ Не удалось отправить: ' + e.message);
-        state.streaming = false; $('sendBtn').disabled = false;
+        addMessage('assistant', '⚠️ ' + e.message);
+        state.streaming = false;
+        $('sendBtn').disabled = false;
+        $('heroSendBtn').disabled = false;
       }
     }
   }
@@ -343,33 +356,30 @@
       });
       removeTyping();
       addMessage('assistant', r.text, r.cards, r.actions);
-      // Update suggestions
-      if (r.suggestions) renderSuggestionBar(r.suggestions);
+      if (r.suggestions) renderConvSuggest(r.suggestions);
     } catch(err) {
       removeTyping();
       addMessage('assistant', '⚠️ ' + err.message);
     }
   });
 
-  // ── Suggestion chips ─────────────────────────────────────
-  function renderSuggestionBar(suggestions) {
-    $('suggestBar').innerHTML = (suggestions || []).map(s =>
-      `<button class="sug-chip" onclick="chatAsk(this.textContent)">${esc(s)}</button>`
+  // ── Suggestions ──────────────────────────────────────────
+  function renderHeroSuggest(suggestions) {
+    $('heroSuggest').innerHTML = (suggestions || []).map(s =>
+      `<button class="sug" onclick="chatAsk('${esc(s).replace(/'/g,"\\'")}', true)">${esc(s)}</button>`
     ).join('');
   }
 
-  function renderEmptyGrid(suggestions) {
-    $('suggestGrid').innerHTML = (suggestions || []).map(s =>
-      `<div class="empty-card" onclick="chatAsk('${esc(s).replace(/'/g,"\\'")}')">
-        <div class="empty-card-title">${esc(s)}</div>
-        <div class="empty-card-text">Кликни чтобы спросить</div>
-      </div>`
+  function renderConvSuggest(suggestions) {
+    $('convSuggest').innerHTML = (suggestions || []).slice(0, 3).map(s =>
+      `<button class="sug" onclick="chatAsk('${esc(s).replace(/'/g,"\\'")}', false)">${esc(s)}</button>`
     ).join('');
   }
 
-  window.chatAsk = (text) => {
-    $('input').value = text;
-    send();
+  window.chatAsk = (text, fromHero) => {
+    const inp = fromHero ? $('heroInput') : $('input');
+    inp.value = text;
+    send(fromHero);
   };
 
   // ── Conversations sidebar ────────────────────────────────
@@ -398,33 +408,43 @@
 
   window.openConv = async (id) => {
     state.convId = id;
-    clearStream();
+    showConv();
+    $('streamInner').innerHTML = '';
     if (state.ws) { try { state.ws.close(); } catch(e){} }
     try {
       const data = await api('/api/assistant/conversations/' + id + '/');
-      $('convTitle').textContent = data.title || 'Диалог';
+      $('convTitle').textContent = data.title || '';
       (data.messages || []).forEach(m => addMessage(m.role, m.content, m.cards, m.actions));
     } catch(e){}
     connectWS();
     renderConvList($('convSearch').value);
+    toggleSidebar(false);
   };
 
   window.newChat = () => {
     state.convId = null;
-    clearStream();
+    showEmpty();
     if (state.ws) { try { state.ws.close(); } catch(e){} }
-    $('convTitle').textContent = 'Новый диалог';
+    $('convTitle').textContent = '';
     connectWS();
     renderConvList();
+    toggleSidebar(false);
+    setTimeout(() => $('heroInput').focus(), 100);
   };
 
-  window.toggleSidebar = () => $('sidebar').classList.toggle('open');
+  window.toggleSidebar = (force) => {
+    const sb = $('sidebar');
+    const ov = $('sideOverlay');
+    const open = force === undefined ? !sb.classList.contains('open') : force;
+    sb.classList.toggle('open', open);
+    ov.classList.toggle('open', open);
+  };
 
-  // ── Voice input (Web Speech API) ─────────────────────────
+  // ── Voice input ──────────────────────────────────────────
   let recog = null;
   window.toggleVoice = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Голосовой ввод не поддерживается этим браузером');
+      alert('Голосовой ввод не поддерживается');
       return;
     }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -434,20 +454,33 @@
     recog.interimResults = true;
     recog.onresult = (e) => {
       const text = Array.from(e.results).map(r => r[0].transcript).join('');
-      $('input').value = text;
+      const target = $('emptyStage').classList.contains('hidden') ? $('input') : $('heroInput');
+      target.value = text;
     };
     recog.onend = () => { recog = null; };
     recog.start();
   };
 
   // ── File upload ──────────────────────────────────────────
-  $('fileInput').addEventListener('change', async (e) => {
+  $('fileInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
     addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
-    addMessage('assistant', 'Обработка файлов пока не реализована (Phase 2). Опишите запрос текстом.');
+    addMessage('assistant', 'Обработка файлов будет в Phase 2. Опишите запрос текстом.');
     e.target.value = '';
   });
+
+  // ── Greeting based on time ───────────────────────────────
+  function setGreeting() {
+    const h = new Date().getHours();
+    const name = state.config ? state.config.user_name.split(' ')[0] : '';
+    let g;
+    if (h < 6) g = 'Доброй ночи';
+    else if (h < 12) g = 'Доброе утро';
+    else if (h < 18) g = 'Добрый день';
+    else g = 'Добрый вечер';
+    $('greetingText').textContent = name ? `${g}, ${name}` : `${g}`;
+  }
 
   // ── Init ─────────────────────────────────────────────────
   async function init() {
@@ -456,8 +489,9 @@
       $('userName').textContent = state.config.user_name || 'User';
       $('userRole').textContent = state.config.role || '';
       $('userAvatar').textContent = (state.config.user_name || 'U')[0].toUpperCase();
-      renderEmptyGrid(state.config.suggestions);
-      renderSuggestionBar((state.config.suggestions || []).slice(0,3));
+      setGreeting();
+      renderHeroSuggest(state.config.suggestions);
+      renderConvSuggest(state.config.suggestions);
       if (state.config.latest_conversation_id) {
         state.convId = state.config.latest_conversation_id;
         await openConv(state.convId);
@@ -467,19 +501,20 @@
       console.warn('Init failed:', e);
     }
     connectWS();
+    setTimeout(() => $('heroInput').focus(), 200);
   }
 
-  // Auto-grow textarea
+  // Auto-grow textareas
   document.addEventListener('input', (e) => {
-    if (e.target.id === 'input') {
+    if (e.target.id === 'input' || e.target.id === 'heroInput') {
       e.target.style.height = 'auto';
       e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
     }
   });
 
   window.send = send;
-  window.onKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  window.onKey = (e, fromHero) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(fromHero); }
   };
 
   document.addEventListener('DOMContentLoaded', init);
