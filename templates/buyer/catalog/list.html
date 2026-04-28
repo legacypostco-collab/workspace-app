@@ -359,7 +359,7 @@
         <span style="height:14px;"></span><span style="height:14px;"></span><span style="height:14px;"></span><span style="height:14px;"></span><span style="height:14px;"></span>
       </div>
     </div>
-    <div><span class="fav-avail fav-avail--order">{% trans "Под заказ" %} (7 дн.)</span></div>
+    <div><span class="fav-avail fav-avail--order">{% trans "Под заказ" %} {% trans "(7 дн.)" %}</span></div>
     <div class="fav-actions">
       <button class="fav-act-btn fav-rfq-btn" data-oem="6212-61-1440">RFQ</button>
     </div>
@@ -466,25 +466,25 @@
       if (val === 'alert') { row.style.display = row.dataset.alert ? '' : 'none'; return; }
       row.style.display = (row.dataset.change === val) ? '' : 'none';
     });
-    if (val) showToast('Фильтр: ' + this.options[this.selectedIndex].text);
+    if (val) showToast(gettext("Фильтр: ") + this.options[this.selectedIndex].text);
   });
 
   // Sort
   document.getElementById('fav-filter-sort').addEventListener('change', function(){
-    showToast('Сортировка: ' + this.options[this.selectedIndex].text);
+    showToast(gettext("Сортировка: ") + this.options[this.selectedIndex].text);
   });
 
   // RFQ buttons
   document.addEventListener('click', function(e){
     var rfqBtn = e.target.closest('.fav-rfq-btn');
-    if (rfqBtn) { showToast('RFQ запрос создан для ' + rfqBtn.dataset.oem); return; }
+    if (rfqBtn) { showToast(gettext("RFQ запрос создан для ") + rfqBtn.dataset.oem); return; }
 
     var cartBtn = e.target.closest('.fav-cart-btn');
     if (cartBtn) {
-      cartBtn.textContent = '✓ Добавлено';
+      cartBtn.textContent = gettext("✓ Добавлено");
       cartBtn.disabled = true;
       cartBtn.style.opacity = '0.5';
-      showToast('Добавлено в корзину: ' + cartBtn.dataset.oem);
+      showToast(gettext("Добавлено в корзину: ") + cartBtn.dataset.oem);
       return;
     }
 
@@ -496,7 +496,7 @@
       row.style.opacity = '0';
       row.style.transform = 'translateX(20px)';
       setTimeout(function(){ row.remove(); }, 260);
-      showToast('Удалено из избранного: ' + removeBtn.dataset.oem, '#E85C0D');
+      showToast(gettext("Удалено из избранного: ") + removeBtn.dataset.oem, '#E85C0D');
       return;
     }
 
@@ -526,7 +526,7 @@
     var thresh = document.getElementById('modal-threshold').value.trim();
     if (!oem) { document.getElementById('modal-oem').style.borderColor = 'rgba(232,92,13,0.5)'; return; }
     document.getElementById('fav-modal').style.display = 'none';
-    showToast('Добавлено в отслеживание: ' + oem + (thresh ? ' · порог ' + thresh : ''));
+    showToast(gettext("Добавлено в отслеживание: ") + oem + (thresh ? gettext(" · порог ") + thresh : ''));
   });
 
   // Threshold modal
@@ -537,7 +537,7 @@
     var val = document.getElementById('thresh-value').value.trim();
     var oem = document.getElementById('thresh-oem-label').textContent;
     document.getElementById('thresh-modal').style.display = 'none';
-    if (val) showToast('Порог установлен для ' + oem + ': ' + val);
+    if (val) showToast(gettext("Порог установлен для ") + oem + ': ' + val);
   });
 
   // Close modals on backdrop click

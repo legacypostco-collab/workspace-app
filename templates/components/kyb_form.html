@@ -1,0 +1,106 @@
+{% extends "seller/base_seller.html" %}
+{% load i18n %}
+{% block title %}{% trans "Верификация компании" %}{% endblock %}
+{% block content %}
+<div style="max-width:780px;">
+  <h1 style="font-family:'Golos Text',sans-serif;font-weight:800;font-size:24px;color:#ECECEC;margin-bottom:6px;">{% trans "Верификация компании (KYB)" %}</h1>
+  <p style="color:#919191;font-size:13px;margin-bottom:24px;">{% trans "Подтвердите легальность вашей компании для допуска к платформе. Проверка занимает 1-2 рабочих дня." %}</p>
+
+  {# Status banner #}
+  {% if kyb.status == 'verified' %}
+    <div style="background:rgba(102,187,106,0.08);border:1px solid rgba(102,187,106,0.25);border-radius:12px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+      <div style="font-size:24px;">✓</div>
+      <div>
+        <div style="font-weight:700;color:#66BB6A;">{% trans "Компания верифицирована" %}</div>
+        <div style="color:#919191;font-size:12px;margin-top:3px;">{% trans "Подтверждено" %}: {{ kyb.reviewed_at|date:"d.m.Y" }}</div>
+      </div>
+    </div>
+  {% elif kyb.status == 'pending' %}
+    <div style="background:rgba(100,181,246,0.08);border:1px solid rgba(100,181,246,0.25);border-radius:12px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+      <div style="font-size:24px;">⏳</div>
+      <div>
+        <div style="font-weight:700;color:#64B5F6;">{% trans "На проверке" %}</div>
+        <div style="color:#919191;font-size:12px;margin-top:3px;">{% trans "Документы получены, ожидайте решения" %}</div>
+      </div>
+    </div>
+  {% elif kyb.status == 'rejected' %}
+    <div style="background:rgba(232,92,13,0.08);border:1px solid rgba(232,92,13,0.25);border-radius:12px;padding:14px 18px;margin-bottom:24px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:24px;">⚠</div>
+        <div>
+          <div style="font-weight:700;color:#E85C0D;">{% trans "Отклонено" %}</div>
+          <div style="color:#919191;font-size:12px;margin-top:3px;">{{ kyb.rejection_reason }}</div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" style="background:#242424;border:1px solid rgba(255,255,255,0.04);border-radius:14px;padding:24px;">
+    {% csrf_token %}
+    {% if kyb.status not in 'verified,pending'|stringformat:"s"|slice:":" %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "Юридическое название" %}</label>
+        <input type="text" name="legal_name" value="{{ kyb.legal_name }}" required style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "ФИО директора" %}</label>
+        <input type="text" name="director_name" value="{{ kyb.director_name }}" required style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "ИНН" %}</label>
+        <input type="text" name="inn" value="{{ kyb.inn }}" required pattern="[0-9]{10,12}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "КПП" %}</label>
+        <input type="text" name="kpp" value="{{ kyb.kpp }}" pattern="[0-9]{9}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "ОГРН" %}</label>
+        <input type="text" name="ogrn" value="{{ kyb.ogrn }}" required pattern="[0-9]{13,15}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "Юридический адрес" %}</label>
+        <input type="text" name="legal_address" value="{{ kyb.legal_address }}" required style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+    </div>
+    <h3 style="font-size:13px;color:#919191;margin:24px 0 12px;text-transform:uppercase;letter-spacing:0.06em;">{% trans "Банковские реквизиты" %}</h3>
+    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "Банк" %}</label>
+        <input type="text" name="bank_name" value="{{ kyb.bank_name }}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "Расч. счёт" %}</label>
+        <input type="text" name="bank_account" value="{{ kyb.bank_account }}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "БИК" %}</label>
+        <input type="text" name="bik" value="{{ kyb.bik }}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
+      </div>
+    </div>
+    <h3 style="font-size:13px;color:#919191;margin:24px 0 12px;text-transform:uppercase;letter-spacing:0.06em;">{% trans "Документы" %} (PDF/JPG)</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px;">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "Устав" %}</label>
+        <input type="file" name="doc_charter" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;padding:8px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#919191;font-size:12px;font-family:inherit;">
+        {% if kyb.doc_charter %}<div style="font-size:11px;color:#66BB6A;margin-top:4px;">✓ {% trans "Загружен" %}</div>{% endif %}
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "Выписка ЕГРЮЛ" %}</label>
+        <input type="file" name="doc_egrul" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;padding:8px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#919191;font-size:12px;font-family:inherit;">
+        {% if kyb.doc_egrul %}<div style="font-size:11px;color:#66BB6A;margin-top:4px;">✓ {% trans "Загружен" %}</div>{% endif %}
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "Паспорт директора" %}</label>
+        <input type="file" name="doc_passport" accept=".pdf,.jpg,.jpeg,.png" style="width:100%;padding:8px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#919191;font-size:12px;font-family:inherit;">
+        {% if kyb.doc_passport %}<div style="font-size:11px;color:#66BB6A;margin-top:4px;">✓ {% trans "Загружен" %}</div>{% endif %}
+      </div>
+    </div>
+    <button type="submit" style="background:#64B5F6;color:#1A1A1A;border:none;padding:11px 24px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">{% trans "Отправить на проверку" %}</button>
+    {% else %}
+    <p style="color:#5E5E5E;text-align:center;padding:20px;">{% trans "Документы уже отправлены или верифицированы." %}</p>
+    {% endif %}
+  </form>
+</div>
+{% endblock %}

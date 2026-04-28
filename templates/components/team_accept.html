@@ -1,0 +1,16 @@
+{% extends "auth/_base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Приглашение в команду" %}{% endblock %}
+{% block content %}
+<div class="auth-title">{% trans "Приглашение в команду" %}</div>
+<div class="auth-message auth-message-success">
+  {% blocktrans with name=tm.owner.get_full_name|default:tm.owner.username role=tm.get_role_display %}
+  <strong>{{ name }}</strong> приглашает вас присоединиться к команде в роли <strong>{{ role }}</strong>.
+  {% endblocktrans %}
+</div>
+<div class="auth-subtitle">{% trans "Чтобы принять приглашение — войдите в свой аккаунт или зарегистрируйтесь с этим email:" %} <strong>{{ tm.invited_email }}</strong></div>
+<div style="display:flex;gap:10px;margin-top:18px;">
+  <a href="/login/?next=/team/accept/{{ token }}/" style="flex:1;padding:11px;background:#64B5F6;color:#1A1A1A;border-radius:10px;text-align:center;font-weight:700;text-decoration:none;font-size:13px;">{% trans "Войти" %}</a>
+  <a href="/register/?email={{ tm.invited_email }}&next=/team/accept/{{ token }}/" style="flex:1;padding:11px;background:transparent;color:#ECECEC;border:1px solid rgba(255,255,255,0.1);border-radius:10px;text-align:center;font-weight:700;text-decoration:none;font-size:13px;">{% trans "Регистрация" %}</a>
+</div>
+{% endblock %}

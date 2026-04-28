@@ -1,15 +1,43 @@
 from django.urls import path
+from django.contrib.auth import views as auth_views
 
 from . import views
 
 urlpatterns = [
     path("", views.home, name="home"),
     path("demo-center/", views.demo_center, name="demo_center"),
+    path("demo/", views.demo_center),  # alias
     path("directory/brands/", views.brands_directory, name="brands_directory"),
+    path("brands/", views.brands_directory),  # alias
     path("directory/categories/", views.categories_directory, name="categories_directory"),
+    path("categories/", views.categories_directory),  # alias
+    path("comparison/", views.compare_view),  # alias for /compare/
+    path("terms/", views.terms_view, name="terms"),
+    path("privacy/", views.privacy_view, name="privacy"),
+    path("cookies/", views.cookies_view, name="cookies"),
+    path("help/", views.help_view, name="help"),
+    path("faq/", views.help_view),  # alias
     path("register/", views.register_view, name="register"),
+    path("verify-email/<str:token>/", views.verify_email_view, name="verify_email"),
     path("login/", views.login_view, name="login"),
     path("logout/", views.logout_view, name="logout"),
+    # Password reset (Django built-in)
+    path("password-reset/", auth_views.PasswordResetView.as_view(
+        template_name="auth/password_reset.html",
+        email_template_name="auth/password_reset_email.txt",
+        subject_template_name="auth/password_reset_subject.txt",
+        success_url="/password-reset/done/",
+    ), name="password_reset"),
+    path("password-reset/done/", auth_views.PasswordResetDoneView.as_view(
+        template_name="auth/password_reset_done.html",
+    ), name="password_reset_done"),
+    path("password-reset/<uidb64>/<token>/", auth_views.PasswordResetConfirmView.as_view(
+        template_name="auth/password_reset_confirm.html",
+        success_url="/password-reset/complete/",
+    ), name="password_reset_confirm"),
+    path("password-reset/complete/", auth_views.PasswordResetCompleteView.as_view(
+        template_name="auth/password_reset_complete.html",
+    ), name="password_reset_complete"),
     path("demo-login/", views.demo_login, name="demo_login"),
     path("catalog/", views.catalog, name="catalog"),
     path("rfq/", views.rfq_list, name="rfq_list"),
@@ -155,4 +183,20 @@ urlpatterns = [
     path("buyer/negotiations/", views.buyer_negotiations, name="buyer_negotiations"),
     path("buyer/finance/", views.buyer_finance, name="buyer_finance"),
     path("buyer/analytics/", views.buyer_analytics, name="buyer_analytics"),
+
+    # Notifications
+    path("notifications/", views.notifications_page, name="notifications"),
+    path("api/notifications/", views.notifications_list, name="notifications_api"),
+    path("api/notifications/read/", views.notifications_mark_read, name="notifications_mark_all_read"),
+    path("api/notifications/<int:notif_id>/read/", views.notifications_mark_read, name="notifications_mark_read"),
+
+    # KYB verification
+    path("kyb/", views.kyb_view, name="kyb"),
+
+    # Team management (multi-user company accounts)
+    path("team/", views.team_list, name="team_management"),
+    path("team/accept/<str:token>/", views.team_accept, name="team_accept"),
+
+    # 2FA
+    path("2fa/", views.twofa_setup, name="twofa_setup"),
 ]

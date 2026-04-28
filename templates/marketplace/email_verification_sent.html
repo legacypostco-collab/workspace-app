@@ -1,0 +1,16 @@
+{% extends "auth/_base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Подтвердите email" %}{% endblock %}
+{% block content %}
+<div class="auth-title">📧 {% trans "Подтвердите email" %}</div>
+<div class="auth-message auth-message-success">
+  {% blocktrans %}Мы отправили письмо с ссылкой подтверждения на <strong>{{ email }}</strong>.{% endblocktrans %}
+</div>
+<div class="auth-subtitle">
+  {% trans "Перейдите по ссылке из письма, чтобы активировать аккаунт. Ссылка действительна 24 часа." %}
+</div>
+<div class="auth-subtitle" style="margin-top:16px;">
+  {% trans "Не пришло письмо? Проверьте папку Спам или" %}
+  <a href="{% url 'register' %}">{% trans "зарегистрируйтесь заново" %}</a>.
+</div>
+{% endblock %}

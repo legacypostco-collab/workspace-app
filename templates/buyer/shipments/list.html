@@ -145,7 +145,7 @@
     <div class="shp-card-head">
       <div>
         <div class="shp-card-id">SHP-2026-0089</div>
-        <div class="shp-card-order">{% trans "Заказ" %} ORD-2026-0142 &middot; Поставщик #1042</div>
+        <div class="shp-card-order">{% trans "Заказ" %} {% trans "ORD-2026-0142 &middot; Поставщик #1042" %}</div>
       </div>
       <div class="shp-card-eta">
         <div class="shp-eta-label">{% trans "Ожидаемая доставка" %}</div>
@@ -155,7 +155,7 @@
     <div class="shp-info">
       <div class="shp-info-item">
         <div class="shp-info-label">{% trans "Маршрут" %}</div>
-        <div class="shp-info-val">Шанхай &rarr; Владивосток</div>
+        <div class="shp-info-val">{% trans "Шанхай &rarr; Владивосток" %}</div>
       </div>
       <div class="shp-info-item">
         <div class="shp-info-label">{% trans "Перевозчик" %}</div>
@@ -167,7 +167,7 @@
       </div>
       <div class="shp-info-item">
         <div class="shp-info-label">{% trans "Вес / Объём" %}</div>
-        <div class="shp-info-val">1,240 кг / 2.8 CBM</div>
+        <div class="shp-info-val">{% trans "1,240 кг / 2.8 CBM" %}</div>
       </div>
     </div>
     <div class="shp-timeline">
@@ -210,7 +210,7 @@
     <div class="shp-card-head">
       <div>
         <div class="shp-card-id">SHP-2026-0074</div>
-        <div class="shp-card-order">{% trans "Заказ" %} ORD-2026-0131 &middot; Поставщик #3156</div>
+        <div class="shp-card-order">{% trans "Заказ" %} {% trans "ORD-2026-0131 &middot; Поставщик #3156" %}</div>
       </div>
       <div class="shp-card-eta">
         <div class="shp-eta-label">{% trans "Ожидаемая доставка" %}</div>
@@ -220,7 +220,7 @@
     <div class="shp-info">
       <div class="shp-info-item">
         <div class="shp-info-label">{% trans "Маршрут" %}</div>
-        <div class="shp-info-val">Циндао &rarr; Новороссийск</div>
+        <div class="shp-info-val">{% trans "Циндао &rarr; Новороссийск" %}</div>
       </div>
       <div class="shp-info-item">
         <div class="shp-info-label">{% trans "Перевозчик" %}</div>
@@ -232,7 +232,7 @@
       </div>
       <div class="shp-info-item">
         <div class="shp-info-label">{% trans "Вес / Объём" %}</div>
-        <div class="shp-info-val">380 кг / 0.9 CBM</div>
+        <div class="shp-info-val">{% trans "380 кг / 0.9 CBM" %}</div>
       </div>
     </div>
     <div class="shp-timeline">
@@ -279,7 +279,7 @@
     <div class="shp-card-head">
       <div>
         <div class="shp-card-id">SHP-2026-0081</div>
-        <div class="shp-card-order">{% trans "Заказ" %} ORD-2026-0138 &middot; Поставщик #2087</div>
+        <div class="shp-card-order">{% trans "Заказ" %} {% trans "ORD-2026-0138 &middot; Поставщик #2087" %}</div>
       </div>
       <div class="shp-card-eta">
         <div class="shp-eta-label">{% trans "Ожидаемая доставка" %}</div>
@@ -289,7 +289,7 @@
     <div class="shp-info">
       <div class="shp-info-item">
         <div class="shp-info-label">{% trans "Маршрут" %}</div>
-        <div class="shp-info-val">Гуанчжоу &rarr; Москва (авиа)</div>
+        <div class="shp-info-val">{% trans "Гуанчжоу &rarr; Москва (авиа)" %}</div>
       </div>
       <div class="shp-info-item">
         <div class="shp-info-label">{% trans "Перевозчик" %}</div>
@@ -301,7 +301,7 @@
       </div>
       <div class="shp-info-item">
         <div class="shp-info-label">{% trans "Вес / Объём" %}</div>
-        <div class="shp-info-val">86 кг / 0.3 CBM</div>
+        <div class="shp-info-val">{% trans "86 кг / 0.3 CBM" %}</div>
       </div>
     </div>
     <div class="shp-timeline">
@@ -386,7 +386,7 @@
         var date = step.querySelector('.shp-step-date');
         var labelText = label ? label.textContent.replace(/\n/g, ' ').replace(/<br\s*\/?>/gi, ' ') : '';
         var dateText = date ? date.textContent : '';
-        var status = step.classList.contains('shp-step--done') ? 'Завершён' : step.classList.contains('shp-step--active') ? 'В процессе' : 'Ожидается';
+        var status = step.classList.contains('shp-step--done') ? [gettext("Завершён")]: step.classList.contains('shp-step--active') ? [gettext("В процессе")]: gettext("Ожидается");
         showToast(idText + ': ' + labelText.trim() + ' (' + dateText + ') — ' + status);
       });
     });

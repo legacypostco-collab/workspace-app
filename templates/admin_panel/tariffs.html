@@ -110,7 +110,7 @@
             <td>{{ d.name }}</td>
             <td class="text-secondary">{{ d.type }}</td>
             <td>{{ d.value }}{% if d.type == 'commission' %}%{% endif %}</td>
-            <td class="text-secondary">{% blocktrans with d_period_default_Бессрочно=d.period|default:"Бессрочно" %}{{ d.period|default:"Бессрочно" }}{% endblocktrans %}</td>
+            <td class="text-secondary">{% blocktrans with d_period_default_Бессрочно=d.period|default:"{% trans 'Бессрочно' %}" %}{{ d.period|default:"{% trans 'Бессрочно' %}" }}{% endblocktrans %}</td>
             <td>
               <label class="ap-toggle">
                 <input type="checkbox" name="active_{{ forloop.counter0 }}" {% if d.is_active %}checked{% endif %}/>

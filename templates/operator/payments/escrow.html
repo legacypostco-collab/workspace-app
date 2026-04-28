@@ -42,7 +42,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr data-status="Удержание">
+      <tr data-status="{% trans 'Удержание' %}">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ESC-1201</td>
         <td>ORD-4521</td>
         <td class="text-secondary">#1042</td>
@@ -57,7 +57,7 @@
           </div>
         </td>
       </tr>
-      <tr data-status="Удержание">
+      <tr data-status="{% trans 'Удержание' %}">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ESC-1198</td>
         <td>ORD-4518</td>
         <td class="text-secondary">#1038</td>
@@ -72,7 +72,7 @@
           </div>
         </td>
       </tr>
-      <tr data-status="Спор">
+      <tr data-status="{% trans 'Спор' %}">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#E85C0D;">ESC-1195</td>
         <td>ORD-4515</td>
         <td class="text-secondary">#1051</td>
@@ -86,7 +86,7 @@
           </div>
         </td>
       </tr>
-      <tr data-status="Удержание">
+      <tr data-status="{% trans 'Удержание' %}">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ESC-1190</td>
         <td>ORD-4505</td>
         <td class="text-secondary">#1033</td>
@@ -169,8 +169,8 @@ window.filterEscrow = function(status) {
   document.getElementById('esc-stat-hold').style.borderColor = inactive;
   document.getElementById('esc-stat-dispute').style.borderColor = inactive;
   document.getElementById('esc-stat-all').style.borderColor = inactive;
-  if (activeEscStatus === '{% trans "Удержание" %}') document.getElementById('esc-stat-hold').style.borderColor = active;
-  else if (activeEscStatus === '{% trans "Спор" %}') document.getElementById('esc-stat-dispute').style.borderColor = warnActive;
+  if (activeEscStatus === '{% trans 'Удержание' %}') document.getElementById('esc-stat-hold').style.borderColor = active;
+  else if (activeEscStatus === '{% trans 'Спор' %}') document.getElementById('esc-stat-dispute').style.borderColor = warnActive;
   else document.getElementById('esc-stat-all').style.borderColor = active;
   document.querySelectorAll('#escrow-table tbody tr[data-status]').forEach(function(row) {
     row.style.display = (!activeEscStatus || row.getAttribute('data-status') === activeEscStatus) ? '' : 'none';
@@ -181,9 +181,9 @@ function releaseEscrow(btn, escId) {
   var row = btn.closest('tr');
   var badge = row.querySelector('.escrow-status');
   badge.className = 'op-badge op-badge-gray escrow-status';
-  badge.textContent = '{% trans "Выпущено" %}';
+  badge.textContent = '{% trans 'Выпущено' %}';
   btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'{% trans "Детали открыты\" %}', 2000, \'success\'{% trans ")\">Детали</button>" %}';
-  opToast('{% trans "Эскроу выпущен" %}', 2000, 'success');
+  opToast('{% trans 'Эскроу выпущен' %}', 2000, 'success');
 }
 </script>
 {% endblock %}

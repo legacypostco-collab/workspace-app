@@ -49,7 +49,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr data-status="Ожидает" onclick="opToast('{% trans "Платёж INV-8841: $5,520 аванс, ожидает" %}')">
+        <tr data-status="{% trans 'Ожидает' %}" onclick="opToast('{% trans "Платёж INV-8841: $5,520 аванс, ожидает" %}')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8841</td>
           <td>ORD-4521</td>
           <td class="text-secondary">#1042</td>
@@ -60,7 +60,7 @@
           <td><span class="op-badge op-badge-orange">{% trans "Ожидает" %}</span></td>
           <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Подтверждено" %}', 2000, 'success')">{% trans "Подтвердить" %}</button></td>
         </tr>
-        <tr data-status="В обработке" onclick="opToast('{% trans "Платёж INV-8839: $12,880 основная оплата, в обработке" %}')">
+        <tr data-status="{% trans 'В обработке' %}" onclick="opToast('{% trans "Платёж INV-8839: $12,880 основная оплата, в обработке" %}')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8839</td>
           <td>ORD-4518</td>
           <td class="text-secondary">#1038</td>
@@ -71,7 +71,7 @@
           <td><span class="op-badge op-badge-gray">{% trans "В обработке" %}</span></td>
           <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Детали открыты" %}', 2000, 'info')">{% trans "Детали" %}</button></td>
         </tr>
-        <tr data-status="Ожидает" onclick="opToast('{% trans "Платёж INV-8837: $1,860 финальная, ожидает" %}')">
+        <tr data-status="{% trans 'Ожидает' %}" onclick="opToast('{% trans "Платёж INV-8837: $1,860 финальная, ожидает" %}')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8837</td>
           <td>ORD-4515</td>
           <td class="text-secondary">#1051</td>
@@ -82,7 +82,7 @@
           <td><span class="op-badge op-badge-orange">{% trans "Ожидает" %}</span></td>
           <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Подтверждено" %}', 2000, 'success')">{% trans "Подтвердить" %}</button></td>
         </tr>
-        <tr data-status="Просрочено" onclick="opToast('{% trans "Платёж INV-8835: $8,200 аванс, просрочено" %}')" style="border-left:2px solid #E85C0D;">
+        <tr data-status="{% trans 'Просрочено' %}" onclick="opToast('{% trans "Платёж INV-8835: $8,200 аванс, просрочено" %}')" style="border-left:2px solid #E85C0D;">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#E85C0D;">INV-8835</td>
           <td>ORD-4512</td>
           <td class="text-secondary">#1029</td>
@@ -93,7 +93,7 @@
           <td><span class="op-badge op-badge-orange">{% trans "Просрочено" %}</span></td>
           <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('{% trans "Запрос на доработку отправлен" %}', 2000, 'warn')">{% trans "Эскалировать" %}</button></td>
         </tr>
-        <tr data-status="Ожидает" onclick="opToast('{% trans "Платёж INV-8833: $3,400 основная, ожидает" %}')">
+        <tr data-status="{% trans 'Ожидает' %}" onclick="opToast('{% trans "Платёж INV-8833: $3,400 основная, ожидает" %}')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8833</td>
           <td>ORD-4508</td>
           <td class="text-secondary">#1055</td>
@@ -166,8 +166,8 @@
     document.querySelectorAll('[id^="pay-stat-"]').forEach(function(el){
       el.style.borderColor = inactive; el.style.background = '';
     });
-    if (activeStatus === '{% trans "В обработке" %}') document.getElementById('pay-stat-processing').style.borderColor = active;
-    if (activeStatus === '{% trans "Просрочено" %}') { document.getElementById('pay-stat-overdue').style.borderColor = active; document.getElementById('pay-stat-overdue').style.borderColor = 'rgba(232,92,13,0.5)'; }
+    if (activeStatus === '{% trans 'В обработке' %}') document.getElementById('pay-stat-processing').style.borderColor = active;
+    if (activeStatus === '{% trans 'Просрочено' %}') { document.getElementById('pay-stat-overdue').style.borderColor = active; document.getElementById('pay-stat-overdue').style.borderColor = 'rgba(232,92,13,0.5)'; }
     document.querySelectorAll('.op-table tbody tr[data-status]').forEach(function(row) {
       row.style.display = (!activeStatus || row.getAttribute('data-status') === activeStatus) ? '' : 'none';
     });
@@ -191,7 +191,7 @@ function closeDiscrepancy(btn) {
   var card = div.parentElement;
   div.remove();
   if (card) card.style.opacity = '0.5';
-  opToast('{% trans "Расхождение закрыто" %}', 2000, 'success');
+  opToast('{% trans 'Расхождение закрыто' %}', 2000, 'success');
 }
 function checkDuplicate(btn) {
   var card = btn.closest('.op-card-elevated') || btn.parentElement;
@@ -210,11 +210,11 @@ function confirmDuplicate(btn) {
   var card = div.parentElement;
   div.remove();
   if (card) { card.style.opacity = '0.4'; card.style.textDecoration = 'line-through'; }
-  opToast('{% trans "Дубликат подтверждён, платёж отмечен" %}', 2000, 'warn');
+  opToast('{% trans 'Дубликат подтверждён, платёж отмечен' %}', 2000, 'warn');
 }
 function notDuplicate(btn) {
   btn.closest('.inline-resolve').remove();
-  opToast('{% trans "Платёж помечен как уникальный" %}', 1500, 'success');
+  opToast('{% trans 'Платёж помечен как уникальный' %}', 1500, 'success');
 }
 </script>
 {% endblock %}

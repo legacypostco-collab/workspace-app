@@ -11,8 +11,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="{% static 'css/seller.css' %}?v=20260323_01" />
     {% block extra_css %}{% endblock %}
+      <script src="{% url 'javascript-catalog' %}"></script>
+    <script src="{% static 'js/cabinet-utils.js' %}"></script>
   </head>
   <body class="seller-shell">
+{% include "components/_mobile_nav.html" %}
     {% include "buyer/components/_sidebar.html" %}
     <main class="seller-main">
       {% include "buyer/components/_topbar.html" %}
@@ -23,5 +26,6 @@
     </main>
     {% block right_panel %}{% include "buyer/components/_right_panel.html" %}{% endblock %}
     {% block extra_js %}{% endblock %}
-  </body>
+  {% include "components/_onboarding.html" %}
+</body>
 </html>

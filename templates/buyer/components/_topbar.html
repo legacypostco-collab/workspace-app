@@ -18,17 +18,7 @@
       <span class="muted">{% trans "Закупки" %}</span>
       <strong>$2.1M</strong>
     </div>
-    {% get_current_language as LANG_CODE %}
-    <form method="post" action="{% url 'set_language' %}" style="display:inline;">
-      {% csrf_token %}
-      <input type="hidden" name="next" value="{{ request.get_full_path }}">
-      {% if LANG_CODE == 'ru' %}
-        <input type="hidden" name="language" value="en">
-        <button type="submit" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#919191;font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;letter-spacing:0.06em;transition:all .15s;" onmouseover="this.style.color='#ECECEC'" onmouseout="this.style.color='#919191'">EN</button>
-      {% else %}
-        <input type="hidden" name="language" value="ru">
-        <button type="submit" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#64B5F6;font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;letter-spacing:0.06em;transition:all .15s;" onmouseover="this.style.color='#ECECEC'" onmouseout="this.style.color='#64B5F6'">RU</button>
-      {% endif %}
-    </form>
+    {% include "components/_notification_bell.html" %}
+    {% include "components/_lang_switcher.html" %}
   </div>
 </header>

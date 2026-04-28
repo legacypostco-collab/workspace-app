@@ -52,7 +52,7 @@ ALLOWED_HOSTS = _env_list(
 )
 CSRF_TRUSTED_ORIGINS = _env_list(
     "CSRF_TRUSTED_ORIGINS",
-    "http://127.0.0.1,http://localhost,https://*.localhost.run,https://*.lhr.life",
+    "http://127.0.0.1,http://127.0.0.1:8001,http://localhost,http://localhost:8001,https://*.localhost.run,https://*.lhr.life",
 )
 
 INSTALLED_APPS = [
@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
     "files",
     "catalog",
     "offers",
@@ -166,6 +167,24 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
+
+# ── Email backend ─────────────────────────────────────────
+# Production: set EMAIL_HOST, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD env vars (SMTP)
+# Local dev: emails print to console
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", True)
+    EMAIL_USE_SSL = _env_bool("EMAIL_USE_SSL", False)
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Consolidator Parts <noreply@consolidator.parts>")
+SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+ADMINS = [tuple(a.split(":", 1)) for a in _env_list("ADMINS", "") if ":" in a]
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours
 USE_HTTPS = _env_bool("USE_HTTPS", False)
 SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", USE_HTTPS)
 CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", USE_HTTPS)
@@ -201,6 +220,16 @@ REST_FRAMEWORK = {
         "import": "10/min",
         "lookup": "10/min",
     },
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Consolidator Parts API",
+    "DESCRIPTION": "B2B marketplace API for industrial spare parts. Endpoints for catalog, RFQ, orders, payments, logistics.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/v1/",
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 STORAGES = {
@@ -208,6 +237,25 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     }
 }
+
+# ── Sentry error tracking ─────────────────────────────────
+# Set SENTRY_DSN env var to enable. Auto-captures unhandled exceptions, performance.
+SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration()],
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+            profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
+            send_default_pii=False,
+            environment=os.getenv("SENTRY_ENV", "production"),
+            release=os.getenv("SENTRY_RELEASE", ""),
+        )
+    except ImportError:
+        pass  # sentry-sdk not installed — skip silently
 
 LOGGING = {
     "version": 1,

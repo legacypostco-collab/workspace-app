@@ -1,4 +1,5 @@
 {% extends "seller/base_seller.html" %}
+{% load i18n %}
 
 {% block extra_css %}
 <style>
@@ -236,35 +237,35 @@
 {% block content %}
 
 <div class="an-tabs">
-  <div class="an-tab active" onclick="anTab(this,'reports')">Отчёты</div>
-  <div class="an-tab" onclick="anTab(this,'export')">Экспорт</div>
-  <div class="an-tab" onclick="anTab(this,'integrations')">Интеграции</div>
-  <div class="an-tab" onclick="anTab(this,'distribution')">Рассылка</div>
+  <div class="an-tab active" onclick="anTab(this,'reports')">{% trans "Отчёты" %}</div>
+  <div class="an-tab" onclick="anTab(this,'export')">{% trans "Экспорт" %}</div>
+  <div class="an-tab" onclick="anTab(this,'integrations')">{% trans "Интеграции" %}</div>
+  <div class="an-tab" onclick="anTab(this,'distribution')">{% trans "Рассылка" %}</div>
   <div class="an-tab" onclick="anTab(this,'api')">API</div>
 </div>
 
 {# ═══ TAB 1: Отчёты ═══ #}
 <div class="an-panel active" id="panel-reports">
   <div class="an-section">
-    <div class="an-section-title">Центр отчётности</div>
-    <div class="an-section-sub">Выберите отчёты, настройте период и формат. Данные формируются в реальном времени</div>
+    <div class="an-section-title">{% trans "Центр отчётности" %}</div>
+    <div class="an-section-sub">{% trans "Выберите отчёты, настройте период и формат. Данные формируются в реальном времени" %}</div>
   </div>
 
   {# Period selector #}
   <div class="an-period-bar">
-    <span style="font-size:11px;color:#6A6A6A;margin-right:4px;">Период:</span>
-    <button class="an-period-btn" onclick="setPeriod(this)">Сегодня</button>
-    <button class="an-period-btn" onclick="setPeriod(this)">7 дней</button>
-    <button class="an-period-btn active" onclick="setPeriod(this)">30 дней</button>
-    <button class="an-period-btn" onclick="setPeriod(this)">90 дней</button>
-    <button class="an-period-btn" onclick="setPeriod(this)">6 месяцев</button>
-    <button class="an-period-btn" onclick="setPeriod(this)">1 год</button>
-    <button class="an-period-btn" onclick="setPeriod(this)">Всё время</button>
+    <span style="font-size:11px;color:#6A6A6A;margin-right:4px;">{% trans "Период:" %}</span>
+    <button class="an-period-btn" onclick="setPeriod(this)">{% trans "Сегодня" %}</button>
+    <button class="an-period-btn" onclick="setPeriod(this)">{% trans "7 дней" %}</button>
+    <button class="an-period-btn active" onclick="setPeriod(this)">{% trans "30 дней" %}</button>
+    <button class="an-period-btn" onclick="setPeriod(this)">{% trans "90 дней" %}</button>
+    <button class="an-period-btn" onclick="setPeriod(this)">{% trans "6 месяцев" %}</button>
+    <button class="an-period-btn" onclick="setPeriod(this)">{% trans "1 год" %}</button>
+    <button class="an-period-btn" onclick="setPeriod(this)">{% trans "Всё время" %}</button>
     <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
-      <span style="font-size:11px;color:#6A6A6A;">Стиль:</span>
+      <span style="font-size:11px;color:#6A6A6A;">{% trans "Стиль:" %}</span>
       <div class="an-style-toggle">
-        <div class="an-style-opt active" onclick="setStyle(this,'official')">Официальный</div>
-        <div class="an-style-opt" onclick="setStyle(this,'informal')">Неофициальный</div>
+        <div class="an-style-opt active" onclick="setStyle(this,'official')">{% trans "Официальный" %}</div>
+        <div class="an-style-opt" onclick="setStyle(this,'informal')">{% trans "Неофициальный" %}</div>
       </div>
     </div>
   </div>
@@ -278,15 +279,15 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Продажи и выручка <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">Ключевой</span></div>
-        <div class="an-report-desc">Объём продаж, средний чек, динамика выручки по дням/неделям</div>
+        <div class="an-report-name">{% trans "Продажи и выручка" %} <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">{% trans "Ключевой" %}</span></div>
+        <div class="an-report-desc">{% trans "Объём продаж, средний чек, динамика выручки по дням/неделям" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">$4.0M</div><div class="an-metric-mini-label">Выручка</div></div>
-          <div class="an-metric-mini"><div class="an-metric-mini-val">1 247</div><div class="an-metric-mini-label">Заказов</div></div>
-          <div class="an-metric-mini"><div class="an-metric-mini-val">$3 208</div><div class="an-metric-mini-label">Ср. чек</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">$4.0M</div><div class="an-metric-mini-label">{% trans "Выручка" %}</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">1 247</div><div class="an-metric-mini-label">{% trans "Заказов" %}</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">$3 208</div><div class="an-metric-mini-label">{% trans "Ср. чек" %}</div></div>
         </div>
       </div>
     </div>
@@ -297,14 +298,14 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">SLA и сроки доставки <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">3 нарушения</span></div>
-        <div class="an-report-desc">Соблюдение SLA, среднее время обработки, нарушения по этапам</div>
+        <div class="an-report-name">{% trans "SLA и сроки доставки" %} <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">{% trans "3 нарушения" %}</span></div>
+        <div class="an-report-desc">{% trans "Соблюдение SLA, среднее время обработки, нарушения по этапам" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
           <div class="an-metric-mini"><div class="an-metric-mini-val">95.2%</div><div class="an-metric-mini-label">SLA</div></div>
-          <div class="an-metric-mini"><div class="an-metric-mini-val">2.1д</div><div class="an-metric-mini-label">Среднее</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">{% trans "2.1д" %}</div><div class="an-metric-mini-label">{% trans "Среднее" %}</div></div>
         </div>
       </div>
     </div>
@@ -315,15 +316,15 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Конверсия RFQ &rarr; Заказ</div>
-        <div class="an-report-desc">Воронка продаж, конверсия по этапам, причины отказов</div>
+        <div class="an-report-name">{% trans "Конверсия RFQ &rarr; Заказ" %}</div>
+        <div class="an-report-desc">{% trans "Воронка продаж, конверсия по этапам, причины отказов" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">68%</div><div class="an-metric-mini-label">Конверсия</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">68%</div><div class="an-metric-mini-label">{% trans "Конверсия" %}</div></div>
           <div class="an-metric-mini"><div class="an-metric-mini-val">84</div><div class="an-metric-mini-label">RFQ</div></div>
-          <div class="an-metric-mini"><div class="an-metric-mini-val">57</div><div class="an-metric-mini-label">Заказов</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">57</div><div class="an-metric-mini-label">{% trans "Заказов" %}</div></div>
         </div>
       </div>
     </div>
@@ -334,14 +335,14 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Товары и ассортимент</div>
-        <div class="an-report-desc">Активные позиции, топ-продаваемые, мёртвые остатки, ценообразование</div>
+        <div class="an-report-name">{% trans "Товары и ассортимент" %}</div>
+        <div class="an-report-desc">{% trans "Активные позиции, топ-продаваемые, мёртвые остатки, ценообразование" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">918K</div><div class="an-metric-mini-label">Товаров</div></div>
-          <div class="an-metric-mini"><div class="an-metric-mini-val">Top 50</div><div class="an-metric-mini-label">Продажи</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">918K</div><div class="an-metric-mini-label">{% trans "Товаров" %}</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">Top 50</div><div class="an-metric-mini-label">{% trans "Продажи" %}</div></div>
         </div>
       </div>
     </div>
@@ -352,13 +353,13 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Рекламации и возвраты <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">2 открытых</span></div>
-        <div class="an-report-desc">Открытые рекламации, решённые споры, причины возвратов, влияние на рейтинг</div>
+        <div class="an-report-name">{% trans "Рекламации и возвраты" %} <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">{% trans "2 открытых" %}</span></div>
+        <div class="an-report-desc">{% trans "Открытые рекламации, решённые споры, причины возвратов, влияние на рейтинг" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">98.4%</div><div class="an-metric-mini-label">Без проблем</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">98.4%</div><div class="an-metric-mini-label">{% trans "Без проблем" %}</div></div>
         </div>
       </div>
     </div>
@@ -369,14 +370,14 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Рейтинг и качество</div>
-        <div class="an-report-desc">Динамика рейтинга, внешний/поведенческий, факторы влияния</div>
+        <div class="an-report-name">{% trans "Рейтинг и качество" %}</div>
+        <div class="an-report-desc">{% trans "Динамика рейтинга, внешний/поведенческий, факторы влияния" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">85.2</div><div class="an-metric-mini-label">Рейтинг</div></div>
-          <div class="an-metric-mini"><div class="an-metric-mini-val">4.26</div><div class="an-metric-mini-label">Оценка</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">85.2</div><div class="an-metric-mini-label">{% trans "Рейтинг" %}</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">4.26</div><div class="an-metric-mini-label">{% trans "Оценка" %}</div></div>
         </div>
       </div>
     </div>
@@ -387,14 +388,14 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Клиенты и география</div>
-        <div class="an-report-desc">Сегментация, география заказов, LTV, повторные покупки</div>
+        <div class="an-report-name">{% trans "Клиенты и география" %}</div>
+        <div class="an-report-desc">{% trans "Сегментация, география заказов, LTV, повторные покупки" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">342</div><div class="an-metric-mini-label">Клиентов</div></div>
-          <div class="an-metric-mini"><div class="an-metric-mini-val">14</div><div class="an-metric-mini-label">Стран</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">342</div><div class="an-metric-mini-label">{% trans "Клиентов" %}</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">14</div><div class="an-metric-mini-label">{% trans "Стран" %}</div></div>
         </div>
       </div>
     </div>
@@ -405,13 +406,13 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Переторжка и скидки <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">73% принято</span></div>
-        <div class="an-report-desc">Средняя скидка, принятые/отклонённые, встречные предложения</div>
+        <div class="an-report-name">{% trans "Переторжка и скидки" %} <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">{% trans "73% принято" %}</span></div>
+        <div class="an-report-desc">{% trans "Средняя скидка, принятые/отклонённые, встречные предложения" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">4.2%</div><div class="an-metric-mini-label">Ср. скидка</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">4.2%</div><div class="an-metric-mini-label">{% trans "Ср. скидка" %}</div></div>
         </div>
       </div>
     </div>
@@ -422,14 +423,14 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Финансовый отчёт <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">P&L</span></div>
-        <div class="an-report-desc">Дебиторка, выплаты, удержания, комиссия платформы, баланс</div>
+        <div class="an-report-name">{% trans "Финансовый отчёт" %} <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">P&L</span></div>
+        <div class="an-report-desc">{% trans "Дебиторка, выплаты, удержания, комиссия платформы, баланс" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">$3.8M</div><div class="an-metric-mini-label">Выплачено</div></div>
-          <div class="an-metric-mini"><div class="an-metric-mini-val">$42K</div><div class="an-metric-mini-label">Задолж.</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">$3.8M</div><div class="an-metric-mini-label">{% trans "Выплачено" %}</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">$42K</div><div class="an-metric-mini-label">{% trans "Задолж." %}</div></div>
         </div>
       </div>
     </div>
@@ -440,14 +441,14 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Чертежи и документация</div>
-        <div class="an-report-desc">Загруженные чертежи, запросы покупателей, время ответа</div>
+        <div class="an-report-name">{% trans "Чертежи и документация" %}</div>
+        <div class="an-report-desc">{% trans "Загруженные чертежи, запросы покупателей, время ответа" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">28</div><div class="an-metric-mini-label">Файлов</div></div>
-          <div class="an-metric-mini"><div class="an-metric-mini-val">3</div><div class="an-metric-mini-label">Запросов</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">28</div><div class="an-metric-mini-label">{% trans "Файлов" %}</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">3</div><div class="an-metric-mini-label">{% trans "Запросов" %}</div></div>
         </div>
       </div>
     </div>
@@ -458,14 +459,14 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Логистика и отгрузки</div>
-        <div class="an-report-desc">Этапы отгрузки, таможня, время в пути, стоимость доставки</div>
+        <div class="an-report-name">{% trans "Логистика и отгрузки" %}</div>
+        <div class="an-report-desc">{% trans "Этапы отгрузки, таможня, время в пути, стоимость доставки" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">12.4д</div><div class="an-metric-mini-label">Ср. путь</div></div>
-          <div class="an-metric-mini"><div class="an-metric-mini-val">$340</div><div class="an-metric-mini-label">Доставка</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">{% trans "12.4д" %}</div><div class="an-metric-mini-label">{% trans "Ср. путь" %}</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">$340</div><div class="an-metric-mini-label">{% trans "Доставка" %}</div></div>
         </div>
       </div>
     </div>
@@ -476,13 +477,13 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
       </div>
       <div class="an-report-left">
-        <div class="an-report-name">Прогноз и тренды <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">+28%</span></div>
-        <div class="an-report-desc">Прогноз спроса, тренды по категориям, сезонность, рекомендации</div>
+        <div class="an-report-name">{% trans "Прогноз и тренды" %} <span class="an-report-tag" style="background:rgba(255,255,255,0.06);color:#8A8A8A;">+28%</span></div>
+        <div class="an-report-desc">{% trans "Прогноз спроса, тренды по категориям, сезонность, рекомендации" %}</div>
       </div>
       <div class="an-report-right">
-        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">Смотреть</button>
+        <button class="an-report-view" onclick="event.stopPropagation();openReportView(this)">{% trans "Смотреть" %}</button>
         <div class="an-report-metrics">
-          <div class="an-metric-mini"><div class="an-metric-mini-val">Q2</div><div class="an-metric-mini-label">Пик сезон</div></div>
+          <div class="an-metric-mini"><div class="an-metric-mini-val">Q2</div><div class="an-metric-mini-label">{% trans "Пик сезон" %}</div></div>
         </div>
       </div>
     </div>
@@ -492,9 +493,9 @@
   {# Action bar #}
   <div class="an-action-bar">
     <div class="an-action-left">
-      <span style="font-size:12px;color:#8A8A8A;">Выбрано: <strong style="color:#ECECEC;" id="selectedCount">1</strong> отчёт</span>
+      <span style="font-size:12px;color:#8A8A8A;">{% trans "Выбрано:" %} <strong style="color:#ECECEC;" id="selectedCount">1</strong> {% trans "отчёт" %}</span>
       <span style="font-size:11px;color:#6A6A6A;">·</span>
-      <span style="font-size:12px;color:#8A8A8A;">Формат:</span>
+      <span style="font-size:12px;color:#8A8A8A;">{% trans "Формат:" %}</span>
       <select class="an-select" style="width:auto;" id="exportFormat">
         <option>PDF</option>
         <option>Excel (.xlsx)</option>
@@ -504,19 +505,19 @@
       </select>
     </div>
     <div class="an-action-right">
-      <button class="an-btn an-btn--secondary" onclick="previewReport()">Предпросмотр</button>
-      <button class="an-btn an-btn--secondary" onclick="selectAll()">Выбрать все</button>
-      <button class="an-btn an-btn--green" onclick="generateReport()">Сформировать отчёт</button>
+      <button class="an-btn an-btn--secondary" onclick="previewReport()">{% trans "Предпросмотр" %}</button>
+      <button class="an-btn an-btn--secondary" onclick="selectAll()">{% trans "Выбрать все" %}</button>
+      <button class="an-btn an-btn--green" onclick="generateReport()">{% trans "Сформировать отчёт" %}</button>
     </div>
   </div>
 
   {# Preview panel — filled dynamically by JS #}
   <div class="an-preview" id="reportPreview">
     <div class="an-preview-head">
-      <div class="an-preview-title" id="previewTitle">Предпросмотр</div>
+      <div class="an-preview-title" id="previewTitle">{% trans "Предпросмотр" %}</div>
       <div style="display:flex;gap:6px;align-items:center;">
         <button class="an-btn an-btn--primary" onclick="downloadReport()" style="padding:4px 12px;font-size:11px;">
-          <span style="margin-right:4px;">&#8615;</span> Скачать отчёт
+          <span style="margin-right:4px;">&#8615;</span> {% trans "Скачать отчёт" %}
         </button>
         <button class="an-preview-close" onclick="closePreview()">&times;</button>
       </div>
@@ -530,8 +531,8 @@
 {# ═══ TAB 2: Экспорт ═══ #}
 <div class="an-panel" id="panel-export">
   <div class="an-section">
-    <div class="an-section-title">Быстрый экспорт</div>
-    <div class="an-section-sub">Выгрузка данных в удобном формате одним кликом</div>
+    <div class="an-section-title">{% trans "Быстрый экспорт" %}</div>
+    <div class="an-section-sub">{% trans "Выгрузка данных в удобном формате одним кликом" %}</div>
   </div>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
 
@@ -539,8 +540,8 @@
       <div style="width:36px;height:36px;border-radius:8px;background:rgba(102,187,106,0.12);display:flex;align-items:center;justify-content:center;">
         <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#66BB6A" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 8h6M5 5.5h4M5 10.5h3"/></svg>
       </div>
-      <div style="font-size:13px;font-weight:600;color:#ECECEC;">Прайс-лист</div>
-      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Все активные товары с ценами, остатками и сроками поставки</div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "Прайс-лист" %}</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">{% trans "Все активные товары с ценами, остатками и сроками поставки" %}</div>
       <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(102,187,106,0.14);color:#66BB6A;margin-top:auto;">XLSX</span>
     </div>
 
@@ -548,8 +549,8 @@
       <div style="width:36px;height:36px;border-radius:8px;background:rgba(100,181,246,0.12);display:flex;align-items:center;justify-content:center;">
         <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#64B5F6" stroke-width="1.4" stroke-linecap="round"><path d="M4 3.5h8l-.8 7H4.8L4 3.5z"/><circle cx="6" cy="13" r="1.2"/><circle cx="11" cy="13" r="1.2"/></svg>
       </div>
-      <div style="font-size:13px;font-weight:600;color:#ECECEC;">История заказов</div>
-      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Все заказы с деталями, статусами и суммами за выбранный период</div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "История заказов" %}</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">{% trans "Все заказы с деталями, статусами и суммами за выбранный период" %}</div>
       <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(100,181,246,0.14);color:#64B5F6;margin-top:auto;">CSV</span>
     </div>
 
@@ -557,8 +558,8 @@
       <div style="width:36px;height:36px;border-radius:8px;background:rgba(239,83,80,0.12);display:flex;align-items:center;justify-content:center;">
         <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#EF5350" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4v8"/><path d="M5.8 6.2c0-.8 1-1.4 2.2-1.4s2.2.6 2.2 1.4-1 1.3-2.2 1.3S5.8 8.2 5.8 9s1 1.5 2.2 1.5 2.2-.4 2.2-1.2"/></svg>
       </div>
-      <div style="font-size:13px;font-weight:600;color:#ECECEC;">Финансовый отчёт</div>
-      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Сводный PDF с платежами, актами и балансом за месяц</div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "Финансовый отчёт" %}</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">{% trans "Сводный PDF с платежами, актами и балансом за месяц" %}</div>
       <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(239,83,80,0.14);color:#EF5350;margin-top:auto;">PDF</span>
     </div>
 
@@ -566,8 +567,8 @@
       <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,159,10,0.12);display:flex;align-items:center;justify-content:center;">
         <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#FF9F0A" stroke-width="1.4" stroke-linecap="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5v4l2.5 1.5"/></svg>
       </div>
-      <div style="font-size:13px;font-weight:600;color:#ECECEC;">SLA-отчёт</div>
-      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Исполнение сроков по каждому заказу, нарушения и причины</div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "SLA-отчёт" %}</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">{% trans "Исполнение сроков по каждому заказу, нарушения и причины" %}</div>
       <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(102,187,106,0.14);color:#66BB6A;margin-top:auto;">XLSX</span>
     </div>
 
@@ -575,8 +576,8 @@
       <div style="width:36px;height:36px;border-radius:8px;background:rgba(171,71,188,0.12);display:flex;align-items:center;justify-content:center;">
         <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#AB47BC" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 13.5V9M5.5 13.5V6M8.5 13.5V8M11.5 13.5V3.5" stroke-width="1.8"/></svg>
       </div>
-      <div style="font-size:13px;font-weight:600;color:#ECECEC;">Аналитика спроса</div>
-      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Популярные позиции, частота запросов, тренды по категориям</div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "Аналитика спроса" %}</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">{% trans "Популярные позиции, частота запросов, тренды по категориям" %}</div>
       <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(102,187,106,0.14);color:#66BB6A;margin-top:auto;">XLSX</span>
     </div>
 
@@ -584,8 +585,8 @@
       <div style="width:36px;height:36px;border-radius:8px;background:rgba(100,181,246,0.12);display:flex;align-items:center;justify-content:center;">
         <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="#64B5F6" stroke-width="1.4" stroke-linecap="round"><rect x="2" y="3" width="12" height="10.5" rx="1.5"/><path d="M5.5 1v3M10.5 1v3"/><path d="M5.5 7.5h5" stroke-width="1.5"/></svg>
       </div>
-      <div style="font-size:13px;font-weight:600;color:#ECECEC;">Запросы клиентов</div>
-      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">Все RFQ с позициями, статусами и историей ответов</div>
+      <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "Запросы клиентов" %}</div>
+      <div style="font-size:11px;color:#6A6A6A;line-height:1.5;">{% trans "Все RFQ с позициями, статусами и историей ответов" %}</div>
       <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;padding:2px 7px;border-radius:4px;background:rgba(100,181,246,0.14);color:#64B5F6;margin-top:auto;">CSV</span>
     </div>
 
@@ -595,11 +596,11 @@
 {# ═══ TAB 3: Интеграции ═══ #}
 <div class="an-panel" id="panel-integrations">
   <div class="an-section">
-    <div class="an-section-title">Интеграции с мессенджерами и системами</div>
-    <div class="an-section-sub">Подключите каналы для автоматической отправки отчётов и уведомлений</div>
+    <div class="an-section-title">{% trans "Интеграции с мессенджерами и системами" %}</div>
+    <div class="an-section-sub">{% trans "Подключите каналы для автоматической отправки отчётов и уведомлений" %}</div>
   </div>
 
-  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Мессенджеры</div>
+  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">{% trans "Мессенджеры" %}</div>
   <div class="an-int-grid" style="margin-bottom:20px;">
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(38,166,224,0.1);font-size:22px;">
@@ -607,9 +608,9 @@
       </div>
       <div class="an-int-info">
         <div class="an-int-name">Telegram</div>
-        <div class="an-int-desc">Bot API · Отчёты в чат или канал</div>
+        <div class="an-int-desc">{% trans "Bot API · Отчёты в чат или канал" %}</div>
       </div>
-      <span class="an-int-status an-int-status--on">Подключён</span>
+      <span class="an-int-status an-int-status--on">{% trans "Подключён" %}</span>
     </div>
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(37,211,102,0.1);font-size:22px;">
@@ -617,9 +618,9 @@
       </div>
       <div class="an-int-info">
         <div class="an-int-name">WhatsApp Business</div>
-        <div class="an-int-desc">Business API · PDF отчёты в диалог</div>
+        <div class="an-int-desc">{% trans "Business API · PDF отчёты в диалог" %}</div>
       </div>
-      <span class="an-int-status an-int-status--off">Не подключён</span>
+      <span class="an-int-status an-int-status--off">{% trans "Не подключён" %}</span>
     </div>
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(124,77,255,0.1);font-size:22px;">
@@ -627,9 +628,9 @@
       </div>
       <div class="an-int-info">
         <div class="an-int-name">Viber</div>
-        <div class="an-int-desc">Viber Bot · Уведомления и сводки</div>
+        <div class="an-int-desc">{% trans "Viber Bot · Уведомления и сводки" %}</div>
       </div>
-      <span class="an-int-status an-int-status--off">Не подключён</span>
+      <span class="an-int-status an-int-status--off">{% trans "Не подключён" %}</span>
     </div>
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(255,140,66,0.1);font-size:22px;">
@@ -637,23 +638,23 @@
       </div>
       <div class="an-int-info">
         <div class="an-int-name">WeChat</div>
-        <div class="an-int-desc">Official Account · Отчёты для партнёров КНР</div>
+        <div class="an-int-desc">{% trans "Official Account · Отчёты для партнёров КНР" %}</div>
       </div>
-      <span class="an-int-status an-int-status--off">Не подключён</span>
+      <span class="an-int-status an-int-status--off">{% trans "Не подключён" %}</span>
     </div>
   </div>
 
-  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">CRM / ERP системы</div>
+  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">{% trans "CRM / ERP системы" %}</div>
   <div class="an-int-grid" style="margin-bottom:20px;">
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg>
       </div>
       <div class="an-int-info">
-        <div class="an-int-name">Битрикс24</div>
-        <div class="an-int-desc">CRM · Синхронизация сделок и контактов</div>
+        <div class="an-int-name">{% trans "Битрикс24" %}</div>
+        <div class="an-int-desc">{% trans "CRM · Синхронизация сделок и контактов" %}</div>
       </div>
-      <span class="an-int-status an-int-status--on">Подключён</span>
+      <span class="an-int-status an-int-status--on">{% trans "Подключён" %}</span>
     </div>
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
@@ -661,19 +662,19 @@
       </div>
       <div class="an-int-info">
         <div class="an-int-name">AmoCRM</div>
-        <div class="an-int-desc">CRM · Воронка продаж, аналитика сделок</div>
+        <div class="an-int-desc">{% trans "CRM · Воронка продаж, аналитика сделок" %}</div>
       </div>
-      <span class="an-int-status an-int-status--off">Не подключён</span>
+      <span class="an-int-status an-int-status--off">{% trans "Не подключён" %}</span>
     </div>
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
       </div>
       <div class="an-int-info">
-        <div class="an-int-name">1С:Предприятие</div>
-        <div class="an-int-desc">ERP · Выгрузка накладных, сверка остатков</div>
+        <div class="an-int-name">{% trans "1С:Предприятие" %}</div>
+        <div class="an-int-desc">{% trans "ERP · Выгрузка накладных, сверка остатков" %}</div>
       </div>
-      <span class="an-int-status an-int-status--on">Подключён</span>
+      <span class="an-int-status an-int-status--on">{% trans "Подключён" %}</span>
     </div>
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
@@ -681,9 +682,9 @@
       </div>
       <div class="an-int-info">
         <div class="an-int-name">SAP Business One</div>
-        <div class="an-int-desc">ERP · Управление цепочкой поставок</div>
+        <div class="an-int-desc">{% trans "ERP · Управление цепочкой поставок" %}</div>
       </div>
-      <span class="an-int-status an-int-status--off">Не подключён</span>
+      <span class="an-int-status an-int-status--off">{% trans "Не подключён" %}</span>
     </div>
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
@@ -691,23 +692,23 @@
       </div>
       <div class="an-int-info">
         <div class="an-int-name">Salesforce</div>
-        <div class="an-int-desc">CRM · Глобальная аналитика продаж</div>
+        <div class="an-int-desc">{% trans "CRM · Глобальная аналитика продаж" %}</div>
       </div>
-      <span class="an-int-status an-int-status--off">Не подключён</span>
+      <span class="an-int-status an-int-status--off">{% trans "Не подключён" %}</span>
     </div>
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A8A8A" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       </div>
       <div class="an-int-info">
-        <div class="an-int-name">Мой Склад</div>
-        <div class="an-int-desc">ERP · Учёт товаров, складских остатков</div>
+        <div class="an-int-name">{% trans "Мой Склад" %}</div>
+        <div class="an-int-desc">{% trans "ERP · Учёт товаров, складских остатков" %}</div>
       </div>
-      <span class="an-int-status an-int-status--off">Не подключён</span>
+      <span class="an-int-status an-int-status--off">{% trans "Не подключён" %}</span>
     </div>
   </div>
 
-  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Дополнительно</div>
+  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">{% trans "Дополнительно" %}</div>
   <div class="an-int-grid">
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
@@ -715,9 +716,9 @@
       </div>
       <div class="an-int-info">
         <div class="an-int-name">Google Sheets</div>
-        <div class="an-int-desc">Автоматическая выгрузка в таблицы</div>
+        <div class="an-int-desc">{% trans "Автоматическая выгрузка в таблицы" %}</div>
       </div>
-      <span class="an-int-status an-int-status--on">Подключён</span>
+      <span class="an-int-status an-int-status--on">{% trans "Подключён" %}</span>
     </div>
     <div class="an-int-card">
       <div class="an-int-icon" style="background:rgba(255,255,255,0.05);">
@@ -725,9 +726,9 @@
       </div>
       <div class="an-int-info">
         <div class="an-int-name">Webhook</div>
-        <div class="an-int-desc">HTTP callback при генерации отчёта</div>
+        <div class="an-int-desc">{% trans "HTTP callback при генерации отчёта" %}</div>
       </div>
-      <span class="an-int-status an-int-status--on">Подключён</span>
+      <span class="an-int-status an-int-status--on">{% trans "Подключён" %}</span>
     </div>
   </div>
 </div>
@@ -735,30 +736,30 @@
 {# ═══ TAB 3: Рассылка ═══ #}
 <div class="an-panel" id="panel-distribution">
   <div class="an-section">
-    <div class="an-section-title">Автоматическая рассылка отчётов</div>
-    <div class="an-section-sub">Настройте расписание отправки отчётов на email. Поддерживаются Gmail, Mail.ru, Яндекс и другие</div>
+    <div class="an-section-title">{% trans "Автоматическая рассылка отчётов" %}</div>
+    <div class="an-section-sub">{% trans "Настройте расписание отправки отчётов на email. Поддерживаются Gmail, Mail.ru, Яндекс и другие" %}</div>
   </div>
 
   {# Style selector for emails #}
   <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
     <div>
-      <span style="font-size:11px;color:#6A6A6A;">Стиль писем:</span>
+      <span style="font-size:11px;color:#6A6A6A;">{% trans "Стиль писем:" %}</span>
       <div class="an-style-toggle" style="margin-top:6px;">
-        <div class="an-style-opt active" onclick="setEmailStyle(this,'official')">Официальный</div>
-        <div class="an-style-opt" onclick="setEmailStyle(this,'informal')">Неофициальный</div>
+        <div class="an-style-opt active" onclick="setEmailStyle(this,'official')">{% trans "Официальный" %}</div>
+        <div class="an-style-opt" onclick="setEmailStyle(this,'informal')">{% trans "Неофициальный" %}</div>
       </div>
     </div>
     <div style="flex:1;">
-      <div style="font-size:11px;color:#6A6A6A;margin-bottom:6px;">Описание стиля:</div>
+      <div style="font-size:11px;color:#6A6A6A;margin-bottom:6px;">{% trans "Описание стиля:" %}</div>
       <div id="styleDesc" style="font-size:12px;color:#8A8A8A;line-height:1.5;">
-        Фирменный бланк с логотипом, полная таблица данных, подпись компании, юридические реквизиты
+        {% trans "Фирменный бланк с логотипом, полная таблица данных, подпись компании, юридические реквизиты" %}
       </div>
     </div>
   </div>
 
   {# Active subscriptions #}
   <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);margin-bottom:16px;">
-    <div style="font-size:12px;font-weight:600;color:#ECECEC;margin-bottom:12px;">Активные подписки</div>
+    <div style="font-size:12px;font-weight:600;color:#ECECEC;margin-bottom:12px;">{% trans "Активные подписки" %}</div>
 
     <div class="an-dist-row">
       <div style="display:flex;align-items:center;gap:8px;">
@@ -767,9 +768,9 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">Gmail</span>
-        <div class="an-dist-sched">Пн-Пт, 09:00</div>
-        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(102,187,106,0.1);color:#66BB6A;">Все отчёты</span>
-        <button class="an-dist-remove" title="Удалить">&times;</button>
+        <div class="an-dist-sched">{% trans "Пн-Пт, 09:00" %}</div>
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(102,187,106,0.1);color:#66BB6A;">{% trans "Все отчёты" %}</span>
+        <button class="an-dist-remove" title="{% trans 'Удалить' %}">&times;</button>
       </div>
     </div>
 
@@ -780,9 +781,9 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">Mail.ru</span>
-        <div class="an-dist-sched">Пн, 08:00</div>
-        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">SLA, Логистика</span>
-        <button class="an-dist-remove" title="Удалить">&times;</button>
+        <div class="an-dist-sched">{% trans "Пн, 08:00" %}</div>
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">{% trans "SLA, Логистика" %}</span>
+        <button class="an-dist-remove" title="{% trans 'Удалить' %}">&times;</button>
       </div>
     </div>
 
@@ -792,56 +793,55 @@
         <div class="an-dist-email">ceo@company.ru</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">Яндекс</span>
-        <div class="an-dist-sched">1 числа, 10:00</div>
-        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">Финансовый</span>
-        <button class="an-dist-remove" title="Удалить">&times;</button>
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">{% trans "Яндекс" %}</span>
+        <div class="an-dist-sched">{% trans "1 числа, 10:00" %}</div>
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,0.05);color:#8A8A8A;">{% trans "Финансовый" %}</span>
+        <button class="an-dist-remove" title="{% trans 'Удалить' %}">&times;</button>
       </div>
     </div>
   </div>
 
   {# Add new subscription #}
   <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);">
-    <div style="font-size:12px;font-weight:600;color:#ECECEC;margin-bottom:12px;">Добавить получателя</div>
+    <div style="font-size:12px;font-weight:600;color:#ECECEC;margin-bottom:12px;">{% trans "Добавить получателя" %}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;">
       <div>
         <label style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px;">Email</label>
         <input class="an-input" type="email" placeholder="name@company.com" id="newEmail" />
       </div>
       <div>
-        <label style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px;">Расписание</label>
+        <label style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px;">{% trans "Расписание" %}</label>
         <select class="an-select" style="width:100%;" id="newSchedule">
-          <option>Ежедневно, 09:00</option>
-          <option>Пн-Пт, 09:00</option>
-          <option>Понедельник, 08:00</option>
-          <option>1 числа, 10:00</option>
-          <option>Пятница, 17:00</option>
+          <option>{% trans "Ежедневно, 09:00" %}</option>
+          <option>{% trans "Пн-Пт, 09:00" %}</option>
+          <option>{% trans "Понедельник, 08:00" %}</option>
+          <option>{% trans "1 числа, 10:00" %}</option>
+          <option>{% trans "Пятница, 17:00" %}</option>
         </select>
       </div>
       <div>
-        <label style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px;">Отчёты</label>
+        <label style="font-size:10px;color:#6A6A6A;text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:4px;">{% trans "Отчёты" %}</label>
         <select class="an-select" style="width:100%;" id="newReports">
-          <option>Все отчёты</option>
-          <option>Продажи и выручка</option>
-          <option>SLA и сроки</option>
-          <option>Конверсия RFQ</option>
-          <option>Финансовый</option>
-          <option>Рейтинг</option>
-          <option>Логистика</option>
+          <option>{% trans "Все отчёты" %}</option>
+          <option>{% trans "Продажи и выручка" %}</option>
+          <option>{% trans "SLA и сроки" %}</option>
+          <option>{% trans "Конверсия RFQ" %}</option>
+          <option>{% trans "Финансовый" %}</option>
+          <option>{% trans "Рейтинг" %}</option>
+          <option>{% trans "Логистика" %}</option>
         </select>
       </div>
-      <button class="an-btn an-btn--primary" onclick="addSubscription()" style="margin-bottom:1px;">Добавить</button>
+      <button class="an-btn an-btn--primary" onclick="addSubscription()" style="margin-bottom:1px;">{% trans "Добавить" %}</button>
     </div>
 
     <div style="margin-top:12px;font-size:11px;color:#6A6A6A;line-height:1.6;">
-      Поддерживаемые почтовые сервисы: <strong style="color:#8A8A8A;">Gmail</strong>, <strong style="color:#8A8A8A;">Mail.ru</strong>, <strong style="color:#8A8A8A;">Яндекс</strong>, <strong style="color:#8A8A8A;">Outlook</strong>, <strong style="color:#8A8A8A;">iCloud</strong> и любые SMTP/IMAP серверы.
-      Письма отправляются от имени <strong style="color:#8A8A8A;">noreply@consolidator.parts</strong>
+      {% trans "Поддерживаемые почтовые сервисы:" %} <strong style="color:#8A8A8A;">Gmail</strong>, <strong style="color:#8A8A8A;">Mail.ru</strong>, <strong style="color:#8A8A8A;">{% trans "Яндекс" %}</strong>, <strong style="color:#8A8A8A;">Outlook</strong>, <strong style="color:#8A8A8A;">iCloud</strong> {% trans "и любые SMTP/IMAP серверы. Письма отправляются от имени" %} <strong style="color:#8A8A8A;">noreply@consolidator.parts</strong>
     </div>
   </div>
 
   {# Telegram notifications #}
   <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);margin-top:12px;">
-    <div style="font-size:12px;font-weight:600;color:#ECECEC;margin-bottom:12px;">Рассылка в мессенджеры</div>
+    <div style="font-size:12px;font-weight:600;color:#ECECEC;margin-bottom:12px;">{% trans "Рассылка в мессенджеры" %}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -853,7 +853,7 @@
             <div style="font-size:10px;color:#6A6A6A;">@consolidator_reports_bot</div>
           </div>
         </div>
-        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(102,187,106,0.1);color:#66BB6A;">Активен</span>
+        <span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(102,187,106,0.1);color:#66BB6A;">{% trans "Активен" %}</span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:#111;border-radius:8px;border:1px solid rgba(255,255,255,0.04);">
         <div style="display:flex;align-items:center;gap:8px;">
@@ -862,10 +862,10 @@
           </span>
           <div>
             <div style="font-size:12px;font-weight:600;color:#ECECEC;">WhatsApp</div>
-            <div style="font-size:10px;color:#6A6A6A;">Не настроен</div>
+            <div style="font-size:10px;color:#6A6A6A;">{% trans "Не настроен" %}</div>
           </div>
         </div>
-        <button class="an-btn an-btn--secondary" style="padding:3px 10px;font-size:10px;">Подключить</button>
+        <button class="an-btn an-btn--secondary" style="padding:3px 10px;font-size:10px;">{% trans "Подключить" %}</button>
       </div>
     </div>
   </div>
@@ -874,50 +874,50 @@
 {# ═══ TAB 4: API ═══ #}
 <div class="an-panel" id="panel-api">
   <div class="an-section">
-    <div class="an-section-title">API для интеграций</div>
-    <div class="an-section-sub">REST API для получения отчётов, метрик и уведомлений в ваших системах</div>
+    <div class="an-section-title">{% trans "API для интеграций" %}</div>
+    <div class="an-section-sub">{% trans "REST API для получения отчётов, метрик и уведомлений в ваших системах" %}</div>
   </div>
 
   <div style="background:#1A1A1A;border-radius:10px;padding:16px;border:1px solid rgba(255,255,255,0.04);margin-bottom:16px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <div style="font-size:12px;font-weight:600;color:#ECECEC;">API ключ</div>
-      <button class="an-btn an-btn--secondary" style="padding:3px 10px;font-size:10px;" onclick="regenerateKey()">Перегенерировать</button>
+      <div style="font-size:12px;font-weight:600;color:#ECECEC;">{% trans "API ключ" %}</div>
+      <button class="an-btn an-btn--secondary" style="padding:3px 10px;font-size:10px;" onclick="regenerateKey()">{% trans "Перегенерировать" %}</button>
     </div>
     <div class="an-api-block">
       <code style="font-size:12px;color:#ECECEC;">sk-cons-4f8a2b1c9d7e6f3a5b0c8d2e1f4a7b3c</code>
     </div>
-    <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">Используйте этот ключ в заголовке <code style="color:#8A8A8A;">Authorization: Bearer &lt;key&gt;</code></div>
+    <div style="font-size:11px;color:#6A6A6A;margin-top:8px;">{% trans "Используйте этот ключ в заголовке" %} <code style="color:#8A8A8A;">Authorization: Bearer &lt;key&gt;</code></div>
   </div>
 
-  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">Эндпоинты</div>
+  <div style="font-size:11px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;">{% trans "Эндпоинты" %}</div>
 
   <div class="an-api-block">
     <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/sales</span></div>
-    <div class="an-api-desc">Отчёт по продажам и выручке. Параметры: period, format (json/csv/pdf)</div>
+    <div class="an-api-desc">{% trans "Отчёт по продажам и выручке. Параметры: period, format (json/csv/pdf)" %}</div>
   </div>
   <div class="an-api-block">
     <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/sla</span></div>
-    <div class="an-api-desc">SLA метрики и нарушения. Параметры: period, include_details</div>
+    <div class="an-api-desc">{% trans "SLA метрики и нарушения. Параметры: period, include_details" %}</div>
   </div>
   <div class="an-api-block">
     <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/conversion</span></div>
-    <div class="an-api-desc">Воронка конверсии RFQ → Заказ. Параметры: period, group_by</div>
+    <div class="an-api-desc">{% trans "Воронка конверсии RFQ → Заказ. Параметры: period, group_by" %}</div>
   </div>
   <div class="an-api-block">
     <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/finance</span></div>
-    <div class="an-api-desc">Финансовый отчёт P&L. Параметры: period, currency, include_debtors</div>
+    <div class="an-api-desc">{% trans "Финансовый отчёт P&L. Параметры: period, currency, include_debtors" %}</div>
   </div>
   <div class="an-api-block">
     <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/rating</span></div>
-    <div class="an-api-desc">Рейтинг и история событий. Параметры: period, include_events</div>
+    <div class="an-api-desc">{% trans "Рейтинг и история событий. Параметры: period, include_events" %}</div>
   </div>
   <div class="an-api-block">
     <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/reports/logistics</span></div>
-    <div class="an-api-desc">Логистика и отгрузки. Параметры: period, destination_country</div>
+    <div class="an-api-desc">{% trans "Логистика и отгрузки. Параметры: period, destination_country" %}</div>
   </div>
   <div class="an-api-block">
     <div><span class="an-api-method">GET</span><span class="an-api-url">/api/v1/metrics/dashboard</span></div>
-    <div class="an-api-desc">Сводка ключевых метрик дашборда в реальном времени</div>
+    <div class="an-api-desc">{% trans "Сводка ключевых метрик дашборда в реальном времени" %}</div>
   </div>
   <div class="an-api-block">
     <div><span class="an-api-method">POST</span><span class="an-api-url">/api/v1/reports/generate</span></div>
@@ -933,8 +933,7 @@
   </div>
 
   <div style="background:rgba(100,181,246,0.04);border:1px solid rgba(100,181,246,0.1);border-radius:10px;padding:12px 14px;margin-top:16px;font-size:12px;color:#8A8A8A;line-height:1.6;">
-    Документация API доступна по адресу <strong style="color:#64B5F6;">docs.consolidator.parts/api/v1</strong>.
-    Rate limit: 100 запросов/минуту. Формат ответа: JSON. Поддерживается пагинация, фильтрация и сортировка.
+    {% trans "Документация API доступна по адресу" %} <strong style="color:#64B5F6;">docs.consolidator.parts/api/v1</strong>{% trans ". Rate limit: 100 запросов/минуту. Формат ответа: JSON. Поддерживается пагинация, фильтрация и сортировка." %}
   </div>
 </div>
 
@@ -964,9 +963,9 @@ function setEmailStyle(el, style) {
   el.classList.add('active');
   const desc = document.getElementById('styleDesc');
   if (style === 'official') {
-    desc.textContent = 'Фирменный бланк с логотипом, полная таблица данных, подпись компании, юридические реквизиты';
+    desc.textContent = gettext("Фирменный бланк с логотипом, полная таблица данных, подпись компании, юридические реквизиты");
   } else {
-    desc.textContent = 'Краткая сводка ключевых метрик, без юридических данных, дружелюбный тон, эмодзи-акценты';
+    desc.textContent = gettext("Краткая сводка ключевых метрик, без юридических данных, дружелюбный тон, эмодзи-акценты");
   }
 }
 
@@ -993,134 +992,134 @@ function updateCount() {
 
 const reportData = {
   sales: {
-    title: 'Продажи и выручка',
+    title: '{% trans 'Продажи и выручка' %}',
     kpis: [
-      {val:'$4.0M', label:'Общая выручка', trend:'+28.7%', up:true},
-      {val:'1 247', label:'Заказов', trend:'+15.3%', up:true},
-      {val:'$3 208', label:'Средний чек', trend:'+11.6%', up:true},
-      {val:'342', label:'Клиентов', trend:'-2.1%', up:false},
+      {val:'$4.0M', label:'{% trans 'Общая выручка' %}', trend:'+28.7%', up:true},
+      {val:'1 247', label:'{% trans 'Заказов' %}', trend:'+15.3%', up:true},
+      {val:'$3 208', label:'{% trans 'Средний чек' %}', trend:'+11.6%', up:true},
+      {val:'342', label:'{% trans 'Клиентов' %}', trend:'-2.1%', up:false},
     ],
-    chart: {type:'bars', title:'Выручка по дням (30 дней)', vals:[65,80,45,90,70,55,85,75,60,95,50,88,72,68,82,77,90,65,78,85,92,58,74,80,86,70,95,88,76,82]},
+    chart: {type:'bars', title:'{% trans 'Выручка по дням (30 дней)' %}', vals:[65,80,45,90,70,55,85,75,60,95,50,88,72,68,82,77,90,65,78,85,92,58,74,80,86,70,95,88,76,82]},
   },
   sla: {
-    title: 'SLA и сроки доставки',
+    title: '{% trans 'SLA и сроки доставки' %}',
     kpis: [
-      {val:'95.2%', label:'SLA соблюдение', trend:'+1.8%', up:true},
-      {val:'2.1д', label:'Среднее время', trend:'-0.3д', up:true},
-      {val:'3', label:'Нарушений', trend:'+1', up:false},
-      {val:'12', label:'Под угрозой', trend:'-4', up:true},
+      {val:'95.2%', label:'{% trans 'SLA соблюдение' %}', trend:'+1.8%', up:true},
+      {val:'{% trans '2.1д' %}', label:'{% trans 'Среднее время' %}', trend:'{% trans '-0.3д' %}', up:true},
+      {val:'3', label:'{% trans 'Нарушений' %}', trend:'+1', up:false},
+      {val:'12', label:'{% trans 'Под угрозой' %}', trend:'-4', up:true},
     ],
-    chart: {type:'bars', title:'SLA по неделям', vals:[92,94,96,91,95,97,93,95,98,94,96,95]},
+    chart: {type:'bars', title:'{% trans 'SLA по неделям' %}', vals:[92,94,96,91,95,97,93,95,98,94,96,95]},
   },
   conversion: {
-    title: 'Конверсия RFQ → Заказ',
+    title: '{% trans 'Конверсия RFQ → Заказ' %}',
     kpis: [
-      {val:'68%', label:'Конверсия', trend:'+4.2%', up:true},
-      {val:'84', label:'Всего RFQ', trend:'+12', up:true},
-      {val:'57', label:'Стали заказами', trend:'+9', up:true},
-      {val:'27', label:'Отклонены', trend:'-3', up:true},
+      {val:'68%', label:'{% trans 'Конверсия' %}', trend:'+4.2%', up:true},
+      {val:'84', label:'{% trans 'Всего RFQ' %}', trend:'+12', up:true},
+      {val:'57', label:'{% trans 'Стали заказами' %}', trend:'+9', up:true},
+      {val:'27', label:'{% trans 'Отклонены' %}', trend:'-3', up:true},
     ],
-    chart: {type:'funnel', title:'Воронка: RFQ → Котировка → Заказ → Оплата', vals:[84,72,57,51]},
+    chart: {type:'funnel', title:'{% trans 'Воронка: RFQ → Котировка → Заказ → Оплата' %}', vals:[84,72,57,51]},
   },
   products: {
-    title: 'Товары и ассортимент',
+    title: '{% trans 'Товары и ассортимент' %}',
     kpis: [
-      {val:'918 759', label:'Активных', trend:'+2 140', up:true},
-      {val:'12 430', label:'Без продаж 90д', trend:'+840', up:false},
-      {val:'Top 50', label:'80% выручки', trend:'', up:true},
-      {val:'$48.20', label:'Ср. цена', trend:'+$2.10', up:true},
+      {val:'918 759', label:'{% trans 'Активных' %}', trend:'+2 140', up:true},
+      {val:'12 430', label:'{% trans 'Без продаж 90д' %}', trend:'+840', up:false},
+      {val:'Top 50', label:'{% trans '80% выручки' %}', trend:'', up:true},
+      {val:'$48.20', label:'{% trans 'Ср. цена' %}', trend:'+$2.10', up:true},
     ],
-    chart: {type:'hbars', title:'Топ-5 категорий по выручке', items:[
-      {name:'Гидравлика', val:85}, {name:'Фильтры', val:72}, {name:'Электрика', val:58}, {name:'Двигатели', val:45}, {name:'Трансмиссия', val:38}
+    chart: {type:'hbars', title:'{% trans 'Топ-5 категорий по выручке' %}', items:[
+      {name:'{% trans 'Гидравлика' %}', val:85}, {name:'{% trans 'Фильтры' %}', val:72}, {name:'{% trans 'Электрика' %}', val:58}, {name:'{% trans 'Двигатели' %}', val:45}, {name:'{% trans 'Трансмиссия' %}', val:38}
     ]},
   },
   claims: {
-    title: 'Рекламации и возвраты',
+    title: '{% trans 'Рекламации и возвраты' %}',
     kpis: [
-      {val:'2', label:'Открытых', trend:'-1', up:true},
-      {val:'14', label:'За 90 дней', trend:'-3', up:true},
-      {val:'98.4%', label:'Без проблем', trend:'+0.6%', up:true},
-      {val:'3.2д', label:'Ср. решение', trend:'-0.8д', up:true},
+      {val:'2', label:'{% trans 'Открытых' %}', trend:'-1', up:true},
+      {val:'14', label:'{% trans 'За 90 дней' %}', trend:'-3', up:true},
+      {val:'98.4%', label:'{% trans 'Без проблем' %}', trend:'+0.6%', up:true},
+      {val:'{% trans '3.2д' %}', label:'{% trans 'Ср. решение' %}', trend:'{% trans '-0.8д' %}', up:true},
     ],
-    chart: {type:'hbars', title:'Причины рекламаций', items:[
-      {name:'Повреждение при доставке', val:40}, {name:'Несоответствие описанию', val:30}, {name:'Некомплект', val:20}, {name:'Заводской брак', val:10}
+    chart: {type:'hbars', title:'{% trans 'Причины рекламаций' %}', items:[
+      {name:'{% trans 'Повреждение при доставке' %}', val:40}, {name:'{% trans 'Несоответствие описанию' %}', val:30}, {name:'{% trans 'Некомплект' %}', val:20}, {name:'{% trans 'Заводской брак' %}', val:10}
     ]},
   },
   rating: {
-    title: 'Рейтинг и качество',
+    title: '{% trans 'Рейтинг и качество' %}',
     kpis: [
-      {val:'85.2', label:'Общий рейтинг', trend:'+3.4', up:true},
-      {val:'88.0', label:'Внешний (60%)', trend:'+2.1', up:true},
-      {val:'81.0', label:'Поведенческий (40%)', trend:'+5.2', up:true},
-      {val:'4.26', label:'Оценка /5', trend:'+0.18', up:true},
+      {val:'85.2', label:'{% trans 'Общий рейтинг' %}', trend:'+3.4', up:true},
+      {val:'88.0', label:'{% trans 'Внешний (60%)' %}', trend:'+2.1', up:true},
+      {val:'81.0', label:'{% trans 'Поведенческий (40%)' %}', trend:'+5.2', up:true},
+      {val:'4.26', label:'{% trans 'Оценка /5' %}', trend:'+0.18', up:true},
     ],
-    chart: {type:'bars', title:'Рейтинг по месяцам', vals:[78,79,80,82,81,83,82,84,83,85,84,85]},
+    chart: {type:'bars', title:'{% trans 'Рейтинг по месяцам' %}', vals:[78,79,80,82,81,83,82,84,83,85,84,85]},
   },
   customers: {
-    title: 'Клиенты и география',
+    title: '{% trans 'Клиенты и география' %}',
     kpis: [
-      {val:'342', label:'Всего клиентов', trend:'+28', up:true},
-      {val:'14', label:'Стран', trend:'+2', up:true},
-      {val:'$11.7K', label:'Ср. LTV', trend:'+$1.2K', up:true},
-      {val:'34%', label:'Повторные', trend:'+5%', up:true},
+      {val:'342', label:'{% trans 'Всего клиентов' %}', trend:'+28', up:true},
+      {val:'14', label:'{% trans 'Стран' %}', trend:'+2', up:true},
+      {val:'$11.7K', label:'{% trans 'Ср. LTV' %}', trend:'+$1.2K', up:true},
+      {val:'34%', label:'{% trans 'Повторные' %}', trend:'+5%', up:true},
     ],
-    chart: {type:'hbars', title:'Топ-5 стран по заказам', items:[
-      {name:'Россия', val:65}, {name:'Казахстан', val:48}, {name:'Беларусь', val:35}, {name:'Узбекистан', val:22}, {name:'Китай', val:18}
+    chart: {type:'hbars', title:'{% trans 'Топ-5 стран по заказам' %}', items:[
+      {name:'{% trans 'Россия' %}', val:65}, {name:'{% trans 'Казахстан' %}', val:48}, {name:'{% trans 'Беларусь' %}', val:35}, {name:'{% trans 'Узбекистан' %}', val:22}, {name:'{% trans 'Китай' %}', val:18}
     ]},
   },
   negotiations: {
-    title: 'Переторжка и скидки',
+    title: '{% trans 'Переторжка и скидки' %}',
     kpis: [
-      {val:'4.2%', label:'Средняя скидка', trend:'-0.3%', up:true},
-      {val:'73%', label:'Принятых', trend:'+8%', up:true},
-      {val:'15%', label:'Встречных', trend:'-2%', up:true},
-      {val:'12%', label:'Отклонённых', trend:'-6%', up:true},
+      {val:'4.2%', label:'{% trans 'Средняя скидка' %}', trend:'-0.3%', up:true},
+      {val:'73%', label:'{% trans 'Принятых' %}', trend:'+8%', up:true},
+      {val:'15%', label:'{% trans 'Встречных' %}', trend:'-2%', up:true},
+      {val:'12%', label:'{% trans 'Отклонённых' %}', trend:'-6%', up:true},
     ],
-    chart: {type:'bars', title:'Скидки по неделям (%)', vals:[5,4,6,3,5,4,3,5,4,3,4,5]},
+    chart: {type:'bars', title:'{% trans 'Скидки по неделям (%)' %}', vals:[5,4,6,3,5,4,3,5,4,3,4,5]},
   },
   finance: {
-    title: 'Финансовый отчёт',
+    title: '{% trans 'Финансовый отчёт' %}',
     kpis: [
-      {val:'$3.8M', label:'Выплачено', trend:'+$420K', up:true},
-      {val:'$42K', label:'Дебиторка', trend:'-$8K', up:true},
-      {val:'$156K', label:'Удержания', trend:'+$12K', up:false},
-      {val:'3.9%', label:'Комиссия', trend:'0%', up:true},
+      {val:'$3.8M', label:'{% trans 'Выплачено' %}', trend:'+$420K', up:true},
+      {val:'$42K', label:'{% trans 'Дебиторка' %}', trend:'-$8K', up:true},
+      {val:'$156K', label:'{% trans 'Удержания' %}', trend:'+$12K', up:false},
+      {val:'3.9%', label:'{% trans 'Комиссия' %}', trend:'0%', up:true},
     ],
-    chart: {type:'hbars', title:'Структура расходов', items:[
-      {name:'Выплаты поставщику', val:92}, {name:'Комиссия платформы', val:45}, {name:'Удержания/штрафы', val:18}, {name:'Возвраты', val:8}
+    chart: {type:'hbars', title:'{% trans 'Структура расходов' %}', items:[
+      {name:'{% trans 'Выплаты поставщику' %}', val:92}, {name:'{% trans 'Комиссия платформы' %}', val:45}, {name:'{% trans 'Удержания/штрафы' %}', val:18}, {name:'{% trans 'Возвраты' %}', val:8}
     ]},
   },
   drawings: {
-    title: 'Чертежи и документация',
+    title: '{% trans 'Чертежи и документация' %}',
     kpis: [
-      {val:'28', label:'Загружено', trend:'+6', up:true},
-      {val:'3', label:'Запросов', trend:'+1', up:false},
-      {val:'4.2ч', label:'Ср. ответ', trend:'-1.8ч', up:true},
-      {val:'92%', label:'Передано', trend:'+4%', up:true},
+      {val:'28', label:'{% trans 'Загружено' %}', trend:'+6', up:true},
+      {val:'3', label:'{% trans 'Запросов' %}', trend:'+1', up:false},
+      {val:'{% trans '4.2ч' %}', label:'{% trans 'Ср. ответ' %}', trend:'{% trans '-1.8ч' %}', up:true},
+      {val:'92%', label:'{% trans 'Передано' %}', trend:'+4%', up:true},
     ],
-    chart: {type:'bars', title:'Загрузки по неделям', vals:[3,5,2,4,6,3,5,4,2,6,4,5]},
+    chart: {type:'bars', title:'{% trans 'Загрузки по неделям' %}', vals:[3,5,2,4,6,3,5,4,2,6,4,5]},
   },
   logistics: {
-    title: 'Логистика и отгрузки',
+    title: '{% trans 'Логистика и отгрузки' %}',
     kpis: [
-      {val:'12.4д', label:'Ср. путь', trend:'-1.2д', up:true},
-      {val:'$340', label:'Ср. доставка', trend:'-$28', up:true},
-      {val:'96%', label:'В срок', trend:'+2%', up:true},
-      {val:'4', label:'На таможне', trend:'-1', up:true},
+      {val:'{% trans '12.4д' %}', label:'{% trans 'Ср. путь' %}', trend:'{% trans '-1.2д' %}', up:true},
+      {val:'$340', label:'{% trans 'Ср. доставка' %}', trend:'-$28', up:true},
+      {val:'96%', label:'{% trans 'В срок' %}', trend:'+2%', up:true},
+      {val:'4', label:'{% trans 'На таможне' %}', trend:'-1', up:true},
     ],
-    chart: {type:'hbars', title:'Время по этапам (дни)', items:[
-      {name:'Производство', val:70}, {name:'Упаковка', val:15}, {name:'Транспорт', val:55}, {name:'Таможня', val:40}, {name:'Последняя миля', val:20}
+    chart: {type:'hbars', title:'{% trans 'Время по этапам (дни)' %}', items:[
+      {name:'{% trans 'Производство' %}', val:70}, {name:'{% trans 'Упаковка' %}', val:15}, {name:'{% trans 'Транспорт' %}', val:55}, {name:'{% trans 'Таможня' %}', val:40}, {name:'{% trans 'Последняя миля' %}', val:20}
     ]},
   },
   forecast: {
-    title: 'Прогноз и тренды',
+    title: '{% trans 'Прогноз и тренды' %}',
     kpis: [
-      {val:'+28%', label:'Тренд роста', trend:'vs 2025', up:true},
-      {val:'Q2', label:'Пик сезон', trend:'апр-июн', up:true},
-      {val:'$5.1M', label:'Прогноз Q2', trend:'+$1.1M', up:true},
-      {val:'Гидравлика', label:'Топ категория', trend:'+34%', up:true},
+      {val:'+28%', label:'{% trans 'Тренд роста' %}', trend:'vs 2025', up:true},
+      {val:'Q2', label:'{% trans 'Пик сезон' %}', trend:'{% trans 'апр-июн' %}', up:true},
+      {val:'$5.1M', label:'{% trans 'Прогноз Q2' %}', trend:'+$1.1M', up:true},
+      {val:'{% trans 'Гидравлика' %}', label:'{% trans 'Топ категория' %}', trend:'+34%', up:true},
     ],
-    chart: {type:'bars', title:'Прогноз выручки по месяцам (2026)', vals:[80,85,92,110,115,108,95,88,90,98,105,112]},
+    chart: {type:'bars', title:'{% trans 'Прогноз выручки по месяцам (2026)' %}', vals:[80,85,92,110,115,108,95,88,90,98,105,112]},
   },
 };
 
@@ -1175,7 +1174,7 @@ function renderPreview(data) {
   }
   else if (data.chart.type === 'funnel') {
     const max = data.chart.vals[0];
-    const labels = ['RFQ получено','Котировка','Заказ','Оплата'];
+    const labels = [gettext("RFQ получено"),gettext("Котировка"),gettext("Заказ"),gettext("Оплата")];
     chartEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;padding:10px 0;">`
       + data.chart.vals.map((v,i) => {
         const pct = (v/max)*100;
@@ -1243,12 +1242,12 @@ function downloadCSV(data) {
   a.download = data.title.replace(/\s+/g, '_') + '.csv';
   a.click();
   URL.revokeObjectURL(url);
-  showToast('CSV скачан: ' + data.title);
+  showToast(gettext("CSV скачан: ") + data.title);
 }
 
 function downloadHTML(data, official, format) {
   const date = new Date().toLocaleDateString('ru-RU', {day:'2-digit',month:'long',year:'numeric'});
-  const period = document.querySelector('.an-period-btn.active')?.textContent || '30 дней';
+  const period = document.querySelector('.an-period-btn.active')?.textContent || gettext("30 дней");
 
   // Build chart HTML
   let chartHTML = '';
@@ -1260,7 +1259,7 @@ function downloadHTML(data, official, format) {
       ).join('') + `</div><p style="text-align:center;color:#666;font-size:12px;">${data.chart.title}</p>`;
   } else if (data.chart.type === 'funnel') {
     const max = data.chart.vals[0];
-    const labels = ['RFQ получено','Котировка','Заказ','Оплата'];
+    const labels = [gettext("RFQ получено"),gettext("Котировка"),gettext("Заказ"),gettext("Оплата")];
     chartHTML = '<div style="margin:20px 0;">' + data.chart.vals.map((v,i) => {
       const pct = (v/max)*100;
       return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
@@ -1320,7 +1319,7 @@ function downloadHTML(data, official, format) {
   <div class="header">
     <div>
       <div class="logo">Consolidator<span>Parts</span></div>
-      <div style="font-size:11px;color:#888;margin-top:2px;">${official ? 'Официальный отчёт' : 'Сводный отчёт'}</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">${official ? [gettext("Официальный отчёт")]: gettext("Сводный отчёт")}</div>
     </div>
     <div class="meta">
       <div>${date}</div>
@@ -1331,7 +1330,7 @@ function downloadHTML(data, official, format) {
   </div>
 
   <h1>${data.title}</h1>
-  <div class="subtitle">${official ? 'Детализированный отчёт за выбранный период. Данные актуальны на момент формирования.' : 'Краткая сводка ключевых показателей за выбранный период.'}</div>
+  <div class="subtitle">${official ? [gettext("Детализированный отчёт за выбранный период. Данные актуальны на момент формирования.")]: gettext("Краткая сводка ключевых показателей за выбранный период.")}</div>
 
   <div class="kpi-grid">
     ${data.kpis.map(k => `<div class="kpi-card">
@@ -1356,7 +1355,7 @@ function downloadHTML(data, official, format) {
   </table>`}
 
   <div class="footer">
-    <div>${official ? '© 2026 Consolidator Parts. Все права защищены. Документ сформирован автоматически.' : 'Consolidator Parts · Автоотчёт'}</div>
+    <div>${official ? [gettext("© 2026 Consolidator Parts. Все права защищены. Документ сформирован автоматически.")]: gettext("Consolidator Parts · Автоотчёт")}</div>
     <div>Стр. 1 из 1</div>
   </div>
 </body></html>`;
@@ -1370,11 +1369,11 @@ function downloadHTML(data, official, format) {
     a.href = url;
     a.download = data.title.replace(/\s+/g, '_') + '.xls';
     a.click();
-    showToast('Excel скачан: ' + data.title);
+    showToast(gettext("Excel скачан: ") + data.title);
   } else {
     // Open in new tab for PDF print
     const w = window.open(url, '_blank');
-    showToast('Документ открыт — нажмите «Печать / Сохранить PDF»');
+    showToast(gettext("Документ открыт — нажмите «Печать / Сохранить PDF»"));
   }
   URL.revokeObjectURL(url);
 }
@@ -1382,13 +1381,13 @@ function downloadHTML(data, official, format) {
 function generateReport() {
   const count = document.querySelectorAll('.an-report-card.selected').length;
   if (count === 0) {
-    showToast('Выберите хотя бы один отчёт');
+    showToast(gettext("Выберите хотя бы один отчёт"));
     return;
   }
   const format = document.getElementById('exportFormat').value;
-  showToast('Формируется ' + count + ' отчёт(ов) в формате ' + format + '...');
+  showToast(gettext("Формируется ") + count + gettext(" отчёт(ов) в формате ") + format + '...');
   setTimeout(() => {
-    showToast('Отчёт сформирован и готов к скачиванию');
+    showToast(gettext("Отчёт сформирован и готов к скачиванию"));
   }, 2000);
 }
 
@@ -1399,7 +1398,7 @@ function addSubscription() {
     document.getElementById('newEmail').focus();
     return;
   }
-  showToast('Подписка добавлена: ' + email);
+  showToast(gettext("Подписка добавлена: ") + email);
   document.getElementById('newEmail').value = '';
   document.getElementById('newEmail').style.borderColor = '';
 }
@@ -1413,7 +1412,7 @@ function regenerateKey() {
   }
   var codeEl = document.querySelector('.an-api-block code');
   if (codeEl) codeEl.textContent = newKey;
-  showToast('API ключ перегенерирован');
+  showToast(gettext("API ключ перегенерирован"));
 }
 
 function showToast(msg) {
@@ -1429,20 +1428,20 @@ document.querySelectorAll('.an-dist-remove').forEach(function(btn) {
     var row = btn.closest('.an-dist-row');
     if (row) {
       var emailEl = row.querySelector('.an-dist-email');
-      var email = emailEl ? emailEl.textContent : 'подписку';
+      var email = emailEl ? emailEl.textContent : '{% trans 'подписку' %}';
       row.style.transition = 'opacity .3s';
       row.style.opacity = '0';
       setTimeout(function() { row.remove(); }, 300);
-      showToast('Удалена подписка: ' + email);
+      showToast(gettext("Удалена подписка: ") + email);
     }
   });
 });
 
 /* ── WhatsApp connect button (distribution tab) ── */
 document.querySelectorAll('.an-btn--secondary').forEach(function(btn) {
-  if (btn.textContent.trim() === 'Подключить') {
+  if (btn.textContent.trim() === gettext("Подключить")) {
     btn.addEventListener('click', function() {
-      showToast('Для подключения WhatsApp обратитесь к администратору платформы');
+      showToast(gettext("Для подключения WhatsApp обратитесь к администратору платформы"));
     });
   }
 });

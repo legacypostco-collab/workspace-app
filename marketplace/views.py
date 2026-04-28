@@ -12,6 +12,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 from django.contrib import messages
+from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -1015,6 +1016,18 @@ def home(request: HttpRequest) -> HttpResponse:
     return render(request, "landing.html")
 
 
+def terms_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "marketplace/legal.html", {"page_key": "terms"})
+
+
+def privacy_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "marketplace/legal.html", {"page_key": "privacy"})
+
+
+def cookies_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "marketplace/legal.html", {"page_key": "cookies"})
+
+
 def home_marketplace(request: HttpRequest) -> HttpResponse:
     """Original marketplace home page (kept for internal use)."""
     _seed_if_empty()
@@ -1791,11 +1804,11 @@ def seller_dashboard(request: HttpRequest) -> HttpResponse:
         _tpl(request.user, "seller/dashboard/index.html"),
         {
             "dashboard_payload": dashboard_payload,
-            "seller_page_title": "Кабинет поставщика",
-            "seller_page_subtitle": "Главная рабочая панель: что требует внимания сейчас и куда перейти дальше.",
+            "seller_page_title": _("Кабинет поставщика"),
+            "seller_page_subtitle": _("Главная рабочая панель: что требует внимания сейчас и куда перейти дальше."),
             "seller_active_nav": "dashboard",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
             ],
         },
     )
@@ -1811,12 +1824,12 @@ def seller_product_list(request: HttpRequest) -> HttpResponse:
         _tpl(request.user, "seller/products/catalog.html"),
         {
             **_build_seller_catalog_context(request),
-            "seller_page_title": "Товары и прайсы",
-            "seller_page_subtitle": "Загрузка прайсов, preview, история импортов, каталог и массовые действия в одном модуле.",
+            "seller_page_title": _("Товары и прайсы"),
+            "seller_page_subtitle": _("Загрузка прайсов, preview, история импортов, каталог и массовые действия в одном модуле."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
             ],
         },
     )
@@ -1881,12 +1894,12 @@ def seller_orders(request: HttpRequest) -> HttpResponse:
             "query": query,
             "status": status,
             "status_choices": Order.STATUS_CHOICES,
-            "seller_page_title": "Заказы",
-            "seller_page_subtitle": "Список заказов по вашим товарам, фильтры, статусы и переход в карточку заказа.",
+            "seller_page_title": _("Заказы"),
+            "seller_page_subtitle": _("Список заказов по вашим товарам, фильтры, статусы и переход в карточку заказа."),
             "seller_active_nav": "orders",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Заказы", "url": reverse("seller_orders")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Заказы"), "url": reverse("seller_orders")},
             ],
         },
     )
@@ -1913,83 +1926,83 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
     kanban_columns_cfg = [
         {
             "key": "pending",
-            "label": "Ожидание оплаты",
+            "label": _("Ожидание оплаты"),
             "statuses": ["pending"],
             "sla_hours": 48,
-            "trigger": "Счёт сформирован",
-            "action": "Кнопка «Отправить счёт покупателю»",
-            "action_type": "Кнопка",
-            "who": "Продавец / система",
+            "trigger": _("Счёт сформирован"),
+            "action": _("Кнопка «Отправить счёт покупателю»"),
+            "action_type": _("Кнопка"),
+            "who": _("Продавец / система"),
         },
         {
             "key": "confirmed",
-            "label": "Формирование заказа",
+            "label": _("Формирование заказа"),
             "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"],
             "sla_hours": 168,
-            "trigger": "Предоплата поступила → Груз готов к отгрузке",
-            "action": "Фиксация оплаты → Кнопка «Передано в логистику»",
-            "action_type": "Автомат / Кнопка",
-            "who": "Фингрид / Поставщик",
+            "trigger": _("Предоплата поступила → Груз готов к отгрузке"),
+            "action": _("Фиксация оплаты → Кнопка «Передано в логистику»"),
+            "action_type": _("Автомат / Кнопка"),
+            "who": _("Фингрид / Поставщик"),
         },
         {
             "key": "transit_abroad",
-            "label": "Логистика (Зарубеж)",
+            "label": _("Логистика (Зарубеж)"),
             "statuses": ["transit_abroad"],
             "sla_hours": 240,
-            "trigger": "Фактическая передача перевозчику",
-            "action": "Сканирование QR-кода отгрузки",
-            "action_type": "QR-скан",
-            "who": "Зарубежный логист",
+            "trigger": _("Фактическая передача перевозчику"),
+            "action": _("Сканирование QR-кода отгрузки"),
+            "action_type": _("QR-скан"),
+            "who": _("Зарубежный логист"),
         },
         {
             "key": "customs",
-            "label": "Таможенное оформление",
+            "label": _("Таможенное оформление"),
             "statuses": ["customs"],
             "sla_hours": 48,
-            "trigger": "Таможня завершена",
-            "action": "Кнопка «Груз растаможен» + декларация",
-            "action_type": "Кнопка + документ",
-            "who": "Таможенный брокер",
+            "trigger": _("Таможня завершена"),
+            "action": _("Кнопка «Груз растаможен» + декларация"),
+            "action_type": _("Кнопка + документ"),
+            "who": _("Таможенный брокер"),
         },
         {
             "key": "transit_rf",
-            "label": "Логистика (РФ)",
+            "label": _("Логистика (РФ)"),
             "statuses": ["transit_rf"],
             "sla_hours": 24,
-            "trigger": "Передача в логистику РФ",
-            "action": "Сканирование QR-кода передачи",
-            "action_type": "QR-скан",
-            "who": "РФ-логист",
+            "trigger": _("Передача в логистику РФ"),
+            "action": _("Сканирование QR-кода передачи"),
+            "action_type": _("QR-скан"),
+            "who": _("РФ-логист"),
         },
         {
             "key": "issuing",
-            "label": "Выдача",
+            "label": _("Выдача"),
             "statuses": ["issuing", "shipped"],
             "sla_hours": 24,
-            "trigger": "Передача на приёмку",
-            "action": "Сканирование QR-кода выдачи",
-            "action_type": "QR-скан",
-            "who": "Оператор платформы",
+            "trigger": _("Передача на приёмку"),
+            "action": _("Сканирование QR-кода выдачи"),
+            "action_type": _("QR-скан"),
+            "who": _("Оператор платформы"),
         },
         {
             "key": "delivered",
-            "label": "Доставлен",
+            "label": _("Доставлен"),
             "statuses": ["delivered"],
             "sla_hours": 72,
-            "trigger": "Фактическая приёмка груза",
-            "action": "QR-код / документы / видеоприёмка",
-            "action_type": "QR / документ / видео",
-            "who": "Заказчик / оператор",
+            "trigger": _("Фактическая приёмка груза"),
+            "action": _("QR-код / документы / видеоприёмка"),
+            "action_type": _("QR / документ / видео"),
+            "who": _("Заказчик / оператор"),
         },
         {
             "key": "completed",
-            "label": "Заказ закрыт",
+            "label": _("Заказ закрыт"),
             "statuses": ["completed"],
             "sla_hours": 1,
-            "trigger": "Документы приняты",
-            "action": "Автоматическое закрытие",
-            "action_type": "Автомат",
-            "who": "Система",
+            "trigger": _("Документы приняты"),
+            "action": _("Автоматическое закрытие"),
+            "action_type": _("Автомат"),
+            "who": _("Система"),
         },
     ]
     kanban_statuses = [(col["key"], col["label"]) for col in kanban_columns_cfg]
@@ -2137,12 +2150,12 @@ def seller_sla(request: HttpRequest) -> HttpResponse:
             "avg_production_hours": avg_production_hours,
             "avg_ship_hours": avg_ship_hours,
             "stage_analytics": stage_analytics,
-            "seller_page_title": "Контроль SLA",
-            "seller_page_subtitle": "Канбан-доска поставок — перетаскивайте карточки между этапами.",
+            "seller_page_title": _("Контроль SLA"),
+            "seller_page_subtitle": _("Канбан-доска поставок — перетаскивайте карточки между этапами."),
             "seller_active_nav": "sla",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Контроль SLA", "url": reverse("seller_sla")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Контроль SLA"), "url": reverse("seller_sla")},
             ],
         },
     )
@@ -2182,26 +2195,26 @@ def seller_qr_control(request: HttpRequest) -> HttpResponse:
     # Статусы которые используют QR по бизнес-логике
     QR_STAGES = {
         "transit_abroad": {
-            "label": "Логистика (Зарубеж)",
-            "action": "Сканирование QR-кода отгрузки",
+            "label": _("Логистика (Зарубеж)"),
+            "action": _("Сканирование QR-кода отгрузки"),
             # самолёт
             "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 19-7z"/></svg>',
         },
         "transit_rf": {
-            "label": "Логистика (РФ)",
-            "action": "Сканирование при приёме груза",
+            "label": _("Логистика (РФ)"),
+            "action": _("Сканирование при приёме груза"),
             # грузовик
             "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
         },
         "issuing": {
-            "label": "Выдача",
-            "action": "QR-скан при получении заказа",
+            "label": _("Выдача"),
+            "action": _("QR-скан при получении заказа"),
             # коробка с рукой / выдача
             "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
         },
         "delivered": {
-            "label": "Доставлен",
-            "action": "Подтверждение доставки",
+            "label": _("Доставлен"),
+            "action": _("Подтверждение доставки"),
             # локация / точка назначения
             "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
         },
@@ -2209,14 +2222,14 @@ def seller_qr_control(request: HttpRequest) -> HttpResponse:
 
     # Timeline data — те же этапы что и в канбане SLA
     kanban_columns_cfg = [
-        {"key": "pending", "label": "Ожидание", "statuses": ["pending"]},
-        {"key": "confirmed", "label": "Формирование", "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"]},
-        {"key": "transit_abroad", "label": "Зарубеж", "statuses": ["transit_abroad"]},
-        {"key": "customs", "label": "Таможня", "statuses": ["customs"]},
-        {"key": "transit_rf", "label": "РФ", "statuses": ["transit_rf"]},
-        {"key": "issuing", "label": "Выдача", "statuses": ["issuing", "shipped"]},
-        {"key": "delivered", "label": "Доставлен", "statuses": ["delivered"]},
-        {"key": "completed", "label": "Закрыт", "statuses": ["completed"]},
+        {"key": "pending", "label": _("Ожидание"), "statuses": ["pending"]},
+        {"key": "confirmed", "label": _("Формирование"), "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"]},
+        {"key": "transit_abroad", "label": _("Зарубеж"), "statuses": ["transit_abroad"]},
+        {"key": "customs", "label": _("Таможня"), "statuses": ["customs"]},
+        {"key": "transit_rf", "label": _("РФ"), "statuses": ["transit_rf"]},
+        {"key": "issuing", "label": _("Выдача"), "statuses": ["issuing", "shipped"]},
+        {"key": "delivered", "label": _("Доставлен"), "statuses": ["delivered"]},
+        {"key": "completed", "label": _("Закрыт"), "statuses": ["completed"]},
     ]
     kanban_statuses = [(col["key"], col["label"]) for col in kanban_columns_cfg]
 
@@ -2251,12 +2264,12 @@ def seller_qr_control(request: HttpRequest) -> HttpResponse:
             "qr_stages": QR_STAGES,
             "timeline_orders": timeline_orders,
             "kanban_statuses": kanban_statuses,
-            "seller_page_title": "QR-контроль",
-            "seller_page_subtitle": "Генерация QR-кодов и отслеживание заказов",
+            "seller_page_title": _("QR-контроль"),
+            "seller_page_subtitle": _("Генерация QR-кодов и отслеживание заказов"),
             "seller_active_nav": "qr",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "QR-контроль", "url": reverse("seller_qr_control")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("QR-контроль"), "url": reverse("seller_qr_control")},
             ],
         },
     )
@@ -2361,7 +2374,7 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
     if rating_score < 80:
         warnings.append({
             "level": "warning",
-            "title": "Рейтинг ниже порога «Надёжный»",
+            "title": _("Рейтинг ниже порога «Надёжный»"),
             "text": f"Текущий рейтинг {rating_score:.1f}. Нужно 80+ для статуса «Надёжный».",
             "icon": "star",
         })
@@ -2375,7 +2388,7 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
     if not warnings:
         warnings.append({
             "level": "success",
-            "title": "Всё в порядке",
+            "title": _("Всё в порядке"),
             "text": "Показатели в норме. Продолжайте поддерживать высокий уровень сервиса.",
             "icon": "check",
         })
@@ -2405,12 +2418,12 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
             "rating_events": rating_events,
             "event_labels": event_labels,
             "warnings": warnings,
-            "seller_page_title": "Рейтинг",
-            "seller_page_subtitle": "Подробная разбивка рейтинга и рекомендации",
+            "seller_page_title": _("Рейтинг"),
+            "seller_page_subtitle": _("Подробная разбивка рейтинга и рекомендации"),
             "seller_active_nav": "rating",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Рейтинг", "url": reverse("seller_rating")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Рейтинг"), "url": reverse("seller_rating")},
             ],
         },
     )
@@ -2538,14 +2551,14 @@ def seller_finance(request: HttpRequest) -> HttpResponse:
 
     # Канбан-этапы для таймлайна в drawer
     kanban_columns_cfg = [
-        {"key": "pending", "label": "Ожидание", "statuses": ["pending"]},
-        {"key": "confirmed", "label": "Формирование", "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"]},
-        {"key": "transit_abroad", "label": "Зарубеж", "statuses": ["transit_abroad"]},
-        {"key": "customs", "label": "Таможня", "statuses": ["customs"]},
-        {"key": "transit_rf", "label": "РФ", "statuses": ["transit_rf"]},
-        {"key": "issuing", "label": "Выдача", "statuses": ["issuing", "shipped"]},
-        {"key": "delivered", "label": "Доставлен", "statuses": ["delivered"]},
-        {"key": "completed", "label": "Закрыт", "statuses": ["completed"]},
+        {"key": "pending", "label": _("Ожидание"), "statuses": ["pending"]},
+        {"key": "confirmed", "label": _("Формирование"), "statuses": ["reserve_paid", "confirmed", "in_production", "ready_to_ship"]},
+        {"key": "transit_abroad", "label": _("Зарубеж"), "statuses": ["transit_abroad"]},
+        {"key": "customs", "label": _("Таможня"), "statuses": ["customs"]},
+        {"key": "transit_rf", "label": _("РФ"), "statuses": ["transit_rf"]},
+        {"key": "issuing", "label": _("Выдача"), "statuses": ["issuing", "shipped"]},
+        {"key": "delivered", "label": _("Доставлен"), "statuses": ["delivered"]},
+        {"key": "completed", "label": _("Закрыт"), "statuses": ["completed"]},
     ]
     kanban_statuses = [(col["key"], col["label"]) for col in kanban_columns_cfg]
 
@@ -2603,12 +2616,12 @@ def seller_finance(request: HttpRequest) -> HttpResponse:
             "payment_filter": payment_filter,
             "search_q": search_q,
             "payment_choices": Order.PAYMENT_STATUS_CHOICES,
-            "seller_page_title": "Финансы",
-            "seller_page_subtitle": "Оплаты, документы и финансовый контроль",
+            "seller_page_title": _("Финансы"),
+            "seller_page_subtitle": _("Оплаты, документы и финансовый контроль"),
             "seller_active_nav": "finance",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Финансы", "url": reverse("seller_finance")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Финансы"), "url": reverse("seller_finance")},
             ],
         },
     )
@@ -2665,12 +2678,12 @@ def seller_drawings(request: HttpRequest) -> HttpResponse:
             "status_filter": status_filter,
             "format_filter": format_filter,
             "search_q": search_q,
-            "seller_page_title": "Чертежи",
-            "seller_page_subtitle": "Управление чертежами и CAD-файлами",
+            "seller_page_title": _("Чертежи"),
+            "seller_page_subtitle": _("Управление чертежами и CAD-файлами"),
             "seller_active_nav": "drawings",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Чертежи", "url": reverse("seller_drawings")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Чертежи"), "url": reverse("seller_drawings")},
             ],
         },
     )
@@ -2710,11 +2723,11 @@ def seller_order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
             "open_claims": open_claims,
             "status_choices": status_choices,
             "seller_page_title": f"Заказ #{order.id}",
-            "seller_page_subtitle": "Карточка заказа, события, документы и действия поставщика.",
+            "seller_page_subtitle": _("Карточка заказа, события, документы и действия поставщика."),
             "seller_active_nav": "orders",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Заказы и SLA", "url": reverse("seller_orders")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Заказы и SLA"), "url": reverse("seller_orders")},
                 {"label": f"Заказ #{order.id}", "url": reverse("seller_order_detail", args=[order.id])},
             ],
         },
@@ -2762,12 +2775,12 @@ def seller_request_list(request: HttpRequest) -> HttpResponse:
             "query": query,
             "status": status,
             "status_choices": RFQ.STATUS_CHOICES,
-            "seller_page_title": "Запросы клиентов",
-            "seller_page_subtitle": "Все RFQ, где уже найдены позиции по вашему ассортименту и требуется ответ поставщика.",
+            "seller_page_title": _("Запросы клиентов"),
+            "seller_page_subtitle": _("Все RFQ, где уже найдены позиции по вашему ассортименту и требуется ответ поставщика."),
             "seller_active_nav": "requests",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Запросы клиентов", "url": reverse("seller_request_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Запросы клиентов"), "url": reverse("seller_request_list")},
             ],
         },
     )
@@ -2808,11 +2821,11 @@ def seller_request_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
             "total_discount_amount": total_discount_amount.quantize(Decimal("0.01")),
             "total_after_discount": total_after_discount.quantize(Decimal("0.01")),
             "seller_page_title": f"RFQ #{rfq.id}",
-            "seller_page_subtitle": "Карточка входящего запроса по вашему ассортименту.",
+            "seller_page_subtitle": _("Карточка входящего запроса по вашему ассортименту."),
             "seller_active_nav": "requests",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Запросы клиентов", "url": reverse("seller_request_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Запросы клиентов"), "url": reverse("seller_request_list")},
                 {"label": f"RFQ #{rfq.id}", "url": reverse("seller_request_detail", args=[rfq.id])},
             ],
         },
@@ -3845,11 +3858,11 @@ def seller_product_detail(request: HttpRequest, part_id: int) -> HttpResponse:
             "demand_stats": demand_stats,
             "related_parts": related_parts,
             "seller_page_title": part.title,
-            "seller_page_subtitle": "Карточка товара поставщика: данные, логистика, полнота и быстрые действия.",
+            "seller_page_subtitle": _("Карточка товара поставщика: данные, логистика, полнота и быстрые действия."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
                 {"label": part.title, "url": reverse("seller_product_detail", args=[part.id])},
             ],
         },
@@ -3883,13 +3896,13 @@ def seller_part_create(request: HttpRequest) -> HttpResponse:
         {
             "form": form,
             "mode": "create",
-            "seller_page_title": "Новый товар",
-            "seller_page_subtitle": "Создание новой позиции вручную.",
+            "seller_page_title": _("Новый товар"),
+            "seller_page_subtitle": _("Создание новой позиции вручную."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
-                {"label": "Новый товар", "url": reverse("seller_part_create")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
+                {"label": _("Новый товар"), "url": reverse("seller_part_create")},
             ],
         },
     )
@@ -3922,13 +3935,13 @@ def seller_part_edit(request: HttpRequest, part_id: int) -> HttpResponse:
             "mode": "edit",
             "part": part,
             "seller_page_title": f"Редактирование: {part.title}",
-            "seller_page_subtitle": "Обновление данных позиции, цены и логистики.",
+            "seller_page_subtitle": _("Обновление данных позиции, цены и логистики."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
                 {"label": part.title, "url": reverse("seller_product_detail", args=[part.id])},
-                {"label": "Редактирование", "url": reverse("seller_part_edit", args=[part.id])},
+                {"label": _("Редактирование"), "url": reverse("seller_part_edit", args=[part.id])},
             ],
         },
     )
@@ -4113,11 +4126,11 @@ def seller_import_result(request: HttpRequest, import_id: int) -> HttpResponse:
             "import_job": job,
             "error_rows_preview": rows,
             "seller_page_title": f"Результат импорта #{job.id}",
-            "seller_page_subtitle": "Статус обработки, итоговые счетчики и ошибки по строкам.",
+            "seller_page_subtitle": _("Статус обработки, итоговые счетчики и ошибки по строкам."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
-                {"label": "Кабинет поставщика", "url": reverse("seller_dashboard")},
-                {"label": "Товары и прайсы", "url": reverse("seller_product_list")},
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
                 {"label": f"Импорт #{job.id}", "url": reverse("seller_import_result", args=[job.id])},
             ],
         },
@@ -5360,12 +5373,12 @@ def admin_panel_settings(request):
 
     _CURRENCY_NAMES = {"USD": "US Dollar", "CNY": "Chinese Yuan", "EUR": "Euro", "RUB": "Russian Ruble", "AED": "UAE Dirham"}
     _NOTIF_META = [
-        {"key": "new_order",    "label": "Новый заказ",        "description": "При создании нового заказа"},
-        {"key": "new_rfq",      "label": "Новый RFQ",          "description": "При подаче нового запроса на котировку"},
-        {"key": "payment",      "label": "Оплата получена",     "description": "При подтверждении платежа"},
-        {"key": "claim",        "label": "Рекламация открыта",  "description": "При создании рекламации покупателем"},
-        {"key": "sla_breach",   "label": "SLA нарушение",      "description": "При превышении установленного времени обработки"},
-        {"key": "new_seller",   "label": "Новый поставщик",    "description": "При регистрации нового поставщика"},
+        {"key": "new_order",    "label": _("Новый заказ"),        "description": "При создании нового заказа"},
+        {"key": "new_rfq",      "label": _("Новый RFQ"),          "description": "При подаче нового запроса на котировку"},
+        {"key": "payment",      "label": _("Оплата получена"),     "description": "При подтверждении платежа"},
+        {"key": "claim",        "label": _("Рекламация открыта"),  "description": "При создании рекламации покупателем"},
+        {"key": "sla_breach",   "label": _("SLA нарушение"),      "description": "При превышении установленного времени обработки"},
+        {"key": "new_seller",   "label": _("Новый поставщик"),    "description": "При регистрации нового поставщика"},
     ]
 
     def _load():
@@ -5635,9 +5648,9 @@ def admin_panel_tariffs(request):
             platform_cfg = _json.load(f)
 
     default_plans = [
-        {"id": "basic", "name": "Базовый", "price": 0, "commission": 10, "max_products": 100, "is_active": True},
-        {"id": "professional", "name": "Профессиональный", "price": 99, "commission": 8, "max_products": 10000, "is_active": True},
-        {"id": "corporate", "name": "Корпоративный", "price": 499, "commission": 5, "max_products": 0, "is_active": True},
+        {"id": "basic", "name": _("Базовый"), "price": 0, "commission": 10, "max_products": 100, "is_active": True},
+        {"id": "professional", "name": _("Профессиональный"), "price": 99, "commission": 8, "max_products": 10000, "is_active": True},
+        {"id": "corporate", "name": _("Корпоративный"), "price": 499, "commission": 5, "max_products": 0, "is_active": True},
     ]
     tariff_plans = platform_cfg.get("tariff_plans", default_plans)
     category_commissions = platform_cfg.get("category_commissions", {})
@@ -5827,4 +5840,222 @@ def admin_panel_support(request):
         "status_filter": status_filter,
         "q": q,
         "page_num": page_num, "has_next": has_next, "has_prev": page_num > 1,
+    })
+
+
+# ── Notifications API ──────────────────────────────────────
+from .models import Notification, TeamMember, CompanyVerification
+
+@login_required
+def notifications_list(request):
+    """JSON API for notification dropdown."""
+    qs = Notification.objects.filter(user=request.user)[:30]
+    items = [{
+        "id": n.id, "kind": n.kind, "title": n.title, "body": n.body[:120],
+        "url": n.url, "is_read": n.is_read,
+        "created_at": n.created_at.strftime("%d.%m %H:%M"),
+    } for n in qs]
+    unread = Notification.objects.filter(user=request.user, is_read=False).count()
+    return JsonResponse({"items": items, "unread": unread})
+
+
+@login_required
+def notifications_mark_read(request, notif_id=None):
+    if notif_id:
+        Notification.objects.filter(user=request.user, id=notif_id).update(is_read=True)
+    else:
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return JsonResponse({"ok": True})
+
+
+@login_required
+def notifications_page(request):
+    qs = Notification.objects.filter(user=request.user)
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return render(request, "components/notifications_page.html", {"items": qs})
+
+
+# ── KYB Verification ───────────────────────────────────────
+@login_required
+def kyb_view(request):
+    kyb, _ = CompanyVerification.objects.get_or_create(user=request.user)
+    if request.method == "POST" and kyb.status not in ("verified", "pending"):
+        for field in ["legal_name", "inn", "kpp", "ogrn", "legal_address",
+                       "bank_name", "bank_account", "bik", "director_name"]:
+            setattr(kyb, field, request.POST.get(field, "").strip())
+        for fld in ["doc_charter", "doc_egrul", "doc_passport"]:
+            if fld in request.FILES:
+                setattr(kyb, fld, request.FILES[fld])
+        kyb.status = "pending"
+        kyb.submitted_at = timezone.now()
+        kyb.rejection_reason = ""
+        kyb.save()
+        Notification.objects.create(
+            user=request.user, kind="system",
+            title=_("KYB документы отправлены на проверку"),
+            body=_("Мы рассмотрим ваши документы в течение 1-2 рабочих дней."),
+            url="/kyb/",
+        )
+        messages.success(request, _("Документы отправлены на проверку"))
+        return redirect("kyb")
+    return render(request, "components/kyb_form.html", {"kyb": kyb})
+
+
+# ── Team management ────────────────────────────────────────
+@login_required
+def team_list(request):
+    members = TeamMember.objects.filter(owner=request.user).select_related("user")
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "invite":
+            email = (request.POST.get("email") or "").strip().lower()
+            full_name = (request.POST.get("full_name") or "").strip()
+            role = (request.POST.get("role") or "viewer").strip()
+            if email and email != request.user.email:
+                token = signing.dumps({"owner": request.user.id, "email": email}, salt="team-invite")
+                tm, created = TeamMember.objects.get_or_create(
+                    owner=request.user, invited_email=email,
+                    defaults={"full_name": full_name, "role": role,
+                              "invite_token": token, "status": "invited"},
+                )
+                if created:
+                    invite_url = request.build_absolute_uri(f"/team/accept/{token}/")
+                    try:
+                        from django.core.mail import send_mail
+                        send_mail(
+                            subject=str(_("Приглашение в команду на Consolidator Parts")),
+                            message=str(_("Вас пригласили присоединиться к команде. Перейдите по ссылке: ")) + invite_url,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[email],
+                            fail_silently=True,
+                        )
+                    except Exception:
+                        pass
+                    messages.success(request, _("Приглашение отправлено: ") + email)
+                else:
+                    messages.warning(request, _("Уже приглашён: ") + email)
+        elif action == "remove":
+            mid = request.POST.get("member_id")
+            TeamMember.objects.filter(owner=request.user, id=mid).delete()
+            messages.success(request, _("Участник удалён"))
+        elif action == "change_role":
+            mid = request.POST.get("member_id")
+            new_role = request.POST.get("role")
+            TeamMember.objects.filter(owner=request.user, id=mid).update(role=new_role)
+            messages.success(request, _("Роль изменена"))
+        return redirect("team_management")
+    return render(request, "components/team_page.html", {"members": members,
+                                                          "role_choices": TeamMember.ROLE_CHOICES})
+
+
+def team_accept(request, token):
+    try:
+        data = signing.loads(token, salt="team-invite", max_age=60 * 60 * 24 * 14)  # 14 days
+    except Exception:
+        messages.error(request, _("Ссылка приглашения недействительна или истекла"))
+        return redirect("login")
+    tm = TeamMember.objects.filter(invite_token=token, status="invited").first()
+    if not tm:
+        messages.info(request, _("Приглашение уже принято или отозвано"))
+        return redirect("login")
+    if request.user.is_authenticated:
+        tm.user = request.user
+        tm.status = "active"
+        tm.accepted_at = timezone.now()
+        tm.save()
+        messages.success(request, _("Вы присоединились к команде ") + tm.owner.get_full_name())
+        return redirect("dashboard")
+    # Otherwise show register/login choice
+    return render(request, "components/team_accept.html", {"tm": tm, "token": token})
+
+
+def help_view(request):
+    return render(request, "marketplace/help.html")
+
+
+# ── 2FA (TOTP) ─────────────────────────────────────────────
+import io
+import secrets as _secrets
+from .models import TwoFactorAuth
+
+@login_required
+def twofa_setup(request):
+    """Enable 2FA: shows QR code + verification."""
+    twofa, _ = TwoFactorAuth.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "enable":
+            try:
+                import pyotp
+            except ImportError:
+                messages.error(request, "pyotp library not installed")
+                return redirect("twofa_setup")
+            code = (request.POST.get("code") or "").strip()
+            if twofa.secret and pyotp.TOTP(twofa.secret).verify(code, valid_window=1):
+                twofa.enabled = True
+                twofa.enabled_at = timezone.now()
+                # Generate 8 backup codes
+                twofa.backup_codes = ",".join(_secrets.token_hex(4) for _ in range(8))
+                twofa.save()
+                Notification.objects.create(
+                    user=request.user, kind="system",
+                    title=_("Двухфакторная аутентификация включена"),
+                    body=_("Сохраните резервные коды в безопасном месте."),
+                    url="/2fa/",
+                )
+                messages.success(request, _("2FA включена. Сохраните резервные коды!"))
+                return redirect("twofa_setup")
+            else:
+                messages.error(request, _("Неверный код. Попробуйте ещё раз."))
+        elif action == "disable":
+            twofa.enabled = False
+            twofa.secret = ""
+            twofa.backup_codes = ""
+            twofa.save()
+            messages.success(request, _("2FA отключена"))
+            return redirect("twofa_setup")
+        elif action == "regenerate":
+            try:
+                import pyotp
+                twofa.secret = pyotp.random_base32()
+                twofa.save()
+            except ImportError:
+                pass
+            return redirect("twofa_setup")
+
+    # Generate secret if not exists
+    if not twofa.secret and not twofa.enabled:
+        try:
+            import pyotp
+            twofa.secret = pyotp.random_base32()
+            twofa.save()
+        except ImportError:
+            pass
+
+    qr_url = ""
+    if twofa.secret and not twofa.enabled:
+        try:
+            import pyotp
+            issuer = "Consolidator Parts"
+            uri = pyotp.totp.TOTP(twofa.secret).provisioning_uri(
+                name=request.user.email or request.user.username,
+                issuer_name=issuer,
+            )
+            # Generate QR via qrcode lib
+            try:
+                import qrcode
+                import base64
+                img = qrcode.make(uri, box_size=6, border=2)
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                qr_url = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+            except ImportError:
+                qr_url = ""
+        except ImportError:
+            pass
+
+    backup_list = twofa.backup_codes.split(",") if twofa.backup_codes else []
+    return render(request, "components/twofa_setup.html", {
+        "twofa": twofa, "qr_url": qr_url, "backup_codes": backup_list,
     })

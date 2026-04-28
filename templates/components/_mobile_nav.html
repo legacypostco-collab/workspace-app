@@ -1,0 +1,53 @@
+{# Mobile navigation: hamburger button + sidebar overlay. Include ONCE in base. #}
+{# Sidebar must have id="mobile-sidebar" or class "seller-sidebar"/"buyer-sidebar"/"op-sidebar"/"ap-sidebar" #}
+<style>
+  .mobile-burger{display:none;position:fixed;top:14px;left:14px;width:38px;height:38px;border-radius:10px;background:#242424;border:1px solid rgba(255,255,255,0.08);color:#ECECEC;align-items:center;justify-content:center;cursor:pointer;z-index:200;}
+  .mobile-burger:hover{border-color:rgba(100,181,246,0.35);}
+  .mobile-burger svg{width:20px;height:20px;}
+  .mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99;backdrop-filter:blur(2px);}
+  .mobile-overlay.open{display:block;}
+  @media (max-width: 900px) {
+    .mobile-burger{display:flex;}
+    body{padding-top:0;}
+    .seller-sidebar,.buyer-sidebar,.op-sidebar,.ap-sidebar{
+      position:fixed!important;top:0;left:-280px;width:260px!important;height:100vh!important;
+      z-index:100;transition:left 0.25s ease;box-shadow:4px 0 20px rgba(0,0,0,0.5);
+    }
+    .seller-sidebar.mobile-open,.buyer-sidebar.mobile-open,.op-sidebar.mobile-open,.ap-sidebar.mobile-open{left:0;}
+    .seller-main,.buyer-main,.op-main,.ap-main{margin-left:0!important;width:100%!important;}
+    .seller-topbar,.buyer-topbar,.op-topbar,.ap-topbar{padding-left:64px!important;}
+    .seller-content,.buyer-content,.op-content,.ap-content{padding:14px!important;}
+    .seller-right-panel,.buyer-right-panel,.op-right-panel{display:none!important;}
+    /* Tables responsive */
+    table{font-size:11px!important;}
+    .ap-stats,.op-stats,.kanban-board{flex-direction:column!important;}
+    .ap-stat,.op-stat{min-width:0!important;}
+  }
+  @media (max-width: 480px) {
+    .seller-page-title,.buyer-page-title,.op-page-title,.ap-page-title{font-size:18px!important;}
+    .seller-topbar-meta,.buyer-topbar-meta,.op-topbar-meta,.ap-topbar-meta{display:none;}
+  }
+</style>
+<button class="mobile-burger" onclick="toggleMobileNav()" aria-label="Menu">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+</button>
+<div class="mobile-overlay" id="mobile-overlay" onclick="toggleMobileNav()"></div>
+<script>
+function toggleMobileNav() {
+  var sb = document.querySelector('.seller-sidebar, .buyer-sidebar, .op-sidebar, .ap-sidebar');
+  var ov = document.getElementById('mobile-overlay');
+  if (!sb || !ov) return;
+  sb.classList.toggle('mobile-open');
+  ov.classList.toggle('open');
+}
+// Close on link click
+document.addEventListener('click', function(e){
+  var link = e.target.closest('.seller-sidebar a, .buyer-sidebar a, .op-sidebar a, .ap-sidebar a');
+  if (link && window.innerWidth <= 900) {
+    var sb = document.querySelector('.seller-sidebar, .buyer-sidebar, .op-sidebar, .ap-sidebar');
+    var ov = document.getElementById('mobile-overlay');
+    if (sb) sb.classList.remove('mobile-open');
+    if (ov) ov.classList.remove('open');
+  }
+});
+</script>

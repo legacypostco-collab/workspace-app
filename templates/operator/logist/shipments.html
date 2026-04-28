@@ -55,7 +55,7 @@
       </tr>
     </thead>
     <tbody>
-      <tr data-route="Шанхай" data-method="Море" data-status="В пути" data-tab="transit" data-problem="">
+      <tr data-route="{% trans 'Шанхай' %}" data-method="{% trans 'Море' %}" data-status="{% trans 'В пути' %}" data-tab="transit" data-problem="">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4521</td>
         <td class="text-secondary">#1042</td>
         <td class="text-secondary">#2087</td>
@@ -81,7 +81,7 @@
           </div>
         </td>
       </tr>
-      <tr data-route="Стамбул" data-method="Авто" data-status="Таможня" data-tab="customs" data-problem="">
+      <tr data-route="{% trans 'Стамбул' %}" data-method="{% trans 'Авто' %}" data-status="{% trans 'Таможня' %}" data-tab="customs" data-problem="">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4518</td>
         <td class="text-secondary">#1038</td>
         <td class="text-secondary">#2091</td>
@@ -107,7 +107,7 @@
           </div>
         </td>
       </tr>
-      <tr data-route="Гуанчжоу" data-method="ЖД" data-status="В пути" data-tab="transit" data-problem="">
+      <tr data-route="{% trans 'Гуанчжоу' %}" data-method="{% trans 'ЖД' %}" data-status="{% trans 'В пути' %}" data-tab="transit" data-problem="">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4515</td>
         <td class="text-secondary">#1051</td>
         <td class="text-secondary">#2075</td>
@@ -133,7 +133,7 @@
           </div>
         </td>
       </tr>
-      <tr data-route="Дубай" data-method="Авиа" data-status="Доставка" data-tab="transit" data-problem="">
+      <tr data-route="{% trans 'Дубай' %}" data-method="{% trans 'Авиа' %}" data-status="{% trans 'Доставка' %}" data-tab="transit" data-problem="">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4512</td>
         <td class="text-secondary">#1029</td>
         <td class="text-secondary">#2063</td>
@@ -159,7 +159,7 @@
           </div>
         </td>
       </tr>
-      <tr data-route="Шанхай" data-method="Море" data-status="Погрузка" data-tab="all" data-problem="">
+      <tr data-route="{% trans 'Шанхай' %}" data-method="{% trans 'Море' %}" data-status="{% trans 'Погрузка' %}" data-tab="all" data-problem="">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4508</td>
         <td class="text-secondary">#1055</td>
         <td class="text-secondary">#2044</td>
@@ -185,7 +185,7 @@
           </div>
         </td>
       </tr>
-      <tr data-route="Шанхай" data-method="Море" data-status="В пути" data-tab="transit" data-problem="problem">
+      <tr data-route="{% trans 'Шанхай' %}" data-method="{% trans 'Море' %}" data-status="{% trans 'В пути' %}" data-tab="transit" data-problem="problem">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ORD-4501</td>
         <td class="text-secondary">#1033</td>
         <td class="text-secondary">#2051</td>
@@ -258,7 +258,7 @@ function updateStatus(option, newStatus) {
   statusText.textContent = newStatus;
   statusText.style.color = '#919191';
   row.dataset.status = newStatus;
-  var stages = ['{% trans "Погрузка" %}','{% trans "В пути" %}','{% trans "Таможня" %}','{% trans "Доставка" %}','{% trans "Получено" %}'];
+  var stages = ['{% trans 'Погрузка' %}','{% trans 'В пути' %}','{% trans 'Таможня' %}','{% trans 'Доставка' %}','{% trans 'Получено' %}'];
   var idx = stages.indexOf(newStatus);
   var steps = row.querySelectorAll('.op-progress-step');
   steps.forEach(function(s, i) {
@@ -268,7 +268,7 @@ function updateStatus(option, newStatus) {
   });
   option.closest('.status-dropdown').style.display = 'none';
   var ordId = row.querySelector('td').textContent;
-  opToast('{% trans "Статус " %}' + ordId + '{% trans " обновлён: " %}' + newStatus);
+  opToast('{% trans 'Статус ' %}' + ordId + '{% trans ' обновлён: ' %}' + newStatus);
 }
 
 document.addEventListener('click', function() {

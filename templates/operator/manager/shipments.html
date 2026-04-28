@@ -191,10 +191,10 @@
     if(btn.parentElement.querySelector('.op-input')) return;
     var inp = document.createElement('input');
     inp.className = 'op-input';
-    inp.placeholder = '{% trans "Заметка..." %}';
+    inp.placeholder = '{% trans 'Заметка...' %}';
     inp.style.cssText = 'width:120px;margin-top:6px;';
     inp.onkeydown = function(e){
-      if(e.key==='Enter'){opToast('{% trans "Заметка для " %}' + orderId + ': ' + inp.value);inp.remove();}
+      if(e.key==='Enter'){opToast('{% trans 'Заметка для ' %}' + orderId + ': ' + inp.value);inp.remove();}
     };
     btn.parentElement.appendChild(inp);
     inp.focus();

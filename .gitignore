@@ -29,3 +29,10 @@ Thumbs.db
 
 .idea/
 .vscode/
+
+# Translation helper scripts (one-shot, not part of project)
+apply_*.py
+fill_po*.py
+fix_*.py
+strip_*.py
+wrap_*.py

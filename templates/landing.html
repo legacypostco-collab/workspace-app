@@ -6647,18 +6647,7 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 </div>
 <button type="button" class="soc-btn soc-btn--contact header-cta" id="contactBtn">{% trans "Обратный звонок" %}</button>
 <div class="header-lang">
-{% get_current_language as LANGUAGE_CODE %}
-<form method="post" action="{% url 'set_language' %}" style="display:inline;">
-  {% csrf_token %}
-  <input type="hidden" name="next" value="{{ request.get_full_path }}">
-  {% if LANGUAGE_CODE == 'ru' %}
-    <input type="hidden" name="language" value="en">
-    <button type="submit" class="lang-btn" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;">EN</button>
-  {% else %}
-    <input type="hidden" name="language" value="ru">
-    <button type="submit" class="lang-btn" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;">RU</button>
-  {% endif %}
-</form>
+{% include "components/_lang_switcher.html" %}
 </div>
 </div>
 
@@ -6675,18 +6664,7 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <div class="mobile-menu__actions">
 <button type="button" class="soc-btn soc-btn--contact header-cta" onclick="document.getElementById('contactModal').setAttribute('aria-hidden','false')">{% trans "Обратный звонок" %}</button>
 <div class="mobile-menu__lang">
-{% get_current_language as LANGUAGE_CODE %}
-<form method="post" action="{% url 'set_language' %}" style="display:inline;">
-  {% csrf_token %}
-  <input type="hidden" name="next" value="{{ request.get_full_path }}">
-  {% if LANGUAGE_CODE == 'ru' %}
-    <input type="hidden" name="language" value="en">
-    <button type="submit" class="lang-btn" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;">EN</button>
-  {% else %}
-    <input type="hidden" name="language" value="ru">
-    <button type="submit" class="lang-btn" style="background:none;border:none;cursor:pointer;padding:4px 8px;color:inherit;font-size:13px;font-weight:600;letter-spacing:.04em;">RU</button>
-  {% endif %}
-</form>
+{% include "components/_lang_switcher.html" %}
 </div>
 </div>
 <nav class="mobile-menu__nav" aria-label="{% trans 'Мобильная навигация' %}">
@@ -6743,7 +6721,7 @@ html.theme-light .muted, html.theme-light [class*="text-secondary"] { color: #6B
 <form id="multi_form" method="post" onsubmit="return handleCalcSubmit(event)">
 {% csrf_token %}
 <div id="rows_container">
-<textarea id="batch_input" name="batch_input" rows="6" placeholder="{% trans 'Примеры:\n2W1223 1\n1R0750 2\nили: 2W1223, 1R0750 2' %}"></textarea>
+<textarea id="batch_input" name="batch_input" rows="6" placeholder="{% trans 'Примеры:' %} 2W1223 1, 1R0750 2"></textarea>
 </div>
 <br>
 <button class="hero-cta" type="submit">{% trans "Посчитать" %}</button>
@@ -7463,5 +7441,6 @@ function handleCalcSubmit(e){
   applyTheme(savedTheme);
 })();
 </script>
+{% include "components/_cookie_banner.html" %}
 </body>
 </html>

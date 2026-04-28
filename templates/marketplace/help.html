@@ -1,0 +1,165 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% trans "Помощь и FAQ" %} | Consolidator Parts</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}"/>
+  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{min-height:100vh;background:#1A1A1A;color:#ECECEC;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;}
+    a{color:#64B5F6;text-decoration:none;}
+    a:hover{text-decoration:underline;}
+    .help-header{padding:18px 32px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:18px;}
+    .help-logo{display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:800;font-size:16px;color:#ECECEC;text-decoration:none;}
+    .help-logo svg{width:26px;height:26px;}
+    .help-back{margin-left:auto;font-size:12px;color:#919191;text-decoration:none;padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);}
+    .help-back:hover{color:#ECECEC;border-color:rgba(100,181,246,0.35);text-decoration:none;}
+    .help-main{max-width:920px;margin:0 auto;padding:48px 32px 80px;}
+    h1{font-family:'Golos Text',sans-serif;font-size:34px;font-weight:800;margin-bottom:8px;}
+    .lead{color:#919191;font-size:15px;margin-bottom:32px;}
+    .search-box{display:flex;background:#242424;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:4px;margin-bottom:36px;}
+    .search-box input{flex:1;background:transparent;border:none;color:#ECECEC;padding:12px 16px;font-size:14px;outline:none;font-family:inherit;}
+    .search-box button{background:#64B5F6;color:#1A1A1A;border:none;padding:10px 22px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+    .help-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:40px;}
+    .help-cat{background:#242424;border:1px solid rgba(255,255,255,0.04);border-radius:12px;padding:20px;text-decoration:none;color:inherit;transition:all .15s;}
+    .help-cat:hover{border-color:rgba(100,181,246,0.3);transform:translateY(-2px);text-decoration:none;}
+    .help-cat-icon{font-size:28px;margin-bottom:10px;}
+    .help-cat-title{font-family:'Golos Text',sans-serif;font-weight:700;font-size:15px;color:#ECECEC;margin-bottom:4px;}
+    .help-cat-text{font-size:12px;color:#919191;}
+    .faq-section{margin-top:36px;}
+    .faq-section h2{font-family:'Golos Text',sans-serif;font-size:22px;font-weight:700;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06);}
+    .faq-item{background:#242424;border:1px solid rgba(255,255,255,0.04);border-radius:10px;margin-bottom:8px;overflow:hidden;}
+    .faq-q{padding:14px 18px;font-weight:600;font-size:14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:#ECECEC;}
+    .faq-q:hover{background:rgba(255,255,255,0.02);}
+    .faq-q .arrow{color:#5E5E5E;font-size:14px;transition:transform .2s;}
+    .faq-item.open .faq-q .arrow{transform:rotate(180deg);color:#64B5F6;}
+    .faq-a{padding:0 18px 16px;color:#B5B5B5;font-size:13px;line-height:1.7;display:none;}
+    .faq-item.open .faq-a{display:block;}
+    .contact-card{background:#242424;border:1px solid rgba(100,181,246,0.2);border-radius:14px;padding:24px;margin-top:40px;display:flex;align-items:center;gap:18px;}
+    .contact-card-icon{font-size:32px;}
+    .contact-card-text{flex:1;}
+    .contact-card-text h3{font-family:'Golos Text',sans-serif;font-size:16px;color:#ECECEC;margin-bottom:4px;}
+    .contact-card-text p{color:#919191;font-size:13px;}
+    .contact-card a{padding:9px 20px;background:#64B5F6;color:#1A1A1A;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;}
+    .contact-card a:hover{text-decoration:none;}
+  </style>
+</head>
+<body>
+<header class="help-header">
+  <a href="/" class="help-logo">
+    <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="#64B5F6" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="#64B5F6"/></svg>
+    Consolidator
+  </a>
+  <a href="/" class="help-back">← {% trans "На главную" %}</a>
+</header>
+<main class="help-main">
+  <h1>{% trans "Помощь и поддержка" %}</h1>
+  <p class="lead">{% trans "Ответы на частые вопросы и инструкции по работе с платформой" %}</p>
+
+  <div class="search-box">
+    <input type="text" placeholder="{% trans 'Поиск по вопросам...' %}" oninput="filterFaq(this.value)">
+    <button>{% trans "Найти" %}</button>
+  </div>
+
+  <div class="help-grid">
+    <a href="#getting-started" class="help-cat">
+      <div class="help-cat-icon">🚀</div>
+      <div class="help-cat-title">{% trans "Начало работы" %}</div>
+      <div class="help-cat-text">{% trans "Регистрация, первые шаги" %}</div>
+    </a>
+    <a href="#orders" class="help-cat">
+      <div class="help-cat-icon">📦</div>
+      <div class="help-cat-title">{% trans "Заказы и RFQ" %}</div>
+      <div class="help-cat-text">{% trans "Создание и отслеживание" %}</div>
+    </a>
+    <a href="#payments" class="help-cat">
+      <div class="help-cat-icon">💰</div>
+      <div class="help-cat-title">{% trans "Оплата" %}</div>
+      <div class="help-cat-text">{% trans "Резервы, эскроу, возвраты" %}</div>
+    </a>
+    <a href="#logistics" class="help-cat">
+      <div class="help-cat-icon">🚢</div>
+      <div class="help-cat-title">{% trans "Логистика" %}</div>
+      <div class="help-cat-text">{% trans "Доставка, таможня" %}</div>
+    </a>
+  </div>
+
+  <section class="faq-section" id="getting-started">
+    <h2>{% trans "Начало работы" %}</h2>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">{% trans "Как зарегистрироваться?" %}<span class="arrow">▾</span></div>
+      <div class="faq-a">{% trans "Перейдите на страницу регистрации, выберите роль (Покупатель/Поставщик), укажите ИНН компании. После подтверждения email вы получите доступ к кабинету. Полная активация — после прохождения KYB верификации (1-2 рабочих дня)." %}</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">{% trans "Что такое KYB и зачем он нужен?" %}<span class="arrow">▾</span></div>
+      <div class="faq-a">{% trans "KYB (Know Your Business) — проверка легальности компании. Загрузите Устав, Выписку ЕГРЮЛ и паспорт директора в разделе /kyb/. Без верификации недоступны крупные сделки и эскроу." %}</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">{% trans "Можно ли работать командой?" %}<span class="arrow">▾</span></div>
+      <div class="faq-a">{% trans "Да. В разделе «Команда» пригласите коллег по email с ролью (Админ/Менеджер/Логист/Финансист/Только просмотр). Один аккаунт компании — до 50 пользователей." %}</div>
+    </div>
+  </section>
+
+  <section class="faq-section" id="orders">
+    <h2>{% trans "Заказы и RFQ" %}</h2>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">{% trans "Что такое RFQ?" %}<span class="arrow">▾</span></div>
+      <div class="faq-a">{% trans "RFQ (Request For Quote) — запрос котировки. Покупатель указывает нужные запчасти, поставщики отвечают ценами и сроками. Сравните предложения и выберите лучшее." %}</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">{% trans "Как отследить заказ?" %}<span class="arrow">▾</span></div>
+      <div class="faq-a">{% trans "В разделе «Мои заказы» каждый заказ имеет статусы: Резерв оплачен → В производстве → Транзит → Таможня → Доставлен. SLA контроль показывает дедлайны." %}</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">{% trans "Что делать при проблемах с заказом?" %}<span class="arrow">▾</span></div>
+      <div class="faq-a">{% trans "Откройте рекламацию в разделе «Рекламации» — приложите фото повреждений или несоответствий. Оператор рассмотрит в течение 14 дней." %}</div>
+    </div>
+  </section>
+
+  <section class="faq-section" id="payments">
+    <h2>{% trans "Оплата" %}</h2>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">{% trans "Как устроена оплата?" %}<span class="arrow">▾</span></div>
+      <div class="faq-a">{% trans "Трёхступенчатая схема: 10% резерв (подтверждение заказа) → 50% основной платёж (готовность к отгрузке) → 40% таможенный платёж (после таможни). Все средства проходят через эскроу оператора." %}</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">{% trans "Можно ли вернуть резерв?" %}<span class="arrow">▾</span></div>
+      <div class="faq-a">{% trans "Да, до момента отправки в производство — резерв возвращается без штрафа. После — взимается 10% штраф за отмену." %}</div>
+    </div>
+  </section>
+
+  <section class="faq-section" id="logistics">
+    <h2>{% trans "Логистика" %}</h2>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">{% trans "Какие способы доставки доступны?" %}<span class="arrow">▾</span></div>
+      <div class="faq-a">{% trans "Море (контейнер 20/40ft), авиа (экспресс/стандарт), ж/д. Маршруты: Китай → Москва, Тайвань → Москва, Япония → Москва. Калькулятор в разделе «Логистика»." %}</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">{% trans "Кто оформляет таможню?" %}<span class="arrow">▾</span></div>
+      <div class="faq-a">{% trans "Оператор. Вы загружаете инвойс и упаковочный лист, брокер платформы готовит декларацию и оплачивает пошлины." %}</div>
+    </div>
+  </section>
+
+  <div class="contact-card">
+    <div class="contact-card-icon">💬</div>
+    <div class="contact-card-text">
+      <h3>{% trans "Не нашли ответ?" %}</h3>
+      <p>{% trans "Напишите в поддержку — отвечаем в течение часа в рабочее время" %}</p>
+    </div>
+    <a href="mailto:support@consolidator.parts">{% trans "Связаться" %}</a>
+  </div>
+</main>
+<script>
+function filterFaq(q){
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('.faq-item').forEach(function(it){
+    var t = it.textContent.toLowerCase();
+    it.style.display = !q || t.indexOf(q) !== -1 ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

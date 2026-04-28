@@ -3,6 +3,7 @@ from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 
 class Category(models.Model):
@@ -179,11 +180,11 @@ class Drawing(models.Model):
         ("jpg", "JPG"),
     ]
     STATUS_CHOICES = [
-        ("draft", "Черновик"),
-        ("on_review", "На проверке"),
-        ("approved", "Утверждён"),
-        ("rejected", "Отклонён"),
-        ("archived", "Архив"),
+        ("draft", _("Черновик")),
+        ("on_review", _("На проверке")),
+        ("approved", _("Утверждён")),
+        ("rejected", _("Отклонён")),
+        ("archived", _("Архив")),
     ]
 
     title = models.CharField(max_length=255)
@@ -279,37 +280,37 @@ class RFQItem(models.Model):
 
 class Order(models.Model):
     STATUS_CHOICES = [
-        ("pending", "Ожидание оплаты"),
-        ("reserve_paid", "Резерв оплачен"),
-        ("confirmed", "Формирование заказа"),
-        ("in_production", "В производстве"),
-        ("ready_to_ship", "Готов к отгрузке"),
-        ("transit_abroad", "Транзит (Зарубеж)"),
-        ("customs", "Таможня"),
-        ("transit_rf", "Транзит (РФ)"),
-        ("issuing", "Выдача"),
-        ("shipped", "Отгружен"),
-        ("delivered", "Доставлен"),
-        ("completed", "Завершён"),
-        ("cancelled", "Отменён"),
+        ("pending", _("Ожидание оплаты")),
+        ("reserve_paid", _("Резерв оплачен")),
+        ("confirmed", _("Формирование заказа")),
+        ("in_production", _("В производстве")),
+        ("ready_to_ship", _("Готов к отгрузке")),
+        ("transit_abroad", _("Транзит (Зарубеж)")),
+        ("customs", _("Таможня")),
+        ("transit_rf", _("Транзит (РФ)")),
+        ("issuing", _("Выдача")),
+        ("shipped", _("Отгружен")),
+        ("delivered", _("Доставлен")),
+        ("completed", _("Завершён")),
+        ("cancelled", _("Отменён")),
     ]
     PAYMENT_STATUS_CHOICES = [
-        ("awaiting_reserve", "Ожидает резерва"),
-        ("reserve_paid", "Резерв оплачен"),
-        ("mid_paid", "Подтверждение оплачено"),
-        ("customs_paid", "Таможня оплачена"),
-        ("paid", "Оплачен"),
-        ("refund_pending", "Возврат в обработке"),
-        ("refunded", "Возвращён"),
+        ("awaiting_reserve", _("Ожидает резерва")),
+        ("reserve_paid", _("Резерв оплачен")),
+        ("mid_paid", _("Подтверждение оплачено")),
+        ("customs_paid", _("Таможня оплачена")),
+        ("paid", _("Оплачен")),
+        ("refund_pending", _("Возврат в обработке")),
+        ("refunded", _("Возвращён")),
     ]
     PAYMENT_SCHEME_CHOICES = [
         ("simple", "10% + 90%"),
         ("staged", "10% + 50% + 40%"),
     ]
     SLA_STATUS_CHOICES = [
-        ("on_track", "В норме"),
-        ("at_risk", "Под угрозой"),
-        ("breached", "Нарушен"),
+        ("on_track", _("В норме")),
+        ("at_risk", _("Под угрозой")),
+        ("breached", _("Нарушен")),
     ]
 
     customer_name = models.CharField(max_length=180)
@@ -478,10 +479,10 @@ class UserProfile(models.Model):
         ("seller", "Seller"),
     ]
     SUPPLIER_STATUS_CHOICES = [
-        ("trusted", "Надёжный"),
-        ("sandbox", "Песочница"),
-        ("risky", "Рисковый"),
-        ("rejected", "Исключён"),
+        ("trusted", _("Надёжный")),
+        ("sandbox", _("Песочница")),
+        ("risky", _("Рисковый")),
+        ("rejected", _("Исключён")),
     ]
 
     DEPARTMENT_CHOICES = [
@@ -614,3 +615,111 @@ class SellerImportRun(models.Model):
 
     def __str__(self) -> str:
         return f"{self.seller_id}:{self.filename}:{self.status}:{self.created_at.isoformat()}"
+
+
+# ── Notifications & Team & KYB ──────────────────────────────
+class Notification(models.Model):
+    KIND_CHOICES = [
+        ("info", _("Информация")),
+        ("order", _("Заказ")),
+        ("rfq", _("RFQ")),
+        ("payment", _("Оплата")),
+        ("sla", _("SLA")),
+        ("claim", _("Рекламация")),
+        ("system", _("Система")),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default="info")
+    title = models.CharField(max_length=200)
+    body = models.TextField(blank=True)
+    url = models.CharField(max_length=400, blank=True, help_text="Optional click target")
+    is_read = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["user", "is_read", "-created_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.user_id}:{self.title}"
+
+
+class TeamMember(models.Model):
+    """Sub-users belonging to a company (the owner is the User with role buyer/seller)."""
+    ROLE_CHOICES = [
+        ("admin", _("Администратор")),
+        ("manager", _("Менеджер")),
+        ("logist", _("Логист")),
+        ("finance", _("Финансист")),
+        ("viewer", _("Только просмотр")),
+    ]
+    STATUS_CHOICES = [
+        ("active", _("Активен")),
+        ("invited", _("Приглашён")),
+        ("disabled", _("Отключён")),
+    ]
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="team_members",
+                               help_text="Company account owner")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="team_membership",
+                             null=True, blank=True, help_text="Set when invitation accepted")
+    invited_email = models.EmailField()
+    full_name = models.CharField(max_length=180, blank=True)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="viewer")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="invited")
+    invite_token = models.CharField(max_length=100, blank=True)
+    invited_at = models.DateTimeField(default=timezone.now)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [("owner", "invited_email")]
+        ordering = ["-invited_at"]
+
+    def __str__(self) -> str:
+        return f"{self.owner_id} → {self.invited_email} ({self.role})"
+
+
+class CompanyVerification(models.Model):
+    """KYB (Know Your Business) verification: collected docs and status."""
+    STATUS_CHOICES = [
+        ("none", _("Не подавалась")),
+        ("pending", _("На проверке")),
+        ("verified", _("Верифицирована")),
+        ("rejected", _("Отклонена")),
+    ]
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="kyb")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="none", db_index=True)
+    legal_name = models.CharField(max_length=300, blank=True)
+    inn = models.CharField(max_length=20, blank=True, verbose_name="ИНН")
+    kpp = models.CharField(max_length=20, blank=True, verbose_name="КПП")
+    ogrn = models.CharField(max_length=20, blank=True, verbose_name="ОГРН")
+    legal_address = models.TextField(blank=True)
+    bank_name = models.CharField(max_length=200, blank=True)
+    bank_account = models.CharField(max_length=30, blank=True)
+    bik = models.CharField(max_length=20, blank=True, verbose_name="БИК")
+    director_name = models.CharField(max_length=200, blank=True)
+    doc_charter = models.FileField(upload_to="kyb/charter/", null=True, blank=True,
+                                    help_text="Устав")
+    doc_egrul = models.FileField(upload_to="kyb/egrul/", null=True, blank=True,
+                                  help_text="Выписка ЕГРЮЛ/ЕГРИП")
+    doc_passport = models.FileField(upload_to="kyb/passport/", null=True, blank=True,
+                                     help_text="Паспорт директора (1 разворот)")
+    rejection_reason = models.TextField(blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                     related_name="reviewed_kyb")
+
+    def __str__(self) -> str:
+        return f"KYB[{self.user_id}]={self.status}"
+
+
+class TwoFactorAuth(models.Model):
+    """TOTP-based 2FA. Stored separately for security."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="twofa")
+    secret = models.CharField(max_length=64, blank=True, help_text="Base32-encoded TOTP secret")
+    enabled = models.BooleanField(default=False)
+    backup_codes = models.TextField(blank=True, help_text="One-time backup codes, comma-separated")
+    enabled_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"2FA[{self.user_id}]={'on' if self.enabled else 'off'}"

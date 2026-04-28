@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
 
@@ -27,10 +28,10 @@ class LoginForm(AuthenticationForm):
 
 
 class CheckoutForm(forms.Form):
-    customer_name = forms.CharField(max_length=180, label="Имя и компания")
+    customer_name = forms.CharField(max_length=180, label=_("Имя и компания"))
     customer_email = forms.EmailField(label="Email")
-    customer_phone = forms.CharField(max_length=50, label="Телефон")
-    delivery_address = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), label="Адрес доставки")
+    customer_phone = forms.CharField(max_length=50, label=_("Телефон"))
+    delivery_address = forms.CharField(widget=forms.Textarea(attrs={"rows": 3}), label=_("Адрес доставки"))
 
 
 class SellerPartForm(forms.ModelForm):
@@ -69,30 +70,30 @@ class SellerPartForm(forms.ModelForm):
 
 class SellerBulkUploadForm(forms.Form):
     file = forms.FileField(
-        label="Файл прайса (.csv или .xlsx)",
-        help_text="Обязательные колонки: PartNumber/Part Number, WarehouseAddress и хотя бы одна цена Price_FOB_SEA/Price_FOB_AIR.",
+        label=_("Файл прайса (.csv или .xlsx)"),
+        help_text=_("Обязательные колонки: PartNumber/Part Number, WarehouseAddress и хотя бы одна цена Price_FOB_SEA/Price_FOB_AIR."),
     )
     category = forms.CharField(
         max_length=120,
         required=False,
         initial="Epiroc",
-        label="Бренд / категория по умолчанию",
-        help_text="Используется, если в файле нет отдельного бренда.",
+        label=_("Бренд / категория по умолчанию"),
+        help_text=_("Используется, если в файле нет отдельного бренда."),
     )
     default_stock = forms.IntegerField(
         min_value=0,
         initial=20,
-        label="Остаток по умолчанию",
-        help_text="Применяется только для строк без значения Stock.",
+        label=_("Остаток по умолчанию"),
+        help_text=_("Применяется только для строк без значения Stock."),
     )
 
 
 class RFQCreateForm(forms.Form):
-    customer_name = forms.CharField(max_length=180, label="Контактное лицо")
+    customer_name = forms.CharField(max_length=180, label=_("Контактное лицо"))
     customer_email = forms.EmailField(label="Email")
-    company_name = forms.CharField(max_length=255, required=False, label="Компания")
+    company_name = forms.CharField(max_length=255, required=False, label=_("Компания"))
     mode = forms.ChoiceField(
-        label="Режим подбора",
+        label=_("Режим подбора"),
         choices=[
             ("auto", "AUTO"),
             ("semi", "SEMI"),
@@ -101,7 +102,7 @@ class RFQCreateForm(forms.Form):
         initial="semi",
     )
     urgency = forms.ChoiceField(
-        label="Срочность",
+        label=_("Срочность"),
         choices=[
             ("standard", "Standard"),
             ("urgent", "Urgent"),
@@ -110,17 +111,17 @@ class RFQCreateForm(forms.Form):
         initial="standard",
     )
     items_text = forms.CharField(
-        label="Позиции запроса",
+        label=_("Позиции запроса"),
         widget=forms.Textarea(
             attrs={
                 "rows": 7,
                 "placeholder": "Каждая строка: номер/запрос;количество\nПример:\nRE48786;2\nMAIN SWITCH;1",
             }
         ),
-        help_text="Формат строки: Запрос;Количество. Если количество не указано, будет 1.",
+        help_text=_("Формат строки: Запрос;Количество. Если количество не указано, будет 1."),
     )
     notes = forms.CharField(
-        label="Комментарий",
+        label=_("Комментарий"),
         required=False,
         widget=forms.Textarea(attrs={"rows": 3}),
     )

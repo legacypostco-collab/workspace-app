@@ -1,27 +1,28 @@
 {% extends "seller/base_seller.html" %}
-{% block title %}Заказы и SLA{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Заказы и SLA" %}{% endblock %}
 {% block content %}
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>Фильтры</h2>
-  <p class="muted">Всего заказов: {{ orders_total }}</p>
+  <h2>{% trans "Фильтры" %}</h2>
+  <p class="muted">{% trans "Всего заказов:" %} {{ orders_total }}</p>
   <form method="get" action="{% url 'seller_orders' %}" class="upload-form">
     <p>
-      <label for="id_q">Введите номер заказа / клиента / запчасти</label>
-      <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="Например, 1048 или RE48786" />
+      <label for="id_q">{% trans "Введите номер заказа / клиента / запчасти" %}</label>
+      <input id="id_q" type="text" name="q" value="{{ query }}" placeholder="{% trans 'Например, 1048 или RE48786' %}" />
     </p>
     <p>
-      <label for="id_status">Статус</label>
+      <label for="id_status">{% trans "Статус" %}</label>
       <select id="id_status" name="status">
-        <option value="">Все</option>
+        <option value="">{% trans "Все" %}</option>
         {% for value, label in status_choices %}
           <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
     </p>
     <div class="card-actions">
-      <button class="btn btn-secondary" type="submit">Применить</button>
+      <button class="btn btn-secondary" type="submit">{% trans "Применить" %}</button>
       {% if query or status %}
-        <a class="btn" href="{% url 'seller_orders' %}">Сбросить</a>
+        <a class="btn" href="{% url 'seller_orders' %}">{% trans "Сбросить" %}</a>
       {% endif %}
     </div>
   </form>
@@ -32,14 +33,14 @@
     <article class="list-row" style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px;cursor:pointer;transition:background .15s;" onclick="if(!event.target.closest('select,a,button,form')){window.location='{% url 'seller_order_detail' row.order.id %}'}">
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;">Заказ #{{ row.order.id }}</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Заказ #" %}{{ row.order.id }}</span>
           <span style="font-size:12px;color:#6A6A6A;">{{ row.order.customer_name }} • {{ row.order.created_at|date:"d.m.Y" }}</span>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <span class="chip" style="padding:2px 8px;font-size:11px;">{{ row.order.get_status_display }}</span>
           <span class="chip" style="padding:2px 8px;font-size:11px;">{{ row.order.get_payment_status_display }}</span>
           <span class="chip" style="padding:2px 8px;font-size:11px;">SLA: {{ row.order.get_sla_status_display }}</span>
-          <span style="font-size:11px;color:#6A6A6A;">{{ row.items_count }} поз. • {{ row.units_total }} шт.</span>
+          <span style="font-size:11px;color:#6A6A6A;">{{ row.items_count }} {% trans "поз. •" %} {{ row.units_total }} {% trans "шт." %}</span>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
@@ -57,7 +58,7 @@
       </div>
     </article>
   {% empty %}
-    {% include "seller/components/_empty_state.html" with title="Заказы не найдены" message="Когда по вашим товарам появятся заказы, они будут отображаться здесь." %}
+    {% trans "Заказы не найдены" as t_title %}{% trans "Когда по вашим товарам появятся заказы, они будут отображаться здесь." as t_message %}{% include "seller/components/_empty_state.html" with title=t_title message=t_message %}
   {% endfor %}
 </div>
 
@@ -65,11 +66,11 @@
   <section class="panel" style="margin-top: 16px;">
     <div class="card-actions">
       {% if orders.has_previous %}
-        <a class="btn btn-secondary" href="?page={{ orders.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">← Назад</a>
+        <a class="btn btn-secondary" href="?page={{ orders.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{% trans "← Назад" %}</a>
       {% endif %}
-      <span class="chip">Страница {{ orders.number }} из {{ orders.paginator.num_pages }}</span>
+      <span class="chip">{% trans "Страница" %} {{ orders.number }} {% trans "из" %} {{ orders.paginator.num_pages }}</span>
       {% if orders.has_next %}
-        <a class="btn btn-secondary" href="?page={{ orders.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">Вперед →</a>
+        <a class="btn btn-secondary" href="?page={{ orders.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{% trans "Вперед →" %}</a>
       {% endif %}
     </div>
   </section>

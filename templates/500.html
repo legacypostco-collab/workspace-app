@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>500 — Consolidator Parts</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}"/>
+  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;background:#1A1A1A;color:#ECECEC;font-family:'Inter',sans-serif;}
+    .err-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;}
+    .err-code{font-family:'Golos Text',sans-serif;font-weight:800;font-size:140px;color:#E85C0D;line-height:1;letter-spacing:-0.04em;}
+    .err-title{font-family:'Golos Text',sans-serif;font-weight:700;font-size:28px;color:#ECECEC;margin-top:8px;margin-bottom:12px;}
+    .err-text{color:#919191;font-size:14px;max-width:440px;line-height:1.6;margin-bottom:32px;}
+    .err-actions{display:flex;gap:10px;}
+    .err-btn{padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+    .err-btn-primary{background:#64B5F6;color:#1A1A1A;}
+    .err-btn-primary:hover{background:#7BC5FA;}
+    .err-btn-ghost{background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.1);}
+    .err-btn-ghost:hover{color:#ECECEC;border-color:rgba(100,181,246,0.35);}
+    .err-logo{position:absolute;top:24px;left:32px;display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:800;font-size:16px;color:#ECECEC;text-decoration:none;}
+    .err-logo svg{width:26px;height:26px;}
+  </style>
+</head>
+<body>
+  <a href="/" class="err-logo">
+    <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="#64B5F6" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="#64B5F6"/></svg>
+    Consolidator
+  </a>
+  <div class="err-page">
+    <div class="err-code">500</div>
+    <h1 class="err-title">Что-то пошло не так</h1>
+    <p class="err-text">
+      На сервере произошла внутренняя ошибка. Мы уже получили уведомление и работаем над её устранением. Попробуйте обновить страницу через минуту.
+    </p>
+    <div class="err-actions">
+      <a href="/" class="err-btn err-btn-primary">← На главную</a>
+      <button onclick="location.reload()" class="err-btn err-btn-ghost" style="border:1px solid rgba(255,255,255,0.1);background:transparent;color:#919191;font-family:inherit;cursor:pointer;">↻ Обновить</button>
+    </div>
+  </div>
+</body>
+</html>

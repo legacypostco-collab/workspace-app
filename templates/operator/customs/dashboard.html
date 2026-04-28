@@ -174,7 +174,7 @@ function requestDoc(btn, docType) {
     btn.style.color = '#66BB6A';
     btn.style.border = '1px solid rgba(102,187,106,0.2)';
     card.style.borderColor = 'rgba(102,187,106,0.25)';
-    opToast(docType + '{% trans " загружен: " %}' + name, 2000, 'success');
+    opToast(docType + '{% trans ' загружен: ' %}' + name, 2000, 'success');
     document.body.removeChild(inp);
   };
   document.body.appendChild(inp);
