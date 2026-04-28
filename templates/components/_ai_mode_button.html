@@ -1,0 +1,16 @@
+{% load i18n %}
+<a href="/chat/" class="ai-mode-btn" title="{% trans 'Перейти в AI-режим (chat-first)' %}">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2C6.5 2 2 6.5 2 12c0 1.5.4 2.9 1 4.2L2 22l5.8-1c1.3.6 2.7 1 4.2 1 5.5 0 10-4.5 10-10S17.5 2 12 2z"/>
+    <circle cx="9" cy="12" r="1" fill="currentColor"/>
+    <circle cx="12" cy="12" r="1" fill="currentColor"/>
+    <circle cx="15" cy="12" r="1" fill="currentColor"/>
+  </svg>
+  <span>{% trans "AI-режим" %}</span>
+</a>
+<style>
+  .ai-mode-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:linear-gradient(135deg,rgba(99,102,241,0.18),rgba(139,92,246,0.18));border:1px solid rgba(99,102,241,0.35);color:#a5b4fc;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s;font-family:inherit;}
+  .ai-mode-btn:hover{background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(139,92,246,0.3));border-color:rgba(99,102,241,0.6);color:#c7d2fe;transform:translateY(-1px);box-shadow:0 4px 12px rgba(99,102,241,0.25);text-decoration:none;}
+  .ai-mode-btn svg{flex-shrink:0;}
+  @media(max-width:600px){.ai-mode-btn span{display:none;}.ai-mode-btn{padding:6px 8px;}}
+</style>

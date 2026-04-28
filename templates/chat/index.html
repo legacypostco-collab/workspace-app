@@ -184,8 +184,17 @@
       <span class="top-title" id="convTitle">{% trans "Новый диалог" %}</span>
       <div class="top-actions">
         <span class="ws-status" id="wsStatus"><span class="dot"></span><span id="wsStatusText">{% trans "Подключение..." %}</span></span>
+        <a href="/dashboard/" class="classic-mode-btn" title="{% trans 'Вернуться в классический интерфейс' %}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <span>{% trans "Классический режим" %}</span>
+        </a>
       </div>
     </div>
+    <style>
+      .classic-mode-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#aaa;font-size:12px;font-weight:600;text-decoration:none;transition:all .15s;}
+      .classic-mode-btn:hover{background:rgba(255,255,255,0.08);color:#ECECEC;border-color:rgba(255,255,255,0.18);text-decoration:none;}
+      @media(max-width:600px){.classic-mode-btn span{display:none;}}
+    </style>
 
     <div class="stream" id="stream">
       <div class="empty-hero" id="emptyHero">

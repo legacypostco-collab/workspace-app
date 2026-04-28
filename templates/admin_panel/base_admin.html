@@ -247,7 +247,10 @@
       <span style="font-size:12px;color:#919191;font-weight:500;">
         {% block topbar_title %}{% trans "Панель администратора" %}{% endblock %}
       </span>
-      {% include "components/_lang_switcher.html" %}
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        {% include "components/_ai_mode_button.html" %}
+        {% include "components/_lang_switcher.html" %}
+      </div>
     </div>
 
     <!-- Page content -->
