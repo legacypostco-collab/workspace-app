@@ -65,10 +65,57 @@
       dd.style.display = 'none';
     }
   });
-  // initial fetch + poll every 30s
-  document.addEventListener('DOMContentLoaded', function(){
+  // ── WebSocket push (with HTTP polling fallback) ──
+  var ws = null;
+  var wsRetryDelay = 1000;
+  function connectWS() {
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    try {
+      ws = new WebSocket(proto + '//' + location.host + '/ws/notifications/');
+    } catch(e) { return startPolling(); }
+    ws.onopen = function(){
+      wsRetryDelay = 1000;
+      // ping every 30s to keep alive
+      var pingTimer = setInterval(function(){
+        if (ws && ws.readyState === 1) ws.send(JSON.stringify({type:'ping'}));
+        else clearInterval(pingTimer);
+      }, 30000);
+    };
+    ws.onmessage = function(ev){
+      try {
+        var msg = JSON.parse(ev.data);
+        if (msg.type === 'notification') {
+          refreshNotifs();  // pull fresh list on push
+          // Optional: show toast
+          if (window.cpToast) cpToast(msg.data.title, msg.data.kind === 'sla' ? 'warn' : 'info');
+        } else if (msg.type === 'unread_count') {
+          var badge = document.getElementById('notifBadge');
+          if (msg.count > 0) { badge.style.display = 'inline-block'; badge.textContent = msg.count > 99 ? '99+' : msg.count; }
+          else { badge.style.display = 'none'; }
+        }
+      } catch(e) {}
+    };
+    ws.onclose = function(ev){
+      ws = null;
+      // 4401 = unauthenticated — don't retry
+      if (ev.code === 4401) return startPolling();
+      // Exponential backoff up to 30s
+      wsRetryDelay = Math.min(wsRetryDelay * 2, 30000);
+      setTimeout(connectWS, wsRetryDelay);
+    };
+    ws.onerror = function(){ /* handled by onclose */ };
+  }
+  function startPolling() {
     refreshNotifs();
     setInterval(refreshNotifs, 30000);
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    refreshNotifs();  // initial snapshot
+    if ('WebSocket' in window) {
+      connectWS();
+    } else {
+      startPolling();
+    }
   });
 })();
 </script>

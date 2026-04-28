@@ -19,3 +19,9 @@ ignore = ["E501"]
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "consolidator_site.settings"
+python_files = ["test_*.py", "*_test.py", "tests.py"]
+testpaths = ["tests", "marketplace/tests"]
+addopts = "-p no:cacheprovider --tb=short"
