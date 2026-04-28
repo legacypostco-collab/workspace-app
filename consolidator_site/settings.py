@@ -56,6 +56,8 @@ CSRF_TRUSTED_ORIGINS = _env_list(
 )
 
 INSTALLED_APPS = [
+    # Daphne MUST come before django.contrib.staticfiles to provide ASGI runserver
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

@@ -33,9 +33,10 @@ class AssistantConsumer(AsyncWebsocketConsumer):
 
         conv_id = self.scope["url_route"]["kwargs"].get("conversation_id")
         self.conversation = await self._get_or_create_conversation(conv_id)
+        # If specific conv_id was requested but doesn't belong to user,
+        # silently fall back to creating new conversation instead of disconnecting
         if not self.conversation:
-            await self.close(code=4404)
-            return
+            self.conversation = await self._get_or_create_conversation(None)
 
         await self.accept()
         await self.send_json({

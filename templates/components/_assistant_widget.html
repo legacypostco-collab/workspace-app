@@ -126,18 +126,30 @@
     }).catch(()=>{});
   }
 
+  var wsRetryCount = 0;
+  var wsRetryTimer = null;
   function connectWS(){
+    if (ws && ws.readyState <= 1) return;  // already connecting/open
+    if (wsRetryTimer) { clearTimeout(wsRetryTimer); wsRetryTimer = null; }
     var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     var path = convId ? '/ws/assistant/'+convId+'/' : '/ws/assistant/';
-    try { ws = new WebSocket(proto+'//'+location.host+path); } catch(e) { return; }
+    var url = proto+'//'+location.host+path;
+    console.log('[AI] connecting to', url);
+    try { ws = new WebSocket(url); } catch(e) { console.error('[AI] ws ctor failed', e); return; }
     ws.onopen = function(){
+      console.log('[AI] connected');
+      wsRetryCount = 0;
       $('aiStatus').className = 'live';
       $('aiStatusText').textContent = '{% trans "На связи" %}';
     };
     ws.onmessage = function(ev){
       try {
         var d = JSON.parse(ev.data);
-        if (d.type === 'connected') { convId = d.conversation_id; }
+        if (d.type === 'connected') {
+          convId = d.conversation_id;
+          // Persist resolved conv_id so reconnects use same chat
+          try { localStorage.setItem('ai_conv_id', convId); } catch(e){}
+        }
         else if (d.type === 'thinking') { showTyping(); }
         else if (d.type === 'context') { /* refs received */ }
         else if (d.type === 'stream') { appendStream(d.content); }
@@ -153,12 +165,27 @@
         }
       } catch(e){}
     };
-    ws.onclose = function(){
+    ws.onclose = function(ev){
+      // 4401 = unauthenticated; 4404 = not found — don't retry forever
+      if (ev.code === 4401 || ev.code === 4404) {
+        $('aiStatus').className = '';
+        $('aiStatus').style.color = '#E85C0D';
+        $('aiStatusText').textContent = '{% trans "Войдите в систему" %}';
+        // Clear stale conv id
+        try { localStorage.removeItem('ai_conv_id'); } catch(e){}
+        convId = null;
+        return;
+      }
+      // For other disconnects: clear cached conv (might belong to other user) and retry
+      if (wsRetryCount === 0) convId = null;
       $('aiStatus').className = '';
       $('aiStatus').style.color = '#919191';
       $('aiStatusText').textContent = '{% trans "Переподключение..." %}';
-      setTimeout(connectWS, 2000);
+      wsRetryCount++;
+      var delay = Math.min(1000 * Math.pow(2, wsRetryCount), 30000);
+      wsRetryTimer = setTimeout(connectWS, delay);
     };
+    ws.onerror = function(){ /* close will handle retry */ };
   }
 
   function addMsg(role, text, refs, msgId){
