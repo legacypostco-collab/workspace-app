@@ -825,7 +825,7 @@ function lgCounter(btn) {
   actionsCell.innerHTML = `
     <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;">
       <span style="font-size:10px;color:#8A8A8A;">$</span>
-      <input type="number" style="width:70px;background:#111;border:1px solid rgba(100,181,246,0.3);border-radius:5px;padding:4px 6px;font-size:11px;color:#ECECEC;outline:none;text-align:center;" placeholder=gettext('цена') />
+      <input type="number" style="width:70px;background:#111;border:1px solid rgba(100,181,246,0.3);border-radius:5px;padding:4px 6px;font-size:11px;color:#ECECEC;outline:none;text-align:center;" placeholder="\' + gettext('цена') + \'" />
       <button class="lg-btn lg-btn--primary" style="padding:3px 8px;font-size:10px;" onclick="submitLgCounter(this)">OK</button>
       <button class="lg-btn lg-btn--secondary" style="padding:3px 6px;font-size:10px;" onclick="cancelLgCounter(this)">&#10005;</button>
     </div>`;
