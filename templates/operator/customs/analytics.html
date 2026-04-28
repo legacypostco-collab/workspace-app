@@ -199,7 +199,7 @@
   window.switchPeriod = function(btn){
     btn.parentElement.querySelectorAll('.op-role-btn').forEach(function(b){b.classList.remove('active');});
     btn.classList.add('active');
-    opToast('{% trans gettext('Период: ') %}' + btn.textContent.trim());
+    opToast('{% trans 'Период: ' %}' + btn.textContent.trim());
   };
 })();
 </script>

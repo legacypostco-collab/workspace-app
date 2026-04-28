@@ -169,8 +169,8 @@ window.filterEscrow = function(status) {
   document.getElementById('esc-stat-hold').style.borderColor = inactive;
   document.getElementById('esc-stat-dispute').style.borderColor = inactive;
   document.getElementById('esc-stat-all').style.borderColor = inactive;
-  if (activeEscStatus === '{% trans gettext('Удержание') %}') document.getElementById('esc-stat-hold').style.borderColor = active;
-  else if (activeEscStatus === '{% trans gettext('Спор') %}') document.getElementById('esc-stat-dispute').style.borderColor = warnActive;
+  if (activeEscStatus === '{% trans 'Удержание' %}') document.getElementById('esc-stat-hold').style.borderColor = active;
+  else if (activeEscStatus === '{% trans 'Спор' %}') document.getElementById('esc-stat-dispute').style.borderColor = warnActive;
   else document.getElementById('esc-stat-all').style.borderColor = active;
   document.querySelectorAll('#escrow-table tbody tr[data-status]').forEach(function(row) {
     row.style.display = (!activeEscStatus || row.getAttribute('data-status') === activeEscStatus) ? '' : 'none';
@@ -181,9 +181,9 @@ function releaseEscrow(btn, escId) {
   var row = btn.closest('tr');
   var badge = row.querySelector('.escrow-status');
   badge.className = 'op-badge op-badge-gray escrow-status';
-  badge.textContent = '{% trans gettext('Выпущено') %}';
+  badge.textContent = '{% trans 'Выпущено' %}';
   btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast(\'{% trans "Детали открыты\" %}', 2000, \'success\'{% trans ")\">Детали</button>" %}';
-  opToast('{% trans gettext('Эскроу выпущен') %}', 2000, 'success');
+  opToast('{% trans 'Эскроу выпущен' %}', 2000, 'success');
 }
 </script>
 {% endblock %}

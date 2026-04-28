@@ -138,7 +138,7 @@ function toggleAllImport(master) {
 function updateImportBar() {
   var count = document.querySelectorAll('.imp-cb:checked').length;
   document.getElementById('importBulkBar').style.display = count > 0 ? 'flex' : 'none';
-  document.getElementById('importSelectedCount').textContent = count + '{% trans gettext(' выбрано') %}';
+  document.getElementById('importSelectedCount').textContent = count + '{% trans ' выбрано' %}';
 }
 function clearImportSelection() {
   document.querySelectorAll('.imp-cb').forEach(function(cb) { cb.checked = false; });

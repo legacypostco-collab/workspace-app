@@ -258,7 +258,7 @@ function updateStatus(option, newStatus) {
   statusText.textContent = newStatus;
   statusText.style.color = '#919191';
   row.dataset.status = newStatus;
-  var stages = ['{% trans gettext('Погрузка') %}','{% trans gettext('В пути') %}','{% trans gettext('Таможня') %}','{% trans gettext('Доставка') %}','{% trans gettext('Получено') %}'];
+  var stages = ['{% trans 'Погрузка' %}','{% trans 'В пути' %}','{% trans 'Таможня' %}','{% trans 'Доставка' %}','{% trans 'Получено' %}'];
   var idx = stages.indexOf(newStatus);
   var steps = row.querySelectorAll('.op-progress-step');
   steps.forEach(function(s, i) {
@@ -268,7 +268,7 @@ function updateStatus(option, newStatus) {
   });
   option.closest('.status-dropdown').style.display = 'none';
   var ordId = row.querySelector('td').textContent;
-  opToast('{% trans gettext('Статус ') %}' + ordId + '{% trans gettext(' обновлён: ') %}' + newStatus);
+  opToast('{% trans 'Статус ' %}' + ordId + '{% trans ' обновлён: ' %}' + newStatus);
 }
 
 document.addEventListener('click', function() {

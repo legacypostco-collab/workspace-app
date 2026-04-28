@@ -194,7 +194,7 @@
     if(activeType === ''){
       document.getElementById('cdoc-type-all').style.borderColor = active;
     } else {
-      var map = {'{% trans gettext('Инвойс') %}':'cdoc-type-invoice','{% trans gettext('Сертификат') %}':'cdoc-type-cert','{% trans gettext('Разрешение') %}':'cdoc-type-perm','{% trans gettext('Заключение') %}':'cdoc-type-conc','{% trans gettext('Прочие') %}':'cdoc-type-other'};
+      var map = {'{% trans 'Инвойс' %}':'cdoc-type-invoice','{% trans 'Сертификат' %}':'cdoc-type-cert','{% trans 'Разрешение' %}':'cdoc-type-perm','{% trans 'Заключение' %}':'cdoc-type-conc','{% trans 'Прочие' %}':'cdoc-type-other'};
       if(map[activeType]) document.getElementById(map[activeType]).style.borderColor = active;
     }
     var currentTab = (document.querySelector('[data-cdoc-tab].active') || {getAttribute:function(){return 'all';}}).getAttribute('data-cdoc-tab');

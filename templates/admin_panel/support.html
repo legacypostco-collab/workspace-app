@@ -127,7 +127,7 @@
   function update() {
     var checked = document.querySelectorAll('.row-cb:checked').length;
     bulkBar.style.display = checked > 0 ? 'flex' : 'none';
-    bulkCount.textContent = checked + '{% trans gettext(' выбрано') %}';
+    bulkCount.textContent = checked + '{% trans ' выбрано' %}';
   }
 
   if (selectAll) {

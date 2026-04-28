@@ -151,7 +151,7 @@ function toggleAllOrders(m) {
 function updateOrderBar() {
   var c = document.querySelectorAll('.order-cb:checked').length;
   document.getElementById('orderBulkBar').style.display = c > 0 ? 'flex' : 'none';
-  document.getElementById('orderSelectedCount').textContent = c + '{% trans gettext(' выбрано') %}';
+  document.getElementById('orderSelectedCount').textContent = c + '{% trans ' выбрано' %}';
 }
 function clearOrderSelection() {
   document.querySelectorAll('.order-cb').forEach(function(cb) { cb.checked = false; });
@@ -164,7 +164,7 @@ function bulkOrderStatus() {
   document.getElementById('ordersForm').submit();
 }
 function bulkOrderCancel() {
-  if (confirm('{% trans gettext('Отменить выбранные заказы?') %}')) {
+  if (confirm('{% trans 'Отменить выбранные заказы?' %}')) {
     document.getElementById('ordersAction').value = 'bulk_cancel';
     document.getElementById('ordersForm').submit();
   }

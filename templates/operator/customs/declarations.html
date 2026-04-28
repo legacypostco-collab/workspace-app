@@ -297,7 +297,7 @@ function submitDecl() {
   }
   var order = document.getElementById('decl-order').value;
   closeDeclModal();
-  opToast('{% trans gettext('Декларация создана: ') %}' + order + ' · ' + tnved, 2500, 'success');
+  opToast('{% trans 'Декларация создана: ' %}' + order + ' · ' + tnved, 2500, 'success');
 }
 document.getElementById('modal-decl').addEventListener('click', function(e){
   if (e.target === this) closeDeclModal();
@@ -324,7 +324,7 @@ function uploadFilesSelected(input) {
     item.innerHTML = '<span style="font-size:14px;">📄</span><span style="font-size:12px;color:#ECECEC;flex:1;">' + file.name + '{% trans "</span><span style=\"font-size:11px;color:#66BB6A;\">✓ Загружен</span>" %}';
     list.appendChild(item);
   });
-  opToast('{% trans gettext('Загружено файлов: ') %}' + input.files.length, 2000, 'success');
+  opToast('{% trans 'Загружено файлов: ' %}' + input.files.length, 2000, 'success');
   input.value = '';
 }
 </script>

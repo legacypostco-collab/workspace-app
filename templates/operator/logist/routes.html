@@ -145,21 +145,21 @@ var ROUTES = {
   'seoul-vladivostok-sea': {days:4,cost:'$800'},
 };
 var CITY_NAMES = {
-  shanghai:'{% trans gettext('Шанхай') %}',guangzhou:'{% trans gettext('Гуанчжоу') %}',istanbul:'{% trans gettext('Стамбул') %}',dubai:'{% trans gettext('Дубай') %}',seoul:'{% trans gettext('Сеул') %}',
-  moscow:'{% trans gettext('Москва') %}',vladivostok:'{% trans gettext('Владивосток') %}',novosibirsk:'{% trans gettext('Новосибирск') %}',ekaterinburg:'{% trans gettext('Екатеринбург') %}'
+  shanghai:'{% trans 'Шанхай' %}',guangzhou:'{% trans 'Гуанчжоу' %}',istanbul:'{% trans 'Стамбул' %}',dubai:'{% trans 'Дубай' %}',seoul:'{% trans 'Сеул' %}',
+  moscow:'{% trans 'Москва' %}',vladivostok:'{% trans 'Владивосток' %}',novosibirsk:'{% trans 'Новосибирск' %}',ekaterinburg:'{% trans 'Екатеринбург' %}'
 };
-var METHOD_NAMES = {sea:'{% trans gettext('Море') %}',air:'{% trans gettext('Авиа') %}',rail:'{% trans gettext('ЖД') %}',road:'{% trans gettext('Авто') %}'};
+var METHOD_NAMES = {sea:'{% trans 'Море' %}',air:'{% trans 'Авиа' %}',rail:'{% trans 'ЖД' %}',road:'{% trans 'Авто' %}'};
 
 function calculateRoute() {
   var o = document.getElementById('calc-origin').value;
   var d = document.getElementById('calc-dest').value;
   var m = document.getElementById('calc-method').value;
-  if (!o||!d||!m) { opToast('{% trans gettext('Заполните все поля') %}'); return; }
+  if (!o||!d||!m) { opToast('{% trans 'Заполните все поля' %}'); return; }
   var key = o+'-'+d+'-'+m;
   var r = ROUTES[key];
   var result = document.getElementById('calc-result');
   if (r) {
-    document.getElementById('calc-days').textContent = r.days + '{% trans gettext(' дн.') %}';
+    document.getElementById('calc-days').textContent = r.days + '{% trans ' дн.' %}';
     document.getElementById('calc-cost').textContent = r.cost;
     document.getElementById('calc-route').textContent = CITY_NAMES[o]+' \u2192 '+CITY_NAMES[d]+' ('+METHOD_NAMES[m]+')';
     result.style.display = 'block';
@@ -168,7 +168,7 @@ function calculateRoute() {
     document.getElementById('calc-cost').textContent = '--';
     document.getElementById('calc-route').textContent = CITY_NAMES[o]+' \u2192 '+CITY_NAMES[d];
     result.style.display = 'block';
-    opToast('{% trans gettext('Маршрут не найден. Попробуйте другой способ доставки.') %}');
+    opToast('{% trans 'Маршрут не найден. Попробуйте другой способ доставки.' %}');
   }
 }
 </script>
