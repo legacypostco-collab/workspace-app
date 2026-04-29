@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-  <title>Consolidator</title>
+  <title>Consolidator Parts</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap" rel="stylesheet">
   <script src="{% url 'javascript-catalog' %}"></script>
@@ -11,9 +11,9 @@
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;color:#1a1a1a;}
 
-    /* ── Gradient background ── */
+    /* ── Gradient background (sunrise) ── */
     body{
-      background:linear-gradient(180deg,#a8c2e3 0%,#e0a3c6 35%,#f5b894 65%,#f6a965 100%);
+      background:linear-gradient(180deg,#a8b8d8 0%,#cda9d6 35%,#f0a59a 65%,#f4956a 100%);
       background-attachment:fixed;
       overflow:hidden;
       position:relative;
@@ -22,155 +22,149 @@
       content:'';
       position:fixed;
       inset:0;
-      background:radial-gradient(ellipse 70% 60% at 50% 75%, rgba(255,140,80,0.55), transparent 60%);
+      background:radial-gradient(ellipse 70% 55% at 50% 80%, rgba(255,130,75,0.5), transparent 65%);
       pointer-events:none;
       z-index:0;
     }
-    body::after{
-      content:'';
-      position:fixed;
-      bottom:-20%;left:50%;transform:translateX(-50%);
-      width:80%;height:60%;
-      background:radial-gradient(ellipse 50% 50% at 50% 100%, rgba(255,100,40,0.7), transparent 60%);
-      pointer-events:none;
-      z-index:0;
-      animation:glow 12s ease-in-out infinite alternate;
-    }
-    @keyframes glow{0%{opacity:0.7;transform:translateX(-50%) scale(1);}100%{opacity:1;transform:translateX(-50%) scale(1.1);}}
 
     a{color:inherit;text-decoration:none;}
-    button{font-family:inherit;cursor:pointer;border:none;background:transparent;color:inherit;}
+    button{font-family:inherit;cursor:pointer;border:none;background:transparent;color:inherit;padding:0;}
     code{background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;font-family:'SF Mono',Menlo,monospace;font-size:12px;}
     ::-webkit-scrollbar{width:6px;height:6px;}
-    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.2);border-radius:3px;}
+    ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:3px;}
+    ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,0.25);}
     ::-webkit-scrollbar-track{background:transparent;}
 
     /* ── App layout ── */
-    .app{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;}
+    .app{position:relative;z-index:1;height:100vh;display:flex;}
 
-    /* ── Top bar (floating, minimal) ── */
-    .topbar{position:fixed;top:0;left:0;right:0;padding:18px 24px;display:flex;align-items:center;gap:12px;z-index:50;background:linear-gradient(180deg,rgba(255,255,255,0.3),transparent);backdrop-filter:blur(8px);}
-    .topbar-left{display:flex;align-items:center;gap:10px;}
-    .icon-btn{width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,0.4);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;color:#1a1a1a;transition:all .15s;border:1px solid rgba(255,255,255,0.3);}
-    .icon-btn:hover{background:rgba(255,255,255,0.6);}
-    .icon-btn .dot{position:absolute;top:3px;right:3px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid #fff;}
-    .brand{display:flex;align-items:center;gap:8px;font-family:'Golos Text',sans-serif;font-weight:700;font-size:14px;color:#1a1a1a;letter-spacing:-0.01em;}
-    .brand svg{width:20px;height:20px;}
-    .topbar-title{font-size:13px;color:rgba(0,0,0,0.55);font-weight:500;margin-left:4px;}
-    .topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
-    .ws-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:rgba(0,0,0,0.55);padding:5px 10px;border-radius:8px;background:rgba(255,255,255,0.4);}
-    .ws-pill .pulse{width:6px;height:6px;border-radius:50%;background:#999;}
-    .ws-pill.live .pulse{background:#22c55e;animation:pulse 2s infinite;}
-    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
-    .classic-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;background:rgba(255,255,255,0.4);backdrop-filter:blur(10px);color:#1a1a1a;font-size:12px;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,0.3);}
-    .classic-btn:hover{background:rgba(255,255,255,0.6);text-decoration:none;}
-    @media(max-width:600px){.classic-btn span,.topbar-title{display:none;}}
-
-    /* ── Sidebar (slide-out, minimal) ── */
-    .sidebar{position:fixed;top:0;left:-320px;bottom:0;width:300px;background:rgba(20,20,30,0.85);backdrop-filter:blur(20px);border-right:1px solid rgba(255,255,255,0.08);transition:left .25s ease;z-index:60;display:flex;flex-direction:column;color:#ECECEC;}
-    .sidebar.open{left:0;}
-    .side-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);z-index:55;display:none;}
-    .side-overlay.open{display:block;}
-    .side-head{padding:18px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,0.06);}
-    .side-head .brand{color:#fff;}
-    .side-new{margin-left:auto;width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.06);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;}
-    .side-new:hover{background:rgba(255,255,255,0.12);}
-    .side-search{padding:10px 16px;}
-    .side-search input{width:100%;padding:8px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.06);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;}
-    .side-search input::placeholder{color:rgba(255,255,255,0.35);}
-    .side-search input:focus{border-color:rgba(255,255,255,0.18);}
-    .side-list{flex:1;overflow-y:auto;padding:6px 10px 14px;}
-    .side-group{font-size:10px;color:rgba(255,255,255,0.35);padding:14px 8px 6px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;}
-    .side-item{display:block;padding:8px 10px;border-radius:8px;color:rgba(255,255,255,0.7);font-size:13px;cursor:pointer;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
-    .side-item:hover{background:rgba(255,255,255,0.06);color:#fff;}
-    .side-item.active{background:rgba(255,255,255,0.12);color:#fff;}
-    .side-foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px;}
-    .side-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#a78bfa,#f0abfc);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff;}
-    .side-user{flex:1;min-width:0;}
-    .side-user-name{font-size:13px;font-weight:600;color:#fff;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
-    .side-user-role{font-size:11px;color:rgba(255,255,255,0.4);text-transform:capitalize;}
-
-    /* ── Main content area ── */
-    .main{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-top:72px;position:relative;z-index:1;}
-
-    /* ── Empty state — home with greeting + actions + input ── */
-    .empty-stage{flex:1;overflow-y:auto;padding:0;}
-    .empty-stage.hidden{display:none;}
-    .home-wrap{max-width:780px;margin:0 auto;padding:32px 24px 40px;display:flex;flex-direction:column;gap:24px;min-height:100%;}
-    .home-header{text-align:center;margin-top:20px;}
-    .home-tag{display:inline-block;font-size:11px;font-weight:700;color:rgba(0,0,0,0.55);background:rgba(255,255,255,0.5);backdrop-filter:blur(10px);padding:5px 12px;border-radius:20px;letter-spacing:0.06em;text-transform:uppercase;border:1px solid rgba(255,255,255,0.4);margin-bottom:14px;}
-    .home-header h1{font-family:'Golos Text',sans-serif;font-weight:800;font-size:38px;color:rgba(0,0,0,0.9);letter-spacing:-0.02em;margin-bottom:10px;line-height:1.15;}
-    .home-sub{font-size:15px;color:rgba(0,0,0,0.6);max-width:560px;margin:0 auto;line-height:1.55;}
-    @media(max-width:600px){
-      .home-header h1{font-size:26px;}
-      .home-sub{font-size:13px;}
-      .home-wrap{padding:20px 16px 30px;gap:18px;}
+    /* ── Sidebar (collapsible, push layout on desktop / overlay on mobile) ── */
+    .sidebar{
+      width:0;
+      flex-shrink:0;
+      background:rgba(255,255,255,0.7);
+      backdrop-filter:blur(20px);
+      border-right:1px solid rgba(255,255,255,0.5);
+      overflow:hidden;
+      transition:width .25s ease;
+      display:flex;
+      flex-direction:column;
+      z-index:10;
     }
+    .sidebar.open{width:280px;}
+    @media(max-width:768px){
+      .sidebar{position:fixed;top:0;bottom:0;left:0;width:0;}
+      .sidebar.open{width:280px;box-shadow:0 0 40px rgba(0,0,0,0.15);}
+    }
+    .side-inner{width:280px;display:flex;flex-direction:column;height:100%;padding:14px;}
+    .side-spacer{height:48px;flex-shrink:0;}  /* room for top brand */
+    .side-new-btn{display:flex;align-items:center;gap:8px;width:100%;padding:11px 14px;background:#1a1a1a;color:#fff;border-radius:12px;font-size:13px;font-weight:600;margin-bottom:14px;}
+    .side-new-btn:hover{background:#000;}
+    .side-search{position:relative;margin-bottom:18px;}
+    .side-search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:rgba(0,0,0,0.4);}
+    .side-search input{width:100%;padding:9px 12px 9px 34px;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.5);border-radius:10px;color:#1a1a1a;font-size:13px;outline:none;font-family:inherit;}
+    .side-search input::placeholder{color:rgba(0,0,0,0.4);}
+    .side-search input:focus{border-color:rgba(0,0,0,0.2);background:rgba(255,255,255,0.85);}
+    .side-list{flex:1;overflow-y:auto;margin:0 -6px;padding:0 6px;}
+    .side-section{margin-bottom:18px;}
+    .side-section-head{display:flex;align-items:center;justify-content:space-between;padding:0 8px 6px;}
+    .side-section-title{font-size:10px;color:rgba(0,0,0,0.5);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
+    .side-section-add{width:18px;height:18px;border-radius:4px;color:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:14px;}
+    .side-section-add:hover{background:rgba(0,0,0,0.06);color:#1a1a1a;}
+    .side-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;color:rgba(0,0,0,0.75);font-size:13px;cursor:pointer;}
+    .side-item:hover{background:rgba(0,0,0,0.05);color:#1a1a1a;}
+    .side-item.active{background:rgba(0,0,0,0.08);color:#1a1a1a;font-weight:600;}
+    .side-item-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .side-item-text{flex:1;min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-item-meta{font-size:11px;color:rgba(0,0,0,0.45);flex-shrink:0;}
+    .side-item-stack{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;padding:8px 10px;border-radius:8px;cursor:pointer;}
+    .side-item-stack:hover{background:rgba(0,0,0,0.05);}
+    .side-item-stack-title{font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-item-stack-meta{font-size:11px;color:rgba(0,0,0,0.45);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-foot{display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid rgba(0,0,0,0.06);margin-top:auto;}
+    .side-avatar{width:32px;height:32px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+    .side-user{flex:1;min-width:0;}
+    .side-user-name{font-size:13px;font-weight:600;color:#1a1a1a;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-user-role{font-size:11px;color:rgba(0,0,0,0.5);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
 
-    /* ── Quick action cards ── */
-    .home-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;}
-    .home-act{padding:18px 18px 16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.55);border-radius:16px;text-align:left;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:8px;color:#1a1a1a;}
-    .home-act:hover{background:rgba(255,255,255,0.75);border-color:rgba(255,255,255,0.85);transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,0.08);}
-    .home-act-icon{width:36px;height:36px;border-radius:10px;background:rgba(20,20,30,0.08);display:flex;align-items:center;justify-content:center;font-size:18px;}
-    .home-act-title{font-family:'Golos Text',sans-serif;font-weight:700;font-size:14px;color:rgba(0,0,0,0.9);}
-    .home-act-desc{font-size:12px;color:rgba(0,0,0,0.55);line-height:1.4;}
+    /* ── Main column ── */
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;min-width:0;}
 
-    /* ── Recent conversations ── */
-    .home-section-title{font-size:11px;font-weight:700;color:rgba(0,0,0,0.55);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;padding:0 4px;}
-    .home-recent-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;}
-    .home-recent-item{padding:12px 14px;background:rgba(255,255,255,0.4);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);border-radius:12px;cursor:pointer;transition:all .15s;}
-    .home-recent-item:hover{background:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.65);}
-    .home-recent-title{font-size:13px;font-weight:600;color:rgba(0,0,0,0.85);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
-    .home-recent-meta{font-size:11px;color:rgba(0,0,0,0.5);margin-top:3px;}
+    /* ── Top bar (always visible, transparent) ── */
+    .topbar{position:absolute;top:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;gap:12px;z-index:5;}
+    .top-burger{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#1a1a1a;}
+    .top-burger:hover{background:rgba(0,0,0,0.06);}
+    .top-brand{display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:700;font-size:15px;color:#1a1a1a;letter-spacing:-0.01em;}
+    .top-brand-logo{width:24px;height:24px;flex-shrink:0;}
+    .top-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+    .top-classic{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:8px;background:rgba(255,255,255,0.5);color:#1a1a1a;font-size:12px;font-weight:600;text-decoration:none;}
+    .top-classic:hover{background:rgba(255,255,255,0.7);text-decoration:none;}
+    .top-avatar{width:34px;height:34px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+    @media(max-width:600px){.top-classic span{display:none;}}
 
-    /* ── Footer hint ── */
-    .home-footer{text-align:center;font-size:12px;color:rgba(0,0,0,0.5);padding-top:8px;}
+    /* ── Welcome state ── */
+    .welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px 32px;gap:28px;overflow-y:auto;}
+    .welcome.hidden{display:none;}
+    .welcome-logo{width:120px;height:120px;display:flex;align-items:center;justify-content:center;}
+    .welcome-logo svg{width:100%;height:100%;}
+    .welcome-text{text-align:center;max-width:560px;}
+    .welcome-text h1{font-family:'Golos Text',sans-serif;font-weight:700;font-size:30px;color:rgba(0,0,0,0.92);letter-spacing:-0.02em;margin-bottom:12px;line-height:1.2;}
+    .welcome-text p{font-size:15px;color:rgba(0,0,0,0.65);line-height:1.55;}
+    .welcome-text p strong{color:rgba(0,0,0,0.9);font-weight:700;}
 
-    /* ── The hero input bar (floating glass) ── */
-    .hero-input{width:100%;max-width:680px;background:rgba(20,20,30,0.85);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:12px 12px 12px 18px;box-shadow:0 20px 60px rgba(0,0,0,0.18), 0 4px 16px rgba(0,0,0,0.08);}
-    .hero-input-row{display:flex;flex-direction:column;gap:10px;}
-    .hero-input-textwrap{display:flex;align-items:flex-end;gap:8px;}
-    .hero-input textarea{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:15px;font-family:inherit;line-height:1.5;resize:none;max-height:200px;padding:8px 0;}
-    .hero-input textarea::placeholder{color:rgba(255,255,255,0.4);}
-    .hero-input-tools{display:flex;align-items:center;gap:4px;padding:0 4px;}
-    .tool{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.5);transition:all .15s;}
-    .tool:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.9);}
-    .tool-divider{width:1px;height:18px;background:rgba(255,255,255,0.1);margin:0 6px;}
+    /* ── Hero input ── */
+    .hero-input{width:100%;max-width:680px;background:#3a2a26;background:rgba(40,28,28,0.92);backdrop-filter:blur(20px);border:1px solid rgba(0,0,0,0.15);border-radius:18px;padding:14px 14px 12px 18px;box-shadow:0 20px 50px rgba(0,0,0,0.18), 0 4px 14px rgba(0,0,0,0.08);}
+    .hero-textwrap textarea{width:100%;background:transparent;border:none;outline:none;color:#fff;font-size:14px;font-family:'SF Mono',Menlo,'Courier New',monospace;line-height:1.6;resize:none;max-height:240px;padding:8px 0;}
+    .hero-textwrap textarea::placeholder{color:rgba(255,255,255,0.4);white-space:pre;}
+    .hero-tools{display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);}
+    .tool{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.55);}
+    .tool:hover{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.95);}
     .tool-spacer{flex:1;}
-    .hero-send{width:36px;height:36px;border-radius:50%;background:#fff;color:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;transition:all .15s;flex-shrink:0;}
-    .hero-send:hover:not(:disabled){background:#f0f0f0;transform:scale(1.05);}
-    .hero-send:disabled{opacity:0.4;}
+    .hero-mic{width:36px;height:36px;border-radius:50%;background:#fff;color:#1a1a1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .hero-mic:hover{background:#f0f0f0;}
+    .hero-mic.send{background:#1a1a1a;color:#fff;}
+    .hero-mic.send:hover{background:#000;}
 
-    /* ── Suggestions under hero input ── */
-    .hero-suggest{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:680px;}
-    .sug{padding:7px 14px;background:rgba(255,255,255,0.4);backdrop-filter:blur(10px);color:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.4);border-radius:20px;font-size:12px;font-weight:500;transition:all .15s;}
-    .sug:hover{background:rgba(255,255,255,0.6);border-color:rgba(255,255,255,0.6);}
+    /* ── Drop hint under input ── */
+    .drop-hint{font-size:12px;color:rgba(0,0,0,0.55);text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .drop-hint code{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.75);font-weight:600;padding:1px 6px;border-radius:4px;}
 
-    /* ── Active conversation: messages + bottom input ── */
-    .conv-stage{flex:1;display:flex;flex-direction:column;overflow:hidden;}
-    .conv-stage.hidden{display:none;}
-    .stream{flex:1;overflow-y:auto;padding:20px 24px 0;}
-    .stream-inner{max-width:780px;margin:0 auto;width:100%;display:flex;flex-direction:column;gap:24px;padding-bottom:24px;}
-    .input-dock{padding:16px 24px 24px;}
+    /* ── Pill action buttons ── */
+    .pills{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.6);color:rgba(0,0,0,0.85);border-radius:24px;font-size:13px;font-weight:600;}
+    .pill:hover{background:rgba(255,255,255,0.75);border-color:rgba(255,255,255,0.85);}
+    .pill svg{flex-shrink:0;color:rgba(0,0,0,0.55);}
+
+    /* ── Conversation state ── */
+    .conv{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-top:60px;}
+    .conv.hidden{display:none;}
+    .stream{flex:1;overflow-y:auto;padding:12px 24px 0;}
+    .stream-inner{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:22px;padding-bottom:24px;}
+    .input-dock{padding:12px 24px 20px;}
     .input-dock-inner{max-width:780px;margin:0 auto;}
-    .conv-suggest{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:10px;}
+    .input-bar{background:rgba(40,28,28,0.92);backdrop-filter:blur(20px);border:1px solid rgba(0,0,0,0.15);border-radius:16px;padding:10px 10px 8px 16px;}
+    .input-bar textarea{width:100%;background:transparent;border:none;outline:none;color:#fff;font-size:14px;font-family:inherit;line-height:1.5;resize:none;max-height:160px;padding:6px 0;}
+    .input-bar textarea::placeholder{color:rgba(255,255,255,0.4);}
+    .input-bar-tools{display:flex;align-items:center;gap:4px;margin-top:6px;}
+    .input-bar .hero-mic{width:30px;height:30px;font-size:13px;}
 
     /* ── Messages ── */
     .msg{display:flex;gap:14px;align-items:flex-start;}
     .msg-avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
-    .msg-avatar-user{background:rgba(255,255,255,0.5);color:#1a1a1a;}
-    .msg-avatar-bot{background:linear-gradient(135deg,#1a1a2e,#3a3a5c);color:#fff;}
-    .msg-avatar-act{background:rgba(255,255,255,0.3);color:#1a1a1a;}
+    .msg-avatar-user{background:rgba(255,255,255,0.6);color:#1a1a1a;}
+    .msg-avatar-bot{width:30px;height:30px;}
+    .msg-avatar-bot svg{width:100%;height:100%;}
+    .msg-avatar-act{background:rgba(255,255,255,0.4);color:#1a1a1a;}
     .msg-body{flex:1;min-width:0;}
     .msg-author{font-size:11px;color:rgba(0,0,0,0.5);margin-bottom:5px;font-weight:600;}
     .msg-content{color:#1a1a1a;font-size:14px;line-height:1.65;white-space:pre-wrap;word-wrap:break-word;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);padding:12px 16px;border-radius:14px;}
-    .msg-user .msg-content{background:rgba(20,20,30,0.85);color:#fff;border-color:rgba(255,255,255,0.08);}
+    .msg-user .msg-content{background:rgba(40,28,28,0.92);color:#fff;border-color:rgba(0,0,0,0.15);}
     .msg-action-tag{font-style:italic;color:rgba(0,0,0,0.6);}
 
     /* ── Cards ── */
     .cards{display:grid;gap:10px;margin-top:12px;}
-    .card{background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);border-radius:14px;padding:14px 16px;color:#1a1a1a;}
-    .card:hover{background:rgba(255,255,255,0.65);}
+    .card{background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;padding:14px 16px;color:#1a1a1a;}
+    .card:hover{background:rgba(255,255,255,0.7);}
     .card-row{display:flex;align-items:center;gap:12px;}
     .card-emoji{font-size:24px;flex-shrink:0;}
     .card-info{flex:1;min-width:0;}
@@ -192,178 +186,196 @@
     .ctable td{padding:8px;border-bottom:1px solid rgba(0,0,0,0.04);color:#1a1a1a;}
 
     .chart-bars{display:flex;gap:8px;align-items:flex-end;height:80px;margin-top:8px;padding-bottom:18px;}
-    .chart-bar{flex:1;background:linear-gradient(180deg,#6366f1,#4f46e5);border-radius:4px 4px 0 0;position:relative;}
+    .chart-bar{flex:1;background:linear-gradient(180deg,#1a1a1a,#3a3a3a);border-radius:4px 4px 0 0;position:relative;}
     .chart-bar-label{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:10px;color:rgba(0,0,0,0.6);}
 
-    /* ── Action buttons ── */
     .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
-    .act-btn{padding:9px 16px;background:rgba(20,20,30,0.85);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:600;backdrop-filter:blur(10px);}
-    .act-btn:hover{background:#1a1a1a;}
+    .act-btn{padding:9px 16px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:600;}
+    .act-btn:hover{background:#000;}
 
-    /* ── Working indicator (spinning logo + rotating status) ── */
-    .working{display:flex;align-items:center;gap:12px;padding:12px 18px;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);border-radius:14px;width:fit-content;}
-    .working-logo{width:22px;height:22px;flex-shrink:0;animation:spin 1.6s linear infinite;}
+    /* ── Working indicator (spinning star + rotating status) ── */
+    .working{display:flex;align-items:center;gap:12px;padding:12px 18px;background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;width:fit-content;}
+    .working-logo{width:24px;height:24px;flex-shrink:0;animation:spin 2s linear infinite;}
     .working-logo svg{width:100%;height:100%;display:block;}
     @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-    .working-text{font-size:13px;color:#1a1a1a;font-weight:500;display:inline-block;min-width:140px;animation:fade-cycle 2.5s ease-in-out infinite;}
-    @keyframes fade-cycle{0%,100%{opacity:0.7}50%{opacity:1}}
-    /* Pulsing variant — for the spinning logo color */
-    .working-logo svg circle{stroke:#6366f1;animation:strokePulse 1.6s ease-in-out infinite;}
-    .working-logo svg circle:last-child{fill:#6366f1;}
-    @keyframes strokePulse{0%,100%{opacity:0.4}50%{opacity:1}}
+    .working-text{font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;display:inline-block;min-width:140px;transition:opacity .2s;}
 
-    /* ── Bottom input (when conversation active) ── */
-    .input-bar{background:rgba(20,20,30,0.85);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:10px 10px 10px 18px;display:flex;align-items:flex-end;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);}
-    .input-bar:focus-within{border-color:rgba(255,255,255,0.18);}
-    .input-bar textarea{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:14px;font-family:inherit;line-height:1.5;resize:none;max-height:200px;padding:6px 0;}
-    .input-bar textarea::placeholder{color:rgba(255,255,255,0.4);}
-    .input-bar .tool{color:rgba(255,255,255,0.5);}
-    .input-bar .tool:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.9);}
-    .input-bar .hero-send{width:32px;height:32px;font-size:15px;}
-
-    /* ── Mobile ── */
     @media(max-width:600px){
-      .topbar{padding:14px 16px;}
-      .empty-greeting h1{font-size:24px;}
-      .stream{padding:14px 16px 0;}
-      .input-dock{padding:12px 16px 16px;}
+      .topbar{padding:12px 14px;}
+      .welcome{padding:64px 16px 28px;gap:22px;}
+      .welcome-logo{width:88px;height:88px;}
+      .welcome-text h1{font-size:24px;}
+      .welcome-text p{font-size:13px;}
+      .stream{padding:8px 14px 0;}
+      .input-dock{padding:10px 14px 14px;}
+      .pills{gap:6px;}
+      .pill{padding:8px 14px;font-size:12px;}
     }
   </style>
 </head>
 <body>
 <div class="app">
 
-  <!-- Top bar -->
-  <div class="topbar">
-    <div class="topbar-left">
-      <button class="icon-btn" onclick="toggleSidebar()" title="{% trans 'Меню' %}">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-      </button>
-      <a href="/" class="brand">
-        <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="currentColor"/></svg>
-        Consolidator
-      </a>
-      <span class="topbar-title" id="convTitle"></span>
-    </div>
-    <div class="topbar-right">
-      <span class="ws-pill" id="wsStatus"><span class="pulse"></span><span id="wsStatusText">{% trans "Подключение..." %}</span></span>
-      <a href="/dashboard/" class="classic-btn" title="{% trans 'Классический режим' %}">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-        <span>{% trans "Классический" %}</span>
-      </a>
-    </div>
-  </div>
-
   <!-- Sidebar -->
-  <div class="side-overlay" id="sideOverlay" onclick="toggleSidebar()"></div>
   <aside class="sidebar" id="sidebar">
-    <div class="side-head">
-      <a class="brand" href="/" style="color:#fff;">
-        <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="currentColor"/></svg>
-        Consolidator
-      </a>
-      <button class="side-new" onclick="newChat()" title="{% trans 'Новый чат' %}">＋</button>
-    </div>
-    <div class="side-search">
-      <input type="text" id="convSearch" placeholder="{% trans 'Поиск чатов...' %}" oninput="filterConvs(this.value)">
-    </div>
-    <div class="side-list" id="convList">
-      <div class="side-group">{% trans "Загрузка..." %}</div>
-    </div>
-    <div class="side-foot">
-      <div class="side-avatar" id="userAvatar">?</div>
-      <div class="side-user">
-        <div class="side-user-name" id="userName">{% trans "Пользователь" %}</div>
-        <div class="side-user-role" id="userRole"></div>
+    <div class="side-inner">
+      <div class="side-spacer"></div>
+      <button class="side-new-btn" onclick="newChat()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        {% trans "Новый чат" %}
+      </button>
+      <div class="side-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="convSearch" placeholder="{% trans 'Поиск чатов и проектов' %}" oninput="filterConvs(this.value)">
       </div>
-      <a href="/logout/" class="icon-btn" style="background:rgba(255,255,255,0.06);color:#fff;border-color:rgba(255,255,255,0.08);" title="{% trans 'Выйти' %}">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-      </a>
-    </div>
-  </aside>
 
-  <!-- Main area -->
-  <main class="main">
-
-    <!-- Empty state: home with greeting + quick actions + input -->
-    <div class="empty-stage" id="emptyStage">
-      <div class="home-wrap">
-        <div class="home-header">
-          <div class="home-tag">{% trans "Consolidator AI" %}</div>
-          <h1 id="greetingText">{% trans "С чего начнём?" %}</h1>
-          <p class="home-sub">{% trans "Я помогу найти запчасти, отследить заказы, создать RFQ и собрать аналитику. Просто напишите вопрос или выберите действие ниже." %}</p>
-        </div>
-
-        <!-- Quick action cards (role-aware) -->
-        <div class="home-actions" id="homeActions">
-          <!-- populated by JS -->
-        </div>
-
-        <!-- Recent chats -->
-        <div class="home-recent" id="homeRecent" style="display:none;">
-          <div class="home-section-title">{% trans "Недавние диалоги" %}</div>
-          <div class="home-recent-list" id="homeRecentList"></div>
-        </div>
-
-        <!-- Hero input -->
-        <div class="hero-input">
-          <div class="hero-input-row">
-            <div class="hero-input-textwrap">
-              <textarea id="heroInput" rows="1" placeholder="{% trans 'Напишите сообщение или выберите действие выше...' %}" onkeydown="onKey(event, true)"></textarea>
-            </div>
-            <div class="hero-input-tools">
-              <button class="tool" title="{% trans 'Прикрепить файл' %}" onclick="document.getElementById('fileInput').click()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-              </button>
-              <button class="tool" title="{% trans 'История' %}" onclick="toggleSidebar()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-              </button>
-              <div class="tool-spacer"></div>
-              <button class="tool" title="{% trans 'Голос' %}" onclick="toggleVoice()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
-              </button>
-              <button class="hero-send" id="heroSendBtn" onclick="send(true)" title="{% trans 'Отправить' %}">↑</button>
-            </div>
+      <div class="side-list">
+        <!-- Projects -->
+        <div class="side-section" id="sideProjects">
+          <div class="side-section-head">
+            <span class="side-section-title">{% trans "Проекты" %}</span>
+            <button class="side-section-add" title="{% trans 'Новый проект' %}">+</button>
+          </div>
+          <div id="projectsList">
+            <div class="side-item"><span class="side-item-dot" style="background:#22c55e;"></span><span class="side-item-text">Norilsk Q2 procurement</span><span class="side-item-meta">12</span></div>
+            <div class="side-item"><span class="side-item-dot" style="background:#f97316;"></span><span class="side-item-text">Polyus Olimpiada</span><span class="side-item-meta">7</span></div>
+            <div class="side-item"><span class="side-item-dot" style="background:#3b82f6;"></span><span class="side-item-text">SUEK Borodino</span><span class="side-item-meta">3</span></div>
+            <div class="side-item"><span class="side-item-dot" style="background:#a855f7;"></span><span class="side-item-text">EuroChem Kovdor</span><span class="side-item-meta">5</span></div>
           </div>
         </div>
 
-        <!-- Suggestion pills under input -->
-        <div class="hero-suggest" id="heroSuggest"></div>
+        <!-- Recent chats -->
+        <div class="side-section">
+          <div class="side-section-head">
+            <span class="side-section-title">{% trans "Недавние" %}</span>
+          </div>
+          <div id="convList">
+            <div class="side-item-stack"><div class="side-item-stack-title">{% trans "Загрузка..." %}</div></div>
+          </div>
+        </div>
+      </div>
 
-        <!-- Footer hint -->
-        <div class="home-footer">
-          <span>{% trans "Совет: можно говорить голосом" %} 🎤 · {% trans "загружать Excel/PDF" %} 📎 · <a href="/dashboard/" style="color:rgba(0,0,0,0.6);text-decoration:underline;">{% trans "вернуться в классический режим" %}</a></span>
+      <div class="side-foot">
+        <div class="side-avatar" id="sideAvatar">M</div>
+        <div class="side-user">
+          <div class="side-user-name" id="sideUserName">{% trans "Пользователь" %}</div>
+          <div class="side-user-role" id="sideUserRole">—</div>
         </div>
       </div>
     </div>
+  </aside>
 
-    <!-- Active conversation: messages + bottom input -->
-    <div class="conv-stage hidden" id="convStage">
+  <!-- Main -->
+  <main class="main">
+    <!-- Top bar -->
+    <div class="topbar">
+      <button class="top-burger" onclick="toggleSidebar()" title="{% trans 'Меню' %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <a href="/" class="top-brand">
+        <svg class="top-brand-logo" viewBox="0 0 64 64" fill="currentColor">
+          <!-- 8-pointed star -->
+          <polygon points="32,4 38,26 60,32 38,38 32,60 26,38 4,32 26,26"/>
+        </svg>
+        Consolidator Parts
+      </a>
+      <div class="top-right">
+        <a href="/dashboard/" class="top-classic" title="{% trans 'Классический режим' %}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          <span>{% trans "Классический" %}</span>
+        </a>
+        <div class="top-avatar" id="topAvatar">?</div>
+      </div>
+    </div>
+
+    <!-- Welcome state -->
+    <div class="welcome" id="welcomeStage">
+      <div class="welcome-logo">
+        <svg viewBox="0 0 64 64" fill="#fff" stroke="rgba(0,0,0,0.08)" stroke-width="0.4">
+          <polygon points="32,2 39,25 62,32 39,39 32,62 25,39 2,32 25,25"/>
+        </svg>
+      </div>
+      <div class="welcome-text">
+        <h1 id="welcomeTitle">{% trans "Какую запчасть найти?" %}</h1>
+        <p>{% trans "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от" %} <strong>{% trans "200+ поставщиков" %}</strong>.</p>
+      </div>
+
+      <div class="hero-input" id="heroInputCard">
+        <div class="hero-textwrap">
+          <textarea id="heroInput" rows="3" placeholder="{% trans 'Примеры:&#10;2W1223  1&#10;1R0750  2' %}" onkeydown="onKey(event, true)"></textarea>
+        </div>
+        <div class="hero-tools">
+          <button class="tool" title="{% trans 'Прикрепить файл (Excel, PDF)' %}" onclick="document.getElementById('fileInput').click()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <button class="tool" title="{% trans 'Фото детали' %}" onclick="document.getElementById('photoInput').click()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </button>
+          <button class="tool" title="{% trans 'Поиск' %}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+          <div class="tool-spacer"></div>
+          <button class="hero-mic" id="heroSendBtn" onclick="heroAction()" title="{% trans 'Отправить или голос' %}">
+            <svg id="heroSendIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="drop-hint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        <span>{% trans "перетащите" %} <code>.xlsx</code>, <code>.pdf</code> {% trans "или фото прямо сюда" %}</span>
+      </div>
+
+      <div class="pills">
+        <button class="pill" onclick="quickAction('get_orders', {})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          {% trans "Мои заказы" %}
+        </button>
+        <button class="pill" onclick="quickAction('get_rfq_status', {})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          {% trans "Открытые RFQ" %}
+        </button>
+        <a href="/help/" class="pill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          {% trans "Как это работает?" %}
+        </a>
+      </div>
+    </div>
+
+    <!-- Conversation state -->
+    <div class="conv hidden" id="convStage">
       <div class="stream" id="stream">
         <div class="stream-inner" id="streamInner"></div>
       </div>
       <div class="input-dock">
         <div class="input-dock-inner">
-          <div class="conv-suggest" id="convSuggest"></div>
           <div class="input-bar">
-            <button class="tool" title="{% trans 'Прикрепить' %}" onclick="document.getElementById('fileInput').click()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-            </button>
             <textarea id="input" rows="1" placeholder="{% trans 'Напишите сообщение...' %}" onkeydown="onKey(event, false)"></textarea>
-            <button class="tool" title="{% trans 'Голос' %}" onclick="toggleVoice()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
-            </button>
-            <button class="hero-send" id="sendBtn" onclick="send(false)" title="{% trans 'Отправить' %}">↑</button>
+            <div class="input-bar-tools">
+              <button class="tool" title="{% trans 'Прикрепить' %}" onclick="document.getElementById('fileInput').click()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+              </button>
+              <button class="tool" title="{% trans 'Фото' %}" onclick="document.getElementById('photoInput').click()">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </button>
+              <div class="tool-spacer"></div>
+              <button class="tool" onclick="toggleVoice()" title="{% trans 'Голос' %}">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
+              </button>
+              <button class="hero-mic send" id="sendBtn" onclick="send(false)" title="{% trans 'Отправить' %}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
-
   </main>
 </div>
 
 <input type="file" id="fileInput" style="display:none;" accept=".xlsx,.xls,.csv,.pdf">
+<input type="file" id="photoInput" style="display:none;" accept="image/*" capture="environment">
 
-<script src="{% static 'js/chat-first.js' %}?v=2"></script>
+<script src="{% static 'js/chat-first.js' %}?v=5"></script>
 </body>
 </html>

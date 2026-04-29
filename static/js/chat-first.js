@@ -1,8 +1,19 @@
-/* Chat-First UI — minimalist gradient design.
- * Two states: empty hero (centered floating input) → conv (messages + bottom input)
+/* Chat-First UI — gradient minimalist (07r/07s design).
+ *
+ * State machine:
+ *   - WELCOME: hero + title + input + pills (sidebar collapsed by default for new users)
+ *   - CONV: chat thread + sticky bottom input
+ *
+ * Sidebar logic:
+ *   - First visit (no chat history): collapsed
+ *   - Returning user (>0 chats): open by default on desktop
+ *   - Mobile (<768px): always overlay (slide over content, never push)
+ *   - State persisted in localStorage 'cf_sidebar_open'
  */
 (function(){
   'use strict';
+
+  const SB_KEY = 'cf_sidebar_open';
 
   let state = {
     convId: null,
@@ -14,6 +25,7 @@
     convs: [],
     _lastCards: [],
     _lastActions: [],
+    _intent: 'default',
   };
 
   // ── Helpers ──────────────────────────────────────────────
@@ -35,7 +47,60 @@
     return res.json();
   }
 
-  // ── Card renderers ───────────────────────────────────────
+  // ══════════════════════════════════════════════════════════
+  // Sidebar toggle
+  // ══════════════════════════════════════════════════════════
+  function isMobile() { return window.innerWidth <= 768; }
+
+  window.toggleSidebar = (force) => {
+    const sb = $('sidebar');
+    const open = force === undefined ? !sb.classList.contains('open') : force;
+    sb.classList.toggle('open', open);
+    if (!isMobile()) {
+      try { localStorage.setItem(SB_KEY, open ? '1' : '0'); } catch(e){}
+    }
+  };
+
+  function applyDefaultSidebar(hasHistory) {
+    if (isMobile()) {
+      // Mobile: always closed by default
+      $('sidebar').classList.remove('open');
+      return;
+    }
+    // Desktop: persisted preference, or open if user has history
+    const saved = localStorage.getItem(SB_KEY);
+    let open;
+    if (saved === '1') open = true;
+    else if (saved === '0') open = false;
+    else open = hasHistory;  // first visit: open if history exists
+    $('sidebar').classList.toggle('open', open);
+  }
+
+  // Click outside on mobile to close
+  document.addEventListener('click', (e) => {
+    if (!isMobile()) return;
+    const sb = $('sidebar');
+    if (!sb.classList.contains('open')) return;
+    if (sb.contains(e.target) || e.target.closest('.top-burger')) return;
+    sb.classList.remove('open');
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // State transitions: WELCOME ↔ CONV
+  // ══════════════════════════════════════════════════════════
+  function showConv() {
+    $('welcomeStage').classList.add('hidden');
+    $('convStage').classList.remove('hidden');
+  }
+  function showWelcome() {
+    $('welcomeStage').classList.remove('hidden');
+    $('convStage').classList.add('hidden');
+    $('streamInner').innerHTML = '';
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // Card renderers
+  // ══════════════════════════════════════════════════════════
   const renderers = {
     product(d) {
       return `<div class="card">
@@ -159,54 +224,27 @@
     ).join('') + '</div>';
   }
 
+  // 8-pointed star SVG (consistent with welcome-logo)
+  const STAR_SVG = '<svg viewBox="0 0 64 64" fill="#fff" stroke="rgba(0,0,0,0.1)" stroke-width="0.4"><polygon points="32,2 39,25 62,32 39,39 32,62 25,39 2,32 25,25"/></svg>';
+
   function avatar(role) {
-    if (role === 'user') return '<div class="msg-avatar msg-avatar-user">' + ((state.config && state.config.user_name || 'U')[0].toUpperCase()) + '</div>';
+    if (role === 'user') {
+      const initial = ((state.config && state.config.user_name || 'U')[0] || 'U').toUpperCase();
+      return `<div class="msg-avatar msg-avatar-user">${initial}</div>`;
+    }
     if (role === 'action') return '<div class="msg-avatar msg-avatar-act">▸</div>';
-    return '<div class="msg-avatar msg-avatar-bot">AI</div>';
+    return `<div class="msg-avatar msg-avatar-bot">${STAR_SVG}</div>`;
   }
 
   function authorLabel(role) {
     if (role === 'user') return state.config ? state.config.user_name : 'Вы';
     if (role === 'action') return 'Действие';
-    return 'Consolidator AI';
+    return 'Consolidator';
   }
 
-  // ── State transition ────────────────────────────────────
-  function showConv() {
-    $('emptyStage').classList.add('hidden');
-    $('convStage').classList.remove('hidden');
-  }
-
-  function showEmpty() {
-    $('emptyStage').classList.remove('hidden');
-    $('convStage').classList.add('hidden');
-    $('streamInner').innerHTML = '';
-  }
-
-  // ── Render messages ──────────────────────────────────────
-  function addMessage(role, content, cards=[], actions=[]) {
-    showConv();
-    const wrap = document.createElement('div');
-    wrap.className = 'msg msg-' + role;
-    wrap.innerHTML = `
-      ${avatar(role)}
-      <div class="msg-body">
-        <div class="msg-author">${esc(authorLabel(role))}</div>
-        <div class="msg-content${role === 'action' ? ' msg-action-tag' : ''}"></div>
-        <div class="msg-cards"></div>
-        <div class="msg-actions"></div>
-      </div>
-    `;
-    wrap.querySelector('.msg-content').textContent = content || '';
-    wrap.querySelector('.msg-cards').innerHTML = renderCards(cards);
-    wrap.querySelector('.msg-actions').innerHTML = renderActions(actions);
-    $('streamInner').appendChild(wrap);
-    scrollBottom();
-    return wrap;
-  }
-
-  // ── Working indicator (spinning logo + rotating status text) ──
-  // Status messages by intent — picked based on user's message or action name
+  // ══════════════════════════════════════════════════════════
+  // Working indicator
+  // ══════════════════════════════════════════════════════════
   const WORKING_MESSAGES = {
     search: ['Ищу в каталоге...', 'Подбираю варианты...', 'Проверяю наличие...', 'Сравниваю цены...'],
     rfq: ['Готовлю запрос...', 'Уведомляю поставщиков...', 'Создаю карточку RFQ...'],
@@ -222,7 +260,7 @@
 
   function pickIntent(text) {
     const t = (text || '').toLowerCase();
-    if (/(search|find|find_|искать|найти|подобрать|катал|запчаст|товар|оем|oem|brand)/i.test(t)) return 'search';
+    if (/(search|find_|искать|найти|подобрать|катал|запчаст|товар|оем|oem|brand|hydraulic|cylinder|filter)/i.test(t)) return 'search';
     if (/(rfq|котировк|запрос)/.test(t)) return 'rfq';
     if (/(order|заказ)/i.test(t)) return 'orders';
     if (/(shipment|track|трекинг|отгрузк|доставк)/.test(t)) return 'shipment';
@@ -246,19 +284,13 @@
     wrap.innerHTML = `${avatar('assistant')}
       <div class="msg-body">
         <div class="working">
-          <div class="working-logo">
-            <svg viewBox="0 0 32 32" fill="none">
-              <circle cx="16" cy="16" r="13" stroke="currentColor" stroke-width="2.5"/>
-              <circle cx="16" cy="16" r="5"/>
-            </svg>
-          </div>
+          <div class="working-logo">${STAR_SVG}</div>
           <span class="working-text" id="workingText">${esc(messages[0])}</span>
         </div>
       </div>`;
     $('streamInner').appendChild(wrap);
     scrollBottom();
 
-    // Cycle through messages every 1.8s
     let idx = 0;
     if (workingTimer) clearInterval(workingTimer);
     workingTimer = setInterval(() => {
@@ -276,12 +308,36 @@
     if (t) t.remove();
   }
 
+  // ══════════════════════════════════════════════════════════
+  // Messages
+  // ══════════════════════════════════════════════════════════
+  function addMessage(role, content, cards=[], actions=[]) {
+    showConv();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg msg-' + role;
+    wrap.innerHTML = `
+      ${avatar(role)}
+      <div class="msg-body">
+        <div class="msg-author">${esc(authorLabel(role))}</div>
+        <div class="msg-content${role === 'action' ? ' msg-action-tag' : ''}"></div>
+        <div class="msg-cards"></div>
+        <div class="msg-actions"></div>
+      </div>
+    `;
+    wrap.querySelector('.msg-content').textContent = content || '';
+    wrap.querySelector('.msg-cards').innerHTML = renderCards(cards);
+    wrap.querySelector('.msg-actions').innerHTML = renderActions(actions);
+    $('streamInner').appendChild(wrap);
+    scrollBottom();
+    return wrap;
+  }
+
   function appendStream(text) {
     if (!state.currentBubble) {
       removeTyping();
       const wrap = document.createElement('div');
       wrap.className = 'msg';
-      wrap.innerHTML = `${avatar('assistant')}<div class="msg-body"><div class="msg-author">Consolidator AI</div><div class="msg-content"></div><div class="msg-cards"></div><div class="msg-actions"></div></div>`;
+      wrap.innerHTML = `${avatar('assistant')}<div class="msg-body"><div class="msg-author">Consolidator</div><div class="msg-content"></div><div class="msg-cards"></div><div class="msg-actions"></div></div>`;
       $('streamInner').appendChild(wrap);
       state.currentBubble = wrap;
     }
@@ -310,18 +366,16 @@
     }, 30);
   }
 
-  // ── WebSocket ────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════
+  // WebSocket
+  // ══════════════════════════════════════════════════════════
   function connectWS() {
     if (state.ws && state.ws.readyState <= 1) return;
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const path = state.convId ? `/ws/assistant/${state.convId}/` : '/ws/assistant/';
     try { state.ws = new WebSocket(proto + '//' + location.host + path); } catch(e) { return; }
 
-    state.ws.onopen = () => {
-      state.wsRetry = 0;
-      $('wsStatus').className = 'ws-pill live';
-      $('wsStatusText').textContent = 'На связи';
-    };
+    state.ws.onopen = () => { state.wsRetry = 0; };
     state.ws.onmessage = (ev) => {
       try {
         const d = JSON.parse(ev.data);
@@ -329,8 +383,6 @@
           state.convId = d.conversation_id;
           loadConvList();
         } else if (d.type === 'thinking') {
-          // intent already set in send() via state._intent
-          // (don't add another typing if we already added one)
           if (!$('typingMsg')) addTyping(state._intent);
         } else if (d.type === 'stream') {
           removeTyping();
@@ -348,34 +400,29 @@
       } catch(e){ console.error(e); }
     };
     state.ws.onclose = (ev) => {
-      $('wsStatus').className = 'ws-pill';
-      if (ev.code === 4401) {
-        $('wsStatusText').textContent = 'Войдите в систему';
-        return;
-      }
+      if (ev.code === 4401) return;
       state.wsRetry++;
-      $('wsStatusText').textContent = 'Подключение...';
       const delay = Math.min(1000 * Math.pow(2, state.wsRetry), 30000);
       setTimeout(connectWS, delay);
     };
   }
 
-  // ── Send message ─────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════
+  // Send & actions
+  // ══════════════════════════════════════════════════════════
   async function send(fromHero) {
     const inp = fromHero ? $('heroInput') : $('input');
     const text = inp.value.trim();
     if (!text || state.streaming) return;
 
     const intent = pickIntent(text);
+    state._intent = intent;
     addMessage('user', text);
     inp.value = '';
     inp.style.height = 'auto';
     state.streaming = true;
     $('sendBtn').disabled = true;
     $('heroSendBtn').disabled = true;
-    state._intent = intent;
-
-    // Focus the conv input after switching
     setTimeout(() => $('input').focus(), 100);
 
     if (state.ws && state.ws.readyState === 1) {
@@ -405,122 +452,31 @@
     }
   }
 
-  // ── Action button click ──────────────────────────────────
-  document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.act-btn');
-    if (!btn) return;
-    const action = btn.dataset.action;
-    const params = JSON.parse(btn.dataset.params || '{}');
-    params._label = btn.dataset.label;
-    const intent = pickIntent(action);
-    addMessage('action', '▸ ' + btn.dataset.label);
-    addTyping(intent);
-    try {
-      const r = await api('/api/assistant/action/', {
-        method:'POST',
-        body: JSON.stringify({conversation_id: state.convId, action, params}),
-      });
-      removeTyping();
-      addMessage('assistant', r.text, r.cards, r.actions);
-      if (r.suggestions) renderConvSuggest(r.suggestions);
-    } catch(err) {
-      removeTyping();
-      addMessage('assistant', '⚠️ ' + err.message);
-    }
-  });
-
-  // ── Suggestions ──────────────────────────────────────────
-  function renderHeroSuggest(suggestions) {
-    $('heroSuggest').innerHTML = (suggestions || []).map(s =>
-      `<button class="sug" onclick="chatAsk('${esc(s).replace(/'/g,"\\'")}', true)">${esc(s)}</button>`
-    ).join('');
-  }
-
-  // ── Quick action cards (home page) ───────────────────────
-  const ROLE_ACTIONS = {
-    buyer: [
-      {icon:'🔍', title:'Найти запчасть', desc:'OEM-номер, бренд или название', action:'search_parts', params:{query:''}},
-      {icon:'📋', title:'Создать RFQ', desc:'Запрос котировки поставщикам', action:'create_rfq', params:{quantity:1}},
-      {icon:'📦', title:'Мои заказы', desc:'История и статус', action:'get_orders', params:{}},
-      {icon:'🚢', title:'Трекинг отгрузок', desc:'Где сейчас груз', action:'track_shipment', params:{}},
-      {icon:'💰', title:'Бюджет', desc:'Расходы и остатки', action:'get_budget', params:{}},
-      {icon:'📊', title:'Аналитика', desc:'Сводка по платформе', action:'get_analytics', params:{}},
-    ],
-    seller: [
-      {icon:'📥', title:'Новые RFQ', desc:'Входящие запросы котировок', action:'get_rfq_status', params:{}},
-      {icon:'📦', title:'Мои заказы', desc:'Активные сделки', action:'get_orders', params:{}},
-      {icon:'📈', title:'Аналитика спроса', desc:'Что ищут клиенты', action:'get_demand_report', params:{}},
-      {icon:'⏱', title:'Мой SLA', desc:'KPI скорости ответа', action:'get_sla_report', params:{}},
-      {icon:'💼', title:'Мой каталог', desc:'Управление товарами', action:'search_parts', params:{query:''}},
-      {icon:'📊', title:'Выручка', desc:'Аналитика продаж', action:'get_analytics', params:{}},
-    ],
-    operator_logist: [
-      {icon:'🚢', title:'Отгрузки в пути', desc:'Активный трекинг', action:'track_shipment', params:{}},
-      {icon:'📦', title:'Все заказы', desc:'Статусы и приоритеты', action:'get_orders', params:{}},
-      {icon:'⚠️', title:'SLA нарушения', desc:'Требуют внимания', action:'get_sla_report', params:{}},
-      {icon:'📊', title:'Аналитика', desc:'Метрики логистики', action:'get_analytics', params:{}},
-    ],
-    operator_customs: [
-      {icon:'🛃', title:'На таможне', desc:'Грузы ожидающие растаможки', action:'track_shipment', params:{}},
-      {icon:'📦', title:'Все заказы', desc:'Полный список', action:'get_orders', params:{}},
-      {icon:'📊', title:'Аналитика', desc:'Метрики таможни', action:'get_analytics', params:{}},
-    ],
-    operator_payment: [
-      {icon:'💰', title:'Платежи', desc:'Бюджеты и расходы', action:'get_budget', params:{}},
-      {icon:'📦', title:'Заказы по статусу', desc:'Оплаты в работе', action:'get_orders', params:{}},
-      {icon:'📊', title:'Аналитика', desc:'Финансовая сводка', action:'get_analytics', params:{}},
-    ],
-    operator_manager: [
-      {icon:'📋', title:'Активные RFQ', desc:'Входящие запросы', action:'get_rfq_status', params:{}},
-      {icon:'📦', title:'Все заказы', desc:'Воронка продаж', action:'get_orders', params:{}},
-      {icon:'🏭', title:'Поставщики', desc:'Сравнение и рейтинги', action:'compare_suppliers', params:{}},
-      {icon:'📈', title:'Спрос', desc:'Тренды по категориям', action:'get_demand_report', params:{}},
-      {icon:'⏱', title:'SLA отчёт', desc:'KPI команды', action:'get_sla_report', params:{}},
-      {icon:'📊', title:'Аналитика', desc:'Сводка платформы', action:'get_analytics', params:{}},
-    ],
-    admin: [
-      {icon:'📊', title:'Метрики платформы', desc:'Полная сводка', action:'get_analytics', params:{}},
-      {icon:'📦', title:'Все заказы', desc:'Глобальный список', action:'get_orders', params:{}},
-      {icon:'📋', title:'Все RFQ', desc:'Активные запросы', action:'get_rfq_status', params:{}},
-      {icon:'⏱', title:'SLA нарушения', desc:'Критичные', action:'get_sla_report', params:{}},
-    ],
+  // Hero button: send if input has text, else voice
+  window.heroAction = () => {
+    const text = $('heroInput').value.trim();
+    if (text) send(true);
+    else toggleVoice();
   };
 
-  function renderHomeActions(role) {
-    const items = ROLE_ACTIONS[role] || ROLE_ACTIONS.buyer;
-    $('homeActions').innerHTML = items.map(it =>
-      `<button class="home-act" data-act="${esc(it.action)}" data-prm='${esc(JSON.stringify(it.params))}' data-lab="${esc(it.title)}">
-        <div class="home-act-icon">${it.icon}</div>
-        <div class="home-act-title">${esc(it.title)}</div>
-        <div class="home-act-desc">${esc(it.desc)}</div>
-      </button>`
-    ).join('');
-  }
-
-  function renderHomeRecent() {
-    if (!state.convs || !state.convs.length) {
-      $('homeRecent').style.display = 'none';
-      return;
+  // Update hero button icon based on input
+  function updateHeroIcon() {
+    const text = $('heroInput').value.trim();
+    const btn = $('heroSendBtn');
+    if (text) {
+      btn.classList.add('send');
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+    } else {
+      btn.classList.remove('send');
+      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>';
     }
-    const top = state.convs.slice(0, 4);
-    $('homeRecent').style.display = 'block';
-    $('homeRecentList').innerHTML = top.map(c => {
-      const date = c.updated_at ? new Date(c.updated_at).toLocaleDateString('ru-RU', {day:'2-digit', month:'short'}) : '';
-      return `<div class="home-recent-item" onclick="openConv('${c.id}')">
-        <div class="home-recent-title">${esc(c.title || 'Без названия')}</div>
-        <div class="home-recent-meta">${esc(date)}</div>
-      </div>`;
-    }).join('');
   }
 
-  // Click handler for home action cards
-  document.addEventListener('click', async (e) => {
-    const card = e.target.closest('.home-act');
-    if (!card) return;
-    const action = card.dataset.act;
-    const params = JSON.parse(card.dataset.prm || '{}');
-    params._label = card.dataset.lab;
-    addMessage('action', '▸ ' + card.dataset.lab);
+  // Quick action from pills/cards
+  window.quickAction = async (action, params) => {
+    params = params || {};
+    params._label = params._label || action;
+    addMessage('action', '▸ ' + (params._label || action));
     addTyping(pickIntent(action));
     try {
       const r = await api('/api/assistant/action/', {
@@ -528,36 +484,34 @@
         body: JSON.stringify({conversation_id: state.convId, action, params}),
       });
       removeTyping();
-      addMessage('assistant', r.text, r.cards, r.actions);
-      if (r.suggestions) renderConvSuggest(r.suggestions);
       state.convId = r.conversation_id || state.convId;
+      addMessage('assistant', r.text, r.cards, r.actions);
       loadConvList();
     } catch(err) {
       removeTyping();
       addMessage('assistant', '⚠️ ' + err.message);
     }
-  });
-
-  function renderConvSuggest(suggestions) {
-    $('convSuggest').innerHTML = (suggestions || []).slice(0, 3).map(s =>
-      `<button class="sug" onclick="chatAsk('${esc(s).replace(/'/g,"\\'")}', false)">${esc(s)}</button>`
-    ).join('');
-  }
-
-  window.chatAsk = (text, fromHero) => {
-    const inp = fromHero ? $('heroInput') : $('input');
-    inp.value = text;
-    send(fromHero);
   };
 
-  // ── Conversations sidebar ────────────────────────────────
+  // Click handler for action buttons inside messages
+  document.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.act-btn');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const params = JSON.parse(btn.dataset.params || '{}');
+    params._label = btn.dataset.label;
+    quickAction(action, params);
+  });
+
+  // ══════════════════════════════════════════════════════════
+  // Sidebar conversations + projects
+  // ══════════════════════════════════════════════════════════
   async function loadConvList() {
     try {
       const r = await fetch('/api/assistant/conversations/');
       const data = await r.json();
       state.convs = data.results || data;
       renderConvList();
-      renderHomeRecent();
     } catch(e){}
   }
 
@@ -565,12 +519,28 @@
     const f = filter.toLowerCase();
     const list = state.convs.filter(c => !f || (c.title||'').toLowerCase().includes(f));
     if (!list.length) {
-      $('convList').innerHTML = '<div class="side-group">Нет чатов</div>';
+      $('convList').innerHTML = '<div class="side-item-stack"><div class="side-item-stack-meta">Нет чатов</div></div>';
       return;
     }
-    $('convList').innerHTML = '<div class="side-group">Недавние</div>' + list.map(c =>
-      `<div class="side-item${c.id === state.convId ? ' active' : ''}" onclick="openConv('${c.id}')">${esc(c.title || 'Без названия')}</div>`
-    ).join('');
+    $('convList').innerHTML = list.slice(0, 30).map(c => {
+      const date = c.updated_at ? new Date(c.updated_at) : null;
+      const meta = date ? relativeTime(date) : '';
+      const lastMeta = c.last_message ? c.last_message.content.substring(0, 40) : meta;
+      return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" onclick="openConv('${c.id}')">
+        <div class="side-item-stack-title">${esc(c.title || 'Без названия')}</div>
+        <div class="side-item-stack-meta">${esc(meta)} ${lastMeta && lastMeta !== meta ? '· ' + esc(lastMeta) : ''}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function relativeTime(date) {
+    const now = new Date();
+    const diff = (now - date) / 1000;
+    if (diff < 60) return 'только что';
+    if (diff < 3600) return Math.floor(diff/60) + ' мин назад';
+    if (diff < 86400) return Math.floor(diff/3600) + ' ч назад';
+    if (diff < 604800) return Math.floor(diff/86400) + ' дн назад';
+    return date.toLocaleDateString('ru-RU', {day:'2-digit', month:'short'});
   }
 
   window.filterConvs = renderConvList;
@@ -582,55 +552,47 @@
     if (state.ws) { try { state.ws.close(); } catch(e){} }
     try {
       const data = await api('/api/assistant/conversations/' + id + '/');
-      $('convTitle').textContent = data.title || '';
       (data.messages || []).forEach(m => addMessage(m.role, m.content, m.cards, m.actions));
     } catch(e){}
     connectWS();
     renderConvList($('convSearch').value);
-    toggleSidebar(false);
+    if (isMobile()) toggleSidebar(false);
   };
 
   window.newChat = () => {
     state.convId = null;
-    showEmpty();
+    showWelcome();
     if (state.ws) { try { state.ws.close(); } catch(e){} }
-    $('convTitle').textContent = '';
     connectWS();
     renderConvList();
-    toggleSidebar(false);
+    if (isMobile()) toggleSidebar(false);
     setTimeout(() => $('heroInput').focus(), 100);
   };
 
-  window.toggleSidebar = (force) => {
-    const sb = $('sidebar');
-    const ov = $('sideOverlay');
-    const open = force === undefined ? !sb.classList.contains('open') : force;
-    sb.classList.toggle('open', open);
-    ov.classList.toggle('open', open);
-  };
-
-  // ── Voice input ──────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════
+  // Voice + file
+  // ══════════════════════════════════════════════════════════
   let recog = null;
   window.toggleVoice = () => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      alert('Голосовой ввод не поддерживается');
+      alert('Голосовой ввод не поддерживается этим браузером');
       return;
     }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (recog) { recog.stop(); recog = null; return; }
     recog = new SR();
-    recog.lang = document.documentElement.lang || 'ru-RU';
+    recog.lang = document.documentElement.lang === 'en' ? 'en-US' : 'ru-RU';
     recog.interimResults = true;
     recog.onresult = (e) => {
       const text = Array.from(e.results).map(r => r[0].transcript).join('');
-      const target = $('emptyStage').classList.contains('hidden') ? $('input') : $('heroInput');
+      const target = $('welcomeStage').classList.contains('hidden') ? $('input') : $('heroInput');
       target.value = text;
+      updateHeroIcon();
     };
     recog.onend = () => { recog = null; };
     recog.start();
   };
 
-  // ── File upload ──────────────────────────────────────────
   $('fileInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -639,44 +601,46 @@
     e.target.value = '';
   });
 
-  // ── Greeting based on time ───────────────────────────────
-  function setGreeting() {
-    const h = new Date().getHours();
-    const name = state.config ? state.config.user_name.split(' ')[0] : '';
-    let g;
-    if (h < 6) g = 'Доброй ночи';
-    else if (h < 12) g = 'Доброе утро';
-    else if (h < 18) g = 'Добрый день';
-    else g = 'Добрый вечер';
-    $('greetingText').textContent = name ? `${g}, ${name}` : `${g}`;
-  }
+  $('photoInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    addMessage('user', '📷 ' + file.name);
+    addMessage('assistant', 'Распознавание фото деталей будет в Phase 2.');
+    e.target.value = '';
+  });
 
-  // ── Init ─────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════
+  // Init
+  // ══════════════════════════════════════════════════════════
   async function init() {
     try {
       state.config = await api('/api/assistant/widget-config/');
-      $('userName').textContent = state.config.user_name || 'User';
-      $('userRole').textContent = state.config.role || '';
-      $('userAvatar').textContent = (state.config.user_name || 'U')[0].toUpperCase();
-      setGreeting();
-      renderHeroSuggest(state.config.suggestions);
-      renderConvSuggest(state.config.suggestions);
-      renderHomeActions(state.config.role);
-      // Don't auto-open latest conversation — show home first
+      const name = state.config.user_name || 'User';
+      const initial = name[0].toUpperCase();
+      $('sideUserName').textContent = name;
+      $('sideUserRole').textContent = (state.config.role || '').replace('operator_', '').replace(/_/g, ' ');
+      $('sideAvatar').textContent = initial;
+      $('topAvatar').textContent = initial;
       await loadConvList();
-      renderHomeRecent();
+      applyDefaultSidebar(state.convs.length > 0);
     } catch(e) {
       console.warn('Init failed:', e);
+      applyDefaultSidebar(false);
     }
     connectWS();
     setTimeout(() => $('heroInput').focus(), 200);
+    updateHeroIcon();
   }
 
-  // Auto-grow textareas
+  // Auto-grow textareas + update hero icon
   document.addEventListener('input', (e) => {
-    if (e.target.id === 'input' || e.target.id === 'heroInput') {
+    if (e.target.id === 'heroInput') {
       e.target.style.height = 'auto';
-      e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+      e.target.style.height = Math.min(e.target.scrollHeight, 240) + 'px';
+      updateHeroIcon();
+    } else if (e.target.id === 'input') {
+      e.target.style.height = 'auto';
+      e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px';
     }
   });
 
@@ -684,6 +648,17 @@
   window.onKey = (e, fromHero) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(fromHero); }
   };
+
+  // Resize handler — reapply mobile vs desktop sidebar logic
+  let lastIsMobile = isMobile();
+  window.addEventListener('resize', () => {
+    const m = isMobile();
+    if (m !== lastIsMobile) {
+      lastIsMobile = m;
+      if (m) $('sidebar').classList.remove('open');
+      else applyDefaultSidebar(state.convs.length > 0);
+    }
+  });
 
   document.addEventListener('DOMContentLoaded', init);
 })();
