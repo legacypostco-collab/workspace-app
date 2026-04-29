@@ -205,17 +205,73 @@
     return wrap;
   }
 
-  function addTyping() {
+  // ── Working indicator (spinning logo + rotating status text) ──
+  // Status messages by intent — picked based on user's message or action name
+  const WORKING_MESSAGES = {
+    search: ['Ищу в каталоге...', 'Подбираю варианты...', 'Проверяю наличие...', 'Сравниваю цены...'],
+    rfq: ['Готовлю запрос...', 'Уведомляю поставщиков...', 'Создаю карточку RFQ...'],
+    orders: ['Загружаю заказы...', 'Сортирую по дате...', 'Проверяю статусы...'],
+    shipment: ['Запрашиваю трекинг...', 'Уточняю местоположение...', 'Считаю ETA...'],
+    budget: ['Считаю расходы...', 'Группирую по статусам...', 'Готовлю отчёт...'],
+    analytics: ['Собираю метрики...', 'Анализирую данные...', 'Формирую сводку...'],
+    claim: ['Оформляю рекламацию...', 'Уведомляю поддержку...'],
+    sla: ['Проверяю SLA...', 'Считаю нарушения...'],
+    suppliers: ['Загружаю поставщиков...', 'Считаю рейтинги...'],
+    default: ['Думаю...', 'Анализирую запрос...', 'Готовлю ответ...', 'Подбираю информацию...'],
+  };
+
+  function pickIntent(text) {
+    const t = (text || '').toLowerCase();
+    if (/(search|find|find_|искать|найти|подобрать|катал|запчаст|товар|оем|oem|brand)/i.test(t)) return 'search';
+    if (/(rfq|котировк|запрос)/.test(t)) return 'rfq';
+    if (/(order|заказ)/i.test(t)) return 'orders';
+    if (/(shipment|track|трекинг|отгрузк|доставк)/.test(t)) return 'shipment';
+    if (/(budget|бюджет|расход|оплат)/.test(t)) return 'budget';
+    if (/(analytic|аналитик|отчёт|метрик)/.test(t)) return 'analytics';
+    if (/(claim|рекламац|жалоб)/.test(t)) return 'claim';
+    if (/(sla|просрочк)/.test(t)) return 'sla';
+    if (/(supplier|поставщик|seller)/i.test(t)) return 'suppliers';
+    return 'default';
+  }
+
+  let workingTimer = null;
+
+  function addTyping(intentHint) {
     showConv();
+    const intent = intentHint || 'default';
+    const messages = WORKING_MESSAGES[intent] || WORKING_MESSAGES.default;
     const wrap = document.createElement('div');
     wrap.className = 'msg';
     wrap.id = 'typingMsg';
-    wrap.innerHTML = `${avatar('assistant')}<div class="msg-body"><div class="typing"><span></span><span></span><span></span></div></div>`;
+    wrap.innerHTML = `${avatar('assistant')}
+      <div class="msg-body">
+        <div class="working">
+          <div class="working-logo">
+            <svg viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="13" stroke="currentColor" stroke-width="2.5"/>
+              <circle cx="16" cy="16" r="5"/>
+            </svg>
+          </div>
+          <span class="working-text" id="workingText">${esc(messages[0])}</span>
+        </div>
+      </div>`;
     $('streamInner').appendChild(wrap);
     scrollBottom();
+
+    // Cycle through messages every 1.8s
+    let idx = 0;
+    if (workingTimer) clearInterval(workingTimer);
+    workingTimer = setInterval(() => {
+      idx = (idx + 1) % messages.length;
+      const el = $('workingText');
+      if (!el) { clearInterval(workingTimer); workingTimer = null; return; }
+      el.style.opacity = 0;
+      setTimeout(() => { el.textContent = messages[idx]; el.style.opacity = 1; }, 200);
+    }, 1800);
   }
 
   function removeTyping() {
+    if (workingTimer) { clearInterval(workingTimer); workingTimer = null; }
     const t = $('typingMsg');
     if (t) t.remove();
   }
@@ -273,8 +329,11 @@
           state.convId = d.conversation_id;
           loadConvList();
         } else if (d.type === 'thinking') {
-          addTyping();
+          // intent already set in send() via state._intent
+          // (don't add another typing if we already added one)
+          if (!$('typingMsg')) addTyping(state._intent);
         } else if (d.type === 'stream') {
+          removeTyping();
           appendStream(d.content);
         } else if (d.type === 'cards') {
           state._lastCards = d.cards || [];
@@ -307,24 +366,29 @@
     const text = inp.value.trim();
     if (!text || state.streaming) return;
 
+    const intent = pickIntent(text);
     addMessage('user', text);
     inp.value = '';
     inp.style.height = 'auto';
     state.streaming = true;
     $('sendBtn').disabled = true;
     $('heroSendBtn').disabled = true;
+    state._intent = intent;
 
     // Focus the conv input after switching
     setTimeout(() => $('input').focus(), 100);
 
     if (state.ws && state.ws.readyState === 1) {
+      addTyping(intent);
       state.ws.send(JSON.stringify({type:'message', content:text}));
     } else {
+      addTyping(intent);
       try {
         const r = await api('/api/assistant/chat/', {
           method:'POST',
           body: JSON.stringify({conversation_id: state.convId, message: text}),
         });
+        removeTyping();
         state.convId = r.conversation_id;
         addMessage('assistant', r.response, r.cards, r.actions);
         state.streaming = false;
@@ -332,6 +396,7 @@
         $('heroSendBtn').disabled = false;
         loadConvList();
       } catch(e) {
+        removeTyping();
         addMessage('assistant', '⚠️ ' + e.message);
         state.streaming = false;
         $('sendBtn').disabled = false;
@@ -347,8 +412,9 @@
     const action = btn.dataset.action;
     const params = JSON.parse(btn.dataset.params || '{}');
     params._label = btn.dataset.label;
+    const intent = pickIntent(action);
     addMessage('action', '▸ ' + btn.dataset.label);
-    addTyping();
+    addTyping(intent);
     try {
       const r = await api('/api/assistant/action/', {
         method:'POST',
@@ -455,7 +521,7 @@
     const params = JSON.parse(card.dataset.prm || '{}');
     params._label = card.dataset.lab;
     addMessage('action', '▸ ' + card.dataset.lab);
-    addTyping();
+    addTyping(pickIntent(action));
     try {
       const r = await api('/api/assistant/action/', {
         method:'POST',

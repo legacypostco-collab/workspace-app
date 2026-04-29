@@ -200,12 +200,17 @@
     .act-btn{padding:9px 16px;background:rgba(20,20,30,0.85);color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:600;backdrop-filter:blur(10px);}
     .act-btn:hover{background:#1a1a1a;}
 
-    /* ── Typing indicator ── */
-    .typing{display:flex;gap:4px;padding:14px 16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);border-radius:14px;width:fit-content;}
-    .typing span{width:6px;height:6px;background:#1a1a1a;border-radius:50%;animation:bouncy 1.4s infinite;}
-    .typing span:nth-child(2){animation-delay:0.2s;}
-    .typing span:nth-child(3){animation-delay:0.4s;}
-    @keyframes bouncy{0%,60%,100%{opacity:0.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+    /* ── Working indicator (spinning logo + rotating status) ── */
+    .working{display:flex;align-items:center;gap:12px;padding:12px 18px;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);border-radius:14px;width:fit-content;}
+    .working-logo{width:22px;height:22px;flex-shrink:0;animation:spin 1.6s linear infinite;}
+    .working-logo svg{width:100%;height:100%;display:block;}
+    @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+    .working-text{font-size:13px;color:#1a1a1a;font-weight:500;display:inline-block;min-width:140px;animation:fade-cycle 2.5s ease-in-out infinite;}
+    @keyframes fade-cycle{0%,100%{opacity:0.7}50%{opacity:1}}
+    /* Pulsing variant — for the spinning logo color */
+    .working-logo svg circle{stroke:#6366f1;animation:strokePulse 1.6s ease-in-out infinite;}
+    .working-logo svg circle:last-child{fill:#6366f1;}
+    @keyframes strokePulse{0%,100%{opacity:0.4}50%{opacity:1}}
 
     /* ── Bottom input (when conversation active) ── */
     .input-bar{background:rgba(20,20,30,0.85);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:10px 10px 10px 18px;display:flex;align-items:flex-end;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,0.12);}
