@@ -224,8 +224,10 @@
     ).join('') + '</div>';
   }
 
-  // 8-pointed star SVG (consistent with welcome-logo)
-  const STAR_SVG = '<svg viewBox="0 0 64 64" fill="#fff" stroke="rgba(0,0,0,0.1)" stroke-width="0.4"><polygon points="32,2 39,25 62,32 39,39 32,62 25,39 2,32 25,25"/></svg>';
+  // Brand mark SVG (8-facet asterisk from official Логобук)
+  const STAR_SVG_WHITE = '<svg viewBox="0 0 74.1 74.1" fill="#fff"><polygon points="5.38 46.64 2.24 54.63 17.29 69.68 17.3 69.69 21.44 66.22 24.75 42.14 5.38 46.64"/><polygon points="21.44 66.22 24.87 74.1 46.16 74.1 46.64 68.72 31.95 49.35 21.44 66.22"/><polygon points="46.64 68.72 54.63 71.86 69.69 56.8 66.22 52.66 42.14 49.35 46.64 68.72"/><polygon points="68.71 27.45 71.86 19.47 56.8 4.41 52.65 7.87 49.35 31.95 68.71 27.45"/><polygon points="74.1 27.94 68.71 27.45 49.35 42.14 66.22 52.66 74.1 49.23 74.1 27.94"/><polygon points="52.65 7.87 49.23 0 27.93 0 27.45 5.38 42.14 24.75 52.65 7.87"/><polygon points="27.45 5.38 19.47 2.24 4.41 17.3 7.87 21.44 31.95 24.75 27.45 5.38"/><polygon points="7.87 21.44 0 24.87 0 46.16 5.38 46.64 24.75 31.95 7.87 21.44"/></svg>';
+  const STAR_SVG_BLACK = STAR_SVG_WHITE.replace(/fill="#fff"/, 'fill="#1a1a1a"');
+  const STAR_SVG = STAR_SVG_WHITE;  // default
 
   function avatar(role) {
     if (role === 'user') {
@@ -233,7 +235,7 @@
       return `<div class="msg-avatar msg-avatar-user">${initial}</div>`;
     }
     if (role === 'action') return '<div class="msg-avatar msg-avatar-act">▸</div>';
-    return `<div class="msg-avatar msg-avatar-bot">${STAR_SVG}</div>`;
+    return `<div class="msg-avatar msg-avatar-bot">${STAR_SVG_BLACK}</div>`;
   }
 
   function authorLabel(role) {
@@ -284,7 +286,7 @@
     wrap.innerHTML = `${avatar('assistant')}
       <div class="msg-body">
         <div class="working">
-          <div class="working-logo">${STAR_SVG}</div>
+          <div class="working-logo">${STAR_SVG_BLACK}</div>
           <span class="working-text" id="workingText">${esc(messages[0])}</span>
         </div>
       </div>`;
