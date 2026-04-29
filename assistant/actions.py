@@ -104,13 +104,40 @@ def list_actions(role: str) -> list[str]:
 # Action handlers
 # ══════════════════════════════════════════════════════════
 
+_OEM_RE = __import__("re").compile(r"^[A-Za-z0-9][A-Za-z0-9\-/.]{3,18}$")
+
+
+def _extract_articles(text: str) -> list[str]:
+    """Extract OEM-like article numbers from a multi-line message."""
+    if not text:
+        return []
+    out = []
+    # Split on common separators: newlines, commas, semicolons
+    for chunk in __import__("re").split(r"[\n,;]+", text):
+        token = chunk.strip().strip(".").strip()
+        if token and _OEM_RE.match(token) and any(ch.isdigit() for ch in token):
+            out.append(token)
+    return out
+
+
 @register("search_parts")
 def search_parts(params, user, role):
-    """Search catalog. params: {query, brand?, category?, limit?}"""
+    """Search catalog. params: {query, articles?, brand?, category?, limit?}
+
+    If query contains multiple article-like tokens (newline/comma separated),
+    auto-extracts and searches each individually — returns one product card per
+    matched part. Renders as a spec_results-style card if 5+ articles supplied.
+    """
     from marketplace.models import Part
     query = (params.get("query") or "").strip()
-    limit = min(int(params.get("limit") or 5), 20)
+    limit = min(int(params.get("limit") or 20), 50)
 
+    # 1) Multi-article list (paste of OEM numbers) ------------------
+    articles = params.get("articles") or _extract_articles(query)
+    if len(articles) >= 2:
+        return _search_articles_list(articles)
+
+    # 2) Free-text query --------------------------------------------
     qs = Part.objects.select_related("brand", "category").filter(is_active=True)
     if query:
         qs = qs.filter(
@@ -158,6 +185,105 @@ def search_parts(params, user, role):
              "params": {"product_ids": [c["data"]["id"] for c in cards]}},
         ],
         suggestions=["Показать ещё", "Фильтр по бренду", "История цен"],
+    )
+
+
+def _search_articles_list(articles: list[str]):
+    """Look up each article in the catalog → spec_results-style card."""
+    from marketplace.models import Part
+
+    items = []
+    matched_ids = []
+    found_n = 0
+    not_found_n = 0
+    total = 0
+
+    for art in articles:
+        p = (
+            Part.objects
+            .select_related("brand")
+            .filter(is_active=True, oem_number__iexact=art)
+            .first()
+        )
+        if p is None:
+            # Try fuzzy contains
+            p = (
+                Part.objects
+                .select_related("brand")
+                .filter(is_active=True, oem_number__icontains=art)
+                .first()
+            )
+        if p:
+            qty = 1
+            price = float(p.price) if p.price else 0
+            items.append({
+                "status": "in_stock",
+                "id": p.oem_number,
+                "name": p.title,
+                "brand": p.brand.name if p.brand else "—",
+                "condition": "oem",
+                "price": price,
+                "qty": qty,
+                "weight": "—",
+                "currency": "USD",
+            })
+            matched_ids.append(str(p.id))
+            found_n += 1
+            total += price * qty
+        else:
+            items.append({
+                "status": "not_found",
+                "id": art,
+                "name": "",
+                "qty": 1,
+            })
+            not_found_n += 1
+
+    intro = (
+        f"Проверил {len(articles)} артикулов: {found_n} найдено, "
+        f"{not_found_n} нет в каталоге. "
+        + (f"Сумма по найденным — ${total:,.0f}." if found_n else
+           "Можно создать RFQ — поставщики поищут аналоги.")
+    )
+
+    actions = []
+    if matched_ids:
+        actions.append({"label": "Создать RFQ на найденные", "action": "create_rfq",
+                        "params": {"product_ids": matched_ids}})
+    if not_found_n:
+        actions.append({"label": f"Создать RFQ на {not_found_n} ненайденных",
+                        "action": "create_rfq",
+                        "params": {"query": ", ".join(it["id"] for it in items if it["status"] == "not_found")}})
+    actions.append({"label": "Создать RFQ на все", "action": "create_rfq",
+                    "params": {"query": ", ".join(articles)}})
+
+    card = {
+        "type": "spec_results",
+        "data": {
+            "title": f"Подбор по списку — {len(articles)} артикулов",
+            "found": found_n,
+            "analogue": 0,
+            "not_found": not_found_n,
+            "items": items,
+            "more_count": 0,
+            "offers_count": found_n,
+            "sellers_count": found_n,  # 1 supplier per match in stub
+            "best_mix": int(total) if total else None,
+            "total": int(total) if total else None,
+            "currency": "USD",
+            "foot_info": f"{found_n} из {len(articles)} priced",
+        },
+    }
+
+    return ActionResult(
+        text=intro,
+        cards=[card],
+        actions=actions,
+        suggestions=[
+            "Найти аналоги для ненайденных",
+            "Сравни цены по бренду",
+            "Только OEM",
+        ],
     )
 
 

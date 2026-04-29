@@ -454,11 +454,20 @@
     scrollBottom();
   }
 
-  function finishStream(cards, actions, refs) {
+  function finishStream(cards, actions, refs, authoritativeText) {
     removeTyping();
     if (!state.currentBubble) return;
-    const text = state.currentBubble.querySelector('.msg-content').textContent;
-    state.currentBubble.querySelector('.msg-content').textContent = text.replace(/\[card:\w+\]/g, '').trim();
+    const contentEl = state.currentBubble.querySelector('.msg-content');
+    if (authoritativeText != null) {
+      contentEl.textContent = authoritativeText;
+    } else {
+      // Fallback: clean placeholders + raw :::block fences from the streamed text
+      const raw = contentEl.textContent;
+      contentEl.textContent = raw
+        .replace(/\[card:\w+\]/g, '')
+        .replace(/:::(?:actions|product|rfq|order|shipment|supplier|comparison|chart|file|table|spec_results|supplier_top)[\s\S]*?:::/g, '')
+        .trim();
+    }
     state.currentBubble.querySelector('.msg-refs').innerHTML = renderContextRefs(refs || []);
     state.currentBubble.querySelector('.msg-cards').innerHTML = renderCards(cards);
     state.currentBubble.querySelector('.msg-actions').innerHTML = renderActions(actions);
@@ -501,9 +510,10 @@
         } else if (d.type === 'cards') {
           state._lastCards = d.cards || [];
           state._lastActions = d.actions || [];
+          state._lastText = d.text;  // authoritative clean text (overrides streamed tokens)
         } else if (d.type === 'done') {
-          finishStream(state._lastCards, state._lastActions, state._lastRefs || d.refs);
-          state._lastCards = []; state._lastActions = []; state._lastRefs = [];
+          finishStream(state._lastCards, state._lastActions, state._lastRefs || d.refs, state._lastText);
+          state._lastCards = []; state._lastActions = []; state._lastRefs = []; state._lastText = null;
         } else if (d.type === 'error') {
           finishStream([], []);
           addMessage('assistant', '⚠️ ' + d.message);

@@ -156,11 +156,15 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
     # 4. Parse cards/actions from AI text
     clean_text, cards, actions = parse_cards_from_text(full_response)
 
+    # Strip internal [card:type] placeholders from user-facing text
+    import re as _re
+    clean_text = _re.sub(r"\[card:\w+\]\s*", "", clean_text or "").strip() or full_response
+
     # 5. Save assistant message
     Message.objects.create(
         conversation=conversation,
         role=Message.Role.ASSISTANT,
-        content=clean_text or full_response,
+        content=clean_text,
         cards=cards,
         actions=actions,
         context_refs=context_refs,
@@ -173,7 +177,7 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
         conversation.save(update_fields=["title", "updated_at"])
 
     return {
-        "text": clean_text or full_response,
+        "text": clean_text,
         "cards": cards,
         "actions": actions,
         "context_refs": context_refs,
@@ -353,9 +357,14 @@ def process_query_stream(conversation: Conversation, user_message: str):
             yield {"type": "token", "text": err}
             full_response = err
     else:
-        # Stub mode — try heuristic action call, emit cards in one chunk
+        # Stub mode — heuristic action call. Stream ONLY the clean text (no :::blocks),
+        # then deliver cards/actions through the structured event below.
         full_response = _stub_with_action(user_message, context_chunks, conversation.role, conversation.user)
-        yield {"type": "token", "text": full_response}
+        clean_for_stream, _, _ = parse_cards_from_text(full_response)
+        # Strip [card:type] markers from the streamed text (they were placeholders)
+        import re as _re
+        clean_for_stream = _re.sub(r"\[card:\w+\]\s*", "", clean_for_stream).strip()
+        yield {"type": "token", "text": clean_for_stream}
 
     # Parse cards/actions from final text
     clean_text, cards, actions = parse_cards_from_text(full_response)
@@ -375,5 +384,9 @@ def process_query_stream(conversation: Conversation, user_message: str):
         conversation.title = user_message[:100]
         conversation.save(update_fields=["title", "updated_at"])
 
-    yield {"type": "cards", "cards": cards, "actions": actions}
+    # Strip [card:type] markers — they're internal placeholders, not for the user
+    import re as _re2
+    clean_final = _re2.sub(r"\[card:\w+\]\s*", "", clean_text or full_response).strip()
+
+    yield {"type": "cards", "cards": cards, "actions": actions, "text": clean_final}
     yield {"type": "done", "tokens": tokens_used, "refs": context_refs}
