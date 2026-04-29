@@ -101,6 +101,165 @@ def list_actions(role: str) -> list[str]:
 
 
 # ══════════════════════════════════════════════════════════
+# Tool schemas (Claude tool-use format)
+# ══════════════════════════════════════════════════════════
+# These describe each action so Claude can call them as tools instead of
+# being instructed to emit :::block JSON. Action handlers stay the same;
+# only the entrypoint differs.
+
+_STR = {"type": "string"}
+_INT = {"type": "integer"}
+_NUM = {"type": "number"}
+_BOOL = {"type": "boolean"}
+_LIST_STR = {"type": "array", "items": {"type": "string"}}
+
+TOOL_SCHEMAS = {
+    "search_parts": {
+        "description": (
+            "Поиск запчастей по каталогу. Поддерживает свободный текст и "
+            "список OEM-артикулов (через query как многострочную строку или "
+            "через articles[]). При >=2 артикулах возвращает spec_results "
+            "карточку (KPI + таблица), иначе — карточки product."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {**_STR, "description": "Свободный текст или несколько артикулов через перевод строки/запятую"},
+                "articles": {**_LIST_STR, "description": "Список OEM-артикулов для точного поиска"},
+                "brand": {**_STR, "description": "Фильтр по бренду"},
+                "category": {**_STR, "description": "Фильтр по категории"},
+                "limit": {**_INT, "description": "Макс. кол-во результатов (default 20, max 50)"},
+            },
+        },
+    },
+    "analyze_spec": {
+        "description": (
+            "Многострочный разбор спецификации/BoM. Считает best mix, "
+            "находит OEM/аналоги, помечает недоступные. Используй когда "
+            "пользователь говорит «посчитай по парку», «обработай спеку», "
+            "«сколько будет стоить», «лучший микс»."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "condition": {"type": "string", "enum": ["oem", "analogue"], "description": "Фильтр: только OEM или только аналоги"},
+                "lead_max_days": {**_INT, "description": "Макс. лидтайм в днях (фильтр)"},
+            },
+        },
+    },
+    "top_suppliers": {
+        "description": (
+            "Возвращает ранжированный топ-N поставщиков под текущую спеку. "
+            "Используй когда пользователь просит «топ-3 поставщиков», "
+            "«сравни поставщиков», «лучшие предложения»."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "limit": {**_INT, "description": "Сколько поставщиков (default 3)"},
+                "condition": {"type": "string", "enum": ["oem", "analogue"]},
+            },
+        },
+    },
+    "create_rfq": {
+        "description": (
+            "Создаёт RFQ (запрос котировок). Принимает product_ids (UUID из "
+            "каталога) ИЛИ articles (OEM-номера) ИЛИ свободный query. "
+            "Поставщики получат уведомление."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "product_ids": {**_LIST_STR, "description": "UUIDs товаров из каталога"},
+                "articles": {**_LIST_STR, "description": "Список OEM-артикулов"},
+                "query": {**_STR, "description": "Свободный текст запроса"},
+                "quantity": {**_INT, "description": "Кол-во по каждой позиции (default 1)"},
+            },
+        },
+    },
+    "get_orders": {
+        "description": "Список заказов пользователя.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "status": {**_STR, "description": "Фильтр по статусу"},
+                "limit": {**_INT},
+            },
+        },
+    },
+    "get_order_detail": {
+        "description": "Детали конкретного заказа.",
+        "input_schema": {"type": "object", "properties": {"order_id": _STR}, "required": ["order_id"]},
+    },
+    "get_rfq_status": {
+        "description": "Список или статус RFQ. Без params — все RFQ пользователя.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"rfq_id": _INT, "status": _STR},
+        },
+    },
+    "track_shipment": {
+        "description": "Трекинг отгрузки по order_id.",
+        "input_schema": {"type": "object", "properties": {"order_id": _STR}},
+    },
+    "get_budget": {
+        "description": "Бюджет/расходы пользователя за период.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"period": {"type": "string", "enum": ["week", "month", "quarter", "year"]}},
+        },
+    },
+    "get_analytics": {
+        "description": "Аналитика для роли (дашборд-метрики).",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "compare_suppliers": {
+        "description": "Сравнение поставщиков по метрикам.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"supplier_ids": _LIST_STR},
+        },
+    },
+    "compare_products": {
+        "description": "Сравнение товаров side-by-side.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"product_ids": _LIST_STR},
+            "required": ["product_ids"],
+        },
+    },
+    "get_claims": {
+        "description": "Список рекламаций пользователя.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "get_sla_report": {
+        "description": "SLA-отчёт по нарушениям.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "get_demand_report": {
+        "description": "Отчёт по спросу для поставщика.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+}
+
+
+def get_tool_definitions(role: str) -> list[dict]:
+    """Return Claude tool-use definitions filtered by role permissions."""
+    available = list_actions(role)
+    out = []
+    for name in available:
+        schema = TOOL_SCHEMAS.get(name)
+        if not schema:
+            continue
+        out.append({
+            "name": name,
+            "description": schema["description"],
+            "input_schema": schema["input_schema"],
+        })
+    return out
+
+
+# ══════════════════════════════════════════════════════════
 # Action handlers
 # ══════════════════════════════════════════════════════════
 

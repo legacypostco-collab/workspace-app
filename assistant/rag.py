@@ -23,6 +23,7 @@ MAX_HISTORY_MESSAGES = 20
 MAX_CONTEXT_CHUNKS = 5
 MIN_SIMILARITY_SCORE = 0.6
 MAX_RESPONSE_TOKENS = 2048
+MAX_TOOL_TURNS = 6
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
 
 
@@ -75,15 +76,127 @@ def _build_context_refs(chunks):
     } for c in chunks]
 
 
+_ANTHROPIC_CLIENT_CACHE = {"client": None, "checked": False}
+
+
 def _get_anthropic_client():
+    """Return cached Anthropic client, or None if no API key / SDK missing.
+
+    Logs once on first call so it's obvious in dev whether the smart mode is on.
+    """
+    if _ANTHROPIC_CLIENT_CACHE["checked"]:
+        return _ANTHROPIC_CLIENT_CACHE["client"]
+    _ANTHROPIC_CLIENT_CACHE["checked"] = True
+
     api_key = getattr(settings, "ANTHROPIC_API_KEY", "") or os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
+        logger.warning(
+            "AI Assistant: ANTHROPIC_API_KEY is not set — falling back to STUB mode "
+            "(keyword heuristics, no real LLM). Set ANTHROPIC_API_KEY in .env to enable smart agent mode."
+        )
         return None
     try:
         import anthropic
-        return anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key)
+        model = getattr(settings, "ANTHROPIC_MODEL", DEFAULT_MODEL)
+        logger.info(f"AI Assistant: Anthropic client ready (model={model}, tool-use enabled)")
+        _ANTHROPIC_CLIENT_CACHE["client"] = client
+        return client
     except ImportError:
+        logger.warning("AI Assistant: 'anthropic' package not installed — falling back to STUB mode")
         return None
+
+
+def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple[str, int, list, list]:
+    """Agentic loop: Claude calls tools (= our actions) until it produces a final answer.
+
+    Returns: (final_text, tokens_used, accumulated_cards, accumulated_actions)
+    """
+    import json as _json
+    from . import actions as action_executor
+
+    tools = action_executor.get_tool_definitions(role)
+    model = getattr(settings, "ANTHROPIC_MODEL", DEFAULT_MODEL)
+
+    # Mutable working copy — we'll append assistant turns and tool_result turns to it
+    msgs = [dict(m) for m in messages]
+
+    accumulated_cards: list = []
+    accumulated_actions: list = []
+    tokens_total = 0
+    final_text_parts: list[str] = []
+
+    for turn in range(MAX_TOOL_TURNS):
+        kwargs = {
+            "model": model,
+            "max_tokens": MAX_RESPONSE_TOKENS,
+            "system": system_prompt,
+            "messages": msgs,
+        }
+        if tools:
+            kwargs["tools"] = tools
+
+        resp = client.messages.create(**kwargs)
+        if hasattr(resp, "usage"):
+            tokens_total += resp.usage.input_tokens + resp.usage.output_tokens
+
+        # Extract text + tool_use blocks
+        text_chunks = []
+        tool_uses = []
+        for block in resp.content:
+            btype = getattr(block, "type", None)
+            if btype == "text":
+                text_chunks.append(block.text)
+            elif btype == "tool_use":
+                tool_uses.append(block)
+
+        if text_chunks:
+            final_text_parts.append("".join(text_chunks))
+
+        # No tool calls → final answer
+        if resp.stop_reason != "tool_use" or not tool_uses:
+            break
+
+        # Append assistant message with text+tool_use as the canonical content blocks
+        msgs.append({
+            "role": "assistant",
+            "content": [
+                {"type": "text", "text": b.text} if getattr(b, "type", None) == "text"
+                else {"type": "tool_use", "id": b.id, "name": b.name, "input": b.input}
+                for b in resp.content
+                if getattr(b, "type", None) in ("text", "tool_use")
+            ],
+        })
+
+        # Execute each tool, build tool_result blocks
+        tool_results = []
+        for tu in tool_uses:
+            result = action_executor.execute(tu.name, tu.input or {}, user, role)
+            accumulated_cards.extend(result.cards or [])
+            accumulated_actions.extend(result.actions or [])
+
+            # Send only text + a slim card summary back to Claude — no need to dump
+            # the full card JSON; Claude just needs to know what happened.
+            summary_lines = [result.text or ""]
+            if result.cards:
+                summary_lines.append(
+                    f"[Получено {len(result.cards)} карточек: " +
+                    ", ".join(c.get("type", "?") for c in result.cards) + "]"
+                )
+                # Include compact data preview so Claude can reason about it
+                for c in result.cards[:3]:
+                    summary_lines.append(_json.dumps(c.get("data", {}), ensure_ascii=False)[:600])
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": tu.id,
+                "content": "\n".join(s for s in summary_lines if s).strip() or "OK",
+            })
+
+        msgs.append({"role": "user", "content": tool_results})
+        # Continue loop — Claude will see tool results and either call more tools or finalize.
+
+    final_text = "\n\n".join(t for t in final_text_parts if t).strip()
+    return final_text, tokens_total, accumulated_cards, accumulated_actions
 
 
 def _stub_response(query: str, chunks) -> str:
@@ -135,26 +248,31 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
     full_response = ""
     tokens_used = 0
 
+    extra_cards: list = []
+    extra_actions: list = []
+
     if client:
         try:
-            resp = client.messages.create(
-                model=getattr(settings, "ANTHROPIC_MODEL", DEFAULT_MODEL),
-                max_tokens=MAX_RESPONSE_TOKENS,
-                system=system_prompt,
+            full_response, tokens_used, extra_cards, extra_actions = _run_claude_with_tools(
+                client=client,
+                system_prompt=system_prompt,
                 messages=messages,
+                role=conversation.role,
+                user=user,
             )
-            full_response = "".join(
-                getattr(block, "text", "") for block in resp.content if hasattr(block, "text")
-            )
-            tokens_used = (resp.usage.input_tokens + resp.usage.output_tokens) if hasattr(resp, "usage") else 0
         except Exception as e:
-            logger.error(f"Anthropic API error: {e}")
+            logger.exception("Anthropic API error")
             full_response = f"⚠️ Ошибка API: {e}"
     else:
         full_response = _stub_with_action(user_message, context_chunks, conversation.role, user)
 
     # 4. Parse cards/actions from AI text
     clean_text, cards, actions = parse_cards_from_text(full_response)
+    # Tool-use cards/actions take precedence (real DB data) over Claude's :::blocks
+    if extra_cards:
+        cards = extra_cards + cards
+    if extra_actions:
+        actions = extra_actions + actions
 
     # Strip internal [card:type] placeholders from user-facing text
     import re as _re
@@ -336,23 +454,25 @@ def process_query_stream(conversation: Conversation, user_message: str):
     client = _get_anthropic_client()
     full_response = ""
     tokens_used = 0
+    extra_cards: list = []
+    extra_actions: list = []
 
     if client:
         try:
-            with client.messages.stream(
-                model=getattr(settings, "ANTHROPIC_MODEL", DEFAULT_MODEL),
-                max_tokens=MAX_RESPONSE_TOKENS,
-                system=system_prompt,
+            # Tool-use loop runs synchronously (multiple round-trips with Claude). We
+            # don't stream tokens during tool calls — instead we emit a "thinking" tick
+            # so the UI shows progress, then send the final composed text in one shot.
+            yield {"type": "token", "text": ""}  # ensures bubble appears
+            full_response, tokens_used, extra_cards, extra_actions = _run_claude_with_tools(
+                client=client,
+                system_prompt=system_prompt,
                 messages=messages,
-            ) as stream:
-                for text in stream.text_stream:
-                    full_response += text
-                    yield {"type": "token", "text": text}
-                final = stream.get_final_message()
-                if final and getattr(final, "usage", None):
-                    tokens_used = final.usage.input_tokens + final.usage.output_tokens
+                role=conversation.role,
+                user=conversation.user,
+            )
+            yield {"type": "token", "text": full_response}
         except Exception as e:
-            logger.error(f"Anthropic streaming error: {e}")
+            logger.exception("Anthropic streaming error")
             err = f"⚠️ Ошибка API: {e}"
             yield {"type": "token", "text": err}
             full_response = err
@@ -368,6 +488,10 @@ def process_query_stream(conversation: Conversation, user_message: str):
 
     # Parse cards/actions from final text
     clean_text, cards, actions = parse_cards_from_text(full_response)
+    if extra_cards:
+        cards = extra_cards + cards
+    if extra_actions:
+        actions = extra_actions + actions
 
     # Save assistant message
     Message.objects.create(
