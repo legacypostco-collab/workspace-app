@@ -241,6 +241,6 @@
 <script>
   window.PROJECT_ID = "{{ project_id }}";
 </script>
-<script src="{% static 'js/project-page.js' %}?v=1" defer></script>
+<script src="{% static 'js/project-page.js' %}?v=1&t={% now 'U' %}" defer></script>
 </body>
 </html>

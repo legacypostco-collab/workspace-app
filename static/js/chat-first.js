@@ -306,8 +306,28 @@
     if (!cards || !cards.length) return '';
     return '<div class="cards">' + cards.map(c => {
       const r = renderers[c.type];
-      return r ? r(c.data || {}) : '';
+      if (r) {
+        try { return r(c.data || {}); }
+        catch(err) {
+          console.error('Card renderer crashed for', c.type, err, c.data);
+          return renderUnknownCard(c.type, c.data);
+        }
+      }
+      console.warn('No renderer for card type:', c.type, '— using fallback');
+      return renderUnknownCard(c.type, c.data || {});
     }).join('') + '</div>';
+  }
+
+  // Fallback renderer for unknown/broken card types — dumps key-value pairs
+  function renderUnknownCard(type, data) {
+    const rows = Object.entries(data || {})
+      .filter(([k, v]) => v != null && typeof v !== 'object')
+      .map(([k, v]) => `<div style="display:flex;gap:8px;padding:3px 0;font-size:12px;"><span style="color:rgba(0,0,0,0.55);min-width:90px;">${esc(k)}:</span><span>${esc(String(v))}</span></div>`)
+      .join('');
+    return `<div class="card">
+      <div class="card-title" style="margin-bottom:8px;">${esc(type)} <span style="font-weight:400;color:rgba(0,0,0,0.45);font-size:11px;">(обновите страницу — Cmd+Shift+R)</span></div>
+      ${rows}
+    </div>`;
   }
 
   function renderActions(actions) {
