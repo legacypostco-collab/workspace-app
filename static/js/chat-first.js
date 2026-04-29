@@ -31,7 +31,7 @@
   // ── Helpers ──────────────────────────────────────────────
   const $ = id => document.getElementById(id);
   const csrf = () => document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*=\s*([^;]*).*$)|^.*$/, '$1');
-  const esc = s => (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const esc = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   const fmtMoney = (v, c='USD') => {
     if (!v && v !== 0) return '—';
     const sym = {USD:'$', EUR:'€', RUB:'₽', CNY:'¥'}[c] || '';

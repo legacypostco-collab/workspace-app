@@ -289,50 +289,104 @@ def _search_articles_list(articles: list[str]):
 
 @register("create_rfq")
 def create_rfq(params, user, role):
-    """Create a new RFQ. params: {product_ids?, articles?, quantity, query?}"""
-    from marketplace.models import RFQ
+    """Create a new RFQ + RFQItem rows. params: {product_ids?, articles?, quantity, query?}"""
+    from marketplace.models import RFQ, RFQItem, Part
+
     quantity = int(params.get("quantity") or 1)
 
-    # Compose RFQ description
-    descr_parts = []
-    if params.get("query"):
-        descr_parts.append(f"Запрос: {params['query']}")
-    if params.get("articles"):
-        descr_parts.append(f"Артикулы: {', '.join(params['articles'])}")
-    if params.get("product_ids"):
-        from marketplace.models import Part
-        prod = Part.objects.filter(id__in=params["product_ids"]).select_related("brand")[:5]
-        descr_parts.append("Товары: " + ", ".join(f"{p.oem_number} ({p.brand.name if p.brand else '?'})" for p in prod))
+    # Resolve items: explicit product_ids first, then articles, then split query
+    items_to_add = []  # list of (query, qty, matched_part)
 
-    description = " | ".join(descr_parts) or "RFQ из чата"
+    if params.get("product_ids"):
+        for pid in params["product_ids"]:
+            p = Part.objects.filter(id=pid).select_related("brand").first()
+            if p:
+                items_to_add.append((p.oem_number, quantity, p))
+            else:
+                items_to_add.append((str(pid), quantity, None))
+
+    elif params.get("articles"):
+        for art in params["articles"]:
+            p = (
+                Part.objects.select_related("brand")
+                .filter(is_active=True)
+                .filter(Q(oem_number__iexact=art) | Q(oem_number__icontains=art))
+                .first()
+            )
+            items_to_add.append((art, quantity, p))
+
+    elif params.get("query"):
+        # Try to extract article-like tokens from the query string
+        q = params["query"]
+        articles = _extract_articles(q)
+        if articles:
+            for art in articles:
+                p = (
+                    Part.objects.select_related("brand")
+                    .filter(is_active=True)
+                    .filter(Q(oem_number__iexact=art) | Q(oem_number__icontains=art))
+                    .first()
+                )
+                items_to_add.append((art, quantity, p))
+        else:
+            items_to_add.append((q[:255], quantity, None))
+
+    if not items_to_add:
+        items_to_add = [("RFQ из чата", quantity, None)]
+
+    # Build a short notes summary
+    notes_parts = []
+    if params.get("query") and len(items_to_add) == 1:
+        notes_parts.append(f"Запрос: {params['query'][:300]}")
+    notes_parts.append(f"Создано из чата · {len(items_to_add)} позиций")
 
     try:
         rfq = RFQ.objects.create(
+            created_by=user,
             customer_name=user.get_full_name() or user.username,
-            customer_email=user.email or "",
-            description=description[:500],
+            customer_email=user.email or f"{user.username}@chat.local",
+            company_name="",
+            mode="semi",
+            urgency="standard",
             status="new",
-            buyer=user,
+            notes=" | ".join(notes_parts)[:5000],
         )
+        for query_str, qty, matched_part in items_to_add:
+            RFQItem.objects.create(
+                rfq=rfq,
+                query=str(query_str)[:255],
+                quantity=qty,
+                matched_part=matched_part,
+                state="matched" if matched_part else "new",
+            )
     except Exception as e:
+        logger.exception("create_rfq failed")
         return ActionResult(text=f"⚠️ Не удалось создать RFQ: {e}")
 
+    matched_count = sum(1 for _, _, p in items_to_add if p is not None)
+    summary = f"{matched_count} из {len(items_to_add)} позиций сматчены с каталогом"
+
     return ActionResult(
-        text=f"✓ RFQ #{rfq.id} создан. Поставщики получат уведомление и ответят с ценами.",
+        text=(
+            f"✓ RFQ #{rfq.id} создан · {len(items_to_add)} позиций. "
+            f"{summary}. Поставщики получат уведомление и ответят с ценами."
+        ),
         cards=[{
             "type": "rfq",
             "data": {
                 "id": str(rfq.id),
                 "number": rfq.id,
                 "status": "new",
-                "description": description[:200],
-                "quantity": quantity,
+                "description": " · ".join(q for q, _, _ in items_to_add[:5])[:200],
+                "quantity": sum(q for _, q, _ in items_to_add),
                 "created_at": rfq.created_at.strftime("%d.%m.%Y %H:%M"),
             },
         }],
         actions=[
             {"label": "Открыть RFQ", "action": "get_rfq_status",
              "params": {"rfq_id": rfq.id}},
+            {"label": "Перейти в кабинет", "action": "get_rfq_status",
+             "params": {"rfq_id": rfq.id, "_url": f"/buyer/rfqs/{rfq.id}/"}},
         ],
         suggestions=["Мои активные RFQ", "Создать ещё RFQ"],
     )
