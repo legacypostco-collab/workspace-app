@@ -508,6 +508,11 @@
   // ══════════════════════════════════════════════════════════
   // Sidebar conversations + projects
   // ══════════════════════════════════════════════════════════
+  const DOT_BG = {
+    green:'#22c55e', orange:'#f97316', blue:'#3b82f6',
+    purple:'#a855f7', red:'#ef4444', gray:'#9ca3af',
+  };
+
   async function loadConvList() {
     try {
       const r = await fetch('/api/assistant/conversations/');
@@ -515,6 +520,29 @@
       state.convs = data.results || data;
       renderConvList();
     } catch(e){}
+  }
+
+  async function loadProjects() {
+    const el = $('projectsList');
+    if (!el) return;
+    try {
+      const data = await api('/api/assistant/projects/');
+      const list = data.projects || [];
+      if (!list.length) {
+        el.innerHTML = `<div class="side-item" style="color:rgba(0,0,0,0.4);">Нет проектов</div>`;
+        return;
+      }
+      el.innerHTML = list.map(p => {
+        const dot = DOT_BG[p.dot_color] || DOT_BG.green;
+        return `<a href="/chat/project/${esc(p.id)}/" class="side-item" style="text-decoration:none;">
+          <span class="side-item-dot" style="background:${dot};"></span>
+          <span class="side-item-text">${esc(p.name)}</span>
+          <span class="side-item-meta">${esc(p.chats || 0)}</span>
+        </a>`;
+      }).join('');
+    } catch(e){
+      // leave demo items as fallback
+    }
   }
 
   function renderConvList(filter='') {
@@ -623,12 +651,21 @@
       $('sideUserRole').textContent = (state.config.role || '').replace('operator_', '').replace(/_/g, ' ');
       $('sideAvatar').textContent = initial;
       $('topAvatar').textContent = initial;
-      await loadConvList();
+      await Promise.all([loadConvList(), loadProjects()]);
       applyDefaultSidebar(state.convs.length > 0);
     } catch(e) {
       console.warn('Init failed:', e);
       applyDefaultSidebar(false);
     }
+    // Auto-open conversation from URL (?conv=<uuid>)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const cid = params.get('conv');
+      if (cid) {
+        await window.openConv(cid);
+        return;
+      }
+    } catch(e){}
     connectWS();
     setTimeout(() => $('heroInput').focus(), 200);
     updateHeroIcon();

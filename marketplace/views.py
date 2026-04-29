@@ -6066,3 +6066,9 @@ def twofa_setup(request):
 def chat_first_view(request):
     """Chat-First single-page UI."""
     return render(request, "chat/index.html")
+
+
+@login_required
+def chat_project_view(request, project_id):
+    """Project detail page within chat-first layout."""
+    return render(request, "chat/project.html", {"project_id": project_id})

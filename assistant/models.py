@@ -42,6 +42,13 @@ class Conversation(models.Model):
         on_delete=models.CASCADE,
         related_name="assistant_conversations",
     )
+    project = models.ForeignKey(
+        "Project",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="conversations",
+    )
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, default="buyer")
     title = models.CharField(max_length=200, blank=True)
     is_active = models.BooleanField(default=True)
@@ -136,3 +143,72 @@ class Feedback(models.Model):
     rating = models.SmallIntegerField(choices=[(1, "👍"), (-1, "👎")])
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(default=timezone.now)
+
+
+# ── Chat-First Projects (workspace folders for grouping chats/RFQs/orders) ──
+class Project(models.Model):
+    DOT_COLORS = [
+        ("green", "Green"),
+        ("orange", "Orange"),
+        ("blue", "Blue"),
+        ("purple", "Purple"),
+        ("red", "Red"),
+        ("gray", "Gray"),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="projects",
+    )
+    name = models.CharField(max_length=200)
+    code = models.CharField(max_length=50, blank=True, help_text="Short code, e.g. NORQ2")
+    customer = models.CharField(max_length=200, blank=True,
+                                  help_text="Customer name (Norilsk Nickel — Kola Division)")
+    tags = models.JSONField(default=list, blank=True,
+                              help_text='Free-form tags: ["квартальная закупка","CAT 988H","793F"]')
+    deadline = models.DateField(null=True, blank=True)
+    description = models.TextField(blank=True)
+    dot_color = models.CharField(max_length=10, choices=DOT_COLORS, default="green")
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+        indexes = [models.Index(fields=["owner", "is_active", "-updated_at"])]
+
+    def __str__(self):
+        return f"{self.name} ({self.owner_id})"
+
+
+class ProjectDocument(models.Model):
+    DOC_TYPES = [
+        ("spec", "Спецификация"),
+        ("fleet", "Парк техники"),
+        ("drawing", "Чертёж"),
+        ("regulation", "Регламент ТО"),
+        ("conditions", "Условия"),
+        ("contract", "Договор"),
+        ("invoice", "Счёт"),
+        ("other", "Другое"),
+    ]
+    STATUS = [
+        ("uploaded", "Загружен"),
+        ("processing", "Обработка"),
+        ("processed", "Обработан"),
+        ("error", "Ошибка"),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="documents")
+    name = models.CharField(max_length=300)
+    file = models.FileField(upload_to="projects/%Y/%m/", null=True, blank=True)
+    doctype = models.CharField(max_length=20, choices=DOC_TYPES, default="other")
+    status = models.CharField(max_length=20, choices=STATUS, default="processed")
+    size_bytes = models.IntegerField(default=0)
+    meta = models.JSONField(default=dict, blank=True,
+                              help_text='{rows, pages, units, ...}')
+    uploaded_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-uploaded_at"]

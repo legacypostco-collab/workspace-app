@@ -207,3 +207,129 @@ class WidgetConfigView(APIView):
             "suggestions": SuggestView.SUGGESTIONS.get(role, SuggestView.SUGGESTIONS["buyer"]),
             "latest_conversation_id": str(latest.id) if latest else None,
         })
+
+
+# ── Projects API ────────────────────────────────────────────
+from .models import Project, ProjectDocument
+
+
+class ProjectListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = Project.objects.filter(owner=request.user, is_active=True)
+        items = []
+        for p in qs:
+            chats = p.conversations.filter(is_active=True).count() if hasattr(p, "conversations") else 0
+            items.append({
+                "id": str(p.id),
+                "name": p.name,
+                "code": p.code,
+                "customer": p.customer,
+                "tags": p.tags,
+                "deadline": p.deadline.isoformat() if p.deadline else None,
+                "dot_color": p.dot_color,
+                "chats": chats,
+            })
+        return Response({"projects": items})
+
+    def post(self, request):
+        data = request.data
+        p = Project.objects.create(
+            owner=request.user,
+            name=data.get("name", "Новый проект")[:200],
+            code=data.get("code", "")[:50],
+            customer=data.get("customer", "")[:200],
+            tags=data.get("tags", []),
+            description=data.get("description", ""),
+            dot_color=data.get("dot_color", "green"),
+        )
+        return Response({"id": str(p.id), "name": p.name}, status=201)
+
+
+class ProjectDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, project_id):
+        p = get_object_or_404(Project, id=project_id, owner=request.user, is_active=True)
+        # Documents
+        docs = [{
+            "id": str(d.id),
+            "name": d.name,
+            "doctype": d.doctype,
+            "doctype_label": d.get_doctype_display(),
+            "status": d.status,
+            "size_kb": round(d.size_bytes / 1024, 1) if d.size_bytes else None,
+            "meta": d.meta,
+            "uploaded_at": d.uploaded_at.strftime("%d.%m.%Y"),
+        } for d in p.documents.all()]
+        # Linked chats
+        chats = [{
+            "id": str(c.id),
+            "title": c.title,
+            "updated_at": c.updated_at.isoformat(),
+            "preview": (c.messages.first().content[:120] if c.messages.exists() else ""),
+        } for c in p.conversations.filter(is_active=True).order_by("-updated_at")[:20]]
+        # Stats: count linked RFQs/orders by code matching (demo)
+        from marketplace.models import RFQ, Order
+        # In real system there'd be FK; for now just demo counts
+        return Response({
+            "id": str(p.id),
+            "name": p.name,
+            "code": p.code,
+            "customer": p.customer,
+            "tags": p.tags,
+            "deadline": p.deadline.strftime("%d %B").lower() if p.deadline else None,
+            "dot_color": p.dot_color,
+            "description": p.description,
+            "documents": docs,
+            "chats": chats,
+            # Demo stats — could be real per-project counts later
+            "stats": {
+                "open_rfqs": {"count": 3, "urgent": 1, "urgent_left": "42m"},
+                "active_orders": {"count": 5, "value_usd": 184200},
+                "in_transit": {"count": 2, "earliest_eta": "30 апр"},
+                "spend_mtd": {"value_usd": 124500, "delta_pct": 12, "vs_period": "Mar"},
+            },
+            # Demo RFQs/orders/chats from this project (could be filtered by FK in real)
+            "rfqs": [
+                {"number": "RFQ-4421", "title": "Spec Q2 — основной микс", "tag": "URGENT 42M",
+                 "meta": "39 позиций · отправлен 5 поставщикам · 2 ответили",
+                 "responded": "2/5", "best_so_far": 47890, "responded_color": "green"},
+                {"number": "RFQ-4418", "title": "Track shoes D8T — аналоги", "tag": "",
+                 "meta": "2 позиции · отправлен 4 поставщикам · 4 ответили",
+                 "responded": "4/4", "best_so_far": 7440, "responded_color": "green",
+                 "best_label": "BEST PRICE"},
+                {"number": "RFQ-4407", "title": "Hydraulic filters — refill", "tag": "",
+                 "meta": "1 позиция · 12 шт · отправлен 3 поставщикам",
+                 "responded": "1/3", "best_so_far": 2112, "responded_color": "amber"},
+            ],
+            "orders": [
+                {"number": "PO-22841", "title": "Spec Q2 partial — 14 позиций",
+                 "status": "AT CUSTOMS", "status_color": "amber",
+                 "stages": [True, True, True, True, False],  # 4/5 done
+                 "stage_labels": ["RFQ", "Order", "Production", "Customs", "Delivered"],
+                 "seller": "XCMG", "operator": "Logist + Customs",
+                 "eta": "ETA · 2 мая · day 3 of 4", "amount": 28640},
+                {"number": "PO-22829", "title": "Hydraulic filters — 12 шт",
+                 "status": "IN TRANSIT", "status_color": "green",
+                 "stages": [True, True, True, False, False],
+                 "stage_labels": ["RFQ", "Order", "Production", "Customs", "Delivered"],
+                 "seller": "Caterpillar Eurasia", "operator": "Logist",
+                 "eta": "ETA · 30 апр · on schedule", "amount": 2112},
+            ],
+        })
+
+
+class ProjectChatView(APIView):
+    """Create new conversation in this project."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, project_id):
+        p = get_object_or_404(Project, id=project_id, owner=request.user)
+        c = Conversation.objects.create(
+            user=request.user,
+            role=detect_user_role(request.user),
+            project=p,
+        )
+        return Response({"conversation_id": str(c.id)}, status=201)
