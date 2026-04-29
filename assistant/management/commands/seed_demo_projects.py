@@ -89,32 +89,25 @@ class Command(BaseCommand):
     help = "Seed demo projects for Chat-First UI sidebar"
 
     def add_arguments(self, parser):
-        parser.add_argument("--user", default="demo_buyer",
-                            help="Username to own these projects (default: demo_buyer)")
+        parser.add_argument("--user", action="append", default=[],
+                            help="Username(s) to own these projects (repeat for multiple)")
+        parser.add_argument("--all-demo", action="store_true",
+                            help="Seed for demo_buyer, demo_seller, demo_operator, Kosta")
         parser.add_argument("--reset", action="store_true",
-                            help="Delete existing projects for this user first")
+                            help="Delete existing projects for these user(s) first")
 
-    def handle(self, *args, **opts):
-        username = opts["user"]
-        try:
-            user = User.objects.get(username=username)
-        except User.DoesNotExist:
-            self.stderr.write(self.style.ERROR(f"User '{username}' not found"))
-            return
-
-        if opts["reset"]:
+    def _seed_user(self, user, reset):
+        if reset:
             n, _ = Project.objects.filter(owner=user).delete()
-            self.stdout.write(self.style.WARNING(f"Deleted {n} existing project(s)"))
+            self.stdout.write(self.style.WARNING(f"  [{user.username}] deleted {n} existing project(s)"))
 
         today = date.today()
         created, skipped = 0, 0
 
         for proj in PROJECTS:
-            # idempotent by (owner, code)
             existing = Project.objects.filter(owner=user, code=proj["code"]).first()
             if existing:
                 skipped += 1
-                self.stdout.write(f"  · {proj['name']} (skipped, exists)")
                 continue
 
             p = Project.objects.create(
@@ -137,11 +130,25 @@ class Command(BaseCommand):
                     meta=doc["meta"],
                 )
             created += 1
-            self.stdout.write(self.style.SUCCESS(
-                f"  + {p.name} ({len(proj['documents'])} doc(s))"
-            ))
 
-        self.stdout.write("")
         self.stdout.write(self.style.SUCCESS(
-            f"Done — created: {created}, skipped: {skipped}, owner: {username}"
+            f"  [{user.username}] created: {created}, skipped: {skipped}"
         ))
+
+    def handle(self, *args, **opts):
+        usernames = list(opts["user"])
+        if opts["all_demo"]:
+            usernames += ["demo_buyer", "demo_seller", "demo_operator", "Kosta"]
+        if not usernames:
+            usernames = ["demo_buyer"]
+        usernames = list(dict.fromkeys(usernames))  # dedupe, preserve order
+
+        for username in usernames:
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist:
+                self.stderr.write(self.style.ERROR(f"User '{username}' not found — skipping"))
+                continue
+            self._seed_user(user, opts["reset"])
+
+        self.stdout.write(self.style.SUCCESS("\nDone."))
