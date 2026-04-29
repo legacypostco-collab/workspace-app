@@ -222,10 +222,53 @@ def execute_action(conversation: Conversation, action_name: str, params: dict, u
     }
 
 
+def _format_action_result(result) -> str:
+    """Serialize an ActionResult back into AI-style :::block text for the parser."""
+    import json as _json
+    text = result.text or ""
+    for c in result.cards:
+        text += f"\n\n:::{c['type']}\n{_json.dumps(c['data'], ensure_ascii=False)}\n:::"
+    if result.actions:
+        text += f"\n\n:::actions\n{_json.dumps(result.actions, ensure_ascii=False)}\n:::"
+    return text
+
+
 def _stub_with_action(user_message: str, chunks, role: str, user) -> str:
     """Heuristic: detect intent and call appropriate action when ANTHROPIC_API_KEY missing."""
     import json as _json
     msg_lower = user_message.lower()
+
+    # Top-suppliers intent (must come BEFORE analyze_spec — "топ поставщиков" should win
+    # over "посчитай" / "spec" keywords in the same sentence)
+    top_kw = ("топ", "top-3", "top 3", "ранжируй", "сравни поставщиков", "сравни цены")
+    if any(k in msg_lower for k in top_kw) and (
+        "поставщик" in msg_lower or "supplier" in msg_lower or "oem" in msg_lower
+    ):
+        params = {}
+        if "oem" in msg_lower or "только oem" in msg_lower:
+            params["condition"] = "oem"
+        if action_executor.can_execute("top_suppliers", role):
+            result = action_executor.execute("top_suppliers", params, user, role)
+            return _format_action_result(result)
+
+    # Spec-analysis intent — "посчитай по парку", "обработай спеку", "сколько будет стоить"
+    spec_kw = ("спек", "посчитай по", "посчитай парк", "по нашему парку", "по парку",
+               "сколько будет стоить", "обработай", "разбери список", "по списку",
+               "best mix", "best price", "лучший микс", "проанализируй спек")
+    only_oem_kw = ("только oem", "лидтайм до", "максимум 14 дней", "не больше 14")
+    if any(k in msg_lower for k in spec_kw) or any(k in msg_lower for k in only_oem_kw):
+        params = {}
+        if "только oem" in msg_lower or "только oem" in msg_lower or " oem" in msg_lower:
+            params["condition"] = "oem"
+        # parse "лидтайм до 14 дней" → 14
+        import re as _re
+        m = _re.search(r"лидтайм\s+до\s+(\d+)", msg_lower)
+        if m:
+            params["lead_max_days"] = int(m.group(1))
+        if action_executor.can_execute("analyze_spec", role):
+            result = action_executor.execute("analyze_spec", params, user, role)
+            return _format_action_result(result)
+
     intent_actions = [
         (["заказ", "order", "订单"], "get_orders"),
         (["rfq", "котировк"], "get_rfq_status"),

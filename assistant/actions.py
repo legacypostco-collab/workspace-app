@@ -39,10 +39,12 @@ ROLE_ACTIONS = {
         "get_order_detail", "track_shipment", "get_budget", "get_analytics",
         "compare_products", "compare_suppliers", "upload_parts_list",
         "get_claims", "create_claim",
+        "analyze_spec", "top_suppliers",
     ],
     "seller": [
         "search_parts", "get_rfq_status", "respond_rfq", "get_orders",
         "get_demand_report", "upload_pricelist", "get_analytics",
+        "analyze_spec", "top_suppliers",
     ],
     "operator_logist": [
         "track_shipment", "get_orders", "get_sla_report", "get_analytics",
@@ -509,4 +511,133 @@ def respond_rfq(params, user, role):
     rfq_id = params.get("rfq_id")
     return ActionResult(
         text=f"Ответ на RFQ #{rfq_id}: используйте форму на /seller/requests/{rfq_id}/",
+    )
+
+
+# ══════════════════════════════════════════════════════════
+# Spec analysis (multi-line BoM → priced mix)
+# ══════════════════════════════════════════════════════════
+
+# Demo data — realistic-looking spec for the Spec Q2 2026 reference screenshot.
+# In production this comes from parsing user-uploaded XLSX + matching against
+# the catalog + querying suppliers. Right now we hand-craft for the demo so the
+# response renders exactly like the design reference.
+_DEMO_SPEC_ITEMS = [
+    {"status": "in_stock", "id": "3047531", "name": "Filter, hydraulic — return line",
+     "brand": "CAT", "condition": "oem", "price": 176, "qty": 12, "weight": "4 lbs"},
+    {"status": "in_stock", "id": "9X-2073", "name": "Seal kit, cylinder rod",
+     "brand": "CAT", "condition": "oem", "price": 148, "qty": 16, "weight": "1 lb",
+     "tag": "приоритет ТО"},
+    {"status": "backorder", "id": "7Y-1947", "name": "Bushing, pin — bucket linkage",
+     "brand": "CAT", "condition": "oem", "price": 56.20, "qty": 24, "weight": "2 lbs"},
+    {"status": "in_stock", "id": "8E-9885", "name": "Cutting edge — Komatsu PC400",
+     "brand": "KOMATSU", "condition": "analogue", "price": 412, "qty": 6, "weight": "18 lbs"},
+    {"status": "backorder", "id": "386-9999", "name": "Track shoe assembly — D8T",
+     "brand": "CAT", "condition": "analogue", "price": 3720, "qty": 2, "weight": "220 lbs"},
+    {"status": "not_found", "id": "XB-77421", "name": "", "qty": 3},
+]
+
+
+@register("analyze_spec")
+def analyze_spec(params, user, role):
+    """Analyze a multi-line spec — returns spec_results card with KPIs + table.
+
+    params: {file_id?, query?, lead_max_days?, condition?}
+      condition='oem' filters out analogues
+    """
+    cond = (params.get("condition") or "").lower()
+    lead_max = params.get("lead_max_days")
+    items = _DEMO_SPEC_ITEMS
+
+    if cond == "oem":
+        items = [it for it in items if it.get("condition") == "oem" or it["status"] == "not_found"]
+
+    # Static aggregated stats (47 lines total in spec; visible items are a 6-row preview)
+    found = 32 if cond != "oem" else 28
+    analogue = 11 if cond != "oem" else 0
+    not_found = 4
+    total = 48420 if cond != "oem" else 47890
+
+    refs = [
+        "fleet_nordisk_2026.xlsx", "service_intervals.xlsx", "cat_988h_assembly.pdf",
+    ]
+
+    intro = (
+        f"Обработал спеку: {found} Found · {analogue} Analogue · {not_found} Not found. "
+        f"Собрал 198 предложений от 23 поставщиков. "
+        f"Лучший микс — ${total:,.0f} у 12 поставщиков, средний лидтайм 11 дней."
+    )
+    if cond == "oem" and lead_max:
+        intro = (
+            f"Сузил выборку: {found} OEM-предложений у 8 поставщиков, "
+            f"лидтайм 4–{lead_max} дней. Топ-3 по сумме при заказе всей спеки:"
+        )
+    elif cond == "oem":
+        intro = f"Только OEM: {found} позиций у 8 поставщиков, средняя сумма ${total:,.0f}."
+
+    card = {
+        "type": "spec_results",
+        "data": {
+            "title": "Spec Q2 2026 — Результаты",
+            "found": found,
+            "analogue": analogue,
+            "not_found": not_found,
+            "items": items,
+            "more_count": max(0, 47 - len(items)),
+            "offers_count": 198,
+            "sellers_count": 23,
+            "best_mix": int(total),
+            "total": int(total),
+            "currency": "USD",
+            "foot_info": f"Estimated total · {len(items) - not_found} из 47 priced · средний лидтайм 11 дней",
+        },
+    }
+
+    actions_list = [
+        {"label": "Открыть в Explorer", "action": "search_parts", "params": {"query": "spec_q2"}},
+        {"label": "Создать RFQ", "action": "create_rfq", "params": {"query": "Spec Q2 2026"}},
+        {"label": "Только OEM", "action": "analyze_spec", "params": {"condition": "oem"}},
+        {"label": "Найти аналоги для 4", "action": "analyze_spec", "params": {"condition": "analogue"}},
+        {"label": "Экспорт в .xlsx", "action": "analyze_spec", "params": {"export": "xlsx"}},
+    ]
+
+    return ActionResult(
+        text=intro,
+        cards=[card],
+        actions=actions_list,
+        suggestions=[
+            "Только OEM, лидтайм до 14 дней",
+            "Покажи топ-3 поставщиков",
+            "Сравни цены по бренду",
+        ],
+    )
+
+
+@register("top_suppliers")
+def top_suppliers(params, user, role):
+    """Top-N suppliers ranked by price/coverage/lead time on the current spec."""
+    suppliers = [
+        {"name": "Caterpillar Eurasia", "rating": "4.9", "total": 47890,
+         "coverage": "32 из 39 позиций", "lead_time": "9 дней", "currency": "USD"},
+        {"name": "Heavy Equipment Spares", "rating": "4.7", "total": 48720,
+         "coverage": "35 из 39", "lead_time": "10 дней", "currency": "USD"},
+        {"name": "Уралмаш-Маркет", "rating": "4.8", "total": 48410,
+         "coverage": "38 из 39", "lead_time": "11 дней", "note": "включая аналоги",
+         "currency": "USD"},
+    ]
+    return ActionResult(
+        text=(
+            "Рекомендую разослать всем трём — Caterpillar Eurasia может не покрыть 7 позиций, "
+            "остальные дадут конкуренцию по цене. Создать RFQ?"
+        ),
+        cards=[{"type": "supplier_top", "data": {"suppliers": suppliers}}],
+        actions=[
+            {"label": "Создать RFQ для топ-3", "action": "create_rfq",
+             "params": {"query": "Spec Q2 2026 — top 3 suppliers"}},
+            {"label": "Добавить ещё поставщиков", "action": "top_suppliers",
+             "params": {"limit": 5}},
+            {"label": "Сравнить детально", "action": "compare_suppliers",
+             "params": {"supplier_ids": [s["name"] for s in suppliers]}},
+        ],
+        suggestions=["Только OEM-сертифицированные", "Сравни по SLA"],
     )

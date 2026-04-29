@@ -207,6 +207,99 @@
       </div>`;
     },
     table(d) { return renderers.comparison(d); },
+
+    // ── Spec results: KPIs + detailed table + footer ──
+    spec_results(d) {
+      const stkClass = (s) => ({in_stock:'in', backorder:'back', not_found:'no'})[s] || 'in';
+      const stkLabel = (s) => ({in_stock:'В наличии', backorder:'Backorder', not_found:'—'})[s] || s;
+      const condLabel = (c) => {
+        if (c === 'oem') return '<span class="spec-cond-oem">OEM</span>';
+        if (c === 'analogue') return '<span class="spec-cond-an">Аналог</span>';
+        return esc(c || '');
+      };
+      const rows = (d.items || []).map((it, idx) => {
+        if (it.status === 'not_found' && !it.id) {
+          return `<tr><td><span class="spec-stk no"><span class="spec-stk-dot"></span>—</span></td>
+            <td class="spec-row-num">${idx+1}</td>
+            <td colspan="5" class="spec-empty-row" style="text-align:left;">— нет предложений —</td>
+            <td>${esc(it.qty || '')}</td><td></td></tr>`;
+        }
+        return `<tr>
+          <td><span class="spec-stk ${stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(stkLabel(it.status))}</span></td>
+          <td class="spec-row-num">${idx+1}</td>
+          <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
+          <td><div class="spec-name-cell"><span class="spec-name">${esc(it.name || '')}</span>${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}</div></td>
+          <td>${esc(it.brand || '')}</td>
+          <td>${condLabel(it.condition)}</td>
+          <td class="spec-price">${fmtMoney(it.price, it.currency || 'USD')}</td>
+          <td>${esc(it.qty || '')}</td>
+          <td>${esc(it.weight || '')}</td>
+        </tr>`;
+      }).join('');
+
+      const moreLink = d.more_count
+        ? `<div class="spec-more">... ${d.more_count} ещё · <a href="#" onclick="return false;">раскрыть полный список</a></div>`
+        : '';
+
+      const found = d.found || 0;
+      const analogue = d.analogue || 0;
+      const notFound = d.not_found || 0;
+      const offers = d.offers_count;
+      const sellers = d.sellers_count;
+      const bestMix = d.best_mix;
+
+      const subParts = [];
+      if (offers != null) subParts.push(`${offers} предложений`);
+      if (sellers != null) subParts.push(`${sellers} поставщиков`);
+      if (bestMix != null) subParts.push(`best mix ${fmtMoney(bestMix, d.currency || 'USD')}`);
+
+      return `<div class="card spec">
+        <div class="spec-head">
+          <div class="spec-head-row">
+            <div class="spec-title">${esc(d.title || 'Результаты подбора')}</div>
+            <div class="spec-title-meta">${esc(subParts.join(' · '))}</div>
+          </div>
+        </div>
+        <div class="spec-kpis">
+          <div class="spec-kpi"><div class="spec-kpi-num green">${found}</div><div class="spec-kpi-label">Found</div></div>
+          <div class="spec-kpi"><div class="spec-kpi-num amber">${analogue}</div><div class="spec-kpi-label">Analogue</div></div>
+          <div class="spec-kpi"><div class="spec-kpi-num red">${notFound}</div><div class="spec-kpi-label">Not found</div></div>
+        </div>
+        <div class="spec-tbl-wrap">
+          <table class="spec-tbl">
+            <thead><tr>
+              <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Condition</th><th>Price</th><th>Qty</th><th>Weight</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        ${moreLink}
+        <div class="spec-foot">
+          <div class="spec-foot-info">${esc(d.foot_info || '')}</div>
+          <div class="spec-foot-total">${d.total != null ? fmtMoney(d.total, d.currency || 'USD') : ''}</div>
+        </div>
+      </div>`;
+    },
+
+    // ── Supplier top: ranked list of 3 suppliers ──
+    supplier_top(d) {
+      const rows = (d.suppliers || []).map((s, idx) => {
+        const rankClass = idx === 0 ? 'gold' : '';
+        const stars = s.rating ? `<span class="stop-stars">★ ${esc(s.rating)}</span>` : '';
+        return `<div class="stop-row">
+          <div class="stop-rank ${rankClass}">${idx+1}</div>
+          <div class="stop-info">
+            <div><span class="stop-name">${esc(s.name)}</span>${stars}</div>
+            <div class="stop-meta">${esc(s.coverage || '')}${s.lead_time ? ' · ср. лидтайм ' + esc(s.lead_time) : ''}${s.note ? ' · ' + esc(s.note) : ''}</div>
+          </div>
+          <div>
+            <div class="stop-price-label">${esc(s.price_label || 'total')}</div>
+            <div class="stop-price">${fmtMoney(s.total, s.currency || 'USD')}</div>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="card stop">${rows}</div>`;
+    },
   };
 
   function renderCards(cards) {
@@ -313,7 +406,18 @@
   // ══════════════════════════════════════════════════════════
   // Messages
   // ══════════════════════════════════════════════════════════
-  function addMessage(role, content, cards=[], actions=[]) {
+  function renderContextRefs(refs) {
+    if (!refs || !refs.length) return '';
+    const fileIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+    const items = refs.slice(0, 8).map(r => {
+      const label = r.title || r.id || '—';
+      const typeLabel = (r.type || '').toUpperCase();
+      return `<span class="ctx-ref">${fileIcon}${typeLabel ? `<span class="ctx-ref-label">${esc(typeLabel)}</span>` : ''}${esc(label)}</span>`;
+    }).join('');
+    return `<div class="ctx-refs">${items}</div>`;
+  }
+
+  function addMessage(role, content, cards=[], actions=[], contextRefs=[]) {
     showConv();
     const wrap = document.createElement('div');
     wrap.className = 'msg msg-' + role;
@@ -322,11 +426,13 @@
       <div class="msg-body">
         <div class="msg-author">${esc(authorLabel(role))}</div>
         <div class="msg-content${role === 'action' ? ' msg-action-tag' : ''}"></div>
+        <div class="msg-refs"></div>
         <div class="msg-cards"></div>
         <div class="msg-actions"></div>
       </div>
     `;
     wrap.querySelector('.msg-content').textContent = content || '';
+    wrap.querySelector('.msg-refs').innerHTML = renderContextRefs(contextRefs);
     wrap.querySelector('.msg-cards').innerHTML = renderCards(cards);
     wrap.querySelector('.msg-actions').innerHTML = renderActions(actions);
     $('streamInner').appendChild(wrap);
@@ -339,7 +445,7 @@
       removeTyping();
       const wrap = document.createElement('div');
       wrap.className = 'msg';
-      wrap.innerHTML = `${avatar('assistant')}<div class="msg-body"><div class="msg-author">Consolidator</div><div class="msg-content"></div><div class="msg-cards"></div><div class="msg-actions"></div></div>`;
+      wrap.innerHTML = `${avatar('assistant')}<div class="msg-body"><div class="msg-author">Consolidator</div><div class="msg-content"></div><div class="msg-refs"></div><div class="msg-cards"></div><div class="msg-actions"></div></div>`;
       $('streamInner').appendChild(wrap);
       state.currentBubble = wrap;
     }
@@ -348,11 +454,12 @@
     scrollBottom();
   }
 
-  function finishStream(cards, actions) {
+  function finishStream(cards, actions, refs) {
     removeTyping();
     if (!state.currentBubble) return;
     const text = state.currentBubble.querySelector('.msg-content').textContent;
     state.currentBubble.querySelector('.msg-content').textContent = text.replace(/\[card:\w+\]/g, '').trim();
+    state.currentBubble.querySelector('.msg-refs').innerHTML = renderContextRefs(refs || []);
     state.currentBubble.querySelector('.msg-cards').innerHTML = renderCards(cards);
     state.currentBubble.querySelector('.msg-actions').innerHTML = renderActions(actions);
     state.currentBubble = null;
@@ -389,12 +496,14 @@
         } else if (d.type === 'stream') {
           removeTyping();
           appendStream(d.content);
+        } else if (d.type === 'context') {
+          state._lastRefs = d.refs || [];
         } else if (d.type === 'cards') {
           state._lastCards = d.cards || [];
           state._lastActions = d.actions || [];
         } else if (d.type === 'done') {
-          finishStream(state._lastCards, state._lastActions);
-          state._lastCards = []; state._lastActions = [];
+          finishStream(state._lastCards, state._lastActions, state._lastRefs || d.refs);
+          state._lastCards = []; state._lastActions = []; state._lastRefs = [];
         } else if (d.type === 'error') {
           finishStream([], []);
           addMessage('assistant', '⚠️ ' + d.message);
@@ -439,7 +548,7 @@
         });
         removeTyping();
         state.convId = r.conversation_id;
-        addMessage('assistant', r.response, r.cards, r.actions);
+        addMessage('assistant', r.response, r.cards, r.actions, r.context_refs || []);
         state.streaming = false;
         $('sendBtn').disabled = false;
         $('heroSendBtn').disabled = false;
@@ -487,7 +596,7 @@
       });
       removeTyping();
       state.convId = r.conversation_id || state.convId;
-      addMessage('assistant', r.text, r.cards, r.actions);
+      addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || []);
       loadConvList();
     } catch(err) {
       removeTyping();
@@ -582,7 +691,7 @@
     if (state.ws) { try { state.ws.close(); } catch(e){} }
     try {
       const data = await api('/api/assistant/conversations/' + id + '/');
-      (data.messages || []).forEach(m => addMessage(m.role, m.content, m.cards, m.actions));
+      (data.messages || []).forEach(m => addMessage(m.role, m.content, m.cards, m.actions, m.context_refs));
     } catch(e){}
     connectWS();
     renderConvList($('convSearch').value);

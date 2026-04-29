@@ -50,6 +50,16 @@ BASE_SYSTEM_PROMPT = """Ты — AI-ассистент платформы Consol
 {"title":"Расходы Q1","items":[{"label":"Январь","value":120000},{"label":"Февраль","value":135000}]}
 :::
 
+:::spec_results
+{"title":"Spec Q2 2026 — Результаты","found":32,"analogue":11,"not_found":4,"offers_count":198,"sellers_count":23,"best_mix":48420,"total":48420,"currency":"USD","foot_info":"43 из 47 priced · средний лидтайм 11 дней","more_count":41,"items":[{"status":"in_stock","id":"3047531","name":"Filter, hydraulic","brand":"CAT","condition":"oem","price":176,"qty":12,"weight":"4 lbs"},{"status":"backorder","id":"7Y-1947","name":"Bushing","brand":"CAT","condition":"oem","price":56.20,"qty":24,"weight":"2 lbs","tag":"приоритет ТО"},{"status":"not_found","id":"XB-77421","qty":3}]}
+:::
+Используй для многострочной обработки спецификации/BoM. status: in_stock|backorder|not_found. condition: oem|analogue. tag — короткая отметка вроде "приоритет ТО".
+
+:::supplier_top
+{"suppliers":[{"name":"Caterpillar Eurasia","rating":"4.9","total":47890,"coverage":"32 из 39 позиций","lead_time":"9 дней","currency":"USD"},{"name":"Heavy Equipment Spares","rating":"4.7","total":48720,"coverage":"35 из 39","lead_time":"10 дней"},{"name":"Уралмаш-Маркет","rating":"4.8","total":48410,"coverage":"38 из 39","lead_time":"11 дней","note":"включая аналоги"}]}
+:::
+Используй когда нужно показать ранжированный топ-N поставщиков по сумме/покрытию/лидтайму.
+
 ДЕЙСТВИЯ — кнопки под сообщением:
 
 :::actions
@@ -62,7 +72,8 @@ BASE_SYSTEM_PROMPT = """Ты — AI-ассистент платформы Consol
 Доступные actions: search_parts, create_rfq, get_rfq_status, get_orders,
 get_order_detail, track_shipment, get_budget, get_analytics,
 compare_products, compare_suppliers, upload_parts_list, get_claims,
-create_claim, respond_rfq, get_demand_report, upload_pricelist, get_sla_report.
+create_claim, respond_rfq, get_demand_report, upload_pricelist, get_sla_report,
+analyze_spec, top_suppliers.
 
 ПРИМЕР ОТВЕТА:
 

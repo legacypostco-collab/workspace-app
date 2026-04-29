@@ -15,7 +15,8 @@ import re
 logger = logging.getLogger(__name__)
 
 CARD_TYPES = {"product", "rfq", "order", "shipment", "supplier",
-              "comparison", "chart", "file", "table"}
+              "comparison", "chart", "file", "table",
+              "spec_results", "supplier_top"}
 ACTION_TYPE = "actions"
 
 _BLOCK_RE = re.compile(
