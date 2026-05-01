@@ -1,53 +1,54 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Логист — Порты и терминалы{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Логист — Порты и терминалы" %}{% endblock %}
 
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
-  <a class="op-stat" href="/operator/logist/ports/"><div class="op-stat-value">28</div><div class="op-stat-label">Всего портов</div></a>
-  <a class="op-stat" href="/operator/logist/ports/"><div class="op-stat-value">34</div><div class="op-stat-label">Активных маршрутов</div></a>
-  <a class="op-stat op-stat-warn" href="/operator/logist/ports/"><div class="op-stat-value">3</div><div class="op-stat-label">С ограничениями</div></a>
+  <a class="op-stat" href="/operator/logist/ports/"><div class="op-stat-value">28</div><div class="op-stat-label">{% trans "Всего портов" %}</div></a>
+  <a class="op-stat" href="/operator/logist/ports/"><div class="op-stat-value">34</div><div class="op-stat-label">{% trans "Активных маршрутов" %}</div></a>
+  <a class="op-stat op-stat-warn" href="/operator/logist/ports/"><div class="op-stat-value">3</div><div class="op-stat-label">{% trans "С ограничениями" %}</div></a>
 </div>
 
 <div class="op-card" style="max-width:720px;">
-  <div class="op-section-title" style="margin-bottom:16px;">Выбор порта / терминала</div>
+  <div class="op-section-title" style="margin-bottom:16px;">{% trans "Выбор порта / терминала" %}</div>
 
   <!-- Dropdown -->
   <select class="op-select" id="port-select" onchange="onPortSelect(this.value)" style="width:100%;padding:10px 14px;font-size:13px;margin-bottom:20px;">
-    <option value="">— Выберите порт или терминал —</option>
-    <optgroup label="🚢 Морские порты">
-      <option value="cnshg">Shanghai (Yangshan) · CNSHG · Китай</option>
-      <option value="cnngb">Ningbo-Zhoushan · CNNGB · Китай</option>
-      <option value="cntao">Qingdao · CNTAO · Китай</option>
-      <option value="cnyan">Shenzhen (Yantian) · CNYAN · Китай</option>
-      <option value="krpus">Busan · KRPUS · Южная Корея</option>
-      <option value="aejea">Jebel Ali (Dubai) · AEJEA · ОАЭ</option>
-      <option value="trmer">Mersin · TRMER · Турция</option>
-      <option value="nlrtm">Rotterdam · NLRTM · Нидерланды</option>
-      <option value="runvs">Novorossiysk · RUNVS · Россия</option>
-      <option value="ruvvo">Vladivostok · RUVVO · Россия</option>
-      <option value="ruled">Saint Petersburg · RULED · Россия</option>
-      <option value="innsa">Mumbai (JNPT) · INNSA · Индия</option>
+    <option value="">{% trans "— Выберите порт или терминал —" %}</option>
+    <optgroup label="{% trans "🚢 Морские порты" %}">
+      <option value="cnshg">{% trans "Shanghai (Yangshan) · CNSHG · Китай" %}</option>
+      <option value="cnngb">{% trans "Ningbo-Zhoushan · CNNGB · Китай" %}</option>
+      <option value="cntao">{% trans "Qingdao · CNTAO · Китай" %}</option>
+      <option value="cnyan">{% trans "Shenzhen (Yantian) · CNYAN · Китай" %}</option>
+      <option value="krpus">{% trans "Busan · KRPUS · Южная Корея" %}</option>
+      <option value="aejea">{% trans "Jebel Ali (Dubai) · AEJEA · ОАЭ" %}</option>
+      <option value="trmer">{% trans "Mersin · TRMER · Турция" %}</option>
+      <option value="nlrtm">{% trans "Rotterdam · NLRTM · Нидерланды" %}</option>
+      <option value="runvs">{% trans "Novorossiysk · RUNVS · Россия" %}</option>
+      <option value="ruvvo">{% trans "Vladivostok · RUVVO · Россия" %}</option>
+      <option value="ruled">{% trans "Saint Petersburg · RULED · Россия" %}</option>
+      <option value="innsa">{% trans "Mumbai (JNPT) · INNSA · Индия" %}</option>
     </optgroup>
-    <optgroup label="✈️ Авиатерминалы">
-      <option value="pvg">Shanghai Pudong · PVG · Китай</option>
-      <option value="can">Guangzhou Baiyun · CAN · Китай</option>
-      <option value="dxb">Dubai · DXB · ОАЭ</option>
-      <option value="ist">Istanbul · IST · Турция</option>
-      <option value="ams">Amsterdam Schiphol · AMS · Нидерланды</option>
-      <option value="svo">Moscow SVO Cargo · SVO · Россия</option>
-      <option value="ala">Almaty · ALA · Казахстан</option>
-      <option value="del">Delhi · DEL · Индия</option>
+    <optgroup label="{% trans "✈️ Авиатерминалы" %}">
+      <option value="pvg">{% trans "Shanghai Pudong · PVG · Китай" %}</option>
+      <option value="can">{% trans "Guangzhou Baiyun · CAN · Китай" %}</option>
+      <option value="dxb">{% trans "Dubai · DXB · ОАЭ" %}</option>
+      <option value="ist">{% trans "Istanbul · IST · Турция" %}</option>
+      <option value="ams">{% trans "Amsterdam Schiphol · AMS · Нидерланды" %}</option>
+      <option value="svo">{% trans "Moscow SVO Cargo · SVO · Россия" %}</option>
+      <option value="ala">{% trans "Almaty · ALA · Казахстан" %}</option>
+      <option value="del">{% trans "Delhi · DEL · Индия" %}</option>
     </optgroup>
-    <optgroup label="🚂 ЖД узлы">
-      <option value="chengdu">Chengdu · Китай</option>
-      <option value="xian">Xi'an · Китай</option>
-      <option value="zhengzhou">Zhengzhou · Китай</option>
-      <option value="dostyk">Dostyk · Казахстан</option>
-      <option value="altynkol">Altynkol · Казахстан</option>
-      <option value="brest">Brest · Беларусь</option>
-      <option value="vorsino">Moscow Vorsino · Россия</option>
-      <option value="ekb">Yekaterinburg · Россия</option>
+    <optgroup label="{% trans "🚂 ЖД узлы" %}">
+      <option value="chengdu">{% trans "Chengdu · Китай" %}</option>
+      <option value="xian">{% trans "Xi'an · Китай" %}</option>
+      <option value="zhengzhou">{% trans "Zhengzhou · Китай" %}</option>
+      <option value="dostyk">{% trans "Dostyk · Казахстан" %}</option>
+      <option value="altynkol">{% trans "Altynkol · Казахстан" %}</option>
+      <option value="brest">{% trans "Brest · Беларусь" %}</option>
+      <option value="vorsino">{% trans "Moscow Vorsino · Россия" %}</option>
+      <option value="ekb">{% trans "Yekaterinburg · Россия" %}</option>
     </optgroup>
   </select>
 
@@ -65,21 +66,21 @@
 
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;">
         <div style="background:#2C2C2C;border-radius:10px;padding:12px 14px;">
-          <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Активных отгрузок</div>
+          <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Активных отгрузок" %}</div>
           <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;" id="port-shipments"></div>
         </div>
         <div style="background:#2C2C2C;border-radius:10px;padding:12px 14px;">
-          <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Время обработки</div>
+          <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Время обработки" %}</div>
           <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;" id="port-time"></div>
         </div>
         <div style="background:#2C2C2C;border-radius:10px;padding:12px 14px;">
-          <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Тип</div>
+          <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Тип" %}</div>
           <div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;" id="port-type"></div>
         </div>
       </div>
 
       <div style="background:#2C2C2C;border-radius:10px;padding:12px 14px;">
-        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Маршрут / описание</div>
+        <div style="font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">{% trans "Маршрут / описание" %}</div>
         <div style="font-size:13px;color:#919191;" id="port-route"></div>
       </div>
     </div>
@@ -87,7 +88,7 @@
 
   <!-- Empty state -->
   <div id="port-empty" style="text-align:center;padding:32px 0;color:#5E5E5E;font-size:13px;">
-    Выберите порт из списка для просмотра деталей
+    {% trans "Выберите порт из списка для просмотра деталей" %}
   </div>
 </div>
 {% endblock %}
@@ -95,34 +96,34 @@
 {% block extra_js %}
 <script>
 var PORTS = {
-  cnshg:     {name:'Shanghai (Yangshan)',  code:'CNSHG', country:'Китай',        type:'Контейнер', cat:'sea',  shipments:12, time:'2.4 дн.', status:'ok',  route:'Тихоокеанское направление · Контейнеры, генгруз · 700K TEU'},
-  cnngb:     {name:'Ningbo-Zhoushan',      code:'CNNGB', country:'Китай',        type:'Контейнер', cat:'sea',  shipments:8,  time:'1.8 дн.', status:'ok',  route:'Крупнейший порт Китая · Контейнеры, наливные'},
-  cntao:     {name:'Qingdao',              code:'CNTAO', country:'Китай',        type:'Контейнер', cat:'sea',  shipments:5,  time:'2.1 дн.', status:'ok',  route:'Северный Китай · Контейнеры'},
-  cnyan:     {name:'Shenzhen (Yantian)',   code:'CNYAN', country:'Китай',        type:'Контейнер', cat:'sea',  shipments:7,  time:'2.6 дн.', status:'warn',route:'Южный Китай · Контейнеры'},
-  krpus:     {name:'Busan',               code:'KRPUS', country:'Южная Корея',  type:'Контейнер', cat:'sea',  shipments:3,  time:'1.5 дн.', status:'ok',  route:'Транзитный хаб Азии · Контейнеры'},
-  aejea:     {name:'Jebel Ali (Dubai)',    code:'AEJEA', country:'ОАЭ',          type:'Насыпь',    cat:'sea',  shipments:4,  time:'1.2 дн.', status:'ok',  route:'Средний Восток · Насыпь, контейнеры'},
-  trmer:     {name:'Mersin',              code:'TRMER', country:'Турция',       type:'Контейнер', cat:'sea',  shipments:6,  time:'1.9 дн.', status:'ok',  route:'Средиземноморье · Контейнеры'},
-  nlrtm:     {name:'Rotterdam',           code:'NLRTM', country:'Нидерланды',   type:'Ро-ро',     cat:'sea',  shipments:2,  time:'1.4 дн.', status:'ok',  route:'Европейский хаб · Ро-ро, контейнеры'},
-  runvs:     {name:'Novorossiysk',        code:'RUNVS', country:'Россия',       type:'Контейнер', cat:'sea',  shipments:9,  time:'3.1 дн.', status:'warn',route:'Черноморское направление · Контейнеры, наливные'},
-  ruvvo:     {name:'Vladivostok',         code:'RUVVO', country:'Россия',       type:'Контейнер', cat:'sea',  shipments:11, time:'3.8 дн.', status:'warn',route:'Тихоокеанское направление · Контейнеры, генгруз'},
-  ruled:     {name:'Saint Petersburg',    code:'RULED', country:'Россия',       type:'Контейнер', cat:'sea',  shipments:4,  time:'2.2 дн.', status:'ok',  route:'Балтика · Контейнеры, ро-ро · 2M TEU/год'},
-  innsa:     {name:'Mumbai (JNPT)',       code:'INNSA', country:'Индия',        type:'Насыпь',    cat:'sea',  shipments:3,  time:'2.8 дн.', status:'ok',  route:'Западная Индия · Насыпь, контейнеры'},
-  pvg:       {name:'Shanghai Pudong',     code:'PVG',   country:'Китай',        type:'Грузовой',  cat:'air',  shipments:6,  time:'0.8 дн.', status:'ok',  route:'Крупнейший грузовой терминал Азии'},
-  can:       {name:'Guangzhou Baiyun',    code:'CAN',   country:'Китай',        type:'Грузовой',  cat:'air',  shipments:4,  time:'0.6 дн.', status:'ok',  route:'Южный Китай · Грузовой терминал'},
-  dxb:       {name:'Dubai',              code:'DXB',   country:'ОАЭ',          type:'Грузовой',  cat:'air',  shipments:5,  time:'0.5 дн.', status:'ok',  route:'Средний Восток · Хаб Emirates SkyCargo'},
-  ist:       {name:'Istanbul',           code:'IST',   country:'Турция',       type:'Грузовой',  cat:'air',  shipments:3,  time:'0.7 дн.', status:'ok',  route:'Европа / Азия · Turkish Cargo'},
-  ams:       {name:'Amsterdam Schiphol', code:'AMS',   country:'Нидерланды',   type:'Грузовой',  cat:'air',  shipments:2,  time:'0.4 дн.', status:'ok',  route:'Европа · Крупнейший грузовой хаб'},
-  svo:       {name:'Moscow SVO Cargo',   code:'SVO',   country:'Россия',       type:'Грузовой',  cat:'air',  shipments:7,  time:'1.1 дн.', status:'warn',route:'Шереметьево · SVO Cargo · 300K т/год'},
-  ala:       {name:'Almaty',             code:'ALA',   country:'Казахстан',    type:'Смешанный', cat:'air',  shipments:2,  time:'0.9 дн.', status:'ok',  route:'Центральная Азия · Смешанный терминал'},
-  del:       {name:'Delhi',              code:'DEL',   country:'Индия',        type:'Грузовой',  cat:'air',  shipments:1,  time:'1.0 дн.', status:'ok',  route:'Северная Индия · Грузовой терминал'},
-  chengdu:   {name:'Chengdu',            code:'—',     country:'Китай',        type:'ЖД',        cat:'rail', shipments:4,  time:'14-16 дн.', status:'ok',  route:'Чэнду — Лодзь / Дуйсбург · Китай-Европа'},
-  xian:      {name:"Xi'an",             code:'—',     country:'Китай',        type:'ЖД',        cat:'rail', shipments:6,  time:'12-15 дн.', status:'ok',  route:'Сиань — Москва / Гамбург · Китай-Европа'},
-  zhengzhou: {name:'Zhengzhou',          code:'—',     country:'Китай',        type:'ЖД',        cat:'rail', shipments:3,  time:'15-18 дн.', status:'ok',  route:'Чжэнчжоу — Гамбург · Китай-Европа'},
-  dostyk:    {name:'Dostyk',             code:'—',     country:'Казахстан',    type:'ЖД',        cat:'rail', shipments:5,  time:'2-3 дн.',   status:'warn',route:'Перевалка Китай-Казахстан'},
-  altynkol:  {name:'Altynkol',           code:'—',     country:'Казахстан',    type:'ЖД',        cat:'rail', shipments:3,  time:'1-2 дн.',   status:'ok',  route:'Перевалка Китай-Казахстан'},
-  brest:     {name:'Brest',              code:'—',     country:'Беларусь',     type:'ЖД',        cat:'rail', shipments:4,  time:'1-2 дн.',   status:'ok',  route:'Перевалка колея 1520/1435 · Европа-СНГ'},
-  vorsino:   {name:'Moscow Vorsino',     code:'—',     country:'Россия',       type:'ЖД',        cat:'rail', shipments:8,  time:'1 дн.',     status:'ok',  route:'Терминал Москва · Основной узел'},
-  ekb:       {name:'Yekaterinburg',      code:'—',     country:'Россия',       type:'ЖД',        cat:'rail', shipments:2,  time:'1 дн.',     status:'ok',  route:'Терминал Урал · ЖД узел'}
+  cnshg:     {name:'Shanghai (Yangshan)',  code:'CNSHG', country:'{% trans 'Китай' %}',        type:'{% trans 'Контейнер' %}', cat:'sea',  shipments:12, time:'{% trans '2.4 дн.' %}', status:'ok',  route:'{% trans 'Тихоокеанское направление · Контейнеры, генгруз · 700K TEU' %}'},
+  cnngb:     {name:'Ningbo-Zhoushan',      code:'CNNGB', country:'{% trans 'Китай' %}',        type:'{% trans 'Контейнер' %}', cat:'sea',  shipments:8,  time:'{% trans '1.8 дн.' %}', status:'ok',  route:'{% trans 'Крупнейший порт Китая · Контейнеры, наливные' %}'},
+  cntao:     {name:'Qingdao',              code:'CNTAO', country:'{% trans 'Китай' %}',        type:'{% trans 'Контейнер' %}', cat:'sea',  shipments:5,  time:'{% trans '2.1 дн.' %}', status:'ok',  route:'{% trans 'Северный Китай · Контейнеры' %}'},
+  cnyan:     {name:'Shenzhen (Yantian)',   code:'CNYAN', country:'{% trans 'Китай' %}',        type:'{% trans 'Контейнер' %}', cat:'sea',  shipments:7,  time:'{% trans '2.6 дн.' %}', status:'warn',route:'{% trans 'Южный Китай · Контейнеры' %}'},
+  krpus:     {name:'Busan',               code:'KRPUS', country:'{% trans 'Южная Корея' %}',  type:'{% trans 'Контейнер' %}', cat:'sea',  shipments:3,  time:'{% trans '1.5 дн.' %}', status:'ok',  route:'{% trans 'Транзитный хаб Азии · Контейнеры' %}'},
+  aejea:     {name:'Jebel Ali (Dubai)',    code:'AEJEA', country:'{% trans 'ОАЭ' %}',          type:'{% trans 'Насыпь' %}',    cat:'sea',  shipments:4,  time:'{% trans '1.2 дн.' %}', status:'ok',  route:'{% trans 'Средний Восток · Насыпь, контейнеры' %}'},
+  trmer:     {name:'Mersin',              code:'TRMER', country:'{% trans 'Турция' %}',       type:'{% trans 'Контейнер' %}', cat:'sea',  shipments:6,  time:'{% trans '1.9 дн.' %}', status:'ok',  route:'{% trans 'Средиземноморье · Контейнеры' %}'},
+  nlrtm:     {name:'Rotterdam',           code:'NLRTM', country:'{% trans 'Нидерланды' %}',   type:'{% trans 'Ро-ро' %}',     cat:'sea',  shipments:2,  time:'{% trans '1.4 дн.' %}', status:'ok',  route:'{% trans 'Европейский хаб · Ро-ро, контейнеры' %}'},
+  runvs:     {name:'Novorossiysk',        code:'RUNVS', country:'{% trans 'Россия' %}',       type:'{% trans 'Контейнер' %}', cat:'sea',  shipments:9,  time:'{% trans '3.1 дн.' %}', status:'warn',route:'{% trans 'Черноморское направление · Контейнеры, наливные' %}'},
+  ruvvo:     {name:'Vladivostok',         code:'RUVVO', country:'{% trans 'Россия' %}',       type:'{% trans 'Контейнер' %}', cat:'sea',  shipments:11, time:'{% trans '3.8 дн.' %}', status:'warn',route:'{% trans 'Тихоокеанское направление · Контейнеры, генгруз' %}'},
+  ruled:     {name:'Saint Petersburg',    code:'RULED', country:'{% trans 'Россия' %}',       type:'{% trans 'Контейнер' %}', cat:'sea',  shipments:4,  time:'{% trans '2.2 дн.' %}', status:'ok',  route:'{% trans 'Балтика · Контейнеры, ро-ро · 2M TEU/год' %}'},
+  innsa:     {name:'Mumbai (JNPT)',       code:'INNSA', country:'{% trans 'Индия' %}',        type:'{% trans 'Насыпь' %}',    cat:'sea',  shipments:3,  time:'{% trans '2.8 дн.' %}', status:'ok',  route:'{% trans 'Западная Индия · Насыпь, контейнеры' %}'},
+  pvg:       {name:'Shanghai Pudong',     code:'PVG',   country:'{% trans 'Китай' %}',        type:'{% trans 'Грузовой' %}',  cat:'air',  shipments:6,  time:'{% trans '0.8 дн.' %}', status:'ok',  route:'{% trans 'Крупнейший грузовой терминал Азии' %}'},
+  can:       {name:'Guangzhou Baiyun',    code:'CAN',   country:'{% trans 'Китай' %}',        type:'{% trans 'Грузовой' %}',  cat:'air',  shipments:4,  time:'{% trans '0.6 дн.' %}', status:'ok',  route:'{% trans 'Южный Китай · Грузовой терминал' %}'},
+  dxb:       {name:'Dubai',              code:'DXB',   country:'{% trans 'ОАЭ' %}',          type:'{% trans 'Грузовой' %}',  cat:'air',  shipments:5,  time:'{% trans '0.5 дн.' %}', status:'ok',  route:'{% trans 'Средний Восток · Хаб Emirates SkyCargo' %}'},
+  ist:       {name:'Istanbul',           code:'IST',   country:'{% trans 'Турция' %}',       type:'{% trans 'Грузовой' %}',  cat:'air',  shipments:3,  time:'{% trans '0.7 дн.' %}', status:'ok',  route:'{% trans 'Европа / Азия · Turkish Cargo' %}'},
+  ams:       {name:'Amsterdam Schiphol', code:'AMS',   country:'{% trans 'Нидерланды' %}',   type:'{% trans 'Грузовой' %}',  cat:'air',  shipments:2,  time:'{% trans '0.4 дн.' %}', status:'ok',  route:'{% trans 'Европа · Крупнейший грузовой хаб' %}'},
+  svo:       {name:'Moscow SVO Cargo',   code:'SVO',   country:'{% trans 'Россия' %}',       type:'{% trans 'Грузовой' %}',  cat:'air',  shipments:7,  time:'{% trans '1.1 дн.' %}', status:'warn',route:'{% trans 'Шереметьево · SVO Cargo · 300K т/год' %}'},
+  ala:       {name:'Almaty',             code:'ALA',   country:'{% trans 'Казахстан' %}',    type:'{% trans 'Смешанный' %}', cat:'air',  shipments:2,  time:'{% trans '0.9 дн.' %}', status:'ok',  route:'{% trans 'Центральная Азия · Смешанный терминал' %}'},
+  del:       {name:'Delhi',              code:'DEL',   country:'{% trans 'Индия' %}',        type:'{% trans 'Грузовой' %}',  cat:'air',  shipments:1,  time:'{% trans '1.0 дн.' %}', status:'ok',  route:'{% trans 'Северная Индия · Грузовой терминал' %}'},
+  chengdu:   {name:'Chengdu',            code:'—',     country:'{% trans 'Китай' %}',        type:'{% trans 'ЖД' %}',        cat:'rail', shipments:4,  time:'{% trans '14-16 дн.' %}', status:'ok',  route:'{% trans 'Чэнду — Лодзь / Дуйсбург · Китай-Европа' %}'},
+  xian:      {name:"Xi'an",             code:'—',     country:'{% trans 'Китай' %}',        type:'{% trans 'ЖД' %}',        cat:'rail', shipments:6,  time:'{% trans '12-15 дн.' %}', status:'ok',  route:'{% trans 'Сиань — Москва / Гамбург · Китай-Европа' %}'},
+  zhengzhou: {name:'Zhengzhou',          code:'—',     country:'{% trans 'Китай' %}',        type:'{% trans 'ЖД' %}',        cat:'rail', shipments:3,  time:'{% trans '15-18 дн.' %}', status:'ok',  route:'{% trans 'Чжэнчжоу — Гамбург · Китай-Европа' %}'},
+  dostyk:    {name:'Dostyk',             code:'—',     country:'{% trans 'Казахстан' %}',    type:'{% trans 'ЖД' %}',        cat:'rail', shipments:5,  time:'{% trans '2-3 дн.' %}',   status:'warn',route:'{% trans 'Перевалка Китай-Казахстан' %}'},
+  altynkol:  {name:'Altynkol',           code:'—',     country:'{% trans 'Казахстан' %}',    type:'{% trans 'ЖД' %}',        cat:'rail', shipments:3,  time:'{% trans '1-2 дн.' %}',   status:'ok',  route:'{% trans 'Перевалка Китай-Казахстан' %}'},
+  brest:     {name:'Brest',              code:'—',     country:'{% trans 'Беларусь' %}',     type:'{% trans 'ЖД' %}',        cat:'rail', shipments:4,  time:'{% trans '1-2 дн.' %}',   status:'ok',  route:'{% trans 'Перевалка колея 1520/1435 · Европа-СНГ' %}'},
+  vorsino:   {name:'Moscow Vorsino',     code:'—',     country:'{% trans 'Россия' %}',       type:'{% trans 'ЖД' %}',        cat:'rail', shipments:8,  time:'{% trans '1 дн.' %}',     status:'ok',  route:'{% trans 'Терминал Москва · Основной узел' %}'},
+  ekb:       {name:'Yekaterinburg',      code:'—',     country:'{% trans 'Россия' %}',       type:'{% trans 'ЖД' %}',        cat:'rail', shipments:2,  time:'{% trans '1 дн.' %}',     status:'ok',  route:'{% trans 'Терминал Урал · ЖД узел' %}'}
 };
 
 var CAT_ICON = {
@@ -150,9 +151,9 @@ function onPortSelect(key) {
 
   var badge = document.getElementById('port-status-badge');
   if (p.status === 'warn') {
-    badge.innerHTML = '<span class="op-badge op-badge-orange">Ограничения</span>';
+    badge.innerHTML = '{% trans "<span class=\"op-badge op-badge-orange\">Ограничения</span>" %}';
   } else {
-    badge.innerHTML = '<span class="op-badge op-badge-gray">Работает</span>';
+    badge.innerHTML = '{% trans "<span class=\"op-badge op-badge-gray\">Работает</span>" %}';
   }
 }
 </script>

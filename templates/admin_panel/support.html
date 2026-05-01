@@ -1,29 +1,30 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Поддержка{% endblock %}
-{% block topbar_title %}Поддержка{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Поддержка" %}{% endblock %}
+{% block topbar_title %}{% trans "Поддержка" %}{% endblock %}
 
 {% block content %}
 <div class="ap-stats">
-  <a href="?status=all" class="ap-stat"><div class="ap-stat-value">{{ total_claims }}</div><div class="ap-stat-label">Всего рекламаций</div></a>
-  <a href="?status=open" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ open_count }}</div><div class="ap-stat-label">Открытых</div></a>
-  <a href="?status=closed" class="ap-stat"><div class="ap-stat-value">{{ resolved_count }}</div><div class="ap-stat-label">Закрытых</div></a>
-  {% if overdue_count %}<a href="?status=open" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ overdue_count }}</div><div class="ap-stat-label">Просрочено (&gt;{{ sla_hours }}ч)</div></a>{% endif %}
+  <a href="?status=all" class="ap-stat"><div class="ap-stat-value">{{ total_claims }}</div><div class="ap-stat-label">{% trans "Всего рекламаций" %}</div></a>
+  <a href="?status=open" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ open_count }}</div><div class="ap-stat-label">{% trans "Открытых" %}</div></a>
+  <a href="?status=closed" class="ap-stat"><div class="ap-stat-value">{{ resolved_count }}</div><div class="ap-stat-label">{% trans "Закрытых" %}</div></a>
+  {% if overdue_count %}<a href="?status=open" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ overdue_count }}</div><div class="ap-stat-label">{% blocktrans with sla_hours=sla_hours %}Просрочено (&gt;{{ sla_hours }}ч){% endblocktrans %}</div></a>{% endif %}
 </div>
 
 <div class="ap-card">
   <!-- Status tabs -->
   <div class="ap-tabs" style="margin-bottom:16px;">
-    <a href="?status=open&q={{ q }}" class="ap-tab {% if status_filter == 'open' %}active{% endif %}" style="text-decoration:none;">Открытые ({{ open_count }})</a>
-    <a href="?status=in_review&q={{ q }}" class="ap-tab {% if status_filter == 'in_review' %}active{% endif %}" style="text-decoration:none;">В работе</a>
-    <a href="?status=all&q={{ q }}" class="ap-tab {% if status_filter == 'all' %}active{% endif %}" style="text-decoration:none;">Все</a>
-    <a href="?status=closed&q={{ q }}" class="ap-tab {% if status_filter == 'closed' %}active{% endif %}" style="text-decoration:none;">Закрытые ({{ resolved_count }})</a>
+    <a href="?status=open&q={{ q }}" class="ap-tab {% if status_filter == 'open' %}active{% endif %}" style="text-decoration:none;">{% blocktrans with open_count=open_count %}Открытые ({{ open_count }}){% endblocktrans %}</a>
+    <a href="?status=in_review&q={{ q }}" class="ap-tab {% if status_filter == 'in_review' %}active{% endif %}" style="text-decoration:none;">{% trans "В работе" %}</a>
+    <a href="?status=all&q={{ q }}" class="ap-tab {% if status_filter == 'all' %}active{% endif %}" style="text-decoration:none;">{% trans "Все" %}</a>
+    <a href="?status=closed&q={{ q }}" class="ap-tab {% if status_filter == 'closed' %}active{% endif %}" style="text-decoration:none;">{% blocktrans with resolved_count=resolved_count %}Закрытые ({{ resolved_count }}){% endblocktrans %}</a>
   </div>
 
   <!-- Search -->
   <form method="get" style="display:flex;gap:8px;margin-bottom:16px;align-items:flex-end;">
     <input type="hidden" name="status" value="{{ status_filter }}"/>
-    <input type="text" name="q" class="ap-input" placeholder="Поиск по теме, заказу или описанию..." value="{{ q }}" style="width:300px;"/>
-    <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+    <input type="text" name="q" class="ap-input" placeholder="{% trans "Поиск по теме, заказу или описанию..." %}" value="{{ q }}" style="width:300px;"/>
+    <button type="submit" class="ap-btn ap-btn-primary">{% trans "Найти" %}</button>
   </form>
 
   <!-- Bulk actions form -->
@@ -33,14 +34,14 @@
 
     <!-- Bulk bar (hidden by default) -->
     <div id="bulk-bar" style="display:none;background:#2C2C2C;border-radius:8px;padding:10px 14px;margin-bottom:12px;align-items:center;gap:10px;">
-      <span style="font-size:12px;color:#919191;" id="bulk-count">0 выбрано</span>
+      <span style="font-size:12px;color:#919191;" id="bulk-count">{% trans "0 выбрано" %}</span>
       <select name="bulk_new_status" class="ap-select" style="min-width:120px;">
         {% for val, label in status_choices %}
         <option value="{{ val }}">{{ label }}</option>
         {% endfor %}
       </select>
-      <input type="text" name="admin_note" class="ap-input" placeholder="Комментарий (опц.)" style="width:200px;"/>
-      <button type="submit" class="ap-btn ap-btn-primary" style="font-size:12px;">Применить</button>
+      <input type="text" name="admin_note" class="ap-input" placeholder="{% trans "Комментарий (опц.)" %}" style="width:200px;"/>
+      <button type="submit" class="ap-btn ap-btn-primary" style="font-size:12px;">{% trans "Применить" %}</button>
     </div>
 
     <table class="ap-table">
@@ -48,13 +49,13 @@
         <tr>
           <th style="width:30px;"><input type="checkbox" id="select-all"/></th>
           <th>ID</th>
-          <th>Заказ</th>
-          <th>Тема</th>
-          <th>Статус</th>
-          <th>Возраст</th>
-          <th>Кем открыто</th>
-          <th>Дата</th>
-          <th>Действия</th>
+          <th>{% trans "Заказ" %}</th>
+          <th>{% trans "Тема" %}</th>
+          <th>{% trans "Статус" %}</th>
+          <th>{% trans "Возраст" %}</th>
+          <th>{% trans "Кем открыто" %}</th>
+          <th>{% trans "Дата" %}</th>
+          <th>{% trans "Действия" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -74,7 +75,7 @@
           </td>
           <td>
             <span style="font-size:12px;font-weight:600;color:{% if claim.is_overdue %}#E85C0D{% elif claim.hours_open > 24 %}#FFB74D{% else %}#919191{% endif %};">
-              {{ claim.hours_open }}ч
+              {% blocktrans with hours=claim.hours_open %}{{ hours }}ч{% endblocktrans %}
             </span>
             {% if claim.is_overdue %}<span style="font-size:10px;color:#E85C0D;margin-left:4px;">SLA</span>{% endif %}
           </td>
@@ -92,7 +93,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="9" style="text-align:center;color:#919191;">Нет рекламаций</td></tr>
+        <tr><td colspan="9" style="text-align:center;color:#919191;">{% trans "Нет рекламаций" %}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -109,9 +110,9 @@
   <!-- Pagination -->
   {% if has_prev or has_next %}
   <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;">
-    {% if has_prev %}<a href="?status={{ status_filter }}&q={{ q }}&page={{ page_num|add:"-1" }}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&#8592; Назад</a>{% endif %}
-    <span style="font-size:13px;color:#919191;padding:6px 12px;">Стр. {{ page_num }}</span>
-    {% if has_next %}<a href="?status={{ status_filter }}&q={{ q }}&page={{ page_num|add:"1" }}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &#8594;</a>{% endif %}
+    {% if has_prev %}<a href="?status={{ status_filter }}&q={{ q }}&page={{ page_num|add:"-1" }}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "&#8592; Назад" %}</a>{% endif %}
+    <span style="font-size:13px;color:#919191;padding:6px 12px;">{% blocktrans with page_num=page_num %}Стр. {{ page_num }}{% endblocktrans %}</span>
+    {% if has_next %}<a href="?status={{ status_filter }}&q={{ q }}&page={{ page_num|add:"1" }}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Далее &#8594;" %}</a>{% endif %}
   </div>
   {% endif %}
 </div>
@@ -126,7 +127,7 @@
   function update() {
     var checked = document.querySelectorAll('.row-cb:checked').length;
     bulkBar.style.display = checked > 0 ? 'flex' : 'none';
-    bulkCount.textContent = checked + ' выбрано';
+    bulkCount.textContent = checked + '{% trans ' выбрано' %}';
   }
 
   if (selectAll) {

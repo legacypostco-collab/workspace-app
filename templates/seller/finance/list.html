@@ -359,7 +359,7 @@
 
       {# 2. Резерв 10% #}
       <div class="fin-pay-step {% if row.order.reserve_paid_at %}done{% elif row.order.payment_status == 'awaiting_reserve' %}current{% endif %}">
-        <div class="fin-pay-step-label">{% blocktrans with pct=row.order.reserve_percent %}Резерв {{ pct }}% оплачен{% endblocktrans %}</div>
+        <div class="fin-pay-step-label">{% trans "Резерв" %} {{ row.order.reserve_percent }}{% trans "% оплачен" %}</div>
         {% if row.order.reserve_paid_at %}
         <div class="fin-pay-step-meta">{{ row.order.reserve_paid_at|date:"d.m.Y H:i" }}</div>
         {% else %}
@@ -439,7 +439,7 @@
 
   {# Документы #}
   <div class="fin-section">
-    <div class="fin-section-title">{% blocktrans with count=row.docs_count %}Документы ({{ count }}){% endblocktrans %}</div>
+    <div class="fin-section-title">{% trans "Документы (" %}{{ row.docs_count }})</div>
     {% if row.docs %}
     {% for doc in row.docs %}
     <div class="fin-doc-row">
@@ -506,7 +506,7 @@
     if (!tpl || !drawer) return;
     var row = document.querySelectorAll('.fin-row')[idx];
     var orderNum = row ? row.querySelector('td span[style]').textContent : '';
-    document.getElementById('fin-drawer-title').textContent = 'Заказ ' + orderNum;
+    document.getElementById('fin-drawer-title').textContent = gettext("Заказ ") + orderNum;
     document.getElementById('fin-drawer-body').innerHTML = tpl.innerHTML;
     overlay.style.display = 'block';
     requestAnimationFrame(function() { drawer.classList.add('open'); });

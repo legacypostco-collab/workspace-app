@@ -1,34 +1,35 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Каталог{% endblock %}
-{% block topbar_title %}Каталог{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Каталог" %}{% endblock %}
+{% block topbar_title %}{% trans "Каталог" %}{% endblock %}
 
 {% block content %}
 <!-- Stats -->
 <div class="ap-stats">
-  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">Всего запчастей</div></a>
-  <a href="/admin-panel/catalog/?status=active" class="ap-stat"><div class="ap-stat-value">{{ active_count }}</div><div class="ap-stat-label">Активных</div></a>
-  <a href="/admin-panel/catalog/?status=blocked" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ blocked_count }}</div><div class="ap-stat-label">Заблокированных</div></a>
-  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ brands_count }}</div><div class="ap-stat-label">Брендов</div></a>
-  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ categories_count }}</div><div class="ap-stat-label">Категорий</div></a>
-  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ sellers_count }}</div><div class="ap-stat-label">Поставщиков</div></a>
+  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ parts_count }}</div><div class="ap-stat-label">{% trans "Всего запчастей" %}</div></a>
+  <a href="/admin-panel/catalog/?status=active" class="ap-stat"><div class="ap-stat-value">{{ active_count }}</div><div class="ap-stat-label">{% trans "Активных" %}</div></a>
+  <a href="/admin-panel/catalog/?status=blocked" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ blocked_count }}</div><div class="ap-stat-label">{% trans "Заблокированных" %}</div></a>
+  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ brands_count }}</div><div class="ap-stat-label">{% trans "Брендов" %}</div></a>
+  <a href="/admin-panel/catalog/" class="ap-stat"><div class="ap-stat-value">{{ categories_count }}</div><div class="ap-stat-label">{% trans "Категорий" %}</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ sellers_count }}</div><div class="ap-stat-label">{% trans "Поставщиков" %}</div></a>
 </div>
 
 <!-- Data quality quick filters -->
 <div class="ap-card" style="margin-bottom:16px;">
-  <div class="ap-section-title">Качество данных</div>
+  <div class="ap-section-title">{% trans "Качество данных" %}</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     <a href="?show=no_price" class="ap-btn {% if show == 'no_price' %}ap-btn-warn{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;">
-      {% if show == 'no_price' and no_price %}{{ no_price }} {% endif %}Без цены
+      {% if show == 'no_price' and no_price %}{{ no_price }} {% endif %}{% trans "Без цены" %}
     </a>
     <a href="?show=no_brand" class="ap-btn {% if show == 'no_brand' %}ap-btn-warn{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;">
-      {% if show == 'no_brand' and no_brand %}{{ no_brand }} {% endif %}Без бренда
+      {% if show == 'no_brand' and no_brand %}{{ no_brand }} {% endif %}{% trans "Без бренда" %}
     </a>
     <a href="?show=zero_stock" class="ap-btn {% if show == 'zero_stock' %}ap-btn-warn{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;">
-      {% if show == 'zero_stock' and zero_stock %}{{ zero_stock }} {% endif %}Нулевой остаток
+      {% if show == 'zero_stock' and zero_stock %}{{ zero_stock }} {% endif %}{% trans "Нулевой остаток" %}
     </a>
-    <a href="?show=duplicates" class="ap-btn {% if show == 'duplicates' %}ap-btn-primary{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;">Дубли OEM</a>
+    <a href="?show=duplicates" class="ap-btn {% if show == 'duplicates' %}ap-btn-primary{% else %}ap-btn-ghost{% endif %}" style="text-decoration:none;">{% trans "Дубли OEM" %}</a>
     {% if show %}
-    <a href="/admin-panel/catalog/" class="ap-btn ap-btn-warn" style="text-decoration:none;">Сбросить</a>
+    <a href="/admin-panel/catalog/" class="ap-btn ap-btn-warn" style="text-decoration:none;">{% trans "Сбросить" %}</a>
     {% endif %}
   </div>
 </div>
@@ -37,8 +38,8 @@
 {% if recent_imports %}
 <div class="ap-card" style="margin-bottom:16px;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-    <div class="ap-section-title" style="margin-bottom:0;">Последние загрузки поставщиков</div>
-    <a href="/admin-panel/imports/" class="ap-btn ap-btn-ghost" style="text-decoration:none;font-size:11px;">Все импорты</a>
+    <div class="ap-section-title" style="margin-bottom:0;">{% trans "Последние загрузки поставщиков" %}</div>
+    <a href="/admin-panel/imports/" class="ap-btn ap-btn-ghost" style="text-decoration:none;font-size:11px;">{% trans "Все импорты" %}</a>
   </div>
   <div style="display:flex;flex-direction:column;gap:6px;">
     {% for imp in recent_imports %}
@@ -49,9 +50,9 @@
       <div style="flex:1;">
         <span style="font-size:13px;color:#ECECEC;font-weight:500;">{{ imp.seller.username }}</span>
         <span style="font-size:11px;color:#919191;margin-left:8px;">
-          {% if imp.created_count %}+{{ imp.created_count }} новых{% endif %}
-          {% if imp.updated_count %}{% if imp.created_count %}, {% endif %}{{ imp.updated_count }} обновлено{% endif %}
-          {% if imp.error_count %}<span style="color:#E85C0D;"> · {{ imp.error_count }} ошибок</span>{% endif %}
+          {% if imp.created_count %}{% blocktrans with n=imp.created_count %}+{{ n }} новых{% endblocktrans %}{% endif %}
+          {% if imp.updated_count %}{% if imp.created_count %}, {% endif %}{% blocktrans with n=imp.updated_count %}{{ n }} обновлено{% endblocktrans %}{% endif %}
+          {% if imp.error_count %}<span style="color:#E85C0D;"> {% blocktrans with n=imp.error_count %}· {{ n }} ошибок{% endblocktrans %}</span>{% endif %}
         </span>
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -59,7 +60,7 @@
         {% if imp.status == 'success' %}
           <span class="ap-badge ap-badge-green" style="font-size:10px;">OK</span>
         {% else %}
-          <span class="ap-badge ap-badge-orange" style="font-size:10px;">Ошибка</span>
+          <span class="ap-badge ap-badge-orange" style="font-size:10px;">{% trans "Ошибка" %}</span>
         {% endif %}
       </div>
     </a>
@@ -75,54 +76,54 @@
 
 <div class="ap-card">
   <div class="ap-tabs">
-    <button type="button" class="ap-tab active" data-tab-group="catalog" data-tab-key="parts" onclick="apSwitchTab('catalog','parts')">Запчасти</button>
-    <button type="button" class="ap-tab" data-tab-group="catalog" data-tab-key="categories" onclick="apSwitchTab('catalog','categories')">Категории</button>
-    <button type="button" class="ap-tab" data-tab-group="catalog" data-tab-key="brands" onclick="apSwitchTab('catalog','brands')">Бренды</button>
+    <button type="button" class="ap-tab active" data-tab-group="catalog" data-tab-key="parts" onclick="apSwitchTab('catalog','parts')">{% trans "Запчасти" %}</button>
+    <button type="button" class="ap-tab" data-tab-group="catalog" data-tab-key="categories" onclick="apSwitchTab('catalog','categories')">{% trans "Категории" %}</button>
+    <button type="button" class="ap-tab" data-tab-group="catalog" data-tab-key="brands" onclick="apSwitchTab('catalog','brands')">{% trans "Бренды" %}</button>
   </div>
 
   <!-- Parts -->
   <div data-panel-group="catalog" data-panel-key="parts">
     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
       <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;" id="catalogFilterForm">
-      <input type="text" name="q" class="ap-input" placeholder="Поиск по OEM или названию..." style="max-width:200px;" value="{{ search }}"/>
+      <input type="text" name="q" class="ap-input" placeholder="{% trans "Поиск по OEM или названию..." %}" style="max-width:200px;" value="{{ search }}"/>
       <select name="seller" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все поставщики</option>
+        <option value="">{% trans "Все поставщики" %}</option>
         {% for s in sellers_list %}
         <option value="{{ s.username }}" {% if current_seller == s.username %}selected{% endif %}>{{ s.username }}</option>
         {% endfor %}
       </select>
       <select name="brand" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все бренды</option>
+        <option value="">{% trans "Все бренды" %}</option>
         {% for b in brands %}
         <option value="{{ b.name }}" {% if current_brand == b.name %}selected{% endif %}>{{ b.name }}</option>
         {% endfor %}
       </select>
       <select name="category" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все категории</option>
+        <option value="">{% trans "Все категории" %}</option>
         {% for c in categories %}
         <option value="{{ c.name }}" {% if current_category == c.name %}selected{% endif %}>{{ c.name }}</option>
         {% endfor %}
       </select>
       <select name="status" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все статусы</option>
-        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Активные</option>
-        <option value="blocked" {% if status_filter == 'blocked' %}selected{% endif %}>Заблокированные</option>
-        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Неактивные</option>
+        <option value="">{% trans "Все статусы" %}</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>{% trans "Активные" %}</option>
+        <option value="blocked" {% if status_filter == 'blocked' %}selected{% endif %}>{% trans "Заблокированные" %}</option>
+        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>{% trans "Неактивные" %}</option>
       </select>
-      <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+      <button type="submit" class="ap-btn ap-btn-primary">{% trans "Найти" %}</button>
       {% if current_seller or current_brand or current_category or status_filter or search or show %}
-      <a href="/admin-panel/catalog/" class="ap-btn ap-btn-warn" style="text-decoration:none;">Сбросить</a>
+      <a href="/admin-panel/catalog/" class="ap-btn ap-btn-warn" style="text-decoration:none;">{% trans "Сбросить" %}</a>
       {% endif %}
       </form>
-      <a href="/admin-panel/export/parts/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Экспорт CSV</a>
+      <a href="/admin-panel/export/parts/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Экспорт CSV" %}</a>
     </div>
 
     <!-- Bulk actions bar (fixed bottom) -->
     <div id="bulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
-      <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="selectedCount">0 выбрано</span>
-      <button type="button" class="ap-btn ap-btn-primary" onclick="bulkApprove()">Одобрить выбранные</button>
-      <button type="button" class="ap-btn ap-btn-warn" onclick="showBlockModal()">Заблокировать выбранные</button>
-      <button type="button" class="ap-btn ap-btn-ghost" onclick="clearSelection()">Снять выделение</button>
+      <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="selectedCount">{% trans "0 выбрано" %}</span>
+      <button type="button" class="ap-btn ap-btn-primary" onclick="bulkApprove()">{% trans "Одобрить выбранные" %}</button>
+      <button type="button" class="ap-btn ap-btn-warn" onclick="showBlockModal()">{% trans "Заблокировать выбранные" %}</button>
+      <button type="button" class="ap-btn ap-btn-ghost" onclick="clearSelection()">{% trans "Снять выделение" %}</button>
     </div>
 
     <table class="ap-table" id="partsTable">
@@ -130,14 +131,14 @@
         <tr>
           <th style="width:30px;"><input type="checkbox" id="selectAll" onchange="toggleAll(this)"/></th>
           <th>OEM</th>
-          <th>Название</th>
-          <th>Бренд</th>
-          <th>Категория</th>
-          <th>Поставщик</th>
-          <th>Цена</th>
-          <th>Остаток</th>
-          <th>Статус</th>
-          <th>Действия</th>
+          <th>{% trans "Название" %}</th>
+          <th>{% trans "Бренд" %}</th>
+          <th>{% trans "Категория" %}</th>
+          <th>{% trans "Поставщик" %}</th>
+          <th>{% trans "Цена" %}</th>
+          <th>{% trans "Остаток" %}</th>
+          <th>{% trans "Статус" %}</th>
+          <th>{% trans "Действия" %}</th>
         </tr>
       </thead>
       <tbody>
@@ -160,23 +161,23 @@
           <td>{{ part.stock_quantity }}</td>
           <td>
             {% if part.availability_status == 'active' %}
-              <span class="ap-badge ap-badge-green">Активна</span>
+              <span class="ap-badge ap-badge-green">{% trans "Активна" %}</span>
             {% elif part.availability_status == 'blocked' %}
-              <span class="ap-badge ap-badge-orange">Заблокирована</span>
+              <span class="ap-badge ap-badge-orange">{% trans "Заблокирована" %}</span>
             {% else %}
               <span class="ap-badge ap-badge-gray">{{ part.availability_status }}</span>
             {% endif %}
           </td>
           <td>
             {% if part.availability_status == 'blocked' or not part.is_active %}
-              <button type="button" class="ap-btn ap-btn-primary" onclick="singleAction('activate','{{ part.id }}','')">Активировать</button>
+              <button type="button" class="ap-btn ap-btn-primary" onclick="singleAction('activate','{{ part.id }}','')">{% trans "Активировать" %}</button>
             {% else %}
-              <button type="button" class="ap-btn ap-btn-warn" onclick="showSingleBlockModal('{{ part.id }}')">Заблокировать</button>
+              <button type="button" class="ap-btn ap-btn-warn" onclick="showSingleBlockModal('{{ part.id }}')">{% trans "Заблокировать" %}</button>
             {% endif %}
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="10" style="text-align:center;color:#919191;">Нет запчастей</td></tr>
+        <tr><td colspan="10" style="text-align:center;color:#919191;">{% trans "Нет запчастей" %}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -185,11 +186,11 @@
     {% if has_prev or has_next %}
     <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;align-items:center;">
       {% if has_prev %}
-      <a href="?page={{ prev_page }}{% if search %}&q={{ search }}{% endif %}{% if current_seller %}&seller={{ current_seller }}{% endif %}{% if current_brand %}&brand={{ current_brand }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if show %}&show={{ show }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Назад</a>
+      <a href="?page={{ prev_page }}{% if search %}&q={{ search }}{% endif %}{% if current_seller %}&seller={{ current_seller }}{% endif %}{% if current_brand %}&brand={{ current_brand }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if show %}&show={{ show }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "&larr; Назад" %}</a>
       {% endif %}
-      <span style="font-size:13px;color:#919191;">Стр. {{ page_num }}</span>
+      <span style="font-size:13px;color:#919191;">{% blocktrans with page_num=page_num %}Стр. {{ page_num }}{% endblocktrans %}</span>
       {% if has_next %}
-      <a href="?page={{ next_page }}{% if search %}&q={{ search }}{% endif %}{% if current_seller %}&seller={{ current_seller }}{% endif %}{% if current_brand %}&brand={{ current_brand }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if show %}&show={{ show }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &rarr;</a>
+      <a href="?page={{ next_page }}{% if search %}&q={{ search }}{% endif %}{% if current_seller %}&seller={{ current_seller }}{% endif %}{% if current_brand %}&brand={{ current_brand }}{% endif %}{% if current_category %}&category={{ current_category }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if show %}&show={{ show }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Далее &rarr;" %}</a>
       {% endif %}
     </div>
     {% endif %}
@@ -198,12 +199,12 @@
   <!-- Categories -->
   <div data-panel-group="catalog" data-panel-key="categories" style="display:none;">
     <table class="ap-table">
-      <thead><tr><th>Категория</th><th>Slug</th><th>Запчастей</th></tr></thead>
+      <thead><tr><th>{% trans "Категория" %}</th><th>Slug</th><th>{% trans "Запчастей" %}</th></tr></thead>
       <tbody>
         {% for cat in categories %}
         <tr><td>{{ cat.name }}</td><td class="text-secondary">{{ cat.slug }}</td><td>{{ cat.parts_count }}</td></tr>
         {% empty %}
-        <tr><td colspan="3" style="text-align:center;color:#919191;">Нет категорий</td></tr>
+        <tr><td colspan="3" style="text-align:center;color:#919191;">{% trans "Нет категорий" %}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -212,12 +213,12 @@
   <!-- Brands -->
   <div data-panel-group="catalog" data-panel-key="brands" style="display:none;">
     <table class="ap-table">
-      <thead><tr><th>Бренд</th><th>Регион</th><th>Запчастей</th></tr></thead>
+      <thead><tr><th>{% trans "Бренд" %}</th><th>{% trans "Регион" %}</th><th>{% trans "Запчастей" %}</th></tr></thead>
       <tbody>
         {% for brand in brands %}
         <tr><td>{{ brand.name }}</td><td class="text-secondary">{{ brand.region|default:"—" }}</td><td>{{ brand.parts_count }}</td></tr>
         {% empty %}
-        <tr><td colspan="3" style="text-align:center;color:#919191;">Нет брендов</td></tr>
+        <tr><td colspan="3" style="text-align:center;color:#919191;">{% trans "Нет брендов" %}</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -228,11 +229,11 @@
 <!-- Block modal -->
 <div id="blockModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:9999;display:none;align-items:center;justify-content:center;">
   <div style="background:#242424;border-radius:14px;border:1px solid rgba(255,255,255,0.06);padding:24px;width:420px;max-width:90vw;">
-    <div style="font-size:15px;font-weight:700;color:#ECECEC;margin-bottom:16px;">Причина блокировки</div>
-    <textarea id="blockReason" class="ap-input" rows="3" placeholder="Укажите причину (поставщик увидит это сообщение)..." style="resize:vertical;margin-bottom:16px;"></textarea>
+    <div style="font-size:15px;font-weight:700;color:#ECECEC;margin-bottom:16px;">{% trans "Причина блокировки" %}</div>
+    <textarea id="blockReason" class="ap-input" rows="3" placeholder="{% trans "Укажите причину (поставщик увидит это сообщение)..." %}" style="resize:vertical;margin-bottom:16px;"></textarea>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
-      <button type="button" class="ap-btn ap-btn-ghost" onclick="hideBlockModal()">Отмена</button>
-      <button type="button" class="ap-btn ap-btn-warn" onclick="confirmBlock()">Заблокировать</button>
+      <button type="button" class="ap-btn ap-btn-ghost" onclick="hideBlockModal()">{% trans "Отмена" %}</button>
+      <button type="button" class="ap-btn ap-btn-warn" onclick="confirmBlock()">{% trans "Заблокировать" %}</button>
     </div>
   </div>
 </div>
@@ -251,7 +252,7 @@ function updateBulkBar() {
   var count = document.querySelectorAll('.part-cb:checked').length;
   var bar = document.getElementById('bulkBar');
   bar.style.display = count > 0 ? 'flex' : 'none';
-  document.getElementById('selectedCount').textContent = count + ' выбрано';
+  document.getElementById('selectedCount').textContent = count + '{% trans ' выбрано' %}';
 }
 function clearSelection() {
   document.querySelectorAll('.part-cb').forEach(function(cb) { cb.checked = false; });

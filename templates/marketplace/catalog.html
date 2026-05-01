@@ -1,100 +1,178 @@
-{% extends "marketplace/base.html" %}
-{% block title %}Каталог | Consolidator Parts{% endblock %}
-{% block content %}
-<section class="section-head">
-  <h1>Каталог запчастей</h1>
-</section>
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% trans "Каталог запчастей" %} | Consolidator Parts</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}"/>
+  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{min-height:100vh;background:#1A1A1A;color:#ECECEC;font-family:'Inter',sans-serif;font-size:14px;}
+    a{color:#64B5F6;text-decoration:none;}
+    a:hover{text-decoration:underline;}
 
-<form method="get" class="filters panel">
-  <input type="text" name="q" value="{{ query }}" placeholder="Поиск по названию или OEM..." />
-  <select name="brand">
-    <option value="">Все бренды</option>
-    {% for brand in brands %}
-      <option value="{{ brand.slug }}" {% if selected_brand == brand.slug %}selected{% endif %}>
-        {{ brand.name }}
-      </option>
-    {% endfor %}
-  </select>
-  <select name="category">
-    <option value="">Все категории</option>
-    {% for category in categories %}
-      <option value="{{ category.slug }}" {% if selected_category == category.slug %}selected{% endif %}>
-        {{ category.name }}
-      </option>
-    {% endfor %}
-  </select>
-  <select name="condition">
-    <option value="">Любое состояние</option>
-    <option value="oem" {% if selected_condition == 'oem' %}selected{% endif %}>OEM</option>
-    <option value="aftermarket" {% if selected_condition == 'aftermarket' %}selected{% endif %}>Aftermarket</option>
-    <option value="reman" {% if selected_condition == 'reman' %}selected{% endif %}>REMAN</option>
-  </select>
-  <input type="number" step="0.01" min="0" name="min_price" value="{{ selected_min_price }}" placeholder="Цена от" />
-  <input type="number" step="0.01" min="0" name="max_price" value="{{ selected_max_price }}" placeholder="Цена до" />
-  <select name="sort">
-    <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>Сначала новые</option>
-    <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>Цена по возрастанию</option>
-    <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>Цена по убыванию</option>
-    <option value="stock_desc" {% if selected_sort == 'stock_desc' %}selected{% endif %}>Больше на складе</option>
-  </select>
-  <label class="checkbox-inline">
-    <input type="checkbox" name="in_stock" value="1" {% if selected_in_stock %}checked{% endif %} />
-    Только в наличии
-  </label>
-  <button type="submit" class="btn">Применить</button>
-</form>
+    .pub-header{padding:18px 32px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:18px;}
+    .pub-logo{display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:800;font-size:16px;color:#ECECEC;text-decoration:none;}
+    .pub-logo svg{width:26px;height:26px;}
+    .pub-nav{display:flex;gap:18px;margin-left:auto;}
+    .pub-nav a{font-size:13px;color:#919191;text-decoration:none;}
+    .pub-nav a:hover{color:#ECECEC;text-decoration:none;}
+    .pub-nav a.active{color:#64B5F6;}
 
-<div class="grid">
-  {% for part in parts %}
-    <article class="card">
-      <img src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
-      <div class="card-body">
-        <div class="card-meta">
-          <span class="chip chip-soft">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
-          <span class="chip chip-soft">{{ part.category.name }}</span>
-          <span class="chip">{{ part.get_condition_display }}</span>
-        </div>
-        <p class="field-label">Part Number</p>
-        <h3 class="part-number"><a href="{% url 'part_detail' part.slug %}">{{ part.oem_number }}</a></h3>
-        <p class="field-label">Part Name</p>
-        <p class="part-name">{{ part.title }}</p>
-        <p class="price">${{ part.price }}</p>
-        <div class="card-actions">
-          <form method="post" action="{% url 'cart_add' part.id %}">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{% url 'catalog' %}" />
-            <button class="btn btn-secondary" type="submit">В корзину</button>
-          </form>
-          {% if part.id in compare_ids %}
-            <form method="post" action="{% url 'compare_remove' part.id %}">
+    .pub-main{max-width:1400px;margin:0 auto;padding:32px 24px 60px;}
+    .pub-title{font-family:'Golos Text',sans-serif;font-weight:800;font-size:32px;color:#ECECEC;margin-bottom:6px;}
+    .pub-subtitle{color:#919191;font-size:13px;margin-bottom:24px;}
+
+    .filters{background:#242424;border:1px solid rgba(255,255,255,0.04);border-radius:14px;padding:18px;display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;}
+    .filters input,.filters select{padding:9px 12px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;font-family:inherit;outline:none;}
+    .filters input:focus,.filters select:focus{border-color:rgba(100,181,246,0.5);}
+    .filters input[type="text"]{flex:1;min-width:240px;}
+    .filters input[type="number"]{width:120px;}
+    .filters select{min-width:140px;cursor:pointer;}
+    .filters .checkbox-inline{display:flex;align-items:center;gap:6px;color:#919191;font-size:12px;cursor:pointer;padding:0 8px;}
+    .filters .checkbox-inline input{width:16px;height:16px;accent-color:#64B5F6;}
+    .filters .btn{padding:9px 18px;background:#64B5F6;border:none;border-radius:8px;color:#1A1A1A;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+    .filters .btn:hover{background:#7BC5FA;}
+
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+    .pcard{background:#242424;border:1px solid rgba(255,255,255,0.04);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .15s,transform .1s;}
+    .pcard:hover{border-color:rgba(100,181,246,0.3);transform:translateY(-2px);}
+    .pcard img{width:100%;height:160px;object-fit:contain;background:#1A1A1A;padding:14px;}
+    .pcard-body{padding:16px;display:flex;flex-direction:column;gap:8px;flex:1;}
+    .pcard-meta{display:flex;flex-wrap:wrap;gap:4px;}
+    .chip{font-size:10px;padding:3px 8px;border-radius:5px;background:#2C2C2C;color:#919191;font-weight:500;letter-spacing:0.04em;}
+    .chip-blue{background:rgba(100,181,246,0.1);color:#64B5F6;}
+    .pcard-label{font-size:10px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;margin-top:4px;}
+    .pcard-oem{font-family:'Golos Text',sans-serif;font-weight:700;font-size:15px;color:#ECECEC;}
+    .pcard-oem a{color:#ECECEC;text-decoration:none;}
+    .pcard-oem a:hover{color:#64B5F6;text-decoration:none;}
+    .pcard-name{font-size:12px;color:#B5B5B5;line-height:1.4;}
+    .pcard-price{font-family:'Golos Text',sans-serif;font-weight:800;font-size:20px;color:#ECECEC;margin-top:4px;}
+    .pcard-actions{display:flex;gap:6px;margin-top:auto;padding-top:12px;}
+    .pcard-actions form{flex:1;display:inline;}
+    .pcard-actions button{width:100%;padding:8px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid rgba(100,181,246,0.25);background:transparent;color:#64B5F6;transition:all .12s;}
+    .pcard-actions button:hover{background:rgba(100,181,246,0.08);}
+    .pcard-actions button.cmp-active{background:rgba(232,92,13,0.08);color:#E85C0D;border-color:rgba(232,92,13,0.25);}
+
+    .pagination{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:32px;color:#919191;font-size:13px;}
+    .pagination a{padding:8px 14px;background:#242424;border:1px solid rgba(255,255,255,0.06);border-radius:8px;color:#ECECEC;text-decoration:none;font-size:12px;}
+    .pagination a:hover{border-color:rgba(100,181,246,0.3);text-decoration:none;}
+
+    .empty-state{text-align:center;padding:60px 20px;color:#919191;font-size:14px;background:#242424;border-radius:14px;border:1px solid rgba(255,255,255,0.04);}
+  </style>
+</head>
+<body>
+<header class="pub-header">
+  <a href="/" class="pub-logo">
+    <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="#64B5F6" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="#64B5F6"/></svg>
+    Consolidator
+  </a>
+  <nav class="pub-nav">
+    <a href="/">{% trans "Главная" %}</a>
+    <a href="/catalog/" class="active">{% trans "Каталог" %}</a>
+    <a href="/brands/">{% trans "Бренды" %}</a>
+    <a href="/categories/">{% trans "Категории" %}</a>
+    <a href="/comparison/">{% trans "Сравнение" %}</a>
+    <a href="/login/">{% trans "Войти" %}</a>
+    <a href="/register/">{% trans "Регистрация" %}</a>
+  </nav>
+  {% include "components/_lang_switcher.html" %}
+</header>
+
+<main class="pub-main">
+  <h1 class="pub-title">{% trans "Каталог запчастей" %}</h1>
+  <p class="pub-subtitle">{% trans "Поиск и сравнение OEM, aftermarket и REMAN запчастей по брендам и категориям" %}</p>
+
+  <form method="get" class="filters">
+    <input type="text" name="q" value="{{ query }}" placeholder="{% trans 'Поиск по названию или OEM...' %}" />
+    <select name="brand">
+      <option value="">{% trans "Все бренды" %}</option>
+      {% for brand in brands %}
+        <option value="{{ brand.slug }}" {% if selected_brand == brand.slug %}selected{% endif %}>{{ brand.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="category">
+      <option value="">{% trans "Все категории" %}</option>
+      {% for category in categories %}
+        <option value="{{ category.slug }}" {% if selected_category == category.slug %}selected{% endif %}>{{ category.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="condition">
+      <option value="">{% trans "Любое состояние" %}</option>
+      <option value="oem" {% if selected_condition == 'oem' %}selected{% endif %}>OEM</option>
+      <option value="aftermarket" {% if selected_condition == 'aftermarket' %}selected{% endif %}>Aftermarket</option>
+      <option value="reman" {% if selected_condition == 'reman' %}selected{% endif %}>REMAN</option>
+    </select>
+    <input type="number" step="0.01" min="0" name="min_price" value="{{ selected_min_price }}" placeholder="{% trans 'Цена от' %}" />
+    <input type="number" step="0.01" min="0" name="max_price" value="{{ selected_max_price }}" placeholder="{% trans 'Цена до' %}" />
+    <select name="sort">
+      <option value="newest" {% if selected_sort == 'newest' %}selected{% endif %}>{% trans "Сначала новые" %}</option>
+      <option value="price_asc" {% if selected_sort == 'price_asc' %}selected{% endif %}>{% trans "Цена по возрастанию" %}</option>
+      <option value="price_desc" {% if selected_sort == 'price_desc' %}selected{% endif %}>{% trans "Цена по убыванию" %}</option>
+      <option value="stock_desc" {% if selected_sort == 'stock_desc' %}selected{% endif %}>{% trans "Больше на складе" %}</option>
+    </select>
+    <label class="checkbox-inline">
+      <input type="checkbox" name="in_stock" value="1" {% if selected_in_stock %}checked{% endif %} />
+      {% trans "Только в наличии" %}
+    </label>
+    <button type="submit" class="btn">{% trans "Применить" %}</button>
+  </form>
+
+  <div class="grid">
+    {% for part in parts %}
+      <article class="pcard">
+        <img src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
+        <div class="pcard-body">
+          <div class="pcard-meta">
+            <span class="chip chip-blue">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
+            <span class="chip">{{ part.category.name }}</span>
+            <span class="chip">{{ part.get_condition_display }}</span>
+          </div>
+          <div class="pcard-label">OEM</div>
+          <h3 class="pcard-oem"><a href="{% url 'part_detail' part.slug %}">{{ part.oem_number }}</a></h3>
+          <p class="pcard-name">{{ part.title }}</p>
+          <p class="pcard-price">${{ part.price }}</p>
+          <div class="pcard-actions">
+            <form method="post" action="{% url 'cart_add' part.id %}">
               {% csrf_token %}
               <input type="hidden" name="next" value="{% url 'catalog' %}" />
-              <button class="btn" type="submit">Убрать</button>
+              <button type="submit">{% trans "В корзину" %}</button>
             </form>
-          {% else %}
-            <form method="post" action="{% url 'compare_add' part.id %}">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{% url 'catalog' %}" />
-              <button class="btn" type="submit">Сравнить</button>
-            </form>
-          {% endif %}
+            {% if part.id in compare_ids %}
+              <form method="post" action="{% url 'compare_remove' part.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'catalog' %}" />
+                <button type="submit" class="cmp-active">{% trans "Убрать" %}</button>
+              </form>
+            {% else %}
+              <form method="post" action="{% url 'compare_add' part.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'catalog' %}" />
+                <button type="submit">{% trans "Сравнить" %}</button>
+              </form>
+            {% endif %}
+          </div>
         </div>
-      </div>
-    </article>
-  {% empty %}
-    <p>Ничего не найдено.</p>
-  {% endfor %}
-</div>
-
-{% if page_obj and page_obj.paginator.num_pages > 1 %}
-  <div class="pagination">
-    {% if page_obj.has_previous %}
-      <a class="btn" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}">Назад</a>
-    {% endif %}
-    <span class="muted">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
-    {% if page_obj.has_next %}
-      <a class="btn" href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}">Далее</a>
-    {% endif %}
+      </article>
+    {% empty %}
+      <div class="empty-state" style="grid-column:1/-1;">{% trans "Ничего не найдено." %}</div>
+    {% endfor %}
   </div>
-{% endif %}
-{% endblock %}
+
+  {% if page_obj and page_obj.paginator.num_pages > 1 %}
+    <div class="pagination">
+      {% if page_obj.has_previous %}
+        <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.previous_page_number }}">← {% trans "Назад" %}</a>
+      {% endif %}
+      <span>{% trans "Страница" %} {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page_obj.next_page_number }}">{% trans "Далее" %} →</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</main>
+{% include "components/_cookie_banner.html" %}
+</body>
+</html>

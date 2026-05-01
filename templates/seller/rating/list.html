@@ -171,12 +171,12 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
       <div class="rat-score-desc">
         <div style="margin-bottom:10px;font-size:12px;color:#8A8A8A;line-height:1.6;">
           {% trans "Итоговый рейтинг складывается из двух компонентов:" %}<br>
-          <span style="color:#ECECEC;font-weight:600;">{% trans "Внешний (60%)" %}</span>{% trans "— отзывы клиентов, качество товара, соответствие описанию." %}<br>
-          <span style="color:#ECECEC;font-weight:600;">{% trans "Поведенческий (40%)" %}</span>{% trans "— соблюдение SLA, скорость ответа на запросы, отмены и возвраты." %}
+          <span style="color:#ECECEC;font-weight:600;">{% trans "Внешний (60%)" %}</span> {% trans "— отзывы клиентов, качество товара, соответствие описанию." %}<br>
+          <span style="color:#ECECEC;font-weight:600;">{% trans "Поведенческий (40%)" %}</span> {% trans "— соблюдение SLA, скорость ответа на запросы, отмены и возвраты." %}
         </div>
         <div style="font-size:11px;color:#6A6A6A;line-height:1.7;">
           <span style="color:#8A8A8A;">{% trans "Формула:" %}</span> <span style="color:#ECECEC;">{% trans "Внешний × 0.6 + Поведенческий × 0.4" %}</span><br>
-          <span style="color:#64B5F6;">≥ 80</span>{% trans "— Надёжный &nbsp;·&nbsp;" %} <span style="color:#FF8C42;">60–79</span>{% trans "— Песочница &nbsp;·&nbsp;" %} <span style="color:#E05555;">&lt; 60</span>{% trans "— Рисковый" %}
+          <span style="color:#64B5F6;">≥ 80</span> {% trans "— Надёжный &nbsp;·&nbsp;" %} <span style="color:#FF8C42;">60–79</span> {% trans "— Песочница &nbsp;·&nbsp;" %} <span style="color:#E05555;">&lt; 60</span> {% trans "— Рисковый" %}
         </div>
       </div>
     </div>
@@ -216,7 +216,7 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
     <div class="rat-metric-val" style="color:#ECECEC;">{{ sla_pct }}%</div>
     <div class="rat-metric-hint" style="color:#6A6A6A;">{% trans "норматив 90%" %}</div>
     <div class="rat-trend {% if sla_trend > 0 %}rat-trend--up{% elif sla_trend < 0 %}rat-trend--down{% else %}rat-trend--flat{% endif %}">
-      {% if sla_trend > 0 %}+{% endif %}{{ sla_trend }}% {% trans "за 30д" %}
+      {% if sla_trend > 0 %}+{% endif %}{{ sla_trend }}{% trans "% за 30д" %}
     </div>
   </a>
   <a class="rat-metric" href="/seller/requests/">
@@ -224,18 +224,18 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
     <div class="rat-metric-val">{{ conversion_pct }}%</div>
     <div class="rat-metric-hint" style="color:#6A6A6A;">{% trans "целевая &gt; 50%" %}</div>
     <div class="rat-trend {% if conv_trend > 0 %}rat-trend--up{% elif conv_trend < 0 %}rat-trend--down{% else %}rat-trend--flat{% endif %}">
-      {% if conv_trend > 0 %}+{% endif %}{{ conv_trend }}% {% trans "за 30д" %}
+      {% if conv_trend > 0 %}+{% endif %}{{ conv_trend }}{% trans "% за 30д" %}
     </div>
   </a>
   <a class="rat-metric" href="/seller/claims/">
     <div class="rat-metric-label">{% trans "Открытые рекламации" %}</div>
     <div class="rat-metric-val" style="color:#ECECEC;">{{ open_claims }}</div>
-    <div class="rat-metric-hint" style="color:#FF8C42;">{% blocktrans with total=total_claims %}всего {{ total }}{% endblocktrans %}</div>
+    <div class="rat-metric-hint" style="color:#FF8C42;">{% trans "всего" %} {{ total_claims }}</div>
   </a>
   <a class="rat-metric" href="/seller/orders/?status=cancelled">
     <div class="rat-metric-label">{% trans "Отмены за 30 дней" %}</div>
     <div class="rat-metric-val" style="color:{% if cancelled_30d > 0 %}#FF8C42{% else %}#ECECEC{% endif %};">{{ cancelled_30d }}</div>
-    <div class="rat-metric-hint" style="color:#FF8C42;">{% blocktrans with total=sla_breaches_total %}нарушений SLA: {{ total }}{% endblocktrans %}</div>
+    <div class="rat-metric-hint" style="color:#FF8C42;">{% trans "нарушений SLA:" %} {{ sla_breaches_total }}</div>
   </a>
 </div>
 

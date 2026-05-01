@@ -1,28 +1,29 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Платёжный агент — Дашборд{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Платёжный агент — Дашборд" %}{% endblock %}
 
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
   <a class="op-stat op-stat-warn" href="/operator/payments/escrow/">
     <div class="op-stat-value">6</div>
-    <div class="op-stat-label">Ожидают оплаты</div>
+    <div class="op-stat-label">{% trans "Ожидают оплаты" %}</div>
   </a>
-  <div class="op-stat" id="pay-stat-processing" onclick="filterPayQueue('В обработке')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
+  <div class="op-stat" id="pay-stat-processing" onclick="filterPayQueue('{% trans "В обработке" %}')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">3</div>
-    <div class="op-stat-label">В обработке</div>
+    <div class="op-stat-label">{% trans "В обработке" %}</div>
   </div>
   <a class="op-stat" href="/operator/payments/analytics/">
     <div class="op-stat-value">87</div>
-    <div class="op-stat-label">Выполнено за месяц</div>
+    <div class="op-stat-label">{% trans "Выполнено за месяц" %}</div>
   </a>
   <a class="op-stat" href="/operator/payments/analytics/">
     <div class="op-stat-value">$428K</div>
-    <div class="op-stat-label">Общая сумма</div>
+    <div class="op-stat-label">{% trans "Общая сумма" %}</div>
   </a>
-  <div class="op-stat op-stat-warn" id="pay-stat-overdue" onclick="filterPayQueue('Просрочено')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
+  <div class="op-stat op-stat-warn" id="pay-stat-overdue" onclick="filterPayQueue('{% trans "Просрочено" %}')" style="cursor:pointer;transition:border-color .15s,background .15s,transform .1s;">
     <div class="op-stat-value">1</div>
-    <div class="op-stat-label">Просрочено</div>
+    <div class="op-stat-label">{% trans "Просрочено" %}</div>
   </div>
 </div>
 
@@ -30,78 +31,78 @@
   <!-- Payment queue -->
   <div class="op-card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <div class="op-section-title">Очередь платежей</div>
-      <a href="/operator/payments/invoices/" class="op-btn op-btn-primary">Все счета</a>
+      <div class="op-section-title">{% trans "Очередь платежей" %}</div>
+      <a href="/operator/payments/invoices/" class="op-btn op-btn-primary">{% trans "Все счета" %}</a>
     </div>
     <table class="op-table">
       <thead>
         <tr>
-          <th>Счёт</th>
-          <th>Заказ</th>
-          <th>Покупатель</th>
-          <th>Поставщик</th>
-          <th>Сумма</th>
-          <th>Тип</th>
-          <th>Срок</th>
-          <th>Статус</th>
-          <th>Действия</th>
+          <th>{% trans "Счёт" %}</th>
+          <th>{% trans "Заказ" %}</th>
+          <th>{% trans "Покупатель" %}</th>
+          <th>{% trans "Поставщик" %}</th>
+          <th>{% trans "Сумма" %}</th>
+          <th>{% trans "Тип" %}</th>
+          <th>{% trans "Срок" %}</th>
+          <th>{% trans "Статус" %}</th>
+          <th>{% trans "Действия" %}</th>
         </tr>
       </thead>
       <tbody>
-        <tr data-status="Ожидает" onclick="toggleRowDetail(this)">
+        <tr data-status="{% trans 'Ожидает' %}" onclick="opToast('{% trans "Платёж INV-8841: $5,520 аванс, ожидает" %}')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8841</td>
           <td>ORD-4521</td>
           <td class="text-secondary">#1042</td>
           <td class="text-secondary">#2087</td>
           <td style="font-family:'Golos Text',sans-serif;">$5,520</td>
-          <td><span class="op-badge op-badge-gray">Аванс</span></td>
-          <td style="font-family:'Golos Text',sans-serif;">27 мар</td>
-          <td><span class="op-badge op-badge-orange">Ожидает</span></td>
-          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();confirmQueuePayment(this,'INV-8841')">Подтвердить</button></td>
+          <td><span class="op-badge op-badge-gray">{% trans "Аванс" %}</span></td>
+          <td style="font-family:'Golos Text',sans-serif;">{% trans "27 мар" %}</td>
+          <td><span class="op-badge op-badge-orange">{% trans "Ожидает" %}</span></td>
+          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Подтверждено" %}', 2000, 'success')">{% trans "Подтвердить" %}</button></td>
         </tr>
-        <tr data-status="В обработке" onclick="toggleRowDetail(this)">
+        <tr data-status="{% trans 'В обработке' %}" onclick="opToast('{% trans "Платёж INV-8839: $12,880 основная оплата, в обработке" %}')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8839</td>
           <td>ORD-4518</td>
           <td class="text-secondary">#1038</td>
           <td class="text-secondary">#2091</td>
           <td style="font-family:'Golos Text',sans-serif;">$12,880</td>
-          <td><span class="op-badge op-badge-gray">Основная</span></td>
-          <td style="font-family:'Golos Text',sans-serif;">25 мар</td>
-          <td><span class="op-badge op-badge-gray">В обработке</span></td>
-          <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();togglePayDetail(this.closest('tr'))">Детали</button></td>
+          <td><span class="op-badge op-badge-gray">{% trans "Основная" %}</span></td>
+          <td style="font-family:'Golos Text',sans-serif;">{% trans "25 мар" %}</td>
+          <td><span class="op-badge op-badge-gray">{% trans "В обработке" %}</span></td>
+          <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Детали открыты" %}', 2000, 'info')">{% trans "Детали" %}</button></td>
         </tr>
-        <tr data-status="Ожидает" onclick="toggleRowDetail(this)">
+        <tr data-status="{% trans 'Ожидает' %}" onclick="opToast('{% trans "Платёж INV-8837: $1,860 финальная, ожидает" %}')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8837</td>
           <td>ORD-4515</td>
           <td class="text-secondary">#1051</td>
           <td class="text-secondary">#2075</td>
           <td style="font-family:'Golos Text',sans-serif;">$1,860</td>
-          <td><span class="op-badge op-badge-gray">Финальная</span></td>
-          <td style="font-family:'Golos Text',sans-serif;">28 мар</td>
-          <td><span class="op-badge op-badge-orange">Ожидает</span></td>
-          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();confirmQueuePayment(this,'INV-8837')">Подтвердить</button></td>
+          <td><span class="op-badge op-badge-gray">{% trans "Финальная" %}</span></td>
+          <td style="font-family:'Golos Text',sans-serif;">{% trans "28 мар" %}</td>
+          <td><span class="op-badge op-badge-orange">{% trans "Ожидает" %}</span></td>
+          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Подтверждено" %}', 2000, 'success')">{% trans "Подтвердить" %}</button></td>
         </tr>
-        <tr data-status="Просрочено" onclick="toggleRowDetail(this)" style="border-left:2px solid #E85C0D;">
+        <tr data-status="{% trans 'Просрочено' %}" onclick="opToast('{% trans "Платёж INV-8835: $8,200 аванс, просрочено" %}')" style="border-left:2px solid #E85C0D;">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;color:#E85C0D;">INV-8835</td>
           <td>ORD-4512</td>
           <td class="text-secondary">#1029</td>
           <td class="text-secondary">#2063</td>
           <td style="font-family:'Golos Text',sans-serif;">$8,200</td>
-          <td><span class="op-badge op-badge-gray">Аванс</span></td>
-          <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">22 мар</td>
-          <td><span class="op-badge op-badge-orange">Просрочено</span></td>
-          <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();escalateQueuePayment(this,'INV-8835')">Эскалировать</button></td>
+          <td><span class="op-badge op-badge-gray">{% trans "Аванс" %}</span></td>
+          <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">{% trans "22 мар" %}</td>
+          <td><span class="op-badge op-badge-orange">{% trans "Просрочено" %}</span></td>
+          <td><button class="op-btn op-btn-warn" onclick="event.stopPropagation();opToast('{% trans "Запрос на доработку отправлен" %}', 2000, 'warn')">{% trans "Эскалировать" %}</button></td>
         </tr>
-        <tr data-status="Ожидает" onclick="toggleRowDetail(this)">
+        <tr data-status="{% trans 'Ожидает' %}" onclick="opToast('{% trans "Платёж INV-8833: $3,400 основная, ожидает" %}')">
           <td style="font-family:'Golos Text',sans-serif;font-weight:700;">INV-8833</td>
           <td>ORD-4508</td>
           <td class="text-secondary">#1055</td>
           <td class="text-secondary">#2044</td>
           <td style="font-family:'Golos Text',sans-serif;">$3,400</td>
-          <td><span class="op-badge op-badge-gray">Основная</span></td>
-          <td style="font-family:'Golos Text',sans-serif;">30 мар</td>
-          <td><span class="op-badge op-badge-orange">Ожидает</span></td>
-          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();confirmQueuePayment(this,'INV-8833')">Подтвердить</button></td>
+          <td><span class="op-badge op-badge-gray">{% trans "Основная" %}</span></td>
+          <td style="font-family:'Golos Text',sans-serif;">{% trans "30 мар" %}</td>
+          <td><span class="op-badge op-badge-orange">{% trans "Ожидает" %}</span></td>
+          <td><button class="op-btn op-btn-primary" onclick="event.stopPropagation();opToast('{% trans "Подтверждено" %}', 2000, 'success')">{% trans "Подтвердить" %}</button></td>
         </tr>
       </tbody>
     </table>
@@ -113,41 +114,41 @@
     <div class="op-card">
       <div class="op-section-title" style="display:flex;align-items:center;gap:8px;">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="1.3" stroke-linecap="round"><rect x="2" y="4" width="12" height="8.5" rx="1.5"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
-        Эскроу
+        {% trans "Эскроу" %}
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div style="font-size:13px;color:#919191;">Удержано</div>
+          <div style="font-size:13px;color:#919191;">{% trans "Удержано" %}</div>
           <div style="font-size:16px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$142,800</div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div style="font-size:13px;color:#919191;">Выпущено (мес.)</div>
+          <div style="font-size:13px;color:#919191;">{% trans "Выпущено (мес.)" %}</div>
           <div style="font-size:16px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;">$285,200</div>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div style="font-size:13px;color:#919191;">Ожидает решения</div>
+          <div style="font-size:13px;color:#919191;">{% trans "Ожидает решения" %}</div>
           <div style="font-size:16px;font-weight:800;color:#E85C0D;font-family:'Golos Text',sans-serif;">$18,400</div>
         </div>
       </div>
-      <a href="/operator/payments/escrow/" class="op-btn op-btn-primary" style="width:100%;justify-content:center;margin-top:14px;">Управление эскроу</a>
+      <a href="/operator/payments/escrow/" class="op-btn op-btn-primary" style="width:100%;justify-content:center;margin-top:14px;">{% trans "Управление эскроу" %}</a>
     </div>
 
     <!-- Reconciliation alerts -->
     <div class="op-card">
       <div class="op-section-title" style="display:flex;align-items:center;gap:8px;">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#E85C0D" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v5M8 11v.5"/><circle cx="8" cy="8" r="7"/></svg>
-        Алерты сверки
+        {% trans "Алерты сверки" %}
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
         <div class="op-card-elevated" style="padding:12px 14px;">
-          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Расхождение суммы</div>
-          <div style="font-size:12px;color:#919191;margin-top:2px;">ORD-4501 - разница $240</div>
-          <button class="op-btn op-btn-ghost" style="margin-top:8px;font-size:11px;" onclick="resolveDiscrepancy(this)">Разобрать</button>
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "Расхождение суммы" %}</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">{% trans "ORD-4501 - разница $240" %}</div>
+          <button class="op-btn op-btn-ghost" style="margin-top:8px;font-size:11px;" onclick="resolveDiscrepancy(this)">{% trans "Разобрать" %}</button>
         </div>
         <div class="op-card-elevated" style="padding:12px 14px;">
-          <div style="font-size:13px;font-weight:600;color:#ECECEC;">Дублирующий платёж</div>
-          <div style="font-size:12px;color:#919191;margin-top:2px;">INV-8820 - возможный дубль</div>
-          <button class="op-btn op-btn-ghost" style="margin-top:8px;font-size:11px;" onclick="checkDuplicate(this)">Проверить</button>
+          <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "Дублирующий платёж" %}</div>
+          <div style="font-size:12px;color:#919191;margin-top:2px;">{% trans "INV-8820 - возможный дубль" %}</div>
+          <button class="op-btn op-btn-ghost" style="margin-top:8px;font-size:11px;" onclick="checkDuplicate(this)">{% trans "Проверить" %}</button>
         </div>
       </div>
     </div>
@@ -158,30 +159,6 @@
 {% block extra_js %}
 <script>
 (function(){
-  window.toggleRowDetail = function(tr) {
-    var next = tr.nextElementSibling;
-    if (next && next.classList.contains('row-detail-expanded')) {
-      next.remove(); tr.classList.remove('row-detail-active'); return;
-    }
-    tr.closest('tbody').querySelectorAll('.row-detail-expanded').forEach(function(r){ r.remove(); });
-    tr.closest('tbody').querySelectorAll('.row-detail-active').forEach(function(r){ r.classList.remove('row-detail-active'); });
-    var ths = Array.from(tr.closest('table').querySelectorAll('thead th'));
-    var tds = Array.from(tr.querySelectorAll('td'));
-    var items = [];
-    tds.forEach(function(td, i) {
-      var h = ths[i] ? ths[i].textContent.trim() : '';
-      if (!h || td.querySelector('button') || td.querySelector('.op-progress')) return;
-      var val = td.textContent.trim();
-      if (!val) return;
-      items.push('<div><div style="font-size:11px;color:#5E5E5E;margin-bottom:3px;">' + h + '</div><div style="font-size:13px;color:#ECECEC;">' + val + '</div></div>');
-    });
-    var detail = document.createElement('tr');
-    detail.className = 'row-detail-expanded';
-    detail.innerHTML = '<td colspan="' + tds.length + '" style="padding:12px 16px;background:rgba(100,181,246,0.03);border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;gap:20px;flex-wrap:wrap;">' + items.join('') + '</div></td>';
-    tr.classList.add('row-detail-active');
-    tr.parentElement.insertBefore(detail, tr.nextSibling);
-  };
-
   var activeStatus = '';
   window.filterPayQueue = function(status) {
     activeStatus = (activeStatus === status) ? '' : status;
@@ -189,8 +166,8 @@
     document.querySelectorAll('[id^="pay-stat-"]').forEach(function(el){
       el.style.borderColor = inactive; el.style.background = '';
     });
-    if (activeStatus === 'В обработке') document.getElementById('pay-stat-processing').style.borderColor = active;
-    if (activeStatus === 'Просрочено') { document.getElementById('pay-stat-overdue').style.borderColor = active; document.getElementById('pay-stat-overdue').style.borderColor = 'rgba(232,92,13,0.5)'; }
+    if (activeStatus === '{% trans 'В обработке' %}') document.getElementById('pay-stat-processing').style.borderColor = active;
+    if (activeStatus === '{% trans 'Просрочено' %}') { document.getElementById('pay-stat-overdue').style.borderColor = active; document.getElementById('pay-stat-overdue').style.borderColor = 'rgba(232,92,13,0.5)'; }
     document.querySelectorAll('.op-table tbody tr[data-status]').forEach(function(row) {
       row.style.display = (!activeStatus || row.getAttribute('data-status') === activeStatus) ? '' : 'none';
     });
@@ -204,9 +181,9 @@ function resolveDiscrepancy(btn) {
   var div = document.createElement('div');
   div.className = 'inline-resolve';
   div.style.cssText = 'margin-top:10px;display:flex;gap:10px;align-items:flex-start;';
-  div.innerHTML = '<select style="padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;"><option>Ошибка суммы</option><option>Банковская комиссия</option><option>Курсовая разница</option><option>Прочее</option></select>'
-    + '<textarea placeholder="Комментарий..." rows="2" style="flex:1;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;font-family:inherit;"></textarea>'
-    + '<button onclick="closeDiscrepancy(this)" style="padding:8px 14px;border-radius:8px;background:rgba(102,187,106,0.12);color:#66BB6A;border:1px solid rgba(102,187,106,0.2);font-size:12px;cursor:pointer;white-space:nowrap;">✓ Закрыть</button>';
+  div.innerHTML = '{% trans "<select style=\"padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;\"><option>Ошибка суммы</option><option>Банковская комиссия</option><option>Курсовая разница</option><option>Прочее</option></select>" %}'
+    + '{% trans "<textarea placeholder=\"Комментарий...\" rows=\"2\" style=\"flex:1;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;font-family:inherit;\"></textarea>" %}'
+    + '{% trans "<button onclick=\"closeDiscrepancy(this)\" style=\"padding:8px 14px;border-radius:8px;background:rgba(102,187,106,0.12);color:#66BB6A;border:1px solid rgba(102,187,106,0.2);font-size:12px;cursor:pointer;white-space:nowrap;\">✓ Закрыть</button>" %}';
   card.appendChild(div);
 }
 function closeDiscrepancy(btn) {
@@ -214,54 +191,8 @@ function closeDiscrepancy(btn) {
   var card = div.parentElement;
   div.remove();
   if (card) card.style.opacity = '0.5';
-  opToast('Расхождение закрыто', 2000, 'success');
+  opToast('{% trans 'Расхождение закрыто' %}', 2000, 'success');
 }
-function confirmQueuePayment(btn, invId) {
-  var row = btn.closest('tr');
-  var badge = row.querySelector('.op-badge.op-badge-orange');
-  if (badge) { badge.className = 'op-badge op-badge-gray'; badge.textContent = 'Оплачено'; }
-  row.dataset.status = 'Оплачено';
-  btn.closest('div').innerHTML = '<button class="op-btn op-btn-ghost" onclick="event.stopPropagation();togglePayDetail(this.closest(\'tr\'))">Детали</button>';
-  opToast(invId + ' — оплата подтверждена', 2000, 'success');
-}
-
-function togglePayDetail(row) {
-  var next = row.nextElementSibling;
-  if (next && next.classList.contains('pay-detail-row')) {
-    next.style.display = next.style.display === 'none' ? 'table-row' : 'none';
-    return;
-  }
-  var invId = row.querySelector('td:first-child + td').textContent;
-  var detail = document.createElement('tr');
-  detail.className = 'pay-detail-row';
-  detail.innerHTML = '<td colspan="9" style="padding:12px 16px;background:#1F1F1F;font-size:12px;">'
-    + '<div style="display:flex;gap:24px;">'
-    + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Банк</div><div style="color:#ECECEC;">SWIFT: CITIRUSX · Ситибанк</div></div>'
-    + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Реквизиты</div><div style="color:#ECECEC;">Счёт: ****4821</div></div>'
-    + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Дата операции</div><div style="color:#ECECEC;">25 мар 09:42</div></div>'
-    + '<div><div style="color:#5E5E5E;margin-bottom:2px;">Референс</div><div style="color:#ECECEC;">' + invId + '-PAY</div></div>'
-    + '</div></td>';
-  row.parentElement.insertBefore(detail, row.nextSibling);
-}
-
-function escalateQueuePayment(btn, invId) {
-  var row = btn.closest('tr');
-  var next = row.nextElementSibling;
-  if (next && next.classList.contains('pay-escalate-row')) { next.remove(); return; }
-  var detail = document.createElement('tr');
-  detail.className = 'pay-escalate-row';
-  detail.innerHTML = '<td colspan="9" style="padding:12px 16px;background:#1F1F1F;">'
-    + '<div style="display:flex;align-items:center;gap:10px;">'
-    + '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#E85C0D" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v5M8 11v.5"/><circle cx="8" cy="8" r="7"/></svg>'
-    + '<span style="font-size:13px;font-weight:600;color:#E85C0D;">Платёж ' + invId + ' эскалирован</span>'
-    + '<input type="text" class="op-input" placeholder="Причина эскалации..." style="flex:1;margin-left:8px;" onkeydown="if(event.key===\'Enter\'&&this.value.trim()){opToast(\'Эскалация: \'+this.value,2000,\'warn\');this.closest(\'tr\').remove();}" />'
-    + '</div></td>';
-  row.parentElement.insertBefore(detail, row.nextSibling);
-  btn.disabled = true; btn.style.opacity = '0.5';
-  detail.querySelector('input').focus();
-  opToast(invId + ' — запрос эскалирован', 2000, 'warn');
-}
-
 function checkDuplicate(btn) {
   var card = btn.closest('.op-card-elevated') || btn.parentElement;
   var existing = card.querySelector('.inline-resolve');
@@ -269,9 +200,9 @@ function checkDuplicate(btn) {
   var div = document.createElement('div');
   div.className = 'inline-resolve';
   div.style.cssText = 'margin-top:10px;display:flex;gap:8px;align-items:center;';
-  div.innerHTML = '<span style="font-size:12px;color:#919191;margin-right:8px;">Это дубликат?</span>'
-    + '<button onclick="confirmDuplicate(this)" style="padding:7px 14px;border-radius:8px;background:rgba(224,85,85,0.12);color:#E05555;border:1px solid rgba(224,85,85,0.2);font-size:12px;cursor:pointer;">Да, дубликат</button>'
-    + '<button onclick="notDuplicate(this)" style="padding:7px 14px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:12px;cursor:pointer;">Разные платежи</button>';
+  div.innerHTML = '{% trans "<span style=\"font-size:12px;color:#919191;margin-right:8px;\">Это дубликат?</span>" %}'
+    + '{% trans "<button onclick=\"confirmDuplicate(this)\" style=\"padding:7px 14px;border-radius:8px;background:rgba(224,85,85,0.12);color:#E05555;border:1px solid rgba(224,85,85,0.2);font-size:12px;cursor:pointer;\">Да, дубликат</button>" %}'
+    + '{% trans "<button onclick=\"notDuplicate(this)\" style=\"padding:7px 14px;border-radius:8px;background:rgba(255,255,255,0.04);color:#919191;border:1px solid rgba(255,255,255,0.08);font-size:12px;cursor:pointer;\">Разные платежи</button>" %}';
   card.appendChild(div);
 }
 function confirmDuplicate(btn) {
@@ -279,11 +210,11 @@ function confirmDuplicate(btn) {
   var card = div.parentElement;
   div.remove();
   if (card) { card.style.opacity = '0.4'; card.style.textDecoration = 'line-through'; }
-  opToast('Дубликат подтверждён, платёж отмечен', 2000, 'warn');
+  opToast('{% trans 'Дубликат подтверждён, платёж отмечен' %}', 2000, 'warn');
 }
 function notDuplicate(btn) {
   btn.closest('.inline-resolve').remove();
-  opToast('Платёж помечен как уникальный', 1500, 'success');
+  opToast('{% trans 'Платёж помечен как уникальный' %}', 1500, 'success');
 }
 </script>
 {% endblock %}

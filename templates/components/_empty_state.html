@@ -1,0 +1,9 @@
+{# Reusable empty state. Pass: icon (emoji or text), title, text, action_url, action_label #}
+<div class="empty-state" style="text-align:center;padding:60px 24px;background:#242424;border:1px dashed rgba(255,255,255,0.08);border-radius:14px;">
+  <div style="font-size:42px;margin-bottom:12px;opacity:0.5;">{{ empty_icon|default:"📭" }}</div>
+  <div style="font-family:'Golos Text',sans-serif;font-weight:700;font-size:16px;color:#ECECEC;margin-bottom:6px;">{{ empty_title|default:"Пока ничего нет" }}</div>
+  <div style="font-size:13px;color:#919191;max-width:380px;margin:0 auto 20px;line-height:1.5;">{{ empty_text|default:"Здесь появятся данные, когда они будут." }}</div>
+  {% if empty_action_url %}
+    <a href="{{ empty_action_url }}" style="display:inline-block;padding:9px 20px;background:#64B5F6;color:#1A1A1A;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">{{ empty_action_label|default:"Создать" }}</a>
+  {% endif %}
+</div>

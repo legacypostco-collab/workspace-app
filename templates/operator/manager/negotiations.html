@@ -1,36 +1,37 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Менеджер — Воронка сделок{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Менеджер — Воронка сделок" %}{% endblock %}
 
 {% block content %}
 <div class="op-stats">
   <a class="op-stat" href="/operator/manager/negotiations/" id="neg-stat-all" style="border-color:rgba(100,181,246,0.35);">
     <div class="op-stat-value">18</div>
-    <div class="op-stat-label">В воронке</div>
+    <div class="op-stat-label">{% trans "В воронке" %}</div>
   </a>
   <div class="op-stat" id="neg-stat-active" onclick="dlTab('active')" style="cursor:pointer;">
     <div class="op-stat-value">5</div>
-    <div class="op-stat-label">Переторжка</div>
+    <div class="op-stat-label">{% trans "Переторжка" %}</div>
   </div>
   <div class="op-stat op-stat-warn" id="neg-stat-risk" onclick="dlTab('risk')" style="cursor:pointer;">
     <div class="op-stat-value">4</div>
-    <div class="op-stat-label">Под угрозой</div>
+    <div class="op-stat-label">{% trans "Под угрозой" %}</div>
   </div>
   <div class="op-stat" id="neg-stat-lost" onclick="dlTab('lost')" style="cursor:pointer;">
     <div class="op-stat-value">3</div>
-    <div class="op-stat-label">Сорвались</div>
+    <div class="op-stat-label">{% trans "Сорвались" %}</div>
   </div>
   <div class="op-stat" id="neg-stat-conv" onclick="dlTab('won')" style="cursor:pointer;">
     <div class="op-stat-value">72%</div>
-    <div class="op-stat-label">Конверсия</div>
+    <div class="op-stat-label">{% trans "Конверсия" %}</div>
   </div>
 </div>
 
 <!-- Tabs -->
 <div style="display:flex;gap:2px;background:#1F1F1F;border-radius:10px;padding:3px;border:1px solid rgba(255,255,255,0.055);margin-bottom:16px;width:fit-content;">
-  <button class="dl-tab active" onclick="dlTab('risk')">Под угрозой <span style="font-size:10px;background:rgba(232,92,13,0.15);color:#E85C0D;padding:2px 7px;border-radius:10px;margin-left:4px;font-weight:700;">4</span></button>
-  <button class="dl-tab" onclick="dlTab('active')">Активные переторжки</button>
-  <button class="dl-tab" onclick="dlTab('lost')">Сорвавшиеся</button>
-  <button class="dl-tab" onclick="dlTab('won')">Закрытые</button>
+  <button class="dl-tab active" onclick="dlTab('risk')">{% trans "Под угрозой" %} <span style="font-size:10px;background:rgba(232,92,13,0.15);color:#E85C0D;padding:2px 7px;border-radius:10px;margin-left:4px;font-weight:700;">4</span></button>
+  <button class="dl-tab" onclick="dlTab('active')">{% trans "Активные переторжки" %}</button>
+  <button class="dl-tab" onclick="dlTab('lost')">{% trans "Сорвавшиеся" %}</button>
+  <button class="dl-tab" onclick="dlTab('won')">{% trans "Закрытые" %}</button>
 </div>
 
 <!-- Panel: At risk -->
@@ -40,37 +41,37 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
       <div>
         <div style="font-size:15px;font-weight:700;color:#ECECEC;">RFQ-2026-0087 · Fleet Corp</div>
-        <div style="font-size:12px;color:#919191;margin-top:2px;">Гидроцилиндры CAT 320D · 8 позиций · $11 200</div>
+        <div style="font-size:12px;color:#919191;margin-top:2px;">{% trans "Гидроцилиндры CAT 320D · 8 позиций · $11 200" %}</div>
       </div>
-      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">3-й раунд</span>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">{% trans "3-й раунд" %}</span>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Покупатель просит</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Покупатель просит" %}</div>
         <div style="font-size:14px;font-weight:700;color:#E85C0D;">-7%</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Поставщик даёт</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Поставщик даёт" %}</div>
         <div style="font-size:14px;font-weight:700;color:#ECECEC;">-4%</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Разрыв</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Разрыв" %}</div>
         <div style="font-size:14px;font-weight:700;color:#E85C0D;">$336</div>
       </div>
     </div>
 
     <div style="background:#1F1F1F;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
-      <div style="font-size:11px;color:#6A6A6A;margin-bottom:4px;">Хронология</div>
+      <div style="font-size:11px;color:#6A6A6A;margin-bottom:4px;">{% trans "Хронология" %}</div>
       <div style="font-size:12px;color:#919191;line-height:1.8;">
-        <span style="color:#64B5F6;">22.03</span> Покупатель запросил -7% → <span style="color:#64B5F6;">22.03</span> Поставщик предложил -3% → <span style="color:#64B5F6;">23.03</span> Покупатель настаивает -7% → <span style="color:#E85C0D;">24.03</span> Поставщик поднял до -4% · <strong style="color:#ECECEC;">Тишина 4 дня</strong>
+        <span style="color:#64B5F6;">22.03</span> {% trans "Покупатель запросил -7% →" %} <span style="color:#64B5F6;">22.03</span> {% trans "Поставщик предложил -3% →" %} <span style="color:#64B5F6;">23.03</span> {% trans "Покупатель настаивает -7% →" %} <span style="color:#E85C0D;">24.03</span> {% trans "Поставщик поднял до -4% ·" %} <strong style="color:#ECECEC;">{% trans "Тишина 4 дня" %}</strong>
       </div>
     </div>
 
     <div style="display:flex;gap:8px;">
-      <button onclick="dealAction(this,'call_buyer')" class="dl-btn dl-btn--primary">Позвонить покупателю</button>
-      <button onclick="dealAction(this,'call_seller')" class="dl-btn dl-btn--secondary">Позвонить поставщику</button>
-      <button onclick="dealAction(this,'platform_discount')" class="dl-btn dl-btn--accent">Предложить бонус платформы</button>
+      <button onclick="dealAction(this,'call_buyer')" class="dl-btn dl-btn--primary">{% trans "Позвонить покупателю" %}</button>
+      <button onclick="dealAction(this,'call_seller')" class="dl-btn dl-btn--secondary">{% trans "Позвонить поставщику" %}</button>
+      <button onclick="dealAction(this,'platform_discount')" class="dl-btn dl-btn--accent">{% trans "Предложить бонус платформы" %}</button>
     </div>
   </div>
 
@@ -78,34 +79,34 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
       <div>
         <div style="font-size:15px;font-weight:700;color:#ECECEC;">RFQ-2026-0082 · Mining Solutions</div>
-        <div style="font-size:12px;color:#919191;margin-top:2px;">Турбина 7C-2297 · 1 позиция · $1 250</div>
+        <div style="font-size:12px;color:#919191;margin-top:2px;">{% trans "Турбина 7C-2297 · 1 позиция · $1 250" %}</div>
       </div>
-      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">Без ответа 5 дн.</span>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">{% trans "Без ответа 5 дн." %}</span>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Покупатель просит</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Покупатель просит" %}</div>
         <div style="font-size:14px;font-weight:700;color:#E85C0D;">-10%</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Поставщик</div>
-        <div style="font-size:14px;font-weight:700;color:#919191;">Не ответил</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Поставщик" %}</div>
+        <div style="font-size:14px;font-weight:700;color:#919191;">{% trans "Не ответил" %}</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Сумма сделки</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Сумма сделки" %}</div>
         <div style="font-size:14px;font-weight:700;color:#ECECEC;">$1 250</div>
       </div>
     </div>
 
     <div style="background:#1F1F1F;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
-      <div style="font-size:11px;color:#6A6A6A;margin-bottom:4px;">Риск</div>
-      <div style="font-size:12px;color:#E85C0D;">Поставщик не отвечает 5 дней. Покупатель может уйти к конкуренту.</div>
+      <div style="font-size:11px;color:#6A6A6A;margin-bottom:4px;">{% trans "Риск" %}</div>
+      <div style="font-size:12px;color:#E85C0D;">{% trans "Поставщик не отвечает 5 дней. Покупатель может уйти к конкуренту." %}</div>
     </div>
 
     <div style="display:flex;gap:8px;">
-      <button onclick="dealAction(this,'remind_seller')" class="dl-btn dl-btn--primary">Напомнить поставщику</button>
-      <button onclick="dealAction(this,'find_alt')" class="dl-btn dl-btn--secondary">Найти альтернативу</button>
+      <button onclick="dealAction(this,'remind_seller')" class="dl-btn dl-btn--primary">{% trans "Напомнить поставщику" %}</button>
+      <button onclick="dealAction(this,'find_alt')" class="dl-btn dl-btn--secondary">{% trans "Найти альтернативу" %}</button>
     </div>
   </div>
 
@@ -113,34 +114,34 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
       <div>
         <div style="font-size:15px;font-weight:700;color:#ECECEC;">RFQ-2026-0079 · Agro Holding</div>
-        <div style="font-size:12px;color:#919191;margin-top:2px;">Диски тормозные WA380 · 6 позиций · $1 890</div>
+        <div style="font-size:12px;color:#919191;margin-top:2px;">{% trans "Диски тормозные WA380 · 6 позиций · $1 890" %}</div>
       </div>
-      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">Покупатель уходит</span>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">{% trans "Покупатель уходит" %}</span>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Покупатель просит</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Покупатель просит" %}</div>
         <div style="font-size:14px;font-weight:700;color:#E85C0D;">-12%</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Поставщик даёт</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Поставщик даёт" %}</div>
         <div style="font-size:14px;font-weight:700;color:#ECECEC;">-5%</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Разрыв</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Разрыв" %}</div>
         <div style="font-size:14px;font-weight:700;color:#E85C0D;">$132</div>
       </div>
     </div>
 
     <div style="background:#1F1F1F;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
-      <div style="font-size:11px;color:#6A6A6A;margin-bottom:4px;">Риск</div>
-      <div style="font-size:12px;color:#E85C0D;">Покупатель получил альтернативное предложение. Разрыв $132 — можно закрыть бонусом платформы.</div>
+      <div style="font-size:11px;color:#6A6A6A;margin-bottom:4px;">{% trans "Риск" %}</div>
+      <div style="font-size:12px;color:#E85C0D;">{% trans "Покупатель получил альтернативное предложение. Разрыв $132 — можно закрыть бонусом платформы." %}</div>
     </div>
 
     <div style="display:flex;gap:8px;">
-      <button onclick="dealAction(this,'platform_discount')" class="dl-btn dl-btn--accent">Дать бонус -3% от платформы</button>
-      <button onclick="dealAction(this,'call_buyer')" class="dl-btn dl-btn--secondary">Позвонить покупателю</button>
+      <button onclick="dealAction(this,'platform_discount')" class="dl-btn dl-btn--accent">{% trans "Дать бонус -3% от платформы" %}</button>
+      <button onclick="dealAction(this,'call_buyer')" class="dl-btn dl-btn--secondary">{% trans "Позвонить покупателю" %}</button>
     </div>
   </div>
 
@@ -148,29 +149,29 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
       <div>
         <div style="font-size:15px;font-weight:700;color:#ECECEC;">RFQ-2026-0076 · Transport Ltd</div>
-        <div style="font-size:12px;color:#919191;margin-top:2px;">Водяная помпа Volvo · 3 позиции · $2 400</div>
+        <div style="font-size:12px;color:#919191;margin-top:2px;">{% trans "Водяная помпа Volvo · 3 позиции · $2 400" %}</div>
       </div>
-      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">Срок SLA</span>
+      <span style="font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(232,92,13,0.12);color:#E85C0D;font-weight:600;">{% trans "Срок SLA" %}</span>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Поставщик</div>
-        <div style="font-size:14px;font-weight:700;color:#ECECEC;">Котировка готова</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Поставщик" %}</div>
+        <div style="font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Котировка готова" %}</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Покупатель</div>
-        <div style="font-size:14px;font-weight:700;color:#919191;">Не подтвердил 6 дн.</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Покупатель" %}</div>
+        <div style="font-size:14px;font-weight:700;color:#919191;">{% trans "Не подтвердил 6 дн." %}</div>
       </div>
       <div>
-        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">Истекает через</div>
-        <div style="font-size:14px;font-weight:700;color:#E85C0D;">2 дня</div>
+        <div style="font-size:11px;color:#6A6A6A;margin-bottom:2px;">{% trans "Истекает через" %}</div>
+        <div style="font-size:14px;font-weight:700;color:#E85C0D;">{% trans "2 дня" %}</div>
       </div>
     </div>
 
     <div style="display:flex;gap:8px;">
-      <button onclick="dealAction(this,'call_buyer')" class="dl-btn dl-btn--primary">Позвонить покупателю</button>
-      <button onclick="dealAction(this,'extend')" class="dl-btn dl-btn--secondary">Продлить срок</button>
+      <button onclick="dealAction(this,'call_buyer')" class="dl-btn dl-btn--primary">{% trans "Позвонить покупателю" %}</button>
+      <button onclick="dealAction(this,'extend')" class="dl-btn dl-btn--secondary">{% trans "Продлить срок" %}</button>
     </div>
   </div>
 </div>
@@ -179,7 +180,7 @@
 <div class="dl-panel" id="panel-active" style="display:none;">
   <table class="op-table" style="width:100%;">
     <thead>
-      <tr><th>RFQ</th><th>Покупатель</th><th>Поставщик</th><th>Сумма</th><th>Раунд</th><th>Покупатель</th><th>Поставщик</th><th>Статус</th></tr>
+      <tr><th>RFQ</th><th>{% trans "Покупатель" %}</th><th>{% trans "Поставщик" %}</th><th>{% trans "Сумма" %}</th><th>{% trans "Раунд" %}</th><th>{% trans "Покупатель" %}</th><th>{% trans "Поставщик" %}</th><th>{% trans "Статус" %}</th></tr>
     </thead>
     <tbody>
       <tr>
@@ -190,7 +191,7 @@
         <td>1</td>
         <td style="color:#E85C0D;">-5%</td>
         <td style="color:#64B5F6;">-3%</td>
-        <td><span class="op-badge op-badge-blue">В процессе</span></td>
+        <td><span class="op-badge op-badge-blue">{% trans "В процессе" %}</span></td>
       </tr>
       <tr>
         <td style="font-weight:600;">#0090</td>
@@ -200,7 +201,7 @@
         <td>2</td>
         <td style="color:#E85C0D;">-8%</td>
         <td style="color:#64B5F6;">-6%</td>
-        <td><span class="op-badge op-badge-blue">В процессе</span></td>
+        <td><span class="op-badge op-badge-blue">{% trans "В процессе" %}</span></td>
       </tr>
       <tr>
         <td style="font-weight:600;">#0088</td>
@@ -209,8 +210,8 @@
         <td style="font-weight:700;">$15 600</td>
         <td>1</td>
         <td style="color:#E85C0D;">-4%</td>
-        <td style="color:#919191;">Ожидает</td>
-        <td><span class="op-badge op-badge-yellow">Ожидает ответа</span></td>
+        <td style="color:#919191;">{% trans "Ожидает" %}</td>
+        <td><span class="op-badge op-badge-yellow">{% trans "Ожидает ответа" %}</span></td>
       </tr>
       <tr>
         <td style="font-weight:600;">#0086</td>
@@ -219,8 +220,8 @@
         <td style="font-weight:700;">$22 000</td>
         <td>1</td>
         <td style="color:#E85C0D;">-6%</td>
-        <td style="color:#919191;">Ожидает</td>
-        <td><span class="op-badge op-badge-yellow">Ожидает ответа</span></td>
+        <td style="color:#919191;">{% trans "Ожидает" %}</td>
+        <td><span class="op-badge op-badge-yellow">{% trans "Ожидает ответа" %}</span></td>
       </tr>
       <tr>
         <td style="font-weight:600;">#0084</td>
@@ -230,7 +231,7 @@
         <td>2</td>
         <td style="color:#E85C0D;">-7%</td>
         <td style="color:#64B5F6;">-5%</td>
-        <td><span class="op-badge op-badge-blue">В процессе</span></td>
+        <td><span class="op-badge op-badge-blue">{% trans "В процессе" %}</span></td>
       </tr>
     </tbody>
   </table>
@@ -240,35 +241,35 @@
 <div class="dl-panel" id="panel-lost" style="display:none;">
   <table class="op-table" style="width:100%;">
     <thead>
-      <tr><th>RFQ</th><th>Покупатель</th><th>Сумма</th><th>Причина</th><th>Разрыв</th><th>Дата</th><th></th></tr>
+      <tr><th>RFQ</th><th>{% trans "Покупатель" %}</th><th>{% trans "Сумма" %}</th><th>{% trans "Причина" %}</th><th>{% trans "Разрыв" %}</th><th>{% trans "Дата" %}</th><th></th></tr>
     </thead>
     <tbody>
       <tr>
         <td style="font-weight:600;">#0071</td>
         <td>Heavy Machines LLC</td>
         <td style="font-weight:700;">$14 200</td>
-        <td><span style="color:#E85C0D;">Цена не устроила</span> — покупатель нашёл дешевле на 8%</td>
+        <td><span style="color:#E85C0D;">{% trans "Цена не устроила" %}</span> {% trans "— покупатель нашёл дешевле на 8%" %}</td>
         <td style="color:#E85C0D;font-weight:600;">$1 136</td>
         <td style="color:#919191;">18.03</td>
-        <td><button onclick="dealAction(this,'reopen')" class="dl-btn dl-btn--secondary" style="padding:4px 12px;font-size:11px;">Вернуть</button></td>
+        <td><button onclick="dealAction(this,'reopen')" class="dl-btn dl-btn--secondary" style="padding:4px 12px;font-size:11px;">{% trans "Вернуть" %}</button></td>
       </tr>
       <tr>
         <td style="font-weight:600;">#0068</td>
         <td>Agro Holding</td>
         <td style="font-weight:700;">$3 400</td>
-        <td><span style="color:#E85C0D;">Поставщик отказал</span> — нет на складе, срок 45 дней</td>
+        <td><span style="color:#E85C0D;">{% trans "Поставщик отказал" %}</span> {% trans "— нет на складе, срок 45 дней" %}</td>
         <td style="color:#919191;">—</td>
         <td style="color:#919191;">15.03</td>
-        <td><button onclick="dealAction(this,'find_alt')" class="dl-btn dl-btn--secondary" style="padding:4px 12px;font-size:11px;">Найти другого</button></td>
+        <td><button onclick="dealAction(this,'find_alt')" class="dl-btn dl-btn--secondary" style="padding:4px 12px;font-size:11px;">{% trans "Найти другого" %}</button></td>
       </tr>
       <tr>
         <td style="font-weight:600;">#0065</td>
         <td>Transport Ltd</td>
         <td style="font-weight:700;">$7 800</td>
-        <td><span style="color:#E85C0D;">Сроки не подошли</span> — покупателю нужно за 10 дней, поставщик даёт 30</td>
+        <td><span style="color:#E85C0D;">{% trans "Сроки не подошли" %}</span> {% trans "— покупателю нужно за 10 дней, поставщик даёт 30" %}</td>
         <td style="color:#919191;">—</td>
         <td style="color:#919191;">12.03</td>
-        <td><button onclick="dealAction(this,'find_alt')" class="dl-btn dl-btn--secondary" style="padding:4px 12px;font-size:11px;">Найти другого</button></td>
+        <td><button onclick="dealAction(this,'find_alt')" class="dl-btn dl-btn--secondary" style="padding:4px 12px;font-size:11px;">{% trans "Найти другого" %}</button></td>
       </tr>
     </tbody>
   </table>
@@ -278,7 +279,7 @@
 <div class="dl-panel" id="panel-won" style="display:none;">
   <table class="op-table" style="width:100%;">
     <thead>
-      <tr><th>RFQ</th><th>Покупатель</th><th>Поставщик</th><th>Сумма</th><th>Скидка</th><th>Раундов</th><th>Дата закрытия</th></tr>
+      <tr><th>RFQ</th><th>{% trans "Покупатель" %}</th><th>{% trans "Поставщик" %}</th><th>{% trans "Сумма" %}</th><th>{% trans "Скидка" %}</th><th>{% trans "Раундов" %}</th><th>{% trans "Дата закрытия" %}</th></tr>
     </thead>
     <tbody>
       <tr>
@@ -365,19 +366,19 @@ function dlTab(tab) {
 
 function dealAction(btn, action) {
   var labels = {
-    'call_buyer': 'Звонок покупателю запланирован',
-    'call_seller': 'Звонок поставщику запланирован',
-    'platform_discount': 'Бонус платформы отправлен покупателю',
-    'remind_seller': 'Напоминание отправлено поставщику',
-    'find_alt': 'Поиск альтернативного поставщика запущен',
-    'extend': 'Срок котировки продлён на 7 дней',
-    'reopen': 'Сделка возвращена в работу'
+    'call_buyer': '{% trans 'Звонок покупателю запланирован' %}',
+    'call_seller': '{% trans 'Звонок поставщику запланирован' %}',
+    'platform_discount': '{% trans 'Бонус платформы отправлен покупателю' %}',
+    'remind_seller': '{% trans 'Напоминание отправлено поставщику' %}',
+    'find_alt': '{% trans 'Поиск альтернативного поставщика запущен' %}',
+    'extend': '{% trans 'Срок котировки продлён на 7 дней' %}',
+    'reopen': '{% trans 'Сделка возвращена в работу' %}'
   };
   btn.style.opacity = '0.5';
   btn.style.pointerEvents = 'none';
-  btn.textContent = '✓ ' + (labels[action] || 'Выполнено');
+  btn.textContent = '✓ ' + (labels[action] || '{% trans 'Выполнено' %}');
   btn.style.color = '#64B5F6';
-  opToast(labels[action] || 'Действие выполнено');
+  opToast(labels[action] || '{% trans 'Действие выполнено' %}');
 }
 
 function opToast(msg) {

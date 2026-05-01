@@ -184,10 +184,10 @@
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64B5F6;margin-bottom:8px;">{% trans "Последний результат" %}</div>
           <h3 style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;margin:0 0 8px;">{{ latest_successful_import.created_at|date:"Y-m-d H:i" }}</h3>
           <p style="font-size:13px;color:#919191;line-height:1.6;margin:0 0 4px;">
-            {% trans "Источник" %}:
+            {% trans "Источник:" %}
             <strong style="color:#ECECEC;">
               {% if latest_successful_import.source_file %}
-                {{ latest_successful_import.source_file.original_name|default:"(без имени)" }}
+                {{ latest_successful_import.source_file.original_name|default:"{% trans '(без имени)' %}" }}
               {% elif latest_successful_import.source_url %}
                 Google Sheets
               {% else %}
@@ -196,9 +196,7 @@
             </strong>
           </p>
           <p style="font-size:13px;color:#919191;line-height:1.6;margin:0 0 10px;">
-            {% trans "Строк" %}: <strong style="color:#ECECEC;">{{ latest_successful_import.total_rows|default:latest_successful_import.rows_total }}</strong> ·
-            {% trans "Успешно" %}: <strong style="color:#64B5F6;">{{ latest_successful_import.valid_rows }}</strong> ·
-            {% trans "Ошибок" %}: <strong style="color:#FEBC2E;">{{ latest_successful_import.error_rows }}</strong>
+            {% trans "Строк:" %} <strong style="color:#ECECEC;">{{ latest_successful_import.total_rows|default:latest_successful_import.rows_total }}</strong> {% trans "· Успешно:" %} <strong style="color:#64B5F6;">{{ latest_successful_import.valid_rows }}</strong> {% trans "· Ошибок:" %} <strong style="color:#FEBC2E;">{{ latest_successful_import.error_rows }}</strong>
           </p>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <a class="chip" href="{% url 'seller_import_result' latest_successful_import.id %}" style="padding:5px 10px;">{% trans "Открыть результат" %}</a>
@@ -300,15 +298,15 @@
             <div class="upload-step-label" style="color:#34A853;">Google Sheets</div>
             <h3>{% trans "Таблица загружена" %}</h3>
             <p class="muted">
-              {% blocktrans with id=active_preview.id status=active_preview.status %}Preview #{{ id }} • Статус: <strong>{{ status }}</strong>{% endblocktrans %}
+              Preview #{{ active_preview.id }} {% trans "• Статус:" %} <strong>{{ active_preview.status }}</strong>
               {% if active_preview.source_url %} • <a href="{{ active_preview.source_url }}" target="_blank" style="color:#64B5F6;">{% trans "Открыть таблицу" %}</a>{% endif %}
             </p>
           {% else %}
             <div class="upload-step-label">{% trans "Шаг 2" %}</div>
             <h3>{% trans "Предпросмотр и mapping" %}</h3>
             <p class="muted">
-              {% blocktrans with id=active_preview.id status=active_preview.status %}Preview #{{ id }} • Статус: <strong>{{ status }}</strong>{% endblocktrans %}
-              {% if active_preview.source_file %} • {% trans "Файл" %}: <strong>{{ active_preview.source_file.original_name|default:"(без имени)" }}</strong>{% endif %}
+              Preview #{{ active_preview.id }} {% trans "• Статус:" %} <strong>{{ active_preview.status }}</strong>
+              {% if active_preview.source_file %} {% trans "• Файл:" %} <strong>{{ active_preview.source_file.original_name|default:"{% trans '(без имени)' %}" }}</strong>{% endif %}
             </p>
           {% endif %}
         </div>
@@ -383,18 +381,18 @@
 </section>
 {% if upload_report %}
   <section class="panel" style="margin-bottom: 16px;">
-    <h2>{% blocktrans with mode=upload_report.mode %}Отчет загрузки ({{ mode }}){% endblocktrans %}</h2>
+    <h2>{% trans "Отчет загрузки (" %}{{ upload_report.mode }})</h2>
     <div class="chips">
-      <span class="chip">{% blocktrans with total=upload_report.total_rows %}Всего строк: {{ total }}{% endblocktrans %}</span>
-      <span class="chip chip-ok">{% blocktrans with count=upload_report.processed_rows %}Успешно: {{ count }}{% endblocktrans %}</span>
-      <span class="chip chip-warn">{% blocktrans with count=upload_report.failed_rows %}Ошибок: {{ count }}{% endblocktrans %}</span>
-      <span class="chip">{% blocktrans with rate=upload_report.success_rate %}Успех: {{ rate }}%{% endblocktrans %}</span>
+      <span class="chip">{% trans "Всего строк:" %} {{ upload_report.total_rows }}</span>
+      <span class="chip chip-ok">{% trans "Успешно:" %} {{ upload_report.processed_rows }}</span>
+      <span class="chip chip-warn">{% trans "Ошибок:" %} {{ upload_report.failed_rows }}</span>
+      <span class="chip">{% trans "Успех:" %} {{ upload_report.success_rate }}%</span>
     </div>
     <div class="chips">
-      <span class="chip chip-ok">{% blocktrans with count=upload_report.created %}Создано: {{ count }}{% endblocktrans %}</span>
-      <span class="chip chip-ok">{% blocktrans with count=upload_report.updated %}Обновлено: {{ count }}{% endblocktrans %}</span>
-      <span class="chip chip-warn">{% blocktrans with count=upload_report.skipped_no_price %}Без цены: {{ count }}{% endblocktrans %}</span>
-      <span class="chip chip-warn">{% blocktrans with count=upload_report.skipped_invalid %}Ошибки: {{ count }}{% endblocktrans %}</span>
+      <span class="chip chip-ok">{% trans "Создано:" %} {{ upload_report.created }}</span>
+      <span class="chip chip-ok">{% trans "Обновлено:" %} {{ upload_report.updated }}</span>
+      <span class="chip chip-warn">{% trans "Без цены:" %} {{ upload_report.skipped_no_price }}</span>
+      <span class="chip chip-warn">{% trans "Ошибки:" %} {{ upload_report.skipped_invalid }}</span>
     </div>
     {% if upload_report.errors %}
       <div style="margin-top: 10px;">
@@ -403,10 +401,10 @@
           {% for err in upload_report.errors %}
             <div class="list-row">
               <div>
-                <strong>{% blocktrans with row=err.row %}Строка {{ row }}{% endblocktrans %}</strong>
+                <strong>{% trans "Строка" %} {{ err.row }}</strong>
                 <p class="muted">{{ err.reason }}</p>
                 {% if err.hint %}
-                  <p class="muted">{% blocktrans with hint=err.hint %}Что исправить: {{ hint }}{% endblocktrans %}</p>
+                  <p class="muted">{% trans "Что исправить:" %} {{ err.hint }}</p>
                 {% endif %}
               </div>
             </div>
@@ -426,19 +424,18 @@
           <div>
             <strong>{{ run.created_at|date:"Y-m-d H:i" }}</strong>
             <p class="muted">
-              {% trans "Источник" %}:
+              {% trans "Источник:" %}
               {% if run.source_file %}
-                {{ run.source_file.original_name|default:"(без имени)" }}
+                {{ run.source_file.original_name|default:"{% trans '(без имени)' %}" }}
               {% elif run.source_url %}
                 Google Sheets
               {% else %}
                 {% trans "(ручной запуск)" %}
               {% endif %}
-              • {% trans "Тип" %}: {{ run.source_type }} • {% trans "Статус" %}: {{ run.status }}
+              {% trans "• Тип:" %} {{ run.source_type }} {% trans "• Статус:" %} {{ run.status }}
             </p>
             <p class="muted">
-              {% trans "Строк" %}: {{ run.total_rows|default:run.rows_total }} • {% trans "Успешно" %}: {{ run.valid_rows }} • {% trans "Ошибок" %}: {{ run.error_rows }} •
-              {% trans "Создано товаров" %}: {{ run.created_products|default:run.rows_created_products }} • {% trans "Обновлено офферов" %}: {{ run.updated_offers|default:run.rows_updated_offers }}
+              {% trans "Строк:" %} {{ run.total_rows|default:run.rows_total }} {% trans "• Успешно:" %} {{ run.valid_rows }} {% trans "• Ошибок:" %} {{ run.error_rows }} {% trans "• Создано товаров:" %} {{ run.created_products|default:run.rows_created_products }} {% trans "• Обновлено офферов:" %} {{ run.updated_offers|default:run.rows_updated_offers }}
             </p>
             <p>
               <a class="chip" href="{% url 'seller_import_result' run.id %}">{% trans "Открыть результат" %}</a>
@@ -524,7 +521,7 @@
       {% if query or brand_filter or status_filter %}
         <a href="{% url 'seller_product_list' %}" style="font-size:11px;color:#64B5F6;text-decoration:none;">{% trans "Сбросить" %}</a>
       {% endif %}
-      <span class="cat-count">{% blocktrans with count=parts.paginator.count %}{{ count }} позиций{% endblocktrans %}</span>
+      <span class="cat-count">{{ parts.paginator.count }} {% trans "позиций" %}</span>
     </div>
   </form>
 
@@ -620,12 +617,12 @@ function toggleAll(el) {
 function updateBulk() {
   var checked = document.querySelectorAll('.part-cb:checked').length;
   var bar = document.getElementById('bulkBar');
-  document.getElementById('bulkCount').textContent = checked + ' выбрано';
+  document.getElementById('bulkCount').textContent = checked + gettext(" выбрано");
   bar.classList.toggle('show', checked > 0);
 }
 
 function bulkPricePrompt(direction) {
-  var pct = prompt(direction > 0 ? 'На сколько % увеличить цену?' : 'На сколько % уменьшить цену?', '5');
+  var pct = prompt(direction > 0 ? [gettext("На сколько % увеличить цену?")]: gettext("На сколько % уменьшить цену?"), '5');
   if(!pct) return;
   var mult = direction > 0 ? (1 + parseFloat(pct)/100) : (1 - parseFloat(pct)/100);
   document.querySelectorAll('.part-cb:checked').forEach(function(cb){
@@ -672,10 +669,10 @@ function bulkPricePrompt(direction) {
 
       btn.disabled = true;
       if (previewBtn) previewBtn.disabled = true;
-      btn.textContent = "Загружаем...";
+      btn.textContent = gettext('Загружаем...');
       progressWrap.style.display = "block";
       progressBar.style.width = "0%";
-      progressText.textContent = "Загрузка: 0%";
+      progressText.textContent = gettext('Загрузка: 0%');
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", form.action, true);
@@ -686,15 +683,15 @@ function bulkPricePrompt(direction) {
         if (!e.lengthComputable) return;
         const percent = Math.min(100, Math.round((e.loaded / e.total) * 100));
         progressBar.style.width = percent + "%";
-        progressText.textContent = "Загрузка: " + percent + "%";
+        progressText.textContent = gettext('Загрузка: ') + percent + "%";
       });
 
       xhr.addEventListener("load", function () {
         if (xhr.status < 200 || xhr.status >= 400) {
           btn.disabled = false;
           if (previewBtn) previewBtn.disabled = false;
-          btn.textContent = "Быстрый импорт (без preview)";
-          let message = "Ошибка импорта (" + xhr.status + ").";
+          btn.textContent = gettext('Быстрый импорт (без preview)');
+          let message = gettext('Ошибка импорта (') + xhr.status + ").";
           try {
             const body = JSON.parse(xhr.responseText || "{}");
             if (body.error) {
@@ -705,7 +702,7 @@ function bulkPricePrompt(direction) {
           return;
         }
         progressBar.style.width = "100%";
-        progressText.textContent = "Файл загружен. Открываем preview...";
+        progressText.textContent = gettext('Файл загружен. Открываем preview...');
         try {
           const body = JSON.parse(xhr.responseText || "{}");
           if (body.redirect_url) {
@@ -719,8 +716,8 @@ function bulkPricePrompt(direction) {
       xhr.addEventListener("error", function () {
         btn.disabled = false;
         if (previewBtn) previewBtn.disabled = false;
-        btn.textContent = "Быстрый импорт (без preview)";
-        progressText.textContent = "Ошибка загрузки. Попробуйте снова.";
+        btn.textContent = gettext('Быстрый импорт (без preview)');
+        progressText.textContent = gettext('Ошибка загрузки. Попробуйте снова.');
       });
 
       xhr.send(data);

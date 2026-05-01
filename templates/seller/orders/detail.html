@@ -1,11 +1,11 @@
 {% extends "seller/base_seller.html" %}
 {% load i18n %}
-{% block title %}{% blocktrans with id=order.id %}Заказ #{{ id }}{% endblocktrans %}{% endblock %}
+{% block title %}{% trans "Заказ #" %}{{ order.id }}{% endblock %}
 {% block content %}
 <section class="panel" style="margin-bottom: 16px;">
   <div class="card-actions" style="justify-content: space-between;">
     <div>
-      <h2 style="margin: 0;">{% blocktrans with id=order.id %}Заказ #{{ id }}{% endblocktrans %}</h2>
+      <h2 style="margin: 0;">{% trans "Заказ #" %}{{ order.id }}</h2>
       <p class="muted">{{ order.customer_name }} • {{ order.customer_email }} • {{ order.created_at|date:"Y-m-d H:i" }}</p>
       <p>
         <span class="chip">Status: {{ order.status }}</span>
@@ -57,7 +57,7 @@
         <div>
           <h3>{{ item.part.title }}</h3>
           <p class="muted">OEM {{ item.part.oem_number }}{% if item.part.brand %} • {{ item.part.brand.name }}{% endif %}</p>
-          <p class="muted">{% blocktrans with qty=item.quantity price=item.unit_price %}Количество: {{ qty }} • Цена за единицу: ${{ price }}{% endblocktrans %}</p>
+          <p class="muted">{% trans "Количество:" %} {{ item.quantity }} {% trans "• Цена за единицу: $" %}{{ item.unit_price }}</p>
         </div>
         <div class="list-actions">
           <p class="price">${{ item.total_price }}</p>
@@ -74,7 +74,7 @@
       <article class="list-row">
         <div>
           <h3>{{ document.title }}</h3>
-          <p class="muted">{% blocktrans with dtype=document.get_doc_type_display date=document.created_at|date:"Y-m-d H:i" %}Тип: {{ dtype }} • {{ date }}{% endblocktrans %}</p>
+          <p class="muted">{% trans "Тип:" %} {{ document.get_doc_type_display }} • {{ document.created_at|date:"Y-m-d H:i" }}</p>
         </div>
       </article>
     {% empty %}
@@ -90,7 +90,7 @@
       <article class="list-row">
         <div>
           <h3>{{ event.get_event_type_display }}</h3>
-          <p class="muted">{% blocktrans with date=event.created_at|date:"Y-m-d H:i" source=event.get_source_display %}{{ date }} • Источник: {{ source }}{% endblocktrans %}</p>
+          <p class="muted">{{ event.created_at|date:"Y-m-d H:i" }} {% trans "• Источник:" %} {{ event.get_source_display }}</p>
           {% if event.meta %}
             <p class="muted">{{ event.meta }}</p>
           {% endif %}
@@ -109,7 +109,7 @@
       <article class="list-row">
         <div>
           <h3>{{ claim.title }}</h3>
-          <p class="muted">{% blocktrans with status=claim.get_status_display date=claim.created_at|date:"Y-m-d H:i" %}Статус: {{ status }} • {{ date }}{% endblocktrans %}</p>
+          <p class="muted">{% trans "Статус:" %} {{ claim.get_status_display }} • {{ claim.created_at|date:"Y-m-d H:i" }}</p>
           <p class="muted">{{ claim.description }}</p>
         </div>
       </article>

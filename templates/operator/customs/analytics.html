@@ -1,87 +1,88 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Таможня — Аналитика{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Таможня — Аналитика" %}{% endblock %}
 
 {% block content %}
 <!-- Period selector -->
 <div style="display:flex;gap:2px;margin-bottom:20px;background:#1F1F1F;border-radius:10px;padding:3px;border:1px solid rgba(255,255,255,0.055);width:fit-content;">
-  <button class="op-role-btn" data-period="7" onclick="switchPeriod(this)">7 дней</button>
-  <button class="op-role-btn active" data-period="30" onclick="switchPeriod(this)">30 дней</button>
-  <button class="op-role-btn" data-period="90" onclick="switchPeriod(this)">90 дней</button>
-  <button class="op-role-btn" data-period="365" onclick="switchPeriod(this)">1 год</button>
+  <button class="op-role-btn" data-period="7" onclick="switchPeriod(this)">{% trans "7 дней" %}</button>
+  <button class="op-role-btn active" data-period="30" onclick="switchPeriod(this)">{% trans "30 дней" %}</button>
+  <button class="op-role-btn" data-period="90" onclick="switchPeriod(this)">{% trans "90 дней" %}</button>
+  <button class="op-role-btn" data-period="365" onclick="switchPeriod(this)">{% trans "1 год" %}</button>
 </div>
 
 <!-- KPI -->
 <div class="op-stats">
   <a class="op-stat" href="/operator/customs/documents/">
     <div class="op-stat-value">142</div>
-    <div class="op-stat-label">Деклараций за период</div>
+    <div class="op-stat-label">{% trans "Деклараций за период" %}</div>
   </a>
   <a class="op-stat" href="/operator/customs/analytics/">
-    <div class="op-stat-value">2.3 <span style="font-size:14px;font-weight:500;">дн.</span></div>
-    <div class="op-stat-label">Среднее время оформления</div>
+    <div class="op-stat-value">2.3 <span style="font-size:14px;font-weight:500;">{% trans "дн." %}</span></div>
+    <div class="op-stat-label">{% trans "Среднее время оформления" %}</div>
   </a>
   <a class="op-stat" href="/operator/customs/documents/">
     <div class="op-stat-value">0</div>
-    <div class="op-stat-label">Отказов</div>
+    <div class="op-stat-label">{% trans "Отказов" %}</div>
   </a>
   <a class="op-stat" href="/operator/payments/analytics/">
     <div class="op-stat-value">$186K</div>
-    <div class="op-stat-label">Сумма пошлин</div>
+    <div class="op-stat-label">{% trans "Сумма пошлин" %}</div>
   </a>
   <a class="op-stat" href="/operator/customs/analytics/">
     <div class="op-stat-value">8.4%</div>
-    <div class="op-stat-label">Средняя ставка</div>
+    <div class="op-stat-label">{% trans "Средняя ставка" %}</div>
   </a>
 </div>
 
 <!-- By product types -->
 <div class="op-card" style="margin-bottom:20px;">
-  <div class="op-section-title" style="margin-bottom:14px;">По типам товаров</div>
+  <div class="op-section-title" style="margin-bottom:14px;">{% trans "По типам товаров" %}</div>
   <table class="op-table">
     <thead>
       <tr>
-        <th>Категория</th>
-        <th>Деклараций</th>
-        <th>Сумма</th>
-        <th>Средняя пошлина %</th>
-        <th>Время оформления</th>
+        <th>{% trans "Категория" %}</th>
+        <th>{% trans "Деклараций" %}</th>
+        <th>{% trans "Сумма" %}</th>
+        <th>{% trans "Средняя пошлина %" %}</th>
+        <th>{% trans "Время оформления" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Автозапчасти</td>
+        <td style="font-weight:600;">{% trans "Автозапчасти" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">48</td>
         <td style="font-family:'Golos Text',sans-serif;">$820K</td>
         <td class="text-secondary">7.5%</td>
-        <td class="text-secondary">2.1 дн.</td>
+        <td class="text-secondary">{% trans "2.1 дн." %}</td>
       </tr>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Электроника</td>
+        <td style="font-weight:600;">{% trans "Электроника" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">32</td>
         <td style="font-family:'Golos Text',sans-serif;">$540K</td>
         <td class="text-secondary">5.0%</td>
-        <td class="text-secondary">1.8 дн.</td>
+        <td class="text-secondary">{% trans "1.8 дн." %}</td>
       </tr>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Промышленное оборудование</td>
+        <td style="font-weight:600;">{% trans "Промышленное оборудование" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">28</td>
         <td style="font-family:'Golos Text',sans-serif;">$1.2M</td>
         <td class="text-secondary">10.2%</td>
-        <td class="text-secondary">3.4 дн.</td>
+        <td class="text-secondary">{% trans "3.4 дн." %}</td>
       </tr>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Текстиль</td>
+        <td style="font-weight:600;">{% trans "Текстиль" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">18</td>
         <td style="font-family:'Golos Text',sans-serif;">$180K</td>
         <td class="text-secondary">12.0%</td>
-        <td class="text-secondary">1.5 дн.</td>
+        <td class="text-secondary">{% trans "1.5 дн." %}</td>
       </tr>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Химическая продукция</td>
+        <td style="font-weight:600;">{% trans "Химическая продукция" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">16</td>
         <td style="font-family:'Golos Text',sans-serif;">$290K</td>
         <td class="text-secondary">6.5%</td>
-        <td class="text-secondary">4.2 дн.</td>
+        <td class="text-secondary">{% trans "4.2 дн." %}</td>
       </tr>
     </tbody>
   </table>
@@ -89,49 +90,49 @@
 
 <!-- By countries -->
 <div class="op-card" style="margin-bottom:20px;">
-  <div class="op-section-title" style="margin-bottom:14px;">По странам происхождения</div>
+  <div class="op-section-title" style="margin-bottom:14px;">{% trans "По странам происхождения" %}</div>
   <table class="op-table">
     <thead>
       <tr>
-        <th>Страна</th>
-        <th>Деклараций</th>
-        <th>Общая стоимость</th>
-        <th>Доля %</th>
+        <th>{% trans "Страна" %}</th>
+        <th>{% trans "Деклараций" %}</th>
+        <th>{% trans "Общая стоимость" %}</th>
+        <th>{% trans "Доля %" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Китай</td>
+        <td style="font-weight:600;">{% trans "Китай" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">68</td>
         <td style="font-family:'Golos Text',sans-serif;">$1.4M</td>
         <td><span class="op-badge op-badge-gray">47.9%</span></td>
       </tr>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Турция</td>
+        <td style="font-weight:600;">{% trans "Турция" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">28</td>
         <td style="font-family:'Golos Text',sans-serif;">$420K</td>
         <td><span class="op-badge op-badge-gray">19.7%</span></td>
       </tr>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">ОАЭ</td>
+        <td style="font-weight:600;">{% trans "ОАЭ" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">18</td>
         <td style="font-family:'Golos Text',sans-serif;">$380K</td>
         <td><span class="op-badge op-badge-gray">12.7%</span></td>
       </tr>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Южная Корея</td>
+        <td style="font-weight:600;">{% trans "Южная Корея" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">12</td>
         <td style="font-family:'Golos Text',sans-serif;">$240K</td>
         <td><span class="op-badge op-badge-gray">8.5%</span></td>
       </tr>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Индия</td>
+        <td style="font-weight:600;">{% trans "Индия" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">9</td>
         <td style="font-family:'Golos Text',sans-serif;">$160K</td>
         <td><span class="op-badge op-badge-gray">6.3%</span></td>
       </tr>
       <tr style="cursor:pointer;" onclick="toggleRowDetail(this)">
-        <td style="font-weight:600;">Прочие</td>
+        <td style="font-weight:600;">{% trans "Прочие" %}</td>
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">7</td>
         <td style="font-family:'Golos Text',sans-serif;">$110K</td>
         <td><span class="op-badge op-badge-gray">4.9%</span></td>
@@ -142,25 +143,25 @@
 
 <!-- Dynamics -->
 <div class="op-card">
-  <div class="op-section-title" style="margin-bottom:14px;">Динамика</div>
+  <div class="op-section-title" style="margin-bottom:14px;">{% trans "Динамика" %}</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
     <div class="op-card-elevated">
-      <div style="font-size:12px;color:#5E5E5E;margin-bottom:6px;">Деклараций vs прошлый месяц</div>
+      <div style="font-size:12px;color:#5E5E5E;margin-bottom:6px;">{% trans "Деклараций vs прошлый месяц" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:20px;font-weight:800;color:#ECECEC;">+12%</div>
       <div style="font-size:12px;color:#919191;margin-top:4px;">142 vs 127</div>
     </div>
     <div class="op-card-elevated">
-      <div style="font-size:12px;color:#5E5E5E;margin-bottom:6px;">Время оформления vs прошлый месяц</div>
+      <div style="font-size:12px;color:#5E5E5E;margin-bottom:6px;">{% trans "Время оформления vs прошлый месяц" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:20px;font-weight:800;color:#ECECEC;">-8%</div>
-      <div style="font-size:12px;color:#919191;margin-top:4px;">2.3 дн. vs 2.5 дн.</div>
+      <div style="font-size:12px;color:#919191;margin-top:4px;">{% trans "2.3 дн. vs 2.5 дн." %}</div>
     </div>
     <div class="op-card-elevated">
-      <div style="font-size:12px;color:#5E5E5E;margin-bottom:6px;">Сумма пошлин vs прошлый месяц</div>
+      <div style="font-size:12px;color:#5E5E5E;margin-bottom:6px;">{% trans "Сумма пошлин vs прошлый месяц" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:20px;font-weight:800;color:#E85C0D;">+18%</div>
       <div style="font-size:12px;color:#919191;margin-top:4px;">$186K vs $158K</div>
     </div>
     <div class="op-card-elevated">
-      <div style="font-size:12px;color:#5E5E5E;margin-bottom:6px;">Отказов vs прошлый месяц</div>
+      <div style="font-size:12px;color:#5E5E5E;margin-bottom:6px;">{% trans "Отказов vs прошлый месяц" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:20px;font-weight:800;color:#ECECEC;">0</div>
       <div style="font-size:12px;color:#919191;margin-top:4px;">0 vs 1</div>
     </div>
@@ -198,7 +199,7 @@
   window.switchPeriod = function(btn){
     btn.parentElement.querySelectorAll('.op-role-btn').forEach(function(b){b.classList.remove('active');});
     btn.classList.add('active');
-    opToast('Период: ' + btn.textContent.trim());
+    opToast('{% trans 'Период: ' %}' + btn.textContent.trim());
   };
 })();
 </script>

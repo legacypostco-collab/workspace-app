@@ -12,6 +12,7 @@ from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
 from django.contrib import messages
+from django.utils.translation import gettext_lazy as _
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -27,7 +28,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.text import slugify
 from django.utils import timezone
-from django.utils.translation import gettext as _
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -700,7 +700,7 @@ def seller_required(view):
         if not request.user.is_authenticated:
             return redirect("login")
         if _role_for(request.user) != "seller":
-            messages.error(request, _("Доступно только для seller."))
+            messages.error(request, "Доступно только для seller.")
             return redirect("dashboard")
         return view(request, *args, **kwargs)
 
@@ -714,7 +714,7 @@ def operator_required(view):
             return redirect("login")
         role = _role_for(request.user)
         if not (request.user.is_superuser or role == "seller"):
-            messages.error(request, _("Доступно только оператору."))
+            messages.error(request, "Доступно только оператору.")
             return redirect("dashboard")
         return view(request, *args, **kwargs)
 
@@ -1016,6 +1016,18 @@ def home(request: HttpRequest) -> HttpResponse:
     return render(request, "landing.html")
 
 
+def terms_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "marketplace/legal.html", {"page_key": "terms"})
+
+
+def privacy_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "marketplace/legal.html", {"page_key": "privacy"})
+
+
+def cookies_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "marketplace/legal.html", {"page_key": "cookies"})
+
+
 def home_marketplace(request: HttpRequest) -> HttpResponse:
     """Original marketplace home page (kept for internal use)."""
     _seed_if_empty()
@@ -1201,7 +1213,7 @@ def register_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         # Rate limit: 5 registrations per hour per IP
         if not _rl_check(request, "register", 5, 3600):
-            messages.error(request, _("Слишком много попыток регистрации. Попробуйте через час."))
+            messages.error(request, "Слишком много попыток регистрации. Попробуйте через час.")
             return render(request, "marketplace/register.html", {"form": RegisterForm()})
 
         form = RegisterForm(request.POST)
@@ -1229,7 +1241,7 @@ def register_view(request: HttpRequest) -> HttpResponse:
                 return render(request, "marketplace/email_verification_sent.html", {"email": user.email})
 
             login(request, user)
-            messages.success(request, _("Регистрация завершена."))
+            messages.success(request, "Регистрация завершена.")
             return redirect("dashboard")
     else:
         form = RegisterForm()
@@ -1240,22 +1252,22 @@ def verify_email_view(request: HttpRequest, token: str) -> HttpResponse:
     try:
         uid, email = _decode_verify_token(token)
     except signing.SignatureExpired:
-        messages.error(request, _("Ссылка подтверждения устарела (24 ч). Зарегистрируйтесь заново."))
+        messages.error(request, "Ссылка подтверждения устарела (24 ч). Зарегистрируйтесь заново.")
         return redirect("register")
     except Exception:
-        messages.error(request, _("Недействительная ссылка подтверждения."))
+        messages.error(request, "Недействительная ссылка подтверждения.")
         return redirect("register")
 
     user = User.objects.filter(id=uid, email=email, is_active=False).first()
     if not user:
         # Already activated or doesn't exist
-        messages.info(request, _("Email уже подтверждён или аккаунт не найден."))
+        messages.info(request, "Email уже подтверждён или аккаунт не найден.")
         return redirect("login")
 
     user.is_active = True
     user.save(update_fields=["is_active"])
     login(request, user)
-    messages.success(request, _("Email подтверждён! Добро пожаловать в Consolidator Parts."))
+    messages.success(request, "Email подтверждён! Добро пожаловать в Consolidator Parts.")
     return redirect("dashboard")
 
 
@@ -1263,7 +1275,7 @@ def login_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         # Rate limit: 10 failed attempts per 10 minutes per IP
         if not _rl_check(request, "login", 10, 600):
-            messages.error(request, _("Слишком много попыток входа. Подождите 10 минут."))
+            messages.error(request, "Слишком много попыток входа. Подождите 10 минут.")
             return render(request, "marketplace/login.html", {"form": LoginForm(request)})
 
         data = request.POST.copy()
@@ -1292,7 +1304,7 @@ def login_view(request: HttpRequest) -> HttpResponse:
 
 def logout_view(request: HttpRequest) -> HttpResponse:
     logout(request)
-    messages.info(request, _("Вы вышли из системы."))
+    messages.info(request, "Вы вышли из системы.")
     return redirect("home")
 
 
@@ -1488,7 +1500,7 @@ def checkout(request: HttpRequest) -> HttpResponse:
                 _set_cart(request, {})
                 return redirect(f"/dashboard/?order_created={order.id}")
             except ValueError as exc:
-                messages.error(request, _(f"Заказ не создан: {exc}"))
+                messages.error(request, f"Заказ не создан: {exc}")
     else:
         form = CheckoutForm(initial=initial)
 
@@ -1510,7 +1522,7 @@ def kpi_reports(request: HttpRequest) -> HttpResponse:
     role = _role_for(request.user)
     is_seller = role == "seller"
     if is_seller and not _has_seller_permission(request.user, "can_view_analytics"):
-        messages.error(request, _("Нет прав на аналитику."))
+        messages.error(request, "Нет прав на аналитику.")
         return redirect("dashboard")
 
     if is_seller:
@@ -1562,7 +1574,7 @@ def kpi_reports_export_csv(request: HttpRequest) -> HttpResponse:
     role = _role_for(request.user)
     is_seller = role == "seller"
     if is_seller and not _has_seller_permission(request.user, "can_view_analytics"):
-        messages.error(request, _("Нет прав на аналитику."))
+        messages.error(request, "Нет прав на аналитику.")
         return redirect("dashboard")
     scoped_orders = Order.objects.filter(items__part__seller=request.user).distinct() if is_seller else Order.objects.filter(buyer=request.user)
 
@@ -1590,7 +1602,7 @@ def claims_export_csv(request: HttpRequest) -> HttpResponse:
     role = _role_for(request.user)
     is_seller = role == "seller"
     if is_seller and not _has_seller_permission(request.user, "can_view_analytics"):
-        messages.error(request, _("Нет прав на аналитику."))
+        messages.error(request, "Нет прав на аналитику.")
         return redirect("dashboard")
     scoped_orders = Order.objects.filter(items__part__seller=request.user).distinct() if is_seller else Order.objects.filter(buyer=request.user)
     claims = OrderClaim.objects.filter(order__in=scoped_orders).select_related("order", "opened_by", "resolved_by").order_by("-id")[:5000]
@@ -1827,7 +1839,7 @@ def seller_product_list(request: HttpRequest) -> HttpResponse:
 @seller_required
 def seller_orders(request: HttpRequest) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_orders"):
-        messages.error(request, _("Нет прав на работу с заказами."))
+        messages.error(request, "Нет прав на работу с заказами.")
         return redirect("seller_dashboard")
 
     orders_qs = (
@@ -1896,7 +1908,7 @@ def seller_orders(request: HttpRequest) -> HttpResponse:
 @seller_required
 def seller_sla(request: HttpRequest) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_orders"):
-        messages.error(request, _("Нет прав на просмотр SLA."))
+        messages.error(request, "Нет прав на просмотр SLA.")
         return redirect("seller_dashboard")
 
     orders_qs = Order.objects.filter(
@@ -2257,7 +2269,7 @@ def seller_qr_control(request: HttpRequest) -> HttpResponse:
             "seller_active_nav": "qr",
             "seller_breadcrumbs": [
                 {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
-                {"label": "QR-контроль", "url": reverse("seller_qr_control")},
+                {"label": _("QR-контроль"), "url": reverse("seller_qr_control")},
             ],
         },
     )
@@ -2362,7 +2374,7 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
     if rating_score < 80:
         warnings.append({
             "level": "warning",
-            "title": "Рейтинг ниже порога «Надёжный»",
+            "title": _("Рейтинг ниже порога «Надёжный»"),
             "text": f"Текущий рейтинг {rating_score:.1f}. Нужно 80+ для статуса «Надёжный».",
             "icon": "star",
         })
@@ -2376,7 +2388,7 @@ def seller_rating(request: HttpRequest) -> HttpResponse:
     if not warnings:
         warnings.append({
             "level": "success",
-            "title": "Всё в порядке",
+            "title": _("Всё в порядке"),
             "text": "Показатели в норме. Продолжайте поддерживать высокий уровень сервиса.",
             "icon": "check",
         })
@@ -2680,7 +2692,7 @@ def seller_drawings(request: HttpRequest) -> HttpResponse:
 @seller_required
 def seller_order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_orders"):
-        messages.error(request, _("Нет прав на работу с заказами."))
+        messages.error(request, "Нет прав на работу с заказами.")
         return redirect("seller_dashboard")
 
     order = get_object_or_404(
@@ -2689,7 +2701,7 @@ def seller_order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
     )
     has_access = order.items.filter(part__seller=request.user).exists()
     if not has_access:
-        messages.error(request, _("Нет доступа к этому заказу."))
+        messages.error(request, "Нет доступа к этому заказу.")
         return redirect("seller_orders")
 
     _recalc_order_sla(order)
@@ -2710,13 +2722,13 @@ def seller_order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
             "claims": order.claims.all()[:100],
             "open_claims": open_claims,
             "status_choices": status_choices,
-            "seller_page_title": _(f"Заказ #{order.id}"),
+            "seller_page_title": f"Заказ #{order.id}",
             "seller_page_subtitle": _("Карточка заказа, события, документы и действия поставщика."),
             "seller_active_nav": "orders",
             "seller_breadcrumbs": [
                 {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
                 {"label": _("Заказы и SLA"), "url": reverse("seller_orders")},
-                {"label": _(f"Заказ #{order.id}"), "url": reverse("seller_order_detail", args=[order.id])},
+                {"label": f"Заказ #{order.id}", "url": reverse("seller_order_detail", args=[order.id])},
             ],
         },
     )
@@ -2808,13 +2820,13 @@ def seller_request_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
             "estimated_total": estimated_total,
             "total_discount_amount": total_discount_amount.quantize(Decimal("0.01")),
             "total_after_discount": total_after_discount.quantize(Decimal("0.01")),
-            "seller_page_title": _(f"RFQ #{rfq.id}"),
+            "seller_page_title": f"RFQ #{rfq.id}",
             "seller_page_subtitle": _("Карточка входящего запроса по вашему ассортименту."),
             "seller_active_nav": "requests",
             "seller_breadcrumbs": [
                 {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
                 {"label": _("Запросы клиентов"), "url": reverse("seller_request_list")},
-                {"label": _(f"RFQ #{rfq.id}"), "url": reverse("seller_request_detail", args=[rfq.id])},
+                {"label": f"RFQ #{rfq.id}", "url": reverse("seller_request_detail", args=[rfq.id])},
             ],
         },
     )
@@ -2829,7 +2841,7 @@ def seller_rfq_inbox(request: HttpRequest) -> HttpResponse:
 @require_POST
 def seller_parts_bulk_action(request: HttpRequest) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
-        messages.error(request, _("Нет прав на массовое управление ассортиментом."))
+        messages.error(request, "Нет прав на массовое управление ассортиментом.")
         return redirect("seller_product_list")
 
     return_qs = (request.POST.get("return_qs") or "").strip()
@@ -2849,7 +2861,7 @@ def seller_parts_bulk_action(request: HttpRequest) -> HttpResponse:
     if selected_ids:
         scoped_parts = scoped_parts.filter(id__in=selected_ids)
     else:
-        messages.warning(request, _("Выберите хотя бы одну позицию."))
+        messages.warning(request, "Выберите хотя бы одну позицию.")
         if return_qs:
             return redirect(f"{reverse('seller_product_list')}?{return_qs}")
         return redirect("seller_product_list")
@@ -2857,33 +2869,33 @@ def seller_parts_bulk_action(request: HttpRequest) -> HttpResponse:
     now = timezone.now()
     if action == "hide":
         updated_count = scoped_parts.update(is_active=False, data_updated_at=now)
-        messages.success(request, _(f"Скрыто позиций: {updated_count}."))
+        messages.success(request, f"Скрыто позиций: {updated_count}.")
     elif action == "unhide":
         updated_count = scoped_parts.update(is_active=True, data_updated_at=now)
-        messages.success(request, _(f"Активировано позиций: {updated_count}."))
+        messages.success(request, f"Активировано позиций: {updated_count}.")
     elif action == "status":
         status_value = (request.POST.get("availability_status") or "").strip()
         allowed_statuses = {code for code, _ in Part.AVAILABILITY_STATUS_CHOICES}
         if status_value not in allowed_statuses:
-            messages.error(request, _("Неверный статус доступности."))
+            messages.error(request, "Неверный статус доступности.")
         else:
             updated_count = scoped_parts.update(availability_status=status_value, data_updated_at=now)
-            messages.success(request, _(f"Статус обновлен у {updated_count} позиций."))
+            messages.success(request, f"Статус обновлен у {updated_count} позиций.")
     elif action == "stock":
         if not _has_seller_permission(request.user, "can_manage_pricing"):
-            messages.error(request, _("Нет прав на массовое обновление остатков."))
+            messages.error(request, "Нет прав на массовое обновление остатков.")
         else:
             try:
                 stock_value = int(request.POST.get("stock_quantity"))
                 if stock_value < 0:
                     raise ValueError
             except (TypeError, ValueError):
-                messages.error(request, _("Остаток должен быть целым числом >= 0."))
+                messages.error(request, "Остаток должен быть целым числом >= 0.")
             else:
                 updated_count = scoped_parts.update(stock_quantity=stock_value, data_updated_at=now)
-                messages.success(request, _(f"Остаток обновлен у {updated_count} позиций."))
+                messages.success(request, f"Остаток обновлен у {updated_count} позиций.")
     else:
-        messages.error(request, _("Неизвестное массовое действие."))
+        messages.error(request, "Неизвестное массовое действие.")
 
     if return_qs:
         return redirect(f"{reverse('seller_product_list')}?{return_qs}")
@@ -3278,7 +3290,7 @@ def rfq_new(request: HttpRequest) -> HttpResponse:
                     rfq.status = "quoted" if all_auto_approved else "needs_review"
                     rfq.save(update_fields=["status"])
 
-                messages.success(request, _(f"RFQ #{rfq.id} создан."))
+                messages.success(request, f"RFQ #{rfq.id} создан.")
                 return redirect("rfq_detail", rfq_id=rfq.id)
     else:
         form = RFQCreateForm(initial=initial)
@@ -3291,7 +3303,7 @@ def rfq_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part__brand", "items__matched_part__category"), id=rfq_id)
     role = _role_for(request.user)
     if role != "seller" and rfq.created_by_id != request.user.id:
-        messages.error(request, _("Нет доступа к этому RFQ."))
+        messages.error(request, "Нет доступа к этому RFQ.")
         return redirect("dashboard")
 
     rows, total = _rfq_rows(rfq)
@@ -3318,15 +3330,15 @@ def rfq_proposal(request: HttpRequest, rfq_id: int) -> HttpResponse:
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part"), id=rfq_id)
     role = _role_for(request.user)
     if role == "seller" and not request.user.is_superuser:
-        messages.error(request, _("КП доступно для клиента."))
+        messages.error(request, "КП доступно для клиента.")
         return redirect("rfq_detail", rfq_id=rfq.id)
     if rfq.created_by_id and rfq.created_by_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, _("Нет доступа к этому RFQ."))
+        messages.error(request, "Нет доступа к этому RFQ.")
         return redirect("rfq_list")
 
     rows, total = _rfq_rows(rfq)
     if not rows:
-        messages.error(request, _("Нет доступных позиций для формирования КП."))
+        messages.error(request, "Нет доступных позиций для формирования КП.")
         return redirect("rfq_detail", rfq_id=rfq.id)
 
     initial = {
@@ -3370,10 +3382,10 @@ def rfq_proposal(request: HttpRequest, rfq_id: int) -> HttpResponse:
                 )
                 rfq.status = "quoted"
                 rfq.save(update_fields=["status"])
-                messages.success(request, _(f"КП принято. Заказ #{order.id} создан."))
+                messages.success(request, f"КП принято. Заказ #{order.id} создан.")
                 return redirect("order_invoice", order_id=order.id)
             except ValueError as exc:
-                messages.error(request, _(f"КП не может быть принято: {exc}"))
+                messages.error(request, f"КП не может быть принято: {exc}")
     else:
         form = CheckoutForm(initial=initial)
 
@@ -3414,15 +3426,15 @@ def rfq_proposal_pdf(request: HttpRequest, rfq_id: int) -> HttpResponse:
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part"), id=rfq_id)
     role = _role_for(request.user)
     if role == "seller" and not request.user.is_superuser:
-        messages.error(request, _("КП доступно для клиента."))
+        messages.error(request, "КП доступно для клиента.")
         return redirect("rfq_detail", rfq_id=rfq.id)
     if rfq.created_by_id and rfq.created_by_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, _("Нет доступа к этому RFQ."))
+        messages.error(request, "Нет доступа к этому RFQ.")
         return redirect("rfq_list")
 
     rows, total = _rfq_rows(rfq)
     if not rows:
-        messages.error(request, _("Нет доступных позиций для формирования КП."))
+        messages.error(request, "Нет доступных позиций для формирования КП.")
         return redirect("rfq_detail", rfq_id=rfq.id)
 
     try:
@@ -3431,7 +3443,7 @@ def rfq_proposal_pdf(request: HttpRequest, rfq_id: int) -> HttpResponse:
         from reportlab.lib.units import mm
         from reportlab.pdfgen import canvas
     except Exception:
-        messages.error(request, _("PDF-экспорт требует пакет reportlab. Выполните: pip install reportlab"))
+        messages.error(request, "PDF-экспорт требует пакет reportlab. Выполните: pip install reportlab")
         return redirect("rfq_proposal", rfq_id=rfq.id)
 
     buffer = io.BytesIO()
@@ -3541,15 +3553,15 @@ def rfq_checkout(request: HttpRequest, rfq_id: int) -> HttpResponse:
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part"), id=rfq_id)
     role = _role_for(request.user)
     if role == "seller" and not request.user.is_superuser:
-        messages.error(request, _("Оформление из RFQ доступно только buyer."))
+        messages.error(request, "Оформление из RFQ доступно только buyer.")
         return redirect("rfq_detail", rfq_id=rfq.id)
     if rfq.created_by_id and rfq.created_by_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, _("Нет доступа к этому RFQ."))
+        messages.error(request, "Нет доступа к этому RFQ.")
         return redirect("rfq_list")
 
     rows, total = _rfq_rows(rfq)
     if not rows:
-        messages.error(request, _("В RFQ нет доступных позиций для заказа."))
+        messages.error(request, "В RFQ нет доступных позиций для заказа.")
         return redirect("rfq_detail", rfq_id=rfq.id)
 
     initial = {
@@ -3574,10 +3586,10 @@ def rfq_checkout(request: HttpRequest, rfq_id: int) -> HttpResponse:
                 )
                 rfq.status = "quoted"
                 rfq.save(update_fields=["status"])
-                messages.success(request, _(f"Заказ #{order.id} создан из RFQ #{rfq.id}."))
+                messages.success(request, f"Заказ #{order.id} создан из RFQ #{rfq.id}.")
                 return redirect("dashboard_buyer")
             except ValueError as exc:
-                messages.error(request, _(f"Заказ не создан: {exc}"))
+                messages.error(request, f"Заказ не создан: {exc}")
     else:
         form = CheckoutForm(initial=initial)
 
@@ -3686,9 +3698,9 @@ def operator_retry_webhook(request: HttpRequest, log_id: int) -> HttpResponse:
     log = get_object_or_404(WebhookDeliveryLog.objects.select_related("order", "order_event"), id=log_id)
     ok = _retry_webhook_log(log)
     if ok:
-        messages.success(request, _(f"Webhook #{log_id} успешно доставлен при ретрае."))
+        messages.success(request, f"Webhook #{log_id} успешно доставлен при ретрае.")
     else:
-        messages.error(request, _(f"Webhook #{log_id} не доставлен. Проверь endpoint/секрет/сеть."))
+        messages.error(request, f"Webhook #{log_id} не доставлен. Проверь endpoint/секрет/сеть.")
     return redirect(f"{reverse('operator_webhooks')}?state=failed")
 
 
@@ -3707,7 +3719,7 @@ def operator_retry_failed_webhooks(request: HttpRequest) -> HttpResponse:
         .order_by("created_at")[:limit]
     )
     if not failed_logs:
-        messages.info(request, _("Нет webhook-ошибок для ретрая."))
+        messages.info(request, "Нет webhook-ошибок для ретрая.")
         return redirect(f"{reverse('operator_webhooks')}?state=failed")
 
     ok_count = 0
@@ -3717,7 +3729,7 @@ def operator_retry_failed_webhooks(request: HttpRequest) -> HttpResponse:
             ok_count += 1
         else:
             fail_count += 1
-    messages.success(request, _(f"Ретрай завершен: успешно {ok_count}, ошибок {fail_count}."))
+    messages.success(request, f"Ретрай завершен: успешно {ok_count}, ошибок {fail_count}.")
     return redirect(f"{reverse('operator_webhooks')}?state=failed")
 
 
@@ -3727,16 +3739,16 @@ def operator_assign_supplier(request: HttpRequest, rfq_item_id: int) -> HttpResp
     item = get_object_or_404(RFQItem.objects.select_related("rfq"), id=rfq_item_id)
     part_id_raw = (request.POST.get("part_id") or "").strip()
     if not part_id_raw.isdigit():
-        messages.error(request, _("Не выбран поставщик/позиция."))
+        messages.error(request, "Не выбран поставщик/позиция.")
         return redirect(f"{reverse('operator_queue')}?tab=queue")
 
     selected_part = get_object_or_404(Part.objects.select_related("seller__profile"), id=int(part_id_raw), is_active=True, price__gt=0)
     if not _operator_can_access_part(request.user, selected_part):
-        messages.error(request, _("Этот бренд/регион недоступен вашей операторской роли."))
+        messages.error(request, "Этот бренд/регион недоступен вашей операторской роли.")
         return redirect(f"{reverse('operator_queue')}?tab=queue")
     status = _supplier_status_for_part(selected_part)
     if status == "rejected":
-        messages.error(request, _("Исключённый поставщик не может быть выбран."))
+        messages.error(request, "Исключённый поставщик не может быть выбран.")
         return redirect(f"{reverse('operator_queue')}?tab=queue")
 
     sandbox_confirm = request.POST.get("sandbox_confirm") == "1"
@@ -3744,11 +3756,11 @@ def operator_assign_supplier(request: HttpRequest, rfq_item_id: int) -> HttpResp
     risky_double_confirm = request.POST.get("risky_double_confirm") == "1"
 
     if status == "sandbox" and not sandbox_confirm:
-        messages.error(request, _("Для Песочницы требуется подтверждение оператора."))
+        messages.error(request, "Для Песочницы требуется подтверждение оператора.")
         return redirect(f"{reverse('operator_queue')}?tab=queue")
 
     if status == "risky" and not (risky_confirm and risky_double_confirm):
-        messages.error(request, _("Для Рискового поставщика требуется двойное подтверждение."))
+        messages.error(request, "Для Рискового поставщика требуется двойное подтверждение.")
         return redirect(f"{reverse('operator_queue')}?tab=risky")
 
     item.matched_part = selected_part
@@ -3779,7 +3791,7 @@ def operator_assign_supplier(request: HttpRequest, rfq_item_id: int) -> HttpResp
         item.rfq.status = "quoted"
         item.rfq.save(update_fields=["status"])
 
-    messages.success(request, _(f"Поставщик назначен для позиции RFQ #{item.rfq_id}."))
+    messages.success(request, f"Поставщик назначен для позиции RFQ #{item.rfq_id}.")
     return redirect(f"{reverse('operator_queue')}?tab=queue")
 
 
@@ -3789,7 +3801,7 @@ def operator_escalate_manual_oem(request: HttpRequest, rfq_item_id: int) -> Http
     item = get_object_or_404(RFQItem.objects.select_related("rfq"), id=rfq_item_id)
     reason = (request.POST.get("manual_reason") or "").strip()
     if not reason:
-        messages.error(request, _("Укажи причину перевода в ручной OEM-поиск."))
+        messages.error(request, "Укажи причину перевода в ручной OEM-поиск.")
         return redirect(f"{reverse('operator_queue')}?tab=manual")
 
     item.state = "oem_manual"
@@ -3809,7 +3821,7 @@ def operator_escalate_manual_oem(request: HttpRequest, rfq_item_id: int) -> Http
         meta={"rfq_id": item.rfq_id, "rfq_item_id": item.id, "reason": reason},
     )
 
-    messages.success(request, _(f"Позиция RFQ #{item.rfq_id} переведена в ручной OEM-поиск."))
+    messages.success(request, f"Позиция RFQ #{item.rfq_id} переведена в ручной OEM-поиск.")
     return redirect(f"{reverse('operator_queue')}?tab=manual")
 
 
@@ -3860,10 +3872,10 @@ def seller_product_detail(request: HttpRequest, part_id: int) -> HttpResponse:
 @seller_required
 def seller_part_create(request: HttpRequest) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
-        messages.error(request, _("Нет прав на управление ассортиментом."))
+        messages.error(request, "Нет прав на управление ассортиментом.")
         return redirect("seller_product_list")
     if not _has_seller_permission(request.user, "can_manage_pricing"):
-        messages.error(request, _("Нет прав на создание позиций с ценой."))
+        messages.error(request, "Нет прав на создание позиций с ценой.")
         return redirect("seller_product_list")
 
     if request.method == "POST":
@@ -3874,7 +3886,7 @@ def seller_part_create(request: HttpRequest) -> HttpResponse:
             part.slug = f"{base}-{uuid4().hex[:8]}"
             part.seller = request.user
             part.save()
-            messages.success(request, _("Товар создан."))
+            messages.success(request, "Товар создан.")
             return redirect("seller_product_list")
     else:
         form = SellerPartForm()
@@ -3899,7 +3911,7 @@ def seller_part_create(request: HttpRequest) -> HttpResponse:
 @seller_required
 def seller_part_edit(request: HttpRequest, part_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
-        messages.error(request, _("Нет прав на редактирование ассортимента."))
+        messages.error(request, "Нет прав на редактирование ассортимента.")
         return redirect("seller_product_list")
 
     part = get_object_or_404(_apply_seller_brand_scope(request.user, Part.objects.all()), id=part_id, seller=request.user)
@@ -3911,7 +3923,7 @@ def seller_part_edit(request: HttpRequest, part_id: int) -> HttpResponse:
             if not _has_seller_permission(request.user, "can_manage_pricing"):
                 updated.price = old_price
             updated.save()
-            messages.success(request, _("Товар обновлен."))
+            messages.success(request, "Товар обновлен.")
             return redirect("seller_product_list")
     else:
         form = SellerPartForm(instance=part)
@@ -3922,7 +3934,7 @@ def seller_part_edit(request: HttpRequest, part_id: int) -> HttpResponse:
             "form": form,
             "mode": "edit",
             "part": part,
-            "seller_page_title": _(f"Редактирование: {part.title}"),
+            "seller_page_title": f"Редактирование: {part.title}",
             "seller_page_subtitle": _("Обновление данных позиции, цены и логистики."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
@@ -3944,13 +3956,13 @@ def seller_import_google_sheet(request: HttpRequest) -> HttpResponse:
 
     sheet_url = (request.POST.get("sheet_url") or "").strip()
     if "docs.google.com/spreadsheets" not in sheet_url:
-        messages.error(request, _("Нужна корректная ссылка Google Sheets."))
+        messages.error(request, "Нужна корректная ссылка Google Sheets.")
         return redirect("seller_product_list")
 
     # Extract sheet ID
     match = _re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", sheet_url)
     if not match:
-        messages.error(request, _("Не удалось извлечь ID таблицы из ссылки."))
+        messages.error(request, "Не удалось извлечь ID таблицы из ссылки.")
         return redirect("seller_product_list")
 
     sheet_id = match.group(1)
@@ -3961,14 +3973,14 @@ def seller_import_google_sheet(request: HttpRequest) -> HttpResponse:
         with _urllib_request.urlopen(req, timeout=15) as resp:
             raw = resp.read()
     except Exception:
-        messages.error(request, _("Не удалось загрузить Google-таблицу. Убедитесь, что таблица открыта для чтения (доступ по ссылке)."))
+        messages.error(request, "Не удалось загрузить Google-таблицу. Убедитесь, что таблица открыта для чтения (доступ по ссылке).")
         return redirect("seller_product_list")
 
     try:
         from marketplace.services.imports import _csv_rows
         headers, rows = _csv_rows(raw)
     except Exception as exc:
-        messages.error(request, _(f"Ошибка парсинга таблицы: {exc}"))
+        messages.error(request, f"Ошибка парсинга таблицы: {exc}")
         return redirect("seller_product_list")
 
     sample = [row_dict for _, row_dict in rows[:10]]
@@ -4000,14 +4012,14 @@ def seller_import_google_sheet(request: HttpRequest) -> HttpResponse:
 @seller_required
 def seller_import_preview(request: HttpRequest, preview_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
-        messages.error(request, _("Нет прав на загрузку ассортимента."))
+        messages.error(request, "Нет прав на загрузку ассортимента.")
         return redirect("seller_product_list")
     preview = get_object_or_404(ImportPreviewSession, id=preview_id, supplier=request.user)
     if preview.source_type not in (ImportPreviewSession.SourceType.CSV, ImportPreviewSession.SourceType.GOOGLE_SHEET):
-        messages.error(request, _("Для этого источника preview пока не поддерживается в UI."))
+        messages.error(request, "Для этого источника preview пока не поддерживается в UI.")
         return redirect("seller_product_list")
     if preview.source_type == ImportPreviewSession.SourceType.CSV and not preview.source_file_id:
-        messages.error(request, _("Файл источника не найден."))
+        messages.error(request, "Файл источника не найден.")
         return redirect("seller_product_list")
 
     header_options = list(dict.fromkeys(list(preview.sample_rows[0].keys() if preview.sample_rows else []) + list(preview.detected_columns.values())))
@@ -4030,7 +4042,7 @@ def seller_import_preview(request: HttpRequest, preview_id: int) -> HttpResponse
 @require_POST
 def seller_import_preview_confirm(request: HttpRequest, preview_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
-        messages.error(request, _("Нет прав на загрузку ассортимента."))
+        messages.error(request, "Нет прав на загрузку ассортимента.")
         return redirect("seller_product_list")
     preview = get_object_or_404(ImportPreviewSession, id=preview_id, supplier=request.user)
     mapping = {key: (request.POST.get(f"mapping__{key}") or "").strip() for key, _ in SELLER_IMPORT_MAPPING_FIELDS}
@@ -4044,7 +4056,7 @@ def seller_import_preview_confirm(request: HttpRequest, preview_id: int) -> Http
     preview.column_mapping = mapping
     preview.status = ImportPreviewSession.Status.MAPPING_CONFIRMED
     preview.save(update_fields=["column_mapping", "status", "updated_at"])
-    messages.success(request, _("Маппинг колонок подтвержден. Можно запускать импорт."))
+    messages.success(request, "Маппинг колонок подтвержден. Можно запускать импорт.")
     return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}")
 
 
@@ -4052,11 +4064,11 @@ def seller_import_preview_confirm(request: HttpRequest, preview_id: int) -> Http
 @require_POST
 def seller_import_preview_start(request: HttpRequest, preview_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
-        messages.error(request, _("Нет прав на загрузку ассортимента."))
+        messages.error(request, "Нет прав на загрузку ассортимента.")
         return redirect("seller_product_list")
     preview = get_object_or_404(ImportPreviewSession, id=preview_id, supplier=request.user)
     if preview.status != ImportPreviewSession.Status.MAPPING_CONFIRMED:
-        messages.error(request, _("Сначала подтвердите маппинг колонок."))
+        messages.error(request, "Сначала подтвердите маппинг колонок.")
         return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}")
 
     idempotency_key = preview.source_file.checksum_sha256 if preview.source_file_id else ""
@@ -4077,17 +4089,17 @@ def seller_import_preview_start(request: HttpRequest, preview_id: int) -> HttpRe
             "import_job_enqueue_failed_from_preview",
             extra={"job_id": job.id, "supplier_id": request.user.id, "error": str(exc)},
         )
-        messages.error(request, _("Не удалось поставить импорт в очередь."))
+        messages.error(request, "Не удалось поставить импорт в очередь.")
         return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}")
 
-    messages.success(request, _(f"Импорт запущен (job #{job.id}). Можно следить за статусом на экране результата."))
+    messages.success(request, f"Импорт запущен (job #{job.id}). Можно следить за статусом на экране результата.")
     return redirect("seller_import_result", import_id=job.id)
 
 
 @seller_required
 def seller_import_result(request: HttpRequest, import_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
-        messages.error(request, _("Нет прав на просмотр результатов импорта."))
+        messages.error(request, "Нет прав на просмотр результатов импорта.")
         return redirect("seller_product_list")
 
     job = get_object_or_404(
@@ -4113,13 +4125,13 @@ def seller_import_result(request: HttpRequest, import_id: int) -> HttpResponse:
         {
             "import_job": job,
             "error_rows_preview": rows,
-            "seller_page_title": _(f"Результат импорта #{job.id}"),
+            "seller_page_title": f"Результат импорта #{job.id}",
             "seller_page_subtitle": _("Статус обработки, итоговые счетчики и ошибки по строкам."),
             "seller_active_nav": "products",
             "seller_breadcrumbs": [
                 {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
                 {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
-                {"label": _(f"Импорт #{job.id}"), "url": reverse("seller_import_result", args=[job.id])},
+                {"label": f"Импорт #{job.id}", "url": reverse("seller_import_result", args=[job.id])},
             ],
         },
     )
@@ -4129,10 +4141,10 @@ def seller_import_result(request: HttpRequest, import_id: int) -> HttpResponse:
 @require_POST
 def seller_bulk_upload(request: HttpRequest) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
-        messages.error(request, _("Нет прав на bulk upload."))
+        messages.error(request, "Нет прав на bulk upload.")
         return redirect("seller_product_list")
     if not _has_seller_permission(request.user, "can_manage_pricing"):
-        messages.error(request, _("Нет прав на bulk upload цен."))
+        messages.error(request, "Нет прав на bulk upload цен.")
         return redirect("seller_product_list")
 
     def _humanize_import_error(raw_message: str) -> str:
@@ -4147,7 +4159,7 @@ def seller_bulk_upload(request: HttpRequest) -> HttpResponse:
 
     form = SellerBulkUploadForm(request.POST, request.FILES)
     if not form.is_valid():
-        messages.error(request, _("Некорректная форма загрузки."))
+        messages.error(request, "Некорректная форма загрузки.")
         return redirect("seller_product_list")
     import_mode = (request.POST.get("import_mode") or "apply").strip().lower()
     if import_mode not in {"preview", "apply"}:
@@ -4411,7 +4423,7 @@ def seller_gsheet_template(request: HttpRequest) -> HttpResponse:
 @seller_required
 def seller_price_export(request: HttpRequest) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
-        messages.error(request, _("Нет прав на выгрузку прайса."))
+        messages.error(request, "Нет прав на выгрузку прайса.")
         return redirect("seller_product_list")
 
     parts = (
@@ -4443,7 +4455,7 @@ def seller_price_export(request: HttpRequest) -> HttpResponse:
 @seller_required
 def seller_import_errors_csv(request: HttpRequest, run_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_assortment"):
-        messages.error(request, _("Нет прав на просмотр ошибок импорта."))
+        messages.error(request, "Нет прав на просмотр ошибок импорта.")
         return redirect("seller_product_list")
 
     job = (
@@ -4480,7 +4492,7 @@ def seller_import_errors_csv(request: HttpRequest, run_id: int) -> HttpResponse:
 @require_POST
 def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpResponse:
     if not _has_seller_permission(request.user, "can_manage_orders"):
-        messages.error(request, _("Нет прав на управление заказами."))
+        messages.error(request, "Нет прав на управление заказами.")
         return redirect("seller_orders")
 
     next_url = (request.POST.get("next") or "").strip()
@@ -4488,17 +4500,17 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
     order = get_object_or_404(Order, id=order_id)
     has_access = order.items.filter(part__seller=request.user).exists()
     if not has_access:
-        messages.error(request, _("Вы не можете менять этот заказ."))
+        messages.error(request, "Вы не можете менять этот заказ.")
         return redirect("seller_orders")
 
     allowed = {key for key, _ in Order.STATUS_CHOICES}
     status = (request.POST.get("status") or "").strip()
     if status not in allowed:
-        messages.error(request, _("Неверный статус."))
+        messages.error(request, "Неверный статус.")
         return redirect(next_url or "seller_orders")
     seller_allowed_statuses = {"pending", "reserve_paid", "confirmed", "in_production", "ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "shipped", "delivered", "completed", "cancelled"}
     if status not in seller_allowed_statuses:
-        messages.error(request, _("Этот статус может быть изменен только клиентом или системой."))
+        messages.error(request, "Этот статус может быть изменен только клиентом или системой.")
         return redirect(next_url or "seller_orders")
 
     current = order.status
@@ -4506,7 +4518,7 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
         # Build path through intermediate statuses
         path = _find_status_path(current, status)
         if path is None:
-            messages.error(request, _(f"Недопустимый переход статуса: {current} -> {status}"))
+            messages.error(request, f"Недопустимый переход статуса: {current} -> {status}")
             return redirect(next_url or "seller_orders")
 
         # Advance through each intermediate status, logging events
@@ -4583,7 +4595,7 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
                 impact_score=Decimal("-5.00"),
                 meta={"order_id": order.id, "deadline": order.ship_deadline.isoformat()},
             )
-    messages.success(request, _(f"Статус заказа #{order.id} обновлен: {order.get_status_display()}"))
+    messages.success(request, f"Статус заказа #{order.id} обновлен: {order.get_status_display()}")
     if next_url:
         return redirect(next_url)
     return redirect("seller_orders")
@@ -4598,7 +4610,7 @@ def order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
     role = _role_for(request.user)
 
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к заказу."))
+        messages.error(request, "Нет доступа к заказу.")
         return redirect("dashboard")
 
     _recalc_order_sla(order)
@@ -4630,7 +4642,7 @@ def order_invoice(request: HttpRequest, order_id: int) -> HttpResponse:
     role = _role_for(request.user)
 
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к инвойсу этого заказа."))
+        messages.error(request, "Нет доступа к инвойсу этого заказа.")
         return redirect("dashboard")
 
     _log_order_event(
@@ -4664,7 +4676,7 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
     order = get_object_or_404(Order.objects.prefetch_related("items__part"), id=order_id)
     role = _role_for(request.user)
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к инвойсу этого заказа."))
+        messages.error(request, "Нет доступа к инвойсу этого заказа.")
         return redirect("dashboard")
 
     _log_order_event(
@@ -4691,7 +4703,7 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
         from reportlab.lib.units import mm
         from reportlab.pdfgen import canvas
     except Exception:
-        messages.error(request, _("PDF-экспорт требует пакет reportlab. Выполните: pip install reportlab"))
+        messages.error(request, "PDF-экспорт требует пакет reportlab. Выполните: pip install reportlab")
         return redirect("order_invoice", order_id=order.id)
 
     buffer = io.BytesIO()
@@ -4822,16 +4834,16 @@ def order_mark_reserve_paid(request: HttpRequest, order_id: int) -> HttpResponse
     order = get_object_or_404(Order, id=order_id)
     role = _role_for(request.user)
     if order.buyer_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, _("Только клиент заказа может подтверждать оплату резерва."))
+        messages.error(request, "Только клиент заказа может подтверждать оплату резерва.")
         return redirect("order_invoice", order_id=order.id)
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к заказу."))
+        messages.error(request, "Нет доступа к заказу.")
         return redirect("dashboard")
     if order.status in {"cancelled", "completed"}:
-        messages.error(request, _("Заказ закрыт для изменения оплаты."))
+        messages.error(request, "Заказ закрыт для изменения оплаты.")
         return redirect("order_invoice", order_id=order.id)
     if order.payment_status in {"reserve_paid", "paid"}:
-        messages.info(request, _("Резерв уже зафиксирован."))
+        messages.info(request, "Резерв уже зафиксирован.")
         return redirect("order_invoice", order_id=order.id)
 
     previous = order.status
@@ -4843,7 +4855,7 @@ def order_mark_reserve_paid(request: HttpRequest, order_id: int) -> HttpResponse
     _log_order_event(order, "reserve_paid", source="buyer", actor=request.user, meta={"reserve_amount": str(order.reserve_amount)})
     if previous != order.status:
         _log_order_event(order, "status_changed", source="buyer", actor=request.user, meta={"from": previous, "to": order.status})
-    messages.success(request, _("Резерв 10% зафиксирован."))
+    messages.success(request, "Резерв 10% зафиксирован.")
     return redirect("order_invoice", order_id=order.id)
 
 
@@ -4853,32 +4865,32 @@ def order_mark_final_paid(request: HttpRequest, order_id: int) -> HttpResponse:
     order = get_object_or_404(Order, id=order_id)
     role = _role_for(request.user)
     if order.buyer_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, _("Только клиент заказа может подтверждать финальную оплату."))
+        messages.error(request, "Только клиент заказа может подтверждать финальную оплату.")
         return redirect("order_invoice", order_id=order.id)
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к заказу."))
+        messages.error(request, "Нет доступа к заказу.")
         return redirect("dashboard")
     if order.status in {"cancelled", "completed"}:
-        messages.error(request, _("Заказ закрыт для изменения оплаты."))
+        messages.error(request, "Заказ закрыт для изменения оплаты.")
         return redirect("order_invoice", order_id=order.id)
     if order.payment_status == "paid":
-        messages.info(request, _("Финальная оплата уже зафиксирована."))
+        messages.info(request, "Финальная оплата уже зафиксирована.")
         return redirect("order_invoice", order_id=order.id)
     # Для simple: reserve_paid → paid; для staged: customs_paid → paid
     if order.payment_scheme == "staged":
         if order.payment_status != "customs_paid":
-            messages.error(request, _("Для поэтапной схемы все промежуточные платежи должны быть зафиксированы."))
+            messages.error(request, "Для поэтапной схемы все промежуточные платежи должны быть зафиксированы.")
             return redirect("order_invoice", order_id=order.id)
     else:
         if order.payment_status != "reserve_paid":
-            messages.error(request, _("Сначала нужно зафиксировать резерв 10%."))
+            messages.error(request, "Сначала нужно зафиксировать резерв 10%.")
             return redirect("order_invoice", order_id=order.id)
 
     order.payment_status = "paid"
     order.final_paid_at = timezone.now()
     order.save(update_fields=["payment_status", "final_paid_at"])
     _log_order_event(order, "final_payment_paid", source="buyer", actor=request.user, meta={"total_amount": str(order.total_amount)})
-    messages.success(request, _("Финальная оплата зафиксирована."))
+    messages.success(request, "Финальная оплата зафиксирована.")
     return redirect("order_invoice", order_id=order.id)
 
 
@@ -4889,23 +4901,23 @@ def order_mark_mid_paid(request: HttpRequest, order_id: int) -> HttpResponse:
     order = get_object_or_404(Order, id=order_id)
     role = _role_for(request.user)
     if order.buyer_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, _("Только клиент заказа может подтверждать оплату."))
+        messages.error(request, "Только клиент заказа может подтверждать оплату.")
         return redirect("order_invoice", order_id=order.id)
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к заказу."))
+        messages.error(request, "Нет доступа к заказу.")
         return redirect("dashboard")
     if order.payment_scheme != "staged":
-        messages.error(request, _("Промежуточный платёж доступен только для поэтапной схемы."))
+        messages.error(request, "Промежуточный платёж доступен только для поэтапной схемы.")
         return redirect("order_invoice", order_id=order.id)
     if order.payment_status != "reserve_paid":
-        messages.error(request, _("Сначала нужно зафиксировать резерв 10%."))
+        messages.error(request, "Сначала нужно зафиксировать резерв 10%.")
         return redirect("order_invoice", order_id=order.id)
 
     order.payment_status = "mid_paid"
     order.mid_paid_at = timezone.now()
     order.save(update_fields=["payment_status", "mid_paid_at"])
     _log_order_event(order, "mid_payment_paid", source="buyer", actor=request.user, meta={"mid_payment_amount": str(order.mid_payment_amount)})
-    messages.success(request, _(f"Промежуточная оплата 50% (${order.mid_payment_amount}) зафиксирована."))
+    messages.success(request, f"Промежуточная оплата 50% (${order.mid_payment_amount}) зафиксирована.")
     return redirect("order_invoice", order_id=order.id)
 
 
@@ -4916,23 +4928,23 @@ def order_mark_customs_paid(request: HttpRequest, order_id: int) -> HttpResponse
     order = get_object_or_404(Order, id=order_id)
     role = _role_for(request.user)
     if order.buyer_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, _("Только клиент заказа может подтверждать оплату."))
+        messages.error(request, "Только клиент заказа может подтверждать оплату.")
         return redirect("order_invoice", order_id=order.id)
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к заказу."))
+        messages.error(request, "Нет доступа к заказу.")
         return redirect("dashboard")
     if order.payment_scheme != "staged":
-        messages.error(request, _("Таможенный платёж доступен только для поэтапной схемы."))
+        messages.error(request, "Таможенный платёж доступен только для поэтапной схемы.")
         return redirect("order_invoice", order_id=order.id)
     if order.payment_status != "mid_paid":
-        messages.error(request, _("Сначала нужно зафиксировать промежуточный платёж 50%."))
+        messages.error(request, "Сначала нужно зафиксировать промежуточный платёж 50%.")
         return redirect("order_invoice", order_id=order.id)
 
     order.payment_status = "customs_paid"
     order.customs_paid_at = timezone.now()
     order.save(update_fields=["payment_status", "customs_paid_at"])
     _log_order_event(order, "customs_payment_paid", source="buyer", actor=request.user, meta={"customs_payment_amount": str(order.customs_payment_amount)})
-    messages.success(request, _(f"Таможенная оплата 40% (${order.customs_payment_amount}) зафиксирована."))
+    messages.success(request, f"Таможенная оплата 40% (${order.customs_payment_amount}) зафиксирована.")
     return redirect("order_invoice", order_id=order.id)
 
 
@@ -4942,16 +4954,16 @@ def order_confirm_quality(request: HttpRequest, order_id: int) -> HttpResponse:
     order = get_object_or_404(Order, id=order_id)
     role = _role_for(request.user)
     if order.buyer_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, _("Только клиент заказа может подтвердить качество."))
+        messages.error(request, "Только клиент заказа может подтвердить качество.")
         return redirect("order_detail", order_id=order.id)
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к заказу."))
+        messages.error(request, "Нет доступа к заказу.")
         return redirect("dashboard")
     if order.status != "delivered":
-        messages.error(request, _("Качество можно подтвердить только после статуса Delivered."))
+        messages.error(request, "Качество можно подтвердить только после статуса Delivered.")
         return redirect("order_detail", order_id=order.id)
     if order.payment_status != "paid":
-        messages.error(request, _("Перед закрытием заказа нужна финальная оплата."))
+        messages.error(request, "Перед закрытием заказа нужна финальная оплата.")
         return redirect("order_detail", order_id=order.id)
 
     previous = order.status
@@ -4959,7 +4971,7 @@ def order_confirm_quality(request: HttpRequest, order_id: int) -> HttpResponse:
     order.save(update_fields=["status"])
     _log_order_event(order, "quality_confirmed", source="buyer", actor=request.user)
     _log_order_event(order, "status_changed", source="buyer", actor=request.user, meta={"from": previous, "to": order.status})
-    messages.success(request, _("Качество подтверждено. Заказ закрыт."))
+    messages.success(request, "Качество подтверждено. Заказ закрыт.")
     return redirect("order_detail", order_id=order.id)
 
 
@@ -4969,10 +4981,10 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
     order = get_object_or_404(Order, id=order_id)
     role = _role_for(request.user)
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к заказу."))
+        messages.error(request, "Нет доступа к заказу.")
         return redirect("dashboard")
     if not _can_upload_order_documents(request.user, role):
-        messages.error(request, _("Нет прав на загрузку документов."))
+        messages.error(request, "Нет прав на загрузку документов.")
         return redirect("order_detail", order_id=order.id)
 
     doc_type = (request.POST.get("doc_type") or "other").strip()
@@ -5007,21 +5019,21 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
     }
 
     if doc_type not in allowed_doc_types:
-        messages.error(request, _("Некорректный тип документа."))
+        messages.error(request, "Некорректный тип документа.")
         return redirect("order_detail", order_id=order.id)
     if not title:
-        messages.error(request, _("Укажите название документа."))
+        messages.error(request, "Укажите название документа.")
         return redirect("order_detail", order_id=order.id)
     if not file_url and not file_obj:
-        messages.error(request, _("Добавьте файл или ссылку на документ."))
+        messages.error(request, "Добавьте файл или ссылку на документ.")
         return redirect("order_detail", order_id=order.id)
     if file_obj:
         ext = os.path.splitext(file_obj.name or "")[1].lower()
         if ext in blocked_extensions or ext not in allowed_extensions:
-            messages.error(request, _("Тип файла не разрешен."))
+            messages.error(request, "Тип файла не разрешен.")
             return redirect("order_detail", order_id=order.id)
         if int(file_obj.size or 0) > int(settings.MAX_ORDER_DOCUMENT_BYTES):
-            messages.error(request, _(f"Файл слишком большой (макс. {settings.MAX_ORDER_DOCUMENT_BYTES} байт)."))
+            messages.error(request, f"Файл слишком большой (макс. {settings.MAX_ORDER_DOCUMENT_BYTES} байт).")
             return redirect("order_detail", order_id=order.id)
         # Normalize filename for storage.
         safe_name = slugify(os.path.splitext(file_obj.name)[0]) or "document"
@@ -5042,7 +5054,7 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
         actor=request.user,
         meta={"document_id": doc.id, "doc_type": doc_type, "title": title},
     )
-    messages.success(request, _("Документ добавлен к заказу."))
+    messages.success(request, "Документ добавлен к заказу.")
     return redirect("order_detail", order_id=order.id)
 
 
@@ -5148,19 +5160,19 @@ def order_open_claim(request: HttpRequest, order_id: int) -> HttpResponse:
     order = get_object_or_404(Order, id=order_id)
     role = _role_for(request.user)
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к заказу."))
+        messages.error(request, "Нет доступа к заказу.")
         return redirect("dashboard")
     if not _can_manage_claims(request.user, role):
-        messages.error(request, _("Нет прав на работу с рекламациями."))
+        messages.error(request, "Нет прав на работу с рекламациями.")
         return redirect("order_detail", order_id=order.id)
     if order.status not in {"delivered", "completed"}:
-        messages.error(request, _("Рекламация доступна после доставки."))
+        messages.error(request, "Рекламация доступна после доставки.")
         return redirect("order_detail", order_id=order.id)
 
     title = (request.POST.get("title") or "").strip()
     description = (request.POST.get("description") or "").strip()
     if not title or not description:
-        messages.error(request, _("Заполните тему и описание рекламации."))
+        messages.error(request, "Заполните тему и описание рекламации.")
         return redirect("order_detail", order_id=order.id)
 
     claim = OrderClaim.objects.create(
@@ -5177,7 +5189,7 @@ def order_open_claim(request: HttpRequest, order_id: int) -> HttpResponse:
         actor=request.user,
         meta={"claim_id": claim.id, "title": title},
     )
-    messages.success(request, _("Рекламация открыта."))
+    messages.success(request, "Рекламация открыта.")
     return redirect("order_detail", order_id=order.id)
 
 
@@ -5188,21 +5200,21 @@ def order_update_claim_status(request: HttpRequest, claim_id: int) -> HttpRespon
     order = claim.order
     role = _role_for(request.user)
     if not _has_order_access(request.user, order, role):
-        messages.error(request, _("Нет доступа к заказу."))
+        messages.error(request, "Нет доступа к заказу.")
         return redirect("dashboard")
     if not _can_manage_claims(request.user, role):
-        messages.error(request, _("Нет прав на работу с рекламациями."))
+        messages.error(request, "Нет прав на работу с рекламациями.")
         return redirect("order_detail", order_id=order.id)
 
     new_status = (request.POST.get("status") or "").strip()
     allowed_statuses = {key for key, _ in OrderClaim.STATUS_CHOICES}
     if new_status not in allowed_statuses:
-        messages.error(request, _("Некорректный статус рекламации."))
+        messages.error(request, "Некорректный статус рекламации.")
         return redirect("order_detail", order_id=order.id)
 
     prev_status = claim.status
     if prev_status == new_status:
-        messages.info(request, _("Статус рекламации не изменился."))
+        messages.info(request, "Статус рекламации не изменился.")
         return redirect("order_detail", order_id=order.id)
 
     claim.status = new_status
@@ -5222,7 +5234,7 @@ def order_update_claim_status(request: HttpRequest, claim_id: int) -> HttpRespon
         order.payment_status = "paid"
         order.save(update_fields=["payment_status"])
 
-    messages.success(request, _("Статус рекламации обновлён."))
+    messages.success(request, "Статус рекламации обновлён.")
     return redirect("order_detail", order_id=order.id)
 
 
@@ -5361,12 +5373,12 @@ def admin_panel_settings(request):
 
     _CURRENCY_NAMES = {"USD": "US Dollar", "CNY": "Chinese Yuan", "EUR": "Euro", "RUB": "Russian Ruble", "AED": "UAE Dirham"}
     _NOTIF_META = [
-        {"key": "new_order",    "label": "Новый заказ",        "description": "При создании нового заказа"},
-        {"key": "new_rfq",      "label": "Новый RFQ",          "description": "При подаче нового запроса на котировку"},
-        {"key": "payment",      "label": "Оплата получена",     "description": "При подтверждении платежа"},
-        {"key": "claim",        "label": "Рекламация открыта",  "description": "При создании рекламации покупателем"},
-        {"key": "sla_breach",   "label": "SLA нарушение",      "description": "При превышении установленного времени обработки"},
-        {"key": "new_seller",   "label": "Новый поставщик",    "description": "При регистрации нового поставщика"},
+        {"key": "new_order",    "label": _("Новый заказ"),        "description": "При создании нового заказа"},
+        {"key": "new_rfq",      "label": _("Новый RFQ"),          "description": "При подаче нового запроса на котировку"},
+        {"key": "payment",      "label": _("Оплата получена"),     "description": "При подтверждении платежа"},
+        {"key": "claim",        "label": _("Рекламация открыта"),  "description": "При создании рекламации покупателем"},
+        {"key": "sla_breach",   "label": _("SLA нарушение"),      "description": "При превышении установленного времени обработки"},
+        {"key": "new_seller",   "label": _("Новый поставщик"),    "description": "При регистрации нового поставщика"},
     ]
 
     def _load():
@@ -5636,9 +5648,9 @@ def admin_panel_tariffs(request):
             platform_cfg = _json.load(f)
 
     default_plans = [
-        {"id": "basic", "name": "Базовый", "price": 0, "commission": 10, "max_products": 100, "is_active": True},
-        {"id": "professional", "name": "Профессиональный", "price": 99, "commission": 8, "max_products": 10000, "is_active": True},
-        {"id": "corporate", "name": "Корпоративный", "price": 499, "commission": 5, "max_products": 0, "is_active": True},
+        {"id": "basic", "name": _("Базовый"), "price": 0, "commission": 10, "max_products": 100, "is_active": True},
+        {"id": "professional", "name": _("Профессиональный"), "price": 99, "commission": 8, "max_products": 10000, "is_active": True},
+        {"id": "corporate", "name": _("Корпоративный"), "price": 499, "commission": 5, "max_products": 0, "is_active": True},
     ]
     tariff_plans = platform_cfg.get("tariff_plans", default_plans)
     category_commissions = platform_cfg.get("category_commissions", {})
@@ -5828,4 +5840,222 @@ def admin_panel_support(request):
         "status_filter": status_filter,
         "q": q,
         "page_num": page_num, "has_next": has_next, "has_prev": page_num > 1,
+    })
+
+
+# ── Notifications API ──────────────────────────────────────
+from .models import Notification, TeamMember, CompanyVerification
+
+@login_required
+def notifications_list(request):
+    """JSON API for notification dropdown."""
+    qs = Notification.objects.filter(user=request.user)[:30]
+    items = [{
+        "id": n.id, "kind": n.kind, "title": n.title, "body": n.body[:120],
+        "url": n.url, "is_read": n.is_read,
+        "created_at": n.created_at.strftime("%d.%m %H:%M"),
+    } for n in qs]
+    unread = Notification.objects.filter(user=request.user, is_read=False).count()
+    return JsonResponse({"items": items, "unread": unread})
+
+
+@login_required
+def notifications_mark_read(request, notif_id=None):
+    if notif_id:
+        Notification.objects.filter(user=request.user, id=notif_id).update(is_read=True)
+    else:
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return JsonResponse({"ok": True})
+
+
+@login_required
+def notifications_page(request):
+    qs = Notification.objects.filter(user=request.user)
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return render(request, "components/notifications_page.html", {"items": qs})
+
+
+# ── KYB Verification ───────────────────────────────────────
+@login_required
+def kyb_view(request):
+    kyb, _ = CompanyVerification.objects.get_or_create(user=request.user)
+    if request.method == "POST" and kyb.status not in ("verified", "pending"):
+        for field in ["legal_name", "inn", "kpp", "ogrn", "legal_address",
+                       "bank_name", "bank_account", "bik", "director_name"]:
+            setattr(kyb, field, request.POST.get(field, "").strip())
+        for fld in ["doc_charter", "doc_egrul", "doc_passport"]:
+            if fld in request.FILES:
+                setattr(kyb, fld, request.FILES[fld])
+        kyb.status = "pending"
+        kyb.submitted_at = timezone.now()
+        kyb.rejection_reason = ""
+        kyb.save()
+        Notification.objects.create(
+            user=request.user, kind="system",
+            title=_("KYB документы отправлены на проверку"),
+            body=_("Мы рассмотрим ваши документы в течение 1-2 рабочих дней."),
+            url="/kyb/",
+        )
+        messages.success(request, _("Документы отправлены на проверку"))
+        return redirect("kyb")
+    return render(request, "components/kyb_form.html", {"kyb": kyb})
+
+
+# ── Team management ────────────────────────────────────────
+@login_required
+def team_list(request):
+    members = TeamMember.objects.filter(owner=request.user).select_related("user")
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "invite":
+            email = (request.POST.get("email") or "").strip().lower()
+            full_name = (request.POST.get("full_name") or "").strip()
+            role = (request.POST.get("role") or "viewer").strip()
+            if email and email != request.user.email:
+                token = signing.dumps({"owner": request.user.id, "email": email}, salt="team-invite")
+                tm, created = TeamMember.objects.get_or_create(
+                    owner=request.user, invited_email=email,
+                    defaults={"full_name": full_name, "role": role,
+                              "invite_token": token, "status": "invited"},
+                )
+                if created:
+                    invite_url = request.build_absolute_uri(f"/team/accept/{token}/")
+                    try:
+                        from django.core.mail import send_mail
+                        send_mail(
+                            subject=str(_("Приглашение в команду на Consolidator Parts")),
+                            message=str(_("Вас пригласили присоединиться к команде. Перейдите по ссылке: ")) + invite_url,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=[email],
+                            fail_silently=True,
+                        )
+                    except Exception:
+                        pass
+                    messages.success(request, _("Приглашение отправлено: ") + email)
+                else:
+                    messages.warning(request, _("Уже приглашён: ") + email)
+        elif action == "remove":
+            mid = request.POST.get("member_id")
+            TeamMember.objects.filter(owner=request.user, id=mid).delete()
+            messages.success(request, _("Участник удалён"))
+        elif action == "change_role":
+            mid = request.POST.get("member_id")
+            new_role = request.POST.get("role")
+            TeamMember.objects.filter(owner=request.user, id=mid).update(role=new_role)
+            messages.success(request, _("Роль изменена"))
+        return redirect("team_management")
+    return render(request, "components/team_page.html", {"members": members,
+                                                          "role_choices": TeamMember.ROLE_CHOICES})
+
+
+def team_accept(request, token):
+    try:
+        data = signing.loads(token, salt="team-invite", max_age=60 * 60 * 24 * 14)  # 14 days
+    except Exception:
+        messages.error(request, _("Ссылка приглашения недействительна или истекла"))
+        return redirect("login")
+    tm = TeamMember.objects.filter(invite_token=token, status="invited").first()
+    if not tm:
+        messages.info(request, _("Приглашение уже принято или отозвано"))
+        return redirect("login")
+    if request.user.is_authenticated:
+        tm.user = request.user
+        tm.status = "active"
+        tm.accepted_at = timezone.now()
+        tm.save()
+        messages.success(request, _("Вы присоединились к команде ") + tm.owner.get_full_name())
+        return redirect("dashboard")
+    # Otherwise show register/login choice
+    return render(request, "components/team_accept.html", {"tm": tm, "token": token})
+
+
+def help_view(request):
+    return render(request, "marketplace/help.html")
+
+
+# ── 2FA (TOTP) ─────────────────────────────────────────────
+import io
+import secrets as _secrets
+from .models import TwoFactorAuth
+
+@login_required
+def twofa_setup(request):
+    """Enable 2FA: shows QR code + verification."""
+    twofa, _ = TwoFactorAuth.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "enable":
+            try:
+                import pyotp
+            except ImportError:
+                messages.error(request, "pyotp library not installed")
+                return redirect("twofa_setup")
+            code = (request.POST.get("code") or "").strip()
+            if twofa.secret and pyotp.TOTP(twofa.secret).verify(code, valid_window=1):
+                twofa.enabled = True
+                twofa.enabled_at = timezone.now()
+                # Generate 8 backup codes
+                twofa.backup_codes = ",".join(_secrets.token_hex(4) for _ in range(8))
+                twofa.save()
+                Notification.objects.create(
+                    user=request.user, kind="system",
+                    title=_("Двухфакторная аутентификация включена"),
+                    body=_("Сохраните резервные коды в безопасном месте."),
+                    url="/2fa/",
+                )
+                messages.success(request, _("2FA включена. Сохраните резервные коды!"))
+                return redirect("twofa_setup")
+            else:
+                messages.error(request, _("Неверный код. Попробуйте ещё раз."))
+        elif action == "disable":
+            twofa.enabled = False
+            twofa.secret = ""
+            twofa.backup_codes = ""
+            twofa.save()
+            messages.success(request, _("2FA отключена"))
+            return redirect("twofa_setup")
+        elif action == "regenerate":
+            try:
+                import pyotp
+                twofa.secret = pyotp.random_base32()
+                twofa.save()
+            except ImportError:
+                pass
+            return redirect("twofa_setup")
+
+    # Generate secret if not exists
+    if not twofa.secret and not twofa.enabled:
+        try:
+            import pyotp
+            twofa.secret = pyotp.random_base32()
+            twofa.save()
+        except ImportError:
+            pass
+
+    qr_url = ""
+    if twofa.secret and not twofa.enabled:
+        try:
+            import pyotp
+            issuer = "Consolidator Parts"
+            uri = pyotp.totp.TOTP(twofa.secret).provisioning_uri(
+                name=request.user.email or request.user.username,
+                issuer_name=issuer,
+            )
+            # Generate QR via qrcode lib
+            try:
+                import qrcode
+                import base64
+                img = qrcode.make(uri, box_size=6, border=2)
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                qr_url = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+            except ImportError:
+                qr_url = ""
+        except ImportError:
+            pass
+
+    backup_list = twofa.backup_codes.split(",") if twofa.backup_codes else []
+    return render(request, "components/twofa_setup.html", {
+        "twofa": twofa, "qr_url": qr_url, "backup_codes": backup_list,
     })

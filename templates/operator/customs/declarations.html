@@ -1,21 +1,22 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Таможенный брокер — Декларации{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Таможенный брокер — Декларации" %}{% endblock %}
 
 {% block content %}
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-  <div class="op-section-title" style="margin-bottom:0;">Управление декларациями</div>
+  <div class="op-section-title" style="margin-bottom:0;">{% trans "Управление декларациями" %}</div>
   <button class="op-btn op-btn-primary" onclick="openDeclModal()">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"/></svg>
-    Создать декларацию
+    {% trans "Создать декларацию" %}
   </button>
 </div>
 
 <!-- Tabs -->
 <div class="op-tabs" id="decl-tabs">
-  <button class="op-tab active" data-tab="all" onclick="switchDeclTab('all')">Все</button>
-  <button class="op-tab" data-tab="active" onclick="switchDeclTab('active')">В работе</button>
-  <button class="op-tab" data-tab="waiting" onclick="switchDeclTab('waiting')">Ожидают</button>
-  <button class="op-tab" data-tab="done" onclick="switchDeclTab('done')">Завершены</button>
+  <button class="op-tab active" data-tab="all" onclick="switchDeclTab('all')">{% trans "Все" %}</button>
+  <button class="op-tab" data-tab="active" onclick="switchDeclTab('active')">{% trans "В работе" %}</button>
+  <button class="op-tab" data-tab="waiting" onclick="switchDeclTab('waiting')">{% trans "Ожидают" %}</button>
+  <button class="op-tab" data-tab="done" onclick="switchDeclTab('done')">{% trans "Завершены" %}</button>
 </div>
 
 <div class="op-card">
@@ -23,14 +24,14 @@
     <thead>
       <tr>
         <th></th>
-        <th>Номер</th>
-        <th>Заказ</th>
-        <th>Товар</th>
-        <th>Стоимость</th>
-        <th>Код ТН ВЭД</th>
-        <th>Статус</th>
-        <th>Дата подачи</th>
-        <th>Действия</th>
+        <th>{% trans "Номер" %}</th>
+        <th>{% trans "Заказ" %}</th>
+        <th>{% trans "Товар" %}</th>
+        <th>{% trans "Стоимость" %}</th>
+        <th>{% trans "Код ТН ВЭД" %}</th>
+        <th>{% trans "Статус" %}</th>
+        <th>{% trans "Дата подачи" %}</th>
+        <th>{% trans "Действия" %}</th>
       </tr>
     </thead>
     <tbody>
@@ -38,34 +39,34 @@
         <td style="cursor:pointer;width:24px;" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="2" stroke-linecap="round" class="expand-icon"><path d="M6 4l4 4-4 4"/></svg>
         </td>
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0847</td>
+        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">{% trans "ДТ-2024-0847" %}</td>
         <td>ORD-4521</td>
-        <td>Автозапчасти</td>
+        <td>{% trans "Автозапчасти" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">$18,400</td>
         <td style="font-family:'Golos Text',sans-serif;color:#919191;">8708 99</td>
-        <td><span class="op-badge op-badge-gray">На рассмотрении</span></td>
-        <td class="text-secondary">22 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">Детали</button></td>
+        <td><span class="op-badge op-badge-gray">{% trans "На рассмотрении" %}</span></td>
+        <td class="text-secondary">{% trans "22 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">{% trans "Детали" %}</button></td>
       </tr>
       <tr class="decl-detail" style="display:none;">
         <td colspan="9" style="padding:16px 12px;background:#1F1F1F;">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
             <div>
-              <div class="op-section-sub">Товары</div>
-              <div style="font-size:13px;color:#ECECEC;">Запчасти двигателя x24</div>
-              <div style="font-size:13px;color:#ECECEC;">Фильтры x48</div>
+              <div class="op-section-sub">{% trans "Товары" %}</div>
+              <div style="font-size:13px;color:#ECECEC;">{% trans "Запчасти двигателя x24" %}</div>
+              <div style="font-size:13px;color:#ECECEC;">{% trans "Фильтры x48" %}</div>
             </div>
             <div>
-              <div class="op-section-sub">Документы</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('Инвойс INV-4521')">Инвойс INV-4521</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('Упаковочный лист')">Упаковочный лист</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('Сертификат происхождения')">Сертификат происхождения</div>
+              <div class="op-section-sub">{% trans "Документы" %}</div>
+              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('{% trans "Инвойс INV-4521" %}')">{% trans "Инвойс INV-4521" %}</div>
+              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('{% trans "Упаковочный лист" %}')">{% trans "Упаковочный лист" %}</div>
+              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('{% trans "Сертификат происхождения" %}')">{% trans "Сертификат происхождения" %}</div>
             </div>
             <div>
-              <div class="op-section-sub">Пошлины</div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">Пошлина (5%)</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$920</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">НДС (20%)</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$3,864</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);"><span style="color:#ECECEC;">Итого</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$4,784</span></div>
+              <div class="op-section-sub">{% trans "Пошлины" %}</div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">{% trans "Пошлина (5%)" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$920</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">{% trans "НДС (20%)" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$3,864</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);"><span style="color:#ECECEC;">{% trans "Итого" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$4,784</span></div>
             </div>
           </div>
         </td>
@@ -74,32 +75,32 @@
         <td style="cursor:pointer;width:24px;" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="2" stroke-linecap="round" class="expand-icon"><path d="M6 4l4 4-4 4"/></svg>
         </td>
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0845</td>
+        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">{% trans "ДТ-2024-0845" %}</td>
         <td>ORD-4518</td>
-        <td>Подшипники</td>
+        <td>{% trans "Подшипники" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">$6,200</td>
         <td style="font-family:'Golos Text',sans-serif;color:#919191;">8482 10</td>
-        <td><span class="op-badge op-badge-gray">Подготовка</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Подготовка" %}</span></td>
         <td class="text-secondary">--</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">Детали</button></td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">{% trans "Детали" %}</button></td>
       </tr>
       <tr class="decl-detail" style="display:none;">
         <td colspan="9" style="padding:16px 12px;background:#1F1F1F;">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
             <div>
-              <div class="op-section-sub">Товары</div>
-              <div style="font-size:13px;color:#ECECEC;">Подшипники шариковые x120</div>
+              <div class="op-section-sub">{% trans "Товары" %}</div>
+              <div style="font-size:13px;color:#ECECEC;">{% trans "Подшипники шариковые x120" %}</div>
             </div>
             <div>
-              <div class="op-section-sub">Документы</div>
-              <div style="font-size:13px;color:#E85C0D;">Инвойс - не загружен</div>
-              <div style="font-size:13px;color:#E85C0D;">Сертификат - ожидает</div>
+              <div class="op-section-sub">{% trans "Документы" %}</div>
+              <div style="font-size:13px;color:#E85C0D;">{% trans "Инвойс - не загружен" %}</div>
+              <div style="font-size:13px;color:#E85C0D;">{% trans "Сертификат - ожидает" %}</div>
             </div>
             <div>
-              <div class="op-section-sub">Пошлины (оценка)</div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">Пошлина (8%)</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$496</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">НДС (20%)</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,339</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);"><span style="color:#ECECEC;">Итого</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,835</span></div>
+              <div class="op-section-sub">{% trans "Пошлины (оценка)" %}</div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">{% trans "Пошлина (8%)" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$496</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">{% trans "НДС (20%)" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,339</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);"><span style="color:#ECECEC;">{% trans "Итого" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,835</span></div>
             </div>
           </div>
         </td>
@@ -108,24 +109,24 @@
         <td style="cursor:pointer;width:24px;" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="2" stroke-linecap="round" class="expand-icon"><path d="M6 4l4 4-4 4"/></svg>
         </td>
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0843</td>
+        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">{% trans "ДТ-2024-0843" %}</td>
         <td>ORD-4515</td>
-        <td>Фильтры масляные</td>
+        <td>{% trans "Фильтры масляные" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">$4,100</td>
         <td style="font-family:'Golos Text',sans-serif;color:#919191;">8421 23</td>
-        <td><span class="op-badge op-badge-gray">На рассмотрении</span></td>
-        <td class="text-secondary">20 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">Детали</button></td>
+        <td><span class="op-badge op-badge-gray">{% trans "На рассмотрении" %}</span></td>
+        <td class="text-secondary">{% trans "20 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">{% trans "Детали" %}</button></td>
       </tr>
       <tr class="decl-detail" style="display:none;">
         <td colspan="9" style="padding:16px 12px;background:#1F1F1F;">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
-            <div><div class="op-section-sub">Товары</div><div style="font-size:13px;color:#ECECEC;">Фильтры масляные x200</div></div>
-            <div><div class="op-section-sub">Документы</div><div style="font-size:13px;color:#919191;">Все документы загружены</div></div>
-            <div><div class="op-section-sub">Пошлины</div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">Пошлина (0%)</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$0</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">НДС (20%)</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$820</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);"><span style="color:#ECECEC;">Итого</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$820</span></div>
+            <div><div class="op-section-sub">{% trans "Товары" %}</div><div style="font-size:13px;color:#ECECEC;">{% trans "Фильтры масляные x200" %}</div></div>
+            <div><div class="op-section-sub">{% trans "Документы" %}</div><div style="font-size:13px;color:#919191;">{% trans "Все документы загружены" %}</div></div>
+            <div><div class="op-section-sub">{% trans "Пошлины" %}</div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">{% trans "Пошлина (0%)" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$0</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">{% trans "НДС (20%)" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$820</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);"><span style="color:#ECECEC;">{% trans "Итого" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$820</span></div>
             </div>
           </div>
         </td>
@@ -134,24 +135,24 @@
         <td style="cursor:pointer;width:24px;" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="2" stroke-linecap="round" class="expand-icon"><path d="M6 4l4 4-4 4"/></svg>
         </td>
-        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">ДТ-2024-0839</td>
+        <td style="font-family:'Golos Text',sans-serif;font-weight:700;">{% trans "ДТ-2024-0839" %}</td>
         <td>ORD-4505</td>
-        <td>Амортизаторы</td>
+        <td>{% trans "Амортизаторы" %}</td>
         <td style="font-family:'Golos Text',sans-serif;">$9,300</td>
         <td style="font-family:'Golos Text',sans-serif;color:#919191;">8708 80</td>
-        <td><span class="op-badge op-badge-gray">Оформлена</span></td>
-        <td class="text-secondary">18 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">Детали</button></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Оформлена" %}</span></td>
+        <td class="text-secondary">{% trans "18 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleDeclRow(this.closest('tr'))">{% trans "Детали" %}</button></td>
       </tr>
       <tr class="decl-detail" style="display:none;">
         <td colspan="9" style="padding:16px 12px;background:#1F1F1F;">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
-            <div><div class="op-section-sub">Товары</div><div style="font-size:13px;color:#ECECEC;">Амортизаторы передние x60</div><div style="font-size:13px;color:#ECECEC;">Амортизаторы задние x40</div></div>
-            <div><div class="op-section-sub">Документы</div><div style="font-size:13px;color:#919191;">Все документы верифицированы</div></div>
-            <div><div class="op-section-sub">Пошлины (оплачено)</div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">Пошлина (5%)</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$465</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">НДС (20%)</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,953</span></div>
-              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);"><span style="color:#ECECEC;">Итого</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$2,418</span></div>
+            <div><div class="op-section-sub">{% trans "Товары" %}</div><div style="font-size:13px;color:#ECECEC;">{% trans "Амортизаторы передние x60" %}</div><div style="font-size:13px;color:#ECECEC;">{% trans "Амортизаторы задние x40" %}</div></div>
+            <div><div class="op-section-sub">{% trans "Документы" %}</div><div style="font-size:13px;color:#919191;">{% trans "Все документы верифицированы" %}</div></div>
+            <div><div class="op-section-sub">{% trans "Пошлины (оплачено)" %}</div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">{% trans "Пошлина (5%)" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$465</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#919191;">{% trans "НДС (20%)" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$1,953</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.04);"><span style="color:#ECECEC;">{% trans "Итого" %}</span><span style="color:#ECECEC;font-family:'Golos Text',sans-serif;">$2,418</span></div>
             </div>
           </div>
         </td>
@@ -162,12 +163,12 @@
 
 <!-- Document upload area -->
 <div class="op-card" style="margin-top:16px;">
-  <div class="op-section-title">Загрузка документов</div>
+  <div class="op-section-title">{% trans "Загрузка документов" %}</div>
   <div id="upload-zone" style="border:2px dashed rgba(255,255,255,0.06);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('upload-input').click()" onmouseenter="this.style.borderColor='rgba(100,181,246,0.2)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'">
     <input id="upload-input" type="file" multiple accept=".pdf,.jpg,.png" style="display:none;" onchange="uploadFilesSelected(this)">
     <svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1" stroke-linecap="round" style="margin-bottom:8px;"><path d="M8 10V3M5 5l3-3 3 3"/><path d="M2 10v2.5a1 1 0 001 1h10a1 1 0 001-1V10"/></svg>
-    <div style="font-size:13px;color:#919191;">Перетащите файлы сюда или нажмите для выбора</div>
-    <div style="font-size:11px;color:#5E5E5E;margin-top:4px;">PDF, JPG, PNG до 10 МБ</div>
+    <div style="font-size:13px;color:#919191;">{% trans "Перетащите файлы сюда или нажмите для выбора" %}</div>
+    <div style="font-size:11px;color:#5E5E5E;margin-top:4px;">{% trans "PDF, JPG, PNG до 10 МБ" %}</div>
   </div>
   <div id="upload-file-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px;"></div>
 </div>
@@ -178,13 +179,13 @@
 <div id="modal-decl" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
   <div style="background:#1F1F1F;border-radius:16px;padding:28px;width:480px;max-width:92vw;border:1px solid rgba(255,255,255,0.08);box-shadow:0 24px 64px rgba(0,0,0,0.5);">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">Создать декларацию</div>
+      <div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;">{% trans "Создать декларацию" %}</div>
       <button onclick="closeDeclModal()" style="background:none;border:none;color:#6A6A6A;font-size:22px;cursor:pointer;line-height:1;">×</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Номер заказа *</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Номер заказа *" %}</label>
           <select id="decl-order" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
             <option>ORD-4521</option>
             <option>ORD-4518</option>
@@ -194,30 +195,30 @@
           </select>
         </div>
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Страна происхождения *</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Страна происхождения *" %}</label>
           <select id="decl-country" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;">
-            <option>Китай</option>
-            <option>Турция</option>
-            <option>Германия</option>
-            <option>Япония</option>
-            <option>США</option>
+            <option>{% trans "Китай" %}</option>
+            <option>{% trans "Турция" %}</option>
+            <option>{% trans "Германия" %}</option>
+            <option>{% trans "Япония" %}</option>
+            <option>{% trans "США" %}</option>
           </select>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">ТН ВЭД код *</label>
-          <input id="decl-tnved" type="text" placeholder="например: 8708 99" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "ТН ВЭД код *" %}</label>
+          <input id="decl-tnved" type="text" placeholder="{% trans "например: 8708 99" %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
         </div>
         <div>
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Таможенная стоимость ($) *</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Таможенная стоимость ($) *" %}</label>
           <input id="decl-value" type="number" placeholder="0.00" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
         </div>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
-      <button onclick="closeDeclModal()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.1);cursor:pointer;">Отмена</button>
-      <button onclick="submitDecl()" class="op-btn op-btn-primary">Создать декларацию</button>
+      <button onclick="closeDeclModal()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.1);cursor:pointer;">{% trans "Отмена" %}</button>
+      <button onclick="submitDecl()" class="op-btn op-btn-primary">{% trans "Создать декларацию" %}</button>
     </div>
   </div>
 </div>
@@ -232,11 +233,11 @@
     <div style="background:#111;border-radius:10px;padding:40px;text-align:center;border:1px solid rgba(255,255,255,0.06);margin-bottom:20px;">
       <svg width="48" height="48" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="0.8" stroke-linecap="round" style="margin-bottom:10px;"><path d="M4 1.5h6l3 3v9.5a1 1 0 01-1 1H4a1 1 0 01-1-1V2.5a1 1 0 011-1z"/><path d="M10 1.5v3h3"/></svg>
       <div id="modal-doc-name" style="font-size:13px;color:#919191;margin-top:4px;"></div>
-      <div style="font-size:11px;color:#5E5E5E;margin-top:4px;">PDF · Просмотр документа</div>
+      <div style="font-size:11px;color:#5E5E5E;margin-top:4px;">{% trans "PDF · Просмотр документа" %}</div>
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;">
-      <button onclick="closeDocModal()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.1);cursor:pointer;">Закрыть</button>
-      <button onclick="opToast('Скачивание...', 1500, 'success')" class="op-btn op-btn-primary">Скачать</button>
+      <button onclick="closeDocModal()" style="padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.1);cursor:pointer;">{% trans "Закрыть" %}</button>
+      <button onclick="opToast('{% trans "Скачивание..." %}', 1500, 'success')" class="op-btn op-btn-primary">{% trans "Скачать" %}</button>
     </div>
   </div>
 </div>
@@ -296,7 +297,7 @@ function submitDecl() {
   }
   var order = document.getElementById('decl-order').value;
   closeDeclModal();
-  opToast('Декларация создана: ' + order + ' · ' + tnved, 2500, 'success');
+  opToast('{% trans 'Декларация создана: ' %}' + order + ' · ' + tnved, 2500, 'success');
 }
 document.getElementById('modal-decl').addEventListener('click', function(e){
   if (e.target === this) closeDeclModal();
@@ -320,10 +321,10 @@ function uploadFilesSelected(input) {
   Array.from(input.files).forEach(function(file) {
     var item = document.createElement('div');
     item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1A1A1A;border-radius:8px;border:1px solid rgba(102,187,106,0.2);';
-    item.innerHTML = '<span style="font-size:14px;">📄</span><span style="font-size:12px;color:#ECECEC;flex:1;">' + file.name + '</span><span style="font-size:11px;color:#66BB6A;">✓ Загружен</span>';
+    item.innerHTML = '<span style="font-size:14px;">📄</span><span style="font-size:12px;color:#ECECEC;flex:1;">' + file.name + '{% trans "</span><span style=\"font-size:11px;color:#66BB6A;\">✓ Загружен</span>" %}';
     list.appendChild(item);
   });
-  opToast('Загружено файлов: ' + input.files.length, 2000, 'success');
+  opToast('{% trans 'Загружено файлов: ' %}' + input.files.length, 2000, 'success');
   input.value = '';
 }
 </script>

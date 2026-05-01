@@ -38,7 +38,7 @@
   </article>
   <article class="card card-body">
     <p class="muted">{% trans "Свежесть данных" %}</p>
-    <p class="price">{{ stale_snapshot.days }}д</p>
+    <p class="price">{{ stale_snapshot.days }}{% trans "д" %}</p>
     <p>
       {% if stale_snapshot.state == "blocked" %}
         <span class="chip chip-warn">Blocked</span>
@@ -56,15 +56,15 @@
   <div class="grid">
     <article class="card card-body">
       <p class="muted">{% trans "Описание" %}</p>
-      <p>{{ part.description|default:"Описание пока не заполнено." }}</p>
+      <p>{{ part.description|default:"{% trans 'Описание пока не заполнено.' %}" }}</p>
     </article>
     <article class="card card-body">
       <p class="muted">{% trans "Кросс-номера" %}</p>
-      <p>{{ part.cross_numbers|default:"Не указаны." }}</p>
+      <p>{{ part.cross_numbers|default:"{% trans 'Не указаны.' %}" }}</p>
     </article>
     <article class="card card-body">
       <p class="muted">{% trans "Источник" %}</p>
-      <p>{{ part.country_of_origin|default:"Не указан." }}</p>
+      <p>{{ part.country_of_origin|default:"{% trans 'Не указан.' %}" }}</p>
     </article>
   </div>
 </section>
@@ -78,23 +78,23 @@
     </article>
     <article class="card card-body">
       <p class="muted">Production lead</p>
-      <p>{% blocktrans with days=part.production_lead_days %}{{ days }} дн.{% endblocktrans %}</p>
+      <p>{{ part.production_lead_days }} {% trans "дн." %}</p>
     </article>
     <article class="card card-body">
       <p class="muted">Prep to ship</p>
-      <p>{% blocktrans with days=part.prep_to_ship_days %}{{ days }} дн.{% endblocktrans %}</p>
+      <p>{{ part.prep_to_ship_days }} {% trans "дн." %}</p>
     </article>
     <article class="card card-body">
       <p class="muted">Shipping lead</p>
-      <p>{% blocktrans with days=part.shipping_lead_days %}{{ days }} дн.{% endblocktrans %}</p>
+      <p>{{ part.shipping_lead_days }} {% trans "дн." %}</p>
     </article>
     <article class="card card-body">
       <p class="muted">{% trans "Вес" %}</p>
-      <p>{% blocktrans with weight=part.gross_weight_kg %}{{ weight }} кг{% endblocktrans %}</p>
+      <p>{{ part.gross_weight_kg }} {% trans "кг" %}</p>
     </article>
     <article class="card card-body">
       <p class="muted">{% trans "Габариты" %}</p>
-      <p>{% blocktrans with l=part.length_cm w=part.width_cm h=part.height_cm %}{{ l }} × {{ w }} × {{ h }} см{% endblocktrans %}</p>
+      <p>{{ part.length_cm }} × {{ part.width_cm }} × {{ part.height_cm }} {% trans "см" %}</p>
     </article>
   </div>
 </section>

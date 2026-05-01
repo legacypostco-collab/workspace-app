@@ -8,16 +8,14 @@
 </section>
 
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>{% blocktrans with id=import_job.id %}Импорт #{{ id }}{% endblocktrans %}</h2>
+  <h2>{% trans "Импорт #" %}{{ import_job.id }}</h2>
   <p class="muted">
-    {% trans "Статус" %}: <strong id="import-status">{{ import_job.status }}</strong> •
-    {% trans "Запуск" %}: <span id="import-started">{{ import_job.started_at|default:import_job.created_at|date:"Y-m-d H:i:s" }}</span> •
-    {% trans "Завершение" %}: <span id="import-finished">{{ import_job.finished_at|default:"—" }}</span>
+    {% trans "Статус:" %} <strong id="import-status">{{ import_job.status }}</strong> {% trans "• Запуск:" %} <span id="import-started">{{ import_job.started_at|default:import_job.created_at|date:"Y-m-d H:i:s" }}</span> {% trans "• Завершение:" %} <span id="import-finished">{{ import_job.finished_at|default:"—" }}</span>
   </p>
   <div class="upload-progress" style="display:block; margin-top:10px;">
     <div class="upload-progress-bar" id="import-progress-bar" style="width:{% widthratio import_job.processed_rows|default:0 import_job.total_rows|default:1 100 %}%;"></div>
   </div>
-  <p class="muted" id="import-progress-text" style="margin-top:6px;">{% blocktrans with processed=import_job.processed_rows|default:0 total=import_job.total_rows|default:import_job.rows_total %}Обработано: {{ processed }} / {{ total }}{% endblocktrans %}</p>
+  <p class="muted" id="import-progress-text" style="margin-top:6px;">{% trans "Обработано:" %} {{ import_job.processed_rows|default:0 }} / {{ import_job.total_rows|default:import_job.rows_total }}</p>
   <div class="chips">
     <span class="chip">{% trans "Всего строк:" %} <strong id="import-total">{{ import_job.total_rows|default:import_job.rows_total }}</strong></span>
     <span class="chip chip-ok">{% trans "Успешно:" %} <strong id="import-valid">{{ import_job.valid_rows }}</strong></span>
@@ -58,7 +56,7 @@
       </button>
       <span class="chip" id="import-rollback-status">
         {% if import_job.summary_json.rollback %}
-          {% blocktrans with count=import_job.summary_json.rollback.rolled_back_offer_count %}Откат уже выполнен ({{ count }} офферов){% endblocktrans %}
+          {% trans "Откат уже выполнен (" %}{{ import_job.summary_json.rollback.rolled_back_offer_count }} {% trans "офферов)" %}
         {% elif import_job.status == "completed" or import_job.status == "partial_success" %}
           {% trans "Доступно для этого импорта" %}
         {% else %}
@@ -105,7 +103,7 @@
   </form>
   <p class="muted" id="rows-summary" style="margin-top:8px;">
     {% if error_rows_preview %}
-      {% blocktrans with count=error_rows_preview|length %}Показано строк: {{ count }} (предварительно загружены ошибки){% endblocktrans %}
+      {% trans "Показано строк:" %} {{ error_rows_preview|length }} {% trans "(предварительно загружены ошибки)" %}
     {% else %}
       {% trans "Данных пока нет" %}
     {% endif %}
@@ -191,7 +189,7 @@
       if (!rowsBody) return;
       if (!items || !items.length) {
         rowsBody.innerHTML = '<tr><td colspan="7">По выбранным фильтрам строк не найдено.</td></tr>';
-        if (rowsSummary) rowsSummary.textContent = "Показано строк: 0";
+        if (rowsSummary) rowsSummary.textContent = gettext('Показано строк: 0');
         return;
       }
       const html = items.map(function (row) {
@@ -208,7 +206,7 @@
         );
       }).join("");
       rowsBody.innerHTML = html;
-      if (rowsSummary) rowsSummary.textContent = "Показано строк: " + String(items.length);
+      if (rowsSummary) rowsSummary.textContent = gettext('Показано строк: ') + String(items.length);
     };
 
     const loadRows = function () {
@@ -229,7 +227,7 @@
           renderRows(data.items || []);
         })
         .catch(function () {
-          if (rowsSummary) rowsSummary.textContent = "Не удалось загрузить строки импорта";
+          if (rowsSummary) rowsSummary.textContent = gettext('Не удалось загрузить строки импорта');
         });
     };
 
@@ -244,7 +242,7 @@
       if (updatedOffersNode) updatedOffersNode.textContent = String(data.updated_offers || 0);
       if (updatedPricesNode) updatedPricesNode.textContent = String(data.rows_updated_prices || 0);
       if (progressBar) progressBar.style.width = Math.max(0, Math.min(100, Number(data.progress_percent || 0))) + "%";
-      if (progressText) progressText.textContent = "Обработано: " + String(data.processed_rows || 0) + " / " + String(data.total_rows || 0);
+      if (progressText) progressText.textContent = gettext('Обработано: ') + String(data.processed_rows || 0) + " / " + String(data.total_rows || 0);
       if (errorsActions) errorsActions.style.display = (Number(data.error_rows || 0) > 0) ? "flex" : "none";
       if (errorMessageNode) {
         if (data.error_message) {
@@ -261,11 +259,11 @@
 
     if (rollbackBtn && csrfToken) {
       rollbackBtn.addEventListener("click", function () {
-        if (!window.confirm("Подтвердить откат этого импорта? Затронутые офферы будут деактивированы.")) {
+        if (!window.confirm(gettext('Подтвердить откат этого импорта? Затронутые офферы будут деактивированы.'))) {
           return;
         }
         rollbackBtn.disabled = true;
-        rollbackBtn.textContent = "Откатываем...";
+        rollbackBtn.textContent = gettext('Откатываем...');
         fetch("/api/v1/seller/imports/" + jobId + "/rollback", {
           method: "POST",
           headers: {
@@ -282,21 +280,21 @@
           .then(function (payload) {
             if (!payload.ok) {
               rollbackBtn.disabled = false;
-              rollbackBtn.textContent = "Откатить импорт";
-              if (rollbackStatus) rollbackStatus.textContent = payload.body.error || "Не удалось выполнить откат";
+              rollbackBtn.textContent = gettext('Откатить импорт');
+              if (rollbackStatus) rollbackStatus.textContent = payload.body.error || gettext('Не удалось выполнить откат');
               return;
             }
             const count = Number(payload.body.rolled_back_offer_count || 0);
-            rollbackBtn.textContent = "Откат выполнен";
-            if (rollbackStatus) rollbackStatus.textContent = "Откат выполнен: деактивировано офферов " + String(count);
+            rollbackBtn.textContent = gettext('Откат выполнен');
+            if (rollbackStatus) rollbackStatus.textContent = gettext('Откат выполнен: деактивировано офферов ') + String(count);
             window.setTimeout(function () {
               window.location.href = "/seller/products/";
             }, 900);
           })
           .catch(function () {
             rollbackBtn.disabled = false;
-            rollbackBtn.textContent = "Откатить импорт";
-            if (rollbackStatus) rollbackStatus.textContent = "Ошибка сети при откате";
+            rollbackBtn.textContent = gettext('Откатить импорт');
+            if (rollbackStatus) rollbackStatus.textContent = gettext('Ошибка сети при откате');
           });
       });
     }

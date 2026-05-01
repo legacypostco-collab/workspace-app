@@ -1,10 +1,10 @@
-{% load static %}
+{% load static i18n %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Вход | Consolidator Parts</title>
+  <title>{% trans "Вход" %} | Consolidator Parts</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -653,33 +653,30 @@ html.theme-light .demo-btn__login { color: #8892A4 !important; }
 
 <nav class="side-nav" aria-label="Основная навигация">
 <ul class="side-nav__list">
-<li><a href="{% url 'home' %}" class="side-nav__link">Главная</a></li>
-<li><a href="{% url 'home' %}#buyers" class="side-nav__link">Покупателям</a></li>
-<li><a href="{% url 'home' %}#suppliers" class="side-nav__link">Поставщикам</a></li>
-<li><a href="{% url 'home' %}#calc_anchor" class="side-nav__link">Расчёты</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link side-nav__link--active">Заказы</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Скидки</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Интеграции</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Логистика</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Платежи</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Бонусы</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Аналитика</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Поддержка</a></li>
-<li><a href="{% url 'login' %}" class="side-nav__link">Настройки</a></li>
+<li><a href="{% url 'home' %}" class="side-nav__link">{% trans "Главная" %}</a></li>
+<li><a href="{% url 'home' %}#buyers" class="side-nav__link">{% trans "Покупателям" %}</a></li>
+<li><a href="{% url 'home' %}#suppliers" class="side-nav__link">{% trans "Поставщикам" %}</a></li>
+<li><a href="{% url 'home' %}#calc_anchor" class="side-nav__link">{% trans "Расчёты" %}</a></li>
+<li><a href="{% url 'login' %}" class="side-nav__link side-nav__link--active">{% trans "Заказы" %}</a></li>
+<li><a href="{% url 'login' %}" class="side-nav__link">{% trans "Скидки" %}</a></li>
+<li><a href="{% url 'login' %}" class="side-nav__link">{% trans "Интеграции" %}</a></li>
+<li><a href="{% url 'login' %}" class="side-nav__link">{% trans "Логистика" %}</a></li>
+<li><a href="{% url 'login' %}" class="side-nav__link">{% trans "Платежи" %}</a></li>
+<li><a href="{% url 'login' %}" class="side-nav__link">{% trans "Бонусы" %}</a></li>
+<li><a href="{% url 'login' %}" class="side-nav__link">{% trans "Аналитика" %}</a></li>
+<li><a href="{% url 'login' %}" class="side-nav__link">{% trans "Поддержка" %}</a></li>
+<li><a href="{% url 'login' %}" class="side-nav__link">{% trans "Настройки" %}</a></li>
 </ul>
 </nav>
 
 <div class="header-actions">
 <div class="header-auth">
-<a href="{% url 'register' %}" class="auth-btn auth-btn--primary">Регистрация</a>
-<a href="{% url 'login' %}" class="auth-btn auth-btn--ghost">Войти</a>
+<a href="{% url 'register' %}" class="auth-btn auth-btn--primary">{% trans "Регистрация" %}</a>
+<a href="{% url 'login' %}" class="auth-btn auth-btn--ghost">{% trans "Войти" %}</a>
 </div>
-<button type="button" class="header-cta">Обратный звонок</button>
+<button type="button" class="header-cta">{% trans "Обратный звонок" %}</button>
 <div class="header-lang">
-<button type="button" class="lang-btn js-lang-toggle" data-next-lang="en">
-<svg class="lang-flag-img" style="width:18px;height:13px;border-radius:3px" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 -4 28 28"><g clip-path="url(#a)"><rect width="28" height="20" fill="#fff" rx="2"/><mask id="b" width="28" height="20" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><rect width="28" height="20" fill="#fff" rx="2"/></mask><g mask="url(#b)"><path fill="#D02F44" fill-rule="evenodd" d="M28 0H0v1.333h28V0Zm0 2.667H0V4h28V2.667ZM0 5.333h28v1.334H0V5.333ZM28 8H0v1.333h28V8ZM0 10.667h28V12H0v-1.333Zm28 2.666H0v1.334h28v-1.334ZM0 16h28v1.333H0V16Zm28 2.667H0V20h28v-1.333Z" clip-rule="evenodd"/><path fill="#46467F" d="M0 0h12v9.333H0z"/><g filter="url(#c)"><path fill="url(#d)" fill-rule="evenodd" d="M2.667 2a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Zm2.666 0A.667.667 0 1 1 4 2a.667.667 0 0 1 1.333 0Zm2 .667a.667.667 0 1 0 0-1.334.667.667 0 0 0 0 1.334ZM10.667 2a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0ZM3.333 4a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm3.334-.667a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Zm2 .667a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm2 .667a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Zm-3.334.666a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm-2-.666a.667.667 0 1 1-1.333 0 .667.667 0 0 1 1.333 0ZM2 5.333A.667.667 0 1 0 2 4a.667.667 0 0 0 0 1.333ZM4 6a.667.667 0 1 1-1.333 0A.667.667 0 0 1 4 6Zm2 .667a.667.667 0 1 0 0-1.334.667.667 0 0 0 0 1.334ZM9.333 6A.667.667 0 1 1 8 6a.667.667 0 0 1 1.333 0ZM10 8a.667.667 0 1 0 0-1.333A.667.667 0 0 0 10 8Zm-2-.667a.667.667 0 1 1-1.333 0 .667.667 0 0 1 1.333 0ZM4.667 8a.667.667 0 1 0 0-1.333.667.667 0 0 0 0 1.333Zm-2-.667a.667.667 0 1 1-1.334 0 .667.667 0 0 1 1.334 0Z" clip-rule="evenodd"/></g></g></g><defs><linearGradient id="d" x1="1.333" x2="1.333" y1="1.333" y2="8" gradientUnits="userSpaceOnUse"><stop stop-color="#fff"/><stop offset="1" stop-color="#F0F0F0"/></linearGradient><clipPath id="a"><rect width="28" height="20" fill="#fff" rx="2"/></clipPath><filter id="c" width="9.333" height="7.667" x="1.333" y="1.333" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" result="hardAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/><feOffset dy="1"/><feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.06 0"/><feBlend in2="BackgroundImageFix" result="effect1_dropShadow_503_3486"/><feBlend in="SourceGraphic" in2="effect1_dropShadow_503_3486" result="shape"/></filter></defs></svg>
-<span class="lang-text">EN</span>
-</button>
+{% include "components/_lang_switcher.html" %}
 </div>
 </div>
 
@@ -689,28 +686,32 @@ html.theme-light .demo-btn__login { color: #8892A4 !important; }
 <!-- Main content -->
 <main class="login-main">
   <div class="login-card">
-    <h1 class="login-card__title">Войти в систему</h1>
-    <p class="login-card__subtitle">Введите данные вашего аккаунта</p>
+    <h1 class="login-card__title">{% trans "Войти в систему" %}</h1>
+    <p class="login-card__subtitle">{% trans "Введите данные вашего аккаунта" %}</p>
 
     <form method="post" class="login-form">
       {% csrf_token %}
       {{ form.as_p }}
-      <button type="submit" class="login-submit">Войти</button>
+      <button type="submit" class="login-submit">{% trans "Войти" %}</button>
     </form>
 
+    <p class="login-card__register" style="text-align:center;margin-top:8px;">
+      <a href="{% url 'password_reset' %}" style="font-size:12px;color:#919191;">{% trans "Забыли пароль?" %}</a>
+    </p>
+
     <p class="login-card__register">
-      Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a>
+      {% trans "Нет аккаунта?" %} <a href="{% url 'register' %}">{% trans "Зарегистрироваться" %}</a>
     </p>
 
     <div class="demo-section">
-      <div class="demo-section__label">Быстрый вход · Демо</div>
+      <div class="demo-section__label">{% trans "Быстрый вход" %} · Demo</div>
       <div class="demo-btns">
         <button type="button" class="demo-btn" onclick="demoLogin('demo_seller')">
           <div class="demo-btn__icon demo-btn__icon--seller">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
           </div>
           <div class="demo-btn__info">
-            <div class="demo-btn__role">Поставщик</div>
+            <div class="demo-btn__role">{% trans "Поставщик" %}</div>
             <div class="demo-btn__login">demo_seller</div>
           </div>
           <span class="demo-btn__arrow">→</span>
@@ -720,7 +721,7 @@ html.theme-light .demo-btn__login { color: #8892A4 !important; }
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
           </div>
           <div class="demo-btn__info">
-            <div class="demo-btn__role">Покупатель</div>
+            <div class="demo-btn__role">{% trans "Покупатель" %}</div>
             <div class="demo-btn__login">demo_buyer</div>
           </div>
           <span class="demo-btn__arrow">→</span>
@@ -730,7 +731,7 @@ html.theme-light .demo-btn__login { color: #8892A4 !important; }
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
           </div>
           <div class="demo-btn__info">
-            <div class="demo-btn__role">Оператор</div>
+            <div class="demo-btn__role">{% trans "Оператор" %}</div>
             <div class="demo-btn__login">demo_operator</div>
           </div>
           <span class="demo-btn__arrow">→</span>
@@ -752,92 +753,6 @@ function demoLogin(username) {
   if (passField) passField.value = 'demo12345';
   form.submit();
 }
-
-// ====== LANG TOGGLE ======
-(function(){
-  var LANGS = {
-    ru: {
-      label: 'EN', next: 'en',
-      title: 'Войти в систему',
-      subtitle: 'Введите данные вашего аккаунта',
-      submit: 'Войти',
-      register: 'Нет аккаунта?',
-      registerLink: 'Зарегистрироваться',
-      demoLabel: 'Быстрый вход · Демо',
-      roles: ['Поставщик','Покупатель','Оператор'],
-      navItems: ['Главная','Покупателям','Поставщикам','Расчёты','Заказы','Скидки','Интеграции','Логистика','Платежи','Бонусы','Аналитика','Поддержка','Настройки'],
-    },
-    en: {
-      label: 'RU', next: 'ru',
-      title: 'Sign in',
-      subtitle: 'Enter your account credentials',
-      submit: 'Sign in',
-      register: 'No account?',
-      registerLink: 'Register',
-      demoLabel: 'Quick login · Demo',
-      roles: ['Supplier','Buyer','Operator'],
-      navItems: ['Home','For Buyers','For Suppliers','Quotes','Orders','Discounts','Integrations','Logistics','Payments','Bonuses','Analytics','Support','Settings'],
-    }
-  };
-
-  var currentLang = localStorage.getItem('cp_lang') || 'ru';
-
-  function applyLang(lang) {
-    var t = LANGS[lang] || LANGS['ru'];
-    currentLang = lang;
-    localStorage.setItem('cp_lang', lang);
-
-    // Button label + next
-    document.querySelectorAll('.js-lang-toggle').forEach(function(b){
-      var span = b.querySelector('.lang-text');
-      if (span) span.textContent = t.label;
-      b.setAttribute('data-next-lang', t.next);
-    });
-
-    // Page text
-    var titleEl = document.querySelector('.login-card__title');
-    if (titleEl) titleEl.textContent = t.title;
-    var subEl = document.querySelector('.login-card__subtitle');
-    if (subEl) subEl.textContent = t.subtitle;
-    var submitEl = document.querySelector('.login-submit');
-    if (submitEl) submitEl.textContent = t.submit;
-    var regEl = document.querySelector('.login-card__register');
-    if (regEl) {
-      var regLink = regEl.querySelector('a');
-      var regText = t.register + ' ';
-      if (regLink) {
-        regLink.textContent = t.registerLink;
-        regEl.childNodes[0].textContent = regText;
-      }
-    }
-    var demoLabelEl = document.querySelector('.demo-section__label');
-    if (demoLabelEl) demoLabelEl.textContent = t.demoLabel;
-    document.querySelectorAll('.demo-btn__role').forEach(function(el, i){
-      if (t.roles[i]) el.textContent = t.roles[i];
-    });
-
-    // Sidebar nav — translate by text map (RU↔EN both directions)
-    var NAV_RU = LANGS['ru'].navItems;
-    var NAV_EN = LANGS['en'].navItems;
-    var navMap = {};
-    NAV_RU.forEach(function(ru, i){ navMap[ru] = t.navItems[i]; });
-    NAV_EN.forEach(function(en, i){ navMap[en] = t.navItems[i]; });
-    document.querySelectorAll('.side-nav__link').forEach(function(a){
-      var text = a.textContent.trim();
-      if (navMap[text] !== undefined) a.textContent = navMap[text];
-    });
-
-    document.documentElement.lang = lang;
-  }
-
-  document.querySelectorAll('.js-lang-toggle').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      applyLang(this.getAttribute('data-next-lang'));
-    });
-  });
-
-  if (currentLang !== 'ru') applyLang(currentLang);
-})();
 
 // ====== THEME TOGGLE ======
 (function(){
@@ -869,5 +784,6 @@ function demoLogin(username) {
 })();
 </script>
 
+{% include "components/_cookie_banner.html" %}
 </body>
 </html>

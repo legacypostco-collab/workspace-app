@@ -4,7 +4,7 @@
 {% block content %}
 <section class="panel" style="margin-bottom: 16px;">
   <h2>{% trans "Фильтры" %}</h2>
-  <p class="muted">{% blocktrans with total=orders_total %}Всего заказов: {{ total }}{% endblocktrans %}</p>
+  <p class="muted">{% trans "Всего заказов:" %} {{ orders_total }}</p>
   <form method="get" action="{% url 'seller_orders' %}" class="upload-form">
     <p>
       <label for="id_q">{% trans "Введите номер заказа / клиента / запчасти" %}</label>
@@ -33,14 +33,14 @@
     <article class="list-row" style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px;cursor:pointer;transition:background .15s;" onclick="if(!event.target.closest('select,a,button,form')){window.location='{% url 'seller_order_detail' row.order.id %}'}">
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:2px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;">{% blocktrans with id=row.order.id %}Заказ #{{ id }}{% endblocktrans %}</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Заказ #" %}{{ row.order.id }}</span>
           <span style="font-size:12px;color:#6A6A6A;">{{ row.order.customer_name }} • {{ row.order.created_at|date:"d.m.Y" }}</span>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
           <span class="chip" style="padding:2px 8px;font-size:11px;">{{ row.order.get_status_display }}</span>
           <span class="chip" style="padding:2px 8px;font-size:11px;">{{ row.order.get_payment_status_display }}</span>
           <span class="chip" style="padding:2px 8px;font-size:11px;">SLA: {{ row.order.get_sla_status_display }}</span>
-          <span style="font-size:11px;color:#6A6A6A;">{% blocktrans with items=row.items_count units=row.units_total %}{{ items }} поз. • {{ units }} шт.{% endblocktrans %}</span>
+          <span style="font-size:11px;color:#6A6A6A;">{{ row.items_count }} {% trans "поз. •" %} {{ row.units_total }} {% trans "шт." %}</span>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
@@ -68,7 +68,7 @@
       {% if orders.has_previous %}
         <a class="btn btn-secondary" href="?page={{ orders.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{% trans "← Назад" %}</a>
       {% endif %}
-      <span class="chip">{% blocktrans with num=orders.number total=orders.paginator.num_pages %}Страница {{ num }} из {{ total }}{% endblocktrans %}</span>
+      <span class="chip">{% trans "Страница" %} {{ orders.number }} {% trans "из" %} {{ orders.paginator.num_pages }}</span>
       {% if orders.has_next %}
         <a class="btn btn-secondary" href="?page={{ orders.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if status %}&status={{ status|urlencode }}{% endif %}">{% trans "Вперед →" %}</a>
       {% endif %}

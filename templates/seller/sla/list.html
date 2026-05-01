@@ -4,7 +4,7 @@
 {% block title %}{% trans "Контроль SLA" %}{% endblock %}
 {% block content %}
 
-<p class="muted" style="margin-bottom:12px;">{% blocktrans with total=orders_total %}Всего заказов: {{ total }}{% endblocktrans %}</p>
+<p class="muted" style="margin-bottom:12px;">{% trans "Всего заказов:" %} {{ orders_total }}</p>
 
 <div id="sla-blocks">
 
@@ -44,11 +44,11 @@
             </div>
             <div class="kanban-card-customer">{{ row.order.customer_name }}</div>
             <div class="kanban-card-meta">
-              {% blocktrans with items=row.items_count units=row.units_total %}{{ items }} поз. · {{ units }} шт.{% endblocktrans %}
+              {{ row.items_count }} {% trans "поз. ·" %} {{ row.units_total }} {% trans "шт." %}
             </div>
             {% if row.order.ship_deadline %}
               <div class="kanban-card-deadline">
-                {% blocktrans with date=row.order.ship_deadline|date:"d.m" %}Отгрузка: {{ date }}{% endblocktrans %}
+                {% trans "Отгрузка:" %} {{ row.order.ship_deadline|date:"d.m" }}
               </div>
             {% endif %}
             <div class="kanban-card-amount">${{ row.order.total_amount }}</div>
@@ -70,7 +70,7 @@
     <div style="margin-bottom:16px;padding-bottom:16px;{% if not forloop.last %}border-bottom:1px solid rgba(255,255,255,0.045);{% endif %}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;">{% blocktrans with id=tl.order.id %}Заказ #{{ id }}{% endblocktrans %}</span>
+          <span style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;">{% trans "Заказ #" %}{{ tl.order.id }}</span>
           <span style="font-size:12px;color:#6A6A6A;">{{ tl.order.customer_name }}</span>
           {% if tl.order.sla_status == "breached" %}
             <span style="font-size:10px;color:#FF8C42;">{{ tl.order.get_sla_status_display }}</span>
@@ -279,16 +279,16 @@ function kanbanDrop(e, col) {
   var who = col.dataset.who || '';
 
   // Показываем модальное подтверждение
-  var needsDoc = actionType.indexOf('документ') !== -1;
+  var needsDoc = actionType.indexOf(gettext("документ")) !== -1;
   var needsQR = actionType.indexOf('QR') !== -1;
   var triggerBlock = '';
   if (trigger) {
     triggerBlock =
       '<div class="kanban-confirm-meta">' +
-        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">Триггер:</span> ' + trigger + '</div>' +
-        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">Действие:</span> ' + action + '</div>' +
-        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">Тип:</span> ' + actionType + '</div>' +
-        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">Исполнитель:</span> ' + who + '</div>' +
+        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">' + gettext("Триггер:") + '</span> ' + trigger + '</div>' +
+        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">' + gettext("Действие:") + '</span> ' + action + '</div>' +
+        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">' + gettext("Тип:") + '</span> ' + actionType + '</div>' +
+        '<div class="kanban-confirm-meta-row"><span class="kanban-confirm-meta-label">' + gettext("Исполнитель:") + '</span> ' + who + '</div>' +
       '</div>';
   }
   var uploadBlock = '';
@@ -297,8 +297,8 @@ function kanbanDrop(e, col) {
       '<div class="kanban-confirm-upload">' +
         '<label class="kanban-confirm-upload-label" for="kanban-doc-file">' +
           '<span class="kanban-confirm-upload-icon">📎</span>' +
-          '<span class="kanban-confirm-upload-text">Загрузить документ</span>' +
-          '<span class="kanban-confirm-upload-hint">PDF, JPG, PNG · до 10 МБ</span>' +
+          '<span class="kanban-confirm-upload-text">' + gettext("Загрузить документ") + '</span>' +
+          '<span class="kanban-confirm-upload-hint">' + gettext("PDF, JPG, PNG · до 10 МБ") + '</span>' +
         '</label>' +
         '<input type="file" id="kanban-doc-file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none;" />' +
         '<div class="kanban-confirm-upload-name" id="kanban-doc-name"></div>' +
@@ -310,15 +310,15 @@ function kanbanDrop(e, col) {
       '<div class="kanban-confirm-qr">' +
         '<div class="kanban-confirm-qr-toggle" id="kanban-qr-toggle">' +
           '<span class="kanban-confirm-upload-icon">📷</span>' +
-          '<span class="kanban-confirm-upload-text">Сканировать QR-код</span>' +
-          '<span class="kanban-confirm-upload-hint">Откройте камеру для сканирования</span>' +
+          '<span class="kanban-confirm-upload-text">' + gettext("Сканировать QR-код") + '</span>' +
+          '<span class="kanban-confirm-upload-hint">' + gettext("Откройте камеру для сканирования") + '</span>' +
         '</div>' +
         '<div class="kanban-confirm-qr-area" id="kanban-qr-area" style="display:none;">' +
           '<video id="kanban-qr-video" autoplay playsinline style="width:100%;border-radius:8px;background:#000;"></video>' +
           '<div class="kanban-confirm-qr-result" id="kanban-qr-result"></div>' +
         '</div>' +
         '<div style="margin-top:6px;text-align:center;">' +
-          '<input type="text" id="kanban-qr-manual" placeholder="или введите код вручную" ' +
+          '<input type="text" id="kanban-qr-manual" placeholder="' + gettext("или введите код вручную") + '" ' +
             'style="width:100%;padding:8px 12px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);' +
             'border-radius:8px;color:#ECECEC;font-size:13px;outline:none;" />' +
         '</div>' +
@@ -329,15 +329,15 @@ function kanbanDrop(e, col) {
   overlay.className = 'kanban-confirm-overlay';
   overlay.innerHTML =
     '<div class="kanban-confirm">' +
-      '<div class="kanban-confirm-title">Перемещение заказа</div>' +
-      '<div class="kanban-confirm-text">Перевести заказ <strong>#' + orderId + '</strong> на этап<br><span class="kanban-confirm-stage">' + colLabel + '</span>?</div>' +
+      '<div class="kanban-confirm-title">' + gettext("Перемещение заказа") + '</div>' +
+      '<div class="kanban-confirm-text">' + gettext("Перевести заказ") + ' <strong>#' + orderId + '</strong> ' + gettext("на этап") + '<br><span class="kanban-confirm-stage">' + colLabel + '</span>?</div>' +
       triggerBlock +
       uploadBlock +
       qrBlock +
-      '<div class="kanban-confirm-hint">Будет создано событие смены статуса</div>' +
+      '<div class="kanban-confirm-hint">' + gettext("Будет создано событие смены статуса") + '</div>' +
       '<div class="kanban-confirm-actions">' +
-        '<button class="btn btn-secondary kanban-confirm-no">Отмена</button>' +
-        '<button class="btn kanban-confirm-yes">Подтвердить</button>' +
+        '<button class="btn btn-secondary kanban-confirm-no">' + gettext("Отмена") + '</button>' +
+        '<button class="btn kanban-confirm-yes">' + gettext("Подтвердить") + '</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(overlay);
@@ -356,7 +356,7 @@ function kanbanDrop(e, col) {
     qrToggle.addEventListener('click', function() {
       if (qrArea.style.display === 'none') {
         qrArea.style.display = 'block';
-        qrToggle.querySelector('.kanban-confirm-upload-text').textContent = 'Камера активна…';
+        qrToggle.querySelector('.kanban-confirm-upload-text').textContent = gettext("Камера активна…");
         navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
           .then(function(stream) {
             qrStream = stream;
@@ -379,10 +379,10 @@ function kanbanDrop(e, col) {
             }
           })
           .catch(function() {
-            qrResult.textContent = 'Камера недоступна — введите код вручную';
+            qrResult.textContent = gettext("Камера недоступна — введите код вручную");
             qrResult.style.color = '#FF8C42';
             qrArea.style.display = 'none';
-            qrToggle.querySelector('.kanban-confirm-upload-text').textContent = 'Камера недоступна';
+            qrToggle.querySelector('.kanban-confirm-upload-text').textContent = gettext("Камера недоступна");
           });
       } else {
         stopQR();
@@ -393,7 +393,7 @@ function kanbanDrop(e, col) {
       if (qrScanInterval) { clearInterval(qrScanInterval); qrScanInterval = null; }
       if (qrStream) { qrStream.getTracks().forEach(function(t) { t.stop(); }); qrStream = null; }
       qrArea.style.display = 'none';
-      qrToggle.querySelector('.kanban-confirm-upload-text').textContent = qrManual.value ? 'QR отсканирован ✓' : 'Сканировать QR-код';
+      qrToggle.querySelector('.kanban-confirm-upload-text').textContent = qrManual.value ? [gettext("QR отсканирован ✓")]: gettext("Сканировать QR-код");
       if (qrManual.value) qrToggle.classList.add('kanban-confirm-upload-label--filled');
     }
 
@@ -432,7 +432,7 @@ function kanbanDrop(e, col) {
   overlay.querySelector('.kanban-confirm-yes').onclick = function() {
     var btn = this;
     btn.disabled = true;
-    btn.textContent = 'Сохраняю…';
+    btn.textContent = gettext("Сохраняю…");
     var csrfToken = '{{ csrf_token }}';
     var fd = new FormData();
     fd.append('status', newStatus);

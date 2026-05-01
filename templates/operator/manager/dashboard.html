@@ -1,28 +1,29 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Менеджер — Дашборд{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Менеджер — Дашборд" %}{% endblock %}
 
 {% block content %}
 <!-- Stats -->
 <div class="op-stats">
   <a class="op-stat" href="/operator/manager/orders/">
     <div class="op-stat-value">24</div>
-    <div class="op-stat-label">Активных заказов</div>
+    <div class="op-stat-label">{% trans "Активных заказов" %}</div>
   </a>
   <a class="op-stat op-stat-warn" href="/operator/manager/orders/?status=pending">
     <div class="op-stat-value">4</div>
-    <div class="op-stat-label">Требуют внимания</div>
+    <div class="op-stat-label">{% trans "Требуют внимания" %}</div>
   </a>
   <a class="op-stat" href="/operator/manager/">
     <div class="op-stat-value">$1.2M</div>
-    <div class="op-stat-label">Выручка за месяц</div>
+    <div class="op-stat-label">{% trans "Выручка за месяц" %}</div>
   </a>
   <a class="op-stat" href="/operator/manager/">
     <div class="op-stat-value">68%</div>
-    <div class="op-stat-label">Конверсия</div>
+    <div class="op-stat-label">{% trans "Конверсия" %}</div>
   </a>
   <a class="op-stat" href="/operator/manager/">
     <div class="op-stat-value">$3,200</div>
-    <div class="op-stat-label">Средний чек</div>
+    <div class="op-stat-label">{% trans "Средний чек" %}</div>
   </a>
 </div>
 
@@ -32,71 +33,71 @@
     <div class="op-card">
       <div class="op-section-title" style="display:flex;align-items:center;gap:8px;">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#E85C0D" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v5M8 11v.5"/><circle cx="8" cy="8" r="7"/></svg>
-        Требуют внимания
+        {% trans "Требуют внимания" %}
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
         <div class="op-card-elevated" style="padding:14px 16px;">
           <div style="display:flex;justify-content:space-between;align-items:start;">
             <div>
-              <div style="font-size:13px;font-weight:600;color:#ECECEC;">ORD-4521 — Задержка оплаты аванса</div>
-              <div style="font-size:12px;color:#919191;margin-top:3px;">Покупатель #1042 не оплатил аванс в срок. Срок истёк 22 мар.</div>
+              <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "ORD-4521 — Задержка оплаты аванса" %}</div>
+              <div style="font-size:12px;color:#919191;margin-top:3px;">{% trans "Покупатель #1042 не оплатил аванс в срок. Срок истёк 22 мар." %}</div>
             </div>
-            <span class="op-badge op-badge-orange">Срочно</span>
+            <span class="op-badge op-badge-orange">{% trans "Срочно" %}</span>
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">Запросить информацию</button>
-            <button class="op-btn op-btn-warn" onclick="escalate(this)">Эскалировать</button>
+            <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">{% trans "Запросить информацию" %}</button>
+            <button class="op-btn op-btn-warn" onclick="escalate(this)">{% trans "Эскалировать" %}</button>
           </div>
           <div class="info-request-area" style="display:none;margin-top:10px;">
-            <input type="text" class="op-input" placeholder="Введите текст запроса..." style="margin-bottom:8px;"/>
-            <button class="op-btn op-btn-primary" onclick="sendInfoRequest(this,'ORD-4521')">Отправить</button>
+            <input type="text" class="op-input" placeholder="{% trans "Введите текст запроса..." %}" style="margin-bottom:8px;"/>
+            <button class="op-btn op-btn-primary" onclick="sendInfoRequest(this,'ORD-4521')">{% trans "Отправить" %}</button>
           </div>
         </div>
         <div class="op-card-elevated" style="padding:14px 16px;">
           <div style="display:flex;justify-content:space-between;align-items:start;">
             <div>
-              <div style="font-size:13px;font-weight:600;color:#ECECEC;">ORD-4515 — Несоответствие товара</div>
-              <div style="font-size:12px;color:#919191;margin-top:3px;">Покупатель #1051 сообщил о несоответствии спецификации.</div>
+              <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "ORD-4515 — Несоответствие товара" %}</div>
+              <div style="font-size:12px;color:#919191;margin-top:3px;">{% trans "Покупатель #1051 сообщил о несоответствии спецификации." %}</div>
             </div>
-            <span class="op-badge op-badge-orange">Важно</span>
+            <span class="op-badge op-badge-orange">{% trans "Важно" %}</span>
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">Запросить информацию</button>
-            <button class="op-btn op-btn-warn" onclick="escalate(this)">Эскалировать</button>
+            <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">{% trans "Запросить информацию" %}</button>
+            <button class="op-btn op-btn-warn" onclick="escalate(this)">{% trans "Эскалировать" %}</button>
           </div>
           <div class="info-request-area" style="display:none;margin-top:10px;">
-            <input type="text" class="op-input" placeholder="Введите текст запроса..." style="margin-bottom:8px;"/>
-            <button class="op-btn op-btn-primary" onclick="sendInfoRequest(this,'ORD-4515')">Отправить</button>
+            <input type="text" class="op-input" placeholder="{% trans "Введите текст запроса..." %}" style="margin-bottom:8px;"/>
+            <button class="op-btn op-btn-primary" onclick="sendInfoRequest(this,'ORD-4515')">{% trans "Отправить" %}</button>
           </div>
         </div>
         <div class="op-card-elevated" style="padding:14px 16px;">
           <div style="display:flex;justify-content:space-between;align-items:start;">
             <div>
-              <div style="font-size:13px;font-weight:600;color:#ECECEC;">ORD-4508 — Изменение маршрута</div>
-              <div style="font-size:12px;color:#919191;margin-top:3px;">Логист запросил изменение порта назначения. Требуется согласование.</div>
+              <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "ORD-4508 — Изменение маршрута" %}</div>
+              <div style="font-size:12px;color:#919191;margin-top:3px;">{% trans "Логист запросил изменение порта назначения. Требуется согласование." %}</div>
             </div>
-            <span class="op-badge op-badge-gray">Ожидает</span>
+            <span class="op-badge op-badge-gray">{% trans "Ожидает" %}</span>
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="op-btn op-btn-primary" onclick="approve(this)">Согласовать</button>
-            <button class="op-btn op-btn-ghost" onclick="reject(this)">Отклонить</button>
+            <button class="op-btn op-btn-primary" onclick="approve(this)">{% trans "Согласовать" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="reject(this)">{% trans "Отклонить" %}</button>
           </div>
         </div>
         <div class="op-card-elevated" style="padding:14px 16px;">
           <div style="display:flex;justify-content:space-between;align-items:start;">
             <div>
-              <div style="font-size:13px;font-weight:600;color:#ECECEC;">ORD-4501 — Рекламация</div>
-              <div style="font-size:12px;color:#919191;margin-top:3px;">Открыта рекламация по качеству товара. Покупатель #1033.</div>
+              <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "ORD-4501 — Рекламация" %}</div>
+              <div style="font-size:12px;color:#919191;margin-top:3px;">{% trans "Открыта рекламация по качеству товара. Покупатель #1033." %}</div>
             </div>
-            <span class="op-badge op-badge-orange">Важно</span>
+            <span class="op-badge op-badge-orange">{% trans "Важно" %}</span>
           </div>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">Запросить информацию</button>
-            <button class="op-btn op-btn-ghost" onclick="addNote(this)">Заметка</button>
+            <button class="op-btn op-btn-primary" onclick="showInfoRequest(this)">{% trans "Запросить информацию" %}</button>
+            <button class="op-btn op-btn-ghost" onclick="addNote(this)">{% trans "Заметка" %}</button>
           </div>
           <div class="info-request-area" style="display:none;margin-top:10px;">
-            <input type="text" class="op-input" placeholder="Введите текст запроса..." style="margin-bottom:8px;"/>
-            <button class="op-btn op-btn-primary" onclick="sendInfoRequest(this,'ORD-4501')">Отправить</button>
+            <input type="text" class="op-input" placeholder="{% trans "Введите текст запроса..." %}" style="margin-bottom:8px;"/>
+            <button class="op-btn op-btn-primary" onclick="sendInfoRequest(this,'ORD-4501')">{% trans "Отправить" %}</button>
           </div>
         </div>
       </div>
@@ -105,19 +106,19 @@
     <!-- Recent orders -->
     <div class="op-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div class="op-section-title" style="margin-bottom:0;">Последние заказы</div>
-        <a href="/operator/manager/orders/" class="op-btn op-btn-primary">Все заказы</a>
+        <div class="op-section-title" style="margin-bottom:0;">{% trans "Последние заказы" %}</div>
+        <a href="/operator/manager/orders/" class="op-btn op-btn-primary">{% trans "Все заказы" %}</a>
       </div>
       <table class="op-table">
         <thead>
           <tr>
             <th>ORD ID</th>
-            <th>Покупатель</th>
-            <th>Поставщик</th>
-            <th>Сумма</th>
-            <th>Статус</th>
-            <th>Дата</th>
-            <th>Действия</th>
+            <th>{% trans "Покупатель" %}</th>
+            <th>{% trans "Поставщик" %}</th>
+            <th>{% trans "Сумма" %}</th>
+            <th>{% trans "Статус" %}</th>
+            <th>{% trans "Дата" %}</th>
+            <th>{% trans "Действия" %}</th>
           </tr>
         </thead>
         <tbody>
@@ -126,16 +127,16 @@
             <td class="text-secondary">#1042</td>
             <td class="text-secondary">#2087</td>
             <td style="font-family:'Golos Text',sans-serif;">$18,400</td>
-            <td><span class="op-badge op-badge-gray">В работе</span></td>
-            <td class="text-secondary">24 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">Детали</button></td>
+            <td><span class="op-badge op-badge-gray">{% trans "В работе" %}</span></td>
+            <td class="text-secondary">{% trans "24 мар" %}</td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">{% trans "Детали" %}</button></td>
           </tr>
           <tr class="order-detail-row" style="display:none;">
             <td colspan="7" style="padding:12px 16px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.04);">
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px;">
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Товар</div><div style="color:#ECECEC;">Запчасти двигателя x24, Фильтры x48</div></div>
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Маршрут</div><div style="color:#ECECEC;">Шанхай → Москва · 12 апр ETA</div></div>
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Оплата</div><div style="color:#E85C0D;">Аванс не оплачен</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Товар" %}</div><div style="color:#ECECEC;">{% trans "Запчасти двигателя x24, Фильтры x48" %}</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Маршрут" %}</div><div style="color:#ECECEC;">{% trans "Шанхай → Москва · 12 апр ETA" %}</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Оплата" %}</div><div style="color:#E85C0D;">{% trans "Аванс не оплачен" %}</div></div>
               </div>
             </td>
           </tr>
@@ -144,16 +145,16 @@
             <td class="text-secondary">#1038</td>
             <td class="text-secondary">#2091</td>
             <td style="font-family:'Golos Text',sans-serif;">$6,200</td>
-            <td><span class="op-badge op-badge-orange">На таможне</span></td>
-            <td class="text-secondary">23 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">Детали</button></td>
+            <td><span class="op-badge op-badge-orange">{% trans "На таможне" %}</span></td>
+            <td class="text-secondary">{% trans "23 мар" %}</td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">{% trans "Детали" %}</button></td>
           </tr>
           <tr class="order-detail-row" style="display:none;">
             <td colspan="7" style="padding:12px 16px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.04);">
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px;">
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Товар</div><div style="color:#ECECEC;">Подшипники x120</div></div>
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Маршрут</div><div style="color:#ECECEC;">Стамбул → Москва · 28 мар ETA</div></div>
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Таможня</div><div style="color:#E85C0D;">На досмотре</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Товар" %}</div><div style="color:#ECECEC;">{% trans "Подшипники x120" %}</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Маршрут" %}</div><div style="color:#ECECEC;">{% trans "Стамбул → Москва · 28 мар ETA" %}</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Таможня" %}</div><div style="color:#E85C0D;">{% trans "На досмотре" %}</div></div>
               </div>
             </td>
           </tr>
@@ -162,16 +163,16 @@
             <td class="text-secondary">#1051</td>
             <td class="text-secondary">#2075</td>
             <td style="font-family:'Golos Text',sans-serif;">$4,100</td>
-            <td><span class="op-badge op-badge-gray">Доставка</span></td>
-            <td class="text-secondary">22 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">Детали</button></td>
+            <td><span class="op-badge op-badge-gray">{% trans "Доставка" %}</span></td>
+            <td class="text-secondary">{% trans "22 мар" %}</td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">{% trans "Детали" %}</button></td>
           </tr>
           <tr class="order-detail-row" style="display:none;">
             <td colspan="7" style="padding:12px 16px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.04);">
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px;">
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Товар</div><div style="color:#ECECEC;">Фильтры масляные x200</div></div>
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Маршрут</div><div style="color:#ECECEC;">Гуанчжоу → Владивосток · 5 апр ETA</div></div>
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Рекламация</div><div style="color:#E85C0D;">CLM открыта</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Товар" %}</div><div style="color:#ECECEC;">{% trans "Фильтры масляные x200" %}</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Маршрут" %}</div><div style="color:#ECECEC;">{% trans "Гуанчжоу → Владивосток · 5 апр ETA" %}</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Рекламация" %}</div><div style="color:#E85C0D;">{% trans "CLM открыта" %}</div></div>
               </div>
             </td>
           </tr>
@@ -180,16 +181,16 @@
             <td class="text-secondary">#1029</td>
             <td class="text-secondary">#2063</td>
             <td style="font-family:'Golos Text',sans-serif;">$12,800</td>
-            <td><span class="op-badge op-badge-gray">Оплата</span></td>
-            <td class="text-secondary">20 мар</td>
-            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">Детали</button></td>
+            <td><span class="op-badge op-badge-gray">{% trans "Оплата" %}</span></td>
+            <td class="text-secondary">{% trans "20 мар" %}</td>
+            <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();toggleOrderRow(this.closest('tr'))">{% trans "Детали" %}</button></td>
           </tr>
           <tr class="order-detail-row" style="display:none;">
             <td colspan="7" style="padding:12px 16px;background:#1F1F1F;border-bottom:1px solid rgba(255,255,255,0.04);">
               <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px;">
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Товар</div><div style="color:#ECECEC;">Тормозные колодки x360</div></div>
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Маршрут</div><div style="color:#ECECEC;">Дубай → Москва · 26 мар ETA</div></div>
-                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">Оплата</div><div style="color:#66BB6A;">Ожидает финальной</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Товар" %}</div><div style="color:#ECECEC;">{% trans "Тормозные колодки x360" %}</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Маршрут" %}</div><div style="color:#ECECEC;">{% trans "Дубай → Москва · 26 мар ETA" %}</div></div>
+                <div><div style="color:#6A6A6A;text-transform:uppercase;font-size:10px;font-weight:600;margin-bottom:4px;">{% trans "Оплата" %}</div><div style="color:#66BB6A;">{% trans "Ожидает финальной" %}</div></div>
               </div>
             </td>
           </tr>
@@ -202,13 +203,13 @@
   <div class="op-card" style="align-self:start;">
     <div class="op-section-title" style="margin-bottom:14px;">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#919191" stroke-width="1.3" stroke-linecap="round" style="vertical-align:-2px;margin-right:6px;"><path d="M8 1v6l4 2"/><circle cx="8" cy="8" r="7"/></svg>
-      Лента событий
+      {% trans "Лента событий" %}
     </div>
     <div style="display:flex;flex-direction:column;gap:0;">
       <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
         <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:6px;flex-shrink:0;"></div>
         <div>
-          <div style="font-size:12px;color:#ECECEC;">Оплата подтверждена</div>
+          <div style="font-size:12px;color:#ECECEC;">{% trans "Оплата подтверждена" %}</div>
           <div style="font-size:11px;color:#919191;margin-top:2px;">ORD-4505 -- $9,300</div>
           <div style="font-size:11px;color:#5E5E5E;margin-top:2px;">14:22</div>
         </div>
@@ -216,23 +217,23 @@
       <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
         <div style="width:6px;height:6px;border-radius:50%;background:#E85C0D;margin-top:6px;flex-shrink:0;"></div>
         <div>
-          <div style="font-size:12px;color:#ECECEC;">Рекламация открыта</div>
-          <div style="font-size:11px;color:#919191;margin-top:2px;">ORD-4501 -- Покупатель #1033</div>
+          <div style="font-size:12px;color:#ECECEC;">{% trans "Рекламация открыта" %}</div>
+          <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "ORD-4501 -- Покупатель #1033" %}</div>
           <div style="font-size:11px;color:#5E5E5E;margin-top:2px;">13:45</div>
         </div>
       </div>
       <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
         <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:6px;flex-shrink:0;"></div>
         <div>
-          <div style="font-size:12px;color:#ECECEC;">Заказ доставлен</div>
-          <div style="font-size:11px;color:#919191;margin-top:2px;">ORD-4497 -- Покупатель #1019</div>
+          <div style="font-size:12px;color:#ECECEC;">{% trans "Заказ доставлен" %}</div>
+          <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "ORD-4497 -- Покупатель #1019" %}</div>
           <div style="font-size:11px;color:#5E5E5E;margin-top:2px;">12:30</div>
         </div>
       </div>
       <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
         <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:6px;flex-shrink:0;"></div>
         <div>
-          <div style="font-size:12px;color:#ECECEC;">Новый заказ создан</div>
+          <div style="font-size:12px;color:#ECECEC;">{% trans "Новый заказ создан" %}</div>
           <div style="font-size:11px;color:#919191;margin-top:2px;">ORD-4521 -- $18,400</div>
           <div style="font-size:11px;color:#5E5E5E;margin-top:2px;">11:15</div>
         </div>
@@ -240,25 +241,25 @@
       <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
         <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:6px;flex-shrink:0;"></div>
         <div>
-          <div style="font-size:12px;color:#ECECEC;">Таможня пройдена</div>
-          <div style="font-size:11px;color:#919191;margin-top:2px;">ORD-4505 -- Стамбул-Екатеринбург</div>
+          <div style="font-size:12px;color:#ECECEC;">{% trans "Таможня пройдена" %}</div>
+          <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "ORD-4505 -- Стамбул-Екатеринбург" %}</div>
           <div style="font-size:11px;color:#5E5E5E;margin-top:2px;">10:48</div>
         </div>
       </div>
       <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
         <div style="width:6px;height:6px;border-radius:50%;background:#E85C0D;margin-top:6px;flex-shrink:0;"></div>
         <div>
-          <div style="font-size:12px;color:#ECECEC;">SLA нарушение</div>
-          <div style="font-size:11px;color:#919191;margin-top:2px;">ORD-4501 -- задержка +3 дн.</div>
+          <div style="font-size:12px;color:#ECECEC;">{% trans "SLA нарушение" %}</div>
+          <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "ORD-4501 -- задержка +3 дн." %}</div>
           <div style="font-size:11px;color:#5E5E5E;margin-top:2px;">09:20</div>
         </div>
       </div>
       <div style="display:flex;gap:12px;padding:10px 0;">
         <div style="width:6px;height:6px;border-radius:50%;background:#919191;margin-top:6px;flex-shrink:0;"></div>
         <div>
-          <div style="font-size:12px;color:#ECECEC;">Декларация оформлена</div>
-          <div style="font-size:11px;color:#919191;margin-top:2px;">ДТ-2024-0839 -- ORD-4505</div>
-          <div style="font-size:11px;color:#5E5E5E;margin-top:2px;">Вчера, 17:05</div>
+          <div style="font-size:12px;color:#ECECEC;">{% trans "Декларация оформлена" %}</div>
+          <div style="font-size:11px;color:#919191;margin-top:2px;">{% trans "ДТ-2024-0839 -- ORD-4505" %}</div>
+          <div style="font-size:11px;color:#5E5E5E;margin-top:2px;">{% trans "Вчера, 17:05" %}</div>
         </div>
       </div>
     </div>
@@ -279,41 +280,41 @@ function showInfoRequest(btn) {
 function sendInfoRequest(btn, ordId) {
   var input = btn.previousElementSibling;
   var text = input.value.trim();
-  if (!text) { opToast('Введите текст запроса'); return; }
-  opToast('Запрос отправлен', 2000, 'success');
+  if (!text) { opToast('{% trans 'Введите текст запроса' %}'); return; }
+  opToast('{% trans 'Запрос отправлен' %}', 2000, 'success');
   input.value = '';
   btn.closest('.info-request-area').style.display = 'none';
 }
 
 function escalate(btn) {
   var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
-  btn.textContent = '✓ Эскалировано';
+  btn.textContent = '{% trans '✓ Эскалировано' %}';
   btn.disabled = true;
   btn.style.cssText += ';opacity:0.6;';
   card.style.borderColor = '#E05555';
   card.style.borderWidth = '1px';
-  opToast('Задача эскалирована руководителю', 2000, 'warn');
+  opToast('{% trans 'Задача эскалирована руководителю' %}', 2000, 'warn');
 }
 function approve(btn) {
   var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
-  btn.textContent = '✓ Согласовано';
+  btn.textContent = '{% trans '✓ Согласовано' %}';
   btn.disabled = true;
   btn.style.background = 'rgba(102,187,106,0.15)';
   btn.style.color = '#66BB6A';
   card.style.borderColor = 'rgba(102,187,106,0.3)';
   var btns = card.querySelectorAll('button');
   btns.forEach(function(b){ if (b !== btn) b.disabled = true; });
-  opToast('Согласовано', 2000, 'success');
+  opToast('{% trans 'Согласовано' %}', 2000, 'success');
 }
 function reject(btn) {
   var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
-  btn.textContent = '✗ Отклонено';
+  btn.textContent = '{% trans '✗ Отклонено' %}';
   btn.disabled = true;
   btn.style.opacity = '0.5';
   card.style.borderColor = 'rgba(255,255,255,0.1)';
   var btns = card.querySelectorAll('button');
   btns.forEach(function(b){ if (b !== btn) b.disabled = true; });
-  opToast('Отклонено', 2000);
+  opToast('{% trans 'Отклонено' %}', 2000);
 }
 function addNote(btn) {
   var card = btn.closest('.op-card-elevated') || btn.parentElement.parentElement;
@@ -322,7 +323,7 @@ function addNote(btn) {
   var noteDiv = document.createElement('div');
   noteDiv.className = 'inline-note';
   noteDiv.style.cssText = 'margin-top:10px;';
-  noteDiv.innerHTML = '<textarea placeholder="Введите заметку..." style="width:100%;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;box-sizing:border-box;font-family:inherit;" rows="2" onkeydown="saveNote(event,this)"></textarea><div style="font-size:10px;color:#6A6A6A;margin-top:4px;">Enter — сохранить · Esc — отмена</div>';
+  noteDiv.innerHTML = '{% trans "<textarea placeholder=\"Введите заметку...\" style=\"width:100%;padding:8px 10px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ECECEC;font-size:12px;outline:none;resize:none;box-sizing:border-box;font-family:inherit;\" rows=\"2\" onkeydown=\"saveNote(event,this)\"></textarea><div style=\"font-size:10px;color:#6A6A6A;margin-top:4px;\">Enter — сохранить · Esc — отмена</div>" %}';
   card.appendChild(noteDiv);
   noteDiv.querySelector('textarea').focus();
 }
@@ -333,7 +334,7 @@ function saveNote(e, ta) {
     if (!text) return;
     var noteDiv = ta.closest('.inline-note');
     noteDiv.innerHTML = '<div style="font-size:12px;color:#919191;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:8px;border:1px solid rgba(255,255,255,0.06);">📝 ' + text + '</div>';
-    opToast('Заметка сохранена', 1500, 'success');
+    opToast('{% trans 'Заметка сохранена' %}', 1500, 'success');
   } else if (e.key === 'Escape') {
     ta.closest('.inline-note').remove();
   }

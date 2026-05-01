@@ -1,18 +1,21 @@
-{% load static %}
+{% load static i18n %}
 <!doctype html>
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block title %}Кабинет покупателя{% endblock %} — Consolidator</title>
+    <title>{% block title %}{% trans "Кабинет покупателя" %}{% endblock %} — Consolidator</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="{% static 'css/seller.css' %}?v=20260323_01" />
     {% block extra_css %}{% endblock %}
+      <script src="{% url 'javascript-catalog' %}"></script>
+    <script src="{% static 'js/cabinet-utils.js' %}"></script>
   </head>
   <body class="seller-shell">
+{% include "components/_mobile_nav.html" %}
     {% include "buyer/components/_sidebar.html" %}
     <main class="seller-main">
       {% include "buyer/components/_topbar.html" %}
@@ -23,6 +26,7 @@
     </main>
     {% block right_panel %}{% include "buyer/components/_right_panel.html" %}{% endblock %}
     {% block extra_js %}{% endblock %}
-    <script src="{% static 'js/cabinet-i18n.js' %}"></script>
-  </body>
+  {% include "components/_onboarding.html" %}
+  {% include "components/_ai_chat.html" %}
+</body>
 </html>

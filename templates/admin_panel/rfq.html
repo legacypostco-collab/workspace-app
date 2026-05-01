@@ -1,16 +1,17 @@
 {% extends "admin_panel/base_admin.html" %}
+{% load i18n %}
 {% block title %}RFQ{% endblock %}
 {% block topbar_title %}RFQ{% endblock %}
 
 {% block content %}
 <div class="ap-stats">
-  <a href="/admin-panel/rfq/" class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></a>
-  <a href="/admin-panel/rfq/?status=new" class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">Новых</div></a>
-  <a href="/admin-panel/rfq/?status=quoted" class="ap-stat"><div class="ap-stat-value">{{ quoted }}</div><div class="ap-stat-label">С котировками</div></a>
-  <a href="/admin-panel/rfq/?status=needs_review" class="ap-stat"><div class="ap-stat-value">{{ needs_review }}</div><div class="ap-stat-label">На проверке</div></a>
-  <a href="/admin-panel/rfq/?status=cancelled" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">Отменённых</div></a>
-  <a href="/admin-panel/rfq/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_rfq }}</div><div class="ap-stat-label">За неделю</div></a>
-  <a href="/admin-panel/analytics/" class="ap-stat"><div class="ap-stat-value">{{ conversion }}%</div><div class="ap-stat-label">Конверсия</div></a>
+  <a href="/admin-panel/rfq/" class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">{% trans "Всего" %}</div></a>
+  <a href="/admin-panel/rfq/?status=new" class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">{% trans "Новых" %}</div></a>
+  <a href="/admin-panel/rfq/?status=quoted" class="ap-stat"><div class="ap-stat-value">{{ quoted }}</div><div class="ap-stat-label">{% trans "С котировками" %}</div></a>
+  <a href="/admin-panel/rfq/?status=needs_review" class="ap-stat"><div class="ap-stat-value">{{ needs_review }}</div><div class="ap-stat-label">{% trans "На проверке" %}</div></a>
+  <a href="/admin-panel/rfq/?status=cancelled" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">{% trans "Отменённых" %}</div></a>
+  <a href="/admin-panel/rfq/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_rfq }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
+  <a href="/admin-panel/analytics/" class="ap-stat"><div class="ap-stat-value">{{ conversion }}%</div><div class="ap-stat-label">{% trans "Конверсия" %}</div></a>
 </div>
 
 <form method="post" id="rfqForm">
@@ -21,31 +22,31 @@
 <div class="ap-card">
   <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
     <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;">
-      <input type="text" name="q" class="ap-input" placeholder="Поиск по ID, имени, email..." style="max-width:220px;" value="{{ search }}"/>
+      <input type="text" name="q" class="ap-input" placeholder="{% trans "Поиск по ID, имени, email..." %}" style="max-width:220px;" value="{{ search }}"/>
       <select name="status" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все статусы</option>
+        <option value="">{% trans "Все статусы" %}</option>
         {% for val, label in status_choices %}
         <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
       <select name="urgency" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все срочности</option>
+        <option value="">{% trans "Все срочности" %}</option>
         {% for val, label in urgency_choices %}
         <option value="{{ val }}" {% if urgency_filter == val %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
       <select name="mode" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все режимы</option>
+        <option value="">{% trans "Все режимы" %}</option>
         {% for val, label in mode_choices %}
         <option value="{{ val }}" {% if mode_filter == val %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
-      <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+      <button type="submit" class="ap-btn ap-btn-primary">{% trans "Найти" %}</button>
       {% if search or status_filter or urgency_filter or mode_filter %}
-      <a href="/admin-panel/rfq/" class="ap-btn ap-btn-warn" style="text-decoration:none;">Сбросить</a>
+      <a href="/admin-panel/rfq/" class="ap-btn ap-btn-warn" style="text-decoration:none;">{% trans "Сбросить" %}</a>
       {% endif %}
     </form>
-    <a href="/admin-panel/export/rfq/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Экспорт CSV</a>
+    <a href="/admin-panel/export/rfq/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Экспорт CSV" %}</a>
   </div>
 
   <table class="ap-table">
@@ -53,12 +54,12 @@
       <tr>
         <th style="width:30px;"><input type="checkbox" id="selectAllRfq" onchange="toggleAllRfq(this)"/></th>
         <th>RFQ</th>
-        <th>Покупатель</th>
-        <th>Компания</th>
-        <th>Режим</th>
-        <th>Срочность</th>
-        <th>Статус</th>
-        <th>Дата</th>
+        <th>{% trans "Покупатель" %}</th>
+        <th>{% trans "Компания" %}</th>
+        <th>{% trans "Режим" %}</th>
+        <th>{% trans "Срочность" %}</th>
+        <th>{% trans "Статус" %}</th>
+        <th>{% trans "Дата" %}</th>
         <th></th>
       </tr>
     </thead>
@@ -80,41 +81,41 @@
           {% else %}<span class="text-secondary">Standard</span>{% endif %}
         </td>
         <td>
-          {% if rfq.status == 'new' %}<span class="ap-badge ap-badge-blue">Новый</span>
-          {% elif rfq.status == 'quoted' %}<span class="ap-badge ap-badge-green">Котировка</span>
-          {% elif rfq.status == 'needs_review' %}<span class="ap-badge ap-badge-orange">На проверке</span>
-          {% elif rfq.status == 'cancelled' %}<span class="ap-badge ap-badge-gray">Отменён</span>
+          {% if rfq.status == 'new' %}<span class="ap-badge ap-badge-blue">{% trans "Новый" %}</span>
+          {% elif rfq.status == 'quoted' %}<span class="ap-badge ap-badge-green">{% trans "Котировка" %}</span>
+          {% elif rfq.status == 'needs_review' %}<span class="ap-badge ap-badge-orange">{% trans "На проверке" %}</span>
+          {% elif rfq.status == 'cancelled' %}<span class="ap-badge ap-badge-gray">{% trans "Отменён" %}</span>
           {% else %}<span class="ap-badge ap-badge-gray">{{ rfq.get_status_display }}</span>{% endif %}
         </td>
         <td class="text-secondary">{{ rfq.created_at|date:"d.m.Y H:i" }}</td>
-        <td><a href="/admin-panel/rfq/{{ rfq.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">Детали</a></td>
+        <td><a href="/admin-panel/rfq/{{ rfq.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">{% trans "Детали" %}</a></td>
       </tr>
       {% empty %}
-      <tr><td colspan="9" style="text-align:center;color:#919191;">Нет RFQ</td></tr>
+      <tr><td colspan="9" style="text-align:center;color:#919191;">{% trans "Нет RFQ" %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
 
   {% if has_prev or has_next %}
   <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;align-items:center;">
-    {% if has_prev %}<a href="?page={{ page_num|add:"-1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if urgency_filter %}&urgency={{ urgency_filter }}{% endif %}{% if mode_filter %}&mode={{ mode_filter }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Назад</a>{% endif %}
-    <span style="font-size:13px;color:#919191;">Стр. {{ page_num }}</span>
-    {% if has_next %}<a href="?page={{ page_num|add:"1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if urgency_filter %}&urgency={{ urgency_filter }}{% endif %}{% if mode_filter %}&mode={{ mode_filter }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &rarr;</a>{% endif %}
+    {% if has_prev %}<a href="?page={{ page_num|add:"-1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if urgency_filter %}&urgency={{ urgency_filter }}{% endif %}{% if mode_filter %}&mode={{ mode_filter }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "&larr; Назад" %}</a>{% endif %}
+    <span style="font-size:13px;color:#919191;">{% blocktrans with page_num=page_num %}Стр. {{ page_num }}{% endblocktrans %}</span>
+    {% if has_next %}<a href="?page={{ page_num|add:"1" }}{% if search %}&q={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if urgency_filter %}&urgency={{ urgency_filter }}{% endif %}{% if mode_filter %}&mode={{ mode_filter }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Далее &rarr;" %}</a>{% endif %}
   </div>
   {% endif %}
 </div>
 
 <!-- Bulk bar -->
 <div id="rfqBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
-  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="rfqSelectedCount">0 выбрано</span>
+  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="rfqSelectedCount">{% trans "0 выбрано" %}</span>
   <select class="ap-select" id="rfqBulkStatusSelect">
     {% for val, label in status_choices %}
     <option value="{{ val }}">{{ label }}</option>
     {% endfor %}
   </select>
-  <button type="button" class="ap-btn ap-btn-primary" onclick="bulkRfqStatus()">Сменить статус</button>
-  <button type="button" class="ap-btn ap-btn-warn" onclick="bulkRfqCancel()">Отменить</button>
-  <button type="button" class="ap-btn ap-btn-ghost" onclick="clearRfqSelection()">Снять</button>
+  <button type="button" class="ap-btn ap-btn-primary" onclick="bulkRfqStatus()">{% trans "Сменить статус" %}</button>
+  <button type="button" class="ap-btn ap-btn-warn" onclick="bulkRfqCancel()">{% trans "Отменить" %}</button>
+  <button type="button" class="ap-btn ap-btn-ghost" onclick="clearRfqSelection()">{% trans "Снять" %}</button>
 </div>
 </form>
 {% endblock %}
@@ -122,9 +123,9 @@
 {% block extra_js %}
 <script>
 function toggleAllRfq(m) { document.querySelectorAll('.rfq-cb').forEach(function(cb){cb.checked=m.checked;}); updateRfqBar(); }
-function updateRfqBar() { var c=document.querySelectorAll('.rfq-cb:checked').length; document.getElementById('rfqBulkBar').style.display=c>0?'flex':'none'; document.getElementById('rfqSelectedCount').textContent=c+' выбрано'; }
+function updateRfqBar() { var c=document.querySelectorAll('.rfq-cb:checked').length; document.getElementById('rfqBulkBar').style.display=c>0?'flex':'none'; document.getElementById('rfqSelectedCount').textContent=c+'{% trans ' выбрано' %}'; }
 function clearRfqSelection() { document.querySelectorAll('.rfq-cb').forEach(function(cb){cb.checked=false;}); document.getElementById('selectAllRfq').checked=false; updateRfqBar(); }
 function bulkRfqStatus() { document.getElementById('rfqAction').value='bulk_status'; document.getElementById('rfqBulkStatus').value=document.getElementById('rfqBulkStatusSelect').value; document.getElementById('rfqForm').submit(); }
-function bulkRfqCancel() { if(confirm('Отменить выбранные RFQ?')){document.getElementById('rfqAction').value='bulk_cancel'; document.getElementById('rfqForm').submit();} }
+function bulkRfqCancel() { if(confirm('{% trans 'Отменить выбранные RFQ?' %}')){document.getElementById('rfqAction').value='bulk_cancel'; document.getElementById('rfqForm').submit();} }
 </script>
 {% endblock %}

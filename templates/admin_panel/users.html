@@ -1,15 +1,16 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Пользователи{% endblock %}
-{% block topbar_title %}Пользователи{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Пользователи" %}{% endblock %}
+{% block topbar_title %}{% trans "Пользователи" %}{% endblock %}
 
 {% block content %}
 <!-- Stats -->
 <div class="ap-stats">
-  <a href="/admin-panel/users/" class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">Всего</div></a>
-  <a href="/admin-panel/users/?role=buyer" class="ap-stat"><div class="ap-stat-value">{{ buyers }}</div><div class="ap-stat-label">Покупатели</div></a>
-  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ sellers }}</div><div class="ap-stat-label">Поставщики</div></a>
-  <a href="/admin-panel/users/?status=blocked" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ blocked }}</div><div class="ap-stat-label">Заблокировано</div></a>
-  <a href="/admin-panel/users/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ new_this_week }}</div><div class="ap-stat-label">За неделю</div></a>
+  <a href="/admin-panel/users/" class="ap-stat"><div class="ap-stat-value">{{ total }}</div><div class="ap-stat-label">{% trans "Всего" %}</div></a>
+  <a href="/admin-panel/users/?role=buyer" class="ap-stat"><div class="ap-stat-value">{{ buyers }}</div><div class="ap-stat-label">{% trans "Покупатели" %}</div></a>
+  <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ sellers }}</div><div class="ap-stat-label">{% trans "Поставщики" %}</div></a>
+  <a href="/admin-panel/users/?status=blocked" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ blocked }}</div><div class="ap-stat-label">{% trans "Заблокировано" %}</div></a>
+  <a href="/admin-panel/users/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ new_this_week }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
 </div>
 
 <form method="post" id="usersForm">
@@ -20,29 +21,29 @@
   <!-- Filters -->
   <div style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
     <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;" id="filterForm">
-      <input type="text" name="q" class="ap-input" placeholder="Поиск по имени или email..." style="max-width:260px;" value="{{ search }}"/>
+      <input type="text" name="q" class="ap-input" placeholder="{% trans "Поиск по имени или email..." %}" style="max-width:260px;" value="{{ search }}"/>
       <select name="role" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все роли</option>
-        <option value="buyer" {% if role_filter == 'buyer' %}selected{% endif %}>Покупатели</option>
-        <option value="seller" {% if role_filter == 'seller' %}selected{% endif %}>Поставщики</option>
-        <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Админы</option>
+        <option value="">{% trans "Все роли" %}</option>
+        <option value="buyer" {% if role_filter == 'buyer' %}selected{% endif %}>{% trans "Покупатели" %}</option>
+        <option value="seller" {% if role_filter == 'seller' %}selected{% endif %}>{% trans "Поставщики" %}</option>
+        <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>{% trans "Админы" %}</option>
       </select>
       <select name="status" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все статусы</option>
-        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Активные</option>
-        <option value="blocked" {% if status_filter == 'blocked' %}selected{% endif %}>Заблокированные</option>
+        <option value="">{% trans "Все статусы" %}</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>{% trans "Активные" %}</option>
+        <option value="blocked" {% if status_filter == 'blocked' %}selected{% endif %}>{% trans "Заблокированные" %}</option>
       </select>
       <select name="sort" class="ap-select" onchange="this.form.submit()">
-        <option value="-date_joined" {% if current_sort == '-date_joined' %}selected{% endif %}>Новые первые</option>
-        <option value="date_joined" {% if current_sort == 'date_joined' %}selected{% endif %}>Старые первые</option>
-        <option value="username" {% if current_sort == 'username' %}selected{% endif %}>По имени</option>
+        <option value="-date_joined" {% if current_sort == '-date_joined' %}selected{% endif %}>{% trans "Новые первые" %}</option>
+        <option value="date_joined" {% if current_sort == 'date_joined' %}selected{% endif %}>{% trans "Старые первые" %}</option>
+        <option value="username" {% if current_sort == 'username' %}selected{% endif %}>{% trans "По имени" %}</option>
       </select>
-      <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+      <button type="submit" class="ap-btn ap-btn-primary">{% trans "Найти" %}</button>
       {% if search or role_filter or status_filter %}
-      <a href="/admin-panel/users/" class="ap-btn ap-btn-warn" style="text-decoration:none;">Сбросить</a>
+      <a href="/admin-panel/users/" class="ap-btn ap-btn-warn" style="text-decoration:none;">{% trans "Сбросить" %}</a>
       {% endif %}
     </form>
-    <a href="/admin-panel/export/users/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Экспорт CSV</a>
+    <a href="/admin-panel/export/users/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Экспорт CSV" %}</a>
   </div>
 
   <table class="ap-table" id="usersTable">
@@ -50,11 +51,11 @@
       <tr>
         <th style="width:30px;"><input type="checkbox" id="selectAllUsers" onchange="toggleAllUsers(this)"/></th>
         <th>ID</th>
-        <th>Имя / Компания</th>
-        <th>Роль</th>
+        <th>{% trans "Имя / Компания" %}</th>
+        <th>{% trans "Роль" %}</th>
         <th>Email</th>
-        <th>Регистрация</th>
-        <th>Статус</th>
+        <th>{% trans "Регистрация" %}</th>
+        <th>{% trans "Статус" %}</th>
         <th></th>
       </tr>
     </thead>
@@ -71,28 +72,28 @@
         </td>
         <td>
           {% if u.is_superuser %}
-            <span class="ap-badge ap-badge-orange">Админ</span>
+            <span class="ap-badge ap-badge-orange">{% trans "Админ" %}</span>
           {% elif u.profile and u.profile.role == 'seller' %}
-            <span class="ap-badge ap-badge-blue">Поставщик</span>
+            <span class="ap-badge ap-badge-blue">{% trans "Поставщик" %}</span>
           {% else %}
-            <span class="ap-badge ap-badge-gray">Покупатель</span>
+            <span class="ap-badge ap-badge-gray">{% trans "Покупатель" %}</span>
           {% endif %}
         </td>
         <td class="text-secondary">{{ u.email }}</td>
         <td class="text-secondary">{{ u.date_joined|date:"d.m.Y" }}</td>
         <td>
           {% if u.is_active %}
-            <span class="ap-badge ap-badge-green">Активен</span>
+            <span class="ap-badge ap-badge-green">{% trans "Активен" %}</span>
           {% else %}
-            <span class="ap-badge ap-badge-orange">Заблокирован</span>
+            <span class="ap-badge ap-badge-orange">{% trans "Заблокирован" %}</span>
           {% endif %}
         </td>
         <td style="white-space:nowrap;">
-          <a href="/admin-panel/users/{{ u.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">Профиль</a>
+          <a href="/admin-panel/users/{{ u.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">{% trans "Профиль" %}</a>
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="10" style="text-align:center;color:#919191;">Нет пользователей</td></tr>
+      <tr><td colspan="10" style="text-align:center;color:#919191;">{% trans "Нет пользователей" %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -101,11 +102,11 @@
   {% if has_prev or has_next %}
   <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;align-items:center;">
     {% if has_prev %}
-    <a href="?page={{ page_num|add:"-1" }}{% if search %}&q={{ search }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Назад</a>
+    <a href="?page={{ page_num|add:"-1" }}{% if search %}&q={{ search }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "&larr; Назад" %}</a>
     {% endif %}
-    <span style="font-size:13px;color:#919191;">Стр. {{ page_num }}</span>
+    <span style="font-size:13px;color:#919191;">{% blocktrans with page_num=page_num %}Стр. {{ page_num }}{% endblocktrans %}</span>
     {% if has_next %}
-    <a href="?page={{ page_num|add:"1" }}{% if search %}&q={{ search }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &rarr;</a>
+    <a href="?page={{ page_num|add:"1" }}{% if search %}&q={{ search }}{% endif %}{% if role_filter %}&role={{ role_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if current_sort %}&sort={{ current_sort }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Далее &rarr;" %}</a>
     {% endif %}
   </div>
   {% endif %}
@@ -113,10 +114,10 @@
 
 <!-- Bulk bar -->
 <div id="userBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
-  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="userSelectedCount">0 выбрано</span>
-  <button type="button" class="ap-btn ap-btn-primary" onclick="bulkUserAction('bulk_activate')">Активировать</button>
-  <button type="button" class="ap-btn ap-btn-warn" onclick="bulkUserAction('bulk_block')">Заблокировать</button>
-  <button type="button" class="ap-btn ap-btn-ghost" onclick="clearUserSelection()">Снять</button>
+  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="userSelectedCount">{% trans "0 выбрано" %}</span>
+  <button type="button" class="ap-btn ap-btn-primary" onclick="bulkUserAction('bulk_activate')">{% trans "Активировать" %}</button>
+  <button type="button" class="ap-btn ap-btn-warn" onclick="bulkUserAction('bulk_block')">{% trans "Заблокировать" %}</button>
+  <button type="button" class="ap-btn ap-btn-ghost" onclick="clearUserSelection()">{% trans "Снять" %}</button>
 </div>
 </form>
 {% endblock %}
@@ -130,7 +131,7 @@ function toggleAllUsers(master) {
 function updateUserBar() {
   var count = document.querySelectorAll('.user-cb:checked').length;
   document.getElementById('userBulkBar').style.display = count > 0 ? 'flex' : 'none';
-  document.getElementById('userSelectedCount').textContent = count + ' выбрано';
+  document.getElementById('userSelectedCount').textContent = count + '{% trans ' выбрано' %}';
 }
 function clearUserSelection() {
   document.querySelectorAll('.user-cb').forEach(function(cb) { cb.checked = false; });

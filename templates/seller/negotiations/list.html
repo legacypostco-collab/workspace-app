@@ -218,7 +218,7 @@
       </div>
     </div>
     <div style="margin-top:8px;font-size:11px;color:#6A6A6A;">
-      <span style="color:#64B5F6;">{% trans "● Активен" %}</span>{% trans "· 918 759 товаров" %}
+      <span style="color:#64B5F6;">{% trans "● Активен" %}</span> {% trans "· 918 759 товаров" %}
     </div>
   </div>
 
@@ -243,7 +243,7 @@
       </div>
     </div>
     <div style="margin-top:8px;font-size:11px;color:#6A6A6A;">
-      <span style="color:#64B5F6;">{% trans "● Активен" %}</span>{% trans "· 918 759 товаров" %}
+      <span style="color:#64B5F6;">{% trans "● Активен" %}</span> {% trans "· 918 759 товаров" %}
     </div>
   </div>
 
@@ -268,7 +268,7 @@
       </div>
     </div>
     <div style="margin-top:8px;font-size:11px;color:#6A6A6A;">
-      <span style="color:#FF8C42;">{% trans "● Не активен" %}</span>{% trans "· Включите для применения" %}
+      <span style="color:#FF8C42;">{% trans "● Не активен" %}</span> {% trans "· Включите для применения" %}
     </div>
   </div>
 
@@ -395,7 +395,7 @@
         <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
           <td style="padding:10px;font-size:13px;color:#ECECEC;">
             <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#1</span>
-            {% trans "Покупатель" %} #4821
+            {% trans "Покупатель #4821" %}
           </td>
           <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−7%</td>
           <td style="padding:10px;font-size:13px;color:#8A8A8A;">$3 529,35</td>
@@ -410,7 +410,7 @@
         <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
           <td style="padding:10px;font-size:13px;color:#ECECEC;">
             <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#2</span>
-            {% trans "Покупатель" %} #4817
+            {% trans "Покупатель #4817" %}
           </td>
           <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−5%</td>
           <td style="padding:10px;font-size:13px;color:#8A8A8A;">$3 605,25</td>
@@ -424,7 +424,7 @@
         <tr>
           <td style="padding:10px;font-size:13px;color:#ECECEC;">
             <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#3</span>
-            {% trans "Покупатель" %} #4830
+            {% trans "Покупатель #4830" %}
           </td>
           <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−10%</td>
           <td style="padding:10px;font-size:13px;color:#8A8A8A;">$3 415,50</td>
@@ -464,7 +464,7 @@
         <tr>
           <td style="padding:10px;font-size:13px;color:#ECECEC;">
             <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:5px;background:rgba(255,255,255,0.05);color:#6A6A6A;font-size:10px;font-weight:700;margin-right:8px;">#1</span>
-            {% trans "Покупатель" %} #4821
+            {% trans "Покупатель #4821" %}
           </td>
           <td style="padding:10px;font-size:13px;color:#66BB6A;font-weight:600;">−3%</td>
           <td style="padding:10px;font-size:13px;color:#8A8A8A;">$2 405,60</td>
@@ -495,8 +495,7 @@
   </div>
 
   <div style="background:rgba(100,181,246,0.04);border:1px solid rgba(100,181,246,0.1);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#8A8A8A;line-height:1.6;">
-    {% trans "Чертежи и технические документы передаются покупателю в обезличенном виде — без логотипов, реквизитов и контактных данных." %}
-    {% trans "Платформа автоматически удаляет метаданные файла перед передачей." %}
+    {% trans "Чертежи и технические документы передаются покупателю в обезличенном виде — без логотипов, реквизитов и контактных данных. Платформа автоматически удаляет метаданные файла перед передачей." %}
   </div>
 
   <div class="drawing-row">
@@ -559,7 +558,7 @@ function auctionAccept(btn) {
 
   // Animate button
   btn.disabled = true;
-  btn.textContent = '✓ Принято';
+  btn.textContent = gettext("✓ Принято");
   btn.style.opacity = '0.7';
 
   setTimeout(() => {

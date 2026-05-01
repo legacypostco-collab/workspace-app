@@ -7,7 +7,7 @@
     <div>
       <h2 style="margin: 0;">RFQ #{{ rfq.id }}</h2>
       <p class="muted">{{ rfq.company_name|default:rfq.customer_name }} • {{ rfq.customer_email }} • {{ rfq.created_at|date:"Y-m-d H:i" }}</p>
-      <p class="muted">{% blocktrans with status=rfq.get_status_display mode=rfq.get_mode_display urgency=rfq.get_urgency_display %}Статус: {{ status }} • Режим: {{ mode }} • Срочность: {{ urgency }}{% endblocktrans %}</p>
+      <p class="muted">{% trans "Статус:" %} {{ rfq.get_status_display }} {% trans "• Режим:" %} {{ rfq.get_mode_display }} {% trans "• Срочность:" %} {{ rfq.get_urgency_display }}</p>
     </div>
     <div class="card-actions">
       <a class="chip" href="{% url 'seller_request_list' %}">{% trans "← Ко всем запросам" %}</a>
@@ -15,7 +15,7 @@
     </div>
   </div>
   {% if rfq.notes %}
-    <p class="muted" style="margin-top: 12px;">{% blocktrans with notes=rfq.notes %}Комментарий клиента: {{ notes }}{% endblocktrans %}</p>
+    <p class="muted" style="margin-top: 12px;">{% trans "Комментарий клиента:" %} {{ rfq.notes }}</p>
   {% endif %}
 </section>
 
@@ -47,7 +47,7 @@
     <div style="text-align:right;">
       {% if rfq.discount_percent %}<div style="font-family:'Golos Text',sans-serif;font-size:18px;font-weight:800;color:#66BB6A;">−{{ rfq.discount_percent }}%</div>{% endif %}
       <div style="font-size:13px;color:#919191;">−${{ total_discount_amount }}</div>
-      <div style="font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#ECECEC;margin-top:3px;">{% blocktrans with total=total_after_discount %}Итого: ${{ total }}{% endblocktrans %}</div>
+      <div style="font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#ECECEC;margin-top:3px;">{% trans "Итого: $" %}{{ total_after_discount }}</div>
     </div>
   </div>
 
@@ -89,14 +89,14 @@
       <article class="list-row" {% if item.matched_part %}style="cursor:pointer;transition:background .15s;" onclick="window.location='{% url 'seller_product_detail' item.matched_part.id %}'"{% endif %}>
         <div>
           <h3>{{ item.query }}</h3>
-          <p class="muted">{% blocktrans with qty=item.quantity state=item.get_state_display %}Количество: {{ qty }} • Состояние подбора: {{ state }}{% endblocktrans %}</p>
+          <p class="muted">{% trans "Количество:" %} {{ item.quantity }} {% trans "• Состояние подбора:" %} {{ item.get_state_display }}</p>
           {% if item.matched_part %}
             <p class="muted">
-              {% trans "Совпавшая позиция" %}: {{ item.matched_part.title }}{% if item.matched_part.brand %} • {{ item.matched_part.brand.name }}{% endif %} • OEM {{ item.matched_part.oem_number }}
+              {% trans "Совпавшая позиция:" %} {{ item.matched_part.title }}{% if item.matched_part.brand %} • {{ item.matched_part.brand.name }}{% endif %} • OEM {{ item.matched_part.oem_number }}
             </p>
             <p>
               <span class="chip">{{ item.matched_part.currency }} / {{ item.matched_part.incoterm }}</span>
-              <span class="chip">{% blocktrans with price=item.matched_part.price %}Цена: ${{ price }}{% endblocktrans %}</span>
+              <span class="chip">{% trans "Цена: $" %}{{ item.matched_part.price }}</span>
               <span class="chip">Stock: {{ item.matched_part.stock_quantity }}</span>
               {% if item.discount_percent or item.discount_fixed %}
                 <span class="chip" style="padding:2px 8px;font-size:11px;">
@@ -108,7 +108,7 @@
             </p>
           {% endif %}
           {% if item.decision_reason %}
-            <p class="muted">{% blocktrans with reason=item.decision_reason %}Комментарий системы: {{ reason }}{% endblocktrans %}</p>
+            <p class="muted">{% trans "Комментарий системы:" %} {{ item.decision_reason }}</p>
           {% endif %}
         </div>
       </article>

@@ -1,4 +1,5 @@
-{% load static i18n %}
+{% load i18n %}
+{% load static %}
 <!doctype html>
 <html lang="ru">
   <head>
@@ -10,9 +11,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="{% static 'css/seller.css' %}?v=20260323_01" />
+    <script src="{% url 'javascript-catalog' %}"></script>
+    <script src="{% static 'js/cabinet-utils.js' %}"></script>
     {% block extra_css %}{% endblock %}
   </head>
   <body class="seller-shell">
+{% include "components/_mobile_nav.html" %}
     {% include "seller/components/_sidebar.html" %}
     <main class="seller-main">
       {% include "seller/components/_topbar.html" %}
@@ -23,5 +27,7 @@
     </main>
     {% block right_panel %}{% include "seller/components/_right_panel.html" %}{% endblock %}
     {% block extra_js %}{% endblock %}
-  </body>
+  {% include "components/_onboarding.html" %}
+  {% include "components/_ai_chat.html" %}
+</body>
 </html>

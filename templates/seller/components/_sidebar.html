@@ -1,4 +1,5 @@
-{% load static i18n %}
+{% load i18n %}
+{% load static %}
 <aside class="seller-sidebar" style="width:280px;background:#1F1F1F;border-right:1px solid rgba(255,255,255,0.055);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:auto;padding:0;">
 
   <!-- Logo -->
@@ -37,7 +38,7 @@
         </div>
       </div>
       <div style="flex:1;">
-        <div style="font-size:12px;font-weight:600;color:#ECECEC;">{{ seller_status_label|default:"Надёжный" }}</div>
+        <div style="font-size:12px;font-weight:600;color:#ECECEC;">{{ seller_status_label|default:"{% trans 'Надёжный' %}" }}</div>
         <div style="font-size:11px;color:#919191;margin-top:1px;white-space:nowrap;">{% trans "Рейтинг поставщика" %}</div>
       </div>
       <div style="text-align:right;margin-right:4px;">
@@ -220,7 +221,7 @@
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:600;color:#ECECEC;">{{ seller_company_name|default:user.username }}</div>
         <div style="display:flex;align-items:center;gap:5px;margin-top:3px;">
-          <span style="font-size:11px;font-weight:600;color:#ECECEC;background:#2C2C2C;padding:1px 6px;border-radius:4px;letter-spacing:0.03em;">{{ seller_team_department|default:"ДИРЕКТОР" }}</span>
+          <span style="font-size:11px;font-weight:600;color:#ECECEC;background:#2C2C2C;padding:1px 6px;border-radius:4px;letter-spacing:0.03em;">{{ seller_team_department|default:"{% trans 'ДИРЕКТОР' %}" }}</span>
         </div>
       </div>
     </div>

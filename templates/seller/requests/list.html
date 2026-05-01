@@ -32,7 +32,7 @@
       <div>
         <h3>RFQ #{{ row.rfq.id }}</h3>
         <p class="muted">{{ row.rfq.company_name|default:row.rfq.customer_name }} • {{ row.rfq.created_at|date:"Y-m-d H:i" }}</p>
-        <p class="muted">{% blocktrans with status=row.rfq.get_status_display items=row.seller_items_count qty=row.total_qty %}Статус: {{ status }} • Ваших позиций: {{ items }} • Общее количество: {{ qty }}{% endblocktrans %}</p>
+        <p class="muted">{% trans "Статус:" %} {{ row.rfq.get_status_display }} {% trans "• Ваших позиций:" %} {{ row.seller_items_count }} {% trans "• Общее количество:" %} {{ row.total_qty }}</p>
         <p class="muted">{% trans "Оценка по вашим позициям:" %} <strong>${{ row.estimated_total }}</strong>
           {% if row.rfq.discount_percent %} <span class="chip" style="padding:2px 8px;font-size:11px;"><span style="color:#66BB6A;">−{{ row.rfq.discount_percent }}%</span> {% trans "запрос скидки" %}</span>{% endif %}
         </p>

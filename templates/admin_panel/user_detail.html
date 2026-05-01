@@ -1,23 +1,24 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Пользователь #{{ target_user.id }}{% endblock %}
-{% block topbar_title %}Пользователь: {{ target_user.get_full_name|default:target_user.username }}{% endblock %}
+{% load i18n %}
+{% block title %}{% blocktrans with target_user_id=target_user.id %}Пользователь #{{ target_user_id }}{% endblocktrans %}{% endblock %}
+{% block topbar_title %}{% blocktrans with target_user_get_full_name_default:target_user_username=target_user.get_full_name|default:target_user.username %}Пользователь: {{ target_user_get_full_name_default:target_user_username }}{% endblocktrans %}{% endblock %}
 
 {% block content %}
 <div style="margin-bottom:16px;">
-  <a href="/admin-panel/users/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Все пользователи</a>
+  <a href="/admin-panel/users/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "&larr; Все пользователи" %}</a>
 </div>
 
 <!-- User metrics -->
 <div class="ap-stats">
   {% if target_user.profile and target_user.profile.role == 'seller' %}
-  <div class="ap-stat"><div class="ap-stat-value">${{ seller_revenue|floatformat:0 }}</div><div class="ap-stat-label">Оборот (поставщик)</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ seller_order_count }}</div><div class="ap-stat-label">Заказов с его запчастями</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ total_parts_count }}</div><div class="ap-stat-label">Запчастей</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ active_parts_count }}</div><div class="ap-stat-label">Активных</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ rating }}</div><div class="ap-stat-label">Рейтинг</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">${{ seller_revenue|floatformat:0 }}</div><div class="ap-stat-label">{% trans "Оборот (поставщик)" %}</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ seller_order_count }}</div><div class="ap-stat-label">{% trans "Заказов с его запчастями" %}</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ total_parts_count }}</div><div class="ap-stat-label">{% trans "Запчастей" %}</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ active_parts_count }}</div><div class="ap-stat-label">{% trans "Активных" %}</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ rating }}</div><div class="ap-stat-label">{% trans "Рейтинг" %}</div></div>
   {% else %}
-  <div class="ap-stat"><div class="ap-stat-value">${{ buyer_spent|floatformat:0 }}</div><div class="ap-stat-label">Потрачено</div></div>
-  <div class="ap-stat"><div class="ap-stat-value">{{ buyer_order_count }}</div><div class="ap-stat-label">Заказов</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">${{ buyer_spent|floatformat:0 }}</div><div class="ap-stat-label">{% trans "Потрачено" %}</div></div>
+  <div class="ap-stat"><div class="ap-stat-value">{{ buyer_order_count }}</div><div class="ap-stat-label">{% trans "Заказов" %}</div></div>
   {% endif %}
 </div>
 
@@ -25,31 +26,31 @@
   <div style="display:flex;flex-direction:column;gap:16px;">
     <!-- Profile info -->
     <div class="ap-card">
-      <div class="ap-section-title">Профиль</div>
+      <div class="ap-section-title">{% trans "Профиль" %}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
         <div><span style="color:#919191;">ID:</span> #{{ target_user.id }}</div>
         <div><span style="color:#919191;">Username:</span> {{ target_user.username }}</div>
         <div><span style="color:#919191;">Email:</span> {{ target_user.email }}</div>
-        <div><span style="color:#919191;">Имя:</span> {{ target_user.get_full_name|default:"—" }}</div>
-        <div><span style="color:#919191;">Регистрация:</span> {{ target_user.date_joined|date:"d.m.Y H:i" }}</div>
-        <div><span style="color:#919191;">Последний вход:</span> {{ target_user.last_login|date:"d.m.Y H:i"|default:"Никогда" }}</div>
-        <div><span style="color:#919191;">Роль:</span>
-          {% if target_user.is_superuser %}<span class="ap-badge ap-badge-orange">Администратор</span>
-          {% elif target_user.profile and target_user.profile.role == 'seller' %}<span class="ap-badge ap-badge-blue">Поставщик</span>
-          {% else %}<span class="ap-badge ap-badge-gray">Покупатель</span>{% endif %}
+        <div><span style="color:#919191;">{% trans "Имя:" %}</span> {{ target_user.get_full_name|default:"—" }}</div>
+        <div><span style="color:#919191;">{% trans "Регистрация:" %}</span> {{ target_user.date_joined|date:"d.m.Y H:i" }}</div>
+        <div><span style="color:#919191;">{% trans "Последний вход:" %}</span> {{ target_user.last_login|date:"d.m.Y H:i"|default:"{% trans 'Никогда' %}" }}</div>
+        <div><span style="color:#919191;">{% trans "Роль:" %}</span>
+          {% if target_user.is_superuser %}<span class="ap-badge ap-badge-orange">{% trans "Администратор" %}</span>
+          {% elif target_user.profile and target_user.profile.role == 'seller' %}<span class="ap-badge ap-badge-blue">{% trans "Поставщик" %}</span>
+          {% else %}<span class="ap-badge ap-badge-gray">{% trans "Покупатель" %}</span>{% endif %}
         </div>
-        <div><span style="color:#919191;">Статус:</span>
-          {% if target_user.is_active %}<span class="ap-badge ap-badge-green">Активен</span>
-          {% else %}<span class="ap-badge ap-badge-orange">Заблокирован</span>{% endif %}
+        <div><span style="color:#919191;">{% trans "Статус:" %}</span>
+          {% if target_user.is_active %}<span class="ap-badge ap-badge-green">{% trans "Активен" %}</span>
+          {% else %}<span class="ap-badge ap-badge-orange">{% trans "Заблокирован" %}</span>{% endif %}
         </div>
         {% if target_user.profile %}
-        <div><span style="color:#919191;">Компания:</span> {{ target_user.profile.company_name|default:"—" }}</div>
-        <div><span style="color:#919191;">Отдел:</span> {{ target_user.profile.get_department_display }}</div>
-        <div><span style="color:#919191;">Статус поставщика:</span>
-          {% if target_user.profile.supplier_status == 'trusted' %}<span class="ap-badge ap-badge-green">Надёжный</span>
-          {% elif target_user.profile.supplier_status == 'sandbox' %}<span class="ap-badge ap-badge-orange">Песочница</span>
-          {% elif target_user.profile.supplier_status == 'risky' %}<span class="ap-badge ap-badge-orange">Рисковый</span>
-          {% elif target_user.profile.supplier_status == 'rejected' %}<span class="ap-badge ap-badge-orange">Исключён</span>
+        <div><span style="color:#919191;">{% trans "Компания:" %}</span> {{ target_user.profile.company_name|default:"—" }}</div>
+        <div><span style="color:#919191;">{% trans "Отдел:" %}</span> {{ target_user.profile.get_department_display }}</div>
+        <div><span style="color:#919191;">{% trans "Статус поставщика:" %}</span>
+          {% if target_user.profile.supplier_status == 'trusted' %}<span class="ap-badge ap-badge-green">{% trans "Надёжный" %}</span>
+          {% elif target_user.profile.supplier_status == 'sandbox' %}<span class="ap-badge ap-badge-orange">{% trans "Песочница" %}</span>
+          {% elif target_user.profile.supplier_status == 'risky' %}<span class="ap-badge ap-badge-orange">{% trans "Рисковый" %}</span>
+          {% elif target_user.profile.supplier_status == 'rejected' %}<span class="ap-badge ap-badge-orange">{% trans "Исключён" %}</span>
           {% else %}<span class="ap-badge ap-badge-gray">{{ target_user.profile.supplier_status }}</span>{% endif %}
         </div>
         {% endif %}
@@ -60,22 +61,22 @@
     {% if user_imports %}
     <div class="ap-card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div class="ap-section-title" style="margin-bottom:0;">Импорты ({{ user_imports|length }})</div>
+        <div class="ap-section-title" style="margin-bottom:0;">{% blocktrans with user_imports_length=user_imports|length %}Импорты ({{ user_imports|length }}){% endblocktrans %}</div>
         <div style="display:flex;gap:6px;">
           <form method="post" style="display:inline;">
             {% csrf_token %}
             <input type="hidden" name="action" value="approve_new_parts"/>
-            <button type="submit" class="ap-btn ap-btn-primary">Одобрить все заблокированные</button>
+            <button type="submit" class="ap-btn ap-btn-primary">{% trans "Одобрить все заблокированные" %}</button>
           </form>
           <form method="post" style="display:inline;">
             {% csrf_token %}
             <input type="hidden" name="action" value="block_new_parts"/>
-            <button type="submit" class="ap-btn ap-btn-warn">Заблокировать недавние</button>
+            <button type="submit" class="ap-btn ap-btn-warn">{% trans "Заблокировать недавние" %}</button>
           </form>
         </div>
       </div>
       <table class="ap-table">
-        <thead><tr><th>Дата</th><th>Файл</th><th>Создано</th><th>Обновлено</th><th>Ошибок</th><th>Статус</th></tr></thead>
+        <thead><tr><th>{% trans "Дата" %}</th><th>{% trans "Файл" %}</th><th>{% trans "Создано" %}</th><th>{% trans "Обновлено" %}</th><th>{% trans "Ошибок" %}</th><th>{% trans "Статус" %}</th></tr></thead>
         <tbody>
           {% for imp in user_imports %}
           <tr>
@@ -84,7 +85,7 @@
             <td>{% if imp.created_count %}<span style="color:#4CAF50;font-weight:600;">+{{ imp.created_count }}</span>{% else %}0{% endif %}</td>
             <td>{% if imp.updated_count %}<span style="color:#64B5F6;font-weight:600;">{{ imp.updated_count }}</span>{% else %}0{% endif %}</td>
             <td>{% if imp.error_count %}<span style="color:#E85C0D;">{{ imp.error_count }}</span>{% else %}0{% endif %}</td>
-            <td>{% if imp.status == 'success' %}<span class="ap-badge ap-badge-green">OK</span>{% else %}<span class="ap-badge ap-badge-orange">Ошибка</span>{% endif %}</td>
+            <td>{% if imp.status == 'success' %}<span class="ap-badge ap-badge-green">OK</span>{% else %}<span class="ap-badge ap-badge-orange">{% trans "Ошибка" %}</span>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -95,9 +96,9 @@
     <!-- Recent changes -->
     {% if recent_parts %}
     <div class="ap-card">
-      <div class="ap-section-title">Недавно изменённые запчасти (7 дней)</div>
+      <div class="ap-section-title">{% trans "Недавно изменённые запчасти (7 дней)" %}</div>
       <table class="ap-table">
-        <thead><tr><th>OEM</th><th>Название</th><th>Цена</th><th>Остаток</th><th>Статус</th><th>Обновлено</th></tr></thead>
+        <thead><tr><th>OEM</th><th>{% trans "Название" %}</th><th>{% trans "Цена" %}</th><th>{% trans "Остаток" %}</th><th>{% trans "Статус" %}</th><th>{% trans "Обновлено" %}</th></tr></thead>
         <tbody>
           {% for part in recent_parts %}
           <tr>
@@ -105,7 +106,7 @@
             <td>{{ part.title|truncatechars:30 }}</td>
             <td>{{ part.price }} {{ part.currency }}</td>
             <td>{{ part.stock_quantity }}</td>
-            <td>{% if part.is_active %}<span class="ap-badge ap-badge-green">Активна</span>{% else %}<span class="ap-badge ap-badge-orange">Неактивна</span>{% endif %}</td>
+            <td>{% if part.is_active %}<span class="ap-badge ap-badge-green">{% trans "Активна" %}</span>{% else %}<span class="ap-badge ap-badge-orange">{% trans "Неактивна" %}</span>{% endif %}</td>
             <td class="text-secondary">{{ part.updated_at|date:"d.m H:i" }}</td>
           </tr>
           {% endfor %}
@@ -117,9 +118,9 @@
     <!-- Seller orders -->
     {% if seller_orders %}
     <div class="ap-card">
-      <div class="ap-section-title">Заказы с его запчастями ({{ seller_orders|length }})</div>
+      <div class="ap-section-title">{% blocktrans with seller_orders_length=seller_orders|length %}Заказы с его запчастями ({{ seller_orders|length }}){% endblocktrans %}</div>
       <table class="ap-table">
-        <thead><tr><th>Заказ</th><th>Покупатель</th><th>Сумма</th><th>Статус</th><th>Оплата</th><th>Дата</th><th></th></tr></thead>
+        <thead><tr><th>{% trans "Заказ" %}</th><th>{% trans "Покупатель" %}</th><th>{% trans "Сумма" %}</th><th>{% trans "Статус" %}</th><th>{% trans "Оплата" %}</th><th>{% trans "Дата" %}</th><th></th></tr></thead>
         <tbody>
           {% for order in seller_orders %}
           <tr>
@@ -129,7 +130,7 @@
             <td><span class="ap-badge ap-badge-{% if order.status == 'completed' or order.status == 'delivered' %}green{% elif order.status == 'cancelled' %}orange{% else %}blue{% endif %}">{{ order.get_status_display }}</span></td>
             <td><span class="ap-badge ap-badge-{% if order.payment_status == 'paid' %}green{% else %}gray{% endif %}">{{ order.get_payment_status_display }}</span></td>
             <td class="text-secondary">{{ order.created_at|date:"d.m.Y" }}</td>
-            <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost">Детали</a></td>
+            <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost">{% trans "Детали" %}</a></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -139,10 +140,10 @@
 
     <!-- Buyer orders -->
     <div class="ap-card">
-      <div class="ap-section-title">Заказы как покупатель ({{ user_orders|length }})</div>
+      <div class="ap-section-title">{% blocktrans with user_orders_length=user_orders|length %}Заказы как покупатель ({{ user_orders|length }}){% endblocktrans %}</div>
       {% if user_orders %}
       <table class="ap-table">
-        <thead><tr><th>Заказ</th><th>Сумма</th><th>Статус</th><th>Оплата</th><th>Дата</th><th></th></tr></thead>
+        <thead><tr><th>{% trans "Заказ" %}</th><th>{% trans "Сумма" %}</th><th>{% trans "Статус" %}</th><th>{% trans "Оплата" %}</th><th>{% trans "Дата" %}</th><th></th></tr></thead>
         <tbody>
           {% for order in user_orders %}
           <tr>
@@ -151,19 +152,19 @@
             <td><span class="ap-badge ap-badge-{% if order.status == 'completed' or order.status == 'delivered' %}green{% elif order.status == 'cancelled' %}orange{% else %}blue{% endif %}">{{ order.get_status_display }}</span></td>
             <td><span class="ap-badge ap-badge-{% if order.payment_status == 'paid' %}green{% else %}gray{% endif %}">{{ order.get_payment_status_display }}</span></td>
             <td class="text-secondary">{{ order.created_at|date:"d.m.Y" }}</td>
-            <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost">Детали</a></td>
+            <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost">{% trans "Детали" %}</a></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-      {% else %}<p style="color:#919191;font-size:13px;">Нет заказов</p>{% endif %}
+      {% else %}<p style="color:#919191;font-size:13px;">{% trans "Нет заказов" %}</p>{% endif %}
     </div>
 
     {% if user_parts %}
     <div class="ap-card">
-      <div class="ap-section-title">Запчасти ({{ user_parts|length }})</div>
+      <div class="ap-section-title">{% blocktrans with user_parts_length=user_parts|length %}Запчасти ({{ user_parts|length }}){% endblocktrans %}</div>
       <table class="ap-table">
-        <thead><tr><th>OEM</th><th>Название</th><th>Цена</th><th>Остаток</th><th>Статус</th></tr></thead>
+        <thead><tr><th>OEM</th><th>{% trans "Название" %}</th><th>{% trans "Цена" %}</th><th>{% trans "Остаток" %}</th><th>{% trans "Статус" %}</th></tr></thead>
         <tbody>
           {% for part in user_parts %}
           <tr>
@@ -171,7 +172,7 @@
             <td>{{ part.title|truncatechars:30 }}</td>
             <td>{{ part.price }} {{ part.currency }}</td>
             <td>{{ part.stock_quantity }}</td>
-            <td>{% if part.is_active %}<span class="ap-badge ap-badge-green">Активна</span>{% else %}<span class="ap-badge ap-badge-orange">Неактивна</span>{% endif %}</td>
+            <td>{% if part.is_active %}<span class="ap-badge ap-badge-green">{% trans "Активна" %}</span>{% else %}<span class="ap-badge ap-badge-orange">{% trans "Неактивна" %}</span>{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -183,14 +184,14 @@
     <div class="ap-card">
       <div class="ap-section-title">RFQ ({{ user_rfqs|length }})</div>
       <table class="ap-table">
-        <thead><tr><th>RFQ</th><th>Статус</th><th>Дата</th><th></th></tr></thead>
+        <thead><tr><th>RFQ</th><th>{% trans "Статус" %}</th><th>{% trans "Дата" %}</th><th></th></tr></thead>
         <tbody>
           {% for rfq in user_rfqs %}
           <tr>
             <td>RFQ-{{ rfq.id }}</td>
             <td><span class="ap-badge ap-badge-{% if rfq.status == 'quoted' %}green{% elif rfq.status == 'new' %}blue{% else %}gray{% endif %}">{{ rfq.get_status_display }}</span></td>
             <td class="text-secondary">{{ rfq.created_at|date:"d.m.Y" }}</td>
-            <td><a href="/admin-panel/rfq/{{ rfq.id }}/" class="ap-btn ap-btn-ghost">Детали</a></td>
+            <td><a href="/admin-panel/rfq/{{ rfq.id }}/" class="ap-btn ap-btn-ghost">{% trans "Детали" %}</a></td>
           </tr>
           {% endfor %}
         </tbody>
@@ -204,57 +205,57 @@
     <!-- Admin note -->
     {% if target_user.profile and not target_user.is_superuser %}
     <div class="ap-card">
-      <div class="ap-section-title">Заметка администратора</div>
+      <div class="ap-section-title">{% trans "Заметка администратора" %}</div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="save_admin_note"/>
-        <textarea name="admin_note" class="ap-input" rows="3" placeholder="Заметка видна только администраторам..." style="resize:vertical;margin-bottom:10px;">{{ target_user.profile.admin_note }}</textarea>
-        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">Сохранить заметку</button>
+        <textarea name="admin_note" class="ap-input" rows="3" placeholder="{% trans "Заметка видна только администраторам..." %}" style="resize:vertical;margin-bottom:10px;">{{ target_user.profile.admin_note }}</textarea>
+        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">{% trans "Сохранить заметку" %}</button>
       </form>
     </div>
     {% endif %}
 
     <!-- Block/unblock -->
     <div class="ap-card">
-      <div class="ap-section-title">Доступ</div>
+      <div class="ap-section-title">{% trans "Доступ" %}</div>
       {% if not target_user.is_superuser %}
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="toggle_active"/>
         {% if target_user.is_active %}
-          <button type="submit" class="ap-btn ap-btn-warn" style="width:100%;justify-content:center;">Заблокировать пользователя</button>
+          <button type="submit" class="ap-btn ap-btn-warn" style="width:100%;justify-content:center;">{% trans "Заблокировать пользователя" %}</button>
         {% else %}
-          <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">Разблокировать пользователя</button>
+          <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">{% trans "Разблокировать пользователя" %}</button>
         {% endif %}
       </form>
       {% else %}
-      <p style="font-size:13px;color:#919191;">Суперпользователь — блокировка недоступна</p>
+      <p style="font-size:13px;color:#919191;">{% trans "Суперпользователь — блокировка недоступна" %}</p>
       {% endif %}
     </div>
 
     <!-- Edit profile -->
     {% if target_user.profile and not target_user.is_superuser %}
     <div class="ap-card">
-      <div class="ap-section-title">Редактировать профиль</div>
+      <div class="ap-section-title">{% trans "Редактировать профиль" %}</div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="update_profile"/>
 
         <div style="margin-bottom:10px;">
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Роль</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Роль" %}</label>
           <select name="role" class="ap-select" style="width:100%;">
-            <option value="buyer" {% if target_user.profile.role == 'buyer' %}selected{% endif %}>Покупатель</option>
-            <option value="seller" {% if target_user.profile.role == 'seller' %}selected{% endif %}>Поставщик</option>
+            <option value="buyer" {% if target_user.profile.role == 'buyer' %}selected{% endif %}>{% trans "Покупатель" %}</option>
+            <option value="seller" {% if target_user.profile.role == 'seller' %}selected{% endif %}>{% trans "Поставщик" %}</option>
           </select>
         </div>
 
         <div style="margin-bottom:10px;">
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Компания</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Компания" %}</label>
           <input type="text" name="company_name" value="{{ target_user.profile.company_name }}" class="ap-input"/>
         </div>
 
         <div style="margin-bottom:10px;">
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Отдел</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Отдел" %}</label>
           <select name="department" class="ap-select" style="width:100%;">
             <option value="director" {% if target_user.profile.department == 'director' %}selected{% endif %}>Director</option>
             <option value="sales" {% if target_user.profile.department == 'sales' %}selected{% endif %}>Sales</option>
@@ -266,40 +267,40 @@
         </div>
 
         <div style="margin-bottom:10px;">
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">Статус поставщика</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:4px;">{% trans "Статус поставщика" %}</label>
           <select name="supplier_status" class="ap-select" style="width:100%;">
-            <option value="trusted" {% if target_user.profile.supplier_status == 'trusted' %}selected{% endif %}>Надёжный</option>
-            <option value="sandbox" {% if target_user.profile.supplier_status == 'sandbox' %}selected{% endif %}>Песочница</option>
-            <option value="risky" {% if target_user.profile.supplier_status == 'risky' %}selected{% endif %}>Рисковый</option>
-            <option value="rejected" {% if target_user.profile.supplier_status == 'rejected' %}selected{% endif %}>Исключён</option>
+            <option value="trusted" {% if target_user.profile.supplier_status == 'trusted' %}selected{% endif %}>{% trans "Надёжный" %}</option>
+            <option value="sandbox" {% if target_user.profile.supplier_status == 'sandbox' %}selected{% endif %}>{% trans "Песочница" %}</option>
+            <option value="risky" {% if target_user.profile.supplier_status == 'risky' %}selected{% endif %}>{% trans "Рисковый" %}</option>
+            <option value="rejected" {% if target_user.profile.supplier_status == 'rejected' %}selected{% endif %}>{% trans "Исключён" %}</option>
           </select>
         </div>
 
         <div style="margin-bottom:12px;">
-          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;">Права доступа</label>
+          <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;">{% trans "Права доступа" %}</label>
           <div style="display:flex;flex-direction:column;gap:6px;">
             <label style="font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
-              <input type="checkbox" name="can_manage_assortment" {% if target_user.profile.can_manage_assortment %}checked{% endif %}/> Ассортимент
+              <input type="checkbox" name="can_manage_assortment" {% if target_user.profile.can_manage_assortment %}checked{% endif %}/> {% trans "Ассортимент" %}
             </label>
             <label style="font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
-              <input type="checkbox" name="can_manage_pricing" {% if target_user.profile.can_manage_pricing %}checked{% endif %}/> Ценообразование
+              <input type="checkbox" name="can_manage_pricing" {% if target_user.profile.can_manage_pricing %}checked{% endif %}/> {% trans "Ценообразование" %}
             </label>
             <label style="font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
-              <input type="checkbox" name="can_manage_orders" {% if target_user.profile.can_manage_orders %}checked{% endif %}/> Заказы
+              <input type="checkbox" name="can_manage_orders" {% if target_user.profile.can_manage_orders %}checked{% endif %}/> {% trans "Заказы" %}
             </label>
             <label style="font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
-              <input type="checkbox" name="can_manage_drawings" {% if target_user.profile.can_manage_drawings %}checked{% endif %}/> Чертежи
+              <input type="checkbox" name="can_manage_drawings" {% if target_user.profile.can_manage_drawings %}checked{% endif %}/> {% trans "Чертежи" %}
             </label>
             <label style="font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
-              <input type="checkbox" name="can_view_analytics" {% if target_user.profile.can_view_analytics %}checked{% endif %}/> Аналитика
+              <input type="checkbox" name="can_view_analytics" {% if target_user.profile.can_view_analytics %}checked{% endif %}/> {% trans "Аналитика" %}
             </label>
             <label style="font-size:12px;display:flex;align-items:center;gap:8px;cursor:pointer;">
-              <input type="checkbox" name="can_manage_team" {% if target_user.profile.can_manage_team %}checked{% endif %}/> Команда
+              <input type="checkbox" name="can_manage_team" {% if target_user.profile.can_manage_team %}checked{% endif %}/> {% trans "Команда" %}
             </label>
           </div>
         </div>
 
-        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">Сохранить изменения</button>
+        <button type="submit" class="ap-btn ap-btn-primary" style="width:100%;justify-content:center;">{% trans "Сохранить изменения" %}</button>
       </form>
     </div>
     {% endif %}

@@ -1,13 +1,14 @@
 {% extends "operator/base_operator.html" %}
-{% block title %}Менеджер — Клиенты{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Менеджер — Клиенты" %}{% endblock %}
 
 {% block content %}
-<div class="op-section-title" style="margin-bottom:16px;">Обзор клиентов</div>
+<div class="op-section-title" style="margin-bottom:16px;">{% trans "Обзор клиентов" %}</div>
 
 <!-- Tabs: Buyers / Suppliers -->
 <div class="op-tabs" id="client-tabs">
-  <button class="op-tab active" data-tab="buyers" onclick="switchClientTab('buyers')">Покупатели</button>
-  <button class="op-tab" data-tab="suppliers" onclick="switchClientTab('suppliers')">Поставщики</button>
+  <button class="op-tab active" data-tab="buyers" onclick="switchClientTab('buyers')">{% trans "Покупатели" %}</button>
+  <button class="op-tab" data-tab="suppliers" onclick="switchClientTab('suppliers')">{% trans "Поставщики" %}</button>
 </div>
 
 <!-- Buyers table -->
@@ -16,19 +17,19 @@
     <thead>
       <tr>
         <th>#ID</th>
-        <th>Тип</th>
-        <th>Заказов</th>
-        <th>Оборот</th>
-        <th>Рейтинг</th>
+        <th>{% trans "Тип" %}</th>
+        <th>{% trans "Заказов" %}</th>
+        <th>{% trans "Оборот" %}</th>
+        <th>{% trans "Рейтинг" %}</th>
         <th>SLA</th>
-        <th>Последняя активность</th>
-        <th>Действия</th>
+        <th>{% trans "Последняя активность" %}</th>
+        <th>{% trans "Действия" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr onclick="showClientProfile(this,'buyer','#1042',8,'$142,800','4.8','98%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#1042</td>
-        <td><span class="op-badge op-badge-gray">Покупатель</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Покупатель" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">8</td>
         <td style="font-family:'Golos Text',sans-serif;">$142,800</td>
         <td>
@@ -38,12 +39,12 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">98%</td>
-        <td class="text-secondary">Сегодня</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "Сегодня" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #1042" %}')">{% trans "Профиль" %}</button></td>
       </tr>
       <tr onclick="showClientProfile(this,'buyer','#1038',5,'$68,400','4.5','95%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#1038</td>
-        <td><span class="op-badge op-badge-gray">Покупатель</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Покупатель" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">5</td>
         <td style="font-family:'Golos Text',sans-serif;">$68,400</td>
         <td>
@@ -53,12 +54,12 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">95%</td>
-        <td class="text-secondary">Вчера</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "Вчера" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #1038" %}')">{% trans "Профиль" %}</button></td>
       </tr>
       <tr onclick="showClientProfile(this,'buyer','#1051',3,'$24,100','4.2','90%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#1051</td>
-        <td><span class="op-badge op-badge-gray">Покупатель</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Покупатель" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">3</td>
         <td style="font-family:'Golos Text',sans-serif;">$24,100</td>
         <td>
@@ -68,12 +69,12 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">90%</td>
-        <td class="text-secondary">22 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "22 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #1051" %}')">{% trans "Профиль" %}</button></td>
       </tr>
       <tr onclick="showClientProfile(this,'buyer','#1029',12,'$248,000','4.9','99%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#1029</td>
-        <td><span class="op-badge op-badge-gray">Покупатель</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Покупатель" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">12</td>
         <td style="font-family:'Golos Text',sans-serif;">$248,000</td>
         <td>
@@ -83,12 +84,12 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">99%</td>
-        <td class="text-secondary">20 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "20 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #1029" %}')">{% trans "Профиль" %}</button></td>
       </tr>
       <tr onclick="showClientProfile(this,'buyer','#1033',6,'$85,200','3.8','82%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#1033</td>
-        <td><span class="op-badge op-badge-gray">Покупатель</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Покупатель" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">6</td>
         <td style="font-family:'Golos Text',sans-serif;">$85,200</td>
         <td>
@@ -98,8 +99,8 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">82%</td>
-        <td class="text-secondary">18 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "18 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #1033" %}')">{% trans "Профиль" %}</button></td>
       </tr>
     </tbody>
   </table>
@@ -111,19 +112,19 @@
     <thead>
       <tr>
         <th>#ID</th>
-        <th>Тип</th>
-        <th>Заказов</th>
-        <th>Оборот</th>
-        <th>Рейтинг</th>
+        <th>{% trans "Тип" %}</th>
+        <th>{% trans "Заказов" %}</th>
+        <th>{% trans "Оборот" %}</th>
+        <th>{% trans "Рейтинг" %}</th>
         <th>SLA</th>
-        <th>Последняя активность</th>
-        <th>Действия</th>
+        <th>{% trans "Последняя активность" %}</th>
+        <th>{% trans "Действия" %}</th>
       </tr>
     </thead>
     <tbody>
       <tr onclick="showClientProfile(this,'supplier','#2087',12,'$320,000','4.7','96%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2087</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Поставщик" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">12</td>
         <td style="font-family:'Golos Text',sans-serif;">$320,000</td>
         <td>
@@ -133,12 +134,12 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">96%</td>
-        <td class="text-secondary">Сегодня</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "Сегодня" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #2087" %}')">{% trans "Профиль" %}</button></td>
       </tr>
       <tr onclick="showClientProfile(this,'supplier','#2091',8,'$185,400','4.4','93%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2091</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Поставщик" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">8</td>
         <td style="font-family:'Golos Text',sans-serif;">$185,400</td>
         <td>
@@ -148,12 +149,12 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">93%</td>
-        <td class="text-secondary">Вчера</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "Вчера" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #2091" %}')">{% trans "Профиль" %}</button></td>
       </tr>
       <tr onclick="showClientProfile(this,'supplier','#2075',15,'$412,000','4.9','99%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2075</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Поставщик" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">15</td>
         <td style="font-family:'Golos Text',sans-serif;">$412,000</td>
         <td>
@@ -163,12 +164,12 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">99%</td>
-        <td class="text-secondary">22 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "22 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #2075" %}')">{% trans "Профиль" %}</button></td>
       </tr>
       <tr onclick="showClientProfile(this,'supplier','#2063',6,'$98,400','4.1','88%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2063</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Поставщик" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">6</td>
         <td style="font-family:'Golos Text',sans-serif;">$98,400</td>
         <td>
@@ -178,12 +179,12 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">88%</td>
-        <td class="text-secondary">20 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "20 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #2063" %}')">{% trans "Профиль" %}</button></td>
       </tr>
       <tr onclick="showClientProfile(this,'supplier','#2044',20,'$580,000','4.8','97%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2044</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Поставщик" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">20</td>
         <td style="font-family:'Golos Text',sans-serif;">$580,000</td>
         <td>
@@ -193,12 +194,12 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#ECECEC;">97%</td>
-        <td class="text-secondary">18 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "18 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #2044" %}')">{% trans "Профиль" %}</button></td>
       </tr>
       <tr onclick="showClientProfile(this,'supplier','#2051',4,'$42,000','3.6','78%')">
         <td style="font-family:'Golos Text',sans-serif;font-weight:700;">#2051</td>
-        <td><span class="op-badge op-badge-gray">Поставщик</span></td>
+        <td><span class="op-badge op-badge-gray">{% trans "Поставщик" %}</span></td>
         <td style="font-family:'Golos Text',sans-serif;">4</td>
         <td style="font-family:'Golos Text',sans-serif;">$42,000</td>
         <td>
@@ -208,8 +209,8 @@
           </div>
         </td>
         <td style="font-family:'Golos Text',sans-serif;color:#E85C0D;">78%</td>
-        <td class="text-secondary">15 мар</td>
-        <td><button class="op-btn op-btn-ghost" onclick="this.closest('tr').click()">Профиль</button></td>
+        <td class="text-secondary">{% trans "15 мар" %}</td>
+        <td><button class="op-btn op-btn-ghost" onclick="event.stopPropagation();opToast('{% trans "Профиль #2051" %}')">{% trans "Профиль" %}</button></td>
       </tr>
     </tbody>
   </table>
@@ -239,43 +240,43 @@ function switchClientTab(tab) {
 
 function showClientProfile(row, type, id, orders, revenue, rating, sla) {
   var profile = document.getElementById('client-profile');
-  document.getElementById('profile-title').textContent = (type === 'buyer' ? 'Покупатель ' : 'Поставщик ') + id;
+  document.getElementById('profile-title').textContent = (type === 'buyer' ? '{% trans 'Покупатель ' %}' : '{% trans 'Поставщик ' %}') + id;
   var content = document.getElementById('profile-content');
   content.innerHTML =
     '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">' +
       '<div style="width:48px;height:48px;border-radius:12px;background:#2C2C2C;border:1px solid rgba(255,255,255,0.055);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">' + id.slice(1,3) + '</div>' +
       '<div>' +
         '<div style="font-size:16px;font-weight:700;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">' + id + '</div>' +
-        '<div style="font-size:12px;color:#919191;margin-top:2px;">' + (type === 'buyer' ? 'Покупатель' : 'Поставщик') + '</div>' +
+        '<div style="font-size:12px;color:#919191;margin-top:2px;">' + (type === 'buyer' ? '{% trans 'Покупатель' %}' : '{% trans 'Поставщик' %}') + '</div>' +
       '</div>' +
     '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">' +
       '<div class="op-card-elevated" style="text-align:center;">' +
         '<div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">' + orders + '</div>' +
-        '<div style="font-size:11px;color:#919191;margin-top:2px;">Заказов</div>' +
+        '{% trans "<div style=\"font-size:11px;color:#919191;margin-top:2px;\">Заказов</div>" %}' +
       '</div>' +
       '<div class="op-card-elevated" style="text-align:center;">' +
         '<div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">' + revenue + '</div>' +
-        '<div style="font-size:11px;color:#919191;margin-top:2px;">Оборот</div>' +
+        '{% trans "<div style=\"font-size:11px;color:#919191;margin-top:2px;\">Оборот</div>" %}' +
       '</div>' +
       '<div class="op-card-elevated" style="text-align:center;">' +
         '<div style="font-size:20px;font-weight:800;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">' + rating + '</div>' +
-        '<div style="font-size:11px;color:#919191;margin-top:2px;">Рейтинг</div>' +
+        '{% trans "<div style=\"font-size:11px;color:#919191;margin-top:2px;\">Рейтинг</div>" %}' +
       '</div>' +
       '<div class="op-card-elevated" style="text-align:center;">' +
         '<div style="font-size:20px;font-weight:800;color:' + (parseFloat(sla) >= 90 ? '#ECECEC' : '#E85C0D') + ';font-family:\'Golos Text\',sans-serif;">' + sla + '</div>' +
         '<div style="font-size:11px;color:#919191;margin-top:2px;">SLA</div>' +
       '</div>' +
     '</div>' +
-    '<div class="op-section-sub">Последние заказы</div>' +
+    '{% trans "<div class=\"op-section-sub\">Последние заказы</div>" %}' +
     '<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">' +
       '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:#1F1F1F;border-radius:8px;">' +
         '<span style="font-size:13px;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">ORD-4521</span>' +
-        '<span class="op-badge op-badge-gray">В работе</span>' +
+        '{% trans "<span class=\"op-badge op-badge-gray\">В работе</span>" %}' +
       '</div>' +
       '<div style="display:flex;justify-content:space-between;padding:8px 12px;background:#1F1F1F;border-radius:8px;">' +
         '<span style="font-size:13px;color:#ECECEC;font-family:\'Golos Text\',sans-serif;">ORD-4505</span>' +
-        '<span class="op-badge op-badge-gray">Завершён</span>' +
+        '{% trans "<span class=\"op-badge op-badge-gray\">Завершён</span>" %}' +
       '</div>' +
     '</div>';
   profile.style.display = 'block';

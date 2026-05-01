@@ -1,10 +1,12 @@
 from django.urls import include, path
 
 from dashboard.api import SupplierDashboardAPIView
-from . import api_views
+from . import ai_views, api_views
 
 urlpatterns = [
     path("health/", api_views.api_health, name="api_health"),
+    path("ai/chat/", ai_views.ai_chat, name="api_ai_chat"),
+    path("ai/status/", ai_views.ai_status, name="api_ai_status"),
     path("readiness/", api_views.api_readiness, name="api_readiness"),
     path("categories/", api_views.api_categories, name="api_categories"),
     path("parts/", api_views.api_parts, name="api_parts"),

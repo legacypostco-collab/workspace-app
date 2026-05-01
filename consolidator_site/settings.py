@@ -18,6 +18,11 @@ def _load_env_file(env_path: Path) -> None:
 
 _load_env_file(BASE_DIR / ".env")
 
+
+def _env(name: str, default: str = "") -> str:
+    return (os.getenv(name, default) or "").strip()
+
+
 def _env_list(name: str, default: str = "") -> list[str]:
     raw = (os.getenv(name, default) or "").strip()
     if not raw:
@@ -32,8 +37,13 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-DEBUG = _env_bool("DEBUG_MODE", True)
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-production")
+DEBUG = _env_bool("DEBUG_MODE", False)
+SECRET_KEY = _env("SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "dev-secret-change-in-production"
+    else:
+        raise RuntimeError("SECRET_KEY is required")
 
 
 ALLOWED_HOSTS = _env_list(
@@ -42,7 +52,7 @@ ALLOWED_HOSTS = _env_list(
 )
 CSRF_TRUSTED_ORIGINS = _env_list(
     "CSRF_TRUSTED_ORIGINS",
-    "http://127.0.0.1,http://localhost,https://*.localhost.run,https://*.lhr.life",
+    "http://127.0.0.1,http://127.0.0.1:8001,http://localhost,http://localhost:8001,https://*.localhost.run,https://*.lhr.life",
 )
 
 INSTALLED_APPS = [
@@ -53,6 +63,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
     "files",
     "catalog",
     "offers",
@@ -64,6 +75,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -95,21 +107,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "consolidator_site.wsgi.application"
 
-# ─── Database ─────────────────────────────────────────────────────────────────
-_db_engine = os.getenv("DB_ENGINE", "").strip()
-if _db_engine and "postgresql" in _db_engine:
+DB_ENGINE = _env("DB_ENGINE", "django.db.backends.postgresql")
+DB_NAME = _env("DB_NAME", "")
+DB_USER = _env("DB_USER", "")
+DB_PASSWORD = _env("DB_PASSWORD", "")
+DB_HOST = _env("DB_HOST", "127.0.0.1")
+DB_PORT = _env("DB_PORT", "5432")
+
+if DB_NAME:
     DATABASES = {
         "default": {
-            "ENGINE": _db_engine,
-            "NAME": os.getenv("DB_NAME", "marketplace"),
-            "USER": os.getenv("DB_USER", "marketplace"),
-            "PASSWORD": os.getenv("DB_PASSWORD", ""),
-            "HOST": os.getenv("DB_HOST", "127.0.0.1"),
-            "PORT": os.getenv("DB_PORT", "5432"),
-            "CONN_MAX_AGE": int(os.getenv("DB_CONN_MAX_AGE", "60")),
-            "OPTIONS": {
-                "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "5")),
-            },
+            "ENGINE": DB_ENGINE,
+            "NAME": DB_NAME,
+            "USER": DB_USER,
+            "PASSWORD": DB_PASSWORD,
+            "HOST": DB_HOST,
+            "PORT": DB_PORT,
+            "CONN_MAX_AGE": int(_env("DB_CONN_MAX_AGE", "60")),
+            "OPTIONS": {"connect_timeout": int(_env("DB_CONNECT_TIMEOUT", "5"))},
         }
     }
 else:
@@ -123,27 +138,9 @@ else:
         }
     }
 
-# ─── Cache ────────────────────────────────────────────────────────────────────
-_redis_url = os.getenv("CELERY_BROKER_URL", "").strip()
-if _redis_url.startswith("redis://") or _redis_url.startswith("rediss://"):
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": _redis_url,
-            "KEY_PREFIX": "consolidator",
-            "TIMEOUT": 300,
-        }
-    }
-else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        }
-    }
-
-AUTH_PASSWORD_VALIDATORS = [] if DEBUG else [
+AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
@@ -159,22 +156,39 @@ USE_I18N = True
 USE_TZ = True
 LOCALE_PATHS = [BASE_DIR / "locale"]
 
-STATIC_URL = "/static/"
+STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+SERVE_MEDIA = _env_bool("SERVE_MEDIA", DEBUG)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
 
-# ─── HTTPS / proxy ────────────────────────────────────────────────────────────
+# ── Email backend ─────────────────────────────────────────
+# Production: set EMAIL_HOST, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD env vars (SMTP)
+# Local dev: emails print to console
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+if EMAIL_HOST:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+    EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", True)
+    EMAIL_USE_SSL = _env_bool("EMAIL_USE_SSL", False)
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Consolidator Parts <noreply@consolidator.parts>")
+SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+ADMINS = [tuple(a.split(":", 1)) for a in _env_list("ADMINS", "") if ":" in a]
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours
 USE_HTTPS = _env_bool("USE_HTTPS", False)
 SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", USE_HTTPS)
 CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", USE_HTTPS)
-SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", False)  # nginx handles redirect
+SECURE_SSL_REDIRECT = _env_bool("SECURE_SSL_REDIRECT", USE_HTTPS)
 SECURE_HSTS_SECONDS = int(os.getenv("SECURE_HSTS_SECONDS", "0"))
 SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", False)
 SECURE_HSTS_PRELOAD = _env_bool("SECURE_HSTS_PRELOAD", False)
@@ -182,49 +196,14 @@ SECURE_CONTENT_TYPE_NOSNIFF = _env_bool("SECURE_CONTENT_TYPE_NOSNIFF", True)
 SECURE_REFERRER_POLICY = os.getenv("SECURE_REFERRER_POLICY", "same-origin")
 X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")
 
-# When running behind nginx proxy (BEHIND_PROXY=1) trust X-Forwarded-Proto
-if _env_bool("BEHIND_PROXY", False):
+BEHIND_PROXY = _env_bool("BEHIND_PROXY", False)
+if BEHIND_PROXY:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     USE_X_FORWARDED_HOST = True
 
-# ─── Logging ──────────────────────────────────────────────────────────────────
-_log_level = os.getenv("LOG_LEVEL", "DEBUG" if DEBUG else "INFO").upper()
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "{asctime} {levelname} {name} {message}",
-            "style": "{",
-        },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-    },
-    "root": {
-        "handlers": ["console"],
-        "level": _log_level,
-    },
-    "loggers": {
-        "django": {
-            "handlers": ["console"],
-            "level": _log_level,
-            "propagate": False,
-        },
-        "marketplace": {
-            "handlers": ["console"],
-            "level": _log_level,
-            "propagate": False,
-        },
-    },
-}
-
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
@@ -241,6 +220,48 @@ REST_FRAMEWORK = {
         "import": "10/min",
         "lookup": "10/min",
     },
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Consolidator Parts API",
+    "DESCRIPTION": "B2B marketplace API for industrial spare parts. Endpoints for catalog, RFQ, orders, payments, logistics.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/v1/",
+    "COMPONENT_SPLIT_REQUEST": True,
+}
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    }
+}
+
+# ── Sentry error tracking ─────────────────────────────────
+# Set SENTRY_DSN env var to enable. Auto-captures unhandled exceptions, performance.
+SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration()],
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+            profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
+            send_default_pii=False,
+            environment=os.getenv("SENTRY_ENV", "production"),
+            release=os.getenv("SENTRY_RELEASE", ""),
+        )
+    except ImportError:
+        pass  # sentry-sdk not installed — skip silently
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": os.getenv("LOG_LEVEL", "INFO")},
 }
 
 TEUSTAT_API_URL = os.getenv("TEUSTAT_API_URL", "").strip()
@@ -283,21 +304,6 @@ MAX_QUOTE_ITEMS = int(os.getenv("MAX_QUOTE_ITEMS", "50"))
 MAX_ORDER_DOCUMENT_BYTES = int(os.getenv("MAX_ORDER_DOCUMENT_BYTES", str(10 * 1024 * 1024)))
 LEGAL_LOOKUP_TIMEOUT_SEC = float(os.getenv("LEGAL_LOOKUP_TIMEOUT_SEC", "2"))
 LEGAL_LOOKUP_CIRCUIT_SECONDS = int(os.getenv("LEGAL_LOOKUP_CIRCUIT_SECONDS", "30"))
-
-# ─── Email / SMTP ─────────────────────────────────────────────────────────────
-_email_host = os.getenv("EMAIL_HOST", "").strip()
-if _email_host:
-    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-    EMAIL_HOST = _email_host
-    EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-    EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", True)
-    EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "").strip()
-    EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "").strip()
-    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@consolidator.parts")
-    SERVER_EMAIL = DEFAULT_FROM_EMAIL
-else:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-    DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@consolidator.parts")
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0").strip()
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL).strip()

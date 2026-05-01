@@ -1,31 +1,32 @@
 {% extends "admin_panel/base_admin.html" %}
-{% block title %}Финансы{% endblock %}
-{% block topbar_title %}Финансы{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Финансы" %}{% endblock %}
+{% block topbar_title %}{% trans "Финансы" %}{% endblock %}
 
 {% block content %}
 <!-- Key metrics -->
 <div class="ap-stats">
-  <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ total_revenue|floatformat:0 }}</div><div class="ap-stat-label">Общий оборот</div></a>
-  <a href="/admin-panel/analytics/?period=month" class="ap-stat"><div class="ap-stat-value">${{ month_revenue|floatformat:0 }}</div><div class="ap-stat-label">За месяц</div></a>
-  <a href="/admin-panel/analytics/?period=week" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">За неделю</div></a>
-  <a href="/admin-panel/tariffs/" class="ap-stat"><div class="ap-stat-value">${{ platform_commission|floatformat:0 }}</div><div class="ap-stat-label">Комиссия ({{ commission_rate }}%)</div></a>
-  <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ total_logistics|floatformat:0 }}</div><div class="ap-stat-label">Логистика</div></a>
+  <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ total_revenue|floatformat:0 }}</div><div class="ap-stat-label">{% trans "Общий оборот" %}</div></a>
+  <a href="/admin-panel/analytics/?period=month" class="ap-stat"><div class="ap-stat-value">${{ month_revenue|floatformat:0 }}</div><div class="ap-stat-label">{% trans "За месяц" %}</div></a>
+  <a href="/admin-panel/analytics/?period=week" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
+  <a href="/admin-panel/tariffs/" class="ap-stat"><div class="ap-stat-value">${{ platform_commission|floatformat:0 }}</div><div class="ap-stat-label">{% blocktrans with commission_rate=commission_rate %}Комиссия ({{ commission_rate }}%){% endblocktrans %}</div></a>
+  <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ total_logistics|floatformat:0 }}</div><div class="ap-stat-label">{% trans "Логистика" %}</div></a>
 </div>
 
 <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;margin-bottom:16px;">
   <!-- Payment funnel -->
   <div class="ap-card">
-    <div class="ap-section-title">Воронка оплат</div>
+    <div class="ap-section-title">{% trans "Воронка оплат" %}</div>
     <div style="display:flex;flex-direction:column;gap:6px;">
       <div class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;">
         <div style="width:60px;text-align:center;">
           <div style="font-size:20px;font-weight:800;color:{% if pending_count %}#E85C0D{% else %}#5E5E5E{% endif %};font-family:'Golos Text',sans-serif;">{{ pending_count }}</div>
         </div>
         <div style="flex:1;">
-          <div style="font-size:13px;color:#ECECEC;">Ожидают резерва</div>
+          <div style="font-size:13px;color:#ECECEC;">{% trans "Ожидают резерва" %}</div>
           <div style="font-size:11px;color:#919191;">${{ pending_sum|floatformat:0 }}</div>
         </div>
-        <a href="?payment=awaiting_reserve" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;text-decoration:none;">Показать</a>
+        <a href="?payment=awaiting_reserve" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;text-decoration:none;">{% trans "Показать" %}</a>
       </div>
       <div style="text-align:center;color:#5E5E5E;font-size:16px;">&darr;</div>
       <div class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;">
@@ -33,10 +34,10 @@
           <div style="font-size:20px;font-weight:800;color:#64B5F6;font-family:'Golos Text',sans-serif;">{{ reserve_paid_count }}</div>
         </div>
         <div style="flex:1;">
-          <div style="font-size:13px;color:#ECECEC;">Резерв оплачен</div>
-          <div style="font-size:11px;color:#919191;">${{ reserve_paid_sum|floatformat:0 }}{% if stuck %} · <span style="color:#E85C0D;">{{ stuck }} зависших</span>{% endif %}</div>
+          <div style="font-size:13px;color:#ECECEC;">{% trans "Резерв оплачен" %}</div>
+          <div style="font-size:11px;color:#919191;">${{ reserve_paid_sum|floatformat:0 }}{% if stuck %} · <span style="color:#E85C0D;">{% blocktrans with stuck=stuck %}{{ stuck }} зависших{% endblocktrans %}</span>{% endif %}</div>
         </div>
-        <a href="?payment=reserve_paid" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;text-decoration:none;">Показать</a>
+        <a href="?payment=reserve_paid" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;text-decoration:none;">{% trans "Показать" %}</a>
       </div>
       {% if mid_paid_count %}
       <div style="text-align:center;color:#5E5E5E;font-size:16px;">&darr;</div>
@@ -45,10 +46,10 @@
           <div style="font-size:20px;font-weight:800;color:#64B5F6;font-family:'Golos Text',sans-serif;">{{ mid_paid_count }}</div>
         </div>
         <div style="flex:1;">
-          <div style="font-size:13px;color:#ECECEC;">Подтверждение оплачено</div>
+          <div style="font-size:13px;color:#ECECEC;">{% trans "Подтверждение оплачено" %}</div>
           <div style="font-size:11px;color:#919191;">${{ mid_paid_sum|floatformat:0 }}</div>
         </div>
-        <a href="?payment=mid_paid" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;text-decoration:none;">Показать</a>
+        <a href="?payment=mid_paid" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;text-decoration:none;">{% trans "Показать" %}</a>
       </div>
       {% endif %}
       <div style="text-align:center;color:#5E5E5E;font-size:16px;">&darr;</div>
@@ -57,10 +58,10 @@
           <div style="font-size:20px;font-weight:800;color:#4CAF50;font-family:'Golos Text',sans-serif;">{{ fully_paid_count }}</div>
         </div>
         <div style="flex:1;">
-          <div style="font-size:13px;color:#ECECEC;">Полностью оплачено</div>
+          <div style="font-size:13px;color:#ECECEC;">{% trans "Полностью оплачено" %}</div>
           <div style="font-size:11px;color:#919191;">${{ fully_paid|floatformat:0 }}</div>
         </div>
-        <a href="?payment=paid" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;text-decoration:none;">Показать</a>
+        <a href="?payment=paid" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;text-decoration:none;">{% trans "Показать" %}</a>
       </div>
     </div>
   </div>
@@ -68,21 +69,21 @@
   <!-- Summary -->
   <div style="display:flex;flex-direction:column;gap:16px;">
     <div class="ap-card">
-      <div class="ap-section-title">Сводка</div>
+      <div class="ap-section-title">{% trans "Сводка" %}</div>
       <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;">
-        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">Собрано резервов</span><span>${{ reserve_collected|floatformat:0 }}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">Полностью оплачено</span><span style="color:#4CAF50;">${{ fully_paid|floatformat:0 }}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">Ожидают резерва</span><span style="color:#E85C0D;">${{ pending_sum|floatformat:0 }}</span></div>
-        <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.055);padding-top:10px;"><span style="color:#919191;">Логистика (всего)</span><span>${{ total_logistics|floatformat:0 }}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">Комиссия платформы</span><span style="color:#64B5F6;">${{ platform_commission|floatformat:0 }}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Собрано резервов" %}</span><span>${{ reserve_collected|floatformat:0 }}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Полностью оплачено" %}</span><span style="color:#4CAF50;">${{ fully_paid|floatformat:0 }}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Ожидают резерва" %}</span><span style="color:#E85C0D;">${{ pending_sum|floatformat:0 }}</span></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.055);padding-top:10px;"><span style="color:#919191;">{% trans "Логистика (всего)" %}</span><span>${{ total_logistics|floatformat:0 }}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Комиссия платформы" %}</span><span style="color:#64B5F6;">${{ platform_commission|floatformat:0 }}</span></div>
       </div>
     </div>
 
     {% if stuck %}
     <div class="ap-card" style="border-left:3px solid #E85C0D;">
-      <div class="ap-section-title" style="color:#E85C0D;">Проблемные платежи</div>
-      <p style="font-size:13px;color:#919191;">{{ stuck }} заказов с резервом оплаченным более 7 дней назад, но без полной оплаты</p>
-      <a href="?payment=reserve_paid" class="ap-btn ap-btn-warn" style="text-decoration:none;margin-top:8px;">Посмотреть</a>
+      <div class="ap-section-title" style="color:#E85C0D;">{% trans "Проблемные платежи" %}</div>
+      <p style="font-size:13px;color:#919191;">{% blocktrans with stuck=stuck %}{{ stuck }} заказов с резервом оплаченным более 7 дней назад, но без полной оплаты{% endblocktrans %}</p>
+      <a href="?payment=reserve_paid" class="ap-btn ap-btn-warn" style="text-decoration:none;margin-top:8px;">{% trans "Посмотреть" %}</a>
     </div>
     {% endif %}
   </div>
@@ -92,24 +93,24 @@
 <div class="ap-card">
   <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
     <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;">
-      <input type="text" name="q" class="ap-input" placeholder="Поиск по ID или покупателю..." style="max-width:220px;" value="{{ search }}"/>
+      <input type="text" name="q" class="ap-input" placeholder="{% trans "Поиск по ID или покупателю..." %}" style="max-width:220px;" value="{{ search }}"/>
       <select name="payment" class="ap-select" onchange="this.form.submit()">
-        <option value="">Все оплаты</option>
+        <option value="">{% trans "Все оплаты" %}</option>
         {% for val, label in payment_choices %}
         <option value="{{ val }}" {% if payment_filter == val %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
-      <button type="submit" class="ap-btn ap-btn-primary">Найти</button>
+      <button type="submit" class="ap-btn ap-btn-primary">{% trans "Найти" %}</button>
       {% if search or payment_filter %}
-      <a href="/admin-panel/finance/" class="ap-btn ap-btn-warn" style="text-decoration:none;">Сбросить</a>
+      <a href="/admin-panel/finance/" class="ap-btn ap-btn-warn" style="text-decoration:none;">{% trans "Сбросить" %}</a>
       {% endif %}
     </form>
-    <a href="/admin-panel/export/finance/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Экспорт CSV</a>
+    <a href="/admin-panel/export/finance/" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Экспорт CSV" %}</a>
   </div>
 
   <table class="ap-table">
     <thead>
-      <tr><th>Заказ</th><th>Покупатель</th><th>Сумма</th><th>Резерв</th><th>Логистика</th><th>Оплата</th><th>Схема</th><th>Дата</th><th></th></tr>
+      <tr><th>{% trans "Заказ" %}</th><th>{% trans "Покупатель" %}</th><th>{% trans "Сумма" %}</th><th>{% trans "Резерв" %}</th><th>{% trans "Логистика" %}</th><th>{% trans "Оплата" %}</th><th>{% trans "Схема" %}</th><th>{% trans "Дата" %}</th><th></th></tr>
     </thead>
     <tbody>
       {% for order in orders %}
@@ -120,26 +121,26 @@
         <td>${{ order.reserve_amount|floatformat:0 }}</td>
         <td>${{ order.logistics_cost|floatformat:0 }}</td>
         <td>
-          {% if order.payment_status == 'paid' %}<span class="ap-badge ap-badge-green">Оплачен</span>
-          {% elif order.payment_status == 'awaiting_reserve' %}<span class="ap-badge ap-badge-orange">Ожидает</span>
-          {% elif order.payment_status == 'reserve_paid' %}<span class="ap-badge ap-badge-blue">Резерв</span>
+          {% if order.payment_status == 'paid' %}<span class="ap-badge ap-badge-green">{% trans "Оплачен" %}</span>
+          {% elif order.payment_status == 'awaiting_reserve' %}<span class="ap-badge ap-badge-orange">{% trans "Ожидает" %}</span>
+          {% elif order.payment_status == 'reserve_paid' %}<span class="ap-badge ap-badge-blue">{% trans "Резерв" %}</span>
           {% else %}<span class="ap-badge ap-badge-blue">{{ order.get_payment_status_display }}</span>{% endif %}
         </td>
         <td class="text-secondary">{{ order.get_payment_scheme_display }}</td>
         <td class="text-secondary">{{ order.created_at|date:"d.m.Y" }}</td>
-        <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">Детали</a></td>
+        <td><a href="/admin-panel/orders/{{ order.id }}/" class="ap-btn ap-btn-ghost" style="font-size:11px;padding:4px 10px;">{% trans "Детали" %}</a></td>
       </tr>
       {% empty %}
-      <tr><td colspan="9" style="text-align:center;color:#919191;">Нет данных</td></tr>
+      <tr><td colspan="9" style="text-align:center;color:#919191;">{% trans "Нет данных" %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
 
   {% if has_prev or has_next %}
   <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;align-items:center;">
-    {% if has_prev %}<a href="?page={{ page_num|add:"-1" }}{% if search %}&q={{ search }}{% endif %}{% if payment_filter %}&payment={{ payment_filter }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">&larr; Назад</a>{% endif %}
-    <span style="font-size:13px;color:#919191;">Стр. {{ page_num }}</span>
-    {% if has_next %}<a href="?page={{ page_num|add:"1" }}{% if search %}&q={{ search }}{% endif %}{% if payment_filter %}&payment={{ payment_filter }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">Далее &rarr;</a>{% endif %}
+    {% if has_prev %}<a href="?page={{ page_num|add:"-1" }}{% if search %}&q={{ search }}{% endif %}{% if payment_filter %}&payment={{ payment_filter }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "&larr; Назад" %}</a>{% endif %}
+    <span style="font-size:13px;color:#919191;">{% blocktrans with page_num=page_num %}Стр. {{ page_num }}{% endblocktrans %}</span>
+    {% if has_next %}<a href="?page={{ page_num|add:"1" }}{% if search %}&q={{ search }}{% endif %}{% if payment_filter %}&payment={{ payment_filter }}{% endif %}" class="ap-btn ap-btn-ghost" style="text-decoration:none;">{% trans "Далее &rarr;" %}</a>{% endif %}
   </div>
   {% endif %}
 </div>
