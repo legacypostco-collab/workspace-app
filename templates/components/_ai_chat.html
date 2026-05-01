@@ -1,0 +1,235 @@
+{# AI-ассистент: плавающая кнопка + всплывающее окно чата.
+   Подключается к /api/v1/ai/chat/ через SSE. #}
+<style>
+  .ai-fab{position:fixed;right:24px;bottom:24px;width:54px;height:54px;border-radius:50%;
+    background:linear-gradient(135deg,#64B5F6,#1E88E5);border:none;color:#fff;cursor:pointer;
+    box-shadow:0 6px 20px rgba(30,136,229,0.45);z-index:9998;display:flex;align-items:center;
+    justify-content:center;transition:transform 0.18s,box-shadow 0.18s;}
+  .ai-fab:hover{transform:translateY(-2px) scale(1.05);box-shadow:0 8px 24px rgba(30,136,229,0.6);}
+  .ai-fab svg{width:24px;height:24px;}
+  .ai-panel{position:fixed;right:24px;bottom:88px;width:380px;max-width:calc(100vw - 32px);
+    height:520px;max-height:calc(100vh - 120px);background:#1F1F1F;
+    border:1px solid rgba(255,255,255,0.08);border-radius:16px;display:none;flex-direction:column;
+    z-index:9999;box-shadow:0 12px 40px rgba(0,0,0,0.5);overflow:hidden;
+    font-family:'Inter',sans-serif;}
+  .ai-panel.ai-open{display:flex;animation:aiPanelIn 0.22s ease-out;}
+  @keyframes aiPanelIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+  .ai-head{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.06);
+    display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;}
+  .ai-head-title{display:flex;align-items:center;gap:10px;}
+  .ai-head-dot{width:8px;height:8px;border-radius:50%;background:#4CAF50;box-shadow:0 0 6px #4CAF50;}
+  .ai-head-dot.off{background:#919191;box-shadow:none;}
+  .ai-head-name{font-size:14px;font-weight:600;color:#ECECEC;}
+  .ai-head-sub{font-size:11px;color:#919191;margin-top:2px;}
+  .ai-close{background:transparent;border:none;color:#919191;cursor:pointer;font-size:20px;
+    line-height:1;padding:4px 8px;border-radius:6px;}
+  .ai-close:hover{background:rgba(255,255,255,0.05);color:#ECECEC;}
+  .ai-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
+  .ai-msg{max-width:85%;padding:10px 12px;border-radius:12px;font-size:13px;line-height:1.5;
+    word-wrap:break-word;white-space:pre-wrap;}
+  .ai-msg-user{align-self:flex-end;background:#1E88E5;color:#fff;border-bottom-right-radius:4px;}
+  .ai-msg-bot{align-self:flex-start;background:#2C2C2C;color:#ECECEC;border-bottom-left-radius:4px;}
+  .ai-msg-bot.ai-typing::after{content:'▍';color:#64B5F6;animation:aiBlink 0.9s infinite;margin-left:2px;}
+  @keyframes aiBlink{0%,50%{opacity:1;}51%,100%{opacity:0;}}
+  .ai-empty{text-align:center;color:#919191;font-size:12px;padding:24px 12px;}
+  .ai-empty-title{color:#ECECEC;font-size:14px;font-weight:600;margin-bottom:6px;}
+  .ai-suggest{display:flex;flex-direction:column;gap:6px;margin-top:14px;}
+  .ai-suggest button{background:#242424;border:1px solid rgba(255,255,255,0.06);color:#ECECEC;
+    text-align:left;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:12px;
+    font-family:'Inter',sans-serif;transition:all 0.12s;}
+  .ai-suggest button:hover{background:#2C2C2C;border-color:rgba(100,181,246,0.4);}
+  .ai-form{padding:12px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:8px;
+    flex-shrink:0;}
+  .ai-input{flex:1;background:#242424;border:1px solid rgba(255,255,255,0.08);border-radius:10px;
+    padding:10px 12px;color:#ECECEC;font-size:13px;font-family:'Inter',sans-serif;resize:none;
+    min-height:40px;max-height:120px;outline:none;}
+  .ai-input:focus{border-color:#64B5F6;}
+  .ai-send{background:#1E88E5;border:none;border-radius:10px;color:#fff;cursor:pointer;
+    padding:0 14px;font-size:13px;font-weight:600;font-family:'Inter',sans-serif;
+    transition:background 0.12s;}
+  .ai-send:hover:not(:disabled){background:#1976D2;}
+  .ai-send:disabled{opacity:0.5;cursor:not-allowed;}
+  @media (max-width:560px){
+    .ai-panel{right:8px;left:8px;width:auto;bottom:78px;height:70vh;}
+    .ai-fab{right:14px;bottom:14px;}
+  }
+</style>
+
+<button class="ai-fab" id="ai-fab" type="button" title="AI-ассистент" aria-label="AI-ассистент">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2a4 4 0 0 1 4 4v2h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-1l-2 3-2-3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/>
+    <circle cx="9.5" cy="13" r="1.2" fill="currentColor"/>
+    <circle cx="14.5" cy="13" r="1.2" fill="currentColor"/>
+  </svg>
+</button>
+
+<div class="ai-panel" id="ai-panel" role="dialog" aria-label="AI-ассистент">
+  <div class="ai-head">
+    <div class="ai-head-title">
+      <span class="ai-head-dot" id="ai-dot"></span>
+      <div>
+        <div class="ai-head-name">AI-ассистент</div>
+        <div class="ai-head-sub" id="ai-sub">Подключение…</div>
+      </div>
+    </div>
+    <button class="ai-close" id="ai-close" type="button" aria-label="Закрыть">×</button>
+  </div>
+  <div class="ai-body" id="ai-body">
+    <div class="ai-empty" id="ai-empty">
+      <div class="ai-empty-title">Чем помочь?</div>
+      <div>Спросите что угодно по работе с маркетплейсом — найду, объясню, подскажу.</div>
+      <div class="ai-suggest" id="ai-suggest"></div>
+    </div>
+  </div>
+  <form class="ai-form" id="ai-form" autocomplete="off">
+    <textarea class="ai-input" id="ai-input" rows="1" placeholder="Напишите сообщение…"></textarea>
+    <button class="ai-send" id="ai-send" type="submit">Отправить</button>
+  </form>
+</div>
+
+<script>
+(function(){
+  var fab = document.getElementById('ai-fab');
+  var panel = document.getElementById('ai-panel');
+  var closeBtn = document.getElementById('ai-close');
+  var body = document.getElementById('ai-body');
+  var empty = document.getElementById('ai-empty');
+  var form = document.getElementById('ai-form');
+  var input = document.getElementById('ai-input');
+  var sendBtn = document.getElementById('ai-send');
+  var dot = document.getElementById('ai-dot');
+  var sub = document.getElementById('ai-sub');
+  var suggestBox = document.getElementById('ai-suggest');
+
+  var role = '{{ request.user.profile.role|default:"buyer" }}';
+  var SUGGESTIONS = {
+    operator: ['Что проверить в очереди платежей?', 'Как оформить таможенную декларацию?', 'Где посмотреть расхождения в сверке?'],
+    seller:   ['Как поднять конверсию по запросам?', 'Что делать с устаревшими карточками?', 'Как ответить на рекламацию?'],
+    buyer:    ['Как найти оптимального поставщика?', 'Как оформить рекламацию?', 'Что входит в эскроу-платёж?'],
+    manager:  ['Что в очереди переговоров?', 'Какие заказы требуют внимания?'],
+    logist:   ['Какие порты загружены?', 'Что с документами по доставке?'],
+    customs:  ['Какие декларации в работе?', 'Что с таможенными документами?'],
+    payments: ['Что в очереди платежей?', 'Какие платежи требуют сверки?']
+  };
+  var picks = SUGGESTIONS[role] || SUGGESTIONS.buyer;
+  picks.forEach(function(text){
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = text;
+    b.addEventListener('click', function(){ input.value = text; sendMessage(); });
+    suggestBox.appendChild(b);
+  });
+
+  var history = [];
+  var streaming = false;
+
+  function open(){ panel.classList.add('ai-open'); setTimeout(function(){ input.focus(); }, 100); }
+  function close(){ panel.classList.remove('ai-open'); }
+  fab.addEventListener('click', function(){
+    if (panel.classList.contains('ai-open')) close(); else open();
+  });
+  closeBtn.addEventListener('click', close);
+
+  fetch('/api/v1/ai/status/').then(function(r){ return r.ok ? r.json() : null; }).then(function(data){
+    if (!data) return;
+    if (data.configured) {
+      dot.classList.remove('off');
+      sub.textContent = 'Готов к работе · ' + (data.role || 'guest');
+    } else {
+      dot.classList.add('off');
+      sub.textContent = 'Не настроен (нет ANTHROPIC_API_KEY)';
+    }
+  }).catch(function(){
+    dot.classList.add('off');
+    sub.textContent = 'Сервис недоступен';
+  });
+
+  input.addEventListener('input', function(){
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  });
+  input.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+  form.addEventListener('submit', function(e){ e.preventDefault(); sendMessage(); });
+
+  function appendMsg(role, text){
+    if (empty && empty.parentNode) empty.remove();
+    var d = document.createElement('div');
+    d.className = 'ai-msg ' + (role === 'user' ? 'ai-msg-user' : 'ai-msg-bot');
+    d.textContent = text;
+    body.appendChild(d);
+    body.scrollTop = body.scrollHeight;
+    return d;
+  }
+
+  function sendMessage(){
+    if (streaming) return;
+    var text = (input.value || '').trim();
+    if (!text) return;
+    appendMsg('user', text);
+    history.push({role:'user', content:text});
+    input.value = '';
+    input.style.height = 'auto';
+
+    var botEl = appendMsg('assistant', '');
+    botEl.classList.add('ai-typing');
+    streaming = true;
+    sendBtn.disabled = true;
+
+    fetch('/api/v1/ai/chat/', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({messages: history})
+    }).then(function(resp){
+      if (!resp.ok || !resp.body) {
+        return resp.text().then(function(t){ throw new Error(t || ('HTTP ' + resp.status)); });
+      }
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+      var fullText = '';
+      function pump(){
+        return reader.read().then(function(res){
+          if (res.done) return;
+          buffer += decoder.decode(res.value, {stream:true});
+          var parts = buffer.split('\n\n');
+          buffer = parts.pop();
+          parts.forEach(function(p){
+            var line = p.trim();
+            if (!line.indexOf('data: ')) line = line.slice(6);
+            if (!line) return;
+            try {
+              var obj = JSON.parse(line);
+              if (obj.delta) {
+                fullText += obj.delta;
+                botEl.textContent = fullText;
+                body.scrollTop = body.scrollHeight;
+              }
+              if (obj.error) {
+                fullText += '\n[Ошибка: ' + obj.error + ']';
+                botEl.textContent = fullText;
+              }
+            } catch(_){}
+          });
+          return pump();
+        });
+      }
+      return pump().then(function(){
+        history.push({role:'assistant', content: fullText});
+      });
+    }).catch(function(err){
+      botEl.textContent = '[Ошибка: ' + (err.message || err) + ']';
+    }).finally(function(){
+      botEl.classList.remove('ai-typing');
+      streaming = false;
+      sendBtn.disabled = false;
+      input.focus();
+    });
+  }
+})();
+</script>
