@@ -66,6 +66,9 @@ _BUYER_ACTIONS = [
     "confirm_delivery",
     # база знаний, конфигуратор цены, аудит, QR, уведомления
     "kb_search", "price_quote", "audit_log", "generate_qr", "notifications",
+    # Onboarding / KYB wizard (всем доступно)
+    "start_onboarding", "submit_company_info", "submit_legal_address",
+    "submit_bank", "submit_director", "submit_for_review", "kyb_status",
 ]
 
 # Seller-only: эксклюзивные действия продавца — отвечать на RFQ, грузить
@@ -107,6 +110,8 @@ _OPERATOR_CORE = [
     "op_payments_dashboard",
     # Operator analytics
     "op_logistics_stats", "op_payments_stats",
+    # KYB moderation
+    "op_kyb_queue", "op_kyb_review", "op_kyb_approve", "op_kyb_reject",
 ]
 
 ROLE_ACTIONS = {
@@ -121,9 +126,41 @@ ROLE_ACTIONS = {
 }
 
 
+# Действия продавца, которые требуют верификации KYB
+_KYB_GATED_SELLER = {
+    "respond_rfq", "respond_rfq_form",
+    "ship_order", "advance_order",
+    "add_product", "edit_product", "toggle_product",
+    "upload_pricelist", "import_pricelist_preview",
+}
+
+
 def can_execute(action_name: str, role: str) -> bool:
     allowed = ROLE_ACTIONS.get(role, [])
     return "*" in allowed or action_name in allowed
+
+
+def kyb_gate(action_name: str, role: str, user) -> str | None:
+    """Возвращает строку-причину если seller-action заблокирован из-за KYB; иначе None.
+
+    Логика:
+      • Если действие не из _KYB_GATED_SELLER — не блокируем
+      • Если роль не seller — не блокируем
+      • Если у пользователя KYB verified — пропускаем
+      • Demo-аккаунты пропускаются (для презентаций)
+    """
+    if action_name not in _KYB_GATED_SELLER:
+        return None
+    if role != "seller":
+        return None
+    try:
+        from .onboarding import kyb_required_for_seller
+        if kyb_required_for_seller(user):
+            return ("Это действие доступно только верифицированным продавцам. "
+                    "Пройдите KYB-верификацию: «Начать верификацию».")
+    except Exception:
+        logger.exception("kyb_gate check failed")
+    return None
 
 
 # ── Registry ───────────────────────────────────────────────
@@ -141,6 +178,15 @@ def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
     """Run an action. Returns ActionResult."""
     if not can_execute(action_name, role):
         return ActionResult(text=f"⚠️ Нет прав на действие '{action_name}' для роли {role}")
+    # KYB gate: продавцы без верификации не могут писать-action'ы
+    gate_reason = kyb_gate(action_name, role, user)
+    if gate_reason:
+        return ActionResult(
+            text=f"🛡 {gate_reason}",
+            actions=[
+                {"action": "start_onboarding", "label": "🚀 Начать верификацию"},
+            ],
+        )
     handler = _REGISTRY.get(action_name)
     if not handler:
         return ActionResult(text=f"⚠️ Действие '{action_name}' не зарегистрировано")
@@ -464,6 +510,78 @@ TOOL_SCHEMAS = {
     "op_payments_stats": {
         "description": "Платежная аналитика: разбивка по payment_status, средний чек, refund rate.",
         "input_schema": {"type": "object", "properties": {}},
+    },
+    # ── Onboarding / KYB wizard ─────────────────────────────
+    "start_onboarding": {
+        "description": "Точка входа в onboarding/KYB-процесс. Показывает текущий шаг или welcome-экран.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "kyb_status": {
+        "description": "Текущий статус KYB-верификации компании пользователя.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "submit_company_info": {
+        "description": "Шаг 1/5 onboarding'а — наименование, ИНН, КПП, ОГРН.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "legal_name": _STR, "inn": _STR, "kpp": _STR, "ogrn": _STR,
+                "confirmed": _BOOL,
+            },
+        },
+    },
+    "submit_legal_address": {
+        "description": "Шаг 2/5 — юридический адрес.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"legal_address": _STR, "confirmed": _BOOL},
+        },
+    },
+    "submit_bank": {
+        "description": "Шаг 3/5 — банковские реквизиты (банк, БИК, расч. счёт).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"bank_name": _STR, "bik": _STR, "bank_account": _STR, "confirmed": _BOOL},
+        },
+    },
+    "submit_director": {
+        "description": "Шаг 4/5 — ФИО директора / уполномоченного лица.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"director_name": _STR, "confirmed": _BOOL},
+        },
+    },
+    "submit_for_review": {
+        "description": "Шаг 5/5 — отправить заполненную анкету оператору на проверку.",
+        "input_schema": {"type": "object", "properties": {"confirmed": _BOOL}},
+    },
+    "op_kyb_queue": {
+        "description": "Очередь KYB-анкет на модерации (operator-only).",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "op_kyb_review": {
+        "description": "Просмотр KYB-анкеты пользователя.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT},
+            "required": ["user_id"],
+        },
+    },
+    "op_kyb_approve": {
+        "description": "Одобрить KYB-анкету. Шаг 1 — preview; шаг 2 с confirmed=true — запись + WS-нотификация заявителю.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT, "confirmed": _BOOL},
+            "required": ["user_id"],
+        },
+    },
+    "op_kyb_reject": {
+        "description": "Отклонить KYB с причиной. Шаг 1 — форма; шаг 2 с confirmed=true и reason — запись + нотификация.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT, "reason": _STR, "confirmed": _BOOL},
+            "required": ["user_id"],
+        },
     },
 }
 

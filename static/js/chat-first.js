@@ -1334,6 +1334,7 @@
       title:    'Что в работе сегодня?',
       subtitle: 'Срочные задачи, входящие RFQ и отгрузки. Каталог, финансы и команда — по запросу.',
       pills: [
+        {label:'🛡 Верификация',     action:'start_onboarding',  params:{}},
         {label:'🔥 Срочное',         action:'seller_inbox',      params:{}},
         {label:'🚚 К отгрузке',      action:'seller_pipeline',   params:{}},
         {label:'📋 Новые RFQ',       action:'get_rfq_status',    params:{}},
@@ -1344,11 +1345,11 @@
       title:    'Что в работе на платформе?',
       subtitle: 'Контролируйте процесс: активные заказы, SLA-нарушения, очередь, спор-кейсы.',
       pills: [
-        {label:'🎛 Сводка',          action:'op_dashboard',    params:{}},
-        {label:'📋 Очередь',         action:'op_queue',        params:{}},
-        {label:'⏱ SLA-нарушения',   action:'op_sla_breach',   params:{}},
-        {label:'📦 Все заказы',      action:'get_orders',      params:{}},
-        {label:'📈 Аналитика',       action:'get_analytics',   params:{}},
+        {label:'🎛 Сводка',          action:'op_dashboard',     params:{}},
+        {label:'🛡 KYB на проверке', action:'op_kyb_queue',     params:{}},
+        {label:'📋 Очередь',         action:'op_queue',         params:{}},
+        {label:'⏱ SLA-нарушения',   action:'op_sla_breach',    params:{}},
+        {label:'📈 Аналитика',       action:'get_analytics',    params:{}},
       ],
     },
     operator_logist: {

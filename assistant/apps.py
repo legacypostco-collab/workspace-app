@@ -22,3 +22,8 @@ class AssistantConfig(AppConfig):
             from . import operator_actions  # noqa
         except ImportError:
             pass
+        # Регистрируем onboarding actions (KYB wizard)
+        try:
+            from . import onboarding  # noqa
+        except ImportError:
+            pass

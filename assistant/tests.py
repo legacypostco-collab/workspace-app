@@ -503,3 +503,185 @@ class CustomsActionsTests(TestCase):
         from .operator_actions import op_sanctions_check
         r = op_sanctions_check({"country": "IR"}, self.op, "operator_customs")
         self.assertIn("Запрещено", r.text)
+
+
+class OnboardingKybTests(TestCase):
+    """KYB wizard: 5 шагов + operator review/approve/reject + gating."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        U = get_user_model()
+        self.seller = U.objects.create_user(username="t_kyb_seller", password="x")
+        self.operator = U.objects.create_user(username="t_kyb_op", password="x")
+
+    # --- wizard ---
+    def test_start_onboarding_new_user_returns_step1_action(self):
+        from .onboarding import start_onboarding
+        r = start_onboarding({}, self.seller, "seller")
+        self.assertIn("Onboarding", r.cards[0]["data"]["title"])
+        # actions должны указывать на submit_company_info
+        action_names = [a["action"] for a in r.actions]
+        self.assertIn("submit_company_info", action_names)
+
+    def test_step1_validation_inn(self):
+        from .onboarding import submit_company_info
+        # bad INN
+        r = submit_company_info({
+            "legal_name": "ООО Тест", "inn": "123",
+            "confirmed": True,
+        }, self.seller, "seller")
+        self.assertIn("ИНН", r.text)
+        self.assertIn("Проверьте", r.text)
+
+    def test_step1_step2_step3_step4(self):
+        from .onboarding import (submit_company_info, submit_legal_address,
+                                  submit_bank, submit_director)
+        r1 = submit_company_info({
+            "legal_name": "ООО Тест", "inn": "1234567890",
+            "kpp": "123456789", "ogrn": "1234567890123",
+            "confirmed": True,
+        }, self.seller, "seller")
+        self.assertIn("✓", r1.text)
+
+        r2 = submit_legal_address({
+            "legal_address": "г. Москва, ул. Тестовая 1",
+            "confirmed": True,
+        }, self.seller, "seller")
+        self.assertIn("✓", r2.text)
+
+        r3 = submit_bank({
+            "bank_name": "ПАО Тестбанк", "bik": "044525225",
+            "bank_account": "40702810400000000001",
+            "confirmed": True,
+        }, self.seller, "seller")
+        self.assertIn("✓", r3.text)
+
+        r4 = submit_director({
+            "director_name": "Иванов Иван Иванович",
+            "confirmed": True,
+        }, self.seller, "seller")
+        self.assertIn("✓", r4.text)
+
+    def test_step5_submit_for_review_flips_status_pending(self):
+        from .onboarding import (submit_company_info, submit_legal_address,
+                                  submit_bank, submit_director, submit_for_review)
+        from marketplace.models import CompanyVerification
+        for fn, p in [
+            (submit_company_info, {"legal_name":"ООО","inn":"1234567890","confirmed":True}),
+            (submit_legal_address, {"legal_address":"Москва","confirmed":True}),
+            (submit_bank, {"bank_name":"Б","bik":"044525225","bank_account":"40702810400000000001","confirmed":True}),
+            (submit_director, {"director_name":"И.","confirmed":True}),
+        ]:
+            fn(p, self.seller, "seller")
+        # step1: preview
+        r1 = submit_for_review({}, self.seller, "seller")
+        self.assertTrue(any(c["type"] == "draft" for c in r1.cards))
+        # step2: confirm
+        r2 = submit_for_review({"confirmed": True}, self.seller, "seller")
+        self.assertIn("отправлена", r2.text.lower())
+        kyb = CompanyVerification.objects.get(user=self.seller)
+        self.assertEqual(kyb.status, "pending")
+        self.assertIsNotNone(kyb.submitted_at)
+
+    def test_submit_for_review_blocks_incomplete(self):
+        from .onboarding import submit_for_review
+        # ничего не заполнено
+        r = submit_for_review({"confirmed": True}, self.seller, "seller")
+        self.assertIn("не готова", r.text.lower())
+
+    # --- operator review ---
+    def test_op_kyb_queue_lists_pending(self):
+        from .onboarding import op_kyb_queue
+        from marketplace.models import CompanyVerification
+        from django.utils import timezone
+        CompanyVerification.objects.create(
+            user=self.seller, legal_name="ООО Pending",
+            inn="1234567890", status="pending", submitted_at=timezone.now(),
+        )
+        r = op_kyb_queue({}, self.operator, "operator")
+        self.assertIn("KYB", r.text)
+        items = r.cards[0]["data"]["items"]
+        self.assertTrue(any("Pending" in it["title"] for it in items))
+
+    def test_op_kyb_approve_flips_status_verified(self):
+        from .onboarding import op_kyb_approve
+        from marketplace.models import CompanyVerification, Notification
+        from django.utils import timezone
+        kyb = CompanyVerification.objects.create(
+            user=self.seller, legal_name="ООО Test",
+            inn="1234567890", status="pending", submitted_at=timezone.now(),
+        )
+        # step1: preview
+        r1 = op_kyb_approve({"user_id": self.seller.id}, self.operator, "operator")
+        self.assertTrue(any(c["type"] == "draft" for c in r1.cards))
+        # step2: confirm
+        r2 = op_kyb_approve({"user_id": self.seller.id, "confirmed": True},
+                            self.operator, "operator")
+        self.assertIn("одобрен", r2.text.lower())
+        kyb.refresh_from_db()
+        self.assertEqual(kyb.status, "verified")
+        self.assertEqual(kyb.reviewed_by, self.operator)
+        # Нотификация ушла seller'у
+        self.assertTrue(Notification.objects.filter(user=self.seller, kind="system").exists())
+
+    def test_op_kyb_reject_writes_reason(self):
+        from .onboarding import op_kyb_reject
+        from marketplace.models import CompanyVerification
+        from django.utils import timezone
+        CompanyVerification.objects.create(
+            user=self.seller, legal_name="X", inn="1234567890",
+            status="pending", submitted_at=timezone.now(),
+        )
+        r = op_kyb_reject({
+            "user_id": self.seller.id, "reason": "Поддельный ИНН",
+            "confirmed": True,
+        }, self.operator, "operator")
+        self.assertIn("отклонён", r.text.lower())
+        kyb = CompanyVerification.objects.get(user=self.seller)
+        self.assertEqual(kyb.status, "rejected")
+        self.assertEqual(kyb.rejection_reason, "Поддельный ИНН")
+
+    def test_op_kyb_actions_blocked_for_buyer(self):
+        from .onboarding import op_kyb_queue
+        r = op_kyb_queue({}, self.seller, "buyer")
+        self.assertIn("оператор", r.text.lower())
+
+    # --- gating ---
+    def test_kyb_required_for_unverified_seller(self):
+        from .onboarding import kyb_required_for_seller
+        # пустой KYB → требуется
+        self.assertTrue(kyb_required_for_seller(self.seller))
+        # demo-аккаунт всегда пропускаем
+        from django.contrib.auth import get_user_model
+        demo = get_user_model().objects.create_user(username="demo_x", password="x")
+        self.assertFalse(kyb_required_for_seller(demo))
+
+    def test_gate_blocks_respond_rfq_for_unverified(self):
+        from .actions import execute, kyb_gate
+        # gate сам по себе
+        reason = kyb_gate("respond_rfq", "seller", self.seller)
+        self.assertIsNotNone(reason)
+        self.assertIn("KYB", reason)
+        # execute() возвращает ошибку с ссылкой на onboarding
+        res = execute("respond_rfq", {}, self.seller, "seller")
+        self.assertIn("🛡", res.text)
+        action_names = [a["action"] for a in res.actions]
+        self.assertIn("start_onboarding", action_names)
+
+    def test_gate_passes_for_verified_seller(self):
+        from .actions import kyb_gate
+        from marketplace.models import CompanyVerification
+        CompanyVerification.objects.create(
+            user=self.seller, legal_name="X", inn="1234567890", status="verified",
+        )
+        self.assertIsNone(kyb_gate("respond_rfq", "seller", self.seller))
+
+    def test_gate_does_not_apply_to_buyer_actions(self):
+        from .actions import kyb_gate
+        # quick_order не в списке gated → не блокируется
+        self.assertIsNone(kyb_gate("quick_order", "buyer", self.seller))
+
+    def test_gate_only_for_seller_role(self):
+        from .actions import kyb_gate
+        # seller-action в роли operator не блокируется (operator не нуждается в KYB)
+        self.assertIsNone(kyb_gate("ship_order", "operator", self.seller))
