@@ -99,6 +99,10 @@ _OPERATOR_CORE = [
     # Operator-only: dashboard, очередь, назначение, спор, заметка
     "op_dashboard", "op_queue", "op_sla_breach",
     "op_order_detail", "op_assign", "op_add_note", "op_resolve_dispute",
+    # Customs / Compliance
+    "op_hs_lookup", "op_hs_assign", "op_calc_duty",
+    "op_certs_check", "op_cert_upload", "op_sanctions_check",
+    "op_customs_dashboard", "op_customs_release",
 ]
 
 ROLE_ACTIONS = {
@@ -362,6 +366,84 @@ TOOL_SCHEMAS = {
                 "resolution": {**_STR, "description": "refund|partial_refund|release|no_action"},
                 "refund_amount": _NUM,
                 "reason": _STR,
+                "confirmed": _BOOL,
+            },
+            "required": ["order_id"],
+        },
+    },
+    # ── Customs / Compliance ───────────────────────────────
+    "op_hs_lookup": {
+        "description": "Поиск ТН ВЭД (HS-code) по описанию детали или артикулу.",
+        "input_schema": {"type": "object", "properties": {"query": _STR}},
+    },
+    "op_hs_assign": {
+        "description": "Присвоить ТН ВЭД заказу. Шаг 1 без hs_code/confirmed — форма; шаг 2 с confirmed=true → запись.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "order_id": _INT,
+                "hs_code": {**_STR, "description": "ТН ВЭД, например 8413.50"},
+                "country": {**_STR, "description": "Страна импорта ISO-2 (RU/BY/KZ/AM/KG)"},
+                "confirmed": _BOOL,
+            },
+            "required": ["order_id"],
+        },
+    },
+    "op_calc_duty": {
+        "description": "Расчёт таможенной пошлины + НДС + сборов по заказу. Использует HS-code и страну из заказа (или из параметров).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "order_id": _INT,
+                "hs_code": _STR,
+                "country": _STR,
+            },
+            "required": ["order_id"],
+        },
+    },
+    "op_certs_check": {
+        "description": "Проверка обязательных сертификатов для заказа (по ТН ВЭД).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"order_id": _INT},
+            "required": ["order_id"],
+        },
+    },
+    "op_cert_upload": {
+        "description": "Зафиксировать загрузку сертификата на заказ. Шаг 1 — форма; шаг 2 с confirmed=true.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "order_id": _INT,
+                "cert": {**_STR, "description": "Тип сертификата (EAC, ТР ТС 010/2011...)"},
+                "number": _STR,
+                "confirmed": _BOOL,
+            },
+            "required": ["order_id"],
+        },
+    },
+    "op_sanctions_check": {
+        "description": "Санкционный скрининг по стране / контрагенту / категории. Возвращает уровень риска (high/medium/low/none) и причины.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "country": _STR,
+                "entity": _STR,
+                "category": _STR,
+            },
+        },
+    },
+    "op_customs_dashboard": {
+        "description": "Сводка по таможне: грузы на оформлении, готовы к выпуску, ждут документы, в транзите.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "op_customs_release": {
+        "description": "Выпустить груз с таможни (status customs → transit_rf). Жёстко проверяет ТН ВЭД и сертификаты. Шаг 1 — форма; шаг 2 с confirmed=true → запись + WS-нотификация покупателю.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "order_id": _INT,
+                "comment": _STR,
                 "confirmed": _BOOL,
             },
             "required": ["order_id"],

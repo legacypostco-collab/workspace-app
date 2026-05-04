@@ -1275,10 +1275,12 @@
     },
     operator_customs: {
       title:    'Таможня',
-      subtitle: 'Грузы под растаможкой, документы, декларации.',
+      subtitle: 'Грузы под растаможкой, ТН ВЭД, документы, санкционный скрининг.',
       pills: [
-        {label:'🎛 Сводка',          action:'op_dashboard',  params:{}},
-        {label:'📋 На таможне',      action:'op_queue',      params:{filter:'open'}},
+        {label:'🛂 Сводка таможни',  action:'op_customs_dashboard', params:{}},
+        {label:'🔎 ТН ВЭД',           action:'op_hs_lookup',         params:{}},
+        {label:'🚫 Санкции',          action:'op_sanctions_check',   params:{}},
+        {label:'📋 На таможне',       action:'op_queue',             params:{filter:'open'}},
       ],
     },
     operator_payment: {

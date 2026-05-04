@@ -512,3 +512,477 @@ def op_resolve_dispute(params, user, role):
             {"action": "op_dashboard", "label": "← Сводка"},
         ],
     )
+
+
+# ══════════════════════════════════════════════════════════
+# 8. Customs / Compliance flow
+# ══════════════════════════════════════════════════════════
+
+def _customs_meta(order) -> dict:
+    """Read customs section from logistics_meta JSON; default empty."""
+    meta = order.logistics_meta or {}
+    return dict(meta.get("customs") or {})
+
+
+def _save_customs_meta(order, customs: dict):
+    """Persist customs dict back into logistics_meta."""
+    meta = dict(order.logistics_meta or {})
+    meta["customs"] = customs
+    order.logistics_meta = meta
+    order.save(update_fields=["logistics_meta"])
+
+
+@register("op_hs_lookup")
+def op_hs_lookup(params, user, role):
+    """Поиск ТН ВЭД по описанию или артикулу."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from .customs_data import find_hs_codes
+
+    query = (params.get("query") or "").strip()
+    if not query:
+        return ActionResult(
+            text="Введите описание детали или артикул для поиска ТН ВЭД.",
+            cards=[{
+                "type": "form",
+                "data": {
+                    "title": "🔎 Поиск ТН ВЭД",
+                    "submit_action": "op_hs_lookup",
+                    "fields": [{"name": "query", "label": "Описание / артикул", "required": True}],
+                },
+            }],
+        )
+    hits = find_hs_codes(query, limit=5)
+    if not hits:
+        return ActionResult(
+            text=f"Не нашёл ТН ВЭД для «{query}». Попробуйте другие ключевые слова.",
+            suggestions=["насос", "фильтр", "подшипник", "гидроцилиндр", "шестерня"],
+        )
+    return ActionResult(
+        text=f"Найдено {len(hits)} ТН ВЭД-кодов по запросу «{query}».",
+        cards=[{
+            "type": "list",
+            "data": {
+                "title": "🔎 Кандидаты ТН ВЭД",
+                "items": [
+                    {"title": f"{h['code']} · {h['title']}",
+                     "subtitle": "Ключевые слова: " + ", ".join(h["keywords"][:4])}
+                    for h in hits
+                ],
+            },
+        }],
+        suggestions=[f"присвой {hits[0]['code']} заказу" if hits else "уточни запрос"],
+    )
+
+
+@register("op_hs_assign")
+def op_hs_assign(params, user, role):
+    """Присвоить HS-код заказу. Two-step DraftCard."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from marketplace.models import Order
+    try:
+        order = Order.objects.get(id=int(params.get("order_id") or 0))
+    except (Order.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Заказ не найден.")
+
+    hs_code = (params.get("hs_code") or "").strip()
+    country = (params.get("country") or "RU").strip().upper()
+    confirmed = bool(params.get("confirmed"))
+
+    if not confirmed or not hs_code:
+        cur = _customs_meta(order)
+        return ActionResult(
+            text=f"Присвоить ТН ВЭД заказу #{order.id}",
+            cards=[{
+                "type": "form",
+                "data": {
+                    "title": f"📋 ТН ВЭД · #{order.id}",
+                    "submit_action": "op_hs_assign",
+                    "fields": [
+                        {"name": "hs_code", "label": "Код ТН ВЭД (например 8413.50)",
+                         "required": True, "value": cur.get("hs_code", "")},
+                        {"name": "country", "label": "Страна импорта (ISO-2, RU/BY/KZ/AM/KG)",
+                         "value": cur.get("country", "RU")},
+                    ],
+                    "fixed_params": {"order_id": order.id, "confirmed": True},
+                },
+            }],
+        )
+
+    customs = _customs_meta(order)
+    customs.update({"hs_code": hs_code, "country": country})
+    _save_customs_meta(order, customs)
+    _log_event(
+        order, "operator_action", actor=user, source="operator",
+        meta={"kind": "customs_hs_assigned", "hs_code": hs_code, "country": country},
+    )
+    return ActionResult(
+        text=f"✓ Заказу #{order.id} присвоен ТН ВЭД {hs_code} (страна {country}).",
+        contextual_actions=[
+            {"action": "op_calc_duty", "label": "💰 Рассчитать пошлину", "params": {"order_id": order.id}},
+            {"action": "op_certs_check", "label": "📑 Проверить сертификаты", "params": {"order_id": order.id}},
+        ],
+    )
+
+
+@register("op_calc_duty")
+def op_calc_duty(params, user, role):
+    """Расчёт таможенной пошлины + НДС + сборов по заказу."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from marketplace.models import Order
+    from .customs_data import duty_rate_for, vat_rate_for, fees_for
+
+    try:
+        order = Order.objects.get(id=int(params.get("order_id") or 0))
+    except (Order.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Заказ не найден.")
+
+    customs = _customs_meta(order)
+    hs_code = (params.get("hs_code") or customs.get("hs_code") or "").strip()
+    country = (params.get("country") or customs.get("country") or "RU").upper()
+    if not hs_code:
+        return ActionResult(
+            text=f"Сначала присвойте ТН ВЭД заказу #{order.id}.",
+            contextual_actions=[
+                {"action": "op_hs_assign", "label": "📋 Присвоить ТН ВЭД", "params": {"order_id": order.id}},
+            ],
+        )
+
+    base = Decimal(str(order.total_amount or 0))
+    duty_pct = duty_rate_for(hs_code)
+    vat_pct = vat_rate_for(country)
+    fees = fees_for(country)
+
+    duty = (base * duty_pct / Decimal("100")).quantize(Decimal("0.01"))
+    vat_base = base + duty
+    vat = (vat_base * vat_pct / Decimal("100")).quantize(Decimal("0.01"))
+    broker = fees["broker"]
+    terminal = fees["terminal"]
+    total = (duty + vat + broker + terminal).quantize(Decimal("0.01"))
+
+    # Сохраним расчёт
+    customs.update({
+        "hs_code": hs_code, "country": country,
+        "duty_pct": float(duty_pct), "duty": float(duty),
+        "vat_pct": float(vat_pct), "vat": float(vat),
+        "broker": float(broker), "terminal": float(terminal),
+        "duty_total": float(total),
+    })
+    _save_customs_meta(order, customs)
+    _log_event(order, "operator_action", actor=user, source="operator",
+               meta={"kind": "customs_duty_calculated", "duty_total": float(total)})
+
+    return ActionResult(
+        text=(
+            f"Пошлина по заказу #{order.id} ({hs_code} → {country})\n"
+            f"База: ${base:,.2f} · пошлина {duty_pct}% = ${duty:,.2f} · "
+            f"НДС {vat_pct}% = ${vat:,.2f}\n"
+            f"Брокер ${broker} · терминал ${terminal} · ИТОГО ${total:,.2f}"
+        ),
+        cards=[{
+            "type": "kpi_grid",
+            "data": {
+                "title": f"💰 Расчёт пошлины · #{order.id}",
+                "items": [
+                    {"label": "База", "value": f"${base:,.2f}"},
+                    {"label": f"Пошлина {duty_pct}%", "value": f"${duty:,.2f}"},
+                    {"label": f"НДС {vat_pct}%", "value": f"${vat:,.2f}"},
+                    {"label": "Брокер", "value": f"${broker}"},
+                    {"label": "Терминал", "value": f"${terminal}"},
+                    {"label": "ИТОГО", "value": f"${total:,.2f}", "tone": "info"},
+                ],
+            },
+        }],
+        contextual_actions=[
+            {"action": "op_certs_check", "label": "📑 Сертификаты", "params": {"order_id": order.id}},
+            {"action": "op_customs_release", "label": "🚚 Выпустить с таможни", "params": {"order_id": order.id}},
+        ],
+    )
+
+
+@register("op_certs_check")
+def op_certs_check(params, user, role):
+    """Проверка наличия сертификатов для заказа."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from marketplace.models import Order
+    from .customs_data import required_certs_for
+
+    try:
+        order = Order.objects.get(id=int(params.get("order_id") or 0))
+    except (Order.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Заказ не найден.")
+
+    customs = _customs_meta(order)
+    hs_code = customs.get("hs_code", "")
+    required = required_certs_for(hs_code)
+    have = list(customs.get("certs") or [])
+    missing = [c for c in required if c not in have]
+
+    text = (
+        f"Сертификаты по заказу #{order.id} (ТН ВЭД {hs_code or '—'})\n"
+        f"Требуется: {', '.join(required) or '—'}\n"
+        f"В наличии: {', '.join(have) or 'нет'}\n"
+        + (f"❗ Не хватает: {', '.join(missing)}" if missing else "✓ Все сертификаты на месте")
+    )
+    items = [{"label": c, "value": "✓" if c in have else "✗",
+              "tone": "ok" if c in have else "warn"} for c in required]
+
+    return ActionResult(
+        text=text,
+        cards=[{"type": "kpi_grid", "data": {"title": f"📑 Сертификаты #{order.id}", "items": items}}],
+        contextual_actions=(
+            [{"action": "op_cert_upload", "label": f"⬆ Загрузить {missing[0]}",
+              "params": {"order_id": order.id, "cert": missing[0]}}] if missing else
+            [{"action": "op_customs_release", "label": "🚚 Выпустить с таможни",
+              "params": {"order_id": order.id}}]
+        ),
+    )
+
+
+@register("op_cert_upload")
+def op_cert_upload(params, user, role):
+    """Зафиксировать загрузку сертификата (writing → DraftCard)."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from marketplace.models import Order
+
+    try:
+        order = Order.objects.get(id=int(params.get("order_id") or 0))
+    except (Order.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Заказ не найден.")
+
+    cert = (params.get("cert") or "").strip()
+    number = (params.get("number") or "").strip()
+    confirmed = bool(params.get("confirmed"))
+
+    if not confirmed or not cert:
+        return ActionResult(
+            text=f"Загрузка сертификата · #{order.id}",
+            cards=[{
+                "type": "form",
+                "data": {
+                    "title": f"⬆ Сертификат · #{order.id}",
+                    "submit_action": "op_cert_upload",
+                    "fields": [
+                        {"name": "cert", "label": "Тип (EAC, ТР ТС 010/2011, ...)", "required": True,
+                         "value": cert},
+                        {"name": "number", "label": "Номер документа"},
+                    ],
+                    "fixed_params": {"order_id": order.id, "confirmed": True},
+                },
+            }],
+        )
+
+    customs = _customs_meta(order)
+    have = list(customs.get("certs") or [])
+    if cert not in have:
+        have.append(cert)
+    customs["certs"] = have
+    customs.setdefault("cert_numbers", {})[cert] = number
+    _save_customs_meta(order, customs)
+    _log_event(order, "operator_action", actor=user, source="operator",
+               meta={"kind": "customs_cert_uploaded", "cert": cert, "number": number})
+
+    return ActionResult(
+        text=f"✓ Сертификат «{cert}» добавлен к заказу #{order.id}.",
+        contextual_actions=[
+            {"action": "op_certs_check", "label": "📑 Проверить", "params": {"order_id": order.id}},
+        ],
+    )
+
+
+@register("op_sanctions_check")
+def op_sanctions_check(params, user, role):
+    """Проверить контрагента/страну/категорию на санкции."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from .customs_data import sanctions_check
+
+    country = (params.get("country") or "").strip()
+    entity = (params.get("entity") or "").strip()
+    category = (params.get("category") or "").strip()
+    if not (country or entity or category):
+        return ActionResult(
+            text="Что проверить на санкции?",
+            cards=[{
+                "type": "form",
+                "data": {
+                    "title": "🚫 Санкционная проверка",
+                    "submit_action": "op_sanctions_check",
+                    "fields": [
+                        {"name": "country", "label": "Страна (ISO-2, например IR)"},
+                        {"name": "entity", "label": "Контрагент / организация"},
+                        {"name": "category", "label": "Категория (dual_use_chip)"},
+                    ],
+                },
+            }],
+        )
+    res = sanctions_check(country=country, entity=entity, category=category)
+    level = res["level"]
+    icon = {"high": "🚫", "medium": "⚠️", "low": "ℹ️", "none": "✓"}[level]
+    label = {"high": "Запрещено", "medium": "Под контролем", "low": "Серая зона", "none": "Чисто"}[level]
+    items = [
+        {"label": "Уровень", "value": label,
+         "tone": {"high": "bad", "medium": "warn", "low": "warn", "none": "ok"}[level]},
+    ]
+    if country:  items.append({"label": "Страна", "value": country.upper()})
+    if entity:   items.append({"label": "Контрагент", "value": entity})
+    if category: items.append({"label": "Категория", "value": category})
+
+    text_lines = [f"{icon} Санкционная проверка: {label}."]
+    text_lines.extend("• " + r for r in (res["reasons"] or ["Нет совпадений в списках."]))
+
+    return ActionResult(
+        text="\n".join(text_lines),
+        cards=[{"type": "kpi_grid", "data": {"title": "🚫 Санкции", "items": items}}],
+    )
+
+
+@register("op_customs_dashboard")
+def op_customs_dashboard(params, user, role):
+    """Сводка по таможне: на оформлении, документы готовы, недостающие, средний срок."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from marketplace.models import Order
+
+    on_customs = Order.objects.filter(status="customs")
+    awaiting_docs = 0
+    ready_to_release = 0
+    total = 0
+    for o in on_customs:
+        total += 1
+        cm = _customs_meta(o)
+        if not cm.get("hs_code") or not cm.get("certs"):
+            awaiting_docs += 1
+        else:
+            ready_to_release += 1
+
+    in_transit = Order.objects.filter(status__in=("transit_abroad", "transit_rf")).count()
+    rows = [
+        {"title": f"#{o.id} · {o.customer_name}",
+         "subtitle": f"{o.get_status_display()} · ТН ВЭД {(_customs_meta(o).get('hs_code') or '—')}",
+         "url": f"/chat/?order={o.id}"}
+        for o in on_customs[:10]
+    ]
+    return ActionResult(
+        text=(
+            f"Таможня · {total} грузов на оформлении · готовы к выпуску: {ready_to_release} · "
+            f"ждут документы: {awaiting_docs} · в транзите: {in_transit}."
+        ),
+        cards=[
+            {"type": "kpi_grid", "data": {"title": "🛂 Таможня", "items": [
+                {"label": "На оформлении", "value": str(total), "tone": "info"},
+                {"label": "К выпуску", "value": str(ready_to_release), "tone": "ok" if ready_to_release else "warn"},
+                {"label": "Не хватает доков", "value": str(awaiting_docs),
+                 "tone": "warn" if awaiting_docs else "ok"},
+                {"label": "В транзите", "value": str(in_transit)},
+            ]}},
+            {"type": "list", "data": {"title": "На таможне сейчас",
+                "items": rows or [{"title": "Нет грузов на таможне"}]}},
+        ],
+        contextual_actions=[
+            {"action": "op_queue", "label": "📋 Очередь оператора", "params": {"filter": "open"}},
+        ],
+    )
+
+
+@register("op_customs_release")
+def op_customs_release(params, user, role):
+    """Выпустить груз с таможни — переводит status `customs` → `transit_rf`."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from marketplace.models import Order
+    from .customs_data import required_certs_for
+
+    try:
+        order = Order.objects.get(id=int(params.get("order_id") or 0))
+    except (Order.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Заказ не найден.")
+
+    confirmed = bool(params.get("confirmed"))
+    customs = _customs_meta(order)
+    hs_code = customs.get("hs_code", "")
+    have = list(customs.get("certs") or [])
+    required = required_certs_for(hs_code)
+    missing = [c for c in required if c not in have]
+
+    if not confirmed:
+        warn = ""
+        if not hs_code:
+            warn = "❗ ТН ВЭД не присвоен."
+        elif missing:
+            warn = f"❗ Нет сертификатов: {', '.join(missing)}"
+        elif not customs.get("duty_total"):
+            warn = "ℹ️ Пошлина не рассчитана."
+        return ActionResult(
+            text=f"Выпустить груз #{order.id} с таможни?\n{warn}",
+            cards=[{
+                "type": "form",
+                "data": {
+                    "title": f"🚚 Выпуск с таможни · #{order.id}",
+                    "submit_action": "op_customs_release",
+                    "fields": [
+                        {"name": "comment", "label": "Комментарий (необязательно)"},
+                    ],
+                    "fixed_params": {"order_id": order.id, "confirmed": True},
+                },
+            }],
+            contextual_actions=(
+                [{"action": "op_hs_assign", "label": "📋 Присвоить ТН ВЭД",
+                  "params": {"order_id": order.id}}] if not hs_code else
+                [{"action": "op_certs_check", "label": "📑 Проверить сертификаты",
+                  "params": {"order_id": order.id}}] if missing else
+                [{"action": "op_calc_duty", "label": "💰 Рассчитать пошлину",
+                  "params": {"order_id": order.id}}] if not customs.get("duty_total") else []
+            ),
+        )
+
+    # Жёсткая проверка перед записью
+    blockers = []
+    if not hs_code:
+        blockers.append("нет ТН ВЭД")
+    if missing:
+        blockers.append("не хватает сертификатов: " + ", ".join(missing))
+    if blockers:
+        return ActionResult(
+            text="⚠️ Нельзя выпустить: " + "; ".join(blockers) + ".",
+            contextual_actions=[
+                {"action": "op_customs_release", "label": "Открыть форму выпуска",
+                 "params": {"order_id": order.id}},
+            ],
+        )
+
+    if order.status == "customs":
+        order.status = "transit_rf"
+        order.save(update_fields=["status"])
+        _log_event(order, "status_changed", actor=user, source="operator",
+                   meta={"from": "customs", "to": "transit_rf", "by": "op_customs_release"})
+
+    comment = (params.get("comment") or "").strip()
+    _log_event(order, "operator_action", actor=user, source="operator",
+               meta={"kind": "customs_released", "comment": comment})
+
+    if order.buyer:
+        _notify(order.buyer, kind="order",
+                title=f"Груз #{order.id} выпущен с таможни",
+                body="Едет к вам · следите за трекингом.",
+                url=f"/chat/?order={order.id}")
+
+    return ActionResult(
+        text=f"✓ Заказ #{order.id} выпущен с таможни → транзит РФ.",
+        contextual_actions=[
+            {"action": "op_customs_dashboard", "label": "← Сводка таможни"},
+            {"action": "op_order_detail", "label": "Открыть заказ", "params": {"order_id": order.id}},
+        ],
+    )
