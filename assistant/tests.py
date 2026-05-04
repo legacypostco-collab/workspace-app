@@ -786,9 +786,12 @@ class NegotiationFlowTests(TestCase):
         r = view_rfq_quotes({"rfq_id": self.rfq.id}, self.buyer, "buyer")
         items = r.cards[0]["data"]["items"]
         self.assertEqual(len(items), 2)
-        # Самый дешёвый первый
-        self.assertIn(self.seller_b.username, items[0]["title"])
+        # Самый дешёвый первый — но имя скрыто для buyer'а («Поставщик №1»)
+        self.assertIn("Поставщик №1", items[0]["title"])
         self.assertIn("$2,600", items[0]["title"])
+        # Реального username seller_b не должно быть в выдаче buyer'у
+        self.assertNotIn(self.seller_b.username, items[0]["title"])
+        self.assertNotIn(self.seller_a.username, items[1]["title"])
 
     def test_view_rfq_quotes_blocks_non_owner(self):
         from .negotiation import view_rfq_quotes
@@ -886,6 +889,61 @@ class NegotiationFlowTests(TestCase):
         self.assertIn("✓", r.text)
         q.refresh_from_db()
         self.assertEqual(q.status, "declined")
+
+    def test_buyer_anonymity_in_top_suppliers(self):
+        """top_suppliers скрывает имена для buyer и показывает для seller/operator."""
+        from .actions import top_suppliers
+        # Buyer
+        r_buyer = top_suppliers({}, self.buyer, "buyer")
+        suppliers = r_buyer.cards[0]["data"]["suppliers"]
+        names = [s["name"] for s in suppliers]
+        assert all(n.startswith("Поставщик №") for n in names), \
+            f"buyer should see anonymized names, got {names}"
+        # Реальные имена не утекают
+        assert "Caterpillar" not in str(suppliers)
+        assert "Уралмаш" not in str(suppliers)
+        # Seller — видит реальные имена
+        r_seller = top_suppliers({}, self.seller_a, "seller")
+        seller_names = [s["name"] for s in r_seller.cards[0]["data"]["suppliers"]]
+        assert any("Caterpillar" in n for n in seller_names), \
+            f"seller should see real names, got {seller_names}"
+
+    def test_buyer_anonymity_in_view_quote(self):
+        """view_quote показывает «Поставщик №N» для buyer и username для seller."""
+        from .negotiation import submit_quote, view_quote
+        from marketplace.models import Quote
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "900",
+            "confirmed": True,
+        }, self.seller_a, "seller")
+        q = Quote.objects.filter(rfq=self.rfq).first()
+        # Buyer видит «Поставщик №…»
+        r_buyer = view_quote({"quote_id": q.id}, self.buyer, "buyer")
+        rows = r_buyer.cards[0]["data"]["rows"]
+        seller_row = next(r for r in rows if r["label"] == "Продавец")
+        assert seller_row["value"].startswith("Поставщик №"), \
+            f"buyer should see anon, got {seller_row['value']!r}"
+        # Seller (автор) видит свой username
+        r_seller = view_quote({"quote_id": q.id}, self.seller_a, "seller")
+        seller_row2 = next(r for r in r_seller.cards[0]["data"]["rows"] if r["label"] == "Продавец")
+        assert seller_row2["value"] == self.seller_a.username
+
+    def test_buyer_anonymity_revealed_after_accept(self):
+        """После accept_quote buyer видит реального продавца — заказ оформлен."""
+        from .negotiation import submit_quote, accept_quote, view_quote
+        from marketplace.models import Quote
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "900",
+            "confirmed": True,
+        }, self.seller_a, "seller")
+        q = Quote.objects.filter(rfq=self.rfq).first()
+        accept_quote({"quote_id": q.id, "confirmed": True}, self.buyer, "buyer")
+        # После accepted — имя раскрыто
+        r = view_quote({"quote_id": q.id}, self.buyer, "buyer")
+        rows = r.cards[0]["data"]["rows"]
+        seller_row = next(r for r in rows if r["label"] == "Продавец")
+        assert seller_row["value"] == self.seller_a.username, \
+            f"after accept buyer should see real username, got {seller_row['value']!r}"
 
     def test_mark_quote_final_only_by_seller(self):
         from .negotiation import submit_quote, mark_quote_final

@@ -261,9 +261,15 @@ def view_rfq_quotes(params, user, role):
             ],
         )
 
+    # Anonymize seller имена для buyer'а (раскрываются после accept_quote)
+    is_buyer_view = (rfq.created_by_id == user.id) and role == "buyer"
+
     items = []
-    for q in latest:
-        seller_name = q.seller.username if q.seller else "—"
+    for idx, q in enumerate(latest):
+        if is_buyer_view:
+            seller_name = f"Поставщик №{idx + 1}"
+        else:
+            seller_name = q.seller.username if q.seller else "—"
         flags = []
         if q.is_final: flags.append("🔒 финальная")
         if q.round_number > 1: flags.append(f"раунд {q.round_number}")
@@ -276,13 +282,16 @@ def view_rfq_quotes(params, user, role):
 
     # Suggest accept на самую дешёвую (если она финальная — не предлагаем counter)
     cheapest = latest[0]
+    cheapest_label = "Поставщик №1" if is_buyer_view else (
+        cheapest.seller.username if cheapest.seller else "?"
+    )
     actions = []
     if cheapest.is_final:
         actions.append({"action": "accept_quote", "label": f"✓ Принять самую дешёвую (${cheapest.total_amount:,.0f})",
                         "params": {"quote_id": cheapest.id}})
     else:
         actions.extend([
-            {"action": "accept_quote", "label": f"✓ Принять — {cheapest.seller.username if cheapest.seller else '?'}",
+            {"action": "accept_quote", "label": f"✓ Принять — {cheapest_label}",
              "params": {"quote_id": cheapest.id}},
             {"action": "counter_offer", "label": "↩ Контр-оффер",
              "params": {"quote_id": cheapest.id}},
@@ -320,9 +329,24 @@ def view_quote(params, user, role):
     if not (is_buyer or is_seller or (role and role.startswith("operator")) or role == "admin"):
         return ActionResult(text="Доступ к котировке ограничен.")
 
+    # Buyer видит «Поставщик №N» (по порядку round_number в данном RFQ);
+    # accepted-котировки раскрывают имя — buyer уже выбрал и теперь нужны контакты.
+    if is_buyer and role == "buyer" and q.status != "accepted":
+        # Определяем порядковый номер среди всех котировок этого RFQ от seller_to_buyer
+        from marketplace.models import Quote as _Q
+        ranked = list(_Q.objects.filter(rfq_id=q.rfq_id, direction="seller_to_buyer")
+                      .order_by("total_amount").values_list("seller_id", flat=True))
+        try:
+            rank = ranked.index(q.seller_id) + 1 if q.seller_id else None
+            seller_label = f"Поставщик №{rank}" if rank else "Поставщик"
+        except ValueError:
+            seller_label = "Поставщик"
+    else:
+        seller_label = q.seller.username if q.seller else "—"
+
     rows = [
         {"label": "RFQ", "value": f"#{q.rfq_id}"},
-        {"label": "Продавец", "value": q.seller.username if q.seller else "—"},
+        {"label": "Продавец", "value": seller_label},
         {"label": "Раунд", "value": str(q.round_number)},
         {"label": "Сумма", "value": f"${q.total_amount:,.2f} {q.currency}", "primary": True},
         {"label": "Доставка (дн)", "value": str(q.delivery_days)},
@@ -388,21 +412,37 @@ def accept_quote(params, user, role):
     if q.status not in ("submitted", "finalized"):
         return ActionResult(text=f"Эту котировку нельзя принять (статус: {q.get_status_display()}).")
 
-    # Шаг 1: preview
+    # Шаг 1: preview (buyer ещё не должен видеть имя — раскрываем после confirm)
     if not confirmed:
+        if role == "buyer":
+            from marketplace.models import Quote as _Q
+            ranked = list(_Q.objects.filter(rfq_id=q.rfq_id, direction="seller_to_buyer")
+                          .order_by("total_amount").values_list("seller_id", flat=True))
+            try:
+                rank = ranked.index(q.seller_id) + 1 if q.seller_id else None
+            except ValueError:
+                rank = None
+            seller_label = f"Поставщик №{rank}" if rank else "Поставщик"
+            extra_warn = "После принятия имя поставщика и контакты будут раскрыты для оформления заказа."
+        else:
+            seller_label = q.seller.username if q.seller else "—"
+            extra_warn = ""
+        warnings = [
+            "После принятия будет создан заказ. Остальные котировки автоматически отклонятся.",
+        ]
+        if extra_warn:
+            warnings.append(extra_warn)
         return ActionResult(
-            text=f"Принять котировку #{q.id} от {q.seller.username if q.seller else '—'}?",
+            text=f"Принять котировку #{q.id} от {seller_label}?",
             cards=[{"type": "draft", "data": {
                 "title": f"✓ Принять котировку #{q.id}",
                 "rows": [
-                    {"label": "Продавец", "value": q.seller.username if q.seller else "—"},
+                    {"label": "Продавец", "value": seller_label},
                     {"label": "Сумма", "value": f"${q.total_amount:,.2f}", "primary": True},
                     {"label": "Доставка", "value": f"{q.delivery_days} дней"},
                     {"label": "Резерв 10%", "value": f"${(q.total_amount * Decimal('0.10')):,.2f}"},
                 ],
-                "warnings": [
-                    "После принятия будет создан заказ. Остальные котировки автоматически отклонятся.",
-                ],
+                "warnings": warnings,
                 "confirm_action": "accept_quote",
                 "confirm_label": "✓ Принять и создать заказ",
                 "confirm_params": {"quote_id": q.id, "confirmed": True},

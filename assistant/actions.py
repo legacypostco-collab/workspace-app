@@ -1414,17 +1414,56 @@ def compare_products(params, user, role):
     )
 
 
+# ══════════════════════════════════════════════════════════
+# Buyer-anonymity: имена поставщиков скрыты до акцепта котировки
+# ══════════════════════════════════════════════════════════
+
+def _is_buyer_view(role: str) -> bool:
+    """Buyer не должен видеть реальные имена поставщиков, чтобы не обходить
+    платформу. Имена раскрываются только в Quote после accept_quote.
+    Operator/admin/seller видят настоящие.
+    """
+    return role == "buyer"
+
+
+def _anonymize_supplier(s: dict, idx: int) -> dict:
+    """Скрывает name/email/identifying fields, оставляя метрики и рейтинг."""
+    safe = dict(s)
+    safe["name"] = f"Поставщик №{idx + 1}"
+    # Удаляем потенциально идентифицирующие поля
+    for k in ("email", "phone", "company_name", "username", "legal_name", "inn"):
+        safe.pop(k, None)
+    safe["anonymous"] = True
+    return safe
+
+
+def _maybe_anonymize_suppliers(suppliers: list[dict], role: str) -> list[dict]:
+    if not _is_buyer_view(role):
+        return suppliers
+    return [_anonymize_supplier(s, i) for i, s in enumerate(suppliers)]
+
+
 @register("compare_suppliers")
 def compare_suppliers(params, user, role):
     from django.contrib.auth.models import User
-    sellers = User.objects.filter(userprofile__role="seller")[:5]
+    sellers = list(User.objects.filter(userprofile__role="seller")[:5])
+    if _is_buyer_view(role):
+        # Для buyer — анонимизируем: только rank + рейтинг, без имени и email
+        rows = [
+            [f"Поставщик №{i + 1}", "—"]
+            for i, _ in enumerate(sellers)
+        ]
+    else:
+        rows = [[s.get_full_name() or s.username, s.email or "—"] for s in sellers]
     return ActionResult(
-        text=f"Топ поставщиков ({len(sellers)}):",
+        text=f"Топ поставщиков ({len(sellers)}):" + (
+            "\n💡 Имена скрыты — раскрываются после принятия котировки." if _is_buyer_view(role) else ""
+        ),
         cards=[{
             "type": "comparison",
             "data": {
                 "headers": ["Поставщик", "Email"],
-                "rows": [[s.get_full_name() or s.username, s.email] for s in sellers],
+                "rows": rows,
             },
         }],
     )
@@ -1590,7 +1629,12 @@ def analyze_spec(params, user, role):
 
 @register("top_suppliers")
 def top_suppliers(params, user, role):
-    """Top-N suppliers ranked by price/coverage/lead time on the current spec."""
+    """Top-N suppliers ranked by price/coverage/lead time on the current spec.
+
+    Для buyer'а имена анонимизированы (Поставщик №1/2/3) до момента
+    принятия котировки. Это защищает платформу от обхода — buyer не может
+    напрямую связаться с поставщиком в обход маркетплейса.
+    """
     suppliers = [
         {"name": "Caterpillar Eurasia", "rating": "4.9", "total": 47890,
          "coverage": "32 из 39 позиций", "lead_time": "9 дней", "currency": "USD"},
@@ -1600,19 +1644,32 @@ def top_suppliers(params, user, role):
          "coverage": "38 из 39", "lead_time": "11 дней", "note": "включая аналоги",
          "currency": "USD"},
     ]
-    return ActionResult(
-        text=(
+    visible = _maybe_anonymize_suppliers(suppliers, role)
+
+    if _is_buyer_view(role):
+        intro = (
+            "Топ-3 поставщика по вашей спеке. Имена скрыты — раскрываются "
+            "после принятия котировки. Создать RFQ всем?"
+        )
+        # Используем индексы вместо имён в action params
+        compare_ids = [f"supplier_{i + 1}" for i, _ in enumerate(suppliers)]
+    else:
+        intro = (
             "Рекомендую разослать всем трём — Caterpillar Eurasia может не покрыть 7 позиций, "
             "остальные дадут конкуренцию по цене. Создать RFQ?"
-        ),
-        cards=[{"type": "supplier_top", "data": {"suppliers": suppliers}}],
+        )
+        compare_ids = [s["name"] for s in suppliers]
+
+    return ActionResult(
+        text=intro,
+        cards=[{"type": "supplier_top", "data": {"suppliers": visible}}],
         actions=[
             {"label": "Создать RFQ для топ-3", "action": "create_rfq",
              "params": {"query": "Spec Q2 2026 — top 3 suppliers"}},
             {"label": "Добавить ещё поставщиков", "action": "top_suppliers",
              "params": {"limit": 5}},
             {"label": "Сравнить детально", "action": "compare_suppliers",
-             "params": {"supplier_ids": [s["name"] for s in suppliers]}},
+             "params": {"supplier_ids": compare_ids}},
         ],
         suggestions=["Только OEM-сертифицированные", "Сравни по SLA"],
     )
