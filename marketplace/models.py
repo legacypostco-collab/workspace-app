@@ -583,6 +583,18 @@ class UserProfile(models.Model):
     last_rating_recalculated_at = models.DateTimeField(null=True, blank=True, editable=False)
     admin_note = models.TextField(blank=True, help_text="Заметка администратора о поставщике")
 
+    # ── Durable notification channels ─────────────────────────
+    # WS push в чат-сессии работает только когда вкладка открыта. Эти каналы
+    # доставляют важные события когда пользователь оффлайн.
+    notif_email_enabled = models.BooleanField(default=True)
+    notif_telegram_chat_id = models.CharField(max_length=64, blank=True,
+        help_text="Telegram chat_id (получают через бот командой /start)")
+    notif_telegram_enabled = models.BooleanField(default=False)
+    # Через запятую: order,payment,rfq,sla,claim,system,info
+    notif_kinds = models.CharField(max_length=200,
+        default="order,payment,rfq,sla,claim,system",
+        help_text="Какие kinds доставлять через email/telegram (CSV)")
+
     @staticmethod
     def _clamp_score(value: Decimal) -> Decimal:
         if value < 0:

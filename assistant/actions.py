@@ -71,6 +71,8 @@ _BUYER_ACTIONS = [
     "submit_bank", "submit_director", "submit_for_review", "kyb_status",
     # Negotiation (buyer side)
     "view_rfq_quotes", "view_quote", "accept_quote", "counter_offer", "decline_quote",
+    # Notification preferences (durable channels)
+    "notif_prefs", "notif_set_email", "notif_set_kinds", "notif_link_telegram",
 ]
 
 # Seller-only: эксклюзивные действия продавца — отвечать на RFQ, грузить
@@ -659,6 +661,32 @@ TOOL_SCHEMAS = {
             "type": "object",
             "properties": {"quote_id": _INT},
             "required": ["quote_id"],
+        },
+    },
+    # ── Durable notification preferences ────────────────────
+    "notif_prefs": {
+        "description": "Текущие настройки durable-каналов (email, telegram, kinds).",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "notif_set_email": {
+        "description": "Включить/выключить email-уведомления. Шаг 1 — форма; шаг 2 с confirmed=true.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"enabled": _STR, "confirmed": _BOOL},
+        },
+    },
+    "notif_set_kinds": {
+        "description": "Какие типы событий доставлять в email/telegram (CSV из order/payment/rfq/sla/claim/system/info).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"kinds": _STR, "confirmed": _BOOL},
+        },
+    },
+    "notif_link_telegram": {
+        "description": "Привязать Telegram chat_id для durable-доставки. Демо: ввести числовой chat_id вручную.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"chat_id": _STR, "confirmed": _BOOL},
         },
     },
 }
@@ -1750,7 +1778,15 @@ def _log_event(order, event_type: str, actor=None, source="system", meta=None):
 
 
 def _notify(user, *, kind: str, title: str, body: str = "", url: str = ""):
-    """Создаёт Notification + пушит её через WebSocket. Безопасный — не падает."""
+    """Создаёт Notification + пушит её через WS + дублирует в durable каналы.
+
+    Цепочка:
+      1. DB row (всегда — основа inbox)
+      2. WebSocket push (если открыта вкладка → toast + badge)
+      3. Email + Telegram fanout (если оффлайн — durable каналы)
+
+    Все шаги best-effort: ошибка в одном не ломает остальные.
+    """
     if not user:
         return
     notif_id = None
@@ -1774,6 +1810,12 @@ def _notify(user, *, kind: str, title: str, body: str = "", url: str = ""):
         })
     except Exception:
         logger.exception("WS notify push failed")
+    # Durable fanout (Email + Telegram)
+    try:
+        from .channels import fanout_to_durable
+        fanout_to_durable(user, kind=kind, title=title[:200], body=body, url=url[:400])
+    except Exception:
+        logger.exception("durable fanout failed")
 
 
 def _notify_seller_of_order(order, kind="order", title="", body=""):

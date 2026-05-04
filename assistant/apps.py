@@ -32,3 +32,8 @@ class AssistantConfig(AppConfig):
             from . import negotiation  # noqa
         except ImportError:
             pass
+        # Регистрируем notification settings actions
+        try:
+            from . import notif_settings  # noqa
+        except ImportError:
+            pass

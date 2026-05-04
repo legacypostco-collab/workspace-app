@@ -903,3 +903,175 @@ class NegotiationFlowTests(TestCase):
         q.refresh_from_db()
         self.assertTrue(q.is_final)
         self.assertEqual(q.status, "finalized")
+
+
+class DurableChannelsTests(TestCase):
+    """Email + Telegram fanout + per-user preferences."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import UserProfile
+        U = get_user_model()
+        self.user = U.objects.create_user(
+            username="t_chan", password="x", email="user@example.com",
+        )
+        self.profile = UserProfile.objects.create(user=self.user, role="buyer")
+
+    def test_email_sent_when_enabled_and_kind_match(self):
+        from django.core import mail
+        from .channels import send_email
+        self.profile.notif_email_enabled = True
+        self.profile.notif_kinds = "order,payment"
+        self.profile.save()
+        ok = send_email(self.user, kind="order", title="T", body="B", url="/x")
+        self.assertTrue(ok)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("T", mail.outbox[0].subject)
+        self.assertIn("user@example.com", mail.outbox[0].to)
+
+    def test_email_skipped_when_kind_not_in_prefs(self):
+        from django.core import mail
+        from .channels import send_email
+        self.profile.notif_email_enabled = True
+        self.profile.notif_kinds = "payment"  # only payment
+        self.profile.save()
+        ok = send_email(self.user, kind="rfq", title="T", body="B")
+        self.assertFalse(ok)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_email_skipped_when_disabled(self):
+        from django.core import mail
+        from .channels import send_email
+        self.profile.notif_email_enabled = False
+        self.profile.save()
+        ok = send_email(self.user, kind="order", title="T")
+        self.assertFalse(ok)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_email_skipped_when_no_email(self):
+        from .channels import send_email
+        self.user.email = ""
+        self.user.save()
+        ok = send_email(self.user, kind="order", title="T")
+        self.assertFalse(ok)
+
+    def test_telegram_skipped_when_no_token(self):
+        import os
+        from .channels import send_telegram
+        os.environ.pop("TELEGRAM_BOT_TOKEN", None)
+        self.profile.notif_telegram_enabled = True
+        self.profile.notif_telegram_chat_id = "12345"
+        self.profile.notif_kinds = "order"
+        self.profile.save()
+        ok = send_telegram(self.user, kind="order", title="T")
+        self.assertFalse(ok)
+
+    def test_telegram_skipped_when_no_chat_id(self):
+        import os
+        from .channels import send_telegram
+        os.environ["TELEGRAM_BOT_TOKEN"] = "fake"
+        try:
+            self.profile.notif_telegram_enabled = True
+            self.profile.notif_telegram_chat_id = ""
+            self.profile.save()
+            ok = send_telegram(self.user, kind="order", title="T")
+            self.assertFalse(ok)
+        finally:
+            os.environ.pop("TELEGRAM_BOT_TOKEN", None)
+
+    def test_fanout_to_durable_returns_status_dict(self):
+        from .channels import fanout_to_durable
+        self.profile.notif_email_enabled = True
+        self.profile.notif_kinds = "order"
+        self.profile.save()
+        r = fanout_to_durable(self.user, kind="order", title="T", body="B", url="/x")
+        self.assertIn("email", r)
+        self.assertIn("telegram", r)
+        self.assertTrue(r["email"])
+        self.assertFalse(r["telegram"])
+
+    def test_notify_creates_db_row_and_sends_email(self):
+        from django.core import mail
+        from .actions import _notify
+        from marketplace.models import Notification
+        self.profile.notif_email_enabled = True
+        self.profile.notif_kinds = "order"
+        self.profile.save()
+        _notify(self.user, kind="order", title="New order #42",
+                body="Total $100", url="/chat/?order=42")
+        # 1. DB row создан
+        self.assertEqual(Notification.objects.filter(user=self.user).count(), 1)
+        # 2. Email отправлен
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_send_digest_returns_false_when_no_unread(self):
+        from .channels import send_digest
+        ok = send_digest(self.user)
+        self.assertFalse(ok)
+
+    def test_send_digest_sends_when_unread_exists(self):
+        from django.core import mail
+        from .channels import send_digest
+        from marketplace.models import Notification
+        Notification.objects.create(user=self.user, kind="order", title="A", body="x")
+        Notification.objects.create(user=self.user, kind="payment", title="B", body="y")
+        self.profile.notif_email_enabled = True
+        self.profile.save()
+        ok = send_digest(self.user)
+        self.assertTrue(ok)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("2 новых", mail.outbox[0].subject)
+
+
+class NotifSettingsActionsTests(TestCase):
+    """User-facing notification preferences actions."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import UserProfile
+        U = get_user_model()
+        self.user = U.objects.create_user(username="t_pref", password="x")
+        UserProfile.objects.create(user=self.user, role="buyer")
+
+    def test_notif_prefs_returns_kpi_grid(self):
+        from .notif_settings import notif_prefs
+        r = notif_prefs({}, self.user, "buyer")
+        self.assertEqual(r.cards[0]["type"], "kpi_grid")
+        labels = [it["label"] for it in r.cards[0]["data"]["items"]]
+        self.assertIn("Email-канал", labels)
+        self.assertIn("Telegram", labels)
+
+    def test_notif_set_email_toggle_off(self):
+        from .notif_settings import notif_set_email
+        r = notif_set_email({"enabled": "0", "confirmed": True}, self.user, "buyer")
+        self.assertIn("выключен", r.text)
+        self.user.profile.refresh_from_db()
+        self.assertFalse(self.user.profile.notif_email_enabled)
+
+    def test_notif_set_kinds_validates(self):
+        from .notif_settings import notif_set_kinds
+        # bad
+        r = notif_set_kinds({"kinds": "garbage,nonsense", "confirmed": True},
+                             self.user, "buyer")
+        self.assertIn("⚠️", r.text)
+        # good
+        r2 = notif_set_kinds({"kinds": "order, sla, claim", "confirmed": True},
+                              self.user, "buyer")
+        self.assertIn("✓", r2.text)
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.notif_kinds, "order,sla,claim")
+
+    def test_notif_link_telegram_writes_chat_id(self):
+        from .notif_settings import notif_link_telegram
+        r = notif_link_telegram({"chat_id": "12345678", "confirmed": True},
+                                 self.user, "buyer")
+        self.assertIn("✓", r.text)
+        self.user.profile.refresh_from_db()
+        self.assertEqual(self.user.profile.notif_telegram_chat_id, "12345678")
+        self.assertTrue(self.user.profile.notif_telegram_enabled)
+
+    def test_notif_link_telegram_rejects_non_numeric(self):
+        from .notif_settings import notif_link_telegram
+        r = notif_link_telegram({"chat_id": "abc", "confirmed": True},
+                                 self.user, "buyer")
+        self.assertIn("числом", r.text)
