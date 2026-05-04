@@ -103,6 +103,8 @@ _OPERATOR_CORE = [
     "op_hs_lookup", "op_hs_assign", "op_calc_duty",
     "op_certs_check", "op_cert_upload", "op_sanctions_check",
     "op_customs_dashboard", "op_customs_release",
+    # Payments / Escrow dashboard
+    "op_payments_dashboard",
 ]
 
 ROLE_ACTIONS = {
@@ -448,6 +450,10 @@ TOOL_SCHEMAS = {
             },
             "required": ["order_id"],
         },
+    },
+    "op_payments_dashboard": {
+        "description": "Эскроу-сводка платформы: текущий holding, выплачено продавцам, возвращено покупателям, открытые холды по заказам.",
+        "input_schema": {"type": "object", "properties": {}},
     },
 }
 
@@ -1453,20 +1459,21 @@ def pay_reserve(params, user, role):
             suggestions=["Изменить заказ", "Какой остаток после?"],
         )
 
+    # Эскроу-платёж: create + confirm intent → деньги уходят на платформу,
+    # а не «в никуда». При confirm_delivery платформа высвобождает средства
+    # продавцу; при споре — refund'ит покупателю.
+    from . import payments as _pay
+    intent = _pay.create_payment_intent(amount, order_id=order.id, payer=user, kind="reserve")
     with transaction.atomic():
-        wallet.balance = wallet.balance - amount
-        wallet.save(update_fields=["balance", "updated_at"])
-        WalletTx.objects.create(
-            wallet=wallet, kind="debit", amount=amount,
-            description=f"Резерв 10% по заказу #{order.id}",
-            order_id=order.id, balance_after=wallet.balance,
-        )
+        intent = _pay.confirm_payment_intent(intent, user)
         order.payment_status = "reserve_paid"
         order.status = "reserve_paid"
         order.reserve_paid_at = timezone.now()
         order.save(update_fields=["payment_status", "status", "reserve_paid_at"])
+    wallet.refresh_from_db(fields=["balance"])
     _log_event(order, "reserve_paid", actor=user, source="buyer",
-               meta={"amount": float(amount), "balance_after": float(wallet.balance)})
+               meta={"amount": float(amount), "balance_after": float(wallet.balance),
+                     "intent_id": intent["id"]})
     _notify_seller_of_order(
         order, kind="payment",
         title=f"Резерв оплачен по заказу #{order.id}",
@@ -2483,20 +2490,18 @@ def pay_final(params, user, role):
                 suggestions=["Куда придёт код?", "Отменить"],
             )
 
+    from . import payments as _pay
+    intent = _pay.create_payment_intent(final_amount, order_id=order.id, payer=user, kind="final")
     with transaction.atomic():
-        wallet.balance = wallet.balance - final_amount
-        wallet.save(update_fields=["balance", "updated_at"])
-        WalletTx.objects.create(
-            wallet=wallet, kind="debit", amount=final_amount,
-            description=f"Остаток 90% по заказу #{order.id}",
-            order_id=order.id, balance_after=wallet.balance,
-        )
+        intent = _pay.confirm_payment_intent(intent, user)
         order.payment_status = "paid"
         order.status = "ready_to_ship"
         order.final_paid_at = timezone.now()
         order.save(update_fields=["payment_status", "status", "final_paid_at"])
+    wallet.refresh_from_db(fields=["balance"])
     _log_event(order, "final_payment_paid", actor=user, source="buyer",
-               meta={"amount": float(final_amount), "balance_after": float(wallet.balance)})
+               meta={"amount": float(final_amount), "balance_after": float(wallet.balance),
+                     "intent_id": intent["id"]})
 
     return ActionResult(
         text=(
@@ -2718,8 +2723,32 @@ def confirm_delivery(params, user, role):
     _log_event(order, "status_changed", actor=user, source="buyer",
                meta={"from": "delivered", "to": "completed", "kind": "buyer_accepted"})
 
+    # Эскроу → продавцу. Берём seller из первой OrderItem (для одно-продавцовых
+    # заказов; multi-seller потребует разбиение по позициям — TODO).
+    release_summary = ""
+    try:
+        from . import payments as _pay
+        from marketplace.models import OrderItem
+        seller = (
+            OrderItem.objects.filter(order=order)
+            .select_related("part__seller").first().part.seller
+        )
+        if seller:
+            res = _pay.release_to_seller(order=order, seller=seller)
+            if res.get("ok"):
+                release_summary = f"\nПлатформа выплатила продавцу ${res['amount']:,.2f} из эскроу."
+                _log_event(order, "operator_action", actor=user, source="system",
+                           meta={"kind": "escrow_released",
+                                 "amount": res["amount"], "to": res["to"]})
+                _notify(seller, kind="payment",
+                        title=f"Поступление по заказу #{order.id}",
+                        body=f"Покупатель подтвердил приёмку — на счёт зачислено ${res['amount']:,.2f}.",
+                        url=f"/chat/?order={order.id}")
+    except Exception:
+        logger.exception("escrow release on confirm_delivery failed")
+
     return ActionResult(
-        text=f"✓ Заказ #{order.id} закрыт. Спасибо за приёмку!",
+        text=f"✓ Заказ #{order.id} закрыт. Спасибо за приёмку!" + release_summary,
         cards=[{
             "type": "order",
             "data": {

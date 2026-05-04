@@ -1287,9 +1287,10 @@
       title:    'Платежи',
       subtitle: 'Инвойсы, эскроу, возвраты — управляйте через чат.',
       pills: [
-        {label:'🎛 Сводка',          action:'op_dashboard',  params:{}},
-        {label:'⏳ Ожидают резерва', action:'op_queue',      params:{filter:'awaiting_reserve'}},
-        {label:'💸 Возвраты',        action:'op_queue',      params:{filter:'refund'}},
+        {label:'💰 Эскроу',          action:'op_payments_dashboard', params:{}},
+        {label:'🎛 Общая сводка',    action:'op_dashboard',          params:{}},
+        {label:'⏳ Ожидают резерва', action:'op_queue',              params:{filter:'awaiting_reserve'}},
+        {label:'💸 Возвраты',        action:'op_queue',              params:{filter:'refund'}},
       ],
     },
     operator_manager: {

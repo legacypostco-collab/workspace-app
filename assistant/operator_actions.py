@@ -468,14 +468,36 @@ def op_resolve_dispute(params, user, role):
         refund_amount = Decimal("0")
     reason = (params.get("reason") or "").strip()
 
-    # Side-effects: если refund — переводим payment_status; если release — paid
+    # Side-effects: статус оплаты + реальное движение эскроу
+    from . import payments as _pay
+    from marketplace.models import OrderItem
+
+    money_moved = ""
     new_payment_status = order.payment_status
-    if resolution == "refund":
-        new_payment_status = "refunded"
-    elif resolution == "partial_refund":
-        new_payment_status = "refund_pending"
-    elif resolution == "release":
-        new_payment_status = "paid"
+    try:
+        if resolution == "refund":
+            res = _pay.refund_to_buyer(order=order, buyer=order.buyer)
+            if res.get("ok"):
+                money_moved = f" · возврат ${res['amount']:,.2f} → покупатель"
+            new_payment_status = "refunded"
+        elif resolution == "partial_refund":
+            if refund_amount > 0 and order.buyer:
+                res = _pay.refund_to_buyer(order=order, buyer=order.buyer, amount=refund_amount)
+                if res.get("ok"):
+                    money_moved = f" · возврат ${res['amount']:,.2f} → покупатель"
+            new_payment_status = "refund_pending"
+        elif resolution == "release":
+            seller_obj = None
+            first = OrderItem.objects.filter(order=order).select_related("part__seller").first()
+            if first and first.part:
+                seller_obj = first.part.seller
+            if seller_obj:
+                res = _pay.release_to_seller(order=order, seller=seller_obj)
+                if res.get("ok"):
+                    money_moved = f" · выплата ${res['amount']:,.2f} → продавец"
+            new_payment_status = "paid"
+    except Exception:
+        logger.exception("escrow move on dispute resolution failed")
 
     if new_payment_status != order.payment_status:
         order.payment_status = new_payment_status
@@ -489,6 +511,7 @@ def op_resolve_dispute(params, user, role):
             "refund_amount": float(refund_amount),
             "reason": reason,
             "by": user.username,
+            "money_moved": money_moved,
         },
     )
 
@@ -497,7 +520,7 @@ def op_resolve_dispute(params, user, role):
         _notify(
             order.buyer, kind="payment",
             title=f"Спор по заказу #{order.id} закрыт",
-            body=f"Решение: {resolution}. {reason[:120]}",
+            body=f"Решение: {resolution}.{money_moved} {reason[:120]}",
             url=f"/chat/?order={order.id}",
         )
 
@@ -984,5 +1007,58 @@ def op_customs_release(params, user, role):
         contextual_actions=[
             {"action": "op_customs_dashboard", "label": "← Сводка таможни"},
             {"action": "op_order_detail", "label": "Открыть заказ", "params": {"order_id": order.id}},
+        ],
+    )
+
+
+# ══════════════════════════════════════════════════════════
+# 9. Payments dashboard — эскроу + outstanding holds
+# ══════════════════════════════════════════════════════════
+
+@register("op_payments_dashboard")
+def op_payments_dashboard(params, user, role):
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from . import payments as _pay
+    from marketplace.models import Order
+
+    s = _pay.escrow_summary()
+    holds = s.get("open_holds", {})
+    rows = []
+    for oid, amt in sorted(holds.items(), key=lambda x: -x[1])[:10]:
+        try:
+            o = Order.objects.get(id=oid)
+            rows.append({
+                "title": f"#{oid} · {o.customer_name}",
+                "subtitle": f"${amt:,.2f} · {o.get_status_display()} · {o.get_payment_status_display()}",
+                "url": f"/chat/?order={oid}",
+            })
+        except Order.DoesNotExist:
+            rows.append({"title": f"#{oid}", "subtitle": f"${amt:,.2f}"})
+
+    return ActionResult(
+        text=(
+            f"Эскроу платформы · удерживается ${s['outstanding_balance']:,.2f} "
+            f"по {len(holds)} заказам.\n"
+            f"За всё время · принято ${s['total_held_ever']:,.0f} · "
+            f"выплачено продавцам ${s['total_released_ever']:,.0f} · "
+            f"возвращено покупателям ${s['total_refunded_ever']:,.0f}."
+        ),
+        cards=[
+            {"type": "kpi_grid", "data": {"title": "💰 Эскроу платформы", "items": [
+                {"label": "Сейчас удерживается", "value": f"${s['outstanding_balance']:,.0f}", "tone": "info"},
+                {"label": "Открытых холдов", "value": str(len(holds))},
+                {"label": "Принято за всё время", "value": f"${s['total_held_ever']:,.0f}"},
+                {"label": "Выплачено продавцам", "value": f"${s['total_released_ever']:,.0f}", "tone": "ok"},
+                {"label": "Возвращено покупателям", "value": f"${s['total_refunded_ever']:,.0f}",
+                 "tone": "warn" if s['total_refunded_ever'] else "ok"},
+                {"label": "Баланс sentinel-кошелька", "value": f"${s['platform_balance']:,.2f}"},
+            ]}},
+            {"type": "list", "data": {"title": "Топ открытых холдов",
+                "items": rows or [{"title": "Эскроу пуст"}]}},
+        ],
+        contextual_actions=[
+            {"action": "op_queue", "label": "📋 Очередь", "params": {"filter": "refund"}},
         ],
     )

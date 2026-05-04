@@ -245,14 +245,17 @@ class Wallet(models.Model):
 
 
 class WalletTx(models.Model):
-    """Лог движений по кошельку: пополнения и списания."""
+    """Лог движений по кошельку: пополнения, списания, эскроу-операции."""
     KIND_CHOICES = [
         ("topup", "Пополнение"),
         ("debit", "Списание"),
         ("refund", "Возврат"),
+        ("escrow_hold", "Эскроу-холд"),
+        ("escrow_release", "Эскроу → продавцу"),
+        ("escrow_refund", "Эскроу → возврат"),
     ]
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name="transactions")
-    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     description = models.CharField(max_length=300, blank=True)
     order_id = models.IntegerField(null=True, blank=True, db_index=True)

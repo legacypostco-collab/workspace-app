@@ -27,4 +27,6 @@ urlpatterns = [
     path("notifications/", views.NotificationListView.as_view(), name="assistant-notifications"),
     path("notifications/read-all/", views.NotificationMarkReadView.as_view(), name="assistant-notifications-read-all"),
     path("notifications/<int:notif_id>/read/", views.NotificationMarkReadView.as_view(), name="assistant-notifications-read"),
+    # Payments webhook (Stripe-compat)
+    path("payments/webhook/", views.PaymentsWebhookView.as_view(), name="assistant-payments-webhook"),
 ]

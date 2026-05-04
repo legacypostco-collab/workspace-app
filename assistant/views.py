@@ -445,6 +445,28 @@ class NotificationListView(APIView):
         })
 
 
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class PaymentsWebhookView(APIView):
+    """POST /api/assistant/payments/webhook/
+
+    Stripe-style webhook receiver. Принимает JSON-event с полями
+    {type, data} и роутит через assistant.payments.dispatch_webhook().
+    Никакой подписи нет — для перехода на реальный Stripe нужно добавить
+    проверку Stripe-Signature через webhook secret.
+    """
+    permission_classes = []  # webhooks приходят без юзера; в проде — IP/HMAC
+    authentication_classes = []  # отключаем session/CSRF, как у Stripe
+
+    def post(self, request):
+        from .payments import dispatch_webhook
+        result = dispatch_webhook(request.data or {})
+        return Response(result)
+
+
 class NotificationMarkReadView(APIView):
     """POST /api/assistant/notifications/<id>/read/  → mark single as read.
 
