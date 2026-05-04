@@ -37,3 +37,8 @@ class AssistantConfig(AppConfig):
             from . import notif_settings  # noqa
         except ImportError:
             pass
+        # Регистрируем admin (platform-level) actions
+        try:
+            from . import admin_actions  # noqa
+        except ImportError:
+            pass

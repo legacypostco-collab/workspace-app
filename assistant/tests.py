@@ -1075,3 +1075,133 @@ class NotifSettingsActionsTests(TestCase):
         r = notif_link_telegram({"chat_id": "abc", "confirmed": True},
                                  self.user, "buyer")
         self.assertIn("числом", r.text)
+
+
+class AdminActionsTests(TestCase):
+    """Platform admin actions: dashboards, user management, moderation."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import UserProfile
+        U = get_user_model()
+        self.admin = U.objects.create_user(username="t_admin", password="x",
+                                            is_superuser=True, is_staff=True)
+        self.buyer = U.objects.create_user(username="t_buy", password="x",
+                                            email="b@x.t")
+        UserProfile.objects.create(user=self.buyer, role="buyer")
+
+    # --- gating ---
+    def test_dashboard_blocks_non_admin(self):
+        from .admin_actions import admin_dashboard
+        r = admin_dashboard({}, self.buyer, "buyer")
+        self.assertIn("администратор", r.text.lower())
+
+    def test_dashboard_returns_kpi_grid(self):
+        from .admin_actions import admin_dashboard
+        r = admin_dashboard({}, self.admin, "admin")
+        self.assertEqual(r.cards[0]["type"], "kpi_grid")
+        labels = [it["label"] for it in r.cards[0]["data"]["items"]]
+        self.assertIn("Активных юзеров", labels)
+        self.assertIn("GMV 7d", labels)
+
+    # --- read actions ---
+    def test_admin_users_default_lists_all(self):
+        from .admin_actions import admin_users
+        r = admin_users({"filter": "all"}, self.admin, "admin")
+        items = r.cards[0]["data"]["items"]
+        # platform_escrow юзер исключён
+        usernames = " ".join(it.get("title", "") for it in items)
+        self.assertNotIn("__platform_escrow__", usernames)
+        self.assertIn("t_buy", usernames)
+
+    def test_admin_users_filter_banned(self):
+        from .admin_actions import admin_users
+        self.buyer.is_active = False
+        self.buyer.save()
+        r = admin_users({"filter": "banned"}, self.admin, "admin")
+        usernames = " ".join(it.get("title", "") for it in r.cards[0]["data"]["items"])
+        self.assertIn("t_buy", usernames)
+
+    def test_admin_user_detail_shows_status(self):
+        from .admin_actions import admin_user_detail
+        r = admin_user_detail({"user_id": self.buyer.id}, self.admin, "admin")
+        # Статус row с "Активен"
+        rows = r.cards[0]["data"]["rows"]
+        labels_values = {row["label"]: row["value"] for row in rows}
+        self.assertIn("Username", labels_values)
+        self.assertEqual(labels_values["Username"], "t_buy")
+
+    # --- write actions ---
+    def test_ban_user_two_step(self):
+        from .admin_actions import admin_ban_user
+        r1 = admin_ban_user({"user_id": self.buyer.id}, self.admin, "admin")
+        self.assertTrue(any(c["type"] == "form" for c in r1.cards))
+        r2 = admin_ban_user({"user_id": self.buyer.id, "reason": "Спам",
+                              "confirmed": True}, self.admin, "admin")
+        self.assertIn("🚫", r2.text)
+        self.buyer.refresh_from_db()
+        self.assertFalse(self.buyer.is_active)
+
+    def test_ban_admin_blocked(self):
+        from .admin_actions import admin_ban_user
+        from django.contrib.auth import get_user_model
+        U = get_user_model()
+        other_admin = U.objects.create_user(username="t_admin2", password="x",
+                                              is_superuser=True)
+        r = admin_ban_user({"user_id": other_admin.id, "reason": "x",
+                             "confirmed": True}, self.admin, "admin")
+        self.assertIn("админа нельзя", r.text)
+
+    def test_ban_self_blocked(self):
+        from .admin_actions import admin_ban_user
+        r = admin_ban_user({"user_id": self.admin.id, "reason": "x",
+                             "confirmed": True}, self.admin, "admin")
+        self.assertIn("самого себя", r.text)
+
+    def test_unban_user(self):
+        from .admin_actions import admin_unban_user
+        self.buyer.is_active = False
+        self.buyer.save()
+        r = admin_unban_user({"user_id": self.buyer.id, "confirmed": True},
+                              self.admin, "admin")
+        self.assertIn("✓", r.text)
+        self.buyer.refresh_from_db()
+        self.assertTrue(self.buyer.is_active)
+
+    def test_change_role_buyer_to_seller(self):
+        from .admin_actions import admin_change_role
+        r = admin_change_role({"user_id": self.buyer.id, "new_role": "seller",
+                                "confirmed": True}, self.admin, "admin")
+        self.assertIn("buyer → seller", r.text)
+        self.buyer.profile.refresh_from_db()
+        self.assertEqual(self.buyer.profile.role, "seller")
+
+    def test_change_role_invalid(self):
+        from .admin_actions import admin_change_role
+        # Step 1: form
+        r = admin_change_role({"user_id": self.buyer.id, "new_role": "bogus",
+                                "confirmed": True}, self.admin, "admin")
+        # invalid роль → возвращает форму, не пишет
+        self.assertTrue(any(c["type"] == "form" for c in r.cards))
+        self.buyer.profile.refresh_from_db()
+        self.assertEqual(self.buyer.profile.role, "buyer")
+
+    # --- moderation queue ---
+    def test_moderation_queue_returns_list(self):
+        from .admin_actions import admin_moderation_queue
+        r = admin_moderation_queue({}, self.admin, "admin")
+        self.assertEqual(r.cards[0]["type"], "list")
+
+    def test_catalog_review_returns_three_lists(self):
+        from .admin_actions import admin_catalog_review
+        r = admin_catalog_review({}, self.admin, "admin")
+        # 3 списка: $0 цена, без seller'а, последние
+        self.assertEqual(len(r.cards), 3)
+
+    def test_platform_settings_kpi(self):
+        from .admin_actions import admin_platform_settings
+        r = admin_platform_settings({}, self.admin, "admin")
+        items = r.cards[0]["data"]["items"]
+        labels = [it["label"] for it in items]
+        self.assertIn("Payment engine", labels)
+        self.assertIn("ANTHROPIC_API_KEY", labels)

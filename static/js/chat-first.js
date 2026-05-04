@@ -1391,6 +1391,18 @@
         {label:'📈 Аналитика',       action:'get_analytics', params:{}},
       ],
     },
+    admin: {
+      title:    'Платформа',
+      subtitle: 'GMV, пользователи, модерация — управление всей площадкой.',
+      pills: [
+        {label:'🛡 Сводка',           action:'admin_dashboard',         params:{}},
+        {label:'📈 GMV',              action:'admin_gmv',               params:{}},
+        {label:'👥 Пользователи',     action:'admin_users',             params:{}},
+        {label:'🚨 Модерация',        action:'admin_moderation_queue',  params:{}},
+        {label:'📦 Каталог',          action:'admin_catalog_review',    params:{}},
+        {label:'🛠 Settings',         action:'admin_platform_settings', params:{}},
+      ],
+    },
   };
 
   function applyRoleWelcome(role) {

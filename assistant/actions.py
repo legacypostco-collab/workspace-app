@@ -128,8 +128,15 @@ ROLE_ACTIONS = {
     "operator_payment": _OPERATOR_CORE,
     "operator_manager": _OPERATOR_CORE,
     "operator": _OPERATOR_CORE,
-    "admin": ["*"],  # admin sees everything
+    "admin": ["*"],  # admin sees everything (wildcard — все actions доступны)
 }
+
+# Подмножество actions, специфичных только для admin (вне operator/seller/buyer)
+_ADMIN_ONLY = [
+    "admin_dashboard", "admin_gmv", "admin_users", "admin_user_detail",
+    "admin_ban_user", "admin_unban_user", "admin_change_role",
+    "admin_moderation_queue", "admin_catalog_review", "admin_platform_settings",
+]
 
 
 # Действия продавца, которые требуют верификации KYB
@@ -688,6 +695,66 @@ TOOL_SCHEMAS = {
             "type": "object",
             "properties": {"chat_id": _STR, "confirmed": _BOOL},
         },
+    },
+    # ── Admin (platform-level) actions ──────────────────────
+    "admin_dashboard": {
+        "description": "Платформенная сводка для админа: GMV 7d, юзеры, заказы, KYB, SLA.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "admin_gmv": {
+        "description": "Платформенный GMV по периодам (24h/7d/30d/90d) + топ категорий.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "admin_users": {
+        "description": "Список пользователей с фильтрами: all|active|banned|buyers|sellers|kyb_pending.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"filter": _STR},
+        },
+    },
+    "admin_user_detail": {
+        "description": "Детальный профиль пользователя для админа: статусы, KYB, wallet, заказы.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT},
+            "required": ["user_id"],
+        },
+    },
+    "admin_ban_user": {
+        "description": "Заблокировать пользователя (User.is_active=False). Шаг 1 — форма с reason; шаг 2 c confirmed=true → запись + WS-нотификация.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT, "reason": _STR, "confirmed": _BOOL},
+            "required": ["user_id"],
+        },
+    },
+    "admin_unban_user": {
+        "description": "Разблокировать пользователя. DraftCard preview → confirm.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT, "confirmed": _BOOL},
+            "required": ["user_id"],
+        },
+    },
+    "admin_change_role": {
+        "description": "Сменить роль пользователя (buyer ↔ seller). Шаг 1 — select; шаг 2 — запись.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT, "new_role": _STR, "confirmed": _BOOL},
+            "required": ["user_id"],
+        },
+    },
+    "admin_moderation_queue": {
+        "description": "Единая очередь модерации платформы: KYB pending, refunds, SLA breach, контр-офферы.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "admin_catalog_review": {
+        "description": "Каталог-модерация: товары с price=$0, без seller'а, последние добавленные.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "admin_platform_settings": {
+        "description": "Read-only снэпшот платформенной конфигурации (engine, env vars).",
+        "input_schema": {"type": "object", "properties": {}},
     },
 }
 
