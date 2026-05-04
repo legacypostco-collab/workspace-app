@@ -37,3 +37,7 @@ httpx==0.28.1
 
 # Payments — Stripe (опц., если нет STRIPE_SECRET_KEY — используется встроенная Wallet-эскроу)
 stripe==15.1.0
+
+# E2E testing (only needed in dev/CI; ставится отдельно с `playwright install chromium`)
+# playwright>=1.50.0
+# pytest-playwright>=0.5
