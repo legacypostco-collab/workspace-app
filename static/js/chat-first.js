@@ -85,8 +85,135 @@
       if (url) t.addEventListener('click', () => { try { location.href = url; } catch(e){} });
       host.appendChild(t);
       setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 5000);
+      // Bump bell badge + prepend to dropdown if user already opened it
+      bumpBellBadge(+1);
+      prependNotifItem(payload);
     } catch (e) { console.error('notif toast', e); }
   }
+
+  // ── Notification bell + dropdown ──────────────────────────────
+  const notif = { items: [], unread: 0, loaded: false, open: false };
+
+  function setBellBadge(n) {
+    notif.unread = Math.max(0, n|0);
+    const el = document.getElementById('bellBadge');
+    if (!el) return;
+    if (notif.unread > 0) {
+      el.textContent = notif.unread > 99 ? '99+' : String(notif.unread);
+      el.style.display = '';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+  function bumpBellBadge(d) { setBellBadge(notif.unread + d); }
+
+  function notifTimeAgo(iso) {
+    if (!iso) return '';
+    try {
+      const t = new Date(iso).getTime();
+      const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+      if (s < 60) return 'только что';
+      if (s < 3600) return Math.floor(s/60) + ' мин';
+      if (s < 86400) return Math.floor(s/3600) + ' ч';
+      return Math.floor(s/86400) + ' д';
+    } catch(e) { return ''; }
+  }
+
+  function renderNotifList() {
+    const list = document.getElementById('notifList');
+    if (!list) return;
+    if (!notif.items.length) {
+      list.innerHTML = '<div class="notif-empty">Нет уведомлений</div>';
+      return;
+    }
+    list.innerHTML = notif.items.map(n =>
+      '<div class="notif-item' + (n.is_read ? '' : ' unread') + '" data-id="' + n.id + '" data-url="' + esc(n.url || '') + '">' +
+        '<div class="notif-row">' +
+          '<span class="notif-kind ' + esc(n.kind || 'info') + '">' + esc(n.kind || 'info') + '</span>' +
+          '<span class="notif-time">' + esc(notifTimeAgo(n.created_at)) + '</span>' +
+        '</div>' +
+        '<div class="notif-title">' + esc(n.title || '') + '</div>' +
+        (n.body ? '<div class="notif-body">' + esc(n.body) + '</div>' : '') +
+      '</div>'
+    ).join('');
+  }
+
+  function prependNotifItem(payload) {
+    if (!payload || !payload.id) return;
+    // Drop existing copy by id (in case server replays)
+    notif.items = (notif.items || []).filter(x => x.id !== payload.id);
+    notif.items.unshift({
+      id: payload.id, kind: payload.kind || 'info',
+      title: payload.title || '', body: payload.body || '',
+      url: payload.url || '', is_read: false,
+      created_at: new Date().toISOString(),
+    });
+    if (notif.items.length > 50) notif.items.length = 50;
+    if (notif.open) renderNotifList();
+  }
+
+  async function loadNotifications() {
+    try {
+      const data = await api('/api/assistant/notifications/?limit=20');
+      notif.items = data.items || [];
+      notif.loaded = true;
+      setBellBadge(data.unread_count || 0);
+      renderNotifList();
+    } catch (e) { console.warn('loadNotifications failed', e); }
+  }
+
+  window.toggleNotifPanel = function() {
+    const panel = document.getElementById('notifPanel');
+    if (!panel) return;
+    notif.open = panel.hasAttribute('hidden');
+    if (notif.open) {
+      panel.removeAttribute('hidden');
+      if (!notif.loaded) loadNotifications(); else renderNotifList();
+      // Close on outside click
+      setTimeout(() => document.addEventListener('click', _notifOutside, true), 0);
+    } else {
+      panel.setAttribute('hidden', '');
+      document.removeEventListener('click', _notifOutside, true);
+    }
+  };
+  function _notifOutside(ev) {
+    const panel = document.getElementById('notifPanel');
+    const bell = document.getElementById('topBell');
+    if (!panel || !bell) return;
+    if (panel.contains(ev.target) || bell.contains(ev.target)) return;
+    panel.setAttribute('hidden', '');
+    notif.open = false;
+    document.removeEventListener('click', _notifOutside, true);
+  }
+
+  async function markNotifRead(id) {
+    try {
+      const r = await api('/api/assistant/notifications/' + id + '/read/', {method:'POST', body: JSON.stringify({})});
+      const it = notif.items.find(x => x.id === id);
+      if (it) it.is_read = true;
+      setBellBadge(r.unread_count || 0);
+      renderNotifList();
+    } catch (e) { console.warn('markNotifRead', e); }
+  }
+
+  window.markAllNotifsRead = async function() {
+    try {
+      await api('/api/assistant/notifications/read-all/', {method:'POST', body: JSON.stringify({})});
+      notif.items.forEach(x => x.is_read = true);
+      setBellBadge(0);
+      renderNotifList();
+    } catch (e) { console.warn('markAllNotifsRead', e); }
+  };
+
+  // Click on a notification row → mark read + navigate (if url given)
+  document.addEventListener('click', (ev) => {
+    const item = ev.target.closest && ev.target.closest('.notif-item');
+    if (!item) return;
+    const id = parseInt(item.dataset.id, 10);
+    const url = item.dataset.url || '';
+    if (id) markNotifRead(id);
+    if (url) { try { location.href = url; } catch(e){} }
+  });
 
   window.toggleSidebar = (force) => {
     const sb = $('sidebar');
@@ -1436,7 +1563,7 @@
       const uiRole = r.startsWith('operator') ? 'operator' : (r === 'seller' ? 'seller' : 'buyer');
       paintRoleToggle(uiRole);
       applyRoleWelcome(state.config.role);
-      await Promise.all([loadConvList(), loadProjects()]);
+      await Promise.all([loadConvList(), loadProjects(), loadNotifications()]);
       applyDefaultSidebar(state.convs.length > 0);
     } catch(e) {
       console.warn('Init failed:', e);

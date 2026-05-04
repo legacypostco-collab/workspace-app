@@ -23,4 +23,8 @@ urlpatterns = [
     path("projects/<uuid:project_id>/chats/", views.ProjectChatView.as_view(), name="assistant-project-chat"),
     # RFQ detail (for chat-first /chat/rfq/<id>/ page)
     path("rfq/<int:rfq_id>/", views.RFQDetailView.as_view(), name="assistant-rfq-detail"),
+    # Notifications (bell + dropdown)
+    path("notifications/", views.NotificationListView.as_view(), name="assistant-notifications"),
+    path("notifications/read-all/", views.NotificationMarkReadView.as_view(), name="assistant-notifications-read-all"),
+    path("notifications/<int:notif_id>/read/", views.NotificationMarkReadView.as_view(), name="assistant-notifications-read"),
 ]

@@ -403,3 +403,63 @@ class RFQDetailView(APIView):
             "created_at": rfq.created_at.isoformat() if rfq.created_at else None,
             "items": items,
         })
+
+
+# ──────────────────────────────────────────────────────────
+# Notifications inbox (bell + dropdown in chat-first UI)
+# ──────────────────────────────────────────────────────────
+class NotificationListView(APIView):
+    """GET /api/assistant/notifications/?unread=1&limit=20
+
+    Returns recent notifications for the user. Pair with WS-push
+    (handled in consumers.py) for realtime updates.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from marketplace.models import Notification
+        unread_only = str(request.GET.get("unread", "")).strip() in ("1", "true", "yes")
+        try:
+            limit = max(1, min(100, int(request.GET.get("limit", 20))))
+        except (TypeError, ValueError):
+            limit = 20
+        qs = Notification.objects.filter(user=request.user)
+        if unread_only:
+            qs = qs.filter(is_read=False)
+        items = list(qs.order_by("-created_at")[:limit])
+        unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({
+            "unread_count": unread_count,
+            "items": [
+                {
+                    "id": n.id,
+                    "kind": n.kind,
+                    "title": n.title,
+                    "body": n.body,
+                    "url": n.url,
+                    "is_read": n.is_read,
+                    "created_at": n.created_at.isoformat() if n.created_at else None,
+                }
+                for n in items
+            ],
+        })
+
+
+class NotificationMarkReadView(APIView):
+    """POST /api/assistant/notifications/<id>/read/  → mark single as read.
+
+    POST /api/assistant/notifications/read-all/   → mark all as read.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, notif_id=None):
+        from marketplace.models import Notification
+        if notif_id is None:
+            updated = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+            return Response({"ok": True, "updated": updated, "unread_count": 0})
+        n = get_object_or_404(Notification, id=notif_id, user=request.user)
+        if not n.is_read:
+            n.is_read = True
+            n.save(update_fields=["is_read"])
+        unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+        return Response({"ok": True, "id": n.id, "unread_count": unread_count})

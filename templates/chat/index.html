@@ -111,6 +111,33 @@
     .top-avatar{width:34px;height:34px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
     @media(max-width:600px){.top-classic span{display:none;}}
 
+    /* ── Notification bell ── */
+    .top-bell{position:relative;width:34px;height:34px;border:none;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;transition:background .12s;}
+    .top-bell:hover{background:rgba(255,255,255,0.78);}
+    .bell-badge{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#e85c0d;color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;border:1.5px solid #f4f1ee;}
+    .notif-panel{position:absolute;top:54px;right:14px;width:340px;max-height:420px;background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.14);z-index:30;display:flex;flex-direction:column;overflow:hidden;}
+    .notif-panel[hidden]{display:none !important;}
+    .notif-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(0,0,0,0.06);font-family:'Golos Text',sans-serif;font-weight:700;font-size:13px;color:#1a1a1a;}
+    .notif-mark-all{background:none;border:none;color:#1d6fa5;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
+    .notif-mark-all:hover{text-decoration:underline;}
+    .notif-list{overflow-y:auto;max-height:360px;}
+    .notif-empty{padding:24px 14px;text-align:center;color:rgba(0,0,0,0.45);font-size:12px;}
+    .notif-item{padding:10px 14px;border-bottom:1px solid rgba(0,0,0,0.04);cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:background .12s;}
+    .notif-item:last-child{border-bottom:none;}
+    .notif-item:hover{background:rgba(0,0,0,0.025);}
+    .notif-item.unread{background:rgba(100,181,246,0.08);}
+    .notif-item.unread:hover{background:rgba(100,181,246,0.14);}
+    .notif-row{display:flex;align-items:center;gap:6px;}
+    .notif-kind{font-size:9px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.65);flex-shrink:0;}
+    .notif-kind.order{background:rgba(100,181,246,0.18);color:#1d6fa5;}
+    .notif-kind.payment{background:rgba(76,175,80,0.18);color:#2e7d32;}
+    .notif-kind.rfq{background:rgba(255,167,38,0.22);color:#bd5c00;}
+    .notif-kind.sla,.notif-kind.claim{background:rgba(232,92,13,0.22);color:#9c3300;}
+    .notif-time{font-size:10px;color:rgba(0,0,0,0.45);margin-left:auto;}
+    .notif-title{font-size:12.5px;font-weight:600;color:#1a1a1a;line-height:1.35;}
+    .notif-body{font-size:11.5px;color:rgba(0,0,0,0.62);line-height:1.4;}
+    @media(max-width:600px){.notif-panel{right:8px;width:calc(100vw - 16px);max-width:340px;}}
+
     /* ── Welcome state ── */
     .welcome{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 24px 32px;gap:28px;overflow-y:auto;}
     .welcome.hidden{display:none;}
@@ -541,7 +568,22 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
           <span>{% trans "Классический" %}</span>
         </a>
+        <!-- Notification bell -->
+        <button class="top-bell" id="topBell" onclick="toggleNotifPanel()" title="{% trans 'Уведомления' %}" aria-label="{% trans 'Уведомления' %}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span class="bell-badge" id="bellBadge" style="display:none;">0</span>
+        </button>
         <div class="top-avatar" id="topAvatar">?</div>
+      </div>
+      <!-- Notification dropdown panel -->
+      <div class="notif-panel" id="notifPanel" hidden>
+        <div class="notif-head">
+          <div>{% trans "Уведомления" %}</div>
+          <button class="notif-mark-all" onclick="markAllNotifsRead()">{% trans "Прочитать все" %}</button>
+        </div>
+        <div class="notif-list" id="notifList">
+          <div class="notif-empty">{% trans "Загрузка…" %}</div>
+        </div>
       </div>
     </div>
 
