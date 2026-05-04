@@ -607,7 +607,11 @@
     },
     order(d) {
       const cls = ({pending:'orange', shipped:'green', completed:'green', cancelled:'gray'})[d.status_code] || '';
-      return `<div class="card">
+      const oid = d.id || d.number;
+      const clickAttrs = oid
+        ? ` data-action="track_order" data-params='${esc(JSON.stringify({order_id: parseInt(String(oid).replace(/\D/g, ''), 10) || oid}))}' role="button" tabindex="0" title="Открыть заказ"`
+        : '';
+      return `<div class="card card-clickable"${clickAttrs}>
         <div class="card-row">
           <div class="card-emoji">📦</div>
           <div class="card-info">
@@ -622,7 +626,11 @@
       </div>`;
     },
     rfq(d) {
-      return `<div class="card">
+      const rid = d.id || d.number;
+      const clickAttrs = rid
+        ? ` data-action="get_rfq_status" data-params='${esc(JSON.stringify({rfq_id: parseInt(String(rid), 10) || rid}))}' role="button" tabindex="0" title="Открыть RFQ"`
+        : '';
+      return `<div class="card card-clickable"${clickAttrs}>
         <div class="card-row">
           <div class="card-emoji">📋</div>
           <div class="card-info">
@@ -985,14 +993,24 @@
     return html;
   }
 
-  // Делегируем клик по entity-link → quickAction
+  // Делегируем клик по entity-link / clickable card → quickAction
   document.addEventListener('click', (e) => {
-    const link = e.target.closest('.entity-link');
-    if (!link) return;
-    const action = link.dataset.action;
-    const params = JSON.parse(link.dataset.params || '{}');
-    params._label = link.textContent;
+    const target = e.target.closest('.entity-link, .card-clickable[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    if (!action) return;
+    let params = {};
+    try { params = JSON.parse(target.dataset.params || '{}'); } catch(_){}
+    params._label = (target.querySelector('.card-title')?.textContent || target.textContent || '').trim().slice(0, 80);
     if (typeof quickAction === 'function') quickAction(action, params);
+  });
+  // Поддержка клавиатуры (Enter/Space) для clickable cards
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const target = e.target.closest && e.target.closest('.card-clickable[data-action]');
+    if (!target) return;
+    e.preventDefault();
+    target.click();
   });
 
   function renderSuggestions(suggestions) {

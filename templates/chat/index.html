@@ -439,6 +439,12 @@
     /* ── Cards ── */
     .cards{display:grid;gap:10px;margin-top:12px;}
     .card{background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;padding:14px 16px;color:#1a1a1a;}
+    /* Кликабельные карточки (заказ, RFQ) — открывают детали при клике */
+    .card-clickable{cursor:pointer;transition:background .15s, border-color .15s, transform .12s;}
+    .card-clickable:hover{background:rgba(255,255,255,0.85);border-color:rgba(100,181,246,0.55);transform:translateY(-1px);}
+    .card-clickable:active{transform:translateY(0);}
+    .card-clickable:focus-visible{outline:2px solid rgba(100,181,246,0.6);outline-offset:2px;}
+    body.dark-mode .card-clickable:hover{background:rgba(255,255,255,0.08);border-color:rgba(100,181,246,0.55);}
     .card:hover{background:rgba(255,255,255,0.7);}
     .card-row{display:flex;align-items:center;gap:12px;}
     .card-emoji{font-size:24px;flex-shrink:0;}
