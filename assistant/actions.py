@@ -105,6 +105,8 @@ _OPERATOR_CORE = [
     "op_customs_dashboard", "op_customs_release",
     # Payments / Escrow dashboard
     "op_payments_dashboard",
+    # Operator analytics
+    "op_logistics_stats", "op_payments_stats",
 ]
 
 ROLE_ACTIONS = {
@@ -453,6 +455,14 @@ TOOL_SCHEMAS = {
     },
     "op_payments_dashboard": {
         "description": "Эскроу-сводка платформы: текущий holding, выплачено продавцам, возвращено покупателям, открытые холды по заказам.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "op_logistics_stats": {
+        "description": "Логистическая аналитика: KPI по статусам, средний срок доставки, разбивка по перевозчикам.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "op_payments_stats": {
+        "description": "Платежная аналитика: разбивка по payment_status, средний чек, refund rate.",
         "input_schema": {"type": "object", "properties": {}},
     },
 }

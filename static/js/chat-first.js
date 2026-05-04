@@ -66,8 +66,41 @@
   // ══════════════════════════════════════════════════════════
   function isMobile() { return window.innerWidth <= 768; }
 
+  // ── Tiny "ding" via WebAudio (no external assets) ─────────────
+  let _audioCtx = null;
+  function notifBeep() {
+    try {
+      if (localStorage.getItem('cf_notif_sound') === '0') return; // user-muted
+      _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = _audioCtx;
+      // Browsers require a user gesture to start audio; if not yet allowed, bail silently.
+      if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); }
+      const t0 = ctx.currentTime;
+      // Two short tones — a friendly "di-ding".
+      [
+        {f: 880, start: 0,    dur: 0.09, gain: 0.08},
+        {f: 1320, start: 0.09, dur: 0.13, gain: 0.07},
+      ].forEach(n => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.frequency.value = n.f;
+        osc.type = 'sine';
+        g.gain.setValueAtTime(0, t0 + n.start);
+        g.gain.linearRampToValueAtTime(n.gain, t0 + n.start + 0.01);
+        g.gain.linearRampToValueAtTime(0, t0 + n.start + n.dur);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(t0 + n.start);
+        osc.stop(t0 + n.start + n.dur + 0.02);
+      });
+    } catch (e) { /* audio unsupported — silent */ }
+  }
+  window.toggleNotifSound = function(on) {
+    localStorage.setItem('cf_notif_sound', on ? '1' : '0');
+  };
+
   // ── Realtime notification toast (WS push) ─────────────────────
   function showNotifToast(payload) {
+    notifBeep();
     try {
       let host = document.getElementById('notifToastHost');
       if (!host) {
@@ -1268,9 +1301,10 @@
       title:    'Логистика',
       subtitle: 'Отгрузки, контейнеры, SLA — управляйте через чат.',
       pills: [
-        {label:'🎛 Сводка',          action:'op_dashboard',  params:{}},
-        {label:'📋 Очередь',         action:'op_queue',      params:{filter:'open'}},
-        {label:'⏱ SLA-нарушения',   action:'op_sla_breach', params:{}},
+        {label:'🚚 Аналитика',       action:'op_logistics_stats', params:{}},
+        {label:'🎛 Сводка',          action:'op_dashboard',       params:{}},
+        {label:'📋 Очередь',         action:'op_queue',           params:{filter:'open'}},
+        {label:'⏱ SLA-нарушения',   action:'op_sla_breach',      params:{}},
       ],
     },
     operator_customs: {
@@ -1288,7 +1322,7 @@
       subtitle: 'Инвойсы, эскроу, возвраты — управляйте через чат.',
       pills: [
         {label:'💰 Эскроу',          action:'op_payments_dashboard', params:{}},
-        {label:'🎛 Общая сводка',    action:'op_dashboard',          params:{}},
+        {label:'💳 Аналитика',       action:'op_payments_stats',     params:{}},
         {label:'⏳ Ожидают резерва', action:'op_queue',              params:{filter:'awaiting_reserve'}},
         {label:'💸 Возвраты',        action:'op_queue',              params:{filter:'refund'}},
       ],

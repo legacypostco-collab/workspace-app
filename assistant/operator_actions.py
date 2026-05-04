@@ -1015,6 +1015,123 @@ def op_customs_release(params, user, role):
 # 9. Payments dashboard — эскроу + outstanding holds
 # ══════════════════════════════════════════════════════════
 
+@register("op_logistics_stats")
+def op_logistics_stats(params, user, role):
+    """Логистическая аналитика: средний срок доставки, по статусам, по перевозчикам."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from datetime import timedelta
+    from marketplace.models import Order, OrderEvent
+    from django.db.models import Count
+
+    completed = Order.objects.filter(status="completed").count()
+    delivered = Order.objects.filter(status="delivered").count()
+    in_transit = Order.objects.filter(status__in=("transit_abroad", "transit_rf", "issuing")).count()
+    on_customs = Order.objects.filter(status="customs").count()
+
+    # Средний срок «создан → доставлен» по уже завершённым (за последние 90 дней)
+    cutoff = timezone.now() - timedelta(days=90)
+    delivered_orders = Order.objects.filter(status__in=("delivered", "completed"),
+                                             created_at__gte=cutoff)
+    avg_days = None
+    if delivered_orders.exists():
+        # Берём из OrderEvent последний переход в delivered
+        deltas = []
+        for o in delivered_orders[:200]:
+            ev = OrderEvent.objects.filter(order=o, event_type="status_changed",
+                                            meta__to="delivered").order_by("-created_at").first()
+            if ev and o.created_at:
+                deltas.append((ev.created_at - o.created_at).total_seconds() / 86400)
+        if deltas:
+            avg_days = sum(deltas) / len(deltas)
+
+    # Разбивка по перевозчикам (logistics_provider) — топ 5
+    by_provider = (
+        Order.objects.values("logistics_provider")
+        .annotate(n=Count("id")).order_by("-n")[:5]
+    )
+
+    items = [
+        {"label": "Завершено", "value": str(completed), "tone": "ok"},
+        {"label": "Доставлено", "value": str(delivered)},
+        {"label": "В транзите", "value": str(in_transit), "tone": "info"},
+        {"label": "На таможне", "value": str(on_customs), "tone": "warn" if on_customs else "ok"},
+        {"label": "Ср. срок (дн)", "value": f"{avg_days:.1f}" if avg_days is not None else "—"},
+    ]
+    rows = [
+        {"title": p["logistics_provider"] or "—", "subtitle": f"{p['n']} заказов"}
+        for p in by_provider
+    ]
+    return ActionResult(
+        text=(
+            f"Логистическая сводка · завершено {completed} · в транзите {in_transit} · "
+            f"на таможне {on_customs}"
+            + (f" · средний срок {avg_days:.1f} дней." if avg_days is not None else ".")
+        ),
+        cards=[
+            {"type": "kpi_grid", "data": {"title": "🚚 Логистика", "items": items}},
+            {"type": "list", "data": {"title": "По перевозчикам",
+                "items": rows or [{"title": "Нет данных"}]}},
+        ],
+        contextual_actions=[
+            {"action": "op_sla_breach", "label": "⏱ SLA-нарушения"},
+            {"action": "op_customs_dashboard", "label": "🛂 Таможня"},
+        ],
+    )
+
+
+@register("op_payments_stats")
+def op_payments_stats(params, user, role):
+    """Платежная аналитика: разбивка по статусам, средний чек, конверсия."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from marketplace.models import Order
+    from django.db.models import Count, Sum
+
+    by_status = list(Order.objects.values("payment_status").annotate(
+        n=Count("id"), total=Sum("total_amount")).order_by("-n"))
+    total_orders = sum(b["n"] for b in by_status)
+    paid_orders = sum(b["n"] for b in by_status if b["payment_status"] in ("paid", "refunded"))
+    refunded = next((b for b in by_status if b["payment_status"] == "refunded"), {"n": 0, "total": 0})
+
+    paid_total = sum(b["total"] or 0 for b in by_status if b["payment_status"] == "paid")
+    refunded_total = refunded["total"] or 0
+    avg_check = (paid_total / paid_orders) if paid_orders else 0
+    refund_rate = (refunded["n"] / total_orders * 100) if total_orders else 0
+
+    items = [
+        {"label": "Всего заказов", "value": str(total_orders), "tone": "info"},
+        {"label": "Полностью оплачено", "value": str(paid_orders), "tone": "ok"},
+        {"label": "Возвраты", "value": f"{refunded['n']} (${refunded_total:,.0f})",
+         "tone": "warn" if refunded["n"] else "ok"},
+        {"label": "Средний чек", "value": f"${avg_check:,.0f}"},
+        {"label": "Refund rate", "value": f"{refund_rate:.1f}%",
+         "tone": "warn" if refund_rate > 5 else "ok"},
+    ]
+    payment_labels = {k: str(v) for k, v in Order.PAYMENT_STATUS_CHOICES}
+    rows = [
+        {"title": payment_labels.get(b["payment_status"], b["payment_status"]),
+         "subtitle": f"{b['n']} заказов · ${(b['total'] or 0):,.0f}"}
+        for b in by_status
+    ]
+    return ActionResult(
+        text=(
+            f"Платежи · {total_orders} заказов · полностью оплачено {paid_orders} · "
+            f"возвраты {refunded['n']} ({refund_rate:.1f}%) · ср. чек ${avg_check:,.0f}."
+        ),
+        cards=[
+            {"type": "kpi_grid", "data": {"title": "💳 Платежи", "items": items}},
+            {"type": "list", "data": {"title": "По статусам оплаты", "items": rows}},
+        ],
+        contextual_actions=[
+            {"action": "op_payments_dashboard", "label": "💰 Эскроу"},
+            {"action": "op_queue", "label": "💸 Возвраты", "params": {"filter": "refund"}},
+        ],
+    )
+
+
 @register("op_payments_dashboard")
 def op_payments_dashboard(params, user, role):
     err = _ensure_operator(role)
