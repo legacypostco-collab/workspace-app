@@ -2704,6 +2704,7 @@ def confirm_delivery(params, user, role):
     Доступно только покупателю и только когда продавец уже довёл заказ
     до статуса `delivered`.
     """
+    from decimal import Decimal
     from django.utils import timezone
     from marketplace.models import Order
 
@@ -2733,27 +2734,31 @@ def confirm_delivery(params, user, role):
     _log_event(order, "status_changed", actor=user, source="buyer",
                meta={"from": "delivered", "to": "completed", "kind": "buyer_accepted"})
 
-    # Эскроу → продавцу. Берём seller из первой OrderItem (для одно-продавцовых
-    # заказов; multi-seller потребует разбиение по позициям — TODO).
+    # Эскроу → продавцам. Multi-seller split: разносим сумму по
+    # OrderItem.part.seller пропорционально стоимости их позиций.
     release_summary = ""
     try:
         from . import payments as _pay
-        from marketplace.models import OrderItem
-        seller = (
-            OrderItem.objects.filter(order=order)
-            .select_related("part__seller").first().part.seller
-        )
-        if seller:
-            res = _pay.release_to_seller(order=order, seller=seller)
+        splits = _pay.split_by_seller(order)
+        released_total = Decimal("0")
+        for s in splits:
+            seller = s["seller"]
+            res = _pay.release_to_seller(order=order, seller=seller, amount=s["amount"])
             if res.get("ok"):
-                release_summary = f"\nПлатформа выплатила продавцу ${res['amount']:,.2f} из эскроу."
+                released_total += Decimal(str(res["amount"]))
                 _log_event(order, "operator_action", actor=user, source="system",
-                           meta={"kind": "escrow_released",
-                                 "amount": res["amount"], "to": res["to"]})
+                           meta={"kind": "escrow_released", "to": res["to"],
+                                 "amount": res["amount"], "share": s["share"]})
                 _notify(seller, kind="payment",
                         title=f"Поступление по заказу #{order.id}",
                         body=f"Покупатель подтвердил приёмку — на счёт зачислено ${res['amount']:,.2f}.",
                         url=f"/chat/?order={order.id}")
+        if released_total > 0:
+            n = len(splits)
+            release_summary = (
+                f"\nПлатформа выплатила ${released_total:,.2f} из эскроу"
+                + (f" (распределено между {n} продавцами)." if n > 1 else " продавцу.")
+            )
     except Exception:
         logger.exception("escrow release on confirm_delivery failed")
 
