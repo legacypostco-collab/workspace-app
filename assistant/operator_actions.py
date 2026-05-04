@@ -468,9 +468,9 @@ def op_resolve_dispute(params, user, role):
         refund_amount = Decimal("0")
     reason = (params.get("reason") or "").strip()
 
-    # Side-effects: статус оплаты + реальное движение эскроу
+    # Side-effects: статус оплаты + реальное движение эскроу (multi-seller split)
+    from decimal import Decimal as _D
     from . import payments as _pay
-    from marketplace.models import OrderItem
 
     money_moved = ""
     new_payment_status = order.payment_status
@@ -487,14 +487,18 @@ def op_resolve_dispute(params, user, role):
                     money_moved = f" · возврат ${res['amount']:,.2f} → покупатель"
             new_payment_status = "refund_pending"
         elif resolution == "release":
-            seller_obj = None
-            first = OrderItem.objects.filter(order=order).select_related("part__seller").first()
-            if first and first.part:
-                seller_obj = first.part.seller
-            if seller_obj:
-                res = _pay.release_to_seller(order=order, seller=seller_obj)
+            splits = _pay.split_by_seller(order)
+            released_total = _D("0")
+            for s in splits:
+                res = _pay.release_to_seller(order=order, seller=s["seller"], amount=s["amount"])
                 if res.get("ok"):
-                    money_moved = f" · выплата ${res['amount']:,.2f} → продавец"
+                    released_total += _D(str(res["amount"]))
+            if released_total > 0:
+                n = len(splits)
+                money_moved = (
+                    f" · выплата ${released_total:,.2f} → продавц"
+                    + ("ам" if n > 1 else "у")
+                )
             new_payment_status = "paid"
     except Exception:
         logger.exception("escrow move on dispute resolution failed")

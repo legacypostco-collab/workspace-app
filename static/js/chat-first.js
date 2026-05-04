@@ -98,6 +98,60 @@
     localStorage.setItem('cf_notif_sound', on ? '1' : '0');
   };
 
+  // ── Settings panel ────────────────────────────────────────────
+  function applyDarkMode(on) {
+    document.body.classList.toggle('dark-mode', !!on);
+    localStorage.setItem('cf_dark_mode', on ? '1' : '0');
+  }
+  function applyLang(lang) {
+    if (!lang) return;
+    document.cookie = 'django_language=' + lang + '; path=/; max-age=' + (60*60*24*365);
+    localStorage.setItem('cf_lang', lang);
+    // Reload to re-render server-side translations
+    location.reload();
+  }
+  function loadSettings() {
+    // Sound toggle
+    const sndEl = document.getElementById('settingNotifSound');
+    if (sndEl) sndEl.checked = localStorage.getItem('cf_notif_sound') !== '0';
+    // Dark mode
+    const darkEl = document.getElementById('settingDarkMode');
+    const darkOn = localStorage.getItem('cf_dark_mode') === '1';
+    if (darkEl) darkEl.checked = darkOn;
+    if (darkOn) document.body.classList.add('dark-mode');
+    // Lang
+    const langEl = document.getElementById('settingLang');
+    if (langEl) {
+      const m = document.cookie.match(/django_language=([a-z]+)/);
+      langEl.value = (m && m[1]) || localStorage.getItem('cf_lang') || 'ru';
+    }
+  }
+  window.onSettingChange = function(key, val) {
+    if (key === 'sound') toggleNotifSound(val);
+    else if (key === 'dark') applyDarkMode(val);
+    else if (key === 'lang') applyLang(val);
+  };
+  window.toggleSettingsPanel = function(force) {
+    const panel = document.getElementById('settingsPanel');
+    if (!panel) return;
+    const willOpen = force === undefined ? panel.hasAttribute('hidden') : !!force;
+    if (willOpen) {
+      panel.removeAttribute('hidden');
+      setTimeout(() => document.addEventListener('click', _settingsOutside, true), 0);
+    } else {
+      panel.setAttribute('hidden', '');
+      document.removeEventListener('click', _settingsOutside, true);
+    }
+  };
+  function _settingsOutside(ev) {
+    const panel = document.getElementById('settingsPanel');
+    if (!panel) return;
+    // Не закрывать клик по самой панели или по кнопке настроек
+    if (panel.contains(ev.target) || ev.target.closest('.side-settings')) return;
+    panel.setAttribute('hidden', '');
+    document.removeEventListener('click', _settingsOutside, true);
+  }
+
   // ── Realtime notification toast (WS push) ─────────────────────
   function showNotifToast(payload) {
     notifBeep();
@@ -1605,6 +1659,7 @@
       applyRoleWelcome(state.config.role);
       await Promise.all([loadConvList(), loadProjects(), loadNotifications()]);
       applyDefaultSidebar(state.convs.length > 0);
+      loadSettings();
     } catch(e) {
       console.warn('Init failed:', e);
       applyDefaultSidebar(false);

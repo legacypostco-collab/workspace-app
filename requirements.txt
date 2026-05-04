@@ -34,3 +34,6 @@ anthropic==0.97.0
 pgvector==0.4.2
 voyageai==0.2.4
 httpx==0.28.1
+
+# Payments — Stripe (опц., если нет STRIPE_SECRET_KEY — используется встроенная Wallet-эскроу)
+stripe==15.1.0

@@ -146,6 +146,11 @@ if DATABASE_URL:
 
 if not DATABASE_URL:
     if DB_NAME:
+        # Postgres/MySQL accept `connect_timeout`; SQLite uses `timeout`
+        if "sqlite" in DB_ENGINE:
+            _db_options = {"timeout": int(_env("DB_CONNECT_TIMEOUT", "60"))}
+        else:
+            _db_options = {"connect_timeout": int(_env("DB_CONNECT_TIMEOUT", "5"))}
         DATABASES = {
             "default": {
                 "ENGINE": DB_ENGINE,
@@ -155,7 +160,7 @@ if not DATABASE_URL:
                 "HOST": DB_HOST,
                 "PORT": DB_PORT,
                 "CONN_MAX_AGE": int(_env("DB_CONN_MAX_AGE", "60")),
-                "OPTIONS": {"connect_timeout": int(_env("DB_CONNECT_TIMEOUT", "5"))},
+                "OPTIONS": _db_options,
             }
         }
     else:

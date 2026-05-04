@@ -70,25 +70,25 @@ def get_platform_wallet() -> Wallet:
 # ── Stripe-like Payment Intent ────────────────────────────────
 
 def create_payment_intent(amount, *, order_id: int, payer, kind: str = "reserve") -> dict:
-    """Возвращает intent dict (status='requires_confirmation').
+    """Создаёт payment intent через активный engine.
 
-    В реальном Stripe — это создание PaymentIntent через API.
-    Тут просто id + метаданные; денег пока никто не двигал.
+    Wallet engine — чисто in-memory placeholder.
+    Stripe engine — реальный stripe.PaymentIntent.create() через API.
     """
-    return {
-        "id": "pi_" + uuid.uuid4().hex[:24],
-        "amount": float(amount),
-        "currency": "usd",
-        "order_id": order_id,
-        "payer_id": payer.id,
-        "kind": kind,
-        "status": "requires_confirmation",
-        "created_at": timezone.now().isoformat(),
-    }
+    from .payments_engines import get_engine
+    intent = get_engine().create_intent(Decimal(str(amount)), order_id=order_id, payer=payer, kind=kind)
+    intent.setdefault("created_at", timezone.now().isoformat())
+    return intent
+
+
+def confirm_payment_intent(intent: dict, payer) -> dict:
+    """Подтверждение intent → реальное движение денег через активный engine."""
+    from .payments_engines import get_engine
+    return get_engine().confirm_intent(intent, payer)
 
 
 @transaction.atomic
-def confirm_payment_intent(intent: dict, payer) -> dict:
+def _wallet_confirm_intent(intent: dict, payer) -> dict:
     """Атомарно: списание у покупателя → зачисление в эскроу платформы.
 
     Соответствует stripe.PaymentIntent.confirm() в Stripe Connect режиме
@@ -126,9 +126,75 @@ def confirm_payment_intent(intent: dict, payer) -> dict:
     return intent
 
 
-@transaction.atomic
+def split_by_seller(order) -> list[dict]:
+    """Разбивка эскроу-суммы заказа по продавцам пропорционально их позициям.
+
+    Возвращает [{"seller": user, "amount": Decimal, "items": [item_id,...]}].
+    Сумма всех amount = escrow_balance_for_order(order.id).
+
+    Для multi-supplier заказов (RFQ-консолидация). Если в заказе один
+    продавец — вернёт список из одного элемента. Если у части позиций
+    нет продавца (старые seed-данные) — они исключаются из распределения.
+    """
+    from marketplace.models import OrderItem
+    items = list(OrderItem.objects.filter(order=order).select_related("part__seller"))
+    by_seller: dict[int, dict] = {}
+    seller_obj_by_id: dict[int, object] = {}
+
+    base_total = Decimal("0")
+    for it in items:
+        seller = it.part.seller if it.part else None
+        if not seller:
+            continue
+        line_total = Decimal(str(it.unit_price or 0)) * Decimal(it.quantity or 0)
+        base_total += line_total
+        bucket = by_seller.setdefault(seller.id, {"line_total": Decimal("0"), "items": []})
+        bucket["line_total"] += line_total
+        bucket["items"].append(it.id)
+        seller_obj_by_id[seller.id] = seller
+
+    escrow = escrow_balance_for_order(order.id)
+    if base_total <= 0 or escrow <= 0:
+        return []
+
+    out = []
+    accumulated = Decimal("0")
+    seller_ids = list(by_seller.keys())
+    for i, sid in enumerate(seller_ids):
+        bucket = by_seller[sid]
+        share = (bucket["line_total"] / base_total)
+        # Последнему продавцу доплачиваем разницу, чтобы не потерять копейки на округлении
+        if i == len(seller_ids) - 1:
+            amount = (escrow - accumulated).quantize(Decimal("0.01"))
+        else:
+            amount = (escrow * share).quantize(Decimal("0.01"))
+            accumulated += amount
+        out.append({
+            "seller": seller_obj_by_id[sid],
+            "amount": amount,
+            "items": bucket["items"],
+            "share": float(share),
+        })
+    return out
+
+
 def release_to_seller(*, order, seller, amount=None) -> dict:
-    """Перевод эскроу → seller. Без amount — высвобождает весь баланс по заказу."""
+    """Перевод эскроу → seller. Без amount — высвобождает весь баланс по заказу.
+
+    Делегирует активному engine. Для Stripe режима amount обязателен.
+    """
+    if amount is None:
+        amount = escrow_balance_for_order(order.id)
+    amount = Decimal(str(amount))
+    if amount <= 0:
+        return {"ok": False, "reason": "ничего не удержано", "amount": 0}
+    from .payments_engines import get_engine
+    return get_engine().release_to_seller(order=order, seller=seller, amount=amount)
+
+
+@transaction.atomic
+def _wallet_release_to_seller(*, order, seller, amount: Decimal) -> dict:
+    """Wallet-engine реализация: эскроу → seller wallet."""
     plat = get_platform_wallet()
     if amount is None:
         amount = escrow_balance_for_order(order.id)
@@ -157,14 +223,20 @@ def release_to_seller(*, order, seller, amount=None) -> dict:
     return {"ok": True, "amount": float(amount), "to": seller.username}
 
 
-@transaction.atomic
 def refund_to_buyer(*, order, buyer, amount=None) -> dict:
-    plat = get_platform_wallet()
+    """Возврат эскроу → buyer. Делегирует активному engine."""
     if amount is None:
         amount = escrow_balance_for_order(order.id)
     amount = Decimal(str(amount))
     if amount <= 0:
         return {"ok": False, "reason": "ничего не удержано", "amount": 0}
+    from .payments_engines import get_engine
+    return get_engine().refund_to_buyer(order=order, buyer=buyer, amount=amount)
+
+
+@transaction.atomic
+def _wallet_refund_to_buyer(*, order, buyer, amount: Decimal) -> dict:
+    plat = get_platform_wallet()
     if plat.balance < amount:
         raise InsufficientEscrow(f"escrow has ${plat.balance}, need ${amount}")
 

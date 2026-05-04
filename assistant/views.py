@@ -455,14 +455,22 @@ class PaymentsWebhookView(APIView):
 
     Stripe-style webhook receiver. Принимает JSON-event с полями
     {type, data} и роутит через assistant.payments.dispatch_webhook().
-    Никакой подписи нет — для перехода на реальный Stripe нужно добавить
-    проверку Stripe-Signature через webhook secret.
+
+    HMAC: если задан STRIPE_WEBHOOK_SECRET — проверяем Stripe-Signature.
+    Если не задан — demo-режим, верим на слово (фронт-демо без реального
+    Stripe). Это безопасно потому что body всё равно идёт через
+    dispatch_webhook → registered handlers, без права писать в БД от
+    лица пользователя.
     """
-    permission_classes = []  # webhooks приходят без юзера; в проде — IP/HMAC
-    authentication_classes = []  # отключаем session/CSRF, как у Stripe
+    permission_classes = []
+    authentication_classes = []
 
     def post(self, request):
         from .payments import dispatch_webhook
+        from .payments_engines import verify_webhook_signature
+        signature = request.META.get("HTTP_STRIPE_SIGNATURE", "")
+        if not verify_webhook_signature(request.body, signature):
+            return Response({"received": False, "error": "invalid signature"}, status=400)
         result = dispatch_webhook(request.data or {})
         return Response(result)
 
