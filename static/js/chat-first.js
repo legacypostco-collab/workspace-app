@@ -1231,18 +1231,24 @@
       // Иначе — не уходим, превращаем в обычный action call (если action есть).
       if (!action) return;
     }
-    addMessage('action', '▸ ' + (params._label || action));
-    addTyping(pickIntent(action));
+    // Не пишем ярлык кнопки в чат — это UI affordance, а не сообщение юзера.
+    // Открываем conv view (чтобы welcome-stage не моргал) и
+    // отложенно (>=400ms) показываем typing-indicator: фастовые actions
+    // (read из БД, кэш) успевают вернуться раньше — спиннер вообще не появится.
+    showConv();
+    const typingDelay = setTimeout(() => addTyping(pickIntent(action)), 400);
     try {
       const r = await api('/api/assistant/action/', {
         method:'POST',
         body: JSON.stringify({conversation_id: state.convId, action, params}),
       });
+      clearTimeout(typingDelay);
       removeTyping();
       setConvId(r.conversation_id || state.convId);
       addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || [], r.message_id || null, r.suggestions || [], r.contextual_actions || []);
       loadConvList();
     } catch(err) {
+      clearTimeout(typingDelay);
       removeTyping();
       addMessage('assistant', '⚠️ ' + err.message);
     }
