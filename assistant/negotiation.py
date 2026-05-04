@@ -46,6 +46,100 @@ def _next_round(rfq, seller_id: int) -> int:
 
 
 # ══════════════════════════════════════════════════════════
+# 0. send_rfq_to_suppliers — buyer рассылает RFQ продавцам
+# ══════════════════════════════════════════════════════════
+
+@register("send_rfq_to_suppliers")
+def send_rfq_to_suppliers(params, user, role):
+    """Buyer разослает RFQ кандидатам-поставщикам.
+
+    Кандидаты: верифицированные KYB-продавцы (status=verified). В demo
+    fallback — всех с role=seller. Каждому создаём Notification с
+    kind='rfq' (durable channels потом добавляют email/telegram).
+    """
+    from django.contrib.auth import get_user_model
+    from marketplace.models import RFQ, CompanyVerification
+
+    confirmed = bool(params.get("confirmed"))
+    try:
+        rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
+    except (RFQ.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="RFQ не найден.")
+
+    if rfq.created_by_id != user.id and role != "admin":
+        return ActionResult(text="Разослать RFQ может только его автор.")
+    if rfq.status == "cancelled":
+        return ActionResult(text=f"RFQ #{rfq.id} отменён — нельзя рассылать.")
+
+    User = get_user_model()
+    # Верифицированные → приоритет; демо-fallback на всех seller-профилей
+    verified_seller_ids = set(
+        CompanyVerification.objects.filter(status="verified")
+        .values_list("user_id", flat=True)
+    )
+    candidates = list(
+        User.objects.filter(profile__role="seller", is_active=True)
+        .exclude(username="__platform_escrow__")[:20]
+    )
+    if not candidates:
+        return ActionResult(text="⚠️ В системе пока нет активных поставщиков.")
+
+    n_verified = sum(1 for s in candidates if s.id in verified_seller_ids)
+
+    # Шаг 1: preview
+    if not confirmed:
+        items_count = rfq.items.count()
+        return ActionResult(
+            text=f"📨 Разослать RFQ #{rfq.id} поставщикам?",
+            cards=[{"type": "draft", "data": {
+                "title": f"📨 Рассылка RFQ #{rfq.id}",
+                "rows": [
+                    {"label": "Позиций", "value": str(items_count), "primary": True},
+                    {"label": "Получателей", "value": f"{len(candidates)} поставщиков"},
+                    {"label": "Из них верифицированных",
+                     "value": f"{n_verified} ({n_verified*100//max(len(candidates),1)}%)",
+                     "primary": True},
+                ],
+                "warnings": [
+                    "Каждый получит уведомление (in-app + email/telegram если включены).",
+                    "Котировки будут приходить — следите за вкладкой RFQ.",
+                ],
+                "confirm_action": "send_rfq_to_suppliers",
+                "confirm_label": f"📨 Разослать {len(candidates)} поставщикам",
+                "confirm_params": {"rfq_id": rfq.id, "confirmed": True},
+                "cancel_label": "Отмена",
+            }}],
+        )
+
+    # Шаг 2: рассылка
+    sent = 0
+    for seller in candidates:
+        try:
+            _notify(
+                seller, kind="rfq",
+                title=f"Новый RFQ #{rfq.id} от {rfq.customer_name or rfq.created_by.username}",
+                body=f"{rfq.items.count()} позиций · {rfq.urgency or 'standard'}. Откройте чтобы ответить котировкой.",
+                url=f"/chat/rfq/{rfq.id}/?source=invite",
+            )
+            sent += 1
+        except Exception:
+            logger.exception("send_rfq notify failed for seller %s", seller.id)
+
+    return ActionResult(
+        text=(
+            f"✓ RFQ #{rfq.id} разослан {sent} поставщикам ({n_verified} верифицированных).\n"
+            f"Котировки будут приходить — следите за уведомлениями."
+        ),
+        contextual_actions=[
+            {"action": "view_rfq_quotes", "label": "📊 Открытые котировки",
+             "params": {"rfq_id": rfq.id}},
+            {"action": "open_url", "label": "← Назад к RFQ",
+             "params": {"_url": f"/chat/rfq/{rfq.id}/"}},
+        ],
+    )
+
+
+# ══════════════════════════════════════════════════════════
 # 1. submit_quote — продавец создаёт котировку
 # ══════════════════════════════════════════════════════════
 

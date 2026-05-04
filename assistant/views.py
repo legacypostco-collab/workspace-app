@@ -376,25 +376,61 @@ class RFQDetailView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    # Условные FX rates → USD. В проде брать из ЦБ или Stripe FX.
+    _FX_TO_USD = {
+        "USD": 1.0, "EUR": 1.08, "RUB": 0.011, "CNY": 0.135,
+        "JPY": 0.0067, "GBP": 1.27,
+    }
+
     def get(self, request, rfq_id):
-        from marketplace.models import RFQ
+        from decimal import Decimal
+        from marketplace.models import RFQ, Quote, Notification
         rfq = get_object_or_404(RFQ, id=rfq_id)
+
         items = []
+        total_usd = 0.0
         for it in rfq.items.select_related("matched_part__brand").all():
             mp = it.matched_part
+            price = float(mp.price) if (mp and mp.price is not None) else None
+            ccy = (getattr(mp, "currency", "USD") if mp else "USD") or "USD"
+            qty = it.quantity or 1
+            if price is not None:
+                total_usd += price * qty * self._FX_TO_USD.get(ccy.upper(), 1.0)
             items.append({
                 "article": it.query,
-                "qty": it.quantity,
+                "qty": qty,
                 "state": "matched" if mp else ("no_match" if it.state == "needs_review" else "pending"),
                 "match": mp.title if mp else None,
                 "brand": (mp.brand.name if (mp and mp.brand) else None),
                 "supplier": getattr(mp, "supplier_name", None) if mp else None,
-                "price": float(mp.price) if (mp and mp.price is not None) else None,
-                "currency": getattr(mp, "currency", "USD") if mp else "USD",
+                "price": price,
+                "currency": ccy,
             })
+
+        # Quotes-аналитика
+        quotes = Quote.objects.filter(rfq=rfq, direction="seller_to_buyer")
+        quotes_count = quotes.values_list("seller_id", flat=True).distinct().count()
+        # Supplier reach: сколько уведомлений было разослано
+        sent_count = Notification.objects.filter(
+            kind="rfq", url__contains=f"rfq={rfq.id}",
+        ).values_list("user_id", flat=True).distinct().count()
+
+        # Состояние «что делать дальше»
+        if rfq.status == "cancelled":
+            stage = "cancelled"
+        elif rfq.status == "needs_review":
+            stage = "needs_review"
+        elif quotes_count > 0:
+            stage = "quotes_received"  # есть котировки — выбирать
+        elif sent_count > 0:
+            stage = "awaiting_quotes"  # разослан, ждём
+        else:
+            stage = "draft"            # создан, не разослан
+
         return Response({
             "id": rfq.id,
             "status": rfq.status,
+            "stage": stage,
             "mode": rfq.mode,
             "urgency": rfq.urgency,
             "customer_name": rfq.customer_name,
@@ -402,6 +438,10 @@ class RFQDetailView(APIView):
             "notes": rfq.notes,
             "created_at": rfq.created_at.isoformat() if rfq.created_at else None,
             "items": items,
+            "total_usd": round(total_usd, 2),
+            "quotes_count": quotes_count,
+            "sent_count": sent_count,
+            "is_owner": rfq.created_by_id == request.user.id,
         })
 
 

@@ -96,13 +96,95 @@
     return 'pending';
   }
 
+  // Status-banner: главное действие зависит от stage'а RFQ
+  function buildStageBanner(d) {
+    const stage = d.stage || 'draft';
+    const sent = d.sent_count || 0;
+    const quotes = d.quotes_count || 0;
+    const isOwner = d.is_owner !== false;
+    const rfqId = d.id;
+
+    if (stage === 'cancelled') {
+      return {
+        tone: 'gray',
+        emoji: '✗',
+        title: 'RFQ отменён',
+        sub: 'Этот запрос был отменён. Создайте новый.',
+        cta: null,
+      };
+    }
+    if (stage === 'needs_review') {
+      return {
+        tone: 'warn',
+        emoji: '⚠️',
+        title: 'Требует проверки оператором',
+        sub: 'Часть позиций нужно вручную сматчить. Оператор скоро свяжется.',
+        cta: null,
+      };
+    }
+    if (stage === 'quotes_received') {
+      return {
+        tone: 'green',
+        emoji: '💬',
+        title: `Получено ${quotes} котировок`,
+        sub: 'Сравните оффера и выберите лучший — продавец примется за заказ.',
+        cta: isOwner ? {
+          label: `📊 Просмотреть котировки (${quotes})`,
+          href: `/chat/?action=view_rfq_quotes&rfq_id=${rfqId}`,
+          action: 'view_rfq_quotes',
+          params: {rfq_id: rfqId},
+        } : null,
+      };
+    }
+    if (stage === 'awaiting_quotes') {
+      return {
+        tone: 'blue',
+        emoji: '⏳',
+        title: `Запрос разослан · ждём котировки`,
+        sub: `Разослано ${sent} поставщикам · 0 ответов. Обычно поставщики отвечают за 6–24 часа.`,
+        cta: isOwner ? {
+          label: '📨 Разослать ещё поставщикам',
+          action: 'send_rfq_to_suppliers',
+          params: {rfq_id: rfqId},
+        } : null,
+      };
+    }
+    // draft / new — RFQ создан, не разослан
+    return {
+      tone: 'orange',
+      emoji: '📨',
+      title: 'RFQ создан, но ещё не разослан',
+      sub: 'Чтобы получить котировки — отправьте запрос поставщикам.',
+      cta: isOwner ? {
+        label: '📨 Разослать поставщикам',
+        action: 'send_rfq_to_suppliers',
+        params: {rfq_id: rfqId},
+      } : null,
+      primary: true,  // Большой акцентный CTA
+    };
+  }
+
+  function renderStageBanner(b) {
+    const ctaHtml = b.cta
+      ? `<a class="banner-cta ${b.primary ? 'primary' : ''}" href="/chat/?run=${esc(b.cta.action)}&rfq_id=${esc(b.cta.params.rfq_id)}">${esc(b.cta.label)} →</a>`
+      : '';
+    return `<div class="stage-banner stage-${b.tone}">
+      <div class="stage-emoji">${b.emoji}</div>
+      <div class="stage-text">
+        <div class="stage-title">${esc(b.title)}</div>
+        <div class="stage-sub">${esc(b.sub)}</div>
+      </div>
+      ${ctaHtml}
+    </div>`;
+  }
+
   function renderRFQ(d) {
     const items = d.items || [];
-    const total = items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty) || 1), 0);
     const matchedCount = items.filter(it => (it.state === 'matched' || it.state === 'quoted')).length;
     const noMatchCount = items.filter(it => it.state === 'no_match').length;
-    const supplierSet = new Set(items.map(it => it.supplier).filter(Boolean));
     const status = d.status || 'new';
+    const totalUsd = Number(d.total_usd || 0);
+    const banner = buildStageBanner(d);
 
     const html = `
       <div class="crumbs">
@@ -120,32 +202,35 @@
           <div class="rfq-meta">
             <span><span class="rfq-meta-strong">${esc(d.customer_name || '—')}</span></span>
             ${d.created_at ? `<span>${esc(fmtDate(d.created_at))}</span>` : ''}
-            ${d.mode ? `<span>Mode: <span class="rfq-meta-strong">${esc((d.mode || '').toUpperCase())}</span></span>` : ''}
-            ${d.urgency ? `<span>Urgency: <span class="rfq-meta-strong">${esc(d.urgency)}</span></span>` : ''}
+            ${d.urgency && d.urgency !== 'standard' ? `<span>Срочность: <span class="rfq-meta-strong">${esc(d.urgency)}</span></span>` : ''}
           </div>
         </div>
-        <div class="rfq-actions">
-          <button class="rfq-btn" onclick="window.history.back()">Назад</button>
-          <button class="rfq-btn primary" onclick="window.location.href='/chat/'">Обсудить в чате</button>
-        </div>
+      </div>
+
+      ${renderStageBanner(banner)}
+
+      <div class="hero-total">
+        <div class="hero-total-label">Ориентировочный бюджет (USD)</div>
+        <div class="hero-total-val">${fmtMoney(totalUsd, 'USD')}</div>
+        <div class="hero-total-sub">${items.length} позиций · цены конвертированы из исходных валют поставщиков</div>
       </div>
 
       <div class="kpi-grid">
         <div class="kpi">
-          <div class="kpi-label">Всего позиций</div>
+          <div class="kpi-label">Позиций</div>
           <div class="kpi-value"><span class="kpi-num">${items.length}</span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">С котировками</div>
+          <div class="kpi-label">Сматчено</div>
           <div class="kpi-value"><span class="kpi-num kpi-good">${matchedCount}</span><span class="kpi-unit">из ${items.length}</span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">Поставщиков</div>
-          <div class="kpi-value"><span class="kpi-num">${supplierSet.size}</span></div>
+          <div class="kpi-label">Разослано</div>
+          <div class="kpi-value"><span class="kpi-num">${d.sent_count || 0}</span><span class="kpi-unit">пост.</span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">Без совпадений</div>
-          <div class="kpi-value"><span class="kpi-num ${noMatchCount ? 'kpi-warn' : ''}">${noMatchCount}</span></div>
+          <div class="kpi-label">Котировок</div>
+          <div class="kpi-value"><span class="kpi-num ${(d.quotes_count || 0) > 0 ? 'kpi-good' : ''}">${d.quotes_count || 0}</span></div>
         </div>
       </div>
 
@@ -170,9 +255,9 @@
         }
       </div>
 
-      <div class="total-bar">
-        <span class="total-label">Итого</span>
-        <span class="total-val">${fmtMoney(total, items[0]?.currency || 'USD')}</span>
+      <div class="rfq-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:24px;justify-content:flex-end;">
+        <button class="rfq-btn" onclick="window.history.back()">← Назад</button>
+        <button class="rfq-btn" onclick="window.location.href='/chat/'">💬 Обсудить в чате</button>
       </div>
     `;
     $('rfqContent').innerHTML = html;

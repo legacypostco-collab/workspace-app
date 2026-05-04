@@ -1753,6 +1753,35 @@
       else if (state.convs && state.convs.length) target = state.convs[0].id;
       if (target) {
         await window.openConv(target);
+        // Если есть ?run=<action> — выполняем после загрузки conv
+        const runAction = params.get('run');
+        if (runAction) {
+          const actionParams = {};
+          for (const [k, v] of params.entries()) {
+            if (k === 'run' || k === 'conv') continue;
+            // Числовые значения (rfq_id, order_id, quote_id) парсим в int
+            const n = parseInt(v, 10);
+            actionParams[k] = (String(n) === v && !isNaN(n)) ? n : v;
+          }
+          setTimeout(() => quickAction(runAction, actionParams), 150);
+          // Очистим url чтобы при F5 не повторялось
+          history.replaceState({}, '', '/chat/');
+        }
+        return;
+      }
+      // Welcome stage — но если ?run= задан, тоже выполняем
+      const runAction = params.get('run');
+      if (runAction) {
+        connectWS();
+        const actionParams = {};
+        for (const [k, v] of params.entries()) {
+          if (k === 'run') continue;
+          const n = parseInt(v, 10);
+          actionParams[k] = (String(n) === v && !isNaN(n)) ? n : v;
+        }
+        setTimeout(() => quickAction(runAction, actionParams), 200);
+        history.replaceState({}, '', '/chat/');
+        updateHeroIcon();
         return;
       }
     } catch(e){ console.warn('conv resolve failed', e); }

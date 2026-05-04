@@ -71,6 +71,7 @@ _BUYER_ACTIONS = [
     "submit_bank", "submit_director", "submit_for_review", "kyb_status",
     # Negotiation (buyer side)
     "view_rfq_quotes", "view_quote", "accept_quote", "counter_offer", "decline_quote",
+    "send_rfq_to_suppliers",
     # Notification preferences (durable channels)
     "notif_prefs", "notif_set_email", "notif_set_kinds", "notif_link_telegram",
     # Auth — 2FA + API tokens (всем доступно)
@@ -671,6 +672,14 @@ TOOL_SCHEMAS = {
             "type": "object",
             "properties": {"quote_id": _INT},
             "required": ["quote_id"],
+        },
+    },
+    "send_rfq_to_suppliers": {
+        "description": "Разослать RFQ кандидатам-поставщикам (верифицированные KYB приоритетно). DraftCard preview → confirm.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"rfq_id": _INT, "confirmed": _BOOL},
+            "required": ["rfq_id"],
         },
     },
     # ── Durable notification preferences ────────────────────

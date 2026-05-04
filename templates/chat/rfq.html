@@ -90,6 +90,33 @@
     .rfq-btn.primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
     .rfq-btn.primary:hover{background:#000;}
 
+    /* ── Stage banner — главное действие на этой странице ── */
+    .stage-banner{display:flex;align-items:center;gap:18px;padding:22px 26px;border-radius:16px;margin-bottom:18px;backdrop-filter:blur(10px);}
+    .stage-emoji{font-size:36px;flex-shrink:0;line-height:1;}
+    .stage-text{flex:1;min-width:0;}
+    .stage-title{font-family:'Golos Text',sans-serif;font-weight:800;font-size:20px;color:rgba(0,0,0,0.92);margin-bottom:4px;}
+    .stage-sub{font-size:13px;color:rgba(0,0,0,0.6);line-height:1.45;}
+    .stage-orange{background:linear-gradient(135deg,rgba(254,202,87,0.55),rgba(255,140,90,0.4));border:1px solid rgba(255,140,90,0.4);}
+    .stage-blue{background:linear-gradient(135deg,rgba(168,184,216,0.55),rgba(186,200,230,0.5));border:1px solid rgba(100,181,246,0.4);}
+    .stage-green{background:linear-gradient(135deg,rgba(187,247,208,0.7),rgba(134,239,172,0.55));border:1px solid rgba(34,197,94,0.45);}
+    .stage-warn{background:linear-gradient(135deg,rgba(254,215,170,0.7),rgba(251,191,36,0.45));border:1px solid rgba(245,158,11,0.5);}
+    .stage-gray{background:rgba(229,231,235,0.7);border:1px solid rgba(0,0,0,0.08);}
+    .banner-cta{display:inline-flex;align-items:center;padding:12px 22px;background:rgba(255,255,255,0.85);border:1px solid rgba(0,0,0,0.1);border-radius:24px;font-weight:700;font-size:14px;color:#1a1a1a;flex-shrink:0;text-decoration:none;transition:transform .12s, background .12s;}
+    .banner-cta:hover{background:#fff;transform:translateY(-1px);text-decoration:none;}
+    .banner-cta.primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a;font-size:15px;padding:14px 26px;}
+    .banner-cta.primary:hover{background:#000;}
+    @media(max-width:768px){
+      .stage-banner{flex-direction:column;align-items:stretch;text-align:center;padding:18px;gap:14px;}
+      .stage-emoji{font-size:30px;}
+      .banner-cta{justify-content:center;}
+    }
+
+    /* ── Hero total — большой бюджет ── */
+    .hero-total{padding:24px 28px;background:rgba(255,255,255,0.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.55);border-radius:16px;margin-bottom:22px;}
+    .hero-total-label{font-size:11px;font-weight:700;color:rgba(0,0,0,0.55);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
+    .hero-total-val{font-family:'Golos Text',sans-serif;font-weight:800;font-size:40px;color:rgba(0,0,0,0.92);line-height:1;letter-spacing:-0.02em;}
+    .hero-total-sub{font-size:12px;color:rgba(0,0,0,0.5);margin-top:8px;}
+
     /* ── KPI cards ── */
     .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:28px;}
     .kpi{padding:18px 20px;background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;}
