@@ -27,3 +27,8 @@ class AssistantConfig(AppConfig):
             from . import onboarding  # noqa
         except ImportError:
             pass
+        # Регистрируем negotiation actions (Quote multi-round)
+        try:
+            from . import negotiation  # noqa
+        except ImportError:
+            pass

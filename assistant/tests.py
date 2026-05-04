@@ -685,3 +685,221 @@ class OnboardingKybTests(TestCase):
         from .actions import kyb_gate
         # seller-action в роли operator не блокируется (operator не нуждается в KYB)
         self.assertIsNone(kyb_gate("ship_order", "operator", self.seller))
+
+
+class NegotiationFlowTests(TestCase):
+    """RFQ → Quote → counter → accept end-to-end."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import (
+            Brand, Category, Part, RFQ, RFQItem, CompanyVerification,
+        )
+        from decimal import Decimal as D
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        U = get_user_model()
+        self.buyer = U.objects.create_user(username=f"t_neg_b_{u}", password="x")
+        self.seller_a = U.objects.create_user(username=f"t_neg_sa_{u}", password="x")
+        self.seller_b = U.objects.create_user(username=f"t_neg_sb_{u}", password="x")
+        # Verify оба продавца чтобы KYB-gate их не блокировал
+        for s in (self.seller_a, self.seller_b):
+            CompanyVerification.objects.create(
+                user=s, legal_name=f"Co {s.id}", inn="1234567890", status="verified",
+            )
+        cat = Category.objects.create(name=f"c-{u}", slug=f"c-{u}")
+        brand = Brand.objects.create(name=f"b-{u}", slug=f"b-{u}")
+        self.part1 = Part.objects.create(
+            title=f"Pump-{u}", oem_number=f"P-{u}", slug=f"pump-{u}",
+            category=cat, brand=brand, price=D("1000"),
+            seller=self.seller_a, is_active=True,
+        )
+        self.part2 = Part.objects.create(
+            title=f"Filter-{u}", oem_number=f"F-{u}", slug=f"filter-{u}",
+            category=cat, brand=brand, price=D("100"),
+            seller=self.seller_a, is_active=True,
+        )
+        self.rfq = RFQ.objects.create(
+            created_by=self.buyer, customer_name="Buyer Co",
+            customer_email="b@x.t",
+        )
+        self.rfq_item1 = RFQItem.objects.create(
+            rfq=self.rfq, query="Pump", quantity=2, matched_part=self.part1,
+        )
+        self.rfq_item2 = RFQItem.objects.create(
+            rfq=self.rfq, query="Filter", quantity=10, matched_part=self.part2,
+        )
+
+    def test_submit_quote_creates_quote_with_items(self):
+        from .negotiation import submit_quote
+        from marketplace.models import Quote, QuoteItem
+        r = submit_quote({
+            "rfq_id": self.rfq.id,
+            f"price_{self.rfq_item1.id}": "950",
+            f"price_{self.rfq_item2.id}": "90",
+            "delivery_days": 10, "valid_days": 7,
+            "confirmed": True,
+        }, self.seller_a, "seller")
+        self.assertIn("✓", r.text)
+        q = Quote.objects.filter(rfq=self.rfq, seller=self.seller_a).first()
+        self.assertIsNotNone(q)
+        # 2 × 950 + 10 × 90 = 1900 + 900 = 2800
+        self.assertEqual(q.total_amount, Decimal("2800.00"))
+        self.assertEqual(q.round_number, 1)
+        self.assertEqual(q.delivery_days, 10)
+        self.assertEqual(q.items.count(), 2)
+
+    def test_submit_quote_form_step_returns_form(self):
+        from .negotiation import submit_quote
+        r = submit_quote({"rfq_id": self.rfq.id}, self.seller_a, "seller")
+        self.assertTrue(any(c["type"] == "form" for c in r.cards))
+
+    def test_submit_quote_blocks_unverified_seller(self):
+        from .negotiation import submit_quote
+        from marketplace.models import CompanyVerification
+        # сбросить verified на rejected
+        kyb = CompanyVerification.objects.get(user=self.seller_a)
+        kyb.status = "rejected"; kyb.save()
+        r = submit_quote({"rfq_id": self.rfq.id, "confirmed": True,
+                          f"price_{self.rfq_item1.id}": "100"},
+                         self.seller_a, "seller")
+        self.assertIn("верифицированным", r.text)
+        # vs verified
+        kyb.status = "verified"; kyb.save()
+        r2 = submit_quote({"rfq_id": self.rfq.id, "confirmed": True,
+                           f"price_{self.rfq_item1.id}": "100"},
+                          self.seller_a, "seller")
+        self.assertIn("✓", r2.text)
+
+    def test_view_rfq_quotes_orders_by_total_asc(self):
+        from .negotiation import submit_quote, view_rfq_quotes
+        # seller_a: 1100*2 + 100*10 = 3200
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1100",
+            f"price_{self.rfq_item2.id}": "100", "confirmed": True,
+        }, self.seller_a, "seller")
+        # seller_b: 900*2 + 80*10 = 2600 (cheaper)
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "900",
+            f"price_{self.rfq_item2.id}": "80", "confirmed": True,
+        }, self.seller_b, "seller")
+        r = view_rfq_quotes({"rfq_id": self.rfq.id}, self.buyer, "buyer")
+        items = r.cards[0]["data"]["items"]
+        self.assertEqual(len(items), 2)
+        # Самый дешёвый первый
+        self.assertIn(self.seller_b.username, items[0]["title"])
+        self.assertIn("$2,600", items[0]["title"])
+
+    def test_view_rfq_quotes_blocks_non_owner(self):
+        from .negotiation import view_rfq_quotes
+        r = view_rfq_quotes({"rfq_id": self.rfq.id}, self.seller_a, "seller")
+        self.assertIn("только заказчик", r.text)
+
+    def test_accept_quote_creates_order(self):
+        from .negotiation import submit_quote, accept_quote
+        from marketplace.models import Quote, Order
+        from decimal import Decimal as D
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
+            f"price_{self.rfq_item2.id}": "100", "confirmed": True,
+        }, self.seller_a, "seller")
+        q = Quote.objects.filter(rfq=self.rfq).first()
+        # step 1
+        r1 = accept_quote({"quote_id": q.id}, self.buyer, "buyer")
+        self.assertTrue(any(c["type"] == "draft" for c in r1.cards))
+        # step 2
+        r2 = accept_quote({"quote_id": q.id, "confirmed": True}, self.buyer, "buyer")
+        self.assertIn("создан заказ", r2.text)
+        order = Order.objects.filter(buyer=self.buyer).order_by("-id").first()
+        self.assertIsNotNone(order)
+        # 2 × 1000 + 10 × 100 = 3000
+        self.assertEqual(order.total_amount, D("3000.00"))
+        self.assertEqual(order.items.count(), 2)
+        q.refresh_from_db()
+        self.assertEqual(q.status, "accepted")
+
+    def test_accept_quote_auto_declines_others(self):
+        from .negotiation import submit_quote, accept_quote
+        from marketplace.models import Quote
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
+            f"price_{self.rfq_item2.id}": "100", "confirmed": True,
+        }, self.seller_a, "seller")
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "950",
+            f"price_{self.rfq_item2.id}": "95", "confirmed": True,
+        }, self.seller_b, "seller")
+        winner = Quote.objects.filter(rfq=self.rfq, seller=self.seller_b).first()
+        accept_quote({"quote_id": winner.id, "confirmed": True}, self.buyer, "buyer")
+        loser = Quote.objects.filter(rfq=self.rfq, seller=self.seller_a).first()
+        loser.refresh_from_db()
+        self.assertEqual(loser.status, "declined")
+
+    def test_counter_offer_creates_round_2_buyer_to_seller(self):
+        from .negotiation import submit_quote, counter_offer
+        from marketplace.models import Quote
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
+            f"price_{self.rfq_item2.id}": "100", "confirmed": True,
+        }, self.seller_a, "seller")
+        q = Quote.objects.filter(rfq=self.rfq).first()
+        qi1 = q.items.filter(rfq_item=self.rfq_item1).first()
+        qi2 = q.items.filter(rfq_item=self.rfq_item2).first()
+        r = counter_offer({
+            "quote_id": q.id, "confirmed": True,
+            f"price_{qi1.id}": "850", f"price_{qi2.id}": "85",
+            "message": "Можем дешевле?",
+        }, self.buyer, "buyer")
+        self.assertIn("Контр-оффер", r.text)
+        # Original → countered
+        q.refresh_from_db()
+        self.assertEqual(q.status, "countered")
+        # New round_2 quote с direction=buyer_to_seller
+        new = Quote.objects.filter(rfq=self.rfq, round_number=2).first()
+        self.assertIsNotNone(new)
+        self.assertEqual(new.direction, "buyer_to_seller")
+        self.assertEqual(new.parent_quote_id, q.id)
+        # 2 × 850 + 10 × 85 = 2550
+        self.assertEqual(new.total_amount, Decimal("2550.00"))
+
+    def test_counter_offer_blocked_for_finalized(self):
+        from .negotiation import submit_quote, counter_offer, mark_quote_final
+        from marketplace.models import Quote
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
+            f"price_{self.rfq_item2.id}": "100", "confirmed": True,
+        }, self.seller_a, "seller")
+        q = Quote.objects.filter(rfq=self.rfq).first()
+        mark_quote_final({"quote_id": q.id}, self.seller_a, "seller")
+        r = counter_offer({"quote_id": q.id}, self.buyer, "buyer")
+        self.assertIn("финальная", r.text)
+
+    def test_decline_quote_marks_status(self):
+        from .negotiation import submit_quote, decline_quote
+        from marketplace.models import Quote
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
+            f"price_{self.rfq_item2.id}": "100", "confirmed": True,
+        }, self.seller_a, "seller")
+        q = Quote.objects.filter(rfq=self.rfq).first()
+        r = decline_quote({"quote_id": q.id}, self.buyer, "buyer")
+        self.assertIn("✓", r.text)
+        q.refresh_from_db()
+        self.assertEqual(q.status, "declined")
+
+    def test_mark_quote_final_only_by_seller(self):
+        from .negotiation import submit_quote, mark_quote_final
+        from marketplace.models import Quote
+        submit_quote({
+            "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
+            "confirmed": True,
+        }, self.seller_a, "seller")
+        q = Quote.objects.filter(rfq=self.rfq).first()
+        r = mark_quote_final({"quote_id": q.id}, self.buyer, "buyer")
+        self.assertIn("автор", r.text)
+        # Author может
+        r2 = mark_quote_final({"quote_id": q.id}, self.seller_a, "seller")
+        self.assertIn("🔒", r2.text)
+        q.refresh_from_db()
+        self.assertTrue(q.is_final)
+        self.assertEqual(q.status, "finalized")

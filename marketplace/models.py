@@ -278,6 +278,69 @@ class RFQItem(models.Model):
         return self.matched_part.price * self.quantity
 
 
+class Quote(models.Model):
+    """Котировка от продавца на RFQ. Поддерживает multi-round negotiation:
+    каждая итерация (initial offer / buyer counter / seller respond) — это
+    отдельный Quote, связанный через parent_quote с предыдущим раундом.
+    """
+    STATUS_CHOICES = [
+        ("draft", _("Черновик")),
+        ("submitted", _("Отправлена")),
+        ("countered", _("Контр-оффер от покупателя")),
+        ("finalized", _("Финальная (без переторжки)")),
+        ("accepted", _("Принята")),
+        ("declined", _("Отклонена")),
+        ("expired", _("Истекла")),
+    ]
+    DIRECTION_CHOICES = [
+        ("seller_to_buyer", _("От продавца")),
+        ("buyer_to_seller", _("От покупателя (counter)")),
+    ]
+
+    rfq = models.ForeignKey(RFQ, on_delete=models.CASCADE, related_name="quotes")
+    seller = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="quotes_offered")
+    direction = models.CharField(max_length=20, choices=DIRECTION_CHOICES, default="seller_to_buyer")
+    parent_quote = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name="children")
+    round_number = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="submitted", db_index=True)
+    is_final = models.BooleanField(default=False, help_text="Продавец зафиксировал — переторжка невозможна")
+    delivery_days = models.PositiveIntegerField(default=14)
+    valid_until = models.DateTimeField(null=True, blank=True)
+    total_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    currency = models.CharField(max_length=10, default="USD")
+    message = models.TextField(blank=True, help_text="Комментарий к раунду")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["rfq", "-round_number", "-created_at"]
+        indexes = [
+            models.Index(fields=["rfq", "seller", "-round_number"], name="quote_rfq_seller_idx"),
+            models.Index(fields=["status", "-created_at"], name="quote_status_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Quote #{self.id} (RFQ {self.rfq_id} round {self.round_number})"
+
+
+class QuoteItem(models.Model):
+    """Позиция котировки — цена за единицу + количество, привязанные к RFQItem."""
+    quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name="items")
+    rfq_item = models.ForeignKey(RFQItem, on_delete=models.SET_NULL, null=True, blank=True)
+    part = models.ForeignKey(Part, on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="quote_items")
+    title_snapshot = models.CharField(max_length=300, blank=True,
+                                       help_text="Снимок названия на момент котировки")
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    notes = models.CharField(max_length=400, blank=True)
+
+    @property
+    def line_total(self):
+        return self.unit_price * self.quantity
+
+
 class Order(models.Model):
     STATUS_CHOICES = [
         ("pending", _("Ожидание оплаты")),

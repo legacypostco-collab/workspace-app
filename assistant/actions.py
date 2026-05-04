@@ -69,6 +69,8 @@ _BUYER_ACTIONS = [
     # Onboarding / KYB wizard (всем доступно)
     "start_onboarding", "submit_company_info", "submit_legal_address",
     "submit_bank", "submit_director", "submit_for_review", "kyb_status",
+    # Negotiation (buyer side)
+    "view_rfq_quotes", "view_quote", "accept_quote", "counter_offer", "decline_quote",
 ]
 
 # Seller-only: эксклюзивные действия продавца — отвечать на RFQ, грузить
@@ -76,6 +78,8 @@ _BUYER_ACTIONS = [
 # Внутри advance_order ещё проверяется, что в заказе есть товары seller'а.
 _SELLER_ONLY = [
     "respond_rfq", "upload_pricelist",
+    # Negotiation (seller side)
+    "submit_quote", "respond_to_counter", "mark_quote_final",
     "get_demand_report", "get_sla_report",
     "advance_order",
     "seller_pipeline", "ship_order",
@@ -129,6 +133,7 @@ ROLE_ACTIONS = {
 # Действия продавца, которые требуют верификации KYB
 _KYB_GATED_SELLER = {
     "respond_rfq", "respond_rfq_form",
+    "submit_quote", "respond_to_counter", "mark_quote_final",
     "ship_order", "advance_order",
     "add_product", "edit_product", "toggle_product",
     "upload_pricelist", "import_pricelist_preview",
@@ -581,6 +586,79 @@ TOOL_SCHEMAS = {
             "type": "object",
             "properties": {"user_id": _INT, "reason": _STR, "confirmed": _BOOL},
             "required": ["user_id"],
+        },
+    },
+    # ── Negotiation (Quote multi-round) ─────────────────────
+    "submit_quote": {
+        "description": "Продавец создаёт котировку на RFQ. Шаг 1 без confirmed — форма (цены per-line + срок + комментарий); шаг 2 с confirmed=true → запись Quote+QuoteItem.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "rfq_id": _INT,
+                "delivery_days": _INT,
+                "valid_days": _INT,
+                "message": _STR,
+                "parent_quote_id": _INT,
+                "direction": _STR,
+                "confirmed": _BOOL,
+            },
+            "required": ["rfq_id"],
+        },
+    },
+    "view_rfq_quotes": {
+        "description": "Покупатель видит все котировки по своему RFQ — sorted by total. Доступно владельцу RFQ или оператору.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"rfq_id": _INT},
+            "required": ["rfq_id"],
+        },
+    },
+    "view_quote": {
+        "description": "Детальная карточка котировки — позиции, статус, доступные actions.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT},
+            "required": ["quote_id"],
+        },
+    },
+    "accept_quote": {
+        "description": "Покупатель принимает котировку → создаётся Order. Шаг 1 — preview, шаг 2 с confirmed=true.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT, "confirmed": _BOOL},
+            "required": ["quote_id"],
+        },
+    },
+    "counter_offer": {
+        "description": "Покупатель предлагает свою цену. Шаг 1 — форма со всеми позициями, шаг 2 с confirmed=true → новая Quote (direction=buyer_to_seller, round_number+1).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT, "confirmed": _BOOL, "message": _STR},
+            "required": ["quote_id"],
+        },
+    },
+    "respond_to_counter": {
+        "description": "Продавец отвечает на контр-оффер — открывает форму submit_quote с parent_quote_id.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT},
+            "required": ["quote_id"],
+        },
+    },
+    "mark_quote_final": {
+        "description": "Продавец фиксирует свою котировку как финальную (is_final=True) — переторжка невозможна, покупатель только принимает или отклоняет.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT},
+            "required": ["quote_id"],
+        },
+    },
+    "decline_quote": {
+        "description": "Покупатель отклоняет котировку. Уведомляет продавца.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT},
+            "required": ["quote_id"],
         },
     },
 }

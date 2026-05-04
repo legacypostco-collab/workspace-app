@@ -1434,67 +1434,8 @@ def rfq_detail(params, user, role):
     )
 
 
-@register("respond_rfq_form")
-def respond_rfq_form(params, user, role):
-    """Двухфазный: без price → форма; с price → создаём ответ через respond_rfq."""
-    from marketplace.models import RFQ
-    rfq_id = params.get("rfq_id")
-    if not rfq_id:
-        return ActionResult(text="Не указан ID RFQ.")
-    try:
-        rfq = RFQ.objects.get(id=rfq_id)
-    except RFQ.DoesNotExist:
-        return ActionResult(text=f"RFQ #{rfq_id} не найден.")
-
-    price = params.get("price")
-    if not price:
-        return ActionResult(
-            text=f"Ответ на RFQ #{rfq.id} от {rfq.customer_name or rfq.created_by.username}.",
-            cards=[{
-                "type": "form",
-                "data": {
-                    "title": f"💬 Ответ на RFQ #{rfq.id}",
-                    "submit_action": "respond_rfq_form",
-                    "submit_label": "Отправить котировку",
-                    "fields": [
-                        {"name": "price", "label": "Цена за единицу, USD",
-                         "type": "number", "required": True,
-                         "placeholder": "например, 1250"},
-                        {"name": "delivery_days", "label": "Срок поставки, дней",
-                         "type": "number", "default": "14"},
-                        {"name": "notes", "label": "Комментарий",
-                         "placeholder": "Гарантия 12 мес, OEM"},
-                    ],
-                    "fixed_params": {"rfq_id": rfq.id},
-                },
-            }],
-        )
-
-    # Сохраняем котировку — упрощённо в notes RFQItem
-    from marketplace.models import RFQItem
-    delivery_days = int(params.get("delivery_days") or 14)
-    notes = (params.get("notes") or "").strip()
-    rfq.status = "processing"
-    rfq.save(update_fields=["status"])
-    # Простая запись ответа: создаём «ответный» RFQItem с offered_price
-    for it in RFQItem.objects.filter(rfq=rfq):
-        if hasattr(it, "offered_price"):
-            it.offered_price = Decimal(str(price))
-            if hasattr(it, "delivery_days"):
-                it.delivery_days = delivery_days
-            it.save()
-    return ActionResult(
-        text=(
-            f"✓ Котировка отправлена по RFQ #{rfq.id}.\n"
-            f"Цена: ${float(price):,.0f} · Срок: {delivery_days} дн."
-            + (f"\nКомментарий: {notes}" if notes else "")
-        ),
-        actions=[
-            {"label": "📋 Все RFQ", "action": "get_rfq_status", "params": {}},
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
-        ],
-        suggestions=["Какие ещё RFQ?", "Спрос"],
-    )
+# NOTE: respond_rfq_form moved to assistant/negotiation.py (alias to submit_quote).
+# Полноценный multi-line, multi-round flow с Quote-моделью.
 
 
 # ══════════════════════════════════════════════════════════
