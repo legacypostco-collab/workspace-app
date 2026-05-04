@@ -1,0 +1,25 @@
+[Unit]
+Description=Daphne ASGI server for workspace-app (WebSocket /ws/*)
+Requires=daphne.socket
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/workspace-app
+EnvironmentFile=/etc/workspace-app/workspace-app.env
+
+# Daphne получает уже открытый сокет от daphne.socket → graceful reload по SIGHUP.
+ExecStart=/var/www/workspace-app/venv/bin/daphne \
+  -u /run/daphne.sock \
+  --proxy-headers \
+  --access-log - \
+  consolidator_site.asgi:application
+
+Restart=always
+RestartSec=3
+TimeoutStartSec=60
+
+[Install]
+WantedBy=multi-user.target

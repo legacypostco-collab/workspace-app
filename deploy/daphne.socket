@@ -1,0 +1,11 @@
+[Unit]
+Description=Daphne socket for workspace-app
+
+[Socket]
+ListenStream=/run/daphne.sock
+SocketUser=www-data
+SocketGroup=www-data
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target
