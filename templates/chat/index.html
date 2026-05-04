@@ -164,6 +164,26 @@
     .top-avatar{width:34px;height:34px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
     @media(max-width:600px){.top-classic span{display:none;}}
 
+    /* ── Home button ── */
+    .top-home{width:34px;height:34px;border:none;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;transition:background .12s;flex-shrink:0;}
+    .top-home:hover{background:rgba(255,255,255,0.78);}
+    body.dark-mode .top-home{background:rgba(255,255,255,0.06);color:#e8e8e8;}
+    body.dark-mode .top-home:hover{background:rgba(255,255,255,0.1);}
+
+    /* ── Breadcrumbs ── */
+    .top-crumbs{display:flex;align-items:center;gap:4px;flex:1;min-width:0;font-size:12px;color:rgba(0,0,0,0.55);overflow:hidden;}
+    .top-crumbs:empty{display:none;}
+    .crumb{padding:4px 8px;border-radius:6px;cursor:pointer;background:rgba(255,255,255,0.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;font-weight:500;}
+    .crumb:hover{background:rgba(255,255,255,0.7);color:#1a1a1a;}
+    .crumb-sep{color:rgba(0,0,0,0.3);font-size:11px;}
+    .crumb-current{font-weight:600;color:#1a1a1a;cursor:default;background:transparent;}
+    .crumb-current:hover{background:transparent;}
+    body.dark-mode .top-crumbs{color:rgba(255,255,255,0.55);}
+    body.dark-mode .crumb{background:rgba(255,255,255,0.06);}
+    body.dark-mode .crumb:hover{background:rgba(255,255,255,0.12);color:#e8e8e8;}
+    body.dark-mode .crumb-current{color:#e8e8e8;}
+    @media(max-width:600px){.crumb{max-width:120px;font-size:11px;}}
+
     /* ── Notification bell ── */
     .top-bell{position:relative;width:34px;height:34px;border:none;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;transition:background .12s;}
     .top-bell:hover{background:rgba(255,255,255,0.78);}
@@ -656,7 +676,13 @@
         <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}" alt="" width="24" height="24">
         Consolidator Parts
       </a>
+      <!-- Breadcrumbs (заполняется JS при глубоком переходе) -->
+      <nav class="top-crumbs" id="topCrumbs" aria-label="{% trans 'Навигация' %}"></nav>
       <div class="top-right">
+        <!-- 🏠 Home — возврат к welcome stage текущей роли -->
+        <button class="top-home" id="topHome" onclick="goHome()" title="{% trans 'Главная' %}" aria-label="{% trans 'Главная' %}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2h-4v-7H9v7H5a2 2 0 01-2-2z"/></svg>
+        </button>
         <a href="/dashboard/" class="top-classic" title="{% trans 'Классический режим' %}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
           <span>{% trans "Классический" %}</span>

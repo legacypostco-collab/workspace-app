@@ -346,7 +346,80 @@
     $('welcomeStage').classList.remove('hidden');
     $('convStage').classList.add('hidden');
     $('streamInner').innerHTML = '';
+    setBreadcrumbs([]);
   }
+
+  // ══════════════════════════════════════════════════════════
+  // Navigation: home + breadcrumbs
+  // ══════════════════════════════════════════════════════════
+  // Стек навигации: показывается в topbar как «🏠 Главная > Заказы > #N».
+  // Каждое action-call может опционально приклеить crumb через addCrumb().
+  // goHome() возвращает к welcome-stage без потери conversation.
+  let _crumbs = [];
+
+  function setBreadcrumbs(items) {
+    _crumbs = items.slice();
+    renderBreadcrumbs();
+  }
+  // Скрываем только confirm-action метки, не остальные emoji-prefixed labels
+  const _SKIP_CRUMB_PREFIXES = ['✓', '✗', '🔒', '💳', '🚫'];
+
+  function pushCrumb(label, action, params) {
+    // Skip noise: confirmations, generated подтверждения, лишние шумы
+    if (!label) return;
+    const trimmed = label.trim();
+    if (trimmed.length > 40) return;
+    // Confirm-кнопки и системные не показываем в crumbs (точная проверка
+    // через startsWith, потому что regex character classes c emoji
+    // ловят surrogate pairs и режут любые 📦/📋/...)
+    if (_SKIP_CRUMB_PREFIXES.some(p => trimmed.startsWith(p))) return;
+    if (trimmed.toLowerCase().includes('подтверд')) return;
+    if (params && params.confirmed) return;
+    if (_crumbs.length && _crumbs[_crumbs.length - 1].label === trimmed) return;
+    _crumbs.push({label: trimmed, action: action || null, params: params || {}});
+    if (_crumbs.length > 4) _crumbs = _crumbs.slice(-4);
+    renderBreadcrumbs();
+  }
+  function renderBreadcrumbs() {
+    const host = $('topCrumbs');
+    if (!host) return;
+    if (!_crumbs.length) { host.innerHTML = ''; return; }
+    const home = `<span class="crumb" onclick="goHome()" title="${esc('Главная')}">🏠</span>`;
+    const parts = _crumbs.map((c, i) => {
+      const isLast = i === _crumbs.length - 1;
+      if (isLast) {
+        return `<span class="crumb crumb-current">${esc(c.label)}</span>`;
+      }
+      const params = (c.params && JSON.stringify(c.params).replace(/"/g, '&quot;')) || '{}';
+      return `<span class="crumb" data-action="${esc(c.action || '')}" data-params="${params}">${esc(c.label)}</span>`;
+    });
+    host.innerHTML = home + parts.map(p => `<span class="crumb-sep">›</span>${p}`).join('');
+  }
+
+  // Click delegation для crumb с data-action — truncate stack до этой точки
+  document.addEventListener('click', (e) => {
+    const c = e.target.closest('.crumb[data-action]');
+    if (!c || !c.dataset.action) return;
+    let p = {};
+    try { p = JSON.parse(c.dataset.params || '{}'); } catch(_){}
+    // Найти index клика в стеке и обрезать
+    const label = c.textContent.trim();
+    const idx = _crumbs.findIndex(x => x.label === label);
+    if (idx >= 0) _crumbs = _crumbs.slice(0, idx);  // оставить всё ДО клика; quickAction добавит сам
+    if (typeof quickAction === 'function') quickAction(c.dataset.action, p);
+  });
+
+  // 🏠 Home — возврат к welcome stage, очистка crumbs, сохраняем conversation
+  window.goHome = () => {
+    showWelcome();
+    // Сбрасываем crumbs (showWelcome уже это сделал, но на всякий случай)
+    setBreadcrumbs([]);
+    // Скрыть notif/settings панели если открыты
+    const np = document.getElementById('notifPanel');
+    if (np) np.setAttribute('hidden', '');
+    const sp = document.getElementById('settingsPanel');
+    if (sp) sp.setAttribute('hidden', '');
+  };
 
   // ══════════════════════════════════════════════════════════
   // Card renderers
@@ -1117,7 +1190,9 @@
           state._lastSuggestions = d.suggestions || [];
           state._lastText = d.text;
         } else if (d.type === 'done') {
-          finishStream(state._lastCards, state._lastActions, state._lastRefs || d.refs, state._lastText, state._lastCtxActions, state._lastSuggestions);
+          // Auto-attach «🏠 Главная» если backend не дал свою навигацию
+          const ctxActs = ensureHomeNav(state._lastCtxActions || []);
+          finishStream(state._lastCards, state._lastActions, state._lastRefs || d.refs, state._lastText, ctxActs, state._lastSuggestions);
           state._lastCards = []; state._lastActions = []; state._lastRefs = []; state._lastText = null;
           state._lastCtxActions = []; state._lastSuggestions = [];
         } else if (d.type === 'error') {
@@ -1236,6 +1311,9 @@
     // отложенно (>=400ms) показываем typing-indicator: фастовые actions
     // (read из БД, кэш) успевают вернуться раньше — спиннер вообще не появится.
     showConv();
+    // Breadcrumb: добавляем clickable crumb с действием = original
+    const crumbLabel = (params._label || params._crumb || action).replace(/^[▸▶]\s*/, '');
+    pushCrumb(crumbLabel, action, params);
     const typingDelay = setTimeout(() => addTyping(pickIntent(action)), 400);
     try {
       const r = await api('/api/assistant/action/', {
@@ -1245,13 +1323,34 @@
       clearTimeout(typingDelay);
       removeTyping();
       setConvId(r.conversation_id || state.convId);
-      addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || [], r.message_id || null, r.suggestions || [], r.contextual_actions || []);
+      // Auto-add «🏠 Главная» в contextual_actions если бэкенд её не вернул
+      const ctxActs = ensureHomeNav(r.contextual_actions || []);
+      addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || [], r.message_id || null, r.suggestions || [], ctxActs);
       loadConvList();
     } catch(err) {
       clearTimeout(typingDelay);
       removeTyping();
       addMessage('assistant', '⚠️ ' + err.message);
     }
+  };
+
+  // Добавить «🏠 Главная» в contextual_actions если нет своей навигации.
+  // Helper для quickAction и WS-handler.
+  function ensureHomeNav(ctxActs) {
+    const hasHome = ctxActs.some(a =>
+      a.action === 'go_home'
+      || (a.label || '').includes('Главная')
+      || (a.label || '').startsWith('🏠')
+    );
+    if (hasHome) return ctxActs;
+    return [...ctxActs, {action: 'go_home', label: '🏠 Главная'}];
+  }
+  // Special action handler: go_home — без round-trip к серверу
+  // Подменяем quickAction для этого случая.
+  const _origQuickAction = window.quickAction;
+  window.quickAction = (action, params) => {
+    if (action === 'go_home') { goHome(); return; }
+    return _origQuickAction(action, params);
   };
 
   // Click handler for action buttons inside messages
@@ -1434,12 +1533,15 @@
     const t = $('welcomeTitle'), s = $('welcomeSubtitle'), p = $('welcomePills');
     if (t) t.textContent = cfg.title;
     if (s) s.innerHTML = cfg.subtitle;
-    if (p) p.innerHTML = cfg.pills.map(b =>
-      `<button class="pill" type="button"
-        onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(b.params)})'>
+    if (p) p.innerHTML = cfg.pills.map(b => {
+      // Передаём label в params._label чтобы breadcrumb показывал «Мои заказы»,
+      // а не raw action name.
+      const params = {...(b.params || {}), _label: b.label};
+      return `<button class="pill" type="button"
+        onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(params)})'>
         ${esc(b.label)}
-      </button>`
-    ).join('');
+      </button>`;
+    }).join('');
   }
 
   async function loadProjects() {
