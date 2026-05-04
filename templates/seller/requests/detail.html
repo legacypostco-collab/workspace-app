@@ -113,7 +113,7 @@
         </div>
       </article>
     {% empty %}
-      {% include "seller/components/_empty_state.html" with title="Для этого RFQ пока нет ваших позиций" message="Когда матчинг найдёт ваши товары, они появятся в карточке запроса." %}
+      {% trans "Для этого RFQ пока нет ваших позиций" as t_title %}{% trans "Когда матчинг найдёт ваши товары, они появятся в карточке запроса." as t_message %}{% include "seller/components/_empty_state.html" with title=t_title message=t_message %}
     {% endfor %}
   </div>
 </section>

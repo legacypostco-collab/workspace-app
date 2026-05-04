@@ -58,7 +58,7 @@
       </div>
     </article>
   {% empty %}
-    {% include "seller/components/_empty_state.html" with title="Заказы не найдены" message="Когда по вашим товарам появятся заказы, они будут отображаться здесь." %}
+    {% trans "Заказы не найдены" as t_title %}{% trans "Когда по вашим товарам появятся заказы, они будут отображаться здесь." as t_message %}{% include "seller/components/_empty_state.html" with title=t_title message=t_message %}
   {% endfor %}
 </div>
 

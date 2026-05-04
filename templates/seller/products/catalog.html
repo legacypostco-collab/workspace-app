@@ -452,7 +452,7 @@
       {% endfor %}
     </div>
   {% else %}
-    {% include "seller/components/_empty_state.html" with title="История импортов пока пуста" message="После первой загрузки здесь появятся результаты и ссылки на ошибки." %}
+    {% trans "История импортов пока пуста" as t_title %}{% trans "После первой загрузки здесь появятся результаты и ссылки на ошибки." as t_message %}{% include "seller/components/_empty_state.html" with title=t_title message=t_message %}
   {% endif %}
 </section>
 

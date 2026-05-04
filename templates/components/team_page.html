@@ -78,7 +78,7 @@
       </table>
     </div>
   {% else %}
-    {% include "components/_empty_state.html" with empty_icon="👥" empty_title="Команды пока нет" empty_text="Пригласите первого участника через форму выше" %}
+    {% trans "Команды пока нет" as t_empty_title %}{% trans "Пригласите первого участника через форму выше" as t_empty_text %}{% include "components/_empty_state.html" with empty_icon="👥" empty_title=t_empty_title empty_text=t_empty_text %}
   {% endif %}
 </div>
 {% endblock %}

@@ -13,7 +13,13 @@ def _load_env_file(env_path: Path) -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        k = key.strip()
+        v = value.strip().strip('"').strip("'")
+        # Override empty/missing env vars from .env, but never clobber a real
+        # value the user set in their shell. setdefault() is wrong here because
+        # an inherited empty `KEY=''` (common in zsh dotfiles) would block .env.
+        if not os.environ.get(k):
+            os.environ[k] = v
 
 
 _load_env_file(BASE_DIR / ".env")
@@ -56,6 +62,8 @@ CSRF_TRUSTED_ORIGINS = _env_list(
 )
 
 INSTALLED_APPS = [
+    # Daphne MUST come before django.contrib.staticfiles to provide ASGI runserver
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -64,6 +72,10 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
+    "django_celery_beat",
+    "django_celery_results",
+    "channels",
+    "assistant",
     "files",
     "catalog",
     "offers",
@@ -114,29 +126,53 @@ DB_PASSWORD = _env("DB_PASSWORD", "")
 DB_HOST = _env("DB_HOST", "127.0.0.1")
 DB_PORT = _env("DB_PORT", "5432")
 
-if DB_NAME:
-    DATABASES = {
-        "default": {
-            "ENGINE": DB_ENGINE,
-            "NAME": DB_NAME,
-            "USER": DB_USER,
-            "PASSWORD": DB_PASSWORD,
-            "HOST": DB_HOST,
-            "PORT": DB_PORT,
-            "CONN_MAX_AGE": int(_env("DB_CONN_MAX_AGE", "60")),
-            "OPTIONS": {"connect_timeout": int(_env("DB_CONNECT_TIMEOUT", "5"))},
+# DATABASE_URL takes priority (production / Heroku-style)
+# Examples: postgres://user:pass@host:5432/dbname  /  sqlite:///path/to/db.sqlite3
+DATABASE_URL = _env("DATABASE_URL", "")
+if DATABASE_URL:
+    try:
+        import dj_database_url
+        DATABASES = {
+            "default": dj_database_url.parse(
+                DATABASE_URL,
+                conn_max_age=int(_env("DB_CONN_MAX_AGE", "60")),
+                conn_health_checks=True,
+                ssl_require=_env_bool("DB_SSL_REQUIRE", False),
+            )
         }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-            "OPTIONS": {
-                "timeout": 60,
-            },
+    except ImportError:
+        # Fallback to legacy DB_* env vars if dj_database_url not installed
+        DATABASE_URL = ""
+
+if not DATABASE_URL:
+    if DB_NAME:
+        # Postgres/MySQL accept `connect_timeout`; SQLite uses `timeout`
+        if "sqlite" in DB_ENGINE:
+            _db_options = {"timeout": int(_env("DB_CONNECT_TIMEOUT", "60"))}
+        else:
+            _db_options = {"connect_timeout": int(_env("DB_CONNECT_TIMEOUT", "5"))}
+        DATABASES = {
+            "default": {
+                "ENGINE": DB_ENGINE,
+                "NAME": DB_NAME,
+                "USER": DB_USER,
+                "PASSWORD": DB_PASSWORD,
+                "HOST": DB_HOST,
+                "PORT": DB_PORT,
+                "CONN_MAX_AGE": int(_env("DB_CONN_MAX_AGE", "60")),
+                "OPTIONS": _db_options,
+            }
         }
-    }
+    else:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": BASE_DIR / "db.sqlite3",
+                "OPTIONS": {
+                    "timeout": 60,
+                },
+            }
+        }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -238,6 +274,13 @@ STORAGES = {
     }
 }
 
+# ── AI Assistant ──────────────────────────────────────────
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514").strip()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+VOYAGE_API_KEY = os.getenv("VOYAGE_API_KEY", "").strip()
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "auto").strip().lower()  # openai|voyage|stub|auto
+
 # ── Sentry error tracking ─────────────────────────────────
 # Set SENTRY_DSN env var to enable. Auto-captures unhandled exceptions, performance.
 SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()
@@ -309,3 +352,27 @@ CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0").s
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL).strip()
 CELERY_TASK_ALWAYS_EAGER = _env_bool("CELERY_TASK_ALWAYS_EAGER", False)
 CELERY_TASK_EAGER_PROPAGATES = _env_bool("CELERY_TASK_EAGER_PROPAGATES", True)
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_TASK_TIME_LIMIT = 5 * 60   # hard kill after 5 min
+CELERY_TASK_SOFT_TIME_LIMIT = 4 * 60
+CELERY_WORKER_PREFETCH_MULTIPLIER = 4
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # restart worker to free memory
+
+# ── Django Channels (WebSocket) ───────────────────────────
+ASGI_APPLICATION = "consolidator_site.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.getenv("CHANNELS_REDIS_URL", "redis://127.0.0.1:6379/1")],
+            "capacity": 1500,
+            "expiry": 60,
+        },
+    },
+} if not _env_bool("CHANNELS_INMEMORY", False) else {
+    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
+}

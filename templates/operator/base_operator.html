@@ -177,7 +177,8 @@
       <span style="font-size:12px;color:#919191;font-weight:500;" id="op-role-label">
         {% if operator_role == 'logist' %}{% trans "Логист" %}{% elif operator_role == 'customs' %}{% trans "Таможенный брокер" %}{% elif operator_role == 'payments' %}{% trans "Платёжный агент" %}{% elif operator_role == 'manager' %}{% trans "Менеджер по продажам" %}{% endif %}
       </span>
-      <div style="margin-left:auto;">
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        {% include "components/_ai_mode_button.html" %}
         {% include "components/_lang_switcher.html" %}
       </div>
     </div>
@@ -284,5 +285,6 @@
 </script>
     {% block extra_js %}{% endblock %}
 {% include "components/_onboarding.html" %}
+{% include "components/_assistant_widget.html" %}
 </body>
 </html>

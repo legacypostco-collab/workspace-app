@@ -32,6 +32,7 @@
       <span class="muted">{% trans "Рейтинг" %}</span>
       <strong>{{ seller_rating_score|default:"—" }}</strong>
     </div>
+    {% include "components/_ai_mode_button.html" %}
     {% include "components/_notification_bell.html" %}
     {% load i18n %}{% get_current_language as LANG_CODE %}
     {% include "components/_lang_switcher.html" %}

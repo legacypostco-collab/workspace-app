@@ -47,7 +47,7 @@
       </div>
     </article>
   {% empty %}
-    {% include "seller/components/_empty_state.html" with title="По вашему ассортименту пока нет входящих RFQ" message="Как только клиентские запросы совпадут с вашими позициями, они появятся здесь." %}
+    {% trans "По вашему ассортименту пока нет входящих RFQ" as t_title %}{% trans "Как только клиентские запросы совпадут с вашими позициями, они появятся здесь." as t_message %}{% include "seller/components/_empty_state.html" with title=t_title message=t_message %}
   {% endfor %}
 </div>
 {% endblock %}

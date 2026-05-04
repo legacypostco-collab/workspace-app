@@ -1,0 +1,74 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Target environment"
+        required: true
+        default: "staging"
+        type: choice
+        options: [staging, production]
+
+concurrency:
+  group: deploy-${{ github.event.inputs.target || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.target || 'staging' }}
+      url: ${{ vars.DEPLOY_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ vars.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Rsync code to server
+        run: |
+          rsync -avz --delete \
+            --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
+            --exclude='.venv' --exclude='node_modules' \
+            --exclude='db.sqlite3' --exclude='media/' \
+            ./ ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:${{ vars.DEPLOY_PATH }}/
+
+      - name: Run remote deploy commands
+        run: |
+          ssh ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }} bash <<'REMOTE'
+            set -euxo pipefail
+            cd ${{ vars.DEPLOY_PATH }}
+            source .venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
+            python manage.py compilemessages
+            sudo systemctl restart consolidator.service
+            sudo systemctl restart consolidator-celery.service || true
+            sudo systemctl restart consolidator-celery-beat.service || true
+            # Smoke test
+            sleep 3
+            curl -fsS -o /dev/null https://${{ vars.DEPLOY_DOMAIN }}/login/
+          REMOTE
+
+      - name: Notify Sentry of release
+        if: vars.SENTRY_ORG != ''
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+        with:
+          environment: ${{ github.event.inputs.target || 'staging' }}

@@ -3300,6 +3300,11 @@ def rfq_new(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def rfq_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
+    # Chat-first redirect: the legacy admin-style page is being phased out.
+    # Anyone landing on /rfq/<id>/ now goes to the new Slack-like view.
+    # ?classic=1 keeps the old form available for back-office editing.
+    if request.GET.get("classic") != "1":
+        return redirect("chat_rfq", rfq_id=rfq_id)
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part__brand", "items__matched_part__category"), id=rfq_id)
     role = _role_for(request.user)
     if role != "seller" and rfq.created_by_id != request.user.id:
@@ -3327,6 +3332,10 @@ def rfq_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
 
 @login_required
 def rfq_proposal(request: HttpRequest, rfq_id: int) -> HttpResponse:
+    # Chat-first redirect: legacy КП page is replaced by /chat/proposal/<id>/.
+    # ?classic=1 escape hatch for ops/back-office.
+    if request.GET.get("classic") != "1":
+        return redirect("chat_proposal", rfq_id=rfq_id)
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part"), id=rfq_id)
     role = _role_for(request.user)
     if role == "seller" and not request.user.is_superuser:
@@ -6059,3 +6068,28 @@ def twofa_setup(request):
     return render(request, "components/twofa_setup.html", {
         "twofa": twofa, "qr_url": qr_url, "backup_codes": backup_list,
     })
+
+
+
+@login_required
+def chat_first_view(request):
+    """Chat-First single-page UI."""
+    return render(request, "chat/index.html")
+
+
+@login_required
+def chat_project_view(request, project_id):
+    """Project detail page within chat-first layout."""
+    return render(request, "chat/project.html", {"project_id": project_id})
+
+
+@login_required
+def chat_rfq_view(request, rfq_id):
+    """RFQ detail page within chat-first layout (Slack-like)."""
+    return render(request, "chat/rfq.html", {"rfq_id": rfq_id})
+
+
+@login_required
+def chat_proposal_view(request, rfq_id):
+    """Commercial proposal (КП) page within chat-first layout."""
+    return render(request, "chat/proposal.html", {"rfq_id": rfq_id})

@@ -48,15 +48,15 @@
         <input type="text" name="director_name" value="{{ kyb.director_name }}" required style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
       </div>
       <div>
-        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">ИНН</label>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "ИНН" %}</label>
         <input type="text" name="inn" value="{{ kyb.inn }}" required pattern="[0-9]{10,12}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
       </div>
       <div>
-        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">КПП</label>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "КПП" %}</label>
         <input type="text" name="kpp" value="{{ kyb.kpp }}" pattern="[0-9]{9}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
       </div>
       <div>
-        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">ОГРН</label>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "ОГРН" %}</label>
         <input type="text" name="ogrn" value="{{ kyb.ogrn }}" required pattern="[0-9]{13,15}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
       </div>
       <div>
@@ -75,7 +75,7 @@
         <input type="text" name="bank_account" value="{{ kyb.bank_account }}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
       </div>
       <div>
-        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">БИК</label>
+        <label style="display:block;font-size:12px;font-weight:600;color:#919191;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">{% trans "БИК" %}</label>
         <input type="text" name="bik" value="{{ kyb.bik }}" style="width:100%;padding:10px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;font-family:inherit;">
       </div>
     </div>

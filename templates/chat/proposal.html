@@ -1,0 +1,114 @@
+{% load static i18n %}<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <title>КП по RFQ #{{ rfq_id }} — Consolidator Parts</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="{% url 'javascript-catalog' %}"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.5;color:#1a1a1a;-webkit-font-smoothing:antialiased;}
+    body{background:linear-gradient(180deg,#a8b8d8 0%,#cda9d6 35%,#f0a59a 65%,#f4956a 100%);background-attachment:fixed;overflow:hidden;}
+    body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 55% at 50% 80%, rgba(255,130,75,0.4), transparent 65%);pointer-events:none;z-index:0;}
+    a{color:inherit;text-decoration:none;}
+    button{font-family:inherit;cursor:pointer;border:none;background:transparent;color:inherit;padding:0;}
+    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:3px;}
+
+    .app{position:relative;z-index:1;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+    .topbar{padding:14px 24px;display:flex;align-items:center;gap:12px;z-index:5;background:linear-gradient(180deg,rgba(168,184,216,0.5),transparent);}
+    .top-back{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;background:rgba(255,255,255,0.5);font-size:13px;font-weight:600;color:#1a1a1a;}
+    .top-back:hover{background:rgba(255,255,255,0.85);}
+    .top-brand{display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:700;font-size:15px;color:#1a1a1a;letter-spacing:-0.01em;margin-left:auto;}
+    .top-brand-logo{width:24px;height:24px;display:block;}
+
+    .content{flex:1;overflow-y:auto;padding:20px 32px 60px;}
+    .content-inner{max-width:1080px;margin:0 auto;}
+
+    .pp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:22px;flex-wrap:wrap;}
+    .pp-title-row{display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
+    .pp-eyebrow{font-size:11px;font-weight:700;color:rgba(0,0,0,0.5);letter-spacing:0.1em;text-transform:uppercase;}
+    .pp-name{font-family:'Golos Text',sans-serif;font-weight:800;font-size:32px;color:rgba(0,0,0,0.92);letter-spacing:-0.02em;line-height:1.15;}
+    .pp-meta{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:rgba(0,0,0,0.6);}
+    .pp-meta strong{color:rgba(0,0,0,0.85);font-weight:600;}
+    .pp-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+    .pp-btn{padding:10px 18px;background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:24px;font-size:13px;font-weight:600;color:#1a1a1a;display:inline-flex;align-items:center;gap:6px;}
+    .pp-btn:hover{background:rgba(255,255,255,0.85);}
+    .pp-btn.primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+    .pp-btn.primary:hover{background:#000;}
+
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px;}
+    .sum{padding:16px 18px;background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;}
+    .sum-lbl{font-size:11px;font-weight:700;color:rgba(0,0,0,0.5);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;}
+    .sum-val{font-family:'Golos Text',sans-serif;font-weight:800;font-size:24px;color:rgba(0,0,0,0.92);}
+    .sum-val.muted{color:rgba(0,0,0,0.55);}
+
+    .sec{background:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.5);border-radius:18px;padding:22px 24px;margin-bottom:18px;backdrop-filter:blur(10px);}
+    .sec-h{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+    .sec-h h2{font-family:'Golos Text',sans-serif;font-weight:700;font-size:16px;color:rgba(0,0,0,0.85);}
+    .sec-pill{font-size:11px;font-weight:600;color:rgba(0,0,0,0.55);background:rgba(0,0,0,0.06);padding:2px 8px;border-radius:10px;}
+
+    table.lines{width:100%;border-collapse:collapse;}
+    table.lines th{font-size:11px;font-weight:700;color:rgba(0,0,0,0.5);text-transform:uppercase;letter-spacing:0.05em;text-align:left;padding:8px 12px;border-bottom:1px solid rgba(0,0,0,0.08);}
+    table.lines td{padding:14px 12px;border-bottom:1px solid rgba(0,0,0,0.06);font-size:13px;color:rgba(0,0,0,0.85);vertical-align:top;}
+    table.lines tr:last-child td{border-bottom:none;}
+    table.lines td.right{text-align:right;font-variant-numeric:tabular-nums;}
+    .art{font-family:'SF Mono',Menlo,monospace;font-weight:700;color:rgba(0,0,0,0.92);}
+    .match-name{color:rgba(0,0,0,0.7);font-size:12px;margin-top:2px;}
+    .badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:0.04em;text-transform:uppercase;}
+    .badge.matched{background:rgba(34,197,94,0.18);color:#15803d;}
+    .badge.pending{background:rgba(245,158,11,0.18);color:#b45309;}
+    .badge.no_match{background:rgba(239,68,68,0.18);color:#b91c1c;}
+
+    .total-row{display:flex;justify-content:space-between;align-items:baseline;padding:18px 24px;background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.6);border-radius:16px;margin-top:18px;}
+    .total-lbl{font-size:13px;font-weight:600;color:rgba(0,0,0,0.7);}
+    .total-val{font-family:'Golos Text',sans-serif;font-weight:800;font-size:28px;color:rgba(0,0,0,0.95);}
+
+    .terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+    .term{padding:12px 14px;background:rgba(255,255,255,0.4);border-radius:10px;border:1px solid rgba(255,255,255,0.5);}
+    .term-lbl{font-size:11px;font-weight:700;color:rgba(0,0,0,0.5);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;}
+    .term-val{font-size:13px;color:rgba(0,0,0,0.88);font-weight:500;}
+
+    .loading{text-align:center;padding:80px 20px;color:rgba(0,0,0,0.55);}
+
+    @media(max-width:768px){
+      .content{padding:10px 14px 40px;}
+      .pp-name{font-size:22px;}
+      .total-val{font-size:22px;}
+      table.lines th:nth-child(3),table.lines td:nth-child(3){display:none;}
+    }
+
+    @media print{
+      body{background:#fff;}
+      body::before{display:none;}
+      .topbar,.pp-actions{display:none !important;}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <a href="/chat/rfq/{{ rfq_id }}/" class="top-back">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+      RFQ #{{ rfq_id }}
+    </a>
+    <a href="/chat/" class="top-brand">
+      <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}" alt="" width="24" height="24">
+      Consolidator Parts
+    </a>
+  </div>
+
+  <div class="content">
+    <div class="content-inner" id="ppContent">
+      <div class="loading">{% trans "Загрузка КП..." %}</div>
+    </div>
+  </div>
+</div>
+
+<script>window.RFQ_ID = "{{ rfq_id }}";</script>
+<script src="{% static 'js/proposal-page.js' %}?v=1&t={% now 'U' %}" defer></script>
+</body>
+</html>

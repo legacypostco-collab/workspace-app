@@ -20,7 +20,7 @@
       </a>
     {% endfor %}
   {% else %}
-    {% include "components/_empty_state.html" with empty_icon="🔔" empty_title="Нет уведомлений" empty_text="Здесь появятся уведомления о новых заказах, RFQ и оплатах" %}
+    {% trans "Нет уведомлений" as t_empty_title %}{% trans "Здесь появятся уведомления о новых заказах, RFQ и оплатах" as t_empty_text %}{% include "components/_empty_state.html" with empty_icon="🔔" empty_title=t_empty_title empty_text=t_empty_text %}
   {% endif %}
 </div>
 {% endblock %}
