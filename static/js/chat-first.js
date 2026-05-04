@@ -1255,45 +1255,48 @@
     },
     operator: {
       title:    'Что в работе на платформе?',
-      subtitle: 'Контролируйте процесс: активные заказы, SLA-нарушения, спрос, аналитика.',
+      subtitle: 'Контролируйте процесс: активные заказы, SLA-нарушения, очередь, спор-кейсы.',
       pills: [
-        {label:'📦 Активные заказы',  action:'get_orders',        params:{}},
-        {label:'⏱ SLA-нарушения',    action:'get_sla_report',    params:{}},
-        {label:'📋 Все RFQ',          action:'get_rfq_status',    params:{}},
-        {label:'📈 Спрос',            action:'get_demand_report', params:{}},
-        {label:'📊 Аналитика',        action:'get_analytics',     params:{}},
+        {label:'🎛 Сводка',          action:'op_dashboard',    params:{}},
+        {label:'📋 Очередь',         action:'op_queue',        params:{}},
+        {label:'⏱ SLA-нарушения',   action:'op_sla_breach',   params:{}},
+        {label:'📦 Все заказы',      action:'get_orders',      params:{}},
+        {label:'📈 Аналитика',       action:'get_analytics',   params:{}},
       ],
     },
     operator_logist: {
       title:    'Логистика',
       subtitle: 'Отгрузки, контейнеры, SLA — управляйте через чат.',
       pills: [
-        {label:'📦 Активные заказы', action:'get_orders',    params:{}},
-        {label:'⏱ SLA-нарушения',   action:'get_sla_report', params:{}},
+        {label:'🎛 Сводка',          action:'op_dashboard',  params:{}},
+        {label:'📋 Очередь',         action:'op_queue',      params:{filter:'open'}},
+        {label:'⏱ SLA-нарушения',   action:'op_sla_breach', params:{}},
       ],
     },
     operator_customs: {
       title:    'Таможня',
       subtitle: 'Грузы под растаможкой, документы, декларации.',
       pills: [
-        {label:'📦 Грузы на таможне', action:'get_orders', params:{}},
+        {label:'🎛 Сводка',          action:'op_dashboard',  params:{}},
+        {label:'📋 На таможне',      action:'op_queue',      params:{filter:'open'}},
       ],
     },
     operator_payment: {
       title:    'Платежи',
-      subtitle: 'Инвойсы, эскроу, платёжный календарь.',
+      subtitle: 'Инвойсы, эскроу, возвраты — управляйте через чат.',
       pills: [
-        {label:'📦 Заказы',        action:'get_orders', params:{}},
-        {label:'💰 Бюджет',        action:'get_budget', params:{}},
+        {label:'🎛 Сводка',          action:'op_dashboard',  params:{}},
+        {label:'⏳ Ожидают резерва', action:'op_queue',      params:{filter:'awaiting_reserve'}},
+        {label:'💸 Возвраты',        action:'op_queue',      params:{filter:'refund'}},
       ],
     },
     operator_manager: {
       title:    'Менеджмент',
       subtitle: 'Конверсия RFQ, топ-клиенты, KPI команды.',
       pills: [
-        {label:'📦 Заказы',          action:'get_orders',    params:{}},
-        {label:'📋 RFQ',             action:'get_rfq_status', params:{}},
-        {label:'📈 Аналитика',       action:'get_analytics',  params:{}},
+        {label:'🎛 Сводка',          action:'op_dashboard',  params:{}},
+        {label:'📋 Очередь',         action:'op_queue',      params:{}},
+        {label:'📈 Аналитика',       action:'get_analytics', params:{}},
       ],
     },
   };

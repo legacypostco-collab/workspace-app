@@ -17,3 +17,8 @@ class AssistantConfig(AppConfig):
             from . import seller_actions  # noqa
         except ImportError:
             pass
+        # Регистрируем operator-actions
+        try:
+            from . import operator_actions  # noqa
+        except ImportError:
+            pass

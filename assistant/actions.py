@@ -88,36 +88,27 @@ _SELLER_ONLY = [
     "sync_1c",
 ]
 
+_OPERATOR_CORE = [
+    # Read-only browse + диспетчерские action'ы
+    "search_parts", "get_orders", "get_order_detail", "get_rfq_status",
+    "track_order", "track_shipment", "advance_order",
+    "get_analytics", "get_demand_report", "get_sla_report", "get_budget",
+    "compare_suppliers", "compare_products", "top_suppliers",
+    "get_claims", "open_url", "generate_proposal",
+    "audit_log", "kb_search", "notifications",
+    # Operator-only: dashboard, очередь, назначение, спор, заметка
+    "op_dashboard", "op_queue", "op_sla_breach",
+    "op_order_detail", "op_assign", "op_add_note", "op_resolve_dispute",
+]
+
 ROLE_ACTIONS = {
     "buyer":  _BUYER_ACTIONS,
     "seller": _BUYER_ACTIONS + _SELLER_ONLY,
-    "operator_logist": [
-        "track_shipment", "get_orders", "get_sla_report", "get_analytics",
-    ],
-    "operator_customs": [
-        "track_shipment", "get_orders", "get_analytics",
-    ],
-    "operator_payment": [
-        "get_orders", "get_budget", "get_analytics",
-    ],
-    "operator_manager": [
-        # Старшие операторы видят всё, но покупка/оплата им не нужна
-        "search_parts", "get_orders", "get_order_detail", "get_rfq_status",
-        "track_order", "track_shipment",
-        "get_analytics", "get_demand_report", "get_sla_report", "get_budget",
-        "compare_suppliers", "compare_products", "top_suppliers",
-        "advance_order", "open_url",
-    ],
-    "operator": [
-        # «Сборная» operator-роль для UI-toggle: всё, что нужно для надзора
-        # за процессом — без покупательских платежей.
-        "search_parts", "get_orders", "get_order_detail", "get_rfq_status",
-        "track_order", "track_shipment", "advance_order",
-        "get_analytics", "get_demand_report", "get_sla_report", "get_budget",
-        "compare_suppliers", "compare_products", "top_suppliers",
-        "get_claims", "open_url", "generate_proposal",
-        "audit_log",  # оператор видит полный аудит любого заказа
-    ],
+    "operator_logist": _OPERATOR_CORE,
+    "operator_customs": _OPERATOR_CORE,
+    "operator_payment": _OPERATOR_CORE,
+    "operator_manager": _OPERATOR_CORE,
+    "operator": _OPERATOR_CORE,
     "admin": ["*"],  # admin sees everything
 }
 
@@ -311,6 +302,69 @@ TOOL_SCHEMAS = {
             "properties": {
                 "rfq_id": {**_INT, "description": "ID RFQ. Если не указан — последний созданный RFQ пользователя."},
             },
+        },
+    },
+    # ── Operator-cabinet actions ────────────────────────────
+    "op_dashboard": {
+        "description": "Операторская сводка: KPI заказов в работе, SLA, оборот, приоритетная очередь.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "op_queue": {
+        "description": "Очередь заказов, требующих внимания оператора. filter: all|breached|at_risk|refund|awaiting_reserve|open.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"filter": {**_STR, "description": "all|breached|at_risk|refund|awaiting_reserve|open"}},
+        },
+    },
+    "op_sla_breach": {
+        "description": "Список заказов с нарушенным или под угрозой SLA + время до/после дедлайна.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "op_order_detail": {
+        "description": "Расширенный operator-view заказа: статусы, текущее назначение оператора, аудит-лог.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"order_id": {**_INT, "description": "ID заказа"}},
+            "required": ["order_id"],
+        },
+    },
+    "op_assign": {
+        "description": "Назначить суб-роль оператора (manager/logist/customs/payments) на заказ. Шаг 1 без to_role/confirmed → форма; шаг 2 с confirmed=true и to_role → запись.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "order_id": _INT,
+                "to_role": {**_STR, "description": "manager|logist|customs|payments"},
+                "comment": _STR,
+                "confirmed": _BOOL,
+            },
+            "required": ["order_id"],
+        },
+    },
+    "op_add_note": {
+        "description": "Добавить операторскую заметку к заказу (audit-log). Шаг 1 без text/confirmed → форма; шаг 2 → запись.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "order_id": _INT,
+                "text": _STR,
+                "confirmed": _BOOL,
+            },
+            "required": ["order_id"],
+        },
+    },
+    "op_resolve_dispute": {
+        "description": "Закрыть спор по заказу. resolution: refund|partial_refund|release|no_action. Шаг 1 — форма; шаг 2 с confirmed=true → запись + side-effects на payment_status.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "order_id": _INT,
+                "resolution": {**_STR, "description": "refund|partial_refund|release|no_action"},
+                "refund_amount": _NUM,
+                "reason": _STR,
+                "confirmed": _BOOL,
+            },
+            "required": ["order_id"],
         },
     },
 }
