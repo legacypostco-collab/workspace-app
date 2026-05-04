@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import upload, views
+from . import auth_views, upload, views
 
 router = DefaultRouter()
 router.register(r"conversations", views.ConversationViewSet, basename="conversation")
@@ -29,4 +29,9 @@ urlpatterns = [
     path("notifications/<int:notif_id>/read/", views.NotificationMarkReadView.as_view(), name="assistant-notifications-read"),
     # Payments webhook (Stripe-compat)
     path("payments/webhook/", views.PaymentsWebhookView.as_view(), name="assistant-payments-webhook"),
+    # Auth — magic-link & OAuth
+    path("auth/magic-link/", auth_views.MagicLinkRequestView.as_view(), name="auth-magic-link-request"),
+    path("auth/magic-link/<str:token>/", auth_views.MagicLinkConfirmView.as_view(), name="auth-magic-link-confirm"),
+    path("auth/oauth/<str:provider>/", auth_views.OAuthLoginView.as_view(), name="auth-oauth-login"),
+    path("auth/oauth/callback/<str:provider>/", auth_views.OAuthCallbackView.as_view(), name="auth-oauth-callback"),
 ]

@@ -73,6 +73,9 @@ _BUYER_ACTIONS = [
     "view_rfq_quotes", "view_quote", "accept_quote", "counter_offer", "decline_quote",
     # Notification preferences (durable channels)
     "notif_prefs", "notif_set_email", "notif_set_kinds", "notif_link_telegram",
+    # Auth — 2FA + API tokens (всем доступно)
+    "setup_2fa", "verify_2fa", "disable_2fa",
+    "create_api_token", "list_api_tokens", "revoke_api_token",
 ]
 
 # Seller-only: эксклюзивные действия продавца — отвечать на RFQ, грузить
@@ -755,6 +758,48 @@ TOOL_SCHEMAS = {
     "admin_platform_settings": {
         "description": "Read-only снэпшот платформенной конфигурации (engine, env vars).",
         "input_schema": {"type": "object", "properties": {}},
+    },
+    # ── Auth — TOTP 2FA + API tokens ──────────────────────
+    "setup_2fa": {
+        "description": "Сгенерировать TOTP secret и показать QR-код для сканирования в authenticator-приложении.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "verify_2fa": {
+        "description": "Подтвердить 6-значный OTP код и активировать 2FA.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"code": _STR, "confirmed": _BOOL},
+        },
+    },
+    "disable_2fa": {
+        "description": "Выключить 2FA (требует ввода OTP кода для подтверждения).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"code": _STR, "confirmed": _BOOL},
+        },
+    },
+    "create_api_token": {
+        "description": "Сгенерировать API-токен для интеграций. Полный токен виден ОДИН раз.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "label": _STR,
+                "permissions": {**_STR, "description": "read | read,write | read,write,admin"},
+                "confirmed": _BOOL,
+            },
+        },
+    },
+    "list_api_tokens": {
+        "description": "Список API-токенов пользователя (активных и отозванных).",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "revoke_api_token": {
+        "description": "Отозвать API-токен. DraftCard preview → confirm.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"token_id": _INT, "confirmed": _BOOL},
+            "required": ["token_id"],
+        },
     },
 }
 

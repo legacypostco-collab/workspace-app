@@ -42,3 +42,8 @@ class AssistantConfig(AppConfig):
             from . import admin_actions  # noqa
         except ImportError:
             pass
+        # Регистрируем auth-actions (2FA + API tokens)
+        try:
+            from . import auth_actions  # noqa
+        except ImportError:
+            pass

@@ -798,3 +798,66 @@ class TwoFactorAuth(models.Model):
 
     def __str__(self):
         return f"2FA[{self.user_id}]={'on' if self.enabled else 'off'}"
+
+
+class MagicLinkToken(models.Model):
+    """Passwordless login: одноразовый токен в email. TTL 15 минут.
+
+    Flow:
+      1. User вводит email → POST /accounts/magic-link/
+      2. Создаётся MagicLinkToken, ссылка шлётся в email
+      3. User кликает → GET /accounts/magic-link/<token>/
+      4. Если active (не used, не expired) → login + redirect
+    """
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="magic_links")
+    expires_at = models.DateTimeField(db_index=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    ip_requested = models.CharField(max_length=64, blank=True)
+    ip_used = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="magic_user_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"MagicLink[{self.user_id}]={'used' if self.used_at else 'active'}"
+
+    @property
+    def is_active(self):
+        return self.used_at is None and self.expires_at > timezone.now()
+
+
+class ApiToken(models.Model):
+    """API tokens для программного доступа партнёров.
+
+    Хранится только prefix + hashed_token (как у Stripe sk_live_xxx).
+    Реальный token виден один раз при создании.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="api_tokens")
+    label = models.CharField(max_length=80, help_text="Человеко-читаемое имя ('CI deploy', 'Telegram bot')")
+    prefix = models.CharField(max_length=12, db_index=True,
+        help_text="Первые символы токена для UI ('ck_live_abcd…')")
+    hashed_token = models.CharField(max_length=128, unique=True, db_index=True,
+        help_text="SHA-256 hex от полного токена")
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    permissions = models.CharField(max_length=200, default="read",
+        help_text="CSV: read,write,admin")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="apitoken_user_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"ApiToken[{self.user_id}] {self.prefix}…"
+
+    @property
+    def is_active(self):
+        return self.revoked_at is None

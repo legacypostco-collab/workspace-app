@@ -1205,3 +1205,194 @@ class AdminActionsTests(TestCase):
         labels = [it["label"] for it in items]
         self.assertIn("Payment engine", labels)
         self.assertIn("ANTHROPIC_API_KEY", labels)
+
+
+class AuthFlowTests(TestCase):
+    """Magic-link, TOTP 2FA, API tokens — full auth surface."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        U = get_user_model()
+        self.user = U.objects.create_user(
+            username="t_auth", password="x", email="auth@example.com",
+        )
+
+    # --- magic-link ---
+    def test_magic_link_request_creates_token_and_sends_email(self):
+        from django.core import mail
+        from django.test import Client
+        from marketplace.models import MagicLinkToken
+        c = Client()
+        resp = c.post("/api/assistant/auth/magic-link/",
+                      data='{"email":"auth@example.com"}',
+                      content_type="application/json")
+        self.assertEqual(resp.status_code, 200)
+        # Token создан
+        ml = MagicLinkToken.objects.filter(user=self.user).first()
+        self.assertIsNotNone(ml)
+        self.assertTrue(ml.is_active)
+        # Email отправлен
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("ссылка", mail.outbox[0].subject.lower())
+
+    def test_magic_link_request_unknown_email_returns_200(self):
+        from django.test import Client
+        from marketplace.models import MagicLinkToken
+        c = Client()
+        resp = c.post("/api/assistant/auth/magic-link/",
+                      data='{"email":"unknown@x.x"}',
+                      content_type="application/json")
+        self.assertEqual(resp.status_code, 200)
+        # Токен НЕ создан, чтобы не утекала инфа существует ли email
+        self.assertEqual(MagicLinkToken.objects.count(), 0)
+
+    def test_magic_link_confirm_logs_in_and_redirects(self):
+        from datetime import timedelta
+        from django.test import Client
+        from django.utils import timezone
+        from marketplace.models import MagicLinkToken
+        ml = MagicLinkToken.objects.create(
+            token="xyz123", user=self.user,
+            expires_at=timezone.now() + timedelta(minutes=15),
+        )
+        c = Client()
+        resp = c.get(f"/api/assistant/auth/magic-link/{ml.token}/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.url, "/chat/")
+        ml.refresh_from_db()
+        self.assertIsNotNone(ml.used_at)
+        # logged-in
+        self.assertEqual(int(c.session["_auth_user_id"]), self.user.id)
+
+    def test_magic_link_confirm_invalid_token_410(self):
+        from django.test import Client
+        c = Client()
+        resp = c.get("/api/assistant/auth/magic-link/no-such-token/")
+        self.assertEqual(resp.status_code, 410)
+
+    def test_magic_link_confirm_expired_410(self):
+        from datetime import timedelta
+        from django.test import Client
+        from django.utils import timezone
+        from marketplace.models import MagicLinkToken
+        ml = MagicLinkToken.objects.create(
+            token="exp123", user=self.user,
+            expires_at=timezone.now() - timedelta(minutes=1),
+        )
+        c = Client()
+        resp = c.get(f"/api/assistant/auth/magic-link/{ml.token}/")
+        self.assertEqual(resp.status_code, 410)
+
+    # --- 2FA ---
+    def test_setup_2fa_generates_secret_and_qr(self):
+        from .auth_actions import setup_2fa
+        from marketplace.models import TwoFactorAuth
+        r = setup_2fa({}, self.user, "buyer")
+        self.assertEqual(r.cards[0]["type"], "qr")
+        self.assertIn("qr_url", r.cards[0]["data"])
+        twofa = TwoFactorAuth.objects.get(user=self.user)
+        self.assertNotEqual(twofa.secret, "")
+        self.assertEqual(len(twofa.backup_codes.split(",")), 8)
+        self.assertFalse(twofa.enabled)  # ещё не активирован — нужен verify
+
+    def test_verify_2fa_with_valid_code_enables(self):
+        import pyotp
+        from .auth_actions import setup_2fa, verify_2fa
+        from marketplace.models import TwoFactorAuth
+        setup_2fa({}, self.user, "buyer")
+        twofa = TwoFactorAuth.objects.get(user=self.user)
+        valid_code = pyotp.TOTP(twofa.secret).now()
+        r = verify_2fa({"code": valid_code, "confirmed": True}, self.user, "buyer")
+        self.assertIn("активирован", r.text)
+        twofa.refresh_from_db()
+        self.assertTrue(twofa.enabled)
+
+    def test_verify_2fa_with_bad_code_fails(self):
+        from .auth_actions import setup_2fa, verify_2fa
+        setup_2fa({}, self.user, "buyer")
+        r = verify_2fa({"code": "000000", "confirmed": True}, self.user, "buyer")
+        self.assertIn("неверн", r.text)
+
+    def test_disable_2fa_requires_valid_code(self):
+        import pyotp
+        from .auth_actions import setup_2fa, verify_2fa, disable_2fa
+        from marketplace.models import TwoFactorAuth
+        setup_2fa({}, self.user, "buyer")
+        twofa = TwoFactorAuth.objects.get(user=self.user)
+        verify_2fa({"code": pyotp.TOTP(twofa.secret).now(), "confirmed": True},
+                    self.user, "buyer")
+        # Bad code
+        r = disable_2fa({"code": "111111", "confirmed": True}, self.user, "buyer")
+        self.assertIn("неверн", r.text)
+        twofa.refresh_from_db()
+        self.assertTrue(twofa.enabled)
+        # Good code
+        r2 = disable_2fa({"code": pyotp.TOTP(twofa.secret).now(), "confirmed": True},
+                          self.user, "buyer")
+        self.assertIn("✓", r2.text)
+        twofa.refresh_from_db()
+        self.assertFalse(twofa.enabled)
+
+    # --- API tokens ---
+    def test_create_api_token_returns_full_once(self):
+        from .auth_actions import create_api_token
+        from marketplace.models import ApiToken
+        r = create_api_token({"label": "CI", "permissions": "read,write",
+                                "confirmed": True}, self.user, "buyer")
+        # Полный токен в card.draft.rows
+        rows = r.cards[0]["data"]["rows"]
+        full_row = next((row for row in rows if row["label"] == "Полный токен"), None)
+        self.assertIsNotNone(full_row)
+        self.assertTrue(full_row["value"].startswith("ck_live_"))
+        # В БД хранится только хэш
+        token_obj = ApiToken.objects.get(user=self.user, label="CI")
+        self.assertEqual(token_obj.permissions, "read,write")
+        self.assertTrue(token_obj.is_active)
+
+    def test_list_api_tokens_shows_prefix_only(self):
+        from .auth_actions import create_api_token, list_api_tokens
+        create_api_token({"label": "Ext", "permissions": "read",
+                            "confirmed": True}, self.user, "buyer")
+        r = list_api_tokens({}, self.user, "buyer")
+        items = r.cards[0]["data"]["items"]
+        self.assertEqual(len(items), 1)
+        self.assertIn("Ext", items[0]["title"])
+        # Префикс показан, полный токен — нет
+        self.assertIn("ck_live_", items[0]["title"])
+
+    def test_revoke_api_token_marks_inactive(self):
+        from .auth_actions import create_api_token, revoke_api_token
+        from marketplace.models import ApiToken
+        create_api_token({"label": "T", "permissions": "read",
+                            "confirmed": True}, self.user, "buyer")
+        token = ApiToken.objects.get(user=self.user, label="T")
+        r = revoke_api_token({"token_id": token.id, "confirmed": True},
+                              self.user, "buyer")
+        self.assertIn("отозван", r.text)
+        token.refresh_from_db()
+        self.assertFalse(token.is_active)
+        self.assertIsNotNone(token.revoked_at)
+
+    # --- OAuth scaffolding ---
+    def test_oauth_login_returns_503_when_not_configured(self):
+        import os
+        from django.test import Client
+        os.environ.pop("GOOGLE_CLIENT_ID", None)
+        c = Client()
+        resp = c.get("/api/assistant/auth/oauth/google/")
+        self.assertEqual(resp.status_code, 503)
+        body = resp.json()
+        self.assertIn("GOOGLE_CLIENT_ID", body["error"])
+
+    def test_oauth_login_unknown_provider_400(self):
+        from django.test import Client
+        c = Client()
+        resp = c.get("/api/assistant/auth/oauth/bogus/")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_oauth_callback_state_mismatch_400(self):
+        from django.test import Client
+        c = Client()
+        resp = c.get("/api/assistant/auth/oauth/callback/google/?code=abc&state=xxx")
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("state mismatch", resp.json()["error"])
