@@ -212,3 +212,52 @@ class ProjectDocument(models.Model):
 
     class Meta:
         ordering = ["-uploaded_at"]
+
+
+class Wallet(models.Model):
+    """Депозит покупателя — простая модель: один кошелёк на пользователя.
+
+    На демо-аккаунтах автоматически наполняется при первом обращении.
+    Поле `balance` — текущий доступный остаток в USD (для упрощения — одна валюта).
+    Транзакции пишутся в WalletTx.
+    """
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="wallet"
+    )
+    balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    currency = models.CharField(max_length=10, default="USD")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    @classmethod
+    def for_user(cls, user, *, demo_seed_amount=50000):
+        """Get-or-create. Демо-аккаунтам (demo_*) выдаём стартовый баланс."""
+        from decimal import Decimal
+        wallet, created = cls.objects.get_or_create(user=user)
+        if created and (user.username or "").startswith("demo_"):
+            wallet.balance = Decimal(str(demo_seed_amount))
+            wallet.save(update_fields=["balance", "updated_at"])
+            WalletTx.objects.create(
+                wallet=wallet, amount=wallet.balance, kind="topup",
+                description="Демо-депозит",
+            )
+        return wallet
+
+
+class WalletTx(models.Model):
+    """Лог движений по кошельку: пополнения и списания."""
+    KIND_CHOICES = [
+        ("topup", "Пополнение"),
+        ("debit", "Списание"),
+        ("refund", "Возврат"),
+    ]
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name="transactions")
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    description = models.CharField(max_length=300, blank=True)
+    order_id = models.IntegerField(null=True, blank=True, db_index=True)
+    balance_after = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]

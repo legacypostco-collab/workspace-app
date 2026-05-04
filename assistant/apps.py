@@ -12,3 +12,8 @@ class AssistantConfig(AppConfig):
             from . import signals  # noqa
         except ImportError:
             pass
+        # Регистрируем seller-actions (импорт триггерит @register декораторы)
+        try:
+            from . import seller_actions  # noqa
+        except ImportError:
+            pass

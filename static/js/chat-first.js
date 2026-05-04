@@ -14,6 +14,7 @@
   'use strict';
 
   const SB_KEY = 'cf_sidebar_open';
+  const CONV_KEY = 'cf_active_conv';
 
   let state = {
     convId: null,
@@ -27,6 +28,19 @@
     _lastActions: [],
     _intent: 'default',
   };
+
+  // Persist active conversation id across page reloads so we don't spawn
+  // a fresh "Без названия" chat every time the user refreshes.
+  function setConvId(id) {
+    state.convId = id || null;
+    try {
+      if (id) localStorage.setItem(CONV_KEY, id);
+      else localStorage.removeItem(CONV_KEY);
+    } catch(e){}
+  }
+  function getStoredConvId() {
+    try { return localStorage.getItem(CONV_KEY); } catch(e) { return null; }
+  }
 
   // ── Helpers ──────────────────────────────────────────────
   const $ = id => document.getElementById(id);
@@ -51,6 +65,28 @@
   // Sidebar toggle
   // ══════════════════════════════════════════════════════════
   function isMobile() { return window.innerWidth <= 768; }
+
+  // ── Realtime notification toast (WS push) ─────────────────────
+  function showNotifToast(payload) {
+    try {
+      let host = document.getElementById('notifToastHost');
+      if (!host) {
+        host = document.createElement('div');
+        host.id = 'notifToastHost';
+        host.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+        document.body.appendChild(host);
+      }
+      const t = document.createElement('div');
+      const title = (payload && payload.title) || 'Уведомление';
+      const body  = (payload && payload.body)  || '';
+      const url   = (payload && payload.url)   || '';
+      t.style.cssText = 'pointer-events:auto;background:#1d2330;color:#fff;padding:10px 14px;border-radius:10px;border:1px solid rgba(100,181,246,0.35);box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:340px;font-size:13px;line-height:1.4;cursor:pointer;';
+      t.innerHTML = '<div style="font-weight:600;margin-bottom:2px;">🔔 ' + esc(title) + '</div>' + (body ? '<div style="opacity:.85;">' + esc(body) + '</div>' : '');
+      if (url) t.addEventListener('click', () => { try { location.href = url; } catch(e){} });
+      host.appendChild(t);
+      setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 5000);
+    } catch (e) { console.error('notif toast', e); }
+  }
 
   window.toggleSidebar = (force) => {
     const sb = $('sidebar');
@@ -117,6 +153,242 @@
           ${d.delivery_days ? `<span class="card-chip">${d.delivery_days} дн</span>` : ''}
           ${d.condition ? `<span class="card-chip card-chip-gray">${esc(d.condition)}</span>` : ''}
         </div>
+      </div>`;
+    },
+    qr(d) {
+      return `<div class="card qr-card">
+        <div class="card-title">${esc(d.title || 'QR-код')}</div>
+        ${d.subtitle ? `<div class="qr-sub">${esc(d.subtitle)}</div>` : ''}
+        <div class="qr-img"><img src="${esc(d.image_url)}" alt="QR" loading="lazy"/></div>
+        <div class="qr-payload">${esc(d.payload || '')}</div>
+      </div>`;
+    },
+    price_breakdown(d) {
+      const lines = (d.lines || []).map(l => {
+        const sign = l.amount < 0 ? 'pb-neg' : '';
+        return `<div class="pb-row ${sign}">
+          <span class="pb-label">${esc(l.label)}</span>
+          <span class="pb-amount">${fmtMoney(l.amount, d.currency || 'USD')}</span>
+        </div>`;
+      }).join('');
+      const cur = d.currency || 'USD';
+      return `<div class="card pb-card">
+        <div class="card-title">${esc(d.title || 'Расчёт цены')}</div>
+        <div class="pb-rows">${lines}</div>
+        <div class="pb-total">
+          <span class="pb-total-label">Итого клиенту</span>
+          <span class="pb-total-amount">${fmtMoney(d.total, cur)}</span>
+        </div>
+      </div>`;
+    },
+    draft(d) {
+      const rows = (d.rows || []).map(r =>
+        `<div class="dr-row${r.primary ? ' dr-primary' : ''}">
+          <span class="dr-label">${esc(r.label || '')}</span>
+          <span class="dr-value">${esc(String(r.value ?? '—'))}</span>
+        </div>`).join('');
+      const warns = (d.warnings || []).map(w =>
+        `<div class="dr-warning">⚠️ ${esc(w)}</div>`).join('');
+      const confirmParams = JSON.stringify(d.confirm_params || {});
+      return `<div class="card dr-card">
+        <div class="dr-head">
+          <span class="dr-badge">📝 Черновик</span>
+          <span class="dr-title">${esc(d.title || 'Подтвердите действие')}</span>
+        </div>
+        <div class="dr-rows">${rows}</div>
+        ${warns ? `<div class="dr-warnings">${warns}</div>` : ''}
+        <div class="dr-actions">
+          <button class="act-btn dr-confirm" data-action="${esc(d.confirm_action || '')}" data-params='${esc(confirmParams)}' data-label="${esc(d.confirm_label || 'Подтвердить')}">${esc(d.confirm_label || 'Подтвердить')}</button>
+          <button class="act-btn dr-cancel" type="button" onclick="(() => { const c = this.closest('.dr-card'); c.outerHTML = '<div class=&quot;dr-cancelled-note&quot;>↩︎ Действие отменено</div>'; })()">${esc(d.cancel_label || 'Отмена')}</button>
+        </div>
+      </div>`;
+    },
+    inbox(d) {
+      const sections = (d.sections || []).map(s => {
+        const rows = (s.rows || []).map(r => {
+          const a = r.action;
+          const btn = a
+            ? `<button class="act-btn ib-btn" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(a.label)}">${esc(a.label)}</button>`
+            : '';
+          return `<div class="ib-row">
+            <div class="ib-main">
+              <div class="ib-title">${esc(r.title || '')}</div>
+              <div class="ib-sub">${esc(r.subtitle || '')}</div>
+            </div>
+            ${btn}
+          </div>`;
+        }).join('');
+        return `<div class="ib-section">
+          <div class="ib-section-head">
+            <span class="ib-section-icon">${esc(s.icon || '•')}</span>
+            <span class="ib-section-title">${esc(s.title || '')}</span>
+            <span class="ib-section-count">${(s.rows||[]).length}</span>
+          </div>
+          ${rows}
+        </div>`;
+      }).join('');
+      return `<div class="card ib-card">
+        <div class="card-title">${esc(d.title || 'Сегодня')}</div>
+        ${sections}
+      </div>`;
+    },
+    catalog(d) {
+      const rows = (d.rows || []).map(r => {
+        const status = r.is_active ? 'cat-active' : 'cat-archived';
+        const stockBadge = r.stock_qty > 0
+          ? `<span class="cat-chip cat-chip-green">${r.stock_qty} шт</span>`
+          : '<span class="cat-chip cat-chip-gray">нет</span>';
+        const sold = r.sold_qty
+          ? `<span class="cat-chip cat-chip-blue">${r.sold_qty} продано</span>`
+          : '';
+        const rev = r.revenue ? `<span class="cat-chip cat-chip-gray">${fmtMoney(r.revenue, 'USD')}</span>` : '';
+        const toggle = `<button class="act-btn cat-btn-mini" data-action="toggle_product" data-params='${esc(JSON.stringify({part_id: r.id}))}' data-label="Скрыть/показать">${r.is_active ? '🚫 Скрыть' : '✓ Активировать'}</button>`;
+        return `<div class="cat-row ${status}">
+          <div class="cat-row-main">
+            <div class="cat-art">${esc(r.article || '')}</div>
+            <div class="cat-name">${esc(r.title || '')}</div>
+            <div class="cat-brand">${esc(r.brand || '')}</div>
+          </div>
+          <div class="cat-row-meta">
+            <span class="cat-price">${fmtMoney(r.price, 'USD')}</span>
+            ${stockBadge}${sold}${rev}
+          </div>
+          <div class="cat-row-actions">${toggle}</div>
+        </div>`;
+      }).join('');
+      return `<div class="card cat-card">
+        <div class="card-title">${esc(d.title || 'Каталог')}</div>
+        <div class="cat-rows">${rows || '<div class="cat-empty">Пусто</div>'}</div>
+      </div>`;
+    },
+    list(d) {
+      const rows = (d.rows || []).map(r => {
+        const badge = r.badge ? `<span class="ls-badge">${esc(r.badge)}</span>` : '';
+        const cls = r.url ? 'ls-row ls-link' : 'ls-row';
+        const open = r.url ? `onclick="window.open('${esc(r.url)}','_blank','noopener')"` : '';
+        return `<div class="${cls}" ${open}>
+          <div class="ls-main">
+            <div class="ls-title">${esc(r.title || '')}</div>
+            <div class="ls-sub">${esc(r.subtitle || '')}</div>
+          </div>
+          ${badge}
+        </div>`;
+      }).join('');
+      return `<div class="card ls-card">
+        <div class="card-title">${esc(d.title || 'Список')}</div>
+        <div class="ls-rows">${rows || '<div class="ls-empty">Пусто</div>'}</div>
+      </div>`;
+    },
+    kpi_grid(d) {
+      const items = (d.kpis || []).map(k => `
+        <div class="kpi-cell">
+          <div class="kpi-value">${esc(String(k.value ?? '—'))}</div>
+          <div class="kpi-label">${esc(k.label || '')}</div>
+          ${k.sub ? `<div class="kpi-sub">${esc(k.sub)}</div>` : ''}
+        </div>`).join('');
+      return `<div class="card kpi-card">
+        <div class="card-title">${esc(d.title || 'KPI')}</div>
+        <div class="kpi-grid">${items}</div>
+      </div>`;
+    },
+    form(d) {
+      const fields = (d.fields || []).map(f => {
+        const val = f.default || '';
+        const req = f.required ? 'required' : '';
+        return `<label class="fm-row">
+          <span class="fm-label">${esc(f.label || f.name)}${f.required ? ' <span class="fm-req">*</span>' : ''}</span>
+          <input class="fm-input" name="${esc(f.name)}" type="${esc(f.type || 'text')}" value="${esc(val)}" placeholder="${esc(f.placeholder || '')}" ${req} autocomplete="off"/>
+        </label>`;
+      }).join('');
+      const fixed = JSON.stringify(d.fixed_params || {});
+      return `<div class="card fm-card" data-form-action="${esc(d.submit_action || '')}" data-fixed='${esc(fixed)}'>
+        <div class="card-title">${esc(d.title || 'Введите данные')}</div>
+        <div class="fm-fields">${fields}</div>
+        <div class="fm-actions">
+          <button type="button" class="act-btn fm-submit">${esc(d.submit_label || 'Отправить')}</button>
+        </div>
+      </div>`;
+    },
+    seller_queue(d) {
+      const sections = (d.sections || []).map(s => {
+        const orders = (s.orders || []).map(o => {
+          const items = (o.items || []).map(it =>
+            `<div class="sq-item">
+              <span class="sq-art">${esc(it.article)}</span>
+              <span class="sq-name">${esc(it.name)}</span>
+              <span class="sq-qty">×${it.qty}</span>
+              <span class="sq-sub">${fmtMoney(it.subtotal, 'USD')}</span>
+            </div>`
+          ).join('');
+          const btnAct = s.btn_action || 'advance_order';
+          const btn = s.btn ? `<button class="act-btn sq-btn" data-action="${esc(btnAct)}" data-params='${esc(JSON.stringify({order_id: o.id}))}' data-label="${esc(s.btn + ' (#' + o.id + ')')}">${esc(s.btn)}</button>` : '';
+          return `<div class="sq-order">
+            <div class="sq-order-head">
+              <div>
+                <span class="sq-order-num">Заказ #${esc(o.id)}</span>
+                <span class="sq-buyer">· ${esc(o.buyer || '')}</span>
+              </div>
+              <span class="sq-order-sub">${fmtMoney(o.subtotal, 'USD')}</span>
+            </div>
+            <div class="sq-items">${items}</div>
+            ${btn ? `<div class="sq-actions">${btn}</div>` : ''}
+          </div>`;
+        }).join('');
+        return `<div class="sq-section">
+          <div class="sq-section-head">
+            <span class="sq-section-label">${esc(s.label)}</span>
+            <span class="sq-section-meta">${s.orders_count} зак. · ${s.items_count} поз. · ${fmtMoney(s.amount, 'USD')}</span>
+          </div>
+          ${orders}
+        </div>`;
+      }).join('');
+      return `<div class="card sq-card">
+        <div class="sq-head">
+          <div class="card-title">📦 ${esc(d.title || 'Очередь продавца')}</div>
+          <div class="sq-total">${d.total_orders} активных заказа(ов)</div>
+        </div>
+        ${sections || '<div class="sq-empty">Очередь пуста.</div>'}
+      </div>`;
+    },
+    tracking(d) {
+      const stages = (d.stages || []).map(s => {
+        const cls = s.state === 'done' ? 'tk-done' : s.state === 'current' ? 'tk-current' : 'tk-pending';
+        const dot = s.state === 'done' ? '●' : s.state === 'current' ? '◆' : '○';
+        return `<div class="tk-stage ${cls}">
+          <span class="tk-dot">${dot}</span>
+          <span class="tk-label">${esc(s.label)}</span>
+          ${s.eta ? `<span class="tk-eta">${esc(s.eta)}</span>` : ''}
+        </div>`;
+      }).join('');
+      const tl = (d.timeline || []).map(t =>
+        `<div class="tk-event"><span class="tk-when">${esc(t.when)}</span><span class="tk-text">${esc(t.text)}</span></div>`
+      ).join('') || '<div class="tk-empty">Событий пока нет.</div>';
+      const trackingLine = d.tracking_number
+        ? `<div class="tk-tracking">📍 ${esc(d.carrier || 'Перевозчик')} · <span class="tk-track-num">${esc(d.tracking_number)}</span></div>`
+        : '';
+      const nextLine = d.next_event
+        ? `<div class="tk-next">🔜 <b>${esc(d.next_actor || 'Дальше')}</b> ${esc(d.next_event)}</div>`
+        : '';
+      return `<div class="card tk-card">
+        <div class="tk-head">
+          <div>
+            <div class="card-title">${esc(d.title || ('Заказ #' + d.order_id))}</div>
+            <div class="card-sub">${esc(d.current_label || '')}</div>
+            ${trackingLine}
+          </div>
+          <div class="tk-total">${fmtMoney(d.total, d.currency)}</div>
+        </div>
+        ${nextLine}
+        <div class="tk-progress-wrap">
+          <div class="tk-progress"><div class="tk-progress-fill" style="width:${d.progress_pct || 0}%"></div></div>
+          <div class="tk-progress-meta">
+            <span>${d.current_idx + 1} из ${d.total_stages}</span>
+            <span>ETA: <b>${esc(d.eta_delivery || '—')}</b> · ${d.days_left || 0} дн.</span>
+          </div>
+        </div>
+        <div class="tk-stages">${stages}</div>
+        <div class="tk-tl-head">История</div>
+        <div class="tk-timeline">${tl}</div>
       </div>`;
     },
     order(d) {
@@ -437,60 +709,139 @@
     return `<div class="ctx-refs">${items}</div>`;
   }
 
-  function addMessage(role, content, cards=[], actions=[], contextRefs=[]) {
+  function addMessage(role, content, cards=[], actions=[], contextRefs=[], messageId=null, suggestions=[], contextualActions=[]) {
     showConv();
     const wrap = document.createElement('div');
     wrap.className = 'msg msg-' + role;
+    if (messageId) wrap.dataset.messageId = messageId;
+    const isAi = role === 'assistant';
     wrap.innerHTML = `
       ${avatar(role)}
       <div class="msg-body">
         <div class="msg-author">${esc(authorLabel(role))}</div>
-        <div class="msg-content${role === 'action' ? ' msg-action-tag' : ''}"></div>
+        <div class="msg-content${role === 'action' ? ' msg-action-tag' : ''}${isAi ? ' msg-content-ai' : ''}"></div>
         <div class="msg-refs"></div>
         <div class="msg-cards"></div>
         <div class="msg-actions"></div>
+        <div class="msg-ctx-actions"></div>
+        <div class="msg-suggestions"></div>
       </div>
     `;
-    wrap.querySelector('.msg-content').textContent = content || '';
+    const cEl = wrap.querySelector('.msg-content');
+    if (isAi && (content || '').trim()) {
+      cEl.innerHTML = linkifyEntities(content || '');
+      cEl.classList.add('msg-has-text');
+    } else {
+      cEl.textContent = content || '';
+    }
     wrap.querySelector('.msg-refs').innerHTML = renderContextRefs(contextRefs);
     wrap.querySelector('.msg-cards').innerHTML = renderCards(cards);
     wrap.querySelector('.msg-actions').innerHTML = renderActions(actions);
+    wrap.querySelector('.msg-ctx-actions').innerHTML = renderContextualActions(contextualActions);
+    wrap.querySelector('.msg-suggestions').innerHTML = renderSuggestions(suggestions);
     $('streamInner').appendChild(wrap);
     scrollBottom();
     return wrap;
   }
 
+  function renderContextualActions(items) {
+    if (!items || !items.length) return '';
+    const btns = items.map(a =>
+      `<button class="act-btn ctx-btn" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(a.label)}">${esc(a.label)}</button>`
+    ).join('');
+    return `<div class="ctx-row">
+      <span class="ctx-label">💡 Также можете:</span>
+      ${btns}
+    </div>`;
+  }
+
+  // Превращает упоминания сущностей в кликабельные ссылки на карточки.
+  // Поддерживаемые форматы:
+  //   «заказ #123», «#ORD-123», «order #123»  → track_order(123)
+  //   «RFQ #45», «RFQ-45»                       → rfq_detail / get_rfq_status
+  function linkifyEntities(text) {
+    let html = esc(text);
+    // Заказ #N — самое частое
+    html = html.replace(/(?<![\w-])(заказ|order|зак\.)\s*#?\s*(\d{1,7})\b/gi,
+      (full, kw, id) => `<span class="entity-link" data-action="track_order" data-params='{"order_id":${id}}'>${full}</span>`);
+    // RFQ #N
+    html = html.replace(/(?<![\w-])RFQ\s*[#-]?\s*(\d{1,7})\b/gi,
+      (full, id) => `<span class="entity-link" data-action="rfq_detail" data-params='{"rfq_id":${id}}'>${full}</span>`);
+    // Просто #N — последний фолбек, если идёт сразу после слов «заказ/order» уже обработано
+    return html;
+  }
+
+  // Делегируем клик по entity-link → quickAction
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('.entity-link');
+    if (!link) return;
+    const action = link.dataset.action;
+    const params = JSON.parse(link.dataset.params || '{}');
+    params._label = link.textContent;
+    if (typeof quickAction === 'function') quickAction(action, params);
+  });
+
+  function renderSuggestions(suggestions) {
+    if (!suggestions || !suggestions.length) return '';
+    const chips = suggestions.map(s =>
+      `<button class="sg-chip" type="button" onclick="window.heroQuick && window.heroQuick(${JSON.stringify(s).replace(/"/g, '&quot;')})">${esc(s)}</button>`
+    ).join('');
+    return `<div class="sg-row">
+      <span class="sg-label">💡 Также можете:</span>
+      ${chips}
+    </div>`;
+  }
+
+  // Положить текст в input при клике на chip
+  window.heroQuick = (text) => {
+    const target = $('welcomeStage').classList.contains('hidden') ? $('input') : $('heroInput');
+    if (target) {
+      target.value = text;
+      target.focus();
+    }
+  };
+
   function appendStream(text) {
     if (!state.currentBubble) {
       removeTyping();
       const wrap = document.createElement('div');
-      wrap.className = 'msg';
-      wrap.innerHTML = `${avatar('assistant')}<div class="msg-body"><div class="msg-author">Consolidator</div><div class="msg-content"></div><div class="msg-refs"></div><div class="msg-cards"></div><div class="msg-actions"></div></div>`;
+      wrap.className = 'msg msg-assistant';
+      wrap.innerHTML = `${avatar('assistant')}<div class="msg-body"><div class="msg-author">Consolidator</div><div class="msg-content msg-content-ai"></div><div class="msg-refs"></div><div class="msg-cards"></div><div class="msg-actions"></div><div class="msg-ctx-actions"></div><div class="msg-suggestions"></div></div>`;
       $('streamInner').appendChild(wrap);
       state.currentBubble = wrap;
     }
     const el = state.currentBubble.querySelector('.msg-content');
     el.textContent += text;
+    if ((el.textContent || '').trim()) el.classList.add('msg-has-text');
     scrollBottom();
   }
 
-  function finishStream(cards, actions, refs, authoritativeText) {
+  function finishStream(cards, actions, refs, authoritativeText, contextualActions, suggestions) {
     removeTyping();
     if (!state.currentBubble) return;
     const contentEl = state.currentBubble.querySelector('.msg-content');
+    let finalText;
     if (authoritativeText != null) {
-      contentEl.textContent = authoritativeText;
+      finalText = authoritativeText;
     } else {
-      // Fallback: clean placeholders + raw :::block fences from the streamed text
-      const raw = contentEl.textContent;
-      contentEl.textContent = raw
+      finalText = (contentEl.textContent || '')
         .replace(/\[card:\w+\]/g, '')
         .replace(/:::(?:actions|product|rfq|order|shipment|supplier|comparison|chart|file|table|spec_results|supplier_top)[\s\S]*?:::/g, '')
         .trim();
     }
+    if (finalText) {
+      contentEl.innerHTML = linkifyEntities(finalText);
+      contentEl.classList.add('msg-has-text');
+    } else {
+      contentEl.textContent = '';
+    }
     state.currentBubble.querySelector('.msg-refs').innerHTML = renderContextRefs(refs || []);
     state.currentBubble.querySelector('.msg-cards').innerHTML = renderCards(cards);
     state.currentBubble.querySelector('.msg-actions').innerHTML = renderActions(actions);
+    const ctxEl = state.currentBubble.querySelector('.msg-ctx-actions');
+    if (ctxEl) ctxEl.innerHTML = renderContextualActions(contextualActions || []);
+    const sgEl = state.currentBubble.querySelector('.msg-suggestions');
+    if (sgEl) sgEl.innerHTML = renderSuggestions(suggestions || []);
     state.currentBubble = null;
     state.streaming = false;
     $('sendBtn').disabled = false;
@@ -518,7 +869,7 @@
       try {
         const d = JSON.parse(ev.data);
         if (d.type === 'connected') {
-          state.convId = d.conversation_id;
+          setConvId(d.conversation_id);
           loadConvList();
         } else if (d.type === 'thinking') {
           if (!$('typingMsg')) addTyping(state._intent);
@@ -530,13 +881,18 @@
         } else if (d.type === 'cards') {
           state._lastCards = d.cards || [];
           state._lastActions = d.actions || [];
-          state._lastText = d.text;  // authoritative clean text (overrides streamed tokens)
+          state._lastCtxActions = d.contextual_actions || [];
+          state._lastSuggestions = d.suggestions || [];
+          state._lastText = d.text;
         } else if (d.type === 'done') {
-          finishStream(state._lastCards, state._lastActions, state._lastRefs || d.refs, state._lastText);
+          finishStream(state._lastCards, state._lastActions, state._lastRefs || d.refs, state._lastText, state._lastCtxActions, state._lastSuggestions);
           state._lastCards = []; state._lastActions = []; state._lastRefs = []; state._lastText = null;
+          state._lastCtxActions = []; state._lastSuggestions = [];
         } else if (d.type === 'error') {
           finishStream([], []);
           addMessage('assistant', '⚠️ ' + d.message);
+        } else if (d.type === 'notification') {
+          showNotifToast(d.payload || {});
         }
       } catch(e){ console.error(e); }
     };
@@ -577,8 +933,8 @@
           body: JSON.stringify({conversation_id: state.convId, message: text}),
         });
         removeTyping();
-        state.convId = r.conversation_id;
-        addMessage('assistant', r.response, r.cards, r.actions, r.context_refs || []);
+        setConvId(r.conversation_id);
+        addMessage('assistant', r.response, r.cards, r.actions, r.context_refs || [], r.message_id || null, r.suggestions || [], r.contextual_actions || []);
         state.streaming = false;
         $('sendBtn').disabled = false;
         $('heroSendBtn').disabled = false;
@@ -617,6 +973,32 @@
   window.quickAction = async (action, params) => {
     params = params || {};
     params._label = params._label || action;
+    // Navigation shortcut: open URL directly (no AI round-trip, no new chat).
+    // Sources of _url:
+    //   1. Explicit params._url (e.g. "Перейти в кабинет")
+    //   2. Backward-compat: legacy "Открыть RFQ"/"Открыть заказ" buttons that
+    //      pre-date this fix shipped without _url. Synthesize one from the id
+    //      and the action's label, so old chat history keeps working.
+    // Navigation: только internal /chat/* — все «старые» URL (cabinet) игнорируются,
+    // вся работа идёт внутри chat-first.
+    let url = params._url;
+    if (url) {
+      url = url
+        .replace(/^\/buyer\/rfqs\/(\d+)\/?$/, '/chat/rfq/$1/')
+        .replace(/^\/rfq\/(\d+)\/?$/, '/chat/rfq/$1/')
+        .replace(/^\/buyer\/orders\/(\d+)\/?$/, '/chat/')
+        .replace(/^\/seller\/rfqs\/(\d+)\/?$/, '/chat/rfq/$1/');
+      if (url.startsWith('/chat/')) {
+        window.location.href = url;
+        return;
+      }
+      // Все не-/chat/ URL — это или PDF/файлы, или внешка. Открываем в новой вкладке,
+      // чтобы пользователь не уходил из чата.
+      const isFile = /\.(pdf|xlsx?|csv|docx?|zip|png|jpe?g)(\?|$)/i.test(url);
+      if (isFile) { window.open(url, '_blank', 'noopener'); return; }
+      // Иначе — не уходим, превращаем в обычный action call (если action есть).
+      if (!action) return;
+    }
     addMessage('action', '▸ ' + (params._label || action));
     addTyping(pickIntent(action));
     try {
@@ -625,8 +1007,8 @@
         body: JSON.stringify({conversation_id: state.convId, action, params}),
       });
       removeTyping();
-      state.convId = r.conversation_id || state.convId;
-      addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || []);
+      setConvId(r.conversation_id || state.convId);
+      addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || [], r.message_id || null, r.suggestions || [], r.contextual_actions || []);
       loadConvList();
     } catch(err) {
       removeTyping();
@@ -636,6 +1018,28 @@
 
   // Click handler for action buttons inside messages
   document.addEventListener('click', async (e) => {
+    // 1. Submit-кнопка inline-формы (карточка type=form)
+    const submit = e.target.closest('.fm-submit');
+    if (submit) {
+      const card = submit.closest('.fm-card');
+      if (!card) return;
+      const action = card.dataset.formAction;
+      const fixed = JSON.parse(card.dataset.fixed || '{}');
+      const params = {...fixed};
+      card.querySelectorAll('.fm-input').forEach(inp => {
+        if (inp.required && !inp.value.trim()) inp.classList.add('fm-error');
+        else inp.classList.remove('fm-error');
+        if (inp.value.trim()) params[inp.name] = inp.value.trim();
+      });
+      const missing = card.querySelectorAll('.fm-input.fm-error').length;
+      if (missing) return;
+      submit.disabled = true;
+      submit.textContent = '…';
+      params._label = card.querySelector('.card-title')?.textContent || action;
+      quickAction(action, params);
+      return;
+    }
+    // 2. Обычные action-кнопки
     const btn = e.target.closest('.act-btn');
     if (!btn) return;
     const action = btn.dataset.action;
@@ -659,6 +1063,125 @@
       state.convs = data.results || data;
       renderConvList();
     } catch(e){}
+  }
+
+  // ── Role toggle (Покупатель / Поставщик / Оператор) ───────
+  const ROLE_TABS = ['buyer', 'seller', 'operator'];
+
+  function paintRoleToggle(activeRole) {
+    document.querySelectorAll('#roleToggle .role-tab').forEach(b => {
+      b.classList.toggle('active', b.dataset.role === activeRole);
+    });
+  }
+
+  async function setRole(newRole) {
+    paintRoleToggle(newRole);
+    try {
+      const r = await fetch('/api/assistant/role/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRFToken': csrf()},
+        credentials: 'same-origin',
+        body: JSON.stringify({role: newRole}),
+      });
+      const data = await r.json();
+      const role = data.role || newRole;
+      state.config = {...(state.config || {}), role};
+      applyRoleWelcome(role);
+      // Сбрасываем активную беседу — новая роль = новый сценарий
+      setConvId(null);
+      showWelcome();
+      if (state.ws) { try { state.ws.close(); } catch(e){} }
+    } catch (err) {
+      console.warn('role switch failed', err);
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const tab = e.target.closest('#roleToggle .role-tab');
+    if (!tab) return;
+    const newRole = tab.dataset.role;
+    if (!ROLE_TABS.includes(newRole)) return;
+    if (state.config && state.config.role === newRole) return;
+    setRole(newRole);
+  });
+
+  // Welcome screen + quick-pills адаптивны под роль
+  const ROLE_WELCOME = {
+    buyer: {
+      title:    'Какую запчасть найти?',
+      subtitle: 'Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>.',
+      pills: [
+        {label:'📦 Мои заказы',      action:'get_orders',     params:{}},
+        {label:'📋 Открытые RFQ',    action:'get_rfq_status', params:{}},
+        {label:'💰 Баланс депозита', action:'get_balance',    params:{}},
+      ],
+    },
+    seller: {
+      title:    'Что в работе сегодня?',
+      subtitle: 'Срочные задачи, входящие RFQ и отгрузки. Каталог, финансы и команда — по запросу.',
+      pills: [
+        {label:'🔥 Срочное',         action:'seller_inbox',      params:{}},
+        {label:'🚚 К отгрузке',      action:'seller_pipeline',   params:{}},
+        {label:'📋 Новые RFQ',       action:'get_rfq_status',    params:{}},
+        {label:'📈 Спрос',           action:'get_demand_report', params:{}},
+      ],
+    },
+    operator: {
+      title:    'Что в работе на платформе?',
+      subtitle: 'Контролируйте процесс: активные заказы, SLA-нарушения, спрос, аналитика.',
+      pills: [
+        {label:'📦 Активные заказы',  action:'get_orders',        params:{}},
+        {label:'⏱ SLA-нарушения',    action:'get_sla_report',    params:{}},
+        {label:'📋 Все RFQ',          action:'get_rfq_status',    params:{}},
+        {label:'📈 Спрос',            action:'get_demand_report', params:{}},
+        {label:'📊 Аналитика',        action:'get_analytics',     params:{}},
+      ],
+    },
+    operator_logist: {
+      title:    'Логистика',
+      subtitle: 'Отгрузки, контейнеры, SLA — управляйте через чат.',
+      pills: [
+        {label:'📦 Активные заказы', action:'get_orders',    params:{}},
+        {label:'⏱ SLA-нарушения',   action:'get_sla_report', params:{}},
+      ],
+    },
+    operator_customs: {
+      title:    'Таможня',
+      subtitle: 'Грузы под растаможкой, документы, декларации.',
+      pills: [
+        {label:'📦 Грузы на таможне', action:'get_orders', params:{}},
+      ],
+    },
+    operator_payment: {
+      title:    'Платежи',
+      subtitle: 'Инвойсы, эскроу, платёжный календарь.',
+      pills: [
+        {label:'📦 Заказы',        action:'get_orders', params:{}},
+        {label:'💰 Бюджет',        action:'get_budget', params:{}},
+      ],
+    },
+    operator_manager: {
+      title:    'Менеджмент',
+      subtitle: 'Конверсия RFQ, топ-клиенты, KPI команды.',
+      pills: [
+        {label:'📦 Заказы',          action:'get_orders',    params:{}},
+        {label:'📋 RFQ',             action:'get_rfq_status', params:{}},
+        {label:'📈 Аналитика',       action:'get_analytics',  params:{}},
+      ],
+    },
+  };
+
+  function applyRoleWelcome(role) {
+    const cfg = ROLE_WELCOME[role] || ROLE_WELCOME.buyer;
+    const t = $('welcomeTitle'), s = $('welcomeSubtitle'), p = $('welcomePills');
+    if (t) t.textContent = cfg.title;
+    if (s) s.innerHTML = cfg.subtitle;
+    if (p) p.innerHTML = cfg.pills.map(b =>
+      `<button class="pill" type="button"
+        onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(b.params)})'>
+        ${esc(b.label)}
+      </button>`
+    ).join('');
   }
 
   async function loadProjects() {
@@ -715,7 +1238,7 @@
   window.filterConvs = renderConvList;
 
   window.openConv = async (id) => {
-    state.convId = id;
+    setConvId(id);
     showConv();
     $('streamInner').innerHTML = '';
     if (state.ws) { try { state.ws.close(); } catch(e){} }
@@ -729,7 +1252,7 @@
   };
 
   window.newChat = () => {
-    state.convId = null;
+    setConvId(null);
     showWelcome();
     if (state.ws) { try { state.ws.close(); } catch(e){} }
     connectWS();
@@ -742,39 +1265,157 @@
   // Voice + file
   // ══════════════════════════════════════════════════════════
   let recog = null;
-  window.toggleVoice = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+  let mediaRec = null;
+  let recordedChunks = [];
+
+  window.toggleVoice = async () => {
+    // Если уже идёт серверная запись — остановить и отправить
+    if (mediaRec && mediaRec.state === 'recording') {
+      mediaRec.stop();
+      return;
+    }
+    // Web Speech API — если есть, используем (бесплатно, on-device)
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) {
+      if (recog) { recog.stop(); recog = null; return; }
+      recog = new SR();
+      recog.lang = document.documentElement.lang === 'en' ? 'en-US' : 'ru-RU';
+      recog.interimResults = true;
+      recog.onresult = (e) => {
+        const text = Array.from(e.results).map(r => r[0].transcript).join('');
+        const target = $('welcomeStage').classList.contains('hidden') ? $('input') : $('heroInput');
+        target.value = text;
+        if (typeof updateHeroIcon === 'function') updateHeroIcon();
+      };
+      recog.onend = () => { recog = null; };
+      recog.start();
+      return;
+    }
+    // Fallback: пишем через MediaRecorder и шлём на сервер для Whisper
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
       alert('Голосовой ввод не поддерживается этим браузером');
       return;
     }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (recog) { recog.stop(); recog = null; return; }
-    recog = new SR();
-    recog.lang = document.documentElement.lang === 'en' ? 'en-US' : 'ru-RU';
-    recog.interimResults = true;
-    recog.onresult = (e) => {
-      const text = Array.from(e.results).map(r => r[0].transcript).join('');
-      const target = $('welcomeStage').classList.contains('hidden') ? $('input') : $('heroInput');
-      target.value = text;
-      updateHeroIcon();
-    };
-    recog.onend = () => { recog = null; };
-    recog.start();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+      mediaRec = new MediaRecorder(stream, {mimeType: 'audio/webm'});
+      recordedChunks = [];
+      mediaRec.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRec.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(recordedChunks, {type: 'audio/webm'});
+        recordedChunks = [];
+        const fd = new FormData();
+        fd.append('audio', blob, 'voice.webm');
+        try {
+          const res = await fetch('/api/assistant/transcribe-audio/', {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrf()},
+            body: fd, credentials: 'same-origin',
+          });
+          const d = await res.json();
+          if (d.error && !d.text) {
+            alert(d.error);
+            return;
+          }
+          const target = $('welcomeStage').classList.contains('hidden') ? $('input') : $('heroInput');
+          target.value = d.text || '';
+          if (typeof updateHeroIcon === 'function') updateHeroIcon();
+        } catch(err) {
+          alert('Не удалось расшифровать: ' + err.message);
+        }
+      };
+      mediaRec.start();
+    } catch(err) {
+      alert('Доступ к микрофону отклонён: ' + (err.message || err));
+    }
   };
+
+  async function uploadSpec(file) {
+    showConv();
+    addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
+    const pending = addMessage('assistant', 'Парсю файл и ищу артикулы в каталоге…');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      if (state.convId) fd.append('conversation_id', state.convId);
+      const res = await fetch('/api/assistant/upload-spec/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf()},
+        body: fd,
+        credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      if (pending && pending.parentNode) pending.remove();
+      if (data.conversation_id) {
+        setConvId(data.conversation_id);
+        if (state.ws) { try { state.ws.close(); } catch(e){} }
+        connectWS();
+      }
+      addMessage('assistant', data.text || 'Готово.', data.cards || [], data.actions || [], [], data.message_id || null, data.suggestions || []);
+      renderConvList();
+    } catch (err) {
+      if (pending && pending.parentNode) pending.remove();
+      addMessage('assistant', '⚠️ Не удалось обработать файл: ' + (err.message || err));
+    }
+  }
 
   $('fileInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
-    addMessage('assistant', 'Обработка файлов будет в Phase 2. Опишите запрос текстом.');
+    uploadSpec(file);
     e.target.value = '';
   });
+
+  async function recognizePhoto(file) {
+    showConv();
+    addMessage('user', '📷 ' + file.name);
+    const pending = addMessage('assistant', 'Распознаю шильду…');
+    try {
+      const fd = new FormData();
+      fd.append('photo', file);
+      const res = await fetch('/api/assistant/recognize-photo/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf()},
+        body: fd, credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (pending && pending.parentNode) pending.remove();
+      if (data.error) {
+        addMessage('assistant', '⚠️ ' + data.error);
+        return;
+      }
+      const t = data.text || '';
+      let recognized = t;
+      try {
+        const j = JSON.parse(t.replace(/^```json\s*/, '').replace(/```$/, ''));
+        const parts = [];
+        if (j.brand) parts.push('Бренд: ' + j.brand);
+        if (j.model) parts.push('Модель: ' + j.model);
+        if (j.part_number) parts.push('Артикул: ' + j.part_number);
+        if (j.serial) parts.push('Серийный: ' + j.serial);
+        if (j.notes) parts.push(j.notes);
+        recognized = parts.join('\n') || t;
+        // Если есть артикул — сразу предложим search_parts
+        if (j.part_number) {
+          addMessage('assistant', '✓ Распознал:\n' + recognized,
+            [], [{label: '🔍 Найти ' + j.part_number, action: 'search_parts',
+                  params: {query: j.part_number}}]);
+          return;
+        }
+      } catch(_){}
+      addMessage('assistant', '✓ Распознал:\n' + recognized);
+    } catch(err) {
+      if (pending && pending.parentNode) pending.remove();
+      addMessage('assistant', '⚠️ Ошибка распознавания: ' + (err.message || err));
+    }
+  }
 
   $('photoInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    addMessage('user', '📷 ' + file.name);
-    addMessage('assistant', 'Распознавание фото деталей будет в Phase 2.');
+    recognizePhoto(file);
     e.target.value = '';
   });
 
@@ -790,21 +1431,36 @@
       $('sideUserRole').textContent = (state.config.role || '').replace('operator_', '').replace(/_/g, ' ');
       $('sideAvatar').textContent = initial;
       $('topAvatar').textContent = initial;
+      // Активная вкладка role-toggle
+      const r = state.config.role || 'buyer';
+      const uiRole = r.startsWith('operator') ? 'operator' : (r === 'seller' ? 'seller' : 'buyer');
+      paintRoleToggle(uiRole);
+      applyRoleWelcome(state.config.role);
       await Promise.all([loadConvList(), loadProjects()]);
       applyDefaultSidebar(state.convs.length > 0);
     } catch(e) {
       console.warn('Init failed:', e);
       applyDefaultSidebar(false);
     }
-    // Auto-open conversation from URL (?conv=<uuid>)
+    // Conversation resolution priority:
+    //   1. ?conv=<uuid> in URL (explicit deep link)
+    //   2. localStorage cf_active_conv (continue last session)
+    //   3. Most recent existing conversation (returning user)
+    //   4. Fresh welcome screen — only here we let WS auto-create a new chat
     try {
       const params = new URLSearchParams(window.location.search);
-      const cid = params.get('conv');
-      if (cid) {
-        await window.openConv(cid);
+      const urlConv = params.get('conv');
+      const storedConv = getStoredConvId();
+      const validIds = new Set((state.convs || []).map(c => c.id));
+      let target = null;
+      if (urlConv && validIds.has(urlConv)) target = urlConv;
+      else if (storedConv && validIds.has(storedConv)) target = storedConv;
+      else if (state.convs && state.convs.length) target = state.convs[0].id;
+      if (target) {
+        await window.openConv(target);
         return;
       }
-    } catch(e){}
+    } catch(e){ console.warn('conv resolve failed', e); }
     connectWS();
     setTimeout(() => $('heroInput').focus(), 200);
     updateHeroIcon();

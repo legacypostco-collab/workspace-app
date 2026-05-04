@@ -1,17 +1,28 @@
 """Signals for auto-indexing on model changes.
 
 Async via Celery — uses .delay() so signal handler returns instantly.
+
+В dev без Redis-брокера Celery .delay() может зависать на коннект-таймауте.
+Поэтому при первом сбое мы запоминаем «брокера нет» и больше не пытаемся —
+сигналы становятся no-op и не тормозят запросы.
 """
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+_BROKER_AVAILABLE = True
+
 
 def _safe_delay(task, *args):
-    """Call task.delay() but don't break if Celery broker unavailable."""
+    """Call task.delay() but bail out fast if broker is unreachable."""
+    global _BROKER_AVAILABLE
+    if not _BROKER_AVAILABLE:
+        return
     try:
         task.delay(*args)
     except Exception:
-        pass
+        # Disable for the rest of the process — dev без Redis не должен
+        # ронять p99 каждого сохранения.
+        _BROKER_AVAILABLE = False
 
 
 def _connect():

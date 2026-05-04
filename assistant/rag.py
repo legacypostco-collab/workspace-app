@@ -220,8 +220,16 @@ def _stub_response(query: str, chunks) -> str:
 def process_query_sync(conversation: Conversation, user_message: str, user=None):
     """Sync RAG pipeline. Returns dict with text/cards/actions/refs.
 
+    Hybrid execution:
+      1. Fast-path: deterministic intent → run action directly, skip LLM
+         (multi-article paste, "show my orders", "make proposal", etc.)
+      2. Slow-path: Claude tool-use for ambiguous queries
+      3. Stub: keyword fallback if no API key
+
     Saves user + assistant messages to the conversation.
     """
+    from . import fast_path
+
     user = user or conversation.user
 
     # 1. Save user message
@@ -231,7 +239,38 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
         content=user_message,
     )
 
-    # 2. Search context + history
+    # 2. Try fast-path first — deterministic, free, instant
+    fp_match = fast_path.match(user_message, conversation.role)
+    if fp_match:
+        action_name, params, rule_name = fp_match
+        if action_executor.can_execute(action_name, conversation.role):
+            logger.info(f"AI fast-path: {rule_name} → {action_name}({params})")
+            result = action_executor.execute(action_name, params, user, conversation.role)
+            clean_text = result.text or ""
+            cards = result.cards or []
+            actions = result.actions or []
+
+            assistant_msg = Message.objects.create(
+                conversation=conversation,
+                role=Message.Role.ASSISTANT,
+                content=clean_text,
+                cards=cards,
+                actions=actions,
+                context_refs=[],
+                tokens_used=0,
+            )
+            if not conversation.title:
+                conversation.title = user_message[:100]
+                conversation.save(update_fields=["title", "updated_at"])
+            return {
+                "text": clean_text, "cards": cards, "actions": actions,
+                "context_refs": [],
+                "contextual_actions": list(getattr(result, "contextual_actions", []) or []),
+                "suggestions": list(getattr(result, "suggestions", []) or []),
+                "message_id": str(assistant_msg.id),
+            }
+
+    # 3. Slow-path: Claude tool-use for everything else
     language = _detect_language(user_message)
     context_chunks = _search_context(user_message, conversation.role, language)
     context_refs = _build_context_refs(context_chunks)
@@ -243,7 +282,6 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
 
     messages = history + [{"role": "user", "content": user_message}]
 
-    # 3. Call Claude (or fallback to stub)
     client = _get_anthropic_client()
     full_response = ""
     tokens_used = 0
@@ -279,7 +317,7 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
     clean_text = _re.sub(r"\[card:\w+\]\s*", "", clean_text or "").strip() or full_response
 
     # 5. Save assistant message
-    Message.objects.create(
+    assistant_msg = Message.objects.create(
         conversation=conversation,
         role=Message.Role.ASSISTANT,
         content=clean_text,
@@ -299,7 +337,10 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
         "cards": cards,
         "actions": actions,
         "context_refs": context_refs,
+        "contextual_actions": [],
+        "suggestions": [],
         "tokens_used": tokens_used,
+        "message_id": str(assistant_msg.id),
     }
 
 
@@ -324,7 +365,7 @@ def execute_action(conversation: Conversation, action_name: str, params: dict, u
     result = action_executor.execute(action_name, params, user, conversation.role)
 
     # Save assistant message with result
-    Message.objects.create(
+    assistant_msg = Message.objects.create(
         conversation=conversation,
         role=Message.Role.ASSISTANT,
         content=result.text,
@@ -340,7 +381,9 @@ def execute_action(conversation: Conversation, action_name: str, params: dict, u
         "text": result.text,
         "cards": result.cards,
         "actions": result.actions,
+        "contextual_actions": list(getattr(result, "contextual_actions", []) or []),
         "suggestions": result.suggestions,
+        "message_id": str(assistant_msg.id),
     }
 
 
@@ -431,6 +474,8 @@ def process_query_stream(conversation: Conversation, user_message: str):
       {"type":"done", "tokens": N} — completion
       {"type":"error", "message":"..."}
     """
+    from . import fast_path
+
     # Save user message
     Message.objects.create(
         conversation=conversation,
@@ -439,6 +484,39 @@ def process_query_stream(conversation: Conversation, user_message: str):
     )
 
     yield {"type": "thinking"}
+
+    # Fast-path: skip context search + Claude entirely for known intents.
+    fp_match = fast_path.match(user_message, conversation.role)
+    if fp_match:
+        action_name, params, rule_name = fp_match
+        if action_executor.can_execute(action_name, conversation.role):
+            logger.info(f"AI fast-path (stream): {rule_name} → {action_name}({params})")
+            result = action_executor.execute(action_name, params, user=conversation.user, role=conversation.role)
+            text = result.text or ""
+            cards = result.cards or []
+            actions = result.actions or []
+
+            ctx_actions = list(getattr(result, "contextual_actions", []) or [])
+            suggestions = list(getattr(result, "suggestions", []) or [])
+            yield {"type": "token", "text": text}
+            yield {
+                "type": "cards", "cards": cards, "actions": actions, "text": text,
+                "contextual_actions": ctx_actions, "suggestions": suggestions,
+            }
+            Message.objects.create(
+                conversation=conversation,
+                role=Message.Role.ASSISTANT,
+                content=text,
+                cards=cards,
+                actions=actions,
+                context_refs=[],
+                tokens_used=0,
+            )
+            if not conversation.title:
+                conversation.title = user_message[:100]
+                conversation.save(update_fields=["title", "updated_at"])
+            yield {"type": "done", "tokens": 0, "refs": []}
+            return
 
     language = _detect_language(user_message)
     context_chunks = _search_context(user_message, conversation.role, language)

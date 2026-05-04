@@ -1,0 +1,209 @@
+{% load static i18n %}<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <title>RFQ #{{ rfq_id }} — Consolidator Parts</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <script src="{% url 'javascript-catalog' %}"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;color:#1a1a1a;}
+    body{background:linear-gradient(180deg,#a8b8d8 0%,#cda9d6 35%,#f0a59a 65%,#f4956a 100%);background-attachment:fixed;overflow:hidden;}
+    body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 55% at 50% 80%, rgba(255,130,75,0.4), transparent 65%);pointer-events:none;z-index:0;}
+    a{color:inherit;text-decoration:none;}
+    button{font-family:inherit;cursor:pointer;border:none;background:transparent;color:inherit;padding:0;}
+    code{background:rgba(255,255,255,0.5);padding:1px 5px;border-radius:4px;font-family:'SF Mono',Menlo,monospace;font-size:12px;}
+    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:3px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+
+    .app{position:relative;z-index:1;height:100vh;display:flex;}
+
+    /* ── Sidebar ── */
+    .sidebar{width:0;flex-shrink:0;background:rgba(255,255,255,0.7);backdrop-filter:blur(20px);border-right:1px solid rgba(255,255,255,0.5);overflow:hidden;transition:width .25s ease;display:flex;flex-direction:column;z-index:10;}
+    .sidebar.open{width:280px;}
+    @media(max-width:768px){.sidebar{position:fixed;top:0;bottom:0;left:0;width:0;}.sidebar.open{width:280px;box-shadow:0 0 40px rgba(0,0,0,0.15);}}
+    .side-inner{width:280px;display:flex;flex-direction:column;height:100%;padding:14px;}
+    .side-spacer{height:48px;}
+    .side-new-btn{display:flex;align-items:center;gap:8px;width:100%;padding:11px 14px;background:#1a1a1a;color:#fff;border-radius:12px;font-size:13px;font-weight:600;margin-bottom:14px;}
+    .side-new-btn:hover{background:#000;}
+    .side-search{position:relative;margin-bottom:18px;}
+    .side-search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:rgba(0,0,0,0.4);}
+    .side-search input{width:100%;padding:9px 12px 9px 34px;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.5);border-radius:10px;color:#1a1a1a;font-size:13px;outline:none;font-family:inherit;}
+    .side-search input::placeholder{color:rgba(0,0,0,0.4);}
+    .side-list{flex:1;overflow-y:auto;margin:0 -6px;padding:0 6px;}
+    .side-section{margin-bottom:18px;}
+    .side-section-head{display:flex;align-items:center;justify-content:space-between;padding:0 8px 6px;}
+    .side-section-title{font-size:10px;color:rgba(0,0,0,0.5);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;}
+    .side-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;color:rgba(0,0,0,0.75);font-size:13px;cursor:pointer;}
+    .side-item:hover{background:rgba(0,0,0,0.05);color:#1a1a1a;}
+    .side-item.active{background:rgba(0,0,0,0.08);color:#1a1a1a;font-weight:600;}
+    .side-item-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .side-item-text{flex:1;min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-item-meta{font-size:11px;color:rgba(0,0,0,0.45);flex-shrink:0;}
+    .side-item-stack{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;padding:8px 10px;border-radius:8px;cursor:pointer;}
+    .side-item-stack:hover{background:rgba(0,0,0,0.05);}
+    .side-item-stack-title{font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-item-stack-meta{font-size:11px;color:rgba(0,0,0,0.45);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-foot{display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid rgba(0,0,0,0.06);margin-top:auto;}
+    .side-avatar{width:32px;height:32px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+    .side-user{flex:1;min-width:0;}
+    .side-user-name{font-size:13px;font-weight:600;color:#1a1a1a;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-user-role{font-size:11px;color:rgba(0,0,0,0.5);}
+
+    /* ── Main ── */
+    .main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;min-width:0;}
+    .topbar{position:absolute;top:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;gap:12px;z-index:5;background:linear-gradient(180deg,rgba(168,184,216,0.5),transparent);}
+    .top-burger{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#1a1a1a;}
+    .top-burger:hover{background:rgba(0,0,0,0.06);}
+    .top-brand{display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:700;font-size:15px;color:#1a1a1a;letter-spacing:-0.01em;}
+    .top-brand-logo{width:24px;height:24px;display:block;}
+    .top-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+    .top-avatar{width:34px;height:34px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+
+    /* ── Content ── */
+    .content{flex:1;overflow-y:auto;padding:80px 32px 40px;}
+    .content-inner{max-width:1100px;margin:0 auto;}
+
+    .crumbs{display:flex;align-items:center;gap:6px;font-size:13px;color:rgba(0,0,0,0.55);margin-bottom:18px;}
+    .crumbs a{color:rgba(0,0,0,0.55);}
+    .crumbs a:hover{color:#1a1a1a;}
+    .crumbs-sep{color:rgba(0,0,0,0.35);}
+
+    /* ── Header ── */
+    .rfq-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:22px;}
+    .rfq-head-left{flex:1;min-width:0;}
+    .rfq-title-row{display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
+    .rfq-name{font-family:'Golos Text',sans-serif;font-weight:800;font-size:30px;color:rgba(0,0,0,0.92);letter-spacing:-0.02em;line-height:1.2;}
+    .rfq-status{font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;letter-spacing:0.05em;text-transform:uppercase;}
+    .rfq-status.new{background:rgba(99,102,241,0.18);color:#4338ca;}
+    .rfq-status.quoted{background:rgba(34,197,94,0.18);color:#15803d;}
+    .rfq-status.needs_review{background:rgba(245,158,11,0.18);color:#b45309;}
+    .rfq-status.cancelled{background:rgba(239,68,68,0.18);color:#b91c1c;}
+    .rfq-meta{display:flex;flex-wrap:wrap;align-items:center;gap:16px;font-size:13px;color:rgba(0,0,0,0.6);}
+    .rfq-meta-strong{color:rgba(0,0,0,0.85);font-weight:600;}
+    .rfq-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;}
+    .rfq-btn{padding:9px 18px;background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:24px;font-size:13px;font-weight:600;color:#1a1a1a;}
+    .rfq-btn:hover{background:rgba(255,255,255,0.85);}
+    .rfq-btn.primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+    .rfq-btn.primary:hover{background:#000;}
+
+    /* ── KPI cards ── */
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:28px;}
+    .kpi{padding:18px 20px;background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;}
+    .kpi-label{font-size:11px;font-weight:700;color:rgba(0,0,0,0.5);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;}
+    .kpi-value{display:flex;align-items:baseline;gap:8px;}
+    .kpi-num{font-family:'Golos Text',sans-serif;font-weight:800;font-size:30px;color:rgba(0,0,0,0.92);line-height:1;}
+    .kpi-unit{font-size:12px;color:rgba(0,0,0,0.55);}
+    .kpi-sub{font-size:12px;color:rgba(0,0,0,0.55);margin-top:6px;}
+    .kpi-good{color:#16a34a;font-weight:600;}
+    .kpi-warn{color:#dc2626;font-weight:600;}
+
+    /* ── Sections ── */
+    .sec-title{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+    .sec-title h2{font-family:'Golos Text',sans-serif;font-weight:700;font-size:16px;color:rgba(0,0,0,0.85);}
+    .sec-title-count{font-size:11px;font-weight:600;color:rgba(0,0,0,0.5);background:rgba(0,0,0,0.06);padding:2px 8px;border-radius:10px;}
+
+    /* ── Items table ── */
+    .items{display:flex;flex-direction:column;gap:8px;margin-bottom:28px;}
+    .item{display:grid;grid-template-columns:auto 1fr auto auto auto;gap:14px;align-items:center;padding:14px 18px;background:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.5);border-radius:12px;}
+    .item-state{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+    .item-state.matched{background:#22c55e;}
+    .item-state.pending{background:#f59e0b;}
+    .item-state.no_match{background:#ef4444;}
+    .item-info{min-width:0;}
+    .item-art{font-weight:700;color:rgba(0,0,0,0.92);font-size:14px;font-family:'SF Mono',Menlo,monospace;}
+    .item-match{font-size:12px;color:rgba(0,0,0,0.6);margin-top:2px;}
+    .item-match strong{color:rgba(0,0,0,0.85);font-weight:600;}
+    .item-qty{font-size:13px;color:rgba(0,0,0,0.7);font-weight:600;text-align:right;}
+    .item-supplier{font-size:12px;color:rgba(0,0,0,0.55);text-align:right;min-width:120px;}
+    .item-price{font-family:'Golos Text',sans-serif;font-weight:800;font-size:16px;color:rgba(0,0,0,0.92);text-align:right;min-width:100px;}
+
+    /* ── Total bar ── */
+    .total-bar{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;background:rgba(255,255,255,0.65);border:1px solid rgba(255,255,255,0.6);border-radius:14px;margin-bottom:28px;}
+    .total-label{font-size:12px;font-weight:700;color:rgba(0,0,0,0.55);letter-spacing:0.08em;text-transform:uppercase;}
+    .total-val{font-family:'Golos Text',sans-serif;font-weight:800;font-size:22px;color:rgba(0,0,0,0.92);}
+
+    /* ── Empty/loading state ── */
+    .loading{text-align:center;padding:80px 20px;color:rgba(0,0,0,0.5);}
+
+    @media(max-width:768px){
+      .content{padding:70px 16px 28px;}
+      .rfq-name{font-size:22px;}
+      .item{grid-template-columns:auto 1fr auto;gap:10px;padding:12px 14px;}
+      .item-supplier,.item-qty{display:none;}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="side-inner">
+      <div class="side-spacer"></div>
+      <a class="side-new-btn" href="/chat/" style="text-decoration:none;text-align:left;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        {% trans "Новый чат" %}
+      </a>
+      <div class="side-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="{% trans 'Поиск чатов и проектов' %}">
+      </div>
+
+      <div class="side-list">
+        <div class="side-section">
+          <div class="side-section-head">
+            <span class="side-section-title">{% trans "Проекты" %}</span>
+          </div>
+          <div id="projectsList">
+            <div class="side-item" style="color:rgba(0,0,0,0.4);">{% trans "Загрузка..." %}</div>
+          </div>
+        </div>
+        <div class="side-section">
+          <div class="side-section-head">
+            <span class="side-section-title">{% trans "Недавние" %}</span>
+          </div>
+          <div id="convList"></div>
+        </div>
+      </div>
+
+      <div class="side-foot">
+        <div class="side-avatar" id="sideAvatar">M</div>
+        <div class="side-user">
+          <div class="side-user-name" id="sideUserName">—</div>
+          <div class="side-user-role" id="sideUserRole">—</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <button class="top-burger" onclick="toggleSidebar()" title="{% trans 'Меню' %}">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <a href="/chat/" class="top-brand">
+        <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}" alt="" width="24" height="24">
+        Consolidator Parts
+      </a>
+      <div class="top-right">
+        <div class="top-avatar" id="topAvatar">?</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="content-inner" id="rfqContent">
+        <div class="loading">{% trans "Загрузка RFQ..." %}</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  window.RFQ_ID = "{{ rfq_id }}";
+</script>
+<script src="{% static 'js/rfq-page.js' %}?v=1&t={% now 'U' %}" defer></script>
+</body>
+</html>

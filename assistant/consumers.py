@@ -1,15 +1,35 @@
-"""WebSocket consumer for streaming AI responses."""
+"""WebSocket consumer for streaming AI responses + realtime notifications."""
 import json
 import logging
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.layers import get_channel_layer
 
 from .models import Conversation
 from .permissions import detect_user_role
 from .rag import process_query_stream
 
 logger = logging.getLogger(__name__)
+
+
+def push_notification_to_user(user_id: int, payload: dict):
+    """Sync helper — отправляет нотификацию по WS всем сессиям пользователя.
+
+    Channel group: notif_user_<id>. Если channel-layer не настроен (нет
+    in-memory или Redis), функция тихо игнорирует — основной flow не сломается.
+    """
+    try:
+        from asgiref.sync import async_to_sync
+        layer = get_channel_layer()
+        if not layer:
+            return
+        async_to_sync(layer.group_send)(
+            f"notif_user_{user_id}",
+            {"type": "notify", "payload": payload},
+        )
+    except Exception:
+        logger.exception("push_notification_to_user failed")
 
 
 class AssistantConsumer(AsyncWebsocketConsumer):
@@ -32,21 +52,35 @@ class AssistantConsumer(AsyncWebsocketConsumer):
             return
 
         conv_id = self.scope["url_route"]["kwargs"].get("conversation_id")
-        self.conversation = await self._get_or_create_conversation(conv_id)
-        # If specific conv_id was requested but doesn't belong to user,
-        # silently fall back to creating new conversation instead of disconnecting
-        if not self.conversation:
-            self.conversation = await self._get_or_create_conversation(None)
+        self.conversation = await self._get_existing_conversation(conv_id) if conv_id else None
+
+        # Подписка на персональную группу для realtime-уведомлений
+        self.notif_group = f"notif_user_{self.user.id}"
+        try:
+            await self.channel_layer.group_add(self.notif_group, self.channel_name)
+        except Exception:
+            self.notif_group = None
 
         await self.accept()
         await self.send_json({
             "type": "connected",
-            "conversation_id": str(self.conversation.id),
-            "role": self.conversation.role,
+            "conversation_id": str(self.conversation.id) if self.conversation else None,
+            "role": self.conversation.role if self.conversation else None,
         })
 
     async def disconnect(self, code):
-        pass
+        if getattr(self, "notif_group", None):
+            try:
+                await self.channel_layer.group_discard(self.notif_group, self.channel_name)
+            except Exception:
+                pass
+
+    async def notify(self, event):
+        """Получено push-уведомление из канала. Шлём клиенту."""
+        await self.send_json({
+            "type": "notification",
+            "payload": event.get("payload") or {},
+        })
 
     async def receive(self, text_data=None, bytes_data=None):
         try:
@@ -67,6 +101,17 @@ class AssistantConsumer(AsyncWebsocketConsumer):
             await self.send_json({"type": "error", "message": "Empty message"})
             return
 
+        # Lazy creation: only spawn a new Conversation row when the user
+        # actually says something. This prevents empty "Без названия" chats
+        # from accumulating on every page reload.
+        if not self.conversation:
+            self.conversation = await self._create_conversation()
+            await self.send_json({
+                "type": "connected",
+                "conversation_id": str(self.conversation.id),
+                "role": self.conversation.role,
+            })
+
         try:
             async for event in self._stream_response(msg):
                 await self.send_json(event)
@@ -78,12 +123,14 @@ class AssistantConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(payload))
 
     @database_sync_to_async
-    def _get_or_create_conversation(self, conv_id):
-        if conv_id:
-            try:
-                return Conversation.objects.get(id=conv_id, user=self.user, is_active=True)
-            except Conversation.DoesNotExist:
-                return None
+    def _get_existing_conversation(self, conv_id):
+        try:
+            return Conversation.objects.get(id=conv_id, user=self.user, is_active=True)
+        except Conversation.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def _create_conversation(self):
         return Conversation.objects.create(user=self.user, role=detect_user_role(self.user))
 
     async def _stream_response(self, message):

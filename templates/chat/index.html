@@ -57,7 +57,7 @@
       .sidebar.open{width:280px;box-shadow:0 0 40px rgba(0,0,0,0.15);}
     }
     .side-inner{width:280px;display:flex;flex-direction:column;height:100%;padding:14px;}
-    .side-spacer{height:48px;flex-shrink:0;}  /* room for top brand */
+    .side-spacer{height:14px;flex-shrink:0;}
     .side-new-btn{display:flex;align-items:center;gap:8px;width:100%;padding:11px 14px;background:#1a1a1a;color:#fff;border-radius:12px;font-size:13px;font-weight:600;margin-bottom:14px;}
     .side-new-btn:hover{background:#000;}
     .side-search{position:relative;margin-bottom:18px;}
@@ -94,6 +94,15 @@
     .topbar{position:absolute;top:0;left:0;right:0;padding:14px 20px;display:flex;align-items:center;gap:12px;z-index:5;}
     .top-burger{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#1a1a1a;}
     .top-burger:hover{background:rgba(0,0,0,0.06);}
+
+    /* Role toggle (Claude-style segmented control) */
+    .role-toggle{display:flex;align-items:center;gap:2px;padding:3px;background:rgba(0,0,0,0.06);backdrop-filter:blur(10px);border-radius:10px;}
+    .role-tab{flex:1;padding:6px 8px;background:transparent;border:none;border-radius:8px;color:rgba(0,0,0,0.6);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.12s;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .role-tab:hover{color:#1a1a1a;}
+    .role-tab.active{background:#fff;color:#1a1a1a;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.04);}
+    /* Sidebar variant: на всю ширину */
+    .role-toggle-side{margin:0 0 12px 0;}
+    .role-toggle-side .role-tab{padding:7px 4px;font-size:11px;letter-spacing:-0.01em;}
     .top-brand{display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:700;font-size:15px;color:#1a1a1a;letter-spacing:-0.01em;}
     .top-brand-logo{width:24px;height:24px;flex-shrink:0;display:block;}
     .top-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
@@ -160,6 +169,192 @@
     .msg-content{color:#1a1a1a;font-size:14px;line-height:1.65;white-space:pre-wrap;word-wrap:break-word;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);padding:12px 16px;border-radius:14px;}
     .msg-user .msg-content{background:rgba(40,28,28,0.92);color:#fff;border-color:rgba(0,0,0,0.15);}
     .msg-action-tag{font-style:italic;color:rgba(0,0,0,0.6);}
+
+    /* ── Entity links: #123 / RFQ #45 кликабельны, открывают карточку ── */
+    .entity-link{color:#1a1a1a;background:rgba(0,0,0,0.05);padding:1px 6px;border-radius:5px;cursor:pointer;border-bottom:1px dashed rgba(0,0,0,0.25);font-weight:500;transition:all 0.12s;}
+    .entity-link:hover{background:#1a1a1a;color:#fff;border-bottom-color:transparent;}
+
+    /* ── AI text marker (💬) — отличает «речь снабженца» от фактов в карточках ── */
+    .msg-content-ai.msg-has-text{position:relative;padding-left:42px !important;}
+    .msg-content-ai.msg-has-text::before{
+      content:'💬';position:absolute;left:12px;top:11px;font-size:18px;line-height:1;
+      z-index:1;
+    }
+
+    /* ── Contextual actions (Уровень 2): «💡 Также можете» — кнопки-действия от кода по правилам ── */
+    .ctx-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;}
+    .ctx-label{font-size:11px;color:rgba(0,0,0,0.55);font-weight:500;margin-right:4px;}
+    .ctx-btn{background:rgba(255,255,255,0.55);color:rgba(0,0,0,0.85);border:1px solid rgba(0,0,0,0.08);padding:5px 12px;border-radius:18px;font-size:11px;font-weight:500;}
+    .ctx-btn:hover{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+
+    /* ── Suggestions (text chips, подставляются в input) ── */
+    .sg-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,0.08);}
+    .sg-label{font-size:11px;color:rgba(0,0,0,0.55);font-weight:500;margin-right:4px;}
+    .sg-chip{background:rgba(255,255,255,0.55);border:1px solid rgba(0,0,0,0.08);color:rgba(0,0,0,0.8);padding:4px 10px;border-radius:20px;font-size:11px;font-family:inherit;cursor:pointer;transition:all 0.12s;}
+    .sg-chip:hover{background:#fff;border-color:rgba(0,0,0,0.2);color:#1a1a1a;}
+
+    /* ── QR card ── */
+    .qr-card{padding:14px 16px;text-align:center;}
+    .qr-sub{font-size:11px;color:rgba(0,0,0,0.55);margin-top:4px;}
+    .qr-img{margin:14px 0;display:flex;justify-content:center;}
+    .qr-img img{width:200px;height:200px;background:#fff;padding:8px;border-radius:8px;border:1px solid rgba(0,0,0,0.06);}
+    .qr-payload{font-family:'SF Mono',Menlo,monospace;font-size:11px;color:rgba(0,0,0,0.6);background:rgba(0,0,0,0.04);padding:6px 10px;border-radius:6px;display:inline-block;}
+
+    /* ── Price breakdown ── */
+    .pb-card{padding:14px 16px;}
+    .pb-rows{display:flex;flex-direction:column;gap:4px;margin-top:10px;}
+    .pb-row{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-radius:6px;font-size:12px;}
+    .pb-row:hover{background:rgba(0,0,0,0.03);}
+    .pb-label{color:rgba(0,0,0,0.7);}
+    .pb-amount{font-weight:500;font-variant-numeric:tabular-nums;}
+    .pb-row.pb-neg .pb-amount{color:#1f6f24;}
+    .pb-total{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-top:10px;background:rgba(0,0,0,0.06);border-radius:8px;}
+    .pb-total-label{font-size:12px;font-weight:600;color:#1a1a1a;}
+    .pb-total-amount{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;color:#1a1a1a;font-family:'Golos Text',sans-serif;}
+
+    /* ── Draft card (двухступенчатое подтверждение writing-действий) ── */
+    .dr-card{padding:14px 16px;border:1px solid rgba(249,115,22,0.25);background:rgba(255,251,245,0.85);}
+    .dr-card.dr-cancelled{opacity:0.4;pointer-events:none;}
+    .dr-cancelled-note{font-size:12px;color:rgba(0,0,0,0.5);font-style:italic;padding:8px 12px;}
+    .dr-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px dashed rgba(0,0,0,0.08);}
+    .dr-badge{font-size:10px;font-weight:700;color:#9a4a0a;background:rgba(249,115,22,0.18);padding:3px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:0.04em;}
+    .dr-title{font-size:13px;font-weight:600;color:#1a1a1a;}
+    .dr-rows{display:flex;flex-direction:column;gap:6px;}
+    .dr-row{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:6px;font-size:13px;}
+    .dr-row .dr-label{color:rgba(0,0,0,0.6);}
+    .dr-row .dr-value{font-weight:500;font-variant-numeric:tabular-nums;color:#1a1a1a;}
+    .dr-row.dr-primary{background:rgba(0,0,0,0.05);}
+    .dr-row.dr-primary .dr-value{font-weight:700;font-size:14px;}
+    .dr-warnings{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+    .dr-warning{font-size:12px;color:#9a4a0a;background:rgba(249,115,22,0.1);border-left:3px solid #f97316;padding:8px 10px;border-radius:6px;line-height:1.4;}
+    .dr-actions{display:flex;gap:8px;margin-top:14px;}
+    .dr-confirm{background:#1a1a1a;color:#fff;}
+    .dr-cancel{background:transparent;color:rgba(0,0,0,0.6);border:1px solid rgba(0,0,0,0.15);}
+    .dr-cancel:hover{background:rgba(0,0,0,0.05);color:#1a1a1a;}
+
+    /* ── Inbox card ── */
+    .ib-card{padding:14px 16px;}
+    .ib-section{margin-top:14px;}
+    .ib-section:first-child{margin-top:10px;}
+    .ib-section-head{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:rgba(0,0,0,0.05);border-left:3px solid rgba(0,0,0,0.35);border-radius:8px;}
+    .ib-section-icon{font-size:15px;}
+    .ib-section-title{flex:1;font-size:13px;font-weight:700;color:#1a1a1a;letter-spacing:-0.01em;}
+    .ib-section-count{font-size:11px;font-weight:600;color:#fff;background:rgba(0,0,0,0.5);border-radius:10px;padding:1px 8px;}
+    .ib-row{background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;}
+    .ib-row:last-child{margin-bottom:0;}
+    .ib-title{font-size:12px;font-weight:600;color:#1a1a1a;}
+    .ib-sub{font-size:11px;color:rgba(0,0,0,0.55);margin-top:2px;}
+    .ib-btn{padding:5px 10px;font-size:11px;flex-shrink:0;background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.85);border:1px solid rgba(0,0,0,0.08);font-weight:500;transition:all 0.12s;}
+    .ib-btn:hover{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+
+    /* ── Catalog card ── */
+    .cat-card{padding:14px 16px;}
+    .cat-rows{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+    .cat-row{background:rgba(255,255,255,0.55);border:1px solid rgba(0,0,0,0.05);border-radius:10px;padding:10px 12px;display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;font-size:12px;}
+    .cat-row.cat-archived{opacity:0.55;}
+    .cat-row-main{min-width:0;}
+    .cat-art{font-family:'SF Mono',Menlo,monospace;font-weight:600;color:#1a1a1a;}
+    .cat-name{font-size:11px;color:rgba(0,0,0,0.65);margin-top:2px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;}
+    .cat-brand{font-size:10px;color:rgba(0,0,0,0.45);text-transform:uppercase;letter-spacing:0.04em;margin-top:2px;}
+    .cat-row-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end;}
+    .cat-price{font-weight:700;font-variant-numeric:tabular-nums;}
+    .cat-chip{padding:2px 8px;border-radius:6px;font-size:10px;font-weight:500;}
+    .cat-chip-green{background:rgba(76,175,80,0.18);color:#1f6f24;}
+    .cat-chip-blue{background:rgba(33,150,243,0.18);color:#0d4577;}
+    .cat-chip-gray{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.65);}
+    .cat-row-actions{display:flex;}
+    .cat-btn-mini{padding:5px 10px;font-size:11px;background:rgba(0,0,0,0.78);}
+    .cat-empty{font-size:12px;color:rgba(0,0,0,0.5);font-style:italic;padding:14px;text-align:center;}
+
+    /* ── Generic list card (drawings/team/integrations/reports) ── */
+    .ls-card{padding:14px 16px;}
+    .ls-rows{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+    .ls-row{background:rgba(255,255,255,0.55);border:1px solid rgba(0,0,0,0.05);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+    .ls-row.ls-link{cursor:pointer;}
+    .ls-row.ls-link:hover{background:rgba(255,255,255,0.75);}
+    .ls-title{font-size:13px;font-weight:600;color:#1a1a1a;}
+    .ls-sub{font-size:11px;color:rgba(0,0,0,0.55);margin-top:2px;}
+    .ls-badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;background:rgba(0,0,0,0.08);color:rgba(0,0,0,0.7);padding:3px 8px;border-radius:6px;flex-shrink:0;}
+    .ls-empty{font-size:12px;color:rgba(0,0,0,0.5);font-style:italic;padding:14px;text-align:center;}
+
+    /* ── KPI grid card ── */
+    .kpi-card{padding:16px 18px;}
+    .kpi-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;margin-top:12px;}
+    .kpi-cell{background:rgba(255,255,255,0.55);border:1px solid rgba(0,0,0,0.04);border-radius:12px;padding:12px;}
+    .kpi-value{font-family:'Golos Text',sans-serif;font-weight:700;font-size:22px;color:#1a1a1a;line-height:1.1;letter-spacing:-0.01em;}
+    .kpi-label{font-size:11px;color:rgba(0,0,0,0.55);font-weight:600;letter-spacing:0.04em;text-transform:uppercase;margin-top:6px;}
+    .kpi-sub{font-size:11px;color:rgba(0,0,0,0.5);margin-top:3px;}
+    @media(max-width:640px){
+      .kpi-grid{grid-template-columns:repeat(2, 1fr);}
+    }
+
+    /* ── Inline form card ── */
+    .fm-card{padding:16px 18px;}
+    .fm-fields{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+    .fm-row{display:flex;flex-direction:column;gap:4px;}
+    .fm-label{font-size:11px;color:rgba(0,0,0,0.6);font-weight:500;}
+    .fm-req{color:#e85c0d;font-weight:700;}
+    .fm-input{background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1a1a1a;outline:none;transition:border-color 0.12s;}
+    .fm-input:focus{border-color:#1a1a1a;background:#fff;}
+    .fm-input.fm-error{border-color:#e85c0d;background:rgba(232,92,13,0.06);}
+    .fm-actions{display:flex;justify-content:flex-end;margin-top:12px;}
+    .fm-submit{padding:9px 18px;}
+
+    /* ── Seller queue card ── */
+    .sq-card{padding:16px 18px;}
+    .sq-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(0,0,0,0.06);}
+    .sq-total{font-size:12px;color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;}
+    .sq-section{margin-bottom:16px;}
+    .sq-section:last-child{margin-bottom:0;}
+    .sq-section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:rgba(0,0,0,0.05);border-left:3px solid rgba(0,0,0,0.35);border-radius:8px;}
+    .sq-section-label{font-size:13px;font-weight:700;color:#1a1a1a;letter-spacing:-0.01em;}
+    .sq-section-meta{font-size:11px;color:rgba(0,0,0,0.6);font-variant-numeric:tabular-nums;font-weight:500;}
+    .sq-order{background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.05);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+    .sq-order:last-child{margin-bottom:0;}
+    .sq-order-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;}
+    .sq-order-num{font-weight:600;color:#1a1a1a;}
+    .sq-buyer{color:rgba(0,0,0,0.55);}
+    .sq-order-sub{font-weight:600;font-variant-numeric:tabular-nums;}
+    .sq-items{display:flex;flex-direction:column;gap:3px;font-size:12px;}
+    .sq-item{display:grid;grid-template-columns:80px 1fr auto auto;gap:10px;align-items:center;padding:3px 0;color:rgba(0,0,0,0.75);}
+    .sq-art{font-family:'SF Mono',Menlo,monospace;color:#1a1a1a;font-weight:500;}
+    .sq-name{text-overflow:ellipsis;overflow:hidden;white-space:nowrap;}
+    .sq-qty{color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;}
+    .sq-sub{font-weight:500;font-variant-numeric:tabular-nums;}
+    .sq-actions{margin-top:8px;}
+    .sq-btn{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.85);border:1px solid rgba(0,0,0,0.08);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.12s;}
+    .sq-btn:hover{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+    .sq-empty{font-size:13px;color:rgba(0,0,0,0.5);font-style:italic;text-align:center;padding:20px;}
+
+    /* ── Tracking card ── */
+    .tk-card{padding:16px 18px;}
+    .tk-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px;}
+    .tk-total{font-size:18px;font-weight:700;color:#1a1a1a;font-family:'Golos Text',sans-serif;}
+    .tk-tracking{margin-top:6px;font-size:11px;color:rgba(0,0,0,0.7);}
+    .tk-track-num{font-family:'SF Mono',Menlo,monospace;background:rgba(0,0,0,0.08);padding:1px 6px;border-radius:4px;font-size:11px;}
+    .tk-next{margin:0 0 14px 0;padding:10px 12px;background:rgba(249,115,22,0.10);border:1px solid rgba(249,115,22,0.18);border-left:3px solid #f97316;border-radius:8px;font-size:12px;color:#1a1a1a;line-height:1.45;}
+    .tk-next b{color:#9a4a0a;}
+    .tk-progress-wrap{margin-bottom:16px;}
+    .tk-progress{height:6px;background:rgba(0,0,0,0.07);border-radius:3px;overflow:hidden;}
+    .tk-progress-fill{height:100%;background:linear-gradient(90deg,#16a34a,#22c55e);border-radius:3px;transition:width .3s;}
+    .tk-progress-meta{display:flex;justify-content:space-between;font-size:11px;color:rgba(0,0,0,0.6);margin-top:6px;}
+    .tk-stages{display:flex;flex-direction:column;gap:2px;margin-bottom:14px;border-left:1px solid rgba(0,0,0,0.08);padding-left:12px;margin-left:6px;}
+    .tk-stage{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:12px;}
+    .tk-dot{width:18px;text-align:center;font-size:12px;line-height:1;}
+    .tk-stage.tk-done{color:#16a34a;}
+    .tk-stage.tk-done .tk-dot{color:#16a34a;}
+    .tk-stage.tk-current{color:#1a1a1a;font-weight:600;}
+    .tk-stage.tk-current .tk-dot{color:#f97316;}
+    .tk-stage.tk-pending{color:rgba(0,0,0,0.4);}
+    .tk-stage.tk-pending .tk-dot{color:rgba(0,0,0,0.3);}
+    .tk-label{flex:1;}
+    .tk-eta{font-size:11px;color:rgba(0,0,0,0.45);font-variant-numeric:tabular-nums;}
+    .tk-tl-head{font-size:10px;font-weight:700;color:rgba(0,0,0,0.5);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;padding-top:10px;border-top:1px solid rgba(0,0,0,0.06);}
+    .tk-timeline{display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto;}
+    .tk-event{display:flex;gap:10px;font-size:12px;color:rgba(0,0,0,0.75);}
+    .tk-when{color:rgba(0,0,0,0.45);min-width:80px;font-variant-numeric:tabular-nums;}
+    .tk-text{flex:1;}
+    .tk-empty{font-size:12px;color:rgba(0,0,0,0.4);font-style:italic;}
 
     /* ── Cards ── */
     .cards{display:grid;gap:10px;margin-top:12px;}
@@ -257,7 +452,7 @@
     .act-btn:hover{background:#000;}
 
     /* ── Working indicator (spinning star + rotating status) ── */
-    .working{display:flex;align-items:center;gap:12px;padding:12px 18px;background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;width:fit-content;}
+    .working{display:flex;align-items:center;gap:12px;padding:12px 18px;background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);border:none;border-radius:14px;width:fit-content;}
     .working-logo{width:24px;height:24px;flex-shrink:0;animation:spin 2s linear infinite;}
     .working-logo svg{width:100%;height:100%;display:block;}
     @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
@@ -283,6 +478,11 @@
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
       <div class="side-spacer"></div>
+      <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
+        <button type="button" class="role-tab" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
+        <button type="button" class="role-tab" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
+        <button type="button" class="role-tab" data-role="operator" role="tab">{% trans "Оператор" %}</button>
+      </div>
       <button class="side-new-btn" onclick="newChat()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         {% trans "Новый чат" %}
@@ -300,10 +500,7 @@
             <button class="side-section-add" title="{% trans 'Новый проект' %}">+</button>
           </div>
           <div id="projectsList">
-            <div class="side-item"><span class="side-item-dot" style="background:#22c55e;"></span><span class="side-item-text">Norilsk Q2 procurement</span><span class="side-item-meta">12</span></div>
-            <div class="side-item"><span class="side-item-dot" style="background:#f97316;"></span><span class="side-item-text">Polyus Olimpiada</span><span class="side-item-meta">7</span></div>
-            <div class="side-item"><span class="side-item-dot" style="background:#3b82f6;"></span><span class="side-item-text">SUEK Borodino</span><span class="side-item-meta">3</span></div>
-            <div class="side-item"><span class="side-item-dot" style="background:#a855f7;"></span><span class="side-item-text">EuroChem Kovdor</span><span class="side-item-meta">5</span></div>
+            <div class="side-empty">{% trans "Загрузка…" %}</div>
           </div>
         </div>
 
@@ -355,7 +552,7 @@
       </div>
       <div class="welcome-text">
         <h1 id="welcomeTitle">{% trans "Какую запчасть найти?" %}</h1>
-        <p>{% trans "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от" %} <strong>{% trans "200+ поставщиков" %}</strong>.</p>
+        <p id="welcomeSubtitle">{% trans "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от" %} <strong>{% trans "200+ поставщиков" %}</strong>.</p>
       </div>
 
       <div class="hero-input" id="heroInputCard">
@@ -384,19 +581,10 @@
         <span>{% trans "перетащите" %} <code>.xlsx</code>, <code>.pdf</code> {% trans "или фото прямо сюда" %}</span>
       </div>
 
-      <div class="pills">
-        <button class="pill" onclick="quickAction('get_orders', {})">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          {% trans "Мои заказы" %}
-        </button>
-        <button class="pill" onclick="quickAction('get_rfq_status', {})">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          {% trans "Открытые RFQ" %}
-        </button>
-        <a href="/help/" class="pill">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          {% trans "Как это работает?" %}
-        </a>
+      <div class="pills" id="welcomePills">
+        {# Кнопки заполняются из JS на основе роли — fallback ниже для no-JS #}
+        <button class="pill" onclick="quickAction('get_orders', {})">{% trans "Мои заказы" %}</button>
+        <button class="pill" onclick="quickAction('get_rfq_status', {})">{% trans "Открытые RFQ" %}</button>
       </div>
     </div>
 

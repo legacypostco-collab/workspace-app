@@ -35,7 +35,8 @@ class ConversationViewSet(viewsets.ModelViewSet):
         return ConversationSerializer
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user, role=detect_user_role(self.request.user))
+        serializer.save(user=self.request.user,
+                        role=detect_user_role(self.request.user, request=self.request))
 
     def perform_destroy(self, instance):
         instance.is_active = False
@@ -62,7 +63,7 @@ class ChatView(APIView):
             )
         else:
             conv = Conversation.objects.create(
-                user=request.user, role=detect_user_role(request.user)
+                user=request.user, role=detect_user_role(request.user, request=request)
             )
 
         try:
@@ -75,7 +76,10 @@ class ChatView(APIView):
             "response": result["text"],
             "cards": result["cards"],
             "actions": result["actions"],
+            "contextual_actions": result.get("contextual_actions", []),
             "context_refs": result["context_refs"],
+            "suggestions": result.get("suggestions", []),
+            "message_id": result.get("message_id"),
         })
 
 
@@ -98,7 +102,9 @@ class ActionView(APIView):
         if conv_id:
             conv = get_object_or_404(Conversation, id=conv_id, user=request.user, is_active=True)
         else:
-            conv = Conversation.objects.create(user=request.user, role=detect_user_role(request.user))
+            conv = Conversation.objects.create(
+                user=request.user, role=detect_user_role(request.user, request=request)
+            )
 
         try:
             result = execute_action(conv, action, params, request.user)
@@ -185,7 +191,7 @@ class SuggestView(APIView):
     }
 
     def get(self, request):
-        role = request.query_params.get("role") or detect_user_role(request.user)
+        role = request.query_params.get("role") or detect_user_role(request.user, request=request)
         return Response({
             "role": role,
             "suggestions": self.SUGGESTIONS.get(role, self.SUGGESTIONS["buyer"]),
@@ -197,16 +203,41 @@ class WidgetConfigView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        role = detect_user_role(request.user)
+        role = detect_user_role(request.user, request=request)
         latest = Conversation.objects.filter(
             user=request.user, is_active=True
         ).order_by("-updated_at").first()
         return Response({
             "role": role,
+            "role_override": (request.session.get("assistant_role_override") if hasattr(request, "session") else None),
             "user_name": request.user.get_full_name() or request.user.username,
             "suggestions": SuggestView.SUGGESTIONS.get(role, SuggestView.SUGGESTIONS["buyer"]),
             "latest_conversation_id": str(latest.id) if latest else None,
         })
+
+
+class RoleSwitchView(APIView):
+    """POST /api/assistant/role/  body: {"role": "buyer"|"seller"|"operator"|null}
+
+    Сохраняет выбор UI-toggle в сессии. На последующих запросах
+    `detect_user_role` подхватит его автоматически.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .permissions import _normalize_override
+        raw = request.data.get("role")
+        if raw in (None, "", "auto"):
+            request.session.pop("assistant_role_override", None)
+            request.session.modified = True
+            new_role = detect_user_role(request.user)
+            return Response({"role": new_role, "override": None})
+        norm = _normalize_override(raw)
+        if not norm:
+            return Response({"error": f"unsupported role '{raw}'"}, status=400)
+        request.session["assistant_role_override"] = norm
+        request.session.modified = True
+        return Response({"role": norm, "override": norm})
 
 
 # ── Projects API ────────────────────────────────────────────
@@ -329,7 +360,46 @@ class ProjectChatView(APIView):
         p = get_object_or_404(Project, id=project_id, owner=request.user)
         c = Conversation.objects.create(
             user=request.user,
-            role=detect_user_role(request.user),
+            role=detect_user_role(request.user, request=request),
             project=p,
         )
         return Response({"conversation_id": str(c.id)}, status=201)
+
+
+class RFQDetailView(APIView):
+    """RFQ detail JSON for chat-first /chat/rfq/<id>/ page.
+
+    Returns structured data the rfq-page.js renderer expects:
+    {id, status, mode, urgency, customer_name, created_at, items:[{
+      article, qty, state, match, brand, supplier, price, currency
+    }]}
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, rfq_id):
+        from marketplace.models import RFQ
+        rfq = get_object_or_404(RFQ, id=rfq_id)
+        items = []
+        for it in rfq.items.select_related("matched_part__brand").all():
+            mp = it.matched_part
+            items.append({
+                "article": it.query,
+                "qty": it.quantity,
+                "state": "matched" if mp else ("no_match" if it.state == "needs_review" else "pending"),
+                "match": mp.title if mp else None,
+                "brand": (mp.brand.name if (mp and mp.brand) else None),
+                "supplier": getattr(mp, "supplier_name", None) if mp else None,
+                "price": float(mp.price) if (mp and mp.price is not None) else None,
+                "currency": getattr(mp, "currency", "USD") if mp else "USD",
+            })
+        return Response({
+            "id": rfq.id,
+            "status": rfq.status,
+            "mode": rfq.mode,
+            "urgency": rfq.urgency,
+            "customer_name": rfq.customer_name,
+            "company_name": rfq.company_name,
+            "notes": rfq.notes,
+            "created_at": rfq.created_at.isoformat() if rfq.created_at else None,
+            "items": items,
+        })

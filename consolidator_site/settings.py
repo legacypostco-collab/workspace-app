@@ -13,7 +13,13 @@ def _load_env_file(env_path: Path) -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        k = key.strip()
+        v = value.strip().strip('"').strip("'")
+        # Override empty/missing env vars from .env, but never clobber a real
+        # value the user set in their shell. setdefault() is wrong here because
+        # an inherited empty `KEY=''` (common in zsh dotfiles) would block .env.
+        if not os.environ.get(k):
+            os.environ[k] = v
 
 
 _load_env_file(BASE_DIR / ".env")

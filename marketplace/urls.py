@@ -18,6 +18,8 @@ urlpatterns = [
     path("help/", views.help_view, name="help"),
     path("chat/", views.chat_first_view, name="chat"),
     path("chat/project/<uuid:project_id>/", views.chat_project_view, name="chat_project"),
+    path("chat/rfq/<int:rfq_id>/", views.chat_rfq_view, name="chat_rfq"),
+    path("chat/proposal/<int:rfq_id>/", views.chat_proposal_view, name="chat_proposal"),
     path("faq/", views.help_view),  # alias
     path("register/", views.register_view, name="register"),
     path("verify-email/<str:token>/", views.verify_email_view, name="verify_email"),

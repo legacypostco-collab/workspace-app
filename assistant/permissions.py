@@ -1,14 +1,45 @@
 """Map a Django User → assistant role string used for context filtering."""
 
-def detect_user_role(user) -> str:
+# Допустимые роли, которые можно явно выбрать в UI (toggle в topbar чата).
+# Любой demo-аккаунт может переключаться между ними — это удобно для
+# демонстрации сценариев, не плодя пользователей.
+SWITCHABLE_ROLES = {"buyer", "seller", "operator"}
+
+
+def _normalize_override(value: str | None) -> str | None:
+    if not value:
+        return None
+    v = str(value).strip().lower()
+    if v in SWITCHABLE_ROLES:
+        return v
+    if v.startswith("operator_"):
+        return v
+    return None
+
+
+def detect_user_role(user, *, request=None, override: str | None = None) -> str:
     """Return the assistant role for a given user.
 
+    Если передан явный `override` (через тело запроса или заголовок), либо
+    в сессии есть `assistant_role_override` — используем его. В противном
+    случае идём по обычной логике (профиль / эвристика по username).
+
     Priority:
+      0. Explicit override (UI toggle) — buyer / seller / operator
       1. Superuser → admin
       2. UserProfile.role (buyer/seller)
       3. operator session subrole (logist/customs/payments/manager) → operator_X
       4. Default: buyer
     """
+    explicit = _normalize_override(override)
+    if not explicit and request is not None:
+        explicit = (
+            _normalize_override(request.headers.get("X-Assistant-Role"))
+            or _normalize_override(getattr(request, "session", {}).get("assistant_role_override"))
+        )
+    if explicit:
+        return explicit
+
     if not user or not user.is_authenticated:
         return "buyer"
     if user.is_superuser:
