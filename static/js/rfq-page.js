@@ -96,71 +96,95 @@
     return 'pending';
   }
 
-  // Status-banner: главное действие зависит от stage'а RFQ
+  // Status-banner: главное действие зависит от stage + mode RFQ.
+  // 3 режима в порядке приоритета:
+  //   AUTO       — платформа сама рассылает + собирает котировки. Buyer ждёт.
+  //   SEMI       — AI подобрал кандидатов; buyer подтверждает рассылку.
+  //   MANUAL_OEM — buyer сам выбирает поставщиков и шлёт.
   function buildStageBanner(d) {
     const stage = d.stage || 'draft';
+    const mode = (d.mode || 'auto').toLowerCase();
     const sent = d.sent_count || 0;
     const quotes = d.quotes_count || 0;
     const isOwner = d.is_owner !== false;
     const rfqId = d.id;
 
     if (stage === 'cancelled') {
-      return {
-        tone: 'gray',
-        emoji: '✗',
-        title: 'RFQ отменён',
-        sub: 'Этот запрос был отменён. Создайте новый.',
-        cta: null,
-      };
+      return {tone: 'gray', emoji: '✗', title: 'RFQ отменён',
+              sub: 'Этот запрос был отменён. Создайте новый.', cta: null};
     }
     if (stage === 'needs_review') {
-      return {
-        tone: 'warn',
-        emoji: '⚠️',
-        title: 'Требует проверки оператором',
-        sub: 'Часть позиций нужно вручную сматчить. Оператор скоро свяжется.',
-        cta: null,
-      };
+      return {tone: 'warn', emoji: '⚠️', title: 'Требует проверки оператором',
+              sub: 'Часть позиций нужно вручную сматчить. Оператор скоро свяжется.', cta: null};
     }
     if (stage === 'quotes_received') {
       return {
-        tone: 'green',
-        emoji: '💬',
+        tone: 'green', emoji: '💬',
         title: `Получено ${quotes} котировок`,
         sub: 'Сравните оффера и выберите лучший — продавец примется за заказ.',
         cta: isOwner ? {
           label: `📊 Просмотреть котировки (${quotes})`,
-          href: `/chat/?action=view_rfq_quotes&rfq_id=${rfqId}`,
-          action: 'view_rfq_quotes',
-          params: {rfq_id: rfqId},
+          action: 'view_rfq_quotes', params: {rfq_id: rfqId},
         } : null,
+        primary: true,
       };
     }
     if (stage === 'awaiting_quotes') {
+      // AUTO ждёт сам; SEMI/MANUAL может разослать ещё
+      if (mode === 'auto') {
+        return {
+          tone: 'blue', emoji: '🤖',
+          title: 'AI собирает котировки автоматически',
+          sub: `Запрос ушёл ${sent} поставщикам · ждём ответы. Обычно 6–24 часа. Уведомления приходят сразу.`,
+          cta: null,
+        };
+      }
       return {
-        tone: 'blue',
-        emoji: '⏳',
-        title: `Запрос разослан · ждём котировки`,
-        sub: `Разослано ${sent} поставщикам · 0 ответов. Обычно поставщики отвечают за 6–24 часа.`,
+        tone: 'blue', emoji: '⏳',
+        title: 'Запрос разослан · ждём котировки',
+        sub: `Разослано ${sent} поставщикам. Обычно отвечают за 6–24 часа.`,
         cta: isOwner ? {
           label: '📨 Разослать ещё поставщикам',
-          action: 'send_rfq_to_suppliers',
-          params: {rfq_id: rfqId},
+          action: 'send_rfq_to_suppliers', params: {rfq_id: rfqId},
         } : null,
       };
     }
-    // draft / new — RFQ создан, не разослан
+    // draft (создан, не разослан) — поведение зависит от mode
+    if (mode === 'auto') {
+      // В норме при mode=auto draft не должен случиться (auto-send в create_rfq).
+      // Но если случилось (timeout / network error) — даём ручной trigger.
+      return {
+        tone: 'blue', emoji: '🤖',
+        title: 'AUTO режим · готовим рассылку',
+        sub: 'AI скоро автоматически разошлёт RFQ верифицированным поставщикам.',
+        cta: isOwner ? {
+          label: '🚀 Запустить рассылку сейчас',
+          action: 'send_rfq_to_suppliers', params: {rfq_id: rfqId},
+        } : null,
+      };
+    }
+    if (mode === 'manual_oem') {
+      return {
+        tone: 'orange', emoji: '🎯',
+        title: 'MANUAL OEM режим · выберите получателей',
+        sub: 'Вы создали запрос на конкретные OEM-номера. Выберите кому разослать.',
+        cta: isOwner ? {
+          label: '🎯 Разослать выбранным',
+          action: 'send_rfq_to_suppliers', params: {rfq_id: rfqId},
+        } : null,
+        primary: true,
+      };
+    }
+    // SEMI (default fallback for non-auto, non-manual)
     return {
-      tone: 'orange',
-      emoji: '📨',
-      title: 'RFQ создан, но ещё не разослан',
-      sub: 'Чтобы получить котировки — отправьте запрос поставщикам.',
+      tone: 'orange', emoji: '📨',
+      title: 'SEMI режим · подтвердите рассылку',
+      sub: 'AI подобрал кандидатов-поставщиков. Подтвердите чтобы они получили запрос.',
       cta: isOwner ? {
-        label: '📨 Разослать поставщикам',
-        action: 'send_rfq_to_suppliers',
-        params: {rfq_id: rfqId},
+        label: '📨 Разослать кандидатам',
+        action: 'send_rfq_to_suppliers', params: {rfq_id: rfqId},
       } : null,
-      primary: true,  // Большой акцентный CTA
+      primary: true,
     };
   }
 
@@ -209,11 +233,17 @@
 
       ${renderStageBanner(banner)}
 
+      ${d.has_priced ? `
       <div class="hero-total">
         <div class="hero-total-label">Ориентировочный бюджет (USD)</div>
         <div class="hero-total-val">${fmtMoney(totalUsd, 'USD')}</div>
         <div class="hero-total-sub">${items.length} позиций · цены конвертированы из исходных валют поставщиков</div>
-      </div>
+      </div>` : `
+      <div class="hero-total hero-total-empty">
+        <div class="hero-total-label">Бюджет</div>
+        <div class="hero-total-val" style="font-size:24px;color:rgba(0,0,0,0.5);">Уточняется</div>
+        <div class="hero-total-sub">Цены появятся после получения котировок от поставщиков</div>
+      </div>`}
 
       <div class="kpi-grid">
         <div class="kpi">

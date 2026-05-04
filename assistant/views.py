@@ -427,11 +427,15 @@ class RFQDetailView(APIView):
         else:
             stage = "draft"            # создан, не разослан
 
+        # has_priced — есть ли хоть одна позиция с известной ценой? Если нет —
+        # total_usd=0 не «бюджет», а «оценим после котировок».
+        has_priced = any(it["price"] is not None for it in items)
+
         return Response({
             "id": rfq.id,
             "status": rfq.status,
             "stage": stage,
-            "mode": rfq.mode,
+            "mode": rfq.mode,            # 'auto' | 'semi' | 'manual_oem'
             "urgency": rfq.urgency,
             "customer_name": rfq.customer_name,
             "company_name": rfq.company_name,
@@ -439,6 +443,7 @@ class RFQDetailView(APIView):
             "created_at": rfq.created_at.isoformat() if rfq.created_at else None,
             "items": items,
             "total_usd": round(total_usd, 2),
+            "has_priced": has_priced,
             "quotes_count": quotes_count,
             "sent_count": sent_count,
             "is_owner": rfq.created_by_id == request.user.id,

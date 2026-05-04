@@ -1132,11 +1132,17 @@ def create_rfq(params, user, role):
     if not items_to_add:
         items_to_add = [("RFQ из чата", quantity, None)]
 
+    # Mode по умолчанию: AUTO (платформа сама рассылает + собирает котировки).
+    # Buyer может явно передать mode='semi' или 'manual_oem' для ручного контроля.
+    mode = (params.get("mode") or "auto").strip().lower()
+    if mode not in ("auto", "semi", "manual_oem"):
+        mode = "auto"
+
     # Build a short notes summary
     notes_parts = []
     if params.get("query") and len(items_to_add) == 1:
         notes_parts.append(f"Запрос: {params['query'][:300]}")
-    notes_parts.append(f"Создано из чата · {len(items_to_add)} позиций")
+    notes_parts.append(f"Создано из чата · {len(items_to_add)} позиций · mode={mode}")
 
     try:
         rfq = RFQ.objects.create(
@@ -1144,7 +1150,7 @@ def create_rfq(params, user, role):
             customer_name=user.get_full_name() or user.username,
             customer_email=user.email or f"{user.username}@chat.local",
             company_name="",
-            mode="semi",
+            mode=mode,
             urgency="standard",
             status="new",
             notes=" | ".join(notes_parts)[:5000],
@@ -1161,14 +1167,45 @@ def create_rfq(params, user, role):
         logger.exception("create_rfq failed")
         return ActionResult(text=f"⚠️ Не удалось создать RFQ: {e}")
 
+    # AUTO режим: сразу автоматически рассылаем поставщикам.
+    # SEMI / MANUAL_OEM: ждём явного действия buyer'а.
+    auto_sent_count = 0
+    if mode == "auto":
+        try:
+            from .negotiation import send_rfq_to_suppliers
+            r = send_rfq_to_suppliers(
+                {"rfq_id": rfq.id, "confirmed": True}, user, role,
+            )
+            # send_rfq_to_suppliers вернёт текст «✓ RFQ #N разослан K поставщикам»
+            import re as _re
+            m = _re.search(r"разослан (\d+)", r.text or "")
+            if m:
+                auto_sent_count = int(m.group(1))
+        except Exception:
+            logger.exception("auto-send on create_rfq failed")
+
     matched_count = sum(1 for _, _, p in items_to_add if p is not None)
     summary = f"{matched_count} из {len(items_to_add)} позиций сматчены с каталогом"
 
+    if mode == "auto":
+        text = (
+            f"✓ RFQ #{rfq.id} создан · {len(items_to_add)} позиций. {summary}.\n"
+            f"🤖 AUTO: запрос автоматически разослан "
+            f"{auto_sent_count} поставщикам — котировки будут приходить."
+        )
+    elif mode == "semi":
+        text = (
+            f"✓ RFQ #{rfq.id} создан в SEMI режиме · {len(items_to_add)} позиций.\n"
+            f"AI подобрал кандидатов — откройте RFQ и подтвердите рассылку."
+        )
+    else:  # manual_oem
+        text = (
+            f"✓ RFQ #{rfq.id} создан в MANUAL OEM режиме · {len(items_to_add)} позиций.\n"
+            f"Откройте RFQ и выберите конкретных поставщиков."
+        )
+
     return ActionResult(
-        text=(
-            f"✓ RFQ #{rfq.id} создан · {len(items_to_add)} позиций. "
-            f"{summary}. Поставщики получат уведомление и ответят с ценами."
-        ),
+        text=text,
         cards=[{
             "type": "rfq",
             "data": {
@@ -1183,12 +1220,10 @@ def create_rfq(params, user, role):
         actions=[
             {"label": "Открыть RFQ", "action": "open_url",
              "params": {"_url": f"/chat/rfq/{rfq.id}/"}},
-            {"label": "Сформировать КП", "action": "generate_proposal",
-             "params": {"rfq_id": rfq.id}},
             {"label": "Статус и ответы", "action": "get_rfq_status",
              "params": {"rfq_id": rfq.id}},
         ],
-        suggestions=["Мои активные RFQ", "Сформировать КП", "Создать ещё RFQ"],
+        suggestions=["Мои активные RFQ", "Создать ещё RFQ"],
     )
 
 
