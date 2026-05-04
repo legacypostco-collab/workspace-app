@@ -1217,12 +1217,9 @@ def create_rfq(params, user, role):
                 "created_at": rfq.created_at.strftime("%d.%m.%Y %H:%M"),
             },
         }],
-        actions=[
-            {"label": "Открыть RFQ", "action": "open_url",
-             "params": {"_url": f"/chat/rfq/{rfq.id}/"}},
-            {"label": "Статус и ответы", "action": "get_rfq_status",
-             "params": {"rfq_id": rfq.id}},
-        ],
+        # Карточка RFQ сама кликабельна → /chat/rfq/<id>/. Дублирующая
+        # кнопка «Открыть страницу RFQ» удалена.
+        actions=[],
         suggestions=["Мои активные RFQ", "Создать ещё RFQ"],
     )
 

@@ -636,9 +636,12 @@
       </div>`;
     },
     rfq(d) {
+      // Клик по карточке = переход на /chat/rfq/<id>/ (полная RFQ-страница).
+      // Чисто фронтовая навигация через data-href, без HTTP roundtrip.
       const rid = d.id || d.number;
-      const clickAttrs = rid
-        ? ` data-action="get_rfq_status" data-params='${esc(JSON.stringify({rfq_id: parseInt(String(rid), 10) || rid}))}' role="button" tabindex="0" title="Открыть RFQ"`
+      const href = rid ? `/chat/rfq/${parseInt(String(rid), 10) || rid}/` : '';
+      const clickAttrs = href
+        ? ` data-href="${esc(href)}" role="link" tabindex="0" title="Открыть RFQ"`
         : '';
       return `<div class="card card-clickable"${clickAttrs}>
         <div class="card-row">
@@ -1003,8 +1006,15 @@
     return html;
   }
 
-  // Делегируем клик по entity-link / clickable card → quickAction
+  // Делегируем клик по clickable card → 1) data-href навигация, 2) data-action quickAction
   document.addEventListener('click', (e) => {
+    // 1. Чистая навигация (RFQ карточки и т.п.)
+    const navCard = e.target.closest('.card-clickable[data-href]');
+    if (navCard && navCard.dataset.href) {
+      window.location.href = navCard.dataset.href;
+      return;
+    }
+    // 2. Action-карточки (order → track_order и т.п.)
     const target = e.target.closest('.entity-link, .card-clickable[data-action]');
     if (!target) return;
     const action = target.dataset.action;
@@ -1017,7 +1027,7 @@
   // Поддержка клавиатуры (Enter/Space) для clickable cards
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const target = e.target.closest && e.target.closest('.card-clickable[data-action]');
+    const target = e.target.closest && e.target.closest('.card-clickable[data-action], .card-clickable[data-href]');
     if (!target) return;
     e.preventDefault();
     target.click();
@@ -1213,6 +1223,53 @@
     }
   }
 
+  // Whitelist «фастовых» actions — просто DB read, без AI/RAG/external API.
+  // Для них спиннер вообще не показывается: открытие должно быть моментальным.
+  // Если action не в этом списке (search_parts с эмбеддингом, generate_proposal,
+  // analyze_spec, kb_search) — спиннер появится через 600ms.
+  const FAST_ACTIONS = new Set([
+    // Reads
+    'get_orders', 'get_order_detail', 'track_order', 'track_shipment',
+    'get_rfq_status', 'rfq_detail', 'view_rfq_quotes', 'view_quote',
+    'get_balance', 'get_budget', 'get_analytics', 'get_demand_report',
+    'get_sla_report', 'get_claims',
+    'compare_products', 'compare_suppliers', 'top_suppliers',
+    // Seller cabinet reads
+    'seller_dashboard', 'seller_finance', 'seller_rating', 'seller_pipeline',
+    'seller_inbox', 'seller_catalog', 'seller_drawings', 'seller_team',
+    'seller_integrations', 'seller_reports', 'seller_qr', 'seller_logistics',
+    'seller_negotiations',
+    // Operator/admin reads
+    'op_dashboard', 'op_queue', 'op_sla_breach', 'op_order_detail',
+    'op_logistics_stats', 'op_payments_stats', 'op_payments_dashboard',
+    'op_kyb_queue', 'op_kyb_review',
+    'op_customs_dashboard', 'op_hs_lookup', 'op_calc_duty',
+    'op_certs_check', 'op_sanctions_check',
+    'admin_dashboard', 'admin_gmv', 'admin_users', 'admin_user_detail',
+    'admin_moderation_queue', 'admin_catalog_review', 'admin_platform_settings',
+    // Onboarding wizard step rendering
+    'start_onboarding', 'kyb_status',
+    'submit_company_info', 'submit_legal_address',
+    'submit_bank', 'submit_director', 'submit_for_review',
+    // Notification settings
+    'notif_prefs', 'notif_set_email', 'notif_set_kinds', 'notif_link_telegram',
+    // Auth
+    'list_api_tokens',
+    // Open-card preview steps (DraftCard step1)
+    'pay_reserve', 'pay_final', 'confirm_delivery',
+    'op_assign', 'op_add_note', 'op_resolve_dispute',
+    'op_hs_assign', 'op_cert_upload', 'op_customs_release',
+    'admin_ban_user', 'admin_unban_user', 'admin_change_role',
+    'create_api_token', 'revoke_api_token',
+    'setup_2fa', 'verify_2fa', 'disable_2fa',
+    'submit_quote', 'respond_to_counter', 'mark_quote_final',
+    'accept_quote', 'counter_offer', 'decline_quote', 'send_rfq_to_suppliers',
+    // Operator misc
+    'audit_log', 'notifications', 'generate_qr',
+    // Misc
+    'open_url', 'topup_wallet',
+  ]);
+
   // Quick action from pills/cards
   window.quickAction = async (action, params) => {
     params = params || {};
@@ -1244,17 +1301,20 @@
       if (!action) return;
     }
     // Не пишем ярлык кнопки в чат — это UI affordance, а не сообщение юзера.
-    // Открываем conv view (чтобы welcome-stage не моргал) и
-    // отложенно (>=400ms) показываем typing-indicator: фастовые actions
-    // (read из БД, кэш) успевают вернуться раньше — спиннер вообще не появится.
+    // Открываем conv view (чтобы welcome-stage не моргал).
+    //
+    // Спиннер: для фастовых actions (просто DB read, без AI) — не показываем
+    // вообще. Для AI-actions (search_parts с embedding, generate_proposal,
+    // analyze_spec) — после 600ms.
     showConv();
-    const typingDelay = setTimeout(() => addTyping(pickIntent(action)), 400);
+    const isFast = FAST_ACTIONS.has(action);
+    const typingDelay = isFast ? null : setTimeout(() => addTyping(pickIntent(action)), 600);
     try {
       const r = await api('/api/assistant/action/', {
         method:'POST',
         body: JSON.stringify({conversation_id: state.convId, action, params}),
       });
-      clearTimeout(typingDelay);
+      if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
       setConvId(r.conversation_id || state.convId);
       // Auto-add «🏠 Главная» в contextual_actions если бэкенд её не вернул
@@ -1262,7 +1322,7 @@
       addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || [], r.message_id || null, r.suggestions || [], ctxActs);
       loadConvList();
     } catch(err) {
-      clearTimeout(typingDelay);
+      if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
       addMessage('assistant', '⚠️ ' + err.message);
     }
