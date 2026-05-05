@@ -238,16 +238,52 @@ def _ai_mapping(headers: list[str], sample_rows: list[list[str]]) -> dict[str, s
 # ── Deterministic parse + import ────────────────────────────────
 
 def _coerce_decimal(raw: Any) -> Decimal | None:
+    """Извлекает первое число из текста.
+
+    Терпим к: «94,0841350448234 €», «$1,234.56», «1 234,56 RUB»,
+    нескольким числам в одной ячейке («94,08 €  9,65 €» → берёт 94.08).
+    """
     if raw is None or raw == "":
         return None
-    s = str(raw).strip().replace(",", ".")
-    # Удаляем валюту-маркеры и пробелы
     import re as _re
-    s = _re.sub(r"[^\d\.\-]", "", s)
-    if not s:
+    s = str(raw).strip()
+    # Первый числовой кусок (с разделителями тысяч и десятичными)
+    m = _re.search(r"-?[\d.,'\s ]+", s)
+    if not m:
+        return None
+    raw_num = m.group(0).strip()
+    # Удаляем апострофы (швейц. 1'234) и любые пробелы (включая NBSP)
+    raw_num = _re.sub(r"[\s' ]", "", raw_num)
+    if not raw_num or raw_num in ("-",):
+        return None
+    # Эвристика разделителей "," vs "."
+    if "," in raw_num and "." in raw_num:
+        # Оба знака: последний из них = десятичный, другой = тысячи
+        if raw_num.rfind(",") > raw_num.rfind("."):
+            cleaned = raw_num.replace(".", "").replace(",", ".")
+        else:
+            cleaned = raw_num.replace(",", "")
+    elif "," in raw_num:
+        # Одна запятая, после неё ровно 3 цифры, до неё ≤3 цифр → тысячи
+        last = raw_num.rfind(",")
+        tail = raw_num[last + 1:]
+        head = raw_num[:last].replace(",", "")
+        if (raw_num.count(",") == 1 and len(tail) == 3 and tail.isdigit()
+                and head.isdigit() and len(head) <= 3):
+            cleaned = raw_num.replace(",", "")
+        else:
+            cleaned = raw_num.replace(",", ".")
+    else:
+        # Только точка(и) — последняя десятичная, остальные тысячи
+        if raw_num.count(".") > 1:
+            parts = raw_num.split(".")
+            cleaned = "".join(parts[:-1]) + "." + parts[-1]
+        else:
+            cleaned = raw_num
+    if not cleaned or cleaned in ("-", ".", "-."):
         return None
     try:
-        return Decimal(s)
+        return Decimal(cleaned)
     except InvalidOperation:
         return None
 

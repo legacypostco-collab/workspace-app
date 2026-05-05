@@ -1224,9 +1224,11 @@ def upload_pricelist(params, user, role):
             continue
         oem, title, price_raw = parts[0], parts[1], parts[2]
         stock_raw = parts[3] if len(parts) > 3 else "0"
-        try:
-            price = _D(_re.sub(r"[^\d\.\-]", "", price_raw.replace(",", ".")))
-        except Exception:
+        # Робастный парсер цены: терпит «€/USD», запятые-десятичные,
+        # пробелы-разделители тысяч, несколько чисел в ячейке.
+        from .pricelist import _coerce_decimal as _coerce
+        price = _coerce(price_raw)
+        if price is None or price <= 0:
             failed_lines.append({"line": line[:80], "reason": "bad price"})
             continue
         try:
