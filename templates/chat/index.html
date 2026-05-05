@@ -408,27 +408,30 @@
     .sq-name{text-overflow:ellipsis;overflow:hidden;white-space:nowrap;}
     .sq-qty{color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;}
     .sq-sub{font-weight:500;font-variant-numeric:tabular-nums;}
-    .sq-actions{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;}
-    /* Перебиваем .act-btn — внутри очереди продавца своя иерархия:
-       primary (первая кнопка, обычно advance) — синий accent
-       secondary («🔍 Открыть») — outlined белая с тёмной рамкой    */
+    .sq-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+    /* Внутри очереди продавца — фирменная двухуровневая иерархия:
+       primary (advance/ship) — чёрная компактная (как .side-new-btn),
+       secondary («🔍 Открыть») — text-link без фона, чтобы не давила. */
     .sq-card .sq-btn,
     .sq-card .sq-btn.act-btn{
-      padding:7px 12px!important;border-radius:8px!important;
+      padding:6px 11px!important;border-radius:7px!important;
       font-size:12px!important;font-weight:600!important;cursor:pointer;
       transition:all 0.12s;line-height:1.2;letter-spacing:-0.005em;
-      background:#2563eb!important;color:#fff!important;
-      border:1px solid #2563eb!important;
+      background:#1a1a1a!important;color:#fff!important;
+      border:1px solid #1a1a1a!important;
     }
-    .sq-card .sq-btn:hover{background:#1d4ed8!important;border-color:#1d4ed8!important;}
-    /* secondary — outlined */
+    .sq-card .sq-btn:hover{background:#000!important;border-color:#000!important;}
+    /* secondary «🔍 Открыть» — текст-ссылка без плашки */
     .sq-card .sq-btn.sq-open,
     .sq-card .sq-btn.sq-open.act-btn{
-      background:#fff!important;color:#0f172a!important;
-      border:1px solid rgba(15,23,42,0.25)!important;
+      background:transparent!important;color:#1a1a1a!important;
+      border:none!important;padding:6px 8px!important;
+      text-decoration:underline;text-decoration-color:rgba(0,0,0,0.25);
+      text-underline-offset:3px;
     }
     .sq-card .sq-btn.sq-open:hover{
-      background:#f1f5f9!important;border-color:#0f172a!important;
+      color:#f97316!important;text-decoration-color:#f97316!important;
+      background:transparent!important;
     }
     /* Усиливаем шапки заказов, чтобы они «держали» внимание сильнее кнопок */
     .sq-order{padding:12px 14px;}
