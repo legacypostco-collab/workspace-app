@@ -426,10 +426,17 @@ class RFQDetailView(APIView):
         # Quotes-аналитика
         quotes = Quote.objects.filter(rfq=rfq, direction="seller_to_buyer")
         quotes_count = quotes.values_list("seller_id", flat=True).distinct().count()
-        # Supplier reach: сколько уведомлений было разослано
-        sent_count = Notification.objects.filter(
-            kind="rfq", url__contains=f"rfq={rfq.id}",
-        ).values_list("user_id", flat=True).distinct().count()
+        # Supplier reach: сколько уведомлений было разослано.
+        # _notify пишет url'ы двух форматов:
+        #   /chat/?rfq=<id>           — общая ссылка (старый формат)
+        #   /chat/rfq/<id>/?source=…  — детальная страница (новый формат)
+        # Считаем оба варианта, по distinct user_id.
+        from django.db.models import Q as _Q
+        sent_count = (
+            Notification.objects.filter(kind="rfq")
+            .filter(_Q(url__contains=f"rfq={rfq.id}") | _Q(url__contains=f"/rfq/{rfq.id}/"))
+            .values_list("user_id", flat=True).distinct().count()
+        )
 
         # Состояние «что делать дальше»
         if rfq.status == "cancelled":

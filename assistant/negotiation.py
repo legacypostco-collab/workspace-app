@@ -45,6 +45,90 @@ def _next_round(rfq, seller_id: int) -> int:
     return (last.round_number + 1) if last else 1
 
 
+def auto_generate_quotes_from_catalog(rfq, recipients) -> int:
+    """ТЗ §4.1 AUTO mode: для каждого trusted-продавца, у которого в каталоге
+    есть Part с матчем по oem_number из RFQItem, мгновенно создаём Quote
+    с его прайсом — без ожидания ручного submit_quote.
+
+    Возвращает кол-во созданных Quote'ов (по 1 на продавца).
+    """
+    from marketplace.models import Part, Quote, QuoteItem
+
+    rfq_items = list(rfq.items.all())
+    oems = [it.query for it in rfq_items if it.query]
+    if not oems:
+        return 0
+
+    # Все актуальные Part'ы recipients по этим OEM
+    seller_ids = [s.id for s in recipients]
+    catalog = (
+        Part.objects.filter(seller_id__in=seller_ids,
+                            is_active=True, price__gt=0,
+                            oem_number__in=oems)
+        .select_related("brand")
+    )
+    # Map: seller_id → {oem: Part}
+    by_seller: dict[int, dict[str, "Part"]] = {}
+    for p in catalog:
+        by_seller.setdefault(p.seller_id, {})[p.oem_number] = p
+
+    created = 0
+    for seller in recipients:
+        seller_catalog = by_seller.get(seller.id) or {}
+        if not seller_catalog:
+            continue
+        # Для AUTO нужен полный матч: продавец покрывает ВСЕ позиции RFQ
+        if not all(it.query in seller_catalog for it in rfq_items):
+            continue
+        # Уже есть quote от этого продавца? — пропускаем
+        if Quote.objects.filter(rfq=rfq, seller=seller,
+                                direction="seller_to_buyer").exists():
+            continue
+
+        items_data = []
+        total = Decimal("0")
+        for it in rfq_items:
+            p = seller_catalog[it.query]
+            qty = int(it.quantity or 1)
+            unit = Decimal(p.price)
+            items_data.append((it, p, qty, unit))
+            total += unit * qty
+
+        # Самый медленный prep+ship определяет общий срок
+        delivery_days = max(
+            (int(p.production_lead_days or 0) + int(p.prep_to_ship_days or 0)
+             + int(p.shipping_lead_days or 0))
+            for _, p, _, _ in items_data
+        ) or 14
+
+        try:
+            quote = Quote.objects.create(
+                rfq=rfq, seller=seller,
+                direction="seller_to_buyer",
+                round_number=_next_round(rfq, seller.id),
+                status="submitted",
+                delivery_days=delivery_days,
+                total_amount=total.quantize(Decimal("0.01")),
+                message="Автоматическая котировка из каталога (AUTO mode)",
+                valid_until=timezone.now() + timedelta(days=7),
+            )
+            for it, p, qty, unit in items_data:
+                QuoteItem.objects.create(
+                    quote=quote, rfq_item=it, part=p,
+                    title_snapshot=p.title[:255],
+                    quantity=qty, unit_price=unit,
+                )
+            created += 1
+            logger.info(
+                f"AUTO quote: RFQ #{rfq.id} ← seller {seller.username} · "
+                f"${total} · {delivery_days}d"
+            )
+        except Exception:
+            logger.exception(f"auto-quote create failed for seller {seller.id}")
+
+    return created
+
+
 # ══════════════════════════════════════════════════════════
 # 0. send_rfq_to_suppliers — buyer рассылает RFQ продавцам
 # ══════════════════════════════════════════════════════════
@@ -180,6 +264,23 @@ def send_rfq_to_suppliers(params, user, role):
         except Exception:
             logger.exception("send_rfq notify failed for seller %s", seller.id)
 
+    # AUTO mode (§4.1): автогенерация Quote'ов из каталога для тех продавцов,
+    # у кого все позиции есть в каталоге с актуальной ценой. Без ожидания
+    # ручного submit_quote.
+    auto_quotes = 0
+    if rfq.mode == "auto":
+        try:
+            auto_quotes = auto_generate_quotes_from_catalog(rfq, recipients)
+            if auto_quotes > 0:
+                _notify(
+                    rfq.created_by, kind="rfq",
+                    title=f"🤖 {auto_quotes} котировок по RFQ #{rfq.id}",
+                    body="AUTO mode: продавцы автоматически выставили КП из каталога.",
+                    url=f"/chat/rfq/{rfq.id}/?source=auto-quote",
+                )
+        except Exception:
+            logger.exception("auto_generate_quotes_from_catalog failed")
+
     # Аудит: если risky включены вручную — логируем (ТЗ §7.1.1)
     # Запись в RFQ.notes (OrderEvent требует order, для RFQ-event'а не подходит)
     if n_risky_in > 0:
@@ -193,12 +294,17 @@ def send_rfq_to_suppliers(params, user, role):
         except Exception:
             logger.exception("audit risky dispatch failed")
 
+    auto_q_line = (
+        f"\n🤖 AUTO: {auto_quotes} продавцов сразу выставили КП из каталога."
+        if rfq.mode == "auto" and auto_quotes > 0 else ""
+    )
     return ActionResult(
         text=(
             f"✓ RFQ #{rfq.id} разослан {sent} поставщикам · "
             f"trusted {n_trusted_in} · sandbox {n_sandbox_in}"
             + (f" · risky {n_risky_in}" if n_risky_in else "")
             + ".\nКотировки будут приходить — следите за уведомлениями."
+            + auto_q_line
         ),
         contextual_actions=[
             {"action": "view_rfq_quotes", "label": "📊 Открытые котировки",
