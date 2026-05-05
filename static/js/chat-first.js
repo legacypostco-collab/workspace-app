@@ -1490,6 +1490,7 @@
       title:    'Что в работе сегодня?',
       subtitle: 'Срочные задачи, входящие RFQ и отгрузки. Каталог, финансы и команда — по запросу.',
       pills: [
+        {label:'📤 Загрузить прайс', action:'upload_pricelist',  params:{}},
         {label:'🛡 Верификация',     action:'start_onboarding',  params:{}},
         {label:'🔥 Срочное',         action:'seller_inbox',      params:{}},
         {label:'🚚 К отгрузке',      action:'seller_pipeline',   params:{}},
@@ -1882,6 +1883,22 @@
   window.quickAction = (action, params) => {
     if (action === '__pricelist_commit') return window.__pricelist_commit_handler(params);
     if (action === '__pricelist_cancel') return window.__pricelist_cancel_handler(params);
+    // Переключение роли — server-side action /api/assistant/role/
+    if (action === '_switch_role') {
+      const newRole = (params && params.role) || 'seller';
+      if (typeof setRole === 'function') {
+        setRole(newRole);
+      } else {
+        // fallback — full reload через cookie API
+        fetch('/api/assistant/role/', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-CSRFToken': csrf()},
+          credentials:'same-origin',
+          body: JSON.stringify({role: newRole}),
+        }).then(() => location.reload());
+      }
+      return;
+    }
     return _origQuickActionForPricelist(action, params);
   };
 

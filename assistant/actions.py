@@ -217,6 +217,35 @@ def register(name: str):
 def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
     """Run an action. Returns ActionResult."""
     if not can_execute(action_name, role):
+        # Дружелюбное сообщение: подсказываем какая роль нужна и предлагаем
+        # переключиться, вместо холодного «нет прав».
+        SELLER_ONLY_HINTS = {
+            "seller_pipeline":     "очередь продавца",
+            "seller_dashboard":    "дашборд продавца",
+            "seller_inbox":        "входящие RFQ",
+            "seller_catalog":      "каталог продавца",
+            "seller_finance":      "финансы продавца",
+            "seller_rating":       "рейтинг продавца",
+            "seller_negotiations": "переговоры продавца",
+            "submit_quote":        "ответ на RFQ",
+            "ship_order":          "отгрузка заказа",
+            "advance_order":       "движение заказа по этапам",
+            "upload_pricelist":    "загрузка прайс-листа",
+            "respond_rfq":         "ответ на RFQ",
+        }
+        hint = SELLER_ONLY_HINTS.get(action_name)
+        if hint and role == "buyer":
+            return ActionResult(
+                text=(
+                    f"🔁 «{hint}» — это раздел продавца, а вы сейчас в роли «Покупатель».\n"
+                    f"Переключите роль в шапке (Покупатель ↔ Продавец) или нажмите кнопку ниже."
+                ),
+                actions=[
+                    {"action": "_switch_role", "label": "🔁 Переключиться на «Продавец»",
+                     "params": {"role": "seller"}},
+                    {"action": "go_home", "label": "🏠 Главная"},
+                ],
+            )
         return ActionResult(text=f"⚠️ Нет прав на действие '{action_name}' для роли {role}")
     # KYB gate: продавцы без верификации не могут писать-action'ы
     gate_reason = kyb_gate(action_name, role, user)
