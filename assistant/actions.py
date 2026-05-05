@@ -54,7 +54,7 @@ class ActionResult:
 _BUYER_ACTIONS = [
     "search_parts", "create_rfq", "get_rfq_status",
     "get_orders", "get_order_detail", "track_order", "track_shipment",
-    "get_budget", "get_analytics",
+    "get_budget", "get_analytics", "get_buyer_discount",
     "compare_products", "compare_suppliers", "top_suppliers",
     "upload_parts_list", "analyze_spec",
     "get_claims", "create_claim",
@@ -325,6 +325,10 @@ TOOL_SCHEMAS = {
     "track_shipment": {
         "description": "Трекинг отгрузки по order_id.",
         "input_schema": {"type": "object", "properties": {"order_id": _STR}},
+    },
+    "get_buyer_discount": {
+        "description": "ТЗ §4.1: текущий уровень auto-discount buyer'а по годовому обороту (0/1/2/3).",
+        "input_schema": {"type": "object", "properties": {}},
     },
     "get_budget": {
         "description": "Бюджет/расходы пользователя за период.",
@@ -3152,6 +3156,14 @@ def pay_final(params, user, role):
                meta={"amount": float(final_amount), "balance_after": float(wallet.balance),
                      "intent_id": intent["id"]})
 
+    # ТЗ §4.1: пересчитать annual volume buyer'а — может перейти на новый
+    # discount level (1/2/3) после этого закрытого заказа.
+    try:
+        from .discounts import recalc_buyer_volume
+        recalc_buyer_volume(user)
+    except Exception:
+        logger.exception("recalc_buyer_volume on pay_final failed")
+
     return ActionResult(
         text=(
             f"✓ Списано ${final_amount:,.2f} с депозита — остаток по заказу #{order.id} оплачен.\n"
@@ -3424,6 +3436,53 @@ def confirm_delivery(params, user, role):
              "params": {"order_id": order.id, "kind": "feedback"}},
         ],
         suggestions=["Открыть отзыв", "Что заказать ещё?"],
+    )
+
+
+@register("get_buyer_discount")
+def get_buyer_discount(params, user, role):
+    """ТЗ §4.1: показать текущий уровень auto-discount по годовому обороту."""
+    from .discounts import recalc_buyer_volume, LEVEL_THRESHOLDS
+    from django.utils import timezone
+
+    bvy = recalc_buyer_volume(user, year=timezone.now().year)
+    if not bvy:
+        return ActionResult(text="Не удалось рассчитать ваш объём закупок.")
+
+    LEVEL_NAMES = {0: "Без скидки", 1: "Уровень 1", 2: "Уровень 2", 3: "Уровень 3"}
+    next_level_info = ""
+    if bvy.level < 3:
+        # Сколько до следующего
+        next_level = bvy.level + 1
+        # Найти threshold для next
+        for lvl, threshold, _ in LEVEL_THRESHOLDS:
+            if lvl == next_level:
+                gap = threshold - bvy.volume_usd
+                if gap > 0:
+                    next_level_info = (
+                        f"\nДо уровня {next_level}: ещё ${gap:,.0f} оборота."
+                    )
+                break
+
+    return ActionResult(
+        text=(
+            f"💰 Ваш годовой объём в {bvy.year}: ${bvy.volume_usd:,.0f}\n"
+            f"Текущий уровень: {LEVEL_NAMES[bvy.level]} · скидка {bvy.discount_pct}%"
+            + next_level_info
+        ),
+        cards=[{"type": "kpi_grid", "data": {
+            "title": f"💰 Auto-discount · {bvy.year}",
+            "items": [
+                {"label": "Оборот", "value": f"${bvy.volume_usd:,.0f}", "tone": "info"},
+                {"label": "Уровень", "value": LEVEL_NAMES[bvy.level],
+                 "tone": "ok" if bvy.level >= 2 else "warn" if bvy.level >= 1 else "warn"},
+                {"label": "Скидка", "value": f"{bvy.discount_pct}%",
+                 "tone": "ok" if bvy.discount_pct > 0 else "warn"},
+                {"label": "Уровень 1", "value": "≥$1.1M → 1%"},
+                {"label": "Уровень 2", "value": "≥$5.5M → 1.5%"},
+                {"label": "Уровень 3", "value": "≥$11M → 3%"},
+            ],
+        }}],
     )
 
 

@@ -787,6 +787,72 @@ class SupplierRatingEngineTests(TestCase):
         self.assertEqual(events.first().impact_score, Decimal("1.00"))
 
 
+class BuyerVolumeDiscountTests(TestCase):
+    """ТЗ §4.1: auto-discount по годовому обороту."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        U = get_user_model()
+        self.buyer = U.objects.create_user(username="t_vol_b", password="x")
+
+    def _create_paid_order(self, amount):
+        from marketplace.models import Order
+        from decimal import Decimal as D
+        return Order.objects.create(
+            customer_name="x", customer_email="x@x.x", customer_phone="",
+            delivery_address="-", buyer=self.buyer,
+            total_amount=D(str(amount)), payment_status="paid",
+            status="completed",
+        )
+
+    def test_level_0_when_no_orders(self):
+        from .discounts import recalc_buyer_volume
+        bvy = recalc_buyer_volume(self.buyer)
+        self.assertEqual(bvy.level, 0)
+        self.assertEqual(bvy.discount_pct, Decimal("0.00"))
+        self.assertEqual(bvy.volume_usd, Decimal("0.00"))
+
+    def test_level_1_at_1_1m(self):
+        from .discounts import recalc_buyer_volume
+        self._create_paid_order(1_200_000)
+        bvy = recalc_buyer_volume(self.buyer)
+        self.assertEqual(bvy.level, 1)
+        self.assertEqual(bvy.discount_pct, Decimal("1.00"))
+
+    def test_level_2_at_5_5m(self):
+        from .discounts import recalc_buyer_volume
+        self._create_paid_order(6_000_000)
+        bvy = recalc_buyer_volume(self.buyer)
+        self.assertEqual(bvy.level, 2)
+        self.assertEqual(bvy.discount_pct, Decimal("1.50"))
+
+    def test_level_3_at_11m(self):
+        from .discounts import recalc_buyer_volume
+        self._create_paid_order(12_000_000)
+        bvy = recalc_buyer_volume(self.buyer)
+        self.assertEqual(bvy.level, 3)
+        self.assertEqual(bvy.discount_pct, Decimal("3.00"))
+
+    def test_apply_volume_discount_calculates_total(self):
+        from .discounts import apply_volume_discount, recalc_buyer_volume
+        # Создадим заказы на 6M → level 2 → 1.5%
+        self._create_paid_order(6_000_000)
+        recalc_buyer_volume(self.buyer)
+        result = apply_volume_discount(Decimal("100000"), self.buyer)
+        self.assertEqual(result["level"], 2)
+        self.assertEqual(result["discount_pct"], Decimal("1.50"))
+        self.assertEqual(result["discount_amount"], Decimal("1500.00"))
+        self.assertEqual(result["total"], Decimal("98500.00"))
+
+    def test_get_buyer_discount_action_returns_kpi(self):
+        from .actions import get_buyer_discount
+        self._create_paid_order(2_000_000)
+        r = get_buyer_discount({}, self.buyer, "buyer")
+        self.assertIn("Уровень 1", r.text)
+        kpi = r.cards[0]["data"]["items"]
+        self.assertEqual(next(i for i in kpi if i["label"] == "Уровень")["value"], "Уровень 1")
+
+
 class ConversationCategorizationTests(TestCase):
     """Не плодить новые conv'ы на каждый клик пилюли — reuse по категории."""
 

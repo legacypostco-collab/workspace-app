@@ -788,6 +788,44 @@ class CompanyVerification(models.Model):
         return f"KYB[{self.user_id}]={self.status}"
 
 
+class BuyerVolumeYearly(models.Model):
+    """ТЗ §4.1: годовой объём закупок клиента → уровень auto-discount.
+
+    Уровень рассчитывается из суммы paid+completed orders за календарный год:
+      ≥ 1 000 000 000 ₽ (~$11M) → level 3 → discount 3%
+      ≥   500 000 000 ₽ (~$5.5M) → level 2 → discount 1.5%
+      ≥   100 000 000 ₽ (~$1.1M) → level 1 → discount 1%
+      < 100M                              → level 0 → 0%
+
+    Пересчитывается:
+      • по событию: order.payment_status='paid' → recalc для buyer
+      • по cron: ежедневный пересчёт уровней (см. mgmt command)
+    """
+    DISCOUNT_LEVELS = [
+        (0, "Без скидки"),
+        (1, "Уровень 1 (≥100M, 1%)"),
+        (2, "Уровень 2 (≥500M, 1.5%)"),
+        (3, "Уровень 3 (≥1B, 3%)"),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="volume_yearly")
+    year = models.PositiveIntegerField(db_index=True)
+    volume_usd = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    level = models.PositiveSmallIntegerField(choices=DISCOUNT_LEVELS, default=0)
+    discount_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    last_recalculated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [("user", "year")]
+        ordering = ["-year"]
+        indexes = [
+            models.Index(fields=["user", "-year"], name="bvy_user_year_idx"),
+            models.Index(fields=["level"], name="bvy_level_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username}/{self.year}: ${self.volume_usd} L{self.level}"
+
+
 class TwoFactorAuth(models.Model):
     """TOTP-based 2FA. Stored separately for security."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="twofa")
