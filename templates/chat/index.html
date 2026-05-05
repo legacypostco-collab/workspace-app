@@ -412,28 +412,28 @@
     .sq-qty{color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;}
     .sq-sub{font-weight:500;font-variant-numeric:tabular-nums;}
     .sq-actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-    /* Внутри очереди продавца — фирменная двухуровневая иерархия:
-       primary (advance/ship) — чёрная компактная (как .side-new-btn),
-       secondary («🔍 Открыть») — text-link без фона, чтобы не давила. */
+    /* Кнопки — единственный «цветной» элемент в очереди, чтобы не сливаться
+       с чёрными заголовками/номерами заказов. Оранжевый #f97316 — фирменный
+       акцент (используется в .tk-current, .dr-warning, .tk-next). */
     .sq-card .sq-btn,
     .sq-card .sq-btn.act-btn{
       padding:6px 11px!important;border-radius:7px!important;
       font-size:12px!important;font-weight:600!important;cursor:pointer;
       transition:all 0.12s;line-height:1.2;letter-spacing:-0.005em;
-      background:#1a1a1a!important;color:#fff!important;
-      border:1px solid #1a1a1a!important;
+      background:#f97316!important;color:#fff!important;
+      border:1px solid #f97316!important;
     }
-    .sq-card .sq-btn:hover{background:#000!important;border-color:#000!important;}
-    /* secondary «🔍 Открыть» — текст-ссылка без плашки */
+    .sq-card .sq-btn:hover{background:#ea580c!important;border-color:#ea580c!important;}
+    /* secondary «🔍 Открыть» — text-link без плашки */
     .sq-card .sq-btn.sq-open,
     .sq-card .sq-btn.sq-open.act-btn{
-      background:transparent!important;color:#1a1a1a!important;
+      background:transparent!important;color:rgba(0,0,0,0.7)!important;
       border:none!important;padding:6px 8px!important;
       text-decoration:underline;text-decoration-color:rgba(0,0,0,0.25);
-      text-underline-offset:3px;
+      text-underline-offset:3px;font-weight:500!important;
     }
     .sq-card .sq-btn.sq-open:hover{
-      color:#f97316!important;text-decoration-color:#f97316!important;
+      color:#c2410c!important;text-decoration-color:#c2410c!important;
       background:transparent!important;
     }
     /* Усиливаем шапки заказов, чтобы они «держали» внимание сильнее кнопок */
