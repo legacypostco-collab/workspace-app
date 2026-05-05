@@ -106,6 +106,8 @@ class Part(models.Model):
         help_text="Морпорт отправления")
     air_port = models.CharField(max_length=120, blank=True,
         help_text="Аэропорт отправления")
+    hs_code = models.CharField(max_length=20, blank=True, db_index=True,
+        help_text="Код ТН ВЭД / HS Code")
     backorder_allowed = models.BooleanField(default=False)
     mapping_status = models.CharField(max_length=20, choices=MAPPING_STATUS_CHOICES, default="auto")
     supplier_part_uid = models.CharField(max_length=80, blank=True)
@@ -1075,6 +1077,40 @@ class ApiToken(models.Model):
         return self.revoked_at is None
 
 
+class LearnedColumnSynonym(models.Model):
+    """ТЗ: «AI возвращает маппинг — добавляй новые варианты в словарь».
+
+    Накопленные синонимы, найденные через AI или ручное переопределение
+    seller'ом. При следующих загрузках применяется поверх статического
+    COLUMN_MAP (assistant/price_mappings.py).
+    """
+    SOURCE_CHOICES = [
+        ("ai",     "AI"),
+        ("manual", "Ручной"),
+        ("seed",   "Seed"),
+    ]
+    canonical = models.CharField(max_length=40, db_index=True,
+        help_text="Канонический ключ (part_number, description, …)")
+    raw_header = models.CharField(max_length=200,
+        help_text="Оригинальный заголовок как из файла (для аудита)")
+    header_normalized = models.CharField(max_length=200, unique=True,
+        db_index=True,
+        help_text="Нормализованный заголовок (lower + trim + без разделителей)")
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default="ai")
+    learned_at = models.DateTimeField(default=timezone.now)
+    use_count = models.PositiveIntegerField(default=0,
+        help_text="Сколько раз применялся (для аналитики)")
+
+    class Meta:
+        ordering = ["-learned_at"]
+        indexes = [
+            models.Index(fields=["canonical", "-learned_at"], name="lcs_canonical_idx"),
+        ]
+
+    def __str__(self):
+        return f"LCS[{self.id}] '{self.raw_header}' → {self.canonical}"
+
+
 class PricelistMapping(models.Model):
     """ТЗ: запоминаем последний маппинг колонок прайса для seller'а.
 
@@ -1118,7 +1154,10 @@ class PricelistImport(models.Model):
     final_mapping = models.JSONField(default=dict, blank=True,
         help_text="Маппинг, подтверждённый seller'ом")
     total_rows = models.PositiveIntegerField(default=0)
-    imported_rows = models.PositiveIntegerField(default=0)
+    imported_rows = models.PositiveIntegerField(default=0,
+        help_text="created + updated")
+    created_rows = models.PositiveIntegerField(default=0)
+    updated_rows = models.PositiveIntegerField(default=0)
     failed_rows = models.PositiveIntegerField(default=0)
     error_details = models.JSONField(default=list, blank=True,
         help_text="[{row, oem, reason}] первых ~50 ошибок")

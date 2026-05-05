@@ -1,0 +1,277 @@
+"""Словарь известных вариантов колонок прайс-листов поставщиков.
+
+ТЗ: «умная автоматическая загрузка прайса». Логика:
+  1. Читаем заголовки → нижний регистр + trim.
+  2. Сверяем со словарём COLUMN_MAP + LearnedColumnSynonym (БД).
+  3. Если все известны — парсим без AI.
+  4. Только нераспознанные отправляем в AI одним запросом.
+  5. AI-ответы добавляются в LearnedColumnSynonym → словарь растёт сам.
+
+Канонические ключи COLUMN_MAP (8 базовых полей):
+  part_number · description · price · currency ·
+  weight · hs_code · lead_time · moq
+
+CANONICAL_TO_STD — маппинг канонических ключей в STD_FIELDS платформы
+(см. pricelist.py). Несовпадающие просто игнорируются при импорте.
+"""
+from __future__ import annotations
+
+import re
+from typing import Iterable
+
+
+# ── Словарь канонических полей и их синонимов (RU/EN/ZH/DE) ─────
+
+COLUMN_MAP: dict[str, list[str]] = {
+    "part_number": [
+        "part number", "partnumber", "part no", "part no.", "part#",
+        "item", "item #", "item no", "sku", "code", "ref", "reference",
+        "артикул", "номер детали", "код товара",
+        "件号", "零件号", "零件编号",
+        "artikelnummer", "artikel-nr", "teilenummer",
+    ],
+    "description": [
+        "description", "desc", "name", "title",
+        "наименование", "название", "описание",
+        "名称", "描述",
+        "bezeichnung", "beschreibung",
+    ],
+    "price": [
+        "unitprice", "unit price", "price", "cost", "list price",
+        "цена", "стоимость",
+        "成本", "价格", "单价",
+        "preis", "stückpreis",
+    ],
+    "currency": [
+        "currency", "ccy",
+        "валюта",
+        "货币",
+        "währung",
+    ],
+    "weight": [
+        "weight", "unit-weight", "unit weight", "gross weight", "net weight",
+        "вес", "масса",
+        "重量",
+        "gewicht",
+    ],
+    "hs_code": [
+        "hs code", "hs-code", "hscode", "harmonized code",
+        "тн вэд", "код тн вэд",
+        "海关编码",
+        "zollnummer", "hs-tarifnummer",
+    ],
+    "lead_time": [
+        "delivery time", "lead time", "delivery", "lead-time",
+        "срок поставки", "поставка",
+        "交货期", "交付时间",
+        "lieferzeit",
+    ],
+    "moq": [
+        "moq", "min qty", "minimum", "min order", "minimum order",
+        "минимальная партия", "минимум", "мин. заказ",
+        "最小订量", "最小起订量",
+        "mindestbestellmenge", "mbm",
+    ],
+    # Дополнительные не из ТЗ-минимума — но часто встречаются и
+    # маппятся на платформенные поля:
+    "brand": [
+        "brand", "manufacturer", "make", "vendor",
+        "бренд", "производитель",
+        "品牌", "制造商",
+        "marke", "hersteller",
+    ],
+    "stock": [
+        "stock", "qty", "quantity", "in stock", "available",
+        "остаток", "наличие", "количество",
+        "库存", "数量",
+        "lager", "bestand",
+    ],
+    "condition": [
+        "condition", "type", "grade",
+        "состояние", "тип",
+        "状态",
+        "zustand",
+    ],
+    "warehouse": [
+        "warehouse", "warehouseaddress", "warehouse address",
+        "адрес склада", "склад",
+        "仓库", "仓库地址",
+        "lager", "lageradresse",
+    ],
+    "price_fob_sea": [
+        "price fob sea", "price_fob_sea", "fob sea",
+        "цена fob море", "цена море",
+        "fob 海运", "海运价格",
+        "fob seefracht",
+    ],
+    "price_fob_air": [
+        "price fob air", "price_fob_air", "fob air",
+        "цена fob авиа", "цена авиа",
+        "fob 空运", "空运价格",
+        "fob luftfracht",
+    ],
+    "sea_port": [
+        "seaport", "sea port", "port of loading sea",
+        "морпорт", "порт",
+        "海港", "装运港",
+        "seehafen",
+    ],
+    "air_port": [
+        "airport", "air port", "port of loading air",
+        "аэропорт",
+        "机场", "起飞机场",
+        "flughafen",
+    ],
+    "length": [
+        "length", "длина", "长度", "länge",
+    ],
+    "width": [
+        "width", "ширина", "宽度", "breite",
+    ],
+    "height": [
+        "height", "высота", "高度", "höhe",
+    ],
+    "cross_number": [
+        "cross number", "crossnumber", "cross-number", "cross ref", "alternative",
+        "кросс-номер", "кросс", "аналог",
+        "交叉号", "替代件号",
+        "kreuzreferenz",
+    ],
+}
+
+
+# Маппинг канонических ключей → полей STD_FIELDS платформы.
+# Если канонический ключ не указан здесь — данные игнорируются (но
+# заголовок всё равно «распознан», AI его не атакует повторно).
+CANONICAL_TO_STD: dict[str, str] = {
+    "part_number":   "oem_number",
+    "cross_number":  "cross_number",
+    "description":   "title",
+    "brand":         "brand",
+    "price":         "price_exw",
+    "currency":      "currency",
+    "stock":         "stock",
+    "moq":           "moq",
+    "weight":        "weight_kg",
+    "length":        "length_cm",
+    "width":         "width_cm",
+    "height":        "height_cm",
+    "condition":     "condition",
+    "warehouse":     "warehouse_address",
+    "price_fob_sea": "price_fob_sea",
+    "price_fob_air": "price_fob_air",
+    "sea_port":      "sea_port",
+    "air_port":      "air_port",
+    # hs_code, lead_time — пока не в STD_FIELDS, но распознаются.
+}
+
+
+# ── Helpers ──────────────────────────────────────────────────────
+
+_NORM_RE = re.compile(r"[\s_\-./()]+")
+
+def normalize(header: str) -> str:
+    """Нормализует заголовок: lower + trim + убирает разделители для
+    устойчивого matching (например «Part-Number» = «part_number» = «part number»).
+    Для словарного matching хранятся уже нормализованные ключи.
+    """
+    s = (header or "").strip().lower()
+    s = _NORM_RE.sub(" ", s).strip()
+    return s
+
+
+# Предкомпилированный «обратный» индекс: normalized synonym → canonical.
+def _build_lookup() -> dict[str, str]:
+    out = {}
+    for canonical, syns in COLUMN_MAP.items():
+        for s in syns:
+            out[normalize(s)] = canonical
+    return out
+
+
+_LOOKUP: dict[str, str] = _build_lookup()
+
+
+def match_header(header: str, learned: dict[str, str] | None = None) -> str | None:
+    """Возвращает канонический ключ для заголовка или None.
+
+    learned: dict нормализованных синонимов из БД (LearnedColumnSynonym).
+             Применяется поверх статического словаря — пользователь может
+             переопределить значение.
+    """
+    if not header:
+        return None
+    n = normalize(header)
+    if not n:
+        return None
+    if learned and n in learned:
+        return learned[n]
+    if n in _LOOKUP:
+        return _LOOKUP[n]
+    # «Лёгкий» fuzzy: подстрочный match на длинных заголовках типа
+    # «Komatsu Part Number Code (OEM)» — ищем нашу подстроку.
+    for synonym, canonical in _LOOKUP.items():
+        if len(synonym) >= 4 and synonym in n:
+            return canonical
+    return None
+
+
+def match_headers(headers: list[str], learned: dict[str, str] | None = None
+                   ) -> tuple[dict[str, str], list[str]]:
+    """Принимает список заголовков, возвращает:
+      mapped:  dict {canonical_key → original_header}
+      unknown: list заголовков, которые НЕ удалось распознать.
+
+    Если несколько заголовков попадают на один канонический ключ —
+    берём первый и не перезаписываем. Остальные игнорируются.
+    """
+    mapped: dict[str, str] = {}
+    unknown: list[str] = []
+    for h in headers or []:
+        if not h or not str(h).strip():
+            continue
+        canonical = match_header(h, learned=learned)
+        if canonical and canonical not in mapped:
+            mapped[canonical] = h
+        elif canonical:
+            # Уже занято этим каноническим — не unknown
+            pass
+        else:
+            unknown.append(h)
+    return mapped, unknown
+
+
+def load_learned_lookup() -> dict[str, str]:
+    """Подгружает LearnedColumnSynonym → {normalized_header → canonical}.
+
+    Вынесено в БД (а не в файл) чтобы не было гонок при многопоточной
+    записи и чтобы deploy не сбрасывал накопленный словарь.
+    """
+    try:
+        from marketplace.models import LearnedColumnSynonym
+        return {
+            normalize(s.header): s.canonical
+            for s in LearnedColumnSynonym.objects.all()
+        }
+    except Exception:
+        return {}
+
+
+def learn_synonym(canonical: str, header: str, source: str = "ai") -> None:
+    """Сохраняет в БД новую пару canonical→header. Идемпотентно по
+    нормализованному заголовку: повторный learn() не дублирует.
+    """
+    try:
+        from marketplace.models import LearnedColumnSynonym
+        n = normalize(header)
+        if not n or not canonical:
+            return
+        # update_or_create — идемпотентность
+        LearnedColumnSynonym.objects.update_or_create(
+            header_normalized=n,
+            defaults={"canonical": canonical, "raw_header": header[:200],
+                       "source": source[:20]},
+        )
+    except Exception:
+        # Не валим импорт прайса если что-то с БД
+        pass

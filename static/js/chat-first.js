@@ -1876,26 +1876,50 @@
         };
       });
 
-      addMessage('assistant',
-        `📋 Файл прочитан · ${headers.length} колонок · ${sample.length} превью-строк.\n` +
-        `Проверьте маппинг ниже и нажмите «Загрузить весь файл».`,
-        [
-          // 1. Превью-таблица
-          {type:'table_preview', data:{
-            title: '👀 Превью прайса (первые 3 строки)',
-            headers: headers,
-            rows: sample,
-            foot: 'AI/heuristic уже подобрали колонки ниже — проверьте и поправьте при необходимости.',
-          }},
-          // 2. Форма с маппингом
-          {type:'form', data:{
-            title: '🔗 Маппинг колонок прайса → платформа',
-            submit_action: '__pricelist_commit',
-            submit_label: '📥 Загрузить весь файл',
-            fields: fields,
-            fixed_params: {import_id: data.import_id},
-          }},
-        ],
+      // Информация откуда взят маппинг (повторная загрузка / AI / словарь)
+      let intro;
+      if (data.from_saved_mapping) {
+        intro = `📋 Файл прочитан · ${headers.length} колонок · ` +
+                `${sample.length} превью-строк.\n` +
+                `🧠 Применён сохранённый маппинг — AI не вызывался. ` +
+                `Проверьте превью «как ляжет в базу» и подтвердите.`;
+      } else if (data.ai_called) {
+        intro = `📋 Файл прочитан · ${headers.length} колонок · ` +
+                `${sample.length} превью-строк.\n` +
+                `📚 Распознано по словарю + AI помог с нестандартными ` +
+                `заголовками. Проверьте маппинг ниже.`;
+      } else {
+        intro = `📋 Файл прочитан · ${headers.length} колонок · ` +
+                `${sample.length} превью-строк.\n` +
+                `📚 Все заголовки распознаны по словарю — AI не вызывался.`;
+      }
+
+      const cards = [];
+      // 1. Превью «как ляжет в базу» (если есть маппинг)
+      if (data.mapped_preview && (data.mapped_preview.rows || []).length) {
+        cards.push({type:'table_preview', data:{
+          title: '✅ Как ляжет в базу (первые 5 строк)',
+          headers: data.mapped_preview.headers,
+          rows: data.mapped_preview.rows,
+          foot: 'Это уже распознанные колонки. Если что-то не так — поправьте маппинг ниже.',
+        }});
+      }
+      // 2. Сырое превью (исходные строки файла)
+      cards.push({type:'table_preview', data:{
+        title: '👀 Сырое превью (как в файле)',
+        headers: headers,
+        rows: sample,
+      }});
+      // 3. Форма с маппингом
+      cards.push({type:'form', data:{
+        title: '🔗 Маппинг колонок прайса → платформа',
+        submit_action: '__pricelist_commit',
+        submit_label: '📥 Подтвердить и загрузить',
+        fields: fields,
+        fixed_params: {import_id: data.import_id},
+      }});
+
+      addMessage('assistant', intro, cards,
         [{action: '__pricelist_cancel', label: 'Отменить',
           params: {import_id: data.import_id}}]
       );
@@ -1926,12 +1950,18 @@
       if (pending && pending.parentNode) pending.remove();
       if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
       const errBtn = data.failed > 0
-        ? [{action: 'pricelist_show_errors', label: 'Показать ошибки',
+        ? [{action: 'pricelist_show_errors', label: 'Посмотреть',
             params: {import_id: importId}}]
         : [];
+      // ТЗ-формат: «Загружено X. Обновлено Y. Ошибок Z — посмотреть».
+      const created = data.created || 0;
+      const updated = data.updated || 0;
+      const failed  = data.failed  || 0;
+      const parts = [`✅ Загружено ${created} позиций.`];
+      if (updated) parts.push(`Обновлено ${updated}.`);
+      if (failed)  parts.push(`Ошибок ${failed} — посмотреть?`);
       addMessage('assistant',
-        `✅ Загружено ${data.imported} позиций.` +
-        (data.failed ? ` Ошибки в ${data.failed} строках.` : ''),
+        parts.join(' '),
         [], errBtn.concat([
           {action: 'seller_catalog', label: '📦 Открыть каталог', params: {}},
         ])

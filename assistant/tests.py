@@ -2897,13 +2897,19 @@ class PricelistUploadTests(TestCase):
         self.assertIn("import_id", data)
         self.assertEqual(data["headers"], ["Артикул", "Наименование", "Цена", "Валюта", "Остаток"])
         self.assertEqual(len(data["sample_rows"]), 3)
-        # Heuristic — теперь только title и weight подставляются авто.
-        # Остальные поля seller выбирает руками (anti-confusion с номерами).
+        # Smart mapping: словарь распознаёт ru-заголовки целиком (ТЗ).
         m = data["suggested_mapping"]
+        self.assertEqual(m.get("oem_number"), "Артикул")
         self.assertEqual(m.get("title"), "Наименование")
-        # oem_number / price больше НЕ авто-подставляются:
-        self.assertNotIn("oem_number", m)
-        self.assertNotIn("price_exw", m)
+        self.assertEqual(m.get("price_exw"), "Цена")
+        self.assertEqual(m.get("currency"), "Валюта")
+        self.assertEqual(m.get("stock"), "Остаток")
+        # Все распознаны → AI не вызывается
+        self.assertFalse(data.get("ai_called", True))
+        self.assertEqual(data.get("unknown_headers"), [])
+        # Превью «как ляжет в базу» возвращается
+        self.assertIn("mapped_preview", data)
+        self.assertEqual(len(data["mapped_preview"]["rows"]), 3)
 
     def test_commit_imports_parts(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -3019,6 +3025,130 @@ class PricelistUploadTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         imp = PricelistImport.objects.get(id=iid)
         self.assertEqual(imp.status, "cancelled")
+
+    def test_dictionary_matches_multilang_headers(self):
+        """Словарь покрывает RU/EN/ZH/DE."""
+        from assistant.price_mappings import match_header
+        self.assertEqual(match_header("Part Number"), "part_number")
+        self.assertEqual(match_header("PARTNUMBER"), "part_number")
+        self.assertEqual(match_header("Артикул"), "part_number")
+        self.assertEqual(match_header("件号"), "part_number")
+        self.assertEqual(match_header("Artikelnummer"), "part_number")
+        self.assertEqual(match_header("Description"), "description")
+        self.assertEqual(match_header("Наименование"), "description")
+        self.assertEqual(match_header("名称"), "description")
+        self.assertEqual(match_header("UnitPrice"), "price")
+        self.assertEqual(match_header("成本"), "price")
+        self.assertEqual(match_header("Weight"), "weight")
+        self.assertEqual(match_header("HS Code"), "hs_code")
+        self.assertEqual(match_header("ТН ВЭД"), "hs_code")
+        self.assertIsNone(match_header("CompletelyUnknownColumn"))
+
+    def test_smart_mapping_returns_unknowns(self):
+        """Заголовки которые не в словаре остаются unknown."""
+        from assistant.pricelist import _smart_mapping
+        # Без AI-ключа: unknown остаются как есть
+        from django.test.utils import override_settings
+        with override_settings(ANTHROPIC_API_KEY=""):
+            mapping_std, unknown, ai = _smart_mapping(
+                ["Артикул", "Наименование", "Цена", "СовершенноНоваяКолонка"],
+                sample_rows=[],
+            )
+            self.assertIn("oem_number", mapping_std)
+            self.assertIn("title", mapping_std)
+            self.assertIn("price_exw", mapping_std)
+            self.assertIn("СовершенноНоваяКолонка", unknown)
+            self.assertFalse(ai)
+
+    def test_learned_synonym_grows_dictionary(self):
+        """AI-распознанная колонка сохраняется в LearnedColumnSynonym."""
+        from assistant.price_mappings import learn_synonym, match_header
+        from marketplace.models import LearnedColumnSynonym
+        learn_synonym("price", "MyCustomPriceCol", source="ai")
+        self.assertEqual(
+            LearnedColumnSynonym.objects.filter(canonical="price").count(),
+            1,
+        )
+        # Идемпотентно: повторный learn не дублирует
+        learn_synonym("price", "MyCustomPriceCol", source="ai")
+        self.assertEqual(
+            LearnedColumnSynonym.objects.filter(canonical="price").count(),
+            1,
+        )
+        # При следующем match с подгруженным learned — распознаётся
+        from assistant.price_mappings import load_learned_lookup
+        learned = load_learned_lookup()
+        self.assertEqual(match_header("MyCustomPriceCol", learned=learned), "price")
+
+    def test_re_upload_uses_saved_mapping_no_ai(self):
+        """Повторная загрузка применяет сохранённый маппинг, AI пропускается."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from marketplace.models import PricelistMapping
+        self.client.force_login(self.seller)
+        # Создаём сохранённый маппинг (как после первой загрузки)
+        PricelistMapping.objects.create(
+            seller=self.seller,
+            mapping={
+                "oem_number":        "Артикул",
+                "title":             "Наименование",
+                "price_exw":         "Цена",
+                "stock":             "fix:0",
+                "brand":             "fix:Generic",
+                "cross_number":      "fix:",
+                "condition":         "fix:OEM",
+                "warehouse_address": "fix:Warehouse",
+                "price_fob_sea":     "fix:0",
+                "price_fob_air":     "fix:0",
+                "sea_port":          "fix:Port",
+                "air_port":          "fix:Airport",
+                "weight_kg":         "fix:0.5",
+                "length_cm":         "fix:1",
+                "width_cm":          "fix:1",
+                "height_cm":         "fix:1",
+            },
+        )
+        csv_bytes = self._make_csv([
+            "Артикул;Наименование;Цена",
+            "RE-UP;X;42",
+        ])
+        f = SimpleUploadedFile("p.csv", csv_bytes)
+        resp = self.client.post(
+            "/api/assistant/upload-pricelist/", data={"file": f},
+        )
+        data = resp.json()
+        self.assertTrue(data.get("from_saved_mapping"))
+        self.assertFalse(data.get("ai_called"))
+
+    def test_commit_returns_created_vs_updated(self):
+        """imported = created + updated, повторная загрузка → updated."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.seller)
+
+        def upload_and_commit():
+            csv_bytes = self._make_csv([
+                "Артикул;Наименование;Цена",
+                "CRT-1;Filter;50",
+                "CRT-2;Pump;180",
+            ])
+            f = SimpleUploadedFile("p.csv", csv_bytes)
+            iid = self.client.post(
+                "/api/assistant/upload-pricelist/", data={"file": f},
+            ).json()["import_id"]
+            return self.client.post(
+                f"/api/assistant/upload-pricelist/{iid}/commit/",
+                data={"mapping": self._full_mapping()},
+                content_type="application/json",
+            ).json()
+
+        d1 = upload_and_commit()
+        self.assertEqual(d1["imported"], 2)
+        self.assertEqual(d1["created"], 2)
+        self.assertEqual(d1["updated"], 0)
+
+        d2 = upload_and_commit()
+        self.assertEqual(d2["imported"], 2)
+        self.assertEqual(d2["created"], 0)
+        self.assertEqual(d2["updated"], 2)
 
     def test_outsider_cannot_commit_other_users_import(self):
         from django.core.files.uploadedfile import SimpleUploadedFile

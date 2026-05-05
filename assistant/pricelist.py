@@ -161,30 +161,138 @@ def _read_all(filename: str, blob: bytes):
 
 # ── AI mapping ───────────────────────────────────────────────────
 
-def _heuristic_mapping(headers: list[str]) -> dict[str, str]:
-    """Минимальные правила — только title и weight предлагаются авто.
+def _smart_mapping(headers: list[str], sample_rows: list[list[str]]
+                    ) -> tuple[dict[str, str], list[str], bool]:
+    """ТЗ: умная автоматическая загрузка прайса.
 
-    По запросу пользователя: «автоматически мы можем подставлять только
-    вес и название, но лучше что бы они тоже были точные и не было
-    путаницы с номерами». Остальные поля seller выбирает явно.
+      1. Словарь COLUMN_MAP + LearnedColumnSynonym (БД)
+      2. Для нераспознанных — один AI-запрос
+      3. AI-ответы → learn_synonym() в БД
+      4. Возвращает (mapping_std, unknown, ai_called):
+            mapping_std    — {std_field: header} для сохранения в commit
+            unknown        — заголовки которые AI тоже не распознал
+            ai_called      — True если AI вызывался (для аналитики)
     """
-    rules = {
-        "title":     ["name", "название", "наименование", "description",
-                       "title", "опис", "名称", "bezeichnung", "désignation"],
-        "weight_kg": ["weight", "вес", "масса", "重量", "gewicht", "poids"],
+    from .price_mappings import (
+        COLUMN_MAP, CANONICAL_TO_STD,
+        match_headers, load_learned_lookup, learn_synonym, normalize,
+    )
+
+    learned = load_learned_lookup()
+    canonical_map, unknown_headers = match_headers(headers, learned=learned)
+
+    ai_called = False
+    if unknown_headers:
+        ai_canonical = _ai_resolve_unknowns(unknown_headers, sample_rows,
+                                              list(COLUMN_MAP.keys()))
+        ai_called = bool(ai_canonical)
+        for header, canonical in (ai_canonical or {}).items():
+            if canonical not in canonical_map and canonical in COLUMN_MAP:
+                canonical_map[canonical] = header
+                # Запоминаем в БД — растим словарь для следующих загрузок
+                learn_synonym(canonical, header, source="ai")
+                # Убираем из unknown
+                if header in unknown_headers:
+                    unknown_headers.remove(header)
+
+    # canonical_map → std_field → header (для STD_FIELDS)
+    mapping_std: dict[str, str] = {}
+    for canonical, header in canonical_map.items():
+        std = CANONICAL_TO_STD.get(canonical)
+        if std and std not in mapping_std:
+            mapping_std[std] = header
+
+    return mapping_std, unknown_headers, ai_called
+
+
+def _ai_resolve_unknowns(unknown_headers: list[str], sample_rows: list[list[str]],
+                          allowed_canonicals: list[str]) -> dict[str, str] | None:
+    """Шлёт AI ОДИН запрос только с нераспознанными заголовками.
+
+    Возвращает {original_header: canonical_key} или {}.
+    """
+    api_key = getattr(settings, "ANTHROPIC_API_KEY", "")
+    if not api_key or not unknown_headers:
+        return {}
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+    except Exception:
+        return {}
+
+    sample_text = "\n".join(
+        " | ".join(str(c)[:30] for c in row) for row in (sample_rows or [])[:3]
+    )
+    prompt = (
+        "Определи назначение колонок прайс-листа поставщика. Допустимые ключи:\n"
+        + ", ".join(allowed_canonicals) + "\n\n"
+        "Не угадывай — если колонка не подходит ни под один ключ, не включай её "
+        "в ответ. Верни ТОЛЬКО JSON формата {\"original_header\": \"canonical_key\"}, "
+        "без объяснений.\n\n"
+        f"Нераспознанные заголовки: {', '.join(repr(h) for h in unknown_headers)}\n\n"
+        f"Примеры строк (для контекста):\n{sample_text}\n\nJSON:"
+    )
+    try:
+        msg = client.messages.create(
+            model=getattr(settings, "ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
+            max_tokens=400,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = msg.content[0].text.strip()
+        if "```" in text:
+            text = text.split("```", 2)[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.split("```", 1)[0]
+        result = json.loads(text.strip())
+        # Фильтр: только реальные unknown headers + только allowed canonicals
+        return {h: c for h, c in result.items()
+                 if h in unknown_headers and c in allowed_canonicals}
+    except Exception:
+        logger.exception("AI resolve unknowns failed")
+        return {}
+
+
+def _build_mapped_preview(headers: list[str], sample_rows: list[list[str]],
+                            mapping: dict[str, str]) -> dict:
+    """Строит «как ляжет в базу» превью первых N строк.
+
+    Возвращает {std_columns: […], rows: [[v, …], …]} — для UI рендеринга
+    как table_preview. Применяет mapping, но без коэрсии (Decimal/int) —
+    показываем как есть из ячеек.
+    """
+    # std_field → header → idx
+    col_idx: dict[str, int] = {}
+    for std, src in (mapping or {}).items():
+        if not src or src.startswith("fix:") or src not in headers:
+            continue
+        col_idx[std] = headers.index(src)
+    # Берём std-поля в фикс-порядке STD_FIELDS чтобы UI колонки
+    # были в осмысленном порядке.
+    std_keys = [k for k, _, _, _ in STD_FIELDS if k in col_idx]
+    rows = []
+    for row in (sample_rows or [])[:5]:
+        rows.append([
+            (str(row[col_idx[k]]) if col_idx[k] < len(row) else "")
+            for k in std_keys
+        ])
+    labels = {k: lbl for k, lbl, _, _ in STD_FIELDS}
+    return {
+        "headers": [labels.get(k, k) for k in std_keys],
+        "std_keys": std_keys,
+        "rows": rows,
     }
-    mapping: dict[str, str] = {}
-    used = set()
-    for std_key, keywords in rules.items():
-        for h in headers:
-            if h in used:
-                continue
-            hl = h.lower()
-            if any(k in hl for k in keywords):
-                mapping[std_key] = h
-                used.add(h)
-                break
-    return mapping
+
+
+# legacy-обёртка, оставлена ради совместимости с тестами
+def _heuristic_mapping(headers: list[str]) -> dict[str, str]:
+    """Минимальный legacy-маппер. В новом коде используется _smart_mapping."""
+    mapping_std, _, _ = _smart_mapping(headers, sample_rows=[])
+    # _smart_mapping возвращает только что нашёл по словарю — это может
+    # включать любые поля, не только title+weight. По legacy-контракту
+    # тут возвращали именно minimal-set. Оставлю как есть — словарь
+    # достаточно консервативен.
+    return mapping_std
 
 
 def _ai_mapping(headers: list[str], sample_rows: list[list[str]]) -> dict[str, str]:
@@ -357,6 +465,8 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
                      Brand.objects.create(name="Generic", slug="generic")
 
     imported = 0
+    created = 0
+    updated = 0
     failed = 0
     errors: list[dict] = []
 
@@ -420,7 +530,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
             height = _coerce_decimal(get("height_cm")) or Decimal("1.0")
 
             try:
-                Part.objects.update_or_create(
+                _obj, was_created = Part.objects.update_or_create(
                     seller=seller, oem_number__iexact=oem,
                     defaults={
                         "title": title[:255],
@@ -445,13 +555,17 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
                         "is_active": True,
                     },
                 )
+                if was_created:
+                    created += 1
+                else:
+                    updated += 1
                 imported += 1
             except Exception as e:
                 failed += 1
                 if len(errors) < 50:
                     errors.append({"row": row_n, "oem": oem[:60], "reason": str(e)[:100]})
 
-    return imported, failed, errors
+    return imported, created, updated, failed, errors
 
 
 # ── HTTP views ───────────────────────────────────────────────────
@@ -485,21 +599,24 @@ class PricelistUploadView(APIView):
         if not headers:
             return Response({"error": "no headers found"}, status=400)
 
-        # Предложенный маппинг:
-        # 1. Если есть сохранённый предыдущий — берём его целиком (это
-        #    «второй заход» — seller уже всё подтвердил).
-        # 2. Иначе AUTO-подставляем ТОЛЬКО title + weight_kg по запросу
-        #    пользователя «не должно быть путаницы с номерами» — все
-        #    остальные поля (особенно артикул и цены) seller выбирает
-        #    точно сам, чтобы исключить ошибки.
+        # ТЗ: умный маппинг.
+        # 1. Если у seller'а есть сохранённый PricelistMapping — берём
+        #    его целиком и AI вообще не трогаем (повторная загрузка).
+        # 2. Иначе словарь COLUMN_MAP + LearnedColumnSynonym (БД).
+        #    Для нераспознанных — один AI-запрос, ответы пишутся в
+        #    LearnedColumnSynonym → словарь растёт сам.
+        ai_called = False
+        unknown: list = []
         prev = PricelistMapping.objects.filter(seller=request.user).first()
         if prev and prev.mapping:
             suggested = {k: v for k, v in prev.mapping.items()
                           if v and (v.startswith("fix:") or v in headers)}
         else:
-            ai_map = _ai_mapping(headers, sample)
-            AUTO_KEYS = {"title", "weight_kg"}
-            suggested = {k: v for k, v in ai_map.items() if k in AUTO_KEYS}
+            suggested, unknown, ai_called = _smart_mapping(headers, sample)
+
+        # Превью «как ляжет в базу»: первые 5 строк уже отрендеренных по
+        # маппингу — seller видит что именно сохранится.
+        mapped_preview = _build_mapped_preview(headers, sample, suggested)
 
         imp = PricelistImport.objects.create(
             seller=request.user,
@@ -517,7 +634,11 @@ class PricelistUploadView(APIView):
             "filename": f.name,
             "headers": headers,
             "sample_rows": sample,
+            "mapped_preview": mapped_preview,  # ТЗ: 5 строк «как ляжет»
             "suggested_mapping": suggested,
+            "ai_called": ai_called,            # для аналитики
+            "unknown_headers": unknown,        # колонки без маппинга
+            "from_saved_mapping": bool(prev and prev.mapping),
             "std_fields": [
                 {"key": k, "label": label, "required": req,
                  "enum_values": enum_v or []}
@@ -569,21 +690,24 @@ class PricelistCommitView(APIView):
         except Exception as e:
             return Response({"error": f"file unavailable: {e}"}, status=500)
 
-        imported, failed, errors = _import_file(imp, mapping, blob)
+        imported, created, updated, failed, errors = _import_file(imp, mapping, blob)
 
         # Сохраняем итог
         imp.final_mapping = mapping
         imp.imported_rows = imported
+        imp.created_rows = created
+        imp.updated_rows = updated
         imp.failed_rows = failed
         imp.error_details = errors
         imp.status = "imported"
         imp.completed_at = timezone.now()
         imp.save(update_fields=[
-            "final_mapping", "imported_rows", "failed_rows",
-            "error_details", "status", "completed_at",
+            "final_mapping", "imported_rows", "created_rows", "updated_rows",
+            "failed_rows", "error_details", "status", "completed_at",
         ])
 
-        # Запоминаем mapping для следующего раза
+        # Запоминаем mapping для следующего раза (повторная загрузка
+        # пропускает AI и сразу применяет этот маппинг).
         PricelistMapping.objects.update_or_create(
             seller=request.user, defaults={"mapping": mapping},
         )
@@ -592,6 +716,8 @@ class PricelistCommitView(APIView):
             "ok": True,
             "import_id": imp.id,
             "imported": imported,
+            "created": created,
+            "updated": updated,
             "failed": failed,
             "errors_preview": errors[:10],
         })
