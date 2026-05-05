@@ -493,8 +493,8 @@
         // Поддержка двух режимов: r.url → external link, r.action → action
         let attrs = '';
         if (r.action) {
-          // Кликабельный через .act-btn handler в document click listener
-          attrs = `class="${cls} act-btn" data-action="${esc(r.action)}" data-params='${esc(JSON.stringify(r.params || {}))}' data-label="${esc(r.title || r.action)}"`;
+          // Кликабельный — использует data-action без .act-btn-стиля
+          attrs = `class="${cls}" data-action="${esc(r.action)}" data-params='${esc(JSON.stringify(r.params || {}))}' data-label="${esc(r.title || r.action)}"`;
         } else if (r.url) {
           attrs = `class="${cls}" onclick="window.open('${esc(r.url)}','_blank','noopener')"`;
         } else {
@@ -1419,8 +1419,8 @@
       quickAction(action, params);
       return;
     }
-    // 2. Обычные action-кнопки
-    const btn = e.target.closest('.act-btn');
+    // 2. Обычные action-кнопки и любой [data-action] (например, ls-row)
+    const btn = e.target.closest('.act-btn,[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;
     const params = JSON.parse(btn.dataset.params || '{}');
