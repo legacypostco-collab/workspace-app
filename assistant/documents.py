@@ -47,20 +47,48 @@ def _pdf_canvas(title: str):
 
 
 def _draw_header(c, title: str, doc_no: str | int):
+    """Шапка документа: логотип-плашка, реквизиты Consolidator, номер+дата."""
+    from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
     width, height = A4
-    c.setFont("Helvetica-Bold", 18)
-    c.drawString(20 * mm, height - 25 * mm, "CONSOLIDATOR PARTS")
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(20 * mm, height - 35 * mm, title)
-    c.setFont("Helvetica", 9)
-    c.drawRightString(width - 20 * mm, height - 25 * mm,
-                       f"№ {doc_no}")
-    c.drawRightString(width - 20 * mm, height - 32 * mm,
-                       timezone.now().strftime("%Y-%m-%d %H:%M UTC"))
-    c.line(20 * mm, height - 40 * mm, width - 20 * mm, height - 40 * mm)
-    return height - 50 * mm  # y-cursor
+
+    # Логотип-плашка слева
+    c.setFillColor(colors.HexColor("#0f172a"))
+    c.rect(20 * mm, height - 30 * mm, 8 * mm, 8 * mm, fill=1, stroke=0)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawCentredString(24 * mm, height - 25.5 * mm, "C")
+
+    # Название компании
+    c.setFillColor(colors.HexColor("#0f172a"))
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(32 * mm, height - 24 * mm, "CONSOLIDATOR PARTS")
+    c.setFont("Helvetica", 8)
+    c.setFillColor(colors.HexColor("#475569"))
+    c.drawString(32 * mm, height - 28.5 * mm,
+                  "B2B Heavy Equipment Spare Parts Marketplace")
+    c.drawString(32 * mm, height - 32 * mm,
+                  "marketplace@consolidator.parts · +7 (495) 123-45-67")
+
+    # Номер документа + дата справа
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 11)
+    c.drawRightString(width - 20 * mm, height - 24 * mm, str(doc_no))
+    c.setFont("Helvetica", 8)
+    c.setFillColor(colors.HexColor("#475569"))
+    c.drawRightString(width - 20 * mm, height - 28.5 * mm,
+                       timezone.now().strftime("Date: %Y-%m-%d %H:%M UTC"))
+
+    # Заголовок документа на отдельной полосе
+    c.setFillColor(colors.HexColor("#0f172a"))
+    c.rect(20 * mm, height - 46 * mm, width - 40 * mm, 8 * mm, fill=1, stroke=0)
+    c.setFillColor(colors.white)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(24 * mm, height - 43 * mm, title)
+
+    c.setFillColor(colors.black)
+    return height - 54 * mm  # y-cursor
 
 
 def _draw_kv_block(c, y, rows: list[tuple[str, str]]):
@@ -141,15 +169,185 @@ def _doc_url(doc) -> str:
         return doc.file_url or f"/media/order_documents/{doc.id}.pdf"
 
 
+# ── Save proforma PDF (нет Order — пишем напрямую в media) ──
+
+def _save_proforma_pdf(rfq, quote, buf: io.BytesIO) -> str:
+    """Сохраняет pro-forma PDF на диск, возвращает MEDIA URL."""
+    media_root = settings.MEDIA_ROOT
+    rel_dir = os.path.join("proforma_invoices", timezone.now().strftime("%Y/%m"))
+    abs_dir = os.path.join(str(media_root), rel_dir)
+    os.makedirs(abs_dir, exist_ok=True)
+    filename = f"PRO-RFQ{rfq.id}-Q{quote.id}-{timezone.now():%Y%m%d-%H%M%S}.pdf"
+    abs_path = os.path.join(abs_dir, filename)
+    buf.seek(0)
+    with open(abs_path, "wb") as fh:
+        fh.write(buf.read())
+    return f"{settings.MEDIA_URL.rstrip('/')}/{rel_dir}/{filename}"
+
+
 # ── Generators ──────────────────────────────────────────────
 
+def _draw_parties_block(c, y, buyer_name, buyer_email, seller_name, seller_label):
+    """Блок «Buyer / Seller» в две колонки."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    width, _ = A4
+    col_w = (width - 40 * mm - 4 * mm) / 2
+
+    # Buyer колонка
+    c.setFillColor(colors.HexColor("#f1f5f9"))
+    c.rect(20 * mm, y - 28 * mm, col_w, 28 * mm, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor("#475569"))
+    c.setFont("Helvetica-Bold", 8)
+    c.drawString(22 * mm, y - 5 * mm, "BILL TO / BUYER")
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(22 * mm, y - 11 * mm, (buyer_name or "—")[:48])
+    c.setFont("Helvetica", 9)
+    c.drawString(22 * mm, y - 17 * mm, (buyer_email or "—")[:48])
+
+    # Seller колонка
+    sx = 20 * mm + col_w + 4 * mm
+    c.setFillColor(colors.HexColor("#f1f5f9"))
+    c.rect(sx, y - 28 * mm, col_w, 28 * mm, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor("#475569"))
+    c.setFont("Helvetica-Bold", 8)
+    c.drawString(sx + 2 * mm, y - 5 * mm, "SUPPLIER / SELLER")
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(sx + 2 * mm, y - 11 * mm, seller_label[:48])
+    c.setFont("Helvetica", 9)
+    c.drawString(sx + 2 * mm, y - 17 * mm, "via Consolidator Parts")
+
+    return y - 32 * mm
+
+
+def _build_proforma_invoice_pdf(rfq, quote, logistics_cost: Decimal,
+                                  buyer, anonymize_seller: bool = True) -> io.BytesIO:
+    """Pro-forma Invoice по RFQ + Quote (Order ещё не создан).
+
+    Используется в стадии КП до confirm_kp_and_reserve. После confirm
+    отдельно генерируется Commercial Invoice уже на Order.
+    """
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+
+    c, buf = _pdf_canvas(f"Pro-forma RFQ-{rfq.id}")
+    doc_no = f"PRO-{rfq.id}/{quote.id}"
+    y = _draw_header(c, "PRO-FORMA INVOICE", doc_no)
+
+    seller_label = (
+        f"Supplier #{quote.id} (rank by price)"
+        if anonymize_seller and buyer.id != (quote.seller_id or 0)
+        else (quote.seller.username if quote.seller else "—")
+    )
+    y = _draw_parties_block(
+        c, y,
+        buyer_name=buyer.get_full_name() or buyer.username,
+        buyer_email=buyer.email or "—",
+        seller_name=quote.seller.username if quote.seller else "—",
+        seller_label=seller_label,
+    )
+
+    # Reference info
+    y = _draw_kv_block(c, y, [
+        ("Reference RFQ", f"RFQ-{rfq.id}"),
+        ("Mode",          rfq.mode.upper()),
+        ("Valid until",   (quote.valid_until or
+                            (timezone.now())).strftime("%Y-%m-%d")
+                          if hasattr(quote, "valid_until") and quote.valid_until
+                          else "7 days"),
+        ("Delivery time", f"{quote.delivery_days} days"),
+        ("Payment terms", "10% reserve from deposit on confirmation, 90% before shipment"),
+    ])
+
+    rows = []
+    parts_total = Decimal("0")
+    for qi in quote.items.select_related("part").all():
+        title = (qi.title_snapshot or (qi.part.title if qi.part else "—"))[:38]
+        oem = (qi.part.oem_number if qi.part else "—")
+        line_total = qi.unit_price * qi.quantity
+        parts_total += line_total
+        rows.append([
+            title, oem, str(qi.quantity),
+            f"${qi.unit_price:,.2f}",
+            f"${line_total:,.2f}",
+        ])
+    y = _draw_table(
+        c, y,
+        header=["Position", "OEM", "Qty", "Unit, USD", "Total, USD"],
+        rows=rows,
+        widths=[55 * mm, 35 * mm, 15 * mm, 30 * mm, 30 * mm],
+    )
+
+    grand = parts_total + logistics_cost
+    reserve = (grand * Decimal("0.10")).quantize(Decimal("0.01"))
+
+    # Totals блок (выровнен справа)
+    y -= 4 * mm
+    from reportlab.lib.pagesizes import A4
+    width, _ = A4
+    box_x = width - 90 * mm
+    c.setFillColor(colors.HexColor("#f1f5f9"))
+    c.rect(box_x, y - 36 * mm, 70 * mm, 36 * mm, fill=1, stroke=0)
+    c.setFillColor(colors.black)
+    c.setFont("Helvetica", 9)
+
+    rows_t = [
+        ("Goods total",           f"${parts_total:,.2f}"),
+        ("Logistics & customs",   f"${logistics_cost:,.2f}"),
+        ("INVOICE 100%",          f"${grand:,.2f}"),
+        ("Reserve 10% on confirm", f"${reserve:,.2f}"),
+        ("Outstanding (90%)",     f"${(grand - reserve):,.2f}"),
+    ]
+    yy = y - 5 * mm
+    for label, value in rows_t:
+        if "INVOICE" in label or "Reserve" in label:
+            c.setFont("Helvetica-Bold", 10)
+        else:
+            c.setFont("Helvetica", 9)
+        c.drawString(box_x + 2 * mm, yy, label)
+        c.drawRightString(box_x + 68 * mm, yy, value)
+        yy -= 6 * mm
+    y = yy - 4 * mm
+
+    # Сноски
+    c.setFont("Helvetica-Oblique", 8)
+    c.setFillColor(colors.HexColor("#475569"))
+    c.drawString(20 * mm, y - 4 * mm,
+                  "This is a PRO-FORMA invoice — used for client review and "
+                  "approval. Not a final tax document.")
+    c.drawString(20 * mm, y - 9 * mm,
+                  "Upon buyer confirmation, 10% of the total is reserved on the "
+                  "Consolidator escrow.")
+    c.drawString(20 * mm, y - 14 * mm,
+                  "A Commercial Invoice (legal document) will be issued after "
+                  "the order is created.")
+
+    _draw_footer(c)
+    c.showPage()
+    c.save()
+    return buf
+
+
 def _build_invoice_pdf(order) -> io.BytesIO:
+    """Commercial Invoice — официальный документ на оплату по Order."""
     from reportlab.lib.units import mm
     c, buf = _pdf_canvas(f"Invoice ORD-{order.id}")
     y = _draw_header(c, "COMMERCIAL INVOICE", f"ORD-{order.id}")
 
+    seller_label = "via Consolidator Parts (escrow)"
+    y = _draw_parties_block(
+        c, y,
+        buyer_name=order.customer_name or (order.buyer.username if order.buyer else "—"),
+        buyer_email=order.customer_email or "—",
+        seller_name="—",
+        seller_label=seller_label,
+    )
+
     y = _draw_kv_block(c, y, [
-        ("Buyer", order.customer_name or order.buyer.username if order.buyer else "—"),
+        ("Buyer", order.customer_name or (order.buyer.username if order.buyer else "—")),
         ("Email", order.customer_email or "—"),
         ("Delivery", order.delivery_address or "—"),
         ("Payment status", order.get_payment_status_display()),

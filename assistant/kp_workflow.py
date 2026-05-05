@@ -150,34 +150,64 @@ def present_kp_to_buyer(params, user, role):
     logi = _calc_logistics(items_for_logi)
 
     parts_total = best.total_amount
-    full_invoice = (parts_total + Decimal(str(logi["cost"]))).quantize(Decimal("0.01"))
+    logi_cost_d = Decimal(str(logi["cost"]))
+    full_invoice = (parts_total + logi_cost_d).quantize(Decimal("0.01"))
     reserve = (full_invoice * Decimal("0.10")).quantize(Decimal("0.01"))
 
+    # ── Генерируем настоящий PDF Pro-forma Invoice ──────────────
+    proforma_url = ""
+    try:
+        from .documents import _build_proforma_invoice_pdf, _save_proforma_pdf
+        buf = _build_proforma_invoice_pdf(rfq, best, logi_cost_d, user)
+        proforma_url = _save_proforma_pdf(rfq, best, buf)
+    except Exception:
+        logger.exception("proforma invoice generation failed")
+
+    # «Шапка» официального инвойса для UI-карточки
     rows = [
-        {"label": "RFQ", "value": f"#{rfq.id} · {rfq.items.count()} позиций"},
-        {"label": "Режим",  "value": {"auto": "AUTO", "semi": "SEMI",
-                                       "manual": "MANUAL", "manual_oem": "MANUAL"}.get(rfq.mode, rfq.mode)},
-        {"label": "Запчасти", "value": f"${parts_total:,.2f}"},
+        {"label": "Документ",   "value": f"PRO-{rfq.id}/{best.id} · Pro-forma Invoice"},
+        {"label": "Покупатель", "value": user.get_full_name() or user.username},
+        {"label": "Поставщик",  "value": "Поставщик №1 (имя раскрывается после подтверждения)"},
+        {"label": "Режим",      "value": {"auto": "AUTO", "semi": "SEMI",
+                                            "manual": "MANUAL",
+                                            "manual_oem": "MANUAL"}.get(rfq.mode, rfq.mode)},
+        {"label": "Позиций",    "value": str(rfq.items.count())},
+        {"label": "Запчасти",   "value": f"${parts_total:,.2f}"},
         {"label": f"Логистика ({logi['method']}, {logi['weight_kg']:.1f} кг)",
          "value": f"${logi['cost']:,.2f}"},
         {"label": "ИНВОЙС 100%", "value": f"${full_invoice:,.2f}", "primary": True},
-        {"label": "Срок поставки", "value": f"{best.delivery_days} дней"},
-        {"label": "Резерв 10% (списание сейчас)", "value": f"${reserve:,.2f}", "primary": True},
+        {"label": "Срок поставки",  "value": f"{best.delivery_days} дней"},
+        {"label": "Условия оплаты", "value": "10% резерв сейчас · 90% перед отгрузкой"},
+        {"label": "Резерв 10%",     "value": f"${reserve:,.2f}", "primary": True},
         {"label": "К оплате после готовности", "value": f"${full_invoice - reserve:,.2f}"},
     ]
+    actions = []
+    if proforma_url:
+        actions.append({
+            "action": "open_url",
+            "label": "📄 Открыть Pro-forma Invoice (PDF)",
+            "params": {"_url": proforma_url},
+        })
+    actions.append({
+        "action": "view_rfq_quotes", "label": "📊 Сравнить все КП",
+        "params": {"rfq_id": rfq.id},
+    })
+
     return ActionResult(
         text=(
-            f"📋 КП по RFQ #{rfq.id} готово.\n"
-            f"Инвойс на 100% — ${full_invoice:,.2f}. "
-            f"При подтверждении блокируется 10% (${reserve:,.2f}) с депозита, "
-            f"остальное — после готовности к отгрузке."
+            f"📋 Pro-forma Invoice PRO-{rfq.id}/{best.id} готов.\n"
+            f"Сумма: ${full_invoice:,.2f} (запчасти ${parts_total:,.0f} + "
+            f"логистика ${logi['cost']:,.0f}).\n"
+            f"Нажмите «Подтвердить» — заблокируем 10% (${reserve:,.0f}) "
+            f"с депозита, после готовности — остаток 90%."
         ),
         cards=[{"type": "draft", "data": {
-            "title": f"📋 КП #{best.id} · ${full_invoice:,.2f}",
+            "title": f"📋 PRO-{rfq.id}/{best.id} · ${full_invoice:,.2f}",
             "rows": rows,
+            "doc_url": proforma_url,
             "warnings": [
-                "После клика чат переключится в режим сделки (shipment).",
-                "Остальные котировки автоматически отклоняются.",
+                "После подтверждения чат переключится в режим сделки (shipment).",
+                "Остальные котировки по этому RFQ автоматически отклоняются.",
             ],
             "confirm_action": "confirm_kp_and_reserve",
             "confirm_label": f"✓ Подтвердить и зарезервировать ${reserve:,.0f}",
@@ -187,10 +217,7 @@ def present_kp_to_buyer(params, user, role):
             },
             "cancel_label": "Сравнить все КП",
         }}],
-        actions=[
-            {"action": "view_rfq_quotes", "label": "📊 Все котировки",
-             "params": {"rfq_id": rfq.id}},
-        ],
+        actions=actions,
     )
 
 
@@ -288,13 +315,37 @@ def confirm_kp_and_reserve(params, user, role):
     conv = _conv_for_rfq(user, rfq)
     _switch_conv_to_shipment(conv, order)
 
+    # 5. Сразу генерируем официальный Commercial Invoice PDF на Order
+    invoice_url = ""
+    try:
+        from .documents import _build_invoice_pdf, _save_pdf, _doc_url
+        buf = _build_invoice_pdf(order)
+        doc = _save_pdf(order, "invoice", f"Commercial Invoice ORD-{order.id}",
+                         buf, user)
+        invoice_url = _doc_url(doc)
+    except Exception:
+        logger.exception("commercial invoice generation failed")
+
     wallet.refresh_from_db()
+    actions = [
+        {"action": "track_order", "label": "📦 Трекинг",
+         "params": {"order_id": order.id}},
+        {"action": "pay_final",
+         "label": f"💳 Оплатить остаток ${full_invoice - reserve:,.0f}",
+         "params": {"order_id": order.id}},
+    ]
+    if invoice_url:
+        actions.insert(0, {
+            "action": "open_url",
+            "label": "📄 Скачать Commercial Invoice (PDF)",
+            "params": {"_url": invoice_url},
+        })
     return ActionResult(
         text=(
             f"✅ КП подтверждено — сделка перешла в работу.\n"
             f"Заказ ORD-{order.id} · инвойс ${full_invoice:,.2f}\n"
             f"Резерв 10% (${reserve:,.2f}) списан · остаток депозита ${wallet.balance:,.2f}\n"
-            f"Чат теперь — сделка."
+            f"Чат теперь — сделка. Commercial Invoice выставлен."
         ),
         cards=[{"type": "order", "data": {
             "id": str(order.id),
@@ -305,13 +356,9 @@ def confirm_kp_and_reserve(params, user, role):
             "currency": "USD",
             "payment_status": "reserve_paid",
             "payment_status_label": f"Резерв ${reserve:,.0f} удержан",
+            "invoice_url": invoice_url,
         }}],
-        actions=[
-            {"action": "track_order", "label": "📦 Трекинг",
-             "params": {"order_id": order.id}},
-            {"action": "pay_final", "label": f"💳 Оплатить остаток ${full_invoice - reserve:,.0f}",
-             "params": {"order_id": order.id}},
-        ],
+        actions=actions,
     )
 
 
