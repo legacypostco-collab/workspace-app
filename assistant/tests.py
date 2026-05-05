@@ -787,6 +787,133 @@ class SupplierRatingEngineTests(TestCase):
         self.assertEqual(events.first().impact_score, Decimal("1.00"))
 
 
+class ClaimWorkflowTests(TestCase):
+    """ТЗ §5.4: claim flow с 6 статусами + переходы."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import Order, UserProfile
+        from decimal import Decimal as D
+        U = get_user_model()
+        self.buyer = U.objects.create_user(username="t_cl_b", password="x", email="b@x.t")
+        self.op = U.objects.create_user(username="t_cl_op", password="x")
+        UserProfile.objects.create(user=self.buyer, role="buyer")
+        self.order = Order.objects.create(
+            customer_name="b", customer_email="b@x.t", customer_phone="",
+            delivery_address="-", buyer=self.buyer, total_amount=D("1000"),
+            status="completed", payment_status="paid",
+        )
+
+    def test_open_claim_form_then_create(self):
+        from .claims import open_claim
+        from marketplace.models import OrderClaim
+        # Step 1 (form)
+        r = open_claim({"order_id": self.order.id}, self.buyer, "buyer")
+        self.assertTrue(any(c["type"] == "form" for c in r.cards))
+        # Step 2 (confirmed)
+        r2 = open_claim({
+            "order_id": self.order.id, "kind": "defect", "title": "Брак насос",
+            "description": "Не работает", "confirmed": True,
+        }, self.buyer, "buyer")
+        self.assertIn("✓", r2.text)
+        claim = OrderClaim.objects.get(order=self.order)
+        self.assertEqual(claim.status, "open")
+        self.assertEqual(claim.kind, "defect")
+
+    def test_full_flow_open_review_approve_corrective_close(self):
+        from .claims import (open_claim, start_claim_review, approve_claim,
+                             apply_corrective, close_claim)
+        from marketplace.models import OrderClaim
+        # 1. open
+        open_claim({
+            "order_id": self.order.id, "kind": "defect", "title": "x",
+            "description": "y", "confirmed": True,
+        }, self.buyer, "buyer")
+        claim = OrderClaim.objects.get(order=self.order)
+        # 2. in_review
+        start_claim_review({"claim_id": claim.id}, self.op, "operator")
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, "in_review")
+        # 3. approve
+        approve_claim({"claim_id": claim.id, "confirmed": True}, self.op, "operator")
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, "approved")
+        # 4. corrective_actions (resolution=repair)
+        apply_corrective({
+            "claim_id": claim.id, "resolution_kind": "repair", "confirmed": True,
+        }, self.op, "operator")
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, "corrective_actions")
+        self.assertEqual(claim.resolution_kind, "repair")
+        # 5. close
+        close_claim({"claim_id": claim.id}, self.op, "operator")
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, "closed")
+        self.assertIsNotNone(claim.closed_at)
+
+    def test_reject_path(self):
+        from .claims import open_claim, reject_claim
+        from marketplace.models import OrderClaim
+        open_claim({
+            "order_id": self.order.id, "kind": "other", "title": "x",
+            "description": "y", "confirmed": True,
+        }, self.buyer, "buyer")
+        claim = OrderClaim.objects.get(order=self.order)
+        # reject_claim → автоматически closes
+        reject_claim({
+            "claim_id": claim.id, "reason": "не подтверждается",
+            "confirmed": True,
+        }, self.op, "operator")
+        claim.refresh_from_db()
+        # rejected → closed (auto)
+        self.assertEqual(claim.status, "closed")
+        self.assertEqual(claim.rejection_reason, "не подтверждается")
+
+    def test_settlement_path_with_full_refund(self):
+        from .claims import (open_claim, start_claim_review, approve_claim,
+                             apply_settlement)
+        from marketplace.models import OrderClaim
+        open_claim({
+            "order_id": self.order.id, "kind": "defect", "title": "x",
+            "description": "y", "confirmed": True,
+        }, self.buyer, "buyer")
+        claim = OrderClaim.objects.get(order=self.order)
+        start_claim_review({"claim_id": claim.id}, self.op, "operator")
+        approve_claim({"claim_id": claim.id, "confirmed": True}, self.op, "operator")
+        apply_settlement({
+            "claim_id": claim.id, "resolution_kind": "full_refund",
+            "confirmed": True,
+        }, self.op, "operator")
+        claim.refresh_from_db()
+        self.assertEqual(claim.status, "financial_settlement")
+        self.assertEqual(claim.refund_amount, Decimal("1000.00"))
+
+    def test_approve_records_rating_event(self):
+        from .claims import open_claim, approve_claim
+        from marketplace.models import OrderClaim, OrderItem, Part, Brand, Category, SupplierRatingEvent
+        from django.contrib.auth import get_user_model
+        from decimal import Decimal as D
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        U = get_user_model()
+        seller = U.objects.create_user(username=f"t_sel_{u}", password="x")
+        cat = Category.objects.create(name=f"c-{u}", slug=f"c-{u}")
+        brand = Brand.objects.create(name=f"b-{u}", slug=f"b-{u}")
+        part = Part.objects.create(
+            title=f"p-{u}", oem_number=f"P-{u}", slug=f"p-{u}",
+            category=cat, brand=brand, price=D("100"), seller=seller, is_active=True,
+        )
+        OrderItem.objects.create(order=self.order, part=part, quantity=1, unit_price=D("100"))
+        # open + approve
+        open_claim({"order_id": self.order.id, "kind": "defect", "title": "x",
+                    "description": "y", "confirmed": True}, self.buyer, "buyer")
+        claim = OrderClaim.objects.get(order=self.order)
+        approve_claim({"claim_id": claim.id, "confirmed": True}, self.op, "operator")
+        # Должен быть claim_confirmed event для seller'а
+        events = SupplierRatingEvent.objects.filter(supplier=seller, event_type="claim_confirmed")
+        self.assertEqual(events.count(), 1)
+
+
 class BuyerVolumeDiscountTests(TestCase):
     """ТЗ §4.1: auto-discount по годовому обороту."""
 

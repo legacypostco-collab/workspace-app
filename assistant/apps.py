@@ -47,3 +47,8 @@ class AssistantConfig(AppConfig):
             from . import auth_actions  # noqa
         except ImportError:
             pass
+        # Регистрируем claim workflow (рекламации)
+        try:
+            from . import claims  # noqa
+        except ImportError:
+            pass

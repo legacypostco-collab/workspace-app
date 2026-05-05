@@ -57,7 +57,7 @@ _BUYER_ACTIONS = [
     "get_budget", "get_analytics", "get_buyer_discount",
     "compare_products", "compare_suppliers", "top_suppliers",
     "upload_parts_list", "analyze_spec",
-    "get_claims", "create_claim",
+    "get_claims", "create_claim", "open_claim", "claim_detail",
     "open_url", "generate_proposal",
     # покупка и депозит
     "quick_order", "pay_reserve", "pay_final",
@@ -124,6 +124,9 @@ _OPERATOR_CORE = [
     "op_kyb_queue", "op_kyb_review", "op_kyb_approve", "op_kyb_reject",
     # External rating refresh
     "op_refresh_external_rating",
+    # Claim workflow (operator side)
+    "start_claim_review", "approve_claim", "reject_claim",
+    "apply_corrective", "apply_settlement", "close_claim", "claim_detail",
 ]
 
 ROLE_ACTIONS = {

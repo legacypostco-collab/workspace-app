@@ -492,28 +492,62 @@ class OrderDocument(models.Model):
 
 
 class OrderClaim(models.Model):
+    """ТЗ §5.4: рекламация по заказу с полным flow 6 статусов.
+
+    open → in_review → approved/rejected
+                          ↓
+              corrective_actions OR financial_settlement → closed
+                          rejected → closed
+    """
     STATUS_CHOICES = [
-        ("open", "Open"),
-        ("in_review", "In Review"),
-        ("approved", "Approved"),
-        ("rejected", "Rejected"),
-        ("closed", "Closed"),
+        ("open",                  _("Открыта")),
+        ("in_review",             _("На рассмотрении")),
+        ("approved",              _("Подтверждена")),
+        ("rejected",              _("Отклонена")),
+        ("corrective_actions",    _("Корректирующие действия")),
+        ("financial_settlement",  _("Финансовое урегулирование")),
+        ("closed",                _("Закрыта")),
+    ]
+    KIND_CHOICES = [
+        ("defect",       _("Брак")),
+        ("wrong_part",   _("Не та деталь")),
+        ("missing",      _("Не пришла")),
+        ("damage",       _("Повреждение при доставке")),
+        ("late",         _("Просрочка поставки")),
+        ("other",        _("Другое")),
+    ]
+    RESOLUTION_CHOICES = [
+        ("none",          _("Нет")),
+        ("repair",        _("Замена/ремонт")),
+        ("reproduce",     _("Повторно произвести")),
+        ("partial_refund", _("Частичный возврат")),
+        ("full_refund",   _("Полный возврат")),
     ]
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="claims")
+    kind = models.CharField(max_length=30, choices=KIND_CHOICES, default="other")
     title = models.CharField(max_length=255)
     description = models.TextField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="open", db_index=True)
+    resolution_kind = models.CharField(max_length=30, choices=RESOLUTION_CHOICES, default="none")
+    refund_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+        help_text="Сумма возврата если resolution_kind=*_refund")
+    rejection_reason = models.TextField(blank=True)
     opened_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="opened_claims")
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_claims")
     resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="resolved_claims")
+    closed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "-created_at"], name="claim_status_idx"),
+        ]
 
     def __str__(self) -> str:
-        return f"Claim #{self.id} for Order #{self.order_id}"
+        return f"Claim #{self.id} for Order #{self.order_id} [{self.status}]"
 
 
 class WebhookDeliveryLog(models.Model):
