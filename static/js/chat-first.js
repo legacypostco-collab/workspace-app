@@ -1987,8 +1987,8 @@
     return _origQuickActionForPricelist(action, params);
   };
 
-  $('fileInput').addEventListener('change', (e) => {
-    const file = e.target.files[0];
+  // Универсальный handler выбора файла — file-picker или drag-n-drop
+  function handleSelectedFile(file) {
     if (!file) return;
     // Seller'у грузим прайс, остальным — спецификацию
     const role = (state.config && state.config.role) || 'buyer';
@@ -1997,6 +1997,57 @@
     } else {
       uploadSpec(file);
     }
+  }
+
+  // Drag-n-drop файла прямо в окно чата (без необходимости жать скрепку)
+  let _dragDepth = 0;  // считаем nested dragenter/leave чтобы overlay не моргал
+  function _hasFiles(e) {
+    const types = e.dataTransfer?.types || [];
+    return Array.from(types).includes('Files');
+  }
+  function _showDropOverlay() {
+    let ov = document.getElementById('dndOverlay');
+    if (ov) { ov.style.display = 'flex'; return; }
+    ov = document.createElement('div');
+    ov.id = 'dndOverlay';
+    ov.innerHTML = `
+      <div class="dnd-box">
+        <div class="dnd-icon">📎</div>
+        <div class="dnd-title">Бросьте файл сюда</div>
+        <div class="dnd-sub">.xlsx · .csv · .pdf · до 20 МБ</div>
+      </div>`;
+    document.body.appendChild(ov);
+  }
+  function _hideDropOverlay() {
+    const ov = document.getElementById('dndOverlay');
+    if (ov) ov.style.display = 'none';
+    _dragDepth = 0;
+  }
+  document.addEventListener('dragenter', (e) => {
+    if (!_hasFiles(e)) return;
+    _dragDepth += 1;
+    _showDropOverlay();
+  });
+  document.addEventListener('dragleave', (e) => {
+    if (!_hasFiles(e)) return;
+    _dragDepth -= 1;
+    if (_dragDepth <= 0) _hideDropOverlay();
+  });
+  document.addEventListener('dragover', (e) => {
+    if (!_hasFiles(e)) return;
+    e.preventDefault();  // обязательно — иначе drop не сработает
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  document.addEventListener('drop', (e) => {
+    if (!_hasFiles(e)) return;
+    e.preventDefault();
+    _hideDropOverlay();
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) handleSelectedFile(file);
+  });
+
+  $('fileInput').addEventListener('change', (e) => {
+    handleSelectedFile(e.target.files[0]);
     e.target.value = '';
   });
 
