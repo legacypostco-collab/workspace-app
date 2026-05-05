@@ -602,6 +602,10 @@
           }
         }
         const disabledCls = m.disabled ? ' im-card-disabled' : '';
+        // Features list (буллеты — для smart-карточки)
+        const featuresHtml = (m.features && m.features.length)
+          ? `<ul class="im-features">${m.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>`
+          : '';
         return `<div class="im-card${disabledCls}">
           <div class="im-head">
             <div class="im-icon">${esc(icon)}</div>
@@ -611,6 +615,7 @@
             </div>
           </div>
           <div class="im-desc">${esc(m.description || '')}</div>
+          ${featuresHtml}
           ${secHtml}
           ${formHtml}
         </div>`;

@@ -3027,30 +3027,113 @@ class PricelistUploadTests(TestCase):
         self.assertEqual(imp.status, "cancelled")
 
     def test_dictionary_matches_multilang_headers(self):
-        """Словарь покрывает RU/EN/ZH/DE."""
+        """Словарь покрывает RU/EN/ZH/DE/ES + реальные заголовки."""
         from assistant.price_mappings import match_header
-        self.assertEqual(match_header("Part Number"), "part_number")
-        self.assertEqual(match_header("PARTNUMBER"), "part_number")
-        self.assertEqual(match_header("Артикул"), "part_number")
-        self.assertEqual(match_header("件号"), "part_number")
-        self.assertEqual(match_header("Artikelnummer"), "part_number")
+        # 5 языков на part_number
+        self.assertEqual(match_header("Part Number"), "part_number")     # EN (Epiroc)
+        self.assertEqual(match_header("Partnumber"), "part_number")       # Liebherr
+        self.assertEqual(match_header("PART NO."), "part_number")         # Sandvik
+        self.assertEqual(match_header("Артикул"), "part_number")          # RU
+        self.assertEqual(match_header("件号"), "part_number")              # ZH (Komatsu)
+        self.assertEqual(match_header("Artikelnummer"), "part_number")   # DE
+        self.assertEqual(match_header("Número de pieza"), "part_number") # ES
+        # description
         self.assertEqual(match_header("Description"), "description")
+        self.assertEqual(match_header("NAME"), "description")             # Sandvik
         self.assertEqual(match_header("Наименование"), "description")
         self.assertEqual(match_header("名称"), "description")
-        self.assertEqual(match_header("UnitPrice"), "price")
-        self.assertEqual(match_header("成本"), "price")
+        self.assertEqual(match_header("Descripción"), "description")
+        # price (включая Sandvik «unit-price (CNY)» и Komatsu «成本»)
+        self.assertEqual(match_header("Unitprice"), "price")              # Epiroc
+        self.assertEqual(match_header("unit-price (CNY)"), "price")       # Sandvik
+        self.assertEqual(match_header("成本"), "price")                    # Komatsu
+        self.assertEqual(match_header("Precio"), "price")
+        # weight (Sandvik «unit-weight», Liebherr «Weight»)
         self.assertEqual(match_header("Weight"), "weight")
+        self.assertEqual(match_header("unit-weight"), "weight")
+        # hs_code (Liebherr «HS Code»)
         self.assertEqual(match_header("HS Code"), "hs_code")
         self.assertEqual(match_header("ТН ВЭД"), "hs_code")
+        # lead_time (Sandvik «Delivery time»)
+        self.assertEqual(match_header("Delivery time"), "lead_time")
+        # replaced_by (Liebherr «Replaced by»)
+        self.assertEqual(match_header("Replaced by"), "replaced_by")
+        # Новые поля из доп. ТЗ
+        self.assertEqual(match_header("Country of origin"), "country_of_origin")
+        self.assertEqual(match_header("Status"), "status")
+        self.assertEqual(match_header("Incoterms"), "incoterms")
         self.assertIsNone(match_header("CompletelyUnknownColumn"))
+
+    def test_file_validation_rejects_oversized(self):
+        """Файл >50 MB → 400, AI не вызывается."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.seller)
+        big_blob = b"a;b;c\n" + b"X;Y;1\n" * (60 * 1024 * 1024 // 6)  # ~60 MB
+        f = SimpleUploadedFile("big.csv", big_blob)
+        resp = self.client.post(
+            "/api/assistant/upload-pricelist/", data={"file": f},
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("слишком большой", resp.json()["error"])
+
+    def test_file_validation_rejects_too_few_columns(self):
+        """Меньше 2 колонок → 400."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.seller)
+        f = SimpleUploadedFile("p.csv", b"OnlyOneColumn\nval1\nval2\n")
+        resp = self.client.post(
+            "/api/assistant/upload-pricelist/", data={"file": f},
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("колонок", resp.json()["error"])
+
+    def test_file_validation_rejects_too_many_columns(self):
+        """Больше 100 колонок → 400."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.seller)
+        # 101 колонка
+        header = ";".join(f"col{i}" for i in range(101))
+        body = ";".join("v" for _ in range(101))
+        csv_bytes = (header + "\n" + body + "\n").encode("utf-8")
+        f = SimpleUploadedFile("p.csv", csv_bytes)
+        resp = self.client.post(
+            "/api/assistant/upload-pricelist/", data={"file": f},
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn("много", resp.json()["error"].lower())
+
+    def test_ai_quota_exceeded_returns_429(self):
+        """3 AI-вызова за 24ч исчерпали квоту → 429 при 4-й попытке."""
+        from datetime import timedelta
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.utils import timezone
+        from marketplace.models import PricelistImport
+        # Создаём 3 PricelistImport с ai_called=True «недавно»
+        for _ in range(3):
+            PricelistImport.objects.create(
+                seller=self.seller, filename="prev.csv",
+                ai_called=True, status="imported",
+                created_at=timezone.now() - timedelta(hours=2),
+            )
+        self.client.force_login(self.seller)
+        # Файл с заведомо НЕ-словарными заголовками — потребует AI
+        csv_bytes = self._make_csv([
+            "ZZZ_unknown_a;ZZZ_unknown_b;ZZZ_unknown_c",
+            "x;y;1",
+        ])
+        f = SimpleUploadedFile("p.csv", csv_bytes)
+        resp = self.client.post(
+            "/api/assistant/upload-pricelist/", data={"file": f},
+        )
+        self.assertEqual(resp.status_code, 429)
+        self.assertIn("Лимит", resp.json()["error"])
 
     def test_smart_mapping_returns_unknowns(self):
         """Заголовки которые не в словаре остаются unknown."""
         from assistant.pricelist import _smart_mapping
-        # Без AI-ключа: unknown остаются как есть
         from django.test.utils import override_settings
         with override_settings(ANTHROPIC_API_KEY=""):
-            mapping_std, unknown, ai = _smart_mapping(
+            mapping_std, unknown, ai, status = _smart_mapping(
                 ["Артикул", "Наименование", "Цена", "СовершенноНоваяКолонка"],
                 sample_rows=[],
             )
@@ -3059,6 +3142,7 @@ class PricelistUploadTests(TestCase):
             self.assertIn("price_exw", mapping_std)
             self.assertIn("СовершенноНоваяКолонка", unknown)
             self.assertFalse(ai)
+            self.assertEqual(status, "ok")
 
     def test_learned_synonym_grows_dictionary(self):
         """AI-распознанная колонка сохраняется в LearnedColumnSynonym."""

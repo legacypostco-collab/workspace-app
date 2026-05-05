@@ -23,74 +23,129 @@ from typing import Iterable
 # ── Словарь канонических полей и их синонимов (RU/EN/ZH/DE) ─────
 
 COLUMN_MAP: dict[str, list[str]] = {
+    # 14 канонических полей × 5 языков (EN/RU/ZH/DE/ES) + реальные
+    # заголовки из прайсов Epiroc/Sandvik/Komatsu/Liebherr.
     "part_number": [
+        # EN
         "part number", "partnumber", "part no", "part no.", "part#",
         "item", "item #", "item no", "sku", "code", "ref", "reference",
+        # RU
         "артикул", "номер детали", "код товара",
+        # ZH
         "件号", "零件号", "零件编号",
+        # DE
         "artikelnummer", "artikel-nr", "teilenummer",
+        # ES
+        "número de pieza", "numero de pieza", "código", "referencia",
+        # Реальные заголовки из прайсов поставщиков:
+        # Epiroc → "Part Number"; Sandvik → "PART NO."; Liebherr → "Partnumber"
     ],
     "description": [
         "description", "desc", "name", "title",
         "наименование", "название", "описание",
         "名称", "描述",
         "bezeichnung", "beschreibung",
+        "descripción", "descripcion", "nombre",
+        # Sandvik → "NAME"
     ],
     "price": [
         "unitprice", "unit price", "price", "cost", "list price",
         "цена", "стоимость",
         "成本", "价格", "单价",
         "preis", "stückpreis",
+        "precio", "coste",
+        # Epiroc → "Unitprice"; Sandvik → "unit-price (CNY)"; Komatsu → "成本"
+        "unit-price", "unit-price (cny)", "unit-price (usd)", "unit-price (eur)",
     ],
     "currency": [
         "currency", "ccy",
         "валюта",
         "货币",
         "währung",
+        "moneda", "divisa",
     ],
     "weight": [
         "weight", "unit-weight", "unit weight", "gross weight", "net weight",
         "вес", "масса",
         "重量",
         "gewicht",
+        "peso", "peso unitario",
+        # Sandvik → "unit-weight"; Liebherr → "Weight"
     ],
     "hs_code": [
         "hs code", "hs-code", "hscode", "harmonized code",
         "тн вэд", "код тн вэд",
         "海关编码",
         "zollnummer", "hs-tarifnummer",
+        "código arancelario", "codigo hs",
+        # Liebherr → "HS Code"
     ],
     "lead_time": [
         "delivery time", "lead time", "delivery", "lead-time",
         "срок поставки", "поставка",
         "交货期", "交付时间",
         "lieferzeit",
+        "tiempo de entrega", "plazo de entrega",
+        # Sandvik → "Delivery time"
     ],
     "moq": [
         "moq", "min qty", "minimum", "min order", "minimum order",
         "минимальная партия", "минимум", "мин. заказ",
         "最小订量", "最小起订量",
         "mindestbestellmenge", "mbm",
+        "cantidad mínima", "pedido mínimo",
     ],
-    # Дополнительные не из ТЗ-минимума — но часто встречаются и
-    # маппятся на платформенные поля:
+    "country_of_origin": [
+        "country of origin", "origin", "country",
+        "страна происхождения", "страна",
+        "原产国", "产地",
+        "ursprungsland", "herkunftsland",
+        "país de origen", "origen",
+    ],
+    "status": [
+        "status", "state", "availability status",
+        "статус",
+        "状态",
+        "status", "verfügbarkeit",
+        "estado", "disponibilidad",
+    ],
+    "replaced_by": [
+        "replaced by", "replacement", "successor", "supersedes",
+        "заменён на", "замена", "новый артикул",
+        "替代件",
+        "ersetzt durch", "ersatzteil",
+        "reemplazado por", "sustituido por",
+        # Liebherr → "Replaced by"
+    ],
+    "incoterms": [
+        "incoterms", "incoterm", "delivery terms", "trade terms",
+        "условия поставки", "базис поставки", "инкотермс",
+        "贸易条款", "国际贸易术语",
+        "lieferbedingungen", "incoterms",
+        "incoterms", "términos de entrega",
+    ],
+    # Дополнительные часто встречающиеся:
     "brand": [
         "brand", "manufacturer", "make", "vendor",
         "бренд", "производитель",
         "品牌", "制造商",
         "marke", "hersteller",
+        "marca", "fabricante",
     ],
     "stock": [
         "stock", "qty", "quantity", "in stock", "available",
         "остаток", "наличие", "количество",
         "库存", "数量",
         "lager", "bestand",
+        "existencias", "cantidad",
+        # Sandvik → "Quantity"
     ],
     "condition": [
         "condition", "type", "grade",
         "состояние", "тип",
         "状态",
         "zustand",
+        "condición", "estado",
     ],
     "warehouse": [
         "warehouse", "warehouseaddress", "warehouse address",

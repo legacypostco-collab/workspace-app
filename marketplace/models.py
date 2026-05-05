@@ -1161,6 +1161,8 @@ class PricelistImport(models.Model):
     failed_rows = models.PositiveIntegerField(default=0)
     error_details = models.JSONField(default=list, blank=True,
         help_text="[{row, oem, reason}] первых ~50 ошибок")
+    ai_called = models.BooleanField(default=False, db_index=True,
+        help_text="Был ли вызов AI для маппинга колонок (для лимита 3/день)")
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 

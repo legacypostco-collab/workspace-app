@@ -85,7 +85,11 @@ REQUIRED_FIELDS = [k for k, _, req, _ in STD_FIELDS if req]
 
 # ── File reading ─────────────────────────────────────────────────
 
-MAX_FILE_BYTES = 20 * 1024 * 1024  # 20 MB
+MAX_FILE_BYTES = 50 * 1024 * 1024  # 50 МБ (ТЗ)
+MIN_COLUMNS = 2          # ТЗ: минимум 2 колонки
+MAX_COLUMNS = 100        # ТЗ: максимум 100 колонок
+MAX_AI_HEADERS = 20      # ТЗ: AI получает максимум 20 заголовков за раз
+MAX_AI_CALLS_PER_DAY = 3  # ТЗ: 3 AI-вызова в день на seller
 
 
 def _read_xlsx_rows(blob: bytes, max_rows: int | None = None):
@@ -161,17 +165,33 @@ def _read_all(filename: str, blob: bytes):
 
 # ── AI mapping ───────────────────────────────────────────────────
 
-def _smart_mapping(headers: list[str], sample_rows: list[list[str]]
-                    ) -> tuple[dict[str, str], list[str], bool]:
+def _ai_calls_used_today(seller) -> int:
+    """Сколько раз seller вызывал AI за последние 24 часа.
+
+    Считаем по PricelistImport.ai_called=True.
+    """
+    from datetime import timedelta
+    from marketplace.models import PricelistImport
+    since = timezone.now() - timedelta(hours=24)
+    return PricelistImport.objects.filter(
+        seller=seller, ai_called=True, created_at__gte=since,
+    ).count()
+
+
+def _smart_mapping(headers: list[str], sample_rows: list[list[str]],
+                    seller=None
+                    ) -> tuple[dict[str, str], list[str], bool, str]:
     """ТЗ: умная автоматическая загрузка прайса.
 
       1. Словарь COLUMN_MAP + LearnedColumnSynonym (БД)
-      2. Для нераспознанных — один AI-запрос
-      3. AI-ответы → learn_synonym() в БД
-      4. Возвращает (mapping_std, unknown, ai_called):
-            mapping_std    — {std_field: header} для сохранения в commit
-            unknown        — заголовки которые AI тоже не распознал
-            ai_called      — True если AI вызывался (для аналитики)
+      2. Для нераспознанных — один AI-запрос (max 20 заголовков)
+      3. Лимит 3 AI-вызова в день на seller
+      4. AI-ответы → learn_synonym() в БД
+      5. Возвращает (mapping_std, unknown, ai_called, status):
+            mapping_std — {std_field: header} для сохранения в commit
+            unknown     — заголовки которые AI тоже не распознал
+            ai_called   — True если AI вызывался (для аналитики)
+            status      — 'ok' / 'quota_exceeded' / 'ai_unavailable'
     """
     from .price_mappings import (
         COLUMN_MAP, CANONICAL_TO_STD,
@@ -182,16 +202,30 @@ def _smart_mapping(headers: list[str], sample_rows: list[list[str]]
     canonical_map, unknown_headers = match_headers(headers, learned=learned)
 
     ai_called = False
+    status = "ok"
     if unknown_headers:
+        # ТЗ: AI получает максимум 20 заголовков за раз
+        if len(unknown_headers) > MAX_AI_HEADERS:
+            unknown_headers = unknown_headers[:MAX_AI_HEADERS]
+        # ТЗ: лимит 3 AI-вызова в день на seller
+        if seller is not None:
+            used = _ai_calls_used_today(seller)
+            if used >= MAX_AI_CALLS_PER_DAY:
+                status = "quota_exceeded"
+                # AI не вызываем, unknowns остаются как есть
+                _build_std_mapping = lambda cmap: {  # noqa: E731
+                    CANONICAL_TO_STD[c]: h for c, h in cmap.items()
+                    if c in CANONICAL_TO_STD
+                }
+                return _build_std_mapping(canonical_map), unknown_headers, False, status
+
         ai_canonical = _ai_resolve_unknowns(unknown_headers, sample_rows,
                                               list(COLUMN_MAP.keys()))
         ai_called = bool(ai_canonical)
         for header, canonical in (ai_canonical or {}).items():
             if canonical not in canonical_map and canonical in COLUMN_MAP:
                 canonical_map[canonical] = header
-                # Запоминаем в БД — растим словарь для следующих загрузок
                 learn_synonym(canonical, header, source="ai")
-                # Убираем из unknown
                 if header in unknown_headers:
                     unknown_headers.remove(header)
 
@@ -202,7 +236,7 @@ def _smart_mapping(headers: list[str], sample_rows: list[list[str]]
         if std and std not in mapping_std:
             mapping_std[std] = header
 
-    return mapping_std, unknown_headers, ai_called
+    return mapping_std, unknown_headers, ai_called, status
 
 
 def _ai_resolve_unknowns(unknown_headers: list[str], sample_rows: list[list[str]],
@@ -287,7 +321,7 @@ def _build_mapped_preview(headers: list[str], sample_rows: list[list[str]],
 # legacy-обёртка, оставлена ради совместимости с тестами
 def _heuristic_mapping(headers: list[str]) -> dict[str, str]:
     """Минимальный legacy-маппер. В новом коде используется _smart_mapping."""
-    mapping_std, _, _ = _smart_mapping(headers, sample_rows=[])
+    mapping_std, _, _, _ = _smart_mapping(headers, sample_rows=[])
     # _smart_mapping возвращает только что нашёл по словарю — это может
     # включать любые поля, не только title+weight. По legacy-контракту
     # тут возвращали именно minimal-set. Оставлю как есть — словарь
@@ -585,19 +619,35 @@ class PricelistUploadView(APIView):
 
         f = request.FILES.get("file")
         if not f:
-            return Response({"error": "file is required"}, status=400)
+            return Response({"error": "Файл не передан."}, status=400)
+        # ТЗ: валидация ДО любой обработки — AI не вызываем впустую
         if f.size > MAX_FILE_BYTES:
+            mb = MAX_FILE_BYTES // 1024 // 1024
             return Response(
-                {"error": f"file too large (>{MAX_FILE_BYTES // 1024 // 1024}MB)"},
+                {"error": f"Файл слишком большой ({f.size // 1024 // 1024} МБ). Максимум {mb} МБ."},
                 status=400,
             )
         blob = f.read()
         try:
             headers, sample = _read_preview(f.name, blob)
         except Exception as e:
-            return Response({"error": f"cannot read file: {e}"}, status=400)
-        if not headers:
-            return Response({"error": "no headers found"}, status=400)
+            return Response({"error": f"Не удалось прочитать файл: {e}"}, status=400)
+        # ТЗ: первая строка не пустая
+        if not headers or not any(str(h).strip() for h in headers):
+            return Response({"error": "Первая строка пустая — нет заголовков."}, status=400)
+        # ТЗ: ≥2 колонки
+        non_empty = [h for h in headers if str(h).strip()]
+        if len(non_empty) < MIN_COLUMNS:
+            return Response({"error": (
+                f"В файле слишком мало колонок ({len(non_empty)}). "
+                f"Минимум {MIN_COLUMNS}."
+            )}, status=400)
+        # ТЗ: ≤100 колонок
+        if len(headers) > MAX_COLUMNS:
+            return Response({"error": (
+                f"В файле слишком много колонок ({len(headers)}). "
+                f"Максимум {MAX_COLUMNS}."
+            )}, status=400)
 
         # ТЗ: умный маппинг.
         # 1. Если у seller'а есть сохранённый PricelistMapping — берём
@@ -607,12 +657,23 @@ class PricelistUploadView(APIView):
         #    LearnedColumnSynonym → словарь растёт сам.
         ai_called = False
         unknown: list = []
+        smart_status = "ok"
         prev = PricelistMapping.objects.filter(seller=request.user).first()
         if prev and prev.mapping:
             suggested = {k: v for k, v in prev.mapping.items()
                           if v and (v.startswith("fix:") or v in headers)}
         else:
-            suggested, unknown, ai_called = _smart_mapping(headers, sample)
+            suggested, unknown, ai_called, smart_status = _smart_mapping(
+                headers, sample, seller=request.user,
+            )
+        # ТЗ: если AI-лимит исчерпан — error для seller'а
+        if smart_status == "quota_exceeded":
+            return Response({
+                "error": (
+                    "Лимит распознавания исчерпан. "
+                    "Попробуйте завтра или скачайте шаблон."
+                ),
+            }, status=429)
 
         # Превью «как ляжет в базу»: первые 5 строк уже отрендеренных по
         # маппингу — seller видит что именно сохранится.
@@ -624,6 +685,7 @@ class PricelistUploadView(APIView):
             headers=headers,
             sample_rows=sample,
             suggested_mapping=suggested,
+            ai_called=ai_called,
             status="preview",
         )
         # Сохраняем файл
