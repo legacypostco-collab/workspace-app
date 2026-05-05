@@ -47,4 +47,5 @@ urlpatterns = [
     path("upload-pricelist/", pricelist.PricelistUploadView.as_view(), name="pricelist-upload"),
     path("upload-pricelist/<int:import_id>/commit/", pricelist.PricelistCommitView.as_view(), name="pricelist-commit"),
     path("upload-pricelist/<int:import_id>/cancel/", pricelist.PricelistCancelView.as_view(), name="pricelist-cancel"),
+    path("pricelist-template.csv", pricelist.PricelistTemplateView.as_view(), name="pricelist-template"),
 ]

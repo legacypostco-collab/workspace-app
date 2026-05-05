@@ -597,6 +597,39 @@ class PricelistCommitView(APIView):
         })
 
 
+class PricelistTemplateView(APIView):
+    """GET /api/assistant/pricelist-template.csv — шаблон 16 колонок."""
+    from rest_framework.permissions import AllowAny
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        from django.http import HttpResponse
+        rows = [
+            ["PartNumber", "CrossNumber", "Brand", "Name", "Quantity",
+             "Condition", "Price_EXW", "WarehouseAddress",
+             "Price_FOB_SEA", "Price_FOB_AIR", "SeaPort", "AirPort",
+             "Weight", "Length", "Width", "Height"],
+            ["561-50-82311", "5615082311", "Komatsu", "BUSHING", "8",
+             "ORIGINAL", "100.00", "Shanghai CN",
+             "120.00", "150.00", "Yangshan Port", "Pudong Airport",
+             "0.5", "10", "5", "5"],
+            ["585-33-21240", "5853321240", "Komatsu", "DISC", "14",
+             "OEM", "120.00", "Shanghai CN",
+             "140.00", "170.00", "Yangshan Port", "Pudong Airport",
+             "2.0", "15", "10", "3"],
+        ]
+        out = io.StringIO()
+        writer = csv.writer(out, delimiter=";", quoting=csv.QUOTE_MINIMAL)
+        writer.writerows(rows)
+        resp = HttpResponse(out.getvalue().encode("utf-8-sig"),  # BOM для Excel
+                              content_type="text/csv; charset=utf-8")
+        resp["Content-Disposition"] = (
+            'attachment; filename="consolidator_pricelist_template.csv"'
+        )
+        return resp
+
+
 class PricelistCancelView(APIView):
     """POST /api/assistant/upload-pricelist/<id>/cancel/  — отменить превью."""
     permission_classes = [IsAuthenticated]
