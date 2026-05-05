@@ -409,18 +409,27 @@
     .sq-qty{color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;}
     .sq-sub{font-weight:500;font-variant-numeric:tabular-nums;}
     .sq-actions{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;}
-    /* Перебиваем .act-btn (тёмный по умолчанию) — в очереди продавца кнопки
-       должны быть второстепенными, иначе чёрные плашки забивают шапки заказов. */
+    /* Перебиваем .act-btn — внутри очереди продавца своя иерархия:
+       primary (первая кнопка, обычно advance) — синий accent
+       secondary («🔍 Открыть») — outlined белая с тёмной рамкой    */
     .sq-card .sq-btn,
     .sq-card .sq-btn.act-btn{
-      background:rgba(15,23,42,0.06)!important;color:#1a1a1a!important;
-      border:1px solid rgba(15,23,42,0.10)!important;
-      padding:5px 10px!important;border-radius:7px!important;
-      font-size:11.5px!important;font-weight:500!important;cursor:pointer;
+      padding:7px 12px!important;border-radius:8px!important;
+      font-size:12px!important;font-weight:600!important;cursor:pointer;
       transition:all 0.12s;line-height:1.2;letter-spacing:-0.005em;
+      background:#2563eb!important;color:#fff!important;
+      border:1px solid #2563eb!important;
     }
-    .sq-card .sq-btn:hover{background:rgba(15,23,42,0.12)!important;}
-    .sq-card .sq-btn.sq-open{background:rgba(15,23,42,0.04)!important;}
+    .sq-card .sq-btn:hover{background:#1d4ed8!important;border-color:#1d4ed8!important;}
+    /* secondary — outlined */
+    .sq-card .sq-btn.sq-open,
+    .sq-card .sq-btn.sq-open.act-btn{
+      background:#fff!important;color:#0f172a!important;
+      border:1px solid rgba(15,23,42,0.25)!important;
+    }
+    .sq-card .sq-btn.sq-open:hover{
+      background:#f1f5f9!important;border-color:#0f172a!important;
+    }
     /* Усиливаем шапки заказов, чтобы они «держали» внимание сильнее кнопок */
     .sq-order{padding:12px 14px;}
     .sq-order-head{font-size:13px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed rgba(0,0,0,0.07);}
