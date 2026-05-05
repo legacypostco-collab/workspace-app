@@ -2613,3 +2613,78 @@ class CompetitorOfferTests(TestCase):
             "offer_id": offer.id, "discount_pct": "10", "confirmed": True,
         }, self.outsider, "seller")
         self.assertIn("только продавец", r.text)
+
+
+class DocumentGeneratorTests(TestCase):
+    """ТЗ §12.2: invoice / packing list / QC report PDF generators."""
+
+    def setUp(self):
+        from decimal import Decimal as D
+        from django.contrib.auth import get_user_model
+        from marketplace.models import Brand, Category, Part, Order, OrderItem
+        import uuid
+        U = get_user_model()
+        u = uuid.uuid4().hex[:6]
+        self.buyer = U.objects.create_user(username=f"t_doc_b_{u}", password="x")
+        self.seller = U.objects.create_user(username=f"t_doc_s_{u}", password="x")
+        self.outsider = U.objects.create_user(username=f"t_doc_o_{u}", password="x")
+        cat = Category.objects.create(name=f"c-{u}", slug=f"c-{u}")
+        brand = Brand.objects.create(name=f"b-{u}", slug=f"b-{u}")
+        self.part = Part.objects.create(
+            title=f"Pump {u}", oem_number=f"OEM-{u}", slug=f"p-{u}",
+            category=cat, brand=brand, price=D("100"),
+            seller=self.seller, is_active=True,
+            gross_weight_kg=D("3.5"),
+            country_of_origin="China",
+        )
+        self.order = Order.objects.create(
+            customer_name="Test Buyer", customer_email="b@t.c",
+            buyer=self.buyer, status="reserve_paid",
+            payment_status="reserve_paid",
+            total_amount=D("250.00"),
+            reserve_amount=D("25.00"),
+            logistics_cost=D("50.00"),
+        )
+        OrderItem.objects.create(order=self.order, part=self.part,
+                                  quantity=2, unit_price=D("100"))
+
+    def test_generate_invoice_pdf(self):
+        from .documents import generate_invoice_pdf
+        from marketplace.models import OrderDocument
+        r = generate_invoice_pdf({"order_id": self.order.id}, self.buyer, "buyer")
+        self.assertIn("Invoice", r.text)
+        self.assertEqual(r.cards[0]["data"]["kind"], "invoice")
+        # Проверяем что файл реально создан в OrderDocument + file_obj
+        doc = OrderDocument.objects.filter(order=self.order, doc_type="invoice").first()
+        self.assertIsNotNone(doc)
+        self.assertGreater(doc.file_obj.size, 1000)  # PDF должен быть >1KB
+
+    def test_generate_packing_list_pdf(self):
+        from .documents import generate_packing_list_pdf
+        from marketplace.models import OrderDocument
+        r = generate_packing_list_pdf({"order_id": self.order.id}, self.seller, "seller")
+        self.assertIn("Packing List", r.text)
+        doc = OrderDocument.objects.filter(order=self.order, doc_type="packing_list").first()
+        self.assertIsNotNone(doc)
+
+    def test_generate_qc_report_pdf(self):
+        from .documents import generate_qc_report_pdf
+        from marketplace.models import OrderDocument
+        r = generate_qc_report_pdf({"order_id": self.order.id}, self.seller, "seller")
+        self.assertIn("QC Report", r.text)
+        doc = OrderDocument.objects.filter(order=self.order, doc_type="quality_report").first()
+        self.assertIsNotNone(doc)
+
+    def test_outsider_cannot_access(self):
+        from .documents import generate_invoice_pdf
+        r = generate_invoice_pdf({"order_id": self.order.id}, self.outsider, "buyer")
+        self.assertIn("Нет доступа", r.text)
+
+    def test_list_order_documents(self):
+        from .documents import generate_invoice_pdf, generate_qc_report_pdf, list_order_documents
+        generate_invoice_pdf({"order_id": self.order.id}, self.buyer, "buyer")
+        generate_qc_report_pdf({"order_id": self.order.id}, self.buyer, "buyer")
+        r = list_order_documents({"order_id": self.order.id}, self.buyer, "buyer")
+        self.assertIn("ORD-", r.text)
+        # 2 документа в cards
+        self.assertEqual(len(r.cards), 2)

@@ -62,3 +62,8 @@ class AssistantConfig(AppConfig):
             from . import competitor_offers  # noqa
         except ImportError:
             pass
+        # Регистрируем PDF document generators (invoice / packing / QC)
+        try:
+            from . import documents  # noqa
+        except ImportError:
+            pass

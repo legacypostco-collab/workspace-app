@@ -76,6 +76,9 @@ _BUYER_ACTIONS = [
     "present_kp_to_buyer", "confirm_kp_and_reserve",
     # Competitor offers (§5.2): buyer загружает чужой оффер для триггера переторжки
     "upload_competitor_offer",
+    # PDF documents (§12.2): invoice/packing/QC — все доступны buyer'у
+    "generate_invoice_pdf", "generate_packing_list_pdf",
+    "generate_qc_report_pdf", "list_order_documents",
     # Notification preferences (durable channels)
     "notif_prefs", "notif_set_email", "notif_set_kinds", "notif_link_telegram",
     # Auth — 2FA + API tokens (всем доступно)
@@ -135,6 +138,9 @@ _OPERATOR_CORE = [
     "apply_corrective", "apply_settlement", "close_claim", "claim_detail",
     # KP workflow: SEMI approve + MANUAL dispatch/compose
     "op_approve_kp", "op_dispatch_manual_rfq", "op_compose_kp",
+    # Document generators (operator может создавать любые)
+    "generate_invoice_pdf", "generate_packing_list_pdf",
+    "generate_qc_report_pdf", "list_order_documents",
 ]
 
 ROLE_ACTIONS = {
