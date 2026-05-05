@@ -1193,7 +1193,8 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
                 prof = UserProfile.objects.filter(user_id=c.seller_id).only("supplier_status").first()
                 seller_status_cache[c.seller_id] = prof.supplier_status if prof else "sandbox"
             status = seller_status_cache[c.seller_id]
-            if status == "excluded":
+            # ТЗ §3: «Исключён» (status='rejected' в модели) — полностью отключён
+            if status == "rejected":
                 continue
             offers_by_oem.setdefault(c.oem_number, []).append((c.seller_id, status))
 
@@ -3346,6 +3347,7 @@ def confirm_delivery(params, user, role):
     release_summary = ""
     try:
         from . import payments as _pay
+        from .rating import record_rating_event
         splits = _pay.split_by_seller(order)
         released_total = Decimal("0")
         for s in splits:
@@ -3360,6 +3362,11 @@ def confirm_delivery(params, user, role):
                         title=f"Поступление по заказу #{order.id}",
                         body=f"Покупатель подтвердил приёмку — на счёт зачислено ${res['amount']:,.2f}.",
                         url=f"/chat/?order={order.id}")
+                # Rating event: +2 за on-time-delivery (buyer accepted без рекламации)
+                record_rating_event(
+                    seller, event_type="delivery_on_time",
+                    meta={"order_id": order.id, "amount": float(s["amount"])},
+                )
         if released_total > 0:
             n = len(splits)
             release_summary = (

@@ -295,6 +295,16 @@ def submit_quote(params, user, role):
             url=f"/chat/?rfq={rfq.id}",
         )
 
+    # Rating event: +1 за быстрый ответ на RFQ (ТЗ §8)
+    try:
+        from .rating import record_rating_event
+        record_rating_event(
+            user, event_type="rfq_response",
+            meta={"rfq_id": rfq.id, "quote_id": quote.id, "round": round_number},
+        )
+    except Exception:
+        logger.exception("rating event on submit_quote failed")
+
     # Если это counter-respond — пометить parent как countered → submitted (он ответил)
     if parent and parent.direction == "buyer_to_seller":
         parent.status = "submitted"

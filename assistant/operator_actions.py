@@ -471,21 +471,41 @@ def op_resolve_dispute(params, user, role):
     # Side-effects: статус оплаты + реальное движение эскроу (multi-seller split)
     from decimal import Decimal as _D
     from . import payments as _pay
+    from .rating import record_rating_event
+    from marketplace.models import OrderItem as _OI
 
     money_moved = ""
     new_payment_status = order.payment_status
+
+    # Поставщики этого заказа (для rating events)
+    sellers_in_order = list({
+        oi.part.seller for oi in
+        _OI.objects.filter(order=order).select_related("part__seller")
+        if oi.part and oi.part.seller
+    })
+
     try:
         if resolution == "refund":
             res = _pay.refund_to_buyer(order=order, buyer=order.buyer)
             if res.get("ok"):
                 money_moved = f" · возврат ${res['amount']:,.2f} → покупатель"
             new_payment_status = "refunded"
+            # Rating: refund → claim_confirmed (-7) для всех продавцов заказа
+            for s in sellers_in_order:
+                record_rating_event(s, event_type="claim_confirmed",
+                                    meta={"order_id": order.id, "resolution": "refund",
+                                          "reason": reason[:200]})
         elif resolution == "partial_refund":
             if refund_amount > 0 and order.buyer:
                 res = _pay.refund_to_buyer(order=order, buyer=order.buyer, amount=refund_amount)
                 if res.get("ok"):
                     money_moved = f" · возврат ${res['amount']:,.2f} → покупатель"
             new_payment_status = "refund_pending"
+            # Rating: partial_refund → return (-5) для всех продавцов заказа
+            for s in sellers_in_order:
+                record_rating_event(s, event_type="return",
+                                    meta={"order_id": order.id, "resolution": "partial_refund",
+                                          "amount": float(refund_amount)})
         elif resolution == "release":
             splits = _pay.split_by_seller(order)
             released_total = _D("0")
@@ -500,6 +520,7 @@ def op_resolve_dispute(params, user, role):
                     + ("ам" if n > 1 else "у")
                 )
             new_payment_status = "paid"
+            # release → нейтрально для рейтинга (споp закрыт в пользу продавца)
     except Exception:
         logger.exception("escrow move on dispute resolution failed")
 

@@ -644,6 +644,135 @@ class RFQModeClassifierTests(TestCase):
         self.assertIn("confidence", reason.lower())
 
 
+class SupplierRatingEngineTests(TestCase):
+    """ТЗ §1, §8: события подбора → behavioral_score → status."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import UserProfile
+        U = get_user_model()
+        self.seller = U.objects.create_user(username="t_rate_s", password="x")
+        UserProfile.objects.create(user=self.seller, role="seller")
+
+    def _profile(self):
+        from marketplace.models import UserProfile
+        return UserProfile.objects.get(user=self.seller)
+
+    def test_record_event_creates_row_and_recalcs(self):
+        from .rating import record_rating_event
+        from marketplace.models import SupplierRatingEvent
+        ev = record_rating_event(self.seller, event_type="rfq_response")
+        self.assertIsNotNone(ev)
+        self.assertEqual(SupplierRatingEvent.objects.filter(supplier=self.seller).count(), 1)
+        # rfq_response default impact = +1, baseline 60 → behavioral = 61
+        self._profile().behavioral_score
+        self.assertEqual(self._profile().behavioral_score, Decimal("61.00"))
+
+    def test_negative_event_lowers_behavioral_score(self):
+        from .rating import record_rating_event
+        # claim_confirmed = -7, baseline 60 → 53
+        record_rating_event(self.seller, event_type="claim_confirmed")
+        self.assertEqual(self._profile().behavioral_score, Decimal("53.00"))
+
+    def test_status_changes_when_score_crosses_threshold(self):
+        """80+ → trusted, 60-79 → sandbox, 0-59 → risky."""
+        from .rating import record_rating_event
+        # Default external=60, behavioral=60 → rating=60 → sandbox
+        self.assertEqual(self._profile().supplier_status, "sandbox")
+
+        # 20 раз +1 = +20 baseline=60, behavioral=80 → rating=0.6*60+0.4*80=68 → sandbox
+        for _ in range(20):
+            record_rating_event(self.seller, event_type="rfq_response")
+        # 60*0.6 + 80*0.4 = 36 + 32 = 68 → sandbox (need 80 для trusted)
+        self.assertEqual(self._profile().supplier_status, "sandbox")
+
+        # Нужно повысить external_score до 90 чтобы перешагнуть 80:
+        p = self._profile()
+        p.external_score = Decimal("90.00")
+        p.save()
+        # 90*0.6 + 80*0.4 = 54 + 32 = 86 → trusted
+        self.assertEqual(self._profile().supplier_status, "trusted")
+
+    def test_excluded_status_when_bankruptcy_flag(self):
+        """ТЗ §3: bankruptcy/liquidation → 'rejected' (excluded)."""
+        p = self._profile()
+        p.bankruptcy_flag = True
+        p.save()
+        self.assertEqual(self._profile().supplier_status, "rejected")
+        self.assertEqual(self._profile().rating_score, Decimal("0.00"))
+
+    def test_rating_window_limits_old_events(self):
+        """Старые события (>90 дней) не учитываются."""
+        from datetime import timedelta
+        from django.utils import timezone
+        from marketplace.models import SupplierRatingEvent
+        from .rating import recalc_behavioral_score
+
+        # Старое событие: -50, должно НЕ попасть в окно
+        old_ev = SupplierRatingEvent.objects.create(
+            supplier=self.seller, event_type="claim_confirmed",
+            impact_score=Decimal("-50"),
+        )
+        # Принудительно сместим created_at на 100 дней назад
+        SupplierRatingEvent.objects.filter(id=old_ev.id).update(
+            created_at=timezone.now() - timedelta(days=100)
+        )
+        recalc_behavioral_score(self.seller)
+        # 60 (baseline) + 0 (events в окне 90д) = 60
+        self.assertEqual(self._profile().behavioral_score, Decimal("60.00"))
+
+    def test_score_clamped_to_0_100(self):
+        """Сумма импактов выходящая за [0,100] клампится."""
+        from .rating import record_rating_event
+        # 50 раз claim_confirmed (-7) = -350, baseline 60 → должно быть 0
+        for _ in range(50):
+            record_rating_event(self.seller, event_type="claim_confirmed")
+        self.assertEqual(self._profile().behavioral_score, Decimal("0.00"))
+        # rating = 0.6*60 + 0.4*0 = 36 → risky
+        self.assertEqual(self._profile().supplier_status, "risky")
+
+    def test_quote_submission_records_rating_event(self):
+        """submit_quote должен создавать SupplierRatingEvent с типом rfq_response."""
+        from marketplace.models import (
+            Brand, Category, Part, RFQ, RFQItem, CompanyVerification,
+            UserProfile, SupplierRatingEvent,
+        )
+        from .negotiation import submit_quote
+        from decimal import Decimal as D
+        import uuid
+        u = uuid.uuid4().hex[:6]
+
+        # Verify seller (для KYB-gate)
+        CompanyVerification.objects.create(
+            user=self.seller, legal_name="Test", inn="1234567890", status="verified",
+        )
+        # Создаём buyer + RFQ
+        from django.contrib.auth import get_user_model
+        U = get_user_model()
+        buyer = U.objects.create_user(username=f"t_buyer_{u}", password="x")
+        cat = Category.objects.create(name=f"c-{u}", slug=f"c-{u}")
+        brand = Brand.objects.create(name=f"b-{u}", slug=f"b-{u}")
+        part = Part.objects.create(
+            title=f"P-{u}", oem_number=f"P-{u}", slug=f"p-{u}",
+            category=cat, brand=brand, price=D("100"),
+            seller=self.seller, is_active=True,
+        )
+        rfq = RFQ.objects.create(created_by=buyer, customer_name="b", customer_email="b@x.t")
+        item = RFQItem.objects.create(rfq=rfq, query="P", quantity=1, matched_part=part)
+
+        # Сабмит котировки
+        submit_quote({
+            "rfq_id": rfq.id, f"price_{item.id}": "90", "confirmed": True,
+        }, self.seller, "seller")
+
+        # Должно появиться rfq_response событие
+        events = SupplierRatingEvent.objects.filter(
+            supplier=self.seller, event_type="rfq_response",
+        )
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events.first().impact_score, Decimal("1.00"))
+
+
 class OnboardingKybTests(TestCase):
     """KYB wizard: 5 шагов + operator review/approve/reject + gating."""
 
