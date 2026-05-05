@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import auth_views, upload, views
+from . import auth_views, qr_scan, upload, views
 
 router = DefaultRouter()
 router.register(r"conversations", views.ConversationViewSet, basename="conversation")
@@ -29,6 +29,8 @@ urlpatterns = [
     path("notifications/<int:notif_id>/read/", views.NotificationMarkReadView.as_view(), name="assistant-notifications-read"),
     # Payments webhook (Stripe-compat)
     path("payments/webhook/", views.PaymentsWebhookView.as_view(), name="assistant-payments-webhook"),
+    # QR scan (TZ §6.2): /api/assistant/qr/scan/<code>/
+    path("qr/scan/<str:code>/", qr_scan.QRScanView.as_view(), name="qr-scan"),
     # Auth — magic-link & OAuth
     path("auth/magic-link/", auth_views.MagicLinkRequestView.as_view(), name="auth-magic-link-request"),
     path("auth/magic-link/<str:token>/", auth_views.MagicLinkConfirmView.as_view(), name="auth-magic-link-confirm"),

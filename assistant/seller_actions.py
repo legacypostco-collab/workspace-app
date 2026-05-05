@@ -478,14 +478,22 @@ def generate_qr(params, user, role):
         _log_event(order, "document_uploaded", actor=user, source=role,
                    meta={"kind": "qr", "token": meta["qr_token"]})
 
-    payload = f"CONS-ORD-{order.id}:{meta['qr_token']}"
+    # ТЗ §6.2: scan-URL ведёт на /api/assistant/qr/scan/<code>/ —
+    # мобильник сканирует, открывается страница, оператор подтверждает событие.
+    from .qr_scan import encode_qr_code
+    code = encode_qr_code(order.id)
+    import os
+    site = os.getenv("SITE_URL", "http://72.56.234.89").rstrip("/")
+    payload = f"{site}/api/assistant/qr/scan/{code}/"
+    from urllib.parse import quote
     qr_url = (
-        f"https://api.qrserver.com/v1/create-qr-code/?size=240x240&data={payload}"
+        f"https://api.qrserver.com/v1/create-qr-code/?size=240x240&data={quote(payload)}"
     )
     return ActionResult(
         text=(
             f"QR для заказа #{order.id} готов. Распечатайте и приклейте на упаковку. "
-            f"При отгрузке/приёмке сканирование зафиксируется в аудит-логе."
+            f"Скан → откроется страница с кнопками действий (отгружено/принято) → "
+            f"событие пишется в audit-log + меняется статус заказа."
         ),
         cards=[{
             "type": "qr",

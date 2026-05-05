@@ -787,6 +787,80 @@ class SupplierRatingEngineTests(TestCase):
         self.assertEqual(events.first().impact_score, Decimal("1.00"))
 
 
+class QRScanTests(TestCase):
+    """ТЗ §6.2: QR-scan endpoint."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import Order
+        from decimal import Decimal as D
+        U = get_user_model()
+        self.buyer = U.objects.create_user(username="t_qr_b", password="x")
+        self.order = Order.objects.create(
+            customer_name="b", customer_email="b@x.t", customer_phone="",
+            delivery_address="-", buyer=self.buyer, total_amount=D("500"),
+            status="ready_to_ship",
+        )
+
+    def test_encode_decode_roundtrip(self):
+        from .qr_scan import encode_qr_code, decode_qr_code
+        code = encode_qr_code(self.order.id)
+        self.assertTrue(code.startswith(f"ORD-{self.order.id}-"))
+        self.assertEqual(decode_qr_code(code), self.order.id)
+
+    def test_decode_rejects_tampered_code(self):
+        from .qr_scan import decode_qr_code
+        # Manipulated hash
+        self.assertIsNone(decode_qr_code(f"ORD-{self.order.id}-deadbeef"))
+        # Random ID with bad hash
+        self.assertIsNone(decode_qr_code("ORD-99999-deadbeef"))
+
+    def test_get_endpoint_returns_html_page(self):
+        from .qr_scan import encode_qr_code
+        from django.test import Client
+        c = Client()
+        code = encode_qr_code(self.order.id)
+        r = c.get(f"/api/assistant/qr/scan/{code}/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn(b"<form", r.content)
+        # Кнопка SHIPPED должна быть видна (status=ready_to_ship)
+        self.assertIn(b"shipped", r.content)
+
+    def test_post_shipped_changes_status(self):
+        from .qr_scan import encode_qr_code
+        from django.test import Client
+        from marketplace.models import Order, OrderEvent
+        c = Client()
+        code = encode_qr_code(self.order.id)
+        r = c.post(f"/api/assistant/qr/scan/{code}/", {"action": "shipped"})
+        self.assertEqual(r.status_code, 200)
+        body = r.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["to_status"], "shipped")
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "shipped")
+        # Event записан
+        ev = OrderEvent.objects.filter(order=self.order).order_by("-created_at").first()
+        self.assertEqual(ev.meta["qr_scan_action"], "shipped")
+
+    def test_post_invalid_transition_returns_409(self):
+        from .qr_scan import encode_qr_code
+        from django.test import Client
+        c = Client()
+        code = encode_qr_code(self.order.id)
+        # Пытаемся 'received' но статус ready_to_ship — нужно delivered
+        r = c.post(f"/api/assistant/qr/scan/{code}/", {"action": "received"})
+        self.assertEqual(r.status_code, 409)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "ready_to_ship")  # не изменился
+
+    def test_invalid_code_returns_error(self):
+        from django.test import Client
+        c = Client()
+        r = c.get("/api/assistant/qr/scan/ORD-99999-baadbaad/")
+        self.assertEqual(r.status_code, 400)
+
+
 class RevenueAccountingTests(TestCase):
     """ТЗ §15: декомпозиция дохода группы."""
 
