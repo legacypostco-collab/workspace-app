@@ -1553,32 +1553,125 @@ def get_orders(params, user, role):
 
 @register("get_order_detail")
 def get_order_detail(params, user, role):
-    from marketplace.models import Order
+    """Полная карточка заказа: позиции, документы, доступные действия по
+    статусу и роли (buyer/seller/operator).
+    """
+    from marketplace.models import Order, OrderDocument
     oid = params.get("order_id") or params.get("id")
     if not oid:
         return ActionResult(text="⚠️ Не указан ID заказа")
     try:
-        o = Order.objects.select_related("buyer").get(id=oid)
+        o = (Order.objects.select_related("buyer")
+             .prefetch_related("items__part__brand", "documents").get(id=oid))
     except Order.DoesNotExist:
         return ActionResult(text=f"⚠️ Заказ #{oid} не найден")
 
+    # Доступ
+    is_seller = (role == "seller" and any(
+        it.part and it.part.seller_id == user.id for it in o.items.all()
+    ))
+    is_buyer = (o.buyer_id == user.id)
+    is_op = role.startswith("operator") or user.is_staff
+    if not (is_buyer or is_seller or is_op):
+        return ActionResult(text="Нет доступа к этому заказу.")
+
+    # Позиции
+    items_rows = []
+    for it in o.items.all():
+        if is_seller and (not it.part or it.part.seller_id != user.id):
+            continue  # seller видит только свои позиции
+        items_rows.append({
+            "label": f"{it.part.oem_number if it.part else '—'} · {(it.part.title if it.part else '—')[:40]}",
+            "value": f"× {it.quantity} = ${it.unit_price * it.quantity:,.2f}",
+        })
+
+    # Документы
+    docs = list(o.documents.all().order_by("-created_at")[:10])
+    doc_rows = [{
+        "label": f"📄 {d.title}",
+        "value": d.get_doc_type_display(),
+    } for d in docs]
+
+    rows = [
+        {"label": "Заказ",            "value": f"ORD-{o.id}",                                "primary": True},
+        {"label": "Статус",           "value": o.get_status_display()},
+        {"label": "Оплата",           "value": o.get_payment_status_display()},
+        {"label": "Сумма",            "value": f"${(o.total_amount or 0):,.2f}",            "primary": True},
+        {"label": "Создан",           "value": o.created_at.strftime("%d.%m.%Y %H:%M") if o.created_at else "—"},
+        {"label": "Покупатель",       "value": o.customer_name or "—"},
+    ]
+    if o.logistics_cost:
+        rows.append({"label": "Логистика", "value": f"${o.logistics_cost:,.2f}"})
+    if o.reserve_amount:
+        rows.append({"label": "Резерв 10%", "value": f"${o.reserve_amount:,.2f}"})
+    if items_rows:
+        rows.append({"label": "─── Позиции ───", "value": ""})
+        rows.extend(items_rows)
+    if doc_rows:
+        rows.append({"label": "─── Документы ───", "value": ""})
+        rows.extend(doc_rows)
+
+    # Действия зависят от роли + статуса
+    actions = []
+    # Документы — всем доступны (buyer/seller/operator)
+    actions.append({"label": "📄 Все документы",
+                     "action": "list_order_documents",
+                     "params": {"order_id": o.id}})
+    actions.append({"label": "🧾 Создать invoice",
+                     "action": "generate_invoice_pdf",
+                     "params": {"order_id": o.id}})
+    # Seller-кнопки: pipeline
+    if is_seller:
+        if o.status == "reserve_paid":
+            actions.append({"label": "▶️ Подтвердить и в производство",
+                             "action": "advance_order",
+                             "params": {"order_id": o.id}})
+        elif o.status == "confirmed":
+            actions.append({"label": "▶️ Запустить производство",
+                             "action": "advance_order",
+                             "params": {"order_id": o.id}})
+        elif o.status == "in_production":
+            actions.append({"label": "▶️ Готов к отгрузке",
+                             "action": "advance_order",
+                             "params": {"order_id": o.id}})
+        elif o.status == "ready_to_ship":
+            actions.append({"label": "🚚 Отгрузить",
+                             "action": "ship_order",
+                             "params": {"order_id": o.id}})
+            actions.append({"label": "📦 Создать packing list",
+                             "action": "generate_packing_list_pdf",
+                             "params": {"order_id": o.id}})
+            actions.append({"label": "✅ QC report",
+                             "action": "generate_qc_report_pdf",
+                             "params": {"order_id": o.id}})
+        elif o.status in ("transit_abroad", "customs", "transit_rf", "issuing"):
+            actions.append({"label": "▶️ Следующий этап",
+                             "action": "advance_order",
+                             "params": {"order_id": o.id}})
+    # Buyer-кнопки
+    if is_buyer:
+        actions.append({"label": "📦 Трекинг",
+                         "action": "track_shipment",
+                         "params": {"order_id": o.id}})
+        if o.payment_status == "reserve_paid" and o.status in ("ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "delivered"):
+            actions.append({"label": "💳 Оплатить остаток 90%",
+                             "action": "pay_final",
+                             "params": {"order_id": o.id}})
+        if o.status == "delivered":
+            actions.append({"label": "✓ Подтвердить приёмку",
+                             "action": "confirm_delivery",
+                             "params": {"order_id": o.id}})
+
     return ActionResult(
-        text=f"Заказ #{o.id} — {o.get_status_display()}",
+        text=f"📋 Заказ ORD-{o.id} · {o.get_status_display()} · ${o.total_amount:,.2f}",
         cards=[{
-            "type": "order",
+            "type": "draft",
             "data": {
-                "id": str(o.id),
-                "number": f"ORD-{o.id}",
-                "status": o.get_status_display(),
-                "total": float(o.total_amount or 0),
-                "customer": o.customer_name or "",
-                "supplier": "—",
-                "created_at": o.created_at.strftime("%d.%m.%Y %H:%M"),
+                "title": f"Заказ ORD-{o.id}",
+                "rows": rows,
             },
         }],
-        actions=[
-            {"label": "Трекинг", "action": "track_shipment", "params": {"order_id": o.id}},
-        ],
+        actions=actions,
     )
 
 
@@ -2692,6 +2785,11 @@ def seller_pipeline(params, user, role):
                 "items": o["items"],
                 "subtotal": float(o["subtotal"]),
                 "payment_status": o["payment_status"],
+                # Клик по карточке заказа → открыть деталь
+                "open_action": {
+                    "action": "get_order_detail",
+                    "params": {"order_id": o["id"]},
+                },
             })
         sections.append({
             "status": code,
@@ -2721,8 +2819,8 @@ def seller_pipeline(params, user, role):
                 "params": {"order_id": first_oid},
             })
             break
-    next_actions.append({"label": "Спрос", "action": "get_demand_report", "params": {}})
-    next_actions.append({"label": "Прайс-лист", "action": "upload_pricelist", "params": {}})
+    next_actions.append({"label": "📤 Загрузить прайс", "action": "upload_pricelist", "params": {}})
+    next_actions.append({"label": "📊 Спрос", "action": "get_demand_report", "params": {}})
 
     return ActionResult(
         text=text,

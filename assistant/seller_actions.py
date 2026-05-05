@@ -1143,6 +1143,172 @@ def seller_negotiations(params, user, role):
     )
 
 
+@register("upload_pricelist")
+def upload_pricelist(params, user, role):
+    """Удобная inline-загрузка прайса прямо в чат.
+
+    Три способа в одной карточке:
+      1. Drag-n-drop файла (CSV/Excel) — фронт ловит drop, шлёт на
+         /api/assistant/upload-spec/.
+      2. Вставить текст CSV/TSV прямо в textarea формы — обработается
+         тут же (если передан csv_data).
+      3. Ссылка на старый bulk-uploader /seller/upload/ для Excel.
+
+    params: {csv_data?, confirmed?}
+    """
+    from decimal import Decimal as _D
+    from django.utils.text import slugify
+    from marketplace.models import Brand, Category, Part
+
+    user = _effective_seller(user)
+    csv_data = (params.get("csv_data") or "").strip()
+    confirmed = bool(params.get("confirmed"))
+
+    # Шаг 1: показать форму
+    if not csv_data:
+        return ActionResult(
+            text=(
+                "📤 Загрузить прайс-лист\n\n"
+                "Самый быстрый путь — вставь строки прямо в форму ниже. "
+                "Формат: `артикул;название;цена;остаток` (по строке на товар, "
+                "разделитель — точка с запятой, запятая или табуляция).\n\n"
+                "Альтернативы: перетащи .xlsx/.csv в окно чата, или открой "
+                "bulk-uploader для крупных каталогов."
+            ),
+            cards=[{"type": "form", "data": {
+                "title": "📤 Импорт прайса · вставить строки",
+                "submit_action": "upload_pricelist",
+                "submit_label": "Импортировать",
+                "fields": [
+                    {"name": "csv_data",
+                     "label": "Строки прайса (артикул;название;цена;остаток)",
+                     "type": "textarea",
+                     "placeholder": "2W1223;Топливный фильтр CAT 3406;42.00;100\n1R0750;Масляный фильтр CAT C13;35.00;50",
+                     "required": True},
+                ],
+                "fixed_params": {"confirmed": True},
+            }}, {"type": "list", "data": {
+                "title": "Альтернативы",
+                "rows": [
+                    {"title": "📦 Bulk-uploader (Excel)",
+                     "subtitle": "Старый интерфейс с превью и валидацией",
+                     "badge": "Excel", "url": "/seller/upload/"},
+                    {"title": "📥 Скачать шаблон CSV",
+                     "subtitle": "Готовый файл с примером",
+                     "badge": "CSV", "url": "/seller/upload/template.csv"},
+                    {"title": "🖱 Drag-n-drop",
+                     "subtitle": "Перетащи .xlsx прямо в это окно чата",
+                     "badge": "Drop"},
+                ],
+            }}],
+            actions=[
+                {"label": "📦 Каталог",       "action": "seller_catalog", "params": {}},
+                {"label": "➕ По одному",     "action": "add_product",    "params": {}},
+            ],
+            suggestions=["Скачать шаблон", "Добавить товар вручную"],
+        )
+
+    # Шаг 2: парсим CSV → превью или импорт
+    import re as _re
+    rows = []
+    failed_lines = []
+    for raw in csv_data.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        # Разделитель: ;  ,  \t  | (выбираем тот, который встречается чаще)
+        sep = max(";,\t|", key=lambda c: line.count(c)) if any(c in line for c in ";,\t|") else None
+        parts = [p.strip().strip('"') for p in (line.split(sep) if sep else [line])]
+        if len(parts) < 3:
+            failed_lines.append({"line": line[:80], "reason": "too few columns"})
+            continue
+        oem, title, price_raw = parts[0], parts[1], parts[2]
+        stock_raw = parts[3] if len(parts) > 3 else "0"
+        try:
+            price = _D(_re.sub(r"[^\d\.\-]", "", price_raw.replace(",", ".")))
+        except Exception:
+            failed_lines.append({"line": line[:80], "reason": "bad price"})
+            continue
+        try:
+            stock = int(_re.sub(r"[^\d]", "", stock_raw) or 0)
+        except Exception:
+            stock = 0
+        rows.append({"oem": oem, "title": title, "price": price, "stock": stock})
+
+    if not rows:
+        return ActionResult(text=(
+            "⚠️ Не удалось прочитать ни одной строки.\n"
+            "Проверь формат: `артикул;название;цена;остаток`."
+        ))
+
+    # Превью без confirmed=true
+    if not confirmed:
+        preview_rows = [{
+            "label": f"{r['oem']} · {r['title'][:32]}",
+            "value": f"${r['price']:,.2f} · {r['stock']} шт",
+        } for r in rows[:8]]
+        return ActionResult(
+            text=(
+                f"📋 Превью импорта · {len(rows)} строк "
+                f"(к импорту), {len(failed_lines)} ошибок.\n"
+                f"Подтверди — обновлю существующие и создам новые."
+            ),
+            cards=[{"type": "draft", "data": {
+                "title": f"Импорт прайса: {len(rows)} позиций",
+                "rows": preview_rows + (
+                    [{"label": "…", "value": f"и ещё {len(rows) - 8} строк"}]
+                    if len(rows) > 8 else []
+                ),
+                "warnings": (
+                    [f"⚠️ Пропущено {len(failed_lines)} строк (формат)"]
+                    if failed_lines else []
+                ),
+                "confirm_action": "upload_pricelist",
+                "confirm_label": f"✓ Импортировать {len(rows)} позиций",
+                "confirm_params": {"csv_data": csv_data, "confirmed": True},
+                "cancel_label": "Отмена",
+            }}],
+        )
+
+    # Реальный импорт
+    cat = Category.objects.first() or Category.objects.create(name="Запчасти", slug="parts")
+    brand = Brand.objects.filter(name__iexact="Generic").first() or Brand.objects.create(
+        name="Generic", slug="generic",
+    )
+    created, updated = 0, 0
+    for r in rows:
+        p, was_created = Part.objects.update_or_create(
+            seller=user, oem_number__iexact=r["oem"],
+            defaults={
+                "title": r["title"][:255],
+                "oem_number": r["oem"][:100],
+                "slug": slugify(f"{r['oem']}-{user.username}")[:280],
+                "price": r["price"],
+                "stock_quantity": r["stock"],
+                "category": cat,
+                "brand": brand,
+                "is_active": True,
+            },
+        )
+        if was_created:
+            created += 1
+        else:
+            updated += 1
+
+    return ActionResult(
+        text=(
+            f"✅ Прайс импортирован.\n"
+            f"  • Новых позиций: {created}\n"
+            f"  • Обновлено: {updated}\n"
+            f"  • Пропущено (формат): {len(failed_lines)}"
+        ),
+        actions=[
+            {"label": "📦 Открыть каталог", "action": "seller_catalog", "params": {}},
+            {"label": "📊 Спрос на маркетплейсе", "action": "get_demand_report", "params": {}},
+        ],
+    )
+
+
 @register("import_pricelist_preview")
 def import_pricelist_preview(params, user, role):
     """Открывает форму с инструкцией по импорту прайса.

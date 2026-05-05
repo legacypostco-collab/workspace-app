@@ -546,8 +546,11 @@
           ).join('');
           const btnAct = s.btn_action || 'advance_order';
           const btn = s.btn ? `<button class="act-btn sq-btn" data-action="${esc(btnAct)}" data-params='${esc(JSON.stringify({order_id: o.id}))}' data-label="${esc(s.btn + ' (#' + o.id + ')')}">${esc(s.btn)}</button>` : '';
+          // Открыть деталь заказа — кликом по шапке + отдельная кнопка
+          const openParams = esc(JSON.stringify({order_id: o.id}));
+          const openBtn = `<button class="act-btn sq-btn sq-open" data-action="get_order_detail" data-params='${openParams}' data-label="Открыть заказ #${esc(o.id)}">🔍 Открыть</button>`;
           return `<div class="sq-order">
-            <div class="sq-order-head">
+            <div class="sq-order-head act-btn" data-action="get_order_detail" data-params='${openParams}' data-label="Открыть заказ #${esc(o.id)}" style="cursor:pointer;">
               <div>
                 <span class="sq-order-num">Заказ #${esc(o.id)}</span>
                 <span class="sq-buyer">· ${esc(o.buyer || '')}</span>
@@ -555,7 +558,7 @@
               <span class="sq-order-sub">${fmtMoney(o.subtotal, 'USD')}</span>
             </div>
             <div class="sq-items">${items}</div>
-            ${btn ? `<div class="sq-actions">${btn}</div>` : ''}
+            <div class="sq-actions">${btn}${openBtn}</div>
           </div>`;
         }).join('');
         return `<div class="sq-section">
