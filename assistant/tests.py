@@ -2496,3 +2496,120 @@ class AuthFlowTests(TestCase):
         resp = c.get("/api/assistant/auth/oauth/callback/google/?code=abc&state=xxx")
         self.assertEqual(resp.status_code, 400)
         self.assertIn("state mismatch", resp.json()["error"])
+
+
+class CompetitorOfferTests(TestCase):
+    """ТЗ §5.2: buyer загружает competitor-оффер → seller даёт скидку (manual discount)."""
+
+    def setUp(self):
+        from decimal import Decimal as D
+        from django.contrib.auth import get_user_model
+        from marketplace.models import (
+            Brand, Category, Part, RFQ, RFQItem, Quote, QuoteItem,
+        )
+        import uuid
+        U = get_user_model()
+        u = uuid.uuid4().hex[:6]
+        self.buyer = U.objects.create_user(username=f"t_co_b_{u}", password="x")
+        self.seller = U.objects.create_user(username=f"t_co_s_{u}", password="x")
+        self.outsider = U.objects.create_user(username=f"t_co_o_{u}", password="x")
+        cat = Category.objects.create(name=f"c-{u}", slug=f"c-{u}")
+        brand = Brand.objects.create(name=f"b-{u}", slug=f"b-{u}")
+        self.part = Part.objects.create(
+            title=f"P-{u}", oem_number=f"OEM-{u}", slug=f"p-{u}",
+            category=cat, brand=brand, price=D("100"),
+            seller=self.seller, is_active=True,
+        )
+        self.rfq = RFQ.objects.create(
+            created_by=self.buyer, customer_name="Buyer", customer_email="b@t.c",
+            mode="auto", urgency="standard", status="quoted",
+        )
+        self.rfq_item = RFQItem.objects.create(
+            rfq=self.rfq, query=self.part.oem_number, quantity=2,
+            matched_part=self.part, state="matched", confidence=100,
+        )
+        self.quote = Quote.objects.create(
+            rfq=self.rfq, seller=self.seller, direction="seller_to_buyer",
+            round_number=1, status="submitted", delivery_days=14,
+            total_amount=D("200.00"), message="initial",
+        )
+        QuoteItem.objects.create(
+            quote=self.quote, rfq_item=self.rfq_item, part=self.part,
+            title_snapshot=self.part.title, quantity=2, unit_price=D("100"),
+        )
+
+    def test_upload_creates_competitor_offer(self):
+        from .competitor_offers import upload_competitor_offer
+        from marketplace.models import CompetitorOffer
+        r = upload_competitor_offer({
+            "quote_id": self.quote.id,
+            "competitor_name": "Acme Cheap Co.",
+            "quoted_price": "150",
+            "delivery_days": 10,
+            "note": "they offer 25% less",
+            "confirmed": True,
+        }, self.buyer, "buyer")
+        self.assertIn("загружено", r.text)
+        offers = CompetitorOffer.objects.filter(quote=self.quote)
+        self.assertEqual(offers.count(), 1)
+        self.assertEqual(offers.first().status, "uploaded")
+
+    def test_upload_only_by_rfq_owner(self):
+        from .competitor_offers import upload_competitor_offer
+        r = upload_competitor_offer({
+            "quote_id": self.quote.id, "competitor_name": "X",
+            "quoted_price": "150", "confirmed": True,
+        }, self.outsider, "buyer")
+        self.assertIn("только заказчик", r.text)
+
+    def test_respond_decline(self):
+        from .competitor_offers import upload_competitor_offer, respond_to_competitor_offer
+        from marketplace.models import CompetitorOffer
+        upload_competitor_offer({
+            "quote_id": self.quote.id, "competitor_name": "X",
+            "quoted_price": "150", "confirmed": True,
+        }, self.buyer, "buyer")
+        offer = CompetitorOffer.objects.filter(quote=self.quote).first()
+        r = respond_to_competitor_offer({
+            "offer_id": offer.id, "decline": "1",
+            "seller_comment": "не могу", "confirmed": True,
+        }, self.seller, "seller")
+        offer.refresh_from_db()
+        self.assertEqual(offer.status, "declined")
+
+    def test_respond_with_discount_creates_counter_quote(self):
+        from decimal import Decimal as D
+        from .competitor_offers import upload_competitor_offer, respond_to_competitor_offer
+        from marketplace.models import CompetitorOffer, Quote
+        upload_competitor_offer({
+            "quote_id": self.quote.id, "competitor_name": "Cheap",
+            "quoted_price": "150", "confirmed": True,
+        }, self.buyer, "buyer")
+        offer = CompetitorOffer.objects.filter(quote=self.quote).first()
+        r = respond_to_competitor_offer({
+            "offer_id": offer.id, "discount_pct": "20",
+            "seller_comment": "OK", "confirmed": True,
+        }, self.seller, "seller")
+        offer.refresh_from_db()
+        self.assertEqual(offer.status, "matched")
+        # Создан новый Quote с round_number=2
+        new_q = Quote.objects.filter(rfq=self.rfq, round_number=2).first()
+        self.assertIsNotNone(new_q)
+        # Цена снижена на 20%: $200 → $160
+        self.assertEqual(new_q.total_amount, D("160.00"))
+        # Старый Quote стал countered
+        self.quote.refresh_from_db()
+        self.assertEqual(self.quote.status, "countered")
+
+    def test_respond_only_by_quote_seller(self):
+        from .competitor_offers import upload_competitor_offer, respond_to_competitor_offer
+        from marketplace.models import CompetitorOffer
+        upload_competitor_offer({
+            "quote_id": self.quote.id, "competitor_name": "X",
+            "quoted_price": "150", "confirmed": True,
+        }, self.buyer, "buyer")
+        offer = CompetitorOffer.objects.filter(quote=self.quote).first()
+        r = respond_to_competitor_offer({
+            "offer_id": offer.id, "discount_pct": "10", "confirmed": True,
+        }, self.outsider, "seller")
+        self.assertIn("только продавец", r.text)

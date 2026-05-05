@@ -74,6 +74,8 @@ _BUYER_ACTIONS = [
     "send_rfq_to_suppliers", "auto_accept_and_pay_reserve",
     # KP workflow (buyer side): present инвойс + confirm reserve
     "present_kp_to_buyer", "confirm_kp_and_reserve",
+    # Competitor offers (§5.2): buyer загружает чужой оффер для триггера переторжки
+    "upload_competitor_offer",
     # Notification preferences (durable channels)
     "notif_prefs", "notif_set_email", "notif_set_kinds", "notif_link_telegram",
     # Auth — 2FA + API tokens (всем доступно)
@@ -88,6 +90,8 @@ _SELLER_ONLY = [
     "respond_rfq", "upload_pricelist",
     # Negotiation (seller side)
     "submit_quote", "respond_to_counter", "mark_quote_final",
+    # Competitor offer response (§5.2): seller дает скидку или отказывается
+    "respond_to_competitor_offer",
     "get_demand_report", "get_sla_report",
     "advance_order",
     "seller_pipeline", "ship_order",
