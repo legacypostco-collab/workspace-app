@@ -31,6 +31,8 @@ urlpatterns = [
     path("payments/webhook/", views.PaymentsWebhookView.as_view(), name="assistant-payments-webhook"),
     # QR scan (TZ §6.2): /api/assistant/qr/scan/<code>/
     path("qr/scan/<str:code>/", qr_scan.QRScanView.as_view(), name="qr-scan"),
+    # Drawings (ТЗ §12.1): защищённый доступ к чертежу + audit log
+    path("drawings/<int:drawing_id>/file/", views.DrawingFileView.as_view(), name="drawing-file"),
     # Auth — magic-link & OAuth
     path("auth/magic-link/", auth_views.MagicLinkRequestView.as_view(), name="auth-magic-link-request"),
     path("auth/magic-link/<str:token>/", auth_views.MagicLinkConfirmView.as_view(), name="auth-magic-link-confirm"),

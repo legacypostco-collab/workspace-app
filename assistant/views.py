@@ -479,6 +479,43 @@ class RFQDetailView(APIView):
 # ──────────────────────────────────────────────────────────
 # Notifications inbox (bell + dropdown in chat-first UI)
 # ──────────────────────────────────────────────────────────
+class DrawingFileView(APIView):
+    """GET /api/assistant/drawings/<id>/file/?action=view|download
+
+    Контролируемая выдача файла чертежа: проверяет access_level + KYB +
+    payment_status, добавляет watermark, пишет в DrawingAccessLog.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, drawing_id):
+        from marketplace.models import Drawing
+        from .drawings_access import can_access, record_access, apply_watermark_url
+        try:
+            drawing = Drawing.objects.get(id=drawing_id)
+        except Drawing.DoesNotExist:
+            return Response({"ok": False, "error": "drawing not found"}, status=404)
+        action = (request.GET.get("action") or "view").strip()
+        if action not in ("view", "download"):
+            action = "view"
+
+        allowed, reason = can_access(request.user, drawing)
+        if not allowed:
+            record_access(request.user, drawing, "denied", request=request, note=reason)
+            return Response({"ok": False, "error": reason}, status=403)
+
+        record_access(request.user, drawing, action, request=request)
+        wm_url = apply_watermark_url(drawing.file_url, request.user, drawing)
+        return Response({
+            "ok": True,
+            "drawing_id": drawing.id,
+            "title": drawing.title,
+            "file_url": wm_url,
+            "file_format": drawing.file_format,
+            "access_level": drawing.access_level,
+            "reason": reason,
+        })
+
+
 class NotificationListView(APIView):
     """GET /api/assistant/notifications/?unread=1&limit=20
 

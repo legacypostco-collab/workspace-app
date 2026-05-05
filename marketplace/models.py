@@ -187,6 +187,13 @@ class Drawing(models.Model):
         ("archived", _("Архив")),
     ]
 
+    # ТЗ §3: уровни доступа к чертежу
+    ACCESS_CHOICES = [
+        ("private",    _("Закрытый — только владелец")),
+        ("for_sale",   _("Доступен для продажи (после предоплаты)")),
+        ("rewardable", _("Доступен с вознаграждением автору")),
+    ]
+
     title = models.CharField(max_length=255)
     part = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="drawings", null=True, blank=True)
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name="drawings")
@@ -196,6 +203,10 @@ class Drawing(models.Model):
     file_size_kb = models.PositiveIntegerField(default=0)
     revision = models.CharField(max_length=20, default="A")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    access_level = models.CharField(max_length=20, choices=ACCESS_CHOICES, default="private",
+        help_text="ТЗ §3: закрытый/продажа/вознаграждение")
+    reward_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+        help_text="Сумма вознаграждения автору при использовании в сделке (USD)")
     description = models.TextField(blank=True)
     oem_number = models.CharField(max_length=100, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -206,6 +217,37 @@ class Drawing(models.Model):
 
     def __str__(self) -> str:
         return f"{self.title} (rev {self.revision})"
+
+
+class DrawingAccessLog(models.Model):
+    """ТЗ §12.1: журнал доступа к чертежам — для аудита и расчёта rewards."""
+    ACTION_CHOICES = [
+        ("view",      _("Просмотр")),
+        ("download",  _("Скачивание")),
+        ("denied",    _("Отказано (нет прав)")),
+        ("watermark_added", _("Применён watermark")),
+    ]
+
+    drawing = models.ForeignKey(Drawing, on_delete=models.CASCADE, related_name="access_log")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="drawing_accesses")
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES)
+    order = models.ForeignKey("Order", on_delete=models.SET_NULL, null=True, blank=True,
+                               help_text="Заказ-контекст (для access_level=for_sale)")
+    ip = models.CharField(max_length=64, blank=True)
+    user_agent = models.CharField(max_length=300, blank=True)
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["drawing", "-created_at"], name="dal_drw_created_idx"),
+            models.Index(fields=["user", "-created_at"], name="dal_user_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"DAL[{self.drawing_id}/{self.action}/{self.user_id}]"
 
 
 class RFQ(models.Model):

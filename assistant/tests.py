@@ -787,6 +787,121 @@ class SupplierRatingEngineTests(TestCase):
         self.assertEqual(events.first().impact_score, Decimal("1.00"))
 
 
+class DrawingsAccessTests(TestCase):
+    """ТЗ §3, §12.1: контроль доступа + audit log + reward."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import Brand, Category, Part, Drawing, Order
+        from decimal import Decimal as D
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        U = get_user_model()
+        self.seller = U.objects.create_user(username=f"t_dr_s_{u}", password="x")
+        self.buyer = U.objects.create_user(username=f"t_dr_b_{u}", password="x")
+        self.outsider = U.objects.create_user(username=f"t_dr_o_{u}", password="x")
+        cat = Category.objects.create(name=f"c-{u}", slug=f"c-{u}")
+        brand = Brand.objects.create(name=f"b-{u}", slug=f"b-{u}")
+        self.part = Part.objects.create(
+            title=f"P-{u}", oem_number=f"P-{u}", slug=f"p-{u}",
+            category=cat, brand=brand, price=D("100"),
+            seller=self.seller, is_active=True,
+        )
+        self.drawing_private = Drawing.objects.create(
+            title="Private drawing", part=self.part, seller=self.seller,
+            file_url="https://example.com/draw.pdf", access_level="private",
+        )
+        self.drawing_for_sale = Drawing.objects.create(
+            title="For-sale drawing", part=self.part, seller=self.seller,
+            file_url="https://example.com/draw2.pdf", access_level="for_sale",
+        )
+        self.drawing_rewardable = Drawing.objects.create(
+            title="Rewardable", part=self.part, seller=self.seller,
+            file_url="https://example.com/draw3.pdf", access_level="rewardable",
+            reward_amount=D("50.00"),
+        )
+        self.order_unpaid = Order.objects.create(
+            customer_name="b", customer_email="b@x.t", customer_phone="",
+            delivery_address="-", buyer=self.buyer, total_amount=D("100"),
+            status="pending", payment_status="awaiting_reserve",
+        )
+        self.order_paid = Order.objects.create(
+            customer_name="b", customer_email="b@x.t", customer_phone="",
+            delivery_address="-", buyer=self.buyer, total_amount=D("100"),
+            status="reserve_paid", payment_status="reserve_paid",
+        )
+        from marketplace.models import OrderItem
+        OrderItem.objects.create(order=self.order_paid, part=self.part,
+                                  quantity=1, unit_price=D("100"))
+
+    def test_owner_always_has_access(self):
+        from .drawings_access import can_access
+        for d in (self.drawing_private, self.drawing_for_sale, self.drawing_rewardable):
+            allowed, _ = can_access(self.seller, d)
+            self.assertTrue(allowed, f"owner should access {d.access_level}")
+
+    def test_private_blocks_outsider(self):
+        from .drawings_access import can_access
+        allowed, reason = can_access(self.outsider, self.drawing_private)
+        self.assertFalse(allowed)
+        self.assertIn("приватный", reason)
+
+    def test_for_sale_requires_paid_reserve(self):
+        from .drawings_access import can_access
+        # Buyer без оплаты — нет
+        allowed, reason = can_access(self.buyer, self.drawing_for_sale,
+                                       order=self.order_unpaid)
+        self.assertFalse(allowed)
+        # Buyer с оплатой резерва — да
+        allowed2, _ = can_access(self.buyer, self.drawing_for_sale,
+                                   order=self.order_paid)
+        self.assertTrue(allowed2)
+
+    def test_rewardable_open_to_all(self):
+        from .drawings_access import can_access
+        allowed, _ = can_access(self.outsider, self.drawing_rewardable)
+        self.assertTrue(allowed)
+
+    def test_record_access_writes_log(self):
+        from .drawings_access import record_access
+        from marketplace.models import DrawingAccessLog
+        record_access(self.buyer, self.drawing_for_sale, "view")
+        self.assertEqual(
+            DrawingAccessLog.objects.filter(drawing=self.drawing_for_sale).count(), 1,
+        )
+
+    def test_apply_watermark_adds_url_param(self):
+        from .drawings_access import apply_watermark_url
+        url = apply_watermark_url("https://example.com/file.pdf",
+                                    self.buyer, self.drawing_for_sale)
+        self.assertIn("wm=", url)
+        self.assertIn(f"u{self.buyer.id}", url)
+        self.assertIn(f"d{self.drawing_for_sale.id}", url)
+
+    def test_grant_reward_credits_author_wallet(self):
+        from .drawings_access import grant_drawing_reward
+        from .models import Wallet
+        before = Wallet.for_user(self.seller, demo_seed_amount=0).balance
+        tx = grant_drawing_reward(self.drawing_rewardable, order=self.order_paid)
+        self.assertIsNotNone(tx)
+        self.assertEqual(tx.amount, Decimal("50.00"))
+        wallet = Wallet.for_user(self.seller)
+        self.assertEqual(wallet.balance, before + Decimal("50.00"))
+
+    def test_drawing_file_view_403_for_private(self):
+        from rest_framework.test import APIClient
+        c = APIClient(); c.force_authenticate(self.outsider)
+        r = c.get(f"/api/assistant/drawings/{self.drawing_private.id}/file/")
+        self.assertEqual(r.status_code, 403)
+
+    def test_drawing_file_view_returns_watermarked_url(self):
+        from rest_framework.test import APIClient
+        c = APIClient(); c.force_authenticate(self.seller)  # owner
+        r = c.get(f"/api/assistant/drawings/{self.drawing_private.id}/file/")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("wm=", r.json()["file_url"])
+
+
 class QRScanTests(TestCase):
     """ТЗ §6.2: QR-scan endpoint."""
 
