@@ -233,6 +233,12 @@
 
       ${renderStageBanner(banner)}
 
+      ${d.mode_reason ? `
+      <div class="mode-reason" title="Почему этот режим был выбран автоматически">
+        <span class="mode-reason-label">⚙️ Логика режима</span>
+        <span class="mode-reason-text">${esc(d.mode_reason)}</span>
+      </div>` : ''}
+
       ${d.has_priced ? `
       <div class="hero-total">
         <div class="hero-total-label">Ориентировочный бюджет (USD)</div>

@@ -505,6 +505,145 @@ class CustomsActionsTests(TestCase):
         self.assertIn("Запрещено", r.text)
 
 
+class RFQModeClassifierTests(TestCase):
+    """RFQ mode classifier — 6 правил из ТЗ §7.1, §7.2."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import (
+            Brand, Category, Part, UserProfile, CompanyVerification,
+        )
+        from decimal import Decimal as D
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        U = get_user_model()
+        self.buyer = U.objects.create_user(username=f"t_cls_b_{u}", password="x")
+        self.seller_trusted = U.objects.create_user(username=f"t_cls_st_{u}", password="x")
+        self.seller_sandbox = U.objects.create_user(username=f"t_cls_ss_{u}", password="x")
+        # Setup profiles
+        UserProfile.objects.create(user=self.buyer, role="buyer")
+        UserProfile.objects.create(user=self.seller_trusted, role="seller")
+        UserProfile.objects.create(user=self.seller_sandbox, role="seller")
+        # supplier_status — editable=False, обходим через .update()
+        UserProfile.objects.filter(user=self.seller_trusted).update(supplier_status="trusted")
+        UserProfile.objects.filter(user=self.seller_sandbox).update(supplier_status="sandbox")
+        # Buyer KYB-verified by default
+        CompanyVerification.objects.create(
+            user=self.buyer, legal_name="Buyer Co", inn="1234567890", status="verified",
+        )
+        # Catalog parts
+        cat = Category.objects.create(name=f"c-{u}", slug=f"c-{u}")
+        brand = Brand.objects.create(name=f"b-{u}", slug=f"b-{u}")
+        self.part_trusted = Part.objects.create(
+            title=f"P1-{u}", oem_number=f"P1-{u}", slug=f"p1-{u}",
+            category=cat, brand=brand, price=D("100"),
+            seller=self.seller_trusted, is_active=True,
+        )
+        self.part_sandbox = Part.objects.create(
+            title=f"P2-{u}", oem_number=f"P2-{u}", slug=f"p2-{u}",
+            category=cat, brand=brand, price=D("200"),
+            seller=self.seller_sandbox, is_active=True,
+        )
+
+    def _items(self, *parts_or_none):
+        """Builds items_to_add tuples like create_rfq does."""
+        return [(p.oem_number if p else "unknown", 1, p) for p in parts_or_none]
+
+    def test_auto_when_all_matched_trusted_and_verified(self):
+        """ТЗ §4.1: AUTO требует ≥3 предложений; для теста ослабляем до 1."""
+        from .actions import _classify_rfq_mode
+        items = self._items(self.part_trusted, self.part_trusted)
+        mode, reason = _classify_rfq_mode(items, self.buyer, {"min_offers_for_auto": 1})
+        self.assertEqual(mode, "auto", f"reason={reason}")
+        self.assertIn("auto", reason.lower())
+
+    def test_semi_when_partial_matched(self):
+        from .actions import _classify_rfq_mode
+        items = self._items(self.part_trusted, None)  # 1/2 matched
+        mode, reason = _classify_rfq_mode(items, self.buyer, {})
+        self.assertEqual(mode, "semi")
+        self.assertIn("partial", reason.lower())
+
+    def test_manual_oem_when_zero_matched(self):
+        from .actions import _classify_rfq_mode
+        items = self._items(None, None)
+        mode, reason = _classify_rfq_mode(items, self.buyer, {})
+        self.assertEqual(mode, "manual_oem")
+        self.assertIn("0/", reason)
+
+    def test_manual_oem_when_articles_param_passed(self):
+        from .actions import _classify_rfq_mode
+        items = self._items(self.part_trusted)
+        mode, reason = _classify_rfq_mode(items, self.buyer, {"articles": ["X-123", "Y-456"]})
+        self.assertEqual(mode, "manual_oem")
+        self.assertIn("oem", reason.lower())
+
+    def test_semi_when_buyer_not_verified(self):
+        from .actions import _classify_rfq_mode
+        from marketplace.models import CompanyVerification
+        kyb = CompanyVerification.objects.get(user=self.buyer)
+        kyb.status = "rejected"; kyb.save()
+        items = self._items(self.part_trusted)
+        mode, reason = _classify_rfq_mode(items, self.buyer, {"min_offers_for_auto": 1})
+        self.assertEqual(mode, "semi", f"reason={reason}")
+        self.assertIn("kyb", reason.lower())
+
+    def test_semi_when_urgency_critical(self):
+        from .actions import _classify_rfq_mode
+        items = self._items(self.part_trusted)
+        mode, reason = _classify_rfq_mode(items, self.buyer,
+                                          {"urgency": "critical", "min_offers_for_auto": 1})
+        self.assertEqual(mode, "semi")
+        self.assertIn("critical", reason.lower())
+
+    def test_semi_when_seller_is_sandbox(self):
+        """ТЗ §6.2: исполнитель НЕ trusted → SEMI, нужен оператор."""
+        from .actions import _classify_rfq_mode
+        items = self._items(self.part_sandbox)
+        mode, reason = _classify_rfq_mode(items, self.buyer, {"min_offers_for_auto": 1})
+        self.assertEqual(mode, "semi", f"reason={reason}")
+        # Reason может быть либо «нет надёжных» (§5.1), либо «исполнитель не trusted»
+        # — обе валидны; главное mode=semi
+        assert "sandbox" in reason.lower() or "надёжных" in reason.lower(), reason
+
+    def test_explicit_mode_param_overrides_classifier(self):
+        from .actions import _classify_rfq_mode
+        items = self._items(None)
+        mode, reason = _classify_rfq_mode(items, self.buyer, {"mode": "auto"})
+        self.assertEqual(mode, "auto")
+        self.assertIn("явно", reason.lower())
+
+    def test_semi_when_insufficient_offers(self):
+        """ТЗ §5.2: <3 предложений → SEMI."""
+        from .actions import _classify_rfq_mode
+        # part_trusted имеет только одного продавца — недостаточно для AUTO
+        items = self._items(self.part_trusted, self.part_trusted)
+        mode, reason = _classify_rfq_mode(items, self.buyer, {})  # default min=3
+        self.assertEqual(mode, "semi", f"reason={reason}")
+        self.assertTrue("недостаточно" in reason.lower() or "<3" in reason
+                        or "надёжных" in reason.lower(), reason)
+
+    def test_semi_when_no_trusted_supplier(self):
+        """ТЗ §5.1: нет надёжного → SEMI с пометкой."""
+        from .actions import _classify_rfq_mode
+        # part_sandbox — единственный продавец в sandbox, нет trusted
+        items = self._items(self.part_sandbox)
+        mode, reason = _classify_rfq_mode(items, self.buyer, {"min_offers_for_auto": 1})
+        self.assertEqual(mode, "semi", f"reason={reason}")
+        self.assertIn("надёжных", reason.lower())
+
+    def test_semi_when_low_confidence(self):
+        """ТЗ §5.3: confidence < threshold → SEMI."""
+        from .actions import _classify_rfq_mode
+        items = self._items(self.part_trusted)
+        mode, reason = _classify_rfq_mode(items, self.buyer, {
+            "min_offers_for_auto": 1,
+            "min_confidence": 50,  # ниже дефолтного порога 70
+        })
+        self.assertEqual(mode, "semi", f"reason={reason}")
+        self.assertIn("confidence", reason.lower())
+
+
 class OnboardingKybTests(TestCase):
     """KYB wizard: 5 шагов + operator review/approve/reject + gating."""
 

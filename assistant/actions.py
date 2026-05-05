@@ -1085,6 +1085,165 @@ def _search_articles_list(articles: list[str]):
     )
 
 
+def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
+    """Определяет режим обработки RFQ согласно детальному ТЗ §3-§5.
+
+    Возвращает (mode, reason) где:
+      mode  — 'auto' | 'semi' | 'manual_oem'
+      reason — человекочитаемое объяснение (для notes / UI / аудита)
+
+    Правила (приоритет сверху вниз):
+      0. params.mode передан явно → override (ops / тесты / форс)
+
+    Гард-условия для SEMI:
+      1. Buyer не верифицирован KYB → SEMI (защита от спама)
+      2. urgency=critical → SEMI (нужен человек в loop'е)
+      3. confidence < 70% (если матчер передал) → SEMI (§5.3)
+
+    Triggers для MANUAL_OEM (§7):
+      4. params.articles[] (явный OEM-ввод) → MANUAL_OEM
+      5. 0% сматчено → MANUAL_OEM (нет в каталоге)
+
+    Условия чистого AUTO (§4.1) — ВСЕ должны выполниться:
+      6a. Все позиции имеют matched_part
+      6b. Для каждой позиции ≥3 актуальных предложений (trusted + sandbox)
+      6c. Для каждой позиции есть ≥1 «надёжный» поставщик
+      6d. Все matched_part от trusted-поставщиков (исполнитель)
+    Иначе → SEMI с пояснением (§5.1, §5.2).
+    """
+    # 0. Явный override
+    explicit = (params.get("mode") or "").strip().lower()
+    if explicit in ("auto", "semi", "manual_oem"):
+        return explicit, f"mode={explicit} (явно передан в params)"
+
+    total = len(items_to_add)
+    matched = [t for t in items_to_add if t[2] is not None]
+    matched_count = len(matched)
+
+    # 4. Buyer вручную ввёл OEM-номера → MANUAL_OEM
+    if params.get("articles"):
+        return "manual_oem", (
+            f"manual_oem · buyer ввёл {len(params['articles'])} OEM-номеров вручную"
+        )
+
+    # 5. Ни одного совпадения с каталогом → MANUAL_OEM
+    if matched_count == 0:
+        return "manual_oem", f"manual_oem · 0/{total} позиций сматчены с каталогом"
+
+    # 1. Buyer не верифицирован KYB → SEMI
+    try:
+        from .onboarding import kyb_required_for_seller as _kyb_required
+        kyb_unverified = _kyb_required(user)
+    except Exception:
+        kyb_unverified = False
+    if kyb_unverified:
+        return "semi", (
+            f"semi · buyer не верифицирован KYB · {matched_count}/{total} matched"
+        )
+
+    # 2. Срочность critical → SEMI
+    urgency = (params.get("urgency") or "").strip().lower()
+    if urgency == "critical":
+        return "semi", f"semi · urgency=critical · {matched_count}/{total} matched"
+
+    # 3. confidence ниже порога → SEMI (§5.3)
+    confidence_threshold = float(params.get("confidence_threshold") or 70)
+    low_confidence = []
+    for query, _, mp in matched:
+        # Confidence не считаем сами — берём из params если матчер передал
+        # (в реальности это поле RFQItem.confidence)
+        c = params.get(f"confidence_{query}") or params.get("min_confidence")
+        if c is not None and float(c) < confidence_threshold:
+            low_confidence.append(query)
+    if low_confidence:
+        return "semi", (
+            f"semi · confidence <{confidence_threshold}% по {len(low_confidence)} позиции"
+        )
+
+    # 6. AUTO условия (§4.1) — проверяем все
+    if matched_count < total:
+        return "semi", (
+            f"semi · partial match {matched_count}/{total} · "
+            f"{total - matched_count} требуют уточнения (§5.2)"
+        )
+
+    # Считаем предложения per-position: для каждого matched_part ищем все Part'ы
+    # с тем же oem_number и считаем поставщиков по supplier_status.
+    from marketplace.models import Part, UserProfile
+    insufficient_offers = []
+    no_trusted = []
+    untrusted_executor = []
+    min_offers = int(params.get("min_offers_for_auto") or 3)
+
+    # Собираем все oem_numbers items_to_add
+    oem_set = list({mp.oem_number for _, _, mp in matched if mp.oem_number})
+    if oem_set:
+        # Один SQL: все Part'ы с этими OEM + их seller-profiles
+        candidates = (
+            Part.objects.filter(oem_number__in=oem_set, is_active=True, price__gt=0)
+            .select_related("seller")
+        )
+        # Build map oem → list of (seller_id, status)
+        offers_by_oem = {}
+        seller_status_cache = {}
+        for c in candidates:
+            if not c.seller_id:
+                continue
+            if c.seller_id not in seller_status_cache:
+                prof = UserProfile.objects.filter(user_id=c.seller_id).only("supplier_status").first()
+                seller_status_cache[c.seller_id] = prof.supplier_status if prof else "sandbox"
+            status = seller_status_cache[c.seller_id]
+            if status == "excluded":
+                continue
+            offers_by_oem.setdefault(c.oem_number, []).append((c.seller_id, status))
+
+        for query, qty, mp in matched:
+            offers = offers_by_oem.get(mp.oem_number, [])
+            unique_sellers = {sid: st for sid, st in offers}
+            n_offers = sum(1 for st in unique_sellers.values() if st in ("trusted", "sandbox"))
+            n_trusted = sum(1 for st in unique_sellers.values() if st == "trusted")
+
+            # 6b. <3 предложений (trusted + sandbox)
+            if n_offers < min_offers:
+                insufficient_offers.append((mp.oem_number, n_offers))
+            # 6c. нет ни одного trusted
+            if n_trusted == 0:
+                no_trusted.append(mp.oem_number)
+
+        # 6d. Исполнитель (matched_part.seller) обязан быть trusted
+        for query, _, mp in matched:
+            executor_status = seller_status_cache.get(
+                mp.seller_id,
+                (UserProfile.objects.filter(user_id=mp.seller_id)
+                 .only("supplier_status").first().supplier_status
+                 if mp.seller_id else "sandbox"),
+            ) if mp.seller_id else "sandbox"
+            if executor_status != "trusted":
+                untrusted_executor.append((mp.seller_id, executor_status))
+
+    # Применяем правила в порядке тяжести
+    if no_trusted:
+        return "semi", (
+            f"semi · нет «надёжных» поставщиков по {len(no_trusted)} позициям (§5.1)"
+        )
+    if insufficient_offers:
+        return "semi", (
+            f"semi · недостаточно предложений (<{min_offers}) "
+            f"по {len(insufficient_offers)} позициям (§5.2)"
+        )
+    if untrusted_executor:
+        kinds = ",".join(sorted(set(s for _, s in untrusted_executor)))
+        return "semi", (
+            f"semi · исполнитель не trusted ({kinds}) · "
+            f"требуется подтверждение оператора (§6.2)"
+        )
+
+    return "auto", (
+        f"auto · {matched_count}/{total} matched · ≥{min_offers} предложений · "
+        f"trusted-исполнитель · buyer verified"
+    )
+
+
 @register("create_rfq")
 def create_rfq(params, user, role):
     """Create a new RFQ + RFQItem rows. params: {product_ids?, articles?, quantity, query?}"""
@@ -1132,17 +1291,17 @@ def create_rfq(params, user, role):
     if not items_to_add:
         items_to_add = [("RFQ из чата", quantity, None)]
 
-    # Mode по умолчанию: AUTO (платформа сама рассылает + собирает котировки).
-    # Buyer может явно передать mode='semi' или 'manual_oem' для ручного контроля.
-    mode = (params.get("mode") or "auto").strip().lower()
-    if mode not in ("auto", "semi", "manual_oem"):
-        mode = "auto"
+    # Mode определяется классификатором согласно ТЗ §7.1/§7.2.
+    # Критерии: matched_count, supplier_status (trusted/sandbox/risky),
+    # KYB-верификация buyer'а, urgency, явный articles[] / params.mode.
+    mode, classifier_reason = _classify_rfq_mode(items_to_add, user, params)
 
     # Build a short notes summary
     notes_parts = []
     if params.get("query") and len(items_to_add) == 1:
         notes_parts.append(f"Запрос: {params['query'][:300]}")
-    notes_parts.append(f"Создано из чата · {len(items_to_add)} позиций · mode={mode}")
+    notes_parts.append(f"Создано из чата · {len(items_to_add)} позиций")
+    notes_parts.append(f"Mode: {classifier_reason}")
 
     try:
         rfq = RFQ.objects.create(

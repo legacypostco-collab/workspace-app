@@ -431,11 +431,21 @@ class RFQDetailView(APIView):
         # total_usd=0 не «бюджет», а «оценим после котировок».
         has_priced = any(it["price"] is not None for it in items)
 
+        # Classifier reason: парсим из notes (записан create_rfq как «Mode: …»)
+        classifier_reason = ""
+        if rfq.notes:
+            for line in (rfq.notes or "").split(" | "):
+                line = line.strip()
+                if line.lower().startswith("mode:"):
+                    classifier_reason = line.split(":", 1)[1].strip()
+                    break
+
         return Response({
             "id": rfq.id,
             "status": rfq.status,
             "stage": stage,
             "mode": rfq.mode,            # 'auto' | 'semi' | 'manual_oem'
+            "mode_reason": classifier_reason,
             "urgency": rfq.urgency,
             "customer_name": rfq.customer_name,
             "company_name": rfq.company_name,
