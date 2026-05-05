@@ -57,17 +57,27 @@ logger = logging.getLogger(__name__)
 
 STD_FIELDS = [
     # (key, label, required, enum_values_or_None)
-    # enum_values — фиксированные значения, доступные как «применить ко
-    # всем строкам» (передаются в commit как `fix:VALUE`).
-    ("oem_number", "Артикул (OEM)",       True,  None),
-    ("title",      "Название",             True,  None),
-    ("price",      "Цена",                 True,  None),
-    ("currency",   "Валюта",               False, ["USD", "EUR", "RUB", "CNY"]),
-    ("brand",      "Бренд",                False, None),
-    ("stock",      "Остаток",              False, None),
-    ("moq",        "MOQ",                  False, None),
-    ("incoterm",   "Базис",                False, ["FOB", "CIF", "DDP"]),
-    ("weight_kg",  "Вес, кг",              False, None),
+    # ВСЕ поля required — по требованию пользователя «лучше пусть будут точные,
+    # чтобы не было путаницы с номерами». Heuristic подставит только title и
+    # weight — остальное seller выбирает руками.
+    ("oem_number",        "Артикул (PartNumber)",   True,  None),
+    ("cross_number",      "Кросс-номер (CrossNumber)", True, None),
+    ("brand",             "Бренд",                   True,  None),
+    ("title",             "Название",                True,  None),
+    ("stock",             "Остаток (Quantity)",      True,  None),
+    ("condition",         "Состояние",               True,  ["ORIGINAL", "OEM", "AFTERMARKET", "REMAN"]),
+    ("price_exw",         "Цена EXW",                True,  None),
+    ("warehouse_address", "Адрес склада",            True,  None),
+    ("price_fob_sea",     "Цена FOB SEA",            True,  None),
+    ("price_fob_air",     "Цена FOB AIR",            True,  None),
+    ("sea_port",          "Морпорт отправления",     True,  None),
+    ("air_port",          "Аэропорт отправления",    True,  None),
+    ("weight_kg",         "Вес, кг",                 True,  None),
+    ("length_cm",         "Длина, см",               True,  None),
+    ("width_cm",          "Ширина, см",              True,  None),
+    ("height_cm",         "Высота, см",              True,  None),
+    # Опционально: валюта (фикс или из колонки)
+    ("currency",          "Валюта",                  False, ["USD", "EUR", "RUB", "CNY"]),
 ]
 
 REQUIRED_FIELDS = [k for k, _, req, _ in STD_FIELDS if req]
@@ -152,24 +162,16 @@ def _read_all(filename: str, blob: bytes):
 # ── AI mapping ───────────────────────────────────────────────────
 
 def _heuristic_mapping(headers: list[str]) -> dict[str, str]:
-    """Правила по ключевым словам — fallback если AI недоступен."""
+    """Минимальные правила — только title и weight предлагаются авто.
+
+    По запросу пользователя: «автоматически мы можем подставлять только
+    вес и название, но лучше что бы они тоже были точные и не было
+    путаницы с номерами». Остальные поля seller выбирает явно.
+    """
     rules = {
-        # ru / en / zh / de / fr
-        "oem_number": ["артикул", "oem", "sku", "part", "code", "номер", "код",
-                        "件号", "零件号", "partnumber", "part no", "ref",
-                        "artikel", "référence", "código"],
-        "title":      ["название", "наименование", "title", "name", "описание",
-                        "description", "名称", "bezeichnung", "désignation"],
-        "price":      ["цена", "price", "стоимост", "cost", "unitprice",
-                        "价格", "成本", "preis", "prix", "precio"],
-        "currency":   ["валюта", "currency", "ccy", "货币"],
-        "brand":      ["бренд", "brand", "производит", "manufacturer", "make",
-                        "品牌", "marke", "marca"],
-        "stock":      ["остаток", "stock", "наличи", "qty", "количество",
-                        "库存", "lager", "存量"],
-        "moq":        ["moq", "мин", "minimum", "min order", "最小"],
-        "incoterm":   ["incoterm", "базис", "условия", "fob", "cif", "ddp"],
-        "weight_kg":  ["вес", "weight", "kg", "масса", "重量", "gewicht", "poids"],
+        "title":     ["name", "название", "наименование", "description",
+                       "title", "опис", "名称", "bezeichnung", "désignation"],
+        "weight_kg": ["weight", "вес", "масса", "重量", "gewicht", "poids"],
     }
     mapping: dict[str, str] = {}
     used = set()
@@ -375,14 +377,14 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
 
             oem = get("oem_number")
             title = get("title")
-            price = _coerce_decimal(get("price"))
-            if not oem or not title or price is None or price <= 0:
+            price_exw = _coerce_decimal(get("price_exw"))
+            if not oem or not title or price_exw is None or price_exw <= 0:
                 failed += 1
                 if len(errors) < 50:
                     reason = (
                         "no oem" if not oem else
                         "no title" if not title else
-                        "bad price"
+                        "bad price_exw"
                     )
                     errors.append({"row": row_n, "oem": oem[:60], "reason": reason})
                 continue
@@ -400,10 +402,22 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
                 brand = generic_brand
 
             stock = _coerce_int(get("stock")) or 0
-            moq = max(1, _coerce_int(get("moq")) or 1)
             currency = _normalize_currency(get("currency"))
-            incoterm = _normalize_incoterm(get("incoterm"))
+            cond_raw = (get("condition") or "").strip().lower()
+            condition = ("oem" if "oem" in cond_raw else
+                          "reman" if "reman" in cond_raw else
+                          "aftermarket" if "after" in cond_raw else
+                          "oem")  # ORIGINAL → oem
+            cross_number = (get("cross_number") or "")[:500]
+            price_fob_sea = _coerce_decimal(get("price_fob_sea")) or Decimal("0")
+            price_fob_air = _coerce_decimal(get("price_fob_air")) or Decimal("0")
+            warehouse = (get("warehouse_address") or "")[:255]
+            sea_port = (get("sea_port") or "")[:120]
+            air_port = (get("air_port") or "")[:120]
             weight = _coerce_decimal(get("weight_kg")) or Decimal("0.5")
+            length = _coerce_decimal(get("length_cm")) or Decimal("1.0")
+            width = _coerce_decimal(get("width_cm")) or Decimal("1.0")
+            height = _coerce_decimal(get("height_cm")) or Decimal("1.0")
 
             try:
                 Part.objects.update_or_create(
@@ -412,12 +426,20 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
                         "title": title[:255],
                         "oem_number": oem[:100],
                         "slug": slugify(f"{oem}-{seller.username}")[:280],
-                        "price": price,
+                        "price": price_exw,
                         "currency": currency,
                         "stock_quantity": stock,
-                        "moq": moq,
-                        "incoterm": incoterm,
+                        "condition": condition,
+                        "cross_numbers": cross_number,
+                        "price_fob_sea": price_fob_sea,
+                        "price_fob_air": price_fob_air,
+                        "warehouse_address": warehouse,
+                        "sea_port": sea_port,
+                        "air_port": air_port,
                         "gross_weight_kg": weight,
+                        "length_cm": length,
+                        "width_cm": width,
+                        "height_cm": height,
                         "category": cat,
                         "brand": brand,
                         "is_active": True,
@@ -463,16 +485,21 @@ class PricelistUploadView(APIView):
         if not headers:
             return Response({"error": "no headers found"}, status=400)
 
-        # Предложенный маппинг: сначала прошлый сохранённый, иначе AI/heuristic
+        # Предложенный маппинг:
+        # 1. Если есть сохранённый предыдущий — берём его целиком (это
+        #    «второй заход» — seller уже всё подтвердил).
+        # 2. Иначе AUTO-подставляем ТОЛЬКО title + weight_kg по запросу
+        #    пользователя «не должно быть путаницы с номерами» — все
+        #    остальные поля (особенно артикул и цены) seller выбирает
+        #    точно сам, чтобы исключить ошибки.
         prev = PricelistMapping.objects.filter(seller=request.user).first()
-        suggested = (
-            {k: v for k, v in (prev.mapping or {}).items() if v in headers}
-            if prev else {}
-        )
-        if len(suggested) < len(REQUIRED_FIELDS):
+        if prev and prev.mapping:
+            suggested = {k: v for k, v in prev.mapping.items()
+                          if v and (v.startswith("fix:") or v in headers)}
+        else:
             ai_map = _ai_mapping(headers, sample)
-            for k, v in ai_map.items():
-                suggested.setdefault(k, v)
+            AUTO_KEYS = {"title", "weight_kg"}
+            suggested = {k: v for k, v in ai_map.items() if k in AUTO_KEYS}
 
         imp = PricelistImport.objects.create(
             seller=request.user,

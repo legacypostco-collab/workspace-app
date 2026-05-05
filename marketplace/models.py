@@ -95,6 +95,17 @@ class Part(models.Model):
     height_cm = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("1.00"))
     country_of_origin = models.CharField(max_length=120, default="Unknown")
     cross_numbers = models.CharField(max_length=500, blank=True)
+    # Расширенные поля прайса поставщика (ТЗ шаблон):
+    price_fob_sea = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"),
+        help_text="Цена FOB морским путём")
+    price_fob_air = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"),
+        help_text="Цена FOB авиа")
+    warehouse_address = models.CharField(max_length=255, blank=True,
+        help_text="Адрес склада отправления")
+    sea_port = models.CharField(max_length=120, blank=True,
+        help_text="Морпорт отправления")
+    air_port = models.CharField(max_length=120, blank=True,
+        help_text="Аэропорт отправления")
     backorder_allowed = models.BooleanField(default=False)
     mapping_status = models.CharField(max_length=20, choices=MAPPING_STATUS_CHOICES, default="auto")
     supplier_part_uid = models.CharField(max_length=80, blank=True)

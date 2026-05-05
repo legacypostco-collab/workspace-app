@@ -2857,6 +2857,27 @@ class PricelistUploadTests(TestCase):
         resp = self.client.post("/api/assistant/upload-pricelist/")
         self.assertIn(resp.status_code, (401, 403))
 
+    def _full_mapping(self):
+        """Полный маппинг 16 required-полей через fix: для всех кроме oem/title."""
+        return {
+            "oem_number":        "Артикул",
+            "cross_number":      "fix:",
+            "brand":             "fix:Generic",
+            "title":             "Наименование",
+            "stock":             "fix:0",
+            "condition":         "fix:OEM",
+            "price_exw":         "Цена",
+            "warehouse_address": "fix:Warehouse",
+            "price_fob_sea":     "fix:0",
+            "price_fob_air":     "fix:0",
+            "sea_port":          "fix:Port",
+            "air_port":          "fix:Airport",
+            "weight_kg":         "fix:0.5",
+            "length_cm":         "fix:1",
+            "width_cm":          "fix:1",
+            "height_cm":         "fix:1",
+        }
+
     def test_preview_returns_headers_and_mapping(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         self.client.force_login(self.seller)
@@ -2876,11 +2897,13 @@ class PricelistUploadTests(TestCase):
         self.assertIn("import_id", data)
         self.assertEqual(data["headers"], ["Артикул", "Наименование", "Цена", "Валюта", "Остаток"])
         self.assertEqual(len(data["sample_rows"]), 3)
-        # Heuristic-маппинг должен распознать оем/название/цену
+        # Heuristic — теперь только title и weight подставляются авто.
+        # Остальные поля seller выбирает руками (anti-confusion с номерами).
         m = data["suggested_mapping"]
-        self.assertEqual(m.get("oem_number"), "Артикул")
         self.assertEqual(m.get("title"), "Наименование")
-        self.assertEqual(m.get("price"), "Цена")
+        # oem_number / price больше НЕ авто-подставляются:
+        self.assertNotIn("oem_number", m)
+        self.assertNotIn("price_exw", m)
 
     def test_commit_imports_parts(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -2898,24 +2921,16 @@ class PricelistUploadTests(TestCase):
         )
         import_id = resp.json()["import_id"]
 
-        # Commit с явным маппингом
         commit = self.client.post(
             f"/api/assistant/upload-pricelist/{import_id}/commit/",
-            data={"mapping": {
-                "oem_number": "Артикул",
-                "title":      "Наименование",
-                "price":      "Цена",
-                "stock":      "Остаток",
-            }},
+            data={"mapping": self._full_mapping()},
             content_type="application/json",
         )
         self.assertEqual(commit.status_code, 200)
         d = commit.json()
         self.assertEqual(d["imported"], 2)
         self.assertEqual(d["failed"], 0)
-        # Parts реально создались
         self.assertEqual(Part.objects.filter(seller=self.seller).count(), 2)
-        # Маппинг сохранён для следующей загрузки
         m = PricelistMapping.objects.get(seller=self.seller)
         self.assertEqual(m.mapping["oem_number"], "Артикул")
 
@@ -2930,7 +2945,7 @@ class PricelistUploadTests(TestCase):
         import_id = self.client.post(
             "/api/assistant/upload-pricelist/", data={"file": f},
         ).json()["import_id"]
-        # Не передали 'price' — обязательное
+        # Не передали price_exw / cross_number / brand / ... — обязательные
         commit = self.client.post(
             f"/api/assistant/upload-pricelist/{import_id}/commit/",
             data={"mapping": {"oem_number": "Артикул", "title": "Наименование"}},
@@ -2956,15 +2971,12 @@ class PricelistUploadTests(TestCase):
             iid = r.json()["import_id"]
             self.client.post(
                 f"/api/assistant/upload-pricelist/{iid}/commit/",
-                data={"mapping": {
-                    "oem_number": "Артикул", "title": "Наименование",
-                    "price": "Цена",
-                }},
+                data={"mapping": self._full_mapping()},
                 content_type="application/json",
             )
 
         upload_and_commit(50)
-        upload_and_commit(75)  # повторно — апдейтит цену
+        upload_and_commit(75)
 
         parts = Part.objects.filter(seller=self.seller, oem_number__iexact="DUPE-1")
         self.assertEqual(parts.count(), 1, "no duplicates")
@@ -2987,10 +2999,7 @@ class PricelistUploadTests(TestCase):
         ).json()["import_id"]
         commit = self.client.post(
             f"/api/assistant/upload-pricelist/{iid}/commit/",
-            data={"mapping": {
-                "oem_number": "Артикул", "title": "Наименование",
-                "price": "Цена",
-            }},
+            data={"mapping": self._full_mapping()},
             content_type="application/json",
         ).json()
         self.assertEqual(commit["imported"], 2)  # GOOD-1 и GOOD-4
@@ -3019,14 +3028,11 @@ class PricelistUploadTests(TestCase):
         iid = self.client.post(
             "/api/assistant/upload-pricelist/", data={"file": f},
         ).json()["import_id"]
-        # Outsider пытается импортировать
         self.client.logout()
         self.client.force_login(self.outsider)
         resp = self.client.post(
             f"/api/assistant/upload-pricelist/{iid}/commit/",
-            data={"mapping": {
-                "oem_number": "Артикул", "title": "Наименование", "price": "Цена",
-            }},
+            data={"mapping": self._full_mapping()},
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 404)
