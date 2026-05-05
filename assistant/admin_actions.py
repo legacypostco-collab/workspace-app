@@ -544,6 +544,68 @@ def admin_catalog_review(params, user, role):
 # 9. Platform settings — read-only снэпшот
 # ══════════════════════════════════════════════════════════
 
+@register("admin_revenue_breakdown")
+def admin_revenue_breakdown(params, user, role):
+    """ТЗ §15: декомпозиция дохода группы — по компонентам, по периодам.
+
+    Показывает сумму basis_fee / logistics_margin / success_fee / rf_agent /
+    customs_fee по 4 окнам (24h / 7d / 30d / 90d) + total.
+    """
+    err = _ensure_admin(role)
+    if err: return err
+    from datetime import timedelta
+    from marketplace.models import PlatformRevenueLine
+    from django.db.models import Sum
+    from django.utils import timezone
+
+    now = timezone.now()
+    windows = [("24 часа", 1), ("7 дней", 7), ("30 дней", 30), ("90 дней", 90)]
+    KIND_LABELS = dict(PlatformRevenueLine.KIND_CHOICES)
+
+    results = []
+    for label, days in windows:
+        cutoff = now - timedelta(days=days)
+        qs = PlatformRevenueLine.objects.filter(created_at__gte=cutoff)
+        agg = qs.values("kind").annotate(total=Sum("amount")).order_by("-total")
+        by_kind = {row["kind"]: row["total"] or 0 for row in agg}
+        total = sum(by_kind.values(), Decimal("0"))
+        results.append({"label": label, "by_kind": by_kind, "total": total,
+                         "n": qs.count()})
+
+    main_window = results[1]  # 7d
+    items = [
+        {"label": "За 7 дней TOTAL", "value": f"${main_window['total']:,.0f}",
+         "tone": "info"},
+    ]
+    for kind, lbl in PlatformRevenueLine.KIND_CHOICES:
+        if main_window["by_kind"].get(kind, 0):
+            items.append({"label": lbl, "value": f"${main_window['by_kind'][kind]:,.0f}"})
+
+    period_rows = []
+    for r in results:
+        period_rows.append({
+            "title": f"{r['label']}",
+            "subtitle": f"${r['total']:,.0f} · {r['n']} строк",
+        })
+
+    return ActionResult(
+        text=(
+            f"💰 Декомпозиция дохода группы (ТЗ §15)\n"
+            f"За 7 дней · ${main_window['total']:,.0f}"
+        ),
+        cards=[
+            {"type": "kpi_grid", "data": {"title": "💰 Структура дохода (7d)",
+                                            "items": items}},
+            {"type": "list", "data": {"title": "📊 По периодам",
+                                        "items": period_rows}},
+        ],
+        contextual_actions=[
+            {"action": "admin_dashboard", "label": "← Сводка"},
+            {"action": "admin_gmv", "label": "📈 GMV"},
+        ],
+    )
+
+
 @register("admin_platform_settings")
 def admin_platform_settings(params, user, role):
     err = _ensure_admin(role)

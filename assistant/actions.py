@@ -145,6 +145,7 @@ _ADMIN_ONLY = [
     "admin_dashboard", "admin_gmv", "admin_users", "admin_user_detail",
     "admin_ban_user", "admin_unban_user", "admin_change_role",
     "admin_moderation_queue", "admin_catalog_review", "admin_platform_settings",
+    "admin_revenue_breakdown",
 ]
 
 
@@ -3387,6 +3388,21 @@ def confirm_delivery(params, user, role):
     order.save(update_fields=["status"])
     _log_event(order, "status_changed", actor=user, source="buyer",
                meta={"from": "delivered", "to": "completed", "kind": "buyer_accepted"})
+
+    # ТЗ §15: генерация revenue lines по этому заказу (basis_fee, logistics,
+    # success_fee, rf_agent, customs_fee, volume_discount).
+    try:
+        from .revenue import generate_revenue_lines
+        # Базис берём из meta или DDP по умолчанию (typical для РФ-импорта)
+        meta = order.logistics_meta or {}
+        basis = (meta.get("customs", {}) or {}).get("basis") or "DDP"
+        we_clear = bool((meta.get("customs", {}) or {}).get("hs_code"))  # если HS присвоен — мы оформляем
+        generate_revenue_lines(
+            order, basis=basis, payment_currency="USD",
+            we_clear_customs=we_clear,
+        )
+    except Exception:
+        logger.exception("generate_revenue_lines on confirm_delivery failed")
 
     # Эскроу → продавцам. Multi-seller split: разносим сумму по
     # OrderItem.part.seller пропорционально стоимости их позиций.

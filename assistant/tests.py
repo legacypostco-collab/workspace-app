@@ -787,6 +787,88 @@ class SupplierRatingEngineTests(TestCase):
         self.assertEqual(events.first().impact_score, Decimal("1.00"))
 
 
+class RevenueAccountingTests(TestCase):
+    """ТЗ §15: декомпозиция дохода группы."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import Order, UserProfile
+        from decimal import Decimal as D
+        U = get_user_model()
+        self.buyer = U.objects.create_user(username="t_rev_b", password="x")
+        UserProfile.objects.create(user=self.buyer, role="buyer")
+        self.order = Order.objects.create(
+            customer_name="b", customer_email="b@x.t", customer_phone="",
+            delivery_address="-", buyer=self.buyer, total_amount=D("10000"),
+            status="completed", payment_status="paid",
+        )
+
+    def test_generate_lines_ddp_basis(self):
+        from .revenue import generate_revenue_lines
+        from marketplace.models import PlatformRevenueLine
+        lines = generate_revenue_lines(self.order, basis="DDP", payment_currency="USD")
+        # DDP 12% от $10k = $1200
+        basis_fee = next(ln for ln in lines if ln.kind == "basis_fee")
+        self.assertEqual(basis_fee.amount, Decimal("1200.00"))
+        self.assertEqual(basis_fee.basis, "DDP")
+        self.assertEqual(basis_fee.pct, Decimal("12.00"))
+
+    def test_fob_basis_6pct(self):
+        from .revenue import generate_revenue_lines
+        lines = generate_revenue_lines(self.order, basis="FOB")
+        basis = next(ln for ln in lines if ln.kind == "basis_fee")
+        self.assertEqual(basis.amount, Decimal("600.00"))  # 6% от $10k
+
+    def test_cif_basis_8pct(self):
+        from .revenue import generate_revenue_lines
+        lines = generate_revenue_lines(self.order, basis="CIF")
+        basis = next(ln for ln in lines if ln.kind == "basis_fee")
+        self.assertEqual(basis.amount, Decimal("800.00"))  # 8% от $10k
+
+    def test_rf_agent_only_when_rub(self):
+        from .revenue import generate_revenue_lines
+        lines = generate_revenue_lines(self.order, basis="DDP", payment_currency="RUB")
+        rf = [ln for ln in lines if ln.kind == "rf_agent"]
+        self.assertEqual(len(rf), 1)
+        self.assertEqual(rf[0].amount, Decimal("200.00"))  # 2% от $10k
+        # USD — без rf_agent
+        lines_usd = generate_revenue_lines(self.order, basis="DDP", payment_currency="USD")
+        rf_usd = [ln for ln in lines_usd if ln.kind == "rf_agent"]
+        self.assertEqual(len(rf_usd), 0)
+
+    def test_customs_fee_when_we_clear(self):
+        from .revenue import generate_revenue_lines
+        lines = generate_revenue_lines(self.order, basis="DDP", we_clear_customs=True)
+        customs = [ln for ln in lines if ln.kind == "customs_fee"]
+        self.assertEqual(len(customs), 1)
+        self.assertEqual(customs[0].amount, Decimal("300"))
+
+    def test_success_fee_5pct(self):
+        from .revenue import generate_revenue_lines
+        lines = generate_revenue_lines(self.order, basis="DDP",
+                                        supplier_payable=Decimal("8000"))
+        sf = next(ln for ln in lines if ln.kind == "success_fee")
+        self.assertEqual(sf.amount, Decimal("400.00"))  # 5% от $8k
+
+    def test_idempotent_regeneration(self):
+        from .revenue import generate_revenue_lines
+        from marketplace.models import PlatformRevenueLine
+        # Первый вызов
+        lines1 = generate_revenue_lines(self.order, basis="DDP")
+        n1 = PlatformRevenueLine.objects.filter(order=self.order).count()
+        # Второй вызов — старые удаляются, новые создаются
+        lines2 = generate_revenue_lines(self.order, basis="FOB")
+        n2 = PlatformRevenueLine.objects.filter(order=self.order).count()
+        self.assertEqual(n2, n1)  # та же структура
+
+    def test_revenue_summary(self):
+        from .revenue import generate_revenue_lines, revenue_summary
+        generate_revenue_lines(self.order, basis="DDP")
+        summary = revenue_summary(self.order)
+        self.assertIn("basis_fee", summary["by_kind"])
+        self.assertGreater(summary["total"], 0)
+
+
 class ClaimWorkflowTests(TestCase):
     """ТЗ §5.4: claim flow с 6 статусами + переходы."""
 

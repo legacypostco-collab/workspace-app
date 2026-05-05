@@ -822,6 +822,49 @@ class CompanyVerification(models.Model):
         return f"KYB[{self.user_id}]={self.status}"
 
 
+class PlatformRevenueLine(models.Model):
+    """ТЗ §15: декомпозиция дохода группы по компонентам.
+
+    На каждый paid+delivered заказ генерируются строки:
+      • basis_fee     IT-Платформа за SLA, проверку, выдачу
+                      6% FOB / 8% CIF / 12% DDP (ТЗ §15.1)
+      • logistics_margin  3-7% по правилам портов (ТЗ §16)
+      • success_fee   5% от завода — удерживается из эскроу
+      • rf_agent      2% (если оплата RUB)
+      • customs_fee   $300 (если we оформляем таможню)
+    """
+    KIND_CHOICES = [
+        ("basis_fee",        "IT-Платформа FOB/CIF/DDP"),
+        ("logistics_margin", "Логистическая маржа"),
+        ("success_fee",      "Success fee 5%"),
+        ("rf_agent",         "РФ-агент 2%"),
+        ("customs_fee",      "Customs $300"),
+        ("volume_discount",  "Скидка по обороту (минус)"),
+    ]
+    BASIS_CHOICES = [("FOB", "FOB"), ("CIF", "CIF"), ("DDP", "DDP"),
+                      ("EXW", "EXW"), ("CIP", "CIP")]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="revenue_lines")
+    kind = models.CharField(max_length=30, choices=KIND_CHOICES)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    pct = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+        help_text="% использованный для расчёта (для basis_fee и logistics_margin)")
+    basis = models.CharField(max_length=10, choices=BASIS_CHOICES, blank=True)
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["order", "kind"], name="rev_order_kind_idx"),
+            models.Index(fields=["kind", "-created_at"], name="rev_kind_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"Rev[{self.order_id}/{self.kind}]: ${self.amount}"
+
+
 class BuyerVolumeYearly(models.Model):
     """ТЗ §4.1: годовой объём закупок клиента → уровень auto-discount.
 
