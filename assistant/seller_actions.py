@@ -1179,70 +1179,18 @@ def upload_pricelist(params, user, role):
                 "AI прочитает заголовки и предложит маппинг колонок на "
                 "стандартные поля платформы — вы проверите и подтвердите."
             ),
-            cards=[{"type": "int_methods", "data": {
-                "title": "Способы интеграции",
-                "methods": [
-                    {
-                        "icon": "📊",
-                        "title": "CSV / XLSX файл",
-                        "status": "active",
-                        "description": (
-                            "Загрузи файл прайса напрямую. Поддерживаем .csv, "
-                            ".xlsx. Автоматический маппинг колонок с preview."
-                        ),
-                        "primary": {
-                            "label": "📂 Выбрать файл",
-                            "action": "__open_file_picker",
-                            "params": {"accept": ".xlsx,.xls,.csv,.tsv,.txt"},
-                        },
-                    },
-                    {
-                        "icon": "📋",
-                        "title": "Google Sheets",
-                        "status": "active",
-                        "description": (
-                            "Подключи Google-таблицу — цены будут синхронизироваться "
-                            "автоматически по расписанию."
-                        ),
-                        "secondary": {
-                            "label": "📥 Создать копию шаблона",
-                            "url": "https://docs.google.com/spreadsheets/d/"
-                                   "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy",
-                        },
-                        "hint": "Заполните → откройте доступ → вставьте ссылку ниже",
-                        "input": {
-                            "name": "gsheet_url", "type": "url",
-                            "placeholder": "Вставьте ссылку на Google Sheet",
-                        },
-                        "primary": {
-                            "label": "Подключить",
-                            "action": "connect_gsheet",
-                            "params": {},
-                        },
-                    },
-                    {
-                        "icon": "🔌",
-                        "title": "REST API",
-                        "status": "soon",
-                        "description": (
-                            "Интеграция через API — обновляй цены, остатки и статусы "
-                            "напрямую из ERP / 1С / ТОиР."
-                        ),
-                        "disabled": True,
-                    },
-                    {
-                        "icon": "📥",
-                        "title": "Скачать шаблон",
-                        "status": "active",
-                        "description": (
-                            "Готовый CSV с 16 колонками и примерами строк "
-                            "(PartNumber, Name, Quantity, Price_EXW…)."
-                        ),
-                        "primary": {
-                            "label": "Скачать",
-                            "url": "/api/assistant/pricelist-template.csv",
-                        },
-                    },
+            cards=[{"type": "list", "data": {
+                "title": "Как загрузить прайс",
+                "rows": [
+                    {"title": "📂 Выбрать файл",
+                     "subtitle": "Excel или CSV до 20 МБ · можно перетащить в окно чата",
+                     "badge": ".xlsx",
+                     "action": "__open_file_picker",
+                     "params": {"accept": ".xlsx,.xls,.csv,.tsv,.txt"}},
+                    {"title": "📥 Скачать шаблон",
+                     "subtitle": "Готовый CSV с 16 колонками и примерами строк",
+                     "badge": "CSV",
+                     "url": "/api/assistant/pricelist-template.csv"},
                 ],
             }}],
             actions=[
@@ -1251,7 +1199,6 @@ def upload_pricelist(params, user, role):
             suggestions=[
                 "Что делать если в прайсе нет валюты?",
                 "Как часто можно обновлять прайс?",
-                "Чем отличается ORIGINAL от OEM?",
             ],
         )
 
