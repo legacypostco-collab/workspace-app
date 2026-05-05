@@ -44,6 +44,9 @@ class Conversation(models.Model):
         ("admin",    _("Управление")),    # KYB, team, integrations, settings
         ("purchase", _("Покупка")),       # quick_order, pay_*, track_order, claims
         ("support",  _("Поддержка")),     # claim disputes, op_resolve
+        # ТЗ: chat-type меняется по жизненному циклу сделки.
+        ("calc",     _("Расчёт")),        # RFQ → КП → reserve confirm
+        ("shipment", _("Сделка")),        # после reserve_paid: трекинг, оплаты, доставка
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

@@ -252,9 +252,12 @@ class DrawingAccessLog(models.Model):
 
 class RFQ(models.Model):
     MODE_CHOICES = [
-        ("auto", "AUTO"),
-        ("semi", "SEMI"),
-        ("manual_oem", "MANUAL OEM"),
+        ("auto",       "AUTO"),
+        ("semi",       "SEMI"),
+        ("manual",     "MANUAL"),
+        # Legacy alias — оставлен для совместимости со старыми RFQ. Новый код
+        # должен использовать "manual".
+        ("manual_oem", "MANUAL (legacy)"),
     ]
     URGENCY_CHOICES = [
         ("standard", "Standard"),
@@ -862,6 +865,47 @@ class CompanyVerification(models.Model):
 
     def __str__(self) -> str:
         return f"KYB[{self.user_id}]={self.status}"
+
+
+class CompetitorOffer(models.Model):
+    """ТЗ §5.2: загрузка конкурентного предложения от buyer'а для триггера
+    переторжки. Seller или operator может посмотреть и применить ручную
+    скидку с комментарием.
+    """
+    STATUS_CHOICES = [
+        ("uploaded",   _("Загружено")),
+        ("under_review", _("Рассматривается")),
+        ("matched",    _("Скидка применена")),
+        ("declined",   _("Отклонено (наша цена ниже)")),
+    ]
+    rfq = models.ForeignKey(RFQ, on_delete=models.CASCADE, related_name="competitor_offers",
+                              null=True, blank=True)
+    quote = models.ForeignKey("Quote", on_delete=models.CASCADE,
+                                related_name="competitor_offers", null=True, blank=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name="competitor_offers_uploaded")
+    competitor_name = models.CharField(max_length=200, blank=True)
+    quoted_price = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    delivery_days = models.PositiveIntegerField(default=14)
+    file_url = models.URLField(blank=True, help_text="Скан/PDF предложения")
+    note = models.TextField(blank=True, help_text="Комментарий buyer'а")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="uploaded")
+    seller_response_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+        help_text="Скидка от seller'а в ответ (% от quote.total_amount)")
+    seller_comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["rfq", "-created_at"], name="comp_rfq_created_idx"),
+            models.Index(fields=["quote", "-created_at"], name="comp_quote_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"CompOffer[{self.id}] {self.competitor_name}: ${self.quoted_price}"
 
 
 class PlatformRevenueLine(models.Model):

@@ -72,6 +72,8 @@ _BUYER_ACTIONS = [
     # Negotiation (buyer side)
     "view_rfq_quotes", "view_quote", "accept_quote", "counter_offer", "decline_quote",
     "send_rfq_to_suppliers", "auto_accept_and_pay_reserve",
+    # KP workflow (buyer side): present инвойс + confirm reserve
+    "present_kp_to_buyer", "confirm_kp_and_reserve",
     # Notification preferences (durable channels)
     "notif_prefs", "notif_set_email", "notif_set_kinds", "notif_link_telegram",
     # Auth — 2FA + API tokens (всем доступно)
@@ -127,6 +129,8 @@ _OPERATOR_CORE = [
     # Claim workflow (operator side)
     "start_claim_review", "approve_claim", "reject_claim",
     "apply_corrective", "apply_settlement", "close_claim", "claim_detail",
+    # KP workflow: SEMI approve + MANUAL dispatch/compose
+    "op_approve_kp", "op_dispatch_manual_rfq", "op_compose_kp",
 ]
 
 ROLE_ACTIONS = {
@@ -1112,7 +1116,7 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
     """Определяет режим обработки RFQ согласно детальному ТЗ §3-§5.
 
     Возвращает (mode, reason) где:
-      mode  — 'auto' | 'semi' | 'manual_oem'
+      mode  — 'auto' | 'semi' | 'manual'
       reason — человекочитаемое объяснение (для notes / UI / аудита)
 
     Правила (приоритет сверху вниз):
@@ -1136,7 +1140,7 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
     """
     # 0. Явный override
     explicit = (params.get("mode") or "").strip().lower()
-    if explicit in ("auto", "semi", "manual_oem"):
+    if explicit in ("auto", "semi", "manual"):
         return explicit, f"mode={explicit} (явно передан в params)"
 
     total = len(items_to_add)
@@ -1145,13 +1149,13 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
 
     # 4. Buyer вручную ввёл OEM-номера → MANUAL_OEM
     if params.get("articles"):
-        return "manual_oem", (
-            f"manual_oem · buyer ввёл {len(params['articles'])} OEM-номеров вручную"
+        return "manual", (
+            f"manual · buyer ввёл {len(params['articles'])} OEM-номеров вручную"
         )
 
     # 5. Ни одного совпадения с каталогом → MANUAL_OEM
     if matched_count == 0:
-        return "manual_oem", f"manual_oem · 0/{total} позиций сматчены с каталогом"
+        return "manual", f"manual · 0/{total} позиций сматчены с каталогом"
 
     # 1. Buyer не верифицирован KYB → SEMI
     try:
@@ -1379,10 +1383,10 @@ def create_rfq(params, user, role):
         logger.exception("create_rfq failed")
         return ActionResult(text=f"⚠️ Не удалось создать RFQ: {e}")
 
-    # AUTO режим: сразу автоматически рассылаем поставщикам.
-    # SEMI / MANUAL_OEM: ждём явного действия buyer'а.
+    # AUTO/SEMI: сразу автоматически рассылаем поставщикам и собираем КП.
+    # MANUAL: ждём оператора (op_dispatch_manual_rfq).
     auto_sent_count = 0
-    if mode == "auto":
+    if mode in ("auto", "semi"):
         try:
             from .negotiation import send_rfq_to_suppliers
             r = send_rfq_to_suppliers(
@@ -1396,25 +1400,73 @@ def create_rfq(params, user, role):
         except Exception:
             logger.exception("auto-send on create_rfq failed")
 
+    # SEMI: уведомляем оператора, что нужен approve в 15 минут
+    if mode == "semi":
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            ops = User.objects.filter(is_staff=True, is_active=True)[:5]
+            for op in ops:
+                _notify(
+                    op, kind="rfq",
+                    title=f"⏱ SEMI RFQ #{rfq.id} — нужен approve (15 мин)",
+                    body=f"Buyer {user.username} создал SEMI-RFQ. "
+                         f"Проверь КП и одобри/отклони.",
+                    url=f"/chat/rfq/{rfq.id}/?source=semi-approve",
+                )
+        except Exception:
+            logger.exception("SEMI operator notify failed")
+
+    # MANUAL: уведомляем оператора, что нужен ручной dispatch (48h)
+    if mode == "manual":
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            ops = User.objects.filter(is_staff=True, is_active=True)[:5]
+            for op in ops:
+                _notify(
+                    op, kind="rfq",
+                    title=f"📋 MANUAL RFQ #{rfq.id} — нужна ручная рассылка",
+                    body=f"Buyer {user.username}: {len(items_to_add)} позиций. "
+                         f"Срок сбора КП — 48 часов.",
+                    url=f"/chat/rfq/{rfq.id}/?source=manual-dispatch",
+                )
+        except Exception:
+            logger.exception("MANUAL operator notify failed")
+
     matched_count = sum(1 for t in items_to_add if t[2] is not None)
     summary = f"{matched_count} из {len(items_to_add)} позиций сматчены с каталогом"
 
     if mode == "auto":
         text = (
             f"✓ RFQ #{rfq.id} создан · {len(items_to_add)} позиций. {summary}.\n"
-            f"🤖 AUTO: запрос автоматически разослан "
-            f"{auto_sent_count} поставщикам — котировки будут приходить."
+            f"🤖 AUTO: запрос автоматически разослан {auto_sent_count} поставщикам.\n"
+            f"📋 КП готовится — откройте, чтобы подтвердить и зарезервировать 10%."
         )
     elif mode == "semi":
         text = (
             f"✓ RFQ #{rfq.id} создан в SEMI режиме · {len(items_to_add)} позиций.\n"
-            f"AI подобрал кандидатов — откройте RFQ и подтвердите рассылку."
+            f"⏱ Расчёт готов, оператор подтвердит КП в течение 15 минут.\n"
+            f"После approve вы получите инвойс с кнопкой резервирования."
         )
-    else:  # manual_oem
+    else:  # manual
         text = (
-            f"✓ RFQ #{rfq.id} создан в MANUAL OEM режиме · {len(items_to_add)} позиций.\n"
-            f"Откройте RFQ и выберите конкретных поставщиков."
+            f"✓ RFQ #{rfq.id} создан в MANUAL режиме · {len(items_to_add)} позиций.\n"
+            f"📋 Оператор вручную разошлёт запрос поставщикам и сформирует КП.\n"
+            f"⏱ Срок сбора предложений — 48 часов."
         )
+
+    # AUTO: сразу показываем КП-инвойс buyer'у с кнопкой
+    # «Подтвердить и зарезервировать 10%».
+    actions = []
+    if mode == "auto":
+        from marketplace.models import Quote as _Q
+        if _Q.objects.filter(rfq=rfq, direction="seller_to_buyer", status="submitted").exists():
+            actions.append({
+                "action": "present_kp_to_buyer",
+                "label": "📋 Открыть КП и подтвердить",
+                "params": {"rfq_id": rfq.id},
+            })
 
     return ActionResult(
         text=text,
@@ -1424,14 +1476,12 @@ def create_rfq(params, user, role):
                 "id": str(rfq.id),
                 "number": rfq.id,
                 "status": "new",
-                "description": " · ".join(q for q, _, _ in items_to_add[:5])[:200],
-                "quantity": sum(q for _, q, _ in items_to_add),
+                "description": " · ".join(str(t[0]) for t in items_to_add[:5])[:200],
+                "quantity": sum(int(t[1] or 1) for t in items_to_add),
                 "created_at": rfq.created_at.strftime("%d.%m.%Y %H:%M"),
             },
         }],
-        # Карточка RFQ сама кликабельна → /chat/rfq/<id>/. Дублирующая
-        # кнопка «Открыть страницу RFQ» удалена.
-        actions=[],
+        actions=actions,
         suggestions=["Мои активные RFQ", "Создать ещё RFQ"],
     )
 

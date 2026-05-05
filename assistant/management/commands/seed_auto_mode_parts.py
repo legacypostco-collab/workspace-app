@@ -30,11 +30,15 @@ User = get_user_model()
 # [demo_seller, seller_1, seller_5, seller_6] — все trusted в БД).
 TEST_OEMS = [
     # (oem_number, title, brand_name, category_slug, base_price_usd)
-    ("AUTO-TEST-9F77-CRAWLER-PIN", "Палец гусеничной цепи D85 (тест AUTO)",  "Komatsu",  "running-gear",  85),
-    ("AUTO-TEST-5K22-FUEL-FILTER", "Топливный фильтр CAT 320 (тест AUTO)",   "Caterpillar", "filters",    42),
-    ("AUTO-TEST-3C18-HYD-PUMP",    "Гидронасос HPV0102 (тест AUTO)",         "Komatsu",  "hydraulics",    1200),
-    ("AUTO-TEST-7M44-INJECTOR",    "Форсунка common-rail (тест AUTO)",        "Caterpillar", "engine",     320),
-    ("AUTO-TEST-2B61-BUSHING",     "Втулка ковша 60×80×95 (тест AUTO)",       "Liebherr", "running-gear",  68),
+    # CAT-style 6-7 знаков (буква-цифра-цифра-цифра-цифра-цифра)
+    ("2W1223", "Топливный фильтр CAT 3406",                    "Caterpillar", "filters",      42),
+    ("1R0750", "Масляный фильтр CAT C13/C15",                  "Caterpillar", "filters",      35),
+    ("6V8398", "Уплотнение поворотного редуктора 320",         "Caterpillar", "hydraulics",   58),
+    ("7C3984", "Палец рукояти CAT 320",                        "Caterpillar", "running-gear", 145),
+    ("9X2197", "Втулка ковша 60×80",                           "Caterpillar", "running-gear", 68),
+    # Komatsu-style (буква-цифры с дефисом)
+    ("207-70-72180", "Палец гусеничной цепи D85",               "Komatsu", "running-gear",   220),
+    ("6217-71-1330", "Форсунка common-rail SAA6D140",           "Komatsu", "engine",         320),
 ]
 
 # Список trusted-юзеров — берём существующих в БД

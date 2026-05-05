@@ -467,7 +467,7 @@ class RFQDetailView(APIView):
             "id": rfq.id,
             "status": rfq.status,
             "stage": stage,
-            "mode": rfq.mode,            # 'auto' | 'semi' | 'manual_oem'
+            "mode": rfq.mode,            # 'auto' | 'semi' | 'manual'
             "mode_reason": classifier_reason,
             "urgency": rfq.urgency,
             "customer_name": rfq.customer_name,

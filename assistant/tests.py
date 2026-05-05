@@ -567,18 +567,18 @@ class RFQModeClassifierTests(TestCase):
         self.assertEqual(mode, "semi")
         self.assertIn("partial", reason.lower())
 
-    def test_manual_oem_when_zero_matched(self):
+    def test_manual_when_zero_matched(self):
         from .actions import _classify_rfq_mode
         items = self._items(None, None)
         mode, reason = _classify_rfq_mode(items, self.buyer, {})
-        self.assertEqual(mode, "manual_oem")
+        self.assertEqual(mode, "manual")
         self.assertIn("0/", reason)
 
-    def test_manual_oem_when_articles_param_passed(self):
+    def test_manual_when_articles_param_passed(self):
         from .actions import _classify_rfq_mode
         items = self._items(self.part_trusted)
         mode, reason = _classify_rfq_mode(items, self.buyer, {"articles": ["X-123", "Y-456"]})
-        self.assertEqual(mode, "manual_oem")
+        self.assertEqual(mode, "manual")
         self.assertIn("oem", reason.lower())
 
     def test_semi_when_buyer_not_verified(self):

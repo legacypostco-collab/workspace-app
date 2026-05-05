@@ -52,3 +52,13 @@ class AssistantConfig(AppConfig):
             from . import claims  # noqa
         except ImportError:
             pass
+        # Регистрируем KP workflow (auto/semi/manual + calc→shipment)
+        try:
+            from . import kp_workflow  # noqa
+        except ImportError:
+            pass
+        # Регистрируем competitor offers (manual discount triggering)
+        try:
+            from . import competitor_offers  # noqa
+        except ImportError:
+            pass
