@@ -564,6 +564,62 @@
         </div>
       </div>`;
     },
+    int_methods(d) {
+      // Карточка способов интеграции (CSV/XLSX, Google Sheets, REST API).
+      const methods = (d.methods || []).map(m => {
+        const stCls = m.status === 'soon' ? 'im-st-soon'
+                     : m.status === 'active' ? 'im-st-active' : 'im-st-default';
+        const stLabel = m.status === 'soon' ? 'Скоро'
+                       : m.status === 'active' ? 'Активно' : '';
+        const stBadge = stLabel ? `<span class="im-status ${stCls}">${esc(stLabel)}</span>` : '';
+        const icon = m.icon || '◇';
+        // Secondary action (вторичная кнопка над main, например «Создать копию шаблона»)
+        let secHtml = '';
+        if (m.secondary) {
+          if (m.secondary.url) {
+            secHtml = `<a class="im-secondary" href="${esc(m.secondary.url)}" target="_blank" rel="noopener">${esc(m.secondary.label || '↗')}</a>`;
+          } else if (m.secondary.action) {
+            secHtml = `<button class="im-secondary act-btn" data-action="${esc(m.secondary.action)}" data-params='${esc(JSON.stringify(m.secondary.params || {}))}' data-label="${esc(m.secondary.label || '')}">${esc(m.secondary.label || '↗')}</button>`;
+          }
+        }
+        // Inline-форма: hint + input + primary submit
+        let formHtml = '';
+        if (m.input) {
+          const inpName = m.input.name || 'value';
+          const fixed = JSON.stringify((m.primary && m.primary.params) || {});
+          const submitAction = (m.primary && m.primary.action) || '';
+          formHtml = `${m.hint ? `<div class="im-hint">${esc(m.hint)}</div>` : ''}
+            <div class="im-form fm-card" data-form-action="${esc(submitAction)}" data-fixed='${esc(fixed)}'>
+              <input class="fm-input im-input" name="${esc(inpName)}" type="${esc(m.input.type || 'text')}" placeholder="${esc(m.input.placeholder || '')}" autocomplete="off"/>
+              <button type="button" class="act-btn fm-submit im-primary">${esc((m.primary && m.primary.label) || 'OK')}</button>
+            </div>`;
+        } else if (m.primary && !m.disabled) {
+          // Просто primary-кнопка
+          if (m.primary.action) {
+            formHtml = `<button class="im-primary act-btn" data-action="${esc(m.primary.action)}" data-params='${esc(JSON.stringify(m.primary.params || {}))}' data-label="${esc(m.primary.label || '')}">${esc(m.primary.label || 'OK')}</button>`;
+          } else if (m.primary.url) {
+            formHtml = `<a class="im-primary" href="${esc(m.primary.url)}" target="_blank" rel="noopener">${esc(m.primary.label || '↗')}</a>`;
+          }
+        }
+        const disabledCls = m.disabled ? ' im-card-disabled' : '';
+        return `<div class="im-card${disabledCls}">
+          <div class="im-head">
+            <div class="im-icon">${esc(icon)}</div>
+            <div class="im-title-wrap">
+              <div class="im-title">${esc(m.title || '')}</div>
+              ${stBadge}
+            </div>
+          </div>
+          <div class="im-desc">${esc(m.description || '')}</div>
+          ${secHtml}
+          ${formHtml}
+        </div>`;
+      }).join('');
+      return `<div class="card im-block">
+        <div class="im-block-title">${esc(d.title || 'Способы интеграции')}</div>
+        <div class="im-list">${methods}</div>
+      </div>`;
+    },
     table_preview(d) {
       const headers = (d.headers || []).map(h => `<th>${esc(h)}</th>`).join('');
       const rows = (d.rows || []).map(row => {
