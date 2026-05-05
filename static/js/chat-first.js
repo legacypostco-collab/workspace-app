@@ -517,10 +517,31 @@
     },
     form(d) {
       const fields = (d.fields || []).map(f => {
-        const val = f.default || '';
+        const val = (f.value !== undefined ? f.value : f.default) || '';
         const req = f.required ? 'required' : '';
-        return `<label class="fm-row">
-          <span class="fm-label">${esc(f.label || f.name)}${f.required ? ' <span class="fm-req">*</span>' : ''}</span>
+        const lbl = `<span class="fm-label">${esc(f.label || f.name)}${f.required ? ' <span class="fm-req">*</span>' : ''}</span>`;
+        // select — настоящий <select> с options
+        if (f.type === 'select') {
+          const opts = (f.options || []).map(o => {
+            const v = o.value !== undefined ? o.value : o;
+            const lab = o.label !== undefined ? o.label : o;
+            const sel = String(v) === String(val) ? 'selected' : '';
+            return `<option value="${esc(v)}" ${sel}>${esc(lab)}</option>`;
+          }).join('');
+          return `<label class="fm-row">${lbl}
+            <select class="fm-input fm-select" name="${esc(f.name)}" ${req}>
+              ${opts}
+            </select>
+          </label>`;
+        }
+        // textarea — многострочный
+        if (f.type === 'textarea') {
+          return `<label class="fm-row">${lbl}
+            <textarea class="fm-input fm-textarea" name="${esc(f.name)}" rows="${f.rows || 4}" placeholder="${esc(f.placeholder || '')}" ${req}>${esc(val)}</textarea>
+          </label>`;
+        }
+        // обычный input (text/number/email/...)
+        return `<label class="fm-row">${lbl}
           <input class="fm-input" name="${esc(f.name)}" type="${esc(f.type || 'text')}" value="${esc(val)}" placeholder="${esc(f.placeholder || '')}" ${req} autocomplete="off"/>
         </label>`;
       }).join('');
@@ -531,6 +552,21 @@
         <div class="fm-actions">
           <button type="button" class="act-btn fm-submit">${esc(d.submit_label || 'Отправить')}</button>
         </div>
+      </div>`;
+    },
+    table_preview(d) {
+      const headers = (d.headers || []).map(h => `<th>${esc(h)}</th>`).join('');
+      const rows = (d.rows || []).map(row => {
+        const cells = (row || []).map(c => `<td>${esc((c == null ? '' : String(c)).slice(0, 60))}</td>`).join('');
+        return `<tr>${cells}</tr>`;
+      }).join('');
+      return `<div class="card tp-card">
+        <div class="card-title">${esc(d.title || 'Превью')}</div>
+        <div class="tp-scroll"><table class="tp-table">
+          <thead><tr>${headers}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+        ${d.foot ? `<div class="tp-foot">${esc(d.foot)}</div>` : ''}
       </div>`;
     },
     seller_queue(d) {
@@ -1754,31 +1790,36 @@
       const headerOpts = [{value: '', label: '— не использовать —'}]
         .concat(headers.map(h => ({value: h, label: h})));
 
+      // (Не добавляем `*` к лейблу — рендерер сам это сделает по f.required)
       const fields = stdFields.map(f => ({
         name: 'col__' + f.key,
-        label: f.label + (f.required ? ' *' : ''),
+        label: f.label,
         type: 'select',
         options: headerOpts,
         value: sug[f.key] || '',
         required: f.required,
       }));
 
-      // Превью-строки (первые 3) — отдельная info-карточка
-      const sampleText = sample.length
-        ? sample.map((r, i) => `${i+1}: ${r.join(' | ').slice(0, 120)}`).join('\n')
-        : '(нет данных)';
-
       addMessage('assistant',
-        `📋 Файл прочитан · ${headers.length} колонок\n` +
-        `Проверьте предложенный маппинг и нажмите «Загрузить».\n\n` +
-        `Примеры строк:\n${sampleText}`,
-        [{type:'form', data:{
-          title: '🔗 Маппинг колонок прайса → платформа',
-          submit_action: '__pricelist_commit',
-          submit_label: '📥 Загрузить весь файл',
-          fields: fields,
-          fixed_params: {import_id: data.import_id},
-        }}],
+        `📋 Файл прочитан · ${headers.length} колонок · ${sample.length} превью-строк.\n` +
+        `Проверьте маппинг ниже и нажмите «Загрузить весь файл».`,
+        [
+          // 1. Превью-таблица
+          {type:'table_preview', data:{
+            title: '👀 Превью прайса (первые 3 строки)',
+            headers: headers,
+            rows: sample,
+            foot: 'AI/heuristic уже подобрали колонки ниже — проверьте и поправьте при необходимости.',
+          }},
+          // 2. Форма с маппингом
+          {type:'form', data:{
+            title: '🔗 Маппинг колонок прайса → платформа',
+            submit_action: '__pricelist_commit',
+            submit_label: '📥 Загрузить весь файл',
+            fields: fields,
+            fixed_params: {import_id: data.import_id},
+          }},
+        ],
         [{action: '__pricelist_cancel', label: 'Отменить',
           params: {import_id: data.import_id}}]
       );

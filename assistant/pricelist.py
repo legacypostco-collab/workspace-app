@@ -152,15 +152,22 @@ def _read_all(filename: str, blob: bytes):
 def _heuristic_mapping(headers: list[str]) -> dict[str, str]:
     """Правила по ключевым словам — fallback если AI недоступен."""
     rules = {
-        "oem_number": ["артикул", "oem", "sku", "part", "code", "номер", "код"],
-        "title":      ["название", "наименование", "title", "name", "описание", "description"],
-        "price":      ["цена", "price", "стоимост", "cost"],
-        "currency":   ["валюта", "currency", "ccy"],
-        "brand":      ["бренд", "brand", "производит", "manufacturer", "make"],
-        "stock":      ["остаток", "stock", "наличи", "qty", "количество"],
-        "moq":        ["moq", "мин", "minimum", "min order"],
+        # ru / en / zh / de / fr
+        "oem_number": ["артикул", "oem", "sku", "part", "code", "номер", "код",
+                        "件号", "零件号", "partnumber", "part no", "ref",
+                        "artikel", "référence", "código"],
+        "title":      ["название", "наименование", "title", "name", "описание",
+                        "description", "名称", "bezeichnung", "désignation"],
+        "price":      ["цена", "price", "стоимост", "cost", "unitprice",
+                        "价格", "成本", "preis", "prix", "precio"],
+        "currency":   ["валюта", "currency", "ccy", "货币"],
+        "brand":      ["бренд", "brand", "производит", "manufacturer", "make",
+                        "品牌", "marke", "marca"],
+        "stock":      ["остаток", "stock", "наличи", "qty", "количество",
+                        "库存", "lager", "存量"],
+        "moq":        ["moq", "мин", "minimum", "min order", "最小"],
         "incoterm":   ["incoterm", "базис", "условия", "fob", "cif", "ddp"],
-        "weight_kg":  ["вес", "weight", "kg", "масса"],
+        "weight_kg":  ["вес", "weight", "kg", "масса", "重量", "gewicht", "poids"],
     }
     mapping: dict[str, str] = {}
     used = set()
