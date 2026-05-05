@@ -56,19 +56,21 @@ logger = logging.getLogger(__name__)
 # ── Standard fields ──────────────────────────────────────────────
 
 STD_FIELDS = [
-    # (key, label, required)
-    ("oem_number", "Артикул (OEM)",       True),
-    ("title",      "Название",             True),
-    ("price",      "Цена",                 True),
-    ("currency",   "Валюта",               False),
-    ("brand",      "Бренд",                False),
-    ("stock",      "Остаток",              False),
-    ("moq",        "MOQ",                  False),
-    ("incoterm",   "Базис (FOB/CIF/DDP)",  False),
-    ("weight_kg",  "Вес, кг",              False),
+    # (key, label, required, enum_values_or_None)
+    # enum_values — фиксированные значения, доступные как «применить ко
+    # всем строкам» (передаются в commit как `fix:VALUE`).
+    ("oem_number", "Артикул (OEM)",       True,  None),
+    ("title",      "Название",             True,  None),
+    ("price",      "Цена",                 True,  None),
+    ("currency",   "Валюта",               False, ["USD", "EUR", "RUB", "CNY"]),
+    ("brand",      "Бренд",                False, None),
+    ("stock",      "Остаток",              False, None),
+    ("moq",        "MOQ",                  False, None),
+    ("incoterm",   "Базис",                False, ["FOB", "CIF", "DDP"]),
+    ("weight_kg",  "Вес, кг",              False, None),
 ]
 
-REQUIRED_FIELDS = [k for k, _, req in STD_FIELDS if req]
+REQUIRED_FIELDS = [k for k, _, req, _ in STD_FIELDS if req]
 
 
 # ── File reading ─────────────────────────────────────────────────
@@ -196,7 +198,7 @@ def _ai_mapping(headers: list[str], sample_rows: list[list[str]]) -> dict[str, s
 
     fields_doc = "\n".join(
         f"  - {k} ({label}){' [REQUIRED]' if req else ''}"
-        for k, label, req in STD_FIELDS
+        for k, label, req, enum_v in STD_FIELDS
     )
     sample_text = "\n".join(
         " | ".join(str(c)[:40] for c in row) for row in sample_rows
@@ -229,7 +231,7 @@ def _ai_mapping(headers: list[str], sample_rows: list[list[str]]) -> dict[str, s
         result = json.loads(text)
         # Проверяем что все значения — реальные заголовки
         return {k: v for k, v in result.items()
-                 if k in {f for f, _, _ in STD_FIELDS} and v in headers}
+                 if k in {f for f, _, _, _ in STD_FIELDS} and v in headers}
     except Exception:
         logger.exception("AI mapping failed, falling back to heuristic")
         return _heuristic_mapping(headers)
@@ -325,12 +327,24 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
 
     seller = import_obj.seller
     headers = import_obj.headers
-    # mapping: {std_field: column_header}. Нужны индексы по headers.
-    col_idx = {fld: headers.index(col) for fld, col in mapping.items()
-                if col in headers}
+    # mapping: {std_field: source}. Source может быть:
+    #   header-name      — берём из колонки
+    #   "fix:VALUE"      — фикс. значение (применяется ко всем строкам)
+    col_idx: dict[str, int] = {}
+    fixed_vals: dict[str, str] = {}
+    for fld, val in mapping.items():
+        if not val:
+            continue
+        if isinstance(val, str) and val.startswith("fix:"):
+            fixed_vals[fld] = val[4:]
+        elif val in headers:
+            col_idx[fld] = headers.index(val)
 
-    # Проверка обязательных полей в маппинге
-    missing_required = [f for f in REQUIRED_FIELDS if f not in col_idx]
+    # Проверка обязательных полей: либо колонка, либо фикс
+    missing_required = [
+        f for f in REQUIRED_FIELDS
+        if f not in col_idx and f not in fixed_vals
+    ]
     if missing_required:
         return 0, 0, [{"row": 0, "reason": f"missing required mapping: {missing_required}"}]
 
@@ -350,6 +364,10 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
                 continue  # пустая строка
 
             def get(field):
+                # Сначала фикс-значение (применяется ко всем строкам),
+                # затем колонка из файла.
+                if field in fixed_vals:
+                    return fixed_vals[field]
                 idx = col_idx.get(field)
                 if idx is None or idx >= len(row):
                     return ""
@@ -474,8 +492,9 @@ class PricelistUploadView(APIView):
             "sample_rows": sample,
             "suggested_mapping": suggested,
             "std_fields": [
-                {"key": k, "label": label, "required": req}
-                for k, label, req in STD_FIELDS
+                {"key": k, "label": label, "required": req,
+                 "enum_values": enum_v or []}
+                for k, label, req, enum_v in STD_FIELDS
             ],
         })
 
@@ -505,11 +524,15 @@ class PricelistCommitView(APIView):
                 return Response(
                     {"error": f"required field '{f}' not mapped"}, status=400,
                 )
-        # Маппинг должен ссылаться на реальные headers
-        for fld, col in mapping.items():
-            if col and col not in imp.headers:
+        # Маппинг ссылается либо на реальный header, либо на «fix:VALUE»
+        for fld, val in mapping.items():
+            if not val:
+                continue
+            if isinstance(val, str) and val.startswith("fix:"):
+                continue  # фикс. значение
+            if val not in imp.headers:
                 return Response(
-                    {"error": f"unknown column '{col}' for {fld}"}, status=400,
+                    {"error": f"unknown column '{val}' for {fld}"}, status=400,
                 )
 
         # Читаем файл

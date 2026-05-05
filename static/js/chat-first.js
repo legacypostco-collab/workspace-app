@@ -1788,18 +1788,27 @@
       const sample = data.sample_rows || [];
       const sug = data.suggested_mapping || {};
       const stdFields = data.std_fields || [];
-      const headerOpts = [{value: '', label: '— не использовать —'}]
-        .concat(headers.map(h => ({value: h, label: h})));
-
       // (Не добавляем `*` к лейблу — рендерер сам это сделает по f.required)
-      const fields = stdFields.map(f => ({
-        name: 'col__' + f.key,
-        label: f.label,
-        type: 'select',
-        options: headerOpts,
-        value: sug[f.key] || '',
-        required: f.required,
-      }));
+      // Для полей с enum_values (currency, incoterm) добавляем
+      // фиксированные варианты «применить ко всем строкам» с префиксом fix:.
+      const fields = stdFields.map(f => {
+        const opts = [{value: '', label: '— не использовать —'}]
+          .concat(headers.map(h => ({value: h, label: '📋 Колонка: ' + h})));
+        if (f.enum_values && f.enum_values.length) {
+          opts.push({value: '__sep__', label: '— или фикс. для всех строк —'});
+          f.enum_values.forEach(v => {
+            opts.push({value: 'fix:' + v, label: '💎 ' + v});
+          });
+        }
+        return {
+          name: 'col__' + f.key,
+          label: f.label,
+          type: 'select',
+          options: opts,
+          value: sug[f.key] || '',
+          required: f.required,
+        };
+      });
 
       addMessage('assistant',
         `📋 Файл прочитан · ${headers.length} колонок · ${sample.length} превью-строк.\n` +
@@ -1835,7 +1844,7 @@
     const importId = params.import_id;
     const mapping = {};
     Object.keys(params).forEach(k => {
-      if (k.startsWith('col__') && params[k]) {
+      if (k.startsWith('col__') && params[k] && params[k] !== '__sep__') {
         mapping[k.slice(5)] = params[k];
       }
     });
