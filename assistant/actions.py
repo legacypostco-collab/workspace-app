@@ -71,7 +71,7 @@ _BUYER_ACTIONS = [
     "submit_bank", "submit_director", "submit_for_review", "kyb_status",
     # Negotiation (buyer side)
     "view_rfq_quotes", "view_quote", "accept_quote", "counter_offer", "decline_quote",
-    "send_rfq_to_suppliers",
+    "send_rfq_to_suppliers", "auto_accept_and_pay_reserve",
     # Notification preferences (durable channels)
     "notif_prefs", "notif_set_email", "notif_set_kinds", "notif_link_telegram",
     # Auth — 2FA + API tokens (всем доступно)

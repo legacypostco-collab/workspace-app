@@ -294,10 +294,36 @@ def send_rfq_to_suppliers(params, user, role):
         except Exception:
             logger.exception("audit risky dispatch failed")
 
+    # AUTO-mode: достаём cheapest для primary CTA
+    best_quote = None
+    reserve_amount = None
+    if rfq.mode == "auto" and auto_quotes > 0:
+        from marketplace.models import Quote as _Q
+        best_quote = (_Q.objects.filter(
+            rfq=rfq, direction="seller_to_buyer", status="submitted",
+        ).order_by("total_amount").first())
+        if best_quote:
+            reserve_amount = (best_quote.total_amount * Decimal("0.10")).quantize(Decimal("0.01"))
+
     auto_q_line = (
         f"\n🤖 AUTO: {auto_quotes} продавцов сразу выставили КП из каталога."
+        + (f"\n🎯 Лучшее: ${best_quote.total_amount:,.0f} · резерв ${reserve_amount:,.0f}"
+           if best_quote else "")
         if rfq.mode == "auto" and auto_quotes > 0 else ""
     )
+
+    actions = []
+    if best_quote:
+        actions.append({
+            "action": "auto_accept_and_pay_reserve",
+            "label": f"✓ Принять лучшее и оплатить резерв ${reserve_amount:,.0f}",
+            "params": {"rfq_id": rfq.id},
+        })
+    actions.append({
+        "action": "view_rfq_quotes", "label": "📊 Все котировки",
+        "params": {"rfq_id": rfq.id},
+    })
+
     return ActionResult(
         text=(
             f"✓ RFQ #{rfq.id} разослан {sent} поставщикам · "
@@ -306,9 +332,8 @@ def send_rfq_to_suppliers(params, user, role):
             + ".\nКотировки будут приходить — следите за уведомлениями."
             + auto_q_line
         ),
+        actions=actions,
         contextual_actions=[
-            {"action": "view_rfq_quotes", "label": "📊 Открытые котировки",
-             "params": {"rfq_id": rfq.id}},
             {"action": "open_url", "label": "← Назад к RFQ",
              "params": {"_url": f"/chat/rfq/{rfq.id}/"}},
         ],
@@ -788,8 +813,93 @@ def accept_quote(params, user, role):
 
 
 # ══════════════════════════════════════════════════════════
-# 5. counter_offer — buyer предлагает свою цену
+# 4b. auto_accept_and_pay_reserve — one-click AUTO-mode finisher (§4.1)
 # ══════════════════════════════════════════════════════════
+
+@register("auto_accept_and_pay_reserve")
+def auto_accept_and_pay_reserve(params, user, role):
+    """ТЗ §4.1: AUTO-mode завершение в один клик.
+
+    Выбирает САМОЕ ДЕШЁВОЕ КП по RFQ, создаёт Order и сразу списывает
+    резерв 10% с депозита. Order заходит в воронку (status=reserve_paid).
+
+    params: {rfq_id, confirmed?}
+    """
+    from marketplace.models import RFQ, Quote
+    from .actions import pay_reserve as _pay_reserve
+
+    confirmed = bool(params.get("confirmed"))
+    try:
+        rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
+    except (RFQ.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="RFQ не найден.")
+
+    if rfq.created_by_id != user.id:
+        return ActionResult(text="Принять КП может только заказчик RFQ.")
+
+    # Выбираем самое дешёвое submitted/finalized КП
+    best = (Quote.objects.filter(rfq=rfq, direction="seller_to_buyer",
+                                  status__in=("submitted", "finalized"))
+            .order_by("total_amount").select_related("seller").first())
+    if not best:
+        return ActionResult(text=(
+            "По этому RFQ ещё нет котировок. Подождите рассылки или измените режим."
+        ))
+
+    reserve_amount = (best.total_amount * Decimal("0.10")).quantize(Decimal("0.01"))
+
+    # Шаг 1: preview
+    if not confirmed:
+        return ActionResult(
+            text=(
+                f"🎯 Лучшее КП по RFQ #{rfq.id}\n"
+                f"Принимаем котировку #{best.id} и сразу списываем резерв 10%."
+            ),
+            cards=[{"type": "draft", "data": {
+                "title": f"🎯 AUTO: принять #{best.id} и оплатить резерв",
+                "rows": [
+                    {"label": "RFQ", "value": f"#{rfq.id} · {rfq.items.count()} позиций"},
+                    {"label": "Поставщик", "value": "🥇 Лучший по цене (имя раскроется)"},
+                    {"label": "Сумма заказа", "value": f"${best.total_amount:,.2f}", "primary": True},
+                    {"label": "Срок поставки", "value": f"{best.delivery_days} дней"},
+                    {"label": "Резерв 10%", "value": f"${reserve_amount:,.2f}", "primary": True},
+                ],
+                "warnings": [
+                    "После клика будет создан Order, остальные котировки автоматически отклоняются.",
+                    f"С депозита спишется ${reserve_amount:,.2f}, удерживается в эскроу платформы.",
+                ],
+                "confirm_action": "auto_accept_and_pay_reserve",
+                "confirm_label": f"✓ Принять и списать ${reserve_amount:,.0f}",
+                "confirm_params": {"rfq_id": rfq.id, "confirmed": True},
+                "cancel_label": "Сравнить все КП",
+            }}],
+            actions=[
+                {"action": "view_rfq_quotes", "label": "📊 Все котировки",
+                 "params": {"rfq_id": rfq.id}},
+            ],
+        )
+
+    # Шаг 2: accept_quote inline
+    res_accept = accept_quote(
+        {"quote_id": best.id, "confirmed": True}, user, role,
+    )
+    if res_accept.text and "создан заказ" not in res_accept.text:
+        # accept_quote вернул ошибку — пробрасываем как есть
+        return res_accept
+
+    # Достаём id созданного Order'а из лог-события
+    from marketplace.models import Order
+    order = (Order.objects.filter(buyer=user)
+             .order_by("-id").first())
+    if not order:
+        return ActionResult(text="⚠️ Не удалось создать заказ.")
+
+    # Шаг 3: pay_reserve inline (если хватает денег на депозите)
+    res_pay = _pay_reserve(
+        {"order_id": order.id, "confirmed": True}, user, role,
+    )
+    # res_pay сам вернёт error-текст с кнопкой topup_wallet если денег нет
+    return res_pay
 
 @register("counter_offer")
 def counter_offer(params, user, role):
