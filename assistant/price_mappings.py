@@ -26,9 +26,11 @@ COLUMN_MAP: dict[str, list[str]] = {
     # 14 канонических полей × 5 языков (EN/RU/ZH/DE/ES) + реальные
     # заголовки из прайсов Epiroc/Sandvik/Komatsu/Liebherr.
     "part_number": [
-        # EN
+        # EN — убрал слишком общие «item», «code», «ref» (на Sandvik
+        # «ITEM» означало «номер строки», не артикул).
         "part number", "partnumber", "part no", "part no.", "part#",
-        "item", "item #", "item no", "sku", "code", "ref", "reference",
+        "part-number", "item code", "item number", "item no",
+        "sku", "article",
         # RU
         "артикул", "номер детали", "код товара",
         # ZH
@@ -36,9 +38,9 @@ COLUMN_MAP: dict[str, list[str]] = {
         # DE
         "artikelnummer", "artikel-nr", "teilenummer",
         # ES
-        "número de pieza", "numero de pieza", "código", "referencia",
-        # Реальные заголовки из прайсов поставщиков:
-        # Epiroc → "Part Number"; Sandvik → "PART NO."; Liebherr → "Partnumber"
+        "número de pieza", "numero de pieza", "referencia",
+        # Реальные заголовки: Epiroc → "Part Number";
+        # Sandvik → "PART NO."; Liebherr → "Partnumber"
     ],
     "description": [
         "description", "desc", "name", "title",
@@ -189,8 +191,9 @@ COLUMN_MAP: dict[str, list[str]] = {
     "cross_number": [
         "cross number", "crossnumber", "cross-number", "cross ref", "alternative",
         "кросс-номер", "кросс", "аналог",
-        "交叉号", "替代件号",
+        "交叉号", "替代件号", "关联件号", "关联零件号",
         "kreuzreferenz",
+        "número alternativo", "referencia cruzada",
     ],
 }
 
