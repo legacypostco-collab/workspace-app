@@ -67,3 +67,8 @@ class AssistantConfig(AppConfig):
             from . import documents  # noqa
         except ImportError:
             pass
+        # Регистрируем pricelist (загрузка прайса с AI-маппингом)
+        try:
+            from . import pricelist  # noqa
+        except ImportError:
+            pass

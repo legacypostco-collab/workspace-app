@@ -1727,10 +1727,133 @@
     }
   }
 
+  // Pricelist upload — для seller'а, AI-маппинг колонок (ТЗ).
+  // 1) POST файл → preview (headers + AI-mapping). 2) Юзер правит маппинг
+  // в карточке-форме. 3) submit → commit → детерминированный импорт.
+  async function uploadPricelist(file) {
+    showConv();
+    addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
+    const pending = addMessage('assistant', 'Читаю заголовки и подбираю маппинг колонок…');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/assistant/upload-pricelist/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf()},
+        body: fd, credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      if (pending && pending.parentNode) pending.remove();
+
+      // Строим карточку-форму с маппингом для подтверждения.
+      const headers = data.headers || [];
+      const sample = data.sample_rows || [];
+      const sug = data.suggested_mapping || {};
+      const stdFields = data.std_fields || [];
+      const headerOpts = [{value: '', label: '— не использовать —'}]
+        .concat(headers.map(h => ({value: h, label: h})));
+
+      const fields = stdFields.map(f => ({
+        name: 'col__' + f.key,
+        label: f.label + (f.required ? ' *' : ''),
+        type: 'select',
+        options: headerOpts,
+        value: sug[f.key] || '',
+        required: f.required,
+      }));
+
+      // Превью-строки (первые 3) — отдельная info-карточка
+      const sampleText = sample.length
+        ? sample.map((r, i) => `${i+1}: ${r.join(' | ').slice(0, 120)}`).join('\n')
+        : '(нет данных)';
+
+      addMessage('assistant',
+        `📋 Файл прочитан · ${headers.length} колонок\n` +
+        `Проверьте предложенный маппинг и нажмите «Загрузить».\n\n` +
+        `Примеры строк:\n${sampleText}`,
+        [{type:'form', data:{
+          title: '🔗 Маппинг колонок прайса → платформа',
+          submit_action: '__pricelist_commit',
+          submit_label: '📥 Загрузить весь файл',
+          fields: fields,
+          fixed_params: {import_id: data.import_id},
+        }}],
+        [{action: '__pricelist_cancel', label: 'Отменить',
+          params: {import_id: data.import_id}}]
+      );
+    } catch (err) {
+      if (pending && pending.parentNode) pending.remove();
+      addMessage('assistant', '⚠️ Не удалось прочитать прайс: ' + (err.message || err));
+    }
+  }
+
+  // Specialhandler: commit маппинга (не через /action/, а через /upload-pricelist/<id>/commit/)
+  window.__pricelist_commit_handler = async (params) => {
+    const importId = params.import_id;
+    const mapping = {};
+    Object.keys(params).forEach(k => {
+      if (k.startsWith('col__') && params[k]) {
+        mapping[k.slice(5)] = params[k];
+      }
+    });
+    showConv();
+    const pending = addMessage('assistant', 'Импортирую прайс…');
+    try {
+      const res = await fetch('/api/assistant/upload-pricelist/' + importId + '/commit/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'X-CSRFToken': csrf()},
+        body: JSON.stringify({mapping}), credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (pending && pending.parentNode) pending.remove();
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      const errBtn = data.failed > 0
+        ? [{action: 'pricelist_show_errors', label: 'Показать ошибки',
+            params: {import_id: importId}}]
+        : [];
+      addMessage('assistant',
+        `✅ Загружено ${data.imported} позиций.` +
+        (data.failed ? ` Ошибки в ${data.failed} строках.` : ''),
+        [], errBtn.concat([
+          {action: 'seller_catalog', label: '📦 Открыть каталог', params: {}},
+        ])
+      );
+    } catch (err) {
+      if (pending && pending.parentNode) pending.remove();
+      addMessage('assistant', '⚠️ Не удалось импортировать: ' + (err.message || err));
+    }
+  };
+
+  window.__pricelist_cancel_handler = async (params) => {
+    try {
+      await fetch('/api/assistant/upload-pricelist/' + params.import_id + '/cancel/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf()},
+        credentials: 'same-origin',
+      });
+    } catch(_){}
+    addMessage('assistant', 'Импорт отменён.');
+  };
+
+  // Перехватываем спец-actions в quickAction'е до отправки на /api/assistant/action/
+  const _origQuickActionForPricelist = window.quickAction;
+  window.quickAction = (action, params) => {
+    if (action === '__pricelist_commit') return window.__pricelist_commit_handler(params);
+    if (action === '__pricelist_cancel') return window.__pricelist_cancel_handler(params);
+    return _origQuickActionForPricelist(action, params);
+  };
+
   $('fileInput').addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    uploadSpec(file);
+    // Seller'у грузим прайс, остальным — спецификацию
+    const role = (state.config && state.config.role) || 'buyer';
+    if (role === 'seller') {
+      uploadPricelist(file);
+    } else {
+      uploadSpec(file);
+    }
     e.target.value = '';
   });
 

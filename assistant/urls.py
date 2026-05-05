@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import auth_views, erp_views, qr_scan, upload, views
+from . import auth_views, erp_views, pricelist, qr_scan, upload, views
 
 router = DefaultRouter()
 router.register(r"conversations", views.ConversationViewSet, basename="conversation")
@@ -43,4 +43,8 @@ urlpatterns = [
     path("erp/sync/orders/", erp_views.sync_orders_pull, name="erp-sync-orders"),
     path("erp/sync/orders/<int:order_id>/ack/", erp_views.sync_order_ack, name="erp-sync-order-ack"),
     path("erp/sync/orders/<int:order_id>/status/", erp_views.sync_order_status, name="erp-sync-order-status"),
+    # Pricelist upload в чате (ТЗ: AI-маппинг колонок)
+    path("upload-pricelist/", pricelist.PricelistUploadView.as_view(), name="pricelist-upload"),
+    path("upload-pricelist/<int:import_id>/commit/", pricelist.PricelistCommitView.as_view(), name="pricelist-commit"),
+    path("upload-pricelist/<int:import_id>/cancel/", pricelist.PricelistCancelView.as_view(), name="pricelist-cancel"),
 ]

@@ -2827,3 +2827,206 @@ class ErpSyncTests(TestCase):
             **self._auth_headers(),
         )
         self.assertEqual(resp.status_code, 400)
+
+
+class PricelistUploadTests(TestCase):
+    """ТЗ: загрузка прайса через чат с AI-маппингом колонок."""
+
+    def setUp(self):
+        from decimal import Decimal as D
+        from django.contrib.auth import get_user_model
+        from django.test import Client
+        from marketplace.models import Brand, Category
+        import uuid
+        U = get_user_model()
+        u = uuid.uuid4().hex[:6]
+        self.seller = U.objects.create_user(
+            username=f"t_pl_s_{u}", password="x",
+        )
+        self.outsider = U.objects.create_user(
+            username=f"t_pl_o_{u}", password="x",
+        )
+        Category.objects.get_or_create(slug="parts", defaults={"name": "Запчасти"})
+        Brand.objects.get_or_create(name="Generic", defaults={"slug": "generic"})
+        self.client = Client()
+
+    def _make_csv(self, lines):
+        return ("\n".join(lines) + "\n").encode("utf-8")
+
+    def test_auth_required(self):
+        resp = self.client.post("/api/assistant/upload-pricelist/")
+        self.assertIn(resp.status_code, (401, 403))
+
+    def test_preview_returns_headers_and_mapping(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.seller)
+        csv_bytes = self._make_csv([
+            "Артикул;Наименование;Цена;Валюта;Остаток",
+            "ABC-100;Фильтр CAT;42;USD;10",
+            "ABC-200;Шланг;180;USD;5",
+            "ABC-300;Втулка;25;USD;100",
+        ])
+        f = SimpleUploadedFile("price.csv", csv_bytes, content_type="text/csv")
+        resp = self.client.post(
+            "/api/assistant/upload-pricelist/",
+            data={"file": f}, format="multipart",
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertIn("import_id", data)
+        self.assertEqual(data["headers"], ["Артикул", "Наименование", "Цена", "Валюта", "Остаток"])
+        self.assertEqual(len(data["sample_rows"]), 3)
+        # Heuristic-маппинг должен распознать оем/название/цену
+        m = data["suggested_mapping"]
+        self.assertEqual(m.get("oem_number"), "Артикул")
+        self.assertEqual(m.get("title"), "Наименование")
+        self.assertEqual(m.get("price"), "Цена")
+
+    def test_commit_imports_parts(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from marketplace.models import Part, PricelistMapping
+        self.client.force_login(self.seller)
+        csv_bytes = self._make_csv([
+            "Артикул;Наименование;Цена;Остаток",
+            "TEST-AAA;Фильтр X;50;10",
+            "TEST-BBB;Шланг Y;180;5",
+        ])
+        f = SimpleUploadedFile("price.csv", csv_bytes)
+        resp = self.client.post(
+            "/api/assistant/upload-pricelist/",
+            data={"file": f}, format="multipart",
+        )
+        import_id = resp.json()["import_id"]
+
+        # Commit с явным маппингом
+        commit = self.client.post(
+            f"/api/assistant/upload-pricelist/{import_id}/commit/",
+            data={"mapping": {
+                "oem_number": "Артикул",
+                "title":      "Наименование",
+                "price":      "Цена",
+                "stock":      "Остаток",
+            }},
+            content_type="application/json",
+        )
+        self.assertEqual(commit.status_code, 200)
+        d = commit.json()
+        self.assertEqual(d["imported"], 2)
+        self.assertEqual(d["failed"], 0)
+        # Parts реально создались
+        self.assertEqual(Part.objects.filter(seller=self.seller).count(), 2)
+        # Маппинг сохранён для следующей загрузки
+        m = PricelistMapping.objects.get(seller=self.seller)
+        self.assertEqual(m.mapping["oem_number"], "Артикул")
+
+    def test_commit_rejects_missing_required(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.seller)
+        csv_bytes = self._make_csv([
+            "Артикул;Наименование;Цена",
+            "X;Y;30",
+        ])
+        f = SimpleUploadedFile("p.csv", csv_bytes)
+        import_id = self.client.post(
+            "/api/assistant/upload-pricelist/", data={"file": f},
+        ).json()["import_id"]
+        # Не передали 'price' — обязательное
+        commit = self.client.post(
+            f"/api/assistant/upload-pricelist/{import_id}/commit/",
+            data={"mapping": {"oem_number": "Артикул", "title": "Наименование"}},
+            content_type="application/json",
+        )
+        self.assertEqual(commit.status_code, 400)
+
+    def test_re_upload_does_not_create_duplicates(self):
+        """Повторная загрузка обновляет, не создаёт дубликаты."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from marketplace.models import Part
+        self.client.force_login(self.seller)
+
+        def upload_and_commit(price_value):
+            csv_bytes = self._make_csv([
+                "Артикул;Наименование;Цена",
+                f"DUPE-1;Фильтр;{price_value}",
+            ])
+            f = SimpleUploadedFile("p.csv", csv_bytes)
+            r = self.client.post(
+                "/api/assistant/upload-pricelist/", data={"file": f},
+            )
+            iid = r.json()["import_id"]
+            self.client.post(
+                f"/api/assistant/upload-pricelist/{iid}/commit/",
+                data={"mapping": {
+                    "oem_number": "Артикул", "title": "Наименование",
+                    "price": "Цена",
+                }},
+                content_type="application/json",
+            )
+
+        upload_and_commit(50)
+        upload_and_commit(75)  # повторно — апдейтит цену
+
+        parts = Part.objects.filter(seller=self.seller, oem_number__iexact="DUPE-1")
+        self.assertEqual(parts.count(), 1, "no duplicates")
+        self.assertEqual(float(parts.first().price), 75.0, "price updated")
+
+    def test_failed_rows_collected(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.seller)
+        csv_bytes = self._make_csv([
+            "Артикул;Наименование;Цена",
+            "GOOD-1;Title;10",
+            ";;Цена",            # нет артикула — fail
+            "GOOD-2;;",           # нет title и цены — fail
+            "GOOD-3;Title;abc",   # bad price — fail
+            "GOOD-4;Title;25",
+        ])
+        f = SimpleUploadedFile("p.csv", csv_bytes)
+        iid = self.client.post(
+            "/api/assistant/upload-pricelist/", data={"file": f},
+        ).json()["import_id"]
+        commit = self.client.post(
+            f"/api/assistant/upload-pricelist/{iid}/commit/",
+            data={"mapping": {
+                "oem_number": "Артикул", "title": "Наименование",
+                "price": "Цена",
+            }},
+            content_type="application/json",
+        ).json()
+        self.assertEqual(commit["imported"], 2)  # GOOD-1 и GOOD-4
+        self.assertEqual(commit["failed"], 3)
+        self.assertGreaterEqual(len(commit["errors_preview"]), 3)
+
+    def test_cancel(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from marketplace.models import PricelistImport
+        self.client.force_login(self.seller)
+        csv_bytes = self._make_csv(["Артикул;Цена", "X;1"])
+        f = SimpleUploadedFile("p.csv", csv_bytes)
+        iid = self.client.post(
+            "/api/assistant/upload-pricelist/", data={"file": f},
+        ).json()["import_id"]
+        resp = self.client.post(f"/api/assistant/upload-pricelist/{iid}/cancel/")
+        self.assertEqual(resp.status_code, 200)
+        imp = PricelistImport.objects.get(id=iid)
+        self.assertEqual(imp.status, "cancelled")
+
+    def test_outsider_cannot_commit_other_users_import(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.client.force_login(self.seller)
+        csv_bytes = self._make_csv(["Артикул;Наименование;Цена", "X;Y;10"])
+        f = SimpleUploadedFile("p.csv", csv_bytes)
+        iid = self.client.post(
+            "/api/assistant/upload-pricelist/", data={"file": f},
+        ).json()["import_id"]
+        # Outsider пытается импортировать
+        self.client.logout()
+        self.client.force_login(self.outsider)
+        resp = self.client.post(
+            f"/api/assistant/upload-pricelist/{iid}/commit/",
+            data={"mapping": {
+                "oem_number": "Артикул", "title": "Наименование", "price": "Цена",
+            }},
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 404)

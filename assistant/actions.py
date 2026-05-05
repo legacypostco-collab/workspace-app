@@ -91,6 +91,8 @@ _BUYER_ACTIONS = [
 # Внутри advance_order ещё проверяется, что в заказе есть товары seller'а.
 _SELLER_ONLY = [
     "respond_rfq", "upload_pricelist",
+    # Pricelist через AI-маппинг (история, ошибки)
+    "pricelist_show_errors", "pricelist_history",
     # Negotiation (seller side)
     "submit_quote", "respond_to_counter", "mark_quote_final",
     # Competitor offer response (§5.2): seller дает скидку или отказывается

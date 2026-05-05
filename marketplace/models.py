@@ -1064,6 +1064,66 @@ class ApiToken(models.Model):
         return self.revoked_at is None
 
 
+class PricelistMapping(models.Model):
+    """ТЗ: запоминаем последний маппинг колонок прайса для seller'а.
+
+    На каждом следующем upload AI предлагает этот маппинг как дефолт,
+    seller может изменить — тогда сохраняется новый.
+    """
+    seller = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="pricelist_mapping",
+    )
+    # mapping: {standard_field: source_column_header_or_index_str}
+    # Пример: {"oem_number": "Артикул", "title": "Наименование",
+    #          "price": "Цена", "currency": "Валюта"}
+    mapping = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"PricelistMapping[{self.seller_id}] {len(self.mapping)} cols"
+
+
+class PricelistImport(models.Model):
+    """Журнал каждой загрузки прайса."""
+    STATUS_CHOICES = [
+        ("preview",   "Превью (ждём подтверждения)"),
+        ("imported",  "Импортирован"),
+        ("failed",    "Ошибка"),
+        ("cancelled", "Отменён"),
+    ]
+    seller = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="pricelist_imports",
+    )
+    file_obj = models.FileField(upload_to="pricelists/%Y/%m/", blank=True)
+    filename = models.CharField(max_length=255, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="preview")
+    headers = models.JSONField(default=list, blank=True,
+        help_text="Заголовки колонок, прочитанные из файла")
+    sample_rows = models.JSONField(default=list, blank=True,
+        help_text="Первые 3 строки для AI и UI")
+    suggested_mapping = models.JSONField(default=dict, blank=True,
+        help_text="Маппинг, предложенный AI (или предыдущий)")
+    final_mapping = models.JSONField(default=dict, blank=True,
+        help_text="Маппинг, подтверждённый seller'ом")
+    total_rows = models.PositiveIntegerField(default=0)
+    imported_rows = models.PositiveIntegerField(default=0)
+    failed_rows = models.PositiveIntegerField(default=0)
+    error_details = models.JSONField(default=list, blank=True,
+        help_text="[{row, oem, reason}] первых ~50 ошибок")
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["seller", "-created_at"], name="pricelist_seller_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"PricelistImport[{self.id}] {self.seller_id} {self.status}"
+
+
 class ErpSyncLog(models.Model):
     """ТЗ §17.2: журнал двустороннего обмена с 1С/ERP.
 
