@@ -1892,19 +1892,15 @@
   window.quickAction = (action, params) => {
     if (action === '__pricelist_commit') return window.__pricelist_commit_handler(params);
     if (action === '__pricelist_cancel') return window.__pricelist_cancel_handler(params);
-    // Прайс — короткий путь: открыть file-picker сразу (без формы с textarea).
-    // Если seller'у нужен текстовый импорт — он может вызвать
-    // import_pricelist_preview (отдельный action в catalog menu).
-    if (action === 'upload_pricelist') {
-      const role = (state.config && state.config.role) || 'buyer';
-      if (role === 'seller') {
-        const fi = $('fileInput');
-        if (fi) {
-          fi.accept = '.xlsx,.xls,.csv,.tsv,.txt';
-          fi.click();
-          return;
-        }
+    // Спец-action «открыть file-picker» — отдельная кнопка в карточке
+    // upload_pricelist (после клика на pill).
+    if (action === '__open_file_picker') {
+      const fi = $('fileInput');
+      if (fi) {
+        fi.accept = (params && params.accept) || '.xlsx,.xls,.csv,.tsv,.txt';
+        fi.click();
       }
+      return;
     }
     // Переключение роли — server-side action /api/assistant/role/
     if (action === '_switch_role') {

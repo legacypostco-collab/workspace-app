@@ -1145,16 +1145,22 @@ def seller_negotiations(params, user, role):
 
 @register("upload_pricelist")
 def upload_pricelist(params, user, role):
-    """Удобная inline-загрузка прайса прямо в чат.
+    """Загрузка прайса через AI-маппинг (ТЗ).
 
-    Три способа в одной карточке:
-      1. Drag-n-drop файла (CSV/Excel) — фронт ловит drop, шлёт на
-         /api/assistant/upload-spec/.
-      2. Вставить текст CSV/TSV прямо в textarea формы — обработается
-         тут же (если передан csv_data).
-      3. Ссылка на старый bulk-uploader /seller/upload/ для Excel.
+    Карточка-инструкция с тремя действиями:
+      • «📂 Выбрать файл» — открывает системный файл-пикер (frontend
+        перехватывает action='__open_file_picker' и кликает на скрытом
+        <input type="file">). После выбора → uploadPricelist() →
+        AI-маппинг → карточка-форма → импорт.
+      • «📥 Скачать шаблон» — официальный шаблон с 16 колонками
+        (PartNumber, CrossNumber, Brand, Name, Quantity, Condition,
+        Price_EXW, WarehouseAddress, Price_FOB_SEA, Price_FOB_AIR,
+        SeaPort, AirPort, Weight, Length, Width, Height).
+      • «📦 Bulk-uploader» — старый Excel-импорт на /seller/upload/
+        для нестандартных кейсов и больших каталогов.
 
-    params: {csv_data?, confirmed?}
+    params: {csv_data?, confirmed?}  — текстовый импорт (legacy режим
+            на случай если csv_data передан явно).
     """
     from decimal import Decimal as _D
     from django.utils.text import slugify
@@ -1164,48 +1170,42 @@ def upload_pricelist(params, user, role):
     csv_data = (params.get("csv_data") or "").strip()
     confirmed = bool(params.get("confirmed"))
 
-    # Шаг 1: показать форму
+    # Шаг 1: инструктивная карточка с тремя действиями
     if not csv_data:
         return ActionResult(
             text=(
-                "📤 Загрузить прайс-лист\n\n"
-                "Самый быстрый путь — вставь строки прямо в форму ниже. "
-                "Формат: `артикул;название;цена;остаток` (по строке на товар, "
-                "разделитель — точка с запятой, запятая или табуляция).\n\n"
-                "Альтернативы: перетащи .xlsx/.csv в окно чата, или открой "
-                "bulk-uploader для крупных каталогов."
+                "📤 Загрузка прайс-листа\n\n"
+                "Поддерживаются файлы Excel (.xlsx) и CSV. После загрузки "
+                "AI прочитает заголовки и предложит маппинг колонок на "
+                "стандартные поля платформы — вы проверите и подтвердите."
             ),
-            cards=[{"type": "form", "data": {
-                "title": "📤 Импорт прайса · вставить строки",
-                "submit_action": "upload_pricelist",
-                "submit_label": "Импортировать",
-                "fields": [
-                    {"name": "csv_data",
-                     "label": "Строки прайса (артикул;название;цена;остаток)",
-                     "type": "textarea",
-                     "placeholder": "2W1223;Топливный фильтр CAT 3406;42.00;100\n1R0750;Масляный фильтр CAT C13;35.00;50",
-                     "required": True},
-                ],
-                "fixed_params": {"confirmed": True},
-            }}, {"type": "list", "data": {
-                "title": "Альтернативы",
+            cards=[{"type": "list", "data": {
+                "title": "Как загрузить прайс",
                 "rows": [
-                    {"title": "📦 Bulk-uploader (Excel)",
-                     "subtitle": "Старый интерфейс с превью и валидацией",
-                     "badge": "Excel", "url": "/seller/upload/"},
-                    {"title": "📥 Скачать шаблон CSV",
-                     "subtitle": "Готовый файл с примером",
+                    {"title": "📂 Выбрать файл с компьютера",
+                     "subtitle": "Excel или CSV · до 20 МБ",
+                     "badge": ".xlsx"},
+                    {"title": "🖱 Перетащить файл в окно чата",
+                     "subtitle": "Просто drag-n-drop в это окно — то же самое",
+                     "badge": "drop"},
+                    {"title": "📥 Шаблон с 16 колонками",
+                     "subtitle": "PartNumber, Name, Quantity, Price_EXW, и т.д.",
                      "badge": "CSV", "url": "/seller/upload/template.csv"},
-                    {"title": "🖱 Drag-n-drop",
-                     "subtitle": "Перетащи .xlsx прямо в это окно чата",
-                     "badge": "Drop"},
+                    {"title": "📦 Bulk-uploader (старый интерфейс)",
+                     "subtitle": "Для нестандартных кейсов и больших каталогов",
+                     "badge": "Excel", "url": "/seller/upload/"},
                 ],
             }}],
             actions=[
+                {"label": "📂 Выбрать файл", "action": "__open_file_picker",
+                 "params": {"accept": ".xlsx,.xls,.csv,.tsv,.txt"}},
                 {"label": "📦 Каталог",       "action": "seller_catalog", "params": {}},
-                {"label": "➕ По одному",     "action": "add_product",    "params": {}},
             ],
-            suggestions=["Скачать шаблон", "Добавить товар вручную"],
+            suggestions=[
+                "Скачать шаблон с 16 колонками",
+                "Открыть bulk-uploader",
+                "Что делать если в прайсе нет валюты?",
+            ],
         )
 
     # Шаг 2: парсим CSV → превью или импорт
