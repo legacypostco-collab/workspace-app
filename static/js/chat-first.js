@@ -1561,6 +1561,14 @@
     }
   }
 
+  // Category icons → визуальное отделение admin/purchase/support от обычных
+  const CATEGORY_ICON = {
+    admin:    '🛡',
+    purchase: '🛒',
+    support:  '🎧',
+    general:  '💬',
+  };
+
   function renderConvList(filter='') {
     const f = filter.toLowerCase();
     const list = state.convs.filter(c => !f || (c.title||'').toLowerCase().includes(f));
@@ -1572,8 +1580,9 @@
       const date = c.updated_at ? new Date(c.updated_at) : null;
       const meta = date ? relativeTime(date) : '';
       const lastMeta = c.last_message ? c.last_message.content.substring(0, 40) : meta;
+      const icon = CATEGORY_ICON[c.category || 'general'] || '💬';
       return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" onclick="openConv('${c.id}')">
-        <div class="side-item-stack-title">${esc(c.title || 'Без названия')}</div>
+        <div class="side-item-stack-title"><span class="conv-cat-icon" title="${esc(c.category || 'general')}">${icon}</span>${esc(c.title || 'Без названия')}</div>
         <div class="side-item-stack-meta">${esc(meta)} ${lastMeta && lastMeta !== meta ? '· ' + esc(lastMeta) : ''}</div>
       </div>`;
     }).join('');

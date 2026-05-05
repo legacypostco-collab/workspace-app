@@ -787,6 +787,99 @@ class SupplierRatingEngineTests(TestCase):
         self.assertEqual(events.first().impact_score, Decimal("1.00"))
 
 
+class ConversationCategorizationTests(TestCase):
+    """Не плодить новые conv'ы на каждый клик пилюли — reuse по категории."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        U = get_user_model()
+        self.user = U.objects.create_user(username="t_cat", password="x")
+
+    def test_category_for_action_admin(self):
+        from .conv_category import category_for_action
+        self.assertEqual(category_for_action("start_onboarding"), "admin")
+        self.assertEqual(category_for_action("seller_team"), "admin")
+        self.assertEqual(category_for_action("sync_1c"), "admin")
+        self.assertEqual(category_for_action("create_api_token"), "admin")
+
+    def test_category_for_action_purchase(self):
+        from .conv_category import category_for_action
+        self.assertEqual(category_for_action("create_rfq"), "purchase")
+        self.assertEqual(category_for_action("quick_order"), "purchase")
+        self.assertEqual(category_for_action("track_order"), "purchase")
+        self.assertEqual(category_for_action("pay_reserve"), "purchase")
+
+    def test_category_for_action_support(self):
+        from .conv_category import category_for_action
+        self.assertEqual(category_for_action("create_claim"), "support")
+        self.assertEqual(category_for_action("op_resolve_dispute"), "support")
+
+    def test_category_for_action_general_fallback(self):
+        from .conv_category import category_for_action
+        self.assertEqual(category_for_action("unknown_action"), "general")
+        self.assertEqual(category_for_action(""), "general")
+
+    def test_title_includes_category_prefix(self):
+        from .conv_category import title_for_action
+        self.assertEqual(
+            title_for_action("submit_company_info", "📋 Реквизиты компании"),
+            "Управление · 📋 Реквизиты компании",
+        )
+        self.assertEqual(
+            title_for_action("track_order", "ORD-151"),
+            "Покупки · ORD-151",
+        )
+
+    def test_find_or_create_reuses_existing_conv_by_category(self):
+        from .conv_category import find_or_create_conv
+        from .models import Conversation
+        # 1-й вызов create
+        conv1 = find_or_create_conv(
+            self.user, action_name="start_onboarding", role="seller",
+            action_label="Шаг 1",
+        )
+        self.assertEqual(conv1.category, "admin")
+        self.assertEqual(Conversation.objects.filter(user=self.user, category="admin").count(), 1)
+        # 2-й вызов другого admin-action — REUSE того же conv'а
+        conv2 = find_or_create_conv(
+            self.user, action_name="seller_team", role="seller",
+            action_label="Команда",
+        )
+        self.assertEqual(conv1.id, conv2.id)
+        # Title обновился
+        conv2.refresh_from_db()
+        self.assertIn("Команда", conv2.title)
+
+    def test_purchase_creates_separate_conv_from_admin(self):
+        from .conv_category import find_or_create_conv
+        admin_conv = find_or_create_conv(
+            self.user, action_name="start_onboarding", role="seller", action_label="KYB",
+        )
+        purchase_conv = find_or_create_conv(
+            self.user, action_name="quick_order", role="buyer", action_label="Заказ",
+        )
+        self.assertNotEqual(admin_conv.id, purchase_conv.id)
+        self.assertEqual(admin_conv.category, "admin")
+        self.assertEqual(purchase_conv.category, "purchase")
+
+    def test_action_view_reuses_admin_conv_across_clicks(self):
+        """E2E: 2 разных admin pill'a → 1 conv в БД."""
+        from rest_framework.test import APIClient
+        from .models import Conversation
+        client = APIClient()
+        client.force_authenticate(self.user)
+        # Клик «Верификация»
+        client.post("/api/assistant/action/", {
+            "action": "start_onboarding", "params": {"_label": "🛡 Верификация"},
+        }, format="json")
+        # Клик «Команда»
+        client.post("/api/assistant/action/", {
+            "action": "seller_team", "params": {"_label": "👥 Команда"},
+        }, format="json")
+        admin_convs = Conversation.objects.filter(user=self.user, category="admin")
+        self.assertEqual(admin_convs.count(), 1, "Должен быть ровно один admin conv")
+
+
 class ExternalRatingTests(TestCase):
     """ТЗ §1: внешняя оценка из Kontur/СПАРК."""
 

@@ -17,7 +17,7 @@ class ConversationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ["id", "role", "title", "is_active", "created_at", "updated_at",
+        fields = ["id", "role", "category", "title", "is_active", "created_at", "updated_at",
                    "messages", "message_count"]
         read_only_fields = ["id", "created_at", "updated_at", "messages", "message_count"]
 
@@ -31,7 +31,7 @@ class ConversationListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Conversation
-        fields = ["id", "role", "title", "created_at", "updated_at", "last_message"]
+        fields = ["id", "role", "category", "title", "created_at", "updated_at", "last_message"]
 
     def get_last_message(self, obj):
         msg = obj.messages.order_by("-created_at").first()

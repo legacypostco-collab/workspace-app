@@ -99,12 +99,28 @@ class ActionView(APIView):
         if not action:
             return Response({"error": "action required"}, status=400)
 
+        from .conv_category import find_or_create_conv, title_for_action, category_for_action
+        label = (params.get("_label") or "").strip() or action
+
         if conv_id:
             conv = get_object_or_404(Conversation, id=conv_id, user=request.user, is_active=True)
         else:
-            conv = Conversation.objects.create(
-                user=request.user, role=detect_user_role(request.user, request=request)
+            # Reuse существующий conv той же категории (admin/purchase/support/general)
+            # вместо плодить новый на каждый клик пилюли.
+            role = detect_user_role(request.user, request=request)
+            conv = find_or_create_conv(
+                request.user, action_name=action, role=role, action_label=label,
             )
+
+        # Динамически обновляем title по текущему action: «Верификация · Шаг 2/5»
+        new_title = title_for_action(action, label)
+        if new_title and new_title[:200] != conv.title:
+            conv.title = new_title[:200]
+            # category может тоже измениться если пользователь сменил вид деятельности
+            new_cat = category_for_action(action)
+            if conv.category != new_cat and new_cat != "general":
+                conv.category = new_cat
+            conv.save(update_fields=["title", "category", "updated_at"])
 
         try:
             result = execute_action(conv, action, params, request.user)
