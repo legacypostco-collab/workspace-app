@@ -408,9 +408,25 @@
     .sq-name{text-overflow:ellipsis;overflow:hidden;white-space:nowrap;}
     .sq-qty{color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;}
     .sq-sub{font-weight:500;font-variant-numeric:tabular-nums;}
-    .sq-actions{margin-top:8px;}
-    .sq-btn{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.85);border:1px solid rgba(0,0,0,0.08);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.12s;}
-    .sq-btn:hover{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+    .sq-actions{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;}
+    /* Перебиваем .act-btn (тёмный по умолчанию) — в очереди продавца кнопки
+       должны быть второстепенными, иначе чёрные плашки забивают шапки заказов. */
+    .sq-card .sq-btn,
+    .sq-card .sq-btn.act-btn{
+      background:rgba(15,23,42,0.06)!important;color:#1a1a1a!important;
+      border:1px solid rgba(15,23,42,0.10)!important;
+      padding:5px 10px!important;border-radius:7px!important;
+      font-size:11.5px!important;font-weight:500!important;cursor:pointer;
+      transition:all 0.12s;line-height:1.2;letter-spacing:-0.005em;
+    }
+    .sq-card .sq-btn:hover{background:rgba(15,23,42,0.12)!important;}
+    .sq-card .sq-btn.sq-open{background:rgba(15,23,42,0.04)!important;}
+    /* Усиливаем шапки заказов, чтобы они «держали» внимание сильнее кнопок */
+    .sq-order{padding:12px 14px;}
+    .sq-order-head{font-size:13px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed rgba(0,0,0,0.07);}
+    .sq-order-num{font-weight:700;color:#0f172a;font-size:13px;letter-spacing:-0.01em;}
+    .sq-buyer{color:rgba(0,0,0,0.6);margin-left:4px;}
+    .sq-order-sub{font-weight:700;color:#0f172a;font-size:13px;}
     .sq-empty{font-size:13px;color:rgba(0,0,0,0.5);font-style:italic;text-align:center;padding:20px;}
 
     /* ── Tracking card ── */
