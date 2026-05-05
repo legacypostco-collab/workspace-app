@@ -122,6 +122,8 @@ _OPERATOR_CORE = [
     "op_logistics_stats", "op_payments_stats",
     # KYB moderation
     "op_kyb_queue", "op_kyb_review", "op_kyb_approve", "op_kyb_reject",
+    # External rating refresh
+    "op_refresh_external_rating",
 ]
 
 ROLE_ACTIONS = {
@@ -1147,12 +1149,16 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
         return "semi", f"semi · urgency=critical · {matched_count}/{total} matched"
 
     # 3. confidence ниже порога → SEMI (§5.3)
+    # items_to_add tuples могут быть (query, qty, mp) [legacy] или
+    # (query, qty, mp, confidence) [новый формат]. Читаем conf если есть.
     confidence_threshold = float(params.get("confidence_threshold") or 70)
     low_confidence = []
-    for query, _, mp in matched:
-        # Confidence не считаем сами — берём из params если матчер передал
-        # (в реальности это поле RFQItem.confidence)
-        c = params.get(f"confidence_{query}") or params.get("min_confidence")
+    for t in matched:
+        query = t[0]
+        # confidence: либо из 4-tuple, либо из params (старый API)
+        c = t[3] if len(t) >= 4 else None
+        if c is None:
+            c = params.get(f"confidence_{query}") or params.get("min_confidence")
         if c is not None and float(c) < confidence_threshold:
             low_confidence.append(query)
     if low_confidence:
@@ -1175,8 +1181,8 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
     untrusted_executor = []
     min_offers = int(params.get("min_offers_for_auto") or 3)
 
-    # Собираем все oem_numbers items_to_add
-    oem_set = list({mp.oem_number for _, _, mp in matched if mp.oem_number})
+    # Собираем все oem_numbers items_to_add (matched это tuples длины 3 или 4)
+    oem_set = list({t[2].oem_number for t in matched if t[2] and t[2].oem_number})
     if oem_set:
         # Один SQL: все Part'ы с этими OEM + их seller-profiles
         candidates = (
@@ -1198,7 +1204,8 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
                 continue
             offers_by_oem.setdefault(c.oem_number, []).append((c.seller_id, status))
 
-        for query, qty, mp in matched:
+        for t in matched:
+            mp = t[2]
             offers = offers_by_oem.get(mp.oem_number, [])
             unique_sellers = {sid: st for sid, st in offers}
             n_offers = sum(1 for st in unique_sellers.values() if st in ("trusted", "sandbox"))
@@ -1212,7 +1219,8 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
                 no_trusted.append(mp.oem_number)
 
         # 6d. Исполнитель (matched_part.seller) обязан быть trusted
-        for query, _, mp in matched:
+        for t in matched:
+            mp = t[2]
             executor_status = seller_status_cache.get(
                 mp.seller_id,
                 (UserProfile.objects.filter(user_id=mp.seller_id)
@@ -1245,6 +1253,27 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
     )
 
 
+def _match_confidence(query: str, matched_part) -> int:
+    """Confidence score 0-100 для соответствия query→matched_part.
+
+    100 — exact OEM match (case-insensitive)
+     80 — substring (либо query в OEM, либо OEM в query)
+     60 — fuzzy (нет точного совпадения, но что-то нашлось)
+      0 — нет matched_part
+    """
+    if not matched_part:
+        return 0
+    q = (query or "").strip().lower()
+    oem = (getattr(matched_part, "oem_number", "") or "").strip().lower()
+    if not q or not oem:
+        return 60
+    if q == oem:
+        return 100
+    if q in oem or oem in q:
+        return 80
+    return 60
+
+
 @register("create_rfq")
 def create_rfq(params, user, role):
     """Create a new RFQ + RFQItem rows. params: {product_ids?, articles?, quantity, query?}"""
@@ -1252,16 +1281,17 @@ def create_rfq(params, user, role):
 
     quantity = int(params.get("quantity") or 1)
 
-    # Resolve items: explicit product_ids first, then articles, then split query
-    items_to_add = []  # list of (query, qty, matched_part)
+    # Resolve items: explicit product_ids first, then articles, then split query.
+    # Format: (query, qty, matched_part, confidence)
+    items_to_add = []
 
     if params.get("product_ids"):
         for pid in params["product_ids"]:
             p = Part.objects.filter(id=pid).select_related("brand").first()
             if p:
-                items_to_add.append((p.oem_number, quantity, p))
+                items_to_add.append((p.oem_number, quantity, p, 100))
             else:
-                items_to_add.append((str(pid), quantity, None))
+                items_to_add.append((str(pid), quantity, None, 0))
 
     elif params.get("articles"):
         for art in params["articles"]:
@@ -1271,10 +1301,9 @@ def create_rfq(params, user, role):
                 .filter(Q(oem_number__iexact=art) | Q(oem_number__icontains=art))
                 .first()
             )
-            items_to_add.append((art, quantity, p))
+            items_to_add.append((art, quantity, p, _match_confidence(art, p)))
 
     elif params.get("query"):
-        # Try to extract article-like tokens from the query string
         q = params["query"]
         articles = _extract_articles(q)
         if articles:
@@ -1285,12 +1314,12 @@ def create_rfq(params, user, role):
                     .filter(Q(oem_number__iexact=art) | Q(oem_number__icontains=art))
                     .first()
                 )
-                items_to_add.append((art, quantity, p))
+                items_to_add.append((art, quantity, p, _match_confidence(art, p)))
         else:
-            items_to_add.append((q[:255], quantity, None))
+            items_to_add.append((q[:255], quantity, None, 0))
 
     if not items_to_add:
-        items_to_add = [("RFQ из чата", quantity, None)]
+        items_to_add = [("RFQ из чата", quantity, None, 0)]
 
     # Mode определяется классификатором согласно ТЗ §7.1/§7.2.
     # Критерии: matched_count, supplier_status (trusted/sandbox/risky),
@@ -1315,13 +1344,15 @@ def create_rfq(params, user, role):
             status="new",
             notes=" | ".join(notes_parts)[:5000],
         )
-        for query_str, qty, matched_part in items_to_add:
+        for query_str, qty, matched_part, confidence in items_to_add:
             RFQItem.objects.create(
                 rfq=rfq,
                 query=str(query_str)[:255],
                 quantity=qty,
                 matched_part=matched_part,
-                state="matched" if matched_part else "new",
+                state=("matched" if matched_part and confidence >= 80
+                       else "needs_review" if matched_part else "new"),
+                confidence=confidence,
             )
     except Exception as e:
         logger.exception("create_rfq failed")
@@ -1344,7 +1375,7 @@ def create_rfq(params, user, role):
         except Exception:
             logger.exception("auto-send on create_rfq failed")
 
-    matched_count = sum(1 for _, _, p in items_to_add if p is not None)
+    matched_count = sum(1 for t in items_to_add if t[2] is not None)
     summary = f"{matched_count} из {len(items_to_add)} позиций сматчены с каталогом"
 
     if mode == "auto":

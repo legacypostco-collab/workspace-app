@@ -1204,3 +1204,65 @@ def op_payments_dashboard(params, user, role):
             {"action": "op_queue", "label": "📋 Очередь", "params": {"filter": "refund"}},
         ],
     )
+
+
+# ══════════════════════════════════════════════════════════
+# 10. External rating refresh (Контур/СПАРК)
+# ══════════════════════════════════════════════════════════
+
+@register("op_refresh_external_rating")
+def op_refresh_external_rating(params, user, role):
+    """Принудительно обновить external_score продавца из Kontur/СПАРК (ТЗ §1)."""
+    if not _is_operator(role) and role != "admin":
+        return ActionResult(text="Доступно только оператору / админу.")
+    from django.contrib.auth import get_user_model
+    from .external_rating import refresh_external_rating
+
+    U = get_user_model()
+    try:
+        seller = U.objects.get(id=int(params.get("user_id") or 0))
+    except (U.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Продавец не найден.")
+
+    data = refresh_external_rating(seller)
+    if not data:
+        return ActionResult(text="⚠️ Не удалось получить external rating.")
+    if data.get("source") == "skip":
+        return ActionResult(
+            text=f"⚠️ {data.get('reason', 'нет данных')} · сначала пройдите KYB.",
+        )
+
+    from marketplace.models import UserProfile
+    p = UserProfile.objects.filter(user=seller).first()
+    return ActionResult(
+        text=(
+            f"✓ External rating обновлён для {seller.username} · "
+            f"score={data['score']:.0f} · {data['source']}"
+        ),
+        cards=[{"type": "kpi_grid", "data": {
+            "title": f"📊 External rating · {seller.username}",
+            "items": [
+                {"label": "External score", "value": f"{float(data['score']):.1f}",
+                 "tone": ("ok" if data['score'] >= 80 else
+                          "warn" if data['score'] >= 60 else "bad")},
+                {"label": "Источник", "value": data['source']},
+                {"label": "Причина", "value": data['reason'][:80]},
+                {"label": "Bankruptcy", "value": "🚫" if data['bankruptcy'] else "✓",
+                 "tone": "bad" if data['bankruptcy'] else "ok"},
+                {"label": "Liquidation", "value": "🚫" if data['liquidation'] else "✓",
+                 "tone": "bad" if data['liquidation'] else "ok"},
+                {"label": "Behavioral score",
+                 "value": f"{float(p.behavioral_score):.1f}" if p else "—"},
+                {"label": "Итоговый рейтинг",
+                 "value": f"{float(p.rating_score):.1f}" if p else "—",
+                 "tone": "info"},
+                {"label": "Статус", "value": p.get_supplier_status_display() if p else "—",
+                 "tone": ("ok" if (p and p.supplier_status == "trusted") else
+                          "warn" if (p and p.supplier_status == "sandbox") else "bad")},
+            ],
+        }}],
+        contextual_actions=[
+            {"action": "admin_user_detail", "label": "← Профиль",
+             "params": {"user_id": seller.id}},
+        ],
+    )

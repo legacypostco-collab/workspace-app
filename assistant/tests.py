@@ -546,8 +546,11 @@ class RFQModeClassifierTests(TestCase):
         )
 
     def _items(self, *parts_or_none):
-        """Builds items_to_add tuples like create_rfq does."""
-        return [(p.oem_number if p else "unknown", 1, p) for p in parts_or_none]
+        """Builds items_to_add tuples like create_rfq does (4-tuple with confidence)."""
+        return [
+            (p.oem_number if p else "unknown", 1, p, 100 if p else 0)
+            for p in parts_or_none
+        ]
 
     def test_auto_when_all_matched_trusted_and_verified(self):
         """ТЗ §4.1: AUTO требует ≥3 предложений; для теста ослабляем до 1."""
@@ -635,13 +638,24 @@ class RFQModeClassifierTests(TestCase):
     def test_semi_when_low_confidence(self):
         """ТЗ §5.3: confidence < threshold → SEMI."""
         from .actions import _classify_rfq_mode
-        items = self._items(self.part_trusted)
+        # Передаём 4-tuple с низкой confidence (50 < default threshold 70)
+        items = [(self.part_trusted.oem_number, 1, self.part_trusted, 50)]
         mode, reason = _classify_rfq_mode(items, self.buyer, {
             "min_offers_for_auto": 1,
-            "min_confidence": 50,  # ниже дефолтного порога 70
         })
         self.assertEqual(mode, "semi", f"reason={reason}")
         self.assertIn("confidence", reason.lower())
+
+    def test_match_confidence_helper(self):
+        """_match_confidence: 100 exact, 80 substring, 60 fuzzy, 0 None."""
+        from .actions import _match_confidence
+        # exact
+        self.assertEqual(_match_confidence(self.part_trusted.oem_number, self.part_trusted), 100)
+        # substring
+        oem = self.part_trusted.oem_number
+        self.assertEqual(_match_confidence(oem[:4], self.part_trusted), 80)
+        # No matched_part
+        self.assertEqual(_match_confidence("XYZ-999", None), 0)
 
 
 class SupplierRatingEngineTests(TestCase):
@@ -771,6 +785,209 @@ class SupplierRatingEngineTests(TestCase):
         )
         self.assertEqual(events.count(), 1)
         self.assertEqual(events.first().impact_score, Decimal("1.00"))
+
+
+class ExternalRatingTests(TestCase):
+    """ТЗ §1: внешняя оценка из Kontur/СПАРК."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import UserProfile, CompanyVerification
+        U = get_user_model()
+        self.seller = U.objects.create_user(username="t_ext_s", password="x")
+        UserProfile.objects.create(user=self.seller, role="seller")
+        CompanyVerification.objects.create(
+            user=self.seller, legal_name="Test Co", inn="7707083893", status="verified",
+        )
+
+    def test_demo_fetch_returns_score_in_range(self):
+        from .external_rating import fetch_external_rating
+        data = fetch_external_rating("7707083893")
+        self.assertIn("score", data)
+        self.assertIn("source", data)
+        self.assertEqual(data["source"], "demo")
+        self.assertGreaterEqual(data["score"], 40)
+        self.assertLessEqual(data["score"], 100)
+        self.assertFalse(data["bankruptcy"])
+        self.assertFalse(data["liquidation"])
+
+    def test_demo_inn_starting_00_flags_bankruptcy(self):
+        from .external_rating import fetch_external_rating
+        data = fetch_external_rating("0012345678")
+        self.assertTrue(data["bankruptcy"])
+        self.assertEqual(data["score"], 0.0)
+
+    def test_demo_inn_starting_99_flags_liquidation(self):
+        from .external_rating import fetch_external_rating
+        data = fetch_external_rating("9912345678")
+        self.assertTrue(data["liquidation"])
+
+    def test_refresh_external_rating_applies_to_profile(self):
+        from .external_rating import refresh_external_rating
+        from marketplace.models import UserProfile
+        data = refresh_external_rating(self.seller)
+        self.assertIsNotNone(data)
+        self.assertGreaterEqual(data["score"], 40)
+        # Profile обновился
+        p = UserProfile.objects.get(user=self.seller)
+        self.assertEqual(float(p.external_score), float(data["score"]))
+
+    def test_refresh_with_no_inn_returns_skip(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import UserProfile
+        from .external_rating import refresh_external_rating
+        u = get_user_model().objects.create_user(username="t_no_inn", password="x")
+        UserProfile.objects.create(user=u, role="seller")
+        # Нет CompanyVerification → нет INN
+        data = refresh_external_rating(u)
+        self.assertEqual(data["source"], "skip")
+
+    def test_bankruptcy_inn_flips_status_to_rejected(self):
+        from marketplace.models import UserProfile, CompanyVerification
+        from .external_rating import refresh_external_rating
+        # Заменяем INN на «банкротный»
+        kyb = CompanyVerification.objects.get(user=self.seller)
+        kyb.inn = "0012345678"; kyb.save()
+        refresh_external_rating(self.seller)
+        p = UserProfile.objects.get(user=self.seller)
+        self.assertTrue(p.bankruptcy_flag)
+        self.assertEqual(p.supplier_status, "rejected")
+
+
+class PriorityRoutingTests(TestCase):
+    """ТЗ §7.1: рассылка RFQ — trusted приоритет, sandbox fallback, risky вручную."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import RFQ, RFQItem, UserProfile
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        U = get_user_model()
+        self.buyer = U.objects.create_user(username=f"t_pr_b_{u}", password="x")
+        UserProfile.objects.create(user=self.buyer, role="buyer")
+        # 2 trusted, 2 sandbox, 2 risky
+        self.trusted_a = U.objects.create_user(username=f"t_pr_ta_{u}", password="x")
+        self.trusted_b = U.objects.create_user(username=f"t_pr_tb_{u}", password="x")
+        self.sandbox_a = U.objects.create_user(username=f"t_pr_sa_{u}", password="x")
+        self.sandbox_b = U.objects.create_user(username=f"t_pr_sb_{u}", password="x")
+        self.risky_a = U.objects.create_user(username=f"t_pr_ra_{u}", password="x")
+        self.risky_b = U.objects.create_user(username=f"t_pr_rb_{u}", password="x")
+        for s, st in [
+            (self.trusted_a, "trusted"), (self.trusted_b, "trusted"),
+            (self.sandbox_a, "sandbox"), (self.sandbox_b, "sandbox"),
+            (self.risky_a, "risky"), (self.risky_b, "risky"),
+        ]:
+            UserProfile.objects.create(user=s, role="seller")
+            UserProfile.objects.filter(user=s).update(supplier_status=st)
+        self.rfq = RFQ.objects.create(
+            created_by=self.buyer, customer_name="b", customer_email="b@x.t",
+        )
+        RFQItem.objects.create(rfq=self.rfq, query="X", quantity=1)
+
+    def test_default_routing_includes_trusted_and_sandbox_skips_risky(self):
+        from .negotiation import send_rfq_to_suppliers
+        from marketplace.models import Notification
+        send_rfq_to_suppliers({"rfq_id": self.rfq.id, "confirmed": True}, self.buyer, "buyer")
+        recipients = set(Notification.objects.filter(kind="rfq").values_list("user_id", flat=True))
+        # Trusted всегда
+        self.assertIn(self.trusted_a.id, recipients)
+        self.assertIn(self.trusted_b.id, recipients)
+        # Sandbox обычно тоже (для альтернативных предложений по ТЗ §3.1)
+        # Risky — нет
+        self.assertNotIn(self.risky_a.id, recipients)
+        self.assertNotIn(self.risky_b.id, recipients)
+
+    def test_include_risky_flag_dispatches_to_risky(self):
+        from .negotiation import send_rfq_to_suppliers
+        from marketplace.models import Notification
+        send_rfq_to_suppliers(
+            {"rfq_id": self.rfq.id, "confirmed": True, "include_risky": True},
+            self.buyer, "buyer",
+        )
+        recipients = set(Notification.objects.filter(kind="rfq").values_list("user_id", flat=True))
+        self.assertIn(self.risky_a.id, recipients)
+        self.assertIn(self.risky_b.id, recipients)
+
+
+class NoResponseDetectionTests(TestCase):
+    """ТЗ §8: detect_no_response cron — продавец без ответа в норматив → −5."""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from marketplace.models import RFQ, RFQItem, UserProfile
+        U = get_user_model()
+        self.buyer = U.objects.create_user(username="t_nr_b", password="x", email="b@x.t")
+        self.seller = U.objects.create_user(username="t_nr_s", password="x")
+        UserProfile.objects.create(user=self.buyer, role="buyer")
+        UserProfile.objects.create(user=self.seller, role="seller")
+        self.rfq = RFQ.objects.create(
+            created_by=self.buyer, customer_name="b", customer_email="b@x.t",
+        )
+        RFQItem.objects.create(rfq=self.rfq, query="X", quantity=1)
+
+    def test_old_unanswered_notification_creates_no_response_event(self):
+        from datetime import timedelta
+        from django.core.management import call_command
+        from django.utils import timezone
+        from marketplace.models import Notification, SupplierRatingEvent
+
+        # Notification 25 часов назад
+        n = Notification.objects.create(
+            user=self.seller, kind="rfq",
+            title="RFQ", body="X", url=f"/chat/rfq/{self.rfq.id}/?source=invite",
+        )
+        Notification.objects.filter(id=n.id).update(
+            created_at=timezone.now() - timedelta(hours=25),
+        )
+
+        call_command("detect_no_response", "--threshold-hours=24")
+
+        events = SupplierRatingEvent.objects.filter(supplier=self.seller, event_type="no_response")
+        self.assertEqual(events.count(), 1)
+        self.assertEqual(events.first().meta["notification_id"], n.id)
+        self.assertEqual(events.first().meta["rfq_id"], self.rfq.id)
+
+    def test_responded_seller_skipped(self):
+        from datetime import timedelta
+        from django.core.management import call_command
+        from django.utils import timezone
+        from marketplace.models import Notification, Quote, SupplierRatingEvent
+
+        n = Notification.objects.create(
+            user=self.seller, kind="rfq",
+            title="RFQ", body="", url=f"/chat/rfq/{self.rfq.id}/?source=invite",
+        )
+        Notification.objects.filter(id=n.id).update(
+            created_at=timezone.now() - timedelta(hours=25),
+        )
+        # Seller ответил Quote'ом
+        Quote.objects.create(
+            rfq=self.rfq, seller=self.seller, direction="seller_to_buyer",
+            round_number=1, status="submitted", total_amount=100,
+        )
+        call_command("detect_no_response", "--threshold-hours=24")
+        # no_response event НЕ создан
+        events = SupplierRatingEvent.objects.filter(supplier=self.seller, event_type="no_response")
+        self.assertEqual(events.count(), 0)
+
+    def test_idempotent(self):
+        """Повторный запуск не дублирует events."""
+        from datetime import timedelta
+        from django.core.management import call_command
+        from django.utils import timezone
+        from marketplace.models import Notification, SupplierRatingEvent
+
+        n = Notification.objects.create(
+            user=self.seller, kind="rfq",
+            title="RFQ", body="", url=f"/chat/rfq/{self.rfq.id}/?source=invite",
+        )
+        Notification.objects.filter(id=n.id).update(
+            created_at=timezone.now() - timedelta(hours=25),
+        )
+        call_command("detect_no_response", "--threshold-hours=24")
+        call_command("detect_no_response", "--threshold-hours=24")  # Re-run
+        events = SupplierRatingEvent.objects.filter(supplier=self.seller, event_type="no_response")
+        self.assertEqual(events.count(), 1)  # Не дублируется
 
 
 class OnboardingKybTests(TestCase):

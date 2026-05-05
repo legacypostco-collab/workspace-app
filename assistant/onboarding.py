@@ -501,6 +501,14 @@ def op_kyb_approve(params, user, role):
     kyb.rejection_reason = ""
     kyb.save(update_fields=["status", "reviewed_at", "reviewed_by", "rejection_reason"])
 
+    # ТЗ §1: после verify сразу обновляем external_score из Kontur/СПАРК
+    # → bankruptcy_flag/liquidation_flag → status может сразу стать rejected
+    try:
+        from .external_rating import refresh_external_rating
+        refresh_external_rating(kyb.user)
+    except Exception:
+        logger.exception("auto-refresh external rating after KYB approve failed")
+
     _notify(
         kyb.user, kind="system",
         title=f"✓ KYB одобрен · {kyb.legal_name}",

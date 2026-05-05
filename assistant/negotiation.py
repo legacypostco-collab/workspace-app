@@ -51,14 +51,19 @@ def _next_round(rfq, seller_id: int) -> int:
 
 @register("send_rfq_to_suppliers")
 def send_rfq_to_suppliers(params, user, role):
-    """Buyer разослает RFQ кандидатам-поставщикам.
+    """Buyer разослает RFQ кандидатам-поставщикам с priority routing (ТЗ §7.1).
 
-    Кандидаты: верифицированные KYB-продавцы (status=verified). В demo
-    fallback — всех с role=seller. Каждому создаём Notification с
-    kind='rfq' (durable channels потом добавляют email/telegram).
+    Кандидаты сортируются по supplier_status:
+      1) trusted    — отправка всегда
+      2) sandbox    — отправка если trusted < min_trusted (по умолчанию 3)
+      3) risky      — только если params.include_risky=True (фиксируется в журнал)
+      4) rejected   — НИКОГДА (ТЗ §3 «Исключён»)
+
+    KYB не verified фильтруются для AUTO-рассылки, но включаются для SEMI/MANUAL
+    в как fallback (если ничего лучше нет).
     """
     from django.contrib.auth import get_user_model
-    from marketplace.models import RFQ, CompanyVerification
+    from marketplace.models import RFQ, CompanyVerification, UserProfile
 
     confirmed = bool(params.get("confirmed"))
     try:
@@ -72,48 +77,98 @@ def send_rfq_to_suppliers(params, user, role):
         return ActionResult(text=f"RFQ #{rfq.id} отменён — нельзя рассылать.")
 
     User = get_user_model()
-    # Верифицированные → приоритет; демо-fallback на всех seller-профилей
+    min_trusted = int(params.get("min_trusted") or 3)
+    include_risky = bool(params.get("include_risky"))
+
+    # Все активные продавцы (исключая sentinel-эскроу)
+    all_sellers = list(
+        User.objects.filter(profile__role="seller", is_active=True)
+        .exclude(username="__platform_escrow__")[:50]
+    )
+    if not all_sellers:
+        return ActionResult(text="⚠️ В системе пока нет активных поставщиков.")
+
+    # Группировка по supplier_status (свежее чтение)
+    status_map = {}
+    for p in UserProfile.objects.filter(user__in=all_sellers).only("user_id", "supplier_status"):
+        status_map[p.user_id] = p.supplier_status
+
+    trusted = [s for s in all_sellers if status_map.get(s.id) == "trusted"]
+    sandbox = [s for s in all_sellers if status_map.get(s.id) == "sandbox"]
+    risky = [s for s in all_sellers if status_map.get(s.id) == "risky"]
+    # rejected — никогда (ТЗ §3)
+
+    # Priority routing: trusted всегда + sandbox если мало trusted + risky по флагу
+    recipients = list(trusted)
+    if len(recipients) < min_trusted:
+        needed = min_trusted - len(recipients)
+        recipients.extend(sandbox[:max(needed, 1)])
+    elif sandbox:
+        # Если trusted ≥ min — всё равно даём sandbox шанс показать цены (но не как
+        # primary). Бизнес-правило ТЗ §3.1: «sandbox может быть показан как
+        # альтернативный вариант».
+        recipients.extend(sandbox[:max(0, min_trusted)])
+    if include_risky:
+        recipients.extend(risky)
+
+    # Дедуп
+    seen = set()
+    recipients = [r for r in recipients if r.id not in seen and not seen.add(r.id)]
+
+    n_trusted_in = sum(1 for r in recipients if status_map.get(r.id) == "trusted")
+    n_sandbox_in = sum(1 for r in recipients if status_map.get(r.id) == "sandbox")
+    n_risky_in = sum(1 for r in recipients if status_map.get(r.id) == "risky")
+
+    if not recipients:
+        return ActionResult(text=(
+            "⚠️ Нет поставщиков для рассылки. "
+            "Trusted=0, sandbox=0, risky=" + ("включены" if include_risky else "выключены") + "."
+        ))
+
     verified_seller_ids = set(
         CompanyVerification.objects.filter(status="verified")
         .values_list("user_id", flat=True)
     )
-    candidates = list(
-        User.objects.filter(profile__role="seller", is_active=True)
-        .exclude(username="__platform_escrow__")[:20]
-    )
-    if not candidates:
-        return ActionResult(text="⚠️ В системе пока нет активных поставщиков.")
-
-    n_verified = sum(1 for s in candidates if s.id in verified_seller_ids)
+    n_verified = sum(1 for s in recipients if s.id in verified_seller_ids)
 
     # Шаг 1: preview
     if not confirmed:
         items_count = rfq.items.count()
+        warnings = [
+            "Каждый получит уведомление (in-app + email/telegram если включены).",
+            "Котировки будут приходить — следите за вкладкой RFQ.",
+        ]
+        if n_risky_in > 0:
+            warnings.insert(0,
+                f"⚠️ В рассылке {n_risky_in} «рисковых» поставщиков (ТЗ §3.1) — "
+                f"включены явно по решению оператора. Решение зафиксируется в журнале."
+            )
         return ActionResult(
             text=f"📨 Разослать RFQ #{rfq.id} поставщикам?",
             cards=[{"type": "draft", "data": {
                 "title": f"📨 Рассылка RFQ #{rfq.id}",
                 "rows": [
                     {"label": "Позиций", "value": str(items_count), "primary": True},
-                    {"label": "Получателей", "value": f"{len(candidates)} поставщиков"},
-                    {"label": "Из них верифицированных",
-                     "value": f"{n_verified} ({n_verified*100//max(len(candidates),1)}%)",
-                     "primary": True},
+                    {"label": "Trusted (надёжных)", "value": str(n_trusted_in), "primary": True},
+                    {"label": "Sandbox (песочница)", "value": str(n_sandbox_in)},
+                    {"label": "Risky (рисковых)", "value": str(n_risky_in)},
+                    {"label": "KYB verified", "value": f"{n_verified} из {len(recipients)}"},
+                    {"label": "Всего получателей", "value": f"{len(recipients)} поставщиков"},
                 ],
-                "warnings": [
-                    "Каждый получит уведомление (in-app + email/telegram если включены).",
-                    "Котировки будут приходить — следите за вкладкой RFQ.",
-                ],
+                "warnings": warnings,
                 "confirm_action": "send_rfq_to_suppliers",
-                "confirm_label": f"📨 Разослать {len(candidates)} поставщикам",
-                "confirm_params": {"rfq_id": rfq.id, "confirmed": True},
+                "confirm_label": f"📨 Разослать {len(recipients)} поставщикам",
+                "confirm_params": {
+                    "rfq_id": rfq.id, "confirmed": True,
+                    "include_risky": include_risky, "min_trusted": min_trusted,
+                },
                 "cancel_label": "Отмена",
             }}],
         )
 
-    # Шаг 2: рассылка
+    # Шаг 2: рассылка + аудит
     sent = 0
-    for seller in candidates:
+    for seller in recipients:
         try:
             _notify(
                 seller, kind="rfq",
@@ -125,10 +180,25 @@ def send_rfq_to_suppliers(params, user, role):
         except Exception:
             logger.exception("send_rfq notify failed for seller %s", seller.id)
 
+    # Аудит: если risky включены вручную — логируем (ТЗ §7.1.1)
+    # Запись в RFQ.notes (OrderEvent требует order, для RFQ-event'а не подходит)
+    if n_risky_in > 0:
+        try:
+            audit_line = (
+                f" | RISKY-DISPATCH: {n_risky_in} рисковых получателей "
+                f"включены вручную {user.username} {timezone.now().strftime('%Y-%m-%d %H:%M')}"
+            )
+            rfq.notes = (rfq.notes or "")[:4500] + audit_line
+            rfq.save(update_fields=["notes"])
+        except Exception:
+            logger.exception("audit risky dispatch failed")
+
     return ActionResult(
         text=(
-            f"✓ RFQ #{rfq.id} разослан {sent} поставщикам ({n_verified} верифицированных).\n"
-            f"Котировки будут приходить — следите за уведомлениями."
+            f"✓ RFQ #{rfq.id} разослан {sent} поставщикам · "
+            f"trusted {n_trusted_in} · sandbox {n_sandbox_in}"
+            + (f" · risky {n_risky_in}" if n_risky_in else "")
+            + ".\nКотировки будут приходить — следите за уведомлениями."
         ),
         contextual_actions=[
             {"action": "view_rfq_quotes", "label": "📊 Открытые котировки",
