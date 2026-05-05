@@ -1062,3 +1062,51 @@ class ApiToken(models.Model):
     @property
     def is_active(self):
         return self.revoked_at is None
+
+
+class ErpSyncLog(models.Model):
+    """ТЗ §17.2: журнал двустороннего обмена с 1С/ERP.
+
+    Каждая операция (push/pull, parts/orders/ack) пишется отдельной
+    строкой. Используется для аудита, диагностики, идемпотентности
+    (проверка по external_ref).
+    """
+    DIRECTION_CHOICES = [
+        ("push", "Push (платформа → ERP)"),
+        ("pull", "Pull (ERP → платформа)"),
+    ]
+    KIND_CHOICES = [
+        ("parts",      "Каталог: цены/остатки"),
+        ("orders",     "Заказы: новые на отгрузку"),
+        ("order_ack",  "Подтверждение заказа от 1С"),
+        ("status",     "Обновление статуса заказа"),
+    ]
+    STATUS_CHOICES = [
+        ("ok",      "Успешно"),
+        ("partial", "Частично"),
+        ("failed",  "Ошибка"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="erp_sync_logs",
+                              help_text="Чей ERP — обычно seller или operator")
+    direction = models.CharField(max_length=8, choices=DIRECTION_CHOICES)
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default="ok")
+    items_count = models.PositiveIntegerField(default=0)
+    items_failed = models.PositiveIntegerField(default=0)
+    external_ref = models.CharField(max_length=120, blank=True, db_index=True,
+        help_text="Внешний идентификатор (для идемпотентности)")
+    payload = models.JSONField(default=dict, blank=True,
+        help_text="Краткая выжимка содержимого для отладки")
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="erpsync_user_created_idx"),
+            models.Index(fields=["kind", "-created_at"], name="erpsync_kind_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"ErpSync[{self.id}] {self.direction}/{self.kind} {self.status}"

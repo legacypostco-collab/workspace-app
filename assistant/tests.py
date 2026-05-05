@@ -2688,3 +2688,142 @@ class DocumentGeneratorTests(TestCase):
         self.assertIn("ORD-", r.text)
         # 2 документа в cards
         self.assertEqual(len(r.cards), 2)
+
+
+class ErpSyncTests(TestCase):
+    """ТЗ §17.2: двусторонний обмен с 1С/ERP по REST."""
+
+    def setUp(self):
+        from decimal import Decimal as D
+        from django.contrib.auth import get_user_model
+        from marketplace.models import (
+            Brand, Category, Part, Order, OrderItem, ApiToken, ErpSyncLog,
+        )
+        import hashlib, secrets, uuid
+        from django.test import Client
+        U = get_user_model()
+        u = uuid.uuid4().hex[:6]
+        self.seller = U.objects.create_user(username=f"t_erp_s_{u}", password="x")
+        self.outsider = U.objects.create_user(username=f"t_erp_o_{u}", password="x")
+        cat = Category.objects.create(name=f"c-{u}", slug=f"c-{u}")
+        brand = Brand.objects.create(name=f"b-{u}", slug=f"b-{u}")
+        self.part = Part.objects.create(
+            title=f"Pump {u}", oem_number=f"ERP-OEM-{u}", slug=f"erp-p-{u}",
+            category=cat, brand=brand, price=D("100"), stock_quantity=10,
+            seller=self.seller, is_active=True,
+        )
+        # ApiToken для seller'а
+        plain = "ck_test_" + secrets.token_urlsafe(20)
+        self.token_plain = plain
+        ApiToken.objects.create(
+            user=self.seller, label="1С CI", prefix=plain[:12],
+            hashed_token=hashlib.sha256(plain.encode("utf-8")).hexdigest(),
+            permissions="read,write",
+        )
+        # Заказ для pull-теста
+        buyer = U.objects.create_user(username=f"t_erp_b_{u}", password="x")
+        self.order = Order.objects.create(
+            customer_name="Buyer", customer_email="b@t.c",
+            buyer=buyer, status="reserve_paid",
+            payment_status="reserve_paid",
+            total_amount=D("200.00"), reserve_amount=D("20.00"),
+        )
+        OrderItem.objects.create(order=self.order, part=self.part,
+                                  quantity=2, unit_price=D("100"))
+        self.client = Client()
+
+    def _auth_headers(self):
+        return {"HTTP_X_API_TOKEN": self.token_plain}
+
+    def test_auth_required(self):
+        resp = self.client.post("/api/assistant/erp/sync/parts/",
+                                 data="[]", content_type="application/json")
+        self.assertEqual(resp.status_code, 401)
+
+    def test_invalid_token_rejected(self):
+        resp = self.client.post(
+            "/api/assistant/erp/sync/parts/",
+            data="[]", content_type="application/json",
+            HTTP_X_API_TOKEN="ck_invalid_token_xxxx",
+        )
+        self.assertEqual(resp.status_code, 401)
+
+    def test_push_parts_updates_price_and_stock(self):
+        from marketplace.models import Part, ErpSyncLog
+        body = [{"oem_number": self.part.oem_number, "price": 95.50, "stock": 25}]
+        import json
+        resp = self.client.post(
+            "/api/assistant/erp/sync/parts/",
+            data=json.dumps(body), content_type="application/json",
+            **self._auth_headers(),
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["updated"], 1)
+        self.assertEqual(data["failed"], 0)
+        self.part.refresh_from_db()
+        self.assertEqual(float(self.part.price), 95.50)
+        self.assertEqual(self.part.stock_quantity, 25)
+        # лог создан
+        log = ErpSyncLog.objects.get(id=data["log_id"])
+        self.assertEqual(log.status, "ok")
+        self.assertEqual(log.kind, "parts")
+
+    def test_push_parts_unknown_oem_marked_failed(self):
+        import json
+        body = [{"oem_number": "ZZZ-DOES-NOT-EXIST", "price": 50}]
+        resp = self.client.post(
+            "/api/assistant/erp/sync/parts/",
+            data=json.dumps(body), content_type="application/json",
+            **self._auth_headers(),
+        )
+        data = resp.json()
+        self.assertEqual(data["updated"], 0)
+        self.assertEqual(data["failed"], 1)
+
+    def test_pull_orders_returns_seller_orders_only(self):
+        resp = self.client.get(
+            "/api/assistant/erp/sync/orders/", **self._auth_headers(),
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertGreaterEqual(len(data["orders"]), 1)
+        ids = [o["id"] for o in data["orders"]]
+        self.assertIn(self.order.id, ids)
+
+    def test_order_ack_records_event(self):
+        from marketplace.models import OrderEvent
+        import json
+        resp = self.client.post(
+            f"/api/assistant/erp/sync/orders/{self.order.id}/ack/",
+            data=json.dumps({"erp_order_id": "1C-9001", "note": "received"}),
+            content_type="application/json",
+            **self._auth_headers(),
+        )
+        self.assertEqual(resp.status_code, 200)
+        events = OrderEvent.objects.filter(
+            order=self.order, meta__kind="erp_order_ack",
+        )
+        self.assertEqual(events.count(), 1)
+
+    def test_order_status_update_persists(self):
+        import json
+        resp = self.client.post(
+            f"/api/assistant/erp/sync/orders/{self.order.id}/status/",
+            data=json.dumps({"status": "ready_to_ship", "note": "packed"}),
+            content_type="application/json",
+            **self._auth_headers(),
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "ready_to_ship")
+
+    def test_status_update_rejects_unknown_status(self):
+        import json
+        resp = self.client.post(
+            f"/api/assistant/erp/sync/orders/{self.order.id}/status/",
+            data=json.dumps({"status": "teleported"}),
+            content_type="application/json",
+            **self._auth_headers(),
+        )
+        self.assertEqual(resp.status_code, 400)
