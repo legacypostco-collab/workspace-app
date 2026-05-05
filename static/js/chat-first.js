@@ -488,9 +488,19 @@
     list(d) {
       const rows = (d.rows || []).map(r => {
         const badge = r.badge ? `<span class="ls-badge">${esc(r.badge)}</span>` : '';
-        const cls = r.url ? 'ls-row ls-link' : 'ls-row';
-        const open = r.url ? `onclick="window.open('${esc(r.url)}','_blank','noopener')"` : '';
-        return `<div class="${cls}" ${open}>
+        const isClickable = !!(r.url || r.action);
+        const cls = isClickable ? 'ls-row ls-link' : 'ls-row';
+        // Поддержка двух режимов: r.url → external link, r.action → action
+        let attrs = '';
+        if (r.action) {
+          // Кликабельный через .act-btn handler в document click listener
+          attrs = `class="${cls} act-btn" data-action="${esc(r.action)}" data-params='${esc(JSON.stringify(r.params || {}))}' data-label="${esc(r.title || r.action)}"`;
+        } else if (r.url) {
+          attrs = `class="${cls}" onclick="window.open('${esc(r.url)}','_blank','noopener')"`;
+        } else {
+          attrs = `class="${cls}"`;
+        }
+        return `<div ${attrs}>
           <div class="ls-main">
             <div class="ls-title">${esc(r.title || '')}</div>
             <div class="ls-sub">${esc(r.subtitle || '')}</div>
