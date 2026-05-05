@@ -930,7 +930,7 @@ def search_parts(params, user, role):
     # 1) Multi-article list (paste of OEM numbers) ------------------
     articles = params.get("articles") or _extract_articles(query)
     if len(articles) >= 2:
-        return _search_articles_list(articles)
+        return _search_articles_list(articles, params.get("quantities") or {})
 
     # 2) Free-text query --------------------------------------------
     qs = Part.objects.select_related("brand", "category").filter(is_active=True)
@@ -983,17 +983,23 @@ def search_parts(params, user, role):
     )
 
 
-def _search_articles_list(articles: list[str]):
-    """Look up each article in the catalog → spec_results-style card."""
+def _search_articles_list(articles: list[str], quantities: dict | None = None):
+    """Look up each article in the catalog → spec_results-style card.
+
+    quantities: {oem: qty} — параметр от fast-path парсера «OEM qty».
+    """
     from marketplace.models import Part
+    qmap = quantities or {}
 
     items = []
-    matched_ids = []
+    matched_ids: list[str] = []
+    matched_qty_pairs: list[tuple[str, int]] = []
     found_n = 0
     not_found_n = 0
     total = 0
 
     for art in articles:
+        qty = int(qmap.get(art, 1) or 1)
         p = (
             Part.objects
             .select_related("brand")
@@ -1009,7 +1015,6 @@ def _search_articles_list(articles: list[str]):
                 .first()
             )
         if p:
-            qty = 1
             price = float(p.price) if p.price else 0
             items.append({
                 "status": "in_stock",
@@ -1023,6 +1028,7 @@ def _search_articles_list(articles: list[str]):
                 "currency": "USD",
             })
             matched_ids.append(str(p.id))
+            matched_qty_pairs.append((str(p.id), qty))
             found_n += 1
             total += price * qty
         else:
@@ -1030,7 +1036,7 @@ def _search_articles_list(articles: list[str]):
                 "status": "not_found",
                 "id": art,
                 "name": "",
-                "qty": 1,
+                "qty": qty,
             })
             not_found_n += 1
 
@@ -1045,10 +1051,17 @@ def _search_articles_list(articles: list[str]):
     # Порядок: primary (RFQ) → создание ценности (КП, заказ) → сравнение/анализ → утилиты.
     actions = []
     if matched_ids:
+        # quantities: dict id→qty чтобы quick_order/create_rfq могли учесть
+        qty_param = {pid: q for pid, q in matched_qty_pairs} if any(q != 1 for _, q in matched_qty_pairs) else None
+        qo_params = {"product_ids": matched_ids}
+        rfq_params = {"product_ids": matched_ids}
+        if qty_param:
+            qo_params["product_quantities"] = qty_param
+            rfq_params["product_quantities"] = qty_param
         actions.append({"label": f"⚡ Купить сейчас (${total:,.0f})", "action": "quick_order",
-                        "params": {"product_ids": matched_ids}})
+                        "params": qo_params})
         actions.append({"label": "Создать RFQ на найденные", "action": "create_rfq",
-                        "params": {"product_ids": matched_ids}})
+                        "params": rfq_params})
     if not_found_n:
         actions.append({"label": f"RFQ на {not_found_n} ненайденных",
                         "action": "create_rfq",
