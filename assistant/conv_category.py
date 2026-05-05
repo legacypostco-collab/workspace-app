@@ -116,16 +116,28 @@ def title_for_action(action_name: str, action_label: str | None = None) -> str:
 def find_or_create_conv(user, *, action_name: str, role: str, action_label: str | None = None):
     """Найти долгий conv пользователя по категории action'а или создать.
 
+    Инвариант: per (user, category) держим РОВНО ОДИН активный conv. Если
+    у пользователя уже накопились дубликаты (например, до того как
+    группировка по категории была включена) — оставляем самый свежий, а
+    остальные той же категории архивируем (is_active=False), чтобы они
+    не маячили в сайдбаре.
+
     Возвращает Conversation. Заголовок обновляется на текущий label если он
     более информативен.
     """
     from .models import Conversation
     cat = category_for_action(action_name)
-    existing = (
+    qs = (
         Conversation.objects.filter(user=user, category=cat, is_active=True)
-        .order_by("-updated_at").first()
+        .order_by("-updated_at")
     )
-    if existing:
+    matches = list(qs[:20])
+    if matches:
+        existing = matches[0]
+        # Архивируем дубликаты той же категории (если есть)
+        dup_ids = [c.id for c in matches[1:]]
+        if dup_ids:
+            Conversation.objects.filter(id__in=dup_ids).update(is_active=False)
         # Обновляем title под текущий шаг
         new_title = title_for_action(action_name, action_label)
         if new_title and new_title != existing.title:
