@@ -1192,11 +1192,16 @@ def upload_pricelist(params, user, role):
                             "Не нужно загружать файл вручную при каждом обновлении."
                         ),
                         "secondary": {
-                            "label": "📥 Создать копию шаблона",
+                            "label": "Открыть шаблон",
                             "url": "https://docs.google.com/spreadsheets/d/"
                                    "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy",
                         },
-                        "hint": "Заполните таблицу → откройте доступ «Все, у кого есть ссылка → Читатель» → вставьте ссылку",
+                        "hint": (
+                            "1) Откройте шаблон → Файл → Создать копию · "
+                            "2) Заполните · "
+                            "3) Файл → Поделиться → «Все, у кого есть ссылка → Читатель» · "
+                            "4) Скопируйте URL и вставьте ниже."
+                        ),
                         "input": {
                             "name": "gsheet_url", "type": "url",
                             "placeholder": "https://docs.google.com/spreadsheets/d/...",

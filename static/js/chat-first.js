@@ -579,7 +579,14 @@
         let secHtml = '';
         if (m.secondary) {
           if (m.secondary.url) {
-            secHtml = `<a class="im-secondary" href="${esc(m.secondary.url)}" target="_blank" rel="noopener">${esc(m.secondary.label || '↗')}</a>`;
+            // Кнопка с двумя действиями: open + copy URL (на случай если
+            // preview-режим Claude блочит docs.google.com — копируем
+            // URL в clipboard и пользователь открывает сам).
+            const u = m.secondary.url;
+            secHtml = `<div class="im-sec-row">
+              <a class="im-secondary" href="${esc(u)}" target="_blank" rel="noopener">${esc(m.secondary.label || '↗')}</a>
+              <button class="im-copy-btn" data-copy-url="${esc(u)}" title="Скопировать ссылку">📋</button>
+            </div>`;
           } else if (m.secondary.action) {
             secHtml = `<button class="im-secondary act-btn" data-action="${esc(m.secondary.action)}" data-params='${esc(JSON.stringify(m.secondary.params || {}))}' data-label="${esc(m.secondary.label || '')}">${esc(m.secondary.label || '↗')}</button>`;
           }
@@ -1480,6 +1487,20 @@
       submit.textContent = '…';
       params._label = card.querySelector('.card-title')?.textContent || action;
       quickAction(action, params);
+      return;
+    }
+    // 2a. Copy-URL кнопка (для случая когда preview блочит external link)
+    const copyBtn = e.target.closest('.im-copy-btn[data-copy-url]');
+    if (copyBtn) {
+      e.preventDefault();
+      const url = copyBtn.dataset.copyUrl;
+      const orig = copyBtn.textContent;
+      navigator.clipboard?.writeText(url).then(() => {
+        copyBtn.textContent = '✓';
+        setTimeout(() => { copyBtn.textContent = orig; }, 1500);
+      }).catch(() => {
+        window.prompt('Скопируйте ссылку и откройте в обычном браузере:', url);
+      });
       return;
     }
     // 2. Обычные action-кнопки и любой [data-action] (например, ls-row)
