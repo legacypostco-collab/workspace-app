@@ -156,7 +156,11 @@ def _detect_format(filename: str, blob: bytes) -> str:
 
 
 def _read_preview(filename: str, blob: bytes) -> tuple[list[str], list[list[str]]]:
-    """Возвращает (headers, sample_rows[3])."""
+    """Возвращает (headers, sample_rows[3]).
+
+    Excel часто читает «висячие» колонки с пустыми заголовками после
+    реальных данных. Срезаем trailing пустые headers + sample-данные.
+    """
     fmt = _detect_format(filename, blob)
     rows = list(
         _read_xlsx_rows(blob, max_rows=4) if fmt == "xlsx"
@@ -165,7 +169,14 @@ def _read_preview(filename: str, blob: bytes) -> tuple[list[str], list[list[str]
     if not rows:
         raise ValueError("File is empty")
     headers = list(rows[0])
-    sample = [list(r) for r in rows[1:4]]
+    # Срезаем trailing пустые headers (Excel оставляет до десятка
+    # пустых ячеек после реальных колонок).
+    while headers and not str(headers[-1]).strip():
+        headers.pop()
+    n_cols = len(headers)
+    # Truncate sample-rows до n_cols чтобы dropdown'ы не показывали
+    # лишние «Колонка:» без имени.
+    sample = [list(r)[:n_cols] for r in rows[1:4]]
     return headers, sample
 
 

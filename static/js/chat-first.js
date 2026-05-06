@@ -1855,16 +1855,32 @@
       if (pending && pending.parentNode) pending.remove();
 
       // Строим карточку-форму с маппингом для подтверждения.
-      const headers = data.headers || [];
+      const headers = (data.headers || []).filter(h => String(h || '').trim());
       const sample = data.sample_rows || [];
       const sug = data.suggested_mapping || {};
       const stdFields = data.std_fields || [];
-      // (Не добавляем `*` к лейблу — рендерер сам это сделает по f.required)
-      // Для полей с enum_values (currency, incoterm) добавляем
-      // фиксированные варианты «применить ко всем строкам» с префиксом fix:.
+
+      // Колонки которые уже маппятся на ДРУГИЕ поля — исключаем из
+      // dropdown'ов остальных полей чтобы не предлагать «Part Number»
+      // в качестве «Цена FOB AIR».
+      const usedHeaders = new Set();
+      Object.values(sug).forEach(v => {
+        if (v && !String(v).startsWith('fix:') && headers.includes(v)) {
+          usedHeaders.add(v);
+        }
+      });
+
       const fields = stdFields.map(f => {
+        const myValue = sug[f.key] || '';
+        // Headers, доступные ЭТОМУ полю: либо ещё не использованы,
+        // либо привязаны именно к нему (чтобы можно было выбрать).
+        const availableHeaders = headers.filter(h =>
+          !usedHeaders.has(h) || h === myValue
+        );
         const opts = [{value: '', label: '— не использовать —'}]
-          .concat(headers.map(h => ({value: h, label: '📋 Колонка: ' + h})));
+          .concat(availableHeaders.map(h =>
+            ({value: h, label: '📋 Колонка: ' + h})
+          ));
         if (f.enum_values && f.enum_values.length) {
           opts.push({value: '__sep__', label: '— или фикс. для всех строк —'});
           f.enum_values.forEach(v => {
@@ -1876,7 +1892,7 @@
           label: f.label,
           type: 'select',
           options: opts,
-          value: sug[f.key] || '',
+          value: myValue,
           required: f.required,
         };
       });
