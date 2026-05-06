@@ -1012,7 +1012,18 @@ def _bulk_lookup_to_rfq_lines(rows: list[dict]) -> str:
 
 
 def home(request: HttpRequest) -> HttpResponse:
-    # Always show the landing page — authenticated users can navigate to their cabinet via sidebar
+    """Главная: сразу редирект на AI-чат (это новый дефолт-интерфейс).
+
+    Старый landing/marketplace остаётся как /landing/ для маркетинга и
+    как /classic/ через legacy home_marketplace.
+    """
+    from django.shortcuts import redirect
+    return redirect("/chat/")
+
+
+def landing_view(request: HttpRequest) -> HttpResponse:
+    """Маркетинговая страница (бывшая home). Используется для презентаций
+    и публичных ссылок. Открывается через /landing/."""
     return render(request, "landing.html")
 
 
