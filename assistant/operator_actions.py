@@ -50,13 +50,38 @@ def op_dashboard(params, user, role):
     err = _ensure_operator(role)
     if err:
         return err
-    from marketplace.models import Order
+    from datetime import timedelta
+    from django.utils import timezone
+    from marketplace.models import Order, RFQ, OrderClaim
 
     in_flight = Order.objects.filter(status__in=OPEN_STATUSES).count()
     at_risk = Order.objects.filter(sla_status="at_risk").count()
     breached = Order.objects.filter(sla_status="breached").count()
     refund_pending = Order.objects.filter(payment_status="refund_pending").count()
     awaiting_reserve = Order.objects.filter(payment_status="awaiting_reserve").count()
+
+    # ТЗ KP-flow: SEMI требуют approve в 15 минут, MANUAL — собрать КП за 48ч
+    now = timezone.now()
+    semi_pending = RFQ.objects.filter(
+        mode="semi", status="new", created_at__gte=now - timedelta(hours=24),
+    )
+    semi_overdue = semi_pending.filter(
+        created_at__lt=now - timedelta(minutes=15),
+    ).count()
+    semi_active = semi_pending.count()
+
+    manual_pending = RFQ.objects.filter(
+        mode__in=("manual", "manual_oem"), status="new",
+    )
+    manual_overdue = manual_pending.filter(
+        created_at__lt=now - timedelta(hours=48),
+    ).count()
+    manual_active = manual_pending.count()
+
+    # Открытые claim'ы / disputes
+    open_claims = OrderClaim.objects.filter(
+        status__in=("open", "in_review", "corrective_actions", "financial_settlement"),
+    ).count()
 
     # Total $ в обороте — сумма по открытым
     total_in_flight = Order.objects.filter(status__in=OPEN_STATUSES).values_list("total_amount", flat=True)
@@ -79,10 +104,52 @@ def op_dashboard(params, user, role):
         for o in hot
     ]
 
+    # Требует действия — собираем горячую очередь по приоритету
+    todo_rows: list[dict] = []
+    # SEMI требующие approve (с маркером overdue)
+    for rfq in semi_pending.order_by("created_at")[:5]:
+        elapsed = (now - rfq.created_at).total_seconds() / 60
+        is_overdue = elapsed > 15
+        todo_rows.append({
+            "title": (("⚠️ " if is_overdue else "⏱ ") +
+                       f"SEMI RFQ #{rfq.id} · {rfq.customer_name}"),
+            "subtitle": (f"approve КП · {int(elapsed)}мин назад" +
+                          (" · SLA нарушен" if is_overdue else "")),
+            "action": "op_approve_kp",
+            "params": {"rfq_id": rfq.id},
+        })
+    # MANUAL требующие dispatch
+    for rfq in manual_pending.order_by("created_at")[:5]:
+        elapsed_h = (now - rfq.created_at).total_seconds() / 3600
+        is_overdue = elapsed_h > 48
+        todo_rows.append({
+            "title": (("⚠️ " if is_overdue else "📋 ") +
+                       f"MANUAL RFQ #{rfq.id} · {rfq.customer_name}"),
+            "subtitle": (f"собрать КП · {int(elapsed_h)}ч назад" +
+                          (" · 48ч просрочено" if is_overdue else "")),
+            "action": "op_dispatch_manual_rfq",
+            "params": {"rfq_id": rfq.id},
+        })
+    # Hot orders (SLA at_risk/breached)
+    for o in hot:
+        todo_rows.append({
+            "title": f"🔥 ORD-{o.id} · {o.customer_name}",
+            "subtitle": f"{o.get_status_display()} · SLA {o.sla_status} · ${float(o.total_amount or 0):,.0f}",
+            "action": "get_order_detail",
+            "params": {"order_id": o.id},
+        })
+    if not todo_rows:
+        todo_rows = [{"title": "✅ Очередь пуста",
+                       "subtitle": "Все SEMI/MANUAL обработаны, SLA в норме"}]
+
     return ActionResult(
         text=(
             f"Сводка оператора · в работе {in_flight} заказов на ${total_usd:,.0f}.\n"
-            f"SLA: {at_risk} под угрозой, {breached} нарушено · возвратов в обработке: {refund_pending}."
+            f"⏱ SEMI: {semi_active} ждут approve" +
+            (f" · {semi_overdue} просрочено!" if semi_overdue else "") +
+            f"\n📋 MANUAL: {manual_active} в сборе КП" +
+            (f" · {manual_overdue} >48ч!" if manual_overdue else "") +
+            f"\nSLA: {at_risk} под угрозой, {breached} нарушено · возвратов: {refund_pending}"
         ),
         cards=[
             {
@@ -90,39 +157,41 @@ def op_dashboard(params, user, role):
                 "data": {
                     "title": "Операторская панель",
                     "items": [
-                        {"label": "В работе", "value": str(in_flight), "tone": "info"},
-                        {"label": "SLA: под угрозой", "value": str(at_risk), "tone": "warn" if at_risk else "ok"},
-                        {"label": "SLA: нарушено", "value": str(breached), "tone": "bad" if breached else "ok"},
-                        {"label": "Ожидает резерва", "value": str(awaiting_reserve)},
-                        {"label": "Возвраты", "value": str(refund_pending), "tone": "warn" if refund_pending else "ok"},
-                        {"label": "Оборот ($)", "value": f"{total_usd:,.0f}"},
+                        {"label": "SEMI ждут approve", "value": str(semi_active),
+                         "tone": "bad" if semi_overdue else ("warn" if semi_active else "ok"),
+                         "sub": (f"{semi_overdue} просрочено" if semi_overdue else "15м SLA")},
+                        {"label": "MANUAL в работе", "value": str(manual_active),
+                         "tone": "bad" if manual_overdue else ("warn" if manual_active else "ok"),
+                         "sub": (f"{manual_overdue} > 48ч" if manual_overdue else "48ч SLA")},
+                        {"label": "В работе", "value": str(in_flight), "tone": "info",
+                         "sub": f"${total_usd:,.0f}"},
+                        {"label": "SLA нарушено", "value": str(breached),
+                         "tone": "bad" if breached else "ok"},
+                        {"label": "Открытые claim'ы", "value": str(open_claims),
+                         "tone": "warn" if open_claims else "ok"},
+                        {"label": "Возвраты", "value": str(refund_pending),
+                         "tone": "warn" if refund_pending else "ok"},
                     ],
                 },
             },
             {
                 "type": "list",
                 "data": {
-                    "title": "🔥 Приоритетная очередь",
-                    "items": [
-                        {
-                            "title": f"#{r['id']} · {r['buyer']}",
-                            "subtitle": f"{r['status']} · SLA {r['sla']} · ${r['total']:,.0f}",
-                            "url": r["url"],
-                        }
-                        for r in rows
-                    ] or [{"title": "Нет горящих заказов", "subtitle": "Все SLA в норме"}],
+                    "title": "🔥 Требует действия",
+                    "rows": todo_rows,
                 },
             },
         ],
         contextual_actions=[
             {"action": "op_queue", "label": "📋 Полная очередь", "params": {"filter": "all"}},
             {"action": "op_sla_breach", "label": "⏱ Нарушения SLA"},
+            {"action": "get_claims", "label": "🛡 Claim'ы"},
             {"action": "get_analytics", "label": "📈 Аналитика"},
         ],
         suggestions=[
             "Покажи очередь нарушений SLA",
-            "Какие заказы ждут резерва дольше суток",
-            "Сводка по таможне за неделю",
+            "Какие SEMI просрочены",
+            "Открытые claim'ы",
         ],
     )
 

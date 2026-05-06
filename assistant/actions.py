@@ -2975,6 +2975,15 @@ def ship_order(params, user, role):
         _notify(order.buyer, kind="order",
                 title=f"Заказ #{order.id} отгружен",
                 body=f"Tracking {tracking} · перевозчик {carrier}. В транзите за рубеж.")
+    # + системное сообщение в shipment-чат с обновлённым timeline
+    try:
+        from .order_events import notify_order_event
+        notify_order_event(order, "shipped", actor=user,
+            text=(f"🚚 Заказ ORD-{order.id} отгружен!\n"
+                  f"Tracking: {tracking} · Перевозчик: {carrier}.\n"
+                  f"В транзите за рубеж."))
+    except Exception:
+        logger.exception("notify_order_event in ship_order failed")
 
     return ActionResult(
         text=(
@@ -3370,6 +3379,13 @@ def pay_final(params, user, role):
     except Exception:
         logger.exception("recalc_buyer_volume on pay_final failed")
 
+    # Broadcast в shipment-чат buyer'а
+    try:
+        from .order_events import notify_order_event
+        notify_order_event(order, "pay_final", actor=user)
+    except Exception:
+        logger.exception("notify_order_event in pay_final failed")
+
     return ActionResult(
         text=(
             f"✓ Списано ${final_amount:,.2f} с депозита — остаток по заказу #{order.id} оплачен.\n"
@@ -3488,6 +3504,13 @@ def advance_order(params, user, role):
     order.save(update_fields=["status"])
     _log_event(order, "status_changed", actor=user, source="buyer",
                meta={"from": old_status, "to": new_status})
+
+    # Broadcast в shipment-чат buyer'а с обновлённым timeline
+    try:
+        from .order_events import notify_order_event
+        notify_order_event(order, new_status, actor=user)
+    except Exception:
+        logger.exception("notify_order_event failed in advance_order")
 
     next_actions = []
     suggestions = []
@@ -3639,6 +3662,13 @@ def confirm_delivery(params, user, role):
             )
     except Exception:
         logger.exception("escrow release on confirm_delivery failed")
+
+    # Broadcast в shipment-чат buyer'а — финальный таймлайн «completed»
+    try:
+        from .order_events import notify_order_event
+        notify_order_event(order, "completed", actor=user)
+    except Exception:
+        logger.exception("notify_order_event in confirm_delivery failed")
 
     return ActionResult(
         text=f"✓ Заказ #{order.id} закрыт. Спасибо за приёмку!" + release_summary,

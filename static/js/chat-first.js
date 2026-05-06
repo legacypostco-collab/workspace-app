@@ -634,6 +634,45 @@
         <div class="im-list">${methods}</div>
       </div>`;
     },
+    order_timeline(d) {
+      const stages = (d.stages || []).map((s, i) => {
+        const cls = s.state === 'done' ? 'tl-done'
+                   : s.state === 'current' ? 'tl-current' : 'tl-pending';
+        const dot = s.state === 'done' ? '●'
+                   : s.state === 'current' ? '◆' : '○';
+        return `<div class="tl-stage ${cls}">
+          <span class="tl-dot">${dot}</span>
+          <span class="tl-label">${esc(s.label)}</span>
+        </div>`;
+      }).join('');
+
+      const next = d.next_action;
+      const nextHtml = next
+        ? `<button class="tl-cta act-btn" data-action="${esc(next.action)}" data-params='${esc(JSON.stringify(next.params||{}))}' data-label="${esc(next.label)}">${esc(next.label)}</button>`
+        : '';
+
+      const pct = d.progress_pct || 0;
+      const totalLine = d.total ? `${fmtMoney(d.total, d.currency)}` : '';
+      const reserveLine = d.reserve_amount
+        ? ` · резерв ${fmtMoney(d.reserve_amount, d.currency)}`
+        : '';
+
+      return `<div class="card tl-card">
+        <div class="tl-head">
+          <div>
+            <div class="card-title">${esc(d.title || ('Заказ ORD-' + d.order_id))}</div>
+            <div class="tl-status">${esc(d.status_label || '')}</div>
+          </div>
+          <div class="tl-total">${totalLine}<span class="tl-reserve">${esc(reserveLine)}</span></div>
+        </div>
+        <div class="tl-progress-wrap">
+          <div class="tl-progress"><div class="tl-progress-fill" style="width:${pct}%"></div></div>
+          <div class="tl-progress-pct">${pct}%</div>
+        </div>
+        <div class="tl-stages">${stages}</div>
+        ${nextHtml ? `<div class="tl-actions">${nextHtml}</div>` : ''}
+      </div>`;
+    },
     table_preview(d) {
       const headers = (d.headers || []).map(h => `<th>${esc(h)}</th>`).join('');
       const rows = (d.rows || []).map(row => {
@@ -1575,9 +1614,10 @@
       title:    'Какую запчасть найти?',
       subtitle: 'Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>.',
       pills: [
-        {label:'📦 Мои заказы',      action:'get_orders',     params:{}},
+        {label:'📦 Мои сделки',      action:'get_orders',     params:{}},
         {label:'📋 Открытые RFQ',    action:'get_rfq_status', params:{}},
-        {label:'💰 Баланс депозита', action:'get_balance',    params:{}},
+        {label:'💰 Депозит',         action:'get_balance',    params:{}},
+        {label:'🎯 Auto-discount',   action:'get_buyer_discount', params:{}},
       ],
     },
     seller: {

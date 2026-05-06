@@ -392,6 +392,29 @@
     .fm-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,0.7) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path fill='none' stroke='%23333' stroke-width='1.4' d='M2 4l4 4 4-4'/></svg>") right 10px center/12px 12px no-repeat;padding-right:30px;cursor:pointer;}
     .fm-textarea{resize:vertical;min-height:60px;font-family:'SF Mono',Menlo,monospace;font-size:12px;}
 
+    /* ── Order timeline (shipment-чат: прогресс сделки) ── */
+    .tl-card{padding:16px 18px;}
+    .tl-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;}
+    .tl-status{font-size:12px;color:rgba(0,0,0,0.6);margin-top:2px;}
+    .tl-total{font-size:16px;font-weight:700;color:#0a0a0a;font-variant-numeric:tabular-nums;text-align:right;}
+    .tl-reserve{font-size:11px;color:rgba(0,0,0,0.5);font-weight:500;display:block;}
+    .tl-progress-wrap{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+    .tl-progress{flex:1;height:6px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden;}
+    .tl-progress-fill{height:100%;background:#1a1a1a;transition:width 0.3s;}
+    .tl-progress-pct{font-size:11px;color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;font-weight:600;min-width:32px;text-align:right;}
+    .tl-stages{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+    .tl-stage{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:6px;font-size:12px;}
+    .tl-stage.tl-done{color:rgba(0,0,0,0.7);}
+    .tl-stage.tl-current{background:rgba(249,115,22,0.10);color:#0a0a0a;font-weight:600;}
+    .tl-stage.tl-pending{color:rgba(0,0,0,0.4);}
+    .tl-dot{width:14px;text-align:center;font-size:10px;}
+    .tl-stage.tl-done .tl-dot{color:#15803d;}
+    .tl-stage.tl-current .tl-dot{color:#f97316;font-size:13px;}
+    .tl-stage.tl-pending .tl-dot{color:rgba(0,0,0,0.3);}
+    .tl-actions{margin-top:8px;}
+    .tl-cta{padding:9px 18px!important;background:#1a1a1a!important;color:#fff!important;border-radius:8px!important;font-size:13px!important;font-weight:600!important;border:none!important;cursor:pointer;}
+    .tl-cta:hover{background:#000!important;}
+
     /* ── Drag-n-drop overlay (drop файла прямо в окно чата) ── */
     #dndOverlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);pointer-events:none;animation:dndFade 0.18s ease;}
     @keyframes dndFade{from{opacity:0}to{opacity:1}}
