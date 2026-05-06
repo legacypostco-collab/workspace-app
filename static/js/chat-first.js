@@ -2311,8 +2311,15 @@
       const urlConv = params.get('conv');
       const storedConv = getStoredConvId();
       const validIds = new Set((state.convs || []).map(c => c.id));
+      // ?new=1 — принудительно welcome-screen, не загружать последний conv
+      // (с landing «массовый поиск» приходим именно с этим флагом).
+      const forceNew = params.get('new') === '1';
       let target = null;
-      if (urlConv && validIds.has(urlConv)) target = urlConv;
+      if (forceNew) {
+        // Чистим storage — и URL — чтобы при F5 не возвращалось
+        try { localStorage.removeItem('cf_active_conv'); } catch(_){}
+        history.replaceState({}, '', '/chat/');
+      } else if (urlConv && validIds.has(urlConv)) target = urlConv;
       else if (storedConv && validIds.has(storedConv)) target = storedConv;
       else if (state.convs && state.convs.length) target = state.convs[0].id;
       if (target) {
