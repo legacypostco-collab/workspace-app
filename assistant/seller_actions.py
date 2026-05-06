@@ -1185,7 +1185,7 @@ def upload_pricelist(params, user, role):
                     {
                         "icon": "📋",
                         "title": "Google Sheets",
-                        "status": "active",
+                        "status": "recommended",
                         "description": (
                             "Подключи Google-таблицу — цены будут "
                             "синхронизироваться автоматически по расписанию "
@@ -1193,7 +1193,11 @@ def upload_pricelist(params, user, role):
                         ),
                         "secondary": {
                             "label": "📥 Создать копию шаблона",
-                            "url": "/api/assistant/pricelist-template.xlsx",
+                            # Placeholder template URL до тех пор пока не
+                            # будет публичного Google Sheet с нашим прайсом.
+                            # User обещал дать доступ — заменю на реальный URL.
+                            "url": "https://docs.google.com/spreadsheets/d/"
+                                   "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy",
                         },
                         "hint": "Заполните → откройте доступ → вставьте ссылку ниже",
                         "input": {
