@@ -82,6 +82,25 @@ class AssistantConsumer(AsyncWebsocketConsumer):
             "payload": event.get("payload") or {},
         })
 
+    async def order_update(self, event):
+        """Обновление заказа — клиент перезагрузит timeline в shipment-чате."""
+        await self.send_json({
+            "type": "order_update",
+            "order_id": event.get("order_id"),
+            "event": event.get("event"),
+            "conversation_id": event.get("conversation_id"),
+        })
+
+    async def operator_alert(self, event):
+        """Алерт оператору (SLA breach, SEMI overdue и т.д.)."""
+        await self.send_json({
+            "type": "operator_alert",
+            "event": event.get("event"),
+            "rfq_id": event.get("rfq_id"),
+            "order_id": event.get("order_id"),
+            "claim_id": event.get("claim_id"),
+        })
+
     async def receive(self, text_data=None, bytes_data=None):
         try:
             data = json.loads(text_data or "{}")

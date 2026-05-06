@@ -106,84 +106,209 @@ def _build_timeline_card(order) -> dict:
     }
 
 
-def _shipment_conv(buyer, order):
-    """Найти/создать conversation(category='shipment') для buyer×order."""
+def _shipment_conv(user, order, role="buyer"):
+    """Найти/создать conversation(category='shipment') для user×order.
+
+    Один conv на (user, ORD-N). Используется и для buyer'а, и для seller'а,
+    и для operator'а — все видят одну и ту же сделку в собственных конвах.
+    """
     from .models import Conversation
     title_prefix = f"Сделка ORD-{order.id}"
     conv = (Conversation.objects.filter(
-        user=buyer, category="shipment",
+        user=user, category="shipment",
         title__startswith=title_prefix, is_active=True,
     ).order_by("-updated_at").first())
     if conv:
         return conv
     return Conversation.objects.create(
-        user=buyer, role="buyer", category="shipment",
+        user=user, role=role, category="shipment",
         title=title_prefix[:200],
     )
 
 
+def _order_sellers(order):
+    """Возвращает уникальных seller'ов по позициям заказа."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    seller_ids = set()
+    for it in order.items.select_related("part").all():
+        if it.part and it.part.seller_id:
+            seller_ids.add(it.part.seller_id)
+    return list(User.objects.filter(id__in=seller_ids))
+
+
+def _operator_users():
+    """Возвращает операторов которым пушим SLA-эскалации.
+
+    Сейчас — все is_staff пользователи (≤5 для не перегружать).
+    В проде — отдельная группа Operator + on-call rotation.
+    """
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    return list(User.objects.filter(is_staff=True, is_active=True)[:5])
+
+
+# Тексты сообщений для разных аудиторий
+_EVENT_TEXTS_BUYER = {
+    "confirmed":      "✅ Поставщик подтвердил заказ ORD-{id} — запускают производство.",
+    "in_production":  "🏭 ORD-{id} в производстве. Сообщим когда готов к отгрузке.",
+    "ready_to_ship":  "📦 ORD-{id} готов к отгрузке. Оплатите остаток 90% — поедет.",
+    "pay_final":      "💳 Остаток 90% оплачен по ORD-{id} — заказ отгружают.",
+    "shipped":        "🚚 ORD-{id} отгружен и в пути.",
+    "transit_abroad": "🛫 ORD-{id} в транзите за рубеж.",
+    "customs":        "🛃 ORD-{id} проходит таможню.",
+    "transit_rf":     "🚛 ORD-{id} в транзите по РФ.",
+    "issuing":        "📬 ORD-{id} на выдаче — забирайте.",
+    "delivered":      "🏁 ORD-{id} доставлен. Подтвердите приёмку — деньги уйдут продавцу.",
+    "completed":      "🎉 ORD-{id} завершён. Эскроу освобождён продавцу.",
+}
+_EVENT_TEXTS_SELLER = {
+    "reserve_paid":   "💰 ORD-{id}: резерв 10% оплачен покупателем — можно подтверждать заказ.",
+    "confirmed":      "✅ ORD-{id} подтверждён — запустите производство.",
+    "in_production":  "🏭 ORD-{id} в производстве (статус обновлён).",
+    "ready_to_ship":  "📦 ORD-{id} помечен «готов к отгрузке». Ждём оплаты 90% от покупателя.",
+    "pay_final":      "💳 Покупатель оплатил остаток 90% по ORD-{id}. Можно отгружать.",
+    "shipped":        "🚚 ORD-{id}: вы отгрузили. Покупатель уведомлён.",
+    "delivered":      "🏁 ORD-{id} доставлен. Покупатель должен подтвердить приёмку.",
+    "completed":      "🎉 ORD-{id}: покупатель подтвердил приёмку — деньги переведены вам из эскроу.",
+}
+_EVENT_TEXTS_OPERATOR = {
+    "sla_semi_overdue":   "⚠️ SEMI RFQ #{rfq_id} — просрочен 15-минутный SLA. Approve или эскалация.",
+    "sla_manual_overdue": "⚠️ MANUAL RFQ #{rfq_id} — собирается КП >48ч. Эскалация.",
+    "sla_breach":         "⚠️ ORD-{id}: SLA breach (статус {status}). Нужна реакция.",
+    "claim_opened":       "🛡 ORD-{id}: открыта рекламация. Требуется review.",
+}
+
+
 def notify_order_event(order, event: str, *, actor=None,
                         text: str | None = None,
-                        extra_actions: list | None = None) -> None:
+                        extra_actions: list | None = None,
+                        targets: tuple = ("buyer", "seller")) -> None:
     """Главный broadcaster. Пишет системное сообщение в shipment-чат
-    buyer'а с обновлённым order_timeline + контекстной кнопкой.
+    каждой из targets (buyer / seller / operator) с обновлённым
+    order_timeline.
 
-    event: «confirmed» / «in_production» / «ready_to_ship» / «shipped» /
-            «customs» / «transit_rf» / «issuing» / «delivered» /
-            «pay_final» / «completed»
-    actor: кто инициировал (для аудита)
-    text: сообщение в чат buyer'а. Если None — сгенерируется из event.
-    extra_actions: доп. action-кнопки сверх timeline.next_action
+    targets: какие роли уведомляем (по умолчанию buyer + seller).
+             Operator уведомляется отдельно через notify_operator_alert().
     """
     from .models import Message
 
-    if not order or not order.buyer:
+    if not order:
         return
-    conv = _shipment_conv(order.buyer, order)
-    if not conv:
-        return
-
-    # Подбор текста по событию
-    EVENT_TEXTS = {
-        "confirmed":      f"✅ Поставщик подтвердил заказ ORD-{order.id} — запускают производство.",
-        "in_production":  f"🏭 ORD-{order.id} в производстве. Сообщим когда готов к отгрузке.",
-        "ready_to_ship":  f"📦 ORD-{order.id} готов к отгрузке. Оплатите остаток 90% — поедет.",
-        "pay_final":      f"💳 Остаток 90% оплачен по ORD-{order.id} — заказ отгружают.",
-        "shipped":        f"🚚 ORD-{order.id} отгружен и в пути.",
-        "transit_abroad": f"🛫 ORD-{order.id} в транзите за рубеж.",
-        "customs":        f"🛃 ORD-{order.id} проходит таможню.",
-        "transit_rf":     f"🚛 ORD-{order.id} в транзите по РФ.",
-        "issuing":        f"📬 ORD-{order.id} на выдаче — забирайте.",
-        "delivered":      f"🏁 ORD-{order.id} доставлен. Подтвердите приёмку — деньги уйдут продавцу.",
-        "completed":      f"🎉 ORD-{order.id} завершён. Эскроу освобождён продавцу.",
-    }
-    msg_text = text or EVENT_TEXTS.get(event,
-        f"Обновление по заказу ORD-{order.id}: {event}")
 
     cards = [_build_timeline_card(order)]
-    actions = list(extra_actions or [])
-    Message.objects.create(
-        conversation=conv,
-        role=Message.Role.SYSTEM,
-        content=msg_text,
-        cards=cards,
-        actions=actions,
-    )
-    logger.info(
-        f"order_event: ORD-{order.id} {event} → buyer {order.buyer_id} "
-        f"conv {conv.id}"
-    )
+    extra = list(extra_actions or [])
 
-    # WebSocket push для live-обновления (если канал активен)
-    try:
-        from channels.layers import get_channel_layer
-        from asgiref.sync import async_to_sync
-        layer = get_channel_layer()
-        if layer:
-            async_to_sync(layer.group_send)(
-                f"user_{order.buyer_id}",
-                {"type": "order.update", "order_id": order.id, "event": event},
+    def _post(user, role_label, text_template_dict):
+        if not user:
+            return
+        conv = _shipment_conv(user, order, role=role_label)
+        if not conv:
+            return
+        body = (text or text_template_dict.get(event, "")).format(id=order.id) \
+               or f"Обновление по заказу ORD-{order.id}: {event}"
+        Message.objects.create(
+            conversation=conv,
+            role=Message.Role.SYSTEM,
+            content=body,
+            cards=cards,
+            actions=extra,
+        )
+        # WebSocket для live-update
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            layer = get_channel_layer()
+            if layer:
+                async_to_sync(layer.group_send)(
+                    f"notif_user_{user.id}",
+                    {"type": "order_update", "order_id": order.id,
+                     "event": event, "conversation_id": str(conv.id)},
+                )
+        except Exception:
+            pass
+        logger.info(
+            f"order_event: ORD-{order.id} {event} → {role_label}"
+            f" {user.id} conv {conv.id}"
+        )
+
+    if "buyer" in targets and order.buyer:
+        _post(order.buyer, "buyer", _EVENT_TEXTS_BUYER)
+    if "seller" in targets:
+        for s in _order_sellers(order):
+            _post(s, "seller", _EVENT_TEXTS_SELLER)
+    if "operator" in targets:
+        for op in _operator_users():
+            _post(op, "operator", _EVENT_TEXTS_OPERATOR)
+
+
+def notify_operator_alert(*, rfq=None, order=None, claim=None,
+                            event: str, text: str | None = None) -> None:
+    """Эскалация в операторские shipment-чаты — SLA breach, SEMI overdue,
+    MANUAL >48ч, claim opened.
+    """
+    from .models import Conversation, Message
+
+    body = text or _EVENT_TEXTS_OPERATOR.get(event, f"Alert: {event}")
+    body = body.format(
+        id=(order.id if order else "—"),
+        rfq_id=(rfq.id if rfq else "—"),
+        status=(order.status if order else "—"),
+    )
+    cards = []
+    actions = []
+    title_prefix = ""
+    if order:
+        cards.append(_build_timeline_card(order))
+        title_prefix = f"Сделка ORD-{order.id}"
+        actions.append({"action": "get_order_detail", "label": "📋 Открыть заказ",
+                          "params": {"order_id": order.id}})
+    elif rfq:
+        title_prefix = f"RFQ #{rfq.id}"
+        if event == "sla_semi_overdue":
+            actions.append({"action": "op_approve_kp", "label": "▶️ Approve КП",
+                              "params": {"rfq_id": rfq.id}})
+        if event == "sla_manual_overdue":
+            actions.append({"action": "op_dispatch_manual_rfq",
+                              "label": "▶️ Сформировать КП",
+                              "params": {"rfq_id": rfq.id}})
+    elif claim:
+        title_prefix = f"Claim #{claim.id}"
+        actions.append({"action": "claim_detail", "label": "📋 Открыть",
+                          "params": {"claim_id": claim.id}})
+
+    for op in _operator_users():
+        # Для оператора — отдельный support-conv, чтобы не плодить
+        # бесконечно shipment-чаты (только при наличии order у нас уже
+        # есть один). Группируем все алерты в category='support'.
+        conv = Conversation.objects.filter(
+            user=op, category="support", title__startswith="Алерты",
+            is_active=True,
+        ).order_by("-updated_at").first()
+        if not conv:
+            conv = Conversation.objects.create(
+                user=op, role="operator", category="support",
+                title="Алерты оператора",
             )
-    except Exception:
-        # Channels не критичен — сообщение уже в БД
-        pass
+        Message.objects.create(
+            conversation=conv,
+            role=Message.Role.SYSTEM,
+            content=f"{title_prefix} · {body}" if title_prefix else body,
+            cards=cards,
+            actions=actions,
+        )
+        try:
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+            layer = get_channel_layer()
+            if layer:
+                async_to_sync(layer.group_send)(
+                    f"notif_user_{op.id}",
+                    {"type": "operator_alert", "event": event,
+                     "rfq_id": rfq.id if rfq else None,
+                     "order_id": order.id if order else None,
+                     "claim_id": claim.id if claim else None},
+                )
+        except Exception:
+            pass
+    logger.info(f"operator_alert: {event} → {len(_operator_users())} ops")

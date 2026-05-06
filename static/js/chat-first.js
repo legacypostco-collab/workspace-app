@@ -1305,6 +1305,33 @@
           addMessage('assistant', '⚠️ ' + d.message);
         } else if (d.type === 'notification') {
           showNotifToast(d.payload || {});
+        } else if (d.type === 'order_update') {
+          // Live-обновление: если seller/buyer/operator сейчас в shipment-
+          // чате этого ORD — перезагружаем conv (там уже свежее системное
+          // сообщение с обновлённым timeline). Иначе toast «Обновление по
+          // ORD-N», клик → переход в чат.
+          const inChat = state.convId && d.conversation_id === state.convId;
+          if (inChat) {
+            // Перезагружаем messages текущего чата
+            try { loadConv(state.convId, {silent: true}); } catch(_){}
+          } else {
+            showNotifToast({
+              title: '📦 Обновление по ORD-' + d.order_id,
+              body: 'Открыть чат сделки →',
+              url: d.conversation_id ? '/chat/' : null,
+            });
+          }
+          loadConvList();  // bump «непрочитанных» в sidebar
+        } else if (d.type === 'operator_alert') {
+          showNotifToast({
+            title: (d.event === 'sla_semi_overdue'   ? '⚠️ SEMI просрочен' :
+                    d.event === 'sla_manual_overdue' ? '⚠️ MANUAL >48ч' :
+                    d.event === 'sla_breach'         ? '🔥 SLA breach' :
+                    d.event === 'claim_opened'       ? '🛡 Открыт claim' :
+                    'Алерт оператору'),
+            body: 'Откройте «Алерты оператора» в сайдбаре',
+          });
+          loadConvList();
         }
       } catch(e){ console.error(e); }
     };
