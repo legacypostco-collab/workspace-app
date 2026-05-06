@@ -1193,11 +1193,13 @@ def upload_pricelist(params, user, role):
                         ),
                         "secondary": {
                             "label": "📥 Создать копию шаблона",
-                            # Placeholder template URL до тех пор пока не
-                            # будет публичного Google Sheet с нашим прайсом.
-                            # User обещал дать доступ — заменю на реальный URL.
+                            # Публичный Google Sheet с прайс-шаблоном
+                            # Consolidator (16 колонок: PartNumber, CrossNumber,
+                            # Brand, Name, Quantity, Condition, Price_EXW, …).
+                            # /copy → Google спросит у seller'а «Создать копию»
+                            # → копия попадает в его Drive.
                             "url": "https://docs.google.com/spreadsheets/d/"
-                                   "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy",
+                                   "1RPZuoDgAd7mh4iuvC7HvmoTY9bTCPwWzPAwOEEiYhas/copy",
                         },
                         "hint": "Заполните → откройте доступ → вставьте ссылку ниже",
                         "input": {
