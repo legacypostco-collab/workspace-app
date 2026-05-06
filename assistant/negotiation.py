@@ -268,7 +268,9 @@ def send_rfq_to_suppliers(params, user, role):
     # у кого все позиции есть в каталоге с актуальной ценой. Без ожидания
     # ручного submit_quote.
     auto_quotes = 0
-    if rfq.mode == "auto":
+    # ТЗ: AUTO — автогенерация + сразу buyer'у. SEMI — автогенерация
+    # из каталога, но КП уходит только после оператор-approve.
+    if rfq.mode in ("auto", "semi"):
         try:
             auto_quotes = auto_generate_quotes_from_catalog(rfq, recipients)
             if auto_quotes > 0:
