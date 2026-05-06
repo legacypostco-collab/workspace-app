@@ -1786,9 +1786,11 @@
       const icon = CATEGORY_ICON[c.category || 'general'] || '💬';
       const cid = esc(c.id);
       return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" data-conv-id="${cid}" onclick="openConv('${cid}')" oncontextmenu="return openConvCtxMenu(event,'${cid}')">
-        <div class="side-item-stack-title"><span class="conv-cat-icon" title="${esc(c.category || 'general')}">${icon}</span>${esc(c.title || 'Без названия')}</div>
-        <div class="side-item-stack-meta">${esc(meta)} ${lastMeta && lastMeta !== meta ? '· ' + esc(lastMeta) : ''}</div>
-        <button class="side-item-stack-more" title="Действия" onclick="event.stopPropagation();openConvCtxMenu(event,'${cid}')" aria-label="Действия">⋯</button>
+        <div class="side-item-stack-content">
+          <div class="side-item-stack-title"><span class="conv-cat-icon" title="${esc(c.category || 'general')}">${icon}</span>${esc(c.title || 'Без названия')}</div>
+          <div class="side-item-stack-meta">${esc(meta)} ${lastMeta && lastMeta !== meta ? '· ' + esc(lastMeta) : ''}</div>
+        </div>
+        <button class="side-item-stack-more" type="button" title="Действия" onclick="event.stopPropagation();openConvCtxMenu(event,'${cid}');return false;" aria-label="Действия">⋯</button>
       </div>`;
     }).join('');
   }
