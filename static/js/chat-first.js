@@ -568,8 +568,10 @@
       // Карточка способов интеграции (CSV/XLSX, Google Sheets, REST API).
       const methods = (d.methods || []).map(m => {
         const stCls = m.status === 'soon' ? 'im-st-soon'
+                     : m.status === 'recommended' ? 'im-st-recommended'
                      : m.status === 'active' ? 'im-st-active' : 'im-st-default';
         const stLabel = m.status === 'soon' ? 'Скоро'
+                       : m.status === 'recommended' ? 'Рекомендуется'
                        : m.status === 'active' ? 'Активно' : '';
         const stBadge = stLabel ? `<span class="im-status ${stCls}">${esc(stLabel)}</span>` : '';
         const icon = m.icon || '◇';

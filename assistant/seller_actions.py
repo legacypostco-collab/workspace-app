@@ -1183,35 +1183,20 @@ def upload_pricelist(params, user, role):
                 "title": "Способы интеграции",
                 "methods": [
                     {
-                        "icon": "🧠",
-                        "title": "Умная загрузка CSV / XLSX",
-                        "status": "active",
-                        "description": (
-                            "Распознаёт заголовки на 5 языках по словарю. "
-                            "AI вызывается только для нестандартных колонок, "
-                            "результаты запоминаются. Повторная загрузка — "
-                            "мгновенно, без дубликатов."
-                        ),
-                        "primary": {
-                            "label": "📂 Выбрать файл",
-                            "action": "__open_file_picker",
-                            "params": {"accept": ".xlsx,.xls,.csv,.tsv,.txt"},
-                        },
-                    },
-                    {
                         "icon": "📋",
                         "title": "Google Sheets",
-                        "status": "active",
+                        "status": "recommended",
                         "description": (
-                            "Подключи Google-таблицу — цены будут синхронизироваться "
-                            "автоматически по расписанию (раз в час)."
+                            "Самый удобный способ. Подключи Google-таблицу — "
+                            "цены синхронизируются автоматически раз в час. "
+                            "Не нужно загружать файл вручную при каждом обновлении."
                         ),
                         "secondary": {
                             "label": "📥 Создать копию шаблона",
                             "url": "https://docs.google.com/spreadsheets/d/"
                                    "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/copy",
                         },
-                        "hint": "Заполните → откройте доступ → вставьте ссылку ниже",
+                        "hint": "Заполните таблицу → откройте доступ «Все, у кого есть ссылка → Читатель» → вставьте ссылку",
                         "input": {
                             "name": "gsheet_url", "type": "url",
                             "placeholder": "https://docs.google.com/spreadsheets/d/...",
@@ -1220,6 +1205,21 @@ def upload_pricelist(params, user, role):
                             "label": "Подключить",
                             "action": "connect_gsheet",
                             "params": {},
+                        },
+                    },
+                    {
+                        "icon": "🧠",
+                        "title": "Умная загрузка CSV / XLSX",
+                        "status": "active",
+                        "description": (
+                            "Разовая загрузка файла. Распознаёт заголовки на "
+                            "5 языках, AI вызывается только для нестандартных "
+                            "колонок. Повторная загрузка — без дубликатов."
+                        ),
+                        "primary": {
+                            "label": "📂 Выбрать файл",
+                            "action": "__open_file_picker",
+                            "params": {"accept": ".xlsx,.xls,.csv,.tsv,.txt"},
                         },
                     },
                     {
@@ -1869,43 +1869,143 @@ def seller_reports(params, user, role):
 def connect_gsheet(params, user, role):
     """ТЗ: подключить Google-таблицу как источник прайса.
 
-    MVP-stub: принимает ссылку, валидирует что это spreadsheet URL,
-    сохраняет в PricelistMapping.mapping['_gsheet_url'] для будущего
-    Celery-watcher'а. Реальная синхронизация — отдельной задачей.
+    Скачивает таблицу через публичный CSV-export и прогоняет через тот
+    же pipeline что и upload-файла: smart-mapping (словарь + AI) →
+    preview-импорт. URL сохраняется в PricelistMapping['_gsheet_url']
+    для будущей авто-синхронизации (Celery raz/час).
     """
-    from marketplace.models import PricelistMapping
+    import re as _re
+    from django.core.files.base import ContentFile
+    from marketplace.models import PricelistImport, PricelistMapping
+    from .pricelist import (
+        _read_preview, _smart_mapping, _build_mapped_preview, STD_FIELDS,
+        MIN_COLUMNS, MAX_COLUMNS, MAX_FILE_BYTES,
+    )
+
     user = _effective_seller(user)
     url = (params.get("gsheet_url") or "").strip()
     if not url:
         return ActionResult(text="⚠️ Пустая ссылка.")
-    if "docs.google.com/spreadsheets" not in url:
+    m = _re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", url)
+    if not m:
         return ActionResult(text=(
             "⚠️ Это не похоже на ссылку Google Sheets. "
             "Ожидается формат `https://docs.google.com/spreadsheets/d/...`"
         ))
-    pm, _ = PricelistMapping.objects.get_or_create(seller=user)
-    cur = dict(pm.mapping or {})
+    sheet_id = m.group(1)
+    gid_m = _re.search(r"[?&#]gid=(\d+)", url)
+    gid = gid_m.group(1) if gid_m else "0"
+    csv_url = (
+        f"https://docs.google.com/spreadsheets/d/{sheet_id}"
+        f"/export?format=csv&gid={gid}"
+    )
+    try:
+        import requests
+        resp = requests.get(csv_url, timeout=20, allow_redirects=True)
+    except Exception as e:
+        return ActionResult(text=f"⚠️ Не удалось скачать таблицу: {e}")
+    if resp.status_code == 401 or resp.status_code == 403:
+        return ActionResult(text=(
+            "⚠️ Таблица не доступна публично. Откройте доступ "
+            "«Все, у кого есть ссылка → Читатель» в настройках Google Sheets "
+            "и попробуйте снова."
+        ))
+    if resp.status_code != 200:
+        return ActionResult(text=(
+            f"⚠️ Google вернул HTTP {resp.status_code}. Проверьте ссылку "
+            f"и доступ."
+        ))
+    blob = resp.content
+    if len(blob) > MAX_FILE_BYTES:
+        return ActionResult(text=(
+            f"⚠️ Таблица слишком большая ({len(blob) // 1024 // 1024} МБ). "
+            f"Максимум {MAX_FILE_BYTES // 1024 // 1024} МБ."
+        ))
+    try:
+        headers, sample = _read_preview("gsheet.csv", blob)
+    except Exception as e:
+        return ActionResult(text=f"⚠️ Не удалось прочитать таблицу: {e}")
+    if not headers or len(headers) < MIN_COLUMNS:
+        return ActionResult(text=(
+            f"⚠️ В таблице меньше {MIN_COLUMNS} колонок. Нечего импортировать."
+        ))
+    if len(headers) > MAX_COLUMNS:
+        return ActionResult(text=(
+            f"⚠️ Колонок слишком много ({len(headers)}). Максимум {MAX_COLUMNS}."
+        ))
+
+    # Smart mapping: словарь + AI fallback
+    pm = PricelistMapping.objects.filter(seller=user).first()
+    ai_called = False
+    if pm and pm.mapping:
+        suggested = {k: v for k, v in pm.mapping.items()
+                      if v and (str(v).startswith("fix:") or v in headers)}
+    else:
+        suggested, _u, ai_called, status = _smart_mapping(
+            headers, sample, seller=user,
+        )
+        if status == "quota_exceeded":
+            return ActionResult(text=(
+                "Лимит распознавания исчерпан. Попробуйте завтра или "
+                "скачайте шаблон."
+            ))
+
+    imp = PricelistImport.objects.create(
+        seller=user, filename="gsheet.csv",
+        headers=headers, sample_rows=sample,
+        suggested_mapping=suggested, ai_called=ai_called,
+        status="preview",
+    )
+    imp.file_obj.save(f"gsheet-{imp.id}.csv", ContentFile(blob), save=True)
+
+    # Сохраняем URL для авто-синхронизации
+    pm2, _ = PricelistMapping.objects.get_or_create(seller=user)
+    cur = dict(pm2.mapping or {})
     cur["_gsheet_url"] = url
-    pm.mapping = cur
-    pm.save(update_fields=["mapping", "updated_at"])
+    pm2.mapping = cur
+    pm2.save(update_fields=["mapping", "updated_at"])
+
+    mapped_preview = _build_mapped_preview(headers, sample, suggested)
+    rows = [{
+        "label": "🔗 URL", "value": url[:60] + ("…" if len(url) > 60 else ""),
+    }, {
+        "label": "Колонок", "value": str(len(headers)),
+    }, {
+        "label": "Маппинг готов", "value": (
+            "по словарю + AI" if ai_called else
+            "по сохранённому маппингу" if pm and pm.mapping else
+            "по словарю"
+        ),
+    }, {
+        "label": "─── Распознанные поля ───", "value": "",
+    }]
+    for std, src in (suggested or {}).items():
+        rows.append({"label": std, "value": str(src)})
+
     return ActionResult(
         text=(
-            f"✅ Google Sheet подключён.\n"
-            f"Ссылка сохранена. Синхронизация запустится автоматически "
-            f"раз в час (или вручную по запросу). Если в таблице нет "
-            f"стандартных колонок — при первой синхронизации запросим маппинг."
+            f"✅ Google Sheet подключён · {len(headers)} колонок прочитано.\n"
+            f"Подтвердите маппинг ниже — после импорта URL сохранится для "
+            f"авто-синхронизации (раз в час)."
         ),
-        cards=[{"type": "list", "data": {
-            "title": "Google Sheet",
-            "rows": [
-                {"title": "🔗 Подключённая таблица",
-                 "subtitle": url[:80] + ("…" if len(url) > 80 else ""),
-                 "badge": "URL", "url": url},
-            ],
-        }}],
+        cards=[
+            {"type": "draft", "data": {
+                "title": "Google Sheet · превью",
+                "rows": rows,
+            }},
+            {"type": "table_preview", "data": {
+                "title": "Как ляжет в базу (первые 5 строк)",
+                "headers": mapped_preview["headers"],
+                "rows": mapped_preview["rows"],
+            }},
+        ],
         actions=[
-            {"label": "🔄 Синхронизировать сейчас",
-             "action": "upload_pricelist", "params": {}},
-            {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
+            {"action": "__pricelist_commit", "label": "📥 Импортировать",
+             "params": dict(
+                 {"import_id": imp.id},
+                 **{f"col__{k}": v for k, v in (suggested or {}).items()},
+             )},
+            {"action": "__pricelist_cancel", "label": "Отменить",
+             "params": {"import_id": imp.id}},
         ],
     )
