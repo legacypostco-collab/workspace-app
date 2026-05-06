@@ -22,7 +22,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     GET    /api/assistant/conversations/        — list
     POST   /api/assistant/conversations/        — create new
     GET    /api/assistant/conversations/{id}/   — detail with messages
-    DELETE /api/assistant/conversations/{id}/   — soft delete (is_active=False)
+    DELETE /api/assistant/conversations/{id}/   — hard delete (cascades messages)
     """
     permission_classes = [IsAuthenticated]
 
@@ -39,8 +39,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
                         role=detect_user_role(self.request.user, request=self.request))
 
     def perform_destroy(self, instance):
-        instance.is_active = False
-        instance.save(update_fields=["is_active"])
+        # Hard delete: пользователь явно нажал «Удалить» в UI и ожидает,
+        # что чат пропадёт навсегда (а не вернётся при следующем
+        # order-event / WS-reconnect через find_or_create_conv,
+        # который фильтрует по is_active=True). Messages удаляются по
+        # CASCADE из FK в models.Message.
+        instance.delete()
 
 
 class ChatView(APIView):
