@@ -107,8 +107,19 @@ def _read_xlsx_rows(blob: bytes, max_rows: int | None = None):
 
 
 def _read_csv_rows(blob: bytes, max_rows: int | None = None):
-    """Iter csv/tsv с авто-определением разделителя."""
+    """Iter csv/tsv с авто-определением разделителя.
+
+    Терпит mixed line endings (\\r, \\r\\n, \\n) — csv.reader падает с
+    «new-line character seen in unquoted field» когда в данных смешаны
+    разные newlines. Нормализуем все newlines к \\n перед парсингом.
+    Также отрезаем UTF-8 BOM если есть.
+    """
+    # UTF-8 BOM можно встретить в файлах из Excel
+    if blob[:3] == b"\xef\xbb\xbf":
+        blob = blob[3:]
     text = blob.decode("utf-8", errors="replace")
+    # Нормализация newlines: \\r\\n или \\r → \\n
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     sample = text[:4096]
     try:
         dialect = csv.Sniffer().sniff(sample, delimiters=";,\t|")
@@ -116,7 +127,7 @@ def _read_csv_rows(blob: bytes, max_rows: int | None = None):
         class _D(csv.excel):
             delimiter = ";"
         dialect = _D()
-    reader = csv.reader(io.StringIO(text), dialect=dialect)
+    reader = csv.reader(io.StringIO(text, newline=""), dialect=dialect)
     n = 0
     for row in reader:
         yield tuple((v or "").strip() for v in row)
@@ -126,14 +137,21 @@ def _read_csv_rows(blob: bytes, max_rows: int | None = None):
 
 
 def _detect_format(filename: str, blob: bytes) -> str:
+    """Определяет формат файла. Magic-байты приоритетнее расширения —
+    бывает что seller сохраняет xlsx с расширением .csv (или наоборот).
+    """
+    # Magic: zip-архив (xlsx) — приоритет над расширением
+    if blob[:4] == b"PK\x03\x04":
+        return "xlsx"
+    # Magic: BIFF-Excel (старый .xls) — у нас не поддерживается, но
+    # пометим как xlsx чтобы openpyxl выдал понятную ошибку.
+    if blob[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
+        return "xlsx"
     name = (filename or "").lower()
-    if name.endswith(".xlsx") or name.endswith(".xlsm"):
+    if name.endswith(".xlsx") or name.endswith(".xlsm") or name.endswith(".xls"):
         return "xlsx"
     if name.endswith(".csv") or name.endswith(".tsv") or name.endswith(".txt"):
         return "csv"
-    # Magic-byte sniff
-    if blob[:2] == b"PK":
-        return "xlsx"
     return "csv"
 
 
