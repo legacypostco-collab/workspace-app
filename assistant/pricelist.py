@@ -830,6 +830,34 @@ class PricelistCommitView(APIView):
         })
 
 
+class PricelistTemplateXlsxView(APIView):
+    """GET /api/assistant/pricelist-template.xlsx — Excel-шаблон с
+    инструкцией на отдельном листе + 16 колонок и 3 примера строк.
+    """
+    from rest_framework.permissions import AllowAny
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        from django.http import HttpResponse, FileResponse, Http404
+        from django.conf import settings
+        path = os.path.join(
+            str(settings.BASE_DIR),
+            "static", "templates", "consolidator_pricelist_template.xlsx",
+        )
+        if not os.path.exists(path):
+            raise Http404("Template not found")
+        resp = FileResponse(
+            open(path, "rb"),
+            content_type=("application/vnd.openxmlformats-officedocument."
+                          "spreadsheetml.sheet"),
+        )
+        resp["Content-Disposition"] = (
+            'attachment; filename="consolidator_pricelist_template.xlsx"'
+        )
+        return resp
+
+
 class PricelistTemplateView(APIView):
     """GET /api/assistant/pricelist-template.csv — шаблон 16 колонок."""
     from rest_framework.permissions import AllowAny

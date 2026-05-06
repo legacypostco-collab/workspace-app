@@ -1242,11 +1242,17 @@ def upload_pricelist(params, user, role):
                         "title": "Скачать шаблон",
                         "status": "active",
                         "description": (
-                            "Готовый CSV с 16 колонками и примерами строк "
-                            "(PartNumber, Name, Quantity, Price_EXW…)."
+                            "Excel-шаблон с двумя листами: «Инструкция» "
+                            "(пошаговое руководство, описание 16 колонок, "
+                            "частые ошибки) и «Прайс» (заголовки + 3 примера "
+                            "строк для замены вашими данными)."
                         ),
                         "primary": {
-                            "label": "Скачать",
+                            "label": "Скачать .xlsx",
+                            "url": "/api/assistant/pricelist-template.xlsx",
+                        },
+                        "secondary": {
+                            "label": "Или CSV-минимум",
                             "url": "/api/assistant/pricelist-template.csv",
                         },
                     },
