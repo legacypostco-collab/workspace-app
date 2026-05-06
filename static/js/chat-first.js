@@ -1860,31 +1860,32 @@
       const sug = data.suggested_mapping || {};
       const stdFields = data.std_fields || [];
 
-      // Колонки которые уже маппятся на ДРУГИЕ поля — исключаем из
-      // dropdown'ов остальных полей чтобы не предлагать «Part Number»
-      // в качестве «Цена FOB AIR».
-      const usedHeaders = new Set();
-      Object.values(sug).forEach(v => {
+      // Маркируем занятые колонки в label чтобы было видно куда они
+      // привязаны (но НЕ исключаем — seller может переназначить).
+      const fieldLabel = {};
+      stdFields.forEach(f => { fieldLabel[f.key] = f.label; });
+      const usedBy = {};  // header → field-label
+      Object.entries(sug).forEach(([fk, v]) => {
         if (v && !String(v).startsWith('fix:') && headers.includes(v)) {
-          usedHeaders.add(v);
+          if (!usedBy[v]) usedBy[v] = fieldLabel[fk] || fk;
         }
       });
 
       const fields = stdFields.map(f => {
         const myValue = sug[f.key] || '';
-        // Headers, доступные ЭТОМУ полю: либо ещё не использованы,
-        // либо привязаны именно к нему (чтобы можно было выбрать).
-        const availableHeaders = headers.filter(h =>
-          !usedHeaders.has(h) || h === myValue
-        );
-        const opts = [{value: '', label: '— не использовать —'}]
-          .concat(availableHeaders.map(h =>
-            ({value: h, label: '📋 Колонка: ' + h})
-          ));
+        const opts = [{value: '', label: '— не использовать —'}];
+        headers.forEach(h => {
+          let label = 'Колонка: ' + h;
+          // Если эта колонка уже занята другим полем — пометим
+          if (usedBy[h] && h !== myValue) {
+            label += '  (→ ' + usedBy[h] + ')';
+          }
+          opts.push({value: h, label: label});
+        });
         if (f.enum_values && f.enum_values.length) {
-          opts.push({value: '__sep__', label: '— или фикс. для всех строк —'});
+          opts.push({value: '__sep__', label: '— или фикс. значение —'});
           f.enum_values.forEach(v => {
-            opts.push({value: 'fix:' + v, label: '💎 ' + v});
+            opts.push({value: 'fix:' + v, label: 'Фикс: ' + v});
           });
         }
         return {
