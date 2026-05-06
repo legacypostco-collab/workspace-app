@@ -1773,6 +1773,8 @@
   function renderConvList(filter='') {
     const f = filter.toLowerCase();
     const list = state.convs.filter(c => !f || (c.title||'').toLowerCase().includes(f));
+    const clearBtn = $('clearHistoryBtn');
+    if (clearBtn) clearBtn.style.display = (state.convs && state.convs.length) ? '' : 'none';
     if (!list.length) {
       $('convList').innerHTML = '<div class="side-item-stack"><div class="side-item-stack-meta">Нет чатов</div></div>';
       return;
@@ -1782,12 +1784,67 @@
       const meta = date ? relativeTime(date) : '';
       const lastMeta = c.last_message ? c.last_message.content.substring(0, 40) : meta;
       const icon = CATEGORY_ICON[c.category || 'general'] || '💬';
-      return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" onclick="openConv('${c.id}')">
+      const cid = esc(c.id);
+      const ttl = esc(c.title || 'Без названия').replace(/'/g, "\\'");
+      return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" onclick="openConv('${cid}')">
         <div class="side-item-stack-title"><span class="conv-cat-icon" title="${esc(c.category || 'general')}">${icon}</span>${esc(c.title || 'Без названия')}</div>
         <div class="side-item-stack-meta">${esc(meta)} ${lastMeta && lastMeta !== meta ? '· ' + esc(lastMeta) : ''}</div>
+        <button class="side-item-stack-del" title="Удалить чат" onclick="event.stopPropagation();deleteConv('${cid}','${ttl}')" aria-label="Удалить чат">×</button>
       </div>`;
     }).join('');
   }
+
+  // Удаление одного чата (soft delete)
+  window.deleteConv = async (id, title) => {
+    const t = (title || '').trim() || 'этот чат';
+    if (!confirm(`Удалить «${t}»?\nЧат и его история будут скрыты.`)) return;
+    try {
+      const res = await fetch('/api/assistant/conversations/' + id + '/', {
+        method: 'DELETE',
+        headers: {'X-CSRFToken': csrf()},
+        credentials: 'same-origin',
+      });
+      if (!res.ok && res.status !== 204) throw new Error('HTTP ' + res.status);
+      // если удалили активный — уйти на welcome
+      if (state.convId === id) {
+        try { localStorage.removeItem('cf_active_conv'); } catch(_){}
+        state.convId = null;
+        if (typeof showWelcome === 'function') showWelcome();
+        else if ($('streamInner')) $('streamInner').innerHTML = '';
+      }
+      // убрать из state и перерисовать
+      state.convs = (state.convs || []).filter(c => c.id !== id);
+      renderConvList($('convSearch') ? $('convSearch').value : '');
+    } catch(e) {
+      alert('Не удалось удалить чат: ' + e.message);
+    }
+  };
+
+  // Массовое удаление всей истории
+  window.clearAllHistory = async () => {
+    const n = (state.convs || []).length;
+    if (!n) return;
+    if (!confirm(`Удалить всю историю поисков (${n} чатов)?\nЭто действие нельзя отменить.`)) return;
+    const ids = state.convs.map(c => c.id);
+    let failed = 0;
+    await Promise.all(ids.map(async (id) => {
+      try {
+        const res = await fetch('/api/assistant/conversations/' + id + '/', {
+          method: 'DELETE',
+          headers: {'X-CSRFToken': csrf()},
+          credentials: 'same-origin',
+        });
+        if (!res.ok && res.status !== 204) failed++;
+      } catch(_) { failed++; }
+    }));
+    try { localStorage.removeItem('cf_active_conv'); } catch(_){}
+    state.convId = null;
+    state.convs = [];
+    if (typeof showWelcome === 'function') showWelcome();
+    else if ($('streamInner')) $('streamInner').innerHTML = '';
+    renderConvList();
+    if (failed) alert(`Не удалось удалить ${failed} чат(ов)`);
+  };
 
   function relativeTime(date) {
     const now = new Date();
