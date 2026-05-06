@@ -1183,12 +1183,43 @@ def upload_pricelist(params, user, role):
                 "title": "Способы интеграции",
                 "methods": [
                     {
-                        "icon": "🧠",
-                        "title": "Загрузить файл (Excel / CSV)",
+                        "icon": "📋",
+                        "title": "Google Sheets",
                         "status": "recommended",
                         "description": (
-                            "Главный рабочий способ. Система распознаёт "
-                            "заголовки на 5 языках, AI помогает с нестандартными "
+                            "Самый удобный способ. Подключите Google-таблицу — "
+                            "цены будут синхронизироваться автоматически раз "
+                            "в час. Не нужно загружать файл вручную при "
+                            "каждом обновлении."
+                        ),
+                        "secondary": {
+                            "label": "📥 Скачать .xlsx-шаблон",
+                            "url": "/api/assistant/pricelist-template.xlsx",
+                        },
+                        "hint": (
+                            "1) Скачайте шаблон с инструкцией · "
+                            "2) Откройте drive.google.com → правый клик «Загрузить файл» → выберите шаблон · "
+                            "3) Откройте таблицу в Google Sheets, заполните данными · "
+                            "4) Файл → Поделиться → «Все, у кого есть ссылка → Читатель» · "
+                            "5) Скопируйте URL из адресной строки и вставьте ниже."
+                        ),
+                        "input": {
+                            "name": "gsheet_url", "type": "url",
+                            "placeholder": "https://docs.google.com/spreadsheets/d/...",
+                        },
+                        "primary": {
+                            "label": "Подключить",
+                            "action": "connect_gsheet",
+                            "params": {},
+                        },
+                    },
+                    {
+                        "icon": "🧠",
+                        "title": "Загрузить файл (Excel / CSV)",
+                        "status": "active",
+                        "description": (
+                            "Разовая загрузка. Система распознаёт заголовки "
+                            "на 5 языках, AI помогает с нестандартными "
                             "колонками. Повторная загрузка обновляет цены "
                             "без дубликатов."
                         ),
@@ -1211,17 +1242,6 @@ def upload_pricelist(params, user, role):
                             "label": "Скачать .xlsx",
                             "url": "/api/assistant/pricelist-template.xlsx",
                         },
-                    },
-                    {
-                        "icon": "📋",
-                        "title": "Google Sheets",
-                        "status": "soon",
-                        "description": (
-                            "Подключить Google-таблицу для автоматической "
-                            "синхронизации цен раз в час. Пока в разработке — "
-                            "включим в production."
-                        ),
-                        "disabled": True,
                     },
                     {
                         "icon": "🔌",
