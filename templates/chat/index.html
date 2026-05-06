@@ -85,15 +85,25 @@
     .side-item-stack-title{font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:6px;padding-right:22px;}
     .conv-cat-icon{font-size:11px;flex-shrink:0;opacity:0.85;}
     .side-item-stack-meta{font-size:11px;color:rgba(0,0,0,0.45);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
-    .side-item-stack-del{position:absolute;top:6px;right:6px;width:22px;height:22px;border:none;background:transparent;color:rgba(0,0,0,0.35);border-radius:6px;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:14px;line-height:1;padding:0;transition:background .12s,color .12s;}
-    .side-item-stack:hover .side-item-stack-del{display:flex;}
-    .side-item-stack-del:hover{background:rgba(220,53,69,0.1);color:#dc3545;}
+    .side-item-stack-more{position:absolute;top:6px;right:6px;width:22px;height:22px;border:none;background:transparent;color:rgba(0,0,0,0.4);border-radius:6px;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:14px;line-height:1;padding:0;transition:background .12s,color .12s;}
+    .side-item-stack:hover .side-item-stack-more,.side-item-stack-more.open{display:flex;}
+    .side-item-stack-more:hover{background:rgba(0,0,0,0.08);color:#1a1a1a;}
     .side-section-clear{font-size:11px;color:rgba(0,0,0,0.4);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px;}
     .side-section-clear:hover{background:rgba(220,53,69,0.08);color:#dc3545;}
-    body.dark-mode .side-item-stack-del{color:rgba(255,255,255,0.4);}
-    body.dark-mode .side-item-stack-del:hover{background:rgba(220,53,69,0.18);color:#ff7079;}
+    body.dark-mode .side-item-stack-more{color:rgba(255,255,255,0.45);}
+    body.dark-mode .side-item-stack-more:hover{background:rgba(255,255,255,0.08);color:#fff;}
     body.dark-mode .side-section-clear{color:rgba(255,255,255,0.4);}
     body.dark-mode .side-section-clear:hover{background:rgba(220,53,69,0.15);color:#ff7079;}
+
+    /* Контекст-меню чата (Linear-style) */
+    .ctx-menu{position:fixed;z-index:1000;min-width:200px;background:#1f1f1f;border:1px solid rgba(255,255,255,0.08);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.45),0 2px 6px rgba(0,0,0,0.3);padding:6px;color:#e8e8e8;font-size:13px;user-select:none;}
+    .ctx-menu[hidden]{display:none !important;}
+    .ctx-menu-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 10px;border-radius:6px;cursor:pointer;color:#e8e8e8;}
+    .ctx-menu-item:hover{background:rgba(255,255,255,0.08);}
+    .ctx-menu-item.danger{color:#ff5b6b;}
+    .ctx-menu-item.danger:hover{background:rgba(255,91,107,0.12);}
+    .ctx-menu-sep{height:1px;background:rgba(255,255,255,0.08);margin:4px 0;}
+    .ctx-menu-key{font-size:11px;color:rgba(255,255,255,0.4);font-family:ui-monospace,monospace;}
     .side-foot{display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid rgba(0,0,0,0.06);margin-top:auto;}
     .side-settings{width:30px;height:30px;border:none;background:transparent;color:rgba(0,0,0,0.55);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .12s;}
     .side-settings:hover{background:rgba(0,0,0,0.06);color:#1a1a1a;}
@@ -889,6 +899,19 @@
 <input type="file" id="fileInput" style="display:none;" accept=".xlsx,.xls,.csv,.pdf">
 <input type="file" id="photoInput" style="display:none;" accept="image/*" capture="environment">
 
-<script src="{% static 'js/chat-first.js' %}?v=11&t={% now 'U' %}"></script>
+<!-- Контекст-меню чата (rename / delete) -->
+<div id="convCtxMenu" class="ctx-menu" hidden role="menu">
+  <div class="ctx-menu-item" data-action="rename" role="menuitem">
+    <span>{% trans "Переименовать" %}</span>
+    <span class="ctx-menu-key">R</span>
+  </div>
+  <div class="ctx-menu-sep"></div>
+  <div class="ctx-menu-item danger" data-action="delete" role="menuitem">
+    <span>{% trans "Удалить" %}</span>
+    <span class="ctx-menu-key">⌫</span>
+  </div>
+</div>
+
+<script src="{% static 'js/chat-first.js' %}?v=12&t={% now 'U' %}"></script>
 </body>
 </html>

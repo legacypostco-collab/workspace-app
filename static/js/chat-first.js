@@ -1785,14 +1785,100 @@
       const lastMeta = c.last_message ? c.last_message.content.substring(0, 40) : meta;
       const icon = CATEGORY_ICON[c.category || 'general'] || '💬';
       const cid = esc(c.id);
-      const ttl = esc(c.title || 'Без названия').replace(/'/g, "\\'");
-      return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" onclick="openConv('${cid}')">
+      return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" data-conv-id="${cid}" onclick="openConv('${cid}')" oncontextmenu="return openConvCtxMenu(event,'${cid}')">
         <div class="side-item-stack-title"><span class="conv-cat-icon" title="${esc(c.category || 'general')}">${icon}</span>${esc(c.title || 'Без названия')}</div>
         <div class="side-item-stack-meta">${esc(meta)} ${lastMeta && lastMeta !== meta ? '· ' + esc(lastMeta) : ''}</div>
-        <button class="side-item-stack-del" title="Удалить чат" onclick="event.stopPropagation();deleteConv('${cid}','${ttl}')" aria-label="Удалить чат">×</button>
+        <button class="side-item-stack-more" title="Действия" onclick="event.stopPropagation();openConvCtxMenu(event,'${cid}')" aria-label="Действия">⋯</button>
       </div>`;
     }).join('');
   }
+
+  // ── Контекст-меню чата (rename/delete) ───────────────────
+  let _ctxConvId = null;
+
+  window.openConvCtxMenu = function(ev, convId) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const menu = $('convCtxMenu');
+    if (!menu) return false;
+    _ctxConvId = convId;
+    // Подсвечиваем кнопку «⋯» у активного элемента
+    document.querySelectorAll('.side-item-stack-more.open').forEach(b => b.classList.remove('open'));
+    const item = document.querySelector(`.side-item-stack[data-conv-id="${convId}"] .side-item-stack-more`);
+    if (item) item.classList.add('open');
+    // Позиционирование
+    menu.hidden = false;
+    const rect = menu.getBoundingClientRect();
+    const w = rect.width || 200, h = rect.height || 80;
+    let x, y;
+    if (ev.clientX || ev.clientY) {
+      x = ev.clientX; y = ev.clientY;
+    } else {
+      const tr = (ev.currentTarget || ev.target).getBoundingClientRect();
+      x = tr.right; y = tr.bottom;
+    }
+    // не выходить за границы окна
+    x = Math.min(x, window.innerWidth - w - 8);
+    y = Math.min(y, window.innerHeight - h - 8);
+    menu.style.left = Math.max(8, x) + 'px';
+    menu.style.top  = Math.max(8, y) + 'px';
+    return false;
+  };
+
+  function closeConvCtxMenu() {
+    const menu = $('convCtxMenu');
+    if (menu) menu.hidden = true;
+    document.querySelectorAll('.side-item-stack-more.open').forEach(b => b.classList.remove('open'));
+    _ctxConvId = null;
+  }
+
+  // Глобальные обработчики для закрытия меню
+  document.addEventListener('click', (e) => {
+    const menu = $('convCtxMenu');
+    if (!menu || menu.hidden) return;
+    if (!menu.contains(e.target)) closeConvCtxMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeConvCtxMenu();
+  });
+  // Делегирование кликов внутри меню
+  document.addEventListener('click', (e) => {
+    const item = e.target.closest('#convCtxMenu .ctx-menu-item');
+    if (!item) return;
+    const action = item.dataset.action;
+    const cid = _ctxConvId;
+    closeConvCtxMenu();
+    if (!cid) return;
+    const conv = (state.convs || []).find(c => c.id === cid);
+    const title = conv ? (conv.title || 'Без названия') : '';
+    if (action === 'rename') renameConv(cid, title);
+    else if (action === 'delete') deleteConv(cid, title);
+  });
+
+  // Переименование чата
+  window.renameConv = async (id, currentTitle) => {
+    const v = prompt('Новое название чата:', currentTitle || '');
+    if (v === null) return;
+    const t = v.trim();
+    if (!t) return;
+    if (t === currentTitle) return;
+    try {
+      const res = await fetch('/api/assistant/conversations/' + id + '/', {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf()},
+        credentials: 'same-origin',
+        body: JSON.stringify({title: t.slice(0, 200)}),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      // обновить state и перерисовать
+      const i = (state.convs || []).findIndex(c => c.id === id);
+      if (i >= 0) state.convs[i] = {...state.convs[i], title: data.title || t};
+      renderConvList($('convSearch') ? $('convSearch').value : '');
+    } catch(e) {
+      alert('Не удалось переименовать чат: ' + e.message);
+    }
+  };
 
   // Удаление одного чата (soft delete)
   window.deleteConv = async (id, title) => {
