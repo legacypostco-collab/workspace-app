@@ -1888,6 +1888,9 @@
             opts.push({value: 'fix:' + v, label: 'Фикс: ' + v});
           });
         }
+        // Опция «Своё значение» — для всех полей. При выборе —
+        // prompt(), результат сохраняется как fix:VALUE.
+        opts.push({value: '__custom__', label: '✏️ Своё значение…'});
         return {
           name: 'col__' + f.key,
           label: f.label,
@@ -2101,6 +2104,36 @@
   $('fileInput').addEventListener('change', (e) => {
     handleSelectedFile(e.target.files[0]);
     e.target.value = '';
+  });
+
+  // Change-listener для form-select: спец-значения
+  //   __sep__   — это разделитель, не выбор → откатываем на пустое
+  //   __custom__ — спросить через prompt() и сохранить как fix:VALUE
+  document.addEventListener('change', (e) => {
+    const sel = e.target;
+    if (!sel || sel.tagName !== 'SELECT' || !sel.classList.contains('fm-select')) return;
+    if (sel.value === '__sep__') {
+      sel.value = '';
+      return;
+    }
+    if (sel.value === '__custom__') {
+      const lbl = sel.closest('.fm-row')?.querySelector('.fm-label')?.textContent?.trim() || sel.name;
+      const v = window.prompt(`Введите своё значение для «${lbl}» (применится ко всем строкам):`, '');
+      if (v && v.trim()) {
+        const val = 'fix:' + v.trim();
+        // Добавляем option-самописец и выбираем его
+        let custom = sel.querySelector(`option[value="${val.replace(/"/g, '&quot;')}"]`);
+        if (!custom) {
+          custom = document.createElement('option');
+          custom.value = val;
+          custom.textContent = 'Своё: ' + v.trim();
+          sel.appendChild(custom);
+        }
+        sel.value = val;
+      } else {
+        sel.value = '';
+      }
+    }
   });
 
   async function recognizePhoto(file) {

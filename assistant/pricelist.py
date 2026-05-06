@@ -63,7 +63,23 @@ STD_FIELDS = [
     # Числовые поля без enum получают «0» / «1» как defaults в UI.
     ("oem_number",        "Артикул (PartNumber)",   True,  None),
     ("cross_number",      "Кросс-номер (CrossNumber)", True, None),
-    ("brand",             "Бренд",                   True,  None),
+    ("brand",             "Бренд",                   True, [
+        # Европа / мир — основные производители спецтехники
+        "Caterpillar", "Komatsu", "Hitachi", "Liebherr", "TEREX",
+        "New Holland", "Wirtgen", "Iveco", "HBM-Nobas", "John Deere",
+        "Volvo", "JCB", "Bobcat", "BOMAG",
+        "Cummins", "Deutz", "Bosch",
+        "Atlas Copco", "Epiroc", "Sandvik", "Ingersoll Rand",
+        "Hyundai", "Doosan", "Kobelco", "Kubota",
+        # Китай
+        "XCMG", "FAW", "LiuGong", "Shantui", "Shacman", "SDLG",
+        "Weichai", "Sinotruk", "HOWO", "Zoomlion", "Sany",
+        # Компоненты / агрегаты
+        "Bosch Rexroth", "Perkins", "Dana", "Carraro", "Denso",
+        "Lincoln", "Berco", "ITR", "ETP",
+        # Fallback
+        "Generic",
+    ]),
     ("title",             "Название",                True,  None),
     ("stock",             "Остаток (Quantity)",      True,  ["0", "1", "10", "100"]),
     ("condition",         "Состояние",               True,  ["ORIGINAL", "OEM", "AFTERMARKET", "REMAN"]),
