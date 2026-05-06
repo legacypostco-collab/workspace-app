@@ -57,26 +57,26 @@ logger = logging.getLogger(__name__)
 
 STD_FIELDS = [
     # (key, label, required, enum_values_or_None)
-    # ВСЕ поля required — по требованию пользователя «лучше пусть будут точные,
-    # чтобы не было путаницы с номерами». Heuristic подставит только title и
-    # weight — остальное seller выбирает руками.
+    # required=True — поле должно быть либо колонкой из файла, либо
+    # фикс-значением (fix:VALUE). Если в прайсе нет колонки — seller
+    # выбирает 💎 default из enum_values или вводит своё через UI.
+    # Числовые поля без enum получают «0» / «1» как defaults в UI.
     ("oem_number",        "Артикул (PartNumber)",   True,  None),
     ("cross_number",      "Кросс-номер (CrossNumber)", True, None),
     ("brand",             "Бренд",                   True,  None),
     ("title",             "Название",                True,  None),
-    ("stock",             "Остаток (Quantity)",      True,  None),
+    ("stock",             "Остаток (Quantity)",      True,  ["0", "1", "10", "100"]),
     ("condition",         "Состояние",               True,  ["ORIGINAL", "OEM", "AFTERMARKET", "REMAN"]),
     ("price_exw",         "Цена EXW",                True,  None),
     ("warehouse_address", "Адрес склада",            True,  None),
-    ("price_fob_sea",     "Цена FOB SEA",            True,  None),
-    ("price_fob_air",     "Цена FOB AIR",            True,  None),
+    ("price_fob_sea",     "Цена FOB SEA",            True,  ["0"]),
+    ("price_fob_air",     "Цена FOB AIR",            True,  ["0"]),
     ("sea_port",          "Морпорт отправления",     True,  None),
     ("air_port",          "Аэропорт отправления",    True,  None),
-    ("weight_kg",         "Вес, кг",                 True,  None),
-    ("length_cm",         "Длина, см",               True,  None),
-    ("width_cm",          "Ширина, см",              True,  None),
-    ("height_cm",         "Высота, см",              True,  None),
-    # Опционально: валюта (фикс или из колонки)
+    ("weight_kg",         "Вес, кг",                 True,  ["0.5", "1", "5", "10"]),
+    ("length_cm",         "Длина, см",               True,  ["1", "10", "20", "50"]),
+    ("width_cm",          "Ширина, см",              True,  ["1", "10", "20", "50"]),
+    ("height_cm",         "Высота, см",              True,  ["1", "10", "20", "50"]),
     ("currency",          "Валюта",                  False, ["USD", "EUR", "RUB", "CNY"]),
 ]
 
