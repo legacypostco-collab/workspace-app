@@ -1012,18 +1012,14 @@ def _bulk_lookup_to_rfq_lines(rows: list[dict]) -> str:
 
 
 def home(request: HttpRequest) -> HttpResponse:
-    """Главная: сразу редирект на AI-чат (это новый дефолт-интерфейс).
-
-    Старый landing/marketplace остаётся как /landing/ для маркетинга и
-    как /classic/ через legacy home_marketplace.
+    """Главная: новый landing 11site-v3 с большой формой поиска.
+    «Массовый поиск» в меганаве и search-box ведут на /chat/ (AI-чат).
     """
-    from django.shortcuts import redirect
-    return redirect("/chat/")
+    return render(request, "landing.html")
 
 
 def landing_view(request: HttpRequest) -> HttpResponse:
-    """Маркетинговая страница (бывшая home). Используется для презентаций
-    и публичных ссылок. Открывается через /landing/."""
+    """Алиас на главную для обратной совместимости (/landing/)."""
     return render(request, "landing.html")
 
 
