@@ -93,6 +93,10 @@
     .side-item-stack-more:hover{background:rgba(0,0,0,0.1);color:#1a1a1a;}
     .side-section-clear{font-size:11px;color:rgba(0,0,0,0.4);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px;}
     .side-section-clear:hover{background:rgba(220,53,69,0.08);color:#dc3545;}
+    .conv-bucket{display:flex;flex-direction:column;}
+    .conv-bucket + .conv-bucket{margin-top:8px;}
+    .conv-bucket-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:rgba(0,0,0,0.4);padding:6px 10px 4px;}
+    body.dark-mode .conv-bucket-label{color:rgba(255,255,255,0.4);}
     body.dark-mode .side-item-stack-meta{color:rgba(255,255,255,0.6);}
     body.dark-mode .side-item-stack-more{color:rgba(255,255,255,0.55);}
     body.dark-mode .side-item-stack-more:hover{background:rgba(255,255,255,0.1);color:#fff;}
@@ -917,6 +921,6 @@
   </div>
 </div>
 
-<script src="{% static 'js/chat-first.js' %}?v=14&t={% now 'U' %}"></script>
+<script src="{% static 'js/chat-first.js' %}?v=15&t={% now 'U' %}"></script>
 </body>
 </html>

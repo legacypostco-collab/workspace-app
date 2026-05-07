@@ -1770,6 +1770,29 @@
     general:  '💬',
   };
 
+  // Группировка чатов по датам (ChatGPT/Linear-style).
+  function _bucketForDate(d, now) {
+    if (!d) return 'older';
+    const ms = now - d;
+    const dStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const nStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const daysAgo = Math.floor((nStart - dStart) / 86400000);
+    if (daysAgo <= 0) return 'today';
+    if (daysAgo === 1) return 'yesterday';
+    if (daysAgo <= 7) return 'week';
+    if (daysAgo <= 30) return 'month';
+    return 'older';
+  }
+
+  const _BUCKET_LABELS = {
+    today: 'Сегодня',
+    yesterday: 'Вчера',
+    week: 'На этой неделе',
+    month: 'В этом месяце',
+    older: 'Старше',
+  };
+  const _BUCKET_ORDER = ['today', 'yesterday', 'week', 'month', 'older'];
+
   function renderConvList(filter='') {
     const f = filter.toLowerCase();
     const list = state.convs.filter(c => !f || (c.title||'').toLowerCase().includes(f));
@@ -1779,7 +1802,13 @@
       $('convList').innerHTML = '<div class="side-item-stack"><div class="side-item-stack-meta">Нет чатов</div></div>';
       return;
     }
-    $('convList').innerHTML = list.slice(0, 30).map(c => {
+    const now = new Date();
+    const buckets = {today:[], yesterday:[], week:[], month:[], older:[]};
+    for (const c of list.slice(0, 60)) {
+      const d = c.updated_at ? new Date(c.updated_at) : null;
+      buckets[_bucketForDate(d, now)].push(c);
+    }
+    const renderItem = (c) => {
       const date = c.updated_at ? new Date(c.updated_at) : null;
       const meta = date ? relativeTime(date) : '';
       const lastMeta = c.last_message ? c.last_message.content.substring(0, 40) : meta;
@@ -1792,7 +1821,12 @@
         </div>
         <button class="side-item-stack-more" type="button" title="Действия" onclick="event.stopPropagation();openConvCtxMenu(event,'${cid}');return false;" aria-label="Действия">⋯</button>
       </div>`;
-    }).join('');
+    };
+    const html = _BUCKET_ORDER
+      .filter(k => buckets[k].length)
+      .map(k => `<div class="conv-bucket"><div class="conv-bucket-label">${_BUCKET_LABELS[k]}</div>${buckets[k].map(renderItem).join('')}</div>`)
+      .join('');
+    $('convList').innerHTML = html;
   }
 
   // ── Контекст-меню чата (rename/delete) ───────────────────
