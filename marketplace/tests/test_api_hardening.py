@@ -8,6 +8,11 @@ from django.test import TestCase, override_settings
 from marketplace.models import Category, Part, UserProfile
 
 
+# См. test_seller_portal_smoke — production STORAGES требует collectstatic.
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
 class ApiHardeningTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="api_user", password="test12345")
@@ -31,52 +36,13 @@ class ApiHardeningTests(TestCase):
             is_active=True,
         )
 
-    def test_quote_preview_valid_and_qty_sum(self):
-        self.client.force_login(self.user)
-        response = self.client.post(
-            "/api/v1/quote/preview/",
-            data=json.dumps({"items": [{"part_id": self.part.id, "qty": 3}]}),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 200)
-        payload = response.json()
-        self.assertEqual(payload["items"][0]["line_total"], "885.00")
-        self.assertEqual(payload["total"], "885.00")
-
-    def test_quote_preview_invalid_payload(self):
-        self.client.force_login(self.user)
-        response = self.client.post(
-            "/api/v1/quote/preview/",
-            data=json.dumps({"items": [{"part_id": self.part.id, "qty": 0}]}),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 400)
-
-    @override_settings(MAX_QUOTE_ITEMS=1)
-    def test_quote_preview_limit(self):
-        self.client.force_login(self.user)
-        response = self.client.post(
-            "/api/v1/quote/preview/",
-            data=json.dumps(
-                {
-                    "items": [
-                        {"part_id": self.part.id, "qty": 1},
-                        {"part_id": self.part.id, "qty": 1},
-                    ]
-                }
-            ),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 413)
-
-    def test_update_template_invalid_payload_returns_400(self):
-        self.client.force_login(self.user)
-        response = self.client.post(
-            "/api/v1/template/update/",
-            data=json.dumps({"template": "invalid-one"}),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 400)
+    # NOTE: тесты test_quote_preview_* и test_update_template_*
+    # удалены — они проверяли эндпоинты /api/v1/quote/preview/ и
+    # /api/v1/template/update/, которые были удалены при переходе на
+    # AI-чат-интерфейс. 404 + рендер error-page триггерит баг
+    # Python 3.14 × Django (super()/copy в Context.__copy__), что
+    # делало failure похожим на ошибку нашего кода — на самом деле
+    # тесты обращались к мёртвым URL-ам.
 
     @override_settings(MAX_IMPORT_FILE_BYTES=100)
     def test_import_oversize_returns_413(self):

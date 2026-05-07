@@ -55,7 +55,7 @@ from .models import (
     WebhookDeliveryLog,
 )
 from .rules import AutoModeInputs, decide_auto_mode
-from .services.imports import UploadLimitError, process_seller_csv_upload
+from .services.imports import UploadLimitError, process_seller_csv_upload, validate_upload_limits
 from .services.logistics import logistics_estimate
 from .services.observability import Timer, log_api_error, metric_inc
 from projections.models import DashboardProjection
@@ -4183,6 +4183,21 @@ def seller_bulk_upload(request: HttpRequest) -> HttpResponse:
 
     upload = form.cleaned_data["file"]
     upload_name = getattr(upload, "name", "") or ""
+
+    # Лимиты enforce'им и в preview-, и в apply-режимах (раньше они
+    # проверялись только внутри process_seller_csv_upload, поэтому preview
+    # обходил MAX_IMPORT_FILE_BYTES / MAX_IMPORT_ROWS).
+    try:
+        validate_upload_limits(upload)
+    except UploadLimitError as exc:
+        error_message = _humanize_import_error(str(exc))
+        metric_inc("import_limits_triggered_total")
+        logger.warning(
+            "import_limit_exceeded",
+            extra={"seller_id": request.user.id, "status": exc.status_code, "reason": error_message},
+        )
+        return JsonResponse({"error": error_message}, status=exc.status_code)
+
     if import_mode == "preview":
         try:
             stored = store_import_source_file(upload)
