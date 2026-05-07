@@ -97,9 +97,12 @@ showToast('Сообщение'); // своя реализация в каждо�
 
 ## Что остаётся сделать
 
-### Продавец (заглушки с showToast — работают, но без реальной логики)
-- `seller/team/list.html` — кнопка "Новая задача" → `showToast('Форма новой задачи')`
-- `seller/logistics/list.html` — "Ручной расчёт менеджером" → `showToast('Запрос отправлен')`
+(Все ранее заявленные TODO закрыты ✅)
+
+### Закрытые в этой итерации
+- `seller/team/list.html` — «Новая задача»: модалка + DOM-вставка + showToast ✅
+- `seller/logistics/list.html` — «Ручной расчёт менеджером»: блок подтверждения с маршрутом/весом/объёмом ✅
+- `templates/real/buyer/rfq/list.html` — кнопка «View» теперь ведёт на `rfq_detail` (была `coming soon`) ✅
 
 ## Git workflow
 - Основная ветка: `main`

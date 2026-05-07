@@ -59,7 +59,7 @@
               <span class="mvp-status mvp-status--{{ rfq.status|lower }}">{{ rfq.status }}</span>
             </td>
             <td>{{ rfq.created_at|date:"d.m.Y" }}</td>
-            <td><a href="javascript:void(0)" onclick="showToast('RFQ detail view coming soon')" class="mvp-btn mvp-btn--outline mvp-btn--sm">View</a></td>
+            <td><a href="{% url 'rfq_detail' rfq.id %}" class="mvp-btn mvp-btn--outline mvp-btn--sm">View</a></td>
           </tr>
           {% endfor %}
         </tbody>
