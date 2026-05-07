@@ -303,14 +303,13 @@
   .white .inner{ max-width: 100%; }
 
   .about{
-    max-width: 880px;
-    font-size: 16.5px; line-height: 1.72;
-    color: rgba(26,20,34,0.78);
-    margin-bottom: 44px;
-    letter-spacing: -0.05px;
+    max-width: 780px;
+    font-size: 15px; line-height: 1.7;
+    color: rgba(26,20,34,0.74);
+    margin-bottom: 40px;
   }
   .about b{ color: var(--ink); font-weight: 600; }
-  .about .hl{ color: var(--accent); font-weight: 600; white-space: nowrap; }
+  .about .hl{ color: var(--accent); font-weight: 600; }
 
   /* ============ TRUST ROW ============ */
   .trust{
@@ -331,16 +330,11 @@
     color: var(--aub);
   }
   .trust .cell .ic svg{ width: 84px; height: 84px; }
-  .trust .cell .lbl{
-    font-size: 15px; font-weight: 600; color: var(--ink);
-    line-height: 1.3; min-height: 38px;
-    display: flex; align-items: center; justify-content: center;
-  }
+  .trust .cell .lbl{ font-size: 15px; font-weight: 600; color: var(--ink); }
   .trust .cell .sub{
-    font-size: 13px; color: var(--ink-3);
-    margin-top: 4px; line-height: 1.45;
+    font-size: 12.5px; color: var(--ink-3);
+    margin-top: 4px; line-height: 1.4;
     max-width: 240px;
-    min-height: 38px;
   }
 
   /* ============ HOW IT WORKS (slim 4 step strip) ============ */
@@ -356,7 +350,6 @@
     padding: 0 24px;
     border-right: 1px dashed var(--line);
     position: relative;
-    display: flex; flex-direction: column;
   }
   .how .step:first-child{ padding-left: 0; }
   .how .step:last-child{ border-right: 0; padding-right: 0; }
@@ -370,26 +363,22 @@
     margin-bottom: 12px;
     font-feature-settings: 'tnum';
     letter-spacing: 0.5px;
-    align-self: flex-start;
   }
   .how .step h3{
-    font-size: 16px; font-weight: 600;
+    font-size: 15px; font-weight: 600;
     margin-bottom: 6px; color: var(--ink);
     letter-spacing: -0.1px;
-    min-height: 22px;
   }
   .how .step p{
-    font-size: 13.5px; line-height: 1.6;
+    font-size: 13px; line-height: 1.55;
     color: var(--ink-3);
-    margin-bottom: 14px;
-    flex: 1;
+    margin-bottom: 10px;
   }
   .how .step .meta{
     font-size: 11.5px; font-weight: 600;
     color: var(--accent);
     letter-spacing: 0.4px; text-transform: uppercase;
     display:flex; align-items: center; gap: 5px;
-    margin-top: auto;
   }
   .how .step .meta svg{ width: 12px; height: 12px; }
 
@@ -1285,9 +1274,9 @@
   </div>
 
   <div class="trust-strip">
-    <span><span class="t-dot t-dot-live"></span><b>AI-парсинг</b> 5 языков</span>
-    <span><span class="t-dot t-dot-time"></span><b>OEM-матчинг</b> по каталогам</span>
-    <span class="discount"><span class="t-dot t-dot-deal"></span><b>10 / 90</b> эскроу</span>
+    <span><span class="t-dot t-dot-live"></span><b>247</b> поставщиков</span>
+    <span><span class="t-dot t-dot-time"></span><b>2.3 ч</b> средний ETA</span>
+    <span class="discount"><span class="t-dot t-dot-deal"></span><b>−18%</b> к рынку</span>
   </div>
 </section>
 
@@ -1301,7 +1290,7 @@
     </div>
 
     <p class="about">
-      <b>Consolidator Parts</b> — AI-консолидатор закупок запчастей для тяжёлой и горнодобывающей техники. Принимаем спецификации в <b>любом формате</b> — Excel, PDF, фото детали, текст письма. AI распознаёт OEM-номера, описания и количества на <span class="hl">5 языках</span> (RU / EN / ZH / DE / ES) и сопоставляет с каталогами производителей: <b>Epiroc, Sandvik, Komatsu, Caterpillar, Liebherr, Cummins, JCB</b>. Платформа автоматически рассылает RFQ верифицированным поставщикам и собирает котировки в одну сравнительную таблицу — <span class="hl">цена · срок · источник · рейтинг</span>. Сделка идёт через эскроу <span class="hl">10 / 90</span> с прозрачным трекингом всех стадий — от резерва до выдачи.
+      <b>Consolidator Parts</b> — AI-консолидатор закупок запчастей для тяжёлой техники. Снабженцы крупных промышленных предприятий — ЕвроХим, СУЭК, Полюс, Норникель, ФосАгро — отправляют нам спецификации в любом формате; ИИ парсит, сопоставляет с каталогами 47 брендов, рассылает RFQ <b>247 проверенным поставщикам</b> и в среднем за <span class="hl">2.3 часа</span> возвращает готовые котировки на <span class="hl">−18%</span> ниже рынка.
     </p>
 
     <!-- Trust signals (line-art icons like original, refined) -->
@@ -1309,92 +1298,89 @@
       <div class="cell">
         <div class="ic">
           <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <!-- documents stack -->
-            <rect x="20" y="14" width="46" height="58" rx="3"/>
-            <rect x="28" y="20" width="46" height="58" rx="3" fill="#fff"/>
-            <rect x="28" y="20" width="46" height="58" rx="3"/>
-            <!-- corner fold -->
-            <path d="M62 20 L74 32 M62 20 L62 32 L74 32" stroke-width="1.6"/>
-            <!-- inner lines -->
-            <path d="M34 42 L66 42 M34 50 L60 50 M34 58 L62 58" stroke-width="1.5" opacity="0.55"/>
-            <!-- format chips -->
-            <rect x="30" y="64" width="14" height="9" rx="1.5" fill="currentColor" stroke="none"/>
-            <text x="37" y="71" text-anchor="middle" font-size="6.5" font-weight="700" fill="#fff" stroke="none" font-family="Arial,sans-serif">XLS</text>
-            <rect x="46" y="64" width="14" height="9" rx="1.5" fill="currentColor" stroke="none"/>
-            <text x="53" y="71" text-anchor="middle" font-size="6.5" font-weight="700" fill="#fff" stroke="none" font-family="Arial,sans-serif">PDF</text>
+            <!-- truck cab + box -->
+            <path d="M6 60 L6 24 L48 24 L48 60 Z"/>
+            <path d="M48 36 L66 36 L80 50 L80 60 L48 60 Z"/>
+            <!-- box separators -->
+            <path d="M24 24 L24 60 M48 42 L66 42 M66 42 L66 60" stroke-width="1.5" opacity="0.55"/>
+            <!-- wheels -->
+            <circle cx="22" cy="68" r="8"/>
+            <circle cx="22" cy="68" r="3" fill="currentColor"/>
+            <circle cx="64" cy="68" r="8"/>
+            <circle cx="64" cy="68" r="3" fill="currentColor"/>
+            <!-- speed lines -->
+            <path d="M2 30 L10 30 M2 38 L8 38 M2 46 L10 46" stroke-width="1.5" opacity="0.4"/>
+            <!-- pin -->
+            <circle cx="40" cy="14" r="5" stroke-width="2"/>
+            <path d="M40 9 L40 4" stroke-width="2"/>
+            <circle cx="40" cy="14" r="1.5" fill="currentColor" stroke="none"/>
           </svg>
         </div>
-        <div class="lbl">Любой формат заявки</div>
-        <div class="sub">Excel, PDF, фото детали или просто текст письма</div>
+        <div class="lbl">Быстрая доставка</div>
+        <div class="sub">день-в-день по МО, 1–3 дня по РФ</div>
       </div>
 
       <div class="cell">
         <div class="ic">
           <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <!-- comparison table frame -->
-            <rect x="10" y="14" width="76" height="68" rx="4"/>
-            <!-- header row -->
-            <path d="M10 28 L86 28"/>
-            <!-- columns -->
-            <path d="M30 14 L30 82 M50 14 L50 82 M68 14 L68 82" stroke-width="1.2" opacity="0.5"/>
-            <!-- bars row 1 -->
-            <path d="M14 38 L26 38" stroke-width="2.6"/>
-            <path d="M34 38 L46 38" stroke-width="2.6"/>
-            <path d="M54 38 L62 38" stroke-width="2.6"/>
-            <path d="M72 38 L82 38" stroke-width="2.6"/>
-            <!-- bars row 2 -->
-            <path d="M14 50 L22 50" stroke-width="2.6"/>
-            <path d="M34 50 L42 50" stroke-width="2.6"/>
-            <path d="M54 50 L64 50" stroke-width="2.6"/>
-            <path d="M72 50 L80 50" stroke-width="2.6"/>
-            <!-- bars row 3 -->
-            <path d="M14 62 L20 62" stroke-width="2.6"/>
-            <path d="M34 62 L44 62" stroke-width="2.6"/>
-            <path d="M54 62 L58 62" stroke-width="2.6"/>
-            <path d="M72 62 L78 62" stroke-width="2.6"/>
-            <!-- best-pick badge -->
-            <circle cx="40" cy="38" r="8" fill="#fff"/>
-            <circle cx="40" cy="38" r="8"/>
-            <path d="M36 38 L39 41 L44 35" stroke-width="2"/>
+            <!-- 3D box -->
+            <path d="M16 30 L48 14 L80 30 L80 66 L48 82 L16 66 Z"/>
+            <path d="M16 30 L48 46 L80 30"/>
+            <path d="M48 46 L48 82"/>
+            <path d="M48 14 L48 46" opacity="0.55" stroke-width="1.5"/>
+            <!-- return arrow -->
+            <path d="M30 50 L26 54 L30 58" stroke-width="2"/>
+            <path d="M26 54 L52 54 L52 64" stroke-width="2"/>
+            <!-- check small badge -->
+            <circle cx="68" cy="24" r="9" fill="#fff"/>
+            <circle cx="68" cy="24" r="9"/>
+            <path d="M64 24 L67 27 L72 22" stroke-width="2"/>
           </svg>
         </div>
-        <div class="lbl">Прозрачное сравнение</div>
-        <div class="sub">цена, срок, источник и рейтинг — в одной таблице</div>
+        <div class="lbl">Возврат и обмен</div>
+        <div class="sub">14 дней · фотофиксация на складе</div>
       </div>
 
       <div class="cell">
         <div class="ic">
           <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <!-- shield -->
-            <path d="M48 8 L82 22 L82 50 C82 67 68 79 48 86 C28 79 14 67 14 50 L14 22 Z"/>
-            <!-- 10/90 split -->
-            <text x="48" y="46" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor" stroke="none" font-family="Arial,sans-serif">10</text>
-            <path d="M30 54 L66 54" stroke-width="1.5"/>
-            <text x="48" y="72" text-anchor="middle" font-size="15" font-weight="700" fill="currentColor" stroke="none" font-family="Arial,sans-serif">90</text>
+            <!-- warehouse roof + walls -->
+            <path d="M10 38 L48 16 L86 38"/>
+            <path d="M14 38 L14 80 L82 80 L82 38"/>
+            <!-- shelves with boxes -->
+            <rect x="22" y="48" width="14" height="14"/>
+            <rect x="22" y="62" width="14" height="14"/>
+            <rect x="40" y="48" width="14" height="14"/>
+            <rect x="40" y="62" width="14" height="14"/>
+            <rect x="58" y="48" width="14" height="14"/>
+            <rect x="58" y="62" width="14" height="14"/>
+            <!-- box detail -->
+            <path d="M22 55 L36 55 M40 55 L54 55 M58 55 L72 55" stroke-width="1.2" opacity="0.5"/>
           </svg>
         </div>
-        <div class="lbl">Эскроу 10 / 90</div>
-        <div class="sub">резерв → подтверждение → отгрузка → выдача</div>
+        <div class="lbl">Собственный склад</div>
+        <div class="sub">Долгопрудный · 4 800 м²</div>
       </div>
 
       <div class="cell">
         <div class="ic">
           <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <!-- clock -->
-            <circle cx="42" cy="50" r="30"/>
-            <!-- hands -->
-            <path d="M42 32 L42 50 L56 58" stroke-width="2.4"/>
-            <!-- ticks -->
-            <path d="M42 22 L42 26 M42 74 L42 78 M14 50 L18 50 M66 50 L70 50" stroke-width="1.6"/>
-            <!-- alert badge -->
-            <circle cx="76" cy="22" r="11" fill="#fff"/>
-            <circle cx="76" cy="22" r="11"/>
-            <path d="M76 16 L76 24" stroke-width="2.4"/>
-            <circle cx="76" cy="28.5" r="1.5" fill="currentColor" stroke="none"/>
+            <!-- person -->
+            <circle cx="34" cy="26" r="11"/>
+            <path d="M14 70 C14 58 23 50 34 50 C45 50 54 58 54 70 L54 78 L14 78 Z"/>
+            <!-- certificate -->
+            <rect x="56" y="36" width="28" height="26" rx="2"/>
+            <!-- ribbon top -->
+            <path d="M64 36 L64 28 C64 24 67 22 70 22 C73 22 76 24 76 28 L76 36" stroke-width="2"/>
+            <!-- seal -->
+            <circle cx="70" cy="50" r="5"/>
+            <path d="M68 50 L70 52 L73 48" stroke-width="1.6"/>
+            <!-- lines -->
+            <path d="M60 58 L80 58" stroke-width="1.5" opacity="0.5"/>
           </svg>
         </div>
-        <div class="lbl">SLA-контроль</div>
-        <div class="sub">оператор подключается при просрочке поставщика</div>
+        <div class="lbl">Статус дистрибьютора</div>
+        <div class="sub">прямые контракты с 12 заводами</div>
       </div>
     </div>
 
@@ -1403,26 +1389,26 @@
       <div class="step">
         <div class="n">01</div>
         <h3>Загрузка</h3>
-        <p>Excel, PDF, фото детали или текст письма. Платформа принимает спецификацию в любом формате.</p>
-        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>пара минут</div>
+        <p>Excel, PDF, фото детали или просто текст письма — принимаем любой формат спецификации.</p>
+        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>10 секунд</div>
       </div>
       <div class="step">
         <div class="n">02</div>
         <h3>AI-парсинг</h3>
-        <p>Распознаём OEM-номера, описания и количества — на пяти языках, с матчингом по каталогам производителей.</p>
-        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>сразу после загрузки</div>
+        <p>ИИ распознаёт OEM-номера, описания, количества и сопоставляет с каталогами 47 брендов.</p>
+        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>1–2 минуты</div>
       </div>
       <div class="step">
         <div class="n">03</div>
         <h3>Рассылка RFQ</h3>
-        <p>Запрос автоматически уходит верифицированным поставщикам платформы — параллельно по всем матчам.</p>
-        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>часы, не дни</div>
+        <p>247 проверенных поставщиков получают запрос автоматически. Параллельно — наш склад и ЕАЭС.</p>
+        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>30 минут</div>
       </div>
       <div class="step">
         <div class="n">04</div>
-        <h3>Сравнение и заказ</h3>
-        <p>Котировки в одной таблице — цена, срок, источник, рейтинг. Один клик: счёт, эскроу, отгрузка.</p>
-        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>в течение дня</div>
+        <h3>Сравнение</h3>
+        <p>Получаете таблицу: цена, срок, источник, рейтинг. Один клик — счёт и оформленный заказ.</p>
+        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>2.3 часа</div>
       </div>
     </div>
   </div>
