@@ -935,6 +935,20 @@
     isolation: isolate;
     width: 100%;
   }
+  /* Полусферическая подложка — затемняет фото между topnav и контентом */
+  .search-hero::after{
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(20,16,14,0.45) 0%,
+      rgba(20,16,14,0.25) 35%,
+      rgba(20,16,14,0.20) 65%,
+      rgba(20,16,14,0.55) 100%
+    );
+    z-index: 1;
+    pointer-events: none;
+  }
   .search-hero .bg-glow{
     position: absolute; inset: 0;
     background:
@@ -942,6 +956,7 @@
       radial-gradient(ellipse 50% 50% at 100% 100%, rgba(232,74,33,0.18) 0%, rgba(232,74,33,0) 60%),
       radial-gradient(ellipse 40% 40% at 0% 100%, rgba(44,30,38,0.15) 0%, rgba(44,30,38,0) 60%);
     pointer-events: none;
+    z-index: 1;
   }
   .search-hero .container{
     max-width: 760px;
@@ -949,26 +964,27 @@
     padding: 0 24px;
     text-align: center;
     position: relative;
-    z-index: 2;
+    z-index: 3;
   }
+  /* Центральная подложка под текстом — мягко выделяет текст-блок */
   .search-hero .container::before{
     content: '';
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    width: 130%;
-    height: 110%;
+    width: 140%;
+    height: 120%;
     background: radial-gradient(
-      ellipse 60% 70% at 50% 50%,
-      rgba(20,16,14,0.62) 0%,
-      rgba(20,16,14,0.42) 40%,
-      rgba(20,16,14,0.18) 65%,
-      rgba(20,16,14,0) 85%
+      ellipse 55% 65% at 50% 50%,
+      rgba(20,16,14,0.78) 0%,
+      rgba(20,16,14,0.55) 35%,
+      rgba(20,16,14,0.28) 65%,
+      rgba(20,16,14,0) 90%
     );
     z-index: -1;
     pointer-events: none;
-    filter: blur(12px);
+    filter: blur(8px);
   }
   .search-hero .container > *{ position: relative; }
   .search-hero .hero-eyebrow{
