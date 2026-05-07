@@ -12,4 +12,6 @@ CSRF_COOKIE_SECURE=False \
 DEBUG_MODE=True \
 SERVE_MEDIA=True \
 ALLOWED_HOSTS="*" \
+CELERY_BROKER_URL=memory:// \
+CELERY_TASK_ALWAYS_EAGER=True \
 .venv/bin/python manage.py runserver 0.0.0.0:8001 --noreload
