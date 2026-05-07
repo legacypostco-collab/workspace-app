@@ -1023,13 +1023,6 @@ def landing_view(request: HttpRequest) -> HttpResponse:
     return render(request, "landing.html")
 
 
-def landing_old_preview(request: HttpRequest) -> HttpResponse:
-    """Временный preview старой главной (до переезда на 11site-v3).
-    Доступен по /landing-old/ — для сравнения с текущей.
-    """
-    return render(request, "landing_old_preview.html")
-
-
 def terms_view(request: HttpRequest) -> HttpResponse:
     return render(request, "marketplace/legal.html", {"page_key": "terms"})
 

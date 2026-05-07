@@ -382,143 +382,6 @@
   }
   .how .step .meta svg{ width: 12px; height: 12px; }
 
-  /* ============ INFRASTRUCTURE (7 cards) ============ */
-  .infra-head{ margin-top: 8px; margin-bottom: 26px; }
-  .infra-title{
-    font-size: clamp(28px, 3vw, 38px);
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.5px;
-    color: var(--ink);
-    margin-bottom: 10px;
-  }
-  .infra-title-accent{ color: var(--accent); }
-  .infra-sub{
-    font-size: 15.5px; line-height: 1.55;
-    color: rgba(26,20,34,0.65);
-    max-width: 640px;
-  }
-  .infra-grid{
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-  }
-  .infra-card{
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 22px 22px 24px;
-    transition: border-color .15s, transform .15s, box-shadow .15s;
-  }
-  .infra-card:hover{
-    border-color: rgba(232,74,33,0.35);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(26,20,34,0.04);
-  }
-  .infra-card--wide{ grid-column: span 3; }
-  .infra-ic{
-    width: 44px; height: 44px;
-    background: var(--surface-2);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--accent);
-    margin-bottom: 14px;
-  }
-  .infra-card h4{
-    font-size: 16px; font-weight: 600;
-    color: var(--ink);
-    margin-bottom: 6px;
-    letter-spacing: -0.1px;
-  }
-  .infra-card p{
-    font-size: 13.5px; line-height: 1.55;
-    color: rgba(26,20,34,0.62);
-  }
-  .infra-cta-row{
-    margin-top: 28px;
-    display: flex; justify-content: center;
-  }
-  .infra-cta{
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 12px 28px;
-    background: var(--ink);
-    color: #fff;
-    text-decoration: none;
-    border-radius: 10px;
-    font-size: 14px; font-weight: 600;
-    letter-spacing: 0.1px;
-    transition: background .15s;
-  }
-  .infra-cta:hover{ background: var(--accent); }
-
-  /* ============ INDUSTRIES (Кому мы служим — 6 cards) ============ */
-  .head-accent{ color: var(--accent); }
-  .ind-grid{
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-  }
-  .ind-card{
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 24px;
-    text-decoration: none;
-    color: inherit;
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto auto;
-    column-gap: 16px;
-    align-items: start;
-    transition: border-color .15s, transform .15s, box-shadow .15s;
-  }
-  .ind-card:hover{
-    border-color: rgba(232,74,33,0.4);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(26,20,34,0.06);
-  }
-  .ind-ic{
-    grid-row: 1 / span 2;
-    width: 48px; height: 48px;
-    background: var(--surface-2);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    color: var(--accent);
-  }
-  .ind-body{ grid-column: 2; align-self: center; }
-  .ind-body h3{
-    font-size: 16px; font-weight: 600;
-    color: var(--ink);
-    margin-bottom: 4px;
-    letter-spacing: -0.1px;
-  }
-  .ind-body p{
-    font-size: 13.5px; line-height: 1.55;
-    color: rgba(26,20,34,0.62);
-  }
-  .ind-arrow{
-    grid-column: 3; grid-row: 1 / span 2;
-    align-self: center;
-    color: rgba(26,20,34,0.3);
-    transition: color .15s, transform .15s;
-  }
-  .ind-card:hover .ind-arrow{
-    color: var(--accent);
-    transform: translate(2px, -2px);
-  }
-
-  /* Responsive grids */
-  @media (max-width: 960px){
-    .infra-grid{ grid-template-columns: repeat(2, 1fr); }
-    .infra-card--wide{ grid-column: span 2; }
-    .ind-grid{ grid-template-columns: repeat(2, 1fr); }
-  }
-  @media (max-width: 600px){
-    .infra-grid{ grid-template-columns: 1fr; }
-    .infra-card--wide{ grid-column: span 1; }
-    .ind-grid{ grid-template-columns: 1fr; }
-  }
-
   /* ============ BRAND CARDS (gradient) ============ */
   .grad.deep{ padding: 32px 0 36px; }
   .grad.deep::before{
@@ -1430,141 +1293,123 @@
       <b>Consolidator Parts</b> — AI-консолидатор закупок запчастей для тяжёлой техники. Снабженцы крупных промышленных предприятий — ЕвроХим, СУЭК, Полюс, Норникель, ФосАгро — отправляют нам спецификации в любом формате; ИИ парсит, сопоставляет с каталогами 47 брендов, рассылает RFQ <b>247 проверенным поставщикам</b> и в среднем за <span class="hl">2.3 часа</span> возвращает готовые котировки на <span class="hl">−18%</span> ниже рынка.
     </p>
 
-    <!-- ===================== INFRASTRUCTURE / 7 cards ===================== -->
-    <div class="infra-head">
-      <h3 class="infra-title">Инфраструктура, <span class="infra-title-accent">ускоряющая поставки</span></h3>
-      <p class="infra-sub">Прямые закупки, прозрачные цены и контроль поставок — в одном окне.</p>
+    <!-- Trust signals (line-art icons like original, refined) -->
+    <div class="trust">
+      <div class="cell">
+        <div class="ic">
+          <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- truck cab + box -->
+            <path d="M6 60 L6 24 L48 24 L48 60 Z"/>
+            <path d="M48 36 L66 36 L80 50 L80 60 L48 60 Z"/>
+            <!-- box separators -->
+            <path d="M24 24 L24 60 M48 42 L66 42 M66 42 L66 60" stroke-width="1.5" opacity="0.55"/>
+            <!-- wheels -->
+            <circle cx="22" cy="68" r="8"/>
+            <circle cx="22" cy="68" r="3" fill="currentColor"/>
+            <circle cx="64" cy="68" r="8"/>
+            <circle cx="64" cy="68" r="3" fill="currentColor"/>
+            <!-- speed lines -->
+            <path d="M2 30 L10 30 M2 38 L8 38 M2 46 L10 46" stroke-width="1.5" opacity="0.4"/>
+            <!-- pin -->
+            <circle cx="40" cy="14" r="5" stroke-width="2"/>
+            <path d="M40 9 L40 4" stroke-width="2"/>
+            <circle cx="40" cy="14" r="1.5" fill="currentColor" stroke="none"/>
+          </svg>
+        </div>
+        <div class="lbl">Быстрая доставка</div>
+        <div class="sub">день-в-день по МО, 1–3 дня по РФ</div>
+      </div>
+
+      <div class="cell">
+        <div class="ic">
+          <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- 3D box -->
+            <path d="M16 30 L48 14 L80 30 L80 66 L48 82 L16 66 Z"/>
+            <path d="M16 30 L48 46 L80 30"/>
+            <path d="M48 46 L48 82"/>
+            <path d="M48 14 L48 46" opacity="0.55" stroke-width="1.5"/>
+            <!-- return arrow -->
+            <path d="M30 50 L26 54 L30 58" stroke-width="2"/>
+            <path d="M26 54 L52 54 L52 64" stroke-width="2"/>
+            <!-- check small badge -->
+            <circle cx="68" cy="24" r="9" fill="#fff"/>
+            <circle cx="68" cy="24" r="9"/>
+            <path d="M64 24 L67 27 L72 22" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="lbl">Возврат и обмен</div>
+        <div class="sub">14 дней · фотофиксация на складе</div>
+      </div>
+
+      <div class="cell">
+        <div class="ic">
+          <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- warehouse roof + walls -->
+            <path d="M10 38 L48 16 L86 38"/>
+            <path d="M14 38 L14 80 L82 80 L82 38"/>
+            <!-- shelves with boxes -->
+            <rect x="22" y="48" width="14" height="14"/>
+            <rect x="22" y="62" width="14" height="14"/>
+            <rect x="40" y="48" width="14" height="14"/>
+            <rect x="40" y="62" width="14" height="14"/>
+            <rect x="58" y="48" width="14" height="14"/>
+            <rect x="58" y="62" width="14" height="14"/>
+            <!-- box detail -->
+            <path d="M22 55 L36 55 M40 55 L54 55 M58 55 L72 55" stroke-width="1.2" opacity="0.5"/>
+          </svg>
+        </div>
+        <div class="lbl">Собственный склад</div>
+        <div class="sub">Долгопрудный · 4 800 м²</div>
+      </div>
+
+      <div class="cell">
+        <div class="ic">
+          <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- person -->
+            <circle cx="34" cy="26" r="11"/>
+            <path d="M14 70 C14 58 23 50 34 50 C45 50 54 58 54 70 L54 78 L14 78 Z"/>
+            <!-- certificate -->
+            <rect x="56" y="36" width="28" height="26" rx="2"/>
+            <!-- ribbon top -->
+            <path d="M64 36 L64 28 C64 24 67 22 70 22 C73 22 76 24 76 28 L76 36" stroke-width="2"/>
+            <!-- seal -->
+            <circle cx="70" cy="50" r="5"/>
+            <path d="M68 50 L70 52 L73 48" stroke-width="1.6"/>
+            <!-- lines -->
+            <path d="M60 58 L80 58" stroke-width="1.5" opacity="0.5"/>
+          </svg>
+        </div>
+        <div class="lbl">Статус дистрибьютора</div>
+        <div class="sub">прямые контракты с 12 заводами</div>
+      </div>
     </div>
-    <div class="infra-grid">
-      <div class="infra-card">
-        <div class="infra-ic">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        </div>
-        <h4>Расчёт и закупка</h4>
-        <p>Получайте цену и наличие за секунды. OEM и aftermarket — напрямую от производителей.</p>
-      </div>
-      <div class="infra-card">
-        <div class="infra-ic">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 22 11 22 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-        </div>
-        <h4>Управление поставками</h4>
-        <p>Контроль логистики на всех этапах. Отгрузка CIP, DDP, EXW. Отслеживание и документы.</p>
-      </div>
-      <div class="infra-card">
-        <div class="infra-ic">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><line x1="14" y1="4" x2="10" y2="20"/></svg>
-        </div>
-        <h4>Интеграции</h4>
-        <p>Интеграция с ERP, ТОИР, EDI и телематикой. API для производственных систем.</p>
-      </div>
-      <div class="infra-card">
-        <div class="infra-ic">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-        </div>
-        <h4>Консолидация</h4>
-        <p>Международные хабы: ОАЭ, Китай, ЕС. Совместная упаковка и оптимизация маршрутов.</p>
-      </div>
-      <div class="infra-card">
-        <div class="infra-ic">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-        </div>
-        <h4>Платежи</h4>
-        <p>Оплата в любой валюте — мгновенно. Банковские и криптоканалы. Автоматическое распределение.</p>
-      </div>
-      <div class="infra-card">
-        <div class="infra-ic">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-        </div>
-        <h4>Сеть поставщиков</h4>
-        <p>Подключайтесь напрямую к экосистеме производителей, логистов и сервисных компаний.</p>
-      </div>
-      <div class="infra-card infra-card--wide">
-        <div class="infra-ic">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-        </div>
-        <h4>Партнёрская инфраструктура</h4>
-        <p>Логистика, финансы, ERP, телематика, консолидация. Совместное развитие рынка без посредничества.</p>
-      </div>
-    </div>
-    <div class="infra-cta-row">
-      <a href="/chat/?new=1" class="infra-cta">Посмотреть демо →</a>
-    </div>
-  </div>
-</section>
 
-<!-- ===================== INDUSTRIES (white) — Кому мы служим ===================== -->
-<section class="white">
-  <div class="inner">
-    <div class="head">
-      <h2>Кому мы <span class="head-accent">служим</span></h2>
-      <div class="line"></div>
-    </div>
-    <div class="ind-grid">
-      <a href="/chat/?new=1" class="ind-card">
-        <div class="ind-ic">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="1"/><path d="M3 9l3-6h12l3 6"/><path d="M8 15h2M14 15h2"/></svg>
-        </div>
-        <div class="ind-body">
-          <h3>Производители и OEM</h3>
-          <p>Прямые каналы поставок, интеграция ERP, контроль цен и данных, снижение издержек.</p>
-        </div>
-        <span class="ind-arrow"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span>
-      </a>
-
-      <a href="/chat/?new=1" class="ind-card">
-        <div class="ind-ic">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 008.51 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H2a2 2 0 010-4h.09A1.65 1.65 0 004.6 8.51a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V2a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H22a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        </div>
-        <div class="ind-body">
-          <h3>Дилеры и дистрибьюторы</h3>
-          <p>Оптимизируйте закупки и логистику в одном окне. Быстрый доступ к складам производителей и консолидация грузов.</p>
-        </div>
-        <span class="ind-arrow"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span>
-      </a>
-
-      <a href="/chat/?new=1" class="ind-card">
-        <div class="ind-ic">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
-        </div>
-        <div class="ind-body">
-          <h3>Сервисные компании</h3>
-          <p>Ускорьте подбор и заказ запчастей. Получайте лучшие цены напрямую от OEM и поставщиков.</p>
-        </div>
-        <span class="ind-arrow"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span>
-      </a>
-
-      <a href="/chat/?new=1" class="ind-card">
-        <div class="ind-ic">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 7.278 12 12m0 0L3.5 7.278M12 12v9.5m9-5.441V7.942c0-.343 0-.514-.05-.667a1 1 0 0 0-.215-.364c-.109-.119-.258-.202-.558-.368l-7.4-4.111c-.284-.158-.425-.237-.575-.267a1 1 0 0 0-.403 0c-.15.03-.292.11-.576.267l-7.4 4.11c-.3.167-.45.25-.558.369a1 1 0 0 0-.215.364C3 7.428 3 7.599 3 7.942v8.117c0 .342 0 .514.05.666a1 1 0 0 0 .215.364c.109.119.258.202.558.368l7.4 4.111c.284.158.425.237.576.268.133.027.27.027.402 0 .15-.031.292-.11.576-.268l7.4-4.11c.3-.167.45-.25.558-.369a.999.999 0 0 0 .215-.364c.05-.152.05-.324.05-.666Z"/></svg>
-        </div>
-        <div class="ind-body">
-          <h3>Эксплуатирующие организации</h3>
-          <p>Контролируйте снабжение техники на объектах. Единая база позиций, статусы поставок и документация.</p>
-        </div>
-        <span class="ind-arrow"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span>
-      </a>
-
-      <a href="/chat/?new=1" class="ind-card">
-        <div class="ind-ic">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-        </div>
-        <div class="ind-body">
-          <h3>Логистические операторы</h3>
-          <p>Интеграция с международными хабами и таможенными системами. Маршруты, консолидация и отслеживание.</p>
-        </div>
-        <span class="ind-arrow"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span>
-      </a>
-
-      <a href="/chat/?new=1" class="ind-card">
-        <div class="ind-ic">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/><circle cx="6" cy="6" r="2" fill="currentColor" stroke="none"/><circle cx="14" cy="12" r="2" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="2" fill="currentColor" stroke="none"/></svg>
-        </div>
-        <div class="ind-body">
-          <h3>ВЭД и трейдеры</h3>
-          <p>Подключайтесь к сети глобальных производителей. Создавайте собственные торговые предложения внутри системы.</p>
-        </div>
-        <span class="ind-arrow"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span>
-      </a>
+    <!-- How it works — slim 4-step strip -->
+    <div class="how">
+      <div class="step">
+        <div class="n">01</div>
+        <h3>Загрузка</h3>
+        <p>Excel, PDF, фото детали или просто текст письма — принимаем любой формат спецификации.</p>
+        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>10 секунд</div>
+      </div>
+      <div class="step">
+        <div class="n">02</div>
+        <h3>AI-парсинг</h3>
+        <p>ИИ распознаёт OEM-номера, описания, количества и сопоставляет с каталогами 47 брендов.</p>
+        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>1–2 минуты</div>
+      </div>
+      <div class="step">
+        <div class="n">03</div>
+        <h3>Рассылка RFQ</h3>
+        <p>247 проверенных поставщиков получают запрос автоматически. Параллельно — наш склад и ЕАЭС.</p>
+        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>30 минут</div>
+      </div>
+      <div class="step">
+        <div class="n">04</div>
+        <h3>Сравнение</h3>
+        <p>Получаете таблицу: цена, срок, источник, рейтинг. Один клик — счёт и оформленный заказ.</p>
+        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>2.3 часа</div>
+      </div>
     </div>
   </div>
 </section>
