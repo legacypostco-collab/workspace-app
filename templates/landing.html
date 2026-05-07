@@ -58,26 +58,29 @@
   .meganav{
     background: #FFFFFF;
     border-bottom: 1px solid var(--line);
-    height: 52px;
+    height: 56px;
     display:flex; align-items: center;
     padding: 0;
-    font-size: 13.5px;
+    font-size: 15px;
+    font-weight: 500;
   }
   .meganav .region{
     display:flex; align-items: center; gap: 8px;
-    cursor: pointer; color: var(--ink-2);
+    cursor: pointer; color: var(--ink);
+    font-weight: 600;
   }
-  .meganav .region .pin{ width: 16px; height: 16px; color: var(--accent); }
-  .meganav nav{ display:flex; gap: 28px; margin-left: auto; align-items: center; }
+  .meganav .region .pin{ width: 17px; height: 17px; color: var(--accent); }
+  .meganav nav{ display:flex; gap: 30px; margin-left: auto; align-items: center; }
   .meganav nav a{
     display:flex; align-items: center; gap: 7px;
-    color: var(--ink-2);
+    color: var(--ink);
     cursor: pointer;
+    font-weight: 500;
     transition: color .15s;
   }
   .meganav nav a:hover{ color: var(--accent); }
-  .meganav nav a.alert{ color: var(--accent); }
-  .meganav nav a .ic{ width: 15px; height: 15px; }
+  .meganav nav a.alert{ color: var(--accent); font-weight: 600; }
+  .meganav nav a .ic{ width: 16px; height: 16px; }
   .ai-badge{
     background: var(--accent); color: #fff;
     font-size: 9.5px; font-weight: 600;
