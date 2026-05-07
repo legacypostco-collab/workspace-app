@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.sessions.middleware import SessionMiddleware
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -16,6 +16,15 @@ from marketplace.views import seller_order_detail, seller_orders, seller_product
 from projections.models import DashboardProjection
 
 
+# В прод-настройках STORAGES.staticfiles =
+# whitenoise.storage.CompressedManifestStaticFilesStorage, который требует
+# collectstatic перед чтением {% static %}. В тестах collectstatic не
+# запускается, и любой шаблон с {% static %} падает с
+# `Missing staticfiles manifest entry`. Переключаем на простой storage.
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
 class SellerPortalSmokeTests(TestCase):
     def setUp(self):
         self.seller = User.objects.create_user(

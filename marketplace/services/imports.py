@@ -22,6 +22,57 @@ class UploadLimitError(Exception):
         self.status_code = status_code
 
 
+def validate_upload_limits(upload) -> None:
+    """Проверяет MAX_IMPORT_FILE_BYTES и MAX_IMPORT_ROWS до того, как файл
+    уйдёт в preview-pipeline. Raises UploadLimitError(413).
+
+    Используется и preview-, и apply-веткой view'а — чтобы лимиты
+    enforce'лись в обоих режимах (исторически проверки были только в
+    process_seller_csv_upload, и preview их обходил).
+    """
+    from django.conf import settings as _settings
+    file_size = int(getattr(upload, "size", 0) or 0)
+    max_bytes = int(getattr(_settings, "MAX_IMPORT_FILE_BYTES", 0) or 0)
+    if max_bytes and file_size > max_bytes:
+        raise UploadLimitError(
+            f"Файл слишком большой. Допустимо до {_format_limit_bytes(max_bytes)}.",
+            status_code=413,
+        )
+    max_rows = int(getattr(_settings, "MAX_IMPORT_ROWS", 0) or 0)
+    if not max_rows:
+        return
+    # Подсчёт строк без полной парсинг-цепочки. Поддержка CSV и XLSX.
+    name = (getattr(upload, "name", "") or "").lower()
+    try:
+        upload.seek(0)
+        raw = upload.read()
+    finally:
+        try:
+            upload.seek(0)
+        except Exception:
+            pass
+    row_count = 0
+    if name.endswith(".xlsx"):
+        try:
+            _, rows = _xlsx_rows(raw)
+            row_count = max(0, len(rows) - 0)  # _xlsx_rows already excludes header
+        except Exception:
+            return  # нерасширяемый файл — пусть провалится дальше с понятной ошибкой
+    else:
+        # CSV: считаем не-пустые строки минус 1 (заголовок).
+        try:
+            text = raw.decode("utf-8", errors="ignore")
+        except Exception:
+            return
+        lines = [ln for ln in text.splitlines() if ln.strip()]
+        row_count = max(0, len(lines) - 1)
+    if row_count > max_rows:
+        raise UploadLimitError(
+            f"Превышен лимит строк: максимум {max_rows}.",
+            status_code=413,
+        )
+
+
 @dataclass
 class ImportResult:
     mode: str

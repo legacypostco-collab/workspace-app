@@ -16,7 +16,10 @@ class ImportServiceTests(TestCase):
         profile.save()
 
     def test_process_upload_preview(self):
-        data = "Part Number,Description,Unitprice\nRE1,MAIN SWITCH,295.00\n"
+        # Схема импорта требует PartNumber + WarehouseAddress + одну из цен
+        # Price_FOB_SEA/Price_FOB_AIR (исторически тесты использовали старую
+        # схему "Part Number,Description,Unitprice" — обновлены под текущую).
+        data = "PartNumber,Description,WarehouseAddress,Price_FOB_SEA\nRE1,MAIN SWITCH,Almaty WH,295.00\n"
         upload = SimpleUploadedFile("parts.csv", data.encode("utf-8"), content_type="text/csv")
         result = process_seller_csv_upload(
             seller=self.seller,
@@ -29,7 +32,7 @@ class ImportServiceTests(TestCase):
         self.assertEqual(result.updated, 0)
 
     def test_process_upload_apply_uses_qty_and_price(self):
-        data = "Part Number,Description,Unitprice,Stock\nRE1,MAIN SWITCH,295.00,7\n"
+        data = "PartNumber,Description,WarehouseAddress,Price_FOB_SEA,Stock\nRE1,MAIN SWITCH,Almaty WH,295.00,7\n"
         upload = SimpleUploadedFile("parts.csv", data.encode("utf-8"), content_type="text/csv")
         result = process_seller_csv_upload(
             seller=self.seller,
@@ -45,7 +48,7 @@ class ImportServiceTests(TestCase):
 
     @override_settings(MAX_IMPORT_ROWS=1)
     def test_process_upload_limits_rows(self):
-        data = "Part Number,Description,Unitprice\nRE1,MAIN SWITCH,295.00\nRE2,SENSOR,120.00\n"
+        data = "PartNumber,Description,WarehouseAddress,Price_FOB_SEA\nRE1,MAIN SWITCH,Almaty WH,295.00\nRE2,SENSOR,Almaty WH,120.00\n"
         upload = SimpleUploadedFile("parts.csv", data.encode("utf-8"), content_type="text/csv")
         with self.assertRaises(UploadLimitError):
             process_seller_csv_upload(
