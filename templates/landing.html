@@ -522,6 +522,50 @@
     .ind-grid{ grid-template-columns: 1fr; }
   }
 
+  /* ============ FINAL CTA (dark band) ============ */
+  .final-cta-section{
+    background: var(--aub);
+    padding: 64px 24px;
+  }
+  .final-cta-section .inner{
+    max-width: 760px;
+    text-align: center;
+  }
+  .final-cta-title{
+    font-size: clamp(28px, 3.2vw, 40px);
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+    margin-bottom: 16px;
+  }
+  .final-cta-lead{
+    font-size: 16.5px;
+    color: rgba(255,255,255,0.78);
+    line-height: 1.6;
+    margin-bottom: 28px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .final-cta-btn{
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    padding: 16px 36px;
+    border-radius: 12px;
+    font-size: 16px; font-weight: 700;
+    letter-spacing: 0.1px;
+    transition: background .15s, transform .15s, box-shadow .15s;
+    box-shadow: 0 6px 20px rgba(232,74,33,0.3);
+  }
+  .final-cta-btn:hover{
+    background: #D63D17;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(232,74,33,0.4);
+  }
+
   /* ============ BRAND CARDS (gradient) ============ */
   .grad.deep{ padding: 32px 0 36px; }
   .grad.deep::before{
@@ -1698,6 +1742,15 @@
         <span class="ind-arrow"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span>
       </a>
     </div>
+  </div>
+</section>
+
+<!-- ===================== ФИНАЛЬНЫЙ CTA (dark band) ===================== -->
+<section class="final-cta-section">
+  <div class="inner">
+    <h2 class="final-cta-title">Запросите котировку по&nbsp;вашим запчастям</h2>
+    <p class="final-cta-lead">Отправьте список деталей — платформа подберёт поставщиков, рассчитает стоимость и предложит оптимальные условия поставки.</p>
+    <a href="/chat/?new=1" class="final-cta-btn">Получить котировку →</a>
   </div>
 </section>
 
