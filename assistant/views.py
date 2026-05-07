@@ -22,7 +22,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     GET    /api/assistant/conversations/        — list
     POST   /api/assistant/conversations/        — create new
     GET    /api/assistant/conversations/{id}/   — detail with messages
-    DELETE /api/assistant/conversations/{id}/   — soft delete (is_active=False)
+    DELETE /api/assistant/conversations/{id}/   — hard delete (cascades messages)
     """
     permission_classes = [IsAuthenticated]
 
@@ -39,8 +39,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
                         role=detect_user_role(self.request.user, request=self.request))
 
     def perform_destroy(self, instance):
-        instance.is_active = False
-        instance.save(update_fields=["is_active"])
+        # Hard delete: пользователь явно нажал «Удалить» в UI и ожидает,
+        # что чат пропадёт навсегда (а не вернётся при следующем
+        # order-event / WS-reconnect через find_or_create_conv,
+        # который фильтрует по is_active=True). Messages удаляются по
+        # CASCADE из FK в models.Message.
+        instance.delete()
 
 
 class ChatView(APIView):
@@ -99,12 +103,28 @@ class ActionView(APIView):
         if not action:
             return Response({"error": "action required"}, status=400)
 
+        from .conv_category import find_or_create_conv, title_for_action, category_for_action
+        label = (params.get("_label") or "").strip() or action
+
         if conv_id:
             conv = get_object_or_404(Conversation, id=conv_id, user=request.user, is_active=True)
         else:
-            conv = Conversation.objects.create(
-                user=request.user, role=detect_user_role(request.user, request=request)
+            # Reuse существующий conv той же категории (admin/purchase/support/general)
+            # вместо плодить новый на каждый клик пилюли.
+            role = detect_user_role(request.user, request=request)
+            conv = find_or_create_conv(
+                request.user, action_name=action, role=role, action_label=label,
             )
+
+        # Динамически обновляем title по текущему action: «Верификация · Шаг 2/5»
+        new_title = title_for_action(action, label)
+        if new_title and new_title[:200] != conv.title:
+            conv.title = new_title[:200]
+            # category может тоже измениться если пользователь сменил вид деятельности
+            new_cat = category_for_action(action)
+            if conv.category != new_cat and new_cat != "general":
+                conv.category = new_cat
+            conv.save(update_fields=["title", "category", "updated_at"])
 
         try:
             result = execute_action(conv, action, params, request.user)
@@ -376,38 +396,137 @@ class RFQDetailView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    # Условные FX rates → USD. В проде брать из ЦБ или Stripe FX.
+    _FX_TO_USD = {
+        "USD": 1.0, "EUR": 1.08, "RUB": 0.011, "CNY": 0.135,
+        "JPY": 0.0067, "GBP": 1.27,
+    }
+
     def get(self, request, rfq_id):
-        from marketplace.models import RFQ
+        from decimal import Decimal
+        from marketplace.models import RFQ, Quote, Notification
         rfq = get_object_or_404(RFQ, id=rfq_id)
+
         items = []
+        total_usd = 0.0
         for it in rfq.items.select_related("matched_part__brand").all():
             mp = it.matched_part
+            price = float(mp.price) if (mp and mp.price is not None) else None
+            ccy = (getattr(mp, "currency", "USD") if mp else "USD") or "USD"
+            qty = it.quantity or 1
+            if price is not None:
+                total_usd += price * qty * self._FX_TO_USD.get(ccy.upper(), 1.0)
             items.append({
                 "article": it.query,
-                "qty": it.quantity,
+                "qty": qty,
                 "state": "matched" if mp else ("no_match" if it.state == "needs_review" else "pending"),
                 "match": mp.title if mp else None,
                 "brand": (mp.brand.name if (mp and mp.brand) else None),
                 "supplier": getattr(mp, "supplier_name", None) if mp else None,
-                "price": float(mp.price) if (mp and mp.price is not None) else None,
-                "currency": getattr(mp, "currency", "USD") if mp else "USD",
+                "price": price,
+                "currency": ccy,
             })
+
+        # Quotes-аналитика
+        quotes = Quote.objects.filter(rfq=rfq, direction="seller_to_buyer")
+        quotes_count = quotes.values_list("seller_id", flat=True).distinct().count()
+        # Supplier reach: сколько уведомлений было разослано.
+        # _notify пишет url'ы двух форматов:
+        #   /chat/?rfq=<id>           — общая ссылка (старый формат)
+        #   /chat/rfq/<id>/?source=…  — детальная страница (новый формат)
+        # Считаем оба варианта, по distinct user_id.
+        from django.db.models import Q as _Q
+        sent_count = (
+            Notification.objects.filter(kind="rfq")
+            .filter(_Q(url__contains=f"rfq={rfq.id}") | _Q(url__contains=f"/rfq/{rfq.id}/"))
+            .values_list("user_id", flat=True).distinct().count()
+        )
+
+        # Состояние «что делать дальше»
+        if rfq.status == "cancelled":
+            stage = "cancelled"
+        elif rfq.status == "needs_review":
+            stage = "needs_review"
+        elif quotes_count > 0:
+            stage = "quotes_received"  # есть котировки — выбирать
+        elif sent_count > 0:
+            stage = "awaiting_quotes"  # разослан, ждём
+        else:
+            stage = "draft"            # создан, не разослан
+
+        # has_priced — есть ли хоть одна позиция с известной ценой? Если нет —
+        # total_usd=0 не «бюджет», а «оценим после котировок».
+        has_priced = any(it["price"] is not None for it in items)
+
+        # Classifier reason: парсим из notes (записан create_rfq как «Mode: …»)
+        classifier_reason = ""
+        if rfq.notes:
+            for line in (rfq.notes or "").split(" | "):
+                line = line.strip()
+                if line.lower().startswith("mode:"):
+                    classifier_reason = line.split(":", 1)[1].strip()
+                    break
+
         return Response({
             "id": rfq.id,
             "status": rfq.status,
-            "mode": rfq.mode,
+            "stage": stage,
+            "mode": rfq.mode,            # 'auto' | 'semi' | 'manual'
+            "mode_reason": classifier_reason,
             "urgency": rfq.urgency,
             "customer_name": rfq.customer_name,
             "company_name": rfq.company_name,
             "notes": rfq.notes,
             "created_at": rfq.created_at.isoformat() if rfq.created_at else None,
             "items": items,
+            "total_usd": round(total_usd, 2),
+            "has_priced": has_priced,
+            "quotes_count": quotes_count,
+            "sent_count": sent_count,
+            "is_owner": rfq.created_by_id == request.user.id,
         })
 
 
 # ──────────────────────────────────────────────────────────
 # Notifications inbox (bell + dropdown in chat-first UI)
 # ──────────────────────────────────────────────────────────
+class DrawingFileView(APIView):
+    """GET /api/assistant/drawings/<id>/file/?action=view|download
+
+    Контролируемая выдача файла чертежа: проверяет access_level + KYB +
+    payment_status, добавляет watermark, пишет в DrawingAccessLog.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, drawing_id):
+        from marketplace.models import Drawing
+        from .drawings_access import can_access, record_access, apply_watermark_url
+        try:
+            drawing = Drawing.objects.get(id=drawing_id)
+        except Drawing.DoesNotExist:
+            return Response({"ok": False, "error": "drawing not found"}, status=404)
+        action = (request.GET.get("action") or "view").strip()
+        if action not in ("view", "download"):
+            action = "view"
+
+        allowed, reason = can_access(request.user, drawing)
+        if not allowed:
+            record_access(request.user, drawing, "denied", request=request, note=reason)
+            return Response({"ok": False, "error": reason}, status=403)
+
+        record_access(request.user, drawing, action, request=request)
+        wm_url = apply_watermark_url(drawing.file_url, request.user, drawing)
+        return Response({
+            "ok": True,
+            "drawing_id": drawing.id,
+            "title": drawing.title,
+            "file_url": wm_url,
+            "file_format": drawing.file_format,
+            "access_level": drawing.access_level,
+            "reason": reason,
+        })
+
+
 class NotificationListView(APIView):
     """GET /api/assistant/notifications/?unread=1&limit=20
 

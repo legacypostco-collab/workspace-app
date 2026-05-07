@@ -478,14 +478,22 @@ def generate_qr(params, user, role):
         _log_event(order, "document_uploaded", actor=user, source=role,
                    meta={"kind": "qr", "token": meta["qr_token"]})
 
-    payload = f"CONS-ORD-{order.id}:{meta['qr_token']}"
+    # ТЗ §6.2: scan-URL ведёт на /api/assistant/qr/scan/<code>/ —
+    # мобильник сканирует, открывается страница, оператор подтверждает событие.
+    from .qr_scan import encode_qr_code
+    code = encode_qr_code(order.id)
+    import os
+    site = os.getenv("SITE_URL", "http://72.56.234.89").rstrip("/")
+    payload = f"{site}/api/assistant/qr/scan/{code}/"
+    from urllib.parse import quote
     qr_url = (
-        f"https://api.qrserver.com/v1/create-qr-code/?size=240x240&data={payload}"
+        f"https://api.qrserver.com/v1/create-qr-code/?size=240x240&data={quote(payload)}"
     )
     return ActionResult(
         text=(
             f"QR для заказа #{order.id} готов. Распечатайте и приклейте на упаковку. "
-            f"При отгрузке/приёмке сканирование зафиксируется в аудит-логе."
+            f"Скан → откроется страница с кнопками действий (отгружено/принято) → "
+            f"событие пишется в audit-log + меняется статус заказа."
         ),
         cards=[{
             "type": "qr",
@@ -1135,6 +1143,230 @@ def seller_negotiations(params, user, role):
     )
 
 
+@register("upload_pricelist")
+def upload_pricelist(params, user, role):
+    """Загрузка прайса через AI-маппинг (ТЗ).
+
+    Карточка-инструкция с тремя действиями:
+      • «📂 Выбрать файл» — открывает системный файл-пикер (frontend
+        перехватывает action='__open_file_picker' и кликает на скрытом
+        <input type="file">). После выбора → uploadPricelist() →
+        AI-маппинг → карточка-форма → импорт.
+      • «📥 Скачать шаблон» — официальный шаблон с 16 колонками
+        (PartNumber, CrossNumber, Brand, Name, Quantity, Condition,
+        Price_EXW, WarehouseAddress, Price_FOB_SEA, Price_FOB_AIR,
+        SeaPort, AirPort, Weight, Length, Width, Height).
+      • «📦 Bulk-uploader» — старый Excel-импорт на /seller/upload/
+        для нестандартных кейсов и больших каталогов.
+
+    params: {csv_data?, confirmed?}  — текстовый импорт (legacy режим
+            на случай если csv_data передан явно).
+    """
+    from decimal import Decimal as _D
+    from django.utils.text import slugify
+    from marketplace.models import Brand, Category, Part
+
+    user = _effective_seller(user)
+    csv_data = (params.get("csv_data") or "").strip()
+    confirmed = bool(params.get("confirmed"))
+
+    # Шаг 1: инструктивная карточка с тремя действиями
+    if not csv_data:
+        return ActionResult(
+            text=(
+                "📤 Загрузка прайс-листа\n\n"
+                "Поддерживаются файлы Excel (.xlsx) и CSV. После загрузки "
+                "AI прочитает заголовки и предложит маппинг колонок на "
+                "стандартные поля платформы — вы проверите и подтвердите."
+            ),
+            cards=[{"type": "int_methods", "data": {
+                "title": "Способы интеграции",
+                "methods": [
+                    {
+                        "icon": "📋",
+                        "title": "Google Sheets",
+                        "status": "recommended",
+                        "description": (
+                            "Подключи Google-таблицу — цены будут "
+                            "синхронизироваться автоматически по расписанию "
+                            "(раз в час)."
+                        ),
+                        "secondary": {
+                            "label": "📥 Создать копию шаблона",
+                            # Публичный Google Sheet с прайс-шаблоном
+                            # Consolidator (16 колонок: PartNumber, CrossNumber,
+                            # Brand, Name, Quantity, Condition, Price_EXW, …).
+                            # /copy → Google спросит у seller'а «Создать копию»
+                            # → копия попадает в его Drive.
+                            "url": "https://docs.google.com/spreadsheets/d/"
+                                   "1RPZuoDgAd7mh4iuvC7HvmoTY9bTCPwWzPAwOEEiYhas/copy",
+                        },
+                        "hint": "Заполните → откройте доступ → вставьте ссылку ниже",
+                        "input": {
+                            "name": "gsheet_url", "type": "url",
+                            "placeholder": "https://docs.google.com/spreadsheets/d/...",
+                        },
+                        "primary": {
+                            "label": "Подключить",
+                            "action": "connect_gsheet",
+                            "params": {},
+                        },
+                    },
+                    {
+                        "icon": "🧠",
+                        "title": "Загрузить файл (Excel / CSV)",
+                        "status": "active",
+                        "description": (
+                            "Разовая загрузка. Система распознаёт заголовки "
+                            "на 5 языках, AI помогает с нестандартными "
+                            "колонками. Повторная загрузка обновляет цены "
+                            "без дубликатов."
+                        ),
+                        "primary": {
+                            "label": "📂 Выбрать файл",
+                            "action": "__open_file_picker",
+                            "params": {"accept": ".xlsx,.xls,.csv,.tsv,.txt"},
+                        },
+                    },
+                    {
+                        "icon": "📥",
+                        "title": "Скачать шаблон",
+                        "status": "active",
+                        "description": (
+                            "Excel-шаблон с инструкцией внутри: пошаговое "
+                            "руководство, описание 16 колонок, частые ошибки и "
+                            "три примера строк."
+                        ),
+                        "primary": {
+                            "label": "Скачать .xlsx",
+                            "url": "/api/assistant/pricelist-template.xlsx",
+                        },
+                    },
+                    {
+                        "icon": "🔌",
+                        "title": "REST API",
+                        "status": "soon",
+                        "description": (
+                            "Прямая интеграция через API: обновлять цены, "
+                            "остатки и статусы из ERP / 1С / ТОиР."
+                        ),
+                        "disabled": True,
+                    },
+                ],
+            }}],
+            actions=[
+                {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
+            ],
+            suggestions=[
+                "Что делать если в прайсе нет валюты?",
+                "Как часто можно обновлять прайс?",
+                "Чем отличается ORIGINAL от OEM?",
+            ],
+        )
+
+    # Шаг 2: парсим CSV → превью или импорт
+    import re as _re
+    rows = []
+    failed_lines = []
+    for raw in csv_data.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        # Разделитель: ;  ,  \t  | (выбираем тот, который встречается чаще)
+        sep = max(";,\t|", key=lambda c: line.count(c)) if any(c in line for c in ";,\t|") else None
+        parts = [p.strip().strip('"') for p in (line.split(sep) if sep else [line])]
+        if len(parts) < 3:
+            failed_lines.append({"line": line[:80], "reason": "too few columns"})
+            continue
+        oem, title, price_raw = parts[0], parts[1], parts[2]
+        stock_raw = parts[3] if len(parts) > 3 else "0"
+        # Робастный парсер цены: терпит «€/USD», запятые-десятичные,
+        # пробелы-разделители тысяч, несколько чисел в ячейке.
+        from .pricelist import _coerce_decimal as _coerce
+        price = _coerce(price_raw)
+        if price is None or price <= 0:
+            failed_lines.append({"line": line[:80], "reason": "bad price"})
+            continue
+        try:
+            stock = int(_re.sub(r"[^\d]", "", stock_raw) or 0)
+        except Exception:
+            stock = 0
+        rows.append({"oem": oem, "title": title, "price": price, "stock": stock})
+
+    if not rows:
+        return ActionResult(text=(
+            "⚠️ Не удалось прочитать ни одной строки.\n"
+            "Проверь формат: `артикул;название;цена;остаток`."
+        ))
+
+    # Превью без confirmed=true
+    if not confirmed:
+        preview_rows = [{
+            "label": f"{r['oem']} · {r['title'][:32]}",
+            "value": f"${r['price']:,.2f} · {r['stock']} шт",
+        } for r in rows[:8]]
+        return ActionResult(
+            text=(
+                f"📋 Превью импорта · {len(rows)} строк "
+                f"(к импорту), {len(failed_lines)} ошибок.\n"
+                f"Подтверди — обновлю существующие и создам новые."
+            ),
+            cards=[{"type": "draft", "data": {
+                "title": f"Импорт прайса: {len(rows)} позиций",
+                "rows": preview_rows + (
+                    [{"label": "…", "value": f"и ещё {len(rows) - 8} строк"}]
+                    if len(rows) > 8 else []
+                ),
+                "warnings": (
+                    [f"⚠️ Пропущено {len(failed_lines)} строк (формат)"]
+                    if failed_lines else []
+                ),
+                "confirm_action": "upload_pricelist",
+                "confirm_label": f"✓ Импортировать {len(rows)} позиций",
+                "confirm_params": {"csv_data": csv_data, "confirmed": True},
+                "cancel_label": "Отмена",
+            }}],
+        )
+
+    # Реальный импорт
+    cat = Category.objects.first() or Category.objects.create(name="Запчасти", slug="parts")
+    brand = Brand.objects.filter(name__iexact="Generic").first() or Brand.objects.create(
+        name="Generic", slug="generic",
+    )
+    created, updated = 0, 0
+    for r in rows:
+        p, was_created = Part.objects.update_or_create(
+            seller=user, oem_number__iexact=r["oem"],
+            defaults={
+                "title": r["title"][:255],
+                "oem_number": r["oem"][:100],
+                "slug": slugify(f"{r['oem']}-{user.username}")[:280],
+                "price": r["price"],
+                "stock_quantity": r["stock"],
+                "category": cat,
+                "brand": brand,
+                "is_active": True,
+            },
+        )
+        if was_created:
+            created += 1
+        else:
+            updated += 1
+
+    return ActionResult(
+        text=(
+            f"✅ Прайс импортирован.\n"
+            f"  • Новых позиций: {created}\n"
+            f"  • Обновлено: {updated}\n"
+            f"  • Пропущено (формат): {len(failed_lines)}"
+        ),
+        actions=[
+            {"label": "📦 Открыть каталог", "action": "seller_catalog", "params": {}},
+            {"label": "📊 Спрос на маркетплейсе", "action": "get_demand_report", "params": {}},
+        ],
+    )
+
+
 @register("import_pricelist_preview")
 def import_pricelist_preview(params, user, role):
     """Открывает форму с инструкцией по импорту прайса.
@@ -1434,67 +1666,8 @@ def rfq_detail(params, user, role):
     )
 
 
-@register("respond_rfq_form")
-def respond_rfq_form(params, user, role):
-    """Двухфазный: без price → форма; с price → создаём ответ через respond_rfq."""
-    from marketplace.models import RFQ
-    rfq_id = params.get("rfq_id")
-    if not rfq_id:
-        return ActionResult(text="Не указан ID RFQ.")
-    try:
-        rfq = RFQ.objects.get(id=rfq_id)
-    except RFQ.DoesNotExist:
-        return ActionResult(text=f"RFQ #{rfq_id} не найден.")
-
-    price = params.get("price")
-    if not price:
-        return ActionResult(
-            text=f"Ответ на RFQ #{rfq.id} от {rfq.customer_name or rfq.created_by.username}.",
-            cards=[{
-                "type": "form",
-                "data": {
-                    "title": f"💬 Ответ на RFQ #{rfq.id}",
-                    "submit_action": "respond_rfq_form",
-                    "submit_label": "Отправить котировку",
-                    "fields": [
-                        {"name": "price", "label": "Цена за единицу, USD",
-                         "type": "number", "required": True,
-                         "placeholder": "например, 1250"},
-                        {"name": "delivery_days", "label": "Срок поставки, дней",
-                         "type": "number", "default": "14"},
-                        {"name": "notes", "label": "Комментарий",
-                         "placeholder": "Гарантия 12 мес, OEM"},
-                    ],
-                    "fixed_params": {"rfq_id": rfq.id},
-                },
-            }],
-        )
-
-    # Сохраняем котировку — упрощённо в notes RFQItem
-    from marketplace.models import RFQItem
-    delivery_days = int(params.get("delivery_days") or 14)
-    notes = (params.get("notes") or "").strip()
-    rfq.status = "processing"
-    rfq.save(update_fields=["status"])
-    # Простая запись ответа: создаём «ответный» RFQItem с offered_price
-    for it in RFQItem.objects.filter(rfq=rfq):
-        if hasattr(it, "offered_price"):
-            it.offered_price = Decimal(str(price))
-            if hasattr(it, "delivery_days"):
-                it.delivery_days = delivery_days
-            it.save()
-    return ActionResult(
-        text=(
-            f"✓ Котировка отправлена по RFQ #{rfq.id}.\n"
-            f"Цена: ${float(price):,.0f} · Срок: {delivery_days} дн."
-            + (f"\nКомментарий: {notes}" if notes else "")
-        ),
-        actions=[
-            {"label": "📋 Все RFQ", "action": "get_rfq_status", "params": {}},
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
-        ],
-        suggestions=["Какие ещё RFQ?", "Спрос"],
-    )
+# NOTE: respond_rfq_form moved to assistant/negotiation.py (alias to submit_quote).
+# Полноценный multi-line, multi-round flow с Quote-моделью.
 
 
 # ══════════════════════════════════════════════════════════
@@ -1696,4 +1869,150 @@ def seller_reports(params, user, role):
             {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
         ],
         suggestions=["Выгрузить продажи", "Скачать каталог"],
+    )
+
+
+@register("connect_gsheet")
+def connect_gsheet(params, user, role):
+    """ТЗ: подключить Google-таблицу как источник прайса.
+
+    Скачивает таблицу через публичный CSV-export и прогоняет через тот
+    же pipeline что и upload-файла: smart-mapping (словарь + AI) →
+    preview-импорт. URL сохраняется в PricelistMapping['_gsheet_url']
+    для будущей авто-синхронизации (Celery raz/час).
+    """
+    import re as _re
+    from django.core.files.base import ContentFile
+    from marketplace.models import PricelistImport, PricelistMapping
+    from .pricelist import (
+        _read_preview, _smart_mapping, _build_mapped_preview, STD_FIELDS,
+        MIN_COLUMNS, MAX_COLUMNS, MAX_FILE_BYTES,
+    )
+
+    user = _effective_seller(user)
+    url = (params.get("gsheet_url") or "").strip()
+    if not url:
+        return ActionResult(text="⚠️ Пустая ссылка.")
+    m = _re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", url)
+    if not m:
+        return ActionResult(text=(
+            "⚠️ Это не похоже на ссылку Google Sheets. "
+            "Ожидается формат `https://docs.google.com/spreadsheets/d/...`"
+        ))
+    sheet_id = m.group(1)
+    gid_m = _re.search(r"[?&#]gid=(\d+)", url)
+    gid = gid_m.group(1) if gid_m else "0"
+    csv_url = (
+        f"https://docs.google.com/spreadsheets/d/{sheet_id}"
+        f"/export?format=csv&gid={gid}"
+    )
+    try:
+        import requests
+        resp = requests.get(csv_url, timeout=20, allow_redirects=True)
+    except Exception as e:
+        return ActionResult(text=f"⚠️ Не удалось скачать таблицу: {e}")
+    if resp.status_code == 401 or resp.status_code == 403:
+        return ActionResult(text=(
+            "⚠️ Таблица не доступна публично. Откройте доступ "
+            "«Все, у кого есть ссылка → Читатель» в настройках Google Sheets "
+            "и попробуйте снова."
+        ))
+    if resp.status_code != 200:
+        return ActionResult(text=(
+            f"⚠️ Google вернул HTTP {resp.status_code}. Проверьте ссылку "
+            f"и доступ."
+        ))
+    blob = resp.content
+    if len(blob) > MAX_FILE_BYTES:
+        return ActionResult(text=(
+            f"⚠️ Таблица слишком большая ({len(blob) // 1024 // 1024} МБ). "
+            f"Максимум {MAX_FILE_BYTES // 1024 // 1024} МБ."
+        ))
+    try:
+        headers, sample = _read_preview("gsheet.csv", blob)
+    except Exception as e:
+        return ActionResult(text=f"⚠️ Не удалось прочитать таблицу: {e}")
+    if not headers or len(headers) < MIN_COLUMNS:
+        return ActionResult(text=(
+            f"⚠️ В таблице меньше {MIN_COLUMNS} колонок. Нечего импортировать."
+        ))
+    if len(headers) > MAX_COLUMNS:
+        return ActionResult(text=(
+            f"⚠️ Колонок слишком много ({len(headers)}). Максимум {MAX_COLUMNS}."
+        ))
+
+    # Smart mapping: словарь + AI fallback
+    pm = PricelistMapping.objects.filter(seller=user).first()
+    ai_called = False
+    if pm and pm.mapping:
+        suggested = {k: v for k, v in pm.mapping.items()
+                      if v and (str(v).startswith("fix:") or v in headers)}
+    else:
+        suggested, _u, ai_called, status = _smart_mapping(
+            headers, sample, seller=user,
+        )
+        if status == "quota_exceeded":
+            return ActionResult(text=(
+                "Лимит распознавания исчерпан. Попробуйте завтра или "
+                "скачайте шаблон."
+            ))
+
+    imp = PricelistImport.objects.create(
+        seller=user, filename="gsheet.csv",
+        headers=headers, sample_rows=sample,
+        suggested_mapping=suggested, ai_called=ai_called,
+        status="preview",
+    )
+    imp.file_obj.save(f"gsheet-{imp.id}.csv", ContentFile(blob), save=True)
+
+    # Сохраняем URL для авто-синхронизации
+    pm2, _ = PricelistMapping.objects.get_or_create(seller=user)
+    cur = dict(pm2.mapping or {})
+    cur["_gsheet_url"] = url
+    pm2.mapping = cur
+    pm2.save(update_fields=["mapping", "updated_at"])
+
+    mapped_preview = _build_mapped_preview(headers, sample, suggested)
+    rows = [{
+        "label": "🔗 URL", "value": url[:60] + ("…" if len(url) > 60 else ""),
+    }, {
+        "label": "Колонок", "value": str(len(headers)),
+    }, {
+        "label": "Маппинг готов", "value": (
+            "по словарю + AI" if ai_called else
+            "по сохранённому маппингу" if pm and pm.mapping else
+            "по словарю"
+        ),
+    }, {
+        "label": "─── Распознанные поля ───", "value": "",
+    }]
+    for std, src in (suggested or {}).items():
+        rows.append({"label": std, "value": str(src)})
+
+    return ActionResult(
+        text=(
+            f"✅ Google Sheet подключён · {len(headers)} колонок прочитано.\n"
+            f"Подтвердите маппинг ниже — после импорта URL сохранится для "
+            f"авто-синхронизации (раз в час)."
+        ),
+        cards=[
+            {"type": "draft", "data": {
+                "title": "Google Sheet · превью",
+                "rows": rows,
+            }},
+            {"type": "table_preview", "data": {
+                "title": "Как ляжет в базу (первые 5 строк)",
+                "headers": mapped_preview["headers"],
+                "rows": mapped_preview["rows"],
+            }},
+        ],
+        actions=[
+            {"action": "__pricelist_commit", "label": "📥 Импортировать",
+             "params": dict(
+                 {"import_id": imp.id},
+                 **{f"col__{k}": v for k, v in (suggested or {}).items()},
+             )},
+            {"action": "__pricelist_cancel", "label": "Отменить",
+             "params": {"import_id": imp.id}},
+        ],
     )

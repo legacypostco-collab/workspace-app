@@ -348,6 +348,16 @@
     $('streamInner').innerHTML = '';
   }
 
+  // 🏠 Home — возврат к welcome stage, сохраняем conversation
+  window.goHome = () => {
+    showWelcome();
+    // Скрыть notif/settings панели если открыты
+    const np = document.getElementById('notifPanel');
+    if (np) np.setAttribute('hidden', '');
+    const sp = document.getElementById('settingsPanel');
+    if (sp) sp.setAttribute('hidden', '');
+  };
+
   // ══════════════════════════════════════════════════════════
   // Card renderers
   // ══════════════════════════════════════════════════════════
@@ -478,9 +488,19 @@
     list(d) {
       const rows = (d.rows || []).map(r => {
         const badge = r.badge ? `<span class="ls-badge">${esc(r.badge)}</span>` : '';
-        const cls = r.url ? 'ls-row ls-link' : 'ls-row';
-        const open = r.url ? `onclick="window.open('${esc(r.url)}','_blank','noopener')"` : '';
-        return `<div class="${cls}" ${open}>
+        const isClickable = !!(r.url || r.action);
+        const cls = isClickable ? 'ls-row ls-link' : 'ls-row';
+        // Поддержка двух режимов: r.url → external link, r.action → action
+        let attrs = '';
+        if (r.action) {
+          // Кликабельный — использует data-action без .act-btn-стиля
+          attrs = `class="${cls}" data-action="${esc(r.action)}" data-params='${esc(JSON.stringify(r.params || {}))}' data-label="${esc(r.title || r.action)}"`;
+        } else if (r.url) {
+          attrs = `class="${cls}" onclick="window.open('${esc(r.url)}','_blank','noopener')"`;
+        } else {
+          attrs = `class="${cls}"`;
+        }
+        return `<div ${attrs}>
           <div class="ls-main">
             <div class="ls-title">${esc(r.title || '')}</div>
             <div class="ls-sub">${esc(r.subtitle || '')}</div>
@@ -507,10 +527,31 @@
     },
     form(d) {
       const fields = (d.fields || []).map(f => {
-        const val = f.default || '';
+        const val = (f.value !== undefined ? f.value : f.default) || '';
         const req = f.required ? 'required' : '';
-        return `<label class="fm-row">
-          <span class="fm-label">${esc(f.label || f.name)}${f.required ? ' <span class="fm-req">*</span>' : ''}</span>
+        const lbl = `<span class="fm-label">${esc(f.label || f.name)}${f.required ? ' <span class="fm-req">*</span>' : ''}</span>`;
+        // select — настоящий <select> с options
+        if (f.type === 'select') {
+          const opts = (f.options || []).map(o => {
+            const v = o.value !== undefined ? o.value : o;
+            const lab = o.label !== undefined ? o.label : o;
+            const sel = String(v) === String(val) ? 'selected' : '';
+            return `<option value="${esc(v)}" ${sel}>${esc(lab)}</option>`;
+          }).join('');
+          return `<label class="fm-row">${lbl}
+            <select class="fm-input fm-select" name="${esc(f.name)}" ${req}>
+              ${opts}
+            </select>
+          </label>`;
+        }
+        // textarea — многострочный
+        if (f.type === 'textarea') {
+          return `<label class="fm-row">${lbl}
+            <textarea class="fm-input fm-textarea" name="${esc(f.name)}" rows="${f.rows || 4}" placeholder="${esc(f.placeholder || '')}" ${req}>${esc(val)}</textarea>
+          </label>`;
+        }
+        // обычный input (text/number/email/...)
+        return `<label class="fm-row">${lbl}
           <input class="fm-input" name="${esc(f.name)}" type="${esc(f.type || 'text')}" value="${esc(val)}" placeholder="${esc(f.placeholder || '')}" ${req} autocomplete="off"/>
         </label>`;
       }).join('');
@@ -521,6 +562,130 @@
         <div class="fm-actions">
           <button type="button" class="act-btn fm-submit">${esc(d.submit_label || 'Отправить')}</button>
         </div>
+      </div>`;
+    },
+    int_methods(d) {
+      // Карточка способов интеграции (CSV/XLSX, Google Sheets, REST API).
+      const methods = (d.methods || []).map(m => {
+        const stCls = m.status === 'soon' ? 'im-st-soon'
+                     : m.status === 'recommended' ? 'im-st-recommended'
+                     : m.status === 'active' ? 'im-st-active' : 'im-st-default';
+        const stLabel = m.status === 'soon' ? 'Скоро'
+                       : m.status === 'recommended' ? 'Рекомендуется'
+                       : m.status === 'active' ? 'Активно' : '';
+        const stBadge = stLabel ? `<span class="im-status ${stCls}">${esc(stLabel)}</span>` : '';
+        const icon = m.icon || '◇';
+        // Secondary action (вторичная кнопка над main, например «Создать копию шаблона»)
+        let secHtml = '';
+        if (m.secondary) {
+          if (m.secondary.url) {
+            // Кнопка с двумя действиями: open + copy URL (на случай если
+            // preview-режим Claude блочит docs.google.com — копируем
+            // URL в clipboard и пользователь открывает сам).
+            const u = m.secondary.url;
+            secHtml = `<div class="im-sec-row">
+              <a class="im-secondary" href="${esc(u)}" target="_blank" rel="noopener">${esc(m.secondary.label || '↗')}</a>
+              <button class="im-copy-btn" data-copy-url="${esc(u)}" title="Скопировать ссылку">📋</button>
+            </div>`;
+          } else if (m.secondary.action) {
+            secHtml = `<button class="im-secondary act-btn" data-action="${esc(m.secondary.action)}" data-params='${esc(JSON.stringify(m.secondary.params || {}))}' data-label="${esc(m.secondary.label || '')}">${esc(m.secondary.label || '↗')}</button>`;
+          }
+        }
+        // Inline-форма: hint + input + primary submit
+        let formHtml = '';
+        if (m.input) {
+          const inpName = m.input.name || 'value';
+          const fixed = JSON.stringify((m.primary && m.primary.params) || {});
+          const submitAction = (m.primary && m.primary.action) || '';
+          formHtml = `${m.hint ? `<div class="im-hint">${esc(m.hint)}</div>` : ''}
+            <div class="im-form fm-card" data-form-action="${esc(submitAction)}" data-fixed='${esc(fixed)}'>
+              <input class="fm-input im-input" name="${esc(inpName)}" type="${esc(m.input.type || 'text')}" placeholder="${esc(m.input.placeholder || '')}" autocomplete="off"/>
+              <button type="button" class="act-btn fm-submit im-primary">${esc((m.primary && m.primary.label) || 'OK')}</button>
+            </div>`;
+        } else if (m.primary && !m.disabled) {
+          // Просто primary-кнопка
+          if (m.primary.action) {
+            formHtml = `<button class="im-primary act-btn" data-action="${esc(m.primary.action)}" data-params='${esc(JSON.stringify(m.primary.params || {}))}' data-label="${esc(m.primary.label || '')}">${esc(m.primary.label || 'OK')}</button>`;
+          } else if (m.primary.url) {
+            formHtml = `<a class="im-primary" href="${esc(m.primary.url)}" target="_blank" rel="noopener">${esc(m.primary.label || '↗')}</a>`;
+          }
+        }
+        const disabledCls = m.disabled ? ' im-card-disabled' : '';
+        // Features list (буллеты — для smart-карточки)
+        const featuresHtml = (m.features && m.features.length)
+          ? `<ul class="im-features">${m.features.map(f => `<li>${esc(f)}</li>`).join('')}</ul>`
+          : '';
+        return `<div class="im-card${disabledCls}">
+          <div class="im-head">
+            <div class="im-icon">${esc(icon)}</div>
+            <div class="im-title-wrap">
+              <div class="im-title">${esc(m.title || '')}</div>
+              ${stBadge}
+            </div>
+          </div>
+          <div class="im-desc">${esc(m.description || '')}</div>
+          ${featuresHtml}
+          ${secHtml}
+          ${formHtml}
+        </div>`;
+      }).join('');
+      return `<div class="card im-block">
+        <div class="im-block-title">${esc(d.title || 'Способы интеграции')}</div>
+        <div class="im-list">${methods}</div>
+      </div>`;
+    },
+    order_timeline(d) {
+      const stages = (d.stages || []).map((s, i) => {
+        const cls = s.state === 'done' ? 'tl-done'
+                   : s.state === 'current' ? 'tl-current' : 'tl-pending';
+        const dot = s.state === 'done' ? '●'
+                   : s.state === 'current' ? '◆' : '○';
+        return `<div class="tl-stage ${cls}">
+          <span class="tl-dot">${dot}</span>
+          <span class="tl-label">${esc(s.label)}</span>
+        </div>`;
+      }).join('');
+
+      const next = d.next_action;
+      const nextHtml = next
+        ? `<button class="tl-cta act-btn" data-action="${esc(next.action)}" data-params='${esc(JSON.stringify(next.params||{}))}' data-label="${esc(next.label)}">${esc(next.label)}</button>`
+        : '';
+
+      const pct = d.progress_pct || 0;
+      const totalLine = d.total ? `${fmtMoney(d.total, d.currency)}` : '';
+      const reserveLine = d.reserve_amount
+        ? ` · резерв ${fmtMoney(d.reserve_amount, d.currency)}`
+        : '';
+
+      return `<div class="card tl-card">
+        <div class="tl-head">
+          <div>
+            <div class="card-title">${esc(d.title || ('Заказ ORD-' + d.order_id))}</div>
+            <div class="tl-status">${esc(d.status_label || '')}</div>
+          </div>
+          <div class="tl-total">${totalLine}<span class="tl-reserve">${esc(reserveLine)}</span></div>
+        </div>
+        <div class="tl-progress-wrap">
+          <div class="tl-progress"><div class="tl-progress-fill" style="width:${pct}%"></div></div>
+          <div class="tl-progress-pct">${pct}%</div>
+        </div>
+        <div class="tl-stages">${stages}</div>
+        ${nextHtml ? `<div class="tl-actions">${nextHtml}</div>` : ''}
+      </div>`;
+    },
+    table_preview(d) {
+      const headers = (d.headers || []).map(h => `<th>${esc(h)}</th>`).join('');
+      const rows = (d.rows || []).map(row => {
+        const cells = (row || []).map(c => `<td>${esc((c == null ? '' : String(c)).slice(0, 60))}</td>`).join('');
+        return `<tr>${cells}</tr>`;
+      }).join('');
+      return `<div class="card tp-card">
+        <div class="card-title">${esc(d.title || 'Превью')}</div>
+        <div class="tp-scroll"><table class="tp-table">
+          <thead><tr>${headers}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+        ${d.foot ? `<div class="tp-foot">${esc(d.foot)}</div>` : ''}
       </div>`;
     },
     seller_queue(d) {
@@ -536,6 +701,9 @@
           ).join('');
           const btnAct = s.btn_action || 'advance_order';
           const btn = s.btn ? `<button class="act-btn sq-btn" data-action="${esc(btnAct)}" data-params='${esc(JSON.stringify({order_id: o.id}))}' data-label="${esc(s.btn + ' (#' + o.id + ')')}">${esc(s.btn)}</button>` : '';
+          // Открыть деталь заказа — отдельная кнопка (без перекраски шапки)
+          const openParams = esc(JSON.stringify({order_id: o.id}));
+          const openBtn = `<button class="act-btn sq-btn sq-open" data-action="get_order_detail" data-params='${openParams}' data-label="Открыть заказ #${esc(o.id)}">🔍 Открыть</button>`;
           return `<div class="sq-order">
             <div class="sq-order-head">
               <div>
@@ -545,7 +713,7 @@
               <span class="sq-order-sub">${fmtMoney(o.subtotal, 'USD')}</span>
             </div>
             <div class="sq-items">${items}</div>
-            ${btn ? `<div class="sq-actions">${btn}</div>` : ''}
+            <div class="sq-actions">${btn}${openBtn}</div>
           </div>`;
         }).join('');
         return `<div class="sq-section">
@@ -607,7 +775,11 @@
     },
     order(d) {
       const cls = ({pending:'orange', shipped:'green', completed:'green', cancelled:'gray'})[d.status_code] || '';
-      return `<div class="card">
+      const oid = d.id || d.number;
+      const clickAttrs = oid
+        ? ` data-action="track_order" data-params='${esc(JSON.stringify({order_id: parseInt(String(oid).replace(/\D/g, ''), 10) || oid}))}' role="button" tabindex="0" title="Открыть заказ"`
+        : '';
+      return `<div class="card card-clickable"${clickAttrs}>
         <div class="card-row">
           <div class="card-emoji">📦</div>
           <div class="card-info">
@@ -622,7 +794,14 @@
       </div>`;
     },
     rfq(d) {
-      return `<div class="card">
+      // Клик по карточке = переход на /chat/rfq/<id>/ (полная RFQ-страница).
+      // Чисто фронтовая навигация через data-href, без HTTP roundtrip.
+      const rid = d.id || d.number;
+      const href = rid ? `/chat/rfq/${parseInt(String(rid), 10) || rid}/` : '';
+      const clickAttrs = href
+        ? ` data-href="${esc(href)}" role="link" tabindex="0" title="Открыть RFQ"`
+        : '';
+      return `<div class="card card-clickable"${clickAttrs}>
         <div class="card-row">
           <div class="card-emoji">📋</div>
           <div class="card-info">
@@ -985,14 +1164,31 @@
     return html;
   }
 
-  // Делегируем клик по entity-link → quickAction
+  // Делегируем клик по clickable card → 1) data-href навигация, 2) data-action quickAction
   document.addEventListener('click', (e) => {
-    const link = e.target.closest('.entity-link');
-    if (!link) return;
-    const action = link.dataset.action;
-    const params = JSON.parse(link.dataset.params || '{}');
-    params._label = link.textContent;
+    // 1. Чистая навигация (RFQ карточки и т.п.)
+    const navCard = e.target.closest('.card-clickable[data-href]');
+    if (navCard && navCard.dataset.href) {
+      window.location.href = navCard.dataset.href;
+      return;
+    }
+    // 2. Action-карточки (order → track_order и т.п.)
+    const target = e.target.closest('.entity-link, .card-clickable[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    if (!action) return;
+    let params = {};
+    try { params = JSON.parse(target.dataset.params || '{}'); } catch(_){}
+    params._label = (target.querySelector('.card-title')?.textContent || target.textContent || '').trim().slice(0, 80);
     if (typeof quickAction === 'function') quickAction(action, params);
+  });
+  // Поддержка клавиатуры (Enter/Space) для clickable cards
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const target = e.target.closest && e.target.closest('.card-clickable[data-action], .card-clickable[data-href]');
+    if (!target) return;
+    e.preventDefault();
+    target.click();
   });
 
   function renderSuggestions(suggestions) {
@@ -1099,7 +1295,9 @@
           state._lastSuggestions = d.suggestions || [];
           state._lastText = d.text;
         } else if (d.type === 'done') {
-          finishStream(state._lastCards, state._lastActions, state._lastRefs || d.refs, state._lastText, state._lastCtxActions, state._lastSuggestions);
+          // Auto-attach «🏠 Главная» если backend не дал свою навигацию
+          const ctxActs = ensureHomeNav(state._lastCtxActions || []);
+          finishStream(state._lastCards, state._lastActions, state._lastRefs || d.refs, state._lastText, ctxActs, state._lastSuggestions);
           state._lastCards = []; state._lastActions = []; state._lastRefs = []; state._lastText = null;
           state._lastCtxActions = []; state._lastSuggestions = [];
         } else if (d.type === 'error') {
@@ -1107,6 +1305,33 @@
           addMessage('assistant', '⚠️ ' + d.message);
         } else if (d.type === 'notification') {
           showNotifToast(d.payload || {});
+        } else if (d.type === 'order_update') {
+          // Live-обновление: если seller/buyer/operator сейчас в shipment-
+          // чате этого ORD — перезагружаем conv (там уже свежее системное
+          // сообщение с обновлённым timeline). Иначе toast «Обновление по
+          // ORD-N», клик → переход в чат.
+          const inChat = state.convId && d.conversation_id === state.convId;
+          if (inChat) {
+            // Перезагружаем messages текущего чата
+            try { loadConv(state.convId, {silent: true}); } catch(_){}
+          } else {
+            showNotifToast({
+              title: '📦 Обновление по ORD-' + d.order_id,
+              body: 'Открыть чат сделки →',
+              url: d.conversation_id ? '/chat/' : null,
+            });
+          }
+          loadConvList();  // bump «непрочитанных» в sidebar
+        } else if (d.type === 'operator_alert') {
+          showNotifToast({
+            title: (d.event === 'sla_semi_overdue'   ? '⚠️ SEMI просрочен' :
+                    d.event === 'sla_manual_overdue' ? '⚠️ MANUAL >48ч' :
+                    d.event === 'sla_breach'         ? '🔥 SLA breach' :
+                    d.event === 'claim_opened'       ? '🛡 Открыт claim' :
+                    'Алерт оператору'),
+            body: 'Откройте «Алерты оператора» в сайдбаре',
+          });
+          loadConvList();
         }
       } catch(e){ console.error(e); }
     };
@@ -1183,6 +1408,53 @@
     }
   }
 
+  // Whitelist «фастовых» actions — просто DB read, без AI/RAG/external API.
+  // Для них спиннер вообще не показывается: открытие должно быть моментальным.
+  // Если action не в этом списке (search_parts с эмбеддингом, generate_proposal,
+  // analyze_spec, kb_search) — спиннер появится через 600ms.
+  const FAST_ACTIONS = new Set([
+    // Reads
+    'get_orders', 'get_order_detail', 'track_order', 'track_shipment',
+    'get_rfq_status', 'rfq_detail', 'view_rfq_quotes', 'view_quote',
+    'get_balance', 'get_budget', 'get_analytics', 'get_demand_report',
+    'get_sla_report', 'get_claims',
+    'compare_products', 'compare_suppliers', 'top_suppliers',
+    // Seller cabinet reads
+    'seller_dashboard', 'seller_finance', 'seller_rating', 'seller_pipeline',
+    'seller_inbox', 'seller_catalog', 'seller_drawings', 'seller_team',
+    'seller_integrations', 'seller_reports', 'seller_qr', 'seller_logistics',
+    'seller_negotiations',
+    // Operator/admin reads
+    'op_dashboard', 'op_queue', 'op_sla_breach', 'op_order_detail',
+    'op_logistics_stats', 'op_payments_stats', 'op_payments_dashboard',
+    'op_kyb_queue', 'op_kyb_review',
+    'op_customs_dashboard', 'op_hs_lookup', 'op_calc_duty',
+    'op_certs_check', 'op_sanctions_check',
+    'admin_dashboard', 'admin_gmv', 'admin_users', 'admin_user_detail',
+    'admin_moderation_queue', 'admin_catalog_review', 'admin_platform_settings',
+    // Onboarding wizard step rendering
+    'start_onboarding', 'kyb_status',
+    'submit_company_info', 'submit_legal_address',
+    'submit_bank', 'submit_director', 'submit_for_review',
+    // Notification settings
+    'notif_prefs', 'notif_set_email', 'notif_set_kinds', 'notif_link_telegram',
+    // Auth
+    'list_api_tokens',
+    // Open-card preview steps (DraftCard step1)
+    'pay_reserve', 'pay_final', 'confirm_delivery',
+    'op_assign', 'op_add_note', 'op_resolve_dispute',
+    'op_hs_assign', 'op_cert_upload', 'op_customs_release',
+    'admin_ban_user', 'admin_unban_user', 'admin_change_role',
+    'create_api_token', 'revoke_api_token',
+    'setup_2fa', 'verify_2fa', 'disable_2fa',
+    'submit_quote', 'respond_to_counter', 'mark_quote_final',
+    'accept_quote', 'counter_offer', 'decline_quote', 'send_rfq_to_suppliers',
+    // Operator misc
+    'audit_log', 'notifications', 'generate_qr',
+    // Misc
+    'open_url', 'topup_wallet',
+  ]);
+
   // Quick action from pills/cards
   window.quickAction = async (action, params) => {
     params = params || {};
@@ -1213,21 +1485,51 @@
       // Иначе — не уходим, превращаем в обычный action call (если action есть).
       if (!action) return;
     }
-    addMessage('action', '▸ ' + (params._label || action));
-    addTyping(pickIntent(action));
+    // Не пишем ярлык кнопки в чат — это UI affordance, а не сообщение юзера.
+    // Открываем conv view (чтобы welcome-stage не моргал).
+    //
+    // Спиннер: для фастовых actions (просто DB read, без AI) — не показываем
+    // вообще. Для AI-actions (search_parts с embedding, generate_proposal,
+    // analyze_spec) — после 600ms.
+    showConv();
+    const isFast = FAST_ACTIONS.has(action);
+    const typingDelay = isFast ? null : setTimeout(() => addTyping(pickIntent(action)), 600);
     try {
       const r = await api('/api/assistant/action/', {
         method:'POST',
         body: JSON.stringify({conversation_id: state.convId, action, params}),
       });
+      if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
       setConvId(r.conversation_id || state.convId);
-      addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || [], r.message_id || null, r.suggestions || [], r.contextual_actions || []);
+      // Auto-add «🏠 Главная» в contextual_actions если бэкенд её не вернул
+      const ctxActs = ensureHomeNav(r.contextual_actions || []);
+      addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || [], r.message_id || null, r.suggestions || [], ctxActs);
       loadConvList();
     } catch(err) {
+      if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
       addMessage('assistant', '⚠️ ' + err.message);
     }
+  };
+
+  // Добавить «🏠 Главная» в contextual_actions если нет своей навигации.
+  // Helper для quickAction и WS-handler.
+  function ensureHomeNav(ctxActs) {
+    const hasHome = ctxActs.some(a =>
+      a.action === 'go_home'
+      || (a.label || '').includes('Главная')
+      || (a.label || '').startsWith('🏠')
+    );
+    if (hasHome) return ctxActs;
+    return [...ctxActs, {action: 'go_home', label: '🏠 Главная'}];
+  }
+  // Special action handler: go_home — без round-trip к серверу
+  // Подменяем quickAction для этого случая.
+  const _origQuickAction = window.quickAction;
+  window.quickAction = (action, params) => {
+    if (action === 'go_home') { goHome(); return; }
+    return _origQuickAction(action, params);
   };
 
   // Click handler for action buttons inside messages
@@ -1253,8 +1555,22 @@
       quickAction(action, params);
       return;
     }
-    // 2. Обычные action-кнопки
-    const btn = e.target.closest('.act-btn');
+    // 2a. Copy-URL кнопка (для случая когда preview блочит external link)
+    const copyBtn = e.target.closest('.im-copy-btn[data-copy-url]');
+    if (copyBtn) {
+      e.preventDefault();
+      const url = copyBtn.dataset.copyUrl;
+      const orig = copyBtn.textContent;
+      navigator.clipboard?.writeText(url).then(() => {
+        copyBtn.textContent = '✓';
+        setTimeout(() => { copyBtn.textContent = orig; }, 1500);
+      }).catch(() => {
+        window.prompt('Скопируйте ссылку и откройте в обычном браузере:', url);
+      });
+      return;
+    }
+    // 2. Обычные action-кнопки и любой [data-action] (например, ls-row)
+    const btn = e.target.closest('.act-btn,[data-action]');
     if (!btn) return;
     const action = btn.dataset.action;
     const params = JSON.parse(btn.dataset.params || '{}');
@@ -1325,15 +1641,18 @@
       title:    'Какую запчасть найти?',
       subtitle: 'Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>.',
       pills: [
-        {label:'📦 Мои заказы',      action:'get_orders',     params:{}},
+        {label:'📦 Мои сделки',      action:'get_orders',     params:{}},
         {label:'📋 Открытые RFQ',    action:'get_rfq_status', params:{}},
-        {label:'💰 Баланс депозита', action:'get_balance',    params:{}},
+        {label:'💰 Депозит',         action:'get_balance',    params:{}},
+        {label:'🎯 Auto-discount',   action:'get_buyer_discount', params:{}},
       ],
     },
     seller: {
       title:    'Что в работе сегодня?',
       subtitle: 'Срочные задачи, входящие RFQ и отгрузки. Каталог, финансы и команда — по запросу.',
       pills: [
+        {label:'📤 Загрузить прайс', action:'upload_pricelist',  params:{}},
+        {label:'🛡 Верификация',     action:'start_onboarding',  params:{}},
         {label:'🔥 Срочное',         action:'seller_inbox',      params:{}},
         {label:'🚚 К отгрузке',      action:'seller_pipeline',   params:{}},
         {label:'📋 Новые RFQ',       action:'get_rfq_status',    params:{}},
@@ -1344,11 +1663,11 @@
       title:    'Что в работе на платформе?',
       subtitle: 'Контролируйте процесс: активные заказы, SLA-нарушения, очередь, спор-кейсы.',
       pills: [
-        {label:'🎛 Сводка',          action:'op_dashboard',    params:{}},
-        {label:'📋 Очередь',         action:'op_queue',        params:{}},
-        {label:'⏱ SLA-нарушения',   action:'op_sla_breach',   params:{}},
-        {label:'📦 Все заказы',      action:'get_orders',      params:{}},
-        {label:'📈 Аналитика',       action:'get_analytics',   params:{}},
+        {label:'🎛 Сводка',          action:'op_dashboard',     params:{}},
+        {label:'🛡 KYB на проверке', action:'op_kyb_queue',     params:{}},
+        {label:'📋 Очередь',         action:'op_queue',         params:{}},
+        {label:'⏱ SLA-нарушения',   action:'op_sla_breach',    params:{}},
+        {label:'📈 Аналитика',       action:'get_analytics',    params:{}},
       ],
     },
     operator_logist: {
@@ -1390,6 +1709,18 @@
         {label:'📈 Аналитика',       action:'get_analytics', params:{}},
       ],
     },
+    admin: {
+      title:    'Платформа',
+      subtitle: 'GMV, пользователи, модерация — управление всей площадкой.',
+      pills: [
+        {label:'🛡 Сводка',           action:'admin_dashboard',         params:{}},
+        {label:'📈 GMV',              action:'admin_gmv',               params:{}},
+        {label:'👥 Пользователи',     action:'admin_users',             params:{}},
+        {label:'🚨 Модерация',        action:'admin_moderation_queue',  params:{}},
+        {label:'📦 Каталог',          action:'admin_catalog_review',    params:{}},
+        {label:'🛠 Settings',         action:'admin_platform_settings', params:{}},
+      ],
+    },
   };
 
   function applyRoleWelcome(role) {
@@ -1397,12 +1728,15 @@
     const t = $('welcomeTitle'), s = $('welcomeSubtitle'), p = $('welcomePills');
     if (t) t.textContent = cfg.title;
     if (s) s.innerHTML = cfg.subtitle;
-    if (p) p.innerHTML = cfg.pills.map(b =>
-      `<button class="pill" type="button"
-        onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(b.params)})'>
+    if (p) p.innerHTML = cfg.pills.map(b => {
+      // Передаём label в params._label чтобы breadcrumb показывал «Мои заказы»,
+      // а не raw action name.
+      const params = {...(b.params || {}), _label: b.label};
+      return `<button class="pill" type="button"
+        onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(params)})'>
         ${esc(b.label)}
-      </button>`
-    ).join('');
+      </button>`;
+    }).join('');
   }
 
   async function loadProjects() {
@@ -1428,9 +1762,19 @@
     }
   }
 
+  // Category icons → визуальное отделение admin/purchase/support от обычных
+  const CATEGORY_ICON = {
+    admin:    '🛡',
+    purchase: '🛒',
+    support:  '🎧',
+    general:  '💬',
+  };
+
   function renderConvList(filter='') {
     const f = filter.toLowerCase();
     const list = state.convs.filter(c => !f || (c.title||'').toLowerCase().includes(f));
+    const clearBtn = $('clearHistoryBtn');
+    if (clearBtn) clearBtn.style.display = (state.convs && state.convs.length) ? '' : 'none';
     if (!list.length) {
       $('convList').innerHTML = '<div class="side-item-stack"><div class="side-item-stack-meta">Нет чатов</div></div>';
       return;
@@ -1439,12 +1783,156 @@
       const date = c.updated_at ? new Date(c.updated_at) : null;
       const meta = date ? relativeTime(date) : '';
       const lastMeta = c.last_message ? c.last_message.content.substring(0, 40) : meta;
-      return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" onclick="openConv('${c.id}')">
-        <div class="side-item-stack-title">${esc(c.title || 'Без названия')}</div>
-        <div class="side-item-stack-meta">${esc(meta)} ${lastMeta && lastMeta !== meta ? '· ' + esc(lastMeta) : ''}</div>
+      const icon = CATEGORY_ICON[c.category || 'general'] || '💬';
+      const cid = esc(c.id);
+      return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" data-conv-id="${cid}" onclick="openConv('${cid}')" oncontextmenu="return openConvCtxMenu(event,'${cid}')">
+        <div class="side-item-stack-content">
+          <div class="side-item-stack-title"><span class="conv-cat-icon" title="${esc(c.category || 'general')}">${icon}</span>${esc(c.title || 'Без названия')}</div>
+          <div class="side-item-stack-meta">${esc(meta)} ${lastMeta && lastMeta !== meta ? '· ' + esc(lastMeta) : ''}</div>
+        </div>
+        <button class="side-item-stack-more" type="button" title="Действия" onclick="event.stopPropagation();openConvCtxMenu(event,'${cid}');return false;" aria-label="Действия">⋯</button>
       </div>`;
     }).join('');
   }
+
+  // ── Контекст-меню чата (rename/delete) ───────────────────
+  let _ctxConvId = null;
+
+  window.openConvCtxMenu = function(ev, convId) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const menu = $('convCtxMenu');
+    if (!menu) return false;
+    _ctxConvId = convId;
+    // Подсвечиваем кнопку «⋯» у активного элемента
+    document.querySelectorAll('.side-item-stack-more.open').forEach(b => b.classList.remove('open'));
+    const item = document.querySelector(`.side-item-stack[data-conv-id="${convId}"] .side-item-stack-more`);
+    if (item) item.classList.add('open');
+    // Позиционирование
+    menu.hidden = false;
+    const rect = menu.getBoundingClientRect();
+    const w = rect.width || 200, h = rect.height || 80;
+    let x, y;
+    if (ev.clientX || ev.clientY) {
+      x = ev.clientX; y = ev.clientY;
+    } else {
+      const tr = (ev.currentTarget || ev.target).getBoundingClientRect();
+      x = tr.right; y = tr.bottom;
+    }
+    // не выходить за границы окна
+    x = Math.min(x, window.innerWidth - w - 8);
+    y = Math.min(y, window.innerHeight - h - 8);
+    menu.style.left = Math.max(8, x) + 'px';
+    menu.style.top  = Math.max(8, y) + 'px';
+    return false;
+  };
+
+  function closeConvCtxMenu() {
+    const menu = $('convCtxMenu');
+    if (menu) menu.hidden = true;
+    document.querySelectorAll('.side-item-stack-more.open').forEach(b => b.classList.remove('open'));
+    _ctxConvId = null;
+  }
+
+  // Глобальные обработчики для закрытия меню
+  document.addEventListener('click', (e) => {
+    const menu = $('convCtxMenu');
+    if (!menu || menu.hidden) return;
+    if (!menu.contains(e.target)) closeConvCtxMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeConvCtxMenu();
+  });
+  // Делегирование кликов внутри меню
+  document.addEventListener('click', (e) => {
+    const item = e.target.closest('#convCtxMenu .ctx-menu-item');
+    if (!item) return;
+    const action = item.dataset.action;
+    const cid = _ctxConvId;
+    closeConvCtxMenu();
+    if (!cid) return;
+    const conv = (state.convs || []).find(c => c.id === cid);
+    const title = conv ? (conv.title || 'Без названия') : '';
+    if (action === 'rename') renameConv(cid, title);
+    else if (action === 'delete') deleteConv(cid, title);
+  });
+
+  // Переименование чата
+  window.renameConv = async (id, currentTitle) => {
+    const v = prompt('Новое название чата:', currentTitle || '');
+    if (v === null) return;
+    const t = v.trim();
+    if (!t) return;
+    if (t === currentTitle) return;
+    try {
+      const res = await fetch('/api/assistant/conversations/' + id + '/', {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf()},
+        credentials: 'same-origin',
+        body: JSON.stringify({title: t.slice(0, 200)}),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      // обновить state и перерисовать
+      const i = (state.convs || []).findIndex(c => c.id === id);
+      if (i >= 0) state.convs[i] = {...state.convs[i], title: data.title || t};
+      renderConvList($('convSearch') ? $('convSearch').value : '');
+    } catch(e) {
+      alert('Не удалось переименовать чат: ' + e.message);
+    }
+  };
+
+  // Удаление одного чата (soft delete)
+  window.deleteConv = async (id, title) => {
+    const t = (title || '').trim() || 'этот чат';
+    if (!confirm(`Удалить «${t}»?\nЧат и его история будут скрыты.`)) return;
+    try {
+      const res = await fetch('/api/assistant/conversations/' + id + '/', {
+        method: 'DELETE',
+        headers: {'X-CSRFToken': csrf()},
+        credentials: 'same-origin',
+      });
+      if (!res.ok && res.status !== 204) throw new Error('HTTP ' + res.status);
+      // если удалили активный — уйти на welcome
+      if (state.convId === id) {
+        try { localStorage.removeItem('cf_active_conv'); } catch(_){}
+        state.convId = null;
+        if (typeof showWelcome === 'function') showWelcome();
+        else if ($('streamInner')) $('streamInner').innerHTML = '';
+      }
+      // убрать из state и перерисовать
+      state.convs = (state.convs || []).filter(c => c.id !== id);
+      renderConvList($('convSearch') ? $('convSearch').value : '');
+    } catch(e) {
+      alert('Не удалось удалить чат: ' + e.message);
+    }
+  };
+
+  // Массовое удаление всей истории
+  window.clearAllHistory = async () => {
+    const n = (state.convs || []).length;
+    if (!n) return;
+    if (!confirm(`Удалить всю историю поисков (${n} чатов)?\nЭто действие нельзя отменить.`)) return;
+    const ids = state.convs.map(c => c.id);
+    let failed = 0;
+    await Promise.all(ids.map(async (id) => {
+      try {
+        const res = await fetch('/api/assistant/conversations/' + id + '/', {
+          method: 'DELETE',
+          headers: {'X-CSRFToken': csrf()},
+          credentials: 'same-origin',
+        });
+        if (!res.ok && res.status !== 204) failed++;
+      } catch(_) { failed++; }
+    }));
+    try { localStorage.removeItem('cf_active_conv'); } catch(_){}
+    state.convId = null;
+    state.convs = [];
+    if (typeof showWelcome === 'function') showWelcome();
+    else if ($('streamInner')) $('streamInner').innerHTML = '';
+    renderConvList();
+    if (failed) alert(`Не удалось удалить ${failed} чат(ов)`);
+  };
 
   function relativeTime(date) {
     const now = new Date();
@@ -1582,11 +2070,305 @@
     }
   }
 
-  $('fileInput').addEventListener('change', (e) => {
-    const file = e.target.files[0];
+  // Pricelist upload — для seller'а, AI-маппинг колонок (ТЗ).
+  // 1) POST файл → preview (headers + AI-mapping). 2) Юзер правит маппинг
+  // в карточке-форме. 3) submit → commit → детерминированный импорт.
+  async function uploadPricelist(file) {
+    showConv();
+    addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
+    const pending = addMessage('assistant', 'Читаю заголовки и подбираю маппинг колонок…');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/assistant/upload-pricelist/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf()},
+        body: fd, credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      if (pending && pending.parentNode) pending.remove();
+
+      // Строим карточку-форму с маппингом для подтверждения.
+      const headers = (data.headers || []).filter(h => String(h || '').trim());
+      const sample = data.sample_rows || [];
+      const sug = data.suggested_mapping || {};
+      const stdFields = data.std_fields || [];
+
+      // Маркируем занятые колонки в label чтобы было видно куда они
+      // привязаны (но НЕ исключаем — seller может переназначить).
+      const fieldLabel = {};
+      stdFields.forEach(f => { fieldLabel[f.key] = f.label; });
+      const usedBy = {};  // header → field-label
+      Object.entries(sug).forEach(([fk, v]) => {
+        if (v && !String(v).startsWith('fix:') && headers.includes(v)) {
+          if (!usedBy[v]) usedBy[v] = fieldLabel[fk] || fk;
+        }
+      });
+
+      const fields = stdFields.map(f => {
+        const myValue = sug[f.key] || '';
+        const opts = [{value: '', label: '— не использовать —'}];
+        headers.forEach(h => {
+          let label = 'Колонка: ' + h;
+          // Если эта колонка уже занята другим полем — пометим
+          if (usedBy[h] && h !== myValue) {
+            label += '  (→ ' + usedBy[h] + ')';
+          }
+          opts.push({value: h, label: label});
+        });
+        if (f.enum_values && f.enum_values.length) {
+          opts.push({value: '__sep__', label: '— или фикс. значение —'});
+          f.enum_values.forEach(v => {
+            opts.push({value: 'fix:' + v, label: 'Фикс: ' + v});
+          });
+        }
+        // Опция «Своё значение» — для всех полей. При выборе —
+        // prompt(), результат сохраняется как fix:VALUE.
+        opts.push({value: '__custom__', label: '✏️ Своё значение…'});
+        return {
+          name: 'col__' + f.key,
+          label: f.label,
+          type: 'select',
+          options: opts,
+          value: myValue,
+          required: f.required,
+        };
+      });
+
+      // Информация откуда взят маппинг (повторная загрузка / AI / словарь)
+      let intro;
+      if (data.from_saved_mapping) {
+        intro = `📋 Файл прочитан · ${headers.length} колонок · ` +
+                `${sample.length} превью-строк.\n` +
+                `🧠 Применён сохранённый маппинг — AI не вызывался. ` +
+                `Проверьте превью «как ляжет в базу» и подтвердите.`;
+      } else if (data.ai_called) {
+        intro = `📋 Файл прочитан · ${headers.length} колонок · ` +
+                `${sample.length} превью-строк.\n` +
+                `📚 Распознано по словарю + AI помог с нестандартными ` +
+                `заголовками. Проверьте маппинг ниже.`;
+      } else {
+        intro = `📋 Файл прочитан · ${headers.length} колонок · ` +
+                `${sample.length} превью-строк.\n` +
+                `📚 Все заголовки распознаны по словарю — AI не вызывался.`;
+      }
+
+      const cards = [];
+      // 1. Превью «как ляжет в базу» (если есть маппинг)
+      if (data.mapped_preview && (data.mapped_preview.rows || []).length) {
+        cards.push({type:'table_preview', data:{
+          title: '✅ Как ляжет в базу (первые 5 строк)',
+          headers: data.mapped_preview.headers,
+          rows: data.mapped_preview.rows,
+          foot: 'Это уже распознанные колонки. Если что-то не так — поправьте маппинг ниже.',
+        }});
+      }
+      // 2. Сырое превью (исходные строки файла)
+      cards.push({type:'table_preview', data:{
+        title: '👀 Сырое превью (как в файле)',
+        headers: headers,
+        rows: sample,
+      }});
+      // 3. Форма с маппингом
+      cards.push({type:'form', data:{
+        title: '🔗 Маппинг колонок прайса → платформа',
+        submit_action: '__pricelist_commit',
+        submit_label: '📥 Подтвердить и загрузить',
+        fields: fields,
+        fixed_params: {import_id: data.import_id},
+      }});
+
+      addMessage('assistant', intro, cards,
+        [{action: '__pricelist_cancel', label: 'Отменить',
+          params: {import_id: data.import_id}}]
+      );
+    } catch (err) {
+      if (pending && pending.parentNode) pending.remove();
+      addMessage('assistant', '⚠️ Не удалось прочитать прайс: ' + (err.message || err));
+    }
+  }
+
+  // Specialhandler: commit маппинга (не через /action/, а через /upload-pricelist/<id>/commit/)
+  window.__pricelist_commit_handler = async (params) => {
+    const importId = params.import_id;
+    const mapping = {};
+    Object.keys(params).forEach(k => {
+      if (k.startsWith('col__') && params[k] && params[k] !== '__sep__') {
+        mapping[k.slice(5)] = params[k];
+      }
+    });
+    showConv();
+    const pending = addMessage('assistant', 'Импортирую прайс…');
+    try {
+      const res = await fetch('/api/assistant/upload-pricelist/' + importId + '/commit/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'X-CSRFToken': csrf()},
+        body: JSON.stringify({mapping}), credentials: 'same-origin',
+      });
+      const data = await res.json();
+      if (pending && pending.parentNode) pending.remove();
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      const errBtn = data.failed > 0
+        ? [{action: 'pricelist_show_errors', label: 'Посмотреть',
+            params: {import_id: importId}}]
+        : [];
+      // ТЗ-формат: «Загружено X. Обновлено Y. Ошибок Z — посмотреть».
+      const created = data.created || 0;
+      const updated = data.updated || 0;
+      const failed  = data.failed  || 0;
+      const parts = [`✅ Загружено ${created} позиций.`];
+      if (updated) parts.push(`Обновлено ${updated}.`);
+      if (failed)  parts.push(`Ошибок ${failed} — посмотреть?`);
+      addMessage('assistant',
+        parts.join(' '),
+        [], errBtn.concat([
+          {action: 'seller_catalog', label: '📦 Открыть каталог', params: {}},
+        ])
+      );
+    } catch (err) {
+      if (pending && pending.parentNode) pending.remove();
+      addMessage('assistant', '⚠️ Не удалось импортировать: ' + (err.message || err));
+    }
+  };
+
+  window.__pricelist_cancel_handler = async (params) => {
+    try {
+      await fetch('/api/assistant/upload-pricelist/' + params.import_id + '/cancel/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf()},
+        credentials: 'same-origin',
+      });
+    } catch(_){}
+    addMessage('assistant', 'Импорт отменён.');
+  };
+
+  // Перехватываем спец-actions в quickAction'е до отправки на /api/assistant/action/
+  const _origQuickActionForPricelist = window.quickAction;
+  window.quickAction = (action, params) => {
+    if (action === '__pricelist_commit') return window.__pricelist_commit_handler(params);
+    if (action === '__pricelist_cancel') return window.__pricelist_cancel_handler(params);
+    // Спец-action «открыть file-picker» — отдельная кнопка в карточке
+    // upload_pricelist (после клика на pill).
+    if (action === '__open_file_picker') {
+      const fi = $('fileInput');
+      if (fi) {
+        fi.accept = (params && params.accept) || '.xlsx,.xls,.csv,.tsv,.txt';
+        fi.click();
+      }
+      return;
+    }
+    // Переключение роли — server-side action /api/assistant/role/
+    if (action === '_switch_role') {
+      const newRole = (params && params.role) || 'seller';
+      if (typeof setRole === 'function') {
+        setRole(newRole);
+      } else {
+        // fallback — full reload через cookie API
+        fetch('/api/assistant/role/', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-CSRFToken': csrf()},
+          credentials:'same-origin',
+          body: JSON.stringify({role: newRole}),
+        }).then(() => location.reload());
+      }
+      return;
+    }
+    return _origQuickActionForPricelist(action, params);
+  };
+
+  // Универсальный handler выбора файла — file-picker или drag-n-drop
+  function handleSelectedFile(file) {
     if (!file) return;
-    uploadSpec(file);
+    // Seller'у грузим прайс, остальным — спецификацию
+    const role = (state.config && state.config.role) || 'buyer';
+    if (role === 'seller') {
+      uploadPricelist(file);
+    } else {
+      uploadSpec(file);
+    }
+  }
+
+  // Drag-n-drop файла прямо в окно чата (без необходимости жать скрепку)
+  let _dragDepth = 0;  // считаем nested dragenter/leave чтобы overlay не моргал
+  function _hasFiles(e) {
+    const types = e.dataTransfer?.types || [];
+    return Array.from(types).includes('Files');
+  }
+  function _showDropOverlay() {
+    let ov = document.getElementById('dndOverlay');
+    if (ov) { ov.style.display = 'flex'; return; }
+    ov = document.createElement('div');
+    ov.id = 'dndOverlay';
+    ov.innerHTML = `
+      <div class="dnd-box">
+        <div class="dnd-icon">📎</div>
+        <div class="dnd-title">Бросьте файл сюда</div>
+        <div class="dnd-sub">.xlsx · .csv · .pdf · до 20 МБ</div>
+      </div>`;
+    document.body.appendChild(ov);
+  }
+  function _hideDropOverlay() {
+    const ov = document.getElementById('dndOverlay');
+    if (ov) ov.style.display = 'none';
+    _dragDepth = 0;
+  }
+  document.addEventListener('dragenter', (e) => {
+    if (!_hasFiles(e)) return;
+    _dragDepth += 1;
+    _showDropOverlay();
+  });
+  document.addEventListener('dragleave', (e) => {
+    if (!_hasFiles(e)) return;
+    _dragDepth -= 1;
+    if (_dragDepth <= 0) _hideDropOverlay();
+  });
+  document.addEventListener('dragover', (e) => {
+    if (!_hasFiles(e)) return;
+    e.preventDefault();  // обязательно — иначе drop не сработает
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  document.addEventListener('drop', (e) => {
+    if (!_hasFiles(e)) return;
+    e.preventDefault();
+    _hideDropOverlay();
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) handleSelectedFile(file);
+  });
+
+  $('fileInput').addEventListener('change', (e) => {
+    handleSelectedFile(e.target.files[0]);
     e.target.value = '';
+  });
+
+  // Change-listener для form-select: спец-значения
+  //   __sep__   — это разделитель, не выбор → откатываем на пустое
+  //   __custom__ — спросить через prompt() и сохранить как fix:VALUE
+  document.addEventListener('change', (e) => {
+    const sel = e.target;
+    if (!sel || sel.tagName !== 'SELECT' || !sel.classList.contains('fm-select')) return;
+    if (sel.value === '__sep__') {
+      sel.value = '';
+      return;
+    }
+    if (sel.value === '__custom__') {
+      const lbl = sel.closest('.fm-row')?.querySelector('.fm-label')?.textContent?.trim() || sel.name;
+      const v = window.prompt(`Введите своё значение для «${lbl}» (применится ко всем строкам):`, '');
+      if (v && v.trim()) {
+        const val = 'fix:' + v.trim();
+        // Добавляем option-самописец и выбираем его
+        let custom = sel.querySelector(`option[value="${val.replace(/"/g, '&quot;')}"]`);
+        if (!custom) {
+          custom = document.createElement('option');
+          custom.value = val;
+          custom.textContent = 'Своё: ' + v.trim();
+          sel.appendChild(custom);
+        }
+        sel.value = val;
+      } else {
+        sel.value = '';
+      }
+    }
   });
 
   async function recognizePhoto(file) {
@@ -1674,12 +2456,48 @@
       const urlConv = params.get('conv');
       const storedConv = getStoredConvId();
       const validIds = new Set((state.convs || []).map(c => c.id));
+      // ?new=1 — принудительно welcome-screen, не загружать последний conv
+      // (с landing «массовый поиск» приходим именно с этим флагом).
+      const forceNew = params.get('new') === '1';
       let target = null;
-      if (urlConv && validIds.has(urlConv)) target = urlConv;
+      if (forceNew) {
+        // Чистим storage — и URL — чтобы при F5 не возвращалось
+        try { localStorage.removeItem('cf_active_conv'); } catch(_){}
+        history.replaceState({}, '', '/chat/');
+      } else if (urlConv && validIds.has(urlConv)) target = urlConv;
       else if (storedConv && validIds.has(storedConv)) target = storedConv;
       else if (state.convs && state.convs.length) target = state.convs[0].id;
       if (target) {
         await window.openConv(target);
+        // Если есть ?run=<action> — выполняем после загрузки conv
+        const runAction = params.get('run');
+        if (runAction) {
+          const actionParams = {};
+          for (const [k, v] of params.entries()) {
+            if (k === 'run' || k === 'conv') continue;
+            // Числовые значения (rfq_id, order_id, quote_id) парсим в int
+            const n = parseInt(v, 10);
+            actionParams[k] = (String(n) === v && !isNaN(n)) ? n : v;
+          }
+          setTimeout(() => quickAction(runAction, actionParams), 150);
+          // Очистим url чтобы при F5 не повторялось
+          history.replaceState({}, '', '/chat/');
+        }
+        return;
+      }
+      // Welcome stage — но если ?run= задан, тоже выполняем
+      const runAction = params.get('run');
+      if (runAction) {
+        connectWS();
+        const actionParams = {};
+        for (const [k, v] of params.entries()) {
+          if (k === 'run') continue;
+          const n = parseInt(v, 10);
+          actionParams[k] = (String(n) === v && !isNaN(n)) ? n : v;
+        }
+        setTimeout(() => quickAction(runAction, actionParams), 200);
+        history.replaceState({}, '', '/chat/');
+        updateHeroIcon();
         return;
       }
     } catch(e){ console.warn('conv resolve failed', e); }

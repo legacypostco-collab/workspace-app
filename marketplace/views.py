@@ -1012,7 +1012,14 @@ def _bulk_lookup_to_rfq_lines(rows: list[dict]) -> str:
 
 
 def home(request: HttpRequest) -> HttpResponse:
-    # Always show the landing page — authenticated users can navigate to their cabinet via sidebar
+    """Главная: новый landing 11site-v3 с большой формой поиска.
+    «Массовый поиск» в меганаве и search-box ведут на /chat/ (AI-чат).
+    """
+    return render(request, "landing.html")
+
+
+def landing_view(request: HttpRequest) -> HttpResponse:
+    """Алиас на главную для обратной совместимости (/landing/)."""
     return render(request, "landing.html")
 
 
@@ -6071,9 +6078,29 @@ def twofa_setup(request):
 
 
 
-@login_required
 def chat_first_view(request):
-    """Chat-First single-page UI."""
+    """Chat-First single-page UI.
+
+    В DEBUG-режиме (демо) авто-логинит demo_buyer для anonymous посетителей,
+    чтобы клик «массовый поиск» с landing'а сразу открывал AI-интерфейс
+    без login-экрана. В production оставляем @login_required.
+    """
+    from django.conf import settings
+    if not request.user.is_authenticated:
+        if getattr(settings, "DEBUG", False):
+            from django.contrib.auth import get_user_model, login
+            U = get_user_model()
+            demo = U.objects.filter(username="demo_buyer", is_active=True).first()
+            if demo:
+                # Backend для login() — обычно ModelBackend
+                demo.backend = "django.contrib.auth.backends.ModelBackend"
+                login(request, demo)
+            else:
+                from django.contrib.auth.decorators import login_required as _lr
+                return _lr(lambda r: render(r, "chat/index.html"))(request)
+        else:
+            from django.contrib.auth.decorators import login_required as _lr
+            return _lr(lambda r: render(r, "chat/index.html"))(request)
     return render(request, "chat/index.html")
 
 

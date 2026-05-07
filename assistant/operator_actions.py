@@ -50,13 +50,38 @@ def op_dashboard(params, user, role):
     err = _ensure_operator(role)
     if err:
         return err
-    from marketplace.models import Order
+    from datetime import timedelta
+    from django.utils import timezone
+    from marketplace.models import Order, RFQ, OrderClaim
 
     in_flight = Order.objects.filter(status__in=OPEN_STATUSES).count()
     at_risk = Order.objects.filter(sla_status="at_risk").count()
     breached = Order.objects.filter(sla_status="breached").count()
     refund_pending = Order.objects.filter(payment_status="refund_pending").count()
     awaiting_reserve = Order.objects.filter(payment_status="awaiting_reserve").count()
+
+    # ТЗ KP-flow: SEMI требуют approve в 15 минут, MANUAL — собрать КП за 48ч
+    now = timezone.now()
+    semi_pending = RFQ.objects.filter(
+        mode="semi", status="new", created_at__gte=now - timedelta(hours=24),
+    )
+    semi_overdue = semi_pending.filter(
+        created_at__lt=now - timedelta(minutes=15),
+    ).count()
+    semi_active = semi_pending.count()
+
+    manual_pending = RFQ.objects.filter(
+        mode__in=("manual", "manual_oem"), status="new",
+    )
+    manual_overdue = manual_pending.filter(
+        created_at__lt=now - timedelta(hours=48),
+    ).count()
+    manual_active = manual_pending.count()
+
+    # Открытые claim'ы / disputes
+    open_claims = OrderClaim.objects.filter(
+        status__in=("open", "in_review", "corrective_actions", "financial_settlement"),
+    ).count()
 
     # Total $ в обороте — сумма по открытым
     total_in_flight = Order.objects.filter(status__in=OPEN_STATUSES).values_list("total_amount", flat=True)
@@ -79,10 +104,52 @@ def op_dashboard(params, user, role):
         for o in hot
     ]
 
+    # Требует действия — собираем горячую очередь по приоритету
+    todo_rows: list[dict] = []
+    # SEMI требующие approve (с маркером overdue)
+    for rfq in semi_pending.order_by("created_at")[:5]:
+        elapsed = (now - rfq.created_at).total_seconds() / 60
+        is_overdue = elapsed > 15
+        todo_rows.append({
+            "title": (("⚠️ " if is_overdue else "⏱ ") +
+                       f"SEMI RFQ #{rfq.id} · {rfq.customer_name}"),
+            "subtitle": (f"approve КП · {int(elapsed)}мин назад" +
+                          (" · SLA нарушен" if is_overdue else "")),
+            "action": "op_approve_kp",
+            "params": {"rfq_id": rfq.id},
+        })
+    # MANUAL требующие dispatch
+    for rfq in manual_pending.order_by("created_at")[:5]:
+        elapsed_h = (now - rfq.created_at).total_seconds() / 3600
+        is_overdue = elapsed_h > 48
+        todo_rows.append({
+            "title": (("⚠️ " if is_overdue else "📋 ") +
+                       f"MANUAL RFQ #{rfq.id} · {rfq.customer_name}"),
+            "subtitle": (f"собрать КП · {int(elapsed_h)}ч назад" +
+                          (" · 48ч просрочено" if is_overdue else "")),
+            "action": "op_dispatch_manual_rfq",
+            "params": {"rfq_id": rfq.id},
+        })
+    # Hot orders (SLA at_risk/breached)
+    for o in hot:
+        todo_rows.append({
+            "title": f"🔥 ORD-{o.id} · {o.customer_name}",
+            "subtitle": f"{o.get_status_display()} · SLA {o.sla_status} · ${float(o.total_amount or 0):,.0f}",
+            "action": "get_order_detail",
+            "params": {"order_id": o.id},
+        })
+    if not todo_rows:
+        todo_rows = [{"title": "✅ Очередь пуста",
+                       "subtitle": "Все SEMI/MANUAL обработаны, SLA в норме"}]
+
     return ActionResult(
         text=(
             f"Сводка оператора · в работе {in_flight} заказов на ${total_usd:,.0f}.\n"
-            f"SLA: {at_risk} под угрозой, {breached} нарушено · возвратов в обработке: {refund_pending}."
+            f"⏱ SEMI: {semi_active} ждут approve" +
+            (f" · {semi_overdue} просрочено!" if semi_overdue else "") +
+            f"\n📋 MANUAL: {manual_active} в сборе КП" +
+            (f" · {manual_overdue} >48ч!" if manual_overdue else "") +
+            f"\nSLA: {at_risk} под угрозой, {breached} нарушено · возвратов: {refund_pending}"
         ),
         cards=[
             {
@@ -90,39 +157,41 @@ def op_dashboard(params, user, role):
                 "data": {
                     "title": "Операторская панель",
                     "items": [
-                        {"label": "В работе", "value": str(in_flight), "tone": "info"},
-                        {"label": "SLA: под угрозой", "value": str(at_risk), "tone": "warn" if at_risk else "ok"},
-                        {"label": "SLA: нарушено", "value": str(breached), "tone": "bad" if breached else "ok"},
-                        {"label": "Ожидает резерва", "value": str(awaiting_reserve)},
-                        {"label": "Возвраты", "value": str(refund_pending), "tone": "warn" if refund_pending else "ok"},
-                        {"label": "Оборот ($)", "value": f"{total_usd:,.0f}"},
+                        {"label": "SEMI ждут approve", "value": str(semi_active),
+                         "tone": "bad" if semi_overdue else ("warn" if semi_active else "ok"),
+                         "sub": (f"{semi_overdue} просрочено" if semi_overdue else "15м SLA")},
+                        {"label": "MANUAL в работе", "value": str(manual_active),
+                         "tone": "bad" if manual_overdue else ("warn" if manual_active else "ok"),
+                         "sub": (f"{manual_overdue} > 48ч" if manual_overdue else "48ч SLA")},
+                        {"label": "В работе", "value": str(in_flight), "tone": "info",
+                         "sub": f"${total_usd:,.0f}"},
+                        {"label": "SLA нарушено", "value": str(breached),
+                         "tone": "bad" if breached else "ok"},
+                        {"label": "Открытые claim'ы", "value": str(open_claims),
+                         "tone": "warn" if open_claims else "ok"},
+                        {"label": "Возвраты", "value": str(refund_pending),
+                         "tone": "warn" if refund_pending else "ok"},
                     ],
                 },
             },
             {
                 "type": "list",
                 "data": {
-                    "title": "🔥 Приоритетная очередь",
-                    "items": [
-                        {
-                            "title": f"#{r['id']} · {r['buyer']}",
-                            "subtitle": f"{r['status']} · SLA {r['sla']} · ${r['total']:,.0f}",
-                            "url": r["url"],
-                        }
-                        for r in rows
-                    ] or [{"title": "Нет горящих заказов", "subtitle": "Все SLA в норме"}],
+                    "title": "🔥 Требует действия",
+                    "rows": todo_rows,
                 },
             },
         ],
         contextual_actions=[
             {"action": "op_queue", "label": "📋 Полная очередь", "params": {"filter": "all"}},
             {"action": "op_sla_breach", "label": "⏱ Нарушения SLA"},
+            {"action": "get_claims", "label": "🛡 Claim'ы"},
             {"action": "get_analytics", "label": "📈 Аналитика"},
         ],
         suggestions=[
             "Покажи очередь нарушений SLA",
-            "Какие заказы ждут резерва дольше суток",
-            "Сводка по таможне за неделю",
+            "Какие SEMI просрочены",
+            "Открытые claim'ы",
         ],
     )
 
@@ -471,21 +540,41 @@ def op_resolve_dispute(params, user, role):
     # Side-effects: статус оплаты + реальное движение эскроу (multi-seller split)
     from decimal import Decimal as _D
     from . import payments as _pay
+    from .rating import record_rating_event
+    from marketplace.models import OrderItem as _OI
 
     money_moved = ""
     new_payment_status = order.payment_status
+
+    # Поставщики этого заказа (для rating events)
+    sellers_in_order = list({
+        oi.part.seller for oi in
+        _OI.objects.filter(order=order).select_related("part__seller")
+        if oi.part and oi.part.seller
+    })
+
     try:
         if resolution == "refund":
             res = _pay.refund_to_buyer(order=order, buyer=order.buyer)
             if res.get("ok"):
                 money_moved = f" · возврат ${res['amount']:,.2f} → покупатель"
             new_payment_status = "refunded"
+            # Rating: refund → claim_confirmed (-7) для всех продавцов заказа
+            for s in sellers_in_order:
+                record_rating_event(s, event_type="claim_confirmed",
+                                    meta={"order_id": order.id, "resolution": "refund",
+                                          "reason": reason[:200]})
         elif resolution == "partial_refund":
             if refund_amount > 0 and order.buyer:
                 res = _pay.refund_to_buyer(order=order, buyer=order.buyer, amount=refund_amount)
                 if res.get("ok"):
                     money_moved = f" · возврат ${res['amount']:,.2f} → покупатель"
             new_payment_status = "refund_pending"
+            # Rating: partial_refund → return (-5) для всех продавцов заказа
+            for s in sellers_in_order:
+                record_rating_event(s, event_type="return",
+                                    meta={"order_id": order.id, "resolution": "partial_refund",
+                                          "amount": float(refund_amount)})
         elif resolution == "release":
             splits = _pay.split_by_seller(order)
             released_total = _D("0")
@@ -500,6 +589,7 @@ def op_resolve_dispute(params, user, role):
                     + ("ам" if n > 1 else "у")
                 )
             new_payment_status = "paid"
+            # release → нейтрально для рейтинга (споp закрыт в пользу продавца)
     except Exception:
         logger.exception("escrow move on dispute resolution failed")
 
@@ -1181,5 +1271,67 @@ def op_payments_dashboard(params, user, role):
         ],
         contextual_actions=[
             {"action": "op_queue", "label": "📋 Очередь", "params": {"filter": "refund"}},
+        ],
+    )
+
+
+# ══════════════════════════════════════════════════════════
+# 10. External rating refresh (Контур/СПАРК)
+# ══════════════════════════════════════════════════════════
+
+@register("op_refresh_external_rating")
+def op_refresh_external_rating(params, user, role):
+    """Принудительно обновить external_score продавца из Kontur/СПАРК (ТЗ §1)."""
+    if not _is_operator(role) and role != "admin":
+        return ActionResult(text="Доступно только оператору / админу.")
+    from django.contrib.auth import get_user_model
+    from .external_rating import refresh_external_rating
+
+    U = get_user_model()
+    try:
+        seller = U.objects.get(id=int(params.get("user_id") or 0))
+    except (U.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Продавец не найден.")
+
+    data = refresh_external_rating(seller)
+    if not data:
+        return ActionResult(text="⚠️ Не удалось получить external rating.")
+    if data.get("source") == "skip":
+        return ActionResult(
+            text=f"⚠️ {data.get('reason', 'нет данных')} · сначала пройдите KYB.",
+        )
+
+    from marketplace.models import UserProfile
+    p = UserProfile.objects.filter(user=seller).first()
+    return ActionResult(
+        text=(
+            f"✓ External rating обновлён для {seller.username} · "
+            f"score={data['score']:.0f} · {data['source']}"
+        ),
+        cards=[{"type": "kpi_grid", "data": {
+            "title": f"📊 External rating · {seller.username}",
+            "items": [
+                {"label": "External score", "value": f"{float(data['score']):.1f}",
+                 "tone": ("ok" if data['score'] >= 80 else
+                          "warn" if data['score'] >= 60 else "bad")},
+                {"label": "Источник", "value": data['source']},
+                {"label": "Причина", "value": data['reason'][:80]},
+                {"label": "Bankruptcy", "value": "🚫" if data['bankruptcy'] else "✓",
+                 "tone": "bad" if data['bankruptcy'] else "ok"},
+                {"label": "Liquidation", "value": "🚫" if data['liquidation'] else "✓",
+                 "tone": "bad" if data['liquidation'] else "ok"},
+                {"label": "Behavioral score",
+                 "value": f"{float(p.behavioral_score):.1f}" if p else "—"},
+                {"label": "Итоговый рейтинг",
+                 "value": f"{float(p.rating_score):.1f}" if p else "—",
+                 "tone": "info"},
+                {"label": "Статус", "value": p.get_supplier_status_display() if p else "—",
+                 "tone": ("ok" if (p and p.supplier_status == "trusted") else
+                          "warn" if (p and p.supplier_status == "sandbox") else "bad")},
+            ],
+        }}],
+        contextual_actions=[
+            {"action": "admin_user_detail", "label": "← Профиль",
+             "params": {"user_id": seller.id}},
         ],
     )

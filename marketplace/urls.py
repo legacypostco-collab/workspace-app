@@ -5,6 +5,7 @@ from . import views
 
 urlpatterns = [
     path("", views.home, name="home"),
+    path("landing/", views.landing_view, name="landing"),
     path("demo-center/", views.demo_center, name="demo_center"),
     path("demo/", views.demo_center),  # alias
     path("directory/brands/", views.brands_directory, name="brands_directory"),

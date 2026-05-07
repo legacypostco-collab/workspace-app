@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import upload, views
+from . import auth_views, erp_views, pricelist, qr_scan, upload, views
 
 router = DefaultRouter()
 router.register(r"conversations", views.ConversationViewSet, basename="conversation")
@@ -29,4 +29,24 @@ urlpatterns = [
     path("notifications/<int:notif_id>/read/", views.NotificationMarkReadView.as_view(), name="assistant-notifications-read"),
     # Payments webhook (Stripe-compat)
     path("payments/webhook/", views.PaymentsWebhookView.as_view(), name="assistant-payments-webhook"),
+    # QR scan (TZ §6.2): /api/assistant/qr/scan/<code>/
+    path("qr/scan/<str:code>/", qr_scan.QRScanView.as_view(), name="qr-scan"),
+    # Drawings (ТЗ §12.1): защищённый доступ к чертежу + audit log
+    path("drawings/<int:drawing_id>/file/", views.DrawingFileView.as_view(), name="drawing-file"),
+    # Auth — magic-link & OAuth
+    path("auth/magic-link/", auth_views.MagicLinkRequestView.as_view(), name="auth-magic-link-request"),
+    path("auth/magic-link/<str:token>/", auth_views.MagicLinkConfirmView.as_view(), name="auth-magic-link-confirm"),
+    path("auth/oauth/<str:provider>/", auth_views.OAuthLoginView.as_view(), name="auth-oauth-login"),
+    path("auth/oauth/callback/<str:provider>/", auth_views.OAuthCallbackView.as_view(), name="auth-oauth-callback"),
+    # ERP двусторонний обмен (ТЗ §17.2): аутентификация по X-Api-Token
+    path("erp/sync/parts/", erp_views.sync_parts_push, name="erp-sync-parts"),
+    path("erp/sync/orders/", erp_views.sync_orders_pull, name="erp-sync-orders"),
+    path("erp/sync/orders/<int:order_id>/ack/", erp_views.sync_order_ack, name="erp-sync-order-ack"),
+    path("erp/sync/orders/<int:order_id>/status/", erp_views.sync_order_status, name="erp-sync-order-status"),
+    # Pricelist upload в чате (ТЗ: AI-маппинг колонок)
+    path("upload-pricelist/", pricelist.PricelistUploadView.as_view(), name="pricelist-upload"),
+    path("upload-pricelist/<int:import_id>/commit/", pricelist.PricelistCommitView.as_view(), name="pricelist-commit"),
+    path("upload-pricelist/<int:import_id>/cancel/", pricelist.PricelistCancelView.as_view(), name="pricelist-cancel"),
+    path("pricelist-template.csv", pricelist.PricelistTemplateView.as_view(), name="pricelist-template"),
+    path("pricelist-template.xlsx", pricelist.PricelistTemplateXlsxView.as_view(), name="pricelist-template-xlsx"),
 ]

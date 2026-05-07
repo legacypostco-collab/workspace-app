@@ -17,17 +17,48 @@ from typing import Optional, Tuple
 # OEM article: 4-19 chars, letters+digits+separators, must contain a digit.
 _OEM_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9\-/.]{3,18}$")
 _SPLIT_RE = re.compile(r"[\n,;]+")
+_QTY_TRAIL_RE = re.compile(r"^\d+(?:[\.,]\d+)?(?:шт|pcs|x|×)?$", re.IGNORECASE)
+
+
+def _extract_articles_with_qty(text: str) -> list[tuple[str, int]]:
+    """Парсит «OEM qty» по строкам. Поддерживаемые форматы:
+        2W1223
+        2W1223 1
+        2W1223,1
+        2W1223 2шт
+        2W1223 x3
+    Возвращает [(oem, qty), …]. Если qty не распознан — qty=1.
+    """
+    if not text:
+        return []
+    out: list[tuple[str, int]] = []
+    for chunk in _SPLIT_RE.split(text):
+        tokens = [t.strip(".").strip() for t in chunk.split() if t.strip()]
+        if not tokens:
+            continue
+        oem = None
+        qty = 1
+        for i, tok in enumerate(tokens):
+            if tok and _OEM_RE.match(tok) and any(ch.isdigit() for ch in tok):
+                # Не должен сам быть «чистым числом» (qty случайно похож на OEM)
+                if tok.isdigit():
+                    continue
+                oem = tok
+                if i + 1 < len(tokens):
+                    nxt = tokens[i + 1].lstrip("xX×").rstrip("шт.pcs")
+                    if _QTY_TRAIL_RE.match(tokens[i + 1]) or nxt.isdigit():
+                        try:
+                            qty = max(1, int(float(nxt)))
+                        except ValueError:
+                            pass
+                break
+        if oem:
+            out.append((oem, qty))
+    return out
 
 
 def _extract_articles(text: str) -> list[str]:
-    if not text:
-        return []
-    out = []
-    for chunk in _SPLIT_RE.split(text):
-        token = chunk.strip().strip(".").strip()
-        if token and _OEM_RE.match(token) and any(ch.isdigit() for ch in token):
-            out.append(token)
-    return out
+    return [oem for oem, _ in _extract_articles_with_qty(text)]
 
 
 def _has_keyword(msg: str, keywords: tuple[str, ...]) -> bool:
@@ -47,10 +78,18 @@ def rule(name: str):
 
 @rule("multi_article_paste")
 def _multi_article(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
-    """User pasted >= 2 OEM article numbers → search_parts with full text."""
-    articles = _extract_articles(msg)
-    if len(articles) >= 2:
-        return ("search_parts", {"query": msg, "articles": articles})
+    """User pasted >= 2 OEM article numbers → search_parts with full text.
+
+    Поддерживает «OEM qty» формат построчно: 2W1223 1, 1R0750 2 → qty
+    прокидываются в search_parts, чтобы create_rfq понимал кол-во.
+    """
+    pairs = _extract_articles_with_qty(msg)
+    if len(pairs) >= 2:
+        return ("search_parts", {
+            "query": msg,
+            "articles": [oem for oem, _ in pairs],
+            "quantities": {oem: q for oem, q in pairs},
+        })
     return None
 
 

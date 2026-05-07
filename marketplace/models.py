@@ -95,6 +95,19 @@ class Part(models.Model):
     height_cm = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("1.00"))
     country_of_origin = models.CharField(max_length=120, default="Unknown")
     cross_numbers = models.CharField(max_length=500, blank=True)
+    # Расширенные поля прайса поставщика (ТЗ шаблон):
+    price_fob_sea = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"),
+        help_text="Цена FOB морским путём")
+    price_fob_air = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"),
+        help_text="Цена FOB авиа")
+    warehouse_address = models.CharField(max_length=255, blank=True,
+        help_text="Адрес склада отправления")
+    sea_port = models.CharField(max_length=120, blank=True,
+        help_text="Морпорт отправления")
+    air_port = models.CharField(max_length=120, blank=True,
+        help_text="Аэропорт отправления")
+    hs_code = models.CharField(max_length=20, blank=True, db_index=True,
+        help_text="Код ТН ВЭД / HS Code")
     backorder_allowed = models.BooleanField(default=False)
     mapping_status = models.CharField(max_length=20, choices=MAPPING_STATUS_CHOICES, default="auto")
     supplier_part_uid = models.CharField(max_length=80, blank=True)
@@ -187,6 +200,13 @@ class Drawing(models.Model):
         ("archived", _("Архив")),
     ]
 
+    # ТЗ §3: уровни доступа к чертежу
+    ACCESS_CHOICES = [
+        ("private",    _("Закрытый — только владелец")),
+        ("for_sale",   _("Доступен для продажи (после предоплаты)")),
+        ("rewardable", _("Доступен с вознаграждением автору")),
+    ]
+
     title = models.CharField(max_length=255)
     part = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="drawings", null=True, blank=True)
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name="drawings")
@@ -196,6 +216,10 @@ class Drawing(models.Model):
     file_size_kb = models.PositiveIntegerField(default=0)
     revision = models.CharField(max_length=20, default="A")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="draft")
+    access_level = models.CharField(max_length=20, choices=ACCESS_CHOICES, default="private",
+        help_text="ТЗ §3: закрытый/продажа/вознаграждение")
+    reward_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0,
+        help_text="Сумма вознаграждения автору при использовании в сделке (USD)")
     description = models.TextField(blank=True)
     oem_number = models.CharField(max_length=100, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -208,11 +232,45 @@ class Drawing(models.Model):
         return f"{self.title} (rev {self.revision})"
 
 
+class DrawingAccessLog(models.Model):
+    """ТЗ §12.1: журнал доступа к чертежам — для аудита и расчёта rewards."""
+    ACTION_CHOICES = [
+        ("view",      _("Просмотр")),
+        ("download",  _("Скачивание")),
+        ("denied",    _("Отказано (нет прав)")),
+        ("watermark_added", _("Применён watermark")),
+    ]
+
+    drawing = models.ForeignKey(Drawing, on_delete=models.CASCADE, related_name="access_log")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="drawing_accesses")
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES)
+    order = models.ForeignKey("Order", on_delete=models.SET_NULL, null=True, blank=True,
+                               help_text="Заказ-контекст (для access_level=for_sale)")
+    ip = models.CharField(max_length=64, blank=True)
+    user_agent = models.CharField(max_length=300, blank=True)
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["drawing", "-created_at"], name="dal_drw_created_idx"),
+            models.Index(fields=["user", "-created_at"], name="dal_user_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"DAL[{self.drawing_id}/{self.action}/{self.user_id}]"
+
+
 class RFQ(models.Model):
     MODE_CHOICES = [
-        ("auto", "AUTO"),
-        ("semi", "SEMI"),
-        ("manual_oem", "MANUAL OEM"),
+        ("auto",       "AUTO"),
+        ("semi",       "SEMI"),
+        ("manual",     "MANUAL"),
+        # Legacy alias — оставлен для совместимости со старыми RFQ. Новый код
+        # должен использовать "manual".
+        ("manual_oem", "MANUAL (legacy)"),
     ]
     URGENCY_CHOICES = [
         ("standard", "Standard"),
@@ -276,6 +334,69 @@ class RFQItem(models.Model):
         if not self.matched_part:
             return 0
         return self.matched_part.price * self.quantity
+
+
+class Quote(models.Model):
+    """Котировка от продавца на RFQ. Поддерживает multi-round negotiation:
+    каждая итерация (initial offer / buyer counter / seller respond) — это
+    отдельный Quote, связанный через parent_quote с предыдущим раундом.
+    """
+    STATUS_CHOICES = [
+        ("draft", _("Черновик")),
+        ("submitted", _("Отправлена")),
+        ("countered", _("Контр-оффер от покупателя")),
+        ("finalized", _("Финальная (без переторжки)")),
+        ("accepted", _("Принята")),
+        ("declined", _("Отклонена")),
+        ("expired", _("Истекла")),
+    ]
+    DIRECTION_CHOICES = [
+        ("seller_to_buyer", _("От продавца")),
+        ("buyer_to_seller", _("От покупателя (counter)")),
+    ]
+
+    rfq = models.ForeignKey(RFQ, on_delete=models.CASCADE, related_name="quotes")
+    seller = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                related_name="quotes_offered")
+    direction = models.CharField(max_length=20, choices=DIRECTION_CHOICES, default="seller_to_buyer")
+    parent_quote = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name="children")
+    round_number = models.PositiveIntegerField(default=1)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="submitted", db_index=True)
+    is_final = models.BooleanField(default=False, help_text="Продавец зафиксировал — переторжка невозможна")
+    delivery_days = models.PositiveIntegerField(default=14)
+    valid_until = models.DateTimeField(null=True, blank=True)
+    total_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    currency = models.CharField(max_length=10, default="USD")
+    message = models.TextField(blank=True, help_text="Комментарий к раунду")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["rfq", "-round_number", "-created_at"]
+        indexes = [
+            models.Index(fields=["rfq", "seller", "-round_number"], name="quote_rfq_seller_idx"),
+            models.Index(fields=["status", "-created_at"], name="quote_status_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"Quote #{self.id} (RFQ {self.rfq_id} round {self.round_number})"
+
+
+class QuoteItem(models.Model):
+    """Позиция котировки — цена за единицу + количество, привязанные к RFQItem."""
+    quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name="items")
+    rfq_item = models.ForeignKey(RFQItem, on_delete=models.SET_NULL, null=True, blank=True)
+    part = models.ForeignKey(Part, on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="quote_items")
+    title_snapshot = models.CharField(max_length=300, blank=True,
+                                       help_text="Снимок названия на момент котировки")
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    notes = models.CharField(max_length=400, blank=True)
+
+    @property
+    def line_total(self):
+        return self.unit_price * self.quantity
 
 
 class Order(models.Model):
@@ -429,28 +550,62 @@ class OrderDocument(models.Model):
 
 
 class OrderClaim(models.Model):
+    """ТЗ §5.4: рекламация по заказу с полным flow 6 статусов.
+
+    open → in_review → approved/rejected
+                          ↓
+              corrective_actions OR financial_settlement → closed
+                          rejected → closed
+    """
     STATUS_CHOICES = [
-        ("open", "Open"),
-        ("in_review", "In Review"),
-        ("approved", "Approved"),
-        ("rejected", "Rejected"),
-        ("closed", "Closed"),
+        ("open",                  _("Открыта")),
+        ("in_review",             _("На рассмотрении")),
+        ("approved",              _("Подтверждена")),
+        ("rejected",              _("Отклонена")),
+        ("corrective_actions",    _("Корректирующие действия")),
+        ("financial_settlement",  _("Финансовое урегулирование")),
+        ("closed",                _("Закрыта")),
+    ]
+    KIND_CHOICES = [
+        ("defect",       _("Брак")),
+        ("wrong_part",   _("Не та деталь")),
+        ("missing",      _("Не пришла")),
+        ("damage",       _("Повреждение при доставке")),
+        ("late",         _("Просрочка поставки")),
+        ("other",        _("Другое")),
+    ]
+    RESOLUTION_CHOICES = [
+        ("none",          _("Нет")),
+        ("repair",        _("Замена/ремонт")),
+        ("reproduce",     _("Повторно произвести")),
+        ("partial_refund", _("Частичный возврат")),
+        ("full_refund",   _("Полный возврат")),
     ]
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="claims")
+    kind = models.CharField(max_length=30, choices=KIND_CHOICES, default="other")
     title = models.CharField(max_length=255)
     description = models.TextField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="open", db_index=True)
+    resolution_kind = models.CharField(max_length=30, choices=RESOLUTION_CHOICES, default="none")
+    refund_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0,
+        help_text="Сумма возврата если resolution_kind=*_refund")
+    rejection_reason = models.TextField(blank=True)
     opened_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="opened_claims")
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="reviewed_claims")
     resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="resolved_claims")
+    closed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "-created_at"], name="claim_status_idx"),
+        ]
 
     def __str__(self) -> str:
-        return f"Claim #{self.id} for Order #{self.order_id}"
+        return f"Claim #{self.id} for Order #{self.order_id} [{self.status}]"
 
 
 class WebhookDeliveryLog(models.Model):
@@ -519,6 +674,18 @@ class UserProfile(models.Model):
     liquidation_flag = models.BooleanField(default=False)
     last_rating_recalculated_at = models.DateTimeField(null=True, blank=True, editable=False)
     admin_note = models.TextField(blank=True, help_text="Заметка администратора о поставщике")
+
+    # ── Durable notification channels ─────────────────────────
+    # WS push в чат-сессии работает только когда вкладка открыта. Эти каналы
+    # доставляют важные события когда пользователь оффлайн.
+    notif_email_enabled = models.BooleanField(default=True)
+    notif_telegram_chat_id = models.CharField(max_length=64, blank=True,
+        help_text="Telegram chat_id (получают через бот командой /start)")
+    notif_telegram_enabled = models.BooleanField(default=False)
+    # Через запятую: order,payment,rfq,sla,claim,system,info
+    notif_kinds = models.CharField(max_length=200,
+        default="order,payment,rfq,sla,claim,system",
+        help_text="Какие kinds доставлять через email/telegram (CSV)")
 
     @staticmethod
     def _clamp_score(value: Decimal) -> Decimal:
@@ -713,6 +880,128 @@ class CompanyVerification(models.Model):
         return f"KYB[{self.user_id}]={self.status}"
 
 
+class CompetitorOffer(models.Model):
+    """ТЗ §5.2: загрузка конкурентного предложения от buyer'а для триггера
+    переторжки. Seller или operator может посмотреть и применить ручную
+    скидку с комментарием.
+    """
+    STATUS_CHOICES = [
+        ("uploaded",   _("Загружено")),
+        ("under_review", _("Рассматривается")),
+        ("matched",    _("Скидка применена")),
+        ("declined",   _("Отклонено (наша цена ниже)")),
+    ]
+    rfq = models.ForeignKey(RFQ, on_delete=models.CASCADE, related_name="competitor_offers",
+                              null=True, blank=True)
+    quote = models.ForeignKey("Quote", on_delete=models.CASCADE,
+                                related_name="competitor_offers", null=True, blank=True)
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name="competitor_offers_uploaded")
+    competitor_name = models.CharField(max_length=200, blank=True)
+    quoted_price = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    delivery_days = models.PositiveIntegerField(default=14)
+    file_url = models.URLField(blank=True, help_text="Скан/PDF предложения")
+    note = models.TextField(blank=True, help_text="Комментарий buyer'а")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="uploaded")
+    seller_response_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+        help_text="Скидка от seller'а в ответ (% от quote.total_amount)")
+    seller_comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["rfq", "-created_at"], name="comp_rfq_created_idx"),
+            models.Index(fields=["quote", "-created_at"], name="comp_quote_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"CompOffer[{self.id}] {self.competitor_name}: ${self.quoted_price}"
+
+
+class PlatformRevenueLine(models.Model):
+    """ТЗ §15: декомпозиция дохода группы по компонентам.
+
+    На каждый paid+delivered заказ генерируются строки:
+      • basis_fee     IT-Платформа за SLA, проверку, выдачу
+                      6% FOB / 8% CIF / 12% DDP (ТЗ §15.1)
+      • logistics_margin  3-7% по правилам портов (ТЗ §16)
+      • success_fee   5% от завода — удерживается из эскроу
+      • rf_agent      2% (если оплата RUB)
+      • customs_fee   $300 (если we оформляем таможню)
+    """
+    KIND_CHOICES = [
+        ("basis_fee",        "IT-Платформа FOB/CIF/DDP"),
+        ("logistics_margin", "Логистическая маржа"),
+        ("success_fee",      "Success fee 5%"),
+        ("rf_agent",         "РФ-агент 2%"),
+        ("customs_fee",      "Customs $300"),
+        ("volume_discount",  "Скидка по обороту (минус)"),
+    ]
+    BASIS_CHOICES = [("FOB", "FOB"), ("CIF", "CIF"), ("DDP", "DDP"),
+                      ("EXW", "EXW"), ("CIP", "CIP")]
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="revenue_lines")
+    kind = models.CharField(max_length=30, choices=KIND_CHOICES)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    pct = models.DecimalField(max_digits=5, decimal_places=2, default=0,
+        help_text="% использованный для расчёта (для basis_fee и logistics_margin)")
+    basis = models.CharField(max_length=10, choices=BASIS_CHOICES, blank=True)
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["order", "kind"], name="rev_order_kind_idx"),
+            models.Index(fields=["kind", "-created_at"], name="rev_kind_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"Rev[{self.order_id}/{self.kind}]: ${self.amount}"
+
+
+class BuyerVolumeYearly(models.Model):
+    """ТЗ §4.1: годовой объём закупок клиента → уровень auto-discount.
+
+    Уровень рассчитывается из суммы paid+completed orders за календарный год:
+      ≥ 1 000 000 000 ₽ (~$11M) → level 3 → discount 3%
+      ≥   500 000 000 ₽ (~$5.5M) → level 2 → discount 1.5%
+      ≥   100 000 000 ₽ (~$1.1M) → level 1 → discount 1%
+      < 100M                              → level 0 → 0%
+
+    Пересчитывается:
+      • по событию: order.payment_status='paid' → recalc для buyer
+      • по cron: ежедневный пересчёт уровней (см. mgmt command)
+    """
+    DISCOUNT_LEVELS = [
+        (0, "Без скидки"),
+        (1, "Уровень 1 (≥100M, 1%)"),
+        (2, "Уровень 2 (≥500M, 1.5%)"),
+        (3, "Уровень 3 (≥1B, 3%)"),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="volume_yearly")
+    year = models.PositiveIntegerField(db_index=True)
+    volume_usd = models.DecimalField(max_digits=18, decimal_places=2, default=0)
+    level = models.PositiveSmallIntegerField(choices=DISCOUNT_LEVELS, default=0)
+    discount_pct = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    last_recalculated_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = [("user", "year")]
+        ordering = ["-year"]
+        indexes = [
+            models.Index(fields=["user", "-year"], name="bvy_user_year_idx"),
+            models.Index(fields=["level"], name="bvy_level_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username}/{self.year}: ${self.volume_usd} L{self.level}"
+
+
 class TwoFactorAuth(models.Model):
     """TOTP-based 2FA. Stored separately for security."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="twofa")
@@ -723,3 +1012,213 @@ class TwoFactorAuth(models.Model):
 
     def __str__(self):
         return f"2FA[{self.user_id}]={'on' if self.enabled else 'off'}"
+
+
+class MagicLinkToken(models.Model):
+    """Passwordless login: одноразовый токен в email. TTL 15 минут.
+
+    Flow:
+      1. User вводит email → POST /accounts/magic-link/
+      2. Создаётся MagicLinkToken, ссылка шлётся в email
+      3. User кликает → GET /accounts/magic-link/<token>/
+      4. Если active (не used, не expired) → login + redirect
+    """
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="magic_links")
+    expires_at = models.DateTimeField(db_index=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    ip_requested = models.CharField(max_length=64, blank=True)
+    ip_used = models.CharField(max_length=64, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="magic_user_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"MagicLink[{self.user_id}]={'used' if self.used_at else 'active'}"
+
+    @property
+    def is_active(self):
+        return self.used_at is None and self.expires_at > timezone.now()
+
+
+class ApiToken(models.Model):
+    """API tokens для программного доступа партнёров.
+
+    Хранится только prefix + hashed_token (как у Stripe sk_live_xxx).
+    Реальный token виден один раз при создании.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="api_tokens")
+    label = models.CharField(max_length=80, help_text="Человеко-читаемое имя ('CI deploy', 'Telegram bot')")
+    prefix = models.CharField(max_length=12, db_index=True,
+        help_text="Первые символы токена для UI ('ck_live_abcd…')")
+    hashed_token = models.CharField(max_length=128, unique=True, db_index=True,
+        help_text="SHA-256 hex от полного токена")
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    permissions = models.CharField(max_length=200, default="read",
+        help_text="CSV: read,write,admin")
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="apitoken_user_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"ApiToken[{self.user_id}] {self.prefix}…"
+
+    @property
+    def is_active(self):
+        return self.revoked_at is None
+
+
+class LearnedColumnSynonym(models.Model):
+    """ТЗ: «AI возвращает маппинг — добавляй новые варианты в словарь».
+
+    Накопленные синонимы, найденные через AI или ручное переопределение
+    seller'ом. При следующих загрузках применяется поверх статического
+    COLUMN_MAP (assistant/price_mappings.py).
+    """
+    SOURCE_CHOICES = [
+        ("ai",     "AI"),
+        ("manual", "Ручной"),
+        ("seed",   "Seed"),
+    ]
+    canonical = models.CharField(max_length=40, db_index=True,
+        help_text="Канонический ключ (part_number, description, …)")
+    raw_header = models.CharField(max_length=200,
+        help_text="Оригинальный заголовок как из файла (для аудита)")
+    header_normalized = models.CharField(max_length=200, unique=True,
+        db_index=True,
+        help_text="Нормализованный заголовок (lower + trim + без разделителей)")
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default="ai")
+    learned_at = models.DateTimeField(default=timezone.now)
+    use_count = models.PositiveIntegerField(default=0,
+        help_text="Сколько раз применялся (для аналитики)")
+
+    class Meta:
+        ordering = ["-learned_at"]
+        indexes = [
+            models.Index(fields=["canonical", "-learned_at"], name="lcs_canonical_idx"),
+        ]
+
+    def __str__(self):
+        return f"LCS[{self.id}] '{self.raw_header}' → {self.canonical}"
+
+
+class PricelistMapping(models.Model):
+    """ТЗ: запоминаем последний маппинг колонок прайса для seller'а.
+
+    На каждом следующем upload AI предлагает этот маппинг как дефолт,
+    seller может изменить — тогда сохраняется новый.
+    """
+    seller = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="pricelist_mapping",
+    )
+    # mapping: {standard_field: source_column_header_or_index_str}
+    # Пример: {"oem_number": "Артикул", "title": "Наименование",
+    #          "price": "Цена", "currency": "Валюта"}
+    mapping = models.JSONField(default=dict, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    def __str__(self):
+        return f"PricelistMapping[{self.seller_id}] {len(self.mapping)} cols"
+
+
+class PricelistImport(models.Model):
+    """Журнал каждой загрузки прайса."""
+    STATUS_CHOICES = [
+        ("preview",   "Превью (ждём подтверждения)"),
+        ("imported",  "Импортирован"),
+        ("failed",    "Ошибка"),
+        ("cancelled", "Отменён"),
+    ]
+    seller = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="pricelist_imports",
+    )
+    file_obj = models.FileField(upload_to="pricelists/%Y/%m/", blank=True)
+    filename = models.CharField(max_length=255, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="preview")
+    headers = models.JSONField(default=list, blank=True,
+        help_text="Заголовки колонок, прочитанные из файла")
+    sample_rows = models.JSONField(default=list, blank=True,
+        help_text="Первые 3 строки для AI и UI")
+    suggested_mapping = models.JSONField(default=dict, blank=True,
+        help_text="Маппинг, предложенный AI (или предыдущий)")
+    final_mapping = models.JSONField(default=dict, blank=True,
+        help_text="Маппинг, подтверждённый seller'ом")
+    total_rows = models.PositiveIntegerField(default=0)
+    imported_rows = models.PositiveIntegerField(default=0,
+        help_text="created + updated")
+    created_rows = models.PositiveIntegerField(default=0)
+    updated_rows = models.PositiveIntegerField(default=0)
+    failed_rows = models.PositiveIntegerField(default=0)
+    error_details = models.JSONField(default=list, blank=True,
+        help_text="[{row, oem, reason}] первых ~50 ошибок")
+    ai_called = models.BooleanField(default=False, db_index=True,
+        help_text="Был ли вызов AI для маппинга колонок (для лимита 3/день)")
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["seller", "-created_at"], name="pricelist_seller_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"PricelistImport[{self.id}] {self.seller_id} {self.status}"
+
+
+class ErpSyncLog(models.Model):
+    """ТЗ §17.2: журнал двустороннего обмена с 1С/ERP.
+
+    Каждая операция (push/pull, parts/orders/ack) пишется отдельной
+    строкой. Используется для аудита, диагностики, идемпотентности
+    (проверка по external_ref).
+    """
+    DIRECTION_CHOICES = [
+        ("push", "Push (платформа → ERP)"),
+        ("pull", "Pull (ERP → платформа)"),
+    ]
+    KIND_CHOICES = [
+        ("parts",      "Каталог: цены/остатки"),
+        ("orders",     "Заказы: новые на отгрузку"),
+        ("order_ack",  "Подтверждение заказа от 1С"),
+        ("status",     "Обновление статуса заказа"),
+    ]
+    STATUS_CHOICES = [
+        ("ok",      "Успешно"),
+        ("partial", "Частично"),
+        ("failed",  "Ошибка"),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="erp_sync_logs",
+                              help_text="Чей ERP — обычно seller или operator")
+    direction = models.CharField(max_length=8, choices=DIRECTION_CHOICES)
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES, default="ok")
+    items_count = models.PositiveIntegerField(default=0)
+    items_failed = models.PositiveIntegerField(default=0)
+    external_ref = models.CharField(max_length=120, blank=True, db_index=True,
+        help_text="Внешний идентификатор (для идемпотентности)")
+    payload = models.JSONField(default=dict, blank=True,
+        help_text="Краткая выжимка содержимого для отладки")
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"], name="erpsync_user_created_idx"),
+            models.Index(fields=["kind", "-created_at"], name="erpsync_kind_created_idx"),
+        ]
+
+    def __str__(self):
+        return f"ErpSync[{self.id}] {self.direction}/{self.kind} {self.status}"

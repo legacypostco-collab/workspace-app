@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Consolidator Parts</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -77,10 +80,34 @@
     .side-item-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
     .side-item-text{flex:1;min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
     .side-item-meta{font-size:11px;color:rgba(0,0,0,0.45);flex-shrink:0;}
-    .side-item-stack{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;padding:8px 10px;border-radius:8px;cursor:pointer;}
+    .side-item-stack{display:grid !important;grid-template-columns:1fr auto !important;grid-template-rows:auto auto !important;align-items:center;column-gap:6px;row-gap:2px;flex:1;min-width:0;padding:8px 10px;border-radius:8px;cursor:pointer;}
     .side-item-stack:hover{background:rgba(0,0,0,0.05);}
-    .side-item-stack-title{font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
-    .side-item-stack-meta{font-size:11px;color:rgba(0,0,0,0.45);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-item-stack-content{grid-column:1;grid-row:1 / span 2;display:flex;flex-direction:column;gap:2px;min-width:0;overflow:hidden;}
+    .side-item-stack-title{grid-column:1;grid-row:1;font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:6px;}
+    .conv-cat-icon{font-size:11px;flex-shrink:0;opacity:0.85;}
+    .side-item-stack-meta{grid-column:1;grid-row:2;font-size:11px;color:rgba(0,0,0,0.6);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-item-stack-content .side-item-stack-title,.side-item-stack-content .side-item-stack-meta{grid-column:auto;grid-row:auto;}
+    .side-item-stack-more{grid-column:2 !important;grid-row:1 / span 2 !important;align-self:center;justify-self:end;flex-shrink:0;width:26px;height:26px;border:none;background:transparent;color:rgba(0,0,0,0.5);border-radius:6px;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:18px;line-height:1;padding:0;transition:background .12s,color .12s;}
+    .side-item-stack:hover .side-item-stack-more,.side-item-stack-more.open,.side-item-stack.active .side-item-stack-more{display:flex !important;}
+    @media (hover:none){.side-item-stack-more{display:flex !important;}}
+    .side-item-stack-more:hover{background:rgba(0,0,0,0.1);color:#1a1a1a;}
+    .side-section-clear{font-size:11px;color:rgba(0,0,0,0.4);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px;}
+    .side-section-clear:hover{background:rgba(220,53,69,0.08);color:#dc3545;}
+    body.dark-mode .side-item-stack-meta{color:rgba(255,255,255,0.6);}
+    body.dark-mode .side-item-stack-more{color:rgba(255,255,255,0.55);}
+    body.dark-mode .side-item-stack-more:hover{background:rgba(255,255,255,0.1);color:#fff;}
+    body.dark-mode .side-section-clear{color:rgba(255,255,255,0.4);}
+    body.dark-mode .side-section-clear:hover{background:rgba(220,53,69,0.15);color:#ff7079;}
+
+    /* Контекст-меню чата (Linear-style) */
+    .ctx-menu{position:fixed;z-index:1000;min-width:200px;background:#1f1f1f;border:1px solid rgba(255,255,255,0.08);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.45),0 2px 6px rgba(0,0,0,0.3);padding:6px;color:#e8e8e8;font-size:13px;user-select:none;}
+    .ctx-menu[hidden]{display:none !important;}
+    .ctx-menu-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 10px;border-radius:6px;cursor:pointer;color:#e8e8e8;}
+    .ctx-menu-item:hover{background:rgba(255,255,255,0.08);}
+    .ctx-menu-item.danger{color:#ff5b6b;}
+    .ctx-menu-item.danger:hover{background:rgba(255,91,107,0.12);}
+    .ctx-menu-sep{height:1px;background:rgba(255,255,255,0.08);margin:4px 0;}
+    .ctx-menu-key{font-size:11px;color:rgba(255,255,255,0.4);font-family:ui-monospace,monospace;}
     .side-foot{display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid rgba(0,0,0,0.06);margin-top:auto;}
     .side-settings{width:30px;height:30px;border:none;background:transparent;color:rgba(0,0,0,0.55);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .12s;}
     .side-settings:hover{background:rgba(0,0,0,0.06);color:#1a1a1a;}
@@ -102,7 +129,8 @@
     /* ── Dark theme — minimal viable ── */
     body.dark-mode{background:#1a1a1a;color:#e8e8e8;}
     body.dark-mode .sidebar{background:#202020;border-right:1px solid rgba(255,255,255,0.08);}
-    body.dark-mode .side-section-title,body.dark-mode .side-empty,body.dark-mode .side-item-stack-meta{color:rgba(255,255,255,0.45);}
+    body.dark-mode .side-section-title,body.dark-mode .side-empty{color:rgba(255,255,255,0.45);}
+    body.dark-mode .side-item-stack-meta{color:rgba(255,255,255,0.7);}
     body.dark-mode .side-item,body.dark-mode .side-item-stack-title{color:#e8e8e8;}
     body.dark-mode .side-item:hover,body.dark-mode .side-item-stack:hover{background:rgba(255,255,255,0.05);}
     body.dark-mode .side-item-stack.active{background:rgba(255,255,255,0.08);}
@@ -163,6 +191,12 @@
     .top-classic:hover{background:rgba(255,255,255,0.7);text-decoration:none;}
     .top-avatar{width:34px;height:34px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
     @media(max-width:600px){.top-classic span{display:none;}}
+
+    /* ── Home button ── */
+    .top-home{width:34px;height:34px;border:none;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;transition:background .12s;flex-shrink:0;}
+    .top-home:hover{background:rgba(255,255,255,0.78);}
+    body.dark-mode .top-home{background:rgba(255,255,255,0.06);color:#e8e8e8;}
+    body.dark-mode .top-home:hover{background:rgba(255,255,255,0.1);}
 
     /* ── Notification bell ── */
     .top-bell{position:relative;width:34px;height:34px;border:none;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;transition:background .12s;}
@@ -379,6 +413,83 @@
     .fm-input.fm-error{border-color:#e85c0d;background:rgba(232,92,13,0.06);}
     .fm-actions{display:flex;justify-content:flex-end;margin-top:12px;}
     .fm-submit{padding:9px 18px;}
+    .fm-select{appearance:none;-webkit-appearance:none;background:rgba(255,255,255,0.7) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path fill='none' stroke='%23333' stroke-width='1.4' d='M2 4l4 4 4-4'/></svg>") right 10px center/12px 12px no-repeat;padding-right:30px;cursor:pointer;}
+    .fm-textarea{resize:vertical;min-height:60px;font-family:'SF Mono',Menlo,monospace;font-size:12px;}
+
+    /* ── Order timeline (shipment-чат: прогресс сделки) ── */
+    .tl-card{padding:16px 18px;}
+    .tl-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;}
+    .tl-status{font-size:12px;color:rgba(0,0,0,0.6);margin-top:2px;}
+    .tl-total{font-size:16px;font-weight:700;color:#0a0a0a;font-variant-numeric:tabular-nums;text-align:right;}
+    .tl-reserve{font-size:11px;color:rgba(0,0,0,0.5);font-weight:500;display:block;}
+    .tl-progress-wrap{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+    .tl-progress{flex:1;height:6px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden;}
+    .tl-progress-fill{height:100%;background:#1a1a1a;transition:width 0.3s;}
+    .tl-progress-pct{font-size:11px;color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;font-weight:600;min-width:32px;text-align:right;}
+    .tl-stages{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
+    .tl-stage{display:flex;align-items:center;gap:9px;padding:5px 8px;border-radius:6px;font-size:12px;}
+    .tl-stage.tl-done{color:rgba(0,0,0,0.7);}
+    .tl-stage.tl-current{background:rgba(249,115,22,0.10);color:#0a0a0a;font-weight:600;}
+    .tl-stage.tl-pending{color:rgba(0,0,0,0.4);}
+    .tl-dot{width:14px;text-align:center;font-size:10px;}
+    .tl-stage.tl-done .tl-dot{color:#15803d;}
+    .tl-stage.tl-current .tl-dot{color:#f97316;font-size:13px;}
+    .tl-stage.tl-pending .tl-dot{color:rgba(0,0,0,0.3);}
+    .tl-actions{margin-top:8px;}
+    .tl-cta{padding:9px 18px!important;background:#1a1a1a!important;color:#fff!important;border-radius:8px!important;font-size:13px!important;font-weight:600!important;border:none!important;cursor:pointer;}
+    .tl-cta:hover{background:#000!important;}
+
+    /* ── Drag-n-drop overlay (drop файла прямо в окно чата) ── */
+    #dndOverlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);pointer-events:none;animation:dndFade 0.18s ease;}
+    @keyframes dndFade{from{opacity:0}to{opacity:1}}
+    #dndOverlay .dnd-box{background:rgba(255,255,255,0.96);border:2px dashed rgba(0,0,0,0.25);border-radius:18px;padding:30px 50px;text-align:center;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.25);}
+    #dndOverlay .dnd-icon{font-size:42px;margin-bottom:12px;}
+    #dndOverlay .dnd-title{font-size:16px;font-weight:700;color:#0a0a0a;letter-spacing:-0.01em;margin-bottom:6px;}
+    #dndOverlay .dnd-sub{font-size:12px;color:rgba(0,0,0,0.6);font-family:'SF Mono',Menlo,monospace;}
+
+    /* ── Integration methods (способы интеграции прайса) ── */
+    .im-block{padding:14px 16px;}
+    .im-block-title{font-size:11px;font-weight:700;color:rgba(0,0,0,0.55);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;}
+    .im-list{display:flex;flex-direction:column;gap:10px;}
+    .im-card{padding:14px;border-radius:12px;background:rgba(255,255,255,0.55);border:1px solid rgba(0,0,0,0.07);transition:border-color 0.15s;}
+    .im-card:hover{border-color:rgba(0,0,0,0.18);}
+    .im-card-disabled{opacity:0.55;}
+    .im-head{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+    .im-icon{width:32px;height:32px;border-radius:8px;background:rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+    .im-title-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1;min-width:0;}
+    .im-title{font-size:14px;font-weight:700;color:#0a0a0a;letter-spacing:-0.01em;}
+    .im-status{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:lowercase;letter-spacing:0;}
+    .im-st-active{background:rgba(34,197,94,0.15);color:#15803d;}
+    .im-st-soon{background:rgba(249,115,22,0.15);color:#c2410c;}
+    .im-st-recommended{background:#1a1a1a;color:#fff;}
+    .im-st-default{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.6);}
+    /* Карточка с recommended-методом — выделяется тонкой рамкой */
+    .im-card:has(.im-st-recommended){border:1.5px solid #1a1a1a;background:rgba(255,255,255,0.7);}
+    .im-desc{font-size:12.5px;color:rgba(0,0,0,0.7);line-height:1.45;margin-bottom:10px;}
+    .im-features{margin:0 0 12px 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px;}
+    .im-features li{font-size:11.5px;color:rgba(0,0,0,0.78);line-height:1.4;padding:5px 9px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.05);border-radius:6px;}
+    .im-sec-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+    .im-secondary{display:inline-flex;align-items:center;padding:6px 12px;border-radius:7px;background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.12);color:#1a1a1a;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;}
+    .im-secondary:hover{background:#fff;border-color:rgba(0,0,0,0.25);}
+    .im-copy-btn{padding:6px 9px;border-radius:7px;background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.12);font-size:13px;cursor:pointer;color:#1a1a1a;line-height:1;}
+    .im-copy-btn:hover{background:#fff;border-color:rgba(0,0,0,0.25);}
+    .im-hint{font-size:11.5px;color:rgba(0,0,0,0.55);margin-bottom:6px;line-height:1.4;}
+    .im-form{display:flex;gap:6px;padding:0;background:transparent;border:none;}
+    .im-form .im-input{flex:1;background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:7px 10px;font-size:12px;}
+    .im-form .im-primary,
+    .im-card>.im-primary{padding:7px 14px;border-radius:8px;background:#1a1a1a;color:#fff;font-size:12px;font-weight:600;border:none;text-decoration:none;display:inline-flex;align-items:center;cursor:pointer;}
+    .im-form .im-primary:hover,
+    .im-card>.im-primary:hover{background:#000;}
+    .im-card-disabled .im-primary{pointer-events:none;}
+
+    /* ── Table preview (для прайс-листов / spec-файлов) ── */
+    .tp-card{padding:14px 16px;}
+    .tp-scroll{overflow-x:auto;margin-top:10px;border:1px solid rgba(0,0,0,0.08);border-radius:8px;background:rgba(255,255,255,0.6);}
+    .tp-table{width:100%;border-collapse:collapse;font-size:11.5px;font-family:'SF Mono',Menlo,monospace;}
+    .tp-table th{padding:7px 10px;text-align:left;background:rgba(0,0,0,0.04);font-weight:700;color:#1a1a1a;border-bottom:1px solid rgba(0,0,0,0.08);white-space:nowrap;font-size:11px;letter-spacing:-0.005em;}
+    .tp-table td{padding:6px 10px;border-bottom:1px solid rgba(0,0,0,0.04);color:rgba(0,0,0,0.85);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .tp-table tr:last-child td{border-bottom:none;}
+    .tp-foot{margin-top:8px;font-size:11px;color:rgba(0,0,0,0.55);font-style:italic;}
 
     /* ── Seller queue card ── */
     .sq-card{padding:16px 18px;}
@@ -386,9 +497,11 @@
     .sq-total{font-size:12px;color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;}
     .sq-section{margin-bottom:16px;}
     .sq-section:last-child{margin-bottom:0;}
-    .sq-section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:8px 12px;background:rgba(0,0,0,0.05);border-left:3px solid rgba(0,0,0,0.35);border-radius:8px;}
-    .sq-section-label{font-size:13px;font-weight:700;color:#1a1a1a;letter-spacing:-0.01em;}
-    .sq-section-meta{font-size:11px;color:rgba(0,0,0,0.6);font-variant-numeric:tabular-nums;font-weight:500;}
+    /* Заголовок секции — тот же #1a1a1a, что у кнопок. Единый чёрный
+       тон для всех «активных» элементов очереди. */
+    .sq-section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:9px 13px;background:#1a1a1a;border-radius:9px;}
+    .sq-section-label{font-size:13px;font-weight:600;color:#fff;letter-spacing:-0.01em;}
+    .sq-section-meta{font-size:11px;color:rgba(255,255,255,0.6);font-variant-numeric:tabular-nums;font-weight:500;}
     .sq-order{background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.05);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
     .sq-order:last-child{margin-bottom:0;}
     .sq-order-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:12px;}
@@ -401,9 +514,38 @@
     .sq-name{text-overflow:ellipsis;overflow:hidden;white-space:nowrap;}
     .sq-qty{color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;}
     .sq-sub{font-weight:500;font-variant-numeric:tabular-nums;}
-    .sq-actions{margin-top:8px;}
-    .sq-btn{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.85);border:1px solid rgba(0,0,0,0.08);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.12s;}
-    .sq-btn:hover{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+    .sq-actions{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+    /* Primary — чёрная компактная (как .side-new-btn).
+       Иерархия держится за счёт того, что заголовок секции крупнее
+       (14px/800) и номер заказа крупнее (15px/800), а кнопки 11.5px/600. */
+    .sq-card .sq-btn,
+    .sq-card .sq-btn.act-btn{
+      padding:6px 11px!important;border-radius:7px!important;
+      font-size:11.5px!important;font-weight:600!important;cursor:pointer;
+      transition:all 0.12s;line-height:1.2;letter-spacing:-0.005em;
+      background:#1a1a1a!important;color:#fff!important;
+      border:1px solid #1a1a1a!important;
+    }
+    .sq-card .sq-btn:hover{background:#000!important;border-color:#000!important;}
+    /* secondary «🔍 Открыть» — text-link */
+    .sq-card .sq-btn.sq-open,
+    .sq-card .sq-btn.sq-open.act-btn{
+      background:transparent!important;color:rgba(0,0,0,0.65)!important;
+      border:none!important;padding:6px 4px!important;
+      text-decoration:underline;text-decoration-color:rgba(0,0,0,0.25);
+      text-underline-offset:3px;font-weight:500!important;font-size:11.5px!important;
+    }
+    .sq-card .sq-btn.sq-open:hover{
+      color:#1a1a1a!important;text-decoration-color:#1a1a1a!important;
+      background:transparent!important;
+    }
+    /* Усиленные шапки заказов: крупнее и жирнее, чтобы держать внимание
+       сильнее чёрных кнопок. */
+    .sq-order{padding:14px 16px;background:#fff;}
+    .sq-order-head{font-size:15px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(0,0,0,0.08);}
+    .sq-order-num{font-weight:800;color:#0a0a0a;font-size:15px;letter-spacing:-0.015em;}
+    .sq-buyer{color:rgba(0,0,0,0.5);margin-left:6px;font-weight:500;font-size:13px;}
+    .sq-order-sub{font-weight:800;color:#0a0a0a;font-size:15px;letter-spacing:-0.01em;}
     .sq-empty{font-size:13px;color:rgba(0,0,0,0.5);font-style:italic;text-align:center;padding:20px;}
 
     /* ── Tracking card ── */
@@ -439,6 +581,12 @@
     /* ── Cards ── */
     .cards{display:grid;gap:10px;margin-top:12px;}
     .card{background:rgba(255,255,255,0.6);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;padding:14px 16px;color:#1a1a1a;}
+    /* Кликабельные карточки (заказ, RFQ) — открывают детали при клике */
+    .card-clickable{cursor:pointer;transition:background .15s, border-color .15s, transform .12s;}
+    .card-clickable:hover{background:rgba(255,255,255,0.85);border-color:rgba(100,181,246,0.55);transform:translateY(-1px);}
+    .card-clickable:active{transform:translateY(0);}
+    .card-clickable:focus-visible{outline:2px solid rgba(100,181,246,0.6);outline-offset:2px;}
+    body.dark-mode .card-clickable:hover{background:rgba(255,255,255,0.08);border-color:rgba(100,181,246,0.55);}
     .card:hover{background:rgba(255,255,255,0.7);}
     .card-row{display:flex;align-items:center;gap:12px;}
     .card-emoji{font-size:24px;flex-shrink:0;}
@@ -596,6 +744,7 @@
         <div class="side-section">
           <div class="side-section-head">
             <span class="side-section-title">{% trans "Недавние" %}</span>
+            <button class="side-section-clear" id="clearHistoryBtn" onclick="clearAllHistory()" title="{% trans 'Очистить историю' %}" style="display:none;">{% trans "Очистить" %}</button>
           </div>
           <div id="convList">
             <div class="side-item-stack"><div class="side-item-stack-title">{% trans "Загрузка..." %}</div></div>
@@ -651,6 +800,10 @@
         Consolidator Parts
       </a>
       <div class="top-right">
+        <!-- 🏠 Home — возврат к welcome stage текущей роли -->
+        <button class="top-home" id="topHome" onclick="goHome()" title="{% trans 'Главная' %}" aria-label="{% trans 'Главная' %}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2h-4v-7H9v7H5a2 2 0 01-2-2z"/></svg>
+        </button>
         <a href="/dashboard/" class="top-classic" title="{% trans 'Классический режим' %}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
           <span>{% trans "Классический" %}</span>
@@ -751,6 +904,19 @@
 <input type="file" id="fileInput" style="display:none;" accept=".xlsx,.xls,.csv,.pdf">
 <input type="file" id="photoInput" style="display:none;" accept="image/*" capture="environment">
 
-<script src="{% static 'js/chat-first.js' %}?v=10&t={% now 'U' %}"></script>
+<!-- Контекст-меню чата (rename / delete) -->
+<div id="convCtxMenu" class="ctx-menu" hidden role="menu">
+  <div class="ctx-menu-item" data-action="rename" role="menuitem">
+    <span>{% trans "Переименовать" %}</span>
+    <span class="ctx-menu-key">R</span>
+  </div>
+  <div class="ctx-menu-sep"></div>
+  <div class="ctx-menu-item danger" data-action="delete" role="menuitem">
+    <span>{% trans "Удалить" %}</span>
+    <span class="ctx-menu-key">⌫</span>
+  </div>
+</div>
+
+<script src="{% static 'js/chat-first.js' %}?v=14&t={% now 'U' %}"></script>
 </body>
 </html>

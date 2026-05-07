@@ -22,3 +22,53 @@ class AssistantConfig(AppConfig):
             from . import operator_actions  # noqa
         except ImportError:
             pass
+        # Регистрируем onboarding actions (KYB wizard)
+        try:
+            from . import onboarding  # noqa
+        except ImportError:
+            pass
+        # Регистрируем negotiation actions (Quote multi-round)
+        try:
+            from . import negotiation  # noqa
+        except ImportError:
+            pass
+        # Регистрируем notification settings actions
+        try:
+            from . import notif_settings  # noqa
+        except ImportError:
+            pass
+        # Регистрируем admin (platform-level) actions
+        try:
+            from . import admin_actions  # noqa
+        except ImportError:
+            pass
+        # Регистрируем auth-actions (2FA + API tokens)
+        try:
+            from . import auth_actions  # noqa
+        except ImportError:
+            pass
+        # Регистрируем claim workflow (рекламации)
+        try:
+            from . import claims  # noqa
+        except ImportError:
+            pass
+        # Регистрируем KP workflow (auto/semi/manual + calc→shipment)
+        try:
+            from . import kp_workflow  # noqa
+        except ImportError:
+            pass
+        # Регистрируем competitor offers (manual discount triggering)
+        try:
+            from . import competitor_offers  # noqa
+        except ImportError:
+            pass
+        # Регистрируем PDF document generators (invoice / packing / QC)
+        try:
+            from . import documents  # noqa
+        except ImportError:
+            pass
+        # Регистрируем pricelist (загрузка прайса с AI-маппингом)
+        try:
+            from . import pricelist  # noqa
+        except ImportError:
+            pass

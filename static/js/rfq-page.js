@@ -96,13 +96,119 @@
     return 'pending';
   }
 
+  // Status-banner: главное действие зависит от stage + mode RFQ.
+  // 3 режима в порядке приоритета:
+  //   AUTO       — платформа сама рассылает + собирает котировки. Buyer ждёт.
+  //   SEMI       — AI подобрал кандидатов; buyer подтверждает рассылку.
+  //   MANUAL_OEM — buyer сам выбирает поставщиков и шлёт.
+  function buildStageBanner(d) {
+    const stage = d.stage || 'draft';
+    const mode = (d.mode || 'auto').toLowerCase();
+    const sent = d.sent_count || 0;
+    const quotes = d.quotes_count || 0;
+    const isOwner = d.is_owner !== false;
+    const rfqId = d.id;
+
+    if (stage === 'cancelled') {
+      return {tone: 'gray', emoji: '✗', title: 'RFQ отменён',
+              sub: 'Этот запрос был отменён. Создайте новый.', cta: null};
+    }
+    if (stage === 'needs_review') {
+      return {tone: 'warn', emoji: '⚠️', title: 'Требует проверки оператором',
+              sub: 'Часть позиций нужно вручную сматчить. Оператор скоро свяжется.', cta: null};
+    }
+    if (stage === 'quotes_received') {
+      return {
+        tone: 'green', emoji: '💬',
+        title: `Получено ${quotes} котировок`,
+        sub: 'Сравните оффера и выберите лучший — продавец примется за заказ.',
+        cta: isOwner ? {
+          label: `📊 Просмотреть котировки (${quotes})`,
+          action: 'view_rfq_quotes', params: {rfq_id: rfqId},
+        } : null,
+        primary: true,
+      };
+    }
+    if (stage === 'awaiting_quotes') {
+      // AUTO ждёт сам; SEMI/MANUAL может разослать ещё
+      if (mode === 'auto') {
+        return {
+          tone: 'blue', emoji: '🤖',
+          title: 'AI собирает котировки автоматически',
+          sub: `Запрос ушёл ${sent} поставщикам · ждём ответы. Обычно 6–24 часа. Уведомления приходят сразу.`,
+          cta: null,
+        };
+      }
+      return {
+        tone: 'blue', emoji: '⏳',
+        title: 'Запрос разослан · ждём котировки',
+        sub: `Разослано ${sent} поставщикам. Обычно отвечают за 6–24 часа.`,
+        cta: isOwner ? {
+          label: '📨 Разослать ещё поставщикам',
+          action: 'send_rfq_to_suppliers', params: {rfq_id: rfqId},
+        } : null,
+      };
+    }
+    // draft (создан, не разослан) — поведение зависит от mode
+    if (mode === 'auto') {
+      // В норме при mode=auto draft не должен случиться (auto-send в create_rfq).
+      // Но если случилось (timeout / network error) — даём ручной trigger.
+      return {
+        tone: 'blue', emoji: '🤖',
+        title: 'AUTO режим · готовим рассылку',
+        sub: 'AI скоро автоматически разошлёт RFQ верифицированным поставщикам.',
+        cta: isOwner ? {
+          label: '🚀 Запустить рассылку сейчас',
+          action: 'send_rfq_to_suppliers', params: {rfq_id: rfqId},
+        } : null,
+      };
+    }
+    if (mode === 'manual_oem') {
+      return {
+        tone: 'orange', emoji: '🎯',
+        title: 'MANUAL OEM режим · выберите получателей',
+        sub: 'Вы создали запрос на конкретные OEM-номера. Выберите кому разослать.',
+        cta: isOwner ? {
+          label: '🎯 Разослать выбранным',
+          action: 'send_rfq_to_suppliers', params: {rfq_id: rfqId},
+        } : null,
+        primary: true,
+      };
+    }
+    // SEMI (default fallback for non-auto, non-manual)
+    return {
+      tone: 'orange', emoji: '📨',
+      title: 'SEMI режим · подтвердите рассылку',
+      sub: 'AI подобрал кандидатов-поставщиков. Подтвердите чтобы они получили запрос.',
+      cta: isOwner ? {
+        label: '📨 Разослать кандидатам',
+        action: 'send_rfq_to_suppliers', params: {rfq_id: rfqId},
+      } : null,
+      primary: true,
+    };
+  }
+
+  function renderStageBanner(b) {
+    const ctaHtml = b.cta
+      ? `<a class="banner-cta ${b.primary ? 'primary' : ''}" href="/chat/?run=${esc(b.cta.action)}&rfq_id=${esc(b.cta.params.rfq_id)}">${esc(b.cta.label)} →</a>`
+      : '';
+    return `<div class="stage-banner stage-${b.tone}">
+      <div class="stage-emoji">${b.emoji}</div>
+      <div class="stage-text">
+        <div class="stage-title">${esc(b.title)}</div>
+        <div class="stage-sub">${esc(b.sub)}</div>
+      </div>
+      ${ctaHtml}
+    </div>`;
+  }
+
   function renderRFQ(d) {
     const items = d.items || [];
-    const total = items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty) || 1), 0);
     const matchedCount = items.filter(it => (it.state === 'matched' || it.state === 'quoted')).length;
     const noMatchCount = items.filter(it => it.state === 'no_match').length;
-    const supplierSet = new Set(items.map(it => it.supplier).filter(Boolean));
     const status = d.status || 'new';
+    const totalUsd = Number(d.total_usd || 0);
+    const banner = buildStageBanner(d);
 
     const html = `
       <div class="crumbs">
@@ -120,32 +226,47 @@
           <div class="rfq-meta">
             <span><span class="rfq-meta-strong">${esc(d.customer_name || '—')}</span></span>
             ${d.created_at ? `<span>${esc(fmtDate(d.created_at))}</span>` : ''}
-            ${d.mode ? `<span>Mode: <span class="rfq-meta-strong">${esc((d.mode || '').toUpperCase())}</span></span>` : ''}
-            ${d.urgency ? `<span>Urgency: <span class="rfq-meta-strong">${esc(d.urgency)}</span></span>` : ''}
+            ${d.urgency && d.urgency !== 'standard' ? `<span>Срочность: <span class="rfq-meta-strong">${esc(d.urgency)}</span></span>` : ''}
           </div>
-        </div>
-        <div class="rfq-actions">
-          <button class="rfq-btn" onclick="window.history.back()">Назад</button>
-          <button class="rfq-btn primary" onclick="window.location.href='/chat/'">Обсудить в чате</button>
         </div>
       </div>
 
+      ${renderStageBanner(banner)}
+
+      ${d.mode_reason ? `
+      <div class="mode-reason" title="Почему этот режим был выбран автоматически">
+        <span class="mode-reason-label">⚙️ Логика режима</span>
+        <span class="mode-reason-text">${esc(d.mode_reason)}</span>
+      </div>` : ''}
+
+      ${d.has_priced ? `
+      <div class="hero-total">
+        <div class="hero-total-label">Ориентировочный бюджет (USD)</div>
+        <div class="hero-total-val">${fmtMoney(totalUsd, 'USD')}</div>
+        <div class="hero-total-sub">${items.length} позиций · цены конвертированы из исходных валют поставщиков</div>
+      </div>` : `
+      <div class="hero-total hero-total-empty">
+        <div class="hero-total-label">Бюджет</div>
+        <div class="hero-total-val" style="font-size:24px;color:rgba(0,0,0,0.5);">Уточняется</div>
+        <div class="hero-total-sub">Цены появятся после получения котировок от поставщиков</div>
+      </div>`}
+
       <div class="kpi-grid">
         <div class="kpi">
-          <div class="kpi-label">Всего позиций</div>
+          <div class="kpi-label">Позиций</div>
           <div class="kpi-value"><span class="kpi-num">${items.length}</span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">С котировками</div>
+          <div class="kpi-label">Сматчено</div>
           <div class="kpi-value"><span class="kpi-num kpi-good">${matchedCount}</span><span class="kpi-unit">из ${items.length}</span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">Поставщиков</div>
-          <div class="kpi-value"><span class="kpi-num">${supplierSet.size}</span></div>
+          <div class="kpi-label">Разослано</div>
+          <div class="kpi-value"><span class="kpi-num">${d.sent_count || 0}</span><span class="kpi-unit">пост.</span></div>
         </div>
         <div class="kpi">
-          <div class="kpi-label">Без совпадений</div>
-          <div class="kpi-value"><span class="kpi-num ${noMatchCount ? 'kpi-warn' : ''}">${noMatchCount}</span></div>
+          <div class="kpi-label">Котировок</div>
+          <div class="kpi-value"><span class="kpi-num ${(d.quotes_count || 0) > 0 ? 'kpi-good' : ''}">${d.quotes_count || 0}</span></div>
         </div>
       </div>
 
@@ -170,9 +291,9 @@
         }
       </div>
 
-      <div class="total-bar">
-        <span class="total-label">Итого</span>
-        <span class="total-val">${fmtMoney(total, items[0]?.currency || 'USD')}</span>
+      <div class="rfq-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:24px;justify-content:flex-end;">
+        <button class="rfq-btn" onclick="window.history.back()">← Назад</button>
+        <button class="rfq-btn" onclick="window.location.href='/chat/'">💬 Обсудить в чате</button>
       </div>
     `;
     $('rfqContent').innerHTML = html;

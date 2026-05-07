@@ -36,6 +36,18 @@ class Conversation(models.Model):
         ("operator_manager", _("Менеджер по продажам")),
         ("admin", _("Администратор")),
     ]
+    # Категория группирует похожие действия в один долгий чат, чтобы не плодить
+    # отдельный conv на каждый клик пилюли. Заголовок при этом меняется
+    # динамически по текущему действию ("Верификация · Шаг 2/5", "Команда…").
+    CATEGORY_CHOICES = [
+        ("general",  _("Общее")),         # default — search, RFQ, разговор
+        ("admin",    _("Управление")),    # KYB, team, integrations, settings
+        ("purchase", _("Покупка")),       # quick_order, pay_*, track_order, claims
+        ("support",  _("Поддержка")),     # claim disputes, op_resolve
+        # ТЗ: chat-type меняется по жизненному циклу сделки.
+        ("calc",     _("Расчёт")),        # RFQ → КП → reserve confirm
+        ("shipment", _("Сделка")),        # после reserve_paid: трекинг, оплаты, доставка
+    ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -50,6 +62,10 @@ class Conversation(models.Model):
         related_name="conversations",
     )
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, default="buyer")
+    category = models.CharField(
+        max_length=20, choices=CATEGORY_CHOICES, default="general", db_index=True,
+        help_text="Группа для reuse чата по типу задачи (admin/purchase/support/general)",
+    )
     title = models.CharField(max_length=200, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -57,7 +73,10 @@ class Conversation(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
-        indexes = [models.Index(fields=["user", "-updated_at"])]
+        indexes = [
+            models.Index(fields=["user", "-updated_at"]),
+            models.Index(fields=["user", "category", "-updated_at"], name="conv_user_cat_idx"),
+        ]
 
     def __str__(self):
         return f"Conv[{self.id}]:{self.user_id}:{self.title or 'untitled'}"

@@ -54,10 +54,10 @@ class ActionResult:
 _BUYER_ACTIONS = [
     "search_parts", "create_rfq", "get_rfq_status",
     "get_orders", "get_order_detail", "track_order", "track_shipment",
-    "get_budget", "get_analytics",
+    "get_budget", "get_analytics", "get_buyer_discount",
     "compare_products", "compare_suppliers", "top_suppliers",
     "upload_parts_list", "analyze_spec",
-    "get_claims", "create_claim",
+    "get_claims", "create_claim", "open_claim", "claim_detail",
     "open_url", "generate_proposal",
     # покупка и депозит
     "quick_order", "pay_reserve", "pay_final",
@@ -66,6 +66,24 @@ _BUYER_ACTIONS = [
     "confirm_delivery",
     # база знаний, конфигуратор цены, аудит, QR, уведомления
     "kb_search", "price_quote", "audit_log", "generate_qr", "notifications",
+    # Onboarding / KYB wizard (всем доступно)
+    "start_onboarding", "submit_company_info", "submit_legal_address",
+    "submit_bank", "submit_director", "submit_for_review", "kyb_status",
+    # Negotiation (buyer side)
+    "view_rfq_quotes", "view_quote", "accept_quote", "counter_offer", "decline_quote",
+    "send_rfq_to_suppliers", "auto_accept_and_pay_reserve",
+    # KP workflow (buyer side): present инвойс + confirm reserve
+    "present_kp_to_buyer", "confirm_kp_and_reserve",
+    # Competitor offers (§5.2): buyer загружает чужой оффер для триггера переторжки
+    "upload_competitor_offer",
+    # PDF documents (§12.2): invoice/packing/QC — все доступны buyer'у
+    "generate_invoice_pdf", "generate_packing_list_pdf",
+    "generate_qc_report_pdf", "list_order_documents",
+    # Notification preferences (durable channels)
+    "notif_prefs", "notif_set_email", "notif_set_kinds", "notif_link_telegram",
+    # Auth — 2FA + API tokens (всем доступно)
+    "setup_2fa", "verify_2fa", "disable_2fa",
+    "create_api_token", "list_api_tokens", "revoke_api_token",
 ]
 
 # Seller-only: эксклюзивные действия продавца — отвечать на RFQ, грузить
@@ -73,6 +91,12 @@ _BUYER_ACTIONS = [
 # Внутри advance_order ещё проверяется, что в заказе есть товары seller'а.
 _SELLER_ONLY = [
     "respond_rfq", "upload_pricelist",
+    # Pricelist через AI-маппинг (история, ошибки) + Google Sheets sync
+    "pricelist_show_errors", "pricelist_history", "connect_gsheet",
+    # Negotiation (seller side)
+    "submit_quote", "respond_to_counter", "mark_quote_final",
+    # Competitor offer response (§5.2): seller дает скидку или отказывается
+    "respond_to_competitor_offer",
     "get_demand_report", "get_sla_report",
     "advance_order",
     "seller_pipeline", "ship_order",
@@ -107,6 +131,18 @@ _OPERATOR_CORE = [
     "op_payments_dashboard",
     # Operator analytics
     "op_logistics_stats", "op_payments_stats",
+    # KYB moderation
+    "op_kyb_queue", "op_kyb_review", "op_kyb_approve", "op_kyb_reject",
+    # External rating refresh
+    "op_refresh_external_rating",
+    # Claim workflow (operator side)
+    "start_claim_review", "approve_claim", "reject_claim",
+    "apply_corrective", "apply_settlement", "close_claim", "claim_detail",
+    # KP workflow: SEMI approve + MANUAL dispatch/compose
+    "op_approve_kp", "op_dispatch_manual_rfq", "op_compose_kp",
+    # Document generators (operator может создавать любые)
+    "generate_invoice_pdf", "generate_packing_list_pdf",
+    "generate_qc_report_pdf", "list_order_documents",
 ]
 
 ROLE_ACTIONS = {
@@ -117,13 +153,54 @@ ROLE_ACTIONS = {
     "operator_payment": _OPERATOR_CORE,
     "operator_manager": _OPERATOR_CORE,
     "operator": _OPERATOR_CORE,
-    "admin": ["*"],  # admin sees everything
+    "admin": ["*"],  # admin sees everything (wildcard — все actions доступны)
+}
+
+# Подмножество actions, специфичных только для admin (вне operator/seller/buyer)
+_ADMIN_ONLY = [
+    "admin_dashboard", "admin_gmv", "admin_users", "admin_user_detail",
+    "admin_ban_user", "admin_unban_user", "admin_change_role",
+    "admin_moderation_queue", "admin_catalog_review", "admin_platform_settings",
+    "admin_revenue_breakdown",
+]
+
+
+# Действия продавца, которые требуют верификации KYB
+_KYB_GATED_SELLER = {
+    "respond_rfq", "respond_rfq_form",
+    "submit_quote", "respond_to_counter", "mark_quote_final",
+    "ship_order", "advance_order",
+    "add_product", "edit_product", "toggle_product",
+    "upload_pricelist", "import_pricelist_preview",
 }
 
 
 def can_execute(action_name: str, role: str) -> bool:
     allowed = ROLE_ACTIONS.get(role, [])
     return "*" in allowed or action_name in allowed
+
+
+def kyb_gate(action_name: str, role: str, user) -> str | None:
+    """Возвращает строку-причину если seller-action заблокирован из-за KYB; иначе None.
+
+    Логика:
+      • Если действие не из _KYB_GATED_SELLER — не блокируем
+      • Если роль не seller — не блокируем
+      • Если у пользователя KYB verified — пропускаем
+      • Demo-аккаунты пропускаются (для презентаций)
+    """
+    if action_name not in _KYB_GATED_SELLER:
+        return None
+    if role != "seller":
+        return None
+    try:
+        from .onboarding import kyb_required_for_seller
+        if kyb_required_for_seller(user):
+            return ("Это действие доступно только верифицированным продавцам. "
+                    "Пройдите KYB-верификацию: «Начать верификацию».")
+    except Exception:
+        logger.exception("kyb_gate check failed")
+    return None
 
 
 # ── Registry ───────────────────────────────────────────────
@@ -140,7 +217,45 @@ def register(name: str):
 def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
     """Run an action. Returns ActionResult."""
     if not can_execute(action_name, role):
+        # Дружелюбное сообщение: подсказываем какая роль нужна и предлагаем
+        # переключиться, вместо холодного «нет прав».
+        SELLER_ONLY_HINTS = {
+            "seller_pipeline":     "очередь продавца",
+            "seller_dashboard":    "дашборд продавца",
+            "seller_inbox":        "входящие RFQ",
+            "seller_catalog":      "каталог продавца",
+            "seller_finance":      "финансы продавца",
+            "seller_rating":       "рейтинг продавца",
+            "seller_negotiations": "переговоры продавца",
+            "submit_quote":        "ответ на RFQ",
+            "ship_order":          "отгрузка заказа",
+            "advance_order":       "движение заказа по этапам",
+            "upload_pricelist":    "загрузка прайс-листа",
+            "respond_rfq":         "ответ на RFQ",
+        }
+        hint = SELLER_ONLY_HINTS.get(action_name)
+        if hint and role == "buyer":
+            return ActionResult(
+                text=(
+                    f"🔁 «{hint}» — это раздел продавца, а вы сейчас в роли «Покупатель».\n"
+                    f"Переключите роль в шапке (Покупатель ↔ Продавец) или нажмите кнопку ниже."
+                ),
+                actions=[
+                    {"action": "_switch_role", "label": "🔁 Переключиться на «Продавец»",
+                     "params": {"role": "seller"}},
+                    {"action": "go_home", "label": "🏠 Главная"},
+                ],
+            )
         return ActionResult(text=f"⚠️ Нет прав на действие '{action_name}' для роли {role}")
+    # KYB gate: продавцы без верификации не могут писать-action'ы
+    gate_reason = kyb_gate(action_name, role, user)
+    if gate_reason:
+        return ActionResult(
+            text=f"🛡 {gate_reason}",
+            actions=[
+                {"action": "start_onboarding", "label": "🚀 Начать верификацию"},
+            ],
+        )
     handler = _REGISTRY.get(action_name)
     if not handler:
         return ActionResult(text=f"⚠️ Действие '{action_name}' не зарегистрировано")
@@ -259,6 +374,10 @@ TOOL_SCHEMAS = {
     "track_shipment": {
         "description": "Трекинг отгрузки по order_id.",
         "input_schema": {"type": "object", "properties": {"order_id": _STR}},
+    },
+    "get_buyer_discount": {
+        "description": "ТЗ §4.1: текущий уровень auto-discount buyer'а по годовому обороту (0/1/2/3).",
+        "input_schema": {"type": "object", "properties": {}},
     },
     "get_budget": {
         "description": "Бюджет/расходы пользователя за период.",
@@ -465,6 +584,287 @@ TOOL_SCHEMAS = {
         "description": "Платежная аналитика: разбивка по payment_status, средний чек, refund rate.",
         "input_schema": {"type": "object", "properties": {}},
     },
+    # ── Onboarding / KYB wizard ─────────────────────────────
+    "start_onboarding": {
+        "description": "Точка входа в onboarding/KYB-процесс. Показывает текущий шаг или welcome-экран.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "kyb_status": {
+        "description": "Текущий статус KYB-верификации компании пользователя.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "submit_company_info": {
+        "description": "Шаг 1/5 onboarding'а — наименование, ИНН, КПП, ОГРН.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "legal_name": _STR, "inn": _STR, "kpp": _STR, "ogrn": _STR,
+                "confirmed": _BOOL,
+            },
+        },
+    },
+    "submit_legal_address": {
+        "description": "Шаг 2/5 — юридический адрес.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"legal_address": _STR, "confirmed": _BOOL},
+        },
+    },
+    "submit_bank": {
+        "description": "Шаг 3/5 — банковские реквизиты (банк, БИК, расч. счёт).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"bank_name": _STR, "bik": _STR, "bank_account": _STR, "confirmed": _BOOL},
+        },
+    },
+    "submit_director": {
+        "description": "Шаг 4/5 — ФИО директора / уполномоченного лица.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"director_name": _STR, "confirmed": _BOOL},
+        },
+    },
+    "submit_for_review": {
+        "description": "Шаг 5/5 — отправить заполненную анкету оператору на проверку.",
+        "input_schema": {"type": "object", "properties": {"confirmed": _BOOL}},
+    },
+    "op_kyb_queue": {
+        "description": "Очередь KYB-анкет на модерации (operator-only).",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "op_kyb_review": {
+        "description": "Просмотр KYB-анкеты пользователя.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT},
+            "required": ["user_id"],
+        },
+    },
+    "op_kyb_approve": {
+        "description": "Одобрить KYB-анкету. Шаг 1 — preview; шаг 2 с confirmed=true — запись + WS-нотификация заявителю.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT, "confirmed": _BOOL},
+            "required": ["user_id"],
+        },
+    },
+    "op_kyb_reject": {
+        "description": "Отклонить KYB с причиной. Шаг 1 — форма; шаг 2 с confirmed=true и reason — запись + нотификация.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT, "reason": _STR, "confirmed": _BOOL},
+            "required": ["user_id"],
+        },
+    },
+    # ── Negotiation (Quote multi-round) ─────────────────────
+    "submit_quote": {
+        "description": "Продавец создаёт котировку на RFQ. Шаг 1 без confirmed — форма (цены per-line + срок + комментарий); шаг 2 с confirmed=true → запись Quote+QuoteItem.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "rfq_id": _INT,
+                "delivery_days": _INT,
+                "valid_days": _INT,
+                "message": _STR,
+                "parent_quote_id": _INT,
+                "direction": _STR,
+                "confirmed": _BOOL,
+            },
+            "required": ["rfq_id"],
+        },
+    },
+    "view_rfq_quotes": {
+        "description": "Покупатель видит все котировки по своему RFQ — sorted by total. Доступно владельцу RFQ или оператору.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"rfq_id": _INT},
+            "required": ["rfq_id"],
+        },
+    },
+    "view_quote": {
+        "description": "Детальная карточка котировки — позиции, статус, доступные actions.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT},
+            "required": ["quote_id"],
+        },
+    },
+    "accept_quote": {
+        "description": "Покупатель принимает котировку → создаётся Order. Шаг 1 — preview, шаг 2 с confirmed=true.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT, "confirmed": _BOOL},
+            "required": ["quote_id"],
+        },
+    },
+    "counter_offer": {
+        "description": "Покупатель предлагает свою цену. Шаг 1 — форма со всеми позициями, шаг 2 с confirmed=true → новая Quote (direction=buyer_to_seller, round_number+1).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT, "confirmed": _BOOL, "message": _STR},
+            "required": ["quote_id"],
+        },
+    },
+    "respond_to_counter": {
+        "description": "Продавец отвечает на контр-оффер — открывает форму submit_quote с parent_quote_id.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT},
+            "required": ["quote_id"],
+        },
+    },
+    "mark_quote_final": {
+        "description": "Продавец фиксирует свою котировку как финальную (is_final=True) — переторжка невозможна, покупатель только принимает или отклоняет.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT},
+            "required": ["quote_id"],
+        },
+    },
+    "decline_quote": {
+        "description": "Покупатель отклоняет котировку. Уведомляет продавца.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"quote_id": _INT},
+            "required": ["quote_id"],
+        },
+    },
+    "send_rfq_to_suppliers": {
+        "description": "Разослать RFQ кандидатам-поставщикам (верифицированные KYB приоритетно). DraftCard preview → confirm.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"rfq_id": _INT, "confirmed": _BOOL},
+            "required": ["rfq_id"],
+        },
+    },
+    # ── Durable notification preferences ────────────────────
+    "notif_prefs": {
+        "description": "Текущие настройки durable-каналов (email, telegram, kinds).",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "notif_set_email": {
+        "description": "Включить/выключить email-уведомления. Шаг 1 — форма; шаг 2 с confirmed=true.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"enabled": _STR, "confirmed": _BOOL},
+        },
+    },
+    "notif_set_kinds": {
+        "description": "Какие типы событий доставлять в email/telegram (CSV из order/payment/rfq/sla/claim/system/info).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"kinds": _STR, "confirmed": _BOOL},
+        },
+    },
+    "notif_link_telegram": {
+        "description": "Привязать Telegram chat_id для durable-доставки. Демо: ввести числовой chat_id вручную.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"chat_id": _STR, "confirmed": _BOOL},
+        },
+    },
+    # ── Admin (platform-level) actions ──────────────────────
+    "admin_dashboard": {
+        "description": "Платформенная сводка для админа: GMV 7d, юзеры, заказы, KYB, SLA.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "admin_gmv": {
+        "description": "Платформенный GMV по периодам (24h/7d/30d/90d) + топ категорий.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "admin_users": {
+        "description": "Список пользователей с фильтрами: all|active|banned|buyers|sellers|kyb_pending.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"filter": _STR},
+        },
+    },
+    "admin_user_detail": {
+        "description": "Детальный профиль пользователя для админа: статусы, KYB, wallet, заказы.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT},
+            "required": ["user_id"],
+        },
+    },
+    "admin_ban_user": {
+        "description": "Заблокировать пользователя (User.is_active=False). Шаг 1 — форма с reason; шаг 2 c confirmed=true → запись + WS-нотификация.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT, "reason": _STR, "confirmed": _BOOL},
+            "required": ["user_id"],
+        },
+    },
+    "admin_unban_user": {
+        "description": "Разблокировать пользователя. DraftCard preview → confirm.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT, "confirmed": _BOOL},
+            "required": ["user_id"],
+        },
+    },
+    "admin_change_role": {
+        "description": "Сменить роль пользователя (buyer ↔ seller). Шаг 1 — select; шаг 2 — запись.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"user_id": _INT, "new_role": _STR, "confirmed": _BOOL},
+            "required": ["user_id"],
+        },
+    },
+    "admin_moderation_queue": {
+        "description": "Единая очередь модерации платформы: KYB pending, refunds, SLA breach, контр-офферы.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "admin_catalog_review": {
+        "description": "Каталог-модерация: товары с price=$0, без seller'а, последние добавленные.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "admin_platform_settings": {
+        "description": "Read-only снэпшот платформенной конфигурации (engine, env vars).",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    # ── Auth — TOTP 2FA + API tokens ──────────────────────
+    "setup_2fa": {
+        "description": "Сгенерировать TOTP secret и показать QR-код для сканирования в authenticator-приложении.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "verify_2fa": {
+        "description": "Подтвердить 6-значный OTP код и активировать 2FA.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"code": _STR, "confirmed": _BOOL},
+        },
+    },
+    "disable_2fa": {
+        "description": "Выключить 2FA (требует ввода OTP кода для подтверждения).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"code": _STR, "confirmed": _BOOL},
+        },
+    },
+    "create_api_token": {
+        "description": "Сгенерировать API-токен для интеграций. Полный токен виден ОДИН раз.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "label": _STR,
+                "permissions": {**_STR, "description": "read | read,write | read,write,admin"},
+                "confirmed": _BOOL,
+            },
+        },
+    },
+    "list_api_tokens": {
+        "description": "Список API-токенов пользователя (активных и отозванных).",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "revoke_api_token": {
+        "description": "Отозвать API-токен. DraftCard preview → confirm.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"token_id": _INT, "confirmed": _BOOL},
+            "required": ["token_id"],
+        },
+    },
 }
 
 
@@ -575,7 +975,7 @@ def search_parts(params, user, role):
     # 1) Multi-article list (paste of OEM numbers) ------------------
     articles = params.get("articles") or _extract_articles(query)
     if len(articles) >= 2:
-        return _search_articles_list(articles)
+        return _search_articles_list(articles, params.get("quantities") or {})
 
     # 2) Free-text query --------------------------------------------
     qs = Part.objects.select_related("brand", "category").filter(is_active=True)
@@ -628,17 +1028,23 @@ def search_parts(params, user, role):
     )
 
 
-def _search_articles_list(articles: list[str]):
-    """Look up each article in the catalog → spec_results-style card."""
+def _search_articles_list(articles: list[str], quantities: dict | None = None):
+    """Look up each article in the catalog → spec_results-style card.
+
+    quantities: {oem: qty} — параметр от fast-path парсера «OEM qty».
+    """
     from marketplace.models import Part
+    qmap = quantities or {}
 
     items = []
-    matched_ids = []
+    matched_ids: list[str] = []
+    matched_qty_pairs: list[tuple[str, int]] = []
     found_n = 0
     not_found_n = 0
     total = 0
 
     for art in articles:
+        qty = int(qmap.get(art, 1) or 1)
         p = (
             Part.objects
             .select_related("brand")
@@ -654,7 +1060,6 @@ def _search_articles_list(articles: list[str]):
                 .first()
             )
         if p:
-            qty = 1
             price = float(p.price) if p.price else 0
             items.append({
                 "status": "in_stock",
@@ -668,6 +1073,7 @@ def _search_articles_list(articles: list[str]):
                 "currency": "USD",
             })
             matched_ids.append(str(p.id))
+            matched_qty_pairs.append((str(p.id), qty))
             found_n += 1
             total += price * qty
         else:
@@ -675,7 +1081,7 @@ def _search_articles_list(articles: list[str]):
                 "status": "not_found",
                 "id": art,
                 "name": "",
-                "qty": 1,
+                "qty": qty,
             })
             not_found_n += 1
 
@@ -690,10 +1096,17 @@ def _search_articles_list(articles: list[str]):
     # Порядок: primary (RFQ) → создание ценности (КП, заказ) → сравнение/анализ → утилиты.
     actions = []
     if matched_ids:
+        # quantities: dict id→qty чтобы quick_order/create_rfq могли учесть
+        qty_param = {pid: q for pid, q in matched_qty_pairs} if any(q != 1 for _, q in matched_qty_pairs) else None
+        qo_params = {"product_ids": matched_ids}
+        rfq_params = {"product_ids": matched_ids}
+        if qty_param:
+            qo_params["product_quantities"] = qty_param
+            rfq_params["product_quantities"] = qty_param
         actions.append({"label": f"⚡ Купить сейчас (${total:,.0f})", "action": "quick_order",
-                        "params": {"product_ids": matched_ids}})
+                        "params": qo_params})
         actions.append({"label": "Создать RFQ на найденные", "action": "create_rfq",
-                        "params": {"product_ids": matched_ids}})
+                        "params": rfq_params})
     if not_found_n:
         actions.append({"label": f"RFQ на {not_found_n} ненайденных",
                         "action": "create_rfq",
@@ -740,6 +1153,193 @@ def _search_articles_list(articles: list[str]):
     )
 
 
+def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
+    """Определяет режим обработки RFQ согласно детальному ТЗ §3-§5.
+
+    Возвращает (mode, reason) где:
+      mode  — 'auto' | 'semi' | 'manual'
+      reason — человекочитаемое объяснение (для notes / UI / аудита)
+
+    Правила (приоритет сверху вниз):
+      0. params.mode передан явно → override (ops / тесты / форс)
+
+    Гард-условия для SEMI:
+      1. Buyer не верифицирован KYB → SEMI (защита от спама)
+      2. urgency=critical → SEMI (нужен человек в loop'е)
+      3. confidence < 70% (если матчер передал) → SEMI (§5.3)
+
+    Triggers для MANUAL_OEM (§7):
+      4. params.articles[] (явный OEM-ввод) → MANUAL_OEM
+      5. 0% сматчено → MANUAL_OEM (нет в каталоге)
+
+    Условия чистого AUTO (§4.1) — ВСЕ должны выполниться:
+      6a. Все позиции имеют matched_part
+      6b. Для каждой позиции ≥3 актуальных предложений (trusted + sandbox)
+      6c. Для каждой позиции есть ≥1 «надёжный» поставщик
+      6d. Все matched_part от trusted-поставщиков (исполнитель)
+    Иначе → SEMI с пояснением (§5.1, §5.2).
+    """
+    # 0. Явный override
+    explicit = (params.get("mode") or "").strip().lower()
+    if explicit in ("auto", "semi", "manual"):
+        return explicit, f"mode={explicit} (явно передан в params)"
+
+    total = len(items_to_add)
+    matched = [t for t in items_to_add if t[2] is not None]
+    matched_count = len(matched)
+
+    # 4. Buyer вручную ввёл OEM-номера → MANUAL_OEM
+    if params.get("articles"):
+        return "manual", (
+            f"manual · buyer ввёл {len(params['articles'])} OEM-номеров вручную"
+        )
+
+    # 5. Ни одного совпадения с каталогом → MANUAL_OEM
+    if matched_count == 0:
+        return "manual", f"manual · 0/{total} позиций сматчены с каталогом"
+
+    # 1. Buyer не верифицирован KYB → SEMI
+    try:
+        from .onboarding import kyb_required_for_seller as _kyb_required
+        kyb_unverified = _kyb_required(user)
+    except Exception:
+        kyb_unverified = False
+    if kyb_unverified:
+        return "semi", (
+            f"semi · buyer не верифицирован KYB · {matched_count}/{total} matched"
+        )
+
+    # 2. Срочность critical → SEMI
+    urgency = (params.get("urgency") or "").strip().lower()
+    if urgency == "critical":
+        return "semi", f"semi · urgency=critical · {matched_count}/{total} matched"
+
+    # 3. confidence ниже порога → SEMI (§5.3)
+    # items_to_add tuples могут быть (query, qty, mp) [legacy] или
+    # (query, qty, mp, confidence) [новый формат]. Читаем conf если есть.
+    confidence_threshold = float(params.get("confidence_threshold") or 70)
+    low_confidence = []
+    for t in matched:
+        query = t[0]
+        # confidence: либо из 4-tuple, либо из params (старый API)
+        c = t[3] if len(t) >= 4 else None
+        if c is None:
+            c = params.get(f"confidence_{query}") or params.get("min_confidence")
+        if c is not None and float(c) < confidence_threshold:
+            low_confidence.append(query)
+    if low_confidence:
+        return "semi", (
+            f"semi · confidence <{confidence_threshold}% по {len(low_confidence)} позиции"
+        )
+
+    # 6. AUTO условия (§4.1) — проверяем все
+    if matched_count < total:
+        return "semi", (
+            f"semi · partial match {matched_count}/{total} · "
+            f"{total - matched_count} требуют уточнения (§5.2)"
+        )
+
+    # Считаем предложения per-position: для каждого matched_part ищем все Part'ы
+    # с тем же oem_number и считаем поставщиков по supplier_status.
+    from marketplace.models import Part, UserProfile
+    insufficient_offers = []
+    no_trusted = []
+    untrusted_executor = []
+    min_offers = int(params.get("min_offers_for_auto") or 3)
+
+    # Собираем все oem_numbers items_to_add (matched это tuples длины 3 или 4)
+    oem_set = list({t[2].oem_number for t in matched if t[2] and t[2].oem_number})
+    if oem_set:
+        # Один SQL: все Part'ы с этими OEM + их seller-profiles
+        candidates = (
+            Part.objects.filter(oem_number__in=oem_set, is_active=True, price__gt=0)
+            .select_related("seller")
+        )
+        # Build map oem → list of (seller_id, status)
+        offers_by_oem = {}
+        seller_status_cache = {}
+        for c in candidates:
+            if not c.seller_id:
+                continue
+            if c.seller_id not in seller_status_cache:
+                prof = UserProfile.objects.filter(user_id=c.seller_id).only("supplier_status").first()
+                seller_status_cache[c.seller_id] = prof.supplier_status if prof else "sandbox"
+            status = seller_status_cache[c.seller_id]
+            # ТЗ §3: «Исключён» (status='rejected' в модели) — полностью отключён
+            if status == "rejected":
+                continue
+            offers_by_oem.setdefault(c.oem_number, []).append((c.seller_id, status))
+
+        for t in matched:
+            mp = t[2]
+            offers = offers_by_oem.get(mp.oem_number, [])
+            unique_sellers = {sid: st for sid, st in offers}
+            n_offers = sum(1 for st in unique_sellers.values() if st in ("trusted", "sandbox"))
+            n_trusted = sum(1 for st in unique_sellers.values() if st == "trusted")
+
+            # 6b. <3 предложений (trusted + sandbox)
+            if n_offers < min_offers:
+                insufficient_offers.append((mp.oem_number, n_offers))
+            # 6c. нет ни одного trusted
+            if n_trusted == 0:
+                no_trusted.append(mp.oem_number)
+
+        # 6d. Исполнитель (matched_part.seller) обязан быть trusted
+        for t in matched:
+            mp = t[2]
+            executor_status = seller_status_cache.get(
+                mp.seller_id,
+                (UserProfile.objects.filter(user_id=mp.seller_id)
+                 .only("supplier_status").first().supplier_status
+                 if mp.seller_id else "sandbox"),
+            ) if mp.seller_id else "sandbox"
+            if executor_status != "trusted":
+                untrusted_executor.append((mp.seller_id, executor_status))
+
+    # Применяем правила в порядке тяжести
+    if no_trusted:
+        return "semi", (
+            f"semi · нет «надёжных» поставщиков по {len(no_trusted)} позициям (§5.1)"
+        )
+    if insufficient_offers:
+        return "semi", (
+            f"semi · недостаточно предложений (<{min_offers}) "
+            f"по {len(insufficient_offers)} позициям (§5.2)"
+        )
+    if untrusted_executor:
+        kinds = ",".join(sorted(set(s for _, s in untrusted_executor)))
+        return "semi", (
+            f"semi · исполнитель не trusted ({kinds}) · "
+            f"требуется подтверждение оператора (§6.2)"
+        )
+
+    return "auto", (
+        f"auto · {matched_count}/{total} matched · ≥{min_offers} предложений · "
+        f"trusted-исполнитель · buyer verified"
+    )
+
+
+def _match_confidence(query: str, matched_part) -> int:
+    """Confidence score 0-100 для соответствия query→matched_part.
+
+    100 — exact OEM match (case-insensitive)
+     80 — substring (либо query в OEM, либо OEM в query)
+     60 — fuzzy (нет точного совпадения, но что-то нашлось)
+      0 — нет matched_part
+    """
+    if not matched_part:
+        return 0
+    q = (query or "").strip().lower()
+    oem = (getattr(matched_part, "oem_number", "") or "").strip().lower()
+    if not q or not oem:
+        return 60
+    if q == oem:
+        return 100
+    if q in oem or oem in q:
+        return 80
+    return 60
+
+
 @register("create_rfq")
 def create_rfq(params, user, role):
     """Create a new RFQ + RFQItem rows. params: {product_ids?, articles?, quantity, query?}"""
@@ -747,16 +1347,17 @@ def create_rfq(params, user, role):
 
     quantity = int(params.get("quantity") or 1)
 
-    # Resolve items: explicit product_ids first, then articles, then split query
-    items_to_add = []  # list of (query, qty, matched_part)
+    # Resolve items: explicit product_ids first, then articles, then split query.
+    # Format: (query, qty, matched_part, confidence)
+    items_to_add = []
 
     if params.get("product_ids"):
         for pid in params["product_ids"]:
             p = Part.objects.filter(id=pid).select_related("brand").first()
             if p:
-                items_to_add.append((p.oem_number, quantity, p))
+                items_to_add.append((p.oem_number, quantity, p, 100))
             else:
-                items_to_add.append((str(pid), quantity, None))
+                items_to_add.append((str(pid), quantity, None, 0))
 
     elif params.get("articles"):
         for art in params["articles"]:
@@ -766,10 +1367,9 @@ def create_rfq(params, user, role):
                 .filter(Q(oem_number__iexact=art) | Q(oem_number__icontains=art))
                 .first()
             )
-            items_to_add.append((art, quantity, p))
+            items_to_add.append((art, quantity, p, _match_confidence(art, p)))
 
     elif params.get("query"):
-        # Try to extract article-like tokens from the query string
         q = params["query"]
         articles = _extract_articles(q)
         if articles:
@@ -780,18 +1380,24 @@ def create_rfq(params, user, role):
                     .filter(Q(oem_number__iexact=art) | Q(oem_number__icontains=art))
                     .first()
                 )
-                items_to_add.append((art, quantity, p))
+                items_to_add.append((art, quantity, p, _match_confidence(art, p)))
         else:
-            items_to_add.append((q[:255], quantity, None))
+            items_to_add.append((q[:255], quantity, None, 0))
 
     if not items_to_add:
-        items_to_add = [("RFQ из чата", quantity, None)]
+        items_to_add = [("RFQ из чата", quantity, None, 0)]
+
+    # Mode определяется классификатором согласно ТЗ §7.1/§7.2.
+    # Критерии: matched_count, supplier_status (trusted/sandbox/risky),
+    # KYB-верификация buyer'а, urgency, явный articles[] / params.mode.
+    mode, classifier_reason = _classify_rfq_mode(items_to_add, user, params)
 
     # Build a short notes summary
     notes_parts = []
     if params.get("query") and len(items_to_add) == 1:
         notes_parts.append(f"Запрос: {params['query'][:300]}")
     notes_parts.append(f"Создано из чата · {len(items_to_add)} позиций")
+    notes_parts.append(f"Mode: {classifier_reason}")
 
     try:
         rfq = RFQ.objects.create(
@@ -799,51 +1405,125 @@ def create_rfq(params, user, role):
             customer_name=user.get_full_name() or user.username,
             customer_email=user.email or f"{user.username}@chat.local",
             company_name="",
-            mode="semi",
+            mode=mode,
             urgency="standard",
             status="new",
             notes=" | ".join(notes_parts)[:5000],
         )
-        for query_str, qty, matched_part in items_to_add:
+        for query_str, qty, matched_part, confidence in items_to_add:
             RFQItem.objects.create(
                 rfq=rfq,
                 query=str(query_str)[:255],
                 quantity=qty,
                 matched_part=matched_part,
-                state="matched" if matched_part else "new",
+                state=("matched" if matched_part and confidence >= 80
+                       else "needs_review" if matched_part else "new"),
+                confidence=confidence,
             )
     except Exception as e:
         logger.exception("create_rfq failed")
         return ActionResult(text=f"⚠️ Не удалось создать RFQ: {e}")
 
-    matched_count = sum(1 for _, _, p in items_to_add if p is not None)
+    # AUTO/SEMI: сразу автоматически рассылаем поставщикам и собираем КП.
+    # MANUAL: ждём оператора (op_dispatch_manual_rfq).
+    auto_sent_count = 0
+    if mode in ("auto", "semi"):
+        try:
+            from .negotiation import send_rfq_to_suppliers
+            r = send_rfq_to_suppliers(
+                {"rfq_id": rfq.id, "confirmed": True}, user, role,
+            )
+            # send_rfq_to_suppliers вернёт текст «✓ RFQ #N разослан K поставщикам»
+            import re as _re
+            m = _re.search(r"разослан (\d+)", r.text or "")
+            if m:
+                auto_sent_count = int(m.group(1))
+        except Exception:
+            logger.exception("auto-send on create_rfq failed")
+
+    # SEMI: уведомляем оператора, что нужен approve в 15 минут
+    if mode == "semi":
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            ops = User.objects.filter(is_staff=True, is_active=True)[:5]
+            for op in ops:
+                _notify(
+                    op, kind="rfq",
+                    title=f"⏱ SEMI RFQ #{rfq.id} — нужен approve (15 мин)",
+                    body=f"Buyer {user.username} создал SEMI-RFQ. "
+                         f"Проверь КП и одобри/отклони.",
+                    url=f"/chat/rfq/{rfq.id}/?source=semi-approve",
+                )
+        except Exception:
+            logger.exception("SEMI operator notify failed")
+
+    # MANUAL: уведомляем оператора, что нужен ручной dispatch (48h)
+    if mode == "manual":
+        try:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            ops = User.objects.filter(is_staff=True, is_active=True)[:5]
+            for op in ops:
+                _notify(
+                    op, kind="rfq",
+                    title=f"📋 MANUAL RFQ #{rfq.id} — нужна ручная рассылка",
+                    body=f"Buyer {user.username}: {len(items_to_add)} позиций. "
+                         f"Срок сбора КП — 48 часов.",
+                    url=f"/chat/rfq/{rfq.id}/?source=manual-dispatch",
+                )
+        except Exception:
+            logger.exception("MANUAL operator notify failed")
+
+    matched_count = sum(1 for t in items_to_add if t[2] is not None)
     summary = f"{matched_count} из {len(items_to_add)} позиций сматчены с каталогом"
 
+    if mode == "auto":
+        text = (
+            f"✓ RFQ #{rfq.id} создан · {len(items_to_add)} позиций. {summary}.\n"
+            f"🤖 AUTO: запрос автоматически разослан {auto_sent_count} поставщикам.\n"
+            f"📋 КП готовится — откройте, чтобы подтвердить и зарезервировать 10%."
+        )
+    elif mode == "semi":
+        text = (
+            f"✓ RFQ #{rfq.id} создан в SEMI режиме · {len(items_to_add)} позиций.\n"
+            f"⏱ Расчёт готов, оператор подтвердит КП в течение 15 минут.\n"
+            f"После approve вы получите инвойс с кнопкой резервирования."
+        )
+    else:  # manual
+        text = (
+            f"✓ RFQ #{rfq.id} создан в MANUAL режиме · {len(items_to_add)} позиций.\n"
+            f"📋 Оператор вручную разошлёт запрос поставщикам и сформирует КП.\n"
+            f"⏱ Срок сбора предложений — 48 часов."
+        )
+
+    # AUTO: сразу показываем КП-инвойс buyer'у с кнопкой
+    # «Подтвердить и зарезервировать 10%».
+    actions = []
+    if mode == "auto":
+        from marketplace.models import Quote as _Q
+        if _Q.objects.filter(rfq=rfq, direction="seller_to_buyer", status="submitted").exists():
+            actions.append({
+                "action": "present_kp_to_buyer",
+                "label": "📋 Открыть КП и подтвердить",
+                "params": {"rfq_id": rfq.id},
+            })
+
     return ActionResult(
-        text=(
-            f"✓ RFQ #{rfq.id} создан · {len(items_to_add)} позиций. "
-            f"{summary}. Поставщики получат уведомление и ответят с ценами."
-        ),
+        text=text,
         cards=[{
             "type": "rfq",
             "data": {
                 "id": str(rfq.id),
                 "number": rfq.id,
                 "status": "new",
-                "description": " · ".join(q for q, _, _ in items_to_add[:5])[:200],
-                "quantity": sum(q for _, q, _ in items_to_add),
+                "description": " · ".join(str(t[0]) for t in items_to_add[:5])[:200],
+                "quantity": sum(int(t[1] or 1) for t in items_to_add),
                 "created_at": rfq.created_at.strftime("%d.%m.%Y %H:%M"),
             },
         }],
-        actions=[
-            {"label": "Открыть RFQ", "action": "open_url",
-             "params": {"_url": f"/chat/rfq/{rfq.id}/"}},
-            {"label": "Сформировать КП", "action": "generate_proposal",
-             "params": {"rfq_id": rfq.id}},
-            {"label": "Статус и ответы", "action": "get_rfq_status",
-             "params": {"rfq_id": rfq.id}},
-        ],
-        suggestions=["Мои активные RFQ", "Сформировать КП", "Создать ещё RFQ"],
+        actions=actions,
+        suggestions=["Мои активные RFQ", "Создать ещё RFQ"],
     )
 
 
@@ -904,32 +1584,125 @@ def get_orders(params, user, role):
 
 @register("get_order_detail")
 def get_order_detail(params, user, role):
-    from marketplace.models import Order
+    """Полная карточка заказа: позиции, документы, доступные действия по
+    статусу и роли (buyer/seller/operator).
+    """
+    from marketplace.models import Order, OrderDocument
     oid = params.get("order_id") or params.get("id")
     if not oid:
         return ActionResult(text="⚠️ Не указан ID заказа")
     try:
-        o = Order.objects.select_related("buyer").get(id=oid)
+        o = (Order.objects.select_related("buyer")
+             .prefetch_related("items__part__brand", "documents").get(id=oid))
     except Order.DoesNotExist:
         return ActionResult(text=f"⚠️ Заказ #{oid} не найден")
 
+    # Доступ
+    is_seller = (role == "seller" and any(
+        it.part and it.part.seller_id == user.id for it in o.items.all()
+    ))
+    is_buyer = (o.buyer_id == user.id)
+    is_op = role.startswith("operator") or user.is_staff
+    if not (is_buyer or is_seller or is_op):
+        return ActionResult(text="Нет доступа к этому заказу.")
+
+    # Позиции
+    items_rows = []
+    for it in o.items.all():
+        if is_seller and (not it.part or it.part.seller_id != user.id):
+            continue  # seller видит только свои позиции
+        items_rows.append({
+            "label": f"{it.part.oem_number if it.part else '—'} · {(it.part.title if it.part else '—')[:40]}",
+            "value": f"× {it.quantity} = ${it.unit_price * it.quantity:,.2f}",
+        })
+
+    # Документы
+    docs = list(o.documents.all().order_by("-created_at")[:10])
+    doc_rows = [{
+        "label": f"📄 {d.title}",
+        "value": d.get_doc_type_display(),
+    } for d in docs]
+
+    rows = [
+        {"label": "Заказ",            "value": f"ORD-{o.id}",                                "primary": True},
+        {"label": "Статус",           "value": o.get_status_display()},
+        {"label": "Оплата",           "value": o.get_payment_status_display()},
+        {"label": "Сумма",            "value": f"${(o.total_amount or 0):,.2f}",            "primary": True},
+        {"label": "Создан",           "value": o.created_at.strftime("%d.%m.%Y %H:%M") if o.created_at else "—"},
+        {"label": "Покупатель",       "value": o.customer_name or "—"},
+    ]
+    if o.logistics_cost:
+        rows.append({"label": "Логистика", "value": f"${o.logistics_cost:,.2f}"})
+    if o.reserve_amount:
+        rows.append({"label": "Резерв 10%", "value": f"${o.reserve_amount:,.2f}"})
+    if items_rows:
+        rows.append({"label": "─── Позиции ───", "value": ""})
+        rows.extend(items_rows)
+    if doc_rows:
+        rows.append({"label": "─── Документы ───", "value": ""})
+        rows.extend(doc_rows)
+
+    # Действия зависят от роли + статуса
+    actions = []
+    # Документы — всем доступны (buyer/seller/operator)
+    actions.append({"label": "📄 Все документы",
+                     "action": "list_order_documents",
+                     "params": {"order_id": o.id}})
+    actions.append({"label": "🧾 Создать invoice",
+                     "action": "generate_invoice_pdf",
+                     "params": {"order_id": o.id}})
+    # Seller-кнопки: pipeline
+    if is_seller:
+        if o.status == "reserve_paid":
+            actions.append({"label": "▶️ Подтвердить и в производство",
+                             "action": "advance_order",
+                             "params": {"order_id": o.id}})
+        elif o.status == "confirmed":
+            actions.append({"label": "▶️ Запустить производство",
+                             "action": "advance_order",
+                             "params": {"order_id": o.id}})
+        elif o.status == "in_production":
+            actions.append({"label": "▶️ Готов к отгрузке",
+                             "action": "advance_order",
+                             "params": {"order_id": o.id}})
+        elif o.status == "ready_to_ship":
+            actions.append({"label": "🚚 Отгрузить",
+                             "action": "ship_order",
+                             "params": {"order_id": o.id}})
+            actions.append({"label": "📦 Создать packing list",
+                             "action": "generate_packing_list_pdf",
+                             "params": {"order_id": o.id}})
+            actions.append({"label": "✅ QC report",
+                             "action": "generate_qc_report_pdf",
+                             "params": {"order_id": o.id}})
+        elif o.status in ("transit_abroad", "customs", "transit_rf", "issuing"):
+            actions.append({"label": "▶️ Следующий этап",
+                             "action": "advance_order",
+                             "params": {"order_id": o.id}})
+    # Buyer-кнопки
+    if is_buyer:
+        actions.append({"label": "📦 Трекинг",
+                         "action": "track_shipment",
+                         "params": {"order_id": o.id}})
+        if o.payment_status == "reserve_paid" and o.status in ("ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "delivered"):
+            actions.append({"label": "💳 Оплатить остаток 90%",
+                             "action": "pay_final",
+                             "params": {"order_id": o.id}})
+        if o.status == "delivered":
+            actions.append({"label": "✓ Подтвердить приёмку",
+                             "action": "confirm_delivery",
+                             "params": {"order_id": o.id}})
+
     return ActionResult(
-        text=f"Заказ #{o.id} — {o.get_status_display()}",
+        text=f"📋 Заказ ORD-{o.id} · {o.get_status_display()} · ${o.total_amount:,.2f}",
         cards=[{
-            "type": "order",
+            "type": "draft",
             "data": {
-                "id": str(o.id),
-                "number": f"ORD-{o.id}",
-                "status": o.get_status_display(),
-                "total": float(o.total_amount or 0),
-                "customer": o.customer_name or "",
-                "supplier": "—",
-                "created_at": o.created_at.strftime("%d.%m.%Y %H:%M"),
+                "title": f"Заказ ORD-{o.id}",
+                "rows": rows,
             },
         }],
-        actions=[
-            {"label": "Трекинг", "action": "track_shipment", "params": {"order_id": o.id}},
-        ],
+        actions=actions,
     )
 
 
@@ -1078,17 +1851,56 @@ def compare_products(params, user, role):
     )
 
 
+# ══════════════════════════════════════════════════════════
+# Buyer-anonymity: имена поставщиков скрыты до акцепта котировки
+# ══════════════════════════════════════════════════════════
+
+def _is_buyer_view(role: str) -> bool:
+    """Buyer не должен видеть реальные имена поставщиков, чтобы не обходить
+    платформу. Имена раскрываются только в Quote после accept_quote.
+    Operator/admin/seller видят настоящие.
+    """
+    return role == "buyer"
+
+
+def _anonymize_supplier(s: dict, idx: int) -> dict:
+    """Скрывает name/email/identifying fields, оставляя метрики и рейтинг."""
+    safe = dict(s)
+    safe["name"] = f"Поставщик №{idx + 1}"
+    # Удаляем потенциально идентифицирующие поля
+    for k in ("email", "phone", "company_name", "username", "legal_name", "inn"):
+        safe.pop(k, None)
+    safe["anonymous"] = True
+    return safe
+
+
+def _maybe_anonymize_suppliers(suppliers: list[dict], role: str) -> list[dict]:
+    if not _is_buyer_view(role):
+        return suppliers
+    return [_anonymize_supplier(s, i) for i, s in enumerate(suppliers)]
+
+
 @register("compare_suppliers")
 def compare_suppliers(params, user, role):
     from django.contrib.auth.models import User
-    sellers = User.objects.filter(userprofile__role="seller")[:5]
+    sellers = list(User.objects.filter(userprofile__role="seller")[:5])
+    if _is_buyer_view(role):
+        # Для buyer — анонимизируем: только rank + рейтинг, без имени и email
+        rows = [
+            [f"Поставщик №{i + 1}", "—"]
+            for i, _ in enumerate(sellers)
+        ]
+    else:
+        rows = [[s.get_full_name() or s.username, s.email or "—"] for s in sellers]
     return ActionResult(
-        text=f"Топ поставщиков ({len(sellers)}):",
+        text=f"Топ поставщиков ({len(sellers)}):" + (
+            "\n💡 Имена скрыты — раскрываются после принятия котировки." if _is_buyer_view(role) else ""
+        ),
         cards=[{
             "type": "comparison",
             "data": {
                 "headers": ["Поставщик", "Email"],
-                "rows": [[s.get_full_name() or s.username, s.email] for s in sellers],
+                "rows": rows,
             },
         }],
     )
@@ -1254,7 +2066,12 @@ def analyze_spec(params, user, role):
 
 @register("top_suppliers")
 def top_suppliers(params, user, role):
-    """Top-N suppliers ranked by price/coverage/lead time on the current spec."""
+    """Top-N suppliers ranked by price/coverage/lead time on the current spec.
+
+    Для buyer'а имена анонимизированы (Поставщик №1/2/3) до момента
+    принятия котировки. Это защищает платформу от обхода — buyer не может
+    напрямую связаться с поставщиком в обход маркетплейса.
+    """
     suppliers = [
         {"name": "Caterpillar Eurasia", "rating": "4.9", "total": 47890,
          "coverage": "32 из 39 позиций", "lead_time": "9 дней", "currency": "USD"},
@@ -1264,19 +2081,32 @@ def top_suppliers(params, user, role):
          "coverage": "38 из 39", "lead_time": "11 дней", "note": "включая аналоги",
          "currency": "USD"},
     ]
-    return ActionResult(
-        text=(
+    visible = _maybe_anonymize_suppliers(suppliers, role)
+
+    if _is_buyer_view(role):
+        intro = (
+            "Топ-3 поставщика по вашей спеке. Имена скрыты — раскрываются "
+            "после принятия котировки. Создать RFQ всем?"
+        )
+        # Используем индексы вместо имён в action params
+        compare_ids = [f"supplier_{i + 1}" for i, _ in enumerate(suppliers)]
+    else:
+        intro = (
             "Рекомендую разослать всем трём — Caterpillar Eurasia может не покрыть 7 позиций, "
             "остальные дадут конкуренцию по цене. Создать RFQ?"
-        ),
-        cards=[{"type": "supplier_top", "data": {"suppliers": suppliers}}],
+        )
+        compare_ids = [s["name"] for s in suppliers]
+
+    return ActionResult(
+        text=intro,
+        cards=[{"type": "supplier_top", "data": {"suppliers": visible}}],
         actions=[
             {"label": "Создать RFQ для топ-3", "action": "create_rfq",
              "params": {"query": "Spec Q2 2026 — top 3 suppliers"}},
             {"label": "Добавить ещё поставщиков", "action": "top_suppliers",
              "params": {"limit": 5}},
             {"label": "Сравнить детально", "action": "compare_suppliers",
-             "params": {"supplier_ids": [s["name"] for s in suppliers]}},
+             "params": {"supplier_ids": compare_ids}},
         ],
         suggestions=["Только OEM-сертифицированные", "Сравни по SLA"],
     )
@@ -1554,7 +2384,15 @@ def _log_event(order, event_type: str, actor=None, source="system", meta=None):
 
 
 def _notify(user, *, kind: str, title: str, body: str = "", url: str = ""):
-    """Создаёт Notification + пушит её через WebSocket. Безопасный — не падает."""
+    """Создаёт Notification + пушит её через WS + дублирует в durable каналы.
+
+    Цепочка:
+      1. DB row (всегда — основа inbox)
+      2. WebSocket push (если открыта вкладка → toast + badge)
+      3. Email + Telegram fanout (если оффлайн — durable каналы)
+
+    Все шаги best-effort: ошибка в одном не ломает остальные.
+    """
     if not user:
         return
     notif_id = None
@@ -1578,6 +2416,12 @@ def _notify(user, *, kind: str, title: str, body: str = "", url: str = ""):
         })
     except Exception:
         logger.exception("WS notify push failed")
+    # Durable fanout (Email + Telegram)
+    try:
+        from .channels import fanout_to_durable
+        fanout_to_durable(user, kind=kind, title=title[:200], body=body, url=url[:400])
+    except Exception:
+        logger.exception("durable fanout failed")
 
 
 def _notify_seller_of_order(order, kind="order", title="", body=""):
@@ -1972,6 +2816,11 @@ def seller_pipeline(params, user, role):
                 "items": o["items"],
                 "subtotal": float(o["subtotal"]),
                 "payment_status": o["payment_status"],
+                # Клик по карточке заказа → открыть деталь
+                "open_action": {
+                    "action": "get_order_detail",
+                    "params": {"order_id": o["id"]},
+                },
             })
         sections.append({
             "status": code,
@@ -2001,8 +2850,8 @@ def seller_pipeline(params, user, role):
                 "params": {"order_id": first_oid},
             })
             break
-    next_actions.append({"label": "Спрос", "action": "get_demand_report", "params": {}})
-    next_actions.append({"label": "Прайс-лист", "action": "upload_pricelist", "params": {}})
+    next_actions.append({"label": "📤 Загрузить прайс", "action": "upload_pricelist", "params": {}})
+    next_actions.append({"label": "📊 Спрос", "action": "get_demand_report", "params": {}})
 
     return ActionResult(
         text=text,
@@ -2126,6 +2975,15 @@ def ship_order(params, user, role):
         _notify(order.buyer, kind="order",
                 title=f"Заказ #{order.id} отгружен",
                 body=f"Tracking {tracking} · перевозчик {carrier}. В транзите за рубеж.")
+    # + системное сообщение в shipment-чат с обновлённым timeline
+    try:
+        from .order_events import notify_order_event
+        notify_order_event(order, "shipped", actor=user,
+            text=(f"🚚 Заказ ORD-{order.id} отгружен!\n"
+                  f"Tracking: {tracking} · Перевозчик: {carrier}.\n"
+                  f"В транзите за рубеж."))
+    except Exception:
+        logger.exception("notify_order_event in ship_order failed")
 
     return ActionResult(
         text=(
@@ -2513,6 +3371,21 @@ def pay_final(params, user, role):
                meta={"amount": float(final_amount), "balance_after": float(wallet.balance),
                      "intent_id": intent["id"]})
 
+    # ТЗ §4.1: пересчитать annual volume buyer'а — может перейти на новый
+    # discount level (1/2/3) после этого закрытого заказа.
+    try:
+        from .discounts import recalc_buyer_volume
+        recalc_buyer_volume(user)
+    except Exception:
+        logger.exception("recalc_buyer_volume on pay_final failed")
+
+    # Broadcast в shipment-чат buyer'а
+    try:
+        from .order_events import notify_order_event
+        notify_order_event(order, "pay_final", actor=user)
+    except Exception:
+        logger.exception("notify_order_event in pay_final failed")
+
     return ActionResult(
         text=(
             f"✓ Списано ${final_amount:,.2f} с депозита — остаток по заказу #{order.id} оплачен.\n"
@@ -2632,6 +3505,13 @@ def advance_order(params, user, role):
     _log_event(order, "status_changed", actor=user, source="buyer",
                meta={"from": old_status, "to": new_status})
 
+    # Broadcast в shipment-чат buyer'а с обновлённым timeline
+    try:
+        from .order_events import notify_order_event
+        notify_order_event(order, new_status, actor=user)
+    except Exception:
+        logger.exception("notify_order_event failed in advance_order")
+
     next_actions = []
     suggestions = []
     next_text = ""
@@ -2734,11 +3614,27 @@ def confirm_delivery(params, user, role):
     _log_event(order, "status_changed", actor=user, source="buyer",
                meta={"from": "delivered", "to": "completed", "kind": "buyer_accepted"})
 
+    # ТЗ §15: генерация revenue lines по этому заказу (basis_fee, logistics,
+    # success_fee, rf_agent, customs_fee, volume_discount).
+    try:
+        from .revenue import generate_revenue_lines
+        # Базис берём из meta или DDP по умолчанию (typical для РФ-импорта)
+        meta = order.logistics_meta or {}
+        basis = (meta.get("customs", {}) or {}).get("basis") or "DDP"
+        we_clear = bool((meta.get("customs", {}) or {}).get("hs_code"))  # если HS присвоен — мы оформляем
+        generate_revenue_lines(
+            order, basis=basis, payment_currency="USD",
+            we_clear_customs=we_clear,
+        )
+    except Exception:
+        logger.exception("generate_revenue_lines on confirm_delivery failed")
+
     # Эскроу → продавцам. Multi-seller split: разносим сумму по
     # OrderItem.part.seller пропорционально стоимости их позиций.
     release_summary = ""
     try:
         from . import payments as _pay
+        from .rating import record_rating_event
         splits = _pay.split_by_seller(order)
         released_total = Decimal("0")
         for s in splits:
@@ -2753,6 +3649,11 @@ def confirm_delivery(params, user, role):
                         title=f"Поступление по заказу #{order.id}",
                         body=f"Покупатель подтвердил приёмку — на счёт зачислено ${res['amount']:,.2f}.",
                         url=f"/chat/?order={order.id}")
+                # Rating event: +2 за on-time-delivery (buyer accepted без рекламации)
+                record_rating_event(
+                    seller, event_type="delivery_on_time",
+                    meta={"order_id": order.id, "amount": float(s["amount"])},
+                )
         if released_total > 0:
             n = len(splits)
             release_summary = (
@@ -2761,6 +3662,13 @@ def confirm_delivery(params, user, role):
             )
     except Exception:
         logger.exception("escrow release on confirm_delivery failed")
+
+    # Broadcast в shipment-чат buyer'а — финальный таймлайн «completed»
+    try:
+        from .order_events import notify_order_event
+        notify_order_event(order, "completed", actor=user)
+    except Exception:
+        logger.exception("notify_order_event in confirm_delivery failed")
 
     return ActionResult(
         text=f"✓ Заказ #{order.id} закрыт. Спасибо за приёмку!" + release_summary,
@@ -2779,6 +3687,53 @@ def confirm_delivery(params, user, role):
              "params": {"order_id": order.id, "kind": "feedback"}},
         ],
         suggestions=["Открыть отзыв", "Что заказать ещё?"],
+    )
+
+
+@register("get_buyer_discount")
+def get_buyer_discount(params, user, role):
+    """ТЗ §4.1: показать текущий уровень auto-discount по годовому обороту."""
+    from .discounts import recalc_buyer_volume, LEVEL_THRESHOLDS
+    from django.utils import timezone
+
+    bvy = recalc_buyer_volume(user, year=timezone.now().year)
+    if not bvy:
+        return ActionResult(text="Не удалось рассчитать ваш объём закупок.")
+
+    LEVEL_NAMES = {0: "Без скидки", 1: "Уровень 1", 2: "Уровень 2", 3: "Уровень 3"}
+    next_level_info = ""
+    if bvy.level < 3:
+        # Сколько до следующего
+        next_level = bvy.level + 1
+        # Найти threshold для next
+        for lvl, threshold, _ in LEVEL_THRESHOLDS:
+            if lvl == next_level:
+                gap = threshold - bvy.volume_usd
+                if gap > 0:
+                    next_level_info = (
+                        f"\nДо уровня {next_level}: ещё ${gap:,.0f} оборота."
+                    )
+                break
+
+    return ActionResult(
+        text=(
+            f"💰 Ваш годовой объём в {bvy.year}: ${bvy.volume_usd:,.0f}\n"
+            f"Текущий уровень: {LEVEL_NAMES[bvy.level]} · скидка {bvy.discount_pct}%"
+            + next_level_info
+        ),
+        cards=[{"type": "kpi_grid", "data": {
+            "title": f"💰 Auto-discount · {bvy.year}",
+            "items": [
+                {"label": "Оборот", "value": f"${bvy.volume_usd:,.0f}", "tone": "info"},
+                {"label": "Уровень", "value": LEVEL_NAMES[bvy.level],
+                 "tone": "ok" if bvy.level >= 2 else "warn" if bvy.level >= 1 else "warn"},
+                {"label": "Скидка", "value": f"{bvy.discount_pct}%",
+                 "tone": "ok" if bvy.discount_pct > 0 else "warn"},
+                {"label": "Уровень 1", "value": "≥$1.1M → 1%"},
+                {"label": "Уровень 2", "value": "≥$5.5M → 1.5%"},
+                {"label": "Уровень 3", "value": "≥$11M → 3%"},
+            ],
+        }}],
     )
 
 
