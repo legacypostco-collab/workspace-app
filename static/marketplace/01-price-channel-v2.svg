@@ -1,0 +1,27 @@
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Manufacturer block (orange filled) -->
+  <rect x="14" y="36" width="48" height="48" rx="10" fill="#E84A21"/>
+  <!-- factory silhouette inside -->
+  <path d="M28 60 L28 50 L32 50 L32 46 L36 50 L36 46 L40 50 L40 46 L44 50 L48 50 L48 60 Z" fill="#fff"/>
+  <rect x="32" y="62" width="4" height="6" fill="#fff" opacity="0.7"/>
+  <rect x="40" y="62" width="4" height="6" fill="#fff" opacity="0.7"/>
+
+  <!-- Direct connection line with subtle flow -->
+  <line x1="68" y1="60" x2="132" y2="60" stroke="#1A1422" stroke-width="2" stroke-linecap="round"/>
+  <!-- flow dots -->
+  <circle cx="80" cy="60" r="2" fill="#1A1422" opacity="0.3"/>
+  <circle cx="92" cy="60" r="2" fill="#1A1422" opacity="0.5"/>
+  <circle cx="108" cy="60" r="2" fill="#1A1422" opacity="0.7"/>
+  <circle cx="120" cy="60" r="2" fill="#1A1422"/>
+
+  <!-- Price tag (clean tag shape) -->
+  <path d="M 138 44 L 178 44 L 196 60 L 178 76 L 138 76 Z" fill="#fff" stroke="#1A1422" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="148" cy="60" r="3" fill="#1A1422"/>
+  <text x="170" y="66" font-family="-apple-system, Inter, sans-serif" font-size="16" font-weight="800" fill="#1A1422" text-anchor="middle">$</text>
+
+  <!-- Bypass label (no middlemen) -->
+  <g transform="translate(85, 90)">
+    <line x1="0" y1="0" x2="30" y2="0" stroke="#E84A21" stroke-width="2" stroke-linecap="round"/>
+    <line x1="2" y1="-3" x2="28" y2="3" stroke="#E84A21" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>
