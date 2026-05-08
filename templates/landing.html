@@ -131,7 +131,7 @@
     padding: 0;
     position: relative;
     overflow: hidden;
-    border-radius: 18px;
+    border-radius: 0;
     margin: 0;
   }
 
@@ -320,6 +320,20 @@
     margin: 0;
   }
   .white + .white{ margin-top: 8px; }
+  /* На стыковке с dark/photo секциями — 90°, не скруглять */
+  .grad + .white,
+  .grad.deep + .white,
+  .final-cta-section + .white,
+  .footer + .white{
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+  .white:has(+ .grad.deep),
+  .white:has(+ .final-cta-section),
+  .white:has(+ .footer){
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
   .white .inner{ max-width: 100%; }
 
   .about{
