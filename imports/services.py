@@ -1038,7 +1038,8 @@ class StrictImportService:
 
     def _read_csv_rows(self, raw: bytes) -> tuple[list[str], list[tuple[int, dict[str, str]]]]:
         text = _decode_csv_bytes(raw)
-        reader = csv.DictReader(io.StringIO(text))
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        reader = csv.DictReader(io.StringIO(text, newline=""))
         if not reader.fieldnames:
             return [], []
         headers = [str(h or "").strip() for h in reader.fieldnames if str(h or "").strip()]
@@ -1052,12 +1053,16 @@ class StrictImportService:
         raw = read_stored_file_bytes(storage_key)
         ext = (original_name or "").rsplit(".", 1)[-1].lower()
 
-        if ext in ("xlsx", "xls"):
-            headers, _ = self._read_xlsx_rows(raw)
-        elif ext == "csv":
-            headers, _ = self._read_csv_rows(raw)
-        else:
-            return False, "Неподдерживаемый формат файла. Загрузите XLS, XLSX или CSV.", []
+        try:
+            if ext in ("xlsx", "xls"):
+                headers, _ = self._read_xlsx_rows(raw)
+            elif ext == "csv":
+                headers, _ = self._read_csv_rows(raw)
+            else:
+                return False, "Неподдерживаемый формат файла. Загрузите XLS, XLSX или CSV.", []
+        except Exception as e:
+            logger.exception("Ошибка чтения файла %s", original_name)
+            return False, f"Не удалось прочитать файл: {e}", []
 
         if not headers:
             return False, "Не удалось прочитать заголовки файла.", []
