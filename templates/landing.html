@@ -1018,18 +1018,18 @@
     width: 100%; height: auto;
     display: block;
   }
-  /* Glassy backdrop под заголовком и lead — для читабельности на фото */
-  .search-hero .hero-text-block{
+  /* Общий glassy backdrop под всем контентом hero (eyebrow + logo + title + lead) */
+  .search-hero .hero-glass-block{
     display: inline-block;
-    padding: 28px 36px 30px;
+    padding: 32px 44px 36px;
     background: rgba(20,16,14,0.32);
     backdrop-filter: blur(8px) saturate(115%);
     -webkit-backdrop-filter: blur(8px) saturate(115%);
     border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 18px;
+    border-radius: 22px;
     margin-bottom: 36px;
   }
-  .search-hero .hero-text-block .search-lead{
+  .search-hero .hero-glass-block .search-lead{
     margin-bottom: 0;
   }
   .search-hero .search-title{
@@ -1191,7 +1191,7 @@
   @media (max-width: 760px){
     .search-hero{ padding: 40px 20px 70px; }
     .search-hero .hero-logo{ width: 200px; margin-bottom: 28px; }
-    .search-hero .hero-text-block{ padding: 22px 22px; border-radius: 14px; }
+    .search-hero .hero-glass-block{ padding: 24px 22px 26px; border-radius: 16px; }
     .search-hero .search-title{ font-size: 28px; }
     .search-hero .search-lead{ font-size: 14.5px; }
     .search-box{ padding: 18px 18px 12px; }
@@ -1387,6 +1387,7 @@
     <div class="bg-glow"></div>
     <div class="container">
 
+      <div class="hero-glass-block">
       <div class="hero-eyebrow">
         <span class="eyebrow-num">01</span>
         <span class="eyebrow-line"></span>
@@ -1451,9 +1452,8 @@
 
       <div class="accent-rule"></div>
 
-      <div class="hero-text-block">
-        <h1 class="search-title">Какую запчасть найти?</h1>
-        <p class="search-lead">Загрузите спецификацию в Excel или опишите словами&nbsp;— соберу предложения от <b>200+ поставщиков</b>.</p>
+      <h1 class="search-title">Какую запчасть найти?</h1>
+      <p class="search-lead">Загрузите спецификацию в Excel или опишите словами&nbsp;— соберу предложения от <b>200+ поставщиков</b>.</p>
       </div>
 
       <a class="search-box" tabindex="0" href="/chat/?new=1" style="text-decoration:none;color:inherit;display:block;">
