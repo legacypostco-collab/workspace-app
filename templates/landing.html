@@ -384,15 +384,10 @@
     cursor: default;
   }
   .trust .cell .ic{
-    width: 200px; height: 120px;
+    width: 96px; height: 96px;
     display:flex; align-items: center; justify-content:center;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     color: var(--aub);
-  }
-  .trust .cell .ic img{
-    width: 100%; height: 100%;
-    object-fit: contain;
-    display: block;
   }
   .trust .cell .ic svg{ width: 84px; height: 84px; }
   .trust .cell .lbl{
@@ -1556,7 +1551,19 @@
     <div class="trust">
       <div class="cell">
         <div class="ic">
-          <img src="{% static 'marketplace/01-price-channel.svg' %}" alt="Прямой канал цен">
+          <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- factory left -->
+            <path d="M10 70 L10 36 L22 36 L22 26 L34 36 L34 70 Z"/>
+            <path d="M14 50 L18 50 M26 50 L30 50 M14 60 L18 60 M26 60 L30 60" stroke-width="1.4" opacity="0.5"/>
+            <!-- buyer right -->
+            <rect x="62" y="38" width="22" height="32" rx="2"/>
+            <path d="M66 46 L80 46 M66 54 L80 54 M66 62 L76 62" stroke-width="1.4" opacity="0.5"/>
+            <!-- direct arrow -->
+            <path d="M40 54 L58 54 M52 48 L58 54 L52 60" stroke-width="2.2"/>
+            <!-- price tag -->
+            <circle cx="48" cy="20" r="11"/>
+            <text x="48" y="25" text-anchor="middle" font-size="14" font-weight="700" fill="currentColor" stroke="none" font-family="Arial,sans-serif">$</text>
+          </svg>
         </div>
         <div class="lbl">Прямой канал цен</div>
         <div class="sub">OEM и aftermarket напрямую от производителей. Мгновенный расчёт по любому базису: EXW, FOB, CIF, DDP.</div>
@@ -1564,7 +1571,26 @@
 
       <div class="cell">
         <div class="ic">
-          <img src="{% static 'marketplace/02-stage-control.svg' %}" alt="Контроль на всех этапах">
+          <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- vertical pipeline -->
+            <path d="M48 14 L48 82" stroke-dasharray="0"/>
+            <!-- 4 stage nodes -->
+            <circle cx="48" cy="22" r="6.5" fill="#fff"/>
+            <circle cx="48" cy="22" r="6.5"/>
+            <path d="M45 22 L47 24 L51 20" stroke-width="1.7"/>
+            <circle cx="48" cy="40" r="6.5" fill="#fff"/>
+            <circle cx="48" cy="40" r="6.5"/>
+            <path d="M45 40 L47 42 L51 38" stroke-width="1.7"/>
+            <circle cx="48" cy="58" r="6.5" fill="#fff"/>
+            <circle cx="48" cy="58" r="6.5"/>
+            <path d="M45 58 L47 60 L51 56" stroke-width="1.7"/>
+            <circle cx="48" cy="76" r="6.5" fill="#fff"/>
+            <circle cx="48" cy="76" r="6.5"/>
+            <!-- side annotation lines -->
+            <path d="M16 22 L36 22 M16 30 L30 30" stroke-width="1.4" opacity="0.4"/>
+            <path d="M60 40 L82 40 M60 48 L76 48" stroke-width="1.4" opacity="0.4"/>
+            <path d="M16 58 L36 58 M16 66 L30 66" stroke-width="1.4" opacity="0.4"/>
+          </svg>
         </div>
         <div class="lbl">Контроль на всех этапах</div>
         <div class="sub">13 статусов заказа, автоматический SLA, рейтинг поставщиков по реальным событиям, полный аудит каждой сделки.</div>
@@ -1572,7 +1598,20 @@
 
       <div class="cell">
         <div class="ic">
-          <img src="{% static 'marketplace/03-global-network.svg' %}" alt="Глобальная сеть поставок">
+          <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- globe -->
+            <circle cx="48" cy="48" r="32"/>
+            <!-- equator -->
+            <path d="M16 48 L80 48"/>
+            <!-- meridian -->
+            <path d="M48 16 C32 32 32 64 48 80 C64 64 64 32 48 16"/>
+            <!-- hubs -->
+            <circle cx="32" cy="36" r="3.5" fill="currentColor" stroke="none"/>
+            <circle cx="64" cy="36" r="3.5" fill="currentColor" stroke="none"/>
+            <circle cx="48" cy="62" r="3.5" fill="currentColor" stroke="none"/>
+            <!-- connection lines -->
+            <path d="M32 36 L64 36 M32 36 L48 62 M64 36 L48 62" stroke-width="1.2" opacity="0.55" stroke-dasharray="3 2"/>
+          </svg>
         </div>
         <div class="lbl">Глобальная сеть поставок</div>
         <div class="sub">Хабы в ОАЭ, Китае и ЕС. Консолидация грузов. Оплата в любой валюте.</div>
@@ -1580,7 +1619,25 @@
 
       <div class="cell">
         <div class="ic">
-          <img src="{% static 'marketplace/04-erp-integration.svg' %}" alt="Интеграция в ваши процессы">
+          <svg viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <!-- center hub -->
+            <rect x="36" y="36" width="24" height="24" rx="3"/>
+            <text x="48" y="52" text-anchor="middle" font-size="9" font-weight="700" fill="currentColor" stroke="none" font-family="Arial,sans-serif">API</text>
+            <!-- ERP -->
+            <rect x="12" y="14" width="22" height="14" rx="2"/>
+            <text x="23" y="24" text-anchor="middle" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="Arial,sans-serif">ERP</text>
+            <!-- EDI -->
+            <rect x="62" y="14" width="22" height="14" rx="2"/>
+            <text x="73" y="24" text-anchor="middle" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="Arial,sans-serif">EDI</text>
+            <!-- 1С -->
+            <rect x="12" y="68" width="22" height="14" rx="2"/>
+            <text x="23" y="78" text-anchor="middle" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="Arial,sans-serif">1С</text>
+            <!-- EAM -->
+            <rect x="62" y="68" width="22" height="14" rx="2"/>
+            <text x="73" y="78" text-anchor="middle" font-size="8" font-weight="700" fill="currentColor" stroke="none" font-family="Arial,sans-serif">EAM</text>
+            <!-- connection lines -->
+            <path d="M34 21 L36 36 M62 21 L60 36 M34 75 L36 60 M62 75 L60 60" stroke-width="1.4" opacity="0.55"/>
+          </svg>
         </div>
         <div class="lbl">Интеграция в ваши процессы</div>
         <div class="sub">ERP, 1С, ТОИР/EAM, EDI. Данные поставок попадают прямо в вашу систему.</div>
