@@ -1,0 +1,33 @@
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Horizontal pipeline track -->
+  <rect x="14" y="56" width="172" height="8" rx="4" fill="#F4ECEC"/>
+  <!-- Filled portion (progress) -->
+  <rect x="14" y="56" width="118" height="8" rx="4" fill="#E84A21"/>
+
+  <!-- Stage 1: completed -->
+  <circle cx="22" cy="60" r="11" fill="#E84A21"/>
+  <path d="M 17 60 L 21 64 L 27 56" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="22" y="92" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#1A1422" text-anchor="middle" opacity="0.65" letter-spacing="0.5">RFQ</text>
+
+  <!-- Stage 2: completed -->
+  <circle cx="78" cy="60" r="11" fill="#E84A21"/>
+  <path d="M 73 60 L 77 64 L 83 56" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="78" y="92" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#1A1422" text-anchor="middle" opacity="0.65" letter-spacing="0.5">PAID</text>
+
+  <!-- Stage 3: in progress (current) -->
+  <circle cx="134" cy="60" r="14" fill="none" stroke="#E84A21" stroke-width="1.5" opacity="0.3"/>
+  <circle cx="134" cy="60" r="11" fill="#fff" stroke="#E84A21" stroke-width="2.5"/>
+  <circle cx="134" cy="60" r="4" fill="#E84A21"/>
+  <text x="134" y="92" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#E84A21" text-anchor="middle" letter-spacing="0.5">SHIP</text>
+
+  <!-- Stage 4: pending -->
+  <circle cx="178" cy="60" r="11" fill="#fff" stroke="#1A1422" stroke-width="2" opacity="0.4"/>
+  <text x="178" y="92" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#1A1422" text-anchor="middle" opacity="0.4" letter-spacing="0.5">DONE</text>
+
+  <!-- Top label: SLA timer -->
+  <g transform="translate(118, 18)">
+    <rect x="0" y="0" width="34" height="16" rx="3" fill="#1A1422"/>
+    <text x="17" y="11" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#fff" text-anchor="middle" letter-spacing="0.3">SLA</text>
+    <line x1="17" y1="20" x2="17" y2="40" stroke="#1A1422" stroke-width="1" stroke-dasharray="2 2" opacity="0.4"/>
+  </g>
+</svg>

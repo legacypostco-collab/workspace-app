@@ -1,0 +1,63 @@
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background dotted world grid (abstract continents) -->
+  <g fill="#1A1422" opacity="0.18">
+    <!-- Europe cluster -->
+    <circle cx="68" cy="38" r="1.5"/>
+    <circle cx="74" cy="36" r="1.5"/>
+    <circle cx="80" cy="40" r="1.5"/>
+    <circle cx="72" cy="44" r="1.5"/>
+    <circle cx="78" cy="46" r="1.5"/>
+    <circle cx="64" cy="44" r="1.5"/>
+    <circle cx="86" cy="38" r="1.5"/>
+
+    <!-- China cluster -->
+    <circle cx="128" cy="44" r="1.5"/>
+    <circle cx="134" cy="42" r="1.5"/>
+    <circle cx="140" cy="46" r="1.5"/>
+    <circle cx="132" cy="50" r="1.5"/>
+    <circle cx="138" cy="52" r="1.5"/>
+    <circle cx="124" cy="48" r="1.5"/>
+    <circle cx="146" cy="44" r="1.5"/>
+
+    <!-- UAE cluster (between EU and China, lower) -->
+    <circle cx="98" cy="62" r="1.5"/>
+    <circle cx="104" cy="60" r="1.5"/>
+    <circle cx="110" cy="64" r="1.5"/>
+    <circle cx="100" cy="68" r="1.5"/>
+    <circle cx="108" cy="70" r="1.5"/>
+    <circle cx="94" cy="66" r="1.5"/>
+
+    <!-- Other distant points -->
+    <circle cx="40" cy="58" r="1.5"/>
+    <circle cx="46" cy="62" r="1.5"/>
+    <circle cx="166" cy="68" r="1.5"/>
+    <circle cx="172" cy="72" r="1.5"/>
+    <circle cx="160" cy="78" r="1.5"/>
+    <circle cx="58" cy="82" r="1.5"/>
+    <circle cx="52" cy="78" r="1.5"/>
+    <circle cx="148" cy="86" r="1.5"/>
+  </g>
+
+  <!-- Connection arcs between hubs -->
+  <path d="M 76 40 Q 100 18 134 46" fill="none" stroke="#E84A21" stroke-width="1.6" stroke-dasharray="3 3" opacity="0.7"/>
+  <path d="M 76 40 Q 90 50 104 64" fill="none" stroke="#E84A21" stroke-width="1.6" stroke-dasharray="3 3" opacity="0.7"/>
+  <path d="M 134 46 Q 122 54 104 64" fill="none" stroke="#E84A21" stroke-width="1.6" stroke-dasharray="3 3" opacity="0.7"/>
+
+  <!-- Hub: Europe -->
+  <circle cx="76" cy="40" r="14" fill="none" stroke="#E84A21" stroke-width="1" opacity="0.25"/>
+  <circle cx="76" cy="40" r="7" fill="#E84A21"/>
+  <circle cx="76" cy="40" r="3" fill="#fff"/>
+  <text x="76" y="20" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#1A1422" text-anchor="middle" letter-spacing="0.5">EU</text>
+
+  <!-- Hub: China -->
+  <circle cx="134" cy="46" r="14" fill="none" stroke="#E84A21" stroke-width="1" opacity="0.25"/>
+  <circle cx="134" cy="46" r="7" fill="#E84A21"/>
+  <circle cx="134" cy="46" r="3" fill="#fff"/>
+  <text x="134" y="26" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#1A1422" text-anchor="middle" letter-spacing="0.5">CN</text>
+
+  <!-- Hub: UAE -->
+  <circle cx="104" cy="64" r="14" fill="none" stroke="#E84A21" stroke-width="1" opacity="0.25"/>
+  <circle cx="104" cy="64" r="7" fill="#E84A21"/>
+  <circle cx="104" cy="64" r="3" fill="#fff"/>
+  <text x="104" y="92" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#1A1422" text-anchor="middle" letter-spacing="0.5">UAE</text>
+</svg>
