@@ -1,0 +1,42 @@
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="v3-api" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1A1422"/>
+      <stop offset="100%" stop-color="#2C1E26"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(20, 8)">
+    <!-- Connection lines (drawn first) -->
+    <line x1="50" y1="22" x2="78" y2="48" stroke="#1A1422" stroke-width="1.4" opacity="0.45"/>
+    <line x1="110" y1="22" x2="82" y2="48" stroke="#1A1422" stroke-width="1.4" opacity="0.45"/>
+    <line x1="50" y1="86" x2="78" y2="60" stroke="#1A1422" stroke-width="1.4" opacity="0.45"/>
+    <line x1="110" y1="86" x2="82" y2="60" stroke="#1A1422" stroke-width="1.4" opacity="0.45"/>
+
+    <!-- ERP top-left -->
+    <rect x="10" y="10" width="50" height="24" rx="5" fill="#fff" stroke="#1A1422" stroke-width="1.6"/>
+    <text x="35" y="26" font-family="-apple-system, Inter, sans-serif" font-size="11" font-weight="800" fill="#1A1422" text-anchor="middle" letter-spacing="0.6">ERP</text>
+
+    <!-- EDI top-right -->
+    <rect x="100" y="10" width="50" height="24" rx="5" fill="#fff" stroke="#1A1422" stroke-width="1.6"/>
+    <text x="125" y="26" font-family="-apple-system, Inter, sans-serif" font-size="11" font-weight="800" fill="#1A1422" text-anchor="middle" letter-spacing="0.6">EDI</text>
+
+    <!-- 1С bottom-left -->
+    <rect x="10" y="74" width="50" height="24" rx="5" fill="#fff" stroke="#1A1422" stroke-width="1.6"/>
+    <text x="35" y="90" font-family="-apple-system, Inter, sans-serif" font-size="11" font-weight="800" fill="#1A1422" text-anchor="middle" letter-spacing="0.6">1С</text>
+
+    <!-- EAM bottom-right -->
+    <rect x="100" y="74" width="50" height="24" rx="5" fill="#fff" stroke="#1A1422" stroke-width="1.6"/>
+    <text x="125" y="90" font-family="-apple-system, Inter, sans-serif" font-size="11" font-weight="800" fill="#1A1422" text-anchor="middle" letter-spacing="0.6">EAM</text>
+
+    <!-- Central API hub (gradient dark) -->
+    <rect x="64" y="44" width="32" height="20" rx="4" fill="url(#v3-api)"/>
+    <text x="80" y="58" font-family="-apple-system, Inter, sans-serif" font-size="10" font-weight="800" fill="#fff" text-anchor="middle" letter-spacing="0.6">API</text>
+
+    <!-- Tiny dots on each connection (data flow) -->
+    <circle cx="64" cy="35" r="1.8" fill="#1A1422"/>
+    <circle cx="96" cy="35" r="1.8" fill="#1A1422"/>
+    <circle cx="64" cy="73" r="1.8" fill="#1A1422"/>
+    <circle cx="96" cy="73" r="1.8" fill="#1A1422"/>
+  </g>
+</svg>
