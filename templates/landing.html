@@ -26,21 +26,23 @@
     --container:    1440px;
   }
 
+  html, body{ overflow-x: clip; }
   .page{
     max-width: var(--container);
     margin: 0 auto;
     padding: 0 40px;
     box-sizing: border-box;
-    overflow-x: clip;
   }
-  /* Full-bleed dark sections — растягиваются за пределы .page padding */
+  /* Full-bleed dark sections — фон растягивается на всю ширину viewport,
+     контент остаётся в сетке .page (выровнен с остальными секциями).
+     Реализовано через box-shadow на пол-вьюпорта влево и вправо. */
   .page > .grad.deep,
   .page > .final-cta-section,
   .page > .footer{
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    padding-left: max(40px, calc(50vw - var(--container, 1440px) / 2 + 40px));
-    padding-right: max(40px, calc(50vw - var(--container, 1440px) / 2 + 40px));
+    box-shadow:
+      -100vw 0 0 var(--aub),
+       100vw 0 0 var(--aub);
+    clip-path: inset(0 -100vw);
   }
 
 
