@@ -2104,178 +2104,68 @@
     }
   }
 
-  // Pricelist upload — для seller'а, AI-маппинг колонок (ТЗ).
-  // 1) POST файл → preview (headers + AI-mapping). 2) Юзер правит маппинг
-  // в карточке-форме. 3) submit → commit → детерминированный импорт.
+  // Pricelist upload — строгая загрузка (16 фиксированных колонок, без маппинга).
   async function uploadPricelist(file) {
     showConv();
     addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
-    const pending = addMessage('assistant', 'Читаю заголовки и подбираю маппинг колонок…');
+    const pending = addMessage('assistant', 'Загружаю и обрабатываю прайс-лист…');
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/assistant/upload-pricelist/', {
+      const res = await fetch('/api/v1/seller/imports/strict-upload', {
         method: 'POST',
         headers: {'X-CSRFToken': csrf()},
         body: fd, credentials: 'same-origin',
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
       if (pending && pending.parentNode) pending.remove();
 
-      // Строим карточку-форму с маппингом для подтверждения.
-      const headers = (data.headers || []).filter(h => String(h || '').trim());
-      const sample = data.sample_rows || [];
-      const sug = data.suggested_mapping || {};
-      const stdFields = data.std_fields || [];
-
-      // Маркируем занятые колонки в label чтобы было видно куда они
-      // привязаны (но НЕ исключаем — seller может переназначить).
-      const fieldLabel = {};
-      stdFields.forEach(f => { fieldLabel[f.key] = f.label; });
-      const usedBy = {};  // header → field-label
-      Object.entries(sug).forEach(([fk, v]) => {
-        if (v && !String(v).startsWith('fix:') && headers.includes(v)) {
-          if (!usedBy[v]) usedBy[v] = fieldLabel[fk] || fk;
+      if (!res.ok) {
+        let errMsg = data.error || ('HTTP ' + res.status);
+        if (data.missing_columns && data.missing_columns.length) {
+          errMsg += '\nОтсутствуют колонки: ' + data.missing_columns.join(', ');
         }
-      });
+        throw new Error(errMsg);
+      }
 
-      const fields = stdFields.map(f => {
-        const myValue = sug[f.key] || '';
-        const opts = [{value: '', label: '— не использовать —'}];
-        headers.forEach(h => {
-          let label = 'Колонка: ' + h;
-          // Если эта колонка уже занята другим полем — пометим
-          if (usedBy[h] && h !== myValue) {
-            label += '  (→ ' + usedBy[h] + ')';
-          }
-          opts.push({value: h, label: label});
-        });
-        if (f.enum_values && f.enum_values.length) {
-          opts.push({value: '__sep__', label: '— или фикс. значение —'});
-          f.enum_values.forEach(v => {
-            opts.push({value: 'fix:' + v, label: 'Фикс: ' + v});
-          });
-        }
-        // Опция «Своё значение» — для всех полей. При выборе —
-        // prompt(), результат сохраняется как fix:VALUE.
-        opts.push({value: '__custom__', label: '✏️ Своё значение…'});
-        return {
-          name: 'col__' + f.key,
-          label: f.label,
-          type: 'select',
-          options: opts,
-          value: myValue,
-          required: f.required,
-        };
-      });
+      const total = data.total_rows || 0;
+      const loaded = data.loaded_rows || 0;
+      const errors = data.error_rows || 0;
+      const errList = data.errors || [];
 
-      // Информация откуда взят маппинг (повторная загрузка / AI / словарь)
-      let intro;
-      if (data.from_saved_mapping) {
-        intro = `📋 Файл прочитан · ${headers.length} колонок · ` +
-                `${sample.length} превью-строк.\n` +
-                `🧠 Применён сохранённый маппинг — AI не вызывался. ` +
-                `Проверьте превью «как ляжет в базу» и подтвердите.`;
-      } else if (data.ai_called) {
-        intro = `📋 Файл прочитан · ${headers.length} колонок · ` +
-                `${sample.length} превью-строк.\n` +
-                `📚 Распознано по словарю + AI помог с нестандартными ` +
-                `заголовками. Проверьте маппинг ниже.`;
+      let msg;
+      if (errors === 0) {
+        msg = `✅ Загружено ${loaded} из ${total} позиций.`;
+      } else if (loaded > 0) {
+        msg = `✅ Загружено ${loaded} из ${total} позиций. Ошибок: ${errors}.`;
       } else {
-        intro = `📋 Файл прочитан · ${headers.length} колонок · ` +
-                `${sample.length} превью-строк.\n` +
-                `📚 Все заголовки распознаны по словарю — AI не вызывался.`;
+        msg = `⚠️ Файл не загружен — ${errors} ошибок из ${total} строк.`;
       }
 
       const cards = [];
-      // 1. Превью «как ляжет в базу» (если есть маппинг)
-      if (data.mapped_preview && (data.mapped_preview.rows || []).length) {
+      if (errList.length > 0) {
+        const errHeaders = ['Строка', 'Колонка', 'Ошибка'];
+        const errRows = errList.slice(0, 20).map(e => [
+          String(e.row || ''),
+          e.column || '',
+          e.message || '',
+        ]);
         cards.push({type:'table_preview', data:{
-          title: '✅ Как ляжет в базу (первые 5 строк)',
-          headers: data.mapped_preview.headers,
-          rows: data.mapped_preview.rows,
-          foot: 'Это уже распознанные колонки. Если что-то не так — поправьте маппинг ниже.',
+          title: '❌ Ошибки (' + errList.length + ')',
+          headers: errHeaders,
+          rows: errRows,
+          foot: errList.length > 20 ? 'Показаны первые 20 из ' + errList.length + ' ошибок.' : '',
         }});
       }
-      // 2. Сырое превью (исходные строки файла)
-      cards.push({type:'table_preview', data:{
-        title: '👀 Сырое превью (как в файле)',
-        headers: headers,
-        rows: sample,
-      }});
-      // 3. Форма с маппингом
-      cards.push({type:'form', data:{
-        title: '🔗 Маппинг колонок прайса → платформа',
-        submit_action: '__pricelist_commit',
-        submit_label: '📥 Подтвердить и загрузить',
-        fields: fields,
-        fixed_params: {import_id: data.import_id},
-      }});
 
-      addMessage('assistant', intro, cards,
-        [{action: '__pricelist_cancel', label: 'Отменить',
-          params: {import_id: data.import_id}}]
-      );
+      addMessage('assistant', msg, cards, [
+        {action: 'seller_catalog', label: '📦 Открыть каталог', params: {}},
+      ]);
     } catch (err) {
       if (pending && pending.parentNode) pending.remove();
-      addMessage('assistant', '⚠️ Не удалось прочитать прайс: ' + (err.message || err));
+      addMessage('assistant', '⚠️ Не удалось загрузить прайс: ' + (err.message || err));
     }
   }
-
-  // Specialhandler: commit маппинга (не через /action/, а через /upload-pricelist/<id>/commit/)
-  window.__pricelist_commit_handler = async (params) => {
-    const importId = params.import_id;
-    const mapping = {};
-    Object.keys(params).forEach(k => {
-      if (k.startsWith('col__') && params[k] && params[k] !== '__sep__') {
-        mapping[k.slice(5)] = params[k];
-      }
-    });
-    showConv();
-    const pending = addMessage('assistant', 'Импортирую прайс…');
-    try {
-      const res = await fetch('/api/assistant/upload-pricelist/' + importId + '/commit/', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json', 'X-CSRFToken': csrf()},
-        body: JSON.stringify({mapping}), credentials: 'same-origin',
-      });
-      const data = await res.json();
-      if (pending && pending.parentNode) pending.remove();
-      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
-      const errBtn = data.failed > 0
-        ? [{action: 'pricelist_show_errors', label: 'Посмотреть',
-            params: {import_id: importId}}]
-        : [];
-      // ТЗ-формат: «Загружено X. Обновлено Y. Ошибок Z — посмотреть».
-      const created = data.created || 0;
-      const updated = data.updated || 0;
-      const failed  = data.failed  || 0;
-      const parts = [`✅ Загружено ${created} позиций.`];
-      if (updated) parts.push(`Обновлено ${updated}.`);
-      if (failed)  parts.push(`Ошибок ${failed} — посмотреть?`);
-      addMessage('assistant',
-        parts.join(' '),
-        [], errBtn.concat([
-          {action: 'seller_catalog', label: '📦 Открыть каталог', params: {}},
-        ])
-      );
-    } catch (err) {
-      if (pending && pending.parentNode) pending.remove();
-      addMessage('assistant', '⚠️ Не удалось импортировать: ' + (err.message || err));
-    }
-  };
-
-  window.__pricelist_cancel_handler = async (params) => {
-    try {
-      await fetch('/api/assistant/upload-pricelist/' + params.import_id + '/cancel/', {
-        method: 'POST',
-        headers: {'X-CSRFToken': csrf()},
-        credentials: 'same-origin',
-      });
-    } catch(_){}
-    addMessage('assistant', 'Импорт отменён.');
-  };
 
   // Перехватываем спец-actions в quickAction'е до отправки на /api/assistant/action/
   const _origQuickActionForPricelist = window.quickAction;
