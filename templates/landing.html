@@ -579,23 +579,15 @@
   }
 
   /* ============ BRAND CARDS (gradient) ============ */
-  .grad.deep{ padding: 32px 0 36px; }
+  .grad.deep{ padding: 32px 0 36px; background: var(--aub); }
   .grad.deep::before{
     background-image: none;
-    background:
-      linear-gradient(135deg,
-        #2A2832 0%,
-        #3A3540 35%,
-        #4A4248 70%,
-        #5A4D4A 100%);
+    background: var(--aub);
     filter: none;
     opacity: 1;
   }
   .grad.deep::after{
-    background:
-      radial-gradient(ellipse 70% 90% at 50% 30%,
-        rgba(255,255,255,0.08) 0%,
-        rgba(255,255,255,0) 65%);
+    background: transparent;
   }
   .grad.deep .head h2{
     color: #FFFFFF;
@@ -833,7 +825,7 @@
 
   /* ============ FOOTER ============ */
   .footer{
-    background: var(--aub-deep);
+    background: var(--aub);
     color: rgba(255,255,255,0.7);
     padding: 56px 0 28px;
   }
