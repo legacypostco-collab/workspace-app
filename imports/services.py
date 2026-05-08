@@ -224,6 +224,8 @@ class OEMNormalizer:
             "OEM": SupplierOffer.Condition.OEM,
             "AFTERMARKET": SupplierOffer.Condition.AFTERMARKET,
             "REMAN": SupplierOffer.Condition.REMAN,
+            "USED": SupplierOffer.Condition.REMAN,
+            "REFURBISHED": SupplierOffer.Condition.REMAN,
         }
         return alias_map.get(raw, raw)
 
@@ -939,7 +941,7 @@ class ImportRowPipeline:
         )
 
 
-STRICT_REQUIRED_COLUMNS = [
+STRICT_ALL_COLUMNS = [
     "PartNumber",
     "CrossNumber",
     "Brand",
@@ -957,6 +959,8 @@ STRICT_REQUIRED_COLUMNS = [
     "Width",
     "Height",
 ]
+
+_STRICT_OPTIONAL_COLUMNS = {"CrossNumber"}
 
 _STRICT_COLUMN_TO_FIELD = {
     "PartNumber": "oem",
@@ -1058,7 +1062,7 @@ class StrictImportService:
         if not headers:
             return False, "Не удалось прочитать заголовки файла.", []
 
-        missing = [col for col in STRICT_REQUIRED_COLUMNS if col not in headers]
+        missing = [col for col in STRICT_ALL_COLUMNS if col not in headers]
         if missing:
             return False, f"Отсутствуют обязательные колонки: {', '.join(missing)}.", missing
 
@@ -1076,7 +1080,9 @@ class StrictImportService:
     def _validate_row(self, row_no: int, row: dict[str, str]) -> list[StrictValidationError]:
         errors: list[StrictValidationError] = []
 
-        for col in STRICT_REQUIRED_COLUMNS:
+        for col in STRICT_ALL_COLUMNS:
+            if col in _STRICT_OPTIONAL_COLUMNS:
+                continue
             val = (row.get(col) or "").strip()
             if not val:
                 errors.append(StrictValidationError(
@@ -1085,11 +1091,10 @@ class StrictImportService:
                     message=f"Строка {row_no}: не заполнено поле {col}.",
                 ))
 
-        if errors:
-            return errors
-
         for col in _STRICT_NUMERIC_FIELDS:
             val = (row.get(col) or "").strip()
+            if not val:
+                continue
             parsed = self._parse_number(val)
             if parsed is None:
                 errors.append(StrictValidationError(
@@ -1105,7 +1110,7 @@ class StrictImportService:
                 ))
 
         condition = (row.get("Condition") or "").strip().upper()
-        valid_conditions = {"ORIGINAL", "OEM", "AFTERMARKET", "USED", "REMAN", "NEW"}
+        valid_conditions = {"ORIGINAL", "OEM", "AFTERMARKET", "USED", "REMAN", "NEW", "REFURBISHED"}
         if condition and condition not in valid_conditions:
             errors.append(StrictValidationError(
                 row_number=row_no,
@@ -1132,7 +1137,7 @@ class StrictImportService:
         else:
             headers, rows = self._read_csv_rows(raw)
 
-        missing = [col for col in STRICT_REQUIRED_COLUMNS if col not in headers]
+        missing = [col for col in STRICT_ALL_COLUMNS if col not in headers]
         if missing:
             return StrictImportResult(
                 total_rows=0,
