@@ -283,9 +283,6 @@ class SupplierStrictImportAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not _is_seller(request.user):
-            return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
-
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
             return Response({"error": "Файл не выбран."}, status=status.HTTP_400_BAD_REQUEST)
