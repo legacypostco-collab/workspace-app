@@ -737,7 +737,7 @@
   .wh-cell{
     height: 240px;
     border-radius: 14px;
-    background: linear-gradient(135deg, #4A3A2A, #6B5340);
+    background: var(--aub);
     position: relative;
     overflow: hidden;
     display:flex; flex-direction: column; justify-content: flex-end;
@@ -870,10 +870,9 @@
   .footer .col.brand .contacts{
     font-size: 12.5px; color: rgba(255,255,255,0.62);
     line-height: 1.7;
-    padding: 12px 14px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 8px;
+    padding: 12px 0;
+    background: transparent;
+    border: 0;
   }
   .footer .col.brand .contacts b{ color: #fff; font-weight: 500; }
   .footer .col.subscribe input{
@@ -909,13 +908,13 @@
   }
   .footer .bottom .pays{ display:flex; align-items: center; gap: 8px; }
   .footer .bottom .pays span{
-    padding: 3px 8px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 4px;
+    padding: 3px 0;
+    background: transparent;
+    border: 0;
     font-size: 10.5px; letter-spacing: 0.5px; font-weight: 600;
     color: rgba(255,255,255,0.55);
   }
+  .footer .bottom .pays span + span{ margin-left: 4px; }
 
 
 
