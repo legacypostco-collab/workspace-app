@@ -12,9 +12,11 @@ from .api import (
     SupplierImportRollbackAPIView,
     SupplierImportRowsAPIView,
     SupplierImportStartAPIView,
+    SupplierStrictImportAPIView,
 )
 
 urlpatterns = [
+    path("seller/imports/strict-upload", SupplierStrictImportAPIView.as_view(), name="seller_strict_import"),
     path("seller/imports/upload", SupplierImportFileCreateAPIView.as_view(), name="seller_import_upload"),
     path("seller/imports/file", SupplierImportFileCreateAPIView.as_view(), name="seller_import_file_alias"),
     path("seller/imports/google-sheet", SupplierImportGoogleSheetCreateAPIView.as_view(), name="seller_import_google_sheet"),

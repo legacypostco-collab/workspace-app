@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+import logging
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
@@ -14,6 +15,8 @@ from files.storage import read_stored_file_bytes, store_generated_file_bytes
 from offers.models import SupplierOffer, SupplierOfferPrice
 
 from .models import ImportErrorReport, ImportJob, ImportRow
+
+logger = logging.getLogger("imports")
 
 
 def _normalize_header(value: str) -> str:
@@ -933,4 +936,433 @@ class ImportRowPipeline:
             error_rows=error_rows,
             created_products=created_products,
             updated_offers=updated_offers,
+        )
+
+
+STRICT_REQUIRED_COLUMNS = [
+    "PartNumber",
+    "CrossNumber",
+    "Brand",
+    "Name",
+    "Quantity",
+    "Condition",
+    "Price_EXW",
+    "WarehouseAddress",
+    "Price_FOB_SEA",
+    "Price_FOB_AIR",
+    "SeaPort",
+    "AirPort",
+    "Weight",
+    "Length",
+    "Width",
+    "Height",
+]
+
+_STRICT_COLUMN_TO_FIELD = {
+    "PartNumber": "oem",
+    "CrossNumber": "cross_number",
+    "Brand": "brand",
+    "Name": "name",
+    "Quantity": "quantity",
+    "Condition": "condition",
+    "Price_EXW": "price_exw",
+    "WarehouseAddress": "warehouse_address",
+    "Price_FOB_SEA": "price_fob_sea",
+    "Price_FOB_AIR": "price_fob_air",
+    "SeaPort": "sea_port",
+    "AirPort": "air_port",
+    "Weight": "weight",
+    "Length": "length",
+    "Width": "width",
+    "Height": "height",
+}
+
+_STRICT_NUMERIC_FIELDS = {"Quantity", "Price_EXW", "Price_FOB_SEA", "Price_FOB_AIR", "Weight", "Length", "Width", "Height"}
+
+
+@dataclass
+class StrictValidationError:
+    row_number: int
+    column: str
+    message: str
+
+
+@dataclass
+class StrictImportResult:
+    total_rows: int
+    loaded_rows: int
+    error_rows: int
+    errors: list[StrictValidationError]
+    job_id: int | None = None
+
+
+class StrictImportService:
+    """Simplified import: seller provides file with exact 16-column structure."""
+
+    def _read_xlsx_rows(self, raw: bytes) -> tuple[list[str], list[tuple[int, dict[str, str]]]]:
+        from openpyxl import load_workbook
+
+        wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+        ws = wb.active
+
+        header_row_idx = None
+        headers: list[str] = []
+        for row_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=5, values_only=False), start=1):
+            cells = [str(c.value or "").strip() for c in row]
+            if "PartNumber" in cells:
+                headers = cells
+                header_row_idx = row_idx
+                break
+
+        if header_row_idx is None:
+            wb.close()
+            return [], []
+
+        rows: list[tuple[int, dict[str, str]]] = []
+        for row_idx, row in enumerate(ws.iter_rows(min_row=header_row_idx + 1, values_only=True), start=header_row_idx + 1):
+            values = [str(v or "").strip() if v is not None else "" for v in row]
+            if not any(values):
+                continue
+            row_dict = {}
+            for i, h in enumerate(headers):
+                if h and i < len(values):
+                    row_dict[h] = values[i]
+            rows.append((row_idx, row_dict))
+
+        wb.close()
+        return headers, rows
+
+    def _read_csv_rows(self, raw: bytes) -> tuple[list[str], list[tuple[int, dict[str, str]]]]:
+        text = _decode_csv_bytes(raw)
+        reader = csv.DictReader(io.StringIO(text))
+        if not reader.fieldnames:
+            return [], []
+        headers = [str(h or "").strip() for h in reader.fieldnames if str(h or "").strip()]
+        rows: list[tuple[int, dict[str, str]]] = []
+        for row_no, row in enumerate(reader, start=2):
+            row_dict = {str(k or "").strip(): str(v or "").strip() for k, v in row.items()}
+            rows.append((row_no, row_dict))
+        return headers, rows
+
+    def validate_structure(self, storage_key: str, original_name: str) -> tuple[bool, str, list[str]]:
+        raw = read_stored_file_bytes(storage_key)
+        ext = (original_name or "").rsplit(".", 1)[-1].lower()
+
+        if ext in ("xlsx", "xls"):
+            headers, _ = self._read_xlsx_rows(raw)
+        elif ext == "csv":
+            headers, _ = self._read_csv_rows(raw)
+        else:
+            return False, "Неподдерживаемый формат файла. Загрузите XLS, XLSX или CSV.", []
+
+        if not headers:
+            return False, "Не удалось прочитать заголовки файла.", []
+
+        missing = [col for col in STRICT_REQUIRED_COLUMNS if col not in headers]
+        if missing:
+            return False, f"Отсутствуют обязательные колонки: {', '.join(missing)}.", missing
+
+        return True, "", []
+
+    def _parse_number(self, raw: str) -> Decimal | None:
+        cleaned = raw.strip().replace(" ", "").replace(",", ".")
+        if not cleaned:
+            return None
+        try:
+            return Decimal(cleaned)
+        except InvalidOperation:
+            return None
+
+    def _validate_row(self, row_no: int, row: dict[str, str]) -> list[StrictValidationError]:
+        errors: list[StrictValidationError] = []
+
+        for col in STRICT_REQUIRED_COLUMNS:
+            val = (row.get(col) or "").strip()
+            if not val:
+                errors.append(StrictValidationError(
+                    row_number=row_no,
+                    column=col,
+                    message=f"Строка {row_no}: не заполнено поле {col}.",
+                ))
+
+        if errors:
+            return errors
+
+        for col in _STRICT_NUMERIC_FIELDS:
+            val = (row.get(col) or "").strip()
+            parsed = self._parse_number(val)
+            if parsed is None:
+                errors.append(StrictValidationError(
+                    row_number=row_no,
+                    column=col,
+                    message=f"Строка {row_no}: поле {col} должно быть числом.",
+                ))
+            elif parsed < 0:
+                errors.append(StrictValidationError(
+                    row_number=row_no,
+                    column=col,
+                    message=f"Строка {row_no}: поле {col} не может быть отрицательным.",
+                ))
+
+        condition = (row.get("Condition") or "").strip().upper()
+        valid_conditions = {"ORIGINAL", "OEM", "AFTERMARKET", "USED", "REMAN", "NEW"}
+        if condition and condition not in valid_conditions:
+            errors.append(StrictValidationError(
+                row_number=row_no,
+                column="Condition",
+                message=f"Строка {row_no}: недопустимое значение Condition: {row.get('Condition')}.",
+            ))
+
+        return errors
+
+    def _row_to_extracted(self, row: dict[str, str]) -> dict[str, str]:
+        extracted: dict[str, str] = {}
+        for col, field in _STRICT_COLUMN_TO_FIELD.items():
+            extracted[field] = (row.get(col) or "").strip()
+        extracted["price"] = extracted["price_exw"] or extracted["price_fob_sea"] or extracted["price_fob_air"]
+        return extracted
+
+    @transaction.atomic
+    def process_file(self, *, storage_key: str, original_name: str, supplier, stored_file: StoredFile) -> StrictImportResult:
+        raw = read_stored_file_bytes(storage_key)
+        ext = (original_name or "").rsplit(".", 1)[-1].lower()
+
+        if ext in ("xlsx", "xls"):
+            headers, rows = self._read_xlsx_rows(raw)
+        else:
+            headers, rows = self._read_csv_rows(raw)
+
+        missing = [col for col in STRICT_REQUIRED_COLUMNS if col not in headers]
+        if missing:
+            return StrictImportResult(
+                total_rows=0,
+                loaded_rows=0,
+                error_rows=0,
+                errors=[StrictValidationError(0, "", f"Отсутствуют обязательные колонки: {', '.join(missing)}.")],
+            )
+
+        job = ImportJob.objects.create(
+            supplier=supplier,
+            source_type=ImportJob.SourceType.CSV,
+            source_file=stored_file,
+            status=ImportJob.Status.PROCESSING,
+            started_at=timezone.now(),
+            column_mapping_json={field: col for col, field in _STRICT_COLUMN_TO_FIELD.items()},
+        )
+
+        validator = ImportValidator()
+        normalizer = OEMNormalizer()
+        matcher = ProductMatcher()
+        upsert_service = CatalogUpsertService()
+
+        all_errors: list[StrictValidationError] = []
+        loaded = 0
+        created_products = 0
+        updated_offers = 0
+        created_offers = 0
+        updated_prices = 0
+        matched_by_cross = 0
+
+        for row_no, row_data in rows:
+            row_errors = self._validate_row(row_no, row_data)
+
+            extracted = self._row_to_extracted(row_data)
+            import_row = ImportRow.objects.create(
+                job=job,
+                row_no=row_no,
+                row_number=row_no,
+                raw_payload=row_data,
+                part_number_raw=extracted.get("oem", ""),
+                part_number_normalized=normalizer.normalize_oem(extracted.get("oem")),
+                cross_number_raw=extracted.get("cross_number", ""),
+                cross_number_normalized=normalizer.normalize_oem(extracted.get("cross_number")),
+                normalized_oem=normalizer.normalize_oem(extracted.get("oem")),
+                normalized_brand=normalizer.normalize_brand(extracted.get("brand")),
+                parsed_name=(extracted.get("name") or "").strip(),
+                normalized_payload={
+                    "condition": normalizer.normalize_condition(extracted.get("condition")),
+                    "warehouse_address": extracted.get("warehouse_address", ""),
+                    "sea_port": extracted.get("sea_port", ""),
+                    "air_port": extracted.get("air_port", ""),
+                },
+                status=ImportRow.Status.PENDING,
+            )
+
+            if row_errors:
+                all_errors.extend(row_errors)
+                import_row.status = ImportRow.Status.INVALID
+                import_row.validation_status = ImportRow.ValidationStatus.INVALID
+                import_row.match_status = ImportRow.MatchStatus.FAILED
+                import_row.error_code = "validation_failed"
+                import_row.error_message = row_errors[0].message
+                import_row.error_hint = "Проверьте значения в строке."
+                import_row.save(update_fields=[
+                    "status", "validation_status", "match_status",
+                    "error_code", "error_message", "error_hint", "updated_at",
+                ])
+                continue
+
+            validation = validator.validate(extracted)
+            if not validation.is_valid:
+                all_errors.append(StrictValidationError(row_no, "", validation.error_message))
+                import_row.status = ImportRow.Status.INVALID
+                import_row.validation_status = ImportRow.ValidationStatus.INVALID
+                import_row.match_status = ImportRow.MatchStatus.FAILED
+                import_row.error_code = validation.error_code
+                import_row.error_message = validation.error_message
+                import_row.error_hint = validation.error_hint
+                import_row.save(update_fields=[
+                    "status", "validation_status", "match_status",
+                    "error_code", "error_message", "error_hint", "updated_at",
+                ])
+                continue
+
+            import_row.parsed_price = validation.parsed_price
+            import_row.parsed_quantity = validation.parsed_quantity
+            import_row.status = ImportRow.Status.VALID
+            import_row.validation_status = ImportRow.ValidationStatus.VALID
+
+            match = matcher.match(import_row.part_number_normalized, import_row.normalized_brand, import_row.cross_number_normalized)
+
+            if match.status == ProductMatcher.STATUS_AMBIGUOUS:
+                all_errors.append(StrictValidationError(row_no, "PartNumber", f"Строка {row_no}: найдено несколько товаров, укажите Brand."))
+                import_row.status = ImportRow.Status.INVALID
+                import_row.validation_status = ImportRow.ValidationStatus.INVALID
+                import_row.match_status = ImportRow.MatchStatus.AMBIGUOUS
+                import_row.error_code = "ambiguous_match"
+                import_row.error_message = "Найдено несколько товаров по OEM."
+                import_row.error_hint = "Укажите бренд для однозначного сопоставления."
+                import_row.save(update_fields=[
+                    "status", "validation_status", "match_status", "parsed_price", "parsed_quantity",
+                    "error_code", "error_message", "error_hint", "updated_at",
+                ])
+                continue
+
+            product = match.product
+            if product is None:
+                product = Product.objects.create(
+                    oem_raw=import_row.part_number_raw,
+                    oem_normalized=import_row.part_number_normalized,
+                    part_number=import_row.part_number_raw,
+                    normalized_part_number=import_row.part_number_normalized,
+                    brand_raw=import_row.normalized_brand,
+                    brand_normalized=import_row.normalized_brand,
+                    name=import_row.parsed_name or f"Part {import_row.part_number_normalized}",
+                    created_by_supplier=supplier,
+                )
+                created_products += 1
+                import_row.match_status = ImportRow.MatchStatus.CREATED_NEW_PRODUCT
+            else:
+                if match.matched_by == "cross_number":
+                    import_row.match_status = ImportRow.MatchStatus.MATCHED_BY_CROSS
+                    matched_by_cross += 1
+                else:
+                    import_row.match_status = ImportRow.MatchStatus.MATCHED
+
+            if import_row.cross_number_normalized and import_row.cross_number_normalized != import_row.part_number_normalized:
+                ProductCrossReference.objects.get_or_create(
+                    product=product,
+                    normalized_cross_number=import_row.cross_number_normalized,
+                    defaults={
+                        "cross_number": import_row.cross_number_raw or import_row.cross_number_normalized,
+                        "cross_type": ProductCrossReference.CrossType.ANALOG,
+                        "source": ProductCrossReference.Source.IMPORT,
+                    },
+                )
+
+            condition = (import_row.normalized_payload or {}).get("condition") or SupplierOffer.Condition.OEM
+            offer, created_offer, row_updated_prices = upsert_service.upsert_offer(
+                supplier=supplier,
+                product=product,
+                condition=condition,
+                price=validation.parsed_price or Decimal("0.00"),
+                price_exw=validation.parsed_price_exw,
+                price_fob_sea=validation.parsed_price_fob_sea,
+                price_fob_air=validation.parsed_price_fob_air,
+                quantity=validation.parsed_quantity,
+                warehouse_address=extracted.get("warehouse_address", ""),
+                sea_port=extracted.get("sea_port", ""),
+                air_port=extracted.get("air_port", ""),
+                weight=validation.parsed_weight,
+                length=validation.parsed_length,
+                width=validation.parsed_width,
+                height=validation.parsed_height,
+                import_job=job,
+            )
+            if created_offer:
+                created_offers += 1
+            else:
+                updated_offers += 1
+            updated_prices += row_updated_prices
+
+            import_row.product = product
+            import_row.supplier_offer = offer
+            import_row.matched_product = product
+            import_row.matched_supplier_offer = offer
+            import_row.status = ImportRow.Status.UPSERTED
+            import_row.matched_by = match.matched_by
+            import_row.error_code = ""
+            import_row.error_message = ""
+            import_row.error_hint = ""
+            import_row.save(update_fields=[
+                "product", "supplier_offer", "matched_product", "matched_supplier_offer",
+                "status", "validation_status", "match_status", "matched_by",
+                "parsed_price", "parsed_quantity",
+                "error_code", "error_message", "error_hint", "updated_at",
+            ])
+            loaded += 1
+
+        error_rows = len(rows) - loaded
+        job.total_rows = len(rows)
+        job.rows_total = len(rows)
+        job.processed_rows = len(rows)
+        job.valid_rows = loaded
+        job.error_rows = error_rows
+        job.created_products = created_products
+        job.updated_offers = updated_offers
+        job.rows_created_products = created_products
+        job.rows_created_offers = created_offers
+        job.rows_updated_offers = updated_offers
+        job.rows_updated_prices = updated_prices
+        job.rows_failed = error_rows
+        job.rows_matched_by_cross_number = matched_by_cross
+        job.created_count = created_products
+        job.updated_count = updated_offers
+        job.error_count = error_rows
+        job.status = ImportJob.Status.COMPLETED if error_rows == 0 else (
+            ImportJob.Status.PARTIAL_SUCCESS if loaded > 0 else ImportJob.Status.FAILED
+        )
+        job.finished_at = timezone.now()
+        job.summary_json = {
+            "rows_total": len(rows),
+            "rows_created_products": created_products,
+            "rows_created_offers": created_offers,
+            "rows_updated_offers": updated_offers,
+            "rows_updated_prices": updated_prices,
+            "rows_failed": error_rows,
+            "rows_matched_by_cross_number": matched_by_cross,
+            "import_mode": "strict_16_columns",
+        }
+        job.save()
+
+        if error_rows > 0:
+            ErrorReportBuilder().build_for_job(job)
+
+        logger.info(
+            "strict_import_done",
+            extra={
+                "job_id": job.id,
+                "supplier_id": supplier.id,
+                "total": len(rows),
+                "loaded": loaded,
+                "errors": error_rows,
+            },
+        )
+
+        return StrictImportResult(
+            total_rows=len(rows),
+            loaded_rows=loaded,
+            error_rows=error_rows,
+            errors=all_errors,
+            job_id=job.id,
         )

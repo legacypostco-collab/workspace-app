@@ -1842,6 +1842,24 @@ def seller_product_list(request: HttpRequest) -> HttpResponse:
     )
 
 
+@seller_required
+def seller_strict_upload(request: HttpRequest) -> HttpResponse:
+    return render(
+        request,
+        _tpl(request.user, "seller/products/strict_upload.html"),
+        {
+            "seller_page_title": _("Загрузка прайс-листа"),
+            "seller_page_subtitle": _("Загрузите файл с 16 обязательными колонками в формате Consolidator Parts."),
+            "seller_active_nav": "products",
+            "seller_breadcrumbs": [
+                {"label": _("Кабинет поставщика"), "url": reverse("seller_dashboard")},
+                {"label": _("Товары и прайсы"), "url": reverse("seller_product_list")},
+                {"label": _("Загрузка прайс-листа"), "url": ""},
+            ],
+        },
+    )
+
+
 
 @seller_required
 def seller_orders(request: HttpRequest) -> HttpResponse:
@@ -4362,14 +4380,14 @@ def seller_gsheet_template(request: HttpRequest) -> HttpResponse:
     ws.title = "Данные"
 
     headers = [
-        "PartNumber", "Name", "Brand", "Price_EXW", "Price_FOB_SEA",
-        "Price_FOB_AIR", "Quantity", "Condition", "WarehouseAddress",
-        "CrossNumber", "SeaPort", "AirPort", "Weight", "Length", "Width", "Height",
+        "PartNumber", "CrossNumber", "Brand", "Name", "Quantity", "Condition",
+        "Price_EXW", "WarehouseAddress", "Price_FOB_SEA", "Price_FOB_AIR",
+        "SeaPort", "AirPort", "Weight", "Length", "Width", "Height",
     ]
     header_ru = [
-        "Артикул", "Название", "Бренд", "Цена EXW ($)", "Цена FOB Море ($)",
-        "Цена FOB Авиа ($)", "Остаток (шт)", "Состояние", "Адрес склада",
-        "Кросс-номер", "Морской порт", "Авиа-порт", "Вес (кг)", "Длина (см)", "Ширина (см)", "Высота (см)",
+        "Артикул", "Кросс-номер", "Бренд", "Наименование", "Кол-во (шт)", "Состояние",
+        "Цена EXW ($)", "Адрес склада", "Цена FOB Море ($)", "Цена FOB Авиа ($)",
+        "Морской порт", "Аэропорт", "Вес (кг)", "Длина (см)", "Ширина (см)", "Высота (см)",
     ]
 
     # Row 1: Russian hints
@@ -4395,8 +4413,8 @@ def seller_gsheet_template(request: HttpRequest) -> HttpResponse:
 
     # Sample rows
     samples = [
-        ["RE48786", "Гидроцилиндр RE48786", "John Deere", 250.00, 295.00, 330.00, 10, "OEM", "Shanghai, CN", "RE48786A", "Shanghai", "PVG", 1.1, 12, 8, 6],
-        ["7C-4190", "Фильтр масляный", "Caterpillar", 18.50, 22.00, 28.00, 150, "New", "Guangzhou, CN", "", "Ningbo", "CAN", 0.3, 8, 8, 10],
+        ["RE48786", "RE48786A", "John Deere", "Гидроцилиндр", 10, "OEM", 250.00, "Shanghai, CN", 295.00, 330.00, "Shanghai Port", "Pudong Airport", 1.1, 12, 8, 6],
+        ["7C-4190", "N/A", "Caterpillar", "Фильтр масляный", 150, "AFTERMARKET", 18.50, "Guangzhou, CN", 22.00, 28.00, "Ningbo Port", "Guangzhou Airport", 0.3, 8, 8, 10],
     ]
     data_font = Font(size=10, color="ECECEC")
     for row_idx, row_data in enumerate(samples, 3):
@@ -4410,27 +4428,40 @@ def seller_gsheet_template(request: HttpRequest) -> HttpResponse:
     wi.column_dimensions["A"].width = 80
 
     instructions = [
-        ("Как подключить Google Sheets к Consolidator Parts", True, 14),
+        ("Инструкция по заполнению прайс-листа Consolidator Parts", True, 14),
         ("", False, 10),
-        ("1. Заполните лист \"Данные\" по образцу", False, 11),
-        ("   - Строка 1 (серая) — подсказки на русском, НЕ удаляйте", False, 10),
-        ("   - Строка 2 (тёмная) — названия колонок для импорта", False, 10),
-        ("   - Строки 3+ — ваши данные", False, 10),
+        ("Заполните все 16 колонок на листе «Данные».", False, 11),
+        ("Названия колонок должны быть строго такими же, как в шаблоне.", False, 11),
+        ("Одна строка = одна товарная позиция.", False, 11),
         ("", False, 10),
-        ("2. Обязательные колонки:", True, 11),
-        ("   PartNumber — артикул / каталожный номер детали", False, 10),
-        ("   Name — название / описание", False, 10),
-        ("   Price_EXW — цена EXW в долларах", False, 10),
-        ("   Quantity — остаток на складе", False, 10),
+        ("Правила заполнения:", True, 12),
+        ("   Все цены указываются за 1 единицу товара в $.", False, 10),
+        ("   Вес указывается в кг.", False, 10),
+        ("   Габариты (Length, Width, Height) указываются в см.", False, 10),
+        ("   Condition: ORIGINAL / OEM / AFTERMARKET / USED / REMAN.", False, 10),
+        ("   Если аналога нет, в CrossNumber укажите N/A.", False, 10),
         ("", False, 10),
-        ("3. Загрузите файл на Google Drive", False, 11),
-        ("   Google Drive → Создать → Загрузить файл → выберите этот .xlsx", False, 10),
+        ("Обязательные колонки (все 16):", True, 12),
+        ("   1. PartNumber — номер детали / артикул", False, 10),
+        ("   2. CrossNumber — кросс-номер / аналог", False, 10),
+        ("   3. Brand — бренд / производитель", False, 10),
+        ("   4. Name — наименование", False, 10),
+        ("   5. Quantity — количество на складе", False, 10),
+        ("   6. Condition — состояние товара", False, 10),
+        ("   7. Price_EXW — цена на складе", False, 10),
+        ("   8. WarehouseAddress — адрес склада", False, 10),
+        ("   9. Price_FOB_SEA — цена FOB для морской отгрузки", False, 10),
+        ("   10. Price_FOB_AIR — цена FOB для авиаотгрузки", False, 10),
+        ("   11. SeaPort — морской порт отгрузки", False, 10),
+        ("   12. AirPort — аэропорт отгрузки", False, 10),
+        ("   13. Weight — вес (кг)", False, 10),
+        ("   14. Length — длина (см)", False, 10),
+        ("   15. Width — ширина (см)", False, 10),
+        ("   16. Height — высота (см)", False, 10),
         ("", False, 10),
-        ("4. Откройте как Google Таблицу", False, 11),
-        ("   Правой кнопкой → Открыть с помощью → Google Таблицы", False, 10),
-        ("", False, 10),
-        ("5. Откройте доступ по ссылке", False, 11),
-        ("   Поделиться → Все, у кого есть ссылка → Читатель → Копировать ссылку", False, 10),
+        ("Не объединяйте ячейки.", False, 11),
+        ("Не оставляйте пустые значения.", False, 11),
+        ("Не добавляйте лишние строки перед заголовками.", False, 11),
         ("", False, 10),
         ("6. Вставьте ссылку на сайте", False, 11),
         ("   Товары и прайсы → Google Sheets → Вставьте ссылку → Подключить", False, 10),

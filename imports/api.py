@@ -28,7 +28,7 @@ from .serializers import (
     UploadGoogleSheetSerializer,
     UploadImportFileSerializer,
 )
-from .services import ColumnMappingResolver, ImportParser
+from .services import ColumnMappingResolver, ImportParser, StrictImportService
 from .tasks import process_import_job
 
 logger = logging.getLogger("imports")
@@ -277,6 +277,66 @@ class SupplierImportErrorsDownloadAPIView(APIView):
         filename = stored_file.original_name or f"import_errors_{job.id}.csv"
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
+
+
+class SupplierStrictImportAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not _is_seller(request.user):
+            return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
+
+        uploaded_file = request.FILES.get("file")
+        if not uploaded_file:
+            return Response({"error": "Файл не выбран."}, status=status.HTTP_400_BAD_REQUEST)
+
+        ext = (uploaded_file.name or "").rsplit(".", 1)[-1].lower()
+        if ext not in ("xls", "xlsx", "csv"):
+            return Response(
+                {"error": "Неподдерживаемый формат. Загрузите XLS, XLSX или CSV."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        stored = store_import_source_file(uploaded_file)
+        stored_file = StoredFile.objects.create(
+            supplier=request.user,
+            source_type=StoredFile.SourceType.IMPORT_CSV,
+            storage_key=stored.storage_key,
+            original_name=stored.original_name,
+            content_type=stored.content_type,
+            size_bytes=stored.size_bytes,
+            checksum_sha256=stored.checksum_sha256,
+        )
+
+        service = StrictImportService()
+        ok, error_msg, missing = service.validate_structure(stored_file.storage_key, stored_file.original_name)
+        if not ok:
+            return Response(
+                {"error": error_msg, "missing_columns": missing},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = service.process_file(
+            storage_key=stored_file.storage_key,
+            original_name=stored_file.original_name,
+            supplier=request.user,
+            stored_file=stored_file,
+        )
+
+        return Response(
+            {
+                "ok": True,
+                "job_id": result.job_id,
+                "total_rows": result.total_rows,
+                "loaded_rows": result.loaded_rows,
+                "error_rows": result.error_rows,
+                "errors": [
+                    {"row": e.row_number, "column": e.column, "message": e.message}
+                    for e in result.errors[:100]
+                ],
+            },
+            status=status.HTTP_201_CREATED if result.loaded_rows > 0 else status.HTTP_400_BAD_REQUEST,
+        )
 
 
 class SupplierImportRollbackAPIView(APIView):

@@ -93,6 +93,7 @@ urlpatterns = [
     path("seller/", views.seller_dashboard, name="seller_dashboard"),
     path("seller/dashboard/", views.seller_dashboard, name="seller_dashboard_page"),
     path("seller/products/", views.seller_product_list, name="seller_product_list"),
+    path("seller/products/strict-upload/", views.seller_strict_upload, name="seller_strict_upload"),
     path("seller/requests/", views.seller_request_list, name="seller_request_list"),
     path("seller/requests/<int:rfq_id>/", views.seller_request_detail, name="seller_request_detail"),
     path("seller/orders/", views.seller_orders, name="seller_orders"),
