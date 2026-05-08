@@ -1,0 +1,34 @@
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1-fill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FAFAFA"/>
+      <stop offset="100%" stop-color="#EFEFEF"/>
+    </linearGradient>
+    <linearGradient id="g1-tag" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1A1A1A"/>
+      <stop offset="100%" stop-color="#333333"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Factory / OEM source -->
+  <g transform="translate(20, 30)">
+    <rect x="0" y="10" width="50" height="60" rx="3" fill="url(#g1-fill)" stroke="#1A1A1A" stroke-width="1.6"/>
+    <rect x="38" y="0" width="8" height="14" fill="#1A1A1A"/>
+    <rect x="8" y="22" width="10" height="10" fill="#1A1A1A" opacity="0.85"/>
+    <rect x="22" y="22" width="10" height="10" fill="#1A1A1A" opacity="0.35"/>
+    <rect x="8" y="38" width="10" height="10" fill="#1A1A1A" opacity="0.35"/>
+    <rect x="22" y="38" width="10" height="10" fill="#1A1A1A" opacity="0.85"/>
+    <rect x="8" y="54" width="24" height="8" fill="#1A1A1A" opacity="0.6"/>
+  </g>
+
+  <!-- Direct line arrow -->
+  <line x1="78" y1="70" x2="118" y2="70" stroke="#1A1A1A" stroke-width="2" stroke-linecap="round"/>
+  <polygon points="118,65 130,70 118,75" fill="#1A1A1A"/>
+
+  <!-- Price tag -->
+  <g transform="translate(135, 45)">
+    <path d="M 0 0 L 35 0 L 50 25 L 35 50 L 0 50 Z" fill="url(#g1-tag)" stroke="#1A1A1A" stroke-width="1.6" stroke-linejoin="round"/>
+    <circle cx="10" cy="25" r="3.5" fill="#FFFFFF"/>
+    <text x="25" y="31" font-family="-apple-system, Inter, sans-serif" font-size="16" font-weight="700" fill="#FFFFFF" text-anchor="middle">$</text>
+  </g>
+</svg>
