@@ -1,0 +1,37 @@
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="v3-tag" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1A1422"/>
+      <stop offset="100%" stop-color="#2C1E26"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Manufacturer block (subtle, with shadow) -->
+  <rect x="14" y="36" width="48" height="48" rx="8" fill="#fff" stroke="#1A1422" stroke-width="1.8"/>
+  <!-- inner factory icon -->
+  <g transform="translate(22, 50)" fill="none" stroke="#1A1422" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0 22 L0 8 L8 8 L8 4 L16 8 L16 4 L24 8 L32 8 L32 22 Z"/>
+    <line x1="6" y1="14" x2="10" y2="14"/>
+    <line x1="14" y1="14" x2="18" y2="14"/>
+    <line x1="22" y1="14" x2="26" y2="14"/>
+  </g>
+  <!-- "Made" badge -->
+  <circle cx="56" cy="36" r="6" fill="#1A1422"/>
+  <text x="56" y="40" font-family="-apple-system, Inter, sans-serif" font-size="8" font-weight="800" fill="#fff" text-anchor="middle">M</text>
+
+  <!-- Direct connection (clean line, no flow dots) -->
+  <line x1="68" y1="60" x2="128" y2="60" stroke="#1A1422" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- arrow tip -->
+  <polygon points="128,53 142,60 128,67" fill="#1A1422"/>
+
+  <!-- Price tag (cleaner, no fancy gradient inside) -->
+  <g transform="translate(146, 38)">
+    <path d="M 0 0 L 32 0 L 50 22 L 32 44 L 0 44 Z" fill="url(#v3-tag)" stroke-linejoin="round"/>
+    <circle cx="9" cy="22" r="3.5" fill="#fff"/>
+    <text x="26" y="28" font-family="-apple-system, Inter, sans-serif" font-size="16" font-weight="800" fill="#fff" text-anchor="middle">$</text>
+  </g>
+
+  <!-- "Direct" caption underline -->
+  <line x1="76" y1="84" x2="118" y2="84" stroke="#1A1422" stroke-width="1.2" opacity="0.45"/>
+  <text x="97" y="98" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#1A1422" text-anchor="middle" opacity="0.65" letter-spacing="0.8">DIRECT</text>
+</svg>
