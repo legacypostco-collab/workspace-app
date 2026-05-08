@@ -1018,6 +1018,20 @@
     width: 100%; height: auto;
     display: block;
   }
+  /* Glassy backdrop под заголовком и lead — для читабельности на фото */
+  .search-hero .hero-text-block{
+    display: inline-block;
+    padding: 28px 36px 30px;
+    background: rgba(20,16,14,0.32);
+    backdrop-filter: blur(8px) saturate(115%);
+    -webkit-backdrop-filter: blur(8px) saturate(115%);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 18px;
+    margin-bottom: 36px;
+  }
+  .search-hero .hero-text-block .search-lead{
+    margin-bottom: 0;
+  }
   .search-hero .search-title{
     font-size: 36px;
     font-weight: 600;
@@ -1177,6 +1191,7 @@
   @media (max-width: 760px){
     .search-hero{ padding: 40px 20px 70px; }
     .search-hero .hero-logo{ width: 200px; margin-bottom: 28px; }
+    .search-hero .hero-text-block{ padding: 22px 22px; border-radius: 14px; }
     .search-hero .search-title{ font-size: 28px; }
     .search-hero .search-lead{ font-size: 14.5px; }
     .search-box{ padding: 18px 18px 12px; }
@@ -1436,8 +1451,10 @@
 
       <div class="accent-rule"></div>
 
-      <h1 class="search-title">Какую запчасть найти?</h1>
-      <p class="search-lead">Загрузите спецификацию в Excel или опишите словами&nbsp;— соберу предложения от <b>200+ поставщиков</b>.</p>
+      <div class="hero-text-block">
+        <h1 class="search-title">Какую запчасть найти?</h1>
+        <p class="search-lead">Загрузите спецификацию в Excel или опишите словами&nbsp;— соберу предложения от <b>200+ поставщиков</b>.</p>
+      </div>
 
       <a class="search-box" tabindex="0" href="/chat/?new=1" style="text-decoration:none;color:inherit;display:block;">
         <div class="examples-tag">ПРИМЕРЫ:</div>
