@@ -160,18 +160,27 @@ def _build_header_mapping(
     str | None,
 ]:
     normalized_to_original = {_normalize_header(h): h for h in fieldnames if h}
-    part_col = _first_of(normalized_to_original, "partnumber", "partno", "partnum", "part#", "number", "sku", "article", "artikul")
-    desc_col = _first_of(normalized_to_original, "description", "descriptionenglisch", "name", "title", "productname")
-    price_exw_col = _first_of(normalized_to_original, "priceexw", "exw", "unitprice", "price")
-    price_fob_sea_col = _first_of(normalized_to_original, "pricefobsea", "fobsea")
-    price_fob_air_col = _first_of(normalized_to_original, "pricefobair", "fobair")
-    currency_col = _first_of(normalized_to_original, "currency", "curr")
-    stock_col = _first_of(normalized_to_original, "stock", "stockqty", "qty", "quantity")
-    oem_col = _first_of(normalized_to_original, "oem", "oemnumber", "oemno")
-    brand_col = _first_of(normalized_to_original, "brand", "make", "manufacturer")
-    cross_col = _first_of(normalized_to_original, "crossnumber", "crossnum", "cross")
-    condition_col = _first_of(normalized_to_original, "condition")
-    warehouse_col = _first_of(normalized_to_original, "warehouseaddress", "warehouse")
+    part_col = _first_of(normalized_to_original,
+        "partnumber", "partno", "partnum", "part#", "number", "sku", "article", "artikul",
+        "артикул", "номер", "номерзапчасти", "номердетали", "артикулзапчасти", "art", "kodartikula")
+    desc_col = _first_of(normalized_to_original,
+        "description", "descriptionenglisch", "name", "title", "productname",
+        "наименование", "название", "описание", "наименованиетовара")
+    price_exw_col = _first_of(normalized_to_original,
+        "priceexw", "exw", "unitprice", "price", "cost", "цена", "стоимость", "ценаусд", "priceusd", "usd")
+    price_fob_sea_col = _first_of(normalized_to_original, "pricefobsea", "fobsea", "fob_sea")
+    price_fob_air_col = _first_of(normalized_to_original, "pricefobair", "fobair", "fob_air")
+    currency_col = _first_of(normalized_to_original, "currency", "curr", "валюта")
+    stock_col = _first_of(normalized_to_original,
+        "stock", "stockqty", "qty", "quantity", "остаток", "наличие", "колво", "количество")
+    oem_col = _first_of(normalized_to_original, "oem", "oemnumber", "oemno", "оем", "оемномер")
+    brand_col = _first_of(normalized_to_original,
+        "brand", "make", "manufacturer", "бренд", "производитель", "марка")
+    cross_col = _first_of(normalized_to_original,
+        "crossnumber", "crossnum", "cross", "кроссномер", "аналог", "кросс")
+    condition_col = _first_of(normalized_to_original, "condition", "состояние", "тип")
+    warehouse_col = _first_of(normalized_to_original,
+        "warehouseaddress", "warehouse", "склад", "адресслада", "адрес", "адресхранения")
     sea_port_col = _first_of(normalized_to_original, "seaport")
     air_port_col = _first_of(normalized_to_original, "airport")
     weight_col = _first_of(normalized_to_original, "weight")
@@ -308,10 +317,13 @@ def process_seller_csv_upload(
         lead_time_col,
     ) = _build_header_mapping(fieldnames)
 
-    if not (part_col and warehouse_col and (price_fob_sea_col or price_fob_air_col)):
+    has_any_price = bool(price_fob_sea_col or price_fob_air_col or price_exw_col)
+    if not (part_col and has_any_price):
+        found_cols = ", ".join(c for c in fieldnames if c) or "(пусто)"
         raise ValueError(
-            "Не найдены обязательные колонки. Нужны PartNumber/Part Number, WarehouseAddress и хотя бы одна цена "
-            "(Price_FOB_SEA или Price_FOB_AIR)."
+            "Не нашли обязательные колонки. Нужны: артикул (PartNumber / Артикул / SKU / OEM) "
+            "и цена (Price / Цена / Price_EXW / Price_FOB_SEA / Price_FOB_AIR / USD). "
+            f"В файле есть: {found_cols}"
         )
 
     category_slug = slugify(category_name)[:140] or "import-category"
@@ -403,20 +415,8 @@ def process_seller_csv_upload(
                 )
             continue
 
-        if not warehouse_address:
-            skipped_no_price += 1
-            if len(errors) < 100:
-                errors.append(
-                    {
-                        "row": row_num,
-                        "error_type": "missing_required_field",
-                        "code": "missing_warehouse_address",
-                        "reason": "Не заполнено обязательное поле WarehouseAddress.",
-                        "hint": "Укажите адрес склада в колонке WarehouseAddress.",
-                        "original_data": row,
-                    }
-                )
-            continue
+        # WarehouseAddress теперь опционально — если не указан, оставляем пустым
+        # (раньше падало с missing_warehouse_address и отбрасывало всю строку)
 
         if raw_condition and not normalized_condition:
             skipped_invalid += 1
@@ -436,16 +436,17 @@ def process_seller_csv_upload(
         price_exw = _parse_price(price_exw_raw) if price_exw_raw else None
         price_fob_sea = _parse_price(price_fob_sea_raw) if price_fob_sea_raw else None
         price_fob_air = _parse_price(price_fob_air_raw) if price_fob_air_raw else None
-        if price_fob_sea is None and price_fob_air is None:
+        # Принимаем любую из трёх цен (раньше требовалось обязательно FOB_SEA или FOB_AIR)
+        if price_fob_sea is None and price_fob_air is None and price_exw is None:
             skipped_no_price += 1
             if len(errors) < 100:
                 errors.append(
                     {
                         "row": row_num,
                         "error_type": "missing_required_field",
-                        "code": "missing_fob_price",
-                        "reason": "Не заполнена ни одна обязательная цена: Price_FOB_SEA или Price_FOB_AIR.",
-                        "hint": "Укажите цену FOB SEA или FOB AIR больше 0.",
+                        "code": "missing_price",
+                        "reason": "Не заполнена цена. Нужна хотя бы одна: Price / Price_EXW / Price_FOB_SEA / Price_FOB_AIR.",
+                        "hint": "Укажите цену больше 0 в любой из колонок.",
                         "original_data": row,
                     }
                 )
