@@ -1131,6 +1131,54 @@ class PricelistMapping(models.Model):
         return f"PricelistMapping[{self.seller_id}] {len(self.mapping)} cols"
 
 
+class SupplierImportProfile(models.Model):
+    """Профиль импорта поставщика — кеш маппингов + правил трансформации.
+
+    При повторной загрузке от того же поставщика (определяется по
+    fingerprint заголовков) AI не вызывается, маппинг берётся из профиля.
+    """
+    seller = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="import_profiles",
+    )
+    name = models.CharField(max_length=200, blank=True,
+        help_text="Имя профиля (авто или ручное)")
+    headers_fingerprint = models.CharField(max_length=64, db_index=True,
+        help_text="SHA256 от отсортированных нормализованных заголовков")
+    source_headers = models.JSONField(default=list,
+        help_text="Оригинальные заголовки из файла")
+    column_mapping = models.JSONField(default=dict,
+        help_text="{std_field: source_header_or_fix}")
+    transform_rules = models.JSONField(default=dict, blank=True,
+        help_text='{std_field: {"formula": "price * 1.15", "type": "formula"}}')
+    constants = models.JSONField(default=dict, blank=True,
+        help_text='{std_field: "fixed_value"} — поля с постоянными значениями')
+    header_row = models.PositiveIntegerField(default=1,
+        help_text="Номер строки с заголовками (1-based)")
+    data_start_row = models.PositiveIntegerField(default=2,
+        help_text="Номер строки, с которой начинаются данные (1-based)")
+    use_count = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["seller", "headers_fingerprint"]),
+            models.Index(fields=["seller", "-updated_at"]),
+        ]
+        unique_together = [("seller", "headers_fingerprint")]
+
+    def __str__(self):
+        return f"ImportProfile[{self.id}] {self.seller_id} ({self.name or 'auto'})"
+
+    @staticmethod
+    def compute_fingerprint(headers: list[str]) -> str:
+        import hashlib
+        from assistant.price_mappings import normalize
+        normalized = sorted(normalize(h) for h in headers if str(h).strip())
+        return hashlib.sha256("|".join(normalized).encode()).hexdigest()
+
+
 class PricelistImport(models.Model):
     """Журнал каждой загрузки прайса."""
     STATUS_CHOICES = [

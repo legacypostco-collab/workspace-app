@@ -2104,9 +2104,12 @@
     }
   }
 
-  // Pricelist upload — двухэтапный flow:
-  // 1) POST файл → AI-маппинг колонок → показываем таблицу маппинга
-  // 2) Оператор жмёт "Подтвердить" → commit → детерминированный импорт
+  // Smart Price Import — трёхэтапный flow:
+  // 1) POST файл → AI-маппинг (tool use) → показываем маппинг + вопросы
+  // 2) Оператор отвечает на вопросы / подтверждает → commit
+  // 3) Backend применяет формулы + импортирует → результат
+  var __pendingImport = null; // {import_id, mapping, questions, transform_rules, constants}
+
   async function uploadPricelist(file) {
     showConv();
     addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
@@ -2123,36 +2126,51 @@
       if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
       if (pending && pending.parentNode) pending.remove();
 
-      const headers = (data.headers || []).filter(h => String(h || '').trim());
+      const headers = (data.headers || []).filter(function(h) { return String(h || '').trim(); });
       const sug = data.suggested_mapping || {};
       const stdFields = data.std_fields || [];
+      const questions = data.questions || [];
+      const transformRules = data.transform_rules || {};
+      const constants = data.constants || {};
 
-      // Строим таблицу маппинга (без дропдаунов — только отображение)
-      const mapHeaders = ['Поле платформы', 'Источник из файла', ''];
-      const mapRows = [];
-      const unmapped = [];
-      stdFields.forEach(f => {
-        const src = sug[f.key] || '';
-        let srcLabel = '';
-        let status = '';
+      // Сохраняем для commit
+      __pendingImport = {
+        import_id: data.import_id,
+        mapping: Object.assign({}, sug),
+        transform_rules: transformRules,
+        constants: constants,
+      };
+
+      // Таблица маппинга
+      var mapRows = [];
+      var unmapped = [];
+      stdFields.forEach(function(f) {
+        var src = sug[f.key] || '';
+        var srcLabel = '';
+        var st = '';
         if (src && src.startsWith('fix:')) {
           srcLabel = 'Фикс: ' + src.slice(4);
-          status = '✓';
+          st = '✓';
         } else if (src && headers.includes(src)) {
           srcLabel = '← ' + src;
-          status = '✓';
+          st = '✓';
         } else if (f.required) {
           srcLabel = '—';
-          status = '⚠️';
+          st = '⚠️';
           unmapped.push(f.label);
         } else {
           srcLabel = '—';
-          status = '·';
+          st = '·';
         }
-        mapRows.push([f.label, srcLabel, status]);
+        // Показываем формулу если есть
+        var rule = transformRules[f.key];
+        if (rule && rule.formula) {
+          srcLabel += '  ⚙ ' + rule.formula;
+        }
+        mapRows.push([f.label, srcLabel, st]);
       });
 
-      const cards = [];
+      var cards = [];
       // 1. Превью «как ляжет в базу»
       if (data.mapped_preview && (data.mapped_preview.rows || []).length) {
         cards.push({type:'table_preview', data:{
@@ -2164,31 +2182,54 @@
       // 2. Таблица маппинга
       cards.push({type:'table_preview', data:{
         title: '🔗 Маппинг колонок',
-        headers: mapHeaders,
+        headers: ['Поле платформы', 'Источник из файла', ''],
         rows: mapRows,
       }});
 
-      let intro;
-      const mapped = stdFields.filter(f => sug[f.key]).length;
-      if (data.from_saved_mapping) {
-        intro = `📋 Файл прочитан · ${headers.length} колонок.\n🧠 Применён сохранённый маппинг (${mapped}/${stdFields.length} полей).`;
+      var intro;
+      var mapped = stdFields.filter(function(f) { return sug[f.key]; }).length;
+      if (data.from_profile) {
+        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🧠 Применён профиль: ' + (data.profile_name || 'auto') + ' (' + mapped + '/' + stdFields.length + ' полей).';
       } else if (data.ai_called) {
-        intro = `📋 Файл прочитан · ${headers.length} колонок.\n🤖 AI распознал ${mapped}/${stdFields.length} полей.`;
+        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🤖 AI распознал ' + mapped + '/' + stdFields.length + ' полей.';
+      } else if (data.from_saved_mapping) {
+        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🧠 Применён сохранённый маппинг (' + mapped + '/' + stdFields.length + ' полей).';
       } else {
-        intro = `📋 Файл прочитан · ${headers.length} колонок.\n📚 Распознано по словарю: ${mapped}/${stdFields.length} полей.`;
+        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n📚 Распознано по словарю: ' + mapped + '/' + stdFields.length + ' полей.';
       }
       if (unmapped.length) {
-        intro += `\n⚠️ Не найдено: ${unmapped.join(', ')}`;
+        intro += '\n⚠️ Не найдено: ' + unmapped.join(', ');
       }
 
-      const actions = [
+      // Если есть вопросы — показываем форму вопросов перед подтверждением
+      if (questions.length > 0) {
+        intro += '\n\n❓ Нужно уточнить ' + questions.length + ' поля:';
+        // Строим карточку с вопросами
+        var qRows = questions.map(function(q) {
+          var opts = q.options || [];
+          var defVal = q['default'] || (opts.length ? opts[0] : '');
+          return {label: q.question, field: q.field, type: q.type || 'text', options: opts, 'default': defVal};
+        });
+        cards.push({type:'draft', data:{
+          title: '❓ Укажите значения',
+          rows: qRows.map(function(q) {
+            return {label: q.label, value: q['default'] || ''};
+          }),
+        }});
+      }
+
+      var actions = [
         {action: '__pricelist_commit', label: '📥 Подтвердить и загрузить',
-         params: {import_id: data.import_id, ...Object.fromEntries(
-           Object.entries(sug).map(([k,v]) => ['col__'+k, v])
-         )}},
+         params: {import_id: data.import_id, _has_questions: questions.length > 0 ? '1' : '0'}},
         {action: '__pricelist_cancel', label: 'Отменить',
          params: {import_id: data.import_id}},
       ];
+
+      // Для вопросов добавляем select-элементы inline в params
+      questions.forEach(function(q) {
+        var defVal = q['default'] || (q.options && q.options.length ? q.options[0] : '');
+        actions[0].params['q__' + q.field] = defVal;
+      });
 
       addMessage('assistant', intro, cards, actions);
     } catch (err) {
@@ -2197,58 +2238,78 @@
     }
   }
 
-  // Commit маппинга
-  window.__pricelist_commit_handler = async (params) => {
-    const importId = params.import_id;
-    const mapping = {};
-    Object.keys(params).forEach(k => {
+  // Commit маппинга с формулами и ответами на вопросы
+  window.__pricelist_commit_handler = async function(params) {
+    var imp = __pendingImport || {};
+    var importId = params.import_id || imp.import_id;
+    var mapping = Object.assign({}, imp.mapping || {});
+    var transformRules = imp.transform_rules || {};
+    var constants = Object.assign({}, imp.constants || {});
+
+    // Собираем mapping из params (legacy col__ формат)
+    Object.keys(params).forEach(function(k) {
       if (k.startsWith('col__') && params[k] && params[k] !== '__sep__') {
         mapping[k.slice(5)] = params[k];
       }
     });
+
+    // Собираем ответы на вопросы → constants
+    Object.keys(params).forEach(function(k) {
+      if (k.startsWith('q__') && params[k]) {
+        constants[k.slice(3)] = params[k];
+      }
+    });
+
     showConv();
-    const pending = addMessage('assistant', 'Импортирую прайс…');
+    var pending = addMessage('assistant', 'Импортирую прайс…');
     try {
-      const res = await fetch('/api/assistant/upload-pricelist/' + importId + '/commit/', {
+      var res = await fetch('/api/assistant/upload-pricelist/' + importId + '/commit/', {
         method: 'POST',
         headers: {'Content-Type':'application/json', 'X-CSRFToken': csrf()},
-        body: JSON.stringify({mapping}), credentials: 'same-origin',
+        body: JSON.stringify({
+          mapping: mapping,
+          transform_rules: transformRules,
+          constants: constants,
+        }),
+        credentials: 'same-origin',
       });
-      const data = await res.json();
+      var data = await res.json();
       if (pending && pending.parentNode) pending.remove();
       if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
 
-      const created = data.created || 0;
-      const updated = data.updated || 0;
-      const failed  = data.failed  || 0;
-      const parts = [];
-      if (created) parts.push(`✅ Загружено ${created}`);
-      if (updated) parts.push(`обновлено ${updated}`);
-      if (failed)  parts.push(`ошибок ${failed}`);
-      const msg = parts.join(', ') + ' позиций.';
+      var created = data.created || 0;
+      var updated = data.updated || 0;
+      var failed  = data.failed  || 0;
+      var parts = [];
+      if (created) parts.push('✅ Загружено ' + created);
+      if (updated) parts.push('обновлено ' + updated);
+      if (failed)  parts.push('ошибок ' + failed);
+      var msg = parts.join(', ') + ' позиций.';
 
-      const btns = [];
+      var btns = [];
       if (failed > 0) {
         btns.push({action: 'pricelist_show_errors', label: '❌ Посмотреть ошибки',
                    params: {import_id: importId}});
       }
       btns.push({action: 'seller_catalog', label: '📦 Открыть каталог', params: {}});
       addMessage('assistant', msg, [], btns);
+      __pendingImport = null;
     } catch (err) {
       if (pending && pending.parentNode) pending.remove();
       addMessage('assistant', '⚠️ Не удалось импортировать: ' + (err.message || err));
     }
   };
 
-  window.__pricelist_cancel_handler = async (params) => {
+  window.__pricelist_cancel_handler = async function(params) {
     try {
       await fetch('/api/assistant/upload-pricelist/' + params.import_id + '/cancel/', {
         method: 'POST',
         headers: {'X-CSRFToken': csrf()},
         credentials: 'same-origin',
       });
-    } catch(_){}
+    } catch(e){}
     addMessage('assistant', 'Импорт отменён.');
+    __pendingImport = null;
   };
 
   // Перехватываем спец-actions в quickAction'е до отправки на /api/assistant/action/

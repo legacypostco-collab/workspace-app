@@ -99,6 +99,128 @@ STD_FIELDS = [
 REQUIRED_FIELDS = [k for k, _, req, _ in STD_FIELDS if req]
 
 
+# ── Formula whitelist engine ────────────────────────────────────
+
+import ast
+import operator as _op
+
+_SAFE_OPS = {
+    ast.Add: _op.add,
+    ast.Sub: _op.sub,
+    ast.Mult: _op.mul,
+    ast.Div: _op.truediv,
+    ast.FloorDiv: _op.floordiv,
+    ast.Mod: _op.mod,
+    ast.USub: _op.neg,
+}
+
+def _safe_round(*args):
+    if len(args) == 1:
+        return Decimal(str(round(float(args[0]))))
+    return Decimal(str(round(float(args[0]), int(args[1]))))
+
+_SAFE_FUNCS = {
+    "round": _safe_round,
+    "min": lambda *a: min(*a),
+    "max": lambda *a: max(*a),
+    "abs": lambda x: abs(x),
+    "int": lambda x: Decimal(int(x)),
+    "float": lambda x: Decimal(str(float(x))),
+}
+
+
+def _eval_node(node, variables: dict[str, Any]) -> Any:
+    """Рекурсивный evaluator AST-узлов — только арифметика + whitelist функций."""
+    if isinstance(node, ast.Expression):
+        return _eval_node(node.body, variables)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, (int, float, Decimal)):
+            return Decimal(str(node.value))
+        return node.value
+    if isinstance(node, ast.Name):
+        if node.id in variables:
+            return variables[node.id]
+        raise ValueError(f"Unknown variable: {node.id}")
+    if isinstance(node, ast.BinOp):
+        left = _eval_node(node.left, variables)
+        right = _eval_node(node.right, variables)
+        op_fn = _SAFE_OPS.get(type(node.op))
+        if not op_fn:
+            raise ValueError(f"Unsupported operator: {type(node.op).__name__}")
+        return op_fn(Decimal(str(left)), Decimal(str(right)))
+    if isinstance(node, ast.UnaryOp):
+        operand = _eval_node(node.operand, variables)
+        op_fn = _SAFE_OPS.get(type(node.op))
+        if not op_fn:
+            raise ValueError(f"Unsupported unary: {type(node.op).__name__}")
+        return op_fn(Decimal(str(operand)))
+    if isinstance(node, ast.Call):
+        if not isinstance(node.func, ast.Name):
+            raise ValueError("Only simple function calls allowed")
+        fn = _SAFE_FUNCS.get(node.func.id)
+        if not fn:
+            raise ValueError(f"Function not allowed: {node.func.id}")
+        args = [_eval_node(a, variables) for a in node.args]
+        return fn(*args)
+    if isinstance(node, ast.IfExp):
+        test = _eval_node(node.test, variables)
+        return _eval_node(node.body if test else node.orelse, variables)
+    if isinstance(node, ast.Compare):
+        left = _eval_node(node.left, variables)
+        for cmp_op, comparator in zip(node.ops, node.comparators):
+            right = _eval_node(comparator, variables)
+            if isinstance(cmp_op, ast.Gt):
+                if not (left > right):
+                    return False
+            elif isinstance(cmp_op, ast.Lt):
+                if not (left < right):
+                    return False
+            elif isinstance(cmp_op, ast.GtE):
+                if not (left >= right):
+                    return False
+            elif isinstance(cmp_op, ast.LtE):
+                if not (left <= right):
+                    return False
+            elif isinstance(cmp_op, ast.Eq):
+                if not (left == right):
+                    return False
+            else:
+                raise ValueError(f"Unsupported comparison: {type(cmp_op).__name__}")
+            left = right
+        return True
+    raise ValueError(f"Unsupported AST node: {type(node).__name__}")
+
+
+def eval_formula(expression: str, variables: dict[str, Any]) -> Any:
+    """Безопасное вычисление формулы. Только арифметика + whitelist функций.
+
+    Примеры:
+      eval_formula("price * 1.15", {"price": Decimal("100")})  → 115.00
+      eval_formula("round(weight * 2.2, 1)", {"weight": Decimal("5")})  → 11.0
+      eval_formula("price if price > 0 else 1", {"price": Decimal("0")})  → 1
+    """
+    try:
+        tree = ast.parse(expression.strip(), mode="eval")
+    except SyntaxError as e:
+        raise ValueError(f"Invalid formula syntax: {e}")
+    return _eval_node(tree, variables)
+
+
+def validate_formula(expression: str, available_vars: list[str]) -> tuple[bool, str]:
+    """Проверяет формулу на синтаксис и использование доступных переменных."""
+    try:
+        tree = ast.parse(expression.strip(), mode="eval")
+    except SyntaxError as e:
+        return False, f"Syntax error: {e}"
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id not in available_vars and node.id not in _SAFE_FUNCS:
+            return False, f"Unknown variable: {node.id}"
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id not in _SAFE_FUNCS:
+                return False, f"Function not allowed: {node.func.id}"
+    return True, ""
+
+
 # ── File reading ─────────────────────────────────────────────────
 
 MAX_FILE_BYTES = 50 * 1024 * 1024  # 50 МБ (ТЗ)
@@ -286,9 +408,11 @@ def _smart_mapping(headers: list[str], sample_rows: list[list[str]],
 
 def _ai_resolve_unknowns(unknown_headers: list[str], sample_rows: list[list[str]],
                           allowed_canonicals: list[str]) -> dict[str, str] | None:
-    """Шлёт AI ОДИН запрос только с нераспознанными заголовками.
+    """Claude tool use для структурированного маппинга колонок.
 
-    Возвращает {original_header: canonical_key} или {}.
+    Вместо парсинга свободного текста JSON — Claude возвращает
+    структурированный ответ через tool_use (propose_mapping).
+    Fallback на текстовый JSON если tool use не сработал.
     """
     api_key = getattr(settings, "ANTHROPIC_API_KEY", "")
     if not api_key or not unknown_headers:
@@ -302,33 +426,101 @@ def _ai_resolve_unknowns(unknown_headers: list[str], sample_rows: list[list[str]
     sample_text = "\n".join(
         " | ".join(str(c)[:30] for c in row) for row in (sample_rows or [])[:3]
     )
+
+    propose_mapping_tool = {
+        "name": "propose_mapping",
+        "description": (
+            "Предложить маппинг колонок прайс-листа поставщика "
+            "на канонические поля платформы."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "mappings": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "source_header": {
+                                "type": "string",
+                                "description": "Оригинальный заголовок колонки из файла",
+                            },
+                            "canonical_key": {
+                                "type": "string",
+                                "enum": allowed_canonicals,
+                                "description": "Каноническое поле платформы",
+                            },
+                            "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1,
+                                "description": "Уверенность в маппинге (0-1)",
+                            },
+                        },
+                        "required": ["source_header", "canonical_key", "confidence"],
+                    },
+                },
+                "unmapped": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Заголовки, которые не подходят ни под один ключ",
+                },
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "field": {"type": "string"},
+                            "question": {"type": "string"},
+                            "options": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                            },
+                            "default": {"type": "string"},
+                        },
+                        "required": ["field", "question"],
+                    },
+                    "description": "Вопросы оператору для уточнения",
+                },
+            },
+            "required": ["mappings"],
+        },
+    }
+
     prompt = (
-        "Определи назначение колонок прайс-листа поставщика. Допустимые ключи:\n"
-        + ", ".join(allowed_canonicals) + "\n\n"
-        "Не угадывай — если колонка не подходит ни под один ключ, не включай её "
-        "в ответ. Верни ТОЛЬКО JSON формата {\"original_header\": \"canonical_key\"}, "
-        "без объяснений.\n\n"
+        "Определи назначение колонок прайс-листа поставщика запчастей "
+        "для спецтехники (Caterpillar, Komatsu, etc.). "
+        "Используй tool propose_mapping для ответа.\n\n"
+        "Правила:\n"
+        "- Маппь только те колонки, в которых уверен (confidence ≥ 0.7)\n"
+        "- Колонки, которые не подходят ни под один ключ — в unmapped\n"
+        "- Если колонка неоднозначна — задай вопрос в questions\n\n"
         f"Нераспознанные заголовки: {', '.join(repr(h) for h in unknown_headers)}\n\n"
-        f"Примеры строк (для контекста):\n{sample_text}\n\nJSON:"
+        f"Примеры строк:\n{sample_text}"
     )
+
     try:
         msg = client.messages.create(
             model=getattr(settings, "ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
-            max_tokens=400,
+            max_tokens=600,
             messages=[{"role": "user", "content": prompt}],
+            tools=[propose_mapping_tool],
+            tool_choice={"type": "tool", "name": "propose_mapping"},
         )
-        text = msg.content[0].text.strip()
-        if "```" in text:
-            text = text.split("```", 2)[1]
-            if text.startswith("json"):
-                text = text[4:]
-            text = text.split("```", 1)[0]
-        result = json.loads(text.strip())
-        # Фильтр: только реальные unknown headers + только allowed canonicals
-        return {h: c for h, c in result.items()
-                 if h in unknown_headers and c in allowed_canonicals}
+        for block in msg.content:
+            if block.type == "tool_use" and block.name == "propose_mapping":
+                result = {}
+                for m in block.input.get("mappings", []):
+                    h = m.get("source_header", "")
+                    c = m.get("canonical_key", "")
+                    conf = m.get("confidence", 0)
+                    if (h in unknown_headers and c in allowed_canonicals
+                            and conf >= 0.7):
+                        result[h] = c
+                return result
+        return {}
     except Exception:
-        logger.exception("AI resolve unknowns failed")
+        logger.exception("AI tool-use mapping failed")
         return {}
 
 
@@ -507,18 +699,46 @@ def _normalize_incoterm(raw: str) -> str:
     return "FOB"
 
 
-def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
+def _apply_transform(field: str, raw_value: str, transform_rules: dict,
+                      row_vars: dict[str, Any]) -> str:
+    """Применяет правило трансформации к значению поля если есть."""
+    rule = transform_rules.get(field)
+    if not rule:
+        return raw_value
+    rule_type = rule.get("type", "")
+    if rule_type == "formula":
+        formula = rule.get("formula", "")
+        if not formula:
+            return raw_value
+        try:
+            result = eval_formula(formula, row_vars)
+            return str(result)
+        except Exception:
+            return raw_value
+    if rule_type == "map":
+        value_map = rule.get("map", {})
+        return value_map.get(raw_value.strip(), raw_value)
+    if rule_type == "concat":
+        parts = rule.get("parts", [])
+        return " ".join(str(row_vars.get(p, p)) for p in parts).strip()
+    return raw_value
+
+
+def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
+                 transform_rules: dict | None = None,
+                 constants: dict | None = None):
     """Полный детерминированный импорт по подтверждённому маппингу.
 
-    Возвращает (imported, failed, error_details).
+    transform_rules: {std_field: {type: formula|map|concat, ...}}
+    constants: {std_field: fixed_value} — дополнительные константы
     """
     from marketplace.models import Brand, Category, Part
 
     seller = import_obj.seller
     headers = import_obj.headers
-    # mapping: {std_field: source}. Source может быть:
-    #   header-name      — берём из колонки
-    #   "fix:VALUE"      — фикс. значение (применяется ко всем строкам)
+    transform_rules = transform_rules or {}
+    constants = constants or {}
+
     col_idx: dict[str, int] = {}
     fixed_vals: dict[str, str] = {}
     for fld, val in mapping.items():
@@ -528,14 +748,16 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
             fixed_vals[fld] = val[4:]
         elif val in headers:
             col_idx[fld] = headers.index(val)
+    for fld, val in constants.items():
+        if fld not in col_idx and fld not in fixed_vals:
+            fixed_vals[fld] = str(val)
 
-    # Проверка обязательных полей: либо колонка, либо фикс
     missing_required = [
         f for f in REQUIRED_FIELDS
         if f not in col_idx and f not in fixed_vals
     ]
     if missing_required:
-        return 0, 0, [{"row": 0, "reason": f"missing required mapping: {missing_required}"}]
+        return 0, 0, 0, 0, [{"row": 0, "reason": f"missing required mapping: {missing_required}"}]
 
     cat = Category.objects.filter(slug="parts").first() or Category.objects.first()
     if not cat:
@@ -552,17 +774,26 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
     with transaction.atomic():
         for row_n, row in enumerate(_read_all(import_obj.filename, blob), start=2):
             if not any(c.strip() for c in row):
-                continue  # пустая строка
+                continue
 
-            def get(field):
-                # Сначала фикс-значение (применяется ко всем строкам),
-                # затем колонка из файла.
+            def get_raw(field):
                 if field in fixed_vals:
                     return fixed_vals[field]
                 idx = col_idx.get(field)
                 if idx is None or idx >= len(row):
                     return ""
                 return str(row[idx]).strip()
+
+            row_vars: dict[str, Any] = {}
+            for fld in col_idx:
+                idx = col_idx[fld]
+                raw = str(row[idx]).strip() if idx < len(row) else ""
+                dec = _coerce_decimal(raw)
+                row_vars[fld] = dec if dec is not None else raw
+
+            def get(field):
+                raw = get_raw(field)
+                return _apply_transform(field, raw, transform_rules, row_vars)
 
             oem = get("oem_number")
             title = get("title")
@@ -578,7 +809,6 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
                     errors.append({"row": row_n, "oem": oem[:60], "reason": reason})
                 continue
 
-            # Brand: ищем по имени, или используем generic
             brand_name = get("brand")
             if brand_name:
                 brand = Brand.objects.filter(name__iexact=brand_name).first()
@@ -596,7 +826,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes):
             condition = ("oem" if "oem" in cond_raw else
                           "reman" if "reman" in cond_raw else
                           "aftermarket" if "after" in cond_raw else
-                          "oem")  # ORIGINAL → oem
+                          "oem")
             cross_number = (get("cross_number") or "")[:500]
             price_fob_sea = _coerce_decimal(get("price_fob_sea")) or Decimal("0")
             price_fob_air = _coerce_decimal(get("price_fob_air")) or Decimal("0")
@@ -660,12 +890,13 @@ class PricelistUploadView(APIView):
     parser_classes = [MultiPartParser]
 
     def post(self, request):
-        from marketplace.models import PricelistImport, PricelistMapping
+        from marketplace.models import (
+            PricelistImport, PricelistMapping, SupplierImportProfile,
+        )
 
         f = request.FILES.get("file")
         if not f:
             return Response({"error": "Файл не передан."}, status=400)
-        # ТЗ: валидация ДО любой обработки — AI не вызываем впустую
         if f.size > MAX_FILE_BYTES:
             mb = MAX_FILE_BYTES // 1024 // 1024
             return Response(
@@ -677,41 +908,48 @@ class PricelistUploadView(APIView):
             headers, sample = _read_preview(f.name, blob)
         except Exception as e:
             return Response({"error": f"Не удалось прочитать файл: {e}"}, status=400)
-        # ТЗ: первая строка не пустая
         if not headers or not any(str(h).strip() for h in headers):
             return Response({"error": "Первая строка пустая — нет заголовков."}, status=400)
-        # ТЗ: ≥2 колонки
         non_empty = [h for h in headers if str(h).strip()]
         if len(non_empty) < MIN_COLUMNS:
             return Response({"error": (
                 f"В файле слишком мало колонок ({len(non_empty)}). "
                 f"Минимум {MIN_COLUMNS}."
             )}, status=400)
-        # ТЗ: ≤100 колонок
         if len(headers) > MAX_COLUMNS:
             return Response({"error": (
                 f"В файле слишком много колонок ({len(headers)}). "
                 f"Максимум {MAX_COLUMNS}."
             )}, status=400)
 
-        # ТЗ: умный маппинг.
-        # 1. Если у seller'а есть сохранённый PricelistMapping — берём
-        #    его целиком и AI вообще не трогаем (повторная загрузка).
-        # 2. Иначе словарь COLUMN_MAP + LearnedColumnSynonym (БД).
-        #    Для нераспознанных — один AI-запрос, ответы пишутся в
-        #    LearnedColumnSynonym → словарь растёт сам.
+        # 1. Ищем сохранённый профиль по fingerprint заголовков
+        fingerprint = SupplierImportProfile.compute_fingerprint(headers)
+        profile = SupplierImportProfile.objects.filter(
+            seller=request.user, headers_fingerprint=fingerprint, is_active=True,
+        ).first()
+
         ai_called = False
         unknown: list = []
         smart_status = "ok"
-        prev = PricelistMapping.objects.filter(seller=request.user).first()
-        if prev and prev.mapping:
-            suggested = {k: v for k, v in prev.mapping.items()
+        transform_rules: dict = {}
+        constants: dict = {}
+        from_profile = False
+
+        if profile:
+            suggested = {k: v for k, v in profile.column_mapping.items()
                           if v and (v.startswith("fix:") or v in headers)}
+            transform_rules = profile.transform_rules or {}
+            constants = profile.constants or {}
+            from_profile = True
         else:
-            suggested, unknown, ai_called, smart_status = _smart_mapping(
-                headers, sample, seller=request.user,
-            )
-        # ТЗ: если AI-лимит исчерпан — error для seller'а
+            prev = PricelistMapping.objects.filter(seller=request.user).first()
+            if prev and prev.mapping:
+                suggested = {k: v for k, v in prev.mapping.items()
+                              if v and (v.startswith("fix:") or v in headers)}
+            else:
+                suggested, unknown, ai_called, smart_status = _smart_mapping(
+                    headers, sample, seller=request.user,
+                )
         if smart_status == "quota_exceeded":
             return Response({
                 "error": (
@@ -720,9 +958,21 @@ class PricelistUploadView(APIView):
                 ),
             }, status=429)
 
-        # Превью «как ляжет в базу»: первые 5 строк уже отрендеренных по
-        # маппингу — seller видит что именно сохранится.
         mapped_preview = _build_mapped_preview(headers, sample, suggested)
+
+        # Определяем незамапленные обязательные поля → вопросы оператору
+        questions = []
+        for key, label, req, enum_v in STD_FIELDS:
+            if req and key not in suggested and key not in constants:
+                q: dict[str, Any] = {
+                    "field": key,
+                    "question": f"Укажите значение для «{label}»",
+                    "type": "select" if enum_v else "text",
+                }
+                if enum_v:
+                    q["options"] = enum_v
+                    q["default"] = enum_v[0]
+                questions.append(q)
 
         imp = PricelistImport.objects.create(
             seller=request.user,
@@ -733,7 +983,6 @@ class PricelistUploadView(APIView):
             ai_called=ai_called,
             status="preview",
         )
-        # Сохраняем файл
         imp.file_obj.save(f.name, ContentFile(blob), save=True)
 
         return Response({
@@ -741,11 +990,16 @@ class PricelistUploadView(APIView):
             "filename": f.name,
             "headers": headers,
             "sample_rows": sample,
-            "mapped_preview": mapped_preview,  # ТЗ: 5 строк «как ляжет»
+            "mapped_preview": mapped_preview,
             "suggested_mapping": suggested,
-            "ai_called": ai_called,            # для аналитики
-            "unknown_headers": unknown,        # колонки без маппинга
-            "from_saved_mapping": bool(prev and prev.mapping),
+            "ai_called": ai_called,
+            "unknown_headers": unknown,
+            "from_saved_mapping": bool(not ai_called and not from_profile),
+            "from_profile": from_profile,
+            "profile_name": profile.name if profile else None,
+            "transform_rules": transform_rules,
+            "constants": constants,
+            "questions": questions,
             "std_fields": [
                 {"key": k, "label": label, "required": req,
                  "enum_values": enum_v or []}
@@ -762,7 +1016,9 @@ class PricelistCommitView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, import_id):
-        from marketplace.models import PricelistImport, PricelistMapping
+        from marketplace.models import (
+            PricelistImport, PricelistMapping, SupplierImportProfile,
+        )
         try:
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)
         except PricelistImport.DoesNotExist:
@@ -771,35 +1027,56 @@ class PricelistCommitView(APIView):
             return Response({"error": f"already in status {imp.status}"}, status=400)
 
         mapping = request.data.get("mapping") or {}
+        transform_rules = request.data.get("transform_rules") or {}
+        constants = request.data.get("constants") or {}
+        save_profile = request.data.get("save_profile", True)
+
         if not isinstance(mapping, dict):
             return Response({"error": "mapping must be object"}, status=400)
-        # Валидация обязательных
-        for f in REQUIRED_FIELDS:
-            if not mapping.get(f):
+
+        # Применяем ответы на вопросы: constants заполняют fix-значения
+        for fld, val in constants.items():
+            if fld not in mapping:
+                mapping[fld] = f"fix:{val}"
+
+        for f_key in REQUIRED_FIELDS:
+            if not mapping.get(f_key):
                 return Response(
-                    {"error": f"required field '{f}' not mapped"}, status=400,
+                    {"error": f"required field '{f_key}' not mapped"}, status=400,
                 )
-        # Маппинг ссылается либо на реальный header, либо на «fix:VALUE»
         for fld, val in mapping.items():
             if not val:
                 continue
             if isinstance(val, str) and val.startswith("fix:"):
-                continue  # фикс. значение
+                continue
             if val not in imp.headers:
                 return Response(
                     {"error": f"unknown column '{val}' for {fld}"}, status=400,
                 )
 
-        # Читаем файл
+        # Валидация формул
+        available_vars = list(mapping.keys())
+        for fld, rule in transform_rules.items():
+            if rule.get("type") == "formula" and rule.get("formula"):
+                ok, reason = validate_formula(rule["formula"], available_vars)
+                if not ok:
+                    return Response(
+                        {"error": f"Invalid formula for {fld}: {reason}"},
+                        status=400,
+                    )
+
         try:
             with imp.file_obj.open("rb") as fh:
                 blob = fh.read()
         except Exception as e:
             return Response({"error": f"file unavailable: {e}"}, status=500)
 
-        imported, created, updated, failed, errors = _import_file(imp, mapping, blob)
+        imported, created, updated, failed, errors = _import_file(
+            imp, mapping, blob,
+            transform_rules=transform_rules,
+            constants=constants,
+        )
 
-        # Сохраняем итог
         imp.final_mapping = mapping
         imp.imported_rows = imported
         imp.created_rows = created
@@ -813,11 +1090,25 @@ class PricelistCommitView(APIView):
             "failed_rows", "error_details", "status", "completed_at",
         ])
 
-        # Запоминаем mapping для следующего раза (повторная загрузка
-        # пропускает AI и сразу применяет этот маппинг).
         PricelistMapping.objects.update_or_create(
             seller=request.user, defaults={"mapping": mapping},
         )
+
+        # Сохраняем/обновляем профиль поставщика для повторных загрузок
+        if save_profile and imp.headers:
+            fp = SupplierImportProfile.compute_fingerprint(imp.headers)
+            SupplierImportProfile.objects.update_or_create(
+                seller=request.user,
+                headers_fingerprint=fp,
+                defaults={
+                    "source_headers": imp.headers,
+                    "column_mapping": mapping,
+                    "transform_rules": transform_rules,
+                    "constants": constants,
+                    "name": f"Auto · {imp.filename[:60]}",
+                    "use_count": 1,
+                },
+            )
 
         return Response({
             "ok": True,

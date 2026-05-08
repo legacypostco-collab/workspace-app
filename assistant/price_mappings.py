@@ -68,7 +68,7 @@ COLUMN_MAP: dict[str, list[str]] = {
     ],
     "weight": [
         "weight", "unit-weight", "unit weight", "gross weight", "net weight",
-        "вес", "масса",
+        "вес", "масса", "масса кг", "вес кг",
         "重量",
         "gewicht",
         "peso", "peso unitario",
@@ -136,7 +136,7 @@ COLUMN_MAP: dict[str, list[str]] = {
     ],
     "stock": [
         "stock", "qty", "quantity", "in stock", "available",
-        "остаток", "наличие", "количество",
+        "остаток", "наличие", "количество", "кол-во", "кол во",
         "库存", "数量",
         "lager", "bestand",
         "existencias", "cantidad",
@@ -151,7 +151,7 @@ COLUMN_MAP: dict[str, list[str]] = {
     ],
     "warehouse": [
         "warehouse", "warehouseaddress", "warehouse address",
-        "адрес склада", "склад",
+        "адрес склада", "склад", "адрес",
         "仓库", "仓库地址",
         "lager", "lageradresse",
     ],
