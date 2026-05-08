@@ -320,7 +320,8 @@
     margin: 0;
   }
   .white + .white{ margin-top: 8px; }
-  /* На стыковке с dark/photo секциями — 90°, не скруглять */
+  /* На стыковке с любыми соседями — 90°, не скруглять.
+     White↔dark/photo, meganav↔ribbon, ribbon↔hero и т.п. */
   .grad + .white,
   .grad.deep + .white,
   .final-cta-section + .white,
@@ -331,6 +332,22 @@
   .white:has(+ .grad.deep),
   .white:has(+ .final-cta-section),
   .white:has(+ .footer){
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  /* Meganav снизу плоский, если за ним ribbon или hero */
+  .meganav:has(+ .ribbon),
+  .meganav:has(+ .grad){
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  /* Ribbon сверху плоский, если перед ним meganav, и снизу плоский,
+     если после него hero */
+  .meganav + .ribbon{
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+  .ribbon:has(+ .grad){
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
   }
