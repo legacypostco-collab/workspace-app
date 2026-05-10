@@ -1153,10 +1153,15 @@ class PricelistCommitView(APIView):
         })
 
 
-def _ai_estimate_per_part(items: list[dict]) -> dict[str, dict]:
-    """Claude tool use: оценить вес/габариты per-part по title/oem/description.
+def _ai_estimate_per_part(items: list[dict],
+                            on_partial=None) -> dict[str, dict]:
+    """Claude tool use streaming: оценить вес/габариты per-part.
 
     items: [{oem, title, description?}] — до 50 штук за раз
+    on_partial: callback(estimates_dict) вызывается когда из стрима
+                распарсилась новая полная позиция. Это позволяет UI
+                показывать прогресс ITEM-BY-ITEM как у claude.ai,
+                а не batch-by-batch.
     returns: {oem: {weight_kg, length_cm, width_cm, height_cm}}
     """
     api_key = getattr(settings, "ANTHROPIC_API_KEY", "")
@@ -1219,31 +1224,104 @@ def _ai_estimate_per_part(items: list[dict]) -> dict[str, dict]:
     )
 
     try:
-        msg = client.messages.create(
+        result: dict[str, dict] = {}
+        accumulated = ""
+        last_seen_oems: set = set()
+
+        with client.messages.stream(
             model=getattr(settings, "ANTHROPIC_FAST_MODEL", "claude-haiku-4-5-20251001"),
-            max_tokens=8000,  # ~50 items × ~150 tokens с tool use overhead
+            max_tokens=8000,
             messages=[{"role": "user", "content": prompt}],
             tools=[estimate_tool],
             tool_choice={"type": "tool", "name": "estimate_dimensions"},
-        )
-        for block in msg.content:
-            if block.type == "tool_use" and block.name == "estimate_dimensions":
-                result = {}
-                for est in block.input.get("estimates", []):
-                    oem = str(est.get("oem", "")).strip()
-                    if not oem:
-                        continue
-                    result[oem] = {
-                        "weight_kg": float(est.get("weight_kg", 0) or 0),
-                        "length_cm": float(est.get("length_cm", 0) or 0),
-                        "width_cm":  float(est.get("width_cm", 0) or 0),
-                        "height_cm": float(est.get("height_cm", 0) or 0),
-                    }
-                return result
-        return {}
+        ) as stream:
+            for event in stream:
+                # input_json_delta — частичный JSON tool input, приходит
+                # по мере генерации Claude'ом. Аккумулируем и парсим.
+                if event.type == "content_block_delta" and \
+                   getattr(event.delta, "type", None) == "input_json_delta":
+                    accumulated += event.delta.partial_json
+                    # Эвристика: ищем закрытые объекты "{...}" с полями
+                    # weight_kg/length_cm и парсим их по одному.
+                    new_count = 0
+                    while True:
+                        obj_str, next_pos = _try_extract_next_estimate(accumulated)
+                        if obj_str is None:
+                            break
+                        accumulated = accumulated[next_pos:]
+                        try:
+                            est = json.loads(obj_str)
+                            oem = str(est.get("oem", "")).strip()
+                            if oem and oem not in last_seen_oems:
+                                result[oem] = {
+                                    "weight_kg": float(est.get("weight_kg", 0) or 0),
+                                    "length_cm": float(est.get("length_cm", 0) or 0),
+                                    "width_cm":  float(est.get("width_cm", 0) or 0),
+                                    "height_cm": float(est.get("height_cm", 0) or 0),
+                                }
+                                last_seen_oems.add(oem)
+                                new_count += 1
+                        except (json.JSONDecodeError, TypeError, ValueError):
+                            pass
+                    if new_count > 0 and on_partial:
+                        try:
+                            on_partial(dict(result))
+                        except Exception:
+                            pass
+
+            # Финальный fallback — полный input из tool_use блока
+            final_msg = stream.get_final_message()
+            for block in final_msg.content:
+                if block.type == "tool_use" and block.name == "estimate_dimensions":
+                    for est in block.input.get("estimates", []):
+                        oem = str(est.get("oem", "")).strip()
+                        if oem and oem not in result:
+                            result[oem] = {
+                                "weight_kg": float(est.get("weight_kg", 0) or 0),
+                                "length_cm": float(est.get("length_cm", 0) or 0),
+                                "width_cm":  float(est.get("width_cm", 0) or 0),
+                                "height_cm": float(est.get("height_cm", 0) or 0),
+                            }
+        return result
     except Exception:
         logger.exception("AI per-part estimation failed")
         return {}
+
+
+def _try_extract_next_estimate(buf: str) -> tuple[str | None, int]:
+    """Ищет в buf первый закрытый JSON объект {..."oem":...,...}.
+
+    Возвращает (obj_str, end_pos) где end_pos — позиция после `}`.
+    Если объект не нашли — (None, 0).
+
+    Простой brace-counter, игнорирует строки в кавычках с escape.
+    """
+    start = buf.find("{")
+    if start < 0:
+        return None, 0
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(buf)):
+        ch = buf[i]
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return buf[start:i + 1], i + 1
+    return None, 0
 
 
 class PricelistAiEstimateView(APIView):
@@ -1255,9 +1333,9 @@ class PricelistAiEstimateView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    MAX_ROWS = 200       # лимит для MVP — иначе токены и время улетят
-    BATCH_SIZE = 15      # маленькие batch'и → быстрее каждый Claude call → плавный прогресс
-    PARALLEL_WORKERS = 10  # больше параллельных batch'ей
+    MAX_ROWS = 200        # лимит для MVP
+    BATCH_SIZE = 5        # ОЧЕНЬ маленькие batch'и → плавный прогресс
+    PARALLEL_WORKERS = 15  # больше параллельных Claude calls (rate limit 50 RPM)
 
     def post(self, request, import_id):
         from marketplace.models import PricelistImport
@@ -1332,18 +1410,35 @@ class PricelistAiEstimateView(APIView):
         progress_key = f"ai_estimate_progress_{imp.id}"
         cache.set(progress_key, {"current": 0, "total": total, "running": True}, 300)
 
+        # Глобальный shared dict — обновляется streaming callback'ами
+        # из разных потоков. OEM уникальны между batch'ами.
+        from threading import Lock
+        live_estimates: dict[str, dict] = {}
+        lock = Lock()
+
+        def on_partial(batch_partial):
+            with lock:
+                live_estimates.update(batch_partial)
+                cache.set(progress_key, {
+                    "current": len(live_estimates),
+                    "total": total, "running": True,
+                }, 300)
+
         estimates: dict[str, dict] = {}
         try:
             with ThreadPoolExecutor(max_workers=self.PARALLEL_WORKERS) as ex:
-                futures = [ex.submit(_ai_estimate_per_part, c) for c in chunks]
+                futures = [ex.submit(_ai_estimate_per_part, c, on_partial)
+                            for c in chunks]
                 for fut in as_completed(futures):
                     try:
-                        estimates.update(fut.result() or {})
+                        with lock:
+                            estimates.update(fut.result() or {})
+                            live_estimates.update(estimates)
                     except Exception:
                         logger.exception("AI estimate batch failed")
-                    # Incremental save после каждого batch'а — для polling прогресса
                     cache.set(progress_key, {
-                        "current": len(estimates), "total": total, "running": True,
+                        "current": len(live_estimates),
+                        "total": total, "running": True,
                     }, 300)
                     imp.ai_estimates = dict(estimates)
                     imp.save(update_fields=["ai_estimates"])
