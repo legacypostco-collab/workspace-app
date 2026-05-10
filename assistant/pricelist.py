@@ -835,20 +835,28 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             warehouse = (get("warehouse_address") or "")[:255]
             sea_port = (get("sea_port") or "")[:120]
             air_port = (get("air_port") or "")[:120]
-            # AI-оценки per-part — используются если в файле нет значений
-            # и колонка не замаплена (т.е. сейчас стоит дефолтный fix:0.5)
+            # AI-оценки per-part используются ТОЛЬКО когда колонка не
+            # замаплена на файл (т.е. сейчас стоит дефолтный fix). Если
+            # значение пришло из файла — оно приоритет.
             ai_est = ai_estimates.get(oem) if ai_estimates else None
 
             def _dim_with_ai(field, default_val, ai_key):
-                raw = _coerce_decimal(get(field))
-                if raw and raw > 0:
-                    return raw
+                # Если колонка замаплена на файл — берём из файла
+                if field in col_idx:
+                    raw = _coerce_decimal(get(field))
+                    if raw and raw > 0:
+                        return raw
+                # Иначе — AI-оценка приоритет над fix-дефолтом
                 if ai_est and ai_est.get(ai_key):
                     try:
-                        return Decimal(str(ai_est[ai_key]))
+                        v = Decimal(str(ai_est[ai_key]))
+                        if v > 0:
+                            return v
                     except Exception:
                         pass
-                return default_val
+                # Fallback на fix-значение (из constants/FIELD_DEFAULTS)
+                raw = _coerce_decimal(get(field))
+                return raw if raw and raw > 0 else default_val
 
             weight = _dim_with_ai("weight_kg", Decimal("0.5"), "weight_kg")
             length = _dim_with_ai("length_cm", Decimal("1.0"), "length_cm")
