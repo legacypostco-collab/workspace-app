@@ -673,6 +673,9 @@
         ${nextHtml ? `<div class="tl-actions">${nextHtml}</div>` : ''}
       </div>`;
     },
+    raw_html(d) {
+      return d.html || '';
+    },
     table_preview(d) {
       const headers = (d.headers || []).map(h => `<th>${esc(h)}</th>`).join('');
       const rows = (d.rows || []).map(row => {
@@ -2144,6 +2147,7 @@
       // Таблица маппинга — показываем только замапленные из файла
       var mapRows = [];
       var unmapped = [];
+      var defaultFields = [];
       var fromFile = 0;
       var fromDefault = 0;
       stdFields.forEach(function(f) {
@@ -2154,6 +2158,7 @@
           srcLabel = '= ' + src.slice(4);
           st = '·';
           fromDefault++;
+          defaultFields.push(f);
         } else if (src && headers.includes(src)) {
           srcLabel = '← ' + src;
           st = '✓';
@@ -2166,6 +2171,7 @@
           srcLabel = f['default'] ? '= ' + f['default'] : '—';
           st = '·';
           fromDefault++;
+          defaultFields.push(f);
         }
         var rule = transformRules[f.key];
         if (rule && rule.formula) {
@@ -2203,11 +2209,33 @@
       } else {
         intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n📚 Распознано ' + fromFile + ' полей из файла.';
       }
-      if (fromDefault > 0) {
-        intro += '\n📎 ' + fromDefault + ' полей заполнены по умолчанию.';
-      }
       if (unmapped.length) {
         intro += '\n⚠️ Не найдено: ' + unmapped.join(', ');
+      }
+
+      // 3. Раскрываемая секция дефолтов
+      if (defaultFields.length > 0) {
+        var dfHtml = defaultFields.map(function(f) {
+          var val = sug[f.key] ? sug[f.key].replace(/^fix:/, '') : (f['default'] || '');
+          var inp = '';
+          if (f.enum_values && f.enum_values.length) {
+            var opts = f.enum_values.map(function(o) {
+              var sel = (String(o) === String(val)) ? ' selected' : '';
+              return '<option value="' + esc(o) + '"' + sel + '>' + esc(o) + '</option>';
+            }).join('');
+            inp = '<select class="pl-df-input" data-field="' + esc(f.key) + '">' + opts + '</select>';
+          } else {
+            inp = '<input class="pl-df-input" data-field="' + esc(f.key) + '" type="text" value="' + esc(val) + '" autocomplete="off"/>';
+          }
+          return '<div class="pl-df-row"><span class="pl-df-label">' + esc(f.label) + '</span>' + inp + '</div>';
+        }).join('');
+        cards.push({type:'raw_html', data:{
+          html: '<div class="card pl-defaults-card">'
+            + '<details class="pl-defaults-details">'
+            + '<summary class="pl-defaults-summary">📎 ' + fromDefault + ' полей по умолчанию — нажмите чтобы изменить</summary>'
+            + '<div class="pl-df-grid">' + dfHtml + '</div>'
+            + '</details></div>',
+        }});
       }
 
       var actions = [
@@ -2249,6 +2277,16 @@
     Object.keys(params).forEach(function(k) {
       if (k.startsWith('q__') && params[k]) {
         constants[k.slice(3)] = params[k];
+      }
+    });
+
+    // Собираем значения из раскрываемой секции дефолтов
+    document.querySelectorAll('.pl-df-input').forEach(function(el) {
+      var field = el.dataset.field;
+      var val = el.value;
+      if (field && val !== undefined) {
+        constants[field] = val;
+        mapping[field] = 'fix:' + val;
       }
     });
 

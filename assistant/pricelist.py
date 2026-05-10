@@ -498,8 +498,8 @@ def _ai_resolve_unknowns(unknown_headers: list[str], sample_rows: list[list[str]
 
     try:
         msg = client.messages.create(
-            model=getattr(settings, "ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
-            max_tokens=600,
+            model=getattr(settings, "ANTHROPIC_FAST_MODEL", "claude-haiku-4-5-20251001"),
+            max_tokens=400,
             messages=[{"role": "user", "content": prompt}],
             tools=[propose_mapping_tool],
             tool_choice={"type": "tool", "name": "propose_mapping"},
@@ -594,8 +594,8 @@ def _ai_mapping(headers: list[str], sample_rows: list[list[str]]) -> dict[str, s
         from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
         msg = client.messages.create(
-            model=getattr(settings, "ANTHROPIC_MODEL", "claude-sonnet-4-20250514"),
-            max_tokens=600,
+            model=getattr(settings, "ANTHROPIC_FAST_MODEL", "claude-haiku-4-5-20251001"),
+            max_tokens=400,
             messages=[{"role": "user", "content": prompt}],
         )
         text = msg.content[0].text.strip()

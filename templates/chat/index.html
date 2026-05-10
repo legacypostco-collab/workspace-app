@@ -495,6 +495,18 @@
     .tp-table tr:last-child td{border-bottom:none;}
     .tp-foot{margin-top:8px;font-size:11px;color:rgba(0,0,0,0.55);font-style:italic;}
 
+    /* ── Pricelist defaults card ── */
+    .pl-defaults-card{padding:10px 14px;}
+    .pl-defaults-summary{cursor:pointer;font-size:13px;font-weight:600;color:rgba(0,0,0,0.7);padding:4px 0;user-select:none;}
+    .pl-defaults-summary:hover{color:#1a1a1a;}
+    .pl-defaults-details[open] .pl-defaults-summary{margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,0.06);padding-bottom:8px;}
+    .pl-df-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;}
+    .pl-df-row{display:flex;flex-direction:column;gap:3px;}
+    .pl-df-label{font-size:11px;color:rgba(0,0,0,0.55);font-weight:500;}
+    .pl-df-input{background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.1);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;color:#1a1a1a;outline:none;transition:border-color 0.12s;width:100%;box-sizing:border-box;}
+    .pl-df-input:focus{border-color:#1a1a1a;background:#fff;}
+    @media(max-width:600px){.pl-df-grid{grid-template-columns:1fr;}}
+
     /* ── Seller queue card ── */
     .sq-card{padding:16px 18px;}
     .sq-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(0,0,0,0.06);}
