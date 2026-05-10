@@ -2141,33 +2141,40 @@
         constants: constants,
       };
 
-      // Таблица маппинга
+      // Таблица маппинга — показываем только замапленные из файла
       var mapRows = [];
       var unmapped = [];
+      var fromFile = 0;
+      var fromDefault = 0;
       stdFields.forEach(function(f) {
         var src = sug[f.key] || '';
         var srcLabel = '';
         var st = '';
         if (src && src.startsWith('fix:')) {
-          srcLabel = 'Фикс: ' + src.slice(4);
-          st = '✓';
+          srcLabel = '= ' + src.slice(4);
+          st = '·';
+          fromDefault++;
         } else if (src && headers.includes(src)) {
           srcLabel = '← ' + src;
           st = '✓';
+          fromFile++;
         } else if (f.required) {
           srcLabel = '—';
           st = '⚠️';
           unmapped.push(f.label);
         } else {
-          srcLabel = '—';
+          srcLabel = f['default'] ? '= ' + f['default'] : '—';
           st = '·';
+          fromDefault++;
         }
-        // Показываем формулу если есть
         var rule = transformRules[f.key];
         if (rule && rule.formula) {
           srcLabel += '  ⚙ ' + rule.formula;
         }
-        mapRows.push([f.label, srcLabel, st]);
+        // Показываем только из файла + обязательные незамапленные
+        if (st === '✓' || st === '⚠️') {
+          mapRows.push([f.label, srcLabel, st]);
+        }
       });
 
       var cards = [];
@@ -2179,43 +2186,28 @@
           rows: data.mapped_preview.rows,
         }});
       }
-      // 2. Таблица маппинга
-      cards.push({type:'table_preview', data:{
-        title: '🔗 Маппинг колонок',
-        headers: ['Поле платформы', 'Источник из файла', ''],
-        rows: mapRows,
-      }});
+      // 2. Таблица маппинга (только из файла)
+      if (mapRows.length > 0) {
+        cards.push({type:'table_preview', data:{
+          title: '🔗 Маппинг колонок',
+          headers: ['Поле платформы', 'Источник из файла', ''],
+          rows: mapRows,
+        }});
+      }
 
       var intro;
-      var mapped = stdFields.filter(function(f) { return sug[f.key]; }).length;
       if (data.from_profile) {
-        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🧠 Применён профиль: ' + (data.profile_name || 'auto') + ' (' + mapped + '/' + stdFields.length + ' полей).';
+        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🧠 Профиль: ' + (data.profile_name || 'auto');
       } else if (data.ai_called) {
-        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🤖 AI распознал ' + mapped + '/' + stdFields.length + ' полей.';
-      } else if (data.from_saved_mapping) {
-        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🧠 Применён сохранённый маппинг (' + mapped + '/' + stdFields.length + ' полей).';
+        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🤖 AI распознал ' + fromFile + ' полей из файла.';
       } else {
-        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n📚 Распознано по словарю: ' + mapped + '/' + stdFields.length + ' полей.';
+        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n📚 Распознано ' + fromFile + ' полей из файла.';
+      }
+      if (fromDefault > 0) {
+        intro += '\n📎 ' + fromDefault + ' полей заполнены по умолчанию.';
       }
       if (unmapped.length) {
         intro += '\n⚠️ Не найдено: ' + unmapped.join(', ');
-      }
-
-      // Если есть вопросы — показываем форму вопросов перед подтверждением
-      if (questions.length > 0) {
-        intro += '\n\n❓ Нужно уточнить ' + questions.length + ' поля:';
-        // Строим карточку с вопросами
-        var qRows = questions.map(function(q) {
-          var opts = q.options || [];
-          var defVal = q['default'] || (opts.length ? opts[0] : '');
-          return {label: q.question, field: q.field, type: q.type || 'text', options: opts, 'default': defVal};
-        });
-        cards.push({type:'draft', data:{
-          title: '❓ Укажите значения',
-          rows: qRows.map(function(q) {
-            return {label: q.label, value: q['default'] || ''};
-          }),
-        }});
       }
 
       var actions = [

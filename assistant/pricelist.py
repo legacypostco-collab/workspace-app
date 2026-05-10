@@ -56,47 +56,44 @@ logger = logging.getLogger(__name__)
 # ── Standard fields ──────────────────────────────────────────────
 
 STD_FIELDS = [
-    # (key, label, required, enum_values_or_None)
-    # required=True — поле должно быть либо колонкой из файла, либо
-    # фикс-значением (fix:VALUE). Если в прайсе нет колонки — seller
-    # выбирает 💎 default из enum_values или вводит своё через UI.
-    # Числовые поля без enum получают «0» / «1» как defaults в UI.
-    ("oem_number",        "Артикул (PartNumber)",   True,  None),
-    ("cross_number",      "Кросс-номер (CrossNumber)", True, None),
-    ("brand",             "Бренд",                   True, [
-        # Европа / мир — основные производители спецтехники
+    # (key, label, required, enum_values_or_None, default_value_or_None)
+    # required=True — поле ОБЯЗАТЕЛЬНО должно быть в файле или указано явно.
+    # Остальные поля заполняются дефолтами автоматически если не замаплены.
+    ("oem_number",        "Артикул (PartNumber)",   True,  None, None),
+    ("cross_number",      "Кросс-номер (CrossNumber)", False, None, ""),
+    ("brand",             "Бренд",                   False, [
         "Caterpillar", "Komatsu", "Hitachi", "Liebherr", "TEREX",
         "New Holland", "Wirtgen", "Iveco", "HBM-Nobas", "John Deere",
         "Volvo", "JCB", "Bobcat", "BOMAG",
         "Cummins", "Deutz", "Bosch",
         "Atlas Copco", "Epiroc", "Sandvik", "Ingersoll Rand",
         "Hyundai", "Doosan", "Kobelco", "Kubota",
-        # Китай
         "XCMG", "FAW", "LiuGong", "Shantui", "Shacman", "SDLG",
         "Weichai", "Sinotruk", "HOWO", "Zoomlion", "Sany",
-        # Компоненты / агрегаты
         "Bosch Rexroth", "Perkins", "Dana", "Carraro", "Denso",
         "Lincoln", "Berco", "ITR", "ETP",
-        # Fallback
         "Generic",
-    ]),
-    ("title",             "Название",                True,  None),
-    ("stock",             "Остаток (Quantity)",      True,  ["0", "1", "10", "100"]),
-    ("condition",         "Состояние",               True,  ["ORIGINAL", "OEM", "AFTERMARKET", "REMAN"]),
-    ("price_exw",         "Цена EXW",                True,  None),
-    ("warehouse_address", "Адрес склада",            True,  None),
-    ("price_fob_sea",     "Цена FOB SEA",            True,  ["0"]),
-    ("price_fob_air",     "Цена FOB AIR",            True,  ["0"]),
-    ("sea_port",          "Морпорт отправления",     True,  None),
-    ("air_port",          "Аэропорт отправления",    True,  None),
-    ("weight_kg",         "Вес, кг",                 True,  ["0.5", "1", "5", "10"]),
-    ("length_cm",         "Длина, см",               True,  ["1", "10", "20", "50"]),
-    ("width_cm",          "Ширина, см",              True,  ["1", "10", "20", "50"]),
-    ("height_cm",         "Высота, см",              True,  ["1", "10", "20", "50"]),
-    ("currency",          "Валюта",                  False, ["USD", "EUR", "RUB", "CNY"]),
+    ], "Generic"),
+    ("title",             "Название",                True,  None, None),
+    ("stock",             "Остаток (Quantity)",      False, ["0", "1", "10", "100"], "0"),
+    ("condition",         "Состояние",               False, ["ORIGINAL", "OEM", "AFTERMARKET", "REMAN"], "OEM"),
+    ("price_exw",         "Цена EXW",                True,  None, None),
+    ("warehouse_address", "Адрес склада",            False, None, ""),
+    ("price_fob_sea",     "Цена FOB SEA",            False, ["0"], "0"),
+    ("price_fob_air",     "Цена FOB AIR",            False, ["0"], "0"),
+    ("sea_port",          "Морпорт отправления",     False, None, ""),
+    ("air_port",          "Аэропорт отправления",    False, None, ""),
+    ("weight_kg",         "Вес, кг",                 False, ["0.5", "1", "5", "10"], "0.5"),
+    ("length_cm",         "Длина, см",               False, ["1", "10", "20", "50"], "1"),
+    ("width_cm",          "Ширина, см",              False, ["1", "10", "20", "50"], "1"),
+    ("height_cm",         "Высота, см",              False, ["1", "10", "20", "50"], "1"),
+    ("currency",          "Валюта",                  False, ["USD", "EUR", "RUB", "CNY"], "USD"),
 ]
 
-REQUIRED_FIELDS = [k for k, _, req, _ in STD_FIELDS if req]
+REQUIRED_FIELDS = [k for k, _, req, _, _ in STD_FIELDS if req]
+
+# Дефолты для незамапленных полей
+FIELD_DEFAULTS = {k: d for k, _, _, _, d in STD_FIELDS if d is not None}
 
 
 # ── Formula whitelist engine ────────────────────────────────────
@@ -540,14 +537,14 @@ def _build_mapped_preview(headers: list[str], sample_rows: list[list[str]],
         col_idx[std] = headers.index(src)
     # Берём std-поля в фикс-порядке STD_FIELDS чтобы UI колонки
     # были в осмысленном порядке.
-    std_keys = [k for k, _, _, _ in STD_FIELDS if k in col_idx]
+    std_keys = [k for k, _, _, _, _ in STD_FIELDS if k in col_idx]
     rows = []
     for row in (sample_rows or [])[:5]:
         rows.append([
             (str(row[col_idx[k]]) if col_idx[k] < len(row) else "")
             for k in std_keys
         ])
-    labels = {k: lbl for k, lbl, _, _ in STD_FIELDS}
+    labels = {k: lbl for k, lbl, _, _, _ in STD_FIELDS}
     return {
         "headers": [labels.get(k, k) for k in std_keys],
         "std_keys": std_keys,
@@ -579,7 +576,7 @@ def _ai_mapping(headers: list[str], sample_rows: list[list[str]]) -> dict[str, s
 
     fields_doc = "\n".join(
         f"  - {k} ({label}){' [REQUIRED]' if req else ''}"
-        for k, label, req, enum_v in STD_FIELDS
+        for k, label, req, enum_v, _ in STD_FIELDS
     )
     sample_text = "\n".join(
         " | ".join(str(c)[:40] for c in row) for row in sample_rows
@@ -741,6 +738,9 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
 
     col_idx: dict[str, int] = {}
     fixed_vals: dict[str, str] = {}
+    # Сначала дефолты, потом mapping (mapping перезаписывает)
+    for fld, dflt in FIELD_DEFAULTS.items():
+        fixed_vals[fld] = str(dflt)
     for fld, val in mapping.items():
         if not val:
             continue
@@ -748,6 +748,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             fixed_vals[fld] = val[4:]
         elif val in headers:
             col_idx[fld] = headers.index(val)
+            fixed_vals.pop(fld, None)
     for fld, val in constants.items():
         if fld not in col_idx and fld not in fixed_vals:
             fixed_vals[fld] = str(val)
@@ -960,9 +961,16 @@ class PricelistUploadView(APIView):
 
         mapped_preview = _build_mapped_preview(headers, sample, suggested)
 
-        # Определяем незамапленные обязательные поля → вопросы оператору
+        # Незамапленные опциональные поля → автозаполнение дефолтами
+        auto_defaults = {}
+        for key, label, req, enum_v, dflt in STD_FIELDS:
+            if key not in suggested and key not in constants and dflt is not None:
+                auto_defaults[key] = dflt
+                suggested[key] = f"fix:{dflt}"
+
+        # Вопросы оператору — только required без маппинга (oem, title, price)
         questions = []
-        for key, label, req, enum_v in STD_FIELDS:
+        for key, label, req, enum_v, dflt in STD_FIELDS:
             if req and key not in suggested and key not in constants:
                 q: dict[str, Any] = {
                     "field": key,
@@ -1002,8 +1010,8 @@ class PricelistUploadView(APIView):
             "questions": questions,
             "std_fields": [
                 {"key": k, "label": label, "required": req,
-                 "enum_values": enum_v or []}
-                for k, label, req, enum_v in STD_FIELDS
+                 "enum_values": enum_v or [], "default": dflt or ""}
+                for k, label, req, enum_v, dflt in STD_FIELDS
             ],
         })
 
