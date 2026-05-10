@@ -1199,6 +1199,9 @@ def _ai_estimate_per_part(items: list[dict]) -> dict[str, dict]:
             },
             "required": ["estimates"],
         },
+        # Prompt caching: tool definition не меняется между batch'ами →
+        # 5x дешевле + быстрее на повторных вызовах.
+        "cache_control": {"type": "ephemeral"},
     }
 
     items_text = "\n".join(
@@ -1218,7 +1221,7 @@ def _ai_estimate_per_part(items: list[dict]) -> dict[str, dict]:
     try:
         msg = client.messages.create(
             model=getattr(settings, "ANTHROPIC_FAST_MODEL", "claude-haiku-4-5-20251001"),
-            max_tokens=4000,
+            max_tokens=8000,  # ~50 items × ~150 tokens с tool use overhead
             messages=[{"role": "user", "content": prompt}],
             tools=[estimate_tool],
             tool_choice={"type": "tool", "name": "estimate_dimensions"},
@@ -1253,7 +1256,8 @@ class PricelistAiEstimateView(APIView):
     permission_classes = [IsAuthenticated]
 
     MAX_ROWS = 200       # лимит для MVP — иначе токены и время улетят
-    BATCH_SIZE = 30
+    BATCH_SIZE = 50      # больше items за один Claude call → меньше latency
+    PARALLEL_WORKERS = 5  # параллельные batch-запросы к Claude
 
     def post(self, request, import_id):
         from marketplace.models import PricelistImport
@@ -1318,11 +1322,18 @@ class PricelistAiEstimateView(APIView):
                 "error": "AI-оценка недоступна (ANTHROPIC_API_KEY не настроен на сервере).",
             }, status=503)
 
+        # Параллельные batch-запросы к Claude (5 одновременно)
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        chunks = [items[i:i + self.BATCH_SIZE]
+                   for i in range(0, len(items), self.BATCH_SIZE)]
         estimates: dict[str, dict] = {}
-        for i in range(0, len(items), self.BATCH_SIZE):
-            chunk = items[i:i + self.BATCH_SIZE]
-            est = _ai_estimate_per_part(chunk)
-            estimates.update(est)
+        with ThreadPoolExecutor(max_workers=self.PARALLEL_WORKERS) as ex:
+            futures = [ex.submit(_ai_estimate_per_part, chunk) for chunk in chunks]
+            for fut in as_completed(futures):
+                try:
+                    estimates.update(fut.result())
+                except Exception:
+                    logger.exception("AI estimate batch failed")
 
         imp.ai_estimates = estimates
         imp.save(update_fields=["ai_estimates"])
