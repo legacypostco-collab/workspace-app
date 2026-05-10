@@ -2213,9 +2213,19 @@
         intro += '\n⚠️ Не найдено: ' + unmapped.join(', ');
       }
 
-      // 3. Раскрываемая секция дефолтов
-      if (defaultFields.length > 0) {
-        var dfHtml = defaultFields.map(function(f) {
+      // 3. Раскрываемая секция supplier-wide дефолтов.
+      // Per-part поля (вес, габариты, остаток, FOB-цены, кросс-номер) у каждой позиции
+      // свои — бессмысленно задавать один на всех. Их seller дозаполнит per-part
+      // через каталог. Здесь только поля, которые реально одинаковые у всего поставщика.
+      var SUPPLIER_WIDE = ['brand', 'condition', 'currency',
+                            'warehouse_address', 'sea_port', 'air_port'];
+      var supplierWideFields = defaultFields.filter(function(f) {
+        return SUPPLIER_WIDE.indexOf(f.key) >= 0;
+      });
+      var perPartCount = defaultFields.length - supplierWideFields.length;
+
+      if (supplierWideFields.length > 0) {
+        var dfHtml = supplierWideFields.map(function(f) {
           var val = sug[f.key] ? sug[f.key].replace(/^fix:/, '') : (f['default'] || '');
           var inp = '';
           if (f.enum_values && f.enum_values.length) {
@@ -2229,11 +2239,15 @@
           }
           return '<div class="pl-df-row"><span class="pl-df-label">' + esc(f.label) + '</span>' + inp + '</div>';
         }).join('');
+        var perPartNote = perPartCount > 0
+          ? '<div class="pl-df-note">ℹ️ ' + perPartCount + ' полей у каждой позиции свои (вес, габариты, остаток, FOB) — дозаполните позже в каталоге.</div>'
+          : '';
         cards.push({type:'raw_html', data:{
           html: '<div class="card pl-defaults-card">'
             + '<details class="pl-defaults-details">'
-            + '<summary class="pl-defaults-summary">📎 ' + fromDefault + ' полей по умолчанию — нажмите чтобы изменить</summary>'
+            + '<summary class="pl-defaults-summary">📎 ' + supplierWideFields.length + ' общих полей поставщика — нажмите чтобы изменить</summary>'
             + '<div class="pl-df-grid">' + dfHtml + '</div>'
+            + perPartNote
             + '</details></div>',
         }});
       }
