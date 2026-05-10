@@ -1211,6 +1211,8 @@ class PricelistImport(models.Model):
         help_text="[{row, oem, reason}] первых ~50 ошибок")
     ai_called = models.BooleanField(default=False, db_index=True,
         help_text="Был ли вызов AI для маппинга колонок (для лимита 3/день)")
+    ai_estimates = models.JSONField(default=dict, blank=True,
+        help_text="AI-оценки per-part вес/габариты по описанию: {oem: {weight_kg, length_cm, ...}}")
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 

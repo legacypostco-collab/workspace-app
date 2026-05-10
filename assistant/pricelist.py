@@ -735,6 +735,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
     headers = import_obj.headers
     transform_rules = transform_rules or {}
     constants = constants or {}
+    ai_estimates = getattr(import_obj, "ai_estimates", None) or {}
 
     col_idx: dict[str, int] = {}
     fixed_vals: dict[str, str] = {}
@@ -834,10 +835,25 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             warehouse = (get("warehouse_address") or "")[:255]
             sea_port = (get("sea_port") or "")[:120]
             air_port = (get("air_port") or "")[:120]
-            weight = _coerce_decimal(get("weight_kg")) or Decimal("0.5")
-            length = _coerce_decimal(get("length_cm")) or Decimal("1.0")
-            width = _coerce_decimal(get("width_cm")) or Decimal("1.0")
-            height = _coerce_decimal(get("height_cm")) or Decimal("1.0")
+            # AI-оценки per-part — используются если в файле нет значений
+            # и колонка не замаплена (т.е. сейчас стоит дефолтный fix:0.5)
+            ai_est = ai_estimates.get(oem) if ai_estimates else None
+
+            def _dim_with_ai(field, default_val, ai_key):
+                raw = _coerce_decimal(get(field))
+                if raw and raw > 0:
+                    return raw
+                if ai_est and ai_est.get(ai_key):
+                    try:
+                        return Decimal(str(ai_est[ai_key]))
+                    except Exception:
+                        pass
+                return default_val
+
+            weight = _dim_with_ai("weight_kg", Decimal("0.5"), "weight_kg")
+            length = _dim_with_ai("length_cm", Decimal("1.0"), "length_cm")
+            width = _dim_with_ai("width_cm", Decimal("1.0"), "width_cm")
+            height = _dim_with_ai("height_cm", Decimal("1.0"), "height_cm")
 
             try:
                 _obj, was_created = Part.objects.update_or_create(
@@ -1126,6 +1142,189 @@ class PricelistCommitView(APIView):
             "updated": updated,
             "failed": failed,
             "errors_preview": errors[:10],
+        })
+
+
+def _ai_estimate_per_part(items: list[dict]) -> dict[str, dict]:
+    """Claude tool use: оценить вес/габариты per-part по title/oem/description.
+
+    items: [{oem, title, description?}] — до 50 штук за раз
+    returns: {oem: {weight_kg, length_cm, width_cm, height_cm}}
+    """
+    api_key = getattr(settings, "ANTHROPIC_API_KEY", "")
+    if not api_key or not items:
+        return {}
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+    except Exception:
+        return {}
+
+    estimate_tool = {
+        "name": "estimate_dimensions",
+        "description": (
+            "Оценить вес и габариты каждой запчасти на основе её "
+            "названия, OEM-номера и описания. Используй типичные "
+            "значения для подобных деталей спецтехники "
+            "(Caterpillar, Komatsu, Hitachi, Liebherr и др.). "
+            "Если не уверен — давай средние/консервативные оценки."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "estimates": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "oem": {"type": "string"},
+                            "weight_kg": {"type": "number", "minimum": 0.01, "maximum": 5000},
+                            "length_cm": {"type": "number", "minimum": 1, "maximum": 500},
+                            "width_cm":  {"type": "number", "minimum": 1, "maximum": 500},
+                            "height_cm": {"type": "number", "minimum": 1, "maximum": 500},
+                            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                        },
+                        "required": ["oem", "weight_kg", "length_cm",
+                                      "width_cm", "height_cm"],
+                    },
+                },
+            },
+            "required": ["estimates"],
+        },
+    }
+
+    items_text = "\n".join(
+        f"- OEM:{it.get('oem','')[:30]} | {it.get('title','')[:80]}"
+        + (f" | {it.get('description','')[:60]}" if it.get('description') else "")
+        for it in items
+    )
+    prompt = (
+        "Оцени вес (кг) и габариты (см) каждой запчасти спецтехники "
+        "по её названию и OEM-номеру. Используй здравый смысл и "
+        "типичные значения для подобных деталей.\n\n"
+        f"Запчасти ({len(items)}):\n{items_text}\n\n"
+        "Используй tool estimate_dimensions для ответа. "
+        "Верни оценку для КАЖДОЙ позиции."
+    )
+
+    try:
+        msg = client.messages.create(
+            model=getattr(settings, "ANTHROPIC_FAST_MODEL", "claude-haiku-4-5-20251001"),
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}],
+            tools=[estimate_tool],
+            tool_choice={"type": "tool", "name": "estimate_dimensions"},
+        )
+        for block in msg.content:
+            if block.type == "tool_use" and block.name == "estimate_dimensions":
+                result = {}
+                for est in block.input.get("estimates", []):
+                    oem = str(est.get("oem", "")).strip()
+                    if not oem:
+                        continue
+                    result[oem] = {
+                        "weight_kg": float(est.get("weight_kg", 0) or 0),
+                        "length_cm": float(est.get("length_cm", 0) or 0),
+                        "width_cm":  float(est.get("width_cm", 0) or 0),
+                        "height_cm": float(est.get("height_cm", 0) or 0),
+                    }
+                return result
+        return {}
+    except Exception:
+        logger.exception("AI per-part estimation failed")
+        return {}
+
+
+class PricelistAiEstimateView(APIView):
+    """POST /api/assistant/upload-pricelist/<id>/ai-estimate/
+
+    Запускает AI-оценку per-part вес/габариты для всех строк прайса
+    (батчами по 50). Сохраняет в imp.ai_estimates. При commit'е
+    подставляются как per-part overrides.
+    """
+    permission_classes = [IsAuthenticated]
+
+    MAX_ROWS = 200       # лимит для MVP — иначе токены и время улетят
+    BATCH_SIZE = 30
+
+    def post(self, request, import_id):
+        from marketplace.models import PricelistImport
+        try:
+            imp = PricelistImport.objects.get(id=import_id, seller=request.user)
+        except PricelistImport.DoesNotExist:
+            return Response({"error": "import not found"}, status=404)
+        if imp.status != "preview":
+            return Response({"error": f"already in status {imp.status}"}, status=400)
+
+        mapping = imp.suggested_mapping or {}
+        oem_col = mapping.get("oem_number")
+        title_col = mapping.get("title")
+        desc_col = mapping.get("description")  # может не быть
+        if not oem_col or not title_col:
+            return Response(
+                {"error": "Нужен маппинг oem_number и title для AI-оценки."},
+                status=400,
+            )
+        if oem_col.startswith("fix:") or title_col.startswith("fix:"):
+            return Response(
+                {"error": "oem_number и title должны быть из файла, не fix."},
+                status=400,
+            )
+        if oem_col not in imp.headers or title_col not in imp.headers:
+            return Response({"error": "колонки не найдены в headers"}, status=400)
+        oem_idx = imp.headers.index(oem_col)
+        title_idx = imp.headers.index(title_col)
+        desc_idx = (imp.headers.index(desc_col) if desc_col
+                     and not desc_col.startswith("fix:")
+                     and desc_col in imp.headers else None)
+
+        try:
+            with imp.file_obj.open("rb") as fh:
+                blob = fh.read()
+        except Exception as e:
+            return Response({"error": f"file unavailable: {e}"}, status=500)
+
+        items: list[dict] = []
+        for row in _read_all(imp.filename, blob):
+            if len(items) >= self.MAX_ROWS:
+                break
+            row_list = list(row)
+            if oem_idx >= len(row_list) or title_idx >= len(row_list):
+                continue
+            oem = str(row_list[oem_idx] or "").strip()
+            title = str(row_list[title_idx] or "").strip()
+            if not oem or not title:
+                continue
+            item = {"oem": oem, "title": title}
+            if desc_idx is not None and desc_idx < len(row_list):
+                d = str(row_list[desc_idx] or "").strip()
+                if d:
+                    item["description"] = d
+            items.append(item)
+
+        if not items:
+            return Response({"error": "Не нашёл валидных строк для оценки."}, status=400)
+
+        if not getattr(settings, "ANTHROPIC_API_KEY", ""):
+            return Response({
+                "error": "AI-оценка недоступна (ANTHROPIC_API_KEY не настроен на сервере).",
+            }, status=503)
+
+        estimates: dict[str, dict] = {}
+        for i in range(0, len(items), self.BATCH_SIZE):
+            chunk = items[i:i + self.BATCH_SIZE]
+            est = _ai_estimate_per_part(chunk)
+            estimates.update(est)
+
+        imp.ai_estimates = estimates
+        imp.save(update_fields=["ai_estimates"])
+
+        return Response({
+            "ok": True,
+            "estimated": len(estimates),
+            "total_processed": len(items),
+            "truncated": len(items) >= self.MAX_ROWS,
+            "sample": dict(list(estimates.items())[:3]),
         })
 
 

@@ -2239,9 +2239,18 @@
           }
           return '<div class="pl-df-row"><span class="pl-df-label">' + esc(f.label) + '</span>' + inp + '</div>';
         }).join('');
-        var perPartNote = perPartCount > 0
-          ? '<div class="pl-df-note">ℹ️ ' + perPartCount + ' полей у каждой позиции свои (вес, габариты, остаток, FOB-цены). Если их нет в файле — добавьте в исходный прайс и загрузите заново, либо используйте формулу.</div>'
-          : '';
+        var perPartNote = '';
+        if (perPartCount > 0) {
+          perPartNote =
+            '<div class="pl-df-note">ℹ️ ' + perPartCount + ' полей у каждой позиции свои (вес, габариты, остаток, FOB-цены).</div>'
+            + '<div class="pl-df-actions-row">'
+            + '<button class="pl-ai-estimate-btn" type="button" '
+            +   'data-import-id="' + esc(data.import_id) + '">'
+            +   '🤖 AI оценит вес и габариты по описанию'
+            + '</button>'
+            + '<span class="pl-ai-estimate-status"></span>'
+            + '</div>';
+        }
         cards.push({type:'raw_html', data:{
           html: '<div class="card pl-defaults-card">'
             + '<details class="pl-defaults-details">'
@@ -2355,6 +2364,44 @@
     addMessage('assistant', 'Импорт отменён.');
     __pendingImport = null;
   };
+
+  // Делегированный обработчик кнопки «🤖 AI оценит вес/габариты»
+  document.addEventListener('click', async function(e) {
+    var btn = e.target.closest('.pl-ai-estimate-btn');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var importId = btn.dataset.importId;
+    if (!importId) return;
+    var statusEl = btn.parentNode.querySelector('.pl-ai-estimate-status');
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    if (statusEl) statusEl.textContent = ' · 🧠 AI оценивает позиции...';
+    try {
+      var res = await fetch('/api/assistant/upload-pricelist/' + importId + '/ai-estimate/', {
+        method: 'POST',
+        headers: {'X-CSRFToken': csrf()},
+        credentials: 'same-origin',
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      var msg = '✅ AI оценил ' + data.estimated + ' позиций';
+      if (data.truncated) msg += ' (первые ' + data.total_processed + ', остальные останутся с дефолтами)';
+      msg += '. Применятся при загрузке.';
+      if (statusEl) {
+        statusEl.textContent = ' · ' + msg;
+        statusEl.style.color = 'rgba(46,125,50,0.85)';
+      }
+      btn.style.display = 'none';
+    } catch (err) {
+      if (statusEl) {
+        statusEl.textContent = ' · ⚠️ ' + (err.message || err);
+        statusEl.style.color = 'rgba(232,92,13,0.85)';
+      }
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  });
 
   // Перехватываем спец-actions в quickAction'е до отправки на /api/assistant/action/
   const _origQuickActionForPricelist = window.quickAction;
