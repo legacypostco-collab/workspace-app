@@ -1250,8 +1250,8 @@ class PricelistAiEstimateView(APIView):
     """POST /api/assistant/upload-pricelist/<id>/ai-estimate/
 
     Запускает AI-оценку per-part вес/габариты для всех строк прайса
-    (батчами по 50). Сохраняет в imp.ai_estimates. При commit'е
-    подставляются как per-part overrides.
+    батчами параллельно (5 workers). Сохраняет в imp.ai_estimates.
+    При commit'е применяются как per-part overrides.
     """
     permission_classes = [IsAuthenticated]
 
@@ -1271,7 +1271,7 @@ class PricelistAiEstimateView(APIView):
         mapping = imp.suggested_mapping or {}
         oem_col = mapping.get("oem_number")
         title_col = mapping.get("title")
-        desc_col = mapping.get("description")  # может не быть
+        desc_col = mapping.get("description")
         if not oem_col or not title_col:
             return Response(
                 {"error": "Нужен маппинг oem_number и title для AI-оценки."},
@@ -1322,16 +1322,18 @@ class PricelistAiEstimateView(APIView):
                 "error": "AI-оценка недоступна (ANTHROPIC_API_KEY не настроен на сервере).",
             }, status=503)
 
-        # Параллельные batch-запросы к Claude (5 одновременно)
-        from concurrent.futures import ThreadPoolExecutor, as_completed
         chunks = [items[i:i + self.BATCH_SIZE]
                    for i in range(0, len(items), self.BATCH_SIZE)]
+        total = len(items)
+        truncated = len(items) >= self.MAX_ROWS
+
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         estimates: dict[str, dict] = {}
         with ThreadPoolExecutor(max_workers=self.PARALLEL_WORKERS) as ex:
-            futures = [ex.submit(_ai_estimate_per_part, chunk) for chunk in chunks]
+            futures = [ex.submit(_ai_estimate_per_part, c) for c in chunks]
             for fut in as_completed(futures):
                 try:
-                    estimates.update(fut.result())
+                    estimates.update(fut.result() or {})
                 except Exception:
                     logger.exception("AI estimate batch failed")
 
@@ -1341,8 +1343,8 @@ class PricelistAiEstimateView(APIView):
         return Response({
             "ok": True,
             "estimated": len(estimates),
-            "total_processed": len(items),
-            "truncated": len(items) >= self.MAX_ROWS,
+            "total": total,
+            "truncated": truncated,
             "sample": dict(list(estimates.items())[:3]),
         })
 

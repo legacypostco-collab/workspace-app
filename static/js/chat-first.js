@@ -2365,7 +2365,8 @@
     __pendingImport = null;
   };
 
-  // Делегированный обработчик кнопки «🤖 AI оценит вес/габариты»
+  // Делегированный обработчик кнопки «🤖 AI оценит вес/габариты».
+  // Прогресс через анимацию точек (AI оценивает...), полный ответ JSON.
   document.addEventListener('click', async function(e) {
     var btn = e.target.closest('.pl-ai-estimate-btn');
     if (!btn) return;
@@ -2376,7 +2377,17 @@
     var statusEl = btn.parentNode.querySelector('.pl-ai-estimate-status');
     btn.disabled = true;
     btn.style.opacity = '0.6';
-    if (statusEl) statusEl.textContent = ' · 🧠 AI оценивает позиции...';
+
+    // Анимация «AI оценивает.../..//...» пока ждём ответ
+    var dots = 0;
+    var animTimer = setInterval(function() {
+      dots = (dots + 1) % 4;
+      if (statusEl) {
+        statusEl.textContent = ' · 🧠 AI оценивает' + '.'.repeat(dots) + ' ';
+        statusEl.style.color = 'rgba(0,0,0,0.65)';
+      }
+    }, 400);
+
     try {
       var res = await fetch('/api/assistant/upload-pricelist/' + importId + '/ai-estimate/', {
         method: 'POST',
@@ -2384,9 +2395,10 @@
         credentials: 'same-origin',
       });
       var data = await res.json();
+      clearInterval(animTimer);
       if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
       var msg = '✅ AI оценил ' + data.estimated + ' позиций';
-      if (data.truncated) msg += ' (первые ' + data.total_processed + ', остальные останутся с дефолтами)';
+      if (data.truncated) msg += ' (первые ' + data.total + ', остальные с дефолтами)';
       msg += '. Применятся при загрузке.';
       if (statusEl) {
         statusEl.textContent = ' · ' + msg;
@@ -2394,6 +2406,7 @@
       }
       btn.style.display = 'none';
     } catch (err) {
+      clearInterval(animTimer);
       if (statusEl) {
         statusEl.textContent = ' · ⚠️ ' + (err.message || err);
         statusEl.style.color = 'rgba(232,92,13,0.85)';
