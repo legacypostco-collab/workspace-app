@@ -2240,7 +2240,7 @@
           return '<div class="pl-df-row"><span class="pl-df-label">' + esc(f.label) + '</span>' + inp + '</div>';
         }).join('');
         var perPartNote = perPartCount > 0
-          ? '<div class="pl-df-note">ℹ️ ' + perPartCount + ' полей у каждой позиции свои (вес, габариты, остаток, FOB) — дозаполните позже в каталоге.</div>'
+          ? '<div class="pl-df-note">ℹ️ ' + perPartCount + ' полей у каждой позиции свои (вес, габариты, остаток, FOB-цены). Если их нет в файле — добавьте в исходный прайс и загрузите заново, либо используйте формулу.</div>'
           : '';
         cards.push({type:'raw_html', data:{
           html: '<div class="card pl-defaults-card">'
