@@ -1256,8 +1256,8 @@ class PricelistAiEstimateView(APIView):
     permission_classes = [IsAuthenticated]
 
     MAX_ROWS = 200       # лимит для MVP — иначе токены и время улетят
-    BATCH_SIZE = 50      # больше items за один Claude call → меньше latency
-    PARALLEL_WORKERS = 5  # параллельные batch-запросы к Claude
+    BATCH_SIZE = 15      # маленькие batch'и → быстрее каждый Claude call → плавный прогресс
+    PARALLEL_WORKERS = 10  # больше параллельных batch'ей
 
     def post(self, request, import_id):
         from marketplace.models import PricelistImport
@@ -1328,17 +1328,29 @@ class PricelistAiEstimateView(APIView):
         truncated = len(items) >= self.MAX_ROWS
 
         from concurrent.futures import ThreadPoolExecutor, as_completed
-        estimates: dict[str, dict] = {}
-        with ThreadPoolExecutor(max_workers=self.PARALLEL_WORKERS) as ex:
-            futures = [ex.submit(_ai_estimate_per_part, c) for c in chunks]
-            for fut in as_completed(futures):
-                try:
-                    estimates.update(fut.result() or {})
-                except Exception:
-                    logger.exception("AI estimate batch failed")
+        from django.core.cache import cache
+        progress_key = f"ai_estimate_progress_{imp.id}"
+        cache.set(progress_key, {"current": 0, "total": total, "running": True}, 300)
 
-        imp.ai_estimates = estimates
-        imp.save(update_fields=["ai_estimates"])
+        estimates: dict[str, dict] = {}
+        try:
+            with ThreadPoolExecutor(max_workers=self.PARALLEL_WORKERS) as ex:
+                futures = [ex.submit(_ai_estimate_per_part, c) for c in chunks]
+                for fut in as_completed(futures):
+                    try:
+                        estimates.update(fut.result() or {})
+                    except Exception:
+                        logger.exception("AI estimate batch failed")
+                    # Incremental save после каждого batch'а — для polling прогресса
+                    cache.set(progress_key, {
+                        "current": len(estimates), "total": total, "running": True,
+                    }, 300)
+                    imp.ai_estimates = dict(estimates)
+                    imp.save(update_fields=["ai_estimates"])
+        finally:
+            cache.set(progress_key, {
+                "current": len(estimates), "total": total, "running": False,
+            }, 300)
 
         return Response({
             "ok": True,
@@ -1346,6 +1358,29 @@ class PricelistAiEstimateView(APIView):
             "total": total,
             "truncated": truncated,
             "sample": dict(list(estimates.items())[:3]),
+        })
+
+
+class PricelistAiEstimateProgressView(APIView):
+    """GET /api/assistant/upload-pricelist/<id>/ai-estimate-progress/
+
+    Возвращает текущий прогресс AI-оценки для polling из UI.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, import_id):
+        from django.core.cache import cache
+        from marketplace.models import PricelistImport
+        try:
+            imp = PricelistImport.objects.get(id=import_id, seller=request.user)
+        except PricelistImport.DoesNotExist:
+            return Response({"error": "import not found"}, status=404)
+        progress = cache.get(f"ai_estimate_progress_{imp.id}") or {}
+        return Response({
+            "current": progress.get("current", 0),
+            "total": progress.get("total", 0),
+            "running": progress.get("running", False),
+            "estimated_in_db": len(imp.ai_estimates or {}),
         })
 
 

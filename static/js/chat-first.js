@@ -2241,14 +2241,17 @@
         }).join('');
         var perPartNote = '';
         if (perPartCount > 0) {
+          // Auto-start: AI оценка запускается сразу в фоне с прогресс-баром.
+          // Пользователь видит «🧠 AI оценивает 0/60 ...» с polling прогрессом.
           perPartNote =
-            '<div class="pl-df-note">ℹ️ ' + perPartCount + ' полей у каждой позиции свои (вес, габариты, остаток, FOB-цены).</div>'
-            + '<div class="pl-df-actions-row">'
-            + '<button class="pl-ai-estimate-btn" type="button" '
-            +   'data-import-id="' + esc(data.import_id) + '">'
-            +   '🤖 AI оценит вес и габариты по описанию'
-            + '</button>'
-            + '<span class="pl-ai-estimate-status"></span>'
+            '<div class="pl-df-note">ℹ️ ' + perPartCount + ' полей у каждой позиции свои (вес, габариты).</div>'
+            + '<div class="pl-ai-progress-card" data-import-id="' + esc(data.import_id) + '" data-autostart="1">'
+            +   '<div class="pl-ai-progress-head">'
+            +     '<span class="pl-ai-progress-label">🤖 AI оценит вес и габариты по описанию</span>'
+            +     '<span class="pl-ai-progress-counter"></span>'
+            +   '</div>'
+            +   '<div class="pl-ai-progress-bar"><div class="pl-ai-progress-fill" style="width:0%"></div></div>'
+            +   '<div class="pl-ai-progress-status">⏳ запуск...</div>'
             + '</div>';
         }
         cards.push({type:'raw_html', data:{
@@ -2365,28 +2368,41 @@
     __pendingImport = null;
   };
 
-  // Делегированный обработчик кнопки «🤖 AI оценит вес/габариты».
-  // Прогресс через анимацию точек (AI оценивает...), полный ответ JSON.
-  document.addEventListener('click', async function(e) {
-    var btn = e.target.closest('.pl-ai-estimate-btn');
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    var importId = btn.dataset.importId;
+  // AI-оценка с auto-start + polling прогресс-баром.
+  // Один POST запускает работу на сервере, параллельно поллим
+  // /ai-estimate-progress/ каждые 500ms и обновляем bar.
+  async function startAiEstimate(card) {
+    var importId = card.dataset.importId;
     if (!importId) return;
-    var statusEl = btn.parentNode.querySelector('.pl-ai-estimate-status');
-    btn.disabled = true;
-    btn.style.opacity = '0.6';
+    if (card.dataset.started === '1') return;  // уже запущено
+    card.dataset.started = '1';
 
-    // Анимация «AI оценивает.../..//...» пока ждём ответ
-    var dots = 0;
-    var animTimer = setInterval(function() {
-      dots = (dots + 1) % 4;
-      if (statusEl) {
-        statusEl.textContent = ' · 🧠 AI оценивает' + '.'.repeat(dots) + ' ';
-        statusEl.style.color = 'rgba(0,0,0,0.65)';
-      }
-    }, 400);
+    var fillEl = card.querySelector('.pl-ai-progress-fill');
+    var counterEl = card.querySelector('.pl-ai-progress-counter');
+    var statusEl = card.querySelector('.pl-ai-progress-status');
+
+    function setProgress(current, total) {
+      var pct = total > 0 ? Math.round(100 * current / total) : 0;
+      if (fillEl) fillEl.style.width = pct + '%';
+      if (counterEl) counterEl.textContent = current + ' / ' + total;
+    }
+
+    if (statusEl) statusEl.textContent = '🧠 запускаю AI...';
+
+    // Polling прогресса
+    var pollTimer = setInterval(async function() {
+      try {
+        var pr = await fetch('/api/assistant/upload-pricelist/' + importId + '/ai-estimate-progress/', {
+          credentials: 'same-origin',
+        });
+        if (!pr.ok) return;
+        var pdata = await pr.json();
+        if (pdata.total > 0) {
+          setProgress(pdata.current, pdata.total);
+          if (statusEl) statusEl.textContent = '🧠 AI оценивает...';
+        }
+      } catch(e) {}
+    }, 500);
 
     try {
       var res = await fetch('/api/assistant/upload-pricelist/' + importId + '/ai-estimate/', {
@@ -2395,26 +2411,41 @@
         credentials: 'same-origin',
       });
       var data = await res.json();
-      clearInterval(animTimer);
+      clearInterval(pollTimer);
       if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      setProgress(data.estimated, data.total);
       var msg = '✅ AI оценил ' + data.estimated + ' позиций';
       if (data.truncated) msg += ' (первые ' + data.total + ', остальные с дефолтами)';
       msg += '. Применятся при загрузке.';
       if (statusEl) {
-        statusEl.textContent = ' · ' + msg;
-        statusEl.style.color = 'rgba(46,125,50,0.85)';
+        statusEl.textContent = msg;
+        statusEl.style.color = 'rgba(46,125,50,0.95)';
       }
-      btn.style.display = 'none';
+      if (fillEl) {
+        fillEl.style.background = 'rgba(46,125,50,0.7)';
+      }
     } catch (err) {
-      clearInterval(animTimer);
+      clearInterval(pollTimer);
       if (statusEl) {
-        statusEl.textContent = ' · ⚠️ ' + (err.message || err);
+        statusEl.textContent = '⚠️ ' + (err.message || err);
         statusEl.style.color = 'rgba(232,92,13,0.85)';
       }
-      btn.disabled = false;
-      btn.style.opacity = '1';
     }
+  }
+
+  // Auto-start: при появлении новой карточки прогресса в DOM запускаем оценку
+  var aiCardObserver = new MutationObserver(function(muts) {
+    muts.forEach(function(m) {
+      m.addedNodes.forEach(function(node) {
+        if (node.nodeType !== 1) return;
+        var cards = node.matches && node.matches('.pl-ai-progress-card[data-autostart="1"]')
+          ? [node]
+          : (node.querySelectorAll ? node.querySelectorAll('.pl-ai-progress-card[data-autostart="1"]') : []);
+        cards.forEach(function(c) { startAiEstimate(c); });
+      });
+    });
   });
+  aiCardObserver.observe(document.body, {childList: true, subtree: true});
 
   // Перехватываем спец-actions в quickAction'е до отправки на /api/assistant/action/
   const _origQuickActionForPricelist = window.quickAction;
