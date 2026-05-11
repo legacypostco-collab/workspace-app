@@ -2579,6 +2579,18 @@
               +     ' list="' + listId + '" placeholder="Код или название порта"/>'
               + '</div>'
               + '<datalist id="' + listId + '">' + suggOpts + '</datalist>';
+          } else if (f.key === 'warehouse_address') {
+            // Полный адрес склада — textarea + datalist подсказок по хабам
+            var listId = 'sugg_' + f.key;
+            var sugg = FIELD_SUGGESTIONS[f.key] || [];
+            var suggOpts = sugg.map(function(s){
+              return '<option value="' + esc(s) + '"/>';
+            }).join('');
+            inp = '<textarea class="pl-df-input pl-df-textarea" data-field="' + esc(f.key)
+              + '" rows="2" placeholder="Страна, город, улица, дом/корпус, индекс. '
+              + 'Напр.: 中国 广州市 南沙区 港口路 88号, Guangzhou 511458"'
+              + ' list="' + listId + '">' + esc(val) + '</textarea>'
+              + '<datalist id="' + listId + '">' + suggOpts + '</datalist>';
           } else {
             // Подсказки по списку складов
             var sugg = FIELD_SUGGESTIONS[f.key] || null;
@@ -3207,25 +3219,41 @@
     card.insertAdjacentHTML('beforeend', html);
   }
 
-  // Фильтрация datalist портов при выборе страны
-  document.addEventListener('change', function(e) {
-    var sel = e.target.closest('.pl-port-country');
-    if (!sel) return;
-    var listId = sel.dataset.target;
-    if (!listId) return;
+  // Фильтрация datalist портов при выборе страны.
+  // Бизнес-логика: страна отправления одна для морпорта И аэропорта,
+  // поэтому селекторы синхронизируются.
+  function _refreshPortDatalist(listId, cc) {
     var list = document.getElementById(listId);
     if (!list) return;
-    var cc = sel.value;
     var kind = listId.includes('sea_port') ? 'sea' : 'air';
     var items = cc ? getPortsByCountry(cc, kind) : (kind === 'sea' ? SEA_PORTS : AIR_PORTS);
     list.innerHTML = items.map(function(s){
       return '<option value="' + esc(s) + '"/>';
     }).join('');
-    // Очистим текущее значение input если оно не из новой страны
+  }
+  document.addEventListener('change', function(e) {
+    var sel = e.target.closest('.pl-port-country');
+    if (!sel) return;
+    var cc = sel.value;
+
+    // Синкаем оба port-country селектора (sea_port и air_port — одна страна)
+    document.querySelectorAll('.pl-port-country').forEach(function(other) {
+      if (other !== sel) other.value = cc;
+    });
+
+    // Перерисовываем datalist для обоих
+    _refreshPortDatalist('sugg_sea_port', cc);
+    _refreshPortDatalist('sugg_air_port', cc);
+
+    // Очищаем input'ы если их значение не из новой страны
+    document.querySelectorAll('.pl-port-input').forEach(function(inp) {
+      if (cc && inp.value && !inp.value.startsWith(cc)) {
+        inp.value = '';
+      }
+    });
+
+    // Фокус на input текущего изменённого поля
     var inp = sel.parentNode.querySelector('.pl-port-input');
-    if (inp && cc && inp.value && !inp.value.startsWith(cc)) {
-      inp.value = '';
-    }
     if (inp) inp.focus();
   });
 
