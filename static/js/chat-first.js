@@ -2202,19 +2202,14 @@
         }});
       }
 
-      // Приоритет — AI-сгенерированное разговорное приветствие
-      // (как у claude.ai: описание файла + умные вопросы).
+      // Базовое короткое приветствие — мгновенно после upload.
+      // AI-разговорный intro подтянется async через smart-questions.
       var intro;
-      if (data.ai_intro && data.ai_intro.trim()) {
-        intro = data.ai_intro;
-      } else if (data.from_profile) {
-        intro = '📋 Файл прочитан · ' + headers.length + ' колонок · '
-              + (data.total_rows ? data.total_rows + ' позиций' : '')
-              + '\n🧠 Профиль: ' + (data.profile_name || 'auto');
-      } else if (data.ai_called) {
-        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🤖 AI распознал ' + fromFile + ' полей из файла.';
+      var rowsInfo = data.total_rows ? data.total_rows + ' позиций' : (headers.length + ' колонок');
+      if (data.from_profile) {
+        intro = '📋 Файл прочитан · ' + rowsInfo + '\n🧠 Профиль: ' + (data.profile_name || 'auto');
       } else {
-        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n📚 Распознано ' + fromFile + ' полей из файла.';
+        intro = '📋 Файл прочитан · ' + rowsInfo + ' · ' + fromFile + ' полей из файла';
       }
       if (unmapped.length) {
         intro += '\n⚠️ Не найдено: ' + unmapped.join(', ');
@@ -2292,14 +2287,42 @@
         actions[0].params['q__' + q.field] = defVal;
       });
 
-      // Если есть smart questions — показываем их вместо commit-кнопок.
-      // Commit-кнопка появится после ответа на последний вопрос.
-      var smartQs = data.smart_questions || [];
-      if (smartQs.length) {
+      // Если questionnaire pending — сразу показываем форму без вопросов,
+      // и параллельно подтягиваем умные вопросы async (не блокируя upload).
+      // Когда придут — отрендерим их перед commit-кнопкой.
+      if (data.smart_questions_pending) {
         addMessage('assistant', intro, cards, []);
-        showNextSmartQuestion(smartQs, 0);
+        var thinking = addMessage('assistant', '💭 Подбираю уточняющие вопросы…', [], []);
+        fetch('/api/assistant/upload-pricelist/' + data.import_id + '/smart-questions/', {
+          credentials: 'same-origin',
+        }).then(function(r){ return r.json(); }).then(function(sq){
+          if (thinking && thinking.parentNode) thinking.remove();
+          var qs = sq.questions || [];
+          if (sq.intro) addMessage('assistant', sq.intro, [], []);
+          if (qs.length) {
+            showNextSmartQuestion(qs, 0);
+          } else {
+            // AI недоступен — показываем кнопку commit сразу
+            addMessage('assistant', '✨ Готово, можно загружать.', [], [
+              {action: '__pricelist_commit', label: '📥 Загрузить',
+               params: {import_id: data.import_id}},
+            ]);
+          }
+        }).catch(function(){
+          if (thinking && thinking.parentNode) thinking.remove();
+          addMessage('assistant', '✨ Готово, можно загружать.', [], [
+            {action: '__pricelist_commit', label: '📥 Загрузить',
+             params: {import_id: data.import_id}},
+          ]);
+        });
       } else {
-        addMessage('assistant', intro, cards, actions);
+        var smartQs = data.smart_questions || [];
+        if (smartQs.length) {
+          addMessage('assistant', intro, cards, []);
+          showNextSmartQuestion(smartQs, 0);
+        } else {
+          addMessage('assistant', intro, cards, actions);
+        }
       }
     } catch (err) {
       if (pending && pending.parentNode) pending.remove();

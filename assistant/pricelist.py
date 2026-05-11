@@ -1173,10 +1173,9 @@ class PricelistUploadView(APIView):
         except Exception:
             total_rows = None
 
-        # AI-разговорный questionnaire как у claude.ai
-        smart = _ai_smart_questions(headers, sample, total_rows, suggested, f.name)
-        ai_intro = smart.get("intro", "")
-        smart_questions = smart.get("questions", [])
+        # AI questionnaire НЕ генерируется здесь синхронно
+        # (это ~4 секунды задержки). Юзер запросит его отдельно
+        # через /smart-questions/ — фронт сразу показывает форму.
 
         return Response({
             "import_id": imp.id,
@@ -1187,8 +1186,9 @@ class PricelistUploadView(APIView):
             "mapped_preview": mapped_preview,
             "suggested_mapping": suggested,
             "ai_called": ai_called,
-            "ai_intro": ai_intro,
-            "smart_questions": smart_questions,
+            "ai_intro": "",         # подтянется async
+            "smart_questions": [],  # подтянется async
+            "smart_questions_pending": True,
             "unknown_headers": unknown,
             "from_saved_mapping": bool(not ai_called and not from_profile),
             "from_profile": from_profile,
@@ -1831,6 +1831,32 @@ class PricelistImportProgressView(APIView):
             "current": progress.get("current", 0),
             "running": progress.get("running", False),
             "status": imp.status,
+        })
+
+
+class PricelistSmartQuestionsView(APIView):
+    """GET /api/assistant/upload-pricelist/<id>/smart-questions/
+
+    Async-генерация Claude.ai-style questionnaire. Вызывается фронтом
+    сразу после upload параллельно с показом базовой формы — чтобы
+    upload-ответ не блокировался на 4 секундах Claude API.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, import_id):
+        from marketplace.models import PricelistImport
+        try:
+            imp = PricelistImport.objects.get(id=import_id, seller=request.user)
+        except PricelistImport.DoesNotExist:
+            return Response({"error": "import not found"}, status=404)
+
+        smart = _ai_smart_questions(
+            imp.headers, imp.sample_rows, None,
+            imp.suggested_mapping or {}, imp.filename,
+        )
+        return Response({
+            "intro": smart.get("intro", ""),
+            "questions": smart.get("questions", []),
         })
 
 
