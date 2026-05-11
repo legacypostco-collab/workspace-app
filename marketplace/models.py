@@ -1226,6 +1226,68 @@ class PricelistImport(models.Model):
         return f"PricelistImport[{self.id}] {self.seller_id} {self.status}"
 
 
+class PartReference(models.Model):
+    """Эталонная база запчастей — точные данные из таможни, дилеров, OEM-каталогов.
+
+    Используется как enrichment layer при импорте прайс-листов:
+    если в файле seller'а нет веса/габаритов — берём отсюда (если знаем).
+    Это намного точнее чем AI guess.
+
+    Источники (в поле `source`):
+      - customs:  таможенные декларации (HS code + реальный вес)
+      - dealer:   официальный каталог дилера (Caterpillar, Komatsu, ...)
+      - oem:      OEM-каталог производителя
+      - manual:   ручной ввод оператора
+      - ai:       AI-оценка (для items без других источников)
+
+    Lookup priority при импорте: customs > dealer > oem > manual > ai.
+    """
+    SOURCE_CHOICES = [
+        ("customs",  "Таможенная декларация"),
+        ("dealer",   "Дилер"),
+        ("oem",      "OEM-каталог"),
+        ("manual",   "Ручной ввод"),
+        ("ai",       "AI-оценка"),
+    ]
+    oem_number = models.CharField(max_length=100, db_index=True,
+        help_text="OEM-номер запчасти — основной ключ для lookup")
+    brand = models.CharField(max_length=100, blank=True, db_index=True,
+        help_text="Бренд (Caterpillar, Komatsu, ...) — для уточнения lookup")
+    title = models.CharField(max_length=255, blank=True,
+        help_text="Название/описание из источника")
+    weight_kg = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    length_cm = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    width_cm  = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    height_cm = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    hs_code   = models.CharField(max_length=20, blank=True, db_index=True,
+        help_text="Код ТН ВЭД из таможни")
+    country_of_origin = models.CharField(max_length=80, blank=True)
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default="manual",
+        db_index=True)
+    source_ref = models.CharField(max_length=255, blank=True,
+        help_text="Ссылка/ID в источнике (номер декларации, URL дилера, ...)")
+    confidence = models.FloatField(default=1.0,
+        help_text="0.0-1.0. Для customs/dealer = 1.0, для AI = 0.7-0.9")
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["oem_number", "brand"], name="part_ref_oem_brand_idx"),
+            models.Index(fields=["source", "-created_at"], name="part_ref_source_idx"),
+        ]
+        # Один (oem, brand, source) — одна запись (последняя по updated_at)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["oem_number", "brand", "source"],
+                name="uniq_part_ref_oem_brand_source",
+            ),
+        ]
+
+    def __str__(self):
+        return f"PartRef[{self.oem_number}|{self.brand}|{self.source}]"
+
+
 class ErpSyncLog(models.Model):
     """ТЗ §17.2: журнал двустороннего обмена с 1С/ERP.
 

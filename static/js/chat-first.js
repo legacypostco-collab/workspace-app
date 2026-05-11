@@ -2386,11 +2386,15 @@
       var msg = parts.join(' · ') + ' позиций.';
 
       // Честный отчёт: что в файле было, чего не было.
+      var refCount = data.reference_enriched || 0;
       if (missing.length) {
         var labels = missing.map(function(m) { return m.label; }).join(', ');
         msg += '\n\n⚠️ В файле отсутствовали: ' + labels + '.';
-        if (aiCount > 0) {
-          msg += '\nAI оценил ' + aiCount + ' позиций по описанию.';
+        var sources = [];
+        if (refCount > 0) sources.push('✨ ' + refCount + ' из эталонной базы (таможня/дилеры)');
+        if (aiCount > 0) sources.push('🤖 ' + aiCount + ' AI-оценкой');
+        if (sources.length) {
+          msg += '\n' + sources.join(', ') + '.';
         } else {
           msg += '\nЭти поля заполнены значениями по умолчанию.';
         }

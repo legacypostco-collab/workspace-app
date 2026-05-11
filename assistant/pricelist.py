@@ -721,6 +721,51 @@ def _apply_transform(field: str, raw_value: str, transform_rules: dict,
     return raw_value
 
 
+def _lookup_reference_data(oems: list[str], brand: str | None = None) -> dict[str, dict]:
+    """Поиск точных данных по OEM-номеру в нашей эталонной базе
+    (таможня, дилеры, OEM-каталоги).
+
+    Используется как enrichment layer ПЕРЕД AI оценкой:
+    точные данные из реестров > AI guess > defaults.
+
+    Source priority: customs > dealer > oem > manual > ai.
+
+    Returns: {oem_number: {weight_kg, length_cm, ..., source, confidence}}
+    """
+    from marketplace.models import PartReference
+    if not oems:
+        return {}
+    qs = PartReference.objects.filter(oem_number__in=oems).order_by(
+        "oem_number", "-confidence", "updated_at",
+    )
+    if brand:
+        # Сначала с точным брендом, потом без — fallback
+        pass
+    SOURCE_PRIORITY = {"customs": 5, "dealer": 4, "oem": 3, "manual": 2, "ai": 1}
+    best: dict[str, dict] = {}
+    for ref in qs:
+        cur = best.get(ref.oem_number)
+        score = (
+            SOURCE_PRIORITY.get(ref.source, 0),
+            ref.confidence,
+        )
+        if cur is None or score > cur["_score"]:
+            best[ref.oem_number] = {
+                "weight_kg": float(ref.weight_kg) if ref.weight_kg else None,
+                "length_cm": float(ref.length_cm) if ref.length_cm else None,
+                "width_cm":  float(ref.width_cm)  if ref.width_cm  else None,
+                "height_cm": float(ref.height_cm) if ref.height_cm else None,
+                "hs_code":   ref.hs_code or None,
+                "country_of_origin": ref.country_of_origin or None,
+                "source":    ref.source,
+                "confidence": ref.confidence,
+                "_score":    score,
+            }
+    for v in best.values():
+        v.pop("_score", None)
+    return best
+
+
 def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                  transform_rules: dict | None = None,
                  constants: dict | None = None):
@@ -728,6 +773,11 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
 
     transform_rules: {std_field: {type: formula|map|concat, ...}}
     constants: {std_field: fixed_value} — дополнительные константы
+
+    Enrichment chain (для отсутствующих в файле полей):
+      1. PartReference (customs/dealer/OEM) — точные данные
+      2. ai_estimates (если seller вызвал AI) — оценки
+      3. fix-defaults / NULL
     """
     from marketplace.models import Brand, Category, Part
 
@@ -905,12 +955,47 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 },
             })
 
-    # ───────── Pass 2: bulk SELECT существующих по oem ─────────
+    # ───────── Pass 2a: bulk SELECT существующих Parts по oem ─────────
     oems = [p["oem"] for p in payloads]
     existing_by_oem: dict[str, "Part"] = {}
     if oems:
         for p in Part.objects.filter(seller=seller, oem_number__in=oems):
             existing_by_oem[p.oem_number.lower()] = p
+
+    # ───────── Pass 2b: enrichment из PartReference (customs/dealer/OEM) ─
+    # Для каждой позиции пробуем достать точные данные из эталонной базы.
+    # Применяется ТОЛЬКО если значение не пришло из файла (col_idx)
+    # и не задано юзером явно (constants).
+    reference_data = _lookup_reference_data(oems)
+    reference_hits = 0
+    for pl in payloads:
+        ref = reference_data.get(pl["oem"])
+        if not ref:
+            continue
+        fields = pl["fields"]
+        applied = False
+        for key in ("weight_kg", "length_cm", "width_cm", "height_cm"):
+            # Применяем reference только если текущее значение — дефолт
+            # (т.е. не из файла), и в reference есть значение.
+            cur = fields.get({"weight_kg": "gross_weight_kg",
+                               "length_cm": "length_cm",
+                               "width_cm":  "width_cm",
+                               "height_cm": "height_cm"}[key])
+            if key in col_idx:
+                continue  # из файла — приоритет
+            if ref.get(key) is not None:
+                target = {"weight_kg": "gross_weight_kg",
+                          "length_cm": "length_cm",
+                          "width_cm":  "width_cm",
+                          "height_cm": "height_cm"}[key]
+                fields[target] = Decimal(str(ref[key]))
+                applied = True
+        if applied:
+            reference_hits += 1
+    if reference_hits:
+        logger.info("PartReference enrichment: %d positions matched", reference_hits)
+    # Сохраним статистику в import_obj для отображения в UI
+    import_obj._enrichment_stats = {"reference_hits": reference_hits}
 
     # ───────── Pass 3: разделяем на create vs update ─────────
     to_create: list = []
@@ -1242,6 +1327,7 @@ class PricelistCommitView(APIView):
             if not val or (isinstance(val, str) and val.startswith("fix:")):
                 missing_from_file.append({"key": key, "label": label})
 
+        enrichment_stats = getattr(imp, "_enrichment_stats", {}) or {}
         return Response({
             "ok": True,
             "import_id": imp.id,
@@ -1252,6 +1338,7 @@ class PricelistCommitView(APIView):
             "errors_preview": errors[:10],
             "missing_from_file": missing_from_file,
             "ai_estimated_count": len(imp.ai_estimates or {}),
+            "reference_enriched": enrichment_stats.get("reference_hits", 0),
         })
 
 
