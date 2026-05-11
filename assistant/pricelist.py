@@ -1422,11 +1422,10 @@ class PricelistUploadView(APIView):
         )
         imp.file_obj.save(f.name, ContentFile(blob), save=True)
 
-        # Подсчитаем общее количество строк (быстро, потоковый счёт)
-        try:
-            total_rows = sum(1 for _ in _read_all(f.name, blob))
-        except Exception:
-            total_rows = None
+        # total_rows НЕ считаем здесь — это требует прохода всего файла
+        # (для 616k Komatsu = +2с). Используем размер файла как proxy.
+        # Если нужно точное число — клиент дозапросит отдельно.
+        total_rows = None
 
         # AI questionnaire НЕ генерируется здесь синхронно
         # (это ~4 секунды задержки). Юзер запросит его отдельно
