@@ -1211,21 +1211,37 @@ class PricelistUploadView(APIView):
         constants: dict = {}
         from_profile = False
 
+        def _file_mapped_count(s):
+            return sum(1 for v in (s or {}).values()
+                        if v and not (isinstance(v, str) and v.startswith("fix:")))
+
+        suggested = {}
         if profile:
             suggested = {k: v for k, v in profile.column_mapping.items()
                           if v and (v.startswith("fix:") or v in headers)}
             transform_rules = profile.transform_rules or {}
             constants = profile.constants or {}
             from_profile = True
-        else:
+        if not profile or _file_mapped_count(suggested) == 0:
+            # Профиль или не нашёлся, или его маппинг не подошёл к нашим
+            # headers (другой supplier, другой язык колонок).
             prev = PricelistMapping.objects.filter(seller=request.user).first()
+            prev_mapped = {}
             if prev and prev.mapping:
-                suggested = {k: v for k, v in prev.mapping.items()
-                              if v and (v.startswith("fix:") or v in headers)}
+                prev_mapped = {k: v for k, v in prev.mapping.items()
+                                if v and (v.startswith("fix:") or v in headers)}
+            if _file_mapped_count(prev_mapped) > 0:
+                suggested = prev_mapped
+                from_profile = False
             else:
-                suggested, unknown, ai_called, smart_status = _smart_mapping(
+                # Свежий smart_mapping (словарь + AI для unknown headers)
+                fresh, unknown, ai_called, smart_status = _smart_mapping(
                     headers, sample, seller=request.user,
                 )
+                suggested = fresh
+                from_profile = False
+                transform_rules = {}
+                constants = {}
         if smart_status == "quota_exceeded":
             return Response({
                 "error": (
