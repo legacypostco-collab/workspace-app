@@ -2128,9 +2128,190 @@
   // 1) POST файл → AI-маппинг (tool use) → показываем маппинг + вопросы
   // 2) Оператор отвечает на вопросы / подтверждает → commit
   // 3) Backend применяет формулы + импортирует → результат
-  // Подсказки для морпортов, аэропортов, складов — основные хабы
-  // по странам где ведём логистику (Дубай, Китай, РФ, NL, TR, KZ).
-  var SEA_PORTS = [
+  // Морпорты с UN/LOCODE (5-буквенный международный код) — по странам.
+  // Юзер выбирает страну, потом получает фильтрованный список портов.
+  var PORTS_BY_COUNTRY = {
+    AE: {
+      flag: '🇦🇪', name: 'ОАЭ',
+      sea: [
+        {code: 'AEJEA', name: 'Jebel Ali', city: 'Дубай'},
+        {code: 'AEPRA', name: 'Port Rashid', city: 'Дубай'},
+        {code: 'AEKHL', name: 'Khor Fakkan', city: 'Шарджа'},
+        {code: 'AESHJ', name: 'Hamriyah Port', city: 'Шарджа'},
+        {code: 'AEKLF', name: 'Khalifa Port', city: 'Абу-Даби'},
+        {code: 'AEFJR', name: 'Port of Fujairah', city: 'Фуджейра'},
+        {code: 'AEMZD', name: 'Mina Zayed', city: 'Абу-Даби'},
+        {code: 'AEAJM', name: 'Ajman Port', city: 'Аджман'},
+      ],
+      air: [
+        {code: 'DXB', name: 'Dubai International', city: 'Дубай'},
+        {code: 'DWC', name: 'Al Maktoum International', city: 'Дубай'},
+        {code: 'AUH', name: 'Zayed International', city: 'Абу-Даби'},
+        {code: 'SHJ', name: 'Sharjah International', city: 'Шарджа'},
+        {code: 'RKT', name: 'Ras Al Khaimah', city: 'Рас-эль-Хайма'},
+      ],
+    },
+    CN: {
+      flag: '🇨🇳', name: 'Китай',
+      sea: [
+        {code: 'CNSHA', name: 'Shanghai (Yangshan)', city: '上海 Шанхай'},
+        {code: 'CNWAI', name: 'Shanghai Waigaoqiao', city: '上海 Шанхай'},
+        {code: 'CNNGB', name: 'Ningbo-Zhoushan', city: '宁波 Нинбо'},
+        {code: 'CNYTN', name: 'Yantian', city: '深圳 Шэньчжэнь'},
+        {code: 'CNSKU', name: 'Shekou', city: '深圳 Шэньчжэнь'},
+        {code: 'CNCWN', name: 'Chiwan', city: '深圳 Шэньчжэнь'},
+        {code: 'CNNSA', name: 'Nansha', city: '广州 Гуанчжоу'},
+        {code: 'CNHUA', name: 'Huangpu', city: '广州 Гуанчжоу'},
+        {code: 'CNTAO', name: 'Qingdao Qianwan', city: '青岛 Циндао'},
+        {code: 'CNTXG', name: 'Tianjin Xingang', city: '天津 Тяньцзинь'},
+        {code: 'CNDLC', name: 'Dalian DCT', city: '大连 Далянь'},
+        {code: 'CNXMN', name: 'Xiamen Haicang', city: '厦门 Сямэнь'},
+        {code: 'HKHKG', name: 'Hong Kong Kwai Tsing', city: '香港 Гонконг'},
+        {code: 'CNLYG', name: 'Lianyungang', city: '连云港'},
+        {code: 'CNFUZ', name: 'Fuzhou', city: '福州 Фучжоу'},
+      ],
+      air: [
+        {code: 'PVG', name: 'Pudong International', city: '上海 Шанхай'},
+        {code: 'PEK', name: 'Capital International', city: '北京 Пекин'},
+        {code: 'PKX', name: 'Daxing International', city: '北京 Пекин'},
+        {code: 'CAN', name: 'Baiyun International', city: '广州 Гуанчжоу'},
+        {code: 'SZX', name: "Bao'an International", city: '深圳 Шэньчжэнь'},
+        {code: 'HKG', name: 'Hong Kong International', city: '香港 Гонконг'},
+        {code: 'HGH', name: 'Xiaoshan International', city: '杭州 Ханчжоу'},
+        {code: 'CTU', name: 'Tianfu International', city: '成都 Чэнду'},
+        {code: 'KMG', name: 'Changshui International', city: '昆明 Куньмин'},
+        {code: 'XIY', name: 'Xianyang International', city: '西安 Сиань'},
+      ],
+    },
+    RU: {
+      flag: '🇷🇺', name: 'Россия',
+      sea: [
+        // Дальний Восток
+        {code: 'RUVVO', name: 'ВМТП', city: 'Владивосток'},
+        {code: 'RUVRP', name: 'ВМРП (рыбный)', city: 'Владивосток'},
+        {code: 'RUPRV', name: 'Первомайский терминал', city: 'Владивосток'},
+        {code: 'RUVCT', name: 'ВКТ (контейнерный)', city: 'Владивосток'},
+        {code: 'RUVYP', name: 'Восточный', city: 'Находка'},
+        {code: 'RUNJK', name: 'НМТП', city: 'Находка'},
+        {code: 'RUZRB', name: 'Зарубино', city: 'Хасанский р-н'},
+        {code: 'RUPSE', name: 'Посьет', city: 'Хасанский р-н'},
+        {code: 'RUSLA', name: 'Славянка', city: 'Приморский край'},
+        {code: 'RUBKM', name: 'Большой Камень', city: 'Приморский край'},
+        {code: 'RUVNN', name: 'Ванино', city: 'Хабаровский край'},
+        {code: 'RUSOV', name: 'Советская Гавань', city: 'Хабаровский край'},
+        // Юг
+        {code: 'RUNVS', name: 'НМТП', city: 'Новороссийск'},
+        {code: 'RUSHX', name: 'Шесхарис', city: 'Новороссийск'},
+        {code: 'RUNUT', name: 'НУТЭП', city: 'Новороссийск'},
+        {code: 'RUTMN', name: 'Порт Тамань', city: 'Краснодарский край'},
+        {code: 'RUTUA', name: 'Туапсе', city: 'Краснодарский край'},
+        {code: 'RUTMK', name: 'Темрюк', city: 'Краснодарский край'},
+        {code: 'RUKVK', name: 'Кавказ', city: 'Краснодарский край'},
+        {code: 'RUROV', name: 'Ростов-на-Дону', city: 'Дон'},
+        // Балтика
+        {code: 'RULED', name: 'Большой порт', city: 'Санкт-Петербург'},
+        {code: 'RUFCT', name: 'ПКТ (контейнерный)', city: 'Санкт-Петербург'},
+        {code: 'RUPLP', name: 'Петролеспорт', city: 'Санкт-Петербург'},
+        {code: 'RUBRO', name: 'Бронка', city: 'Санкт-Петербург'},
+        {code: 'RUULU', name: 'Усть-Луга', city: 'Ленинградская обл.'},
+        {code: 'RUUL2', name: 'Усть-Луга ЮГ-2', city: 'Ленинградская обл.'},
+        {code: 'RUKGD', name: 'КМТП', city: 'Калининград'},
+        {code: 'RUBLT', name: 'Балтийск', city: 'Калининград'},
+        // Север
+        {code: 'RUMMK', name: 'ММТП', city: 'Мурманск'},
+        {code: 'RUARH', name: 'Архангельск', city: 'Архангельск'},
+        {code: 'RUKDA', name: 'Кандалакша', city: 'Мурманская обл.'},
+      ],
+      air: [
+        {code: 'SVO', name: 'Шереметьево', city: 'Москва'},
+        {code: 'DME', name: 'Домодедово', city: 'Москва'},
+        {code: 'VKO', name: 'Внуково', city: 'Москва'},
+        {code: 'LED', name: 'Пулково', city: 'Санкт-Петербург'},
+        {code: 'VVO', name: 'Владивосток', city: 'Владивосток'},
+        {code: 'KJA', name: 'Емельяново', city: 'Красноярск'},
+        {code: 'OVB', name: 'Толмачёво', city: 'Новосибирск'},
+        {code: 'KZN', name: 'Казань', city: 'Казань'},
+        {code: 'KHV', name: 'Хабаровск', city: 'Хабаровск'},
+        {code: 'EKB', name: 'Кольцово', city: 'Екатеринбург'},
+        {code: 'AER', name: 'Сочи', city: 'Сочи'},
+      ],
+    },
+    NL: {
+      flag: '🇳🇱', name: 'Нидерланды',
+      sea: [
+        {code: 'NLRTM', name: 'Rotterdam (Maasvlakte II)', city: 'Роттердам'},
+        {code: 'NLRTA', name: 'Rotterdam APMT/RWG/ECT', city: 'Роттердам'},
+        {code: 'NLAMS', name: 'Amsterdam Westpoort', city: 'Амстердам'},
+        {code: 'NLVLS', name: 'Vlissingen', city: 'Влиссинген'},
+      ],
+      air: [
+        {code: 'AMS', name: 'Schiphol', city: 'Амстердам'},
+        {code: 'EIN', name: 'Eindhoven', city: 'Эйндховен'},
+        {code: 'RTM', name: 'Rotterdam The Hague', city: 'Роттердам'},
+      ],
+    },
+    TR: {
+      flag: '🇹🇷', name: 'Турция',
+      sea: [
+        {code: 'TRAMB', name: 'Ambarli (Marport/Kumport)', city: 'Стамбул'},
+        {code: 'TRHAY', name: 'Haydarpaşa', city: 'Стамбул'},
+        {code: 'TRMER', name: 'MIP International', city: 'Мерсин'},
+        {code: 'TRIZM', name: 'Aliaga Nemrut Bay', city: 'Измир'},
+        {code: 'TRGEB', name: 'Gebze (Yilport/Evyap)', city: 'Коджаэли'},
+        {code: 'TRDER', name: 'Derince', city: 'Коджаэли'},
+        {code: 'TRSAN', name: 'Iskenderun', city: 'Хатай'},
+      ],
+      air: [
+        {code: 'IST', name: 'Istanbul Airport', city: 'Стамбул'},
+        {code: 'SAW', name: 'Sabiha Gökçen', city: 'Стамбул'},
+        {code: 'ESB', name: 'Esenboğa', city: 'Анкара'},
+        {code: 'ADB', name: 'Adnan Menderes', city: 'Измир'},
+        {code: 'AYT', name: 'Antalya', city: 'Анталья'},
+      ],
+    },
+    KZ: {
+      flag: '🇰🇿', name: 'Казахстан',
+      sea: [
+        {code: 'KZAKT', name: 'Морской торговый порт', city: 'Актау'},
+        {code: 'KZKUR', name: 'Курык (мультимодальный)', city: 'Курык'},
+      ],
+      air: [
+        {code: 'ALA', name: 'Almaty International', city: 'Алматы'},
+        {code: 'NQZ', name: 'Astana International', city: 'Астана'},
+        {code: 'CIT', name: 'Shymkent', city: 'Шымкент'},
+        {code: 'KGF', name: 'Sary-Arka', city: 'Караганда'},
+        {code: 'AKX', name: 'Aktobe', city: 'Актобе'},
+      ],
+    },
+  };
+
+  // Flatten в формат "AEJEA · Jebel Ali · Дубай · 🇦🇪 ОАЭ" — для datalist
+  // (searchable by code, name, city, country)
+  function _flattenPorts(kind) {
+    var out = [];
+    for (var cc in PORTS_BY_COUNTRY) {
+      var country = PORTS_BY_COUNTRY[cc];
+      (country[kind] || []).forEach(function(p) {
+        out.push(p.code + ' · ' + p.name + ' · ' + p.city
+               + ' · ' + country.flag + ' ' + country.name);
+      });
+    }
+    return out;
+  }
+  window.getPortsByCountry = function(cc, kind) {
+    var country = PORTS_BY_COUNTRY[cc];
+    if (!country) return _flattenPorts(kind);
+    return (country[kind] || []).map(function(p) {
+      return p.code + ' · ' + p.name + ' · ' + p.city
+           + ' · ' + country.flag + ' ' + country.name;
+    });
+  };
+
+  var SEA_PORTS = _flattenPorts('sea');
+  var AIR_PORTS = _flattenPorts('air');
+
+  // LEGACY (для совместимости, можно удалить позже)
+  var _OLD_SEA_PORTS = [
     // 🇦🇪 ОАЭ
     'Jebel Ali · Container Terminal 1-4 (Дубай, ОАЭ)',
     'Port Rashid (Дубай, ОАЭ)',
@@ -2199,42 +2380,8 @@
     'Актау · Морской торговый порт (KZ)',
     'Курык · мультимодальный (KZ)',
   ];
-  var AIR_PORTS = [
-    // 🇦🇪 ОАЭ
-    'DXB · Dubai International (Дубай)',
-    'DWC · Al Maktoum International (Дубай)',
-    'AUH · Abu Dhabi International (Абу-Даби)',
-    'SHJ · Sharjah International (Шарджа)',
-    // 🇨🇳 Китай
-    'PVG · Shanghai Pudong (Шанхай)',
-    'PEK · Beijing Capital (Пекин)',
-    'PKX · Beijing Daxing (Пекин)',
-    'CAN · Guangzhou Baiyun (Гуанчжоу)',
-    'SZX · Shenzhen Bao\'an (Шэньчжэнь)',
-    'HKG · Hong Kong (Гонконг)',
-    'HGH · Hangzhou Xiaoshan (Ханчжоу)',
-    'CTU · Chengdu Tianfu (Чэнду)',
-    // 🇷🇺 Россия
-    'SVO · Шереметьево (Москва)',
-    'DME · Домодедово (Москва)',
-    'VKO · Внуково (Москва)',
-    'LED · Пулково (СПб)',
-    'VVO · Владивосток',
-    'KJA · Красноярск',
-    'NJK · Новосибирск',
-    'KZN · Казань',
-    // 🇳🇱 Нидерланды
-    'AMS · Schiphol (Амстердам)',
-    // 🇹🇷 Турция
-    'IST · Istanbul Airport (Стамбул)',
-    'SAW · Sabiha Gökçen (Стамбул)',
-    'ESB · Esenboğa (Анкара)',
-    'ADB · İzmir (Измир)',
-    // 🇰🇿 Казахстан
-    'ALA · Алматы',
-    'NQZ · Астана',
-    'CIT · Шымкент',
-  ];
+  // (старые legacy-списки AIR_PORTS/SEA_PORTS заменены на новые
+  // PORTS_BY_COUNTRY с UN/LOCODE кодами выше)
   var WAREHOUSE_HUBS = [
     // 🇦🇪 ОАЭ
     'Jebel Ali Free Zone (JAFZA), Дубай', 'Dubai South Logistics, Дубай',
@@ -2410,8 +2557,30 @@
               return '<option value="' + esc(o) + '"' + sel + '>' + esc(o) + '</option>';
             }).join('');
             inp = '<select class="pl-df-input" data-field="' + esc(f.key) + '">' + opts + '</select>';
+          } else if (f.key === 'sea_port' || f.key === 'air_port') {
+            // Морпорт / Аэропорт: страна → порт. UN/LOCODE в начале.
+            var portKind = f.key === 'sea_port' ? 'sea' : 'air';
+            var allPorts = portKind === 'sea' ? SEA_PORTS : AIR_PORTS;
+            var listId = 'sugg_' + f.key;
+            var countryId = 'country_' + f.key;
+            var countryOpts = '<option value="">Любая страна</option>'
+              + Object.keys(PORTS_BY_COUNTRY).map(function(cc){
+                var c = PORTS_BY_COUNTRY[cc];
+                return '<option value="' + cc + '">' + esc(c.flag + ' ' + c.name) + '</option>';
+              }).join('');
+            var suggOpts = allPorts.map(function(s){
+              return '<option value="' + esc(s) + '"/>';
+            }).join('');
+            inp = '<div class="pl-port-row">'
+              +   '<select class="pl-df-input pl-port-country" id="' + countryId + '"'
+              +     ' data-target="' + listId + '">' + countryOpts + '</select>'
+              +   '<input class="pl-df-input pl-port-input" data-field="' + esc(f.key)
+              +     '" type="text" value="' + esc(val) + '" autocomplete="off"'
+              +     ' list="' + listId + '" placeholder="Код или название порта"/>'
+              + '</div>'
+              + '<datalist id="' + listId + '">' + suggOpts + '</datalist>';
           } else {
-            // Подсказки по списку портов/складов для соответствующих полей
+            // Подсказки по списку складов
             var sugg = FIELD_SUGGESTIONS[f.key] || null;
             if (sugg) {
               var listId = 'sugg_' + f.key;
@@ -3037,6 +3206,28 @@
       + '</div>';
     card.insertAdjacentHTML('beforeend', html);
   }
+
+  // Фильтрация datalist портов при выборе страны
+  document.addEventListener('change', function(e) {
+    var sel = e.target.closest('.pl-port-country');
+    if (!sel) return;
+    var listId = sel.dataset.target;
+    if (!listId) return;
+    var list = document.getElementById(listId);
+    if (!list) return;
+    var cc = sel.value;
+    var kind = listId.includes('sea_port') ? 'sea' : 'air';
+    var items = cc ? getPortsByCountry(cc, kind) : (kind === 'sea' ? SEA_PORTS : AIR_PORTS);
+    list.innerHTML = items.map(function(s){
+      return '<option value="' + esc(s) + '"/>';
+    }).join('');
+    // Очистим текущее значение input если оно не из новой страны
+    var inp = sel.parentNode.querySelector('.pl-port-input');
+    if (inp && cc && inp.value && !inp.value.startsWith(cc)) {
+      inp.value = '';
+    }
+    if (inp) inp.focus();
+  });
 
   // Side preview panel (как у claude.ai) — открывается по клику
   // на карточку файла или кнопку «↗ Открыть».
