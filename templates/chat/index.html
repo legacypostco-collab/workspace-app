@@ -516,11 +516,11 @@
     .pl-port-input{flex:1;}
     .pl-df-textarea{font-family:inherit;resize:vertical;min-height:64px;line-height:1.5;padding:10px 12px;}
     .pl-df-row:has(.pl-df-textarea){grid-column:1 / -1;}
-    /* Селектор «Страна отправления» сверху — мягкая выделенная плашка */
-    .pl-ship-country-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;margin-bottom:18px;background:#FAFAF9;border:1px solid rgba(0,0,0,0.08);border-radius:10px;}
-    .pl-ship-country-label{font-size:13.5px;font-weight:500;color:#1a1a1a;display:flex;flex-direction:column;flex:1;gap:2px;}
+    /* Селектор «Страна отправления» сверху — лейбл и хинт сверху, селект слева */
+    .pl-ship-country-row{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:14px 16px;margin-bottom:18px;background:#FAFAF9;border:1px solid rgba(0,0,0,0.08);border-radius:10px;}
+    .pl-ship-country-label{font-size:13.5px;font-weight:500;color:#1a1a1a;display:flex;flex-direction:column;gap:2px;}
     .pl-ship-country-hint{font-weight:400;font-size:11.5px;color:rgba(0,0,0,0.5);line-height:1.4;}
-    .pl-ship-country{flex:0 0 220px;}
+    .pl-ship-country{width:280px;max-width:100%;}
     /* Пояснительная записка перед загрузкой — чистая, без фона */
     .import-explain{padding:20px 22px;background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:12px;}
     .ie-title{font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:4px;}
