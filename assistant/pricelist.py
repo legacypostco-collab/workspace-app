@@ -803,9 +803,14 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
         elif val in headers:
             col_idx[fld] = headers.index(val)
             fixed_vals.pop(fld, None)
+    # Constants имеют приоритет над любыми дефолтами (свежий ответ юзера
+    # должен перезаписывать значения из сохранённого профиля)
     for fld, val in constants.items():
-        if fld not in col_idx and fld not in fixed_vals:
-            fixed_vals[fld] = str(val)
+        if val is None or val == "":
+            continue
+        if fld in col_idx:
+            continue  # колонка из файла — приоритет
+        fixed_vals[fld] = str(val)
 
     missing_required = [
         f for f in REQUIRED_FIELDS
@@ -1514,9 +1519,14 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
         elif val in headers:
             col_idx[fld] = headers.index(val)
             fixed_vals.pop(fld, None)
+    # Constants имеют приоритет — даже если mapping уже содержит fix:default,
+    # юзерский ответ должен перебить (свежий ответ юзера > старый профиль).
     for fld, val in (constants or {}).items():
-        if fld not in col_idx and fld not in fixed_vals:
-            fixed_vals[fld] = str(val)
+        if val is None or val == "":
+            continue
+        if fld in col_idx:
+            continue  # колонка замаплена на файл — это приоритет
+        fixed_vals[fld] = str(val)
 
     # xlsxwriter — в 2-3 раза быстрее openpyxl для массовой записи.
     # constant_memory=True пишет напрямую в файл (не накапливает в RAM).
