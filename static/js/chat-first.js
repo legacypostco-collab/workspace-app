@@ -2847,6 +2847,63 @@
     if (body) body.innerHTML = '';
   };
 
+  // Drag-to-resize side panel — ручка слева тянется в любую сторону
+  (function() {
+    var panel = document.getElementById('sidePreview');
+    var resizer = document.getElementById('sidePreviewResizer');
+    if (!panel || !resizer) return;
+
+    // Восстанавливаем сохранённую ширину
+    try {
+      var saved = parseInt(localStorage.getItem('cf_side_preview_width'), 10);
+      if (saved && saved > 320) panel.style.width = saved + 'px';
+    } catch(e){}
+
+    var dragging = false;
+    var startX = 0;
+    var startWidth = 0;
+
+    resizer.addEventListener('mousedown', function(e) {
+      dragging = true;
+      startX = e.clientX;
+      startWidth = panel.getBoundingClientRect().width;
+      panel.classList.add('resizing');
+      resizer.classList.add('active');
+      document.body.classList.add('side-preview-resizing');
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!dragging) return;
+      // Панель справа: тянем влево → шире, вправо → уже
+      var delta = startX - e.clientX;
+      var newWidth = startWidth + delta;
+      var minW = 320;
+      var maxW = window.innerWidth - 200;
+      if (newWidth < minW) newWidth = minW;
+      if (newWidth > maxW) newWidth = maxW;
+      panel.style.width = newWidth + 'px';
+    });
+
+    document.addEventListener('mouseup', function() {
+      if (!dragging) return;
+      dragging = false;
+      panel.classList.remove('resizing');
+      resizer.classList.remove('active');
+      document.body.classList.remove('side-preview-resizing');
+      try {
+        var w = parseInt(panel.style.width, 10);
+        if (w) localStorage.setItem('cf_side_preview_width', String(w));
+      } catch(e){}
+    });
+
+    // Double-click — сброс ширины к дефолту (50vw)
+    resizer.addEventListener('dblclick', function() {
+      panel.style.width = '50vw';
+      try { localStorage.removeItem('cf_side_preview_width'); } catch(e){}
+    });
+  })();
+
   document.addEventListener('click', function(e) {
     var btn = e.target.closest('.of-open-preview');
     if (!btn) return;
