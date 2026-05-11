@@ -2331,7 +2331,23 @@
     });
 
     showConv();
-    var pending = addMessage('assistant', 'Импортирую прайс…');
+    var pending = addMessage('assistant', '📥 Импортирую прайс… 0 строк');
+
+    // Polling прогресса импорта каждые 500ms
+    var importPollTimer = setInterval(async function() {
+      try {
+        var pr = await fetch('/api/assistant/upload-pricelist/' + importId + '/import-progress/', {
+          credentials: 'same-origin',
+        });
+        if (!pr.ok) return;
+        var pdata = await pr.json();
+        if (pending && pdata.current !== undefined) {
+          var cEl = pending.querySelector('.msg-content');
+          if (cEl) cEl.textContent = '📥 Импортирую прайс… ' + pdata.current + ' строк';
+        }
+      } catch(e) {}
+    }, 500);
+
     try {
       var res = await fetch('/api/assistant/upload-pricelist/' + importId + '/commit/', {
         method: 'POST',
@@ -2345,6 +2361,7 @@
         credentials: 'same-origin',
       });
       var data = await res.json();
+      clearInterval(importPollTimer);
       if (pending && pending.parentNode) pending.remove();
       if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
 
@@ -2366,6 +2383,7 @@
       addMessage('assistant', msg, [], btns);
       __pendingImport = null;
     } catch (err) {
+      clearInterval(importPollTimer);
       if (pending && pending.parentNode) pending.remove();
       addMessage('assistant', '⚠️ Не удалось импортировать: ' + (err.message || err));
     }

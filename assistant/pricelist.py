@@ -773,8 +773,21 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
     failed = 0
     errors: list[dict] = []
 
-    with transaction.atomic():
-        for row_n, row in enumerate(_read_all(import_obj.filename, blob), start=2):
+    # Кэш брендов: на каждый прайс одни и те же названия → не лезть
+    # в БД n раз. seed'им существующими + Generic.
+    brand_cache: dict[str, "Brand"] = {
+        b.name.lower(): b for b in Brand.objects.all()
+    }
+    brand_cache.setdefault("generic", generic_brand)
+
+    # Прогресс импорта для polling из UI
+    from django.core.cache import cache
+    progress_key = f"import_progress_{import_obj.id}"
+    cache.set(progress_key, {"current": 0, "total": 0, "running": True}, 600)
+
+    # ───────── Pass 1: парсим все строки в payload'ы ─────────
+    payloads: list[dict] = []
+    for row_n, row in enumerate(_read_all(import_obj.filename, blob), start=2):
             if not any(c.strip() for c in row):
                 continue
 
@@ -811,14 +824,16 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     errors.append({"row": row_n, "oem": oem[:60], "reason": reason})
                 continue
 
-            brand_name = get("brand")
+            brand_name = (get("brand") or "").strip()
             if brand_name:
-                brand = Brand.objects.filter(name__iexact=brand_name).first()
+                key = brand_name.lower()
+                brand = brand_cache.get(key)
                 if not brand:
                     brand = Brand.objects.create(
                         name=brand_name[:200],
                         slug=slugify(brand_name)[:200] or generic_brand.slug,
                     )
+                    brand_cache[key] = brand
             else:
                 brand = generic_brand
 
@@ -863,42 +878,92 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             width = _dim_with_ai("width_cm", Decimal("1.0"), "width_cm")
             height = _dim_with_ai("height_cm", Decimal("1.0"), "height_cm")
 
-            try:
-                _obj, was_created = Part.objects.update_or_create(
-                    seller=seller, oem_number__iexact=oem,
-                    defaults={
-                        "title": title[:255],
-                        "oem_number": oem[:100],
-                        "slug": slugify(f"{oem}-{seller.username}")[:280],
-                        "price": price_exw,
-                        "currency": currency,
-                        "stock_quantity": stock,
-                        "condition": condition,
-                        "cross_numbers": cross_number,
-                        "price_fob_sea": price_fob_sea,
-                        "price_fob_air": price_fob_air,
-                        "warehouse_address": warehouse,
-                        "sea_port": sea_port,
-                        "air_port": air_port,
-                        "gross_weight_kg": weight,
-                        "length_cm": length,
-                        "width_cm": width,
-                        "height_cm": height,
-                        "category": cat,
-                        "brand": brand,
-                        "is_active": True,
-                    },
-                )
-                if was_created:
-                    created += 1
-                else:
-                    updated += 1
-                imported += 1
-            except Exception as e:
-                failed += 1
-                if len(errors) < 50:
-                    errors.append({"row": row_n, "oem": oem[:60], "reason": str(e)[:100]})
+            payloads.append({
+                "row_n": row_n,
+                "oem": oem[:100],
+                "fields": {
+                    "title": title[:255],
+                    "oem_number": oem[:100],
+                    "slug": slugify(f"{oem}-{seller.username}")[:280],
+                    "price": price_exw,
+                    "currency": currency,
+                    "stock_quantity": stock,
+                    "condition": condition,
+                    "cross_numbers": cross_number,
+                    "price_fob_sea": price_fob_sea,
+                    "price_fob_air": price_fob_air,
+                    "warehouse_address": warehouse,
+                    "sea_port": sea_port,
+                    "air_port": air_port,
+                    "gross_weight_kg": weight,
+                    "length_cm": length,
+                    "width_cm": width,
+                    "height_cm": height,
+                    "category": cat,
+                    "brand": brand,
+                    "is_active": True,
+                },
+            })
 
+    # ───────── Pass 2: bulk SELECT существующих по oem ─────────
+    oems = [p["oem"] for p in payloads]
+    existing_by_oem: dict[str, "Part"] = {}
+    if oems:
+        for p in Part.objects.filter(seller=seller, oem_number__in=oems):
+            existing_by_oem[p.oem_number.lower()] = p
+
+    # ───────── Pass 3: разделяем на create vs update ─────────
+    to_create: list = []
+    to_update: list = []
+    update_fields = [
+        "title", "price", "currency", "stock_quantity", "condition",
+        "cross_numbers", "price_fob_sea", "price_fob_air",
+        "warehouse_address", "sea_port", "air_port",
+        "gross_weight_kg", "length_cm", "width_cm", "height_cm",
+        "category", "brand", "is_active", "slug",
+    ]
+    for pl in payloads:
+        existing = existing_by_oem.get(pl["oem"].lower())
+        if existing:
+            for k, v in pl["fields"].items():
+                setattr(existing, k, v)
+            to_update.append(existing)
+        else:
+            to_create.append(Part(seller=seller, **pl["fields"]))
+
+    # ───────── Pass 4: bulk_create + bulk_update ─────────
+    BATCH = 200
+    with transaction.atomic():
+        for i in range(0, len(to_create), BATCH):
+            chunk = to_create[i:i + BATCH]
+            try:
+                Part.objects.bulk_create(chunk, batch_size=BATCH)
+                created += len(chunk)
+            except Exception as e:
+                failed += len(chunk)
+                if len(errors) < 50:
+                    errors.append({"row": 0, "reason": f"bulk_create: {str(e)[:120]}"})
+            cache.set(progress_key, {
+                "current": created + updated, "total": len(payloads), "running": True,
+            }, 600)
+
+        for i in range(0, len(to_update), BATCH):
+            chunk = to_update[i:i + BATCH]
+            try:
+                Part.objects.bulk_update(chunk, fields=update_fields, batch_size=BATCH)
+                updated += len(chunk)
+            except Exception as e:
+                failed += len(chunk)
+                if len(errors) < 50:
+                    errors.append({"row": 0, "reason": f"bulk_update: {str(e)[:120]}"})
+            cache.set(progress_key, {
+                "current": created + updated, "total": len(payloads), "running": True,
+            }, 600)
+
+    imported = created + updated
+    cache.set(progress_key, {
+        "current": imported, "total": imported + failed, "running": False,
+    }, 600)
     return imported, created, updated, failed, errors
 
 
@@ -1354,9 +1419,9 @@ class PricelistAiEstimateView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    MAX_ROWS = 200        # лимит для MVP
-    BATCH_SIZE = 5        # ОЧЕНЬ маленькие batch'и → плавный прогресс
-    PARALLEL_WORKERS = 15  # больше параллельных Claude calls (rate limit 50 RPM)
+    MAX_ROWS = 1000       # покрываем большинство реальных прайсов
+    BATCH_SIZE = 10       # компромисс: плавный прогресс vs много API calls
+    PARALLEL_WORKERS = 20  # параллельные Claude calls (rate limit 50 RPM)
 
     def post(self, request, import_id):
         from marketplace.models import PricelistImport
@@ -1497,6 +1562,28 @@ class PricelistAiEstimateView(APIView):
             "truncated": truncated,
             "review_sample": review_sample,
             "low_confidence_count": low_conf_count,
+        })
+
+
+class PricelistImportProgressView(APIView):
+    """GET /api/assistant/upload-pricelist/<id>/import-progress/
+
+    Возвращает текущий прогресс импорта (commit) для polling из UI.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, import_id):
+        from django.core.cache import cache
+        from marketplace.models import PricelistImport
+        try:
+            imp = PricelistImport.objects.get(id=import_id, seller=request.user)
+        except PricelistImport.DoesNotExist:
+            return Response({"error": "import not found"}, status=404)
+        progress = cache.get(f"import_progress_{imp.id}") or {}
+        return Response({
+            "current": progress.get("current", 0),
+            "running": progress.get("running", False),
+            "status": imp.status,
         })
 
 
