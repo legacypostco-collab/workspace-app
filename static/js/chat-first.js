@@ -2879,18 +2879,27 @@
     if (nameEl) nameEl.textContent = filename || 'Файл';
     if (metaEl) metaEl.textContent = 'XLSX';
     if (dlEl) { dlEl.href = downloadUrl || '#'; dlEl.setAttribute('download', filename || ''); }
-    body.innerHTML = '<div class="opx-loading">Загружаю превью…</div>';
+    // Если panel уже открыт с loading-стейтом (от генерации) — не мигаем
+    // плоским «Загружаю превью…», оставляем спиннер. Иначе показываем
+    // красивый loading с спиннером.
+    var hasGenLoading = body.querySelector('.opx-gen-loading');
+    if (!hasGenLoading) {
+      body.innerHTML =
+        '<div class="opx-gen-loading">'
+        + '<div class="opx-gen-spinner"></div>'
+        + '<div class="opx-gen-message">Загружаю превью…</div>'
+        + '</div>';
+    }
     panel.hidden = false;
     try {
       var res = await fetch('/api/assistant/upload-pricelist/' + importId + '/output-preview/', {
         credentials: 'same-origin',
       });
       var html = await res.text();
-      // Из полной HTML страницы извлекаем только содержимое body
       var match = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
       body.innerHTML = match ? match[1] : html;
     } catch (e) {
-      body.innerHTML = '<div class="opx-loading">⚠️ Ошибка загрузки: ' + (e.message || e) + '</div>';
+      body.innerHTML = '<div class="opx-gen-loading"><div class="opx-gen-message">⚠️ Ошибка: ' + (e.message || e) + '</div></div>';
     }
   };
   window.closeSidePreview = function() {
