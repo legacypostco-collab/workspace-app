@@ -678,18 +678,19 @@
     },
     output_file(d) {
       // Карточка готового файла (как у claude.ai): иконка + имя + размер +
-      // кнопки «Открыть» / «Скачать».
+      // кнопки «Открыть» (side panel) / «Скачать».
       var name = esc(d.filename || 'pricelist.xlsx');
       var size = d.size_kb ? d.size_kb + ' KB' : '';
       var url = esc(d.download_url || '');
-      return '<div class="card of-card">'
+      var importId = esc(String(d.import_id || ''));
+      return '<div class="card of-card" data-import-id="' + importId + '" data-filename="' + name + '" data-download="' + url + '">'
         + '<div class="of-icon">📊</div>'
         + '<div class="of-info">'
         +   '<div class="of-name">' + name + '</div>'
         +   '<div class="of-meta">Spreadsheet · XLSX' + (size ? ' · ' + size : '') + '</div>'
         + '</div>'
         + '<a class="of-btn of-btn-primary" href="' + url + '" download="' + name + '" target="_blank" rel="noopener">⬇ Скачать</a>'
-        + (url ? '<a class="of-btn" href="' + url + '" target="_blank" rel="noopener">↗ Открыть</a>' : '')
+        + '<button class="of-btn of-open-preview">↗ Открыть</button>'
         + '</div>';
     },
     table_preview(d) {
@@ -2611,11 +2612,12 @@
       if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
       var sizeKB = Math.round((data.size || 0) / 1024);
       addMessage('assistant',
-        '✨ Готово! Я подготовил файл в формате маркетплейса.\nПроверьте его — можно скачать и открыть, либо сразу загрузить позиции в каталог.',
+        '✨ Готово! Я подготовил файл в формате маркетплейса.\nПроверьте его — можно открыть превью или скачать, либо сразу загрузить позиции в каталог.',
         [{type: 'output_file', data: {
           filename: data.filename,
           size_kb: sizeKB,
           download_url: data.download_url,
+          import_id: imp.import_id,
         }}],
         [
           {action: '__pricelist_commit', label: '📥 Загрузить в каталог',
@@ -2810,6 +2812,61 @@
       + '</div>';
     card.insertAdjacentHTML('beforeend', html);
   }
+
+  // Side preview panel (как у claude.ai) — открывается по клику
+  // на карточку файла или кнопку «↗ Открыть».
+  window.openSidePreview = async function(importId, filename, downloadUrl) {
+    var panel = document.getElementById('sidePreview');
+    var body = document.getElementById('sidePreviewBody');
+    var nameEl = document.getElementById('sidePreviewName');
+    var metaEl = document.getElementById('sidePreviewMeta');
+    var dlEl = document.getElementById('sidePreviewDownload');
+    if (!panel || !body) return;
+    if (nameEl) nameEl.textContent = filename || 'Файл';
+    if (metaEl) metaEl.textContent = 'XLSX';
+    if (dlEl) { dlEl.href = downloadUrl || '#'; dlEl.setAttribute('download', filename || ''); }
+    body.innerHTML = '<div class="opx-loading">Загружаю превью…</div>';
+    panel.hidden = false;
+    try {
+      var res = await fetch('/api/assistant/upload-pricelist/' + importId + '/output-preview/', {
+        credentials: 'same-origin',
+      });
+      var html = await res.text();
+      // Из полной HTML страницы извлекаем только содержимое body
+      var match = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      body.innerHTML = match ? match[1] : html;
+    } catch (e) {
+      body.innerHTML = '<div class="opx-loading">⚠️ Ошибка загрузки: ' + (e.message || e) + '</div>';
+    }
+  };
+  window.closeSidePreview = function() {
+    var panel = document.getElementById('sidePreview');
+    if (!panel) return;
+    panel.hidden = true;
+    var body = document.getElementById('sidePreviewBody');
+    if (body) body.innerHTML = '';
+  };
+
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.of-open-preview');
+    if (!btn) return;
+    e.preventDefault(); e.stopPropagation();
+    var card = btn.closest('.of-card');
+    if (!card) return;
+    openSidePreview(
+      card.dataset.importId,
+      card.dataset.filename,
+      card.dataset.download,
+    );
+  });
+
+  // Esc закрывает side panel
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var p = document.getElementById('sidePreview');
+      if (p && !p.hidden) closeSidePreview();
+    }
+  });
 
   // Запуск AI-оценки по нажатию кнопки (НЕ auto-start — пусть
   // юзер сам решает нужен ли ему AI). По клику показываем

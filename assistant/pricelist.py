@@ -2008,6 +2008,79 @@ class PricelistImportProgressView(APIView):
         })
 
 
+class PricelistOutputPreviewView(APIView):
+    """GET /api/assistant/upload-pricelist/<id>/output-preview/
+
+    Возвращает HTML preview сгенерированного output_file (XLSX).
+    Используется для side panel в чате (как у claude.ai).
+    """
+    permission_classes = [IsAuthenticated]
+
+    PREVIEW_ROWS = 100  # ограничиваем превью
+
+    def get(self, request, import_id):
+        from marketplace.models import PricelistImport
+        from django.http import HttpResponse
+        try:
+            imp = PricelistImport.objects.get(id=import_id, seller=request.user)
+        except PricelistImport.DoesNotExist:
+            return Response({"error": "import not found"}, status=404)
+        if not imp.output_file:
+            return Response({"error": "output file not generated"}, status=404)
+
+        from openpyxl import load_workbook
+        try:
+            with imp.output_file.open("rb") as fh:
+                wb = load_workbook(io.BytesIO(fh.read()), read_only=True, data_only=True)
+            ws = wb.worksheets[0]
+        except Exception as e:
+            return Response({"error": f"cannot read XLSX: {e}"}, status=500)
+
+        rows_html = []
+        total = 0
+        for row_idx, row in enumerate(ws.iter_rows(values_only=True), start=1):
+            if row_idx > self.PREVIEW_ROWS + 1:
+                # просто считаем общее количество
+                total = row_idx - 1
+                continue
+            cells = []
+            for col_idx, val in enumerate(row):
+                v = "" if val is None else str(val)
+                if len(v) > 50:
+                    v = v[:50] + "…"
+                tag = "th" if row_idx == 1 else "td"
+                cls = ' class="opx-num"' if row_idx == 1 else ''
+                cells.append(f"<{tag}{cls}>{v}</{tag}>")
+            rows_html.append(f"<tr>{''.join(cells)}</tr>")
+        if total == 0:
+            total = ws.max_row - 1 if ws.max_row else 0
+        try:
+            wb.close()
+        except Exception:
+            pass
+
+        truncated = total > self.PREVIEW_ROWS
+        more_note = (f'<div class="opx-note">Показаны первые {self.PREVIEW_ROWS} '
+                      f'из {total} строк</div>') if truncated else ""
+
+        html = (
+            '<!doctype html><html><head><meta charset="utf-8">'
+            '<style>'
+            'body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#fff;}'
+            '.opx-note{font-size:11.5px;color:rgba(0,0,0,0.55);margin-bottom:10px;font-style:italic;}'
+            'table{border-collapse:collapse;width:100%;font-size:11.5px;font-family:"SF Mono",Menlo,monospace;}'
+            'th{background:#2D7A3E;color:#fff;padding:6px 8px;text-align:left;position:sticky;top:0;font-weight:600;letter-spacing:0.02em;}'
+            'td{padding:4px 8px;border-bottom:1px solid rgba(0,0,0,0.05);color:#1a1a1a;white-space:nowrap;}'
+            'tr:nth-child(even) td{background:rgba(45,122,62,0.03);}'
+            '</style></head><body>'
+            + more_note
+            + '<table><thead>' + (rows_html[0] if rows_html else "") + '</thead>'
+            + '<tbody>' + ''.join(rows_html[1:]) + '</tbody>'
+            + '</table></body></html>'
+        )
+        return HttpResponse(html, content_type="text/html; charset=utf-8")
+
+
 class PricelistGenerateOutputView(APIView):
     """POST /api/assistant/upload-pricelist/<id>/generate-output/
 

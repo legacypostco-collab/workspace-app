@@ -565,6 +565,28 @@
     .of-btn:hover{background:#fff;border-color:#1a1a1a;}
     .of-btn-primary{background:rgba(45,122,62,0.9);color:#fff;border:0;}
     .of-btn-primary:hover{background:rgba(45,122,62,1);color:#fff;}
+
+    /* Side preview panel (как у claude.ai) — XLSX preview справа */
+    .side-preview{position:fixed;top:0;right:0;width:50vw;min-width:420px;max-width:900px;height:100vh;background:#1a1a1a;color:#fff;z-index:10000;box-shadow:-8px 0 40px rgba(0,0,0,0.3);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.25s ease;}
+    .side-preview:not([hidden]){transform:translateX(0);}
+    .side-preview[hidden]{display:flex !important;pointer-events:none;}
+    .side-preview-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.4);}
+    .side-preview-title{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;}
+    .side-preview-title #sidePreviewName{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .side-preview-meta{font-size:11px;color:rgba(255,255,255,0.55);}
+    .side-preview-actions{display:flex;gap:6px;align-items:center;}
+    .side-preview-btn{background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;text-decoration:none;font-family:inherit;}
+    .side-preview-btn:hover{background:rgba(255,255,255,0.18);}
+    .side-preview-close{padding:6px 10px;font-size:14px;}
+    .side-preview-frame{flex:1;width:100%;border:0;background:#fff;}
+    .side-preview-body{flex:1;overflow:auto;background:#fff;color:#1a1a1a;}
+    .side-preview-body .opx-loading{padding:30px;text-align:center;color:rgba(0,0,0,0.5);font-size:13px;}
+    .side-preview-body table{border-collapse:collapse;width:100%;font-size:11.5px;font-family:'SF Mono',Menlo,monospace;}
+    .side-preview-body thead th{background:#2D7A3E;color:#fff;padding:8px 10px;text-align:left;position:sticky;top:0;font-weight:600;letter-spacing:0.02em;z-index:2;}
+    .side-preview-body tbody td{padding:5px 10px;border-bottom:1px solid rgba(0,0,0,0.05);white-space:nowrap;}
+    .side-preview-body tbody tr:nth-child(even) td{background:rgba(45,122,62,0.04);}
+    .side-preview-body .opx-note{padding:10px 14px;font-size:11.5px;color:rgba(0,0,0,0.55);font-style:italic;border-bottom:1px solid rgba(0,0,0,0.08);background:rgba(45,122,62,0.04);}
+    @media(max-width:800px){.side-preview{width:100vw;min-width:auto;}}
     @media(max-width:600px){.pl-df-grid{grid-template-columns:1fr;}}
 
     /* ── Seller queue card ── */
@@ -991,6 +1013,21 @@
     <span>{% trans "Удалить" %}</span>
     <span class="ctx-menu-key">⌫</span>
   </div>
+</div>
+
+<!-- Side preview panel (как у claude.ai) — слайдит справа при клике на файл -->
+<div id="sidePreview" class="side-preview" hidden>
+  <div class="side-preview-head">
+    <div class="side-preview-title">
+      <span id="sidePreviewName">Файл</span>
+      <span id="sidePreviewMeta" class="side-preview-meta">XLSX</span>
+    </div>
+    <div class="side-preview-actions">
+      <a id="sidePreviewDownload" class="side-preview-btn" download>⬇ Скачать</a>
+      <button class="side-preview-btn side-preview-close" onclick="window.closeSidePreview && closeSidePreview()">✕</button>
+    </div>
+  </div>
+  <div id="sidePreviewBody" class="side-preview-body"></div>
 </div>
 
 <script src="{% static 'js/chat-first.js' %}?v=15&t={% now 'U' %}"></script>
