@@ -2699,29 +2699,45 @@
       // и параллельно подтягиваем умные вопросы async (не блокируя upload).
       // Когда придут — отрендерим их перед commit-кнопкой.
       if (data.smart_questions_pending) {
-        addMessage('assistant', intro, cards, []);
+        var bigMsg = addMessage('assistant', intro, cards, []);
+        // Скроллим к НАЧАЛУ нового сообщения чтобы юзер увидел
+        // инструкцию сверху, а не сразу прыгнул вниз к чему-то.
+        setTimeout(function() {
+          if (bigMsg && bigMsg.scrollIntoView) {
+            bigMsg.scrollIntoView({block:'start', behavior:'smooth'});
+          }
+        }, 100);
         var thinking = addMessage('assistant', '💭 Подбираю уточняющие вопросы…', [], []);
         fetch('/api/assistant/upload-pricelist/' + data.import_id + '/smart-questions/', {
           credentials: 'same-origin',
         }).then(function(r){ return r.json(); }).then(function(sq){
           if (thinking && thinking.parentNode) thinking.remove();
+          // Сохраняем позицию скролла — не дёргаем юзера вниз
+          var stream = document.getElementById('stream');
+          var savedScroll = stream ? stream.scrollTop : 0;
           var qs = sq.questions || [];
           if (sq.intro) addMessage('assistant', sq.intro, [], []);
           if (qs.length) {
             showNextSmartQuestion(qs, 0);
           } else {
-            // AI недоступен — показываем кнопку commit сразу
             addMessage('assistant', '✨ Готово, можно загружать.', [], [
               {action: '__pricelist_commit', label: '📥 Загрузить',
                params: {import_id: data.import_id}},
             ]);
           }
+          // Восстанавливаем позицию — пусть юзер сам доскроллит вниз
+          if (stream) {
+            setTimeout(function(){ stream.scrollTop = savedScroll; }, 10);
+          }
         }).catch(function(){
           if (thinking && thinking.parentNode) thinking.remove();
+          var stream = document.getElementById('stream');
+          var savedScroll = stream ? stream.scrollTop : 0;
           addMessage('assistant', '✨ Готово, можно загружать.', [], [
             {action: '__pricelist_commit', label: '📥 Загрузить',
              params: {import_id: data.import_id}},
           ]);
+          if (stream) setTimeout(function(){ stream.scrollTop = savedScroll; }, 10);
         });
       } else {
         var smartQs = data.smart_questions || [];
@@ -3222,7 +3238,19 @@
       +   '<button class="sq-skip">Пропустить</button>'
       + '</div>'
       + '</div>';
-    addMessage('assistant', '', [{type: 'raw_html', data: {html: html}}], []);
+    // Первый вопрос рендерим БЕЗ скролла (юзер сейчас читает
+    // инструкции сверху, не надо тащить его вниз).
+    var stream = document.getElementById('stream');
+    var savedScroll = (idx === 0 && stream) ? stream.scrollTop : null;
+    var qMsg = addMessage('assistant', '', [{type: 'raw_html', data: {html: html}}], []);
+    if (savedScroll !== null && stream) {
+      setTimeout(function(){ stream.scrollTop = savedScroll; }, 10);
+    } else if (idx > 0 && qMsg && qMsg.scrollIntoView) {
+      // Последующие вопросы — скроллим чтобы был виден следующий шаг
+      setTimeout(function() {
+        qMsg.scrollIntoView({block:'end', behavior:'smooth'});
+      }, 50);
+    }
     // Сохраняем контекст для обработчиков
     window.__smartQuestions = questions;
     window.__smartQuestionIdx = idx;
