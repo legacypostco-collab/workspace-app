@@ -345,20 +345,144 @@ def _ai_calls_used_today(seller) -> int:
     ).count()
 
 
+def _detect_by_values(headers: list[str], sample_rows: list[list[str]],
+                       already_mapped: set[str]) -> dict[str, str]:
+    """Детекция канонических полей по СОДЕРЖИМОМУ колонок (sample rows).
+
+    Работает когда заголовки непонятные (PRO_ID, ABCD123, etc):
+    смотрит на значения, угадывает что это:
+      - price_exw — числа с decimal > 1
+      - stock — небольшие целые
+      - oem_number — alphanumeric codes (дефисы, точки)
+      - title — длинные строки с пробелами
+      - brand — известные бренды
+      - condition — OEM/AFTERMARKET/REMAN/NEW
+      - currency — USD/EUR/RUB/CNY
+      - weight_kg — small decimals < 100
+
+    already_mapped: каноники которые уже сматчились через словарь —
+                    пропускаем (не дублируем).
+
+    Returns: {header: canonical_key}
+    """
+    if not sample_rows:
+        return {}
+
+    import re as _re
+    KNOWN_BRANDS = {
+        "epiroc", "caterpillar", "cat", "komatsu", "hitachi", "liebherr",
+        "sandvik", "atlas copco", "volvo", "kobelco", "doosan", "hyundai",
+        "cummins", "deutz", "perkins", "bosch", "bobcat", "jcb",
+    }
+    CONDITION_VALUES = {"oem", "original", "aftermarket", "reman", "new",
+                         "used", "remanufactured"}
+    CURRENCY_VALUES = {"usd", "eur", "rub", "cny", "rmb", "jpy", "kzt"}
+
+    n_cols = len(headers)
+    n_rows = len(sample_rows)
+    if n_rows == 0:
+        return {}
+
+    # Собираем колонки (по-столбцово)
+    cols = [[] for _ in range(n_cols)]
+    for row in sample_rows:
+        for i in range(n_cols):
+            if i < len(row):
+                v = row[i]
+                cols[i].append("" if v is None else str(v).strip())
+            else:
+                cols[i].append("")
+
+    detected: dict[str, str] = {}
+    used_canonical = set(already_mapped)
+
+    for i, vals in enumerate(cols):
+        if not vals:
+            continue
+        non_empty = [v for v in vals if v]
+        if not non_empty:
+            continue
+        header = headers[i] if i < len(headers) else f"col{i}"
+
+        # Стрипуем единицы измерения для числовых проверок
+        decimals = []
+        for v in non_empty:
+            m = _re.search(r"-?\d+[.,]?\d*", v.replace(" ", ""))
+            if m:
+                try:
+                    decimals.append(float(m.group(0).replace(",", ".")))
+                except ValueError:
+                    pass
+
+        # Считаем характеристики
+        all_decimal_ratio = len(decimals) / len(non_empty)
+        avg_len = sum(len(v) for v in non_empty) / len(non_empty)
+        has_spaces = sum(1 for v in non_empty if " " in v) / len(non_empty)
+        has_dashes = sum(1 for v in non_empty if "-" in v) / len(non_empty)
+
+        # ── currency
+        if "currency" not in used_canonical:
+            if all(v.lower() in CURRENCY_VALUES for v in non_empty):
+                detected[header] = "currency"; used_canonical.add("currency"); continue
+
+        # ── condition
+        if "condition" not in used_canonical:
+            if all(v.lower() in CONDITION_VALUES for v in non_empty):
+                detected[header] = "condition"; used_canonical.add("condition"); continue
+
+        # ── brand
+        if "brand" not in used_canonical:
+            if all(v.lower() in KNOWN_BRANDS for v in non_empty):
+                detected[header] = "brand"; used_canonical.add("brand"); continue
+
+        # ── price_exw — все числа, среднее > 1
+        if "price" not in used_canonical and all_decimal_ratio >= 0.9:
+            avg_dec = sum(decimals) / max(len(decimals), 1)
+            if avg_dec > 1 and max(decimals) > 1:
+                detected[header] = "price"
+                used_canonical.add("price"); continue
+
+        # ── weight (decimals < 100 in average)
+        if "weight" not in used_canonical and all_decimal_ratio >= 0.9:
+            avg_dec = sum(decimals) / max(len(decimals), 1)
+            if avg_dec < 100:
+                detected[header] = "weight"
+                used_canonical.add("weight"); continue
+
+        # ── stock — целые числа
+        if "stock" not in used_canonical and all_decimal_ratio >= 0.9:
+            if all(d == int(d) and 0 <= d < 10000 for d in decimals):
+                detected[header] = "stock"; used_canonical.add("stock"); continue
+
+        # ── part_number — alphanumeric codes (дефисы/точки, короткие)
+        if "part_number" not in used_canonical:
+            if has_dashes >= 0.5 and avg_len <= 25 and has_spaces < 0.3:
+                detected[header] = "part_number"
+                used_canonical.add("part_number"); continue
+            # Числовые коды (Komatsu OEM)
+            if all_decimal_ratio >= 0.8 and avg_len >= 6 and has_spaces < 0.2:
+                detected[header] = "part_number"
+                used_canonical.add("part_number"); continue
+
+        # ── description/title — длинная строка с пробелами
+        if "description" not in used_canonical:
+            if has_spaces >= 0.4 or avg_len > 15:
+                detected[header] = "description"
+                used_canonical.add("description"); continue
+
+    return detected
+
+
 def _smart_mapping(headers: list[str], sample_rows: list[list[str]],
                     seller=None
                     ) -> tuple[dict[str, str], list[str], bool, str]:
-    """ТЗ: умная автоматическая загрузка прайса.
+    """Умная автоматическая загрузка прайса.
 
       1. Словарь COLUMN_MAP + LearnedColumnSynonym (БД)
-      2. Для нераспознанных — один AI-запрос (max 20 заголовков)
-      3. Лимит 3 AI-вызова в день на seller
+      2. Value-based детекция по содержимому колонок (для unknown headers)
+      3. Для оставшихся — AI-запрос (max 20 заголовков)
       4. AI-ответы → learn_synonym() в БД
-      5. Возвращает (mapping_std, unknown, ai_called, status):
-            mapping_std — {std_field: header} для сохранения в commit
-            unknown     — заголовки которые AI тоже не распознал
-            ai_called   — True если AI вызывался (для аналитики)
-            status      — 'ok' / 'quota_exceeded' / 'ai_unavailable'
+      5. Возвращает (mapping_std, unknown, ai_called, status)
     """
     from .price_mappings import (
         COLUMN_MAP, CANONICAL_TO_STD,
@@ -367,6 +491,20 @@ def _smart_mapping(headers: list[str], sample_rows: list[list[str]],
 
     learned = load_learned_lookup()
     canonical_map, unknown_headers = match_headers(headers, learned=learned)
+
+    # Value-based fallback для нераспознанных через словарь
+    if unknown_headers and sample_rows:
+        already = set(canonical_map.keys())
+        by_values = _detect_by_values(headers, sample_rows, already)
+        for header, canonical in by_values.items():
+            if canonical not in canonical_map and header in unknown_headers:
+                canonical_map[canonical] = header
+                unknown_headers.remove(header)
+                # Learn для будущих импортов
+                try:
+                    learn_synonym(canonical, header, source="value-detect")
+                except Exception:
+                    pass
 
     ai_called = False
     status = "ok"
