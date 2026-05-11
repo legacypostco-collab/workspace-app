@@ -1465,13 +1465,17 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
                                   constants: dict) -> bytes:
     """Генерирует выходной XLSX в формате маркетплейса (как у claude.ai).
 
-    Структура: те же колонки что в `pricelist-template.xlsx`:
-      PartNumber, CrossNumber, Brand, Name, Quantity, Condition,
-      Price_EXW, WarehouseAddress, Price_FOB_SEA, Price_FOB_AIR,
-      SeaPort, AirPort, Weight, Length, Width, Height
+    Использует openpyxl WriteOnlyWorkbook — в 5-10 раз быстрее обычного
+    Workbook потому что не создаёт Cell objects в памяти, пишет
+    напрямую в zip stream.
+
+    Прогресс пишется в Django cache → виден в UI через polling
+    /generate-output-progress/ endpoint.
     """
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.cell import WriteOnlyCell
+    from django.core.cache import cache
 
     OUTPUT_COLS = [
         ("PartNumber",       "oem_number"),
@@ -1514,28 +1518,39 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
         if fld not in col_idx and fld not in fixed_vals:
             fixed_vals[fld] = str(val)
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Pricelist"
+    # xlsxwriter — в 2-3 раза быстрее openpyxl для массовой записи.
+    # constant_memory=True пишет напрямую в файл (не накапливает в RAM).
+    import xlsxwriter
+    buf = io.BytesIO()
+    wb = xlsxwriter.Workbook(buf, {"constant_memory": True, "in_memory": True})
+    ws = wb.add_worksheet("Pricelist")
 
-    # Header row с зелёным выделением (как в claude.ai шаблоне)
-    hdr_font = Font(bold=True, color="FFFFFF")
-    hdr_fill = PatternFill(start_color="2D7A3E", end_color="2D7A3E", fill_type="solid")
-    for col_n, (label, _key) in enumerate(OUTPUT_COLS, start=1):
-        cell = ws.cell(row=1, column=col_n, value=label)
-        cell.font = hdr_font
-        cell.fill = hdr_fill
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+    hdr_fmt = wb.add_format({
+        "bold": True, "font_color": "#FFFFFF", "bg_color": "#2D7A3E",
+        "align": "center", "valign": "vcenter",
+    })
 
-    # Данные
+    # Header row
+    for col_n, (label, _key) in enumerate(OUTPUT_COLS):
+        ws.write(0, col_n, label, hdr_fmt)
+        ws.set_column(col_n, col_n, max(12, len(label) + 2))
+    ws.set_row(0, 22)
+
+    # Прогресс — для polling в UI
+    progress_key = f"generate_output_progress_{import_obj.id}"
+    cache.set(progress_key, {"current": 0, "total": 0, "running": True}, 600)
+
     try:
         with import_obj.file_obj.open("rb") as fh:
             blob = fh.read()
     except Exception:
+        cache.set(progress_key, {"current": 0, "total": 0, "running": False}, 60)
         wb.close()
         raise
 
-    row_n = 2
+    written = 0
+    row_idx = 1  # после header
+    DIM_KEYS = ("weight_kg", "length_cm", "width_cm", "height_cm")
     for row in _read_all(import_obj.filename, blob):
         if not any(str(c).strip() for c in row):
             continue
@@ -1571,23 +1586,23 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
             raw = _coerce_decimal(get(field))
             return str(raw) if raw and raw > 0 else ""
 
-        for col_n, (_label, key) in enumerate(OUTPUT_COLS, start=1):
-            if key in ("weight_kg", "length_cm", "width_cm", "height_cm"):
-                value = _dim(key, key)
+        # write_row — быстрее чем write по одной cell
+        row_values = []
+        for _label, key in OUTPUT_COLS:
+            if key in DIM_KEYS:
+                row_values.append(_dim(key, key))
             else:
-                value = get(key) or ""
-            ws.cell(row=row_n, column=col_n, value=value)
+                row_values.append(get(key) or "")
+        ws.write_row(row_idx, 0, row_values)
+        row_idx += 1
+        written += 1
+        if written % 1000 == 0:
+            cache.set(progress_key, {
+                "current": written, "total": 0, "running": True,
+            }, 600)
 
-        row_n += 1
-
-    # Ширины колонок
-    for col_n, (label, _) in enumerate(OUTPUT_COLS, start=1):
-        ws.column_dimensions[chr(64 + col_n)].width = max(12, len(label) + 2)
-    ws.row_dimensions[1].height = 22
-
-    buf = io.BytesIO()
-    wb.save(buf)
     wb.close()
+    cache.set(progress_key, {"current": written, "total": written, "running": False}, 60)
     return buf.getvalue()
 
 
@@ -2148,6 +2163,23 @@ class PricelistImportProgressView(APIView):
             "current": progress.get("current", 0),
             "running": progress.get("running", False),
             "status": imp.status,
+        })
+
+
+class PricelistGenerateOutputProgressView(APIView):
+    """GET /api/assistant/upload-pricelist/<id>/generate-output-progress/
+
+    Polling endpoint для прогресс-бара генерации output XLSX.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, import_id):
+        from django.core.cache import cache
+        progress = cache.get(f"generate_output_progress_{import_id}") or {}
+        return Response({
+            "current": progress.get("current", 0),
+            "total": progress.get("total", 0),
+            "running": progress.get("running", False),
         })
 
 

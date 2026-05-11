@@ -2577,6 +2577,21 @@
   async function generateAndShowOutputFile() {
     if (!__pendingImport) return;
     var imp = __pendingImport;
+
+    // Открываем side panel сразу с loading-индикатором,
+    // фоном поллим прогресс генерации.
+    showSidePreviewLoading('Готовлю файл в формате маркетплейса…');
+    var progressPoller = setInterval(async function() {
+      try {
+        var pr = await fetch('/api/assistant/upload-pricelist/' + imp.import_id + '/generate-output-progress/', {
+          credentials: 'same-origin',
+        });
+        if (!pr.ok) return;
+        var p = await pr.json();
+        updateSidePreviewLoading(p.current || 0);
+      } catch(e) {}
+    }, 400);
+
     var thinking = addMessage('assistant', '🔧 Готовлю файл в формате маркетплейса…', [], []);
     try {
       // Подтягиваем все ответы пользователя
@@ -2608,9 +2623,15 @@
         credentials: 'same-origin',
       });
       var data = await res.json();
+      clearInterval(progressPoller);
       if (thinking && thinking.parentNode) thinking.remove();
-      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      if (!res.ok) {
+        closeSidePreview();
+        throw new Error(data.error || ('HTTP ' + res.status));
+      }
       var sizeKB = Math.round((data.size || 0) / 1024);
+      // Автоматически открываем файл в side panel — пусть юзер сразу видит результат
+      openSidePreview(imp.import_id, data.filename, data.download_url);
       addMessage('assistant',
         '✨ Готово! Я подготовил файл в формате маркетплейса.\nПроверьте его — можно открыть превью или скачать, либо сразу загрузить позиции в каталог.',
         [{type: 'output_file', data: {
@@ -2627,7 +2648,9 @@
         ],
       );
     } catch (err) {
+      clearInterval(progressPoller);
       if (thinking && thinking.parentNode) thinking.remove();
+      closeSidePreview();
       addMessage('assistant', '⚠️ Не удалось сгенерировать файл: ' + (err.message || err),
         [], [
         {action: '__pricelist_commit', label: '📥 Загрузить в каталог',
@@ -2635,6 +2658,37 @@
       ]);
     }
   }
+
+  // Loading state в side panel пока генерится XLSX
+  window.showSidePreviewLoading = function(message) {
+    var panel = document.getElementById('sidePreview');
+    var body = document.getElementById('sidePreviewBody');
+    var nameEl = document.getElementById('sidePreviewName');
+    var metaEl = document.getElementById('sidePreviewMeta');
+    if (!panel || !body) return;
+    if (nameEl) nameEl.textContent = 'Генерирую файл…';
+    if (metaEl) metaEl.textContent = 'XLSX';
+    body.innerHTML =
+      '<div class="opx-gen-loading">'
+      + '<div class="opx-gen-spinner"></div>'
+      + '<div class="opx-gen-message">' + esc(message) + '</div>'
+      + '<div class="opx-gen-counter" id="opxGenCounter">обработано 0 строк</div>'
+      + '<div class="opx-gen-progress-bar"><div class="opx-gen-progress-fill" id="opxGenFill"></div></div>'
+      + '</div>';
+    panel.hidden = false;
+  };
+
+  window.updateSidePreviewLoading = function(current) {
+    var counter = document.getElementById('opxGenCounter');
+    var fill = document.getElementById('opxGenFill');
+    if (counter) counter.textContent = 'обработано ' + current.toLocaleString('ru') + ' строк';
+    if (fill) {
+      // Псевдо-прогресс: чем больше current — тем ближе к 95% (никогда не 100%
+      // пока не пришёл финальный ответ).
+      var pct = Math.min(95, Math.log10(Math.max(current, 1)) * 18);
+      fill.style.width = pct + '%';
+    }
+  };
 
   // ── Claude.ai-style smart questionnaire ────────────────────────
   // Показывает вопросы ПО ОДНОМУ: текст + chip-кнопки + ввод.

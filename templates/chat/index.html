@@ -595,6 +595,14 @@
     .side-preview-body tbody td{padding:5px 10px;border-bottom:1px solid rgba(0,0,0,0.05);white-space:nowrap;}
     .side-preview-body tbody tr:nth-child(even) td{background:rgba(45,122,62,0.04);}
     .side-preview-body .opx-note{padding:10px 14px;font-size:11.5px;color:rgba(0,0,0,0.55);font-style:italic;border-bottom:1px solid rgba(0,0,0,0.08);background:rgba(45,122,62,0.04);}
+    /* Loading state во время генерации файла */
+    .opx-gen-loading{padding:60px 30px;display:flex;flex-direction:column;align-items:center;gap:16px;font-family:-apple-system,sans-serif;}
+    .opx-gen-spinner{width:48px;height:48px;border:3px solid rgba(45,122,62,0.15);border-top-color:#2D7A3E;border-radius:50%;animation:opxSpin 0.8s linear infinite;}
+    @keyframes opxSpin{to{transform:rotate(360deg);}}
+    .opx-gen-message{font-size:14px;color:#1a1a1a;font-weight:500;text-align:center;}
+    .opx-gen-counter{font-size:12px;color:rgba(0,0,0,0.6);font-variant-numeric:tabular-nums;}
+    .opx-gen-progress-bar{width:100%;max-width:300px;height:6px;background:rgba(0,0,0,0.07);border-radius:3px;overflow:hidden;margin-top:4px;}
+    .opx-gen-progress-fill{height:100%;background:linear-gradient(90deg,rgba(45,122,62,0.7),rgba(45,122,62,1));border-radius:3px;transition:width 0.4s ease;width:0%;}
     @media(max-width:800px){.side-preview{width:100vw;min-width:auto;}}
     @media(max-width:600px){.pl-df-grid{grid-template-columns:1fr;}}
 
