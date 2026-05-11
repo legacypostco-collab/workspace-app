@@ -1219,6 +1219,10 @@ class PricelistImport(models.Model):
         help_text="AI-оценки per-part вес/габариты по описанию: {oem: {weight_kg, length_cm, ...}}")
     output_file = models.FileField(upload_to="pricelist_outputs/%Y/%m/", blank=True, null=True,
         help_text="Сгенерированный XLSX в формате маркетплейса (как у claude.ai)")
+    output_preview_html = models.TextField(blank=True,
+        help_text="Кэш HTML-превью первых 100 строк (для мгновенного preview)")
+    output_total_rows = models.PositiveIntegerField(default=0,
+        help_text="Сколько строк в output_file")
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 

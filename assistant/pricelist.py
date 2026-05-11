@@ -1714,6 +1714,8 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
     written = 0
     row_idx = 1  # после header
     DIM_KEYS = ("weight_kg", "length_cm", "width_cm", "height_cm")
+    PREVIEW_LIMIT = 100  # сохраняем HTML preview первых N строк
+    preview_rows_html = []
     for row in _read_all(import_obj.filename, blob):
         if not any(str(c).strip() for c in row):
             continue
@@ -1757,6 +1759,13 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
             else:
                 row_values.append(get(key) or "")
         ws.write_row(row_idx, 0, row_values)
+        # Накопляем HTML preview первых строк параллельно с записью в XLSX
+        if written < PREVIEW_LIMIT:
+            from html import escape as _h
+            cells = "".join(
+                f"<td>{_h(str(v)[:50])}</td>" for v in row_values
+            )
+            preview_rows_html.append(f"<tr>{cells}</tr>")
         row_idx += 1
         written += 1
         if written % 1000 == 0:
@@ -1766,6 +1775,33 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
 
     wb.close()
     cache.set(progress_key, {"current": written, "total": written, "running": False}, 60)
+
+    # Кэшируем preview HTML в БД — мгновенный показ без openpyxl re-parse
+    from html import escape as _h
+    headers_html = "".join(f"<th>{_h(label)}</th>" for label, _ in OUTPUT_COLS)
+    truncated = written > PREVIEW_LIMIT
+    note = (f'<div class="opx-note">Показаны первые {PREVIEW_LIMIT} '
+             f'из {written} строк</div>') if truncated else ""
+    preview_html = (
+        '<style>'
+        'body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#fff;}'
+        '.opx-note{font-size:11.5px;color:rgba(0,0,0,0.55);margin-bottom:10px;font-style:italic;}'
+        'table{border-collapse:collapse;width:100%;font-size:11.5px;font-family:"SF Mono",Menlo,monospace;}'
+        'th{background:#2D7A3E;color:#fff;padding:6px 8px;text-align:left;position:sticky;top:0;font-weight:600;letter-spacing:0.02em;}'
+        'td{padding:4px 8px;border-bottom:1px solid rgba(0,0,0,0.05);color:#1a1a1a;white-space:nowrap;}'
+        'tr:nth-child(even) td{background:rgba(45,122,62,0.03);}'
+        '</style>'
+        + note
+        + f'<table><thead><tr>{headers_html}</tr></thead>'
+        + '<tbody>' + ''.join(preview_rows_html) + '</tbody></table>'
+    )
+    try:
+        import_obj.output_preview_html = preview_html
+        import_obj.output_total_rows = written
+        import_obj.save(update_fields=["output_preview_html", "output_total_rows"])
+    except Exception:
+        pass
+
     return buf.getvalue()
 
 
@@ -2365,6 +2401,15 @@ class PricelistOutputPreviewView(APIView):
             return Response({"error": "import not found"}, status=404)
         if not imp.output_file:
             return Response({"error": "output file not generated"}, status=404)
+
+        # Если есть кэш HTML preview — отдаём моментально (10-100 мс
+        # вместо 15+ сек openpyxl re-parse 36MB файла).
+        if imp.output_preview_html:
+            html = (
+                '<!doctype html><html><head><meta charset="utf-8"></head>'
+                '<body>' + imp.output_preview_html + '</body></html>'
+            )
+            return HttpResponse(html, content_type="text/html; charset=utf-8")
 
         from openpyxl import load_workbook
         try:
