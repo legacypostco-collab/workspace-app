@@ -2128,6 +2128,98 @@
   // 1) POST файл → AI-маппинг (tool use) → показываем маппинг + вопросы
   // 2) Оператор отвечает на вопросы / подтверждает → commit
   // 3) Backend применяет формулы + импортирует → результат
+  // Подсказки для морпортов, аэропортов, складов — основные хабы
+  // по странам где ведём логистику (Дубай, Китай, РФ, NL, TR, KZ).
+  var SEA_PORTS = [
+    // 🇦🇪 ОАЭ
+    'Jebel Ali (Дубай, ОАЭ)', 'Port Rashid (Дубай, ОАЭ)',
+    'Khor Fakkan (Шарджа, ОАЭ)', 'Hamriyah (Шарджа, ОАЭ)',
+    'Khalifa Port (Абу-Даби, ОАЭ)',
+    // 🇨🇳 Китай
+    'Shanghai / 上海 (Шанхай, КНР)', 'Yangshan / 洋山 (Шанхай, КНР)',
+    'Ningbo-Zhoushan / 宁波舟山 (Нинбо, КНР)',
+    'Shenzhen / 深圳 (Шэньчжэнь, КНР)',
+    'Guangzhou / 广州 (Гуанчжоу, КНР)',
+    'Nansha / 南沙 (Гуанчжоу, КНР)',
+    'Qingdao / 青岛 (Циндао, КНР)',
+    'Tianjin / 天津 (Тяньцзинь, КНР)',
+    'Dalian / 大连 (Далянь, КНР)',
+    'Xiamen / 厦门 (Сямэнь, КНР)',
+    'Hong Kong / 香港 (Гонконг)',
+    // 🇷🇺 Россия
+    'Владивосток (РФ)', 'Восточный / Находка (РФ)',
+    'Новороссийск (РФ)', 'Санкт-Петербург (РФ)',
+    'Усть-Луга (РФ)', 'Калининград (РФ)', 'Мурманск (РФ)',
+    'Архангельск (РФ)',
+    // 🇳🇱 Нидерланды
+    'Rotterdam (Роттердам, NL)', 'Amsterdam (Амстердам, NL)',
+    // 🇹🇷 Турция
+    'Стамбул Ambarli (Турция)', 'Mersin (Мерсин, Турция)',
+    'Izmir Aliaga (Измир, Турция)', 'Kocaeli Gebze (Турция)',
+    // 🇰🇿 Казахстан (Каспий)
+    'Актау (Каспий, KZ)', 'Курык (Каспий, KZ)',
+  ];
+  var AIR_PORTS = [
+    // 🇦🇪 ОАЭ
+    'DXB · Dubai International (Дубай)',
+    'DWC · Al Maktoum International (Дубай)',
+    'AUH · Abu Dhabi International (Абу-Даби)',
+    'SHJ · Sharjah International (Шарджа)',
+    // 🇨🇳 Китай
+    'PVG · Shanghai Pudong (Шанхай)',
+    'PEK · Beijing Capital (Пекин)',
+    'PKX · Beijing Daxing (Пекин)',
+    'CAN · Guangzhou Baiyun (Гуанчжоу)',
+    'SZX · Shenzhen Bao\'an (Шэньчжэнь)',
+    'HKG · Hong Kong (Гонконг)',
+    'HGH · Hangzhou Xiaoshan (Ханчжоу)',
+    'CTU · Chengdu Tianfu (Чэнду)',
+    // 🇷🇺 Россия
+    'SVO · Шереметьево (Москва)',
+    'DME · Домодедово (Москва)',
+    'VKO · Внуково (Москва)',
+    'LED · Пулково (СПб)',
+    'VVO · Владивосток',
+    'KJA · Красноярск',
+    'NJK · Новосибирск',
+    'KZN · Казань',
+    // 🇳🇱 Нидерланды
+    'AMS · Schiphol (Амстердам)',
+    // 🇹🇷 Турция
+    'IST · Istanbul Airport (Стамбул)',
+    'SAW · Sabiha Gökçen (Стамбул)',
+    'ESB · Esenboğa (Анкара)',
+    'ADB · İzmir (Измир)',
+    // 🇰🇿 Казахстан
+    'ALA · Алматы',
+    'NQZ · Астана',
+    'CIT · Шымкент',
+  ];
+  var WAREHOUSE_HUBS = [
+    // 🇦🇪 ОАЭ
+    'Jebel Ali Free Zone (JAFZA), Дубай', 'Dubai South Logistics, Дубай',
+    'DAFZA · Dubai Airport FZ, Дубай',
+    // 🇨🇳 Китай
+    'Yiwu / 义乌 (Иу, КНР)', 'Guangzhou / 广州 (Гуанчжоу, КНР)',
+    'Shenzhen Qianhai / 前海 (Шэньчжэнь, КНР)',
+    'Shanghai Waigaoqiao FTZ / 外高桥 (Шанхай, КНР)',
+    'Tianjin Binhai / 滨海 (Тяньцзинь, КНР)',
+    // 🇷🇺 Россия
+    'Москва', 'Санкт-Петербург', 'Владивосток',
+    'Новосибирск', 'Екатеринбург', 'Казань', 'Калининград',
+    // 🇳🇱 Нидерланды
+    'Rotterdam (NL)', 'Amsterdam (NL)',
+    // 🇹🇷 Турция
+    'Стамбул (TR)', 'Mersin (TR)',
+    // 🇰🇿 Казахстан
+    'Алматы', 'Астана', 'Шымкент',
+  ];
+  var FIELD_SUGGESTIONS = {
+    sea_port: SEA_PORTS,
+    air_port: AIR_PORTS,
+    warehouse_address: WAREHOUSE_HUBS,
+  };
+
   var __pendingImport = null; // {import_id, mapping, questions, transform_rules, constants}
 
   async function uploadPricelist(file) {
@@ -2279,7 +2371,20 @@
             }).join('');
             inp = '<select class="pl-df-input" data-field="' + esc(f.key) + '">' + opts + '</select>';
           } else {
-            inp = '<input class="pl-df-input" data-field="' + esc(f.key) + '" type="text" value="' + esc(val) + '" autocomplete="off"/>';
+            // Подсказки по списку портов/складов для соответствующих полей
+            var sugg = FIELD_SUGGESTIONS[f.key] || null;
+            if (sugg) {
+              var listId = 'sugg_' + f.key;
+              var suggOpts = sugg.map(function(s){
+                return '<option value="' + esc(s) + '"/>';
+              }).join('');
+              inp = '<input class="pl-df-input" data-field="' + esc(f.key)
+                + '" type="text" value="' + esc(val) + '" autocomplete="off"'
+                + ' list="' + listId + '"/>'
+                + '<datalist id="' + listId + '">' + suggOpts + '</datalist>';
+            } else {
+              inp = '<input class="pl-df-input" data-field="' + esc(f.key) + '" type="text" value="' + esc(val) + '" autocomplete="off"/>';
+            }
           }
           return '<div class="pl-df-row"><span class="pl-df-label">' + esc(f.label) + '</span>' + inp + '</div>';
         }).join('');

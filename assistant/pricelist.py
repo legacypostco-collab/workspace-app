@@ -1741,19 +1741,10 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
         ai_est = ai_estimates.get(oem) if ai_estimates else None
 
         def _dim(field, ai_key):
-            # Если поле замаплено на файл — отдаём значение из файла
-            # ВСЕГДА (включая 0), чтобы юзер видел реальную картину.
-            # Пустые ячейки → AI estimate → fallback default.
             if field in col_idx:
-                raw_str = get(field)
-                if raw_str:  # есть текст в ячейке
-                    dec = _coerce_decimal(raw_str)
-                    return str(dec) if dec is not None else raw_str
-                # пустая ячейка в файле → пробуем AI
-                if ai_est and ai_est.get(ai_key):
-                    return str(ai_est[ai_key])
-                return ""
-            # Не замаплено на файл — AI estimate или fix-default
+                raw = _coerce_decimal(get(field))
+                if raw and raw > 0:
+                    return str(raw)
             if ai_est and ai_est.get(ai_key):
                 return str(ai_est[ai_key])
             raw = _coerce_decimal(get(field))
