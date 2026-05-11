@@ -75,7 +75,7 @@ STD_FIELDS = [
         "Generic",
     ], "Generic"),
     ("title",             "Название",                True,  None, None),
-    ("stock",             "Остаток (Quantity)",      False, None, "0"),
+    ("stock",             "Остаток (Quantity)",      False, None, "1"),
     ("condition",         "Тип товара",              False, ["OEM", "AFTERMARKET", "REMAN"], "OEM"),
     ("availability",      "Наличие",                 False, ["IN_STOCK", "BACKORDER"], "IN_STOCK"),
     ("manufacturer",      "Завод-производитель",     False, None, ""),
