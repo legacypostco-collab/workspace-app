@@ -227,7 +227,8 @@ MAX_FILE_BYTES = 50 * 1024 * 1024  # 50 МБ (ТЗ)
 MIN_COLUMNS = 2          # ТЗ: минимум 2 колонки
 MAX_COLUMNS = 100        # ТЗ: максимум 100 колонок
 MAX_AI_HEADERS = 20      # ТЗ: AI получает максимум 20 заголовков за раз
-MAX_AI_CALLS_PER_DAY = 3  # ТЗ: 3 AI-вызова в день на seller
+MAX_AI_CALLS_PER_DAY = 50  # увеличил с 3 — словарь + value-detection
+                            # покрывают большинство кейсов, AI как fallback
 
 
 def _read_xlsx_rows(blob: bytes, max_rows: int | None = None):
@@ -1344,7 +1345,7 @@ class PricelistUploadView(APIView):
 
         ai_called = False
         unknown: list = []
-        smart_status = "ok"
+        smart_status: str = "ok"  # default; will be set if _smart_mapping called
         transform_rules: dict = {}
         constants: dict = {}
         from_profile = False
@@ -1380,13 +1381,10 @@ class PricelistUploadView(APIView):
                 from_profile = False
                 transform_rules = {}
                 constants = {}
-        if smart_status == "quota_exceeded":
-            return Response({
-                "error": (
-                    "Лимит распознавания исчерпан. "
-                    "Попробуйте завтра или скачайте шаблон."
-                ),
-            }, status=429)
+        # AI quota exceeded — НЕ фатально. У нас есть результат словаря +
+        # value detection. Просто отмечаем для UI чтобы юзер знал что
+        # уникальные колонки не дораспознаны AI'ом — пусть поправит руками.
+        ai_quota_exceeded = (smart_status == "quota_exceeded")
 
         mapped_preview = _build_mapped_preview(headers, sample, suggested)
 
@@ -1440,6 +1438,7 @@ class PricelistUploadView(APIView):
             "mapped_preview": mapped_preview,
             "suggested_mapping": suggested,
             "ai_called": ai_called,
+            "ai_quota_exceeded": ai_quota_exceeded,
             "ai_intro": "",         # подтянется async
             "smart_questions": [],  # подтянется async
             "smart_questions_pending": True,
