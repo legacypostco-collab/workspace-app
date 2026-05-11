@@ -495,61 +495,69 @@
     .tp-table tr:last-child td{border-bottom:none;}
     .tp-foot{margin-top:8px;font-size:11px;color:rgba(0,0,0,0.55);font-style:italic;}
 
-    /* ── Pricelist defaults card ── */
-    .pl-defaults-card{padding:10px 14px;}
-    .pl-defaults-summary{cursor:pointer;font-size:13px;font-weight:600;color:rgba(0,0,0,0.7);padding:4px 0;user-select:none;}
+    /* ── Pricelist форма в стиле claude.ai: чистая, минималистичная ── */
+    /* Базовая карточка: белая, тонкий бордер, мягкие тени */
+    .pl-defaults-card{padding:20px 22px;background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:12px;}
+    .pl-defaults-summary{cursor:pointer;font-size:13.5px;font-weight:500;color:rgba(0,0,0,0.6);padding:2px 0;user-select:none;display:flex;align-items:center;gap:8px;}
     .pl-defaults-summary:hover{color:#1a1a1a;}
-    .pl-defaults-details[open] .pl-defaults-summary{margin-bottom:10px;border-bottom:1px solid rgba(0,0,0,0.06);padding-bottom:8px;}
-    .pl-df-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;}
-    .pl-df-row{display:flex;flex-direction:column;gap:3px;}
-    .pl-df-label{font-size:11px;color:rgba(0,0,0,0.55);font-weight:500;}
-    .pl-df-input{background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.1);border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit;color:#1a1a1a;outline:none;transition:border-color 0.12s;width:100%;box-sizing:border-box;}
-    .pl-df-input:focus{border-color:#1a1a1a;background:#fff;}
-    .pl-port-row{display:flex;gap:4px;}
-    .pl-port-country{flex:0 0 120px;}
+    .pl-defaults-summary::-webkit-details-marker{display:none;}
+    .pl-defaults-details[open] .pl-defaults-summary{margin-bottom:18px;color:#1a1a1a;font-weight:600;}
+    /* Grid: 2 колонки на десктопе, 1 на мобильном */
+    .pl-df-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 18px;}
+    .pl-df-row{display:flex;flex-direction:column;gap:6px;}
+    .pl-df-label{font-size:11.5px;color:rgba(0,0,0,0.5);font-weight:500;letter-spacing:0.01em;}
+    /* Инпуты в стиле claude.ai: белый фон, серый тонкий бордер, аккуратный фокус */
+    .pl-df-input{background:#fff;border:1px solid rgba(0,0,0,0.12);border-radius:8px;padding:9px 12px;font-size:13.5px;font-family:inherit;color:#1a1a1a;outline:none;transition:border-color 0.15s, box-shadow 0.15s;width:100%;box-sizing:border-box;line-height:1.4;}
+    .pl-df-input:hover{border-color:rgba(0,0,0,0.22);}
+    .pl-df-input:focus{border-color:#1a1a1a;box-shadow:0 0 0 3px rgba(0,0,0,0.04);}
+    select.pl-df-input{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23999' stroke-width='1.5'%3E%3Cpath d='M3 5l3 3 3-3'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:10px;padding-right:32px;cursor:pointer;}
+    .pl-port-row{display:flex;gap:6px;}
+    .pl-port-country{flex:0 0 130px;}
     .pl-port-input{flex:1;}
-    .pl-df-textarea{font-family:inherit;resize:vertical;min-height:48px;line-height:1.35;}
+    .pl-df-textarea{font-family:inherit;resize:vertical;min-height:64px;line-height:1.5;padding:10px 12px;}
     .pl-df-row:has(.pl-df-textarea){grid-column:1 / -1;}
-    /* Топовый селектор страны отправления */
-    .pl-ship-country-row{display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:10px;background:rgba(45,122,62,0.06);border:1px solid rgba(45,122,62,0.2);border-radius:8px;}
-    .pl-ship-country-label{font-size:13px;font-weight:600;color:#1a1a1a;display:flex;flex-direction:column;flex:1;}
-    .pl-ship-country-hint{font-weight:400;font-size:10.5px;color:rgba(0,0,0,0.55);margin-top:2px;}
-    .pl-ship-country{flex:0 0 200px;}
-    /* Пояснительная записка перед загрузкой */
-    .import-explain{padding:14px 16px;background:rgba(100,181,246,0.06);border:1px solid rgba(100,181,246,0.2);}
-    .ie-title{font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:4px;}
-    .ie-sub{font-size:12px;color:rgba(0,0,0,0.55);margin-bottom:10px;}
-    .ie-row{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.05);}
+    /* Селектор «Страна отправления» сверху — мягкая выделенная плашка */
+    .pl-ship-country-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;margin-bottom:18px;background:#FAFAF9;border:1px solid rgba(0,0,0,0.08);border-radius:10px;}
+    .pl-ship-country-label{font-size:13.5px;font-weight:500;color:#1a1a1a;display:flex;flex-direction:column;flex:1;gap:2px;}
+    .pl-ship-country-hint{font-weight:400;font-size:11.5px;color:rgba(0,0,0,0.5);line-height:1.4;}
+    .pl-ship-country{flex:0 0 220px;}
+    /* Пояснительная записка перед загрузкой — чистая, без фона */
+    .import-explain{padding:20px 22px;background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:12px;}
+    .ie-title{font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:4px;}
+    .ie-sub{font-size:12.5px;color:rgba(0,0,0,0.55);margin-bottom:14px;}
+    .ie-row{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid rgba(0,0,0,0.06);}
     .ie-row:last-of-type{border-bottom:0;}
-    .ie-icon{font-size:18px;flex-shrink:0;width:24px;text-align:center;}
+    .ie-icon{font-size:16px;flex-shrink:0;width:24px;text-align:center;line-height:1.4;opacity:0.7;}
     .ie-content{flex:1;min-width:0;}
-    .ie-label{font-size:11px;font-weight:600;color:rgba(0,0,0,0.55);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:2px;}
-    .ie-value{font-size:12.5px;color:#1a1a1a;line-height:1.4;word-break:break-word;}
-    .ie-value b{color:#1a1a1a;}
-    .ie-hint{font-size:10.5px;color:rgba(0,0,0,0.45);font-style:italic;}
-    .ie-rule{margin-top:10px;padding:8px 10px;background:rgba(232,92,13,0.08);border-left:3px solid rgba(232,92,13,0.5);border-radius:4px;font-size:12px;color:rgba(0,0,0,0.75);line-height:1.45;}
-    /* Инструкция в начале */
-    .import-intro{padding:14px 18px;background:rgba(45,122,62,0.05);border:1px solid rgba(45,122,62,0.25);}
-    .ii-title{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:12px;}
-    .ii-steps{display:flex;flex-direction:column;gap:8px;}
-    .ii-step{display:flex;gap:10px;align-items:flex-start;}
-    .ii-n{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#2D7A3E;color:#fff;border-radius:50%;font-size:11px;font-weight:700;flex-shrink:0;}
-    .ii-step > div{flex:1;font-size:12.5px;color:#1a1a1a;line-height:1.4;}
-    .ii-step b{font-size:13px;}
-    .ii-hint{font-size:11px;color:rgba(0,0,0,0.55);}
-    .ii-rules{margin-top:12px;padding:10px 12px;background:rgba(232,92,13,0.07);border-left:3px solid rgba(232,92,13,0.5);border-radius:4px;font-size:12px;color:rgba(0,0,0,0.8);}
-    .ii-rules ul{margin:4px 0 0 0;padding-left:18px;line-height:1.6;}
-    .ii-rules li{font-size:11.5px;}
-    .pl-df-note{margin-top:10px;padding:8px 10px;background:rgba(100,181,246,0.08);border-left:2px solid rgba(100,181,246,0.5);border-radius:4px;font-size:11.5px;color:rgba(0,0,0,0.65);line-height:1.4;}
+    .ie-label{font-size:10.5px;font-weight:600;color:rgba(0,0,0,0.45);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;}
+    .ie-value{font-size:13px;color:#1a1a1a;line-height:1.5;word-break:break-word;}
+    .ie-value b{color:#1a1a1a;font-weight:600;}
+    .ie-hint{font-size:11.5px;color:rgba(0,0,0,0.45);font-style:italic;}
+    .ie-rule{margin-top:14px;padding:11px 14px;background:#FAFAF9;border:1px solid rgba(0,0,0,0.08);border-radius:8px;font-size:12.5px;color:rgba(0,0,0,0.7);line-height:1.5;}
+    .ie-rule b{color:#1a1a1a;}
+    /* Инструкция в начале — белая карточка, как у claude */
+    .import-intro{padding:22px 24px;background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:12px;}
+    .ii-title{font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:16px;}
+    .ii-steps{display:flex;flex-direction:column;gap:14px;}
+    .ii-step{display:flex;gap:14px;align-items:flex-start;}
+    .ii-n{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;background:#1a1a1a;color:#fff;border-radius:50%;font-size:11px;font-weight:600;flex-shrink:0;line-height:1;}
+    .ii-step > div{flex:1;font-size:13px;color:#1a1a1a;line-height:1.5;}
+    .ii-step b{font-size:13.5px;font-weight:600;}
+    .ii-hint{font-size:12px;color:rgba(0,0,0,0.55);line-height:1.45;}
+    .ii-rules{margin-top:18px;padding:14px 16px;background:#FAFAF9;border:1px solid rgba(0,0,0,0.08);border-radius:8px;font-size:12.5px;color:rgba(0,0,0,0.75);}
+    .ii-rules ul{margin:6px 0 0 0;padding-left:18px;line-height:1.7;}
+    .ii-rules li{font-size:12.5px;}
+    .ii-rules b{color:#1a1a1a;font-weight:600;}
+    .pl-df-note{margin-top:18px;padding:12px 14px;background:#FAFAF9;border:1px solid rgba(0,0,0,0.06);border-radius:8px;font-size:12.5px;color:rgba(0,0,0,0.6);line-height:1.5;}
     .pl-df-actions-row{margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
     .pl-ai-estimate-btn{background:#1a1a1a;color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity 0.12s;}
     .pl-ai-estimate-btn:hover{opacity:0.85;}
     .pl-ai-estimate-btn:disabled{cursor:wait;}
     .pl-ai-estimate-status{font-size:11.5px;color:rgba(0,0,0,0.65);}
     /* Progress bar для AI-оценки */
-    .pl-ai-progress-card{margin-top:10px;padding:10px 12px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.06);border-radius:8px;}
-    .pl-ai-start-btn{background:rgba(100,181,246,0.15);color:#1a1a1a;border:1px solid rgba(100,181,246,0.4);border-radius:6px;padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.12s;}
-    .pl-ai-start-btn:hover{background:rgba(100,181,246,0.25);border-color:rgba(100,181,246,0.7);}
+    .pl-ai-progress-card{margin-top:14px;padding:14px 16px;background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:10px;}
+    .pl-ai-start-btn{background:#fff;color:#1a1a1a;border:1px solid rgba(0,0,0,0.15);border-radius:8px;padding:9px 16px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;font-family:inherit;}
+    .pl-ai-start-btn:hover{background:#FAFAF9;border-color:rgba(0,0,0,0.3);}
     .pl-ai-progress-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px;font-weight:600;color:rgba(0,0,0,0.85);}
     .pl-ai-progress-counter{font-size:11px;color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;}
     .pl-ai-progress-bar{height:6px;background:rgba(0,0,0,0.07);border-radius:3px;overflow:hidden;}
