@@ -2241,17 +2241,25 @@
         }).join('');
         var perPartNote = '';
         if (perPartCount > 0) {
-          // Auto-start: AI оценка запускается сразу в фоне с прогресс-баром.
-          // Пользователь видит «🧠 AI оценивает 0/60 ...» с polling прогрессом.
+          // НЕ autostart — пусть юзер сам решает, нужен ли ему AI.
+          // Загрузка точно > угадывание. Если в файле нет веса —
+          // лучше загрузить с NULL и пометить, чем выдумать число.
           perPartNote =
-            '<div class="pl-df-note">ℹ️ ' + perPartCount + ' полей у каждой позиции свои (вес, габариты).</div>'
-            + '<div class="pl-ai-progress-card" data-import-id="' + esc(data.import_id) + '" data-autostart="1">'
-            +   '<div class="pl-ai-progress-head">'
-            +     '<span class="pl-ai-progress-label">🤖 AI оценит вес и габариты по описанию</span>'
-            +     '<span class="pl-ai-progress-counter"></span>'
+            '<div class="pl-df-note">'
+            +   'ℹ️ ' + perPartCount + ' полей не передаются в файле (вес, габариты, остаток).'
+            +   '<br>Загрузятся пустыми — можно отредактировать в каталоге позже,'
+            +   ' либо нажмите кнопку чтобы AI оценил по описанию.'
+            + '</div>'
+            + '<div class="pl-ai-progress-card" data-import-id="' + esc(data.import_id) + '">'
+            +   '<button class="pl-ai-start-btn" type="button">🤖 Оценить через AI (~10 сек на 60 позиций)</button>'
+            +   '<div class="pl-ai-progress-area" style="display:none;">'
+            +     '<div class="pl-ai-progress-head">'
+            +       '<span class="pl-ai-progress-label">🧠 AI оценивает</span>'
+            +       '<span class="pl-ai-progress-counter"></span>'
+            +     '</div>'
+            +     '<div class="pl-ai-progress-bar"><div class="pl-ai-progress-fill" style="width:0%"></div></div>'
+            +     '<div class="pl-ai-progress-status"></div>'
             +   '</div>'
-            +   '<div class="pl-ai-progress-bar"><div class="pl-ai-progress-fill" style="width:0%"></div></div>'
-            +   '<div class="pl-ai-progress-status">⏳ запуск...</div>'
             + '</div>';
         }
         cards.push({type:'raw_html', data:{
@@ -2368,11 +2376,26 @@
       var created = data.created || 0;
       var updated = data.updated || 0;
       var failed  = data.failed  || 0;
+      var aiCount = data.ai_estimated_count || 0;
+      var missing = data.missing_from_file || [];
+
       var parts = [];
-      if (created) parts.push('✅ Загружено ' + created);
-      if (updated) parts.push('обновлено ' + updated);
-      if (failed)  parts.push('ошибок ' + failed);
-      var msg = parts.join(', ') + ' позиций.';
+      if (created) parts.push('✅ Создано ' + created);
+      if (updated) parts.push('🔄 Обновлено ' + updated);
+      if (failed)  parts.push('❌ Ошибок ' + failed);
+      var msg = parts.join(' · ') + ' позиций.';
+
+      // Честный отчёт: что в файле было, чего не было.
+      if (missing.length) {
+        var labels = missing.map(function(m) { return m.label; }).join(', ');
+        msg += '\n\n⚠️ В файле отсутствовали: ' + labels + '.';
+        if (aiCount > 0) {
+          msg += '\nAI оценил ' + aiCount + ' позиций по описанию.';
+        } else {
+          msg += '\nЭти поля заполнены значениями по умолчанию.';
+        }
+        msg += '\nМожно отредактировать в каталоге per-part.';
+      }
 
       var btns = [];
       if (failed > 0) {
@@ -2506,19 +2529,21 @@
     card.insertAdjacentHTML('beforeend', html);
   }
 
-  // Auto-start: при появлении новой карточки прогресса в DOM запускаем оценку
-  var aiCardObserver = new MutationObserver(function(muts) {
-    muts.forEach(function(m) {
-      m.addedNodes.forEach(function(node) {
-        if (node.nodeType !== 1) return;
-        var cards = node.matches && node.matches('.pl-ai-progress-card[data-autostart="1"]')
-          ? [node]
-          : (node.querySelectorAll ? node.querySelectorAll('.pl-ai-progress-card[data-autostart="1"]') : []);
-        cards.forEach(function(c) { startAiEstimate(c); });
-      });
-    });
+  // Запуск AI-оценки по нажатию кнопки (НЕ auto-start — пусть
+  // юзер сам решает нужен ли ему AI). По клику показываем
+  // progress area и стартуем.
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.pl-ai-start-btn');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var card = btn.closest('.pl-ai-progress-card');
+    if (!card) return;
+    btn.style.display = 'none';
+    var area = card.querySelector('.pl-ai-progress-area');
+    if (area) area.style.display = 'block';
+    startAiEstimate(card);
   });
-  aiCardObserver.observe(document.body, {childList: true, subtree: true});
 
   // Перехватываем спец-actions в quickAction'е до отправки на /api/assistant/action/
   const _origQuickActionForPricelist = window.quickAction;

@@ -513,18 +513,20 @@
     .pl-ai-estimate-status{font-size:11.5px;color:rgba(0,0,0,0.65);}
     /* Progress bar для AI-оценки */
     .pl-ai-progress-card{margin-top:10px;padding:10px 12px;background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.06);border-radius:8px;}
+    .pl-ai-start-btn{background:rgba(100,181,246,0.15);color:#1a1a1a;border:1px solid rgba(100,181,246,0.4);border-radius:6px;padding:7px 12px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.12s;}
+    .pl-ai-start-btn:hover{background:rgba(100,181,246,0.25);border-color:rgba(100,181,246,0.7);}
     .pl-ai-progress-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px;font-weight:600;color:rgba(0,0,0,0.85);}
     .pl-ai-progress-counter{font-size:11px;color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;}
     .pl-ai-progress-bar{height:6px;background:rgba(0,0,0,0.07);border-radius:3px;overflow:hidden;}
     .pl-ai-progress-fill{height:100%;background:linear-gradient(90deg,rgba(100,181,246,0.8),rgba(100,181,246,1));border-radius:3px;transition:width 0.4s ease,background 0.3s;}
     .pl-ai-progress-status{margin-top:6px;font-size:11px;color:rgba(0,0,0,0.6);}
     /* AI review-таблица — collaborative correction */
-    .pl-ai-review{margin-top:12px;padding-top:10px;border-top:1px solid rgba(0,0,0,0.06);}
-    .pl-ai-review-hdr{font-size:12px;font-weight:600;color:rgba(0,0,0,0.85);margin-bottom:6px;}
+    .pl-ai-review{margin-top:12px;padding-top:10px;border-top:1px solid rgba(0,0,0,0.06);max-height:340px;overflow-y:auto;}
+    .pl-ai-review-hdr{font-size:12px;font-weight:600;color:rgba(0,0,0,0.85);margin-bottom:6px;position:sticky;top:0;background:rgba(255,255,255,0.95);padding:6px 0;backdrop-filter:blur(4px);}
     .pl-ai-review-sub{font-weight:400;font-size:11px;color:rgba(0,0,0,0.55);margin-top:2px;}
     .pl-ai-lowconf{color:rgba(232,92,13,0.95);font-weight:600;}
     .pl-ai-table{width:100%;border-collapse:collapse;font-size:11.5px;}
-    .pl-ai-table th{text-align:left;padding:4px 6px;font-weight:600;font-size:10.5px;color:rgba(0,0,0,0.55);text-transform:uppercase;letter-spacing:0.03em;border-bottom:1px solid rgba(0,0,0,0.08);}
+    .pl-ai-table th{text-align:left;padding:4px 6px;font-weight:600;font-size:10.5px;color:rgba(0,0,0,0.55);text-transform:uppercase;letter-spacing:0.03em;border-bottom:1px solid rgba(0,0,0,0.08);position:sticky;top:32px;background:rgba(255,255,255,0.95);}
     .pl-ai-table td{padding:4px 6px;border-bottom:1px solid rgba(0,0,0,0.04);vertical-align:middle;}
     .pl-ai-row-lowconf{background:rgba(232,92,13,0.06);}
     .pl-ai-cell-title{max-width:260px;}

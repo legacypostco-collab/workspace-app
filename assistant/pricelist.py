@@ -1226,6 +1226,22 @@ class PricelistCommitView(APIView):
                 },
             )
 
+        # Что точно НЕ пришло из файла — для transparency после импорта
+        # пользователь должен это видеть, чтобы понимать качество данных.
+        missing_from_file = []
+        FIELD_LABELS = {
+            "weight_kg": "вес", "length_cm": "длина", "width_cm": "ширина",
+            "height_cm": "высота", "stock": "остаток",
+            "price_fob_sea": "FOB SEA", "price_fob_air": "FOB AIR",
+            "warehouse_address": "адрес склада",
+            "sea_port": "морпорт", "air_port": "аэропорт",
+            "cross_number": "кросс-номер",
+        }
+        for key, label in FIELD_LABELS.items():
+            val = mapping.get(key, "")
+            if not val or (isinstance(val, str) and val.startswith("fix:")):
+                missing_from_file.append({"key": key, "label": label})
+
         return Response({
             "ok": True,
             "import_id": imp.id,
@@ -1234,6 +1250,8 @@ class PricelistCommitView(APIView):
             "updated": updated,
             "failed": failed,
             "errors_preview": errors[:10],
+            "missing_from_file": missing_from_file,
+            "ai_estimated_count": len(imp.ai_estimates or {}),
         })
 
 
