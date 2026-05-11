@@ -76,7 +76,10 @@ STD_FIELDS = [
     ], "Generic"),
     ("title",             "Название",                True,  None, None),
     ("stock",             "Остаток (Quantity)",      False, None, "0"),
-    ("condition",         "Состояние",               False, ["ORIGINAL", "OEM", "AFTERMARKET", "REMAN"], "OEM"),
+    ("condition",         "Тип товара",              False, ["OEM", "AFTERMARKET", "REMAN"], "OEM"),
+    ("availability",      "Наличие",                 False, ["IN_STOCK", "BACKORDER"], "IN_STOCK"),
+    ("manufacturer",      "Завод-производитель",     False, None, ""),
+    ("manufacturer_visible", "Показывать завод",     False, ["Да", "Нет"], "Да"),
     ("price_exw",         "Цена EXW",                True,  None, None),
     ("warehouse_address", "Адрес склада",            False, None, ""),
     ("price_fob_sea",     "Цена FOB SEA",            False, None, "0"),
@@ -898,6 +901,13 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                           "reman" if "reman" in cond_raw else
                           "aftermarket" if "after" in cond_raw else
                           "oem")
+            # availability: IN_STOCK / BACKORDER → in_stock / backorder
+            avail_raw = (get("availability") or "").strip().lower()
+            availability = "backorder" if "backorder" in avail_raw or "back" in avail_raw else "in_stock"
+            # manufacturer + visible flag
+            manufacturer = (get("manufacturer") or "")[:200]
+            mvis_raw = (get("manufacturer_visible") or "").strip().lower()
+            manufacturer_visible = mvis_raw not in ("нет", "no", "false", "0", "hidden", "скрыть")
             cross_number = (get("cross_number") or "")[:500]
             price_fob_sea = _coerce_decimal(get("price_fob_sea")) or Decimal("0")
             price_fob_air = _coerce_decimal(get("price_fob_air")) or Decimal("0")
@@ -943,6 +953,9 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     "currency": currency,
                     "stock_quantity": stock,
                     "condition": condition,
+                    "availability": availability,
+                    "manufacturer": manufacturer,
+                    "manufacturer_visible": manufacturer_visible,
                     "cross_numbers": cross_number,
                     "price_fob_sea": price_fob_sea,
                     "price_fob_air": price_fob_air,
@@ -1038,6 +1051,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
         "price_fob_sea", "price_fob_air", "warehouse_address", "sea_port", "air_port",
         "hs_code", "backorder_allowed", "mapping_status", "supplier_part_uid",
         "data_updated_at", "is_active", "admin_note",
+        "manufacturer", "manufacturer_visible",
         "created_at", "updated_at",
     ]
     table = Part._meta.db_table
@@ -1058,7 +1072,8 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     p.price, p.stock_quantity or 0,
                     p.condition or "oem", "",
                     p.seller_id, p.brand_id, p.category_id,
-                    "in_stock", "active", p.currency or "USD",
+                    getattr(p, "availability", "") or "in_stock",
+                    "active", p.currency or "USD",
                     "FOB", 1, 1, 1, 1,
                     p.gross_weight_kg, p.length_cm, p.width_cm, p.height_cm,
                     "Unknown", p.cross_numbers or "",
@@ -1066,6 +1081,8 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     p.warehouse_address or "", p.sea_port or "", p.air_port or "",
                     "", False, "auto", "",
                     now, True, "",
+                    getattr(p, "manufacturer", "") or "",
+                    getattr(p, "manufacturer_visible", True),
                     now, now,  # created_at, updated_at
                 ))
             try:
@@ -1086,6 +1103,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
         if to_update:
             upd_cols = [
                 "title", "price", "currency", "stock_quantity", "condition",
+                "availability", "manufacturer", "manufacturer_visible",
                 "cross_numbers", "price_fob_sea", "price_fob_air",
                 "warehouse_address", "sea_port", "air_port",
                 "gross_weight_kg", "length_cm", "width_cm", "height_cm",
@@ -1100,6 +1118,9 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 upd_rows.append((
                     p.title or "", p.price, p.currency or "USD",
                     p.stock_quantity or 0, p.condition or "oem",
+                    getattr(p, "availability", "") or "in_stock",
+                    getattr(p, "manufacturer", "") or "",
+                    getattr(p, "manufacturer_visible", True),
                     p.cross_numbers or "",
                     p.price_fob_sea, p.price_fob_air,
                     p.warehouse_address or "", p.sea_port or "", p.air_port or "",
@@ -1324,9 +1345,18 @@ class PricelistCommitView(APIView):
         if not isinstance(mapping, dict):
             return Response({"error": "mapping must be object"}, status=400)
 
-        # Применяем ответы на вопросы: constants заполняют fix-значения
-        for fld, val in constants.items():
-            if fld not in mapping:
+        # Применяем ответы на вопросы: constants ПРИОРИТЕТ над дефолтами.
+        # Раньше скипались если fld уже в mapping — но mapping мог содержать
+        # пустой default (fix:""), который блокировал юзерский ответ.
+        for fld, val in (constants or {}).items():
+            if val is None or val == "":
+                continue
+            cur = mapping.get(fld, "")
+            # Перезатираем если: (а) нет в mapping, (б) пустой default fix:""
+            #                   (в) колонка не замаплена на файл
+            if (not cur
+                or (isinstance(cur, str) and cur.startswith("fix:") and
+                    cur[4:].strip() in ("", str(FIELD_DEFAULTS.get(fld, ""))))):
                 mapping[fld] = f"fix:{val}"
 
         for f_key in REQUIRED_FIELDS:
@@ -1448,8 +1478,10 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
         ("CrossNumber",      "cross_number"),
         ("Brand",            "brand"),
         ("Name",             "title"),
+        ("Manufacturer",     "manufacturer"),
         ("Quantity",         "stock"),
         ("Condition",        "condition"),
+        ("Availability",     "availability"),
         ("Price_EXW",        "price_exw"),
         ("WarehouseAddress", "warehouse_address"),
         ("Price_FOB_SEA",    "price_fob_sea"),
@@ -1559,20 +1591,102 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
     return buf.getvalue()
 
 
+HARDCODED_QUESTIONS = [
+    {
+        "field": "brand",
+        "question": "Бренд / производитель?",
+        "options": ["Epiroc", "Caterpillar", "Komatsu", "Hitachi", "Sandvik"],
+        "default": "",
+        "placeholder": "Или впишите свой бренд",
+        "apply_as": "constant",
+    },
+    {
+        "field": "condition",
+        "question": "Тип товара (Condition)?",
+        "options": ["OEM", "AFTERMARKET", "REMAN"],
+        "default": "OEM",
+        "apply_as": "constant",
+    },
+    {
+        "field": "availability",
+        "question": "Наличие?",
+        "options": ["IN_STOCK", "BACKORDER"],
+        "default": "IN_STOCK",
+        "apply_as": "constant",
+    },
+    {
+        "field": "manufacturer",
+        "question": "Завод-производитель? Для OEM — OEM-завод, для AFTERMARKET — завод аналога, для REMAN — компания восстановления.",
+        "options": [],
+        "default": "",
+        "placeholder": "напр.: Epiroc Sweden AB, или завод аналога",
+        "apply_as": "constant",
+    },
+    {
+        "field": "manufacturer_visible",
+        "question": "Показывать завод клиенту? (для публичных брендов — да; для непубличных — нет, останется только внутри)",
+        "options": ["Да", "Нет"],
+        "default": "Да",
+        "apply_as": "constant",
+    },
+    {
+        "field": "price_fob_sea",
+        "question": "Наценка FOB SEA (морем) к цене EXW?",
+        "options": ["+5%", "+10%", "+15%"],
+        "default": "+10%",
+        "apply_as": "formula",
+    },
+    {
+        "field": "price_fob_air",
+        "question": "Наценка FOB AIR (авиа) к цене EXW?",
+        "options": ["+7%", "+15%", "+20%"],
+        "default": "+15%",
+        "apply_as": "formula",
+    },
+]
+
+
 def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
                          total_rows: int | None, mapping: dict[str, str],
                          filename: str = "") -> dict:
-    """Claude.ai-style: возвращает {intro, questions[]} структурированно.
+    """Возвращает захардкоженный список вопросов + краткое intro.
 
-    questions = [{
-        field: "brand" | "condition" | "price_fob_sea" | ...,
-        question: "Какой бренд?",
-        options: ["Epiroc", "Caterpillar", ...],    # chip-кнопки
-        default: "Epiroc",                          # для prefill
-        placeholder: "напр. Москва",
-        apply_as: "constant" | "formula",
-        formula_template: "price_exw * (1 + {value}/100)",  # для markup
-    }]
+    AI-генерация заменена на детерминированный список — у нас фикс-набор
+    статусов товара (OEM/AFTERMARKET/REMAN), наличия (IN_STOCK/BACKORDER),
+    наценок (FOB SEA: +5/+10/+15%, FOB AIR: +7/+15/+20%).
+    """
+    # Бренд по умолчанию подставляем из имени файла если узнаём (Epiroc, ...)
+    known_brands = ["Epiroc", "Caterpillar", "Komatsu", "Hitachi", "Sandvik",
+                     "Liebherr", "Atlas Copco"]
+    detected_brand = ""
+    fname_lower = (filename or "").lower()
+    for b in known_brands:
+        if b.lower().replace(" ", "") in fname_lower.replace("_", "").replace(" ", ""):
+            detected_brand = b
+            break
+
+    questions = []
+    for q in HARDCODED_QUESTIONS:
+        q_copy = dict(q)
+        if q_copy["field"] == "brand" and detected_brand:
+            q_copy["default"] = detected_brand
+        questions.append(q_copy)
+
+    # Базовое intro
+    rows_label = f"{total_rows} позиций" if total_rows else f"{len(headers)} колонок"
+    intro = (f"📋 Я распознал в файле **{rows_label}**. "
+             f"Уточню 7 деталей чтобы корректно заполнить карточки товара:")
+
+    return {"intro": intro, "questions": questions}
+
+
+def _ai_smart_questions_legacy_AI(headers: list[str], sample_rows: list[list[str]],
+                         total_rows: int | None, mapping: dict[str, str],
+                         filename: str = "") -> dict:
+    """[legacy] AI-генерация вопросов через Claude tool use.
+
+    Оставлено для возврата если понадобится динамика. Заменено на
+    _ai_smart_questions с захардкоженным списком.
     """
     api_key = getattr(settings, "ANTHROPIC_API_KEY", "")
     if not api_key:

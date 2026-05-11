@@ -94,6 +94,10 @@ class Part(models.Model):
     width_cm = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("1.00"))
     height_cm = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("1.00"))
     country_of_origin = models.CharField(max_length=120, default="Unknown")
+    manufacturer = models.CharField(max_length=200, blank=True,
+        help_text="Завод-производитель (для OEM — OEM-завод, для AFTERMARKET — завод аналога, для REMAN — завод восстановления)")
+    manufacturer_visible = models.BooleanField(default=True,
+        help_text="Показывать завод клиенту. False — если бренд непубличный, хранится внутри")
     cross_numbers = models.CharField(max_length=500, blank=True)
     # Расширенные поля прайса поставщика (ТЗ шаблон):
     price_fob_sea = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"),
