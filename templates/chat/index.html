@@ -502,8 +502,8 @@
     .pl-defaults-summary:hover{color:#1a1a1a;}
     .pl-defaults-summary::-webkit-details-marker{display:none;}
     .pl-defaults-details[open] .pl-defaults-summary{margin-bottom:18px;color:#1a1a1a;font-weight:600;}
-    /* Grid: 2 колонки на десктопе, 1 на мобильном */
-    .pl-df-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 18px;}
+    /* Одна колонка — поля идут стопкой, без пустых слотов */
+    .pl-df-grid{display:flex;flex-direction:column;gap:14px;}
     .pl-df-row{display:flex;flex-direction:column;gap:6px;}
     .pl-df-label{font-size:11.5px;color:rgba(0,0,0,0.5);font-weight:500;letter-spacing:0.01em;}
     /* Инпуты в стиле claude.ai: белый фон, серый тонкий бордер, аккуратный фокус */
@@ -515,7 +515,6 @@
     .pl-port-country{flex:0 0 130px;}
     .pl-port-input{flex:1;}
     .pl-df-textarea{font-family:inherit;resize:vertical;min-height:64px;line-height:1.5;padding:10px 12px;}
-    .pl-df-row:has(.pl-df-textarea){grid-column:1 / -1;}
     /* Селектор «Страна отправления» — всё прижато к левому краю */
     .pl-ship-country-row{display:flex !important;flex-direction:column !important;align-items:stretch !important;gap:10px;padding:14px 16px;margin-bottom:18px;background:#FAFAF9;border:1px solid rgba(0,0,0,0.08);border-radius:10px;}
     .pl-ship-country-label{font-size:13.5px;font-weight:500;color:#1a1a1a;display:flex;flex-direction:column;gap:2px;text-align:left;width:100%;}
@@ -647,7 +646,6 @@
     .opx-gen-progress-bar{width:100%;max-width:300px;height:6px;background:rgba(0,0,0,0.07);border-radius:3px;overflow:hidden;margin-top:4px;}
     .opx-gen-progress-fill{height:100%;background:linear-gradient(90deg,rgba(45,122,62,0.7),rgba(45,122,62,1));border-radius:3px;transition:width 0.4s ease;width:0%;}
     @media(max-width:800px){.side-preview{width:100vw;min-width:auto;}}
-    @media(max-width:600px){.pl-df-grid{grid-template-columns:1fr;}}
 
     /* ── Seller queue card ── */
     .sq-card{padding:16px 18px;}
