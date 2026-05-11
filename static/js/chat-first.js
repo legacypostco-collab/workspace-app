@@ -2414,27 +2414,8 @@
     addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
     const pending = addMessage('assistant', 'Читаю файл и подбираю маппинг колонок…');
 
-    // Side panel с loading-state открывается мгновенно для визуальной
-    // обратной связи. Закрывается когда mapping готов.
-    try {
-      var panel = document.getElementById('sidePreview');
-      var nameEl = document.getElementById('sidePreviewName');
-      var metaEl = document.getElementById('sidePreviewMeta');
-      var bodyEl = document.getElementById('sidePreviewBody');
-      if (panel && bodyEl) {
-        if (nameEl) nameEl.textContent = file.name;
-        if (metaEl) metaEl.textContent = (file.size > 1024*1024
-          ? (file.size / (1024*1024)).toFixed(1) + ' MB'
-          : Math.round(file.size/1024) + ' KB');
-        bodyEl.innerHTML =
-          '<div class="opx-gen-loading">'
-          + '<div class="opx-gen-spinner"></div>'
-          + '<div class="opx-gen-message">Анализирую файл…</div>'
-          + '<div class="opx-gen-counter">распознаю заголовки и тип данных</div>'
-          + '</div>';
-        panel.hidden = false;
-      }
-    } catch(e) {}
+    // НЕ открываем side panel на этом этапе — он только для XLSX preview
+    // в конце процесса. Здесь визуальная обратная связь — в чат-сообщении.
 
     try {
       const fd = new FormData();
@@ -2447,8 +2428,6 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
       if (pending && pending.parentNode) pending.remove();
-      // Закрываем side panel — mapping готов, юзер дальше отвечает на вопросы
-      try { closeSidePreview(); } catch(e) {}
 
       const headers = (data.headers || []).filter(function(h) { return String(h || '').trim(); });
       const sug = data.suggested_mapping || {};
@@ -2750,7 +2729,6 @@
       }
     } catch (err) {
       if (pending && pending.parentNode) pending.remove();
-      try { closeSidePreview(); } catch(e) {}
       addMessage('assistant', '⚠️ Не удалось прочитать прайс: ' + (err.message || err));
     }
   }
