@@ -2414,8 +2414,28 @@
     addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
     const pending = addMessage('assistant', 'Читаю файл и подбираю маппинг колонок…');
 
-    // НЕ открываем side panel на этом этапе — он только для XLSX preview
-    // в конце процесса. Здесь визуальная обратная связь — в чат-сообщении.
+    // Side panel: спиннер с прогрессом во время чтения файла.
+    // Когда mapping готов — заменяем спиннер на превью исходного файла
+    // (заголовки + первые строки). Не исчезает, юзер видит результат.
+    try {
+      var spPanel = document.getElementById('sidePreview');
+      var spNameEl = document.getElementById('sidePreviewName');
+      var spMetaEl = document.getElementById('sidePreviewMeta');
+      var spBodyEl = document.getElementById('sidePreviewBody');
+      if (spPanel && spBodyEl) {
+        if (spNameEl) spNameEl.textContent = file.name;
+        if (spMetaEl) spMetaEl.textContent = (file.size > 1024*1024
+          ? (file.size / (1024*1024)).toFixed(1) + ' MB'
+          : Math.round(file.size/1024) + ' KB');
+        spBodyEl.innerHTML =
+          '<div class="opx-gen-loading">'
+          + '<div class="opx-gen-spinner"></div>'
+          + '<div class="opx-gen-message">Анализирую файл…</div>'
+          + '<div class="opx-gen-counter">распознаю заголовки и тип данных</div>'
+          + '</div>';
+        spPanel.hidden = false;
+      }
+    } catch(e) {}
 
     try {
       const fd = new FormData();
@@ -2428,6 +2448,29 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
       if (pending && pending.parentNode) pending.remove();
+
+      // Заменяем спиннер на превью исходного файла (headers + sample rows)
+      try {
+        var spBody = document.getElementById('sidePreviewBody');
+        if (spBody && data.headers) {
+          var hdrs = (data.headers || []).filter(function(h){ return String(h||'').trim(); });
+          var headerHtml = hdrs.map(function(h){ return '<th>' + esc(h) + '</th>'; }).join('');
+          var rowsHtml = (data.sample_rows || []).map(function(row){
+            var cells = (row || []).slice(0, hdrs.length).map(function(c){
+              var v = (c == null ? '' : String(c)).slice(0, 60);
+              return '<td>' + esc(v) + '</td>';
+            }).join('');
+            return '<tr>' + cells + '</tr>';
+          }).join('');
+          var noteHtml = '<div class="opx-note">📂 Ваш файл · '
+            + hdrs.length + ' колонок'
+            + (data.total_rows ? ' · ' + data.total_rows + ' позиций' : '')
+            + '</div>';
+          spBody.innerHTML = noteHtml
+            + '<table><thead><tr>' + headerHtml + '</tr></thead>'
+            + '<tbody>' + rowsHtml + '</tbody></table>';
+        }
+      } catch(e) {}
 
       const headers = (data.headers || []).filter(function(h) { return String(h || '').trim(); });
       const sug = data.suggested_mapping || {};
@@ -2729,6 +2772,7 @@
       }
     } catch (err) {
       if (pending && pending.parentNode) pending.remove();
+      try { closeSidePreview(); } catch(e) {}
       addMessage('assistant', '⚠️ Не удалось прочитать прайс: ' + (err.message || err));
     }
   }
