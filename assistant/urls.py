@@ -51,6 +51,7 @@ urlpatterns = [
     path("upload-pricelist/<int:import_id>/ai-estimate-progress/", pricelist.PricelistAiEstimateProgressView.as_view(), name="pricelist-ai-estimate-progress"),
     path("upload-pricelist/<int:import_id>/import-progress/", pricelist.PricelistImportProgressView.as_view(), name="pricelist-import-progress"),
     path("upload-pricelist/<int:import_id>/smart-questions/", pricelist.PricelistSmartQuestionsView.as_view(), name="pricelist-smart-questions"),
+    path("upload-pricelist/<int:import_id>/generate-output/", pricelist.PricelistGenerateOutputView.as_view(), name="pricelist-generate-output"),
     path("pricelist-template.csv", pricelist.PricelistTemplateView.as_view(), name="pricelist-template"),
     path("pricelist-template.xlsx", pricelist.PricelistTemplateXlsxView.as_view(), name="pricelist-template-xlsx"),
 ]

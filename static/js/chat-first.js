@@ -676,6 +676,22 @@
     raw_html(d) {
       return d.html || '';
     },
+    output_file(d) {
+      // Карточка готового файла (как у claude.ai): иконка + имя + размер +
+      // кнопки «Открыть» / «Скачать».
+      var name = esc(d.filename || 'pricelist.xlsx');
+      var size = d.size_kb ? d.size_kb + ' KB' : '';
+      var url = esc(d.download_url || '');
+      return '<div class="card of-card">'
+        + '<div class="of-icon">📊</div>'
+        + '<div class="of-info">'
+        +   '<div class="of-name">' + name + '</div>'
+        +   '<div class="of-meta">Spreadsheet · XLSX' + (size ? ' · ' + size : '') + '</div>'
+        + '</div>'
+        + '<a class="of-btn of-btn-primary" href="' + url + '" download="' + name + '" target="_blank" rel="noopener">⬇ Скачать</a>'
+        + (url ? '<a class="of-btn" href="' + url + '" target="_blank" rel="noopener">↗ Открыть</a>' : '')
+        + '</div>';
+    },
     table_preview(d) {
       const headers = (d.headers || []).map(h => `<th>${esc(h)}</th>`).join('');
       const rows = (d.rows || []).map(row => {
@@ -2554,6 +2570,70 @@
     }
   }
 
+  // Генерация выходного XLSX-файла как у Claude.ai —
+  // юзер видит карточку с готовым файлом, может скачать или
+  // загрузить в каталог.
+  async function generateAndShowOutputFile() {
+    if (!__pendingImport) return;
+    var imp = __pendingImport;
+    var thinking = addMessage('assistant', '🔧 Готовлю файл в формате маркетплейса…', [], []);
+    try {
+      // Подтягиваем все ответы пользователя
+      var constants = Object.assign({}, imp.constants || {});
+      document.querySelectorAll('.pl-df-input').forEach(function(el) {
+        var f = el.dataset.field; var v = el.value;
+        if (f && v !== undefined) constants[f] = v;
+      });
+      var aiOverrides = {};
+      document.querySelectorAll('.pl-ai-row').forEach(function(row) {
+        var oem = row.dataset.oem;
+        if (!oem) return;
+        var fields = {};
+        row.querySelectorAll('.pl-ai-input').forEach(function(inp) {
+          var f = inp.dataset.field; var v = parseFloat(inp.value);
+          if (f && !isNaN(v)) fields[f] = v;
+        });
+        if (Object.keys(fields).length) aiOverrides[oem] = fields;
+      });
+      var res = await fetch('/api/assistant/upload-pricelist/' + imp.import_id + '/generate-output/', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json', 'X-CSRFToken': csrf()},
+        body: JSON.stringify({
+          mapping: imp.mapping,
+          transform_rules: imp.transform_rules,
+          constants: constants,
+          ai_estimates_override: aiOverrides,
+        }),
+        credentials: 'same-origin',
+      });
+      var data = await res.json();
+      if (thinking && thinking.parentNode) thinking.remove();
+      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      var sizeKB = Math.round((data.size || 0) / 1024);
+      addMessage('assistant',
+        '✨ Готово! Я подготовил файл в формате маркетплейса.\nПроверьте его — можно скачать и открыть, либо сразу загрузить позиции в каталог.',
+        [{type: 'output_file', data: {
+          filename: data.filename,
+          size_kb: sizeKB,
+          download_url: data.download_url,
+        }}],
+        [
+          {action: '__pricelist_commit', label: '📥 Загрузить в каталог',
+           params: {import_id: imp.import_id}},
+          {action: '__pricelist_cancel', label: 'Отменить',
+           params: {import_id: imp.import_id}},
+        ],
+      );
+    } catch (err) {
+      if (thinking && thinking.parentNode) thinking.remove();
+      addMessage('assistant', '⚠️ Не удалось сгенерировать файл: ' + (err.message || err),
+        [], [
+        {action: '__pricelist_commit', label: '📥 Загрузить в каталог',
+         params: {import_id: imp.import_id}},
+      ]);
+    }
+  }
+
   // ── Claude.ai-style smart questionnaire ────────────────────────
   // Показывает вопросы ПО ОДНОМУ: текст + chip-кнопки + ввод.
   // Ответы накапливаются в __pendingImport.smart_answers и
@@ -2561,13 +2641,9 @@
 
   function showNextSmartQuestion(questions, idx) {
     if (idx >= questions.length) {
-      // Все вопросы пройдены — показываем "Готово"
-      var doneMsg = '✨ Спасибо! Я учту ваши ответы при загрузке.';
-      addMessage('assistant', doneMsg, [], [
-        {action: '__pricelist_commit', label: '📥 Загрузить ' +
-          ((__pendingImport && __pendingImport.import_id) ? '' : ''),
-         params: {import_id: __pendingImport.import_id}},
-      ]);
+      // Все вопросы пройдены — генерим выходной XLSX (как у claude.ai)
+      // и показываем downloadable карточку + кнопку Загрузить в каталог.
+      generateAndShowOutputFile();
       return;
     }
     var q = questions[idx];

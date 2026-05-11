@@ -1402,6 +1402,134 @@ class PricelistCommitView(APIView):
         })
 
 
+def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
+                                  constants: dict) -> bytes:
+    """Генерирует выходной XLSX в формате маркетплейса (как у claude.ai).
+
+    Структура: те же колонки что в `pricelist-template.xlsx`:
+      PartNumber, CrossNumber, Brand, Name, Quantity, Condition,
+      Price_EXW, WarehouseAddress, Price_FOB_SEA, Price_FOB_AIR,
+      SeaPort, AirPort, Weight, Length, Width, Height
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    OUTPUT_COLS = [
+        ("PartNumber",       "oem_number"),
+        ("CrossNumber",      "cross_number"),
+        ("Brand",            "brand"),
+        ("Name",             "title"),
+        ("Quantity",         "stock"),
+        ("Condition",        "condition"),
+        ("Price_EXW",        "price_exw"),
+        ("WarehouseAddress", "warehouse_address"),
+        ("Price_FOB_SEA",    "price_fob_sea"),
+        ("Price_FOB_AIR",    "price_fob_air"),
+        ("SeaPort",          "sea_port"),
+        ("AirPort",          "air_port"),
+        ("Weight",           "weight_kg"),
+        ("Length",           "length_cm"),
+        ("Width",            "width_cm"),
+        ("Height",           "height_cm"),
+    ]
+
+    headers = import_obj.headers
+    ai_estimates = getattr(import_obj, "ai_estimates", None) or {}
+
+    # col_idx + fixed_vals (как в _import_file)
+    col_idx: dict[str, int] = {}
+    fixed_vals: dict[str, str] = {}
+    for fld, dflt in FIELD_DEFAULTS.items():
+        fixed_vals[fld] = str(dflt)
+    for fld, val in (mapping or {}).items():
+        if not val:
+            continue
+        if isinstance(val, str) and val.startswith("fix:"):
+            fixed_vals[fld] = val[4:]
+        elif val in headers:
+            col_idx[fld] = headers.index(val)
+            fixed_vals.pop(fld, None)
+    for fld, val in (constants or {}).items():
+        if fld not in col_idx and fld not in fixed_vals:
+            fixed_vals[fld] = str(val)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pricelist"
+
+    # Header row с зелёным выделением (как в claude.ai шаблоне)
+    hdr_font = Font(bold=True, color="FFFFFF")
+    hdr_fill = PatternFill(start_color="2D7A3E", end_color="2D7A3E", fill_type="solid")
+    for col_n, (label, _key) in enumerate(OUTPUT_COLS, start=1):
+        cell = ws.cell(row=1, column=col_n, value=label)
+        cell.font = hdr_font
+        cell.fill = hdr_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # Данные
+    try:
+        with import_obj.file_obj.open("rb") as fh:
+            blob = fh.read()
+    except Exception:
+        wb.close()
+        raise
+
+    row_n = 2
+    for row in _read_all(import_obj.filename, blob):
+        if not any(str(c).strip() for c in row):
+            continue
+
+        # row_vars для формул
+        row_vars = {}
+        for fld in col_idx:
+            idx = col_idx[fld]
+            raw = str(row[idx]).strip() if idx < len(row) else ""
+            dec = _coerce_decimal(raw)
+            row_vars[fld] = dec if dec is not None else raw
+
+        def get(field):
+            if field in col_idx:
+                idx = col_idx[field]
+                raw = str(row[idx]).strip() if idx < len(row) else ""
+            else:
+                raw = fixed_vals.get(field, "")
+            return _apply_transform(field, raw, transform_rules or {}, row_vars)
+
+        oem = get("oem_number")
+        if not oem:
+            continue
+        ai_est = ai_estimates.get(oem) if ai_estimates else None
+
+        def _dim(field, ai_key):
+            if field in col_idx:
+                raw = _coerce_decimal(get(field))
+                if raw and raw > 0:
+                    return str(raw)
+            if ai_est and ai_est.get(ai_key):
+                return str(ai_est[ai_key])
+            raw = _coerce_decimal(get(field))
+            return str(raw) if raw and raw > 0 else ""
+
+        for col_n, (_label, key) in enumerate(OUTPUT_COLS, start=1):
+            if key in ("weight_kg", "length_cm", "width_cm", "height_cm"):
+                value = _dim(key, key)
+            else:
+                value = get(key) or ""
+            ws.cell(row=row_n, column=col_n, value=value)
+
+        row_n += 1
+
+    # Ширины колонок
+    for col_n, (label, _) in enumerate(OUTPUT_COLS, start=1):
+        ws.column_dimensions[chr(64 + col_n)].width = max(12, len(label) + 2)
+    ws.row_dimensions[1].height = 22
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    wb.close()
+    return buf.getvalue()
+
+
 def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
                          total_rows: int | None, mapping: dict[str, str],
                          filename: str = "") -> dict:
@@ -1877,6 +2005,66 @@ class PricelistImportProgressView(APIView):
             "current": progress.get("current", 0),
             "running": progress.get("running", False),
             "status": imp.status,
+        })
+
+
+class PricelistGenerateOutputView(APIView):
+    """POST /api/assistant/upload-pricelist/<id>/generate-output/
+
+    Генерирует XLSX в формате маркетплейса (как у claude.ai).
+    Body: {mapping, transform_rules, constants, ai_estimates_override}
+    Returns: {filename, size, download_url}
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, import_id):
+        from marketplace.models import PricelistImport
+        from django.core.files.base import ContentFile
+        try:
+            imp = PricelistImport.objects.get(id=import_id, seller=request.user)
+        except PricelistImport.DoesNotExist:
+            return Response({"error": "import not found"}, status=404)
+
+        mapping = request.data.get("mapping") or imp.suggested_mapping or {}
+        transform_rules = request.data.get("transform_rules") or {}
+        constants = request.data.get("constants") or {}
+        ai_overrides = request.data.get("ai_estimates_override") or {}
+
+        # Применяем ai_overrides поверх ai_estimates
+        if isinstance(ai_overrides, dict) and ai_overrides:
+            current = imp.ai_estimates or {}
+            for oem, fields in ai_overrides.items():
+                if not isinstance(fields, dict):
+                    continue
+                cur = current.get(oem, {})
+                for k in ("weight_kg", "length_cm", "width_cm", "height_cm"):
+                    if k in fields:
+                        try:
+                            cur[k] = float(fields[k])
+                        except (TypeError, ValueError):
+                            pass
+                cur["confidence"] = 1.0
+                current[oem] = cur
+            imp.ai_estimates = current
+
+        try:
+            xlsx_bytes = _generate_marketplace_xlsx(
+                imp, mapping, transform_rules, constants,
+            )
+        except Exception as e:
+            logger.exception("XLSX generation failed")
+            return Response({"error": f"Не удалось сгенерировать XLSX: {e}"}, status=500)
+
+        # Сохраняем в FileField
+        base_name = (imp.filename or "pricelist").rsplit(".", 1)[0]
+        out_name = f"{base_name}_marketplace.xlsx"
+        imp.output_file.save(out_name, ContentFile(xlsx_bytes), save=True)
+
+        return Response({
+            "filename": out_name,
+            "size": len(xlsx_bytes),
+            "download_url": imp.output_file.url if imp.output_file else "",
+            "rows_generated": xlsx_bytes.count(b"<row") if False else None,
         })
 
 

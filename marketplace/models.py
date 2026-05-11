@@ -1213,6 +1213,8 @@ class PricelistImport(models.Model):
         help_text="Был ли вызов AI для маппинга колонок (для лимита 3/день)")
     ai_estimates = models.JSONField(default=dict, blank=True,
         help_text="AI-оценки per-part вес/габариты по описанию: {oem: {weight_kg, length_cm, ...}}")
+    output_file = models.FileField(upload_to="pricelist_outputs/%Y/%m/", blank=True, null=True,
+        help_text="Сгенерированный XLSX в формате маркетплейса (как у claude.ai)")
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
