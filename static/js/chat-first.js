@@ -2201,9 +2201,15 @@
         }});
       }
 
+      // Приоритет — AI-сгенерированное разговорное приветствие
+      // (как у claude.ai: описание файла + умные вопросы).
       var intro;
-      if (data.from_profile) {
-        intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🧠 Профиль: ' + (data.profile_name || 'auto');
+      if (data.ai_intro && data.ai_intro.trim()) {
+        intro = data.ai_intro;
+      } else if (data.from_profile) {
+        intro = '📋 Файл прочитан · ' + headers.length + ' колонок · '
+              + (data.total_rows ? data.total_rows + ' позиций' : '')
+              + '\n🧠 Профиль: ' + (data.profile_name || 'auto');
       } else if (data.ai_called) {
         intro = '📋 Файл прочитан · ' + headers.length + ' колонок.\n🤖 AI распознал ' + fromFile + ' полей из файла.';
       } else {

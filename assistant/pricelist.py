@@ -1167,14 +1167,25 @@ class PricelistUploadView(APIView):
         )
         imp.file_obj.save(f.name, ContentFile(blob), save=True)
 
+        # Подсчитаем общее количество строк (быстро, потоковый счёт)
+        try:
+            total_rows = sum(1 for _ in _read_all(f.name, blob))
+        except Exception:
+            total_rows = None
+
+        # AI-разговорное приветствие как у claude.ai
+        ai_intro = _ai_intro_message(headers, sample, total_rows, suggested, f.name)
+
         return Response({
             "import_id": imp.id,
             "filename": f.name,
             "headers": headers,
             "sample_rows": sample,
+            "total_rows": total_rows,
             "mapped_preview": mapped_preview,
             "suggested_mapping": suggested,
             "ai_called": ai_called,
+            "ai_intro": ai_intro,
             "unknown_headers": unknown,
             "from_saved_mapping": bool(not ai_called and not from_profile),
             "from_profile": from_profile,
@@ -1340,6 +1351,71 @@ class PricelistCommitView(APIView):
             "ai_estimated_count": len(imp.ai_estimates or {}),
             "reference_enriched": enrichment_stats.get("reference_hits", 0),
         })
+
+
+def _ai_intro_message(headers: list[str], sample_rows: list[list[str]],
+                      total_rows: int | None, mapping: dict[str, str],
+                      filename: str = "") -> str:
+    """Claude.ai-style разговорное сообщение после upload.
+
+    Описывает что увидел в файле + задаёт умные вопросы про missing поля.
+    Это работает как у claude.ai: сначала AI рассказывает контекст,
+    потом спрашивает уточнения, юзер отвечает в чате — мы парсим ответ
+    и применяем к constants/formulas.
+    """
+    api_key = getattr(settings, "ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return ""
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+    except Exception:
+        return ""
+
+    mapped_from_file = [k for k, v in mapping.items()
+                         if v and not v.startswith("fix:")]
+    mapped_to_file = {k: v for k, v in mapping.items()
+                       if v and not v.startswith("fix:")}
+    missing_labels = []
+    for k, label, req, _, _ in STD_FIELDS:
+        if k not in mapping or mapping[k].startswith("fix:"):
+            if k not in mapped_from_file:
+                missing_labels.append(f"{label} ({k})")
+
+    sample_text = "\n".join(
+        " | ".join(str(c)[:30] for c in row) for row in (sample_rows or [])[:3]
+    )
+
+    rows_info = f"{total_rows} позиций" if total_rows else f"{len(headers)} колонок"
+    prompt = (
+        f"Юзер загрузил прайс-лист в B2B-маркетплейс запчастей.\n\n"
+        f"ФАЙЛ: {filename}\n"
+        f"КОЛОНКИ ({len(headers)}): {', '.join(headers)}\n"
+        f"ОБЪЁМ: {rows_info}\n\n"
+        f"ПЕРВЫЕ СТРОКИ:\n{sample_text}\n\n"
+        f"РАСПОЗНАНО ИЗ ФАЙЛА: {', '.join(mapped_from_file) or '—'}\n"
+        f"НЕТ В ФАЙЛЕ: {', '.join(missing_labels[:10]) or '—'}\n\n"
+        "Напиши КОРОТКОЕ дружелюбное сообщение (как Claude.ai):\n"
+        "1. В 1-2 строках опиши что в файле (объём, что распознано)\n"
+        "2. Задай 2-4 КОНКРЕТНЫХ вопроса про важные missing поля. "
+        "Спрашивай только про значимое: бренд, состояние, наценка FOB, "
+        "склад/порт. НЕ спрашивай про вес/габариты (это per-part).\n"
+        "3. Подскажи примеры ответов ('Caterpillar', 'OEM', '+15%' и т.п.)\n"
+        "Не более 6-8 строк всего. На русском. Markdown ok."
+    )
+    try:
+        msg = client.messages.create(
+            model=getattr(settings, "ANTHROPIC_FAST_MODEL", "claude-haiku-4-5-20251001"),
+            max_tokens=500,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        for block in msg.content:
+            if block.type == "text":
+                return block.text.strip()
+        return ""
+    except Exception:
+        logger.exception("AI intro generation failed")
+        return ""
 
 
 def _ai_estimate_per_part(items: list[dict],
