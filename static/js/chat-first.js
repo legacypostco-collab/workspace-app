@@ -2603,11 +2603,11 @@
       }
 
       // 3. Раскрываемая секция supplier-wide дефолтов.
-      // Per-part поля (вес, габариты, остаток, FOB-цены, кросс-номер) у каждой позиции
-      // свои — бессмысленно задавать один на всех. Их seller дозаполнит per-part
-      // через каталог. Здесь только поля, которые реально одинаковые у всего поставщика.
-      var SUPPLIER_WIDE = ['brand', 'condition', 'currency',
-                            'warehouse_address', 'sea_port', 'air_port'];
+      // Сюда попадают ТОЛЬКО поля, не покрытые smart questionnaire
+      // (brand, condition, availability, manufacturer, manufacturer_visible,
+      //  price_fob_* — задаются в чате через вопросы).
+      // Здесь — логистические поля поставщика и валюта.
+      var SUPPLIER_WIDE = ['currency', 'warehouse_address', 'sea_port', 'air_port'];
       var supplierWideFields = defaultFields.filter(function(f) {
         return SUPPLIER_WIDE.indexOf(f.key) >= 0;
       });
