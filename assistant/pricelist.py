@@ -1062,6 +1062,25 @@ class PricelistCommitView(APIView):
         transform_rules = request.data.get("transform_rules") or {}
         constants = request.data.get("constants") or {}
         save_profile = request.data.get("save_profile", True)
+        # Юзерские правки AI-оценок: {oem: {weight_kg, length_cm, ...}}
+        # Применяются поверх ai_estimates как human-in-the-loop корректировка
+        ai_overrides = request.data.get("ai_estimates_override") or {}
+        if isinstance(ai_overrides, dict) and ai_overrides:
+            current = imp.ai_estimates or {}
+            for oem, fields in ai_overrides.items():
+                if not isinstance(fields, dict):
+                    continue
+                cur = current.get(oem, {})
+                for k in ("weight_kg", "length_cm", "width_cm", "height_cm"):
+                    if k in fields:
+                        try:
+                            cur[k] = float(fields[k])
+                        except (TypeError, ValueError):
+                            pass
+                cur["confidence"] = 1.0  # юзер подтвердил → 100%
+                current[oem] = cur
+            imp.ai_estimates = current
+            imp.save(update_fields=["ai_estimates"])
 
         if not isinstance(mapping, dict):
             return Response({"error": "mapping must be object"}, status=400)
@@ -1258,6 +1277,7 @@ def _ai_estimate_per_part(items: list[dict],
                                     "length_cm": float(est.get("length_cm", 0) or 0),
                                     "width_cm":  float(est.get("width_cm", 0) or 0),
                                     "height_cm": float(est.get("height_cm", 0) or 0),
+                                    "confidence": float(est.get("confidence", 0.8) or 0.8),
                                 }
                                 last_seen_oems.add(oem)
                                 new_count += 1
@@ -1281,6 +1301,7 @@ def _ai_estimate_per_part(items: list[dict],
                                 "length_cm": float(est.get("length_cm", 0) or 0),
                                 "width_cm":  float(est.get("width_cm", 0) or 0),
                                 "height_cm": float(est.get("height_cm", 0) or 0),
+                                "confidence": float(est.get("confidence", 0.8) or 0.8),
                             }
         return result
     except Exception:
@@ -1447,12 +1468,35 @@ class PricelistAiEstimateView(APIView):
                 "current": len(estimates), "total": total, "running": False,
             }, 300)
 
+        # Sample для review — приоритет позициям с низкой confidence,
+        # чтобы юзер мог проверить именно их (Claude-style human-in-loop)
+        items_by_oem = {it["oem"]: it for it in items}
+        scored = []
+        for oem, est in estimates.items():
+            conf = est.get("confidence", 0.8)
+            title = items_by_oem.get(oem, {}).get("title", "")
+            scored.append((conf, oem, title, est))
+        # Сортируем: сначала с низкой confidence — туда смотреть в первую очередь
+        scored.sort(key=lambda x: x[0])
+        review_sample = []
+        for conf, oem, title, est in scored[:8]:
+            review_sample.append({
+                "oem": oem, "title": title,
+                "weight_kg": est["weight_kg"],
+                "length_cm": est["length_cm"],
+                "width_cm": est["width_cm"],
+                "height_cm": est["height_cm"],
+                "confidence": conf,
+            })
+        low_conf_count = sum(1 for c, _, _, _ in scored if c < 0.6)
+
         return Response({
             "ok": True,
             "estimated": len(estimates),
             "total": total,
             "truncated": truncated,
-            "sample": dict(list(estimates.items())[:3]),
+            "review_sample": review_sample,
+            "low_confidence_count": low_conf_count,
         })
 
 

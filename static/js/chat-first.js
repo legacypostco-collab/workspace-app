@@ -2316,6 +2316,20 @@
       }
     });
 
+    // Собираем юзерские правки AI оценок (review-таблица)
+    var aiOverrides = {};
+    document.querySelectorAll('.pl-ai-row').forEach(function(row) {
+      var oem = row.dataset.oem;
+      if (!oem) return;
+      var fields = {};
+      row.querySelectorAll('.pl-ai-input').forEach(function(inp) {
+        var f = inp.dataset.field;
+        var v = parseFloat(inp.value);
+        if (f && !isNaN(v)) fields[f] = v;
+      });
+      if (Object.keys(fields).length) aiOverrides[oem] = fields;
+    });
+
     showConv();
     var pending = addMessage('assistant', 'Импортирую прайс…');
     try {
@@ -2326,6 +2340,7 @@
           mapping: mapping,
           transform_rules: transformRules,
           constants: constants,
+          ai_estimates_override: aiOverrides,
         }),
         credentials: 'same-origin',
       });
@@ -2416,13 +2431,17 @@
       setProgress(data.estimated, data.total);
       var msg = '✅ AI оценил ' + data.estimated + ' позиций';
       if (data.truncated) msg += ' (первые ' + data.total + ', остальные с дефолтами)';
-      msg += '. Применятся при загрузке.';
       if (statusEl) {
         statusEl.textContent = msg;
         statusEl.style.color = 'rgba(46,125,50,0.95)';
       }
-      if (fillEl) {
-        fillEl.style.background = 'rgba(46,125,50,0.7)';
+      if (fillEl) fillEl.style.background = 'rgba(46,125,50,0.7)';
+
+      // Review-таблица: показываем образец оценок с editable полями.
+      // Юзер видит что AI намерил, может поправить — изменения уйдут
+      // в commit как ai_estimates_override.
+      if (data.review_sample && data.review_sample.length) {
+        renderAiReview(card, importId, data.review_sample, data.low_confidence_count);
       }
     } catch (err) {
       clearInterval(pollTimer);
@@ -2431,6 +2450,42 @@
         statusEl.style.color = 'rgba(232,92,13,0.85)';
       }
     }
+  }
+
+  // Review-таблица AI оценок — collaborative correction
+  function renderAiReview(card, importId, sampleItems, lowConfCount) {
+    var existing = card.querySelector('.pl-ai-review');
+    if (existing) existing.remove();
+
+    var hdr = '<div class="pl-ai-review-hdr">🔍 Проверьте оценки AI'
+      + (lowConfCount > 0
+          ? ' · <span class="pl-ai-lowconf">⚠️ ' + lowConfCount + ' с низкой уверенностью</span>'
+          : '')
+      + '<div class="pl-ai-review-sub">Поправьте если что-то не так — мы запомним. AI оценил по описанию, но человек точнее.</div>'
+      + '</div>';
+    var rows = sampleItems.map(function(it) {
+      var lowCls = it.confidence < 0.6 ? ' pl-ai-row-lowconf' : '';
+      var confPct = Math.round(it.confidence * 100);
+      return '<tr class="pl-ai-row' + lowCls + '" data-oem="' + esc(it.oem) + '">'
+        + '<td class="pl-ai-cell-title">'
+        +   '<div class="pl-ai-oem">' + esc(it.oem) + '</div>'
+        +   '<div class="pl-ai-name">' + esc(it.title) + '</div>'
+        + '</td>'
+        + '<td><input class="pl-ai-input" data-field="weight_kg" type="number" step="0.1" value="' + it.weight_kg + '"/> кг</td>'
+        + '<td><input class="pl-ai-input" data-field="length_cm" type="number" step="1" value="' + it.length_cm + '"/></td>'
+        + '<td><input class="pl-ai-input" data-field="width_cm"  type="number" step="1" value="' + it.width_cm  + '"/></td>'
+        + '<td><input class="pl-ai-input" data-field="height_cm" type="number" step="1" value="' + it.height_cm + '"/></td>'
+        + '<td class="pl-ai-conf">' + confPct + '%</td>'
+        + '</tr>';
+    }).join('');
+    var html = '<div class="pl-ai-review">'
+      + hdr
+      + '<table class="pl-ai-table">'
+      +   '<thead><tr><th>Позиция</th><th>Вес</th><th>Д, см</th><th>Ш, см</th><th>В, см</th><th>AI</th></tr></thead>'
+      +   '<tbody>' + rows + '</tbody>'
+      + '</table>'
+      + '</div>';
+    card.insertAdjacentHTML('beforeend', html);
   }
 
   // Auto-start: при появлении новой карточки прогресса в DOM запускаем оценку
