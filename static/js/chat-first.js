@@ -2607,10 +2607,15 @@
       // (brand, condition, availability, manufacturer, manufacturer_visible,
       //  price_fob_* — задаются в чате через вопросы).
       // Здесь — логистические поля поставщика и валюта.
-      var SUPPLIER_WIDE = ['currency', 'warehouse_address', 'sea_port', 'air_port'];
-      var supplierWideFields = defaultFields.filter(function(f) {
-        return SUPPLIER_WIDE.indexOf(f.key) >= 0;
-      });
+      // Порядок важен для визуального баланса грида 2 колонки:
+      // Морпорт + Аэропорт парой, потом Адрес склада full-width,
+      // потом Валюта одна (она короткая, выглядит ок)
+      var SUPPLIER_WIDE_ORDER = ['sea_port', 'air_port', 'warehouse_address', 'currency'];
+      var supplierWideFields = SUPPLIER_WIDE_ORDER
+        .map(function(key) {
+          return defaultFields.find(function(f){ return f.key === key; });
+        })
+        .filter(function(f) { return !!f; });
       var perPartCount = defaultFields.length - supplierWideFields.length;
 
       if (supplierWideFields.length > 0) {
