@@ -1173,8 +1173,10 @@ class PricelistUploadView(APIView):
         except Exception:
             total_rows = None
 
-        # AI-разговорное приветствие как у claude.ai
-        ai_intro = _ai_intro_message(headers, sample, total_rows, suggested, f.name)
+        # AI-разговорный questionnaire как у claude.ai
+        smart = _ai_smart_questions(headers, sample, total_rows, suggested, f.name)
+        ai_intro = smart.get("intro", "")
+        smart_questions = smart.get("questions", [])
 
         return Response({
             "import_id": imp.id,
@@ -1186,6 +1188,7 @@ class PricelistUploadView(APIView):
             "suggested_mapping": suggested,
             "ai_called": ai_called,
             "ai_intro": ai_intro,
+            "smart_questions": smart_questions,
             "unknown_headers": unknown,
             "from_saved_mapping": bool(not ai_called and not from_profile),
             "from_profile": from_profile,
@@ -1353,69 +1356,132 @@ class PricelistCommitView(APIView):
         })
 
 
-def _ai_intro_message(headers: list[str], sample_rows: list[list[str]],
-                      total_rows: int | None, mapping: dict[str, str],
-                      filename: str = "") -> str:
-    """Claude.ai-style разговорное сообщение после upload.
+def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
+                         total_rows: int | None, mapping: dict[str, str],
+                         filename: str = "") -> dict:
+    """Claude.ai-style: возвращает {intro, questions[]} структурированно.
 
-    Описывает что увидел в файле + задаёт умные вопросы про missing поля.
-    Это работает как у claude.ai: сначала AI рассказывает контекст,
-    потом спрашивает уточнения, юзер отвечает в чате — мы парсим ответ
-    и применяем к constants/formulas.
+    questions = [{
+        field: "brand" | "condition" | "price_fob_sea" | ...,
+        question: "Какой бренд?",
+        options: ["Epiroc", "Caterpillar", ...],    # chip-кнопки
+        default: "Epiroc",                          # для prefill
+        placeholder: "напр. Москва",
+        apply_as: "constant" | "formula",
+        formula_template: "price_exw * (1 + {value}/100)",  # для markup
+    }]
     """
     api_key = getattr(settings, "ANTHROPIC_API_KEY", "")
     if not api_key:
-        return ""
+        return {"intro": "", "questions": []}
     try:
         from anthropic import Anthropic
         client = Anthropic(api_key=api_key)
     except Exception:
-        return ""
+        return {"intro": "", "questions": []}
 
     mapped_from_file = [k for k, v in mapping.items()
                          if v and not v.startswith("fix:")]
-    mapped_to_file = {k: v for k, v in mapping.items()
-                       if v and not v.startswith("fix:")}
-    missing_labels = []
+    missing_keys = []
     for k, label, req, _, _ in STD_FIELDS:
         if k not in mapping or mapping[k].startswith("fix:"):
             if k not in mapped_from_file:
-                missing_labels.append(f"{label} ({k})")
+                missing_keys.append(k)
 
     sample_text = "\n".join(
         " | ".join(str(c)[:30] for c in row) for row in (sample_rows or [])[:3]
     )
-
     rows_info = f"{total_rows} позиций" if total_rows else f"{len(headers)} колонок"
+
+    questionnaire_tool = {
+        "name": "generate_questionnaire",
+        "description": (
+            "Сгенерировать дружелюбный intro + 2-4 умных вопроса "
+            "для уточнения данных прайс-листа. Каждый вопрос имеет "
+            "варианты ответа (chip-кнопки) или текстовое поле."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "intro": {
+                    "type": "string",
+                    "description": ("1-2 строки приветствия: что увидел в файле "
+                                     "(объём, распознанные поля). Эмодзи ok."),
+                },
+                "questions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "field": {
+                                "type": "string",
+                                "description": ("std-поле платформы (brand, condition, "
+                                                 "warehouse_address, sea_port, air_port, "
+                                                 "currency) ИЛИ price_fob_sea / "
+                                                 "price_fob_air для наценок"),
+                            },
+                            "question": {"type": "string"},
+                            "options": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Chip-кнопки (3-5 вариантов)",
+                            },
+                            "default": {"type": "string"},
+                            "placeholder": {"type": "string"},
+                            "apply_as": {
+                                "type": "string",
+                                "enum": ["constant", "formula"],
+                                "description": ("constant — прямое значение в "
+                                                 "constants. formula — для наценок типа "
+                                                 "FOB SEA +15%, применяется как "
+                                                 "price_exw * (1 + value/100)"),
+                            },
+                        },
+                        "required": ["field", "question", "apply_as"],
+                    },
+                },
+            },
+            "required": ["intro", "questions"],
+        },
+    }
+
     prompt = (
         f"Юзер загрузил прайс-лист в B2B-маркетплейс запчастей.\n\n"
         f"ФАЙЛ: {filename}\n"
         f"КОЛОНКИ ({len(headers)}): {', '.join(headers)}\n"
-        f"ОБЪЁМ: {rows_info}\n\n"
+        f"ОБЪЁМ: {rows_info}\n"
         f"ПЕРВЫЕ СТРОКИ:\n{sample_text}\n\n"
         f"РАСПОЗНАНО ИЗ ФАЙЛА: {', '.join(mapped_from_file) or '—'}\n"
-        f"НЕТ В ФАЙЛЕ: {', '.join(missing_labels[:10]) or '—'}\n\n"
-        "Напиши КОРОТКОЕ дружелюбное сообщение (как Claude.ai):\n"
-        "1. В 1-2 строках опиши что в файле (объём, что распознано)\n"
-        "2. Задай 2-4 КОНКРЕТНЫХ вопроса про важные missing поля. "
-        "Спрашивай только про значимое: бренд, состояние, наценка FOB, "
-        "склад/порт. НЕ спрашивай про вес/габариты (это per-part).\n"
-        "3. Подскажи примеры ответов ('Caterpillar', 'OEM', '+15%' и т.п.)\n"
-        "Не более 6-8 строк всего. На русском. Markdown ok."
+        f"НЕТ В ФАЙЛЕ: {', '.join(missing_keys[:10]) or '—'}\n\n"
+        "Сгенерируй questionnaire через tool generate_questionnaire.\n"
+        "ПРАВИЛА:\n"
+        "- intro: 1-2 строки дружелюбно, как Claude.ai\n"
+        "- Задавай 2-4 вопроса (не больше!) про САМОЕ ВАЖНОЕ:\n"
+        "  бренд, состояние, наценка FOB SEA, наценка FOB AIR, склад\n"
+        "- НЕ спрашивай про вес/габариты/остаток (это per-part)\n"
+        "- options — 3-5 chip-вариантов плюс возможность ввести своё\n"
+        "- Для наценок FOB используй apply_as=formula, options как «+10%, +15%, +20%»\n"
+        "- Если бренд явный (Epiroc в имени файла) — default=«Epiroc»\n"
     )
     try:
         msg = client.messages.create(
             model=getattr(settings, "ANTHROPIC_FAST_MODEL", "claude-haiku-4-5-20251001"),
-            max_tokens=500,
+            max_tokens=2000,
             messages=[{"role": "user", "content": prompt}],
+            tools=[questionnaire_tool],
+            tool_choice={"type": "tool", "name": "generate_questionnaire"},
         )
         for block in msg.content:
-            if block.type == "text":
-                return block.text.strip()
-        return ""
+            if block.type == "tool_use" and block.name == "generate_questionnaire":
+                inp = block.input or {}
+                return {
+                    "intro": inp.get("intro", ""),
+                    "questions": inp.get("questions", []),
+                }
+        return {"intro": "", "questions": []}
     except Exception:
-        logger.exception("AI intro generation failed")
-        return ""
+        logger.exception("AI questionnaire failed")
+        return {"intro": "", "questions": []}
 
 
 def _ai_estimate_per_part(items: list[dict],

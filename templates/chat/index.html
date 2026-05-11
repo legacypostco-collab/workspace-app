@@ -535,6 +535,25 @@
     .pl-ai-input{width:55px;background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.08);border-radius:4px;padding:3px 5px;font-size:11px;font-family:inherit;color:#1a1a1a;text-align:right;outline:none;}
     .pl-ai-input:focus{border-color:#1a1a1a;background:#fff;}
     .pl-ai-conf{font-size:10.5px;color:rgba(0,0,0,0.5);font-variant-numeric:tabular-nums;text-align:right;}
+
+    /* Claude.ai-style smart questionnaire cards */
+    .smart-q-card{padding:14px 16px;animation:sqFadeIn 0.25s ease;}
+    @keyframes sqFadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+    .sq-step{font-size:10.5px;color:rgba(0,0,0,0.45);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;font-weight:600;}
+    .sq-q{font-size:14px;font-weight:600;color:#1a1a1a;margin-bottom:10px;line-height:1.4;}
+    .sq-q-done{font-size:13px;color:rgba(0,0,0,0.65);font-weight:500;}
+    .sq-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+    .sq-chip{background:rgba(100,181,246,0.12);color:#1a1a1a;border:1px solid rgba(100,181,246,0.35);border-radius:18px;padding:5px 12px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.12s;font-family:inherit;}
+    .sq-chip:hover{background:rgba(100,181,246,0.25);border-color:rgba(100,181,246,0.6);}
+    .sq-input-row{display:flex;gap:6px;align-items:center;}
+    .sq-input{flex:1;background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.1);border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;color:#1a1a1a;outline:none;}
+    .sq-input:focus{border-color:#1a1a1a;background:#fff;}
+    .sq-submit{background:#1a1a1a;color:#fff;border:0;border-radius:6px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity 0.12s;}
+    .sq-submit:hover{opacity:0.85;}
+    .sq-skip{background:transparent;color:rgba(0,0,0,0.5);border:0;padding:7px 8px;font-size:11px;cursor:pointer;font-family:inherit;}
+    .sq-skip:hover{color:rgba(0,0,0,0.8);}
+    .sq-card-done{opacity:0.7;}
+    .sq-answer{font-size:12.5px;color:rgba(46,125,50,0.9);font-weight:500;}
     @media(max-width:600px){.pl-df-grid{grid-template-columns:1fr;}}
 
     /* ── Seller queue card ── */

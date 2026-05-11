@@ -2142,6 +2142,7 @@
         mapping: Object.assign({}, sug),
         transform_rules: transformRules,
         constants: constants,
+        smart_answers: {},  // {field: value} от smart questionnaire
       };
 
       // Таблица маппинга — показываем только замапленные из файла
@@ -2291,7 +2292,15 @@
         actions[0].params['q__' + q.field] = defVal;
       });
 
-      addMessage('assistant', intro, cards, actions);
+      // Если есть smart questions — показываем их вместо commit-кнопок.
+      // Commit-кнопка появится после ответа на последний вопрос.
+      var smartQs = data.smart_questions || [];
+      if (smartQs.length) {
+        addMessage('assistant', intro, cards, []);
+        showNextSmartQuestion(smartQs, 0);
+      } else {
+        addMessage('assistant', intro, cards, actions);
+      }
     } catch (err) {
       if (pending && pending.parentNode) pending.remove();
       addMessage('assistant', '⚠️ Не удалось прочитать прайс: ' + (err.message || err));
@@ -2393,18 +2402,37 @@
 
       // Честный отчёт: что в файле было, чего не было.
       var refCount = data.reference_enriched || 0;
-      if (missing.length) {
-        var labels = missing.map(function(m) { return m.label; }).join(', ');
-        msg += '\n\n⚠️ В файле отсутствовали: ' + labels + '.';
+      var smartAns = (__pendingImport && __pendingImport.smart_answers) || {};
+      var smartConstantFields = Object.keys(smartAns).filter(function(k){
+        return smartAns[k] && smartAns[k].apply_as === 'constant';
+      });
+      var smartFormulaFields = Object.keys(smartAns).filter(function(k){
+        return smartAns[k] && smartAns[k].apply_as === 'formula';
+      });
+      // Фильтруем missing от полей, которые юзер уже ответил
+      var missingFiltered = missing.filter(function(m){
+        return smartConstantFields.indexOf(m.key) < 0
+            && smartFormulaFields.indexOf(m.key) < 0;
+      });
+      if (smartConstantFields.length || smartFormulaFields.length) {
+        var smartParts = [];
+        Object.keys(smartAns).forEach(function(k){
+          var a = smartAns[k];
+          smartParts.push(k + '=' + a.value);
+        });
+        msg += '\n\n✨ Применены ваши ответы: ' + smartParts.join(', ') + '.';
+      }
+      if (missingFiltered.length) {
+        var labels = missingFiltered.map(function(m) { return m.label; }).join(', ');
+        msg += '\n\n⚠️ Остались без значений: ' + labels + '.';
         var sources = [];
         if (refCount > 0) sources.push('✨ ' + refCount + ' из эталонной базы (таможня/дилеры)');
         if (aiCount > 0) sources.push('🤖 ' + aiCount + ' AI-оценкой');
         if (sources.length) {
           msg += '\n' + sources.join(', ') + '.';
         } else {
-          msg += '\nЭти поля заполнены значениями по умолчанию.';
+          msg += '\nЭти поля заполнены дефолтами — можно отредактировать в каталоге.';
         }
-        msg += '\nМожно отредактировать в каталоге per-part.';
       }
 
       var btns = [];
@@ -2501,6 +2529,151 @@
         statusEl.style.color = 'rgba(232,92,13,0.85)';
       }
     }
+  }
+
+  // ── Claude.ai-style smart questionnaire ────────────────────────
+  // Показывает вопросы ПО ОДНОМУ: текст + chip-кнопки + ввод.
+  // Ответы накапливаются в __pendingImport.smart_answers и
+  // применяются при commit как constants или transform_rules.
+
+  function showNextSmartQuestion(questions, idx) {
+    if (idx >= questions.length) {
+      // Все вопросы пройдены — показываем "Готово"
+      var doneMsg = '✨ Спасибо! Я учту ваши ответы при загрузке.';
+      addMessage('assistant', doneMsg, [], [
+        {action: '__pricelist_commit', label: '📥 Загрузить ' +
+          ((__pendingImport && __pendingImport.import_id) ? '' : ''),
+         params: {import_id: __pendingImport.import_id}},
+      ]);
+      return;
+    }
+    var q = questions[idx];
+    var chips = (q.options || []).map(function(opt, i) {
+      return '<button class="sq-chip" data-answer="' + esc(opt) + '">'
+        + esc(opt) + '</button>';
+    }).join('');
+    var defVal = q['default'] || '';
+    var placeholder = q.placeholder || 'или впишите свой вариант...';
+    var html = '<div class="smart-q-card"'
+      + ' data-q-idx="' + idx + '"'
+      + ' data-field="' + esc(q.field) + '"'
+      + ' data-apply-as="' + esc(q.apply_as || 'constant') + '">'
+      + '<div class="sq-step">' + (idx + 1) + ' / ' + questions.length + '</div>'
+      + '<div class="sq-q">' + esc(q.question) + '</div>'
+      + (chips ? '<div class="sq-chips">' + chips + '</div>' : '')
+      + '<div class="sq-input-row">'
+      +   '<input class="sq-input" type="text" placeholder="' + esc(placeholder) + '" value="' + esc(defVal) + '"/>'
+      +   '<button class="sq-submit">→</button>'
+      +   '<button class="sq-skip">Пропустить</button>'
+      + '</div>'
+      + '</div>';
+    addMessage('assistant', '', [{type: 'raw_html', data: {html: html}}], []);
+    // Сохраняем контекст для обработчиков
+    window.__smartQuestions = questions;
+    window.__smartQuestionIdx = idx;
+  }
+
+  function applySmartAnswer(field, applyAs, value) {
+    if (!__pendingImport) return;
+    if (!value || !value.trim()) return;
+    value = value.trim();
+    __pendingImport.smart_answers = __pendingImport.smart_answers || {};
+    __pendingImport.smart_answers[field] = {value: value, apply_as: applyAs};
+    if (applyAs === 'formula') {
+      // «+15%» → 15 → формула price_exw * (1 + 15/100) для поля field
+      var pctMatch = String(value).match(/([\d.]+)/);
+      if (pctMatch) {
+        var pct = parseFloat(pctMatch[1]);
+        if (!isNaN(pct)) {
+          __pendingImport.transform_rules = __pendingImport.transform_rules || {};
+          __pendingImport.transform_rules[field] = {
+            type: 'formula',
+            formula: 'price_exw * (1 + ' + pct + ' / 100)',
+          };
+        }
+      }
+    } else {
+      // constant — прямое значение
+      __pendingImport.constants = __pendingImport.constants || {};
+      __pendingImport.constants[field] = value;
+      // Синхронизируем с формой дефолтов (если такое поле есть в pl-df-input),
+      // иначе defaults-section перезатрёт наш smart answer.
+      var dfInput = document.querySelector('.pl-df-input[data-field="' + field + '"]');
+      if (dfInput) {
+        // Для <select> добавим option если такого нет
+        if (dfInput.tagName === 'SELECT') {
+          var found = false;
+          for (var i = 0; i < dfInput.options.length; i++) {
+            if (dfInput.options[i].value === value) { found = true; break; }
+          }
+          if (!found) {
+            var opt = document.createElement('option');
+            opt.value = value; opt.textContent = value;
+            dfInput.appendChild(opt);
+          }
+        }
+        dfInput.value = value;
+      }
+    }
+  }
+
+  document.addEventListener('click', function(e) {
+    // Клик по chip
+    var chip = e.target.closest('.sq-chip');
+    if (chip) {
+      e.preventDefault();
+      e.stopPropagation();
+      var card = chip.closest('.smart-q-card');
+      var answer = chip.dataset.answer || '';
+      finalizeSmartAnswer(card, answer);
+      return;
+    }
+    // Клик «→» submit
+    var submit = e.target.closest('.sq-submit');
+    if (submit) {
+      e.preventDefault();
+      e.stopPropagation();
+      var card = submit.closest('.smart-q-card');
+      var input = card.querySelector('.sq-input');
+      finalizeSmartAnswer(card, input ? input.value : '');
+      return;
+    }
+    // Skip
+    var skip = e.target.closest('.sq-skip');
+    if (skip) {
+      e.preventDefault();
+      e.stopPropagation();
+      var card = skip.closest('.smart-q-card');
+      finalizeSmartAnswer(card, '');
+      return;
+    }
+  });
+
+  // Enter в input → submit
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    var input = e.target.closest('.sq-input');
+    if (!input) return;
+    e.preventDefault();
+    var card = input.closest('.smart-q-card');
+    finalizeSmartAnswer(card, input.value);
+  });
+
+  function finalizeSmartAnswer(card, value) {
+    if (!card) return;
+    var field = card.dataset.field;
+    var applyAs = card.dataset.applyAs;
+    var idx = parseInt(card.dataset.qIdx, 10);
+    if (value && value.trim()) applySmartAnswer(field, applyAs, value);
+    // Сохраняем оригинальный вопрос, показываем выбранный ответ
+    var qText = card.querySelector('.sq-q');
+    var qHtml = qText ? qText.outerHTML : '';
+    card.classList.add('sq-card-done');
+    var label = value && value.trim() ? value : '(пропущено)';
+    card.innerHTML = qHtml + '<div class="sq-answer">✓ ' + esc(label) + '</div>';
+    setTimeout(function() {
+      showNextSmartQuestion(window.__smartQuestions || [], idx + 1);
+    }, 250);
   }
 
   // Review-таблица AI оценок — collaborative correction
