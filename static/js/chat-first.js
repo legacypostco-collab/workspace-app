@@ -2932,6 +2932,107 @@
     }
   }
 
+  // Пояснительная записка — что произойдёт при загрузке (по правилам)
+  function buildImportExplanation(imp, genData) {
+    var smartAns = imp.smart_answers || {};
+    var constants = imp.constants || {};
+    var rules = imp.transform_rules || {};
+    var mapping = imp.mapping || {};
+
+    function _val(field) {
+      if (smartAns[field] && smartAns[field].value) return smartAns[field].value;
+      if (constants[field]) return constants[field];
+      var m = mapping[field];
+      if (m && m.indexOf && m.indexOf('fix:') === 0) return m.slice(4);
+      return null;
+    }
+    function _formulaPct(field) {
+      var r = rules[field];
+      if (!r || !r.formula) return null;
+      var m = r.formula.match(/\+\s*([\d.]+)\s*\//);
+      return m ? '+' + m[1] + '%' : r.formula;
+    }
+    var fromFile = [];
+    Object.keys(mapping).forEach(function(k) {
+      var v = mapping[k];
+      if (v && (!v.indexOf || v.indexOf('fix:') !== 0)) fromFile.push(k);
+    });
+
+    var countryEl = document.getElementById('shipment_country');
+    var country = countryEl && countryEl.value ? countryEl.value : null;
+
+    var items = [];
+
+    items.push({icon: '📂', label: 'Из файла', value:
+      'Колонки: <b>' + fromFile.join(', ') + '</b>'
+    });
+
+    var brand = _val('brand');
+    var cond = _val('condition');
+    var avail = _val('availability');
+    var manuf = _val('manufacturer');
+    var mvis = _val('manufacturer_visible');
+    if (brand || cond || avail || manuf) {
+      var ansParts = [];
+      if (brand) ansParts.push('Бренд: <b>' + esc(brand) + '</b>');
+      if (cond) ansParts.push('Тип: <b>' + esc(cond) + '</b>');
+      if (avail) ansParts.push('Наличие: <b>' + esc(avail) + '</b>');
+      if (manuf) ansParts.push('Завод: <b>' + esc(manuf) + '</b>'
+        + (mvis === 'Нет' ? ' (скрыт от клиента)' : ''));
+      items.push({icon: '✋', label: 'Ваши ответы', value: ansParts.join(' · ')});
+    }
+
+    var seaPct = _formulaPct('price_fob_sea');
+    var airPct = _formulaPct('price_fob_air');
+    if (seaPct || airPct) {
+      items.push({icon: '📐', label: 'Формулы FOB', value:
+        (seaPct ? 'SEA = EXW × (1 ' + esc(seaPct) + ')' : '')
+        + (seaPct && airPct ? ' · ' : '')
+        + (airPct ? 'AIR = EXW × (1 ' + esc(airPct) + ')' : '')
+      });
+    }
+
+    if (country) {
+      var c = PORTS_BY_COUNTRY[country];
+      items.push({icon: '🌍', label: 'Страна отправления', value:
+        (c ? c.flag + ' ' + c.name : country)
+        + ' <span class="ie-hint">(порты и склад из этой страны)</span>'
+      });
+    }
+
+    var aiCount = (imp.ai_estimates_count || (window.__lastAiEstimateCount || 0));
+    if (aiCount > 0) {
+      items.push({icon: '🤖', label: 'AI оценил',
+        value: '<b>' + aiCount + '</b> позиций (вес и габариты по описанию)'});
+    }
+
+    items.push({icon: '⚙️', label: 'Quantity', value:
+      'По умолчанию <b>1</b> (если не указано в файле — цена за единицу)'
+    });
+
+    items.push({icon: '📭', label: 'Пустые поля', value:
+      'Если в источнике пусто или 0 — оставляем пусто, можно дозаполнить позже'
+    });
+
+    var rows = items.map(function(it) {
+      return '<div class="ie-row">'
+        + '<span class="ie-icon">' + it.icon + '</span>'
+        + '<div class="ie-content">'
+        +   '<div class="ie-label">' + esc(it.label) + '</div>'
+        +   '<div class="ie-value">' + it.value + '</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+
+    return '<div class="card import-explain">'
+      + '<div class="ie-title">📋 Что произойдёт при загрузке</div>'
+      + '<div class="ie-sub">Правила применены — проверьте перед коммитом:</div>'
+      + rows
+      + '<div class="ie-rule">⚠️ <b>Правило:</b> одна загрузка = одна страна отправления. '
+      + 'Если разные страны — отдельные файлы.</div>'
+      + '</div>';
+  }
+
   // Генерация выходного XLSX-файла как у Claude.ai —
   // юзер видит карточку с готовым файлом, может скачать или
   // загрузить в каталог.
@@ -2991,16 +3092,21 @@
         throw new Error(data.error || ('HTTP ' + res.status));
       }
       var sizeKB = Math.round((data.size || 0) / 1024);
-      // Автоматически открываем файл в side panel — пусть юзер сразу видит результат
       openSidePreview(imp.import_id, data.filename, data.download_url);
+
+      // Пояснительная записка — что именно произойдёт по правилам
+      var explanationHtml = buildImportExplanation(imp, data);
       addMessage('assistant',
-        '✨ Готово! Я подготовил файл в формате маркетплейса.\nПроверьте его — можно открыть превью или скачать, либо сразу загрузить позиции в каталог.',
-        [{type: 'output_file', data: {
-          filename: data.filename,
-          size_kb: sizeKB,
-          download_url: data.download_url,
-          import_id: imp.import_id,
-        }}],
+        '✨ Готово! Я подготовил файл в формате маркетплейса.',
+        [
+          {type:'output_file', data:{
+            filename: data.filename,
+            size_kb: sizeKB,
+            download_url: data.download_url,
+            import_id: imp.import_id,
+          }},
+          {type:'raw_html', data:{html: explanationHtml}},
+        ],
         [
           {action: '__pricelist_commit', label: '📥 Загрузить в каталог',
            params: {import_id: imp.import_id}},
