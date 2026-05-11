@@ -2558,26 +2558,16 @@
             }).join('');
             inp = '<select class="pl-df-input" data-field="' + esc(f.key) + '">' + opts + '</select>';
           } else if (f.key === 'sea_port' || f.key === 'air_port') {
-            // Морпорт / Аэропорт: страна → порт. UN/LOCODE в начале.
-            var portKind = f.key === 'sea_port' ? 'sea' : 'air';
-            var allPorts = portKind === 'sea' ? SEA_PORTS : AIR_PORTS;
+            // Морпорт / Аэропорт. Страна берётся из общего селектора
+            // «🌍 Страна отправления» сверху (одна загрузка = одна страна).
+            var allPorts = f.key === 'sea_port' ? SEA_PORTS : AIR_PORTS;
             var listId = 'sugg_' + f.key;
-            var countryId = 'country_' + f.key;
-            var countryOpts = '<option value="">Любая страна</option>'
-              + Object.keys(PORTS_BY_COUNTRY).map(function(cc){
-                var c = PORTS_BY_COUNTRY[cc];
-                return '<option value="' + cc + '">' + esc(c.flag + ' ' + c.name) + '</option>';
-              }).join('');
             var suggOpts = allPorts.map(function(s){
               return '<option value="' + esc(s) + '"/>';
             }).join('');
-            inp = '<div class="pl-port-row">'
-              +   '<select class="pl-df-input pl-port-country" id="' + countryId + '"'
-              +     ' data-target="' + listId + '">' + countryOpts + '</select>'
-              +   '<input class="pl-df-input pl-port-input" data-field="' + esc(f.key)
-              +     '" type="text" value="' + esc(val) + '" autocomplete="off"'
-              +     ' list="' + listId + '" placeholder="Код или название порта"/>'
-              + '</div>'
+            inp = '<input class="pl-df-input pl-port-input" data-field="' + esc(f.key)
+              + '" type="text" value="' + esc(val) + '" autocomplete="off"'
+              + ' list="' + listId + '" placeholder="Код или название порта"/>'
               + '<datalist id="' + listId + '">' + suggOpts + '</datalist>';
           } else if (f.key === 'warehouse_address') {
             // Полный адрес склада — textarea + datalist подсказок по хабам
@@ -2632,10 +2622,29 @@
             +   '</div>'
             + '</div>';
         }
+        // Один селектор «Страна отправления» сверху — он управляет
+        // фильтрацией морпорт/аэропорт и подсказкой для адреса склада.
+        // Правило: одна загрузка = одна страна. Если разные — отдельные файлы.
+        var topCountryOpts = '<option value="">— выбрать страну —</option>'
+          + Object.keys(PORTS_BY_COUNTRY).map(function(cc){
+            var c = PORTS_BY_COUNTRY[cc];
+            return '<option value="' + cc + '">' + esc(c.flag + ' ' + c.name) + '</option>';
+          }).join('');
+        var countryHeaderHtml =
+          '<div class="pl-ship-country-row">'
+          + '<label class="pl-ship-country-label">'
+          +   '🌍 Страна отправления'
+          +   '<span class="pl-ship-country-hint">(одна на всю загрузку — порты и склад фильтруются)</span>'
+          + '</label>'
+          + '<select class="pl-df-input pl-ship-country" id="shipment_country">'
+          +   topCountryOpts
+          + '</select>'
+          + '</div>';
         cards.push({type:'raw_html', data:{
           html: '<div class="card pl-defaults-card">'
-            + '<details class="pl-defaults-details">'
+            + '<details class="pl-defaults-details" open>'
             + '<summary class="pl-defaults-summary">📎 ' + supplierWideFields.length + ' общих полей поставщика — нажмите чтобы изменить</summary>'
+            + countryHeaderHtml
             + '<div class="pl-df-grid">' + dfHtml + '</div>'
             + perPartNote
             + '</details></div>',
@@ -3232,16 +3241,15 @@
     }).join('');
   }
   document.addEventListener('change', function(e) {
-    var sel = e.target.closest('.pl-port-country');
+    var sel = e.target.closest('.pl-ship-country, .pl-port-country');
     if (!sel) return;
     var cc = sel.value;
 
-    // Синкаем оба port-country селектора (sea_port и air_port — одна страна)
-    document.querySelectorAll('.pl-port-country').forEach(function(other) {
-      if (other !== sel) other.value = cc;
-    });
+    // Sync с топ-level страной отправления
+    var top = document.getElementById('shipment_country');
+    if (top && top !== sel) top.value = cc;
 
-    // Перерисовываем datalist для обоих
+    // Перерисовываем datalist для морпорт и аэропорт
     _refreshPortDatalist('sugg_sea_port', cc);
     _refreshPortDatalist('sugg_air_port', cc);
 
@@ -3251,10 +3259,6 @@
         inp.value = '';
       }
     });
-
-    // Фокус на input текущего изменённого поля
-    var inp = sel.parentNode.querySelector('.pl-port-input');
-    if (inp) inp.focus();
   });
 
   // Side preview panel (как у claude.ai) — открывается по клику
