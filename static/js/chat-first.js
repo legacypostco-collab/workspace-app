@@ -2506,6 +2506,45 @@
       });
 
       var cards = [];
+
+      // ── ИНСТРУКЦИЯ В НАЧАЛЕ — как всё работает ──
+      // Юзеры на первом импорте не знают чего ожидать. Объясняем
+      // ключевые правила сразу: одна страна, Q=1, AI оценка, и т.п.
+      cards.push({type:'raw_html', data:{html:
+        '<div class="card import-intro">'
+        + '<div class="ii-title">📘 Как работает загрузка прайса</div>'
+        + '<div class="ii-steps">'
+        +   '<div class="ii-step"><span class="ii-n">1</span>'
+        +     '<div><b>Распознаём колонки</b><br>'
+        +       '<span class="ii-hint">Системный словарь (RU/EN/ZH/DE/ES) + AI для нестандартных заголовков</span></div></div>'
+        +   '<div class="ii-step"><span class="ii-n">2</span>'
+        +     '<div><b>Задаём 7 вопросов</b><br>'
+        +       '<span class="ii-hint">Бренд · Тип товара · Наличие · Завод · Видимость завода · '
+        +       'Наценка FOB SEA · Наценка FOB AIR — можно отвечать тапом по чипу</span></div></div>'
+        +   '<div class="ii-step"><span class="ii-n">3</span>'
+        +     '<div><b>Заполняете общие поля</b><br>'
+        +       '<span class="ii-hint">Страна отправления, адрес склада, морпорт, аэропорт — '
+        +       'фильтруются по стране (UN/LOCODE коды)</span></div></div>'
+        +   '<div class="ii-step"><span class="ii-n">4</span>'
+        +     '<div><b>Генерируем XLSX в формате маркетплейса</b><br>'
+        +       '<span class="ii-hint">Превью справа в боковой панели + скачивание</span></div></div>'
+        +   '<div class="ii-step"><span class="ii-n">5</span>'
+        +     '<div><b>Загружаете в каталог</b><br>'
+        +       '<span class="ii-hint">Перед коммитом — итоговая сводка по всем применённым правилам</span></div></div>'
+        + '</div>'
+        + '<div class="ii-rules">'
+        +   '<div class="ii-rule"><b>⚠️ Правила:</b></div>'
+        +   '<ul>'
+        +     '<li><b>Одна загрузка = одна страна.</b> Разные страны — отдельные файлы.</li>'
+        +     '<li><b>Quantity = 1</b> по умолчанию (если в файле нет — цена за единицу).</li>'
+        +     '<li><b>Пустые поля в источнике</b> грузятся пустыми (не выдумываем).</li>'
+        +     '<li><b>AI-оценка вес/габариты</b> — опционально, по кнопке.</li>'
+        +     '<li><b>Сохраняем профиль поставщика</b> — следующий импорт того же файла '
+        +     'спросит меньше.</li>'
+        +   '</ul>'
+        + '</div>'
+        + '</div>'
+      }});
       // 1. Превью «как ляжет в базу»
       if (data.mapped_preview && (data.mapped_preview.rows || []).length) {
         cards.push({type:'table_preview', data:{
