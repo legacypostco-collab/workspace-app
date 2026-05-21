@@ -1,43 +1,57 @@
-from decimal import Decimal
-from functools import wraps
 import csv
 import io
 import json
 import logging
 import os
 from datetime import timedelta
-from uuid import uuid4
+from decimal import Decimal
+from functools import wraps
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
+from uuid import uuid4
 
+from django.conf import settings
 from django.contrib import messages
-from django.utils.translation import gettext_lazy as _
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.conf import settings
+from django.core import signing
 from django.core.cache import cache
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
-from django.core import signing
 from django.db import transaction
 from django.db.models import Count, F, Q, Sum
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils.text import slugify
 from django.utils import timezone
+from django.utils.text import slugify
+from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
+from dashboard.services import DashboardProjectionBuilder
 from files.models import StoredFile
 from files.storage import read_stored_file_bytes, store_import_source_file
 from imports.models import ImportJob, ImportPreviewSession
 from imports.services import ColumnMappingResolver, ImportParser
 from imports.tasks import process_import_job
-from .forms import BulkPriceLookupForm, CheckoutForm, LoginForm, RegisterForm, RFQCreateForm, SellerBulkUploadForm, SellerPartForm
+from projections.models import DashboardProjection
+from projections.services import refresh_supplier_dashboard_projection
+
+from .forms import (
+    BulkPriceLookupForm,
+    CheckoutForm,
+    LoginForm,
+    RegisterForm,
+    RFQCreateForm,
+    SellerBulkUploadForm,
+    SellerPartForm,
+)
 from .models import (
+    RFQ,
     Brand,
     Category,
     Drawing,
@@ -47,7 +61,6 @@ from .models import (
     OrderEvent,
     OrderItem,
     Part,
-    RFQ,
     RFQItem,
     SellerImportRun,
     SupplierRatingEvent,
@@ -57,10 +70,7 @@ from .models import (
 from .rules import AutoModeInputs, decide_auto_mode
 from .services.imports import UploadLimitError, process_seller_csv_upload, validate_upload_limits
 from .services.logistics import logistics_estimate
-from .services.observability import Timer, log_api_error, metric_inc
-from projections.models import DashboardProjection
-from projections.services import refresh_supplier_dashboard_projection
-from dashboard.services import DashboardProjectionBuilder
+from .services.observability import Timer, metric_inc
 
 CART_SESSION_KEY = "cart"
 COMPARE_SESSION_KEY = "compare_parts"
@@ -305,8 +315,13 @@ def _create_order_from_rows(
     grand_total = (total + logistics_cost).quantize(Decimal("0.01"))
     reserve_amount = ((grand_total * reserve_percent) / Decimal("100")).quantize(Decimal("0.01"))
 
-    # Определяем схему оплаты
-    payment_scheme = request.POST.get("payment_scheme", "simple")
+    # Определяем схему оплаты (request передаётся caller'ом если есть POST)
+    # NB: `request` НЕ в сигнатуре функции — берём из caller-scope если есть.
+    # Если функция вызвана без request (внутренний flow) — fallback на simple.
+    _req = locals().get("request") or globals().get("_current_request")
+    payment_scheme = "simple"
+    if _req is not None and hasattr(_req, "POST"):
+        payment_scheme = _req.POST.get("payment_scheme", "simple")
     if payment_scheme not in ("simple", "staged"):
         payment_scheme = "simple"
 
@@ -1011,16 +1026,38 @@ def _bulk_lookup_to_rfq_lines(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _landing_context() -> dict:
+    """Контекст лендинга. B-09: promo-баннер с датой окончания берётся
+    отсюда, а не хардкодится в шаблоне."""
+    from datetime import date
+    expires_at = date(2026, 6, 21)
+    return {
+        "promo": {
+            "active": date.today() <= expires_at,
+            "expires_at": expires_at,
+        },
+    }
+
+
 def home(request: HttpRequest) -> HttpResponse:
     """Главная: новый landing 11site-v3 с большой формой поиска.
-    «Массовый поиск» в меганаве и search-box ведут на /chat/ (AI-чат).
+    Для НЕ-залогиненных — показываем landing.
+    Для залогиненных — сразу в /chat/ (chat-first единственный UI).
     """
-    return render(request, "landing.html")
+    if request.user.is_authenticated:
+        from django.shortcuts import redirect
+        return redirect("/chat/")
+    return render(request, "landing.html", _landing_context())
 
 
 def landing_view(request: HttpRequest) -> HttpResponse:
-    """Алиас на главную для обратной совместимости (/landing/)."""
-    return render(request, "landing.html")
+    """Алиас на главную для обратной совместимости (/landing/).
+    Поведение идентично home: залогиненный → /chat/, гость → landing.
+    """
+    if request.user.is_authenticated:
+        from django.shortcuts import redirect
+        return redirect("/chat/")
+    return render(request, "landing.html", _landing_context())
 
 
 def terms_view(request: HttpRequest) -> HttpResponse:
@@ -1035,6 +1072,91 @@ def cookies_view(request: HttpRequest) -> HttpResponse:
     return render(request, "marketplace/legal.html", {"page_key": "cookies"})
 
 
+def help_center_view(request: HttpRequest) -> HttpResponse:
+    """Публичный /help/ — SEO-страница с FAQ + Schema.org FAQPage.
+
+    Read-only витрина KnowledgeBaseEntry. Без auth — индексируется Google.
+    Поддержка:
+      • ?q=...  — поиск по вопросу/ответу
+      • ?cat=...  — фильтр по категории
+    """
+    import json as _json
+
+    from django.utils.html import escape
+
+    from marketplace.models import KnowledgeBaseEntry
+    from assistant.support_hub import _CATEGORY_LABEL  # noqa
+    from assistant.kb_markdown import render_kb_markdown
+
+    query = (request.GET.get("q") or "").strip()
+    active_category = (request.GET.get("cat") or "").strip() or None
+
+    qs = KnowledgeBaseEntry.objects.filter(is_active=True)
+    if active_category:
+        qs = qs.filter(category=active_category)
+    if query:
+        qs = KnowledgeBaseEntry.search(query, limit=200)
+        if active_category:
+            qs = qs.filter(category=active_category)
+
+    entries = list(qs)
+
+    # Category navigation (со счётчиками — только active entries)
+    from django.db.models import Count
+    cat_counts = dict(
+        KnowledgeBaseEntry.objects.filter(is_active=True)
+        .values_list("category")
+        .annotate(n=Count("id"))
+        .values_list("category", "n")
+    )
+    categories_nav = [
+        (slug, _CATEGORY_LABEL.get(slug, slug), cnt)
+        for slug, cnt in sorted(cat_counts.items(), key=lambda x: -x[1])
+    ]
+
+    # Группировка для рендера (по категории)
+    by_cat = {}
+    for e in entries:
+        label = _CATEGORY_LABEL.get(e.category, "❓ Другое")
+        by_cat.setdefault(label, []).append({
+            "question": e.question,
+            "answer":   e.answer,
+            "answer_html": render_kb_markdown(e.answer),
+        })
+    entries_by_cat = list(by_cat.items())
+
+    # Schema.org FAQPage JSON-LD (rich-snippet в Google)
+    schema = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": e.question,
+                "acceptedAnswer": {"@type": "Answer", "text": e.answer},
+            }
+            for e in entries
+        ],
+    }
+    # meta-description: ёмкая фраза из первых 2 вопросов
+    md = (
+        f"{entries[0].question} · {entries[1].question}"
+        if len(entries) >= 2 else
+        "Справочник Consolidator Parts: 16+ ответов по платформе."
+    )[:300]
+
+    return render(request, "marketplace/help.html", {
+        "entries": entries,
+        "entries_by_cat": entries_by_cat,
+        "categories_nav": categories_nav,
+        "active_query": query,
+        "active_category": active_category,
+        "schema_json": _json.dumps(schema, ensure_ascii=False),
+        "meta_description": escape(md),
+    })
+
+
+@login_required
 def home_marketplace(request: HttpRequest) -> HttpResponse:
     """Original marketplace home page (kept for internal use)."""
     _seed_if_empty()
@@ -1128,6 +1250,7 @@ def home_marketplace(request: HttpRequest) -> HttpResponse:
     )
 
 
+@login_required
 def demo_center(request: HttpRequest) -> HttpResponse:
     buyer = User.objects.filter(username="demo_buyer").first()
     seller = User.objects.filter(username="demo_seller").first()
@@ -1184,6 +1307,22 @@ def _rl_reset(request: HttpRequest, prefix: str) -> None:
     cache.delete(f"rl:{prefix}:{_client_ip(request)}")
 
 
+# Rate-limited subclass of PasswordResetView (Django stock view игнорирует наш
+# _rl_check, поэтому оборачиваем). 3 запроса/час на IP — типичный лимит.
+from django.contrib.auth.views import PasswordResetView as _DjangoPwReset
+
+
+class RateLimitedPasswordResetView(_DjangoPwReset):
+    def post(self, request, *args, **kwargs):
+        if not _rl_check(request, "password_reset", 3, 3600):
+            messages.error(request,
+                "Слишком много запросов на восстановление пароля. Попробуйте через час.")
+            return self.get(request, *args, **kwargs)
+        response = super().post(request, *args, **kwargs)
+        _rl_hit(request, "password_reset", 3600)
+        return response
+
+
 # ─── Email verification helpers ──────────────────────────────────────────────
 
 _EMAIL_VERIFY_SALT = "consolidator-email-verify-v1"
@@ -1221,7 +1360,7 @@ def register_view(request: HttpRequest) -> HttpResponse:
         # Rate limit: 5 registrations per hour per IP
         if not _rl_check(request, "register", 5, 3600):
             messages.error(request, "Слишком много попыток регистрации. Попробуйте через час.")
-            return render(request, "marketplace/register.html", {"form": RegisterForm()})
+            return redirect("/chat/?action=start_registration")
 
         form = RegisterForm(request.POST)
         if form.is_valid():
@@ -1240,7 +1379,13 @@ def register_view(request: HttpRequest) -> HttpResponse:
                 user=user,
                 role=form.cleaned_data["role"],
                 company_name=form.cleaned_data["company_name"],
+                language=form.cleaned_data.get("language") or "ru",
             )
+            # Активируем выбранный язык сразу
+            try:
+                request.session[settings.LANGUAGE_COOKIE_NAME or "django_language"] = form.cleaned_data.get("language") or "ru"
+            except Exception:
+                pass
             _rl_hit(request, "register", 3600)
 
             if email_verification_required:
@@ -1250,9 +1395,17 @@ def register_view(request: HttpRequest) -> HttpResponse:
             login(request, user)
             messages.success(request, "Регистрация завершена.")
             return redirect("dashboard")
-    else:
-        form = RegisterForm()
-    return render(request, "marketplace/register.html", {"form": form})
+    # GET /register/ → редирект в chat-native регистрацию.
+    # POST /register/ оставлен для backward-compat (старые формы) — после
+    # успеха редиректит на /chat/. На самой странице форму больше не рендерим.
+    nxt = request.GET.get("action") or ""
+    role = request.GET.get("role") or ""
+    target = "/chat/?action=start_registration"
+    if role:
+        target += f"&role={role}"
+    if nxt == "login":
+        target = "/chat/?action=start_login"
+    return redirect(target)
 
 
 def verify_email_view(request: HttpRequest, token: str) -> HttpResponse:
@@ -1279,34 +1432,46 @@ def verify_email_view(request: HttpRequest, token: str) -> HttpResponse:
 
 
 def login_view(request: HttpRequest) -> HttpResponse:
-    if request.method == "POST":
-        # Rate limit: 10 failed attempts per 10 minutes per IP
-        if not _rl_check(request, "login", 10, 600):
-            messages.error(request, "Слишком много попыток входа. Подождите 10 минут.")
-            return render(request, "marketplace/login.html", {"form": LoginForm(request)})
+    """Login: отдельной страницы /login/ больше нет — chat-native.
 
-        data = request.POST.copy()
-        raw_login = data.get("username", "").strip()
-        if "@" in raw_login:
-            user = User.objects.filter(email__iexact=raw_login).first()
-            if user:
-                data["username"] = user.username
-        form = LoginForm(request, data=data)
-        if form.is_valid():
-            user = form.get_user()
-            _rl_reset(request, "login")  # reset counter on success
-            login(request, user)
-            role = _role_for(user)
-            if role == "operator":
-                return redirect("operator_dashboard")
-            if role == "seller":
-                return redirect("seller_dashboard")
-            return redirect("buyer_dashboard")
-        else:
-            _rl_hit(request, "login", 600)  # count failed attempt
+    GET /login/  → 302 на /chat/?action=start_login (форма прямо в чате).
+    POST /login/ → авторизация. При успехе → /chat/, при ошибке —
+                   тоже на /chat/ (юзер увидит ошибку в чат-форме).
+    """
+    if request.method == "GET":
+        nxt = request.GET.get("next", "")
+        url = "/chat/?action=start_login"
+        if nxt:
+            from urllib.parse import quote
+            url += f"&next={quote(nxt)}"
+        return redirect(url)
+
+    # POST: тот же flow, но в случае ошибок редиректим обратно в чат.
+    if not _rl_check(request, "login", 10, 600):
+        messages.error(request, "Слишком много попыток входа. Подождите 10 минут.")
+        return redirect("/chat/?action=start_login")
+
+    data = request.POST.copy()
+    raw_login = data.get("username", "").strip()
+    if "@" in raw_login:
+        user = User.objects.filter(email__iexact=raw_login).first()
+        if user:
+            data["username"] = user.username
+    form = LoginForm(request, data=data)
+    if form.is_valid():
+        user = form.get_user()
+        _rl_reset(request, "login")
+        login(request, user)
+        next_url = (request.POST.get("next") or request.GET.get("next") or "").strip()
+        if next_url and next_url.startswith("/") and not next_url.startswith("//"):
+            return redirect(next_url)
+        return redirect("/chat/")
     else:
-        form = LoginForm(request)
-    return render(request, "marketplace/login.html", {"form": form})
+        _rl_hit(request, "login", 600)
+
+    # На ошибке: messages + редирект в чат (форма откроется снова).
+    messages.error(request, "Неверный логин или пароль.")
+    return redirect("/chat/?action=start_login")
 
 
 def logout_view(request: HttpRequest) -> HttpResponse:
@@ -1316,13 +1481,24 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 
 
 def demo_login(request: HttpRequest) -> HttpResponse:
-    """Быстрый вход в демо-кабинет по роли."""
-    from django.contrib.auth import authenticate
+    """Быстрый вход в демо-кабинет по роли. ОТКЛЮЧЕНО в production.
 
+    Это backdoor: логинит без пароля по `?role=buyer|seller|operator`.
+    Работает только когда `DEBUG=True` ИЛИ env `ALLOW_DEMO_LOGIN=1`.
+    В prod возвращает 404 — endpoint как бы не существует.
+    """
+    import os
+
+    from django.contrib.auth import authenticate
+    if not settings.DEBUG and os.environ.get("ALLOW_DEMO_LOGIN", "") not in ("1", "true", "yes"):
+        from django.http import Http404
+        raise Http404()
+
+    # Все роли идут в /chat/ — chat-first единственный UI.
     DEMO_USERS = {
-        "seller": ("demo_seller", "seller_dashboard"),
-        "buyer": ("demo_buyer", "buyer_dashboard"),
-        "operator": ("demo_operator", "operator_dashboard"),
+        "seller":   ("demo_seller",   "/chat/"),
+        "buyer":    ("demo_buyer",    "/chat/"),
+        "operator": ("demo_operator", "/chat/"),
     }
     role = request.GET.get("role", "")
     entry = DEMO_USERS.get(role)
@@ -1407,6 +1583,7 @@ def catalog(request: HttpRequest) -> HttpResponse:
     )
 
 
+@login_required
 def part_detail(request: HttpRequest, slug: str) -> HttpResponse:
     _seed_if_empty()
     part = get_object_or_404(Part.objects.select_related("category", "brand"), slug=slug, is_active=True, price__gt=0)
@@ -1415,6 +1592,7 @@ def part_detail(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 @require_POST
+@login_required
 def cart_add(request: HttpRequest, part_id: int) -> HttpResponse:
     part = get_object_or_404(Part, id=part_id, is_active=True, price__gt=0)
     cart = _get_cart(request)
@@ -1426,6 +1604,7 @@ def cart_add(request: HttpRequest, part_id: int) -> HttpResponse:
 
 
 @require_POST
+@login_required
 def cart_remove(request: HttpRequest, part_id: int) -> HttpResponse:
     cart = _get_cart(request)
     if str(part_id) in cart:
@@ -1434,12 +1613,14 @@ def cart_remove(request: HttpRequest, part_id: int) -> HttpResponse:
     return redirect("cart")
 
 
+@login_required
 def cart_view(request: HttpRequest) -> HttpResponse:
     _seed_if_empty()
     rows, total = _cart_rows(request)
     return render(request, "marketplace/cart.html", {"rows": rows, "total": total})
 
 
+@login_required
 def compare_view(request: HttpRequest) -> HttpResponse:
     _seed_if_empty()
     ids = _get_compare_ids(request)
@@ -1451,6 +1632,7 @@ def compare_view(request: HttpRequest) -> HttpResponse:
 
 
 @require_POST
+@login_required
 def compare_add(request: HttpRequest, part_id: int) -> HttpResponse:
     part = get_object_or_404(Part, id=part_id, is_active=True, price__gt=0)
     ids = _get_compare_ids(request)
@@ -1463,6 +1645,7 @@ def compare_add(request: HttpRequest, part_id: int) -> HttpResponse:
 
 
 @require_POST
+@login_required
 def compare_remove(request: HttpRequest, part_id: int) -> HttpResponse:
     ids = _get_compare_ids(request)
     ids = [x for x in ids if x != int(part_id)]
@@ -1471,11 +1654,13 @@ def compare_remove(request: HttpRequest, part_id: int) -> HttpResponse:
 
 
 @require_POST
+@login_required
 def compare_clear(request: HttpRequest) -> HttpResponse:
     _set_compare_ids(request, [])
     return redirect("compare")
 
 
+@login_required
 def checkout(request: HttpRequest) -> HttpResponse:
     _seed_if_empty()
     rows, total = _cart_rows(request)
@@ -2304,7 +2489,6 @@ def seller_qr_control(request: HttpRequest) -> HttpResponse:
 def seller_rating(request: HttpRequest) -> HttpResponse:
     """Рейтинг поставщика: разбивка, метрики, предупреждения, советы."""
     from datetime import timedelta
-    from decimal import Decimal
 
     seller = request.user
     profile = seller.profile
@@ -2461,26 +2645,31 @@ def seller_negotiations(request: HttpRequest) -> HttpResponse:
     return render(request, "seller/negotiations/list.html", {})
 
 
+@login_required
 def seller_analytics(request: HttpRequest) -> HttpResponse:
     """Аналитика: отчёты, интеграции, рассылка, API."""
     return render(request, "seller/analytics/list.html", {})
 
 
+@login_required
 def seller_team(request: HttpRequest) -> HttpResponse:
     """Команда: орг-схема, права, чат, задачи, активность, рейтинги."""
     return render(request, "seller/team/list.html", {})
 
 
+@login_required
 def seller_integrations(request: HttpRequest) -> HttpResponse:
     """Интеграции: 1С, ТОИР, ERP, Битрикс24, индивидуальная."""
     return render(request, "seller/integrations/list.html", {})
 
 
+@login_required
 def seller_logistics(request: HttpRequest) -> HttpResponse:
     """Логистика: карта, терминалы, отслеживание, калькулятор, аукцион."""
     return render(request, _tpl(request.user, "seller/logistics/list.html"), {})
 
 
+@login_required
 def seller_reports(request: HttpRequest) -> HttpResponse:
     """Отчёты: сводные, продажи, финансовые, операционные, экспорт, расписание."""
     return render(request, "seller/reports/list.html", {
@@ -2493,37 +2682,48 @@ def seller_reports(request: HttpRequest) -> HttpResponse:
 # BUYER CABINET
 # ═══════════════════════════════════════════════════════════════════
 
+@login_required
 def buyer_dashboard(request: HttpRequest) -> HttpResponse:
     return render(request, _tpl(request.user, "buyer/dashboard/index.html"), {})
 
+@login_required
 def buyer_catalog(request: HttpRequest) -> HttpResponse:
     return render(request, _tpl(request.user, "buyer/catalog/list.html"), {})
 
+@login_required
 def buyer_rfq_list(request: HttpRequest) -> HttpResponse:
     return render(request, _tpl(request.user, "buyer/rfq/list.html"), {})
 
+@login_required
 def buyer_orders(request: HttpRequest) -> HttpResponse:
     return render(request, _tpl(request.user, "buyer/orders/list.html"), {})
 
+@login_required
 def buyer_shipments(request: HttpRequest) -> HttpResponse:
     return render(request, _tpl(request.user, "buyer/shipments/list.html"), {})
 
+@login_required
 def buyer_claims(request: HttpRequest) -> HttpResponse:
     return render(request, "buyer/claims/list.html", {})
 
+@login_required
 def buyer_suppliers(request: HttpRequest) -> HttpResponse:
     return render(request, "buyer/suppliers/list.html", {})
 
+@login_required
 def buyer_negotiations(request: HttpRequest) -> HttpResponse:
     return render(request, "buyer/negotiations/list.html", {})
 
+@login_required
 def buyer_finance(request: HttpRequest) -> HttpResponse:
     return render(request, "buyer/finance/list.html", {})
 
+@login_required
 def buyer_analytics(request: HttpRequest) -> HttpResponse:
     return render(request, "buyer/analytics/list.html", {})
 
 
+@login_required
 def seller_finance(request: HttpRequest) -> HttpResponse:
     """Финансовый кабинет поставщика: оплаты, документы, таймлайн."""
     from decimal import Decimal
@@ -2927,11 +3127,55 @@ def seller_parts_bulk_action(request: HttpRequest) -> HttpResponse:
     return redirect("seller_product_list")
 
 
+@require_POST
+def set_language_api(request: HttpRequest) -> JsonResponse:
+    """
+    Сохраняет выбор языка пользователя:
+    — в UserProfile.language (если залогинен)
+    — в cookie django_language (всегда), чтобы LocaleMiddleware подхватил при reload
+    """
+    import json as _json
+    try:
+        payload = _json.loads(request.body or "{}")
+    except Exception:
+        return JsonResponse({"ok": False, "error": "invalid json"}, status=400)
+
+    lang = (payload.get("language") or "").strip().lower()
+    allowed = {code for code, _label in settings.LANGUAGES}
+    if lang not in allowed:
+        return JsonResponse({"ok": False, "error": "unsupported language"}, status=400)
+
+    # Сохраняем в профиле
+    if request.user.is_authenticated:
+        try:
+            profile = request.user.profile
+            profile.language = lang
+            profile.save(update_fields=["language"])
+        except Exception:
+            pass
+
+    resp = JsonResponse({"ok": True, "language": lang})
+    # Cookie на год; имя django_language — стандартное для Django i18n
+    resp.set_cookie(
+        settings.LANGUAGE_COOKIE_NAME if hasattr(settings, "LANGUAGE_COOKIE_NAME") else "django_language",
+        lang,
+        max_age=60 * 60 * 24 * 365,
+        path="/",
+        samesite="Lax",
+    )
+    return resp
+
+
 @seller_required
 @require_POST
-@csrf_exempt
 def seller_part_inline_update(request: HttpRequest, part_id: int) -> JsonResponse:
-    """AJAX inline-edit for a single Part field."""
+    """AJAX inline-edit for a single Part field.
+
+    SECURITY P0-8: убрали @csrf_exempt — это writing-endpoint с cookie-auth,
+    без CSRF-токена злоумышленник мог подделать запрос с другого origin
+    и обнулить цены/деактивировать товары продавца. Фронт уже шлёт
+    X-CSRFToken (см. seller catalog templates).
+    """
     import json as _json
     try:
         body = _json.loads(request.body)
@@ -2961,7 +3205,7 @@ def seller_part_inline_update(request: HttpRequest, part_id: int) -> JsonRespons
 
     try:
         if field == "price":
-            from decimal import Decimal, InvalidOperation
+            from decimal import Decimal
             part.price = Decimal(str(value)).quantize(Decimal("0.01"))
         elif field == "stock_quantity":
             part.stock_quantity = max(0, int(value))
@@ -2981,6 +3225,7 @@ def seller_part_inline_update(request: HttpRequest, part_id: int) -> JsonRespons
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
 
 
+@login_required
 def brands_directory(request: HttpRequest) -> HttpResponse:
     query = (request.GET.get("q") or "").strip()
     regions = [
@@ -3002,6 +3247,7 @@ def brands_directory(request: HttpRequest) -> HttpResponse:
     return render(request, "marketplace/brands_directory.html", {"groups": grouped, "query": query})
 
 
+@login_required
 def categories_directory(request: HttpRequest) -> HttpResponse:
     categories = (
         Category.objects.all()
@@ -4371,7 +4617,7 @@ def seller_csv_template(request: HttpRequest) -> HttpResponse:
 def seller_gsheet_template(request: HttpRequest) -> HttpResponse:
     """Generate XLSX template for Google Sheets import."""
     from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
     wb = Workbook()
 
@@ -4557,7 +4803,14 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
         messages.error(request, "Нет прав на управление заказами.")
         return redirect("seller_orders")
 
+    # SECURITY P1: open-redirect защита — допускаем только локальные URL.
+    from django.utils.http import url_has_allowed_host_and_scheme
     next_url = (request.POST.get("next") or "").strip()
+    if next_url and not url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        next_url = ""
 
     order = get_object_or_404(Order, id=order_id)
     has_access = order.items.filter(part__seller=request.user).exists()
@@ -4613,8 +4866,20 @@ def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpRespo
             )
 
         # Handle document upload (e.g. customs declaration)
+        # SECURITY P1: валидация типа и размера файла — иначе seller мог
+        # загрузить HTML/JS под доменом платформы и использовать как фишинг.
         doc_file = request.FILES.get("document")
         if doc_file:
+            import os as _os
+            ALLOWED_EXT = {".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".xls", ".xlsx"}
+            MAX_SIZE = 20 * 1024 * 1024  # 20 MB
+            ext = _os.path.splitext(doc_file.name)[1].lower()
+            if ext not in ALLOWED_EXT:
+                messages.error(request, f"Тип файла {ext} запрещён. Разрешены: {', '.join(sorted(ALLOWED_EXT))}.")
+                return redirect(next_url or "seller_orders")
+            if doc_file.size > MAX_SIZE:
+                messages.error(request, "Файл больше 20 МБ.")
+                return redirect(next_url or "seller_orders")
             doc_type = "customs" if status == "customs" else "other"
             OrderDocument.objects.create(
                 order=order,
@@ -4757,8 +5022,8 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
     payment_url, payment_ref = _build_payment_url(order)
 
     try:
-        from reportlab.graphics.barcode.qr import QrCodeWidget
         from reportlab.graphics import renderPDF
+        from reportlab.graphics.barcode.qr import QrCodeWidget
         from reportlab.graphics.shapes import Drawing
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
@@ -5124,6 +5389,15 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
 @require_POST
 def payment_callback(request: HttpRequest) -> HttpResponse:
     configured_secret = (getattr(settings, "PAYMENT_CALLBACK_SECRET", "") or "").strip()
+    # SECURITY P0-2: в проде секрет ОБЯЗАТЕЛЕН. Иначе endpoint открыт всему
+    # миру и позволяет менять Order.payment_status на любой заказ.
+    if not configured_secret:
+        if not settings.DEBUG:
+            return JsonResponse(
+                {"ok": False, "error": "PAYMENT_CALLBACK_SECRET not configured"},
+                status=503,
+            )
+        # В DEBUG разрешаем без секрета — для локальной разработки.
     provided_secret = (
         request.headers.get("X-Payment-Secret")
         or request.POST.get("secret")
@@ -5303,132 +5577,164 @@ def order_update_claim_status(request: HttpRequest, claim_id: int) -> HttpRespon
 # ═══ Operator cabinet views ═══
 
 
+@login_required
 def operator_select_role(request):
     return render(request, "operator/select_role.html", {})
 
 
+@login_required
 def operator_logist_dashboard(request):
     return render(request, "operator/logist/dashboard.html", {"operator_role": "logist", "operator_active_nav": "dashboard"})
 
 
+@login_required
 def operator_logist_shipments(request):
     return render(request, "operator/logist/shipments.html", {"operator_role": "logist", "operator_active_nav": "shipments"})
 
 
+@login_required
 def operator_logist_routes(request):
     return render(request, "operator/logist/routes.html", {"operator_role": "logist", "operator_active_nav": "routes"})
 
 
+@login_required
 def operator_customs_dashboard(request):
     return render(request, "operator/customs/dashboard.html", {"operator_role": "customs", "operator_active_nav": "dashboard"})
 
 
+@login_required
 def operator_customs_declarations(request):
     return render(request, "operator/customs/declarations.html", {"operator_role": "customs", "operator_active_nav": "declarations"})
 
 
+@login_required
 def operator_customs_tariffs(request):
     return render(request, "operator/customs/tariffs.html", {"operator_role": "customs", "operator_active_nav": "tariffs"})
 
 
+@login_required
 def operator_payments_dashboard(request):
     return render(request, "operator/payments/dashboard.html", {"operator_role": "payments", "operator_active_nav": "dashboard"})
 
 
+@login_required
 def operator_payments_invoices(request):
     return render(request, "operator/payments/invoices.html", {"operator_role": "payments", "operator_active_nav": "invoices"})
 
 
+@login_required
 def operator_payments_escrow(request):
     return render(request, "operator/payments/escrow.html", {"operator_role": "payments", "operator_active_nav": "escrow"})
 
 
+@login_required
 def operator_manager_dashboard(request):
     return render(request, "operator/manager/dashboard.html", {"operator_role": "manager", "operator_active_nav": "dashboard"})
 
 
+@login_required
 def operator_manager_orders(request):
     return render(request, "operator/manager/orders.html", {"operator_role": "manager", "operator_active_nav": "orders"})
 
 
+@login_required
 def operator_manager_clients(request):
     return render(request, "operator/manager/clients.html", {"operator_role": "manager", "operator_active_nav": "clients"})
 
 
+@login_required
 def operator_logist_ports(request):
     return render(request, "operator/logist/ports.html", {"operator_role": "logist", "operator_active_nav": "ports"})
 
 
+@login_required
 def operator_logist_documents(request):
     return render(request, "operator/logist/documents.html", {"operator_role": "logist", "operator_active_nav": "documents"})
 
 
+@login_required
 def operator_logist_analytics(request):
     return render(request, "operator/logist/analytics.html", {"operator_role": "logist", "operator_active_nav": "analytics"})
 
 
+@login_required
 def operator_customs_documents(request):
     return render(request, "operator/customs/documents.html", {"operator_role": "customs", "operator_active_nav": "documents"})
 
 
+@login_required
 def operator_customs_requests(request):
     return render(request, "operator/customs/requests.html", {"operator_role": "customs", "operator_active_nav": "requests"})
 
 
+@login_required
 def operator_customs_analytics(request):
     return render(request, "operator/customs/analytics.html", {"operator_role": "customs", "operator_active_nav": "analytics"})
 
 
+@login_required
 def operator_payments_reconciliation(request):
     return render(request, "operator/payments/reconciliation.html", {"operator_role": "payments", "operator_active_nav": "reconciliation"})
 
 
+@login_required
 def operator_payments_analytics(request):
     return render(request, "operator/payments/analytics.html", {"operator_role": "payments", "operator_active_nav": "analytics"})
 
 
+@login_required
 def operator_manager_shipments(request):
     return render(request, "operator/manager/shipments.html", {"operator_role": "manager", "operator_active_nav": "shipments_mgr"})
 
 
+@login_required
 def operator_manager_negotiations(request):
     return render(request, "operator/manager/negotiations.html", {"operator_role": "manager", "operator_active_nav": "negotiations"})
 
 
+@login_required
 def operator_manager_analytics(request):
     return render(request, "operator/manager/analytics.html", {"operator_role": "manager", "operator_active_nav": "analytics"})
 
 
 # ═══ Admin panel ═══
 
+@staff_member_required
 def admin_panel_dashboard(request):
     return render(request, "admin_panel/dashboard.html", {"admin_active_nav": "dashboard"})
 
 
+@staff_member_required
 def admin_panel_users(request):
     return render(request, "admin_panel/users.html", {"admin_active_nav": "users"})
 
 
+@staff_member_required
 def admin_panel_orders(request):
     return render(request, "admin_panel/orders.html", {"admin_active_nav": "orders"})
 
 
+@staff_member_required
 def admin_panel_rfq(request):
     return render(request, "admin_panel/rfq.html", {"admin_active_nav": "rfq"})
 
 
+@staff_member_required
 def admin_panel_finance(request):
     return render(request, "admin_panel/finance.html", {"admin_active_nav": "finance"})
 
 
+@staff_member_required
 def admin_panel_catalog(request):
     return render(request, "admin_panel/catalog.html", {"admin_active_nav": "catalog"})
 
 
+@staff_member_required
 def admin_panel_moderation(request):
     return render(request, "admin_panel/moderation.html", {"admin_active_nav": "moderation"})
 
 
+@staff_member_required
 def admin_panel_settings(request):
     import json as _json_mod
     settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")
@@ -5505,6 +5811,7 @@ def admin_panel_settings(request):
     })
 
 
+@staff_member_required
 def admin_panel_analytics(request):
     now = timezone.now()
 
@@ -5624,6 +5931,7 @@ def admin_panel_analytics(request):
     })
 
 
+@staff_member_required
 def admin_panel_logs(request):
     now = timezone.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -5701,12 +6009,13 @@ def admin_panel_logs(request):
     })
 
 
+@staff_member_required
 def admin_panel_tariffs(request):
     import json as _json
     settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")
     platform_cfg = {}
     if os.path.exists(settings_path):
-        with open(settings_path, "r", encoding="utf-8") as f:
+        with open(settings_path, encoding="utf-8") as f:
             platform_cfg = _json.load(f)
 
     default_plans = [
@@ -5807,12 +6116,13 @@ def admin_panel_tariffs(request):
     })
 
 
+@staff_member_required
 def admin_panel_support(request):
     import json as _json
     settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")
     sla_hours = 48
     try:
-        with open(settings_path, "r", encoding="utf-8") as f:
+        with open(settings_path, encoding="utf-8") as f:
             sla_hours = _json.load(f).get("claim_response_hours", 48)
     except Exception:
         pass
@@ -5906,7 +6216,8 @@ def admin_panel_support(request):
 
 
 # ── Notifications API ──────────────────────────────────────
-from .models import Notification, TeamMember, CompanyVerification
+from .models import CompanyVerification, Notification, TeamMember
+
 
 @login_required
 def notifications_list(request):
@@ -6010,6 +6321,7 @@ def team_list(request):
                                                           "role_choices": TeamMember.ROLE_CHOICES})
 
 
+@login_required
 def team_accept(request, token):
     try:
         data = signing.loads(token, salt="team-invite", max_age=60 * 60 * 24 * 14)  # 14 days
@@ -6031,14 +6343,17 @@ def team_accept(request, token):
     return render(request, "components/team_accept.html", {"tm": tm, "token": token})
 
 
-def help_view(request):
-    return render(request, "marketplace/help.html")
+# help_view — alias на публичный help_center_view (без login, для SEO).
+# Раньше требовался login и рендерил пустую help.html — теперь нормальный
+# FAQ-центр с Schema.org FAQPage rich-snippet.
+help_view = help_center_view
 
 
 # ── 2FA (TOTP) ─────────────────────────────────────────────
-import io
 import secrets as _secrets
+
 from .models import TwoFactorAuth
+
 
 @login_required
 def twofa_setup(request):
@@ -6106,8 +6421,9 @@ def twofa_setup(request):
             )
             # Generate QR via qrcode lib
             try:
-                import qrcode
                 import base64
+
+                import qrcode
                 img = qrcode.make(uri, box_size=6, border=2)
                 buf = io.BytesIO()
                 img.save(buf, format="PNG")
@@ -6125,28 +6441,13 @@ def twofa_setup(request):
 
 
 def chat_first_view(request):
-    """Chat-First single-page UI.
+    """Chat-First single-page UI — открыт для anonymous (guest buyer-mode).
 
-    В DEBUG-режиме (демо) авто-логинит demo_buyer для anonymous посетителей,
-    чтобы клик «массовый поиск» с landing'а сразу открывал AI-интерфейс
-    без login-экрана. В production оставляем @login_required.
+    Стратегия: anonymous посетитель сразу видит чат в режиме покупателя.
+    Может искать запчасти, смотреть каталог, общаться с AI. Когда дело
+    доходит до mutating-действий (создать RFQ, заказать, оплатить) —
+    backend возвращает gating-card «Зарегистрируйтесь, чтобы продолжить».
     """
-    from django.conf import settings
-    if not request.user.is_authenticated:
-        if getattr(settings, "DEBUG", False):
-            from django.contrib.auth import get_user_model, login
-            U = get_user_model()
-            demo = U.objects.filter(username="demo_buyer", is_active=True).first()
-            if demo:
-                # Backend для login() — обычно ModelBackend
-                demo.backend = "django.contrib.auth.backends.ModelBackend"
-                login(request, demo)
-            else:
-                from django.contrib.auth.decorators import login_required as _lr
-                return _lr(lambda r: render(r, "chat/index.html"))(request)
-        else:
-            from django.contrib.auth.decorators import login_required as _lr
-            return _lr(lambda r: render(r, "chat/index.html"))(request)
     return render(request, "chat/index.html")
 
 

@@ -13,7 +13,7 @@ from django.utils.translation import gettext_lazy as _
 
 # pgvector is only available on Postgres. Fallback to JSONField on SQLite.
 try:
-    from pgvector.django import VectorField, HnswIndex
+    from pgvector.django import VectorField
     _PGVECTOR = True
 except Exception:
     _PGVECTOR = False
@@ -283,3 +283,115 @@ class WalletTx(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class WalletTopupRequest(models.Model):
+    """Заявка на пополнение депозита (production flow).
+
+    Юзер → создаёт заявку (сумма + способ оплаты) → видит реквизиты →
+    оплачивает за пределами платформы (банк wire) или редиректится
+    в платёжный шлюз (card / USDT). Оператор финансы видит pending
+    заявки в своей очереди и подтверждает поступление средств → wallet
+    автоматически кредитуется через `mark_paid()` метод.
+
+    Состояния: pending → awaiting_confirmation → paid (или cancelled/failed).
+    """
+    METHOD_CHOICES = [
+        ("bank_wire", "Банковский перевод"),
+        ("card",      "Банковская карта"),
+        ("usdt",      "USDT (TRC-20)"),
+    ]
+    STATUS_CHOICES = [
+        ("pending",                "Ожидает оплаты"),
+        ("awaiting_confirmation",  "Юзер сообщил об оплате — ждём подтверждения"),
+        ("paid",                   "Оплачено — депозит пополнен"),
+        ("cancelled",              "Отменено пользователем"),
+        ("failed",                 "Платёж не прошёл"),
+        ("expired",                "Истёк срок"),
+    ]
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name="topup_requests",
+    )
+    amount   = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    method   = models.CharField(max_length=20, choices=METHOD_CHOICES)
+    status   = models.CharField(max_length=30, choices=STATUS_CHOICES,
+                                 default="pending", db_index=True)
+    # Реф-код для мэтчинга банковского перевода (юзер указывает в назначении
+    # платежа). Уникальный, 8 символов hex.
+    reference_code = models.CharField(max_length=16, unique=True, db_index=True)
+    # Реквизиты, выданные юзеру при создании (snapshot — на случай если поменяем).
+    payment_details = models.JSONField(default=dict, blank=True)
+    # Кто из операторов финансов подтвердил.
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
+    confirmed_at  = models.DateTimeField(null=True, blank=True)
+    user_claim_at = models.DateTimeField(null=True, blank=True,
+                                          help_text="Когда юзер кликнул «Я оплатил»")
+    cancelled_at  = models.DateTimeField(null=True, blank=True)
+    note          = models.CharField(max_length=400, blank=True)
+    created_at    = models.DateTimeField(default=timezone.now)
+    updated_at    = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["status", "-created_at"])]
+
+    def __str__(self):
+        return f"Topup[{self.id}] {self.user_id} {self.amount}{self.currency} {self.status}"
+
+    @classmethod
+    def make_ref(cls) -> str:
+        import secrets
+        for _ in range(10):
+            ref = "DEP-" + secrets.token_hex(4).upper()
+            if not cls.objects.filter(reference_code=ref).exists():
+                return ref
+        # на всякий случай — fallback c timestamp, шансов 0
+        import time
+        return f"DEP-{int(time.time() * 1000):X}"
+
+    def mark_paid(self, *, by_user=None) -> "WalletTx":
+        """Атомарно: статус → paid, кошелёк пополнен, WalletTx создан.
+
+        SECURITY P0-5/P0-6: select_for_update на заявке + re-check статуса
+        под блокировкой. Два оператора, одновременно жмущие «Подтвердить
+        пополнение», не должны зачислить деньги дважды.
+        """
+        from django.db import transaction
+        # Быстрая проверка без блокировки — оптимизация
+        if self.status == "paid":
+            return WalletTx.objects.filter(
+                wallet__user=self.user, kind="topup",
+                description__contains=self.reference_code,
+            ).first()
+        with transaction.atomic():
+            # Перепроверяем под row-lock — другой запрос мог уже зачислить
+            locked = (type(self).objects.select_for_update()
+                      .get(pk=self.pk))
+            if locked.status == "paid":
+                return WalletTx.objects.filter(
+                    wallet__user=locked.user, kind="topup",
+                    description__contains=locked.reference_code,
+                ).first()
+            locked.status = "paid"
+            locked.confirmed_by = by_user
+            locked.confirmed_at = timezone.now()
+            locked.save(update_fields=["status", "confirmed_by",
+                                         "confirmed_at", "updated_at"])
+            wallet = Wallet.objects.select_for_update().get(
+                pk=Wallet.for_user(locked.user).pk,
+            )
+            wallet.balance = wallet.balance + locked.amount
+            wallet.save(update_fields=["balance", "updated_at"])
+            tx = WalletTx.objects.create(
+                wallet=wallet, kind="topup", amount=locked.amount,
+                description=f"Пополнение по заявке {locked.reference_code}",
+                balance_after=wallet.balance,
+            )
+            # Синхронизируем self чтобы caller получил актуальное состояние
+            self.refresh_from_db()
+        return tx

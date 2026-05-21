@@ -1,9 +1,12 @@
+import logging
+
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+logger = logging.getLogger(__name__)
 
 from .models import Conversation, Feedback, Message
 from .permissions import detect_user_role
@@ -24,9 +27,12 @@ class ConversationViewSet(viewsets.ModelViewSet):
     GET    /api/assistant/conversations/{id}/   — detail with messages
     DELETE /api/assistant/conversations/{id}/   — hard delete (cascades messages)
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # anon → пустой список (без 401 в консоли)
 
     def get_queryset(self):
+        # Anon: пустой queryset (UI покажет «Нет проектов / Недавнее пусто»)
+        if not self.request.user.is_authenticated:
+            return Conversation.objects.none()
         return Conversation.objects.filter(user=self.request.user, is_active=True)
 
     def get_serializer_class(self):
@@ -87,23 +93,278 @@ class ChatView(APIView):
         })
 
 
+# Whitelist actions, разрешённых анонимному гостю.
+# Сейчас только auth-actions — регистрация и вход проходят таким же
+# chat-flow, как KYB у поставщика: форма-карточка прямо в чате.
+ANON_ALLOWED_ACTIONS: set[str] = {"start_registration", "start_login"}
+
+
+def _registration_required_response():
+    """Карточка «зарегистрируйтесь» — для всех остальных action'ов.
+
+    Кнопки запускают chat-action `start_registration` / `start_login`
+    прямо в текущем чате (без редиректа на отдельную страницу).
+    """
+    return {
+        "text": (
+            "🔒 Чтобы продолжить — зарегистрируйтесь прямо здесь, в чате.\n"
+            "Это займёт 20 секунд."
+        ),
+        "actions": [
+            {"action": "start_registration", "label": "🚀 Зарегистрироваться"},
+            {"action": "start_login",        "label": "У меня есть аккаунт"},
+        ],
+        "cards": [], "suggestions": [], "contextual_actions": [],
+    }
+
+
+# ── start_registration / start_login: chat-native auth ─────────
+# Двухфазный flow, как все form-actions (KYB, claims, RFQ):
+#   Phase 1 (нет confirmed=true) → возвращаем form-карточку
+#   Phase 2 (есть confirmed=true + поля) → создаём user / login
+
+def _handle_start_registration(request, params):
+    """Регистрация прямо в чате. Делегирует в buyer_registration.py (ТЗ §1–§4).
+
+    Для role=seller — упрощённый flow (минимальная форма + дальше KYB).
+    Для role=buyer (default) — 8 полей по ТЗ с автопроверками.
+    """
+    from django.contrib.auth import login
+    from . import buyer_registration as bureg
+
+    confirmed = bool(params.get("confirmed"))
+    role = (params.get("role") or "buyer").lower()
+
+    # ── Seller — простой flow + KYB-onboarding после регистрации ─
+    if role == "seller":
+        return _handle_seller_quick_registration(request, params)
+
+    # ── Buyer — 8 полей по ТЗ §1 ───────────────────────────
+    if not confirmed:
+        return bureg.render_form(params)
+    result = bureg.attempt_register(request, params)
+    if result["ok"]:
+        user = result["user"]
+        user.backend = "django.contrib.auth.backends.ModelBackend"
+        login(request, user)
+        try:
+            from .order_events import notify_operator_alert
+            notify_operator_alert(user_obj=user, event="user_registered",
+                                  extra={"role": "buyer"})
+        except Exception:
+            logger.exception("notify_operator_alert user_registered failed")
+    return result["response"]
+
+
+def _handle_seller_quick_registration(request, params):
+    """Seller-регистрация: 4 базовых поля → создание аккаунта → KYB-онбоардинг.
+
+    Полные реквизиты компании поставщик заполняет в `start_onboarding`
+    (отдельный многошаговый flow в assistant/onboarding.py).
+    """
+    from django.contrib.auth import login
+    from marketplace.forms import RegisterForm
+    from marketplace.models import UserProfile
+
+    confirmed = bool(params.get("confirmed"))
+    if not confirmed:
+        return {
+            "text": (
+                "🏭 Регистрация поставщика — 2 шага.\n\n"
+                "▸ Шаг 1 (сейчас): только аккаунт — логин, e-mail, пароль. "
+                "Это нужно, чтобы вы могли сохранять прогресс.\n"
+                "▸ Шаг 2 (после): KYB-анкета — реквизиты компании, ИНН/ОГРН, "
+                "юр.адрес, банковский счёт, директор, сертификаты. После "
+                "проверки оператором (≤24ч) сможете отвечать на RFQ и "
+                "принимать заказы."
+            ),
+            "cards": [{
+                "type": "form",
+                "data": {
+                    "title": "🏭 Шаг 1 из 2 · Аккаунт поставщика",
+                    "submit_action": "start_registration",
+                    "submit_label": "Шаг 2: к KYB-анкете →",
+                    "fields": [
+                        {"name": "username", "label": "Логин",
+                         "required": True, "placeholder": "myshop_2026"},
+                        {"name": "email", "label": "E-mail",
+                         "type": "email", "required": True},
+                        {"name": "password1", "label": "Пароль",
+                         "type": "password", "required": True, "minlength": 8},
+                        {"name": "password2", "label": "Повторите пароль",
+                         "type": "password", "required": True, "minlength": 8},
+                    ],
+                    "fixed_params": {"confirmed": True, "role": "seller"},
+                },
+            }],
+            "actions": [{"action": "start_login", "label": "У меня уже есть аккаунт",
+                          "params": {"role": "seller"}}],
+            "suggestions": [], "contextual_actions": [],
+        }
+
+    form = RegisterForm({
+        "username": (params.get("username") or "").strip(),
+        "email":    (params.get("email") or "").strip(),
+        "password1": params.get("password1") or "",
+        "password2": params.get("password2") or "",
+        "role": "seller", "language": "ru",
+        "first_name": "", "last_name": "", "company_name": "",
+    })
+    if not form.is_valid():
+        errs = "\n".join(f"• {f}: {e[0]}" for f, e in form.errors.items())
+        return {
+            "text": "⚠️ Не получилось создать аккаунт:\n" + errs,
+            "actions": [{"action": "start_registration", "label": "🔄 Попробовать снова",
+                         "params": {"role": "seller"}}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+        }
+    user = form.save(commit=False)
+    user.email = params.get("email")
+    user.save()
+    UserProfile.objects.create(user=user, role="seller", language="ru",
+                                company_name="")
+    user.backend = "django.contrib.auth.backends.ModelBackend"
+    login(request, user)
+    try:
+        from .order_events import notify_operator_alert
+        notify_operator_alert(user_obj=user, event="user_registered",
+                              extra={"role": "seller"})
+    except Exception:
+        logger.exception("notify_operator_alert user_registered failed")
+    return {
+        "text": (f"✅ Аккаунт создан · {user.username}\n"
+                 f"Сейчас откроем KYB-анкету — нужны реквизиты компании, "
+                 f"банк и директор. После проверки оператором (≤24ч) сможете "
+                 f"отвечать на RFQ и принимать заказы."),
+        "cards": [],
+        "actions": [{"action": "reload_page", "label": "🚀 Перейти к KYB"}],
+        "suggestions": [], "contextual_actions": [],
+        "_post_action": "reload",
+    }
+
+
+def _handle_start_login(request, params):
+    """Вход существующим пользователем — тоже через chat-форму.
+
+    Принимает `role` (buyer | seller | operator) — разные сущности, разные
+    кабинеты. Для buyer/seller есть кнопка регистрации, для operator её нет
+    (оператора заводит только админ).
+    """
+    confirmed = bool(params.get("confirmed"))
+    role = (params.get("role") or "buyer").lower()
+
+    LOGIN_META = {
+        "buyer":    ("👋 Вход покупателя", "С возвращением. Введите логин или e-mail."),
+        "seller":   ("🏭 Вход поставщика", "Войдите в кабинет поставщика."),
+        "operator": ("🛡 Вход оператора",  "Войдите в операторский кабинет."),
+    }
+    title, greeting = LOGIN_META.get(role, LOGIN_META["buyer"])
+
+    if not confirmed:
+        actions = []
+        if role == "operator":
+            # Оператора заводит только админ — никакой self-регистрации.
+            pass
+        elif role == "seller":
+            actions.append({"action": "start_registration",
+                             "label": "Создать аккаунт поставщика",
+                             "params": {"role": "seller"}})
+        else:
+            actions.append({"action": "start_registration",
+                             "label": "Создать новый аккаунт"})
+        return {
+            "text": greeting,
+            "cards": [{
+                "type": "form",
+                "data": {
+                    "title": title,
+                    "submit_action": "start_login",
+                    "submit_label": "Войти →",
+                    "fields": [
+                        {"name": "username", "label": "Логин или e-mail",
+                         "required": True, "placeholder": "ivanov / you@company.ru"},
+                        {"name": "password", "label": "Пароль",
+                         "type": "password", "required": True},
+                    ],
+                    "fixed_params": {"confirmed": True, "role": role},
+                },
+            }],
+            "actions": actions,
+            "suggestions": [], "contextual_actions": [],
+        }
+
+    from django.contrib.auth import authenticate, get_user_model, login
+    raw = (params.get("username") or "").strip()
+    pwd = params.get("password") or ""
+    U = get_user_model()
+    # Разрешаем вход по e-mail
+    if "@" in raw:
+        u = U.objects.filter(email__iexact=raw).first()
+        if u:
+            raw = u.username
+    user = authenticate(request, username=raw, password=pwd)
+    if not user:
+        return {
+            "text": "❌ Неверный логин или пароль. Попробуйте ещё раз.",
+            "actions": [{"action": "start_login", "label": "🔄 Войти снова"}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+        }
+    login(request, user)
+    return {
+        "text": f"✅ Привет, {user.username}! Перезагружу чат — увидите свои данные.",
+        "actions": [{"action": "reload_page", "label": "🚀 Открыть кабинет"}],
+        "cards": [], "suggestions": [], "contextual_actions": [],
+        "_post_action": "reload",
+    }
+
+
 class ActionView(APIView):
     """Execute a chat action (button click).
 
     POST /api/assistant/action/
-    Body: {"conversation_id":"uuid","action":"create_rfq","params":{"product_ids":[...],"_label":"..."}}
+    Body: {"conversation_id":"uuid","action":"create_rfq","params":{...}}
     Resp: {"text":"...","cards":[...],"actions":[...],"suggestions":[...]}
+
+    Для anonymous гостя: пускаем только whitelisted read-only actions
+    (search_parts, kb_search). Всё остальное → карточка «зарегистрируйтесь».
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # гость может звать read-only actions
 
     def post(self, request):
-        conv_id = request.data.get("conversation_id")
         action = request.data.get("action") or ""
         params = request.data.get("params") or {}
         if not action:
             return Response({"error": "action required"}, status=400)
 
-        from .conv_category import find_or_create_conv, title_for_action, category_for_action
+        # ── Anon gate ────────────────────────────────────────
+        if not request.user.is_authenticated:
+            # start_registration / start_login обрабатываем тут (им нужен
+            # request для django.contrib.auth.login()).
+            if action == "start_registration":
+                return Response({"conversation_id": None,
+                                  **_handle_start_registration(request, params)})
+            if action == "start_login":
+                return Response({"conversation_id": None,
+                                  **_handle_start_login(request, params)})
+            if action not in ANON_ALLOWED_ACTIONS:
+                return Response({"conversation_id": None,
+                                  **_registration_required_response()})
+            # Прочие whitelisted — пока пусто; на будущее.
+            # NB: execute_action импортирован в module scope (`from .rag`),
+            # не делаем повторный локальный импорт — он бы сделал имя
+            # local-only и стал бы причиной UnboundLocalError в auth-ветке.
+            try:
+                result = execute_action(
+                    None, action, params, request.user, role="buyer",
+                )
+            except Exception as e:
+                return Response({"error": str(e)}, status=500)
+            return Response({"conversation_id": None, **result})
+
+        # ── Authenticated flow (как раньше) ──────────────────
+        conv_id = request.data.get("conversation_id")
+
+        from .conv_category import category_for_action, find_or_create_conv, title_for_action
         label = (params.get("_label") or "").strip() or action
 
         if conv_id:
@@ -127,7 +388,12 @@ class ActionView(APIView):
             conv.save(update_fields=["title", "category", "updated_at"])
 
         try:
-            result = execute_action(conv, action, params, request.user)
+            # role от текущего UI-toggle, не от сохранённой в conversation —
+            # юзер мог переключить роль и теперь видит другую сторону.
+            current_role = detect_user_role(request.user, request=request)
+            result = execute_action(
+                conv, action, params, request.user, role=current_role,
+            )
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
@@ -241,11 +507,17 @@ class RoleSwitchView(APIView):
 
     Сохраняет выбор UI-toggle в сессии. На последующих запросах
     `detect_user_role` подхватит его автоматически.
+
+    Anonymous: всегда отвечает `buyer` (без 403) — гость не может
+    переключиться на seller/operator, это требует регистрации.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def post(self, request):
-        from .permissions import _normalize_override
+        if not request.user.is_authenticated:
+            return Response({"role": "buyer", "override": None,
+                             "anonymous": True})
+        from .permissions import _normalize_override, _override_allowed
         raw = request.data.get("role")
         if raw in (None, "", "auto"):
             request.session.pop("assistant_role_override", None)
@@ -255,13 +527,21 @@ class RoleSwitchView(APIView):
         norm = _normalize_override(raw)
         if not norm:
             return Response({"error": f"unsupported role '{raw}'"}, status=400)
+        # SECURITY P0-1: проверяем, что user реально имеет право на эту роль.
+        # Buyer не может стать operator через POST {"role":"operator"}.
+        if not _override_allowed(request.user, norm):
+            return Response(
+                {"error": "forbidden: insufficient privileges for this role",
+                 "role": detect_user_role(request.user)},
+                status=403,
+            )
         request.session["assistant_role_override"] = norm
         request.session.modified = True
         return Response({"role": norm, "override": norm})
 
 
 # ── Projects API ────────────────────────────────────────────
-from .models import Project, ProjectDocument
+from .models import Project
 
 
 class ProjectListView(APIView):
@@ -322,7 +602,6 @@ class ProjectDetailView(APIView):
             "preview": (c.messages.first().content[:120] if c.messages.exists() else ""),
         } for c in p.conversations.filter(is_active=True).order_by("-updated_at")[:20]]
         # Stats: count linked RFQs/orders by code matching (demo)
-        from marketplace.models import RFQ, Order
         # In real system there'd be FK; for now just demo counts
         return Response({
             "id": str(p.id),
@@ -403,8 +682,8 @@ class RFQDetailView(APIView):
     }
 
     def get(self, request, rfq_id):
-        from decimal import Decimal
-        from marketplace.models import RFQ, Quote, Notification
+
+        from marketplace.models import RFQ, Notification, Quote
         rfq = get_object_or_404(RFQ, id=rfq_id)
 
         items = []
@@ -500,7 +779,8 @@ class DrawingFileView(APIView):
 
     def get(self, request, drawing_id):
         from marketplace.models import Drawing
-        from .drawings_access import can_access, record_access, apply_watermark_url
+
+        from .drawings_access import apply_watermark_url, can_access, record_access
         try:
             drawing = Drawing.objects.get(id=drawing_id)
         except Drawing.DoesNotExist:

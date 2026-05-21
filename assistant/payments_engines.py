@@ -190,15 +190,18 @@ def get_engine() -> PaymentEngine:
 def verify_webhook_signature(raw_body: bytes, signature_header: str) -> bool:
     """Проверка Stripe-Signature заголовка (без парсинга event'а).
 
-    Возвращает True если HMAC-SHA256 валиден (или verification отключён).
-    Если STRIPE_WEBHOOK_SECRET не установлен — проверка пропускается
-    (демо-режим). Используем низкоуровневый WebhookSignature.verify_header,
-    чтобы не запускать Stripe event-parser, который требует поля
-    Stripe-API формата (object, id, ...) — нам важна только подпись.
+    SECURITY P1: в проде (DEBUG=False) STRIPE_WEBHOOK_SECRET обязателен —
+    без него возвращаем False (fail-closed). Иначе любой может POSTить
+    «события» оплаты и менять состояние заказов. В DEBUG/dev — пропускаем
+    для удобства локальной разработки.
     """
+    from django.conf import settings as _s
     secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
     if not secret:
-        return True  # demo mode — webhook верят на слово
+        if getattr(_s, "DEBUG", False):
+            return True  # dev/demo mode — без секрета пропускаем
+        logger.warning("STRIPE_WEBHOOK_SECRET not configured in prod — rejecting webhook")
+        return False
     try:
         from stripe import WebhookSignature
         # Stripe library wants str, not bytes (does its own .encode internally)

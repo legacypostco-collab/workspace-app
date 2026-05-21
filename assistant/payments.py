@@ -23,7 +23,6 @@ Implementation notes:
 from __future__ import annotations
 
 import logging
-import uuid
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -91,20 +90,40 @@ def confirm_payment_intent(intent: dict, payer) -> dict:
 def _wallet_confirm_intent(intent: dict, payer) -> dict:
     """Атомарно: списание у покупателя → зачисление в эскроу платформы.
 
-    Соответствует stripe.PaymentIntent.confirm() в Stripe Connect режиме
-    `destination_charge` где transfer_data.destination = platform.
+    SECURITY P0-6: идемпотентность через `intent_id` в `WalletTx.description`.
+    Если уже есть WalletTx с этим intent_id и kind=escrow_hold — возвращаем
+    сохранённый результат без повторного списания. Stripe-compatible:
+    повторный confirm на одном intent НЕ должен списывать второй раз.
+
+    SECURITY P0-5: select_for_update на обоих кошельках — два параллельных
+    confirm не могут одновременно прочитать-модифицировать-записать баланс.
     """
     amount = Decimal(str(intent["amount"]))
     order_id = intent["order_id"]
     kind_label = intent.get("kind", "payment")
+    intent_id = intent.get("id")
 
-    payer_wallet = Wallet.for_user(payer)
+    # Идемпотентность: если этот intent уже подтверждён — выходим.
+    if intent_id:
+        existing = WalletTx.objects.filter(
+            description__contains=f"(intent {intent_id})",
+            kind="escrow_hold",
+        ).first()
+        if existing:
+            intent["status"] = "succeeded"
+            intent["confirmed_at"] = existing.created_at.isoformat()
+            intent["idempotent_replay"] = True
+            return intent
+
+    payer_wallet = Wallet.objects.select_for_update().get(
+        pk=Wallet.for_user(payer).pk,
+    )
     if payer_wallet.balance < amount:
         raise InsufficientFunds(
             f"need ${amount} have ${payer_wallet.balance}"
         )
 
-    plat = get_platform_wallet()
+    plat = Wallet.objects.select_for_update().get(pk=get_platform_wallet().pk)
     payer_wallet.balance -= amount
     payer_wallet.save(update_fields=["balance", "updated_at"])
     plat.balance += amount
@@ -112,12 +131,12 @@ def _wallet_confirm_intent(intent: dict, payer) -> dict:
 
     WalletTx.objects.create(
         wallet=payer_wallet, kind="escrow_hold", amount=amount,
-        description=f"Эскроу-холд {kind_label} #{order_id} (intent {intent['id']})",
+        description=f"Эскроу-холд {kind_label} #{order_id} (intent {intent_id})",
         order_id=order_id, balance_after=payer_wallet.balance,
     )
     WalletTx.objects.create(
         wallet=plat, kind="escrow_hold", amount=amount,
-        description=f"Эскроу-приём {kind_label} #{order_id} (intent {intent['id']})",
+        description=f"Эскроу-приём {kind_label} #{order_id} (intent {intent_id})",
         order_id=order_id, balance_after=plat.balance,
     )
 

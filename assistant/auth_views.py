@@ -73,8 +73,8 @@ class MagicLinkRequestView(View):
 
     def _send_email(self, user, token: str, request) -> None:
         try:
-            from django.core.mail import EmailMultiAlternatives
             from django.conf import settings
+            from django.core.mail import EmailMultiAlternatives
             site = (
                 os.getenv("SITE_URL")
                 or getattr(settings, "SITE_URL", "")
@@ -123,7 +123,15 @@ class MagicLinkConfirmView(View):
         ml.used_at = timezone.now()
         ml.ip_used = request.META.get("REMOTE_ADDR", "")[:64]
         ml.save(update_fields=["used_at", "ip_used"])
+        # SECURITY P1: проверяем, что next-URL локальный (защита от open redirect /
+        # фишинга через подмененный next).
+        from django.utils.http import url_has_allowed_host_and_scheme
         next_url = request.GET.get("next") or "/chat/"
+        if not url_has_allowed_host_and_scheme(
+            next_url, allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            next_url = "/chat/"
         return redirect(next_url)
 
 

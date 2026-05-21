@@ -16,6 +16,11 @@
   const SB_KEY = 'cf_sidebar_open';
   const CONV_KEY = 'cf_active_conv';
 
+  // Local i18n shorthand. window.t (из i18n.js) переводит ключ под текущим
+  // языком; если i18n.js ещё не загружен — возвращаем fallback (русский).
+  // Назван `tr`, чтобы не конфликтовать с локальными `const t = ...` внутри функций.
+  const tr = (key, fallback) => (typeof window.t === 'function' ? window.t(key) : (fallback != null ? fallback : key));
+
   let state = {
     convId: null,
     ws: null,
@@ -34,12 +39,16 @@
   function setConvId(id) {
     state.convId = id || null;
     try {
-      if (id) localStorage.setItem(CONV_KEY, id);
-      else localStorage.removeItem(CONV_KEY);
+      // sessionStorage: conversation_id — это идентификатор активной
+      // сессии переписки, не должен переживать закрытие вкладки. Раньше
+      // localStorage означал что после logout другой юзер мог в той же
+      // вкладке унаследовать чужой conv_id (architectural leak).
+      if (id) sessionStorage.setItem(CONV_KEY, id);
+      else sessionStorage.removeItem(CONV_KEY);
     } catch(e){}
   }
   function getStoredConvId() {
-    try { return localStorage.getItem(CONV_KEY); } catch(e) { return null; }
+    try { return sessionStorage.getItem(CONV_KEY); } catch(e) { return null; }
   }
 
   // ── Helpers ──────────────────────────────────────────────
@@ -102,13 +111,29 @@
   function applyDarkMode(on) {
     document.body.classList.toggle('dark-mode', !!on);
     localStorage.setItem('cf_dark_mode', on ? '1' : '0');
+    // Синхронизируем чекбокс в настройках
+    const cb = document.getElementById('settingDarkMode');
+    if (cb) cb.checked = !!on;
   }
+  // Глобальный toggle для top-bar кнопки 🌙/☀️
+  window.toggleTheme = function() {
+    const isDark = document.body.classList.contains('dark-mode');
+    applyDarkMode(!isDark);
+  };
   function applyLang(lang) {
     if (!lang) return;
     document.cookie = 'django_language=' + lang + '; path=/; max-age=' + (60*60*24*365);
     localStorage.setItem('cf_lang', lang);
-    // Reload to re-render server-side translations
-    location.reload();
+    // 1) Сразу перерисовываем клиентские строки через window.setLanguage (из i18n.js)
+    // 2) Сохраняем выбор в профиле через /api/set-language/
+    // 3) reload() — чтобы серверные {% trans %} тоже переключились
+    if (typeof window.setLanguage === 'function') {
+      Promise.resolve(window.setLanguage(lang)).finally(function () {
+        location.reload();
+      });
+    } else {
+      location.reload();
+    }
   }
   function loadSettings() {
     // Sound toggle
@@ -122,8 +147,8 @@
     // Lang
     const langEl = document.getElementById('settingLang');
     if (langEl) {
-      const m = document.cookie.match(/django_language=([a-z]+)/);
-      langEl.value = (m && m[1]) || localStorage.getItem('cf_lang') || 'ru';
+      const m = document.cookie.match(/django_language=([a-z-]+)/);
+      langEl.value = (m && m[1]) || localStorage.getItem('cf_lang') || (document.documentElement.getAttribute('lang') || 'ru');
     }
   }
   window.onSettingChange = function(key, val) {
@@ -164,7 +189,7 @@
         document.body.appendChild(host);
       }
       const t = document.createElement('div');
-      const title = (payload && payload.title) || 'Уведомление';
+      const title = (payload && payload.title) || tr('card.notification');
       const body  = (payload && payload.body)  || '';
       const url   = (payload && payload.url)   || '';
       t.style.cssText = 'pointer-events:auto;background:#1d2330;color:#fff;padding:10px 14px;border-radius:10px;border:1px solid rgba(100,181,246,0.35);box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:340px;font-size:13px;line-height:1.4;cursor:pointer;';
@@ -214,7 +239,8 @@
       return;
     }
     list.innerHTML = notif.items.map(n =>
-      '<div class="notif-item' + (n.is_read ? '' : ' unread') + '" data-id="' + n.id + '" data-url="' + esc(n.url || '') + '">' +
+      // esc() для всех полей, включая id (защита от подмены типа в JSON)
+      '<div class="notif-item' + (n.is_read ? '' : ' unread') + '" data-id="' + esc(n.id) + '" data-url="' + esc(n.url || '') + '">' +
         '<div class="notif-row">' +
           '<span class="notif-kind ' + esc(n.kind || 'info') + '">' + esc(n.kind || 'info') + '</span>' +
           '<span class="notif-time">' + esc(notifTimeAgo(n.created_at)) + '</span>' +
@@ -240,13 +266,29 @@
   }
 
   async function loadNotifications() {
+    const list = document.getElementById('notifList');
+    if (list && !notif.loaded) {
+      // Loading skeleton — пока ждём ответ. Раньше: пустой блок без feedback.
+      list.innerHTML = '<div class="notif-skel"></div>'.repeat(3);
+    }
     try {
       const data = await api('/api/assistant/notifications/?limit=20');
       notif.items = data.items || [];
       notif.loaded = true;
       setBellBadge(data.unread_count || 0);
       renderNotifList();
-    } catch (e) { console.warn('loadNotifications failed', e); }
+    } catch (e) {
+      console.warn('loadNotifications failed', e);
+      if (list) {
+        list.innerHTML =
+          '<div class="notif-error">⚠️ Не удалось загрузить уведомления. '
+          + '<button type="button" class="notif-retry">Повторить</button></div>';
+        const btn = list.querySelector('.notif-retry');
+        if (btn) btn.addEventListener('click', () => {
+          notif.loaded = false; loadNotifications();
+        });
+      }
+    }
   }
 
   window.toggleNotifPanel = function() {
@@ -373,7 +415,7 @@
           <div class="card-price">${fmtMoney(d.price, d.currency)}</div>
         </div>
         <div class="card-meta">
-          ${d.in_stock !== false ? `<span class="card-chip card-chip-green">${d.quantity ? d.quantity + ' шт' : 'В наличии'}</span>` : '<span class="card-chip card-chip-gray">Нет в наличии</span>'}
+          ${d.in_stock !== false ? `<span class="card-chip card-chip-green">${d.quantity ? d.quantity + ' ' + tr('stock.pcs') : tr('stock.in_stock')}</span>` : `<span class="card-chip card-chip-gray">${tr('stock.not_available')}</span>`}
           ${d.delivery_days ? `<span class="card-chip">${d.delivery_days} дн</span>` : ''}
           ${d.condition ? `<span class="card-chip card-chip-gray">${esc(d.condition)}</span>` : ''}
         </div>
@@ -397,7 +439,7 @@
       }).join('');
       const cur = d.currency || 'USD';
       return `<div class="card pb-card">
-        <div class="card-title">${esc(d.title || 'Расчёт цены')}</div>
+        <div class="card-title">${esc(d.title || tr('card.price_calc'))}</div>
         <div class="pb-rows">${lines}</div>
         <div class="pb-total">
           <span class="pb-total-label">Итого клиенту</span>
@@ -417,13 +459,13 @@
       return `<div class="card dr-card">
         <div class="dr-head">
           <span class="dr-badge">📝 Черновик</span>
-          <span class="dr-title">${esc(d.title || 'Подтвердите действие')}</span>
+          <span class="dr-title">${esc(d.title || tr('card.confirm_action'))}</span>
         </div>
         <div class="dr-rows">${rows}</div>
         ${warns ? `<div class="dr-warnings">${warns}</div>` : ''}
         <div class="dr-actions">
-          <button class="act-btn dr-confirm" data-action="${esc(d.confirm_action || '')}" data-params='${esc(confirmParams)}' data-label="${esc(d.confirm_label || 'Подтвердить')}">${esc(d.confirm_label || 'Подтвердить')}</button>
-          <button class="act-btn dr-cancel" type="button" onclick="(() => { const c = this.closest('.dr-card'); c.outerHTML = '<div class=&quot;dr-cancelled-note&quot;>↩︎ Действие отменено</div>'; })()">${esc(d.cancel_label || 'Отмена')}</button>
+          <button class="act-btn dr-confirm" data-action="${esc(d.confirm_action || '')}" data-params='${esc(confirmParams)}' data-label="${esc(d.confirm_label || tr('common.confirm'))}">${esc(d.confirm_label || tr('common.confirm'))}</button>
+          <button class="act-btn dr-cancel" type="button" onclick="window.cancelDraftCard&&window.cancelDraftCard(this)">${esc(d.cancel_label || tr('common.cancel'))}</button>
         </div>
       </div>`;
     },
@@ -452,48 +494,253 @@
         </div>`;
       }).join('');
       return `<div class="card ib-card">
-        <div class="card-title">${esc(d.title || 'Сегодня')}</div>
+        <div class="card-title">${esc(d.title || tr('card.today'))}</div>
         ${sections}
       </div>`;
     },
     catalog(d) {
       const rows = (d.rows || []).map(r => {
         const status = r.is_active ? 'cat-active' : 'cat-archived';
+        const ccy = r.currency || 'USD';
         const stockBadge = r.stock_qty > 0
           ? `<span class="cat-chip cat-chip-green">${r.stock_qty} шт</span>`
-          : '<span class="cat-chip cat-chip-gray">нет</span>';
+          : '<span class="cat-chip cat-chip-gray">нет в наличии</span>';
         const sold = r.sold_qty
           ? `<span class="cat-chip cat-chip-blue">${r.sold_qty} продано</span>`
           : '';
-        const rev = r.revenue ? `<span class="cat-chip cat-chip-gray">${fmtMoney(r.revenue, 'USD')}</span>` : '';
+        const rev = r.revenue ? `<span class="cat-chip cat-chip-gray">${fmtMoney(r.revenue, ccy)}</span>` : '';
+        const condBadge = r.condition ? `<span class="cat-chip cat-chip-gray">${esc(r.condition)}</span>` : '';
         const toggle = `<button class="act-btn cat-btn-mini" data-action="toggle_product" data-params='${esc(JSON.stringify({part_id: r.id}))}' data-label="Скрыть/показать">${r.is_active ? '🚫 Скрыть' : '✓ Активировать'}</button>`;
-        return `<div class="cat-row ${status}">
-          <div class="cat-row-main">
-            <div class="cat-art">${esc(r.article || '')}</div>
-            <div class="cat-name">${esc(r.title || '')}</div>
-            <div class="cat-brand">${esc(r.brand || '')}</div>
-          </div>
-          <div class="cat-row-meta">
-            <span class="cat-price">${fmtMoney(r.price, 'USD')}</span>
-            ${stockBadge}${sold}${rev}
-          </div>
-          <div class="cat-row-actions">${toggle}</div>
-        </div>`;
+
+        // Раскрываемая «портянка» с полными данными позиции.
+        // Все поля показываем, даже пустые (с «—»), чтобы продавец видел
+        // что есть в карточке, а что надо дозаполнить.
+        const fobBits = [];
+        fobBits.push(`SEA ${r.price_fob_sea ? fmtMoney(r.price_fob_sea, ccy) : '—'}`);
+        fobBits.push(`AIR ${r.price_fob_air ? fmtMoney(r.price_fob_air, ccy) : '—'}`);
+        const dim = (r.weight_kg) ? `${r.weight_kg} кг` : '—';
+        const dash = v => v ? esc(v) : '<span class="cat-empty-v">—</span>';
+        const details = `
+          <div class="cat-details">
+            <div><span class="cat-dl">Артикул (OEM):</span> <code>${esc(r.article || '')}</code></div>
+            <div><span class="cat-dl">Кросс-номера:</span> ${r.cross_numbers ? `<code>${esc(r.cross_numbers)}</code>` : '<span class="cat-empty-v">—</span>'}</div>
+            <div><span class="cat-dl">Название:</span> ${dash(r.title)}</div>
+            <div><span class="cat-dl">Бренд:</span> ${dash(r.brand)}</div>
+            <div><span class="cat-dl">Завод-производитель:</span> ${dash(r.manufacturer)}</div>
+            <div><span class="cat-dl">Состояние:</span> ${dash(r.condition)}</div>
+            <div><span class="cat-dl">Наличие:</span> ${dash(r.availability)}</div>
+            <div><span class="cat-dl">Остаток:</span> ${r.stock_qty || 0} шт</div>
+            <div><span class="cat-dl">Цена EXW:</span> ${fmtMoney(r.price, ccy)}</div>
+            <div><span class="cat-dl">Цена FOB:</span> ${fobBits.join(' · ')}</div>
+            <div><span class="cat-dl">Морпорт:</span> ${dash(r.sea_port)}</div>
+            <div><span class="cat-dl">Аэропорт:</span> ${dash(r.air_port)}</div>
+            <div><span class="cat-dl">Адрес склада:</span> ${dash(r.warehouse)}</div>
+            <div><span class="cat-dl">Вес:</span> ${dim}</div>
+            <div><span class="cat-dl">Продано:</span> ${r.sold_qty || 0} шт · оборот ${fmtMoney(r.revenue || 0, ccy)}</div>
+          </div>`;
+
+        return `<details class="cat-row ${status}">
+          <summary class="cat-row-summary">
+            <div class="cat-row-main">
+              <div class="cat-art">${esc(r.article || '')}</div>
+              <div class="cat-name">${esc(r.title || '')}</div>
+              <div class="cat-brand">${esc(r.brand || '')}${r.manufacturer && r.manufacturer !== r.brand ? ' · ' + esc(r.manufacturer) : ''}${r.warehouse_name ? ' · 📁 ' + esc(r.warehouse_name) : ''}</div>
+            </div>
+            <div class="cat-row-meta">
+              <span class="cat-price">${fmtMoney(r.price, ccy)}</span>
+              ${condBadge}${stockBadge}${sold}${rev}
+            </div>
+            <div class="cat-row-actions">${toggle}</div>
+          </summary>
+          ${details}
+        </details>`;
       }).join('');
+      const counter = (d.total_count && d.shown_end)
+        ? `<span class="cat-counter">${d.offset + 1}–${d.shown_end} из ${d.total_count}</span>` : '';
       return `<div class="card cat-card">
-        <div class="card-title">${esc(d.title || 'Каталог')}</div>
+        <div class="card-title">${esc(d.title || tr('card.catalog'))} ${counter}</div>
         <div class="cat-rows">${rows || '<div class="cat-empty">Пусто</div>'}</div>
       </div>`;
     },
-    list(d) {
+    warehouses(d) {
+      // Если карточка встроена в каталог (compact=true) — рендерим
+      // горизонтальную ленту чипов, чтобы не оттягивать каталог вниз.
+      if (d.compact) {
+        const active = d.active_id == null ? null : Number(d.active_id);
+        const chips = (d.rows || []).map(r => {
+          const flag = ({'TR':'🇹🇷','CN':'🇨🇳','RU':'🇷🇺','AE':'🇦🇪','NL':'🇳🇱','KZ':'🇰🇿'}[r.country_code] || '🌍');
+          const wid = r.is_orphan ? 0 : r.id;
+          const isActive = (active === wid);
+          const stale = r.staleness && r.staleness !== 'unknown' && !r.is_orphan
+            ? `<span class="wh-chip-stale wh-stale-${r.staleness}"></span>` : '';
+          return `<button class="wh-chip${r.is_orphan ? ' wh-chip-orphan' : ''}${isActive ? ' wh-chip-active' : ''}" data-action="seller_catalog" data-params='${esc(JSON.stringify({warehouse_id: wid}))}' data-label="Открыть склад">
+            <span class="wh-chip-flag">${flag}</span>
+            <span class="wh-chip-name">${esc(r.name)}</span>
+            <span class="wh-chip-n">${r.parts_count}</span>
+            ${stale}
+          </button>`;
+        }).join('');
+        const allActive = (active == null);
+        const allBtn = `<button class="wh-chip wh-chip-all${allActive ? ' wh-chip-active' : ''}" data-action="seller_catalog" data-params='${esc(JSON.stringify({}))}' data-label="Все товары">
+          <span class="wh-chip-flag">📦</span><span class="wh-chip-name">Все товары</span>
+        </button>`;
+        return `<div class="wh-bar">
+          <div class="wh-bar-label">${esc(d.title || tr('card.warehouses'))}</div>
+          <div class="wh-bar-chips">${allBtn}${chips}</div>
+        </div>`;
+      }
       const rows = (d.rows || []).map(r => {
-        const badge = r.badge ? `<span class="ls-badge">${esc(r.badge)}</span>` : '';
+        const ports = [r.sea_port, r.air_port].filter(Boolean).join(' / ') || '—';
+        const flag = ({'TR':'🇹🇷','CN':'🇨🇳','RU':'🇷🇺','AE':'🇦🇪','NL':'🇳🇱','KZ':'🇰🇿'}[r.country_code] || '🌍');
+        const wid = r.is_orphan ? 0 : r.id;
+        // Вся карточка кликабельна — открывает каталог этого склада
+        const openParams = JSON.stringify({warehouse_id: wid});
+        // Иконки управления — приглушены, проявляются на hover карточки
+        const renameIcon = !r.is_orphan
+          ? `<button class="wh-icon" title="Переименовать" onclick="event.stopPropagation();window.renameWarehouse && window.renameWarehouse(${r.id}, ${JSON.stringify(r.name).replace(/"/g,'&quot;')})">✏️</button>`
+          : '';
+        const refreshIcon = !r.is_orphan
+          ? `<button class="wh-icon" title="Обновить прайс" onclick="event.stopPropagation();window.refreshWarehousePrice && window.refreshWarehousePrice(${r.id}, ${JSON.stringify(r.name).replace(/"/g,'&quot;')})">🔄</button>`
+          : '';
+        const deleteIcon = !r.is_orphan
+          ? `<button class="wh-icon wh-icon-danger" title="Удалить склад" onclick="event.stopPropagation();window.deleteWarehouse && window.deleteWarehouse(${r.id}, ${JSON.stringify(r.name).replace(/"/g,'&quot;')}, ${r.parts_count})">🗑</button>`
+          : '';
+        const staleBadge = r.stale_label && r.staleness !== 'unknown' && !r.is_orphan
+          ? `<span class="wh-stale wh-stale-${r.staleness}" title="Последняя загрузка: ${esc(r.last_import || '—')}">${esc(r.stale_label)}</span>`
+          : '';
+        return `<div class="wh-row${r.is_orphan ? ' wh-orphan' : ''} wh-row-${r.staleness || ''}" data-action="seller_catalog" data-params='${esc(openParams)}' data-label="Открыть склад">
+          <div class="wh-head">
+            <span class="wh-flag">${flag}</span>
+            <div class="wh-main">
+              <div class="wh-name">${esc(r.name)}</div>
+              <div class="wh-meta">${esc(ports)}${r.address ? ' · ' + esc(r.address.slice(0,80)) : ''}</div>
+              ${staleBadge ? `<div class="wh-staleness">${staleBadge}</div>` : ''}
+            </div>
+            <div class="wh-stats">
+              <span class="wh-count">${r.parts_count} поз.</span>
+              ${r.currency ? `<span class="wh-ccy">${esc(r.currency)}</span>` : ''}
+              ${refreshIcon}${renameIcon}${deleteIcon}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="card wh-card">
+        <div class="card-title">${esc(d.title || tr('card.warehouses'))}</div>
+        <div class="wh-rows">${rows || '<div class="cat-empty">Складов нет</div>'}</div>
+      </div>`;
+    },
+    best_offers(d) {
+      const rows = (d.rows || []).map((r, idx) => {
+        const ccy = r.currency || 'USD';
+        const rank = `<span class="bo-rank">${idx + 1}</span>`;
+        const ratingBadge = `<span class="bo-rating bo-status-${r.status}" title="Статус: ${esc(r.status_badge)}">${esc(r.status_badge)} · ${(r.rating || 0).toFixed(0)}</span>`;
+        const fobBits = [];
+        if (r.price_fob_sea) fobBits.push(`SEA ${fmtMoney(r.price_fob_sea, ccy)}`);
+        if (r.price_fob_air) fobBits.push(`AIR ${fmtMoney(r.price_fob_air, ccy)}`);
+        const drilldown = `<button class="act-btn bo-btn" data-action="buyer_offer_compare" data-params='${esc(JSON.stringify({oem_number: r.oem_number}))}' data-label="Сравнить">🔍 Сравнить</button>`;
+        return `<div class="bo-row">
+          <div class="bo-head">
+            ${rank}
+            <div class="bo-main">
+              <div class="bo-oem">${esc(r.oem_number || '')}</div>
+              <div class="bo-title">${esc(r.title || '')}</div>
+              <div class="bo-brand">${esc(r.brand || '')}</div>
+            </div>
+            <div class="bo-meta">
+              <span class="bo-price">${fmtMoney(r.price, ccy)}</span>
+              ${ratingBadge}
+            </div>
+          </div>
+          <div class="bo-sub">
+            <span class="bo-supplier">${esc(r.supplier_label)}</span>
+            ${fobBits.length ? `<span class="bo-fob">${fobBits.join(' · ')}</span>` : ''}
+            ${r.sea_port || r.air_port ? `<span class="bo-port">${esc([r.sea_port, r.air_port].filter(Boolean).join(' / '))}</span>` : ''}
+            ${r.condition ? `<span class="bo-cond">${esc(r.condition)}</span>` : ''}
+          </div>
+          <div class="bo-actions">${drilldown}</div>
+        </div>`;
+      }).join('');
+      return `<div class="card bo-card">
+        <div class="card-title">${esc(d.title || tr('card.best_offers'))}</div>
+        <div class="bo-rows">${rows || '<div class="cat-empty">Нет предложений</div>'}</div>
+      </div>`;
+    },
+    offer_compare(d) {
+      const rows = (d.rows || []).map((r, idx) => {
+        const ccy = r.currency || 'USD';
+        const shipSea = r.ship_sea_cost ? fmtMoney(r.ship_sea_cost, 'USD') + (r.ship_sea_days ? ` · ${r.ship_sea_days}д` : '') : '—';
+        const shipAir = r.ship_air_cost ? fmtMoney(r.ship_air_cost, 'USD') + (r.ship_air_days ? ` · ${r.ship_air_days}д` : '') : '—';
+        const landed = r.landed_cost ? `<b>${fmtMoney(r.landed_cost, ccy)}</b>` : '—';
+        const bestMode = r.ship_best_mode === 'air' ? '✈️' : (r.ship_best_mode === 'sea' ? '🚢' : '');
+        return `<tr class="oc-row oc-status-${r.status}">
+          <td class="oc-rank">${idx + 1}</td>
+          <td class="oc-supplier">${esc(r.supplier_label)}<br><span class="oc-status">${esc(r.status_badge)}</span></td>
+          <td class="oc-rating">${(r.rating || 0).toFixed(0)}</td>
+          <td class="oc-price">${fmtMoney(r.price, ccy)}</td>
+          <td>${shipSea}</td>
+          <td>${shipAir}</td>
+          <td class="oc-landed">${landed} ${bestMode}</td>
+          <td>${esc(r.condition || '—')}</td>
+          <td>${r.stock || 0}</td>
+          <td class="oc-score">${((r.score || 0) * 100).toFixed(0)}</td>
+        </tr>`;
+      }).join('');
+      return `<div class="card oc-card">
+        <div class="card-title">${esc(d.title || tr('card.comparison'))}</div>
+        <div class="oc-legend">🟢 Надёжный · 🟡 Песочница · 🟠 Рисковый — рейтинг 0–100 · Доставка считается по весу/габаритам · Landed = EXW + лучшая доставка</div>
+        <div class="oc-scroll"><table class="oc-table">
+          <thead><tr>
+            <th>#</th><th>Поставщик</th><th>Рейтинг</th><th>EXW</th>
+            <th>🚢 Доставка</th><th>✈️ Доставка</th>
+            <th>Landed</th>
+            <th>Условие</th><th>Остаток</th><th>Score</th>
+          </tr></thead>
+          <tbody>${rows || '<tr><td colspan="10" class="cat-empty">Поставщиков нет</td></tr>'}</tbody>
+        </table></div>
+      </div>`;
+    },
+    audit_timeline(d) {
+      const events = (d.events || []).map(e => {
+        const change = (e.before != null && e.after != null)
+          ? `<span class="atl-before">${esc(e.before)}</span><span class="atl-arrow">→</span><span class="atl-after">${esc(e.after)}</span>`
+          : (e.delta ? `<span class="atl-after">${esc(e.delta)}</span>` : '');
+        return `<div class="atl-row atl-tone-${esc(e.tone || 'gray')}">
+          <div class="atl-icon">${esc(e.icon || '•')}</div>
+          <div class="atl-body">
+            <div class="atl-line1">
+              <span class="atl-title">${esc(e.title || '')}</span>
+              ${change}
+            </div>
+            <div class="atl-line2">
+              <span class="atl-actor atl-actor-${esc(e.actor_color || 'gray')}">${esc(e.actor_role_label || '')}</span>
+              <span class="atl-actor-name">${esc(e.actor || '')}</span>
+              <span class="atl-when">${esc(e.when_short || '')}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="card atl-card">
+        <div class="card-title">${esc(d.title || tr('card.history'))}</div>
+        <div class="atl-list">${events || '<div class="atl-empty">Событий пока нет</div>'}</div>
+      </div>`;
+    },
+    list(d) {
+      const rows = (d.rows || d.items || []).map(r => {
+        // Badge может быть строкой (старый формат) или объектом {label, tone}.
+        let badge = '';
+        if (r.badge) {
+          if (typeof r.badge === 'object') {
+            badge = `<span class="ls-badge ls-badge-${esc(r.badge.tone || 'info')}">${esc(r.badge.label || '')}</span>`;
+          } else {
+            badge = `<span class="ls-badge">${esc(r.badge)}</span>`;
+          }
+        }
         const isClickable = !!(r.url || r.action);
-        const cls = isClickable ? 'ls-row ls-link' : 'ls-row';
-        // Поддержка двух режимов: r.url → external link, r.action → action
+        // tone — окрашивает левый бордер строки (warn/ok/info/bad).
+        const toneCls = r.tone ? ` ls-tone-${esc(r.tone)}` : '';
+        const cls = (isClickable ? 'ls-row ls-link' : 'ls-row') + toneCls;
         let attrs = '';
         if (r.action) {
-          // Кликабельный — использует data-action без .act-btn-стиля
           attrs = `class="${cls}" data-action="${esc(r.action)}" data-params='${esc(JSON.stringify(r.params || {}))}' data-label="${esc(r.title || r.action)}"`;
         } else if (r.url) {
           attrs = `class="${cls}" onclick="window.open('${esc(r.url)}','_blank','noopener')"`;
@@ -509,17 +756,365 @@
         </div>`;
       }).join('');
       return `<div class="card ls-card">
-        <div class="card-title">${esc(d.title || 'Список')}</div>
+        <div class="card-title">${esc(d.title || tr('card.list'))}</div>
         <div class="ls-rows">${rows || '<div class="ls-empty">Пусто</div>'}</div>
       </div>`;
     },
+    quote_form(d) {
+      // Квот-карточка как Excel/Stripe checkout: шапка с контекстом RFQ,
+      // живой ИТОГО в чёрной полосе, табличный список позиций (артикул /
+      // товар / кол-во / цена / сумма), сервис-поля внизу, submit.
+      // d: {
+      //   rfq_id, mode_badge, urgency_label, urgency_tone,
+      //   customer_name, company_name, request_text,
+      //   items: [{rfq_item_id, article, title, brand, quantity, unit_price, currency}],
+      //   delivery_days, valid_days, message,
+      //   parent_quote_id, direction,
+      // }
+      const items = d.items || [];
+      const rfqId = String(d.rfq_id || '');
+      const itemRows = items.map((it, idx) => {
+        const qty = Number(it.quantity || 0);
+        const price = Number(it.unit_price || 0);
+        const lineTotal = qty * price;
+        return `<tr class="qf-row" data-line-idx="${idx}">
+          <td class="qf-c-art">${esc(String(it.article || ''))}</td>
+          <td class="qf-c-title">
+            <div class="qf-title">${esc(String(it.title || ''))}</div>
+            ${it.brand ? `<div class="qf-brand">${esc(String(it.brand))}</div>` : ''}
+          </td>
+          <td class="qf-c-qty">${qty}</td>
+          <td class="qf-c-price">
+            <div class="qf-price-wrap">
+              <span class="qf-currency">${esc(String(it.currency || 'USD'))}</span>
+              <input class="qf-price-input"
+                     type="number" step="0.01" min="0"
+                     name="price_${esc(String(it.rfq_item_id))}"
+                     data-qty="${qty}"
+                     value="${price.toFixed(2)}" />
+            </div>
+          </td>
+          <td class="qf-c-total" data-line-total>${lineTotal.toFixed(2)}</td>
+        </tr>`;
+      }).join('');
+      const initialTotal = items.reduce((s, it) =>
+        s + Number(it.quantity || 0) * Number(it.unit_price || 0), 0);
+      const urgencyTone = String(d.urgency_tone || 'info');
+      return `<div class="card qf-card" data-rfq-id="${esc(rfqId)}"
+          data-parent-quote-id="${esc(String(d.parent_quote_id || ''))}"
+          data-direction="${esc(String(d.direction || 'seller_to_buyer'))}">
+        <div class="qf-head">
+          <div class="qf-head-l">
+            <div class="qf-head-title">💬 Котировка по RFQ #${esc(rfqId)}</div>
+            <div class="qf-head-meta">
+              <span class="qf-customer">${esc(String(d.customer_name || ''))}</span>
+              ${d.mode_badge ? `<span class="qf-mode">${esc(String(d.mode_badge))}</span>` : ''}
+              ${d.urgency_label ? `<span class="qf-urg qf-urg-${esc(urgencyTone)}">${esc(String(d.urgency_label))}</span>` : ''}
+            </div>
+            ${d.request_text ? `<div class="qf-request">${esc(String(d.request_text))}</div>` : ''}
+          </div>
+        </div>
+
+        <div class="qf-total-band">
+          <div>
+            <div class="qf-total-label">ИТОГО ПО КОТИРОВКЕ</div>
+            <div class="qf-total-hint">${items.length} позиций · обновляется при редактировании цен</div>
+          </div>
+          <div class="qf-total-amount" data-total>$${initialTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+        </div>
+
+        <div class="qf-table-wrap">
+          <table class="qf-table">
+            <thead>
+              <tr>
+                <th class="qf-c-art">Артикул</th>
+                <th class="qf-c-title">Товар</th>
+                <th class="qf-c-qty">Кол-во</th>
+                <th class="qf-c-price">Цена за шт.</th>
+                <th class="qf-c-total">Сумма</th>
+              </tr>
+            </thead>
+            <tbody>${itemRows}</tbody>
+          </table>
+        </div>
+
+        <div class="qf-aux">
+          <div class="qf-aux-row">
+            <label>Срок поставки (дней)</label>
+            <input class="qf-aux-input" name="delivery_days" type="number" min="1" value="${esc(String(d.delivery_days || 14))}" />
+          </div>
+          <div class="qf-aux-row">
+            <label>Котировка действует (дней)</label>
+            <input class="qf-aux-input" name="valid_days" type="number" min="1" value="${esc(String(d.valid_days || 7))}" />
+          </div>
+          <div class="qf-aux-row qf-aux-row-wide">
+            <label>Комментарий покупателю (необязательно)</label>
+            <textarea class="qf-aux-textarea" name="message" rows="2"
+              placeholder="Например: позиция X заменена на аналог Y — то же качество, в наличии"></textarea>
+          </div>
+        </div>
+
+        <div class="qf-actions">
+          <button class="qf-cancel" type="button" data-action="seller_inbox" data-params="{}">Отмена</button>
+          <button class="qf-submit" type="button" data-rfq-id="${esc(rfqId)}">
+            📨 Отправить котировку · <span data-submit-count>${items.length}</span> поз · <span data-submit-total>$${initialTotal.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+          </button>
+        </div>
+      </div>`;
+    },
+    smart_question(d) {
+      // Безопасный рендер questionnaire-вопроса. Все значения экранируются.
+      // d: {question, options:[…], default, placeholder, q_idx, total, field, apply_as}
+      const chips = (d.options || []).map(opt =>
+        `<button class="sq-chip" type="button" data-answer="${esc(String(opt))}">${esc(String(opt))}</button>`
+      ).join('');
+      const idx = Number(d.q_idx || 0);
+      const total = Number(d.total || 1);
+      const defVal = d.default != null ? String(d.default) : '';
+      const placeholder = d.placeholder || 'или впишите свой вариант...';
+      return `<div class="smart-q-card card"
+          data-q-idx="${esc(String(idx))}"
+          data-field="${esc(String(d.field || ''))}"
+          data-apply-as="${esc(String(d.apply_as || 'constant'))}">
+        <div class="sq-step">${idx + 1} / ${total}</div>
+        <div class="sq-q">${esc(String(d.question || ''))}</div>
+        ${chips ? `<div class="sq-chips">${chips}</div>` : ''}
+        <div class="sq-input-row">
+          <input class="sq-input" type="text" placeholder="${esc(placeholder)}" value="${esc(defVal)}"/>
+          <button class="sq-submit" type="button">→</button>
+          <button class="sq-skip" type="button">Пропустить</button>
+        </div>
+      </div>`;
+    },
+    seller_status(d) {
+      // Дашборд-карточка статуса поставщика: tier + рейтинг прогресс-бар,
+      // 3 hero-метрики, вторичные метрики, аудит-строка.
+      // d: {company_name, tier, tier_tone, score, score_max,
+      //     verified_label, risk_label, risk_tone, jurisdiction, verified_at,
+      //     hero:[{label, value, tone, sub}], secondary:[{label, value, sub}]}
+      const pct = Math.max(0, Math.min(100, Number(d.score) || 0));
+      const tierTone = String(d.tier_tone || 'info');
+      const riskTone = String(d.risk_tone || 'info');
+      const heroHtml = (d.hero || []).map(h => `
+        <div class="ss-hero-cell ss-tone-${esc(String(h.tone || 'info'))}">
+          <div class="ss-hero-label">${esc(h.label || '')}</div>
+          <div class="ss-hero-value">${esc(String(h.value ?? '—'))}</div>
+          ${h.sub ? `<div class="ss-hero-sub">${esc(h.sub)}</div>` : ''}
+        </div>`).join('');
+      const secondaryHtml = (d.secondary || []).map(s => `
+        <div class="ss-sec-row">
+          <div class="ss-sec-label">${esc(s.label || '')}</div>
+          <div class="ss-sec-value">${esc(String(s.value ?? '—'))}</div>
+          ${s.sub ? `<div class="ss-sec-sub">${esc(s.sub)}</div>` : ''}
+        </div>`).join('');
+      return `<div class="card ss-card">
+        <div class="ss-head">
+          <div class="ss-head-l">
+            <div class="ss-head-cap">Статус поставщика</div>
+            <div class="ss-head-company">${esc(d.company_name || '—')}</div>
+          </div>
+          <div class="ss-head-r">
+            ${d.verified_label ? `<div class="ss-badge ss-badge-ok">${esc(d.verified_label)}</div>` : ''}
+            ${d.risk_label ? `<div class="ss-badge ss-badge-${esc(riskTone)}">${esc(d.risk_label)}</div>` : ''}
+          </div>
+        </div>
+        <div class="ss-tier">
+          <div class="ss-tier-row">
+            <div>
+              <div class="ss-tier-cap">Tier</div>
+              <div class="ss-tier-name ss-tone-${esc(tierTone)}">${esc(d.tier || '—')}</div>
+            </div>
+            <div class="ss-tier-score">
+              <span class="ss-tier-score-val">${Math.round(pct)}</span>
+              <span class="ss-tier-score-max"> / ${esc(String(d.score_max || 100))}</span>
+            </div>
+          </div>
+          <div class="ss-bar"><div class="ss-bar-fill ss-tone-${esc(tierTone)}" style="width:${pct}%"></div></div>
+        </div>
+        ${heroHtml ? `<div class="ss-hero">${heroHtml}</div>` : ''}
+        ${secondaryHtml ? `<div class="ss-secondary">${secondaryHtml}</div>` : ''}
+        ${(d.verified_at || d.jurisdiction) ? `<div class="ss-footer">
+          ${d.jurisdiction ? `<span>🌍 ${esc(d.jurisdiction)}</span>` : ''}
+          ${d.verified_at ? `<span>📅 верифицирована ${esc(d.verified_at)}</span>` : ''}
+        </div>` : ''}
+      </div>`;
+    },
+    tier_progress(d) {
+      // Прогресс по тиру скидки: текущая скидка крупно, прогресс-бар,
+      // лестница уровней с подсветкой текущего.
+      // d: {title, current:{discount_pct, label, turnover_text},
+      //     progress:{pct, current_text, target_text, gap_text, next_label},
+      //     tiers:[{label, discount_pct, threshold_text, state}], // state: 'done'|'current'|'next'|'future'
+      //     footer_text}
+      const c = d.current || {};
+      const p = d.progress || {};
+      const pct = Math.max(0, Math.min(100, Number(p.pct) || 0));
+      const tiersHtml = (d.tiers || []).map(t => {
+        const state = t.state || 'future';
+        const marker = state === 'done' ? '✓'
+                     : state === 'current' ? '●'
+                     : '○';
+        return `<div class="tp-tier tp-tier-${esc(state)}">
+          <div class="tp-tier-mark">${marker}</div>
+          <div class="tp-tier-name">${esc(t.label)}</div>
+          <div class="tp-tier-disc">${esc(t.discount_pct)}</div>
+          <div class="tp-tier-thr">${esc(t.threshold_text)}</div>
+        </div>`;
+      }).join('');
+      const progressBlock = p.pct !== undefined ? `
+        <div class="tp-progress">
+          <div class="tp-progress-head">
+            <span>${esc(p.current_text || '')}</span>
+            <span class="tp-progress-target">→ ${esc(p.target_text || '')}</span>
+          </div>
+          <div class="tp-bar"><div class="tp-bar-fill" style="width:${pct}%"></div></div>
+          <div class="tp-progress-foot">${esc(p.gap_text || '')}${p.next_label ? ' до <b>' + esc(p.next_label) + '</b>' : ''}</div>
+        </div>` : '';
+      return `<div class="card tp-card">
+        <div class="tp-head">
+          <div class="tp-head-label">${esc(d.title || 'Auto-discount')}</div>
+        </div>
+        <div class="tp-hero">
+          <div class="tp-hero-side">
+            <div class="tp-hero-cap">Текущая скидка</div>
+            <div class="tp-hero-pct">${esc(c.discount_pct || '0%')}</div>
+            <div class="tp-hero-tier">${esc(c.label || '')}</div>
+          </div>
+          <div class="tp-hero-side tp-hero-side-right">
+            <div class="tp-hero-cap">Годовой оборот</div>
+            <div class="tp-hero-amount">${esc(c.turnover_text || '')}</div>
+          </div>
+        </div>
+        ${progressBlock}
+        ${tiersHtml ? `<div class="tp-tiers">
+          <div class="tp-tiers-cap">Лестница тиров</div>
+          ${tiersHtml}
+        </div>` : ''}
+        ${d.footer_text ? `<div class="tp-footer">${esc(d.footer_text)}</div>` : ''}
+      </div>`;
+    },
+    invoice(d) {
+      // Бухгалтерский invoice-документ. Стиль — официальный счёт на оплату:
+      // белый лист, шапка с эмитентом, номер/дата справа, табличные секции,
+      // подвал. Похоже на Stripe invoice / банковский payment slip.
+      // d: {ref, amount_text, expires_text, issuer:{name,subtitle},
+      //     meta:[{label,value}], sections:[{title, rows:[{label,value,copy,hint,warn,mono}]}],
+      //     notes}
+      const sectionsHtml = (d.sections || []).map(sec => {
+        const rows = (sec.rows || []).map(r => {
+          const copyBtn = r.copy
+            ? `<button class="iv-copy" type="button" data-copy="${esc(String(r.value))}" title="Скопировать">⎘</button>`
+            : '';
+          const hint = r.hint ? `<div class="iv-hint">${esc(r.hint)}</div>` : '';
+          const valCls = 'iv-value' + (r.mono ? ' iv-mono' : '') + (r.warn ? ' iv-warn' : '');
+          return `<tr class="iv-row">
+            <td class="iv-label">${esc(r.label)}</td>
+            <td class="${valCls}">
+              <span>${esc(String(r.value))}</span>${copyBtn}
+              ${hint}
+            </td>
+          </tr>`;
+        }).join('');
+        return `<div class="iv-section">
+          <div class="iv-section-bar">${esc(sec.title)}</div>
+          <table class="iv-table">${rows}</table>
+        </div>`;
+      }).join('');
+      const notes = (d.notes || []).map(n =>
+        `<li>${esc(n)}</li>`
+      ).join('');
+      const issuer = d.issuer || {};
+      const meta = (d.meta || []).map(m =>
+        `<div class="iv-meta-row">
+          <span class="iv-meta-label">${esc(m.label)}</span>
+          <span class="iv-meta-value">${esc(String(m.value))}</span>
+        </div>`
+      ).join('');
+      return `<div class="card iv-doc">
+        <div class="iv-header">
+          <div class="iv-issuer">
+            <div class="iv-issuer-mark">🏛</div>
+            <div>
+              <div class="iv-issuer-name">${esc(issuer.name || 'Consolidator Parts')}</div>
+              <div class="iv-issuer-sub">${esc(issuer.subtitle || 'B2B parts marketplace')}</div>
+            </div>
+          </div>
+          <div class="iv-doc-meta">
+            <div class="iv-doc-type">${esc(d.doc_type || 'INVOICE')}</div>
+            ${meta}
+          </div>
+        </div>
+        <div class="iv-total">
+          <div class="iv-total-label">К ОПЛАТЕ</div>
+          <div class="iv-total-amount">${esc(d.amount_text || '')}</div>
+          ${d.expires_text ? `<div class="iv-total-expires">${esc(d.expires_text)}</div>` : ''}
+        </div>
+        ${d.ref ? `<div class="iv-ref-band">
+          <div class="iv-ref-side">
+            <div class="iv-ref-cap">PAYMENT REFERENCE</div>
+            <div class="iv-ref-code">${esc(d.ref)}</div>
+          </div>
+          <button class="iv-ref-copy" type="button" data-copy="${esc(d.ref)}" title="Скопировать">Копировать</button>
+          ${d.ref_warning ? `<div class="iv-ref-warn">⚠️ ${esc(d.ref_warning)}</div>` : ''}
+        </div>` : ''}
+        ${sectionsHtml}
+        ${notes ? `<div class="iv-footer">
+          <div class="iv-footer-title">Примечания</div>
+          <ul class="iv-footer-notes">${notes}</ul>
+        </div>` : ''}
+        <div class="iv-stamp">Документ сформирован автоматически и действителен без печати и подписи · ${esc(d.stamp_meta || 'Consolidator Parts')}</div>
+      </div>`;
+    },
+    faq(d) {
+      // Accordion на нативных <details>. Item:
+      //   {q, a}                                 — простой текст
+      //   {q, rows: [{title, subtitle}]}         — вертикальный список
+      //   {q, rows: [...], layout: 'grid'}       — горизонтальная сетка
+      const items = (d.items || []).map(it => {
+        let body;
+        if (Array.isArray(it.rows) && it.rows.length) {
+          const layoutCls = it.layout === 'grid' ? 'faq-rows faq-rows-grid' : 'faq-rows';
+          body = `<div class="${layoutCls}">${it.rows.map(r => `
+            <div class="faq-row">
+              <div class="faq-row-title">${esc(String(r.title || ''))}</div>
+              ${r.subtitle ? `<div class="faq-row-sub">${esc(String(r.subtitle))}</div>` : ''}
+            </div>`).join('')}</div>`;
+        } else {
+          const ans = String(it.a || it.answer || '');
+          body = esc(ans).replace(/\n/g, '<br>');
+        }
+        return `<details class="faq-item">
+          <summary>${esc(it.q || it.question || '')}</summary>
+          <div class="faq-ans">${body}</div>
+        </details>`;
+      }).join('');
+      return `<div class="card faq-card">
+        <div class="card-title">${esc(d.title || 'FAQ')}</div>
+        <div class="faq-list">${items || '<div class="ls-empty">Пусто</div>'}</div>
+      </div>`;
+    },
     kpi_grid(d) {
-      const items = (d.kpis || []).map(k => `
-        <div class="kpi-cell">
+      // KPI-ячейка может быть кликабельной если у item есть `action`/`params` или `url`.
+      // Visually: добавляем класс `.kpi-cell-clickable` + cursor:pointer + handler.
+      const items = (d.kpis || d.items || []).map(k => {
+        const inner = `
           <div class="kpi-value">${esc(String(k.value ?? '—'))}</div>
           <div class="kpi-label">${esc(k.label || '')}</div>
-          ${k.sub ? `<div class="kpi-sub">${esc(k.sub)}</div>` : ''}
-        </div>`).join('');
+          ${k.sub ? `<div class="kpi-sub">${esc(k.sub)}</div>` : ''}`;
+        if (k.action) {
+          // S4 fix: action/params могут содержать апострофы → ломали inline onclick='…'
+          // и открывали XSS. Кладём в data-* атрибуты с esc(); делегированный
+          // listener на .kpi-cell-clickable[data-action] (см. ниже) подхватит.
+          const paramsJson = JSON.stringify({...(k.params || {}), _label: k.label || ''});
+          return `<button type="button" class="kpi-cell kpi-cell-clickable"
+            data-action="${esc(k.action)}"
+            data-params='${esc(paramsJson)}'>${inner}</button>`;
+        }
+        if (k.url) {
+          return `<a class="kpi-cell kpi-cell-clickable" href="${esc(k.url)}">${inner}</a>`;
+        }
+        return `<div class="kpi-cell">${inner}</div>`;
+      }).join('');
       return `<div class="card kpi-card">
         <div class="card-title">${esc(d.title || 'KPI')}</div>
         <div class="kpi-grid">${items}</div>
@@ -557,10 +1152,10 @@
       }).join('');
       const fixed = JSON.stringify(d.fixed_params || {});
       return `<div class="card fm-card" data-form-action="${esc(d.submit_action || '')}" data-fixed='${esc(fixed)}'>
-        <div class="card-title">${esc(d.title || 'Введите данные')}</div>
+        <div class="card-title">${esc(d.title || tr('card.enter_data'))}</div>
         <div class="fm-fields">${fields}</div>
         <div class="fm-actions">
-          <button type="button" class="act-btn fm-submit">${esc(d.submit_label || 'Отправить')}</button>
+          <button type="button" class="act-btn fm-submit">${esc(d.submit_label || tr('common.send'))}</button>
         </div>
       </div>`;
     },
@@ -570,9 +1165,9 @@
         const stCls = m.status === 'soon' ? 'im-st-soon'
                      : m.status === 'recommended' ? 'im-st-recommended'
                      : m.status === 'active' ? 'im-st-active' : 'im-st-default';
-        const stLabel = m.status === 'soon' ? 'Скоро'
-                       : m.status === 'recommended' ? 'Рекомендуется'
-                       : m.status === 'active' ? 'Активно' : '';
+        const stLabel = m.status === 'soon' ? tr('tag.coming_soon')
+                       : m.status === 'recommended' ? tr('tag.recommended')
+                       : m.status === 'active' ? tr('tag.active') : '';
         const stBadge = stLabel ? `<span class="im-status ${stCls}">${esc(stLabel)}</span>` : '';
         const icon = m.icon || '◇';
         // Secondary action (вторичная кнопка над main, например «Создать копию шаблона»)
@@ -630,7 +1225,7 @@
         </div>`;
       }).join('');
       return `<div class="card im-block">
-        <div class="im-block-title">${esc(d.title || 'Способы интеграции')}</div>
+        <div class="im-block-title">${esc(d.title || tr('card.integration'))}</div>
         <div class="im-list">${methods}</div>
       </div>`;
     },
@@ -674,6 +1269,13 @@
       </div>`;
     },
     raw_html(d) {
+      // ⚠️ ВНИМАНИЕ: trust boundary. Этот renderer ВЫВОДИТ HTML БЕЗ ЭСКЕЙПА.
+      // Использовать ТОЛЬКО для контента, сформированного фронтендом
+      // (статичные инструкции, sticky-карточки, готовые формы).
+      // НИКОГДА не использовать для ответов AI/бэкенда — туда заведи
+      // отдельный type с фиксированной схемой и esc(). Сервер-сайд
+      // продьюсеров raw_html нет (проверено grep'ом по backend) — если
+      // появится, это критическая регрессия безопасности.
       return d.html || '';
     },
     output_file(d) {
@@ -700,7 +1302,7 @@
         return `<tr>${cells}</tr>`;
       }).join('');
       return `<div class="card tp-card">
-        <div class="card-title">${esc(d.title || 'Превью')}</div>
+        <div class="card-title">${esc(d.title || tr('card.preview'))}</div>
         <div class="tp-scroll"><table class="tp-table">
           <thead><tr>${headers}</tr></thead>
           <tbody>${rows}</tbody>
@@ -711,45 +1313,154 @@
     seller_queue(d) {
       const sections = (d.sections || []).map(s => {
         const orders = (s.orders || []).map(o => {
-          const items = (o.items || []).map(it =>
-            `<div class="sq-item">
-              <span class="sq-art">${esc(it.article)}</span>
-              <span class="sq-name">${esc(it.name)}</span>
-              <span class="sq-qty">×${it.qty}</span>
-              <span class="sq-sub">${fmtMoney(it.subtotal, 'USD')}</span>
-            </div>`
-          ).join('');
+          // Позиции — в той же стилистике, что у покупателя (spec-tbl).
+          // Колонки для продавца: Stock | # | ID | Name | Brand | Cond | Цена | Кол-во | Вес | Сумма
+          const condLabel = (c) => {
+            if (c === 'oem') return '<span class="spec-cond-oem">OEM</span>';
+            if (c === 'analogue') return '<span class="spec-cond-an">Аналог</span>';
+            return esc(c || '');
+          };
+          const items = `<div class="spec-tbl-wrap"><table class="spec-tbl"><thead><tr>
+            <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Condition</th><th>Цена</th><th>Кол-во</th><th>Вес</th><th>Сумма</th>
+          </tr></thead><tbody>${(o.items || []).map((it, idx) => `
+            <tr>
+              <td><span class="spec-stk in"><span class="spec-stk-dot"></span>${it.stock > 0 ? tr('stock.in_stock') : tr('stock.on_order')}</span></td>
+              <td class="spec-row-num">${idx+1}</td>
+              <td><a class="spec-id-link">${esc(it.article)}</a></td>
+              <td><div class="spec-name-cell"><span class="spec-name">${esc(it.name)}</span></div></td>
+              <td>${esc(it.brand || '')}</td>
+              <td>${condLabel(it.condition)}</td>
+              <td class="spec-price">${fmtMoney(it.unit_price, 'USD')}</td>
+              <td>${it.qty}</td>
+              <td>${esc(it.weight || '—')}</td>
+              <td class="spec-price">${fmtMoney(it.subtotal, 'USD')}</td>
+            </tr>`).join('')}</tbody></table></div>`;
           const btnAct = s.btn_action || 'advance_order';
-          const btn = s.btn ? `<button class="act-btn sq-btn" data-action="${esc(btnAct)}" data-params='${esc(JSON.stringify({order_id: o.id}))}' data-label="${esc(s.btn + ' (#' + o.id + ')')}">${esc(s.btn)}</button>` : '';
-          // Открыть деталь заказа — отдельная кнопка (без перекраски шапки)
-          const openParams = esc(JSON.stringify({order_id: o.id}));
-          const openBtn = `<button class="act-btn sq-btn sq-open" data-action="get_order_detail" data-params='${openParams}' data-label="Открыть заказ #${esc(o.id)}">🔍 Открыть</button>`;
-          return `<div class="sq-order">
-            <div class="sq-order-head">
-              <div>
-                <span class="sq-order-num">Заказ #${esc(o.id)}</span>
-                <span class="sq-buyer">· ${esc(o.buyer || '')}</span>
-              </div>
+          // Только qr/upload триггеры блокируют переход. button-триггеры
+          // auto-закрываются самим действием advance (одно подтверждение).
+          // Чек-лист берём per-order: зависит от incoterm (FOB/CIP/DDP).
+          const checklist = o.checklist || s.checklist || [];
+          const doneIds = new Set(o.triggers_done || []);
+          const blockingMissing = checklist.filter(t =>
+            ['qr', 'upload'].includes(t.type) && !doneIds.has(t.id)
+          );
+          const allDone = blockingMissing.length === 0;
+          const triggerDisabled = !allDone;
+          // Inline advance — без переключения чат-сообщений и скролла вниз.
+          const advOnclick = `event.stopPropagation();event.preventDefault();window.sqAdvance&&window.sqAdvance(this, ${o.id}, '${esc(btnAct)}');`;
+          const blockingTotal = checklist.filter(t => ['qr','upload'].includes(t.type)).length;
+          const blockingDone = blockingTotal - blockingMissing.length;
+          const advBtn = s.btn
+            ? `<button class="act-btn sq-btn${triggerDisabled ? ' sq-btn-locked' : ''}" type="button" data-checklist-total="${blockingTotal}" data-done-count="${blockingDone}" ${triggerDisabled ? `disabled title="Загрузите документы и QR-сканы перед переходом"` : ''} onclick="${advOnclick}">${esc(s.btn)}${triggerDisabled ? ` 🔒 ${blockingDone}/${blockingTotal}` : ''}</button>`
+            : '';
+          const openOnclick = `event.stopPropagation();event.preventDefault();window.quickAction&&window.quickAction('get_order_detail',{order_id:${o.id}});`;
+          const openBtn = `<button class="act-btn sq-btn sq-open" type="button" onclick="${openOnclick}">🔍 Открыть</button>`;
+          // Для статуса «Ожидает оплаты» — добавляем кнопку отмены и показываем дедлайн если установлен
+          let cancelBtn = '';
+          let deadlineChip = '';
+          if (s.status === 'pending') {
+            cancelBtn = `<button class="act-btn sq-btn sq-cancel" type="button" onclick="event.stopPropagation();window.sellerCancelPending && window.sellerCancelPending(${o.id}, ${o.subtotal});">🗑 Отменить</button>`;
+            if (o.payment_deadline) {
+              try {
+                const dl = new Date(o.payment_deadline);
+                const hrs = Math.max(0, Math.round((dl - Date.now()) / 36e5));
+                deadlineChip = `<span class="sq-deadline" title="Дедлайн: ${dl.toLocaleString('ru-RU')}">⏰ ${hrs}ч</span>`;
+              } catch(_){}
+            }
+          }
+          // Компактная строка: №, статус, действие, total. Позиции — раскрытие по клику.
+          return `<details class="sq-order">
+            <summary class="sq-order-head">
+              <span class="sq-chev">▸</span>
+              <span class="sq-order-num">Заказ #${esc(o.id)}</span>
+              <span class="sq-status-chip">${esc(s.short_label || s.label.replace(/^[^a-zа-я]+/i, '').split('—')[0].trim())}${deadlineChip}</span>
+              ${o.incoterm ? `<span class="sq-incoterm sq-incoterm-${esc(o.incoterm.toLowerCase())}" title="Базис поставки ${esc(o.incoterm)}">${esc(o.incoterm)}</span>` : ''}
+              <span class="sq-order-items">${o.items.length} поз.</span>
               <span class="sq-order-sub">${fmtMoney(o.subtotal, 'USD')}</span>
+              <span class="sq-order-actions">${advBtn}${cancelBtn}${openBtn}</span>
+            </summary>
+            <div class="sq-order-body">
+              <div class="sq-buyer">Покупатель: ${esc(o.buyer || '—')}</div>
+              ${o.stage_meta && (o.stage_meta.trigger || o.stage_meta.actor || o.stage_meta.sla) ? `<div class="sq-stage-info" style="margin-bottom:10px;">
+                ${o.stage_meta.trigger ? `<div class="sq-stage-row"><span class="sq-stage-tag">⚡ Триггер</span> ${esc(o.stage_meta.trigger)}</div>` : ''}
+                ${o.stage_meta.actor ? `<div class="sq-stage-row"><span class="sq-stage-tag">👤 Вы</span> ${esc(o.stage_meta.actor)}</div>` : ''}
+                ${o.stage_meta.sla ? `<div class="sq-stage-row"><span class="sq-stage-tag">⏱ SLA</span> ${esc(o.stage_meta.sla)}</div>` : ''}
+                ${o.stage_meta.next_actor ? `<div class="sq-stage-row"><span class="sq-stage-tag">▶ Дальше</span> ${esc(o.stage_meta.next_actor)}</div>` : ''}
+              </div>` : ''}
+              ${checklist.length ? `<div class="sq-checklist">
+                <div class="sq-checklist-title">⚡ Триггеры этапа (${doneIds.size}/${checklist.length}):</div>
+                ${checklist.map(t => {
+                  const done = doneIds.has(t.id);
+                  const isAuto = t.type === 'auto';
+                  const icon = ({qr:'📷', upload:'📎', button:'✓', auto:'🤖'})[t.type] || '✓';
+                  const clickCode = `event.stopPropagation();event.preventDefault();window.sqTrigger&&window.sqTrigger(this, ${o.id}, '${esc(s.status)}', '${esc(t.id)}');`;
+                  const cls = `sq-trigger${done ? ' sq-trigger-done' : ''}${isAuto ? ' sq-trigger-auto' : ''}`;
+                  const autoBadge = isAuto && done ? '<span class="sq-trigger-auto-tag">авто</span>' : '';
+                  return `<button class="${cls}" type="button" ${(done || isAuto) ? 'disabled' : `onclick="${clickCode}"`}>
+                    <span class="sq-trigger-mark">${done ? '☑' : '☐'}</span>
+                    <span class="sq-trigger-icon">${icon}</span>
+                    <span class="sq-trigger-label">${esc(t.label)}</span>
+                    ${autoBadge}
+                  </button>`;
+                }).join('')}
+              </div>` : ''}
+              ${items}
             </div>
-            <div class="sq-items">${items}</div>
-            <div class="sq-actions">${btn}${openBtn}</div>
-          </div>`;
+          </details>`;
         }).join('');
-        return `<div class="sq-section">
-          <div class="sq-section-head">
+        // Триггер этапа + требуемые документы + SLA — из ТЗ «Этапы ЛК»
+        const stageInfo = (s.trigger || s.docs?.length || s.sla)
+          ? `<div class="sq-stage-info">
+              ${s.trigger ? `<div class="sq-stage-row"><span class="sq-stage-tag">⚡ Триггер</span> ${esc(s.trigger)}</div>` : ''}
+              ${s.actor ? `<div class="sq-stage-row"><span class="sq-stage-tag">👤 Исполнитель</span> ${esc(s.actor)}</div>` : ''}
+              ${s.docs?.length ? `<div class="sq-stage-row"><span class="sq-stage-tag">📎 Документы</span> ${s.docs.map(esc).join(' · ')}</div>` : ''}
+              ${s.sla ? `<div class="sq-stage-row"><span class="sq-stage-tag">⏱ SLA</span> ${esc(s.sla)}</div>` : ''}
+            </div>`
+          : '';
+        return `<details class="sq-section" open>
+          <summary class="sq-section-head">
+            <span class="sq-chev">▸</span>
             <span class="sq-section-label">${esc(s.label)}</span>
             <span class="sq-section-meta">${s.orders_count} зак. · ${s.items_count} поз. · ${fmtMoney(s.amount, 'USD')}</span>
-          </div>
+          </summary>
+          ${stageInfo}
           ${orders}
-        </div>`;
+        </details>`;
       }).join('');
+      // Архивные секции — отгруженные заказы (без действий, только инфо).
+      const archiveSections = (d.archive_sections || []).map(s => {
+        const rows = (s.orders || []).map(o => `
+          <div class="sq-arc-row">
+            <span class="sq-order-num">Заказ #${esc(o.id)}</span>
+            <span class="sq-status-chip">${esc(s.short_label || '')}</span>
+            ${o.incoterm ? `<span class="sq-incoterm sq-incoterm-${esc(o.incoterm.toLowerCase())}">${esc(o.incoterm)}</span>` : ''}
+            <span class="sq-arc-actor">📍 ${esc(o.current_actor || '')}</span>
+            <span class="sq-order-items">${o.items.length} поз.</span>
+            <span class="sq-order-sub">${fmtMoney(o.subtotal, 'USD')}</span>
+            <button class="act-btn sq-btn sq-open" type="button" onclick="event.stopPropagation();event.preventDefault();window.quickAction&&window.quickAction('track_order',{order_id:${o.id}});">📍 Трекинг</button>
+          </div>`).join('');
+        return `<details class="sq-section sq-archive">
+          <summary class="sq-section-head sq-archive-head">
+            <span class="sq-chev">▸</span>
+            <span class="sq-section-label">${esc(s.label)}</span>
+            <span class="sq-section-meta">${s.orders_count} зак. · ${fmtMoney(s.amount, 'USD')}</span>
+          </summary>
+          <div class="sq-arc-list">${rows}</div>
+        </details>`;
+      }).join('');
+      const archiveBlock = (d.archive_sections && d.archive_sections.length)
+        ? `<div class="sq-archive-wrap">
+            <div class="sq-archive-title">${esc(d.archive_title || '📤 Уже отгружено')}</div>
+            ${archiveSections}
+          </div>`
+        : '';
       return `<div class="card sq-card">
         <div class="sq-head">
-          <div class="card-title">📦 ${esc(d.title || 'Очередь продавца')}</div>
+          <div class="card-title">📦 ${esc(d.title || tr('card.seller_queue'))}</div>
           <div class="sq-total">${d.total_orders} активных заказа(ов)</div>
         </div>
         ${sections || '<div class="sq-empty">Очередь пуста.</div>'}
+        ${archiveBlock}
       </div>`;
     },
     tracking(d) {
@@ -766,10 +1477,10 @@
         `<div class="tk-event"><span class="tk-when">${esc(t.when)}</span><span class="tk-text">${esc(t.text)}</span></div>`
       ).join('') || '<div class="tk-empty">Событий пока нет.</div>';
       const trackingLine = d.tracking_number
-        ? `<div class="tk-tracking">📍 ${esc(d.carrier || 'Перевозчик')} · <span class="tk-track-num">${esc(d.tracking_number)}</span></div>`
+        ? `<div class="tk-tracking">📍 ${esc(d.carrier || tr('common.carrier'))} · <span class="tk-track-num">${esc(d.tracking_number)}</span></div>`
         : '';
       const nextLine = d.next_event
-        ? `<div class="tk-next">🔜 <b>${esc(d.next_actor || 'Дальше')}</b> ${esc(d.next_event)}</div>`
+        ? `<div class="tk-next">🔜 <b>${esc(d.next_actor || tr('common.next'))}</b> ${esc(d.next_event)}</div>`
         : '';
       return `<div class="card tk-card">
         <div class="tk-head">
@@ -782,10 +1493,10 @@
         </div>
         ${nextLine}
         <div class="tk-progress-wrap">
-          <div class="tk-progress"><div class="tk-progress-fill" style="width:${d.progress_pct || 0}%"></div></div>
+          <div class="tk-progress"><div class="tk-progress-fill" style="width:${Math.max(0, Math.min(100, Number(d.progress_pct) || 0))}%"></div></div>
           <div class="tk-progress-meta">
-            <span>${d.current_idx + 1} из ${d.total_stages}</span>
-            <span>ETA: <b>${esc(d.eta_delivery || '—')}</b> · ${d.days_left || 0} дн.</span>
+            <span>${(Number(d.current_idx) || 0) + 1} из ${Number(d.total_stages) || 0}</span>
+            <span>ETA: <b>${esc(d.eta_delivery || '—')}</b> · ${Number(d.days_left) || 0} дн.</span>
           </div>
         </div>
         <div class="tk-stages">${stages}</div>
@@ -799,6 +1510,35 @@
       const clickAttrs = oid
         ? ` data-action="track_order" data-params='${esc(JSON.stringify({order_id: parseInt(String(oid).replace(/\D/g, ''), 10) || oid}))}' role="button" tabindex="0" title="Открыть заказ"`
         : '';
+      // Состав отправки по странам — показываем после выбора способа доставки
+      const ob = d.origin_breakdown || [];
+      const modeLabel = {sea:'🚢 Морем', air:'✈️ Авиа', auto:'🚚 Авто'}[d.shipping_mode] || d.shipping_mode || '';
+      let originBlock = '';
+      if (ob.length >= 1 && d.shipping_mode) {
+        const rows = ob.map(o => `
+          <tr>
+            <td>${o.flag} ${esc(o.name)}<div class="ob-ports">${o.ports.map(esc).join(', ')}</div></td>
+            <td class="ob-num">${o.count}</td>
+            <td class="ob-num">${o.weight_kg.toFixed(1)} кг</td>
+            <td class="ob-num">${fmtMoney(o.cargo, 'USD')}</td>
+            <td class="ob-num">${o.freight > 0 ? '$' + Math.round(o.freight).toLocaleString() : '—'}<div class="ob-days">${o.days ? '~'+o.days+'д' : ''}</div></td>
+          </tr>`).join('');
+        originBlock = `<div class="ob-block">
+          <div class="ob-title">📦 Состав отправки · ${esc(modeLabel)} · ${esc(d.incoterm || '')}</div>
+          <table class="ob-table">
+            <thead><tr><th>Откуда</th><th>Поз.</th><th>Вес</th><th>Cargo</th><th>Фрахт</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          ${ob.length >= 2
+            ? `<div class="ob-hint">⚠️ ${ob.length} отправки = ${ob.length} коносамента. Для FOB придётся забирать ${ob.length === 2 ? 'из обоих портов' : 'из ' + ob.length + ' портов'}.</div>`
+            : '<div class="ob-hint">✓ Единая отправка из одного порта.</div>'}
+        </div>`;
+      }
+      // Кнопка отмены — только для заказов с неоплаченным резервом
+      const orderIdInt = parseInt(String(d.id || d.number).replace(/\D/g, ''), 10) || 0;
+      const cancelBtn = d.can_cancel
+        ? `<button class="act-btn ord-cancel" type="button" title="Удалить неоплаченный заказ" onclick="event.stopPropagation();window.cancelOrderPrompt && window.cancelOrderPrompt(${orderIdInt}, '${esc(d.number || ('ORD-' + d.id))}', ${d.total || 0});">🗑 Отменить</button>`
+        : '';
       return `<div class="card card-clickable"${clickAttrs}>
         <div class="card-row">
           <div class="card-emoji">📦</div>
@@ -810,7 +1550,9 @@
         </div>
         <div class="card-meta">
           <span class="card-chip card-chip-${cls}">${esc(d.status || '')}</span>
+          ${cancelBtn}
         </div>
+        ${originBlock}
       </div>`;
     },
     rfq(d) {
@@ -885,7 +1627,7 @@
         <div class="card-row">
           <div class="card-emoji">📎</div>
           <div class="card-info">
-            <div class="card-title">${esc(d.name || 'Файл')}</div>
+            <div class="card-title">${esc(d.name || tr('card.file'))}</div>
             <div class="card-sub">${esc(d.size || '')}</div>
           </div>
         </div>
@@ -893,10 +1635,61 @@
     },
     table(d) { return renderers.comparison(d); },
 
+    // ── Bar chart: SVG-бары с подписями ──
+    // Раньше «chart» рендерил только KPI-цифры, без визуальных пропорций.
+    // bar_chart рисует горизонтальные бары — заметно нагляднее для
+    // распределений (статусы, месяцы, поставщики).
+    bar_chart(d) {
+      const items = d.items || [];
+      const color = d.color || '#64B5F6';
+      if (!items.length) return '';
+      const maxV = Math.max(1, ...items.map(i => Number(i.value) || 0));
+      const barW = 100;  // % от контейнера
+      const rows = items.map(it => {
+        const v = Number(it.value) || 0;
+        const pct = Math.max(2, Math.round((v / maxV) * barW));
+        return `<div class="bch-row">
+          <div class="bch-label">${esc(it.label || '')}</div>
+          <div class="bch-track">
+            <div class="bch-fill" style="width:${pct}%;background:${esc(color)}"></div>
+          </div>
+          <div class="bch-val">${esc(String(it.value))}</div>
+        </div>`;
+      }).join('');
+      return `<div class="card bch-card">
+        <div class="card-title bch-title">${esc(d.title || '')}</div>
+        <div class="bch-body">${rows}</div>
+      </div>`;
+    },
+
     // ── Spec results: KPIs + detailed table + footer ──
+    // Helper для матрицы выбора 3 mode × 3 incoterm внутри spec_results
+    // не используется напрямую (вызывается через renderShippingMatrix ниже)
+    _shipping_matrix_stub() { return ''; },
+    shipping_options(d) {
+      const rows = (d.rows || []).map(r => {
+        const selectedCls = r.selected ? ' so-row-selected' : '';
+        return `<div class="so-row${selectedCls}" data-action="shipping_apply" data-params='${esc(JSON.stringify({order_id: d.order_id, mode: r.mode, incoterm: r.incoterm}))}' data-label="Применить ${esc(r.mode_label)} ${esc(r.incoterm)}">
+          <div class="so-head">
+            <span class="so-mode">${esc(r.mode_label)}</span>
+            <span class="so-inc">${esc(r.incoterm)}</span>
+            ${r.selected ? '<span class="so-active-tag">текущий</span>' : ''}
+          </div>
+          <div class="so-desc">${esc(r.incoterm_desc)}</div>
+          <div class="so-meta">
+            <span class="so-ship">Доставка: ${fmtMoney(r.shipping, d.currency || 'USD')}${r.days ? ` · ~${r.days}д` : ''}</span>
+            <span class="so-landed">Landed: <b>${fmtMoney(r.landed, d.currency || 'USD')}</b></span>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="card so-card">
+        <div class="card-title">${esc(d.title || tr('card.shipping'))}</div>
+        <div class="so-rows">${rows || '<div class="cat-empty">Нет доступных вариантов доставки</div>'}</div>
+      </div>`;
+    },
     spec_results(d) {
       const stkClass = (s) => ({in_stock:'in', backorder:'back', not_found:'no'})[s] || 'in';
-      const stkLabel = (s) => ({in_stock:'В наличии', backorder:'Backorder', not_found:'—'})[s] || s;
+      const stkLabel = (s) => ({in_stock:tr('stock.in_stock'), backorder:'Backorder', not_found:'—'})[s] || s;
       const condLabel = (c) => {
         if (c === 'oem') return '<span class="spec-cond-oem">OEM</span>';
         if (c === 'analogue') return '<span class="spec-cond-an">Аналог</span>';
@@ -907,20 +1700,70 @@
           return `<tr><td><span class="spec-stk no"><span class="spec-stk-dot"></span>—</span></td>
             <td class="spec-row-num">${idx+1}</td>
             <td colspan="5" class="spec-empty-row" style="text-align:left;">— нет предложений —</td>
-            <td>${esc(it.qty || '')}</td><td></td></tr>`;
+            <td>${esc(it.qty || '')}</td><td></td><td></td><td></td></tr>`;
         }
-        return `<tr>
+        const shipCell = it.ship_cost
+          ? `${it.ship_mode === 'air' ? '✈️' : '🚢'} ${fmtMoney(it.ship_cost, 'USD')}${it.ship_days ? ` · ${it.ship_days}д` : ''}`
+          : '—';
+        // Поставщик: бейдж статуса + рейтинг + кнопка drill-down (если есть альт-офферы)
+        const statusCls = {trusted:'sp-trusted', sandbox:'sp-sandbox', risky:'sp-risky'}[it.supplier_status] || '';
+        const supplierCell = it.supplier_status_badge
+          ? `<span class="sp-badge ${statusCls}" title="Рейтинг ${it.supplier_rating}/100${it.alt_offers > 0 ? ' · клик по строке для сравнения' : ''}">${esc(it.supplier_status_badge)} · ${it.supplier_rating}${it.alt_offers > 0 ? ` <span class="sp-alt">+${it.alt_offers}</span>` : ''}</span>`
+          : '—';
+        // Вся строка кликабельна — раскрывает inline-список поставщиков
+        // прямо в таблице (без перехода в отдельную карточку).
+        const clickable = it.status === 'in_stock' && it.id && (it.alt_suppliers || []).length > 0;
+        const rowAttrs = clickable
+          ? ` class="spec-row-clickable spec-row-toggle" data-oem="${esc(it.id)}" data-row-idx="${idx}" title="Клик — все поставщики этой позиции"`
+          : '';
+        // Детали — отдельная мини-таблица внутри одной table-row, прилипшая
+        // sticky к левому краю видимой области. Width задаём через JS по
+        // wrap.clientWidth, чтобы блок всегда влезал в видимую часть карточки.
+        let detailRow = '';
+        if (clickable) {
+          const suppliers = it.alt_suppliers || [];
+          const supRows = suppliers.map((s, i) => {
+            const statusCls = ({trusted:'sp-trusted',sandbox:'sp-sandbox',risky:'sp-risky'})[s.status] || '';
+            return `<tr class="${s.is_primary ? 'as-row as-primary' : 'as-row'}">
+              <td class="as-rank">${i + 1}</td>
+              <td class="as-label">${esc(s.label)}</td>
+              <td><span class="sp-badge ${statusCls}">${esc(s.status_badge)}</span></td>
+              <td class="as-num">${s.rating}</td>
+              <td class="as-num as-price">${fmtMoney(s.price, s.currency)}</td>
+              <td class="as-cond">${esc(s.condition || '')}</td>
+              <td class="as-num">${s.stock || '—'}</td>
+              <td class="as-wh" title="${esc(s.warehouse || '')}">${esc(s.warehouse || '—')}</td>
+              <td class="as-num as-score">${s.score != null ? s.score : '—'}</td>
+            </tr>`;
+          }).join('');
+          detailRow = `<tr class="spec-detail-row" data-detail-for="${idx}" style="display:none;">
+            <td colspan="10" class="spec-detail-cell">
+              <div class="as-block">
+                <div class="as-title">🔍 ${suppliers.length} поставщик${suppliers.length === 1 ? '' : (suppliers.length < 5 ? 'а' : 'ов')} по OEM <b>${esc(it.id)}</b></div>
+                <table class="as-table">
+                  <thead><tr>
+                    <th class="as-col-rank">#</th><th class="as-col-label">Поставщик</th><th class="as-col-status">Статус</th><th class="as-col-rating">Рейтинг</th><th class="as-col-price">Цена EXW</th><th class="as-col-cond">Состояние</th><th class="as-col-stock">Остаток</th><th class="as-col-wh">Склад</th><th class="as-col-score">Score</th>
+                  </tr></thead>
+                  <tbody>${supRows}</tbody>
+                </table>
+              </div>
+            </td>
+          </tr>`;
+        }
+        return `<tr${rowAttrs}>
           <td><span class="spec-stk ${stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(stkLabel(it.status))}</span></td>
           <td class="spec-row-num">${idx+1}</td>
           <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
           <td><div class="spec-name-cell"><span class="spec-name">${esc(it.name || '')}</span>${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}</div></td>
           <td>${esc(it.brand || '')}</td>
-          <td>${condLabel(it.condition)}</td>
           <td class="spec-price">${fmtMoney(it.price, it.currency || 'USD')}</td>
           <td>${esc(it.qty || '')}</td>
           <td>${esc(it.weight || '')}</td>
-        </tr>`;
+          <td>${supplierCell}</td>
+          <td class="spec-ship">${shipCell}</td>
+        </tr>${detailRow}`;
       }).join('');
+      const detailBlocks = '';
 
       const moreLink = d.more_count
         ? `<div class="spec-more">... ${d.more_count} ещё · <a href="#" onclick="return false;">раскрыть полный список</a></div>`
@@ -941,7 +1784,7 @@
       return `<div class="card spec">
         <div class="spec-head">
           <div class="spec-head-row">
-            <div class="spec-title">${esc(d.title || 'Результаты подбора')}</div>
+            <div class="spec-title">${esc(d.title || tr('card.match_results'))}</div>
             <div class="spec-title-meta">${esc(subParts.join(' · '))}</div>
           </div>
         </div>
@@ -953,16 +1796,18 @@
         <div class="spec-tbl-wrap">
           <table class="spec-tbl">
             <thead><tr>
-              <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Condition</th><th>Price</th><th>Qty</th><th>Weight</th>
+              <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Price</th><th>Qty</th><th>Weight</th><th>Поставщик</th><th>🚚 Доставка${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
+        <div class="spec-details-host">${detailBlocks}</div>
         ${moreLink}
         <div class="spec-foot">
-          <div class="spec-foot-info">${esc(d.foot_info || '')}</div>
+          <div class="spec-foot-info">${esc(d.foot_info || '')}${d.shipping_matrix ? ' · доставка ↓' : ''}</div>
           <div class="spec-foot-total">${d.total != null ? fmtMoney(d.total, d.currency || 'USD') : ''}</div>
         </div>
+        ${renderShippingMatrix(d)}
       </div>`;
     },
 
@@ -986,24 +1831,197 @@
       return `<div class="card stop">${rows}</div>`;
     },
   };
+  // Экспорт для inline DOM-апдейтов (например после sqAdvance —
+  // перерисовать карточку pipeline'а на месте без переотрисовки чата).
+  window.__cardRenderers = renderers;
 
-  function renderCards(cards) {
+  // S3 — whitelist допустимых типов карточек. Источник истины: ключи `renderers`.
+  // Любой неизвестный тип (включая случай когда AI/бэкенд вернул мусор) —
+  // отбрасываем тихо, не дампим в DOM. Раньше fallback renderUnknownCard
+  // выводил произвольное содержимое — потенциальный XSS-вектор и
+  // дезориентирующий UX.
+  const ALLOWED_CARD_TYPES = new Set(Object.keys(renderers));
+  // Типы, которые ТОЛЬКО фронтенд имеет право конструировать (raw HTML и пр.).
+  // renderCards() блокирует их при `from_server: true` пометке — это
+  // защита от того, что backend случайно начнёт продьюсить XSS-векторы.
+  const FRONTEND_ONLY_TYPES = new Set(['raw_html']);
+
+  function renderCards(cards, opts) {
     if (!cards || !cards.length) return '';
+    const fromServer = !!(opts && opts.fromServer);
     return '<div class="cards">' + cards.map(c => {
-      const r = renderers[c.type];
-      if (r) {
-        try { return r(c.data || {}); }
-        catch(err) {
-          console.error('Card renderer crashed for', c.type, err, c.data);
-          return renderUnknownCard(c.type, c.data);
-        }
+      if (!c || !ALLOWED_CARD_TYPES.has(c.type)) {
+        console.warn('renderCards: type not in whitelist —', c && c.type);
+        return '';
       }
-      console.warn('No renderer for card type:', c.type, '— using fallback');
-      return renderUnknownCard(c.type, c.data || {});
+      if (fromServer && FRONTEND_ONLY_TYPES.has(c.type)) {
+        console.error('renderCards: SECURITY — backend tried to use frontend-only type:', c.type);
+        return '';
+      }
+      try { return renderers[c.type](c.data || {}); }
+      catch(err) {
+        console.error('Card renderer crashed for', c.type, err, c.data);
+        return '';
+      }
     }).join('') + '</div>';
   }
 
   // Fallback renderer for unknown/broken card types — dumps key-value pairs
+  // Виджет матрицы 3 mode × 3 incoterm внутри карточки spec_results.
+  // По клику на вариант формируется quick_order с выбранными params.
+  // Форма ввода адреса доставки и порта прибытия для CIP/DDP.
+  // Без этих данных нельзя корректно посчитать пошлину/НДС/last-mile.
+  function renderDeliveryForm(d) {
+    if (!d.product_ids && !d.orig_articles) return '';
+    // Передаём ОРИГИНАЛЬНЫЕ OEM-артикулы (не Part IDs), иначе повторный
+    // search_parts не найдёт позиции — ID не равны OEM.
+    const articlesJson = esc(JSON.stringify(d.orig_articles || d.product_ids.map(String)));
+    const qtyJson = d.product_quantities ? esc(JSON.stringify(d.product_quantities)) : '';
+    // Популярные порты прибытия. Страна выводится автоматом из префикса
+    // ISO-кода порта (RUMOW → RU, KZALA → KZ).
+    const arrivalPorts = [
+      'RUMOW — Москва (auto/air)',
+      'RULED — Санкт-Петербург (sea/auto)',
+      'RUNVS — Новосибирск (auto/air)',
+      'RUEKB — Екатеринбург (auto/air)',
+      'RUKZN — Казань (auto)',
+      'RUVVO — Владивосток (sea)',
+      'RUKGD — Калининград (sea)',
+      'KZALA — Алматы (auto/air)',
+      'KZAST — Астана (auto/air)',
+      'BYMSQ — Минск (auto)',
+      'AMEVN — Ереван (auto/air)',
+    ];
+    const portOpts = arrivalPorts.map(p => `<option value="${esc(p)}"/>`).join('');
+    const curPort = d.arrival_port ? `value="${esc(d.arrival_port)}"` : '';
+    const curAddr = d.delivery_address ? esc(d.delivery_address) : '';
+    return `<div class="df-block" data-articles='${articlesJson}' ${qtyJson ? `data-qty='${qtyJson}'` : ''}>
+      <div class="df-title">📍 Куда доставить?</div>
+      <div class="df-hint">FOB (самовывоз из порта поставщика) уже посчитан — без доплат. Для CIP укажите свой порт прибытия, для DDP — ещё и адрес до двери.</div>
+      <div class="df-row">
+        <label class="df-lbl">Порт прибытия <span class="df-opt">(для CIP/DDP)</span></label>
+        <input class="df-input df-port" type="text" list="df-port-list" placeholder="Напр.: RUMOW — Москва" ${curPort} />
+        <datalist id="df-port-list">${portOpts}</datalist>
+      </div>
+      <div class="df-row">
+        <label class="df-lbl">Полный адрес доставки <span class="df-opt">(только для DDP)</span></label>
+        <textarea class="df-input df-addr" rows="2" placeholder="Напр.: 117485, Москва, ул. Профсоюзная 84, корп. 5">${curAddr}</textarea>
+      </div>
+      <button class="df-submit act-btn" type="button" onclick="window.calcShipping && window.calcShipping(this)">
+        🧮 Пересчитать CIP / DDP
+      </button>
+    </div>`;
+  }
+
+  function renderShippingMatrix(d) {
+    if (!d.shipping_matrix || !d.product_ids) return '';
+    const dest = d.dest_country || '';
+    const descs = d.incoterm_descs || {};
+    const incoterms = ['FOB', 'CIP', 'DDP'];
+    const incShort = {
+      FOB: 'самовывоз из порта',
+      CIP: 'до вашего порта',
+      DDP: 'до двери, all-in',
+    };
+    const headerCells = incoterms.map(inc =>
+      `<th title="${esc(descs[inc] || '')}">
+        <div class="sm-inc-name">${inc}</div>
+        <div class="sm-inc-sub">${esc(incShort[inc] || '')}</div>
+      </th>`
+    ).join('');
+    const rows = (d.shipping_matrix || []).map(m => {
+      const cells = m.options.map(opt => {
+        if (opt.available === false) {
+          const hint = opt.incoterm === 'CIP'
+            ? 'укажите порт прибытия'
+            : (opt.incoterm === 'DDP'
+                ? (d.cip_available ? 'укажите адрес' : 'укажите порт и адрес')
+                : 'недоступно');
+          return `<td class="sm-cell sm-cell-disabled" title="${esc(hint)}">
+            <div class="sm-landed sm-na-mark">—</div>
+            <div class="sm-ship">${esc(hint)}</div>
+          </td>`;
+        }
+        const params = {
+          product_ids: d.product_ids,
+          mode: m.mode, incoterm: opt.incoterm,
+        };
+        if (dest) params.dest_country = dest;
+        if (d.delivery_address) params.delivery_address = d.delivery_address;
+        if (d.arrival_port) params.arrival_port = d.arrival_port;
+        if (d.product_quantities) params.product_quantities = d.product_quantities;
+        const shipBadge = opt.incoterm === 'FOB'
+          ? '<div class="sm-ship">самовывоз · $0</div>'
+          : `<div class="sm-ship">+${fmtMoney(opt.ship, 'USD')} ship</div>`;
+        return `<td class="sm-cell" data-action="quick_order" data-params='${esc(JSON.stringify(params))}' data-label="Купить ${esc(m.mode_label)} ${opt.incoterm}">
+          <div class="sm-landed">${fmtMoney(opt.landed, d.currency || 'USD')}</div>
+          ${shipBadge}
+        </td>`;
+      }).join('');
+      return `<tr class="sm-row">
+        <td class="sm-mode">${esc(m.mode_label)}<div class="sm-days">${m.days ? `~${m.days}д` : ''}</div></td>
+        ${cells}
+      </tr>`;
+    }).join('');
+    const originsBadge = (d.origins || []).map(o =>
+      `<span class="sm-origin">${o.flag} ${esc(o.name)}${o.count > 1 ? ` × ${o.count}` : ''}</span>`
+    ).join('');
+    const arrow = dest ? ` → ${esc(dest)}` : ' → ?';
+    const ob = d.origin_breakdown || [];
+    const expandable = ob.length >= 1;
+    const routeLine = originsBadge
+      ? `<div class="sm-route${expandable ? ' sm-route-expandable' : ''}"${expandable ? ` onclick="this.classList.toggle('sm-route-open'); const t=this.nextElementSibling; if(t&&t.classList.contains('ob-block')) t.style.display = t.style.display==='block'?'none':'block';"` : ''}>${expandable ? '<span class="sm-chev">▸</span> ' : ''}Откуда: ${originsBadge}${arrow}${d.filter_origin ? ` <span class="sm-filter-badge">фильтр: только ${esc(d.filter_origin)}</span>` : ''}</div>`
+      : '';
+    // Разворачиваемая таблица по странам — скрыта до клика на "Откуда".
+    // Каждая страна — отдельный <details>, чтобы можно было раскрыть
+    // конкретные позиции и оценить риски (что именно едет из Китая и т.п.).
+    let originTable = '';
+    if (expandable) {
+      const blocks = ob.map(o => {
+        const itemsList = (o.items || []).map(it => `
+          <li><span class="ob-it-oem">${esc(it.oem)}</span>${it.title ? ` · <span class="ob-it-title">${esc(it.title)}</span>` : ''}<span class="ob-it-meta">${it.weight_kg ? ` · ${it.weight_kg.toFixed(1)}кг` : ''} · ${fmtMoney(it.cargo, 'USD')}</span></li>`).join('');
+        return `<details class="ob-country">
+          <summary>
+            <span class="ob-c-flag">${o.flag}</span>
+            <span class="ob-c-name">${esc(o.name)}</span>
+            <span class="ob-c-ports">${o.ports.map(esc).join(', ')}</span>
+            <span class="ob-c-stat"><b>${o.count}</b> поз.</span>
+            <span class="ob-c-stat">${o.weight_kg.toFixed(1)} кг</span>
+            <span class="ob-c-stat">${fmtMoney(o.cargo, 'USD')}</span>
+            <span class="ob-c-stat">${o.freight_sea > 0 ? '$' + Math.round(o.freight_sea).toLocaleString() : '—'} sea${o.days_sea ? ` · ~${o.days_sea}д` : ''}</span>
+          </summary>
+          ${itemsList ? `<ul class="ob-items">${itemsList}</ul>` : ''}
+        </details>`;
+      }).join('');
+      originTable = `<div class="ob-block" style="display:none;">
+        ${blocks}
+        ${ob.length >= 2 && !d.filter_origin
+          ? '<div class="ob-hint">💡 Несколько origin = несколько коносаментов. Клик по стране — раскрыть позиции для оценки рисков.</div>'
+          : '<div class="ob-hint">💡 Клик по стране — раскрыть позиции для оценки рисков.</div>'}
+      </div>`;
+    }
+    const title = dest
+      ? `🚚 Выберите способ и базис${arrow}`
+      : '🚚 Выберите базис (FOB — самовывоз без доплат)';
+    const form = (!d.cip_available || !d.delivery_address) ? renderDeliveryForm(d) : '';
+    return `<div class="sm-block">
+      <div class="sm-title">${title}</div>
+      ${routeLine}
+      ${originTable}
+      <table class="sm-table">
+        <thead><tr><th>Способ / срок</th>${headerCells}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="sm-legend">
+        <div class="sm-legend-row"><b>FOB</b> — Free On Board: ${esc(descs.FOB || '')}</div>
+        <div class="sm-legend-row"><b>CIP</b> — Carriage & Insurance Paid: ${esc(descs.CIP || '')}</div>
+        <div class="sm-legend-row"><b>DDP</b> — Delivered Duty Paid: ${esc(descs.DDP || '')}</div>
+      </div>
+      <div class="sm-hint">Клик по доступной ячейке = создать заказ с выбранным базисом.</div>
+      ${form}
+    </div>`;
+  }
+
   function renderUnknownCard(type, data) {
     const rows = Object.entries(data || {})
       .filter(([k, v]) => v != null && typeof v !== 'object')
@@ -1037,25 +2055,31 @@
   }
 
   function authorLabel(role) {
-    if (role === 'user') return state.config ? state.config.user_name : 'Вы';
-    if (role === 'action') return 'Действие';
+    if (role === 'user') return state.config ? state.config.user_name : tr('common.you');
+    if (role === 'action') return tr('common.action_done');
     return 'Consolidator';
   }
 
   // ══════════════════════════════════════════════════════════
   // Working indicator
+  // Лейблы — i18n-ключи; messages() резолвит их в массивы строк под
+  // текущим языком на каждом запросе (язык мог поменяться).
   // ══════════════════════════════════════════════════════════
-  const WORKING_MESSAGES = {
-    search: ['Ищу в каталоге...', 'Подбираю варианты...', 'Проверяю наличие...', 'Сравниваю цены...'],
-    rfq: ['Готовлю запрос...', 'Уведомляю поставщиков...', 'Создаю карточку RFQ...'],
-    orders: ['Загружаю заказы...', 'Сортирую по дате...', 'Проверяю статусы...'],
-    shipment: ['Запрашиваю трекинг...', 'Уточняю местоположение...', 'Считаю ETA...'],
-    budget: ['Считаю расходы...', 'Группирую по статусам...', 'Готовлю отчёт...'],
-    analytics: ['Собираю метрики...', 'Анализирую данные...', 'Формирую сводку...'],
-    claim: ['Оформляю рекламацию...', 'Уведомляю поддержку...'],
-    sla: ['Проверяю SLA...', 'Считаю нарушения...'],
-    suppliers: ['Загружаю поставщиков...', 'Считаю рейтинги...'],
-    default: ['Думаю...', 'Анализирую запрос...', 'Готовлю ответ...', 'Подбираю информацию...'],
+  function workingMessages(category) {
+    const cat = WORKING_KEYS[category] ? category : 'default';
+    return WORKING_KEYS[cat].map(k => tr(k));
+  }
+  const WORKING_KEYS = {
+    search:    ['working.search.0',    'working.search.1',    'working.search.2',    'working.search.3'],
+    rfq:       ['working.rfq.0',       'working.rfq.1',       'working.rfq.2'],
+    orders:    ['working.orders.0',    'working.orders.1',    'working.orders.2'],
+    shipment:  ['working.shipment.0',  'working.shipment.1',  'working.shipment.2'],
+    budget:    ['working.budget.0',    'working.budget.1',    'working.budget.2'],
+    analytics: ['working.analytics.0', 'working.analytics.1', 'working.analytics.2'],
+    claim:     ['working.claim.0',     'working.claim.1'],
+    sla:       ['working.sla.0',       'working.sla.1'],
+    suppliers: ['working.suppliers.0', 'working.suppliers.1'],
+    default:   ['working.default.0',   'working.default.1',   'working.default.2', 'working.default.3'],
   };
 
   function pickIntent(text) {
@@ -1074,22 +2098,36 @@
 
   let workingTimer = null;
 
-  function addTyping(intentHint) {
+  function addTyping(intentHint, minimal=false) {
     showConv();
     const intent = intentHint || 'default';
-    const messages = WORKING_MESSAGES[intent] || WORKING_MESSAGES.default;
+    const messages = workingMessages(intent);
     const wrap = document.createElement('div');
     wrap.className = 'msg';
     wrap.id = 'typingMsg';
-    wrap.innerHTML = `${avatar('assistant')}
-      <div class="msg-body">
-        <div class="working">
-          <div class="working-logo">${STAR_SVG_BLACK}</div>
-          <span class="working-text" id="workingText">${esc(messages[0])}</span>
-        </div>
-      </div>`;
+    // Минимальный режим (для FAST_ACTIONS): только три точки без вертящейся
+    // звёздочки и без подсказки «ищу позиции в каталоге…». Раньше fast-actions
+    // вообще не показывали индикатор, и при дольше 200-300мс юзер думал
+    // «не работает».
+    if (minimal) {
+      wrap.innerHTML = `${avatar('assistant')}
+        <div class="msg-body">
+          <div class="working working-min">
+            <span class="working-dots"><span></span><span></span><span></span></span>
+          </div>
+        </div>`;
+    } else {
+      wrap.innerHTML = `${avatar('assistant')}
+        <div class="msg-body">
+          <div class="working">
+            <div class="working-logo">${STAR_SVG_BLACK}</div>
+            <span class="working-text" id="workingText">${esc(messages[0])}</span>
+          </div>
+        </div>`;
+    }
     $('streamInner').appendChild(wrap);
     scrollBottom();
+    if (minimal) return;  // dots анимируются через CSS, без интервала
 
     let idx = 0;
     if (workingTimer) clearInterval(workingTimer);
@@ -1148,12 +2186,21 @@
       cEl.textContent = content || '';
     }
     wrap.querySelector('.msg-refs').innerHTML = renderContextRefs(contextRefs);
-    wrap.querySelector('.msg-cards').innerHTML = renderCards(cards);
+    wrap.querySelector('.msg-cards').innerHTML = renderCards(cards, {fromServer: true});
     wrap.querySelector('.msg-actions').innerHTML = renderActions(actions);
     wrap.querySelector('.msg-ctx-actions').innerHTML = renderContextualActions(contextualActions);
     wrap.querySelector('.msg-suggestions').innerHTML = renderSuggestions(suggestions);
     $('streamInner').appendChild(wrap);
+    // Двухфазный scroll: сначала простой scrollTop (мгновенно),
+    // потом scrollIntoView с smooth — на случай если карточки/изображения
+    // вытолкнули контент ниже. Раньше скролл срабатывал ДО рендера
+    // тяжёлых карточек и юзер не видел новый ответ ("долго грузится").
     scrollBottom();
+    requestAnimationFrame(() => {
+      try {
+        wrap.scrollIntoView({ block: "end", behavior: "smooth" });
+      } catch (e) { /* старые браузеры — fallback на scrollBottom */ }
+    });
     return wrap;
   }
 
@@ -1184,6 +2231,27 @@
     return html;
   }
 
+  // Раскрытие списка поставщиков inline — detail-row внутри spec-таблицы.
+  document.addEventListener('click', (e) => {
+    const toggleRow = e.target.closest('tr.spec-row-toggle');
+    if (!toggleRow) return;
+    if (e.target.closest('.sp-compare, .act-btn, a[href], button')) return;
+    const idx = toggleRow.dataset.rowIdx;
+    const tbody = toggleRow.parentElement;
+    const detail = tbody.querySelector(`tr.spec-detail-row[data-detail-for="${idx}"]`);
+    if (!detail) return;
+    const open = detail.style.display === 'table-row';
+    detail.style.display = open ? 'none' : 'table-row';
+    toggleRow.classList.toggle('spec-row-open', !open);
+    if (!open) {
+      const wrap = toggleRow.closest('.spec-tbl-wrap');
+      const block = detail.querySelector('.as-block');
+      if (wrap && block) block.style.width = wrap.clientWidth + 'px';
+    }
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
   // Делегируем клик по clickable card → 1) data-href навигация, 2) data-action quickAction
   document.addEventListener('click', (e) => {
     // 1. Чистая навигация (RFQ карточки и т.п.)
@@ -1192,8 +2260,8 @@
       window.location.href = navCard.dataset.href;
       return;
     }
-    // 2. Action-карточки (order → track_order и т.п.)
-    const target = e.target.closest('.entity-link, .card-clickable[data-action]');
+    // 2. Action-карточки (order → track_order, KPI-ячейки, sidebar pills и т.п.)
+    const target = e.target.closest('.entity-link, .card-clickable[data-action], .kpi-cell-clickable[data-action], .side-history-btn[data-action]');
     if (!target) return;
     const action = target.dataset.action;
     if (!action) return;
@@ -1213,16 +2281,452 @@
 
   function renderSuggestions(suggestions) {
     if (!suggestions || !suggestions.length) return '';
-    const chips = suggestions.map(s =>
-      `<button class="sg-chip" type="button" onclick="window.heroQuick && window.heroQuick(${JSON.stringify(s).replace(/"/g, '&quot;')})">${esc(s)}</button>`
-    ).join('');
+    // Поддерживаем два формата:
+    //   1. String  → text-chip (отправляется как сообщение → /chat/ → Claude).
+    //                Для случаев, где контекст неоднозначен (свободный follow-up).
+    //   2. {label, action, params} → action-chip (прямой /action/, без LLM).
+    //                Для случаев под карточкой сущности — контекст однозначен,
+    //                ответ детерминирован.
+    const chips = suggestions.map(s => {
+      if (s && typeof s === 'object' && s.action) {
+        const paramsJson = JSON.stringify(s.params || {});
+        return `<button class="sg-chip sg-chip-action" type="button"
+          data-action="${esc(s.action)}"
+          data-params='${esc(paramsJson)}'>${esc(s.label || s.action)}</button>`;
+      }
+      return `<button class="sg-chip" type="button" data-text="${esc(s)}">${esc(s)}</button>`;
+    }).join('');
     return `<div class="sg-row">
       <span class="sg-label">💡 Также можете:</span>
       ${chips}
     </div>`;
   }
+  // ── Quote form (qf-card): live-total + submit ────────────────
+  function _qfRecalc(card) {
+    let total = 0;
+    let cnt = 0;
+    card.querySelectorAll('.qf-row').forEach(row => {
+      const inp = row.querySelector('.qf-price-input');
+      if (!inp) return;
+      const qty = Number(inp.dataset.qty || 0);
+      const price = Number(inp.value || 0);
+      const lineTotal = qty * price;
+      cnt += 1;
+      total += lineTotal;
+      const tdTotal = row.querySelector('[data-line-total]');
+      if (tdTotal) tdTotal.textContent = lineTotal.toFixed(2);
+    });
+    const totalEl = card.querySelector('[data-total]');
+    if (totalEl) totalEl.textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const sCount = card.querySelector('[data-submit-count]');
+    if (sCount) sCount.textContent = cnt;
+    const sTotal = card.querySelector('[data-submit-total]');
+    if (sTotal) sTotal.textContent = '$' + total.toLocaleString('en-US', {maximumFractionDigits: 0});
+  }
+  document.addEventListener('input', (e) => {
+    const inp = e.target && e.target.closest && e.target.closest('.qf-price-input');
+    if (!inp) return;
+    const card = inp.closest('.qf-card');
+    if (card) _qfRecalc(card);
+  });
+  document.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest && e.target.closest('.qf-submit');
+    if (!btn) return;
+    e.preventDefault();
+    const card = btn.closest('.qf-card');
+    if (!card) return;
+    if (card.dataset._submitting === '1') return;
+    card.dataset._submitting = '1';
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    const params = {
+      rfq_id:           card.dataset.rfqId,
+      confirmed:        true,
+      parent_quote_id:  card.dataset.parentQuoteId || '',
+      direction:        card.dataset.direction || 'seller_to_buyer',
+    };
+    card.querySelectorAll('.qf-price-input').forEach(inp => {
+      params[inp.name] = inp.value;
+    });
+    card.querySelectorAll('.qf-aux-input, .qf-aux-textarea').forEach(inp => {
+      params[inp.name] = inp.value;
+    });
+    if (typeof quickAction === 'function') quickAction('submit_quote', params);
+  });
+
+  // Делегированный обработчик copy-кнопок (invoice card)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('[data-copy]');
+    if (!btn) return;
+    e.preventDefault();
+    const txt = btn.dataset.copy || '';
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(txt).then(() => {
+        if (window.toast) window.toast('Скопировано', 1500);
+      }).catch(() => {
+        if (window.toast) window.toast('Не удалось скопировать', 2000);
+      });
+    }
+  });
+
+  // Делегированный обработчик для sg-chip:
+  //   - data-action → прямой quickAction (без /chat/, без Claude)
+  //   - data-text   → heroQuick (через инпут → /chat/ → fast_path или Claude)
+  document.addEventListener('click', (e) => {
+    const chip = e.target.closest && e.target.closest('.sg-chip');
+    if (!chip) return;
+    e.preventDefault();
+    if (chip.dataset.action) {
+      let params = {};
+      try { params = JSON.parse(chip.dataset.params || '{}'); } catch(_){}
+      params._label = (chip.textContent || '').trim().slice(0, 80);
+      if (typeof quickAction === 'function') quickAction(chip.dataset.action, params);
+      return;
+    }
+    const txt = chip.dataset.text || '';
+    if (window.heroQuick) window.heroQuick(txt);
+  });
 
   // Положить текст в input при клике на chip
+  // Лёгкий toast в стиле приложения — мини-уведомление снизу-справа.
+  window.toast = (text, ttl=2400) => {
+    let host = document.getElementById('app-toast-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'app-toast-host';
+      document.body.appendChild(host);
+    }
+    const el = document.createElement('div');
+    el.className = 'app-toast';
+    el.textContent = text;
+    host.appendChild(el);
+    setTimeout(() => el.classList.add('app-toast-show'), 10);
+    setTimeout(() => {
+      el.classList.remove('app-toast-show');
+      setTimeout(() => el.remove(), 200);
+    }, ttl);
+  };
+
+  // Кастомный confirm-модал в стиле приложения — Promise<bool>.
+  // Заменяет браузерный confirm() который вылазит у самой верхней
+  // адресной строки и выглядит чужеродно.
+  window.appConfirm = (opts) => {
+    const {title=tr('card.confirm_action'), message='', danger=false,
+           okLabel=tr('common.confirm'), cancelLabel=tr('common.cancel')} = (opts || {});
+    return new Promise((resolve) => {
+      const back = document.createElement('div');
+      back.className = 'app-confirm-back';
+      back.innerHTML =
+        '<div class="app-confirm">'
+        + '<div class="app-confirm-title">' + esc(title) + '</div>'
+        + '<div class="app-confirm-msg">' + esc(message).replace(/\n/g,'<br>') + '</div>'
+        + '<div class="app-confirm-actions">'
+        +   '<button class="app-confirm-cancel">' + esc(cancelLabel) + '</button>'
+        +   '<button class="app-confirm-ok' + (danger ? ' app-confirm-danger' : '') + '">' + esc(okLabel) + '</button>'
+        + '</div></div>';
+      document.body.appendChild(back);
+      const close = (v) => { back.remove(); resolve(v); };
+      back.querySelector('.app-confirm-cancel').addEventListener('click', () => close(false));
+      back.querySelector('.app-confirm-ok').addEventListener('click', () => close(true));
+      back.addEventListener('click', (e) => { if (e.target === back) close(false); });
+      const esc_handler = (e) => {
+        if (e.key === 'Escape') { document.removeEventListener('keydown', esc_handler); close(false); }
+      };
+      document.addEventListener('keydown', esc_handler);
+      setTimeout(() => back.querySelector('.app-confirm-ok')?.focus(), 30);
+    });
+  };
+
+  window.calcShipping = (btn) => {
+    const block = btn.closest('.df-block');
+    if (!block) return;
+    const port = (block.querySelector('.df-port')?.value || '').trim();
+    const addr = (block.querySelector('.df-addr')?.value || '').trim();
+    if (!port) {
+      window.toast && window.toast('⚠️ Укажите порт прибытия для расчёта CIP/DDP', 3000);
+      return;
+    }
+    // Страна выводится из префикса порта: "RUMOW — Москва" → "RU".
+    const head = port.split(/\s+/)[0] || '';
+    const country = (head.length >= 2 && /^[A-Za-z]{2}/.test(head)) ? head.slice(0,2).toUpperCase() : '';
+    let articles = []; let qty = null;
+    try { articles = JSON.parse(block.dataset.articles || '[]'); } catch(e){}
+    try { qty = block.dataset.qty ? JSON.parse(block.dataset.qty) : null; } catch(e){}
+    const params = {
+      articles: articles,
+      dest_country: country,
+      delivery_address: addr,
+      arrival_port: port,
+    };
+    if (qty) params.quantities = qty;
+    btn.disabled = true; btn.textContent = '⏳ Считаем…';
+    quickAction('search_parts', params);
+  };
+
+  // Inline-выполнение триггера: без новых сообщений в чате и скролла.
+  // Кнопка в чек-листе → отмечает себя «done», апдейтит счётчик и
+  // разблокирует «Подтвердить», если все триггеры закрыты.
+  window.sqTrigger = async (btn, orderId, status, triggerId) => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.dataset._busy = '1';
+    try {
+      const r = await fetch('/api/assistant/action/', {
+        method:'POST', credentials:'same-origin',
+        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+        body: JSON.stringify({action:'complete_trigger',
+          params:{order_id: orderId, status, trigger_id: triggerId}}),
+      });
+      const j = await r.json();
+      if (!r.ok || j.error) {
+        btn.disabled = false; delete btn.dataset._busy;
+        window.toast && window.toast('❌ ' + (j.error || tr('common.error')), 3000);
+        return;
+      }
+      // Помечаем триггер как выполненный
+      btn.classList.add('sq-trigger-done');
+      const mark = btn.querySelector('.sq-trigger-mark');
+      if (mark) mark.textContent = '☑';
+      // Считаем сколько закрыто в этом ордере и апдейтим advance-кнопку
+      const orderRow = btn.closest('.sq-order');
+      const advBtn = orderRow?.querySelector('.sq-btn:not(.sq-open):not(.sq-cancel)');
+      const total = parseInt(advBtn?.dataset.checklistTotal || '0', 10);
+      const done = orderRow.querySelectorAll('.sq-trigger.sq-trigger-done').length;
+      if (advBtn) {
+        advBtn.dataset.doneCount = done;
+        if (done >= total) {
+          advBtn.disabled = false;
+          advBtn.classList.remove('sq-btn-locked');
+          // Убрать "🔒 X/Y" — оставить только базовый label.
+          advBtn.textContent = advBtn.textContent.replace(/\s*🔒\s*\d+\/\d+\s*/, '');
+        } else {
+          advBtn.textContent = advBtn.textContent.replace(/🔒\s*\d+\/\d+/, `🔒 ${done}/${total}`);
+        }
+      }
+      // Заголовок чек-листа: обновить N/M
+      const title = orderRow.querySelector('.sq-checklist-title');
+      if (title && total) title.textContent = `⚡ Триггеры этапа (${done}/${total}):`;
+    } catch(e) {
+      btn.disabled = false; delete btn.dataset._busy;
+      window.toast && window.toast('❌ Сетевая ошибка', 3000);
+    }
+  };
+
+  // Inline-переход на следующий статус. После успешного перехода
+  // перерисовываем всю .sq-card свежими данными — заказ переезжает
+  // в следующую секцию визуально без скролла и без нового сообщения в чате.
+  window.sqAdvance = async (btn, orderId, action) => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const origText = btn.textContent;
+    btn.textContent = '⏳ ...';
+    const card = btn.closest('.sq-card');
+    const scrollY = window.scrollY;
+    const streamScroll = document.getElementById('stream')?.scrollTop;
+    try {
+      const r = await fetch('/api/assistant/action/', {
+        method:'POST', credentials:'same-origin',
+        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+        body: JSON.stringify({action, params:{order_id: orderId}}),
+      });
+      const j = await r.json();
+      if (!r.ok || j.error) {
+        btn.disabled = false; btn.textContent = origText;
+        window.toast && window.toast('❌ ' + (j.error || (j.text || '').slice(0, 100) || 'Ошибка'), 4000);
+        return;
+      }
+      const status = (j.text || '').match(/«([^»]+)»/)?.[1] || 'следующий этап';
+      // Получаем свежую версию pipeline и перерисовываем КОНКРЕТНУЮ карточку
+      const r2 = await fetch('/api/assistant/action/', {
+        method:'POST', credentials:'same-origin',
+        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+        body: JSON.stringify({action:'seller_pipeline', params:{}}),
+      });
+      const j2 = await r2.json();
+      const cardData = (j2.cards || []).find(c => c.type === 'seller_queue');
+      if (cardData && card && typeof window.renderSellerQueueInto === 'function') {
+        window.renderSellerQueueInto(card, cardData.data);
+      } else if (cardData && card) {
+        // Fallback — простой DOM-replace через renderers (если экспортирован)
+        const renderers = window.__cardRenderers;
+        if (renderers && renderers.seller_queue) {
+          const newHtml = renderers.seller_queue(cardData.data);
+          const wrap = document.createElement('div');
+          wrap.innerHTML = newHtml;
+          card.replaceWith(wrap.firstElementChild);
+        }
+      }
+      // Возвращаем скролл (renderers могли изменить высоту)
+      if (streamScroll != null) document.getElementById('stream').scrollTop = streamScroll;
+      else window.scrollTo(0, scrollY);
+      window.toast && window.toast(`✓ Заказ #${orderId} → ${status}`, 2500);
+    } catch(e) {
+      btn.disabled = false; btn.textContent = origText;
+      window.toast && window.toast('❌ Сетевая ошибка', 3000);
+    }
+  };
+
+  // Отмена draft-карточки (кнопка «Отмена» внутри dr-card).
+  // Заменяет всю карточку на короткую заметку «↩︎ Действие отменено».
+  // Текст берётся из i18n, поэтому работает на всех языках.
+  window.cancelDraftCard = (btnEl) => {
+    if (!btnEl) return;
+    const card = btnEl.closest('.dr-card');
+    if (!card) return;
+    const note = document.createElement('div');
+    note.className = 'dr-cancelled-note';
+    note.textContent = tr('common.cancelled_note');
+    card.replaceWith(note);
+  };
+
+  // Продавец отменяет неоплаченный заказ (если резерв не пришёл)
+  window.sellerCancelPending = async (orderId, total) => {
+    const ok = await window.appConfirm({
+      title: `Отменить заказ #${orderId}?`,
+      message: `Заказ на $${Number(total).toLocaleString('en-US')} будет удалён. Покупатель получит уведомление об отмене. Это используют если резерв не был оплачен в срок.`,
+      danger: true,
+      okLabel: '🗑 Отменить заказ',
+      cancelLabel: tr('common.do_not_cancel'),
+    });
+    if (!ok) return;
+    try {
+      const r = await fetch('/api/assistant/action/', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+        credentials:'same-origin',
+        body: JSON.stringify({action:'seller_cancel_pending', params:{order_id: orderId}}),
+      });
+      const j = await r.json();
+      if (!r.ok || j.error) {
+        window.toast && window.toast('❌ Ошибка: ' + (j.error || r.status), 3000);
+        return;
+      }
+      // Убираем строку заказа из DOM
+      document.querySelectorAll('.sq-order').forEach(det => {
+        const num = det.querySelector('.sq-order-num')?.textContent || '';
+        if (num.includes('#' + orderId)) {
+          det.style.transition = 'opacity 0.25s, transform 0.25s';
+          det.style.opacity = '0';
+          det.style.transform = 'scale(0.96)';
+          setTimeout(() => det.remove(), 250);
+        }
+      });
+      window.toast && window.toast(`✓ Заказ #${orderId} отменён`, 2000);
+    } catch(e) {
+      window.toast && window.toast('❌ Сетевая ошибка', 3000);
+    }
+  };
+
+  // Подтверждение и отмена неоплаченного заказа
+  window.cancelOrderPrompt = async (orderId, number, total) => {
+    const ok = await window.appConfirm({
+      title: `Отменить заказ ${number}?`,
+      message: `Заказ на $${Number(total).toLocaleString('en-US')} будет удалён. Это безопасно — резерв ещё не списан с депозита.`,
+      danger: true,
+      okLabel: '🗑 Отменить заказ',
+      cancelLabel: tr('common.do_not_cancel'),
+    });
+    if (!ok) return;
+    // Прямой fetch вместо quickAction — чтобы дождаться ответа и убрать
+    // карточку отменённого заказа из DOM в текущем списке.
+    try {
+      const r = await fetch('/api/assistant/action/', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+        credentials:'same-origin',
+        body: JSON.stringify({action:'cancel_order', params:{order_id: orderId}}),
+      });
+      const j = await r.json();
+      if (!r.ok || j.error) {
+        window.toast && window.toast('❌ Ошибка: ' + (j.error || r.status), 3000);
+        return;
+      }
+      // Убираем все карточки этого заказа из текущего DOM
+      document.querySelectorAll('.ord-cancel').forEach(btn => {
+        const onclickStr = btn.getAttribute('onclick') || '';
+        if (onclickStr.includes(`(${orderId},`)) {
+          const card = btn.closest('.card');
+          if (card) {
+            card.style.transition = 'opacity 0.25s, transform 0.25s';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.96)';
+            setTimeout(() => card.remove(), 250);
+          }
+        }
+      });
+      window.toast && window.toast(`✓ ${number} отменён`, 2000);
+    } catch (e) {
+      window.toast && window.toast('❌ Сетевая ошибка', 3000);
+    }
+  };
+
+  window.refreshWarehousePrice = async (wid, name) => {
+    // Открываем загрузку прайса с подсказкой, что обновляется конкретный
+    // склад. Импорт сам найдёт существующий склад по ports+address
+    // и обновит цены в нём (вместо создания нового).
+    addMessage('assistant',
+      `🔄 Обновление прайса склада «${name}»\n\nЗагрузите новый файл — мы найдём существующий склад по портам/адресу и обновим цены позиций. Старые позиции сохранятся.`,
+      [], [
+        {label:'📤 Выбрать файл прайса', action:'upload_pricelist', params:{warehouse_hint: wid}},
+        {label:'↩️ Отмена', action:'seller_warehouses', params:{}},
+      ]);
+  };
+
+  window.deleteWarehouse = async (wid, name, partsCount) => {
+    const msg = partsCount > 0
+      ? `${partsCount} позиций будут перемещены в «без склада». Это действие нельзя отменить — но позиции сохранятся.`
+      : `Склад пуст, позиций в нём нет.`;
+    const ok = await window.appConfirm({
+      title: `Удалить склад «${name}»?`,
+      message: msg,
+      danger: true,
+      okLabel: '🗑 Удалить',
+      cancelLabel: tr('common.cancel'),
+    });
+    if (!ok) return;
+    try {
+      const r = await fetch('/api/assistant/action/', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+        credentials:'same-origin',
+        body: JSON.stringify({action:'seller_warehouses',
+                              params:{warehouse_id: wid, action: 'delete'}}),
+      });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      // Удаляем строку склада из DOM во всех карточках чата, чтобы клик
+      // по ней не пытался снова открыть несуществующий склад.
+      document.querySelectorAll(`.wh-row[data-params*='"warehouse_id":${wid}']`).forEach(row => {
+        // Анимация исчезновения
+        row.style.transition = 'opacity 0.2s, transform 0.2s';
+        row.style.opacity = '0';
+        row.style.transform = 'scale(0.96)';
+        setTimeout(() => row.remove(), 200);
+      });
+      // Лёгкий toast вместо отдельного сообщения в чате
+      window.toast && window.toast(`✓ Склад «${name}» удалён`);
+    } catch(e) {
+      window.toast && window.toast('⚠️ Не удалось удалить: ' + (e.message || e), 4000);
+    }
+  };
+
+  window.renameWarehouse = async (wid, oldName) => {
+    const next = prompt(tr('prompt.rename_warehouse'), oldName || '');
+    if (!next || !next.trim() || next.trim() === oldName) return;
+    try {
+      const r = await fetch('/api/assistant/action/', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+        credentials:'same-origin',
+        body: JSON.stringify({action:'seller_warehouses',
+                              params:{warehouse_id: wid, rename_to: next.trim()}}),
+      });
+      const j = await r.json();
+      addMessage('assistant', j.text || '✓ Переименовано', j.cards || [], j.actions || []);
+    } catch(e) {
+      addMessage('assistant', '⚠️ Не удалось переименовать: ' + (e.message || e));
+    }
+  };
+
   window.heroQuick = (text) => {
     const target = $('welcomeStage').classList.contains('hidden') ? $('input') : $('heroInput');
     if (target) {
@@ -1266,7 +2770,7 @@
       contentEl.textContent = '';
     }
     state.currentBubble.querySelector('.msg-refs').innerHTML = renderContextRefs(refs || []);
-    state.currentBubble.querySelector('.msg-cards').innerHTML = renderCards(cards);
+    state.currentBubble.querySelector('.msg-cards').innerHTML = renderCards(cards, {fromServer: true});
     state.currentBubble.querySelector('.msg-actions').innerHTML = renderActions(actions);
     const ctxEl = state.currentBubble.querySelector('.msg-ctx-actions');
     if (ctxEl) ctxEl.innerHTML = renderContextualActions(contextualActions || []);
@@ -1436,8 +2940,14 @@
     // Reads
     'get_orders', 'get_order_detail', 'track_order', 'track_shipment',
     'get_rfq_status', 'rfq_detail', 'view_rfq_quotes', 'view_quote',
-    'get_balance', 'get_budget', 'get_analytics', 'get_demand_report',
-    'get_sla_report', 'get_claims',
+    'get_balance', 'get_budget', 'get_analytics', 'get_supply_report', 'get_savings', 'get_buyer_discount', 'recent_activity',
+    'seller_analytics_hub', 'seller_executive_report',
+    // Deposit top-up flow
+    'topup_wallet', 'start_topup', 'submit_topup', 'confirm_topup_paid',
+    'cancel_topup', 'list_topups',
+    'get_demand_report', 'get_sla_report', 'get_claims',
+    // Support Hub — все pure-DB
+    'support_home', 'kb_faq', 'my_verifications', 'my_bonuses',
     'compare_products', 'compare_suppliers', 'top_suppliers',
     // Seller cabinet reads
     'seller_dashboard', 'seller_finance', 'seller_rating', 'seller_pipeline',
@@ -1446,14 +2956,16 @@
     'seller_negotiations',
     // Operator/admin reads
     'op_dashboard', 'op_queue', 'op_sla_breach', 'op_order_detail',
+    'op_analytics_hub',
+    'op_topup_queue', 'op_confirm_topup', 'op_reject_topup',
     'op_logistics_stats', 'op_payments_stats', 'op_payments_dashboard',
-    'op_kyb_queue', 'op_kyb_review',
+    'op_kyb_queue', 'op_kyb_review', 'op_kyb_check', 'op_kyb_clarify',
     'op_customs_dashboard', 'op_hs_lookup', 'op_calc_duty',
     'op_certs_check', 'op_sanctions_check',
     'admin_dashboard', 'admin_gmv', 'admin_users', 'admin_user_detail',
     'admin_moderation_queue', 'admin_catalog_review', 'admin_platform_settings',
     // Onboarding wizard step rendering
-    'start_onboarding', 'kyb_status',
+    'start_onboarding', 'kyb_status', 'update_kyb_contacts',
     'submit_company_info', 'submit_legal_address',
     'submit_bank', 'submit_director', 'submit_for_review',
     // Notification settings
@@ -1476,9 +2988,94 @@
   ]);
 
   // Quick action from pills/cards
+  // ── Concurrency guard for action calls ────────────────────────
+  // Защищает от двойного клика (мульти-открытия одного и того же действия).
+  // Inline `onclick="quickAction(...)"` обходит .act-btn delegated handler,
+  // поэтому централизуем guard здесь. Ключ — action+params hash.
+  const _inflightActions = new Set();
+  function _actionKey(action, params) {
+    // Стабильный ключ: action + sorted JSON params (без _label/_url, они UI-only)
+    const p = {...(params || {})};
+    delete p._label;
+    delete p._url;
+    const keys = Object.keys(p).sort();
+    const norm = {};
+    for (const k of keys) norm[k] = p[k];
+    return action + '|' + JSON.stringify(norm);
+  }
+  function _markBusy(el, busy) {
+    // Guard: el может быть document/text-node — у них нет dataset/classList.
+    if (!el || el.nodeType !== 1 || !el.classList || !el.dataset) return;
+    if (busy) {
+      el.dataset._loading = '1';
+      el.setAttribute('aria-busy', 'true');
+      el.classList.add('is-loading');
+    } else {
+      delete el.dataset._loading;
+      el.removeAttribute('aria-busy');
+      el.classList.remove('is-loading');
+    }
+  }
+
+  // Actions, после которых надо перерисовать видимый seller_inbox/queue
+  const REFRESH_INBOX_TRIGGERS = new Set([
+    'ship_order', 'advance_order', 'complete_trigger',
+    'op_confirm_topup', 'op_reject_topup',
+    'submit_quote', 'accept_quote', 'decline_quote',
+  ]);
+
+  async function refreshVisibleSellerInbox() {
+    // Ищем последнюю видимую inbox/queue карточку в чате
+    const targets = [];
+    document.querySelectorAll('.cards > .card').forEach(card => {
+      // inbox = list-card с секциями (data-attr нет, ищем по структуре)
+      // или sq-card. Проще — найти message-cards-wrap'ы и проверить data
+      // по api'шке. Делаем универсально: повторно вызываем seller_inbox
+      // и заменяем innerHTML последнего message-cards там где была карточка.
+    });
+    try {
+      const r = await api('/api/assistant/action/', {
+        method: 'POST',
+        body: JSON.stringify({conversation_id: state.convId, action: 'seller_inbox', params: {}}),
+      });
+      // Берём свежие карточки и подменяем содержимое последней msg-cards
+      // которая принадлежит ранее-рендеренному seller_inbox.
+      // Простой эвристик: ищем msg где есть .sq-section или text "Срочные задачи".
+      const allMsgs = document.querySelectorAll('.msg .msg-cards');
+      let lastInboxEl = null;
+      allMsgs.forEach(el => {
+        const txt = el.textContent || '';
+        if (txt.includes('Срочные задачи') || txt.includes('К отгрузке (оплачено')
+            || el.querySelector('.sq-section') || el.querySelector('.ls-card')) {
+          lastInboxEl = el;
+        }
+      });
+      if (lastInboxEl && Array.isArray(r.cards)) {
+        lastInboxEl.innerHTML = renderCards(r.cards, {fromServer: true});
+      }
+    } catch (err) {
+      console.warn('refreshVisibleSellerInbox failed:', err);
+    }
+  }
+
   window.quickAction = async (action, params) => {
     params = params || {};
     params._label = params._label || action;
+    // Source element для visual feedback. Ищем ближайший clickable element от
+    // event.target — НЕ currentTarget (currentTarget = document когда listener
+    // делегирован, у document нет dataset, что приводило к TypeError).
+    const ev = (typeof window.event !== 'undefined') ? window.event : null;
+    let srcEl = null;
+    if (ev && ev.target && typeof ev.target.closest === 'function') {
+      srcEl = ev.target.closest('button,a,[data-action],[data-href],.pill,.kpi-cell-clickable,.ls-row,.card-clickable');
+    }
+    // Per-action debounce: same payload, parallel call → reject.
+    const key = _actionKey(action, params);
+    if (_inflightActions.has(key)) return;
+    // Per-element debounce: clicked element still loading → reject.
+    if (srcEl && srcEl.dataset && srcEl.dataset._loading === '1') return;
+    _inflightActions.add(key);
+    _markBusy(srcEl, true);
     // Navigation shortcut: open URL directly (no AI round-trip, no new chat).
     // Sources of _url:
     //   1. Explicit params._url (e.g. "Перейти в кабинет")
@@ -1508,12 +3105,19 @@
     // Не пишем ярлык кнопки в чат — это UI affordance, а не сообщение юзера.
     // Открываем conv view (чтобы welcome-stage не моргал).
     //
-    // Спиннер: для фастовых actions (просто DB read, без AI) — не показываем
-    // вообще. Для AI-actions (search_parts с embedding, generate_proposal,
-    // analyze_spec) — после 600ms.
+    // Спиннер: для фастовых actions (просто DB read) — мини-индикатор
+    // через 150ms (если ответ <150мс — не моргает, если дольше — видно
+    // что обрабатываем). Для AI-actions — полный typing через 250ms.
+    // Раньше fast-actions вообще не показывали feedback → юзер думал
+    // «висит, не работает» (см. жалобу про долгий get_order_detail с 9 поз).
     showConv();
     const isFast = FAST_ACTIONS.has(action);
-    const typingDelay = isFast ? null : setTimeout(() => addTyping(pickIntent(action)), 600);
+    // FAST_ACTIONS = pure DB-read (≤200ms). Не показываем спиннер вообще —
+    // он мигает и создаёт ощущение «висит». Если действие неожиданно
+    // зависнет дольше 800ms — покажем минималку (защита от «мертвого UI»).
+    const typingDelay = isFast
+      ? setTimeout(() => addTyping("loading", true), 800)
+      : setTimeout(() => addTyping(pickIntent(action)), 250);
     try {
       const r = await api('/api/assistant/action/', {
         method:'POST',
@@ -1522,14 +3126,30 @@
       if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
       setConvId(r.conversation_id || state.convId);
-      // Auto-add «🏠 Главная» в contextual_actions если бэкенд её не вернул
       const ctxActs = ensureHomeNav(r.contextual_actions || []);
       addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || [], r.message_id || null, r.suggestions || [], ctxActs);
       loadConvList();
+      // Хук авто-reload (after start_registration / start_login success).
+      // Backend ставит _post_action="reload" чтобы фронт автоматически
+      // перезагрузил чат — юзер увидит свои данные / правильную роль / пиллы.
+      if (r._post_action === 'reload') {
+        setTimeout(() => window.location.reload(), 900);
+      }
+      // Инвалидация inbox/pipeline после state-changing seller-action'ов:
+      // отгрузил / двинул статус / финансист подтвердил пополнение — все
+      // ранее отрендеренные карточки seller_inbox / seller_queue должны
+      // перестроиться, иначе юзер видит «вчерашний» список и пытается
+      // отгрузить заказ, который уже в транзите.
+      if (REFRESH_INBOX_TRIGGERS.has(action)) {
+        refreshVisibleSellerInbox();
+      }
     } catch(err) {
       if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
       addMessage('assistant', '⚠️ ' + err.message);
+    } finally {
+      _inflightActions.delete(key);
+      _markBusy(srcEl, false);
     }
   };
 
@@ -1545,12 +3165,40 @@
     return [...ctxActs, {action: 'go_home', label: '🏠 Главная'}];
   }
   // Special action handler: go_home — без round-trip к серверу
-  // Подменяем quickAction для этого случая.
+  // + reload_page (после регистрации/логина в чате — перезагрузка).
+  // + open_url (универсальный переход).
   const _origQuickAction = window.quickAction;
   window.quickAction = (action, params) => {
     if (action === 'go_home') { goHome(); return; }
+    if (action === 'reload_page') { window.location.reload(); return; }
+    if (action === 'open_url') {
+      const url = params && params.url;
+      if (url) window.location.href = url;
+      return;
+    }
     return _origQuickAction(action, params);
   };
+
+  // Auto-trigger action from URL: /chat/?action=start_registration&role=seller
+  // Удобно для CTA с лендинга: "Стать поставщиком" → сразу форма регистрации в чате.
+  (function autoTriggerFromUrl() {
+    const p = new URLSearchParams(window.location.search);
+    const a = p.get('action');
+    if (!a) return;
+    // Очищаем query чтобы при перезагрузке action не запускался повторно.
+    const cleanUrl = window.location.pathname;
+    history.replaceState(null, '', cleanUrl);
+    const role = p.get('role');
+    const params = role ? {role} : {};
+    // Подождём пока инициализируется UI и quickAction
+    setTimeout(() => {
+      try { window.quickAction(a, params); } catch (e) { console.warn('auto-trigger failed', e); }
+    }, 400);
+  })();
+
+  // Перехват «assistant ответил с _post_action=reload» — для случая, когда
+  // фронт получил это поле в data, но action рендерится как кнопка.
+  // (Не обязательно — кнопка reload_page уже работает, оставлено на будущее.)
 
   // Click handler for action buttons inside messages
   document.addEventListener('click', async (e) => {
@@ -1569,10 +3217,23 @@
       });
       const missing = card.querySelectorAll('.fm-input.fm-error').length;
       if (missing) return;
+      // Запоминаем оригинальный текст, чтобы вернуть кнопку в рабочее
+      // состояние после ответа сервера (раньше кнопка зависала в '…'
+      // если сервер вернул ошибку валидации — юзер не мог повторить).
+      const originalText = submit.textContent;
       submit.disabled = true;
       submit.textContent = '…';
       params._label = card.querySelector('.card-title')?.textContent || action;
-      quickAction(action, params);
+      try {
+        await quickAction(action, params);
+      } finally {
+        // Карточка могла быть заменена новой (например той же формой
+        // с per-field errors) — тогда submit уже не в DOM и трогать не надо.
+        if (submit.isConnected) {
+          submit.disabled = false;
+          submit.textContent = originalText;
+        }
+      }
       return;
     }
     // 2a. Copy-URL кнопка (для случая когда preview блочит external link)
@@ -1585,13 +3246,18 @@
         copyBtn.textContent = '✓';
         setTimeout(() => { copyBtn.textContent = orig; }, 1500);
       }).catch(() => {
-        window.prompt('Скопируйте ссылку и откройте в обычном браузере:', url);
+        window.prompt(tr('prompt.copy_link'), url);
       });
       return;
     }
     // 2. Обычные action-кнопки и любой [data-action] (например, ls-row)
     const btn = e.target.closest('.act-btn,[data-action]');
     if (!btn) return;
+    // Debounce — защита от двойного клика и дубля event-listener'ов.
+    // Без этого «Трекинг» / любая action-кнопка могла выстрелить 2 раза.
+    if (btn.dataset._busy === '1') return;
+    btn.dataset._busy = '1';
+    setTimeout(() => { delete btn.dataset._busy; }, 800);
     const action = btn.dataset.action;
     const params = JSON.parse(btn.dataset.params || '{}');
     params._label = btn.dataset.label;
@@ -1607,12 +3273,32 @@
   };
 
   async function loadConvList() {
+    // 4 состояния списка: loading / empty / error / loaded.
+    // Раньше: пустая ловля catch — юзер вообще не понимал что произошло
+    // (тихая ошибка вместо «нет связи»).
+    const wrap = document.getElementById('convList');
+    if (wrap && (!state.convs || !state.convs.length)) {
+      // Loading skeleton (3 серых полоски). Показываем только если списка
+      // ещё нет (не моргаем при перерисовке после ответа сервера).
+      wrap.innerHTML =
+        '<div class="conv-skel"></div>'.repeat(3);
+    }
     try {
       const r = await fetch('/api/assistant/conversations/');
+      if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       state.convs = data.results || data;
       renderConvList();
-    } catch(e){}
+    } catch (err) {
+      console.warn('loadConvList failed', err);
+      if (wrap) {
+        wrap.innerHTML =
+          '<div class="conv-error">⚠️ Не удалось загрузить список. '
+          + '<button type="button" class="conv-retry">Повторить</button></div>';
+        const btn = wrap.querySelector('.conv-retry');
+        if (btn) btn.addEventListener('click', () => loadConvList());
+      }
+    }
   }
 
   // ── Role toggle (Покупатель / Поставщик / Оператор) ───────
@@ -1651,94 +3337,134 @@
     if (!tab) return;
     const newRole = tab.dataset.role;
     if (!ROLE_TABS.includes(newRole)) return;
+    // ── Анонимный режим: продавец / оператор — отдельные сущности,
+    // отдельные кабинеты, отдельные входы. На каждый клик чистим
+    // историю чата (новый «conversation»), чтобы flows не наслаивались.
+    if (!window.IS_AUTHENTICATED) {
+      paintRoleToggle(newRole);
+      try { window.newChat(); } catch (_) {}
+      // Дополнительно очищаем поток, т.к. quickAction добавляет в конец.
+      try {
+        const stream = document.getElementById('streamInner');
+        if (stream) stream.innerHTML = '';
+      } catch (_) {}
+      if (newRole === 'seller') {
+        // Поставщик — регистрация (форма + KYB после)
+        setTimeout(() => { try { window.quickAction('start_registration', {role: 'seller'}); }
+          catch (err) { console.warn('seller flow failed', err); } }, 50);
+        return;
+      }
+      if (newRole === 'operator') {
+        // Оператор — только вход, регистрации нет (заводит админ)
+        setTimeout(() => { try { window.quickAction('start_login', {role: 'operator'}); }
+          catch (err) { console.warn('operator flow failed', err); } }, 50);
+        return;
+      }
+      // Покупатель — welcome с pills уже отрисован newChat()
+      return;
+    }
     if (state.config && state.config.role === newRole) return;
     setRole(newRole);
   });
 
-  // Welcome screen + quick-pills адаптивны под роль
+  // Welcome screen + quick-pills адаптивны под роль.
+  // Каждый pill хранит translation-key (`tkey`) + emoji, лейбл вычисляется
+  // в applyRoleWelcome() через window.t() под текущим языком.
   const ROLE_WELCOME = {
     buyer: {
-      title:    'Какую запчасть найти?',
-      subtitle: 'Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>.',
+      titleKey: 'welcome.buyer.title',
+      subKey:   'welcome.buyer.subtitle',
       pills: [
-        {label:'📦 Мои сделки',      action:'get_orders',     params:{}},
-        {label:'📋 Открытые RFQ',    action:'get_rfq_status', params:{}},
-        {label:'💰 Депозит',         action:'get_balance',    params:{}},
-        {label:'🎯 Auto-discount',   action:'get_buyer_discount', params:{}},
+        {tkey:'pill.my_orders',     emoji:'📦', action:'get_orders',     params:{}},
+        {tkey:'pill.open_rfq',      emoji:'📋', action:'get_rfq_status', params:{}},
+        {tkey:'pill.deposit',       emoji:'💰', action:'get_balance',    params:{}},
+        {tkey:'pill.auto_discount', emoji:'🎯', action:'get_buyer_discount', params:{}},
+        {tkey:'pill.support',        emoji:'',  action:'support_home',  params:{}},
       ],
     },
     seller: {
-      title:    'Что в работе сегодня?',
-      subtitle: 'Срочные задачи, входящие RFQ и отгрузки. Каталог, финансы и команда — по запросу.',
+      titleKey: 'welcome.seller.title',
+      subKey:   'welcome.seller.subtitle',
       pills: [
-        {label:'📤 Загрузить прайс', action:'upload_pricelist',  params:{}},
-        {label:'🛡 Верификация',     action:'start_onboarding',  params:{}},
-        {label:'🔥 Срочное',         action:'seller_inbox',      params:{}},
-        {label:'🚚 К отгрузке',      action:'seller_pipeline',   params:{}},
-        {label:'📋 Новые RFQ',       action:'get_rfq_status',    params:{}},
-        {label:'📈 Спрос',           action:'get_demand_report', params:{}},
+        // Главная пилюля — единый inbox (вкл. RFQ, отгрузки, подтверждения, SLA).
+        // Дубли «🚚 К отгрузке» и «📋 Новые RFQ» убраны — клик на секцию внутри
+        // 🔥 Срочного раскрывает полный список соответствующей категории.
+        {tkey:'pill.urgent',           emoji:'🔥', action:'seller_inbox',      params:{}},
+        {tkey:'pill.upload_price',     emoji:'📤', action:'upload_pricelist',  params:{}},
+        {tkey:'pill.my_products',      emoji:'📦', action:'seller_warehouses', params:{}},
+        {tkey:'pill.verification',     emoji:'🛡', action:'start_onboarding',  params:{}},
+        {tkey:'pill.analytics',        emoji:'📊', action:'seller_analytics_hub', params:{}},
+        {tkey:'pill.support', emoji:'',  action:'support_home',  params:{}},
       ],
     },
     operator: {
-      title:    'Что в работе на платформе?',
-      subtitle: 'Контролируйте процесс: активные заказы, SLA-нарушения, очередь, спор-кейсы.',
+      titleKey: 'welcome.operator.title',
+      subKey:   'welcome.operator.subtitle',
       pills: [
-        {label:'🎛 Сводка',          action:'op_dashboard',     params:{}},
-        {label:'🛡 KYB на проверке', action:'op_kyb_queue',     params:{}},
-        {label:'📋 Очередь',         action:'op_queue',         params:{}},
-        {label:'⏱ SLA-нарушения',   action:'op_sla_breach',    params:{}},
-        {label:'📈 Аналитика',       action:'get_analytics',    params:{}},
+        {tkey:'pill.overview',         emoji:'🎛', action:'op_dashboard',          params:{}},
+        {tkey:'pill.queue',            emoji:'📋', action:'op_queue',              params:{}},
+        // RFQ-режимы: оператор контролирует SEMI (15 мин SLA) и MANUAL (48 ч).
+        // AUTO идёт мимо оператора — кнопка для просмотра/аудита.
+        {tkey:'pill.rfq',              emoji:'📋', action:'op_rfq_queue',   params:{}},
+        {tkey:'pill.sla_breach',       emoji:'⏱',  action:'op_sla_breach',         params:{}},
+        {tkey:'pill.payments_escrow',  emoji:'💰', action:'op_payments_dashboard', params:{}},
+        {tkey:'pill.customs',          emoji:'🛂', action:'op_customs_dashboard',  params:{}},
+        {tkey:'pill.logistics',        emoji:'🚚', action:'op_logistics_stats',    params:{}},
+        {tkey:'pill.kyb_suppliers',    emoji:'🛡', action:'op_kyb_queue',          params:{}},
+        {tkey:'pill.claims',           emoji:'🧾', action:'get_claims',            params:{}},
+        {tkey:'pill.analytics',        emoji:'📊', action:'op_analytics_hub',     params:{}},
+        {tkey:'pill.support',          emoji:'',  action:'support_home',          params:{}},
       ],
     },
     operator_logist: {
-      title:    'Логистика',
-      subtitle: 'Отгрузки, контейнеры, SLA — управляйте через чат.',
+      titleKey: 'welcome.operator_logist.title',
+      subKey:   'welcome.operator_logist.subtitle',
       pills: [
-        {label:'🚚 Аналитика',       action:'op_logistics_stats', params:{}},
-        {label:'🎛 Сводка',          action:'op_dashboard',       params:{}},
-        {label:'📋 Очередь',         action:'op_queue',           params:{filter:'open'}},
-        {label:'⏱ SLA-нарушения',   action:'op_sla_breach',      params:{}},
+        {tkey:'pill.analytics',  emoji:'🚚', action:'op_logistics_stats', params:{}},
+        {tkey:'pill.overview',   emoji:'🎛', action:'op_dashboard',       params:{}},
+        {tkey:'pill.queue',      emoji:'📋', action:'op_queue',           params:{filter:'open'}},
+        {tkey:'pill.sla_breach', emoji:'⏱',  action:'op_sla_breach',      params:{}},
       ],
     },
     operator_customs: {
-      title:    'Таможня',
-      subtitle: 'Грузы под растаможкой, ТН ВЭД, документы, санкционный скрининг.',
+      titleKey: 'welcome.operator_customs.title',
+      subKey:   'welcome.operator_customs.subtitle',
       pills: [
-        {label:'🛂 Сводка таможни',  action:'op_customs_dashboard', params:{}},
-        {label:'🔎 ТН ВЭД',           action:'op_hs_lookup',         params:{}},
-        {label:'🚫 Санкции',          action:'op_sanctions_check',   params:{}},
-        {label:'📋 На таможне',       action:'op_queue',             params:{filter:'open'}},
+        {tkey:'pill.customs_summary', emoji:'🛂', action:'op_customs_dashboard', params:{}},
+        {tkey:'pill.hs_code',         emoji:'🔎', action:'op_hs_lookup',         params:{}},
+        {tkey:'pill.sanctions',       emoji:'🚫', action:'op_sanctions_check',   params:{}},
+        {tkey:'pill.at_customs',      emoji:'📋', action:'op_queue',             params:{filter:'open'}},
       ],
     },
     operator_payment: {
-      title:    'Платежи',
-      subtitle: 'Инвойсы, эскроу, возвраты — управляйте через чат.',
+      titleKey: 'welcome.operator_payment.title',
+      subKey:   'welcome.operator_payment.subtitle',
       pills: [
-        {label:'💰 Эскроу',          action:'op_payments_dashboard', params:{}},
-        {label:'💳 Аналитика',       action:'op_payments_stats',     params:{}},
-        {label:'⏳ Ожидают резерва', action:'op_queue',              params:{filter:'awaiting_reserve'}},
-        {label:'💸 Возвраты',        action:'op_queue',              params:{filter:'refund'}},
+        {tkey:'pill.escrow',           emoji:'💰', action:'op_payments_dashboard', params:{}},
+        {tkey:'pill.payments_stats',   emoji:'💳', action:'op_payments_stats',     params:{}},
+        {tkey:'pill.awaiting_reserve', emoji:'⏳', action:'op_queue',              params:{filter:'awaiting_reserve'}},
+        {tkey:'pill.refunds',          emoji:'💸', action:'op_queue',              params:{filter:'refund'}},
       ],
     },
     operator_manager: {
-      title:    'Менеджмент',
-      subtitle: 'Конверсия RFQ, топ-клиенты, KPI команды.',
+      titleKey: 'welcome.operator_manager.title',
+      subKey:   'welcome.operator_manager.subtitle',
       pills: [
-        {label:'🎛 Сводка',          action:'op_dashboard',  params:{}},
-        {label:'📋 Очередь',         action:'op_queue',      params:{}},
-        {label:'📈 Аналитика',       action:'get_analytics', params:{}},
+        {tkey:'pill.overview',  emoji:'🎛', action:'op_dashboard',  params:{}},
+        {tkey:'pill.queue',     emoji:'📋', action:'op_queue',      params:{}},
+        {tkey:'pill.analytics', emoji:'📈', action:'get_analytics', params:{}},
       ],
     },
     admin: {
-      title:    'Платформа',
-      subtitle: 'GMV, пользователи, модерация — управление всей площадкой.',
+      titleKey: 'welcome.admin.title',
+      subKey:   'welcome.admin.subtitle',
       pills: [
-        {label:'🛡 Сводка',           action:'admin_dashboard',         params:{}},
-        {label:'📈 GMV',              action:'admin_gmv',               params:{}},
-        {label:'👥 Пользователи',     action:'admin_users',             params:{}},
-        {label:'🚨 Модерация',        action:'admin_moderation_queue',  params:{}},
-        {label:'📦 Каталог',          action:'admin_catalog_review',    params:{}},
-        {label:'🛠 Settings',         action:'admin_platform_settings', params:{}},
+        {tkey:'pill.overview',       emoji:'🛡', action:'admin_dashboard',         params:{}},
+        {tkey:'pill.gmv',            emoji:'📈', action:'admin_gmv',               params:{}},
+        {tkey:'pill.users',          emoji:'👥', action:'admin_users',             params:{}},
+        {tkey:'pill.moderation',     emoji:'🚨', action:'admin_moderation_queue',  params:{}},
+        {tkey:'pill.catalog',        emoji:'📦', action:'admin_catalog_review',    params:{}},
+        {tkey:'pill.settings_admin', emoji:'🛠', action:'admin_platform_settings', params:{}},
       ],
     },
   };
@@ -1746,15 +3472,15 @@
   function applyRoleWelcome(role) {
     const cfg = ROLE_WELCOME[role] || ROLE_WELCOME.buyer;
     const t = $('welcomeTitle'), s = $('welcomeSubtitle'), p = $('welcomePills');
-    if (t) t.textContent = cfg.title;
-    if (s) s.innerHTML = cfg.subtitle;
+    // tr — глобальный переводчик из i18n.js (объявлен в начале файла).
+    if (t) t.textContent = tr(cfg.titleKey);
+    if (s) s.innerHTML = tr(cfg.subKey);
     if (p) p.innerHTML = cfg.pills.map(b => {
-      // Передаём label в params._label чтобы breadcrumb показывал «Мои заказы»,
-      // а не raw action name.
-      const params = {...(b.params || {}), _label: b.label};
+      const label = `${b.emoji} ${tr(b.tkey)}`;
+      const params = {...(b.params || {}), _label: label};
       return `<button class="pill" type="button"
         onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(params)})'>
-        ${esc(b.label)}
+        ${esc(label)}
       </button>`;
     }).join('');
   }
@@ -1805,11 +3531,11 @@
   }
 
   const _BUCKET_LABELS = {
-    today: 'Сегодня',
-    yesterday: 'Вчера',
-    week: 'На этой неделе',
-    month: 'В этом месяце',
-    older: 'Старше',
+    today: tr('bucket.today'),
+    yesterday: tr('bucket.yesterday'),
+    week: tr('bucket.week'),
+    month: tr('bucket.month'),
+    older: tr('bucket.older'),
   };
   const _BUCKET_ORDER = ['today', 'yesterday', 'week', 'month', 'older'];
 
@@ -1836,7 +3562,7 @@
       const cid = esc(c.id);
       return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" data-conv-id="${cid}" onclick="openConv('${cid}')" oncontextmenu="return openConvCtxMenu(event,'${cid}')">
         <div class="side-item-stack-content">
-          <div class="side-item-stack-title"><span class="conv-cat-icon" title="${esc(c.category || 'general')}">${icon}</span>${esc(c.title || 'Без названия')}</div>
+          <div class="side-item-stack-title"><span class="conv-cat-icon" title="${esc(c.category || 'general')}">${icon}</span>${esc(c.title || tr('card.untitled'))}</div>
           <div class="side-item-stack-meta">${esc(meta)} ${lastMeta && lastMeta !== meta ? '· ' + esc(lastMeta) : ''}</div>
         </div>
         <button class="side-item-stack-more" type="button" title="Действия" onclick="event.stopPropagation();openConvCtxMenu(event,'${cid}');return false;" aria-label="Действия">⋯</button>
@@ -1906,14 +3632,14 @@
     closeConvCtxMenu();
     if (!cid) return;
     const conv = (state.convs || []).find(c => c.id === cid);
-    const title = conv ? (conv.title || 'Без названия') : '';
+    const title = conv ? (conv.title || tr('card.untitled')) : '';
     if (action === 'rename') renameConv(cid, title);
     else if (action === 'delete') deleteConv(cid, title);
   });
 
   // Переименование чата
   window.renameConv = async (id, currentTitle) => {
-    const v = prompt('Новое название чата:', currentTitle || '');
+    const v = prompt(tr('prompt.rename_chat'), currentTitle || '');
     if (v === null) return;
     const t = v.trim();
     if (!t) return;
@@ -1949,7 +3675,7 @@
       if (!res.ok && res.status !== 204) throw new Error('HTTP ' + res.status);
       // если удалили активный — уйти на welcome
       if (state.convId === id) {
-        try { localStorage.removeItem('cf_active_conv'); } catch(_){}
+        try { sessionStorage.removeItem('cf_active_conv'); } catch(_){}
         state.convId = null;
         if (typeof showWelcome === 'function') showWelcome();
         else if ($('streamInner')) $('streamInner').innerHTML = '';
@@ -2094,34 +3820,78 @@
     }
   };
 
-  async function uploadSpec(file) {
+  // XHR-обёртка для upload c прогрессом + abort + network-error handler.
+  // fetch() не отдаёт upload.onprogress, поэтому идём через XMLHttpRequest.
+  function _uploadWithProgress(url, formData, {onProgress, onSuccess, onError}) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('X-CSRFToken', csrf());
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = (e) => {
+      if (!e.lengthComputable) return;
+      const pct = Math.round((e.loaded / e.total) * 100);
+      onProgress && onProgress(pct, e.loaded, e.total);
+    };
+    xhr.onload = () => {
+      let data; try { data = JSON.parse(xhr.responseText); } catch { data = {}; }
+      if (xhr.status >= 200 && xhr.status < 300) onSuccess && onSuccess(data);
+      else onError && onError(new Error(data.error || ('HTTP ' + xhr.status)));
+    };
+    xhr.onerror = () => onError && onError(new Error('сеть недоступна'));
+    xhr.ontimeout = () => onError && onError(new Error('таймаут загрузки'));
+    xhr.timeout = 120000;  // 2 минуты на большой xlsx
+    xhr.send(formData);
+    return xhr;
+  }
+
+  function uploadSpec(file) {
     showConv();
     addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
-    const pending = addMessage('assistant', 'Парсю файл и ищу артикулы в каталоге…');
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      if (state.convId) fd.append('conversation_id', state.convId);
-      const res = await fetch('/api/assistant/upload-spec/', {
-        method: 'POST',
-        headers: {'X-CSRFToken': csrf()},
-        body: fd,
-        credentials: 'same-origin',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
-      if (pending && pending.parentNode) pending.remove();
-      if (data.conversation_id) {
-        setConvId(data.conversation_id);
-        if (state.ws) { try { state.ws.close(); } catch(e){} }
-        connectWS();
-      }
-      addMessage('assistant', data.text || 'Готово.', data.cards || [], data.actions || [], [], data.message_id || null, data.suggestions || []);
-      renderConvList();
-    } catch (err) {
-      if (pending && pending.parentNode) pending.remove();
-      addMessage('assistant', '⚠️ Не удалось обработать файл: ' + (err.message || err));
-    }
+    // Сообщение-плейсхолдер с прогресс-баром (обновляется по ходу загрузки).
+    const pending = addMessage(
+      'assistant',
+      'Загружаю файл… <span class="upl-pct">0%</span><div class="upl-bar"><div class="upl-bar-fill" style="width:0%"></div></div>',
+    );
+    const fd = new FormData();
+    fd.append('file', file);
+    if (state.convId) fd.append('conversation_id', state.convId);
+
+    _uploadWithProgress('/api/assistant/upload-spec/', fd, {
+      onProgress: (pct) => {
+        if (!pending) return;
+        const txtEl = pending.querySelector('.upl-pct');
+        const barEl = pending.querySelector('.upl-bar-fill');
+        if (txtEl) txtEl.textContent = pct + '%';
+        if (barEl) barEl.style.width = pct + '%';
+        // Когда загрузка завершилась — меняем подпись на «Парсю файл…»
+        if (pct >= 100) {
+          const tEl = pending.querySelector('.msg-content') || pending;
+          // Не перетираем содержимое полностью — точно знаем структуру плейсхолдера
+          const html = 'Парсю файл и ищу артикулы в каталоге…';
+          if (tEl) tEl.innerHTML = html;
+        }
+      },
+      onSuccess: (data) => {
+        if (pending && pending.parentNode) pending.remove();
+        if (data.error) {
+          addMessage('assistant', '⚠️ ' + data.error);
+          return;
+        }
+        if (data.conversation_id) {
+          setConvId(data.conversation_id);
+          if (state.ws) { try { state.ws.close(); } catch(e){} }
+          connectWS();
+        }
+        addMessage('assistant', data.text || 'Готово.',
+                   data.cards || [], data.actions || [], [],
+                   data.message_id || null, data.suggestions || []);
+        renderConvList();
+      },
+      onError: (err) => {
+        if (pending && pending.parentNode) pending.remove();
+        addMessage('assistant', '⚠️ Не удалось обработать файл: ' + (err.message || err));
+      },
+    });
   }
 
   // Smart Price Import — трёхэтапный flow:
@@ -2494,6 +4264,20 @@
       var defaultFields = [];
       var fromFile = 0;
       var fromDefault = 0;
+      // Supplier-wide логистика обязана быть одинаковой на всю загрузку.
+      // Если колонка замаплена но во всех sample-строках пуста — игнорируем
+      // её как «из файла» и просим юзера ввести в форме общих полей.
+      var SUPPLIER_WIDE_KEYS = ['sea_port', 'air_port', 'warehouse_address'];
+      var sampleRows = data.sample_rows || [];
+      function columnHasData(colName) {
+        var idx = headers.indexOf(colName);
+        if (idx < 0) return false;
+        for (var i = 0; i < sampleRows.length; i++) {
+          var row = sampleRows[i];
+          if (idx < row.length && String(row[idx] == null ? '' : row[idx]).trim()) return true;
+        }
+        return false;
+      }
       stdFields.forEach(function(f) {
         var src = sug[f.key] || '';
         var srcLabel = '';
@@ -2503,7 +4287,8 @@
           st = '·';
           fromDefault++;
           defaultFields.push(f);
-        } else if (src && headers.includes(src)) {
+        } else if (src && headers.includes(src)
+                    && (SUPPLIER_WIDE_KEYS.indexOf(f.key) < 0 || columnHasData(src))) {
           srcLabel = '← ' + src;
           st = '✓';
           fromFile++;
@@ -2618,9 +4403,40 @@
         .filter(function(f) { return !!f; });
       var perPartCount = defaultFields.length - supplierWideFields.length;
 
+      // Селектор страны нужен ТОЛЬКО для фильтрации портов в form'е.
+      // Если оба порта (sea_port и air_port) уже заполнены — страна
+      // выводится из ISO-кода порта и селектор лишний шум.
+      function hasPortValue(key) {
+        // Уже заполнено через колонку файла (есть данные)?
+        var src = sug[key] || '';
+        if (src && headers.includes(src) && columnHasData(src)) return true;
+        // Через fix:VALUE?
+        if (src.startsWith && src.startsWith('fix:') && src.slice(4).trim()) return true;
+        // Через constants?
+        if ((constants[key] || '').toString().trim()) return true;
+        return false;
+      }
+      var portsReady = hasPortValue('sea_port') && hasPortValue('air_port');
+      var needsCountrySelector = !portsReady && supplierWideFields.some(function(f){
+        return f.key === 'sea_port' || f.key === 'air_port';
+      });
       if (supplierWideFields.length > 0) {
         var dfHtml = supplierWideFields.map(function(f) {
-          var val = sug[f.key] ? sug[f.key].replace(/^fix:/, '') : (f['default'] || '');
+          // Если поле в форме потому что колонка файла пустая — val=''
+          // (а не имя колонки), чтобы placeholder подсказывал формат.
+          var rawSrc = sug[f.key] || '';
+          var val;
+          if (rawSrc.startsWith && rawSrc.startsWith('fix:')) {
+            val = rawSrc.slice(4);
+          } else if (rawSrc && headers.includes(rawSrc)
+                      && SUPPLIER_WIDE_KEYS.indexOf(f.key) >= 0
+                      && !columnHasData(rawSrc)) {
+            val = '';  // колонка пустая → дать юзеру ввести с нуля
+          } else if (rawSrc && !headers.includes(rawSrc)) {
+            val = rawSrc;
+          } else {
+            val = f['default'] || '';
+          }
           var inp = '';
           if (f.enum_values && f.enum_values.length) {
             var opts = f.enum_values.map(function(o) {
@@ -2674,10 +4490,13 @@
         if (perPartCount > 0) {
           // Никаких AI-угадаек по умолчанию — то что не пришло в файле
           // грузится пустым, юзер дозаполняет в каталоге per-part.
+          var noun = (perPartCount === 1) ? 'поле' :
+                     (perPartCount >= 2 && perPartCount <= 4) ? 'поля' : 'полей';
+          var verb = (perPartCount === 1) ? 'не передаётся' : 'не передаются';
           perPartNote =
             '<div class="pl-df-note">'
-            +   perPartCount + ' полей не передаются в файле (вес, габариты, остаток).'
-            +   ' Загрузятся пустыми — можно отредактировать в каталоге позже.'
+            +   perPartCount + ' ' + noun + ' ' + verb + ' в файле'
+            +   ' — загрузятся пустыми, можно отредактировать в каталоге позже.'
             + '</div>';
         }
         // Один селектор «Страна отправления» сверху — он управляет
@@ -2702,7 +4521,7 @@
           html: '<div class="card pl-defaults-card">'
             + '<details class="pl-defaults-details" open>'
             + '<summary class="pl-defaults-summary">📎 ' + supplierWideFields.length + ' общих полей поставщика — нажмите чтобы изменить</summary>'
-            + countryHeaderHtml
+            + (needsCountrySelector ? countryHeaderHtml : '')
             + '<div class="pl-df-grid">' + dfHtml + '</div>'
             + perPartNote
             + '</details></div>',
@@ -2775,6 +4594,25 @@
           addMessage('assistant', intro, cards, actions);
         }
       }
+      // Если из профиля поставщика подтянулись sea_port/air_port —
+      // определяем страну из кода порта (первые 2 символа = ISO-код)
+      // и автоматически выбираем её в селекторе. Иначе юзер видит
+      // непустые порты при пустой стране — выглядит сломанно.
+      setTimeout(function() {
+        var top = document.getElementById('shipment_country');
+        if (!top || top.value) return;
+        var seaInp = document.querySelector('.pl-df-input[data-field="sea_port"]');
+        var airInp = document.querySelector('.pl-df-input[data-field="air_port"]');
+        var sample = (seaInp && seaInp.value) || (airInp && airInp.value) || '';
+        if (!sample) return;
+        var code = sample.split(/[\s·]/)[0];
+        if (code.length < 2) return;
+        var cc = code.slice(0, 2).toUpperCase();
+        if (!PORTS_BY_COUNTRY[cc]) return;
+        top.value = cc;
+        _refreshPortDatalist('sugg_sea_port', cc);
+        _refreshPortDatalist('sugg_air_port', cc);
+      }, 50);
     } catch (err) {
       if (pending && pending.parentNode) pending.remove();
       try { closeSidePreview(); } catch(e) {}
@@ -2784,6 +4622,16 @@
 
   // Commit маппинга с формулами и ответами на вопросы
   window.__pricelist_commit_handler = async function(params) {
+    // Single-flight: один импорт за сессию. Блокируем повторные клики
+    // на кнопках «Загрузить» пока текущий идёт.
+    if (window.__importInFlight) {
+      window.toast && window.toast('⏳ Импорт уже идёт, дождитесь завершения', 3000);
+      return;
+    }
+    window.__importInFlight = true;
+    // Дизейблим все кнопки запуска импорта на странице
+    var lockedBtns = Array.from(document.querySelectorAll('[data-action="__pricelist_commit"]'));
+    lockedBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.45'; b.style.cursor = 'not-allowed'; });
     var imp = __pendingImport || {};
     var importId = params.import_id || imp.import_id;
     var mapping = Object.assign({}, imp.mapping || {});
@@ -2841,7 +4689,16 @@
         var pdata = await pr.json();
         if (pending && pdata.current !== undefined) {
           var cEl = pending.querySelector('.msg-content');
-          if (cEl) cEl.textContent = '📥 Импортирую прайс… ' + pdata.current + ' строк';
+          if (cEl) {
+            var phaseMap = {
+              parsing: 'Читаю файл',
+              matching: 'Сопоставляю с базой',
+              writing: 'Записываю в каталог',
+            };
+            var phase = phaseMap[pdata.phase] || 'Импортирую прайс';
+            var totalPart = pdata.total ? (' / ' + pdata.total) : '';
+            cEl.textContent = '📥 ' + phase + '… ' + pdata.current + totalPart + ' строк';
+          }
         }
       } catch(e) {}
     }, 500);
@@ -2861,67 +4718,107 @@
       var data = await res.json();
       clearInterval(importPollTimer);
       if (pending && pending.parentNode) pending.remove();
-      if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+      if (!res.ok) {
+        var blockingErrors = {
+          warehouse_address_required: 'Укажите адрес склада отгрузки.',
+          brand_required: 'Не удалось определить бренд.',
+        };
+        if (blockingErrors[data.error]) {
+          addMessage('assistant',
+            '❗ ' + (data.message || blockingErrors[data.error]));
+          __pendingImport = null;
+          return;
+        }
+        throw new Error(data.message || data.error || ('HTTP ' + res.status));
+      }
 
       var created = data.created || 0;
       var updated = data.updated || 0;
       var failed  = data.failed  || 0;
       var aiCount = data.ai_estimated_count || 0;
-      var missing = data.missing_from_file || [];
 
       var parts = [];
       if (created) parts.push('✅ Создано ' + created);
       if (updated) parts.push('🔄 Обновлено ' + updated);
-      if (failed)  parts.push('❌ Ошибок ' + failed);
       var msg = parts.join(' · ') + ' позиций.';
+      if (failed) {
+        // Это НЕ поломка импорта — успешные строки уже в базе.
+        // Просто N строк с битыми данными (пустой OEM/название/цена)
+        // пропущены и доступны к просмотру отдельно.
+        msg += '\nℹ️ ' + failed + ' ' + (failed === 1 ? 'строка пропущена' : 'строк пропущено')
+             + ' — битые данные (пустой артикул, название или цена).';
+      }
+      var merged = data.merged_duplicates || 0;
+      if (merged) {
+        msg += '\n🧩 Объединено ' + merged + ' дублирующих'
+             + (merged === 1 ? 'ся строки' : ' строк') + ' с одинаковым OEM и ценой — '
+             + 'одна позиция с MAX(Qty).';
+      }
+      var conflicts = data.price_conflicts || 0;
+      if (conflicts) {
+        msg += '\n⚠️ ' + conflicts + ' дубль' + (conflicts === 1 ? '' : 'я')
+             + ' с разной ценой — оставлена первая, остальные в списке пропущенных.';
+      }
 
-      // Честный отчёт: что в файле было, чего не было.
+      // Категоризированный отчёт о незаполненных полях.
       var refCount = data.reference_enriched || 0;
       var smartAns = (__pendingImport && __pendingImport.smart_answers) || {};
-      var smartConstantFields = Object.keys(smartAns).filter(function(k){
-        return smartAns[k] && smartAns[k].apply_as === 'constant';
-      });
-      var smartFormulaFields = Object.keys(smartAns).filter(function(k){
-        return smartAns[k] && smartAns[k].apply_as === 'formula';
-      });
-      // Фильтруем missing от полей, которые юзер уже ответил
-      var missingFiltered = missing.filter(function(m){
-        return smartConstantFields.indexOf(m.key) < 0
-            && smartFormulaFields.indexOf(m.key) < 0;
-      });
-      if (smartConstantFields.length || smartFormulaFields.length) {
-        var smartParts = [];
-        Object.keys(smartAns).forEach(function(k){
-          var a = smartAns[k];
-          smartParts.push(k + '=' + a.value);
+      var smartFields = Object.keys(smartAns);
+      function filterAnswered(list) {
+        return (list || []).filter(function(m){
+          return smartFields.indexOf(m.key) < 0;
+        });
+      }
+      var missMand  = filterAnswered(data.missing_mandatory);
+      var missBonus = filterAnswered(data.missing_rating_bonus);
+      var missOpt   = filterAnswered(data.missing_optional);
+
+      if (smartFields.length) {
+        var smartParts = smartFields.map(function(k){
+          return k + '=' + smartAns[k].value;
         });
         msg += '\n\n✨ Применены ваши ответы: ' + smartParts.join(', ') + '.';
       }
-      if (missingFiltered.length) {
-        var labels = missingFiltered.map(function(m) { return m.label; }).join(', ');
-        msg += '\n\n⚠️ Остались без значений: ' + labels + '.';
-        var sources = [];
-        if (refCount > 0) sources.push('✨ ' + refCount + ' из эталонной базы (таможня/дилеры)');
-        if (aiCount > 0) sources.push('🤖 ' + aiCount + ' AI-оценкой');
-        if (sources.length) {
-          msg += '\n' + sources.join(', ') + '.';
+      if (missMand.length) {
+        msg += '\n\n❗ Обязательно заполнить: '
+             + missMand.map(function(m){return m.label;}).join(', ') + '.';
+      }
+      if (missBonus.length) {
+        msg += '\n\n⭐ Повысит рейтинг карточки: '
+             + missBonus.map(function(m){return m.label;}).join(', ') + '.';
+        if (refCount > 0) {
+          msg += '\n✨ Подтянули ' + refCount + ' позиций из эталонной базы.';
         } else {
-          msg += '\nЭти поля заполнены дефолтами — можно отредактировать в каталоге.';
+          msg += '\nЗаполните в каталоге чтобы поднять карточки в выдаче — '
+               + 'или пропустите, можно добавить позже.';
         }
       }
+      if (missOpt.length) {
+        msg += '\n\nℹ️ Не пришло из файла: '
+             + missOpt.map(function(m){return m.label;}).join(', ') + '.'
+             + ' Можно дозаполнить позже в каталоге.';
+      }
+      var sources = [];
+      if (refCount > 0) sources.push('✨ ' + refCount + ' позиций обогащены из эталонной базы');
+      if (aiCount > 0) sources.push('🤖 ' + aiCount + ' AI-оценкой');
+      if (sources.length) msg += '\n\n' + sources.join(' · ') + '.';
 
       var btns = [];
       if (failed > 0) {
-        btns.push({action: 'pricelist_show_errors', label: '❌ Посмотреть ошибки',
+        btns.push({action: 'pricelist_show_errors', label: '🔎 Показать пропущенные',
                    params: {import_id: importId}});
       }
-      btns.push({action: 'seller_catalog', label: '📦 Открыть каталог', params: {}});
+      btns.push({action: 'seller_warehouses', label: '📦 Мои товары', params: {}});
       addMessage('assistant', msg, [], btns);
       __pendingImport = null;
     } catch (err) {
       clearInterval(importPollTimer);
       if (pending && pending.parentNode) pending.remove();
       addMessage('assistant', '⚠️ Не удалось импортировать: ' + (err.message || err));
+    } finally {
+      // Отпускаем single-flight lock и разблокируем кнопки
+      window.__importInFlight = false;
+      lockedBtns.forEach(b => { b.disabled = false; b.style.opacity = ''; b.style.cursor = ''; });
     }
   };
 
@@ -3246,30 +5143,24 @@
       return;
     }
     var q = questions[idx];
-    var chips = (q.options || []).map(function(opt, i) {
-      return '<button class="sq-chip" data-answer="' + esc(opt) + '">'
-        + esc(opt) + '</button>';
-    }).join('');
-    var defVal = q['default'] || '';
-    var placeholder = q.placeholder || 'или впишите свой вариант...';
-    var html = '<div class="smart-q-card"'
-      + ' data-q-idx="' + idx + '"'
-      + ' data-field="' + esc(q.field) + '"'
-      + ' data-apply-as="' + esc(q.apply_as || 'constant') + '">'
-      + '<div class="sq-step">' + (idx + 1) + ' / ' + questions.length + '</div>'
-      + '<div class="sq-q">' + esc(q.question) + '</div>'
-      + (chips ? '<div class="sq-chips">' + chips + '</div>' : '')
-      + '<div class="sq-input-row">'
-      +   '<input class="sq-input" type="text" placeholder="' + esc(placeholder) + '" value="' + esc(defVal) + '"/>'
-      +   '<button class="sq-submit">→</button>'
-      +   '<button class="sq-skip">Пропустить</button>'
-      + '</div>'
-      + '</div>';
-    // Первый вопрос рендерим БЕЗ скролла (юзер сейчас читает
-    // инструкции сверху, не надо тащить его вниз).
+    // Безопасный рендер через зарегистрированный type 'smart_question' —
+    // вместо raw_html (удалён ради S3/XSS). Все поля экранируются в
+    // рендерере, поэтому здесь просто передаём data как есть.
     var stream = document.getElementById('stream');
     var savedScroll = (idx === 0 && stream) ? stream.scrollTop : null;
-    var qMsg = addMessage('assistant', '', [{type: 'raw_html', data: {html: html}}], []);
+    var qMsg = addMessage('assistant', '', [{
+      type: 'smart_question',
+      data: {
+        question:    q.question || '',
+        options:     q.options || [],
+        'default':   q['default'] || '',
+        placeholder: q.placeholder || '',
+        q_idx:       idx,
+        total:       questions.length,
+        field:       q.field || '',
+        apply_as:    q.apply_as || 'constant',
+      },
+    }], []);
     if (savedScroll !== null && stream) {
       setTimeout(function(){ stream.scrollTop = savedScroll; }, 10);
     } else if (idx > 0 && qMsg && qMsg.scrollIntoView) {
@@ -3434,6 +5325,26 @@
       return '<option value="' + esc(s) + '"/>';
     }).join('');
   }
+  // Кнопка «Очистить» в баннере «из прошлой загрузки»: сбрасывает порты,
+  // склад и страну до пустых значений, чтобы юзер заполнил с нуля.
+  document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.pl-clear-profile');
+    if (!btn) return;
+    e.preventDefault();
+    var card = btn.closest('.pl-defaults-card');
+    if (!card) return;
+    var top = card.querySelector('#shipment_country');
+    if (top) top.value = '';
+    card.querySelectorAll('.pl-df-input[data-field]').forEach(function(inp) {
+      var f = inp.dataset.field;
+      if (f === 'sea_port' || f === 'air_port' || f === 'warehouse_address') {
+        if (inp.tagName === 'SELECT') inp.value = '';
+        else inp.value = '';
+      }
+    });
+    var banner = btn.closest('.pl-from-profile');
+    if (banner) banner.remove();
+  });
   document.addEventListener('change', function(e) {
     var sel = e.target.closest('.pl-ship-country, .pl-port-country');
     if (!sel) return;
@@ -3811,7 +5722,7 @@
       let target = null;
       if (forceNew) {
         // Чистим storage — и URL — чтобы при F5 не возвращалось
-        try { localStorage.removeItem('cf_active_conv'); } catch(_){}
+        try { sessionStorage.removeItem('cf_active_conv'); } catch(_){}
         history.replaceState({}, '', '/chat/');
       } else if (urlConv && validIds.has(urlConv)) target = urlConv;
       else if (storedConv && validIds.has(storedConv)) target = storedConv;

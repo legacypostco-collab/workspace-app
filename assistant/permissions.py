@@ -1,8 +1,14 @@
-"""Map a Django User → assistant role string used for context filtering."""
+"""Map a Django User → assistant role string used for context filtering.
 
-# Допустимые роли, которые можно явно выбрать в UI (toggle в topbar чата).
-# Любой demo-аккаунт может переключаться между ними — это удобно для
-# демонстрации сценариев, не плодя пользователей.
+SECURITY (P0-1, прод-аудит 2026-05-21):
+  Override роли через UI-toggle / X-Assistant-Role / session разрешён ТОЛЬКО
+  если у пользователя реально есть права на эту роль. Раньше любой buyer мог
+  POST /api/assistant/role/ {"role":"operator"} и получить доступ ко всем
+  op_* actions (refund, KYB-approve и пр.) — эскалация привилегий до
+  оператора. См. assistant/views.py:RoleSwitchView.
+"""
+
+
 SWITCHABLE_ROLES = {"buyer", "seller", "operator"}
 
 
@@ -17,19 +23,75 @@ def _normalize_override(value: str | None) -> str | None:
     return None
 
 
+def _user_real_role(user) -> str:
+    """Реальная роль пользователя из БД / superuser-флага. Без override."""
+    if not user or not user.is_authenticated:
+        return "anon"
+    if user.is_superuser or user.is_staff:
+        return "admin"
+    profile = getattr(user, "userprofile", None) or getattr(user, "profile", None)
+    if profile:
+        role = (getattr(profile, "role", "") or "").lower()
+        if role in ("seller", "buyer"):
+            return role
+        if role == "operator" or getattr(profile, "operator_role", None):
+            return "operator"
+    # Demo-аккаунты: только в DEBUG/test — см. _is_demo_account ниже.
+    name = (user.username or "").lower()
+    if name.startswith(("demo_", "test_")):
+        if "operator" in name or "logist" in name:
+            return "operator"
+        if "seller" in name:
+            return "seller"
+        if "buyer" in name:
+            return "buyer"
+    return "buyer"
+
+
+def _is_demo_account(user) -> bool:
+    """В DEBUG-режиме demo-аккаунты могут переключаться между ролями
+    (нужно для демонстраций без плодения пользователей)."""
+    from django.conf import settings as _s
+    if not getattr(_s, "DEBUG", False):
+        return False
+    name = (user.username or "").lower() if user and user.is_authenticated else ""
+    return name.startswith(("demo_", "test_"))
+
+
+def _override_allowed(user, requested: str) -> bool:
+    """Разрешён ли pereзапрошенный override для этого user.
+
+    Правила:
+    - buyer → seller / operator: ЗАПРЕЩЕНО (эскалация). Исключение —
+      demo-аккаунт в DEBUG.
+    - seller → operator: ЗАПРЕЩЕНО. Demo в DEBUG — OK.
+    - любой → своя же роль или подроль: OK (no-op override).
+    - admin / superuser: может всё.
+    - operator → operator_logist / operator_customs / etc.: OK.
+    """
+    if not requested:
+        return False
+    real = _user_real_role(user)
+    if real == "admin":
+        return True
+    # Свою роль перепросить можно всегда
+    if requested == real:
+        return True
+    # Operator может уточнять подроль (operator_logist и т.п.)
+    if real == "operator" and requested.startswith("operator"):
+        return True
+    # Demo-аккаунты в DEBUG могут всё (нужно для демо-сценариев)
+    if _is_demo_account(user):
+        return True
+    return False
+
+
 def detect_user_role(user, *, request=None, override: str | None = None) -> str:
     """Return the assistant role for a given user.
 
-    Если передан явный `override` (через тело запроса или заголовок), либо
-    в сессии есть `assistant_role_override` — используем его. В противном
-    случае идём по обычной логике (профиль / эвристика по username).
-
-    Priority:
-      0. Explicit override (UI toggle) — buyer / seller / operator
-      1. Superuser → admin
-      2. UserProfile.role (buyer/seller)
-      3. operator session subrole (logist/customs/payments/manager) → operator_X
-      4. Default: buyer
+    Override (через тело запроса, X-Assistant-Role или session) применяется
+    ТОЛЬКО если пользователь имеет на это право (см. `_override_allowed`).
+    Иначе возвращаем реальную роль из БД.
     """
     explicit = _normalize_override(override)
     if not explicit and request is not None:
@@ -37,7 +99,7 @@ def detect_user_role(user, *, request=None, override: str | None = None) -> str:
             _normalize_override(request.headers.get("X-Assistant-Role"))
             or _normalize_override(getattr(request, "session", {}).get("assistant_role_override"))
         )
-    if explicit:
+    if explicit and _override_allowed(user, explicit):
         return explicit
 
     if not user or not user.is_authenticated:
@@ -58,13 +120,14 @@ def detect_user_role(user, *, request=None, override: str | None = None) -> str:
     if op_sub:
         return f"operator_{op_sub}"
 
-    # Try username heuristic for demo accounts
-    name = (user.username or "").lower()
-    if "operator" in name or "logist" in name:
-        return "operator_logist"
-    if "buyer" in name:
-        return "buyer"
-    if "seller" in name:
-        return "seller"
+    # Try username heuristic for demo accounts (только в DEBUG)
+    if _is_demo_account(user):
+        name = (user.username or "").lower()
+        if "operator" in name or "logist" in name:
+            return "operator_logist"
+        if "buyer" in name:
+            return "buyer"
+        if "seller" in name:
+            return "seller"
 
     return "buyer"
