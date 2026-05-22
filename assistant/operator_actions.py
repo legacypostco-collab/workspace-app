@@ -476,20 +476,18 @@ def op_rfq_queue(params, user, role):
         items, total = _build_items(mk, limit=8)
         totals[mk] = total
         badge = mode_badge(mk)
-        header = [{
-            "title":    f"📍 {badge} · {total} RFQ",
-            "subtitle": f"{label_prefix} · {sla_hint}",
-        }]
         action_hint = {
             "auto":   "Авто-подбор. Открывайте только для аудита, контроль не нужен.",
             "semi":   "Действие: approve КП → RFQ уходит покупателю.",
             "manual": "Действие: собрать КП — рассылка по поставщикам, выбрать исполнителя.",
         }[mk]
-        hint_row = [{"title": "Действие оператора", "subtitle": action_hint}]
+        # Заголовок секции (badge + total + SLA-намёк) — в data.title,
+        # подсказка про действие — в data.subtitle. Не дублируем в rows.
         rows = items if items else [{"title": "✅ Очередь пуста", "subtitle": "—"}]
         cards.append({"type": "list", "data": {
             "title": f"{badge} · {total} RFQ",
-            "items": header + hint_row + rows
+            "subtitle": f"{label_prefix} · {sla_hint} · {action_hint}",
+            "items": rows
                       + ([{"title": f"… ещё {total - 8} RFQ",
                             "subtitle": "Открыть полный список",
                             "action": "op_rfq_queue", "params": {"mode": mk}}]
@@ -3139,7 +3137,14 @@ def op_topup_queue(params, user, role):
           .select_related("user")
           .order_by("status", "-created_at")[:100])
     if not qs:
-        return ActionResult(text="✓ Очередь пополнений пуста.")
+        return ActionResult(
+            text="✓ Очередь пополнений пуста — все заявки обработаны.",
+            actions=[
+                {"label": "📥 Поддержка",  "action": "support_home", "params": {}},
+                {"label": "💰 Эскроу",     "action": "op_payments_dashboard", "params": {}},
+            ],
+            contextual_actions=[{"action": "op_analytics_hub", "label": "← Аналитика"}],
+        )
 
     rows = []
     for r in qs:
@@ -3163,6 +3168,7 @@ def op_topup_queue(params, user, role):
             "type": "list",
             "data": {"title": "Pending top-up requests", "items": rows},
         }],
+        contextual_actions=[{"action": "op_analytics_hub", "label": "← Аналитика"}],
     )
 
 

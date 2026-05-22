@@ -2595,7 +2595,8 @@ def _maybe_anonymize_suppliers(suppliers: list[dict], role: str) -> list[dict]:
 @register("compare_suppliers")
 def compare_suppliers(params, user, role):
     from django.contrib.auth.models import User
-    sellers = list(User.objects.filter(userprofile__role="seller")[:5])
+    # related_name = 'profile' (см. marketplace.UserProfile), а не 'userprofile'
+    sellers = list(User.objects.filter(profile__role="seller")[:5])
     if _is_buyer_view(role):
         # Для buyer — анонимизируем: только rank + рейтинг, без имени и email
         rows = [
@@ -3176,21 +3177,31 @@ def get_sla_report(params, user, role):
     on_track = qs.filter(sla_status="on_track").count()
     at_risk  = qs.filter(sla_status="at_risk").count() if hasattr(Order, "sla_status") else 0
     total    = breached + on_track + at_risk
-    on_track_pct = (on_track / total * 100) if total else 0
+    on_track_pct = (on_track / total * 100) if total else None
 
     # Money at risk (для заказов в риске/нарушенных)
     risk_orders = list(qs.filter(sla_status__in=("at_risk", "breached"))[:500])
     money_at_risk = sum(float(o.total_amount or 0) for o in risk_orders)
     # Breach rate
-    breach_pct = int(breached * 100 / total) if total else 0
-    # Health score
-    health_tone = "ok" if on_track_pct >= 80 else ("warn" if on_track_pct >= 60 else "bad")
+    breach_pct = int(breached * 100 / total) if total else None
+    # Health score — при отсутствии данных показываем «—», а не пугающий 0%.
+    if on_track_pct is None:
+        health_label, health_tone, health_sub = "—", "info", "нет данных"
+    else:
+        health_tone = "ok" if on_track_pct >= 80 else ("warn" if on_track_pct >= 60 else "bad")
+        health_label = f"{on_track_pct:.0f}%"
+        health_sub = f"{on_track}/{total} on-track"
+    if breach_pct is None:
+        breach_label, breach_tone, breach_sub = "—", "info", "нет заказов"
+    else:
+        breach_label = f"{breach_pct}%"
+        breach_tone = "bad" if breach_pct > 10 else ("warn" if breach_pct > 0 else "ok")
+        breach_sub = f"{breached} нарушено"
     items = [
-        {"label": "SLA здоровье",  "value": f"{on_track_pct:.0f}%",
-         "tone": health_tone, "sub": f"{on_track}/{total} on-track"},
-        {"label": "% нарушений",   "value": f"{breach_pct}%",
-         "tone": "bad" if breach_pct > 10 else ("warn" if breach_pct > 0 else "ok"),
-         "sub": f"{breached} нарушено"},
+        {"label": "SLA здоровье",  "value": health_label,
+         "tone": health_tone, "sub": health_sub},
+        {"label": "% нарушений",   "value": breach_label,
+         "tone": breach_tone, "sub": breach_sub},
         {"label": "Деньги под риском", "value": f"${money_at_risk:,.0f}",
          "tone": "bad" if money_at_risk and breached else ("warn" if money_at_risk else "ok"),
          "sub": f"{breached + at_risk} заказов"},
@@ -4985,7 +4996,8 @@ def seller_demand_payment(params, user, role):
     try:
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
-        return ActionResult(text=f"Заказ #{order_id} не найден.")
+        # SECURITY: одинаковый текст для not-found и not-yours — защита от enumeration leak.
+        return ActionResult(text=f"Заказ #{order_id} не содержит ваших товаров.")
     # SECURITY P0-3: ownership-check — продавец не может трогать чужой заказ.
     seller_user = _effective_seller(user)
     if not OrderItem.objects.filter(order=order, part__seller=seller_user).exists():
@@ -5040,7 +5052,8 @@ def seller_cancel_pending(params, user, role):
     try:
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
-        return ActionResult(text=f"Заказ #{order_id} не найден.")
+        # SECURITY: одинаковый ответ для not-found и not-yours (enum-leak protection).
+        return ActionResult(text=f"Заказ #{order_id} не содержит ваших товаров.")
     # SECURITY P0-3: ownership-check — продавец удаляет только свои заказы.
     seller_user = _effective_seller(user)
     if not OrderItem.objects.filter(order=order, part__seller=seller_user).exists():

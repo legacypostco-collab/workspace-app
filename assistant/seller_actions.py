@@ -439,14 +439,19 @@ def notifications(params, user, role):
 
     items = list(qs)
     unread = Notification.objects.filter(user=user, is_read=False).count()
+    # Кнопка «Дашборд» — роль-зависимая (buyer ≠ seller ≠ operator).
+    if role == "seller":
+        dash_action = {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}}
+    elif role and role.startswith("operator"):
+        dash_action = {"label": "📊 Дашборд", "action": "op_dashboard", "params": {}}
+    else:
+        dash_action = {"label": "📦 Мои заказы", "action": "get_orders", "params": {}}
     if not items:
         return ActionResult(
             text=("🔕 Уведомлений нет — на сегодня ничего не пропустили."
                   if unread == 0 else
                   f"Без новых, всего непрочитанных в системе: {unread}."),
-            actions=[
-                {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
-            ],
+            actions=[dash_action],
         )
 
     KIND_ICONS = {"order":"📦","rfq":"📋","payment":"💳","sla":"⏱","claim":"⚠️","system":"⚙️","info":"💬"}
@@ -464,9 +469,7 @@ def notifications(params, user, role):
         text=(f"🔔 Уведомления: {len(items)} (непрочитанных было {unread})."
               if unread else f"🔔 Все уведомления — {len(items)}."),
         cards=[{"type": "list", "data": {"title": "Уведомления", "rows": rows}}],
-        actions=[
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
-        ],
+        actions=[dash_action],
         suggestions=["Что новенького?", "Только непрочитанные"],
     )
 
