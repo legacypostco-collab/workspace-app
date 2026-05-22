@@ -10,8 +10,7 @@
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}/">
 
-{# ── hreflang alternates (B-17): 5 локалей + x-default.
-   Нормализуем zh-hans → zh (Google допускает оба, тесты ждут короткий). #}
+{# hreflang alternates (B-17): 5 локалей + x-default; zh-hans → zh #}
 {% get_available_languages as LANGUAGES %}
 {% for lang_code, lang_name in LANGUAGES %}
   <link rel="alternate"
@@ -1485,17 +1484,19 @@
 
   /* Theme toggle button (на лэндинге) */
   .theme-fab{
-    position:fixed;top:18px;right:18px;z-index:9999;
-    width:38px;height:38px;border-radius:50%;
-    background:rgba(255,255,255,0.85);color:#1a1422;border:1px solid rgba(0,0,0,0.10);
+    /* Выровнено с .lang-fab-wrap: top:14px, right:14px, та же форма */
+    position:fixed;top:14px;right:14px;z-index:9999;
+    width:38px;height:38px;border-radius:10px;
+    background:#fff;color:#1a1422;border:1px solid rgba(0,0,0,0.10);
     display:flex;align-items:center;justify-content:center;cursor:pointer;
-    box-shadow:0 2px 8px rgba(0,0,0,0.10);transition:all 0.18s;
+    box-shadow:0 4px 12px rgba(0,0,0,0.06);transition:background .12s,border-color .12s;
   }
   .theme-fab:hover{background:#fff;transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,0.16);}
   .theme-fab .theme-icon-moon{display:none;}
-  body.dark-mode .theme-fab{background:#262626;color:#f5f5f5;border-color:rgba(255,255,255,0.22);
-    box-shadow:0 2px 8px rgba(0,0,0,0.50);}
-  body.dark-mode .theme-fab:hover{background:#333;}
+  /* В тёмной теме theme-fab выровнен с .lang-fab — те же цвета фона/бордера */
+  body.dark-mode .theme-fab{background:#1f1f1f;color:#f5f5f5;border-color:rgba(255,255,255,0.14);
+    box-shadow:0 4px 12px rgba(0,0,0,0.40);}
+  body.dark-mode .theme-fab:hover{background:#2a2a2a;border-color:rgba(255,255,255,0.28);}
   body.dark-mode .theme-fab .theme-icon-sun{display:none;}
   body.dark-mode .theme-fab .theme-icon-moon{display:block;}
 
@@ -1572,7 +1573,8 @@
   </div>
 </div>
 <style>
-.lang-fab-wrap{position:fixed;top:14px;right:62px;z-index:200;}
+/* Globe сразу слева от theme-fab. 14 (отступ от края) + 38 (theme) + 8 (gap) = 60px */
+.lang-fab-wrap{position:fixed;top:14px;right:60px;z-index:200;}
 .lang-fab{width:38px;height:38px;border-radius:10px;border:1px solid rgba(0,0,0,0.10);
   background:#fff;color:#1a1422;cursor:pointer;display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 12px rgba(0,0,0,0.06);transition:background .12s,border-color .12s;}
