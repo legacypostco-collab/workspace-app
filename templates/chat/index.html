@@ -2620,11 +2620,16 @@
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
+      {# Bug-A fix: ролевые табы видны только staff/мульти-ролевым.
+         Анонимам и юзерам с одной ролью — скрываем, чтобы не утекала
+         модель ролей и не сбивало с толку. #}
+      {% if user.is_authenticated and user.is_staff %}
       <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
         <button type="button" class="role-tab" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
         <button type="button" class="role-tab" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
         <button type="button" class="role-tab" data-role="operator" role="tab">{% trans "Оператор" %}</button>
       </div>
+      {% endif %}
       <button class="side-new-btn" onclick="newChat()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         {% trans "Новый чат" %}
@@ -2766,10 +2771,67 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
             <span class="bell-badge" id="bellBadge" style="display:none;">0</span>
           </button>
-          <div class="top-avatar" id="topAvatar"
-               role="button" tabindex="0"
-               aria-label="{% trans 'Профиль и настройки' %}"
-               title="{% trans 'Профиль и настройки' %}">?</div>
+          <div class="top-avatar-wrap" style="position:relative;">
+            <div class="top-avatar" id="topAvatar"
+                 role="button" tabindex="0"
+                 onclick="toggleProfileMenu(event)"
+                 onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleProfileMenu(event);}"
+                 aria-label="{% trans 'Профиль и настройки' %}"
+                 aria-haspopup="true" aria-expanded="false"
+                 title="{% trans 'Профиль и настройки' %}">?</div>
+            <div class="profile-menu" id="profileMenu" hidden
+                 style="position:absolute;top:46px;right:0;min-width:200px;background:#fff;
+                        border:1px solid rgba(0,0,0,0.10);border-radius:10px;
+                        box-shadow:0 10px 30px rgba(0,0,0,0.15);padding:6px;z-index:1000;">
+              <div style="padding:8px 12px 6px;font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.04em;">
+                {{ user.username }}
+              </div>
+              <button type="button" onclick="quickAction('account_settings',{})"
+                      style="display:block;width:100%;text-align:left;padding:8px 12px;background:none;border:none;border-radius:6px;font-size:13px;color:#1a1a1a;cursor:pointer;">
+                {% trans "Настройки" %}
+              </button>
+              <button type="button" onclick="quickAction('notif_settings',{})"
+                      style="display:block;width:100%;text-align:left;padding:8px 12px;background:none;border:none;border-radius:6px;font-size:13px;color:#1a1a1a;cursor:pointer;">
+                {% trans "Уведомления" %}
+              </button>
+              <div style="height:1px;background:rgba(0,0,0,0.08);margin:4px 6px;"></div>
+              <form method="post" action="{% url 'logout' %}" style="margin:0;">
+                {% csrf_token %}
+                <button type="submit"
+                        style="display:block;width:100%;text-align:left;padding:8px 12px;background:none;border:none;border-radius:6px;font-size:13px;color:#c0392b;cursor:pointer;">
+                  {% trans "Выйти" %}
+                </button>
+              </form>
+            </div>
+          </div>
+          <script>
+          (function(){
+            window.toggleProfileMenu = function(ev){
+              if(ev) ev.stopPropagation();
+              var m = document.getElementById('profileMenu');
+              var a = document.getElementById('topAvatar');
+              if(!m) return;
+              var open = m.hasAttribute('hidden');
+              if(open){ m.removeAttribute('hidden'); a.setAttribute('aria-expanded','true'); }
+              else    { m.setAttribute('hidden',''); a.setAttribute('aria-expanded','false'); }
+            };
+            document.addEventListener('click', function(e){
+              var m = document.getElementById('profileMenu');
+              var a = document.getElementById('topAvatar');
+              if(!m || m.hasAttribute('hidden')) return;
+              if(e.target===a || a.contains(e.target) || m.contains(e.target)) return;
+              m.setAttribute('hidden','');
+              a.setAttribute('aria-expanded','false');
+            });
+          })();
+          </script>
+          <style>
+          .profile-menu[hidden]{display:none !important;}
+          .profile-menu button:hover{background:#f5f5f7;}
+          body.dark-mode .profile-menu{background:#1f1f1f;border-color:rgba(255,255,255,0.14);}
+          body.dark-mode .profile-menu button{color:#f5f5f5;}
+          body.dark-mode .profile-menu button:hover{background:#2a2a2a;}
+          </style>
         {% else %}
           <!-- Anonymous: триггерят chat-action прямо в чате, без редиректов -->
           <button type="button" class="top-icon"
