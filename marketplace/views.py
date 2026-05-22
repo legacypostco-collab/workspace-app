@@ -6473,7 +6473,24 @@ def chat_first_view(request):
     доходит до mutating-действий (создать RFQ, заказать, оплатить) —
     backend возвращает gating-card «Зарегистрируйтесь, чтобы продолжить».
     """
-    return render(request, "chat/index.html")
+    # Передаём активную роль в шаблон — sidebar показывает её как badge
+    # вместо переключателя, чтобы юзер видел кто он, а не "выбирал" роль.
+    active_role = None
+    if request.user.is_authenticated:
+        try:
+            profile = getattr(request.user, "profile", None) or getattr(request.user, "userprofile", None)
+            r = (getattr(profile, "role", "") or "").lower()
+            if r.startswith("operator"):
+                active_role = "operator"
+            elif r == "seller":
+                active_role = "seller"
+            elif r == "admin":
+                active_role = "admin"
+            else:
+                active_role = "buyer"
+        except Exception:
+            active_role = "buyer"
+    return render(request, "chat/index.html", {"active_role": active_role})
 
 
 @login_required
