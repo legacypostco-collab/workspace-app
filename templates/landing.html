@@ -1464,8 +1464,11 @@
     --line-2:      rgba(255,255,255,0.14);
     --aub:         #0a0a0a;
     --aub-deep:    #050505;
-    --accent:      #f5f5f5;
-    --accent-deep: #ffffff;
+    /* A11y: в dark-mode оранжевый акцент должен оставаться оранжевым,
+       иначе кнопки CTA с background:var(--accent)+color:#fff станут
+       невидимыми (белыми на белом). */
+    --accent:      #FF6B3D;
+    --accent-deep: #E84A21;
     --peach:       rgba(255,255,255,0.55);
     --ok:          #86efac;
     --grad-sunset: linear-gradient(180deg, #555555 0%, #3a3a3a 35%, #181818 65%, #050505 100%);
