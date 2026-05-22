@@ -19,7 +19,6 @@ from django.utils import timezone
 
 from assistant.order_events import notify_operator_alert
 
-
 _ESCALATED_MARKER = "SLA_ESCALATED:"
 
 

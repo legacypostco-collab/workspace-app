@@ -4,11 +4,13 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import User
-from django.utils.text import slugify
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.utils.text import slugify
 
+from assistant.management._seed_guard import ensure_dev_only
 from marketplace.models import (
+    RFQ,
     Brand,
     Category,
     Order,
@@ -17,11 +19,9 @@ from marketplace.models import (
     OrderEvent,
     OrderItem,
     Part,
-    RFQ,
     RFQItem,
     SupplierRatingEvent,
     UserProfile,
-    WebhookDeliveryLog,
 )
 
 
@@ -29,6 +29,7 @@ class Command(BaseCommand):
     help = "Seed database with rich demo data for all admin tabs"
 
     def handle(self, *args, **options):
+        ensure_dev_only(self)
         now = timezone.now()
 
         # ── Users ──────────────────────────────────────────────

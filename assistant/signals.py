@@ -28,7 +28,7 @@ def _safe_delay(task, *args):
 def _connect():
     """Wire up signals lazily to avoid AppRegistry issues during startup."""
     try:
-        from marketplace.models import Order, Part, RFQ
+        from marketplace.models import RFQ, Order, Part
     except ImportError:
         return
     from .tasks import index_order_task, index_part_task, index_rfq_task

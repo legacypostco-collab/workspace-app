@@ -11,7 +11,6 @@ import os
 import struct
 
 import httpx
-
 from django.conf import settings
 
 logger = logging.getLogger(__name__)

@@ -11,8 +11,8 @@ This file owns the fast-path matchers. Each `match_*` returns either
 (action_name, params) to execute, or None to defer to LLM.
 """
 from __future__ import annotations
+
 import re
-from typing import Optional, Tuple
 
 # OEM article: 4-19 chars, letters+digits+separators, must contain a digit.
 _OEM_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9\-/.]{3,18}$")
@@ -77,7 +77,7 @@ def rule(name: str):
 
 
 @rule("multi_article_paste")
-def _multi_article(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _multi_article(msg: str, lower: str) -> tuple[str, dict] | None:
     """User pasted >= 2 OEM article numbers → search_parts with full text.
 
     Поддерживает «OEM qty» формат построчно: 2W1223 1, 1R0750 2 → qty
@@ -94,7 +94,7 @@ def _multi_article(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("show_rfqs")
-def _my_rfqs(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _my_rfqs(msg: str, lower: str) -> tuple[str, dict] | None:
     """«мои rfq», «покажи rfq», «активные котировки»"""
     triggers = ("мои rfq", "мои rfq", "мои котировки", "покажи rfq",
                 "покажи мои rfq", "активные rfq", "активные котировки",
@@ -105,7 +105,7 @@ def _my_rfqs(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("show_orders")
-def _my_orders(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _my_orders(msg: str, lower: str) -> tuple[str, dict] | None:
     """«мои заказы», «статус заказов», «show orders»"""
     triggers = ("мои заказ", "покажи заказ", "статус заказ", "статус мои заказ",
                 "список заказ", "все заказы", "активные заказ",
@@ -116,7 +116,7 @@ def _my_orders(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("generate_proposal")
-def _make_proposal(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _make_proposal(msg: str, lower: str) -> tuple[str, dict] | None:
     """«сформируй кп», «сделай коммерческое», «выгрузи кп»"""
     triggers = ("сформируй кп", "сформировать кп", "сделай кп", "сделать кп",
                 "коммерческое предложение", "выгрузи кп", "генерируй кп",
@@ -132,7 +132,7 @@ def _make_proposal(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("budget")
-def _budget(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _budget(msg: str, lower: str) -> tuple[str, dict] | None:
     """«бюджет», «расходы», «сколько потратили»"""
     triggers = ("бюджет", "расходы за", "сколько потратили", "сколько потратил",
                 "общая сумма заказ", "budget", "spending")
@@ -149,7 +149,7 @@ def _budget(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("analytics")
-def _analytics(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _analytics(msg: str, lower: str) -> tuple[str, dict] | None:
     # «дашборд» / «dashboard» отдают приоритет seller_dashboard rule (ниже).
     triggers = ("аналитик", "kpi", "метрик", "analytics")
     if _has_keyword(lower, triggers):
@@ -158,14 +158,14 @@ def _analytics(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("sla_report")
-def _sla(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _sla(msg: str, lower: str) -> tuple[str, dict] | None:
     if "sla" in lower or "просрочк" in lower or "нарушен" in lower:
         return ("get_sla_report", {})
     return None
 
 
 @rule("claims")
-def _claims(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _claims(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("рекламац", "претенз", "брак", "claim", "complaint")
     if _has_keyword(lower, triggers):
         return ("get_claims", {})
@@ -173,7 +173,7 @@ def _claims(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("ship_order_fp")
-def _ship_order_fp(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _ship_order_fp(msg: str, lower: str) -> tuple[str, dict] | None:
     """«отгрузил 138 RA12345» / «отгрузить заказ #138 трекинг RA123 DHL»."""
     triggers = ("отгруз", "отправ", "ship ", "shipped", "shipping ")
     if not _has_keyword(lower, triggers):
@@ -196,14 +196,14 @@ def _ship_order_fp(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_qr")
-def _seller_qr(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_qr(msg: str, lower: str) -> tuple[str, dict] | None:
     if _has_keyword(lower, ("qr", "кьюар", "сканирован")):
         return ("seller_qr", {})
     return None
 
 
 @rule("seller_logistics")
-def _seller_logistics(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_logistics(msg: str, lower: str) -> tuple[str, dict] | None:
     if _has_keyword(lower, ("логистик", "в пути", "транзит", "tracking",
                             "logistics", "in transit")):
         return ("seller_logistics", {})
@@ -211,14 +211,14 @@ def _seller_logistics(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_negotiations")
-def _seller_negotiations(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_negotiations(msg: str, lower: str) -> tuple[str, dict] | None:
     if _has_keyword(lower, ("переговор", "negotiation", "торг")):
         return ("seller_negotiations", {})
     return None
 
 
 @rule("notifications")
-def _notifications(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _notifications(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("уведомлен", "что новенького", "что нового", "колоколь",
                 "notifications", "inbox bell")
     if _has_keyword(lower, triggers):
@@ -227,7 +227,7 @@ def _notifications(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("audit_log")
-def _audit_log(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _audit_log(msg: str, lower: str) -> tuple[str, dict] | None:
     """«аудит заказа N», «лог по #N», «события заказа N»."""
     triggers = ("аудит", "лог по", "события заказ", "events", "audit log")
     if not _has_keyword(lower, triggers):
@@ -239,7 +239,7 @@ def _audit_log(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("price_quote")
-def _price_quote(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _price_quote(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = (
         "конфигуратор цен", "посчитай цен", "цена для клиента",
         "fob ", "cif ", "ddp ", "сколько будет с маржей",
@@ -251,7 +251,7 @@ def _price_quote(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("kb_search")
-def _kb_search(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _kb_search(msg: str, lower: str) -> tuple[str, dict] | None:
     """«база знаний», «кросс-номер», «как упаковать», «таможенный код», «маршрут»."""
     triggers = (
         "база знаний", "что в базе", "регламент", "кросс-номер", "кросс номер",
@@ -264,7 +264,7 @@ def _kb_search(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_inbox")
-def _seller_inbox(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_inbox(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("сегодня", "что делать", "что срочно", "горящи", "inbox",
                 "to-do", "чеклист", "что важно", "что в первую")
     if _has_keyword(lower, triggers):
@@ -273,7 +273,7 @@ def _seller_inbox(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_catalog")
-def _seller_catalog(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_catalog(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("каталог", "мои товар", "мой каталог", "список товаров",
                 "products list", "my catalog")
     if _has_keyword(lower, triggers):
@@ -282,7 +282,7 @@ def _seller_catalog(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_drawings")
-def _seller_drawings(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_drawings(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("чертеж", "drawing", "схем")
     if _has_keyword(lower, triggers):
         return ("seller_drawings", {})
@@ -290,7 +290,7 @@ def _seller_drawings(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_team")
-def _seller_team(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_team(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("команд", "сотрудник", "пригласи", "team",
                 "my staff", "members")
     if _has_keyword(lower, triggers):
@@ -299,7 +299,7 @@ def _seller_team(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_integrations")
-def _seller_integrations(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_integrations(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("интеграц", "1с", "битрикс", "telegram", "api",
                 "integration", "webhook")
     if _has_keyword(lower, triggers):
@@ -308,7 +308,7 @@ def _seller_integrations(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_reports")
-def _seller_reports(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_reports(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("отчет", "отчёт", "выгрузк", "экспорт",
                 "report", "export", "download")
     if _has_keyword(lower, triggers):
@@ -317,7 +317,7 @@ def _seller_reports(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("add_product")
-def _add_product(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _add_product(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("добавь товар", "добавить товар", "новый товар",
                 "add product", "new product")
     if _has_keyword(lower, triggers):
@@ -326,7 +326,7 @@ def _add_product(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_dashboard")
-def _seller_dashboard(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_dashboard(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("дашборд", "сводка", "сводку", "kpi", "главная", "обзор",
                 "dashboard", "overview")
     if _has_keyword(lower, triggers):
@@ -335,7 +335,7 @@ def _seller_dashboard(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_finance")
-def _seller_finance(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_finance(msg: str, lower: str) -> tuple[str, dict] | None:
     # «выручка», «финансы», «продажи за месяц», «когда выплата»
     triggers = ("выручк", "финанс", "продаж", "выплат", "доход",
                 "revenue", "income", "payouts", "earnings")
@@ -345,7 +345,7 @@ def _seller_finance(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_rating")
-def _seller_rating(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_rating(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("рейтинг", "отзыв", "репутац", "балл",
                 "rating", "reviews", "score")
     if _has_keyword(lower, triggers):
@@ -354,7 +354,7 @@ def _seller_rating(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("seller_pipeline")
-def _seller_pipeline(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _seller_pipeline(msg: str, lower: str) -> tuple[str, dict] | None:
     """«к отгрузке», «очередь», «что отгружать», «мои отгрузки»."""
     triggers = (
         "к отгрузке", "очередь", "очередь отгруз", "что отгружать",
@@ -367,23 +367,42 @@ def _seller_pipeline(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("track_order")
-def _track_order(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
-    """«трекинг 124», «где заказ 124», «отследи заказ #124», «статус заказа 124»."""
+def _track_order(msg: str, lower: str) -> tuple[str, dict] | None:
+    """«трекинг 124», «где заказ 124», «отследи заказ #124», «статус заказа 124»,
+    «когда отгрузят 82», «как скоро отгрузят заказ #82», «когда придёт 82»,
+    «когда доедет 82», «ETA по 82», «срок поставки 82».
+
+    Расширено: покрывает популярные вопросы про сроки поставки —
+    раньше падали в LLM (≈1500 input + 300 output токенов на запрос).
+    """
     triggers = (
+        # tracking / location
         "трекинг", "отслеж", "отследи", "где заказ", "где мой заказ",
         "где посылк", "статус заказ", "статус #",
-        "track", "where is order", "tracking",
+        # ETA / shipping date
+        "когда отгруз", "как скоро отгруз", "когда придёт", "когда придет",
+        "когда доедет", "когда прибуд", "когда поедет", "когда привез",
+        "срок поставки", "срок доставки", "eta", "ета",
+        # English
+        "track", "where is order", "tracking", "when will", "when ship",
+        "delivery date", "eta order",
     )
     if not _has_keyword(lower, triggers):
         return None
-    m = re.search(r"(?:заказ|order)?\s*#?\s*(\d+)", lower)
+    # Захватываем число в окружении (русские окончания «заказу/заказа», «order #»,
+    # или цифры без префикса в формате «отгрузят 82»).
+    m = (
+        re.search(r"(?:заказ\w*|order)\s*#?\s*(\d+)", lower)
+        or re.search(r"#\s*(\d+)", lower)
+        or re.search(r"\b(\d{2,7})\b", lower)
+    )
     if m:
         return ("track_order", {"order_id": int(m.group(1))})
     return None
 
 
 @rule("track_shipment")
-def _track(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _track(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("шипмент", "shipment", "где посылк")
     if _has_keyword(lower, triggers):
         m = re.search(r"(?:заказ|order)\s*#?\s*(\w+)", lower)
@@ -392,7 +411,7 @@ def _track(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("demand_report")
-def _demand(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _demand(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("спрос", "что ищут", "что чаще ищут", "топ запрос",
                 "demand report", "what is in demand")
     if _has_keyword(lower, triggers):
@@ -401,7 +420,7 @@ def _demand(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("get_balance")
-def _balance(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _balance(msg: str, lower: str) -> tuple[str, dict] | None:
     """«баланс», «депозит», «сколько на счёте», «кошелёк», «история операций»."""
     triggers = (
         "баланс", "депозит", "кошел", "сколько на счет", "сколько на счёт",
@@ -415,7 +434,7 @@ def _balance(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("topup_wallet")
-def _topup(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _topup(msg: str, lower: str) -> tuple[str, dict] | None:
     """«пополни на 5000», «пополнить депозит на $1000», «закинь 10к»."""
     triggers = ("пополни", "пополн", "закинь", "topup", "top up", "top-up", "add funds")
     if not _has_keyword(lower, triggers):
@@ -433,7 +452,7 @@ def _topup(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("pay_reserve_fp")
-def _pay_reserve_fp(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _pay_reserve_fp(msg: str, lower: str) -> tuple[str, dict] | None:
     """«оплати резерв заказа 126», «спиши 10% по #126»."""
     triggers_pay = ("оплат", "списать", "спиши", "pay")
     triggers_reserve = ("резерв", "10%", "reserve")
@@ -448,7 +467,7 @@ def _pay_reserve_fp(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("pay_final_fp")
-def _pay_final_fp(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _pay_final_fp(msg: str, lower: str) -> tuple[str, dict] | None:
     """«оплати остаток заказа 126», «доплати 90% по #126»."""
     triggers_pay = ("оплат", "доплат", "списать", "спиши", "pay")
     triggers_final = ("остаток", "90%", "финал", "final", "balance", "rest")
@@ -463,7 +482,7 @@ def _pay_final_fp(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 @rule("top_suppliers")
-def _suppliers(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
+def _suppliers(msg: str, lower: str) -> tuple[str, dict] | None:
     triggers = ("топ поставщик", "лучшие поставщик", "сравни поставщик",
                 "сравнить поставщик", "best suppliers", "compare suppliers",
                 "top suppliers")
@@ -475,7 +494,7 @@ def _suppliers(msg: str, lower: str) -> Optional[Tuple[str, dict]]:
 
 
 # ── Public API ───────────────────────────────────────────────
-def match(message: str, role: str) -> Optional[Tuple[str, dict, str]]:
+def match(message: str, role: str) -> tuple[str, dict, str] | None:
     """Try every rule in order. Return (action, params, rule_name) or None.
 
     Не матчим действия, на которые у роли нет прав, чтобы не показывать

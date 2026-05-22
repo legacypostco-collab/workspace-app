@@ -14,9 +14,8 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
 from assistant.models import Conversation, Message
-from assistant.order_events import notify_order_event, notify_operator_alert
+from assistant.order_events import notify_operator_alert, notify_order_event
 from marketplace.models import Category, Order, OrderItem, Part, UserProfile
-
 
 User = get_user_model()
 

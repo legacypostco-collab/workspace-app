@@ -299,7 +299,7 @@
             <h3>{% trans "Таблица загружена" %}</h3>
             <p class="muted">
               Preview #{{ active_preview.id }} {% trans "• Статус:" %} <strong>{{ active_preview.status }}</strong>
-              {% if active_preview.source_url %} • <a href="{{ active_preview.source_url }}" target="_blank" style="color:#64B5F6;">{% trans "Открыть таблицу" %}</a>{% endif %}
+              {% if active_preview.source_url %} • <a href="{{ active_preview.source_url }}" target="_blank" rel="noopener noreferrer" style="color:#64B5F6;">{% trans "Открыть таблицу" %}</a>{% endif %}
             </p>
           {% else %}
             <div class="upload-step-label">{% trans "Шаг 2" %}</div>

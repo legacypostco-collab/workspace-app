@@ -1,9 +1,35 @@
-from django.urls import path
 from django.contrib.auth import views as auth_views
+from django.urls import path
 
+from . import feedback as _feedback
+from . import gdpr as _gdpr
+from . import health as _health
 from . import views
 
 urlpatterns = [
+    # ── Healthchecks (k8s / nginx / Yandex MK) ─────────────────
+    path("healthz/", _health.liveness,  name="healthz"),
+    path("readyz/",  _health.readiness, name="readyz"),
+    # ── Password reset (Django stock view'ы — стандартный flow) ──
+    # Шаблоны лежат в templates/registration/password_reset_*.html (Django default lookup).
+    # RateLimitedPasswordResetView оборачивает Django stock view с лимитом
+    # 3 запроса/час на IP — защита от спама на чужие email.
+    path("password_reset/", views.RateLimitedPasswordResetView.as_view(
+        email_template_name="registration/password_reset_email.txt",
+        subject_template_name="registration/password_reset_subject.txt",
+    ), name="password_reset"),
+    path("password_reset/done/", auth_views.PasswordResetDoneView.as_view(),
+         name="password_reset_done"),
+    path("reset/<uidb64>/<token>/", auth_views.PasswordResetConfirmView.as_view(),
+         name="password_reset_confirm"),
+    path("reset/done/", auth_views.PasswordResetCompleteView.as_view(),
+         name="password_reset_complete"),
+    # ── GDPR / 152-ФЗ: data export + soft-delete ──
+    path("api/me/export/", _gdpr.export_my_data, name="gdpr_export"),
+    path("api/me/delete/", _gdpr.delete_my_account, name="gdpr_delete"),
+    # ── Beta feedback widget ──
+    path("api/feedback/", _feedback.submit_feedback, name="submit_feedback"),
+
     path("", views.home, name="home"),
     path("landing/", views.landing_view, name="landing"),
     path("demo-center/", views.demo_center, name="demo_center"),
@@ -189,6 +215,9 @@ urlpatterns = [
     path("buyer/negotiations/", views.buyer_negotiations, name="buyer_negotiations"),
     path("buyer/finance/", views.buyer_finance, name="buyer_finance"),
     path("buyer/analytics/", views.buyer_analytics, name="buyer_analytics"),
+
+    # i18n — set user language
+    path("api/set-language/", views.set_language_api, name="set_language_api"),
 
     # Notifications
     path("notifications/", views.notifications_page, name="notifications"),

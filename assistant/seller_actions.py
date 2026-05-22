@@ -11,6 +11,7 @@ from decimal import Decimal
 from django.utils import timezone
 
 from .actions import ActionResult, register
+from .rfq_mode_badge import mode_badge_with_sla
 
 logger = logging.getLogger(__name__)
 
@@ -19,21 +20,47 @@ def _effective_seller(user):
     """Возвращает «продавца» для seller-actions.
 
     Toggle «Продавец/Покупатель/Оператор» переключает только UI-режим, не меняя
-    request.user. Чтобы demo-аккаунт (demo_buyer / demo_operator) при переключении
-    в seller-режим видел работающий кабинет, делаем fallback: если у текущего
-    пользователя нет товаров в каталоге, и он — демо-аккаунт, показываем данные
-    demo_seller. В реальной жизни (не demo) пользователь либо сам seller, либо
-    у него своих товаров действительно нет — тогда отвечаем «пусто».
+    request.user. Чтобы любой тестировщик мог посмотреть, как seller-кабинет
+    наполнен, делаем fallback на demo_seller когда у юзера НЕТ собственного
+    каталога — в DEBUG/dev-окружении или если username начинается с
+    `demo_*` / `test_*` (классические seed-пользователи).
+
+    Production-юзер с реальным каталогом видит свои данные — fallback не
+    срабатывает (у него есть хотя бы один Part).
     """
+    from django.conf import settings
     from django.contrib.auth import get_user_model
+
     from marketplace.models import Part
-    if Part.objects.filter(seller=user, is_active=True).exists():
+
+    from marketplace.models import OrderItem
+
+    username = (user.username or "")
+    if username == "demo_seller":
         return user
-    if (user.username or "").startswith("demo_"):
+
+    # Тестовый/демо/DEBUG-юзер — всегда fallback на demo_seller,
+    # независимо от того, есть ли у него своя свалка тестовых parts.
+    is_test_account = (
+        username.startswith("demo_")
+        or username.startswith("test_")
+        or username.startswith("tz")  # автогенерённые тестеры из beta
+        or bool(getattr(settings, "DEBUG", False))
+    )
+    if is_test_account:
         try:
             return get_user_model().objects.get(username="demo_seller")
         except Exception:
             return user
+
+    # Production-юзер с реальными OrderItem'ами — продавец сам, никаких подмен.
+    if OrderItem.objects.filter(part__seller=user).exists():
+        return user
+
+    # Production-юзер без orders, но с parts (свежий продавец) — он сам.
+    if Part.objects.filter(seller=user, is_active=True).exists():
+        return user
+
     return user
 
 
@@ -243,7 +270,6 @@ def forecast_demand(params, user, role):
       months_ahead: int (горизонт, по умолчанию 6)
       machines: int (количество единиц техники, по умолчанию 1)
     """
-    from datetime import timedelta
     hours_per_month = int(params.get("hours_per_month") or 200)
     months_ahead = min(int(params.get("months_ahead") or 6), 24)
     machines = max(1, int(params.get("machines") or 1))
@@ -318,7 +344,8 @@ def sync_1c(params, user, role):
     """
     import os
     from datetime import timedelta
-    from marketplace.models import Order, OrderItem, Part
+
+    from marketplace.models import Order, Part
 
     direction = (params.get("direction") or "both").lower()
     since_days = min(int(params.get("since_days") or 7), 90)
@@ -353,7 +380,6 @@ def sync_1c(params, user, role):
     else:
         # Реальный обмен через OData (минимальный stub — серверу нужен 1С со схемой)
         try:
-            import requests
             log_lines = []
             ok_push, ok_pull = 0, 0
             if direction in ("push", "both"):
@@ -413,14 +439,19 @@ def notifications(params, user, role):
 
     items = list(qs)
     unread = Notification.objects.filter(user=user, is_read=False).count()
+    # Кнопка «Дашборд» — роль-зависимая (buyer ≠ seller ≠ operator).
+    if role == "seller":
+        dash_action = {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}}
+    elif role and role.startswith("operator"):
+        dash_action = {"label": "📊 Дашборд", "action": "op_dashboard", "params": {}}
+    else:
+        dash_action = {"label": "📦 Мои заказы", "action": "get_orders", "params": {}}
     if not items:
         return ActionResult(
             text=("🔕 Уведомлений нет — на сегодня ничего не пропустили."
                   if unread == 0 else
                   f"Без новых, всего непрочитанных в системе: {unread}."),
-            actions=[
-                {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
-            ],
+            actions=[dash_action],
         )
 
     KIND_ICONS = {"order":"📦","rfq":"📋","payment":"💳","sla":"⏱","claim":"⚠️","system":"⚙️","info":"💬"}
@@ -438,9 +469,7 @@ def notifications(params, user, role):
         text=(f"🔔 Уведомления: {len(items)} (непрочитанных было {unread})."
               if unread else f"🔔 Все уведомления — {len(items)}."),
         cards=[{"type": "list", "data": {"title": "Уведомления", "rows": rows}}],
-        actions=[
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
-        ],
+        actions=[dash_action],
         suggestions=["Что новенького?", "Только непрочитанные"],
     )
 
@@ -451,6 +480,7 @@ def generate_qr(params, user, role):
     логируется как событие. По ТЗ: «каждое сканирование — событие».
     """
     import secrets
+
     from marketplace.models import Order, OrderItem
     order_id = params.get("order_id")
     if not order_id:
@@ -509,6 +539,374 @@ def generate_qr(params, user, role):
             {"label": "📋 Аудит", "action": "audit_log", "params": {"order_id": order.id}},
         ],
         suggestions=["Сгенерировать ещё", "Где сканировать?"],
+    )
+
+
+@register("seller_analytics_hub")
+def seller_analytics_hub(params, user, role):
+    """Хаб аналитики поставщика: все отчёты в одной точке.
+
+    Включает: оборот · рейтинг · SLA · спрос на рынке · поставки ·
+    финансы/выплаты · отчёт для руководства (executive summary).
+    """
+    from datetime import timedelta
+
+    from django.db.models import Sum
+    from django.utils import timezone
+
+    from assistant.models import Wallet, WalletTx
+    from marketplace.models import Order, OrderClaim, Part, RFQ
+
+    seller = _effective_seller(user)
+    now = timezone.now()
+    year = now.year
+    last_30 = now - timedelta(days=30)
+
+    # ── Краткая сводка для шапки ────────────────────────────
+    my_orders = Order.objects.filter(items__part__seller=seller).distinct()
+    n_total       = my_orders.count()
+    n_delivered   = my_orders.filter(status__in=("delivered", "completed")).count()
+    n_in_flight   = my_orders.exclude(status__in=("delivered", "completed", "cancelled")).count()
+    n_breached    = my_orders.filter(sla_status="breached").count()
+    revenue_year  = float(my_orders.filter(
+        created_at__year=year, status__in=("delivered", "completed")
+    ).aggregate(s=Sum("total_amount"))["s"] or 0)
+    revenue_30    = float(my_orders.filter(
+        created_at__gte=last_30, status__in=("delivered", "completed")
+    ).aggregate(s=Sum("total_amount"))["s"] or 0)
+    sla_pct       = ((n_total - n_breached) / n_total * 100) if n_total else 0
+    catalog_n     = Part.objects.filter(seller=seller, is_active=True).count()
+    open_rfq      = RFQ.objects.exclude(status__in=("closed", "cancelled")).count()
+    active_claims = OrderClaim.objects.filter(
+        order__items__part__seller=seller, status__in=("open", "in_review")
+    ).distinct().count()
+    wallet = Wallet.for_user(seller)
+
+    hero = [
+        {"label": f"Оборот {year}", "value": f"${revenue_year:,.0f}",
+         "tone": "ok" if revenue_year > 0 else "info",
+         "sub":  f"за 30 дней: ${revenue_30:,.0f}"},
+        {"label": "SLA", "value": f"{sla_pct:.0f}%" if n_total else "—",
+         "tone": "ok" if sla_pct >= 95 else "warn" if sla_pct >= 80 else "bad" if n_total else "info",
+         "sub": f"{n_breached} наруш. из {n_total}" if n_total else "нет сделок"},
+        {"label": "Заказы", "value": str(n_total),
+         "sub": f"{n_delivered} закрыто · {n_in_flight} в работе"},
+        {"label": "Депозит", "value": f"${float(wallet.balance):,.0f}",
+         "tone": "ok" if wallet.balance > 0 else "info"},
+        {"label": "Каталог", "value": f"{catalog_n:,} поз.",
+         "tone": "ok" if catalog_n >= 100 else "warn" if catalog_n > 0 else "info"},
+        {"label": "Активные рекламации", "value": str(active_claims),
+         "tone": "bad" if active_claims > 0 else "ok"},
+    ]
+
+    # ── Реестр отчётов: title · описание · action ───────────
+    # Дубли с pill «🔥 Срочное» (seller_inbox) и кнопкой сайдбара
+    # «История действий» (recent_activity) — здесь не дублируем,
+    # это аналитика, а не оперативный inbox.
+    reports = [
+        {"title":    "📈 Спрос на рынке",
+         "subtitle": "Что покупатели запрашивают, где у вас дыры в каталоге, динамика по неделям",
+         "action":   "get_demand_report", "params": {}},
+        {"title":    "🚚 Отчёт по поставкам",
+         "subtitle": "Воронка статусов · ваши заказы по этапам pipeline · ETA доставки",
+         "action":   "get_supply_report", "params": {}},
+        {"title":    "⏱ SLA по заказам",
+         "subtitle": "Соблюдение сроков · среднее время на каждом этапе · застрявшие заказы",
+         "action":   "get_sla_report", "params": {}},
+        {"title":    "📊 Аналитика заказов",
+         "subtitle": "Распределение по статусам · динамика по месяцам · средний чек",
+         "action":   "get_analytics", "params": {}},
+        {"title":    "🛡 Рейтинг и статус поставщика",
+         "subtitle": "Как считается рейтинг · что повысит · план роста · преимущества тиров",
+         "action":   "kyb_status", "params": {}},
+        {"title":    "💰 Финансы и движения по депозиту",
+         "subtitle": "Баланс · выплаты эскроу · история транзакций",
+         "action":   "get_balance", "params": {}},
+        {"title":    "📑 Executive summary (для руководства)",
+         "subtitle": "Сводный отчёт: ключевые метрики на одной странице — для топ-менеджмента",
+         "action":   "seller_executive_report", "params": {}},
+    ]
+
+    return ActionResult(
+        text=(
+            f"📊 Аналитика — все отчёты в одной точке.\n"
+            f"Кратко: оборот за {year} · ${revenue_year:,.0f}, "
+            f"SLA {sla_pct:.0f}%, "
+            f"{n_total} сделок ({n_delivered} закрыто), "
+            f"открытых RFQ на рынке: {open_rfq}."
+        ),
+        cards=[
+            {"type": "kpi_grid", "data": {
+                "title": "📊 Сводка по поставщику",
+                "items": hero,
+            }},
+            {"type": "list", "data": {
+                "title": "📈 Развёрнутые отчёты — кликните для деталей",
+                "items": reports,
+            }},
+        ],
+        actions=[
+            {"label": "📤 Загрузить прайс",     "action": "upload_pricelist",  "params": {}},
+            {"label": "🔥 Срочные задачи",      "action": "seller_inbox",      "params": {}},
+            {"label": "💬 Связаться с менеджером", "action": "contact_operator", "params": {"topic": "analytics"}},
+        ],
+    )
+
+
+@register("seller_executive_report")
+def seller_executive_report(params, user, role):
+    """Executive summary — короткая выжимка для руководства.
+    Одна KPI-карточка с ключевыми цифрами + текст с инсайтами.
+    """
+    from django.db.models import Sum
+    from django.utils import timezone
+
+    from marketplace.models import Order, OrderClaim, Part, RFQ
+    from assistant.models import Wallet
+
+    seller = _effective_seller(user)
+    now = timezone.now()
+    year, prev_year = now.year, now.year - 1
+    q_year = Order.objects.filter(items__part__seller=seller,
+                                   created_at__year=year).distinct()
+    q_prev = Order.objects.filter(items__part__seller=seller,
+                                   created_at__year=prev_year).distinct()
+    rev_now = float(q_year.filter(status__in=("delivered", "completed"))
+                          .aggregate(s=Sum("total_amount"))["s"] or 0)
+    rev_prev = float(q_prev.filter(status__in=("delivered", "completed"))
+                           .aggregate(s=Sum("total_amount"))["s"] or 0)
+    growth = ((rev_now - rev_prev) / rev_prev * 100) if rev_prev else 0
+    n_year = q_year.count()
+    n_delivered = q_year.filter(status__in=("delivered", "completed")).count()
+    n_breached = q_year.filter(sla_status="breached").count()
+    sla_pct = ((n_year - n_breached) / n_year * 100) if n_year else 0
+    avg_check = (rev_now / n_delivered) if n_delivered else 0
+    n_claims = OrderClaim.objects.filter(
+        order__items__part__seller=seller, status__in=("open", "in_review")
+    ).distinct().count()
+    catalog = Part.objects.filter(seller=seller, is_active=True).count()
+    wallet = Wallet.for_user(seller)
+
+    kpis = [
+        {"label": f"Оборот {year}", "value": f"${rev_now:,.0f}", "tone": "ok",
+         "sub": f"vs {prev_year}: " + (f"+{growth:.0f}%" if growth >= 0 else f"{growth:.0f}%")},
+        {"label": "Средний чек", "value": f"${avg_check:,.0f}",
+         "sub": f"{n_delivered} закрытых сделок"},
+        {"label": "SLA",
+         "value": f"{sla_pct:.0f}%" if n_year else "—",
+         "tone": "ok" if sla_pct >= 95 else "warn" if sla_pct >= 80 else "bad" if n_year else "info"},
+        {"label": "Открытые рекламации", "value": str(n_claims),
+         "tone": "bad" if n_claims > 0 else "ok"},
+        {"label": "Каталог", "value": f"{catalog:,} поз."},
+        {"label": "Депозит на платформе", "value": f"${float(wallet.balance):,.0f}"},
+    ]
+
+    # Текст-инсайты для руководства
+    insights = []
+    if growth >= 20:
+        insights.append(f"📈 Рост оборота год к году: +{growth:.0f}%")
+    elif growth <= -20 and rev_prev:
+        insights.append(f"📉 Падение оборота год к году: {growth:.0f}% — требует анализа")
+    if sla_pct >= 95:
+        insights.append("✅ SLA в зелёной зоне ≥95%")
+    elif sla_pct < 80 and n_year:
+        insights.append(f"⚠️ SLA {sla_pct:.0f}% — ниже целевого порога 80%, риск понижения статуса")
+    if n_claims > 5:
+        insights.append(f"⚠️ {n_claims} активных рекламаций — нужна работа с поддержкой клиентов")
+
+    text = (
+        f"📑 Executive Summary · {year}\n\n"
+        f"Поставщик демонстрирует {'устойчивый рост' if growth >= 20 else 'стабильный темп' if growth >= 0 else 'снижение'} "
+        f"({n_delivered} закрытых сделок на ${rev_now:,.0f}, средний чек ${avg_check:,.0f}).\n"
+        f"Качество исполнения: SLA {sla_pct:.0f}%, открытых рекламаций {n_claims}.\n"
+        + (("\n" + "\n".join(insights)) if insights else "")
+    )
+
+    return ActionResult(
+        text=text,
+        cards=[
+            {"type": "kpi_grid", "data": {
+                "title": f"📑 Ключевые метрики {year}",
+                "items": kpis,
+            }},
+        ],
+        actions=[
+            {"label": "📈 Спрос на рынке",     "action": "get_demand_report", "params": {}},
+            {"label": "⏱ SLA-отчёт",           "action": "get_sla_report",   "params": {}},
+            {"label": "📊 Аналитика по месяцам","action": "get_analytics",    "params": {}},
+            {"label": "📊 Назад в Аналитика",  "action": "seller_analytics_hub", "params": {}},
+        ],
+    )
+
+
+@register("recent_activity")
+def recent_activity(params, user, role):
+    """Лента последних действий пользователя по всем его сущностям:
+    OrderEvent (заказы), Quote (котировки), WalletTx (депозит),
+    WalletTopupRequest (пополнения).
+
+    Фильтр по реальному отношению к сущности:
+      buyer  — события по своим заказам/RFQ/пополнениям
+      seller — события по своим item'ам в заказах + котировкам
+      operator/admin — все события за период
+    """
+    from assistant.models import Wallet, WalletTopupRequest, WalletTx
+    from marketplace.models import OrderEvent, OrderItem, Quote
+
+    limit = min(int(params.get("limit") or 50), 200)
+    user = _effective_seller(user) if role == "seller" else user
+
+    events = []  # [{ts, icon, label, sub, action?, params?}]
+
+    # 1) Заказы — OrderEvent
+    oe_qs = OrderEvent.objects.select_related("order", "actor").order_by("-created_at")
+    if role == "buyer":
+        oe_qs = oe_qs.filter(order__buyer=user)
+    elif role == "seller":
+        my_order_ids = OrderItem.objects.filter(part__seller=user)\
+            .values_list("order_id", flat=True).distinct()
+        oe_qs = oe_qs.filter(order_id__in=list(my_order_ids))
+    for e in oe_qs[:limit]:
+        meta = e.meta or {}
+        icon_map = {
+            "order_created":        "🆕",
+            "status_changed":       "🔁",
+            "sla_status_changed":   "⏱",
+            "invoice_opened":       "🧾",
+            "reserve_paid":         "💳",
+            "mid_payment_paid":     "💳",
+            "final_payment_paid":   "💳",
+            "quality_confirmed":    "✅",
+            "document_uploaded":    "📄",
+            "claim_opened":         "⚠️",
+            "claim_status_changed": "⚠️",
+        }
+        icon = icon_map.get(e.event_type, "•")
+        if e.event_type == "status_changed":
+            label = f"Заказ #{e.order_id} → {meta.get('to', '—')}"
+        elif e.event_type in ("reserve_paid", "final_payment_paid", "mid_payment_paid"):
+            amt = meta.get("amount")
+            label = f"Заказ #{e.order_id}: оплата ${float(amt):,.0f}" if amt else f"Заказ #{e.order_id}: платёж"
+        elif e.event_type == "claim_opened":
+            label = f"Заказ #{e.order_id}: открыта рекламация"
+        elif e.event_type == "order_created":
+            label = f"Заказ #{e.order_id} создан"
+        else:
+            label = f"Заказ #{e.order_id}: {e.event_type}"
+        actor = e.actor.username if e.actor else "system"
+        events.append({
+            "ts":      e.created_at,
+            "icon":    icon,
+            "label":   label,
+            "sub":     f"{e.get_source_display()} · {actor}",
+            "action":  "track_order",
+            "params":  {"order_id": e.order_id},
+        })
+
+    # 2) Котировки (Quote) — только для seller
+    if role == "seller":
+        q_qs = Quote.objects.select_related("rfq").filter(seller=user).order_by("-created_at")[:30]
+        for q in q_qs:
+            events.append({
+                "ts":     q.created_at,
+                "icon":   "💬",
+                "label":  f"Котировка по RFQ #{q.rfq_id} · ${float(q.total_amount or 0):,.0f}",
+                "sub":    f"раунд {q.round_number} · {q.get_status_display() if hasattr(q, 'get_status_display') else q.status}",
+                "action": "rfq_detail",
+                "params": {"rfq_id": q.rfq_id},
+            })
+
+    # 3) Депозитные транзакции — для buyer
+    if role == "buyer":
+        try:
+            wallet = Wallet.objects.get(user=user)
+            tx_qs = WalletTx.objects.filter(wallet=wallet).order_by("-created_at")[:30]
+            kind_icon = {
+                "topup":          "💰",
+                "debit":          "💸",
+                "refund":         "↩",
+                "escrow_hold":    "🔒",
+                "escrow_release": "🔓",
+                "escrow_refund":  "↩",
+            }
+            for tx in tx_qs:
+                sign = "+" if tx.kind in ("topup", "refund", "escrow_refund") else "−"
+                events.append({
+                    "ts":     tx.created_at,
+                    "icon":   kind_icon.get(tx.kind, "•"),
+                    "label":  f"Депозит {sign}${float(tx.amount or 0):,.0f}",
+                    "sub":    f"{tx.get_kind_display()} · остаток ${float(tx.balance_after or 0):,.0f}",
+                    "action": "get_balance",
+                    "params": {},
+                })
+        except Wallet.DoesNotExist:
+            pass
+
+        # 4) Заявки на пополнение
+        for r in WalletTopupRequest.objects.filter(user=user).order_by("-created_at")[:20]:
+            status_icon = {
+                "pending": "⏳", "awaiting_confirmation": "🔎", "paid": "✅",
+                "cancelled": "✖", "failed": "⚠️", "expired": "⌛",
+            }.get(r.status, "•")
+            events.append({
+                "ts":     r.created_at,
+                "icon":   status_icon,
+                "label":  f"Заявка {r.reference_code} · ${float(r.amount):,.0f}",
+                "sub":    f"{r.get_method_display()} · {r.get_status_display()}",
+                "action": "list_topups",
+                "params": {},
+            })
+
+    # Сортируем по времени (новые сверху), обрезаем до limit
+    events.sort(key=lambda e: e["ts"], reverse=True)
+    events = events[:limit]
+
+    if not events:
+        return ActionResult(
+            text="📋 История действий пока пуста.",
+            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}],
+        )
+
+    # Группируем по дням
+    from collections import defaultdict
+    from django.utils import timezone as _tz
+
+    by_day: dict[str, list] = defaultdict(list)
+    today_str = _tz.now().date()
+    for e in events:
+        d = e["ts"].date()
+        if d == today_str:
+            key = "Сегодня"
+        elif (today_str - d).days == 1:
+            key = "Вчера"
+        else:
+            key = d.strftime("%d.%m.%Y")
+        by_day[key].append(e)
+
+    rows = []
+    for day, items in by_day.items():
+        rows.append({"title": day, "subtitle": f"{len(items)} действий"})
+        for e in items:
+            rows.append({
+                "title":    f"{e['icon']} {e['label']}",
+                "subtitle": f"{e['ts'].strftime('%H:%M')} · {e['sub']}",
+                "action":   e.get("action"),
+                "params":   e.get("params") or {},
+            })
+
+    return ActionResult(
+        text=f"📋 История действий — {len(events)} за последний период.",
+        cards=[{
+            "type": "list",
+            "data": {"title": "Последние действия", "items": rows},
+        }],
+        actions=[
+            {"label": "📦 Все мои заказы", "action": "get_orders", "params": {}},
+        ] + (
+            [{"label": "💰 Баланс", "action": "get_balance", "params": {}}] if role == "buyer" else
+            [{"label": "🔥 Срочное", "action": "seller_inbox", "params": {}}] if role == "seller" else
+            []
+        ),
     )
 
 
@@ -608,7 +1006,7 @@ def price_quote(params, user, role):
       annual_turnover: число,       # годовой оборот клиента в USD
     }
     """
-    from .pricing import calculate_quote, D
+    from .pricing import D, calculate_quote
 
     base = params.get("base_price")
     if base is None:
@@ -699,8 +1097,9 @@ def kb_search(params, user, role):
     """Поиск по базе знаний (KnowledgeChunk) — кросс-номера, регламенты,
     OEM-каталоги. Простой full-text по title+content (RAG-эмбеддинги — Этап 2).
     """
-    from .models import KnowledgeChunk
     from django.db.models import Q
+
+    from .models import KnowledgeChunk
 
     query = (params.get("query") or "").strip()
     limit = min(int(params.get("limit") or 8), 20)
@@ -770,7 +1169,8 @@ def seller_inbox(params, user, role):
     и ждущие отгрузки, заказы на этапе подтверждения, истёкшие SLA.
     """
     from datetime import timedelta
-    from marketplace.models import Order, OrderItem, RFQ
+
+    from marketplace.models import RFQ, Order, OrderItem
 
     user = _effective_seller(user)
     now = timezone.now()
@@ -804,40 +1204,83 @@ def seller_inbox(params, user, role):
         .distinct().order_by("-created_at")[:3]
     )
 
+    # Описания Incoterms — что значит для продавца
+    _INCOTERM_HINT = {
+        "EXW": "EXW — самовывоз со склада продавца",
+        "FCA": "FCA — продавец грузит на перевозчика покупателя",
+        "FAS": "FAS — груз на причал у борта судна",
+        "FOB": "FOB — погрузка на борт судна, далее перевозчик покупателя",
+        "CFR": "CFR — продавец оплачивает фрахт до порта назначения",
+        "CIF": "CIF — продавец оплачивает фрахт + страховку",
+        "CPT": "CPT — продавец оплачивает доставку до согласованного пункта",
+        "CIP": "CIP — то же что CPT + страховка",
+        "DAP": "DAP — доставка до места назначения",
+        "DPU": "DPU — доставка с разгрузкой в терминале",
+        "DDP": "DDP — продавец платит таможенные пошлины и налоги",
+    }
+
+    def _incoterm_chip(o):
+        inc = (o.incoterm or "FOB").upper()
+        hint = _INCOTERM_HINT.get(inc, inc)
+        # Убираем дубль "FOB — погрузка..." → "погрузка..."
+        if hint.startswith(inc):
+            hint = hint[len(inc):].lstrip(" —-").strip()
+        return inc, hint
+
     sections = []
     if to_ship:
+        rows = []
+        for o in to_ship:
+            inc, inc_hint = _incoterm_chip(o)
+            rows.append({
+                "title": f"Заказ #{o.id} · {o.customer_name}",
+                "subtitle": (
+                    f"${o.total_amount:,.0f} · базис {inc} · "
+                    f"оплачен {(o.final_paid_at or o.created_at).strftime('%d.%m.%Y')}\n"
+                    f"{inc_hint}"
+                ),
+                "badge": {"label": inc, "tone": "info"},
+                "action": {"label": "🚚 Отгрузить",
+                           "action": "ship_order",
+                           "params": {"order_id": o.id}},
+            })
         sections.append({
             "icon": "🚚", "title": "К отгрузке (оплачено покупателем)",
-            "rows": [
-                {
-                    "title": f"Заказ #{o.id} · {o.customer_name}",
-                    "subtitle": f"Сумма ${o.total_amount:,.0f} · оплачен {(o.final_paid_at or o.created_at).strftime('%d.%m.%Y')}",
-                    "action": {"label": "🚚 Отгрузить",
-                               "action": "ship_order",
-                               "params": {"order_id": o.id}},
-                } for o in to_ship
-            ],
+            "rows": rows,
         })
     if to_confirm:
+        rows = []
+        for o in to_confirm:
+            inc, inc_hint = _incoterm_chip(o)
+            rows.append({
+                "title": f"Заказ #{o.id} · {o.customer_name}",
+                "subtitle": (
+                    f"${o.total_amount:,.0f} · базис {inc} · резерв 10% оплачен\n"
+                    f"{inc_hint}"
+                ),
+                "badge": {"label": inc, "tone": "info"},
+                "action": {"label": "▶️ Подтвердить",
+                           "action": "advance_order",
+                           "params": {"order_id": o.id}},
+            })
         sections.append({
             "icon": "✅", "title": "Новые заказы — подтвердить и в производство",
-            "rows": [
-                {
-                    "title": f"Заказ #{o.id} · {o.customer_name}",
-                    "subtitle": f"Сумма ${o.total_amount:,.0f} · резерв оплачен",
-                    "action": {"label": "▶️ Подтвердить",
-                               "action": "advance_order",
-                               "params": {"order_id": o.id}},
-                } for o in to_confirm
-            ],
+            "rows": rows,
         })
     if new_rfqs:
+        def _rfq_subtitle(r):
+            # Бейдж режима впереди — продавец сразу видит срочность.
+            # MANUAL = адресная рассылка, ответ приоритетный.
+            badge = mode_badge_with_sla(r.mode)
+            badge_part = f"{badge} · " if badge else ""
+            return (f"{badge_part}Создан {r.created_at.strftime('%d.%m.%Y')} · "
+                    f"{r.get_status_display()}")
         sections.append({
             "icon": "📋", "title": "Новые RFQ — ответить ценой",
             "rows": [
                 {
                     "title": f"RFQ #{r.id} · {r.customer_name}",
-                    "subtitle": f"Создан {r.created_at.strftime('%d.%m.%Y')} · {r.get_status_display()}",
+                    "subtitle": _rfq_subtitle(r),
                     "action": {"label": "💬 Ответить",
                                "action": "respond_rfq_form",
                                "params": {"rfq_id": r.id}},
@@ -886,7 +1329,11 @@ def seller_inbox(params, user, role):
             {"label": "📋 Все RFQ", "action": "get_rfq_status",   "params": {}},
             {"label": "🚚 К отгрузке", "action": "seller_pipeline","params": {}},
         ],
-        suggestions=["Что отгрузить?", "Какие RFQ срочные?", "Дашборд"],
+        suggestions=[
+            {"label": "🚚 Что отгрузить?",  "action": "get_supply_report", "params": {}},
+            {"label": "📋 Какие RFQ срочные?", "action": "get_rfq_status",  "params": {}},
+            {"label": "📊 Аналитика",       "action": "seller_analytics_hub", "params": {}},
+        ],
     )
 
 
@@ -898,8 +1345,10 @@ def seller_inbox(params, user, role):
 def product_detail(params, user, role):
     """Детали товара: цена, остатки, спрос, история продаж."""
     from datetime import timedelta
-    from marketplace.models import Part, OrderItem
-    from django.db.models import Sum, Count
+
+    from django.db.models import Count, Sum
+
+    from marketplace.models import OrderItem, Part
 
     pid = params.get("part_id") or params.get("id")
     if not pid:
@@ -966,7 +1415,7 @@ def product_detail(params, user, role):
 def edit_product(params, user, role):
     """Редактирование товара: без полей → форма с текущими значениями;
     с полями → сохраняем."""
-    from marketplace.models import Part, Brand
+    from marketplace.models import Brand, Part
     pid = params.get("part_id")
     if not pid:
         return ActionResult(text="Не указан товар.")
@@ -1162,8 +1611,9 @@ def upload_pricelist(params, user, role):
     params: {csv_data?, confirmed?}  — текстовый импорт (legacy режим
             на случай если csv_data передан явно).
     """
-    from decimal import Decimal as _D
+
     from django.utils.text import slugify
+
     from marketplace.models import Brand, Category, Part
 
     user = _effective_seller(user)
@@ -1412,31 +1862,226 @@ def import_pricelist_preview(params, user, role):
 # 1. Каталог продавца (аналог /seller/products/)
 # ══════════════════════════════════════════════════════════
 
+@register("seller_warehouses")
+def seller_warehouses(params, user, role):
+    """Список виртуальных складов продавца — папок с фиксированной
+    логистикой (порты + адрес).
+
+    params: {warehouse_id?: int, rename_to?: str, action?: 'delete'}
+        - без параметров: список всех складов
+        - warehouse_id + rename_to: переименовать
+        - warehouse_id + action='delete': удалить (Parts → orphan)
+        - warehouse_id only: каталог этого склада
+    """
+    from django.db import connection
+    from django.db.models import Count
+
+    from marketplace.models import Part, SellerWarehouse
+
+    user = _effective_seller(user)
+    wid = params.get("warehouse_id")
+    rename_to = (params.get("rename_to") or "").strip()
+    sub_action = params.get("action") or ""
+
+    # Удаление склада — позиции переводим в orphan (warehouse_id = NULL)
+    if wid and sub_action == "delete":
+        try:
+            w = SellerWarehouse.objects.get(id=int(wid), seller=user)
+        except (SellerWarehouse.DoesNotExist, ValueError, TypeError):
+            return ActionResult(text="Склад не найден.")
+        name = w.name
+        # Bulk UPDATE Part.warehouse_id = NULL для всех позиций склада
+        with connection.cursor() as cur:
+            cur.execute(
+                f"UPDATE {Part._meta.db_table} SET warehouse_id = NULL "
+                f"WHERE warehouse_id = %s AND seller_id = %s",
+                [w.id, user.id],
+            )
+            unlinked = cur.rowcount
+        w.delete()
+        return ActionResult(
+            text=(f"✓ Склад «{name}» удалён." +
+                  (f" {unlinked} позиций переведены в «без склада»." if unlinked else "")),
+            actions=[{"label": "📦 К каталогу",
+                       "action": "seller_catalog", "params": {}}],
+        )
+
+    # Переименование
+    if wid and rename_to:
+        try:
+            w = SellerWarehouse.objects.get(id=int(wid), seller=user)
+        except (SellerWarehouse.DoesNotExist, ValueError, TypeError):
+            return ActionResult(text="Склад не найден.")
+        w.name = rename_to[:120]
+        w.save(update_fields=["name", "updated_at"])
+        return ActionResult(
+            text=f"✓ Склад переименован в «{w.name}».",
+            actions=[{"label": "📦 К каталогу",
+                       "action": "seller_catalog", "params": {}}],
+        )
+
+    # Дрилл-даун в склад → каталог отфильтрованный по warehouse_id
+    if wid:
+        return seller_catalog(
+            {"warehouse_id": int(wid), "limit": 50, "offset": 0}, user, role,
+        )
+
+    # Список складов
+    from django.db.models import Max, Q
+    warehouses = list(
+        SellerWarehouse.objects
+        .filter(seller=user, is_active=True)
+        .annotate(
+            parts_count=Count("parts", filter=Q(parts__is_active=True)),
+            last_import=Max("parts__data_updated_at"),
+        )
+        .order_by("-created_at")
+    )
+    orphans_count = Part.objects.filter(
+        seller=user, is_active=True, warehouse__isnull=True
+    ).count()
+
+    if not warehouses and not orphans_count:
+        return ActionResult(
+            text="У вас пока нет складов. Каждая загрузка прайса создаст склад автоматически.",
+            actions=[{"label": "📤 Загрузить прайс",
+                       "action": "upload_pricelist", "params": {}}],
+        )
+
+    # Раньше: если у продавца 1 склад — прыгали сразу в плоский каталог.
+    # Это плохо для юзера: он не понимает где находится, и для каталогов
+    # >50k позиций экран выглядит как «свалка». Теперь ВСЕГДА показываем
+    # карточку склада (даже если он один) — drill-down делается явным
+    # кликом юзера, чтобы навигация была предсказуемой.
+
+    from django.utils import timezone as _tz
+    now = _tz.now()
+    rows = []
+    for w in warehouses:
+        last_import = getattr(w, "last_import", None)
+        days = (now - last_import).days if last_import else None
+        if days is None:
+            staleness = "unknown"
+            stale_label = "—"
+        elif days < 7:
+            staleness = "fresh"
+            stale_label = f"свежий ({days} дн.)"
+        elif days < 30:
+            staleness = "stale"
+            stale_label = f"⚠ обновить ({days} дн.)"
+        else:
+            staleness = "old"
+            stale_label = f"⚠ устарел ({days} дн.)"
+        rows.append({
+            "id": w.id,
+            "name": w.name,
+            "country_code": w.country_code,
+            "sea_port": w.sea_port,
+            "air_port": w.air_port,
+            "address": w.address[:200] if w.address else "",
+            "currency": w.currency,
+            "parts_count": int(getattr(w, "parts_count", 0) or 0),
+            "created_at": w.created_at.strftime("%d.%m.%Y"),
+            "updated_at": w.updated_at.strftime("%d.%m.%Y %H:%M"),
+            "last_import": last_import.strftime("%d.%m.%Y") if last_import else "",
+            "staleness": staleness,
+            "stale_label": stale_label,
+            "days_since_import": days if days is not None else -1,
+        })
+    if orphans_count:
+        rows.append({
+            "id": 0,
+            "name": "📦 Без склада (старые загрузки)",
+            "country_code": "",
+            "sea_port": "", "air_port": "",
+            "address": "Позиции загруженные до системы складов — без логистического базиса.",
+            "currency": "",
+            "parts_count": orphans_count,
+            "created_at": "",
+            "is_orphan": True,
+        })
+
+    from django.utils import timezone as _tz
+    refreshed_at = _tz.now().strftime("%H:%M:%S")
+    return ActionResult(
+        text=f"📦 Мои товары — {len(warehouses)} склад{'ов' if len(warehouses) != 1 else ''}"
+              + (f" + {orphans_count} позиций без склада" if orphans_count else "")
+              + f". Обновлено в {refreshed_at}.",
+        cards=[{
+            "type": "warehouses",
+            "data": {
+                "title": "Мои товары — выберите склад",
+                "rows": rows,
+                "refreshed_at": refreshed_at,
+            },
+        }],
+        actions=[
+            {"label": "🔄 Обновить",     "action": "seller_warehouses", "params": {}},
+            {"label": "📤 Новая загрузка", "action": "upload_pricelist", "params": {}},
+            {"label": "📦 Все товары",    "action": "seller_catalog", "params": {}},
+        ],
+        suggestions=["Переименовать склад", "Удалить пустой склад"],
+    )
+
+
 @register("seller_catalog")
 def seller_catalog(params, user, role):
-    """Список товаров продавца с базовой статистикой и быстрыми действиями.
+    """Каталог продавца — полные данные позиций с пагинацией.
 
-    params: {q?: str, status?: 'active'|'archived', limit?: int}
+    params: {q?: str, status?: 'active'|'archived',
+             limit?: int (default 50), offset?: int (default 0)}
+    Возвращает все поля позиции: EXW + валюта, FOB SEA/AIR, порты,
+    склад, состояние, наличие, габариты, продажи. Поддерживает «Показать
+    ещё» через offset.
     """
-    from marketplace.models import Part, OrderItem
-    from django.db.models import Sum, Count
+    from django.db.models import Sum
+
+    from marketplace.models import OrderItem, Part
 
     user = _effective_seller(user)
     q = (params.get("q") or "").strip()
     status = params.get("status") or "active"
-    limit = min(int(params.get("limit") or 20), 50)
+    limit = min(int(params.get("limit") or 50), 200)
+    offset = max(int(params.get("offset") or 0), 0)
+    warehouse_id = params.get("warehouse_id")
+    try:
+        warehouse_id = int(warehouse_id) if warehouse_id is not None and warehouse_id != "" else None
+    except (TypeError, ValueError):
+        warehouse_id = None
 
-    qs = Part.objects.filter(seller=user).select_related("brand", "category")
+    # Без warehouse_id и без поискового запроса — показываем экран складов,
+    # а не свалку всех позиций. Юзер кликает «Каталог» в общем меню и
+    # ожидает выбрать склад → провалиться в его товары. Прыжок сразу в
+    # плоский список 160k позиций дезориентирует и тяжёл для рендера.
+    # Исключение: если явный поиск (q) или фильтр (status='archived') —
+    # показываем плоский результат поиска по всем складам.
+    if warehouse_id is None and not q and status == "active":
+        return seller_warehouses({}, user, role)
+
+    qs = Part.objects.filter(seller=user).select_related("brand", "category", "warehouse")
     if status == "active":
         qs = qs.filter(is_active=True)
     elif status == "archived":
         qs = qs.filter(is_active=False)
+    if warehouse_id == 0:
+        qs = qs.filter(warehouse__isnull=True)
+    elif warehouse_id:
+        qs = qs.filter(warehouse_id=warehouse_id)
     if q:
         from django.db.models import Q
-        qs = qs.filter(Q(oem_number__icontains=q) | Q(title__icontains=q))
+        qs = qs.filter(
+            Q(oem_number__icontains=q)
+            | Q(title__icontains=q)
+            | Q(cross_numbers__icontains=q)
+            | Q(manufacturer__icontains=q)
+        )
 
-    parts = list(qs.order_by("-id")[:limit])
-    if not parts:
+    total_count = qs.count()
+    # Сортировка по дате последнего апдейта — свежие загрузки сверху.
+    # -id вторичный, чтобы стабильно ранжировать строки с одинаковым timestamp
+    # (bulk-upload пишет одинаковый updated_at для всех 200k+ rows).
+    parts = list(qs.order_by("-data_updated_at", "-id")[offset:offset + limit])
+    if not parts and offset == 0:
         return ActionResult(
             text=("В каталоге пока нет товаров." if not q else
                   f"По запросу «{q}» товаров не найдено."),
@@ -1446,7 +2091,6 @@ def seller_catalog(params, user, role):
             ],
         )
 
-    # Быстрая агрегация продаж по товарам (топ-5 продаж)
     sales = (
         OrderItem.objects
         .filter(part_id__in=[p.id for p in parts],
@@ -1464,42 +2108,163 @@ def seller_catalog(params, user, role):
         rows.append({
             "id": p.id,
             "article": p.oem_number,
+            "cross_numbers": p.cross_numbers or "",
             "title": p.title,
             "brand": p.brand.name if p.brand else "—",
+            "manufacturer": p.manufacturer or "",
+            "warehouse_id": p.warehouse_id,
+            "warehouse_name": (p.warehouse.name if p.warehouse_id else ""),
             "price": float(p.price) if p.price else None,
+            "currency": p.currency or "USD",
+            "price_fob_sea": float(p.price_fob_sea) if p.price_fob_sea else None,
+            "price_fob_air": float(p.price_fob_air) if p.price_fob_air else None,
+            "sea_port": p.sea_port or "",
+            "air_port": p.air_port or "",
+            "warehouse": p.warehouse_address or "",
+            "condition": p.condition or "",
+            "availability": getattr(p, "availability", "") or "",
             "stock_qty": getattr(p, "stock_quantity", None) or 0,
+            "weight_kg": float(p.gross_weight_kg) if p.gross_weight_kg else None,
             "is_active": p.is_active,
             "sold_qty": int(s.get("qty") or 0),
             "revenue": float(s.get("revenue") or 0),
         })
 
-    intro = f"Каталог: {len(parts)} {'позиций' if status=='active' else 'архивных'}"
+    rows.sort(key=lambda r: (r["sold_qty"], r["id"]), reverse=True)
+
+    shown_end = offset + len(parts)
+    warehouse_label = ""
+    if warehouse_id:
+        from marketplace.models import SellerWarehouse
+        if warehouse_id == 0:
+            warehouse_label = " (без склада)"
+        else:
+            try:
+                w = SellerWarehouse.objects.get(id=warehouse_id, seller=user)
+                warehouse_label = f" со склада «{w.name}»"
+            except SellerWarehouse.DoesNotExist:
+                pass
+    intro = f"Каталог: {total_count} {'позиций' if status == 'active' else 'архивных'}{warehouse_label}"
     if q:
         intro += f" по запросу «{q}»"
-    intro += ". Топовые позиции по продажам сверху."
+    if shown_end < total_count:
+        intro += f". Показаны {offset + 1}–{shown_end}, ещё {total_count - shown_end}."
+    else:
+        intro += "."
 
-    rows.sort(key=lambda r: r["sold_qty"], reverse=True)
+    actions = [
+        {"label": "➕ Добавить товар", "action": "add_product", "params": {}},
+        {"label": "📤 Загрузить прайс", "action": "upload_pricelist", "params": {}},
+        {"label": ("📁 Архив" if status == "active" else "📂 Активные"),
+         "action": "seller_catalog",
+         "params": {"status": "archived" if status == "active" else "active"}},
+        {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+    ]
+    if shown_end < total_count:
+        actions.insert(0, {
+            "label": f"⬇️ Показать ещё {min(limit, total_count - shown_end)}",
+            "action": "seller_catalog",
+            "params": {"q": q, "status": status, "limit": limit,
+                       "offset": shown_end,
+                       "warehouse_id": warehouse_id or ""},
+        })
+    if warehouse_id:
+        # При фильтре по складу — кнопка возврата самой первой, чтобы
+        # пользователь сразу видел путь назад в «Мои товары».
+        actions.insert(0, {"label": "📦 Мои товары",
+                            "action": "seller_warehouses", "params": {}})
+
+    cards = []
+    cards.append({
+        "type": "catalog",
+        "data": {
+            "title": "Каталог" + (warehouse_label if warehouse_label else " — все позиции"),
+            "rows": rows,
+            "total_count": total_count,
+            "offset": offset,
+            "shown_end": shown_end,
+            "warehouse_id": warehouse_id,
+            # Хлебная крошка для возврата в общий список складов
+            "back_to_warehouses": bool(warehouse_id),
+            "filter": {"q": q, "status": status},
+        },
+    })
 
     return ActionResult(
         text=intro,
-        cards=[{
-            "type": "catalog",
-            "data": {
-                "title": "Каталог продавца",
-                "rows": rows,
-                "filter": {"q": q, "status": status},
-            },
-        }],
-        actions=[
-            {"label": "➕ Добавить товар", "action": "add_product", "params": {}},
-            {"label": "📤 Загрузить прайс", "action": "upload_pricelist", "params": {}},
-            {"label": ("📁 Архив" if status == "active" else "📂 Активные"),
-             "action": "seller_catalog",
-             "params": {"status": "archived" if status == "active" else "active"}},
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
-        ],
+        cards=cards,
+        actions=actions,
         suggestions=["Что чаще покупают?", "Добавить товар", "Скрыть позицию"],
     )
+
+
+def _build_warehouses_card(user, active_id=None) -> dict | None:
+    """Карточка со списком складов для встраивания в общий каталог.
+    active_id — id текущего активного фильтра (для подсветки чипа).
+    Возвращает None если складов нет вообще."""
+    from django.db.models import Count, Max, Q
+    from django.utils import timezone as _tz
+
+    from marketplace.models import Part, SellerWarehouse
+
+    warehouses = list(
+        SellerWarehouse.objects
+        .filter(seller=user, is_active=True)
+        .annotate(
+            parts_count=Count("parts", filter=Q(parts__is_active=True)),
+            last_import=Max("parts__data_updated_at"),
+        )
+        .order_by("-created_at")
+    )
+    orphans_count = Part.objects.filter(
+        seller=user, is_active=True, warehouse__isnull=True
+    ).count()
+    if not warehouses and not orphans_count:
+        return None
+
+    now = _tz.now()
+    rows = []
+    for w in warehouses:
+        last_import = getattr(w, "last_import", None)
+        days = (now - last_import).days if last_import else None
+        if days is None:
+            staleness = "unknown"
+            stale_label = "—"
+        elif days < 7:
+            staleness = "fresh"
+            stale_label = f"свежий ({days} дн.)"
+        elif days < 30:
+            staleness = "stale"
+            stale_label = f"⚠ обновить ({days} дн.)"
+        else:
+            staleness = "old"
+            stale_label = f"⚠ устарел ({days} дн.)"
+        rows.append({
+            "id": w.id, "name": w.name, "country_code": w.country_code,
+            "sea_port": w.sea_port, "air_port": w.air_port,
+            "address": w.address[:200] if w.address else "",
+            "currency": w.currency,
+            "parts_count": int(getattr(w, "parts_count", 0) or 0),
+            "last_import": last_import.strftime("%d.%m.%Y") if last_import else "",
+            "staleness": staleness, "stale_label": stale_label,
+            "days_since_import": days if days is not None else -1,
+        })
+    if orphans_count:
+        rows.append({
+            "id": 0, "name": "📦 Без склада (старые загрузки)",
+            "country_code": "", "sea_port": "", "air_port": "",
+            "address": "Позиции загруженные до системы складов — без логистического базиса.",
+            "currency": "", "parts_count": orphans_count, "is_orphan": True,
+        })
+    return {
+        "type": "warehouses",
+        "data": {
+            "title": f"📁 Склады ({len(warehouses)})",
+            "rows": rows,
+            "compact": True,  # горизонтальные чипы вместо больших карточек
+            "active_id": active_id,  # подсветить активный фильтр
+        },
+    }
 
 
 @register("toggle_product")
@@ -1534,7 +2299,7 @@ def toggle_product(params, user, role):
 @register("add_product")
 def add_product(params, user, role):
     """Двухфазный: без полей → форма, с полями → создаём Part."""
-    from marketplace.models import Part, Brand, Category
+    from marketplace.models import Brand, Category, Part
 
     article = (params.get("article") or "").strip()
     title = (params.get("title") or "").strip()
@@ -1627,8 +2392,11 @@ def rfq_detail(params, user, role):
         f"  • {it.query} × {it.quantity}" for it in items[:8]
     ) or "  (позиций нет)"
 
+    badge = mode_badge_with_sla(rfq.mode)
+    badge_line = f"Режим: {badge}\n" if badge else ""
     text = (
         f"📋 RFQ #{rfq.id} · {rfq.get_status_display()}\n"
+        f"{badge_line}"
         f"От: {rfq.customer_name or rfq.created_by.username}\n"
         f"Создан: {rfq.created_at.strftime('%d.%m.%Y %H:%M')}\n"
         f"Позиций: {len(items)}\n\n"
@@ -1882,11 +2650,18 @@ def connect_gsheet(params, user, role):
     для будущей авто-синхронизации (Celery raz/час).
     """
     import re as _re
+
     from django.core.files.base import ContentFile
+
     from marketplace.models import PricelistImport, PricelistMapping
+
     from .pricelist import (
-        _read_preview, _smart_mapping, _build_mapped_preview, STD_FIELDS,
-        MIN_COLUMNS, MAX_COLUMNS, MAX_FILE_BYTES,
+        MAX_COLUMNS,
+        MAX_FILE_BYTES,
+        MIN_COLUMNS,
+        _build_mapped_preview,
+        _read_preview,
+        _smart_mapping,
     )
 
     user = _effective_seller(user)

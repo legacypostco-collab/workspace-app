@@ -1,6 +1,7 @@
 from django.utils import translation
 from django.utils.translation import gettext_lazy as _
-from .models import Order, Part, RFQ, SellerImportRun
+
+from .models import RFQ, Order, Part, SellerImportRun
 
 
 def auth_meta(request):
@@ -158,7 +159,7 @@ def auth_meta(request):
     # Admin moderation count
     admin_moderation_count = 0
     if request.user.is_authenticated and request.user.is_superuser:
-        from .models import UserProfile, OrderClaim
+        from .models import OrderClaim, UserProfile
         admin_moderation_count = (
             UserProfile.objects.filter(role="seller", supplier_status="sandbox").count()
             + OrderClaim.objects.exclude(status="closed").count()

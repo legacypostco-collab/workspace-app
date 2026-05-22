@@ -1,6 +1,25 @@
+import re
+
+from django.utils.translation import gettext as _t
 from rest_framework import serializers
 
-from .models import Conversation, Feedback, Message
+from .models import Conversation, Message
+
+
+def _translate_conv_title(title: str) -> str:
+    """
+    Перевод хранимых в БД названий conv.title под текущий язык.
+    Поддерживаемые шаблоны:
+      "Сделка ORD-{N}"       → tr + ORD-N
+      "Сделка ORD-{N} — ..."  → tr + ORD-N + остаток
+    Если префикс не совпал — возвращаем title как есть.
+    """
+    if not title:
+        return title
+    m = re.match(r"^(Сделка)\s+(ORD-\d+)(.*)$", title)
+    if m:
+        return f"{_t('Сделка')} {m.group(2)}{m.group(3)}"
+    return title
 
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -28,10 +47,14 @@ class ConversationSerializer(serializers.ModelSerializer):
 class ConversationListSerializer(serializers.ModelSerializer):
     """Compact serializer for list view."""
     last_message = serializers.SerializerMethodField()
+    title = serializers.SerializerMethodField()
 
     class Meta:
         model = Conversation
         fields = ["id", "role", "category", "title", "created_at", "updated_at", "last_message"]
+
+    def get_title(self, obj):
+        return _translate_conv_title(obj.title)
 
     def get_last_message(self, obj):
         msg = obj.messages.order_by("-created_at").first()

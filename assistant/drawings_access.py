@@ -116,8 +116,9 @@ def grant_drawing_reward(drawing, *, order=None, multiplier=1):
     if not drawing or drawing.reward_amount <= 0:
         return None
     try:
-        from .models import Wallet, WalletTx
         from decimal import Decimal as _D
+
+        from .models import Wallet, WalletTx
         amount = _D(str(drawing.reward_amount)) * _D(str(multiplier))
         author_wallet = Wallet.for_user(drawing.seller, demo_seed_amount=0)
         author_wallet.balance = author_wallet.balance + amount

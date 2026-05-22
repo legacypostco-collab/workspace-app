@@ -1,89 +1,149 @@
 #!/usr/bin/env bash
-# Production deploy script for workspace-app on /var/www/workspace-app.
+# Production deploy для Consolidator Parts на /var/www/workspace-app.
 #
-# Запуск (на проде, под root):
-#   cd /var/www/workspace-app && bash deploy/deploy.sh
+# Использование:
+#   ssh root@72.56.234.89 'cd /var/www/workspace-app && bash deploy/deploy.sh'
 #
-# Что делает:
-#   1. Тянет свежий main
-#   2. Обновляет venv (новые deps: daphne, channels, channels-redis, anthropic, ...)
-#   3. Применяет миграции (новая 0007 + всё что было после)
-#   4. Собирает статику
-#   5. Устанавливает/обновляет daphne.service + daphne.socket (если ещё нет)
-#   6. Обновляет nginx config (если ещё нет)
-#   7. Перезапускает gunicorn + daphne, reload nginx
+# Опции:
+#   bash deploy/deploy.sh              # обычный деплой (git pull + migrate + restart)
+#   bash deploy/deploy.sh --rollback   # откат на предыдущий commit
+#   bash deploy/deploy.sh --dry-run    # показать migrate --plan без применения
 #
-# Идемпотентен — можно запускать сколько угодно раз.
+# Идемпотентен. Каждый шаг безопасен к повторному запуску.
 
 set -euo pipefail
 
 APP_DIR="/var/www/workspace-app"
 VENV="$APP_DIR/venv"
 BRANCH="${DEPLOY_BRANCH:-main}"
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1/}"
 
 cd "$APP_DIR"
+log() { echo "[$(date '+%F %T')] $*"; }
+die() { log "✗ $*"; exit 1; }
 
-echo "━━━ 1. git pull origin $BRANCH ━━━"
+# ── Rollback ─────────────────────────────────────────────
+if [[ "${1:-}" == "--rollback" ]]; then
+    PREV=$(git rev-parse HEAD@{1} 2>/dev/null) || die "no previous HEAD"
+    log "Rolling back to $PREV"
+    git reset --hard "$PREV"
+    "$VENV/bin/python" manage.py collectstatic --noinput --clear > /dev/null
+    systemctl restart gunicorn daphne
+    systemctl reload nginx
+    log "✓ Rolled back to $PREV"
+    exit 0
+fi
+
+DRY_RUN=0
+[[ "${1:-}" == "--dry-run" ]] && DRY_RUN=1
+
+# ── Pre-flight: validate .env ────────────────────────────
+log "━━━ 0. pre-flight checks ━━━"
+[[ -f .env ]] || die ".env missing"
+. <(grep -E '^[A-Z_]+=' .env | sed 's/=.*$//' | awk '{print $1"=\"${"$1":-}\""}')
+[[ -n "${SECRET_KEY:-}" ]]              || die ".env: SECRET_KEY required"
+[[ -n "${DATABASE_URL:-}" ]]            || die ".env: DATABASE_URL required"
+[[ -n "${PAYMENT_CALLBACK_SECRET:-}" ]] || die ".env: PAYMENT_CALLBACK_SECRET required (P0-2)"
+[[ "${DEBUG:-False}" == "False" ]]      || die ".env: DEBUG must be False in prod"
+[[ -n "${ALLOWED_HOSTS:-}" ]]           || die ".env: ALLOWED_HOSTS required"
+[[ -n "${ANTHROPIC_API_KEY:-}" ]] || log "  ⚠ ANTHROPIC_API_KEY missing — AI will use stub heuristics"
+[[ -n "${STRIPE_WEBHOOK_SECRET:-}" ]] || log "  ⚠ STRIPE_WEBHOOK_SECRET missing — webhook will reject in prod"
+log "  ✓ env validated"
+
+log "━━━ 1. git pull origin $BRANCH ━━━"
+BEFORE=$(git rev-parse HEAD)
 git fetch origin
 git checkout "$BRANCH"
 git reset --hard "origin/$BRANCH"
+AFTER=$(git rev-parse HEAD)
+if [[ "$BEFORE" == "$AFTER" ]]; then
+    log "  (no changes — $AFTER)"
+else
+    log "  $BEFORE → $AFTER"
+    git --no-pager log --oneline "$BEFORE..$AFTER" | head -10
+fi
 
-echo "━━━ 2. pip install ━━━"
-"$VENV/bin/pip" install --upgrade pip --quiet
-"$VENV/bin/pip" install -r requirements.txt --quiet
+log "━━━ 2. pip install ━━━"
+if [[ "$BEFORE" != "$AFTER" ]] && git diff --name-only "$BEFORE..$AFTER" | grep -q '^requirements.txt$'; then
+    "$VENV/bin/pip" install --upgrade pip --quiet
+    "$VENV/bin/pip" install -r requirements.txt --quiet
+    log "  ✓ deps updated"
+else
+    log "  (no changes)"
+fi
 
-echo "━━━ 3. migrate ━━━"
+log "━━━ 3. migrate --plan ━━━"
+"$VENV/bin/python" manage.py migrate --plan 2>&1 | head -30
+if [[ "$DRY_RUN" == "1" ]]; then
+    log "→ dry-run mode, exiting before apply"
+    exit 0
+fi
+log "━━━ 3b. migrate --noinput ━━━"
 "$VENV/bin/python" manage.py migrate --noinput
 
-echo "━━━ 4. collectstatic ━━━"
-"$VENV/bin/python" manage.py collectstatic --noinput --clear
+log "━━━ 4. collectstatic ━━━"
+"$VENV/bin/python" manage.py collectstatic --noinput --clear > /tmp/collect.log 2>&1 || {
+    tail -20 /tmp/collect.log
+    die "collectstatic failed"
+}
+log "  $(tail -1 /tmp/collect.log)"
 
-echo "━━━ 5. systemd units (idempotent) ━━━"
-# Daphne для WebSocket
-if [ ! -f /etc/systemd/system/daphne.socket ]; then
+log "━━━ 5. compilemessages ━━━"
+"$VENV/bin/python" manage.py compilemessages 2>&1 | tail -3 || true
+
+log "━━━ 6. systemd units (idempotent) ━━━"
+if [[ ! -f /etc/systemd/system/daphne.socket ]]; then
     cp deploy/daphne.socket /etc/systemd/system/daphne.socket
     cp deploy/daphne.service /etc/systemd/system/daphne.service
     systemctl daemon-reload
     systemctl enable --now daphne.socket
-    echo "  + installed daphne.service / daphne.socket"
+    log "  + installed daphne units"
 else
-    # Refresh from repo if changed
     if ! cmp -s deploy/daphne.service /etc/systemd/system/daphne.service; then
         cp deploy/daphne.service /etc/systemd/system/daphne.service
         systemctl daemon-reload
-        echo "  ~ refreshed daphne.service"
+        log "  ~ refreshed daphne.service"
     fi
 fi
 
-echo "━━━ 6. nginx config ━━━"
-NGINX_TARGET=/etc/nginx/sites-available/workspace-app
-if [ ! -f "$NGINX_TARGET" ] || ! cmp -s deploy/nginx-prod.conf "$NGINX_TARGET"; then
-    cp deploy/nginx-prod.conf "$NGINX_TARGET"
-    ln -sf "$NGINX_TARGET" /etc/nginx/sites-enabled/workspace-app
-    # Удалить дефолтный сайт, если он мешает
-    [ -e /etc/nginx/sites-enabled/default ] && rm -f /etc/nginx/sites-enabled/default
-    nginx -t
-    echo "  ~ refreshed nginx config"
+log "━━━ 7. nginx config ━━━"
+# Используем новый nginx.conf (HTTPS + CSP + WS + gzip + brotli)
+NGINX_TARGET=/etc/nginx/sites-available/consolidator
+if [[ -f deploy/nginx.conf ]] && ! cmp -s deploy/nginx.conf "$NGINX_TARGET" 2>/dev/null; then
+    cp deploy/nginx.conf "$NGINX_TARGET"
+    ln -sf "$NGINX_TARGET" /etc/nginx/sites-enabled/consolidator
+    [[ -e /etc/nginx/sites-enabled/default ]] && rm -f /etc/nginx/sites-enabled/default
+    nginx -t > /dev/null 2>&1 || die "nginx config invalid"
+    log "  ~ nginx config refreshed"
 fi
 
-echo "━━━ 7. restart services ━━━"
-systemctl restart gunicorn
+log "━━━ 8. restart services ━━━"
+systemctl restart gunicorn 2>/dev/null || true
 systemctl restart daphne
+sleep 3
+systemctl is-active --quiet daphne || {
+    journalctl -u daphne -n 30 --no-pager
+    die "daphne failed to start"
+}
 systemctl reload nginx
 
-# Поднять celery, если есть
-if systemctl list-unit-files | grep -q '^celery\.service'; then
-    systemctl restart celery
-fi
+systemctl list-unit-files | grep -q '^celery\.service' && systemctl restart celery
 
-echo
-echo "━━━ STATUS ━━━"
-systemctl --no-pager status gunicorn daphne nginx 2>&1 | grep -E "(●|Active:|Main PID)" | head -20
+log "━━━ 9. health checks ━━━"
+sleep 2
+for path in "/" "/robots.txt" "/sitemap.xml"; do
+    code=$(curl -s -o /dev/null -w '%{http_code}' "${HEALTH_URL%/}$path" 2>/dev/null || echo "000")
+    case "$code" in
+        200|301|302) log "  ✓ $path → $code" ;;
+        *) die "✗ $path → $code (run: bash deploy/deploy.sh --rollback)" ;;
+    esac
+done
 
-echo
-echo "━━━ HEALTH ━━━"
-curl -s -o /dev/null -w "HTTP /  → %{http_code} (%{time_total}s)\n" http://127.0.0.1/ || true
-curl -s -o /dev/null -w "HTTP /chat/ → %{http_code} (%{time_total}s)\n" http://127.0.0.1/chat/ -H "Host: 72.56.234.89" || true
+# Security headers smoke
+csp=$(curl -sI "$HEALTH_URL" | grep -ic '^content-security-policy:')
+[[ "$csp" -ge 1 ]] && log "  ✓ CSP present" || log "  ⚠ CSP missing"
 
-echo
-echo "✓ deploy complete. App at http://72.56.234.89/"
+log "━━━ STATUS ━━━"
+systemctl --no-pager status daphne nginx 2>&1 | grep -E "(●|Active:|Main PID)" | head -10
+
+log "✓ Deploy complete — $AFTER live"

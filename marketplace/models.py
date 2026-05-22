@@ -1,7 +1,7 @@
 from decimal import Decimal
 
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -33,6 +33,100 @@ class Brand(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+
+class SellerWarehouse(models.Model):
+    """Виртуальный склад продавца — папка для группировки позиций.
+
+    Одна загрузка прайса = один склад с фиксированной логистикой
+    (страна, порт морской, порт авиа, физический адрес). Позиции из
+    разных стран = разные склады = разные загрузки. Это enforce'ит
+    правило «одна загрузка = одна страна» на уровне данных.
+
+    Имя можно переименовывать в любой момент (например, «Турция-Анкара»
+    вместо автогенерированного «Склад #3»).
+    """
+    seller = models.ForeignKey(User, on_delete=models.CASCADE,
+        related_name="warehouses")
+    name = models.CharField(max_length=120,
+        help_text="Произвольное имя — продавец может менять")
+    country_code = models.CharField(max_length=2, blank=True, db_index=True,
+        help_text="ISO-код страны отгрузки (TR/CN/RU/...)")
+    sea_port = models.CharField(max_length=120, blank=True)
+    air_port = models.CharField(max_length=120, blank=True)
+    address = models.TextField(blank=True,
+        help_text="Полный адрес склада (страна, город, улица)")
+    currency = models.CharField(max_length=3, default="USD")
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["seller", "-created_at"],
+                          name="warehouse_seller_idx"),
+        ]
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} ({self.seller_id})"
+
+
+class LogisticsTariff(models.Model):
+    """Тариф международной доставки от origin до dest_country.
+
+    Используется калькулятором (assistant.logistics.calc_logistics)
+    для расчёта стоимости доставки одной позиции по габаритам и весу.
+
+    Формула:
+        volumetric_kg = L*W*H / divisor (5000=sea, 6000=air)
+        chargeable_kg = max(actual_kg, volumetric_kg)
+        cost = max(chargeable_kg * rate_per_kg, min_charge)
+    """
+    MODE_CHOICES = [
+        ("sea", "Морем"),
+        ("air", "Авиа"),
+    ]
+    SOURCE_CHOICES = [
+        ("internal", "Внутренний тариф"),
+        ("api_dhl",   "DHL API"),
+        ("api_fedex", "FedEx API"),
+        ("api_other", "Другой API"),
+    ]
+    origin_port = models.CharField(max_length=120, db_index=True,
+        help_text="Порт отправления (CNNGB, TRMER, PKX и т.п.)")
+    dest_country = models.CharField(max_length=2, db_index=True,
+        help_text="ISO-код страны назначения (RU, KZ, ...)")
+    mode = models.CharField(max_length=4, choices=MODE_CHOICES, db_index=True)
+    rate_per_kg = models.DecimalField(max_digits=8, decimal_places=2,
+        help_text="USD за килограмм billable weight")
+    min_charge = models.DecimalField(max_digits=8, decimal_places=2,
+        default=Decimal("0"),
+        help_text="Минимальная стоимость отправления (USD)")
+    transit_days = models.PositiveIntegerField(default=30,
+        help_text="Среднее время в пути")
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES,
+        default="internal")
+    is_active = models.BooleanField(default=True, db_index=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["origin_port", "dest_country", "mode", "source"],
+                name="uniq_tariff_route",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["origin_port", "dest_country", "mode"],
+                          name="tariff_route_idx"),
+        ]
+        ordering = ["origin_port", "dest_country", "mode"]
+
+    def __str__(self):
+        return f"{self.origin_port}→{self.dest_country} {self.mode} ${self.rate_per_kg}/кг"
 
 
 class Part(models.Model):
@@ -104,8 +198,11 @@ class Part(models.Model):
         help_text="Цена FOB морским путём")
     price_fob_air = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0"),
         help_text="Цена FOB авиа")
+    warehouse = models.ForeignKey("SellerWarehouse", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="parts", db_index=True,
+        help_text="Виртуальный склад поставщика — папка по логистическому базису")
     warehouse_address = models.CharField(max_length=255, blank=True,
-        help_text="Адрес склада отправления")
+        help_text="Адрес склада отправления (денормализован из warehouse.address)")
     sea_port = models.CharField(max_length=120, blank=True,
         help_text="Морпорт отправления")
     air_port = models.CharField(max_length=120, blank=True,
@@ -129,6 +226,9 @@ class Part(models.Model):
             models.Index(fields=["seller", "-data_updated_at", "-id"], name="part_seller_updated_idx"),
             models.Index(fields=["seller", "availability_status"], name="part_seller_avail_idx"),
             models.Index(fields=["seller", "is_active"], name="part_seller_active_idx"),
+            # Композитный для быстрого matching при импорте:
+            # WHERE seller_id=? AND oem_number IN (...) — иначе O(N) скан.
+            models.Index(fields=["seller", "oem_number"], name="part_seller_oem_idx"),
         ]
 
     def __str__(self) -> str:
@@ -452,6 +552,29 @@ class Order(models.Model):
     logistics_currency = models.CharField(max_length=10, default="USD")
     logistics_provider = models.CharField(max_length=60, default="internal_fallback")
     logistics_meta = models.JSONField(default=dict, blank=True)
+    # ── Реальный перевозчик/логист (виден в track_order) ──────
+    # Заполняется оператором или приходит из API перевозчика.
+    # Чтобы юзер не писал в LLM «как отследить» — показываем прямо в карточке.
+    carrier_name = models.CharField(max_length=120, blank=True,
+        help_text="DHL / UPS / СДЭК / Деловые Линии / внутренний курьер")
+    carrier_phone = models.CharField(max_length=40, blank=True,
+        help_text="Прямой телефон перевозчика (для buyer)")
+    carrier_email = models.EmailField(blank=True,
+        help_text="Email перевозчика (для уточнений)")
+    tracking_number = models.CharField(max_length=80, blank=True,
+        help_text="Номер для трекинга на сайте перевозчика")
+    tracking_url = models.URLField(blank=True,
+        help_text="Прямая ссылка на статус (deep-link). Например dhl.com/track/...")
+    shipping_mode = models.CharField(max_length=4, choices=[
+        ("sea",  "Морем"),
+        ("air",  "Авиа"),
+        ("auto", "Авто"),
+    ], default="sea", help_text="Способ доставки (выбирает покупатель)")
+    incoterm = models.CharField(max_length=3, choices=[
+        ("FOB", "FOB — продавец до порта отгрузки"),
+        ("CIP", "CIP — фрахт+страховка до места назначения"),
+        ("DDP", "DDP — до двери получателя, all-in"),
+    ], default="FOB", help_text="Базис поставки Incoterms 2020")
     invoice_number = models.CharField(max_length=80, blank=True)
     payment_status = models.CharField(max_length=30, choices=PAYMENT_STATUS_CHOICES, default="awaiting_reserve")
     payment_scheme = models.CharField(max_length=20, choices=PAYMENT_SCHEME_CHOICES, default="simple")
@@ -600,6 +723,10 @@ class OrderClaim(models.Model):
     resolved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="resolved_claims")
     closed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    # Эскалация супервайзеру: когда claim открыт > N дней без resolution
+    # (см. management command `escalate_stale_claims`).
+    escalated_at = models.DateTimeField(null=True, blank=True, db_index=True,
+        help_text="Когда был отправлен алерт супервайзеру (защита от повторов)")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -653,9 +780,23 @@ class UserProfile(models.Model):
         ("viewer", "Viewer"),
     ]
 
+    LANGUAGE_CHOICES = [
+        ("ru", "Русский"),
+        ("en", "English"),
+        ("zh-hans", "中文"),
+        ("es", "Español"),
+        ("ar", "العربية"),
+    ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="buyer")
     company_name = models.CharField(max_length=255, blank=True)
+    language = models.CharField(
+        max_length=10,
+        choices=LANGUAGE_CHOICES,
+        default="ru",
+        help_text="Язык интерфейса. Меняется при регистрации или в настройках ЛК.",
+    )
     department = models.CharField(max_length=20, choices=DEPARTMENT_CHOICES, default="director")
     allowed_regions = models.CharField(max_length=255, blank=True, help_text="CSV list: europe,china,components,...")
     allowed_brands = models.ManyToManyField(Brand, blank=True, related_name="allowed_profiles")
@@ -678,6 +819,28 @@ class UserProfile(models.Model):
     liquidation_flag = models.BooleanField(default=False)
     last_rating_recalculated_at = models.DateTimeField(null=True, blank=True, editable=False)
     admin_note = models.TextField(blank=True, help_text="Заметка администратора о поставщике")
+
+    # ── Buyer registration fields (ТЗ §1: 8 полей) ────────────
+    # Подтягиваются при self-регистрации через chat-форму.
+    # ИНН/Tax ID → автоматически резолвится в название компании через
+    # check_ru_aggregator() / check_opencorporates() и пишется в company_name.
+    country = models.CharField(max_length=2, blank=True,
+        help_text="ISO-3166-1 alpha-2: RU, KZ, BY, AE, ...")
+    tax_id = models.CharField(max_length=32, blank=True, db_index=True,
+        help_text="ИНН / Tax ID / Company Reg. No.")
+    contact_name = models.CharField(max_length=200, blank=True,
+        help_text="ФИО контактного лица (кто работает с платформой)")
+    position = models.CharField(max_length=80, blank=True,
+        help_text="Должность: закупщик / директор / владелец / иное")
+    phone_e164 = models.CharField(max_length=20, blank=True,
+        help_text="Телефон в международном формате (+7 ...)")
+    messenger_kind = models.CharField(max_length=16, blank=True,
+        choices=[("whatsapp", "WhatsApp"), ("telegram", "Telegram")],
+        help_text="Какой мессенджер: WhatsApp или Telegram")
+    messenger_handle = models.CharField(max_length=80, blank=True,
+        help_text="Username Telegram (@user) или номер WhatsApp (+7...)")
+    equipment_fleet = models.TextField(blank=True,
+        help_text="Парк техники: бренды и модели (любым текстом)")
 
     # ── Durable notification channels ─────────────────────────
     # WS push в чат-сессии работает только когда вкладка открыта. Эти каналы
@@ -874,6 +1037,46 @@ class CompanyVerification(models.Model):
                                   help_text="Выписка ЕГРЮЛ/ЕГРИП")
     doc_passport = models.FileField(upload_to="kyb/passport/", null=True, blank=True,
                                      help_text="Паспорт директора (1 разворот)")
+    # ── ТЗ «Онбординг и проверка поставщика» §2 ───────────────────────
+    # Поля, которые поставщик заполняет в форме онбординга. Дополняют
+    # существующие реквизиты (legal_name/inn/kpp/ogrn) — для зарубежных
+    # компаний legal_name + inn используются как Company Number + Tax ID.
+    country = models.CharField(max_length=4, blank=True,
+        help_text="ISO-2 страны регистрации: RU/CN/AE/DE/...")
+    vat_number = models.CharField(max_length=40, blank=True,
+        help_text="VAT / Tax ID (если применимо)")
+    warehouse_address = models.TextField(blank=True,
+        help_text="Адрес склада, откуда реально отгружает")
+    website = models.URLField(max_length=300, blank=True)
+    phone = models.CharField(max_length=40, blank=True)
+    whatsapp = models.CharField(max_length=80, blank=True)
+    telegram = models.CharField(max_length=80, blank=True)
+    contact_email = models.EmailField(blank=True)
+    categories = models.CharField(max_length=400, blank=True,
+        help_text="Бренды и типы запчастей (CSV или текст)")
+    doc_dealership = models.FileField(upload_to="kyb/dealership/", null=True, blank=True,
+        help_text="Сертификаты дилерства (если заявляет «официальный дилер»)")
+    doc_bank = models.FileField(upload_to="kyb/bank/", null=True, blank=True,
+        help_text="Реквизиты банковского счёта (PDF/PNG)")
+    # ── Авто-API результаты (§3 ТЗ) ─────────────────────────────────
+    # JSON со снэпшотами всех API ответов: aggregator/opencorporates/vies/
+    # opensanctions/maps/site/messenger. Каждое решение оператора может
+    # сослаться на конкретный источник + дату получения данных (§11 аудит).
+    api_results = models.JSONField(default=dict, blank=True,
+        help_text="Снэпшоты API: {aggregator, opencorporates, vies, sanctions, maps, site, messenger}")
+    # Risk-индикатор по итогам автопроверок: red/yellow/green/unknown.
+    # red → автоотказ (§5 ТЗ); yellow/green → попадает на ручную проверку.
+    risk_indicator = models.CharField(max_length=10, default="unknown",
+        choices=[("green", "Зелёный"), ("yellow", "Жёлтый"), ("red", "Красный"), ("unknown", "Не определён")])
+    auto_decision = models.CharField(max_length=20, default="", blank=True,
+        help_text="auto_reject / sandbox_candidate / manual_review")
+    auto_checked_at = models.DateTimeField(null=True, blank=True)
+    # Чеклист оператора (§4 ТЗ): {streetview_ok, reviews_ok, site_ok, bank_ok, certs_ok, messenger_test_ok}
+    operator_checklist = models.JSONField(default=dict, blank=True)
+    operator_note = models.TextField(blank=True,
+        help_text="Свободный комментарий оператора при решении")
+    # ── ТЗ §8 Постоянный мониторинг ─────────────────────────────────
+    last_monitored_at = models.DateTimeField(null=True, blank=True)
     rejection_reason = models.TextField(blank=True)
     submitted_at = models.DateTimeField(null=True, blank=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
@@ -1178,6 +1381,7 @@ class SupplierImportProfile(models.Model):
     @staticmethod
     def compute_fingerprint(headers: list[str]) -> str:
         import hashlib
+
         from assistant.price_mappings import normalize
         normalized = sorted(normalize(h) for h in headers if str(h).strip())
         return hashlib.sha256("|".join(normalized).encode()).hexdigest()
@@ -1271,6 +1475,8 @@ class PartReference(models.Model):
     height_cm = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     hs_code   = models.CharField(max_length=20, blank=True, db_index=True,
         help_text="Код ТН ВЭД из таможни")
+    cross_numbers = models.CharField(max_length=500, blank=True,
+        help_text="Перекрёстные номера (cross/reference numbers) из каталогов")
     country_of_origin = models.CharField(max_length=80, blank=True)
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default="manual",
         db_index=True)
@@ -1344,3 +1550,84 @@ class ErpSyncLog(models.Model):
 
     def __str__(self):
         return f"ErpSync[{self.id}] {self.direction}/{self.kind} {self.status}"
+
+
+# ── Knowledge Base ─────────────────────────────────────────────
+# Редактируется оператором через /admin/. Раньше FAQ был хардкодом
+# в assistant/support_hub.py — для каждого изменения нужен был релиз.
+# Теперь оператор сам добавляет вопросы/ответы.
+
+class KnowledgeBaseEntry(models.Model):
+    """FAQ-entry для Support Hub в чате (kb_faq action).
+
+    Видим всем юзерам через `🛟 Поддержка → ❓ Частые вопросы`.
+    Полнотекстовый поиск через PostgreSQL tsvector — см. search() ниже.
+    """
+    CATEGORY_CHOICES = [
+        ("registration",   "📝 Регистрация"),
+        ("kyb",            "🛡 KYB / Верификация"),
+        ("payment",        "💰 Заказ и оплата"),
+        ("delivery",       "🚚 Доставка и сроки"),
+        ("claims",         "🧾 Рекламации"),
+        ("contacts",       "👥 Контакты сторон"),
+        ("bonuses",        "🎁 Бонусы"),
+        ("platform",       "⚙️ Платформа"),
+        ("support",        "🛟 Поддержка"),
+        ("other",          "❓ Другое"),
+    ]
+
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES,
+                                default="other", db_index=True)
+    question = models.CharField(max_length=300,
+        help_text="Короткий вопрос — отображается как заголовок")
+    answer = models.TextField(
+        help_text="Полный ответ. Markdown НЕ поддерживается, plain-text.")
+    is_active = models.BooleanField(default=True, db_index=True,
+        help_text="Снимите чтобы скрыть entry без удаления.")
+    sort_order = models.PositiveIntegerField(default=100, db_index=True,
+        help_text="Меньше число — выше в списке (для важных вопросов).")
+    views = models.PositiveIntegerField(default=0,
+        help_text="Сколько раз показано (для аналитики популярности).")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="kb_entries_created")
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["category", "sort_order", "id"]
+        verbose_name = "FAQ entry"
+        verbose_name_plural = "FAQ entries"
+        indexes = [
+            models.Index(fields=["category", "is_active", "sort_order"],
+                          name="kb_cat_sort_idx"),
+        ]
+
+    def __str__(self):
+        return f"[{self.category}] {self.question[:60]}"
+
+    @classmethod
+    def search(cls, query: str, *, limit: int = 50):
+        """Полнотекстовый поиск + фильтр по категории.
+
+        PostgreSQL: SearchVector(question + answer) + russian config.
+        SQLite (dev): fallback на icontains по обоим полям.
+        """
+        from django.db import connection
+        qs = cls.objects.filter(is_active=True)
+        if not query:
+            return qs[:limit]
+        if connection.vendor == "postgresql":
+            from django.contrib.postgres.search import (
+                SearchQuery, SearchRank, SearchVector,
+            )
+            vec = SearchVector("question", weight="A", config="russian") \
+                + SearchVector("answer", weight="B", config="russian")
+            q = SearchQuery(query, config="russian")
+            return (qs.annotate(rank=SearchRank(vec, q))
+                      .filter(rank__gt=0)
+                      .order_by("-rank")[:limit])
+        # SQLite-fallback: substring по lower
+        from django.db.models import Q
+        q_low = query.lower()
+        return qs.filter(Q(question__icontains=q_low)
+                          | Q(answer__icontains=q_low))[:limit]

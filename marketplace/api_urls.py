@@ -1,6 +1,7 @@
 from django.urls import include, path
 
 from dashboard.api import SupplierDashboardAPIView
+
 from . import api_views
 
 urlpatterns = [

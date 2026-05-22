@@ -1,0 +1,32 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "color-no-hex": [true, {
+      "message": "Не используй хардкод #hex — заведи токен в :root и обращайся через var(--…). Исключения: data-uri, SVG fill в шаблонах."
+    }],
+    "color-named": ["never", {
+      "message": "Не используй именованные цвета (red, blue, white). Используй CSS-переменные."
+    }],
+    "declaration-no-important": [true, {
+      "message": "!important — последний костыль. Подними специфичность или поправь каскад."
+    }],
+    "selector-max-id": [0, {
+      "message": "Никаких ID в селекторах — используй классы или data-атрибуты."
+    }],
+    "max-nesting-depth": [3, {
+      "ignoreAtRules": ["media", "supports"]
+    }],
+    "no-duplicate-selectors": true,
+    "shorthand-property-no-redundant-values": true,
+    "declaration-block-no-redundant-longhand-properties": true,
+    "alpha-value-notation": null,
+    "color-function-notation": null,
+    "media-feature-range-notation": null
+  },
+  "ignoreFiles": [
+    "static/**/*.min.css",
+    "staticfiles/**",
+    "node_modules/**",
+    ".venv/**"
+  ]
+}

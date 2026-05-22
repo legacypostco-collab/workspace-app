@@ -1,7 +1,7 @@
 from django import forms
-from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
+from django.utils.translation import gettext_lazy as _
 
 from .models import Part
 
@@ -11,16 +11,25 @@ class RegisterForm(UserCreationForm):
         ("buyer", "Buyer"),
         ("seller", "Seller"),
     ]
+    LANGUAGE_CHOICES = [
+        ("ru", "Русский"),
+        ("en", "English"),
+        ("zh-hans", "中文"),
+        ("es", "Español"),
+        ("ar", "العربية"),
+    ]
 
     email = forms.EmailField(required=True)
     first_name = forms.CharField(max_length=150, required=False)
     last_name = forms.CharField(max_length=150, required=False)
     role = forms.ChoiceField(choices=ROLE_CHOICES, required=True)
     company_name = forms.CharField(max_length=255, required=False)
+    language = forms.ChoiceField(choices=LANGUAGE_CHOICES, required=True, initial="ru",
+                                 label=_("Язык интерфейса"))
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ("username", "email", "first_name", "last_name", "role", "company_name")
+        fields = ("username", "email", "first_name", "last_name", "role", "company_name", "language")
 
 
 class LoginForm(AuthenticationForm):
@@ -73,6 +82,13 @@ class SellerBulkUploadForm(forms.Form):
         label=_("Файл прайса (.csv или .xlsx)"),
         help_text=_("Обязательные колонки: PartNumber/Part Number, WarehouseAddress и хотя бы одна цена Price_FOB_SEA/Price_FOB_AIR."),
     )
+
+    def clean_file(self):
+        """Validate size / extension / magic bytes / virus scan."""
+        from .upload_validation import PRICELIST_RULES, validate_upload
+        f = self.cleaned_data.get("file")
+        validate_upload(f, PRICELIST_RULES)
+        return f
     category = forms.CharField(
         max_length=120,
         required=False,

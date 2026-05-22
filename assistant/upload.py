@@ -9,7 +9,6 @@ import csv
 import io
 import os
 import re
-from typing import Iterable
 
 from django.shortcuts import get_object_or_404
 from rest_framework.parsers import MultiPartParser
@@ -22,6 +21,44 @@ from .permissions import detect_user_role
 from .rag import execute_action
 
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+def _verify_magic_bytes(kind: str, blob: bytes) -> bool:
+    """Проверка signature в первых байтах файла.
+
+    Защищает от polyglot-атак: переименованный EXE/HTML с расширением xlsx/csv/pdf.
+    Возвращает True если первые байты соответствуют ожидаемому типу.
+
+    Сигнатуры:
+      xlsx/xls (modern xlsx — это ZIP):  PK\\x03\\x04
+      xls (legacy OLE2 compound):        \\xD0\\xCF\\x11\\xE0\\xA1\\xB1\\x1A\\xE1
+      pdf:                                %PDF
+      csv: пропускаем (это plain text, нет уникальной сигнатуры) — но
+           проверяем что нет MZ/ELF/PK сигнатур в начале (anti-EXE).
+    """
+    if not blob or len(blob) < 4:
+        return False
+    head = blob[:8]
+    if kind == "xlsx":
+        # XLSX = ZIP container. Старый XLS = OLE2.
+        return head[:4] == b"PK\x03\x04" or head == b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"
+    if kind == "pdf":
+        return head[:4] == b"%PDF"
+    if kind == "csv":
+        # CSV это text/plain — нет magic-bytes. Но запрещаем известные binary-сигнатуры
+        # (anti-EXE/dll/elf/zip/pdf под маской csv).
+        forbidden_signatures = (
+            b"MZ",                  # PE/EXE/DLL
+            b"\x7fELF",             # ELF (Linux)
+            b"\xCA\xFE\xBA\xBE",    # Mach-O fat / Java class
+            b"\xCE\xFA\xED\xFE",    # Mach-O 32
+            b"\xCF\xFA\xED\xFE",    # Mach-O 64
+            b"PK\x03\x04",          # ZIP/XLSX/DOCX
+            b"%PDF",                # PDF
+            b"\xD0\xCF\x11\xE0",    # OLE2 (legacy office)
+        )
+        return not any(head.startswith(sig) for sig in forbidden_signatures)
+    return False
 MAX_ARTICLES = 200
 
 _OEM_RE = re.compile(r"^[A-ZА-Я0-9][A-ZА-Я0-9\-./]{2,}$", re.IGNORECASE)
@@ -164,6 +201,7 @@ class RecognizePhotoView(APIView):
 
         try:
             import base64
+
             import anthropic
             blob = photo.read()
             b64 = base64.b64encode(blob).decode("ascii")
@@ -261,6 +299,18 @@ class UploadSpecView(APIView):
 
         blob = upload.read()
         kind = _detect_kind(upload.name, upload.content_type or "")
+
+        # ── Magic-bytes защита от polyglot-атак ─────────────────
+        # _detect_kind полагается на расширение + клиентский content-type
+        # (юзер может подменить). Проверяем сигнатуру в первых байтах.
+        # Раньше проверка была только для PDF — мог пройти EXE.xlsx или
+        # PE-payload с расширением .csv.
+        if not _verify_magic_bytes(kind, blob):
+            return Response(
+                {"error": f"Содержимое файла не соответствует расширению .{kind} "
+                          f"(подозрение на polyglot/подменённый файл)."},
+                status=400,
+            )
 
         if kind == "xlsx":
             articles = _extract_from_xlsx(blob)

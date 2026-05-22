@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 @register("upload_competitor_offer")
 def upload_competitor_offer(params, user, role):
     """Buyer загружает конкурентное предложение для триггера переторжки."""
-    from marketplace.models import Quote, CompetitorOffer
+    from marketplace.models import CompetitorOffer, Quote
 
     confirmed = bool(params.get("confirmed"))
     try:
@@ -50,7 +50,7 @@ def upload_competitor_offer(params, user, role):
         return ActionResult(
             text=f"📄 Загрузить конкурентное предложение по котировке #{quote.id}",
             cards=[{"type": "form", "data": {
-                "title": f"📄 Конкурентное предложение",
+                "title": "📄 Конкурентное предложение",
                 "submit_action": "upload_competitor_offer",
                 "fields": [
                     {"name": "competitor_name", "label": "Название поставщика-конкурента",
@@ -162,7 +162,7 @@ def respond_to_competitor_offer(params, user, role):
         offer.save(update_fields=["status", "seller_comment", "reviewed_at"])
         if offer.uploaded_by:
             _notify(offer.uploaded_by, kind="rfq",
-                    title=f"Поставщик отклонил вашу competitor-оффер",
+                    title="Поставщик отклонил вашу competitor-оффер",
                     body=f"Комментарий: {seller_comment[:200]}",
                     url=f"/chat/?rfq={offer.rfq_id}")
         return ActionResult(

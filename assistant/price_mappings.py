@@ -17,8 +17,6 @@ CANONICAL_TO_STD — маппинг канонических ключей в STD
 from __future__ import annotations
 
 import re
-from typing import Iterable
-
 
 # ── Словарь канонических полей и их синонимов (RU/EN/ZH/DE) ─────
 
@@ -52,11 +50,13 @@ COLUMN_MAP: dict[str, list[str]] = {
     ],
     "price": [
         "unitprice", "unit price", "price", "cost", "list price",
+        "price exw", "exw price", "exworks", "ex works",
         "цена", "стоимость",
         "成本", "价格", "单价",
         "preis", "stückpreis",
         "precio", "coste",
         # Epiroc → "Unitprice"; Sandvik → "unit-price (CNY)"; Komatsu → "成本"
+        # marketplace output → "Price_EXW"
         "unit-price", "unit-price (cny)", "unit-price (usd)", "unit-price (eur)",
     ],
     "currency": [
@@ -128,11 +128,25 @@ COLUMN_MAP: dict[str, list[str]] = {
     ],
     # Дополнительные часто встречающиеся:
     "brand": [
-        "brand", "manufacturer", "make", "vendor",
-        "бренд", "производитель",
-        "品牌", "制造商",
-        "marke", "hersteller",
-        "marca", "fabricante",
+        "brand", "make", "vendor",
+        "бренд",
+        "品牌",
+        "marke",
+        "marca",
+    ],
+    "manufacturer": [
+        "manufacturer", "factory", "plant",
+        "производитель", "завод", "завод-производитель",
+        "制造商", "厂家", "工厂",
+        "hersteller", "werk",
+        "fabricante", "fábrica",
+    ],
+    "availability": [
+        "availability", "stock status", "in stock",
+        "наличие", "доступность",
+        "可用性", "库存状态",
+        "verfügbarkeit",
+        "disponibilidad",
     ],
     "stock": [
         "stock", "qty", "quantity", "in stock", "available",
@@ -206,6 +220,8 @@ CANONICAL_TO_STD: dict[str, str] = {
     "cross_number":  "cross_number",
     "description":   "title",
     "brand":         "brand",
+    "manufacturer":  "manufacturer",
+    "availability":  "availability",
     "price":         "price_exw",
     "currency":      "currency",
     "stock":         "stock",

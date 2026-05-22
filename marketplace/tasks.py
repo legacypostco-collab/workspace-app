@@ -36,8 +36,8 @@ def send_notification_task(self, user_id: int, kind: str, title: str, body: str 
     )
     # Push via Channels (graceful no-op if Channels not configured)
     try:
-        from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
         layer = get_channel_layer()
         if layer:
             async_to_sync(layer.group_send)(
@@ -93,7 +93,7 @@ def send_pending_email_notifications():
 @shared_task
 def check_sla_breaches():
     """Find orders nearing or past SLA deadline; create notifications."""
-    from .models import Order, Notification
+    from .models import Notification, Order
     now = timezone.now()
     # Orders past their ship_deadline that haven't shipped yet
     overdue = Order.objects.filter(

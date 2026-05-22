@@ -52,6 +52,11 @@ class AssistantConfig(AppConfig):
             from . import claims  # noqa
         except ImportError:
             pass
+        # Регистрируем Support Hub (FAQ, статусы, бонусы, контакт с оператором)
+        try:
+            from . import support_hub  # noqa
+        except ImportError:
+            pass
         # Регистрируем KP workflow (auto/semi/manual + calc→shipment)
         try:
             from . import kp_workflow  # noqa

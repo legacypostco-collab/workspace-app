@@ -327,6 +327,7 @@ def apply_settlement(params, user, role):
     if not _is_operator(role) and role != "admin":
         return ActionResult(text="Доступно только оператору.")
     from marketplace.models import OrderClaim
+
     from . import payments as _pay
     try:
         claim = OrderClaim.objects.get(id=int(params.get("claim_id") or 0))

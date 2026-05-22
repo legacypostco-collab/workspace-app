@@ -44,3 +44,11 @@ stripe==15.1.0
 # E2E testing (only needed in dev/CI; ставится отдельно с `playwright install chromium`)
 # playwright>=1.50.0
 # pytest-playwright>=0.5
+
+# ── Production hardening (опционально, активируются при наличии) ──
+django-axes==7.0.0          # Brute-force protection (settings.py: auto-enabled if installed)
+django-storages==1.14.4     # S3/MinIO/Yandex Object Storage (требует boto3)
+boto3==1.35.0               # AWS SDK для django-storages
+django-csp==4.0             # Content Security Policy middleware
+clamd==1.0.2                # ClamAV daemon client для скана загрузок
+coverage==7.6.10            # Test coverage в CI

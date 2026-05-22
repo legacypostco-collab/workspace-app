@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from marketplace.models import Category, Order, OrderItem, Part, RFQ, RFQItem, UserProfile
+from marketplace.models import RFQ, Category, Order, OrderItem, Part, RFQItem, UserProfile
 
 
 class SellerProductApiTests(TestCase):

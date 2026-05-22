@@ -71,10 +71,19 @@ jobs:
       - name: Run tests
         run: |
           if [ -f pytest.ini ] || [ -f pyproject.toml ] && grep -q '\[tool.pytest' pyproject.toml 2>/dev/null; then
-            pytest --cov=marketplace --cov-report=term --cov-report=xml -q
+            pytest --cov=marketplace --cov=assistant --cov-report=term --cov-report=xml \
+                   --cov-fail-under=${COVERAGE_MIN:-50} -q
           else
             python manage.py test --keepdb --parallel auto
           fi
+        env:
+          COVERAGE_MIN: 50
+
+      - name: E2E smoke (pipeline через action handlers)
+        run: |
+          python manage.py migrate --noinput
+          python manage.py seed_chat_demo || true
+          python manage.py e2e_test --reset
 
       - name: Upload coverage
         if: always() && hashFiles('coverage.xml') != ''

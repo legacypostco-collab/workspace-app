@@ -40,7 +40,6 @@ from typing import Any
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
-from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework.parsers import MultiPartParser
@@ -48,7 +47,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .actions import ActionResult, _notify, register
+from .actions import ActionResult, register
 
 logger = logging.getLogger(__name__)
 
@@ -99,10 +98,105 @@ REQUIRED_FIELDS = [k for k, _, req, _, _ in STD_FIELDS if req]
 FIELD_DEFAULTS = {k: d for k, _, _, _, d in STD_FIELDS if d is not None}
 
 
+# ── EN-translation для названий запчастей ──────────────────────
+# Каталог маркетплейса международный → выходной XLSX всегда на английском.
+# Известные термины переводим, остальное оставляем (лучше частичный перевод
+# чем сломанный текст).
+_EN_TERMS: dict[str, str] = {
+    # Chinese (упрощённый) — экскаватор/спецтехника
+    "岩石型斗齿": "Rock-type bucket tooth",
+    "斗齿": "Bucket tooth", "齿座": "Tooth holder",
+    "铲斗": "Bucket", "岩石铲斗": "Rock bucket",
+    "立方": "m³",
+    "履带": "Track", "履带板": "Track shoe",
+    "拖链轮": "Carrier roller", "拖轮": "Carrier roller",
+    "链轨": "Track link", "链节": "Track link",
+    "驱动轮": "Drive sprocket", "支重轮": "Track roller",
+    "引导轮": "Front idler", "托链轮": "Carrier roller",
+    "回转支承": "Slewing bearing", "回转马达": "Swing motor",
+    "行走马达": "Travel motor",
+    "动臂": "Boom", "斗杆": "Stick", "斗杆缸": "Stick cylinder",
+    "动臂缸": "Boom cylinder", "铲斗缸": "Bucket cylinder",
+    "液压泵": "Hydraulic pump", "主泵": "Main pump",
+    # Chinese (упрощённый) — крепёж и базовые запчасти
+    "螺栓": "Bolt", "螺钉": "Screw", "螺丝": "Screw", "螺母": "Nut",
+    "垫圈": "Washer", "弹垫": "Spring washer", "平垫": "Flat washer",
+    "销": "Pin", "卡簧": "Snap ring", "开口销": "Cotter pin",
+    "轴承": "Bearing", "密封": "Seal", "油封": "Oil seal",
+    "滤芯": "Filter", "滤清器": "Filter", "机油滤芯": "Oil filter",
+    "空气滤芯": "Air filter", "燃油滤芯": "Fuel filter",
+    "皮带": "Belt", "链条": "Chain", "齿轮": "Gear",
+    "活塞": "Piston", "活塞环": "Piston ring", "气缸": "Cylinder",
+    "曲轴": "Crankshaft", "凸轮轴": "Camshaft", "连杆": "Connecting rod",
+    "水泵": "Water pump", "油泵": "Oil pump", "燃油泵": "Fuel pump",
+    "喷油器": "Injector", "喷嘴": "Nozzle", "火花塞": "Spark plug",
+    "传感器": "Sensor", "继电器": "Relay", "保险丝": "Fuse",
+    "电池": "Battery", "起动机": "Starter", "发电机": "Alternator",
+    "散热器": "Radiator", "水箱": "Radiator", "风扇": "Fan",
+    "刹车片": "Brake pad", "刹车盘": "Brake disc", "离合器": "Clutch",
+    "轮胎": "Tire", "钢圈": "Rim", "车轮": "Wheel",
+    "软管": "Hose", "管": "Pipe", "接头": "Fitting", "法兰": "Flange",
+    "支架": "Bracket", "盖": "Cover", "板": "Plate", "壳体": "Housing",
+    "弹簧": "Spring", "阀": "Valve", "阀门": "Valve", "电磁阀": "Solenoid valve",
+    "套": "Bushing", "衬套": "Bushing", "护套": "Sleeve",
+    # Russian
+    "болт": "Bolt", "винт": "Screw", "гайка": "Nut",
+    "шайба": "Washer", "штифт": "Pin", "шплинт": "Cotter pin",
+    "подшипник": "Bearing", "сальник": "Oil seal", "уплотнение": "Seal",
+    "фильтр": "Filter", "масляный фильтр": "Oil filter",
+    "воздушный фильтр": "Air filter", "топливный фильтр": "Fuel filter",
+    "ремень": "Belt", "цепь": "Chain", "шестерня": "Gear",
+    "поршень": "Piston", "кольцо": "Ring", "цилиндр": "Cylinder",
+    "коленвал": "Crankshaft", "распредвал": "Camshaft", "шатун": "Connecting rod",
+    "помпа": "Pump", "насос": "Pump", "форсунка": "Injector",
+    "свеча": "Spark plug", "датчик": "Sensor", "реле": "Relay",
+    "предохранитель": "Fuse", "аккумулятор": "Battery",
+    "стартер": "Starter", "генератор": "Alternator",
+    "радиатор": "Radiator", "вентилятор": "Fan",
+    "тормозная колодка": "Brake pad", "колодка": "Brake pad",
+    "тормозной диск": "Brake disc", "сцепление": "Clutch",
+    "шланг": "Hose", "трубка": "Pipe", "трубa": "Pipe",
+    "кронштейн": "Bracket", "крышка": "Cover", "пластина": "Plate",
+    "корпус": "Housing", "пружина": "Spring", "клапан": "Valve",
+    "втулка": "Bushing", "уплотнитель": "Seal",
+}
+
+
+def _looks_non_ascii(text: str) -> bool:
+    """True если в строке есть символы кириллицы или CJK."""
+    for ch in text:
+        c = ord(ch)
+        # Cyrillic + CJK Unified Ideographs ranges
+        if 0x0400 <= c <= 0x04FF or 0x4E00 <= c <= 0x9FFF or 0x3400 <= c <= 0x4DBF:
+            return True
+    return False
+
+
+def _translate_to_en(text: str) -> str:
+    """Переводит CJK/Cyrillic токены на английский по словарю.
+    Неизвестные слова оставляет как есть. Если в строке нет non-ASCII —
+    возвращает без изменений (fast path)."""
+    if not text or not _looks_non_ascii(text):
+        return text
+    out = text
+    # сортируем по длине: длинные термины сначала, чтобы "масляный фильтр"
+    # сматчился раньше чем "фильтр".
+    for src in sorted(_EN_TERMS.keys(), key=len, reverse=True):
+        if src in out:
+            out = out.replace(src, _EN_TERMS[src])
+        # Capitalized вариант для русских терминов
+        if src and src[0].isalpha() and src != src.capitalize():
+            cap = src.capitalize()
+            if cap in out:
+                out = out.replace(cap, _EN_TERMS[src])
+    return out
+
+
 # ── Formula whitelist engine ────────────────────────────────────
 
 import ast
 import operator as _op
+from datetime import UTC
 
 _SAFE_OPS = {
     ast.Add: _op.add,
@@ -232,13 +326,33 @@ MAX_AI_CALLS_PER_DAY = 50  # увеличил с 3 — словарь + value-de
 
 
 def _read_xlsx_rows(blob: bytes, max_rows: int | None = None):
-    """Iter всех строк xlsx как кортежи. Максимум первый лист."""
+    """Iter всех строк xlsx как кортежи. Максимум первый лист.
+
+    Hybrid стратегия:
+    • max_rows ≤ 100 (preview) → openpyxl read_only (быстрый старт)
+    • max_rows > 100 или None (full read) → python-calamine Rust-based
+      (на 616k+ ~6× быстрее openpyxl). Fallback на openpyxl.
+    """
+    use_calamine = max_rows is None or max_rows > 100
+    if use_calamine:
+        try:
+            from python_calamine import CalamineWorkbook
+            wb = CalamineWorkbook.from_filelike(io.BytesIO(blob))
+            sheet = wb.get_sheet_by_index(0)
+            rows = sheet.to_python(nrows=max_rows) if max_rows else sheet.to_python()
+            for row in rows:
+                yield tuple("" if v is None else str(v).strip() for v in row)
+            return
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.warning("calamine failed, falling back to openpyxl: %s", e)
+
     from openpyxl import load_workbook
     wb = load_workbook(io.BytesIO(blob), read_only=True, data_only=True)
     sheet = wb.worksheets[0]
     n = 0
     for row in sheet.iter_rows(values_only=True):
-        # Прозрачно конвертируем None → ""
         yield tuple("" if v is None else str(v).strip() for v in row)
         n += 1
         if max_rows is not None and n >= max_rows:
@@ -339,6 +453,7 @@ def _ai_calls_used_today(seller) -> int:
     Считаем по PricelistImport.ai_called=True.
     """
     from datetime import timedelta
+
     from marketplace.models import PricelistImport
     since = timezone.now() - timedelta(hours=24)
     return PricelistImport.objects.filter(
@@ -486,8 +601,11 @@ def _smart_mapping(headers: list[str], sample_rows: list[list[str]],
       5. Возвращает (mapping_std, unknown, ai_called, status)
     """
     from .price_mappings import (
-        COLUMN_MAP, CANONICAL_TO_STD,
-        match_headers, load_learned_lookup, learn_synonym, normalize,
+        CANONICAL_TO_STD,
+        COLUMN_MAP,
+        learn_synonym,
+        load_learned_lookup,
+        match_headers,
     )
 
     learned = load_learned_lookup()
@@ -877,9 +995,13 @@ def _lookup_reference_data(oems: list[str], brand: str | None = None) -> dict[st
     from marketplace.models import PartReference
     if not oems:
         return {}
-    qs = PartReference.objects.filter(oem_number__in=oems).order_by(
-        "oem_number", "-confidence", "updated_at",
-    )
+    # SQLite ограничивает WHERE IN до 999 параметров — режем на чанки.
+    refs = []
+    CHUNK = 900
+    for i in range(0, len(oems), CHUNK):
+        batch = oems[i:i + CHUNK]
+        refs.extend(PartReference.objects.filter(oem_number__in=batch))
+    qs = sorted(refs, key=lambda r: (r.oem_number, -float(r.confidence or 0)))
     if brand:
         # Сначала с точным брендом, потом без — fallback
         pass
@@ -898,6 +1020,7 @@ def _lookup_reference_data(oems: list[str], brand: str | None = None) -> dict[st
                 "width_cm":  float(ref.width_cm)  if ref.width_cm  else None,
                 "height_cm": float(ref.height_cm) if ref.height_cm else None,
                 "hs_code":   ref.hs_code or None,
+                "cross_numbers": ref.cross_numbers or None,
                 "country_of_origin": ref.country_of_origin or None,
                 "source":    ref.source,
                 "confidence": ref.confidence,
@@ -908,9 +1031,78 @@ def _lookup_reference_data(oems: list[str], brand: str | None = None) -> dict[st
     return best
 
 
+def _supplier_wide_value(key: str, mapping: dict, constants: dict | None) -> str:
+    """Возвращает supplier-wide константное значение для поля:
+    приоритет constants → mapping['fix:...'], '' если нигде нет."""
+    c = (constants or {}).get(key)
+    if c not in (None, "", 0):
+        return str(c).strip()
+    m = (mapping or {}).get(key, "")
+    if isinstance(m, str) and m.startswith("fix:"):
+        return m[4:].strip()
+    return ""
+
+
+def _resolve_warehouse_for_import(seller, mapping: dict, constants: dict | None,
+                                    filename: str = ""):
+    """Создаёт НОВЫЙ виртуальный склад на каждую загрузку прайса.
+
+    Правило: «один импорт — один склад». Даже если ports+address совпадают
+    с существующим складом — это отдельная загрузка, отдельная папка.
+    Продавец сам может потом переименовать или объединить.
+
+    Возвращает SellerWarehouse (никогда None — всегда создаёт папку).
+    """
+    from marketplace.models import SellerWarehouse
+    sea = _supplier_wide_value("sea_port", mapping, constants)
+    air = _supplier_wide_value("air_port", mapping, constants)
+    addr = _supplier_wide_value("warehouse_address", mapping, constants)
+    currency = _supplier_wide_value("currency", mapping, constants) or "USD"
+
+    # Страна выводится из ISO-кода в начале портового кода (TRMER → TR)
+    cc = ""
+    for src in (sea, air):
+        if src and len(src) >= 2:
+            head = src.split()[0]
+            if len(head) >= 2 and head[:2].isalpha():
+                cc = head[:2].upper()
+                break
+
+    # Автоимя: «Склад #N · Страна · Город» либо «Склад #N · <filename>»
+    idx = SellerWarehouse.objects.filter(seller=seller).count() + 1
+    country_label = {
+        "TR": "Турция", "CN": "Китай", "RU": "Россия",
+        "AE": "ОАЭ", "NL": "Нидерланды", "KZ": "Казахстан",
+    }.get(cc, cc or "")
+    # Город — третий токен в портовой строке (Анкара, Мерсин, ...)
+    city = ""
+    for src in (sea, air):
+        parts = [p.strip() for p in src.split("·")]
+        if len(parts) >= 3:
+            city = parts[2]
+            break
+    name_parts = [f"Склад #{idx}"]
+    if country_label:
+        name_parts.append(country_label)
+    if city:
+        name_parts.append(city)
+    if len(name_parts) == 1 and filename:
+        # Если логистики нет — используем имя файла как fallback
+        short = filename.rsplit("/", 1)[-1].rsplit(".", 1)[0][:50]
+        name_parts.append(short)
+    name = " · ".join(name_parts)
+
+    return SellerWarehouse.objects.create(
+        seller=seller, name=name[:120],
+        country_code=cc[:2], sea_port=sea[:120], air_port=air[:120],
+        address=addr[:1000], currency=currency[:3] or "USD",
+    )
+
+
 def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                  transform_rules: dict | None = None,
-                 constants: dict | None = None):
+                 constants: dict | None = None,
+                 warehouse=None):
     """Полный детерминированный импорт по подтверждённому маппингу.
 
     transform_rules: {std_field: {type: formula|map|concat, ...}}
@@ -943,12 +1135,19 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             col_idx[fld] = headers.index(val)
             fixed_vals.pop(fld, None)
     # Constants имеют приоритет над любыми дефолтами (свежий ответ юзера
-    # должен перезаписывать значения из сохранённого профиля)
+    # должен перезаписывать значения из сохранённого профиля).
+    # Для supplier-wide логистики (порты, склад) constants ВСЕГДА выигрывают
+    # даже над замапленной колонкой — потому что эти поля обязаны быть одинаковы
+    # для всей загрузки, и колонка в маркетплейс-XLSX часто бывает пустой.
+    SUPPLIER_WIDE_OVERRIDE = {"sea_port", "air_port", "warehouse_address"}
     for fld, val in constants.items():
         if val is None or val == "":
             continue
-        if fld in col_idx:
+        if fld in col_idx and fld not in SUPPLIER_WIDE_OVERRIDE:
             continue  # колонка из файла — приоритет
+        # Если supplier-wide constant есть — удаляем col_idx чтобы fixed_vals выиграл
+        if fld in col_idx and fld in SUPPLIER_WIDE_OVERRIDE:
+            col_idx.pop(fld, None)
         fixed_vals[fld] = str(val)
 
     missing_required = [
@@ -972,10 +1171,27 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
 
     # Кэш брендов: на каждый прайс одни и те же названия → не лезть
     # в БД n раз. seed'им существующими + Generic.
-    brand_cache: dict[str, "Brand"] = {
+    brand_cache: dict[str, Brand] = {
         b.name.lower(): b for b in Brand.objects.all()
     }
     brand_cache.setdefault("generic", generic_brand)
+
+    # Fallback-бренд: если Brand-колонка пустая, пробуем определить по имени
+    # файла (например komatsu*.xlsx → Komatsu, sandvik*.xlsx → Sandvik).
+    filename_brand = None
+    known_brands_l = ["epiroc", "caterpillar", "komatsu", "hitachi", "sandvik",
+                       "liebherr", "atlas copco"]
+    fname_lc = (getattr(import_obj, "filename", "") or "").lower()
+    fname_clean = fname_lc.replace("_", "").replace(" ", "").replace("-", "")
+    for b in known_brands_l:
+        if b.replace(" ", "") in fname_clean:
+            key = b
+            filename_brand = brand_cache.get(key)
+            if not filename_brand:
+                filename_brand = Brand.objects.filter(name__iexact=b).first()
+                if filename_brand:
+                    brand_cache[key] = filename_brand
+            break
 
     # Прогресс импорта для polling из UI
     from django.core.cache import cache
@@ -985,6 +1201,15 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
     # ───────── Pass 1: парсим все строки в payload'ы ─────────
     payloads: list[dict] = []
     for row_n, row in enumerate(_read_all(import_obj.filename, blob), start=2):
+            # Обновление прогресса каждые 500 строк во время парсинга:
+            # без этого UI висел бы на "0 строк" пока разбираем 160k XLSX.
+            if row_n % 500 == 0:
+                cache.set(progress_key, {
+                    "current": len(payloads),
+                    "total": row_n,
+                    "phase": "parsing",
+                    "running": True,
+                }, 600)
             if not any(c.strip() for c in row):
                 continue
 
@@ -1014,6 +1239,10 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             # (всё равно лучше чем пропустить позицию)
             if oem and not title:
                 title = oem
+            # Переводим title на английский для единообразия каталога
+            # и сопоставления с конкурентами. Если уже ASCII — fast-path.
+            if title:
+                title = _translate_to_en(title)
             if not oem or not title or price_exw is None or price_exw <= 0:
                 failed += 1
                 if len(errors) < 50:
@@ -1025,7 +1254,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     errors.append({"row": row_n, "oem": oem[:60], "reason": reason})
                 continue
 
-            brand_name = (get("brand") or "").strip()
+            brand_name = _translate_to_en((get("brand") or "").strip())
             if brand_name:
                 key = brand_name.lower()
                 brand = brand_cache.get(key)
@@ -1035,6 +1264,9 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                         slug=slugify(brand_name)[:200] or generic_brand.slug,
                     )
                     brand_cache[key] = brand
+            elif filename_brand:
+                # Колонка Brand пустая, но имя файла подсказывает бренд
+                brand = filename_brand
             else:
                 brand = generic_brand
 
@@ -1048,28 +1280,29 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             # availability: IN_STOCK / BACKORDER → in_stock / backorder
             avail_raw = (get("availability") or "").strip().lower()
             availability = "backorder" if "backorder" in avail_raw or "back" in avail_raw else "in_stock"
-            # manufacturer + visible flag
-            manufacturer = (get("manufacturer") or "")[:200]
+            # manufacturer + visible flag — переводим на английский
+            manufacturer = _translate_to_en((get("manufacturer") or "")[:200])
             mvis_raw = (get("manufacturer_visible") or "").strip().lower()
             manufacturer_visible = mvis_raw not in ("нет", "no", "false", "0", "hidden", "скрыть")
             cross_number = (get("cross_number") or "")[:500]
             price_fob_sea = _coerce_decimal(get("price_fob_sea")) or Decimal("0")
             price_fob_air = _coerce_decimal(get("price_fob_air")) or Decimal("0")
-            warehouse = (get("warehouse_address") or "")[:255]
+            warehouse_addr = (get("warehouse_address") or "")[:255]
             sea_port = (get("sea_port") or "")[:120]
             air_port = (get("air_port") or "")[:120]
-            # AI-оценки per-part используются ТОЛЬКО когда колонка не
-            # замаплена на файл (т.е. сейчас стоит дефолтный fix). Если
-            # значение пришло из файла — оно приоритет.
+            # AI-оценки per-part — fast-path skip если их нет (типичный случай).
+            # Когда есть — приоритет: файл > AI > fix-дефолт.
             ai_est = ai_estimates.get(oem) if ai_estimates else None
 
+            def _dim_fast(field, default_val):
+                raw = _coerce_decimal(get(field))
+                return raw if raw and raw > 0 else default_val
+
             def _dim_with_ai(field, default_val, ai_key):
-                # Если колонка замаплена на файл — берём из файла
                 if field in col_idx:
                     raw = _coerce_decimal(get(field))
                     if raw and raw > 0:
                         return raw
-                # Иначе — AI-оценка приоритет над fix-дефолтом
                 if ai_est and ai_est.get(ai_key):
                     try:
                         v = Decimal(str(ai_est[ai_key]))
@@ -1077,14 +1310,20 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                             return v
                     except Exception:
                         pass
-                # Fallback на fix-значение (из constants/FIELD_DEFAULTS)
                 raw = _coerce_decimal(get(field))
                 return raw if raw and raw > 0 else default_val
 
-            weight = _dim_with_ai("weight_kg", Decimal("0.5"), "weight_kg")
-            length = _dim_with_ai("length_cm", Decimal("1.0"), "length_cm")
-            width = _dim_with_ai("width_cm", Decimal("1.0"), "width_cm")
-            height = _dim_with_ai("height_cm", Decimal("1.0"), "height_cm")
+            _dim = _dim_with_ai if ai_est else _dim_fast
+            if ai_est:
+                weight = _dim_with_ai("weight_kg", Decimal("0.5"), "weight_kg")
+                length = _dim_with_ai("length_cm", Decimal("1.0"), "length_cm")
+                width = _dim_with_ai("width_cm", Decimal("1.0"), "width_cm")
+                height = _dim_with_ai("height_cm", Decimal("1.0"), "height_cm")
+            else:
+                weight = _dim_fast("weight_kg", Decimal("0.5"))
+                length = _dim_fast("length_cm", Decimal("1.0"))
+                width = _dim_fast("width_cm", Decimal("1.0"))
+                height = _dim_fast("height_cm", Decimal("1.0"))
 
             payloads.append({
                 "row_n": row_n,
@@ -1103,7 +1342,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     "cross_numbers": cross_number,
                     "price_fob_sea": price_fob_sea,
                     "price_fob_air": price_fob_air,
-                    "warehouse_address": warehouse,
+                    "warehouse_address": warehouse_addr,
                     "sea_port": sea_port,
                     "air_port": air_port,
                     "gross_weight_kg": weight,
@@ -1116,74 +1355,133 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 },
             })
 
-    # ───────── Pass 2a: bulk SELECT существующих Parts по oem ─────────
-    oems = [p["oem"] for p in payloads]
-    existing_by_oem: dict[str, "Part"] = {}
-    if oems:
-        for p in Part.objects.filter(seller=seller, oem_number__in=oems):
-            existing_by_oem[p.oem_number.lower()] = p
-
-    # ───────── Pass 2b: enrichment из PartReference (customs/dealer/OEM) ─
-    # Для каждой позиции пробуем достать точные данные из эталонной базы.
-    # Применяется ТОЛЬКО если значение не пришло из файла (col_idx)
-    # и не задано юзером явно (constants).
-    reference_data = _lookup_reference_data(oems)
-    reference_hits = 0
+    # ───────── Pass 1b: дедупликация внутри файла ─────────────────────
+    # Поставщики (Sandvik, Atlas Copco) часто пишут одну позицию N раз
+    # с Quantity=1 вместо одной строки с Quantity=N. Если цена совпадает —
+    # суммируем количества в одну позицию. Если цены различаются — берём
+    # первую и логируем как ошибку (это или опечатка, или две модификации).
+    merged_payloads: dict[str, dict] = {}
+    merged_count = 0
+    price_conflicts = 0
     for pl in payloads:
-        ref = reference_data.get(pl["oem"])
-        if not ref:
+        key = pl["oem"].lower()
+        if key not in merged_payloads:
+            merged_payloads[key] = pl
             continue
-        fields = pl["fields"]
-        applied = False
-        for key in ("weight_kg", "length_cm", "width_cm", "height_cm"):
-            # Применяем reference только если текущее значение — дефолт
-            # (т.е. не из файла), и в reference есть значение.
-            cur = fields.get({"weight_kg": "gross_weight_kg",
-                               "length_cm": "length_cm",
-                               "width_cm":  "width_cm",
-                               "height_cm": "height_cm"}[key])
-            if key in col_idx:
-                continue  # из файла — приоритет
-            if ref.get(key) is not None:
-                target = {"weight_kg": "gross_weight_kg",
-                          "length_cm": "length_cm",
-                          "width_cm":  "width_cm",
-                          "height_cm": "height_cm"}[key]
-                fields[target] = Decimal(str(ref[key]))
-                applied = True
-        if applied:
-            reference_hits += 1
-    if reference_hits:
-        logger.info("PartReference enrichment: %d positions matched", reference_hits)
-    # Сохраним статистику в import_obj для отображения в UI
+        # Дубль: проверяем цены
+        existing_pl = merged_payloads[key]
+        cur_price = existing_pl["fields"].get("price")
+        new_price = pl["fields"].get("price")
+        if cur_price == new_price:
+            # Одинаковая цена → одна позиция. Qty берём MAX, не сумму:
+            # поставщики типа Sandvik пишут один OEM в N строках с уже
+            # агрегированным Qty в каждой (например BH00022188 × 5 строк
+            # с Qty=22). Сумма (110) даст ложный остаток, MAX (22) — верный.
+            cur_qty = existing_pl["fields"].get("stock_quantity", 0) or 0
+            new_qty = pl["fields"].get("stock_quantity", 0) or 0
+            existing_pl["fields"]["stock_quantity"] = max(cur_qty, new_qty)
+            merged_count += 1
+        else:
+            # Разные цены → не сливаем, отмечаем в errors
+            price_conflicts += 1
+            if len(errors) < 50:
+                errors.append({
+                    "row": pl["row_n"], "oem": pl["oem"][:60],
+                    "reason": f"price conflict: {cur_price} vs {new_price}",
+                })
+    payloads = list(merged_payloads.values())
+    if merged_count:
+        logger.info("In-file dedupe: merged %d duplicate rows by Qty sum", merged_count)
+    if price_conflicts:
+        logger.warning("In-file dedupe: %d price conflicts skipped", price_conflicts)
+    # Сохраним статистику для отчёта в UI
+    import_obj._dedupe_stats = {
+        "merged": merged_count, "price_conflicts": price_conflicts,
+        "unique_oems": len(payloads),
+    }
+
+    # ───────── Pass 2a: только {oem_lower: part_id} — не полный Part ─────
+    # Раньше загружали полные Part объекты (десятки полей × 600k = много
+    # RAM и Python overhead). Для классификации create/update нужен только
+    # ID существующей записи. values_list в 5-10× быстрее .objects.filter().
+    # С составным индексом (seller_id, oem_number) чанк в 900 — почти O(1).
+    oems = [p["oem"] for p in payloads]
+    existing_id_by_oem: dict[str, int] = {}
+    CHUNK = 900
+    if oems:
+        cache.set(progress_key, {
+            "current": 0, "total": len(oems), "phase": "matching",
+            "running": True,
+        }, 600)
+        seller_id = seller.id
+        last_progress = 0
+        for i in range(0, len(oems), CHUNK):
+            batch = oems[i:i + CHUNK]
+            for pid, oem in (Part.objects
+                              .filter(seller_id=seller_id, oem_number__in=batch)
+                              .values_list("id", "oem_number")):
+                existing_id_by_oem[oem.lower()] = pid
+            # Прогресс каждый ~10k OEM — чаще чем раньше (раз в 9k → 5k),
+            # пользователь видит непрерывное движение, нет «зависов».
+            if (i - last_progress) >= 5000:
+                cache.set(progress_key, {
+                    "current": min(i + CHUNK, len(oems)), "total": len(oems),
+                    "phase": "matching", "running": True,
+                }, 600)
+                last_progress = i
+
+    # ───────── Pass 2b: enrichment из PartReference — fast-path skip ────
+    # Если эталонная база пуста для данного seller'а — пропускаем целиком.
+    # Эта таблица почти всегда пустая в demo/прод, не тратим время.
+    from marketplace.models import PartReference
+    has_refs = PartReference.objects.filter(oem_number__in=oems[:CHUNK]).exists()
+    reference_hits = 0
+    if has_refs:
+        reference_data = _lookup_reference_data(oems)
+        for pl in payloads:
+            ref = reference_data.get(pl["oem"])
+            if not ref:
+                continue
+            fields = pl["fields"]
+            applied = False
+            for key, target in (("weight_kg", "gross_weight_kg"),
+                                  ("length_cm", "length_cm"),
+                                  ("width_cm", "width_cm"),
+                                  ("height_cm", "height_cm")):
+                if key in col_idx:
+                    continue
+                if ref.get(key) is not None:
+                    fields[target] = Decimal(str(ref[key]))
+                    applied = True
+            if "cross_number" not in col_idx and ref.get("cross_numbers"):
+                if not (fields.get("cross_numbers") or "").strip():
+                    fields["cross_numbers"] = ref["cross_numbers"][:500]
+                    applied = True
+            if applied:
+                reference_hits += 1
     import_obj._enrichment_stats = {"reference_hits": reference_hits}
 
-    # ───────── Pass 3: разделяем на create vs update ─────────
-    to_create: list = []
-    to_update: list = []
-    update_fields = [
-        "title", "price", "currency", "stock_quantity", "condition",
-        "cross_numbers", "price_fob_sea", "price_fob_air",
-        "warehouse_address", "sea_port", "air_port",
-        "gross_weight_kg", "length_cm", "width_cm", "height_cm",
-        "category", "brand", "is_active", "slug",
-    ]
+    # ───────── Pass 3: split create/update без построения Part объектов ──
+    # Раньше создавали Part(seller=...) и setattr — Python overhead.
+    # Теперь только разделяем payloads на 2 списка по наличию ID, всё
+    # дальнейшее — кортежи прямо из pl["fields"].
+    to_create_payloads: list = []
+    to_update_payloads: list = []  # (part_id, fields_dict)
     for pl in payloads:
-        existing = existing_by_oem.get(pl["oem"].lower())
-        if existing:
-            for k, v in pl["fields"].items():
-                setattr(existing, k, v)
-            to_update.append(existing)
+        pid = existing_id_by_oem.get(pl["oem"].lower())
+        if pid:
+            to_update_payloads.append((pid, pl["fields"]))
         else:
-            to_create.append(Part(seller=seller, **pl["fields"]))
+            to_create_payloads.append(pl["fields"])
 
     # ───────── Pass 4: BULK INSERT через raw SQL (5-10x быстрее ORM) ─────
     # ORM bulk_create делает много overhead'а на signal'ах, валидации,
     # auto-now полях. Для массового импорта используем raw INSERT
     # через executemany с явной транзакцией.
+    from datetime import datetime
+
     from django.db import connection
-    from datetime import datetime, timezone as _tz
-    now = datetime.now(tz=_tz.utc)
+    now = datetime.now(tz=UTC)
 
     insert_cols = [
         "title", "slug", "oem_number", "description", "price", "stock_quantity",
@@ -1196,6 +1494,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
         "hs_code", "backorder_allowed", "mapping_status", "supplier_part_uid",
         "data_updated_at", "is_active", "admin_note",
         "manufacturer", "manufacturer_visible",
+        "warehouse_id",
         "created_at", "updated_at",
     ]
     table = Part._meta.db_table
@@ -1207,36 +1506,57 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
         v = getattr(obj, attr, None)
         return v if v is not None else default
 
+    wh_id = warehouse.id if warehouse else None
+    # Прогресс между matching и INSERT/UPDATE: пользователь видит что
+    # сопоставление закончилось и теперь идёт запись в БД.
+    total_pending = len(to_create_payloads) + len(to_update_payloads)
+    cache.set(progress_key, {
+        "current": 0, "total": total_pending, "phase": "writing",
+        "running": True,
+    }, 600)
     with transaction.atomic():
-        if to_create:
+        if to_create_payloads:
             rows = []
-            for p in to_create:
+            for f in to_create_payloads:
                 rows.append((
-                    p.title or "", p.slug or "", p.oem_number, "",
-                    p.price, p.stock_quantity or 0,
-                    p.condition or "oem", "",
-                    p.seller_id, p.brand_id, p.category_id,
-                    getattr(p, "availability", "") or "in_stock",
-                    "active", p.currency or "USD",
+                    f.get("title") or "", f.get("slug") or "",
+                    f.get("oem_number"), "",
+                    f.get("price"), f.get("stock_quantity") or 0,
+                    f.get("condition") or "oem", "",
+                    seller.id, f["brand"].id, f["category"].id,
+                    f.get("availability") or "in_stock",
+                    "active", f.get("currency") or "USD",
                     "FOB", 1, 1, 1, 1,
-                    p.gross_weight_kg, p.length_cm, p.width_cm, p.height_cm,
-                    "Unknown", p.cross_numbers or "",
-                    p.price_fob_sea, p.price_fob_air,
-                    p.warehouse_address or "", p.sea_port or "", p.air_port or "",
+                    f.get("gross_weight_kg"), f.get("length_cm"),
+                    f.get("width_cm"), f.get("height_cm"),
+                    "Unknown", f.get("cross_numbers") or "",
+                    f.get("price_fob_sea"), f.get("price_fob_air"),
+                    f.get("warehouse_address") or "",
+                    f.get("sea_port") or "", f.get("air_port") or "",
                     "", False, "auto", "",
                     now, True, "",
-                    getattr(p, "manufacturer", "") or "",
-                    getattr(p, "manufacturer_visible", True),
+                    f.get("manufacturer") or "",
+                    f.get("manufacturer_visible", True),
+                    wh_id,
                     now, now,  # created_at, updated_at
                 ))
+            INS_BATCH = 50000
             try:
                 with connection.cursor() as cur:
-                    cur.executemany(insert_sql, rows)
-                created = len(rows)
+                    for batch_start in range(0, len(rows), INS_BATCH):
+                        batch = rows[batch_start:batch_start + INS_BATCH]
+                        cur.executemany(insert_sql, batch)
+                        created += len(batch)
+                        cache.set(progress_key, {
+                            "current": created, "total": total_pending,
+                            "phase": "writing", "running": True,
+                        }, 600)
             except Exception as e:
-                failed = len(rows)
-                if len(errors) < 50:
-                    errors.append({"row": 0, "reason": f"raw insert: {str(e)[:200]}"})
+                logger.exception("bulk INSERT failed for %d rows (batch %d)",
+                                  len(rows), batch_start)
+                failed += len(rows) - created
+                err_entry = {"row": 0, "reason": f"raw insert: {type(e).__name__}: {str(e)[:200]}"}
+                errors.insert(0, err_entry)
             cache.set(progress_key, {
                 "current": created, "total": len(payloads), "running": True,
             }, 600)
@@ -1244,43 +1564,66 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
         # Raw SQL bulk UPDATE через executemany — намного быстрее
         # Django bulk_update который генерит CASE WHEN на каждое поле.
         # 160k UPDATE: было 110с (bulk_update), стало ~5с (executemany).
-        if to_update:
+        if to_update_payloads:
+            # slug НЕ обновляем — он уникален и генерится из OEM, который
+            # совпадает (мы матчим по seller+oem_number). Обновление slug
+            # ловит UNIQUE constraint если он отличается от исходного.
             upd_cols = [
                 "title", "price", "currency", "stock_quantity", "condition",
                 "availability", "manufacturer", "manufacturer_visible",
                 "cross_numbers", "price_fob_sea", "price_fob_air",
                 "warehouse_address", "sea_port", "air_port",
                 "gross_weight_kg", "length_cm", "width_cm", "height_cm",
-                "brand_id", "category_id", "is_active", "slug",
+                "brand_id", "category_id", "is_active",
+                "warehouse_id",
                 "data_updated_at", "updated_at",
             ]
             update_sql = (f"UPDATE {table} SET "
                            + ", ".join(f"{c} = %s" for c in upd_cols)
                            + " WHERE id = %s")
             upd_rows = []
-            for p in to_update:
+            for pid, f in to_update_payloads:
                 upd_rows.append((
-                    p.title or "", p.price, p.currency or "USD",
-                    p.stock_quantity or 0, p.condition or "oem",
-                    getattr(p, "availability", "") or "in_stock",
-                    getattr(p, "manufacturer", "") or "",
-                    getattr(p, "manufacturer_visible", True),
-                    p.cross_numbers or "",
-                    p.price_fob_sea, p.price_fob_air,
-                    p.warehouse_address or "", p.sea_port or "", p.air_port or "",
-                    p.gross_weight_kg, p.length_cm, p.width_cm, p.height_cm,
-                    p.brand_id, p.category_id, True, p.slug or "",
+                    f.get("title") or "", f.get("price"),
+                    f.get("currency") or "USD",
+                    f.get("stock_quantity") or 0, f.get("condition") or "oem",
+                    f.get("availability") or "in_stock",
+                    f.get("manufacturer") or "",
+                    f.get("manufacturer_visible", True),
+                    f.get("cross_numbers") or "",
+                    f.get("price_fob_sea"), f.get("price_fob_air"),
+                    f.get("warehouse_address") or "",
+                    f.get("sea_port") or "", f.get("air_port") or "",
+                    f.get("gross_weight_kg"), f.get("length_cm"),
+                    f.get("width_cm"), f.get("height_cm"),
+                    f["brand"].id, f["category"].id, True,
+                    wh_id,
                     now, now,
-                    p.id,
+                    pid,
                 ))
+            # Чанкуем UPDATE на пачки по 50k — каждая пачка ~3-5с в SQLite.
+            # Между пачками cache.set обновляет прогресс, чтобы UI не висел
+            # на «616473/616473» по 30+ секунд.
+            UPD_BATCH = 50000
             try:
                 with connection.cursor() as cur:
-                    cur.executemany(update_sql, upd_rows)
-                updated = len(upd_rows)
+                    for batch_start in range(0, len(upd_rows), UPD_BATCH):
+                        batch = upd_rows[batch_start:batch_start + UPD_BATCH]
+                        cur.executemany(update_sql, batch)
+                        updated += len(batch)
+                        cache.set(progress_key, {
+                            "current": created + updated,
+                            "total": total_pending,
+                            "phase": "writing", "running": True,
+                        }, 600)
             except Exception as e:
-                failed += len(upd_rows)
-                if len(errors) < 50:
-                    errors.append({"row": 0, "reason": f"raw update: {str(e)[:200]}"})
+                logger.exception("bulk UPDATE failed for %d rows (batch %d)",
+                                  len(upd_rows), batch_start)
+                # Уже успешно записанные UPDATE остаются — failed только
+                # для строк которые не дошли до записи.
+                failed += len(upd_rows) - updated
+                err_entry = {"row": 0, "reason": f"raw update: {type(e).__name__}: {str(e)[:200]}"}
+                errors.insert(0, err_entry)
             cache.set(progress_key, {
                 "current": created + updated, "total": len(payloads), "running": True,
             }, 600)
@@ -1306,7 +1649,9 @@ class PricelistUploadView(APIView):
 
     def post(self, request):
         from marketplace.models import (
-            PricelistImport, PricelistMapping, SupplierImportProfile,
+            PricelistImport,
+            PricelistMapping,
+            SupplierImportProfile,
         )
 
         f = request.FILES.get("file")
@@ -1354,22 +1699,53 @@ class PricelistUploadView(APIView):
             return sum(1 for v in (s or {}).values()
                         if v and not (isinstance(v, str) and v.startswith("fix:")))
 
+        def _required_satisfied(s):
+            # Профиль засчитывается только если purchase-критичные поля
+            # есть среди замапленных колонок (а не один случайный «Quantity»).
+            for f in REQUIRED_FIELDS:
+                v = (s or {}).get(f)
+                if not v or (isinstance(v, str) and v.startswith("fix:")):
+                    return False
+            return True
+
+        # Supplier-wide поля (порты, склад) НЕ восстанавливаем из профиля —
+        # юзер должен выбрать их заново для каждой загрузки. Профиль
+        # переиспользуется только для маппинга колонок и formula-правил.
+        SUPPLIER_WIDE_RESET = {"sea_port", "air_port", "warehouse_address"}
         suggested = {}
         if profile:
-            suggested = {k: v for k, v in profile.column_mapping.items()
-                          if v and (v.startswith("fix:") or v in headers)}
+            suggested = {
+                k: v for k, v in profile.column_mapping.items()
+                if v and (v.startswith("fix:") or v in headers)
+                and k not in SUPPLIER_WIDE_RESET
+            }
             transform_rules = profile.transform_rules or {}
-            constants = profile.constants or {}
+            constants = {
+                k: v for k, v in (profile.constants or {}).items()
+                if k not in SUPPLIER_WIDE_RESET
+            }
+            # Однако supplier-wide колонки В ФАЙЛЕ — это другое: если
+            # SeaPort/AirPort/WarehouseAddress есть как заголовки, мапим
+            # их детерминированно через словарь (НЕ через профиль, т.е.
+            # значения там per-row, а не supplier-wide константа).
+            from assistant.price_mappings import CANONICAL_TO_STD, _build_lookup, normalize
+            _lookup_local = _build_lookup()
+            for h in headers:
+                canonical = _lookup_local.get(normalize(h))
+                std = CANONICAL_TO_STD.get(canonical) if canonical else None
+                if std in SUPPLIER_WIDE_RESET and std not in suggested:
+                    suggested[std] = h
             from_profile = True
-        if not profile or _file_mapped_count(suggested) == 0:
-            # Профиль или не нашёлся, или его маппинг не подошёл к нашим
-            # headers (другой supplier, другой язык колонок).
+        # Если профиль не покрывает required-поля файла (oem, title, price) —
+        # его маппинг бесполезен (он от другого поставщика). Делаем fresh
+        # smart-mapping вместо того чтобы сохранять одну случайную колонку.
+        if not profile or not _required_satisfied(suggested):
             prev = PricelistMapping.objects.filter(seller=request.user).first()
             prev_mapped = {}
             if prev and prev.mapping:
                 prev_mapped = {k: v for k, v in prev.mapping.items()
                                 if v and (v.startswith("fix:") or v in headers)}
-            if _file_mapped_count(prev_mapped) > 0:
+            if _required_satisfied(prev_mapped):
                 suggested = prev_mapped
                 from_profile = False
             else:
@@ -1466,7 +1842,9 @@ class PricelistCommitView(APIView):
 
     def post(self, request, import_id):
         from marketplace.models import (
-            PricelistImport, PricelistMapping, SupplierImportProfile,
+            PricelistImport,
+            PricelistMapping,
+            SupplierImportProfile,
         )
         try:
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)
@@ -1521,6 +1899,60 @@ class PricelistCommitView(APIView):
                 return Response(
                     {"error": f"required field '{f_key}' not mapped"}, status=400,
                 )
+
+        # Жёсткий чек обязательных supplier-wide полей.
+        # Адрес склада — обязателен. Без него рассчитать логистику нельзя.
+        def _has_value(key: str) -> bool:
+            """Проверяет что для supplier-wide поля есть данные:
+            - constants из формы (приоритет)
+            - fix:VALUE в mapping
+            - mapped file column И в sample_rows хотя бы одна непустая ячейка
+              (избегаем «колонка есть но всё пусто» — типичный кейс для
+              маркетплейс-формата с незаполненными WarehouseAddress)"""
+            c = (constants or {}).get(key)
+            if c not in (None, "", 0):
+                return True
+            m = mapping.get(key, "")
+            if isinstance(m, str) and m.startswith("fix:") and m[4:].strip():
+                return True
+            if m and isinstance(m, str) and m in (imp.headers or []):
+                # Проверяем sample_rows на наличие реальных данных
+                idx = imp.headers.index(m)
+                for row in (imp.sample_rows or []):
+                    if idx < len(row) and str(row[idx]).strip():
+                        return True
+            return False
+
+        if not _has_value("warehouse_address"):
+            return Response({
+                "error": "warehouse_address_required",
+                "message": (
+                    "Укажите адрес склада отгрузки — обязательное поле. "
+                    "В колонке WarehouseAddress нет данных или она не заполнена — "
+                    "впишите адрес в форме «📎 общих полей поставщика»."
+                ),
+            }, status=400)
+
+        # Бренд — обязателен. Должен быть в колонке файла (с данными),
+        # в constants/fix:VALUE, ИЛИ детектится из имени файла.
+        # Без бренда позиции попадут в "Generic" и потеряют сопоставление
+        # с конкурентами — нам важны точные данные.
+        if not _has_value("brand"):
+            # Fallback: имя файла содержит известный бренд?
+            fname_lc = (imp.filename or "").lower()
+            fname_clean = fname_lc.replace("_", "").replace(" ", "").replace("-", "")
+            known = ["epiroc", "caterpillar", "komatsu", "hitachi", "sandvik",
+                     "liebherr", "atlascopco"]
+            if not any(b in fname_clean for b in known):
+                return Response({
+                    "error": "brand_required",
+                    "message": (
+                        "Не удалось определить бренд: колонка Brand пуста, "
+                        "имя файла не содержит известного бренда. "
+                        "Укажите бренд в смарт-вопросе или назовите файл "
+                        "включив бренд (напр. komatsu_pricelist.xlsx)."
+                    ),
+                }, status=400)
         for fld, val in mapping.items():
             if not val:
                 continue
@@ -1548,10 +1980,16 @@ class PricelistCommitView(APIView):
         except Exception as e:
             return Response({"error": f"file unavailable: {e}"}, status=500)
 
+        # Виртуальный склад для этой загрузки — папка с фиксированной
+        # логистикой. Ищем существующий по совпадению ports+address,
+        # иначе создаём новый.
+        warehouse = _resolve_warehouse_for_import(request.user, mapping, constants, imp.filename)
+
         imported, created, updated, failed, errors = _import_file(
             imp, mapping, blob,
             transform_rules=transform_rules,
             constants=constants,
+            warehouse=warehouse,
         )
 
         imp.final_mapping = mapping
@@ -1587,9 +2025,11 @@ class PricelistCommitView(APIView):
                 },
             )
 
-        # Что точно НЕ пришло из файла — для transparency после импорта
-        # пользователь должен это видеть, чтобы понимать качество данных.
-        missing_from_file = []
+        # Категоризация полей:
+        #   mandatory      — без этого нельзя сохранить (warehouse_address)
+        #   rating_bonus   — необязательно, но повышает рейтинг карточки;
+        #                    мы подтягиваем из эталонной базы (catalogs/customs)
+        #   optional       — нейтрально, можно дозаполнить в каталоге
         FIELD_LABELS = {
             "weight_kg": "вес", "length_cm": "длина", "width_cm": "ширина",
             "height_cm": "высота", "stock": "остаток",
@@ -1598,12 +2038,41 @@ class PricelistCommitView(APIView):
             "sea_port": "морпорт", "air_port": "аэропорт",
             "cross_number": "кросс-номер",
         }
-        for key, label in FIELD_LABELS.items():
+        MANDATORY = {"warehouse_address"}
+        RATING_BONUS = {"length_cm", "width_cm", "height_cm", "cross_number"}
+
+        def _filled(key: str) -> bool:
+            # из файла
             val = mapping.get(key, "")
-            if not val or (isinstance(val, str) and val.startswith("fix:")):
-                missing_from_file.append({"key": key, "label": label})
+            if val and not (isinstance(val, str) and val.startswith("fix:")):
+                return True
+            # supplier-wide constant из формы
+            cval = (constants or {}).get(key)
+            if cval not in (None, "", 0):
+                return True
+            return False
+
+        missing_mandatory = []
+        missing_rating_bonus = []
+        missing_optional = []
+        for key, label in FIELD_LABELS.items():
+            if _filled(key):
+                continue
+            entry = {"key": key, "label": label}
+            if key in MANDATORY:
+                missing_mandatory.append(entry)
+            elif key in RATING_BONUS:
+                missing_rating_bonus.append(entry)
+            else:
+                missing_optional.append(entry)
+
+        # Legacy combined list — для обратной совместимости со старым UI.
+        missing_from_file = (
+            missing_mandatory + missing_rating_bonus + missing_optional
+        )
 
         enrichment_stats = getattr(imp, "_enrichment_stats", {}) or {}
+        dedupe_stats = getattr(imp, "_dedupe_stats", {}) or {}
         return Response({
             "ok": True,
             "import_id": imp.id,
@@ -1613,8 +2082,14 @@ class PricelistCommitView(APIView):
             "failed": failed,
             "errors_preview": errors[:10],
             "missing_from_file": missing_from_file,
+            "missing_mandatory": missing_mandatory,
+            "missing_rating_bonus": missing_rating_bonus,
+            "missing_optional": missing_optional,
             "ai_estimated_count": len(imp.ai_estimates or {}),
             "reference_enriched": enrichment_stats.get("reference_hits", 0),
+            "merged_duplicates": dedupe_stats.get("merged", 0),
+            "price_conflicts": dedupe_stats.get("price_conflicts", 0),
+            "unique_oems": dedupe_stats.get("unique_oems", 0),
         })
 
 
@@ -1629,9 +2104,6 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
     Прогресс пишется в Django cache → виден в UI через polling
     /generate-output-progress/ endpoint.
     """
-    from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill, Alignment
-    from openpyxl.cell import WriteOnlyCell
     from django.core.cache import cache
 
     OUTPUT_COLS = [
@@ -1644,6 +2116,7 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
         ("Condition",        "condition"),
         ("Availability",     "availability"),
         ("Price_EXW",        "price_exw"),
+        ("Currency",         "currency"),
         ("WarehouseAddress", "warehouse_address"),
         ("Price_FOB_SEA",    "price_fob_sea"),
         ("Price_FOB_AIR",    "price_fob_air"),
@@ -1751,12 +2224,18 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
             return str(raw) if raw and raw > 0 else ""
 
         # write_row — быстрее чем write по одной cell
+        # Текстовые поля переводим на английский (каталог международный).
+        EN_FIELDS = {"title", "manufacturer", "brand", "warehouse_address",
+                     "sea_port", "air_port", "condition", "availability"}
         row_values = []
         for _label, key in OUTPUT_COLS:
             if key in DIM_KEYS:
                 row_values.append(_dim(key, key))
             else:
-                row_values.append(get(key) or "")
+                val = get(key) or ""
+                if key in EN_FIELDS and isinstance(val, str):
+                    val = _translate_to_en(val)
+                row_values.append(val)
         ws.write_row(row_idx, 0, row_values)
         # Накопляем HTML preview первых строк параллельно с записью в XLSX
         if written < PREVIEW_LIMIT:
@@ -1878,8 +2357,34 @@ def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
             detected_brand = b
             break
 
+    # Если поле уже замаплено на колонку файла — вопрос задавать не нужно.
+    # mapping[field] = "Column" — из файла; "fix:..." — дефолт, спрашиваем.
+    def _from_file(field: str) -> bool:
+        """True если поле замаплено на колонку файла И в этой колонке
+        есть хотя бы одна непустая ячейка в sample-строках.
+        Иначе мы спросим у юзера — потому что иначе все 600k строк
+        получат пустое значение (brand=Generic, manufacturer='', и т.п.)."""
+        v = (mapping or {}).get(field)
+        if not v or (isinstance(v, str) and v.startswith("fix:")):
+            return False
+        if v not in (headers or []):
+            return False
+        idx = headers.index(v)
+        for row in (sample_rows or []):
+            if idx < len(row) and str(row[idx]).strip():
+                return True
+        return False
+
     questions = []
     for q in HARDCODED_QUESTIONS:
+        field = q["field"]
+        if _from_file(field):
+            continue  # значение придёт из колонки файла
+        # manufacturer_visible — управляющий флаг, не data-поле. Если
+        # manufacturer пришёл из файла, презюмируем «показывать = Да»
+        # (раз положили в файл, значит хотят показывать) и не спрашиваем.
+        if field == "manufacturer_visible" and _from_file("manufacturer"):
+            continue
         q_copy = dict(q)
         if q_copy["field"] == "brand" and detected_brand:
             q_copy["default"] = detected_brand
@@ -1887,8 +2392,14 @@ def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
 
     # Базовое intro
     rows_label = f"{total_rows} позиций" if total_rows else f"{len(headers)} колонок"
-    intro = (f"📋 Я распознал в файле **{rows_label}**. "
-             f"Уточню 7 деталей чтобы корректно заполнить карточки товара:")
+    if questions:
+        intro = (f"📋 Я распознал в файле **{rows_label}**. "
+                 f"Уточню {len(questions)} "
+                 f"{'деталь' if len(questions) == 1 else 'детали' if 2 <= len(questions) <= 4 else 'деталей'}"
+                 f" чтобы корректно заполнить карточки товара:")
+    else:
+        intro = (f"📋 Файл распознан полностью ({rows_label}). "
+                 f"Уточнять нечего — все колонки на месте.")
 
     return {"intro": intro, "questions": questions}
 
@@ -2269,6 +2780,7 @@ class PricelistAiEstimateView(APIView):
         truncated = len(items) >= self.MAX_ROWS
 
         from concurrent.futures import ThreadPoolExecutor, as_completed
+
         from django.core.cache import cache
         progress_key = f"ai_estimate_progress_{imp.id}"
         cache.set(progress_key, {"current": 0, "total": total, "running": True}, 300)
@@ -2351,6 +2863,7 @@ class PricelistImportProgressView(APIView):
 
     def get(self, request, import_id):
         from django.core.cache import cache
+
         from marketplace.models import PricelistImport
         try:
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)
@@ -2359,6 +2872,8 @@ class PricelistImportProgressView(APIView):
         progress = cache.get(f"import_progress_{imp.id}") or {}
         return Response({
             "current": progress.get("current", 0),
+            "total": progress.get("total", 0),
+            "phase": progress.get("phase", ""),
             "running": progress.get("running", False),
             "status": imp.status,
         })
@@ -2392,8 +2907,9 @@ class PricelistOutputPreviewView(APIView):
     PREVIEW_ROWS = 100  # ограничиваем превью
 
     def get(self, request, import_id):
-        from marketplace.models import PricelistImport
         from django.http import HttpResponse
+
+        from marketplace.models import PricelistImport
         try:
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)
         except PricelistImport.DoesNotExist:
@@ -2404,9 +2920,13 @@ class PricelistOutputPreviewView(APIView):
         # Если есть кэш HTML preview — отдаём моментально (10-100 мс
         # вместо 15+ сек openpyxl re-parse 36MB файла).
         if imp.output_preview_html:
+            # Перевод применяется и к старому кэшу (генерация была до фикса
+            # _translate_to_en). _looks_non_ascii fast-path делает это
+            # бесплатным для уже-английского HTML.
+            body = _translate_to_en(imp.output_preview_html)
             html = (
                 '<!doctype html><html><head><meta charset="utf-8"></head>'
-                '<body>' + imp.output_preview_html + '</body></html>'
+                '<body>' + body + '</body></html>'
             )
             return HttpResponse(html, content_type="text/html; charset=utf-8")
 
@@ -2473,8 +2993,9 @@ class PricelistGenerateOutputView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, import_id):
-        from marketplace.models import PricelistImport
         from django.core.files.base import ContentFile
+
+        from marketplace.models import PricelistImport
         try:
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)
         except PricelistImport.DoesNotExist:
@@ -2558,6 +3079,7 @@ class PricelistAiEstimateProgressView(APIView):
 
     def get(self, request, import_id):
         from django.core.cache import cache
+
         from marketplace.models import PricelistImport
         try:
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)
@@ -2581,8 +3103,8 @@ class PricelistTemplateXlsxView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        from django.http import HttpResponse, FileResponse, Http404
         from django.conf import settings
+        from django.http import FileResponse, Http404
         path = os.path.join(
             str(settings.BASE_DIR),
             "static", "templates", "consolidator_pricelist_template.xlsx",

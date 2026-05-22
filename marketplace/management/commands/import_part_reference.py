@@ -46,7 +46,7 @@ class Command(BaseCommand):
         delim = opts["delimiter"]
 
         try:
-            f = open(path, "r", encoding="utf-8-sig")
+            f = open(path, encoding="utf-8-sig")
         except OSError as e:
             raise CommandError(f"Cannot open {path}: {e}")
 

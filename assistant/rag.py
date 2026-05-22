@@ -25,6 +25,25 @@ MIN_SIMILARITY_SCORE = 0.6
 MAX_RESPONSE_TOKENS = 2048
 MAX_TOOL_TURNS = 6
 DEFAULT_MODEL = "claude-sonnet-4-20250514"
+FAST_MODEL    = "claude-haiku-4-5-20251001"  # 12× дешевле для простых запросов
+
+# Какие роли получают Haiku (простой intent → action). Sonnet остаётся для
+# seller/operator — там сложная reasoning (smart price mapping, KP analysis,
+# multi-step KYB review). Buyer-chat в 95% случаев — это «найди/закажи/трек».
+FAST_MODE_ROLES = {"buyer"}
+
+
+def _pick_model(role: str | None) -> str:
+    """Возвращает имя модели исходя из роли и feature-flag.
+
+    ANTHROPIC_FAST_MODE=1 (env) — принудительно Haiku везде (R&D, dev).
+    Иначе buyer → Haiku, остальные → Sonnet (или ANTHROPIC_MODEL override).
+    """
+    if getattr(settings, "ANTHROPIC_FAST_MODE", False):
+        return getattr(settings, "ANTHROPIC_FAST_MODEL", FAST_MODEL)
+    if role in FAST_MODE_ROLES:
+        return getattr(settings, "ANTHROPIC_FAST_MODEL", FAST_MODEL)
+    return getattr(settings, "ANTHROPIC_MODEL", DEFAULT_MODEL)
 
 
 def _detect_language(text: str) -> str:
@@ -113,10 +132,11 @@ def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple
     Returns: (final_text, tokens_used, accumulated_cards, accumulated_actions)
     """
     import json as _json
+
     from . import actions as action_executor
 
     tools = action_executor.get_tool_definitions(role)
-    model = getattr(settings, "ANTHROPIC_MODEL", DEFAULT_MODEL)
+    model = _pick_model(role)
 
     # Mutable working copy — we'll append assistant turns and tool_result turns to it
     msgs = [dict(m) for m in messages]
@@ -126,19 +146,77 @@ def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple
     tokens_total = 0
     final_text_parts: list[str] = []
 
+    # ── Prompt caching (Anthropic ephemeral cache, 5 min TTL) ──
+    # system-prompt (~3-5K токенов) и tools-schema (~2K) не меняются между
+    # запросами одного user-role. Помечаем их cache_control: при втором+
+    # запросе в течение 5 мин Anthropic тарифицирует cached input как 10%
+    # стоимости (вместо $3/M → $0.30/M). Экономия на повторных:
+    #   - 1-й запрос: cache_creation_input_tokens учитываются за полную цену
+    #   - 2+: cache_read_input_tokens учитываются за 10%
+    # Структура: system как list[block], последний tool с cache_control.
+    system_blocks = [{
+        "type": "text",
+        "text": system_prompt,
+        "cache_control": {"type": "ephemeral"},
+    }]
+    tools_with_cache = None
+    if tools:
+        # Anthropic кеширует ВСЁ что идёт ДО последнего cache_control,
+        # ставим его на самый последний tool — закроется и system, и все tools.
+        tools_with_cache = [dict(t) for t in tools]
+        tools_with_cache[-1]["cache_control"] = {"type": "ephemeral"}
+
     for turn in range(MAX_TOOL_TURNS):
         kwargs = {
             "model": model,
             "max_tokens": MAX_RESPONSE_TOKENS,
-            "system": system_prompt,
+            "system": system_blocks,
             "messages": msgs,
         }
-        if tools:
-            kwargs["tools"] = tools
+        if tools_with_cache:
+            kwargs["tools"] = tools_with_cache
 
+        # ── Cost-cap: проверка перед запросом, учёт после ──
+        from .ai_budget import BudgetExceeded, check_budget_or_raise, record_usage
+        try:
+            check_budget_or_raise(user)
+        except BudgetExceeded as e:
+            logger.warning("AI budget exceeded for user %s: $%.4f >= $%.2f",
+                            e.user_id, e.spent_usd, e.limit_usd)
+            final_text_parts.append(
+                f"⚠️ Дневной AI-лимит исчерпан "
+                f"(${e.spent_usd:.2f} из ${e.limit_usd:.2f}). "
+                f"Возобновится завтра или попробуйте без AI-режима."
+            )
+            break
         resp = client.messages.create(**kwargs)
         if hasattr(resp, "usage"):
-            tokens_total += resp.usage.input_tokens + resp.usage.output_tokens
+            u = resp.usage
+            # cache_read_input_tokens — переиспользованный кэш (10% цены)
+            # cache_creation_input_tokens — создание кэша (125% цены, потом окупается)
+            # input_tokens — обычный input (не cached)
+            cached_read = getattr(u, "cache_read_input_tokens", 0) or 0
+            cached_write = getattr(u, "cache_creation_input_tokens", 0) or 0
+            regular_input = u.input_tokens
+            tokens_total += regular_input + cached_read + cached_write + u.output_tokens
+            try:
+                # ai_budget учитывает по эффективной цене:
+                # cached_read = 0.1× от input_tokens,
+                # cached_write = 1.25× от input_tokens.
+                effective_input = (
+                    regular_input
+                    + int(cached_read * 0.1)
+                    + int(cached_write * 1.25)
+                )
+                record_usage(user,
+                              input_tokens=effective_input,
+                              output_tokens=u.output_tokens)
+                if cached_read:
+                    logger.info(
+                        "AI cache hit: %d cached_read · %d regular_in · saved ~%d tokens",
+                        cached_read, regular_input, int(cached_read * 0.9))
+            except Exception:
+                logger.exception("record_usage failed (non-fatal)")
 
         # Extract text + tool_use blocks
         text_chunks = []
@@ -207,7 +285,7 @@ def _stub_response(query: str, chunks) -> str:
             f"По вашему вопросу «{query}» — релевантного контекста не найдено."
         )
     parts = [
-        f"ℹ️ AI ассистент работает в режиме без LLM (ANTHROPIC_API_KEY не настроен).",
+        "ℹ️ AI ассистент работает в режиме без LLM (ANTHROPIC_API_KEY не настроен).",
         f"Найдено {len(chunks)} релевантных источников по запросу «{query}»:\n",
     ]
     for i, c in enumerate(chunks, 1):
@@ -217,10 +295,19 @@ def _stub_response(query: str, chunks) -> str:
     return "\n".join(parts)
 
 
+def _answer_cache_key(user_id, role, message: str) -> str:
+    """Ключ для answer-cache: одна и та же фраза от того же юзера-роли."""
+    import hashlib
+    h = hashlib.md5(message.strip().lower().encode("utf-8")).hexdigest()
+    return f"ai_answer:{user_id}:{role}:{h}"
+
+
 def process_query_sync(conversation: Conversation, user_message: str, user=None):
     """Sync RAG pipeline. Returns dict with text/cards/actions/refs.
 
     Hybrid execution:
+      0. Answer-cache: тот же вопрос в течение 5 мин → отдаём prior response
+         (Redis TTL=300с, ключ хеширует user+role+message-lower)
       1. Fast-path: deterministic intent → run action directly, skip LLM
          (multi-article paste, "show my orders", "make proposal", etc.)
       2. Slow-path: Claude tool-use for ambiguous queries
@@ -231,6 +318,31 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
     from . import fast_path
 
     user = user or conversation.user
+
+    # 0. Answer cache — повторяющиеся вопросы в течение 5 мин не зовут LLM.
+    # Только для slow-path (LLM-heavy) actions — fast-path и так instant.
+    # Кэш создаётся ПОСЛЕ обработки в slow-path (см. ниже).
+    from django.core.cache import cache
+    cache_key = _answer_cache_key(user.id if user else 0, conversation.role, user_message)
+    cached = cache.get(cache_key) if user_message.strip() else None
+    if cached:
+        # Сохраняем user-message и копию ассистентского ответа в БД
+        # (для истории), но БЕЗ повторного LLM-вызова.
+        Message.objects.create(
+            conversation=conversation, role=Message.Role.USER,
+            content=user_message,
+        )
+        assistant_msg = Message.objects.create(
+            conversation=conversation, role=Message.Role.ASSISTANT,
+            content=cached.get("text") or "",
+            cards=cached.get("cards") or [],
+            actions=cached.get("actions") or [],
+            context_refs=cached.get("context_refs") or [],
+            tokens_used=0,  # из кэша = $0
+        )
+        logger.info("AI answer-cache HIT (saved ~%s tokens)",
+                    cached.get("_orig_tokens", "?"))
+        return {**cached, "message_id": str(assistant_msg.id), "_from_cache": True}
 
     # 1. Save user message
     Message.objects.create(
@@ -332,7 +444,7 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
         conversation.title = user_message[:100]
         conversation.save(update_fields=["title", "updated_at"])
 
-    return {
+    response_dict = {
         "text": clean_text,
         "cards": cards,
         "actions": actions,
@@ -343,13 +455,52 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
         "message_id": str(assistant_msg.id),
     }
 
+    # 7. Cache LLM-response на 5 минут — повторный идентичный вопрос отдаст
+    # тот же ответ без LLM-вызова. Кэш только для slow-path (LLM-heavy),
+    # fast-path и так бесплатный. Не кэшируем mutating actions (создание RFQ/Order)
+    # — у них есть `actions` с side-effects в follow-up клике.
+    has_side_effects = any(
+        a.get("action", "").startswith(("create_", "pay_", "quick_order",
+                                          "accept_quote", "confirm_"))
+        for a in (actions or [])
+    )
+    if user_message.strip() and not has_side_effects:
+        cache.set(cache_key, {
+            **response_dict, "_orig_tokens": tokens_used,
+        }, 300)  # 5 минут
 
-def execute_action(conversation: Conversation, action_name: str, params: dict, user=None):
+    return response_dict
+
+
+def execute_action(conversation: Conversation | None, action_name: str, params: dict,
+                    user=None, role: str | None = None):
     """Execute a chat action (e.g. user clicked a button).
 
     Saves an "action" message + an assistant message with the result cards.
     Returns dict with text/cards/actions.
+
+    `role` — текущая UI-роль (от тоггла в шапке). Если None, fallback на
+    сохранённую в conversation. Это позволяет покупателю переключиться
+    в режим «Продавец» в любой conversation, не плодя новые.
+
+    Если conversation=None — stateless flow (анонимный юзер кликнул
+    кнопку из ANON_ALLOWED_ACTIONS, например start_registration). Не пишем
+    Message в БД (нечем привязаться), просто выполняем action и отдаём ответ.
     """
+    # Stateless anon-flow: нет conversation, нет user.
+    if conversation is None:
+        label = params.get("_label") or action_name
+        effective_role = role or "buyer"
+        result = action_executor.execute(action_name, params, user, effective_role)
+        return {
+            "text": result.text,
+            "cards": result.cards,
+            "actions": result.actions,
+            "contextual_actions": list(getattr(result, "contextual_actions", []) or []),
+            "suggestions": result.suggestions,
+            "message_id": None,
+        }
+
     user = user or conversation.user
 
     # Save user-action message (for history)
@@ -361,8 +512,9 @@ def execute_action(conversation: Conversation, action_name: str, params: dict, u
         actions=[{"action": action_name, "params": params}],
     )
 
-    # Execute action
-    result = action_executor.execute(action_name, params, user, conversation.role)
+    # Execute action — current request's role over conversation's stored role
+    effective_role = role or conversation.role
+    result = action_executor.execute(action_name, params, user, effective_role)
 
     # Save assistant message with result
     assistant_msg = Message.objects.create(

@@ -87,6 +87,7 @@ def recalc_behavioral_score(seller, *, window_days: int = 90, baseline: Decimal 
         return None
     try:
         from django.db.models import Sum
+
         from marketplace.models import SupplierRatingEvent, UserProfile
 
         cutoff = timezone.now() - timedelta(days=window_days)
