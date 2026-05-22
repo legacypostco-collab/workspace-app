@@ -5986,7 +5986,7 @@ msgstr ""
 
 #: templates/components/_cookie_banner.html:6
 msgid "Мы используем cookies"
-msgstr ""
+msgstr "نستخدم ملفات تعريف الارتباط"
 
 #: templates/components/_cookie_banner.html:8
 msgid "Для работы авторизации и улучшения сервиса. Подробнее в"
@@ -6002,7 +6002,7 @@ msgstr ""
 
 #: templates/components/_cookie_banner.html:14
 msgid "Принять все"
-msgstr ""
+msgstr "قبول الكل"
 
 #: templates/components/_notification_bell.html:17
 msgid "Все уведомления"
@@ -7340,7 +7340,7 @@ msgstr ""
 
 #: templates/marketplace/register.html:81
 msgid "политикой конфиденциальности"
-msgstr ""
+msgstr "سياسة الخصوصية"
 
 #: templates/operator/base_operator.html:174
 msgid "Сменить роль"
