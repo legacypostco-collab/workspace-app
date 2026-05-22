@@ -2620,9 +2620,6 @@
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
-      {# Bug-A fix: ролевые табы видны только staff/мульти-ролевым.
-         Анонимам и юзерам с одной ролью — скрываем, чтобы не утекала
-         модель ролей и не сбивало с толку. #}
       {% if user.is_authenticated and user.is_staff %}
       <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
         <button type="button" class="role-tab" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
