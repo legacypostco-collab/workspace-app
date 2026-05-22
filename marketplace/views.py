@@ -3225,7 +3225,6 @@ def seller_part_inline_update(request: HttpRequest, part_id: int) -> JsonRespons
         return JsonResponse({"ok": False, "error": str(exc)}, status=400)
 
 
-@login_required
 def brands_directory(request: HttpRequest) -> HttpResponse:
     query = (request.GET.get("q") or "").strip()
     regions = [
@@ -3245,6 +3244,32 @@ def brands_directory(request: HttpRequest) -> HttpResponse:
         brands = brands_qs.order_by("-parts_count", "name")
         grouped.append({"key": key, "title": title, "brands": brands, "count": brands.count()})
     return render(request, "marketplace/brands_directory.html", {"groups": grouped, "query": query})
+
+
+def suppliers_directory(request: HttpRequest) -> HttpResponse:
+    """Публичный каталог поставщиков (P0-8 fix: ссылка раньше отдавала 404).
+
+    Минималистичный листинг продавцов с активными товарами и количеством
+    SKU. Доступен анонимам — это листовая страница для SEO/конверсии.
+    """
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    query = (request.GET.get("q") or "").strip()
+    sellers_qs = (
+        User.objects.filter(profile__role="seller")
+        .annotate(parts_count=Count("parts", filter=Q(parts__is_active=True, parts__price__gt=0)))
+        .filter(parts_count__gt=0)
+    )
+    if query:
+        sellers_qs = sellers_qs.filter(
+            Q(username__icontains=query) | Q(profile__company_name__icontains=query)
+        )
+    sellers = sellers_qs.order_by("-parts_count", "username")[:200]
+    return render(
+        request,
+        "marketplace/suppliers_directory.html",
+        {"sellers": sellers, "query": query},
+    )
 
 
 @login_required

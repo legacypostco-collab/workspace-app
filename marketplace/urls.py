@@ -36,6 +36,8 @@ urlpatterns = [
     path("demo/", views.demo_center),  # alias
     path("directory/brands/", views.brands_directory, name="brands_directory"),
     path("brands/", views.brands_directory),  # alias
+    path("directory/suppliers/", views.suppliers_directory, name="suppliers_directory"),
+    path("suppliers/", views.suppliers_directory),  # alias
     path("directory/categories/", views.categories_directory, name="categories_directory"),
     path("categories/", views.categories_directory),  # alias
     path("comparison/", views.compare_view),  # alias for /compare/

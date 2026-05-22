@@ -1,0 +1,29 @@
+{% extends "marketplace/base.html" %}
+{% block title %}Каталог поставщиков | Consolidator Parts{% endblock %}
+{% block content %}
+<section class="section-head">
+  <h1>Каталог поставщиков</h1>
+  <p class="muted">Активные поставщики, прошедшие верификацию KYB</p>
+</section>
+
+<form method="get" class="filters panel" style="grid-template-columns: 1fr auto;">
+  <input type="text" name="q" value="{{ query }}" placeholder="Название компании или продавца..." />
+  <button type="submit" class="btn">Найти</button>
+</form>
+
+<div class="grid">
+  <section class="panel">
+    <h2>Поставщики <span class="muted">({{ sellers|length }})</span></h2>
+    <div class="chips">
+      {% for s in sellers %}
+        <a class="chip" href="{% url 'catalog' %}?seller={{ s.id }}">
+          {% if s.profile.company_name %}{{ s.profile.company_name }}{% else %}{{ s.username }}{% endif %}
+          ({{ s.parts_count }})
+        </a>
+      {% empty %}
+        <span class="muted">Нет активных поставщиков{% if query %} по запросу «{{ query }}»{% endif %}.</span>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

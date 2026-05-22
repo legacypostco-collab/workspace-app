@@ -11,6 +11,7 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
+from rest_framework.permissions import IsAdminUser
 
 
 # ── SEO: sitemap.xml + robots.txt ──────────────────────────────
@@ -66,10 +67,13 @@ urlpatterns = [
     path("sitemap.xml", sitemap_xml, name="sitemap-xml"),
     path("api/v1/", include("marketplace.api_urls")),
     path("api/assistant/", include("assistant.urls")),
-    # API documentation
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    # API documentation — staff only (IDOR/info-leak fix from QA report)
+    path("api/schema/", SpectacularAPIView.as_view(
+        permission_classes=[IsAdminUser]), name="schema"),
+    path("api/docs/", SpectacularSwaggerView.as_view(
+        url_name="schema", permission_classes=[IsAdminUser]), name="swagger-ui"),
+    path("api/redoc/", SpectacularRedocView.as_view(
+        url_name="schema", permission_classes=[IsAdminUser]), name="redoc"),
     path("", include("marketplace.urls")),
 ]
 

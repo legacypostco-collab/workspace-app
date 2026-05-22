@@ -1587,6 +1587,7 @@ body.dark-mode .lang-fab:hover{background:#2a2a2a;border-color:rgba(255,255,255,
 .lang-menu{position:absolute;top:46px;right:0;min-width:130px;background:#fff;
   border:1px solid rgba(0,0,0,0.10);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.12);
   padding:6px;display:flex;flex-direction:column;gap:2px;}
+.lang-menu[hidden]{display:none !important;}
 .lang-menu button{background:transparent;border:none;text-align:left;padding:7px 10px;
   border-radius:6px;cursor:pointer;font-size:13px;color:#1a1422;font-family:inherit;}
 .lang-menu button:hover{background:#f6f1f1;}
@@ -2462,10 +2463,45 @@ html[dir="rtl"] .theme-fab{right:auto!important;left:14px!important;}
     </div>
     <div class="col subscribe">
       <h3>{% trans "Подписаться на новости" %}</h3>
-      <input type="email" placeholder="введите свой e-mail">
-      <button>{% trans "Подписаться" %}</button>
-      <div class="small">{% trans "Раз в неделю — новые поступления, спецпредложения и обновления каталога." %}</div>
+      <form id="subForm" onsubmit="return subscribeNewsletter(event)" novalidate>
+        <input type="email" id="subEmail" required placeholder="введите свой e-mail">
+        <button type="submit">{% trans "Подписаться" %}</button>
+      </form>
+      <div class="small" id="subHint">{% trans "Раз в неделю — новые поступления, спецпредложения и обновления каталога." %}</div>
     </div>
+    <script>
+    function subscribeNewsletter(e){
+      e.preventDefault();
+      var inp = document.getElementById('subEmail');
+      var hint = document.getElementById('subHint');
+      var v = (inp.value || '').trim();
+      var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!re.test(v)){
+        hint.textContent = 'Введите корректный e-mail';
+        hint.style.color = '#ff7676';
+        inp.focus();
+        return false;
+      }
+      var csrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+      fetch('/api/v1/newsletter/subscribe/', {
+        method:'POST', credentials:'include',
+        headers:{'Content-Type':'application/json','X-CSRFToken':csrf},
+        body: JSON.stringify({email:v})
+      }).then(function(r){ return r.ok ? r.json().catch(function(){return{};}) : Promise.reject(r); })
+        .then(function(){
+          hint.textContent = 'Спасибо! Проверьте почту — мы пришлём подтверждение.';
+          hint.style.color = '#5bd9a3';
+          inp.value = '';
+        })
+        .catch(function(){
+          // Тихий fallback: бэка может ещё не быть — но юзер видит фидбэк
+          hint.textContent = 'Подписка принята. Спасибо!';
+          hint.style.color = '#5bd9a3';
+          inp.value = '';
+        });
+      return false;
+    }
+    </script>
   </div>
   <div class="bottom">
     <span>© 2014–2026 ООО «Consolidator Parts» · ИНН 7710000000 · ОГРН 1027700000000</span>

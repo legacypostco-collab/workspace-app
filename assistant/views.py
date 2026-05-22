@@ -684,7 +684,29 @@ class RFQDetailView(APIView):
     def get(self, request, rfq_id):
 
         from marketplace.models import RFQ, Notification, Quote
+        from django.db.models import Q as _Q
+        from django.http import Http404
         rfq = get_object_or_404(RFQ, id=rfq_id)
+
+        # SECURITY (IDOR fix): доступ к RFQ имеют только:
+        #  • владелец (создатель RFQ),
+        #  • продавец-адресат (получивший Notification по этому RFQ),
+        #  • staff/superuser.
+        # Для остальных — 404 (не 403), чтобы не утекало само наличие RFQ.
+        is_owner = (rfq.created_by_id == request.user.id)
+        is_staff = bool(getattr(request.user, "is_staff", False))
+        is_recipient = False
+        if not (is_owner or is_staff):
+            is_recipient = Notification.objects.filter(
+                kind="rfq", user_id=request.user.id,
+            ).filter(
+                _Q(url__contains=f"rfq={rfq.id}") | _Q(url__contains=f"/rfq/{rfq.id}/")
+            ).exists()
+        if not (is_owner or is_staff or is_recipient):
+            raise Http404("RFQ not found")
+
+        # Для не-владельцев скрываем чувствительные поля покупателя
+        redact_pii = not (is_owner or is_staff)
 
         items = []
         total_usd = 0.0
@@ -714,7 +736,6 @@ class RFQDetailView(APIView):
         #   /chat/?rfq=<id>           — общая ссылка (старый формат)
         #   /chat/rfq/<id>/?source=…  — детальная страница (новый формат)
         # Считаем оба варианта, по distinct user_id.
-        from django.db.models import Q as _Q
         sent_count = (
             Notification.objects.filter(kind="rfq")
             .filter(_Q(url__contains=f"rfq={rfq.id}") | _Q(url__contains=f"/rfq/{rfq.id}/"))
@@ -746,7 +767,7 @@ class RFQDetailView(APIView):
                     classifier_reason = line.split(":", 1)[1].strip()
                     break
 
-        return Response({
+        payload = {
             "id": rfq.id,
             "status": rfq.status,
             "stage": stage,
@@ -762,8 +783,14 @@ class RFQDetailView(APIView):
             "has_priced": has_priced,
             "quotes_count": quotes_count,
             "sent_count": sent_count,
-            "is_owner": rfq.created_by_id == request.user.id,
-        })
+            "is_owner": is_owner,
+        }
+        # PII-protection: продавцу-адресату не видны имя/компания/заметки покупателя
+        if redact_pii:
+            payload["customer_name"] = None
+            payload["company_name"] = None
+            payload["notes"] = None
+        return Response(payload)
 
 
 # ──────────────────────────────────────────────────────────
