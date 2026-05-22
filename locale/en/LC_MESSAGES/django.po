@@ -6130,7 +6130,7 @@ msgstr "Errors only"
 
 #: templates/components/_cookie_banner.html:14
 msgid "Принять все"
-msgstr "Accept 10%%"
+msgstr "Accept all"
 
 #: templates/components/_notification_bell.html:17
 msgid "Все уведомления"
@@ -14017,7 +14017,7 @@ msgstr "7 days"
 #: templates/seller/negotiations/list.html:406
 #: templates/seller/negotiations/list.html:435
 msgid "Принять"
-msgstr "Accept 10%%"
+msgstr "Accept"
 
 #: templates/seller/logistics/list.html:445
 #: templates/seller/logistics/list.html:453
