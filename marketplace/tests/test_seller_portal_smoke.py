@@ -2,17 +2,32 @@ from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.contrib.messages.storage.fallback import FallbackStorage
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.sessions.middleware import SessionMiddleware
-from django.test import RequestFactory, override_settings
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from imports.models import ImportPreviewSession
-from marketplace.models import Category, Order, OrderItem, Part, RFQ, RFQItem, SellerImportRun, UserProfile
+from marketplace.models import (
+    RFQ,
+    Category,
+    Order,
+    OrderItem,
+    Part,
+    RFQItem,
+    SellerImportRun,
+    UserProfile,
+)
 from marketplace.services.imports import process_seller_csv_upload
-from marketplace.views import seller_order_detail, seller_orders, seller_product_detail, seller_request_detail, seller_request_list, seller_rfq_inbox
+from marketplace.views import (
+    seller_order_detail,
+    seller_orders,
+    seller_product_detail,
+    seller_request_detail,
+    seller_request_list,
+    seller_rfq_inbox,
+)
 from projections.models import DashboardProjection
 
 

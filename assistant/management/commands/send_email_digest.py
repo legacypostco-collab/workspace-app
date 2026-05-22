@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 
 from assistant.channels import send_digest
 
@@ -34,7 +33,6 @@ class Command(BaseCommand):
         os.environ["DIGEST_WINDOW_HOURS"] = str(options["window_hours"])
 
         User = get_user_model()
-        from marketplace.models import UserProfile
 
         eligible = User.objects.filter(
             is_active=True, email__isnull=False,

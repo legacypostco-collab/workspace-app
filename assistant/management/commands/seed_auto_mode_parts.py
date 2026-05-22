@@ -20,6 +20,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.text import slugify
 
+from assistant.management._seed_guard import ensure_dev_only
 from marketplace.models import Brand, Category, Part, UserProfile
 
 User = get_user_model()
@@ -49,6 +50,7 @@ class Command(BaseCommand):
     help = "Засеять тестовые OEM-номера, проходящие AUTO-mode классификатор."
 
     def handle(self, *args, **opts):
+        ensure_dev_only(self)
         # 1. Найти trusted-продавцов
         trusted_users = []
         for uname in TRUSTED_USERNAMES:

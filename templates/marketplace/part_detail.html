@@ -1,20 +1,59 @@
 {% extends "marketplace/base.html" %}
-{% block title %}{{ part.title }} | Consolidator Parts{% endblock %}
+{% load static %}
+{% block title %}{{ part.title }} · OEM {{ part.oem_number }} | Consolidator Parts{% endblock %}
+{% block extra_head %}
+  <meta name="description" content="{{ part.title }} · OEM {{ part.oem_number }} · ${{ part.price }} · {{ part.brand.name|default:'' }}. Купить с доставкой через Consolidator Parts.">
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="{{ part.title }} · OEM {{ part.oem_number }}">
+  <meta property="og:description" content="{{ part.title }} от ${{ part.price }}. {{ part.description|truncatewords:25 }}">
+  <meta property="og:image" content="{{ part.image_url|default:'' }}">
+  <meta property="product:price:amount" content="{{ part.price }}">
+  <meta property="product:price:currency" content="{{ part.currency|default:'USD' }}">
+  <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}{% url 'part_detail' part.slug %}">
+
+  {# Schema.org Product — позволяет Google показать rich-snippet с ценой и наличием #}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "name": "{{ part.title|escapejs }}",
+    "sku": "{{ part.oem_number|escapejs }}",
+    "mpn": "{{ part.oem_number|escapejs }}",
+    "description": "{{ part.description|escapejs|truncatewords:40 }}",
+    "image": "{{ part.image_url|default:'' }}",
+    {% if part.brand %}"brand": {"@type": "Brand", "name": "{{ part.brand.name|escapejs }}"},{% endif %}
+    "offers": {
+      "@type": "Offer",
+      "url": "{{ request.scheme }}://{{ request.get_host }}{% url 'part_detail' part.slug %}",
+      "priceCurrency": "{{ part.currency|default:'USD' }}",
+      "price": "{{ part.price }}",
+      "availability": "{% if part.stock_quantity > 0 %}https://schema.org/InStock{% else %}https://schema.org/OutOfStock{% endif %}",
+      "seller": {"@type": "Organization", "name": "Consolidator Parts"}
+    }
+  }
+  </script>
+{% endblock %}
 {% block content %}
-<section class="part-layout">
-  <img class="part-image" src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
+<section class="part-layout" itemscope itemtype="https://schema.org/Product">
+  <img class="part-image" src="{{ part.image_url }}" alt="{{ part.title }}"
+       width="480" height="360" loading="lazy" decoding="async"
+       itemprop="image"
+       onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
   <div class="panel">
     <div class="card-meta">
-      <span class="chip chip-soft">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
+      <span class="chip chip-soft" itemprop="brand">{% if part.brand %}{{ part.brand.name }}{% else %}Brand{% endif %}</span>
       <span class="chip chip-soft">{{ part.category.name }}</span>
       <span class="chip">{{ part.get_condition_display }}</span>
     </div>
     <p class="field-label">Part Number</p>
-    <h1 class="detail-part-number">{{ part.oem_number }}</h1>
+    <h1 class="detail-part-number" itemprop="sku">{{ part.oem_number }}</h1>
     <p class="field-label">Part Name</p>
-    <p class="detail-part-name">{{ part.title }}</p>
-    <p>{{ part.description }}</p>
-    <p class="price">${{ part.price }}</p>
+    <p class="detail-part-name" itemprop="name">{{ part.title }}</p>
+    <p itemprop="description">{{ part.description }}</p>
+    <p class="price" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+      <span itemprop="priceCurrency" content="{{ part.currency|default:'USD' }}">$</span><span itemprop="price" content="{{ part.price }}">{{ part.price }}</span>
+      <link itemprop="availability" href="https://schema.org/{% if part.stock_quantity > 0 %}InStock{% else %}OutOfStock{% endif %}">
+    </p>
     <p class="muted">Остаток: {{ part.stock_quantity }} шт</p>
     <form method="post" action="{% url 'cart_add' part.id %}">
       {% csrf_token %}
@@ -30,7 +69,9 @@
     <div class="grid">
     {% for item in related %}
       <article class="card">
-        <img src="{{ item.image_url }}" alt="{{ item.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
+        <img src="{{ item.image_url }}" alt="{{ item.title }}"
+             width="240" height="180" loading="lazy" decoding="async"
+             onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" />
         <div class="card-body">
           <p class="field-label">Part Number</p>
           <h3 class="part-number"><a href="{% url 'part_detail' item.slug %}">{{ item.oem_number }}</a></h3>

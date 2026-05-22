@@ -68,7 +68,7 @@ def auto_generate_quotes_from_catalog(rfq, recipients) -> int:
         .select_related("brand")
     )
     # Map: seller_id → {oem: Part}
-    by_seller: dict[int, dict[str, "Part"]] = {}
+    by_seller: dict[int, dict[str, Part]] = {}
     for p in catalog:
         by_seller.setdefault(p.seller_id, {})[p.oem_number] = p
 
@@ -147,6 +147,7 @@ def send_rfq_to_suppliers(params, user, role):
     в как fallback (если ничего лучше нет).
     """
     from django.contrib.auth import get_user_model
+
     from marketplace.models import RFQ, CompanyVerification, UserProfile
 
     confirmed = bool(params.get("confirmed"))
@@ -360,7 +361,8 @@ def submit_quote(params, user, role):
       direction           — 'seller_to_buyer' (default) или 'buyer_to_seller' для counter
       confirmed           — bool
     """
-    from marketplace.models import RFQ, RFQItem, Quote, QuoteItem
+    from marketplace.models import RFQ, Quote, QuoteItem, RFQItem
+
     from .onboarding import kyb_required_for_seller
 
     try:
@@ -391,47 +393,77 @@ def submit_quote(params, user, role):
         # Map by rfq_item_id для ассоциации
         suggested = {int(it.get("rfq_item_id") or 0): it for it in items_input if it.get("rfq_item_id")}
 
-        fields = []
+        # Собираем строки для табличного quote_form-renderer.
+        # Каждая строка: artikul + title + brand + qty + suggested unit_price.
+        # Сумма и live-итого считаются на фронте при редактировании.
+        from .rfq_mode_badge import mode_badge, mode_hint_for_seller
+        items_for_card = []
+        suggested_total = Decimal("0")
         for it in rfq_items:
             base = suggested.get(it.id, {})
             default_price = base.get("unit_price")
             if default_price is None and it.matched_part:
                 default_price = float(it.matched_part.price or 0)
-            fields.append({
-                "name": f"price_{it.id}",
-                "label": f"{it.query[:60]} × {it.quantity}",
-                "type": "number",
-                "required": True,
-                "value": str(default_price) if default_price else "",
+            try:
+                price_d = Decimal(str(default_price)) if default_price else Decimal("0")
+            except Exception:
+                price_d = Decimal("0")
+            qty_d = Decimal(str(it.quantity or 0))
+            suggested_total += (price_d * qty_d)
+
+            part_title = ""
+            brand_name = ""
+            currency = "USD"
+            if it.matched_part:
+                part_title = (it.matched_part.title or "")[:80]
+                brand_name = it.matched_part.brand.name if it.matched_part.brand_id else ""
+                currency = it.matched_part.currency or "USD"
+            items_for_card.append({
+                "rfq_item_id": it.id,
+                "article":     it.query,
+                "title":       part_title,
+                "brand":       brand_name,
+                "quantity":    int(it.quantity or 0),
+                "unit_price":  float(price_d),
+                "currency":    currency,
             })
 
-        fields.extend([
-            {"name": "delivery_days", "label": "Срок поставки (дн)",
-             "type": "number", "value": str(delivery_days)},
-            {"name": "valid_days", "label": "Котировка действует (дн)",
-             "type": "number", "value": str(valid_days)},
-            {"name": "message", "label": "Комментарий", "type": "textarea"},
-        ])
-
-        title_extra = ""
-        round_number = _next_round(rfq, user.id)
-        if parent_quote_id:
-            title_extra = f" · ответ на counter (раунд {round_number})"
+        badge = mode_badge(rfq.mode)
+        hint  = mode_hint_for_seller(rfq.mode) if role == "seller" else ""
+        urgency_tone = (
+            "bad"  if rfq.urgency == "critical" else
+            "warn" if rfq.urgency == "urgent"   else "info"
+        )
 
         return ActionResult(
-            text=f"💬 Котировка по RFQ #{rfq.id}{title_extra}",
-            cards=[{"type": "form", "data": {
-                "title": f"💬 Котировка · RFQ #{rfq.id}",
-                "submit_action": "submit_quote",
-                "submit_label": "Отправить котировку",
-                "fields": fields,
-                "fixed_params": {
-                    "rfq_id": rfq.id,
-                    "confirmed": True,
-                    "parent_quote_id": parent_quote_id,
-                    "direction": direction,
+            text=(f"💬 Котировка по RFQ #{rfq.id}"
+                  + (f" · ответ на counter (раунд {_next_round(rfq, user.id)})" if parent_quote_id else "")
+                  + (f"\n{hint}" if hint else "")),
+            cards=[{
+                "type": "quote_form",
+                "data": {
+                    "rfq_id":          rfq.id,
+                    "mode_badge":      badge or "",
+                    "urgency_label":   rfq.get_urgency_display(),
+                    "urgency_tone":    urgency_tone,
+                    "customer_name":   rfq.customer_name or "—",
+                    "company_name":    rfq.company_name or "",
+                    "request_text":    (rfq.notes or "")[:200],
+                    "items":           items_for_card,
+                    "delivery_days":   int(delivery_days),
+                    "valid_days":      int(valid_days),
+                    "message":         message,
+                    "parent_quote_id": parent_quote_id or "",
+                    "direction":       direction,
                 },
-            }}],
+            }],
+            actions=[
+                {"label": "📦 Открыть RFQ #" + str(rfq.id), "action": "rfq_detail",
+                 "params": {"rfq_id": rfq.id}},
+            ],
+            contextual_actions=[
+                {"action": "seller_inbox", "label": "← Срочные задачи"},
+            ],
         )
 
     # Шаг 2: парсим цены из form-полей price_<rfq_item_id>
@@ -488,6 +520,29 @@ def submit_quote(params, user, role):
     if rfq.status == "new":
         rfq.status = "quoted"
         rfq.save(update_fields=["status"])
+
+    # Anti-collusion: если seller написал в message email/phone/messenger
+    # с offplatform-намёком — флаг оператору (audit_log + admin-chat alert).
+    try:
+        from .support_hub import _detect_offplatform_contact
+        if message and _detect_offplatform_contact(message):
+            from .order_events import notify_operator_alert
+            notify_operator_alert(
+                user_obj=user, event="user_registered",
+                text=(
+                    f"⚠️ ANTI-COLLUSION FLAG · Quote от @{user.username}\n"
+                    f"RFQ #{rfq.id} · Quote #{quote.id} · "
+                    f"в message обнаружены off-platform контакты:\n"
+                    f"«{message[:200]}»"
+                ),
+                extra={"role": "seller"},
+            )
+            logger.warning(
+                "anti-collusion: quote #%d by seller @%s contains offplatform contact",
+                quote.id, user.username,
+            )
+    except Exception:
+        logger.exception("anti-collusion check on submit_quote failed (non-fatal)")
 
     # Уведомляем покупателя
     if rfq.created_by:
@@ -707,7 +762,7 @@ def view_quote(params, user, role):
 
 @register("accept_quote")
 def accept_quote(params, user, role):
-    from marketplace.models import Quote, RFQ, Order, OrderItem
+    from marketplace.models import Order, OrderItem, Quote
     confirmed = bool(params.get("confirmed"))
     try:
         q = Quote.objects.select_related("rfq", "seller").get(id=int(params.get("quote_id") or 0))
@@ -718,6 +773,13 @@ def accept_quote(params, user, role):
         return ActionResult(text="Принять котировку может только заказчик RFQ.")
     if q.status not in ("submitted", "finalized"):
         return ActionResult(text=f"Эту котировку нельзя принять (статус: {q.get_status_display()}).")
+
+    # Бизнес-правило: минимальная сумма заказа. Блокируем И на preview,
+    # И на confirm — buyer должен сразу понять что котировку нельзя принять.
+    from .order_limits import check_min_order
+    block = check_min_order(q.total_amount)
+    if block:
+        return ActionResult(**block)
 
     # Шаг 1: preview (buyer ещё не должен видеть имя — раскрываем после confirm)
     if not confirmed:
@@ -828,6 +890,7 @@ def auto_accept_and_pay_reserve(params, user, role):
     params: {rfq_id, confirmed?}
     """
     from marketplace.models import RFQ, Quote
+
     from .actions import pay_reserve as _pay_reserve
 
     confirmed = bool(params.get("confirmed"))

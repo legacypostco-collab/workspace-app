@@ -36,8 +36,8 @@ class Command(BaseCommand):
                             help="Только показать кандидатов, не писать events")
 
     def handle(self, *args, **options):
-        from marketplace.models import Notification, Quote, SupplierRatingEvent
         from assistant.rating import record_rating_event
+        from marketplace.models import Notification, Quote, SupplierRatingEvent
 
         threshold = options["threshold_hours"]
         cutoff = timezone.now() - timedelta(hours=threshold)

@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
+from assistant.management._seed_guard import ensure_dev_only
 from assistant.models import Project, ProjectDocument
 
 User = get_user_model()
@@ -136,6 +137,7 @@ class Command(BaseCommand):
         ))
 
     def handle(self, *args, **opts):
+        ensure_dev_only(self)
         usernames = list(opts["user"])
         if opts["all_demo"]:
             usernames += ["demo_buyer", "demo_seller", "demo_operator", "Kosta"]

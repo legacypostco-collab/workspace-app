@@ -26,7 +26,6 @@ from __future__ import annotations
 import logging
 import os
 from datetime import timedelta
-from urllib.parse import quote
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -53,7 +52,14 @@ def _kind_in_prefs(kind: str, csv: str) -> bool:
 # ── Email channel ────────────────────────────────────────────
 
 def _build_email_link(url: str) -> str:
-    """Если url относительный — добавим SITE_URL префикс из settings."""
+    """Если url относительный — добавим SITE_URL префикс из settings.
+
+    Приоритеты для базы:
+      1. env SITE_URL                          — явно задано админом
+      2. settings.SITE_URL                     — same
+      3. https://<ALLOWED_HOSTS[0]>            — основной prod-host
+      4. http://localhost:8001                 — dev fallback (НЕ prod-IP)
+    """
     if not url:
         return ""
     if url.startswith("http"):
@@ -61,8 +67,14 @@ def _build_email_link(url: str) -> str:
     site = (
         os.getenv("SITE_URL")
         or getattr(settings, "SITE_URL", "")
-        or "http://72.56.234.89"
     )
+    if not site:
+        hosts = [h for h in getattr(settings, "ALLOWED_HOSTS", [])
+                 if h and h not in ("*", "localhost", "127.0.0.1", "testserver")]
+        if hosts:
+            site = f"https://{hosts[0]}"
+        else:
+            site = "http://localhost:8001"  # dev fallback
     return site.rstrip("/") + url
 
 
@@ -98,8 +110,54 @@ def send_email(user, *, kind: str, title: str, body: str = "", url: str = "") ->
 
 # ── Telegram channel ─────────────────────────────────────────
 
+# Emoji-индикаторы по типу события — мгновенно считываются в push-нотификации
+_KIND_EMOJI = {
+    "order":     "📦",
+    "payment":   "💰",
+    "rfq":       "📋",
+    "sla":       "⏱",
+    "claim":     "🧾",
+    "kyb":       "🛡",
+    "system":    "⚙️",
+    "info":      "ℹ️",
+}
+
+
+def _build_inline_keyboard(url: str, kind: str) -> list[list[dict]] | None:
+    """Inline-кнопки под сообщением. Telegram-нативный UX вместо текст-ссылки.
+
+    Layout: первая кнопка — главная (Открыть в чате), вторая — quick-shortcut
+    по типу (Все заказы / Все RFQ / Поддержка).
+    """
+    if not url:
+        return None
+    abs_url = _build_email_link(url)
+    if not abs_url.startswith("http"):
+        return None  # TG требует абсолютные URL для url-кнопок
+
+    primary = {"text": "🔗 Открыть в чате", "url": abs_url}
+    secondary = {
+        "order":   {"text": "📦 Все заказы",      "url": _build_email_link("/chat/")},
+        "payment": {"text": "💰 Депозит",         "url": _build_email_link("/chat/")},
+        "rfq":     {"text": "📋 Мои RFQ",         "url": _build_email_link("/chat/")},
+        "claim":   {"text": "🧾 Все рекламации",  "url": _build_email_link("/chat/")},
+        "kyb":     {"text": "🛡 Статус KYB",      "url": _build_email_link("/chat/")},
+        "sla":     {"text": "⏱ Очередь SLA",     "url": _build_email_link("/chat/")},
+    }.get(kind)
+    rows = [[primary]]
+    if secondary:
+        rows.append([secondary])
+    return rows
+
+
 def send_telegram(user, *, kind: str, title: str, body: str = "", url: str = "") -> bool:
-    """Отправить сообщение через Telegram bot API. Требует TELEGRAM_BOT_TOKEN env."""
+    """Отправить сообщение через Telegram bot API. Требует TELEGRAM_BOT_TOKEN env.
+
+    Формат сообщения:
+      <emoji> <bold title>
+      <body>  ← если есть, как отдельная строка(и)
+      [inline keyboard: 🔗 Открыть · <quick-action>]
+    """
     if not user:
         return False
     profile = _get_profile(user)
@@ -112,28 +170,36 @@ def send_telegram(user, *, kind: str, title: str, body: str = "", url: str = "")
 
     token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
     if not token:
-        # demo mode — нет токена, тихо игнорим
         return False
 
-    full_url = _build_email_link(url)
-    text_lines = [f"<b>{title}</b>"]
+    emoji = _KIND_EMOJI.get(kind, "🔔")
+    # Заголовок: emoji + bold. Если title уже содержит emoji в начале — не дублируем.
+    title_text = title or ""
+    if title_text and title_text[0] in "📦💰📋⏱🧾🛡⚙️ℹ️🔔🚨✅⚠️":
+        header = f"<b>{title_text}</b>"
+    else:
+        header = f"{emoji} <b>{title_text}</b>"
+    text_lines = [header]
     if body:
+        text_lines.append("")  # пустая строка перед body для визуального воздуха
         text_lines.append(body)
-    if full_url:
-        text_lines.append(f"<a href='{full_url}'>Открыть</a>")
     text = "\n".join(text_lines)
+
+    payload = {
+        "chat_id": profile.notif_telegram_chat_id,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }
+    keyboard = _build_inline_keyboard(url, kind)
+    if keyboard:
+        payload["reply_markup"] = {"inline_keyboard": keyboard}
 
     try:
         import httpx
         resp = httpx.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            json={
-                "chat_id": profile.notif_telegram_chat_id,
-                "text": text,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-            },
-            timeout=5,
+            json=payload, timeout=5,
         )
         if resp.status_code != 200:
             logger.warning("telegram %s for user_id=%s: %s",

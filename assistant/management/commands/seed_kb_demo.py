@@ -17,6 +17,8 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand
 
+from assistant.management._seed_guard import ensure_dev_only
+
 SEED_TAG = "[kb-demo]"
 
 CHUNKS = [
@@ -488,6 +490,7 @@ class Command(BaseCommand):
                             help="Удалить ранее созданные seed-записи")
 
     def handle(self, *args, **options):
+        ensure_dev_only(self)
         from assistant.models import KnowledgeChunk
 
         if options["reset"]:

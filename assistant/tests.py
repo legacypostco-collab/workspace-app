@@ -8,8 +8,14 @@ from decimal import Decimal
 from django.test import TestCase
 
 from .customs_data import (
-    duty_rate_for, vat_rate_for, fees_for, required_certs_for,
-    find_hs_codes, sanctions_check, DUTY_DEFAULT, VAT_DEFAULT,
+    DUTY_DEFAULT,
+    VAT_DEFAULT,
+    duty_rate_for,
+    fees_for,
+    find_hs_codes,
+    required_certs_for,
+    sanctions_check,
+    vat_rate_for,
 )
 
 
@@ -126,6 +132,7 @@ class PaymentsModuleSmokeTests(TestCase):
 
     def test_create_intent_shape(self):
         from django.contrib.auth import get_user_model
+
         from . import payments
         User = get_user_model()
         u = User.objects.create_user(username="t_buyer", password="x")
@@ -161,10 +168,13 @@ class EscrowTransferTests(TestCase):
     """Реальные эскроу-движения через WalletEngine (без сети)."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        from marketplace.models import Order, OrderItem, Part, Category, Brand
-        from .models import Wallet
         from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import Brand, Category, Order, OrderItem, Part
+
+        from .models import Wallet
         U = get_user_model()
         self.buyer = U.objects.create_user(username="t_buyer", password="x")
         self.seller_a = U.objects.create_user(username="t_seller_a", password="x")
@@ -197,8 +207,8 @@ class EscrowTransferTests(TestCase):
         OrderItem.objects.create(order=self.order, part=self.part_b, quantity=1, unit_price=D("100"))
 
     def _balances(self):
-        from .models import Wallet
         from . import payments as p
+        from .models import Wallet
         return {
             "buyer": Wallet.for_user(self.buyer).balance,
             "a": Wallet.for_user(self.seller_a).balance,
@@ -208,8 +218,9 @@ class EscrowTransferTests(TestCase):
 
     def test_full_escrow_cycle_multi_seller(self):
         """buyer → escrow → 2 sellers (split 75/25 по позициям 300/100)."""
-        from . import payments as p
         from decimal import Decimal as D
+
+        from . import payments as p
 
         intent = p.create_payment_intent(D("400"), order_id=self.order.id, payer=self.buyer)
         intent = p.confirm_payment_intent(intent, self.buyer)
@@ -240,8 +251,9 @@ class EscrowTransferTests(TestCase):
         self.assertEqual(p.escrow_balance_for_order(self.order.id), D("0"))
 
     def test_refund_to_buyer(self):
-        from . import payments as p
         from decimal import Decimal as D
+
+        from . import payments as p
 
         intent = p.confirm_payment_intent(
             p.create_payment_intent(D("400"), order_id=self.order.id, payer=self.buyer),
@@ -255,8 +267,9 @@ class EscrowTransferTests(TestCase):
         self.assertEqual(self._balances()["platform"], D("0"))
 
     def test_partial_release_then_refund_remainder(self):
-        from . import payments as p
         from decimal import Decimal as D
+
+        from . import payments as p
 
         p.confirm_payment_intent(
             p.create_payment_intent(D("400"), order_id=self.order.id, payer=self.buyer),
@@ -274,8 +287,9 @@ class EscrowTransferTests(TestCase):
         self.assertEqual(b["platform"], D("0"))
 
     def test_split_by_seller_proportional(self):
-        from . import payments as p
         from decimal import Decimal as D
+
+        from . import payments as p
 
         p.confirm_payment_intent(
             p.create_payment_intent(D("400"), order_id=self.order.id, payer=self.buyer),
@@ -291,19 +305,21 @@ class EscrowTransferTests(TestCase):
         self.assertEqual(amt_b, D("100.00"))
 
     def test_release_more_than_escrow_raises(self):
+        from decimal import Decimal as D
+
         from . import payments as p
         from .payments import InsufficientEscrow
-        from decimal import Decimal as D
 
         # эскроу пуст
         with self.assertRaises(InsufficientEscrow):
             p._wallet_release_to_seller(order=self.order, seller=self.seller_a, amount=D("1"))
 
     def test_confirm_intent_insufficient_funds(self):
-        from . import payments as p
-        from .payments import InsufficientFunds
         from decimal import Decimal as D
+
+        from . import payments as p
         from .models import Wallet
+        from .payments import InsufficientFunds
 
         wb = Wallet.for_user(self.buyer)
         wb.balance = D("50"); wb.save(update_fields=["balance"])
@@ -319,17 +335,21 @@ class WebhookSignatureTests(TestCase):
     """HMAC-SHA256 подпись Stripe-style webhook."""
 
     def _sign(self, body: bytes, secret: str, ts: int) -> str:
-        import hmac, hashlib
+        import hashlib
+        import hmac
         return hmac.new(secret.encode(), f"{ts}.".encode() + body, hashlib.sha256).hexdigest()
 
     def test_demo_mode_passes_when_no_secret(self):
         import os
+
         from .payments_engines import verify_webhook_signature
         os.environ.pop("STRIPE_WEBHOOK_SECRET", None)
         self.assertTrue(verify_webhook_signature(b"{}", "anything"))
 
     def test_valid_signature(self):
-        import os, time
+        import os
+        import time
+
         from .payments_engines import verify_webhook_signature
         secret = "whsec_test_unit"
         os.environ["STRIPE_WEBHOOK_SECRET"] = secret
@@ -343,6 +363,7 @@ class WebhookSignatureTests(TestCase):
 
     def test_invalid_signature(self):
         import os
+
         from .payments_engines import verify_webhook_signature
         os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test_unit"
         try:
@@ -367,7 +388,7 @@ class EngineSelectorTests(TestCase):
     def test_default_is_wallet(self):
         import os
         os.environ.pop("PAYMENT_ENGINE", None)
-        from .payments_engines import get_engine, WalletEngine
+        from .payments_engines import WalletEngine, get_engine
         e = get_engine()
         self.assertIsInstance(e, WalletEngine)
         self.assertEqual(e.name, "wallet")
@@ -376,7 +397,7 @@ class EngineSelectorTests(TestCase):
         import os
         os.environ["PAYMENT_ENGINE"] = "wallet"
         try:
-            from .payments_engines import get_engine, WalletEngine
+            from .payments_engines import WalletEngine, get_engine
             self.assertIsInstance(get_engine(), WalletEngine)
         finally:
             os.environ.pop("PAYMENT_ENGINE", None)
@@ -386,7 +407,7 @@ class EngineSelectorTests(TestCase):
         os.environ["PAYMENT_ENGINE"] = "stripe"
         os.environ.pop("STRIPE_SECRET_KEY", None)
         try:
-            from .payments_engines import get_engine, WalletEngine
+            from .payments_engines import WalletEngine, get_engine
             # No STRIPE_SECRET_KEY → init raises → fallback to WalletEngine
             self.assertIsInstance(get_engine(), WalletEngine)
         finally:
@@ -426,9 +447,11 @@ class OperatorActionsTests(TestCase):
         self.assertIsNotNone(r.cards)
 
     def test_op_assign_returns_form_on_step1(self):
-        from marketplace.models import Order
-        from .operator_actions import op_assign
         from decimal import Decimal as D
+
+        from marketplace.models import Order
+
+        from .operator_actions import op_assign
         order = Order.objects.create(
             customer_name="t", customer_email="t@x.t", customer_phone="",
             delivery_address="-", buyer=self.op, total_amount=D("100"),
@@ -437,9 +460,11 @@ class OperatorActionsTests(TestCase):
         self.assertTrue(any(c["type"] == "form" for c in r.cards))
 
     def test_op_assign_writes_event_on_step2(self):
-        from marketplace.models import Order, OrderEvent
-        from .operator_actions import op_assign
         from decimal import Decimal as D
+
+        from marketplace.models import Order, OrderEvent
+
+        from .operator_actions import op_assign
         order = Order.objects.create(
             customer_name="t", customer_email="t@x.t", customer_phone="",
             delivery_address="-", buyer=self.op, total_amount=D("100"),
@@ -459,9 +484,11 @@ class CustomsActionsTests(TestCase):
     """Customs flow: hs_assign → calc_duty → certs_check → release."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        from marketplace.models import Order
         from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import Order
         U = get_user_model()
         self.op = U.objects.create_user(username="t_op_cs", password="x")
         self.buyer = U.objects.create_user(username="t_buyer_cs", password="x")
@@ -477,7 +504,7 @@ class CustomsActionsTests(TestCase):
         self.assertIn("Найдено", r.text)
 
     def test_hs_assign_then_calc_duty(self):
-        from .operator_actions import op_hs_assign, op_calc_duty
+        from .operator_actions import op_calc_duty, op_hs_assign
         r1 = op_hs_assign({
             "order_id": self.order.id, "hs_code": "8421.23",
             "country": "RU", "confirmed": True,
@@ -490,7 +517,7 @@ class CustomsActionsTests(TestCase):
         self.assertIn("$690.00", r2.text)
 
     def test_release_blocks_without_certs(self):
-        from .operator_actions import op_hs_assign, op_customs_release
+        from .operator_actions import op_customs_release, op_hs_assign
         op_hs_assign({"order_id": self.order.id, "hs_code": "8413.50",
                       "country": "RU", "confirmed": True},
                      self.op, "operator_customs")
@@ -509,12 +536,18 @@ class RFQModeClassifierTests(TestCase):
     """RFQ mode classifier — 6 правил из ТЗ §7.1, §7.2."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        from marketplace.models import (
-            Brand, Category, Part, UserProfile, CompanyVerification,
-        )
-        from decimal import Decimal as D
         import uuid
+        from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import (
+            Brand,
+            Category,
+            CompanyVerification,
+            Part,
+            UserProfile,
+        )
         u = uuid.uuid4().hex[:6]
         U = get_user_model()
         self.buyer = U.objects.create_user(username=f"t_cls_b_{u}", password="x")
@@ -582,8 +615,9 @@ class RFQModeClassifierTests(TestCase):
         self.assertIn("oem", reason.lower())
 
     def test_semi_when_buyer_not_verified(self):
-        from .actions import _classify_rfq_mode
         from marketplace.models import CompanyVerification
+
+        from .actions import _classify_rfq_mode
         kyb = CompanyVerification.objects.get(user=self.buyer)
         kyb.status = "rejected"; kyb.save()
         items = self._items(self.part_trusted)
@@ -663,6 +697,7 @@ class SupplierRatingEngineTests(TestCase):
 
     def setUp(self):
         from django.contrib.auth import get_user_model
+
         from marketplace.models import UserProfile
         U = get_user_model()
         self.seller = U.objects.create_user(username="t_rate_s", password="x")
@@ -673,8 +708,9 @@ class SupplierRatingEngineTests(TestCase):
         return UserProfile.objects.get(user=self.seller)
 
     def test_record_event_creates_row_and_recalcs(self):
-        from .rating import record_rating_event
         from marketplace.models import SupplierRatingEvent
+
+        from .rating import record_rating_event
         ev = record_rating_event(self.seller, event_type="rfq_response")
         self.assertIsNotNone(ev)
         self.assertEqual(SupplierRatingEvent.objects.filter(supplier=self.seller).count(), 1)
@@ -718,8 +754,11 @@ class SupplierRatingEngineTests(TestCase):
     def test_rating_window_limits_old_events(self):
         """Старые события (>90 дней) не учитываются."""
         from datetime import timedelta
+
         from django.utils import timezone
+
         from marketplace.models import SupplierRatingEvent
+
         from .rating import recalc_behavioral_score
 
         # Старое событие: -50, должно НЕ попасть в окно
@@ -747,13 +786,20 @@ class SupplierRatingEngineTests(TestCase):
 
     def test_quote_submission_records_rating_event(self):
         """submit_quote должен создавать SupplierRatingEvent с типом rfq_response."""
-        from marketplace.models import (
-            Brand, Category, Part, RFQ, RFQItem, CompanyVerification,
-            UserProfile, SupplierRatingEvent,
-        )
-        from .negotiation import submit_quote
-        from decimal import Decimal as D
         import uuid
+        from decimal import Decimal as D
+
+        from marketplace.models import (
+            RFQ,
+            Brand,
+            Category,
+            CompanyVerification,
+            Part,
+            RFQItem,
+            SupplierRatingEvent,
+        )
+
+        from .negotiation import submit_quote
         u = uuid.uuid4().hex[:6]
 
         # Verify seller (для KYB-gate)
@@ -791,10 +837,12 @@ class DrawingsAccessTests(TestCase):
     """ТЗ §3, §12.1: контроль доступа + audit log + reward."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        from marketplace.models import Brand, Category, Part, Drawing, Order
-        from decimal import Decimal as D
         import uuid
+        from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import Brand, Category, Drawing, Order, Part
         u = uuid.uuid4().hex[:6]
         U = get_user_model()
         self.seller = U.objects.create_user(username=f"t_dr_s_{u}", password="x")
@@ -863,8 +911,9 @@ class DrawingsAccessTests(TestCase):
         self.assertTrue(allowed)
 
     def test_record_access_writes_log(self):
-        from .drawings_access import record_access
         from marketplace.models import DrawingAccessLog
+
+        from .drawings_access import record_access
         record_access(self.buyer, self.drawing_for_sale, "view")
         self.assertEqual(
             DrawingAccessLog.objects.filter(drawing=self.drawing_for_sale).count(), 1,
@@ -906,9 +955,11 @@ class QRScanTests(TestCase):
     """ТЗ §6.2: QR-scan endpoint."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        from marketplace.models import Order
         from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import Order
         U = get_user_model()
         self.buyer = U.objects.create_user(username="t_qr_b", password="x")
         self.order = Order.objects.create(
@@ -918,7 +969,7 @@ class QRScanTests(TestCase):
         )
 
     def test_encode_decode_roundtrip(self):
-        from .qr_scan import encode_qr_code, decode_qr_code
+        from .qr_scan import decode_qr_code, encode_qr_code
         code = encode_qr_code(self.order.id)
         self.assertTrue(code.startswith(f"ORD-{self.order.id}-"))
         self.assertEqual(decode_qr_code(code), self.order.id)
@@ -931,8 +982,9 @@ class QRScanTests(TestCase):
         self.assertIsNone(decode_qr_code("ORD-99999-deadbeef"))
 
     def test_get_endpoint_returns_html_page(self):
-        from .qr_scan import encode_qr_code
         from django.test import Client
+
+        from .qr_scan import encode_qr_code
         c = Client()
         code = encode_qr_code(self.order.id)
         r = c.get(f"/api/assistant/qr/scan/{code}/")
@@ -942,9 +994,11 @@ class QRScanTests(TestCase):
         self.assertIn(b"shipped", r.content)
 
     def test_post_shipped_changes_status(self):
-        from .qr_scan import encode_qr_code
         from django.test import Client
-        from marketplace.models import Order, OrderEvent
+
+        from marketplace.models import OrderEvent
+
+        from .qr_scan import encode_qr_code
         c = Client()
         code = encode_qr_code(self.order.id)
         r = c.post(f"/api/assistant/qr/scan/{code}/", {"action": "shipped"})
@@ -959,8 +1013,9 @@ class QRScanTests(TestCase):
         self.assertEqual(ev.meta["qr_scan_action"], "shipped")
 
     def test_post_invalid_transition_returns_409(self):
-        from .qr_scan import encode_qr_code
         from django.test import Client
+
+        from .qr_scan import encode_qr_code
         c = Client()
         code = encode_qr_code(self.order.id)
         # Пытаемся 'received' но статус ready_to_ship — нужно delivered
@@ -980,9 +1035,11 @@ class RevenueAccountingTests(TestCase):
     """ТЗ §15: декомпозиция дохода группы."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        from marketplace.models import Order, UserProfile
         from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import Order, UserProfile
         U = get_user_model()
         self.buyer = U.objects.create_user(username="t_rev_b", password="x")
         UserProfile.objects.create(user=self.buyer, role="buyer")
@@ -993,8 +1050,8 @@ class RevenueAccountingTests(TestCase):
         )
 
     def test_generate_lines_ddp_basis(self):
+
         from .revenue import generate_revenue_lines
-        from marketplace.models import PlatformRevenueLine
         lines = generate_revenue_lines(self.order, basis="DDP", payment_currency="USD")
         # DDP 12% от $10k = $1200
         basis_fee = next(ln for ln in lines if ln.kind == "basis_fee")
@@ -1040,8 +1097,9 @@ class RevenueAccountingTests(TestCase):
         self.assertEqual(sf.amount, Decimal("400.00"))  # 5% от $8k
 
     def test_idempotent_regeneration(self):
-        from .revenue import generate_revenue_lines
         from marketplace.models import PlatformRevenueLine
+
+        from .revenue import generate_revenue_lines
         # Первый вызов
         lines1 = generate_revenue_lines(self.order, basis="DDP")
         n1 = PlatformRevenueLine.objects.filter(order=self.order).count()
@@ -1062,9 +1120,11 @@ class ClaimWorkflowTests(TestCase):
     """ТЗ §5.4: claim flow с 6 статусами + переходы."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        from marketplace.models import Order, UserProfile
         from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import Order, UserProfile
         U = get_user_model()
         self.buyer = U.objects.create_user(username="t_cl_b", password="x", email="b@x.t")
         self.op = U.objects.create_user(username="t_cl_op", password="x")
@@ -1076,8 +1136,9 @@ class ClaimWorkflowTests(TestCase):
         )
 
     def test_open_claim_form_then_create(self):
-        from .claims import open_claim
         from marketplace.models import OrderClaim
+
+        from .claims import open_claim
         # Step 1 (form)
         r = open_claim({"order_id": self.order.id}, self.buyer, "buyer")
         self.assertTrue(any(c["type"] == "form" for c in r.cards))
@@ -1092,9 +1153,15 @@ class ClaimWorkflowTests(TestCase):
         self.assertEqual(claim.kind, "defect")
 
     def test_full_flow_open_review_approve_corrective_close(self):
-        from .claims import (open_claim, start_claim_review, approve_claim,
-                             apply_corrective, close_claim)
         from marketplace.models import OrderClaim
+
+        from .claims import (
+            apply_corrective,
+            approve_claim,
+            close_claim,
+            open_claim,
+            start_claim_review,
+        )
         # 1. open
         open_claim({
             "order_id": self.order.id, "kind": "defect", "title": "x",
@@ -1123,8 +1190,9 @@ class ClaimWorkflowTests(TestCase):
         self.assertIsNotNone(claim.closed_at)
 
     def test_reject_path(self):
-        from .claims import open_claim, reject_claim
         from marketplace.models import OrderClaim
+
+        from .claims import open_claim, reject_claim
         open_claim({
             "order_id": self.order.id, "kind": "other", "title": "x",
             "description": "y", "confirmed": True,
@@ -1141,9 +1209,9 @@ class ClaimWorkflowTests(TestCase):
         self.assertEqual(claim.rejection_reason, "не подтверждается")
 
     def test_settlement_path_with_full_refund(self):
-        from .claims import (open_claim, start_claim_review, approve_claim,
-                             apply_settlement)
         from marketplace.models import OrderClaim
+
+        from .claims import apply_settlement, approve_claim, open_claim, start_claim_review
         open_claim({
             "order_id": self.order.id, "kind": "defect", "title": "x",
             "description": "y", "confirmed": True,
@@ -1160,11 +1228,21 @@ class ClaimWorkflowTests(TestCase):
         self.assertEqual(claim.refund_amount, Decimal("1000.00"))
 
     def test_approve_records_rating_event(self):
-        from .claims import open_claim, approve_claim
-        from marketplace.models import OrderClaim, OrderItem, Part, Brand, Category, SupplierRatingEvent
-        from django.contrib.auth import get_user_model
-        from decimal import Decimal as D
         import uuid
+        from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import (
+            Brand,
+            Category,
+            OrderClaim,
+            OrderItem,
+            Part,
+            SupplierRatingEvent,
+        )
+
+        from .claims import approve_claim, open_claim
         u = uuid.uuid4().hex[:6]
         U = get_user_model()
         seller = U.objects.create_user(username=f"t_sel_{u}", password="x")
@@ -1194,8 +1272,9 @@ class BuyerVolumeDiscountTests(TestCase):
         self.buyer = U.objects.create_user(username="t_vol_b", password="x")
 
     def _create_paid_order(self, amount):
-        from marketplace.models import Order
         from decimal import Decimal as D
+
+        from marketplace.models import Order
         return Order.objects.create(
             customer_name="x", customer_email="x@x.x", customer_phone="",
             delivery_address="-", buyer=self.buyer,
@@ -1329,6 +1408,7 @@ class ConversationCategorizationTests(TestCase):
     def test_action_view_reuses_admin_conv_across_clicks(self):
         """E2E: 2 разных admin pill'a → 1 conv в БД."""
         from rest_framework.test import APIClient
+
         from .models import Conversation
         client = APIClient()
         client.force_authenticate(self.user)
@@ -1349,7 +1429,8 @@ class ExternalRatingTests(TestCase):
 
     def setUp(self):
         from django.contrib.auth import get_user_model
-        from marketplace.models import UserProfile, CompanyVerification
+
+        from marketplace.models import CompanyVerification, UserProfile
         U = get_user_model()
         self.seller = U.objects.create_user(username="t_ext_s", password="x")
         UserProfile.objects.create(user=self.seller, role="seller")
@@ -1380,8 +1461,9 @@ class ExternalRatingTests(TestCase):
         self.assertTrue(data["liquidation"])
 
     def test_refresh_external_rating_applies_to_profile(self):
-        from .external_rating import refresh_external_rating
         from marketplace.models import UserProfile
+
+        from .external_rating import refresh_external_rating
         data = refresh_external_rating(self.seller)
         self.assertIsNotNone(data)
         self.assertGreaterEqual(data["score"], 40)
@@ -1391,7 +1473,9 @@ class ExternalRatingTests(TestCase):
 
     def test_refresh_with_no_inn_returns_skip(self):
         from django.contrib.auth import get_user_model
+
         from marketplace.models import UserProfile
+
         from .external_rating import refresh_external_rating
         u = get_user_model().objects.create_user(username="t_no_inn", password="x")
         UserProfile.objects.create(user=u, role="seller")
@@ -1400,7 +1484,8 @@ class ExternalRatingTests(TestCase):
         self.assertEqual(data["source"], "skip")
 
     def test_bankruptcy_inn_flips_status_to_rejected(self):
-        from marketplace.models import UserProfile, CompanyVerification
+        from marketplace.models import CompanyVerification, UserProfile
+
         from .external_rating import refresh_external_rating
         # Заменяем INN на «банкротный»
         kyb = CompanyVerification.objects.get(user=self.seller)
@@ -1415,9 +1500,11 @@ class PriorityRoutingTests(TestCase):
     """ТЗ §7.1: рассылка RFQ — trusted приоритет, sandbox fallback, risky вручную."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        from marketplace.models import RFQ, RFQItem, UserProfile
         import uuid
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import RFQ, RFQItem, UserProfile
         u = uuid.uuid4().hex[:6]
         U = get_user_model()
         self.buyer = U.objects.create_user(username=f"t_pr_b_{u}", password="x")
@@ -1442,8 +1529,9 @@ class PriorityRoutingTests(TestCase):
         RFQItem.objects.create(rfq=self.rfq, query="X", quantity=1)
 
     def test_default_routing_includes_trusted_and_sandbox_skips_risky(self):
-        from .negotiation import send_rfq_to_suppliers
         from marketplace.models import Notification
+
+        from .negotiation import send_rfq_to_suppliers
         send_rfq_to_suppliers({"rfq_id": self.rfq.id, "confirmed": True}, self.buyer, "buyer")
         recipients = set(Notification.objects.filter(kind="rfq").values_list("user_id", flat=True))
         # Trusted всегда
@@ -1455,8 +1543,9 @@ class PriorityRoutingTests(TestCase):
         self.assertNotIn(self.risky_b.id, recipients)
 
     def test_include_risky_flag_dispatches_to_risky(self):
-        from .negotiation import send_rfq_to_suppliers
         from marketplace.models import Notification
+
+        from .negotiation import send_rfq_to_suppliers
         send_rfq_to_suppliers(
             {"rfq_id": self.rfq.id, "confirmed": True, "include_risky": True},
             self.buyer, "buyer",
@@ -1471,6 +1560,7 @@ class NoResponseDetectionTests(TestCase):
 
     def setUp(self):
         from django.contrib.auth import get_user_model
+
         from marketplace.models import RFQ, RFQItem, UserProfile
         U = get_user_model()
         self.buyer = U.objects.create_user(username="t_nr_b", password="x", email="b@x.t")
@@ -1484,8 +1574,10 @@ class NoResponseDetectionTests(TestCase):
 
     def test_old_unanswered_notification_creates_no_response_event(self):
         from datetime import timedelta
+
         from django.core.management import call_command
         from django.utils import timezone
+
         from marketplace.models import Notification, SupplierRatingEvent
 
         # Notification 25 часов назад
@@ -1506,8 +1598,10 @@ class NoResponseDetectionTests(TestCase):
 
     def test_responded_seller_skipped(self):
         from datetime import timedelta
+
         from django.core.management import call_command
         from django.utils import timezone
+
         from marketplace.models import Notification, Quote, SupplierRatingEvent
 
         n = Notification.objects.create(
@@ -1530,8 +1624,10 @@ class NoResponseDetectionTests(TestCase):
     def test_idempotent(self):
         """Повторный запуск не дублирует events."""
         from datetime import timedelta
+
         from django.core.management import call_command
         from django.utils import timezone
+
         from marketplace.models import Notification, SupplierRatingEvent
 
         n = Notification.objects.create(
@@ -1576,8 +1672,12 @@ class OnboardingKybTests(TestCase):
         self.assertIn("Проверьте", r.text)
 
     def test_step1_step2_step3_step4(self):
-        from .onboarding import (submit_company_info, submit_legal_address,
-                                  submit_bank, submit_director)
+        from .onboarding import (
+            submit_bank,
+            submit_company_info,
+            submit_director,
+            submit_legal_address,
+        )
         r1 = submit_company_info({
             "legal_name": "ООО Тест", "inn": "1234567890",
             "kpp": "123456789", "ogrn": "1234567890123",
@@ -1605,9 +1705,15 @@ class OnboardingKybTests(TestCase):
         self.assertIn("✓", r4.text)
 
     def test_step5_submit_for_review_flips_status_pending(self):
-        from .onboarding import (submit_company_info, submit_legal_address,
-                                  submit_bank, submit_director, submit_for_review)
         from marketplace.models import CompanyVerification
+
+        from .onboarding import (
+            submit_bank,
+            submit_company_info,
+            submit_director,
+            submit_for_review,
+            submit_legal_address,
+        )
         for fn, p in [
             (submit_company_info, {"legal_name":"ООО","inn":"1234567890","confirmed":True}),
             (submit_legal_address, {"legal_address":"Москва","confirmed":True}),
@@ -1633,9 +1739,11 @@ class OnboardingKybTests(TestCase):
 
     # --- operator review ---
     def test_op_kyb_queue_lists_pending(self):
-        from .onboarding import op_kyb_queue
-        from marketplace.models import CompanyVerification
         from django.utils import timezone
+
+        from marketplace.models import CompanyVerification
+
+        from .onboarding import op_kyb_queue
         CompanyVerification.objects.create(
             user=self.seller, legal_name="ООО Pending",
             inn="1234567890", status="pending", submitted_at=timezone.now(),
@@ -1646,9 +1754,11 @@ class OnboardingKybTests(TestCase):
         self.assertTrue(any("Pending" in it["title"] for it in items))
 
     def test_op_kyb_approve_flips_status_verified(self):
-        from .onboarding import op_kyb_approve
-        from marketplace.models import CompanyVerification, Notification
         from django.utils import timezone
+
+        from marketplace.models import CompanyVerification, Notification
+
+        from .onboarding import op_kyb_approve
         kyb = CompanyVerification.objects.create(
             user=self.seller, legal_name="ООО Test",
             inn="1234567890", status="pending", submitted_at=timezone.now(),
@@ -1667,9 +1777,11 @@ class OnboardingKybTests(TestCase):
         self.assertTrue(Notification.objects.filter(user=self.seller, kind="system").exists())
 
     def test_op_kyb_reject_writes_reason(self):
-        from .onboarding import op_kyb_reject
-        from marketplace.models import CompanyVerification
         from django.utils import timezone
+
+        from marketplace.models import CompanyVerification
+
+        from .onboarding import op_kyb_reject
         CompanyVerification.objects.create(
             user=self.seller, legal_name="X", inn="1234567890",
             status="pending", submitted_at=timezone.now(),
@@ -1711,8 +1823,9 @@ class OnboardingKybTests(TestCase):
         self.assertIn("start_onboarding", action_names)
 
     def test_gate_passes_for_verified_seller(self):
-        from .actions import kyb_gate
         from marketplace.models import CompanyVerification
+
+        from .actions import kyb_gate
         CompanyVerification.objects.create(
             user=self.seller, legal_name="X", inn="1234567890", status="verified",
         )
@@ -1733,12 +1846,19 @@ class NegotiationFlowTests(TestCase):
     """RFQ → Quote → counter → accept end-to-end."""
 
     def setUp(self):
-        from django.contrib.auth import get_user_model
-        from marketplace.models import (
-            Brand, Category, Part, RFQ, RFQItem, CompanyVerification,
-        )
-        from decimal import Decimal as D
         import uuid
+        from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import (
+            RFQ,
+            Brand,
+            Category,
+            CompanyVerification,
+            Part,
+            RFQItem,
+        )
         u = uuid.uuid4().hex[:6]
         U = get_user_model()
         self.buyer = U.objects.create_user(username=f"t_neg_b_{u}", password="x")
@@ -1773,8 +1893,9 @@ class NegotiationFlowTests(TestCase):
         )
 
     def test_submit_quote_creates_quote_with_items(self):
+        from marketplace.models import Quote
+
         from .negotiation import submit_quote
-        from marketplace.models import Quote, QuoteItem
         r = submit_quote({
             "rfq_id": self.rfq.id,
             f"price_{self.rfq_item1.id}": "950",
@@ -1797,8 +1918,9 @@ class NegotiationFlowTests(TestCase):
         self.assertTrue(any(c["type"] == "form" for c in r.cards))
 
     def test_submit_quote_blocks_unverified_seller(self):
-        from .negotiation import submit_quote
         from marketplace.models import CompanyVerification
+
+        from .negotiation import submit_quote
         # сбросить verified на rejected
         kyb = CompanyVerification.objects.get(user=self.seller_a)
         kyb.status = "rejected"; kyb.save()
@@ -1841,9 +1963,11 @@ class NegotiationFlowTests(TestCase):
         self.assertIn("только заказчик", r.text)
 
     def test_accept_quote_creates_order(self):
-        from .negotiation import submit_quote, accept_quote
-        from marketplace.models import Quote, Order
         from decimal import Decimal as D
+
+        from marketplace.models import Order, Quote
+
+        from .negotiation import accept_quote, submit_quote
         submit_quote({
             "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
             f"price_{self.rfq_item2.id}": "100", "confirmed": True,
@@ -1864,8 +1988,9 @@ class NegotiationFlowTests(TestCase):
         self.assertEqual(q.status, "accepted")
 
     def test_accept_quote_auto_declines_others(self):
-        from .negotiation import submit_quote, accept_quote
         from marketplace.models import Quote
+
+        from .negotiation import accept_quote, submit_quote
         submit_quote({
             "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
             f"price_{self.rfq_item2.id}": "100", "confirmed": True,
@@ -1881,8 +2006,9 @@ class NegotiationFlowTests(TestCase):
         self.assertEqual(loser.status, "declined")
 
     def test_counter_offer_creates_round_2_buyer_to_seller(self):
-        from .negotiation import submit_quote, counter_offer
         from marketplace.models import Quote
+
+        from .negotiation import counter_offer, submit_quote
         submit_quote({
             "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
             f"price_{self.rfq_item2.id}": "100", "confirmed": True,
@@ -1908,8 +2034,9 @@ class NegotiationFlowTests(TestCase):
         self.assertEqual(new.total_amount, Decimal("2550.00"))
 
     def test_counter_offer_blocked_for_finalized(self):
-        from .negotiation import submit_quote, counter_offer, mark_quote_final
         from marketplace.models import Quote
+
+        from .negotiation import counter_offer, mark_quote_final, submit_quote
         submit_quote({
             "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
             f"price_{self.rfq_item2.id}": "100", "confirmed": True,
@@ -1920,8 +2047,9 @@ class NegotiationFlowTests(TestCase):
         self.assertIn("финальная", r.text)
 
     def test_decline_quote_marks_status(self):
-        from .negotiation import submit_quote, decline_quote
         from marketplace.models import Quote
+
+        from .negotiation import decline_quote, submit_quote
         submit_quote({
             "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
             f"price_{self.rfq_item2.id}": "100", "confirmed": True,
@@ -1952,8 +2080,9 @@ class NegotiationFlowTests(TestCase):
 
     def test_buyer_anonymity_in_view_quote(self):
         """view_quote показывает «Поставщик №N» для buyer и username для seller."""
-        from .negotiation import submit_quote, view_quote
         from marketplace.models import Quote
+
+        from .negotiation import submit_quote, view_quote
         submit_quote({
             "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "900",
             "confirmed": True,
@@ -1972,8 +2101,9 @@ class NegotiationFlowTests(TestCase):
 
     def test_buyer_anonymity_revealed_after_accept(self):
         """После accept_quote buyer видит реального продавца — заказ оформлен."""
-        from .negotiation import submit_quote, accept_quote, view_quote
         from marketplace.models import Quote
+
+        from .negotiation import accept_quote, submit_quote, view_quote
         submit_quote({
             "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "900",
             "confirmed": True,
@@ -1988,8 +2118,9 @@ class NegotiationFlowTests(TestCase):
             f"after accept buyer should see real username, got {seller_row['value']!r}"
 
     def test_mark_quote_final_only_by_seller(self):
-        from .negotiation import submit_quote, mark_quote_final
         from marketplace.models import Quote
+
+        from .negotiation import mark_quote_final, submit_quote
         submit_quote({
             "rfq_id": self.rfq.id, f"price_{self.rfq_item1.id}": "1000",
             "confirmed": True,
@@ -2010,6 +2141,7 @@ class DurableChannelsTests(TestCase):
 
     def setUp(self):
         from django.contrib.auth import get_user_model
+
         from marketplace.models import UserProfile
         U = get_user_model()
         self.user = U.objects.create_user(
@@ -2019,6 +2151,7 @@ class DurableChannelsTests(TestCase):
 
     def test_email_sent_when_enabled_and_kind_match(self):
         from django.core import mail
+
         from .channels import send_email
         self.profile.notif_email_enabled = True
         self.profile.notif_kinds = "order,payment"
@@ -2031,6 +2164,7 @@ class DurableChannelsTests(TestCase):
 
     def test_email_skipped_when_kind_not_in_prefs(self):
         from django.core import mail
+
         from .channels import send_email
         self.profile.notif_email_enabled = True
         self.profile.notif_kinds = "payment"  # only payment
@@ -2041,6 +2175,7 @@ class DurableChannelsTests(TestCase):
 
     def test_email_skipped_when_disabled(self):
         from django.core import mail
+
         from .channels import send_email
         self.profile.notif_email_enabled = False
         self.profile.save()
@@ -2057,6 +2192,7 @@ class DurableChannelsTests(TestCase):
 
     def test_telegram_skipped_when_no_token(self):
         import os
+
         from .channels import send_telegram
         os.environ.pop("TELEGRAM_BOT_TOKEN", None)
         self.profile.notif_telegram_enabled = True
@@ -2068,6 +2204,7 @@ class DurableChannelsTests(TestCase):
 
     def test_telegram_skipped_when_no_chat_id(self):
         import os
+
         from .channels import send_telegram
         os.environ["TELEGRAM_BOT_TOKEN"] = "fake"
         try:
@@ -2092,8 +2229,10 @@ class DurableChannelsTests(TestCase):
 
     def test_notify_creates_db_row_and_sends_email(self):
         from django.core import mail
-        from .actions import _notify
+
         from marketplace.models import Notification
+
+        from .actions import _notify
         self.profile.notif_email_enabled = True
         self.profile.notif_kinds = "order"
         self.profile.save()
@@ -2111,8 +2250,10 @@ class DurableChannelsTests(TestCase):
 
     def test_send_digest_sends_when_unread_exists(self):
         from django.core import mail
-        from .channels import send_digest
+
         from marketplace.models import Notification
+
+        from .channels import send_digest
         Notification.objects.create(user=self.user, kind="order", title="A", body="x")
         Notification.objects.create(user=self.user, kind="payment", title="B", body="y")
         self.profile.notif_email_enabled = True
@@ -2128,6 +2269,7 @@ class NotifSettingsActionsTests(TestCase):
 
     def setUp(self):
         from django.contrib.auth import get_user_model
+
         from marketplace.models import UserProfile
         U = get_user_model()
         self.user = U.objects.create_user(username="t_pref", password="x")
@@ -2182,6 +2324,7 @@ class AdminActionsTests(TestCase):
 
     def setUp(self):
         from django.contrib.auth import get_user_model
+
         from marketplace.models import UserProfile
         U = get_user_model()
         self.admin = U.objects.create_user(username="t_admin", password="x",
@@ -2243,8 +2386,9 @@ class AdminActionsTests(TestCase):
         self.assertFalse(self.buyer.is_active)
 
     def test_ban_admin_blocked(self):
-        from .admin_actions import admin_ban_user
         from django.contrib.auth import get_user_model
+
+        from .admin_actions import admin_ban_user
         U = get_user_model()
         other_admin = U.objects.create_user(username="t_admin2", password="x",
                                               is_superuser=True)
@@ -2321,6 +2465,7 @@ class AuthFlowTests(TestCase):
     def test_magic_link_request_creates_token_and_sends_email(self):
         from django.core import mail
         from django.test import Client
+
         from marketplace.models import MagicLinkToken
         c = Client()
         resp = c.post("/api/assistant/auth/magic-link/",
@@ -2337,6 +2482,7 @@ class AuthFlowTests(TestCase):
 
     def test_magic_link_request_unknown_email_returns_200(self):
         from django.test import Client
+
         from marketplace.models import MagicLinkToken
         c = Client()
         resp = c.post("/api/assistant/auth/magic-link/",
@@ -2348,8 +2494,10 @@ class AuthFlowTests(TestCase):
 
     def test_magic_link_confirm_logs_in_and_redirects(self):
         from datetime import timedelta
+
         from django.test import Client
         from django.utils import timezone
+
         from marketplace.models import MagicLinkToken
         ml = MagicLinkToken.objects.create(
             token="xyz123", user=self.user,
@@ -2372,8 +2520,10 @@ class AuthFlowTests(TestCase):
 
     def test_magic_link_confirm_expired_410(self):
         from datetime import timedelta
+
         from django.test import Client
         from django.utils import timezone
+
         from marketplace.models import MagicLinkToken
         ml = MagicLinkToken.objects.create(
             token="exp123", user=self.user,
@@ -2385,8 +2535,9 @@ class AuthFlowTests(TestCase):
 
     # --- 2FA ---
     def test_setup_2fa_generates_secret_and_qr(self):
-        from .auth_actions import setup_2fa
         from marketplace.models import TwoFactorAuth
+
+        from .auth_actions import setup_2fa
         r = setup_2fa({}, self.user, "buyer")
         self.assertEqual(r.cards[0]["type"], "qr")
         self.assertIn("qr_url", r.cards[0]["data"])
@@ -2397,8 +2548,10 @@ class AuthFlowTests(TestCase):
 
     def test_verify_2fa_with_valid_code_enables(self):
         import pyotp
-        from .auth_actions import setup_2fa, verify_2fa
+
         from marketplace.models import TwoFactorAuth
+
+        from .auth_actions import setup_2fa, verify_2fa
         setup_2fa({}, self.user, "buyer")
         twofa = TwoFactorAuth.objects.get(user=self.user)
         valid_code = pyotp.TOTP(twofa.secret).now()
@@ -2415,8 +2568,10 @@ class AuthFlowTests(TestCase):
 
     def test_disable_2fa_requires_valid_code(self):
         import pyotp
-        from .auth_actions import setup_2fa, verify_2fa, disable_2fa
+
         from marketplace.models import TwoFactorAuth
+
+        from .auth_actions import disable_2fa, setup_2fa, verify_2fa
         setup_2fa({}, self.user, "buyer")
         twofa = TwoFactorAuth.objects.get(user=self.user)
         verify_2fa({"code": pyotp.TOTP(twofa.secret).now(), "confirmed": True},
@@ -2435,8 +2590,9 @@ class AuthFlowTests(TestCase):
 
     # --- API tokens ---
     def test_create_api_token_returns_full_once(self):
-        from .auth_actions import create_api_token
         from marketplace.models import ApiToken
+
+        from .auth_actions import create_api_token
         r = create_api_token({"label": "CI", "permissions": "read,write",
                                 "confirmed": True}, self.user, "buyer")
         # Полный токен в card.draft.rows
@@ -2461,8 +2617,9 @@ class AuthFlowTests(TestCase):
         self.assertIn("ck_live_", items[0]["title"])
 
     def test_revoke_api_token_marks_inactive(self):
-        from .auth_actions import create_api_token, revoke_api_token
         from marketplace.models import ApiToken
+
+        from .auth_actions import create_api_token, revoke_api_token
         create_api_token({"label": "T", "permissions": "read",
                             "confirmed": True}, self.user, "buyer")
         token = ApiToken.objects.get(user=self.user, label="T")
@@ -2476,6 +2633,7 @@ class AuthFlowTests(TestCase):
     # --- OAuth scaffolding ---
     def test_oauth_login_returns_503_when_not_configured(self):
         import os
+
         from django.test import Client
         os.environ.pop("GOOGLE_CLIENT_ID", None)
         c = Client()
@@ -2502,12 +2660,20 @@ class CompetitorOfferTests(TestCase):
     """ТЗ §5.2: buyer загружает competitor-оффер → seller даёт скидку (manual discount)."""
 
     def setUp(self):
-        from decimal import Decimal as D
-        from django.contrib.auth import get_user_model
-        from marketplace.models import (
-            Brand, Category, Part, RFQ, RFQItem, Quote, QuoteItem,
-        )
         import uuid
+        from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import (
+            RFQ,
+            Brand,
+            Category,
+            Part,
+            Quote,
+            QuoteItem,
+            RFQItem,
+        )
         U = get_user_model()
         u = uuid.uuid4().hex[:6]
         self.buyer = U.objects.create_user(username=f"t_co_b_{u}", password="x")
@@ -2539,8 +2705,9 @@ class CompetitorOfferTests(TestCase):
         )
 
     def test_upload_creates_competitor_offer(self):
-        from .competitor_offers import upload_competitor_offer
         from marketplace.models import CompetitorOffer
+
+        from .competitor_offers import upload_competitor_offer
         r = upload_competitor_offer({
             "quote_id": self.quote.id,
             "competitor_name": "Acme Cheap Co.",
@@ -2563,8 +2730,9 @@ class CompetitorOfferTests(TestCase):
         self.assertIn("только заказчик", r.text)
 
     def test_respond_decline(self):
-        from .competitor_offers import upload_competitor_offer, respond_to_competitor_offer
         from marketplace.models import CompetitorOffer
+
+        from .competitor_offers import respond_to_competitor_offer, upload_competitor_offer
         upload_competitor_offer({
             "quote_id": self.quote.id, "competitor_name": "X",
             "quoted_price": "150", "confirmed": True,
@@ -2579,8 +2747,10 @@ class CompetitorOfferTests(TestCase):
 
     def test_respond_with_discount_creates_counter_quote(self):
         from decimal import Decimal as D
-        from .competitor_offers import upload_competitor_offer, respond_to_competitor_offer
+
         from marketplace.models import CompetitorOffer, Quote
+
+        from .competitor_offers import respond_to_competitor_offer, upload_competitor_offer
         upload_competitor_offer({
             "quote_id": self.quote.id, "competitor_name": "Cheap",
             "quoted_price": "150", "confirmed": True,
@@ -2602,8 +2772,9 @@ class CompetitorOfferTests(TestCase):
         self.assertEqual(self.quote.status, "countered")
 
     def test_respond_only_by_quote_seller(self):
-        from .competitor_offers import upload_competitor_offer, respond_to_competitor_offer
         from marketplace.models import CompetitorOffer
+
+        from .competitor_offers import respond_to_competitor_offer, upload_competitor_offer
         upload_competitor_offer({
             "quote_id": self.quote.id, "competitor_name": "X",
             "quoted_price": "150", "confirmed": True,
@@ -2619,10 +2790,12 @@ class DocumentGeneratorTests(TestCase):
     """ТЗ §12.2: invoice / packing list / QC report PDF generators."""
 
     def setUp(self):
-        from decimal import Decimal as D
-        from django.contrib.auth import get_user_model
-        from marketplace.models import Brand, Category, Part, Order, OrderItem
         import uuid
+        from decimal import Decimal as D
+
+        from django.contrib.auth import get_user_model
+
+        from marketplace.models import Brand, Category, Order, OrderItem, Part
         U = get_user_model()
         u = uuid.uuid4().hex[:6]
         self.buyer = U.objects.create_user(username=f"t_doc_b_{u}", password="x")
@@ -2649,8 +2822,9 @@ class DocumentGeneratorTests(TestCase):
                                   quantity=2, unit_price=D("100"))
 
     def test_generate_invoice_pdf(self):
-        from .documents import generate_invoice_pdf
         from marketplace.models import OrderDocument
+
+        from .documents import generate_invoice_pdf
         r = generate_invoice_pdf({"order_id": self.order.id}, self.buyer, "buyer")
         self.assertIn("Invoice", r.text)
         self.assertEqual(r.cards[0]["data"]["kind"], "invoice")
@@ -2660,16 +2834,18 @@ class DocumentGeneratorTests(TestCase):
         self.assertGreater(doc.file_obj.size, 1000)  # PDF должен быть >1KB
 
     def test_generate_packing_list_pdf(self):
-        from .documents import generate_packing_list_pdf
         from marketplace.models import OrderDocument
+
+        from .documents import generate_packing_list_pdf
         r = generate_packing_list_pdf({"order_id": self.order.id}, self.seller, "seller")
         self.assertIn("Packing List", r.text)
         doc = OrderDocument.objects.filter(order=self.order, doc_type="packing_list").first()
         self.assertIsNotNone(doc)
 
     def test_generate_qc_report_pdf(self):
-        from .documents import generate_qc_report_pdf
         from marketplace.models import OrderDocument
+
+        from .documents import generate_qc_report_pdf
         r = generate_qc_report_pdf({"order_id": self.order.id}, self.seller, "seller")
         self.assertIn("QC Report", r.text)
         doc = OrderDocument.objects.filter(order=self.order, doc_type="quality_report").first()
@@ -2694,13 +2870,22 @@ class ErpSyncTests(TestCase):
     """ТЗ §17.2: двусторонний обмен с 1С/ERP по REST."""
 
     def setUp(self):
+        import hashlib
+        import secrets
+        import uuid
         from decimal import Decimal as D
+
         from django.contrib.auth import get_user_model
-        from marketplace.models import (
-            Brand, Category, Part, Order, OrderItem, ApiToken, ErpSyncLog,
-        )
-        import hashlib, secrets, uuid
         from django.test import Client
+
+        from marketplace.models import (
+            ApiToken,
+            Brand,
+            Category,
+            Order,
+            OrderItem,
+            Part,
+        )
         U = get_user_model()
         u = uuid.uuid4().hex[:6]
         self.seller = U.objects.create_user(username=f"t_erp_s_{u}", password="x")
@@ -2749,7 +2934,7 @@ class ErpSyncTests(TestCase):
         self.assertEqual(resp.status_code, 401)
 
     def test_push_parts_updates_price_and_stock(self):
-        from marketplace.models import Part, ErpSyncLog
+        from marketplace.models import ErpSyncLog
         body = [{"oem_number": self.part.oem_number, "price": 95.50, "stock": 25}]
         import json
         resp = self.client.post(
@@ -2792,8 +2977,9 @@ class ErpSyncTests(TestCase):
         self.assertIn(self.order.id, ids)
 
     def test_order_ack_records_event(self):
-        from marketplace.models import OrderEvent
         import json
+
+        from marketplace.models import OrderEvent
         resp = self.client.post(
             f"/api/assistant/erp/sync/orders/{self.order.id}/ack/",
             data=json.dumps({"erp_order_id": "1C-9001", "note": "received"}),
@@ -2833,11 +3019,12 @@ class PricelistUploadTests(TestCase):
     """ТЗ: загрузка прайса через чат с AI-маппингом колонок."""
 
     def setUp(self):
-        from decimal import Decimal as D
+        import uuid
+
         from django.contrib.auth import get_user_model
         from django.test import Client
+
         from marketplace.models import Brand, Category
-        import uuid
         U = get_user_model()
         u = uuid.uuid4().hex[:6]
         self.seller = U.objects.create_user(
@@ -2913,6 +3100,7 @@ class PricelistUploadTests(TestCase):
 
     def test_commit_imports_parts(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         from marketplace.models import Part, PricelistMapping
         self.client.force_login(self.seller)
         csv_bytes = self._make_csv([
@@ -2962,6 +3150,7 @@ class PricelistUploadTests(TestCase):
     def test_re_upload_does_not_create_duplicates(self):
         """Повторная загрузка обновляет, не создаёт дубликаты."""
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         from marketplace.models import Part
         self.client.force_login(self.seller)
 
@@ -3014,6 +3203,7 @@ class PricelistUploadTests(TestCase):
 
     def test_cancel(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         from marketplace.models import PricelistImport
         self.client.force_login(self.seller)
         csv_bytes = self._make_csv(["Артикул;Цена", "X;1"])
@@ -3105,8 +3295,10 @@ class PricelistUploadTests(TestCase):
     def test_ai_quota_exceeded_returns_429(self):
         """3 AI-вызова за 24ч исчерпали квоту → 429 при 4-й попытке."""
         from datetime import timedelta
+
         from django.core.files.uploadedfile import SimpleUploadedFile
         from django.utils import timezone
+
         from marketplace.models import PricelistImport
         # Создаём 3 PricelistImport с ai_called=True «недавно»
         for _ in range(3):
@@ -3130,8 +3322,9 @@ class PricelistUploadTests(TestCase):
 
     def test_smart_mapping_returns_unknowns(self):
         """Заголовки которые не в словаре остаются unknown."""
-        from assistant.pricelist import _smart_mapping
         from django.test.utils import override_settings
+
+        from assistant.pricelist import _smart_mapping
         with override_settings(ANTHROPIC_API_KEY=""):
             mapping_std, unknown, ai, status = _smart_mapping(
                 ["Артикул", "Наименование", "Цена", "СовершенноНоваяКолонка"],
@@ -3167,6 +3360,7 @@ class PricelistUploadTests(TestCase):
     def test_re_upload_uses_saved_mapping_no_ai(self):
         """Повторная загрузка применяет сохранённый маппинг, AI пропускается."""
         from django.core.files.uploadedfile import SimpleUploadedFile
+
         from marketplace.models import PricelistMapping
         self.client.force_login(self.seller)
         # Создаём сохранённый маппинг (как после первой загрузки)

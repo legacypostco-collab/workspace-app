@@ -1,0 +1,46 @@
+# Local / dev artifacts — никогда не попадают в prod-образ
+db.sqlite3
+db.sqlite3-journal
+*.sqlite3
+*.pyc
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+.tox
+.env
+.env.local
+.envrc
+
+# Git + IDE
+.git
+.gitignore
+.github
+.idea
+.vscode
+.DS_Store
+
+# Worktrees & Claude artefacts
+.claude
+worktrees
+
+# Tests / E2E / docs (не нужны в runtime образа)
+tests
+docs
+*.md
+DEPLOY.md
+TZ_*.md
+
+# Build artefacts
+staticfiles
+media
+node_modules
+*.log
+imports/*.json
+imports/*.xlsx
+
+# Локальные дампы
+dumps
+backups

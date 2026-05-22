@@ -7,6 +7,8 @@
     <title>{% block title %}Consolidator Parts{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}" />
     <link rel="stylesheet" href="{% static 'marketplace/styles.css' %}" />
+    {# Дочерние шаблоны кладут сюда meta description, OG, Schema.org JSON-LD. #}
+    {% block extra_head %}{% endblock %}
   </head>
   <body>
     <div class="app-shell">

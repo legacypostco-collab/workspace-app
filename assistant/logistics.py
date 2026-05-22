@@ -1,0 +1,225 @@
+"""Калькулятор международной логистики.
+
+Формула:
+    volumetric_kg = (L × W × H см) / divisor
+        divisor = 5000 для sea, 6000 для air (IATA / FIATA стандарт)
+    chargeable_kg = max(actual_kg, volumetric_kg)
+    cost = max(chargeable_kg × rate_per_kg, min_charge)
+
+Источник тарифов — модель `LogisticsTariff`. В будущем подключаем API
+провайдеров (DHL/FedEx/Maersk) через `LogisticsProvider`-интерфейс.
+"""
+from __future__ import annotations
+
+from decimal import Decimal
+from typing import Protocol
+
+DIVISORS = {
+    "sea":  Decimal("5000"),
+    "air":  Decimal("6000"),
+    "auto": Decimal("4000"),
+}
+
+# Реальный breakdown базисов поставки (Incoterms 2020):
+#
+# FOB (Free On Board):
+#   покупатель сам забирает товар в порту отгрузки поставщика.
+#   Доплат поверх EXW-цены НЕТ — клиент сам организует вывоз.
+#
+# CIP (Carriage & Insurance Paid To):
+#   продавец/маркетплейс довозит до выбранного покупателем порта прибытия.
+#   Стоимость = фрахт (port-to-port) + страховка груза (1.5% от cargo,
+#   правило Institute Cargo Clauses A, минимум 110% cargo value).
+#   Таможню и пошлины платит покупатель.
+#
+# DDP (Delivered Duty Paid):
+#   до двери, all-in. Поверх CIP добавляются:
+#     • импортная пошлина (~10% от cargo, реальный диапазон 3-20% по HS-коду);
+#     • НДС 20% от (cargo + duty + freight + insurance + last_mile);
+#     • last-mile авто внутри страны (~5% от cargo).
+INCOTERM_RULES = {
+    "FOB": dict(include_freight=False, insurance_pct=Decimal("0"),
+                duty_pct=Decimal("0"),  vat_pct=Decimal("0"),
+                last_mile_pct=Decimal("0")),
+    "CIP": dict(include_freight=True,  insurance_pct=Decimal("0.015"),
+                duty_pct=Decimal("0"),  vat_pct=Decimal("0"),
+                last_mile_pct=Decimal("0")),
+    "DDP": dict(include_freight=True,  insurance_pct=Decimal("0.015"),
+                duty_pct=Decimal("0.10"), vat_pct=Decimal("0.20"),
+                last_mile_pct=Decimal("0.05")),
+}
+
+
+def calc_incoterm_breakdown(freight: Decimal, cargo_value: Decimal,
+                              incoterm: str) -> dict:
+    """Разложение надбавки за доставку по базису.
+
+    FOB → 0 (покупатель забирает в порту отгрузки).
+    CIP → freight + страховка.
+    DDP → CIP + пошлина + НДС + last-mile.
+    """
+    rules = INCOTERM_RULES.get(incoterm, INCOTERM_RULES["FOB"])
+    freight = Decimal(freight or 0)
+    cargo = Decimal(cargo_value or 0)
+    freight_used = freight if rules["include_freight"] else Decimal("0")
+    insurance = (cargo * rules["insurance_pct"]).quantize(Decimal("0.01"))
+    duty = (cargo * rules["duty_pct"]).quantize(Decimal("0.01"))
+    last_mile = (cargo * rules["last_mile_pct"]).quantize(Decimal("0.01"))
+    vat_base = cargo + duty + freight_used + insurance + last_mile
+    vat = (vat_base * rules["vat_pct"]).quantize(Decimal("0.01"))
+    total = freight_used + insurance + duty + vat + last_mile
+    return {
+        "freight": freight_used, "insurance": insurance,
+        "carriage_ext": Decimal("0"), "duty": duty,
+        "vat": vat, "last_mile": last_mile,
+        "total": total.quantize(Decimal("0.01")),
+        "incoterm": incoterm,
+    }
+
+
+# Legacy alias — старый коэффициент для совместимости
+INCOTERM_MARKUP = {"FOB": Decimal("1.00"), "CIP": Decimal("1.07"), "DDP": Decimal("1.18")}
+
+
+def _country_from_port(port_string: str) -> str:
+    """Извлекает ISO-код страны из портовой строки.
+
+    Пример: 'CNNGB · Ningbo-Zhoushan · 宁波 · 🇨🇳 Китай' → 'CN'
+    """
+    if not port_string:
+        return ""
+    head = port_string.strip().split()[0]
+    if len(head) >= 2 and head[:2].isalpha():
+        return head[:2].upper()
+    return ""
+
+
+def _volumetric_kg(length_cm, width_cm, height_cm, mode: str) -> Decimal:
+    """Объёмный вес в кг по габаритам в см."""
+    try:
+        l = Decimal(length_cm or 0)
+        w = Decimal(width_cm or 0)
+        h = Decimal(height_cm or 0)
+    except Exception:
+        return Decimal("0")
+    if l <= 0 or w <= 0 or h <= 0:
+        return Decimal("0")
+    divisor = DIVISORS.get(mode, DIVISORS["sea"])
+    return (l * w * h) / divisor
+
+
+def calc_with_incoterm(part, dest_country: str, mode: str, incoterm: str) -> dict:
+    """Расчёт доставки с учётом базиса. Поверх базового тарифа применяет
+    markup для CIP/CIF/DDP (страховка, фрахт, таможня).
+    """
+    r = calc_logistics(part, dest_country, mode)
+    if r.get("cost") is None:
+        return r
+    markup = INCOTERM_MARKUP.get(incoterm, Decimal("1.00"))
+    r = dict(r)
+    r["cost"] = (r["cost"] * markup).quantize(Decimal("0.01"))
+    r["incoterm"] = incoterm
+    return r
+
+
+def calc_logistics(part, dest_country: str, mode: str = "sea") -> dict:
+    """Считает стоимость доставки одной позиции.
+
+    Args:
+        part: marketplace.Part instance — нужны gross_weight_kg + LxWxH + sea_port/air_port
+        dest_country: ISO-код страны назначения (RU, KZ, ...)
+        mode: 'sea' или 'air'
+
+    Returns:
+        dict с ключами:
+            cost (Decimal | None)            — итоговая стоимость USD
+            chargeable_kg (Decimal)          — billable вес
+            actual_kg (Decimal)              — фактический вес
+            volumetric_kg (Decimal)          — объёмный вес
+            transit_days (int | None)        — срок доставки
+            tariff_id (int | None)           — id применённого тарифа
+            origin_port (str)                — порт отправления
+            mode (str)                       — sea / air
+            source (str)                     — internal / api_dhl / ...
+            error (str | None)               — что не получилось
+    """
+    from marketplace.models import LogisticsTariff
+
+    mode = mode if mode in ("sea", "air") else "sea"
+    port_field = "sea_port" if mode == "sea" else "air_port"
+    origin = (getattr(part, port_field, "") or "").strip()
+    origin_code = (origin.split()[0] if origin else "")
+    dest_country = (dest_country or "").upper()[:2]
+
+    actual = Decimal(part.gross_weight_kg or 0)
+    vol = _volumetric_kg(part.length_cm, part.width_cm, part.height_cm, mode)
+    chargeable = max(actual, vol)
+
+    base = {
+        "cost": None,
+        "actual_kg": actual,
+        "volumetric_kg": vol,
+        "chargeable_kg": chargeable,
+        "transit_days": None,
+        "tariff_id": None,
+        "origin_port": origin_code,
+        "mode": mode,
+        "source": None,
+        "error": None,
+    }
+
+    if not origin_code:
+        base["error"] = "no_origin_port"
+        return base
+    if not dest_country:
+        base["error"] = "no_dest_country"
+        return base
+    if chargeable <= 0:
+        base["error"] = "no_weight_or_dims"
+        return base
+
+    # Lookup тариф: точное совпадение по porto-code, иначе fallback на страну-страну.
+    origin_country = _country_from_port(origin)
+    # Сначала ищем точное совпадение по порту (TRMER), потом fallback на
+    # страну отправления (TR). Специфичный тариф порта > общий по стране.
+    tariff = LogisticsTariff.objects.filter(
+        origin_port__iexact=origin_code,
+        dest_country=dest_country, mode=mode, is_active=True,
+    ).first()
+    if not tariff and origin_country and origin_country != origin_code:
+        tariff = LogisticsTariff.objects.filter(
+            origin_port__iexact=origin_country,
+            dest_country=dest_country, mode=mode, is_active=True,
+        ).first()
+    if not tariff:
+        base["error"] = "no_tariff"
+        return base
+
+    cost = chargeable * tariff.rate_per_kg
+    if tariff.min_charge and cost < tariff.min_charge:
+        cost = Decimal(tariff.min_charge)
+
+    base.update({
+        "cost": cost.quantize(Decimal("0.01")),
+        "transit_days": tariff.transit_days,
+        "tariff_id": tariff.id,
+        "source": tariff.source,
+    })
+    return base
+
+
+# ── Pluggable provider interface (для будущих API) ──────────────────
+
+class LogisticsProvider(Protocol):
+    """Интерфейс провайдера расчёта логистики.
+
+    Дефолтный провайдер использует LogisticsTariff (внутренние тарифы).
+    В будущем — DHL/FedEx/Maersk API через тот же интерфейс.
+    """
+    def quote(self, part, dest_country: str, mode: str) -> dict: ...
+
+
+class InternalTariffProvider:
+    """Дефолтный провайдер на основе модели LogisticsTariff."""
+    def quote(self, part, dest_country: str, mode: str = "sea") -> dict:
+        return calc_logistics(part, dest_country, mode)

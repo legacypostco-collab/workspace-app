@@ -5,7 +5,6 @@ from django.db import transaction
 
 from marketplace.models import Part
 
-
 CJK_RE = re.compile(r"[\u4e00-\u9fff]")
 ORIGINAL_CN_RE = re.compile(r"Original CN:\s*(.+?)\.")
 

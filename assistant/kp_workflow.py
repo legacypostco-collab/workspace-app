@@ -152,6 +152,14 @@ def present_kp_to_buyer(params, user, role):
     parts_total = best.total_amount
     logi_cost_d = Decimal(str(logi["cost"]))
     full_invoice = (parts_total + logi_cost_d).quantize(Decimal("0.01"))
+
+    # Early-warning: если сумма КП меньше минимума, сразу показываем
+    # blocker — не строим Pro-forma, не плодим UI.
+    from .order_limits import check_min_order
+    block = check_min_order(full_invoice)
+    if block:
+        return ActionResult(**block)
+
     reserve = (full_invoice * Decimal("0.10")).quantize(Decimal("0.01"))
 
     # ── Генерируем настоящий PDF Pro-forma Invoice ──────────────
@@ -226,11 +234,13 @@ def confirm_kp_and_reserve(params, user, role):
     """Финальная кнопка во всех трёх режимах: подтверждение клиента →
     резерв 10% → calc-чат становится shipment-чатом.
     """
-    from marketplace.models import RFQ, Quote, Order, OrderItem
-    from .actions import _log_event
-    from . import payments as _pay
-    from .models import Wallet
     from django.db import transaction
+
+    from marketplace.models import RFQ, Order, OrderItem, Quote
+
+    from . import payments as _pay
+    from .actions import _log_event
+    from .models import Wallet
 
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
@@ -249,6 +259,13 @@ def confirm_kp_and_reserve(params, user, role):
     parts_total = q.total_amount
     logi_cost = Decimal(str(params.get("logistics_cost") or 0))
     full_invoice = (parts_total + logi_cost).quantize(Decimal("0.01"))
+
+    # Бизнес-правило: минимальная сумма заказа (см. assistant/order_limits.py).
+    from .order_limits import check_min_order
+    block = check_min_order(full_invoice)
+    if block:
+        return ActionResult(**block)
+
     reserve = (full_invoice * Decimal("0.10")).quantize(Decimal("0.01"))
 
     wallet = Wallet.for_user(user)
@@ -318,7 +335,7 @@ def confirm_kp_and_reserve(params, user, role):
     # 5. Сразу генерируем официальный Commercial Invoice PDF на Order
     invoice_url = ""
     try:
-        from .documents import _build_invoice_pdf, _save_pdf, _doc_url
+        from .documents import _build_invoice_pdf, _doc_url, _save_pdf
         buf = _build_invoice_pdf(order)
         doc = _save_pdf(order, "invoice", f"Commercial Invoice ORD-{order.id}",
                          buf, user)

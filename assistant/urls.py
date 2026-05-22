@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import auth_views, erp_views, pricelist, qr_scan, upload, views
+from . import auth_views, erp_views, pricelist, qr_scan, tg_views, upload, views
 
 router = DefaultRouter()
 router.register(r"conversations", views.ConversationViewSet, basename="conversation")
@@ -14,6 +14,8 @@ urlpatterns = [
     path("suggest/", views.SuggestView.as_view(), name="assistant-suggest"),
     path("widget-config/", views.WidgetConfigView.as_view(), name="assistant-widget-config"),
     path("role/", views.RoleSwitchView.as_view(), name="assistant-role"),
+    # Telegram bot webhook (prod). Secret в env TELEGRAM_WEBHOOK_SECRET.
+    path("tg/webhook/<str:secret>/", tg_views.telegram_webhook, name="tg-webhook"),
     path("upload-spec/", upload.UploadSpecView.as_view(), name="assistant-upload-spec"),
     path("transcribe-audio/", upload.TranscribeAudioView.as_view(), name="assistant-transcribe"),
     path("recognize-photo/", upload.RecognizePhotoView.as_view(), name="assistant-recognize-photo"),

@@ -24,6 +24,8 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
+from assistant.management._seed_guard import ensure_dev_only
+
 User = get_user_model()
 
 
@@ -55,8 +57,9 @@ class Command(BaseCommand):
                             help="Удалить ранее созданные seed-объекты")
 
     def handle(self, *args, **options):
-        from marketplace.models import Order, OrderItem, OrderEvent, Part, RFQ, RFQItem
-        from assistant.models import Wallet, WalletTx, Project
+        ensure_dev_only(self)
+        from assistant.models import Project, Wallet, WalletTx
+        from marketplace.models import RFQ, Order, OrderEvent, OrderItem, Part, RFQItem
 
         if options["reset"]:
             n_orders = Order.objects.filter(logistics_meta__seed=SEED_TAG).delete()

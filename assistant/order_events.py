@@ -24,23 +24,25 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
-from django.utils import timezone
-
 logger = logging.getLogger(__name__)
 
 
+from django.utils.translation import gettext
+
 # Pipeline этапы для timeline-карточки. (status, label, who_acts_next)
+# Лейблы — функции (lambda), чтобы вычислялись на каждом рендере под текущим
+# активным языком (translation.activate() сделан в middleware).
 PIPELINE_STAGES = [
-    ("reserve_paid",   "Резерв оплачен",          "seller"),
-    ("confirmed",      "Подтверждён продавцом",   "seller"),
-    ("in_production",  "В производстве",          "seller"),
-    ("ready_to_ship",  "Готов к отгрузке",        "buyer"),  # buyer платит 90%
-    ("transit_abroad", "Транзит за рубеж",        "operator"),
-    ("customs",        "На таможне",              "operator"),
-    ("transit_rf",     "Транзит по РФ",           "operator"),
-    ("issuing",        "На выдаче",               "operator"),
-    ("delivered",      "Доставлен",               "buyer"),  # buyer подтверждает
-    ("completed",      "Завершён",                None),
+    ("reserve_paid",   lambda: gettext("Резерв оплачен"),          "seller"),
+    ("confirmed",      lambda: gettext("Подтверждён продавцом"),   "seller"),
+    ("in_production",  lambda: gettext("В производстве"),          "seller"),
+    ("ready_to_ship",  lambda: gettext("Готов к отгрузке"),        "buyer"),
+    ("transit_abroad", lambda: gettext("Транзит за рубеж"),        "operator"),
+    ("customs",        lambda: gettext("На таможне"),              "operator"),
+    ("transit_rf",     lambda: gettext("Транзит по РФ"),           "operator"),
+    ("issuing",        lambda: gettext("На выдаче"),               "operator"),
+    ("delivered",      lambda: gettext("Доставлен"),               "buyer"),
+    ("completed",      lambda: gettext("Завершён"),                None),
 ]
 
 STAGE_INDEX = {s: i for i, (s, _, _) in enumerate(PIPELINE_STAGES)}
@@ -50,10 +52,12 @@ def _build_timeline_card(order) -> dict:
     """Карточка type=order_timeline для frontend-renderer'а."""
     cur_idx = STAGE_INDEX.get(order.status, -1)
     stages = []
-    for i, (code, label, _who) in enumerate(PIPELINE_STAGES):
+    for i, (code, label_fn, _who) in enumerate(PIPELINE_STAGES):
         state = ("done" if i < cur_idx
                  else "current" if i == cur_idx
                  else "pending")
+        # label_fn — callable, чтобы перевод применился под текущим языком запроса.
+        label = label_fn() if callable(label_fn) else label_fn
         stages.append({"code": code, "label": label, "state": state})
 
     # Next-step CTA по текущему статусу + payment_status
@@ -64,21 +68,21 @@ def _build_timeline_card(order) -> dict:
         rem = (Decimal(str(order.total_amount or 0))
                 - Decimal(str(order.reserve_amount or 0))).quantize(Decimal("0.01"))
         next_action = {
-            "label": f"💳 Оплатить остаток ${rem:,.0f} (90%)",
+            "label": gettext("💳 Оплатить остаток ${rem} (90%)").format(rem=f"{rem:,.0f}"),
             "action": "pay_final",
             "params": {"order_id": order.id},
             "actor": "buyer",
         }
     elif cur == "delivered":
         next_action = {
-            "label": "✓ Подтвердить приёмку",
+            "label": gettext("✓ Подтвердить приёмку"),
             "action": "confirm_delivery",
             "params": {"order_id": order.id},
             "actor": "buyer",
         }
     elif cur in ("transit_abroad", "customs", "transit_rf", "issuing"):
         next_action = {
-            "label": "📦 Трекинг",
+            "label": gettext("📦 Трекинг"),
             "action": "track_shipment",
             "params": {"order_id": order.id},
             "actor": "any",
@@ -92,7 +96,7 @@ def _build_timeline_card(order) -> dict:
         "type": "order_timeline",
         "data": {
             "order_id": order.id,
-            "title": f"Сделка ORD-{order.id}",
+            "title": gettext("Сделка ORD-{id}").format(id=order.id),
             "status_label": order.get_status_display() if hasattr(order, "get_status_display") else str(order.status),
             "total": float(order.total_amount or 0),
             "reserve_amount": float(order.reserve_amount or 0),
@@ -140,47 +144,74 @@ def _order_sellers(order):
 def _operator_users():
     """Возвращает операторов которым пушим SLA-эскалации.
 
-    Сейчас — все is_staff пользователи (≤5 для не перегружать).
-    В проде — отдельная группа Operator + on-call rotation.
+    Кандидаты:
+      • is_staff=True (django admin)
+      • UserProfile.role='operator' / 'operator_*' (явная operator-роль)
+    Дедуплицируем по id, ограничиваем 10 чтобы не флудить алертами.
     """
     from django.contrib.auth import get_user_model
+    from django.db.models import Q
+    from marketplace.models import UserProfile
     User = get_user_model()
-    return list(User.objects.filter(is_staff=True, is_active=True)[:5])
+    operator_user_ids = set(
+        UserProfile.objects.filter(role__startswith="operator")
+        .values_list("user_id", flat=True)
+    )
+    qs = User.objects.filter(
+        Q(is_staff=True) | Q(id__in=operator_user_ids),
+        is_active=True,
+    ).distinct()[:10]
+    return list(qs)
 
 
 # Тексты сообщений для разных аудиторий
-_EVENT_TEXTS_BUYER = {
-    "confirmed":      "✅ Поставщик подтвердил заказ ORD-{id} — запускают производство.",
-    "in_production":  "🏭 ORD-{id} в производстве. Сообщим когда готов к отгрузке.",
-    "ready_to_ship":  "📦 ORD-{id} готов к отгрузке. Оплатите остаток 90% — поедет.",
-    "pay_final":      "💳 Остаток 90% оплачен по ORD-{id} — заказ отгружают.",
-    "shipped":        "🚚 ORD-{id} отгружен и в пути.",
-    "transit_abroad": "🛫 ORD-{id} в транзите за рубеж.",
-    "customs":        "🛃 ORD-{id} проходит таможню.",
-    "transit_rf":     "🚛 ORD-{id} в транзите по РФ.",
-    "issuing":        "📬 ORD-{id} на выдаче — забирайте.",
-    "delivered":      "🏁 ORD-{id} доставлен. Подтвердите приёмку — деньги уйдут продавцу.",
-    "completed":      "🎉 ORD-{id} завершён. Эскроу освобождён продавцу.",
-}
-_EVENT_TEXTS_SELLER = {
-    "reserve_paid":   "💰 ORD-{id}: резерв 10% оплачен покупателем — можно подтверждать заказ.",
-    "confirmed":      "✅ ORD-{id} подтверждён — запустите производство.",
-    "in_production":  "🏭 ORD-{id} в производстве (статус обновлён).",
-    "ready_to_ship":  "📦 ORD-{id} помечен «готов к отгрузке». Ждём оплаты 90% от покупателя.",
-    "pay_final":      "💳 Покупатель оплатил остаток 90% по ORD-{id}. Можно отгружать.",
-    "shipped":        "🚚 ORD-{id}: вы отгрузили. Покупатель уведомлён.",
-    "transit_abroad": "🛫 ORD-{id}: транзит за рубеж — следите за трекингом.",
-    "customs":        "🛃 ORD-{id}: на таможне (оператор оформляет).",
-    "transit_rf":     "🚛 ORD-{id}: транзит по РФ.",
-    "issuing":        "📬 ORD-{id}: передан на выдачу — покупатель заберёт.",
-    "delivered":      "🏁 ORD-{id} доставлен. Покупатель должен подтвердить приёмку.",
-    "completed":      "🎉 ORD-{id}: покупатель подтвердил приёмку — деньги переведены вам из эскроу.",
-}
+# Тексты — функции, чтобы перевод применялся под текущим языком запроса.
+def _event_text_buyer(code: str) -> str | None:
+    table = {
+        "confirmed":      gettext("✅ Поставщик подтвердил заказ ORD-{id} — запускают производство."),
+        "in_production":  gettext("🏭 ORD-{id} в производстве. Сообщим когда готов к отгрузке."),
+        "ready_to_ship":  gettext("📦 ORD-{id} готов к отгрузке. Оплатите остаток 90% — поедет."),
+        "pay_final":      gettext("💳 Остаток 90% оплачен по ORD-{id} — заказ отгружают."),
+        "shipped":        gettext("🚚 ORD-{id} отгружен и в пути."),
+        "transit_abroad": gettext("🛫 ORD-{id} в транзите за рубеж."),
+        "customs":        gettext("🛃 ORD-{id} проходит таможню."),
+        "transit_rf":     gettext("🚛 ORD-{id} в транзите по РФ."),
+        "issuing":        gettext("📬 ORD-{id} на выдаче — забирайте."),
+        "delivered":      gettext("🏁 ORD-{id} доставлен. Подтвердите приёмку — деньги уйдут продавцу."),
+        "completed":      gettext("🎉 ORD-{id} завершён. Эскроу освобождён продавцу."),
+    }
+    return table.get(code)
+
+
+def _event_text_seller(code: str) -> str | None:
+    table = {
+        "reserve_paid":   gettext("💰 ORD-{id}: резерв 10% оплачен покупателем — можно подтверждать заказ."),
+        "confirmed":      gettext("✅ ORD-{id} подтверждён — запустите производство."),
+        "in_production":  gettext("🏭 ORD-{id} в производстве (статус обновлён)."),
+        "ready_to_ship":  gettext("📦 ORD-{id} помечен «готов к отгрузке». Ждём оплаты 90% от покупателя."),
+        "pay_final":      gettext("💳 Покупатель оплатил остаток 90% по ORD-{id}. Можно отгружать."),
+        "shipped":        gettext("🚚 ORD-{id}: вы отгрузили. Покупатель уведомлён."),
+        "transit_abroad": gettext("🛫 ORD-{id}: транзит за рубеж — следите за трекингом."),
+        "customs":        gettext("🛃 ORD-{id}: на таможне (оператор оформляет)."),
+        "transit_rf":     gettext("🚛 ORD-{id}: транзит по РФ."),
+        "issuing":        gettext("📬 ORD-{id}: передан на выдачу — покупатель заберёт."),
+        "delivered":      gettext("🏁 ORD-{id} доставлен. Покупатель должен подтвердить приёмку."),
+        "completed":      gettext("🎉 ORD-{id}: покупатель подтвердил приёмку — деньги переведены вам из эскроу."),
+    }
+    return table.get(code)
+
+
+# Обратная совместимость для внешних импортов
+_EVENT_TEXTS_BUYER = {}    # deprecated, see _event_text_buyer()
+_EVENT_TEXTS_SELLER = {}   # deprecated, see _event_text_seller()
 _EVENT_TEXTS_OPERATOR = {
     "sla_semi_overdue":   "⚠️ SEMI RFQ #{rfq_id} — просрочен 15-минутный SLA. Approve или эскалация.",
     "sla_manual_overdue": "⚠️ MANUAL RFQ #{rfq_id} — собирается КП >48ч. Эскалация.",
     "sla_breach":         "⚠️ ORD-{id}: SLA breach (статус {status}). Нужна реакция.",
     "claim_opened":       "🛡 ORD-{id}: открыта рекламация. Требуется review.",
+    "claim_escalated":    "🚨 ЭСКАЛАЦИЯ · рекламация открыта >7 дней без решения.",
+    "user_registered":    "👤 Новый пользователь: {username} · {role} · {email}",
+    "kyb_submitted":      "🛡 {username} отправил KYB на проверку — компания «{legal_name}».",
 }
 
 
@@ -203,14 +234,21 @@ def notify_order_event(order, event: str, *, actor=None,
     cards = [_build_timeline_card(order)]
     extra = list(extra_actions or [])
 
-    def _post(user, role_label, text_template_dict):
+    def _post(user, role_label, text_resolver):
         if not user:
             return
         conv = _shipment_conv(user, order, role=role_label)
         if not conv:
             return
-        body = (text or text_template_dict.get(event, "")).format(id=order.id) \
-               or f"Обновление по заказу ORD-{order.id}: {event}"
+        # text_resolver — либо dict (старый) либо callable(event)->str|None (новый)
+        if callable(text_resolver):
+            tpl = text_resolver(event) or ""
+        elif isinstance(text_resolver, dict):
+            tpl = text_resolver.get(event, "")
+        else:
+            tpl = ""
+        body = (text or tpl).format(id=order.id) \
+               or gettext("Обновление по заказу ORD-{id}: {event}").format(id=order.id, event=event)
         Message.objects.create(
             conversation=conv,
             role=Message.Role.SYSTEM,
@@ -220,8 +258,8 @@ def notify_order_event(order, event: str, *, actor=None,
         )
         # WebSocket для live-update
         try:
-            from channels.layers import get_channel_layer
             from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
             layer = get_channel_layer()
             if layer:
                 async_to_sync(layer.group_send)(
@@ -237,28 +275,40 @@ def notify_order_event(order, event: str, *, actor=None,
         )
 
     if "buyer" in targets and order.buyer:
-        _post(order.buyer, "buyer", _EVENT_TEXTS_BUYER)
+        _post(order.buyer, "buyer", _event_text_buyer)
     if "seller" in targets:
         for s in _order_sellers(order):
-            _post(s, "seller", _EVENT_TEXTS_SELLER)
+            _post(s, "seller", _event_text_seller)
     if "operator" in targets:
         for op in _operator_users():
             _post(op, "operator", _EVENT_TEXTS_OPERATOR)
 
 
-def notify_operator_alert(*, rfq=None, order=None, claim=None,
-                            event: str, text: str | None = None) -> None:
+def notify_operator_alert(*, rfq=None, order=None, claim=None, user_obj=None,
+                            event: str, text: str | None = None,
+                            extra: dict | None = None) -> None:
     """Эскалация в операторские shipment-чаты — SLA breach, SEMI overdue,
-    MANUAL >48ч, claim opened.
+    MANUAL >48ч, claim opened, регистрация нового пользователя, KYB submit.
+
+    `user_obj` — для user-related events (user_registered, kyb_submitted).
+    `extra` — дополнительные плейсхолдеры для format() (например legal_name).
     """
     from .models import Conversation, Message
 
+    fmt = {
+        "id": (order.id if order else "—"),
+        "rfq_id": (rfq.id if rfq else "—"),
+        "status": (order.status if order else "—"),
+        "username": (user_obj.username if user_obj else "—"),
+        "email":    (user_obj.email if user_obj else "—"),
+        "role":     ((extra or {}).get("role") or "—"),
+        "legal_name": (extra or {}).get("legal_name", "—"),
+    }
     body = text or _EVENT_TEXTS_OPERATOR.get(event, f"Alert: {event}")
-    body = body.format(
-        id=(order.id if order else "—"),
-        rfq_id=(rfq.id if rfq else "—"),
-        status=(order.status if order else "—"),
-    )
+    try:
+        body = body.format(**fmt)
+    except KeyError:
+        pass  # неполные плейсхолдеры — оставляем как есть
     cards = []
     actions = []
     title_prefix = ""
@@ -277,9 +327,17 @@ def notify_operator_alert(*, rfq=None, order=None, claim=None,
                               "label": "▶️ Сформировать КП",
                               "params": {"rfq_id": rfq.id}})
     elif claim:
-        title_prefix = f"Claim #{claim.id}"
+        title_prefix = f"Рекламация #{claim.id}"
         actions.append({"action": "claim_detail", "label": "📋 Открыть",
                           "params": {"claim_id": claim.id}})
+    elif user_obj:
+        title_prefix = f"@{user_obj.username}"
+        if event == "user_registered":
+            actions.append({"action": "admin_user_detail", "label": "👤 Открыть профиль",
+                              "params": {"user_id": user_obj.id}})
+        elif event == "kyb_submitted":
+            actions.append({"action": "op_kyb_review", "label": "🛡 Проверить KYB",
+                              "params": {"user_id": user_obj.id}})
 
     for op in _operator_users():
         # Для оператора — отдельный support-conv, чтобы не плодить
@@ -302,8 +360,8 @@ def notify_operator_alert(*, rfq=None, order=None, claim=None,
             actions=actions,
         )
         try:
-            from channels.layers import get_channel_layer
             from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
             layer = get_channel_layer()
             if layer:
                 async_to_sync(layer.group_send)(
@@ -315,4 +373,15 @@ def notify_operator_alert(*, rfq=None, order=None, claim=None,
                 )
         except Exception:
             pass
+
+    # ── Bonus: всем операторам с подключённым Telegram — push в TG ──
+    # Это даёт реальный канал доставки помимо WS/admin-chat (если оператор
+    # сейчас не в чате — увидит в смартфоне).
+    try:
+        from .notif_settings import send_telegram_to_operators
+        tg_text = f"{title_prefix} · {body}" if title_prefix else body
+        send_telegram_to_operators(f"🚨 {event}\n\n{tg_text[:600]}")
+    except Exception:
+        logger.exception("operator_alert telegram fanout failed (non-fatal)")
+
     logger.info(f"operator_alert: {event} → {len(_operator_users())} ops")

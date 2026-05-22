@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 import zipfile
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from collections.abc import Iterable
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
-from typing import Iterable
 from uuid import uuid4
 from xml.etree import ElementTree as ET
 
@@ -14,7 +14,6 @@ from django.db import transaction
 from django.utils.text import slugify
 
 from marketplace.models import Brand, Category, Part
-
 
 NS = {
     "a": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
@@ -131,7 +130,7 @@ class Command(BaseCommand):
             idx_part = header_normalized.index("part number")
             idx_desc = header_normalized.index("description")
             idx_price = header_normalized.index("unitprice")
-        except ValueError as exc:
+        except ValueError:
             try:
                 idx_part = header_normalized.index("partnumber")
                 idx_desc = header_normalized.index("description")

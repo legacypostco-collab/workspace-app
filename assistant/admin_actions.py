@@ -50,7 +50,8 @@ def admin_dashboard(params, user, role):
     err = _ensure_admin(role)
     if err: return err
     from django.contrib.auth import get_user_model
-    from marketplace.models import Order, RFQ, CompanyVerification, Notification
+
+    from marketplace.models import RFQ, CompanyVerification, Order
 
     U = get_user_model()
     now = timezone.now()
@@ -120,8 +121,9 @@ def admin_dashboard(params, user, role):
 def admin_gmv(params, user, role):
     err = _ensure_admin(role)
     if err: return err
+    from django.db.models import Count, Sum
+
     from marketplace.models import Order
-    from django.db.models import Sum, Count
 
     now = timezone.now()
     windows = [
@@ -157,7 +159,7 @@ def admin_gmv(params, user, role):
 
     return ActionResult(
         text=(
-            f"📈 Платформенный GMV (только paid/refunded, без отменённых)."
+            "📈 Платформенный GMV (только paid/refunded, без отменённых)."
         ),
         cards=[
             {"type": "kpi_grid", "data": {"title": "💰 GMV по периодам", "items": items}},
@@ -238,7 +240,9 @@ def admin_user_detail(params, user, role):
     err = _ensure_admin(role)
     if err: return err
     from django.contrib.auth import get_user_model
+
     from marketplace.models import Order
+
     from .models import Wallet
     U = get_user_model()
     try:
@@ -397,6 +401,7 @@ def admin_change_role(params, user, role):
     err = _ensure_admin(role)
     if err: return err
     from django.contrib.auth import get_user_model
+
     from marketplace.models import UserProfile
     U = get_user_model()
     try:
@@ -455,7 +460,7 @@ def admin_change_role(params, user, role):
 def admin_moderation_queue(params, user, role):
     err = _ensure_admin(role)
     if err: return err
-    from marketplace.models import Order, CompanyVerification, Quote
+    from marketplace.models import CompanyVerification, Order, Quote
 
     kyb_pending = CompanyVerification.objects.filter(status="pending").count()
     refunds = Order.objects.filter(payment_status="refund_pending").count()
@@ -554,9 +559,11 @@ def admin_revenue_breakdown(params, user, role):
     err = _ensure_admin(role)
     if err: return err
     from datetime import timedelta
-    from marketplace.models import PlatformRevenueLine
+
     from django.db.models import Sum
     from django.utils import timezone
+
+    from marketplace.models import PlatformRevenueLine
 
     now = timezone.now()
     windows = [("24 часа", 1), ("7 дней", 7), ("30 дней", 30), ("90 дней", 90)]
@@ -611,6 +618,7 @@ def admin_platform_settings(params, user, role):
     err = _ensure_admin(role)
     if err: return err
     import os
+
     from .payments_engines import get_engine
 
     items = [

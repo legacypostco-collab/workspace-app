@@ -1,0 +1,187 @@
+name: E2E + Quality
+
+# Запускается на PR и на main. Долгие проверки (cross-browser, Lighthouse)
+# не блокируют merge — только постят отчёт. Critical-fail в a11y или
+# падение всех браузеров — блокирует через required check.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Раз в сутки — фиксируем drift в Lighthouse скоре
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PY_VERSION: "3.12"
+  # Минимальные значения для dev-server в CI
+  DEBUG_MODE: "True"
+  SECRET_KEY: "ci-only-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  DATABASE_URL: "postgres://test:test@localhost:5432/test"
+  ALLOWED_HOSTS: "localhost,127.0.0.1,testserver"
+  CSRF_TRUSTED_ORIGINS: "http://localhost,http://127.0.0.1"
+  CELERY_TASK_ALWAYS_EAGER: "True"
+  CHANNELS_INMEMORY: "True"
+  KYB_ENABLED: "True"
+  ALLOW_DEMO_LOGIN: "1"
+
+jobs:
+  # ════════════════════════════════════════════════════════════
+  # 1. Playwright cross-browser smoke (chromium/firefox/webkit)
+  # ════════════════════════════════════════════════════════════
+  cross-browser:
+    name: Cross-browser smoke (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false  # один браузер падает — другие должны прогнаться
+      matrix:
+        browser: [chromium, firefox, webkit]
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: test, POSTGRES_PASSWORD: test, POSTGRES_DB: test }
+        ports: ["5432:5432"]
+        options: --health-cmd="pg_isready -U test" --health-interval=5s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PY_VERSION }}", cache: pip }
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          pip install playwright pytest-django pytest-playwright
+          playwright install --with-deps ${{ matrix.browser }}
+      - name: Migrate + seed demo data
+        run: |
+          python manage.py migrate --noinput
+          # Создаём demo-аккаунты для тестов
+          python manage.py shell -c "
+          from django.contrib.auth import get_user_model
+          from marketplace.models import UserProfile
+          U = get_user_model()
+          for name, role in [('demo_buyer','buyer'),('demo_seller','seller'),('demo_operator','operator')]:
+              u,_ = U.objects.get_or_create(username=name, defaults={'email':f'{name}@x.local'})
+              u.set_password('demo12345'); u.is_active=True
+              if role=='operator': u.is_staff=True
+              u.save()
+              UserProfile.objects.get_or_create(user=u, defaults={'role':role,'language':'ru'})
+          "
+      - name: Start dev server
+        run: |
+          nohup python manage.py runserver 127.0.0.1:8003 --noreload > /tmp/dj.log 2>&1 &
+          # Wait for server up
+          for i in {1..30}; do
+            curl -sf http://127.0.0.1:8003/healthz/ && break || sleep 1
+          done
+      - name: Run cross-browser smoke
+        env:
+          E2E_BROWSER: ${{ matrix.browser }}
+          E2E_BASE_URL: http://127.0.0.1:8003
+        run: |
+          pytest tests/e2e/test_cross_browser_smoke.py -v --tb=short
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ matrix.browser }}
+          path: tests/e2e/screenshots/
+          retention-days: 14
+      - name: Upload server log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log-${{ matrix.browser }}
+          path: /tmp/dj.log
+
+  # ════════════════════════════════════════════════════════════
+  # 2. Lighthouse mobile (perf/a11y/SEO/best-practices)
+  # ════════════════════════════════════════════════════════════
+  lighthouse:
+    name: Lighthouse (mobile)
+    runs-on: ubuntu-latest
+    needs: [cross-browser]
+    if: github.event_name == 'pull_request' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: test, POSTGRES_PASSWORD: test, POSTGRES_DB: test }
+        ports: ["5432:5432"]
+        options: --health-cmd="pg_isready -U test" --health-interval=5s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PY_VERSION }}", cache: pip }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - name: Install
+        run: |
+          pip install -r requirements.txt
+          npm install -g @lhci/cli@0.13.x
+      - name: Migrate
+        run: python manage.py migrate --noinput
+      - name: Start server
+        run: |
+          nohup python manage.py runserver 127.0.0.1:8003 --noreload > /tmp/dj.log 2>&1 &
+          for i in {1..30}; do curl -sf http://127.0.0.1:8003/healthz/ && break || sleep 1; done
+      - name: Run Lighthouse CI
+        run: lhci autorun --config=./lighthouserc.json
+        continue-on-error: true  # отчёт не должен блокировать merge
+      - name: Upload Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
+          retention-days: 30
+
+  # ════════════════════════════════════════════════════════════
+  # 3. axe-playwright accessibility scan (0 critical)
+  # ════════════════════════════════════════════════════════════
+  axe-a11y:
+    name: axe a11y (critical=0)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_USER: test, POSTGRES_PASSWORD: test, POSTGRES_DB: test }
+        ports: ["5432:5432"]
+        options: --health-cmd="pg_isready -U test" --health-interval=5s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PY_VERSION }}", cache: pip }
+      - name: Install
+        run: |
+          pip install -r requirements.txt
+          pip install playwright pytest-django axe-playwright-python
+          playwright install --with-deps chromium
+      - name: Migrate
+        run: python manage.py migrate --noinput
+      - name: Start server
+        run: |
+          nohup python manage.py runserver 127.0.0.1:8003 --noreload > /tmp/dj.log 2>&1 &
+          for i in {1..30}; do curl -sf http://127.0.0.1:8003/healthz/ && break || sleep 1; done
+      - name: Run axe scan
+        env: { E2E_BASE_URL: http://127.0.0.1:8003 }
+        run: pytest tests/e2e/test_axe_a11y.py -v --tb=short
+      - name: Upload axe report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: axe-report, path: tests/e2e/axe-results/, retention-days: 14 }

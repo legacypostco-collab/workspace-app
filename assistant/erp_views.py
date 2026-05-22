@@ -25,7 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone as dt_tz
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 
 from django.http import JsonResponse
@@ -34,7 +34,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from marketplace.models import (
-    ApiToken, ErpSyncLog, Order, OrderItem, Part,
+    ApiToken,
+    ErpSyncLog,
+    Order,
+    OrderItem,
+    Part,
 )
 
 logger = logging.getLogger(__name__)
@@ -176,7 +180,7 @@ def sync_orders_pull(request):
         try:
             since = datetime.fromisoformat(since_raw.replace("Z", "+00:00"))
             if since.tzinfo is None:
-                since = since.replace(tzinfo=dt_tz.utc)
+                since = since.replace(tzinfo=UTC)
             qs = qs.filter(created_at__gte=since)
         except ValueError:
             return _err(f"Invalid 'since' date: {since_raw}")

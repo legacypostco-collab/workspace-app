@@ -349,7 +349,7 @@
         <td>
           <div class="drw-actions">
             {% if d.file_url %}
-            <a href="{{ d.file_url }}" target="_blank" class="drw-action-btn" title="{% trans 'Скачать' %}" onclick="event.stopPropagation()">↓</a>
+            <a href="{{ d.file_url }}" target="_blank" rel="noopener noreferrer" class="drw-action-btn" title="{% trans 'Скачать' %}" onclick="event.stopPropagation()">↓</a>
             {% endif %}
           </div>
         </td>
@@ -473,7 +473,7 @@
             '<div class="drw-drawer-file-name">' + (d.fileName || d.title + '.' + d.format.toLowerCase()) + '</div>' +
             '<div class="drw-drawer-file-size">' + d.size + '</div>' +
           '</div>' +
-          '<a href="' + d.fileUrl + '" target="_blank" class="drw-drawer-file-dl">↓ Скачать</a>' +
+          '<a href="' + d.fileUrl + '" target="_blank" rel="noopener noreferrer" class="drw-drawer-file-dl">↓ Скачать</a>' +
         '</div>';
     } else {
       filesEl.innerHTML =

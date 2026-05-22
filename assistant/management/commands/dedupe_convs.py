@@ -12,7 +12,6 @@ conv на (user, category)». Команда оставляет самый св�
 from collections import defaultdict
 
 from django.core.management.base import BaseCommand
-from django.db.models import Count
 
 from assistant.models import Conversation
 

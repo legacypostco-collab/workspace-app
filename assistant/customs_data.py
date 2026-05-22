@@ -12,8 +12,8 @@
 таблицы (ФТС, EAC реестр, OFAC SDN list).
 """
 from __future__ import annotations
-from decimal import Decimal
 
+from decimal import Decimal
 
 # ── HS-коды ───────────────────────────────────────────────────
 # Формат: 4–6 знаков ТН ВЭД ЕАЭС, ключевые слова для поиска

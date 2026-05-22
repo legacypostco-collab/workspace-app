@@ -1,4 +1,3 @@
-import json
 from decimal import Decimal
 
 from django.contrib.auth.models import User
@@ -58,7 +57,7 @@ class ApiHardeningTests(TestCase):
     @override_settings(MAX_IMPORT_ROWS=1)
     def test_import_too_many_rows_returns_413(self):
         self.client.force_login(self.seller)
-        csv_data = "Part Number,Description,Unitprice\nA,desc,1.0\nB,desc,1.5\n".encode("utf-8")
+        csv_data = b"Part Number,Description,Unitprice\nA,desc,1.0\nB,desc,1.5\n"
         file = SimpleUploadedFile("import.csv", csv_data, content_type="text/csv")
         response = self.client.post(
             "/seller/upload/",

@@ -11,14 +11,8 @@ Each adapter implements:
 """
 from __future__ import annotations
 
-import hashlib
-import hmac
-import json
 import os
 from dataclasses import dataclass
-from typing import Optional
-
-from django.conf import settings
 
 
 @dataclass
@@ -42,7 +36,7 @@ class BasePaymentAdapter:
     def capture(self, payment_id: str) -> bool:
         raise NotImplementedError
 
-    def refund(self, payment_id: str, amount: Optional[float] = None) -> str:
+    def refund(self, payment_id: str, amount: float | None = None) -> str:
         raise NotImplementedError
 
 

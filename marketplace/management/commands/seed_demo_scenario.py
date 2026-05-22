@@ -5,13 +5,15 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 
-from marketplace.models import Brand, Category, Part, RFQ, RFQItem, UserProfile
+from assistant.management._seed_guard import ensure_dev_only
+from marketplace.models import RFQ, Brand, Category, Part, RFQItem, UserProfile
 
 
 class Command(BaseCommand):
     help = "Create realistic demo data for proposal/logistics testing."
 
     def handle(self, *args, **options):
+        ensure_dev_only(self)
         # Users
         buyer, _ = User.objects.get_or_create(
             username="demo_buyer",

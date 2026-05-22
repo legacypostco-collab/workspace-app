@@ -1,20 +1,39 @@
 from django.contrib import admin
 
 from .models import (
+    RFQ,
     Brand,
     Category,
+    KnowledgeBaseEntry,
     Order,
     OrderClaim,
     OrderDocument,
     OrderEvent,
     OrderItem,
     Part,
-    RFQ,
     RFQItem,
     SupplierRatingEvent,
     UserProfile,
     WebhookDeliveryLog,
 )
+
+
+@admin.register(KnowledgeBaseEntry)
+class KnowledgeBaseEntryAdmin(admin.ModelAdmin):
+    list_display  = ("question", "category", "is_active", "sort_order",
+                     "views", "updated_at")
+    list_filter   = ("category", "is_active")
+    search_fields = ("question", "answer")
+    list_editable = ("is_active", "sort_order")
+    fields = ("category", "question", "answer", "is_active", "sort_order",
+              "views", "created_by", "created_at", "updated_at")
+    readonly_fields = ("views", "created_at", "updated_at")
+    ordering = ("category", "sort_order", "id")
+
+    def save_model(self, request, obj, form, change):
+        if not change and not obj.created_by:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Brand)

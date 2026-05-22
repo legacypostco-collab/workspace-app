@@ -1,7 +1,6 @@
 """WebSocket consumers — replaces 30s polling for notifications."""
 from __future__ import annotations
 
-import json
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 
@@ -61,6 +60,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
     @staticmethod
     async def _unread_count(user_id):
         from channels.db import database_sync_to_async
+
         from .models import Notification
         return await database_sync_to_async(
             lambda: Notification.objects.filter(user_id=user_id, is_read=False).count()
@@ -69,6 +69,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
     @staticmethod
     async def _mark_read(user_id, notif_id):
         from channels.db import database_sync_to_async
+
         from .models import Notification
         await database_sync_to_async(
             lambda: Notification.objects.filter(user_id=user_id, id=notif_id).update(is_read=True)
@@ -77,6 +78,7 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
     @staticmethod
     async def _mark_all_read(user_id):
         from channels.db import database_sync_to_async
+
         from .models import Notification
         await database_sync_to_async(
             lambda: Notification.objects.filter(user_id=user_id, is_read=False).update(is_read=True)

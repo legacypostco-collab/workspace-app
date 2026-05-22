@@ -34,10 +34,7 @@ logger = logging.getLogger(__name__)
 
 def _pdf_canvas(title: str):
     """Создаёт reportlab Canvas + standard styles."""
-    from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import mm
     from reportlab.pdfgen import canvas
 
     buf = io.BytesIO()
@@ -149,7 +146,7 @@ def _draw_footer(c):
 # ── Save PDF buffer → OrderDocument ─────────────────────────
 
 def _save_pdf(order, doc_type: str, title: str, buf: io.BytesIO,
-              uploaded_by) -> "OrderDocument":
+              uploaded_by) -> OrderDocument:
     from marketplace.models import OrderDocument
     filename = f"ORD-{order.id}-{doc_type}-{timezone.now():%Y%m%d-%H%M%S}.pdf"
     buf.seek(0)

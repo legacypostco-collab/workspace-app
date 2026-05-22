@@ -79,8 +79,8 @@ def setup_2fa(params, user, role):
 
     return ActionResult(
         text=(
-            f"🔐 Setup 2FA · отсканируйте QR в Google Authenticator / Authy / 1Password.\n"
-            f"После добавления — введите 6-значный код из приложения через verify_2fa."
+            "🔐 Setup 2FA · отсканируйте QR в Google Authenticator / Authy / 1Password.\n"
+            "После добавления — введите 6-значный код из приложения через verify_2fa."
         ),
         cards=[
             {"type": "qr", "data": {

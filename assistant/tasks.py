@@ -5,6 +5,7 @@ from celery import shared_task
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def index_part_task(self, part_id):
     from marketplace.models import Part
+
     from .indexer import index_part
     try:
         part = Part.objects.select_related("brand", "category").get(id=part_id)
@@ -17,6 +18,7 @@ def index_part_task(self, part_id):
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def index_order_task(self, order_id):
     from marketplace.models import Order
+
     from .indexer import index_order
     try:
         order = Order.objects.select_related("buyer", "seller").get(id=order_id)
@@ -29,6 +31,7 @@ def index_order_task(self, order_id):
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def index_rfq_task(self, rfq_id):
     from marketplace.models import RFQ
+
     from .indexer import index_rfq
     try:
         rfq = RFQ.objects.get(id=rfq_id)
@@ -48,3 +51,85 @@ def reindex_all_task():
         "orders": index_all_orders(limit=500),
         "rfqs": index_all_rfqs(limit=200),
     }
+
+
+# ──────────────────────────────────────────────────────────────────
+# ТЗ §8 — Постоянный мониторинг KYB.
+# Раз в неделю (Celery beat) перегоняем всех verified поставщиков
+# через run_all_checks → если red signal → переводим в excluded и
+# уведомляем оператора.
+# ──────────────────────────────────────────────────────────────────
+
+@shared_task
+def kyb_weekly_monitor():
+    """Перепроверка всех verified KYB-анкет.
+    Запускается Celery beat раз в неделю (см. CELERY_BEAT_SCHEDULE).
+    """
+    from django.utils import timezone
+
+    from marketplace.models import CompanyVerification
+
+    from .kyb_api_checks import evaluate_risk, run_all_checks
+    from .order_events import _notify  # internal notification helper
+
+    now = timezone.now()
+    excluded = 0
+    checked = 0
+    errors = 0
+    qs = CompanyVerification.objects.filter(status="verified")
+    for kyb in qs.iterator(chunk_size=50):
+        try:
+            kyb.api_results = run_all_checks(kyb)
+            decision, risk, reasons = evaluate_risk(kyb.api_results)
+            kyb.risk_indicator = risk
+            kyb.last_monitored_at = now
+            if decision == "auto_reject":
+                kyb.status = "rejected"  # ТЗ §8: «Исключён автоматически»
+                kyb.rejection_reason = (
+                    "ИСКЛЮЧЁН по мониторингу (раз в неделю):\n• "
+                    + "\n• ".join(reasons[:5])
+                )
+                kyb.reviewed_at = now
+                excluded += 1
+                # Уведомить оператора
+                try:
+                    from django.contrib.auth import get_user_model
+                    for op in get_user_model().objects.filter(is_staff=True)[:5]:
+                        _notify(op, kind="system",
+                                title=f"⚠️ KYB исключён: {kyb.legal_name}",
+                                body=f"Мониторинг выявил red signals: {reasons[0] if reasons else '?'}",
+                                url="/chat/")
+                except Exception:
+                    pass
+            kyb.save()
+            checked += 1
+        except Exception:
+            errors += 1
+    return {"checked": checked, "excluded": excluded, "errors": errors}
+
+
+# ──────────────────────────────────────────────────────────────────
+# Audit log retention. Старые OrderEvent / Message могут раздуть БД.
+# Беспредельное хранение не нужно — деньги уже завершены.
+# ──────────────────────────────────────────────────────────────────
+
+@shared_task
+def prune_old_audit(days: int = 1095):  # 3 года
+    """Удалить OrderEvent старше N дней (по умолчанию 3 года).
+    Беги ежемесячно через Celery beat. Безопасно: события касаются только
+    завершённых заказов; для completed-orders это история, которую можно
+    архивировать в отдельный data warehouse если нужно.
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from marketplace.models import OrderEvent
+    cutoff = timezone.now() - timedelta(days=days)
+    # Только по завершённым / отменённым заказам — активные не трогаем
+    qs = OrderEvent.objects.filter(
+        created_at__lt=cutoff,
+        order__status__in=("completed", "cancelled"),
+    )
+    deleted, _ = qs.delete()
+    return {"deleted_events": deleted, "cutoff": cutoff.isoformat()}

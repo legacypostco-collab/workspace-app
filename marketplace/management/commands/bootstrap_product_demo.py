@@ -10,7 +10,20 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.text import slugify
 
-from marketplace.models import Brand, Category, Order, OrderClaim, OrderDocument, OrderEvent, OrderItem, Part, RFQ, RFQItem, UserProfile
+from assistant.management._seed_guard import ensure_dev_only
+from marketplace.models import (
+    RFQ,
+    Brand,
+    Category,
+    Order,
+    OrderClaim,
+    OrderDocument,
+    OrderEvent,
+    OrderItem,
+    Part,
+    RFQItem,
+    UserProfile,
+)
 
 
 class Command(BaseCommand):
@@ -220,6 +233,7 @@ class Command(BaseCommand):
         return order
 
     def handle(self, *args, **options):
+        ensure_dev_only(self)
         with transaction.atomic():
             buyer = self._ensure_user(
                 username="demo_buyer",

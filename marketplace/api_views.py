@@ -3,15 +3,15 @@ from datetime import timedelta
 from django.conf import settings
 from django.db import connection
 from django.db.models import Count, Q, Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
-from django.http import HttpResponse
 
-from .models import Category, Order, OrderClaim, OrderEvent, Part, RFQ, RFQItem, WebhookDeliveryLog
+from .models import RFQ, Category, Order, OrderClaim, OrderEvent, Part, RFQItem, WebhookDeliveryLog
 from .serializers import CategorySerializer, OrderSerializer, PartSerializer
 from .views import (
     ORDER_TRANSITIONS,
@@ -329,7 +329,7 @@ def api_seller_product_export(request):
         response.write(
             f'{part.id},"{(part.title or "").replace("\"", "\"\"")}",'
             f'"{(part.oem_number or "").replace("\"", "\"\"")}",'
-            f'"{((part.brand.name if part.brand else "")).replace("\"", "\"\"")}",'
+            f'"{(part.brand.name if part.brand else "").replace("\"", "\"\"")}",'
             f"{part.price},{part.currency},{part.stock_quantity},{part.availability_status},{part.data_updated_at.isoformat()}\r\n"
         )
     return response

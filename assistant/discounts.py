@@ -55,7 +55,7 @@ def recalc_buyer_volume(user, year: int | None = None):
     if not user or not user.is_authenticated:
         return None
     try:
-        from marketplace.models import Order, BuyerVolumeYearly
+        from marketplace.models import BuyerVolumeYearly, Order
         if year is None:
             year = timezone.now().year
 

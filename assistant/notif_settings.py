@@ -131,6 +131,66 @@ def notif_set_kinds(params, user, role):
     )
 
 
+# ── Telegram sender (для эскалаций и critical-alerts) ─────────
+
+def send_telegram(chat_id: str, text: str) -> bool:
+    """Отправляет сообщение в Telegram через Bot API.
+
+    Тихо возвращает False если:
+      • TELEGRAM_BOT_TOKEN не задан в env
+      • requests не установлен
+      • API вернул ошибку
+
+    Не падает — не блокирует основной flow при сбоях TG.
+    """
+    from django.conf import settings
+    token = getattr(settings, "TELEGRAM_BOT_TOKEN", "")
+    if not (token and chat_id and text):
+        return False
+    try:
+        import requests  # type: ignore
+    except ImportError:
+        return False
+    try:
+        r = requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={
+                "chat_id": chat_id, "text": text[:4000],
+                "disable_web_page_preview": True,
+            },
+            timeout=5,
+        )
+        return r.ok
+    except Exception:
+        return False
+
+
+def send_telegram_to_operators(text: str) -> int:
+    """Шлёт push всем операторам у которых notif_telegram_enabled+chat_id.
+
+    Возвращает количество успешных отправок. Используется в:
+      • escalate_stale_claims management command
+      • любой будущий critical-alert (KYB fraud, SLA breach)
+    """
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+    U = get_user_model()
+
+    ops = (U.objects.filter(is_active=True)
+           .filter(Q(is_staff=True) | Q(profile__role__startswith="operator"))
+           .filter(profile__notif_telegram_enabled=True)
+           .exclude(profile__notif_telegram_chat_id="")
+           .select_related("profile")
+           .distinct()[:20])
+    sent = 0
+    for op in ops:
+        chat_id = op.profile.notif_telegram_chat_id
+        if send_telegram(chat_id, text):
+            sent += 1
+    logger.info("send_telegram_to_operators: %d / %d delivered", sent, ops.count())
+    return sent
+
+
 @register("notif_link_telegram")
 def notif_link_telegram(params, user, role):
     """Привязать Telegram chat_id.
