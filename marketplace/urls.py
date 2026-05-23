@@ -54,23 +54,12 @@ urlpatterns = [
     path("verify-email/<str:token>/", views.verify_email_view, name="verify_email"),
     path("login/", views.login_view, name="login"),
     path("logout/", views.logout_view, name="logout"),
-    # Password reset (Django built-in)
-    path("password-reset/", auth_views.PasswordResetView.as_view(
-        template_name="auth/password_reset.html",
-        email_template_name="auth/password_reset_email.txt",
-        subject_template_name="auth/password_reset_subject.txt",
-        success_url="/password-reset/done/",
-    ), name="password_reset"),
-    path("password-reset/done/", auth_views.PasswordResetDoneView.as_view(
-        template_name="auth/password_reset_done.html",
-    ), name="password_reset_done"),
-    path("password-reset/<uidb64>/<token>/", auth_views.PasswordResetConfirmView.as_view(
-        template_name="auth/password_reset_confirm.html",
-        success_url="/password-reset/complete/",
-    ), name="password_reset_confirm"),
-    path("password-reset/complete/", auth_views.PasswordResetCompleteView.as_view(
-        template_name="auth/password_reset_complete.html",
-    ), name="password_reset_complete"),
+    # SECURITY (round-3 audit): убраны duplicate password-reset routes —
+    # они overlay'или RateLimitedPasswordResetView (см. строки 17-26),
+    # что снимало защиту от спама на /password_reset/. Оставлен только
+    # ratelimited вариант выше, эти алиасы редиректят на него.
+    path("password-reset/", lambda r: __import__("django.shortcuts", fromlist=["redirect"]).redirect("password_reset")),
+    path("password-reset/done/", lambda r: __import__("django.shortcuts", fromlist=["redirect"]).redirect("password_reset_done")),
     path("demo-login/", views.demo_login, name="demo_login"),
     path("catalog/", views.catalog, name="catalog"),
     path("rfq/", views.rfq_list, name="rfq_list"),
