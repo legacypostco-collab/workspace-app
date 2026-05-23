@@ -2738,14 +2738,27 @@
               data-i18n-title="topbar.menu" data-i18n-aria-label="topbar.menu">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
-      <a href="/" class="top-brand"
+      <a href="/" class="top-brand" id="topBrandLink"
          title="{% trans 'Перейти на главную' %}"
-         aria-label="{% trans 'Перейти на главную' %}"
-         onclick="event.preventDefault(); window.onbeforeunload=null; window.location.assign('/'); return false;">
+         aria-label="{% trans 'Перейти на главную' %}">
         <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}"
              alt="Consolidator Parts" loading="lazy" width="24" height="24">
         Consolidator Parts
       </a>
+      <script>
+      (function(){
+        var el = document.getElementById('topBrandLink');
+        if (!el) return;
+        el.addEventListener('click', function(ev){
+          ev.preventDefault();
+          ev.stopPropagation();
+          try { window.onbeforeunload = null; } catch(e){}
+          try { document.body.onbeforeunload = null; } catch(e){}
+          // setTimeout чтобы обойти любые синхронные onbeforeunload-handlers
+          setTimeout(function(){ window.location.replace('/'); }, 0);
+        }, true);
+      })();
+      </script>
       <div class="top-right">
         <!-- 🏠 Home — возврат к welcome stage чата (не путать с /). -->
         <button class="top-home" id="topHome" onclick="goHome()"
