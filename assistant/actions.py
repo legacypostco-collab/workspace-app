@@ -160,6 +160,12 @@ _SELLER_ONLY = [
     "contact_operator", "open_complaint",
     "view_support_ticket", "color_legend",
     "sync_1c",
+    # BUG-2 fix (seller permission gating): сайдбар-кнопки требовали
+    # actions «срочные / котировки / аналитика / заказы / RFQ / прайс».
+    # Они существуют, но не были в whitelist'е → «Нет прав для роли seller».
+    "seller_urgent", "seller_quotes", "seller_analytics",
+    "seller_orders", "seller_rfqs", "get_seller_rfqs",
+    "seller_upload_pricelist",
 ]
 
 _OPERATOR_CORE = [

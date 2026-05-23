@@ -485,10 +485,25 @@ class SuggestView(APIView):
 
 
 class WidgetConfigView(APIView):
-    """Initial config for the chat widget — role, suggestions, latest conv."""
-    permission_classes = [IsAuthenticated]
+    """Initial config for the chat widget — role, suggestions, latest conv.
+
+    B-14 fix: ранее [IsAuthenticated] → анонимы получали 403 на старте
+    /chat/, фронт падал в catch и показывал «Загрузка...» вечно.
+    Теперь AllowAny: анонимам возвращаем guest-конфиг (role=buyer,
+    user_name='Гость', latest=None) — UI рендерит welcome без ошибок.
+    """
+    permission_classes = [AllowAny]
 
     def get(self, request):
+        if not request.user.is_authenticated:
+            return Response({
+                "role": "buyer",
+                "role_override": None,
+                "user_name": "Гость",
+                "suggestions": SuggestView.SUGGESTIONS.get("buyer", []),
+                "latest_conversation_id": None,
+                "anonymous": True,
+            })
         role = detect_user_role(request.user, request=request)
         latest = Conversation.objects.filter(
             user=request.user, is_active=True

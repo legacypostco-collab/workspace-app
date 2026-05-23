@@ -2791,3 +2791,47 @@ def connect_gsheet(params, user, role):
              "params": {"import_id": imp.id}},
         ],
     )
+
+
+# ══════════════════════════════════════════════════════════
+# BUG-2 fix: alias-actions для sidebar-кнопок продавца, которых
+# раньше не было в реестре → «Нет прав для роли seller».
+# Алиасы делегируют в реальные хэндлеры.
+# ══════════════════════════════════════════════════════════
+
+@register("seller_urgent")
+def seller_urgent_alias(params, user, role):
+    return seller_inbox(params, user, role)
+
+@register("seller_quotes")
+def seller_quotes_alias(params, user, role):
+    return seller_negotiations(params, user, role)
+
+@register("seller_analytics")
+def seller_analytics_alias(params, user, role):
+    return seller_analytics_hub(params, user, role)
+
+@register("seller_orders")
+def seller_orders_alias(params, user, role):
+    # Покупательский get_orders уже отдаёт seller-view через _effective_seller
+    from . import actions as _a
+    return _a.REGISTRY["get_orders"](params, user, role)
+
+@register("seller_rfqs")
+def seller_rfqs_alias(params, user, role):
+    return seller_inbox(params, user, role)
+
+@register("get_seller_rfqs")
+def get_seller_rfqs_alias(params, user, role):
+    return seller_inbox(params, user, role)
+
+@register("seller_upload_pricelist")
+def seller_upload_pricelist_alias(params, user, role):
+    from . import actions as _a
+    if "upload_pricelist" in _a.REGISTRY:
+        return _a.REGISTRY["upload_pricelist"](params, user, role)
+    # Fallback: подсказать как загрузить
+    return ActionResult(
+        text="📤 Загрузка прайса. Прикрепите Excel-файл к сообщению — AI сам распознает колонки.",
+        actions=[{"action": "pricelist_history", "label": "📋 История загрузок"}],
+    )

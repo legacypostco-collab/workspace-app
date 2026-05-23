@@ -605,6 +605,27 @@ def api_health(_request):
     return Response({"ok": True, "service": "hybrid_marketplace"}, status=200)
 
 
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def api_newsletter_subscribe(request):
+    """Newsletter subscribe (Bug-Round4: раньше JS бил в 404 и показывал
+    фейковый успех в catch). Минимальная реализация: валидируем email,
+    дедуплицируем, пишем в БД (если есть модель) или в лог.
+    """
+    import re
+    email = (request.data.get("email") or "").strip().lower()
+    if not email or not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email):
+        return Response({"ok": False, "error": "invalid_email"}, status=400)
+    try:
+        from marketplace.models import NewsletterSubscriber  # optional
+        NewsletterSubscriber.objects.get_or_create(email=email)
+    except Exception:
+        # Модели может не быть — fallback в лог
+        import logging
+        logging.getLogger("marketplace.newsletter").info("newsletter_subscribe", extra={"email": email})
+    return Response({"ok": True, "email": email}, status=200)
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def api_readiness(_request):

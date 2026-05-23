@@ -446,9 +446,12 @@ def submit_quote(params, user, role):
                     "mode_badge":      badge or "",
                     "urgency_label":   rfq.get_urgency_display(),
                     "urgency_tone":    urgency_tone,
-                    "customer_name":   rfq.customer_name or "—",
-                    "company_name":    rfq.company_name or "",
-                    "request_text":    (rfq.notes or "")[:200],
+                    # BUG-1 fix (PII leak): не показываем продавцу настоящие
+                    # ФИО/компанию покупателя — только аноним. Узнать кто
+                    # купил можно только после принятия котировки + оплаты.
+                    "customer_name":   f"Покупатель #{rfq.created_by_id or '—'}",
+                    "company_name":    "",
+                    "request_text":    (rfq.notes or "")[:200] if (role != "seller") else "",
                     "items":           items_for_card,
                     "delivery_days":   int(delivery_days),
                     "valid_days":      int(valid_days),

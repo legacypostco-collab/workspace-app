@@ -98,6 +98,87 @@ _CATEGORY_TITLES: dict[str, str] = {
 }
 
 
+# Bug-E fix: маппинг технических action_name → человекочитаемые заголовки.
+# Без этой таблицы в sidebar истории показывались строки вида
+# «seller_demand_payment», «get_claims», что одновременно UX-проблема
+# и утечка названий API actions.
+_ACTION_TITLES: dict[str, str] = {
+    # Seller-side
+    "seller_dashboard":        "Сводка продавца",
+    "seller_orders":           "Мои заказы",
+    "seller_catalog":          "Мои товары",
+    "seller_drawings":         "Чертежи",
+    "seller_team":             "Команда",
+    "seller_integrations":     "Интеграции",
+    "seller_analytics":        "Аналитика продавца",
+    "seller_quotes":           "Мои котировки",
+    "seller_demand_payment":   "Запрос оплаты",
+    "seller_cancel_pending":   "Отмена ожидающего заказа",
+    "send_quote":              "Отправить котировку",
+    # Buyer-side
+    "get_orders":              "Мои заказы",
+    "get_order_detail":        "Детали заказа",
+    "track_order":             "Отслеживание заказа",
+    "track_shipment":          "Отслеживание доставки",
+    "get_rfq_status":          "Статусы RFQ",
+    "rfq_detail":              "Детали RFQ",
+    "create_rfq":              "Создать RFQ",
+    "search_parts":            "Поиск запчастей",
+    "compare_products":        "Сравнение товаров",
+    "compare_suppliers":       "Сравнение поставщиков",
+    "top_suppliers":           "Топ-поставщиков",
+    "get_budget":              "Бюджет",
+    "get_analytics":           "Аналитика",
+    "get_buyer_discount":      "Скидка покупателя",
+    "get_savings":             "Экономия",
+    "quick_order":             "Быстрая покупка",
+    "pay_reserve":             "Оплата резерва",
+    "pay_final":                "Финальная оплата",
+    "confirm_delivery":        "Подтверждение доставки",
+    # Claims / Support
+    "get_claims":              "Рекламации",
+    "create_claim":            "Создать рекламацию",
+    "open_claim":              "Открыть рекламацию",
+    "claim_detail":            "Детали рекламации",
+    "support_home":            "Поддержка",
+    # Auth / Onboarding
+    "start_login":             "Вход",
+    "start_registration":      "Регистрация",
+    "start_onboarding":        "Верификация · Начало",
+    "submit_company_info":     "Верификация · Компания",
+    "submit_legal_address":    "Верификация · Адрес",
+    "submit_bank":             "Верификация · Реквизиты",
+    "submit_director":         "Верификация · Директор",
+    "submit_for_review":       "Верификация · Отправка",
+    "kyb_status":              "Статус верификации",
+    # Settings
+    "account_settings":        "Настройки",
+    "notif_settings":          "Уведомления",
+    "notif_prefs":             "Настройки уведомлений",
+    "setup_2fa":               "Двухфакторная аутентификация",
+    # Operator
+    "op_dashboard":            "Дашборд оператора",
+    "op_topup_queue":          "Очередь пополнений",
+    "op_rfq_queue":            "Очередь RFQ",
+    "op_analytics_hub":        "Аналитика оператора",
+    "get_sla_report":          "Отчёт по SLA",
+    # Generic
+    "kb_search":               "База знаний",
+    "audit_log":               "Журнал действий",
+    "recent_activity":         "История действий",
+    "notifications":           "Уведомления",
+    "generate_qr":             "QR-код",
+    "price_quote":             "Калькулятор цены",
+}
+
+
+def _humanize_action(action_name: str) -> str:
+    """Fallback humanizer: get_orders → 'Get orders'. Лучше чем raw имя."""
+    if not action_name:
+        return ""
+    return action_name.replace("_", " ").strip().capitalize()
+
+
 def title_for_action(action_name: str, action_label: str | None = None) -> str:
     """Заголовок для conv'а на основании текущего action.
 
@@ -107,7 +188,10 @@ def title_for_action(action_name: str, action_label: str | None = None) -> str:
     base = _CATEGORY_TITLES.get(cat, "")
     label = (action_label or "").strip()
     if not label:
-        return base or action_name
+        # Bug-E fix: не показывать сырое имя action. Сначала пробуем
+        # справочник человекочитаемых заголовков, потом fallback-гуманизация.
+        nice = _ACTION_TITLES.get(action_name) or _humanize_action(action_name)
+        return base or nice
     if base:
         return f"{base} · {label}"
     return label
