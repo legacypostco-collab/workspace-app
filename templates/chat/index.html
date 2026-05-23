@@ -2739,8 +2739,9 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
       <a href="/" class="top-brand"
-         title="{% trans 'Перейти на сайт' %}"
-         aria-label="{% trans 'Перейти на сайт' %}">
+         title="{% trans 'Перейти на главную' %}"
+         aria-label="{% trans 'Перейти на главную' %}"
+         onclick="event.preventDefault(); window.onbeforeunload=null; window.location.assign('/'); return false;">
         <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}"
              alt="Consolidator Parts" loading="lazy" width="24" height="24">
         Consolidator Parts
