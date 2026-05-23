@@ -2620,29 +2620,11 @@
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
-      {# Role-tabs: показываем только staff/admin (multi-role users).
-         Обычные buyer/seller не видят переключения — у них одна роль. #}
-      {% if user.is_authenticated and user.is_staff %}
       <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
         <button type="button" class="role-tab" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
         <button type="button" class="role-tab" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
         <button type="button" class="role-tab" data-role="operator" role="tab">{% trans "Оператор" %}</button>
       </div>
-      {% elif not user.is_authenticated %}
-      {# Анонимный: показываем чтобы можно было выбрать какой кабинет регистрировать #}
-      <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
-        <button type="button" class="role-tab" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
-        <button type="button" class="role-tab" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
-        <button type="button" class="role-tab" data-role="operator" role="tab">{% trans "Оператор" %}</button>
-      </div>
-      {% else %}
-      {# Залогиненный single-role (buyer/seller): hidden DOM-носитель для совместимости с chat-first.js #}
-      <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" hidden style="display:none;">
-        <button type="button" class="role-tab" data-role="buyer" role="tab"></button>
-        <button type="button" class="role-tab" data-role="seller" role="tab"></button>
-        <button type="button" class="role-tab" data-role="operator" role="tab"></button>
-      </div>
-      {% endif %}
       <button class="side-new-btn" onclick="newChat()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         {% trans "Новый чат" %}
