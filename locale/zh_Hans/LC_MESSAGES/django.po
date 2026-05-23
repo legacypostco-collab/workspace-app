@@ -19422,3 +19422,8 @@ msgstr "确认收货"
 
 #~ msgid "Добавлено в отслеживание: "
 #~ msgstr "已添加到跟踪："
+
+#: templates/landing.html:6
+msgid "Consolidator Parts — B2B-маркетплейс запчастей для спецтехники"
+msgstr "Consolidator Parts — 重型设备零件 B2B 市场"
+

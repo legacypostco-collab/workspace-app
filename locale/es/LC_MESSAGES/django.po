@@ -18165,3 +18165,8 @@ msgstr ""
 #: templates/seller/team/list.html:746
 msgid "Отправить приглашение"
 msgstr ""
+
+#: templates/landing.html:6
+msgid "Consolidator Parts — B2B-маркетплейс запчастей для спецтехники"
+msgstr "Consolidator Parts — Mercado B2B de repuestos para maquinaria pesada"
+

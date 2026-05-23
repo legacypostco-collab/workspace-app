@@ -19653,3 +19653,8 @@ msgstr "Confirm receipt"
 
 #~ msgid "Добавлено в отслеживание: "
 #~ msgstr "Added to tracking: "
+
+#: templates/landing.html:6
+msgid "Consolidator Parts — B2B-маркетплейс запчастей для спецтехники"
+msgstr "Consolidator Parts — B2B marketplace for heavy equipment spare parts"
+
