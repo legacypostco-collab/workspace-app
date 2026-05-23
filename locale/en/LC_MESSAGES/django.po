@@ -17975,11 +17975,11 @@ msgstr "in hours · current stage highlighted"
 
 #: templates/seller/team/list.html:215
 msgid "Чат"
-msgstr "Date"
+msgstr "Chat"
 
 #: templates/seller/team/list.html:216
 msgid "Задачи"
-msgstr "Submission date"
+msgstr "Tasks"
 
 #: templates/seller/team/list.html:217 templates/seller/team/list.html:623
 #: templates/seller/team/list.html:637 templates/seller/team/list.html:651

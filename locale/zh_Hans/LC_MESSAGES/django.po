@@ -17761,11 +17761,11 @@ msgstr "以小时计 · 当前阶段已突出显示"
 
 #: templates/seller/team/list.html:215
 msgid "Чат"
-msgstr "日期"
+msgstr "聊天"
 
 #: templates/seller/team/list.html:216
 msgid "Задачи"
-msgstr "提交日期"
+msgstr "任务"
 
 #: templates/seller/team/list.html:217 templates/seller/team/list.html:623
 #: templates/seller/team/list.html:637 templates/seller/team/list.html:651
