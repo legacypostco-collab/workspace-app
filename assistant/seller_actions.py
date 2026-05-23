@@ -2815,7 +2815,7 @@ def seller_analytics_alias(params, user, role):
 def seller_orders_alias(params, user, role):
     # Покупательский get_orders уже отдаёт seller-view через _effective_seller
     from . import actions as _a
-    return _a.REGISTRY["get_orders"](params, user, role)
+    return _a._REGISTRY["get_orders"](params, user, role)
 
 @register("seller_rfqs")
 def seller_rfqs_alias(params, user, role):
@@ -2828,8 +2828,8 @@ def get_seller_rfqs_alias(params, user, role):
 @register("seller_upload_pricelist")
 def seller_upload_pricelist_alias(params, user, role):
     from . import actions as _a
-    if "upload_pricelist" in _a.REGISTRY:
-        return _a.REGISTRY["upload_pricelist"](params, user, role)
+    if "upload_pricelist" in _a._REGISTRY:
+        return _a._REGISTRY["upload_pricelist"](params, user, role)
     # Fallback: подсказать как загрузить
     return ActionResult(
         text="📤 Загрузка прайса. Прикрепите Excel-файл к сообщению — AI сам распознает колонки.",
