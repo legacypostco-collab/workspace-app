@@ -23,6 +23,10 @@ urlpatterns = [
     path("projects/", views.ProjectListView.as_view(), name="assistant-projects"),
     path("projects/<uuid:project_id>/", views.ProjectDetailView.as_view(), name="assistant-project-detail"),
     path("projects/<uuid:project_id>/chats/", views.ProjectChatView.as_view(), name="assistant-project-chat"),
+    path("projects/<uuid:project_id>/update/", views.ProjectUpdateView.as_view(), name="assistant-project-update"),
+    path("projects/<uuid:project_id>/documents/", views.ProjectDocumentUploadView.as_view(), name="assistant-project-doc-upload"),
+    # KYB document upload (dealership certificate, bank requisites — file fields в CompanyVerification)
+    path("kyb/doc/<str:kind>/", views.KYBDocUploadView.as_view(), name="assistant-kyb-doc-upload"),
     # RFQ detail (for chat-first /chat/rfq/<id>/ page)
     path("rfq/<int:rfq_id>/", views.RFQDetailView.as_view(), name="assistant-rfq-detail"),
     # Notifications (bell + dropdown)

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import timedelta
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -88,20 +89,27 @@ class ActionResult:
 # (продавец тоже может докупать товар или докомплектовывать свой заказ
 # как обычный покупатель).
 _BUYER_ACTIONS = [
-    "search_parts", "create_rfq", "get_rfq_status",
+    "search_parts", "create_rfq", "get_rfq_status", "get_my_deals",
     "get_orders", "get_order_detail", "track_order", "track_shipment",
+    "cancel_order",
+    # Решение по консолидации vs split shipment
+    "consolidate_wait", "split_shipment", "set_supplier_decision",
     "get_budget", "get_analytics", "get_supply_report", "get_sla_report",
     "get_buyer_discount", "get_savings", "recent_activity",
+    "open_project", "list_projects",
     "seller_analytics_hub", "seller_executive_report",
     "compare_products", "compare_suppliers", "top_suppliers",
     "buyer_best_offers", "buyer_offer_compare", "calc_part_logistics",
     "upload_parts_list", "analyze_spec",
     "get_claims", "create_claim", "open_claim", "claim_detail",
+    # Communication with operator (support/escalation)
+    "ask_operator", "ask_about_rfq",
+    "cancel_rfq",
     "open_url", "generate_proposal",
     # покупка и депозит
     "quick_order", "pay_reserve", "pay_final",
     "shipping_choose", "shipping_apply",
-    "get_balance", "topup_wallet",
+    "get_balance", "topup_wallet", "link_card", "withdraw_wallet", "transfer_wallet",
     # Production deposit top-up flow
     "start_topup", "submit_topup", "confirm_topup_paid", "cancel_topup", "list_topups",
     # приёмка собственного заказа после доставки
@@ -114,7 +122,7 @@ _BUYER_ACTIONS = [
     # Onboarding / KYB wizard (всем доступно)
     "start_onboarding", "submit_company_info", "submit_legal_address",
     "submit_bank", "submit_director", "submit_for_review", "kyb_status",
-    "update_kyb_contacts",
+    "update_kyb_contacts", "upload_kyb_doc",
     # Negotiation (buyer side)
     "view_rfq_quotes", "view_quote", "accept_quote", "counter_offer", "decline_quote",
     "send_rfq_to_suppliers", "auto_accept_and_pay_reserve",
@@ -136,6 +144,7 @@ _BUYER_ACTIONS = [
 # прайс, двигать заказ по pipeline (production → ready → shipped → ...).
 # Внутри advance_order ещё проверяется, что в заказе есть товары seller'а.
 _SELLER_ONLY = [
+    "request_payout",
     "respond_rfq", "upload_pricelist",
     # Pricelist через AI-маппинг (история, ошибки) + Google Sheets sync
     "pricelist_show_errors", "pricelist_history", "connect_gsheet",
@@ -160,18 +169,17 @@ _SELLER_ONLY = [
     "contact_operator", "open_complaint",
     "view_support_ticket", "color_legend",
     "sync_1c",
-    # BUG-2 fix (seller permission gating): сайдбар-кнопки требовали
-    # actions «срочные / котировки / аналитика / заказы / RFQ / прайс».
-    # Они существуют, но не были в whitelist'е → «Нет прав для роли seller».
-    "seller_urgent", "seller_quotes", "seller_analytics",
-    "seller_orders", "seller_rfqs", "get_seller_rfqs",
-    "seller_upload_pricelist",
+    # View-as: чтобы оператор в режиме просмотра мог выйти обратно + дёргать помощь
+    "op_exit_view_as", "op_help_supplier", "op_help_send_reminder", "op_help_escalate",
 ]
 
 _OPERATOR_CORE = [
+    "open_project", "list_projects",
     # Read-only browse + диспетчерские action'ы
     "search_parts", "get_orders", "get_order_detail", "get_rfq_status",
     "track_order", "track_shipment", "advance_order", "complete_trigger",
+    "get_balance", "request_payout", "op_my_bonuses",  # бонусы оператора
+    "op_my_suppliers",  # моя база поставщиков (PIVOT 2026-05-27)
     "get_analytics", "get_supply_report", "get_demand_report", "get_sla_report", "get_budget",
     "compare_suppliers", "compare_products", "top_suppliers",
     "get_claims", "open_url", "generate_proposal",
@@ -204,6 +212,16 @@ _OPERATOR_CORE = [
     "apply_corrective", "apply_settlement", "close_claim", "claim_detail",
     # KP workflow: SEMI approve + MANUAL dispatch/compose
     "op_approve_kp", "op_dispatch_manual_rfq", "op_compose_kp",
+    # RFQ → suppliers (оператор может рассылать любые RFQ и видеть КП)
+    "view_rfq_quotes", "view_quote", "send_rfq_to_suppliers", "compare_quotes",
+    "rfq_detail", "create_rfq", "cancel_rfq", "ask_about_rfq",
+    "contact_supplier", "ask_operator",
+    # Кросс-юзер диалоги оператора (зеркальные conv в его сайдбаре)
+    "op_my_user_chats", "open_conversation",
+    # View-as: оператор переключается в кабинет поставщика для просмотра
+    "op_view_as_supplier", "op_exit_view_as",
+    # Помощь поставщику (доступна и в нормальном, и в view-as режиме)
+    "op_help_supplier", "op_help_send_reminder", "op_help_escalate",
     # Document generators (operator может создавать любые)
     "generate_invoice_pdf", "generate_packing_list_pdf",
     "generate_qc_report_pdf", "list_order_documents",
@@ -1005,8 +1023,8 @@ def generate_proposal(params, user, role):
              "params": {"_url": f"/chat/proposal/{rfq.id}/"}},
             {"label": "Скачать PDF", "action": "open_url",
              "params": {"_url": f"/rfq/{rfq.id}/proposal/pdf/"}},
-            {"label": "Открыть RFQ", "action": "open_url",
-             "params": {"_url": f"/chat/rfq/{rfq.id}/"}},
+            # Кнопка «Открыть RFQ» убрана — /chat/rfq/<id>/ упразднена,
+            # RFQ показывается inline-карточкой через get_rfq_status.
         ],
     )
 
@@ -1036,15 +1054,18 @@ def search_parts(params, user, role):
     query = (params.get("query") or "").strip()
     limit = min(int(params.get("limit") or 20), 50)
 
-    # 1) Multi-article list (paste of OEM numbers) ------------------
+    # 1) Article-list (paste of OEM numbers) — даже 1 артикул должен идти
+    # через rich spec_results-карточку (то же UX что и для списка).
+    # БАЗОВАЯ ФИЧА платформы: вставил код → получил цену из БД мгновенно.
     articles = params.get("articles") or _extract_articles(query)
-    if len(articles) >= 2:
+    if len(articles) >= 1:
         return _search_articles_list(
             articles, params.get("quantities") or {},
             dest_country=params.get("dest_country") or "",
             delivery_address=params.get("delivery_address") or "",
             arrival_port=params.get("arrival_port") or "",
             filter_origin=params.get("filter_origin") or "",
+            role=role,
         )
 
     # 2) Free-text query --------------------------------------------
@@ -1124,10 +1145,14 @@ def search_parts(params, user, role):
 
 def _search_articles_list(articles: list[str], quantities: dict | None = None,
                             dest_country: str = "", delivery_address: str = "",
-                            arrival_port: str = "", filter_origin: str = ""):
+                            arrival_port: str = "", filter_origin: str = "",
+                            role: str = "buyer"):
     """Look up each article in the catalog → spec_results-style card.
 
     quantities: {oem: qty} — параметр от fast-path парсера «OEM qty».
+    role: «buyer» (по умолчанию) — НЕ показываем поставщиков, рейтинги,
+          альт-офферы. Это коммерческая инфа платформы, открывается только
+          оператору после оплаты резерва. Для operator/admin — полный payload.
     """
     from marketplace.models import Part
     qmap = quantities or {}
@@ -1180,26 +1205,35 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
         # OEM-нормализация: артикул в БД и query могут различаться раздели-
         # телями/leading zero. Annotation чистит stored oem_number и матчит
         # против нормализованной формы query. Двусторонняя проверка.
-        from django.db.models import Value as V
-        from django.db.models.functions import Replace, Upper
-
         from .oem_normalizer import _strip_separators, normalize_oem
         oem_candidates = normalize_oem(art)
-        clean_candidates = list({
-            _strip_separators(c).upper() for c in oem_candidates if c
-        })
+        # ── Fast path: точный матч по oem_number (попадает в индекс) ──
+        # Раньше делали 4×Replace-annotation на всю таблицу 1.3М строк —
+        # на каждый OEM по ~500мс. Сейчас сначала пробуем индекс-lookup;
+        # клин-lookup только если точного матча нет (редкий случай).
         candidates = list(
             Part.objects
             .select_related("brand", "seller", "seller__profile")
-            .annotate(oem_clean=Upper(Replace(Replace(Replace(Replace(
-                "oem_number",
-                V("-"), V("")), V("."), V("")), V(" "), V("")), V("/"), V(""))))
-            .filter(is_active=True)
-            .filter(
-                Q(oem_number__in=oem_candidates) | Q(oem_clean__in=clean_candidates)
-            )
+            .filter(is_active=True, oem_number__in=oem_candidates)
         )
         if not candidates:
+            # Fallback 1: clean-нормализация (разделители вычищены)
+            from django.db.models import Value as V
+            from django.db.models.functions import Replace, Upper
+            clean_candidates = list({
+                _strip_separators(c).upper() for c in oem_candidates if c
+            })
+            if clean_candidates:
+                candidates = list(
+                    Part.objects
+                    .select_related("brand", "seller", "seller__profile")
+                    .annotate(oem_clean=Upper(Replace(Replace(Replace(Replace(
+                        "oem_number",
+                        V("-"), V("")), V("."), V("")), V(" "), V("")), V("/"), V(""))))
+                    .filter(is_active=True, oem_clean__in=clean_candidates)
+                )
+        if not candidates:
+            # Fallback 2: частичный icontains (limit 20)
             candidates = list(
                 Part.objects
                 .select_related("brand", "seller", "seller__profile")
@@ -1223,12 +1257,20 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
         alt_offers_count = max(0, len(ranked) - 1)
         if p:
             origin_cc = _country_from_port(p.sea_port or p.air_port or "")
-            # Фильтр по стране отправления — "купить только из Турции".
-            if filter_origin and origin_cc and origin_cc.upper() != filter_origin.upper():
-                items.append({"status": "skipped", "id": p.oem_number,
-                              "name": p.title, "qty": qty,
-                              "reason": f"origin {origin_cc}"})
-                continue
+            sea_code = (p.sea_port or "").split()[0] if p.sea_port else ""
+            air_code = (p.air_port or "").split()[0] if p.air_port else ""
+            # Фильтр по origin: 2 chars = country code (AE), 3+ = port code (AEFJR).
+            # Поддерживает оба формата: «купить только из Турции» (TR) и «купить
+            # только с этого терминала» (AEFJR).
+            if filter_origin:
+                fo = filter_origin.upper()
+                country_match = origin_cc and origin_cc.upper() == fo
+                port_match = (sea_code.upper() == fo or air_code.upper() == fo)
+                if not (country_match or port_match):
+                    items.append({"status": "skipped", "id": p.oem_number,
+                                  "name": p.title, "qty": qty,
+                                  "reason": f"origin {origin_cc}"})
+                    continue
             price = float(p.price) if p.price else 0
             cargo_line = Decimal(str(price)) * Decimal(qty)
             if origin_cc:
@@ -1241,10 +1283,34 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                     matrix_breakdown[(m, "FOB")][k] += bd_fob[k]
             # Запоминаем параметры для второго прохода (агрегация по shipment).
             resolved_parts.append((p, qty, price, cargo_line))
+
+            # ── Режим подбора per-item (ТЗ §4) ──────────────────────
+            # AUTO: позиция в каталоге + есть Надёжный + данные свежие (≤30д)
+            # SEMI: позиция в каталоге, но нет Надёжного ИЛИ данные устарели
+            # MANUAL: позиции нет в каталоге (обрабатывается в else-ветке)
+            from datetime import timedelta as _td_mode
+            from django.utils import timezone as _tz_mode
+            _PRICE_FRESHNESS_DAYS = 30
+            _is_fresh = bool(
+                p.data_updated_at and
+                p.data_updated_at >= _tz_mode.now() - _td_mode(days=_PRICE_FRESHNESS_DAYS)
+            )
+            _has_reliable = any(o["status"] == "trusted" for o in ranked)
+            if _has_reliable and _is_fresh:
+                _item_mode = "auto"
+            else:
+                _item_mode = "semi"
+            _freshness_days = None
+            if p.data_updated_at:
+                _freshness_days = int((_tz_mode.now() - p.data_updated_at).total_seconds() // 86400)
+
             items.append({
                 "status": "in_stock",
                 "id": p.oem_number,
-                "name": p.title,
+                "part_id": str(p.id),
+                # _clean_title: убирает CJK-иероглифы (中文/日本/한국),
+                # чтобы UI не пугал пользователя смешанными скриптами.
+                "name": _clean_title(p.title) or "—",
                 "brand": p.brand.name if p.brand else "—",
                 "condition": "oem",
                 "price": price,
@@ -1259,6 +1325,11 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 "supplier_status_badge": _status_badge(best_status),
                 "supplier_rating": round(best_rating, 1),
                 "alt_offers": alt_offers_count,  # сколько ещё поставщиков по этой позиции
+                # ── Режим подбора и свежесть данных (ТЗ §4) ──
+                "item_mode": _item_mode,
+                "is_fresh": _is_fresh,
+                "has_reliable": _has_reliable,
+                "freshness_days": _freshness_days,
                 # Полный ранжированный список поставщиков для inline-раскрытия.
                 # Анонимизирован: только псевдоним #S{id%1000:03d} + бейдж.
                 "alt_suppliers": [
@@ -1288,6 +1359,11 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 "id": art,
                 "name": "",
                 "qty": qty,
+                # MANUAL OEM-поиск — позиции нет в каталоге, требуется
+                # рассылка реальным поставщикам (ТЗ §7).
+                "item_mode": "manual",
+                "is_fresh": False,
+                "has_reliable": False,
             })
             not_found_n += 1
 
@@ -1300,30 +1376,68 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
     origin_groups_info: dict = defaultdict(lambda: {
         "count": 0, "weight": Decimal("0"), "cargo": Decimal("0"),
         "freight": {}, "days": {}, "items": [],
+        # port_types — какие порты этого origin: {'sea'}, {'air'} или {'sea','air'}
+        "port_types": set(),
+        # country_code: явно указываем чтобы агрегация by_country была верной.
+        # _country_from_port работает только для UN/LOCODE (sea), но IATA-коды
+        # аэропортов (RKT, PKX) не следуют префиксу страны.
+        "country_code": "",
     })
+
+    # Хелпер: парсим country_code из строки порта вида
+    # «AEFJR · Port of Fujairah · Фуджейра · 🇦🇪 ОАЭ» → "AE".
+    # Сначала пытаемся через emoji-флаг (есть в seed-данных), иначе fallback на
+    # _country_from_port (работает для морских UN/LOCODE).
+    _FLAG_TO_CC = {
+        "🇦🇪": "AE", "🇨🇳": "CN", "🇹🇷": "TR", "🇳🇱": "NL", "🇰🇿": "KZ",
+        "🇷🇺": "RU", "🇩🇪": "DE", "🇺🇸": "US", "🇵🇰": "PK", "🇪🇸": "ES",
+        "🇯🇵": "JP", "🇰🇷": "KR", "🇮🇳": "IN", "🇹🇭": "TH", "🇲🇾": "MY",
+    }
+    def _country_from_port_str(port_str: str, port_code: str) -> str:
+        if not port_str:
+            return ""
+        for flag, cc in _FLAG_TO_CC.items():
+            if flag in port_str:
+                return cc
+        return _country_from_port(port_code) or port_code[:2].upper()
     # Базовая разбивка origin_groups_info — собираем даже когда dest нет.
     # Это нужно чтобы кнопка «Состав» и таблица origin_breakdown были
     # доступны до того как пользователь укажет порт прибытия.
     if resolved_parts:
         for p, qty, price, cargo_line in resolved_parts:
-            origin = (p.sea_port or p.air_port or "").strip()
-            origin_code = origin.split()[0] if origin else ""
-            if not origin_code:
-                continue
-            info = origin_groups_info[origin_code]
+            # Регистрируем ОБА порта (sea + air) — юзеру нужно видеть варианты
+            # доставки сразу: и контейнером, и авиа. Раньше брали первый, теперь
+            # каждая позиция вносится дважды (если у партии оба порта указаны).
+            sea_code = (p.sea_port or "").split()[0] if p.sea_port else ""
+            air_code = (p.air_port or "").split()[0] if p.air_port else ""
             ch = max(
                 Decimal(p.gross_weight_kg or 0),
                 _volumetric_kg(p.length_cm, p.width_cm, p.height_cm, "sea"),
             ) * Decimal(qty)
-            info["count"] += 1
-            info["weight"] += ch
-            info["cargo"] += cargo_line
-            info["items"].append({
-                "oem": p.oem_number,
-                "title": p.title[:60] if p.title else "",
-                "weight_kg": float(p.gross_weight_kg or 0),
-                "cargo": float(cargo_line),
-            })
+            registered = False
+            for port_code, port_type, port_str in [
+                (sea_code, "sea", p.sea_port or ""),
+                (air_code, "air", p.air_port or ""),
+            ]:
+                if not port_code:
+                    continue
+                info = origin_groups_info[port_code]
+                info["port_types"].add(port_type)
+                if not info["country_code"]:
+                    info["country_code"] = _country_from_port_str(port_str, port_code)
+                # Считаем позицию только один раз (по первому порту), чтобы
+                # не дублировать count/weight/cargo при наличии и sea и air.
+                if not registered:
+                    info["count"] += 1
+                    info["weight"] += ch
+                    info["cargo"] += cargo_line
+                    info["items"].append({
+                        "oem": p.oem_number,
+                        "title": p.title[:60] if p.title else "",
+                        "weight_kg": float(p.gross_weight_kg or 0),
+                        "cargo": float(cargo_line),
+                    })
+                    registered = True
     if dest and resolved_parts:
         # cache тарифов чтобы не дёргать БД 9× на каждую группу
         tariff_cache: dict = {}
@@ -1434,35 +1548,134 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                if found_n else "Можно создать RFQ — поставщики поищут аналоги.")
         )
 
-    # Полный набор действий — то, что умел маркетплейс, но прямо в чате.
-    # Порядок: primary (RFQ) → создание ценности (КП, заказ) → сравнение/анализ → утилиты.
+    # ── Кнопки по группам режимов (ТЗ §4–7) ──────────────────────
+    # Вместо одной «Купить всё» — разделяем по auto/semi/manual,
+    # чтобы юзер видел: что можно сразу, что требует подтверждения,
+    # что нужно рассылать поставщикам.
     actions = []
-    if matched_ids:
-        # quantities: dict id→qty чтобы quick_order/create_rfq могли учесть
-        qty_param = {pid: q for pid, q in matched_qty_pairs} if any(q != 1 for _, q in matched_qty_pairs) else None
-        qo_params = {"product_ids": matched_ids}
-        rfq_params = {"product_ids": matched_ids}
+    auto_ids = [str(it.get("part_id") or "") for it in items if it.get("item_mode") == "auto" and it.get("part_id")]
+    auto_total = sum(float(it["price"]) * (it.get("qty") or 1)
+                      for it in items if it.get("item_mode") == "auto" and it.get("price"))
+    semi_ids = [str(it.get("part_id") or "") for it in items if it.get("item_mode") == "semi" and it.get("part_id")]
+    manual_arts = [it["id"] for it in items if it.get("item_mode") == "manual" and it.get("id")]
+    qty_param = {pid: q for pid, q in matched_qty_pairs} if any(q != 1 for _, q in matched_qty_pairs) else None
+    # Pre-считаем счётчики для labels (агрегация card_mode идёт позже,
+    # но нам нужно знать «есть ли другие режимы» уже здесь).
+    _auto_n = len(auto_ids)
+    _semi_n = len(semi_ids)
+    _manual_n = len(manual_arts)
+
+    # 1) AUTO — главная primary-кнопка «Купить сейчас» только на надёжных + свежих
+    if auto_ids:
+        qo_params = {"product_ids": auto_ids}
         if qty_param:
-            qo_params["product_quantities"] = qty_param
-            rfq_params["product_quantities"] = qty_param
-        # Кнопка как fallback — без явного выбора базиса (дефолт: sea/FOB)
-        actions.append({"label": f"⚡ Купить сейчас ${total:,.0f}",
-                        "action": "quick_order", "params": qo_params})
-        actions.append({"label": "Создать RFQ на найденные", "action": "create_rfq",
-                        "params": rfq_params})
-    if not_found_n:
-        actions.append({"label": f"RFQ на {not_found_n} ненайденных",
-                        "action": "create_rfq",
-                        "params": {"query": ", ".join(it["id"] for it in items if it["status"] == "not_found")}})
-    actions.append({"label": "Создать RFQ на все", "action": "create_rfq",
-                    "params": {"query": ", ".join(articles)}})
+            qo_params["product_quantities"] = {k: v for k, v in qty_param.items() if k in auto_ids}
+        actions.append({
+            "label": f"⚡ Купить {len(auto_ids)} ИЗ AUTO · ${auto_total:,.0f}" if _semi_n or _manual_n
+                     else f"⚡ Купить сейчас ${auto_total:,.0f}",
+            "action": "quick_order",
+            "params": qo_params,
+            "style": "primary",
+        })
+
+    # 2) SEMI — позиции от Песочницы / устаревшие → отправить на подтверждение оператора
+    if semi_ids:
+        actions.append({
+            "label": f"✓ {len(semi_ids)} на подтверждение оператора",
+            "action": "create_rfq",
+            "params": {"product_ids": semi_ids, "mode": "semi"},
+            "style": "warn",
+        })
+
+    # 3) MANUAL flow удалён (PIVOT 2026-05-28): не предлагаем создавать RFQ
+    # для unmatched-артикулов. Просто оставляем их в spec_results как
+    # «not_found» — пусть оператор подберёт аналог при следующем заходе,
+    # или пользователь уточнит запрос.
+
+    # Вторичные действия (не primary, поэтому в конце)
     if matched_ids:
         actions.append({"label": "Сравнить поставщиков", "action": "top_suppliers",
                         "params": {"limit": 3}})
-        actions.append({"label": "Только OEM", "action": "analyze_spec",
-                        "params": {"condition": "oem"}})
-        actions.append({"label": "Найти дешевле (аналоги)", "action": "analyze_spec",
-                        "params": {"condition": "analogue"}})
+
+    # Сводим origin_breakdown по странам (а не по портам) — клиенту важна
+    # страна для решения «забрать только из Турции». При нескольких origin
+    # добавляем кнопки фильтрации.
+    origin_breakdown = []
+    cc_flags = {"CN":"🇨🇳","TR":"🇹🇷","AE":"🇦🇪","NL":"🇳🇱","KZ":"🇰🇿","RU":"🇷🇺","DE":"🇩🇪","US":"🇺🇸","PK":"🇵🇰","ES":"🇪🇸"}
+    cc_names = {"CN":"Китай","TR":"Турция","AE":"ОАЭ","NL":"Нидерланды","KZ":"Казахстан","RU":"Россия","DE":"Германия","US":"США","PK":"Пакистан","ES":"Испания"}
+    if origin_groups_info:
+        from collections import defaultdict as _dd
+        by_country: dict = _dd(lambda: {
+            "ports": {},  # {code: 'sea'|'air'|'both'}
+            "count": 0, "weight": Decimal("0"), "cargo": Decimal("0"),
+            "freight": {"sea": Decimal("0"), "air": Decimal("0"), "auto": Decimal("0")},
+            "days": {"sea": 0, "air": 0, "auto": 0},
+            "items": [],
+        })
+        for origin_code, info in origin_groups_info.items():
+            # Используем явно проставленный country_code (он работает и для IATA
+            # аэропортов типа RKT/PKX, где _country_from_port даёт мусор).
+            cc = info.get("country_code") or _country_from_port(origin_code) or origin_code[:2].upper()
+            b = by_country[cc]
+            # Сохраняем тип порта (sea/air/both) для каждого кода
+            types = info.get("port_types") or set()
+            if len(types) >= 2:
+                b["ports"][origin_code] = "both"
+            elif "air" in types:
+                b["ports"][origin_code] = "air"
+            else:
+                b["ports"][origin_code] = "sea"
+            b["count"] += info["count"]
+            b["weight"] += info["weight"]
+            b["cargo"] += info["cargo"]
+            b["items"].extend(info.get("items", []))
+            for m in ("sea", "air", "auto"):
+                if m in info["freight"]:
+                    b["freight"][m] += info["freight"][m]
+                    if info["days"].get(m, 0) > b["days"][m]:
+                        b["days"][m] = info["days"][m]
+        for cc, b in sorted(by_country.items(), key=lambda x: -x[1]["cargo"]):
+            # Скипаем артефакты: origin без позиций (бывает когда air_port
+            # отличается от sea_port — для air-mode появляется лишняя группа).
+            if b["count"] == 0:
+                continue
+            # Превращаем {code: type} в массив [{code, type}] — фронт
+            # покажет 🚢 / ✈️ / 🚢✈️ иконку рядом с каждым портом.
+            ports_list = [{"code": code, "type": b["ports"][code]}
+                          for code in sorted(b["ports"].keys())]
+            origin_breakdown.append({
+                "country_code": cc,
+                "flag": cc_flags.get(cc, "🌍"),
+                "name": cc_names.get(cc, cc),
+                "ports": ports_list,
+                "count": b["count"],
+                "weight_kg": float(b["weight"]),
+                "cargo": float(b["cargo"]),
+                "freight_sea": float(b["freight"]["sea"]),
+                "freight_air": float(b["freight"]["air"]),
+                "freight_auto": float(b["freight"]["auto"]),
+                "days_sea": b["days"]["sea"],
+                "days_air": b["days"]["air"],
+                "days_auto": b["days"]["auto"],
+                "items": b["items"],
+            })
+
+    # ── Агрегация режимов по карточке (ТЗ §4) ─────────────────────
+    # _auto_n / _semi_n / _manual_n уже посчитаны выше для action-кнопок.
+    # Определяем card_mode:
+    #   AUTO — все позиции auto
+    #   SEMI — есть semi, нет manual
+    #   MANUAL — есть not_found (нужен ручной OEM-поиск)
+    #   MIXED — комбинация типов (>= 2 разных режима)
+    _modes_set = {m for m in [_auto_n and "auto", _semi_n and "semi", _manual_n and "manual"] if m}
+    if len(_modes_set) >= 2:
+        _card_mode = "mixed"
+    elif _manual_n:
+        _card_mode = "manual"
+    elif _semi_n:
+        _card_mode = "semi"
+    else:
+        _card_mode = "auto"
 
     # Сводим origin_breakdown по странам (а не по портам) — клиенту важна
     # страна для решения «забрать только из Турции». При нескольких origin
@@ -1521,6 +1734,11 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             "analogue": 0,
             "not_found": not_found_n,
             "items": items,
+            # ── Режимы (ТЗ §4) ──
+            "card_mode": _card_mode,           # auto | semi | manual | mixed
+            "auto_count": _auto_n,
+            "semi_count": _semi_n,
+            "manual_count": _manual_n,
             "more_count": 0,
             "offers_count": found_n,
             "sellers_count": found_n,  # 1 supplier per match in stub
@@ -1593,6 +1811,46 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
         },
     }
 
+    # ── Для buyer чистим коммерческую инфу поставщиков ─────────────
+    # Имена/коды/рейтинги/счётчики альт-офферов — это интеллектуальная
+    # собственность платформы. Юзер их видеть НЕ должен до 10% депозита,
+    # иначе будет фильтровать (Надёжный/Песочница) и скачивать инсайты
+    # маркетплейса бесплатно. После оплаты резерва оператор получает full.
+    #
+    # Также скрываем внутренний роутинг AUTO/SEMI/MANUAL — юзер видит
+    # просто «в наличии» / «нет в каталоге» + единую зелёную кнопку
+    # «Купить всё». Платформа сама внутри решает кого по какому режиму
+    # вести (Надёжный → авто, Песочница → к оператору и т.п.).
+    if (role or "buyer") == "buyer":
+        for it in card["data"]["items"]:
+            for k in ("supplier_status", "supplier_status_badge",
+                       "supplier_rating", "alt_offers", "alt_suppliers",
+                       "item_mode", "is_fresh", "has_reliable", "freshness_days"):
+                it.pop(k, None)
+        # Card-level режим тоже не нужен юзеру
+        for k in ("card_mode", "auto_count", "semi_count", "manual_count"):
+            card["data"].pop(k, None)
+        # Кнопки переформируем: одна зелёная «Купить всё» (объединяем
+        # auto+semi на бэке — внутренний роутинг прозрачен для юзера)
+        # + soft-кнопка «Запросить ненайденные» (MANUAL OEM-поиск).
+        all_purchaseable_ids = auto_ids + semi_ids
+        all_total = sum(float(it["price"]) * (it.get("qty") or 1)
+                         for it in items if it.get("status") == "in_stock" and it.get("price"))
+        actions = []
+        if all_purchaseable_ids:
+            buy_params = {"product_ids": all_purchaseable_ids}
+            if qty_param:
+                buy_params["product_quantities"] = {
+                    k: v for k, v in qty_param.items() if k in all_purchaseable_ids
+                }
+            actions.append({
+                "label": f"⚡ Купить {len(all_purchaseable_ids)} · ${all_total:,.0f}",
+                "action": "quick_order",
+                "params": buy_params,
+                "style": "primary",
+            })
+        # MANUAL CTA удалён (PIVOT 2026-05-28) — см. комментарий выше в primary actions.
+
     return ActionResult(
         text=intro,
         cards=[card],
@@ -1601,7 +1859,6 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             "Найти аналоги для ненайденных",
             "Сравни цены по бренду",
             "Сформировать КП",
-            "Топ-3 поставщика",
             "Скачать спеку CSV",
         ],
     )
@@ -1642,15 +1899,28 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
     matched = [t for t in items_to_add if t[2] is not None]
     matched_count = len(matched)
 
-    # 4. Buyer вручную ввёл OEM-номера → MANUAL_OEM
-    if params.get("articles"):
-        return "manual", (
-            f"manual · buyer ввёл {len(params['articles'])} OEM-номеров вручную"
-        )
-
-    # 5. Ни одного совпадения с каталогом → MANUAL_OEM
+    # ── PIVOT 2026-05-26: MANUAL режим убран как класс. ────────────
+    # Мы НЕ делаем ручную рассылку поставщикам — только каталожный матчинг.
+    # Если позиции нет в каталоге → это сигнал для отдела каталога:
+    # фиксируем в аналитику «спрос без предложения» и предлагаем покупателю
+    # либо аналог (через AI), либо подписку на появление, либо ничего.
+    # → Раньше тут было: articles[] → "manual", 0% matched → "manual"
+    # → Теперь: всё что не AUTO → SEMI (оператор уточняет аналоги).
     if matched_count == 0:
-        return "manual", f"manual · 0/{total} позиций сматчены с каталогом"
+        # Не нашли вообще — оператор должен предложить аналог или сообщить
+        # покупателю «этого нет в каталоге». Анализ потом → ищем поставщика.
+        return "semi", (
+            f"semi · 0/{total} позиций в каталоге · нужно предложить аналог "
+            f"или сообщить отсутствие. Не-найденные позиции пишутся в аналитику "
+            f"спроса для пополнения каталога."
+        )
+    if params.get("articles"):
+        # Buyer вручную ввёл OEM — мы их сматчили частично. SEMI чтобы
+        # оператор подтвердил/уточнил неточные совпадения.
+        return "semi", (
+            f"semi · buyer ввёл {len(params['articles'])} OEM-номеров, "
+            f"{matched_count}/{total} сматчены — нужно подтверждение"
+        )
 
     # 1. Buyer не верифицирован KYB → SEMI
     try:
@@ -1853,11 +2123,29 @@ def create_rfq(params, user, role):
     notes_parts.append(f"Создано из чата · {len(items_to_add)} позиций")
     notes_parts.append(f"Mode: {classifier_reason}")
 
+    # Anonymous-buyer support: created_by=None, placeholder email/name.
+    # При регистрации /api/assistant/action/start_registration RFQ
+    # перепривяжется к новому user (см. _resume в pending_action).
+    is_anon = not (user and getattr(user, "is_authenticated", False))
+    if is_anon:
+        rfq_creator = None
+        rfq_customer_name = "Гость"
+        # Email-плейсхолдер с session-id для трассировки → потом replace на user.email
+        try:
+            from django.contrib.sessions.models import Session  # noqa: F401
+            rfq_customer_email = "anon@chat.local"
+        except Exception:
+            rfq_customer_email = "anon@chat.local"
+    else:
+        rfq_creator = user
+        rfq_customer_name = user.get_full_name() or user.username
+        rfq_customer_email = user.email or f"{user.username}@chat.local"
+
     try:
         rfq = RFQ.objects.create(
-            created_by=user,
-            customer_name=user.get_full_name() or user.username,
-            customer_email=user.email or f"{user.username}@chat.local",
+            created_by=rfq_creator,
+            customer_name=rfq_customer_name,
+            customer_email=rfq_customer_email,
             company_name="",
             mode=mode,
             urgency="standard",
@@ -1905,51 +2193,52 @@ def create_rfq(params, user, role):
                 _notify(
                     op, kind="rfq",
                     title=f"⏱ SEMI RFQ #{rfq.id} — нужен approve (15 мин)",
-                    body=f"Buyer {user.username} создал SEMI-RFQ. "
+                    body=f"Buyer {rfq_customer_name} создал SEMI-RFQ. "
                          f"Проверь КП и одобри/отклони.",
                     url=f"/chat/rfq/{rfq.id}/?source=semi-approve",
                 )
         except Exception:
             logger.exception("SEMI operator notify failed")
 
-    # MANUAL: уведомляем оператора, что нужен ручной dispatch (48h)
+    # MANUAL режим отключён (PIVOT 2026-05-26). Если в legacy данных где-то
+    # mode=="manual" — лечим в SEMI на лету, оператор увидит как «нужно
+    # уточнение / предложить аналог».
     if mode == "manual":
-        try:
-            from django.contrib.auth import get_user_model
-            User = get_user_model()
-            ops = User.objects.filter(is_staff=True, is_active=True)[:5]
-            for op in ops:
-                _notify(
-                    op, kind="rfq",
-                    title=f"📋 MANUAL RFQ #{rfq.id} — нужна ручная рассылка",
-                    body=f"Buyer {user.username}: {len(items_to_add)} позиций. "
-                         f"Срок сбора КП — 48 часов.",
-                    url=f"/chat/rfq/{rfq.id}/?source=manual-dispatch",
-                )
-        except Exception:
-            logger.exception("MANUAL operator notify failed")
+        mode = "semi"
 
     matched_count = sum(1 for t in items_to_add if t[2] is not None)
+    not_matched = [t[0] for t in items_to_add if t[2] is None]
     summary = f"{matched_count} из {len(items_to_add)} позиций сматчены с каталогом"
+
+    # Фиксируем «спрос без предложения» для аналитики (что чаще запрашивают
+    # но нет в каталоге → отдел развития каталога ищет поставщиков с прайсом)
+    if not_matched and not is_anon:
+        try:
+            from .demand_tracker import track_missing_demand
+            track_missing_demand(user, not_matched, rfq_id=rfq.id)
+        except Exception:
+            logger.exception("track_missing_demand failed")
 
     if mode == "auto":
         text = (
-            f"✓ RFQ #{rfq.id} создан · {len(items_to_add)} позиций. {summary}.\n"
-            f"🤖 AUTO: запрос автоматически разослан {auto_sent_count} поставщикам.\n"
-            f"📋 КП готовится — откройте, чтобы подтвердить и зарезервировать 10%."
+            f"RFQ #{rfq.id} создан · {len(items_to_add)} позиций. {summary}.\n"
+            f"Котировка от {auto_sent_count} поставщиков готовится автоматически — "
+            f"откройте чтобы подтвердить и зарезервировать 10%."
         )
-    elif mode == "semi":
-        text = (
-            f"✓ RFQ #{rfq.id} создан в SEMI режиме · {len(items_to_add)} позиций.\n"
-            f"⏱ Расчёт готов, оператор подтвердит КП в течение 15 минут.\n"
-            f"После approve вы получите инвойс с кнопкой резервирования."
-        )
-    else:  # manual
-        text = (
-            f"✓ RFQ #{rfq.id} создан в MANUAL режиме · {len(items_to_add)} позиций.\n"
-            f"📋 Оператор вручную разошлёт запрос поставщикам и сформирует КП.\n"
-            f"⏱ Срок сбора предложений — 48 часов."
-        )
+    else:  # semi
+        if matched_count == 0:
+            text = (
+                f"RFQ #{rfq.id} создан · {len(items_to_add)} позиций.\n"
+                f"Ни одна позиция не найдена в каталоге. Оператор предложит аналоги "
+                f"в течение 15 минут или сообщит об отсутствии. "
+                f"Запрошенные OEM записаны в аналитику для развития каталога."
+            )
+        else:
+            text = (
+                f"RFQ #{rfq.id} создан · {len(items_to_add)} позиций. {summary}.\n"
+                f"По {len(items_to_add) - matched_count} позициям оператор подтвердит "
+                f"аналог или цену в течение 15 минут."
+            )
 
     # AUTO: сразу показываем КП-инвойс buyer'у с кнопкой
     # «Подтвердить и зарезервировать 10%».
@@ -1963,6 +2252,44 @@ def create_rfq(params, user, role):
                 "params": {"rfq_id": rfq.id},
             })
 
+    # ── Богатый data shape для rfq-карточки (chat-first.js::rfq) ──
+    # Без этого карточка выглядит пустой (0/0, бюджет —, лучшая —).
+    # Считаем budget estimate из matched parts, готовим items_preview.
+    _FX_TO_USD_CR = {"USD": 1.0, "EUR": 1.08, "RUB": 0.011, "CNY": 0.135,
+                     "JPY": 0.0067, "GBP": 1.27}
+    budget_est_usd = 0.0
+    items_preview = []
+    for query_str, qty, matched_part, _conf in items_to_add[:8]:
+        est_usd = None
+        match_name = ""
+        brand_name = ""
+        if matched_part and matched_part.price is not None:
+            ccy = (matched_part.currency or "USD").upper()
+            est_usd = float(matched_part.price) * _FX_TO_USD_CR.get(ccy, 1.0)
+            budget_est_usd += est_usd * (qty or 1)
+            match_name = _clean_title(matched_part.title or "")
+            brand_name = matched_part.brand.name if matched_part.brand else ""
+        items_preview.append({
+            "article": str(query_str),
+            "match": match_name,
+            "brand": brand_name,
+            "qty": qty or 1,
+            "matched": bool(matched_part),
+            "est_usd": int(est_usd) if est_usd else None,
+        })
+
+    items_count_total = len(items_to_add)
+    sourcing_pct = int(round(matched_count * 100 / items_count_total)) if items_count_total else 0
+    quoting_pct = 0  # на момент create_rfq котировок ещё нет
+
+    # Status label по режиму — что именно сейчас происходит
+    if mode == "auto":
+        status_label = f"🤖 Разослано {auto_sent_count} поставщ. · ждём КП"
+    elif mode == "semi":
+        status_label = "⏱ Оператор подтвердит КП в течение 15 мин"
+    else:
+        status_label = "📋 Оператор разошлёт запрос (срок 48ч)"
+
     return ActionResult(
         text=text,
         cards=[{
@@ -1971,8 +2298,19 @@ def create_rfq(params, user, role):
                 "id": str(rfq.id),
                 "number": rfq.id,
                 "status": "new",
+                "status_label": status_label,
+                "mode": mode.upper(),
                 "description": " · ".join(str(t[0]) for t in items_to_add[:5])[:200],
-                "quantity": sum(int(t[1] or 1) for t in items_to_add),
+                "items_count": items_count_total,
+                "matched_count": matched_count,
+                "sourcing_pct": sourcing_pct,
+                "quoting_pct": quoting_pct,
+                "quotes_count": 0,
+                "sent_count": auto_sent_count,
+                "budget_usd": int(budget_est_usd) if budget_est_usd else None,
+                "best_quote_usd": None,
+                "age_label": "только что",
+                "items_preview": items_preview,
                 "created_at": rfq.created_at.strftime("%d.%m.%Y %H:%M"),
             },
         }],
@@ -1992,15 +2330,21 @@ def get_orders(params, user, role):
     if role == "buyer":
         qs = qs.filter(buyer=user)
     elif role == "seller":
-        # Seller sees orders containing their parts
-        from marketplace.models import OrderItem
-        seller_part_ids = list(user.parts.values_list("id", flat=True)) if hasattr(user, "parts") else []
-        order_ids = OrderItem.objects.filter(part_id__in=seller_part_ids).values_list("order_id", flat=True).distinct()
-        qs = qs.filter(id__in=order_ids)
+        # Seller sees orders containing their parts.
+        # FIX: используем subquery вместо materialized ID-листа — SQLite падает
+        # на «too many SQL variables» при каталоге >999 позиций. Связка через
+        # FK Part.seller → нет лимита параметров.
+        qs = qs.filter(items__part__seller=user).distinct()
     # Operators see all
 
-    if params.get("status"):
+    if params.get("status") == "awaiting_reserve":
+        # Спец-фильтр «только неоплаченные» — по payment_status, не по status
+        qs = qs.filter(payment_status="awaiting_reserve")
+    elif params.get("status"):
         qs = qs.filter(status=params["status"])
+    # Pre-payment orders (awaiting_reserve) теперь живут здесь же, в «Мои
+    # заказы», просто с бейджем «Ждёт оплаты резерва». В «Мои RFQ» их больше
+    # не дублируем — RFQ = только реальные запросы котировок.
 
     orders = list(qs[:limit])
     cards = [{
@@ -2058,7 +2402,19 @@ def get_order_detail(params, user, role):
         o = (Order.objects.select_related("buyer")
              .prefetch_related("items__part__brand", "documents").get(id=oid))
     except Order.DoesNotExist:
-        return ActionResult(text=f"⚠️ Заказ #{oid} не найден")
+        # Заказ не найден — обычно случается с устаревшими ссылками
+        # из истории кошелька. Даём осмысленный fallback с навигацией.
+        return ActionResult(
+            text=(f"⚠️ Заказ ORD-{oid} не найден или был удалён.\n"
+                  f"Возможно, ссылка устарела (старая запись кошелька)."),
+            actions=[
+                {"action": "get_orders", "label": "📦 Мои заказы",
+                 "params": {}},
+                {"action": "get_my_deals", "label": "📋 Все сделки",
+                 "params": {}},
+            ],
+            contextual_actions=[{"action": "go_home", "label": "🏠 Главная"}],
+        )
 
     # Доступ
     is_seller = (role == "seller" and any(
@@ -2069,13 +2425,362 @@ def get_order_detail(params, user, role):
     if not (is_buyer or is_seller or is_op):
         return ActionResult(text="Нет доступа к этому заказу.")
 
-    # Позиции
+    # ── Spec_results таблица (единый вид как в RFQ) ──
+    spec_items = []
+    _STATUS_BADGE_RU = {"trusted": "Надёжный", "sandbox": "Песочница",
+                         "risky": "Рисковый", "rejected": "Исключён"}
+    # Map статус-кода Order → русский label (для per-item статусов).
+    # str(...) обязательно — choices содержат gettext_lazy proxy-объекты,
+    # которые JSON-сериализатор не понимает.
+    _ORDER_STATUS_LABEL_RU = ({k: str(v) for k, v in Order._meta.get_field("status").choices}
+                              if hasattr(Order, "_meta") else {})
+    found_n = 0
+    total_spec_usd = 0.0
+    # Доставка: распределяем logistics_cost по позициям пропорционально весу/qty
+    incoterm = (getattr(o, "incoterm", "") or "").upper() or None
+    ship_mode = (getattr(o, "shipping_mode", "") or "").lower() or None
+    total_logi = float(getattr(o, "logistics_cost", 0) or 0)
+    # Базовая оценка дней доставки по basis
+    _SHIP_DAYS = {"FOB": 3, "CIF": 28, "CIP": 30, "DDP": 35, "EXW": 1}
+    ship_days_est = _SHIP_DAYS.get(incoterm or "", None)
+    # Распределяем фрахт по числу позиций (грубо, для отображения)
+    items_count = o.items.count() or 1
+    ship_per_item = total_logi / items_count if total_logi else 0
+    for it in o.items.all():
+        if is_seller and (not it.part or it.part.seller_id != user.id):
+            continue
+        mp = it.part
+        qty = it.quantity or 1
+        price = float(it.unit_price or 0)
+        if mp:
+            sup_status = "trusted"
+            sup_rating = 91.6
+            sup_username = ""
+            sup_id = mp.seller_id or 0
+            # Fallback: имя из User напрямую (если нет UserProfile)
+            try:
+                if mp.seller:
+                    sup_username = mp.seller.username
+            except Exception:
+                pass
+            try:
+                from marketplace.models import UserProfile as _UP
+                _p = _UP.objects.filter(user_id=sup_id).only(
+                    "supplier_status", "rating", "user").first()
+                if _p:
+                    sup_status = _p.supplier_status or "trusted"
+                    sup_rating = float(_p.rating or 90.0)
+                    try:
+                        if _p.user and _p.user.username:
+                            sup_username = _p.user.username
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            badge_label = _STATUS_BADGE_RU.get(sup_status, "Надёжный")
+            if is_op and sup_username:
+                badge_text = f"{badge_label} · {sup_username}"
+            else:
+                badge_text = badge_label
+            # Per-item статус (если задан) или общий статус заказа
+            _item_eff = (it.status or o.status) if hasattr(it, "status") else o.status
+            spec_items.append({
+                "status": "in_stock",
+                "id": mp.oem_number or "—",
+                "name": _clean_title(mp.title or "")[:80] or "—",
+                "brand": mp.brand.name if mp.brand else "—",
+                "condition": (mp.condition or "oem"),
+                "price": price,
+                "qty": qty,
+                "weight": f"{mp.gross_weight_kg} кг" if mp.gross_weight_kg else "—",
+                "currency": "USD",
+                "supplier_status": sup_status,
+                "supplier_status_badge": badge_text,
+                "supplier_rating": round(sup_rating, 1),
+                "alt_offers": 0,
+                # Для оператора — клик-action чтобы связаться с поставщиком
+                "supplier_id": sup_id if is_op else None,
+                "supplier_username": sup_username if is_op else None,
+                # Доставка (отображается если выбран Incoterm)
+                "ship_cost": ship_per_item if ship_per_item > 0 else None,
+                "ship_mode": ship_mode,
+                "ship_days": ship_days_est,
+                "order_id": o.id,  # клик по ячейке → track_shipment(order_id)
+                # Per-item статус — поставщики двигают позиции независимо
+                "item_status": _item_eff,
+                "item_status_label": _ORDER_STATUS_LABEL_RU.get(_item_eff, _item_eff),
+                # для группировки на фронте + анонимизация для покупателя
+                "_seller_id": sup_id,
+            })
+            found_n += 1
+            total_spec_usd += price * qty
+        else:
+            spec_items.append({
+                "status": "not_found",
+                "id": "—", "name": "", "qty": qty,
+            })
+    # Meta-блок: всё что раньше было в draft-карточке (статус/оплата/сумма/etc)
+    meta = [
+        {"label": "Заказ",      "value": f"ORD-{o.id}"},
+        {"label": "Статус",     "value": o.get_status_display()},
+        {"label": "Оплата",     "value": o.get_payment_status_display()},
+        {"label": "Сумма",      "value": f"${float(o.total_amount or 0):,.2f}"},
+        {"label": "Покупатель", "value": o.customer_name or "—"},
+        {"label": "Создан",     "value": o.created_at.strftime("%d.%m.%Y %H:%M") if o.created_at else "—"},
+    ]
+    # PIVOT 2026-05-27: sub-order контекст
+    if getattr(o, "is_sub_order", False) and o.parent_order_id:
+        # Сколько ещё операторов ведут эту общую сделку
+        siblings = o.parent_order.sub_orders.exclude(id=o.id).count() if o.parent_order else 0
+        meta.append({
+            "label": "Общий заказ",
+            "value": f"ORD-{o.parent_order_id} · ещё {siblings} операторов" if siblings else f"ORD-{o.parent_order_id}",
+        })
+    elif o.sub_orders.exists():
+        # Это parent-order — показываем сколько частей
+        n_subs = o.sub_orders.count()
+        meta.append({
+            "label": "Частей у операторов",
+            "value": f"{n_subs} sub-orders",
+        })
+    if o.reserve_amount:
+        meta.append({"label": "Резерв 10%", "value": f"${float(o.reserve_amount):,.2f}"})
+    if o.logistics_cost:
+        meta.append({"label": "Логистика", "value": f"${float(o.logistics_cost):,.2f}"})
+    if incoterm:
+        _MODE_RU = {"sea": "морем", "air": "авиа", "auto": "авто"}
+        mode_ru = _MODE_RU.get(ship_mode, "") if ship_mode else ""
+        v = incoterm + (f" · {mode_ru}" if mode_ru else "")
+        if ship_days_est:
+            v += f" · ~{ship_days_est}д"
+        meta.append({"label": "Базис / доставка", "value": v})
+    # Документы
+    docs_count = o.documents.count() if hasattr(o, "documents") else 0
+    if docs_count:
+        meta.append({"label": "Документы", "value": f"{docs_count} файлов"})
+    # Трек-номер если есть
+    if getattr(o, "tracking_number", None):
+        meta.append({"label": "Трек-номер", "value": str(o.tracking_number)})
+
+    spec_card = {
+        "type": "spec_results",
+        "data": {
+            "title": f"Заказ ORD-{o.id}",
+            "meta": meta,
+            "found": found_n,
+            "analogue": 0,
+            "not_found": sum(1 for s in spec_items if s.get("status") == "not_found"),
+            "items": spec_items,
+            "more_count": 0,
+            "offers_count": found_n,
+            "sellers_count": len({(s.get('supplier_status_badge') or '') for s in spec_items if s.get('supplier_status_badge')}),
+            "best_mix": int(total_spec_usd) if total_spec_usd else None,
+            "total": int(total_spec_usd) if total_spec_usd else None,
+            "currency": "USD",
+            "foot_info": f"{found_n} позиций · оплата: {o.get_payment_status_display()}",
+        },
+    }
+
+    # ── По поставщикам: разбивка с per-supplier статусом ──────────
+    # Поставщики двигают свои позиции независимо — общий Order.status
+    # ничего не говорит о реальном положении дел по каждой части.
+    from collections import defaultdict as _dd
+    by_seller = _dd(lambda: {"items": [], "amount": 0.0, "qty": 0, "statuses": set(),
+                              "name": "", "id": 0})
+    for it in o.items.all():
+        if is_seller and (not it.part or it.part.seller_id != user.id):
+            continue
+        sid = it.part.seller_id if it.part else 0
+        g = by_seller[sid]
+        g["id"] = sid
+        if not g["name"]:
+            g["name"] = (it.part.seller.username if (it.part and it.part.seller_id) else "—")
+        g["items"].append(it)
+        g["amount"] += float(it.unit_price or 0) * (it.quantity or 0)
+        g["qty"] += (it.quantity or 0)
+        g["statuses"].add((it.status if hasattr(it, "status") and it.status else None) or o.status)
+    supplier_rows = []
+    if len(by_seller) > 1:  # показываем только при мульти-поставщике
+        # Какие item.id попали в какой-то shipment — для inline-трекинга
+        _item_to_shipment = {}
+        try:
+            for sh in o.shipments.prefetch_related("items").all():
+                for it in sh.items.all():
+                    _item_to_shipment[it.id] = sh
+        except Exception:
+            pass
+        for idx, (sid, g) in enumerate(sorted(by_seller.items(), key=lambda kv: -kv[1]["amount"])):
+            display_name = g["name"] if (is_op or is_seller) else f"Поставщик {chr(ord('A') + idx)}"
+            sts = sorted(g["statuses"])
+            if len(sts) == 1:
+                stage_lbl = _ORDER_STATUS_LABEL_RU.get(sts[0], sts[0])
+            else:
+                stage_lbl = "смешанный"
+            # Тон бейджа по «слабейшему звену»
+            _ORDER = ["awaiting_reserve","reserve_paid","confirmed","in_production","ready_to_ship",
+                      "transit_abroad","customs","transit_rf","issuing","delivered","completed"]
+            worst = min(sts, key=lambda s: _ORDER.index(s) if s in _ORDER else 99)
+            tone = "warn" if worst in ("awaiting_reserve","reserve_paid","confirmed","in_production") else "ok"
+            # Inline-трекинг: ищем shipment, в котором лежит хотя бы одна позиция группы
+            sh = None
+            for it in g["items"]:
+                if it.id in _item_to_shipment:
+                    sh = _item_to_shipment[it.id]
+                    break
+            sub_parts = [f"{len(g['items'])} поз · {g['qty']} шт · ${g['amount']:,.0f}"]
+            if sh:
+                kind_lbl = sh.get_kind_display()
+                sub_parts.append(f"📦 {kind_lbl} #{sh.id}")
+                if sh.eta_delivery:
+                    sub_parts.append(f"ETA {sh.eta_delivery.strftime('%d.%m.%Y')}")
+                if is_op and sh.tracking_number:
+                    sub_parts.append(f"трек {sh.tracking_number}")
+                if is_op and sh.carrier:
+                    sub_parts.append(f"перевозчик {sh.carrier}")
+            else:
+                # Нет партии — нужно понимать почему: ждёт консолидации или
+                # пока не дошёл до ready_to_ship
+                if worst in ("ready_to_ship",):
+                    sub_parts.append("⏸ на складе платформы, ждёт консолидации")
+                elif worst in ("transit_abroad","customs","transit_rf","issuing","delivered","completed"):
+                    sub_parts.append("⚠ ушёл в путь без оформленной партии")
+                else:
+                    sub_parts.append("ещё у поставщика — партия не нужна")
+            _STAGE_ORDER_S = ["awaiting_reserve","reserve_paid","confirmed","in_production",
+                              "ready_to_ship","transit_abroad","customs","transit_rf",
+                              "issuing","delivered","completed"]
+            _worst_idx = _STAGE_ORDER_S.index(worst) if worst in _STAGE_ORDER_S else 0
+            _pct = int(round(_worst_idx / max(1, len(_STAGE_ORDER_S) - 1) * 100))
+            # «Дальше: actor event» по слабейшему звену группы
+            _actor_map = {
+                "awaiting_reserve": ("Покупатель",        "оплачивает резерв 10%"),
+                "reserve_paid":     ("Поставщик",         "подтверждает заказ"),
+                "confirmed":        ("Поставщик",         "запускает производство"),
+                "in_production":    ("Поставщик",         "сообщает о готовности"),
+                "ready_to_ship":    ("Поставщик",         "оформляет отгрузку"),
+                "transit_abroad":   ("Перевозчик",        "везёт груз до границы РФ"),
+                "customs":          ("Таможенный брокер", "проводит оформление"),
+                "transit_rf":       ("Перевозчик",        "везёт груз по РФ"),
+                "issuing":          ("Перевозчик",        "выдаёт груз получателю"),
+                "delivered":        ("Покупатель",        "подтверждает приёмку"),
+                "completed":        ("—",                 "Партия закрыта"),
+            }
+            _next_a, _next_e = _actor_map.get(worst, ("—", "—"))
+            # SLA-светофор + дни в стадии (по последнему status_changed для заказа)
+            from django.utils import timezone as _tz_g
+            from marketplace.models import OrderEvent as _OE_g
+            _STAGE_SLA_G = {"awaiting_reserve":2,"reserve_paid":2,"confirmed":1,"in_production":7,
+                            "ready_to_ship":2,"transit_abroad":14,"customs":5,"transit_rf":7,"issuing":3}
+            _last_ev_g = (_OE_g.objects.filter(order_id=o.id, event_type="status_changed")
+                           .order_by("-created_at").first())
+            _entered_g = _last_ev_g.created_at if _last_ev_g else o.created_at
+            _days_here_g = max(0, int((_tz_g.now() - _entered_g).total_seconds() / 86400)) if _entered_g else 0
+            _sla_g = _STAGE_SLA_G.get(worst, 0)
+            if _sla_g:
+                if _days_here_g > _sla_g:
+                    _sla_lbl_g = f"просрочка +{_days_here_g - _sla_g}д"
+                elif _days_here_g >= _sla_g * 0.8:
+                    _sla_lbl_g = f"скоро дедлайн (осталось {max(0,_sla_g-_days_here_g)}д)"
+                else:
+                    _sla_lbl_g = f"в норме (осталось {_sla_g - _days_here_g}д из {_sla_g})"
+            else:
+                _sla_lbl_g = "—"
+            # Оплата по поставщику (proportional split от общей оплаты заказа)
+            _total_ord = float(o.total_amount or 0) or 1.0
+            _share = float(g['amount']) / _total_ord
+            _reserve_supplier = float(o.reserve_amount or 0) * _share
+            _final_supplier = max(0.0, float(g['amount']) - _reserve_supplier)
+            if o.payment_status == "paid":
+                _pay_lbl_g = f"оплачен полностью (${g['amount']:,.0f})"
+            elif o.payment_status == "reserve_paid":
+                _pay_lbl_g = f"резерв оплачен ${_reserve_supplier:,.0f} · остаток ${_final_supplier:,.0f}"
+            elif o.payment_status == "awaiting_reserve":
+                _pay_lbl_g = f"ждём резерв ${_reserve_supplier:,.0f}"
+            else:
+                _pay_lbl_g = o.get_payment_status_display()
+            # Meta-блок (как в shipment-карточке)
+            _meta = [
+                {"lbl": "Сумма",            "val": f"${g['amount']:,.0f}"},
+                {"lbl": "Оплата",           "val": _pay_lbl_g},
+                {"lbl": "Состав",           "val": f"{len(g['items'])} поз · {g['qty']} шт"},
+                {"lbl": "В текущей стадии", "val": f"{_days_here_g} дн"},
+                {"lbl": "SLA",              "val": _sla_lbl_g},
+            ]
+            if sh:
+                if sh.eta_delivery:
+                    _meta.append({"lbl": "ETA", "val": sh.eta_delivery.strftime("%d.%m.%Y")})
+                _meta.append({"lbl": "Партия", "val": f"{sh.get_kind_display()} #{sh.id}"})
+                if is_op and sh.tracking_number:
+                    _meta.append({"lbl": "Трек", "val": sh.tracking_number})
+                if is_op and sh.carrier:
+                    _meta.append({"lbl": "Перевозчик", "val": sh.carrier})
+            else:
+                if worst in ("ready_to_ship",):
+                    _meta.append({"lbl": "Партия", "val": "⏸ на складе, ждёт консолидации"})
+                elif worst in ("transit_abroad","customs","transit_rf","issuing","delivered","completed"):
+                    _meta.append({"lbl": "Партия", "val": "⚠ ушёл без оформления"})
+                else:
+                    _meta.append({"lbl": "Партия", "val": "ещё у поставщика"})
+            # Stages-пилюли (5 шагов как в shipment)
+            _stages_pills = [
+                {"label": "Резерв оплачен", "done": worst not in ("awaiting_reserve",)},
+                {"label": "В производстве", "done": worst in ("in_production","ready_to_ship","transit_abroad","customs","transit_rf","issuing","delivered","completed")},
+                {"label": "Транзит",        "done": worst in ("customs","transit_rf","issuing","delivered","completed")},
+                {"label": "Таможня",        "done": worst in ("transit_rf","issuing","delivered","completed")},
+                {"label": "Доставлен",      "done": worst in ("delivered","completed")},
+            ]
+            # Per-supplier decision: «ждать всех» vs «отправлять отдельно».
+            # Показываем только когда выбор ещё имеет смысл — поставщик не уехал.
+            # Сохранённое предпочтение читаем из logistics_meta.per_supplier.
+            _per = (o.logistics_meta or {}).get("per_supplier") or {}
+            _cur_choice = _per.get(str(sid))  # "consolidate" / "split" / None
+            _shipped_already = bool(sh and (sh.kind == "split" or
+                worst in ("transit_abroad","customs","transit_rf","issuing","delivered","completed")))
+            _row_decision = None
+            if not _shipped_already and worst not in ("delivered","completed","cancelled"):
+                _row_decision = {
+                    "current": _cur_choice,
+                    "buttons": [
+                        {"key":"consolidate","label":"Ждать всех","icon":"📦",
+                         "active": _cur_choice == "consolidate",
+                         "action":"set_supplier_decision",
+                         "params":{"order_id": o.id, "seller_id": sid, "choice": "consolidate"}},
+                        {"key":"split","label":"Отправлять отдельно","icon":"🚚",
+                         "active": _cur_choice == "split",
+                         "action":"set_supplier_decision",
+                         "params":{"order_id": o.id, "seller_id": sid, "choice": "split"}},
+                    ],
+                }
+            supplier_rows.append({
+                "supplier": display_name,
+                "stage_label": stage_lbl,
+                "stage_tone": tone,
+                "progress_pct": _pct,
+                "next_actor": _next_a,
+                "next_event": _next_e,
+                "meta": _meta,
+                "stages": _stages_pills,
+                "decision": _row_decision,
+            })
+
+    # Позиции (legacy compact rows для draft-сводки) — с именем поставщика
     items_rows = []
     for it in o.items.all():
         if is_seller and (not it.part or it.part.seller_id != user.id):
-            continue  # seller видит только свои позиции
+            continue
+        sup_name = ""
+        if is_op and it.part and it.part.seller_id:
+            try:
+                sup_name = it.part.seller.username
+            except Exception:
+                sup_name = f"#S{it.part.seller_id}"
+        label = (
+            f"{it.part.oem_number if it.part else '—'} · "
+            f"{(it.part.title if it.part else '—')[:40]}"
+            + (f" · {sup_name}" if sup_name else "")
+        )
         items_rows.append({
-            "label": f"{it.part.oem_number if it.part else '—'} · {(it.part.title if it.part else '—')[:40]}",
+            "label": label,
             "value": f"× {it.quantity} = ${it.unit_price * it.quantity:,.2f}",
         })
 
@@ -2111,9 +2816,12 @@ def get_order_detail(params, user, role):
     actions.append({"label": "📄 Все документы",
                      "action": "list_order_documents",
                      "params": {"order_id": o.id}})
-    actions.append({"label": "🧾 Создать invoice",
-                     "action": "generate_invoice_pdf",
-                     "params": {"order_id": o.id}})
+    # Счёт на оплату — это артефакт продавца/оператора, и только пока оплата не закрыта.
+    # Покупателю «создать счёт самому себе» не нужно; после full_paid тоже бессмысленно.
+    if (is_seller or is_op) and o.payment_status in ("awaiting_reserve", "reserve_paid", "awaiting_final"):
+        actions.append({"label": "Создать счёт на оплату",
+                         "action": "generate_invoice_pdf",
+                         "params": {"order_id": o.id}})
     # Seller-кнопки: pipeline
     if is_seller:
         if o.status == "reserve_paid":
@@ -2132,10 +2840,10 @@ def get_order_detail(params, user, role):
             actions.append({"label": "🚚 Отгрузить",
                              "action": "ship_order",
                              "params": {"order_id": o.id}})
-            actions.append({"label": "📦 Создать packing list",
+            actions.append({"label": "Создать упаковочный лист",
                              "action": "generate_packing_list_pdf",
                              "params": {"order_id": o.id}})
-            actions.append({"label": "✅ QC report",
+            actions.append({"label": "Создать акт качества",
                              "action": "generate_qc_report_pdf",
                              "params": {"order_id": o.id}})
         elif o.status in ("transit_abroad", "customs", "transit_rf", "issuing"):
@@ -2147,6 +2855,10 @@ def get_order_detail(params, user, role):
         actions.append({"label": "📦 Трекинг",
                          "action": "track_shipment",
                          "params": {"order_id": o.id}})
+        if o.status != "cancelled":
+            actions.append({"label": "⏱ SLA-отчёт",
+                             "action": "get_sla_report",
+                             "params": {"order_id": o.id}})
         if o.payment_status == "reserve_paid" and o.status in ("ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "delivered"):
             actions.append({"label": "💳 Оплатить остаток 90%",
                              "action": "pay_final",
@@ -2156,16 +2868,68 @@ def get_order_detail(params, user, role):
                              "action": "confirm_delivery",
                              "params": {"order_id": o.id}})
 
+    # ── Что дальше: подсказка по текущей фазе заказа ──────────────
+    # Buyer и operator видят разные «next steps» в зависимости от роли + статуса.
+    next_step_hint = ""
+    suggestions = []
+    if o.status == "cancelled" or o.payment_status == "refunded":
+        next_step_hint = "Заказ отменён. Если нужно повторить — создайте новый RFQ."
+        suggestions = ["Создать RFQ", "Связаться с оператором", "Все мои заказы"]
+    elif o.payment_status == "awaiting_reserve":
+        next_step_hint = (
+            f"⏳ Дальше: оплатите резерв 10% (${float(o.reserve_amount or 0):,.0f}) — "
+            f"после этого продавец подтвердит и запустит производство. "
+            f"Срок без оплаты: 7 дней, потом авто-отмена."
+        )
+        suggestions = ["Оплатить резерв", "Спросить оператора", "Отменить заказ"]
+    elif o.status == "reserve_paid":
+        next_step_hint = (
+            "✓ Резерв оплачен. Дальше: продавец подтверждает заказ и запускает "
+            "производство (SLA 24 ч). Следите за статусом — придёт уведомление."
+        )
+        suggestions = ["Трекинг отгрузки", "Спросить оператора", "Все мои заказы"]
+    elif o.status == "in_production":
+        next_step_hint = (
+            "🏭 В производстве. Дальше: готовность к отгрузке (срок по контракту "
+            "с поставщиком). Оплата 90% — перед выходом груза."
+        )
+        suggestions = ["Когда отгрузка?", "Трекинг", "Документы"]
+    elif o.status == "ready_to_ship":
+        next_step_hint = (
+            "📦 Готов к отгрузке. Дальше: оплата остатка 90% → выход груза с базиса."
+        )
+        suggestions = ["Оплатить остаток 90%", "Документы", "Спросить оператора"]
+    elif o.status in ("transit_abroad", "customs", "transit_rf", "issuing"):
+        next_step_hint = (
+            f"🚚 В пути ({o.get_status_display()}). ETA можно посмотреть в трекинге. "
+            f"Документы (BL, инвойс, упаковочный лист) уже сформированы."
+        )
+        suggestions = ["Трекинг отгрузки", "Все документы", "Связаться с оператором"]
+    elif o.status == "delivered":
+        next_step_hint = (
+            "✓ Доставлен. Дальше: подтвердите приёмку — после этого деньги уйдут "
+            "продавцу из эскроу и заказ закроется."
+        )
+        suggestions = ["Подтвердить приёмку", "Открыть рекламацию", "Документы"]
+    elif o.status == "completed":
+        next_step_hint = "✓ Заказ закрыт. Эскроу освобождён."
+        suggestions = ["Создать новый RFQ", "Все мои заказы", "Аналитика"]
+
+    text = f"Заказ ORD-{o.id} · {o.get_status_display()} · ${o.total_amount:,.2f}"
+    if next_step_hint:
+        text += "\n\n" + next_step_hint
+
+    _cards = [spec_card]
+    if supplier_rows:
+        _cards.append({"type": "supplier_tracks", "data": {
+            "title": f"📦 По поставщикам — {len(supplier_rows)} участников",
+            "items": supplier_rows,
+        }})
     return ActionResult(
-        text=f"📋 Заказ ORD-{o.id} · {o.get_status_display()} · ${o.total_amount:,.2f}",
-        cards=[{
-            "type": "draft",
-            "data": {
-                "title": f"Заказ ORD-{o.id}",
-                "rows": rows,
-            },
-        }],
+        text=text,
+        cards=_cards,
         actions=actions,
+        suggestions=suggestions,
     )
 
 
@@ -2181,25 +2945,461 @@ def track_shipment(params, user, role):
     except Order.DoesNotExist:
         return ActionResult(text=f"⚠️ Заказ #{oid} не найден")
 
+    # ── Важные поля для шапки: ETA, кто держит мяч, перевозчик ──
+    _actor_by_stage = {
+        "awaiting_reserve": ("Покупатель",          "оплачивает резерв 10%"),
+        "reserve_paid":     ("Поставщик",           "подтверждает заказ"),
+        "confirmed":        ("Поставщик",           "запускает производство"),
+        "in_production":    ("Поставщик",           "сообщает о готовности к отгрузке"),
+        "ready_to_ship":    ("Поставщик",           "оформляет отгрузку"),
+        "transit_abroad":   ("Перевозчик",          "везёт груз до границы РФ"),
+        "customs":          ("Таможенный брокер",   "проводит оформление"),
+        "transit_rf":       ("Перевозчик",          "везёт груз по РФ"),
+        "issuing":          ("Перевозчик",          "выдаёт груз получателю"),
+        "delivered":        ("Покупатель",          "подтверждает приёмку"),
+        "completed":        ("—",                   "Заказ закрыт"),
+    }
+    _next_actor, _next_event = _actor_by_stage.get(o.status, ("—", "—"))
+    _lm = o.logistics_meta or {}
+    _eta = _lm.get("eta_delivery") or _lm.get("eta")  # строка дд.мм.гггг
+    _tracking_number = _lm.get("tracking_number")
+    _carrier = _lm.get("carrier")
+    _is_real_op = role in ("operator", "admin") and getattr(user, "is_staff", False)
+
+    # Дополнительные поля для шапки
+    from django.utils import timezone as _tz
+    from datetime import timedelta as _td
+    _items_qs = list(o.items.all())
+    _positions = len(_items_qs)
+    _qty_total = sum(int(it.quantity or 0) for it in _items_qs)
+    _weight = sum(float((it.part.weight if it.part and getattr(it.part, "weight", None) else 0) or 0) * (it.quantity or 0)
+                  for it in _items_qs)
+    # Сколько уже в текущей стадии (по последнему status_changed)
+    from marketplace.models import OrderEvent as _OE2
+    _last_ev = (_OE2.objects.filter(order_id=o.id, event_type="status_changed")
+                .order_by("-created_at").first())
+    _entered = _last_ev.created_at if _last_ev else o.created_at
+    _days_here = max(0, int((_tz.now() - _entered).total_seconds() / 86400))
+    _STAGE_SLA = {"awaiting_reserve":2,"reserve_paid":2,"confirmed":1,"in_production":7,
+                  "ready_to_ship":2,"transit_abroad":14,"customs":5,"transit_rf":7,"issuing":3}
+    _sla = _STAGE_SLA.get(o.status, 0)
+    if _sla:
+        if _days_here > _sla:
+            _sla_label, _sla_tone = f"просрочка +{_days_here - _sla}д", "bad"
+        elif _days_here >= _sla * 0.8:
+            _sla_label, _sla_tone = f"скоро дедлайн ({_sla - _days_here}д)", "warn"
+        else:
+            _sla_label, _sla_tone = f"в норме (осталось {_sla - _days_here}д из {_sla})", "ok"
+    else:
+        _sla_label, _sla_tone = "", "info"
+    # Прогресс оплаты
+    from decimal import Decimal as _D
+    _total_d = _D(str(o.total_amount or 0))
+    _reserve_d = _D(str(o.reserve_amount or 0))
+    if o.payment_status == "paid":
+        _pay_label = f"оплачено полностью (${_total_d:,.0f})"
+    elif o.payment_status == "reserve_paid":
+        _pay_label = f"резерв оплачен ${_reserve_d:,.0f} · остаток ${(_total_d - _reserve_d):,.0f}"
+    elif o.payment_status == "awaiting_reserve":
+        _pay_label = f"ждём резерв ${_reserve_d:,.0f}"
+    else:
+        _pay_label = o.get_payment_status_display()
+
+    # ── Per-shipment / per-supplier разбивка (как в track_order) ──
+    _sh_parts = []
+    _total_ord = float(o.total_amount or 0) or 1.0
+    # Русские labels для статусов (без gettext_lazy proxy)
+    _STAGE_LABEL_RU = ({k: str(v) for k, v in Order._meta.get_field("status").choices}
+                        if hasattr(Order, "_meta") else {})
+    _shipments = list(o.shipments.prefetch_related("items__part__seller").all()) \
+                  if hasattr(o, "shipments") else []
+    if _shipments:
+        _in_sh_ids = {it.id for sh in _shipments for it in sh.items.all()}
+        for idx, sh in enumerate(sorted(_shipments, key=lambda s: -float(s.total_amount or 0))):
+            its = list(sh.items.all())
+            names = sorted({(it.part.seller.username if (it.part and it.part.seller_id) else "—") for it in its})
+            disp = ", ".join(names) if _is_real_op else f"Партия {idx + 1}"
+            amt = float(sh.total_amount or 0)
+            _sh_parts.append({
+                "supplier":     f"{disp} · {sh.get_kind_display()}",
+                "amount":       amt,
+                "amount_pct":   int(round(amt / _total_ord * 100)) if _total_ord else 0,
+                "items_count":  len(its),
+                "stage_label":  sh.get_status_display(),
+                "stage_code":   sh.status,
+                "shipment_id":  sh.id,
+            })
+        _leftover = [it for it in o.items.select_related("part__seller") if it.id not in _in_sh_ids]
+        if _leftover:
+            from collections import defaultdict as _dd
+            _lg = _dd(lambda: {"items":[],"amount":0.0,"name":"","statuses":set()})
+            for it in _leftover:
+                sid = it.part.seller_id if it.part else 0
+                g = _lg[sid]
+                if not g["name"]:
+                    g["name"] = it.part.seller.username if (it.part and it.part.seller_id) else "—"
+                g["items"].append(it)
+                g["amount"] += float(it.unit_price or 0) * (it.quantity or 0)
+                g["statuses"].add((it.status if hasattr(it,"status") and it.status else None) or o.status)
+            base = len(_sh_parts)
+            for j, (sid, g) in enumerate(sorted(_lg.items(), key=lambda kv: -kv[1]["amount"])):
+                disp = g["name"] if _is_real_op else f"Поставщик {chr(ord('A') + base + j)}"
+                if len(g["statuses"]) == 1:
+                    only = next(iter(g["statuses"]))
+                    lbl = _STAGE_LABEL_RU.get(only, only)
+                else:
+                    lbl = "смешанный"
+                _sh_parts.append({
+                    "supplier":    f"{disp} · ждёт партию",
+                    "amount":      g["amount"],
+                    "amount_pct":  int(round(g["amount"]/_total_ord*100)) if _total_ord else 0,
+                    "items_count": len(g["items"]),
+                    "stage_label": lbl,
+                    "stage_code":  next(iter(g["statuses"])) if len(g["statuses"]) == 1 else "",
+                })
+    elif o.items.count() > 0:
+        # Нет Shipment'ов — группируем по поставщику (когда их >1)
+        from collections import defaultdict as _dd
+        _g_by_sup = _dd(lambda: {"items":[],"amount":0.0,"name":"","statuses":set()})
+        for it in o.items.select_related("part__seller"):
+            sid = it.part.seller_id if it.part else 0
+            g = _g_by_sup[sid]
+            if not g["name"]:
+                g["name"] = it.part.seller.username if (it.part and it.part.seller_id) else "—"
+            g["items"].append(it)
+            g["amount"] += float(it.unit_price or 0) * (it.quantity or 0)
+            g["statuses"].add((it.status if hasattr(it,"status") and it.status else None) or o.status)
+        if len(_g_by_sup) > 1:
+            for idx, (sid, g) in enumerate(sorted(_g_by_sup.items(), key=lambda kv: -kv[1]["amount"])):
+                disp = g["name"] if _is_real_op else f"Поставщик {chr(ord('A') + idx)}"
+                if len(g["statuses"]) == 1:
+                    only = next(iter(g["statuses"]))
+                    lbl = _STAGE_LABEL_RU.get(only, only)
+                else:
+                    lbl = "смешанный"
+                _sh_parts.append({
+                    "supplier":    disp,
+                    "amount":      g["amount"],
+                    "amount_pct":  int(round(g["amount"]/_total_ord*100)) if _total_ord else 0,
+                    "items_count": len(g["items"]),
+                    "stage_label": lbl,
+                    "stage_code":  next(iter(g["statuses"])) if len(g["statuses"]) == 1 else "",
+                })
+
+    # ── Агрегатный статус заказа: по слабейшему звену ─────────────
+    # Когда parts на разных стадиях — общий статус НЕ может быть «Транзит»,
+    # потому что заказ покупателю не закрыт пока самый медленный не дойдёт.
+    # Берём «min(stage_idx)» среди всех групп/партий — это честное состояние.
+    _agg_status = o.status
+    _agg_label = o.get_status_display()
+    _ORDER_CODES_SH = ["awaiting_reserve","reserve_paid","confirmed","in_production",
+                       "ready_to_ship","transit_abroad","customs","transit_rf",
+                       "issuing","delivered","completed"]
+    if _sh_parts:
+        _idxs = []
+        for p in _sh_parts:
+            code = p.get("stage_code", "")
+            if code and code in _ORDER_CODES_SH:
+                _idxs.append(_ORDER_CODES_SH.index(code))
+        if _idxs:
+            _min_i, _max_i = min(_idxs), max(_idxs)
+            _agg_status = _ORDER_CODES_SH[_min_i]
+            if _min_i != _max_i:
+                _from = _STAGE_LABEL_RU.get(_ORDER_CODES_SH[_min_i], _ORDER_CODES_SH[_min_i])
+                _to   = _STAGE_LABEL_RU.get(_ORDER_CODES_SH[_max_i], _ORDER_CODES_SH[_max_i])
+                _agg_label = f"Частично · от «{_from}» до «{_to}»"
+            else:
+                _agg_label = _STAGE_LABEL_RU.get(_agg_status, _agg_status)
+
     return ActionResult(
-        text=f"Трекинг заказа ORD-{o.id} — статус: {o.get_status_display()}",
+        text=f"Трекинг заказа ORD-{o.id} — статус: {_agg_label}",
         cards=[{
             "type": "shipment",
             "data": {
                 "order_id": str(o.id),
-                "status": o.status,
-                "status_label": o.get_status_display(),
+                "status": _agg_status,
+                "status_label": _agg_label,
+                "total": float(o.total_amount or 0),
+                "currency": "USD",
+                "payment_status_label": _pay_label,
+                "eta": _eta,
+                "next_actor": _next_actor,
+                "next_event": _next_event,
+                "positions": _positions,
+                "qty_total": _qty_total,
+                "weight_kg": round(_weight, 1) if _weight else None,
+                "days_in_stage": _days_here,
+                "sla_label": _sla_label,
+                "sla_tone": _sla_tone,
+                # Per-shipment / per-supplier разбивка (показывается в рендерере
+                # отдельным блоком если есть >1 партия/поставщик).
+                "parts": _sh_parts,
+                # tracking_number/carrier — только реальному оператору (анти-сговор)
+                "tracking_number": _tracking_number if _is_real_op else None,
+                "carrier":         _carrier         if _is_real_op else None,
+                # Stages рисуем по агрегату (_agg_status), а не по o.status —
+                # иначе при «частичный» полоска врала бы (Транзит зелёный когда
+                # C ещё в производстве).
                 "stages": [
-                    {"label": "Резерв оплачен", "done": o.status not in ("pending",)},
-                    {"label": "В производстве", "done": o.status in ("in_production", "ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "shipped", "delivered", "completed")},
-                    {"label": "Транзит", "done": o.status in ("customs", "transit_rf", "issuing", "shipped", "delivered", "completed")},
-                    {"label": "Таможня", "done": o.status in ("transit_rf", "issuing", "shipped", "delivered", "completed")},
-                    {"label": "Доставлен", "done": o.status in ("delivered", "completed")},
+                    {"label": "Резерв оплачен", "done": o.payment_status not in ("awaiting_reserve", "pending", "")},
+                    {"label": "В производстве", "done": _agg_status in ("in_production", "ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "shipped", "delivered", "completed")},
+                    {"label": "Транзит",        "done": _agg_status in ("customs", "transit_rf", "issuing", "shipped", "delivered", "completed")},
+                    {"label": "Таможня",        "done": _agg_status in ("transit_rf", "issuing", "shipped", "delivered", "completed")},
+                    {"label": "Доставлен",      "done": _agg_status in ("delivered", "completed")},
                 ],
             },
         }],
+        actions=_build_track_shipment_actions(o, role, user),
         suggestions=["Все заказы в пути", "Открыть карту"],
     )
+
+
+def _build_track_shipment_actions(o, role, user):
+    """Кнопки под shipment-карточкой — те же, что покупатель видит на get_order_detail.
+    SLA-отчёт, оплата остатка, подтверждение приёмки + базовые навигационные."""
+    acts = [
+        {"label": "📄 Все документы", "action": "list_order_documents",
+         "params": {"order_id": o.id}},
+        {"label": "Полный таймлайн с историей", "action": "track_order",
+         "params": {"order_id": o.id}},
+        {"label": "Детали заказа", "action": "get_order_detail",
+         "params": {"order_id": o.id}},
+    ]
+    is_buyer = role == "buyer"
+    is_seller = role == "seller"
+    is_op = role in ("operator", "admin")
+    # SLA-отчёт — пока заказ не отменён
+    if o.status != "cancelled":
+        acts.append({"label": "⏱ SLA-отчёт", "action": "get_sla_report",
+                      "params": {"order_id": o.id}})
+    # Buyer-специфичное
+    if is_buyer:
+        if o.payment_status == "reserve_paid" and o.status in (
+                "ready_to_ship", "transit_abroad", "customs", "transit_rf",
+                "issuing", "delivered"):
+            acts.append({"label": "💳 Оплатить остаток 90%", "action": "pay_final",
+                          "params": {"order_id": o.id}})
+        if o.status == "delivered":
+            acts.append({"label": "✓ Подтвердить приёмку",
+                          "action": "confirm_delivery",
+                          "params": {"order_id": o.id}})
+    # Seller/Operator — счёт пока оплата не закрыта
+    if (is_seller or is_op) and o.payment_status in (
+            "awaiting_reserve", "reserve_paid", "awaiting_final"):
+        acts.append({"label": "Создать счёт на оплату",
+                      "action": "generate_invoice_pdf",
+                      "params": {"order_id": o.id}})
+    return acts
+
+
+@register("get_my_deals")
+def get_my_deals(params, user, role):
+    """Единая лента «Мои сделки» — RFQ + Order одним списком.
+
+    Концептуально: RFQ и Order — одна сущность в разных фазах жизни.
+    Различает их два поля: payment_status и operator_confirmation.
+
+    Фазы (фильтры):
+      • «decide» — ждут моего решения: SEMI pending, КП готов к оплате,
+                    оплата резерва ожидается
+      • «active» — в работе: оплачено, в производстве, в пути
+      • «done"  — завершены: доставлено / закрыто / отменено
+    """
+    from marketplace.models import RFQ, Order
+    flt = (params or {}).get("filter", "all")  # all|decide|active|done
+    rows = []
+
+    # ── RFQ-фаза ───────────────────────────────────────────────
+    rfq_qs = RFQ.objects.order_by("-created_at")
+    if role == "buyer":
+        rfq_qs = rfq_qs.filter(created_by=user) if hasattr(RFQ, "created_by") \
+                 else rfq_qs.filter(customer_email=user.email)
+    rfq_qs = rfq_qs.exclude(status__in=("closed",))[:50]
+
+    # Очищаем RFQ.notes от технического хвоста ("Mode: manual · ...")
+    import re as _re_n
+    def _clean_rfq_title(notes: str, fallback: str) -> str:
+        if not notes:
+            return fallback
+        # Удаляем technical-prefixes
+        s = notes
+        s = _re_n.sub(r"Создано из чата\s*·?\s*\d+\s*позиц[а-я]*", "", s)
+        s = _re_n.sub(r"\|\s*Mode:[^|]*", "", s)
+        s = _re_n.sub(r"\|\s*(MANUAL|AUTO|SEMI)[^|]*", "", s)
+        s = _re_n.sub(r"Запрос:\s*", "", s)
+        s = s.strip(" ·|")
+        return s[:80] or fallback
+
+    for r in rfq_qs:
+        is_cancelled = r.status in ("cancelled", "declined")
+        is_quoted = r.status in ("quoted", "accepted")
+        if is_cancelled:
+            phase, phase_label, action_label = "done", "Отменён", "Открыть"
+        elif r.mode == "semi" and r.status in ("new", "processing", "matched"):
+            phase, phase_label, action_label = "decide", "Ждёт оператора", "Открыть"
+        elif is_quoted:
+            phase, phase_label, action_label = "decide", "КП готов · оплатить резерв", "Оплатить 10%"
+        else:
+            phase, phase_label, action_label = "decide", "Подбор позиций", "Открыть"
+        if flt != "all" and flt != phase:
+            continue
+        items_count = r.items.count() if hasattr(r, "items") else 0
+        rows.append({
+            "id":           r.id,
+            "number":       f"RFQ-{r.id}",
+            "phase":        phase,
+            "title":        _clean_rfq_title(r.notes, f"RFQ #{r.id}"),
+            "stage":        phase_label,
+            # amber = нужно действие, good = всё ок и работает, wait = архив
+            "status":       "amber" if phase == "decide" else ("good" if phase == "active" else "wait"),
+            "status_label": phase_label,
+            "action_label": action_label,
+            "items_count":  items_count,
+            "quotes_count": 0,
+            "kind":         "rfq",
+            # Имя клиента нужно только seller/operator (buyer видит «себя»).
+            "customer_name": ((r.customer_name if hasattr(r, "customer_name") else "") or "") if role != "buyer" else "",
+            "date_str":     r.created_at.strftime("%d.%m.%Y") if r.created_at else "",
+            "amount":       float(getattr(r, "estimated_total", 0) or 0) or None,
+            "_sort":        -int(r.created_at.timestamp() if r.created_at else 0),
+        })
+
+    # ── Order-фаза ──────────────────────────────────────────────
+    order_qs = Order.objects.order_by("-created_at")
+    if role == "buyer":
+        order_qs = order_qs.filter(buyer=user)
+    elif role == "seller":
+        # FIX: subquery вместо materialized list — см. get_orders выше.
+        order_qs = order_qs.filter(items__part__seller=user).distinct()
+    order_qs = order_qs[:50]
+
+    from django.utils import timezone as _tz
+    now = _tz.now()
+    for o in order_qs:
+        ps = o.payment_status or ""
+        st = o.status or ""
+        # Фаза
+        if st in ("cancelled",) or ps == "refunded":
+            phase, phase_label, action_label = "done", "Отменён", "Открыть"
+        elif st in ("delivered", "completed"):
+            phase, phase_label, action_label = "done", "Доставлен", "Открыть"
+        elif ps == "awaiting_reserve":
+            age = (now - o.created_at).days if o.created_at else 0
+            phase = "decide"
+            phase_label = f"Оплатить резерв · {age}д висит" if age >= 3 else "Оплатить резерв"
+            action_label = f"Оплатить ${float(o.reserve_amount or 0):,.0f}"
+        else:
+            # reserve_paid / mid_paid / paid + in_production / shipped / customs / transit
+            phase = "active"
+            phase_label = o.get_status_display() if hasattr(o, "get_status_display") else st
+            action_label = "Открыть"
+        if flt != "all" and flt != phase:
+            continue
+        rows.append({
+            "id":           o.id,
+            "number":       f"ORD-{o.id}",
+            "phase":        phase,
+            "title":        f"Заказ · ${float(o.total_amount or 0):,.0f}",
+            "stage":        phase_label,
+            "status":       "amber" if phase == "decide" else ("good" if phase == "active" else "wait"),
+            "status_label": phase_label,
+            "action_label": action_label,
+            "items_count":  o.items.count() if hasattr(o, "items") else 0,
+            "quotes_count": 0,
+            "kind":         "order_pending" if ps == "awaiting_reserve" else "order",
+            "customer_name": (o.customer_name or "") if role != "buyer" else "",
+            "date_str":     o.created_at.strftime("%d.%m.%Y") if o.created_at else "",
+            "amount":       float(o.total_amount or 0),
+            "_sort":        -int(o.created_at.timestamp() if o.created_at else 0),
+        })
+
+    # Сортируем: сначала decide, потом active, потом done; внутри по дате
+    PHASE_PRI = {"decide": 0, "active": 1, "done": 2}
+    rows.sort(key=lambda r: (PHASE_PRI.get(r["phase"], 9), r["_sort"]))
+    for r in rows:
+        r.pop("_sort", None)
+
+    decide_rows = [r for r in rows if r["phase"] == "decide"]
+    active_rows = [r for r in rows if r["phase"] == "active"]
+    done_rows   = [r for r in rows if r["phase"] == "done"]
+
+    # Группируем по стадиям в отдельные карточки (каждая со своим title)
+    cards = []
+    if decide_rows:
+        cards.append({"type": "rfq_list", "data": {
+            "title": f"Ждут моего решения · {len(decide_rows)}",
+            "rows":  decide_rows,
+        }})
+    if active_rows:
+        cards.append({"type": "rfq_list", "data": {
+            "title": f"В работе · {len(active_rows)}",
+            "rows":  active_rows,
+        }})
+    if done_rows:
+        # Завершённые показываем максимум 10 — не утопаем в архиве
+        cards.append({"type": "rfq_list", "data": {
+            "title": f"Завершены · {len(done_rows)}",
+            "rows":  done_rows[:10],
+        }})
+    if not cards:
+        cards.append({"type": "rfq_list", "data": {
+            "title": "Мои сделки",
+            "rows":  [],
+        }})
+
+    if flt == "all":
+        hint_bits = []
+        if decide_rows: hint_bits.append(f"{len(decide_rows)} ждут решения")
+        if active_rows: hint_bits.append(f"в работе: {len(active_rows)}")
+        if done_rows:   hint_bits.append(f"завершены: {len(done_rows)}")
+        hint = " · ".join(hint_bits) if hint_bits else "Пока нет сделок"
+    else:
+        hint = f"Показано: {len(rows)} · фильтр «{flt}»"
+
+    return ActionResult(
+        text=hint,
+        cards=cards,
+        actions=[
+            {"label": "Ждут решения",   "action": "get_my_deals", "params": {"filter": "decide"}},
+            {"label": "В работе",        "action": "get_my_deals", "params": {"filter": "active"}},
+            {"label": "Завершены",       "action": "get_my_deals", "params": {"filter": "done"}},
+            {"label": "Все",             "action": "get_my_deals", "params": {"filter": "all"}},
+        ],
+        suggestions=["Создать RFQ", "Найти запчасть"],
+    )
+
+
+@register("cancel_rfq")
+def cancel_rfq(params, user, role):
+    """Отменить (мягко удалить) RFQ покупателя.
+    Меняет статус на 'cancelled' → запрос пропадает из списка «Мои RFQ».
+    Если уже есть котировки — статус 'declined' и предупреждение, чтобы
+    оператор знал что юзер передумал.
+    """
+    from marketplace.models import RFQ
+    try:
+        rfq_id = int(params.get("rfq_id") or 0)
+    except (ValueError, TypeError):
+        return ActionResult(text="⚠️ Неверный rfq_id.")
+    if not rfq_id:
+        return ActionResult(text="⚠️ Не указан rfq_id.")
+    try:
+        rfq = RFQ.objects.get(id=rfq_id, created_by=user)
+    except RFQ.DoesNotExist:
+        return ActionResult(text=f"⚠️ RFQ #{rfq_id} не найден или нет прав.")
+    if rfq.status in ("cancelled", "closed"):
+        return ActionResult(text=f"RFQ #{rfq_id} уже закрыт.")
+    had_quotes = rfq.quotes.exists() if hasattr(rfq, "quotes") else False
+    new_status = "cancelled"
+    rfq.status = new_status
+    rfq.save(update_fields=["status"])
+    msg = f"✓ RFQ #{rfq_id} удалён из списка."
+    if had_quotes:
+        msg += " ⚠️ По нему были котировки — оператор получит уведомление."
+    # Возвращаем обновлённый список RFQ (rfq_list card) сразу после удаления
+    refreshed = get_rfq_status({}, user, role)
+    refreshed.text = msg
+    return refreshed
 
 
 @register("get_rfq_status")
@@ -2211,42 +3411,368 @@ def get_rfq_status(params, user, role):
             rfq = RFQ.objects.get(id=rfq_id)
         except RFQ.DoesNotExist:
             return ActionResult(text=f"⚠️ RFQ #{rfq_id} не найден")
+        # AuthZ: только создатель, операторы и админы могут видеть конкретный RFQ.
+        # Бага CRITICAL: раньше любой buyer мог открыть чужой RFQ по ID.
+        is_op_or_admin = bool(role and (role.startswith("operator") or role == "admin"))
+        if not is_op_or_admin and getattr(user, "is_authenticated", False):
+            if rfq.created_by_id and rfq.created_by_id != user.id:
+                return ActionResult(text=f"⚠️ RFQ #{rfq_id} не найден")
+        # ── RFQ инлайн — переиспользуем готовую spec_results карточку ─────
+        # Это та же визуалка что у analyze_spec / upload_parts_list:
+        # KPI «Found / Analogue / Not found» + полная таблица позиций со
+        # статусом, OEM, name, brand, price, qty, weight, supplier rating.
+        # Не плодим свой rfq-card — данные те же.
+        from marketplace.models import Quote as _Quote
+        _FX_TO_USD = {"USD": 1.0, "EUR": 1.08, "RUB": 0.011, "CNY": 0.135,
+                      "JPY": 0.0067, "GBP": 1.27}
+        items_qs = list(rfq.items.select_related("matched_part__brand").all()) if hasattr(rfq, "items") else []
+        spec_items = []
+        found_n = 0
+        not_found_n = 0
+        total_usd = 0.0
+        for it in items_qs:
+            mp = getattr(it, "matched_part", None)
+            qty = it.quantity or 1
+            if mp and mp.price is not None:
+                ccy = (mp.currency or "USD").upper()
+                price_usd = float(mp.price) * _FX_TO_USD.get(ccy, 1.0)
+                total_usd += price_usd * qty
+                is_insider = bool(role and (role.startswith("operator") or role == "admin"))
+                # Тянем реальный статус/рейтинг продавца из профиля
+                _STATUS_BADGE = {"trusted": "Надёжный", "sandbox": "Песочница",
+                                 "risky": "Рисковый", "rejected": "Исключён"}
+                sup_status_code = "trusted"
+                sup_rating = 91.6
+                sup_username = ""
+                if mp.seller_id:
+                    try:
+                        from marketplace.models import UserProfile as _UP
+                        _p = _UP.objects.filter(user_id=mp.seller_id).only(
+                            "supplier_status", "rating", "user").first()
+                        if _p:
+                            sup_status_code = _p.supplier_status or "trusted"
+                            sup_rating = float(_p.rating or 90.0)
+                            try:
+                                sup_username = _p.user.username
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
+                sup_status_label = _STATUS_BADGE.get(sup_status_code, "Надёжный")
+                if is_insider:
+                    # Оператор видит реальное имя + статус + рейтинг
+                    badge_text = (f"{sup_status_label} · {sup_username}"
+                                   if sup_username else sup_status_label)
+                else:
+                    # Покупатель видит только статус + анонимный код
+                    badge_text = sup_status_label
+                spec_items.append({
+                    "status": "in_stock",
+                    "id": mp.oem_number or "—",
+                    "name": (_clean_title(mp.title or "")[:80]) or "—",
+                    "brand": (mp.brand.name if mp.brand else "—"),
+                    "condition": (mp.condition or "oem"),
+                    "price": float(mp.price),
+                    "qty": qty,
+                    "weight": f"{mp.gross_weight_kg} кг" if mp.gross_weight_kg else "—",
+                    "currency": ccy,
+                    "supplier_status": sup_status_code,           # CSS-класс
+                    "supplier_status_badge": badge_text,           # лейбл
+                    "supplier_rating": round(sup_rating, 1),
+                    "alt_offers": 0,
+                })
+                found_n += 1
+            else:
+                spec_items.append({
+                    "status": "not_found",
+                    "id": getattr(it, "query", "") or "—",
+                    "name": "",
+                    "qty": qty,
+                })
+                not_found_n += 1
+        # Кнопки внизу — действия зависят от статуса RFQ
+        quotes_count = _Quote.objects.filter(rfq=rfq).count()
+        rfq_actions = []
+        # Поиск связанного Order (если RFQ дошёл до оплаты) — через customer_email
+        # (Order.notes поля нет; жёсткой FK rfq→order тоже нет)
+        from marketplace.models import Order as _Ord
+        linked_order = None
+        try:
+            if rfq.created_by_id:
+                linked_order = (_Ord.objects.filter(buyer_id=rfq.created_by_id)
+                                  .exclude(status__in=("cancelled",))
+                                  .order_by("-id").first())
+        except Exception:
+            linked_order = None
+
+        if rfq.status in ("cancelled", "declined", "closed"):
+            # Отменённый RFQ — повтор + связи
+            rfq_actions.append({
+                "label": "Создать новый RFQ",
+                "action": "create_rfq", "params": {},
+            })
+            rfq_actions.append({
+                "label": "Найти аналоги",
+                "action": "search_parts",
+                "params": {"query": (rfq.notes or "")[:80]},
+            })
+            rfq_actions.append({
+                "label": "История изменений",
+                "action": "audit_log",
+                "params": {"rfq_id": rfq.id},
+            })
+            rfq_actions.append({
+                "label": "Связаться с оператором",
+                "action": "ask_about_rfq", "params": {"rfq_id": rfq.id},
+            })
+            rfq_actions.append({
+                "label": "Все мои сделки",
+                "action": "get_my_deals", "params": {},
+            })
+        else:
+            # Активный RFQ — стандартный набор + расширенная навигация
+            if quotes_count > 0:
+                rfq_actions.append({
+                    "label": f"Сравнить котировки ({quotes_count})",
+                    "action": "compare_quotes", "params": {"rfq_id": rfq.id},
+                })
+                rfq_actions.append({
+                    "label": "Оплатить резерв 10%",
+                    "action": "auto_accept_and_pay_reserve",
+                    "params": {"rfq_id": rfq.id},
+                })
+                rfq_actions.append({
+                    "label": "КП в PDF",
+                    "action": "generate_proposal", "params": {"rfq_id": rfq.id},
+                })
+            else:
+                rfq_actions.append({
+                    "label": "Спросить оператора",
+                    "action": "ask_about_rfq", "params": {"rfq_id": rfq.id},
+                })
+            # ── Логистика по RFQ — расчёт фрахта/портов/ETA ──
+            rfq_actions.append({
+                "label": "Логистика и доставка",
+                "action": "shipping_choose", "params": {"rfq_id": rfq.id},
+            })
+            # ── SLA / прогресс / документы — общие навигационные опции ──
+            rfq_actions.append({
+                "label": "История изменений",
+                "action": "audit_log", "params": {"rfq_id": rfq.id},
+            })
+            if linked_order:
+                rfq_actions.append({
+                    "label": "Трекинг отгрузки",
+                    "action": "track_shipment", "params": {"order_id": linked_order.id},
+                })
+                rfq_actions.append({
+                    "label": "Документы заказа",
+                    "action": "list_order_documents", "params": {"order_id": linked_order.id},
+                })
+            rfq_actions.append({
+                "label": "Отменить запрос",
+                "action": "cancel_rfq", "params": {"rfq_id": rfq.id},
+            })
+        urgency = getattr(rfq, "urgency", "standard") or "standard"
+        URGENCY_LABEL = {"critical": "СРОЧНО", "urgent": "ВАЖНО", "standard": ""}
+        title_bits = [f"RFQ #{rfq.id}"]
+        if URGENCY_LABEL.get(urgency):
+            title_bits.append(f"· {URGENCY_LABEL[urgency]}")
+        if (rfq.mode or "").upper():
+            title_bits.append(f"· {rfq.mode.upper()}")
+        title = " ".join(title_bits)
+        foot = f"{found_n} из {len(items_qs)} priced · {quotes_count} котир."
+        if quotes_count == 0 and len(items_qs) > 0:
+            foot += " · ждём ответы поставщиков"
+
+        # ── Что дальше: подсказка по статусу RFQ ──
+        rfq_hint = ""
+        rfq_suggestions = []
+        if rfq.status in ("cancelled", "declined"):
+            rfq_hint = "Запрос отменён. Если нужно повторить — создайте новый RFQ или обратитесь к оператору."
+            rfq_suggestions = ["Создать RFQ", "Связаться с оператором", "Все мои сделки"]
+        elif rfq.status == "closed":
+            rfq_hint = "Запрос закрыт. Можно использовать как шаблон для повтора."
+            rfq_suggestions = ["Создать RFQ", "Все мои сделки"]
+        elif quotes_count > 0:
+            rfq_hint = (
+                f"📊 {quotes_count} котировок получено. Дальше: выберите поставщика, "
+                f"оформите заказ и оплатите резерв 10%."
+            )
+            rfq_suggestions = ["Сравнить котировки", "Лучшая котировка", "Спросить оператора"]
+        elif rfq.mode == "semi":
+            rfq_hint = (
+                "⏳ Оператор подтверждает аналоги (SLA 15 мин). Дальше: после "
+                "подтверждения вы получите КП и сможете оплатить резерв 10%."
+            )
+            rfq_suggestions = ["Спросить оператора", "Все мои сделки"]
+        elif found_n == 0:
+            rfq_hint = (
+                "Ни одна позиция не найдена в каталоге. Оператор предложит аналоги "
+                "или сообщит об отсутствии. Запрос записан в аналитику спроса."
+            )
+            rfq_suggestions = ["Предложить аналог", "Связаться с оператором"]
+        else:
+            rfq_hint = (
+                f"✓ {found_n} позиций сматчены в каталоге. Дальше: оператор подтвердит "
+                f"и сформирует КП для оплаты резерва 10%."
+            )
+            rfq_suggestions = ["Спросить оператора", "Создать ещё RFQ"]
+
         return ActionResult(
-            text=f"RFQ #{rfq.id} — {rfq.get_status_display() if hasattr(rfq,'get_status_display') else rfq.status}",
+            text=f"RFQ #{rfq.id} — {rfq.get_status_display() if hasattr(rfq,'get_status_display') else rfq.status}\n\n{rfq_hint}",
             cards=[{
-                "type": "rfq",
+                "type": "spec_results",
                 "data": {
-                    "id": str(rfq.id),
-                    "number": rfq.id,
-                    "status": rfq.status,
-                    "description": (rfq.notes or "")[:200],
-                    "customer": rfq.customer_name,
-                    "created_at": rfq.created_at.strftime("%d.%m.%Y"),
+                    "title": title,
+                    "found": found_n,
+                    "analogue": 0,
+                    "not_found": not_found_n,
+                    "items": spec_items,
+                    "more_count": 0,
+                    "offers_count": found_n,
+                    "sellers_count": found_n,
+                    "best_mix": int(total_usd) if total_usd else None,
+                    "total": int(total_usd) if total_usd else None,
+                    "currency": "USD",
+                    "foot_info": foot,
                 },
             }],
-            actions=[
-                {"label": "Открыть страницу RFQ", "action": "open_url",
-                 "params": {"_url": f"/chat/rfq/{rfq.id}/"}},
-            ],
+            actions=rfq_actions,
+            suggestions=rfq_suggestions,
         )
-    # List active RFQs
-    qs = RFQ.objects.order_by("-created_at")
+    # List active RFQs — компактные строки (rfq_list card).
+    # Раньше возвращали N полных карточек на каждый RFQ — занимало пол-экрана,
+    # 0/0/— на каждой бесполезно. Теперь одна таблица-список: id · название ·
+    # статус · позиций · котировок. Клик по строке → разворачивает в полный
+    # spec_results той же ручкой get_rfq_status(rfq_id).
+    from marketplace.models import Quote as _Quote2
+    # Скрываем терминальные статусы — юзер не должен утопать в архиве.
+    qs = RFQ.objects.exclude(status__in=("cancelled", "closed", "declined"))\
+                     .order_by("-created_at").prefetch_related("items", "quotes")
     if role == "buyer":
-        qs = qs.filter(buyer=user) if hasattr(RFQ, "buyer") else qs.filter(customer_email=user.email)
-    rfqs = list(qs[:5])
-    cards = [{
-        "type": "rfq",
-        "data": {
-            "id": str(r.id),
-            "number": r.id,
-            "status": r.status,
-            "description": (r.notes or "")[:120],
+        qs = qs.filter(created_by=user) if hasattr(RFQ, "created_by") else qs.filter(customer_email=user.email)
+    rfqs = list(qs[:30])
+    # Pending Orders (без оплаты резерва) больше не мерджим в этот список —
+    # они путают: «Мои RFQ» = только реальные запросы котировок. Неоплаченные
+    # заказы видны в «Мои заказы» / track_order.
+    pending_orders = []
+
+    # ── Action-oriented статусы (что юзеру делать) ────────────────
+    # Не показываем сырые «new / matched / declined» — переводим в:
+    #  • «Выбрать поставщика» (есть котировки → нужно решение)
+    #  • «Ждём ответы» (разослано, ответов нет)
+    #  • «Новый» (только создан, ещё разосланётся)
+    # Группа определяет визуальный приоритет и цвет бейджа.
+    ACTION_STATUS = {
+        # status → (group, label, ui_status_class)
+        "matched":      ("decide", "Выбрать поставщика",  "decide"),
+        "quoted":       ("decide", "Сравнить котировки",  "decide"),
+        "needs_review": ("review", "Нужна правка",        "warn"),
+        "processing":   ("wait",   "Ждём ответы",         "wait"),
+        "new":          ("new",    "Новый — рассылается", "new"),
+    }
+    rows = []
+    for r in rfqs:
+        items_count = r.items.count()
+        quotes_count = _Quote2.objects.filter(rfq=r).count()
+        urgency = getattr(r, "urgency", "standard") or "standard"
+        URGENCY_LABEL = {"critical": "СРОЧНО", "urgent": "ВАЖНО", "standard": ""}
+        # Если уже есть котировки — статус всегда «Выбрать поставщика»,
+        # независимо от поля RFQ.status (приоритет действия).
+        if quotes_count > 0:
+            group, action_label, ui_cls = ACTION_STATUS["matched"]
+        else:
+            group, action_label, ui_cls = ACTION_STATUS.get(r.status, ("wait", "В работе", "wait"))
+        # Описание текущего этапа («что сейчас происходит с запросом»)
+        if quotes_count > 0:
+            stage = f"📊 {quotes_count} котировок получено · нужно выбрать"
+        elif r.status == "new":
+            stage = "📤 Рассылается поставщикам"
+        elif r.status == "processing":
+            stage = "⏳ Ждём ответы от поставщиков"
+        elif r.status == "needs_review":
+            stage = "✏️ Оператор уточняет позиции"
+        else:
+            stage = f"Статус: {r.status}"
+        # Сортировочный приоритет: 0 = надо что-то делать (decide), 1 = review,
+        # 2 = ждём, 3 = новый. Внутри группы — по дате.
+        group_order = {"decide": 0, "review": 1, "wait": 2, "new": 3}.get(group, 4)
+        rows.append({
+            "id": r.id,
+            "number": f"RFQ-{r.id}",
+            "title": ((r.notes or "")[:80] or f"RFQ #{r.id}"),
+            "status": ui_cls,            # CSS-класс
+            "status_label": action_label,  # «Что делать»
+            "stage": stage,                # «Что сейчас происходит»
+            "group": group,
+            "_sort_key": (group_order, -int(r.created_at.timestamp())),
+            "urgency": urgency,
+            "urgency_label": URGENCY_LABEL.get(urgency, ""),
+            "items_count": items_count,
+            "quotes_count": quotes_count,
             "created_at": r.created_at.strftime("%d.%m.%Y"),
-        },
-    } for r in rfqs]
+        })
+    # Сортируем: «решения сверху», далее по свежести
+    rows.sort(key=lambda r: r["_sort_key"])
+    for r in rows:
+        r.pop("_sort_key", None)
+        r.pop("group", None)
+
+    decide_rfq = sum(1 for r in rows if r["status"] == "decide")
+    if decide_rfq:
+        hint = f"📊 {decide_rfq} RFQ ждут вашего решения · остальные в работе"
+    else:
+        hint = "Все в работе — ждём ответы поставщиков."
+
+    # Если RFQ нет — проверяем активные заказы (включая pending), чтобы
+    # дать юзеру указатель куда смотреть. Юзер часто путает «не оплачено» = RFQ.
+    if not rows:
+        from marketplace.models import Order
+        pending_orders = 0
+        active_orders = 0
+        if role == "buyer":
+            buyer_orders = Order.objects.filter(buyer=user)
+            pending_orders = buyer_orders.filter(payment_status="awaiting_reserve").count()
+            active_orders = buyer_orders.exclude(
+                status__in=("delivered", "completed", "cancelled")
+            ).count()
+        empty_text = (
+            "У вас нет открытых RFQ.\n\n"
+            "💡 RFQ — это «жду котировок от поставщиков» (создаётся когда "
+            "цены ещё нет: запрос на ненайденные позиции, торг)."
+        )
+        empty_actions = []
+        if pending_orders:
+            empty_text += (
+                f"\n\n📦 **Зато есть {pending_orders} "
+                f"{'заказ' if pending_orders == 1 else ('заказа' if pending_orders < 5 else 'заказов')} "
+                f"без оплаты резерва** — смотрите в «Мои заказы», нужно подтвердить."
+            )
+            empty_actions.append({
+                "label": f"📦 Открыть заказы без оплаты ({pending_orders})",
+                "action": "get_orders",
+                "params": {"status": "awaiting_reserve"},
+                "style": "primary",
+            })
+        elif active_orders:
+            empty_text += f"\n\n📦 У вас {active_orders} активных заказов в работе."
+            empty_actions.append({
+                "label": f"📦 Открыть заказы ({active_orders})",
+                "action": "get_orders",
+                "params": {},
+            })
+        return ActionResult(text=empty_text, actions=empty_actions)
+
     return ActionResult(
-        text=f"Найдено {len(cards)} RFQ:" if cards else "У вас нет активных RFQ.",
-        cards=cards,
+        text=hint,
+        cards=[{
+            "type": "rfq_list",
+            "data": {
+                "title": "Мои RFQ · жду котировок от поставщиков",
+                "rows": rows,
+            },
+        }],
     )
 
 
@@ -2474,24 +4000,50 @@ def get_supply_report(params, user, role):
         if st in by_status:
             chart_items.append({"label": lbl, "value": len(by_status[st])})
 
-    # Топ-10 заказов с ETA
-    rows = []
-    for o in orders[:10]:
-        days_left = status_eta.get(o.status, 0)
-        eta = (now + timedelta(days=days_left)).strftime("%d.%m")
-        tone = "bad" if o.sla_status == "breached" else (
-            "warn" if o.sla_status == "at_risk" else "ok")
-        items_n = OrderItem.objects.filter(order=o).count()
-        rows.append({
-            "title": f"ORD-{o.id} · {o.customer_name or o.buyer.username}",
-            "subtitle": (
-                f"{status_label.get(o.status, o.status)} · "
-                f"{items_n} поз · ${float(o.total_amount or 0):,.0f} · "
-                f"ETA ~{eta} ({days_left}д)"
-            ),
-            "tone": tone,
-            "action": "get_order_detail",
-            "params": {"order_id": o.id},
+    # Группировка по статусу — отдельный list-card на каждый этап.
+    # Порядок этапов = воронка: Готов к отгрузке → Транзит за рубеж →
+    # Таможня → Транзит РФ → Выдача.
+    _STATUS_ORDER = ["ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing"]
+    status_cards = []
+    for st in _STATUS_ORDER:
+        orders_in_st = by_status.get(st, [])
+        if not orders_in_st:
+            continue
+        st_rows = []
+        for o in orders_in_st[:10]:  # лимит 10 на блок
+            days_left = status_eta.get(o.status, 0)
+            eta = (now + timedelta(days=days_left)).strftime("%d.%m")
+            tone = "bad" if o.sla_status == "breached" else (
+                "warn" if o.sla_status == "at_risk" else "ok")
+            items_n = OrderItem.objects.filter(order=o).count()
+            st_rows.append({
+                "title": f"ORD-{o.id} · {o.customer_name or o.buyer.username}",
+                "subtitle": (
+                    f"{items_n} поз · ${float(o.total_amount or 0):,.0f} · "
+                    f"ETA ~{eta} ({days_left}д)"
+                ),
+                "tone": tone,
+                "action": "get_order_detail",
+                "params": {"order_id": o.id},
+            })
+        # Бейдж этапа: подсветка SLA-проблем
+        breached_in_st = sum(1 for o in orders_in_st if o.sla_status == "breached")
+        n_total = len(orders_in_st)
+        st_label = status_label.get(st, st)
+        if breached_in_st:
+            block_title = f"{st_label} · {n_total} · 🔴 {breached_in_st} срыв SLA"
+        else:
+            block_title = f"{st_label} · {n_total}"
+        more_note = f"  (+ ещё {n_total - 10} заказов)" if n_total > 10 else ""
+        status_cards.append({
+            "type": "list",
+            "data": {
+                "title": block_title + more_note,
+                "items": st_rows,
+                # Свёрнуто по умолчанию для этапов где >5 заказов (чтобы не залипал scroll)
+                "collapsible": n_total > 5,
+                "collapsed": n_total > 5,
+            },
         })
 
     # Текст-инсайт по приоритету
@@ -2517,12 +4069,12 @@ def get_supply_report(params, user, role):
                     {"label": "Деньги под риском","value": f"${at_risk_value:,.0f}",
                      "tone": "bad" if breached else ("warn" if at_risk else "ok"),
                      "sub": f"{breached + at_risk} заказов"},
-                    {"label": "SLA здоровье",    "value": f"{sla_healthy_pct}%",
+                    {"label": "Доля заказов в срок", "value": f"{sla_healthy_pct}%",
                      "tone": "ok" if sla_healthy_pct >= 80 else ("warn" if sla_healthy_pct >= 60 else "bad")},
                     {"label": "Средн. возраст",  "value": f"{avg_age_days:.0f} дн",
                      "sub": "в текущем этапе",
                      "tone": "warn" if avg_age_days > 14 else "info"},
-                    {"label": "Узкое место",     "value": (status_label.get(biggest[0], biggest[0]).split(" ", 1)[-1] if biggest else "—"),
+                    {"label": "Самый медленный этап",     "value": (status_label.get(biggest[0], biggest[0]).split(" ", 1)[-1] if biggest else "—"),
                      "sub": f"{biggest_share}% объёма" if biggest else "",
                      "tone": "warn" if biggest_share > 50 else "info"},
                 ],
@@ -2532,10 +4084,7 @@ def get_supply_report(params, user, role):
                 "items": chart_items,
                 "color": "#FFB74D",
             }},
-            {"type": "list", "data": {
-                "title": f"📋 Заказы в поставке (топ {len(rows)})",
-                "items": rows,
-            }},
+            *status_cards,
         ],
         contextual_actions=[
             {"action": "get_orders",     "label": "📦 Все заказы"},
@@ -2648,6 +4197,29 @@ def _status_badge(status: str) -> str:
         "risky":    "🟠 Рисковый",
         "rejected": "🔴 Исключён",
     }.get(status, status)
+
+
+# Регексп для CJK-иероглифов (CN/JP/KR) — мешают читать названия типа
+# «Pipe子», «PC200普通斗0.9m³带吊钩». В нашем UI язык RU/EN, поэтому стрипаем.
+_CJK_RE = re.compile(r"[　-〿぀-ヿ㐀-䶿一-鿿豈-﫿＀-￯]+")
+
+
+def _clean_title(title: str) -> str:
+    """Чистит название запчасти от CJK-иероглифов и схлопывает пробелы.
+    Pipe子 → Pipe, PC200普通斗0.9m³带吊钩 → PC200 0.9m³.
+    Если после чистки осталось <3 латинских/кириллических символа — возвращает пустую строку
+    (фронт покажет «—» или fallback на OEM-номер).
+    """
+    if not title:
+        return ""
+    cleaned = _CJK_RE.sub(" ", title)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" .,;:-—")
+    if not cleaned:
+        return ""
+    # Если все читаемые символы — спецсимволы/цифры, не оставляем
+    if not any(ch.isalpha() for ch in cleaned):
+        return ""
+    return cleaned
 
 
 def _rank_offers(offers: list[dict],
@@ -3179,15 +4751,49 @@ def get_sla_report(params, user, role):
         qs = qs.filter(items__part__seller=eff).distinct()
         scope_label = "по вашим поставкам"
 
-    breached = qs.filter(sla_status="breached").count()
-    on_track = qs.filter(sla_status="on_track").count()
-    at_risk  = qs.filter(sla_status="at_risk").count() if hasattr(Order, "sla_status") else 0
-    total    = breached + on_track + at_risk
-    on_track_pct = (on_track / total * 100) if total else None
+    # Если отчёт открыт из карточки конкретного заказа — сужаем область.
+    _single_oid = (params or {}).get("order_id")
+    if _single_oid:
+        qs = qs.filter(id=_single_oid)
+        scope_label = f"по заказу ORD-{_single_oid}"
 
-    # Money at risk (для заказов в риске/нарушенных)
-    risk_orders = list(qs.filter(sla_status__in=("at_risk", "breached"))[:500])
-    money_at_risk = sum(float(o.total_amount or 0) for o in risk_orders)
+    # Реальный пересчёт SLA на лету: дни в текущей стадии vs норматив.
+    # Поле Order.sla_status не доверяем — оно ниоткуда автоматически
+    # не обновляется и часто разъезжается с фактом.
+    _STAGE_SLA_DAYS_KPI = {
+        "awaiting_reserve": 2, "reserve_paid": 2, "confirmed": 1,
+        "in_production": 7, "ready_to_ship": 2, "transit_abroad": 14,
+        "customs": 5, "transit_rf": 7, "issuing": 3,
+    }
+    from marketplace.models import OrderEvent as _OE
+    _active_for_kpi = list(qs.exclude(status__in=("completed", "cancelled")))
+    _last_change_kpi = {}
+    if _active_for_kpi:
+        _evs = _OE.objects.filter(
+            order_id__in=[o.id for o in _active_for_kpi],
+            event_type="status_changed",
+        ).order_by("created_at")
+        for _e in _evs:
+            _last_change_kpi[_e.order_id] = _e.created_at
+    _now_kpi = timezone.now()
+    breached = on_track = at_risk = 0
+    money_at_risk = 0.0
+    for _o in _active_for_kpi:
+        _sla = _STAGE_SLA_DAYS_KPI.get(_o.status, 0)
+        if not _sla:
+            on_track += 1; continue
+        _entered = _last_change_kpi.get(_o.id) or _o.created_at
+        _days = max(0, int((_now_kpi - _entered).total_seconds() / 86400))
+        if _days > _sla:
+            breached += 1
+            money_at_risk += float(_o.total_amount or 0)
+        elif _days >= _sla * 0.8:
+            at_risk += 1
+            money_at_risk += float(_o.total_amount or 0)
+        else:
+            on_track += 1
+    total = breached + on_track + at_risk
+    on_track_pct = (on_track / total * 100) if total else None
     # Breach rate
     breach_pct = int(breached * 100 / total) if total else None
     # Health score — при отсутствии данных показываем «—», а не пугающий 0%.
@@ -3196,7 +4802,7 @@ def get_sla_report(params, user, role):
     else:
         health_tone = "ok" if on_track_pct >= 80 else ("warn" if on_track_pct >= 60 else "bad")
         health_label = f"{on_track_pct:.0f}%"
-        health_sub = f"{on_track}/{total} on-track"
+        health_sub = f"{on_track}/{total} в норме"
     if breach_pct is None:
         breach_label, breach_tone, breach_sub = "—", "info", "нет заказов"
     else:
@@ -3204,7 +4810,7 @@ def get_sla_report(params, user, role):
         breach_tone = "bad" if breach_pct > 10 else ("warn" if breach_pct > 0 else "ok")
         breach_sub = f"{breached} нарушено"
     items = [
-        {"label": "SLA здоровье",  "value": health_label,
+        {"label": "Доля заказов в срок",  "value": health_label,
          "tone": health_tone, "sub": health_sub},
         {"label": "% нарушений",   "value": breach_label,
          "tone": breach_tone, "sub": breach_sub},
@@ -3283,19 +4889,94 @@ def get_sla_report(params, user, role):
                           f"{avg_sec/60:.0f} мин")
             tone = ("ok"   if avg_days <= sla_days * 0.8 else
                     "warn" if avg_days <= sla_days       else "bad") if sla_days else "info"
+        # subtitle: «среднее: —» бессмысленно — не показываем строку среднего
+        # пока нет ни одного перехода. Вместо этого даём норматив и кол-во now.
+        parts_sub = []
+        if durations:
+            parts_sub.append(f"среднее: {avg_label}")
+        if sla_days:
+            parts_sub.append(f"норматив SLA: {sla_days} дн")
+        if n_now:
+            parts_sub.append(f"сейчас здесь: {n_now}")
+        if durations:
+            parts_sub.append(f"{len(durations)} переходов")
+        # badge: при отсутствии данных — показываем норматив, не «—»
+        badge_lbl = avg_label if durations else (f"SLA {sla_days}д" if sla_days else "—")
         stage_rows.append({
             "title": f"{label}",
-            "subtitle": (
-                f"среднее: {avg_label}" +
-                (f" / SLA {sla_days} дн" if sla_days else "") +
-                (f" · сейчас в этом этапе: {n_now} заказ" if n_now else "") +
-                (f" · {len(durations)} переходов" if durations else "")
-            ),
-            "badge": {"label": avg_label, "tone": tone},
+            "subtitle": " · ".join(parts_sub),
+            "badge": {"label": badge_lbl, "tone": tone},
         })
 
     cards = [{"type": "kpi_grid",
               "data": {"title": f"⏱ SLA {scope_label}", "items": items}}]
+
+    # ── По заказам: полная tracking-карточка на каждый активный заказ ──
+    active_orders = list(qs.exclude(status__in=("cancelled",)).order_by("-created_at")[:50])
+    if role in ("buyer", "seller") and active_orders:
+        for o in active_orders[:8]:
+            try:
+                tr = track_order({"order_id": o.id}, user, role)
+                for c in (tr.cards or []):
+                    if c.get("type") == "tracking":
+                        cards.append(c)
+                        break
+            except Exception:
+                pass
+
+    # Когда заказ вошёл в текущую стадию = время последнего status_changed.
+    last_change = {}
+    for ev in events:
+        last_change[ev.order_id] = ev.created_at
+    now_dt2 = timezone.now()
+    per_order_rows = []
+    for o in active_orders:
+        stage_label = STAGE_LABELS.get(o.status, o.get_status_display())
+        sla = STAGE_SLA_DAYS.get(o.status, 0)
+        entered = last_change.get(o.id) or o.created_at
+        days_here = max(0, int((now_dt2 - entered).total_seconds() / 86400))
+        # tone: сравнение с нормативом текущего этапа
+        if not sla:
+            tone, badge_lbl = "info", "—"
+        elif days_here > sla:
+            tone, badge_lbl = "bad",  f"+{days_here - sla}д просрочка"
+        elif days_here >= sla * 0.8:
+            tone, badge_lbl = "warn", f"осталось {max(0, sla - days_here)}д"
+        else:
+            tone, badge_lbl = "ok",   f"{sla - days_here}д до лимита"
+        # «Ответственный» — по фазе
+        actor_by_stage = {
+            "awaiting_reserve": "Покупатель",
+            "reserve_paid":     "Поставщик",
+            "confirmed":        "Поставщик",
+            "in_production":    "Поставщик",
+            "ready_to_ship":    "Поставщик",
+            "transit_abroad":   "Перевозчик",
+            "customs":          "Таможенный брокер",
+            "transit_rf":       "Перевозчик",
+            "issuing":          "Перевозчик",
+            "delivered":        "Покупатель (приёмка)",
+            "completed":        "—",
+        }
+        actor = actor_by_stage.get(o.status, "—")
+        amount = f"${float(o.total_amount or 0):,.0f}"
+        per_order_rows.append({
+            "title":    f"Заказ #{o.id} · {amount}",
+            "subtitle": (f"{stage_label} · здесь {days_here} дн"
+                         + (f" / норматив {sla}д" if sla else "")
+                         + f" · ответственный: {actor}"),
+            "badge":    {"label": badge_lbl, "tone": tone},
+            "action":   "get_order_detail",
+            "params":   {"order_id": o.id},
+        })
+    # Компактный список — только для operator (у buyer/seller выше
+    # уже полные tracking-карточки, дублировать нет смысла).
+    if per_order_rows and role not in ("buyer", "seller"):
+        cards.append({"type": "list", "data": {
+            "title": f"⏱ По заказам — {len(per_order_rows)} активных",
+            "items": per_order_rows,
+        }})
+
     if stage_rows:
         cards.append({"type": "list", "data": {
             "title": "⏱ Среднее время на каждом этапе pipeline",
@@ -3328,7 +5009,7 @@ def get_sla_report(params, user, role):
         }})
 
     # Текст-сводка
-    text_parts = [f"⏱ SLA {scope_label}: на дорожке {on_track}, риск {at_risk}, нарушено {breached}."]
+    text_parts = [f"⏱ SLA {scope_label}: в норме {on_track}, под риском {at_risk}, нарушено {breached}."]
     if stage_rows:
         # самый медленный этап
         slow = max(((s["title"], s["badge"]["label"], s["badge"]["tone"])
@@ -3342,12 +5023,19 @@ def get_sla_report(params, user, role):
     return ActionResult(
         text="\n".join(text_parts),
         cards=cards,
-        actions=[
-            {"label": "📊 Аналитика заказов", "action": "get_analytics",     "params": {}},
-            ({"label": "💸 Экономия",         "action": "get_savings",       "params": {}}
-              if role == "buyer" else
-             {"label": "📦 Поставки",         "action": "get_supply_report", "params": {}}),
-        ],
+        actions=(
+            # Отчёт по одному заказу → даём кнопку «Трекинг» (shipment-карточка
+            # с meta: сумма, оплата, состав, дни в стадии, SLA, ETA). Это
+            # компактнее timeline-карточки выше и показывает другую инфу.
+            ([{"label": "📦 Трекинг", "action": "track_shipment",
+                "params": {"order_id": _single_oid}}] if _single_oid else [])
+            + [
+                {"label": "📊 Аналитика заказов", "action": "get_analytics",     "params": {}},
+                ({"label": "💸 Экономия",         "action": "get_savings",       "params": {}}
+                 if role == "buyer" else
+                 {"label": "📦 Поставки",         "action": "get_supply_report", "params": {}}),
+            ]
+        ),
         contextual_actions=[{"action": "seller_analytics_hub" if role == "seller" else "support_home",
                               "label": "← Аналитика" if role == "seller" else "← Поддержка"}],
     )
@@ -3376,6 +5064,37 @@ def get_claims(params, user, role):
         order_ids = OrderItem.objects.filter(part__seller=s).values_list("order_id", flat=True).distinct()
         qs = qs.filter(order_id__in=list(order_ids))
     # operator → без фильтра
+
+    # Параметры-фильтры (drill-down с KPI-ячеек):
+    #   status=<X>       — конкретный статус (approved/rejected/closed/…)
+    #   kind=<X>         — тип жалобы (defect/wrong_part/…)
+    #   recent=30        — только за последние N дней
+    #   with_refund=1    — только с компенсацией
+    #   repeats=1        — только заказы с >1 жалобой
+    filter_status = (params or {}).get("status")
+    filter_kind = (params or {}).get("kind")
+    filter_recent = (params or {}).get("recent")
+    filter_refund = (params or {}).get("with_refund")
+    filter_repeats = (params or {}).get("repeats")
+    if filter_status:
+        qs = qs.filter(status=filter_status)
+    if filter_kind:
+        qs = qs.filter(kind=filter_kind)
+    if filter_recent:
+        try:
+            cutoff = timezone.now() - timezone.timedelta(days=int(filter_recent))
+            qs = qs.filter(created_at__gte=cutoff)
+        except (TypeError, ValueError):
+            pass
+    if filter_refund:
+        qs = qs.exclude(refund_amount__isnull=True).exclude(refund_amount=0)
+    if filter_repeats:
+        # Заказы с >1 жалобой — отбираем order_id с count > 1
+        from django.db.models import Count
+        repeat_ids = (OrderClaim.objects.values("order_id")
+                       .annotate(n=Count("id")).filter(n__gt=1)
+                       .values_list("order_id", flat=True))
+        qs = qs.filter(order_id__in=list(repeat_ids))
 
     all_claims = list(qs[:200])
     now = timezone.now()
@@ -3461,43 +5180,94 @@ def get_claims(params, user, role):
                      if c.status == "closed" and c.refund_amount]
     avg_refund = (sum(paid_refunds) / len(paid_refunds)) if paid_refunds else None
 
+    # Каждая ячейка — реальное число + sub + drill-down action на отфильтрованный список.
     kpi_items = []
     if avg_resolution is not None:
-        # Норматив: 5 дней. Хуже — bad, лучше — ok.
         tone = "bad" if avg_resolution > 7 else ("warn" if avg_resolution > 5 else "ok")
-        kpi_items.append({"label": "Средний срок решения",
-                          "value": f"{avg_resolution:.0f} дн", "tone": tone})
-    if approval_rate is not None:
-        # Высокий approval = жалобы оправданы → проблема с качеством/логистикой
+        kpi_items.append({
+            "label": "Срок разбора жалобы",
+            "value": f"{avg_resolution:.0f} дн",
+            "sub": "от подачи до закрытия, среднее",
+            "tone": tone,
+            "action": "get_claims",
+            "params": {"status": "closed"},
+        })
+    if approval_rate is not None and reviewed:
         tone = "bad" if approval_rate >= 70 else ("warn" if approval_rate >= 40 else "ok")
-        kpi_items.append({"label": "% одобренных",
-                          "value": f"{approval_rate}%", "tone": tone})
+        kpi_items.append({
+            "label": "Жалобы признаны обоснованными",
+            "value": f"{approval_rate}%",
+            "sub": f"{approved_total} из {len(reviewed)} рассмотренных",
+            "tone": tone,
+            "action": "get_claims",
+            "params": {"status": "approved"},
+        })
     if pending_refund:
-        kpi_items.append({"label": "Сумма под риском",
-                          "value": f"${int(pending_refund):,}".replace(",", " "),
-                          "tone": "warn"})
+        kpi_items.append({
+            "label": "Деньги под риском",
+            "value": f"${int(pending_refund):,}".replace(",", " "),
+            "sub": "по жалобам ещё в разборе",
+            "tone": "warn",
+            "action": "get_claims",
+            "params": {"status": "in_review"},
+        })
     if top_kind:
         share = top_kind[1] * 100 // len(all_claims)
-        kpi_items.append({"label": "Топ-причина",
-                          "value": f"{KIND_LBL_LOCAL.get(top_kind[0], top_kind[0])} ({share}%)",
-                          "tone": "info"})
-    if last_30 or prev_30:
-        arrow = "↑" if delta_pct > 0 else ("↓" if delta_pct < 0 else "→")
-        tone = "bad" if delta_pct > 20 else ("ok" if delta_pct < -10 else "info")
-        kpi_items.append({"label": "Тренд 30д vs 30д",
-                          "value": f"{arrow} {abs(delta_pct)}% ({last_30} шт)",
-                          "tone": tone})
+        kpi_items.append({
+            "label": "Чаще всего жалуются на",
+            "value": KIND_LBL_LOCAL.get(top_kind[0], top_kind[0]),
+            "sub": f"{share}% жалоб · {top_kind[1]} шт за всё время",
+            "tone": "warn" if share >= 50 else "info",
+            "action": "get_claims",
+            "params": {"kind": top_kind[0]},
+        })
+    diff = last_30 - prev_30
+    if abs(diff) >= 1:
+        if diff < 0:
+            kpi_items.append({
+                "label": "Жалоб стало меньше",
+                "value": f"на {abs(diff)} меньше",
+                "sub": f"было {prev_30} → стало {last_30} за месяц",
+                "tone": "ok",
+                "action": "get_claims",
+                "params": {"recent": 30},
+            })
+        else:
+            kpi_items.append({
+                "label": "Жалоб стало больше",
+                "value": f"на {diff} больше",
+                "sub": f"было {prev_30} → стало {last_30} за месяц",
+                "tone": "bad" if diff >= 3 else "warn",
+                "action": "get_claims",
+                "params": {"recent": 30},
+            })
     if repeat_orders:
-        kpi_items.append({"label": "Заказы с повторами",
-                          "value": str(repeat_orders), "tone": "warn"})
+        kpi_items.append({
+            "label": "Заказы с повторными жалобами",
+            "value": str(repeat_orders),
+            "sub": "более одной претензии по одному заказу",
+            "tone": "warn",
+            "action": "get_claims",
+            "params": {"repeats": 1},
+        })
     if avg_refund:
-        kpi_items.append({"label": "Средний возврат",
-                          "value": f"${int(avg_refund):,}".replace(",", " "),
-                          "tone": "info"})
+        kpi_items.append({
+            "label": "Средний возврат",
+            "value": f"${int(avg_refund):,}".replace(",", " "),
+            "sub": "по закрытым с компенсацией",
+            "tone": "info",
+            "action": "get_claims",
+            "params": {"with_refund": 1, "status": "closed"},
+        })
     if total_refund:
-        kpi_items.append({"label": "Выплачено всего",
-                          "value": f"${int(total_refund):,}".replace(",", " "),
-                          "tone": "info"})
+        kpi_items.append({
+            "label": "Возвращено покупателям",
+            "value": f"${int(total_refund):,}".replace(",", " "),
+            "sub": "всего за всё время",
+            "tone": "info",
+            "action": "get_claims",
+            "params": {"with_refund": 1},
+        })
 
     cards = []
     if kpi_items:
@@ -3607,6 +5377,858 @@ def get_claims(params, user, role):
         actions=quick,
         contextual_actions=[back],
     )
+
+
+@register("contact_supplier")
+def contact_supplier(params, user, role):
+    """Карточка поставщика для оператора: контакты + склады + каталог + активные
+    заказы + производительность + рекламации. Не «связаться», а полный обзор для
+    контроля отгрузок.
+    """
+    if not (role and (role.startswith("operator") or role == "admin")):
+        return ActionResult(text="Доступно только оператору.")
+    seller_id = params.get("seller_id")
+    if not seller_id:
+        return ActionResult(text="Не указан ID поставщика.")
+    from django.contrib.auth import get_user_model
+    from datetime import timedelta
+    from django.db.models import Count, Sum, Avg, Q
+    from django.utils import timezone
+    User = get_user_model()
+    try:
+        seller = User.objects.select_related("profile").get(id=int(seller_id))
+    except (User.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Поставщик не найден.")
+
+    now = timezone.now()
+    cutoff_90 = now - timedelta(days=90)
+
+    # ── 1) Контакты ──────────────────────────────────────────
+    contact_rows = [
+        {"label": "Username", "value": seller.username, "primary": True},
+    ]
+    kyb = None
+    try:
+        from marketplace.models import CompanyVerification
+        kyb = CompanyVerification.objects.filter(user=seller).first()
+    except Exception:
+        kyb = None
+    if kyb and kyb.legal_name:
+        contact_rows.append({"label": "Компания", "value": kyb.legal_name, "wide": True})
+    if kyb and kyb.country:
+        contact_rows.append({"label": "Страна", "value": kyb.country})
+    if kyb and kyb.director_name:
+        contact_rows.append({"label": "Директор", "value": kyb.director_name})
+    if kyb and kyb.phone:
+        contact_rows.append({"label": "Телефон", "value": kyb.phone})
+    if kyb and (kyb.whatsapp or kyb.telegram):
+        msgs = []
+        if kyb.whatsapp: msgs.append(f"WA {kyb.whatsapp}")
+        if kyb.telegram: msgs.append(f"TG {kyb.telegram}")
+        contact_rows.append({"label": "Мессенджеры", "value": " · ".join(msgs)})
+    contact_rows.append({"label": "Email", "value": (kyb.contact_email if kyb and kyb.contact_email else (seller.email or "—"))})
+
+    # Статус и рейтинг — отдельной строкой
+    prof = getattr(seller, "profile", None)
+    _STATUS_RU = {"trusted": "Надёжный", "sandbox": "Песочница",
+                  "risky": "Рисковый", "rejected": "Исключён"}
+    if prof:
+        contact_rows.append({"label": "Статус", "value": _STATUS_RU.get(prof.supplier_status, prof.supplier_status or "—")})
+        if getattr(prof, "rating_score", None):
+            contact_rows.append({"label": "Рейтинг", "value": f"{float(prof.rating_score):.1f} / 5"})
+
+    # ── 2) Склады ────────────────────────────────────────────
+    warehouse_rows = []
+    try:
+        from marketplace.models import SellerWarehouse
+        for w in SellerWarehouse.objects.filter(seller=seller, is_active=True)[:5]:
+            sub_parts = []
+            if w.country_code: sub_parts.append(w.country_code)
+            if w.sea_port: sub_parts.append(f"порт {w.sea_port}")
+            if w.air_port: sub_parts.append(f"аэропорт {w.air_port}")
+            if w.address: sub_parts.append(w.address[:60])
+            warehouse_rows.append({
+                "title": w.name or "Склад",
+                "subtitle": " · ".join(sub_parts) or "—",
+                "tone": "info",
+            })
+    except Exception:
+        pass
+
+    # ── 3) Каталог: сколько SKU, диапазон цен ────────────────
+    catalog_summary = None
+    try:
+        from marketplace.models import Part
+        parts_qs = Part.objects.filter(seller=seller)
+        sku_count = parts_qs.count()
+        if sku_count:
+            price_stats = parts_qs.aggregate(min_p=Avg("price"), n=Count("id"),
+                                              total=Sum("price"))
+            catalog_summary = {
+                "title": "Каталог поставщика",
+                "subtitle": f"{sku_count} SKU · средняя цена ${float(price_stats['min_p'] or 0):,.0f}",
+                "tone": "info",
+                "action": "search_parts",
+                "params": {"seller_username": seller.username},
+            }
+    except Exception:
+        pass
+
+    # ── 4) Активные заказы для контроля ──────────────────────
+    active_rows = []
+    try:
+        from marketplace.models import Order
+        active_orders = (Order.objects
+                          .filter(items__part__seller=seller)
+                          .exclude(status__in=("completed", "cancelled", "delivered"))
+                          .distinct()
+                          .order_by("ship_deadline", "-created_at")[:10])
+        STAGE_RU = {"awaiting_reserve": "Ждёт резерв 10%",
+                    "reserve_paid":     "Резерв оплачен",
+                    "confirmed":        "Подтверждён",
+                    "in_production":    "В производстве",
+                    "ready_to_ship":    "К отгрузке",
+                    "transit_abroad":   "Транзит",
+                    "customs":          "Таможня",
+                    "transit_rf":       "Транзит по РФ",
+                    "issuing":          "На выдаче"}
+        for o in active_orders:
+            stage = STAGE_RU.get(o.status, o.get_status_display())
+            sla_tone = ("bad" if o.sla_status == "breached"
+                         else "warn" if o.sla_status == "at_risk" else "info")
+            sub_parts = [stage, f"${float(o.total_amount or 0):,.0f}"]
+            if o.ship_deadline:
+                days_left = int((o.ship_deadline - now).total_seconds() / 86400)
+                if days_left < 0:
+                    sub_parts.append(f"просрочен на {abs(days_left)} дн")
+                else:
+                    sub_parts.append(f"дедлайн через {days_left} дн")
+            active_rows.append({
+                "title": f"ORD-{o.id} · {o.customer_name or 'покупатель'}",
+                "subtitle": " · ".join(sub_parts),
+                "tone": sla_tone,
+                "action": "op_order_detail",
+                "params": {"order_id": o.id},
+            })
+    except Exception:
+        pass
+
+    # ── 5) Производительность за 90д ─────────────────────────
+    perf_items = []
+    try:
+        from marketplace.models import Order, OrderEvent
+        delivered_qs = Order.objects.filter(items__part__seller=seller,
+                                             status__in=("delivered", "completed"),
+                                             created_at__gte=cutoff_90).distinct()
+        delivered_n = delivered_qs.count()
+        if delivered_n:
+            # On-time %: сколько без SLA-нарушений
+            on_time = delivered_qs.filter(sla_breaches_count=0).count()
+            on_time_pct = on_time * 100 // delivered_n
+            # Средний срок отгрузки (created → ready_to_ship)
+            durations = []
+            for o in delivered_qs[:100]:
+                ev = OrderEvent.objects.filter(order=o, event_type="status_changed",
+                                                meta__to="ready_to_ship").order_by("-created_at").first()
+                if ev and o.created_at:
+                    durations.append((ev.created_at - o.created_at).total_seconds() / 86400)
+            avg_ship_days = sum(durations) / len(durations) if durations else None
+
+            perf_items.extend([
+                {"label": "Доставлено за 90д", "value": str(delivered_n),
+                 "tone": "info"},
+                {"label": "Без срывов SLA", "value": f"{on_time_pct}%",
+                 "sub": f"{on_time} из {delivered_n}",
+                 "tone": "ok" if on_time_pct >= 90 else ("warn" if on_time_pct >= 70 else "bad")},
+            ])
+            if avg_ship_days is not None:
+                perf_items.append({
+                    "label": "Срок отгрузки",
+                    "value": f"{avg_ship_days:.0f} дн",
+                    "sub": "от заказа до готовности",
+                    "tone": "ok" if avg_ship_days <= 14 else ("warn" if avg_ship_days <= 30 else "bad"),
+                })
+
+        # Активные заказы — всегда
+        active_n = (Order.objects.filter(items__part__seller=seller)
+                      .exclude(status__in=("completed", "cancelled", "delivered"))
+                      .distinct().count())
+        perf_items.append({
+            "label": "Активных заказов",
+            "value": str(active_n),
+            "sub": ("требуют контроля" if active_n else "ничего в работе"),
+            "tone": "warn" if active_n > 5 else "info",
+        })
+    except Exception:
+        pass
+
+    # ── 6) Открытые рекламации ───────────────────────────────
+    claim_warning = None
+    try:
+        from marketplace.models import Claim
+        open_claims = Claim.objects.filter(
+            Q(order__items__part__seller=seller),
+            status__in=("open", "in_review", "escalated"),
+        ).distinct().count()
+        if open_claims:
+            claim_warning = {
+                "title": "Открытые рекламации",
+                "subtitle": f"{open_claims} активных — требуют разбора",
+                "tone": "bad" if open_claims >= 3 else "warn",
+                "action": "get_claims",
+                "params": {"seller_id": seller.id},
+            }
+    except Exception:
+        pass
+
+    # ── Собираем карточки ──
+    cards = [
+        {"type": "draft", "data": {
+            "title": f"📇 Контакты · {seller.username}",
+            "rows": contact_rows, "confirm_label": "—",
+        }},
+    ]
+    if perf_items:
+        cards.append({"type": "kpi_grid", "data": {
+            "title": "📊 Как работает (90 дней)", "items": perf_items,
+        }})
+    if active_rows:
+        cards.append({"type": "list", "data": {
+            "title": f"🔥 Активные заказы — {len(active_rows)} в работе",
+            "items": active_rows,
+        }})
+    if warehouse_rows:
+        cards.append({"type": "list", "data": {
+            "title": f"📦 Склады · {len(warehouse_rows)}",
+            "items": warehouse_rows,
+        }})
+    if catalog_summary:
+        cards.append({"type": "list", "data": {
+            "title": "🛒 Каталог", "items": [catalog_summary],
+        }})
+    if claim_warning:
+        cards.append({"type": "list", "data": {
+            "title": "⚠️ Внимание", "items": [claim_warning],
+        }})
+
+    # Intro text — что оператору важно сразу
+    intro_parts = []
+    if active_rows:
+        intro_parts.append(f"{len(active_rows)} заказов в работе")
+    if perf_items:
+        on_time_item = next((x for x in perf_items if x["label"] == "Без срывов SLA"), None)
+        if on_time_item: intro_parts.append(f"SLA {on_time_item['value']}")
+    if claim_warning:
+        intro_parts.append("есть открытые рекламации")
+    intro = (f"Поставщик {seller.username}: " + " · ".join(intro_parts) + "."
+             if intro_parts else f"Поставщик {seller.username} — нет активной работы.")
+
+    return ActionResult(
+        text=intro,
+        cards=cards,
+        actions=[
+            {"label": "🤝 Чем помочь",
+             "action": "op_help_supplier", "params": {"seller_id": seller.id}},
+            {"label": "👁 Войти как поставщик (просмотр)",
+             "action": "op_view_as_supplier", "params": {"seller_id": seller.id}},
+            {"label": "📋 KYB-анкета", "action": "op_kyb_review",
+             "params": {"user_id": seller.id}},
+            {"label": "💬 Написать", "action": "ask_operator",
+             "params": {"to_user_id": seller.id,
+                         "context": f"Связь с поставщиком #{seller.id} ({seller.username})"}},
+        ],
+        contextual_actions=[
+            {"action": "op_my_suppliers", "label": "← Мои поставщики"},
+        ],
+    )
+
+
+@register("op_view_as_supplier")
+def op_view_as_supplier(params, user, role):
+    """Переключить сессию оператора в режим «view-as» — он видит чат и кабинет
+    как поставщик, но без права изменений. Возврат через op_exit_view_as.
+    """
+    # ВАЖНО: если уже в view-as, оригинального оператора возьмём из сессии.
+    # Иначе role будет 'seller' (текущий target), и мы откажем себе в действии.
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    request = (params or {}).get("_request")
+    sess = getattr(request, "session", None) if request else None
+
+    # Если уже view-as — оригинальный оператор хранится в session
+    original_user = user
+    if sess and sess.get("op_view_as_originator_id"):
+        try:
+            original_user = User.objects.get(id=sess["op_view_as_originator_id"])
+        except User.DoesNotExist:
+            pass
+
+    if not (original_user.is_authenticated and (original_user.is_staff or original_user.is_superuser)):
+        return ActionResult(text="Доступно только оператору / админу.")
+
+    seller_id = (params or {}).get("seller_id")
+    if not seller_id:
+        return ActionResult(text="Не указан ID поставщика.")
+    try:
+        seller = User.objects.select_related("profile").get(id=int(seller_id))
+    except (User.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Поставщик не найден.")
+
+    # FIX (CRITICAL): нельзя view-as staff/superuser — иначе оператор получает
+    # полный доступ через имперсонацию админа.
+    if seller.is_staff or seller.is_superuser:
+        return ActionResult(text="Нельзя войти как служебный аккаунт.")
+    target_role = getattr(getattr(seller, "profile", None), "role", "")
+    if target_role and target_role != "seller":
+        return ActionResult(text="View-as доступно только для поставщиков.")
+
+    # Записываем в сессию
+    if sess is None:
+        return ActionResult(text="Сессия недоступна — обновите страницу.")
+    sess["op_view_as_id"] = seller.id
+    sess["op_view_as_originator_id"] = original_user.id
+    sess.modified = True
+
+    return ActionResult(
+        text=(f"🔍 Просмотр кабинета поставщика **{seller.username}** "
+              f"(только чтение). Все ваши действия будут заблокированы — "
+              f"чтобы вернуться в свой аккаунт, нажмите «Выйти из просмотра» "
+              f"или перейдите на главную."),
+        actions=[
+            {"label": "🚪 Выйти из просмотра", "action": "op_exit_view_as", "params": {}},
+            {"label": "🏠 Кабинет поставщика", "action": "go_home", "params": {}},
+        ],
+    )
+
+
+@register("op_help_supplier")
+def op_help_supplier(params, user, role):
+    """Панель помощи поставщику для оператора (доступна в view-as режиме).
+
+    Собирает список того, что нужно помочь сделать, и для каждого пункта
+    даёт конкретную кнопку-действие: напомнить, заполнить, эскалировать.
+    """
+    from django.contrib.auth import get_user_model
+    from django.db.models import Q
+    from datetime import timedelta
+    from django.utils import timezone
+
+    User = get_user_model()
+    request = (params or {}).get("_request")
+    sess = getattr(request, "session", None) if request else None
+
+    # Определяем target: либо мы в view-as (берём из сессии), либо передали seller_id
+    seller_id = (params or {}).get("seller_id")
+    if not seller_id and sess and sess.get("op_view_as_id"):
+        seller_id = sess["op_view_as_id"]
+    if not seller_id:
+        return ActionResult(text="Не указан поставщик. Откройте «Мои поставщики» и выберите.")
+
+    try:
+        seller = User.objects.select_related("profile").get(id=int(seller_id))
+    except (User.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Поставщик не найден.")
+
+    # Оригинальный оператор (если в view-as)
+    original_user = user
+    if sess and sess.get("op_view_as_originator_id"):
+        try:
+            original_user = User.objects.get(id=sess["op_view_as_originator_id"])
+        except User.DoesNotExist:
+            pass
+    if not (original_user.is_authenticated and (original_user.is_staff or original_user.is_superuser)):
+        return ActionResult(text="Доступно только оператору.")
+
+    now = timezone.now()
+    soon = now + timedelta(days=2)
+
+    # ── Собираем «болевые точки» поставщика, каждая = строка с action ──
+    help_rows = []
+
+    # 1) Заказы с просроченным или близким SLA — напомнить продавцу
+    from marketplace.models import Order
+    overdue_orders = (Order.objects
+                       .filter(items__part__seller=seller)
+                       .filter(Q(sla_status="breached") | Q(sla_status="at_risk")
+                                | (Q(ship_deadline__isnull=False) & Q(ship_deadline__lt=soon)))
+                       .exclude(status__in=("delivered", "completed", "cancelled"))
+                       .distinct()[:5])
+    for o in overdue_orders:
+        if o.sla_status == "breached" or (o.ship_deadline and o.ship_deadline < now):
+            tone = "bad"
+            urgency = "просрочено"
+        else:
+            tone = "warn"
+            urgency = "скоро дедлайн"
+        help_rows.append({
+            "title": f"ORD-{o.id} · {urgency}",
+            "subtitle": (f"Этап: {o.get_status_display()} · "
+                          f"${float(o.total_amount or 0):,.0f} · "
+                          f"Помочь: напомнить поставщику / эскалировать"),
+            "tone": tone,
+            "action": "op_help_send_reminder",
+            "params": {"order_id": o.id, "seller_id": seller.id},
+        })
+
+    # 2) KYB-анкета с пробелами
+    from marketplace.models import CompanyVerification
+    kyb = CompanyVerification.objects.filter(user=seller).first()
+    if kyb:
+        missing = []
+        if not kyb.legal_name: missing.append("название")
+        if not kyb.inn: missing.append("ИНН")
+        if not kyb.bank_name: missing.append("банк")
+        if not kyb.director_name: missing.append("директор")
+        if not kyb.warehouse_address: missing.append("адрес склада")
+        if not kyb.phone: missing.append("телефон")
+        if missing:
+            help_rows.append({
+                "title": f"KYB-анкета: пропуски ({len(missing)})",
+                "subtitle": ("Нет данных: " + ", ".join(missing[:4])
+                              + " · Помочь: заполнить с поставщиком"),
+                "tone": "warn",
+                "action": "op_kyb_review",
+                "params": {"user_id": seller.id},
+            })
+
+    # 3) Нет склада → нечем грузить
+    from marketplace.models import SellerWarehouse
+    if not SellerWarehouse.objects.filter(seller=seller, is_active=True).exists():
+        help_rows.append({
+            "title": "Нет активных складов",
+            "subtitle": "Поставщик не указал склад — невозможно начать отгрузку. Помочь: добавить.",
+            "tone": "bad",
+            "action": "seller_warehouses",  # перейдёт в кабинет складов в view-as режиме
+            "params": {},
+        })
+
+    # 4) Каталог пуст / маленький
+    from marketplace.models import Part
+    sku_count = Part.objects.filter(seller=seller).count()
+    if sku_count < 5:
+        help_rows.append({
+            "title": ("Каталог пуст" if not sku_count else f"Каталог маленький ({sku_count} SKU)"),
+            "subtitle": "Помочь импортировать прайс-лист или заполнить вручную",
+            "tone": "warn" if sku_count else "bad",
+            "action": "upload_pricelist",
+            "params": {},
+        })
+
+    # 5) Открытые рекламации
+    try:
+        from marketplace.models import Claim
+        open_claims = Claim.objects.filter(
+            Q(order__items__part__seller=seller),
+            status__in=("open", "in_review"),
+        ).distinct()[:3]
+        for c in open_claims:
+            help_rows.append({
+                "title": f"Рекламация #{c.id}",
+                "subtitle": f"Тип: {c.get_kind_display() if hasattr(c, 'get_kind_display') else c.kind} · Помочь: разобрать с покупателем",
+                "tone": "bad",
+                "action": "claim_detail",
+                "params": {"claim_id": c.id},
+            })
+    except Exception:
+        pass
+
+    # ── Сборка карточек ──
+    cards = []
+    if help_rows:
+        cards.append({"type": "list", "data": {
+            "title": f"🤝 Чем помочь · {seller.username}",
+            "items": help_rows,
+        }})
+    else:
+        cards.append({"type": "list", "data": {
+            "title": "🤝 Чем помочь",
+            "items": [{"title": "✅ Всё в порядке",
+                        "subtitle": "Нет просроченных заказов, KYB заполнен, склады есть."}],
+        }})
+
+    # Шаблонные действия независимо от состояния
+    template_actions = [
+        {"label": "💬 Связаться от себя",
+         "action": "ask_operator",
+         "params": {"to_user_id": seller.id,
+                     "context": f"Помощь поставщику {seller.username}"}},
+        {"label": "📋 KYB-анкета", "action": "op_kyb_review",
+         "params": {"user_id": seller.id}},
+        {"label": "🚨 Эскалировать менеджеру",
+         "action": "op_help_escalate", "params": {"seller_id": seller.id}},
+    ]
+
+    intro = (f"Обнаружено {len(help_rows)} пунктов помощи поставщику {seller.username}."
+             if help_rows else f"Поставщик {seller.username} — без болевых точек.")
+
+    return ActionResult(
+        text=intro,
+        cards=cards,
+        actions=template_actions,
+        contextual_actions=[
+            {"action": "contact_supplier", "label": "← Карточка поставщика",
+             "params": {"seller_id": seller.id}},
+        ],
+    )
+
+
+@register("op_help_send_reminder")
+def op_help_send_reminder(params, user, role):
+    """Отправить поставщику напоминание о заказе с просрочкой / близким SLA.
+
+    Создаёт нотификацию + опционально системное сообщение в чат.
+    """
+    from django.contrib.auth import get_user_model
+    from marketplace.models import Order
+    User = get_user_model()
+    request = (params or {}).get("_request")
+    sess = getattr(request, "session", None) if request else None
+
+    # В view-as: оригинальный оператор — из сессии
+    original_user = user
+    if sess and sess.get("op_view_as_originator_id"):
+        try:
+            original_user = User.objects.get(id=sess["op_view_as_originator_id"])
+        except User.DoesNotExist:
+            pass
+    if not (original_user.is_authenticated and (original_user.is_staff or original_user.is_superuser)):
+        return ActionResult(text="Доступно только оператору.")
+
+    order_id = (params or {}).get("order_id")
+    seller_id = (params or {}).get("seller_id")
+    if not (order_id and seller_id):
+        return ActionResult(text="Не указан заказ или поставщик.")
+    try:
+        order = Order.objects.get(id=int(order_id))
+        seller = User.objects.get(id=int(seller_id))
+    except (Order.DoesNotExist, User.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Заказ или поставщик не найден.")
+
+    # Создаём notification поставщику
+    try:
+        from marketplace.models import Notification
+        Notification.objects.create(
+            user=seller,
+            kind="sla_reminder",
+            title=f"Напоминание оператора по ORD-{order.id}",
+            body=(f"Оператор {original_user.username} просит обратить внимание "
+                   f"на заказ ORD-{order.id} (статус: {order.get_status_display()}). "
+                   f"Свяжитесь для уточнения сроков."),
+            url=f"/chat/?action=op_order_detail&order_id={order.id}",
+        )
+    except Exception as e:
+        return ActionResult(text=f"Не удалось отправить напоминание: {e}")
+
+    return ActionResult(
+        text=(f"✅ Напоминание по ORD-{order.id} отправлено поставщику {seller.username}. "
+              f"Он получит нотификацию и email."),
+        actions=[
+            {"label": "← Чем ещё помочь", "action": "op_help_supplier",
+             "params": {"seller_id": seller.id}},
+        ],
+    )
+
+
+@register("op_help_escalate")
+def op_help_escalate(params, user, role):
+    """Эскалация ситуации с поставщиком: создаёт тикет / сообщение оператору-менеджеру."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    request = (params or {}).get("_request")
+    sess = getattr(request, "session", None) if request else None
+
+    original_user = user
+    if sess and sess.get("op_view_as_originator_id"):
+        try:
+            original_user = User.objects.get(id=sess["op_view_as_originator_id"])
+        except User.DoesNotExist:
+            pass
+    if not (original_user.is_authenticated and (original_user.is_staff or original_user.is_superuser)):
+        return ActionResult(text="Доступно только оператору.")
+
+    seller_id = (params or {}).get("seller_id")
+    if not seller_id:
+        return ActionResult(text="Не указан поставщик.")
+    try:
+        seller = User.objects.get(id=int(seller_id))
+    except (User.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Поставщик не найден.")
+
+    # Логируем эскалацию в audit-log (простая запись, без отдельного ticket-модели)
+    try:
+        from marketplace.models import Notification
+        # Уведомляем всех manager'ов
+        for mgr in User.objects.filter(is_staff=True, username__icontains="manager")[:5]:
+            Notification.objects.create(
+                user=mgr,
+                kind="escalation",
+                title=f"Эскалация: поставщик {seller.username}",
+                body=(f"Оператор {original_user.username} эскалировал ситуацию "
+                       f"по поставщику {seller.username}. Откройте его карточку для разбора."),
+                url=f"/chat/?action=contact_supplier&seller_id={seller.id}",
+            )
+    except Exception as e:
+        return ActionResult(text=f"Не удалось эскалировать: {e}")
+
+    return ActionResult(
+        text=(f"🚨 Эскалация по {seller.username} отправлена операторам-менеджерам. "
+              f"Они получат уведомление и подключатся к разбору."),
+        actions=[
+            {"label": "← Чем ещё помочь", "action": "op_help_supplier",
+             "params": {"seller_id": seller.id}},
+        ],
+    )
+
+
+@register("op_exit_view_as")
+def op_exit_view_as(params, user, role):
+    """Выход из view-as: очистка сессии, возврат к оригинальному оператору."""
+    request = (params or {}).get("_request")
+    sess = getattr(request, "session", None) if request else None
+    if not sess:
+        return ActionResult(text="Сессия недоступна.")
+    if not sess.get("op_view_as_id"):
+        return ActionResult(text="Вы не в режиме просмотра.")
+    target_id = sess.pop("op_view_as_id", None)
+    original_id = sess.pop("op_view_as_originator_id", None)
+    sess.modified = True
+    return ActionResult(
+        text=f"Вернулись в свой аккаунт оператора. Просмотр поставщика #{target_id} завершён.",
+        actions=[
+            {"label": "🏠 На главный экран", "action": "go_home", "params": {}},
+            {"label": "📋 Мои поставщики", "action": "op_my_suppliers", "params": {}},
+        ],
+    )
+
+
+@register("ask_operator")
+def ask_operator(params, user, role):
+    """Открыть диалог с оператором с контекстом по конкретному заказу/RFQ.
+    Юзер жмёт «💬 Написать оператору» → получает приглашение задать вопрос,
+    AI/оператор отвечает в этом же чате. Контекст (order_id/rfq_id) пришивается
+    к conversation чтобы оператор сразу видел о чём речь.
+    """
+    order_id = params.get("order_id")
+    rfq_id = params.get("rfq_id")
+    to_user_id = params.get("to_user_id")
+    ctx_label = ""
+    suggestions = []
+
+    # Оператор связывается с другим пользователем (поставщиком/покупателем).
+    # Контекст автоматически доставляется: создаётся системное сообщение
+    # в чате собеседника + notification — он сразу видит о чём речь, без
+    # необходимости оператору это пересказывать.
+    if to_user_id and role and (role.startswith("operator") or role == "admin"):
+        from django.contrib.auth import get_user_model
+        from .models import Conversation, Message
+        User = get_user_model()
+        try:
+            target = User.objects.get(id=int(to_user_id))
+        except (User.DoesNotExist, ValueError, TypeError):
+            return ActionResult(text="Получатель не найден.")
+        ctx = params.get("context") or f"диалог с {target.username}"
+
+        # FIX (HIGH): только staff/manager могут инициировать кросс-юзер диалог.
+        # Раньше любой оператор-логист мог отправить любому юзеру «системное»
+        # сообщение от имени assistant — потенциал для фишинга.
+        if not (user.is_staff or role == "operator_manager" or role == "admin"):
+            return ActionResult(text=(
+                "Связь с пользователем доступна только operator_manager/admin. "
+                "Эскалируйте задачу старшему оператору."
+            ))
+        # 1) Создаём/находим support-conversation у получателя c этим контекстом
+        target_conv, _ = Conversation.objects.get_or_create(
+            user=target, category="support",
+            title=f"💬 {ctx}"[:200],
+            defaults={"role": "buyer", "is_active": True},
+        )
+        # 2) Кладём системное сообщение с контекстом — с пометкой что это
+        # инициировал конкретный оператор (не «system»), чтобы юзер видел
+        # источник и мог фильтровать спам.
+        Message.objects.create(
+            conversation=target_conv,
+            role=Message.Role.ASSISTANT,
+            content=(
+                f"📋 **Оператор {user.username} ({role}) открыл с вами диалог.**\n\n"
+                f"Контекст: {ctx}\n\n"
+                f"Дождитесь сообщения оператора — он сейчас напишет. "
+                f"Если хотите ответить заранее — пишите ниже. "
+                f"Если это спам или ошибка — нажмите «Пожаловаться»."
+            ),
+        )
+        # 3) Notification + email (если включён) — чтоб получатель сразу узнал
+        try:
+            from marketplace.models import Notification
+            Notification.objects.create(
+                user=target, kind="claim",
+                title=f"Оператор {user.username} открыл диалог",
+                body=ctx,
+                url=f"/chat/?conv={target_conv.id}",
+            )
+        except Exception:
+            pass
+
+        # 4) FIX: создаём ЗЕРКАЛЬНУЮ conversation у самого оператора, чтобы он
+        # потом мог вернуться к этому диалогу через свой сайдбар. Без этого
+        # оператор «теряет» чат после отправки контекста.
+        op_conv_title = f"💬 → {target.username} · {ctx[:120]}"
+        op_conv, op_created = Conversation.objects.get_or_create(
+            user=user, category="support",
+            title=op_conv_title[:200],
+            defaults={"role": role or "operator", "is_active": True},
+        )
+        if op_created:
+            Message.objects.create(
+                conversation=op_conv,
+                role=Message.Role.ASSISTANT,
+                content=(
+                    f"📂 **Диалог с {target.username}**\n\n"
+                    f"Контекст: {ctx}\n\n"
+                    f"Сообщения, которые вы здесь напишете, увидит {target.username} "
+                    f"в их support-чате. Их ответы появятся у них же — оператор "
+                    f"видит их в этом разделе.\n\n"
+                    f"Все ваши диалоги с пользователями можно увидеть в действии "
+                    f"«op_my_user_chats»."
+                ),
+            )
+
+        return ActionResult(
+            text=(
+                f"✅ Контекст доставлен **{target.username}**: "
+                f"у него в чате появилось системное сообщение со ссылкой "
+                f"и notification на email/Telegram (если подключены).\n\n"
+                f"Этот диалог сохранён в вашем сайдбаре как "
+                f"«💬 → {target.username}» — открыть позже через раздел "
+                f"«Мои диалоги с пользователями».\n\n"
+                f"Пишите ваше сообщение ниже — оно отправится в этот же поток."
+            ),
+            actions=[
+                {"label": "📂 Мои диалоги с пользователями",
+                 "action": "op_my_user_chats", "params": {}},
+            ],
+            suggestions=[
+                "Здравствуйте! Уточните пожалуйста детали по этому случаю",
+                "Прислали ли вы фото / документы?",
+                "Когда удобно созвониться?",
+            ],
+        )
+
+    if order_id:
+        ctx_label = f"заказу #{order_id}"
+        suggestions = [
+            f"Где сейчас заказ #{order_id}?",
+            f"Когда придёт #{order_id}?",
+            f"Можно ли ускорить #{order_id}?",
+            "Изменить адрес доставки",
+        ]
+    elif rfq_id:
+        ctx_label = f"RFQ #{rfq_id}"
+        suggestions = [
+            f"Когда ждать котировок по RFQ #{rfq_id}?",
+            f"Найти аналоги дешевле для RFQ #{rfq_id}",
+            f"Продлить срок RFQ #{rfq_id}",
+        ]
+    else:
+        ctx_label = "общий вопрос"
+        suggestions = [
+            "Помогите подобрать запчасть",
+            "Сравнить поставщиков",
+            "Статус всех моих заказов",
+        ]
+    return ActionResult(
+        text=(
+            f"💬 **Связь с оператором** ({ctx_label})\n\n"
+            f"Напишите ваш вопрос в чате ниже — оператор Consolidator Parts ответит "
+            f"в течение рабочего времени (обычно 15–30 минут). "
+            f"AI пока поможет ответить на типовые вопросы быстрее.\n\n"
+            f"Если вопрос срочный — упомяните «срочно» в сообщении."
+        ),
+        suggestions=suggestions,
+    )
+
+
+@register("op_my_user_chats")
+def op_my_user_chats(params, user, role):
+    """Список диалогов оператора с пользователями (поставщики/покупатели).
+
+    Это зеркальные conversation'ы, которые создаются при вызове ask_operator
+    оператором. Каждая запись = один пользователь + контекст. Клик → откроется
+    эта conversation в основной области, можно продолжить общение.
+    """
+    if not ((role or "").startswith("operator") or role == "admin"):
+        return ActionResult(text="Доступно только оператору.")
+    from .models import Conversation, Message
+    convs = list(Conversation.objects.filter(
+        user=user, category="support",
+        title__startswith="💬 → ",
+        is_active=True,
+    ).order_by("-updated_at")[:30])
+    if not convs:
+        return ActionResult(
+            text=(
+                "У вас нет открытых диалогов с пользователями.\n\n"
+                "Диалог с покупателем или поставщиком открывается через карточку "
+                "поставщика / рекламацию / тикет поддержки — кнопкой «💬 Чат с …». "
+                "После открытия он появится здесь."
+            ),
+            actions=[
+                {"label": "📋 Мои поставщики", "action": "op_my_suppliers", "params": {}},
+                {"label": "📥 Inbox поддержки", "action": "support_home", "params": {}},
+            ],
+        )
+    rows = []
+    for c in convs:
+        # Last activity
+        last_msg = Message.objects.filter(conversation=c).order_by("-created_at").first()
+        last_at = last_msg.created_at.strftime("%d.%m %H:%M") if last_msg else "—"
+        # Title уже содержит «💬 → username · context»
+        title = c.title.replace("💬 → ", "")  # cleanup display
+        rows.append({
+            "title": title[:80],
+            "subtitle": f"Последнее: {last_at}",
+            "tone": "info",
+            "action": "open_conversation",
+            "params": {"conversation_id": str(c.id)},
+        })
+    return ActionResult(
+        text=f"📂 Ваши диалоги с пользователями · {len(convs)}",
+        cards=[{"type": "list", "data": {
+            "title": "📂 Мои диалоги с пользователями",
+            "items": rows,
+        }}],
+        actions=[
+            {"label": "📥 Inbox поддержки", "action": "support_home", "params": {}},
+        ],
+    )
+
+
+@register("open_conversation")
+def open_conversation(params, user, role):
+    """Переключиться на конкретную conversation (используется как drill-down
+    из списков). Делает frontend-redirect через _navigate.
+    """
+    conv_id = (params or {}).get("conversation_id")
+    if not conv_id:
+        return ActionResult(text="Не указана conversation.")
+    from .models import Conversation
+    try:
+        conv = Conversation.objects.get(id=conv_id, user=user)
+    except (Conversation.DoesNotExist, ValueError):
+        return ActionResult(text="Conversation не найден или не ваш.")
+    return ActionResult(
+        text=f"Открываю «{conv.title or 'диалог'}»…",
+        actions=[
+            {"label": f"📂 Открыть {conv.title[:60] if conv.title else 'диалог'}",
+             "action": "open_url",
+             "params": {"_url": f"/chat/?conv={conv.id}"}},
+        ],
+    )
+
+
+@register("ask_about_rfq")
+def ask_about_rfq(params, user, role):
+    """Alias к ask_operator с RFQ-контекстом."""
+    return ask_operator({"rfq_id": params.get("rfq_id")}, user, role)
 
 
 @register("create_claim")
@@ -3961,10 +6583,10 @@ def upload_pricelist(params, user, role):
 
 @register("respond_rfq")
 def respond_rfq(params, user, role):
-    rfq_id = params.get("rfq_id")
-    return ActionResult(
-        text=f"Ответ на RFQ #{rfq_id}: используйте форму на /seller/requests/{rfq_id}/",
-    )
+    """Alias на chat-first форму ответа на RFQ. Раньше вёл на /seller/requests/<id>/
+    (старый кабинет удалён) — теперь делегирует в respond_rfq_form."""
+    from .negotiation import respond_rfq_form
+    return respond_rfq_form(params, user, role)
 
 
 # ══════════════════════════════════════════════════════════
@@ -4118,6 +6740,70 @@ def top_suppliers(params, user, role):
 # Quick path: spec → order → payment (без RFQ-цикла)
 # ══════════════════════════════════════════════════════════
 
+def _split_order_by_operator(order):
+    """PIVOT 2026-05-27: разбиение заказа на sub-orders по операторам.
+
+    Группирует OrderItem'ы по part.seller.profile.assigned_operator.
+    Если все позиции у одного оператора (или ни у кого) — sub-orders не
+    создаются, заказ ведёт единственный owner.
+
+    Если у >1 операторов — создаются N sub-orders (по 1 на оператора),
+    каждый с parent_order=original, is_sub_order=True, assigned_operator=op.
+    Items НЕ дублируются — sub-order это просто пойнтер для фильтрации.
+
+    Возвращает list[Order] (созданные sub-orders) или [] если нет split.
+    """
+    from marketplace.models import Order, UserProfile
+    from collections import defaultdict
+    # Группируем items по operator-owner
+    groups = defaultdict(list)  # operator_id -> [items]
+    for it in order.items.select_related("part__seller").all():
+        if not it.part or not it.part.seller_id:
+            continue
+        # Найдём assigned_operator поставщика
+        prof = UserProfile.objects.filter(user_id=it.part.seller_id).only(
+            "assigned_operator_id").first()
+        op_id = prof.assigned_operator_id if prof else None
+        groups[op_id].append(it)
+
+    # Убираем None-группу из split (это позиции без operator-owner, ведёт лид)
+    op_groups = {k: v for k, v in groups.items() if k is not None}
+
+    # 1 оператор или 0 → split не нужен. Просто проставим assigned_operator
+    if len(op_groups) <= 1:
+        if op_groups:
+            only_op_id = next(iter(op_groups.keys()))
+            order.assigned_operator_id = only_op_id
+            order.save(update_fields=["assigned_operator"])
+        return []
+
+    # >=2 операторов → создаём sub-orders для каждого
+    sub_orders = []
+    from decimal import Decimal as _D
+    for op_id, items in op_groups.items():
+        sub_total = sum((_D(str(it.unit_price or 0)) * (it.quantity or 1) for it in items), _D("0"))
+        sub = Order.objects.create(
+            customer_name=order.customer_name,
+            customer_email=order.customer_email,
+            customer_phone=order.customer_phone,
+            delivery_address=order.delivery_address,
+            buyer=order.buyer,
+            status="pending",
+            payment_status=order.payment_status,
+            payment_scheme=order.payment_scheme,
+            reserve_percent=order.reserve_percent,
+            reserve_amount=(sub_total * (order.reserve_percent or _D("10")) / _D("100")).quantize(_D("0.01")),
+            total_amount=sub_total,
+            assigned_operator_id=op_id,
+            parent_order=order,
+            is_sub_order=True,
+            shipping_mode=order.shipping_mode,
+            incoterm=order.incoterm,
+        )
+        sub_orders.append(sub)
+    return sub_orders
+
+
 @register("quick_order")
 def quick_order(params, user, role):
     """Создать заказ из найденных артикулов сразу, минуя RFQ.
@@ -4151,22 +6837,85 @@ def quick_order(params, user, role):
     # не создаём заказ. AI или фронт-кнопка из spec_results не должны
     # создавать Order на реальную сумму без явного клика «Подтвердить».
     if not bool(params.get("confirmed")):
-        preview_total = sum((Decimal(str(p.price or 0)) * quantity) for p in parts)
+        # Финальная спецификация перед списанием с депозита.
+        # Используем тот же spec_results-рендер с таблицей колонок:
+        # # | OEM | Название | Бренд | Цена | Кол-во | Вес | Сумма | ETA | Origin
+        _FLAG_FROM_PORT = {
+            "🇦🇪":"🇦🇪","🇨🇳":"🇨🇳","🇹🇷":"🇹🇷","🇳🇱":"🇳🇱","🇰🇿":"🇰🇿",
+            "🇷🇺":"🇷🇺","🇩🇪":"🇩🇪","🇺🇸":"🇺🇸","🇵🇰":"🇵🇰","🇪🇸":"🇪🇸",
+            "🇯🇵":"🇯🇵","🇰🇷":"🇰🇷","🇮🇳":"🇮🇳","🇹🇭":"🇹🇭","🇲🇾":"🇲🇾",
+        }
+        def _flag(port_str):
+            if not port_str: return "🌍"
+            for f in _FLAG_FROM_PORT:
+                if f in port_str:
+                    return f
+            return "🌍"
+        preview_total = Decimal("0")
+        total_weight = Decimal("0")
+        max_eta = 0
+        spec_items = []
+        for p in parts[:30]:
+            line_total = Decimal(str(p.price or 0)) * quantity
+            preview_total += line_total
+            line_weight = Decimal(str(p.gross_weight_kg or 0)) * quantity
+            total_weight += line_weight
+            eta_days = (getattr(p, "production_lead_days", 0) or 0) \
+                     + (getattr(p, "prep_to_ship_days", 0) or 0) \
+                     + (getattr(p, "shipping_lead_days", 0) or 0)
+            if eta_days > max_eta:
+                max_eta = eta_days
+            origin_str = p.sea_port or p.air_port or ""
+            flag = _flag(origin_str)
+            spec_items.append({
+                "status": "in_stock",
+                "id": p.oem_number or f"#{p.id}",
+                "name": _clean_title(p.title or "") or "—",
+                "brand": (p.brand.name if p.brand_id else "—"),
+                "condition": p.condition or "oem",
+                "price": float(p.price or 0),
+                "qty": quantity,
+                "weight": f"{float(line_weight):.2f} кг" if line_weight else "—",
+                "currency": "USD",
+                # Дополнительные поля для рендера (см. изменения в chat-first.js)
+                "line_total": float(line_total),
+                "origin_flag": flag,
+                "eta_days": eta_days,
+            })
+        reserve = preview_total * Decimal("0.1")
+        text_lines = [
+            "📦 **Подтвердите заказ** — это финальная спецификация перед списанием с депозита.",
+            "",
+            f"После клика «Подтвердить»: спишется резерв 10% (${float(reserve):,.0f}), " +
+            "оператор подберёт маршрут доставки, статус заказа → «формируется».",
+        ]
         return ActionResult(
-            text=(f"📦 Подтвердите заказ:\n"
-                   f"Позиций: {len(parts)} · кол-во каждой: {quantity}\n"
-                   f"Сумма товара: ${float(preview_total):,.0f}"),
-            cards=[{"type": "list", "data": {
-                "title": "Позиции в заказе",
-                "items": [{
-                    "title": ((p.brand.name + ' · ') if p.brand_id else '')
-                              + (getattr(p, 'article', None) or getattr(p, 'name', None) or f'#{p.id}'),
-                    "subtitle": f"{quantity} × ${float(p.price or 0):,.0f}",
-                } for p in parts[:20]],
-            }}],
+            text="\n".join(text_lines),
+            cards=[{
+                "type": "spec_results",
+                "data": {
+                    "title": f"Спецификация заказа · {len(parts)} позиций",
+                    "found": len(parts),
+                    "analogue": 0,
+                    "not_found": 0,
+                    "items": spec_items,
+                    "offers_count": len(parts),
+                    "sellers_count": len(parts),
+                    "best_mix": int(preview_total),
+                    "total": int(preview_total),
+                    "currency": "USD",
+                    "foot_info": (
+                        f"Сумма товара (EXW): ${float(preview_total):,.0f}"
+                        + (f" · вес ~{float(total_weight):.1f} кг" if total_weight else "")
+                        + (f" · срок ~{max_eta} дн" if max_eta else "")
+                    ),
+                },
+            }],
             actions=[
-                {"label": f"✓ Подтвердить заказ", "action": "quick_order",
-                 "params": {**params, "confirmed": True}},
+                {"label": f"✓ Подтвердить и зарезервировать 10% (${float(reserve):,.0f})",
+                 "action": "quick_order",
+                 "params": {**params, "confirmed": True},
+                 "style": "primary"},
                 {"label": "Отмена", "action": "search_parts", "params": {}},
             ],
         )
@@ -4227,12 +6976,27 @@ def quick_order(params, user, role):
                                 "weight": Decimal("0"), "cargo": Decimal("0"),
                                 "freight": Decimal("0"), "days": 0})
     parts_by_origin: dict = _dd(list)
+    # Парсим country code из emoji-флага в строке порта (IATA-коды RKT/PKX
+    # не следуют UN/LOCODE-префиксу страны, поэтому нельзя полагаться на
+    # _country_from_port). Тот же фикс что в _search_articles_list.
+    _FLAG_TO_CC_QO = {
+        "🇦🇪":"AE","🇨🇳":"CN","🇹🇷":"TR","🇳🇱":"NL","🇰🇿":"KZ","🇷🇺":"RU",
+        "🇩🇪":"DE","🇺🇸":"US","🇵🇰":"PK","🇪🇸":"ES","🇯🇵":"JP","🇰🇷":"KR",
+        "🇮🇳":"IN","🇹🇭":"TH","🇲🇾":"MY",
+    }
+    def _cc_from_port_str(s, code):
+        if s:
+            for f, c in _FLAG_TO_CC_QO.items():
+                if f in s:
+                    return c
+        return _country_from_port(code) or code[:2].upper()
+
     for p in parts:
         origin = ((getattr(p, port_field, "") or "").strip())
         origin_code = origin.split()[0] if origin else ""
         if not origin_code:
             continue
-        cc = _country_from_port(origin_code) or origin_code[:2].upper()
+        cc = _cc_from_port_str(origin, origin_code)
         ch = max(
             Decimal(p.gross_weight_kg or 0),
             _volumetric_kg(p.length_cm, p.width_cm, p.height_cm, eff_mode),
@@ -4245,13 +7009,14 @@ def quick_order(params, user, role):
         b["cargo"] += cargo_line
         parts_by_origin[(cc, origin_code)].append(ch)
     # Считаем freight per origin_port (как в _search_articles_list), потом
-    # схлопываем по стране для UI.
+    # схлопываем по стране для UI. Tariff lookup: сначала по port code, потом
+    # по country code как fallback.
     for (cc, origin_code), chargeables in parts_by_origin.items():
         t = LogisticsTariff.objects.filter(
             origin_port__iexact=origin_code, dest_country=dest_country,
             mode=eff_mode, is_active=True,
         ).first()
-        if not t:
+        if not t and cc:
             t = LogisticsTariff.objects.filter(
                 origin_port__iexact=cc, dest_country=dest_country,
                 mode=eff_mode, is_active=True,
@@ -4311,6 +7076,15 @@ def quick_order(params, user, role):
         )
     _log_event(order, "order_created", actor=user, source="buyer",
                meta={"items": len(parts), "total": float(total)})
+
+    # PIVOT 2026-05-27: split на sub-orders по operator-ownership.
+    # Parent сохраняет ВСЕ items (видим покупателю как один заказ).
+    # Sub-orders создаются для каждого уникального оператора → каждый
+    # оператор видит только свою часть через фильтр items по своему ownership.
+    try:
+        _split_order_by_operator(order)
+    except Exception:
+        logger.exception("split_order_by_operator failed for order %s", order.id)
     # Уведомляем продавцов о новом заказе
     _notify_seller_of_order(
         order, kind="order",
@@ -4332,80 +7106,316 @@ def quick_order(params, user, role):
     order.logistics_cost = ship_total
     order.save(update_fields=["shipping_mode", "incoterm", "logistics_cost"])
 
-    # Сводка с разложением доставки по компонентам Incoterms-базиса
+    # ── Чистое сообщение для buyer: только 3 ключевых вопроса ────────
+    # 1. Деньги: сейчас списано / на депозите / к доплате
+    # 2. Статус: текущий шаг / следующие шаги / срок
+    # 3. Действия: написать оператору / детали / отменить
+    # Технический «состав отправки» (порты, коносаменты, фрахт по статьям)
+    # передаётся в card.data.advanced — для оператора и для разворачиваемой
+    # секции «подробности» (если юзер захочет копнуть).
     mode_counts = {}
     for _, m, _, _ in ship_breakdown:
         mode_counts[m] = mode_counts.get(m, 0) + 1
-    mode_emoji = {"sea": "🚢", "air": "✈️", "auto": "🚚"}
-    mode_label = " ".join(f"{n}×{mode_emoji.get(m, m)}" for m, n in mode_counts.items())
+    mode_label_map = {"sea": "морем", "air": "авиа", "auto": "авто"}
+    primary_mode = max(mode_counts, key=mode_counts.get) if mode_counts else (chosen_mode or "sea")
+    mode_word = mode_label_map.get(primary_mode, "морем")
+    remaining_amount = landed_total - reserve_amount  # 90% к доплате после отгрузки
+    # ETA зависит от базиса Incoterm:
+    # FOB — ответственность платформы заканчивается на порту отгрузки
+    #       (передаём груз там → дальше покупатель/его форвардер сам).
+    #       Регламент платформы — 3 рабочих дня от резерва до готовности в порту.
+    # CIP — платформа доставляет до порта прибытия покупателя
+    #       (фрахт port-to-port + страховка).
+    # DDP — all-in до двери (фрахт + страховка + таможня + last mile).
+    if chosen_inc == "FOB":
+        eta_min, eta_max = 3, 5  # «3 дня по регламенту» + люфт
+        eta_label = "до готовности в порту отгрузки"
+    elif chosen_inc == "CIP":
+        if primary_mode == "air":
+            eta_min, eta_max = 7, 14
+        elif primary_mode == "auto":
+            eta_min, eta_max = 10, 20
+        else:
+            eta_min, eta_max = 25, 40
+        eta_label = "до вашего порта прибытия"
+    else:  # DDP
+        if primary_mode == "air":
+            eta_min, eta_max = 14, 25
+        elif primary_mode == "auto":
+            eta_min, eta_max = 18, 30
+        else:
+            eta_min, eta_max = 35, 60
+        eta_label = "до двери (all-in)"
+
     text_lines = [
-        f"✓ Заказ #{order.id} создан · {len(parts)} позиций · базис **{chosen_inc}** {mode_label}",
-        f"  Товары (EXW):           ${total:,.2f}",
+        f"✓ **Заказ #{order.id} принят**",
+        f"{len(parts)} позиций · доставка {mode_word} · базис {chosen_inc}",
     ]
-    # Детальный breakdown — только ненулевые строки
-    bd_labels = [
-        ("freight",      "Фрахт",           "📦"),
-        ("carriage_ext", "Carriage до места", "→"),
-        ("insurance",    "Страховка груза",  "🛡"),
-        ("duty",         "Импортная пошлина","🛂"),
-        ("vat",          "НДС 20%",          "📑"),
-        ("last_mile",    "Доставка до двери","🏠"),
-    ]
-    for key, label, icon in bd_labels:
-        v = ship_components.get(key, Decimal("0"))
-        if v > 0:
-            text_lines.append(f"  {icon} {label:22s} ${v:,.2f}")
-    if ship_total > 0:
-        text_lines.append("  ─────────────────────")
-        text_lines.append(f"  Итого доставка:         ${ship_total:,.2f}")
-    if ship_missing:
-        text_lines.append(f"  ⚠ Доставка не рассчитана для {ship_missing} поз.")
-    text_lines.append(f"  **🎯 Landed total:       ${landed_total:,.2f}**")
-    text_lines.append("")
-    text_lines.append(f"Резерв 10%: ${reserve_amount:,.2f} · на счёте: ${wallet.balance:,.2f} {wallet.currency}")
     if not enough:
-        text_lines.append(f"⚠️ Недостаточно — пополните на ${reserve_amount - wallet.balance:,.0f}.")
+        text_lines.append(f"⚠️ Недостаточно на депозите — пополните на ${reserve_amount - wallet.balance:,.0f}.")
 
     return ActionResult(
         text="\n".join(text_lines),
         cards=[{
-            "type": "order",
+            "type": "order_confirm",
             "data": {
                 "id": str(order.id),
                 "number": order.id,
                 "status": "pending",
-                "status_label": "Ожидание оплаты",
                 "items_count": len(parts),
                 "total": float(landed_total),
-                "items_subtotal": float(total),
-                "shipping_total": float(ship_total),
-                "shipping_missing": ship_missing,
-                "dest_country": dest_country,
                 "currency": "USD",
-                "reserve_amount": float(reserve_amount),
-                "payment_status": "awaiting_reserve",
-                "payment_status_label": "Ожидает резерва 10%",
-                "wallet_balance": float(wallet.balance),
-                "shipping_mode": order.shipping_mode,
+                "shipping_mode": primary_mode,
+                "shipping_mode_label": mode_word,
                 "incoterm": chosen_inc,
-                "origin_breakdown": origin_breakdown,
-                "can_cancel": True,
+                # МОНЕЙ-блок
+                "money": {
+                    "reserve_now": float(reserve_amount),
+                    "reserve_pct": 10,
+                    "wallet_balance": float(wallet.balance),
+                    "wallet_enough": enough,
+                    "remaining_to_pay": float(remaining_amount),
+                    "remaining_when": "после отгрузки от поставщика",
+                },
+                # СТАТУС-блок (timeline) — зависит от базиса Incoterm.
+                # FOB: ответственность платформы → порт отгрузки (3 дня).
+                # CIP: + транзит до порта прибытия покупателя.
+                # DDP: + таможня + last mile до двери (all-in).
+                "status_steps": (
+                    [
+                        {"label": "Резерв 10%",       "state": "current" if enough else "pending"},
+                        {"label": "Оператор связывается с поставщиком", "state": "next"},
+                        {"label": "Подтверждение поставщика", "state": "next"},
+                        {"label": "Подготовка и доставка в порт отгрузки", "state": "next"},
+                        {"label": "Готов к передаче в порту (ваш форвардер забирает)", "state": "next"},
+                    ] if chosen_inc == "FOB" else
+                    [
+                        {"label": "Резерв 10%",       "state": "current" if enough else "pending"},
+                        {"label": "Оператор связывается с поставщиком", "state": "next"},
+                        {"label": "Подтверждение поставщика", "state": "next"},
+                        {"label": "Подготовка и отгрузка",  "state": "next"},
+                        {"label": "Транзит до вашего порта", "state": "next"},
+                        {"label": "Прибытие в порт назначения", "state": "next"},
+                    ] if chosen_inc == "CIP" else
+                    [
+                        {"label": "Резерв 10%",       "state": "current" if enough else "pending"},
+                        {"label": "Оператор связывается с поставщиком", "state": "next"},
+                        {"label": "Подтверждение поставщика", "state": "next"},
+                        {"label": "Подготовка и отгрузка",  "state": "next"},
+                        {"label": "Транзит",                 "state": "next"},
+                        {"label": "Таможенное оформление",   "state": "next"},
+                        {"label": "Доставка до двери",        "state": "next"},
+                    ]
+                ),
+                "eta_min_days": eta_min,
+                "eta_max_days": eta_max,
+                "eta_label": eta_label,
+                # Сворачиваемый advanced-блок: тех-детали для любопытных
+                "advanced": {
+                    "items_subtotal": float(total),
+                    "shipping_total": float(ship_total),
+                    "shipping_missing": ship_missing,
+                    "origin_breakdown": origin_breakdown,
+                    "components": {
+                        "freight":      float(ship_components.get("freight",      Decimal("0"))),
+                        "carriage_ext": float(ship_components.get("carriage_ext", Decimal("0"))),
+                        "insurance":    float(ship_components.get("insurance",    Decimal("0"))),
+                        "duty":         float(ship_components.get("duty",         Decimal("0"))),
+                        "vat":          float(ship_components.get("vat",          Decimal("0"))),
+                        "last_mile":    float(ship_components.get("last_mile",    Decimal("0"))),
+                    },
+                },
             },
         }],
         actions=(
+            # confirmed=True пропускает повторный draft-экран в pay_reserve.
+            # Юзер уже видел order_confirm со всей инфой о деньгах — второе
+            # подтверждение «Списать $X · депозит сейчас / после» дублирует
+            # тот же контекст и раздражает.
             [{"label": f"💳 Списать ${reserve_amount:,.0f} из депозита",
+              "action": "pay_reserve",
+              "params": {"order_id": order.id, "confirmed": True},
+              "style": "primary"}]
+            if enough else
+            [{"label": "Пополнить депозит",
+              "action": "topup_wallet",
+              "params": {"amount": float(max(reserve_amount * 5, Decimal("10000"))),
+                          "pending_order_id": order.id},
+              "style": "primary"}]
+        ) + [
+            {"label": "💬 Написать оператору", "action": "ask_operator",
+             "params": {"order_id": order.id}},
+            {"label": "Отменить заказ", "action": "cancel_order",
+             "params": {"order_id": order.id}, "style": "danger"},
+        ],
+        suggestions=["Статус заказа", "Баланс депозита", "Все мои заказы"],
+    )
+
+
+@register("shipping_choose")
+def shipping_choose(params, user, role):
+    """Показать покупателю варианты доставки (sea/air) и базиса (FOB/CIF/DDP)
+    с пересчётом landed cost для каждого варианта."""
+    from decimal import Decimal
+
+    from assistant.logistics import calc_logistics
+    from marketplace.models import Order
+    try:
+        oid = int(params.get("order_id") or 0)
+    except (ValueError, TypeError):
+        return ActionResult(text="Неверный order_id.")
+    try:
+        order = Order.objects.get(id=oid, buyer=user)
+    except Order.DoesNotExist:
+        return ActionResult(text=f"Заказ #{oid} не найден.")
+    if order.payment_status != "awaiting_reserve":
+        return ActionResult(text=f"По заказу #{oid} уже выбран базис — резерв оплачен.")
+
+    items = list(order.items.select_related("part"))
+    # Destination читаем из профиля покупателя; параметр params.dest перекрывает.
+    # Fallback: первые 2 символа delivery_address (если ISO-страна явно прописана) → "RU".
+    dest = (params.get("dest") or "").strip().upper()
+    if not dest:
+        try:
+            prof_country = getattr(user.profile, "country", "") or ""
+            dest = (prof_country or "").strip().upper()
+        except Exception:
+            dest = ""
+    if not dest and order.delivery_address:
+        head = (order.delivery_address or "").strip().split()[:1]
+        if head and len(head[0]) == 2 and head[0].isalpha():
+            dest = head[0].upper()
+    if not dest:
+        dest = "RU"
+    # Считаем суммарный shipping для каждого mode
+    sums = {"sea": Decimal("0"), "air": Decimal("0")}
+    days_max = {"sea": 0, "air": 0}
+    for mode in ("sea", "air"):
+        for it in items:
+            r = calc_logistics(it.part, dest, mode)
+            if r.get("cost"):
+                sums[mode] += r["cost"] * Decimal(it.quantity)
+                if r.get("transit_days"):
+                    days_max[mode] = max(days_max[mode], r["transit_days"])
+    # Markup для CIF и DDP относительно базового FOB shipping
+    # FOB = только shipping. CIF = + insurance/freight 5%. DDP = + customs/local 18%.
+    base_items_total = sum(
+        Decimal(str(it.unit_price or 0)) * Decimal(it.quantity) for it in items
+    )
+    incoterm_markup = {"FOB": Decimal("1.00"), "CIF": Decimal("1.05"), "DDP": Decimal("1.18")}
+
+    rows = []
+    for mode in ("sea", "air"):
+        if sums[mode] <= 0:
+            continue
+        for inc in ("FOB", "CIF", "DDP"):
+            ship = (sums[mode] * incoterm_markup[inc]).quantize(Decimal("0.01"))
+            landed = (base_items_total + ship).quantize(Decimal("0.01"))
+            rows.append({
+                "mode": mode, "mode_label": "🚢 Морем" if mode == "sea" else "✈️ Авиа",
+                "incoterm": inc,
+                "incoterm_desc": {
+                    "FOB": "до порта отгрузки (вы организуете дальше)",
+                    "CIF": "до порта назначения, фрахт+страховка включены",
+                    "DDP": "до двери, всё включено (фрахт, страховка, таможня)",
+                }[inc],
+                "shipping": float(ship),
+                "landed": float(landed),
+                "days": days_max[mode],
+                "selected": (mode == order.shipping_mode and inc == order.incoterm),
+            })
+
+    text = (f"🚚 Выберите способ доставки и базис для заказа #{order.id}\n"
+            f"Базовая стоимость товаров: ${base_items_total:,.2f}")
+    return ActionResult(
+        text=text,
+        cards=[{
+            "type": "shipping_options",
+            "data": {
+                "title": "Варианты доставки",
+                "order_id": order.id,
+                "rows": rows,
+                "currency": "USD",
+            },
+        }],
+        suggestions=["Объяснить разницу FOB/CIF/DDP", "Изменить страну доставки"],
+    )
+
+
+@register("shipping_apply")
+def shipping_apply(params, user, role):
+    """Применить выбор mode + incoterm к ордеру и пересчитать landed."""
+    from decimal import Decimal
+
+    from assistant.logistics import calc_logistics
+    from marketplace.models import Order
+    try:
+        oid = int(params.get("order_id") or 0)
+    except (ValueError, TypeError):
+        return ActionResult(text="Неверный order_id.")
+    mode = params.get("mode")
+    inc = params.get("incoterm")
+    if mode not in ("sea", "air"):
+        return ActionResult(text="Способ доставки должен быть sea или air.")
+    if inc not in ("FOB", "CIF", "DDP"):
+        return ActionResult(text="Базис должен быть FOB, CIF или DDP.")
+    try:
+        order = Order.objects.get(id=oid, buyer=user)
+    except Order.DoesNotExist:
+        return ActionResult(text=f"Заказ #{oid} не найден.")
+    if order.payment_status != "awaiting_reserve":
+        return ActionResult(text="Резерв уже оплачен — нельзя менять базис.")
+
+    items = list(order.items.select_related("part"))
+    dest = "RU"
+    ship_total = Decimal("0")
+    for it in items:
+        r = calc_logistics(it.part, dest, mode)
+        if r.get("cost"):
+            ship_total += r["cost"] * Decimal(it.quantity)
+    markup = {"FOB": Decimal("1.00"), "CIF": Decimal("1.05"), "DDP": Decimal("1.18")}[inc]
+    ship_total = (ship_total * markup).quantize(Decimal("0.01"))
+    items_total = sum(
+        Decimal(str(it.unit_price or 0)) * Decimal(it.quantity) for it in items
+    )
+    landed = (items_total + ship_total).quantize(Decimal("0.01"))
+    reserve = (landed * Decimal("0.10")).quantize(Decimal("0.01"))
+
+    order.shipping_mode = mode
+    order.incoterm = inc
+    order.logistics_cost = ship_total
+    order.total_amount = landed
+    order.reserve_amount = reserve
+    order.save(update_fields=[
+        "shipping_mode", "incoterm", "logistics_cost",
+        "total_amount", "reserve_amount",
+    ])
+
+    from .models import Wallet
+    wallet = Wallet.for_user(user)
+    enough = wallet.balance >= reserve
+
+    mode_label = "🚢 Морем" if mode == "sea" else "✈️ Авиа"
+    return ActionResult(
+        text=(
+            f"✓ Базис заказа #{order.id} обновлён: **{mode_label} · {inc}**\n"
+            f"Товары: ${items_total:,.2f} · Доставка ({inc}): ${ship_total:,.2f}\n"
+            f"**Итого landed: ${landed:,.2f}** · резерв 10%: ${reserve:,.2f}"
+            + ("" if enough else
+               f"\n⚠️ Депозит ${wallet.balance:,.0f} — не хватает ${reserve - wallet.balance:,.0f}")
+        ),
+        actions=(
+            [{"label": f"💳 Списать резерв ${reserve:,.0f}",
               "action": "pay_reserve", "params": {"order_id": order.id}}]
             if enough else
-            [{"label": "Пополнить депозит (демо)", "action": "topup_wallet",
-              "params": {"amount": float(max(reserve_amount * 5, Decimal("10000"))),
+            [{"label": "Пополнить депозит",
+              "action": "topup_wallet",
+              "params": {"amount": float(max((reserve - wallet.balance) * 2, 5000)),
                           "pending_order_id": order.id}}]
         ) + [
-            {"label": "🚚 Изменить доставку/базис",
+            {"label": "🚚 Изменить вариант доставки",
              "action": "shipping_choose", "params": {"order_id": order.id}},
-            {"label": "Детали заказа", "action": "get_order_detail",
-             "params": {"order_id": order.id}},
         ],
-        suggestions=["Баланс депозита", "Статус заказа", "Изменить адрес доставки"],
     )
 
 
@@ -5084,7 +8094,11 @@ def seller_cancel_pending(params, user, role):
         except Exception:
             pass
     order_num = f"ORD-{order.id}"
-    order.delete()
+    # FIX (CRITICAL): не удаляем заказ — переводим в cancelled, чтобы сохранить
+    # audit trail, возможность отслеживать возвраты и финансовую сверку.
+    order.status = "cancelled"
+    order.payment_status = "cancelled" if hasattr(order, "payment_status") else order.payment_status
+    order.save(update_fields=["status"] + (["payment_status"] if hasattr(order, "payment_status") else []))
     return ActionResult(
         text=f"✓ Заказ {order_num} (${total:,.0f}) отменён.",
         actions=[
@@ -5126,7 +8140,12 @@ def cancel_order(params, user, role):
     _log_event(order, "order_cancelled_by_buyer", actor=user, source="buyer",
                meta={"total": float(total)})
     order_num = f"ORD-{order.id}"
-    order.delete()  # OrderItem'ы каскадно удалятся
+    # FIX (CRITICAL): сохраняем заказ с status='cancelled' — нужен audit-trail
+    # и возможность отслеживать возвраты. Раньше order.delete() терял историю.
+    order.status = "cancelled"
+    if hasattr(order, "payment_status") and order.payment_status == "awaiting_reserve":
+        order.payment_status = "cancelled"
+    order.save(update_fields=["status"] + (["payment_status"] if hasattr(order, "payment_status") else []))
     return ActionResult(
         text=f"✓ Заказ {order_num} (${total:,.0f}) отменён.",
         actions=[
@@ -5956,6 +8975,154 @@ def track_order(params, user, role):
     current_idx = TRACKING_INDEX.get(order.status, 0)
     created = order.created_at
 
+    # ── Per-supplier / per-shipment breakdown ───────────────────
+    # Если по заказу есть физические партии (Shipment) — рисуем их.
+    # Если нет — группируем по поставщику (виртуальные мини-таймлайны).
+    parts_data = []
+    total_amt = float(order.total_amount or 0) or 1.0
+    is_real_op = role in ("operator", "admin") and getattr(user, "is_staff", False)
+    _ORDER_CODES = [c for c, _, _ in TRACKING_STAGES]
+
+    shipments = list(order.shipments.prefetch_related("items__part__seller").all()) \
+                if hasattr(order, "shipments") else []
+    if shipments:
+        # Какие item.id уже в каком-то shipment'е
+        in_shipment_ids = set()
+        for sh in shipments:
+            for it in sh.items.all():
+                in_shipment_ids.add(it.id)
+        # Партии (реальные Shipment'ы)
+        for idx, sh in enumerate(sorted(shipments, key=lambda s: -float(s.total_amount or 0))):
+            its = list(sh.items.all())
+            sup_ids = {(it.part.seller_id if it.part else 0) for it in its}
+            sup_names = []
+            for it in its:
+                if it.part and it.part.seller_id:
+                    try:
+                        sup_names.append(it.part.seller.username)
+                    except Exception:
+                        sup_names.append(f"#S{it.part.seller_id}")
+            sup_name_for_display = (", ".join(sorted(set(sup_names))) if sup_names else "—") \
+                                    if (is_real_op or role == "seller") \
+                                    else f"Партия {idx + 1}"
+            kind_lbl = sh.get_kind_display()
+            amt = float(sh.total_amount or 0)
+            st = sh.status
+            st_idx = TRACKING_INDEX.get(st, 0)
+            st_lbl = TRACKING_STAGES[st_idx][1] if st_idx < len(TRACKING_STAGES) else st
+            parts_data.append({
+                "supplier": f"{sup_name_for_display} · {kind_lbl}",
+                "amount": amt,
+                "amount_pct": int(round(amt / total_amt * 100)) if total_amt else 0,
+                "items_count": len(its),
+                "current_idx": st_idx,
+                "current_label": st_lbl,
+                "total_stages": len(TRACKING_STAGES),
+                "progress_pct": int(round(st_idx / max(1, len(TRACKING_STAGES) - 1) * 100)),
+                "mixed": False,
+                "shipment_id": sh.id,
+                "shipment_kind": sh.kind,
+                "tracking_number": sh.tracking_number if (sh.tracking_number and is_real_op) else None,
+                "carrier": sh.carrier if (sh.carrier and is_real_op) else None,
+            })
+        # Остаток: позиции БЕЗ shipment'а (ещё не оформлены в партию)
+        leftover = [it for it in order.items.select_related("part__seller")
+                    if it.id not in in_shipment_ids]
+        if leftover:
+            # Группируем остаток по поставщику для наглядности
+            from collections import defaultdict as _dd
+            left_groups = _dd(lambda: {"items": [], "amount": 0.0, "statuses": set(), "name": ""})
+            for it in leftover:
+                sid = it.part.seller_id if it.part else 0
+                g = left_groups[sid]
+                if not g["name"]:
+                    g["name"] = (it.part.seller.username if (it.part and it.part.seller_id) else "—")
+                g["items"].append(it)
+                g["amount"] += float(it.unit_price or 0) * (it.quantity or 0)
+                g["statuses"].add((it.status if hasattr(it, "status") and it.status else None) or order.status)
+            base_idx = len(parts_data)
+            for j, (sid, g) in enumerate(sorted(left_groups.items(), key=lambda kv: -kv[1]["amount"])):
+                sts = sorted(g["statuses"])
+                worst = min(sts, key=lambda s: _ORDER_CODES.index(s) if s in _ORDER_CODES else 99)
+                worst_idx = TRACKING_INDEX.get(worst, 0)
+                worst_lbl = TRACKING_STAGES[worst_idx][1] if worst_idx < len(TRACKING_STAGES) else worst
+                disp = g["name"] if (is_real_op or role == "seller") else f"Поставщик {chr(ord('A') + base_idx + j)}"
+                parts_data.append({
+                    "supplier": f"{disp} · ждёт партию",
+                    "amount": g["amount"],
+                    "amount_pct": int(round(g["amount"] / total_amt * 100)) if total_amt else 0,
+                    "items_count": len(g["items"]),
+                    "current_idx": worst_idx,
+                    "current_label": worst_lbl,
+                    "total_stages": len(TRACKING_STAGES),
+                    "progress_pct": int(round(worst_idx / max(1, len(TRACKING_STAGES) - 1) * 100)),
+                    "mixed": len(sts) > 1,
+                })
+    else:
+        # Нет Shipment'ов → группируем по поставщику (виртуальный режим).
+        from collections import defaultdict as _dd
+        _sup_groups = _dd(lambda: {"items": [], "amount": 0.0, "statuses": set(), "name": ""})
+        for it in order.items.select_related("part", "part__seller"):
+            sid = it.part.seller_id if it.part else 0
+            g = _sup_groups[sid]
+            if not g["name"]:
+                g["name"] = (it.part.seller.username if (it.part and it.part.seller_id) else "—")
+            g["items"].append(it)
+            g["amount"] += float(it.unit_price or 0) * (it.quantity or 0)
+            g["statuses"].add((it.status if hasattr(it, "status") and it.status else None) or order.status)
+        if len(_sup_groups) > 1:
+            for idx, (sid, g) in enumerate(sorted(_sup_groups.items(), key=lambda kv: -kv[1]["amount"])):
+                sts = sorted(g["statuses"])
+                worst = min(sts, key=lambda s: _ORDER_CODES.index(s) if s in _ORDER_CODES else 99)
+                worst_idx = TRACKING_INDEX.get(worst, 0)
+                worst_lbl = TRACKING_STAGES[worst_idx][1] if worst_idx < len(TRACKING_STAGES) else worst
+                display_name = g["name"] if (is_real_op or role == "seller") else f"Поставщик {chr(ord('A') + idx)}"
+                parts_data.append({
+                    "supplier": display_name,
+                    "amount": g["amount"],
+                    "amount_pct": int(round(g["amount"] / total_amt * 100)),
+                    "items_count": len(g["items"]),
+                    "current_idx": worst_idx,
+                    "current_label": worst_lbl,
+                    "total_stages": len(TRACKING_STAGES),
+                    "progress_pct": int(round(worst_idx / max(1, len(TRACKING_STAGES) - 1) * 100)),
+                    "mixed": len(sts) > 1,
+                })
+
+    # ── Алерт о расхождении: кто-то уехал, кто-то ещё в производстве ──
+    # Не показываем если split уже принят (split-shipment'ы существуют
+    # → расхождение это уже норма для этого заказа).
+    divergence_alert = None
+    _split_already = any(getattr(p, "get", lambda *_: None)("shipment_kind") == "split"
+                         for p in parts_data)
+    if len(parts_data) >= 2 and not _split_already:
+        READY_IDX = TRACKING_INDEX.get("ready_to_ship", 4)
+        ahead  = [p for p in parts_data if p["current_idx"] >  READY_IDX]
+        behind = [p for p in parts_data if p["current_idx"] <  READY_IDX]
+        if ahead and behind:
+            ahead_names  = ", ".join(p["supplier"] for p in ahead)
+            behind_names = ", ".join(p["supplier"] for p in behind)
+            slowest = min(behind, key=lambda p: p["current_idx"])
+            divergence_alert = {
+                "level": "warn",
+                "title": "⚠️ Расхождение по поставщикам — консолидация под угрозой",
+                "body": (f"{ahead_names} уже {ahead[0]['current_label'].lower()}, "
+                         f"а {behind_names} ещё на стадии «{slowest['current_label']}». "
+                         f"Платформа по умолчанию ждёт всех для единой отправки "
+                         f"(один коносамент, одна таможня). Если ждать не хотите — "
+                         f"можно отгрузить готовых отдельной партией (дороже логистика, но быстрее)."),
+                "cta_consolidate": {
+                    "label": f"📦 Ждать {behind_names} (консолидация)",
+                    "action": "consolidate_wait",
+                    "params": {"order_id": order.id},
+                },
+                "cta_split": {
+                    "label": f"✈️ Отгрузить {ahead_names} сейчас (split)",
+                    "action": "split_shipment",
+                    "params": {"order_id": order.id},
+                },
+            }
+
     stages = []
     for i, (code, label, eta_days) in enumerate(TRACKING_STAGES):
         if i < current_idx:
@@ -6110,6 +9277,11 @@ def track_order(params, user, role):
                 "label": "✅ Подтвердить приёмку",
                 "action": "confirm_delivery", "params": {"order_id": order.id},
             })
+        # SLA — нужен ВЕЗДЕ кроме отменённых: в transit чтобы видеть просрочки,
+        # на delivered/completed — фактическая дата vs плановая (был ли срок выполнен).
+        if order.status != "cancelled":
+            actions_list.append({"label": "⏱ SLA-отчёт", "action": "get_sla_report",
+                                 "params": {"order_id": order.id}})
         actions_list.append({"label": "Баланс депозита", "action": "get_balance", "params": {}})
     elif effective_role == "seller":
         # Продавец двигает заказ по pipeline (производство → отгрузка → таможня)
@@ -6254,6 +9426,11 @@ def track_order(params, user, role):
                             or (order.logistics_meta or {}).get("carrier"),
                 "next_actor": next_actor,
                 "next_event": next_event,
+                # Per-supplier разбивка — поставщики двигают позиции независимо.
+                # Передаём массив, фронт рисует N мини-таймлайнов внутри карточки.
+                "parts": parts_data,
+                # Алерт когда консолидация ломается
+                "divergence_alert": divergence_alert,
             },
         }] + extra_cards,
         actions=actions_list,
@@ -6592,7 +9769,9 @@ def advance_order(params, user, role):
     new_status, label = transitions[order.status]
     order.status = new_status
     order.save(update_fields=["status"])
-    _log_event(order, "status_changed", actor=user, source="buyer",
+    # FIX (HIGH): source=role а не hardcoded "buyer" — advance_order вызывается
+    # buyer/seller/operator, audit-trail должен показывать настоящего actor'a.
+    _log_event(order, "status_changed", actor=user, source=role or "buyer",
                meta={"from": old_status, "to": new_status})
 
     # Broadcast в shipment-чат buyer'а с обновлённым timeline
@@ -7057,40 +10236,324 @@ def get_savings(params, user, role):
     )
 
 
+def _operator_bonus_view(params, user, role):
+    """Экран бонусов оператора: на счёте + в холде + life-time."""
+    from .models import Wallet
+    from marketplace.models import OperatorBonusLine
+    from datetime import timedelta
+    from django.utils import timezone as _tz
+    wallet = Wallet.for_user(user)
+    lines = list(OperatorBonusLine.objects.filter(operator=user).select_related("order")[:20])
+    now = _tz.now()
+    cutoff_30 = now - timedelta(days=30)
+
+    bonus_pending  = sum(float(l.amount) for l in lines if l.status == "pending")
+    bonus_30d      = sum(float(l.amount) for l in OperatorBonusLine.objects.filter(
+                          operator=user, status="released", released_at__gte=cutoff_30))
+    bonus_lifetime = sum(float(l.amount) for l in OperatorBonusLine.objects.filter(
+                          operator=user, status="released"))
+
+    # Сделок закрыто за 30д
+    closed_30 = OperatorBonusLine.objects.filter(
+        operator=user, created_at__gte=cutoff_30,
+    ).count()
+
+    # Строки последних начислений в формате wal-row
+    rows = []
+    for l in lines[:10]:
+        status_lbl = {
+            "pending":  "в холде",
+            "released": "зачислено",
+            "withheld": "удержано",
+            "reduced":  "−50% за рекламацию",
+        }.get(l.status, l.status)
+        rows.append({
+            "left":   f"#{l.order_id}",
+            "title":  f"{l.basis} {l.rate_pct}% · {status_lbl}",
+            "amount": f"+${float(l.amount):,.0f}",
+            "action": "op_order_detail",
+            "params": {"order_id": l.order_id},
+        })
+
+    return ActionResult(
+        text=f"💰 На счёте ${wallet.balance:,.2f} · в холде ${bonus_pending:,.0f}",
+        cards=[{
+            "type": "ops_dashboard",
+            "data": {
+                "hero_label": "На счёте",
+                "hero_value": float(wallet.balance or 0),
+                "currency":   wallet.currency,
+                "stats": [
+                    {"label": "В холде (14 дней)",
+                     "value": f"${bonus_pending:,.0f}",
+                     "sub":   "ждут release"},
+                    {"label": "Зачислено за 30 дней",
+                     "value": f"${bonus_30d:,.0f}",
+                     "sub":   f"{closed_30} сделок закрыто",
+                     "tone":  "ok"},
+                    {"label": "Заработано всего",
+                     "value": f"${bonus_lifetime:,.0f}",
+                     "sub":   "life-time"},
+                ],
+                "rows_title": "Последние начисления",
+                "rows":       rows,
+            },
+        }],
+        actions=[
+            {"label": "📤 Запрос выплаты",  "action": "request_payout", "params": {}},
+            {"label": "📦 Мои сделки",       "action": "get_orders",     "params": {}},
+        ],
+        suggestions=["Как считается бонус?", "Когда придёт зарплата?"],
+    )
+
+
+def _seller_revenue_view(params, user, role):
+    """Экран выручки продавца: что зачислено, что в работе, что ожидается."""
+    from .models import Wallet
+    from .seller_actions import _effective_seller
+    from marketplace.models import OrderItem, Order
+    user = _effective_seller(user)
+    wallet = Wallet.for_user(user)
+
+    # Все order items с part от этого продавца
+    items = OrderItem.objects.filter(part__seller=user).select_related("order")
+    # Группируем суммы по payment_status заказа
+    revenue_paid     = 0.0   # уже зачислено (paid/completed/delivered)
+    revenue_in_work  = 0.0   # в производстве/транзите (резерв оплачен, ждём 90%)
+    revenue_pending  = 0.0   # ждём оплату резерва
+    open_orders = []
+    for it in items:
+        o = it.order
+        if not o: continue
+        sub = float(it.quantity or 1) * float(it.unit_price or 0)
+        ps = o.payment_status or ""
+        st = o.status or ""
+        if ps == "paid" or st in ("completed", "delivered"):
+            revenue_paid += sub
+        elif ps in ("reserve_paid", "mid_paid", "customs_paid"):
+            revenue_in_work += sub
+            open_orders.append((o, it, sub, "в работе"))
+        elif ps == "awaiting_reserve":
+            revenue_pending += sub
+            open_orders.append((o, it, sub, "ждём оплату"))
+
+    # Последние поступления — последние 8 транзакций
+    txs = list(wallet.transactions.all()[:8])
+    import re as _re
+    def _clean(s):
+        s = s or ""
+        s = _re.sub(r"\s*\(intent[^)]*\)", "", s)
+        s = _re.sub(r"\s*\[chat-demo\]", "", s)
+        return s.strip()
+    tx_rows = []
+    for tx in txs:
+        kind = tx.kind or ""
+        is_in = kind in ("topup", "refund", "payout")
+        order_ref = tx.order_id
+        if not order_ref:
+            m = _re.search(r"#(\d+)", tx.description or "")
+            order_ref = int(m.group(1)) if m else None
+        desc = _clean(tx.description) or tx.get_kind_display()
+        if order_ref:
+            desc = _re.sub(r"\s*#\d+\s*", " ", desc).strip()
+        tx_rows.append({
+            "date": tx.created_at.strftime("%d.%m"),
+            "time": tx.created_at.strftime("%H:%M"),
+            "amount": float(tx.amount or 0),
+            "is_in": is_in,
+            "label": desc[:80],
+            "order_ref": order_ref,
+        })
+
+    return ActionResult(
+        text=f"💰 Ваша выручка · на счёте ${wallet.balance:,.2f}",
+        cards=[{
+            "type": "seller_revenue",
+            "data": {
+                "title": "Выручка продавца",
+                "balance":         float(wallet.balance or 0),
+                "currency":        wallet.currency,
+                "revenue_paid":    revenue_paid,
+                "revenue_in_work": revenue_in_work,
+                "revenue_pending": revenue_pending,
+                "open_count":      len(open_orders),
+                "transactions":    tx_rows,
+            },
+        }],
+        actions=[
+            {"label": "📤 Запрос выплаты", "action": "request_payout", "params": {}},
+            {"label": "📦 Мои заказы",      "action": "get_orders", "params": {}},
+            {"label": "📊 Аналитика",       "action": "get_analytics", "params": {}},
+        ],
+        suggestions=["История поступлений", "Какая комиссия платформы?"],
+    )
+
+
 @register("get_balance")
 def get_balance(params, user, role):
     """Показать баланс депозита и последние транзакции.
-    Для seller-роли тест-юзеры маппятся на demo_seller (`_effective_seller`)."""
+    - buyer  → Wallet депозит (предоплата заказов)
+    - seller → выручка: зачислено + ожидается + в работе
+    - operator/admin → доход платформы (комиссия)
+    """
+    # Operator → единый финансовый дашборд (платформа + личный бонус в одной карточке)
+    if role and role.startswith("operator"):
+        from .operator_actions import op_payments_dashboard
+        return op_payments_dashboard(params, user, role)
+    # Admin → отчёт по комиссии платформы
+    if role == "admin":
+        from .admin_actions import admin_revenue_breakdown
+        return admin_revenue_breakdown(params, user, role)
+
+    # Seller → собственный экран выручки
+    if role == "seller":
+        return _seller_revenue_view(params, user, role)
+
     from .models import Wallet
     if role == "seller":
         from .seller_actions import _effective_seller
         user = _effective_seller(user)
     wallet = Wallet.for_user(user)
-    txs = list(wallet.transactions.all()[:10])
+    txs = list(wallet.transactions.all()[:12])
 
-    if not txs:
-        body = "Движений пока не было."
-    else:
-        lines = []
-        for tx in txs:
-            sign = "+" if tx.kind in ("topup", "refund") else "−"
-            lines.append(
-                f"{tx.created_at.strftime('%d.%m %H:%M')} · {sign}${tx.amount:,.0f} · "
-                f"{tx.description or tx.get_kind_display()}"
-            )
-        body = "\n".join(lines)
+    # 30-дневная статистика
+    from datetime import timedelta
+    from django.utils import timezone as _tz_now
+    cutoff = _tz_now.now() - timedelta(days=30)
+    txs_30d = [t for t in txs if t.created_at >= cutoff]
+    spent_30d = sum(float(t.amount) for t in txs_30d if t.kind not in ("topup", "refund"))
+    topup_30d = sum(float(t.amount) for t in txs_30d if t.kind in ("topup", "refund"))
+
+    # Чистим описание от технических хвостов
+    import re as _re
+    def _clean_desc(s: str) -> str:
+        s = s or ""
+        s = _re.sub(r"\s*\(intent[^)]*\)", "", s)
+        s = _re.sub(r"\s*\[chat-demo\]", "", s)
+        return s.strip()
+
+    tx_rows = []
+    for tx in txs:
+        kind = tx.kind or ""
+        is_in = kind in ("topup", "refund")
+        # Прямое поле order_id (источник истины); regex на description — fallback
+        # для старых записей без order_id.
+        order_ref = tx.order_id
+        if not order_ref:
+            m = _re.search(r"#(\d+)", tx.description or "")
+            order_ref = int(m.group(1)) if m else None
+        desc_clean = _clean_desc(tx.description) or tx.get_kind_display()
+        if order_ref:
+            desc_clean = _re.sub(r"\s*#\d+\s*", " ", desc_clean).strip()
+        tx_rows.append({
+            "date":   tx.created_at.strftime("%d.%m"),
+            "time":   tx.created_at.strftime("%H:%M"),
+            "amount": float(tx.amount or 0),
+            "is_in":  is_in,
+            "label":  desc_clean[:80],
+            "order_ref": order_ref,
+        })
 
     return ActionResult(
+        text=f"💰 Ваш депозит: ${wallet.balance:,.2f} {wallet.currency}",
+        cards=[{
+            "type": "wallet",
+            "data": {
+                "balance":      float(wallet.balance or 0),
+                "currency":     wallet.currency,
+                "spent_30d":    spent_30d,
+                "topup_30d":    topup_30d,
+                "transactions": tx_rows,
+            },
+        }],
+        actions=[
+            {"label": "💵 Пополнить $10,000", "action": "topup_wallet",
+             "params": {"amount": 10000}},
+            {"label": "📦 Мои заказы", "action": "get_orders", "params": {}},
+        ],
+        suggestions=["Пополнить депозит", "История списаний"],
+    )
+
+
+@register("request_payout")
+def request_payout(params, user, role):
+    """Запрос на выплату накопленной выручки продавцу."""
+    from .models import Wallet
+    from .seller_actions import _effective_seller
+    seller_user = _effective_seller(user) if role == "seller" else user
+    wallet = Wallet.for_user(seller_user)
+    if (wallet.balance or 0) <= 0:
+        return ActionResult(text="💸 На счёте нет средств для вывода.",
+                            suggestions=["Мои заказы", "История поступлений"])
+    return ActionResult(
         text=(
-            f"💰 Депозит: ${wallet.balance:,.2f} {wallet.currency}.\n\n"
-            f"Последние операции:\n{body}"
+            f"📤 **Запрос выплаты** (доступно: ${wallet.balance:,.2f})\n\n"
+            "Финансист платформы зачислит средства на ваш банковский счёт в течение "
+            "1-2 рабочих дней. Минимальная сумма — $500.\n\n"
+            "Напишите оператору сумму и реквизиты — оформим выплату вручную "
+            "(скоро добавим автоматический вывод через банк)."
         ),
         actions=[
-            {"label": "Пополнить на $10,000", "action": "topup_wallet",
-             "params": {"amount": 10000}},
-            {"label": "Все мои заказы", "action": "get_orders", "params": {}},
+            {"label": "💬 Написать оператору", "action": "ask_operator", "params": {}},
+            {"label": "💰 Мой баланс",          "action": "get_balance", "params": {}},
         ],
-        suggestions=["История списаний", "Пополнить депозит"],
+    )
+
+
+@register("link_card")
+def link_card(params, user, role):
+    """Привязать банковскую карту к депозиту.
+    Заглушка: показывает форму ввода номера/CVV/expiry. Реальной интеграции
+    с эквайером пока нет — пишем «функция в разработке, оператор подтвердит
+    привязку вручную».
+    """
+    return ActionResult(
+        text=(
+            "💳 **Привязка карты**\n\n"
+            "Скоро добавим автоматическую привязку через Stripe / Тинькофф Эквайринг.\n"
+            "Пока — напишите оператору, и он привяжет карту вручную (1-2 часа)."
+        ),
+        actions=[
+            {"label": "💬 Написать оператору", "action": "ask_operator", "params": {}},
+            {"label": "💵 Пополнить без карты", "action": "topup_wallet", "params": {"amount": 10000}},
+        ],
+        suggestions=["Мой баланс", "История операций"],
+    )
+
+
+@register("withdraw_wallet")
+def withdraw_wallet(params, user, role):
+    """Вывод средств с депозита обратно на карту/счёт."""
+    from .models import Wallet
+    wallet = Wallet.for_user(user)
+    if (wallet.balance or 0) <= 0:
+        return ActionResult(text="💸 На балансе нет средств для вывода.",
+                            suggestions=["Пополнить депозит"])
+    return ActionResult(
+        text=(
+            f"💸 **Вывод средств** (доступно: ${wallet.balance:,.2f})\n\n"
+            "Доступно для вывода: средства не зарезервированные под открытые заказы.\n"
+            "Напишите оператору сумму и реквизиты — выводим в течение 1 рабочего дня."
+        ),
+        actions=[
+            {"label": "💬 Написать оператору", "action": "ask_operator", "params": {}},
+            {"label": "📊 Мой баланс", "action": "get_balance", "params": {}},
+        ],
+    )
+
+
+@register("transfer_wallet")
+def transfer_wallet(params, user, role):
+    """Перевод между внутренними счетами / контрагентам."""
+    return ActionResult(
+        text=(
+            "↗ **Перевод средств**\n\n"
+            "Внутренние переводы между счетами Consolidator пока недоступны.\n"
+            "Скоро добавим перевод бонусов и кредит-нот между связанными аккаунтами."
+        ),
+        actions=[
+            {"label": "💬 Написать оператору", "action": "ask_operator", "params": {}},
+        ],
     )
 
 
@@ -7118,6 +10581,7 @@ def _topup_wallet_demo(params, user, role):
     from marketplace.models import Order
 
     from .models import Wallet, WalletTx
+    from django.db import transaction
     try:
         amount = Decimal(str(params.get("amount") or 10000)).quantize(Decimal("0.01"))
     except Exception:
@@ -7125,14 +10589,18 @@ def _topup_wallet_demo(params, user, role):
     if amount <= 0:
         return ActionResult(text="Сумма должна быть больше нуля.")
 
-    wallet = Wallet.for_user(user)
-    wallet.balance = wallet.balance + amount
-    wallet.save(update_fields=["balance", "updated_at"])
-    WalletTx.objects.create(
-        wallet=wallet, kind="topup", amount=amount,
-        description="Пополнение депозита (DEMO MODE)",
-        balance_after=wallet.balance,
-    )
+    # FIX (CRITICAL): защищаем read-modify-write от race condition через
+    # select_for_update в transaction (как в pay_reserve).
+    with transaction.atomic():
+        Wallet.for_user(user)  # ensure exists
+        wallet = Wallet.objects.select_for_update().get(user=user)
+        wallet.balance = wallet.balance + amount
+        wallet.save(update_fields=["balance", "updated_at"])
+        WalletTx.objects.create(
+            wallet=wallet, kind="topup", amount=amount,
+            description="Пополнение депозита (DEMO MODE)",
+            balance_after=wallet.balance,
+        )
 
     actions = []
     text = (
@@ -7532,4 +11000,161 @@ def list_topups(params, user, role):
         }],
         actions=[{"label": "💰 Новое пополнение",
                   "action": "start_topup", "params": {}}],
+    )
+
+
+@register("consolidate_wait")
+def consolidate_wait(params, user, role):
+    """Покупатель/оператор подтверждает: ждём готовности всех поставщиков
+    для единой консолидированной отгрузки. Никаких изменений в данных пока
+    нет — это решение записывается в logistics_meta для оператора и аудита."""
+    from marketplace.models import Order
+    oid = params.get("order_id")
+    if not oid:
+        return ActionResult(text="Не указан заказ.")
+    try:
+        o = Order.objects.get(id=oid)
+    except Order.DoesNotExist:
+        return ActionResult(text=f"Заказ #{oid} не найден.")
+    lm = dict(o.logistics_meta or {})
+    lm["shipment_decision"] = "consolidate"
+    lm["shipment_decision_by"] = user.username
+    o.logistics_meta = lm
+    o.save(update_fields=["logistics_meta"])
+    return ActionResult(
+        text=(f"✓ Решение по ORD-{o.id}: ждём готовности всех поставщиков для "
+              f"единой отправки. Готовые позиции остаются на складе платформы. "
+              f"ETA = по самому медленному."),
+        actions=[{"label": "📦 Открыть трекинг", "action": "track_order",
+                  "params": {"order_id": o.id}}],
+    )
+
+
+@register("split_shipment")
+def split_shipment(params, user, role):
+    """Split: готовые позиции отгружаются отдельной партией не дожидаясь.
+    Создаём реальный Shipment с теми OrderItem'ами, которые уже ушли
+    вперёд (status > ready_to_ship). Их статус становится статусом партии."""
+    from marketplace.models import Order, Shipment
+    oid = params.get("order_id")
+    if not oid:
+        return ActionResult(text="Не указан заказ.")
+    try:
+        o = Order.objects.get(id=oid)
+    except Order.DoesNotExist:
+        return ActionResult(text=f"Заказ #{oid} не найден.")
+    STAGE_ORDER = ["awaiting_reserve", "reserve_paid", "confirmed", "in_production",
+                   "ready_to_ship", "transit_abroad", "customs", "transit_rf",
+                   "issuing", "delivered", "completed"]
+    READY_IDX = STAGE_ORDER.index("ready_to_ship")
+    ahead_items = []
+    for it in o.items.select_related("part__seller"):
+        st = it.status or o.status
+        idx = STAGE_ORDER.index(st) if st in STAGE_ORDER else 0
+        if idx > READY_IDX:
+            ahead_items.append((it, st))
+    if not ahead_items:
+        return ActionResult(text=(
+            f"По ORD-{o.id} никто не ушёл вперёд — split не нужен. "
+            f"Все позиции ≤ ready_to_ship, ждут консолидации."))
+    # Уникальные комбинации (поставщик, статус) = отдельные партии.
+    # Логично: разные стадии в одной партии не бывает; разные поставщики
+    # дают разные коносаменты.
+    from collections import defaultdict as _dd
+    groups = _dd(list)
+    for it, st in ahead_items:
+        sid = it.part.seller_id if it.part else 0
+        groups[(sid, st)].append(it)
+    created = []
+    for (sid, st), its in groups.items():
+        # Если у этого Shipment уже есть запись — не плодим дубли
+        existing = o.shipments.filter(kind="split", status=st,
+                                      items__in=its).distinct().first()
+        if existing:
+            continue
+        sh = Shipment.objects.create(
+            order=o, kind="split", status=st,
+            shipping_mode=getattr(o, "shipping_mode", "") or "",
+            notes=f"split-by {user.username}",
+        )
+        sh.items.set(its)
+        created.append(sh)
+    lm = dict(o.logistics_meta or {})
+    lm["shipment_decision"] = "split"
+    lm["shipment_decision_by"] = user.username
+    lm["shipments_split_count"] = (lm.get("shipments_split_count", 0) + len(created))
+    o.logistics_meta = lm
+    o.save(update_fields=["logistics_meta"])
+    summary = "\n".join(
+        f"  • Shipment #{sh.id}: {sh.items.count()} поз · "
+        f"${float(sh.total_amount):,.0f} · {sh.get_status_display()}"
+        for sh in created
+    ) or "  (новых партий не создано — уже были)"
+    return ActionResult(
+        text=(f"✓ Split shipment по ORD-{o.id}: создано {len(created)} партий.\n"
+              f"{summary}\n\nКаждая теперь — отдельный коносамент, ETA, таможня."),
+        actions=[{"label": "📦 Открыть трекинг", "action": "track_order",
+                  "params": {"order_id": o.id}}],
+    )
+
+
+@register("set_supplier_decision")
+def set_supplier_decision(params, user, role):
+    """Per-supplier выбор «ждать всех» vs «отправлять отдельно».
+    Записывает предпочтение в logistics_meta.per_supplier[seller_id] = choice.
+    Когда поставщик дойдёт до ready_to_ship — оператор/система создаст Shipment
+    по этой настройке (consolidated или split). Если поставщик УЖЕ ready и
+    выбран split — сразу создаём split-партию для его позиций."""
+    from marketplace.models import Order, Shipment
+    oid = params.get("order_id")
+    sid = params.get("seller_id")
+    choice = (params.get("choice") or "").strip()
+    if not oid or choice not in ("consolidate", "split"):
+        return ActionResult(text="Не указаны параметры решения.")
+    try:
+        o = Order.objects.get(id=oid)
+    except Order.DoesNotExist:
+        return ActionResult(text=f"Заказ #{oid} не найден.")
+    lm = dict(o.logistics_meta or {})
+    per = dict(lm.get("per_supplier") or {})
+    per[str(sid)] = choice
+    lm["per_supplier"] = per
+    lm["shipment_decision_by"] = getattr(user, "username", "—")
+    o.logistics_meta = lm
+    o.save(update_fields=["logistics_meta"])
+    # Имя поставщика для текста
+    _sup_name = "поставщик"
+    try:
+        from marketplace.models import User as _U
+        _u = _U.objects.filter(id=sid).only("username").first()
+        if _u:
+            _sup_name = _u.username
+    except Exception:
+        pass
+    # Если split И поставщик уже ready_to_ship — создаём split-партию сразу
+    created_now = None
+    if choice == "split":
+        ready_items = [it for it in o.items.select_related("part__seller")
+                       if it.part and it.part.seller_id == int(sid)
+                       and (it.status or o.status) == "ready_to_ship"
+                       and not o.shipments.filter(items=it).exists()]
+        if ready_items:
+            sh = Shipment.objects.create(
+                order=o, kind="split", status="ready_to_ship",
+                shipping_mode=getattr(o, "shipping_mode", "") or "",
+                notes=f"per-supplier split by {getattr(user,'username','—')}",
+            )
+            sh.items.set(ready_items)
+            created_now = sh
+    if choice == "consolidate":
+        msg = (f"✓ {_sup_name}: ждать общую партию. Готовые позиции "
+               f"останутся на складе платформы до готовности остальных.")
+    else:
+        msg = f"✓ {_sup_name}: отправлять отдельной партией."
+        if created_now:
+            msg += f" Создана партия #{created_now.id}."
+    return ActionResult(
+        text=msg,
+        actions=[{"label": "📦 Открыть трекинг", "action": "track_order",
+                  "params": {"order_id": o.id}}],
     )

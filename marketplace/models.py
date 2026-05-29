@@ -543,6 +543,26 @@ class Order(models.Model):
     customer_phone = models.CharField(max_length=50)
     delivery_address = models.TextField()
     buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
+    # Оператор, ведущий сделку — получает бонус 0.4-0.7% после release.
+    # Назначается при первом операторском действии (confirm/dispatch/quote-approve).
+    assigned_operator = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="assigned_orders",
+        help_text="Оператор, ведущий сделку (получает бонус по закрытию)",
+    )
+    # PIVOT 2026-05-27: sub-order split.
+    # Один RFQ может разбиться на N sub-orders по числу операторов, чьи
+    # поставщики попали в заказ. parent_order — оригинальный «общий» заказ
+    # видимый покупателю; sub-orders видны только своим операторам.
+    parent_order = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="sub_orders",
+        help_text="Оригинальный заказ если это sub-order (видим покупателю)",
+    )
+    is_sub_order = models.BooleanField(
+        default=False,
+        help_text="True если этот Order — часть разбитого по операторам заказа",
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     supplier_confirm_deadline = models.DateTimeField(null=True, blank=True)
     ship_deadline = models.DateTimeField(null=True, blank=True)
@@ -606,10 +626,60 @@ class OrderItem(models.Model):
     part = models.ForeignKey(Part, on_delete=models.PROTECT)
     quantity = models.PositiveIntegerField()
     unit_price = models.DecimalField(max_digits=12, decimal_places=2)
+    # Каждый поставщик двигает свои позиции независимо от других.
+    # Берём те же choices что и у Order.status — это не sub-status, а
+    # реальный статус именно ЭТОЙ позиции у её поставщика.
+    status = models.CharField(max_length=30, blank=True, default="",
+        help_text="Per-item статус. Пусто = наследует Order.status.")
+    status_changed_at = models.DateTimeField(null=True, blank=True)
 
     @property
     def total_price(self):
         return self.quantity * self.unit_price
+
+    @property
+    def effective_status(self):
+        """Статус позиции: per-item если задан, иначе общий статус заказа."""
+        return self.status or self.order.status
+
+
+class Shipment(models.Model):
+    """Физическая партия отгрузки. Один Order может породить 1 (консолидация)
+    или N (split) партий. Каждая партия = свой коносамент, своя таможня,
+    свой ETA, свой статус.
+    """
+    KIND_CHOICES = [
+        ("consolidated", "Консолидированная"),
+        ("split", "Split (раздельная)"),
+    ]
+    STATUS_CHOICES = [
+        ("formed",          "Сформирована"),
+        ("ready_to_ship",   "Готова к отгрузке"),
+        ("transit_abroad",  "Транзит (зарубеж)"),
+        ("customs",         "Таможня"),
+        ("transit_rf",      "Транзит (РФ)"),
+        ("issuing",         "Выдача"),
+        ("delivered",       "Доставлена"),
+    ]
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="shipments")
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default="consolidated")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="formed")
+    tracking_number = models.CharField(max_length=120, blank=True)
+    carrier = models.CharField(max_length=120, blank=True)
+    shipping_mode = models.CharField(max_length=20, blank=True)  # sea/air/auto
+    cost = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    eta_delivery = models.DateField(null=True, blank=True)
+    items = models.ManyToManyField(OrderItem, related_name="shipments", blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Shipment #{self.id} ORD-{self.order_id} · {self.get_status_display()}"
+
+    @property
+    def total_amount(self):
+        return sum((it.unit_price * it.quantity for it in self.items.all()), 0)
 
 
 class OrderEvent(models.Model):
@@ -789,6 +859,14 @@ class UserProfile(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    # Оператор ВЭД, ведущий этого поставщика (PIVOT 2026-05-27).
+    # 1 поставщик = 1 оператор. Закрепляется при KYB-approve = тот кто одобрил.
+    # Только для role=seller; для buyer не используется.
+    assigned_operator = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="managed_suppliers",
+        help_text="Оператор ВЭД, ведущий этого поставщика (1:1)",
+    )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="buyer")
     company_name = models.CharField(max_length=255, blank=True)
     language = models.CharField(
@@ -900,13 +978,16 @@ class UserProfile(models.Model):
 class SupplierRatingEvent(models.Model):
     EVENT_CHOICES = [
         ("rfq_response", "RFQ Response"),
+        ("rfq_response_late", "RFQ Response Late"),
         ("data_mismatch", "Data Mismatch"),
         ("delivery_delay", "Delivery Delay"),
+        ("delivery_on_time", "Delivery On Time"),
         ("order_cancellation", "Order Cancellation"),
         ("return", "Return"),
         ("sandbox_selected", "Sandbox Selected"),
         ("risky_selected", "Risky Selected"),
         ("manual_oem_escalation", "Manual OEM Escalation"),
+        ("claim_confirmed", "Claim Confirmed"),
     ]
 
     supplier = models.ForeignKey(User, on_delete=models.CASCADE, related_name="supplier_rating_events")
@@ -1169,6 +1250,96 @@ class PlatformRevenueLine(models.Model):
 
     def __str__(self):
         return f"Rev[{self.order_id}/{self.kind}]: ${self.amount}"
+
+
+class OperatorBonusLine(models.Model):
+    """Вознаграждение оператора за закрытую сделку.
+
+    Единая комиссия по Incoterm:
+      FOB 0.4% · CIP 0.5% · DDP 0.7% от стоимости товара
+      min $50 / max $5,000 на сделку
+      −50% при подтверждённой вине оператора
+
+    Жизненный цикл строки:
+      • pending  — создана при release (status=delivered + payment=paid),
+                   холд 14 дней на случай рекламации
+      • released — спустя 14 дней без проблем → зачисление в Wallet оператора
+      • withheld — рекламация подтверждена по вине → коммисия удержана
+      • reduced  — частично выплачена (−50%) при вине оператора
+    """
+    STATUS_CHOICES = [
+        ("pending",  "Холд (14 дней)"),
+        ("released", "Зачислено"),
+        ("withheld", "Удержано (вина оператора)"),
+        ("reduced",  "−50% (вина оператора)"),
+    ]
+    BASIS_CHOICES = [("FOB", "FOB"), ("CIP", "CIP"), ("DDP", "DDP")]
+    RATE_BY_BASIS = {"FOB": 0.40, "CIP": 0.50, "DDP": 0.70}  # в процентах
+    MIN_BONUS_USD = 50
+    MAX_BONUS_USD = 5000
+
+    operator = models.ForeignKey(User, on_delete=models.CASCADE,
+                                  related_name="bonus_lines")
+    order = models.OneToOneField(Order, on_delete=models.CASCADE,
+                                  related_name="operator_bonus")
+    basis = models.CharField(max_length=10, choices=BASIS_CHOICES)
+    base_amount = models.DecimalField(max_digits=14, decimal_places=2,
+                                       help_text="Стоимость товара (база начисления)")
+    rate_pct = models.DecimalField(max_digits=5, decimal_places=2,
+                                    help_text="% применённый к base_amount")
+    amount = models.DecimalField(max_digits=14, decimal_places=2,
+                                  help_text="Итоговая сумма бонуса (USD), с учётом min/max")
+    currency = models.CharField(max_length=10, default="USD")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    release_at = models.DateTimeField(null=True, blank=True,
+                                       help_text="Когда выйти из холда (created_at + 14 дней)")
+    released_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["operator", "-created_at"],
+                         name="opbon_op_created_idx"),
+            models.Index(fields=["status", "release_at"],
+                         name="opbon_status_release_idx"),
+        ]
+
+    def __str__(self):
+        return f"Bonus[{self.operator_id}/{self.order_id}]: ${self.amount} ({self.status})"
+
+
+class MissingDemand(models.Model):
+    """Аналитика спроса без предложения (PIVOT 2026-05-26).
+
+    Каждый раз когда покупатель запрашивает OEM-номер, которого НЕТ в каталоге
+    ни у одного поставщика, мы фиксируем это здесь. На основе агрегатов отдел
+    развития каталога ищет и заводит новых поставщиков с этими позициями.
+
+    Идемпотентность: одна строка на (oem, day) — counter++ при повторных запросах.
+    """
+    oem = models.CharField(max_length=128, db_index=True)
+    day = models.DateField(db_index=True)
+    buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name="missing_demand_records")
+    count = models.PositiveIntegerField(default=1)
+    rfq_id = models.IntegerField(null=True, blank=True,
+                                  help_text="ID первого RFQ где это спросили")
+    last_rfq_id = models.IntegerField(null=True, blank=True,
+                                       help_text="ID последнего RFQ где это спросили")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("oem", "day")]
+        ordering = ["-day", "-count"]
+        indexes = [
+            models.Index(fields=["-day", "-count"], name="missdem_day_count_idx"),
+            models.Index(fields=["oem", "-day"], name="missdem_oem_day_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.oem} · {self.day} × {self.count}"
 
 
 class BuyerVolumeYearly(models.Model):

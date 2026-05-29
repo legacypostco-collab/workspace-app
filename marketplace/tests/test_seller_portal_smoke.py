@@ -1,3 +1,4 @@
+import unittest
 from datetime import timedelta
 
 from django.contrib.auth.models import User
@@ -36,6 +37,8 @@ from projections.models import DashboardProjection
 # collectstatic перед чтением {% static %}. В тестах collectstatic не
 # запускается, и любой шаблон с {% static %} падает с
 # `Missing staticfiles manifest entry`. Переключаем на простой storage.
+@unittest.skip("Seller portal /seller/* removed in chat-first pivot — see CLAUDE.md. "
+                "Tests cover deprecated URLs that now redirect to /chat/.")
 @override_settings(STORAGES={
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},

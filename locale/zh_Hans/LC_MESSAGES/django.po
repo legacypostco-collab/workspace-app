@@ -19423,7 +19423,145 @@ msgstr "确认收货"
 #~ msgid "Добавлено в отслеживание: "
 #~ msgstr "已添加到跟踪："
 
-#: templates/landing.html:6
-msgid "Consolidator Parts — B2B-маркетплейс запчастей для спецтехники"
-msgstr "Consolidator Parts — 重型设备零件 B2B 市场"
+#: static/js/project-page.js
+msgid "Расходы за месяц"
+msgstr "月度支出"
 
+msgid "лучшая на сейчас"
+msgstr "目前最佳"
+
+msgid "Документы не загружены"
+msgstr "未上传文档"
+
+msgid "Нет чатов в этом проекте"
+msgstr "此项目中没有聊天"
+
+msgid "Документы проекта"
+msgstr "项目文档"
+
+msgid "AI использует"
+msgstr "AI 使用"
+
+msgid "все эти документы"
+msgstr "所有这些文档"
+
+msgid "как контекст для ответов в чатах этого проекта"
+msgstr "作为此项目聊天回复的上下文"
+
+msgid "Открытые заказы"
+msgstr "未结订单"
+
+msgid "Чаты по проекту"
+msgstr "项目聊天"
+
+msgid "Не удалось загрузить проект"
+msgstr "无法加载项目"
+
+msgid "Нет чатов"
+msgstr "无聊天"
+
+#: static/js/project-page.js assistant/views.py
+msgid "только что"
+msgstr "刚刚"
+
+msgid "мин назад"
+msgstr "分钟前"
+
+msgid "ч назад"
+msgstr "小时前"
+
+msgid "дн назад"
+msgstr "天前"
+
+msgid "Нет проектов"
+msgstr "没有项目"
+
+msgid "Без названия"
+msgstr "无标题"
+
+msgid "срочно"
+msgstr "紧急"
+
+msgid "осталось"
+msgstr "剩余"
+
+msgid "сумма"
+msgstr "金额"
+
+msgid "ближайший ETA"
+msgstr "最早 ETA"
+
+msgid "vs"
+msgstr "对比"
+
+msgid "обработан"
+msgstr "已处理"
+
+msgid "Нет активных RFQ"
+msgstr "无活跃 RFQ"
+
+msgid "Нет открытых заказов"
+msgstr "无未结订单"
+
+msgid "Файлы — скоро"
+msgstr "文件 — 即将推出"
+
+msgid "Настройки проекта — скоро"
+msgstr "项目设置 — 即将推出"
+
+msgid "Проект не указан"
+msgstr "未指定项目"
+
+msgid "Назад в чаты"
+msgstr "返回聊天"
+
+msgid "Не удалось создать чат"
+msgstr "无法创建聊天"
+
+msgid "Загрузка документов — скоро"
+msgstr "文档上传 — 即将推出"
+
+msgid "Spec Q2 — основной микс"
+msgstr "Spec Q2 — 主混合"
+
+msgid "СРОЧНО 42М"
+msgstr "紧急 42分钟"
+
+msgid "39 позиций · отправлен 5 поставщикам · 2 ответили"
+msgstr "39 项 · 发送至 5 个供应商 · 2 个已回复"
+
+msgid "Track shoes D8T — аналоги"
+msgstr "履带板 D8T — 替代品"
+
+msgid "2 позиции · отправлен 4 поставщикам · 4 ответили"
+msgstr "2 项 · 发送至 4 个供应商 · 4 个已回复"
+
+msgid "ЛУЧШАЯ ЦЕНА"
+msgstr "最优价格"
+
+msgid "Гидрофильтры — пополнение"
+msgstr "液压滤清器 — 补货"
+
+msgid "1 позиция · 12 шт · отправлен 3 поставщикам"
+msgstr "1 项 · 12 件 · 发送至 3 个供应商"
+
+msgid "Spec Q2 partial — 14 позиций"
+msgstr "Spec Q2 部分 — 14 项"
+
+msgid "НА ТАМОЖНЕ"
+msgstr "海关中"
+
+msgid "Логистика + Таможня"
+msgstr "物流 + 海关"
+
+msgid "ETA · 2 мая · день 3 из 4"
+msgstr "ETA · 5月2日 · 第 3/4 天"
+
+msgid "Гидрофильтры — 12 шт"
+msgstr "液压滤清器 — 12 件"
+
+msgid "В ПУТИ"
+msgstr "运输中"
+
+msgid "ETA · 30 апр · по графику"
+msgstr "ETA · 4月30日 · 按计划"

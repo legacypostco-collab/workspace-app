@@ -54,21 +54,44 @@ def support_home(params, user, role):
 
         now = timezone.now()
 
-        recent_msgs = (
-            Message.objects.filter(
-                role=Message.Role.ACTION,
-                actions__icontains="contact_operator",
-                created_at__gte=now - timedelta(days=14),
+        # Inbox поддержки — реальные обращения от клиентов (buyer/seller).
+        # «Реальное обращение» = последнее USER-сообщение с текстом ≥10 символов
+        # за последние 14 дней (не клик «Связаться с оператором», а реальный
+        # вопрос/жалоба). Служебные аккаунты (is_staff/is_superuser) скрываем.
+        from .models import Conversation
+        from django.db.models import Q, Max, OuterRef, Subquery
+        cutoff_14 = now - timedelta(days=14)
+
+        # Подзапрос: ID последнего USER-сообщения с осмысленным текстом по каждому conv
+        last_user_msg_sub = (Message.objects
+            .filter(conversation=OuterRef("pk"), role=Message.Role.USER)
+            .exclude(content__isnull=True).exclude(content="")
+            .order_by("-created_at"))
+
+        # Все conv в категории support с хотя бы одним user-сообщением длиннее 10 символов
+        ticket_convs = list(Conversation.objects
+            .filter(category="support", updated_at__gte=cutoff_14)
+            .exclude(user__is_staff=True)
+            .exclude(user__is_superuser=True)
+            .annotate(
+                last_user_msg_id=Subquery(last_user_msg_sub.values("id")[:1]),
+                last_user_text=Subquery(last_user_msg_sub.values("content")[:1]),
+                last_user_at=Subquery(last_user_msg_sub.values("created_at")[:1]),
             )
-            .select_related("conversation", "conversation__user")
-            .order_by("-created_at")[:20]
-        )
+            .filter(last_user_msg_id__isnull=False)
+            .select_related("user")
+            .order_by("-last_user_at")[:20])
+        # Дополнительно: фильтр на минимальную длину текста (>10 символов = настоящий вопрос)
+        ticket_convs = [c for c in ticket_convs if c.last_user_text and len(c.last_user_text.strip()) >= 10]
+
         complaints = (
             Message.objects.filter(
                 role=Message.Role.ACTION,
                 actions__icontains="open_complaint",
-                created_at__gte=now - timedelta(days=14),
+                created_at__gte=cutoff_14,
             )
+            .exclude(conversation__user__is_staff=True)
+            .exclude(conversation__user__is_superuser=True)
             .select_related("conversation", "conversation__user")
             .order_by("-created_at")[:20]
         )
@@ -78,40 +101,65 @@ def support_home(params, user, role):
         cards.append({"type": "kpi_grid", "data": {
             "title": "📥 Inbox поддержки",
             "items": [
-                {"label": "Обращений к оператору", "value": str(recent_msgs.count()),
-                 "tone": "warn" if recent_msgs.count() else None,
-                 "sub": "за последние 14 дней"},
+                {"label": "Обращений к оператору", "value": str(len(ticket_convs)),
+                 "tone": "warn" if ticket_convs else None,
+                 "sub": "с реальным вопросом за 14 дней"},
                 {"label": "Жалоб на платформу",   "value": str(complaints.count()),
                  "tone": "bad" if complaints.count() else None,
-                 "sub": "open_complaint за 14 дней"},
+                 "sub": "поданных через форму за 14 дней"},
             ],
         }})
 
-        if recent_msgs:
-            rows = [{
-                "title":    f"💬 {m.conversation.user.username if m.conversation and m.conversation.user else '—'}",
-                "subtitle": f"{m.created_at.strftime('%d.%m %H:%M')} · {(m.content or '')[:80]}",
-                "action":   "view_support_ticket",
-                "params":   {"conversation_id": str(m.conversation_id) if m.conversation_id else ""},
-            } for m in recent_msgs[:10]]
+        if ticket_convs:
+            rows = []
+            for c in ticket_convs[:10]:
+                uname = c.user.username if c.user else "—"
+                text_snippet = (c.last_user_text or "").strip().replace("\n", " ")[:90]
+                when = c.last_user_at.strftime("%d.%m %H:%M") if c.last_user_at else ""
+                rows.append({
+                    "title":    f"💬 {uname}",
+                    "subtitle": f"{when} · «{text_snippet}…»" if len(c.last_user_text or "") > 90
+                                  else f"{when} · «{text_snippet}»",
+                    "action":   "view_support_ticket",
+                    "params":   {"conversation_id": str(c.id)},
+                })
             cards.append({"type": "list", "data": {
-                "title": f"💬 Обращения к оператору · {recent_msgs.count()}",
+                "title": f"💬 Обращения к оператору · {len(ticket_convs)}",
                 "items": rows,
             }})
 
         if complaints:
-            rows = [{
-                "title":    f"🚨 {m.conversation.user.username if m.conversation and m.conversation.user else '—'}",
-                "subtitle": f"{m.created_at.strftime('%d.%m %H:%M')} · {(m.content or '')[:80]}",
-                "action":   "view_support_ticket",
-                "params":   {"conversation_id": str(m.conversation_id) if m.conversation_id else ""},
-            } for m in complaints[:10]]
+            rows = []
+            seen_convs = set()
+            for m in complaints:
+                if m.conversation_id in seen_convs: continue
+                seen_convs.add(m.conversation_id)
+                uname = m.conversation.user.username if m.conversation and m.conversation.user else "—"
+                # Берём текст жалобы из params открытия формы
+                complaint_text = ""
+                try:
+                    for a in (m.actions or []):
+                        if a.get("action") == "open_complaint":
+                            complaint_text = (a.get("params") or {}).get("text") or ""
+                            break
+                except Exception:
+                    pass
+                snippet = complaint_text.strip().replace("\n", " ")[:90]
+                when = m.created_at.strftime("%d.%m %H:%M")
+                rows.append({
+                    "title":    f"🚨 {uname}",
+                    "subtitle": (f"{when} · «{snippet}…»" if len(complaint_text) > 90
+                                   else (f"{when} · «{snippet}»" if snippet
+                                            else f"{when} · жалоба подана через форму")),
+                    "action":   "view_support_ticket",
+                    "params":   {"conversation_id": str(m.conversation_id)},
+                })
             cards.append({"type": "list", "data": {
-                "title": f"🚨 Жалобы на платформу · {complaints.count()}",
+                "title": f"🚨 Жалобы на платформу · {len(rows)}",
                 "items": rows,
             }})
 
-        if not (recent_msgs or complaints):
+        if not (ticket_convs or complaints):
             cards.append({"type": "list", "data": {
                 "title": "📥 Inbox поддержки",
                 "items": [{"title": "✅ Очередь поддержки пуста",
@@ -123,6 +171,8 @@ def support_home(params, user, role):
                   "Рекламации по заказам — в отдельной вкладке «Рекламации»."),
             cards=cards,
             actions=[
+                {"label": "📂 Мои диалоги с пользователями",
+                 "action": "op_my_user_chats", "params": {}},
                 {"label": "📋 База знаний (FAQ)",   "action": "kb_faq",       "params": {}},
                 {"label": "🎨 Цветовая памятка",    "action": "color_legend", "params": {}},
                 {"label": "🧾 Рекламации",          "action": "get_claims",   "params": {}},
@@ -233,9 +283,24 @@ def color_legend(params, user, role):
 
 @register("view_support_ticket")
 def view_support_ticket(params, user, role):
-    """Открыть тикет/обращение для оператора. Показывает conversation
-    с пользователем + контекст (его заказы, статус KYB и т.д.)."""
+    """Карточка тикета поддержки — ТОЛЬКО для оператора/админа.
+
+    SECURITY: без role-check любой buyer/seller мог открыть чужой conv по ID
+    и увидеть KYB-данные / email / phone других пользователей.
+    """
+    if not ((role or "").startswith("operator") or role == "admin"):
+        return ActionResult(text="Доступно только оператору поддержки.")
+    """Карточка тикета поддержки для оператора.
+
+    Структура (что важно при разборе обращения):
+      1. Краткая шапка — кто, когда последняя активность, сколько сообщений
+      2. Контакты — email, телефон, мессенджеры из KYB
+      3. Контекст — активные заказы, баланс, статус KYB
+      4. О чём разговор — последний вопрос пользователя + темы обращений
+      5. Действия — связаться (с авто-контекстом), эскалировать
+    """
     from .models import Conversation, Message
+    from django.utils import timezone
 
     conv_id = params.get("conversation_id")
     if not conv_id:
@@ -245,28 +310,219 @@ def view_support_ticket(params, user, role):
     except Conversation.DoesNotExist:
         return ActionResult(text="Тикет не найден.")
 
-    # Последние 15 сообщений
-    msgs = list(Message.objects.filter(conversation=conv).order_by("-created_at")[:15])
-    msgs.reverse()
-    body_lines = []
-    for m in msgs:
-        when = m.created_at.strftime("%d.%m %H:%M")
-        who = ("👤 " + (m.conversation.user.username if m.conversation.user else "—")
-                if m.role == Message.Role.USER else
-                "▸ " if m.role == Message.Role.ACTION else "🤖")
-        body_lines.append(f"{when} {who} {(m.content or '')[:120]}")
-    body = "\n".join(body_lines) or "Сообщений нет."
+    target = conv.user
+    target_name = target.username if target else "—"
 
-    return ActionResult(
-        text=(f"💬 Тикет от {conv.user.username if conv.user else '—'} "
-              f"(категория: {conv.category or 'general'}).\n\n"
-              f"Последние сообщения:\n{body}"),
-        actions=[
-            {"label": "💬 Связаться с пользователем", "action": "contact_operator",
-             "params": {"topic": f"reply to {conv.user.username if conv.user else '—'}"}},
-            {"label": "← Inbox поддержки", "action": "support_home", "params": {}},
-        ],
-    )
+    # ── 1) Сводка тикета ───────────────────────────────────
+    total_msgs = Message.objects.filter(conversation=conv).count()
+    last_msg = Message.objects.filter(conversation=conv).order_by("-created_at").first()
+    last_when = last_msg.created_at if last_msg else conv.updated_at
+    minutes_ago = int((timezone.now() - last_when).total_seconds() / 60) if last_when else None
+    if minutes_ago is None:
+        last_activity = "—"
+    elif minutes_ago < 60:
+        last_activity = f"{minutes_ago} мин назад"
+    elif minutes_ago < 1440:
+        last_activity = f"{minutes_ago // 60} ч назад"
+    else:
+        last_activity = f"{minutes_ago // 1440} дн назад"
+
+    CATEGORY_LBL = {"support": "Поддержка", "purchase": "Покупки",
+                      "admin": "Админ", "general": "Общее"}
+    cat_label = CATEGORY_LBL.get(conv.category, conv.category or "Общее")
+
+    summary_rows = [
+        {"label": "Пользователь", "value": target_name, "primary": True},
+        {"label": "Категория",   "value": cat_label},
+        {"label": "Сообщений",   "value": str(total_msgs)},
+        {"label": "Последняя активность", "value": last_activity},
+    ]
+
+    # ── 2) Контакты (из KYB если есть) ─────────────────────
+    contact_rows = []
+    if target:
+        contact_rows.append({"label": "Email", "value": target.email or "—"})
+        try:
+            from marketplace.models import CompanyVerification
+            kyb = CompanyVerification.objects.filter(user=target).first()
+            if kyb:
+                if kyb.legal_name: contact_rows.append({"label": "Компания", "value": kyb.legal_name})
+                if kyb.country:    contact_rows.append({"label": "Страна", "value": kyb.country})
+                if kyb.phone:      contact_rows.append({"label": "Телефон", "value": kyb.phone})
+                if kyb.whatsapp or kyb.telegram:
+                    parts = []
+                    if kyb.whatsapp: parts.append(f"WA {kyb.whatsapp}")
+                    if kyb.telegram: parts.append(f"TG {kyb.telegram}")
+                    contact_rows.append({"label": "Мессенджеры", "value": " · ".join(parts)})
+        except Exception:
+            pass
+
+    # ── 3) Контекст: заказы, баланс, KYB-статус ────────────
+    context_rows = []
+    if target:
+        try:
+            from marketplace.models import Order
+            active_orders = Order.objects.filter(buyer=target).exclude(
+                status__in=("delivered", "completed", "cancelled")).count()
+            total_orders = Order.objects.filter(buyer=target).count()
+            context_rows.append({
+                "label": "Заказов в работе",
+                "value": str(active_orders),
+                "sub": f"{total_orders} всего за всё время",
+                "tone": "warn" if active_orders > 0 else "info",
+            })
+        except Exception:
+            pass
+        try:
+            from marketplace.models import Wallet
+            w = Wallet.objects.filter(user=target).first()
+            if w:
+                context_rows.append({
+                    "label": "Депозит",
+                    "value": f"${float(w.balance or 0):,.0f}",
+                    "tone": "info",
+                })
+        except Exception:
+            pass
+        try:
+            from marketplace.models import CompanyVerification
+            kyb = CompanyVerification.objects.filter(user=target).first()
+            if kyb:
+                STATUS_LBL = {"none": "Не подавалась", "pending": "На проверке",
+                                "verified": "Верифицирована", "rejected": "Отклонена"}
+                tone_map = {"verified": "ok", "pending": "warn", "rejected": "bad", "none": "info"}
+                context_rows.append({
+                    "label": "KYB-статус",
+                    "value": STATUS_LBL.get(kyb.status, kyb.status),
+                    "tone": tone_map.get(kyb.status, "info"),
+                })
+        except Exception:
+            pass
+
+    # ── 4) О чём общался — только реальные вопросы и осмысленные темы ─
+    # Пользователь = реально что-то написал. Action-клики типа «Назад», «Поддержка»,
+    # «← Поддержка» — это просто навигация, не обращение. Их игнорируем.
+    last_user_msg = Message.objects.filter(
+        conversation=conv, role=Message.Role.USER,
+    ).order_by("-created_at").first()
+    last_user_text = (last_user_msg.content or "").strip()[:400] if last_user_msg else ""
+    user_msg_count = Message.objects.filter(
+        conversation=conv, role=Message.Role.USER,
+    ).count()
+
+    # Темы — фильтруем навигационный шум.
+    NAV_NOISE = {"назад", "поддержка", "← поддержка", "← назад", "главная",
+                   "← главная", "🏠 главная", "← inbox поддержки", "inbox поддержки"}
+    action_msgs = list(Message.objects.filter(
+        conversation=conv, role=Message.Role.ACTION,
+    ).order_by("-created_at")[:30])
+    topic_set = []
+    seen_topics = set()
+    for m in action_msgs:
+        topic = (m.content or "").strip().lstrip("▸").strip()
+        if not topic: continue
+        # Чистим эмодзи в начале для дедупа+проверки на nav
+        import re as _re
+        clean = _re.sub(r"^[\W_]+", "", topic).strip().lower()
+        if clean in NAV_NOISE or clean.startswith("←"): continue
+        if clean in seen_topics: continue
+        seen_topics.add(clean)
+        topic_set.append(topic)
+        if len(topic_set) >= 5: break
+
+    # Тип обращения определяем ТОЛЬКО по реально написанному пользователем тексту.
+    # Клик на «Пожаловаться» — это просто навигация к форме, не сама жалоба.
+    # Жалобой считается случай, когда юзер написал что-то с жалобными словами
+    # ИЛИ submit'нул форму жалобы (видно по последнему сообщению ассистента
+    # «🚨 Жалоба фиксируется в audit-log...» с конкретным content от юзера).
+    if user_msg_count == 0:
+        ticket_kind = "browsing"
+    else:
+        complaint_kws = (
+            "брак", "сломан", "не работает", "обман", "мошенник",
+            "не пришл", "не дошл", "не отгрузил", "тормозит",
+            "хамит", "груб", "молчит", "не отвеч",
+            "нарушен", "просроч", "опозда",
+            "верн", "возврат", "компенсаци",
+        )
+        # Берём последние 5 user-сообщений
+        recent_user_msgs = list(Message.objects.filter(
+            conversation=conv, role=Message.Role.USER,
+        ).order_by("-created_at")[:5])
+        is_complaint_text = any(
+            any(kw in (m.content or "").lower() for kw in complaint_kws)
+            for m in recent_user_msgs
+        )
+        ticket_kind = "complaint" if is_complaint_text else "question"
+
+    # ── Заголовок и intro зависят от типа активности ──
+    if ticket_kind == "browsing":
+        card_title = f"👁 Просмотр поддержки · {target_name}"
+        intro = (f"**Реального обращения нет.** Пользователь {target_name} "
+                 f"просто просматривал FAQ/Поддержку, не задавал вопросов "
+                 f"и не жаловался. Последний вход: {last_activity}.")
+    elif ticket_kind == "complaint":
+        card_title = f"🚨 Жалоба · {target_name}"
+        intro = (f"**Пользователь {target_name} подал жалобу через поддержку.** "
+                 f"Требует разбора. Последняя активность: {last_activity}.")
+    else:  # question
+        card_title = f"💬 Вопрос в поддержку · {target_name}"
+        intro = (f"Пользователь {target_name} задал {user_msg_count} вопрос(а/ов) "
+                 f"в поддержку. Последняя активность: {last_activity}.")
+
+    # ── Собираем карточки ──
+    cards = [
+        {"type": "draft", "data": {
+            "title": card_title,
+            "rows": summary_rows, "confirm_label": "—",
+        }},
+    ]
+    # Контакты и контекст — только если это реальное обращение
+    if ticket_kind != "browsing":
+        if contact_rows:
+            cards.append({"type": "draft", "data": {
+                "title": "📇 Контакты", "rows": contact_rows, "confirm_label": "—",
+            }})
+        if context_rows:
+            cards.append({"type": "kpi_grid", "data": {
+                "title": "📊 Контекст пользователя", "items": context_rows,
+            }})
+        if last_user_text:
+            cards.append({"type": "draft", "data": {
+                "title": "💬 Последний вопрос пользователя",
+                "rows": [{"label": "Текст", "value": last_user_text, "wide": True, "primary": True}],
+                "confirm_label": "—",
+            }})
+        if topic_set:
+            cards.append({"type": "list", "data": {
+                "title": "🧭 Темы, которые искал",
+                "items": [{"title": t, "tone": "info"} for t in topic_set],
+            }})
+
+    # Кнопка «Связаться» — авто-доставка контекста через ask_operator
+    if ticket_kind == "browsing":
+        ctx_label = f"Просмотр поддержки · просто проверка наличия проблем"
+    elif ticket_kind == "complaint":
+        ctx_label = f"Жалоба пользователя в поддержку"
+    else:
+        ctx_label = f"Вопрос в поддержку · «{last_user_text[:80]}»" if last_user_text else "Вопрос в поддержку"
+
+    actions = []
+    if target:
+        action_label = (f"💬 Написать {target_name} (профилактика)"
+                          if ticket_kind == "browsing"
+                          else f"💬 Связаться с {target_name}")
+        actions.append({
+            "label": action_label,
+            "action": "ask_operator",
+            "params": {"to_user_id": target.id, "context": ctx_label},
+        })
+    actions.append({
+        "label": "← Inbox поддержки",
+        "action": "support_home", "params": {},
+    })
+
+    return ActionResult(text=intro, cards=cards, actions=actions)
 
 
 # ── 2. KB / FAQ ────────────────────────────────────────────────

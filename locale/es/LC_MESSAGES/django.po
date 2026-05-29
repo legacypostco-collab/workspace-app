@@ -18166,7 +18166,145 @@ msgstr ""
 msgid "Отправить приглашение"
 msgstr ""
 
-#: templates/landing.html:6
-msgid "Consolidator Parts — B2B-маркетплейс запчастей для спецтехники"
-msgstr "Consolidator Parts — Mercado B2B de repuestos para maquinaria pesada"
+#: static/js/project-page.js
+msgid "Расходы за месяц"
+msgstr "Gasto mensual"
 
+msgid "лучшая на сейчас"
+msgstr "mejor hasta ahora"
+
+msgid "Документы не загружены"
+msgstr "Sin documentos cargados"
+
+msgid "Нет чатов в этом проекте"
+msgstr "Sin chats en este proyecto"
+
+msgid "Документы проекта"
+msgstr "Documentos del proyecto"
+
+msgid "AI использует"
+msgstr "La IA usa"
+
+msgid "все эти документы"
+msgstr "todos estos documentos"
+
+msgid "как контекст для ответов в чатах этого проекта"
+msgstr "como contexto para respuestas en los chats de este proyecto"
+
+msgid "Открытые заказы"
+msgstr "Pedidos abiertos"
+
+msgid "Чаты по проекту"
+msgstr "Chats del proyecto"
+
+msgid "Не удалось загрузить проект"
+msgstr "No se pudo cargar el proyecto"
+
+msgid "Нет чатов"
+msgstr "Sin chats"
+
+#: static/js/project-page.js assistant/views.py
+msgid "только что"
+msgstr "justo ahora"
+
+msgid "мин назад"
+msgstr "min atrás"
+
+msgid "ч назад"
+msgstr "h atrás"
+
+msgid "дн назад"
+msgstr "d atrás"
+
+msgid "Нет проектов"
+msgstr "Sin proyectos"
+
+msgid "Без названия"
+msgstr "Sin título"
+
+msgid "срочно"
+msgstr "urgente"
+
+msgid "осталось"
+msgstr "restante"
+
+msgid "сумма"
+msgstr "valor"
+
+msgid "ближайший ETA"
+msgstr "ETA más próximo"
+
+msgid "vs"
+msgstr "vs"
+
+msgid "обработан"
+msgstr "procesado"
+
+msgid "Нет активных RFQ"
+msgstr "Sin RFQ activos"
+
+msgid "Нет открытых заказов"
+msgstr "Sin pedidos abiertos"
+
+msgid "Файлы — скоро"
+msgstr "Archivos — próximamente"
+
+msgid "Настройки проекта — скоро"
+msgstr "Ajustes del proyecto — próximamente"
+
+msgid "Проект не указан"
+msgstr "Proyecto no especificado"
+
+msgid "Назад в чаты"
+msgstr "Volver a los chats"
+
+msgid "Не удалось создать чат"
+msgstr "No se pudo crear el chat"
+
+msgid "Загрузка документов — скоро"
+msgstr "Subida de documentos — próximamente"
+
+msgid "Spec Q2 — основной микс"
+msgstr "Spec Q2 — mezcla principal"
+
+msgid "СРОЧНО 42М"
+msgstr "URGENTE 42M"
+
+msgid "39 позиций · отправлен 5 поставщикам · 2 ответили"
+msgstr "39 ítems · enviado a 5 proveedores · 2 respondieron"
+
+msgid "Track shoes D8T — аналоги"
+msgstr "Zapatas D8T — alternativas"
+
+msgid "2 позиции · отправлен 4 поставщикам · 4 ответили"
+msgstr "2 ítems · enviado a 4 proveedores · 4 respondieron"
+
+msgid "ЛУЧШАЯ ЦЕНА"
+msgstr "MEJOR PRECIO"
+
+msgid "Гидрофильтры — пополнение"
+msgstr "Filtros hidráulicos — recarga"
+
+msgid "1 позиция · 12 шт · отправлен 3 поставщикам"
+msgstr "1 ítem · 12 uds · enviado a 3 proveedores"
+
+msgid "Spec Q2 partial — 14 позиций"
+msgstr "Spec Q2 parcial — 14 ítems"
+
+msgid "НА ТАМОЖНЕ"
+msgstr "EN ADUANA"
+
+msgid "Логистика + Таможня"
+msgstr "Logística + Aduana"
+
+msgid "ETA · 2 мая · день 3 из 4"
+msgstr "ETA · 2 may · día 3 de 4"
+
+msgid "Гидрофильтры — 12 шт"
+msgstr "Filtros hidráulicos — 12 uds"
+
+msgid "В ПУТИ"
+msgstr "EN TRÁNSITO"
+
+msgid "ETA · 30 апр · по графику"
+msgstr "ETA · 30 abr · según calendario"

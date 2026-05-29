@@ -6130,7 +6130,7 @@ msgstr "Errors only"
 
 #: templates/components/_cookie_banner.html:14
 msgid "Принять все"
-msgstr "Accept all"
+msgstr "Accept 10%%"
 
 #: templates/components/_notification_bell.html:17
 msgid "Все уведомления"
@@ -19654,7 +19654,145 @@ msgstr "Confirm receipt"
 #~ msgid "Добавлено в отслеживание: "
 #~ msgstr "Added to tracking: "
 
-#: templates/landing.html:6
-msgid "Consolidator Parts — B2B-маркетплейс запчастей для спецтехники"
-msgstr "Consolidator Parts — B2B marketplace for heavy equipment spare parts"
+#: static/js/project-page.js
+msgid "Расходы за месяц"
+msgstr "Spend MTD"
 
+msgid "лучшая на сейчас"
+msgstr "best so far"
+
+msgid "Документы не загружены"
+msgstr "No documents uploaded"
+
+msgid "Нет чатов в этом проекте"
+msgstr "No chats in this project"
+
+msgid "Документы проекта"
+msgstr "Project documents"
+
+msgid "AI использует"
+msgstr "AI uses"
+
+msgid "все эти документы"
+msgstr "all these documents"
+
+msgid "как контекст для ответов в чатах этого проекта"
+msgstr "as context for replies in this project's chats"
+
+msgid "Открытые заказы"
+msgstr "Open orders"
+
+msgid "Чаты по проекту"
+msgstr "Project chats"
+
+msgid "Не удалось загрузить проект"
+msgstr "Failed to load project"
+
+msgid "Нет чатов"
+msgstr "No chats"
+
+#: static/js/project-page.js assistant/views.py
+msgid "только что"
+msgstr "just now"
+
+msgid "мин назад"
+msgstr "min ago"
+
+msgid "ч назад"
+msgstr "h ago"
+
+msgid "дн назад"
+msgstr "d ago"
+
+msgid "Нет проектов"
+msgstr "No projects"
+
+msgid "Без названия"
+msgstr "Untitled"
+
+msgid "срочно"
+msgstr "urgent"
+
+msgid "осталось"
+msgstr "left"
+
+msgid "сумма"
+msgstr "value"
+
+msgid "ближайший ETA"
+msgstr "earliest ETA"
+
+msgid "vs"
+msgstr "vs"
+
+msgid "обработан"
+msgstr "processed"
+
+msgid "Нет активных RFQ"
+msgstr "No active RFQs"
+
+msgid "Нет открытых заказов"
+msgstr "No open orders"
+
+msgid "Файлы — скоро"
+msgstr "Files — coming soon"
+
+msgid "Настройки проекта — скоро"
+msgstr "Project settings — coming soon"
+
+msgid "Проект не указан"
+msgstr "Project not specified"
+
+msgid "Назад в чаты"
+msgstr "Back to chats"
+
+msgid "Не удалось создать чат"
+msgstr "Failed to create chat"
+
+msgid "Загрузка документов — скоро"
+msgstr "Document upload — coming soon"
+
+msgid "Spec Q2 — основной микс"
+msgstr "Spec Q2 — main mix"
+
+msgid "СРОЧНО 42М"
+msgstr "URGENT 42M"
+
+msgid "39 позиций · отправлен 5 поставщикам · 2 ответили"
+msgstr "39 items · sent to 5 suppliers · 2 replied"
+
+msgid "Track shoes D8T — аналоги"
+msgstr "Track shoes D8T — alternatives"
+
+msgid "2 позиции · отправлен 4 поставщикам · 4 ответили"
+msgstr "2 items · sent to 4 suppliers · 4 replied"
+
+msgid "ЛУЧШАЯ ЦЕНА"
+msgstr "BEST PRICE"
+
+msgid "Гидрофильтры — пополнение"
+msgstr "Hydraulic filters — refill"
+
+msgid "1 позиция · 12 шт · отправлен 3 поставщикам"
+msgstr "1 item · 12 pcs · sent to 3 suppliers"
+
+msgid "Spec Q2 partial — 14 позиций"
+msgstr "Spec Q2 partial — 14 items"
+
+msgid "НА ТАМОЖНЕ"
+msgstr "AT CUSTOMS"
+
+msgid "Логистика + Таможня"
+msgstr "Logist + Customs"
+
+msgid "ETA · 2 мая · день 3 из 4"
+msgstr "ETA · May 2 · day 3 of 4"
+
+msgid "Гидрофильтры — 12 шт"
+msgstr "Hydraulic filters — 12 pcs"
+
+msgid "В ПУТИ"
+msgstr "IN TRANSIT"
+
+msgid "ETA · 30 апр · по графику"
+msgstr "ETA · Apr 30 · on schedule"

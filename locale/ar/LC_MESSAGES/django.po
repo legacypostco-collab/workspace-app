@@ -5986,7 +5986,7 @@ msgstr ""
 
 #: templates/components/_cookie_banner.html:6
 msgid "Мы используем cookies"
-msgstr "نستخدم ملفات تعريف الارتباط"
+msgstr ""
 
 #: templates/components/_cookie_banner.html:8
 msgid "Для работы авторизации и улучшения сервиса. Подробнее в"
@@ -6002,7 +6002,7 @@ msgstr ""
 
 #: templates/components/_cookie_banner.html:14
 msgid "Принять все"
-msgstr "قبول الكل"
+msgstr ""
 
 #: templates/components/_notification_bell.html:17
 msgid "Все уведомления"
@@ -7340,7 +7340,7 @@ msgstr ""
 
 #: templates/marketplace/register.html:81
 msgid "политикой конфиденциальности"
-msgstr "سياسة الخصوصية"
+msgstr ""
 
 #: templates/operator/base_operator.html:174
 msgid "Сменить роль"
@@ -18127,7 +18127,145 @@ msgstr ""
 msgid "Отправить приглашение"
 msgstr ""
 
-#: templates/landing.html:6
-msgid "Consolidator Parts — B2B-маркетплейс запчастей для спецтехники"
-msgstr "Consolidator Parts — سوق B2B لقطع غيار المعدات الثقيلة"
+#: static/js/project-page.js
+msgid "Расходы за месяц"
+msgstr "الإنفاق الشهري"
 
+msgid "лучшая на сейчас"
+msgstr "الأفضل حتى الآن"
+
+msgid "Документы не загружены"
+msgstr "لا توجد مستندات مرفوعة"
+
+msgid "Нет чатов в этом проекте"
+msgstr "لا توجد محادثات في هذا المشروع"
+
+msgid "Документы проекта"
+msgstr "مستندات المشروع"
+
+msgid "AI использует"
+msgstr "يستخدم الذكاء الاصطناعي"
+
+msgid "все эти документы"
+msgstr "كل هذه المستندات"
+
+msgid "как контекст для ответов в чатах этого проекта"
+msgstr "كسياق للردود في محادثات هذا المشروع"
+
+msgid "Открытые заказы"
+msgstr "الطلبات المفتوحة"
+
+msgid "Чаты по проекту"
+msgstr "محادثات المشروع"
+
+msgid "Не удалось загрузить проект"
+msgstr "فشل تحميل المشروع"
+
+msgid "Нет чатов"
+msgstr "لا توجد محادثات"
+
+#: static/js/project-page.js assistant/views.py
+msgid "только что"
+msgstr "الآن"
+
+msgid "мин назад"
+msgstr "د مضت"
+
+msgid "ч назад"
+msgstr "س مضت"
+
+msgid "дн назад"
+msgstr "ي مضت"
+
+msgid "Нет проектов"
+msgstr "لا توجد مشاريع"
+
+msgid "Без названия"
+msgstr "بدون عنوان"
+
+msgid "срочно"
+msgstr "عاجل"
+
+msgid "осталось"
+msgstr "متبقي"
+
+msgid "сумма"
+msgstr "القيمة"
+
+msgid "ближайший ETA"
+msgstr "أقرب وقت وصول"
+
+msgid "vs"
+msgstr "مقابل"
+
+msgid "обработан"
+msgstr "تمت المعالجة"
+
+msgid "Нет активных RFQ"
+msgstr "لا توجد طلبات عروض نشطة"
+
+msgid "Нет открытых заказов"
+msgstr "لا توجد طلبات مفتوحة"
+
+msgid "Файлы — скоро"
+msgstr "الملفات — قريباً"
+
+msgid "Настройки проекта — скоро"
+msgstr "إعدادات المشروع — قريباً"
+
+msgid "Проект не указан"
+msgstr "لم يتم تحديد المشروع"
+
+msgid "Назад в чаты"
+msgstr "العودة إلى المحادثات"
+
+msgid "Не удалось создать чат"
+msgstr "فشل إنشاء المحادثة"
+
+msgid "Загрузка документов — скоро"
+msgstr "رفع المستندات — قريباً"
+
+msgid "Spec Q2 — основной микс"
+msgstr "Spec Q2 — المزيج الرئيسي"
+
+msgid "СРОЧНО 42М"
+msgstr "عاجل 42 د"
+
+msgid "39 позиций · отправлен 5 поставщикам · 2 ответили"
+msgstr "39 بنداً · مُرسل إلى 5 موردين · 2 ردّا"
+
+msgid "Track shoes D8T — аналоги"
+msgstr "أحذية الجنزير D8T — بدائل"
+
+msgid "2 позиции · отправлен 4 поставщикам · 4 ответили"
+msgstr "بندان · مُرسل إلى 4 موردين · 4 ردّوا"
+
+msgid "ЛУЧШАЯ ЦЕНА"
+msgstr "أفضل سعر"
+
+msgid "Гидрофильтры — пополнение"
+msgstr "مرشحات هيدروليكية — إعادة تعبئة"
+
+msgid "1 позиция · 12 шт · отправлен 3 поставщикам"
+msgstr "بند واحد · 12 قطعة · مُرسل إلى 3 موردين"
+
+msgid "Spec Q2 partial — 14 позиций"
+msgstr "Spec Q2 جزئي — 14 بنداً"
+
+msgid "НА ТАМОЖНЕ"
+msgstr "في الجمارك"
+
+msgid "Логистика + Таможня"
+msgstr "اللوجستيات + الجمارك"
+
+msgid "ETA · 2 мая · день 3 из 4"
+msgstr "وقت الوصول · 2 مايو · اليوم 3 من 4"
+
+msgid "Гидрофильтры — 12 шт"
+msgstr "مرشحات هيدروليكية — 12 قطعة"
+
+msgid "В ПУТИ"
+msgstr "في الطريق"
+
+msgid "ETA · 30 апр · по графику"
+msgstr "وقت الوصول · 30 أبريل · حسب الجدول"

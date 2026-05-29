@@ -12,9 +12,6 @@ def _translate_conv_title(title: str) -> str:
     Поддерживаемые шаблоны:
       "Сделка ORD-{N}"       → tr + ORD-N
       "Сделка ORD-{N} — ..."  → tr + ORD-N + остаток
-    Bug-Round4: для старых conv'ов в БД сохранились сырые slug'и
-    («notifications», «get_claims», «Поддержка · get_claims») — мапим
-    их через _ACTION_TITLES.
     Если префикс не совпал — возвращаем title как есть.
     """
     if not title:
@@ -22,21 +19,6 @@ def _translate_conv_title(title: str) -> str:
     m = re.match(r"^(Сделка)\s+(ORD-\d+)(.*)$", title)
     if m:
         return f"{_t('Сделка')} {m.group(2)}{m.group(3)}"
-    # Маппинг старых сырых slug'ов на читаемые лейблы
-    from .conv_category import _ACTION_TITLES, _humanize_action
-    bare = title.strip()
-    if bare in _ACTION_TITLES:
-        return _ACTION_TITLES[bare]
-    # «Поддержка · get_claims» → «Поддержка · Рекламации»
-    if " · " in bare:
-        head, sep, tail = bare.rpartition(" · ")
-        if tail in _ACTION_TITLES:
-            return f"{head} · {_ACTION_TITLES[tail]}"
-        if re.match(r"^[a-z][a-z0-9_]*$", tail):
-            return f"{head} · {_humanize_action(tail)}"
-    # Чистый slug без префикса («notifications») — гуманизируем
-    if re.match(r"^[a-z][a-z0-9_]*$", bare):
-        return _humanize_action(bare)
     return title
 
 
