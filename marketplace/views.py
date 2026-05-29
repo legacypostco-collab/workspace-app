@@ -6454,13 +6454,44 @@ def chat_first_view(request):
 @login_required
 def chat_project_view(request, project_id):
     """Project detail page within chat-first layout."""
-    return render(request, "chat/project.html", {"project_id": project_id})
+    response = render(request, "chat/project.html", {"project_id": project_id})
+    # Anti-cache: страница активно меняется (тема/уведомления/JS-bundle)
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    return response
+
+
+def suppliers_directory(request):
+    """Публичная директория поставщиков (без login).
+    Шаблон уже существует — добавлен stub-view, т.к. URL был, а view-функции не было.
+    """
+    # Подготовим минимальный context для шаблона: список верифицированных поставщиков
+    try:
+        from marketplace.models import CompanyVerification
+        suppliers = (
+            CompanyVerification.objects
+            .filter(status="verified")
+            .select_related("user")
+            .order_by("-reviewed_at")[:50]
+        )
+    except Exception:
+        suppliers = []
+    return render(request, "marketplace/suppliers_directory.html", {
+        "suppliers": suppliers,
+    })
 
 
 @login_required
 def chat_rfq_view(request, rfq_id):
-    """RFQ detail page within chat-first layout (Slack-like)."""
-    return render(request, "chat/rfq.html", {"rfq_id": rfq_id})
+    """RFQ detail — теперь редирект в chat-first inline (action=get_rfq_status).
+    Отдельный standalone-экран /chat/rfq/<id>/ упразднён: дублировал данные
+    из chat-first карточки, имел свои проблемы со стилями/i18n/темой и уводил
+    юзера из контекста диалога. Все deep-link'и (email/WS/notifications/тесты)
+    продолжают работать через 301 редирект.
+    """
+    from django.shortcuts import redirect
+    return redirect(f"/chat/?action=get_rfq_status&rfq_id={rfq_id}", permanent=True)
 
 
 @login_required

@@ -503,13 +503,50 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
 
     user = user or conversation.user
 
-    # Save user-action message (for history)
+    # Save user-action message (for history) — но без _request (HttpRequest не сериализуем).
     label = params.get("_label") or action_name
+    saved_params = {k: v for k, v in (params or {}).items() if k != "_request"}
+
+    # FIX: защита от дублей при двойном клике / быстром ретрае. Если за
+    # последние 3 секунды ровно та же пара (action, params) уже записывалась
+    # в эту conversation — возвращаем последний ASSISTANT-ответ вместо
+    # повторного выполнения и нового Message.create. Юзер всё равно увидит
+    # тот же результат; в истории не плодим дубли.
+    from datetime import timedelta
+    from django.utils import timezone as _tz
+    debounce_cutoff = _tz.now() - timedelta(seconds=3)
+    recent_dup = (Message.objects
+        .filter(conversation=conversation, role=Message.Role.ACTION,
+                created_at__gte=debounce_cutoff)
+        .order_by("-created_at").first())
+    if recent_dup:
+        try:
+            prev_action = (recent_dup.actions or [{}])[0]
+            if prev_action.get("action") == action_name \
+               and (prev_action.get("params") or {}) == saved_params:
+                # Берём последний ASSISTANT после этого action
+                prev_assistant = (Message.objects
+                    .filter(conversation=conversation, role=Message.Role.ASSISTANT,
+                            created_at__gte=recent_dup.created_at)
+                    .order_by("created_at").first())
+                if prev_assistant:
+                    return {
+                        "text": prev_assistant.content,
+                        "cards": prev_assistant.cards or [],
+                        "actions": prev_assistant.actions or [],
+                        "contextual_actions": [],
+                        "suggestions": [],
+                        "message_id": str(prev_assistant.id),
+                        "_debounced": True,
+                    }
+        except Exception:
+            pass
+
     Message.objects.create(
         conversation=conversation,
         role=Message.Role.ACTION,
         content=f"▸ {label}",
-        actions=[{"action": action_name, "params": params}],
+        actions=[{"action": action_name, "params": saved_params}],
     )
 
     # Execute action — current request's role over conversation's stored role

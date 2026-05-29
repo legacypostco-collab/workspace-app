@@ -40,8 +40,10 @@ def _extract_articles_with_qty(text: str) -> list[tuple[str, int]]:
         qty = 1
         for i, tok in enumerate(tokens):
             if tok and _OEM_RE.match(tok) and any(ch.isdigit() for ch in tok):
-                # Не должен сам быть «чистым числом» (qty случайно похож на OEM)
-                if tok.isdigit():
+                # Чистые числа — это qty (1, 12, 100), НО реальные OEM
+                # Komatsu/Sandvik бывают чисто-цифровые (3128316557, 707-99-58030).
+                # Порог 4 символа: до 3 цифр включительно = qty, 4+ = OEM.
+                if tok.isdigit() and len(tok) <= 3:
                     continue
                 oem = tok
                 if i + 1 < len(tokens):
@@ -78,13 +80,42 @@ def rule(name: str):
 
 @rule("multi_article_paste")
 def _multi_article(msg: str, lower: str) -> tuple[str, dict] | None:
-    """User pasted >= 2 OEM article numbers → search_parts with full text.
+    """User pasted OEM article numbers → search_parts (БЕЗ LLM, мгновенно).
 
-    Поддерживает «OEM qty» формат построчно: 2W1223 1, 1R0750 2 → qty
-    прокидываются в search_parts, чтобы create_rfq понимал кол-во.
+    БАЗОВАЯ ФИЧА платформы: вставил парт-номер → получил цену из БД быстро.
+    Никаких галлюцинаций LLM на коде запчасти — детерминированный код-поиск.
+
+    Поддерживает «OEM qty» формат: «2W1223 1», «1R0750,2», «3EG-66-73330KF x4».
+    - 2+ артикулов → всегда fast-path
+    - 1 артикул → fast-path только если в сообщении НЕТ обычных слов
+      (т.е. это чистая вставка кода, а не вопрос «что такое 1R0750?»).
     """
     pairs = _extract_articles_with_qty(msg)
+    if not pairs:
+        return None
     if len(pairs) >= 2:
+        return ("search_parts", {
+            "query": msg,
+            "articles": [oem for oem, _ in pairs],
+            "quantities": {oem: q for oem, q in pairs},
+        })
+    # 1 артикул — fast-path только если нет других «человеческих» слов.
+    # Иначе вопросы «что такое 1R0750?» / «найди аналог 1R0750» уходят в LLM.
+    oem_tokens = {oem for oem, _ in pairs}
+    extra_words = []
+    for token in re.split(r"[\s,;\n]+", msg):
+        token = token.strip(".,;:!?()[]{}")
+        if not token:
+            continue
+        if token in oem_tokens:
+            continue
+        # Цифры/qty-маркеры — не считаются «человеческими словами».
+        if _QTY_TRAIL_RE.match(token) or token.lstrip("xX×").isdigit():
+            continue
+        # Любое слово 2+ буквенных символов — признак естественного запроса.
+        if sum(1 for ch in token if ch.isalpha()) >= 2:
+            extra_words.append(token)
+    if not extra_words:
         return ("search_parts", {
             "query": msg,
             "articles": [oem for oem, _ in pairs],

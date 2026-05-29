@@ -156,8 +156,10 @@ def send_rfq_to_suppliers(params, user, role):
     except (RFQ.DoesNotExist, ValueError, TypeError):
         return ActionResult(text="RFQ не найден.")
 
-    if rfq.created_by_id != user.id and role != "admin":
-        return ActionResult(text="Разослать RFQ может только его автор.")
+    # Авторы RFQ + операторы/админы могут рассылать
+    is_operator = bool(role and (role.startswith("operator") or role == "admin"))
+    if rfq.created_by_id != user.id and not is_operator:
+        return ActionResult(text="Разослать RFQ может только его автор или оператор.")
     if rfq.status == "cancelled":
         return ActionResult(text=f"RFQ #{rfq.id} отменён — нельзя рассылать.")
 
@@ -337,8 +339,10 @@ def send_rfq_to_suppliers(params, user, role):
         ),
         actions=actions,
         contextual_actions=[
-            {"action": "open_url", "label": "← Назад к RFQ",
-             "params": {"_url": f"/chat/rfq/{rfq.id}/"}},
+            # «Назад к RFQ» → inline-карточка через get_rfq_status
+            # (отдельная страница /chat/rfq/<id>/ упразднена).
+            {"action": "get_rfq_status", "label": "← Назад к RFQ",
+             "params": {"rfq_id": rfq.id}},
         ],
     )
 
@@ -590,8 +594,12 @@ def respond_rfq_form(params, user, role):
 # 2. view_rfq_quotes — buyer видит все котировки по RFQ
 # ══════════════════════════════════════════════════════════
 
+@register("compare_quotes")
 @register("view_rfq_quotes")
 def view_rfq_quotes(params, user, role):
+    """Список котировок по RFQ. `compare_quotes` — alias на тот же handler
+    (кнопка «📊 Сравнить котировки (N)» из RFQ-card зовёт compare_quotes,
+    функционал идентичный — отображение всех Quote для buyer)."""
     from marketplace.models import RFQ, Quote
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
@@ -616,10 +624,20 @@ def view_rfq_quotes(params, user, role):
     latest.sort(key=lambda q: q.total_amount)
 
     if not latest:
+        # PIVOT 2026-05-26: не предлагаем «разослать поставщикам».
+        # Цена либо есть в каталоге (SEMI подтверждает), либо нет
+        # (фиксируется в аналитику спроса).
         return ActionResult(
-            text=f"По RFQ #{rfq.id} пока нет котировок.",
+            text=(
+                f"По RFQ #{rfq.id} КП ещё не сформирован.\n"
+                "Откройте RFQ и проверьте/подтвердите позиции из каталога."
+            ),
+            actions=[
+                {"label": "Открыть RFQ", "action": "rfq_detail",
+                 "params": {"rfq_id": rfq.id}},
+            ],
             contextual_actions=[
-                {"action": "get_rfq_status", "label": "📋 Все RFQ"},
+                {"action": "get_rfq_status", "label": "Все RFQ"},
             ],
         )
 

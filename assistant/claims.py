@@ -138,12 +138,20 @@ def start_claim_review(params, user, role):
                 title=f"Рекламация #{claim.id} взята в работу",
                 body=f"Оператор {user.username} рассматривает.",
                 url=f"/chat/?order={claim.order_id}")
+    ctx_actions = [
+        {"action": "approve_claim", "label": "✓ Подтвердить", "params": {"claim_id": claim.id}},
+        {"action": "reject_claim",  "label": "✗ Отклонить",  "params": {"claim_id": claim.id}},
+    ]
+    if claim.opened_by:
+        ctx_actions.append({
+            "action": "ask_operator",
+            "label": f"💬 Чат с покупателем ({claim.opened_by.username})",
+            "params": {"to_user_id": claim.opened_by.id,
+                        "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+        })
     return ActionResult(
         text=f"✓ Рекламация #{claim.id} → в работу.",
-        contextual_actions=[
-            {"action": "approve_claim", "label": "✓ Подтвердить", "params": {"claim_id": claim.id}},
-            {"action": "reject_claim",  "label": "✗ Отклонить",  "params": {"claim_id": claim.id}},
-        ],
+        contextual_actions=ctx_actions,
     )
 
 
@@ -163,6 +171,31 @@ def approve_claim(params, user, role):
         return ActionResult(text=f"Нельзя подтвердить — статус {claim.get_status_display()}.")
 
     if not confirmed:
+        # contextual_actions: чат с покупателем (опционально), чат с продавцом
+        ctx_actions = []
+        if claim.opened_by:
+            ctx_actions.append({
+                "action": "ask_operator",
+                "label": f"💬 Чат с покупателем ({claim.opened_by.username})",
+                "params": {"to_user_id": claim.opened_by.id,
+                            "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+            })
+        # Чат с продавцом по этому заказу
+        try:
+            from marketplace.models import OrderItem
+            sellers = list({oi.part.seller for oi in
+                              OrderItem.objects.filter(order=claim.order)
+                              .select_related("part__seller")
+                              if oi.part and oi.part.seller})
+            for s in sellers[:1]:  # один основной seller
+                ctx_actions.append({
+                    "action": "ask_operator",
+                    "label": f"💬 Чат с продавцом ({s.username})",
+                    "params": {"to_user_id": s.id,
+                                "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+                })
+        except Exception:
+            pass
         return ActionResult(
             text=f"Подтвердить рекламацию #{claim.id}?",
             cards=[{"type": "draft", "data": {
@@ -181,6 +214,7 @@ def approve_claim(params, user, role):
                 "confirm_params": {"claim_id": claim.id, "confirmed": True},
                 "cancel_label": "Отмена",
             }}],
+            contextual_actions=ctx_actions,
         )
 
     claim.status = "approved"
@@ -207,16 +241,26 @@ def approve_claim(params, user, role):
                 body=f"Дальше: {claim.get_kind_display()} → выберите способ урегулирования.",
                 url=f"/chat/?order={claim.order_id}")
 
+    # Дополнительно — кнопка чата с покупателем (часто нужен для уточнений
+    # перед выбором пути урегулирования).
+    post_actions = [
+        {"action": "apply_corrective",
+         "label": "🔧 Корректирующие действия",
+         "params": {"claim_id": claim.id}},
+        {"action": "apply_settlement",
+         "label": "💸 Финансовое урегулирование",
+         "params": {"claim_id": claim.id}},
+    ]
+    if claim.opened_by:
+        post_actions.append({
+            "action": "ask_operator",
+            "label": f"💬 Чат с покупателем ({claim.opened_by.username})",
+            "params": {"to_user_id": claim.opened_by.id,
+                        "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+        })
     return ActionResult(
         text=f"✓ Рекламация #{claim.id} подтверждена. Выберите путь:",
-        contextual_actions=[
-            {"action": "apply_corrective",
-             "label": "🔧 Корректирующие действия",
-             "params": {"claim_id": claim.id}},
-            {"action": "apply_settlement",
-             "label": "💸 Финансовое урегулирование",
-             "params": {"claim_id": claim.id}},
-        ],
+        contextual_actions=post_actions,
     )
 
 
@@ -385,6 +429,17 @@ def apply_settlement(params, user, role):
     claim.resolution_kind = resolution
     claim.refund_amount = refund_amount
     claim.save(update_fields=["status", "resolution_kind", "refund_amount", "updated_at"])
+    # FIX (HIGH): синхронизируем Order.payment_status — иначе финансовая сверка
+    # не находит возвраты. resolution=full_refund → 'refunded', partial → 'refund_pending'.
+    try:
+        if resolution == "full_refund":
+            claim.order.payment_status = "refunded"
+            claim.order.save(update_fields=["payment_status"])
+        elif resolution == "partial_refund":
+            claim.order.payment_status = "refund_pending"
+            claim.order.save(update_fields=["payment_status"])
+    except Exception:
+        logger.exception("apply_settlement: failed to update payment_status")
     _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
                meta={"claim_id": claim.id, "from": "approved", "to": "financial_settlement",
                      "resolution": resolution, "amount": float(refund_amount)})
@@ -482,6 +537,31 @@ def claim_detail(params, user, role):
         elif claim.status in ("corrective_actions", "financial_settlement"):
             actions.append({"action": "close_claim", "label": "🔒 Закрыть",
                             "params": {"claim_id": claim.id}})
+
+    # Чаты с участниками — всегда доступны (для оператора с покупателем И продавцом,
+    # для покупателя — только с оператором поддержки).
+    if is_op and claim.opened_by:
+        actions.append({
+            "action": "ask_operator",
+            "label": f"💬 Чат с покупателем ({claim.opened_by.username})",
+            "params": {"to_user_id": claim.opened_by.id,
+                        "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+        })
+        try:
+            from marketplace.models import OrderItem
+            sellers = list({oi.part.seller for oi in
+                              OrderItem.objects.filter(order=claim.order)
+                              .select_related("part__seller")
+                              if oi.part and oi.part.seller})
+            for s in sellers[:1]:
+                actions.append({
+                    "action": "ask_operator",
+                    "label": f"💬 Чат с продавцом ({s.username})",
+                    "params": {"to_user_id": s.id,
+                                "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+                })
+        except Exception:
+            pass
 
     return ActionResult(
         text=f"📋 Рекламация #{claim.id} · {claim.get_status_display()}",

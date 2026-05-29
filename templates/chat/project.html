@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>{% trans "Проект" %} — Consolidator Parts</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -10,8 +13,8 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;color:#1a1a1a;}
-    body{background:linear-gradient(180deg,#a8b8d8 0%,#cda9d6 35%,#f0a59a 65%,#f4956a 100%);background-attachment:fixed;overflow:hidden;}
-    body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 55% at 50% 80%, rgba(255,130,75,0.4), transparent 65%);pointer-events:none;z-index:0;}
+    body{background:#a8b8d8;overflow:hidden;position:relative;}
+    body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 55% at 50% 80%, rgba(255,130,75,0.5), transparent 65%),linear-gradient(180deg,#a8b8d8 0%,#cda9d6 35%,#f0a59a 65%,#f4956a 100%);pointer-events:none;z-index:0;}
     a{color:inherit;text-decoration:none;}
     button{font-family:inherit;cursor:pointer;border:none;background:transparent;color:inherit;padding:0;}
     code{background:rgba(255,255,255,0.5);padding:1px 5px;border-radius:4px;font-family:'SF Mono',Menlo,monospace;font-size:12px;}
@@ -45,10 +48,43 @@
     .side-item-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
     .side-item-text{flex:1;min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
     .side-item-meta{font-size:11px;color:rgba(0,0,0,0.45);flex-shrink:0;}
-    .side-item-stack{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;padding:8px 10px;border-radius:8px;cursor:pointer;}
+    /* × Удалить — на hover, перекрывает счётчик */
+    .side-item-proj{position:relative;}
+    .side-item-del{position:absolute;right:6px;top:50%;transform:translateY(-50%);
+      width:20px;height:20px;border:none;background:rgba(0,0,0,0.08);color:rgba(0,0,0,0.55);
+      border-radius:5px;font-size:14px;line-height:1;cursor:pointer;display:none;
+      align-items:center;justify-content:center;padding:0;transition:background .12s,color .12s;}
+    .side-item-proj:hover .side-item-del{display:flex;}
+    .side-item-proj:hover .side-item-meta{visibility:hidden;}
+    .side-item-del:hover{background:rgba(239,68,68,0.18);color:#b91c1c;}
+    .side-item-stack{position:relative;display:grid !important;grid-template-columns:1fr auto !important;grid-template-rows:auto auto !important;align-items:center;column-gap:6px;row-gap:2px;min-width:0;padding:8px 10px;border-radius:8px;cursor:pointer;text-decoration:none;color:inherit;}
     .side-item-stack:hover{background:rgba(0,0,0,0.05);}
-    .side-item-stack-title{font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
-    .side-item-stack-meta{font-size:11px;color:rgba(0,0,0,0.45);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .side-item-stack.active{background:rgba(0,0,0,0.08);}
+    .side-item-stack-content{grid-column:1;grid-row:1 / span 2;display:flex;flex-direction:column;gap:2px;min-width:0;overflow:hidden;}
+    .side-item-stack-title{font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:6px;}
+    .side-item-stack-meta{font-size:11px;color:rgba(0,0,0,0.55);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
+    .conv-cat-icon{font-size:11px;flex-shrink:0;opacity:0.85;}
+    .side-item-stack-more{grid-column:2 !important;grid-row:1 / span 2 !important;align-self:center;justify-self:end;flex-shrink:0;width:26px;height:26px;border:none;background:transparent;color:rgba(0,0,0,0.66);border-radius:6px;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:18px;line-height:1;padding:0;transition:background .12s,color .12s;}
+    .side-item-stack:hover .side-item-stack-more,.side-item-stack.active .side-item-stack-more{display:flex !important;}
+    @media (hover:none){.side-item-stack-more{display:flex !important;}}
+    .side-item-stack-more:hover{background:rgba(0,0,0,0.1);color:#1a1a1a;}
+    /* Бакеты-разделители «Вчера / На этой неделе / В этом месяце» */
+    .conv-bucket{display:flex;flex-direction:column;}
+    .conv-bucket + .conv-bucket{margin-top:8px;}
+    .conv-bucket-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:rgba(0,0,0,0.62);padding:6px 10px 4px;}
+    /* «Очистить» в шапке секции */
+    .side-section-clear{font-size:11px;color:rgba(0,0,0,0.62);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px;}
+    .side-section-clear:hover{background:rgba(220,53,69,0.08);color:#dc3545;}
+    /* Шестерёнка настроек */
+    .side-settings:hover{background:rgba(0,0,0,0.06);color:#1a1a1a;}
+    body.dark-mode .side-item-stack.active{background:rgba(255,255,255,0.12);}
+    body.dark-mode .side-item-stack-more{color:rgba(255,255,255,0.55);}
+    body.dark-mode .side-item-stack-more:hover{background:rgba(255,255,255,0.10);color:#fff;}
+    body.dark-mode .conv-bucket-label{color:rgba(255,255,255,0.5);}
+    body.dark-mode .side-section-clear{color:rgba(255,255,255,0.5);}
+    body.dark-mode .side-section-clear:hover{background:rgba(220,53,69,0.15);color:#ff7079;}
+    body.dark-mode .side-settings{color:rgba(255,255,255,0.5) !important;}
+    body.dark-mode .side-settings:hover{background:rgba(255,255,255,0.08);color:#fff !important;}
     .side-foot{display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid rgba(0,0,0,0.06);margin-top:auto;}
     .side-avatar{width:32px;height:32px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
     .side-user{flex:1;min-width:0;}
@@ -105,6 +141,96 @@
 
     /* ── Documents ── */
     .docs-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:10px;margin-bottom:18px;}
+    /* Категоризованные документы — 2 колонки симметрично */
+    .doc-slots-stack{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+    /* doc-progress занимает всю ширину (полоса сверху) */
+    .doc-slots-stack > .doc-progress{grid-column:1 / -1;}
+    @media(max-width:900px){.doc-slots-stack{grid-template-columns:1fr;}}
+    /* Empty-state карточка: левая колонка eyebrow+title+CTA, правая — 2×2 tiles */
+    .doc-empty-card{display:grid;grid-template-columns:1fr 1fr;gap:24px;padding:24px 26px;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;margin-bottom:18px;}
+    @media(max-width:900px){.doc-empty-card{grid-template-columns:1fr;}}
+    .doc-empty-left{display:flex;flex-direction:column;}
+    .doc-empty-eyebrow{font-size:10.5px;font-weight:700;color:rgba(0,0,0,0.45);letter-spacing:0.10em;text-transform:uppercase;margin-bottom:10px;}
+    .doc-empty-title{font-family:'Golos Text',sans-serif;font-weight:700;font-size:20px;color:rgba(0,0,0,0.92);line-height:1.25;margin-bottom:10px;letter-spacing:-0.01em;}
+    .doc-empty-sub{font-size:13px;color:rgba(0,0,0,0.62);line-height:1.5;margin-bottom:18px;}
+    .doc-empty-cta{align-self:flex-start;padding:11px 22px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;transition:background 0.12s;}
+    .doc-empty-cta:hover{background:#000;}
+    .doc-empty-hint{font-size:11.5px;color:rgba(0,0,0,0.45);margin-top:8px;}
+    .doc-empty-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .doc-empty-tile{padding:14px 14px;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.06);border-radius:10px;display:flex;flex-direction:column;gap:6px;}
+    .doc-empty-tile-head{display:flex;align-items:center;gap:8px;}
+    .doc-empty-tile-icon{font-size:16px;}
+    .doc-empty-tile-title{font-size:13px;font-weight:700;color:rgba(0,0,0,0.88);}
+    .doc-empty-tile-desc{font-size:11.5px;color:rgba(0,0,0,0.60);line-height:1.4;}
+    body.dark-mode .doc-empty-card{background:rgba(20,20,20,0.75) !important;border-color:rgba(255,255,255,0.08) !important;}
+    body.dark-mode .doc-empty-eyebrow{color:rgba(255,255,255,0.50) !important;}
+    body.dark-mode .doc-empty-title{color:#fff !important;}
+    body.dark-mode .doc-empty-sub{color:rgba(255,255,255,0.65) !important;}
+    body.dark-mode .doc-empty-cta{background:#fff !important;color:#000 !important;}
+    body.dark-mode .doc-empty-cta:hover{background:#e5e5e5 !important;}
+    body.dark-mode .doc-empty-hint{color:rgba(255,255,255,0.45) !important;}
+    body.dark-mode .doc-empty-tile{background:rgba(255,255,255,0.05) !important;border-color:rgba(255,255,255,0.08) !important;}
+    body.dark-mode .doc-empty-tile-title{color:#fff !important;}
+    body.dark-mode .doc-empty-tile-desc{color:rgba(255,255,255,0.62) !important;}
+    /* 5 слотов с прогрессом */
+    .doc-progress{padding:14px 16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;margin-bottom:12px;}
+    .doc-progress-bar{height:6px;background:rgba(0,0,0,0.08);border-radius:3px;overflow:hidden;margin-bottom:8px;}
+    .doc-progress-fill{height:100%;background:linear-gradient(90deg,#16a34a,#22c55e);border-radius:3px;transition:width .3s;}
+    .doc-progress-label{font-size:12px;color:rgba(0,0,0,0.62);}
+    .doc-progress-label strong{color:rgba(0,0,0,0.88);}
+    body.dark-mode .doc-progress{background:rgba(20,20,20,0.75) !important;border-color:rgba(255,255,255,0.08) !important;}
+    body.dark-mode .doc-progress-bar{background:rgba(255,255,255,0.10) !important;}
+    body.dark-mode .doc-progress-label{color:rgba(255,255,255,0.62) !important;}
+    body.dark-mode .doc-progress-label strong{color:#fff !important;}
+    /* Слот-карточка (гибрид: больше воздуха + смысл) */
+    .doc-slot{position:relative;padding:18px 20px 16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;margin-bottom:0;min-height:148px;display:flex;flex-direction:column;}
+    /* Маленький зелёный значок-цифра в правом верхнем углу карточки */
+    .doc-slot-corner-badge{position:absolute;bottom:12px;right:14px;min-width:20px;height:20px;padding:0 6px;background:#16a34a;color:#fff;font-size:11px;font-weight:700;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;line-height:1;letter-spacing:0.02em;box-shadow:0 1px 3px rgba(22,163,74,0.35);}
+    body.dark-mode .doc-slot-corner-badge{background:#22c55e;color:#0a3d18;box-shadow:0 1px 3px rgba(34,197,94,0.45);}
+    .doc-slot-filled{border-color:rgba(34,197,94,0.55);}
+    .doc-slot-head{display:flex;align-items:center;gap:10px;}
+    .doc-slot-icon{font-size:20px;line-height:1;flex-shrink:0;}
+    .doc-slot-label{font-size:14.5px;font-weight:700;color:rgba(0,0,0,0.90);letter-spacing:-0.005em;}
+    .doc-slot-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 7px;font-size:11px;font-weight:600;color:rgba(0,0,0,0.55);background:rgba(0,0,0,0.06);border-radius:10px;}
+    .doc-slot-add{margin-left:auto;font-size:12px;color:rgba(0,0,0,0.6);font-weight:600;text-decoration:none;cursor:pointer;}
+    .doc-slot-add:hover{color:#1a1a1a;}
+    /* Короткое описание-смысл (почему это нужно) */
+    .doc-slot-desc-short{font-size:12.5px;color:rgba(0,0,0,0.62);line-height:1.45;margin-top:10px;flex:1;}
+    body.dark-mode .doc-slot-desc-short{color:rgba(255,255,255,0.68) !important;}
+    /* Рекламная мини-карточка (вместо большого empty-блока) */
+    .doc-slot-cta{padding:18px 20px 16px;}
+    .doc-slot-cta-eyebrow{font-size:10.5px;font-weight:700;color:rgba(0,0,0,0.50);letter-spacing:0.10em;text-transform:uppercase;margin-bottom:8px;}
+    .doc-slot-cta-title{font-family:'Golos Text',sans-serif;font-weight:700;font-size:16px;color:rgba(0,0,0,0.92);line-height:1.25;margin-bottom:8px;letter-spacing:-0.005em;}
+    .doc-slot-cta-sub{font-size:12px;color:rgba(0,0,0,0.60);line-height:1.45;margin-bottom:14px;flex:1;}
+    .doc-slot-cta-btn{align-self:flex-start;padding:9px 16px;background:#1a1a1a;color:#fff;border:none;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;transition:background 0.12s;}
+    .doc-slot-cta-btn:hover{background:#000;}
+    .doc-slot-cta-hint{font-size:10.5px;color:rgba(0,0,0,0.42);margin-top:8px;}
+    body.dark-mode .doc-slot-cta-eyebrow{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .doc-slot-cta-title{color:#fff !important;}
+    body.dark-mode .doc-slot-cta-sub{color:rgba(255,255,255,0.65) !important;}
+    body.dark-mode .doc-slot-cta-btn{background:#fff !important;color:#000 !important;}
+    body.dark-mode .doc-slot-cta-btn:hover{background:#e5e5e5 !important;}
+    body.dark-mode .doc-slot-cta-hint{color:rgba(255,255,255,0.42) !important;}
+    .doc-slot-files{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+    .doc-slot-file{display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(34,197,94,0.10);border:1px solid rgba(34,197,94,0.25);border-radius:8px;}
+    .doc-slot-file-icon{font-size:14px;}
+    .doc-slot-file-info{flex:1;min-width:0;}
+    .doc-slot-file-name{font-size:13px;font-weight:600;color:rgba(0,0,0,0.88);}
+    .doc-slot-file-meta{font-size:11px;color:rgba(0,0,0,0.55);}
+    .doc-slot-file-status{font-size:11px;color:#15803d;display:flex;align-items:center;gap:6px;}
+    .doc-slot-file-status .dot{width:6px;height:6px;border-radius:50%;background:#22c55e;}
+    .doc-slot-desc{font-size:11px;color:rgba(0,0,0,0.42);margin-top:10px;font-style:italic;}
+    body.dark-mode .doc-slot{background:rgba(20,20,20,0.75) !important;border-color:rgba(255,255,255,0.08) !important;}
+    body.dark-mode .doc-slot-filled{border-color:rgba(34,197,94,0.50) !important;}
+    body.dark-mode .doc-slot-label{color:#fff !important;}
+    body.dark-mode .doc-slot-count{background:rgba(255,255,255,0.10) !important;color:rgba(255,255,255,0.62) !important;}
+    body.dark-mode .doc-slot-add{color:rgba(255,255,255,0.65) !important;}
+    body.dark-mode .doc-slot-add:hover{color:#fff !important;}
+    body.dark-mode .doc-slot-file{background:rgba(34,197,94,0.14) !important;border-color:rgba(34,197,94,0.35) !important;}
+    body.dark-mode .doc-slot-file-name{color:#fff !important;}
+    body.dark-mode .doc-slot-file-meta{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .doc-slot-file-status{color:#86efac !important;}
+    body.dark-mode .doc-slot-desc{color:rgba(255,255,255,0.45) !important;}
     .doc{display:flex;align-items:center;gap:14px;padding:14px 16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;}
     .doc-icon{width:38px;height:38px;border-radius:10px;background:rgba(34,197,94,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#16a34a;}
     .doc-icon.red{background:rgba(239,68,68,0.12);color:#dc2626;}
@@ -133,8 +259,11 @@
     .rfq-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;background:rgba(239,68,68,0.18);color:#b91c1c;letter-spacing:0.04em;}
     .rfq-meta{font-size:12px;color:rgba(0,0,0,0.55);margin-top:3px;}
     .rfq-info{flex:1;min-width:0;}
+    .rfq-resp-block{display:flex;flex-direction:column;align-items:center;gap:3px;}
     .rfq-resp{font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;background:rgba(34,197,94,0.18);color:#15803d;letter-spacing:0.04em;}
     .rfq-resp.amber{background:rgba(245,158,11,0.18);color:#b45309;}
+    .rfq-resp-label{font-size:10px;color:rgba(0,0,0,0.50);font-weight:500;letter-spacing:0.04em;}
+    body.dark-mode .rfq-resp-label{color:rgba(255,255,255,0.55) !important;}
     .rfq-best{text-align:right;flex-shrink:0;min-width:120px;}
     .rfq-best-label{font-size:10px;font-weight:700;color:rgba(0,0,0,0.45);letter-spacing:0.06em;}
     .rfq-best-val{font-family:'Golos Text',sans-serif;font-weight:800;font-size:18px;color:rgba(0,0,0,0.92);}
@@ -168,15 +297,131 @@
       .pj-actions{flex-shrink:0;}
       .kpi-num{font-size:24px;}
     }
+
+    /* ── Тёмная тема (синхронно с /chat/ через localStorage cf_dark_mode) ── */
+    body.dark-mode{background:#050505;color:#f5f5f5;}
+    /* Тот же градиент что на /chat/ — единый стиль на всех страницах проекта */
+    body.dark-mode::before{background:radial-gradient(ellipse 70% 55% at 50% 20%, rgba(255,255,255,0.30), transparent 65%),linear-gradient(180deg,#555555 0%,#3a3a3a 35%,#181818 65%,#050505 100%);}
+    /* Sidebar */
+    body.dark-mode .sidebar{background:rgba(20,20,20,0.85);border-right-color:rgba(255,255,255,0.06);}
+    /* Нижняя панель: имя/роль/border — идентично /chat/ */
+    body.dark-mode .side-foot{border-top-color:rgba(255,255,255,0.08);}
+    body.dark-mode .side-user-name{color:#fff !important;}
+    body.dark-mode .side-user-role{color:rgba(255,255,255,0.6) !important;}
+    body.dark-mode .side-new-btn{background:rgba(255,255,255,0.10);color:#fff;}
+    body.dark-mode .side-new-btn:hover{background:rgba(255,255,255,0.16);}
+    body.dark-mode .side-search input{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.10);color:#fff;}
+    body.dark-mode .side-search input::placeholder{color:rgba(255,255,255,0.4);}
+    body.dark-mode .side-search{color:#fff;}
+    body.dark-mode .side-search[style*="background"]{background:rgba(255,255,255,0.06) !important;border-color:rgba(255,255,255,0.10) !important;color:#fff !important;}
+    body.dark-mode .side-section-title{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .side-section-add{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .side-section-add:hover{background:rgba(255,255,255,0.08);color:#fff !important;}
+    body.dark-mode .side-item{color:rgba(255,255,255,0.85) !important;}
+    body.dark-mode .side-item:hover{background:rgba(255,255,255,0.08);color:#fff !important;}
+    body.dark-mode .side-item.active{background:rgba(255,255,255,0.14);color:#fff !important;}
+    body.dark-mode .side-item-meta{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .side-item-stack:hover{background:rgba(255,255,255,0.08);}
+    body.dark-mode .side-item-stack-title{color:rgba(255,255,255,0.90) !important;}
+    body.dark-mode .side-item-stack-meta{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .chat-title{color:rgba(255,255,255,0.92);}
+    body.dark-mode .chat-preview{color:rgba(255,255,255,0.55);}
+    body.dark-mode .chat-time{color:rgba(255,255,255,0.42);}
+    body.dark-mode .role-toggle{background:rgba(255,255,255,0.06) !important;}
+    body.dark-mode .role-tab{color:rgba(255,255,255,0.62) !important;}
+    body.dark-mode .role-tab.active,body.dark-mode .role-tab[aria-selected="true"]{background:rgba(255,255,255,0.14);color:#fff !important;}
+    /* Topbar */
+    body.dark-mode .topbar{color:#e5e5e5;}
+    body.dark-mode .top-burger,body.dark-mode .top-brand{color:#e5e5e5 !important;}
+    body.dark-mode .top-brand img{filter:invert(1);}
+    body.dark-mode .top-home,body.dark-mode .top-theme,body.dark-mode .top-bell{background:rgba(255,255,255,0.06) !important;color:#e8e8e8 !important;border-color:rgba(255,255,255,0.10) !important;}
+    body.dark-mode .top-home:hover,body.dark-mode .top-theme:hover,body.dark-mode .top-bell:hover{background:rgba(255,255,255,0.14) !important;}
+    /* Хлебные крошки + заголовок */
+    body.dark-mode .crumbs{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .crumbs a{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .crumbs a:hover{color:#fff !important;}
+    body.dark-mode .crumbs-sep{color:rgba(255,255,255,0.30) !important;}
+    body.dark-mode .pj-name{color:#fff !important;}
+    body.dark-mode .pj-meta{color:rgba(255,255,255,0.62) !important;}
+    body.dark-mode .pj-meta-strong{color:rgba(255,255,255,0.90) !important;}
+    body.dark-mode .pj-actions .pj-btn{background:rgba(255,255,255,0.08) !important;border-color:rgba(255,255,255,0.12) !important;color:#fff !important;}
+    body.dark-mode .pj-actions .pj-btn:hover{background:rgba(255,255,255,0.16) !important;}
+    /* KPI карточки */
+    body.dark-mode .kpi{background:rgba(20,20,20,0.75) !important;backdrop-filter:blur(12px);border-color:rgba(255,255,255,0.08) !important;}
+    body.dark-mode .kpi-label{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .kpi-num{color:#fff !important;}
+    body.dark-mode .kpi-unit,body.dark-mode .kpi-sub{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .kpi-warn{color:#fca5a5 !important;}
+    body.dark-mode .kpi-good{color:#86efac !important;}
+    /* Sec-title (заголовки секций) */
+    body.dark-mode .sec-title h2{color:rgba(255,255,255,0.92) !important;}
+    body.dark-mode .sec-title-count{background:rgba(255,255,255,0.10) !important;color:rgba(255,255,255,0.62) !important;}
+    body.dark-mode .sec-title-link{color:rgba(255,255,255,0.65) !important;}
+    body.dark-mode .sec-title-link:hover{color:#fff !important;}
+    /* Документы */
+    body.dark-mode .doc{background:rgba(20,20,20,0.75) !important;backdrop-filter:blur(10px);border-color:rgba(255,255,255,0.08) !important;}
+    body.dark-mode .doc:hover{background:rgba(255,255,255,0.06) !important;border-color:rgba(255,255,255,0.14) !important;}
+    body.dark-mode .doc-icon{background:rgba(34,197,94,0.22);color:#86efac;}
+    body.dark-mode .doc-icon.red{background:rgba(239,68,68,0.22);color:#fca5a5;}
+    body.dark-mode .doc-name{color:#fff !important;}
+    body.dark-mode .doc-meta{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .doc-status{color:rgba(255,255,255,0.62) !important;}
+    body.dark-mode .doc-tag{background:rgba(34,197,94,0.25) !important;color:#86efac !important;}
+    body.dark-mode .doc-tag.blue{background:rgba(99,102,241,0.28) !important;color:#a5b4fc !important;}
+    /* AI-note */
+    body.dark-mode .ai-note{background:rgba(20,20,20,0.75) !important;backdrop-filter:blur(10px);border-color:rgba(255,255,255,0.08) !important;color:rgba(255,255,255,0.75) !important;}
+    body.dark-mode .ai-note strong{color:#fff !important;}
+    /* RFQ карточки */
+    body.dark-mode .rfq{background:rgba(20,20,20,0.75) !important;backdrop-filter:blur(10px);border-color:rgba(255,255,255,0.08) !important;}
+    body.dark-mode .rfq:hover{background:rgba(255,255,255,0.06) !important;border-color:rgba(255,255,255,0.14) !important;}
+    body.dark-mode .rfq-id,body.dark-mode .rfq-num{background:rgba(255,255,255,0.10) !important;color:rgba(255,255,255,0.85) !important;}
+    body.dark-mode .rfq-title{color:#fff !important;}
+    body.dark-mode .rfq-meta{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .rfq-tag,body.dark-mode .rfq-urgent{background:rgba(239,68,68,0.25) !important;color:#fca5a5 !important;}
+    body.dark-mode .rfq-responded{color:rgba(255,255,255,0.62) !important;}
+    body.dark-mode .rfq-best,body.dark-mode .rfq-best-label{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .rfq-best-val{color:#fff !important;}
+    body.dark-mode .rfq-best-value{color:#fff !important;}
+    /* Орders / PO */
+    body.dark-mode .po,body.dark-mode .order{background:rgba(20,20,20,0.75) !important;backdrop-filter:blur(10px);border-color:rgba(255,255,255,0.08) !important;}
+    body.dark-mode .po:hover,body.dark-mode .order:hover{background:rgba(255,255,255,0.06) !important;border-color:rgba(255,255,255,0.14) !important;}
+    body.dark-mode .po-id,body.dark-mode .order-id,body.dark-mode .po-num,body.dark-mode .order-num{background:rgba(255,255,255,0.10) !important;color:rgba(255,255,255,0.85) !important;}
+    body.dark-mode .po-title,body.dark-mode .order-title{color:#fff !important;}
+    body.dark-mode .po-status,body.dark-mode .order-status{background:rgba(245,158,11,0.25) !important;color:#fcd34d !important;}
+    body.dark-mode .po-status.green,body.dark-mode .order-status.green{background:rgba(34,197,94,0.25) !important;color:#86efac !important;}
+    body.dark-mode .po-eta,body.dark-mode .order-eta{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .po-seller,body.dark-mode .order-seller{color:rgba(255,255,255,0.75) !important;}
+    body.dark-mode .po-operator,body.dark-mode .order-operator{color:rgba(255,255,255,0.55) !important;}
+    body.dark-mode .po-amount,body.dark-mode .order-amount{color:#fff !important;}
+    body.dark-mode .po-stage-done{background:#22c55e !important;}
+    body.dark-mode .po-stage-pending{background:rgba(255,255,255,0.12) !important;}
+    /* Чат-карточки внутри проекта */
+    body.dark-mode .chat,body.dark-mode .chat-card{background:rgba(20,20,20,0.75) !important;backdrop-filter:blur(10px);border-color:rgba(255,255,255,0.08) !important;}
+    body.dark-mode .chat:hover,body.dark-mode .chat-card:hover{background:rgba(255,255,255,0.06) !important;border-color:rgba(255,255,255,0.14) !important;}
+    body.dark-mode .chat-info,body.dark-mode .chat-list{color:#fff;}
+    /* Aватар */
+    body.dark-mode .top-avatar{background:rgba(255,255,255,0.10) !important;color:#fff !important;}
+    /* Theme icon swap */
+    body.dark-mode .top-theme .theme-icon-sun{display:none !important;}
+    body.dark-mode .top-theme .theme-icon-moon{display:block !important;}
   </style>
 </head>
 <body>
+<script>
+  // Применяем dark-mode СРАЗУ из localStorage — чтобы избежать «вспышки» светлой темы.
+  // project-page.js загружается с defer и доходит позже DOM.
+  try { if (localStorage.getItem('cf_dark_mode') === '1') document.body.classList.add('dark-mode'); } catch(e) {}
+</script>
 <div class="app">
 
   <!-- Sidebar (shared with /chat/) -->
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
-      <div class="side-spacer"></div>
+      <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}" style="display:flex;gap:4px;padding:4px;background:rgba(0,0,0,0.04);border-radius:10px;margin-bottom:12px;">
+        <a href="/chat/" class="role-tab" data-role="buyer" role="tab" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;letter-spacing:-0.01em;color:rgba(0,0,0,0.6);text-decoration:none;border-radius:8px;">{% trans "Покупатель" %}</a>
+        <a href="/chat/" class="role-tab" data-role="seller" role="tab" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;letter-spacing:-0.01em;color:rgba(0,0,0,0.6);text-decoration:none;border-radius:8px;">{% trans "Продавец" %}</a>
+        <a href="/chat/" class="role-tab" data-role="operator" role="tab" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;letter-spacing:-0.01em;color:rgba(0,0,0,0.6);text-decoration:none;border-radius:8px;">{% trans "Оператор" %}</a>
+      </div>
       <a class="side-new-btn" href="/chat/" style="text-decoration:none;text-align:left;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
         {% trans "Новый чат" %}
@@ -185,6 +430,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" placeholder="{% trans 'Поиск чатов и проектов' %}">
       </div>
+      <a href="/chat/?action=recent_activity" class="side-search" style="text-decoration:none;display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.5);border-radius:10px;color:#1a1a1a;font-size:13px;margin-bottom:18px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        {% trans "История действий" %}
+      </a>
 
       <div class="side-list">
         <div class="side-section">
@@ -199,6 +448,7 @@
         <div class="side-section">
           <div class="side-section-head">
             <span class="side-section-title">{% trans "Недавние" %}</span>
+            <button class="side-section-clear" id="clearHistoryBtn" type="button" onclick="window.__clearHistory&amp;&amp;window.__clearHistory()" title="{% trans 'Очистить историю' %}" style="display:none;">{% trans "Очистить" %}</button>
           </div>
           <div id="convList"></div>
         </div>
@@ -210,6 +460,9 @@
           <div class="side-user-name" id="sideUserName">—</div>
           <div class="side-user-role" id="sideUserRole">—</div>
         </div>
+        <a class="side-settings" href="/chat/#settings" title="{% trans 'Настройки' %}" aria-label="{% trans 'Настройки' %}" style="margin-left:auto;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,0.55);text-decoration:none;background:transparent;transition:background .12s,color .12s;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 008.51 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H2a2 2 0 010-4h.09A1.65 1.65 0 004.6 8.51a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V2a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H22a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </a>
       </div>
     </div>
   </aside>
@@ -217,16 +470,34 @@
   <!-- Main -->
   <main class="main">
     <div class="topbar">
-      <button class="top-burger" onclick="toggleSidebar()" title="{% trans 'Меню' %}">
+      <button class="top-burger" onclick="toggleSidebar()" title="{% trans 'Меню' %}" style="background:transparent;border:none;cursor:pointer;color:#1a1a1a;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
-      <a href="/chat/" class="top-brand">
-        <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}" alt="" width="24" height="24">
+      <a href="/" onclick="event.preventDefault();try{window.onbeforeunload=null;}catch(e){};window.location.assign('/');return false;" class="top-brand" title="{% trans 'Перейти на главную' %}" style="display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:700;font-size:15px;color:#1a1a1a;text-decoration:none;letter-spacing:-0.01em;">
+        <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}" alt="Consolidator Parts" width="24" height="24" style="width:24px;height:24px;flex-shrink:0;display:block;">
         Consolidator Parts
       </a>
-      <div class="top-right">
-        <a href="/dashboard/" class="pj-btn" style="padding:6px 14px;font-size:12px;">{% trans "Классический" %}</a>
-        <div class="top-avatar" id="topAvatar">?</div>
+      <div class="top-right" style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+        <a href="/chat/" class="top-home" title="{% trans 'Главный экран чата' %}" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.65);display:flex;align-items:center;justify-content:center;color:#1a1a1a;text-decoration:none;border:1px solid rgba(0,0,0,0.06);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2h-4v-7H9v7H5a2 2 0 01-2-2z"/></svg>
+        </a>
+        <!-- Theme toggle (light/dark) — синхронизирован с /chat/ через localStorage cf_dark_mode -->
+        <button class="top-icon top-theme" id="topTheme" type="button"
+                onclick="toggleTheme()"
+                title="{% trans 'Тема' %}" aria-label="{% trans 'Переключить тему' %}"
+                style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;">
+          <svg class="theme-icon-sun"  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg class="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        {% if user.is_authenticated %}
+        <button class="top-bell" id="topBell" type="button" onclick="window.location.href='/chat/#notifications'"
+                title="{% trans 'Уведомления' %}" aria-label="{% trans 'Уведомления' %}"
+                style="position:relative;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span class="bell-badge" id="bellBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;padding:0 4px;display:none;align-items:center;justify-content:center;">0</span>
+        </button>
+        {% endif %}
+        <div class="top-avatar" id="topAvatar" style="width:34px;height:34px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;cursor:pointer;">?</div>
       </div>
     </div>
 
@@ -241,6 +512,7 @@
 <script>
   window.PROJECT_ID = "{{ project_id }}";
 </script>
+<script src="{% static 'js/i18n.js' %}?v=1&t={% now 'U' %}" defer></script>
 <script src="{% static 'js/project-page.js' %}?v=1&t={% now 'U' %}" defer></script>
 </body>
 </html>

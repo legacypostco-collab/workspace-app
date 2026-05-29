@@ -59,14 +59,88 @@ class ChatView(APIView):
     POST /api/assistant/chat/
     Body: {"conversation_id": "uuid"|null, "message": "text"}
     Resp: {"conversation_id": "uuid", "response": "...", "context_refs": [...]}
+
+    PIVOT 2026-05-28: AllowAny — anonymous buyer может писать в чат
+    (поиск, RFQ, котировки). Регистрация триггерится при pay_reserve.
+    Conversation для anon не сохраняется в БД (нет user_id), но action'ы
+    выполняются stateless через execute_action(None, ...).
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def post(self, request):
         ser = ChatRequestSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         conv_id = ser.validated_data.get("conversation_id")
+        message = ser.validated_data["message"]
 
+        # ── Anon path: только fast-path, без БД, без LLM ──
+        # Анон-юзер пишет parts list / запрос → fast_path определяет
+        # intent (create_rfq, search_parts) → выполняем напрямую через
+        # execute_action(conv=None, ...). LLM не зовём — экономим токены
+        # и не сохраняем Conversation/Message (нет user_id для FK).
+        if not request.user.is_authenticated:
+            from . import fast_path
+            from . import actions as action_executor
+            fp_match = fast_path.match(message, "buyer")
+            if not fp_match:
+                # Не распознали intent — предлагаем зарегистрироваться или
+                # уточнить запрос примерами OEM/RFQ
+                return Response({
+                    "conversation_id": None,
+                    "response": (
+                        "Я не понял запрос. Попробуйте:\n"
+                        "• Вставьте список артикулов (по одному на строке)\n"
+                        "• Загрузите файл (.xlsx/.pdf) с позициями\n"
+                        "• Нажмите «Создать RFQ» или «Открытые RFQ»\n\n"
+                        "Если хотите вести историю чата — зарегистрируйтесь."
+                    ),
+                    "cards": [],
+                    "actions": [
+                        {"action": "start_registration", "label": "🚀 Зарегистрироваться"},
+                        {"action": "start_login",        "label": "Войти"},
+                    ],
+                    "contextual_actions": [], "context_refs": [],
+                    "suggestions": [], "message_id": None,
+                })
+            action_name, params, rule_name = fp_match
+            # Block payment-actions для anon (триггер реги)
+            if action_name in ANON_BLOCKED_PAYMENT_ACTIONS:
+                request.session["pending_action"] = {"action": action_name, "params": params}
+                request.session.modified = True
+                resp = _payment_requires_registration_response(action_name, params)
+                return Response({"conversation_id": None, **{
+                    "response": resp.get("text", ""),
+                    "cards": resp.get("cards", []),
+                    "actions": resp.get("actions", []),
+                    "contextual_actions": [], "context_refs": [],
+                    "suggestions": [], "message_id": None,
+                }})
+            if action_name not in ANON_ALLOWED_ACTIONS:
+                resp = _registration_required_response()
+                return Response({"conversation_id": None, **{
+                    "response": resp.get("text", ""),
+                    "cards": resp.get("cards", []),
+                    "actions": resp.get("actions", []),
+                    "contextual_actions": [], "context_refs": [],
+                    "suggestions": [], "message_id": None,
+                }})
+            try:
+                result = execute_action(None, action_name, {**params, "_request": request}, request.user, role="buyer")
+            except Exception as e:
+                logger.exception("anon fast_path action failed")
+                return Response({"error": str(e)},
+                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                "conversation_id": None,
+                "response": result.get("text", ""),
+                "cards": result.get("cards", []),
+                "actions": result.get("actions", []),
+                "contextual_actions": result.get("contextual_actions", []),
+                "context_refs": [], "suggestions": result.get("suggestions", []),
+                "message_id": None,
+            })
+
+        # ── Authenticated flow (как раньше) ──
         if conv_id:
             conv = get_object_or_404(
                 Conversation, id=conv_id, user=request.user, is_active=True
@@ -77,7 +151,7 @@ class ChatView(APIView):
             )
 
         try:
-            result = process_query_sync(conv, ser.validated_data["message"], request.user)
+            result = process_query_sync(conv, message, request.user)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -94,9 +168,37 @@ class ChatView(APIView):
 
 
 # Whitelist actions, разрешённых анонимному гостю.
-# Сейчас только auth-actions — регистрация и вход проходят таким же
-# chat-flow, как KYB у поставщика: форма-карточка прямо в чате.
-ANON_ALLOWED_ACTIONS: set[str] = {"start_registration", "start_login"}
+# PIVOT 2026-05-28: покупатель может работать без регистрации
+# до момента оплаты резерва. Регистрация триггерится при pay_reserve
+# (и других денежных действиях) — там просим email/телефон/пароль.
+ANON_ALLOWED_ACTIONS: set[str] = {
+    # Auth-actions
+    "start_registration", "start_login",
+    # Discovery — поиск, база знаний, аналитика товаров
+    "search_parts", "kb_search",
+    "compare_products", "compare_suppliers", "top_suppliers",
+    "buyer_best_offers", "buyer_offer_compare",
+    "calc_part_logistics",
+    # Аналитика спецификации (upload xlsx → AI-маппинг)
+    "analyze_spec", "upload_parts_list",
+    # RFQ flow — создать запрос, получить котировки, посмотреть
+    "create_rfq", "get_rfq_status", "view_rfq_quotes", "view_quote",
+    "compare_quotes", "ask_about_rfq",
+    "generate_proposal",
+    # Accept quote (только preview-фаза, confirmed=False).
+    # Phase 2 (confirmed=True → создаёт Order → требует payment) блокируется
+    # внутри handler'а в _block_anon_payment().
+    "accept_quote",
+    # Comms / help
+    "ask_operator", "go_home",
+}
+
+# Actions требующие денег / payment intent — для anon триггерим registration.
+ANON_BLOCKED_PAYMENT_ACTIONS: set[str] = {
+    "pay_reserve", "pay_final", "pay_remaining",
+    "confirm_kp_and_reserve", "auto_accept_and_pay_reserve",
+    "submit_topup", "create_payment_intent",
+}
 
 
 def _registration_required_response():
@@ -113,6 +215,33 @@ def _registration_required_response():
         "actions": [
             {"action": "start_registration", "label": "🚀 Зарегистрироваться"},
             {"action": "start_login",        "label": "У меня есть аккаунт"},
+        ],
+        "cards": [], "suggestions": [], "contextual_actions": [],
+    }
+
+
+def _payment_requires_registration_response(action_name: str, params: dict):
+    """Карточка для anon-юзера который пытается оплатить.
+
+    Объясняет ЗАЧЕМ нужна регистрация именно сейчас (для приёма платежа
+    и оформления заказа). Pending action сохранён в session — после
+    регистрации фронт его сам replays.
+    """
+    return {
+        "text": (
+            "💳 Чтобы оформить оплату — нужен аккаунт.\n"
+            "Это нужно для:\n"
+            "• приёма и возврата средств (резерв 10%)\n"
+            "• юридического оформления заказа\n"
+            "• трекинга вашей доставки в личном кабинете\n\n"
+            "Регистрация в чате — 30 секунд. Все данные что вы ввели — "
+            "RFQ, выбранная котировка — сохранятся."
+        ),
+        "actions": [
+            {"action": "start_registration", "label": "🚀 Создать аккаунт и оплатить",
+             "params": {"role": "buyer", "_resume": action_name}},
+            {"action": "start_login",        "label": "У меня уже есть аккаунт",
+             "params": {"role": "buyer", "_resume": action_name}},
         ],
         "cards": [], "suggestions": [], "contextual_actions": [],
     }
@@ -153,7 +282,52 @@ def _handle_start_registration(request, params):
                                   extra={"role": "buyer"})
         except Exception:
             logger.exception("notify_operator_alert user_registered failed")
+        # Anonymous-flow: перепривязываем созданные ранее RFQ (created_by=None)
+        # к новому user'у через email match или session_key.
+        try:
+            _attach_anonymous_rfqs_to_user(request, user)
+        except Exception:
+            logger.exception("attach anonymous RFQs failed")
+        # Resume pending action (если до регистрации юзер нажал pay_reserve)
+        pending = request.session.pop("pending_action", None)
+        if pending and pending.get("action"):
+            # Возвращаем resume-карточку: фронт сам кликнет action в чате
+            return {
+                "text": (result["response"].get("text", "") + "\n\n"
+                         "▶ Продолжаю оформление заказа..."),
+                "actions": [{
+                    "action": pending["action"],
+                    "label": "▶ Продолжить",
+                    "params": pending.get("params", {}),
+                }],
+                "cards": [], "suggestions": [], "contextual_actions": [],
+                "_post_action": "auto_resume",
+            }
     return result["response"]
+
+
+def _attach_anonymous_rfqs_to_user(request, user):
+    """После регистрации привязываем anon-RFQ к новому user'у.
+    Логика поиска: RFQ.created_by=None И customer_email=anon@chat.local
+    созданные в течение текущей session (по session_key).
+    """
+    from marketplace.models import RFQ
+    # Безопасный фильтр: только anon-RFQ за последние 24ч (защита от случайного захвата)
+    from django.utils import timezone
+    from datetime import timedelta
+    recent = timezone.now() - timedelta(hours=24)
+    qs = RFQ.objects.filter(
+        created_by__isnull=True,
+        customer_email="anon@chat.local",
+        created_at__gte=recent,
+    )
+    updated = qs.update(
+        created_by=user,
+        customer_name=user.get_full_name() or user.username,
+        customer_email=user.email or f"{user.username}@chat.local",
+    )
+    if updated:
+        logger.info(f"Attached {updated} anonymous RFQs to user {user.username}")
 
 
 def _handle_seller_quick_registration(request, params):
@@ -243,6 +417,151 @@ def _handle_seller_quick_registration(request, params):
     }
 
 
+def _handle_switch_role_login(request, params):
+    """Переключение на аккаунт другой роли через chat-форму с паролем.
+
+    Двухфазный flow (как start_login):
+      Phase 1: возвращает form-карточку с editable username (prefilled demo_<role>) + password
+      Phase 2: authenticate + проверка что user.role совпадает + login + reload_page
+
+    Если аккаунта с такой ролью нет — предлагается зарегистрировать
+    (кроме операторских — операторов заводит только админ).
+    """
+    role = (params.get("role") or "").lower()
+    DEMO_USERNAMES = {
+        "buyer":    "demo_buyer",
+        "seller":   "demo_seller",
+        "operator": "demo_operator",
+    }
+    if role not in DEMO_USERNAMES:
+        return {"text": f"⚠️ Неизвестная роль: {role}",
+                "cards": [], "actions": [], "suggestions": [], "contextual_actions": []}
+    suggested_username = DEMO_USERNAMES[role]
+
+    ROLE_META = {
+        "buyer":    ("👋 Войти как Покупатель", "Введите логин и пароль аккаунта покупателя."),
+        "seller":   ("🏭 Войти как Поставщик",  "Введите логин и пароль аккаунта поставщика."),
+        "operator": ("🛡 Войти как Оператор",   "Введите логин и пароль операторского аккаунта."),
+    }
+    title, greeting = ROLE_META[role]
+    confirmed = bool(params.get("confirmed"))
+
+    if not confirmed:
+        # Регистрационная кнопка — buyer/seller сами создают аккаунт,
+        # operator заводит только админ.
+        reg_actions = []
+        if role == "buyer":
+            reg_actions.append({"action": "start_registration",
+                                "label": "📝 Создать аккаунт покупателя",
+                                "params": {"role": "buyer"}})
+        elif role == "seller":
+            reg_actions.append({"action": "start_registration",
+                                "label": "🏭 Создать аккаунт поставщика",
+                                "params": {"role": "seller"}})
+        elif role == "operator":
+            reg_actions.append({"action": "contact_operator",
+                                "label": "📨 Запросить операторский доступ у админа",
+                                "params": {"topic": "operator_access"}})
+        return {
+            "text": greeting,
+            "cards": [{
+                "type": "form",
+                "data": {
+                    "title": title,
+                    "intent": (
+                        "Каждая роль = отдельный аккаунт. Текущая сессия будет переключена. "
+                        "Если аккаунта нет — создайте его кнопкой ниже формы."
+                    ),
+                    "submit_action": "switch_role_login",
+                    "submit_label": "Войти →",
+                    "fields": [
+                        {"name": "username", "label": "Логин или e-mail",
+                         "value": suggested_username,
+                         "placeholder": "ivanov / you@company.ru",
+                         "required": True,
+                         "hint": f"Подставлен demo-аккаунт. Если у вас свой — замените."},
+                        {"name": "password", "label": "Пароль",
+                         "type": "password", "required": True,
+                         "placeholder": "Введите пароль"},
+                    ],
+                    "fixed_params": {"confirmed": True, "role": role},
+                },
+            }],
+            "actions": reg_actions,
+            "suggestions": [], "contextual_actions": [],
+        }
+
+    # Phase 2: проверка пароля + login
+    from django.contrib.auth import authenticate, get_user_model, login
+    raw = (params.get("username") or "").strip()
+    pwd = params.get("password") or ""
+    U = get_user_model()
+    # Разрешаем вход по e-mail
+    if "@" in raw:
+        u = U.objects.filter(email__iexact=raw).first()
+        if u:
+            raw = u.username
+    if not raw:
+        return {
+            "text": "❌ Логин не указан.",
+            "actions": [{"action": "switch_role_login",
+                         "label": "🔄 Попробовать ещё раз",
+                         "params": {"role": role}}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+        }
+    user = authenticate(request, username=raw, password=pwd)
+    if not user:
+        # Различаем «нет аккаунта» vs «неверный пароль»
+        exists = U.objects.filter(username=raw).exists()
+        if not exists:
+            reg_btn = []
+            if role == "buyer":
+                reg_btn.append({"action": "start_registration",
+                                "label": "📝 Создать аккаунт покупателя",
+                                "params": {"role": "buyer"}})
+            elif role == "seller":
+                reg_btn.append({"action": "start_registration",
+                                "label": "🏭 Создать аккаунт поставщика",
+                                "params": {"role": "seller"}})
+            return {
+                "text": f"⚠️ Аккаунт «{raw}» не найден. Зарегистрируйтесь или укажите другой логин.",
+                "actions": reg_btn + [
+                    {"action": "switch_role_login",
+                     "label": "🔄 Ввести другой логин",
+                     "params": {"role": role}},
+                ],
+                "cards": [], "suggestions": [], "contextual_actions": [],
+            }
+        return {
+            "text": f"❌ Неверный пароль для «{raw}». Попробуйте ещё раз.",
+            "actions": [{"action": "switch_role_login",
+                         "label": "🔄 Войти снова",
+                         "params": {"role": role}}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+        }
+    # Verify the user has the requested role (no privilege escalation)
+    actual_role = detect_user_role(user)
+    actual_norm = "operator" if actual_role.startswith("operator") else actual_role
+    if actual_norm != role:
+        return {
+            "text": (f"⚠️ Аккаунт «{user.username}» имеет роль «{actual_norm}», "
+                     f"а вы пытались войти как «{role}». Войдите под другим логином."),
+            "actions": [{"action": "switch_role_login",
+                         "label": "🔄 Ввести другой логин",
+                         "params": {"role": role}}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+        }
+    # Очищаем старый session-override чтобы UI взял правильную роль из identity
+    request.session.pop("assistant_role_override", None)
+    login(request, user)
+    return {
+        "text": f"✅ Вы вошли как «{user.username}». Перезагружаю кабинет...",
+        "actions": [{"action": "reload_page", "label": "🚀 Открыть кабинет"}],
+        "cards": [], "suggestions": [], "contextual_actions": [],
+        "_post_action": "reload",
+    }
+
+
 def _handle_start_login(request, params):
     """Вход существующим пользователем — тоже через chat-форму.
 
@@ -310,6 +629,23 @@ def _handle_start_login(request, params):
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
     login(request, user)
+    # Resume pending payment action (anon → клик pay_reserve → login → resume)
+    try:
+        _attach_anonymous_rfqs_to_user(request, user)
+    except Exception:
+        logger.exception("attach anonymous RFQs failed on login")
+    pending = request.session.pop("pending_action", None)
+    if pending and pending.get("action"):
+        return {
+            "text": f"✅ Вы вошли как «{user.username}». ▶ Продолжаю оформление заказа...",
+            "actions": [{
+                "action": pending["action"],
+                "label": "▶ Продолжить оформление",
+                "params": pending.get("params", {}),
+            }],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+            "_post_action": "auto_resume",
+        }
     return {
         "text": f"✅ Привет, {user.username}! Перезагружу чат — увидите свои данные.",
         "actions": [{"action": "reload_page", "label": "🚀 Открыть кабинет"}],
@@ -346,22 +682,39 @@ class ActionView(APIView):
             if action == "start_login":
                 return Response({"conversation_id": None,
                                   **_handle_start_login(request, params)})
+            # Payment-actions → принудительная регистрация с intent.
+            if action in ANON_BLOCKED_PAYMENT_ACTIONS:
+                # Сохраняем intent в session: после регистрации resume этого action
+                request.session["pending_action"] = {"action": action, "params": params}
+                request.session.modified = True
+                return Response({"conversation_id": None,
+                                  **_payment_requires_registration_response(action, params)})
+            # Phase 2 accept_quote (confirmed=True) тоже требует регистрации,
+            # потому что создаёт Order и сразу ведёт к pay_reserve.
+            if action == "accept_quote" and bool(params.get("confirmed")):
+                request.session["pending_action"] = {"action": action, "params": params}
+                request.session.modified = True
+                return Response({"conversation_id": None,
+                                  **_payment_requires_registration_response(action, params)})
             if action not in ANON_ALLOWED_ACTIONS:
                 return Response({"conversation_id": None,
                                   **_registration_required_response()})
-            # Прочие whitelisted — пока пусто; на будущее.
-            # NB: execute_action импортирован в module scope (`from .rag`),
-            # не делаем повторный локальный импорт — он бы сделал имя
-            # local-only и стал бы причиной UnboundLocalError в auth-ветке.
+            # Прочие whitelisted — выполняем как обычный buyer
             try:
                 result = execute_action(
-                    None, action, params, request.user, role="buyer",
+                    None, action, {**params, "_request": request}, request.user, role="buyer",
                 )
             except Exception as e:
                 return Response({"error": str(e)}, status=500)
             return Response({"conversation_id": None, **result})
 
-        # ── Authenticated flow (как раньше) ──────────────────
+        # ── Authenticated flow ──────────────────────────────
+        # Special-case: switch_role_login (нужен request для login/session).
+        # Это смена аккаунта через chat-форму с паролем (вместо JS-prompt).
+        if action == "switch_role_login":
+            return Response({"conversation_id": None,
+                             **_handle_switch_role_login(request, params)})
+
         conv_id = request.data.get("conversation_id")
 
         from .conv_category import category_for_action, find_or_create_conv, title_for_action
@@ -392,11 +745,15 @@ class ActionView(APIView):
             # юзер мог переключить роль и теперь видит другую сторону.
             current_role = detect_user_role(request.user, request=request)
             result = execute_action(
-                conv, action, params, request.user, role=current_role,
+                conv, action, {**params, "_request": request}, request.user, role=current_role,
             )
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
+        # Авто-reload после переключения view-as / выхода — чтобы middleware
+        # подхватил новую сессию и подменил request.user.
+        if action in ("op_view_as_supplier", "op_exit_view_as"):
+            result = {**result, "_post_action": "reload"}
         return Response({
             "conversation_id": str(conv.id),
             **result,
@@ -503,41 +860,83 @@ class WidgetConfigView(APIView):
 
 
 class RoleSwitchView(APIView):
-    """POST /api/assistant/role/  body: {"role": "buyer"|"seller"|"operator"|null}
+    """POST /api/assistant/role/  body: {"role": "buyer"|"seller"|"operator", "password": "..."}
 
-    Сохраняет выбор UI-toggle в сессии. На последующих запросах
-    `detect_user_role` подхватит его автоматически.
+    PIVOT 2026-05-27: переключение ролей теперь = смена аккаунта.
+    Каждая роль = отдельный пользователь. Чтобы переключиться, нужно
+    ввести пароль аккаунта, владеющего этой ролью.
+
+    Для демо-юзеров маппинг username:
+      buyer    → demo_buyer
+      seller   → demo_seller
+      operator → demo_operator
 
     Anonymous: всегда отвечает `buyer` (без 403) — гость не может
     переключиться на seller/operator, это требует регистрации.
     """
     permission_classes = [AllowAny]
 
+    # Демо-мэппинг роли на username. В проде заменить на per-user mapping
+    # (один пользователь может иметь несколько аккаунтов под разными ролями).
+    _DEMO_ROLE_TO_USERNAME = {
+        "buyer":    "demo_buyer",
+        "seller":   "demo_seller",
+        "operator": "demo_operator",
+    }
+
     def post(self, request):
+        from django.contrib.auth import authenticate, login, get_user_model
+        from .permissions import _normalize_override
+
         if not request.user.is_authenticated:
-            return Response({"role": "buyer", "override": None,
-                             "anonymous": True})
-        from .permissions import _normalize_override, _override_allowed
+            return Response({"role": "buyer", "override": None, "anonymous": True})
+
         raw = request.data.get("role")
-        if raw in (None, "", "auto"):
-            request.session.pop("assistant_role_override", None)
-            request.session.modified = True
-            new_role = detect_user_role(request.user)
-            return Response({"role": new_role, "override": None})
+        password = request.data.get("password") or ""
         norm = _normalize_override(raw)
-        if not norm:
+        if not norm or norm not in self._DEMO_ROLE_TO_USERNAME:
             return Response({"error": f"unsupported role '{raw}'"}, status=400)
-        # SECURITY P0-1: проверяем, что user реально имеет право на эту роль.
-        # Buyer не может стать operator через POST {"role":"operator"}.
-        if not _override_allowed(request.user, norm):
-            return Response(
-                {"error": "forbidden: insufficient privileges for this role",
-                 "role": detect_user_role(request.user)},
-                status=403,
-            )
-        request.session["assistant_role_override"] = norm
+
+        # Уже в этой роли — ничего не делаем
+        current_role = detect_user_role(request.user)
+        current_normalized = "operator" if current_role.startswith("operator") else current_role
+        if current_normalized == norm:
+            return Response({"role": current_role, "override": None, "no_change": True})
+
+        # Operator → operator-сабролей (logist/customs/payment/manager) — это
+        # UI-detail, не смена аккаунта. Разрешаем без пароля.
+        from .permissions import _override_allowed
+        if current_normalized == "operator" and norm == "operator":
+            return Response({"role": current_role, "override": None, "no_change": True})
+
+        target_username = self._DEMO_ROLE_TO_USERNAME[norm]
+        if not password:
+            # Без пароля — возвращаем "требуется пароль" + куда отправлять следующий запрос
+            return Response({
+                "password_required": True,
+                "target_username": target_username,
+                "target_role": norm,
+            }, status=401)
+
+        # Проверяем пароль через стандартный authenticate
+        target_user = authenticate(request, username=target_username, password=password)
+        if not target_user:
+            return Response({
+                "error": "Неверный пароль",
+                "target_username": target_username,
+                "target_role": norm,
+            }, status=403)
+
+        # Очищаем role-override (он больше не используется)
+        request.session.pop("assistant_role_override", None)
+        # Logout + login as target
+        login(request, target_user)
         request.session.modified = True
-        return Response({"role": norm, "override": norm})
+        return Response({
+            "role": detect_user_role(target_user),
+            "username": target_user.username,
+            "switched": True,
+        })
 
 
 # ── Projects API ────────────────────────────────────────────
@@ -578,8 +977,176 @@ class ProjectListView(APIView):
         return Response({"id": str(p.id), "name": p.name}, status=201)
 
 
+class ProjectUpdateView(APIView):
+    """PATCH-обновление полей проекта (name, code, customer, tags, dot_color, description)."""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, project_id):
+        p = get_object_or_404(Project, id=project_id, owner=request.user, is_active=True)
+        data = request.data or {}
+        allowed = ("name", "code", "customer", "description", "dot_color")
+        for f in allowed:
+            if f in data:
+                setattr(p, f, (data.get(f) or "")[:500] if f != "name" else (data.get(f) or "Новый проект")[:200])
+        if "tags" in data and isinstance(data.get("tags"), list):
+            p.tags = data["tags"]
+        p.save()
+        return Response({"id": str(p.id), "name": p.name})
+
+
+class KYBDocUploadView(APIView):
+    """POST multipart/form-data 'file' → сохраняет файл в CompanyVerification.doc_<kind>.
+    kind ∈ ('dealership', 'bank'). После загрузки документ ждёт проверки оператора —
+    бейдж «Официальный дилер» выдаётся отдельным действием op_kyb_approve_doc."""
+    permission_classes = [IsAuthenticated]
+    from rest_framework.parsers import MultiPartParser, FormParser
+    parser_classes = [MultiPartParser, FormParser]
+
+    KIND_FIELD = {"dealership": "doc_dealership", "bank": "doc_bank"}
+
+    def post(self, request, kind):
+        if kind not in self.KIND_FIELD:
+            return Response({"error": f"Неизвестный тип документа: {kind}"}, status=400)
+        f = request.FILES.get("file")
+        if not f:
+            return Response({"error": "Файл не приложен"}, status=400)
+        # Базовая валидация: размер ≤10MB, разрешённые расширения
+        MAX_SIZE = 10 * 1024 * 1024
+        if (f.size or 0) > MAX_SIZE:
+            return Response({"error": f"Файл слишком большой ({f.size // 1024} КБ, лимит 10 МБ)"}, status=400)
+        name = f.name or "document"
+        ext = (name.rsplit(".", 1)[-1] if "." in name else "").lower()
+        if ext not in ("pdf", "png", "jpg", "jpeg", "heic"):
+            return Response({"error": f"Неподдерживаемое расширение «.{ext}». Используйте PDF, PNG или JPG."},
+                             status=400)
+        # FIX (HIGH): magic-byte валидация — защита от .exe, переименованных в .pdf.
+        # Проверяем первые байты файла на соответствие реальному формату.
+        try:
+            head = f.read(12); f.seek(0)
+            valid_magic = (
+                (ext == "pdf" and head.startswith(b"%PDF"))
+                or (ext in ("png",) and head.startswith(b"\x89PNG\r\n\x1a\n"))
+                or (ext in ("jpg", "jpeg") and head[:3] == b"\xFF\xD8\xFF")
+                or (ext == "heic" and (b"ftyp" in head[:12]))
+            )
+            if not valid_magic:
+                return Response({
+                    "error": f"Содержимое файла не соответствует расширению .{ext}. "
+                             f"Возможно, файл переименован — отправьте оригинал."
+                }, status=400)
+        except Exception:
+            return Response({"error": "Не удалось проверить содержимое файла."}, status=400)
+        try:
+            from marketplace.models import CompanyVerification
+            kyb, _ = CompanyVerification.objects.get_or_create(user=request.user)
+            field_name = self.KIND_FIELD[kind]
+            setattr(kyb, field_name, f)
+            kyb.save(update_fields=[field_name])
+            saved = getattr(kyb, field_name)
+            return Response({
+                "ok": True,
+                "kind": kind,
+                "name": name,
+                "size_kb": round((f.size or 0) / 1024, 1),
+                "url": saved.url if saved else None,
+            }, status=201)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+
+class ProjectDocumentUploadView(APIView):
+    """POST multipart/form-data 'file' → создаёт ProjectDocument + сохраняет файл.
+    Тип документа угадываем по расширению (xlsx/csv → spec, pdf → other, и т.д.)."""
+    permission_classes = [IsAuthenticated]
+
+    # Парсеры для multipart — иначе DRF не разберёт FormData
+    from rest_framework.parsers import MultiPartParser, FormParser
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, project_id):
+        p = get_object_or_404(Project, id=project_id, owner=request.user, is_active=True)
+        f = request.FILES.get("file")
+        if not f:
+            return Response({"error": "Файл не приложен"}, status=400)
+        # Простая эвристика типа по расширению
+        name = f.name or "document"
+        ext = (name.rsplit(".", 1)[-1] if "." in name else "").lower()
+        _by_ext = {
+            "xlsx": "spec", "xls": "spec", "csv": "spec",
+            "pdf": "other", "docx": "other", "doc": "other",
+            "dwg": "drawing", "dxf": "drawing",
+            "png": "other", "jpg": "other", "jpeg": "other",
+        }
+        # Если фронт явно указал doctype (выбор слота категории) — используем его,
+        # иначе угадываем по расширению.
+        explicit_doctype = (request.data.get("doctype") or "").strip().lower()
+        ALLOWED = ("fleet", "spec", "regulation", "drawing", "conditions", "contract", "invoice", "other")
+        doctype = explicit_doctype if explicit_doctype in ALLOWED else _by_ext.get(ext, "other")
+        try:
+            from .models import ProjectDocument
+            doc = ProjectDocument.objects.create(
+                project=p,
+                name=name[:200],
+                file=f,
+                doctype=doctype,
+                status="processed",
+                size_bytes=f.size or 0,
+                meta={"original_ext": ext},
+            )
+            return Response({
+                "id": str(doc.id),
+                "name": doc.name,
+                "doctype": doc.doctype,
+                "doctype_label": doc.get_doctype_display(),
+                "status": doc.status,
+                "size_kb": round((doc.size_bytes or 0) / 1024, 1),
+            }, status=201)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
+
+def _eta_label(request, days=30):
+    """ETA-дата через N дней, локализованная: «30 апр» / «Apr 30» / «4月30日»."""
+    from django.utils import translation, timezone
+    from django.utils.formats import date_format
+    from datetime import timedelta
+    lang = getattr(request, "LANGUAGE_CODE", "ru") if request else "ru"
+    d = (timezone.now() + timedelta(days=days)).date()
+    with translation.override(lang):
+        return date_format(d, "j E").lower() if lang == "ru" else date_format(d, "M j")
+
+
+def _prev_month_label(request, offset=1):
+    """Возвращает название месяца (locale-aware) с offset месяцев назад.
+    offset=0 — текущий, offset=1 — прошлый.
+    """
+    from django.utils import translation, timezone
+    from django.utils.formats import date_format
+    lang = getattr(request, "LANGUAGE_CODE", "ru") if request else "ru"
+    now = timezone.now()
+    # Откатываем месяц
+    month = now.month - offset
+    year = now.year
+    while month < 1:
+        month += 12
+        year -= 1
+    import datetime
+    d = datetime.date(year, month, 1)
+    with translation.override(lang):
+        # Полное название месяца. Можно сократить до 3 букв через .strftime("%b") — но
+        # Django formatting даёт корректную локаль для %b в зависимости от языка.
+        return date_format(d, "F")
+
+
 class ProjectDetailView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def delete(self, request, project_id):
+        # Soft-delete: is_active=False — иначе оторвём связанные чаты/документы
+        p = get_object_or_404(Project, id=project_id, owner=request.user)
+        p.is_active = False
+        p.save(update_fields=["is_active"])
+        return Response(status=204)
 
     def get(self, request, project_id):
         p = get_object_or_404(Project, id=project_id, owner=request.user, is_active=True)
@@ -614,39 +1181,51 @@ class ProjectDetailView(APIView):
             "description": p.description,
             "documents": docs,
             "chats": chats,
-            # Demo stats — could be real per-project counts later
+            # Demo stats. Подписи строго по логике платформы:
+            #   open_rfqs.semi  — RFQ где оператор подбирает аналог (ждут действия)
+            #   active_orders   — заказы в работе после оплаты резерва
+            #   in_transit      — заказы со статусом transit_*/customs/issuing
+            #   spend_mtd       — расходы за месяц + дельта к прошлому
             "stats": {
-                "open_rfqs": {"count": 3, "urgent": 1, "urgent_left": "42m"},
+                "open_rfqs": {"count": 3, "semi": 1},
                 "active_orders": {"count": 5, "value_usd": 184200},
-                "in_transit": {"count": 2, "earliest_eta": "30 апр"},
-                "spend_mtd": {"value_usd": 124500, "delta_pct": 12, "vs_period": "Mar"},
+                "in_transit": {"count": 2, "earliest_eta": _eta_label(request, days=30)},
+                "spend_mtd": {"value_usd": 124500, "delta_pct": 12},
             },
-            # Demo RFQs/orders/chats from this project (could be filtered by FK in real)
+            # Demo RFQs/orders/chats. Логика платформы (см. CLAUDE.md):
+            # AUTO — система подбирает из каталога; SEMI — оператор подбирает аналог.
+            # Никаких «рассылок поставщикам» и «дедлайнов ответа» — это убрано.
             "rfqs": [
-                {"number": "RFQ-4421", "title": "Spec Q2 — основной микс", "tag": "URGENT 42M",
-                 "meta": "39 позиций · отправлен 5 поставщикам · 2 ответили",
-                 "responded": "2/5", "best_so_far": 47890, "responded_color": "green"},
-                {"number": "RFQ-4418", "title": "Track shoes D8T — аналоги", "tag": "",
-                 "meta": "2 позиции · отправлен 4 поставщикам · 4 ответили",
-                 "responded": "4/4", "best_so_far": 7440, "responded_color": "green",
-                 "best_label": "BEST PRICE"},
-                {"number": "RFQ-4407", "title": "Hydraulic filters — refill", "tag": "",
-                 "meta": "1 позиция · 12 шт · отправлен 3 поставщикам",
-                 "responded": "1/3", "best_so_far": 2112, "responded_color": "amber"},
+                {"number": "RFQ-4421", "title": "Spec Q2 — основной микс", "tag": "AUTO",
+                 "meta": "39 позиций · сматчены с каталогом",
+                 "best_so_far": 47890,
+                 "best_label": "сумма по подбору"},
+                {"number": "RFQ-4418", "title": "Track shoes D8T — аналоги", "tag": "SEMI",
+                 "meta": "2 позиции · оператор подбирает аналог",
+                 "best_so_far": 7440,
+                 "best_label": "ориентир по каталогу"},
+                {"number": "RFQ-4407", "title": "Гидрофильтры — пополнение", "tag": "AUTO",
+                 "meta": "1 позиция · 12 шт · сматчена с каталогом",
+                 "best_so_far": 2112,
+                 "best_label": "сумма по подбору"},
             ],
             "orders": [
+                # Подписи по делу: stage_labels = state machine; eta = чистая дата + статус SLA.
+                # "seller" — кто продал; "operator" удалён (не нужен покупателю в этом списке).
                 {"number": "PO-22841", "title": "Spec Q2 partial — 14 позиций",
-                 "status": "AT CUSTOMS", "status_color": "amber",
-                 "stages": [True, True, True, True, False],  # 4/5 done
-                 "stage_labels": ["RFQ", "Order", "Production", "Customs", "Delivered"],
-                 "seller": "XCMG", "operator": "Logist + Customs",
-                 "eta": "ETA · 2 мая · day 3 of 4", "amount": 28640},
-                {"number": "PO-22829", "title": "Hydraulic filters — 12 шт",
-                 "status": "IN TRANSIT", "status_color": "green",
+                 "status": "НА ТАМОЖНЕ", "status_color": "amber",
+                 "stages": [True, True, True, True, False],
+                 "stage_labels": ["RFQ", "Заказ", "Производство", "Таможня", "Доставлен"],
+                 "seller": "XCMG",
+                 "eta": "ETA " + _eta_label(request, days=4),
+                 "amount": 28640},
+                {"number": "PO-22829", "title": "Гидрофильтры — 12 шт",
+                 "status": "В ПУТИ", "status_color": "green",
                  "stages": [True, True, True, False, False],
-                 "stage_labels": ["RFQ", "Order", "Production", "Customs", "Delivered"],
-                 "seller": "Caterpillar Eurasia", "operator": "Logist",
-                 "eta": "ETA · 30 апр · on schedule", "amount": 2112},
+                 "stage_labels": ["RFQ", "Заказ", "Производство", "Таможня", "Доставлен"],
+                 "seller": "Caterpillar Eurasia",
+                 "eta": "ETA " + _eta_label(request, days=2),
+                 "amount": 2112},
             ],
         })
 

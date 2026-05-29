@@ -47,18 +47,31 @@ DEBUG = _env_bool("DEBUG_MODE", False)
 SECRET_KEY = _env("SECRET_KEY")
 if not SECRET_KEY:
     if DEBUG:
-        SECRET_KEY = "dev-secret-change-in-production"
+        # FIX (HIGH): больше не используем известный hardcoded fallback —
+        # генерим эфемерный ключ для dev (сессии не переживут перезапуск,
+        # но это безопаснее чем известный всем 'dev-secret-...').
+        import secrets as _secrets
+        SECRET_KEY = "dev-ephemeral-" + _secrets.token_urlsafe(48)
+        import warnings as _warnings
+        _warnings.warn(
+            "SECRET_KEY not set — using ephemeral dev key. Sessions won't "
+            "persist across restarts. Set SECRET_KEY env var for stable dev.",
+            RuntimeWarning, stacklevel=2,
+        )
     else:
         raise RuntimeError("SECRET_KEY is required")
 
 
+# FIX (HIGH): .localhost.run / .lhr.life — публичные tunneling-TLD, через них
+# можно перехватить CSRF/session если поднять malicious subdomain. По умолчанию
+# только локалхост; tunneling нужно явно включать через env.
 ALLOWED_HOSTS = _env_list(
     "ALLOWED_HOSTS",
-    "127.0.0.1,localhost,.localhost.run,.lhr.life",
+    "127.0.0.1,localhost",
 )
 CSRF_TRUSTED_ORIGINS = _env_list(
     "CSRF_TRUSTED_ORIGINS",
-    "http://127.0.0.1,http://127.0.0.1:8001,http://localhost,http://localhost:8001,https://*.localhost.run,https://*.lhr.life",
+    "http://127.0.0.1,http://127.0.0.1:8001,http://localhost,http://localhost:8001",
 )
 
 INSTALLED_APPS = [
@@ -111,6 +124,8 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "marketplace.middleware.UserLanguageMiddleware",
+    # View-as: оператор → кабинет поставщика для контроля (read-only)
+    "marketplace.middleware.OperatorViewAsMiddleware",
     # Старые кабинеты → /chat/ (chat-first — единственный UI)
     "marketplace.middleware.LegacyCabinetRedirectMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -255,7 +270,10 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Consolidator Parts <norepl
 SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 ADMINS = [tuple(a.split(":", 1)) for a in _env_list("ADMINS", "") if ":" in a]
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours
-USE_HTTPS = _env_bool("USE_HTTPS", False)
+# FIX (HIGH): по умолчанию prod-режим = HTTPS. В DEBUG можно явно отключить
+# env var. Это закрывает дыру: раньше USE_HTTPS=False по умолчанию означал
+# session/csrf cookies без Secure-флага даже в prod.
+USE_HTTPS = _env_bool("USE_HTTPS", not DEBUG)
 SESSION_COOKIE_SECURE = _env_bool("SESSION_COOKIE_SECURE", USE_HTTPS)
 CSRF_COOKIE_SECURE = _env_bool("CSRF_COOKIE_SECURE", USE_HTTPS)
 # Явная защита cookies (Django дефолты тоже True, но фиксируем для security-audit):

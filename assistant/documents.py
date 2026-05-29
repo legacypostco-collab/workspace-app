@@ -505,14 +505,14 @@ def generate_invoice_pdf(params, user, role):
         return err
     try:
         buf = _build_invoice_pdf(order)
-        doc = _save_pdf(order, "invoice", f"Invoice ORD-{order.id}", buf, user)
+        doc = _save_pdf(order, "invoice", f"Счёт на оплату ORD-{order.id}", buf, user)
     except Exception as e:
         logger.exception("invoice PDF generation failed")
-        return ActionResult(text=f"⚠️ Не удалось сгенерировать invoice: {e}")
+        return ActionResult(text=f"⚠️ Не удалось создать счёт: {e}")
     url = _doc_url(doc)
     return ActionResult(
         text=(
-            f"✓ Commercial Invoice сгенерирован.\n"
+            f"Счёт на оплату создан.\n"
             f"Заказ ORD-{order.id} · ${order.total_amount:,.2f}"
         ),
         cards=[{"type": "doc", "data": {
@@ -538,13 +538,13 @@ def generate_packing_list_pdf(params, user, role):
         return err
     try:
         buf = _build_packing_list_pdf(order)
-        doc = _save_pdf(order, "packing_list", f"Packing List ORD-{order.id}", buf, user)
+        doc = _save_pdf(order, "packing_list", f"Упаковочный лист ORD-{order.id}", buf, user)
     except Exception as e:
         logger.exception("packing list PDF generation failed")
-        return ActionResult(text=f"⚠️ Не удалось сгенерировать packing list: {e}")
+        return ActionResult(text=f"⚠️ Не удалось создать упаковочный лист: {e}")
     url = _doc_url(doc)
     return ActionResult(
-        text=f"✓ Packing List сгенерирован для ORD-{order.id}.",
+        text=f"Упаковочный лист по заказу ORD-{order.id} готов.",
         cards=[{"type": "doc", "data": {
             "id": str(doc.id), "title": doc.title, "kind": "packing_list",
             "url": url,
@@ -561,13 +561,13 @@ def generate_qc_report_pdf(params, user, role):
         return err
     try:
         buf = _build_qc_report_pdf(order)
-        doc = _save_pdf(order, "quality_report", f"QC Report ORD-{order.id}", buf, user)
+        doc = _save_pdf(order, "quality_report", f"Акт контроля качества ORD-{order.id}", buf, user)
     except Exception as e:
         logger.exception("QC report PDF generation failed")
-        return ActionResult(text=f"⚠️ Не удалось сгенерировать QC report: {e}")
+        return ActionResult(text=f"⚠️ Не удалось создать акт качества: {e}")
     url = _doc_url(doc)
     return ActionResult(
-        text=f"✓ QC Report сгенерирован для ORD-{order.id}.",
+        text=f"Акт контроля качества по заказу ORD-{order.id} готов.",
         cards=[{"type": "doc", "data": {
             "id": str(doc.id), "title": doc.title, "kind": "qc_report",
             "url": url,
@@ -587,11 +587,11 @@ def list_order_documents(params, user, role):
         return ActionResult(
             text=f"По заказу ORD-{order.id} пока нет документов.",
             actions=[
-                {"action": "generate_invoice_pdf", "label": "🧾 Создать invoice",
+                {"action": "generate_invoice_pdf", "label": "Создать счёт на оплату",
                  "params": {"order_id": order.id}},
-                {"action": "generate_packing_list_pdf", "label": "📦 Packing list",
+                {"action": "generate_packing_list_pdf", "label": "Создать упаковочный лист",
                  "params": {"order_id": order.id}},
-                {"action": "generate_qc_report_pdf", "label": "✅ QC report",
+                {"action": "generate_qc_report_pdf", "label": "Создать акт качества",
                  "params": {"order_id": order.id}},
             ],
         )
@@ -606,11 +606,11 @@ def list_order_documents(params, user, role):
         text=f"📄 Документы по заказу ORD-{order.id} ({len(cards)}):",
         cards=cards,
         actions=[
-            {"action": "generate_invoice_pdf", "label": "+ Invoice",
+            {"action": "generate_invoice_pdf", "label": "+ Счёт на оплату",
              "params": {"order_id": order.id}},
-            {"action": "generate_packing_list_pdf", "label": "+ Packing list",
+            {"action": "generate_packing_list_pdf", "label": "+ Упаковочный лист",
              "params": {"order_id": order.id}},
-            {"action": "generate_qc_report_pdf", "label": "+ QC report",
+            {"action": "generate_qc_report_pdf", "label": "+ Акт качества",
              "params": {"order_id": order.id}},
         ],
     )

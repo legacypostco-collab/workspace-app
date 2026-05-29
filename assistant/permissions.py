@@ -80,9 +80,10 @@ def _override_allowed(user, requested: str) -> bool:
     # Operator может уточнять подроль (operator_logist и т.п.)
     if real == "operator" and requested.startswith("operator"):
         return True
-    # Demo-аккаунты в DEBUG могут всё (нужно для демо-сценариев)
-    if _is_demo_account(user):
-        return True
+    # SECURITY: даже demo-аккаунты НЕ должны переключать роль (buyer→seller→operator)
+    # без явного логина. Раньше тут было `if _is_demo_account(user): return True`,
+    # что позволяло demo_buyer одним кликом смотреть кабинет оператора.
+    # Теперь любая смена роли = смена аккаунта = ввод пароля.
     return False
 
 
@@ -120,14 +121,26 @@ def detect_user_role(user, *, request=None, override: str | None = None) -> str:
     if op_sub:
         return f"operator_{op_sub}"
 
-    # Try username heuristic for demo accounts (только в DEBUG)
+    # Try username heuristic for demo accounts (только в DEBUG).
+    # Суб-роль определяется суффиксом: demo_operator_logist / _customs / _payment / _manager.
+    # Без суффикса demo_operator → general operator (полный набор).
     if _is_demo_account(user):
         name = (user.username or "").lower()
-        if "operator" in name or "logist" in name:
-            return "operator_logist"
         if "buyer" in name:
             return "buyer"
         if "seller" in name:
             return "seller"
+        if "operator" in name or "logist" in name:
+            # Точные суффиксы → суб-роль
+            if name.endswith("_logist") or "logist" in name:
+                return "operator_logist"
+            if name.endswith("_customs") or "_customs_" in name:
+                return "operator_customs"
+            if name.endswith("_payment") or "_payment_" in name or name.endswith("_payments"):
+                return "operator_payment"
+            if name.endswith("_manager") or "_manager_" in name:
+                return "operator_manager"
+            # demo_operator без суффикса → general operator (полный доступ)
+            return "operator"
 
     return "buyer"

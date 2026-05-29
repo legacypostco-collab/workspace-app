@@ -265,6 +265,16 @@ def op_queue(params, user, role):
 
     flt = (params.get("filter") or "all").strip().lower()
     qs = Order.objects.all()
+    # PIVOT 2026-05-27: оператор видит только заказы/sub-orders своих
+    # поставщиков. Лиды (is_staff=True) — всё. Параметр `all_ops=1` СНИМАЕТ
+    # фильтр ТОЛЬКО ДЛЯ STAFF — обычный оператор не может им bypass'нуть PIVOT.
+    show_all = user.is_staff  # обычный operator (is_staff=False) ВСЕГДА ограничен своими
+    if not show_all:
+        # Sub-orders с assigned_operator=user + non-sub orders без split (single-op)
+        # где assigned_operator=user
+        qs = qs.filter(assigned_operator=user)
+    # Скрываем parent-orders (для оператора они избыточны: их sub-orders уже в выдаче)
+    qs = qs.filter(sub_orders__isnull=True) if not show_all else qs
     if flt == "breached":
         qs = qs.filter(sla_status="breached")
     elif flt == "at_risk":
@@ -275,6 +285,13 @@ def op_queue(params, user, role):
         qs = qs.filter(payment_status="awaiting_reserve")
     elif flt == "open":
         qs = qs.filter(status__in=OPEN_STATUSES)
+    # Логистические фильтры — drill-down с KPI-карточек op_logistics_stats.
+    elif flt == "live":
+        qs = qs.filter(status__in=("transit_abroad", "customs", "transit_rf", "issuing"))
+    elif flt == "customs":
+        qs = qs.filter(status="customs")
+    elif flt == "transit":
+        qs = qs.filter(status__in=("transit_abroad", "transit_rf", "issuing"))
     qs = qs.exclude(status__in=("completed", "cancelled"))\
            .order_by("sla_status", "-created_at")[:200]
 
@@ -320,6 +337,58 @@ def op_queue(params, user, role):
 
     cards = []
     total_count = 0
+
+    # ── ФАЗА 0: RFQ ждут подтверждения оператора (SEMI) ──
+    # Перед оплатой резерва идёт стадия SEMI: каталог сматчил позиции,
+    # оператор должен проверить и подтвердить КП клиенту.
+    if flt in ("all", "open"):
+        from marketplace.models import RFQ
+        from datetime import timedelta as _td
+        from django.utils import timezone as _tz
+        now = _tz.now()
+        pending_rfqs = list(
+            RFQ.objects.filter(mode="semi", status__in=("new", "processing", "matched"))
+                       .order_by("created_at")[:50]
+        )
+        if pending_rfqs:
+            rfq_items = [{
+                "title":    "Этап: Ждут подтверждения оператора (SEMI)",
+                "subtitle": "Действие оператора: проверить позиции, утвердить КП клиенту или запросить уточнение (SLA 15 мин)",
+            }]
+            n_breach = 0
+            for r in pending_rfqs[:10]:
+                age_min = int((now - r.created_at).total_seconds() // 60) if r.created_at else 0
+                left = 15 - age_min
+                if left < 0:
+                    sla_str = f"SLA нарушен {abs(left)} мин назад"
+                    tone = "bad"
+                    n_breach += 1
+                elif left < 5:
+                    sla_str = f"осталось {left} мин"
+                    tone = "warn"
+                else:
+                    sla_str = f"осталось {left} мин из 15"
+                    tone = "ok"
+                rfq_items.append({
+                    "title":    f"RFQ #{r.id} · {r.customer_name or '—'}",
+                    "subtitle": f"{r.items.count()} позиций · {sla_str}",
+                    "tone":     tone,
+                    "badge":    {"label": "Ждёт подтверждения", "tone": "warn"},
+                    "action":   "op_approve_kp",
+                    "params":   {"rfq_id": r.id},
+                })
+            n_total_rfq = len(pending_rfqs)
+            total_count += n_total_rfq
+            meta_bits_rfq = [f"{n_total_rfq} RFQ"]
+            if n_breach:
+                meta_bits_rfq.append(f"{n_breach} SLA нарушен")
+            cards.append({"type": "list", "data": {
+                "title": f"Ждут подтверждения оператора · {' · '.join(meta_bits_rfq)}",
+                "items": rfq_items
+                          + ([{"title": f"… ещё {n_total_rfq - 10} RFQ", "subtitle": "—"}]
+                              if n_total_rfq > 10 else []),
+            }})
+
     for status_code, (stage_title, op_action) in STAGE_META.items():
         orders = groups.get(status_code) or []
         if not orders:
@@ -349,7 +418,7 @@ def op_queue(params, user, role):
         if n_at_risk:  meta_bits.append(f"{n_at_risk} под угрозой")
         # Header-item стилизованный — это первая строка с подзаголовком
         header = {
-            "title":    f"📍 Этап: {stage_title}",
+            "title":    f"Этап: {stage_title}",
             "subtitle": "Действие оператора: " + op_action,
         }
         cards.append({"type": "list", "data": {
@@ -468,9 +537,9 @@ def op_rfq_queue(params, user, role):
     # ── Все 3 режима в одном экране ─────────────────────────
     cards = []
     totals = {}
+    # PIVOT 2026-05-26: убран MANUAL — только AUTO + SEMI
     for mk, label_prefix, sla_hint in [
         ("semi",   "Оператор подтверждает", "SLA 15 мин"),
-        ("manual", "Адресный поиск",        "SLA 48 ч"),
         ("auto",   "Без оператора",          "≈1 сек"),
     ]:
         items, total = _build_items(mk, limit=8)
@@ -494,17 +563,17 @@ def op_rfq_queue(params, user, role):
                           if total > 8 else []),
         }})
 
+    # PIVOT 2026-05-26: Ручная рассылка (MANUAL) удалена как класс.
+    # Показываем только Автоподбор и SEMI (подтверждения оператора).
     return ActionResult(
-        text=(f"📋 Очередь RFQ · {totals.get('semi',0)+totals.get('manual',0)+totals.get('auto',0)} в работе.\n"
-              f"SEMI: {totals.get('semi',0)} (15 мин) · "
-              f"MANUAL: {totals.get('manual',0)} (48 ч) · "
-              f"AUTO: {totals.get('auto',0)} (без оператора)."),
-        cards=cards,
+        text=(f"Очередь RFQ · {totals.get('semi',0)+totals.get('auto',0)} в работе.\n"
+              f"Нужно подтвердить: {totals.get('semi',0)} (15 мин) · "
+              f"Автоподбор: {totals.get('auto',0)}."),
+        cards=[c for c in cards if not (c.get('data',{}).get('title','').startswith('Ручная'))],
         contextual_actions=[
             {"action": "op_analytics_hub", "label": "← Аналитика"},
-            {"action": "op_rfq_queue", "label": "SEMI",   "params": {"mode": "semi"}},
-            {"action": "op_rfq_queue", "label": "MANUAL", "params": {"mode": "manual"}},
-            {"action": "op_rfq_queue", "label": "AUTO",   "params": {"mode": "auto"}},
+            {"action": "op_rfq_queue", "label": "Нужно подтвердить",  "params": {"mode": "semi"}},
+            {"action": "op_rfq_queue", "label": "Автоподбор",         "params": {"mode": "auto"}},
             {"action": "op_dashboard", "label": "← Дашборд"},
         ],
     )
@@ -621,7 +690,7 @@ def op_sla_breach(params, user, role):
     arrow = "↑" if breach_trend > 0 else ("↓" if breach_trend < 0 else "→")
 
     kpi_items = [
-        {"label": "SLA здоровье",
+        {"label": "Доля заказов в срок",
          "value": f"{sla_health}%",
          "tone": "bad" if sla_health < 70 else ("warn" if sla_health < 90 else "ok")},
     ]
@@ -633,33 +702,43 @@ def op_sla_breach(params, user, role):
         })
     if money_at_risk:
         kpi_items.append({
-            "label": "Сумма под риском",
+            "label": "Деньги под риском",
             "value": f"${money_at_risk:,.0f}",
             "tone": "warn",
         })
     if top_stage_label:
         kpi_items.append({
-            "label": "Узкое место",
+            "label": "Самый медленный этап",
             "value": f"{top_stage_label} ({top_stage_n})",
             "tone": "bad",
         })
         kpi_items.append({
-            "label": "Кто срывает чаще",
+            "label": "Кто чаще нарушает SLA",
             "value": top_owner, "tone": "warn",
         })
-    if breach_30 or breach_prev:
+    # Показываем тренд только если есть что показать (изменение хотя бы на 1 заказ).
+    # «→ стабильно» при нулевой разнице — бесполезный шум на дашборде.
+    breach_diff = breach_30 - breach_prev
+    if abs(breach_diff) >= 1:
+        if breach_diff < 0:
+            trend_value = f"↓ на {abs(breach_diff)} меньше ({breach_30} за 30д)"
+            trend_tone = "ok"
+        else:
+            trend_value = f"↑ на {breach_diff} больше ({breach_30} за 30д)"
+            trend_tone = "bad" if breach_diff >= 3 else "warn"
         kpi_items.append({
-            "label": "Тренд 30д vs 30д",
-            "value": f"{arrow} {abs(breach_trend)}% ({breach_30} шт)",
-            "tone": "bad" if breach_trend > 20 else ("ok" if breach_trend < -10 else "info"),
+            "label": "Нарушений к прошлому месяцу",
+            "value": trend_value,
+            "sub": f"было {breach_prev} → стало {breach_30}",
+            "tone": trend_tone,
         })
 
     # Actionable инсайт
     if len(breached_rows) and top_stage_label:
-        intro = (f"Узкое место сейчас: {top_stage_label} ({top_stage_n} нарушений). "
+        intro = (f"Самый медленный этап: {top_stage_label} ({top_stage_n} нарушений). "
                  f"Начните с эскалации {top_owner}.")
     elif sla_health < 70:
-        intro = f"SLA здоровье {sla_health}% — критическая зона. Нужны срочные действия."
+        intro = f"В срок укладываются всего {sla_health}% заказов — критическая зона. Нужны срочные действия."
     elif breach_trend > 20:
         intro = (f"За 30 дней рост SLA-нарушений на {breach_trend}% — "
                  f"проверьте, что изменилось в процессе.")
@@ -1401,6 +1480,12 @@ def op_resolve_dispute(params, user, role):
     except (Order.DoesNotExist, ValueError, TypeError):
         return ActionResult(text="Заказ не найден.")
 
+    # FIX (HIGH): обычный оператор может resolve dispute только по своим
+    # назначенным заказам (PIVOT 2026-05-27). Только staff (lead-operator)
+    # может закрыть любой спор.
+    if not user.is_staff and order.assigned_operator_id and order.assigned_operator_id != user.id:
+        return ActionResult(text="Этот спор не назначен на вас — обратитесь к старшему оператору.")
+
     resolution = (params.get("resolution") or "").strip().lower()
     refund_amount_raw = params.get("refund_amount") or "0"
     confirmed = bool(params.get("confirmed"))
@@ -2129,7 +2214,7 @@ def op_logistics_stats(params, user, role):
         return err
     from datetime import timedelta
 
-    from django.db.models import Count
+    from django.db.models import Count, Sum
 
     from marketplace.models import Order, OrderEvent
 
@@ -2347,28 +2432,124 @@ def op_logistics_stats(params, user, role):
         return sum(deltas) / len(deltas) if deltas else None
     lead_30 = _avg_lead(now - timedelta(days=30), now)
     lead_prev = _avg_lead(prev_cut, now - timedelta(days=30))
+    # Динамика срока — считаем в ДНЯХ (а не в %), это конкретнее.
     if lead_30 and lead_prev:
-        speed_delta = int((lead_30 - lead_prev) * 100 / lead_prev)
+        days_delta = lead_30 - lead_prev  # >0 = стало медленнее, <0 = быстрее
     else:
-        speed_delta = 0
-    speed_arrow = "↓" if speed_delta < 0 else ("↑" if speed_delta > 0 else "→")
+        days_delta = 0
 
-    items = [
-        {"label": "Средний lead-time (90д)",
-         "value": f"{avg_days:.1f} дн" if avg_days is not None else "—",
-         "tone": "ok" if (avg_days or 99) <= 30 else ("warn" if (avg_days or 0) <= 45 else "bad")},
-        {"label": "Узкое место",
-         "value": slowest_label, "tone": "warn" if slowest else "info"},
-        {"label": "Тренд скорости",
-         "value": (f"{speed_arrow} {abs(speed_delta)}%" if speed_delta else "→ стабильно"),
-         "tone": "ok" if speed_delta < 0 else ("bad" if speed_delta > 15 else "info")},
-        {"label": "SLA здоровье маршрутов",
-         "value": f"{sla_health}%",
-         "tone": "bad" if sla_health < 70 else ("warn" if sla_health < 90 else "ok")},
-        {"label": "Нарушено / под угрозой",
-         "value": f"{sla_breached_n} / {sla_atrisk_n}",
-         "tone": "bad" if sla_breached_n else ("warn" if sla_atrisk_n else "ok")},
-    ]
+    # ── Конструктивная сводка для оператора ──────────────────
+    # Принцип: каждая ячейка — реальное число + action-формулировка в sub.
+    # Метрик-плейсхолдеров «—» не показываем, если данных нет — карточки нет.
+    live_value = float(live_active.aggregate(s=Sum("total_amount"))["s"] or 0)
+    delivered_n_90d = delivered_orders.count() if delivered_orders.exists() else 0
+    items = []
+
+    # Drill-down карты: каждая KPI-ячейка — кнопка, открывает соответствующий
+    # отфильтрованный список заказов.
+    # 1) ЧТО СЕЙЧАС НА КОНТРОЛЕ ── главная ячейка
+    items.append({
+        "label": "Активных отгрузок",
+        "value": f"{live_total}",
+        "sub": (f"на ${live_value:,.0f}" if live_value else "ни одной в работе"),
+        "tone": "info",
+        "action": "op_queue" if live_total else None,
+        "params": {"filter": "live"} if live_total else None,
+    })
+
+    # 2) В зоне риска — показываем только когда есть проблема
+    if sla_breached_n or sla_atrisk_n:
+        risk_total = sla_breached_n + sla_atrisk_n
+        sub_parts = []
+        if sla_breached_n:
+            sub_parts.append(f"{sla_breached_n} просрочено")
+        if sla_atrisk_n:
+            sub_parts.append(f"{sla_atrisk_n} под угрозой")
+        items.append({
+            "label": "Требуют внимания",
+            "value": f"{risk_total}",
+            "sub": " · ".join(sub_parts),
+            "tone": "bad" if sla_breached_n else "warn",
+            "action": "op_sla_breach",
+            "params": {},
+        })
+
+    # 3) На таможне — отдельно, т.к. это самый частый источник задержек
+    if on_customs:
+        customs_avg = stage_avg_days.get("customs")
+        items.append({
+            "label": "Сейчас на таможне",
+            "value": f"{on_customs}",
+            "sub": (f"в среднем {customs_avg:.0f} дн на этапе"
+                    if customs_avg else "контроль брокера"),
+            "tone": "warn" if on_customs > 3 else "info",
+            "action": "op_queue",
+            "params": {"filter": "customs"},
+        })
+
+    # 4) В транзите
+    if in_transit:
+        items.append({
+            "label": "В пути",
+            "value": f"{in_transit}",
+            "sub": "транзит + приёмка",
+            "tone": "info",
+            "action": "op_queue",
+            "params": {"filter": "transit"},
+        })
+
+    # 5) Производительность — только если есть delivered за 90д
+    if avg_days is not None and delivered_n_90d:
+        items.append({
+            "label": "Доставлено за 90 дней",
+            "value": f"{delivered_n_90d}",
+            "sub": f"средний срок {avg_days:.0f} дн",
+            "tone": "ok" if avg_days <= 30 else ("warn" if avg_days <= 45 else "bad"),
+            # Доставленные — informational, без drill-down (целевая страница их не покажет).
+        })
+
+    # 6) Самый медленный этап — клик ведёт в очередь по этому статусу
+    if slowest:
+        stage_filter_map = {
+            "transit_abroad": "transit",
+            "transit_rf":     "transit",
+            "issuing":        "transit",
+            "customs":        "customs",
+        }
+        items.append({
+            "label": "Самый медленный этап",
+            "value": stage_lbl[slowest[0]],
+            "sub": f"в среднем {slowest[1]:.1f} дн на нём",
+            "tone": "warn" if slowest[1] >= 10 else "info",
+            "action": "op_queue",
+            "params": {"filter": stage_filter_map.get(slowest[0], "live")},
+        })
+
+    # 7) Динамика срока к прошлому месяцу — только при значимом изменении
+    if abs(days_delta) >= 1:
+        if days_delta < 0:
+            items.append({
+                "label": "Стали возить быстрее",
+                "value": f"на {abs(days_delta):.0f} дн",
+                "sub": f"было {lead_prev:.0f} → стало {lead_30:.0f} дн",
+                "tone": "ok",
+            })
+        else:
+            items.append({
+                "label": "Стали возить медленнее",
+                "value": f"на {days_delta:.0f} дн",
+                "sub": f"было {lead_prev:.0f} → стало {lead_30:.0f} дн",
+                "tone": "bad" if days_delta >= 5 else "warn",
+            })
+
+    # 8) Если совсем пусто (нет ни активных, ни данных) — единственная карточка
+    if not items or (len(items) == 1 and live_total == 0):
+        items = [{
+            "label": "Логистика простаивает",
+            "value": "0",
+            "sub": "нет ни активных отгрузок, ни доставленных за 90 дней",
+            "tone": "info",
+        }]
 
     # ── Аналитика по модам доставки (Море / Авиа / Авто / ЖД) ──
     # По доставленным за 90 дней: количество, средний lead-time, средняя
@@ -2571,17 +2752,19 @@ def op_logistics_stats(params, user, role):
                        f"Проверьте сертификаты и HS-коды.")
     elif slowest and slowest[1] > 20:
         log_insight = f"Самый медленный этап: {slowest_label}. Есть смысл сменить подрядчика."
-    elif speed_delta > 15:
-        log_insight = f"Скорость доставки выросла на {abs(speed_delta)}% — проверьте причину."
-    elif speed_delta < -10:
-        log_insight = f"Скорость упала на {abs(speed_delta)}% — хорошая динамика."
+    elif days_delta >= 5:
+        log_insight = (f"Стали возить на {days_delta:.0f} дн дольше "
+                       f"(было {lead_prev:.0f} → стало {lead_30:.0f}). Проверьте причину.")
+    elif days_delta <= -3:
+        log_insight = (f"Доставка ускорилась на {abs(days_delta):.0f} дн "
+                       f"(было {lead_prev:.0f} → стало {lead_30:.0f}) — хорошая динамика.")
     else:
         log_insight = "Логистика в норме."
 
     # В отчёт идёт ТОЛЬКО аналитика. Индивидуальные заказы доступны через
     # «📋 Очередь» и карточки заказа — здесь дублировать незачем.
     cards_out = [
-        {"type": "kpi_grid", "data": {"title": "🚚 Логистика — скорость и узкие места", "items": items}},
+        {"type": "kpi_grid", "data": {"title": "🚚 Логистика — что под контролем сейчас", "items": items}},
     ]
     if mode_rows:
         cards_out.append({"type": "list", "data": {
@@ -2810,50 +2993,114 @@ def op_analytics_hub(params, user, role):
          "subtitle": "Конверсия резерв → финал · средние сроки оплат"},
     ]
 
-    # Текст — actionable инсайт по приоритету
-    if claim_rate is not None and claim_rate >= 10:
-        insight = (f"Уровень рекламаций {claim_rate}% от доставленных за 30д — "
-                   f"проверьте качество поставок и сегмент топ-причин.")
-    elif gmv_trend_pct < -15:
-        insight = (f"GMV за 30д упал на {abs(gmv_trend_pct)}% — посмотрите спрос и "
-                   f"конверсию RFQ.")
-    elif gmv_trend_pct > 20:
-        insight = (f"GMV за 30д вырос на {gmv_trend_pct}% — проверьте, тянет ли "
-                   f"логистика и эскроу.")
-    elif in_work_share > 60:
-        insight = (f"{in_work_share}% всех заказов в работе — возможно, узкое "
-                   f"место в pipeline. Откройте SLA-отчёт.")
-    else:
-        insight = "Платформа работает в нормальном режиме."
+    # Текст — конкретные приоритеты для оператора (не CEO-уровень).
 
-    arrow = "↑" if gmv_trend_pct > 0 else ("↓" if gmv_trend_pct < 0 else "→")
+    # ── Только то, на что оператор может прямо сейчас повлиять ──
+    # Executive-метрики (GMV, рост) — в отдельный «Заказы и GMV» отчёт ниже.
+    # Здесь только operational signals: что в работе, что просрочено, что
+    # требует разбора.
+    sla_breached = Order.objects.filter(
+        sla_status="breached",
+    ).exclude(status__in=("delivered", "completed", "cancelled")).count()
+    sla_at_risk = Order.objects.filter(
+        sla_status="at_risk",
+    ).exclude(status__in=("delivered", "completed", "cancelled")).count()
+    on_customs = Order.objects.filter(status="customs").count()
+    open_claims = OrderClaim.objects.filter(status__in=("open", "in_review")).count()
+    # KYB pending — если модель доступна
+    kyb_pending = 0
+    try:
+        from marketplace.models import CompanyVerification
+        kyb_pending = CompanyVerification.objects.filter(status="pending").count()
+    except Exception:
+        pass
+    new_7d = Order.objects.filter(created_at__gte=now - timedelta(days=7)).count()
+
+    health_items = []
+    # 1) Срочно: SLA — самая важная ячейка, операторская работа = не допустить срыв
+    if sla_breached or sla_at_risk:
+        risk_total = sla_breached + sla_at_risk
+        sub_parts = []
+        if sla_breached: sub_parts.append(f"{sla_breached} просрочено")
+        if sla_at_risk:  sub_parts.append(f"{sla_at_risk} под угрозой")
+        health_items.append({
+            "label": "Срочно: SLA",
+            "value": str(risk_total),
+            "sub": " · ".join(sub_parts),
+            "tone": "bad" if sla_breached else "warn",
+            "action": "op_sla_breach", "params": {}})
+
+    # 2) Активная нагрузка — всегда показываем
+    health_items.append({
+        "label": "В работе сейчас",
+        "value": str(active),
+        "sub": f"{new_7d} новых за последние 7 дней",
+        "tone": "info",
+        "action": "op_queue", "params": {"filter": "open"}})
+
+    # 3) Таможня — главное узкое место в трансгран логистике
+    if on_customs:
+        health_items.append({
+            "label": "На таможне",
+            "value": str(on_customs),
+            "sub": "требуют контроля брокера",
+            "tone": "warn" if on_customs >= 3 else "info",
+            "action": "op_queue", "params": {"filter": "customs"}})
+
+    # 4) Рекламации в работе — операторский фронт
+    if open_claims:
+        health_items.append({
+            "label": "Рекламации в разборе",
+            "value": str(open_claims),
+            "sub": "open + in_review",
+            "tone": "warn" if open_claims >= 5 else "info",
+            "action": "get_claims", "params": {"status": "in_review"}})
+
+    # 5) KYB-очередь — оператор одобряет новых поставщиков
+    if kyb_pending:
+        health_items.append({
+            "label": "KYB на проверке",
+            "value": str(kyb_pending),
+            "sub": "анкеты поставщиков ждут решения",
+            "tone": "warn" if kyb_pending >= 5 else "info",
+            "action": "op_kyb_queue", "params": {}})
+
+    # Если ничего срочного — лаконичная зелёная ячейка
+    if not health_items or (len(health_items) == 1 and active == 0):
+        health_items = [{
+            "label": "Платформа в покое",
+            "value": "0",
+            "sub": "нет активных заказов, SLA-нарушений и открытых рекламаций",
+            "tone": "ok",
+        }]
+
+    # Operational insight — приоритизируем для оператора (не CEO).
+    if sla_breached:
+        insight = (f"{sla_breached} заказов уже нарушили SLA. Это первая задача — "
+                   f"откройте «Срочно: SLA» и эскалируйте.")
+    elif sla_at_risk >= 3:
+        insight = (f"{sla_at_risk} заказов под угрозой SLA. Свяжитесь с подрядчиками "
+                   f"чтобы успели — пока не дошло до нарушения.")
+    elif open_claims >= 5:
+        insight = (f"{open_claims} рекламаций в разборе. Разгребите очередь, чтобы "
+                   f"не копились.")
+    elif kyb_pending >= 5:
+        insight = (f"{kyb_pending} KYB-анкет ждут решения. Откройте очередь — "
+                   f"поставщики простаивают без верификации.")
+    elif on_customs >= 5:
+        insight = (f"{on_customs} грузов на таможне — проверьте, не застряли ли "
+                   f"какие-то дольше 3 дней.")
+    elif active == 0:
+        insight = "Платформа в покое — активной работы нет."
+    else:
+        insight = f"{active} заказов в работе. Срочных проблем нет."
 
     return ActionResult(
         text=insight,
         cards=[
             {"type": "kpi_grid", "data": {
-                "title": "📊 Здоровье платформы",
-                "items": [
-                    {"label": "GMV за 30д",
-                     "value": f"${gmv_30:,.0f}",
-                     "tone": "ok" if gmv_trend_pct >= 0 else "warn"},
-                    {"label": "Тренд GMV 30д vs 30д",
-                     "value": f"{arrow} {abs(gmv_trend_pct)}%",
-                     "tone": "bad" if gmv_trend_pct < -15 else ("ok" if gmv_trend_pct > 0 else "warn")},
-                    {"label": "Средний чек",
-                     "value": f"${avg_check:,.0f}",
-                     "tone": "info"},
-                    {"label": "Конверсия в доставку 30д",
-                     "value": f"{conversion}%",
-                     "tone": "ok" if conversion >= 70 else ("warn" if conversion >= 40 else "bad")},
-                    {"label": "Доля заказов в работе",
-                     "value": f"{in_work_share}%",
-                     "tone": "warn" if in_work_share > 60 else "info"},
-                    {"label": "Claim rate (30д)",
-                     "value": (f"{claim_rate}%" if claim_rate is not None else "недостаточно данных"),
-                     "tone": ("bad" if (claim_rate or 0) >= 10 else ("warn" if (claim_rate or 0) >= 5 else "ok"))
-                              if claim_rate is not None else "info"},
-                ],
+                "title": "📊 Что требует внимания сейчас",
+                "items": health_items,
             }},
             {"type": "list", "data": {
                 "title": "📈 Доступные отчёты — кликните для деталей",
@@ -2862,6 +3109,108 @@ def op_analytics_hub(params, user, role):
         ],
         contextual_actions=[
             {"action": "op_dashboard", "label": "← Главный дашборд"},
+        ],
+    )
+
+
+@register("op_my_suppliers")
+def op_my_suppliers(params, user, role):
+    """PIVOT 2026-05-27: список поставщиков закреплённых за этим оператором.
+
+    Capacity-индикатор N/25, статусы (trusted/sandbox/risky), активные сделки
+    по каждому.
+    """
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from marketplace.models import UserProfile, Order
+    MAX = 25
+    profiles = list(UserProfile.objects.filter(assigned_operator=user)
+                     .select_related("user").order_by("supplier_status", "user__username"))
+    rows = []
+    _STATUS_RU = {"trusted": "Надёжный", "sandbox": "Песочница",
+                  "risky": "Рисковый", "rejected": "Исключён"}
+    for p in profiles:
+        # активные sub-orders по этому поставщику
+        active_n = Order.objects.filter(
+            assigned_operator=user,
+            items__part__seller=p.user,
+        ).exclude(status__in=("delivered", "completed", "cancelled")).distinct().count()
+        rows.append({
+            "title": f"{p.user.username}",
+            "subtitle": (f"{_STATUS_RU.get(p.supplier_status, p.supplier_status or '—')} · "
+                          f"рейтинг {float(p.rating_score or 0):.1f} · {active_n} активных сделок"),
+            "tone": {"trusted": "ok", "sandbox": "warn",
+                     "risky": "bad", "rejected": "bad"}.get(p.supplier_status),
+            "action": "contact_supplier",
+            "params": {"seller_id": p.user_id, "seller_username": p.user.username},
+        })
+    cap = len(profiles)
+    capacity_label = f"{cap} / {MAX}"
+    title = f"Мои поставщики · {capacity_label}"
+    if cap >= MAX:
+        title += " · ЛИМИТ"
+    return ActionResult(
+        text=(
+            f"Закреплено {cap} из {MAX} поставщиков. "
+            + ("Свободных слотов нет — освободите место перед KYB-approve нового." if cap >= MAX
+                else f"Свободно {MAX - cap} слотов.")
+        ),
+        cards=[{"type": "list", "data": {
+            "title": title,
+            "items": rows or [{"title": "Поставщиков нет",
+                                "subtitle": "Одобрите KYB-анкеты — они закрепятся за вами автоматически"}],
+        }}],
+        actions=[
+            {"label": "Очередь KYB", "action": "op_kyb_queue", "params": {}},
+        ],
+        contextual_actions=[
+            {"action": "op_dashboard", "label": "← Дашборд"},
+        ],
+    )
+
+
+@register("op_my_bonuses")
+def op_my_bonuses(params, user, role):
+    """Список бонусов оператора с фильтрами: pending / released_30d / all."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from datetime import timedelta
+    from django.utils import timezone
+    from marketplace.models import OperatorBonusLine
+    flt = (params or {}).get("filter", "all")
+    qs = OperatorBonusLine.objects.filter(operator=user).select_related("order")
+    if flt == "pending":
+        qs = qs.filter(status="pending")
+        title = f"💼 Бонусы в холде (14 дней)"
+    elif flt == "released_30d":
+        cutoff = timezone.now() - timedelta(days=30)
+        qs = qs.filter(status="released", released_at__gte=cutoff)
+        title = f"💼 Зачислено за 30 дней"
+    else:
+        title = f"💼 Все мои бонусы (life-time)"
+    rows = []
+    total = 0.0
+    for l in qs.order_by("-created_at")[:50]:
+        total += float(l.amount or 0)
+        status_lbl = {"pending": "в холде", "released": "зачислено",
+                       "withheld": "удержано", "reduced": "−50% вина"}.get(l.status, l.status)
+        rows.append({
+            "title": f"#{l.order_id} · {l.basis} {l.rate_pct}% · {status_lbl}",
+            "subtitle": f"+${float(l.amount):,.2f} · база ${float(l.base_amount):,.0f} · {l.created_at:%d.%m.%Y}",
+            "action": "op_order_detail",
+            "params": {"order_id": l.order_id},
+        })
+    return ActionResult(
+        text=f"{title} · итого ${total:,.2f}",
+        cards=[{"type": "list", "data": {
+            "title": title,
+            "items": rows or [{"title": "Бонусов нет",
+                                "subtitle": "По выбранному фильтру пока пусто"}],
+        }}],
+        contextual_actions=[
+            {"action": "op_payments_dashboard", "label": "← Финансы"},
         ],
     )
 
@@ -2883,11 +3232,28 @@ def op_payments_dashboard(params, user, role):
     s = _pay.escrow_summary()
     holds = s.get("open_holds", {})
 
-    # ── Аналитика эскроу ──
-    avg_hold = (s["outstanding_balance"] / len(holds)) if holds else 0
-    # средний возраст активных холдов (по created_at заказов с partial/paid)
+    # ── Реально активные эскроу: заказы которые ещё «в работе» (не paid/cancelled)
+    # Считаем из Order — более правдивая картина чем из WalletTx (там может
+    # остаться мусор при desync release_escrow).
     now = timezone.now()
-    active_orders = Order.objects.filter(id__in=list(holds.keys()))
+    _orders_q = Order.objects.filter(
+        id__in=list(holds.keys()),
+    ).exclude(
+        payment_status__in=("paid", "refunded"),
+    ).exclude(status__in=("delivered", "completed", "cancelled"))
+    # PIVOT 2026-05-27: фильтр по ownership (не для лидов)
+    if not user.is_staff:
+        _orders_q = _orders_q.filter(assigned_operator=user)
+    active_orders = list(_orders_q)
+    # Реальный outstanding = сумма total_amount активных заказов
+    real_outstanding = sum(float(o.total_amount or 0) for o in active_orders)
+    # Если активных нет, fall back на accounting-сумму из WalletTx
+    if not active_orders:
+        real_outstanding = s["outstanding_balance"]
+    s["outstanding_balance"] = real_outstanding
+
+    # ── Аналитика эскроу ──
+    avg_hold = (real_outstanding / len(active_orders)) if active_orders else 0
     ages = [(now - o.created_at).days for o in active_orders if o.created_at]
     avg_hold_age = (sum(ages) / len(ages)) if ages else 0
 
@@ -2906,18 +3272,45 @@ def op_payments_dashboard(params, user, role):
         final_paid_at__gte=cutoff_30, payment_status="paid",
     ).aggregate(s=Sum("total_amount"))["s"] or 0)
 
+    # ── Action-oriented метрики: что требует внимания оператора ──
+    # 1. Старые холды (>30 дней без движения) — могут «съесть» оборотку
+    stuck_count = sum(1 for o in active_orders if o.created_at and (now - o.created_at).days > 30)
+    stuck_amount = sum(holds.get(o.id, 0) for o in active_orders
+                        if o.created_at and (now - o.created_at).days > 30)
+    # 2. Готовы к выплате продавцу (delivered/completed но не released)
+    ready_payouts_qs = Order.objects.filter(
+        status__in=("delivered", "completed"),
+        payment_status="paid",
+    ).exclude(id__in=list(holds.keys()))[:0]  # placeholder — для будущей логики
+    # 3. Возвраты в обработке
+    pending_refunds_qs = Order.objects.filter(payment_status="refund_pending")
+    pending_refunds_count = pending_refunds_qs.count()
+    pending_refunds_amount = float(pending_refunds_qs.aggregate(
+        s=Sum("total_amount"))["s"] or 0)
+    # 4. Рекламации за 30 дней
+    from marketplace.models import OrderClaim as _OC
+    claims_30 = _OC.objects.filter(created_at__gte=cutoff_30).count()
+
     rows = []
-    for oid, amt in sorted(holds.items(), key=lambda x: -x[1])[:10]:
+    # Защита от data inconsistency: исключаем заказы, по которым деньги уже
+    # ушли продавцу (payment_status="paid" / delivered) — там escrow должен
+    # быть закрыт. Если WalletTx не синхронизирован — это бухгалтерская
+    # ошибка, но в списке «активных» им не место.
+    for oid, amt in sorted(holds.items(), key=lambda x: -x[1])[:30]:
         try:
             o = Order.objects.get(id=oid)
+            if o.payment_status in ("paid", "refunded") or o.status in ("delivered", "completed", "cancelled"):
+                continue  # деньги уже не в работе — скрываем из списка активных
             rows.append({
                 "title": f"#{oid} · {o.customer_name}",
                 "subtitle": f"💰 ${amt:,.2f} лежит на платформе · {o.get_status_display()} · {o.get_payment_status_display()}",
                 "action": "op_order_detail",
                 "params": {"order_id": oid},
             })
+            if len(rows) >= 10:
+                break
         except Order.DoesNotExist:
-            rows.append({"title": f"#{oid}", "subtitle": f"${amt:,.2f}"})
+            continue
 
     # Финансовая модель — полные условия по клиенту, оплатам и поставщику.
     # Без markdown в bubble — всё в list-карточках.
@@ -3004,48 +3397,277 @@ def op_payments_dashboard(params, user, role):
     else:
         esc_insight = "Эскроу-поток в норме."
 
-    # Основной дашборд — живые метрики + аналитика + холды + правила.
+    # Сверка — показываем тайл ТОЛЬКО при расхождении (когда есть проблема).
+    # «✓ всё сходится» как отдельный тайл не несёт пользы и выглядит колхозно.
+    reconciliation_ok = s['platform_balance'] == s['outstanding_balance']
+    reconciliation_diff = abs(s['platform_balance'] - s['outstanding_balance'])
+    # Если есть расхождение — добавим в текст-инсайт сверху приоритетно
+    if not reconciliation_ok:
+        esc_insight = (f"⚠️ Расхождение с банковским балансом: ${reconciliation_diff:,.0f}. "
+                       "Откройте бухгалтерскую сверку.")
+
+    # ── Тайлы «Требует действия» (action-oriented, главная информация) ──
+    action_tiles = []
+    if not reconciliation_ok:
+        action_tiles.append({
+            "label": "Расхождение с банком",
+            "value": f"⚠ ${reconciliation_diff:,.0f}",
+            "sub": "срочная сверка",
+            "tone": "bad",
+            "action": "op_payments_reconciliation",
+            "params": {},
+        })
+    if stuck_count > 0:
+        action_tiles.append({
+            "label": "Заказы застряли >30 дней",
+            "value": str(stuck_count),
+            "sub": f"${stuck_amount:,.0f} зависло · нужно разобрать",
+            "tone": "bad" if stuck_count >= 5 else "warn",
+            "action": "op_sla_breach",
+            "params": {},
+        })
+    if pending_refunds_count > 0:
+        action_tiles.append({
+            "label": "Возвраты в обработке",
+            "value": str(pending_refunds_count),
+            "sub": f"${pending_refunds_amount:,.0f} к возврату",
+            "tone": "warn",
+            "action": "op_payments_refunds",
+            "params": {},
+        })
+    if claims_30 > 0:
+        action_tiles.append({
+            "label": "Рекламации за 30 дней",
+            "value": str(claims_30),
+            "sub": "к разбору",
+            "tone": "warn" if claims_30 < 5 else "bad",
+            "action": "get_claims",
+            "params": {},
+        })
+
+    # ── Health-метрики (для понимания общей картины) ──
+    main_tiles = [
+        {"label": "Удерживается до выплаты продавцам",
+         "value": f"${s['outstanding_balance']:,.0f}",
+         "sub": f"{len(active_orders)} {'заказ' if len(active_orders)==1 else 'заказов' if len(active_orders) >= 5 else 'заказа'} в эскроу"},
+        {"label": "Средняя сумма заказа",
+         "value": f"${avg_hold:,.0f}",
+         "sub": "по активным эскроу",
+         "tone": "info"},
+        {"label": "Средний возраст",
+         "value": f"{avg_hold_age:.0f} дн",
+         "sub": ("ок" if avg_hold_age <= 30 else "застревают" if avg_hold_age <= 45 else "много старых"),
+         "tone": "bad" if avg_hold_age > 45 else ("warn" if avg_hold_age > 30 else "ok")},
+    ]
+
+    # Выплачено / возвраты за 30 дней — нужны для hero и для нижней карточки
+    payouts_30 = float(Order.objects.filter(
+        final_paid_at__gte=cutoff_30, payment_status="paid",
+        status__in=("delivered", "completed"),
+    ).aggregate(s=Sum("total_amount"))["s"] or 0)
+    refunded_30 = float(Order.objects.filter(
+        payment_status="refunded",
+        created_at__gte=cutoff_30,
+    ).aggregate(s=Sum("total_amount"))["s"] or 0)
+
+    # ── Hero «спидометр»: общий статус платформы одной плашкой ──
+    # CRITICAL = есть рассогласование с банком, или ≥5 застрявших, или ≥10 рекламаций
+    # WARNING  = есть любой action-tile
+    # OK       = всё чисто
+    is_critical = (not reconciliation_ok) or stuck_count >= 5 or claims_30 >= 10
+    has_warnings = bool(action_tiles)
+    if is_critical:
+        status_kind, status_emoji, status_label = "critical", "🔴", "Критично"
+    elif has_warnings:
+        status_kind, status_emoji, status_label = "warning", "🟡", "Внимание"
+    else:
+        status_kind, status_emoji, status_label = "ok", "🟢", "Норма"
+    # Краткое summary что именно — для одной строки под индикатором
+    summary_bits = []
+    if stuck_count:           summary_bits.append(f"{stuck_count} застряли")
+    if pending_refunds_count: summary_bits.append(f"{pending_refunds_count} возвратов")
+    if claims_30:             summary_bits.append(f"{claims_30} рекламаций")
+    if not reconciliation_ok: summary_bits.append(f"Δ ${reconciliation_diff:,.0f} с банком")
+    status_summary = " · ".join(summary_bits) if summary_bits else "Все процессы в норме"
+
+    # ── Минималистичный дашборд: только важное для оператора ──
+    # Считаем дополнительные метрики для информативных тайлов
+    orders_30 = Order.objects.filter(created_at__gte=cutoff_30).count()
+    paid_orders_30 = Order.objects.filter(
+        final_paid_at__gte=cutoff_30, payment_status="paid",
+        status__in=("delivered", "completed"),
+    ).count()
+    # Тренд оборота: 30д vs предыдущие 30д
+    cutoff_60 = now - timedelta(days=60)
+    inflow_prev_30 = float(Order.objects.filter(
+        final_paid_at__gte=cutoff_60, final_paid_at__lt=cutoff_30,
+        payment_status="paid",
+    ).aggregate(s=Sum("total_amount"))["s"] or 0)
+    # Тренд показываем только если есть осмысленная база (≥$10K) и не слишком
+    # большой — иначе вместо «нет данных» получаем «↑ 2 207 552%» от копейки.
+    if inflow_prev_30 >= 10_000 and inflow_30 >= 1_000:
+        trend_pct = int(round((inflow_30 - inflow_prev_30) * 100 / inflow_prev_30))
+        # Клемпуем до ±999% — больше уже информационный шум
+        if abs(trend_pct) > 999:
+            trend_pct = 999 if trend_pct > 0 else -999
+        trend_arrow = "↑" if trend_pct >= 0 else "↓"
+        trend_str = f"{trend_arrow} {abs(trend_pct)}% к прошлому"
+    else:
+        trend_str = f"{orders_30} {'заказ' if orders_30 == 1 else 'заказов'}"
+    # Доля выплат от оборота (cash conversion)
+    payout_share = int(round(payouts_30 * 100 / inflow_30)) if inflow_30 > 0 else 0
+    # Самый старый застрявший заказ
+    oldest_age = max(
+        ((now - o.created_at).days for o in active_orders
+         if o.created_at and (now - o.created_at).days > 30),
+        default=0,
+    )
+
+    op_stats = [
+        {"label": "Оборот за 30 дней",
+         "value": f"${inflow_30:,.0f}",
+         "sub":   trend_str,
+         "action": "get_orders", "params": {"status": "paid"}},
+        {"label": "Выплачено продавцам",
+         "value": f"${payouts_30:,.0f}",
+         "sub":   f"{payout_share}% от оборота · {paid_orders_30} заказов",
+         "tone":  "ok",
+         "action": "get_orders", "params": {"status": "delivered"}},
+    ]
+    # Третий тайл: проблема (если есть) или нейтральная статистика
+    if stuck_count > 0:
+        op_stats.append({
+            "label": "Застряли >30 дней",
+            "value": str(stuck_count),
+            "sub":   f"${stuck_amount:,.0f} · самый старый {oldest_age}д",
+            "tone":  "bad",
+            "action": "op_sla_breach", "params": {},
+        })
+    elif refund_share > 0:
+        op_stats.append({
+            "label": "Возвраты",
+            "value": f"${refunded_30:,.0f}",
+            "sub":   f"{refund_share:.1f}% от оборота",
+            "tone":  "bad" if refund_share > 5 else ("warn" if refund_share > 2 else None),
+            "action": "op_queue", "params": {"filter": "refund"},
+        })
+    else:
+        op_stats.append({
+            "label": "Возвраты",
+            "value": "$0",
+            "sub":   "нет за 30 дней"})
+    # Четвёртый тайл — рекламации (если есть за 30д)
+    if claims_30 > 0:
+        op_stats.append({
+            "label": "Рекламации",
+            "value": str(claims_30),
+            "sub":   f"открыто за 30 дней",
+            "tone":  "warn" if claims_30 < 5 else "bad",
+            "action": "get_claims", "params": {},
+        })
+
+    # Формируем строки активных заказов в простом формате (left/title/amount)
+    simple_rows = []
+    for r in rows:
+        # r.title уже как "#18 · Demo Seller"
+        parts = (r.get("title") or "").split(" · ", 1)
+        oid_part = parts[0]
+        name_part = parts[1] if len(parts) > 1 else ""
+        # Берём сумму из subtitle "💰 $X лежит ..."
+        import re as _re
+        m = _re.search(r"\$([\d,\.]+)", r.get("subtitle") or "")
+        amount = f"${m.group(1)}" if m else ""
+        # Краткий статус из subtitle (после второго · если есть)
+        sub_parts = (r.get("subtitle") or "").split("·")
+        stage = sub_parts[-1].strip() if len(sub_parts) >= 2 else ""
+        simple_rows.append({
+            "left":  oid_part,
+            "title": f"{name_part}  ·  {stage}".strip(" ·"),
+            "amount": amount,
+            "action": r.get("action"),
+            "params": r.get("params"),
+        })
+
+    # ── Личный бонус оператора (если есть данные) ──
+    from marketplace.models import OperatorBonusLine as _OBL
+    from .models import Wallet as _Wallet
+    my_wallet = _Wallet.for_user(user)
+    my_pending = float(_OBL.objects.filter(
+        operator=user, status="pending",
+    ).aggregate(s=Sum("amount"))["s"] or 0)
+    my_30d = float(_OBL.objects.filter(
+        operator=user, status="released",
+        released_at__gte=cutoff_30,
+    ).aggregate(s=Sum("amount"))["s"] or 0)
+    my_lifetime = float(_OBL.objects.filter(
+        operator=user, status="released",
+    ).aggregate(s=Sum("amount"))["s"] or 0)
+    my_closed_30 = _OBL.objects.filter(
+        operator=user, created_at__gte=cutoff_30,
+    ).count()
+
+    # Готовим details_rows для inline-раскрытия каждого тайла
+    def _bonus_rows(qs):
+        out = []
+        for l in qs.select_related("order").order_by("-created_at")[:30]:
+            status_lbl = {"pending": "в холде", "released": "✓ зачислено",
+                           "withheld": "удержано", "reduced": "−50% вина"}.get(l.status, l.status)
+            out.append({
+                "left":   f"#{l.order_id}",
+                "title":  f"{l.basis} {l.rate_pct}% · {status_lbl}",
+                "amount": f"+${float(l.amount):,.0f}",
+                "action": "op_order_detail",
+                "params": {"order_id": l.order_id},
+            })
+        return out
+
+    pending_rows  = _bonus_rows(_OBL.objects.filter(operator=user, status="pending"))
+    released_rows = _bonus_rows(_OBL.objects.filter(
+        operator=user, status="released", released_at__gte=cutoff_30,
+    ))
+    all_rows      = _bonus_rows(_OBL.objects.filter(operator=user))
+
+    cards = [
+        # ── Карточка 1: МОЙ БОНУС (что заработал лично) ──
+        {"type": "ops_dashboard", "data": {
+            "hero_label": "Мой бонус · на счёте",
+            "hero_value": float(my_wallet.balance or 0),
+            "currency":   my_wallet.currency,
+            "stats": [
+                {"label": "В холде (14 дней)",
+                 "value": f"${my_pending:,.0f}",
+                 "sub":   "ждут release",
+                 "details_rows": pending_rows,
+                 "details_empty": "Нет бонусов в холде"},
+                {"label": "За 30 дней",
+                 "value": f"${my_30d:,.0f}",
+                 "sub":   f"{my_closed_30} сделок",
+                 "tone":  "ok",
+                 "details_rows": released_rows,
+                 "details_empty": "За 30 дней нет зачислений"},
+                {"label": "Заработано всего",
+                 "value": f"${my_lifetime:,.0f}",
+                 "sub":   "life-time",
+                 "details_rows": all_rows,
+                 "details_empty": "Бонусов пока не было"},
+            ],
+        }},
+        # ── Карточка 2: ПЛАТФОРМА (контекст и проблемы) ──
+        {"type": "ops_dashboard", "data": {
+            "hero_label": "Платформа · деньги в эскроу",
+            "hero_value": s['outstanding_balance'],
+            "currency":   "USD",
+            "stats":      op_stats,
+            "rows_title": f"Активные заказы · топ-{len(simple_rows)}",
+            "rows":       simple_rows,
+        }},
+    ]
+    # FAQ — отдельной справочной карточкой ниже (это не часть оперативного дашборда)
+    cards.append(rules_faq)
+
     return ActionResult(
         text=esc_insight,
-        cards=[
-            {"type": "kpi_grid", "data": {"title": "💰 Эскроу — состояние и здоровье", "items": [
-                {"label": "На платформе",
-                 "value": f"${s['outstanding_balance']:,.0f}",
-                 "sub": "удерживается до приёмки"},
-                {"label": "Средний холд",
-                 "value": f"${avg_hold:,.0f}",
-                 "tone": "info"},
-                {"label": "Средний возраст холда",
-                 "value": f"{avg_hold_age:.0f} дн",
-                 "tone": "bad" if avg_hold_age > 45 else ("warn" if avg_hold_age > 30 else "ok")},
-                {"label": "Refund ratio",
-                 "value": f"{refund_share:.1f}%",
-                 "tone": "bad" if refund_share > 5 else ("warn" if refund_share > 2 else "ok")},
-                {"label": "Payout efficiency",
-                 "value": f"{payout_pct:.0f}%",
-                 "tone": "ok" if payout_pct >= 80 else ("warn" if payout_pct >= 60 else "bad")},
-                {"label": "Inflow 30д",
-                 "value": f"${inflow_30:,.0f}",
-                 "tone": "info"},
-                {"label": "Сверка баланс vs холды",
-                 "value": ("✓ сходится" if s['platform_balance'] == s['outstanding_balance']
-                            else f"Δ ${abs(s['platform_balance']-s['outstanding_balance']):,.0f}"),
-                 "tone": "ok" if s['platform_balance'] == s['outstanding_balance'] else "bad"},
-            ]}},
-            {"type": "kpi_grid", "data": {"title": "📊 Поток за всё время", "items": [
-                {"label": "Принято от покупателей", "value": f"${s['total_held_ever']:,.0f}"},
-                {"label": "Выплачено продавцам",    "value": f"${s['total_released_ever']:,.0f}",
-                 "tone": "ok"},
-                {"label": "Возвраты покупателям",   "value": f"${s['total_refunded_ever']:,.0f}",
-                 "tone": "warn" if s['total_refunded_ever'] else None},
-            ]}},
-            {"type": "list", "data": {
-                "title": f"💼 Активные эскроу-холды · топ-{len(rows)}",
-                "items": rows or [{"title": "Эскроу пуст",
-                                    "subtitle": "Нет заказов с удержанными платежами"}],
-            }},
-            rules_faq,
-        ],
+        cards=cards,
         actions=[
             {"label": "Возвраты в обработке",
              "action": "op_queue", "params": {"filter": "refund"}},

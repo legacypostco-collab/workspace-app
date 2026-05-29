@@ -39,13 +39,16 @@ def _effective_seller(user):
     if username == "demo_seller":
         return user
 
-    # Тестовый/демо/DEBUG-юзер — всегда fallback на demo_seller,
-    # независимо от того, есть ли у него своя свалка тестовых parts.
-    is_test_account = (
+    # Тестовый/демо-юзер — fallback на demo_seller ТОЛЬКО в DEBUG.
+    # В prod (DEBUG=False) каждый юзер видит свои данные, даже если у него
+    # username начинается с demo_/test_ (важно: реальный production-юзер мог
+    # случайно зарегистрироваться с таким префиксом и не должен видеть чужой
+    # каталог).
+    is_debug = bool(getattr(settings, "DEBUG", False))
+    is_test_account = is_debug and (
         username.startswith("demo_")
         or username.startswith("test_")
         or username.startswith("tz")  # автогенерённые тестеры из beta
-        or bool(getattr(settings, "DEBUG", False))
     )
     if is_test_account:
         try:
@@ -1624,10 +1627,9 @@ def upload_pricelist(params, user, role):
     if not csv_data:
         return ActionResult(
             text=(
-                "📤 Загрузка прайс-листа\n\n"
                 "Поддерживаются файлы Excel (.xlsx) и CSV. После загрузки "
-                "AI прочитает заголовки и предложит маппинг колонок на "
-                "стандартные поля платформы — вы проверите и подтвердите."
+                "AI прочитает заголовки и предложит маппинг колонок — "
+                "вы проверите и подтвердите."
             ),
             cards=[{"type": "int_methods", "data": {
                 "title": "Способы интеграции",
@@ -2004,9 +2006,8 @@ def seller_warehouses(params, user, role):
     from django.utils import timezone as _tz
     refreshed_at = _tz.now().strftime("%H:%M:%S")
     return ActionResult(
-        text=f"📦 Мои товары — {len(warehouses)} склад{'ов' if len(warehouses) != 1 else ''}"
-              + (f" + {orphans_count} позиций без склада" if orphans_count else "")
-              + f". Обновлено в {refreshed_at}.",
+        text=(f"Обновлено в {refreshed_at}"
+              + (f" · {orphans_count} позиций без склада" if orphans_count else "")),
         cards=[{
             "type": "warehouses",
             "data": {
@@ -2377,7 +2378,17 @@ def add_product(params, user, role):
 
 @register("rfq_detail")
 def rfq_detail(params, user, role):
-    """Детали входящего RFQ с inline-формой ответа."""
+    """Детали входящего RFQ.
+
+    Для оператора / покупателя → делегируем в get_rfq_status — там полная
+    spec_results карточка с таблицей позиций (статус, OEM, бренд, цена,
+    qty, вес, поставщик, доставка). Это тот же шаблон что у покупателя.
+
+    Для продавца → текстовая сводка + inline-форма ответа."""
+    if role and (role.startswith("operator") or role == "admin" or role == "buyer"):
+        from .actions import get_rfq_status as _get_rfq_status
+        return _get_rfq_status({"rfq_id": params.get("rfq_id")}, user, role)
+
     from marketplace.models import RFQ, RFQItem
     rfq_id = params.get("rfq_id")
     if not rfq_id:
@@ -2448,8 +2459,9 @@ def seller_drawings(params, user, role):
     from marketplace.models import Drawing, Part
     user = _effective_seller(user)
 
-    part_ids = list(Part.objects.filter(seller=user).values_list("id", flat=True))
-    qs = Drawing.objects.filter(part_id__in=part_ids).select_related("part")[:20]
+    # FIX: subquery вместо materialized ID-листа — иначе SQLite падает
+    # на «too many SQL variables» при каталоге >1000 позиций (лимит ~999).
+    qs = Drawing.objects.filter(part__seller=user).select_related("part")[:20]
     items = list(qs)
     if not items:
         return ActionResult(
@@ -2667,7 +2679,29 @@ def connect_gsheet(params, user, role):
     user = _effective_seller(user)
     url = (params.get("gsheet_url") or "").strip()
     if not url:
-        return ActionResult(text="⚠️ Пустая ссылка.")
+        # Phase 1: показываем форму для ввода ссылки (вместо «пустая ссылка» error)
+        return ActionResult(
+            text="Подключите Google Sheets как источник прайс-листа.",
+            cards=[{"type": "form", "data": {
+                "title": "📊 Подключить Google Sheets",
+                "intent": (
+                    "Откройте таблицу → Поделиться → 'Все, у кого есть ссылка' → "
+                    "Просмотр. Затем скопируйте URL и вставьте сюда. "
+                    "Платформа скачает CSV-экспорт и прогонит через smart-mapping."
+                ),
+                "submit_action": "connect_gsheet",
+                "submit_label": "Подключить →",
+                "fields": [
+                    {"name": "gsheet_url", "label": "Ссылка на таблицу",
+                     "type": "url", "required": True,
+                     "placeholder": "https://docs.google.com/spreadsheets/d/.../edit#gid=0",
+                     "hint": "URL должен быть с правами 'у кого есть ссылка'"},
+                ],
+            }}],
+            actions=[
+                {"label": "← Назад в интеграции", "action": "seller_integrations", "params": {}},
+            ],
+        )
     m = _re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", url)
     if not m:
         return ActionResult(text=(
@@ -2790,4 +2824,85 @@ def connect_gsheet(params, user, role):
             {"action": "__pricelist_cancel", "label": "Отменить",
              "params": {"import_id": imp.id}},
         ],
+    )
+
+
+# ══════════════════════════════════════════════════════════
+# open_project — открыть проект ВНУТРИ /chat/ (не отдельная страница)
+# Заменяет переход на /chat/project/<id>/ который имел другой шаблон.
+# ══════════════════════════════════════════════════════════
+
+@register("list_projects")
+def list_projects(params, user, role):
+    """Список активных проектов пользователя — отображается как plain list,
+    клик ведёт в open_project.
+    """
+    from .models import Project, Conversation
+    qs = Project.objects.filter(owner=user, is_active=True).order_by("-updated_at")[:30]
+    if not qs.exists():
+        return ActionResult(
+            text="Активных проектов нет. Создайте первый — он автоматически объединит "
+                  "связанные чаты, RFQ и заказы.",
+            actions=[
+                {"label": "+ Создать проект", "action": "create_project", "params": {}},
+            ],
+        )
+    rows = []
+    for p in qs:
+        chat_n = Conversation.objects.filter(user=user, project=p, is_active=True).count()
+        sub_parts = []
+        if p.customer: sub_parts.append(p.customer)
+        if p.code: sub_parts.append(p.code)
+        sub_parts.append(f"{chat_n} чат(а)")
+        rows.append({
+            "title": p.name,
+            "subtitle": " · ".join(sub_parts),
+            "tone": "info",
+            "action": "open_project",
+            "params": {"project_id": str(p.id)},
+        })
+    return ActionResult(
+        text=f"📁 Ваши проекты · {qs.count()}",
+        cards=[{"type": "list", "data": {"title": "📁 Проекты", "items": rows}}],
+    )
+
+
+@register("open_project")
+def open_project(params, user, role):
+    """Открыть проект в основной области /chat/ — без перехода на другую страницу."""
+    from .models import Conversation, Project
+    project_id = params.get("project_id") or ""
+    if not project_id:
+        return ActionResult(text="Проект не указан.")
+    try:
+        p = Project.objects.get(id=project_id, owner=user, is_active=True)
+    except (Project.DoesNotExist, ValueError):
+        return ActionResult(text="Проект не найден.")
+
+    chats = list(Conversation.objects.filter(
+        user=user, project=p, is_active=True,
+    ).order_by("-updated_at")[:10])
+
+    return ActionResult(
+        text=f"📁 Проект «{p.name}»" + (f" · {p.customer}" if p.customer else ""),
+        cards=[{
+            "type": "project_summary",
+            "data": {
+                "name": p.name,
+                "code": p.code or "",
+                "customer": p.customer or "",
+                "description": p.description or "",
+                "dot_color": p.dot_color or "green",
+                "chats_count": len(chats),
+                "chats": [{
+                    "title": c.title or "Без названия",
+                    "ts": c.updated_at.strftime("%d.%m %H:%M"),
+                } for c in chats],
+            },
+        }],
+        actions=[
+            {"label": "📦 Заказы по проекту", "action": "get_orders", "params": {"project_id": str(p.id)}},
+            {"label": "📋 Открытые RFQ", "action": "get_rfq_status", "params": {"project_id": str(p.id)}},
+        ],
+        suggestions=["Открытые RFQ по проекту", "Активные заказы", "Покажи документы"],
     )

@@ -89,3 +89,80 @@ class UserLanguageMiddleware:
         response = self.get_response(request)
         translation.deactivate()
         return response
+
+
+class OperatorViewAsMiddleware:
+    """View-as: оператор «входит» в кабинет поставщика для просмотра / контроля.
+
+    Принцип:
+    — В `request.session['op_view_as_id']` хранится ID поставщика-цели.
+    — Оригинальный оператор хранится в `request.session['op_view_as_originator_id']`.
+    — При наличии этих ключей middleware подменяет `request.user` на поставщика
+      (для всех views — actions, страницы кабинета и т.д. естественно видят
+      его контекст). Оригинального юзера кладём в `request.original_user`.
+    — Флаг `request.is_view_as = True` + `request.view_as_readonly = True`
+      позволяют views отказывать в мутациях.
+
+    Безопасность:
+    — Подмена возможна только если оригинальный юзер — operator или admin
+      (is_staff / is_superuser). Если кто-то другой случайно поставил ключ
+      в сессию — ignore.
+    — Цель должна существовать и быть seller.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        request.is_view_as = False
+        request.view_as_readonly = False
+        request.original_user = None
+        try:
+            self._maybe_swap_user(request)
+        except Exception:
+            # Никогда не валим запрос из-за view-as
+            request.is_view_as = False
+        return self.get_response(request)
+
+    def _maybe_swap_user(self, request):
+        sess = getattr(request, "session", None)
+        if sess is None:
+            return
+        target_id = sess.get("op_view_as_id")
+        if not target_id:
+            return
+        original = request.user
+        # Только staff может имперсонировать (operator/admin — у всех is_staff=True)
+        if not getattr(original, "is_authenticated", False) or not getattr(original, "is_staff", False):
+            # Левый юзер с ключом в сессии — чистим
+            sess.pop("op_view_as_id", None)
+            sess.pop("op_view_as_originator_id", None)
+            return
+        # Загружаем target
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            target = User.objects.select_related("profile").get(id=int(target_id))
+        except (User.DoesNotExist, ValueError, TypeError):
+            sess.pop("op_view_as_id", None)
+            sess.pop("op_view_as_originator_id", None)
+            return
+        # FIX (CRITICAL): нельзя имперсонировать staff/superuser — иначе оператор
+        # с view-as правами может «войти» как админ и получить полный доступ.
+        if getattr(target, "is_staff", False) or getattr(target, "is_superuser", False):
+            sess.pop("op_view_as_id", None)
+            sess.pop("op_view_as_originator_id", None)
+            return
+        # Target должен быть seller — view-as только для контроля поставщиков.
+        try:
+            target_role = getattr(getattr(target, "profile", None), "role", "")
+            if target_role and target_role != "seller":
+                sess.pop("op_view_as_id", None)
+                sess.pop("op_view_as_originator_id", None)
+                return
+        except Exception:
+            pass
+        # Подмена
+        request.original_user = original
+        request.user = target
+        request.is_view_as = True
+        request.view_as_readonly = True

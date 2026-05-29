@@ -13,30 +13,31 @@
 from __future__ import annotations
 
 # (emoji, short_label, sla_hint, priority_for_seller)
+# Без эмодзи и без англо-аббревиатур — понятные русские названия
 _MODE_META: dict[str, tuple[str, str, str, str]] = {
-    "auto":       ("🤖", "AUTO",   "≈1 сек",   "автоподбор"),
-    "semi":       ("👨‍💼", "SEMI",   "SLA 15 мин", "оператор подтверждает"),
-    "manual":     ("🔍", "MANUAL", "до 48 ч",  "адресный OEM-запрос"),
-    "manual_oem": ("🔍", "MANUAL", "до 48 ч",  "адресный OEM-запрос"),
+    "auto":       ("", "Автоподбор",          "≈1 сек",       "без оператора"),
+    "semi":       ("", "Нужно подтвердить",   "15 минут",     "оператор подтверждает КП"),
+    "manual":     ("", "Ручная рассылка",     "48 часов",     "оператор рассылает поставщикам"),
+    "manual_oem": ("", "Ручная рассылка",     "48 часов",     "оператор рассылает поставщикам"),
 }
 
 
 def mode_badge(mode: str | None) -> str:
-    """Короткий бейдж: `🔍 MANUAL`. Безопасно для пустого/неизвестного режима."""
+    """Короткий бейдж: «Ручная рассылка». Безопасно для пустого/неизвестного режима."""
     meta = _MODE_META.get((mode or "").strip().lower())
     if not meta:
         return ""
-    emoji, label, _, _ = meta
-    return f"{emoji} {label}"
+    _emoji, label, _, _ = meta
+    return label
 
 
 def mode_badge_with_sla(mode: str | None) -> str:
-    """Развёрнутый бейдж: `🔍 MANUAL · до 48 ч`. Для подзаголовков."""
+    """Развёрнутый бейдж: «Ручная рассылка · 48 часов»."""
     meta = _MODE_META.get((mode or "").strip().lower())
     if not meta:
         return ""
-    emoji, label, sla, _ = meta
-    return f"{emoji} {label} · {sla}"
+    _emoji, label, sla, _ = meta
+    return f"{label} · {sla}"
 
 
 def sla_countdown_for_operator(mode: str, created_at) -> tuple[str, str]:

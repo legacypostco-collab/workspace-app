@@ -255,6 +255,15 @@ def confirm_kp_and_reserve(params, user, role):
     if q.status not in ("submitted", "finalized"):
         return ActionResult(text=f"Эту котировку нельзя принять (статус: {q.get_status_display()}).")
 
+    # FIX (HIGH): проверка срока действия котировки. Раньше можно было принять
+    # просроченное КП (valid_until заносится при auto_generate, но не проверялось).
+    from django.utils import timezone as _tz
+    if q.valid_until and _tz.now() > q.valid_until:
+        return ActionResult(text=(
+            f"Котировка истекла {q.valid_until.strftime('%d.%m.%Y %H:%M')}. "
+            f"Запросите у поставщика новое КП."
+        ))
+
     # Полная сумма = запчасти + логистика
     parts_total = q.total_amount
     logi_cost = Decimal(str(params.get("logistics_cost") or 0))
@@ -405,10 +414,23 @@ def op_approve_kp(params, user, role):
 
     quotes = Quote.objects.filter(rfq=rfq, direction="seller_to_buyer", status="submitted")
     if not quotes.exists():
-        return ActionResult(text=(
-            "По этому RFQ ещё нет КП от продавцов. "
-            "Сначала запустите рассылку (send_rfq_to_suppliers)."
-        ))
+        # SEMI-режим: KP формируется автоматически из каталога. Подгружаем
+        # spec-таблицу прямо сюда — оператор сразу видит что подтверждать.
+        from .actions import get_rfq_status as _grs
+        spec_result = _grs({"rfq_id": rfq.id}, user, role)
+        return ActionResult(
+            text=(
+                f"RFQ #{rfq.id} · подтвердите позиции и зафиксируйте КП. "
+                "Спорные строки можно заменить аналогом или пометить «нет в каталоге»."
+            ),
+            cards=spec_result.cards,
+            actions=[
+                {"label": "Подтвердить КП", "action": "op_compose_kp",
+                 "params": {"rfq_id": rfq.id}},
+                {"label": "Спросить у клиента", "action": "ask_about_rfq",
+                 "params": {"rfq_id": rfq.id}},
+            ],
+        )
 
     if not params.get("confirmed"):
         elapsed = timezone.now() - rfq.created_at
@@ -552,7 +574,16 @@ def op_compose_kp(params, user, role):
     else:
         chosen = qs.order_by("total_amount").first()
     if not chosen:
-        return ActionResult(text="По этому RFQ нет КП от продавцов.")
+        return ActionResult(
+            text=(
+                "По этому RFQ нет позиций с актуальной ценой в каталоге.\n"
+                "Откройте RFQ и подтвердите аналоги вручную."
+            ),
+            actions=[
+                {"label": "Открыть RFQ", "action": "rfq_detail",
+                 "params": {"rfq_id": params.get("rfq_id")}},
+            ],
+        )
 
     # Маркер «оператор сформировал КП» в notes
     line = (
