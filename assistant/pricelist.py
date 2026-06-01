@@ -1857,6 +1857,18 @@ class PricelistCommitView(APIView):
         transform_rules = request.data.get("transform_rules") or {}
         constants = request.data.get("constants") or {}
         save_profile = request.data.get("save_profile", True)
+
+        # warehouse_address — supplier-wide. Если seller заполнил его в KYB-
+        # профиле и в текущей загрузке не передал ни колонку, ни константу —
+        # подставляем из профиля. Без этого валидатор отклонит загрузку
+        # даже когда адрес уже известен платформе.
+        if not constants.get("warehouse_address") and not mapping.get("warehouse_address"):
+            try:
+                kyb = getattr(request.user, "kyb_profile", None)
+                if kyb and getattr(kyb, "warehouse_address", ""):
+                    constants["warehouse_address"] = kyb.warehouse_address
+            except Exception:
+                pass
         # Юзерские правки AI-оценок: {oem: {weight_kg, length_cm, ...}}
         # Применяются поверх ai_estimates как human-in-the-loop корректировка
         ai_overrides = request.data.get("ai_estimates_override") or {}
@@ -2322,6 +2334,14 @@ HARDCODED_QUESTIONS = [
         "apply_as": "constant",
     },
     {
+        "field": "warehouse_address",
+        "question": "Адрес склада отгрузки? (нужен для расчёта логистики до покупателя)",
+        "options": [],
+        "default": "",
+        "placeholder": "напр.: Shenzhen, China — 1 Industrial Rd",
+        "apply_as": "constant",
+    },
+    {
         "field": "price_fob_sea",
         "question": "Наценка FOB SEA (морем) к цене EXW?",
         "options": ["+5%", "+10%", "+15%"],
@@ -2340,7 +2360,7 @@ HARDCODED_QUESTIONS = [
 
 def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
                          total_rows: int | None, mapping: dict[str, str],
-                         filename: str = "") -> dict:
+                         filename: str = "", seller=None) -> dict:
     """Возвращает захардкоженный список вопросов + краткое intro.
 
     AI-генерация заменена на детерминированный список — у нас фикс-набор
@@ -2375,11 +2395,25 @@ def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
                 return True
         return False
 
+    # warehouse_address подтягиваем из KYB-профиля seller'а если есть —
+    # это глобальная настройка склада, не должна спрашиваться каждый раз.
+    profile_warehouse = ""
+    if seller is not None:
+        try:
+            kyb = getattr(seller, "kyb_profile", None)
+            if kyb and getattr(kyb, "warehouse_address", ""):
+                profile_warehouse = kyb.warehouse_address
+        except Exception:
+            pass
+
     questions = []
     for q in HARDCODED_QUESTIONS:
         field = q["field"]
         if _from_file(field):
             continue  # значение придёт из колонки файла
+        # warehouse_address из профиля seller — не спрашиваем повторно.
+        if field == "warehouse_address" and profile_warehouse:
+            continue
         # manufacturer_visible — управляющий флаг, не data-поле. Если
         # manufacturer пришёл из файла, презюмируем «показывать = Да»
         # (раз положили в файл, значит хотят показывать) и не спрашиваем.
@@ -3063,6 +3097,7 @@ class PricelistSmartQuestionsView(APIView):
         smart = _ai_smart_questions(
             imp.headers, imp.sample_rows, None,
             imp.suggested_mapping or {}, imp.filename,
+            seller=request.user,
         )
         return Response({
             "intro": smart.get("intro", ""),
