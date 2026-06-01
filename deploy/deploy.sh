@@ -88,6 +88,12 @@ log "━━━ 4. collectstatic ━━━"
 }
 log "  $(tail -1 /tmp/collect.log)"
 
+# daphne runs as www-data; ensure all upload targets are writable by it.
+mkdir -p "$APP_DIR"/media/{pricelists,drawings,kyb,claims_evidence,parts,brands,categories,onboarding,catalog,part_images,claims,imports}
+chown -R www-data:www-data "$APP_DIR"/media
+chmod -R u+rwX,g+rX "$APP_DIR"/media
+log "  ✓ media perms (www-data)"
+
 log "━━━ 5. compilemessages ━━━"
 "$VENV/bin/python" manage.py compilemessages 2>&1 | tail -3 || true
 
