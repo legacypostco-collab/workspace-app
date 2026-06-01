@@ -5859,6 +5859,25 @@
       }
     });
 
+    // Required-проверка ДО отправки: если warehouse_address не задан ни
+    // в constants (через мастер или общую форму), ни в mapping как fix:VAL —
+    // НЕ шлём commit, показываем понятное сообщение и оставляем кнопку
+    // активной чтобы пользователь мог исправить.
+    var whVal = (constants && constants.warehouse_address ? String(constants.warehouse_address).trim() : '');
+    if (!whVal) {
+      var whMap = (mapping && mapping.warehouse_address) || '';
+      if (typeof whMap === 'string' && whMap.indexOf('fix:') === 0) {
+        whVal = whMap.slice(4).trim();
+      }
+    }
+    if (!whVal) {
+      lockedBtns.forEach(b => { b.disabled = false; b.style.opacity = ''; b.style.cursor = ''; });
+      addMessage('assistant',
+        '❗ Укажите адрес склада отгрузки — это обязательное поле. ' +
+        'Впишите его в вопросе мастера или раскройте «📎 общих полей поставщика».');
+      return;
+    }
+
     // Собираем юзерские правки AI оценок (review-таблица)
     var aiOverrides = {};
     document.querySelectorAll('.pl-ai-row').forEach(function(row) {

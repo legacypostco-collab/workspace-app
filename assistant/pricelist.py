@@ -2347,10 +2347,11 @@ HARDCODED_QUESTIONS = [
     },
     {
         "field": "warehouse_address",
-        "question": "Адрес склада отгрузки? (нужен для расчёта логистики до покупателя)",
+        "question": "Адрес склада отгрузки? (обязательно — нужен для расчёта логистики до покупателя)",
         "options": [],
         "default": "",
         "placeholder": "напр.: Shenzhen, China — 1 Industrial Rd",
+        "required": True,
         "apply_as": "constant",
     },
     {
