@@ -1914,13 +1914,17 @@ class PricelistCommitView(APIView):
 
         # Жёсткий чек обязательных supplier-wide полей.
         # Адрес склада — обязателен. Без него рассчитать логистику нельзя.
+        SUPPLIER_WIDE_KEYS = {"warehouse_address", "sea_port", "air_port"}
+
         def _has_value(key: str) -> bool:
             """Проверяет что для supplier-wide поля есть данные:
             - constants из формы (приоритет)
             - fix:VALUE в mapping
-            - mapped file column И в sample_rows хотя бы одна непустая ячейка
-              (избегаем «колонка есть но всё пусто» — типичный кейс для
-              маркетплейс-формата с незаполненными WarehouseAddress)"""
+            - mapped file column. Для supplier-wide колонок: ВСЕ строки sample
+              должны быть заполнены одним значением (иначе констант важнее —
+              иначе разольёмся пустотой по 160k строк маркетплейс-формата).
+              Для не-supplier-wide: хотя бы одна непустая ячейка.
+            """
             c = (constants or {}).get(key)
             if c not in (None, "", 0):
                 return True
@@ -1928,9 +1932,17 @@ class PricelistCommitView(APIView):
             if isinstance(m, str) and m.startswith("fix:") and m[4:].strip():
                 return True
             if m and isinstance(m, str) and m in (imp.headers or []):
-                # Проверяем sample_rows на наличие реальных данных
                 idx = imp.headers.index(m)
-                for row in (imp.sample_rows or []):
+                rows = imp.sample_rows or []
+                if key in SUPPLIER_WIDE_KEYS:
+                    seen = set()
+                    for row in rows:
+                        cell = str(row[idx]).strip() if idx < len(row) else ""
+                        if not cell:
+                            return False
+                        seen.add(cell)
+                    return bool(rows) and len(seen) == 1
+                for row in rows:
                     if idx < len(row) and str(row[idx]).strip():
                         return True
             return False
@@ -2379,18 +2391,32 @@ def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
 
     # Если поле уже замаплено на колонку файла — вопрос задавать не нужно.
     # mapping[field] = "Column" — из файла; "fix:..." — дефолт, спрашиваем.
+    SUPPLIER_WIDE_KEYS = {"warehouse_address", "sea_port", "air_port"}
+
     def _from_file(field: str) -> bool:
-        """True если поле замаплено на колонку файла И в этой колонке
-        есть хотя бы одна непустая ячейка в sample-строках.
-        Иначе мы спросим у юзера — потому что иначе все 600k строк
-        получат пустое значение (brand=Generic, manufacturer='', и т.п.)."""
+        """True если поле замаплено на колонку файла И значение в порядке.
+        Для обычных полей: достаточно хотя бы одной непустой ячейки.
+        Для supplier-wide (склад/порты): колонка должна быть полностью
+        заполнена одним и тем же значением — иначе нужен один константный
+        ответ от юзера, чтобы не разлились пустые/смешанные адреса на 160k
+        строк (типичный кейс маркетплейс-формата с пустым WarehouseAddress).
+        """
         v = (mapping or {}).get(field)
         if not v or (isinstance(v, str) and v.startswith("fix:")):
             return False
         if v not in (headers or []):
             return False
         idx = headers.index(v)
-        for row in (sample_rows or []):
+        rows = sample_rows or []
+        if field in SUPPLIER_WIDE_KEYS:
+            seen = set()
+            for row in rows:
+                cell = str(row[idx]).strip() if idx < len(row) else ""
+                if not cell:
+                    return False  # хоть одна пустая — не подходит
+                seen.add(cell)
+            return bool(rows) and len(seen) == 1
+        for row in rows:
             if idx < len(row) and str(row[idx]).strip():
                 return True
         return False
