@@ -1858,17 +1858,21 @@ class PricelistCommitView(APIView):
         constants = request.data.get("constants") or {}
         save_profile = request.data.get("save_profile", True)
 
-        # warehouse_address — supplier-wide. Если seller заполнил его в KYB-
+        # Supplier-wide логистика (склад/порты) — если seller заполнил в KYB-
         # профиле и в текущей загрузке не передал ни колонку, ни константу —
         # подставляем из профиля. Без этого валидатор отклонит загрузку
-        # даже когда адрес уже известен платформе.
-        if not constants.get("warehouse_address") and not mapping.get("warehouse_address"):
-            try:
-                kyb = getattr(request.user, "kyb_profile", None)
-                if kyb and getattr(kyb, "warehouse_address", ""):
-                    constants["warehouse_address"] = kyb.warehouse_address
-            except Exception:
-                pass
+        # даже когда значение уже известно платформе.
+        try:
+            kyb = getattr(request.user, "kyb_profile", None)
+        except Exception:
+            kyb = None
+        for _sw_fld in ("warehouse_address", "sea_port", "air_port"):
+            if constants.get(_sw_fld) or mapping.get(_sw_fld):
+                continue
+            if kyb:
+                v = getattr(kyb, _sw_fld, "") or ""
+                if v:
+                    constants[_sw_fld] = v
         # Юзерские правки AI-оценок: {oem: {weight_kg, length_cm, ...}}
         # Применяются поверх ai_estimates как human-in-the-loop корректировка
         ai_overrides = request.data.get("ai_estimates_override") or {}
@@ -1954,6 +1958,24 @@ class PricelistCommitView(APIView):
                     "Укажите адрес склада отгрузки — обязательное поле. "
                     "В колонке WarehouseAddress нет данных или она не заполнена — "
                     "впишите адрес в форме «📎 общих полей поставщика»."
+                ),
+            }, status=400)
+        if not _has_value("sea_port"):
+            return Response({
+                "error": "sea_port_required",
+                "message": (
+                    "Укажите ближайший к складу морпорт отгрузки — обязательное "
+                    "поле для расчёта FOB SEA. Впишите в вопросе мастера или в "
+                    "форме «📎 общих полей поставщика»."
+                ),
+            }, status=400)
+        if not _has_value("air_port"):
+            return Response({
+                "error": "air_port_required",
+                "message": (
+                    "Укажите ближайший к складу аэропорт отгрузки — обязательное "
+                    "поле для расчёта FOB AIR. Впишите в вопросе мастера или в "
+                    "форме «📎 общих полей поставщика»."
                 ),
             }, status=400)
 
@@ -2062,7 +2084,7 @@ class PricelistCommitView(APIView):
             "sea_port": "морпорт", "air_port": "аэропорт",
             "cross_number": "кросс-номер",
         }
-        MANDATORY = {"warehouse_address"}
+        MANDATORY = {"warehouse_address", "sea_port", "air_port"}
         RATING_BONUS = {"length_cm", "width_cm", "height_cm", "cross_number"}
 
         def _filled(key: str) -> bool:
@@ -2355,6 +2377,24 @@ HARDCODED_QUESTIONS = [
         "apply_as": "constant",
     },
     {
+        "field": "sea_port",
+        "question": "Ближайший к складу морпорт отгрузки? (обязательно — для расчёта FOB SEA)",
+        "options": [],
+        "default": "",
+        "placeholder": "напр.: Shanghai (SHA), Hamburg (HAM), Vladivostok (VVO)",
+        "required": True,
+        "apply_as": "constant",
+    },
+    {
+        "field": "air_port",
+        "question": "Ближайший к складу аэропорт отгрузки? (обязательно — для расчёта FOB AIR)",
+        "options": [],
+        "default": "",
+        "placeholder": "напр.: PVG (Shanghai Pudong), FRA (Frankfurt), SVO (Sheremetyevo)",
+        "required": True,
+        "apply_as": "constant",
+    },
+    {
         "field": "price_fob_sea",
         "question": "Наценка FOB SEA (морем) к цене EXW?",
         "options": ["+5%", "+10%", "+15%"],
@@ -2422,14 +2462,17 @@ def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
                 return True
         return False
 
-    # warehouse_address подтягиваем из KYB-профиля seller'а если есть —
-    # это глобальная настройка склада, не должна спрашиваться каждый раз.
-    profile_warehouse = ""
+    # Supplier-wide поля (склад, порты) подтягиваем из KYB-профиля если есть —
+    # это глобальные настройки логистики, не должны спрашиваться каждый раз.
+    profile_supplier_wide = {}
     if seller is not None:
         try:
             kyb = getattr(seller, "kyb_profile", None)
-            if kyb and getattr(kyb, "warehouse_address", ""):
-                profile_warehouse = kyb.warehouse_address
+            if kyb:
+                for fld in ("warehouse_address", "sea_port", "air_port"):
+                    v = getattr(kyb, fld, "") or ""
+                    if v:
+                        profile_supplier_wide[fld] = v
         except Exception:
             pass
 
@@ -2438,8 +2481,8 @@ def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
         field = q["field"]
         if _from_file(field):
             continue  # значение придёт из колонки файла
-        # warehouse_address из профиля seller — не спрашиваем повторно.
-        if field == "warehouse_address" and profile_warehouse:
+        # supplier-wide поле уже есть в KYB-профиле — не спрашиваем повторно.
+        if field in SUPPLIER_WIDE_KEYS and profile_supplier_wide.get(field):
             continue
         # manufacturer_visible — управляющий флаг, не data-поле. Если
         # manufacturer пришёл из файла, презюмируем «показывать = Да»

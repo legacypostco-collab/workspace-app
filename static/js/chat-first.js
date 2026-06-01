@@ -5859,22 +5859,32 @@
       }
     });
 
-    // Required-проверка ДО отправки: если warehouse_address не задан ни
-    // в constants (через мастер или общую форму), ни в mapping как fix:VAL —
-    // НЕ шлём commit, показываем понятное сообщение и оставляем кнопку
-    // активной чтобы пользователь мог исправить.
-    var whVal = (constants && constants.warehouse_address ? String(constants.warehouse_address).trim() : '');
-    if (!whVal) {
-      var whMap = (mapping && mapping.warehouse_address) || '';
-      if (typeof whMap === 'string' && whMap.indexOf('fix:') === 0) {
-        whVal = whMap.slice(4).trim();
+    // Required-проверка ДО отправки для supplier-wide полей. Если значение
+    // не задано ни в constants (через мастер или общую форму), ни в mapping
+    // как fix:VAL — НЕ шлём commit, показываем понятное сообщение и
+    // оставляем кнопку активной чтобы пользователь мог исправить.
+    var SUPPLIER_WIDE_REQUIRED = [
+      ['warehouse_address', 'адрес склада отгрузки'],
+      ['sea_port', 'ближайший морпорт отгрузки'],
+      ['air_port', 'ближайший аэропорт отгрузки'],
+    ];
+    var missingSW = [];
+    SUPPLIER_WIDE_REQUIRED.forEach(function(pair) {
+      var key = pair[0];
+      var v = (constants && constants[key] ? String(constants[key]).trim() : '');
+      if (!v) {
+        var m = (mapping && mapping[key]) || '';
+        if (typeof m === 'string' && m.indexOf('fix:') === 0) {
+          v = m.slice(4).trim();
+        }
       }
-    }
-    if (!whVal) {
+      if (!v) missingSW.push(pair[1]);
+    });
+    if (missingSW.length) {
       lockedBtns.forEach(b => { b.disabled = false; b.style.opacity = ''; b.style.cursor = ''; });
       addMessage('assistant',
-        '❗ Укажите адрес склада отгрузки — это обязательное поле. ' +
-        'Впишите его в вопросе мастера или раскройте «📎 общих полей поставщика».');
+        '❗ Заполните обязательные поля: ' + missingSW.join(', ') + '. ' +
+        'Впишите их в вопросах мастера или раскройте «📎 общих полей поставщика».');
       return;
     }
 
