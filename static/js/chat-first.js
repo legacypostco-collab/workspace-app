@@ -16,6 +16,1303 @@
   const SB_KEY = 'cf_sidebar_open';
   const CONV_KEY = 'cf_active_conv';
 
+  // Подсказки для smart-вопросов pricelist (warehouse_address/sea_port/
+  // air_port). Browser-side datalist фильтрует по введённым символам —
+  // юзер вписывает "Sha" и видит Shanghai/Sharjah/Шанхай. Список плоский
+  // потому что PORTS_BY_COUNTRY определён глубже внутри pricelist-handler
+  // и недоступен из renderers; данные подобраны вручную как срез самых
+  // частых направлений.
+  const SUGGEST_SEA = [
+    'Shanghai (CNSHA)', 'Ningbo (CNNGB)', 'Shenzhen Yantian (CNYTN)',
+    'Shenzhen Shekou (CNSKU)', 'Qingdao (CNTAO)', 'Tianjin (CNTXG)',
+    'Dalian (CNDLC)', 'Xiamen (CNXMN)', 'Hong Kong (HKHKG)',
+    'Vladivostok ВМТП (RUVVO)', 'Vostochny (RUVYP)', 'Nakhodka (RUNJK)',
+    'Novorossiysk (RUNVS)', 'Saint Petersburg (RULED)', 'Ust-Luga (RUULU)',
+    'Hamburg (DEHAM)', 'Rotterdam (NLRTM)', 'Antwerp (BEANR)',
+    'Jebel Ali (AEJEA)', 'Khalifa (AEKLF)', 'Mundra (INMUN)', 'Nhava Sheva (INNSA)',
+    'Busan (KRPUS)', 'Yokohama (JPYOK)', 'Singapore (SGSIN)',
+    'Long Beach (USLGB)', 'Los Angeles (USLAX)',
+  ];
+  const SUGGEST_AIR = [
+    'Shanghai Pudong (PVG)', 'Beijing Capital (PEK)', 'Beijing Daxing (PKX)',
+    'Guangzhou (CAN)', 'Shenzhen (SZX)', 'Hong Kong (HKG)', 'Chengdu (CTU)',
+    'Hangzhou (HGH)', 'Sheremetyevo (SVO)', 'Domodedovo (DME)', 'Vnukovo (VKO)',
+    'Vladivostok (VVO)', 'Novosibirsk (OVB)', 'Frankfurt (FRA)',
+    'Amsterdam (AMS)', 'Paris CDG (CDG)', 'London Heathrow (LHR)',
+    'Dubai (DXB)', 'Abu Dhabi (AUH)', 'Doha (DOH)', 'Istanbul (IST)',
+    'Mumbai (BOM)', 'Delhi (DEL)', 'Seoul Incheon (ICN)', 'Tokyo Narita (NRT)',
+  ];
+  const SUGGEST_CITY = [
+    'Shanghai, China', 'Shenzhen, China', 'Guangzhou, China', 'Ningbo, China',
+    'Qingdao, China', 'Tianjin, China', 'Yiwu, China', 'Hong Kong',
+    'Vladivostok, Russia', 'Saint Petersburg, Russia', 'Moscow, Russia',
+    'Novorossiysk, Russia', 'Novosibirsk, Russia',
+    'Dubai, UAE', 'Abu Dhabi, UAE', 'Sharjah, UAE',
+    'Mumbai, India', 'Delhi, India', 'Chennai, India',
+    'Busan, South Korea', 'Seoul, South Korea',
+    'Tokyo, Japan', 'Yokohama, Japan',
+    'Singapore', 'Bangkok, Thailand',
+    'Hamburg, Germany', 'Frankfurt, Germany', 'Rotterdam, Netherlands',
+    'Antwerp, Belgium', 'Istanbul, Turkey',
+  ];
+  const SUGGEST_BY_SOURCE = { sea: SUGGEST_SEA, air: SUGGEST_AIR, city: SUGGEST_CITY };
+  // Координаты портов (по городу порта) — для сортировки по РЕАЛЬНОМУ гео-
+  // расстоянию от склада. Ключ — код порта (UN/LOCODE морпорта или IATA
+  // аэропорта). Юзер указал склад в Шэньяне → ближайший морпорт Далянь
+  // (а не Шанхай) определяется по haversine между складом и портами.
+  const PORT_COORDS = {
+    AEJEA:[25.20,55.27],AEPRA:[25.20,55.27],DXB:[25.25,55.36],DWC:[24.90,55.16],
+    AEKHL:[25.35,55.39],AESHJ:[25.47,55.51],SHJ:[25.33,55.52],
+    AEKLF:[24.81,54.65],AEMZD:[24.52,54.38],AUH:[24.43,54.65],
+    AEFJR:[25.12,56.33],AEAJM:[25.41,55.44],RKT:[25.61,55.94],
+    CNSHA:[30.63,122.07],CNWAI:[31.34,121.60],PVG:[31.14,121.81],
+    CNNGB:[29.87,121.55],CNYTN:[22.56,114.27],CNSKU:[22.48,113.91],
+    CNCWN:[22.48,113.88],CNNSA:[22.78,113.61],CNHUA:[23.10,113.43],
+    CAN:[23.39,113.30],CNTAO:[36.07,120.32],CNTXG:[38.98,117.70],
+    CNDLC:[38.95,121.88],CNXMN:[24.45,118.07],HKHKG:[22.32,114.13],
+    HKG:[22.31,113.91],CNLYG:[34.74,119.45],CNFUZ:[26.07,119.30],
+    PEK:[40.08,116.58],PKX:[39.51,116.41],HGH:[30.23,120.43],
+    CTU:[30.58,103.95],KMG:[25.10,102.93],XIY:[34.44,108.75],
+    RUVVO:[43.11,131.89],RUVRP:[43.11,131.91],RUPRV:[43.10,131.93],
+    RUVCT:[43.11,131.89],VVO:[43.40,132.15],RUVYP:[42.74,133.08],
+    RUNJK:[42.82,132.87],RUZRB:[42.64,131.10],RUPSE:[42.65,130.80],
+    RUSLA:[42.86,131.36],RUBKM:[43.11,132.35],RUVNN:[49.09,140.29],
+    RUSOV:[48.97,140.29],RUNVS:[44.72,37.77],RUSHX:[44.69,37.80],
+    RUNUT:[44.72,37.79],RUTMN:[45.20,36.70],RUTUA:[44.10,39.08],
+    RUTMK:[45.27,37.38],RUKVK:[45.33,36.68],RUROV:[47.24,39.70],
+    RULED:[59.90,30.24],RUFCT:[59.89,30.22],RUPLP:[59.87,30.21],
+    RUBRO:[59.84,29.78],LED:[59.80,30.26],RUULU:[59.67,28.27],
+    RUUL2:[59.67,28.27],RUKGD:[54.70,20.50],RUBLT:[54.65,19.90],
+    RUMMK:[68.97,33.08],RUARH:[64.54,40.52],RUKDA:[67.15,32.41],
+    SVO:[55.97,37.41],DME:[55.41,37.90],VKO:[55.60,37.27],
+    KJA:[56.17,92.49],OVB:[55.01,82.65],KZN:[55.61,49.28],
+    KHV:[48.53,135.19],EKB:[56.74,60.80],AER:[43.45,39.96],
+    NLRTM:[51.95,4.05],NLRTA:[51.95,4.05],RTM:[51.96,4.44],
+    NLAMS:[52.40,4.80],AMS:[52.31,4.76],NLVLS:[51.44,3.57],EIN:[51.45,5.37],
+    TRAMB:[40.96,28.68],TRHAY:[40.99,29.02],IST:[41.26,28.74],
+    TRMER:[36.80,34.63],TRIZM:[38.80,26.97],ADB:[38.29,27.16],
+    TRGEB:[40.79,29.43],TRDER:[40.76,29.83],TRSAN:[36.58,36.17],
+    SAW:[40.90,29.31],ESB:[40.13,32.99],AYT:[36.90,30.79],
+    KZAKT:[43.65,51.16],KZKUR:[43.20,51.65],ALA:[43.35,77.04],
+    NQZ:[51.02,71.47],CIT:[42.36,69.78],KGF:[49.67,73.33],AKX:[50.25,57.21],
+  };
+  // Гаверсинус — расстояние между точками (км). Для сортировки портов
+  // по близости к складу.
+  function _haversineKm(lat1, lon1, lat2, lon2) {
+    var R = 6371, toR = Math.PI / 180;
+    var dLat = (lat2 - lat1) * toR, dLon = (lon2 - lon1) * toR;
+    var a = Math.sin(dLat/2)*Math.sin(dLat/2)
+      + Math.cos(lat1*toR)*Math.cos(lat2*toR)*Math.sin(dLon/2)*Math.sin(dLon/2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+  }
+  // Координаты выбранного склада (lat,lng) — выставляется при выборе города
+  // в city-автокомплите, используется для гео-сортировки портов.
+  var _warehouseCoords = null;
+  // Карта название_города(lower) → [lat,lng], наполняется из geo-cities.
+  var _cityCoordsMap = {};
+  // По текущему значению city-инпута выставляет _warehouseCoords (если город
+  // известен) — чтобы порты пересортировались по близости к складу.
+  function _maybeSetWarehouseCoords(val) {
+    var key = String(val || '').split(' / ')[0].trim().toLowerCase();
+    if (key && _cityCoordsMap[key]) {
+      _warehouseCoords = _cityCoordsMap[key];
+    }
+  }
+  // Country-specific placeholders для smart-вопросов про порты. Когда юзер
+  // выбрал страну в адресе склада — последующие port-вопросы получают
+  // подсказку с примерами из этой страны (а не общемировой mix).
+  const PORTS_PLACEHOLDER_BY_COUNTRY = {
+    CN: { sea: 'Shanghai, Ningbo, Yantian… — начните набирать',
+          air: 'PVG, PEK, CAN, HKG… — начните набирать' },
+    RU: { sea: 'ВМТП, Восточный, Усть-Луга… — начните набирать',
+          air: 'SVO, DME, LED, VVO… — начните набирать' },
+    AE: { sea: 'Jebel Ali, Khalifa Port… — начните набирать',
+          air: 'DXB, AUH, SHJ… — начните набирать' },
+    TR: { sea: 'Стамбул, Мерсин, Измир… — начните набирать',
+          air: 'IST, SAW, ADB… — начните набирать' },
+    DE: { sea: 'Hamburg, Bremerhaven… — начните набирать',
+          air: 'FRA, MUC, DUS… — начните набирать' },
+    KR: { sea: 'Busan, Incheon… — начните набирать',
+          air: 'ICN, GMP, PUS… — начните набирать' },
+    JP: { sea: 'Yokohama, Tokyo, Kobe… — начните набирать',
+          air: 'NRT, HND, KIX… — начните набирать' },
+    IN: { sea: 'Mundra, Nhava Sheva, Chennai… — начните набирать',
+          air: 'BOM, DEL, BLR… — начните набирать' },
+    US: { sea: 'LA, Long Beach, NY/NJ… — начните набирать',
+          air: 'LAX, JFK, ORD… — начните набирать' },
+    IT: { sea: 'Genova, Trieste, La Spezia… — начните набирать',
+          air: 'MXP, FCO, BGY… — начните набирать' },
+  };
+  // Подсказки по странам — после выбора в country_picker фильтруем датасеты
+  // sea/air/city по стране, чтобы юзер не утопал в нерелевантных подсказках.
+  // Ключ — ISO2 страны. Если страны нет в этой карте — fallback на общий
+  // SUGGEST_BY_SOURCE (мировой список из ~25 крупных хабов).
+  // Списки городов и портов — каждая запись содержит ОБА языка через " / ",
+  // чтобы datalist combobox матчил при наборе и на латинице, и на кириллице.
+  // Пример: "Shanghai / Шанхай" — браузер показывает обе строки при наборе
+  // "Sha" и "Шан". Для портов формат: "Имя (КОД) / Русское_имя".
+  const SUGGEST_BY_COUNTRY = {
+    CN: {
+      sea: ['Shanghai / Шанхай (CNSHA)', 'Shanghai Waigaoqiao / Шанхай Вайгаоцяо',
+        'Ningbo / Нинбо (CNNGB)', 'Shenzhen Yantian / Шэньчжэнь Янтянь (CNYTN)',
+        'Shenzhen Shekou / Шэньчжэнь Шэкоу (CNSKU)', 'Shenzhen Chiwan / Шэньчжэнь Чиван',
+        'Qingdao / Циндао (CNTAO)', 'Tianjin Xingang / Тяньцзинь Синьган (CNTXG)',
+        'Dalian / Далянь (CNDLC)', 'Xiamen / Сямэнь (CNXMN)',
+        'Hong Kong / Гонконг (HKHKG)', 'Guangzhou Nansha / Гуанчжоу Наньша (CNNSA)'],
+      air: ['Shanghai Pudong / Шанхай Пудун (PVG)', 'Beijing Capital / Пекин Шоуду (PEK)',
+        'Beijing Daxing / Пекин Дасин (PKX)', 'Guangzhou / Гуанчжоу (CAN)',
+        'Shenzhen / Шэньчжэнь (SZX)', 'Hong Kong / Гонконг (HKG)',
+        'Hangzhou / Ханчжоу (HGH)', 'Chengdu / Чэнду (CTU)',
+        'Kunming / Куньмин (KMG)', 'Xi’an / Сиань (XIY)'],
+      city: ['Shanghai / Шанхай', 'Shenzhen / Шэньчжэнь', 'Guangzhou / Гуанчжоу',
+        'Beijing / Пекин', 'Tianjin / Тяньцзинь', 'Qingdao / Циндао',
+        'Ningbo / Нинбо', 'Xiamen / Сямэнь', 'Dalian / Далянь',
+        'Hangzhou / Ханчжоу', 'Suzhou / Сучжоу', 'Nanjing / Нанкин',
+        'Wuhan / Ухань', 'Chengdu / Чэнду', 'Chongqing / Чунцин',
+        'Xi’an / Сиань', 'Hong Kong / Гонконг', 'Macau / Макао',
+        'Foshan / Фошань', 'Dongguan / Дунгуань', 'Wenzhou / Вэньчжоу',
+        'Yiwu / Иу', 'Wuxi / Уси', 'Fuzhou / Фучжоу',
+        'Jinan / Цзинань', 'Changsha / Чанша', 'Zhengzhou / Чжэнчжоу',
+        'Kunming / Куньмин', 'Shenyang / Шэньян', 'Harbin / Харбин',
+        'Changchun / Чанчунь', 'Jilin / Гирин', 'Anshan / Аньшань',
+        'Fushun / Фушунь', 'Daqing / Дацин', 'Hefei / Хэфэй',
+        'Taiyuan / Тайюань', 'Shijiazhuang / Шицзячжуан', 'Tangshan / Таншань',
+        'Baotou / Баотоу', 'Hohhot / Хух-Хото', 'Lanzhou / Ланьчжоу',
+        'Nanchang / Наньчан', 'Guiyang / Гуйян', 'Nanning / Наньнин',
+        'Haikou / Хайкоу', 'Sanya / Санья', 'Lhasa / Лхаса',
+        'Urumqi / Урумчи', 'Yinchuan / Иньчуань', 'Xining / Синин',
+        'Yichang / Ичан', 'Yangzhou / Янчжоу', 'Wenling / Вэньлин',
+        'Putian / Путянь', 'Quanzhou / Цюаньчжоу', 'Zhongshan / Чжуншань',
+        'Zhuhai / Чжухай', 'Huizhou / Хуэйчжоу', 'Jiangmen / Цзянмэнь',
+        'Zhanjiang / Чжаньцзян', 'Maoming / Маомин', 'Shantou / Шаньтоу',
+        'Liuzhou / Лючжоу', 'Beihai / Бэйхай', 'Mianyang / Мяньян',
+        'Luzhou / Лучжоу', 'Yibin / Ибинь', 'Zigong / Цзыгун',
+        'Nanchong / Наньчун', 'Deyang / Дэян', 'Lianyungang / Ляньюньган',
+        'Yantai / Яньтай', 'Weifang / Вэйфан', 'Weihai / Вэйхай',
+        'Linyi / Линьи', 'Zibo / Цзыбо', 'Datong / Датун',
+        'Handan / Ханьдань', 'Baoding / Баодин', 'Cangzhou / Цанчжоу',
+        'Qinhuangdao / Циньхуандао', 'Wuhu / Уху', 'Xuzhou / Сюйчжоу',
+        'Changzhou / Чанчжоу', 'Yangzhou / Янчжоу', 'Nantong / Наньтун',
+        'Lianyungang / Ляньюньган', 'Huai’an / Хуайань', 'Yancheng / Яньчэн',
+        'Jiaxing / Цзясин', 'Huzhou / Хучжоу', 'Shaoxing / Шаосин',
+        'Jinhua / Цзиньхуа', 'Quzhou / Цюйчжоу', 'Taizhou / Тайчжоу',
+        'Lijiang / Лицзян', 'Dali / Дали'],
+    },
+    RU: {
+      sea: ['Vladivostok ВМТП / Владивосток ВМТП', 'Vostochny / Восточный (RUVYP)',
+        'Nakhodka НМТП / Находка НМТП', 'Novorossiysk НМТП / Новороссийск НМТП',
+        'Saint Petersburg / Санкт-Петербург Большой порт', 'Ust-Luga / Усть-Луга',
+        'Bronka / Бронка', 'Kaliningrad / Калининград', 'Murmansk / Мурманск'],
+      air: ['Sheremetyevo / Шереметьево (SVO)', 'Domodedovo / Домодедово (DME)',
+        'Vnukovo / Внуково (VKO)', 'Vladivostok / Владивосток (VVO)',
+        'Novosibirsk / Новосибирск (OVB)', 'Yekaterinburg / Екатеринбург (SVX)',
+        'Saint Petersburg Pulkovo / Санкт-Петербург Пулково (LED)'],
+      city: ['Moscow / Москва', 'Saint Petersburg / Санкт-Петербург',
+        'Novosibirsk / Новосибирск', 'Yekaterinburg / Екатеринбург',
+        'Kazan / Казань', 'Nizhny Novgorod / Нижний Новгород',
+        'Chelyabinsk / Челябинск', 'Samara / Самара',
+        'Rostov-on-Don / Ростов-на-Дону', 'Ufa / Уфа',
+        'Krasnoyarsk / Красноярск', 'Voronezh / Воронеж',
+        'Perm / Пермь', 'Volgograd / Волгоград', 'Krasnodar / Краснодар',
+        'Saratov / Саратов', 'Tyumen / Тюмень', 'Togliatti / Тольятти',
+        'Barnaul / Барнаул', 'Irkutsk / Иркутск', 'Khabarovsk / Хабаровск',
+        'Yaroslavl / Ярославль', 'Vladivostok / Владивосток',
+        'Kaliningrad / Калининград', 'Novorossiysk / Новороссийск',
+        'Sochi / Сочи', 'Belgorod / Белгород', 'Bryansk / Брянск',
+        'Vladimir / Владимир', 'Vologda / Вологда', 'Ivanovo / Иваново',
+        'Izhevsk / Ижевск', 'Yoshkar-Ola / Йошкар-Ола', 'Kaluga / Калуга',
+        'Kemerovo / Кемерово', 'Kirov / Киров', 'Kostroma / Кострома',
+        'Kursk / Курск', 'Lipetsk / Липецк', 'Magnitogorsk / Магнитогорск',
+        'Makhachkala / Махачкала', 'Murmansk / Мурманск',
+        'Naberezhnye Chelny / Набережные Челны', 'Nizhny Tagil / Нижний Тагил',
+        'Novokuznetsk / Новокузнецк', 'Omsk / Омск', 'Orenburg / Оренбург',
+        'Orel / Орёл', 'Penza / Пенза', 'Petrozavodsk / Петрозаводск',
+        'Pskov / Псков', 'Ryazan / Рязань', 'Saransk / Саранск',
+        'Smolensk / Смоленск', 'Stavropol / Ставрополь', 'Surgut / Сургут',
+        'Syktyvkar / Сыктывкар', 'Tambov / Тамбов', 'Tver / Тверь',
+        'Tomsk / Томск', 'Tula / Тула', 'Ulan-Ude / Улан-Удэ',
+        'Ulyanovsk / Ульяновск', 'Cheboksary / Чебоксары',
+        'Chita / Чита', 'Yakutsk / Якутск',
+        'Petropavlovsk-Kamchatsky / Петропавловск-Камчатский',
+        'Yuzhno-Sakhalinsk / Южно-Сахалинск', 'Blagoveshchensk / Благовещенск',
+        'Vladikavkaz / Владикавказ', 'Grozny / Грозный',
+        'Nalchik / Нальчик', 'Maykop / Майкоп', 'Cherkessk / Черкесск',
+        'Magas / Магас', 'Elista / Элиста', 'Naryan-Mar / Нарьян-Мар',
+        'Anadyr / Анадырь', 'Salekhard / Салехард', 'Khanty-Mansiysk / Ханты-Мансийск',
+        'Birobidzhan / Биробиджан', 'Gorno-Altaysk / Горно-Алтайск',
+        'Kyzyl / Кызыл', 'Abakan / Абакан', 'Magadan / Магадан',
+        'Nakhodka / Находка', 'Ussuriysk / Уссурийск',
+        'Komsomolsk-on-Amur / Комсомольск-на-Амуре',
+        'Arkhangelsk / Архангельск', 'Severodvinsk / Северодвинск',
+        'Cherepovets / Череповец', 'Norilsk / Норильск', 'Bratsk / Братск',
+        'Angarsk / Ангарск', 'Engels / Энгельс', 'Sterlitamak / Стерлитамак',
+        'Nefteyugansk / Нефтеюганск', 'Nizhnevartovsk / Нижневартовск',
+        'Noyabrsk / Ноябрьск', 'Novy Urengoy / Новый Уренгой',
+        'Mytishchi / Мытищи', 'Lyubertsy / Люберцы',
+        'Khimki / Химки', 'Balashikha / Балашиха',
+        'Korolev / Королёв', 'Podolsk / Подольск'],
+    },
+    AE: {
+      sea: ['Jebel Ali / Джебель-Али (AEJEA)', 'Port Rashid / Порт Рашид (AEPRA)',
+        'Khalifa Port / Порт Халифа (AEKLF)', 'Khor Fakkan / Хор Факкан',
+        'Port of Fujairah / Порт Фуджейра', 'Hamriyah Port / Порт Хамрия'],
+      air: ['Dubai / Дубай (DXB)', 'Al Maktoum / Аль-Мактум (DWC)',
+        'Abu Dhabi / Абу-Даби (AUH)', 'Sharjah / Шарджа (SHJ)',
+        'Ras Al Khaimah / Рас-эль-Хайма (RKT)'],
+      city: ['Dubai / Дубай', 'Abu Dhabi / Абу-Даби', 'Sharjah / Шарджа',
+        'Ajman / Аджман', 'Ras Al Khaimah / Рас-эль-Хайма',
+        'Fujairah / Фуджейра', 'Umm Al Quwain / Умм-эль-Кайвайн',
+        'Al Ain / Аль-Айн', 'Khor Fakkan / Хор-Факкан',
+        'Dibba Al-Hisn / Дибба-эль-Хисн', 'Madinat Zayed / Мадинат-Зайед',
+        'Ruwais / Эр-Рувайс', 'Jebel Ali / Джебель-Али',
+        'Hatta / Хатта', 'Liwa / Лива', 'Ghayathi / Гаяти',
+        'Al Dhaid / Эд-Даид', 'Kalba / Калба', 'Masafi / Масафи'],
+    },
+    TR: {
+      sea: ['Istanbul Ambarli / Стамбул Амбарли', 'Mersin / Мерсин',
+        'Izmit Kocaeli / Измит Коджаэли', 'Gebze / Гебзе',
+        'Izmir Aliağa / Измир Алиага'],
+      air: ['Istanbul / Стамбул (IST)', 'Istanbul Sabiha / Стамбул Сабиха (SAW)',
+        'Ankara / Анкара (ESB)', 'Antalya / Анталья (AYT)',
+        'Izmir / Измир (ADB)'],
+      city: ['Istanbul / Стамбул', 'Ankara / Анкара', 'Izmir / Измир',
+        'Bursa / Бурса', 'Antalya / Анталья', 'Adana / Адана',
+        'Gaziantep / Газиантеп', 'Konya / Конья', 'Mersin / Мерсин',
+        'Kocaeli / Коджаэли', 'Kayseri / Кайсери', 'Eskişehir / Эскишехир',
+        'Diyarbakır / Диярбакыр', 'Samsun / Самсун', 'Denizli / Денизли',
+        'Şanlıurfa / Шанлыурфа', 'Adapazarı / Адапазары', 'Malatya / Малатья',
+        'Kahramanmaraş / Кахраманмараш', 'Erzurum / Эрзурум', 'Van / Ван',
+        'Batman / Батман', 'Elazığ / Элязыг', 'Manisa / Маниса',
+        'Sivas / Сивас', 'Trabzon / Трабзон', 'Çanakkale / Чанаккале',
+        'Çorum / Чорум', 'Edirne / Эдирне', 'Kütahya / Кютахья',
+        'Tekirdağ / Текирдаг', 'Hatay (Antakya) / Хатай (Антакья)',
+        'Aydın / Айдын', 'Balıkesir / Балыкесир', 'Isparta / Ыспарта',
+        'Aksaray / Аксарай', 'Sakarya / Сакарья', 'Niğde / Нигде',
+        'Yozgat / Йозгат', 'Tokat / Токат', 'Bolu / Болу',
+        'Düzce / Дюздже', 'Kırıkkale / Кырыккале', 'Çankırı / Чанкыры',
+        'Bilecik / Биледжик', 'Karaman / Караман', 'Burdur / Бурдур'],
+    },
+    DE: {
+      sea: ['Hamburg / Гамбург (DEHAM)', 'Bremerhaven / Бремерхафен (DEBRV)',
+        'Wilhelmshaven / Вильгельмсхафен'],
+      air: ['Frankfurt / Франкфурт (FRA)', 'München / Мюнхен (MUC)',
+        'Düsseldorf / Дюссельдорф (DUS)', 'Köln/Bonn / Кёльн/Бонн (CGN)',
+        'Leipzig / Лейпциг (LEJ)'],
+      city: ['Berlin / Берлин', 'München / Мюнхен', 'Hamburg / Гамбург',
+        'Köln / Кёльн', 'Frankfurt / Франкфурт', 'Stuttgart / Штутгарт',
+        'Düsseldorf / Дюссельдорф', 'Dortmund / Дортмунд', 'Essen / Эссен',
+        'Leipzig / Лейпциг', 'Bremen / Бремен', 'Dresden / Дрезден',
+        'Hannover / Ганновер', 'Nürnberg / Нюрнберг', 'Duisburg / Дуйсбург',
+        'Bochum / Бохум', 'Wuppertal / Вупперталь', 'Bielefeld / Билефельд',
+        'Bonn / Бонн', 'Mannheim / Мангейм', 'Karlsruhe / Карлсруэ',
+        'Augsburg / Аугсбург', 'Wiesbaden / Висбаден',
+        'Gelsenkirchen / Гельзенкирхен', 'Mönchengladbach / Мёнхенгладбах',
+        'Braunschweig / Брауншвейг', 'Chemnitz / Хемниц', 'Kiel / Киль',
+        'Aachen / Ахен', 'Halle / Галле', 'Magdeburg / Магдебург',
+        'Freiburg / Фрайбург', 'Krefeld / Крефельд', 'Lübeck / Любек',
+        'Oberhausen / Оберхаузен', 'Erfurt / Эрфурт', 'Mainz / Майнц',
+        'Rostock / Росток', 'Kassel / Кассель', 'Hagen / Хаген',
+        'Hamm / Хамм', 'Saarbrücken / Саарбрюккен',
+        'Mülheim / Мюльхайм', 'Potsdam / Потсдам', 'Ludwigshafen / Людвигсхафен',
+        'Oldenburg / Ольденбург', 'Leverkusen / Леверкузен',
+        'Osnabrück / Оснабрюк', 'Solingen / Золинген', 'Heidelberg / Гейдельберг',
+        'Darmstadt / Дармштадт', 'Regensburg / Регенсбург', 'Würzburg / Вюрцбург',
+        'Ingolstadt / Ингольштадт', 'Heilbronn / Хайльбронн',
+        'Ulm / Ульм', 'Pforzheim / Пфорцхайм', 'Reutlingen / Ройтлинген'],
+    },
+    KR: {
+      sea: ['Busan / Пусан (KRPUS)', 'Incheon / Инчхон (KRINC)',
+        'Gwangyang / Кванъян (KRKAN)'],
+      air: ['Seoul Incheon / Сеул Инчхон (ICN)', 'Seoul Gimpo / Сеул Кимпо (GMP)',
+        'Busan / Пусан (PUS)'],
+      city: ['Seoul / Сеул', 'Busan / Пусан', 'Incheon / Инчхон',
+        'Daegu / Тэгу', 'Daejeon / Тэджон', 'Gwangju / Кванджу',
+        'Ulsan / Ульсан', 'Suwon / Сувон', 'Goyang / Коянг',
+        'Changwon / Чханвон', 'Yongin / Ёнин', 'Bucheon / Пучхон',
+        'Cheongju / Чхонджу', 'Ansan / Ансан', 'Jeonju / Чонджу',
+        'Cheonan / Чхонан', 'Pohang / Пхохан', 'Hwaseong / Хвасон',
+        'Namyangju / Намъянджу', 'Gimhae / Кимхэ', 'Jeju / Чеджу',
+        'Pyeongtaek / Пхёнтхэк', 'Uijeongbu / Ыйджонбу',
+        'Siheung / Сихын', 'Paju / Паджу', 'Cheongju / Чхонджу',
+        'Gunpo / Кунпхо', 'Anyang / Аньян', 'Sejong / Седжон',
+        'Wonju / Вонджу', 'Asan / Асан', 'Chuncheon / Чхунчхон',
+        'Gangneung / Каннын', 'Gumi / Куми', 'Gyeongju / Кёнджу',
+        'Mokpo / Мокпхо', 'Yeosu / Ёсу', 'Tongyeong / Тхонъён'],
+    },
+    JP: {
+      sea: ['Yokohama / Иокогама (JPYOK)', 'Tokyo / Токио (JPTYO)',
+        'Kobe / Кобе (JPUKB)', 'Nagoya / Нагоя (JPNGO)',
+        'Osaka / Осака (JPOSA)'],
+      air: ['Tokyo Narita / Токио Нарита (NRT)', 'Tokyo Haneda / Токио Ханэда (HND)',
+        'Osaka Kansai / Осака Кансай (KIX)', 'Nagoya / Нагоя (NGO)'],
+      city: ['Tokyo / Токио', 'Yokohama / Иокогама', 'Osaka / Осака',
+        'Nagoya / Нагоя', 'Sapporo / Саппоро', 'Kobe / Кобе',
+        'Kyoto / Киото', 'Fukuoka / Фукуока', 'Kawasaki / Кавасаки',
+        'Saitama / Сайтама', 'Hiroshima / Хиросима', 'Sendai / Сэндай',
+        'Chiba / Тиба', 'Kitakyushu / Китакюсю', 'Sakai / Сакаи',
+        'Niigata / Ниигата', 'Hamamatsu / Хамамацу', 'Okayama / Окаяма',
+        'Sagamihara / Сагамихара', 'Shizuoka / Сидзуока',
+        'Kumamoto / Кумамото', 'Kagoshima / Кагосима',
+        'Funabashi / Фунабаси', 'Hachioji / Хатиодзи', 'Matsuyama / Мацуяма',
+        'Higashiosaka / Хигасиосака', 'Nishinomiya / Нисиномия',
+        'Kurashiki / Курасики', 'Ichikawa / Итикава', 'Fukuyama / Фукуяма',
+        'Amagasaki / Амагасаки', 'Toyota / Тоёта', 'Suita / Суйта',
+        'Naha / Наха', 'Kanazawa / Канадзава', 'Utsunomiya / Уцуномия',
+        'Matsudo / Мацудо', 'Hirakata / Хираката', 'Kashiwa / Касива',
+        'Toyonaka / Тоёнака', 'Yokosuka / Йокосука', 'Toyohashi / Тоёхаси',
+        'Maebashi / Маэбаси', 'Takamatsu / Такамацу', 'Aomori / Аомори',
+        'Akita / Акита', 'Iwaki / Иваки', 'Koshigaya / Косигая',
+        'Wakayama / Вакаяма', 'Nara / Нара', 'Tokushima / Токусима',
+        'Otsu / Оцу', 'Morioka / Мориока', 'Yamagata / Ямагата',
+        'Mito / Мито', 'Fukushima / Фукусима', 'Kofu / Кофу',
+        'Toyama / Тояма', 'Fukui / Фукуи', 'Gifu / Гифу',
+        'Tsu / Цу', 'Tottori / Тоттори', 'Matsue / Мацуэ',
+        'Yamaguchi / Ямагути', 'Saga / Сага', 'Nagasaki / Нагасаки',
+        'Oita / Оита', 'Miyazaki / Миядзаки'],
+    },
+    IN: {
+      sea: ['Mundra / Мундра (INMUN)', 'Nhava Sheva JNPT / Нхава-Шева (INNSA)',
+        'Chennai / Ченнаи (INMAA)', 'Mumbai / Мумбаи (INBOM)',
+        'Kolkata / Калькутта (INCCU)', 'Cochin / Кочин (INCOK)'],
+      air: ['Mumbai / Мумбаи (BOM)', 'Delhi / Дели (DEL)',
+        'Chennai / Ченнаи (MAA)', 'Bangalore / Бангалор (BLR)',
+        'Hyderabad / Хайдарабад (HYD)', 'Kolkata / Калькутта (CCU)'],
+      city: ['Mumbai / Мумбаи', 'Delhi / Дели', 'Bangalore / Бангалор',
+        'Hyderabad / Хайдарабад', 'Chennai / Ченнаи', 'Kolkata / Калькутта',
+        'Pune / Пуна', 'Ahmedabad / Ахмадабад', 'Surat / Сурат',
+        'Jaipur / Джайпур', 'Lucknow / Лакхнау', 'Kanpur / Канпур',
+        'Nagpur / Нагпур', 'Indore / Индаур', 'Visakhapatnam / Вишакхапатнам',
+        'Bhopal / Бхопал', 'Patna / Патна', 'Vadodara / Вадодара',
+        'Ghaziabad / Газиабад', 'Ludhiana / Лудхиана', 'Agra / Агра',
+        'Nashik / Нашик', 'Faridabad / Фаридабад', 'Meerut / Мирут',
+        'Rajkot / Раджкот', 'Kalyan-Dombivli / Кальян-Домбивли',
+        'Vasai-Virar / Васаи-Вирар', 'Varanasi / Варанаси',
+        'Srinagar / Сринагар', 'Aurangabad / Аурангабад',
+        'Dhanbad / Дханбад', 'Amritsar / Амритсар', 'Navi Mumbai / Нави-Мумбаи',
+        'Allahabad / Аллахабад', 'Ranchi / Ранчи', 'Howrah / Ховрах',
+        'Coimbatore / Коимбатор', 'Jabalpur / Джабалпур', 'Gwalior / Гвалиор',
+        'Vijayawada / Виджаявада', 'Jodhpur / Джодхпур', 'Madurai / Мадурай',
+        'Raipur / Райпур', 'Kota / Кота', 'Chandigarh / Чандигарх',
+        'Guwahati / Гувахати', 'Solapur / Шолапур',
+        'Hubli-Dharwad / Хубли-Дхарвад', 'Bareilly / Барейли',
+        'Moradabad / Морадабад', 'Mysore / Майсур', 'Tiruchirappalli / Тиручираппалли',
+        'Tiruppur / Тируппур', 'Salem / Салем', 'Bhubaneswar / Бхубанешвар',
+        'Aligarh / Алигарх', 'Saharanpur / Сахаранпур', 'Bikaner / Биканер',
+        'Jamshedpur / Джамшедпур', 'Bhilai / Бхилаи', 'Cuttack / Каттак',
+        'Firozabad / Фирозабад', 'Kochi / Кочи', 'Trivandrum / Тривандрум',
+        'Pondicherry / Пондишери', 'Gurgaon / Гуруграм', 'Noida / Нойда'],
+    },
+    US: {
+      sea: ['Los Angeles / Лос-Анджелес (USLAX)',
+        'Long Beach / Лонг-Бич (USLGB)',
+        'New York/New Jersey / Нью-Йорк/Нью-Джерси',
+        'Savannah / Саванна', 'Seattle/Tacoma / Сиэтл/Такома',
+        'Houston / Хьюстон', 'Charleston / Чарлстон'],
+      air: ['Los Angeles / Лос-Анджелес (LAX)', 'New York JFK / Нью-Йорк JFK',
+        'Chicago ORD / Чикаго ORD', 'Miami / Майами (MIA)',
+        'Atlanta / Атланта (ATL)', 'Dallas / Даллас (DFW)',
+        'Seattle / Сиэтл (SEA)'],
+      city: ['New York / Нью-Йорк', 'Los Angeles / Лос-Анджелес',
+        'Chicago / Чикаго', 'Houston / Хьюстон', 'Phoenix / Финикс',
+        'Philadelphia / Филадельфия', 'San Antonio / Сан-Антонио',
+        'San Diego / Сан-Диего', 'Dallas / Даллас', 'Austin / Остин',
+        'Jacksonville / Джексонвилл', 'San Francisco / Сан-Франциско',
+        'Seattle / Сиэтл', 'Miami / Майами', 'Atlanta / Атланта',
+        'Boston / Бостон', 'Denver / Денвер', 'Portland / Портленд',
+        'Las Vegas / Лас-Вегас', 'Washington DC / Вашингтон',
+        'Nashville / Нэшвилл', 'Detroit / Детройт', 'Memphis / Мемфис',
+        'Louisville / Луисвилл', 'Baltimore / Балтимор',
+        'Milwaukee / Милуоки', 'Albuquerque / Альбукерке',
+        'Tucson / Тусон', 'Fresno / Фресно', 'Sacramento / Сакраменто',
+        'Mesa / Меса', 'Kansas City / Канзас-Сити', 'Long Beach / Лонг-Бич',
+        'Colorado Springs / Колорадо-Спрингс', 'Raleigh / Роли',
+        'Omaha / Омаха', 'Minneapolis / Миннеаполис', 'Cleveland / Кливленд',
+        'Tulsa / Талса', 'Wichita / Уичита', 'Arlington / Арлингтон',
+        'New Orleans / Новый Орлеан', 'Honolulu / Гонолулу',
+        'Anaheim / Анахайм', 'Tampa / Тампа', 'Aurora / Аврора',
+        'Riverside / Риверсайд', 'St. Louis / Сент-Луис',
+        'Pittsburgh / Питтсбург', 'Cincinnati / Цинциннати',
+        'Orlando / Орландо', 'Bakersfield / Бейкерсфилд',
+        'Stockton / Стоктон', 'Buffalo / Буффало', 'Toledo / Толидо',
+        'Lincoln / Линкольн', 'Plano / Плано', 'Greensboro / Гринсборо',
+        'Henderson / Хендерсон', 'Madison / Мэдисон',
+        'Jersey City / Джерси-Сити', 'Chandler / Чандлер',
+        'Fort Wayne / Форт-Уэйн', 'Charlotte / Шарлотт',
+        'Indianapolis / Индианаполис', 'Columbus / Колумбус',
+        'Fort Worth / Форт-Уэрт', 'El Paso / Эль-Пасо',
+        'Oklahoma City / Оклахома-Сити', 'Virginia Beach / Вирджиния-Бич',
+        'Salt Lake City / Солт-Лейк-Сити', 'Anchorage / Анкоридж',
+        'St. Paul / Сент-Пол'],
+    },
+    IT: {
+      sea: ['Genova / Генуя', 'La Spezia / Ла-Специя', 'Trieste / Триест',
+        'Livorno / Ливорно', 'Gioia Tauro / Джойя-Тауро'],
+      air: ['Milano Malpensa / Милан Мальпенса (MXP)',
+        'Roma Fiumicino / Рим Фьюмичино (FCO)',
+        'Bergamo / Бергамо (BGY)'],
+      city: ['Roma / Рим', 'Milano / Милан', 'Napoli / Неаполь',
+        'Torino / Турин', 'Bologna / Болонья', 'Genova / Генуя',
+        'Firenze / Флоренция', 'Palermo / Палермо', 'Catania / Катания',
+        'Bari / Бари', 'Verona / Верона', 'Padova / Падуя',
+        'Brescia / Брешиа', 'Modena / Модена', 'Parma / Парма',
+        'Reggio Emilia / Реджо-Эмилия', 'Trento / Тренто',
+        'Perugia / Перуджа', 'Ravenna / Равенна', 'Livorno / Ливорно',
+        'Cagliari / Кальяри', 'Foggia / Фоджа', 'Rimini / Римини',
+        'Salerno / Салерно', 'Ferrara / Феррара', 'Sassari / Сассари',
+        'Latina / Латина', 'Giugliano in Campania / Джульяно-ин-Кампанья',
+        'Monza / Монца', 'Siracusa / Сиракузы', 'Pescara / Пескара',
+        'Bergamo / Бергамо', 'Vicenza / Виченца', 'Trieste / Триест',
+        'Bolzano / Больцано', 'Novara / Новара', 'Piacenza / Пьяченца',
+        'Ancona / Анкона', 'Lecce / Лечче', 'Udine / Удине',
+        'Arezzo / Ареццо', 'Cesena / Чезена', 'La Spezia / Ла-Специя',
+        'Pesaro / Пезаро', 'Alessandria / Алессандрия',
+        'Pistoia / Пистоя', 'Catanzaro / Катандзаро',
+        'Brindisi / Бриндизи', 'Taranto / Таранто'],
+    },
+    // ── Остальные страны (COUNTRIES_ALL): города в формате
+    // "English / Русский", главные порты/аэропорты ключевых направлений.
+    AU: { city: ['Sydney / Сидней', 'Melbourne / Мельбурн', 'Brisbane / Брисбен',
+        'Perth / Перт', 'Adelaide / Аделаида', 'Canberra / Канберра',
+        'Gold Coast / Голд-Кост', 'Newcastle / Ньюкасл',
+        'Wollongong / Вуллонгонг', 'Hobart / Хобарт', 'Geelong / Джилонг',
+        'Townsville / Таунсвилл', 'Cairns / Кэрнс', 'Darwin / Дарвин',
+        'Toowoomba / Тувумба', 'Ballarat / Балларат', 'Bendigo / Бендиго',
+        'Albury / Олбери', 'Mackay / Маккай', 'Rockhampton / Рокгемптон',
+        'Bunbury / Банбери', 'Bundaberg / Бандаберг', 'Coffs Harbour / Коффс-Харбор',
+        'Hervey Bay / Херви-Бэй', 'Wagga Wagga / Уогга-Уогга',
+        'Mildura / Милдьюра', 'Shepparton / Шеппартон',
+        'Port Macquarie / Порт-Маккуори', 'Tamworth / Тамворт',
+        'Orange / Ориндж', 'Dubbo / Даббо', 'Geraldton / Джералдтон',
+        'Kalgoorlie / Калгурли', 'Mount Isa / Маунт-Иса',
+        'Broken Hill / Брокен-Хилл'],
+        sea: ['Sydney / Сидней', 'Melbourne / Мельбурн', 'Brisbane / Брисбен', 'Fremantle / Фримантл'],
+        air: ['Sydney / Сидней (SYD)', 'Melbourne / Мельбурн (MEL)', 'Brisbane / Брисбен (BNE)', 'Perth / Перт (PER)'] },
+    AT: { city: ['Vienna / Вена', 'Graz / Грац', 'Linz / Линц',
+        'Salzburg / Зальцбург', 'Innsbruck / Инсбрук', 'Klagenfurt / Клагенфурт',
+        'Villach / Филлах', 'Wels / Вельс', 'St. Pölten / Санкт-Пёльтен',
+        'Dornbirn / Дорнбирн', 'Steyr / Штайр', 'Feldkirch / Фельдкирх',
+        'Bregenz / Брегенц', 'Leoben / Леобен', 'Krems / Кремс',
+        'Wiener Neustadt / Винер-Нойштадт', 'Lustenau / Лустенау',
+        'Klosterneuburg / Клостернойбург', 'Baden / Баден',
+        'Wolfsberg / Вольфсберг', 'Eisenstadt / Эйзенштадт'],
+        sea: [], air: ['Vienna / Вена (VIE)', 'Salzburg / Зальцбург (SZG)', 'Innsbruck / Инсбрук (INN)', 'Graz / Грац (GRZ)'] },
+    AR: { city: ['Buenos Aires / Буэнос-Айрес', 'Córdoba / Кордова',
+        'Rosario / Росарио', 'Mendoza / Мендоса', 'La Plata / Ла-Плата',
+        'Mar del Plata / Мар-дель-Плата', 'Tucumán / Тукуман',
+        'Salta / Сальта', 'Santa Fe / Санта-Фе', 'Bahía Blanca / Баия-Бланка',
+        'Resistencia / Ресистенсия', 'San Juan / Сан-Хуан',
+        'Posadas / Посадас', 'Neuquén / Неукен', 'Jujuy / Жужуй',
+        'Corrientes / Корриентес', 'Comodoro Rivadavia / Комодоро-Ривадавия',
+        'Río Cuarto / Рио-Куарто', 'Paraná / Парана', 'San Luis / Сан-Луис',
+        'San Salvador de Jujuy / Сан-Сальвадор-де-Жужуй',
+        'Catamarca / Катамарка', 'La Rioja / Ла-Риоха',
+        'Formosa / Формоса', 'Río Gallegos / Рио-Гальегос',
+        'Ushuaia / Ушуая'],
+        sea: ['Buenos Aires / Буэнос-Айрес', 'Rosario / Росарио'], air: ['Buenos Aires Ezeiza / Буэнос-Айрес Эсейса (EZE)', 'Córdoba / Кордова (COR)'] },
+    BE: { city: ['Brussels / Брюссель', 'Antwerp / Антверпен', 'Ghent / Гент',
+        'Bruges / Брюгге', 'Liège / Льеж', 'Charleroi / Шарлеруа',
+        'Namur / Намюр', 'Mons / Монс', 'Leuven / Лёвен',
+        'Mechelen / Мехелен', 'Aalst / Алст', 'Hasselt / Хасселт',
+        'Sint-Niklaas / Синт-Никлас', 'Ostend / Остенде',
+        'Tournai / Турне', 'Verviers / Вервье',
+        'Kortrijk / Кортрейк', 'Genk / Генк', 'Roeselare / Руселаре',
+        'Mouscron / Мускрон', 'La Louvière / Ла-Лувьер',
+        'Seraing / Серен', 'Brasschaat / Брасхат', 'Sint-Truiden / Синт-Трёйден'],
+        sea: ['Antwerp / Антверпен (BEANR)', 'Zeebrugge / Зебрюгге'], air: ['Brussels / Брюссель (BRU)', 'Liège / Льеж (LGG)', 'Charleroi / Шарлеруа (CRL)'] },
+    BG: { city: ['Sofia / София', 'Plovdiv / Пловдив', 'Varna / Варна',
+        'Burgas / Бургас', 'Ruse / Русе', 'Stara Zagora / Стара-Загора',
+        'Pleven / Плевен', 'Sliven / Сливен', 'Dobrich / Добрич',
+        'Shumen / Шумен', 'Pernik / Перник', 'Yambol / Ямбол',
+        'Haskovo / Хасково', 'Pazardzhik / Пазарджик',
+        'Blagoevgrad / Благоевград', 'Veliko Tarnovo / Велико-Тырново',
+        'Vratsa / Враца', 'Kazanlak / Казанлык', 'Asenovgrad / Асеновград',
+        'Gabrovo / Габрово'],
+        sea: ['Varna / Варна', 'Burgas / Бургас'], air: ['Sofia / София (SOF)', 'Varna / Варна (VAR)', 'Burgas / Бургас (BOJ)'] },
+    BR: { city: ['São Paulo / Сан-Паулу', 'Rio de Janeiro / Рио-де-Жанейро',
+        'Brasília / Бразилиа', 'Salvador / Салвадор',
+        'Fortaleza / Форталеза', 'Belo Horizonte / Белу-Оризонти',
+        'Manaus / Манаус', 'Curitiba / Куритиба', 'Recife / Ресифи',
+        'Porto Alegre / Порту-Алегри', 'Belém / Белен',
+        'Goiânia / Гояния', 'Campinas / Кампинас', 'Guarulhos / Гуарульюс',
+        'São Luís / Сан-Луис', 'Natal / Натал', 'Maceió / Масейо',
+        'Campo Grande / Кампу-Гранди', 'Teresina / Терезина',
+        'João Pessoa / Жуан-Песоа', 'Florianópolis / Флорианополис',
+        'Vitória / Витория', 'Cuiabá / Куяба', 'Aracaju / Аракажу',
+        'Joinville / Жоинвиль', 'Caxias do Sul / Кашиас-ду-Сул',
+        'Londrina / Лондрина', 'Ribeirão Preto / Рибейран-Прету',
+        'Sorocaba / Сорокаба', 'Niterói / Нитерой',
+        'Jaboatão dos Guararapes / Жабоатан-дус-Гуарарапис',
+        'Osasco / Озаску', 'Santo André / Санту-Андре',
+        'São Bernardo do Campo / Сан-Бернарду-ду-Кампу',
+        'Nova Iguaçu / Нова-Игуасу', 'Duque de Caxias / Дуки-ди-Кашиас',
+        'São José dos Campos / Сан-Жозе-дус-Кампус',
+        'Uberlândia / Уберландия', 'Contagem / Контажен',
+        'Feira de Santana / Фейра-ди-Сантана', 'Aparecida de Goiânia / Апаресида-ди-Гояния',
+        'São Vicente / Сан-Висенти', 'Santos / Сантус',
+        'Mauá / Мауа', 'Jundiaí / Жундиай', 'Piracicaba / Пирасикаба',
+        'Macapá / Макапа', 'Boa Vista / Боа-Виста', 'Palmas / Палмас',
+        'Rio Branco / Риу-Бранку', 'Porto Velho / Порту-Велью'],
+        sea: ['Santos / Сантос', 'Rio de Janeiro / Рио-де-Жанейро', 'Paranaguá / Паранагуа', 'Itajaí / Итажай'],
+        air: ['São Paulo Guarulhos / Сан-Паулу Гуарульюс (GRU)', 'Rio de Janeiro / Рио-де-Жанейро (GIG)', 'Brasília / Бразилиа (BSB)', 'Manaus / Манаус (MAO)'] },
+    GB: { city: ['London / Лондон', 'Manchester / Манчестер',
+        'Birmingham / Бирмингем', 'Glasgow / Глазго',
+        'Liverpool / Ливерпуль', 'Edinburgh / Эдинбург',
+        'Leeds / Лидс', 'Sheffield / Шеффилд', 'Bristol / Бристоль',
+        'Newcastle upon Tyne / Ньюкасл-апон-Тайн', 'Cardiff / Кардифф',
+        'Belfast / Белфаст', 'Nottingham / Ноттингем',
+        'Coventry / Ковентри', 'Leicester / Лестер',
+        'Stoke-on-Trent / Сток-он-Трент', 'Aberdeen / Абердин',
+        'Plymouth / Плимут', 'Wolverhampton / Вулверхэмптон',
+        'Derby / Дерби', 'Swansea / Суонси', 'Brighton / Брайтон',
+        'Sunderland / Сандерленд', 'Reading / Рединг',
+        'Oxford / Оксфорд', 'Cambridge / Кембридж', 'York / Йорк',
+        'Norwich / Норвич', 'Southampton / Саутгемптон',
+        'Portsmouth / Портсмут', 'Bradford / Брадфорд',
+        'Hull / Халл', 'Wakefield / Уэйкфилд', 'Bath / Бат',
+        'Exeter / Эксетер', 'Canterbury / Кентербери',
+        'Inverness / Инвернесс', 'Bournemouth / Борнмут',
+        'Milton Keynes / Милтон-Кинс', 'Northampton / Нортгемптон',
+        'Luton / Лутон', 'Slough / Слау', 'Watford / Уотфорд',
+        'Crawley / Кроули', 'Maidstone / Мейдстон', 'Chester / Честер',
+        'Carlisle / Карлайл', 'Lancaster / Ланкастер',
+        'Preston / Престон', 'Blackpool / Блэкпул',
+        'Middlesbrough / Мидлсбро', 'Doncaster / Донкастер',
+        'Mansfield / Мансфилд', 'Worcester / Вустер',
+        'Gloucester / Глостер', 'Cheltenham / Челтнем'],
+        sea: ['Felixstowe / Феликстоу', 'Southampton / Саутгемптон', 'London Gateway / Лондон Гейтвей', 'Liverpool / Ливерпуль'],
+        air: ['London Heathrow / Лондон Хитроу (LHR)', 'London Gatwick / Лондон Гатвик (LGW)', 'Manchester / Манчестер (MAN)', 'Birmingham / Бирмингем (BHX)'] },
+    HU: { city: ['Budapest / Будапешт', 'Debrecen / Дебрецен',
+        'Szeged / Сегед', 'Miskolc / Мишкольц', 'Pécs / Печ',
+        'Győr / Дёр', 'Nyíregyháza / Ньиредьхаза', 'Kecskemét / Кечкемет',
+        'Székesfehérvár / Секешфехервар', 'Szombathely / Сомбатхей',
+        'Szolnok / Сольнок', 'Tatabánya / Татабанья', 'Kaposvár / Капошвар',
+        'Békéscsaba / Бекешчаба', 'Veszprém / Веспрем',
+        'Zalaegerszeg / Залаэгерсег', 'Sopron / Шопрон',
+        'Eger / Эгер', 'Nagykanizsa / Надьканижа', 'Dunaújváros / Дунауйварош'],
+        sea: [], air: ['Budapest / Будапешт (BUD)', 'Debrecen / Дебрецен (DEB)'] },
+    VN: { city: ['Ho Chi Minh City / Хошимин', 'Hanoi / Ханой',
+        'Da Nang / Дананг', 'Hai Phong / Хайфон', 'Can Tho / Кантхо',
+        'Bien Hoa / Бьенхоа', 'Hue / Хюэ', 'Nha Trang / Нячанг',
+        'Buon Ma Thuot / Буонматхуот', 'Vinh / Винь',
+        'Long Xuyen / Лонгсюйен', 'Quy Nhon / Куиньон',
+        'Rach Gia / Рактья', 'Phan Thiet / Фантхьет',
+        'Cam Ranh / Камрань', 'Vung Tau / Вунгтау',
+        'Da Lat / Далат', 'Thai Nguyen / Тхайнгуен',
+        'Nam Dinh / Намдинь', 'Thanh Hoa / Тханьхоа',
+        'Ha Long / Халонг', 'My Tho / Митхо', 'Sa Dec / Шадек',
+        'Tra Vinh / Чавинь', 'Ben Tre / Бенче'],
+        sea: ['Ho Chi Minh Cai Mep / Хошимин Кай-Меп', 'Hai Phong / Хайфон', 'Da Nang / Дананг'],
+        air: ['Ho Chi Minh / Хошимин (SGN)', 'Hanoi Noi Bai / Ханой Нойбай (HAN)', 'Da Nang / Дананг (DAD)'] },
+    GR: { city: ['Athens / Афины', 'Thessaloniki / Салоники',
+        'Patras / Патры', 'Piraeus / Пирей', 'Heraklion / Ираклион',
+        'Larissa / Лариса', 'Volos / Волос', 'Rhodes / Родос',
+        'Ioannina / Янина', 'Chania / Ханья', 'Chalcis / Халкида',
+        'Agrinio / Агринион', 'Katerini / Катерини',
+        'Trikala / Трикала', 'Serres / Серре', 'Lamia / Ламия',
+        'Alexandroupoli / Александруполис', 'Kavala / Кавала',
+        'Kalamata / Каламата', 'Veria / Верия',
+        'Komotini / Комотини', 'Drama / Драма',
+        'Kozani / Козани', 'Karditsa / Кардица', 'Corfu / Корфу'],
+        sea: ['Piraeus / Пирей (GRPIR)', 'Thessaloniki / Салоники'], air: ['Athens / Афины (ATH)', 'Thessaloniki / Салоники (SKG)', 'Heraklion / Ираклион (HER)'] },
+    DK: { city: ['Copenhagen / Копенгаген', 'Aarhus / Орхус',
+        'Odense / Оденсе', 'Aalborg / Ольборг', 'Esbjerg / Эсбьерг',
+        'Randers / Раннерс', 'Kolding / Колдинг', 'Horsens / Хорсенс',
+        'Vejle / Вайле', 'Roskilde / Роскилле', 'Herning / Хернинг',
+        'Helsingør / Хельсингёр', 'Silkeborg / Силькеборг',
+        'Næstved / Нествед', 'Fredericia / Фредерисия',
+        'Viborg / Виборг', 'Køge / Кёге', 'Holstebro / Хольстебро',
+        'Taastrup / Тоструп', 'Slagelse / Слагельсе'],
+        sea: ['Copenhagen / Копенгаген (DKCPH)', 'Aarhus / Орхус', 'Esbjerg / Эсбьерг'], air: ['Copenhagen / Копенгаген (CPH)', 'Billund / Биллунн (BLL)', 'Aarhus / Орхус (AAR)'] },
+    EG: { city: ['Cairo / Каир', 'Alexandria / Александрия', 'Giza / Гиза',
+        'Port Said / Порт-Саид', 'Suez / Суэц', 'Luxor / Луксор',
+        'Mansoura / Мансура', 'Aswan / Асуан',
+        'El-Mahalla El-Kubra / Эль-Махалла-эль-Кубра', 'Tanta / Танта',
+        'Asyut / Асьют', 'Ismailia / Исмаилия', 'Faiyum / Эль-Файюм',
+        'Zagazig / Заказик', 'Damanhour / Даманхур',
+        'Damietta / Думьят', 'Beni Suef / Бени-Суэйф',
+        'Minya / Эль-Минья', 'Qena / Кена', 'Sohag / Сохаг',
+        'Hurghada / Хургада', 'Sharm El-Sheikh / Шарм-эш-Шейх',
+        'Marsa Matruh / Марса-Матрух', 'Arish / Эль-Ариш',
+        '6th of October / 6 октября', 'New Cairo / Новый Каир'],
+        sea: ['Alexandria / Александрия (EGALY)', 'Port Said / Порт-Саид (EGPSD)', 'Damietta / Думьят'],
+        air: ['Cairo / Каир (CAI)', 'Alexandria / Александрия (HBE)', 'Hurghada / Хургада (HRG)', 'Sharm El-Sheikh / Шарм-эш-Шейх (SSH)'] },
+    IL: { city: ['Tel Aviv / Тель-Авив', 'Jerusalem / Иерусалим',
+        'Haifa / Хайфа', 'Rishon LeZion / Ришон-ле-Цион',
+        'Petah Tikva / Петах-Тиква', 'Ashdod / Ашдод',
+        'Netanya / Нетания', 'Beer Sheva / Беэр-Шева',
+        'Bnei Brak / Бней-Брак', 'Holon / Холон',
+        'Ramat Gan / Рамат-Ган', 'Ashkelon / Ашкелон',
+        'Rehovot / Реховот', 'Bat Yam / Бат-Ям',
+        'Beit Shemesh / Бейт-Шемеш', 'Kfar Saba / Кфар-Саба',
+        'Herzliya / Герцлия', 'Modi’in / Модиин',
+        'Nazareth / Назарет', 'Eilat / Эйлат',
+        'Tiberias / Тверия', 'Lod / Лод', 'Ramla / Рамле',
+        'Hadera / Хадера', 'Acre / Акко', 'Nahariya / Нагария'],
+        sea: ['Haifa / Хайфа (ILHFA)', 'Ashdod / Ашдод (ILASH)'], air: ['Tel Aviv / Тель-Авив (TLV)', 'Eilat / Эйлат (ETM)'] },
+    ID: { city: ['Jakarta / Джакарта', 'Surabaya / Сурабая',
+        'Bandung / Бандунг', 'Medan / Медан', 'Bekasi / Бекаси',
+        'Semarang / Семаранг', 'Tangerang / Тангеранг',
+        'Depok / Депок', 'Palembang / Палембанг', 'Makassar / Макасар',
+        'South Tangerang / Южный Тангеранг', 'Batam / Батам',
+        'Pekanbaru / Пеканбару', 'Bogor / Богор', 'Padang / Паданг',
+        'Malang / Маланг', 'Denpasar / Денпасар',
+        'Samarinda / Самаринда', 'Tasikmalaya / Тасикмалая',
+        'Banjarmasin / Банжармасин', 'Balikpapan / Баликпапан',
+        'Pontianak / Понтианак', 'Manado / Манадо',
+        'Cimahi / Чимахи', 'Yogyakarta / Джокьякарта',
+        'Surakarta / Суракарта', 'Mataram / Матарам',
+        'Jambi / Джамби', 'Cilegon / Чилегон',
+        'Kupang / Купанг', 'Ambon / Амбон',
+        'Sorong / Соронг', 'Manokwari / Маноквари'],
+        sea: ['Jakarta Tanjung Priok / Джакарта Танджунг-Приок', 'Surabaya Tanjung Perak / Сурабая Танджунг-Перак'],
+        air: ['Jakarta Soekarno-Hatta / Джакарта (CGK)', 'Bali Denpasar / Бали Денпасар (DPS)', 'Surabaya / Сурабая (SUB)'] },
+    IR: { city: ['Tehran / Тегеран', 'Mashhad / Мешхед', 'Isfahan / Исфахан',
+        'Tabriz / Тебриз', 'Shiraz / Шираз', 'Karaj / Кередж',
+        'Qom / Кум', 'Ahvaz / Ахваз', 'Kermanshah / Керманшах',
+        'Urmia / Урмия', 'Rasht / Решт', 'Zahedan / Захедан',
+        'Hamadan / Хамадан', 'Kerman / Керман', 'Yazd / Йезд',
+        'Ardabil / Ардебиль', 'Bandar Abbas / Бендер-Аббас',
+        'Eslamshahr / Исламшехр', 'Zanjan / Зенджан',
+        'Sanandaj / Сенендедж', 'Qazvin / Казвин',
+        'Khorramabad / Хорремабад', 'Gorgan / Горган',
+        'Sari / Сари', 'Arak / Эрак', 'Bushehr / Бушер'],
+        sea: ['Bandar Abbas / Бендер-Аббас (IRBND)', 'Bushehr / Бушер'], air: ['Tehran Imam Khomeini / Тегеран (IKA)', 'Mashhad / Мешхед (MHD)'] },
+    IE: { city: ['Dublin / Дублин', 'Cork / Корк', 'Limerick / Лимерик',
+        'Galway / Голуэй', 'Waterford / Уотерфорд', 'Drogheda / Дроэда',
+        'Swords / Свордс', 'Dundalk / Дандолк', 'Bray / Брей',
+        'Navan / Наван', 'Kilkenny / Килкенни', 'Tralee / Трали',
+        'Wexford / Уэксфорд', 'Athlone / Атлон', 'Sligo / Слайго',
+        'Letterkenny / Леттеркенни', 'Carlow / Карлоу',
+        'Mullingar / Малингар', 'Ennis / Эннис', 'Killarney / Килларни'],
+        sea: ['Dublin / Дублин', 'Cork / Корк'], air: ['Dublin / Дублин (DUB)', 'Cork / Корк (ORK)', 'Shannon / Шеннон (SNN)'] },
+    ES: { city: ['Madrid / Мадрид', 'Barcelona / Барселона',
+        'Valencia / Валенсия', 'Seville / Севилья',
+        'Zaragoza / Сарагоса', 'Málaga / Малага', 'Bilbao / Бильбао',
+        'Palma / Пальма', 'Murcia / Мурсия', 'Alicante / Аликанте',
+        'Córdoba / Кордова', 'Valladolid / Вальядолид',
+        'Vigo / Виго', 'Gijón / Хихон', 'L’Hospitalet / Оспиталет',
+        'A Coruña / Ла-Корунья', 'Vitoria-Gasteiz / Витория-Гастейс',
+        'Granada / Гранада', 'Elche / Эльче', 'Oviedo / Овьедо',
+        'Badalona / Бадалона', 'Cartagena / Картахена',
+        'Terrassa / Терраса', 'Jerez / Херес-де-ла-Фронтера',
+        'Sabadell / Сабадель', 'Móstoles / Мостолес',
+        'Santa Cruz de Tenerife / Санта-Крус-де-Тенерифе',
+        'Pamplona / Памплона', 'Almería / Альмерия',
+        'Alcalá / Алькала-де-Энарес', 'San Sebastián / Сан-Себастьян',
+        'Burgos / Бургос', 'Salamanca / Саламанка',
+        'Logroño / Логроньо', 'Huelva / Уэльва',
+        'Tarragona / Таррагона', 'Lleida / Льейда',
+        'Marbella / Марбелья', 'León / Леон',
+        'Castellón / Кастельон-де-ла-Плана', 'Cádiz / Кадис',
+        'Mataró / Матаро', 'Reus / Реус', 'Toledo / Толедо'],
+        sea: ['Valencia / Валенсия (ESVLC)', 'Barcelona / Барселона (ESBCN)', 'Algeciras / Альхесирас'],
+        air: ['Madrid / Мадрид (MAD)', 'Barcelona / Барселона (BCN)', 'Palma / Пальма (PMI)', 'Málaga / Малага (AGP)'] },
+    KZ: { city: ['Almaty / Алматы', 'Astana / Астана', 'Shymkent / Шымкент',
+        'Karaganda / Караганда', 'Aktobe / Актобе', 'Atyrau / Атырау',
+        'Pavlodar / Павлодар', 'Oskemen / Усть-Каменогорск',
+        'Kyzylorda / Кызылорда', 'Taraz / Тараз',
+        'Kostanay / Костанай', 'Petropavl / Петропавловск',
+        'Oral / Уральск', 'Aktau / Актау', 'Temirtau / Темиртау',
+        'Semey / Семей', 'Kokshetau / Кокшетау',
+        'Taldykorgan / Талдыкорган', 'Ekibastuz / Экибастуз',
+        'Stepnogorsk / Степногорск', 'Rudny / Рудный',
+        'Zhanaozen / Жанаозен', 'Balkhash / Балхаш',
+        'Turkistan / Туркестан', 'Zhezkazgan / Жезказган'],
+        sea: ['Aktau / Актау'], air: ['Almaty / Алматы (ALA)', 'Astana / Астана (NQZ)', 'Shymkent / Шымкент (CIT)'] },
+    CA: { city: ['Toronto / Торонто', 'Montreal / Монреаль',
+        'Vancouver / Ванкувер', 'Calgary / Калгари',
+        'Edmonton / Эдмонтон', 'Ottawa / Оттава',
+        'Winnipeg / Виннипег', 'Quebec City / Квебек',
+        'Hamilton / Гамильтон', 'Kitchener / Китченер',
+        'London / Лондон', 'Victoria / Виктория',
+        'Halifax / Галифакс', 'Oshawa / Ошава',
+        'Windsor / Виндзор', 'Saskatoon / Саскатун',
+        'Regina / Реджайна', 'Sherbrooke / Шербрук',
+        'St John’s / Сент-Джонс', 'Barrie / Барри',
+        'Kelowna / Келоуна', 'Abbotsford / Абботсфорд',
+        'Trois-Rivières / Труа-Ривьер', 'Guelph / Гуэлф',
+        'Cambridge / Кембридж', 'Whitby / Уитби',
+        'Greater Sudbury / Большой Садбери', 'Kingston / Кингстон',
+        'Saguenay / Сагенай', 'Thunder Bay / Тандер-Бей',
+        'Brantford / Брантфорд', 'Saint John / Сент-Джон',
+        'Lethbridge / Летбридж', 'Yellowknife / Йеллоунайф',
+        'Whitehorse / Уайтхорс', 'Iqaluit / Икалуит',
+        'Charlottetown / Шарлоттаун', 'Fredericton / Фредериктон'],
+        sea: ['Vancouver / Ванкувер (CAVAN)', 'Montreal / Монреаль', 'Halifax / Галифакс', 'Prince Rupert / Принс-Руперт'],
+        air: ['Toronto / Торонто (YYZ)', 'Vancouver / Ванкувер (YVR)', 'Montreal / Монреаль (YUL)', 'Calgary / Калгари (YYC)'] },
+    KE: { city: ['Nairobi / Найроби', 'Mombasa / Момбаса',
+        'Kisumu / Кисуму', 'Nakuru / Накуру', 'Eldoret / Элдорет',
+        'Ruiru / Руиру', 'Kikuyu / Кикуйю', 'Kangundo / Кангундо',
+        'Malindi / Малинди', 'Naivasha / Найваша',
+        'Machakos / Мачакос', 'Nyeri / Ньери', 'Kitale / Китале',
+        'Thika / Тика', 'Garissa / Гарисса', 'Kakamega / Какамега',
+        'Kericho / Керичо', 'Meru / Меру', 'Lamu / Ламу'],
+        sea: ['Mombasa / Момбаса (KEMBA)'], air: ['Nairobi / Найроби (NBO)', 'Mombasa / Момбаса (MBA)'] },
+    CO: { city: ['Bogotá / Богота', 'Medellín / Медельин', 'Cali / Кали',
+        'Barranquilla / Барранкилья', 'Cartagena / Картахена',
+        'Cúcuta / Кукута', 'Bucaramanga / Букараманга',
+        'Ibagué / Ибаге', 'Soledad / Соледад', 'Pereira / Перейра',
+        'Soacha / Соача', 'Santa Marta / Санта-Марта',
+        'Villavicencio / Вильявисенсио', 'Bello / Бельо',
+        'Valledupar / Вальедупар', 'Pasto / Пасто',
+        'Manizales / Манисалес', 'Montería / Монтерия',
+        'Buenaventura / Буэнавентура', 'Neiva / Нейва',
+        'Armenia / Армения', 'Popayán / Попаян',
+        'Sincelejo / Синселехо', 'Palmira / Пальмира',
+        'Riohacha / Риоача', 'Tunja / Тунха'],
+        sea: ['Cartagena / Картахена', 'Buenaventura / Буэнавентура'], air: ['Bogotá / Богота (BOG)', 'Medellín / Медельин (MDE)', 'Cartagena / Картахена (CTG)'] },
+    MY: { city: ['Kuala Lumpur / Куала-Лумпур', 'Johor Bahru / Джохор-Бару',
+        'George Town (Penang) / Джорджтаун (Пенанг)', 'Ipoh / Ипох',
+        'Kuching / Кучинг', 'Shah Alam / Шах-Алам',
+        'Petaling Jaya / Петалинг-Джая', 'Klang / Кланг',
+        'Kota Kinabalu / Кота-Кинабалу', 'Kajang / Каджанг',
+        'Subang Jaya / Субанг-Джая', 'Seremban / Серембан',
+        'Iskandar Puteri / Искандар-Путери', 'Kuantan / Куантан',
+        'Sandakan / Сандакан', 'Malacca / Малакка',
+        'Sungai Petani / Сунгай-Петани', 'Alor Setar / Алор-Сетар',
+        'Miri / Мири', 'Kuala Terengganu / Куала-Теренгану',
+        'Putrajaya / Путраджая', 'Sibu / Сибу', 'Tawau / Тавау',
+        'Kota Bharu / Кота-Бару', 'Kangar / Кангар',
+        'Labuan / Лабуан'],
+        sea: ['Port Klang / Порт-Кланг (MYPKG)', 'Tanjung Pelepas / Танджунг-Пелепас (MYTPP)', 'Penang / Пенанг'],
+        air: ['Kuala Lumpur / Куала-Лумпур (KUL)', 'Penang / Пенанг (PEN)', 'Johor Bahru / Джохор-Бару (JHB)'] },
+    MX: { city: ['Mexico City / Мехико', 'Guadalajara / Гвадалахара',
+        'Monterrey / Монтеррей', 'Puebla / Пуэбла', 'Tijuana / Тихуана',
+        'León / Леон', 'Juárez / Сьюдад-Хуарес', 'Zapopan / Сапопан',
+        'Ecatepec / Экатепек', 'Nezahualcóyotl / Несауалькойотль',
+        'Querétaro / Керетаро', 'Chihuahua / Чиуауа',
+        'Acapulco / Акапулько', 'Mérida / Мерида',
+        'Mexicali / Мехикали', 'Aguascalientes / Агуаскальентес',
+        'Tlalnepantla / Тлальнепантла', 'Saltillo / Сальтильо',
+        'San Luis Potosí / Сан-Луис-Потоси', 'Hermosillo / Эрмосильо',
+        'Culiacán / Кульякан', 'Cuernavaca / Куэрнавака',
+        'Veracruz / Веракрус', 'Toluca / Толука', 'Cancún / Канкун',
+        'Reynosa / Рейноса', 'Matamoros / Матаморос',
+        'Morelia / Морелия', 'Xalapa / Халапа',
+        'Tuxtla Gutiérrez / Тустла-Гутьеррес', 'Durango / Дуранго',
+        'Mazatlán / Масатлан', 'Oaxaca / Оахака',
+        'Pachuca / Пачука', 'Tepic / Тепик', 'Campeche / Кампече',
+        'Villahermosa / Вильяэрмоса', 'Chetumal / Четумаль',
+        'La Paz / Ла-Пас', 'Tampico / Тампико'],
+        sea: ['Manzanillo / Мансанильо (MXZLO)', 'Veracruz / Веракрус (MXVER)', 'Lázaro Cárdenas / Ласаро-Карденас'],
+        air: ['Mexico City / Мехико (MEX)', 'Guadalajara / Гвадалахара (GDL)', 'Monterrey / Монтеррей (MTY)', 'Cancún / Канкун (CUN)'] },
+    NL: { city: ['Amsterdam / Амстердам', 'Rotterdam / Роттердам',
+        'The Hague / Гаага', 'Utrecht / Утрехт',
+        'Eindhoven / Эйндховен', 'Tilburg / Тилбург',
+        'Groningen / Гронинген', 'Almere / Алмере',
+        'Breda / Бреда', 'Nijmegen / Неймеген',
+        'Enschede / Энсхеде', 'Haarlem / Харлем',
+        'Arnhem / Арнем', 'Zaanstad / Занстад',
+        'Amersfoort / Амерсфорт', 'Apeldoorn / Апелдорн',
+        'Hoofddorp / Хоофддорп', 'Maastricht / Маастрихт',
+        'Leiden / Лейден', 'Dordrecht / Дордрехт',
+        'Zoetermeer / Зутермер', 'Zwolle / Зволле',
+        'Deventer / Девентер', 'Delft / Делфт',
+        'Alkmaar / Алкмар', 'Leeuwarden / Леуварден',
+        'Sittard / Ситтард', 'Helmond / Хелмонд',
+        'Oss / Осс', 'Roosendaal / Рузендал',
+        'Hilversum / Хилверсюм', 'Heerlen / Херлен',
+        'Venlo / Венло', 'Emmen / Эммен'],
+        sea: ['Rotterdam / Роттердам (NLRTM)', 'Amsterdam / Амстердам (NLAMS)'], air: ['Amsterdam Schiphol / Амстердам Схипхол (AMS)', 'Eindhoven / Эйндховен (EIN)', 'Rotterdam / Роттердам (RTM)'] },
+    NO: { city: ['Oslo / Осло', 'Bergen / Берген', 'Trondheim / Тронхейм',
+        'Stavanger / Ставангер', 'Drammen / Драммен', 'Tromsø / Тромсё',
+        'Fredrikstad / Фредрикстад', 'Sarpsborg / Сарпсборг',
+        'Skien / Шиен', 'Kristiansand / Кристиансанн',
+        'Ålesund / Олесунн', 'Sandefjord / Саннефьорд',
+        'Tønsberg / Тёнсберг', 'Moss / Мосс', 'Bodø / Будё',
+        'Arendal / Арендал', 'Larvik / Ларвик', 'Halden / Халден',
+        'Hamar / Хамар', 'Lillehammer / Лиллехаммер',
+        'Mo i Rana / Му', 'Hammerfest / Хаммерфест',
+        'Alta / Алта', 'Kirkenes / Киркенес',
+        'Honningsvåg / Хоннингсвог'],
+        sea: ['Oslo / Осло', 'Bergen / Берген', 'Stavanger / Ставангер'], air: ['Oslo / Осло (OSL)', 'Bergen / Берген (BGO)', 'Trondheim / Тронхейм (TRD)'] },
+    PK: { city: ['Karachi / Карачи', 'Lahore / Лахор',
+        'Faisalabad / Фейсалабад', 'Rawalpindi / Равалпинди',
+        'Multan / Мултан', 'Islamabad / Исламабад',
+        'Peshawar / Пешавар', 'Quetta / Кветта',
+        'Sialkot / Сиялкот', 'Bahawalpur / Бахавалпур',
+        'Sargodha / Саргодха', 'Sukkur / Суккур',
+        'Jhang / Джанг', 'Sheikhupura / Шейхупура',
+        'Larkana / Ларкана', 'Gujranwala / Гуджранвала',
+        'Kasur / Касур', 'Mardan / Мардан',
+        'Rahim Yar Khan / Рахим-Яр-Хан', 'Hyderabad / Хайдарабад',
+        'Mirpur Khas / Мирпур-Хас', 'Nawabshah / Навабшах',
+        'Mingora / Мингора', 'Okara / Окара', 'Sahiwal / Сахивал',
+        'Dera Ghazi Khan / Дера-Гази-Хан', 'Chiniot / Чиниот',
+        'Gujrat / Гуджрат', 'Wah / Вах'],
+        sea: ['Karachi / Карачи (PKKHI)', 'Port Qasim / Порт-Касим'], air: ['Karachi / Карачи (KHI)', 'Lahore / Лахор (LHE)', 'Islamabad / Исламабад (ISB)'] },
+    PL: { city: ['Warsaw / Варшава', 'Kraków / Краков', 'Łódź / Лодзь',
+        'Wrocław / Вроцлав', 'Poznań / Познань', 'Gdańsk / Гданьск',
+        'Szczecin / Щецин', 'Lublin / Люблин', 'Białystok / Белосток',
+        'Katowice / Катовице', 'Gdynia / Гдыня',
+        'Częstochowa / Ченстохова', 'Radom / Радом', 'Toruń / Торунь',
+        'Sosnowiec / Сосновец', 'Rzeszów / Жешув', 'Kielce / Кельце',
+        'Gliwice / Гливице', 'Olsztyn / Ольштын', 'Zabrze / Забже',
+        'Bielsko-Biała / Бельско-Бяла', 'Bytom / Бытом',
+        'Zielona Góra / Зелёна-Гура', 'Rybnik / Рыбник',
+        'Płock / Плоцк', 'Tarnów / Тарнув', 'Elbląg / Эльблонг',
+        'Opole / Ополе', 'Wałbrzych / Валбжих', 'Włocławek / Влоцлавек',
+        'Tychy / Тыхы', 'Koszalin / Кошалин', 'Kalisz / Калиш',
+        'Legnica / Легница', 'Grudziądz / Грудзёндз',
+        'Słupsk / Слупск', 'Jaworzno / Явожно',
+        'Jastrzębie-Zdrój / Ястшембе-Здруй'],
+        sea: ['Gdańsk / Гданьск (PLGDN)', 'Gdynia / Гдыня (PLGDY)', 'Szczecin / Щецин', 'Świnoujście / Свиноуйсьце'],
+        air: ['Warsaw / Варшава (WAW)', 'Kraków / Краков (KRK)', 'Gdańsk / Гданьск (GDN)', 'Wrocław / Вроцлав (WRO)'] },
+    PT: { city: ['Lisbon / Лиссабон', 'Porto / Порту',
+        'Vila Nova de Gaia / Вила-Нова-ди-Гая', 'Amadora / Амадора',
+        'Braga / Брага', 'Coimbra / Коимбра', 'Funchal / Фуншал',
+        'Setúbal / Сетубал', 'Faro / Фару', 'Aveiro / Авейру',
+        'Évora / Эвора', 'Almada / Алмада', 'Cascais / Кашкайш',
+        'Sintra / Синтра', 'Loures / Лоуреш', 'Oeiras / Уэйраш',
+        'Odivelas / Одивелаш', 'Maia / Майя', 'Matosinhos / Матозиньюш',
+        'Guimarães / Гимарайнш', 'Viseu / Визеу', 'Leiria / Лейрия',
+        'Barreiro / Баррейру', 'Águeda / Агеда', 'Bragança / Браганса',
+        'Castelo Branco / Каштелу-Бранку', 'Viana do Castelo / Виана-ду-Каштелу',
+        'Beja / Бежа', 'Portalegre / Порталегри', 'Santarém / Сантарен'],
+        sea: ['Lisbon / Лиссабон', 'Porto Leixões / Порту Лейшоэс', 'Sines / Синиш'], air: ['Lisbon / Лиссабон (LIS)', 'Porto / Порту (OPO)', 'Faro / Фару (FAO)'] },
+    RO: { city: ['Bucharest / Бухарест', 'Cluj-Napoca / Клуж-Напока',
+        'Timișoara / Тимишоара', 'Iași / Яссы', 'Constanța / Констанца',
+        'Brașov / Брашов', 'Craiova / Крайова', 'Galați / Галац',
+        'Ploiești / Плоешти', 'Oradea / Орадя', 'Brăila / Брэила',
+        'Arad / Арад', 'Pitești / Питешти', 'Sibiu / Сибиу',
+        'Bacău / Бакэу', 'Târgu Mureș / Тыргу-Муреш',
+        'Baia Mare / Бая-Маре', 'Buzău / Бузэу', 'Botoșani / Ботошани',
+        'Satu Mare / Сату-Маре', 'Râmnicu Vâlcea / Рымнику-Вылча',
+        'Suceava / Сучава', 'Piatra Neamț / Пьятра-Нямц',
+        'Drobeta-Turnu Severin / Дробета-Турну-Северин',
+        'Târgoviște / Тырговиште', 'Focșani / Фокшани',
+        'Bistrița / Бистрица', 'Tulcea / Тулча',
+        'Reșița / Решица', 'Călărași / Кэлэраши',
+        'Slatina / Слатина', 'Alba Iulia / Алба-Юлия'],
+        sea: ['Constanța / Констанца (ROCND)'], air: ['Bucharest / Бухарест (OTP)', 'Cluj-Napoca / Клуж-Напока (CLJ)', 'Timișoara / Тимишоара (TSR)'] },
+    SA: { city: ['Riyadh / Эр-Рияд', 'Jeddah / Джидда', 'Mecca / Мекка',
+        'Medina / Медина', 'Dammam / Даммам', 'Khobar / Эль-Хубар',
+        'Tabuk / Табук', 'Buraidah / Бурайда',
+        'Khamis Mushait / Хамис-Мушайт', 'Hail / Хаиль',
+        'Najran / Наджран', 'Abha / Абха', 'Yanbu / Янбу',
+        'Al-Kharj / Эль-Хардж', 'Taif / Эт-Таиф', 'Jubail / Эль-Джубайль',
+        'Al-Hofuf / Эль-Хофуф', 'Hafar Al-Batin / Хафр-эль-Батин',
+        'Arar / Арар', 'Jizan / Джизан', 'Sakaka / Сакака',
+        'Bisha / Биша'],
+        sea: ['Jeddah / Джидда (SAJED)', 'Dammam / Даммам (SADMM)', 'King Abdullah Port / Порт короля Абдаллы'],
+        air: ['Riyadh / Эр-Рияд (RUH)', 'Jeddah / Джидда (JED)', 'Dammam / Даммам (DMM)'] },
+    SG: { city: ['Singapore / Сингапур'], sea: ['Singapore / Сингапур (SGSIN)'], air: ['Singapore Changi / Сингапур Чанги (SIN)'] },
+    SK: { city: ['Bratislava / Братислава', 'Košice / Кошице',
+        'Prešov / Прешов', 'Žilina / Жилина', 'Banská Bystrica / Банска-Бистрица',
+        'Nitra / Нитра', 'Trnava / Трнава', 'Trenčín / Тренчин',
+        'Martin / Мартин', 'Poprad / Попрад', 'Prievidza / Привидза',
+        'Zvolen / Зволен', 'Považská Bystrica / Поважска-Бистрица',
+        'Michalovce / Михаловце', 'Nové Zámky / Нове-Замки',
+        'Spišská Nová Ves / Спишска-Нова-Вес', 'Komárno / Комарно',
+        'Levice / Левице', 'Humenné / Гуменне', 'Bardejov / Бардеёв'],
+        sea: [], air: ['Bratislava / Братислава (BTS)', 'Košice / Кошице (KSC)'] },
+    SI: { city: ['Ljubljana / Любляна', 'Maribor / Марибор', 'Celje / Целе',
+        'Koper / Копер', 'Kranj / Крань', 'Velenje / Велене',
+        'Novo Mesto / Ново-Место', 'Ptuj / Птуй', 'Trbovlje / Трбовле',
+        'Kamnik / Камник', 'Jesenice / Есенице', 'Domžale / Домжале',
+        'Škofja Loka / Шкофья-Лока', 'Murska Sobota / Мурска-Собота',
+        'Postojna / Постойна', 'Slovenj Gradec / Словень-Градец',
+        'Idrija / Идрия', 'Nova Gorica / Нова-Горица'],
+        sea: ['Koper / Копер (SIKOP)'], air: ['Ljubljana / Любляна (LJU)', 'Maribor / Марибор (MBX)'] },
+    TW: { city: ['Taipei / Тайбэй', 'New Taipei / Новый Тайбэй',
+        'Kaohsiung / Гаосюн', 'Taichung / Тайчжун', 'Tainan / Тайнань',
+        'Taoyuan / Таоюань', 'Hsinchu / Синьчжу', 'Keelung / Цзилун',
+        'Chiayi / Цзяи', 'Changhua / Чжанхуа', 'Yunlin / Юньлинь',
+        'Pingtung / Пиндун', 'Yilan / Илань', 'Hualien / Хуалянь',
+        'Taitung / Тайдун', 'Miaoli / Мяоли', 'Nantou / Наньтоу',
+        'Penghu / Пэнху', 'Kinmen / Цзиньмэнь', 'Lienchiang / Ляньцзян'],
+        sea: ['Kaohsiung / Гаосюн (TWKHH)', 'Keelung / Цзилун (TWKEL)', 'Taichung / Тайчжун'], air: ['Taipei Taoyuan / Тайбэй Таоюань (TPE)', 'Kaohsiung / Гаосюн (KHH)'] },
+    TH: { city: ['Bangkok / Бангкок', 'Nonthaburi / Нонтхабури',
+        'Chiang Mai / Чиангмай', 'Pattaya / Паттайя', 'Phuket / Пхукет',
+        'Khon Kaen / Кхонкэн', 'Hat Yai / Хатъяй', 'Udon Thani / Удонтхани',
+        'Nakhon Ratchasima / Накхонратчасима', 'Surat Thani / Сураттхани',
+        'Chiang Rai / Чианграй', 'Krabi / Краби', 'Rayong / Районг',
+        'Ubon Ratchathani / Убонратчатхани', 'Songkhla / Сонгкхла',
+        'Pak Kret / Паккрет', 'Si Racha / Сирача', 'Phra Pradaeng / Прапрадэнг',
+        'Phitsanulok / Питсанулок', 'Sakon Nakhon / Саконнакхон',
+        'Lampang / Лампанг', 'Lamphun / Лампхун', 'Trang / Транг',
+        'Nakhon Sawan / Накхонсаван', 'Loei / Лей', 'Chumphon / Чумпхон'],
+        sea: ['Laem Chabang / Лаем-Чабанг (THLCH)', 'Bangkok / Бангкок (THBKK)'], air: ['Bangkok Suvarnabhumi / Бангкок Суварнабхуми (BKK)', 'Bangkok Don Mueang / Бангкок Дон-Мыанг (DMK)', 'Phuket / Пхукет (HKT)'] },
+    UZ: { city: ['Tashkent / Ташкент', 'Samarkand / Самарканд',
+        'Bukhara / Бухара', 'Andijan / Андижан', 'Namangan / Наманган',
+        'Fergana / Фергана', 'Nukus / Нукус', 'Karshi / Карши',
+        'Margilan / Маргилан', 'Kokand / Коканд', 'Termez / Термез',
+        'Urgench / Ургенч', 'Jizzakh / Джизак', 'Navoiy / Навои',
+        'Chirchiq / Чирчик', 'Olmaliq / Алмалык', 'Angren / Ангрен',
+        'Bekabad / Бекабад', 'Khiva / Хива', 'Shahrisabz / Шахрисабз'],
+        sea: [], air: ['Tashkent / Ташкент (TAS)', 'Samarkand / Самарканд (SKD)', 'Bukhara / Бухара (BHK)'] },
+    UA: { city: ['Kyiv / Киев', 'Kharkiv / Харьков', 'Odesa / Одесса',
+        'Dnipro / Днипро', 'Lviv / Львов', 'Zaporizhzhia / Запорожье',
+        'Kryvyi Rih / Кривой Рог', 'Mykolaiv / Николаев',
+        'Mariupol / Мариуполь', 'Luhansk / Луганск',
+        'Vinnytsia / Винница', 'Makiivka / Макеевка',
+        'Sevastopol / Севастополь', 'Simferopol / Симферополь',
+        'Kherson / Херсон', 'Poltava / Полтава',
+        'Chernihiv / Чернигов', 'Cherkasy / Черкассы',
+        'Khmelnytskyi / Хмельницкий', 'Chernivtsi / Черновцы',
+        'Sumy / Сумы', 'Zhytomyr / Житомир', 'Rivne / Ровно',
+        'Ivano-Frankivsk / Ивано-Франковск', 'Ternopil / Тернополь',
+        'Lutsk / Луцк', 'Kropyvnytskyi / Кропивницкий',
+        'Uzhhorod / Ужгород', 'Kamianets-Podilskyi / Каменец-Подольский',
+        'Bila Tserkva / Белая Церковь', 'Berdiansk / Бердянск'],
+        sea: ['Odesa / Одесса (UAODS)', 'Chornomorsk / Черноморск', 'Yuzhny / Южный'], air: ['Kyiv Boryspil / Киев Борисполь (KBP)', 'Lviv / Львов (LWO)', 'Odesa / Одесса (ODS)'] },
+    FI: { city: ['Helsinki / Хельсинки', 'Espoo / Эспоо', 'Tampere / Тампере',
+        'Vantaa / Вантаа', 'Turku / Турку', 'Oulu / Оулу',
+        'Lahti / Лахти', 'Kuopio / Куопио', 'Jyväskylä / Ювяскюля',
+        'Pori / Пори', 'Lappeenranta / Лаппеэнранта', 'Kotka / Котка',
+        'Joensuu / Йоэнсуу', 'Hämeenlinna / Хямеэнлинна',
+        'Vaasa / Вааса', 'Seinäjoki / Сейняйоки', 'Rovaniemi / Рованиеми',
+        'Mikkeli / Миккели', 'Kokkola / Коккола', 'Salo / Сало',
+        'Porvoo / Порвоо', 'Hyvinkää / Хювинкяа',
+        'Lohja / Лохья', 'Järvenpää / Ярвенпяа',
+        'Kerava / Керава', 'Tornio / Торнио', 'Kemi / Кеми',
+        'Kajaani / Каяани', 'Imatra / Иматра'],
+        sea: ['Helsinki / Хельсинки (FIHEL)', 'Kotka / Котка', 'Hamina / Хамина'], air: ['Helsinki / Хельсинки (HEL)', 'Tampere / Тампере (TMP)', 'Turku / Турку (TKU)'] },
+    FR: { city: ['Paris / Париж', 'Marseille / Марсель', 'Lyon / Лион',
+        'Toulouse / Тулуза', 'Nice / Ницца', 'Bordeaux / Бордо',
+        'Lille / Лилль', 'Strasbourg / Страсбург', 'Nantes / Нант',
+        'Rennes / Ренн', 'Reims / Реймс', 'Saint-Étienne / Сент-Этьен',
+        'Toulon / Тулон', 'Le Havre / Гавр', 'Grenoble / Гренобль',
+        'Dijon / Дижон', 'Angers / Анже', 'Nîmes / Ним',
+        'Villeurbanne / Виллёрбан', 'Saint-Denis / Сен-Дени',
+        'Le Mans / Ле-Ман', 'Aix-en-Provence / Экс-ан-Прованс',
+        'Clermont-Ferrand / Клермон-Ферран', 'Brest / Брест',
+        'Limoges / Лимож', 'Tours / Тур', 'Amiens / Амьен',
+        'Perpignan / Перпиньян', 'Metz / Мец', 'Besançon / Безансон',
+        'Orléans / Орлеан', 'Mulhouse / Мюлуз', 'Rouen / Руан',
+        'Caen / Кан', 'Nancy / Нанси', 'Saint-Nazaire / Сен-Назер',
+        'Avignon / Авиньон', 'Poitiers / Пуатье', 'Calais / Кале',
+        'Dunkerque / Дюнкерк', 'La Rochelle / Ла-Рошель',
+        'Cannes / Канны', 'Antibes / Антиб', 'Annecy / Анси',
+        'Pau / По', 'Lorient / Лорьян', 'Versailles / Версаль',
+        'Chambéry / Шамбери', 'Beauvais / Бове', 'Albi / Альби'],
+        sea: ['Le Havre / Гавр (FRLEH)', 'Marseille / Марсель (FRMRS)', 'Dunkerque / Дюнкерк'],
+        air: ['Paris CDG / Париж Шарль-де-Голль (CDG)', 'Paris Orly / Париж Орли (ORY)', 'Lyon / Лион (LYS)', 'Marseille / Марсель (MRS)', 'Nice / Ницца (NCE)'] },
+    HR: { city: ['Zagreb / Загреб', 'Split / Сплит', 'Rijeka / Риека',
+        'Osijek / Осиек', 'Zadar / Задар', 'Slavonski Brod / Славонски-Брод',
+        'Pula / Пула', 'Karlovac / Карловац', 'Sisak / Сисак',
+        'Varaždin / Вараждин', 'Šibenik / Шибеник',
+        'Dubrovnik / Дубровник', 'Bjelovar / Беловар',
+        'Velika Gorica / Велика-Горица', 'Vinkovci / Винковци',
+        'Vukovar / Вуковар', 'Samobor / Самобор',
+        'Koprivnica / Копривница', 'Đakovo / Джяково',
+        'Požega / Пожега', 'Krapina / Крапина', 'Makarska / Макарска'],
+        sea: ['Rijeka / Риека (HRRJK)', 'Ploče / Плоче', 'Split / Сплит'], air: ['Zagreb / Загреб (ZAG)', 'Split / Сплит (SPU)', 'Dubrovnik / Дубровник (DBV)'] },
+    CZ: { city: ['Prague / Прага', 'Brno / Брно', 'Ostrava / Острава',
+        'Plzeň / Пльзень', 'Liberec / Либерец', 'Olomouc / Оломоуц',
+        'Ústí nad Labem / Усти-над-Лабем', 'Hradec Králové / Градец-Кралове',
+        'Pardubice / Пардубице', 'Zlín / Злин', 'Havířov / Гавиржов',
+        'Kladno / Кладно', 'Most / Мост', 'Karviná / Карвина',
+        'Opava / Опава', 'Frýdek-Místek / Фридек-Мистек',
+        'České Budějovice / Ческе-Будеёвице', 'Karlovy Vary / Карловы Вары',
+        'Jihlava / Йиглава', 'Děčín / Дечин', 'Teplice / Теплице',
+        'Chomutov / Хомутов', 'Třebíč / Тршебич', 'Tábor / Табор',
+        'Znojmo / Зноймо', 'Příbram / Пршибрам',
+        'Mladá Boleslav / Млада-Болеслав'],
+        sea: [], air: ['Prague / Прага (PRG)', 'Brno / Брно (BRQ)', 'Ostrava / Острава (OSR)'] },
+    CL: { city: ['Santiago / Сантьяго', 'Valparaíso / Вальпараисо',
+        'Concepción / Консепсьон', 'La Serena / Ла-Серена',
+        'Antofagasta / Антофагаста', 'Temuco / Темуко',
+        'Rancagua / Ранкагуа', 'Talca / Талька', 'Iquique / Икике',
+        'Arica / Арика', 'Puerto Montt / Пуэрто-Монт',
+        'Coquimbo / Кокимбо', 'Osorno / Осорно', 'Calama / Калама',
+        'Copiapó / Копьяпо', 'Punta Arenas / Пунта-Аренас',
+        'Quillota / Кильота', 'Curicó / Курико', 'Valdivia / Вальдивия',
+        'Chillán / Чильян', 'Linares / Линарес',
+        'Los Ángeles / Лос-Анхелес', 'Castro / Кастро',
+        'Coyhaique / Койайке'],
+        sea: ['Valparaíso / Вальпараисо', 'San Antonio / Сан-Антонио', 'Iquique / Икике'], air: ['Santiago / Сантьяго (SCL)', 'Concepción / Консепсьон (CCP)'] },
+    CH: { city: ['Zurich / Цюрих', 'Geneva / Женева', 'Basel / Базель',
+        'Bern / Берн', 'Lausanne / Лозанна', 'Winterthur / Винтертур',
+        'St. Gallen / Санкт-Галлен', 'Lucerne / Люцерн', 'Lugano / Лугано',
+        'Biel/Bienne / Биль', 'Thun / Тун', 'Köniz / Кёниц',
+        'La Chaux-de-Fonds / Ла-Шо-де-Фон', 'Schaffhausen / Шаффхаузен',
+        'Fribourg / Фрибур', 'Chur / Кур', 'Neuchâtel / Невшатель',
+        'Vernier / Вернье', 'Uster / Устер', 'Sion / Сьон',
+        'Davos / Давос', 'Locarno / Локарно', 'Bellinzona / Беллинцона',
+        'Solothurn / Золотурн', 'Zug / Цуг', 'Aarau / Аарау',
+        'Interlaken / Интерлакен'],
+        sea: [], air: ['Zurich / Цюрих (ZRH)', 'Geneva / Женева (GVA)', 'Basel / Базель (BSL)'] },
+    SE: { city: ['Stockholm / Стокгольм', 'Gothenburg / Гётеборг',
+        'Malmö / Мальмё', 'Uppsala / Уппсала', 'Linköping / Линчёпинг',
+        'Västerås / Вестерос', 'Örebro / Эребру', 'Norrköping / Норрчёпинг',
+        'Helsingborg / Хельсингборг', 'Jönköping / Йёнчёпинг',
+        'Umeå / Умео', 'Lund / Лунд', 'Borås / Бурос',
+        'Sundsvall / Сундсвалль', 'Gävle / Евле',
+        'Eskilstuna / Эскильстуна', 'Halmstad / Хальмстад',
+        'Karlstad / Карлстад', 'Växjö / Векшё', 'Södertälje / Сёдертелье',
+        'Skellefteå / Шеллефтео', 'Kalmar / Кальмар',
+        'Karlskrona / Карлскруна', 'Östersund / Эстерсунд',
+        'Trollhättan / Тролльхеттан', 'Kiruna / Кируна',
+        'Luleå / Лулео', 'Visby / Висбю'],
+        sea: ['Gothenburg / Гётеборг (SEGOT)', 'Stockholm / Стокгольм', 'Helsingborg / Хельсингборг'], air: ['Stockholm Arlanda / Стокгольм Арланда (ARN)', 'Gothenburg / Гётеборг (GOT)', 'Malmö / Мальмё (MMX)'] },
+    ZA: { city: ['Johannesburg / Йоханнесбург', 'Cape Town / Кейптаун',
+        'Durban / Дурбан', 'Pretoria / Претория',
+        'Port Elizabeth / Порт-Элизабет', 'Bloemfontein / Блумфонтейн',
+        'East London / Ист-Лондон', 'Pietermaritzburg / Питермарицбург',
+        'Witbank / Витбанк', 'Welkom / Велком', 'Rustenburg / Растенбург',
+        'Soweto / Соуэто', 'Vereeniging / Феринихинг',
+        'Kimberley / Кимберли', 'Polokwane / Полокване',
+        'Nelspruit / Нелспрут', 'George / Джордж', 'Newcastle / Ньюкасл',
+        'Pinetown / Пайнтаун', 'Krugersdorp / Крюгерсдорп',
+        'Mafikeng / Мафикенг', 'Upington / Апингтон',
+        'Stellenbosch / Стелленбос', 'Knysna / Книсна',
+        'Mossel Bay / Мосселбай'],
+        sea: ['Durban / Дурбан (ZADUR)', 'Cape Town / Кейптаун (ZACPT)', 'Port Elizabeth / Порт-Элизабет', 'Ngqura / Нгкура'],
+        air: ['Johannesburg / Йоханнесбург (JNB)', 'Cape Town / Кейптаун (CPT)', 'Durban / Дурбан (DUR)'] },
+  };
+  // Топ-10 стран — основные хабы B2B-запчастей. Показываются первыми.
+  const COUNTRIES_TOP = [
+    { code: 'CN', flag: '🇨🇳', name: 'Китай' },
+    { code: 'RU', flag: '🇷🇺', name: 'Россия' },
+    { code: 'AE', flag: '🇦🇪', name: 'ОАЭ' },
+    { code: 'TR', flag: '🇹🇷', name: 'Турция' },
+    { code: 'DE', flag: '🇩🇪', name: 'Германия' },
+    { code: 'KR', flag: '🇰🇷', name: 'Южная Корея' },
+    { code: 'JP', flag: '🇯🇵', name: 'Япония' },
+    { code: 'IN', flag: '🇮🇳', name: 'Индия' },
+    { code: 'US', flag: '🇺🇸', name: 'США' },
+    { code: 'IT', flag: '🇮🇹', name: 'Италия' },
+  ];
+  // «Все остальные» — полный список стран мира (ISO2), у которых есть
+  // города в GeoNames-базе. Алфавитный порядок по русскому названию.
+  const COUNTRIES_ALL = [
+    { code: 'AU', flag: '🇦🇺', name: 'Австралия' },
+    { code: 'AT', flag: '🇦🇹', name: 'Австрия' },
+    { code: 'AZ', flag: '🇦🇿', name: 'Азербайджан' },
+    { code: 'AX', flag: '🇦🇽', name: 'Аландские о-ва' },
+    { code: 'AL', flag: '🇦🇱', name: 'Албания' },
+    { code: 'DZ', flag: '🇩🇿', name: 'Алжир' },
+    { code: 'AS', flag: '🇦🇸', name: 'Американское Самоа' },
+    { code: 'AI', flag: '🇦🇮', name: 'Ангилья' },
+    { code: 'AO', flag: '🇦🇴', name: 'Ангола' },
+    { code: 'AD', flag: '🇦🇩', name: 'Андорра' },
+    { code: 'AG', flag: '🇦🇬', name: 'Антигуа и Барбуда' },
+    { code: 'AR', flag: '🇦🇷', name: 'Аргентина' },
+    { code: 'AM', flag: '🇦🇲', name: 'Армения' },
+    { code: 'AW', flag: '🇦🇼', name: 'Аруба' },
+    { code: 'AF', flag: '🇦🇫', name: 'Афганистан' },
+    { code: 'BS', flag: '🇧🇸', name: 'Багамы' },
+    { code: 'BD', flag: '🇧🇩', name: 'Бангладеш' },
+    { code: 'BB', flag: '🇧🇧', name: 'Барбадос' },
+    { code: 'BH', flag: '🇧🇭', name: 'Бахрейн' },
+    { code: 'BY', flag: '🇧🇾', name: 'Беларусь' },
+    { code: 'BZ', flag: '🇧🇿', name: 'Белиз' },
+    { code: 'BE', flag: '🇧🇪', name: 'Бельгия' },
+    { code: 'BJ', flag: '🇧🇯', name: 'Бенин' },
+    { code: 'BM', flag: '🇧🇲', name: 'Бермудские о-ва' },
+    { code: 'BG', flag: '🇧🇬', name: 'Болгария' },
+    { code: 'BO', flag: '🇧🇴', name: 'Боливия' },
+    { code: 'BQ', flag: '🇧🇶', name: 'Бонэйр, Синт-Эстатиус и Саба' },
+    { code: 'BA', flag: '🇧🇦', name: 'Босния и Герцеговина' },
+    { code: 'BW', flag: '🇧🇼', name: 'Ботсвана' },
+    { code: 'BR', flag: '🇧🇷', name: 'Бразилия' },
+    { code: 'BN', flag: '🇧🇳', name: 'Бруней-Даруссалам' },
+    { code: 'BF', flag: '🇧🇫', name: 'Буркина-Фасо' },
+    { code: 'BI', flag: '🇧🇮', name: 'Бурунди' },
+    { code: 'BT', flag: '🇧🇹', name: 'Бутан' },
+    { code: 'VU', flag: '🇻🇺', name: 'Вануату' },
+    { code: 'VA', flag: '🇻🇦', name: 'Ватикан' },
+    { code: 'GB', flag: '🇬🇧', name: 'Великобритания' },
+    { code: 'HU', flag: '🇭🇺', name: 'Венгрия' },
+    { code: 'VE', flag: '🇻🇪', name: 'Венесуэла' },
+    { code: 'VG', flag: '🇻🇬', name: 'Виргинские о-ва (Великобритания)' },
+    { code: 'VI', flag: '🇻🇮', name: 'Виргинские о-ва (США)' },
+    { code: 'TL', flag: '🇹🇱', name: 'Восточный Тимор' },
+    { code: 'VN', flag: '🇻🇳', name: 'Вьетнам' },
+    { code: 'GA', flag: '🇬🇦', name: 'Габон' },
+    { code: 'HT', flag: '🇭🇹', name: 'Гаити' },
+    { code: 'GY', flag: '🇬🇾', name: 'Гайана' },
+    { code: 'GM', flag: '🇬🇲', name: 'Гамбия' },
+    { code: 'GH', flag: '🇬🇭', name: 'Гана' },
+    { code: 'GP', flag: '🇬🇵', name: 'Гваделупа' },
+    { code: 'GT', flag: '🇬🇹', name: 'Гватемала' },
+    { code: 'GN', flag: '🇬🇳', name: 'Гвинея' },
+    { code: 'GW', flag: '🇬🇼', name: 'Гвинея-Бисау' },
+    { code: 'GG', flag: '🇬🇬', name: 'Гернси' },
+    { code: 'GI', flag: '🇬🇮', name: 'Гибралтар' },
+    { code: 'HN', flag: '🇭🇳', name: 'Гондурас' },
+    { code: 'HK', flag: '🇭🇰', name: 'Гонконг (САР)' },
+    { code: 'GD', flag: '🇬🇩', name: 'Гренада' },
+    { code: 'GL', flag: '🇬🇱', name: 'Гренландия' },
+    { code: 'GR', flag: '🇬🇷', name: 'Греция' },
+    { code: 'GE', flag: '🇬🇪', name: 'Грузия' },
+    { code: 'GU', flag: '🇬🇺', name: 'Гуам' },
+    { code: 'DK', flag: '🇩🇰', name: 'Дания' },
+    { code: 'JE', flag: '🇯🇪', name: 'Джерси' },
+    { code: 'DJ', flag: '🇩🇯', name: 'Джибути' },
+    { code: 'DM', flag: '🇩🇲', name: 'Доминика' },
+    { code: 'DO', flag: '🇩🇴', name: 'Доминиканская Республика' },
+    { code: 'EG', flag: '🇪🇬', name: 'Египет' },
+    { code: 'ZM', flag: '🇿🇲', name: 'Замбия' },
+    { code: 'EH', flag: '🇪🇭', name: 'Западная Сахара' },
+    { code: 'ZW', flag: '🇿🇼', name: 'Зимбабве' },
+    { code: 'IL', flag: '🇮🇱', name: 'Израиль' },
+    { code: 'ID', flag: '🇮🇩', name: 'Индонезия' },
+    { code: 'JO', flag: '🇯🇴', name: 'Иордания' },
+    { code: 'IQ', flag: '🇮🇶', name: 'Ирак' },
+    { code: 'IR', flag: '🇮🇷', name: 'Иран' },
+    { code: 'IE', flag: '🇮🇪', name: 'Ирландия' },
+    { code: 'IS', flag: '🇮🇸', name: 'Исландия' },
+    { code: 'ES', flag: '🇪🇸', name: 'Испания' },
+    { code: 'YE', flag: '🇾🇪', name: 'Йемен' },
+    { code: 'KP', flag: '🇰🇵', name: 'КНДР' },
+    { code: 'CV', flag: '🇨🇻', name: 'Кабо-Верде' },
+    { code: 'KZ', flag: '🇰🇿', name: 'Казахстан' },
+    { code: 'KH', flag: '🇰🇭', name: 'Камбоджа' },
+    { code: 'CM', flag: '🇨🇲', name: 'Камерун' },
+    { code: 'CA', flag: '🇨🇦', name: 'Канада' },
+    { code: 'QA', flag: '🇶🇦', name: 'Катар' },
+    { code: 'KE', flag: '🇰🇪', name: 'Кения' },
+    { code: 'CY', flag: '🇨🇾', name: 'Кипр' },
+    { code: 'KG', flag: '🇰🇬', name: 'Киргизия' },
+    { code: 'KI', flag: '🇰🇮', name: 'Кирибати' },
+    { code: 'CC', flag: '🇨🇨', name: 'Кокосовые о-ва' },
+    { code: 'CO', flag: '🇨🇴', name: 'Колумбия' },
+    { code: 'KM', flag: '🇰🇲', name: 'Коморы' },
+    { code: 'CG', flag: '🇨🇬', name: 'Конго - Браззавиль' },
+    { code: 'CD', flag: '🇨🇩', name: 'Конго - Киншаса' },
+    { code: 'CR', flag: '🇨🇷', name: 'Коста-Рика' },
+    { code: 'CI', flag: '🇨🇮', name: 'Кот-д’Ивуар' },
+    { code: 'CU', flag: '🇨🇺', name: 'Куба' },
+    { code: 'KW', flag: '🇰🇼', name: 'Кувейт' },
+    { code: 'CW', flag: '🇨🇼', name: 'Кюрасао' },
+    { code: 'LA', flag: '🇱🇦', name: 'Лаос' },
+    { code: 'LV', flag: '🇱🇻', name: 'Латвия' },
+    { code: 'LS', flag: '🇱🇸', name: 'Лесото' },
+    { code: 'LR', flag: '🇱🇷', name: 'Либерия' },
+    { code: 'LB', flag: '🇱🇧', name: 'Ливан' },
+    { code: 'LY', flag: '🇱🇾', name: 'Ливия' },
+    { code: 'LT', flag: '🇱🇹', name: 'Литва' },
+    { code: 'LI', flag: '🇱🇮', name: 'Лихтенштейн' },
+    { code: 'LU', flag: '🇱🇺', name: 'Люксембург' },
+    { code: 'MU', flag: '🇲🇺', name: 'Маврикий' },
+    { code: 'MR', flag: '🇲🇷', name: 'Мавритания' },
+    { code: 'MG', flag: '🇲🇬', name: 'Мадагаскар' },
+    { code: 'YT', flag: '🇾🇹', name: 'Майотта' },
+    { code: 'MO', flag: '🇲🇴', name: 'Макао (САР)' },
+    { code: 'MW', flag: '🇲🇼', name: 'Малави' },
+    { code: 'MY', flag: '🇲🇾', name: 'Малайзия' },
+    { code: 'ML', flag: '🇲🇱', name: 'Мали' },
+    { code: 'MV', flag: '🇲🇻', name: 'Мальдивы' },
+    { code: 'MT', flag: '🇲🇹', name: 'Мальта' },
+    { code: 'MA', flag: '🇲🇦', name: 'Марокко' },
+    { code: 'MQ', flag: '🇲🇶', name: 'Мартиника' },
+    { code: 'MH', flag: '🇲🇭', name: 'Маршалловы Острова' },
+    { code: 'MX', flag: '🇲🇽', name: 'Мексика' },
+    { code: 'MZ', flag: '🇲🇿', name: 'Мозамбик' },
+    { code: 'MD', flag: '🇲🇩', name: 'Молдова' },
+    { code: 'MC', flag: '🇲🇨', name: 'Монако' },
+    { code: 'MN', flag: '🇲🇳', name: 'Монголия' },
+    { code: 'MS', flag: '🇲🇸', name: 'Монтсеррат' },
+    { code: 'MM', flag: '🇲🇲', name: 'Мьянма (Бирма)' },
+    { code: 'NA', flag: '🇳🇦', name: 'Намибия' },
+    { code: 'NR', flag: '🇳🇷', name: 'Науру' },
+    { code: 'NP', flag: '🇳🇵', name: 'Непал' },
+    { code: 'NE', flag: '🇳🇪', name: 'Нигер' },
+    { code: 'NG', flag: '🇳🇬', name: 'Нигерия' },
+    { code: 'NL', flag: '🇳🇱', name: 'Нидерланды' },
+    { code: 'NI', flag: '🇳🇮', name: 'Никарагуа' },
+    { code: 'NU', flag: '🇳🇺', name: 'Ниуэ' },
+    { code: 'NZ', flag: '🇳🇿', name: 'Новая Зеландия' },
+    { code: 'NC', flag: '🇳🇨', name: 'Новая Каледония' },
+    { code: 'NO', flag: '🇳🇴', name: 'Норвегия' },
+    { code: 'OM', flag: '🇴🇲', name: 'Оман' },
+    { code: 'KY', flag: '🇰🇾', name: 'Острова Кайман' },
+    { code: 'CK', flag: '🇨🇰', name: 'Острова Кука' },
+    { code: 'PK', flag: '🇵🇰', name: 'Пакистан' },
+    { code: 'PW', flag: '🇵🇼', name: 'Палау' },
+    { code: 'PS', flag: '🇵🇸', name: 'Палестинские территории' },
+    { code: 'PA', flag: '🇵🇦', name: 'Панама' },
+    { code: 'PG', flag: '🇵🇬', name: 'Папуа — Новая Гвинея' },
+    { code: 'PY', flag: '🇵🇾', name: 'Парагвай' },
+    { code: 'PE', flag: '🇵🇪', name: 'Перу' },
+    { code: 'PL', flag: '🇵🇱', name: 'Польша' },
+    { code: 'PT', flag: '🇵🇹', name: 'Португалия' },
+    { code: 'PR', flag: '🇵🇷', name: 'Пуэрто-Рико' },
+    { code: 'RE', flag: '🇷🇪', name: 'Реюньон' },
+    { code: 'RW', flag: '🇷🇼', name: 'Руанда' },
+    { code: 'RO', flag: '🇷🇴', name: 'Румыния' },
+    { code: 'SV', flag: '🇸🇻', name: 'Сальвадор' },
+    { code: 'WS', flag: '🇼🇸', name: 'Самоа' },
+    { code: 'SM', flag: '🇸🇲', name: 'Сан-Марино' },
+    { code: 'ST', flag: '🇸🇹', name: 'Сан-Томе и Принсипи' },
+    { code: 'SA', flag: '🇸🇦', name: 'Саудовская Аравия' },
+    { code: 'MK', flag: '🇲🇰', name: 'Северная Македония' },
+    { code: 'MP', flag: '🇲🇵', name: 'Северные Марианские о-ва' },
+    { code: 'SC', flag: '🇸🇨', name: 'Сейшельские Острова' },
+    { code: 'BL', flag: '🇧🇱', name: 'Сен-Бартелеми' },
+    { code: 'MF', flag: '🇲🇫', name: 'Сен-Мартен' },
+    { code: 'PM', flag: '🇵🇲', name: 'Сен-Пьер и Микелон' },
+    { code: 'SN', flag: '🇸🇳', name: 'Сенегал' },
+    { code: 'VC', flag: '🇻🇨', name: 'Сент-Винсент и Гренадины' },
+    { code: 'KN', flag: '🇰🇳', name: 'Сент-Китс и Невис' },
+    { code: 'LC', flag: '🇱🇨', name: 'Сент-Люсия' },
+    { code: 'RS', flag: '🇷🇸', name: 'Сербия' },
+    { code: 'SG', flag: '🇸🇬', name: 'Сингапур' },
+    { code: 'SX', flag: '🇸🇽', name: 'Синт-Мартен' },
+    { code: 'SY', flag: '🇸🇾', name: 'Сирия' },
+    { code: 'SK', flag: '🇸🇰', name: 'Словакия' },
+    { code: 'SI', flag: '🇸🇮', name: 'Словения' },
+    { code: 'SB', flag: '🇸🇧', name: 'Соломоновы Острова' },
+    { code: 'SO', flag: '🇸🇴', name: 'Сомали' },
+    { code: 'SD', flag: '🇸🇩', name: 'Судан' },
+    { code: 'SR', flag: '🇸🇷', name: 'Суринам' },
+    { code: 'SL', flag: '🇸🇱', name: 'Сьерра-Леоне' },
+    { code: 'TJ', flag: '🇹🇯', name: 'Таджикистан' },
+    { code: 'TH', flag: '🇹🇭', name: 'Таиланд' },
+    { code: 'TW', flag: '🇹🇼', name: 'Тайвань' },
+    { code: 'TZ', flag: '🇹🇿', name: 'Танзания' },
+    { code: 'TG', flag: '🇹🇬', name: 'Того' },
+    { code: 'TO', flag: '🇹🇴', name: 'Тонга' },
+    { code: 'TT', flag: '🇹🇹', name: 'Тринидад и Тобаго' },
+    { code: 'TV', flag: '🇹🇻', name: 'Тувалу' },
+    { code: 'TN', flag: '🇹🇳', name: 'Тунис' },
+    { code: 'TM', flag: '🇹🇲', name: 'Туркменистан' },
+    { code: 'UG', flag: '🇺🇬', name: 'Уганда' },
+    { code: 'UZ', flag: '🇺🇿', name: 'Узбекистан' },
+    { code: 'UA', flag: '🇺🇦', name: 'Украина' },
+    { code: 'WF', flag: '🇼🇫', name: 'Уоллис и Футуна' },
+    { code: 'UY', flag: '🇺🇾', name: 'Уругвай' },
+    { code: 'FO', flag: '🇫🇴', name: 'Фарерские о-ва' },
+    { code: 'FM', flag: '🇫🇲', name: 'Федеративные Штаты Микронезии' },
+    { code: 'FJ', flag: '🇫🇯', name: 'Фиджи' },
+    { code: 'PH', flag: '🇵🇭', name: 'Филиппины' },
+    { code: 'FI', flag: '🇫🇮', name: 'Финляндия' },
+    { code: 'FK', flag: '🇫🇰', name: 'Фолклендские о-ва' },
+    { code: 'FR', flag: '🇫🇷', name: 'Франция' },
+    { code: 'GF', flag: '🇬🇫', name: 'Французская Гвиана' },
+    { code: 'PF', flag: '🇵🇫', name: 'Французская Полинезия' },
+    { code: 'TF', flag: '🇹🇫', name: 'Французские Южные территории' },
+    { code: 'HR', flag: '🇭🇷', name: 'Хорватия' },
+    { code: 'CF', flag: '🇨🇫', name: 'Центрально-Африканская Республика' },
+    { code: 'TD', flag: '🇹🇩', name: 'Чад' },
+    { code: 'ME', flag: '🇲🇪', name: 'Черногория' },
+    { code: 'CZ', flag: '🇨🇿', name: 'Чехия' },
+    { code: 'CL', flag: '🇨🇱', name: 'Чили' },
+    { code: 'CH', flag: '🇨🇭', name: 'Швейцария' },
+    { code: 'SE', flag: '🇸🇪', name: 'Швеция' },
+    { code: 'SJ', flag: '🇸🇯', name: 'Шпицберген и Ян-Майен' },
+    { code: 'LK', flag: '🇱🇰', name: 'Шри-Ланка' },
+    { code: 'EC', flag: '🇪🇨', name: 'Эквадор' },
+    { code: 'GQ', flag: '🇬🇶', name: 'Экваториальная Гвинея' },
+    { code: 'ER', flag: '🇪🇷', name: 'Эритрея' },
+    { code: 'SZ', flag: '🇸🇿', name: 'Эсватини' },
+    { code: 'EE', flag: '🇪🇪', name: 'Эстония' },
+    { code: 'ET', flag: '🇪🇹', name: 'Эфиопия' },
+    { code: 'GS', flag: '🇬🇸', name: 'Южная Георгия и Южные Сандвичевы о-ва' },
+    { code: 'ZA', flag: '🇿🇦', name: 'Южно-Африканская Республика' },
+    { code: 'SS', flag: '🇸🇸', name: 'Южный Судан' },
+    { code: 'JM', flag: '🇯🇲', name: 'Ямайка' },
+    { code: 'IM', flag: '🇮🇲', name: 'о-в Мэн' },
+    { code: 'NF', flag: '🇳🇫', name: 'о-в Норфолк' },
+    { code: 'CX', flag: '🇨🇽', name: 'о-в Рождества' },
+    { code: 'SH', flag: '🇸🇭', name: 'о-в Св. Елены' },
+    { code: 'PN', flag: '🇵🇳', name: 'о-ва Питкэрн' },
+    { code: 'TC', flag: '🇹🇨', name: 'о-ва Тёркс и Кайкос' },
+  ];
+  let __suggDatalistCounter = 0;
+
   // Local i18n shorthand. window.t (из i18n.js) переводит ключ под текущим
   // языком; если i18n.js ещё не загружен — возвращаем fallback (русский).
   // Назван `tr`, чтобы не конфликтовать с локальными `const t = ...` внутри функций.
@@ -1125,25 +2422,121 @@
     },
     smart_question(d) {
       // Безопасный рендер questionnaire-вопроса. Все значения экранируются.
-      // d: {question, options:[…], default, placeholder, q_idx, total, field, apply_as}
-      const chips = (d.options || []).map(opt =>
+      // d: {question, options:[…], default, placeholder, q_idx, total, field,
+      //     apply_as, suggestions_source: 'sea'|'air'|'city'|'',
+      //     country_picker: bool, shipment_country: 'CN'|'RU'|...}
+      // render:'select' → комбобокс на нашем кастомном автокомплите (.pl-ac):
+      // можно сразу печатать (substring-фильтр), а аккуратный скроллящийся
+      // попап .pl-ac-pop показывает список (нативный <datalist> растягивался
+      // на весь экран и не скроллился). Любое введённое значение принимается.
+      const useSelect = (d.render === 'select') && (d.options || []).length;
+      const chips = (useSelect ? '' : (d.options || []).map(opt =>
         `<button class="sq-chip" type="button" data-answer="${esc(String(opt))}">${esc(String(opt))}</button>`
-      ).join('');
+      ).join(''));
+      let comboClass = '';
+      let comboExtra = '';
+      if (useSelect) {
+        // Список опций кладём в data-атрибут — провайдер _acItemsFor читает его.
+        const optsAttr = (d.options || []).map(o => String(o)).join('|');
+        comboClass = ' pl-ac';
+        comboExtra = ' data-ac-kind="manuf" data-ac-options="' + esc(optsAttr) + '" autocomplete="off"';
+      }
       const idx = Number(d.q_idx || 0);
       const total = Number(d.total || 1);
       const defVal = d.default != null ? String(d.default) : '';
       const placeholder = d.placeholder || 'или впишите свой вариант...';
+      const sugSrc = String(d.suggestions_source || '');
+      const selectedCountry = String(d.shipment_country || '');
+      // Динамический placeholder для port-вопросов: если страна выбрана и
+      // есть наши подсказки для неё — подменяем общую "выберите из списка"
+      // на конкретные примеры из этой страны.
+      let dynamicPlaceholder = '';
+      if ((sugSrc === 'sea' || sugSrc === 'air') && selectedCountry
+          && PORTS_PLACEHOLDER_BY_COUNTRY[selectedCountry]
+          && PORTS_PLACEHOLDER_BY_COUNTRY[selectedCountry][sugSrc]) {
+        dynamicPlaceholder = PORTS_PLACEHOLDER_BY_COUNTRY[selectedCountry][sugSrc];
+      }
+      // Фильтруем подсказки по выбранной стране, если она есть и для неё
+      // в SUGGEST_BY_COUNTRY есть список. Иначе fallback на общемировой.
+      let sugList = [];
+      if (sugSrc) {
+        if (selectedCountry && SUGGEST_BY_COUNTRY[selectedCountry]
+            && SUGGEST_BY_COUNTRY[selectedCountry][sugSrc]) {
+          sugList = SUGGEST_BY_COUNTRY[selectedCountry][sugSrc];
+        } else {
+          sugList = SUGGEST_BY_SOURCE[sugSrc] || [];
+        }
+      }
+      let dlAttr = '';
+      let dlHtml = '';
+      if (sugList && sugList.length) {
+        const dlId = 'sq-dl-' + (++__suggDatalistCounter);
+        dlAttr = ' list="' + esc(dlId) + '"';
+        dlHtml = '<datalist id="' + esc(dlId) + '">'
+          + sugList.map(v => '<option value="' + esc(String(v)) + '"></option>').join('')
+          + '</datalist>';
+      }
+      // Country + City picker: рендерим два <select> + текстовое поле для
+      // улицы. Город заполняется на основе выбранной страны (если есть в
+      // SUGGEST_BY_COUNTRY) + опция «Другой...» для свободного ввода.
+      // На submit (см. ниже) три части склеиваются как
+      // "{улица}, {город}, {страна}" → warehouse_address.
+      let countryHtml = '';
+      let cityHtml = '';
+      let streetInputDl = dlAttr;     // для city-source — если есть город, datalist не нужен
+      let useCustomPlaceholder = placeholder;
+      if (d.country_picker) {
+        const optTop = COUNTRIES_TOP.map(c =>
+          '<option value="' + esc(c.code) + '"'
+          + (c.code === selectedCountry ? ' selected' : '')
+          + '>' + esc(c.flag + ' ' + c.name) + '</option>'
+        ).join('');
+        const optAll = COUNTRIES_ALL.map(c =>
+          '<option value="' + esc(c.code) + '"'
+          + (c.code === selectedCountry ? ' selected' : '')
+          + '>' + esc(c.flag + ' ' + c.name) + '</option>'
+        ).join('');
+        const placeholderOpt = '<option value=""' + (selectedCountry ? '' : ' selected')
+          + '>— выберите страну —</option>';
+        countryHtml = '<select class="sq-country">'
+          + placeholderOpt
+          + '<optgroup label="Основные">' + optTop + '</optgroup>'
+          + '<optgroup label="Все остальные">' + optAll + '</optgroup>'
+          + '</select>';
+        // City — combobox (input + datalist). Юзер либо выбирает из подсказок,
+        // либо свободно вписывает свой город. При смене страны datalist
+        // перерисовывается. Для стран без списка остаётся пустой datalist —
+        // юзер просто печатает свой город.
+        const cityDlId = 'sq-city-dl-' + (++__suggDatalistCounter);
+        let cityDlOpts = '';
+        if (selectedCountry && SUGGEST_BY_COUNTRY[selectedCountry]
+            && SUGGEST_BY_COUNTRY[selectedCountry].city) {
+          cityDlOpts = SUGGEST_BY_COUNTRY[selectedCountry].city.map(c =>
+            '<option value="' + esc(String(c)) + '"></option>'
+          ).join('');
+        }
+        cityHtml = '<input class="sq-city" type="text" list="' + esc(cityDlId)
+          + '" placeholder="город (или впишите свой)"/>'
+          + '<datalist id="' + esc(cityDlId) + '">' + cityDlOpts + '</datalist>';
+        // Когда city picker есть — основное поле это улица, datalist не нужен.
+        streetInputDl = '';
+        useCustomPlaceholder = 'улица, № дома';
+      }
       return `<div class="smart-q-card card"
           data-q-idx="${esc(String(idx))}"
           data-field="${esc(String(d.field || ''))}"
           data-apply-as="${esc(String(d.apply_as || 'constant'))}">
         <div class="sq-step">${idx + 1} / ${total}</div>
         <div class="sq-q">${esc(String(d.question || ''))}</div>
+        ${d.hint ? `<div class="sq-hint" style="font-size:13px;line-height:1.4;opacity:.72;margin:-2px 0 10px;">${esc(String(d.hint))}</div>` : ''}
         ${chips ? `<div class="sq-chips">${chips}</div>` : ''}
         <div class="sq-input-row">
-          <input class="sq-input" type="text" placeholder="${esc(placeholder)}" value="${esc(defVal)}"/>
+          ${countryHtml}
+          ${cityHtml}
+          <input class="sq-input${comboClass}" type="text" placeholder="${esc(dynamicPlaceholder || useCustomPlaceholder)}" value="${esc(defVal)}"${streetInputDl}${comboExtra}/>
+          ${d.country_picker ? '' : dlHtml}
           <button class="sq-submit" type="button">→</button>
-          <button class="sq-skip" type="button">Пропустить</button>
+          ${d.skippable ? '<button class="sq-skip" type="button">Пропустить</button>' : ''}
         </div>
       </div>`;
     },
@@ -1379,9 +2772,21 @@
       // data-count → CSS подстраивает число колонок под фактическое количество
       // ячеек, чтобы не было пустых клеток в конце строки.
       const itemCount = (d.kpis || d.items || []).length;
+      // Монохромная линия-прогресс (ЧБ): горизонтальная полоса до значения,
+      // слева подпись, справа %. Цвета — из CSS (адаптируются к теме).
+      let progress = '';
+      if (d.progress) {
+        const pct = Math.max(0, Math.min(100, Number(d.progress.value) || 0));
+        const center = d.progress.center != null ? d.progress.center : pct + '%';
+        progress = `<div class="kpi-line">
+          <div class="kpi-line-head"><span class="kpi-line-lbl">${esc(d.progress.label || '')}</span><span class="kpi-line-val">${esc(String(center))}</span></div>
+          <div class="kpi-line-track"><div class="kpi-line-fill" style="width:${pct}%"></div></div>
+        </div>`;
+      }
       return `<div class="card kpi-card">
         <div class="card-title">${esc(d.title || 'KPI')}</div>
         <div class="kpi-grid" data-count="${itemCount}">${items}</div>
+        ${progress}
       </div>`;
     },
     form(d) {
@@ -2905,7 +4310,7 @@
     return `<div class="ctx-refs">${items}</div>`;
   }
 
-  function addMessage(role, content, cards=[], actions=[], contextRefs=[], messageId=null, suggestions=[], contextualActions=[]) {
+  function addMessage(role, content, cards=[], actions=[], contextRefs=[], messageId=null, suggestions=[], contextualActions=[], fromServer=true) {
     showConv();
     const wrap = document.createElement('div');
     wrap.className = 'msg msg-' + role;
@@ -2940,7 +4345,7 @@
       cEl.textContent = content || '';
     }
     wrap.querySelector('.msg-refs').innerHTML = renderContextRefs(contextRefs);
-    wrap.querySelector('.msg-cards').innerHTML = renderCards(cards, {fromServer: true});
+    wrap.querySelector('.msg-cards').innerHTML = renderCards(cards, {fromServer: fromServer});
     wrap.querySelector('.msg-actions').innerHTML = renderActions(actions);
     wrap.querySelector('.msg-ctx-actions').innerHTML = renderContextualActions(contextualActions);
     wrap.querySelector('.msg-suggestions').innerHTML = renderSuggestions(suggestions);
@@ -3996,7 +5401,9 @@
       removeTyping();
       setConvId(r.conversation_id || state.convId);
       const ctxActs = ensureHomeNav(r.contextual_actions || []);
-      const sugs = ensureSuggestions(r.suggestions || []);
+      // no_suggestions → не подставляем дефолтные подсказки (экраны, где
+      // рекомендации не к месту, например отчёт об ошибках импорта).
+      const sugs = r.no_suggestions ? [] : ensureSuggestions(r.suggestions || []);
       addMessage('assistant', r.text, r.cards, r.actions, r.context_refs || [], r.message_id || null, sugs, ctxActs);
       loadConvList();
       // Хук авто-reload (after start_registration / start_login success).
@@ -4082,7 +5489,9 @@
     }
     if (action === 'reload_page') { window.location.reload(); return; }
     if (action === 'open_url') {
-      const url = params && params.url;
+      // Бэкенд шлёт ссылку как `_url` (доминирующая конвенция), часть мест — `url`.
+      // Принимаем оба, иначе переход молча не срабатывает («не открывается»).
+      const url = params && (params._url || params.url);
       if (url) window.location.href = url;
       return;
     }
@@ -5097,6 +6506,16 @@
   // 3) Backend применяет формулы + импортирует → результат
   // Морпорты с UN/LOCODE (5-буквенный международный код) — по странам.
   // Юзер выбирает страну, потом получает фильтрованный список портов.
+  // Известные бренды-аналоги (зеркало KNOWN_ANALOG_BRANDS в pricelist.py).
+  // Нужно только для сводки «Ваши ответы»: показать, будет ли завод виден
+  // покупателю. Реальное решение по видимости принимает бэкенд.
+  var KNOWN_ANALOG_BRANDS_JS = {};
+  ['itr','berco','carraro','dana','denso','bosch','bosch rexroth','rexroth',
+   'perkins','etp','cummins','deutz','donaldson','fleetguard','skf','nok',
+   'ntn','nsk','parker','kyb','kayaba','mahle','mann-filter','mann','garrett',
+   'holset','wabco','sachs','hengst','eaton','vickers','lincoln','fleetpride',
+   'federal-mogul'].forEach(function(b){ KNOWN_ANALOG_BRANDS_JS[b] = 1; });
+
   var PORTS_BY_COUNTRY = {
     AE: {
       flag: '🇦🇪', name: 'ОАЭ',
@@ -5583,6 +7002,14 @@
       if (unmapped.length) {
         intro += '\n⚠️ Не найдено: ' + unmapped.join(', ');
       }
+      // Бренды из колонки — подтверждение что мультибренд-прайс распознан.
+      var brands = data.detected_brands || [];
+      if (brands.length) {
+        var shown = brands.slice(0, 12).join(', ');
+        intro += '\n🏷 Бренды из колонки (' + brands.length + '): ' + shown
+               + (brands.length > 12 ? ' и др.' : '')
+               + ' — берём для каждой позиции свой, спрашивать не буду.';
+      }
 
       // 3. Раскрываемая секция supplier-wide дефолтов.
       // Сюда попадают ТОЛЬКО поля, не покрытые smart questionnaire
@@ -5592,7 +7019,11 @@
       // Порядок важен для визуального баланса грида 2 колонки:
       // Морпорт + Аэропорт парой, потом Адрес склада full-width,
       // потом Валюта одна (она короткая, выглядит ок)
-      var SUPPLIER_WIDE_ORDER = ['sea_port', 'air_port', 'warehouse_address', 'currency'];
+      // warehouse_address ставим первым (он "адрес склада EXW" — улица),
+      // потом порты которые юзер ближе подбирает к складу, потом валюта.
+      // Между country и warehouse в рендере вставляется отдельное поле
+      // "Город" (см. cityRowHtml ниже) для подсказок и приоритизации портов.
+      var SUPPLIER_WIDE_ORDER = ['warehouse_address', 'sea_port', 'air_port', 'currency'];
       var supplierWideFields = SUPPLIER_WIDE_ORDER
         .map(function(key) {
           return defaultFields.find(function(f){ return f.key === key; });
@@ -5642,29 +7073,26 @@
             }).join('');
             inp = '<select class="pl-df-input" data-field="' + esc(f.key) + '">' + opts + '</select>';
           } else if (f.key === 'sea_port' || f.key === 'air_port') {
-            // Морпорт / Аэропорт. Страна берётся из общего селектора
-            // «🌍 Страна отправления» сверху (одна загрузка = одна страна).
-            var allPorts = f.key === 'sea_port' ? SEA_PORTS : AIR_PORTS;
-            var listId = 'sugg_' + f.key;
-            var suggOpts = allPorts.map(function(s){
-              return '<option value="' + esc(s) + '"/>';
-            }).join('');
-            inp = '<input class="pl-df-input pl-port-input" data-field="' + esc(f.key)
-              + '" type="text" value="' + esc(val) + '" autocomplete="off"'
-              + ' list="' + listId + '" placeholder="Код или название порта"/>'
-              + '<datalist id="' + listId + '">' + suggOpts + '</datalist>';
+            // Морпорт / Аэропорт. Кастомный автокомплит (см. ниже _initAC):
+            // нативный <datalist> в Chrome фильтрует по ПРЕФИКСУ значения,
+            // поэтому "Beijing / Пекин" не находится при наборе "Пек".
+            // data-ac-kind="sea|air" → провайдер отдаёт порты текущей страны
+            // отсортированные по близости к складу.
+            // type="search" + readonly (снимается на focusin) подавляют
+            // нативный Chrome address-autofill, который иначе всплывает
+            // поверх нашего попапа.
+            inp = '<input class="pl-df-input pl-port-input pl-ac" data-field="' + esc(f.key)
+              + '" data-ac-kind="' + (f.key === 'sea_port' ? 'sea' : 'air') + '"'
+              + ' type="search" value="' + esc(val) + '" autocomplete="off"'
+              + ' autocorrect="off" spellcheck="false" data-lpignore="true" readonly'
+              + ' placeholder="Код или название порта"/>';
           } else if (f.key === 'warehouse_address') {
-            // Полный адрес склада — textarea + datalist подсказок по хабам
-            var listId = 'sugg_' + f.key;
-            var sugg = FIELD_SUGGESTIONS[f.key] || [];
-            var suggOpts = sugg.map(function(s){
-              return '<option value="' + esc(s) + '"/>';
-            }).join('');
-            inp = '<textarea class="pl-df-input pl-df-textarea" data-field="' + esc(f.key)
-              + '" rows="2" placeholder="Страна, город, улица, дом/корпус, индекс. '
-              + 'Напр.: 中国 广州市 南沙区 港口路 88号, Guangzhou 511458"'
-              + ' list="' + listId + '">' + esc(val) + '</textarea>'
-              + '<datalist id="' + listId + '">' + suggOpts + '</datalist>';
+            // Адрес склада EXW — улица + № дома. Город указывается отдельно
+            // выше (см. cityRowHtml), на commit мы склеиваем
+            // "{улица}, {город}, {страна}" в полное warehouse_address.
+            inp = '<input class="pl-df-input pl-wh-street" data-field="' + esc(f.key)
+              + '" type="text" value="' + esc(val) + '" autocomplete="off"'
+              + ' placeholder="улица, № дома"/>';
           } else {
             // Подсказки по списку складов
             var sugg = FIELD_SUGGESTIONS[f.key] || null;
@@ -5704,21 +7132,39 @@
             var c = PORTS_BY_COUNTRY[cc];
             return '<option value="' + cc + '">' + esc(c.flag + ' ' + c.name) + '</option>';
           }).join('');
-        var countryHeaderHtml =
-          '<div class="pl-ship-country-row">'
-          + '<label class="pl-ship-country-label" for="shipment_country">'
-          +   '🌍 Страна отправления'
-          +   '<span class="pl-ship-country-hint">Одна на всю загрузку. Порты и склад фильтруются по выбранной стране.</span>'
-          + '</label>'
+        // Страна + Город — в ОДНОЙ строке горизонтально (pl-ship-combo).
+        // Город — combobox с кастомным AC (data-ac-kind="city"): поиск по
+        // 155k городов GeoNames через backend, рус+лат+транслит+опечатки.
+        // id/for/name НЕ содержат "city"/"address" + readonly → Chrome не
+        // показывает свой address-autofill поверх нашего попапа.
+        var cityNameSalt = 'pl_field_' + Math.random().toString(36).slice(2, 10);
+        var countryFieldHtml =
+          '<div class="pl-ship-field">'
+          + '<label class="pl-ship-flabel" for="shipment_country">🌍 Страна отправления</label>'
           + '<select class="pl-df-input pl-ship-country" id="shipment_country">'
           +   topCountryOpts
           + '</select>'
           + '</div>';
+        var cityFieldHtml =
+          '<div class="pl-ship-field">'
+          + '<label class="pl-ship-flabel">Город</label>'
+          + '<input class="pl-df-input pl-city-input pl-ac" type="search"'
+          +   ' data-ac-kind="city" placeholder="Например: Shanghai, Стамбул…"'
+          +   ' name="' + cityNameSalt + '" autocomplete="off" autocorrect="off"'
+          +   ' spellcheck="false" data-lpignore="true" data-form-type="other" readonly/>'
+          + '</div>';
+        var comboHtml =
+          '<div class="pl-ship-combo">'
+          + (needsCountrySelector ? countryFieldHtml : '')
+          + cityFieldHtml
+          + '</div>'
+          + '<div class="pl-ship-combo-hint">Одна страна на всю загрузку. '
+          + 'Порты и склад фильтруются по выбранной стране.</div>';
         cards.push({type:'raw_html', data:{
           html: '<div class="card pl-defaults-card">'
             + '<details class="pl-defaults-details" open>'
             + '<summary class="pl-defaults-summary">📎 ' + supplierWideFields.length + ' общих полей поставщика — нажмите чтобы изменить</summary>'
-            + (needsCountrySelector ? countryHeaderHtml : '')
+            + comboHtml
             + '<div class="pl-df-grid">' + dfHtml + '</div>'
             + perPartNote
             + '</details></div>',
@@ -5742,7 +7188,14 @@
       // и параллельно подтягиваем умные вопросы async (не блокируя upload).
       // Когда придут — отрендерим их перед commit-кнопкой.
       if (data.smart_questions_pending) {
-        var bigMsg = addMessage('assistant', intro, cards, []);
+        // fromServer=false — все карты в этом сообщении (preview-table,
+        // mapping-table, import-intro, pl-defaults-card) сгенерированы
+        // КЛИЕНТОМ из upload-response, не пришли с бэка как готовые карты.
+        // Без явного false security-check (FRONTEND_ONLY_TYPES) тихо
+        // дропает raw_html-карты (intro + supplier-wide form).
+        var bigMsg = addMessage('assistant', intro, cards, [], [], null, [], [], false);
+        // Кастомный AC сам подтягивает список при фокусе на инпут —
+        // bootstrap datalist'ов больше не нужен.
         // Скроллим к НАЧАЛУ нового сообщения чтобы юзер увидел
         // инструкцию сверху, а не сразу прыгнул вниз к чему-то.
         setTimeout(function() {
@@ -5807,8 +7260,7 @@
         var cc = code.slice(0, 2).toUpperCase();
         if (!PORTS_BY_COUNTRY[cc]) return;
         top.value = cc;
-        _refreshPortDatalist('sugg_sea_port', cc);
-        _refreshPortDatalist('sugg_air_port', cc);
+        // Список портов/городов подтянется при фокусе на AC-инпут.
       }, 50);
     } catch (err) {
       if (pending && pending.parentNode) pending.remove();
@@ -5859,34 +7311,50 @@
       }
     });
 
-    // Required-проверка ДО отправки для supplier-wide полей. Если значение
-    // не задано ни в constants (через мастер или общую форму), ни в mapping
-    // как fix:VAL — НЕ шлём commit, показываем понятное сообщение и
-    // оставляем кнопку активной чтобы пользователь мог исправить.
-    var SUPPLIER_WIDE_REQUIRED = [
-      ['warehouse_address', 'адрес склада отгрузки'],
-      ['sea_port', 'ближайший морпорт отгрузки'],
-      ['air_port', 'ближайший аэропорт отгрузки'],
-    ];
-    var missingSW = [];
-    SUPPLIER_WIDE_REQUIRED.forEach(function(pair) {
-      var key = pair[0];
+    // ── Обязательная логистика: страна + город + адрес + порты ──────
+    // Считываем компоненты ДО склейки warehouse_address. Без полного блока
+    // загрузку не пропускаем (даже если на все вопросы мастера ответили).
+    var _cityInp = document.querySelector('.pl-city-input');
+    var _countrySel = document.querySelector('.pl-ship-country, #shipment_country');
+    var _street = String(constants.warehouse_address || '').trim();  // pl-df-input склад = улица
+    var _city = _cityInp ? String(_cityInp.value || '').trim() : '';
+    var _countryName = '';
+    if (_countrySel) {
+      if (_countrySel.tagName === 'SELECT') {
+        var _opt = _countrySel.options[_countrySel.selectedIndex];
+        _countryName = (_opt && _opt.value) ? (_opt.text || '').replace(/^[\s\S]*?\s/, '') : '';
+      } else {
+        _countryName = String(_countrySel.value || '').trim();
+      }
+    }
+    function _fixVal(key) {
       var v = (constants && constants[key] ? String(constants[key]).trim() : '');
       if (!v) {
         var m = (mapping && mapping[key]) || '';
-        if (typeof m === 'string' && m.indexOf('fix:') === 0) {
-          v = m.slice(4).trim();
-        }
+        if (typeof m === 'string' && m.indexOf('fix:') === 0) v = m.slice(4).trim();
       }
-      if (!v) missingSW.push(pair[1]);
-    });
+      return v;
+    }
+    var _sea = _fixVal('sea_port');
+    var _air = _fixVal('air_port');
+    var missingSW = [];
+    if (!_countryName) missingSW.push('страна отправления');
+    if (!_city)        missingSW.push('город');
+    if (!_street)      missingSW.push('адрес склада EXW');
+    if (!_sea)         missingSW.push('морпорт отправления');
+    if (!_air)         missingSW.push('аэропорт отправления');
     if (missingSW.length) {
       lockedBtns.forEach(b => { b.disabled = false; b.style.opacity = ''; b.style.cursor = ''; });
       addMessage('assistant',
-        '❗ Заполните обязательные поля: ' + missingSW.join(', ') + '. ' +
-        'Впишите их в вопросах мастера или раскройте «📎 общих полей поставщика».');
+        '❗ Без логистики загрузку продолжить нельзя. Заполните: ' + missingSW.join(', ') +
+        '. Это в блоке «📎 общих полей поставщика» сверху.');
       return;
     }
+
+    // Все поля есть → склеиваем полный warehouse_address (улица, город, страна).
+    var _wfull = [_street, _city, _countryName].filter(function(p){ return p; }).join(', ');
+    constants.warehouse_address = _wfull;
+    mapping.warehouse_address = 'fix:' + _wfull;
 
     // Собираем юзерские правки AI оценок (review-таблица)
     var aiOverrides = {};
@@ -5966,7 +7434,15 @@
       var parts = [];
       if (created) parts.push('✅ Создано ' + created);
       if (updated) parts.push('🔄 Обновлено ' + updated);
-      var msg = parts.join(' · ') + ' позиций.';
+      // Заголовок об успехе — только если что-то реально загрузилось.
+      var msg = '';
+      if (created || updated) {
+        msg = '✅ Загрузка прошла успешно!\n';
+      }
+      msg += parts.join(' · ') + ' позиций.';
+      if (created || updated) {
+        msg += '\n📦 Все позиции уже в разделе «Мои товары».';
+      }
       if (failed) {
         // Это НЕ поломка импорта — успешные строки уже в базе.
         // Просто N строк с битыми данными (пустой OEM/название/цена)
@@ -5982,8 +7458,9 @@
       }
       var conflicts = data.price_conflicts || 0;
       if (conflicts) {
-        msg += '\n⚠️ ' + conflicts + ' дубль' + (conflicts === 1 ? '' : 'я')
-             + ' с разной ценой — оставлена первая, остальные в списке пропущенных.';
+        msg += '\nℹ️ ' + conflicts + ' артикул' + (conflicts === 1 ? '' : 'ов')
+             + ' с разными ценами — загружены как отдельные позиции (варианты прайса). '
+             + 'Покупатель увидит оба варианта в каталоге.';
       }
 
       // Категоризированный отчёт о незаполненных полях.
@@ -6168,14 +7645,17 @@
     var cond = _val('condition');
     var avail = _val('availability');
     var manuf = _val('manufacturer');
-    var mvis = _val('manufacturer_visible');
     if (brand || cond || avail || manuf) {
       var ansParts = [];
       if (brand) ansParts.push('Бренд — <b>' + esc(brand) + '</b>');
       if (cond) ansParts.push('Тип товара — <b>' + esc(cond) + '</b>');
       if (avail) ansParts.push('Наличие — <b>' + esc(avail) + '</b>');
-      if (manuf) ansParts.push('Завод — <b>' + esc(manuf) + '</b>'
-        + (mvis === 'Нет' ? ' (скрыт от клиента)' : ''));
+      if (manuf) {
+        var _known = KNOWN_ANALOG_BRANDS_JS[manuf.trim().toLowerCase()];
+        ansParts.push('Завод — <b>' + esc(manuf) + '</b>'
+          + (_known ? ' (известный бренд — виден покупателю)'
+                    : ' (известный бренд покажем покупателю, частную марку скроем)'));
+      }
       items.push({icon: '✋', label: 'Ваши ответы', value: ansParts.join(' · ')});
     }
 
@@ -6261,6 +7741,46 @@
         var f = el.dataset.field; var v = el.value;
         if (f && v !== undefined) constants[f] = v;
       });
+      // ── Обязательная логистика (та же проверка что в commit) ─────────
+      // Без полного блока НЕ генерируем файл — иначе WarehouseAddress
+      // заполнится placeholder'ом «— выбрать страну —».
+      var _gCityInp = document.querySelector('.pl-city-input');
+      var _gCountrySel = document.querySelector('.pl-ship-country, #shipment_country');
+      var _gStreet = String(constants.warehouse_address || '').trim();
+      var _gCity = _gCityInp ? String(_gCityInp.value || '').trim() : '';
+      var _gCountry = '';
+      if (_gCountrySel) {
+        if (_gCountrySel.tagName === 'SELECT') {
+          var _gOpt = _gCountrySel.options[_gCountrySel.selectedIndex];
+          // только если реально выбрана страна (value не пустой) — иначе
+          // text это placeholder «— выбрать страну —».
+          _gCountry = (_gOpt && _gOpt.value) ? (_gOpt.text || '').replace(/^[\s\S]*?\s/, '') : '';
+        } else {
+          _gCountry = String(_gCountrySel.value || '').trim();
+        }
+      }
+      var _gSea = String(constants.sea_port || '').trim();
+      var _gAir = String(constants.air_port || '').trim();
+      var _gMissing = [];
+      if (!_gCountry) _gMissing.push('страна отправления');
+      if (!_gCity)    _gMissing.push('город');
+      if (!_gStreet)  _gMissing.push('адрес склада EXW');
+      if (!_gSea)     _gMissing.push('морпорт отправления');
+      if (!_gAir)     _gMissing.push('аэропорт отправления');
+      if (_gMissing.length) {
+        clearInterval(progressPoller);
+        if (thinking && thinking.parentNode) thinking.remove();
+        try { closeSidePreview(); } catch(e) {}
+        // Кнопка повтора: юзер дозаполняет блок логистики сверху и жмёт её.
+        addMessage('assistant',
+          '❗ Без логистики продолжить нельзя. Заполните в блоке «📎 общих полей '
+          + 'поставщика» сверху: ' + _gMissing.join(', ') + '. Потом нажмите «Сгенерировать файл».',
+          [], [{action: '__pricelist_retry_generate', label: '🔄 Сгенерировать файл'}]);
+        return;
+      }
+      // Все поля есть → склейка полного warehouse_address.
+      constants.warehouse_address = [_gStreet, _gCity, _gCountry]
+        .filter(function(p){ return p; }).join(', ');
       var aiOverrides = {};
       document.querySelectorAll('.pl-ai-row').forEach(function(row) {
         var oem = row.dataset.oem;
@@ -6374,17 +7894,33 @@
     // рендерере, поэтому здесь просто передаём data как есть.
     var stream = document.getElementById('stream');
     var savedScroll = (idx === 0 && stream) ? stream.scrollTop : null;
+    // shipment_country пробрасываем в каждый вопрос — для country_picker
+    // используется как preselected value, для остальных supplier-wide
+    // используется чтобы отфильтровать datalist портов/городов по стране.
+    // __pendingImport объявлен в IIFE-scope (не на window) — обращаемся
+    // напрямую без window. префикса, иначе всегда был бы пустой curCountry.
+    var curCountry = '';
+    try {
+      var c = (__pendingImport && __pendingImport.constants) || {};
+      curCountry = c.shipment_country || '';
+    } catch (e) {}
     var qMsg = addMessage('assistant', '', [{
       type: 'smart_question',
       data: {
-        question:    q.question || '',
-        options:     q.options || [],
-        'default':   q['default'] || '',
-        placeholder: q.placeholder || '',
-        q_idx:       idx,
-        total:       questions.length,
-        field:       q.field || '',
-        apply_as:    q.apply_as || 'constant',
+        question:           q.question || '',
+        hint:               q.hint || '',
+        render:             q.render || '',
+        options:            q.options || [],
+        'default':          q['default'] || '',
+        placeholder:        q.placeholder || '',
+        q_idx:              idx,
+        total:              questions.length,
+        field:              q.field || '',
+        apply_as:           q.apply_as || 'constant',
+        suggestions_source: q.suggestions_source || '',
+        skippable:          !!q.skippable,
+        country_picker:     !!q.country_picker,
+        shipment_country:   curCountry,
       },
     }], []);
     if (savedScroll !== null && stream) {
@@ -6462,18 +7998,85 @@
       e.stopPropagation();
       var card = submit.closest('.smart-q-card');
       var input = card.querySelector('.sq-input');
-      finalizeSmartAnswer(card, input ? input.value : '');
+      var countrySel = card.querySelector('.sq-country');
+      var citySel = card.querySelector('.sq-city');
+      // Сохраняем страну ОТДЕЛЬНО (shipment_country constant) если есть picker.
+      if (countrySel && countrySel.value) {
+        applySmartAnswer('shipment_country', 'constant', countrySel.value);
+      }
+      // Если в карточке есть city picker → собираем {улица, город, страна}
+      // как полный warehouse_address. Иначе обычное значение из input
+      // (для render:'select' это комбобокс — берём то, что в поле).
+      var finalValue = input ? input.value : '';
+      if (citySel) {
+        var street = (input && input.value || '').trim();
+        var city = String(citySel.value || '').trim();
+        var countryName = '';
+        if (countrySel) {
+          if (countrySel.tagName === 'SELECT') {
+            var opt = countrySel.options[countrySel.selectedIndex];
+            countryName = (opt && opt.text || '').replace(/^[\s\S]*?\s/, '');  // strip flag + space
+          } else {
+            countryName = String(countrySel.value || '').trim();  // custom input
+          }
+        }
+        var parts = [street, city, countryName].filter(function(p){ return p && p.length; });
+        finalValue = parts.join(', ');
+      }
+      finalizeSmartAnswer(card, finalValue);
       return;
     }
-    // Skip
+    // Skip (рендерится только для вопросов с skippable=true)
     var skip = e.target.closest('.sq-skip');
     if (skip) {
       e.preventDefault();
       e.stopPropagation();
-      var card = skip.closest('.smart-q-card');
-      finalizeSmartAnswer(card, '');
+      var skipCard = skip.closest('.smart-q-card');
+      finalizeSmartAnswer(skipCard, '');
       return;
     }
+  });
+
+  // При смене страны в smart-question карточке:
+  //   1) "__custom__" — юзер хочет вписать свою страну → заменяем
+  //      <select> на <input type="text"> с тем же классом sq-country,
+  //      submit handler работает на .value одинаково.
+  //   2) Иначе — перерисовываем datalist городов под выбранную страну
+  //      и очищаем поле города.
+  document.addEventListener('change', function(e) {
+    var sel = e.target;
+    if (!sel || !sel.classList || !sel.classList.contains('sq-country')) return;
+    var card = sel.closest('.smart-q-card');
+    if (!card) return;
+    if (sel.tagName === 'SELECT' && sel.value === '__custom__') {
+      var inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'sq-country';
+      inp.placeholder = 'введите страну';
+      sel.parentNode.replaceChild(inp, sel);
+      inp.focus();
+      // Очищаем подсказки городов — для произвольной страны их нет.
+      var cityInpEl = card.querySelector('.sq-city');
+      if (cityInpEl) {
+        cityInpEl.value = '';
+        var dlIdEl = cityInpEl.getAttribute('list');
+        var dlEl = dlIdEl ? card.querySelector('#' + CSS.escape(dlIdEl)) : null;
+        if (dlEl) dlEl.innerHTML = '';
+      }
+      return;
+    }
+    var cityInp = card.querySelector('.sq-city');
+    if (!cityInp) return;
+    var dlId = cityInp.getAttribute('list');
+    var dl = dlId ? card.querySelector('#' + CSS.escape(dlId)) : null;
+    if (!dl) return;
+    var code = sel.value;
+    var cities = (code && SUGGEST_BY_COUNTRY[code] && SUGGEST_BY_COUNTRY[code].city) || [];
+    dl.innerHTML = cities.map(function(c){
+      var safe = String(c).replace(/[<>"']/g, '');
+      return '<option value="' + safe + '"></option>';
+    }).join('');
+    cityInp.value = '';  // старый город из другой страны — сбрасываем
   });
 
   // Enter в input → submit
@@ -6481,9 +8084,32 @@
     if (e.key !== 'Enter') return;
     var input = e.target.closest('.sq-input');
     if (!input) return;
+    // Combobox (.pl-ac): если попап открыт и стрелками подсвечен пункт —
+    // отдаём Enter автокомплиту (он выберет пункт), не сабмитим раньше времени.
+    if (input.classList.contains('pl-ac') && _acInput === input
+        && _acPop && _acPop.style.display !== 'none' && _acActiveIdx >= 0) {
+      return;
+    }
     e.preventDefault();
     var card = input.closest('.smart-q-card');
-    finalizeSmartAnswer(card, input.value);
+    var countrySel = card.querySelector('.sq-country');
+    var citySel = card.querySelector('.sq-city');
+    if (countrySel && countrySel.value) {
+      applySmartAnswer('shipment_country', 'constant', countrySel.value);
+    }
+    var finalValue = input.value;
+    if (citySel) {
+      var street = (input.value || '').trim();
+      var city = String(citySel.value || '').trim();
+      var countryName = '';
+      if (countrySel) {
+        var opt = countrySel.options[countrySel.selectedIndex];
+        countryName = (opt && opt.text || '').replace(/^[\s\S]*?\s/, '');
+      }
+      var parts = [street, city, countryName].filter(function(p){ return p && p.length; });
+      finalValue = parts.join(', ');
+    }
+    finalizeSmartAnswer(card, finalValue);
   });
 
   function finalizeSmartAnswer(card, value) {
@@ -6542,15 +8168,306 @@
   // Фильтрация datalist портов при выборе страны.
   // Бизнес-логика: страна отправления одна для морпорта И аэропорта,
   // поэтому селекторы синхронизируются.
-  function _refreshPortDatalist(listId, cc) {
-    var list = document.getElementById(listId);
-    if (!list) return;
-    var kind = listId.includes('sea_port') ? 'sea' : 'air';
-    var items = cc ? getPortsByCountry(cc, kind) : (kind === 'sea' ? SEA_PORTS : AIR_PORTS);
-    list.innerHTML = items.map(function(s){
-      return '<option value="' + esc(s) + '"/>';
-    }).join('');
+  // Сортировка портов по близости к городу/адресу склада. Юзер набирает
+  // city + street → выделяем значащие слова (длина ≥3, без цифр/знаков),
+  // считаем сколько из них встречается в названии порта. Порты с
+  // максимальным совпадением — сверху, остальные в исходном порядке.
+  // Cosmetic боост: «Shanghai» в адресе → Shanghai (CNSHA) и Pudong (PVG)
+  // оба содержат «shanghai» → выше Ningbo/Qingdao по стране.
+  function _proximityScore(port, keywords) {
+    if (!keywords.length) return 0;
+    var p = String(port).toLowerCase();
+    var s = 0;
+    for (var i = 0; i < keywords.length; i++) {
+      if (p.indexOf(keywords[i]) >= 0) s++;
+    }
+    return s;
   }
+  function _sortPortsByProximity(ports, city, address) {
+    var text = ((city || '') + ' ' + (address || '')).toLowerCase();
+    var keywords = text.split(/[\s,.\-/№#"'()]+/)
+      .filter(function(w){ return w.length >= 3 && !/^\d+$/.test(w); });
+    if (!keywords.length) return ports.slice();
+    return ports.slice().sort(function(a, b) {
+      return _proximityScore(b, keywords) - _proximityScore(a, keywords);
+    });
+  }
+  function _portHintsFromCard(card) {
+    if (!card) card = document;
+    var cityEl = card.querySelector('.pl-city-input');
+    var addrEl = card.querySelector('.pl-wh-street, .pl-df-input[data-field="warehouse_address"]');
+    return {
+      city: cityEl ? String(cityEl.value || '').trim() : '',
+      address: addrEl ? String(addrEl.value || '').trim() : '',
+    };
+  }
+  // ── Провайдеры items для кастомного автокомплита ──────────────────
+  // Город по стране (плоский список). Возвращает [] если страна не выбрана.
+  function _getCityItems(cc) {
+    return (cc && SUGGEST_BY_COUNTRY[cc] && SUGGEST_BY_COUNTRY[cc].city) || [];
+  }
+  // Код порта из строки автокомплита: "CNSHA · Shanghai · …" → "CNSHA".
+  function _portCode(s) {
+    return String(s).split('·')[0].trim();
+  }
+  // Порты по стране, отсортированные по близости к складу:
+  //  1) если известны координаты склада (_warehouseCoords) — РЕАЛЬНОЕ гео-
+  //     расстояние (haversine) до каждого порта по PORT_COORDS. Шэньян →
+  //     Далянь сверху, Шанхай ниже.
+  //  2) иначе fallback на текстовую близость (совпадение названия города).
+  function _getPortItems(cc, kind, hints) {
+    var items = cc ? getPortsByCountry(cc, kind) : (kind === 'sea' ? SEA_PORTS : AIR_PORTS);
+    if (_warehouseCoords) {
+      var wc = _warehouseCoords;
+      var withDist = items.map(function(s){
+        var c = PORT_COORDS[_portCode(s)];
+        var d = c ? _haversineKm(wc[0], wc[1], c[0], c[1]) : 1e9;  // без коорд → в конец
+        return { s: s, d: d };
+      });
+      withDist.sort(function(a, b){ return a.d - b.d; });
+      return withDist.map(function(x){ return x.s; });
+    }
+    if (hints && (hints.city || hints.address)) {
+      items = _sortPortsByProximity(items, hints.city, hints.address);
+    }
+    return items;
+  }
+  // Возвращает items для конкретного AC-инпута по его data-ac-kind.
+  function _acItemsFor(input) {
+    var kind = input.getAttribute('data-ac-kind');
+    var card = input.closest('.pl-defaults-card');
+    var top = card ? card.querySelector('#shipment_country') : document.getElementById('shipment_country');
+    var cc = top ? top.value : '';
+    if (kind === 'city') return _getCityItems(cc);
+    if (kind === 'sea' || kind === 'air') {
+      return _getPortItems(cc, kind, _portHintsFromCard(card));
+    }
+    if (kind === 'manuf') {
+      // Статический список брендов из data-атрибута (рендерится в мастере).
+      var raw = input.getAttribute('data-ac-options') || '';
+      return raw ? raw.split('|') : [];
+    }
+    return [];
+  }
+
+  // ── Кастомный автокомплит (substring, двуязычный) ─────────────────
+  // Нативный <datalist> в Chrome фильтрует по ПРЕФИКСУ значения, поэтому
+  // "Beijing / Пекин" не находится при наборе "Пек". Свой попап ищет
+  // подстроку в любой части строки, на любом языке. Один глобальный
+  // элемент попапа переиспользуется всеми AC-инпутами через делегирование.
+  var _acPop = null;        // DOM-элемент попапа
+  var _acInput = null;      // активный input
+  var _acActiveIdx = -1;    // индекс подсвеченного пункта (для стрелок)
+
+  function _acEnsurePop() {
+    if (_acPop) return _acPop;
+    _acPop = document.createElement('div');
+    _acPop.className = 'pl-ac-pop';
+    _acPop.style.display = 'none';
+    document.body.appendChild(_acPop);
+    // Клик по пункту (mousedown — раньше blur, чтобы не закрылось до клика).
+    _acPop.addEventListener('mousedown', function(e) {
+      var item = e.target.closest('.pl-ac-item');
+      if (!item || !_acInput) return;
+      e.preventDefault();
+      var inp = _acInput;
+      inp.value = item.getAttribute('data-val') || '';
+      // Если выбрали город — запоминаем его координаты для гео-сортировки портов.
+      if (inp.getAttribute('data-ac-kind') === 'city') _maybeSetWarehouseCoords(inp.value);
+      inp.dispatchEvent(new Event('input', {bubbles: true}));
+      _acHide();
+    });
+    return _acPop;
+  }
+  function _acHide() {
+    if (_acPop) _acPop.style.display = 'none';
+    _acInput = null;
+    _acActiveIdx = -1;
+  }
+  function _acPosition(input) {
+    var r = input.getBoundingClientRect();
+    _acPop.style.position = 'fixed';
+    _acPop.style.left = r.left + 'px';
+    _acPop.style.top = (r.bottom + 2) + 'px';
+    _acPop.style.width = Math.max(r.width, 240) + 'px';
+  }
+  // Рисует попап из готового массива строк для конкретного input.
+  function _acShowItems(input, items) {
+    var pop = _acEnsurePop();
+    if (!items || !items.length) { if (_acInput === input) _acHide(); return; }
+    _acActiveIdx = -1;
+    pop.innerHTML = items.slice(0, 60).map(function(s){
+      return '<div class="pl-ac-item" data-val="' + esc(String(s)) + '">'
+        + esc(String(s)) + '</div>';
+    }).join('');
+    _acInput = input;
+    _acPosition(input);
+    pop.style.display = 'block';
+  }
+  // Город ищется через backend (GeoNames ≈32k городов, поиск en+ru).
+  // Порты — локальные списки (их немного, они полные). Debounce запросов.
+  var _geoTimer = null, _geoSeq = 0;
+  function _acRender(input) {
+    _acEnsurePop();
+    var q = String(input.value || '').trim().toLowerCase();
+    var kind = input.getAttribute('data-ac-kind');
+    if (kind === 'city') {
+      // мгновенно — локальные топ-города (если есть), потом дополним с сервера
+      var local = _acItemsFor(input);
+      var localMatched = q
+        ? local.filter(function(s){ return String(s).toLowerCase().indexOf(q) >= 0; })
+        : local;
+      _acShowItems(input, localMatched);
+      // backend-поиск: полнота 32k городов
+      var card = input.closest('.pl-defaults-card');
+      var top = card ? card.querySelector('#shipment_country') : document.getElementById('shipment_country');
+      var cc = top ? (top.value || '') : '';
+      var seq = ++_geoSeq;
+      clearTimeout(_geoTimer);
+      _geoTimer = setTimeout(function(){
+        fetch('/api/assistant/geo-cities/?q=' + encodeURIComponent(q) + '&cc=' + encodeURIComponent(cc), {credentials:'same-origin'})
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            if (seq !== _geoSeq || _acInput !== input) return;  // устарел/потерял фокус
+            // Сервер отдаёт [{n, lat, lng}]. Запоминаем координаты каждого
+            // города в _cityCoordsMap → при выборе склада узнаем его lat/lng
+            // и сортируем порты по реальному расстоянию.
+            var serverCities = (d.cities || []).map(function(o){
+              if (o && typeof o === 'object') {
+                if (o.lat != null && o.lng != null) {
+                  _cityCoordsMap[String(o.n).toLowerCase()] = [o.lat, o.lng];
+                }
+                return o.n;
+              }
+              return o;  // на случай старого формата (строка)
+            });
+            var merged = [], seen = {};
+            localMatched.concat(serverCities).forEach(function(s){
+              var keyName = String(s).split(' / ')[0].trim().toLowerCase();
+              if (seen[keyName]) return;
+              seen[keyName] = 1; merged.push(s);
+            });
+            _acShowItems(input, merged);
+          })
+          .catch(function(){ /* оставляем локальные */ });
+      }, 180);
+      return;
+    }
+    if (kind === 'sea' || kind === 'air') {
+      var pcard = input.closest('.pl-defaults-card');
+      var ptop = pcard ? pcard.querySelector('#shipment_country') : document.getElementById('shipment_country');
+      var pcc = ptop ? (ptop.value || '') : '';
+      // 1) МГНОВЕННО — крупные хабы страны (локальный PORTS_BY_COUNTRY),
+      //    осмысленный выпадающий список сразу при фокусе/наборе.
+      var localPorts = _acItemsFor(input);
+      var localMatchedP = q
+        ? localPorts.filter(function(s){ return String(s).toLowerCase().indexOf(q) >= 0; })
+        : localPorts;
+      if (localMatchedP.length) _acShowItems(input, localMatchedP);
+      // 2) Если известны координаты склада — подменяем на РЕАЛЬНЫЕ ближайшие
+      //    порты из полной базы (geo-ports, все 244 страны, по расстоянию).
+      if (_warehouseCoords) {
+        var coordQ = '&lat=' + _warehouseCoords[0] + '&lng=' + _warehouseCoords[1];
+        var pseq = ++_geoSeq;
+        clearTimeout(_geoTimer);
+        _geoTimer = setTimeout(function(){
+          fetch('/api/assistant/geo-ports/?cc=' + encodeURIComponent(pcc)
+                + '&kind=' + kind + '&q=' + encodeURIComponent(q) + coordQ,
+                {credentials:'same-origin'})
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+              if (pseq !== _geoSeq || _acInput !== input) return;
+              var ports = (d.ports || []).map(function(p){ return p.label; });
+              if (ports.length) _acShowItems(input, ports);
+            })
+            .catch(function(){});
+        }, 150);
+      } else if (!localMatchedP.length && pcc) {
+        // Нет ни координат, ни локальных хабов (страна вне топ-10) — берём
+        // geo-ports без сортировки (хоть какой-то список реальных портов).
+        var pseq2 = ++_geoSeq;
+        clearTimeout(_geoTimer);
+        _geoTimer = setTimeout(function(){
+          fetch('/api/assistant/geo-ports/?cc=' + encodeURIComponent(pcc)
+                + '&kind=' + kind + '&q=' + encodeURIComponent(q),
+                {credentials:'same-origin'})
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+              if (pseq2 !== _geoSeq || _acInput !== input) return;
+              _acShowItems(input, (d.ports || []).map(function(p){ return p.label; }));
+            })
+            .catch(function(){});
+        }, 150);
+      }
+      return;
+    }
+    // Прочее — локальный список, substring-фильтр.
+    var all = _acItemsFor(input);
+    var matched = q
+      ? all.filter(function(s){ return String(s).toLowerCase().indexOf(q) >= 0; })
+      : all;
+    _acShowItems(input, matched);
+  }
+
+  // focusin → открыть попап, НО readonly НЕ снимаем (это ключ к подавлению
+  // нативного Chrome address-autofill: он не всплывает над readonly-полем).
+  // Клик по пункту нашего попапа пишет value программно — readonly не мешает.
+  document.addEventListener('focusin', function(e) {
+    var input = e.target.closest && e.target.closest('.pl-ac');
+    if (!input) return;
+    _acRender(input);
+  });
+  // keydown с печатаемым символом → снимаем readonly синхронно (символ
+  // успевает ввестись). Chrome autofill уже не покажется — он триггерит
+  // только на focus/click, а к моменту печати фокус давно установлен.
+  document.addEventListener('keydown', function(e) {
+    var input = e.target.closest && e.target.closest('.pl-ac');
+    if (!input || !input.hasAttribute('readonly')) return;
+    // Снимаем только для вводящих клавиш (буквы/цифры/Backspace), не для Tab/Esc.
+    if (e.key && (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete')) {
+      input.removeAttribute('readonly');
+    }
+  });
+  // input → перефильтровать (и обновить позицию)
+  document.addEventListener('input', function(e) {
+    var input = e.target.closest && e.target.closest('.pl-ac');
+    if (input) { _acRender(input); }
+  });
+  // клик вне попапа и вне инпута → закрыть
+  document.addEventListener('mousedown', function(e) {
+    if (_acPop && _acPop.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('.pl-ac')) return;
+    _acHide();
+  });
+  // навигация стрелками + Enter/Escape в активном AC-инпуте
+  document.addEventListener('keydown', function(e) {
+    if (!_acInput || !_acPop || _acPop.style.display === 'none') return;
+    if (e.target !== _acInput) return;
+    var items = _acPop.querySelectorAll('.pl-ac-item');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      _acActiveIdx += (e.key === 'ArrowDown' ? 1 : -1);
+      if (_acActiveIdx < 0) _acActiveIdx = items.length - 1;
+      if (_acActiveIdx >= items.length) _acActiveIdx = 0;
+      items.forEach(function(it, i){ it.classList.toggle('pl-ac-active', i === _acActiveIdx); });
+      items[_acActiveIdx].scrollIntoView({block: 'nearest'});
+    } else if (e.key === 'Enter') {
+      if (_acActiveIdx >= 0 && items[_acActiveIdx]) {
+        e.preventDefault();
+        _acInput.value = items[_acActiveIdx].getAttribute('data-val') || '';
+        if (_acInput.getAttribute('data-ac-kind') === 'city') _maybeSetWarehouseCoords(_acInput.value);
+        _acInput.dispatchEvent(new Event('input', {bubbles: true}));
+        _acHide();
+      }
+    } else if (e.key === 'Escape') {
+      _acHide();
+    }
+  });
+  // скролл/resize → перепозиционировать открытый попап
+  window.addEventListener('scroll', function(){ if (_acInput) _acPosition(_acInput); }, true);
+  window.addEventListener('resize', function(){ if (_acInput) _acPosition(_acInput); });
+
   // Кнопка «Очистить» в баннере «из прошлой загрузки»: сбрасывает порты,
   // склад и страну до пустых значений, чтобы юзер заполнил с нуля.
   document.addEventListener('click', function(e) {
@@ -6564,32 +8481,29 @@
     card.querySelectorAll('.pl-df-input[data-field]').forEach(function(inp) {
       var f = inp.dataset.field;
       if (f === 'sea_port' || f === 'air_port' || f === 'warehouse_address') {
-        if (inp.tagName === 'SELECT') inp.value = '';
-        else inp.value = '';
+        inp.value = '';
       }
     });
+    var cityInp = card.querySelector('.pl-city-input');
+    if (cityInp) cityInp.value = '';
     var banner = btn.closest('.pl-from-profile');
     if (banner) banner.remove();
   });
+  // Смена страны → очищаем город и порты (старые значения из другой страны).
+  // Списки items подтянутся сами при следующем фокусе на AC-инпут.
   document.addEventListener('change', function(e) {
     var sel = e.target.closest('.pl-ship-country, .pl-port-country');
     if (!sel) return;
     var cc = sel.value;
-
-    // Sync с топ-level страной отправления
     var top = document.getElementById('shipment_country');
     if (top && top !== sel) top.value = cc;
-
-    // Перерисовываем datalist для морпорт и аэропорт
-    _refreshPortDatalist('sugg_sea_port', cc);
-    _refreshPortDatalist('sugg_air_port', cc);
-
-    // Очищаем input'ы если их значение не из новой страны
-    document.querySelectorAll('.pl-port-input').forEach(function(inp) {
-      if (cc && inp.value && !inp.value.startsWith(cc)) {
-        inp.value = '';
-      }
+    var card = sel.closest('.pl-defaults-card') || document;
+    var cityInp = card.querySelector('.pl-city-input');
+    if (cityInp) cityInp.value = '';
+    card.querySelectorAll('.pl-port-input').forEach(function(inp) {
+      inp.value = '';
     });
+    _warehouseCoords = null;  // координаты склада сбрасываем — город сменится
   });
 
   // Side preview panel (как у claude.ai) — открывается по клику
@@ -6734,6 +8648,13 @@
   window.quickAction = (action, params) => {
     if (action === '__pricelist_commit') return window.__pricelist_commit_handler(params);
     if (action === '__pricelist_cancel') return window.__pricelist_cancel_handler(params);
+    if (action === '__pricelist_retry_generate') return generateAndShowOutputFile();
+    if (action === '__download_url' && params && params.url) {
+      var a = document.createElement('a');
+      a.href = params.url; a.download = '';
+      document.body.appendChild(a); a.click(); a.remove();
+      return;
+    }
     // Спец-action «открыть file-picker» — отдельная кнопка в карточке
     // upload_pricelist (после клика на pill).
     if (action === '__open_file_picker') {

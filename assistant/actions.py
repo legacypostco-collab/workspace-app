@@ -73,6 +73,10 @@ class ActionResult:
     actions: list = field(default_factory=list)              # уровень 1
     contextual_actions: list = field(default_factory=list)   # уровень 2
     suggestions: list = field(default_factory=list)
+    # True → фронт НЕ подставляет дефолтные подсказки (ensureSuggestions).
+    # Для экранов, где рекомендации не к месту (например, отчёт об ошибках
+    # импорта — там не нужно звать «Создать RFQ / Аналитика»).
+    no_suggestions: bool = False
 
     def to_dict(self):
         return {
@@ -81,6 +85,7 @@ class ActionResult:
             "actions": self.actions,
             "contextual_actions": self.contextual_actions,
             "suggestions": self.suggestions,
+            "no_suggestions": self.no_suggestions,
         }
 
 

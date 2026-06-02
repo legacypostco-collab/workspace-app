@@ -80,7 +80,7 @@ STD_FIELDS = [
     ("manufacturer",      "Завод-производитель",     False, None, ""),
     ("manufacturer_visible", "Показывать завод",     False, ["Да", "Нет"], "Да"),
     ("price_exw",         "Цена EXW",                True,  None, None),
-    ("warehouse_address", "Адрес склада",            False, None, ""),
+    ("warehouse_address", "Адрес склада EXW",        False, None, ""),
     ("price_fob_sea",     "Цена FOB SEA",            False, None, "0"),
     ("price_fob_air",     "Цена FOB AIR",            False, None, "0"),
     ("sea_port",          "Морпорт отправления",     False, None, ""),
@@ -96,6 +96,32 @@ REQUIRED_FIELDS = [k for k, _, req, _, _ in STD_FIELDS if req]
 
 # Дефолты для незамапленных полей
 FIELD_DEFAULTS = {k: d for k, _, _, _, d in STD_FIELDS if d is not None}
+
+# Известные бренды-аналоги — реальные изготовители деталей. Поле
+# `manufacturer` = бренд-аналога. Видимость для покупателя считается
+# автоматически: значение из этого whitelist → ПОКАЗЫВАЕМ (узнаваемый бренд
+# повышает доверие и рейтинг в выдаче); любой другой текст трактуем как
+# частную торговую марку поставщика → СКРЫВАЕМ от покупателя.
+KNOWN_ANALOG_BRANDS = [
+    "ITR", "Berco", "Carraro", "Dana", "Denso", "Bosch", "Bosch Rexroth",
+    "Rexroth", "Perkins", "ETP", "Cummins", "Deutz", "Donaldson",
+    "Fleetguard", "SKF", "NOK", "NTN", "NSK", "Parker", "KYB", "Kayaba",
+    "Mahle", "Mann-Filter", "Mann", "Garrett", "Holset", "WABCO", "Sachs",
+    "Hengst", "Eaton", "Vickers", "Lincoln", "FleetPride", "Federal-Mogul",
+]
+_KNOWN_ANALOG_NORM = {b.strip().lower() for b in KNOWN_ANALOG_BRANDS}
+
+# Чипы быстрого выбора в мастере (самые частые в спецтехнике). Любой бренд
+# из KNOWN_ANALOG_BRANDS, вписанный вручную, тоже считается «известным».
+MANUFACTURER_CHIP_OPTIONS = [
+    "ITR", "Berco", "Carraro", "Dana", "Denso", "Bosch",
+    "Perkins", "Cummins", "Donaldson", "SKF", "Parker", "ETP",
+]
+# Полный список для выпадающего списка в мастере — узнаваемые бренды-аналоги
+# из whitelist, по алфавиту. Дубли-варианты схлопываем.
+MANUFACTURER_SELECT_OPTIONS = sorted(
+    {b for b in KNOWN_ANALOG_BRANDS}, key=str.lower
+)
 
 
 # ── EN-translation для названий запчастей ──────────────────────
@@ -408,40 +434,68 @@ def _detect_format(filename: str, blob: bytes) -> str:
     return "csv"
 
 
-def _read_preview(filename: str, blob: bytes) -> tuple[list[str], list[list[str]]]:
-    """Возвращает (headers, sample_rows[3]).
-
-    Excel часто читает «висячие» колонки с пустыми заголовками после
-    реальных данных. Срезаем trailing пустые headers + sample-данные.
+def _find_header_idx(rows: list) -> int:
+    """Находит строку с заголовками таблицы, пропуская «шапку» прайса
+    (название компании, дата, телефон — обычно в одной merged-ячейке).
+    Заголовки = первая строка с ≥2 непустыми ячейками, где их число близко
+    к максимуму среди первых 15 строк. Возвращает индекс (0 если не нашли).
     """
+    scan = rows[:15]
+    if not scan:
+        return 0
+
+    def nonempty(r):
+        return sum(1 for c in r if str(c).strip())
+
+    counts = [nonempty(r) for r in scan]
+    mx = max(counts) if counts else 0
+    if mx < 2:
+        return 0
+    # первая строка где непустых >= 2 и >= 60% от макс (это уже таблица,
+    # а не однострочная шапка).
+    for i, c in enumerate(counts):
+        if c >= 2 and c >= mx * 0.6:
+            return i
+    return 0
+
+
+def _read_preview(filename: str, blob: bytes) -> tuple[list[str], list[list[str]]]:
+    """Возвращает (headers, sample_rows[3]). Автоматически пропускает
+    шапку прайса и находит реальную строку заголовков."""
     fmt = _detect_format(filename, blob)
+    # читаем чуть больше строк, чтобы найти заголовки под шапкой
     rows = list(
-        _read_xlsx_rows(blob, max_rows=4) if fmt == "xlsx"
-        else _read_csv_rows(blob, max_rows=4)
+        _read_xlsx_rows(blob, max_rows=19) if fmt == "xlsx"
+        else _read_csv_rows(blob, max_rows=19)
     )
     if not rows:
         raise ValueError("File is empty")
-    headers = list(rows[0])
-    # Срезаем trailing пустые headers (Excel оставляет до десятка
-    # пустых ячеек после реальных колонок).
+    hidx = _find_header_idx(rows)
+    headers = list(rows[hidx])
     while headers and not str(headers[-1]).strip():
         headers.pop()
     n_cols = len(headers)
-    # Truncate sample-rows до n_cols чтобы dropdown'ы не показывали
-    # лишние «Колонка:» без имени.
-    sample = [list(r)[:n_cols] for r in rows[1:4]]
+    sample = [list(r)[:n_cols] for r in rows[hidx + 1:hidx + 4]]
     return headers, sample
 
 
 def _read_all(filename: str, blob: bytes):
-    """Iter всех строк (без первой строки = headers)."""
+    """Iter всех строк данных — пропускает шапку + строку заголовков."""
     fmt = _detect_format(filename, blob)
     rows_iter = _read_xlsx_rows(blob) if fmt == "xlsx" else _read_csv_rows(blob)
-    first = True
-    for row in rows_iter:
-        if first:
-            first = False
-            continue
+    # определяем header-индекс по первым 15 строкам (буферизуем их)
+    buf = []
+    it = iter(rows_iter)
+    for _ in range(15):
+        try:
+            buf.append(next(it))
+        except StopIteration:
+            break
+    hidx = _find_header_idx(buf)
+    # отдаём строки ПОСЛЕ заголовков: остаток буфера + хвост итератора
+    for row in buf[hidx + 1:]:
+        yield row
+    for row in it:
         yield row
 
 
@@ -1175,6 +1229,14 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
         b.name.lower(): b for b in Brand.objects.all()
     }
     brand_cache.setdefault("generic", generic_brand)
+    # Снапшот «известных» брендов для расчёта видимости завода: whitelist
+    # аналогов + ВСЕ бренды каталога платформы (OEM и aftermarket). Берём
+    # ДО цикла, чтобы новые бренды, созданные по ходу из колонки Brand, не
+    # засчитывались как «известные» автоматически. Generic — не показываем.
+    _known_for_visibility = set(_KNOWN_ANALOG_NORM)
+    _known_for_visibility.update(
+        k for k in brand_cache.keys() if k != "generic"
+    )
 
     # Fallback-бренд: если Brand-колонка пустая, пробуем определить по имени
     # файла (например komatsu*.xlsx → Komatsu, sandvik*.xlsx → Sandvik).
@@ -1212,6 +1274,24 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 }, 600)
             if not any(c.strip() for c in row):
                 continue
+            # Строка-разделитель секции бренда в мультибрендовом прайсе
+            # («▸ KOMATSU (оригинал)», «=== CATERPILLAR ===»): заполнена
+            # только одна ячейка, часто с маркером. Пропускаем молча —
+            # это не товар и не ошибка.
+            _nonempty = [c for c in row if str(c).strip()]
+            if len(_nonempty) <= 1:
+                _first = str(_nonempty[0]).strip() if _nonempty else ""
+                # Заголовок секции — маркер (▸/===) ИЛИ чисто буквенное название
+                # бренда заглавными. Артикул (GOOD-2, SKF-100) содержит цифры —
+                # его НЕ скипаем: одиночная ячейка-артикул без названия/цены
+                # должна попасть в «битые строки», а не исчезнуть молча.
+                _is_divider = (
+                    (not _first)
+                    or _first[0] in "▸►▶•—–-=*#"
+                    or (_first.isupper() and not any(c.isdigit() for c in _first))
+                )
+                if _is_divider:
+                    continue
 
             def get_raw(field):
                 if field in fixed_vals:
@@ -1246,12 +1326,41 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             if not oem or not title or price_exw is None or price_exw <= 0:
                 failed += 1
                 if len(errors) < 50:
-                    reason = (
-                        "no oem" if not oem else
-                        "no title" if not title else
-                        "bad price_exw"
-                    )
-                    errors.append({"row": row_n, "oem": oem[:60], "reason": reason})
+                    # Человекочитаемый комментарий: что не так + название
+                    # колонки-источника + сырое значение из ячейки.
+                    def _src_col(field):
+                        i = col_idx.get(field)
+                        if i is not None and headers and i < len(headers):
+                            return str(headers[i]).strip()
+                        return ""
+                    if not oem:
+                        reason = "no oem"
+                        col = _src_col("oem_number") or "PartNumber"
+                        val = ""
+                        problem = "Артикул пустой — заполните"
+                    elif not title:
+                        reason = "no title"
+                        col = _src_col("title") or "Description"
+                        val = ""
+                        problem = "Название пустое — заполните"
+                    else:
+                        reason = "bad price_exw"
+                        col = _src_col("price_exw") or "Unitprice"
+                        raw_cell = get_raw("price_exw").strip()
+                        val = raw_cell or (str(price_exw) if price_exw is not None else "")
+                        if price_exw is None:
+                            problem = ("Пустая — впишите цену" if not raw_cell
+                                       else "Не число — уберите текст/символы")
+                        else:  # <= 0
+                            problem = "Ноль или меньше — продавать нельзя"
+                    comment = (f"Колонка «{col}»"
+                               + (f": значение «{val[:24]}»" if val else " пустая")
+                               + f" — {problem.lower()}.")
+                    errors.append({
+                        "row": row_n, "oem": oem[:60], "reason": reason,
+                        "column": col, "value": val[:30], "problem": problem,
+                        "comment": comment,
+                    })
                 continue
 
             brand_name = _translate_to_en((get("brand") or "").strip())
@@ -1280,10 +1389,26 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             # availability: IN_STOCK / BACKORDER → in_stock / backorder
             avail_raw = (get("availability") or "").strip().lower()
             availability = "backorder" if "backorder" in avail_raw or "back" in avail_raw else "in_stock"
-            # manufacturer + visible flag — переводим на английский
-            manufacturer = _translate_to_en((get("manufacturer") or "")[:200])
-            mvis_raw = (get("manufacturer_visible") or "").strip().lower()
-            manufacturer_visible = mvis_raw not in ("нет", "no", "false", "0", "hidden", "скрыть")
+            # manufacturer + visible flag — переводим на английский.
+            # Per-row fallback: если колонка Manufacturer есть, но в этой
+            # ячейке пусто (типичный мульти-брендовый прайс) — подставляем
+            # значение из мастера (constants). Это даёт column-wins-with-
+            # fallback семантику: разные бренды получают свои заводы из
+            # файла, а пустые ячейки — общий fallback от поставщика.
+            _mfg_raw = (get("manufacturer") or "").strip()
+            if not _mfg_raw:
+                _mfg_raw = str(constants.get("manufacturer") or "").strip()
+            manufacturer = _translate_to_en(_mfg_raw[:200])
+            # Видимость завода для покупателя — автоматически по ЗНАЧЕНИЮ
+            # (не по источнику: вписал руками или выбрал чип — неважно).
+            # Известный бренд (whitelist аналогов ИЛИ любой бренд каталога
+            # платформы) → показываем (доверие/рейтинг). Неизвестная строка
+            # = частная торговая марка поставщика → скрываем. Сравниваем и
+            # сырое, и переведённое значение (бренды латиницей не переводятся).
+            manufacturer_visible = bool(manufacturer) and (
+                manufacturer.strip().lower() in _known_for_visibility
+                or _mfg_raw.strip().lower() in _known_for_visibility
+            )
             cross_number = (get("cross_number") or "")[:500]
             price_fob_sea = _coerce_decimal(get("price_fob_sea")) or Decimal("0")
             price_fob_air = _coerce_decimal(get("price_fob_air")) or Decimal("0")
@@ -1360,43 +1485,45 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
     # с Quantity=1 вместо одной строки с Quantity=N. Если цена совпадает —
     # суммируем количества в одну позицию. Если цены различаются — берём
     # первую и логируем как ошибку (это или опечатка, или две модификации).
+    # Ключ дедупа — (oem, price): одинаковая цена → одна позиция (Qty=MAX);
+    # РАЗНАЯ цена у того же артикула → берём ОБЕ как отдельные позиции
+    # (варианты прайса). Второму+ варианту даём уникальный slug, иначе
+    # БД отвергнет по unique(slug). oem остаётся тот же.
     merged_payloads: dict[str, dict] = {}
     merged_count = 0
-    price_conflicts = 0
+    price_variants = 0
+    oem_variant_n: dict[str, int] = {}
     for pl in payloads:
-        key = pl["oem"].lower()
-        if key not in merged_payloads:
-            merged_payloads[key] = pl
-            continue
-        # Дубль: проверяем цены
-        existing_pl = merged_payloads[key]
-        cur_price = existing_pl["fields"].get("price")
-        new_price = pl["fields"].get("price")
-        if cur_price == new_price:
-            # Одинаковая цена → одна позиция. Qty берём MAX, не сумму:
-            # поставщики типа Sandvik пишут один OEM в N строках с уже
-            # агрегированным Qty в каждой (например BH00022188 × 5 строк
-            # с Qty=22). Сумма (110) даст ложный остаток, MAX (22) — верный.
-            cur_qty = existing_pl["fields"].get("stock_quantity", 0) or 0
-            new_qty = pl["fields"].get("stock_quantity", 0) or 0
-            existing_pl["fields"]["stock_quantity"] = max(cur_qty, new_qty)
+        oem = pl["oem"].lower()
+        price = pl["fields"].get("price")
+        key = oem + "|" + str(price)
+        if key in merged_payloads:
+            # Тот же oem И та же цена → одна позиция, Qty=MAX.
+            ex = merged_payloads[key]
+            ex["fields"]["stock_quantity"] = max(
+                ex["fields"].get("stock_quantity", 0) or 0,
+                pl["fields"].get("stock_quantity", 0) or 0,
+            )
             merged_count += 1
-        else:
-            # Разные цены → не сливаем, отмечаем в errors
-            price_conflicts += 1
-            if len(errors) < 50:
-                errors.append({
-                    "row": pl["row_n"], "oem": pl["oem"][:60],
-                    "reason": f"price conflict: {cur_price} vs {new_price}",
-                })
+            continue
+        n = oem_variant_n.get(oem, 0)
+        if n > 0:
+            # 2-й+ вариант цены для этого артикула → уникализируем slug
+            # и помечаем как отдельную позицию (всегда create, не update).
+            base = pl["fields"].get("slug", "")
+            pl["fields"]["slug"] = (base + "-v" + str(n + 1))[:280]
+            pl["_force_create"] = True
+            price_variants += 1
+        oem_variant_n[oem] = n + 1
+        merged_payloads[key] = pl
     payloads = list(merged_payloads.values())
     if merged_count:
-        logger.info("In-file dedupe: merged %d duplicate rows by Qty sum", merged_count)
-    if price_conflicts:
-        logger.warning("In-file dedupe: %d price conflicts skipped", price_conflicts)
+        logger.info("In-file dedupe: merged %d duplicate rows by Qty MAX", merged_count)
+    if price_variants:
+        logger.info("In-file dedupe: %d price variants kept as separate positions", price_variants)
     # Сохраним статистику для отчёта в UI
     import_obj._dedupe_stats = {
-        "merged": merged_count, "price_conflicts": price_conflicts,
+        "merged": merged_count, "price_conflicts": price_variants,
         "unique_oems": len(payloads),
     }
 
@@ -1469,7 +1596,9 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
     to_update_payloads: list = []  # (part_id, fields_dict)
     for pl in payloads:
         pid = existing_id_by_oem.get(pl["oem"].lower())
-        if pid:
+        # Ценовые варианты (2-й+ с уникальным slug) всегда создаём отдельно,
+        # иначе все варианты одного oem перезапишут одну запись.
+        if pid and not pl.get("_force_create"):
             to_update_payloads.append((pid, pl["fields"]))
         else:
             to_create_payloads.append(pl["fields"])
@@ -1762,7 +1891,41 @@ class PricelistUploadView(APIView):
         # уникальные колонки не дораспознаны AI'ом — пусть поправит руками.
         ai_quota_exceeded = (smart_status == "quota_exceeded")
 
-        mapped_preview = _build_mapped_preview(headers, sample, suggested)
+        # Сканируем колонку бренда: собираем (1) список всех брендов в файле
+        # и (2) по одной показательной строке на каждый бренд — чтобы превью
+        # «как ляжет в базу» демонстрировало мультибренд, а не три строки
+        # из первой секции файла.
+        detected_brands = []
+        diverse_sample = []
+        brand_src = suggested.get("brand")
+        if brand_src and isinstance(brand_src, str) and not brand_src.startswith("fix:") \
+                and brand_src in headers:
+            try:
+                bidx = headers.index(brand_src)
+                # Повторные строки-заголовки внутри секций мультибренд-файла
+                # ("Бренд", "Brand"…) не должны попасть в список брендов.
+                _hdr_low = {str(h).strip().lower() for h in headers if h}
+                seen_b = set()
+                for i, r in enumerate(_read_all(f.name, blob)):
+                    if i > 5000:
+                        break
+                    v = str(r[bidx]).strip() if bidx < len(r) else ""
+                    vl = v.lower()
+                    if v and vl not in seen_b and vl not in _hdr_low:
+                        seen_b.add(vl)
+                        detected_brands.append(v)
+                        if len(diverse_sample) < 5:
+                            diverse_sample.append(list(r))
+                        if len(detected_brands) >= 60:
+                            break
+            except Exception:
+                detected_brands = []
+                diverse_sample = []
+
+        # Если в файле ≥2 брендов — показываем превью по одной строке на бренд,
+        # иначе обычные первые строки.
+        preview_sample = diverse_sample if len(detected_brands) >= 2 else sample
+        mapped_preview = _build_mapped_preview(headers, preview_sample, suggested)
 
         # Незамапленные опциональные поля → автозаполнение дефолтами
         auto_defaults = {}
@@ -1805,12 +1968,16 @@ class PricelistUploadView(APIView):
         # (это ~4 секунды задержки). Юзер запросит его отдельно
         # через /smart-questions/ — фронт сразу показывает форму.
 
+        # Если бренд берётся из колонки файла — собираем уникальные бренды
+        # (скан файла, до ~5000 строк), чтобы показать поставщику «вижу N
+        # брендов: Komatsu, Caterpillar…» — подтверждение мультибренд-прайса.
         return Response({
             "import_id": imp.id,
             "filename": f.name,
             "headers": headers,
             "sample_rows": sample,
             "total_rows": total_rows,
+            "detected_brands": detected_brands,
             "mapped_preview": mapped_preview,
             "suggested_mapping": suggested,
             "ai_called": ai_called,
@@ -2354,58 +2521,34 @@ HARDCODED_QUESTIONS = [
     },
     {
         "field": "manufacturer",
-        "question": "Завод-производитель? Для OEM — OEM-завод, для AFTERMARKET — завод аналога, для REMAN — компания восстановления.",
-        "options": [],
+        "question": "Кто производитель детали?",
+        "hint": "Узнаваемый бренд повышает рейтинг в выдаче и снимает вопросы покупателей. Нет в списке — впишите свой (частную марку скроем).",
+        "options": MANUFACTURER_SELECT_OPTIONS,
+        "render": "select",
         "default": "",
-        "placeholder": "напр.: Epiroc Sweden AB, или завод аналога",
+        "placeholder": "Кликните или начните вводить — появится список брендов",
         "apply_as": "constant",
+        "skippable": True,
     },
-    {
-        "field": "manufacturer_visible",
-        "question": "Показывать завод клиенту? (для публичных брендов — да; для непубличных — нет, останется только внутри)",
-        "options": ["Да", "Нет"],
-        "default": "Да",
-        "apply_as": "constant",
-    },
-    {
-        "field": "warehouse_address",
-        "question": "Адрес склада отгрузки? (обязательно — нужен для расчёта логистики до покупателя)",
-        "options": [],
-        "default": "",
-        "placeholder": "напр.: Shenzhen, China — 1 Industrial Rd",
-        "required": True,
-        "apply_as": "constant",
-    },
-    {
-        "field": "sea_port",
-        "question": "Ближайший к складу морпорт отгрузки? (обязательно — для расчёта FOB SEA)",
-        "options": [],
-        "default": "",
-        "placeholder": "напр.: Shanghai (SHA), Hamburg (HAM), Vladivostok (VVO)",
-        "required": True,
-        "apply_as": "constant",
-    },
-    {
-        "field": "air_port",
-        "question": "Ближайший к складу аэропорт отгрузки? (обязательно — для расчёта FOB AIR)",
-        "options": [],
-        "default": "",
-        "placeholder": "напр.: PVG (Shanghai Pudong), FRA (Frankfurt), SVO (Sheremetyevo)",
-        "required": True,
-        "apply_as": "constant",
-    },
+    # Внимание: warehouse_address / sea_port / air_port — supplier-wide
+    # логистика. Задаётся в отдельном блоке "📎 общих полей поставщика"
+    # сразу после маппинга колонок (см. pl-defaults-card в chat-first.js),
+    # с селектором страны и фильтрацией портов по стране. В мастере их нет
+    # чтобы не дублировать UX. Бекенд-валидация (_has_value, MANDATORY,
+    # KYB-fallback) продолжает работать — поля приходят через constants
+    # из формы.
     {
         "field": "price_fob_sea",
-        "question": "Наценка FOB SEA (морем) к цене EXW?",
-        "options": ["+5%", "+10%", "+15%"],
-        "default": "+10%",
+        "question": "Наценка FOB SEA (доставка до морпорта) к цене EXW?",
+        "options": ["+0%", "+2%", "+4%"],
+        "default": "+2%",
         "apply_as": "formula",
     },
     {
         "field": "price_fob_air",
-        "question": "Наценка FOB AIR (авиа) к цене EXW?",
-        "options": ["+7%", "+15%", "+20%"],
-        "default": "+15%",
+        "question": "Наценка FOB AIR (доставка до аэропорта) к цене EXW?",
+        "options": ["+1%", "+3%", "+5%"],
+        "default": "+3%",
         "apply_as": "formula",
     },
 ]
@@ -2483,11 +2626,6 @@ def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
             continue  # значение придёт из колонки файла
         # supplier-wide поле уже есть в KYB-профиле — не спрашиваем повторно.
         if field in SUPPLIER_WIDE_KEYS and profile_supplier_wide.get(field):
-            continue
-        # manufacturer_visible — управляющий флаг, не data-поле. Если
-        # manufacturer пришёл из файла, презюмируем «показывать = Да»
-        # (раз положили в файл, значит хотят показывать) и не спрашиваем.
-        if field == "manufacturer_visible" and _from_file("manufacturer"):
             continue
         q_copy = dict(q)
         if q_copy["field"] == "brand" and detected_brand:
@@ -3291,17 +3429,97 @@ def pricelist_show_errors(params, user, role):
         return ActionResult(text="Импорт не найден.")
     if not imp.error_details:
         return ActionResult(text="Ошибок нет 🎉")
-    rows = [{
-        "label": f"Стр. {e.get('row', '?')} · {e.get('oem', '?')[:30]}",
-        "value": e.get("reason", "?"),
-    } for e in imp.error_details]
+    # Понятный комментарий вместо технического reason (bad price_exw и т.п.).
+    # comment пишется при импорте; для старых записей — fallback по reason.
+    _REASON_HINT = {
+        "bad price_exw": "Цена пустая, 0 или не число — позиция пропущена",
+        "no oem": "Не указан артикул (PartNumber) — позиция пропущена",
+        "no title": "Не указано название (Description) — позиция пропущена",
+        "price_conflict": "Артикул-дубль с разными ценами",
+        "duplicate": "Дубль строки",
+        "no price": "Не указана цена — позиция пропущена",
+    }
+    def _reason_text(e):
+        if e.get("comment"):
+            return e["comment"]
+        r = e.get("reason", "")
+        return _REASON_HINT.get(r) or (
+            "Строка пропущена: " + r if r else "Строка пропущена")
+    # Таблица: Строка | Артикул | Колонка | Значение | Проблема.
+    # Для старых записей без структурных полей — fallback из comment.
+    table_rows = []
+    for e in imp.error_details:
+        col = e.get("column", "")
+        val = e.get("value", "")
+        prob = e.get("problem") or _reason_text(e)
+        if not col and not prob:  # совсем старый формат
+            prob = _reason_text(e)
+        table_rows.append([
+            str(e.get("row", "?")),
+            (e.get("oem") or "—")[:24],
+            col or "—",
+            (str(val) if val != "" else "—"),
+            prob,
+        ])
+    # Группируем по типу для краткой сводки «что делать».
+    from collections import Counter
+    by_reason = Counter(e.get("reason", "?") for e in imp.error_details)
+    hint_lines = []
+    if by_reason.get("bad price_exw"):
+        hint_lines.append(f"• {by_reason['bad price_exw']} с проблемной ценой → впишите цену (или удалите строку, если позиции нет)")
+    if by_reason.get("no oem"):
+        hint_lines.append(f"• {by_reason['no oem']} без артикула → заполните PartNumber")
+    if by_reason.get("no title"):
+        hint_lines.append(f"• {by_reason['no title']} без названия → заполните Description")
+    how_to = ("Как исправить:\n" + "\n".join(hint_lines)
+              + "\n\nИсправьте эти строки в своём файле и загрузите заново — "
+              + "обновление не задвоит уже загруженные позиции.") if hint_lines else ""
     return ActionResult(
-        text=f"❌ Ошибки импорта #{imp.id}: {imp.failed_rows} строк",
-        cards=[{"type": "draft", "data": {
-            "title": f"Ошибки импорта (показаны первые {len(rows)})",
-            "rows": rows,
+        text=f"❌ Ошибки импорта #{imp.id}: {imp.failed_rows} строк не загружено "
+             f"(остальные — в каталоге).\n\n{how_to}",
+        cards=[{"type": "table_preview", "data": {
+            "title": f"Ошибки импорта (показаны первые {len(table_rows)})",
+            "headers": ["Строка", "Артикул", "Колонка", "Значение", "Проблема"],
+            "rows": table_rows,
         }}],
+        actions=[
+            {"action": "__download_url", "label": "📥 Скачать список ошибок (.csv)",
+             "params": {"url": f"/api/assistant/upload-pricelist/{imp.id}/errors.csv"}},
+            {"action": "upload_pricelist", "label": "📤 Загрузить исправленный файл",
+             "params": {}},
+            {"action": "seller_warehouses", "label": "📦 Мои товары",
+             "params": {}},
+        ],
+        # Экран исправления ошибок — не место для рекомендаций «Создать RFQ /
+        # Аналитика»: подавляем дефолтные подсказки фронта.
+        no_suggestions=True,
     )
+
+
+class PricelistErrorsCsvView(APIView):
+    """GET /api/assistant/upload-pricelist/<id>/errors.csv
+
+    Скачать список проблемных строк (строка, артикул, что не так) — чтобы
+    поставщик исправил их в своём файле и загрузил заново.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, import_id):
+        from django.http import HttpResponse
+        from marketplace.models import PricelistImport
+        try:
+            imp = PricelistImport.objects.get(id=import_id, seller=request.user)
+        except PricelistImport.DoesNotExist:
+            return Response({"error": "not found"}, status=404)
+        out = io.StringIO()
+        w = csv.writer(out)
+        w.writerow(["Строка", "Артикул", "Проблема"])
+        for e in (imp.error_details or []):
+            w.writerow([e.get("row", ""), e.get("oem", ""),
+                        e.get("comment") or e.get("reason", "")])
+        resp = HttpResponse(out.getvalue(), content_type="text/csv; charset=utf-8")
+        resp["Content-Disposition"] = f'attachment; filename="errors_{imp.id}.csv"'
+        return resp
 
 
 @register("pricelist_history")
@@ -3330,3 +3548,206 @@ def pricelist_history(params, user, role):
         actions=[{"action": "upload_pricelist", "label": "📤 Новая загрузка",
                   "params": {}}],
     )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Geo-поиск городов для автокомплита склада отгрузки.
+# База — GeoNames cities15000 (≈32k городов, население >15000), сгруппирована
+# по ISO2-коду страны. Каждая запись: [display_latin, search_blob]. search_blob
+# содержит name + asciiname + все латинские/кириллические alternatenames в
+# нижнем регистре → поиск работает и на латинице, и на кириллице ("пек"→Beijing).
+# Грузится в память один раз (lazy), отдаётся через endpoint топ-N по подстроке.
+# ─────────────────────────────────────────────────────────────────────
+_CITIES_DB = None
+
+
+def _load_cities_db():
+    global _CITIES_DB
+    if _CITIES_DB is None:
+        path = os.path.join(os.path.dirname(__file__), "data", "cities_db.json")
+        try:
+            with open(path, encoding="utf-8") as f:
+                _CITIES_DB = json.load(f)
+        except Exception:
+            logger.exception("cities_db.json load failed")
+            _CITIES_DB = {}
+    return _CITIES_DB
+
+
+# Реальные карго-порты по странам (морпорты UN/LOCODE func=port + аэропорты
+# OurAirports large/medium с IATA). Формат: {cc: {sea:[[code,name,lat,lng]],
+# air:[[iata,name,lat,lng]]}}. Endpoint сортирует по близости к складу.
+_PORTS_DB = None
+
+
+def _load_ports_db():
+    global _PORTS_DB
+    if _PORTS_DB is None:
+        path = os.path.join(os.path.dirname(__file__), "data", "ports_db.json")
+        try:
+            with open(path, encoding="utf-8") as f:
+                _PORTS_DB = json.load(f)
+        except Exception:
+            logger.exception("ports_db.json load failed")
+            _PORTS_DB = {}
+    return _PORTS_DB
+
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    import math
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat / 2) ** 2
+         + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2))
+         * math.sin(dlon / 2) ** 2)
+    return 2 * R * math.asin(min(1.0, math.sqrt(a)))
+
+
+# Транслитерация кириллица→латиница (BGN/PCGN-подобная). Нужна потому что
+# в GeoNames у многих городов нет русских названий, только латиница
+# («Ürgüp»: urgup). Юзер вводит «ургюп» → транслитерируем в «urgyup» →
+# fuzzy-матч с «urgup». Закрывает города без русского варианта в базе.
+_TRANSLIT = {
+    'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z',
+    'и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r',
+    'с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts','ч':'ch','ш':'sh',
+    'щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya',
+}
+
+
+def _translit_ru(s):
+    """Кириллица → латиница. Не-кириллические символы оставляем как есть."""
+    return ''.join(_TRANSLIT.get(ch, ch) for ch in s.lower())
+
+
+def _fuzzy_city_match(q, rows, limit=12):
+    """Fuzzy-поиск опечаток (как у крупных сервисов): «масква»→Moscow,
+    «ургюп»→Ürgüp. Сравнивает запрос И его транслитерацию с токенами
+    search-индекса через SequenceMatcher, берёт лучший ratio на город.
+    Offline, надёжно, без внешних API. Только в пределах страны (быстро).
+    """
+    from difflib import SequenceMatcher
+    qt = _translit_ru(q)               # латинская транслитерация запроса
+    variants = [q] if qt == q else [q, qt]
+    scored = []
+    for entry in rows:
+        disp, search = entry[0], entry[1]
+        best = 0.0
+        for tok in search.split():
+            if not tok:
+                continue
+            for v in variants:
+                r = SequenceMatcher(None, v, tok).ratio()
+                if r > best:
+                    best = r
+            if best >= 0.95:
+                break
+        if best >= 0.7:
+            scored.append((best, disp))
+    scored.sort(key=lambda x: -x[0])
+    return [d for _, d in scored[:limit]]
+
+
+class GeoCitiesView(APIView):
+    """GET /api/assistant/geo-cities/?q=<query>&cc=<ISO2>
+
+    Подсказки городов для поля «Город» склада отгрузки (≈32k городов мира,
+    GeoNames). Поиск двуязычный (рус+лат) по подстроке. Если точных мало —
+    добавляем fuzzy-поиск опечаток в пределах страны. Кэш 10 мин.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from django.core.cache import cache
+        q = (request.GET.get("q") or "").strip().lower()
+        cc = (request.GET.get("cc") or "").strip().upper()
+        ckey = f"geocities:{cc}:{q}"
+        cached = cache.get(ckey)
+        if cached is not None:
+            return Response({"cities": cached})
+
+        db = _load_cities_db()
+        if cc and cc in db:
+            pool = [(cc, db[cc])]
+        elif cc:
+            pool = []
+        else:
+            pool = list(db.items())
+
+        # Каждая запись базы: [display, search, lat, lng]. Возвращаем
+        # объекты {n, lat, lng} — координаты нужны фронту для сортировки
+        # портов по реальному гео-расстоянию от склада.
+        qt = _translit_ru(q) if q else q
+        results = []
+        seen = set()
+
+        def _coords(entry):
+            la = entry[2] if len(entry) > 2 else None
+            lo = entry[3] if len(entry) > 3 else None
+            return {"n": entry[0], "lat": la, "lng": lo}
+
+        # 1) substring — точные совпадения (по запросу или транслитерации)
+        for _cc, rows in pool:
+            for entry in rows:
+                disp, search = entry[0], entry[1]
+                if not q or q in search or (qt != q and qt in search):
+                    if disp not in seen:
+                        seen.add(disp); results.append(_coords(entry))
+                        if len(results) >= 25:
+                            break
+            if len(results) >= 25:
+                break
+
+        # 2) fuzzy — опечатки, если точных мало и страна задана
+        if q and len(results) < 8 and cc and cc in db:
+            coord_map = {e[0]: e for e in db[cc]}
+            for d in _fuzzy_city_match(q, db[cc]):
+                if d not in seen:
+                    seen.add(d)
+                    results.append(_coords(coord_map.get(d, [d])))
+                    if len(results) >= 25:
+                        break
+
+        cache.set(ckey, results, 600)
+        return Response({"cities": results})
+
+
+class GeoPortsView(APIView):
+    """GET /api/assistant/geo-ports/?cc=<ISO2>&kind=sea|air&lat=&lng=&q=
+
+    Реальные карго-порты страны (морпорты UN/LOCODE / аэропорты-хабы
+    OurAirports). Если переданы координаты склада (lat,lng) — сортируем по
+    реальному расстоянию (ближайший сверху: Шэньян→Далянь). Опц. q —
+    подстрочный фильтр по коду/названию. Отдаём до 40 ближайших.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        cc = (request.GET.get("cc") or "").strip().upper()
+        kind = (request.GET.get("kind") or "sea").strip().lower()
+        if kind not in ("sea", "air"):
+            kind = "sea"
+        q = (request.GET.get("q") or "").strip().lower()
+        try:
+            wlat = float(request.GET.get("lat"))
+            wlng = float(request.GET.get("lng"))
+        except (TypeError, ValueError):
+            wlat = wlng = None
+
+        db = _load_ports_db()
+        rows = (db.get(cc, {}) or {}).get(kind, []) if cc else []
+        # каждая запись: [code, name, lat, lng]
+        items = []
+        for code, name, la, lo in rows:
+            label = code + " · " + name
+            if q and q not in code.lower() and q not in name.lower():
+                continue
+            dist = None
+            if wlat is not None and la is not None:
+                dist = _haversine_km(wlat, wlng, la, lo)
+            items.append({"code": code, "name": name, "label": label, "dist": dist})
+
+        if wlat is not None:
+            items.sort(key=lambda x: (x["dist"] is None, x["dist"] or 1e9))
+        return Response({"ports": items[:40]})

@@ -282,10 +282,16 @@ def match_header(header: str, learned: dict[str, str] | None = None) -> str | No
         return learned[n]
     if n in _LOOKUP:
         return _LOOKUP[n]
+    # «Бренд аналога» / «brand of analog» — это бренд АНАЛОГА (кросс-бренд),
+    # а не основной бренд товара. Не матчим как brand, иначе в мультибрендовом
+    # прайсе основная колонка «Бренд» проиграет «Бренд аналога».
+    _is_analog = ("аналог" in n or "analog" in n or "кросс" in n or "cross" in n)
     # «Лёгкий» fuzzy: подстрочный match на длинных заголовках типа
     # «Komatsu Part Number Code (OEM)» — ищем нашу подстроку.
     for synonym, canonical in _LOOKUP.items():
         if len(synonym) >= 4 and synonym in n:
+            if canonical == "brand" and _is_analog:
+                continue  # это про аналог, не основной бренд
             return canonical
     return None
 

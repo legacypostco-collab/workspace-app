@@ -60,6 +60,9 @@ urlpatterns = [
     path("upload-pricelist/<int:import_id>/generate-output/", pricelist.PricelistGenerateOutputView.as_view(), name="pricelist-generate-output"),
     path("upload-pricelist/<int:import_id>/generate-output-progress/", pricelist.PricelistGenerateOutputProgressView.as_view(), name="pricelist-generate-output-progress"),
     path("upload-pricelist/<int:import_id>/output-preview/", pricelist.PricelistOutputPreviewView.as_view(), name="pricelist-output-preview"),
+    path("upload-pricelist/<int:import_id>/errors.csv", pricelist.PricelistErrorsCsvView.as_view(), name="pricelist-errors-csv"),
+    path("geo-cities/", pricelist.GeoCitiesView.as_view(), name="geo-cities"),
+    path("geo-ports/", pricelist.GeoPortsView.as_view(), name="geo-ports"),
     path("pricelist-template.csv", pricelist.PricelistTemplateView.as_view(), name="pricelist-template"),
     path("pricelist-template.xlsx", pricelist.PricelistTemplateXlsxView.as_view(), name="pricelist-template-xlsx"),
 ]

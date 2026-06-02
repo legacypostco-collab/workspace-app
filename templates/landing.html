@@ -73,6 +73,10 @@
   }
 
   html, body{ overflow-x: clip; }
+  /* Отключаем резиновый отскок (overscroll) сверху/снизу — иначе при оттяжке
+     страницы вверх мелькала полоса фона корня (белая в светлой теме, чёрная
+     в тёмной). Так страница не тянется за пределы контента. */
+  html{ overscroll-behavior-y: none; }
   .page{
     max-width: var(--container);
     margin: 0 auto;
@@ -95,6 +99,11 @@
 
   *,*::before,*::after { box-sizing: border-box; margin:0; padding:0; }
   html, body { background: var(--bg); }
+  /* Overscroll (резиновый отскок на macOS) показывает фон <html>. Тёмная тема
+     задаёт --bg только на body, до html оно не доходит (свойство наследуется
+     вниз, а html — родитель) → при прокрутке вверх мелькала белая полоса.
+     Класс dark-mode дублируется на <html> в JS, фон тут — тёмный. */
+  html.dark-mode { background: #050505; }
   body{
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display','Segoe UI', Roboto, sans-serif;
     color: var(--ink);
@@ -340,6 +349,7 @@
     border-radius: 50%;
     display:flex; align-items:center; justify-content:center;
     color: var(--ink); cursor: pointer;
+    text-decoration: none;
     transition: background .15s;
     position: relative;
   }
@@ -582,7 +592,11 @@
     letter-spacing: 0.1px;
     transition: background .15s;
   }
-  .infra-cta:hover{ background: var(--accent); }
+  .infra-cta:hover{ background: var(--accent); color:#fff; }
+  /* В тёмной теме --ink светлеет → светлая кнопка + белый текст была
+     нечитаема. Инвертируем: светлый фон + тёмный текст, hover — оранжевый. */
+  body.dark-mode .infra-cta{ background:#f5f5f5; color:#1a1422; }
+  body.dark-mode .infra-cta:hover{ background:var(--accent); color:#fff; }
 
   /* ============ INDUSTRIES (Кому мы служим — 6 cards) ============ */
   .head-accent{ color: var(--accent); }
@@ -787,15 +801,19 @@
     background: var(--aub); color: #fff;
   }
   .deal .badge.sale{ background: var(--accent); }
-  .deal .badge.oem{ background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  /* Фон бейджа всегда белый → текст/рамку задаём фиксированными тёмными,
+     не из темо-зависимых переменных (иначе в dark-mode текст белел и пропадал). */
+  .deal .badge.oem{ background: #fff; color: #1A1422; border: 1px solid rgba(0,0,0,0.12); }
   .deal .fav{
     position: absolute; top: 12px; right: 12px;
     width: 30px; height: 30px;
     background: #fff;
-    border: 1px solid var(--line);
+    border: 1px solid rgba(0,0,0,0.12);
     border-radius: 50%;
     display:flex; align-items: center; justify-content: center;
-    color: var(--ink-3);
+    /* Белый фон → иконка фиксированно-тёмная (в dark-mode var(--ink-3) светлел
+       и сердечко пропадало на белом кружке). */
+    color: #6B5560;
   }
   .deal .fav:hover{ color: var(--accent); border-color: var(--accent); }
   .deal .fav svg{ width: 14px; height: 14px; }
@@ -1509,6 +1527,9 @@
   }
   body.dark-mode .meganav .region{color:rgba(255,255,255,0.85);}
   body.dark-mode .meganav .region .pin{color:#ffffff;}
+  /* Мобильное выпадающее меню .meganav nav имеет background:#fff. В dark-mode
+     ссылки светлеют (ниже) → был бы светлый текст на белом. Затемняем фон. */
+  body.dark-mode .meganav nav{background:#1f1f1f;border-color:rgba(255,255,255,0.14);}
   body.dark-mode .meganav nav a{color:rgba(255,255,255,0.78);}
   body.dark-mode .meganav nav a:hover{color:#ffffff;}
   body.dark-mode .meganav nav a.alert{color:#ffffff;font-weight:700;}
@@ -1587,6 +1608,10 @@ body.dark-mode .lang-fab:hover{background:#2a2a2a;border-color:rgba(255,255,255,
 .lang-menu{position:absolute;top:46px;right:0;min-width:130px;background:#fff;
   border:1px solid rgba(0,0,0,0.10);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,0.12);
   padding:6px;display:flex;flex-direction:column;gap:2px;}
+/* Атрибут hidden обязан прятать меню: у [hidden] (UA display:none) и .lang-menu
+   одинаковая специфичность, а .lang-menu объявлен позже → перебивал display:none,
+   из-за чего меню было всегда раскрыто. Селектор .lang-menu[hidden] специфичнее. */
+.lang-menu[hidden]{display:none;}
 .lang-menu button{background:transparent;border:none;text-align:left;padding:7px 10px;
   border-radius:6px;cursor:pointer;font-size:13px;color:#1a1422;font-family:inherit;}
 .lang-menu button:hover{background:#f6f1f1;}
@@ -1648,9 +1673,15 @@ html[dir="rtl"] .theme-fab{right:auto!important;left:14px!important;}
 </script>
 <script>
   (function(){
-    try { if (localStorage.getItem('cf_dark_mode') === '1') document.body.classList.add('dark-mode'); } catch(e){}
+    try {
+      if (localStorage.getItem('cf_dark_mode') === '1') {
+        document.body.classList.add('dark-mode');
+        document.documentElement.classList.add('dark-mode');  // фон overscroll-зоны
+      }
+    } catch(e){}
     window.toggleLandingTheme = function(){
       const on = document.body.classList.toggle('dark-mode');
+      document.documentElement.classList.toggle('dark-mode', on);  // фон overscroll-зоны
       try { localStorage.setItem('cf_dark_mode', on ? '1' : '0'); } catch(e){}
     };
   })();
@@ -1707,13 +1738,13 @@ html[dir="rtl"] .theme-fab{right:auto!important;left:14px!important;}
     </nav>
 
     <div class="actions">
-      <div class="pill" title="{% trans 'заказы' %}">
+      <a href="/chat/?action=get_orders" class="pill" title="{% trans 'заказы' %}" aria-label="{% trans 'заказы' %}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>
-        <span class="ct">3</span>
-      </div>
-      <div class="pill" title="{% trans 'кабинет' %}">
+        {% if nav_badge %}<span class="ct">{{ nav_badge }}</span>{% endif %}
+      </a>
+      <a href="/chat/?action=start_login" class="pill" title="{% trans 'кабинет' %}" aria-label="{% trans 'кабинет' %}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></svg>
-      </div>
+      </a>
     </div>
   </div>
 
@@ -1825,8 +1856,8 @@ html[dir="rtl"] .theme-fab{right:auto!important;left:14px!important;}
 
   <div class="trust-strip">
     <span><span class="t-dot t-dot-live"></span><b>247</b> {% trans "поставщиков" %}</span>
-    <span><span class="t-dot t-dot-time"></span><b>2.3 {% trans "ч" %}</b> {% trans "средний ETA" %}</span>
-    <span class="discount"><span class="t-dot t-dot-deal"></span><b>−18%</b> {% trans "к рынку" %}</span>
+    <span><span class="t-dot t-dot-time"></span><b>14 {% trans "дн" %}</b> — {% trans "медиана доставки" %}</span>
+    <span class="discount"><span class="t-dot t-dot-deal"></span><b>18%</b> {% trans "экономии к рынку" %}</span>
   </div>
 </section>
 
@@ -2202,7 +2233,7 @@ html[dir="rtl"] .theme-fab{right:auto!important;left:14px!important;}
           <div class="sku">14Y-22-37470</div>
           <div class="ttl">{% trans "Кольцо уплотнительное гидроцилиндра" %}</div>
           <div class="meta"><span class="b">Komatsu</span><span class="dot"></span><span>NBR 90</span><span class="dot"></span><span>GA Ricambi</span></div>
-          <div class="price"><span class="now">680 ₽</span><span class="was">800 ₽</span><span class="pct">−15%</span></div>
+          <div class="price"><span class="now">680 ₽</span><span class="was">800 ₽</span></div>
           <div class="stock"><span class="ok">{% trans "в наличии" %} · 7 {% trans "шт" %}</span><span class="eta">{% trans "отгрузка сегодня" %}</span></div>
         </div>
       </div>
@@ -2242,7 +2273,7 @@ html[dir="rtl"] .theme-fab{right:auto!important;left:14px!important;}
           <div class="sku">CA0107091</div>
           <div class="ttl">Шпилька крепёжная редуктора M16×120</div>
           <div class="meta"><span class="b">Carraro</span><span class="dot"></span><span>10.9</span><span class="dot"></span><span>{% trans "оригинал" %}</span></div>
-          <div class="price"><span class="now">295 ₽</span><span class="was">333 ₽</span><span class="pct">−11%</span></div>
+          <div class="price"><span class="now">295 ₽</span><span class="was">333 ₽</span></div>
           <div class="stock"><span class="ok">{% trans "в наличии" %} · 14 {% trans "шт" %}</span><span class="eta">{% trans "отгрузка сегодня" %}</span></div>
         </div>
       </div>
@@ -2277,7 +2308,7 @@ html[dir="rtl"] .theme-fab{right:auto!important;left:14px!important;}
           <div class="sku">707-99-47130</div>
           <div class="ttl">{% trans "Ремкомплект гидроцилиндра стрелы" %}</div>
           <div class="meta"><span class="b">NOK</span><span class="dot"></span><span>PC200/PC300</span><span class="dot"></span><span>{% trans "9 позиций" %}</span></div>
-          <div class="price"><span class="now">2 280 ₽</span><span class="was">2 730 ₽</span><span class="pct">−16%</span></div>
+          <div class="price"><span class="now">2 280 ₽</span><span class="was">2 730 ₽</span></div>
           <div class="stock"><span class="ok">{% trans "в наличии" %} · 1 {% trans "шт" %}</span><span class="eta">{% trans "отгрузка сегодня" %}</span></div>
         </div>
       </div>
@@ -2325,7 +2356,7 @@ html[dir="rtl"] .theme-fab{right:auto!important;left:14px!important;}
           <div class="sku">YM129953-77803</div>
           <div class="ttl">Соленоид топливный 12V</div>
           <div class="meta"><span class="b">Yanmar</span><span class="dot"></span><span>OEM</span><span class="dot"></span><span>4TNV94</span></div>
-          <div class="price"><span class="now">1 720 ₽</span><span class="was">2 018 ₽</span><span class="pct">−15%</span></div>
+          <div class="price"><span class="now">1 720 ₽</span><span class="was">2 018 ₽</span></div>
           <div class="stock"><span class="ok">{% trans "в наличии" %} · 8 {% trans "шт" %}</span><span class="eta">{% trans "отгрузка сегодня" %}</span></div>
         </div>
       </div>

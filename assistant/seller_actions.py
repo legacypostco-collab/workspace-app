@@ -1637,7 +1637,7 @@ def upload_pricelist(params, user, role):
                     {
                         "icon": "📋",
                         "title": "Google Sheets",
-                        "status": "recommended",
+                        "status": "active",
                         "description": (
                             "Подключи Google-таблицу — цены будут "
                             "синхронизироваться автоматически по расписанию "
@@ -1667,7 +1667,7 @@ def upload_pricelist(params, user, role):
                     {
                         "icon": "🧠",
                         "title": "Загрузить файл (Excel / CSV)",
-                        "status": "active",
+                        "status": "recommended",
                         "description": (
                             "Разовая загрузка. Система распознаёт заголовки "
                             "на 5 языках, AI помогает с нестандартными "

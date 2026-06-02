@@ -1217,6 +1217,17 @@
 
     /* ── KPI grid card ── */
     .kpi-card{padding:16px 18px;}
+    /* Монохромная линия-прогресс SLA (ЧБ): заполнение до значения, цвета из
+       темы (светлая/тёмная). Без цветных зон. */
+    .kpi-line{margin:16px 2px 2px;}
+    .kpi-line-head{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:7px;color:#3a3a3a;}
+    .kpi-line-val{font-weight:700;font-size:15px;color:#1a1a1a;}
+    .kpi-line-track{height:8px;border-radius:6px;background:rgba(0,0,0,0.10);overflow:hidden;}
+    .kpi-line-fill{height:100%;border-radius:6px;background:#1a1a1a;transition:width .3s;}
+    body.dark-mode .kpi-line-head{color:rgba(255,255,255,0.7);}
+    body.dark-mode .kpi-line-val{color:#f5f5f5;}
+    body.dark-mode .kpi-line-track{background:rgba(255,255,255,0.12);}
+    body.dark-mode .kpi-line-fill{background:#f0f0f0;}
     .kpi-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;margin-top:12px;}
     /* Адаптивная сетка по количеству ячеек: пустых клеток в конце строки быть не должно. */
     .kpi-grid[data-count="1"]{grid-template-columns:1fr;}
@@ -1250,7 +1261,9 @@
       background:#222222;border-color:rgba(255,255,255,0.16);
     }
     .kpi-value{font-family:'Golos Text',sans-serif;font-weight:700;font-size:22px;color:#1a1a1a;line-height:1.1;letter-spacing:-0.01em;}
-    .kpi-label{font-size:13px;color:rgba(0,0,0,0.7);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-top:8px;line-height:1.4;}
+    /* min-height ≈ 2 строки: короткие и длинные (в 2 строки) метки занимают
+       одинаковую высоту → плитки в ряду выровнены, без «рваного» вида. */
+    .kpi-label{font-size:13px;color:rgba(0,0,0,0.7);font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-top:8px;line-height:1.4;min-height:2.8em;}
     .kpi-sub{font-size:13.5px;color:rgba(0,0,0,0.78);margin-top:6px;line-height:1.45;}
     body.dark-mode .kpi-label{color:rgba(255,255,255,0.78)!important;}
     body.dark-mode .kpi-sub{color:rgba(255,255,255,0.82)!important;}
@@ -1378,10 +1391,17 @@
     .pl-port-input{flex:1;}
     .pl-df-textarea{font-family:inherit;resize:vertical;min-height:64px;line-height:1.5;padding:10px 12px;}
     /* Селектор «Страна отправления» — всё прижато к левому краю */
-    .pl-ship-country-row{display:flex !important;flex-direction:column !important;align-items:stretch !important;gap:10px;padding:14px 16px;margin-bottom:18px;background:#FAFAF9;border:1px solid rgba(0,0,0,0.08);border-radius:10px;}
-    .pl-ship-country-label{font-size:14.5px;font-weight:600;color:#1a1a1a;display:flex;flex-direction:column;gap:3px;text-align:left;width:100%;}
-    .pl-ship-country-hint{font-weight:400;font-size:12.5px;color:rgba(0,0,0,0.6);line-height:1.45;}
-    .pl-ship-country{width:280px !important;max-width:100%;margin:0;align-self:flex-start;}
+    /* Страна + Город в одной строке горизонтально */
+    .pl-ship-combo{display:flex !important;flex-wrap:wrap;gap:14px;padding:14px 16px 6px;background:#FAFAF9;border:1px solid rgba(0,0,0,0.08);border-radius:10px;}
+    .pl-ship-field{flex:1 1 220px;min-width:200px;display:flex;flex-direction:column;gap:6px;}
+    .pl-ship-flabel{font-size:14px;font-weight:600;color:#1a1a1a;text-align:left;}
+    .pl-ship-combo-hint{font-size:12px;color:rgba(0,0,0,0.55);line-height:1.4;padding:6px 16px 0;margin-bottom:18px;}
+    .pl-ship-country{width:100% !important;max-width:100%;margin:0;}
+    .pl-city-input{width:100% !important;max-width:100%;margin:0;}
+    /* Кастомный автокомплит (города/порты) — substring-поиск, двуязычный */
+    .pl-ac-pop{z-index:99999;max-height:280px;overflow-y:auto;background:#1a1a1a;border:1px solid rgba(255,255,255,0.12);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,0.35);padding:5px;}
+    .pl-ac-item{padding:9px 13px;font-size:13.5px;color:#f2f2f2;border-radius:7px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .pl-ac-item:hover,.pl-ac-item.pl-ac-active{background:rgba(255,255,255,0.14);}
     /* Пояснительная записка перед загрузкой — чистая, без фона */
     .import-explain{padding:20px 22px;background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.4);border-radius:14px;}
     .ie-title{font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:4px;}
@@ -1451,8 +1471,12 @@
     .sq-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:11px;}
     .sq-chip{background:rgba(255,255,255,0.75);color:#1a1a1a;border:1px solid rgba(0,0,0,0.16);border-radius:19px;padding:6px 13px;font-size:12.5px;font-weight:500;cursor:pointer;transition:all 0.12s;font-family:inherit;}
     .sq-chip:hover{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
-    .sq-input-row{display:flex;gap:7px;align-items:center;}
-    .sq-input{flex:1;background:rgba(255,255,255,0.75);border:1px solid rgba(0,0,0,0.16);border-radius:7px;padding:8px 11px;font-size:13px;font-family:inherit;color:#1a1a1a;outline:none;transition:border-color 0.12s;}
+    .sq-input-row{display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+    .sq-country{background:rgba(255,255,255,0.75);border:1px solid rgba(0,0,0,0.16);border-radius:7px;padding:8px 11px;font-size:13px;font-family:inherit;color:#1a1a1a;outline:none;cursor:pointer;max-width:160px;}
+    .sq-country:focus{border-color:#1a1a1a;background:#fff;}
+    .sq-city{background:rgba(255,255,255,0.75);border:1px solid rgba(0,0,0,0.16);border-radius:7px;padding:8px 11px;font-size:13px;font-family:inherit;color:#1a1a1a;outline:none;max-width:170px;}
+    .sq-city:focus{border-color:#1a1a1a;background:#fff;}
+    .sq-input{flex:1;min-width:180px;background:rgba(255,255,255,0.75);border:1px solid rgba(0,0,0,0.16);border-radius:7px;padding:8px 11px;font-size:13px;font-family:inherit;color:#1a1a1a;outline:none;transition:border-color 0.12s;}
     .sq-input:focus{border-color:#1a1a1a;background:#fff;}
     .sq-submit{background:#1a1a1a;color:#fff;border:0;border-radius:7px;padding:8px 13px;font-size:13.5px;font-weight:600;cursor:pointer;transition:opacity 0.12s;}
     .sq-submit:hover{opacity:0.85;}
@@ -3813,7 +3837,7 @@
 </div>
 
 <script src="{% static 'js/i18n.js' %}?v=3&t={% now 'U' %}"></script>
-<script src="{% static 'js/chat-first.js' %}?v=25&t={% now 'U' %}"></script>
+<script src="{% static 'js/chat-first.js' %}?v=74&t={% now 'U' %}"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>

@@ -292,8 +292,18 @@ def op_queue(params, user, role):
         qs = qs.filter(status="customs")
     elif flt == "transit":
         qs = qs.filter(status__in=("transit_abroad", "transit_rf", "issuing"))
-    qs = qs.exclude(status__in=("completed", "cancelled"))\
-           .order_by("sla_status", "-created_at")[:200]
+    if flt == "delivered":
+        # Доставленные за 90 дней — единственный фильтр, который НЕ исключает
+        # completed (это и есть его суть). Показываем как есть.
+        from datetime import timedelta
+
+        from django.utils import timezone as _tz
+        cutoff = _tz.now() - timedelta(days=90)
+        qs = qs.filter(status__in=("delivered", "completed"),
+                       created_at__gte=cutoff).order_by("-created_at")[:200]
+    else:
+        qs = qs.exclude(status__in=("completed", "cancelled"))\
+               .order_by("sla_status", "-created_at")[:200]
 
     # ── Группировка по этапу + что делать оператору на каждом ──
     # (порядок · title · действия оператора)
@@ -689,49 +699,64 @@ def op_sla_breach(params, user, role):
         breach_trend = 0
     arrow = "↑" if breach_trend > 0 else ("↓" if breach_trend < 0 else "→")
 
-    kpi_items = [
-        {"label": "Доля заказов в срок",
-         "value": f"{sla_health}%",
-         "tone": "bad" if sla_health < 70 else ("warn" if sla_health < 90 else "ok")},
-    ]
-    if avg_overdue is not None:
-        kpi_items.append({
-            "label": "Средняя просрочка",
-            "value": (f"{avg_overdue:.0f} ч" if avg_overdue < 48 else f"{avg_overdue/24:.1f} дн"),
-            "tone": "bad" if avg_overdue > 48 else "warn",
-        })
-    if money_at_risk:
-        kpi_items.append({
-            "label": "Деньги под риском",
-            "value": f"${money_at_risk:,.0f}",
-            "tone": "warn",
-        })
+    # Распределение активных заказов по 3 SLA-статусам — головные плитки.
+    _active_base = Order.objects.exclude(
+        status__in=("delivered", "completed", "cancelled"))
+    _n_breached = _active_base.filter(sla_status="breached").count()
+    _n_at_risk = _active_base.filter(sla_status="at_risk").count()
+    _n_on_time = max(0, total_active - _n_breached - _n_at_risk)
+
+    # Средняя просрочка — форматируем (часы/дни), «—» если нарушений нет.
+    if avg_overdue is None:
+        _avg_val = "—"
+    elif avg_overdue < 48:
+        _avg_val = f"{avg_overdue:.0f} ч"
+    else:
+        _avg_val = f"{avg_overdue / 24:.1f} дн"
+
+    # Этап с наибольшей задержкой: короткое слово в значение (чтобы плитка не
+    # переносилась на 2 строки), число задержек — в подпись.
+    _SHORT_STAGE = {
+        "pending": "Оплата", "reserve_paid": "Подтверждение",
+        "confirmed": "Производство", "in_production": "Производство",
+        "ready_to_ship": "Отгрузка", "transit_abroad": "Транзит",
+        "customs": "Таможня", "transit_rf": "Транзит РФ",
+        "issuing": "Выдача", "shipped": "Транзит", "delivered": "Приёмка",
+    }
     if top_stage_label:
-        kpi_items.append({
-            "label": "Самый медленный этап",
-            "value": f"{top_stage_label} ({top_stage_n})",
-            "tone": "bad",
-        })
-        kpi_items.append({
-            "label": "Кто чаще нарушает SLA",
-            "value": top_owner, "tone": "warn",
-        })
-    # Показываем тренд только если есть что показать (изменение хотя бы на 1 заказ).
-    # «→ стабильно» при нулевой разнице — бесполезный шум на дашборде.
-    breach_diff = breach_30 - breach_prev
-    if abs(breach_diff) >= 1:
-        if breach_diff < 0:
-            trend_value = f"↓ на {abs(breach_diff)} меньше ({breach_30} за 30д)"
-            trend_tone = "ok"
-        else:
-            trend_value = f"↑ на {breach_diff} больше ({breach_30} за 30д)"
-            trend_tone = "bad" if breach_diff >= 3 else "warn"
-        kpi_items.append({
-            "label": "Нарушений к прошлому месяцу",
-            "value": trend_value,
-            "sub": f"было {breach_prev} → стало {breach_30}",
-            "tone": trend_tone,
-        })
+        _stage_val = _SHORT_STAGE.get(top_stage_code, top_stage_label)
+        _stage_sub = f"задержек: {top_stage_n}"
+    else:
+        _stage_val = "—"
+        _stage_sub = None
+
+    # 6 плиток — сетка 2×3.
+    # Плитки кликабельны → очередь заказов с фильтром. Делаем кликабельной
+    # ТОЛЬКО когда есть что показать (иначе клик ведёт в пустоту = «не работает»).
+    def _q(flt):
+        return {"action": "op_queue", "params": {"filter": flt}}
+
+    kpi_items = [
+        {"label": "В срок", "value": str(_n_on_time),
+         "sub": f"{sla_health}% заказов", "tone": "ok",
+         **(_q("open") if _n_on_time else {})},
+        {"label": "Под угрозой", "value": str(_n_at_risk),
+         "tone": "warn" if _n_at_risk else "ok",
+         **(_q("at_risk") if _n_at_risk else {})},
+        {"label": "В просрочке", "value": str(_n_breached),
+         "tone": "bad" if _n_breached else "ok",
+         **(_q("breached") if _n_breached else {})},
+        {"label": "Средняя просрочка", "value": _avg_val,
+         "tone": "bad" if (avg_overdue and avg_overdue > 48) else ("warn" if avg_overdue else "ok"),
+         **(_q("breached") if _n_breached else {})},
+        {"label": "Деньги под риском", "value": f"${money_at_risk:,.0f}",
+         "tone": "warn" if money_at_risk else "ok",
+         **(_q("breached") if money_at_risk else {})},
+        {"label": "Где больше всего задержек",
+         "value": _stage_val, "sub": _stage_sub,
+         "tone": "bad" if top_stage_label else "ok",
+         **(_q("breached") if top_stage_label else {})},
+    ]
 
     # Actionable инсайт
     if len(breached_rows) and top_stage_label:
@@ -752,7 +777,11 @@ def op_sla_breach(params, user, role):
         cards.append({"type": "kpi_grid", "data": {
             "title": "📊 Аналитика SLA",
             "items": kpi_items,
+            # Монохромная линия-прогресс (% заказов в срок). Цвета — из CSS (ЧБ).
+            "progress": {"value": sla_health, "center": f"{sla_health}%",
+                         "label": "заказов в срок"},
         }})
+
     if breached_rows:
         cards.append({"type": "list", "data": {
             "title": f"Нарушено · {len(breached_rows)}",
@@ -2049,30 +2078,40 @@ def op_customs_dashboard(params, user, role):
             "params": {"order_id": o.id},
         })
 
+    # Плитки кликабельны → очередь с фильтром (только когда есть что показать).
+    def _qc(flt):
+        return {"action": "op_queue", "params": {"filter": flt}}
+
     kpi_items = [
         {"label": "Доля готовых к выпуску",
          "value": f"{docs_completeness}%",
-         "tone": "ok" if docs_completeness >= 80 else ("warn" if docs_completeness >= 50 else "bad")},
+         "tone": "ok" if docs_completeness >= 80 else ("warn" if docs_completeness >= 50 else "bad"),
+         **(_qc("customs") if total else {})},
         {"label": "Средний срок на таможне",
          "value": f"{avg_stuck:.1f} дн",
-         "tone": "bad" if avg_stuck > 5 else ("warn" if avg_stuck > 3 else "ok")},
+         "tone": "bad" if avg_stuck > 5 else ("warn" if avg_stuck > 3 else "ok"),
+         **(_qc("customs") if total else {})},
         {"label": "Просрочены >3 дн",
          "value": str(overdue_3d),
-         "tone": "bad" if overdue_3d else "ok"},
+         "tone": "bad" if overdue_3d else "ok",
+         **(_qc("customs") if overdue_3d else {})},
         {"label": "Сумма на таможне",
-         "value": f"${money_stuck:,.0f}", "tone": "info"},
+         "value": f"${money_stuck:,.0f}", "tone": "info",
+         **(_qc("customs") if total else {})},
     ]
     if avg_release_days is not None:
         kpi_items.append({
             "label": "Ср. срок выпуска (30д)",
             "value": f"{avg_release_days:.1f} дн",
             "tone": "ok" if avg_release_days <= 3 else "warn",
+            **_qc("transit"),
         })
     if released_30 or released_prev:
         kpi_items.append({
             "label": "Поток через таможню 30д",
             "value": f"{arrow} {abs(flow_delta)}% ({released_30} шт)",
             "tone": "ok" if flow_delta >= 0 else "warn",
+            **_qc("transit"),
         })
 
     # Actionable инсайт
@@ -2507,7 +2546,8 @@ def op_logistics_stats(params, user, role):
             "value": f"{delivered_n_90d}",
             "sub": f"средний срок {avg_days:.0f} дн",
             "tone": "ok" if avg_days <= 30 else ("warn" if avg_days <= 45 else "bad"),
-            # Доставленные — informational, без drill-down (целевая страница их не покажет).
+            "action": "op_queue",
+            "params": {"filter": "delivered"},
         })
 
     # 6) Самый медленный этап — клик ведёт в очередь по этому статусу
