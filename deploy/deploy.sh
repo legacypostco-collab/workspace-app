@@ -192,6 +192,37 @@ else
     log "  ✓ backup cron уже установлен"
 fi
 
+log "━━━ 11. healthcheck watchdog (авто-рестарт daphne при зависании) ━━━"
+# daphne может «зависнуть» (процесс жив, но не отвечает на HTTP) — systemd
+# Restart=always тут НЕ помогает (нет exit-кода). Cron каждую минуту проверяет
+# HTTP и рестартит daphne при зависании → макс ~1 мин простоя вместо «до ручного
+# ребута». Это лечит первопричину повторных обвалов прод-сервиса.
+cat > /usr/local/bin/consolidator-watchdog.sh <<'WD'
+#!/usr/bin/env bash
+chk() { curl -sk --max-time 8 -H 'Host: consolidatorparts.com' -o /dev/null -w '%{http_code}' https://127.0.0.1/ 2>/dev/null || echo 000; }
+c=$(chk)
+case "$c" in 200|301|302) exit 0 ;; esac
+sleep 5
+c=$(chk)
+case "$c" in 200|301|302) exit 0 ;; esac
+echo "$(date '+%F %T') watchdog: HTTP=$c → restart daphne" >> /var/log/consolidator-watchdog.log
+systemctl restart daphne
+sleep 3
+systemctl reload nginx 2>/dev/null || true
+WD
+chmod +x /usr/local/bin/consolidator-watchdog.sh
+if [[ ! -f /etc/cron.d/consolidator-watchdog ]]; then
+    cat > /etc/cron.d/consolidator-watchdog <<'WDC'
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+* * * * * root /usr/local/bin/consolidator-watchdog.sh
+WDC
+    chmod 0644 /etc/cron.d/consolidator-watchdog
+    log "  + watchdog cron установлен (проверка каждую минуту)"
+else
+    log "  ✓ watchdog уже установлен"
+fi
+
 log "━━━ STATUS ━━━"
 systemctl --no-pager status daphne nginx 2>&1 | grep -E "(●|Active:|Main PID)" | head -10
 
