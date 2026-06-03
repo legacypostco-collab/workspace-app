@@ -99,7 +99,14 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"⚠ Сброшено прежних t*-аккаунтов: {on}"))
 
         # ── reference data (parts pool, brands, cats) ──────────
-        parts_pool = list(Part.objects.filter(is_active=True).order_by("?")[:200])
+        # NB: без order_by("?") — на 916K товаров PostgreSQL делал бы полную
+        # сортировку (минуты). Берём первые 500 id и сэмплируем в Python.
+        _pool_ids = list(Part.objects.filter(is_active=True).values_list("id", flat=True)[:500])
+        if _pool_ids:
+            _take = random.sample(_pool_ids, min(200, len(_pool_ids)))
+            parts_pool = list(Part.objects.filter(id__in=_take))
+        else:
+            parts_pool = []
         brands = list(Brand.objects.all()[:12]) or [
             Brand.objects.get_or_create(name=b, defaults={"slug": slugify(b), "region": "europe"})[0]
             for b in ("Caterpillar", "Komatsu", "Volvo", "Liebherr", "Hitachi")
