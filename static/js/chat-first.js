@@ -2065,9 +2065,24 @@
       }).join('');
       const counter = (d.total_count && d.shown_end)
         ? `<span class="cat-counter">${d.offset + 1}–${d.shown_end} из ${d.total_count}</span>` : '';
+      // Поиск по артикулу: warehouse_id передаём числом или null (без кавычек —
+      // иначе сломается inline-обработчик внутри атрибута).
+      const whArg = (d.warehouse_id === null || d.warehouse_id === undefined || d.warehouse_id === '')
+        ? 'null' : Number(d.warehouse_id);
+      const curQ = (d.filter && d.filter.q) ? esc(d.filter.q) : '';
+      const searchBar = `<div class="cat-search" style="display:flex;gap:8px;margin:4px 0 12px;flex-wrap:wrap;">
+        <input type="text" class="cat-search-input" value="${curQ}" placeholder="🔎 Поиск по артикулу / OEM…"
+          style="flex:1;min-width:180px;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:rgba(128,128,128,0.08);color:inherit;font-size:14px;"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();window.__catalogSearch(this,${whArg});}">
+        <button class="cat-search-btn" onclick="window.__catalogSearch(this.parentNode.querySelector('.cat-search-input'),${whArg});"
+          style="padding:8px 16px;border-radius:8px;border:none;background:#2D7A3E;color:#fff;font-size:14px;cursor:pointer;white-space:nowrap;">Найти</button>
+        ${curQ ? `<button class="cat-search-clear" title="Сбросить поиск" onclick="window.__catalogSearch(null,${whArg},true);"
+          style="padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:transparent;color:inherit;cursor:pointer;">✕</button>` : ''}
+      </div>`;
       return `<div class="card cat-card">
         <div class="card-title">${esc(d.title || tr('card.catalog'))} ${counter}</div>
-        <div class="cat-rows">${rows || '<div class="cat-empty">Пусто</div>'}</div>
+        ${searchBar}
+        <div class="cat-rows">${rows || '<div class="cat-empty">Ничего не найдено</div>'}</div>
       </div>`;
     },
     warehouses(d) {
@@ -3955,6 +3970,17 @@
   // Экспорт для inline DOM-апдейтов (например после sqAdvance —
   // перерисовать карточку pipeline'а на месте без переотрисовки чата).
   window.__cardRenderers = renderers;
+
+  // Поиск по каталогу (по артикулу/OEM). Вызывается из поля в карточке catalog.
+  // warehouseId: число (склад), 0 (без склада), null (искать по всем складам).
+  window.__catalogSearch = function(inp, warehouseId, clear) {
+    var q = clear ? '' : ((inp && inp.value || '').trim());
+    var params = { q: q };
+    if (warehouseId !== null && warehouseId !== undefined && warehouseId !== '') {
+      params.warehouse_id = warehouseId;
+    }
+    window.quickAction && window.quickAction('seller_catalog', params);
+  };
 
   // S3 — whitelist допустимых типов карточек. Источник истины: ключи `renderers`.
   // Любой неизвестный тип (включая случай когда AI/бэкенд вернул мусор) —

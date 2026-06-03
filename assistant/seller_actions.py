@@ -2082,12 +2082,26 @@ def seller_catalog(params, user, role):
         qs = qs.filter(warehouse_id=warehouse_id)
     if q:
         from django.db.models import Q
-        qs = qs.filter(
-            Q(oem_number__icontains=q)
-            | Q(title__icontains=q)
-            | Q(cross_numbers__icontains=q)
-            | Q(manufacturer__icontains=q)
-        )
+        # Поиск по артикулу (запрос без пробелов) → быстрый prefix-поиск по
+        # индексу oem_number (Django держит `_like` varchar_pattern_ops индекс
+        # под LIKE 'q%'). icontains/LIKE '%q%' индекс НЕ использует и на 160k+
+        # позиций сканирует всю таблицу. Три варианта регистра покрывают
+        # как-введено / UPPER / lower (OEM в каталогах обычно в верхнем).
+        if " " not in q and len(q) >= 2:
+            qs = qs.filter(
+                Q(oem_number__startswith=q)
+                | Q(oem_number__startswith=q.upper())
+                | Q(oem_number__startswith=q.lower())
+            )
+        else:
+            # Многословный запрос (название) → широкий поиск (медленнее, но
+            # такие запросы редки и обычно дают узкую выборку).
+            qs = qs.filter(
+                Q(oem_number__icontains=q)
+                | Q(title__icontains=q)
+                | Q(cross_numbers__icontains=q)
+                | Q(manufacturer__icontains=q)
+            )
 
     total_count = qs.count()
     # Сортировка по дате последнего апдейта — свежие загрузки сверху.
