@@ -2520,6 +2520,7 @@ def seller_drawings(params, user, role):
 TEAM_ROLE_LABELS = {
     "admin": "Администратор",
     "manager": "Менеджер",
+    "ved": "Менеджер ВЭД",
     "logist": "Логист",
     "finance": "Финансист",
     "viewer": "Только просмотр",
@@ -2527,6 +2528,7 @@ TEAM_ROLE_LABELS = {
 TEAM_ROLE_HINT = {
     "admin": "всё + управление командой",
     "manager": "каталог, заказы, КП",
+    "ved": "поставщики, прайс-листы, импорт, таможня",
     "logist": "логистика, отгрузки, документы",
     "finance": "платежи, инвойсы, финансы",
     "viewer": "только просмотр",
@@ -2534,6 +2536,8 @@ TEAM_ROLE_HINT = {
 TEAM_INVITE_TTL_DAYS = 7
 _TEAM_ROLE_SYNONYMS = {
     "sales": "manager", "менеджер": "manager", "продажи": "manager",
+    "вэд": "ved", "ved": "ved", "вэд-менеджер": "ved", "снабжение": "ved",
+    "закупки": "ved", "закупщик": "ved", "поставщики": "ved",
     "логист": "logist", "логистика": "logist",
     "финансист": "finance", "финансы": "finance",
     "админ": "admin", "администратор": "admin", "директор": "admin",
@@ -2662,7 +2666,7 @@ def invite_team_member(params, user, role):
                          "default": "manager",
                          "options": [
                              {"value": k, "label": f"{TEAM_ROLE_LABELS[k]} — {TEAM_ROLE_HINT[k]}"}
-                             for k in ("manager", "logist", "finance", "admin", "viewer")
+                             for k in ("manager", "ved", "logist", "finance", "admin", "viewer")
                          ]},
                     ],
                     "fixed_params": {},
@@ -2779,7 +2783,7 @@ def team_member(params, user, role):
         acts.append({"label": "🚫 Отключить доступ", "action": "team_disable", "params": {"member_id": tm.id}})
     elif tm.status == "disabled":
         acts.append({"label": "✅ Включить доступ", "action": "team_enable", "params": {"member_id": tm.id}})
-    for rk in ("manager", "logist", "finance", "admin", "viewer"):
+    for rk in ("manager", "ved", "logist", "finance", "admin", "viewer"):
         if rk != tm.role:
             acts.append({"label": f"Роль → {TEAM_ROLE_LABELS[rk]}", "action": "team_set_role",
                          "params": {"member_id": tm.id, "role": rk}})

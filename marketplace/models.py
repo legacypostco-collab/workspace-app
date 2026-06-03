@@ -1064,6 +1064,7 @@ class TeamMember(models.Model):
     ROLE_CHOICES = [
         ("admin", _("Администратор")),
         ("manager", _("Менеджер")),
+        ("ved", _("Менеджер ВЭД")),
         ("logist", _("Логист")),
         ("finance", _("Финансист")),
         ("viewer", _("Только просмотр")),
