@@ -5788,6 +5788,7 @@
         {tkey:'pill.urgent',           emoji:'🔥', action:'seller_inbox',      params:{}},
         {tkey:'pill.upload_price',     emoji:'📤', action:'upload_pricelist',  params:{}},
         {tkey:'pill.my_products',      emoji:'📦', action:'seller_warehouses', params:{}},
+        {tkey:'pill.drawings',         emoji:'📐', action:'seller_drawings',   params:{}},
         {tkey:'pill.deposit',          emoji:'💰', action:'get_balance',       params:{}},
         {tkey:'pill.verification',     emoji:'🛡', action:'start_onboarding',  params:{}},
         {tkey:'pill.analytics',        emoji:'📊', action:'seller_analytics_hub', params:{}},
