@@ -1,7 +1,17 @@
 import os
+import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Запущены ли мы под тест-раннером (manage.py test / pytest). Используется,
+# напр., чтобы фоновые задачи (импорт прайса) выполнялись ИНЛАЙН внутри
+# тестовой транзакции, а не в отдельном потоке (который её не видит).
+TESTING = (
+    "test" in sys.argv
+    or "pytest" in sys.modules
+    or bool(os.getenv("PYTEST_CURRENT_TEST"))
+)
 
 
 def _load_env_file(env_path: Path) -> None:

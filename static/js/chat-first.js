@@ -7383,7 +7383,16 @@
     showConv();
     var pending = addMessage('assistant', '📥 Импортирую прайс… 0 строк');
 
-    // Polling прогресса импорта каждые 500ms
+    // Импорт идёт в ФОНЕ на сервере: commit отвечает 202 сразу, иначе длинный
+    // запрос (100K+ строк) рвёт Cloudflare на ~100s → «Failed to fetch».
+    // Промис резолвится поллером прогресса, когда фоновый импорт завершён.
+    var importResultResolve, importResultReject;
+    var importResultPromise = new Promise(function(rs, rj){
+      importResultResolve = rs; importResultReject = rj;
+    });
+    var importSettled = false;
+
+    // Polling прогресса импорта каждые 500ms (+ детект завершения)
     var importPollTimer = setInterval(async function() {
       try {
         var pr = await fetch('/api/assistant/upload-pricelist/' + importId + '/import-progress/', {
@@ -7391,7 +7400,7 @@
         });
         if (!pr.ok) return;
         var pdata = await pr.json();
-        if (pending && pdata.current !== undefined) {
+        if (pending && pdata.current !== undefined && !pdata.done) {
           var cEl = pending.querySelector('.msg-content');
           if (cEl) {
             var phaseMap = {
@@ -7402,6 +7411,17 @@
             var phase = phaseMap[pdata.phase] || 'Импортирую прайс';
             var totalPart = pdata.total ? (' / ' + pdata.total) : '';
             cEl.textContent = '📥 ' + phase + '… ' + pdata.current + totalPart + ' строк';
+          }
+        }
+        // Завершение фонового импорта → резолвим/реджектим промис.
+        if (!importSettled && (pdata.done || pdata.status === 'imported' || pdata.status === 'failed')) {
+          importSettled = true;
+          clearInterval(importPollTimer);
+          var rd = pdata.result || {};
+          if (rd.ok === false || pdata.status === 'failed') {
+            importResultReject(new Error(rd.error || 'ошибка импорта на сервере'));
+          } else {
+            importResultResolve(rd);
           }
         }
       } catch(e) {}
@@ -7419,22 +7439,26 @@
         }),
         credentials: 'same-origin',
       });
-      var data = await res.json();
-      clearInterval(importPollTimer);
-      if (pending && pending.parentNode) pending.remove();
+      var startData = await res.json();
       if (!res.ok) {
+        importSettled = true;
+        clearInterval(importPollTimer);
+        if (pending && pending.parentNode) pending.remove();
         var blockingErrors = {
           warehouse_address_required: 'Укажите адрес склада отгрузки.',
           brand_required: 'Не удалось определить бренд.',
         };
-        if (blockingErrors[data.error]) {
+        if (blockingErrors[startData.error]) {
           addMessage('assistant',
-            '❗ ' + (data.message || blockingErrors[data.error]));
+            '❗ ' + (startData.message || blockingErrors[startData.error]));
           __pendingImport = null;
           return;
         }
-        throw new Error(data.message || data.error || ('HTTP ' + res.status));
+        throw new Error(startData.message || startData.error || ('HTTP ' + res.status));
       }
+      // 202 принят — ждём, пока поллер принесёт результат фонового импорта.
+      var data = await importResultPromise;
+      if (pending && pending.parentNode) pending.remove();
 
       var created = data.created || 0;
       var updated = data.updated || 0;
