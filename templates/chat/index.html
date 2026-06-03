@@ -3297,8 +3297,20 @@
     body.dark-mode .pl-df-input{background:rgba(255,255,255,0.05);color:#fff;border-color:rgba(255,255,255,0.14);}
     body.dark-mode .pl-df-input:hover{border-color:rgba(255,255,255,0.24);}
     body.dark-mode .pl-df-input:focus{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,0.08);}
-    body.dark-mode .pl-ship-country-label{color:#fff;}
-    body.dark-mode .pl-ship-country-hint{color:rgba(255,255,255,0.72);}
+    /* pl-defaults dark-mode: тёмная карточка #141414 + светлый combo-бокс.
+       Раньше правила целились в несуществующие классы (.pl-ship-country-*),
+       поэтому combo оставался светлым, а текст инпутов — белым → нечитаемо. */
+    body.dark-mode .pl-ship-combo{background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.12);}
+    body.dark-mode .pl-ship-flabel{color:#f5f5f5;}
+    body.dark-mode .pl-ship-combo-hint{color:rgba(255,255,255,0.62);}
+    body.dark-mode .pl-df-label{color:rgba(255,255,255,0.72);}
+    body.dark-mode .pl-df-input::placeholder{color:rgba(255,255,255,0.45);}
+    body.dark-mode select.pl-df-input option{background:#1f1f1f;color:#f5f5f5;}
+    body.dark-mode .pl-defaults-summary,
+    body.dark-mode .pl-defaults-details[open] .pl-defaults-summary{color:#f5f5f5;}
+    body.dark-mode .pl-from-profile{background:rgba(100,181,246,0.16);border-color:rgba(100,181,246,0.4);color:rgba(255,255,255,0.85);}
+    body.dark-mode .pl-clear-profile{border-color:rgba(255,255,255,0.28);color:#f5f5f5;}
+    body.dark-mode .pl-clear-profile:hover{background:#fff;color:#1a1a1a;border-color:#fff;}
     body.dark-mode .pl-df-note{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);color:rgba(255,255,255,0.70);}
     body.dark-mode .pl-ai-estimate-status{color:rgba(255,255,255,0.72);}
     body.dark-mode .pl-ai-start-btn:hover{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.30);}
