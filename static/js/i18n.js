@@ -56,6 +56,10 @@
       'settings.density': 'Плотность',
       'settings.account': 'Аккаунт',
       'settings.logout': 'Выйти',
+      'settings.team': 'Команда компании',
+      'settings.landing': 'Перейти на сайт',
+      'settings.export': 'Скачать мои данные',
+      'settings.password': 'Сменить пароль',
 
       // Welcome
       'welcome.h1': 'Чем могу помочь?',
@@ -305,6 +309,10 @@
       'settings.density': 'Density',
       'settings.account': 'Account',
       'settings.logout': 'Log out',
+      'settings.team': 'Company team',
+      'settings.landing': 'Go to website',
+      'settings.export': 'Export my data',
+      'settings.password': 'Change password',
 
       'welcome.h1': 'How can I help?',
       'welcome.p': 'Request a quote, shipment, order status or upload a file — I’ll match suppliers and walk you through the deal.',

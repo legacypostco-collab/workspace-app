@@ -3606,6 +3606,13 @@
             <option value="ar">العربية</option>
           </select>
         </div>
+        {# ── Команда компании (руководитель приглашает сотрудников) ── #}
+        <button type="button" class="settings-row"
+                onclick="toggleSettingsPanel(false); window.quickAction && window.quickAction('seller_team', {});"
+                style="width:100%;border:none;background:transparent;cursor:pointer;text-align:left;font:inherit;color:inherit;">
+          <span>👥 <span data-i18n="settings.team">{% trans "Команда компании" %}</span></span>
+          <span style="opacity:0.5;font-size:11px;">→</span>
+        </button>
         {# ── Account block ── #}
         <div style="border-top:1px solid rgba(0,0,0,0.06);margin:6px 0;"></div>
         <a class="settings-row" href="/" style="text-decoration:none;color:inherit;">
