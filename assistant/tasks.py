@@ -133,3 +133,19 @@ def prune_old_audit(days: int = 1095):  # 3 года
     )
     deleted, _ = qs.delete()
     return {"deleted_events": deleted, "cutoff": cutoff.isoformat()}
+
+
+@shared_task(bind=True, max_retries=0)
+def run_pricelist_import(self, import_id, mapping, transform_rules, constants,
+                          save_profile, warehouse_id):
+    """Фоновый импорт прайса в каталог (тяжёлая часть коммита).
+
+    Исполняется в отдельном процессе Celery-воркера — не грузит daphne/AI на
+    больших файлах (100K+ строк). Прогресс/результат пишутся в общий Redis-кэш
+    caches["pricelist"], откуда их поллит daphne. retry отключён: импорт —
+    upsert, но повтор на середине нежелателен; ошибки фиксируются в статусе.
+    """
+    from assistant.pricelist import _execute_import_job
+    return _execute_import_job(
+        import_id, mapping, transform_rules, constants, save_profile, warehouse_id,
+    )

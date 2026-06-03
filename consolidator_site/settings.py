@@ -13,6 +13,28 @@ TESTING = (
     or bool(os.getenv("PYTEST_CURRENT_TEST"))
 )
 
+# Кэши. "default" — LocMem (в пределах одного процесса). "pricelist" — Redis:
+# фоновый импорт прайса исполняется в Celery-воркере (отдельный процесс), а
+# прогресс/результат поллит daphne — им нужен ОБЩИЙ стор, LocMem (per-process)
+# не подходит. В тестах "pricelist" тоже LocMem: Celery не задействуется
+# (импорт идёт inline в той же транзакции), Redis в CI может быть недоступен.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    },
+    "pricelist": (
+        {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "pricelist-locmem",
+        }
+        if TESTING
+        else {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": os.getenv("PRICELIST_CACHE_URL", "redis://127.0.0.1:6379/4"),
+        }
+    ),
+}
+
 
 def _load_env_file(env_path: Path) -> None:
     if not env_path.exists():

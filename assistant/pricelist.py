@@ -1255,8 +1255,11 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     brand_cache[key] = filename_brand
             break
 
-    # Прогресс импорта для polling из UI
-    from django.core.cache import cache
+    # Прогресс импорта для polling из UI. Пишем в общий Redis-кэш "pricelist":
+    # коммит исполняется в Celery-воркере (отдельный процесс), а поллинг идёт в
+    # daphne — LocMem (per-process) их бы не связал. В тестах алиас = LocMem.
+    from django.core.cache import caches
+    cache = caches["pricelist"]
     progress_key = f"import_progress_{import_obj.id}"
     cache.set(progress_key, {"current": 0, "total": 0, "running": True}, 600)
 
@@ -2000,6 +2003,163 @@ class PricelistUploadView(APIView):
         })
 
 
+def _execute_import_job(import_id, mapping, transform_rules, constants,
+                          save_profile, warehouse_id):
+    """Тяжёлая часть коммита прайса в каталог (запись + статистика).
+
+    Вызывается:
+      • Celery-задачей run_pricelist_import (прод — отдельный процесс воркера,
+        не грузит daphne/AI: для файла 100K+ строк это критично);
+      • инлайн в тестах / PRICELIST_IMPORT_SYNC (Celery-воркер не видит
+        транзакцию тестовой БД, а тесты ждут синхронный результат).
+
+    Прогресс и результат пишутся в общий Redis-кэш caches["pricelist"], чтобы
+    их видел поллинг из daphne. Возвращает result-dict (для inline-режима).
+    Соединение БД НЕ закрывает — этим управляет вызывающий (Celery / request).
+    """
+    import logging
+
+    from django.core.cache import caches
+    from django.utils import timezone as _tz
+
+    from marketplace.models import (
+        PricelistImport,
+        PricelistMapping,
+        SellerWarehouse,
+        SupplierImportProfile,
+    )
+    plc = caches["pricelist"]
+    imp = PricelistImport.objects.get(id=import_id)
+    seller = imp.seller
+    warehouse = None
+    if warehouse_id:
+        try:
+            warehouse = SellerWarehouse.objects.get(id=warehouse_id)
+        except SellerWarehouse.DoesNotExist:
+            warehouse = None
+
+    try:
+        with imp.file_obj.open("rb") as fh:
+            blob = fh.read()
+
+        imported, created, updated, failed, errors = _import_file(
+            imp, mapping, blob,
+            transform_rules=transform_rules,
+            constants=constants,
+            warehouse=warehouse,
+        )
+
+        imp.final_mapping = mapping
+        imp.imported_rows = imported
+        imp.created_rows = created
+        imp.updated_rows = updated
+        imp.failed_rows = failed
+        imp.error_details = errors
+        imp.status = "imported"
+        imp.completed_at = _tz.now()
+        imp.save(update_fields=[
+            "final_mapping", "imported_rows", "created_rows", "updated_rows",
+            "failed_rows", "error_details", "status", "completed_at",
+        ])
+
+        PricelistMapping.objects.update_or_create(
+            seller=seller, defaults={"mapping": mapping},
+        )
+
+        # Профиль поставщика для повторных загрузок
+        if save_profile and imp.headers:
+            fp = SupplierImportProfile.compute_fingerprint(imp.headers)
+            SupplierImportProfile.objects.update_or_create(
+                seller=seller,
+                headers_fingerprint=fp,
+                defaults={
+                    "source_headers": imp.headers,
+                    "column_mapping": mapping,
+                    "transform_rules": transform_rules,
+                    "constants": constants,
+                    "name": f"Auto · {imp.filename[:60]}",
+                    "use_count": 1,
+                },
+            )
+
+        # Категоризация незаполненных полей (mandatory / rating_bonus / optional)
+        FIELD_LABELS = {
+            "weight_kg": "вес", "length_cm": "длина", "width_cm": "ширина",
+            "height_cm": "высота", "stock": "остаток",
+            "price_fob_sea": "FOB SEA", "price_fob_air": "FOB AIR",
+            "warehouse_address": "адрес склада",
+            "sea_port": "морпорт", "air_port": "аэропорт",
+            "cross_number": "кросс-номер",
+        }
+        MANDATORY = {"warehouse_address", "sea_port", "air_port"}
+        RATING_BONUS = {"length_cm", "width_cm", "height_cm", "cross_number"}
+
+        def _filled(key):
+            val = mapping.get(key, "")
+            if val and not (isinstance(val, str) and val.startswith("fix:")):
+                return True
+            cval = (constants or {}).get(key)
+            if cval not in (None, "", 0):
+                return True
+            return False
+
+        missing_mandatory, missing_rating_bonus, missing_optional = [], [], []
+        for key, label in FIELD_LABELS.items():
+            if _filled(key):
+                continue
+            entry = {"key": key, "label": label}
+            if key in MANDATORY:
+                missing_mandatory.append(entry)
+            elif key in RATING_BONUS:
+                missing_rating_bonus.append(entry)
+            else:
+                missing_optional.append(entry)
+        missing_from_file = missing_mandatory + missing_rating_bonus + missing_optional
+
+        enrichment_stats = getattr(imp, "_enrichment_stats", {}) or {}
+        dedupe_stats = getattr(imp, "_dedupe_stats", {}) or {}
+        result = {
+            "ok": True,
+            "import_id": imp.id,
+            "imported": imported,
+            "created": created,
+            "updated": updated,
+            "failed": failed,
+            "errors_preview": errors[:10],
+            "missing_from_file": missing_from_file,
+            "missing_mandatory": missing_mandatory,
+            "missing_rating_bonus": missing_rating_bonus,
+            "missing_optional": missing_optional,
+            "ai_estimated_count": len(imp.ai_estimates or {}),
+            "reference_enriched": enrichment_stats.get("reference_hits", 0),
+            "merged_duplicates": dedupe_stats.get("merged", 0),
+            "price_conflicts": dedupe_stats.get("price_conflicts", 0),
+            "unique_oems": dedupe_stats.get("unique_oems", 0),
+        }
+        plc.set(f"import_result_{imp.id}", result, 3600)
+        plc.set(f"import_progress_{imp.id}", {
+            "current": imported, "total": imported,
+            "phase": "done", "running": False,
+        }, 600)
+        return result
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger("pricelist").exception(
+            "Import job failed for import_id=%s", import_id)
+        try:
+            imp.status = "failed"
+            imp.error_details = [{"row": 0, "oem": "", "reason": str(e)[:300]}]
+            imp.save(update_fields=["status", "error_details"])
+        except Exception:
+            pass
+        err = {"ok": False, "import_id": import_id, "error": str(e)[:300]}
+        plc.set(f"import_result_{import_id}", err, 3600)
+        plc.set(f"import_progress_{import_id}", {
+            "current": 0, "total": 0, "phase": "failed",
+            "running": False, "error": str(e)[:300],
+        }, 600)
+        return err
+
+
 class PricelistCommitView(APIView):
     """POST /api/assistant/upload-pricelist/<id>/commit/
 
@@ -2187,191 +2347,59 @@ class PricelistCommitView(APIView):
                         status=400,
                     )
 
-        try:
-            with imp.file_obj.open("rb") as fh:
-                blob = fh.read()
-        except Exception as e:
-            return Response({"error": f"file unavailable: {e}"}, status=500)
+        # Файл существует? (сам blob читает job — не тащим 15 МБ через Celery.)
+        if not imp.file_obj:
+            return Response({"error": "file unavailable"}, status=500)
 
-        # Виртуальный склад для этой загрузки — папка с фиксированной
-        # логистикой. Ищем существующий по совпадению ports+address,
-        # иначе создаём новый.
+        # Виртуальный склад для этой загрузки (создаётся на каждую загрузку).
         warehouse = _resolve_warehouse_for_import(request.user, mapping, constants, imp.filename)
+        warehouse_id = warehouse.id if warehouse else None
 
-        # ── Импорт выполняется в ФОНОВОМ ПОТОКЕ ──────────────────────────
-        # Файл может быть огромным (100K+ строк, напр. полный каталог Epiroc
-        # ~160K). Синхронный коммит длится минуты, а сайт стоит за Cloudflare,
-        # который рвёт соединение с origin на ~100s → фронт ловит «Failed to
-        # fetch» (а до фикса nginx — «Unexpected token '<'» от 524-страницы).
-        # Решение: запускаем _import_file в daemon-потоке (тот же процесс
-        # daphne → LocMem-кэш прогресса/результата виден поллингу), а HTTP-
-        # запрос отвечает 202 мгновенно. Фронт поллит /import-progress/ до
-        # появления результата (cache import_result_<id> / status=imported).
-        import threading
+        # ── Тяжёлый импорт уходит в Celery-воркер (отдельный процесс) ─────
+        # На больших прайсах (100K+ строк, напр. полный каталог Epiroc ~160K)
+        # запись длится минуты. Синхронно в запросе — Cloudflare рвёт на ~100s
+        # («Failed to fetch»); в потоке daphne — CPU-bound Python (GIL) тормозит
+        # чат и AI. Celery исполняет импорт в своём процессе: daphne мгновенно
+        # отдаёт 202, прогресс/результат идут через общий Redis-кэш "pricelist",
+        # поллинг /import-progress/ их видит.
+        import logging
 
-        from django.core.cache import cache as _cache
-        from django.db import connection as _dbconn
-
-        seller = request.user
-        _cache.delete(f"import_result_{imp.id}")
-        _cache.set(f"import_progress_{imp.id}", {
+        from django.core.cache import caches
+        plc = caches["pricelist"]
+        plc.delete(f"import_result_{imp.id}")
+        plc.set(f"import_progress_{imp.id}", {
             "current": 0, "total": 0, "phase": "writing", "running": True,
         }, 600)
 
-        def _run_import():
-            try:
-                imported, created, updated, failed, errors = _import_file(
-                    imp, mapping, blob,
-                    transform_rules=transform_rules,
-                    constants=constants,
-                    warehouse=warehouse,
-                )
-
-                imp.final_mapping = mapping
-                imp.imported_rows = imported
-                imp.created_rows = created
-                imp.updated_rows = updated
-                imp.failed_rows = failed
-                imp.error_details = errors
-                imp.status = "imported"
-                imp.completed_at = timezone.now()
-                imp.save(update_fields=[
-                    "final_mapping", "imported_rows", "created_rows", "updated_rows",
-                    "failed_rows", "error_details", "status", "completed_at",
-                ])
-
-                PricelistMapping.objects.update_or_create(
-                    seller=seller, defaults={"mapping": mapping},
-                )
-
-                # Сохраняем/обновляем профиль поставщика для повторных загрузок
-                if save_profile and imp.headers:
-                    fp = SupplierImportProfile.compute_fingerprint(imp.headers)
-                    SupplierImportProfile.objects.update_or_create(
-                        seller=seller,
-                        headers_fingerprint=fp,
-                        defaults={
-                            "source_headers": imp.headers,
-                            "column_mapping": mapping,
-                            "transform_rules": transform_rules,
-                            "constants": constants,
-                            "name": f"Auto · {imp.filename[:60]}",
-                            "use_count": 1,
-                        },
-                    )
-
-                # Категоризация полей:
-                #   mandatory      — без этого нельзя сохранить (warehouse_address)
-                #   rating_bonus   — необязательно, но повышает рейтинг карточки;
-                #                    мы подтягиваем из эталонной базы (catalogs/customs)
-                #   optional       — нейтрально, можно дозаполнить в каталоге
-                FIELD_LABELS = {
-                    "weight_kg": "вес", "length_cm": "длина", "width_cm": "ширина",
-                    "height_cm": "высота", "stock": "остаток",
-                    "price_fob_sea": "FOB SEA", "price_fob_air": "FOB AIR",
-                    "warehouse_address": "адрес склада",
-                    "sea_port": "морпорт", "air_port": "аэропорт",
-                    "cross_number": "кросс-номер",
-                }
-                MANDATORY = {"warehouse_address", "sea_port", "air_port"}
-                RATING_BONUS = {"length_cm", "width_cm", "height_cm", "cross_number"}
-
-                def _filled(key: str) -> bool:
-                    # из файла
-                    val = mapping.get(key, "")
-                    if val and not (isinstance(val, str) and val.startswith("fix:")):
-                        return True
-                    # supplier-wide constant из формы
-                    cval = (constants or {}).get(key)
-                    if cval not in (None, "", 0):
-                        return True
-                    return False
-
-                missing_mandatory = []
-                missing_rating_bonus = []
-                missing_optional = []
-                for key, label in FIELD_LABELS.items():
-                    if _filled(key):
-                        continue
-                    entry = {"key": key, "label": label}
-                    if key in MANDATORY:
-                        missing_mandatory.append(entry)
-                    elif key in RATING_BONUS:
-                        missing_rating_bonus.append(entry)
-                    else:
-                        missing_optional.append(entry)
-
-                # Legacy combined list — для обратной совместимости со старым UI.
-                missing_from_file = (
-                    missing_mandatory + missing_rating_bonus + missing_optional
-                )
-
-                enrichment_stats = getattr(imp, "_enrichment_stats", {}) or {}
-                dedupe_stats = getattr(imp, "_dedupe_stats", {}) or {}
-                result = {
-                    "ok": True,
-                    "import_id": imp.id,
-                    "imported": imported,
-                    "created": created,
-                    "updated": updated,
-                    "failed": failed,
-                    "errors_preview": errors[:10],
-                    "missing_from_file": missing_from_file,
-                    "missing_mandatory": missing_mandatory,
-                    "missing_rating_bonus": missing_rating_bonus,
-                    "missing_optional": missing_optional,
-                    "ai_estimated_count": len(imp.ai_estimates or {}),
-                    "reference_enriched": enrichment_stats.get("reference_hits", 0),
-                    "merged_duplicates": dedupe_stats.get("merged", 0),
-                    "price_conflicts": dedupe_stats.get("price_conflicts", 0),
-                    "unique_oems": dedupe_stats.get("unique_oems", 0),
-                }
-                _cache.set(f"import_result_{imp.id}", result, 3600)
-                _cache.set(f"import_progress_{imp.id}", {
-                    "current": imported, "total": imported,
-                    "phase": "done", "running": False,
-                }, 600)
-            except Exception as e:  # noqa: BLE001
-                import logging
-                logging.getLogger("pricelist").exception(
-                    "Background import failed for import_id=%s", imp.id)
-                try:
-                    imp.status = "failed"
-                    imp.error_details = [{"row": 0, "oem": "", "reason": str(e)[:300]}]
-                    imp.save(update_fields=["status", "error_details"])
-                except Exception:
-                    pass
-                _cache.set(f"import_result_{imp.id}", {
-                    "ok": False, "import_id": imp.id, "error": str(e)[:300],
-                }, 3600)
-                _cache.set(f"import_progress_{imp.id}", {
-                    "current": 0, "total": 0, "phase": "failed",
-                    "running": False, "error": str(e)[:300],
-                }, 600)
-
-        def _run_import_bg():
-            # Фоновый поток владеет собственным thread-local DB-соединением —
-            # по завершении закрываем, иначе оно «протечёт» в пуле postgres.
-            try:
-                _run_import()
-            finally:
-                _dbconn.close()
-
-        # В тестах / CLI импорт выполняется ИНЛАЙН и отдаёт результат сразу
-        # (200): фоновый поток не виден транзакции тестовой БД (in-memory
-        # SQLite), а существующие тесты ждут синхронный ответ. Соединение здесь
-        # НЕ закрываем — оно держит активную (в т.ч. тестовую) транзакцию.
+        # В тестах / sync-режиме импорт идёт ИНЛАЙН (Celery-воркер не видит
+        # транзакцию тестовой БД; существующие тесты ждут синхронный 200).
         if getattr(settings, "TESTING", False) or getattr(settings, "PRICELIST_IMPORT_SYNC", False):
-            _run_import()
-            result = _cache.get(f"import_result_{imp.id}") or {}
+            result = _execute_import_job(
+                imp.id, mapping, transform_rules, constants, save_profile, warehouse_id,
+            )
             if result.get("ok"):
                 return Response(result)
             return Response(
                 {"error": result.get("error") or "import failed"}, status=500)
 
-        threading.Thread(
-            target=_run_import_bg, name=f"pricelist-import-{imp.id}", daemon=True,
-        ).start()
+        # Прод — фоновая Celery-задача. Если брокер недоступен — fallback инлайн
+        # (хуже для UX на больших файлах, но импорт не теряется).
+        try:
+            from assistant.tasks import run_pricelist_import
+            run_pricelist_import.delay(
+                imp.id, mapping, transform_rules, constants, save_profile, warehouse_id,
+            )
+        except Exception:
+            logging.getLogger("pricelist").exception(
+                "Celery dispatch failed — inline fallback for import_id=%s", imp.id)
+            result = _execute_import_job(
+                imp.id, mapping, transform_rules, constants, save_profile, warehouse_id,
+            )
+            if result.get("ok"):
+                return Response(result)
+            return Response(
+                {"error": result.get("error") or "import failed"}, status=500)
+
         return Response({
             "ok": True, "status": "running", "import_id": imp.id,
         }, status=202)
@@ -3175,9 +3203,12 @@ class PricelistImportProgressView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, import_id):
-        from django.core.cache import cache
+        # Общий Redis-кэш: коммит исполняется в Celery-воркере (др. процесс),
+        # прогресс/результат там же — LocMem (per-process) их бы не связал.
+        from django.core.cache import caches
 
         from marketplace.models import PricelistImport
+        cache = caches["pricelist"]
         try:
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)
         except PricelistImport.DoesNotExist:
