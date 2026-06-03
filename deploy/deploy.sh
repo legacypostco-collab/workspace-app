@@ -40,7 +40,9 @@ DRY_RUN=0
 # ── Pre-flight: validate .env ────────────────────────────
 log "━━━ 0. pre-flight checks ━━━"
 [[ -f .env ]] || die ".env missing"
-. <(grep -E '^[A-Z_]+=' .env | sed 's/=.*$//' | awk '{print $1"=\"${"$1":-}\""}')
+# Загружаем ЗНАЧЕНИЯ из .env (а не только имена) — иначе проверки ниже всегда
+# видят пустые переменные и падают на «SECRET_KEY required».
+set -a; . ./.env; set +a
 [[ -n "${SECRET_KEY:-}" ]]              || die ".env: SECRET_KEY required"
 [[ -n "${DATABASE_URL:-}" ]]            || die ".env: DATABASE_URL required"
 [[ -n "${PAYMENT_CALLBACK_SECRET:-}" ]] || die ".env: PAYMENT_CALLBACK_SECRET required (P0-2)"
