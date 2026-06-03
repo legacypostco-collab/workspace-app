@@ -2036,6 +2036,7 @@ def _execute_import_job(import_id, mapping, transform_rules, constants,
     from django.utils import timezone as _tz
 
     from marketplace.models import (
+        Part,
         PricelistImport,
         PricelistMapping,
         SellerWarehouse,
@@ -2050,6 +2051,18 @@ def _execute_import_job(import_id, mapping, transform_rules, constants,
             warehouse = SellerWarehouse.objects.get(id=warehouse_id)
         except SellerWarehouse.DoesNotExist:
             warehouse = None
+
+    def _drop_empty_warehouse():
+        # Склад создаётся ДО импорта (_resolve_warehouse_for_import). Если
+        # импорт упал или не дал ни одной позиции — пустой склад не должен
+        # оставаться (бизнес-правило: пустых складов быть не может). Удаляем
+        # ТОЛЬКО если он реально пуст (мог быть переиспользован — тогда в нём
+        # есть чужие позиции, его не трогаем).
+        try:
+            if warehouse and not Part.objects.filter(warehouse=warehouse).exists():
+                warehouse.delete()
+        except Exception:
+            pass
 
     try:
         with imp.file_obj.open("rb") as fh:
@@ -2149,6 +2162,9 @@ def _execute_import_job(import_id, mapping, transform_rules, constants,
             "price_conflicts": dedupe_stats.get("price_conflicts", 0),
             "unique_oems": dedupe_stats.get("unique_oems", 0),
         }
+        # Если импорт не дал ни одной позиции — не оставляем пустой склад.
+        if not imported:
+            _drop_empty_warehouse()
         plc.set(f"import_result_{imp.id}", result, 3600)
         plc.set(f"import_progress_{imp.id}", {
             "current": imported, "total": imported,
@@ -2164,6 +2180,8 @@ def _execute_import_job(import_id, mapping, transform_rules, constants,
             imp.save(update_fields=["status", "error_details"])
         except Exception:
             pass
+        # Импорт упал → пустой склад-husk удаляем (пустых складов быть не должно).
+        _drop_empty_warehouse()
         err = {"ok": False, "import_id": import_id, "error": str(e)[:300]}
         plc.set(f"import_result_{import_id}", err, 3600)
         plc.set(f"import_progress_{import_id}", {
