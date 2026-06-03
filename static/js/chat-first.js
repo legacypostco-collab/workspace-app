@@ -2071,12 +2071,13 @@
         ? 'null' : Number(d.warehouse_id);
       const curQ = (d.filter && d.filter.q) ? esc(d.filter.q) : '';
       const searchBar = `<div class="cat-search" style="display:flex;gap:8px;margin:4px 0 12px;flex-wrap:wrap;">
-        <input type="text" class="cat-search-input" value="${curQ}" placeholder="🔎 Поиск по артикулу / OEM…"
+        <input type="text" class="cat-search-input" value="${curQ}" placeholder="🔎 Поиск по артикулу / названию — фильтрует при наборе…"
           style="flex:1;min-width:180px;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:rgba(128,128,128,0.08);color:inherit;font-size:14px;"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();window.__catalogSearch(this,${whArg});}">
-        <button class="cat-search-btn" onclick="window.__catalogSearch(this.parentNode.querySelector('.cat-search-input'),${whArg});"
+          oninput="window.__catalogLiveSearch && window.__catalogLiveSearch(this,${whArg})"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();window.__catalogLiveSearch&&window.__catalogLiveSearch(this,${whArg},true);}">
+        <button class="cat-search-btn" onclick="window.__catalogLiveSearch&&window.__catalogLiveSearch(this.parentNode.querySelector('.cat-search-input'),${whArg},true);"
           style="padding:8px 16px;border-radius:8px;border:none;background:#2D7A3E;color:#fff;font-size:14px;cursor:pointer;white-space:nowrap;">Найти</button>
-        ${curQ ? `<button class="cat-search-clear" title="Сбросить поиск" onclick="window.__catalogSearch(null,${whArg},true);"
+        ${curQ ? `<button class="cat-search-clear" title="Сбросить поиск" onclick="var i=this.parentNode.querySelector('.cat-search-input');i.value='';window.__catalogLiveSearch&&window.__catalogLiveSearch(i,${whArg},true);"
           style="padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:transparent;color:inherit;cursor:pointer;">✕</button>` : ''}
       </div>`;
       return `<div class="card cat-card">
@@ -3973,13 +3974,56 @@
 
   // Поиск по каталогу (по артикулу/OEM). Вызывается из поля в карточке catalog.
   // warehouseId: число (склад), 0 (без склада), null (искать по всем складам).
-  window.__catalogSearch = function(inp, warehouseId, clear) {
-    var q = clear ? '' : ((inp && inp.value || '').trim());
-    var params = { q: q };
-    if (warehouseId !== null && warehouseId !== undefined && warehouseId !== '') {
-      params.warehouse_id = warehouseId;
-    }
-    window.quickAction && window.quickAction('seller_catalog', params);
+  // Живой поиск по каталогу: фильтрует ПРИ НАБОРЕ (debounce 400мс) и обновляет
+  // список ВНУТРИ текущей карточки — без новых сообщений в чате, поле сохраняет
+  // фокус. immediate=true (Enter/кнопка) — без задержки.
+  var _catSearchTimer = null;
+  window.__catalogLiveSearch = function(inp, warehouseId, immediate) {
+    if (!inp) return;
+    var card = inp.closest('.cat-card');
+    if (!card) return;
+    var q = (inp.value || '').trim();
+    clearTimeout(_catSearchTimer);
+    var run = function() {
+      var params = { q: q };
+      if (warehouseId !== null && warehouseId !== undefined && warehouseId !== '') {
+        params.warehouse_id = warehouseId;
+      }
+      fetch('/api/assistant/action/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'seller_catalog', params: params }),
+      }).then(function(r){ return r.json(); }).then(function(resp){
+        // Гонка: пока ждали ответ, юзер мог изменить запрос — игнорим устаревший.
+        if ((inp.value || '').trim() !== q) return;
+        var cards = (resp && resp.cards) || [];
+        var cat = cards.find(function(c){ return c.type === 'catalog'; });
+        var rowsEl = card.querySelector('.cat-rows');
+        if (!rowsEl) return;
+        if (cat) {
+          var tmp = document.createElement('div');
+          tmp.innerHTML = window.__cardRenderers.catalog(cat.data);
+          var nr = tmp.querySelector('.cat-rows');
+          rowsEl.innerHTML = nr ? nr.innerHTML : '';
+          // обновляем счётчик в заголовке
+          var title = card.querySelector('.card-title');
+          var oldC = card.querySelector('.cat-counter');
+          if (oldC) oldC.remove();
+          var nc = tmp.querySelector('.cat-counter');
+          if (nc && title) title.insertAdjacentHTML('beforeend', ' ' + nc.outerHTML);
+        } else if (q) {
+          rowsEl.innerHTML = '<div class="cat-empty"></div>';
+          rowsEl.firstChild.textContent = 'Ничего не найдено по запросу «' + q + '»';
+        }
+        // q === '' и нет catalog-карточки (бэкенд отдал список складов) — не трогаем.
+      }).catch(function(){});
+    };
+    if (immediate) { run(); } else { _catSearchTimer = setTimeout(run, 400); }
+  };
+  // Совместимость со старым именем (на случай stale-разметки).
+  window.__catalogSearch = function(inp, warehouseId) {
+    return window.__catalogLiveSearch(inp, warehouseId, true);
   };
 
   // S3 — whitelist допустимых типов карточек. Источник истины: ключи `renderers`.
