@@ -2472,58 +2472,55 @@ def rfq_detail(params, user, role):
 
 @register("seller_drawings")
 def seller_drawings(params, user, role):
-    """Список чертежей по товарам seller'а."""
-    from marketplace.models import Drawing, Part
-    user = _effective_seller(user)
+    """Чертежи, загруженные пользователем (продавцом ИЛИ покупателем).
 
-    # FIX: subquery вместо materialized ID-листа — иначе SQLite падает
-    # на «too many SQL variables» при каталоге >1000 позиций (лимит ~999).
-    qs = Drawing.objects.filter(part__seller=user).select_related("part")[:20]
-    items = list(qs)
+    Модель: чертежи ПРИВАТНЫ — видны только владельцу и оператору (при
+    согласовании сделки). Покупатель и продавец чертежи друг другу не
+    показывают; оператор сверяет «что нужно» (от покупателя) и «что
+    предлагают» (от продавца) → точность поставки.
+    """
+    from marketplace.models import Drawing
+    owner = _effective_seller(user)
+    # По ВЛАДЕЛЬЦУ (поле seller = автор), а не по part__seller — иначе
+    # непривязанные и покупательские чертежи не показывались бы.
+    items = list(
+        Drawing.objects.filter(seller=owner).select_related("part")
+        .order_by("-created_at")[:20]
+    )
+    _is_buyer = (role or "").startswith("buyer")
+    _what = "что вам нужно" if _is_buyer else "что вы предлагаете"
     if not items:
         return ActionResult(
-            text="Чертежей пока нет. Прикрепите файлы к товарам — они помогают покупателям точнее искать.",
+            text=(f"📐 Чертежей пока нет. Загрузите чертёж ({_what}) — оператор "
+                  "сверит его при согласовании сделки. Это повышает точность поставки."),
             actions=[
-                {"label": "Каталог", "action": "seller_catalog", "params": {}},
-                {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+                {"label": "📤 Загрузить чертёж", "action": "upload_drawing", "params": {}},
+                {"label": "🏠 Главная", "action": "go_home", "params": {}},
             ],
         )
 
     _ST = {"draft": "черновик", "on_review": "на проверке", "approved": "✓ одобрен",
            "rejected": "✗ отклонён", "archived": "архив"}
-    _ACC = {"private": "🔒 приватный", "for_sale": "💳 по оплате", "rewardable": "🎁 открытый"}
     rows = [{
-        "id": d.id,
-        "title": (getattr(d, "title", None) or f"Чертёж #{d.id}"),
-        "part": d.part.oem_number if getattr(d, "part", None) else "—",
-        "created_at": d.created_at.strftime("%d.%m.%Y"),
-        "revision": d.revision or "A",
-        "status": _ST.get(d.status, d.status or ""),
-        "access": _ACC.get(d.access_level, d.access_level or ""),
-        "fmt": (d.file_format or "").upper(),
-        # Владелец смотрит свой файл напрямую; доступ под аудитом — через
-        # /api/assistant/drawings/<id>/file/ (для покупателей).
+        "title": f"{(getattr(d, 'title', None) or f'Чертёж #{d.id}')} · ред. {d.revision or 'A'}",
+        "subtitle": (
+            f"{(d.file_format or '').upper()} · "
+            + (f"арт. {d.oem_number}" if d.oem_number
+               else (f"товар {d.part.oem_number}" if d.part_id else "без привязки"))
+            + f" · {_ST.get(d.status, d.status or '')} · {d.created_at.strftime('%d.%m.%Y')}"
+        ),
         "url": d.file_url or None,
     } for d in items]
 
     return ActionResult(
-        text=f"📐 Чертежи: {len(items)} файлов по вашим товарам.",
-        cards=[{
-            "type": "list",
-            "data": {
-                "title": "Чертежи",
-                "rows": [{
-                    "title": f"{r['title']} · ред. {r['revision']}",
-                    "subtitle": f"{r['fmt']} · товар {r['part']} · {r['status']} · {r['access']} · {r['created_at']}",
-                    "url": r["url"],
-                } for r in rows],
-            },
-        }],
+        text=(f"📐 Ваши чертежи: {len(items)}. Видны только вам и оператору "
+              "(при согласовании сделки) — другая сторона их не видит."),
+        cards=[{"type": "list", "data": {"title": "Мои чертежи", "rows": rows}}],
         actions=[
             {"label": "📤 Загрузить чертёж", "action": "upload_drawing", "params": {}},
-            {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
+            {"label": "🏠 Главная", "action": "go_home", "params": {}},
         ],
-        suggestions=["Загрузить чертёж", "По какому товару чертёж?"],
+        suggestions=["Загрузить чертёж", "Зачем чертёж оператору?"],
     )
 
 
@@ -2536,8 +2533,9 @@ def upload_drawing(params, user, role):
         text=(
             "📐 Загрузка чертежа.\n"
             "Форматы: PDF, DWG, DXF, STEP, IGES, STL, PNG, JPG (до 50 МБ). "
-            "При загрузке можно указать артикул (OEM) — чертёж привяжется к "
-            "товару. После загрузки он уйдёт на модерацию оператору."
+            "Укажите артикул (OEM) нужной детали — оператор сверит ваш чертёж "
+            "при согласовании сделки (это повышает точность поставки). Чертёж "
+            "приватный: его видите только вы и оператор."
         ),
         cards=[{"type": "int_methods", "data": {
             "title": "Загрузить чертёж",

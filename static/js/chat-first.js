@@ -5773,6 +5773,7 @@
       subKey:   'welcome.buyer.subtitle',
       pills: [
         {tkey:'pill.my_orders',     emoji:'📦', action:'get_my_deals',   params:{}},
+        {tkey:'pill.drawings',      emoji:'📐', action:'seller_drawings', params:{}},
         {tkey:'pill.deposit',       emoji:'💰', action:'get_balance',    params:{}},
         {tkey:'pill.auto_discount', emoji:'🎯', action:'get_buyer_discount', params:{}},
         {tkey:'pill.support',        emoji:'🎧', action:'support_home',  params:{}},

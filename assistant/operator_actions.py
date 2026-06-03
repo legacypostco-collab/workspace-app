@@ -1162,6 +1162,32 @@ def op_order_detail(params, user, role):
     docs_present = sum(1 for r in docs_rows if r["badge"]["label"] == "ЕСТЬ")
     docs_missing = sum(1 for r in docs_rows if r["badge"]["label"] == "НЕТ")
 
+    # ── 📐 Чертежи сделки (сверка оператором → точность поставки) ──
+    # Оператор видит ОБА: «что нужно» (от покупателя) и «что предлагают» (от
+    # продавца). Стороны друг другу чертежи не показывают — только оператор.
+    from django.db.models import Q as _Qd
+
+    from marketplace.models import Drawing
+    _oems = [o for o in OrderItem.objects.filter(order=order)
+             .values_list("part__oem_number", flat=True) if o]
+    _DST = {"draft": "черновик", "on_review": "на проверке", "approved": "✓ одобрен",
+            "rejected": "✗ отклонён", "archived": "архив"}
+    drawing_rows = []
+    if _oems:
+        _buyer_id = getattr(order, "buyer_id", None)
+        for d in (Drawing.objects
+                  .filter(_Qd(oem_number__in=_oems) | _Qd(part__oem_number__in=_oems))
+                  .select_related("seller", "part").order_by("-created_at")[:30]):
+            who = "🛒 покупатель" if (_buyer_id and d.seller_id == _buyer_id) else "🏭 продавец"
+            oem = d.oem_number or (d.part.oem_number if d.part_id else "—")
+            drawing_rows.append({
+                "title": f"{who} · {(d.title or 'Чертёж')[:50]} · ред. {d.revision or 'A'}",
+                "subtitle": (f"арт. {oem} · {(d.file_format or '').upper()} · "
+                             f"{_DST.get(d.status, d.status or '')} · {d.created_at:%d.%m.%Y}"),
+                "url": d.file_url or None,
+                "badge": {"label": (d.file_format or "").upper() or "—", "tone": "info"},
+            })
+
     return ActionResult(
         text=(
             f"Заказ #{order.id} · {order.customer_name}\n"
@@ -1177,6 +1203,13 @@ def op_order_detail(params, user, role):
             {"type": "list", "data": {
                 "title": f"📦 Состав заказа · {len(composition_rows)} поз. · ${(order.total_amount or 0):,.0f}",
                 "items": composition_rows or [{"title": "Нет позиций"}],
+            }},
+            # ── 📐 Чертежи сделки (сверка покупатель↔продавец → точность поставки) ──
+            {"type": "list", "data": {
+                "title": f"📐 Чертежи сделки · {len(drawing_rows)} (сверка → точность поставки)",
+                "items": drawing_rows or [{
+                    "title": "Чертежей нет",
+                    "subtitle": "Стороны не приложили чертежи к артикулам этого заказа."}],
             }},
             # ── Маршрут и логистика ──
             {"type": "list", "data": {

@@ -1444,9 +1444,11 @@ class DrawingUploadView(APIView):
         from marketplace.models import Drawing, Part
 
         role = detect_user_role(request.user, request=request)
-        if role != "seller":
+        # Загружают и продавцы (что предлагают), и покупатели (что нужно).
+        # Чертежи приватны: видны только владельцу и оператору (при согласовании).
+        if role not in ("seller", "buyer"):
             return Response(
-                {"ok": False, "error": "Загрузка чертежей доступна продавцам."},
+                {"ok": False, "error": "Загрузка чертежей доступна продавцам и покупателям."},
                 status=403)
 
         f = request.FILES.get("file")
