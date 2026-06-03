@@ -39,7 +39,7 @@ from typing import Any
 
 from django.conf import settings
 from django.core.files.base import ContentFile
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.text import slugify
 from rest_framework.parsers import MultiPartParser
@@ -1371,10 +1371,23 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 key = brand_name.lower()
                 brand = brand_cache.get(key)
                 if not brand:
-                    brand = Brand.objects.create(
-                        name=brand_name[:200],
-                        slug=slugify(brand_name)[:200] or generic_brand.slug,
-                    )
+                    # SLUG — unique-поле, а slugify нормализует сильнее, чем
+                    # .lower() (убирает ®, точки, спецсимволы), поэтому разные
+                    # имена («Cummins», «Cummins®», «CUMMINS.») дают один slug.
+                    # Раньше это падало на duplicate key marketplace_brand_slug.
+                    # get_or_create по slug берёт существующий бренд; fallback
+                    # ловит и прочие коллизии (напр. unique по name).
+                    bslug = slugify(brand_name)[:200] or generic_brand.slug
+                    try:
+                        brand, _ = Brand.objects.get_or_create(
+                            slug=bslug, defaults={"name": brand_name[:200]},
+                        )
+                    except IntegrityError:
+                        brand = (
+                            Brand.objects.filter(slug=bslug).first()
+                            or Brand.objects.filter(name__iexact=brand_name).first()
+                            or generic_brand
+                        )
                     brand_cache[key] = brand
             elif filename_brand:
                 # Колонка Brand пустая, но имя файла подсказывает бренд
@@ -2177,7 +2190,9 @@ class PricelistCommitView(APIView):
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)
         except PricelistImport.DoesNotExist:
             return Response({"error": "import not found"}, status=404)
-        if imp.status != "preview":
+        # Разрешаем повтор после неудачного импорта (failed) — напр. после фикса
+        # бага: импорт идемпотентен (upsert по seller+oem), повтор безопасен.
+        if imp.status not in ("preview", "failed"):
             return Response({"error": f"already in status {imp.status}"}, status=400)
 
         mapping = request.data.get("mapping") or {}
