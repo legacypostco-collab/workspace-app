@@ -173,7 +173,7 @@ for path in "/" "/robots.txt" "/sitemap.xml"; do
 done
 
 # Security headers smoke
-csp=$(curl -sI "$HEALTH_URL" | grep -ic '^content-security-policy:')
+csp=$(curl -sI "$HEALTH_URL" | grep -ic '^content-security-policy:' || true)
 [[ "$csp" -ge 1 ]] && log "  ✓ CSP present" || log "  ⚠ CSP missing"
 
 log "━━━ 10. daily DB backup cron ━━━"
