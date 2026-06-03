@@ -176,6 +176,22 @@ done
 csp=$(curl -sI "$HEALTH_URL" | grep -ic '^content-security-policy:')
 [[ "$csp" -ge 1 ]] && log "  ✓ CSP present" || log "  ⚠ CSP missing"
 
+log "━━━ 10. daily DB backup cron ━━━"
+# Ежедневный бэкап БД (03:30) с ротацией — обязательная страховка для prod.
+chmod +x deploy/backup.sh 2>/dev/null || true
+if [[ ! -f /etc/cron.d/consolidator-backup ]]; then
+    cat > /etc/cron.d/consolidator-backup <<'CRON'
+# Consolidator: ежедневный бэкап БД в 03:30, хранит 7 последних дампов
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+30 3 * * * root /var/www/workspace-app/deploy/backup.sh >> /var/log/consolidator-backup.log 2>&1
+CRON
+    chmod 0644 /etc/cron.d/consolidator-backup
+    log "  + установлен daily backup cron (03:30 · хранит 7)"
+else
+    log "  ✓ backup cron уже установлен"
+fi
+
 log "━━━ STATUS ━━━"
 systemctl --no-pager status daphne nginx 2>&1 | grep -E "(●|Active:|Main PID)" | head -10
 
