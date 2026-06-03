@@ -58,6 +58,8 @@ class Command(BaseCommand):
                             help="Удалить ранее созданные t* комплекты перед посевом")
         parser.add_argument("--force-prod", action="store_true",
                             help="Разрешить запуск при DEBUG=False (прод)")
+        parser.add_argument("--fixed", action="store_true",
+                            help="Детерминированные пароли TestNNCons26 (вместо случайных)")
         parser.add_argument("--out", default="tester_sets.csv")
 
     @transaction.atomic
@@ -213,7 +215,7 @@ class Command(BaseCommand):
         rows = []
         for i in range(1, N + 1):
             tp = f"{prefix}{i:02d}"
-            pw = _gen_password()
+            pw = f"Test{i:02d}Cons26" if opts["fixed"] else _gen_password()
             accts = []
             for role in ROLES:
                 for variant in VARIANTS:
