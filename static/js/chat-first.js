@@ -1359,10 +1359,23 @@
   };
 
   async function api(path, opts={}) {
-    const res = await fetch(path, {
+    const doFetch = () => fetch(path, {
       headers: {'Content-Type':'application/json','X-CSRFToken': csrf(), ...(opts.headers||{})},
       ...opts,
     });
+    let res;
+    try {
+      res = await doFetch();
+    } catch (e) {
+      // Сетевой сбой (TypeError «Failed to fetch») — частый при нестабильном
+      // канале браузер↔Cloudflare. Один тихий ретрай ТОЛЬКО для безопасных
+      // (idempotent) запросов: GET и HEAD. POST не ретраим — риск двойного
+      // выполнения (платёж/заказ/импорт).
+      const method = (opts.method || 'GET').toUpperCase();
+      if (method !== 'GET' && method !== 'HEAD') throw e;
+      await new Promise(r => setTimeout(r, 600));
+      res = await doFetch();
+    }
     if (!res.ok) throw new Error(`${path} → ${res.status}`);
     return res.json();
   }
@@ -5506,7 +5519,19 @@
     } catch(err) {
       if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
-      addMessage('assistant', '⚠️ ' + err.message);
+      // Сетевой сбой (обрыв канала браузер↔Cloudflare) — частый при
+      // нестабильной сети. POST не авто-ретраим (действие могло быть пишущим
+      // → риск двойного выполнения), но даём понятное сообщение + кнопку
+      // «Повторить» (один клик повторяет то же действие).
+      const _net = /Failed to fetch|NetworkError|network|load failed/i.test(
+        (err && err.message) || '');
+      if (_net) {
+        addMessage('assistant',
+          '⚠️ Соединение прервалось — нажмите «Повторить».',
+          [], [{action: action, params: params, label: '🔄 Повторить'}]);
+      } else {
+        addMessage('assistant', '⚠️ ' + err.message);
+      }
     } finally {
       _inflightActions.delete(key);
       _markBusy(srcEl, false);
