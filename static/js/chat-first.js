@@ -8913,6 +8913,20 @@
       console.warn('Init failed:', e);
       applyDefaultSidebar(false);
     }
+
+    // Keep-alive: держим HTTP(S)-соединение тёплым. Иначе после ~75с простоя
+    // (nginx keepalive_timeout) первый клик ловит холодный TLS-хэндшейк до
+    // Cloudflare — замеряли ~9с против ~0.6с на тёплом соединении. Лёгкий
+    // GET раз в 50с (только когда вкладка видима) переустанавливать соединение
+    // не даёт, и любой клик идёт по уже открытому каналу.
+    if (!window.__cfKeepAlive) {
+      window.__cfKeepAlive = setInterval(function() {
+        if (document.visibilityState !== 'visible') return;
+        fetch('/robots.txt', { cache: 'no-store', credentials: 'same-origin' })
+          .catch(function(){});
+      }, 50000);
+    }
+
     // Conversation resolution priority — симметричная sticky-логика:
     //   • Был на welcome → F5 → welcome (sessionStorage.cf_on_welcome=1)
     //   • Был в conv     → F5 → та же conv (sessionStorage.cf_active_conv=ID)
