@@ -5502,6 +5502,16 @@
   // Удобно для CTA с лендинга: "Стать поставщиком" → сразу форма регистрации в чате.
   (function autoTriggerFromUrl() {
     const p = new URLSearchParams(window.location.search);
+    // Ссылка-приглашение в команду компании: /chat/?join_team=<token>
+    const joinTeam = p.get('join_team');
+    if (joinTeam) {
+      history.replaceState(null, '', window.location.pathname);
+      setTimeout(() => {
+        try { window.quickAction('accept_team_invite', { token: joinTeam }); }
+        catch (e) { console.warn('join_team trigger failed', e); }
+      }, 500);
+      return;
+    }
     const a = p.get('action');
     if (!a) return;
     // Очищаем query чтобы при перезагрузке action не запускался повторно.

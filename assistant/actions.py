@@ -167,6 +167,7 @@ _SELLER_ONLY = [
     "product_detail", "import_pricelist_preview",
     "rfq_detail", "respond_rfq_form",
     "seller_drawings", "seller_team", "invite_team_member",
+    "accept_team_invite", "team_member", "team_disable", "team_enable", "team_set_role",
     "seller_integrations", "seller_reports",
     "seller_qr", "seller_logistics", "seller_negotiations",
     "price_quote", "audit_log", "recent_activity", "generate_qr", "notifications",

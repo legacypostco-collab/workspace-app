@@ -35,6 +35,18 @@ def _effective_seller(user):
 
     from marketplace.models import OrderItem
 
+    # ── Командный доступ: активный сотрудник видит данные СВОЕЙ компании ──
+    # (руководитель приглашает сотрудников → TeamMember; они работают с теми же
+    #  товарами/заказами/КП, что и компания-владелец).
+    try:
+        from marketplace.models import TeamMember
+        _tm = (TeamMember.objects.filter(user=user, status="active")
+               .exclude(owner=user).select_related("owner").first())
+        if _tm is not None:
+            return _tm.owner
+    except Exception:
+        pass
+
     username = (user.username or "")
     if username == "demo_seller":
         return user
@@ -2505,72 +2517,322 @@ def seller_drawings(params, user, role):
 # 5. Команда
 # ══════════════════════════════════════════════════════════
 
+TEAM_ROLE_LABELS = {
+    "admin": "Администратор",
+    "manager": "Менеджер",
+    "logist": "Логист",
+    "finance": "Финансист",
+    "viewer": "Только просмотр",
+}
+TEAM_ROLE_HINT = {
+    "admin": "всё + управление командой",
+    "manager": "каталог, заказы, КП",
+    "logist": "логистика, отгрузки, документы",
+    "finance": "платежи, инвойсы, финансы",
+    "viewer": "только просмотр",
+}
+TEAM_INVITE_TTL_DAYS = 7
+_TEAM_ROLE_SYNONYMS = {
+    "sales": "manager", "менеджер": "manager", "продажи": "manager",
+    "логист": "logist", "логистика": "logist",
+    "финансист": "finance", "финансы": "finance",
+    "админ": "admin", "администратор": "admin", "директор": "admin",
+    "просмотр": "viewer", "наблюдатель": "viewer",
+}
+
+
+def _company_owner(user):
+    """User-владелец компании для данного юзера (он сам, если он не сотрудник)."""
+    from marketplace.models import TeamMember
+    try:
+        m = (TeamMember.objects.filter(user=user, status="active")
+             .exclude(owner=user).select_related("owner").first())
+        if m:
+            return m.owner
+    except Exception:
+        pass
+    return user
+
+
+def _team_role_of(user):
+    """Роль юзера: 'owner' (руководитель компании) или роль TeamMember."""
+    from marketplace.models import TeamMember
+    try:
+        m = TeamMember.objects.filter(user=user, status="active").first()
+        if m and m.owner_id != user.id:
+            return m.role
+    except Exception:
+        pass
+    return "owner"
+
+
+def _can_manage_team(user):
+    return _team_role_of(user) in ("owner", "admin")
+
+
+def _invite_base_url():
+    from django.conf import settings
+    base = (getattr(settings, "SITE_URL", "") or "").strip().rstrip("/")
+    return base or "https://consolidatorparts.com"
+
+
+def _company_name_of(owner):
+    from marketplace.models import UserProfile
+    try:
+        return UserProfile.objects.filter(user=owner).values_list("company_name", flat=True).first() or ""
+    except Exception:
+        return ""
+
+
 @register("seller_team")
 def seller_team(params, user, role):
-    """Список членов команды продавца (TeamMember)."""
-    from marketplace.models import TeamMember
-    user = _effective_seller(user)
-    qs = TeamMember.objects.filter(owner=user).select_related("user") if hasattr(TeamMember, "owner") else TeamMember.objects.none()
-    items = list(qs[:30])
+    """Команда компании: сотрудники, роли, статусы. Управление — у руководителя/админа."""
+    from marketplace.models import TeamMember, UserProfile
+    owner = _company_owner(user)
+    can_manage = _team_role_of(user) in ("owner", "admin")
+    if user.id == owner.id:
+        UserProfile.objects.filter(user=owner).update(can_manage_team=True)
 
-    rows = []
-    for m in items:
-        u = getattr(m, "user", None)
-        name = (u.get_full_name() if u else "") or (u.username if u else "—")
-        dept = getattr(m, "department", None) or getattr(m, "role", "") or ""
-        active = getattr(m, "is_active", True)
-        rows.append({
+    members = list(TeamMember.objects.filter(owner=owner).select_related("user")[:50])
+    company = _company_name_of(owner)
+
+    rows = [{
+        "title": "👑 " + (owner.get_full_name() or owner.username),
+        "subtitle": "Руководитель компании" + (" · вы" if user.id == owner.id else ""),
+    }]
+    _st_label = {"invited": "приглашён — ждёт принятия", "disabled": "отключён", "active": "активен"}
+    for m in members:
+        u = m.user
+        name = (u.get_full_name() if u else "") or (u.username if u else "") or m.invited_email
+        row = {
             "title": name,
-            "subtitle": f"{dept} · {'активен' if active else 'отключён'}",
-        })
-    if not rows:
-        rows = [{"title": user.get_full_name() or user.username, "subtitle": "Владелец · вы"}]
+            "subtitle": f"{TEAM_ROLE_LABELS.get(m.role, m.role)} · {_st_label.get(m.status, m.status)}",
+        }
+        if can_manage:
+            row["action"] = "team_member"
+            row["params"] = {"member_id": m.id}
+        rows.append(row)
 
+    actions = []
+    if can_manage:
+        actions.append({"label": "➕ Пригласить сотрудника", "action": "invite_team_member", "params": {}})
+    actions += [
+        {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
+        {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+    ]
+    head = (f"👥 Команда компании{(' «' + company + '»') if company else ''}: "
+            f"{len(members)} + руководитель." if can_manage else "👥 Команда вашей компании.")
     return ActionResult(
-        text=f"👥 Команда: {len(rows)} {'участник' if len(rows)==1 else 'участников'}.",
-        cards=[{
-            "type": "list",
-            "data": {"title": "Команда", "rows": rows},
-        }],
-        actions=[
-            {"label": "➕ Пригласить", "action": "invite_team_member", "params": {}},
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
-        ],
-        suggestions=["Пригласить менеджера", "Дать права логиста"],
+        text=head,
+        cards=[{"type": "list", "data": {"title": "Команда компании", "rows": rows}}],
+        actions=actions,
+        suggestions=(["Пригласить менеджера", "Пригласить логиста"] if can_manage else []),
     )
 
 
 @register("invite_team_member")
 def invite_team_member(params, user, role):
-    """Пригласить участника команды по email (форма)."""
-    email = (params.get("email") or "").strip()
+    """Пригласить сотрудника по email → ссылка-приглашение (действует TTL дней)."""
+    import secrets
+    from django.utils import timezone as _tz
+    from marketplace.models import TeamMember
+
+    if not _can_manage_team(user):
+        return ActionResult(text="Приглашать сотрудников может только руководитель компании или администратор.")
+
+    email = (params.get("email") or "").strip().lower()
+    role_in = (params.get("role") or "manager").strip().lower()
+    role_in = _TEAM_ROLE_SYNONYMS.get(role_in, role_in)
+    if role_in not in TEAM_ROLE_LABELS:
+        role_in = "manager"
+
     if not email:
         return ActionResult(
-            text="Пригласить нового участника команды.",
+            text="Пригласить сотрудника в компанию. Он получит ссылку и доступ к данным компании.",
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": "👥 Приглашение в команду",
+                    "title": "👥 Пригласить сотрудника в компанию",
                     "submit_action": "invite_team_member",
-                    "submit_label": "Отправить приглашение",
+                    "submit_label": "Создать приглашение",
                     "fields": [
-                        {"name": "email", "label": "Email", "type": "email",
-                         "required": True, "placeholder": "manager@company.com"},
-                        {"name": "role", "label": "Роль",
-                         "placeholder": "manager / sales / logist / viewer",
-                         "default": "manager"},
+                        {"name": "email", "label": "Email сотрудника", "type": "email",
+                         "required": True, "placeholder": "ivanov@company.com"},
+                        {"name": "role", "label": "Роль (manager / logist / finance / admin / viewer)",
+                         "placeholder": "manager", "default": "manager"},
                     ],
                     "fixed_params": {},
                 },
             }],
         )
-    return ActionResult(
-        text=(
-            f"✓ Приглашение отправлено на {email}.\n"
-            f"Когда получатель зарегистрируется, он попадёт в вашу команду."
-        ),
-        actions=[{"label": "👥 Команда", "action": "seller_team", "params": {}}],
+
+    owner = _company_owner(user)
+    token = secrets.token_urlsafe(24)
+    tm, created = TeamMember.objects.get_or_create(
+        owner=owner, invited_email=email,
+        defaults={"role": role_in, "status": "invited", "invite_token": token, "invited_at": _tz.now()},
     )
+    if not created:
+        tm.role = role_in
+        tm.invite_token = token
+        if tm.status != "active":
+            tm.status = "invited"
+        tm.invited_at = _tz.now()
+        tm.save(update_fields=["role", "invite_token", "status", "invited_at"])
+
+    link = f"{_invite_base_url()}/chat/?join_team={token}"
+    rlabel = TEAM_ROLE_LABELS.get(role_in, role_in)
+    return ActionResult(
+        text=(f"✓ Приглашение для {email} ({rlabel}) создано.\n"
+              f"Отправьте сотруднику ссылку — действует {TEAM_INVITE_TTL_DAYS} дней:\n{link}\n\n"
+              f"Он откроет ссылку, войдёт или зарегистрируется и получит доступ к данным компании."),
+        actions=[
+            {"label": "👥 К команде", "action": "seller_team", "params": {}},
+            {"label": "➕ Ещё приглашение", "action": "invite_team_member", "params": {}},
+        ],
+    )
+
+
+@register("accept_team_invite")
+def accept_team_invite(params, user, role):
+    """Принять приглашение в команду по токену из ссылки ?join_team=…"""
+    from datetime import timedelta
+    from django.utils import timezone as _tz
+    from marketplace.models import TeamMember, UserProfile
+
+    token = (params.get("token") or params.get("join_team") or "").strip()
+    if not token:
+        return ActionResult(text="Ссылка-приглашение недействительна (нет токена).")
+
+    tm = TeamMember.objects.filter(invite_token=token).select_related("owner").first()
+    if not tm or tm.status == "disabled":
+        return ActionResult(text="Приглашение не найдено или отозвано. Попросите руководителя выслать новое.")
+    if tm.invited_at and tm.invited_at < _tz.now() - timedelta(days=TEAM_INVITE_TTL_DAYS):
+        return ActionResult(text=f"Срок действия приглашения истёк ({TEAM_INVITE_TTL_DAYS} дней). Попросите руководителя выслать новое.")
+
+    if not getattr(user, "is_authenticated", False):
+        return ActionResult(
+            text="Чтобы принять приглашение в команду, войдите или зарегистрируйтесь — затем снова откройте ссылку из письма.",
+            actions=[{"label": "Войти / зарегистрироваться", "action": "start_login", "params": {}}],
+        )
+
+    if tm.status == "active" and tm.user_id == user.id:
+        return ActionResult(text="Вы уже в команде этой компании.",
+                            actions=[{"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}}])
+
+    tm.user = user
+    tm.status = "active"
+    tm.accepted_at = _tz.now()
+    tm.save(update_fields=["user", "status", "accepted_at"])
+
+    prof, _ = UserProfile.objects.get_or_create(user=user, defaults={"role": "seller"})
+    if prof.role != "seller":
+        prof.role = "seller"
+        prof.save(update_fields=["role"])
+    UserProfile.objects.filter(user=user).update(can_manage_team=(tm.role == "admin"))
+
+    company = _company_name_of(tm.owner)
+    rlabel = TEAM_ROLE_LABELS.get(tm.role, tm.role)
+    return ActionResult(
+        text=(f"✅ Вы присоединились к команде компании{(' «' + company + '»') if company else ''} как {rlabel}.\n"
+              f"Теперь у вас доступ к данным компании: каталог, заказы, КП."),
+        actions=[
+            {"label": "📊 Дашборд продавца", "action": "seller_dashboard", "params": {}},
+            {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
+        ],
+    )
+
+
+@register("team_member")
+def team_member(params, user, role):
+    """Карточка сотрудника + управление (для руководителя/админа)."""
+    from marketplace.models import TeamMember
+    if not _can_manage_team(user):
+        return ActionResult(text="Управление командой доступно руководителю или администратору.")
+    owner = _company_owner(user)
+    try:
+        mid = int(params.get("member_id"))
+    except (TypeError, ValueError):
+        return ActionResult(text="Сотрудник не найден.")
+    tm = TeamMember.objects.filter(id=mid, owner=owner).select_related("user").first()
+    if not tm:
+        return ActionResult(text="Сотрудник не найден в вашей компании.")
+
+    u = tm.user
+    name = (u.get_full_name() if u else "") or (u.username if u else "") or tm.invited_email
+    rlabel = TEAM_ROLE_LABELS.get(tm.role, tm.role)
+    st = {"invited": "приглашён", "disabled": "отключён", "active": "активен"}.get(tm.status, tm.status)
+
+    if tm.status == "invited":
+        link = f"{_invite_base_url()}/chat/?join_team={tm.invite_token}"
+        return ActionResult(
+            text=f"👤 {name}\nРоль: {rlabel} · статус: {st}\n\nСсылка-приглашение (7 дней):\n{link}",
+            actions=[{"label": "👥 К команде", "action": "seller_team", "params": {}}],
+        )
+
+    acts = []
+    if tm.status == "active":
+        acts.append({"label": "🚫 Отключить доступ", "action": "team_disable", "params": {"member_id": tm.id}})
+    elif tm.status == "disabled":
+        acts.append({"label": "✅ Включить доступ", "action": "team_enable", "params": {"member_id": tm.id}})
+    for rk in ("manager", "logist", "finance", "admin", "viewer"):
+        if rk != tm.role:
+            acts.append({"label": f"Роль → {TEAM_ROLE_LABELS[rk]}", "action": "team_set_role",
+                         "params": {"member_id": tm.id, "role": rk}})
+    acts.append({"label": "👥 К команде", "action": "seller_team", "params": {}})
+    return ActionResult(text=f"👤 {name}\nРоль: {rlabel} · статус: {st}\nПрава: {TEAM_ROLE_HINT.get(tm.role, '')}",
+                        actions=acts)
+
+
+def _team_set_status(params, user, status, msg):
+    from marketplace.models import TeamMember
+    if not _can_manage_team(user):
+        return ActionResult(text="Недостаточно прав.")
+    owner = _company_owner(user)
+    try:
+        mid = int(params.get("member_id"))
+    except (TypeError, ValueError):
+        return ActionResult(text="Сотрудник не найден.")
+    tm = TeamMember.objects.filter(id=mid, owner=owner).first()
+    if not tm:
+        return ActionResult(text="Сотрудник не найден.")
+    tm.status = status
+    tm.save(update_fields=["status"])
+    return ActionResult(text=f"✓ {msg}", actions=[{"label": "👥 К команде", "action": "seller_team", "params": {}}])
+
+
+@register("team_disable")
+def team_disable(params, user, role):
+    return _team_set_status(params, user, "disabled", "Доступ сотрудника отключён.")
+
+
+@register("team_enable")
+def team_enable(params, user, role):
+    return _team_set_status(params, user, "active", "Доступ сотрудника восстановлен.")
+
+
+@register("team_set_role")
+def team_set_role(params, user, role):
+    from marketplace.models import TeamMember, UserProfile
+    if not _can_manage_team(user):
+        return ActionResult(text="Недостаточно прав.")
+    owner = _company_owner(user)
+    try:
+        mid = int(params.get("member_id"))
+    except (TypeError, ValueError):
+        return ActionResult(text="Сотрудник не найден.")
+    new_role = _TEAM_ROLE_SYNONYMS.get((params.get("role") or "").strip().lower(), (params.get("role") or "").strip().lower())
+    if new_role not in TEAM_ROLE_LABELS:
+        return ActionResult(text="Неизвестная роль.")
+    tm = TeamMember.objects.filter(id=mid, owner=owner).first()
+    if not tm:
+        return ActionResult(text="Сотрудник не найден.")
+    tm.role = new_role
+    tm.save(update_fields=["role"])
+    if tm.user_id:
+        UserProfile.objects.filter(user_id=tm.user_id).update(can_manage_team=(new_role == "admin"))
+    return ActionResult(text=f"✓ Роль изменена на «{TEAM_ROLE_LABELS[new_role]}».",
+                        actions=[{"label": "👥 К команде", "action": "seller_team", "params": {}}])
 
 
 # ══════════════════════════════════════════════════════════
