@@ -52,6 +52,31 @@ set -a; . ./.env; set +a
 [[ -n "${STRIPE_WEBHOOK_SECRET:-}" ]] || log "  ⚠ STRIPE_WEBHOOK_SECRET missing — webhook will reject in prod"
 log "  ✓ env validated"
 
+# ── 0b. OOM guard: swap (idempotent) ─────────────────────
+# На боксе 4GB RAM без swap daphne+postgres под нагрузкой ловят OOM-killer →
+# сервис «постоянно падает». 4G swap + низкий swappiness снимают краш-цикл.
+# Блок безопасен к повторному запуску и переживает ребут (fstab).
+log "━━━ 0b. OOM guard (swap) ━━━"
+if ! swapon --show=NAME --noheadings 2>/dev/null | grep -q '/swapfile'; then
+    if [[ ! -f /swapfile ]]; then
+        fallocate -l 4G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=4096 status=none
+        chmod 600 /swapfile
+        mkswap /swapfile >/dev/null 2>&1
+    fi
+    swapon /swapfile 2>/dev/null && log "  + swap включён (4G)" || log "  ⚠ swapon не удался"
+else
+    log "  ✓ swap уже активен"
+fi
+if ! grep -q '/swapfile' /etc/fstab 2>/dev/null; then
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    log "  + swap прописан в /etc/fstab (переживёт ребут)"
+fi
+if [[ "$(cat /proc/sys/vm/swappiness 2>/dev/null || echo 60)" != "10" ]]; then
+    sysctl -w vm.swappiness=10 >/dev/null 2>&1 || true
+    grep -q '^vm.swappiness' /etc/sysctl.conf 2>/dev/null || echo 'vm.swappiness=10' >> /etc/sysctl.conf
+    log "  + swappiness=10 (мягче вытесняет в swap)"
+fi
+
 log "━━━ 1. git pull origin $BRANCH ━━━"
 BEFORE=$(git rev-parse HEAD)
 git fetch origin
