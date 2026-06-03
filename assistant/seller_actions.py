@@ -2489,12 +2489,21 @@ def seller_drawings(params, user, role):
             ],
         )
 
+    _ST = {"draft": "черновик", "on_review": "на проверке", "approved": "✓ одобрен",
+           "rejected": "✗ отклонён", "archived": "архив"}
+    _ACC = {"private": "🔒 приватный", "for_sale": "💳 по оплате", "rewardable": "🎁 открытый"}
     rows = [{
         "id": d.id,
-        "title": getattr(d, "title", None) or f"Чертёж #{d.id}",
+        "title": (getattr(d, "title", None) or f"Чертёж #{d.id}"),
         "part": d.part.oem_number if getattr(d, "part", None) else "—",
-        "uploaded_at": d.uploaded_at.strftime("%d.%m.%Y") if hasattr(d, "uploaded_at") else "",
-        "url": d.file.url if getattr(d, "file", None) else None,
+        "created_at": d.created_at.strftime("%d.%m.%Y"),
+        "revision": d.revision or "A",
+        "status": _ST.get(d.status, d.status or ""),
+        "access": _ACC.get(d.access_level, d.access_level or ""),
+        "fmt": (d.file_format or "").upper(),
+        # Владелец смотрит свой файл напрямую; доступ под аудитом — через
+        # /api/assistant/drawings/<id>/file/ (для покупателей).
+        "url": d.file_url or None,
     } for d in items]
 
     return ActionResult(
@@ -2504,17 +2513,49 @@ def seller_drawings(params, user, role):
             "data": {
                 "title": "Чертежи",
                 "rows": [{
-                    "title": r["title"],
-                    "subtitle": f"К товару {r['part']} · загружен {r['uploaded_at']}",
+                    "title": f"{r['title']} · ред. {r['revision']}",
+                    "subtitle": f"{r['fmt']} · товар {r['part']} · {r['status']} · {r['access']} · {r['created_at']}",
                     "url": r["url"],
                 } for r in rows],
             },
         }],
         actions=[
-            {"label": "Каталог", "action": "seller_catalog", "params": {}},
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+            {"label": "📤 Загрузить чертёж", "action": "upload_drawing", "params": {}},
+            {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
         ],
-        suggestions=["Сколько чертежей?", "По какому товару чертёж?"],
+        suggestions=["Загрузить чертёж", "По какому товару чертёж?"],
+    )
+
+
+@register("upload_drawing")
+def upload_drawing(params, user, role):
+    """Карточка загрузки чертежа: кнопка выбора файла → __open_drawing_picker
+    (фронт открывает файл-пикер в режиме чертежа и шлёт на /drawings/upload/).
+    """
+    return ActionResult(
+        text=(
+            "📐 Загрузка чертежа.\n"
+            "Форматы: PDF, DWG, DXF, STEP, IGES, STL, PNG, JPG (до 50 МБ). "
+            "При загрузке можно указать артикул (OEM) — чертёж привяжется к "
+            "товару. После загрузки он уйдёт на модерацию оператору."
+        ),
+        cards=[{"type": "int_methods", "data": {
+            "title": "Загрузить чертёж",
+            "methods": [{
+                "icon": "📂",
+                "title": "Выбрать файл чертежа",
+                "status": "recommended",
+                "description": "PDF / DWG / DXF / STEP / IGES / STL / PNG / JPG, до 50 МБ. "
+                               "Можно указать артикул для привязки к товару.",
+                "primary": {"label": "📂 Выбрать файл",
+                            "action": "__open_drawing_picker", "params": {}},
+            }],
+        }}],
+        actions=[
+            {"label": "📐 Мои чертежи", "action": "seller_drawings", "params": {}},
+            {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
+        ],
+        suggestions=["Мои чертежи", "Зачем чертежи покупателю?"],
     )
 
 

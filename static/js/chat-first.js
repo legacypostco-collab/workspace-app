@@ -8770,6 +8770,16 @@
       }
       return;
     }
+    // Пикер чертежа: ставим режим, файл уйдёт в uploadDrawing (не в прайс).
+    if (action === '__open_drawing_picker') {
+      window.__drawingUpload = true;
+      const fi = $('fileInput');
+      if (fi) {
+        fi.accept = '.pdf,.dwg,.dxf,.step,.stp,.iges,.igs,.stl,.png,.jpg,.jpeg';
+        fi.click();
+      }
+      return;
+    }
     // Переключение роли — server-side action /api/assistant/role/
     if (action === '_switch_role') {
       const newRole = (params && params.role) || 'seller';
@@ -8792,12 +8802,60 @@
   // Универсальный handler выбора файла — file-picker или drag-n-drop
   function handleSelectedFile(file) {
     if (!file) return;
+    // Режим загрузки чертежа (выставлен __open_drawing_picker) — приоритетно.
+    if (window.__drawingUpload) {
+      window.__drawingUpload = false;
+      uploadDrawing(file);
+      return;
+    }
     // Seller'у грузим прайс, остальным — спецификацию
     const role = (state.config && state.config.role) || 'buyer';
     if (role === 'seller') {
       uploadPricelist(file);
     } else {
       uploadSpec(file);
+    }
+  }
+
+  // Загрузка чертежа продавцом → POST /api/assistant/drawings/upload/ (multipart).
+  async function uploadDrawing(file) {
+    showConv();
+    let oem = '';
+    try {
+      oem = (window.prompt(
+        'Артикул (OEM) для привязки к товару — или оставьте пустым:', '') || '').trim();
+    } catch(_) {}
+    const pending = addMessage('assistant', '📐 Загружаю чертёж «' + file.name + '»…');
+    const fd = new FormData();
+    fd.append('file', file);
+    if (oem) fd.append('oem_number', oem);
+    try {
+      const res = await fetch('/api/assistant/drawings/upload/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf() },
+        credentials: 'same-origin',
+        body: fd,
+      });
+      const data = await res.json();
+      if (pending && pending.parentNode) pending.remove();
+      if (!res.ok || !data.ok) {
+        addMessage('assistant', '⚠️ Не удалось загрузить чертёж: '
+          + (data.error || ('HTTP ' + res.status)));
+        return;
+      }
+      let msg = '✅ Чертёж «' + (data.title || file.name) + '» загружен ('
+        + (data.file_format || '').toUpperCase() + ').';
+      msg += data.linked_part
+        ? '\n🔗 Привязан к товару ' + data.linked_part + '.'
+        : '\nℹ️ Не привязан к товару (артикул не указан или не найден — можно указать позже).';
+      msg += '\n🛡 Статус: на модерации у оператора.';
+      addMessage('assistant', msg, [], [
+        { action: 'seller_drawings', label: '📐 Мои чертежи', params: {} },
+        { action: 'upload_drawing', label: '📤 Ещё чертёж', params: {} },
+      ]);
+    } catch (err) {
+      if (pending && pending.parentNode) pending.remove();
+      addMessage('assistant', '⚠️ Не удалось загрузить чертёж: ' + (err.message || err));
     }
   }
 

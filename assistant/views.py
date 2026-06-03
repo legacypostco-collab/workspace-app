@@ -1426,6 +1426,82 @@ class DrawingFileView(APIView):
         })
 
 
+class DrawingUploadView(APIView):
+    """POST /api/assistant/drawings/upload/  (multipart/form-data)
+
+    Продавец загружает чертёж: file (required) + опц. oem_number, title,
+    revision, access_level. Файл кладётся в media/drawings/<seller>/, создаётся
+    Drawing (status=draft → на модерацию оператору). Привязка к детали по OEM.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import os
+
+        from django.core.files.storage import default_storage
+        from django.utils.text import get_valid_filename
+
+        from marketplace.models import Drawing, Part
+
+        role = detect_user_role(request.user, request=request)
+        if role != "seller":
+            return Response(
+                {"ok": False, "error": "Загрузка чертежей доступна продавцам."},
+                status=403)
+
+        f = request.FILES.get("file")
+        if not f:
+            return Response({"ok": False, "error": "Файл не передан."}, status=400)
+        if f.size > 50 * 1024 * 1024:
+            return Response({"ok": False, "error": "Файл больше 50 МБ."}, status=400)
+
+        ext = (os.path.splitext(f.name)[1] or "").lstrip(".").lower()
+        FMT = {"pdf": "pdf", "dwg": "dwg", "dxf": "dxf", "step": "step",
+               "stp": "step", "iges": "iges", "igs": "iges", "stl": "stl",
+               "png": "png", "jpg": "jpg", "jpeg": "jpg"}
+        file_format = FMT.get(ext, "pdf")
+
+        safe_name = get_valid_filename(f.name)[:200] or "drawing"
+        path = default_storage.save(f"drawings/{request.user.id}/{safe_name}", f)
+        try:
+            file_url = default_storage.url(path)
+        except Exception:
+            file_url = f"/media/{path}"
+
+        oem = (request.data.get("oem_number") or "").strip()
+        part = None
+        if oem:
+            part = Part.objects.filter(
+                seller=request.user, oem_number__iexact=oem).first()
+
+        access_level = (request.data.get("access_level") or "private").strip()
+        if access_level not in ("private", "for_sale", "rewardable"):
+            access_level = "private"
+
+        d = Drawing.objects.create(
+            seller=request.user,
+            part=part,
+            title=((request.data.get("title") or "").strip()[:255] or f.name[:255]),
+            file_url=file_url,
+            file_name=f.name[:255],
+            file_size_kb=max(1, f.size // 1024),
+            file_format=file_format,
+            revision=((request.data.get("revision") or "A").strip()[:20] or "A"),
+            status="draft",
+            access_level=access_level,
+            oem_number=oem[:100],
+        )
+        return Response({
+            "ok": True,
+            "drawing_id": d.id,
+            "title": d.title,
+            "file_format": d.file_format,
+            "linked_part": (part.oem_number if part else None),
+            "access_level": d.access_level,
+            "status": d.status,
+        }, status=201)
+
+
 class NotificationListView(APIView):
     """GET /api/assistant/notifications/?unread=1&limit=20
 

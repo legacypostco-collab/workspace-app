@@ -166,7 +166,7 @@ _SELLER_ONLY = [
     "seller_catalog", "seller_warehouses", "toggle_product", "add_product", "edit_product",
     "product_detail", "import_pricelist_preview",
     "rfq_detail", "respond_rfq_form",
-    "seller_drawings", "seller_team", "invite_team_member",
+    "seller_drawings", "upload_drawing", "seller_team", "invite_team_member",
     "accept_team_invite", "team_member", "team_disable", "team_enable", "team_set_role",
     "seller_integrations", "seller_reports",
     "seller_qr", "seller_logistics", "seller_negotiations",

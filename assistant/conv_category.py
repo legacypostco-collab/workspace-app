@@ -41,6 +41,7 @@ _CATEGORY_MAP: dict[str, str] = {
     "seller_qr": "admin",
     "generate_qr": "admin",
     "seller_drawings": "admin",
+    "upload_drawing": "admin",
     "referral_program": "admin",
     "notif_prefs": "admin",
     "notif_set_email": "admin",
