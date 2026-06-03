@@ -2082,26 +2082,17 @@ def seller_catalog(params, user, role):
         qs = qs.filter(warehouse_id=warehouse_id)
     if q:
         from django.db.models import Q
-        # Поиск по артикулу (запрос без пробелов) → быстрый prefix-поиск по
-        # индексу oem_number (Django держит `_like` varchar_pattern_ops индекс
-        # под LIKE 'q%'). icontains/LIKE '%q%' индекс НЕ использует и на 160k+
-        # позиций сканирует всю таблицу. Три варианта регистра покрывают
-        # как-введено / UPPER / lower (OEM в каталогах обычно в верхнем).
-        if " " not in q and len(q) >= 2:
-            qs = qs.filter(
-                Q(oem_number__startswith=q)
-                | Q(oem_number__startswith=q.upper())
-                | Q(oem_number__startswith=q.lower())
-            )
-        else:
-            # Многословный запрос (название) → широкий поиск (медленнее, но
-            # такие запросы редки и обычно дают узкую выборку).
-            qs = qs.filter(
-                Q(oem_number__icontains=q)
-                | Q(title__icontains=q)
-                | Q(cross_numbers__icontains=q)
-                | Q(manufacturer__icontains=q)
-            )
+        # Поиск ПО ВХОЖДЕНИЮ (icontains, LIKE '%q%'). Артикулы часто сегментные
+        # (напр. Komatsu «6892-89-8463»), и продавец ищет по любому куску —
+        # «8463», «89», «cummins». Поэтому prefix-поиск (startswith) НЕ годится:
+        # «8463» не в начале строки → 0 совпадений (это и был баг). На каталоге
+        # одного склада (обычный сценарий поиска) это десятки мс — быстро.
+        qs = qs.filter(
+            Q(oem_number__icontains=q)
+            | Q(cross_numbers__icontains=q)
+            | Q(title__icontains=q)
+            | Q(manufacturer__icontains=q)
+        )
 
     total_count = qs.count()
     # Сортировка по дате последнего апдейта — свежие загрузки сверху.
