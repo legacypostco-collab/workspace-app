@@ -2658,8 +2658,12 @@ def invite_team_member(params, user, role):
                     "fields": [
                         {"name": "email", "label": "Email сотрудника", "type": "email",
                          "required": True, "placeholder": "ivanov@company.com"},
-                        {"name": "role", "label": "Роль (manager / logist / finance / admin / viewer)",
-                         "placeholder": "manager", "default": "manager"},
+                        {"name": "role", "label": "Права доступа", "type": "select",
+                         "default": "manager",
+                         "options": [
+                             {"value": k, "label": f"{TEAM_ROLE_LABELS[k]} — {TEAM_ROLE_HINT[k]}"}
+                             for k in ("manager", "logist", "finance", "admin", "viewer")
+                         ]},
                     ],
                     "fixed_params": {},
                 },
