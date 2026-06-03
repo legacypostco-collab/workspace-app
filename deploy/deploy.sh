@@ -160,7 +160,15 @@ systemctl is-active --quiet daphne || {
 }
 systemctl reload nginx
 
-systemctl list-unit-files | grep -q '^celery\.service' && systemctl restart celery
+# Celery worker/beat — рестартим ВСЕГДА (если юнит есть). Иначе воркер держит
+# СТАРЫЙ код в sys.modules: деплой обновит файлы, но фоновые задачи (импорт
+# прайса) будут исполнять прежнюю версию — тихий и опасный баг. Прежний
+# `grep -q '^celery\.service' && restart` под set -e мог молча пропустить рестарт.
+for _svc in celery celery-beat; do
+    if systemctl cat "$_svc" >/dev/null 2>&1; then
+        systemctl restart "$_svc" 2>/dev/null && log "  ✓ restarted $_svc" || log "  ⚠ $_svc restart failed"
+    fi
+done
 
 log "━━━ 9. health checks ━━━"
 sleep 2
