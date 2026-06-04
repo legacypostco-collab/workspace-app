@@ -2529,6 +2529,18 @@ def seller_drawings(params, user, role):
     )
 
 
+@register("go_home")
+def go_home(params, user, role):
+    """Бэкенд-фолбэк для go_home. Обычно перехватывается фронтом (chat-first.js
+    делает goHome() без round-trip), но если запрос всё же дошёл до сервера
+    (устаревший кэш JS, реплей истории) — отдаём дружелюбный экран вместо
+    «Нет прав». Доступно всем ролям."""
+    return ActionResult(
+        text="🏠 Главный экран. Чем помочь?",
+        suggestions=["Мои заказы", "Поиск запчастей", "Создать RFQ", "Чертежи"],
+    )
+
+
 @register("upload_drawing")
 def upload_drawing(params, user, role):
     """Карточка загрузки чертежа: кнопка выбора файла → __open_drawing_picker

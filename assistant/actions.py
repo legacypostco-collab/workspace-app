@@ -110,6 +110,8 @@ _BUYER_ACTIONS = [
     # СВОИ. Покупатель видит «что нужно», продавец «что предлагает»; друг другу
     # не показываются — сверяет только оператор при согласовании сделки.
     "seller_drawings", "upload_drawing",
+    # go_home обычно перехватывается фронтом, но допускаем и на бэке (stale JS)
+    "go_home",
     "get_claims", "create_claim", "open_claim", "claim_detail",
     # Communication with operator (support/escalation)
     "ask_operator", "ask_about_rfq",
@@ -184,7 +186,7 @@ _SELLER_ONLY = [
 ]
 
 _OPERATOR_CORE = [
-    "open_project", "list_projects",
+    "open_project", "list_projects", "go_home",
     # Read-only browse + диспетчерские action'ы
     "search_parts", "get_orders", "get_order_detail", "get_rfq_status",
     "track_order", "track_shipment", "advance_order", "complete_trigger",
