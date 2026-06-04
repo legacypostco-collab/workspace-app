@@ -106,6 +106,10 @@ _BUYER_ACTIONS = [
     "compare_products", "compare_suppliers", "top_suppliers",
     "buyer_best_offers", "buyer_offer_compare", "calc_part_logistics",
     "upload_parts_list", "analyze_spec",
+    # Чертежи (приватные, owner-based): и покупатель, и продавец грузят/смотрят
+    # СВОИ. Покупатель видит «что нужно», продавец «что предлагает»; друг другу
+    # не показываются — сверяет только оператор при согласовании сделки.
+    "seller_drawings", "upload_drawing",
     "get_claims", "create_claim", "open_claim", "claim_detail",
     # Communication with operator (support/escalation)
     "ask_operator", "ask_about_rfq",
@@ -166,7 +170,7 @@ _SELLER_ONLY = [
     "seller_catalog", "seller_warehouses", "toggle_product", "add_product", "edit_product",
     "product_detail", "import_pricelist_preview",
     "rfq_detail", "respond_rfq_form",
-    "seller_drawings", "upload_drawing", "seller_team", "invite_team_member",
+    "seller_team", "invite_team_member",
     "accept_team_invite", "team_member", "team_disable", "team_enable", "team_set_role",
     "seller_integrations", "seller_reports",
     "seller_qr", "seller_logistics", "seller_negotiations",

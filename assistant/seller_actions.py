@@ -2480,7 +2480,12 @@ def seller_drawings(params, user, role):
     предлагают» (от продавца) → точность поставки.
     """
     from marketplace.models import Drawing
-    owner = _effective_seller(user)
+    # Владелец = автор чертежа (поле Drawing.seller). Покупатель грузит чертежи
+    # под своим user (см. DrawingUploadView: seller=request.user), поэтому для
+    # него owner = сам user — иначе _effective_seller увёл бы на demo_seller и
+    # покупатель видел бы чужие чертежи. Продавец — через _effective_seller
+    # (командный/демо-fallback).
+    owner = user if (role or "").startswith("buyer") else _effective_seller(user)
     # По ВЛАДЕЛЬЦУ (поле seller = автор), а не по part__seller — иначе
     # непривязанные и покупательские чертежи не показывались бы.
     items = list(
@@ -2551,7 +2556,10 @@ def upload_drawing(params, user, role):
         }}],
         actions=[
             {"label": "📐 Мои чертежи", "action": "seller_drawings", "params": {}},
-            {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
+            # «Каталог» — seller-only; покупателю даём поиск товара вместо него.
+            ({"label": "🔎 Найти товар", "action": "search_parts", "params": {}}
+             if (role or "").startswith("buyer")
+             else {"label": "📦 Каталог", "action": "seller_catalog", "params": {}}),
         ],
         suggestions=["Мои чертежи", "Зачем чертежи покупателю?"],
     )
