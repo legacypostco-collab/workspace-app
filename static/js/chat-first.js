@@ -1359,25 +1359,42 @@
   };
 
   async function api(path, opts={}) {
-    const doFetch = () => fetch(path, {
-      headers: {'Content-Type':'application/json','X-CSRFToken': csrf(), ...(opts.headers||{})},
-      ...opts,
-    });
-    let res;
-    try {
-      res = await doFetch();
-    } catch (e) {
-      // Сетевой сбой (TypeError «Failed to fetch») — частый при нестабильном
-      // канале браузер↔Cloudflare. Один тихий ретрай ТОЛЬКО для безопасных
-      // (idempotent) запросов: GET и HEAD. POST не ретраим — риск двойного
-      // выполнения (платёж/заказ/импорт).
-      const method = (opts.method || 'GET').toUpperCase();
-      if (method !== 'GET' && method !== 'HEAD') throw e;
-      await new Promise(r => setTimeout(r, 600));
-      res = await doFetch();
+    // Канал браузер↔origin (РФ) нестабилен: ~10-15% запросов рвутся ИЛИ
+    // зависают (без таймаута UI крутит спиннер вечно). Для idempotent
+    // запросов (GET/HEAD) — до 3 попыток с таймаутом 8с и backoff'ом, плюс
+    // ретрай на 5xx (транзиентный upstream). POST НЕ ретраим (риск двойного
+    // выполнения: платёж/заказ/импорт) и без abort'а — одна попытка.
+    const method = (opts.method || 'GET').toUpperCase();
+    const idempotent = (method === 'GET' || method === 'HEAD');
+    const attempts = idempotent ? 3 : 1;
+    let lastErr;
+    for (let i = 0; i < attempts; i++) {
+      const ctrl = (idempotent && window.AbortController) ? new AbortController() : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : null;
+      let res;
+      try {
+        res = await fetch(path, {
+          headers: {'Content-Type':'application/json','X-CSRFToken': csrf(), ...(opts.headers||{})},
+          ...opts,
+          ...(ctrl ? {signal: ctrl.signal} : {}),
+        });
+      } catch (e) {
+        if (timer) clearTimeout(timer);
+        lastErr = e;
+        if (idempotent && i < attempts - 1) { await new Promise(r => setTimeout(r, 500 + i*700)); continue; }
+        throw e;
+      }
+      if (timer) clearTimeout(timer);
+      if (res.ok) return res.json();
+      // 5xx — транзиент: ретраим (idempotent). 4xx — сразу наверх.
+      if (res.status >= 500 && idempotent && i < attempts - 1) {
+        lastErr = new Error(`${path} → ${res.status}`);
+        await new Promise(r => setTimeout(r, 500 + i*700));
+        continue;
+      }
+      throw new Error(`${path} → ${res.status}`);
     }
-    if (!res.ok) throw new Error(`${path} → ${res.status}`);
-    return res.json();
+    throw lastErr;
   }
 
   // ══════════════════════════════════════════════════════════
