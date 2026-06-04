@@ -2514,7 +2514,9 @@ def seller_drawings(params, user, role):
                else (f"товар {d.part.oem_number}" if d.part_id else "без привязки"))
             + f" · {_ST.get(d.status, d.status or '')} · {d.created_at.strftime('%d.%m.%Y')}"
         ),
-        "url": d.file_url or None,
+        # Открываем через access-controlled эндпоинт (стримит файл с проверкой
+        # доступа), а не прямой /media/ URL — приватность чертежа.
+        "url": f"/api/assistant/drawings/{d.id}/file/",
     } for d in items]
 
     return ActionResult(

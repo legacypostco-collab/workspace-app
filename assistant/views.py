@@ -1414,16 +1414,20 @@ class DrawingFileView(APIView):
             return Response({"ok": False, "error": reason}, status=403)
 
         record_access(request.user, drawing, action, request=request)
-        wm_url = apply_watermark_url(drawing.file_url, request.user, drawing)
-        return Response({
-            "ok": True,
-            "drawing_id": drawing.id,
-            "title": drawing.title,
-            "file_url": wm_url,
-            "file_format": drawing.file_format,
-            "access_level": drawing.access_level,
-            "reason": reason,
-        })
+        # Стримим САМ файл (после проверки доступа выше), а не JSON со ссылкой
+        # на /media/: иначе приватный чертёж открыт всем по прямой ссылке.
+        # Работает одинаково на runserver (локально) и на проде.
+        from django.core.files.storage import default_storage
+        from django.http import FileResponse
+        rel = (drawing.file_url or "").split("/media/", 1)[-1].lstrip("/")
+        if not rel or not default_storage.exists(rel):
+            return Response({"ok": False, "error": "файл чертежа не найден"}, status=404)
+        fname = drawing.file_name or rel.rsplit("/", 1)[-1]
+        return FileResponse(
+            default_storage.open(rel, "rb"),
+            as_attachment=(action == "download"),
+            filename=fname,
+        )
 
 
 class DrawingUploadView(APIView):
