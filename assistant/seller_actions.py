@@ -2470,64 +2470,1232 @@ def rfq_detail(params, user, role):
 # 4. Чертежи
 # ══════════════════════════════════════════════════════════
 
-@register("seller_drawings")
-def seller_drawings(params, user, role):
-    """Чертежи, загруженные пользователем (продавцом ИЛИ покупателем).
+# ══════════════════════════════════════════════════════════
+# Заказчики продавца (CRM) — завести по ИНН, проекты, отгрузки
+# ══════════════════════════════════════════════════════════
 
-    Модель: чертежи ПРИВАТНЫ — видны только владельцу и оператору (при
-    согласовании сделки). Покупатель и продавец чертежи друг другу не
-    показывают; оператор сверяет «что нужно» (от покупателя) и «что
-    предлагают» (от продавца) → точность поставки.
-    """
-    from marketplace.models import Drawing
-    # Владелец = автор чертежа (поле Drawing.seller). Покупатель грузит чертежи
-    # под своим user (см. DrawingUploadView: seller=request.user), поэтому для
-    # него owner = сам user — иначе _effective_seller увёл бы на demo_seller и
-    # покупатель видел бы чужие чертежи. Продавец — через _effective_seller
-    # (командный/демо-fallback).
-    owner = user if (role or "").startswith("buyer") else _effective_seller(user)
-    # По ВЛАДЕЛЬЦУ (поле seller = автор), а не по part__seller — иначе
-    # непривязанные и покупательские чертежи не показывались бы.
-    items = list(
-        Drawing.objects.filter(seller=owner).select_related("part")
-        .order_by("-created_at")[:20]
-    )
-    _is_buyer = (role or "").startswith("buyer")
-    _what = "что вам нужно" if _is_buyer else "что вы предлагаете"
-    if not items:
+@register("seller_customers")
+def seller_customers(params, user, role):
+    """Заказчики продавца: список + завести нового по ИНН."""
+    from marketplace.models import Customer
+    owner = _effective_seller(user)
+    custs = list(Customer.objects.filter(owner=owner, is_active=True))
+    add_btn = {"label": "➕ Завести заказчика", "action": "add_customer", "params": {}}
+    home_btn = {"label": "🏠 Главная", "action": "go_home", "params": {}}
+    if not custs:
         return ActionResult(
-            text=(f"📐 Чертежей пока нет. Загрузите чертёж ({_what}) — оператор "
-                  "сверит его при согласовании сделки. Это повышает точность поставки."),
+            text=("👥 Заказчиков пока нет. Заведите первого по ИНН — он попадёт в вашу "
+                  "базу; по нему создадите проекты и будете контролировать отгрузки."),
+            actions=[add_btn, home_btn],
+        )
+    from assistant.models import Project
+    from marketplace.models import Order
+    rows = []
+    leads = 0
+    for c in custs:
+        _autolink_orders(c)  # точная привязка по ИНН до подсчёта
+        c_orders = list(Order.objects.filter(customer_ref=c).only("created_at"))
+        nproj = Project.objects.filter(customer_ref=c, is_active=True).count()
+        nship = len(c_orders)
+        ret = _retention(c, c_orders)
+        if ret[0] == "lead":
+            leads += 1
+        meta = [f"ИНН {c.inn}"]
+        if c.kpp:
+            meta.append(f"КПП {c.kpp}")
+        tail = []
+        if nproj:
+            tail.append(f"📁 {nproj}")
+        if nship:
+            tail.append(f"📦 {nship}")
+        sub = ret[1] + " · " + " · ".join(meta) + ("   " + " · ".join(tail) if tail else "")
+        rows.append({
+            "title": c.name,
+            "subtitle": sub,
+            "tone": ("ok" if ret[0] == "active" else ("warn" if ret[0] == "watch" else "info")),
+            "action": "customer_detail",
+            "params": {"id": str(c.id)},
+        })
+    head = f"👥 Ваши заказчики: {len(custs)}"
+    if leads:
+        head += f" · ⚪️ {leads} лид(ов) ждут подтверждения — отправьте инвайт"
+    head += ". 🟢 закреплён · 🟡 под вопросом · ⚪️ лид."
+    return ActionResult(
+        text=head,
+        cards=[{"type": "list", "data": {"title": "Заказчики", "rows": rows}}],
+        actions=[add_btn, home_btn],
+        suggestions=["Завести заказчика"],
+    )
+
+
+@register("add_customer")
+def add_customer(params, user, role):
+    """Завести заказчика по ИНН: форма → резолв КПП/адреса → создать."""
+    from marketplace.models import Customer
+    owner = _effective_seller(user)
+    inn = (params.get("inn") or "").strip()
+    name = (params.get("name") or "").strip()
+    if not inn or not name:
+        return ActionResult(
+            text="Заведите заказчика: ИНН и название. КПП и юр.адрес подтянем автоматически.",
+            cards=[{"type": "form", "data": {
+                "title": "👥 Новый заказчик",
+                "submit_action": "add_customer",
+                "submit_label": "Завести",
+                "fields": [
+                    {"name": "inn", "label": "ИНН", "type": "text", "required": True, "placeholder": "7707083893"},
+                    {"name": "name", "label": "Название", "type": "text", "required": True, "placeholder": "ООО «Норильск-Снаб»"},
+                    {"name": "contact_name", "label": "Контактное лицо", "type": "text", "placeholder": "Иван Петров (опц.)"},
+                    {"name": "phone", "label": "Телефон", "type": "text", "placeholder": "+7… (опц.)"},
+                ],
+                "fixed_params": {},
+            }}],
+        )
+    existing = Customer.objects.filter(owner=owner, inn=inn).first()
+    if existing:
+        return ActionResult(
+            text=f"👥 Заказчик с ИНН {inn} уже есть: «{existing.name}».",
+            actions=[{"label": "← К заказчикам", "action": "seller_customers", "params": {}}],
+        )
+    # Резолв КПП/юр.адреса по ИНН (RU) — переиспользуем KYB-агрегатор.
+    kpp, addr = "", ""
+    try:
+        from .kyb_api_checks import check_ru_aggregator
+        data = (check_ru_aggregator(inn, "RU") or {}).get("data") or {}
+        kpp = (data.get("kpp") or "")
+        addr = (data.get("legal_address") or "")
+    except Exception:
+        pass
+    c = Customer.objects.create(
+        owner=owner, inn=inn[:20], name=name[:255],
+        kpp=kpp[:20], legal_address=addr[:500],
+        contact_name=(params.get("contact_name") or "").strip()[:200],
+        phone=(params.get("phone") or "").strip()[:20],
+    )
+    return ActionResult(
+        text=(f"✅ «{c.name}» (ИНН {c.inn}) заведён как ⚪️ ЛИД"
+              + (f" · КПП {c.kpp}" if c.kpp else "")
+              + ". Заведения мало — отправьте инвайт: когда клиент подтвердит, "
+              "он закрепится за вами и начнёт приносить начисления."),
+        actions=[
+            {"label": "📨 Пригласить — подтвердить", "action": "invite_customer", "params": {"id": str(c.id)}},
+            {"label": "📂 Открыть карточку", "action": "customer_detail", "params": {"id": str(c.id)}},
+            {"label": "➕ Ещё заказчик", "action": "add_customer", "params": {}},
+        ],
+    )
+
+
+# Метки статусов заказа (для блока отгрузок).
+_ORDER_STATUS_RU = {
+    "pending": "Ожидание оплаты", "reserve_paid": "Резерв оплачен",
+    "confirmed": "Формирование", "in_production": "В производстве",
+    "ready_to_ship": "Готов к отгрузке", "shipped": "В пути",
+    "in_transit": "В пути", "customs": "Таможня", "arrived": "Прибыл",
+    "delivered": "Доставлен", "completed": "Завершён", "cancelled": "Отменён",
+    "disputed": "Спор", "refunded": "Возврат",
+}
+
+
+def _get_customer(user, params):
+    """Заказчик из CRM по id, строго в рамках продавца-владельца."""
+    from marketplace.models import Customer
+    owner = _effective_seller(user)
+    cid = (params.get("id") or params.get("customer_id") or "").strip()
+    if not cid:
+        return None
+    return Customer.objects.filter(owner=owner, id=cid).first()
+
+
+def _autolink_orders(c):
+    """Точная привязка заказов к заказчику по ИНН покупателя (write-through).
+    Заказ, где у покупателя в KYB указан тот же ИНН, что у заказчика CRM, и
+    который ещё не привязан, привязывается к этому заказчику. Возвращает кол-во."""
+    if not c or not c.inn:
+        return 0
+    from marketplace.models import Order
+    try:
+        return (Order.objects
+                .filter(customer_ref__isnull=True, buyer__kyb__inn=c.inn)
+                .update(customer_ref=c, assigned_kam_id=c.owner_id))
+    except Exception:
+        return 0
+
+
+# Вознаграждение менеджера за ведение клиента — % от GMV проведённых сделок.
+# НАСТРАИВАЕМАЯ ставка (поверх стандартной комиссии платформы 6/8/12%).
+# По умолчанию 0.1% (0.001). Это РАСЧЁТНАЯ оценка для менеджера, не движение денег.
+from decimal import Decimal as _Dec
+MANAGER_COMMISSION_RATE = _Dec("0.001")  # 0.1% — поправь, если нужна другая ставка
+_INS_ACTIVE = {"shipped", "in_transit", "customs", "ready_to_ship", "in_production", "confirmed", "reserve_paid"}
+
+
+def _plural(n, one, few, many):
+    """Русское склонение: 1 сделка / 2 сделки / 5 сделок."""
+    n = abs(int(n))
+    if n % 10 == 1 and n % 100 != 11:
+        return one
+    if 2 <= n % 10 <= 4 and not (12 <= n % 100 <= 14):
+        return few
+    return many
+
+
+# Бонус с покупки = единая комиссия по Incoterm (как OperatorBonusLine):
+# FOB 0.4% · CIP 0.5% · DDP 0.7%, min $50 / max $5000. Пока реальной строки
+# нет — показываем расчёт по FOB 0.4% (начислится при закрытии сделки).
+_BONUS_RATE = {"FOB": 0.40, "CIP": 0.50, "DDP": 0.70}
+_BONUS_MIN, _BONUS_MAX = 50.0, 5000.0
+_BONUS_STLBL = {"pending": "в холде (14 дн)", "released": "зачислено",
+                "withheld": "удержано", "reduced": "−50% (вина)", "estimate": "расчётно"}
+
+
+def _order_bonus(order):
+    """(amount, status, rate_pct, basis, is_real) — бонус по одному заказу.
+    Реальная строка OperatorBonusLine если есть, иначе расчёт (FOB 0.4%)."""
+    try:
+        line = order.operator_bonus  # OneToOne related_name
+    except Exception:
+        line = None
+    if line:
+        return float(line.amount or 0), line.status, float(line.rate_pct or 0), line.basis, True
+    base = float(order.total_amount or 0)
+    rate = _BONUS_RATE["FOB"]
+    amt = max(_BONUS_MIN, min(_BONUS_MAX, base * rate / 100.0)) if base else 0.0
+    return amt, "estimate", rate, "FOB", False
+
+
+def _customer_bonus_summary(orders):
+    """Свод бонусов по заказам клиента: начислено (реальные) + расчётно."""
+    accrued = estimated = 0.0
+    lines = []
+    for o in orders:
+        amt, status, rate, basis, real = _order_bonus(o)
+        if real:
+            accrued += amt
+        else:
+            estimated += amt
+        lines.append({"order_id": o.id, "amount": amt, "status": status,
+                      "rate": rate, "basis": basis, "real": real,
+                      "base": float(o.total_amount or 0)})
+    return {"accrued": accrued, "estimated": estimated,
+            "total": accrued + estimated, "lines": lines}
+
+
+def _retention(c, orders):
+    """Статус закрепления клиента за KAM (критерии сохранения).
+    Подтверждение = клиент принял инвайт/реф (есть c.user). Активность = сделка
+    за 90 дней. Возвращает (code, label, hint)."""
+    from datetime import timedelta
+    from django.utils import timezone
+    if not getattr(c, "user_id", None):
+        return ("lead", "⚪️ Лид", "не подтверждён клиентом — отправьте инвайт")
+    cutoff = timezone.now() - timedelta(days=90)
+    has_orders = len(orders) > 0
+    has_recent = any((o.created_at and o.created_at >= cutoff) for o in orders)
+    if has_orders and has_recent:
+        return ("active", "🟢 Закреплён", "подтверждён · активен · есть сделки")
+    if not has_orders:
+        return ("watch", "🟡 Под вопросом", "подтверждён, но сделок ещё нет — нужна польза")
+    return ("watch", "🟡 Под вопросом", "спящий >90 дней — оживите или вернётся в пул")
+
+
+def _customer_insights(c, projects, orders):
+    """Авто-обогащение по заказчику: GMV, сделки, спрос (OEM), вознаграждение,
+    плюс умные подсказки менеджеру. Считается из проектов/чертежей/заказов."""
+    gmv = sum((o.total_amount or 0) for o in orders)
+    n = len(orders)
+    avg = (gmv / n) if n else 0
+    active_ship = sum(1 for o in orders if o.status in _INS_ACTIVE)
+    done = sum(1 for o in orders if o.status in ("delivered", "completed"))
+    active_proj = sum(1 for p in projects if getattr(p, "is_active", True))
+    bonus = _customer_bonus_summary(orders)
+
+    # Спрос: топ OEM-артикулов из чертежей по проектам этого заказчика.
+    oem_demand = []
+    try:
+        from collections import Counter
+        from marketplace.models import Drawing
+        pids = [p.id for p in projects]
+        if pids:
+            oems = (Drawing.objects.filter(project_id__in=pids)
+                    .exclude(oem_number="").exclude(oem_number__isnull=True)
+                    .values_list("oem_number", flat=True))
+            oem_demand = [o for o, _ in Counter(oems).most_common(3)]
+    except Exception:
+        pass
+
+    # Умные подсказки (инсайты) — что менеджеру сделать дальше.
+    tips = []
+    if active_proj and n == 0:
+        tips.append("📁 Есть активные проекты без заказов — возможность допродажи: отправьте КП.")
+    if active_ship:
+        tips.append(f"🚚 {active_ship} {_plural(active_ship, 'отгрузка', 'отгрузки', 'отгрузок')} "
+                    "в работе — держите клиента в курсе статусов.")
+    if oem_demand:
+        tips.append("🔁 Повторный спрос: " + ", ".join(oem_demand)
+                    + " — предложите рамочный контракт / складскую программу.")
+    if n >= 3:
+        tips.append(f"⭐ {n} {_plural(n, 'сделка', 'сделки', 'сделок')} — лояльный клиент: "
+                    "зафиксируйте индивидуальные условия и наценку.")
+    if not orders and not projects:
+        tips.append("🆕 Новый клиент без активности — заведите первый проект и отправьте КП.")
+    if not tips:
+        tips.append("✅ По клиенту всё в норме — продолжайте сопровождение.")
+
+    return {
+        "gmv": gmv, "n": n, "avg": avg, "active_ship": active_ship, "done": done,
+        "active_proj": active_proj, "oem_demand": oem_demand, "tips": tips,
+        "commission": bonus["total"], "bonus_accrued": bonus["accrued"],
+        "bonus_estimated": bonus["estimated"],
+    }
+
+
+@register("customer_detail")
+def customer_detail(params, user, role):
+    """Карточка заказчика: инсайты + реквизиты + проекты + контроль отгрузок."""
+    from assistant.models import Project
+    from marketplace.models import Order
+    c = _get_customer(user, params)
+    if not c:
+        return ActionResult(
+            text="Заказчик не найден.",
+            actions=[{"label": "← К заказчикам", "action": "seller_customers", "params": {}}],
+        )
+    # Точная привязка по ИНН (идемпотентно) — до сбора отгрузок.
+    _autolink_orders(c)
+
+    # --- Реквизиты ---
+    info_rows = [{"title": "ИНН", "subtitle": c.inn}]
+    if c.kpp:
+        info_rows.append({"title": "КПП", "subtitle": c.kpp})
+    if c.legal_address:
+        info_rows.append({"title": "Юр. адрес", "subtitle": c.legal_address})
+    if c.contact_name or c.phone:
+        info_rows.append({"title": "Контакт",
+                          "subtitle": " · ".join([x for x in [c.contact_name, c.phone] if x])})
+
+    # --- Проекты заказчика ---
+    projects = list(Project.objects.filter(customer_ref=c, is_active=True).order_by("-updated_at"))
+    proj_rows = [{
+        "title": p.name,
+        "subtitle": (p.code or "проект") + (f" · {len(p.tags)} тегов" if p.tags else ""),
+        "url": f"/chat/project/{p.id}/",
+    } for p in projects]
+
+    # --- Отгрузки: ТОЧНО привязанные к заказчику (customer_ref) ---
+    ACTIVE = {"shipped", "in_transit", "customs", "ready_to_ship", "in_production", "confirmed", "reserve_paid"}
+
+    def _ship_row(o, link_action=None):
+        st = _ORDER_STATUS_RU.get(o.status, o.status)
+        tone = "ok" if o.status in ("delivered", "completed") else ("warn" if o.status in ACTIVE else "info")
+        amt = f"${o.total_amount:,.0f}".replace(",", " ") if o.total_amount else ""
+        extra = []
+        if o.tracking_number:
+            extra.append(f"🔎 {o.tracking_number}")
+        if amt:
+            extra.append(amt)
+        row = {
+            "title": f"Заказ #{o.id}",
+            "subtitle": " · ".join(extra) or "—",
+            "badge": {"label": st, "tone": tone},
+            "tone": tone,
+        }
+        if link_action:
+            row["subtitle"] = (row["subtitle"] + "  ·  🔗 привязать к заказчику").strip(" ·")
+            row["action"] = "link_order_to_customer"
+            row["params"] = {"id": str(c.id), "order_id": o.id}
+        return row
+
+    linked = list(Order.objects.filter(customer_ref=c).order_by("-created_at")[:20])
+    ship_rows = [_ship_row(o) for o in linked]
+
+    # --- Кандидаты: совпали по названию, но ещё не привязаны (нужно подтвердить) ---
+    cand_rows = []
+    if c.name:
+        cands = list(Order.objects
+                     .filter(customer_name__icontains=c.name, customer_ref__isnull=True)
+                     .order_by("-created_at")[:8])
+        cand_rows = [_ship_row(o, link_action=True) for o in cands]
+
+    # --- Статус закрепления (критерий сохранения за KAM) ---
+    ret = _retention(c, linked)
+    info_rows.insert(0, {
+        "title": ret[1], "subtitle": ret[2],
+        "tone": ("ok" if ret[0] == "active" else ("warn" if ret[0] == "watch" else "info")),
+    })
+
+    # --- Инсайты + авто-обогащение по заказчику ---
+    ins = _customer_insights(c, projects, linked)
+
+    def _money(v):
+        return ("$" + f"{float(v):,.0f}").replace(",", " ")
+
+    bonus_sub = ("начислено " + _money(ins["bonus_accrued"])) if ins["bonus_accrued"] else "расчётно · нажмите"
+    insights_card = {"type": "kpi_grid", "data": {
+        "title": "📊 Инсайты по заказчику",
+        "kpis": [
+            {"value": _money(ins["gmv"]), "label": "GMV по клиенту",
+             "sub": f"{ins['n']} {_plural(ins['n'], 'сделка', 'сделки', 'сделок')}"},
+            {"value": _money(ins["avg"]), "label": "Средний чек"},
+            {"value": ins["active_ship"], "label": "В работе", "sub": "активных отгрузок"},
+            {"value": len(proj_rows), "label": "Проектов", "sub": f"активных: {ins['active_proj']}"},
+            {"value": _money(ins["commission"]), "label": "💰 Бонус с покупок",
+             "sub": bonus_sub, "action": "customer_bonuses", "params": {"id": str(c.id)}},
+        ],
+    }}
+
+    cards = [insights_card]
+    cards.append({"type": "list", "data": {"title": f"👤 {c.name}", "rows": info_rows}})
+    cards.append({"type": "list", "data": {
+        "title": f"📁 Проекты ({len(proj_rows)})",
+        "rows": proj_rows or [{"title": "Проектов пока нет",
+                               "subtitle": "Создайте первый проект по этому заказчику"}],
+    }})
+    cards.append({"type": "list", "data": {
+        "title": f"📦 Отгрузки ({len(ship_rows)})",
+        "rows": ship_rows or [{"title": "Отгрузок пока нет",
+                               "subtitle": "Привязанные заказы появятся здесь (авто по ИНН покупателя)"}],
+    }})
+    if cand_rows:
+        cards.append({"type": "list", "data": {
+            "title": f"🔗 Возможно этого заказчика ({len(cand_rows)})",
+            "rows": cand_rows,
+        }})
+    # Умные подсказки менеджеру (инсайты → действия).
+    cards.append({"type": "list", "data": {
+        "title": "💡 Подсказки KAM",
+        "rows": [{"title": t, "subtitle": "", "tone": "info"} for t in ins["tips"]],
+    }})
+
+    flash = (params.get("flash") or "").strip()
+    is_lead = (ret[0] == "lead")
+    acts = []
+    if is_lead:
+        # Лид: главное действие — пригласить, чтобы клиент ПОДТВЕРДИЛ закрепление.
+        acts.append({"label": "📨 Пригласить — подтвердить клиента",
+                     "action": "invite_customer", "params": {"id": str(c.id)}})
+    acts += [
+        {"label": "➕ Создать проект", "action": "create_project_for_customer", "params": {"id": str(c.id)}},
+        {"label": "💰 Начисления", "action": "customer_bonuses", "params": {"id": str(c.id)}},
+    ]
+    if not is_lead:
+        acts.append({"label": "📨 Пригласить", "action": "invite_customer", "params": {"id": str(c.id)}})
+    acts.append({"label": "← К заказчикам", "action": "seller_customers", "params": {}})
+    return ActionResult(
+        text=(flash or (f"Карточка заказчика «{c.name}». ⚪️ Это ЛИД — отправьте инвайт, "
+                        "клиент подтвердит, и он закрепится за вами." if is_lead
+                        else f"Карточка заказчика «{c.name}».")),
+        cards=cards,
+        actions=acts,
+        suggestions=[f"Создать проект для {c.name}"],
+    )
+
+
+@register("link_order_to_customer")
+def link_order_to_customer(params, user, role):
+    """Ручная привязка заказа к заказчику CRM (подтверждение кандидата по имени)."""
+    from marketplace.models import Order
+    c = _get_customer(user, params)
+    if not c:
+        return ActionResult(
+            text="Заказчик не найден.",
+            actions=[{"label": "← К заказчикам", "action": "seller_customers", "params": {}}],
+        )
+    oid = params.get("order_id")
+    o = Order.objects.filter(id=oid).first()
+    if not o:
+        return customer_detail({"id": str(c.id), "flash": "Заказ не найден — возможно, уже привязан."}, user, role)
+    o.customer_ref = c
+    o.assigned_kam_id = c.owner_id
+    o.save(update_fields=["customer_ref", "assigned_kam"])
+    return customer_detail(
+        {"id": str(c.id), "flash": f"🔗 Заказ #{o.id} привязан к «{c.name}» — теперь в отгрузках."},
+        user, role)
+
+
+@register("create_project_for_customer")
+def create_project_for_customer(params, user, role):
+    """Завести проект под конкретного заказчика из CRM продавца."""
+    from assistant.models import Project
+    owner = _effective_seller(user)
+    c = _get_customer(user, params)
+    if not c:
+        return ActionResult(
+            text="Заказчик не найден — не могу привязать проект.",
+            actions=[{"label": "← К заказчикам", "action": "seller_customers", "params": {}}],
+        )
+    name = (params.get("name") or "").strip()
+    if not name:
+        return ActionResult(
+            text=f"Назовите проект для «{c.name}» — он попадёт в общий раздел проектов и будет привязан к заказчику.",
+            cards=[{"type": "form", "data": {
+                "title": f"📁 Новый проект · {c.name}",
+                "submit_action": "create_project_for_customer",
+                "submit_label": "Создать проект",
+                "fields": [
+                    {"name": "name", "label": "Название проекта", "type": "text", "required": True,
+                     "placeholder": "Ходовка Komatsu D155 — Q3"},
+                    {"name": "code", "label": "Код (опц.)", "type": "text", "placeholder": "KOM-Q3"},
+                ],
+                "fixed_params": {"id": str(c.id)},
+            }}],
+        )
+    p = Project.objects.create(
+        owner=owner, name=name[:200], code=(params.get("code") or "").strip()[:50],
+        customer=c.name[:200], customer_ref=c,
+    )
+    return ActionResult(
+        text=f"✅ Проект «{p.name}» создан и привязан к заказчику «{c.name}».",
+        cards=[{"type": "list", "data": {
+            "title": "📁 Проект готов",
+            "rows": [{
+                "title": p.name,
+                "subtitle": (p.code or "проект") + " · открыть страницу проекта →",
+                "url": f"/chat/project/{p.id}/",
+            }],
+        }}],
+        actions=[
+            {"label": "👤 Карточка заказчика", "action": "customer_detail", "params": {"id": str(c.id)}},
+            {"label": "➕ Ещё проект", "action": "create_project_for_customer", "params": {"id": str(c.id)}},
+        ],
+    )
+
+
+def _ref_code(user):
+    """Подписанный реф-токен пригласившего (без отдельной таблицы)."""
+    from django.core import signing
+    return signing.dumps(int(user.id), salt="kam-ref")
+
+
+def _invitee_benefits_card(title="🎁 Что это даёт вам"):
+    """Оффер для приглашённого контрагента (согласованный текст)."""
+    return {"type": "list", "data": {
+        "title": title,
+        "rows": [
+            {"title": "👤 Персональный менеджер ведёт ваши закупки", "subtitle": "без тендеров и очередей"},
+            {"title": "🔎 Любые запчасти по OEM в одном окне", "subtitle": "цены от проверенных поставщиков"},
+            {"title": "🚢 Логистика и таможня под ключ", "subtitle": "консолидация грузов — дешевле доставка"},
+            {"title": "🛡 Эскроу-защита платежей", "subtitle": "деньги поставщику только после приёмки + трекинг заказа"},
+        ],
+    }}
+
+
+@register("accept_referral")
+def accept_referral(params, user, role):
+    """Принять реф-ссылку: привязать текущего пользователя к пригласившему (как заказчика)."""
+    from django.core import signing
+    from django.contrib.auth import get_user_model
+    from marketplace.models import Customer
+    code = (params.get("code") or params.get("ref") or "").strip()
+    if not code:
+        return ActionResult(text="Реф-ссылка недействительна.")
+    try:
+        ref_uid = signing.loads(code, salt="kam-ref")
+    except Exception:
+        return ActionResult(text="Реф-ссылка повреждена или устарела.")
+    if not (user and getattr(user, "is_authenticated", False)):
+        return ActionResult(
+            text="Вас пригласили на платформу запчастей. Войдите или зарегистрируйтесь — "
+                 "приглашение применится автоматически, и вами займётся персональный менеджер.",
+            cards=[_invitee_benefits_card("🎁 Что это даёт вам")],
+            actions=[{"label": "Войти / регистрация", "action": "start_login", "params": {}}],
+        )
+    if int(user.id) == int(ref_uid):
+        return ActionResult(text="Это ваша собственная ссылка — поделитесь ею с контрагентом.",
+                            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}])
+    User = get_user_model()
+    ref = User.objects.filter(id=ref_uid).first()
+    if not ref:
+        return ActionResult(text="Пригласивший не найден.")
+    # Владелец заказчика — тот же «эффективный продавец», что видит CRM-кабинет
+    # пригласившего (учитывает demo-фолбэк), чтобы новый заказчик появился у него.
+    owner = _effective_seller(ref)
+    if Customer.objects.filter(owner=owner, user=user).exists():
+        return ActionResult(text="✅ Вы уже закреплены за вашим менеджером (KAM). Спасибо!",
+                            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}])
+    # ИНН из KYB, иначе плейсхолдер (уникален в рамках owner).
+    inn = ""
+    try:
+        from marketplace.models import CompanyVerification
+        kyb = CompanyVerification.objects.filter(user=user).first()
+        inn = (kyb.inn if kyb else "") or ""
+    except Exception:
+        pass
+    if not inn:
+        inn = f"ref{user.id}"
+    name = ""
+    try:
+        from marketplace.models import UserProfile
+        name = UserProfile.objects.filter(user=user).values_list("company_name", flat=True).first() or ""
+    except Exception:
+        pass
+    name = name or user.get_full_name() or user.username
+    cust = Customer.objects.filter(owner=owner, inn=inn).first()
+    if cust:
+        if not cust.user_id:
+            cust.user = user
+            cust.save(update_fields=["user"])
+    else:
+        Customer.objects.create(owner=owner, inn=inn[:20], name=name[:255], user=user,
+                                note="Привязан по реф-ссылке")
+    return ActionResult(
+        text="✅ Готово! Вы закреплены за вашим персональным менеджером (KAM) — он ведёт вас на платформе.",
+        actions=[{"label": "🏠 В кабинет", "action": "go_home", "params": {}}],
+    )
+
+
+@register("invite_customer")
+def invite_customer(params, user, role):
+    """Пригласить заказчика на платформу → ссылка (без id — общий инвайт, для любой роли)."""
+    import secrets
+    from django.utils import timezone as _tz
+    base = _invite_base_url()
+    c = _get_customer(user, params)
+    if not c:
+        # Реферальный инвайт (для всех ролей): ссылка с ПОДПИСАННЫМ токеном
+        # пригласившего. Кто зарегистрируется по ней — привяжется к вам.
+        if not (user and getattr(user, "is_authenticated", False)):
+            return ActionResult(text="Чтобы создать реф-ссылку, войдите в аккаунт.",
+                                actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+        link = f"{base}/chat/?ref={_ref_code(user)}"
+        return ActionResult(
+            text=("📨 Ваша персональная реф-ссылка. Отправьте её контрагенту — когда он "
+                  "зарегистрируется по ней, он автоматически привяжется к вам: попадёт в ваших "
+                  "заказчиков, а его заказы — в ваши отгрузки и начисления."),
+            cards=[
+                {"type": "list", "data": {"title": "Реферальная ссылка",
+                    "rows": [{"title": link, "subtitle": "скопируйте и отправьте — привязка отслеживается"}]}},
+                _invitee_benefits_card("🎁 Что получит контрагент (вставьте в сообщение)"),
+            ],
             actions=[
-                {"label": "📤 Загрузить чертёж", "action": "upload_drawing", "params": {}},
+                {"label": "👥 Мои заказчики", "action": "seller_customers", "params": {}},
                 {"label": "🏠 Главная", "action": "go_home", "params": {}},
             ],
         )
+    if not c.invite_token:
+        c.invite_token = secrets.token_urlsafe(20)
+    c.invited_at = _tz.now()
+    c.save(update_fields=["invite_token", "invited_at"])
+    link = f"{base}/chat/?invite_customer={c.invite_token}"
+    status = "✅ привязан" if c.user_id else "ожидает принятия"
+    return ActionResult(
+        text=(f"📨 Приглашение для «{c.name}» готово ({status}). Отправьте ссылку — "
+              f"заказчик войдёт/зарегистрируется и привяжется к вам; его заказы "
+              f"попадут в ваши отгрузки и начисления:\n{link}"),
+        cards=[
+            {"type": "list", "data": {"title": "Ссылка-приглашение заказчика",
+                "rows": [{"title": link, "subtitle": "скопируйте и отправьте заказчику"}]}},
+            _invitee_benefits_card("🎁 Что получит заказчик (вставьте в сообщение)"),
+        ],
+        actions=[
+            {"label": "👤 Карточка заказчика", "action": "customer_detail", "params": {"id": str(c.id)}},
+            {"label": "👥 К заказчикам", "action": "seller_customers", "params": {}},
+        ],
+    )
 
-    _ST = {"draft": "черновик", "on_review": "на проверке", "approved": "✓ одобрен",
-           "rejected": "✗ отклонён", "archived": "архив"}
-    rows = [{
+
+@register("accept_customer_invite")
+def accept_customer_invite(params, user, role):
+    """Принять приглашение заказчика по токену → привязать аккаунт к Customer."""
+    from marketplace.models import Customer
+    token = (params.get("token") or "").strip()
+    if not token:
+        return ActionResult(text="Ссылка-приглашение недействительна.")
+    c = Customer.objects.filter(invite_token=token).first()
+    if not c:
+        return ActionResult(text="Приглашение не найдено или уже отозвано.")
+    if not (user and getattr(user, "is_authenticated", False)):
+        return ActionResult(
+            text=f"Чтобы принять приглашение «{c.name}», войдите или зарегистрируйтесь — "
+                 "после входа вы автоматически привяжетесь к вашему персональному менеджеру (KAM).",
+            actions=[{"label": "Войти / регистрация", "action": "start_login", "params": {}}],
+        )
+    c.user = user
+    c.save(update_fields=["user"])
+    return ActionResult(
+        text=(f"✅ Готово! Вы привязаны как заказчик «{c.name}». Ваши заказы теперь "
+              "видны вашему KAM, а сопровождение идёт через платформу."),
+        actions=[{"label": "🏠 В кабинет", "action": "go_home", "params": {}}],
+    )
+
+
+@register("customer_bonuses")
+def customer_bonuses(params, user, role):
+    """Начисления бонусов с покупок конкретного заказчика (реальные + расчётные)."""
+    from marketplace.models import Order
+    c = _get_customer(user, params)
+    if not c:
+        return ActionResult(
+            text="Заказчик не найден.",
+            actions=[{"label": "← К заказчикам", "action": "seller_customers", "params": {}}],
+        )
+    _autolink_orders(c)
+    orders = list(Order.objects.filter(customer_ref=c).order_by("-created_at"))
+    summ = _customer_bonus_summary(orders)
+
+    def _m(v):
+        return ("$" + f"{float(v):,.0f}").replace(",", " ")
+
+    rows = []
+    for ln in summ["lines"]:
+        tone = ("ok" if ln["status"] == "released"
+                else ("info" if ln["status"] == "estimate" else "warn"))
+        rows.append({
+            "title": f"Заказ #{ln['order_id']} · +{_m(ln['amount'])}",
+            "subtitle": f"{ln['basis']} {ln['rate']}% · база {_m(ln['base'])}",
+            "badge": {"label": _BONUS_STLBL.get(ln["status"], ln["status"]), "tone": tone},
+            "tone": tone,
+        })
+    kpi = {"type": "kpi_grid", "data": {
+        "title": f"💰 Бонус с покупок · {c.name}",
+        "kpis": [
+            {"value": _m(summ["accrued"]), "label": "Начислено", "sub": "реальные строки"},
+            {"value": _m(summ["estimated"]), "label": "Расчётно", "sub": "при закрытии сделок"},
+            {"value": _m(summ["total"]), "label": "Всего по клиенту"},
+        ],
+    }}
+    cards = [kpi, {"type": "list", "data": {
+        "title": f"Начисления по заказам ({len(rows)})",
+        "rows": rows or [{"title": "Пока нет покупок",
+                          "subtitle": "Начисления появятся с заказами заказчика"}],
+    }}]
+    return ActionResult(
+        text=(f"💰 По «{c.name}»: начислено {_m(summ['accrued'])}"
+              + (f", расчётно ещё {_m(summ['estimated'])}" if summ["estimated"] else "")
+              + ". FOB 0.4% / CIP 0.5% / DDP 0.7%, min $50 / max $5000 на сделку."),
+        cards=cards,
+        actions=[
+            {"label": "👤 Карточка заказчика", "action": "customer_detail", "params": {"id": str(c.id)}},
+            {"label": "💰 Все начисления", "action": "my_accruals", "params": {}},
+        ],
+    )
+
+
+@register("my_accruals")
+def my_accruals(params, user, role):
+    """Все начисления менеджера — по всем заказчикам (реальные + расчётные)."""
+    from marketplace.models import Customer, Order
+    owner = _effective_seller(user)
+    custs = list(Customer.objects.filter(owner=owner, is_active=True))
+
+    def _m(v):
+        return ("$" + f"{float(v):,.0f}").replace(",", " ")
+
+    rows = []
+    tot_accr = tot_est = 0.0
+    for c in custs:
+        _autolink_orders(c)
+        orders = list(Order.objects.filter(customer_ref=c))
+        s = _customer_bonus_summary(orders)
+        tot_accr += s["accrued"]
+        tot_est += s["estimated"]
+        if orders:
+            rows.append({
+                "title": c.name,
+                "subtitle": (f"начислено {_m(s['accrued'])} · расчётно {_m(s['estimated'])} · "
+                             f"{len(orders)} {_plural(len(orders), 'заказ', 'заказа', 'заказов')}"),
+                "action": "customer_bonuses", "params": {"id": str(c.id)},
+            })
+    kpi = {"type": "kpi_grid", "data": {
+        "title": "💰 Мои начисления",
+        "kpis": [
+            {"value": _m(tot_accr), "label": "Начислено", "sub": "по всем клиентам"},
+            {"value": _m(tot_est), "label": "Расчётно", "sub": "при закрытии сделок"},
+            {"value": len(rows), "label": "Активных клиентов"},
+        ],
+    }}
+    return ActionResult(
+        text=f"💰 Ваши начисления: начислено {_m(tot_accr)}, расчётно {_m(tot_est)}.",
+        cards=[kpi, {"type": "list", "data": {
+            "title": "По заказчикам",
+            "rows": rows or [{"title": "Пока нет начислений",
+                              "subtitle": "Появятся с заказами ваших заказчиков"}],
+        }}],
+        actions=[
+            {"label": "👥 Заказчики", "action": "seller_customers", "params": {}},
+            {"label": "🏠 Главная", "action": "go_home", "params": {}},
+        ],
+    )
+
+
+@register("kam_deals")
+def kam_deals(params, user, role):
+    """Сделки KAM — заказы его аккаунтов (assigned_kam), отдельно от очереди оператора."""
+    from marketplace.models import Order
+    owner = _effective_seller(user)
+    qs = (Order.objects.filter(assigned_kam=owner)
+          .select_related("customer_ref").order_by("-created_at"))
+    ACTIVE = {"shipped", "in_transit", "customs", "ready_to_ship",
+              "in_production", "confirmed", "reserve_paid"}
+    orders = list(qs[:60])
+    # Эскалации — наверх (требуют действия KAM с клиентом).
+    orders.sort(key=lambda o: 0 if o.kam_handoff == "escalation" else 1)
+    total = len(orders)
+    active = sum(1 for o in orders if o.status in ACTIVE)
+    esc = sum(1 for o in orders if o.kam_handoff == "escalation")
+    gmv = sum(float(o.total_amount or 0) for o in orders)
+    HOFF = {"escalation": "🔴 эскалация — связаться с клиентом"}  # сделку ведёт оператор
+
+    def _m(v):
+        return ("$" + f"{float(v):,.0f}").replace(",", " ")
+
+    rows = []
+    for o in orders:
+        st = _ORDER_STATUS_RU.get(o.status, o.status)
+        hoff = o.kam_handoff or "kam"
+        tone = ("warn" if hoff == "escalation"
+                else ("ok" if o.status in ("delivered", "completed")
+                      else ("warn" if o.status in ACTIVE else "info")))
+        cname = o.customer_ref.name if o.customer_ref_id else (o.customer_name or "—")
+        sub = [(_m(o.total_amount) if o.total_amount else "—"),
+               HOFF.get(hoff, "🔵 ведёт оператор")]
+        if hoff == "escalation" and o.kam_handoff_note:
+            sub.append("⚠️ " + o.kam_handoff_note)
+        row = {
+            "title": f"Заказ #{o.id} · {cname}",
+            "subtitle": " · ".join(sub),
+            "badge": {"label": st, "tone": tone}, "tone": tone,
+        }
+        if o.customer_ref_id:  # read-only: открыть карточку клиента (отношения)
+            row["action"] = "customer_detail"
+            row["params"] = {"id": str(o.customer_ref_id)}
+        rows.append(row)
+
+    kpi = {"type": "kpi_grid", "data": {"title": "📋 Мои сделки (KAM)", "kpis": [
+        {"value": total, "label": "Всего сделок"},
+        {"value": active, "label": "В работе"},
+        {"value": esc, "label": "⚠️ Эскалаций"},
+        {"value": _m(gmv), "label": "GMV"},
+    ]}}
+    return ActionResult(
+        text=(f"📋 Продажи ваших клиентов: {total} (в работе {active}"
+              + (f", эскалаций {esc}" if esc else "") + "). Сделки ведёт оператор — это "
+              "ваша видимость для комиссии и активации. 🔴 эскалация = оператор просит "
+              "вас связаться с клиентом."),
+        cards=[kpi, {"type": "list", "data": {"title": "Сделки",
+                "rows": rows or [{"title": "Сделок пока нет",
+                                  "subtitle": "Появятся с заказами ваших заказчиков"}]}}],
+        actions=[
+            {"label": "👥 Заказчики", "action": "seller_customers", "params": {}},
+            {"label": "💰 Начисления", "action": "my_accruals", "params": {}},
+        ],
+    )
+
+
+@register("kam_handoff_to_operator")
+def kam_handoff_to_operator(params, user, role):
+    """KAM → Оператор: передать подтверждённую сделку на исполнение."""
+    from marketplace.models import Order
+    from django.utils import timezone as _tz
+    owner = _effective_seller(user)
+    oid = params.get("order_id")
+    o = Order.objects.filter(id=oid, assigned_kam=owner).first()
+    if not o:
+        return ActionResult(text="Сделка не найдена среди ваших.",
+                            actions=[{"label": "📋 Мои сделки", "action": "kam_deals", "params": {}}])
+    o.kam_handoff = "operator"
+    o.kam_handoff_note = ""
+    o.kam_handoff_at = _tz.now()
+    o.save(update_fields=["kam_handoff", "kam_handoff_note", "kam_handoff_at"])
+    return ActionResult(
+        text=(f"✅ Заказ #{o.id} передан оператору на исполнение. Вы остаётесь на аккаунте "
+              "(read-only по исполнению); вернётся к вам при исключении."),
+        actions=[{"label": "📋 Мои сделки", "action": "kam_deals", "params": {}}],
+    )
+
+
+@register("op_escalate_to_kam")
+def op_escalate_to_kam(params, user, role):
+    """Оператор → KAM: эскалация исключения (срыв SLA / брак / перерасход)."""
+    from marketplace.models import Order
+    from django.utils import timezone as _tz
+    oid = params.get("order_id")
+    reason = (params.get("reason") or params.get("note") or "").strip()
+    o = Order.objects.filter(id=oid).first()
+    if not o:
+        return ActionResult(text="Заказ не найден.")
+    if not reason:
+        return ActionResult(
+            text=f"Эскалация заказа #{o.id} к KAM — укажите причину.",
+            cards=[{"type": "form", "data": {
+                "title": f"⚠️ Эскалация #{o.id} → KAM",
+                "submit_action": "op_escalate_to_kam", "submit_label": "Эскалировать",
+                "fields": [{"name": "reason", "label": "Причина", "type": "text", "required": True,
+                            "placeholder": "Срыв SLA / брак / перерасход — коротко"}],
+                "fixed_params": {"order_id": oid},
+            }}],
+        )
+    o.kam_handoff = "escalation"
+    o.kam_handoff_note = reason[:300]
+    o.kam_handoff_at = _tz.now()
+    o.save(update_fields=["kam_handoff", "kam_handoff_note", "kam_handoff_at"])
+    who = ((o.assigned_kam.get_full_name() or o.assigned_kam.username)
+           if o.assigned_kam_id else "KAM не назначен")
+    return ActionResult(
+        text=(f"⚠️ Заказ #{o.id} эскалирован к KAM ({who}): {reason}. "
+              "KAM свяжется с клиентом; исполнение остаётся за вами."),
+        actions=[
+            {"label": "← К заказу", "action": "op_order_detail", "params": {"order_id": oid}},
+            {"label": "📋 Очередь", "action": "op_queue", "params": {}},
+        ],
+    )
+
+
+@register("my_kam")
+def my_kam(params, user, role):
+    """Кабинет клиента: кто его ведёт (KAM) + право сменить менеджера."""
+    from marketplace.models import Customer
+    if not (user and getattr(user, "is_authenticated", False)):
+        return ActionResult(text="Войдите, чтобы увидеть вашего персонального менеджера.",
+                            actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+    recs = list(Customer.objects.filter(user=user, is_active=True).select_related("owner"))
+    if not recs:
+        return ActionResult(
+            text="За вами пока не закреплён персональный менеджер (KAM). Хотите — подберём: "
+                 "специалист по закупкам возьмёт ваши заявки на себя.",
+            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}])
+    rows = []
+    for c in recs:
+        mgr = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "—"
+        rows.append({
+            "title": f"Ваш менеджер (KAM): {mgr}",
+            "subtitle": "Ведёт ваши закупки на платформе. Не подходит? Нажмите → сменить менеджера.",
+            "action": "change_manager", "params": {"id": str(c.id)},
+        })
+    return ActionResult(
+        text="👤 Ваш персональный менеджер (KAM) — отвечает за ваши закупки, сроки и выгоду.",
+        cards=[{"type": "list", "data": {"title": "Менеджер", "rows": rows}}],
+        actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}],
+    )
+
+
+@register("change_manager")
+def change_manager(params, user, role):
+    """Клиент открепляется от KAM → заявка возвращается в пул (назначат нового)."""
+    from marketplace.models import Customer
+    cid = params.get("id")
+    c = Customer.objects.filter(id=cid, user=user, is_active=True).first()
+    if not c:
+        return ActionResult(text="Привязка не найдена или уже снята.")
+    c.is_active = False
+    c.save(update_fields=["is_active"])
+    return ActionResult(
+        text="✅ Вы откреплены от менеджера. Ваша заявка вернулась в пул — мы назначим нового "
+             "персонального менеджера, который продолжит вести ваши закупки.",
+        actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}],
+    )
+
+
+def _drawing_owner(user, role):
+    """Владелец чертежей. Покупатель грузит под своим user (DrawingUploadView:
+    seller=request.user) → для него owner = сам user. Продавец — через
+    _effective_seller (командный/демо-fallback)."""
+    return user if (role or "").startswith("buyer") else _effective_seller(user)
+
+
+_DRAWING_ST = {"draft": "черновик", "on_review": "на проверке", "approved": "✓ одобрен",
+               "rejected": "✗ отклонён", "archived": "архив"}
+
+
+def _drawing_row(d):
+    """Строка списка для чертежа: клик открывает файл через access-controlled
+    эндпоинт (не сырой /media/ — приватность)."""
+    return {
         "title": f"{(getattr(d, 'title', None) or f'Чертёж #{d.id}')} · ред. {d.revision or 'A'}",
         "subtitle": (
             f"{(d.file_format or '').upper()} · "
             + (f"арт. {d.oem_number}" if d.oem_number
                else (f"товар {d.part.oem_number}" if d.part_id else "без привязки"))
-            + f" · {_ST.get(d.status, d.status or '')} · {d.created_at.strftime('%d.%m.%Y')}"
+            + f" · {_DRAWING_ST.get(d.status, d.status or '')} · {d.created_at.strftime('%d.%m.%Y')}"
         ),
-        # Открываем через access-controlled эндпоинт (стримит файл с проверкой
-        # доступа), а не прямой /media/ URL — приватность чертежа.
         "url": f"/api/assistant/drawings/{d.id}/file/",
-    } for d in items]
+    }
+
+
+def _drawing_item(d):
+    """То же, что _drawing_row, но с id — для карточки drawings (drag/привязка)."""
+    return {"id": d.id, **_drawing_row(d)}
+
+
+def _drawings_view(user, role, note=None):
+    """ActionResult с карточкой type=drawings (папки + чертежи без папки).
+    Возвращается из seller_drawings/create_drawing_folder/move_drawing —
+    фронт подменяет карточку на месте (inline-создание + drag-n-drop)."""
+    from django.db.models import Count
+    from marketplace.models import Drawing, DrawingFolder
+    owner = _drawing_owner(user, role)
+    _is_buyer = (role or "").startswith("buyer")
+    _what = "что вам нужно" if _is_buyer else "что вы предлагаете"
+
+    total = Drawing.objects.filter(seller=owner).count()
+    folders_data = []
+
+    # 1) Ручные папки (DrawingFolder)
+    folders = list(DrawingFolder.objects.filter(owner=owner).annotate(n=Count("drawings")))
+    for f in folders:
+        fdr = (Drawing.objects.filter(seller=owner, folder=f)
+               .select_related("part").order_by("-created_at")[:50])
+        folders_data.append({"id": f.id, "name": f.name, "count": f.n,
+                             "drawings": [_drawing_item(x) for x in fdr], "is_project": False})
+
+    # 2) Виртуальные папки проектов: чертежи проекта (без ручной папки) →
+    #    отдельной папкой с названием проекта.
+    from assistant.models import Project
+    # dict.fromkeys + order_by() — иначе дефолтный ordering модели попадает в
+    # SELECT и .distinct() даёт дубли project_id (по паре project_id, updated_at).
+    proj_ids = list(dict.fromkeys(
+        Drawing.objects
+        .filter(seller=owner, folder__isnull=True, project__isnull=False)
+        .order_by().values_list("project_id", flat=True)))
+    if proj_ids:
+        pmap = {p.id: p for p in Project.objects.filter(id__in=proj_ids)}
+        for pid in proj_ids:
+            p = pmap.get(pid)
+            if not p:
+                continue
+            pdr = (Drawing.objects.filter(seller=owner, folder__isnull=True, project_id=pid)
+                   .select_related("part").order_by("-created_at")[:50])
+            folders_data.append({"id": f"pid:{pid}", "name": p.name, "count": len(pdr),
+                                 "drawings": [_drawing_item(x) for x in pdr], "is_project": True})
+
+    # 3) Без папки и без проекта
+    ungrouped = list(
+        Drawing.objects.filter(seller=owner, folder__isnull=True, project__isnull=True)
+        .select_related("part").order_by("-created_at")[:50]
+    )
+    ungrouped_data = [_drawing_item(d) for d in ungrouped]
+
+    if total == 0:
+        text = (f"📐 Чертежей пока нет. Загрузите чертёж ({_what}) — оператор "
+                "сверит его при согласовании сделки. Это повышает точность поставки.")
+    else:
+        text = (note or (f"📐 Ваши чертежи: {total} · папок: {len(folders_data)}. "
+                "Перетащите чертёж на папку, чтобы разложить. Видны только вам и оператору."))
 
     return ActionResult(
-        text=(f"📐 Ваши чертежи: {len(items)}. Видны только вам и оператору "
-              "(при согласовании сделки) — другая сторона их не видит."),
-        cards=[{"type": "list", "data": {"title": "Мои чертежи", "rows": rows}}],
+        text=text,
+        cards=[{"type": "drawings", "data": {
+            "title": "Мои чертежи",
+            "folders": folders_data,
+            "ungrouped": ungrouped_data,
+            "total": total,
+        }}],
         actions=[
             {"label": "📤 Загрузить чертёж", "action": "upload_drawing", "params": {}},
             {"label": "🏠 Главная", "action": "go_home", "params": {}},
         ],
-        suggestions=["Загрузить чертёж", "Зачем чертёж оператору?"],
+        suggestions=["Загрузить чертёж"],
+    )
+
+
+@register("seller_drawings")
+def seller_drawings(params, user, role):
+    """Чертежи пользователя: папки (drop-target) + чертежи без папки.
+    Папки/чертежи приватны — видны только владельцу и оператору."""
+    return _drawings_view(user, role)
+
+
+@register("drawing_folder")
+def drawing_folder(params, user, role):
+    """Содержимое одной папки + кнопки управления."""
+    from marketplace.models import Drawing, DrawingFolder
+    owner = _drawing_owner(user, role)
+    try:
+        folder = DrawingFolder.objects.get(id=params.get("folder_id"), owner=owner)
+    except (DrawingFolder.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Папка не найдена.",
+            actions=[{"label": "← Все чертежи", "action": "seller_drawings", "params": {}}])
+    items = list(Drawing.objects.filter(seller=owner, folder=folder)
+                 .select_related("part").order_by("-created_at"))
+    cards = ([{"type": "list", "data": {"title": folder.name,
+                                        "rows": [_drawing_row(d) for d in items]}}]
+             if items else [])
+    text = (f"📁 «{folder.name}» — {len(items)} чертеж." if items
+            else f"📁 «{folder.name}» пока пуста. Добавьте сюда чертежи.")
+    return ActionResult(
+        text=text,
+        cards=cards,
+        actions=[
+            {"label": "➕ Добавить чертежи", "action": "add_to_folder", "params": {"folder_id": folder.id}},
+            {"label": "🗑 Удалить папку", "action": "delete_drawing_folder", "params": {"folder_id": folder.id}},
+            {"label": "← Все чертежи", "action": "seller_drawings", "params": {}},
+        ],
+    )
+
+
+@register("create_drawing_folder")
+def create_drawing_folder(params, user, role):
+    """Создать папку inline (имя из поля в карточке) → обновлённая карточка."""
+    from marketplace.models import DrawingFolder
+    owner = _drawing_owner(user, role)
+    name = (params.get("name") or "").strip()[:120]
+    note = None
+    if name:
+        folder, created = DrawingFolder.objects.get_or_create(owner=owner, name=name)
+        note = (f"📁 Папка «{folder.name}» создана." if created
+                else f"📁 Папка «{folder.name}» уже есть.")
+    return _drawings_view(user, role, note=note)
+
+
+@register("add_to_folder")
+def add_to_folder(params, user, role):
+    """Список чертежей вне этой папки → клик кладёт чертёж в папку."""
+    from marketplace.models import Drawing, DrawingFolder
+    owner = _drawing_owner(user, role)
+    try:
+        folder = DrawingFolder.objects.get(id=params.get("folder_id"), owner=owner)
+    except (DrawingFolder.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Папка не найдена.",
+            actions=[{"label": "← Все чертежи", "action": "seller_drawings", "params": {}}])
+    cand = list(Drawing.objects.filter(seller=owner).exclude(folder=folder)
+                .select_related("part", "folder").order_by("-created_at")[:50])
+    if not cand:
+        return ActionResult(
+            text=f"Нет чертежей для добавления в «{folder.name}». Сначала загрузите чертёж.",
+            actions=[
+                {"label": "📤 Загрузить чертёж", "action": "upload_drawing", "params": {}},
+                {"label": f"← Назад в «{folder.name}»", "action": "drawing_folder", "params": {"folder_id": folder.id}},
+            ],
+        )
+    rows = []
+    for d in cand:
+        loc = f" · сейчас в «{d.folder.name}»" if d.folder_id else ""
+        rows.append({
+            "title": f"{(d.title or f'Чертёж #{d.id}')} · ред. {d.revision or 'A'}",
+            "subtitle": f"{(d.file_format or '').upper()}{loc} — нажмите, чтобы положить сюда",
+            "action": "move_drawing",
+            "params": {"drawing_id": d.id, "folder_id": folder.id},
+        })
+    return ActionResult(
+        text=f"Выберите чертёж — он переедет в папку «{folder.name}».",
+        cards=[{"type": "list", "data": {"title": f"Добавить в «{folder.name}»", "rows": rows}}],
+        actions=[{"label": f"← Назад в «{folder.name}»", "action": "drawing_folder", "params": {"folder_id": folder.id}}],
+    )
+
+
+@register("move_drawing")
+def move_drawing(params, user, role):
+    """Положить чертёж в папку (folder_id) или вынуть (пустой folder_id).
+    Возвращает обновлённую карточку чертежей (для drag-n-drop refresh)."""
+    from marketplace.models import Drawing, DrawingFolder
+    owner = _drawing_owner(user, role)
+    try:
+        d = Drawing.objects.get(id=params.get("drawing_id"), seller=owner)
+    except (Drawing.DoesNotExist, ValueError, TypeError):
+        return _drawings_view(user, role)
+    nm = d.title or f"Чертёж #{d.id}"
+    fid = params.get("folder_id")
+    if fid:
+        try:
+            folder = DrawingFolder.objects.get(id=fid, owner=owner)
+        except (DrawingFolder.DoesNotExist, ValueError, TypeError):
+            return _drawings_view(user, role)
+        d.folder = folder
+        note = f"✓ «{nm}» → папка «{folder.name}»."
+    else:
+        d.folder = None
+        note = f"✓ «{nm}» вынут из папки."
+    d.save(update_fields=["folder", "updated_at"])
+    return _drawings_view(user, role, note=note)
+
+
+@register("link_drawing")
+def link_drawing(params, user, role):
+    """Умный поиск позиции каталога для привязки к чертежу. Рендерит карточку
+    поиска drawing_link; с параметром q отдаёт результаты (для live-swap)."""
+    from django.db.models import Q
+    from marketplace.models import Drawing, Part
+    owner = _drawing_owner(user, role)
+    try:
+        d = Drawing.objects.get(id=params.get("drawing_id"), seller=owner)
+    except (Drawing.DoesNotExist, ValueError, TypeError):
+        return _drawings_view(user, role)
+    q = (params.get("q") or "").strip()
+    rows = []
+    if len(q) >= 2:
+        # Поиск по ОБЩЕЙ базе парт-номеров (без цен) — автоподстановка артикулов
+        # для всех (включая покупателя без своего каталога). oem_number__icontains
+        # + order_by(индекс) ≈ 13мс на 900K+. Уникальные OEM (один артикул у многих
+        # продавцов — показываем один раз).
+        seen = set()
+        for r in (Part.objects.filter(oem_number__icontains=q)
+                  .order_by("oem_number").values("oem_number", "title")[:80]):
+            o = (r["oem_number"] or "").strip()
+            if not o or o in seen:
+                continue
+            seen.add(o)
+            ttl = f"{o} — {r['title']}".strip(" —") if r["title"] else o
+            rows.append({"title": ttl, "subtitle": "",
+                         "action": "bind_drawing", "params": {"drawing_id": d.id, "oem": o}})
+            if len(rows) >= 15:
+                break
+    cur = (f"Сейчас: {d.oem_number}" if d.oem_number else "Сейчас: без привязки")
+    return ActionResult(
+        text=f"🔗 Привязать «{d.title or ('Чертёж #'+str(d.id))}» к позиции. {cur}",
+        cards=[{"type": "drawing_link", "data": {
+            "drawing_id": d.id,
+            "title": d.title or f"Чертёж #{d.id}",
+            "q": q,
+            "rows": rows,
+            "searched": len(q) >= 2,
+        }}],
+        actions=[
+            {"label": "✖ Снять привязку", "action": "bind_drawing", "params": {"drawing_id": d.id, "oem": ""}},
+            {"label": "← Все чертежи", "action": "seller_drawings", "params": {}},
+        ],
+    )
+
+
+@register("bind_drawing")
+def bind_drawing(params, user, role):
+    """Привязать чертёж к позиции по парт-номеру (oem) из общей базы, либо снять
+    (пустой oem). Парт-номер — seller-agnostic, чтобы оператор метчил по нему
+    чертежи всех сторон. part_id поддержан для старых карточек (legacy)."""
+    from marketplace.models import Drawing, Part
+    owner = _drawing_owner(user, role)
+    try:
+        d = Drawing.objects.get(id=params.get("drawing_id"), seller=owner)
+    except (Drawing.DoesNotExist, ValueError, TypeError):
+        return _drawings_view(user, role)
+    nm = d.title or f"Чертёж #{d.id}"
+    oem = (params.get("oem") or "").strip()
+    pid = params.get("part_id")  # legacy
+    if oem:
+        d.part = None
+        d.oem_number = oem
+        d.save(update_fields=["part", "oem_number", "updated_at"])
+        note = f"🔗 «{nm}» привязан к позиции {oem}."
+    elif pid and str(pid) not in ("", "0", "None"):
+        try:
+            p = Part.objects.get(id=int(pid))
+            d.part = p
+            d.oem_number = p.oem_number or d.oem_number
+            d.save(update_fields=["part", "oem_number", "updated_at"])
+            note = f"🔗 «{nm}» привязан к позиции {p.oem_number}."
+        except (Part.DoesNotExist, ValueError, TypeError):
+            return _drawings_view(user, role)
+    else:
+        d.part = None
+        d.oem_number = ""
+        d.save(update_fields=["part", "oem_number", "updated_at"])
+        note = f"🔗 Привязка снята с «{nm}»."
+    return _drawings_view(user, role, note=note)
+
+
+@register("delete_drawing_folder")
+def delete_drawing_folder(params, user, role):
+    """Удалить папку. Чертежи НЕ удаляются (folder=SET_NULL) — просто без папки."""
+    from marketplace.models import DrawingFolder
+    owner = _drawing_owner(user, role)
+    try:
+        folder = DrawingFolder.objects.get(id=params.get("folder_id"), owner=owner)
+    except (DrawingFolder.DoesNotExist, ValueError, TypeError):
+        return ActionResult(text="Папка не найдена.",
+            actions=[{"label": "← Все чертежи", "action": "seller_drawings", "params": {}}])
+    nm = folder.name
+    folder.delete()
+    return ActionResult(
+        text=f"🗑 Папка «{nm}» удалена. Чертежи из неё сохранены (теперь без папки).",
+        actions=[{"label": "← Все чертежи", "action": "seller_drawings", "params": {}}],
     )
 
 

@@ -6453,7 +6453,17 @@ def chat_first_view(request):
     доходит до mutating-действий (создать RFQ, заказать, оплатить) —
     backend возвращает gating-card «Зарегистрируйтесь, чтобы продолжить».
     """
-    return render(request, "chat/index.html")
+    # Allowlist действий по ролям → фронт фильтрует каталог пилюль, чтобы не
+    # предлагать пилюли, недоступные роли (клик по ним всё равно дал бы «нет прав»).
+    role_actions_json = "{}"
+    try:
+        import json as _json
+        from assistant.actions import ROLE_ACTIONS
+        role_actions_json = _json.dumps({r: list(a) for r, a in ROLE_ACTIONS.items()},
+                                        ensure_ascii=False)
+    except Exception:
+        pass
+    return render(request, "chat/index.html", {"role_actions_json": role_actions_json})
 
 
 @login_required

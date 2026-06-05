@@ -25,6 +25,7 @@ urlpatterns = [
     path("projects/<uuid:project_id>/chats/", views.ProjectChatView.as_view(), name="assistant-project-chat"),
     path("projects/<uuid:project_id>/update/", views.ProjectUpdateView.as_view(), name="assistant-project-update"),
     path("projects/<uuid:project_id>/documents/", views.ProjectDocumentUploadView.as_view(), name="assistant-project-doc-upload"),
+    path("projects/<uuid:project_id>/documents/<uuid:doc_id>/file/", views.ProjectDocumentFileView.as_view(), name="assistant-project-doc-file"),
     # KYB document upload (dealership certificate, bank requisites — file fields в CompanyVerification)
     path("kyb/doc/<str:kind>/", views.KYBDocUploadView.as_view(), name="assistant-kyb-doc-upload"),
     # RFQ detail (for chat-first /chat/rfq/<id>/ page)

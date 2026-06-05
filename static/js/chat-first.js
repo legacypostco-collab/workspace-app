@@ -1779,6 +1779,94 @@
   // Card renderers
   // ══════════════════════════════════════════════════════════
   const renderers = {
+    // Чертежи: папки (drop-target) + чертежи без папки (draggable). Inline-
+    // создание папки и drag-n-drop — обработчики ниже (_initDrawingsDnD).
+    drawings(d) {
+      _ensureDrawingsCSS();
+      const folders = d.folders || [];
+      const ungrouped = d.ungrouped || [];
+      const itemHtml = (r) => `
+        <div class="dw-row" data-drawing-id="${esc(String(r.id))}">
+          <div class="dw-item" draggable="true" data-drawing-id="${esc(String(r.id))}" data-url="${esc(r.url || '')}" title="Открыть · перетащите в папку">
+            <span class="dw-grip">⠿</span>
+            <span class="dw-ibody">
+              <span class="dw-ititle">${esc(r.title || '')}</span>
+              <span class="dw-isub">${esc(r.subtitle || '')}</span>
+            </span>
+            <span class="dw-link-btn" title="Привязать к позиции каталога">🔗</span>
+          </div>
+          <div class="dw-linkpanel">
+            <input class="dw-linkinput" type="text" placeholder="Артикул или название позиции — напр. 6D102" autocomplete="off" oninput="window.__dwLinkInline&&window.__dwLinkInline(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();window.__dwLinkInline&&window.__dwLinkInline(this,true);}"/>
+            <div class="dw-results"></div>
+          </div>
+        </div>`;
+      const fHtml = folders.map(f => {
+        const proj = !!f.is_project;
+        return `
+        <div class="dw-folder${proj ? ' dw-folder-proj' : ''}" data-folder-id="${esc(String(f.id))}"${proj ? ' data-project="1"' : ''}>
+          <div class="dw-fhead" title="${proj ? 'Папка проекта (чертежи загружены на странице проекта)' : 'Нажмите, чтобы развернуть · перетащите сюда чертёж'}">
+            <span class="dw-fchev">▸</span>
+            <span class="dw-fname">${proj ? '🗂' : '📁'} ${esc(f.name)}${proj ? ' <span class="dw-projtag">проект</span>' : ''}</span>
+            <span class="dw-fcount">${esc(String(f.count))}</span>
+          </div>
+          <div class="dw-fbody">
+            ${(f.drawings || []).map(itemHtml).join('') || '<div class="dw-empty dw-fempty">' + (proj ? 'Пусто' : 'Пусто — перетащите сюда чертёж') + '</div>'}
+          </div>
+        </div>`;
+      }).join('');
+      const empty = (!folders.length && !ungrouped.length)
+        ? '<div class="dw-empty">Пока пусто — создайте папку или загрузите чертёж.</div>' : '';
+      return `<div class="card dw-card">
+        <div class="card-title">${esc(d.title || 'Мои чертежи')}</div>
+        <div class="dw-newrow">
+          <input class="dw-newinput" type="text" placeholder="Новая папка — напр. Ходовка Komatsu" autocomplete="off" maxlength="120"/>
+          <button type="button" class="dw-newbtn">📁 Создать</button>
+        </div>
+        ${folders.length ? `<div class="dw-sec">Папки</div><div class="dw-folders">${fHtml}</div>` : ''}
+        ${(folders.length || ungrouped.length) ? `<div class="dw-sec dw-nofolder" data-folder-id="" title="Перетащите сюда, чтобы убрать из папки">Без папки${ungrouped.length ? '' : ' — пусто'}</div>` : ''}
+        ${ungrouped.length ? `<div class="dw-items">${ungrouped.map(itemHtml).join('')}</div>` : ''}
+        ${empty}
+      </div>`;
+    },
+    // Умный поиск позиции каталога для привязки к чертежу (live-swap .dw-results).
+    drawing_link(d) {
+      _ensureDrawingsCSS();
+      const did = esc(String(d.drawing_id));
+      const rows = (d.rows || []).map(r => `
+        <div class="dw-result" data-action="bind_drawing" data-params='${esc(JSON.stringify(r.params || {}))}' data-label="${esc(r.title || '')}">
+          <span class="dw-rtitle">${esc(r.title || '')}</span>
+          ${r.subtitle ? `<span class="dw-rsub">${esc(r.subtitle)}</span>` : ''}
+        </div>`).join('');
+      let body;
+      if (!d.searched) body = '<div class="dw-empty">Введите артикул или название позиции</div>';
+      else if (!(d.rows || []).length) body = '<div class="dw-empty">Ничего не найдено</div>';
+      else body = rows;
+      return `<div class="card dw-card dw-link" data-drawing-id="${did}">
+        <div class="card-title">🔗 Привязать «${esc(d.title || '')}» к позиции</div>
+        <input class="dw-newinput dw-linkinput" type="text" placeholder="Артикул или название — напр. 6D102 или коленвал" autocomplete="off" value="${esc(d.q || '')}" oninput="window.__drawingLinkSearch&&window.__drawingLinkSearch(this,'${did}')" onkeydown="if(event.key==='Enter'){event.preventDefault();window.__drawingLinkSearch&&window.__drawingLinkSearch(this,'${did}',true);}"/>
+        <div class="dw-results">${body}</div>
+      </div>`;
+    },
+    // Операторский поиск чертежей по артикулу (live, swap .opd-results).
+    op_drawings(d) {
+      _ensureDrawingsCSS();
+      const input = `<input class="dw-newinput opd-input" type="text" value="${esc(d.q || '')}" placeholder="Артикул (OEM) — напр. 6D102 или 5243" autocomplete="off" oninput="window.__opDrawingsSearch&&window.__opDrawingsSearch(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();window.__opDrawingsSearch&&window.__opDrawingsSearch(this,true);}"/>`;
+      let body;
+      if (!d.searched) body = '<div class="dw-empty">Введите артикул — покажу, что нужно покупателям и что предлагают продавцы.</div>';
+      else if (!(d.groups || []).some(g => (g.rows || []).length)) body = '<div class="dw-empty">По «' + esc(d.q || '') + '» чертежей не найдено.</div>';
+      else body = (d.groups || []).filter(g => (g.rows || []).length).map(g =>
+        '<div class="opd-group"><div class="opd-gtitle">' + esc(g.label) + ' (' + (g.rows || []).length + ')</div>'
+        + (g.rows || []).map(r =>
+            '<a class="dw-result" href="' + esc(r.url || '#') + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">'
+            + '<span class="dw-rtitle">' + esc(r.title || '') + '</span>'
+            + (r.subtitle ? '<span class="dw-rsub">' + esc(r.subtitle) + '</span>' : '') + '</a>').join('')
+        + '</div>').join('');
+      return `<div class="card dw-card opd-card">
+        <div class="card-title">📐 Чертежи</div>
+        ${input}
+        <div class="opd-results">${body}</div>
+      </div>`;
+    },
     product(d) {
       return `<div class="card">
         <div class="card-row">
@@ -5624,6 +5712,39 @@
       }, 500);
       return;
     }
+    // Ссылка-приглашение заказчика: /chat/?invite_customer=<token>
+    const inviteCustomer = p.get('invite_customer');
+    if (inviteCustomer) {
+      history.replaceState(null, '', window.location.pathname);
+      setTimeout(() => {
+        try { window.quickAction('accept_customer_invite', { token: inviteCustomer }); }
+        catch (e) { console.warn('invite_customer trigger failed', e); }
+      }, 500);
+      return;
+    }
+    // Реферальная ссылка KAM: /chat/?ref=<signed>. Сохраняем токен, чтобы
+    // применить после регистрации, и пробуем привязать сразу.
+    const ref = p.get('ref');
+    if (ref) {
+      try { localStorage.setItem('kamRef', ref); } catch (e) {}
+      history.replaceState(null, '', window.location.pathname);
+      setTimeout(() => {
+        try { window.quickAction('accept_referral', { code: ref }); }
+        catch (e) { console.warn('ref trigger failed', e); }
+      }, 500);
+      return;
+    }
+    // Отложенный реферал: пользователь зарегистрировался → применяем один раз.
+    try {
+      const pendingRef = localStorage.getItem('kamRef');
+      if (pendingRef && window.IS_AUTHENTICATED) {
+        localStorage.removeItem('kamRef');
+        setTimeout(() => {
+          try { window.quickAction('accept_referral', { code: pendingRef }); }
+          catch (e) { console.warn('pending ref failed', e); }
+        }, 700);
+      }
+    } catch (e) {}
     const a = p.get('action');
     if (!a) return;
     // Очищаем query чтобы при перезагрузке action не запускался повторно.
@@ -5646,6 +5767,272 @@
   // Перехват «assistant ответил с _post_action=reload» — для случая, когда
   // фронт получил это поле в data, но action рендерится как кнопка.
   // (Не обязательно — кнопка reload_page уже работает, оставлено на будущее.)
+
+  // Enter в текстовом поле формы = подтвердить (нажать .fm-submit). Работает
+  // во ВСЕХ формах (.fm-card): создание папки, приглашение, любые input'ы.
+  // textarea не трогаем (Enter = перенос строки), Shift+Enter и IME-композицию
+  // (китайский/японский ввод) пропускаем.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+    const inp = e.target;
+    if (!inp || !inp.classList || !inp.classList.contains('fm-input')) return;
+    if (inp.tagName === 'TEXTAREA' || inp.tagName === 'SELECT') return;
+    const card = inp.closest('.fm-card');
+    const submit = card && card.querySelector('.fm-submit');
+    if (!submit || submit.disabled) return;
+    e.preventDefault();
+    submit.click();
+  });
+
+  // ── Карточка чертежей (type=drawings): inline-папки + drag-n-drop ──
+  function _ensureDrawingsCSS() {
+    if (document.getElementById('dw-css')) return;
+    const s = document.createElement('style');
+    s.id = 'dw-css';
+    s.textContent =
+      '.dw-card{display:flex;flex-direction:column;gap:8px}'
+      + '.dw-newrow{display:flex;gap:6px}'
+      + '.dw-newinput{flex:1;padding:8px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.14);font:inherit;background:#fff}'
+      + '.dw-newbtn{padding:8px 14px;border-radius:8px;border:none;background:#1a1a1a;color:#fff;font:inherit;cursor:pointer;white-space:nowrap}'
+      + '.dw-newbtn:hover{opacity:.9}'
+      + '.dw-sec{font-size:11px;font-weight:700;opacity:.5;margin:10px 2px 2px;text-transform:uppercase;letter-spacing:.05em}'
+      + '.dw-folders{display:flex;flex-direction:column;gap:6px;margin-top:2px}'
+      + '.dw-folder{border-radius:10px;border:1px dashed rgba(0,0,0,.2);background:rgba(0,0,0,.02);transition:.12s;overflow:hidden}'
+      + '.dw-folder.dw-over{border-color:#2e7d32;background:rgba(46,125,50,.14);border-style:solid}'
+      + '.dw-fhead{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer}'
+      + '.dw-fhead:hover{background:rgba(0,0,0,.04)}'
+      + '.dw-fchev{font-size:11px;opacity:.55;transition:.15s}'
+      + '.dw-folder.dw-open .dw-fchev{transform:rotate(90deg)}'
+      + '.dw-fname{font-weight:600;flex:1}'
+      + '.dw-fcount{font-size:12px;opacity:.7;background:rgba(0,0,0,.08);border-radius:10px;padding:1px 8px;min-width:18px;text-align:center}'
+      + '.dw-folder-proj{border-style:solid;border-color:rgba(100,120,200,.35);background:rgba(100,120,200,.05)}'
+      + '.dw-projtag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6cc0;background:rgba(100,120,200,.16);border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle}'
+      + '.dw-fbody{display:none;flex-direction:column;gap:6px;padding:0 8px 8px}'
+      + '.dw-folder.dw-open .dw-fbody{display:flex}'
+      + '.dw-fempty{padding:6px 4px}'
+      + '.dw-nofolder{border:1px dashed transparent;border-radius:8px;transition:.12s}'
+      + '.dw-nofolder.dw-over{border-color:#2e7d32;background:rgba(46,125,50,.12)}'
+      + '.dw-items{display:flex;flex-direction:column;gap:6px;margin-top:4px}'
+      + '.dw-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,.08);background:#fff;cursor:pointer}'
+      + '.dw-item:hover{background:rgba(0,0,0,.03)}'
+      + '.dw-item.dw-dragging{opacity:.4}'
+      + '.dw-grip{cursor:grab;opacity:.4;font-size:16px;user-select:none}'
+      + '.dw-ibody{display:flex;flex-direction:column;min-width:0;flex:1}'
+      + '.dw-ititle{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '.dw-isub{font-size:12px;opacity:.65}'
+      + '.dw-empty{opacity:.6;padding:8px 2px}'
+      + '.dw-link-btn{cursor:pointer;opacity:.5;font-size:15px;padding:2px 7px;border-radius:6px;align-self:center}'
+      + '.dw-link-btn:hover{opacity:1;background:rgba(0,0,0,.07)}'
+      + '.dw-row{display:flex;flex-direction:column;border-radius:10px;overflow:hidden}'
+      + '.dw-row.dw-open{box-shadow:0 0 0 1px rgba(46,125,50,.4)}'
+      + '.dw-linkpanel{display:none;flex-direction:column;gap:6px;padding:8px 10px 10px;background:rgba(46,125,50,.05)}'
+      + '.dw-row.dw-open .dw-linkpanel{display:flex}'
+      + '.dw-linkinput{padding:7px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.14);font:inherit;background:#fff}'
+      + '.dw-results{display:flex;flex-direction:column;gap:5px;margin-top:6px;max-height:340px;overflow:auto}'
+      + '.dw-result{display:flex;flex-direction:column;padding:8px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.08);background:#fff;cursor:pointer}'
+      + '.dw-result:hover{background:rgba(46,125,50,.08);border-color:#2e7d32}'
+      + '.dw-rtitle{font-weight:600}'
+      + '.dw-rsub{font-size:12px;opacity:.6}'
+      + '.opd-card{gap:12px;padding:16px 18px 18px}'
+      + '.opd-input{padding:12px 14px;font-size:15px;border-radius:10px}'
+      + '.opd-results{display:flex;flex-direction:column;gap:14px;margin-top:4px}'
+      + '.opd-results .dw-empty{padding:6px 2px 4px}'
+      + '.opd-group{display:flex;flex-direction:column;gap:6px}'
+      + '.opd-gtitle{font-size:12px;font-weight:700;opacity:.6;text-transform:uppercase;letter-spacing:.03em}';
+    document.head.appendChild(s);
+  }
+
+  let _dwDragId = null;
+  async function _refreshDrawings(dwCard, action, params) {
+    try {
+      const r = await api('/api/assistant/action/', {
+        method: 'POST',
+        body: JSON.stringify({conversation_id: state.convId, action, params}),
+      });
+      const card = (r.cards || []).find(c => c.type === 'drawings');
+      if (card && dwCard && dwCard.isConnected) {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = renderers.drawings(card.data || {});
+        const fresh = tmp.firstElementChild;
+        if (fresh) dwCard.replaceWith(fresh);
+      }
+    } catch (e) { /* оставляем старую карточку */ }
+  }
+  function _dwCreateFolder(card, inp) {
+    const name = ((inp && inp.value) || '').trim();
+    if (!name) { if (inp) inp.focus(); return; }
+    _refreshDrawings(card, 'create_drawing_folder', {name});
+  }
+
+  // Инлайн-поиск позиции под чертежом (без перехода на новую карточку):
+  // рендерит результаты прямо в .dw-results панели этого чертежа.
+  let _dwInlineTimer = null;
+  window.__dwLinkInline = function(inp, immediate) {
+    if (!inp) return;
+    const row = inp.closest('.dw-row');
+    const panel = inp.closest('.dw-linkpanel');
+    if (!row || !panel) return;
+    const did = row.dataset.drawingId;
+    const q = (inp.value || '').trim();
+    clearTimeout(_dwInlineTimer);
+    const run = function() {
+      api('/api/assistant/action/', {
+        method: 'POST',
+        body: JSON.stringify({conversation_id: state.convId, action: 'link_drawing', params: {drawing_id: did, q}}),
+      }).then(function(resp) {
+        if ((inp.value || '').trim() !== q) return; // гонка
+        const c = (resp.cards || []).find(x => x.type === 'drawing_link');
+        const resEl = panel.querySelector('.dw-results');
+        if (!resEl) return;
+        const rows = (c && c.data && c.data.rows) || [];
+        if (!c || !c.data.searched) { resEl.innerHTML = '<div class="dw-empty">Введите артикул или название</div>'; return; }
+        if (!rows.length) { resEl.innerHTML = '<div class="dw-empty">Ничего не найдено</div>'; return; }
+        resEl.innerHTML = rows.map(function(r) {
+          const oem = String((r.params || {}).oem || '');
+          return '<div class="dw-result" data-oem="' + esc(oem) + '" data-drawing-id="' + esc(String(did)) +
+                 '"><span class="dw-rtitle">' + esc(r.title || '') + '</span>' +
+                 (r.subtitle ? '<span class="dw-rsub">' + esc(r.subtitle) + '</span>' : '') + '</div>';
+        }).join('');
+      }).catch(function() {});
+    };
+    if (immediate) run(); else _dwInlineTimer = setTimeout(run, 350);
+  };
+
+  // Умный поиск позиции для привязки чертежа: live-swap .dw-results.
+  let _dwLinkTimer = null;
+  window.__drawingLinkSearch = function(inp, drawingId, immediate) {
+    if (!inp) return;
+    const card = inp.closest('.dw-link');
+    if (!card) return;
+    const q = (inp.value || '').trim();
+    clearTimeout(_dwLinkTimer);
+    const run = function() {
+      api('/api/assistant/action/', {
+        method: 'POST',
+        body: JSON.stringify({conversation_id: state.convId, action: 'link_drawing', params: {drawing_id: drawingId, q}}),
+      }).then(function(resp) {
+        if ((inp.value || '').trim() !== q) return; // гонка
+        const c = (resp.cards || []).find(x => x.type === 'drawing_link');
+        const resEl = card.querySelector('.dw-results');
+        if (!resEl || !c) return;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = renderers.drawing_link(c.data || {});
+        const nr = tmp.querySelector('.dw-results');
+        resEl.innerHTML = nr ? nr.innerHTML : '';
+      }).catch(function() {});
+    };
+    if (immediate) run(); else _dwLinkTimer = setTimeout(run, 350);
+  };
+
+  // Операторский live-поиск чертежей по артикулу: swap .opd-results.
+  let _opdTimer = null;
+  window.__opDrawingsSearch = function(inp, immediate) {
+    if (!inp) return;
+    const card = inp.closest('.opd-card');
+    if (!card) return;
+    const q = (inp.value || '').trim();
+    clearTimeout(_opdTimer);
+    const run = function() {
+      api('/api/assistant/action/', {
+        method: 'POST',
+        body: JSON.stringify({conversation_id: state.convId, action: 'op_drawings_by_part', params: {q}}),
+      }).then(function(resp) {
+        if ((inp.value || '').trim() !== q) return;
+        const c = (resp.cards || []).find(x => x.type === 'op_drawings');
+        const res = card.querySelector('.opd-results');
+        if (!res || !c) return;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = renderers.op_drawings(c.data || {});
+        const nr = tmp.querySelector('.opd-results');
+        res.innerHTML = nr ? nr.innerHTML : '';
+      }).catch(function() {});
+    };
+    if (immediate) run(); else _opdTimer = setTimeout(run, 300);
+  };
+
+  document.addEventListener('dragstart', (e) => {
+    const item = e.target.closest && e.target.closest('.dw-item');
+    if (!item) return;
+    _dwDragId = item.dataset.drawingId;
+    item.classList.add('dw-dragging');
+    try { e.dataTransfer.setData('text/plain', _dwDragId); e.dataTransfer.effectAllowed = 'move'; } catch (_) {}
+  });
+  const _DW_DROP = '.dw-folder, .dw-nofolder';
+  document.addEventListener('dragend', (e) => {
+    const item = e.target.closest && e.target.closest('.dw-item');
+    if (item) item.classList.remove('dw-dragging');
+    document.querySelectorAll('.dw-over').forEach(el => el.classList.remove('dw-over'));
+    _dwDragId = null;
+  });
+  document.addEventListener('dragover', (e) => {
+    const tgt = e.target.closest && e.target.closest(_DW_DROP);
+    if (!tgt || !_dwDragId || tgt.dataset.project) return; // папки проектов — read-only
+    e.preventDefault();
+    try { e.dataTransfer.dropEffect = 'move'; } catch (_) {}
+    tgt.classList.add('dw-over');
+  });
+  document.addEventListener('dragleave', (e) => {
+    const tgt = e.target.closest && e.target.closest(_DW_DROP);
+    if (tgt && !tgt.contains(e.relatedTarget)) tgt.classList.remove('dw-over');
+  });
+  document.addEventListener('drop', (e) => {
+    const tgt = e.target.closest && e.target.closest(_DW_DROP);
+    if (!tgt || tgt.dataset.project) return; // в папку проекта не кладём вручную
+    e.preventDefault();
+    tgt.classList.remove('dw-over');
+    let did = _dwDragId;
+    try { did = did || e.dataTransfer.getData('text/plain'); } catch (_) {}
+    _dwDragId = null;
+    if (!did) return;
+    // data-folder-id="" у зоны «Без папки» → снять из папки
+    _refreshDrawings(tgt.closest('.dw-card'), 'move_drawing', {drawing_id: did, folder_id: tgt.dataset.folderId || ''});
+  });
+  // Разворачивание/сворачивание папки по клику на заголовок
+  document.addEventListener('click', (e) => {
+    const head = e.target.closest && e.target.closest('.dw-fhead');
+    if (!head) return;
+    const folder = head.closest('.dw-folder');
+    if (folder) folder.classList.toggle('dw-open');
+  });
+  // Клик по чертежу → открыть файл (но не по кнопке 🔗, и drag не вызывает click)
+  document.addEventListener('click', (e) => {
+    if (e.target.closest && e.target.closest('.dw-link-btn')) return;
+    const item = e.target.closest && e.target.closest('.dw-item');
+    if (!item) return;
+    const url = item.dataset.url;
+    if (url) window.open(url, '_blank', 'noopener');
+  });
+  // 🔗 → раскрыть/скрыть инлайн-поиск позиции под чертежом (без новой карточки)
+  document.addEventListener('click', (e) => {
+    const lb = e.target.closest && e.target.closest('.dw-link-btn');
+    if (!lb) return;
+    const row = lb.closest('.dw-row');
+    if (!row) return;
+    const open = row.classList.toggle('dw-open');
+    if (open) { const inp = row.querySelector('.dw-linkinput'); if (inp) setTimeout(() => inp.focus(), 0); }
+  });
+  // Выбор позиции в инлайн-поиске → привязать и обновить карточку НА МЕСТЕ
+  document.addEventListener('click', (e) => {
+    const res = e.target.closest && e.target.closest('.dw-result');
+    if (!res || res.dataset.action) return; // старые drawing_link-карточки — общий обработчик
+    const card = res.closest('.dw-card');
+    if (!card) return;
+    _refreshDrawings(card, 'bind_drawing', {drawing_id: res.dataset.drawingId, oem: res.dataset.oem || ''});
+  });
+  // Inline-создание папки: кнопка «Создать» или Enter в поле
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.dw-newbtn');
+    if (!btn) return;
+    const card = btn.closest('.dw-card');
+    _dwCreateFolder(card, card && card.querySelector('.dw-newinput'));
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.isComposing) return;
+    const inp = e.target;
+    if (!inp || !inp.classList || !inp.classList.contains('dw-newinput')) return;
+    e.preventDefault();
+    _dwCreateFolder(inp.closest('.dw-card'), inp);
+  });
 
   // Click handler for action buttons inside messages
   document.addEventListener('click', async (e) => {
@@ -5815,9 +6202,11 @@
       subKey:   'welcome.buyer.subtitle',
       pills: [
         {tkey:'pill.my_orders',     emoji:'📦', action:'get_my_deals',   params:{}},
+        {tkey:'pill.my_kam',        emoji:'👤', action:'my_kam',         params:{}},
         {tkey:'pill.drawings',      emoji:'📐', action:'seller_drawings', params:{}},
         {tkey:'pill.deposit',       emoji:'💰', action:'get_balance',    params:{}},
         {tkey:'pill.auto_discount', emoji:'🎯', action:'get_buyer_discount', params:{}},
+        {tkey:'pill.invite',        emoji:'📨', action:'invite_customer', params:{}},
         {tkey:'pill.support',        emoji:'🎧', action:'support_home',  params:{}},
       ],
     },
@@ -5831,6 +6220,7 @@
         {tkey:'pill.urgent',           emoji:'🔥', action:'seller_inbox',      params:{}},
         {tkey:'pill.upload_price',     emoji:'📤', action:'upload_pricelist',  params:{}},
         {tkey:'pill.my_products',      emoji:'📦', action:'seller_warehouses', params:{}},
+        {tkey:'pill.invite',           emoji:'📨', action:'invite_customer',   params:{}},
         {tkey:'pill.drawings',         emoji:'📐', action:'seller_drawings',   params:{}},
         {tkey:'pill.deposit',          emoji:'💰', action:'get_balance',       params:{}},
         {tkey:'pill.verification',     emoji:'🛡', action:'start_onboarding',  params:{}},
@@ -5854,6 +6244,7 @@
         {tkey:'pill.kyb_suppliers',    emoji:'🛡', action:'op_kyb_queue',          params:{}},
         {tkey:'pill.claims',           emoji:'🧾', action:'get_claims',            params:{}},
         {tkey:'pill.my_user_chats',    emoji:'📂', action:'op_my_user_chats',     params:{}},
+        {tkey:'pill.drawings', emoji:'📐', action:'op_drawings_by_part',   params:{}},
         {tkey:'pill.analytics',        emoji:'📊', action:'op_analytics_hub',     params:{}},
         {tkey:'pill.support',          emoji:'🎧', action:'support_home',          params:{}},
       ],
@@ -5890,22 +6281,18 @@
         {tkey:'pill.refunds',          emoji:'💸', action:'op_queue',              params:{filter:'refund'}},
       ],
     },
-    // operator_manager = полный оператор (зам. директора). 11 пилюль, как у general operator.
+    // KAM (operator_manager) = КОММЕРЧЕСКИЙ кабинет: аккаунты, спрос, выгода.
+    // БЕЗ исполнения (эскроу/таможня/KYB/логистика/рекламации) — это зона оператора.
     operator_manager: {
       titleKey: 'welcome.operator_manager.title',
       subKey:   'welcome.operator_manager.subtitle',
       pills: [
-        {tkey:'pill.overview',        emoji:'🎛', action:'op_dashboard',          params:{}},
-        {tkey:'pill.queue',           emoji:'📋', action:'op_queue',              params:{}},
-        {tkey:'pill.sla_breach',      emoji:'⏱',  action:'op_sla_breach',         params:{}},
-        {tkey:'pill.payments_escrow', emoji:'💰', action:'op_payments_dashboard', params:{}},
-        {tkey:'pill.customs',         emoji:'🛂', action:'op_customs_dashboard',  params:{}},
-        {tkey:'pill.logistics',       emoji:'🚚', action:'op_logistics_stats',    params:{}},
-        {tkey:'pill.my_suppliers',    emoji:'🏭', action:'op_my_suppliers',       params:{}},
-        {tkey:'pill.kyb_suppliers',   emoji:'🛡', action:'op_kyb_queue',          params:{}},
-        {tkey:'pill.claims',          emoji:'🧾', action:'get_claims',            params:{}},
-        {tkey:'pill.my_user_chats',   emoji:'📂', action:'op_my_user_chats',     params:{}},
+        {tkey:'pill.customers',       emoji:'👥', action:'seller_customers',     params:{}},
+        {tkey:'pill.my_deals',        emoji:'📋', action:'kam_deals',            params:{}},
+        {tkey:'pill.accruals',        emoji:'💰', action:'my_accruals',          params:{}},
+        {tkey:'pill.invite',          emoji:'📨', action:'invite_customer',      params:{}},
         {tkey:'pill.analytics',       emoji:'📊', action:'op_analytics_hub',      params:{}},
+        {tkey:'pill.my_user_chats',   emoji:'📂', action:'op_my_user_chats',     params:{}},
         {tkey:'pill.support',         emoji:'🎧', action:'support_home',          params:{}},
       ],
     },
@@ -5914,6 +6301,8 @@
       subKey:   'welcome.admin.subtitle',
       pills: [
         {tkey:'pill.overview',       emoji:'🛡', action:'admin_dashboard',         params:{}},
+        {tkey:'pill.market_twin',    emoji:'🌐', action:'admin_market_twin',       params:{}},
+        {tkey:'pill.customs_data',   emoji:'🛂', action:'admin_customs',           params:{}},
         {tkey:'pill.gmv',            emoji:'📈', action:'admin_gmv',               params:{}},
         {tkey:'pill.users',          emoji:'👥', action:'admin_users',             params:{}},
         {tkey:'pill.moderation',     emoji:'🚨', action:'admin_moderation_queue',  params:{}},
@@ -5923,20 +6312,553 @@
     },
   };
 
+  // ============================================================
+  //  ПИЛЮЛИ: кастомизация (закреп/откреп, мастер-меню, drag, своя пилюля)
+  //  Хранение — localStorage per role (мгновенно, без сервера).
+  // ============================================================
+  const ROLE_RU = {
+    buyer: 'Покупатель', seller: 'Продавец', operator: 'Оператор',
+    operator_manager: 'KAM', operator_logist: 'Логист',
+    operator_customs: 'Таможня', operator_payment: 'Платежи', admin: 'Администратор',
+  };
+  const PILL_KEY = (role) => `pillPrefs:v1:${role}`;
+  function loadPillPrefs(role) {
+    try { return JSON.parse(localStorage.getItem(PILL_KEY(role))) || {}; } catch (e) { return {}; }
+  }
+  function savePillPrefs(role, prefs) {
+    try { localStorage.setItem(PILL_KEY(role), JSON.stringify(prefs)); } catch (e) {}
+  }
+  function pillId(action, params) { return action + '#' + JSON.stringify(params || {}); }
+  // Доступно ли действие роли (по allowlist с бэкенда). Нет данных → не фильтруем.
+  function __pillAllowed(role, action) {
+    const ra = window.__roleActions;
+    if (!ra) return true;
+    const allow = ra[role];
+    if (!allow) return true;
+    return allow.indexOf('*') >= 0 || allow.indexOf(action) >= 0;
+  }
+  function _normPill(b, srcRole) {
+    return {
+      id: pillId(b.action, b.params),
+      emoji: b.emoji || '•',
+      text: (b.label != null ? b.label : (b.tkey ? tr(b.tkey) : b.action)),
+      action: b.action, params: b.params || {}, srcRole: srcRole || null,
+    };
+  }
+  // Полный каталог пилюль по ВСЕМ кабинетам (дедуп по action+params).
+  function globalPillCatalog() {
+    const seen = {}, out = [];
+    Object.keys(ROLE_WELCOME).forEach(r => (ROLE_WELCOME[r].pills || []).forEach(b => {
+      const p = _normPill(b, r);
+      if (seen[p.id]) return; seen[p.id] = 1; out.push(p);
+    }));
+    return out;
+  }
+  // Каталог пилюль для роли = её дефолтные + пользовательские (custom).
+  function rolePillCatalog(role) {
+    const base = (ROLE_WELCOME[role] || ROLE_WELCOME.buyer).pills.map(b => _normPill(b, role));
+    const custom = (loadPillPrefs(role).custom || []).map(c => _normPill(c, null));
+    const seen = {}; const out = [];
+    base.concat(custom).forEach(p => { if (!seen[p.id]) { seen[p.id] = 1; out.push(p); } });
+    return out;
+  }
+  // Итоговое состояние: видимые (упорядоченные) + доступные для закрепа.
+  function pillState(role) {
+    const cat = rolePillCatalog(role);
+    const global = globalPillCatalog();
+    const prefs = loadPillPrefs(role);
+    const hidden = new Set(prefs.hidden || []);
+    const order = prefs.order || [];
+    const byId = {}; cat.forEach(p => byId[p.id] = p);
+    const visible = [], used = new Set();
+    order.forEach(id => { if (byId[id] && !hidden.has(id)) { visible.push(byId[id]); used.add(id); } });
+    cat.forEach(p => { if (!used.has(p.id) && !hidden.has(p.id)) { visible.push(p); used.add(p.id); } });
+    const seen = new Set(visible.map(p => p.id)), avail = [];
+    // В каталог «Все пилюли» — только то, что роль реально может выполнить
+    // (по allowlist роли с бэкенда); иначе клик дал бы «нет прав».
+    cat.concat(global).forEach(p => {
+      if (!seen.has(p.id) && __pillAllowed(role, p.action)) { seen.add(p.id); avail.push(p); }
+    });
+    return { visible, avail, cat, global, prefs, byId };
+  }
+
   function applyRoleWelcome(role) {
+    _ensurePillCSS();
     const cfg = ROLE_WELCOME[role] || ROLE_WELCOME.buyer;
     const t = $('welcomeTitle'), s = $('welcomeSubtitle'), p = $('welcomePills');
-    // tr — глобальный переводчик из i18n.js (объявлен в начале файла).
     if (t) t.textContent = tr(cfg.titleKey);
     if (s) s.innerHTML = tr(cfg.subKey);
-    if (p) p.innerHTML = cfg.pills.map(b => {
-      const label = `${b.emoji} ${tr(b.tkey)}`;
-      const params = {...(b.params || {}), _label: label};
-      return `<button class="pill" type="button"
+    if (!p) return;
+    window.__pillRole = role;
+    const pills = pillState(role).visible;
+    const html = pills.map(b => {
+      const label = `${b.emoji} ${b.text}`;
+      const params = { ...(b.params || {}), _label: label };
+      // «×» скрыт; проявляется только в режиме редактирования (долгое нажатие).
+      return `<button class="pill" type="button" data-pid="${esc(b.id)}"
         onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(params)})'>
-        ${esc(label)}
+        <span class="pill-del" aria-label="Убрать" title="Убрать">×</span>
+        <span class="pill-txt">${esc(label)}</span>
       </button>`;
     }).join('');
+    const master = `<button class="pill-add" type="button" aria-label="Добавить пилюлю"
+        title="Меню пилюль: добавить, закрепить, переставить"
+        onclick="window.__openPillMaster&&window.__openPillMaster()">+</button>`;
+    p.innerHTML = html + master;
+    wirePillEditMode();
+  }
+
+  function refreshPills() {
+    if (window.__pillRole) applyRoleWelcome(window.__pillRole);
+    if (document.getElementById('pm-overlay')) renderPillMaster();
+  }
+
+  // --- iOS-стиль: долгое нажатие → режим правки (×) + перетаскивание для порядка ---
+  let __pillEditing = false, __lpTimer = null, __lpStart = null, __dragPill = null, __dragging = false;
+  let __dragOff = { x: 0, y: 0 }, __pillPlaceholder = null;
+  let __lastRemoved = null, __undoTimer = null;
+  function __enterPillEdit() {
+    const el = $('welcomePills'); if (!el) return;
+    __pillEditing = true; el.classList.add('pills-editing');
+    document.addEventListener('click', __pillEditOutside, true);
+    document.addEventListener('keydown', __pillEditKey);
+    if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+  }
+  function __exitPillEdit() {
+    const el = $('welcomePills'); __pillEditing = false;
+    if (el) el.classList.remove('pills-editing');
+    document.removeEventListener('click', __pillEditOutside, true);
+    document.removeEventListener('keydown', __pillEditKey);
+  }
+  function __pillEditOutside(e) {
+    const el = $('welcomePills');
+    if (el && !el.contains(e.target)) __exitPillEdit();
+  }
+  function __pillEditKey(e) { if (e.key === 'Escape') __exitPillEdit(); }
+  function __savePillOrderFromDOM() {
+    const el = $('welcomePills'); if (!el) return;
+    const ids = [...el.querySelectorAll('.pill[data-pid]')].map(n => n.getAttribute('data-pid'));
+    const role = window.__pillRole, prefs = loadPillPrefs(role);
+    prefs.order = ids; savePillPrefs(role, prefs);
+  }
+  // Поднять пилюлю: фиксируем её под курсором, на месте — пустой слот.
+  function __startPillDrag(e) {
+    const dp = __dragPill; if (!dp) return;
+    const r = dp.getBoundingClientRect();
+    __dragOff = { x: e.clientX - r.left, y: e.clientY - r.top };
+    __pillPlaceholder = document.createElement('span');
+    __pillPlaceholder.className = 'pill-placeholder';
+    __pillPlaceholder.style.width = r.width + 'px';
+    __pillPlaceholder.style.height = r.height + 'px';
+    dp.parentNode.insertBefore(__pillPlaceholder, dp);
+    dp.style.width = r.width + 'px'; dp.style.height = r.height + 'px';
+    dp.style.left = r.left + 'px'; dp.style.top = r.top + 'px';
+    document.body.appendChild(dp);          // fixed → следует за курсором, не обрезается
+    dp.classList.add('pill-dragging');
+    __dragging = true;
+  }
+  // Опустить пилюлю на место слота, зафиксировать порядок.
+  function __endPillDrag() {
+    const dp = __dragPill;
+    if (dp && __pillPlaceholder) {
+      __pillPlaceholder.parentNode.insertBefore(dp, __pillPlaceholder);
+      __pillPlaceholder.remove();
+      dp.classList.remove('pill-dragging');
+      dp.style.left = dp.style.top = dp.style.width = dp.style.height = '';
+      __savePillOrderFromDOM();
+    }
+    __pillPlaceholder = null; __dragPill = null; __dragging = false;
+  }
+  function wirePillEditMode() {
+    const el = $('welcomePills'); if (!el || el.__pillEditWired) return; el.__pillEditWired = true;
+    const cancelLP = () => { clearTimeout(__lpTimer); __lpTimer = null; };
+    // Начало взаимодействия с пилюлей.
+    el.addEventListener('pointerdown', (e) => {
+      const pill = e.target.closest('.pill');
+      if (!pill || pill.classList.contains('pill-master') || e.target.closest('.pill-del')) return;
+      __lpStart = { x: e.clientX, y: e.clientY, pill };
+      if (__pillEditing) {
+        __dragPill = pill; __dragging = false;   // в режиме правки — готовы тащить
+      } else {
+        clearTimeout(__lpTimer);
+        __lpTimer = setTimeout(() => {            // зажать ~0.5с → режим правки
+          __enterPillEdit();
+          if (__lpStart) { __dragPill = __lpStart.pill; __dragging = false; }
+        }, 480);
+      }
+    });
+    // Движение: либо отмена long-press (скролл), либо перетаскивание.
+    document.addEventListener('pointermove', (e) => {
+      if (!__lpStart) return;
+      const dx = e.clientX - __lpStart.x, dy = e.clientY - __lpStart.y;
+      if (!__pillEditing) {                       // ещё ждём долгое нажатие
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) cancelLP();
+        return;
+      }
+      if (!__dragPill) return;
+      if (!__dragging) {
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) __startPillDrag(e);
+        else return;
+      }
+      e.preventDefault();                         // не скроллим во время drag
+      // Пилюля едет за курсором.
+      __dragPill.style.left = (e.clientX - __dragOff.x) + 'px';
+      __dragPill.style.top = (e.clientY - __dragOff.y) + 'px';
+      // Слот переезжает туда, где курсор — остальные расступаются.
+      const node = document.elementFromPoint(e.clientX, e.clientY);
+      const t = node && node.closest && node.closest('.pill[data-pid]');
+      if (t && t !== __dragPill && __pillPlaceholder) {
+        const r = t.getBoundingClientRect();
+        const before = e.clientX < r.left + r.width / 2;
+        t.parentNode.insertBefore(__pillPlaceholder, before ? t : t.nextSibling);
+      }
+    }, { passive: false });
+    // Конец взаимодействия.
+    const endPointer = () => {
+      cancelLP(); __lpStart = null;
+      if (__dragging) __endPillDrag();
+      else { __dragPill = null; }
+    };
+    document.addEventListener('pointerup', endPointer);
+    document.addEventListener('pointercancel', endPointer);
+    // Перехват кликов (capture): «×» убирает пилюлю; в режиме правки тап по телу
+    // не запускает действие (и не считается, если был drag); «+» — выходит и открывает меню.
+    el.addEventListener('click', (e) => {
+      const del = e.target.closest('.pill-del');
+      if (del) {
+        e.stopPropagation(); e.preventDefault();
+        const pill = del.closest('.pill'); if (pill) __pillRemove(pill.getAttribute('data-pid'));
+        return;
+      }
+      if (__pillEditing) {
+        if (e.target.closest('.pill-add')) { __exitPillEdit(); return; }
+        e.stopPropagation(); e.preventDefault();
+      }
+    }, true);
+  }
+
+  // --- Операции над пилюлями ---
+  window.__pillUnpin = function (el) {
+    const pill = el.closest('.pill'); if (!pill) return;
+    __pillDoUnpin(pill.getAttribute('data-pid'));
+  };
+  // order ВСЕГДА хранит полную последовательность видимых пилюль — чтобы
+  // закреп/добавление шли в конец, а не «прыгали» в начало.
+  function __pillDoUnpin(id) {
+    const role = window.__pillRole;
+    const ids = pillState(role).visible.map(p => p.id).filter(x => x !== id);
+    const prefs = loadPillPrefs(role);
+    prefs.hidden = (prefs.hidden || []); if (!prefs.hidden.includes(id)) prefs.hidden.push(id);
+    prefs.order = ids;
+    savePillPrefs(role, prefs); refreshPills();
+  }
+  function __pillPin(id) {
+    const role = window.__pillRole, st = pillState(role);
+    const p = st.byId[id] || st.global.find(x => x.id === id); if (!p) return;
+    const prefs = loadPillPrefs(role);
+    prefs.hidden = (prefs.hidden || []).filter(x => x !== id);
+    if (!st.cat.some(x => x.id === id)) {  // пилюля из другого кабинета → в custom
+      prefs.custom = (prefs.custom || []);
+      prefs.custom.push({ emoji: p.emoji, label: p.text, action: p.action, params: p.params });
+    }
+    const ids = st.visible.map(x => x.id).filter(x => x !== id); ids.push(id);
+    prefs.order = ids;
+    savePillPrefs(role, prefs); refreshPills();
+  }
+  function __pillMove(id, dir) {
+    const role = window.__pillRole;
+    const ids = pillState(role).visible.map(p => p.id);
+    const i = ids.indexOf(id), j = i + dir;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    ids.splice(j, 0, ids.splice(i, 1)[0]);
+    const prefs = loadPillPrefs(role); prefs.order = ids; savePillPrefs(role, prefs); refreshPills();
+  }
+  function __pillReorderDrop(dragId, targetId) {
+    if (dragId === targetId) return;
+    const role = window.__pillRole;
+    const ids = pillState(role).visible.map(p => p.id);
+    const from = ids.indexOf(dragId); if (from < 0) return;
+    ids.splice(from, 1);
+    let to = ids.indexOf(targetId); if (to < 0) to = ids.length; else to += 1;
+    ids.splice(to, 0, dragId);
+    const prefs = loadPillPrefs(role); prefs.order = ids; savePillPrefs(role, prefs); refreshPills();
+  }
+  function __pillRemove(id) {
+    const role = window.__pillRole, st = pillState(role);
+    const p = st.byId[id];
+    const idx = st.visible.findIndex(x => x.id === id);
+    const isCustom = !((ROLE_WELCOME[role] || ROLE_WELCOME.buyer).pills || []).some(b => pillId(b.action, b.params) === id);
+    // Запоминаем для «Вернуть» (случайно убрали).
+    if (p) __lastRemoved = { role, id, idx: idx < 0 ? 9999 : idx, isCustom,
+      p: { emoji: p.emoji, label: p.text, action: p.action, params: p.params } };
+    const ids = st.visible.map(x => x.id).filter(x => x !== id);
+    const prefs = loadPillPrefs(role);
+    if (isCustom) prefs.custom = (prefs.custom || []).filter(c => pillId(c.action, c.params) !== id);
+    prefs.hidden = (prefs.hidden || []); if (!isCustom && !prefs.hidden.includes(id)) prefs.hidden.push(id);
+    prefs.order = ids;
+    savePillPrefs(role, prefs); refreshPills();
+    if (p) __showPillUndo(p.text);
+  }
+  // Вернуть последнюю убранную пилюлю — на её прежнее место.
+  function __pillRestoreLast() {
+    const lr = __lastRemoved; if (!lr) return;
+    const role = lr.role;
+    let prefs = loadPillPrefs(role);
+    prefs.hidden = (prefs.hidden || []).filter(x => x !== lr.id);
+    if (lr.isCustom) {
+      prefs.custom = (prefs.custom || []);
+      if (!prefs.custom.some(c => pillId(c.action, c.params) === lr.id)) prefs.custom.push(lr.p);
+    }
+    savePillPrefs(role, prefs);
+    // Вставляем на прежний индекс.
+    prefs = loadPillPrefs(role);
+    const vis = pillState(role).visible.map(x => x.id).filter(x => x !== lr.id);
+    const at = Math.max(0, Math.min(vis.length, lr.idx));
+    vis.splice(at, 0, lr.id);
+    prefs.order = vis; savePillPrefs(role, prefs);
+    __lastRemoved = null; __hidePillUndo(); refreshPills();
+  }
+  // Снэкбар «Вернуть» (как на iPhone после удаления).
+  function __showPillUndo(name) {
+    _ensurePillCSS();
+    __hidePillUndo();
+    const bar = document.createElement('div');
+    bar.id = 'pill-undo'; bar.className = 'pill-undo';
+    bar.innerHTML = `<span class="pu-txt">Пилюля «${esc(name || '')}» убрана</span>`
+      + `<button type="button" class="pu-btn">Вернуть</button>`;
+    bar.querySelector('.pu-btn').onclick = () => __pillRestoreLast();
+    document.body.appendChild(bar);
+    requestAnimationFrame(() => bar.classList.add('show'));
+    __undoTimer = setTimeout(__hidePillUndo, 6000);
+  }
+  function __hidePillUndo() {
+    if (__undoTimer) { clearTimeout(__undoTimer); __undoTimer = null; }
+    const bar = document.getElementById('pill-undo');
+    if (bar) { bar.classList.remove('show'); setTimeout(() => bar.remove(), 200); }
+  }
+  function __pillAddCustom(emoji, label, action, params) {
+    const role = window.__pillRole, st = pillState(role), prefs = loadPillPrefs(role);
+    prefs.custom = (prefs.custom || []);
+    prefs.custom.push({ emoji: emoji || '✨', label: label || action, action, params: params || {} });
+    const id = pillId(action, params || {});
+    prefs.hidden = (prefs.hidden || []).filter(x => x !== id);
+    const ids = st.visible.map(x => x.id).filter(x => x !== id); ids.push(id);
+    prefs.order = ids;
+    savePillPrefs(role, prefs); refreshPills();
+  }
+  function __pillResetRole() {
+    const role = window.__pillRole;
+    try { localStorage.removeItem(PILL_KEY(role)); } catch (e) {}
+    refreshPills();
+  }
+
+  // --- Мастер-меню (модалка) ---
+  let __pmConfirmId = null, __pmAddOpen = false, __pmDragId = null;
+  function _ensurePillCSS() {
+    if (document.getElementById('pill-css')) return;
+    const s = document.createElement('style'); s.id = 'pill-css';
+    s.textContent =
+      '.pill{position:relative;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}'
+      + '.pill-add{width:40px;height:40px;border-radius:50%;border:1px dashed rgba(0,0,0,.28);'
+      + 'background:rgba(255,255,255,.45);font-size:22px;line-height:1;color:rgba(0,0,0,.5);cursor:pointer;'
+      + 'display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0;'
+      + 'transition:background .15s,border-color .15s,color .15s,transform .1s}'
+      + '.pill-add:hover{background:#fff;border-color:rgba(0,0,0,.45);color:#000}'
+      + '.pill-add:active{transform:scale(.92)}'
+      + '.pill-del{position:absolute;top:-6px;left:-6px;width:18px;height:18px;border-radius:50%;'
+      + 'background:rgba(70,70,70,.5);color:#fff;font-size:13px;line-height:17px;text-align:center;font-weight:600;'
+      + 'opacity:0;transform:scale(.4);transition:opacity .15s,transform .15s,background .15s;'
+      + 'pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:4}'
+      + '.pills-editing .pill-del{opacity:.45;transform:scale(1);pointer-events:auto}'
+      + '.pills-editing .pill-del:hover{opacity:1;background:#e0245e}'
+      + '.pills-editing .pill{animation:pilljiggle .42s ease-in-out infinite;touch-action:none}'
+      + '.pill-dragging{position:fixed!important;margin:0!important;z-index:9999;pointer-events:none;'
+      + 'animation:none!important;opacity:.96;transform:scale(1.08);transition:transform .1s;'
+      + 'box-shadow:0 12px 30px rgba(0,0,0,.34)}'
+      + '.pill-placeholder{display:inline-flex;vertical-align:middle;border-radius:999px;box-sizing:border-box;'
+      + 'background:rgba(0,0,0,.05);border:1px dashed rgba(0,0,0,.2)}'
+      + '@keyframes pilljiggle{0%{transform:rotate(-.5deg)}50%{transform:rotate(.5deg)}100%{transform:rotate(-.5deg)}}'
+      + '.pm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100000;animation:pmfade .12s ease}'
+      + '@keyframes pmfade{from{opacity:0}to{opacity:1}}'
+      + '.pm-box{background:#fff;color:#1a1a1a;width:min(94vw,560px);max-height:86vh;overflow:auto;border-radius:16px;padding:18px 18px 22px;box-shadow:0 16px 50px rgba(0,0,0,.4)}'
+      + '.pm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}'
+      + '.pm-title{font-weight:700;font-size:17px}.pm-sub{font-size:12px;opacity:.5;margin-bottom:6px}'
+      + '.pm-x{border:none;background:rgba(0,0,0,.06);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:16px}'
+      + '.pm-sec{font-size:11px;text-transform:uppercase;letter-spacing:.04em;opacity:.5;margin:14px 0 6px;font-weight:600}'
+      + '.pm-row{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid rgba(0,0,0,.09);border-radius:10px;margin-bottom:6px;background:#fff}'
+      + '.pm-row.dragover{border-color:#2563eb;background:rgba(37,99,235,.07)}'
+      + '.pm-grip{opacity:.35;cursor:grab;font-size:13px;user-select:none}'
+      + '.pm-emoji{font-size:15px;width:20px;text-align:center}'
+      + '.pm-lbl{flex:1;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+      + '.pm-src{font-size:10px;opacity:.45;border:1px solid rgba(0,0,0,.14);border-radius:6px;padding:1px 5px;white-space:nowrap}'
+      + '.pm-act{border:none;background:rgba(0,0,0,.06);border-radius:7px;min-width:28px;height:28px;cursor:pointer;font-size:13px;padding:0 7px}'
+      + '.pm-act:hover{background:rgba(0,0,0,.12)}.pm-act.danger:hover{background:rgba(220,38,38,.16)}'
+      + '.pm-act.pin{background:rgba(37,99,235,.1)}.pm-act.pin:hover{background:rgba(37,99,235,.2)}'
+      + '.pm-search{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid rgba(0,0,0,.16);border-radius:9px;margin-bottom:8px;font:inherit}'
+      + '.pm-form{border:1px dashed rgba(0,0,0,.22);border-radius:10px;padding:11px;margin-top:8px;display:grid;gap:8px}'
+      + '.pm-form input,.pm-form select{padding:8px 10px;border:1px solid rgba(0,0,0,.16);border-radius:8px;font:inherit;width:100%;box-sizing:border-box}'
+      + '.pm-frow{display:flex;gap:8px}.pm-frow .pm-emoji-in{flex:0 0 64px}'
+      + '.pm-confirm{color:#dc2626;font-size:12px;margin-right:2px}'
+      + '.pm-empty{opacity:.4;font-size:13px;padding:6px 2px}'
+      + '.pm-addbtn{border:none;background:#2563eb;color:#fff;border-radius:9px;padding:9px 14px;cursor:pointer;font:inherit;font-weight:600}'
+      + '.pm-reset{border:1px solid rgba(0,0,0,.14);background:#fff;color:#1a1a1a;cursor:pointer;font:inherit;font-size:13px;font-weight:600;border-radius:9px;margin-top:6px;padding:9px 14px;width:100%}'
+      + '.pm-reset:hover{background:rgba(0,0,0,.04)}'
+      + '.pm-hint{font-size:12px;opacity:.6;line-height:1.4;margin:2px 0 8px}'
+      + '.pm-row.pm-missing{border-color:rgba(37,99,235,.4);background:rgba(37,99,235,.05)}'
+      + '.pm-missing .pm-act.pin{min-width:auto;font-weight:600;color:#2563eb}'
+      + '.pill-undo{position:fixed;left:50%;bottom:22px;transform:translate(-50%,16px);z-index:100001;'
+      + 'display:flex;align-items:center;gap:14px;background:#1f2937;color:#fff;padding:11px 14px 11px 16px;'
+      + 'border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;transition:opacity .2s,transform .2s;'
+      + 'max-width:92vw;font-size:14px}'
+      + '.pill-undo.show{opacity:1;transform:translate(-50%,0)}'
+      + '.pill-undo .pu-txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}'
+      + '.pill-undo .pu-btn{border:none;background:transparent;color:#7dd3fc;font:inherit;font-weight:700;cursor:pointer;padding:4px 6px;white-space:nowrap}'
+      + '.pill-undo .pu-btn:hover{color:#bae6fd}';
+    document.head.appendChild(s);
+  }
+  window.__openPillMaster = function () {
+    _ensurePillCSS();
+    if (document.getElementById('pm-overlay')) return;
+    const ov = document.createElement('div'); ov.id = 'pm-overlay'; ov.className = 'pm-overlay';
+    ov.innerHTML = `<div class="pm-box" id="pm-box"></div>`;
+    ov.addEventListener('click', (e) => { if (e.target === ov) __closePillMaster(); });
+    document.body.appendChild(ov);
+    __pmConfirmId = null; __pmAddOpen = false;
+    renderPillMaster();
+  };
+  function __closePillMaster() {
+    const ov = document.getElementById('pm-overlay'); if (ov) ov.remove();
+    __pmConfirmId = null; __pmAddOpen = false;
+  }
+  function renderPillMaster() {
+    const box = document.getElementById('pm-box'); if (!box) return;
+    const role = window.__pillRole, st = pillState(role);
+    const roleName = ROLE_RU[role] || role;
+    // Пилюли из стандартного набора, которых сейчас НЕТ на экране = что убрали.
+    const visIds = new Set(st.visible.map(p => p.id));
+    const missingDefaults = (ROLE_WELCOME[role] || ROLE_WELCOME.buyer).pills
+      .map(b => _normPill(b, role)).filter(p => !visIds.has(p.id));
+    const missingBlock = missingDefaults.length ? (
+      `<div class="pm-sec">Убрано из стандартных (${missingDefaults.length})</div>`
+      + `<div class="pm-hint">Похоже, вот это вы убирали — нажмите «Вернуть».</div>`
+      + missingDefaults.map(p => `<div class="pm-row pm-missing">
+          <span class="pm-emoji">${esc(p.emoji)}</span>
+          <span class="pm-lbl">${esc(p.text)}</span>
+          <button class="pm-act pin" data-pm="pin" data-pid="${esc(p.id)}" title="Вернуть">＋ Вернуть</button>
+        </div>`).join('')
+    ) : '';
+    const defIds = new Set((ROLE_WELCOME[role] || ROLE_WELCOME.buyer).pills.map(b => pillId(b.action, b.params)));
+    const pinnedRows = st.visible.map((p) => {
+      const isCustom = !defIds.has(p.id);
+      const confirming = (__pmConfirmId === p.id);
+      // Одна кнопка: «−» убрать с экрана (встроенная, обратимо) / «🗑» удалить (своя).
+      const del = confirming
+        ? `<span class="pm-confirm">Удалить?</span>
+           <button class="pm-act danger" data-pm="del-yes" data-pid="${esc(p.id)}" title="Да">✓</button>
+           <button class="pm-act" data-pm="del-no" title="Отмена">✕</button>`
+        : (isCustom
+            ? `<button class="pm-act danger" data-pm="del" data-pid="${esc(p.id)}" title="Удалить пилюлю">🗑</button>`
+            : `<button class="pm-act" data-pm="unpin" data-pid="${esc(p.id)}" title="Убрать с экрана">−</button>`);
+      return `<div class="pm-row" draggable="true" data-pid="${esc(p.id)}">
+        <span class="pm-grip" title="Перетащите, чтобы переставить">⠿</span>
+        <span class="pm-emoji">${esc(p.emoji)}</span>
+        <span class="pm-lbl">${esc(p.text)}</span>
+        ${del}
+      </div>`;
+    }).join('') || `<div class="pm-empty">Нет закреплённых пилюль</div>`;
+
+    const availRows = st.avail.map(p => `
+      <div class="pm-row pm-avail-row" data-text="${esc((p.emoji + ' ' + p.text).toLowerCase())}">
+        <span class="pm-emoji">${esc(p.emoji)}</span>
+        <span class="pm-lbl">${esc(p.text)}</span>
+        ${p.srcRole && p.srcRole !== role ? `<span class="pm-src">${esc(ROLE_RU[p.srcRole] || p.srcRole)}</span>` : ''}
+        <button class="pm-act pin" data-pm="pin" data-pid="${esc(p.id)}" title="Закрепить">＋</button>
+      </div>`).join('') || `<div class="pm-empty">Все пилюли уже на экране</div>`;
+
+    const actionOpts = st.global.filter(p => __pillAllowed(role, p.action)).map(p =>
+      `<option value="${esc(p.id)}">${esc(p.emoji + ' ' + p.text)} — ${esc(ROLE_RU[p.srcRole] || p.srcRole || '')}</option>`
+    ).join('');
+    const addForm = __pmAddOpen ? `
+      <div class="pm-form">
+        <div class="pm-frow">
+          <input id="pm-add-emoji" class="pm-emoji-in" placeholder="✨" maxlength="3" value="✨">
+          <input id="pm-add-label" placeholder="Название пилюли">
+        </div>
+        <select id="pm-add-action"><option value="" disabled>— действие пилюли —</option>${actionOpts}</select>
+        <div class="pm-frow">
+          <button class="pm-addbtn" data-pm="add-save" style="flex:1">Добавить на экран</button>
+          <button class="pm-act" data-pm="add-cancel" style="height:auto;padding:0 14px">Отмена</button>
+        </div>
+      </div>` : `<button class="pm-addbtn" data-pm="add-open" style="margin-top:8px">➕ Своя пилюля</button>`;
+
+    box.innerHTML = `
+      <div class="pm-head">
+        <div class="pm-title">Пилюли</div>
+        <button class="pm-x" data-pm="close" title="Закрыть">✕</button>
+      </div>
+      <div class="pm-sub">Кабинет: ${esc(roleName)} · перетащите ⠿ чтобы переставить · «−» чтобы убрать</div>
+      <div class="pm-hint">Случайно убрали пилюлю? Верните её в разделе ниже или восстановите стандартный набор.</div>
+      ${missingBlock}
+      <div class="pm-sec">На экране (${st.visible.length})</div>
+      <div id="pm-pinned">${pinnedRows}</div>
+      ${addForm}
+      <div class="pm-sec">Все пилюли — закрепить (${st.avail.length})</div>
+      <input class="pm-search" id="pm-search" placeholder="Поиск пилюли по всем кабинетам…">
+      <div id="pm-avail">${availRows}</div>
+      <div class="pm-sec">Стандартный набор</div>
+      <div class="pm-hint">${((ROLE_WELCOME[role] || ROLE_WELCOME.buyer).pills || []).length} пилюль по умолчанию для кабинета «${esc(roleName)}». Вернёт всё как было — порядок и состав.</div>
+      <button class="pm-reset" data-pm="reset">↺ Восстановить стандартный набор</button>`;
+    wirePillMaster();
+  }
+  function wirePillMaster() {
+    const box = document.getElementById('pm-box'); if (!box) return;
+    box.onclick = (e) => {
+      const btn = e.target.closest('[data-pm]'); if (!btn) return;
+      const pm = btn.getAttribute('data-pm'), id = btn.getAttribute('data-pid');
+      if (pm === 'close') return __closePillMaster();
+      if (pm === 'unpin') { __pillDoUnpin(id); return; }
+      if (pm === 'pin') { __pillPin(id); return; }
+      if (pm === 'up') { __pillMove(id, -1); return; }
+      if (pm === 'down') { __pillMove(id, 1); return; }
+      if (pm === 'del') { __pmConfirmId = id; renderPillMaster(); return; }
+      if (pm === 'del-no') { __pmConfirmId = null; renderPillMaster(); return; }
+      if (pm === 'del-yes') { __pmConfirmId = null; __pillRemove(id); return; }
+      if (pm === 'add-open') { __pmAddOpen = true; renderPillMaster(); return; }
+      if (pm === 'add-cancel') { __pmAddOpen = false; renderPillMaster(); return; }
+      if (pm === 'reset') { __pmConfirmId = null; __pillResetRole(); return; }
+      if (pm === 'add-save') {
+        const emoji = (document.getElementById('pm-add-emoji') || {}).value || '✨';
+        const label = (document.getElementById('pm-add-label') || {}).value || '';
+        const sel = document.getElementById('pm-add-action');
+        const chosenId = sel && sel.value;
+        if (!chosenId) { sel && sel.focus(); return; }
+        const src = globalPillCatalog().find(p => p.id === chosenId);
+        if (!src) return;
+        __pmAddOpen = false;
+        __pillAddCustom(emoji.trim(), label.trim() || src.text, src.action, src.params);
+        return;
+      }
+    };
+    // Живой поиск по доступным пилюлям (без перерендера — фокус сохраняется).
+    const search = document.getElementById('pm-search');
+    if (search) search.oninput = () => {
+      const q = search.value.trim().toLowerCase();
+      document.querySelectorAll('#pm-avail .pm-avail-row').forEach(r => {
+        r.style.display = (!q || (r.getAttribute('data-text') || '').includes(q)) ? '' : 'none';
+      });
+    };
+    // Drag-and-drop перестановка закреплённых.
+    box.querySelectorAll('#pm-pinned .pm-row').forEach(row => {
+      row.addEventListener('dragstart', (e) => { __pmDragId = row.getAttribute('data-pid'); e.dataTransfer.effectAllowed = 'move'; });
+      row.addEventListener('dragover', (e) => { e.preventDefault(); row.classList.add('dragover'); });
+      row.addEventListener('dragleave', () => row.classList.remove('dragover'));
+      row.addEventListener('drop', (e) => {
+        e.preventDefault(); row.classList.remove('dragover');
+        const target = row.getAttribute('data-pid');
+        if (__pmDragId && target) __pillReorderDrop(__pmDragId, target);
+        __pmDragId = null;
+      });
+    });
   }
 
   async function loadProjects() {
@@ -5965,10 +6887,75 @@
     }
   }
 
-  // «+ Новый проект» в сайдбаре. Минимальная UX: prompt → POST → reload list →
-  // переход на страницу проекта. Без модалки (можно дозаполнить там).
+  // Аккуратная модалка вместо нативного prompt(). Возвращает Promise<string|null>.
+  function _ensureUiPromptCSS() {
+    if (document.getElementById('uiprompt-css')) return;
+    const s = document.createElement('style');
+    s.id = 'uiprompt-css';
+    s.textContent =
+      '.uip-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:99999;animation:uipfade .12s ease}'
+      + '@keyframes uipfade{from{opacity:0}to{opacity:1}}'
+      + '.uip-box{background:#fff;color:#1a1a1a;width:min(92vw,420px);border-radius:14px;padding:18px;box-shadow:0 14px 44px rgba(0,0,0,.38);animation:uippop .14s ease}'
+      + '@keyframes uippop{from{transform:translateY(6px) scale(.98);opacity:.6}to{transform:none;opacity:1}}'
+      + '.uip-title{font-weight:700;font-size:16px;margin-bottom:4px}'
+      + '.uip-label{font-size:12px;opacity:.6;margin:6px 0 4px}'
+      + '.uip-input{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;border:1px solid rgba(0,0,0,.18);background:#fff;color:#1a1a1a;font:inherit;outline:none;margin-top:6px}'
+      + '.uip-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}'
+      + '.uip-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}'
+      + '.uip-btn{padding:9px 18px;border-radius:9px;border:none;font:inherit;cursor:pointer}'
+      + '.uip-cancel{background:rgba(0,0,0,.07);color:#1a1a1a}.uip-cancel:hover{background:rgba(0,0,0,.12)}'
+      + '.uip-ok{background:#2563eb;color:#fff}.uip-ok:hover{opacity:.92}';
+    document.head.appendChild(s);
+  }
+  window.uiPrompt = function(opts) {
+    opts = opts || {};
+    _ensureUiPromptCSS();
+    return new Promise((resolve) => {
+      const ov = document.createElement('div');
+      ov.className = 'uip-overlay';
+      ov.innerHTML =
+        '<div class="uip-box" role="dialog" aria-modal="true">'
+        + '<div class="uip-title"></div>'
+        + (opts.label ? '<div class="uip-label"></div>' : '')
+        + '<input class="uip-input" type="text" autocomplete="off"/>'
+        + '<div class="uip-actions">'
+        + '<button type="button" class="uip-btn uip-cancel"></button>'
+        + '<button type="button" class="uip-btn uip-ok"></button>'
+        + '</div></div>';
+      ov.querySelector('.uip-title').textContent = opts.title || 'Введите значение';
+      if (opts.label) ov.querySelector('.uip-label').textContent = opts.label;
+      const inp = ov.querySelector('.uip-input');
+      inp.placeholder = opts.placeholder || '';
+      inp.value = opts.value || '';
+      ov.querySelector('.uip-cancel').textContent = opts.cancelLabel || 'Отмена';
+      ov.querySelector('.uip-ok').textContent = opts.okLabel || 'OK';
+      let done = false;
+      const close = (val) => {
+        if (done) return; done = true;
+        document.removeEventListener('keydown', onKey, true);
+        ov.remove();
+        resolve(val);
+      };
+      const submit = () => close((inp.value || '').trim());
+      ov.querySelector('.uip-ok').addEventListener('click', submit);
+      ov.querySelector('.uip-cancel').addEventListener('click', () => close(null));
+      ov.addEventListener('mousedown', (e) => { if (e.target === ov) close(null); });
+      const onKey = (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); close(null); }
+        else if (e.key === 'Enter' && document.activeElement === inp) { e.preventDefault(); submit(); }
+      };
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(ov);
+      setTimeout(() => inp.focus(), 30);
+    });
+  };
+
+  // «+ Новый проект» в сайдбаре → аккуратная модалка → POST → reload → переход.
   async function createProjectFromSidebar() {
-    const name = (window.prompt('Название проекта:', '') || '').trim();
+    const name = await window.uiPrompt({
+      title: 'Новый проект', label: 'Название проекта',
+      placeholder: 'Напр. EuroChem Kovdor', okLabel: 'Создать',
+    });
     if (!name) return;
     try {
       const r = await fetch('/api/assistant/projects/', {
@@ -8863,15 +9850,11 @@
   // Загрузка чертежа продавцом → POST /api/assistant/drawings/upload/ (multipart).
   async function uploadDrawing(file) {
     showConv();
-    let oem = '';
-    try {
-      oem = (window.prompt(
-        'Артикул (OEM) для привязки к товару — или оставьте пустым:', '') || '').trim();
-    } catch(_) {}
+    // Без нативного prompt(): грузим сразу, позицию привязываем красиво через 🔗
+    // в карточке «Мои чертежи» (умный поиск).
     const pending = addMessage('assistant', '📐 Загружаю чертёж «' + file.name + '»…');
     const fd = new FormData();
     fd.append('file', file);
-    if (oem) fd.append('oem_number', oem);
     try {
       const res = await fetch('/api/assistant/drawings/upload/', {
         method: 'POST',
@@ -8886,16 +9869,12 @@
           + (data.error || ('HTTP ' + res.status)));
         return;
       }
-      let msg = '✅ Чертёж «' + (data.title || file.name) + '» загружен ('
-        + (data.file_format || '').toUpperCase() + ').';
-      msg += data.linked_part
-        ? '\n🔗 Привязан к товару ' + data.linked_part + '.'
-        : '\nℹ️ Не привязан к товару (артикул не указан или не найден — можно указать позже).';
-      msg += '\n🛡 Статус: на модерации у оператора.';
-      addMessage('assistant', msg, [], [
-        { action: 'seller_drawings', label: '📐 Мои чертежи', params: {} },
-        { action: 'upload_drawing', label: '📤 Ещё чертёж', params: {} },
-      ]);
+      addMessage('assistant', '✅ Чертёж «' + (data.title || file.name) + '» загружен ('
+        + (data.file_format || '').toUpperCase() + '). Он в разделе «Без папки» — '
+        + 'привяжите позицию через 🔗 и при желании перетащите в папку. '
+        + '🛡 Статус: на модерации у оператора.');
+      // Показать обновлённую карточку чертежей (новый — в «Без папки»).
+      if (window.quickAction) window.quickAction('seller_drawings', {});
     } catch (err) {
       if (pending && pending.parentNode) pending.remove();
       addMessage('assistant', '⚠️ Не удалось загрузить чертёж: ' + (err.message || err));

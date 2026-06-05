@@ -172,6 +172,60 @@
 
   // Загрузка документа в проект: открываем системный file-picker, POST multipart,
   // перерендериваем страницу проекта.
+  // KPI-блоки кликабельны → плавный скролл к разделу + подсветка заголовка.
+  // Надёжно через scrollBy(delta) — scrollIntoView нестабилен в .content.
+  window.__projScrollTo = function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    // Нативный scrollIntoView (instant) — браузер сам находит нужный скролл-
+    // контейнер (.content) и доводит секцию до видимой области. smooth здесь
+    // в .content не срабатывает, поэтому без него.
+    el.scrollIntoView({block: 'start'});
+    const h = el.querySelector('h2') || el;
+    const oc = h.style.color;
+    h.style.transition = 'color .25s';
+    h.style.color = '#2563eb';
+    setTimeout(() => { h.style.color = oc; }, 1000);
+  };
+
+  // Настройки проекта — модалка редактирования (PATCH /projects/<id>/update/).
+  window.__openProjectSettings = function() {
+    const info = window.__projInfo || {};
+    const field = (name, label, val, ph) =>
+      '<label style="display:block;margin-top:10px"><span style="display:block;font-size:12px;opacity:.6;margin-bottom:4px">' + label + '</span>'
+      + '<input class="__ps-inp" data-field="' + name + '" type="text" value="' + esc(val || '') + '" placeholder="' + esc(ph || '') + '" style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:9px;border:1px solid rgba(0,0,0,.16);font:inherit"/></label>';
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:99999';
+    ov.innerHTML =
+      '<div style="background:#fff;color:#1a1a1a;width:min(94vw,480px);border-radius:16px;padding:20px;box-shadow:0 16px 50px rgba(0,0,0,.4)">'
+      + '<div style="font-weight:700;font-size:17px;margin-bottom:6px">Настройки проекта</div>'
+      + field('name', 'Название', info.name, 'Напр. Norilsk Q2')
+      + field('code', 'Код', info.code, 'NORQ2')
+      + field('customer', 'Заказчик', info.customer, 'Норникель — Кольская ГМК')
+      + field('description', 'Описание', info.description, 'Кратко о проекте')
+      + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">'
+      + '<button type="button" class="__ps-cancel" style="padding:9px 16px;border-radius:9px;border:none;background:rgba(0,0,0,.07);font:inherit;cursor:pointer">Отмена</button>'
+      + '<button type="button" class="__ps-save" style="padding:9px 18px;border-radius:9px;border:none;background:#2563eb;color:#fff;font:inherit;cursor:pointer">Сохранить</button>'
+      + '</div></div>';
+    const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    ov.addEventListener('mousedown', (e) => { if (e.target === ov) close(); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(ov);
+    ov.querySelector('.__ps-cancel').addEventListener('click', close);
+    ov.querySelector('.__ps-save').addEventListener('click', () => {
+      const data = {};
+      ov.querySelectorAll('.__ps-inp').forEach(i => { data[i.dataset.field] = i.value.trim(); });
+      const btn = ov.querySelector('.__ps-save'); btn.disabled = true; btn.textContent = '…';
+      fetch('/api/assistant/projects/' + PID + '/update/', {
+        method: 'PATCH', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf()}, credentials: 'same-origin',
+        body: JSON.stringify(data),
+      }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(() => { close(); if (typeof loadProject === 'function') loadProject(); else location.reload(); })
+        .catch(e => { btn.disabled = false; btn.textContent = 'Сохранить'; alert('Не удалось сохранить: ' + e.message); });
+    });
+  };
+
   window.__uploadProjectDoc = function(doctypeHint) {
     if (!PID) return;
     // accept-фильтр по конкретному типу слота
@@ -216,6 +270,107 @@
     };
     document.body.appendChild(input);
     input.click();
+  };
+
+  // Открыть категорию документов как «папку» — модалка с карточками файлов.
+  // Для чертежей в карточке есть 🔗-привязка артикула (поиск по общей базе).
+  window.__openDocFolder = function(key) {
+    const all = key === '__all__';
+    const slot = all ? {label: 'Файлы проекта', icon: '📁'}
+                     : ((window.__projSlots || []).find(s => s.key === key) || {label: 'Документы', icon: '📁'});
+    const docs = all ? (window.__projDocs || []).slice()
+                     : (window.__projDocs || []).filter(d => (d.doctype || 'other') === key);
+    const cardHtml = (d) => {
+      const canBind = !!d.drawing_id;
+      return `<div class="__df-card" data-drawing-id="${esc(d.drawing_id || '')}" style="border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#fff;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+          <span style="font-size:22px">📄</span>
+          <span style="flex:1;min-width:0">
+            <span style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</span>
+            <span style="display:block;font-size:12px;opacity:.55">${esc(d.doctype_label || '')}${d.size_kb ? ' · ' + esc(String(d.size_kb)) + ' КБ' : ''}<span class="__df-oemtag" style="color:#2563eb;font-weight:600">${d.oem ? ' · 🔗 ' + esc(d.oem) : ''}</span></span>
+          </span>
+          <a href="/api/assistant/projects/${PID}/documents/${d.id}/file/" target="_blank" rel="noopener" style="opacity:.6;font-size:13px;text-decoration:none;color:inherit;white-space:nowrap">Открыть ›</a>
+        </div>
+        ${canBind ? `<div style="padding:0 14px 12px">
+          <button type="button" class="__df-bindbtn" style="font-size:13px;padding:5px 11px;border-radius:8px;border:1px solid rgba(0,0,0,.12);background:rgba(0,0,0,.03);cursor:pointer">🔗 <span class="__df-bindlabel">${d.oem ? 'Изменить артикул' : 'Привязать артикул'}</span></button>
+          <div class="__df-bindpanel" style="display:none;margin-top:8px">
+            <input class="__df-oeminput" type="text" placeholder="Артикул из общей базы — напр. 6D102" autocomplete="off" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.14);font:inherit"/>
+            <div class="__df-oemresults" style="display:flex;flex-direction:column;gap:4px;margin-top:6px;max-height:210px;overflow:auto"></div>
+          </div>
+        </div>` : ''}
+      </div>`;
+    };
+    const cards = docs.map(cardHtml).join('') || '<div style="opacity:.6;padding:14px 4px">В этой папке пока нет файлов.</div>';
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:99999;animation:dffade .12s ease';
+    ov.innerHTML = `
+      <style>@keyframes dffade{from{opacity:0}to{opacity:1}}</style>
+      <div style="background:#f5f5f7;color:#1a1a1a;width:min(94vw,560px);max-height:84vh;border-radius:16px;padding:18px;box-shadow:0 16px 50px rgba(0,0,0,.4);display:flex;flex-direction:column">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:22px">${slot.icon || '📁'}</span>
+          <span style="font-weight:700;font-size:17px;flex:1">${esc(slot.label || 'Документы')} <span style="opacity:.5;font-weight:500">· ${docs.length}</span></span>
+          <button type="button" class="__df-add" style="padding:7px 13px;border-radius:9px;border:none;background:#2563eb;color:#fff;font:inherit;cursor:pointer">+ Добавить</button>
+          <button type="button" class="__df-close" style="padding:7px 11px;border-radius:9px;border:none;background:rgba(0,0,0,.08);font:inherit;cursor:pointer">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;overflow:auto">${cards}</div>
+      </div>`;
+    const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    ov.addEventListener('mousedown', (e) => { if (e.target === ov) close(); });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(ov);
+    ov.querySelector('.__df-close').addEventListener('click', close);
+    ov.querySelector('.__df-add').addEventListener('click', () => { close(); window.__uploadProjectDoc && window.__uploadProjectDoc(all ? undefined : key); });
+
+    // 🔗 привязка артикула: раскрытие, поиск, выбор
+    let _bt = null;
+    ov.addEventListener('click', (e) => {
+      const bb = e.target.closest('.__df-bindbtn');
+      if (bb) {
+        const card = bb.closest('.__df-card');
+        const panel = card.querySelector('.__df-bindpanel');
+        const show = panel.style.display === 'none';
+        panel.style.display = show ? 'block' : 'none';
+        if (show) card.querySelector('.__df-oeminput').focus();
+        return;
+      }
+      const res = e.target.closest('.__df-oemres');
+      if (res) {
+        const card = res.closest('.__df-card');
+        const did = card.dataset.drawingId, oem = res.dataset.oem;
+        fetch('/api/assistant/action/', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf()}, credentials:'same-origin',
+          body: JSON.stringify({action:'bind_drawing', params:{drawing_id: did, oem}})}).then(() => {
+          card.querySelector('.__df-oemtag').textContent = ' · 🔗 ' + oem;
+          const lbl = card.querySelector('.__df-bindlabel'); if (lbl) lbl.textContent = 'Изменить артикул';
+          card.querySelector('.__df-bindpanel').style.display = 'none';
+          // обновим кэш, чтобы при переоткрытии папки артикул сохранился
+          const dd = (window.__projDocs || []).find(x => x.drawing_id === did); if (dd) dd.oem = oem;
+        }).catch(() => {});
+      }
+    });
+    ov.addEventListener('input', (e) => {
+      const inp = e.target.closest('.__df-oeminput');
+      if (!inp) return;
+      const card = inp.closest('.__df-card');
+      const did = card.dataset.drawingId, q = (inp.value || '').trim();
+      const out = card.querySelector('.__df-oemresults');
+      clearTimeout(_bt);
+      _bt = setTimeout(() => {
+        fetch('/api/assistant/action/', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf()}, credentials:'same-origin',
+          body: JSON.stringify({action:'link_drawing', params:{drawing_id: did, q}})})
+          .then(r => r.json()).then(resp => {
+            if ((inp.value || '').trim() !== q) return;
+            const c = (resp.cards || []).find(x => x.type === 'drawing_link');
+            const rows = (c && c.data && c.data.rows) || [];
+            if (!c || !c.data.searched) { out.innerHTML = '<div style="opacity:.55;font-size:13px;padding:6px">Введите артикул</div>'; return; }
+            if (!rows.length) { out.innerHTML = '<div style="opacity:.55;font-size:13px;padding:6px">Ничего не найдено</div>'; return; }
+            out.innerHTML = rows.map(rr => {
+              const oem = (rr.params || {}).oem || '';
+              return '<div class="__df-oemres" data-oem="' + esc(oem) + '" style="padding:7px 10px;border-radius:7px;border:1px solid rgba(0,0,0,.08);background:#fafafa;cursor:pointer;font-size:13px">' + esc(rr.title || '') + '</div>';
+            }).join('');
+          }).catch(() => {});
+      }, 350);
+    });
   };
 
   // Глобальный helper для inline-onclick (более надёжно чем capture-listener
@@ -471,29 +626,30 @@
     // KPI cards. Подписи под цифрами объясняют ЧТО за число.
     const stats = p.stats || {};
     const semiCount = stats.open_rfqs?.semi || 0;  // RFQ ждущие подбора оператора
+    const kpiClick = (id) => `onclick="window.__projScrollTo&amp;&amp;window.__projScrollTo('${id}')" style="cursor:pointer"`;
     const kpiHTML = `
-      <div class="kpi">
+      <div class="kpi" ${kpiClick('sec-rfqs')} title="К разделу RFQ">
         <div class="kpi-label">${L.open_rfqs}</div>
         <div class="kpi-value">
           <div class="kpi-num">${stats.open_rfqs?.count || 0}</div>
         </div>
         ${semiCount ? `<div class="kpi-sub"><span class="kpi-warn">${semiCount}</span> ${L.awaiting_op}</div>` : ''}
       </div>
-      <div class="kpi">
+      <div class="kpi" ${kpiClick('sec-orders')} title="К разделу заказов">
         <div class="kpi-label">${L.active_orders}</div>
         <div class="kpi-value">
           <div class="kpi-num">${stats.active_orders?.count || 0}</div>
         </div>
         <div class="kpi-sub">${fmtMoney(stats.active_orders?.value_usd)} ${L.value}</div>
       </div>
-      <div class="kpi">
+      <div class="kpi" ${kpiClick('sec-orders')} title="К разделу заказов">
         <div class="kpi-label">${L.in_transit}</div>
         <div class="kpi-value">
           <div class="kpi-num">${stats.in_transit?.count || 0}</div>
         </div>
         <div class="kpi-sub">${L.earliest_eta}: ${esc(stats.in_transit?.earliest_eta || '—')}</div>
       </div>
-      <div class="kpi">
+      <div class="kpi" ${kpiClick('sec-orders')} title="К разделу заказов">
         <div class="kpi-label">${L.spend_mtd}</div>
         <div class="kpi-value">
           <div class="kpi-num">${fmtMoney(stats.spend_mtd?.value_usd)}</div>
@@ -530,6 +686,10 @@
       if (!docsByType[k]) docsByType[k] = [];
       docsByType[k].push(d);
     });
+    // Глобально — чтобы модалка-папка (window.__openDocFolder) имела доступ.
+    window.__projDocs = docs;
+    window.__projSlots = SLOTS_WITH_OTHER;
+    window.__projInfo = {name: p.name || '', code: p.code || '', customer: p.customer || '', description: p.description || ''};
     const connectedTypes = SLOTS_WITH_OTHER.filter(s => (docsByType[s.key] || []).length > 0).length;
     const progressPct = Math.round(connectedTypes / SLOTS_WITH_OTHER.length * 100);
     const renderSlot = (slot) => {
@@ -539,15 +699,16 @@
       const cornerBadge = filled
         ? `<span class="doc-slot-corner-badge" title="${slotDocs.length} документ(ов)">${slotDocs.length}</span>`
         : '';
-      return `<div class="doc-slot${filled ? ' doc-slot-filled' : ''}">
+      return `<div class="doc-slot${filled ? ' doc-slot-filled' : ''}"${filled ? ` onclick="window.__openDocFolder&amp;&amp;window.__openDocFolder('${slot.key}')" style="cursor:pointer"` : ''}>
         ${cornerBadge}
         <div class="doc-slot-head">
           <span class="doc-slot-icon">${slot.icon}</span>
           <span class="doc-slot-label">${esc(slot.label)}</span>
-          <a href="#" class="doc-slot-add" onclick="window.__uploadProjectDoc&amp;&amp;window.__uploadProjectDoc('${slot.key}');return false;">${addLabel}</a>
+          <a href="#" class="doc-slot-add" onclick="event.stopPropagation();window.__uploadProjectDoc&amp;&amp;window.__uploadProjectDoc('${slot.key}');return false;">${addLabel}</a>
         </div>
         <div class="doc-slot-desc-short">${esc(slot.descShort)}</div>
         <div class="doc-slot-desc">↓ ${esc(slot.descFull)}</div>
+        ${filled ? `<div style="margin-top:8px;font-size:12.5px;font-weight:600;opacity:.7">📂 Открыть папку (${slotDocs.length}) ›</div>` : ''}
       </div>`;
     };
     // 4 функциональных слота, потом рекламная мини-карточка, потом «Другое» — в нижнем ряду
@@ -591,7 +752,7 @@
       };
       const ML = MODE_LABEL[lang] || MODE_LABEL.ru;
       const tagText = r.tag ? (ML[r.tag.toUpperCase()] || r.tag) : '';
-      return `<div class="rfq">
+      return `<div class="rfq" onclick="window.location.href='/chat/?action=get_rfq_status'" style="cursor:pointer" title="Открыть RFQ в чате">
         <span class="rfq-num">${esc(r.number)}</span>
         <div class="rfq-info">
           <div class="rfq-title">${esc(r.title)}${tagText ? ` <span class="rfq-tag rfq-tag-${esc((r.tag||'').toLowerCase())}">${esc(tagText)}</span>` : ''}</div>
@@ -610,7 +771,7 @@
       const stages = o.stages || [];
       const stageBars = stages.map(s => `<div class="po-stage ${s ? 'done' : ''}"></div>`).join('');
       const statusClass = o.status_color === 'green' ? 'green' : '';
-      return `<div class="po">
+      return `<div class="po" onclick="window.location.href='/chat/?action=get_orders'" style="cursor:pointer" title="Открыть заказы в чате">
         <div class="po-row1">
           <span class="po-num">${esc(o.number)}</span>
           <span class="po-title">${esc(o.title)}</span>
@@ -661,8 +822,8 @@
         </div>
         <div class="pj-actions">
           <button class="pj-btn" onclick="newProjectChat()">+ Новый чат</button>
-          <button class="pj-btn" onclick="alert('Файлы — скоро')">Файлы</button>
-          <button class="pj-btn" onclick="alert('Настройки проекта — скоро')">Настройки</button>
+          <button class="pj-btn" onclick="window.__openDocFolder&amp;&amp;window.__openDocFolder('__all__')">Файлы</button>
+          <button class="pj-btn" onclick="window.__openProjectSettings&amp;&amp;window.__openProjectSettings()">Настройки</button>
         </div>
       </div>
 
@@ -679,13 +840,13 @@
         <span>AI использует <strong>все эти документы</strong> как контекст для ответов в чатах этого проекта</span>
       </div>
 
-      <div class="sec-title">
+      <div class="sec-title" id="sec-rfqs">
         <h2>${L.sec_rfqs}</h2>
         <span class="sec-title-count">${rfqs.length}</span>
       </div>
       <div class="rfq-list">${rfqsHTML}</div>
 
-      <div class="sec-title">
+      <div class="sec-title" id="sec-orders">
         <h2>${L.sec_orders}</h2>
         <span class="sec-title-count">${orders.length}</span>
       </div>

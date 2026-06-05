@@ -1143,7 +1143,7 @@ def _is_operator(role: str) -> bool:
 
 @register("op_kyb_queue")
 def op_kyb_queue(params, user, role):
-    if not _is_operator(role):
+    if not _is_operator(role) and role != "admin":
         return ActionResult(text="Доступно только оператору.")
     from marketplace.models import CompanyVerification
     pending = list(CompanyVerification.objects.filter(status="pending").select_related("user").order_by("submitted_at")[:20])
@@ -1200,7 +1200,7 @@ def op_kyb_review(params, user, role):
     цветовыми сигналами + чеклист оператора (что нужно проверить глазами) +
     кнопки решений (одобрить / запросить уточнения / отклонить).
     """
-    if not _is_operator(role):
+    if not _is_operator(role) and role != "admin":
         return ActionResult(text="Доступно только оператору.")
     from marketplace.models import CompanyVerification
     try:
@@ -1363,7 +1363,7 @@ def op_kyb_review(params, user, role):
 @register("op_kyb_check")
 def op_kyb_check(params, user, role):
     """Toggle для отметки оператором пункта чеклиста (§4 ТЗ)."""
-    if not _is_operator(role):
+    if not _is_operator(role) and role != "admin":
         return ActionResult(text="Доступно только оператору.")
     from marketplace.models import CompanyVerification
     try:
@@ -1384,7 +1384,7 @@ def op_kyb_check(params, user, role):
 @register("op_kyb_clarify")
 def op_kyb_clarify(params, user, role):
     """ТЗ §6: «Запросить уточнения» — отправить запрос поставщику на доп. документы."""
-    if not _is_operator(role):
+    if not _is_operator(role) and role != "admin":
         return ActionResult(text="Доступно только оператору.")
     from marketplace.models import CompanyVerification
     try:
@@ -1423,7 +1423,7 @@ def op_kyb_clarify(params, user, role):
 
 @register("op_kyb_approve")
 def op_kyb_approve(params, user, role):
-    if not _is_operator(role):
+    if not _is_operator(role) and role != "admin":
         return ActionResult(text="Доступно только оператору.")
     from marketplace.models import CompanyVerification
     confirmed = bool(params.get("confirmed"))
@@ -1579,7 +1579,7 @@ def op_kyb_approve(params, user, role):
 
 @register("op_kyb_reject")
 def op_kyb_reject(params, user, role):
-    if not _is_operator(role):
+    if not _is_operator(role) and role != "admin":
         return ActionResult(text="Доступно только оператору.")
     from marketplace.models import CompanyVerification
     try:

@@ -97,6 +97,8 @@ _BUYER_ACTIONS = [
     "search_parts", "create_rfq", "get_rfq_status", "get_my_deals",
     "get_orders", "get_order_detail", "track_order", "track_shipment",
     "cancel_order",
+    "invite_customer", "accept_customer_invite", "accept_referral",  # инвайт/реферал (для всех ролей)
+    "my_kam", "change_manager",  # клиент: его менеджер + право сменить (удержание)
     # Решение по консолидации vs split shipment
     "consolidate_wait", "split_shipment", "set_supplier_decision",
     "get_budget", "get_analytics", "get_supply_report", "get_sla_report",
@@ -110,6 +112,11 @@ _BUYER_ACTIONS = [
     # СВОИ. Покупатель видит «что нужно», продавец «что предлагает»; друг другу
     # не показываются — сверяет только оператор при согласовании сделки.
     "seller_drawings", "upload_drawing",
+    # Папки чертежей (создать / открыть / разложить / переместить / удалить)
+    "drawing_folder", "create_drawing_folder", "add_to_folder",
+    "move_drawing", "delete_drawing_folder",
+    # Привязка чертежа к позиции каталога через умный поиск
+    "link_drawing", "bind_drawing",
     # go_home обычно перехватывается фронтом, но допускаем и на бэке (stale JS)
     "go_home",
     "get_claims", "create_claim", "open_claim", "claim_detail",
@@ -169,6 +176,9 @@ _SELLER_ONLY = [
     "seller_pipeline", "ship_order",
     "seller_dashboard", "seller_finance", "seller_rating",
     "seller_inbox",
+    # CRM-аккаунт (заказчики, проекты, начисления) — НЕ у продавца: это KAM.
+    # Продавцу/покупателю остаётся только виральный инвайт/реферал.
+    "invite_customer", "accept_customer_invite", "accept_referral",
     "seller_catalog", "seller_warehouses", "toggle_product", "add_product", "edit_product",
     "product_detail", "import_pricelist_preview",
     "rfq_detail", "respond_rfq_form",
@@ -201,6 +211,10 @@ _OPERATOR_CORE = [
     "contact_operator", "open_complaint",
     # Operator-only: dashboard, очередь, назначение, спор, заметка
     "op_dashboard", "op_queue", "op_rfq_queue", "op_sla_breach",
+    "op_drawings_by_part",  # мастер-вид: чертежи по артикулу (сверка need/offer)
+    "op_escalate_to_kam",  # Оператор → KAM: эскалация исключения
+    # CRM заказчиков — НЕ в общем операторском наборе: это эксклюзив KAM
+    # (см. _KAM_ONLY ниже). Так оператор не пересекается с KAM по аккаунтам.
     "op_order_detail", "op_assign", "op_assign_carrier", "op_add_note", "op_resolve_dispute",
     # Customs / Compliance
     "op_hs_lookup", "op_hs_assign", "op_calc_duty",
@@ -239,14 +253,46 @@ _OPERATOR_CORE = [
     "generate_qc_report_pdf", "list_order_documents",
 ]
 
+# KAM (Key Account Manager) — коммерческий/аккаунт-набор. Эксклюзив роли:
+# заказчики по ИНН, проекты, привязка отгрузок, инвайты/рефералы, начисления.
+# Никакая другая операторская подроль этого не получает → нет конфликта.
+_KAM_ONLY = [
+    "seller_customers", "add_customer", "customer_detail",
+    "create_project_for_customer", "link_order_to_customer",
+    "invite_customer", "accept_customer_invite", "accept_referral",
+    "customer_bonuses", "my_accruals", "kam_deals",
+]
+
+# Исполнительные writes — это зона ОПЕРАТОРА, не KAM. KAM их не делает
+# (видимость дашбордов остаётся, а сами действия-исполнения — нет).
+_KAM_EXCLUDED = {
+    "op_customs_release", "op_hs_assign", "op_cert_upload", "op_sanctions_check",
+    "op_topup_queue", "op_confirm_topup", "op_reject_topup",
+    "op_kyb_queue", "op_kyb_review", "op_kyb_approve", "op_kyb_reject",
+    "op_kyb_check", "op_kyb_clarify",
+    "op_assign_carrier", "op_resolve_dispute",
+    "start_claim_review", "approve_claim", "reject_claim",
+    "apply_corrective", "apply_settlement", "close_claim",
+    "op_escalate_to_kam",  # эскалирует оператор, не KAM
+    # Сделку ведёт ОПЕРАТОР — KAM её не драйвит (ни КП, ни рассылку RFQ,
+    # ни назначения, ни передачу на исполнение). KAM = привлечение/онбординг.
+    "op_compose_kp", "op_approve_kp", "op_dispatch_manual_rfq",
+    "send_rfq_to_suppliers", "op_assign", "op_add_note",
+    "kam_handoff_to_operator",
+}
+
+# KAM = операторская база (для видимости статусов/RFQ/КП) МИНУС исполнение
+# ПЛЮС коммерческий аккаунт-набор.
+_KAM_ACTIONS = [a for a in _OPERATOR_CORE if a not in _KAM_EXCLUDED] + _KAM_ONLY
+
 ROLE_ACTIONS = {
     "buyer":  _BUYER_ACTIONS,
     "seller": _BUYER_ACTIONS + _SELLER_ONLY,
     "operator_logist": _OPERATOR_CORE,
     "operator_customs": _OPERATOR_CORE,
     "operator_payment": _OPERATOR_CORE,
-    "operator_manager": _OPERATOR_CORE,
-    "operator": _OPERATOR_CORE,
+    "operator_manager": _KAM_ACTIONS,   # KAM — коммерция, без исполнения
+    "operator": _OPERATOR_CORE,         # оператор — исполнение, без CRM
     "admin": ["*"],  # admin sees everything (wildcard — все actions доступны)
 }
 

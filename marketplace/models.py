@@ -283,6 +283,25 @@ class Part(models.Model):
         return self.is_mandatory_complete
 
 
+class DrawingFolder(models.Model):
+    """Папка для группировки чертежей владельца (напр. «Ходовка Komatsu»).
+
+    Приватна, как и сами чертежи: видна только владельцу. Позволяет разложить
+    чертежи по узлам/проектам, чтобы быстрее находить нужный."""
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="drawing_folders")
+    name = models.CharField(max_length=120)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "name"], name="uniq_drawing_folder_owner_name"),
+        ]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Drawing(models.Model):
     """Чертёж / CAD-файл, привязанный к детали поставщика."""
 
@@ -326,6 +345,21 @@ class Drawing(models.Model):
         help_text="Сумма вознаграждения автору при использовании в сделке (USD)")
     description = models.TextField(blank=True)
     oem_number = models.CharField(max_length=100, blank=True, db_index=True)
+    folder = models.ForeignKey("DrawingFolder", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="drawings")
+    # Чертёж может принадлежать проекту покупателя (грузится на странице проекта,
+    # слот «Чертежи и спецификации») — тогда в «Мои чертежи» он показывается
+    # отдельной виртуальной папкой с названием проекта.
+    project = models.ForeignKey("assistant.Project", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="drawings")
+    # Связь с документом проекта (мост): чертёж, загруженный на странице проекта,
+    # ссылается на свой ProjectDocument — чтобы привязывать артикул из проекта.
+    project_doc = models.ForeignKey("assistant.ProjectDocument", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="drawings")
+    # Сторона: «need» — покупатель (что нужно), «offer» — продавец (что предлагают).
+    # Оператор по артикулу сверяет need vs offer → точность поставки.
+    SIDE_CHOICES = [("need", _("Нужно (покупатель)")), ("offer", _("Предлагают (продавец)"))]
+    side = models.CharField(max_length=10, choices=SIDE_CHOICES, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -543,6 +577,35 @@ class Order(models.Model):
     customer_phone = models.CharField(max_length=50)
     delivery_address = models.TextField()
     buyer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders")
+    # CRM продавца: точная привязка заказа к заказчику (по ИНН покупателя или
+    # ручным подтверждением). Позволяет продавцу контролировать отгрузки по
+    # конкретному контрагенту, а не по совпадению названия.
+    customer_ref = models.ForeignKey(
+        "marketplace.Customer", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="orders", db_index=True,
+        help_text="Заказчик из CRM продавца, к которому относится этот заказ",
+    )
+    # KAM (Key Account Manager) — владелец АККАУНТА по сделке (коммерция).
+    # Отделён от assigned_operator (исполнение): KAM видит «свои» сделки,
+    # оператор — «свои». Авто-проставляется из customer_ref.owner при привязке.
+    assigned_kam = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="kam_orders", db_index=True,
+        help_text="KAM — владелец аккаунта по этой сделке",
+    )
+    # Хэндофф KAM ↔ Оператор (единственная точка касания, без конфликта):
+    #   kam        — у KAM (коммерция, до передачи)
+    #   operator   — передано оператору на исполнение (KAM read-only)
+    #   escalation — оператор вернул KAM (исключение: SLA/брак/перерасход)
+    KAM_HANDOFF_CHOICES = [
+        ("kam", "У KAM"),
+        ("operator", "У оператора (исполнение)"),
+        ("escalation", "Эскалация к KAM"),
+    ]
+    kam_handoff = models.CharField(max_length=12, choices=KAM_HANDOFF_CHOICES,
+                                    default="kam", db_index=True)
+    kam_handoff_note = models.CharField(max_length=300, blank=True)
+    kam_handoff_at = models.DateTimeField(null=True, blank=True)
     # Оператор, ведущий сделку — получает бонус 0.4-0.7% после release.
     # Назначается при первом операторском действии (confirm/dispatch/quote-approve).
     assigned_operator = models.ForeignKey(
@@ -1092,6 +1155,41 @@ class TeamMember(models.Model):
 
     def __str__(self) -> str:
         return f"{self.owner_id} → {self.invited_email} ({self.role})"
+
+
+class Customer(models.Model):
+    """Заказчик продавца — контрагент, которого продавец заводит по ИНН в своём
+    кабинете. По заказчику создаются проекты и контролируются отгрузки.
+    1 заказчик уникален в рамках одного продавца (owner+inn)."""
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="customers",
+        help_text="Продавец, который ведёт этого заказчика")
+    inn = models.CharField(max_length=20, db_index=True, verbose_name="ИНН")
+    kpp = models.CharField(max_length=20, blank=True, verbose_name="КПП")
+    name = models.CharField(max_length=255)
+    country = models.CharField(max_length=2, default="RU")
+    legal_address = models.CharField(max_length=500, blank=True)
+    contact_name = models.CharField(max_length=200, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+    note = models.TextField(blank=True)
+    # Инвайт заказчика на платформу (продавец/менеджер генерит ссылку).
+    invite_token = models.CharField(max_length=100, blank=True, db_index=True)
+    invited_at = models.DateTimeField(null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                             related_name="customer_records",
+                             help_text="Аккаунт заказчика после принятия инвайта")
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "inn"], name="uniq_customer_owner_inn"),
+        ]
+        indexes = [models.Index(fields=["owner", "is_active", "name"])]
+
+    def __str__(self) -> str:
+        return f"{self.name} (ИНН {self.inn})"
 
 
 class CompanyVerification(models.Model):
@@ -1803,3 +1901,39 @@ class KnowledgeBaseEntry(models.Model):
         q_low = query.lower()
         return qs.filter(Q(question__icontains=q_low)
                           | Q(answer__icontains=q_low))[:limit]
+
+
+class CustomsRecord(models.Model):
+    """Таможенная аналитика — высокоценный ручной засев администратора.
+    Реальные данные ввоза (ФТС-выписки и т.п.): HS-код, страна, объём, цена.
+    Привязка по oem_number обогащает граф рынка реальными ценами импорта."""
+    DIRECTION = [("import", "Импорт"), ("export", "Экспорт")]
+    hs_code = models.CharField(max_length=14, db_index=True, verbose_name="ТН ВЭД / HS")
+    commodity = models.CharField(max_length=300, blank=True, verbose_name="Товар")
+    oem_number = models.CharField(max_length=100, blank=True, db_index=True, verbose_name="Парт-номер")
+    direction = models.CharField(max_length=8, choices=DIRECTION, default="import")
+    origin_country = models.CharField(max_length=2, blank=True, verbose_name="Страна происх.")
+    dest_country = models.CharField(max_length=2, default="RU", verbose_name="Страна назн.")
+    importer = models.CharField(max_length=255, blank=True, verbose_name="Импортёр")
+    importer_inn = models.CharField(max_length=20, blank=True, db_index=True)
+    supplier = models.CharField(max_length=255, blank=True, verbose_name="Поставщик/отправитель")
+    qty = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    unit = models.CharField(max_length=20, blank=True, default="шт")
+    net_weight_kg = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    customs_value_usd = models.DecimalField(max_digits=16, decimal_places=2, default=0)
+    period = models.DateField(null=True, blank=True, verbose_name="Период (месяц)")
+    source = models.CharField(max_length=120, blank=True, default="manual")
+    note = models.TextField(blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="customs_records")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-period", "-created_at"]
+        indexes = [
+            models.Index(fields=["hs_code", "origin_country"]),
+            models.Index(fields=["oem_number"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.hs_code} {self.origin_country}→{self.dest_country} ${self.customs_value_usd}"

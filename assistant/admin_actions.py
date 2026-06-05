@@ -90,19 +90,29 @@ def admin_dashboard(params, user, role):
         ),
         cards=[
             {"type": "kpi_grid", "data": {"title": "🛡 Admin · Сводка", "items": [
-                {"label": "Активных юзеров", "value": str(users_total), "tone": "info"},
+                {"label": "Активных юзеров", "value": str(users_total), "tone": "info",
+                 "action": "admin_users", "params": {}},
                 {"label": "Новых за 7 дней", "value": f"+{users_new_7d}",
-                 "tone": "ok" if users_new_7d else "warn"},
-                {"label": "Заказов всего", "value": str(orders_total)},
-                {"label": "За 24 часа", "value": str(orders_24h)},
-                {"label": "В работе", "value": str(open_orders), "tone": "info"},
-                {"label": "GMV 7d", "value": f"${gmv_7d:,.0f}", "tone": "ok"},
+                 "tone": "ok" if users_new_7d else "warn",
+                 "action": "admin_users", "params": {"filter": "new"}},
+                {"label": "Заказов всего", "value": str(orders_total),
+                 "action": "admin_gmv", "params": {}},
+                {"label": "За 24 часа", "value": str(orders_24h),
+                 "action": "admin_gmv", "params": {}},
+                {"label": "В работе", "value": str(open_orders), "tone": "info",
+                 "action": "admin_gmv", "params": {}},
+                {"label": "GMV 7d", "value": f"${gmv_7d:,.0f}", "tone": "ok",
+                 "action": "admin_revenue_breakdown", "params": {}},
                 {"label": "SLA breach 7d", "value": str(sla_breached_7d),
-                 "tone": "bad" if sla_breached_7d > 0 else "ok"},
-                {"label": "RFQ за 24ч", "value": str(rfq_24h)},
+                 "tone": "bad" if sla_breached_7d > 0 else "ok",
+                 "action": "admin_moderation_queue", "params": {}},
+                {"label": "RFQ за 24ч", "value": str(rfq_24h),
+                 "action": "admin_market_twin", "params": {}},
                 {"label": "KYB pending", "value": str(kyb_pending),
-                 "tone": "warn" if kyb_pending else "ok"},
-                {"label": "KYB verified", "value": str(kyb_verified)},
+                 "tone": "warn" if kyb_pending else "ok",
+                 "action": "admin_moderation_queue", "params": {}},
+                {"label": "KYB verified", "value": str(kyb_verified),
+                 "action": "admin_users", "params": {"filter": "verified"}},
             ]}},
         ],
         contextual_actions=[
@@ -142,7 +152,8 @@ def admin_gmv(params, user, role):
         gmv = agg["gmv"] or Decimal("0")
         n = agg["n"] or 0
         items.append({"label": label, "value": f"${gmv:,.0f} · {n} заказ.",
-                       "tone": "ok" if gmv > 0 else "warn"})
+                       "tone": "ok" if gmv > 0 else "warn",
+                       "action": "admin_revenue_breakdown", "params": {}})
 
     # Top categories
     top_cat = list(
@@ -153,7 +164,8 @@ def admin_gmv(params, user, role):
     )
     cat_rows = [
         {"title": c["items__part__category__name"] or "—",
-         "subtitle": f"${(c['gmv'] or 0):,.0f}"}
+         "subtitle": f"${(c['gmv'] or 0):,.0f}",
+         "action": "admin_catalog_review", "params": {}}
         for c in top_cat if c["gmv"]
     ]
 
@@ -196,6 +208,10 @@ def admin_users(params, user, role):
         qs = qs.filter(profile__role="seller")
     elif flt == "kyb_pending":
         qs = qs.filter(kyb__status="pending")
+    elif flt == "verified":
+        qs = qs.filter(kyb__status="verified")
+    elif flt == "new":
+        qs = qs.filter(date_joined__gte=timezone.now() - timedelta(days=7))
     qs = qs.exclude(username="__platform_escrow__").order_by("-date_joined")[:30]
 
     rows = []
@@ -214,6 +230,7 @@ def admin_users(params, user, role):
                 f"{u.email or '—'} · KYB: {kyb_label}"
                 + (" · " + " ".join(flags) if flags else "")
             ),
+            "action": "admin_user_detail", "params": {"user_id": u.id},
         })
 
     return ActionResult(
@@ -469,13 +486,17 @@ def admin_moderation_queue(params, user, role):
 
     items = [
         {"title": f"KYB на проверке · {kyb_pending}",
-         "subtitle": "→ op_kyb_queue"} if kyb_pending else None,
+         "subtitle": "Анкеты ждут верификации — нажмите", "tone": "warn",
+         "action": "op_kyb_queue", "params": {}} if kyb_pending else None,
         {"title": f"Возвраты в обработке · {refunds}",
-         "subtitle": "→ op_queue?filter=refund"} if refunds else None,
+         "subtitle": "Заказы на возврат — нажмите", "tone": "warn",
+         "action": "op_queue", "params": {"filter": "refund"}} if refunds else None,
         {"title": f"SLA нарушены · {sla_breached}",
-         "subtitle": "→ op_sla_breach"} if sla_breached else None,
+         "subtitle": "Просрочки по этапам — нажмите", "tone": "bad",
+         "action": "op_sla_breach", "params": {}} if sla_breached else None,
         {"title": f"Контр-офферы ждут ответа · {quotes_countered}",
-         "subtitle": "семинары переторжки"} if quotes_countered else None,
+         "subtitle": "Переторжка по КП — нажмите", "tone": "info",
+         "action": "op_queue", "params": {}} if quotes_countered else None,
     ]
     items = [x for x in items if x]
     if not items:
@@ -582,17 +603,19 @@ def admin_revenue_breakdown(params, user, role):
     main_window = results[1]  # 7d
     items = [
         {"label": "За 7 дней TOTAL", "value": f"${main_window['total']:,.0f}",
-         "tone": "info"},
+         "tone": "info", "action": "admin_gmv", "params": {}},
     ]
     for kind, lbl in PlatformRevenueLine.KIND_CHOICES:
         if main_window["by_kind"].get(kind, 0):
-            items.append({"label": lbl, "value": f"${main_window['by_kind'][kind]:,.0f}"})
+            items.append({"label": lbl, "value": f"${main_window['by_kind'][kind]:,.0f}",
+                          "action": "admin_gmv", "params": {}})
 
     period_rows = []
     for r in results:
         period_rows.append({
             "title": f"{r['label']}",
             "subtitle": f"${r['total']:,.0f} · {r['n']} строк",
+            "action": "admin_gmv", "params": {},
         })
 
     return ActionResult(
@@ -645,4 +668,289 @@ def admin_platform_settings(params, user, role):
         contextual_actions=[
             {"action": "admin_dashboard", "label": "← Сводка"},
         ],
+    )
+
+
+# ══════════════════════════════════════════════════════════
+#  Цифровой слепок рынка — главный актив платформы (данные)
+# ══════════════════════════════════════════════════════════
+
+@register("admin_market_twin")
+def admin_market_twin(params, user, role):
+    """Цифровой слепок рынка: какие данные копятся, из каких источников,
+    с каким покрытием. Это конечный продукт платформы для владельца."""
+    err = _ensure_admin(role)
+    if err:
+        return err
+    from django.contrib.auth import get_user_model
+    from django.db.models import Count, Sum
+    from marketplace.models import Part, Drawing, Order, Customer, Brand, Category
+    from assistant.models import Project
+    U = get_user_model()
+
+    parts = Part.objects.count()
+    try:
+        from marketplace.models import PartRef
+        partrefs = PartRef.objects.count()
+    except Exception:
+        partrefs = 0
+    draw = Drawing.objects.count()
+    orders = Order.objects.count()
+    gmv = float(Order.objects.aggregate(s=Sum("total_amount"))["s"] or 0)
+    custs = Customer.objects.count()
+    projs = Project.objects.count()
+    users = U.objects.count()
+    brands = Brand.objects.count()
+    cats = Category.objects.count()
+    try:
+        from marketplace.models import CustomsRecord
+        customs = CustomsRecord.objects.count()
+        customs_val = float(CustomsRecord.objects.aggregate(s=Sum("customs_value_usd"))["s"] or 0)
+    except Exception:
+        customs, customs_val = 0, 0
+
+    def _n(v):
+        return f"{int(v):,}".replace(",", " ")
+
+    def _m(v):
+        return ("$" + f"{float(v):,.0f}").replace(",", " ")
+
+    def cov(n, rich):
+        return "🟢" if n >= rich else ("🟡" if n > 0 else "⚪️")
+
+    kpi = {"type": "kpi_grid", "data": {"title": "🌐 Цифровой слепок рынка", "kpis": [
+        {"value": _n(parts), "label": "Артикулы (OEM)", "action": "admin_catalog_review", "params": {}},
+        {"value": _n(partrefs), "label": "Кросс-ссылки", "sub": "граф аналогов", "action": "admin_catalog_review", "params": {}},
+        {"value": _n(draw), "label": "Чертежи", "action": "op_drawings_by_part", "params": {}},
+        {"value": _n(orders), "label": "Сделки", "sub": _m(gmv) + " GMV", "action": "admin_gmv", "params": {}},
+        {"value": _n(custs), "label": "Заказчики", "action": "admin_customers", "params": {}},
+        {"value": _n(projs), "label": "Парки техники", "action": "admin_fleets", "params": {}},
+    ]}}
+
+    # Активы рынка: что копится, источник, покрытие. Каждый → в свой раздел.
+    assets = {"type": "list", "data": {"title": "📦 Активы данных (что копится) — нажмите", "rows": [
+        {"title": f"{cov(parts, 100000)} Артикулы / OEM · {_n(parts)}",
+         "subtitle": "спрос+предложение, цены, наличие · источник: продавцы (каталоги) + покупатели (поиск/RFQ)",
+         "action": "admin_catalog_review", "params": {}},
+        {"title": f"{cov(partrefs, 10000)} Кросс-ссылки аналогов · {_n(partrefs)}",
+         "subtitle": "граф «оригинал↔аналог» · источник: импорт + привязки операторов/KAM",
+         "action": "admin_catalog_review", "params": {}},
+        {"title": f"{cov(draw, 1000)} Чертежи · {_n(draw)}",
+         "subtitle": "тех. идентификация детали → точность поставки · источник: покупатели + продавцы + админ",
+         "action": "op_drawings_by_part", "params": {}},
+        {"title": f"{cov(orders, 1000)} Цены / маршруты / сроки · {_n(orders)} сделок",
+         "subtitle": "реальные цены, логистика, таможня · источник: транзакции (самые ценные данные)",
+         "action": "admin_gmv", "params": {}},
+        {"title": f"{cov(custs, 100)} Заказчики + контакты · {_n(custs)}",
+         "subtitle": "кто покупает, контакты ЛПР · источник: KAM (привлечение) + регистрации",
+         "action": "admin_customers", "params": {}},
+        {"title": f"{cov(projs, 100)} Парки техники + периодичность · {_n(projs)}",
+         "subtitle": "что у клиента в эксплуатации + как часто закупает · источник: проекты/RFQ покупателей",
+         "action": "admin_fleets", "params": {}},
+        {"title": f"{cov(customs, 1000)} Таможенная аналитика · {_n(customs)} ({_m(customs_val)})",
+         "subtitle": "реальные цены/объёмы ввоза по HS/странам · источник: ваш ручной засев",
+         "action": "admin_customs", "params": {}},
+    ]}}
+
+    sources = {"type": "list", "data": {"title": "🔌 Источники обогащения — нажмите", "rows": [
+        {"title": "👤 Покупатели", "subtitle": "RFQ, поиск, заказы, чертежи, парки техники — основной поток спроса",
+         "action": "admin_users", "params": {"filter": "buyers"}},
+        {"title": "🏭 Продавцы", "subtitle": "каталоги, цены, наличие, чертежи — основной поток предложения",
+         "action": "admin_users", "params": {"filter": "sellers"}},
+        {"title": "🛡 Операторы / KAM", "subtitle": "KYB, HS-коды, привязки аналогов, контакты, верификация",
+         "action": "admin_moderation_queue", "params": {}},
+        {"title": "🗂 Админ (вы)", "subtitle": "таможенная аналитика, чертежи, парт-номера — ручной засев",
+         "action": "admin_customs", "params": {}},
+    ]}}
+
+    geo = list(Customer.objects.values("country").annotate(c=Count("id")).order_by("-c")[:10])
+    geo_rows = [{"title": (g["country"] or "—"), "subtitle": f"{g['c']} заказчиков",
+                 "action": "admin_customers", "params": {}} for g in geo] or \
+               [{"title": "Пока нет данных по странам", "subtitle": "наполнится с заказчиками"}]
+    geography = {"type": "list", "data": {"title": "🗺 География (по странам)", "rows": geo_rows}}
+
+    roadmap = {"type": "list", "data": {"title": "🧭 Заложить под наполнение (архитектура)", "rows": [
+        {"title": "Таможенная аналитика (импорт)", "subtitle": "HS-коды, объёмы, цены ввоза — отдельная модель + загрузчик", "tone": "info"},
+        {"title": "История цен по артикулу", "subtitle": "цена/время/поставщик/регион → тренды и бенчмарк", "tone": "info"},
+        {"title": "Структурный парк техники", "subtitle": "модель/серийник/наработка → предиктивный спрос", "tone": "info"},
+        {"title": "Контакты ключевых поставщиков", "subtitle": "рейтинг надёжности, сроки, ниши", "tone": "info"},
+    ]}}
+
+    return ActionResult(
+        text=(f"🌐 Цифровой слепок рынка. Артикулы {_n(parts)}, кросс-ссылки {_n(partrefs)}, "
+              f"чертежи {_n(draw)}, сделки {_n(orders)} ({_m(gmv)} GMV). Это и есть конечный "
+              "продукт: рынок копится из действий пользователей; вы засеваете таможню/чертежи/парт-номера."),
+        cards=[kpi, assets, sources, geography, roadmap],
+        contextual_actions=[
+            {"action": "admin_dashboard", "label": "← Сводка"},
+            {"action": "admin_catalog_review", "label": "📦 Каталог"},
+        ],
+    )
+
+
+# ══════════════════════════════════════════════════════════
+#  Таможенная аналитика — ручной засев администратора
+# ══════════════════════════════════════════════════════════
+
+@register("admin_customs")
+def admin_customs(params, user, role):
+    """Обзор таможенной аналитики: объём данных, топ HS/страны, последние записи."""
+    err = _ensure_admin(role)
+    if err:
+        return err
+    from django.db.models import Count, Sum
+    from marketplace.models import CustomsRecord
+    qs = CustomsRecord.objects.all()
+    total = qs.count()
+    value = float(qs.aggregate(s=Sum("customs_value_usd"))["s"] or 0)
+    weight = float(qs.aggregate(s=Sum("net_weight_kg"))["s"] or 0)
+    linked = qs.exclude(oem_number="").count()
+
+    def _n(v):
+        return f"{int(v):,}".replace(",", " ")
+
+    def _m(v):
+        return ("$" + f"{float(v):,.0f}").replace(",", " ")
+
+    add_btn = {"action": "admin_customs_add", "label": "➕ Добавить запись", "params": {}}
+    if not total:
+        return ActionResult(
+            text="🛂 Таможенная аналитика пуста. Засейте первую запись — это уникальный пласт "
+                 "данных (реальные цены/объёмы ввоза), которого нет у пользователей.",
+            contextual_actions=[add_btn, {"action": "admin_market_twin", "label": "← Слепок рынка"}],
+        )
+    top_hs = list(qs.values("hs_code").annotate(c=Count("id"), v=Sum("customs_value_usd")).order_by("-v")[:8])
+    top_co = list(qs.values("origin_country").annotate(c=Count("id"), v=Sum("customs_value_usd")).order_by("-v")[:8])
+    recent = list(qs[:15])
+
+    kpi = {"type": "kpi_grid", "data": {"title": "🛂 Таможенная аналитика", "kpis": [
+        {"value": _n(total), "label": "Записей"},
+        {"value": _m(value), "label": "Стоимость ввоза"},
+        {"value": _n(weight) + " кг", "label": "Вес"},
+        {"value": _n(linked), "label": "С парт-номером", "sub": "связь с графом"},
+    ]}}
+    hs_rows = [{"title": f"HS {h['hs_code']}", "subtitle": f"{h['c']} записей · {_m(h['v'])}"} for h in top_hs]
+    co_rows = [{"title": (c["origin_country"] or "—"), "subtitle": f"{c['c']} записей · {_m(c['v'])}"} for c in top_co]
+    rec_rows = [{
+        "title": f"HS {r.hs_code} · {r.origin_country or '—'}→{r.dest_country}",
+        "subtitle": (f"{r.commodity or ''} · {_m(r.customs_value_usd)}"
+                     + (f" · OEM {r.oem_number}" if r.oem_number else "")),
+    } for r in recent]
+    return ActionResult(
+        text=f"🛂 Таможенная аналитика: {_n(total)} записей, {_m(value)} ввоза, {_n(linked)} с парт-номером.",
+        cards=[
+            kpi,
+            {"type": "list", "data": {"title": "📊 Топ HS-кодов по стоимости", "rows": hs_rows}},
+            {"type": "list", "data": {"title": "🗺 Топ стран происхождения", "rows": co_rows}},
+            {"type": "list", "data": {"title": "🕒 Последние записи", "rows": rec_rows}},
+        ],
+        contextual_actions=[add_btn, {"action": "admin_market_twin", "label": "← Слепок рынка"}],
+    )
+
+
+@register("admin_customs_add")
+def admin_customs_add(params, user, role):
+    """Добавить запись таможенной аналитики (ручной засев)."""
+    err = _ensure_admin(role)
+    if err:
+        return err
+    from marketplace.models import CustomsRecord
+    hs = (params.get("hs_code") or "").strip()
+    if not hs:
+        return ActionResult(
+            text="Добавьте запись таможенной аналитики. Привяжите парт-номер (OEM) — "
+                 "тогда реальная цена ввоза попадёт в граф рынка по этому артикулу.",
+            cards=[{"type": "form", "data": {
+                "title": "🛂 Новая запись таможни",
+                "submit_action": "admin_customs_add",
+                "submit_label": "Добавить",
+                "fields": [
+                    {"name": "hs_code", "label": "ТН ВЭД / HS", "type": "text", "required": True, "placeholder": "8431499900"},
+                    {"name": "commodity", "label": "Товар", "type": "text", "placeholder": "Башмак гусеницы CAT"},
+                    {"name": "oem_number", "label": "Парт-номер (OEM)", "type": "text", "placeholder": "1R-0750 (опц., связь с графом)"},
+                    {"name": "origin_country", "label": "Страна происхождения (2 буквы)", "type": "text", "placeholder": "CN"},
+                    {"name": "supplier", "label": "Поставщик/отправитель", "type": "text", "placeholder": "опц."},
+                    {"name": "importer", "label": "Импортёр", "type": "text", "placeholder": "опц."},
+                    {"name": "qty", "label": "Кол-во", "type": "text", "placeholder": "0"},
+                    {"name": "net_weight_kg", "label": "Вес, кг", "type": "text", "placeholder": "0"},
+                    {"name": "customs_value_usd", "label": "Стоимость ввоза, USD", "type": "text", "placeholder": "0"},
+                ],
+                "fixed_params": {},
+            }}],
+        )
+
+    def _num(k):
+        try:
+            return float((params.get(k) or "0").replace(" ", "").replace(",", "."))
+        except Exception:
+            return 0
+
+    rec = CustomsRecord.objects.create(
+        hs_code=hs[:14],
+        commodity=(params.get("commodity") or "").strip()[:300],
+        oem_number=(params.get("oem_number") or "").strip()[:100],
+        origin_country=(params.get("origin_country") or "").strip().upper()[:2],
+        supplier=(params.get("supplier") or "").strip()[:255],
+        importer=(params.get("importer") or "").strip()[:255],
+        qty=_num("qty"), net_weight_kg=_num("net_weight_kg"),
+        customs_value_usd=_num("customs_value_usd"),
+        source="manual", created_by=user,
+    )
+    msg = f"✅ Запись добавлена: HS {rec.hs_code}"
+    if rec.oem_number:
+        msg += f" · привязана к OEM {rec.oem_number} (обогатила граф)"
+    return ActionResult(
+        text=msg + ".",
+        contextual_actions=[
+            {"action": "admin_customs_add", "label": "➕ Ещё запись", "params": {}},
+            {"action": "admin_customs", "label": "🛂 К таможне", "params": {}},
+        ],
+    )
+
+
+@register("admin_customers")
+def admin_customers(params, user, role):
+    """Все заказчики платформы (контакты, привязка к KAM, статус)."""
+    err = _ensure_admin(role)
+    if err:
+        return err
+    from marketplace.models import Customer
+    total = Customer.objects.count()
+    qs = Customer.objects.select_related("owner", "user").order_by("-created_at")[:50]
+    rows = []
+    for c in qs:
+        kam = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "—"
+        confirmed = "✅ подтв." if c.user_id else "⚪️ лид"
+        contact = " · ".join([x for x in [c.contact_name, c.phone] if x]) or "контактов нет"
+        rows.append({"title": f"{c.name} · ИНН {c.inn}",
+                     "subtitle": f"{confirmed} · KAM {kam} · {contact}",
+                     "action": "customer_detail", "params": {"id": str(c.id)}})
+    return ActionResult(
+        text=f"👥 Заказчики платформы: {total}. Контакты ЛПР, привязка к KAM, статус закрепления.",
+        cards=[{"type": "list", "data": {"title": f"Заказчики ({total})",
+                "rows": rows or [{"title": "Пока нет заказчиков", "subtitle": "появятся с привлечением KAM"}]}}],
+        contextual_actions=[{"action": "admin_market_twin", "label": "← Слепок рынка"}],
+    )
+
+
+@register("admin_fleets")
+def admin_fleets(params, user, role):
+    """Парки техники / проекты клиентов — что в эксплуатации (предиктивный спрос)."""
+    err = _ensure_admin(role)
+    if err:
+        return err
+    from assistant.models import Project
+    total = Project.objects.count()
+    qs = Project.objects.select_related("owner").order_by("-updated_at")[:50]
+    rows = []
+    for p in qs:
+        owner = (p.owner.get_full_name() or p.owner.username) if p.owner_id else "—"
+        tags = ", ".join((p.tags or [])[:6]) if p.tags else "—"
+        rows.append({"title": p.name, "subtitle": f"парк/теги: {tags} · владелец {owner}",
+                     "url": f"/chat/project/{p.id}/"})
+    return ActionResult(
+        text=f"🚜 Парки техники / проекты: {total}. Что у клиентов в эксплуатации → предиктивный спрос.",
+        cards=[{"type": "list", "data": {"title": f"Парки / проекты ({total})",
+                "rows": rows or [{"title": "Пока нет", "subtitle": "появятся из проектов покупателей"}]}}],
+        contextual_actions=[{"action": "admin_market_twin", "label": "← Слепок рынка"}],
     )

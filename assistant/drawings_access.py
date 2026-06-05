@@ -38,6 +38,15 @@ def can_access(user, drawing, order=None) -> tuple[bool, str]:
     if user.is_superuser or user.is_staff:
         return True, "staff"
 
+    # Оператор (роль из профиля, не обязательно is_staff) видит чертежи всех
+    # сторон — чтобы сверять «что нужно» vs «что предлагают» по артикулу.
+    try:
+        from .permissions import detect_user_role
+        if (detect_user_role(user) or "").startswith("operator"):
+            return True, "operator"
+    except Exception:
+        pass
+
     # private — никому кроме владельца
     if drawing.access_level == "private":
         return False, "приватный чертёж — доступ только у владельца"

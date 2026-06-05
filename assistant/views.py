@@ -1108,6 +1108,28 @@ class ProjectDocumentUploadView(APIView):
                 size_bytes=f.size or 0,
                 meta={"original_ext": ext},
             )
+            # Мост Проект→Чертежи: чертёж проекта дублируем как Drawing(project=…),
+            # чтобы он попал в «Мои чертежи» отдельной папкой проекта и получил
+            # привязку к позиции каталога (🔗 умный поиск).
+            if doctype == "drawing":
+                try:
+                    from marketplace.models import Drawing
+                    FMT = {"dwg": "dwg", "dxf": "dxf", "pdf": "pdf", "step": "step",
+                           "stp": "step", "iges": "iges", "igs": "iges", "stl": "stl",
+                           "png": "png", "jpg": "jpg", "jpeg": "jpg"}
+                    try:
+                        d_url = doc.file.url
+                    except Exception:
+                        d_url = ""
+                    Drawing.objects.create(
+                        seller=request.user, project=p, project_doc=doc,
+                        title=name[:255], file_url=d_url, file_name=name[:255],
+                        file_format=FMT.get(ext, "pdf"), status="draft",
+                        access_level="private", side="need",
+                        file_size_kb=int((f.size or 0) / 1024),
+                    )
+                except Exception:
+                    logger.exception("project→drawing bridge failed")
             return Response({
                 "id": str(doc.id),
                 "name": doc.name,
@@ -1118,6 +1140,25 @@ class ProjectDocumentUploadView(APIView):
             }, status=201)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+
+class ProjectDocumentFileView(APIView):
+    """GET → стримит файл документа проекта владельцу (надёжно: по file.name,
+    без проблем с URL-кодированной кириллицей; работает локально и на проде)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, project_id, doc_id):
+        from django.http import FileResponse
+        from .models import ProjectDocument
+        p = get_object_or_404(Project, id=project_id, owner=request.user)
+        doc = get_object_or_404(ProjectDocument, id=doc_id, project=p)
+        if not doc.file:
+            return Response({"error": "файл не найден"}, status=404)
+        try:
+            return FileResponse(doc.file.open("rb"), as_attachment=False,
+                                filename=doc.name or "document")
+        except Exception:
+            return Response({"error": "файл не найден"}, status=404)
 
 
 def _eta_label(request, days=30):
@@ -1165,17 +1206,42 @@ class ProjectDetailView(APIView):
 
     def get(self, request, project_id):
         p = get_object_or_404(Project, id=project_id, owner=request.user, is_active=True)
-        # Documents
-        docs = [{
-            "id": str(d.id),
-            "name": d.name,
-            "doctype": d.doctype,
-            "doctype_label": d.get_doctype_display(),
-            "status": d.status,
-            "size_kb": round(d.size_bytes / 1024, 1) if d.size_bytes else None,
-            "meta": d.meta,
-            "uploaded_at": d.uploaded_at.strftime("%d.%m.%Y"),
-        } for d in p.documents.all()]
+        # Documents — для чертежей подтягиваем bridge-Drawing (drawing_id + oem),
+        # чтобы на странице проекта можно было привязать артикул.
+        from marketplace.models import Drawing
+        _FMT = {"dwg": "dwg", "dxf": "dxf", "pdf": "pdf", "step": "step", "stp": "step",
+                "iges": "iges", "igs": "iges", "stl": "stl", "png": "png", "jpg": "jpg", "jpeg": "jpg"}
+        docs = []
+        for d in p.documents.all():
+            entry = {
+                "id": str(d.id),
+                "name": d.name,
+                "doctype": d.doctype,
+                "doctype_label": d.get_doctype_display(),
+                "status": d.status,
+                "size_kb": round(d.size_bytes / 1024, 1) if d.size_bytes else None,
+                "url": (d.file.url if d.file else None),
+                "meta": d.meta,
+                "uploaded_at": d.uploaded_at.strftime("%d.%m.%Y"),
+                "drawing_id": None,
+                "oem": "",
+            }
+            if d.doctype == "drawing":
+                dr = Drawing.objects.filter(project_doc=d).first()
+                if not dr:  # backfill для старых документов
+                    try:
+                        d_url = d.file.url if d.file else ""
+                    except Exception:
+                        d_url = ""
+                    ext = (d.name.rsplit(".", 1)[-1] if "." in d.name else "").lower()
+                    dr = Drawing.objects.create(
+                        seller=request.user, project=p, project_doc=d,
+                        title=d.name[:255], file_url=d_url, file_name=d.name[:255],
+                        file_format=_FMT.get(ext, "pdf"), status="draft", side="need",
+                        access_level="private", file_size_kb=int((d.size_bytes or 0) / 1024))
+                entry["drawing_id"] = str(dr.id)
+                entry["oem"] = dr.oem_number or ""
+            docs.append(entry)
         # Linked chats
         chats = [{
             "id": str(c.id),
@@ -1417,9 +1483,13 @@ class DrawingFileView(APIView):
         # Стримим САМ файл (после проверки доступа выше), а не JSON со ссылкой
         # на /media/: иначе приватный чертёж открыт всем по прямой ссылке.
         # Работает одинаково на runserver (локально) и на проде.
+        import urllib.parse
+
         from django.core.files.storage import default_storage
         from django.http import FileResponse
-        rel = (drawing.file_url or "").split("/media/", 1)[-1].lstrip("/")
+        # file_url хранится URL-кодированным (кириллица → %D0..); на диске путь
+        # декодирован — раскодируем, иначе default_storage.exists() = False.
+        rel = urllib.parse.unquote((drawing.file_url or "").split("/media/", 1)[-1].lstrip("/"))
         if not rel or not default_storage.exists(rel):
             return Response({"ok": False, "error": "файл чертежа не найден"}, status=404)
         fname = drawing.file_name or rel.rsplit("/", 1)[-1]
@@ -1496,6 +1566,7 @@ class DrawingUploadView(APIView):
             status="draft",
             access_level=access_level,
             oem_number=oem[:100],
+            side=("need" if role == "buyer" else "offer"),
         )
         return Response({
             "ok": True,

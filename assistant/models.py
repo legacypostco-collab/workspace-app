@@ -184,6 +184,10 @@ class Project(models.Model):
     code = models.CharField(max_length=50, blank=True, help_text="Short code, e.g. NORQ2")
     customer = models.CharField(max_length=200, blank=True,
                                   help_text="Customer name (Norilsk Nickel — Kola Division)")
+    customer_ref = models.ForeignKey(
+        "marketplace.Customer", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="projects",
+        help_text="Заказчик из CRM продавца (если проект заведён под конкретного заказчика)")
     tags = models.JSONField(default=list, blank=True,
                               help_text='Free-form tags: ["квартальная закупка","CAT 988H","793F"]')
     deadline = models.DateField(null=True, blank=True)

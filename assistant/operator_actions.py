@@ -36,9 +36,55 @@ def _is_operator(role: str) -> bool:
 
 
 def _ensure_operator(role: str):
-    if not _is_operator(role):
+    # admin (superuser) проходит операторские гарды — видит всё.
+    if not _is_operator(role) and role != "admin":
         return ActionResult(text="Это действие доступно только оператору.")
     return None
+
+
+# ══════════════════════════════════════════════════════════
+# Чертежи по артикулу — мастер-вид оператора (сверка need vs offer)
+# ══════════════════════════════════════════════════════════
+
+@register("op_drawings_by_part")
+def op_drawings_by_part(params, user, role):
+    """Оператор ищет по парт-номеру и видит ВСЕ чертежи всех сторон по позиции:
+    что нужно покупателям («need») и что предлагают продавцы («offer»). Живой
+    поиск по мере ввода (карточка op_drawings). Только оператор."""
+    err = _ensure_operator(role)
+    if err:
+        return err
+    from marketplace.models import Drawing
+    q = (params.get("q") or "").strip()
+    groups, total_need, total_offer = [], 0, 0
+    if len(q) >= 2:
+        items = list(Drawing.objects.filter(oem_number__icontains=q)
+                     .select_related("seller").order_by("oem_number", "side", "-created_at")[:60])
+        _SIDE = {"need": "🛒 нужно", "offer": "🏭 предлагают"}
+        need, offer, other = [], [], []
+        for d in items:
+            who = getattr(d.seller, "username", None) or "—"
+            row = {
+                "title": f"{(d.title or f'Чертёж #{d.id}')} · {d.oem_number or '—'}",
+                "subtitle": f"{(d.file_format or '').upper()} · {_SIDE.get(d.side, '—')} · {who} · {d.created_at.strftime('%d.%m.%Y')}",
+                "url": f"/api/assistant/drawings/{d.id}/file/",
+            }
+            (need if d.side == "need" else offer if d.side == "offer" else other).append(row)
+        total_need, total_offer = len(need), len(offer)
+        if need:
+            groups.append({"label": "🛒 Что нужно покупателям", "rows": need})
+        if offer:
+            groups.append({"label": "🏭 Что предлагают продавцы", "rows": offer})
+        if other:
+            groups.append({"label": "Прочие", "rows": other})
+    text = (f"📐 Чертежи по «{q}»: {total_need} нужно · {total_offer} предлагают."
+            if len(q) >= 2 else
+            "🔎 Введите артикул — покажу что нужно покупателям и что предлагают продавцы.")
+    return ActionResult(
+        text=text,
+        cards=[{"type": "op_drawings", "data": {"q": q, "searched": len(q) >= 2, "groups": groups}}],
+        actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}],
+    )
 
 
 # ══════════════════════════════════════════════════════════
@@ -1237,6 +1283,7 @@ def op_order_detail(params, user, role):
             {"action": "track_order", "label": "📦 Трекинг", "params": {"order_id": order.id}},
             {"action": "op_resolve_dispute", "label": "⚖️ Закрыть спор", "params": {"order_id": order.id}},
             {"action": "get_claims", "label": "🧾 Рекламации", "params": {}},
+            {"action": "op_escalate_to_kam", "label": "⚠️ Эскалировать KAM", "params": {"order_id": order.id}},
             {"action": "go_home", "label": "🏠 Главная"},
         ],
     )
