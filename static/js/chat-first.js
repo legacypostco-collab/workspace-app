@@ -1779,6 +1779,24 @@
   // Card renderers
   // ══════════════════════════════════════════════════════════
   const renderers = {
+    // Ссылка с быстрым копированием (реф-ссылка, инвайт). Красивый бокс +
+    // кнопки «Копировать» и «Поделиться» (native share на мобиле).
+    copy_link(d) {
+      _ensureCopyLinkCSS();
+      const url = String(d.url || d.link || '');
+      const title = d.title || 'Ссылка';
+      const hint = d.hint || '';
+      const canShare = (typeof navigator !== 'undefined' && !!navigator.share);
+      return `<div class="card cl-card">
+        <div class="cl-title">${esc(title)}</div>
+        <div class="cl-box">
+          <span class="cl-url" title="${esc(url)}">${esc(url)}</span>
+          <button type="button" class="cl-copy" data-copy="${esc(url)}" data-copied-label="✓ Скопировано">📋 Копировать</button>
+        </div>
+        ${canShare ? `<button type="button" class="cl-share" data-share-url="${esc(url)}" data-share-text="${esc(d.share_text || title)}">📤 Поделиться…</button>` : ''}
+        ${hint ? `<div class="cl-hint">${esc(hint)}</div>` : ''}
+      </div>`;
+    },
     // Чертежи: папки (drop-target) + чертежи без папки (draggable). Inline-
     // создание папки и drag-n-drop — обработчики ниже (_initDrawingsDnD).
     drawings(d) {
@@ -4730,11 +4748,41 @@
     if (!btn) return;
     e.preventDefault();
     const txt = btn.dataset.copy || '';
+    const flash = () => {
+      const lbl = btn.dataset.copiedLabel;
+      if (!lbl) return;
+      const old = btn.textContent;
+      btn.textContent = lbl; btn.classList.add('cl-copied');
+      setTimeout(() => { btn.textContent = old; btn.classList.remove('cl-copied'); }, 1400);
+    };
+    const ok = () => { flash(); if (window.toast) window.toast('Скопировано', 1500); };
     if (navigator.clipboard) {
-      navigator.clipboard.writeText(txt).then(() => {
-        if (window.toast) window.toast('Скопировано', 1500);
-      }).catch(() => {
+      navigator.clipboard.writeText(txt).then(ok).catch(() => {
         if (window.toast) window.toast('Не удалось скопировать', 2000);
+      });
+    } else {
+      // Фолбэк для незащищённого контекста / старых браузеров
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); ta.remove(); ok();
+      } catch (_) { if (window.toast) window.toast('Не удалось скопировать', 2000); }
+    }
+  });
+
+  // Делегированный обработчик «Поделиться» (native share на мобиле, иначе copy)
+  document.addEventListener('click', (e) => {
+    const sb = e.target.closest && e.target.closest('[data-share-url]');
+    if (!sb) return;
+    e.preventDefault();
+    const url = sb.dataset.shareUrl || '';
+    const text = sb.dataset.shareText || '';
+    if (navigator.share) {
+      navigator.share({ title: 'Consolidator Parts', text, url }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        if (window.toast) window.toast('Ссылка скопирована', 1500);
       });
     }
   });
@@ -5783,6 +5831,33 @@
     e.preventDefault();
     submit.click();
   });
+
+  // ── Карточка ссылки с копированием (type=copy_link) ──
+  function _ensureCopyLinkCSS() {
+    if (document.getElementById('cl-css')) return;
+    const s = document.createElement('style');
+    s.id = 'cl-css';
+    s.textContent =
+      '.cl-card{display:flex;flex-direction:column;gap:10px}'
+      + '.cl-title{font-weight:700;font-size:14px}'
+      + '.cl-box{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}'
+      + '.cl-url{flex:1;min-width:0;display:flex;align-items:center;padding:10px 12px;'
+      +   'border-radius:10px;background:rgba(128,128,128,.12);border:1px solid rgba(128,128,128,.22);'
+      +   'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;'
+      +   'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:all;cursor:text}'
+      + '.cl-copy{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:10px 16px;'
+      +   'border-radius:10px;border:none;background:#F26522;color:#fff;font:inherit;font-weight:600;'
+      +   'cursor:pointer;white-space:nowrap;transition:background .15s,transform .08s}'
+      + '.cl-copy:hover{background:#e0560f}'
+      + '.cl-copy:active{transform:scale(.96)}'
+      + '.cl-copy.cl-copied{background:#2e9e5b}'
+      + '.cl-share{align-self:flex-start;padding:9px 14px;border-radius:10px;font:inherit;font-weight:600;'
+      +   'cursor:pointer;background:rgba(128,128,128,.14);border:1px solid rgba(128,128,128,.25);color:inherit}'
+      + '.cl-share:hover{background:rgba(128,128,128,.22)}'
+      + '.cl-hint{font-size:12px;opacity:.65;line-height:1.35}'
+      + '@media(max-width:520px){.cl-url{flex:1 1 100%}.cl-copy{flex:1 1 100%;justify-content:center}}';
+    document.head.appendChild(s);
+  }
 
   // ── Карточка чертежей (type=drawings): inline-папки + drag-n-drop ──
   function _ensureDrawingsCSS() {

@@ -3096,8 +3096,9 @@ def invite_customer(params, user, role):
         return ActionResult(
             text=txt,
             cards=[
-                {"type": "list", "data": {"title": "Реферальная ссылка",
-                    "rows": [{"title": link, "subtitle": "скопируйте и отправьте — привязка отслеживается"}]}},
+                {"type": "copy_link", "data": {"title": "📨 Ваша реферальная ссылка",
+                    "url": link, "share_text": "Приглашаю на платформу запчастей Consolidator Parts",
+                    "hint": "Привязка отслеживается автоматически."}},
                 _referral_reward_card(role),
             ],
             actions=ref_acts or [
@@ -3116,8 +3117,9 @@ def invite_customer(params, user, role):
               f"заказчик войдёт/зарегистрируется и привяжется к вам; его заказы "
               f"попадут в ваши отгрузки и начисления:\n{link}"),
         cards=[
-            {"type": "list", "data": {"title": "Ссылка-приглашение заказчика",
-                "rows": [{"title": link, "subtitle": "скопируйте и отправьте заказчику"}]}},
+            {"type": "copy_link", "data": {"title": "📨 Ссылка-приглашение заказчика",
+                "url": link, "share_text": f"Приглашаю вас в закупки через Consolidator Parts",
+                "hint": "Отправьте заказчику — он войдёт и привяжется к вам."}},
         ],
         actions=[
             {"label": "👤 Карточка заказчика", "action": "customer_detail", "params": {"id": str(c.id)}},
