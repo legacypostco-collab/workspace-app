@@ -9,9 +9,21 @@
   <title>{% trans 'Чат' %} · Consolidator Parts</title>
   <meta name="description" content="{% trans 'AI-чат закупщика: ищет запчасть в каталоге 200+ поставщиков, формирует RFQ и отслеживает доставку.' %}">
   <meta name="robots" content="noindex,nofollow"> {# Chat-first SPA — не индексируем #}
-  <meta property="og:title" content="Consolidator Parts">
-  <meta property="og:description" content="{% trans 'Чат-first маркетплейс запчастей для спецтехники' %}">
+  {# ── Фирменная share-карточка (визитка) для инвайт/реф-ссылок ?ref= ── #}
+  <meta property="og:site_name" content="Consolidator Parts">
+  <meta property="og:title" content="{% trans 'Consolidator Parts — запчасти для спецтехники' %}">
+  <meta property="og:description" content="{% trans 'AI-консолидатор: одно RFQ → 200+ проверенных поставщиков → лучшая цена. Присоединяйтесь.' %}">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}/">
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:locale" content="{{ CURRENT_LANG|default:'ru' }}_RU">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Consolidator Parts">
+  <meta name="twitter:description" content="{% trans 'AI-консолидатор запчастей для спецтехники' %}">
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}">
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
