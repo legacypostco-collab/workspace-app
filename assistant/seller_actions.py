@@ -2966,19 +2966,6 @@ def _ref_code(user):
     return signing.dumps(int(user.id), salt="kam-ref")
 
 
-def _invitee_benefits_card(title="🎁 Что это даёт вам"):
-    """Оффер для приглашённого контрагента (согласованный текст)."""
-    return {"type": "list", "data": {
-        "title": title,
-        "rows": [
-            {"title": "👤 Персональный менеджер ведёт ваши закупки", "subtitle": "без тендеров и очередей"},
-            {"title": "🔎 Любые запчасти по OEM в одном окне", "subtitle": "цены от проверенных поставщиков"},
-            {"title": "🚢 Логистика и таможня под ключ", "subtitle": "консолидация грузов — дешевле доставка"},
-            {"title": "🛡 Эскроу-защита платежей", "subtitle": "деньги поставщику только после приёмки + трекинг заказа"},
-        ],
-    }}
-
-
 def _referral_reward_card(role):
     """Награда ПРИГЛАСИВШЕГО — разная по роли (KAM — отдельная модель)."""
     role = role or ""
@@ -3018,7 +3005,6 @@ def accept_referral(params, user, role):
         return ActionResult(
             text="Вас пригласили на платформу запчастей. Войдите или зарегистрируйтесь — "
                  "приглашение применится автоматически, и вами займётся персональный менеджер.",
-            cards=[_invitee_benefits_card("🎁 Что это даёт вам")],
             actions=[{"label": "Войти / регистрация", "action": "start_login", "params": {}}],
         )
     if int(user.id) == int(ref_uid):
@@ -3040,7 +3026,6 @@ def accept_referral(params, user, role):
             text=("✅ Приглашение принято! Добро пожаловать на платформу запчастей. "
                   "Пригласивший получит свою награду, когда вы оформите первый заказ, "
                   "а вам доступны все возможности маркетплейса."),
-            cards=[_invitee_benefits_card("🎁 Что вам доступно")],
             actions=[{"label": "🏠 В кабинет", "action": "go_home", "params": {}}],
         )
     # Владелец заказчика — тот же «эффективный продавец», что видит CRM-кабинет
@@ -3114,7 +3099,6 @@ def invite_customer(params, user, role):
                 {"type": "list", "data": {"title": "Реферальная ссылка",
                     "rows": [{"title": link, "subtitle": "скопируйте и отправьте — привязка отслеживается"}]}},
                 _referral_reward_card(role),
-                _invitee_benefits_card("🎁 Что получит контрагент (вставьте в сообщение)"),
             ],
             actions=ref_acts or [
                 {"label": "👥 Мои заказчики", "action": "seller_customers", "params": {}},
@@ -3134,7 +3118,6 @@ def invite_customer(params, user, role):
         cards=[
             {"type": "list", "data": {"title": "Ссылка-приглашение заказчика",
                 "rows": [{"title": link, "subtitle": "скопируйте и отправьте заказчику"}]}},
-            _invitee_benefits_card("🎁 Что получит заказчик (вставьте в сообщение)"),
         ],
         actions=[
             {"label": "👤 Карточка заказчика", "action": "customer_detail", "params": {"id": str(c.id)}},
