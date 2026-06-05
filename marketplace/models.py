@@ -896,6 +896,14 @@ class UserProfile(models.Model):
     ROLE_CHOICES = [
         ("buyer", "Buyer"),
         ("seller", "Seller"),
+        ("operator", "Operator"),
+    ]
+    OPERATOR_ROLE_CHOICES = [
+        ("", "—"),
+        ("manager", "KAM (менеджер по работе с клиентами)"),
+        ("logist", "Логист"),
+        ("customs", "Таможенный"),
+        ("payment", "Финансовый"),
     ]
     SUPPLIER_STATUS_CHOICES = [
         ("trusted", _("Надёжный")),
@@ -931,6 +939,11 @@ class UserProfile(models.Model):
         help_text="Оператор ВЭД, ведущий этого поставщика (1:1)",
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="buyer")
+    # Суброль оператора (для role=operator). Реальный механизм вместо demo-
+    # эвристики по username: detect_user_role → operator_<operator_role>.
+    # KAM = operator_role="manager".
+    operator_role = models.CharField(max_length=20, choices=OPERATOR_ROLE_CHOICES,
+                                     blank=True, default="")
     company_name = models.CharField(max_length=255, blank=True)
     language = models.CharField(
         max_length=10,
