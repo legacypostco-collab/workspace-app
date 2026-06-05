@@ -216,6 +216,14 @@
     .settings-sep{border-top:1px solid rgba(0,0,0,0.08);margin:6px 0;}
     body.dark-mode .settings-row-meta{color:rgba(255,255,255,0.55);}
     body.dark-mode .settings-sep{border-top-color:rgba(255,255,255,0.12);}
+    /* Сворачиваемый подраздел «Конфиденциальность и аккаунт» */
+    .settings-subsection{margin:0;}
+    .settings-subsection > summary{list-style:none;cursor:pointer;}
+    .settings-subsection > summary::-webkit-details-marker{display:none;}
+    .settings-sub-chevron{color:rgba(0,0,0,0.4);font-size:15px;transition:transform .15s;}
+    .settings-subsection[open] > summary .settings-sub-chevron{transform:rotate(90deg);}
+    .settings-subsection-body{padding-left:8px;}
+    body.dark-mode .settings-sub-chevron{color:rgba(255,255,255,0.4);}
 
     /* ── Dark theme — minimal viable ── */
     body.dark-mode{background:#1a1a1a;color:#e8e8e8;}
@@ -3636,15 +3644,25 @@
           <span>🌐 <span data-i18n="settings.landing">{% trans "Перейти на сайт" %}</span></span>
           <span class="settings-row-meta">consolidator.parts</span>
         </a>
-        <a class="settings-row" href="/api/me/export/" download
-           style="text-decoration:none;color:inherit;">
-          <span>📥 <span data-i18n="settings.export">{% trans "Скачать мои данные" %}</span></span>
-          <span class="settings-row-meta">JSON</span>
-        </a>
-        <a class="settings-row" href="/password_reset/"
-           style="text-decoration:none;color:inherit;">
-          <span>🔑 <span data-i18n="settings.password">{% trans "Сменить пароль" %}</span></span>
-        </a>
+        {# ── Конфиденциальность и аккаунт: свёрнуто (как на «взрослых» площадках —
+             экспорт ПДн / смена пароля не висят на виду, а в подразделе) ── #}
+        <details class="settings-subsection">
+          <summary class="settings-row">
+            <span>🔒 <span data-i18n="settings.privacy">{% trans "Конфиденциальность и аккаунт" %}</span></span>
+            <span class="settings-sub-chevron">›</span>
+          </summary>
+          <div class="settings-subsection-body">
+            <a class="settings-row" href="/password_reset/"
+               style="text-decoration:none;color:inherit;">
+              <span>🔑 <span data-i18n="settings.password">{% trans "Сменить пароль" %}</span></span>
+            </a>
+            <a class="settings-row" href="/api/me/export/" download
+               style="text-decoration:none;color:inherit;">
+              <span>📥 <span data-i18n="settings.export">{% trans "Скачать мои данные" %}</span></span>
+              <span class="settings-row-meta">JSON</span>
+            </a>
+          </div>
+        </details>
         <form method="post" action="{% url 'logout' %}" style="margin:0;">
           {% csrf_token %}
           <button type="submit" class="settings-row" style="width:100%;border:none;background:transparent;cursor:pointer;text-align:left;font:inherit;color:#b91c1c;">
@@ -3874,7 +3892,7 @@
 
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
-<script src="{% static 'js/i18n.js' %}?v=3&t={% now 'U' %}"></script>
+<script src="{% static 'js/i18n.js' %}?v=4&t={% now 'U' %}"></script>
 <script src="{% static 'js/chat-first.js' %}?v=85&t={% now 'U' %}"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}

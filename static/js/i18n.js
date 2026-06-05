@@ -60,6 +60,7 @@
       'settings.landing': 'Перейти на сайт',
       'settings.export': 'Скачать мои данные',
       'settings.password': 'Сменить пароль',
+      'settings.privacy': 'Конфиденциальность и аккаунт',
 
       // Welcome
       'welcome.h1': 'Чем могу помочь?',
@@ -322,6 +323,7 @@
       'settings.landing': 'Go to website',
       'settings.export': 'Export my data',
       'settings.password': 'Change password',
+      'settings.privacy': 'Privacy & account',
 
       'welcome.h1': 'How can I help?',
       'welcome.p': 'Request a quote, shipment, order status or upload a file — I’ll match suppliers and walk you through the deal.',
