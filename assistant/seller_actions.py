@@ -2961,9 +2961,9 @@ def create_project_for_customer(params, user, role):
 
 
 def _ref_code(user):
-    """Подписанный реф-токен пригласившего (без отдельной таблицы)."""
-    from django.core import signing
-    return signing.dumps(int(user.id), salt="kam-ref")
+    """Короткий реф-код пригласившего — для аккуратных ссылок /i/CODE."""
+    from marketplace.models import ReferralCode
+    return ReferralCode.for_user(user).code
 
 
 def _referral_reward_card(role):
@@ -2997,10 +2997,18 @@ def accept_referral(params, user, role):
     code = (params.get("code") or params.get("ref") or "").strip()
     if not code:
         return ActionResult(text="Реф-ссылка недействительна.")
-    try:
-        ref_uid = signing.loads(code, salt="kam-ref")
-    except Exception:
-        return ActionResult(text="Реф-ссылка повреждена или устарела.")
+    # Резолвим: сначала короткий код (новые ссылки /i/CODE), иначе старый
+    # подписанный токен (обратная совместимость с уже разосланными ссылками).
+    from marketplace.models import ReferralCode
+    ref_uid = None
+    _ru = ReferralCode.resolve(code)
+    if _ru:
+        ref_uid = _ru.id
+    else:
+        try:
+            ref_uid = signing.loads(code, salt="kam-ref")
+        except Exception:
+            return ActionResult(text="Реф-ссылка повреждена или устарела.")
     if not (user and getattr(user, "is_authenticated", False)):
         return ActionResult(
             text="Вас пригласили на платформу запчастей. Войдите или зарегистрируйтесь — "
@@ -3078,7 +3086,7 @@ def invite_customer(params, user, role):
         if not (user and getattr(user, "is_authenticated", False)):
             return ActionResult(text="Чтобы создать реф-ссылку, войдите в аккаунт.",
                                 actions=[{"label": "Войти", "action": "start_login", "params": {}}])
-        link = f"{base}/chat/?ref={_ref_code(user)}"
+        link = f"{base}/i/{_ref_code(user)}"
         is_kam = (role == "operator_manager")
         if is_kam:
             txt = ("📨 Ваша персональная реф-ссылка. Отправьте контрагенту — когда он "

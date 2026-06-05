@@ -1482,6 +1482,51 @@ class ReferralReward(models.Model):
         return f"Ref[{self.referrer_id}→{self.referred_id}] {self.kind} ${self.amount} ({self.status})"
 
 
+class ReferralCode(models.Model):
+    """Короткий человекочитаемый реф-код пользователя — для аккуратных ссылок
+    вида consolidatorparts.com/i/AB23CD вместо длинного подписанного токена.
+
+    Алфавит без двусмысленных символов (0/O, 1/I/L). Код случайный → не
+    перебирается и не подделывается (в отличие от обратимого кодека id).
+    """
+    ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # без 0 O 1 I L
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE,
+                                 related_name="referral_code")
+    code = models.CharField(max_length=16, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.code} → user {self.user_id}"
+
+    @classmethod
+    def _gen(cls, n=6):
+        import secrets
+        return "".join(secrets.choice(cls.ALPHABET) for _ in range(n))
+
+    @classmethod
+    def for_user(cls, user):
+        """Get-or-create уникальный короткий код для пользователя."""
+        obj = cls.objects.filter(user=user).first()
+        if obj:
+            return obj
+        for _ in range(12):
+            code = cls._gen()
+            if not cls.objects.filter(code=code).exists():
+                try:
+                    return cls.objects.create(user=user, code=code)
+                except Exception:
+                    continue
+        return cls.objects.create(user=user, code=cls._gen(10))
+
+    @classmethod
+    def resolve(cls, code):
+        """Код → пользователь (None если нет). Без учёта регистра."""
+        obj = (cls.objects.filter(code=(code or "").strip().upper())
+               .select_related("user").first())
+        return obj.user if obj else None
+
+
 class MissingDemand(models.Model):
     """Аналитика спроса без предложения (PIVOT 2026-05-26).
 

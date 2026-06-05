@@ -6466,6 +6466,16 @@ def chat_first_view(request):
     return render(request, "chat/index.html", {"role_actions_json": role_actions_json})
 
 
+def invite_redirect(request, code):
+    """Короткая реф-ссылка /i/<code> → /chat/?ref=<code>.
+
+    Фронт (autoTriggerFromUrl) применит реферал. Код санируем (только символы
+    алфавита реф-кода), чтобы не протащить ничего лишнего в query.
+    """
+    safe = "".join(ch for ch in (code or "") if ch.isalnum())[:16]
+    return redirect(f"/chat/?ref={safe}")
+
+
 @login_required
 def chat_project_view(request, project_id):
     """Project detail page within chat-first layout."""

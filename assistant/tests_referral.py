@@ -151,6 +151,33 @@ class AcceptReferralBranchTests(TestCase):
         # CRM-заказчик НЕ создаётся для не-KAM пригласившего
         self.assertEqual(Customer.objects.filter(owner=seller).count(), 0)
 
+    def test_short_code_resolves(self):
+        from assistant.seller_actions import accept_referral
+        from marketplace.models import Customer, UserProfile, ReferralCode
+        seller = User.objects.create_user("short_seller", password="x")
+        UserProfile.objects.update_or_create(user=seller, defaults={"role": "seller"})
+        code = ReferralCode.for_user(seller).code
+        self.assertTrue(6 <= len(code) <= 16)
+        res = accept_referral({"code": code}, self.invitee, "buyer")
+        self.assertIn("Приглашение принято", res.text)
+        self.assertEqual(
+            ReferralReward.objects.filter(referrer=seller, kind="flat_first_order").count(), 1)
+
+    def test_short_code_case_insensitive(self):
+        from marketplace.models import ReferralCode
+        u = User.objects.create_user("ci_user", password="x")
+        code = ReferralCode.for_user(u).code
+        self.assertEqual(ReferralCode.resolve(code.lower()).id, u.id)
+
+    def test_old_signed_token_still_works(self):
+        from assistant.seller_actions import accept_referral
+        from marketplace.models import UserProfile
+        seller = User.objects.create_user("legacy_seller", password="x")
+        UserProfile.objects.update_or_create(user=seller, defaults={"role": "seller"})
+        old_token = self.signing.dumps(int(seller.id), salt="kam-ref")
+        res = accept_referral({"code": old_token}, self.invitee, "buyer")
+        self.assertIn("Приглашение принято", res.text)
+
     @override_settings(DEBUG=True)
     def test_kam_creates_customer(self):
         from assistant.seller_actions import accept_referral

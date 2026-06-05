@@ -46,6 +46,8 @@ urlpatterns = [
     path("cookies/", views.cookies_view, name="cookies"),
     path("help/", views.help_view, name="help"),
     path("chat/", views.chat_first_view, name="chat"),
+    # Короткая реф-ссылка: /i/<code> → чат с применением реферала.
+    path("i/<str:code>/", views.invite_redirect, name="invite_redirect"),
     path("chat/project/<uuid:project_id>/", views.chat_project_view, name="chat_project"),
     path("chat/rfq/<int:rfq_id>/", views.chat_rfq_view, name="chat_rfq"),
     path("chat/proposal/<int:rfq_id>/", views.chat_proposal_view, name="chat_proposal"),
