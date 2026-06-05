@@ -211,6 +211,11 @@
     .settings-row input[type=checkbox]:checked{background:#1a1a1a;}
     .settings-row input[type=checkbox]:checked::after{left:16px;}
     .settings-row-block select{font-family:inherit;font-size:13px;padding:4px 8px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#fff;cursor:pointer;}
+    /* Вторичный текст-значение в строках настроек (consolidator.parts, JSON, username) */
+    .settings-row-meta{color:rgba(0,0,0,0.62);font-size:11px;}
+    .settings-sep{border-top:1px solid rgba(0,0,0,0.08);margin:6px 0;}
+    body.dark-mode .settings-row-meta{color:rgba(255,255,255,0.55);}
+    body.dark-mode .settings-sep{border-top-color:rgba(255,255,255,0.12);}
 
     /* ── Dark theme — minimal viable ── */
     body.dark-mode{background:#1a1a1a;color:#e8e8e8;}
@@ -3626,15 +3631,15 @@
           <span style="opacity:0.5;font-size:11px;">→</span>
         </button>
         {# ── Account block ── #}
-        <div style="border-top:1px solid rgba(0,0,0,0.06);margin:6px 0;"></div>
+        <div class="settings-sep"></div>
         <a class="settings-row" href="/" style="text-decoration:none;color:inherit;">
           <span>🌐 <span data-i18n="settings.landing">{% trans "Перейти на сайт" %}</span></span>
-          <span style="color:rgba(0,0,0,0.62);font-size:11px;">consolidator.parts</span>
+          <span class="settings-row-meta">consolidator.parts</span>
         </a>
         <a class="settings-row" href="/api/me/export/" download
            style="text-decoration:none;color:inherit;">
           <span>📥 <span data-i18n="settings.export">{% trans "Скачать мои данные" %}</span></span>
-          <span style="color:rgba(0,0,0,0.62);font-size:11px;">JSON</span>
+          <span class="settings-row-meta">JSON</span>
         </a>
         <a class="settings-row" href="/password_reset/"
            style="text-decoration:none;color:inherit;">
@@ -3644,7 +3649,7 @@
           {% csrf_token %}
           <button type="submit" class="settings-row" style="width:100%;border:none;background:transparent;cursor:pointer;text-align:left;font:inherit;color:#b91c1c;">
             <span>🚪 <span data-i18n="settings.logout">{% trans "Выйти" %}</span></span>
-            <span style="color:rgba(0,0,0,0.62);font-size:11px;">{{ user.username }}</span>
+            <span class="settings-row-meta">{{ user.username }}</span>
           </button>
         </form>
       </div>
@@ -3870,7 +3875,7 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=3&t={% now 'U' %}"></script>
-<script src="{% static 'js/chat-first.js' %}?v=84&t={% now 'U' %}"></script>
+<script src="{% static 'js/chat-first.js' %}?v=85&t={% now 'U' %}"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>

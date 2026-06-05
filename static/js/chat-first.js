@@ -6663,7 +6663,7 @@
       + 'transition:background .15s,border-color .15s,color .15s,transform .1s}'
       + '.pill-add:hover{background:#fff;border-color:rgba(0,0,0,.45);color:#000}'
       + '.pill-add:active{transform:scale(.92)}'
-      + '.pill-del{position:absolute;top:-6px;left:-6px;width:18px;height:18px;border-radius:50%;'
+      + '.pill-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;'
       + 'background:rgba(70,70,70,.5);color:#fff;font-size:13px;line-height:17px;text-align:center;font-weight:600;'
       + 'opacity:0;transform:scale(.4);transition:opacity .15s,transform .15s,background .15s;'
       + 'pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:4}'
