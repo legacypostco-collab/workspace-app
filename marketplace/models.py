@@ -1506,18 +1506,28 @@ class ReferralCode(models.Model):
 
     @classmethod
     def for_user(cls, user):
-        """Get-or-create уникальный короткий код для пользователя."""
+        """Get-or-create уникальный короткий код для пользователя.
+
+        Race-safe: каждый INSERT в своём savepoint (transaction.atomic). При
+        коллизии кода — повтор; при гонке по user (OneToOne уже создан другим
+        запросом) — возвращаем уже существующую строку.
+        """
+        from django.db import IntegrityError, transaction
         obj = cls.objects.filter(user=user).first()
         if obj:
             return obj
-        for _ in range(12):
-            code = cls._gen()
-            if not cls.objects.filter(code=code).exists():
-                try:
+        for n in range(12):
+            code = cls._gen(6 if n < 8 else 10)
+            try:
+                with transaction.atomic():
                     return cls.objects.create(user=user, code=code)
-                except Exception:
-                    continue
-        return cls.objects.create(user=user, code=cls._gen(10))
+            except IntegrityError:
+                existing = cls.objects.filter(user=user).first()
+                if existing:           # гонка по user — вернём чужой инсерт
+                    return existing
+                continue               # коллизия кода — пробуем другой
+        # Крайне маловероятно: длинный код как последний шанс
+        return cls.objects.create(user=user, code=cls._gen(12))
 
     @classmethod
     def resolve(cls, code):

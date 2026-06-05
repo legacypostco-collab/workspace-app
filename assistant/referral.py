@@ -66,7 +66,25 @@ def record_referral(referrer, referred, referrer_role: str):
         )
         return obj
 
-    # Продавец / оператор / прочие (кроме KAM) → $100 с первой покупки приглашённого
+    # Продавец / оператор / прочие (кроме KAM) → $100 с первой покупки приглашённого.
+    # Анти-абуз:
+    #  (1) self-referral исключён в accept_referral (user.id != ref_uid);
+    #  (2) ПЕРВЫЙ-ТАЧ — один пригласивший на приглашённого: если он уже
+    #      закреплён за кем-то другим, второй награды не получает (иначе один
+    #      заказ приглашённого оплачивал бы $100 каждому, кто кинул ему ссылку);
+    #  (3) только НОВЫЙ клиент: нельзя «привести» того, кто уже оплачивал заказы
+    #      (награда — за приведённого нового покупателя, а не за чужого старого).
+    from marketplace.models import Order
+    _PAID = ("reserve_paid", "mid_paid", "paid", "final_paid")
+    existing = (ReferralReward.objects
+                .filter(referred=referred, kind="flat_first_order")
+                .first())
+    if existing:
+        # уже закреплён: за этим же пригласившим → идемпотентно вернём;
+        # за другим → отказ (без мульти-награды за одного приглашённого).
+        return existing if existing.referrer_id == referrer.id else None
+    if Order.objects.filter(buyer=referred, payment_status__in=_PAID).exists():
+        return None
     obj, _ = ReferralReward.objects.get_or_create(
         referrer=referrer, referred=referred, kind="flat_first_order",
         defaults={
@@ -91,9 +109,13 @@ def on_order_reserve_paid(order) -> int:
         return 0
     credited = 0
     with transaction.atomic():
+        # Первый-тач: на одного приглашённого начисляем максимум ОДНУ награду
+        # (самую раннюю). Защита от мульти-выплаты даже на легаси-данных, где
+        # могло оказаться несколько pending-строк на одного приглашённого.
         rows = (ReferralReward.objects
                 .select_for_update()
-                .filter(referred=buyer, kind="flat_first_order", status="pending"))
+                .filter(referred=buyer, kind="flat_first_order", status="pending")
+                .order_by("created_at")[:1])
         for rw in rows:
             _credit_wallet(
                 rw.referrer, rw.amount,

@@ -54,6 +54,30 @@ class RecordReferralTests(TestCase):
         self.assertEqual(a.id, b.id)
         self.assertEqual(ReferralReward.objects.filter(kind="flat_first_order").count(), 1)
 
+    def test_flat_first_touch_only_one_referrer(self):
+        # Приглашённый кликнул ссылки двух продавцов — награда только первому.
+        a = User.objects.create_user("ft_a", password="x")
+        b = User.objects.create_user("ft_b", password="x")
+        r1 = ref.record_referral(a, self.invitee, "seller")
+        r2 = ref.record_referral(b, self.invitee, "seller")
+        self.assertIsNotNone(r1)
+        self.assertIsNone(r2)
+        rows = ReferralReward.objects.filter(referred=self.invitee, kind="flat_first_order")
+        self.assertEqual(rows.count(), 1)
+        self.assertEqual(rows.first().referrer_id, a.id)
+
+    def test_flat_skips_existing_customer(self):
+        # Нельзя «привести» того, кто уже оплачивал заказы.
+        seller = User.objects.create_user("ft_seller", password="x")
+        old = User.objects.create_user("ft_oldbuyer", password="x")
+        Order.objects.create(
+            customer_name="t", customer_email="t@t.local", delivery_address="—",
+            buyer=old, status="reserve_paid", payment_status="reserve_paid",
+            total_amount=Decimal("100"))
+        r = ref.record_referral(seller, old, "seller")
+        self.assertIsNone(r)
+        self.assertEqual(ReferralReward.objects.filter(referred=old).count(), 0)
+
     def test_record_is_idempotent_buyer_discount(self):
         ref.record_referral(self.buyer, self.invitee, "buyer")
         other_invitee = User.objects.create_user("invitee_two", password="x")
@@ -95,6 +119,24 @@ class CreditFlatOnFirstOrderTests(TestCase):
         n = ref.on_order_reserve_paid(order2)
         self.assertEqual(n, 0)
         self.assertEqual(_bal(self.seller), bal_after_first)
+
+    def test_credit_only_one_even_if_multiple_pending(self):
+        # Легаси: на одного приглашённого две pending-строки → начислится одна.
+        a = User.objects.create_user("mp_a", password="x")
+        b = User.objects.create_user("mp_b", password="x")
+        inv = User.objects.create_user("mp_inv", password="x")
+        ReferralReward.objects.create(referrer=a, referred=inv, kind="flat_first_order",
+                                      amount=Decimal("100"), referrer_role="seller")
+        ReferralReward.objects.create(referrer=b, referred=inv, kind="flat_first_order",
+                                      amount=Decimal("100"), referrer_role="seller")
+        order = Order.objects.create(
+            customer_name="t", customer_email="t@t.local", delivery_address="—",
+            buyer=inv, status="reserve_paid", payment_status="reserve_paid",
+            total_amount=Decimal("5000"))
+        n = ref.on_order_reserve_paid(order)
+        self.assertEqual(n, 1)
+        self.assertEqual(
+            ReferralReward.objects.filter(referred=inv, status="credited").count(), 1)
 
     def test_no_reward_for_unrelated_buyer(self):
         stranger = User.objects.create_user("stranger", password="x")

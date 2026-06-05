@@ -6469,10 +6469,13 @@ def chat_first_view(request):
 def invite_redirect(request, code):
     """Короткая реф-ссылка /i/<code> → /chat/?ref=<code>.
 
-    Фронт (autoTriggerFromUrl) применит реферал. Код санируем (только символы
-    алфавита реф-кода), чтобы не протащить ничего лишнего в query.
+    Фронт (autoTriggerFromUrl) применит реферал. Редирект всегда на ВНУТРЕННИЙ
+    относительный путь (не open-redirect). Код жёстко санируем по алфавиту
+    реф-кода (ASCII, верхний регистр) — не протаскиваем ничего лишнего в query.
     """
-    safe = "".join(ch for ch in (code or "") if ch.isalnum())[:16]
+    from marketplace.models import ReferralCode
+    allowed = set(ReferralCode.ALPHABET)
+    safe = "".join(ch for ch in (code or "").upper() if ch in allowed)[:16]
     return redirect(f"/chat/?ref={safe}")
 
 
