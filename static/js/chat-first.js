@@ -6244,6 +6244,7 @@
         {tkey:'pill.kyb_suppliers',    emoji:'🛡', action:'op_kyb_queue',          params:{}},
         {tkey:'pill.claims',           emoji:'🧾', action:'get_claims',            params:{}},
         {tkey:'pill.my_user_chats',    emoji:'📂', action:'op_my_user_chats',     params:{}},
+        {tkey:'pill.invite',           emoji:'📨', action:'invite_customer',      params:{}},
         {tkey:'pill.drawings', emoji:'📐', action:'op_drawings_by_part',   params:{}},
         {tkey:'pill.analytics',        emoji:'📊', action:'op_analytics_hub',     params:{}},
         {tkey:'pill.support',          emoji:'🎧', action:'support_home',          params:{}},

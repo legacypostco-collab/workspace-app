@@ -2979,6 +2979,28 @@ def _invitee_benefits_card(title="🎁 Что это даёт вам"):
     }}
 
 
+def _referral_reward_card(role):
+    """Награда ПРИГЛАСИВШЕГО — разная по роли (KAM — отдельная модель)."""
+    role = role or ""
+    if role == "operator_manager":  # KAM — комиссия, не флэт
+        rows = [
+            {"title": "0.02% со сделок приведённых клиентов", "subtitle": "пока они покупают на платформе — резидуально"},
+            {"title": "+ бонус с «дожатых» отказных сделок", "subtitle": "вернули отказника к покупке → доля ваша"},
+        ]
+        title = "💰 Ваша награда (KAM)"
+    elif role == "buyer":
+        rows = [
+            {"title": "−$100 на ваш первый заказ", "subtitle": "зачтём при пополнении депозита по этому приглашению"},
+        ]
+        title = "💰 Ваша награда за приглашение"
+    else:  # продавец, оператор и все прочие, кроме KAM
+        rows = [
+            {"title": "$100 с первой покупки приглашённого", "subtitle": "зачислим, как только он сделает первый заказ"},
+        ]
+        title = "💰 Ваша награда за приглашение"
+    return {"type": "list", "data": {"title": title, "rows": rows}}
+
+
 @register("accept_referral")
 def accept_referral(params, user, role):
     """Принять реф-ссылку: привязать текущего пользователя к пригласившему (как заказчика)."""
@@ -3057,16 +3079,27 @@ def invite_customer(params, user, role):
             return ActionResult(text="Чтобы создать реф-ссылку, войдите в аккаунт.",
                                 actions=[{"label": "Войти", "action": "start_login", "params": {}}])
         link = f"{base}/chat/?ref={_ref_code(user)}"
+        is_kam = (role == "operator_manager")
+        if is_kam:
+            txt = ("📨 Ваша персональная реф-ссылка. Отправьте контрагенту — когда он "
+                   "зарегистрируется, привяжется к вам: попадёт в ваших заказчиков, а его "
+                   "заказы — в ваши отгрузки и начисления.")
+        else:
+            txt = ("📨 Ваша персональная реф-ссылка. Отправьте контрагенту — когда он "
+                   "зарегистрируется по ней и сделает первый заказ, вы получите вашу награду (ниже).")
+        ref_acts = []
+        if is_kam:
+            ref_acts.append({"label": "👥 Мои заказчики", "action": "seller_customers", "params": {}})
+        ref_acts.append({"label": "🏠 Главная", "action": "go_home", "params": {}})
         return ActionResult(
-            text=("📨 Ваша персональная реф-ссылка. Отправьте её контрагенту — когда он "
-                  "зарегистрируется по ней, он автоматически привяжется к вам: попадёт в ваших "
-                  "заказчиков, а его заказы — в ваши отгрузки и начисления."),
+            text=txt,
             cards=[
                 {"type": "list", "data": {"title": "Реферальная ссылка",
                     "rows": [{"title": link, "subtitle": "скопируйте и отправьте — привязка отслеживается"}]}},
+                _referral_reward_card(role),
                 _invitee_benefits_card("🎁 Что получит контрагент (вставьте в сообщение)"),
             ],
-            actions=[
+            actions=ref_acts or [
                 {"label": "👥 Мои заказчики", "action": "seller_customers", "params": {}},
                 {"label": "🏠 Главная", "action": "go_home", "params": {}},
             ],

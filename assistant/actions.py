@@ -213,6 +213,7 @@ _OPERATOR_CORE = [
     "op_dashboard", "op_queue", "op_rfq_queue", "op_sla_breach",
     "op_drawings_by_part",  # мастер-вид: чертежи по артикулу (сверка need/offer)
     "op_escalate_to_kam",  # Оператор → KAM: эскалация исключения
+    "invite_customer", "accept_referral", "accept_customer_invite",  # реферал ($100 за приведённого)
     # CRM заказчиков — НЕ в общем операторском наборе: это эксклюзив KAM
     # (см. _KAM_ONLY ниже). Так оператор не пересекается с KAM по аккаунтам.
     "op_order_detail", "op_assign", "op_assign_carrier", "op_add_note", "op_resolve_dispute",
