@@ -1786,14 +1786,14 @@
       const url = String(d.url || d.link || '');
       const title = d.title || 'Ссылка';
       const hint = d.hint || '';
-      const canShare = (typeof navigator !== 'undefined' && !!navigator.share);
+      const ICON_COPY = '<svg class="cl-ic-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      const ICON_DONE = '<svg class="cl-ic-done" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
       return `<div class="card cl-card">
         <div class="cl-title">${esc(title)}</div>
         <div class="cl-box">
           <span class="cl-url" title="${esc(url)}">${esc(url)}</span>
-          <button type="button" class="cl-copy" data-copy="${esc(url)}" data-copied-label="✓ Скопировано">📋 Копировать</button>
+          <button type="button" class="cl-copy" data-copy="${esc(url)}" title="Скопировать" aria-label="Скопировать">${ICON_COPY}${ICON_DONE}</button>
         </div>
-        ${canShare ? `<button type="button" class="cl-share" data-share-url="${esc(url)}" data-share-text="${esc(d.share_text || title)}">📤 Поделиться…</button>` : ''}
         ${hint ? `<div class="cl-hint">${esc(hint)}</div>` : ''}
       </div>`;
     },
@@ -4749,11 +4749,14 @@
     e.preventDefault();
     const txt = btn.dataset.copy || '';
     const flash = () => {
+      btn.classList.add('cl-copied');  // иконка copy→галочка (CSS) либо просто подсветка
       const lbl = btn.dataset.copiedLabel;
-      if (!lbl) return;
-      const old = btn.textContent;
-      btn.textContent = lbl; btn.classList.add('cl-copied');
-      setTimeout(() => { btn.textContent = old; btn.classList.remove('cl-copied'); }, 1400);
+      let old = null;
+      if (lbl) { old = btn.innerHTML; btn.textContent = lbl; }
+      setTimeout(() => {
+        btn.classList.remove('cl-copied');
+        if (old != null) btn.innerHTML = old;
+      }, 1400);
     };
     const ok = () => { flash(); if (window.toast) window.toast('Скопировано', 1500); };
     if (navigator.clipboard) {
@@ -5838,24 +5841,26 @@
     const s = document.createElement('style');
     s.id = 'cl-css';
     s.textContent =
-      '.cl-card{display:flex;flex-direction:column;gap:10px}'
+      '.cl-card{display:flex;flex-direction:column;gap:8px}'
       + '.cl-title{font-weight:700;font-size:14px}'
-      + '.cl-box{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap}'
-      + '.cl-url{flex:1;min-width:0;display:flex;align-items:center;padding:10px 12px;'
+      + '.cl-box{position:relative}'
+      + '.cl-url{display:block;padding:11px 46px 11px 13px;'
       +   'border-radius:10px;background:rgba(128,128,128,.12);border:1px solid rgba(128,128,128,.22);'
-      +   'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;'
+      +   'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;line-height:1.3;'
       +   'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:all;cursor:text}'
-      + '.cl-copy{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:10px 16px;'
-      +   'border-radius:10px;border:none;background:#F26522;color:#fff;font:inherit;font-weight:600;'
-      +   'cursor:pointer;white-space:nowrap;transition:background .15s,transform .08s}'
-      + '.cl-copy:hover{background:#e0560f}'
-      + '.cl-copy:active{transform:scale(.96)}'
-      + '.cl-copy.cl-copied{background:#2e9e5b}'
-      + '.cl-share{align-self:flex-start;padding:9px 14px;border-radius:10px;font:inherit;font-weight:600;'
-      +   'cursor:pointer;background:rgba(128,128,128,.14);border:1px solid rgba(128,128,128,.25);color:inherit}'
-      + '.cl-share:hover{background:rgba(128,128,128,.22)}'
-      + '.cl-hint{font-size:12px;opacity:.65;line-height:1.35}'
-      + '@media(max-width:520px){.cl-url{flex:1 1 100%}.cl-copy{flex:1 1 100%;justify-content:center}}';
+      + '.cl-copy{position:absolute;top:50%;right:6px;transform:translateY(-50%);'
+      +   'width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;'
+      +   'border:none;border-radius:8px;background:transparent;color:inherit;opacity:.55;'
+      +   'cursor:pointer;transition:opacity .15s,background .15s}'
+      + '.cl-copy:hover{opacity:1;background:rgba(128,128,128,.2)}'
+      + '.cl-copy:active{transform:translateY(-50%) scale(.9)}'
+      + '.cl-copy svg{width:16px;height:16px;pointer-events:none}'
+      + '.cl-ic-copy{display:block}'
+      + '.cl-ic-done{display:none;color:#2e9e5b}'
+      + '.cl-copy.cl-copied{opacity:1}'
+      + '.cl-copy.cl-copied .cl-ic-copy{display:none}'
+      + '.cl-copy.cl-copied .cl-ic-done{display:block}'
+      + '.cl-hint{font-size:12px;opacity:.6;line-height:1.35}';
     document.head.appendChild(s);
   }
 
