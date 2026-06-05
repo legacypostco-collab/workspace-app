@@ -3644,6 +3644,13 @@
           <span>🌐 <span data-i18n="settings.landing">{% trans "Перейти на сайт" %}</span></span>
           <span class="settings-row-meta">consolidator.parts</span>
         </a>
+        {# ── Пригласить (реферал/бонус для всех ролей) — на месте бывшего «Скачать данные» ── #}
+        <button type="button" class="settings-row"
+                onclick="toggleSettingsPanel(false); window.quickAction && window.quickAction('invite_customer', {});"
+                style="width:100%;border:none;background:transparent;cursor:pointer;text-align:left;font:inherit;color:inherit;">
+          <span>📨 <span data-i18n="pill.invite">{% trans "Пригласить" %}</span></span>
+          <span class="settings-row-meta">→</span>
+        </button>
         {# ── Конфиденциальность и аккаунт: свёрнуто (как на «взрослых» площадках —
              экспорт ПДн / смена пароля не висят на виду, а в подразделе) ── #}
         <details class="settings-subsection">
