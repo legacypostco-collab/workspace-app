@@ -398,4 +398,11 @@ class WalletTopupRequest(models.Model):
             )
             # Синхронизируем self чтобы caller получил актуальное состояние
             self.refresh_from_db()
+        # Реферал: если пополнивший — покупатель-пригласивший, зачислить его
+        # buyer_discount −$100 (отдельной транзакцией, после фиксации пополнения).
+        try:
+            from . import referral as _ref
+            _ref.on_deposit_funded(self.user)
+        except Exception:
+            pass
         return tx

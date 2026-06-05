@@ -3028,6 +3028,21 @@ def accept_referral(params, user, role):
     ref = User.objects.filter(id=ref_uid).first()
     if not ref:
         return ActionResult(text="Пригласивший не найден.")
+    # Роль пригласившего определяет механику: KAM → CRM-привязка клиента;
+    # остальные роли (покупатель/продавец/оператор) → реферальная награда $100
+    # (без CRM-заказчика — это не аккаунт KAM).
+    from .permissions import detect_user_role
+    ref_role = detect_user_role(ref)
+    if ref_role != "operator_manager":
+        from . import referral as _ref
+        _ref.record_referral(ref, user, ref_role)
+        return ActionResult(
+            text=("✅ Приглашение принято! Добро пожаловать на платформу запчастей. "
+                  "Пригласивший получит свою награду, когда вы оформите первый заказ, "
+                  "а вам доступны все возможности маркетплейса."),
+            cards=[_invitee_benefits_card("🎁 Что вам доступно")],
+            actions=[{"label": "🏠 В кабинет", "action": "go_home", "params": {}}],
+        )
     # Владелец заказчика — тот же «эффективный продавец», что видит CRM-кабинет
     # пригласившего (учитывает demo-фолбэк), чтобы новый заказчик появился у него.
     owner = _effective_seller(ref)
@@ -3090,6 +3105,8 @@ def invite_customer(params, user, role):
         ref_acts = []
         if is_kam:
             ref_acts.append({"label": "👥 Мои заказчики", "action": "seller_customers", "params": {}})
+        else:
+            ref_acts.append({"label": "📨 Мои награды", "action": "my_referrals", "params": {}})
         ref_acts.append({"label": "🏠 Главная", "action": "go_home", "params": {}})
         return ActionResult(
             text=txt,
@@ -3415,6 +3432,61 @@ def change_manager(params, user, role):
         text="✅ Вы откреплены от менеджера. Ваша заявка вернулась в пул — мы назначим нового "
              "персонального менеджера, который продолжит вести ваши закупки.",
         actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}],
+    )
+
+
+@register("my_referrals")
+def my_referrals(params, user, role):
+    """Мои реферальные награды — кого пригласил и сколько начислено (не-KAM роли)."""
+    if not (user and getattr(user, "is_authenticated", False)):
+        return ActionResult(text="Войдите, чтобы увидеть ваши реферальные награды.",
+                            actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+    # KAM — резидуальная модель: его «реферал» = CRM-клиенты + начисления.
+    if role == "operator_manager":
+        return ActionResult(
+            text="У KAM реферальная мотивация — резидуальная: приглашённые клиенты "
+                 "закрепляются за вами, а вознаграждение идёт со сделок (0.02% + дожатые "
+                 "отказные). Смотрите в начислениях и заказчиках.",
+            actions=[
+                {"label": "💰 Мои начисления", "action": "my_accruals", "params": {}},
+                {"label": "👥 Мои заказчики", "action": "seller_customers", "params": {}},
+            ],
+        )
+    from . import referral as _ref
+    summ = _ref.summary_for(user)
+
+    def _m(v):
+        return ("$" + f"{float(v):,.0f}").replace(",", " ")
+
+    _ST = {"pending": ("в ожидании", "info"), "credited": ("✓ зачислено", "ok"),
+           "cancelled": ("отменено", "warn")}
+    _KIND = {"flat_first_order": "$100 с первой покупки приглашённого",
+             "buyer_discount": "−$100 на ваш первый заказ (при пополнении)"}
+    rows = []
+    for r in summ["rows"]:
+        lbl, tone = _ST.get(r.status, (r.status, "info"))
+        rows.append({
+            "title": f"{_KIND.get(r.kind, r.kind)} · +{_m(r.amount)}",
+            "subtitle": (r.note or "") + (f" · заказ #{r.trigger_order_id}" if r.trigger_order_id else ""),
+            "badge": {"label": lbl, "tone": tone}, "tone": tone,
+        })
+    kpi = {"type": "kpi_grid", "data": {"title": "📨 Мои приглашения", "kpis": [
+        {"value": _m(summ["credited"]), "label": "Зачислено"},
+        {"value": _m(summ["pending"]), "label": "В ожидании", "sub": "при первом заказе/пополнении"},
+        {"value": summ["count"], "label": "Приглашений"},
+    ]}}
+    return ActionResult(
+        text=(f"📨 Реферальные награды: зачислено {_m(summ['credited'])}, "
+              f"в ожидании {_m(summ['pending'])}." if summ["rows"]
+              else "Пока нет приглашений. Отправьте реф-ссылку — за первый заказ "
+                   "приглашённого получите награду."),
+        cards=[kpi, {"type": "list", "data": {"title": "Начисления",
+                "rows": rows or [{"title": "Пока пусто",
+                                  "subtitle": "Награда появится, когда приглашённый оформит первый заказ"}]}}],
+        actions=[
+            {"label": "📨 Пригласить", "action": "invite_customer", "params": {}},
+            {"label": "🏠 Главная", "action": "go_home", "params": {}},
+        ],
     )
 
 

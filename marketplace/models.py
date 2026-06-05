@@ -1409,6 +1409,79 @@ class OperatorBonusLine(models.Model):
         return f"Bonus[{self.operator_id}/{self.order_id}]: ${self.amount} ({self.status})"
 
 
+class ReferralReward(models.Model):
+    """Реферальное вознаграждение пригласившего — для всех ролей, КРОМЕ KAM.
+
+    Мотивация по ролям (согласована с владельцем продукта):
+      • Покупатель приглашает → −$100 на свой первый заказ (зачёт при
+        пополнении депозита) — kind=buyer_discount, начисляется один раз
+        на пригласившего при ближайшем пополнении кошелька.
+      • Продавец / оператор / прочие → $100 с первой покупки приглашённого
+        — kind=flat_first_order, начисляется когда приглашённый оплатил
+        резерв своего первого заказа.
+      • KAM — НЕ через эту таблицу: его «награда» = CRM-привязка клиента и
+        резидуальные начисления (OperatorBonusLine / customer_bonuses),
+        0.02% со сделок + бонус с дожатых отказных.
+
+    Жизненный цикл строки: pending → credited (зачислено в Wallet) | cancelled.
+    Идемпотентность — через uniq-констрейнты ниже + проверку статуса под
+    транзакцией в assistant/referral.py.
+    """
+    KIND_CHOICES = [
+        ("flat_first_order", "$100 за первый заказ приглашённого"),
+        ("buyer_discount",   "−$100 на первый заказ (зачёт при пополнении)"),
+    ]
+    STATUS_CHOICES = [
+        ("pending",   "Ожидает условия"),
+        ("credited",  "Зачислено"),
+        ("cancelled", "Отменено"),
+    ]
+    FLAT_AMOUNT_USD = 100
+
+    referrer = models.ForeignKey(User, on_delete=models.CASCADE,
+                                  related_name="referral_rewards_given")
+    referred = models.ForeignKey(User, on_delete=models.SET_NULL,
+                                  null=True, blank=True,
+                                  related_name="referral_rewards_received")
+    referrer_role = models.CharField(max_length=32, blank=True,
+                                      help_text="Роль пригласившего на момент приглашения")
+    kind = models.CharField(max_length=24, choices=KIND_CHOICES)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=FLAT_AMOUNT_USD)
+    currency = models.CharField(max_length=10, default="USD")
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES,
+                               default="pending", db_index=True)
+    trigger_order = models.ForeignKey(Order, on_delete=models.SET_NULL,
+                                       null=True, blank=True, related_name="+",
+                                       help_text="Заказ, активировавший начисление")
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    credited_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            # flat_first_order — один раз на пару (пригласивший, приглашённый)
+            models.UniqueConstraint(
+                fields=["referrer", "referred", "kind"],
+                condition=models.Q(kind="flat_first_order"),
+                name="refrwd_uniq_flat_pair",
+            ),
+            # buyer_discount — один раз на пригласившего (его собственная скидка)
+            models.UniqueConstraint(
+                fields=["referrer", "kind"],
+                condition=models.Q(kind="buyer_discount"),
+                name="refrwd_uniq_buyer_discount",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["referred", "status"], name="refrwd_referred_status_idx"),
+            models.Index(fields=["referrer", "-created_at"], name="refrwd_referrer_idx"),
+        ]
+
+    def __str__(self):
+        return f"Ref[{self.referrer_id}→{self.referred_id}] {self.kind} ${self.amount} ({self.status})"
+
+
 class MissingDemand(models.Model):
     """Аналитика спроса без предложения (PIVOT 2026-05-26).
 

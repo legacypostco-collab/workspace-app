@@ -98,6 +98,7 @@ _BUYER_ACTIONS = [
     "get_orders", "get_order_detail", "track_order", "track_shipment",
     "cancel_order",
     "invite_customer", "accept_customer_invite", "accept_referral",  # инвайт/реферал (для всех ролей)
+    "my_referrals",  # мои реферальные награды ($100 за приведённого)
     "my_kam", "change_manager",  # клиент: его менеджер + право сменить (удержание)
     # Решение по консолидации vs split shipment
     "consolidate_wait", "split_shipment", "set_supplier_decision",
@@ -214,6 +215,7 @@ _OPERATOR_CORE = [
     "op_drawings_by_part",  # мастер-вид: чертежи по артикулу (сверка need/offer)
     "op_escalate_to_kam",  # Оператор → KAM: эскалация исключения
     "invite_customer", "accept_referral", "accept_customer_invite",  # реферал ($100 за приведённого)
+    "my_referrals",  # мои реферальные награды
     # CRM заказчиков — НЕ в общем операторском наборе: это эксклюзив KAM
     # (см. _KAM_ONLY ниже). Так оператор не пересекается с KAM по аккаунтам.
     "op_order_detail", "op_assign", "op_assign_carrier", "op_add_note", "op_resolve_dispute",
@@ -7771,6 +7773,13 @@ def pay_reserve(params, user, role):
         body=f"Покупатель оплатил резерв ${amount:,.0f}. Можно подтверждать и запускать в производство.",
     )
 
+    # Реферал: первый оплаченный резерв приглашённого → $100 пригласившему.
+    try:
+        from . import referral as _ref
+        _ref.on_order_reserve_paid(order)
+    except Exception:
+        pass
+
     return ActionResult(
         text=(
             f"✓ Списано ${amount:,.2f} с депозита по заказу #{order.id}.\n"
@@ -10660,6 +10669,14 @@ def _topup_wallet_demo(params, user, role):
             description="Пополнение депозита (DEMO MODE)",
             balance_after=wallet.balance,
         )
+
+    # Реферал: покупатель-пригласивший пополнил депозит → его buyer_discount −$100.
+    try:
+        from . import referral as _ref
+        _ref.on_deposit_funded(user)
+        wallet.refresh_from_db(fields=["balance"])
+    except Exception:
+        pass
 
     actions = []
     text = (

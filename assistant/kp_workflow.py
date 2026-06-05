@@ -331,6 +331,13 @@ def confirm_kp_and_reserve(params, user, role):
                      "parts": float(parts_total), "logistics": float(logi_cost),
                      "reserve": float(reserve), "mode": rfq.mode})
 
+    # Реферал: первый оплаченный резерв приглашённого → $100 пригласившему.
+    try:
+        from . import referral as _ref
+        _ref.on_order_reserve_paid(order)
+    except Exception:
+        pass
+
     if q.seller:
         _notify(q.seller, kind="order",
                 title=f"✅ КП #{q.id} принято — ORD-{order.id}",
