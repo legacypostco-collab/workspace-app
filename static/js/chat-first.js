@@ -6106,7 +6106,7 @@
     purple:'#a855f7', red:'#ef4444', gray:'#9ca3af',
   };
 
-  async function loadConvList() {
+  async function loadConvList(attempt = 0) {
     // 4 состояния списка: loading / empty / error / loaded.
     // Раньше: пустая ловля catch — юзер вообще не понимал что произошло
     // (тихая ошибка вместо «нет связи»).
@@ -6118,12 +6118,22 @@
         '<div class="conv-skel"></div>'.repeat(3);
     }
     try {
-      const r = await fetch('/api/assistant/conversations/');
+      // cache:'no-store' + keepalive=false — не переиспользуем «подвисшее»
+      // keep-alive соединение dev-сервера (источник редких Failed to fetch).
+      const r = await fetch('/api/assistant/conversations/', { cache: 'no-store' });
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       state.convs = data.results || data;
       renderConvList();
     } catch (err) {
+      // Транзиентный сбой соединения: на dev-сервере (single-worker Daphne)
+      // параллельные HTTP + WS-апгрейд иногда роняют одно соединение
+      // («Failed to fetch»); на проде — флапающая сеть. Авто-ретрай с
+      // бэкоффом, скелетоны остаются. Только потом — UI ошибки с «Повторить».
+      if (attempt < 4) {
+        setTimeout(() => loadConvList(attempt + 1), 300 * (attempt + 1));
+        return;
+      }
       console.warn('loadConvList failed', err);
       if (wrap) {
         wrap.innerHTML =
