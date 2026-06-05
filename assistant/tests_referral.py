@@ -148,24 +148,44 @@ class CreditFlatOnFirstOrderTests(TestCase):
         self.assertEqual(n, 0)
 
 
-class CreditBuyerDiscountOnTopupTests(TestCase):
+class CreditBuyerDiscountTests(TestCase):
     def setUp(self):
         self.buyer = User.objects.create_user("ref_buyer", password="x")
         self.invitee = User.objects.create_user("disc_invitee", password="x")
         ref.record_referral(self.buyer, self.invitee, "buyer")
 
-    def test_topup_credits_buyer_100(self):
+    def _make_invitee_real(self):
+        """Сделать приглашённого настоящим клиентом — оплаченный заказ."""
+        return Order.objects.create(
+            customer_name="t", customer_email="t@t.local", delivery_address="—",
+            buyer=self.invitee, status="reserve_paid", payment_status="reserve_paid",
+            total_amount=Decimal("5000"))
+
+    def test_topup_blocked_until_invitee_real(self):
+        # throwaway-приглашённый (без покупок/KYB) → пополнение НЕ зачисляет скидку
         start = _bal(self.buyer)
-        n = ref.on_deposit_funded(self.buyer)
-        self.assertEqual(n, 1)
+        self.assertEqual(ref.on_deposit_funded(self.buyer), 0)
+        self.assertEqual(_bal(self.buyer), start)
+        # приглашённый стал реальным → следующее пополнение зачисляет
+        self._make_invitee_real()
+        self.assertEqual(ref.on_deposit_funded(self.buyer), 1)
         self.assertEqual(_bal(self.buyer), start + Decimal("100"))
-        self.assertEqual(ReferralReward.objects.get(referrer=self.buyer).status, "credited")
+
+    def test_credited_when_invitee_orders(self):
+        # приглашённый оформил реальный заказ → скидка пригласившему зачтена сразу
+        start = _bal(self.buyer)
+        order = self._make_invitee_real()
+        ref.on_order_reserve_paid(order)
+        self.assertEqual(_bal(self.buyer), start + Decimal("100"))
+        self.assertEqual(
+            ReferralReward.objects.get(referrer=self.buyer, kind="buyer_discount").status,
+            "credited")
 
     def test_topup_idempotent(self):
+        self._make_invitee_real()
         ref.on_deposit_funded(self.buyer)
         b = _bal(self.buyer)
-        n = ref.on_deposit_funded(self.buyer)
-        self.assertEqual(n, 0)
+        self.assertEqual(ref.on_deposit_funded(self.buyer), 0)
         self.assertEqual(_bal(self.buyer), b)
 
 

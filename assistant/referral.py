@@ -96,12 +96,27 @@ def record_referral(referrer, referred, referrer_role: str):
     return obj
 
 
-def on_order_reserve_paid(order) -> int:
-    """Приглашённый оплатил резерв заказа → зачислить flat_first_order пригласившему.
+def _invitee_is_real(u) -> bool:
+    """Приглашённый — настоящий клиент: прошёл KYB-верификацию ИЛИ реально
+    оплачивал заказы. Отсекает self-grant через throwaway-аккаунты."""
+    if not u:
+        return False
+    try:
+        from marketplace.models import CompanyVerification
+        if CompanyVerification.objects.filter(user=u, status="verified").exists():
+            return True
+    except Exception:
+        pass
+    from marketplace.models import Order
+    return Order.objects.filter(
+        buyer=u, payment_status__in=("reserve_paid", "mid_paid", "paid", "final_paid"),
+    ).exists()
 
-    Срабатывает на ПЕРВОМ заказе приглашённого (по любому заказу — но строка
-    одна на пару referrer→referred, и она credited лишь раз). Возвращает число
-    зачисленных строк (0/1).
+
+def on_order_reserve_paid(order) -> int:
+    """Приглашённый оплатил резерв заказа → зачислить награды пригласившему.
+
+    Срабатывает на ПЕРВОМ заказе приглашённого. Возвращает число зачисленных строк.
     """
     from marketplace.models import ReferralReward
     buyer = getattr(order, "buyer", None)
@@ -109,9 +124,9 @@ def on_order_reserve_paid(order) -> int:
         return 0
     credited = 0
     with transaction.atomic():
-        # Первый-тач: на одного приглашённого начисляем максимум ОДНУ награду
-        # (самую раннюю). Защита от мульти-выплаты даже на легаси-данных, где
-        # могло оказаться несколько pending-строк на одного приглашённого.
+        # flat_first_order ($100 продавцу/оператору). Первый-тач: на одного
+        # приглашённого начисляем максимум ОДНУ награду (самую раннюю) — защита
+        # от мульти-выплаты даже на легаси-данных с несколькими pending-строками.
         rows = (ReferralReward.objects
                 .select_for_update()
                 .filter(referred=buyer, kind="flat_first_order", status="pending")
@@ -127,14 +142,34 @@ def on_order_reserve_paid(order) -> int:
             rw.trigger_order = order
             rw.save(update_fields=["status", "credited_at", "trigger_order"])
             credited += 1
+        # buyer_discount (−$100 пригласившему-покупателю): приглашённый только что
+        # оформил РЕАЛЬНЫЙ заказ → стал настоящим клиентом → можно зачесть скидку
+        # (даже если пригласивший ещё не пополнял депозит). Без реальной покупки
+        # приглашённого скидка не выдаётся — это убивает self-grant через throwaway.
+        bd = (ReferralReward.objects
+              .select_for_update()
+              .filter(referred=buyer, kind="buyer_discount", status="pending"))
+        for rw in bd:
+            _credit_wallet(
+                rw.referrer, rw.amount,
+                description=f"Реферальная скидка −$100 (приглашённый оформил первый заказ #{order.id})",
+                order_id=order.id,
+            )
+            rw.status = "credited"
+            rw.credited_at = timezone.now()
+            rw.trigger_order = order
+            rw.save(update_fields=["status", "credited_at", "trigger_order"])
+            credited += 1
     return credited
 
 
 def on_deposit_funded(user) -> int:
     """Пригласивший-покупатель пополнил депозит → зачислить его buyer_discount −$100.
 
-    Реализуем «скидку на первый заказ» как зачисление $100 на кошелёк при
-    ближайшем пополнении (в депозитной модели функционально эквивалентно скидке).
+    Зачисляем ТОЛЬКО если приглашённый — настоящий клиент (KYB-верифицирован или
+    реально покупал). Иначе скидка остаётся pending и зачтётся позже (когда
+    приглашённый оформит заказ — см. on_order_reserve_paid). Это закрывает
+    self-grant: «пригласить» throwaway и просто пополнить депозит уже не сработает.
     Возвращает число зачисленных строк (0/1).
     """
     from marketplace.models import ReferralReward
@@ -146,6 +181,8 @@ def on_deposit_funded(user) -> int:
                 .select_for_update()
                 .filter(referrer=user, kind="buyer_discount", status="pending"))
         for rw in rows:
+            if not _invitee_is_real(rw.referred):
+                continue  # приглашённый ещё не настоящий клиент — скидка ждёт
             _credit_wallet(
                 rw.referrer, rw.amount,
                 description="Реферальная скидка −$100 на первый заказ (зачёт при пополнении)",

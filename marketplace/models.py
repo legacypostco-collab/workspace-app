@@ -1500,7 +1500,9 @@ class ReferralCode(models.Model):
         return f"{self.code} → user {self.user_id}"
 
     @classmethod
-    def _gen(cls, n=6):
+    def _gen(cls, n=8):
+        # 8 символов из 31-буквенного алфавита ≈ 8.5e11 вариантов — запас против
+        # перебора при сохранении читабельности (без 0/O/1/I/L).
         import secrets
         return "".join(secrets.choice(cls.ALPHABET) for _ in range(n))
 
@@ -1517,7 +1519,7 @@ class ReferralCode(models.Model):
         if obj:
             return obj
         for n in range(12):
-            code = cls._gen(6 if n < 8 else 10)
+            code = cls._gen(8 if n < 8 else 12)
             try:
                 with transaction.atomic():
                     return cls.objects.create(user=user, code=code)
@@ -1527,7 +1529,7 @@ class ReferralCode(models.Model):
                     return existing
                 continue               # коллизия кода — пробуем другой
         # Крайне маловероятно: длинный код как последний шанс
-        return cls.objects.create(user=user, code=cls._gen(12))
+        return cls.objects.create(user=user, code=cls._gen(14))
 
     @classmethod
     def resolve(cls, code):
