@@ -38,18 +38,18 @@ DEFAULT_PASSWORD = "Consol2026"
 # (display_name, username_base, role, operator_role, is_admin)
 # Логины по имени — узнаваемо и не громоздко.
 TEAM = [
-    ("Константин К",     "konstantin", "operator", "manager", False),
-    ("Аркадий П",        "arkadiy",    "operator", "manager", False),
-    ("Дмитрий Б",        "dmitriy",    "operator", "manager", False),
-    ("Денис М",          "denis",      "seller",   "",        False),
-    ("Владислав Д",      "vladislav",  "seller",   "",        False),
-    ("Евгений А",        "evgeniy",    "seller",   "",        False),
-    ("Даниил П",         "daniil",     "seller",   "",        False),
-    ("Али",              "ali",        "seller",   "",        False),
-    ("Альбина",          "albina",     "seller",   "",        False),
-    ("Кирилл (разраб.)", "kirill",     "buyer",    "",        True),
-    ("Никита М",         "nikita",     "buyer",    "",        True),
-    ("Александр Зенит",  "aleksandr",  "buyer",    "",        True),
+    ("Константин К",     "konstantin_k",   "operator", "manager", False),
+    ("Аркадий П",        "arkadiy_p",      "operator", "manager", False),
+    ("Дмитрий Б",        "dmitriy_b",      "operator", "manager", False),
+    ("Денис М",          "denis_m",        "seller",   "",        False),
+    ("Владислав Д",      "vladislav_d",    "seller",   "",        False),
+    ("Евгений А",        "evgeniy_a",      "seller",   "",        False),
+    ("Даниил П",         "daniil_p",       "seller",   "",        False),
+    ("Али",              "ali",            "seller",   "",        False),
+    ("Альбина",          "albina",         "seller",   "",        False),
+    ("Кирилл (разраб.)", "kirill",         "buyer",    "",        True),
+    ("Никита М",         "nikita_m",       "buyer",    "",        True),
+    ("Александр Зенит",  "aleksandr_zenit","buyer",    "",        True),
 ]
 # 3 тест-аккаунта на РАЗНЫЕ сущности: (suffix, role, operator_role, label)
 TEST_ENTITIES = [
@@ -142,9 +142,9 @@ class Command(BaseCommand):
                     kam_links.append((personal, cust, accts["buyer"]))
 
             for n in range(1, NUM_ANON + 1):
-                buyers.append(ensure_user(f"client{n}",
-                              display=f"Клиент {n}", role="buyer",
-                              company=f"Тест-клиент {n}"))
+                buyers.append(ensure_user(f"client{n:02d}",
+                              display=f"Клиент {n:02d}", role="buyer",
+                              company=f"Тест-клиент {n:02d}"))
 
         data_msg = "пропущены (--no-data)"
         if not opts.get("no_data"):
