@@ -156,13 +156,15 @@ class Command(BaseCommand):
                     else:
                         operators.append(a)
 
-        data_msg = "пропущены (--no-data)"
+        data_msg = enrich_msg = "пропущены (--no-data)"
         if not opts.get("no_data"):
             data_msg = self._seed_data(sellers, buyers, operators, kam_links)
+            enrich_msg = self._enrich(sellers, buyers, operators)
 
         self.stdout.write(self.style.SUCCESS(f"\nГотово. Пароль: {password}"))
         self.stdout.write(f"Аккаунтов создано: {len(created_rows)} · обновлено: {len(updated_rows)}")
-        self.stdout.write(f"Тестовые данные: {data_msg}")
+        self.stdout.write(f"Базовые данные: {data_msg}")
+        self.stdout.write(f"Обогащение: {enrich_msg}")
 
     # ── Сидинг тестовых данных под сущность ──────────────────────────
     def _seed_data(self, sellers, buyers, operators, kam_links):
@@ -277,3 +279,134 @@ class Command(BaseCommand):
 
         return (f"товаров {stats['parts']}, RFQ {stats['rfqs']}, "
                 f"заказов {stats['orders']}")
+
+    # ── Обогащение: рекламации, уведомления, KYB, КП, чертежи, пайплайн ──
+    def _enrich(self, sellers, buyers, operators):
+        from marketplace.models import (OrderClaim, Notification,
+                                         CompanyVerification, Quote, Drawing,
+                                         Order, OrderItem, RFQ, Part)
+        st = {"claims": 0, "notif": 0, "kyb": 0, "quotes": 0, "drawings": 0,
+              "pipe": 0}
+
+        def uniq(lst):
+            return list({u.id: u for u in lst}.values())
+
+        all_users = uniq(sellers + buyers + operators)
+
+        # 1) Уведомления — всем (разные типы)
+        NOTI = [("order", "Заказ обновлён", "Статус вашего заказа изменился."),
+                ("payment", "Платёж принят", "Резерв по заказу зачислен."),
+                ("rfq", "Новый ответ на запрос", "Поставщик прислал КП."),
+                ("system", "Добро пожаловать", "Тестовый аккаунт готов к работе.")]
+        for u in all_users:
+            if Notification.objects.filter(user=u).exists():
+                continue
+            for kind, title, body in NOTI:
+                try:
+                    Notification.objects.create(user=u, kind=kind, title=title,
+                                                body=body, is_read=False)
+                    st["notif"] += 1
+                except Exception:
+                    pass
+
+        # 2) KYB — продавцам (часть pending → попадут в очередь оператора),
+        #    покупателям — verified. pending = «на проверке» у оператора.
+        for i, u in enumerate(uniq(sellers)):
+            if CompanyVerification.objects.filter(user=u).exists():
+                continue
+            status = "pending" if i % 2 == 0 else "verified"
+            try:
+                CompanyVerification.objects.create(
+                    user=u, status=status,
+                    legal_name=f'ООО «{(u.first_name or u.username)[:40]}»',
+                    inn=f"77{u.id:08d}"[:12])
+                st["kyb"] += 1
+            except Exception:
+                pass
+        for u in uniq(buyers):
+            if CompanyVerification.objects.filter(user=u).exists():
+                continue
+            try:
+                CompanyVerification.objects.create(
+                    user=u, status="verified",
+                    legal_name=f'ООО «{(u.first_name or u.username)[:40]}»',
+                    inn=f"50{u.id:08d}"[:12])
+                st["kyb"] += 1
+            except Exception:
+                pass
+
+        # 3) Рекламации — покупателям (на доставленный заказ); операторы видят
+        CLAIMS = [("defect", "Брак детали", "Получена деталь с дефектом корпуса."),
+                  ("missing", "Недокомплект", "В поставке не хватает позиции.")]
+        for j, b in enumerate(uniq(buyers)):
+            if OrderClaim.objects.filter(opened_by=b).exists():
+                continue
+            o = Order.objects.filter(buyer=b).order_by("-id").first()
+            if not o:
+                continue
+            kind, title, desc = CLAIMS[j % len(CLAIMS)]
+            try:
+                OrderClaim.objects.create(order=o, opened_by=b, kind=kind,
+                                          status="open", title=title,
+                                          description=desc)
+                st["claims"] += 1
+            except Exception:
+                pass
+
+        # 4) КП (Quote) — продавцы отвечают на существующие RFQ
+        rfqs = list(RFQ.objects.order_by("-id")[:30])
+        for s in uniq(sellers):
+            if not rfqs or Quote.objects.filter(seller=s).exists():
+                continue
+            for rfq in rfqs[:2]:
+                try:
+                    Quote.objects.create(rfq=rfq, seller=s,
+                                         total_amount=Decimal("1850.00"),
+                                         delivery_days=12, status="submitted")
+                    st["quotes"] += 1
+                except Exception:
+                    pass
+
+        # 5) Чертежи — покупателям и продавцам
+        for u in uniq(buyers + sellers):
+            if Drawing.objects.filter(seller=u).exists():
+                continue
+            for title, fmt, statd in [("Сборочный чертёж узла", "pdf", "approved"),
+                                      ("Деталировка корпуса", "dwg", "on_review")]:
+                try:
+                    Drawing.objects.create(seller=u, title=title, file_format=fmt,
+                                           status=statd, oem_number="DWG-0001")
+                    st["drawings"] += 1
+                except Exception:
+                    pass
+
+        # 6) Пайплайн продавца — заказ на ЕГО товары (видно в «Мои продажи»)
+        now = timezone.now()
+        a_buyer = (uniq(buyers) or [None])[0]
+        for s in uniq(sellers):
+            sparts = list(Part.objects.filter(seller=s)[:2])
+            if not sparts or not a_buyer:
+                continue
+            if Order.objects.filter(items__part__seller=s).exists():
+                continue
+            try:
+                sub = sum((p.price for p in sparts), Decimal("0"))
+                total = (sub + Decimal("190")).quantize(Decimal("0.01"))
+                o = Order.objects.create(
+                    customer_name=a_buyer.username, customer_email=a_buyer.email,
+                    delivery_address="Тестовый адрес", buyer=a_buyer,
+                    status="in_production", payment_status="reserve_paid",
+                    reserve_percent=Decimal("10"),
+                    reserve_amount=(total * Decimal("0.1")).quantize(Decimal("0.01")),
+                    reserve_paid_at=now, total_amount=total,
+                    logistics_cost=Decimal("190"))
+                for p in sparts:
+                    OrderItem.objects.create(order=o, part=p, quantity=1,
+                                             unit_price=p.price)
+                st["pipe"] += 1
+            except Exception:
+                pass
+
+        return (f"уведомлений {st['notif']}, KYB {st['kyb']}, рекламаций "
+                f"{st['claims']}, КП {st['quotes']}, чертежей {st['drawings']}, "
+                f"заказов-в-пайплайне {st['pipe']}")
