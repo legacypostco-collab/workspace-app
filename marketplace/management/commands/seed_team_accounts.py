@@ -44,7 +44,13 @@ TEAM = [
     ("Али",              "ali",            "buyer",    "",        True),
     ("Альбина",          "albina",         "buyer",    "",        True),
 ]
-NUM_TEST_PER_PERSON = 3
+# Каждому — по 3 тест-аккаунта на РАЗНЫЕ сущности (а не 3 покупателя):
+# (suffix, role, operator_role, label)
+TEST_ENTITIES = [
+    ("_buyer",    "buyer",    "", "Покупатель"),
+    ("_seller",   "seller",   "", "Продавец"),
+    ("_operator", "operator", "", "Оператор"),
+]
 NUM_ANON = 7
 
 
@@ -101,26 +107,32 @@ class Command(BaseCommand):
             return user
 
         with transaction.atomic():
+            # Чистим старые тест-аккаунты прошлой версии (_t1/_t2/_t3 — были
+            # все покупатели; теперь 3 разные сущности _buyer/_seller/_operator).
+            old_usernames = [f"{base}_t{i}" for _, base, *_ in TEAM for i in (1, 2, 3)]
+            purged = User.objects.filter(username__in=old_usernames).count()
+            User.objects.filter(username__in=old_usernames).delete()
+
             for display, base, role, op_role, is_admin in TEAM:
-                # Личный аккаунт
+                # Личный аккаунт (реальная роль)
                 personal = ensure_user(
                     base, display=display, role=role, operator_role=op_role,
                     is_admin=is_admin, company=display)
-                # 3 тест-покупателя
-                test_buyers = []
-                for i in range(1, NUM_TEST_PER_PERSON + 1):
-                    tb = ensure_user(
-                        f"{base}_t{i}", display=f"{display} · тест {i}",
-                        role="buyer", company=f"{display} — тест {i}")
-                    test_buyers.append(tb)
-                # Для KAM — привязать тест-покупателей как клиентов CRM (данные)
+                # 3 тест-аккаунта на РАЗНЫЕ сущности
+                test_accts = {}
+                for suffix, trole, top_role, label in TEST_ENTITIES:
+                    test_accts[trole] = ensure_user(
+                        f"{base}{suffix}", display=f"{display} · {label}",
+                        role=trole, operator_role=top_role,
+                        company=f"{display} — {label} (тест)")
+                # Для KAM — привязать тест-покупателя как клиента CRM (данные)
                 if role == "operator" and op_role == "manager":
-                    for i, tb in enumerate(test_buyers, 1):
-                        Customer.objects.get_or_create(
-                            owner=personal, inn=f"TEST{personal.id:04d}{i}",
-                            defaults={"name": f"{display} — клиент {i}",
-                                      "user": tb, "note": "seed: тестовый клиент"},
-                        )
+                    Customer.objects.get_or_create(
+                        owner=personal, inn=f"TEST{personal.id:04d}1",
+                        defaults={"name": f"{display} — клиент (тест)",
+                                  "user": test_accts.get("buyer"),
+                                  "note": "seed: тестовый клиент"},
+                    )
 
             # 7 безымянных покупателей
             for n in range(1, NUM_ANON + 1):

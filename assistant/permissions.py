@@ -115,6 +115,10 @@ def detect_user_role(user, *, request=None, override: str | None = None) -> str:
             return "seller"
         if role == "buyer":
             return "buyer"
+        if role == "operator":
+            # Оператор: с суброллю → operator_<sub> (KAM=manager), без → общий operator.
+            op_sub = (getattr(profile, "operator_role", "") or "").strip()
+            return f"operator_{op_sub}" if op_sub else "operator"
 
     # Operator subrole detection — try common attributes first
     op_sub = getattr(user, "operator_role", None) or getattr(profile, "operator_role", None) if profile else None
