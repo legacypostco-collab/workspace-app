@@ -5918,7 +5918,20 @@
       + '.opd-results{display:flex;flex-direction:column;gap:14px;margin-top:4px}'
       + '.opd-results .dw-empty{padding:6px 2px 4px}'
       + '.opd-group{display:flex;flex-direction:column;gap:6px}'
-      + '.opd-gtitle{font-size:12px;font-weight:700;opacity:.6;text-transform:uppercase;letter-spacing:.03em}';
+      + '.opd-gtitle{font-size:12px;font-weight:700;opacity:.6;text-transform:uppercase;letter-spacing:.03em}'
+      // ── Тёмная тема: исходный блок весь на светлых цветах (#fff / rgba(0,0,0)),
+      //    из-за чего светлый текст оказывался на белом фоне (нечитаемо). Инвертируем.
+      + 'body.dark-mode .dw-item,body.dark-mode .dw-result{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.1)}'
+      + 'body.dark-mode .dw-item:hover{background:rgba(255,255,255,.09)}'
+      + 'body.dark-mode .dw-result:hover{background:rgba(46,125,50,.22);border-color:#4caf50}'
+      + 'body.dark-mode .dw-newinput,body.dark-mode .dw-linkinput{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14);color:#e8e8e8}'
+      + 'body.dark-mode .dw-newbtn{background:rgba(255,255,255,.16);color:#fff}'
+      + 'body.dark-mode .dw-folder{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.03)}'
+      + 'body.dark-mode .dw-fhead:hover{background:rgba(255,255,255,.06)}'
+      + 'body.dark-mode .dw-fcount{background:rgba(255,255,255,.12)}'
+      + 'body.dark-mode .dw-link-btn:hover{background:rgba(255,255,255,.12)}'
+      + 'body.dark-mode .dw-projtag{background:rgba(120,140,220,.28);color:#c5cdf5}'
+      + 'body.dark-mode .dw-folder-proj{border-color:rgba(140,160,230,.4);background:rgba(120,140,220,.08)}';
     document.head.appendChild(s);
   }
 
