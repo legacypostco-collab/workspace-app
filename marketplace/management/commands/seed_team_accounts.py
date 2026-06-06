@@ -49,7 +49,7 @@ TEAM = [
     ("Альбина",          "albina",         "seller",   "",        False),
     ("Кирилл (разраб.)", "kirill",         "buyer",    "",        True),
     ("Никита М",         "nikita_m",       "buyer",    "",        True),
-    ("Александр Зенит",  "aleksandr_zenit","buyer",    "",        True),
+    ("Александр Зенит",  "aleksandr_zenit","buyer",    "",        False),  # без админа
 ]
 # 3 тест-аккаунта на РАЗНЫЕ сущности: (suffix, role, operator_role, label)
 TEST_ENTITIES = [
@@ -141,10 +141,20 @@ class Command(BaseCommand):
                                   "note": "seed: тестовый клиент"})
                     kam_links.append((personal, cust, accts["buyer"]))
 
+            # Безымянные — тоже по 3 аккаунта на разные сущности, БЕЗ личного.
             for n in range(1, NUM_ANON + 1):
-                buyers.append(ensure_user(f"client{n:02d}",
-                              display=f"Клиент {n:02d}", role="buyer",
-                              company=f"Тест-клиент {n:02d}"))
+                cbase = f"client{n:02d}"
+                for suffix, trole, top_role, label in TEST_ENTITIES:
+                    a = ensure_user(f"{cbase}{suffix}",
+                                    display=f"Клиент {n:02d} · {label}",
+                                    role=trole, operator_role=top_role,
+                                    company=f"Клиент {n:02d} — {label} (тест)")
+                    if trole == "buyer":
+                        buyers.append(a)
+                    elif trole == "seller":
+                        sellers.append(a)
+                    else:
+                        operators.append(a)
 
         data_msg = "пропущены (--no-data)"
         if not opts.get("no_data"):
