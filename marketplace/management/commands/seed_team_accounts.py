@@ -47,8 +47,8 @@ TEAM = [
     ("Кирилл (разраб.)", "kirill",         "buyer",    "",        True),
     ("Никита М",         "nikita_m",       "buyer",    "",        True),
     ("Александр Зенит",  "aleksandr_zenit","buyer",    "",        True),
-    ("Али",              "ali",            "buyer",    "",        True),
-    ("Альбина",          "albina",         "buyer",    "",        True),
+    ("Али",              "ali",            "seller",   "",        False),
+    ("Альбина",          "albina",         "seller",   "",        False),
 ]
 # 3 тест-аккаунта на РАЗНЫЕ сущности: (suffix, role, operator_role, label)
 TEST_ENTITIES = [
