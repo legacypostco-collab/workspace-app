@@ -33,28 +33,28 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-DEFAULT_PASSWORD = "Consolidator2026"
+DEFAULT_PASSWORD = "cp2026"
 
-# (display_name, username_base, role, operator_role, is_admin)
+# (display_name, username_base, role, operator_role, is_admin) — короткие логины
 TEAM = [
-    ("Константин К",     "konstantin_k",   "operator", "manager", False),
-    ("Аркадий П",        "arkadiy_p",      "operator", "manager", False),
-    ("Дмитрий Б",        "dmitriy_b",      "operator", "manager", False),
-    ("Денис М",          "denis_m",        "seller",   "",        False),
-    ("Владислав Д",      "vladislav_d",    "seller",   "",        False),
-    ("Евгений А",        "evgeniy_a",      "seller",   "",        False),
-    ("Даниил П",         "daniil_p",       "seller",   "",        False),
-    ("Кирилл (разраб.)", "kirill",         "buyer",    "",        True),
-    ("Никита М",         "nikita_m",       "buyer",    "",        True),
-    ("Александр Зенит",  "aleksandr_zenit","buyer",    "",        True),
-    ("Али",              "ali",            "seller",   "",        False),
-    ("Альбина",          "albina",         "seller",   "",        False),
+    ("Константин К",     "kk",  "operator", "manager", False),
+    ("Аркадий П",        "ap",  "operator", "manager", False),
+    ("Дмитрий Б",        "db",  "operator", "manager", False),
+    ("Денис М",          "dm",  "seller",   "",        False),
+    ("Владислав Д",      "vd",  "seller",   "",        False),
+    ("Евгений А",        "ea",  "seller",   "",        False),
+    ("Даниил П",         "dp",  "seller",   "",        False),
+    ("Али",              "ali", "seller",   "",        False),
+    ("Альбина",          "alb", "seller",   "",        False),
+    ("Кирилл (разраб.)", "kir", "buyer",    "",        True),
+    ("Никита М",         "nm",  "buyer",    "",        True),
+    ("Александр Зенит",  "az",  "buyer",    "",        True),
 ]
 # 3 тест-аккаунта на РАЗНЫЕ сущности: (suffix, role, operator_role, label)
 TEST_ENTITIES = [
-    ("_buyer",    "buyer",    "", "Покупатель"),
-    ("_seller",   "seller",   "", "Продавец"),
-    ("_operator", "operator", "", "Оператор"),
+    ("_b", "buyer",    "", "Покупатель"),
+    ("_s", "seller",   "", "Продавец"),
+    ("_o", "operator", "", "Оператор"),
 ]
 NUM_ANON = 7
 
@@ -141,7 +141,7 @@ class Command(BaseCommand):
                     kam_links.append((personal, cust, accts["buyer"]))
 
             for n in range(1, NUM_ANON + 1):
-                buyers.append(ensure_user(f"client{n:02d}",
+                buyers.append(ensure_user(f"c{n:02d}",
                               display=f"Клиент {n:02d}", role="buyer",
                               company=f"Тест-клиент {n:02d}"))
 
@@ -248,7 +248,9 @@ class Command(BaseCommand):
             mk_order(b, pool[:2], "delivered", "paid")
 
         # Операторы → 2 заказа в очередь (assigned_operator)
-        client_buyers = [b for b in buyers if b.username.startswith("client")] or buyers
+        client_buyers = [b for b in buyers
+                         if len(b.username) == 3 and b.username[0] == "c"
+                         and b.username[1:].isdigit()] or buyers
         for idx, op in enumerate({o.id: o for o in operators}.values()):
             if Order.objects.filter(assigned_operator=op).exists():
                 continue
