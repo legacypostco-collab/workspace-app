@@ -15,7 +15,9 @@
   <meta property="og:description" content="{% trans 'AI-консолидатор: одно RFQ → 200+ проверенных поставщиков → лучшая цена. Присоединяйтесь.' %}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}/">
-  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}">
+  {# og:image с jsDelivr (CDN поверх GitHub) — домен под SNI-фильтрацией РФ, #}
+  {# отдаём картинку с глобального CDN, чтобы краулер Telegram её дотянул.   #}
+  <meta property="og:image" content="https://cdn.jsdelivr.net/gh/legacypostco-collab/workspace-app@8bca1317c2e75b319911401da06e8e28c9bcfe2b/static/brand/og-card.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:type" content="image/png">
@@ -23,7 +25,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Consolidator Parts">
   <meta name="twitter:description" content="{% trans 'AI-консолидатор запчастей для спецтехники' %}">
-  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}">
+  <meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/legacypostco-collab/workspace-app@8bca1317c2e75b319911401da06e8e28c9bcfe2b/static/brand/og-card.png">
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
