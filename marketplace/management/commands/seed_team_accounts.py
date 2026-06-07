@@ -331,16 +331,21 @@ class Command(BaseCommand):
 
         # 2) KYB — продавцам (часть pending → попадут в очередь оператора),
         #    покупателям — verified. pending = «на проверке» у оператора.
-        for i, u in enumerate(uniq(sellers)):
+        # Тест-продавцы verified (чтобы можно было тестировать продавцовые
+        # действия без блокировок). Пару client-продавцов держим pending —
+        # чтобы у оператора не пустовала очередь KYB на проверку.
+        PENDING_KYB_DEMO = {"client01_seller", "client02_seller"}
+        for u in uniq(sellers):
             if CompanyVerification.objects.filter(user=u).exists():
                 continue
-            status = "pending" if i % 2 == 0 else "verified"
+            status = "pending" if u.username in PENDING_KYB_DEMO else "verified"
+            kw = dict(user=u, status=status, submitted_at=timezone.now(),
+                      legal_name=f'ООО «{(u.first_name or u.username)[:40]}»',
+                      inn=f"77{u.id:08d}"[:12])
+            if status == "verified":
+                kw["reviewed_at"] = timezone.now()
             try:
-                CompanyVerification.objects.create(
-                    user=u, status=status,
-                    submitted_at=timezone.now(),
-                    legal_name=f'ООО «{(u.first_name or u.username)[:40]}»',
-                    inn=f"77{u.id:08d}"[:12])
+                CompanyVerification.objects.create(**kw)
                 st["kyb"] += 1
             except Exception:
                 pass
