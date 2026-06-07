@@ -366,7 +366,7 @@ def start_onboarding(params, user, role):
     if step == "pending":
         return ActionResult(
             text=(
-                f"⏳ Анкета отправлена на проверку оператору ({kyb.submitted_at:%d.%m.%Y %H:%M}).\n"
+                f"⏳ Анкета отправлена на проверку оператору ({kyb.submitted_at.strftime('%d.%m.%Y %H:%M') if kyb.submitted_at else 'недавно'}).\n"
                 f"Обычно проверка занимает до 24 часов. Дождитесь решения — мы пришлём "
                 f"нотификацию."
             ),

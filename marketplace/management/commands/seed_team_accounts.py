@@ -338,6 +338,7 @@ class Command(BaseCommand):
             try:
                 CompanyVerification.objects.create(
                     user=u, status=status,
+                    submitted_at=timezone.now(),
                     legal_name=f'ООО «{(u.first_name or u.username)[:40]}»',
                     inn=f"77{u.id:08d}"[:12])
                 st["kyb"] += 1
@@ -349,6 +350,7 @@ class Command(BaseCommand):
             try:
                 CompanyVerification.objects.create(
                     user=u, status="verified",
+                    submitted_at=timezone.now(),
                     legal_name=f'ООО «{(u.first_name or u.username)[:40]}»',
                     inn=f"50{u.id:08d}"[:12])
                 st["kyb"] += 1
