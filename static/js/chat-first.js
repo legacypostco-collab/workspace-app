@@ -3122,7 +3122,7 @@
     table_preview(d) {
       const headers = (d.headers || []).map(h => `<th>${esc(h)}</th>`).join('');
       const rows = (d.rows || []).map(row => {
-        const cells = (row || []).map(c => `<td>${esc((c == null ? '' : String(c)).slice(0, 60))}</td>`).join('');
+        const cells = (row || []).map(c => `<td>${esc((c == null ? '' : String(c)).slice(0, 240))}</td>`).join('');
         return `<tr>${cells}</tr>`;
       }).join('');
       return `<div class="card tp-card">

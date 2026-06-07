@@ -1406,7 +1406,9 @@
     .tp-scroll{overflow-x:auto;margin-top:12px;border:1px solid rgba(0,0,0,0.08);border-radius:8px;background:rgba(255,255,255,0.6);}
     .tp-table{width:auto;max-width:100%;border-collapse:collapse;font-size:13px;font-family:'SF Mono',Menlo,monospace;}
     .tp-table th{padding:9px 12px;text-align:left;background:rgba(0,0,0,0.05);font-weight:700;color:#1a1a1a;border-bottom:1px solid rgba(0,0,0,0.08);white-space:nowrap;font-size:12.5px;letter-spacing:-0.005em;}
-    .tp-table td{padding:8px 12px;border-bottom:1px solid rgba(0,0,0,0.05);color:rgba(0,0,0,0.88);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .tp-table td{padding:8px 12px;border-bottom:1px solid rgba(0,0,0,0.05);color:rgba(0,0,0,0.88);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    /* Последняя колонка (напр. «Проблема») — показываем целиком, с переносом */
+    .tp-table td:last-child{white-space:normal;word-break:break-word;overflow:visible;text-overflow:clip;max-width:460px;min-width:240px;line-height:1.4;}
     .tp-table tr:last-child td{border-bottom:none;}
     .tp-foot{margin-top:10px;font-size:12.5px;color:rgba(0,0,0,0.6);font-style:italic;}
 
