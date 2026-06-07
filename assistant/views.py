@@ -1366,6 +1366,7 @@ class RFQDetailView(APIView):
         # Для не-владельцев скрываем чувствительные поля покупателя
         redact_pii = not (is_owner or is_staff)
 
+        from marketplace.fx import to_usd_float  # живой бирж. курс
         items = []
         total_usd = 0.0
         for it in rfq.items.select_related("matched_part__brand").all():
@@ -1373,8 +1374,12 @@ class RFQDetailView(APIView):
             price = float(mp.price) if (mp and mp.price is not None) else None
             ccy = (getattr(mp, "currency", "USD") if mp else "USD") or "USD"
             qty = it.quantity or 1
-            if price is not None:
-                total_usd += price * qty * self._FX_TO_USD.get(ccy.upper(), 1.0)
+            price_usd = to_usd_float(price, ccy) if price is not None else None
+            if price_usd is not None:
+                total_usd += price_usd * qty
+            # Покупатель (владелец RFQ) видит USD; продавец-адресат/staff — исходную валюту.
+            show_price = price_usd if is_owner else price
+            show_ccy = "USD" if is_owner else ccy
             items.append({
                 "article": it.query,
                 "qty": qty,
@@ -1382,8 +1387,8 @@ class RFQDetailView(APIView):
                 "match": mp.title if mp else None,
                 "brand": (mp.brand.name if (mp and mp.brand) else None),
                 "supplier": getattr(mp, "supplier_name", None) if mp else None,
-                "price": price,
-                "currency": ccy,
+                "price": show_price,
+                "currency": show_ccy,
             })
 
         # Quotes-аналитика

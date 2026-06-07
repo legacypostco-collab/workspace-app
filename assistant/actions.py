@@ -1168,6 +1168,7 @@ def search_parts(params, user, role):
         qs = qs.filter(category__name__icontains=params["category"])
 
     parts = list(qs[:limit])
+    from marketplace.fx import to_usd_float  # покупатель ВСЕГДА видит USD по бирж. курсу
     cards = [{
         "type": "product",
         "data": {
@@ -1175,7 +1176,7 @@ def search_parts(params, user, role):
             "article": p.oem_number,
             "brand": p.brand.name if p.brand else "—",
             "name": p.title,
-            "price": float(p.price) if p.price else None,
+            "price": to_usd_float(p.price, getattr(p, "currency", "USD")) if p.price else None,
             "currency": "USD",
             "in_stock": getattr(p, "stock_qty", 0) > 0,
             "category": p.category.name if p.category else None,
@@ -1306,10 +1307,12 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                       if _seller_rating(c.seller).get("status") != "rejected"]
         # Ранжируем по цене + рейтингу (50/50)
         offer_pool = []
+        from marketplace.fx import to_usd_float  # цены поставщиков → USD (и для сравнения, и для показа покупателю)
         for c in candidates:
             r = _seller_rating(c.seller)
             offer_pool.append({
-                "part": c, "price": float(c.price) if c.price else None,
+                "part": c,
+                "price": to_usd_float(c.price, getattr(c, "currency", "USD")) if c.price else None,
                 "rating": r["rating"], "status": r["status"],
             })
         ranked = _rank_offers(offer_pool)
@@ -1333,7 +1336,9 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                                   "name": p.title, "qty": qty,
                                   "reason": f"origin {origin_cc}"})
                     continue
-            price = float(p.price) if p.price else 0
+            # Цена ранжированного оффера уже в USD (offer_pool → to_usd_float).
+            # Покупатель ВСЕГДА видит USD по биржевому курсу.
+            price = ranked[0]["price"] if (ranked and ranked[0].get("price") is not None) else 0
             cargo_line = Decimal(str(price)) * Decimal(qty)
             if origin_cc:
                 origins_count[origin_cc] = origins_count.get(origin_cc, 0) + 1
@@ -2317,8 +2322,7 @@ def create_rfq(params, user, role):
     # ── Богатый data shape для rfq-карточки (chat-first.js::rfq) ──
     # Без этого карточка выглядит пустой (0/0, бюджет —, лучшая —).
     # Считаем budget estimate из matched parts, готовим items_preview.
-    _FX_TO_USD_CR = {"USD": 1.0, "EUR": 1.08, "RUB": 0.011, "CNY": 0.135,
-                     "JPY": 0.0067, "GBP": 1.27}
+    from marketplace.fx import to_usd_float  # живой биржевой курс → USD
     budget_est_usd = 0.0
     items_preview = []
     for query_str, qty, matched_part, _conf in items_to_add[:8]:
@@ -2327,8 +2331,8 @@ def create_rfq(params, user, role):
         brand_name = ""
         if matched_part and matched_part.price is not None:
             ccy = (matched_part.currency or "USD").upper()
-            est_usd = float(matched_part.price) * _FX_TO_USD_CR.get(ccy, 1.0)
-            budget_est_usd += est_usd * (qty or 1)
+            est_usd = to_usd_float(matched_part.price, ccy)
+            budget_est_usd += (est_usd or 0.0) * (qty or 1)
             match_name = _clean_title(matched_part.title or "")
             brand_name = matched_part.brand.name if matched_part.brand else ""
         items_preview.append({
@@ -3485,8 +3489,7 @@ def get_rfq_status(params, user, role):
         # статусом, OEM, name, brand, price, qty, weight, supplier rating.
         # Не плодим свой rfq-card — данные те же.
         from marketplace.models import Quote as _Quote
-        _FX_TO_USD = {"USD": 1.0, "EUR": 1.08, "RUB": 0.011, "CNY": 0.135,
-                      "JPY": 0.0067, "GBP": 1.27}
+        from marketplace.fx import to_usd_float  # живой биржевой курс
         items_qs = list(rfq.items.select_related("matched_part__brand").all()) if hasattr(rfq, "items") else []
         spec_items = []
         found_n = 0
@@ -3497,7 +3500,7 @@ def get_rfq_status(params, user, role):
             qty = it.quantity or 1
             if mp and mp.price is not None:
                 ccy = (mp.currency or "USD").upper()
-                price_usd = float(mp.price) * _FX_TO_USD.get(ccy, 1.0)
+                price_usd = to_usd_float(mp.price, ccy) or 0.0
                 total_usd += price_usd * qty
                 is_insider = bool(role and (role.startswith("operator") or role == "admin"))
                 # Тянем реальный статус/рейтинг продавца из профиля
@@ -3534,10 +3537,11 @@ def get_rfq_status(params, user, role):
                     "name": (_clean_title(mp.title or "")[:80]) or "—",
                     "brand": (mp.brand.name if mp.brand else "—"),
                     "condition": (mp.condition or "oem"),
-                    "price": float(mp.price),
+                    # Покупатель ВСЕГДА видит USD (бирж. курс); оператор — исходную валюту продавца.
+                    "price": (float(mp.price) if is_insider else price_usd),
                     "qty": qty,
                     "weight": f"{mp.gross_weight_kg} кг" if mp.gross_weight_kg else "—",
-                    "currency": ccy,
+                    "currency": (ccy if is_insider else "USD"),
                     "supplier_status": sup_status_code,           # CSS-класс
                     "supplier_status_badge": badge_text,           # лейбл
                     "supplier_rating": round(sup_rating, 1),
@@ -4345,9 +4349,10 @@ def buyer_best_offers(params, user, role):
 
     # Группируем: для каждой пары (oem_number, seller) — минимальная цена
     by_key: dict[tuple, dict] = {}
+    from marketplace.fx import to_usd_float  # покупатель ВСЕГДА видит USD по бирж. курсу
     for p in parts:
         key = ((p.oem_number or "").upper(), p.seller_id)
-        price = float(p.price) if p.price else None
+        price = to_usd_float(p.price, getattr(p, "currency", "USD"))
         existing = by_key.get(key)
         if existing and existing["price"] is not None and price is not None:
             if price >= existing["price"]:
@@ -4359,9 +4364,9 @@ def buyer_best_offers(params, user, role):
             "title": p.title,
             "brand": p.brand.name if p.brand else "—",
             "price": price,
-            "currency": p.currency or "USD",
-            "price_fob_sea": float(p.price_fob_sea) if p.price_fob_sea else None,
-            "price_fob_air": float(p.price_fob_air) if p.price_fob_air else None,
+            "currency": "USD",
+            "price_fob_sea": to_usd_float(p.price_fob_sea, getattr(p, "currency", "USD")),
+            "price_fob_air": to_usd_float(p.price_fob_air, getattr(p, "currency", "USD")),
             "sea_port": p.sea_port or "",
             "air_port": p.air_port or "",
             "warehouse": p.warehouse_address or "",
