@@ -479,6 +479,53 @@ class Command(BaseCommand):
             except Exception:
                 pass
 
+        # 6) Глубина аналитики продавца: заказы по статусам (упор на
+        #    delivered/completed → оборот), разнесены по месяцам, SLA-микс.
+        #    Без них отчёты продавца пустые ($0 оборот, 0 закрытых).
+        st["seller_orders"] = 0
+        _now2 = timezone.now()
+        _PLAN = [("delivered", "mid_paid"), ("completed", "full_paid"),
+                 ("delivered", "mid_paid"), ("shipped", "mid_paid"),
+                 ("in_production", "reserve_paid"), ("delivered", "mid_paid"),
+                 ("ready_to_ship", "mid_paid"), ("completed", "full_paid"),
+                 ("delivered", "mid_paid"), ("reserve_paid", "reserve_paid")]
+        _bpool = [b for b in uniq(buyers) if not b.username.startswith("client")] or uniq(buyers)
+        for s in uniq(sellers):
+            if s.username.startswith("client") or not _bpool:
+                continue
+            sparts = list(Part.objects.filter(seller=s, is_active=True)[:4])
+            if not sparts:
+                continue
+            if Order.objects.filter(items__part__seller=s,
+                                    status__in=("delivered", "completed")).distinct().count() >= 6:
+                continue
+            for i, (st_status, pst) in enumerate(_PLAN):
+                ps = sparts[(i % len(sparts)):(i % len(sparts)) + 2] or sparts[:1]
+                b = _bpool[i % len(_bpool)]
+                sub = sum((p.price * Decimal((i % 3) + 1) for p in ps), Decimal("0"))
+                total = (sub + Decimal("190")).quantize(Decimal("0.01"))
+                try:
+                    o = Order.objects.create(
+                        customer_name=(b.first_name or b.username),
+                        customer_email=(b.email or f"{b.username}@chat.local"),
+                        customer_phone="+7 999 000 00 00",
+                        delivery_address="Тестовый адрес, Москва", buyer=b,
+                        status=st_status, payment_status=pst, reserve_percent=Decimal("10"),
+                        reserve_amount=(total * Decimal("0.1")).quantize(Decimal("0.01")),
+                        reserve_paid_at=_now2, total_amount=total,
+                        logistics_cost=Decimal("190"), logistics_currency="USD",
+                        ship_deadline=_now2 + timedelta(days=6),
+                        sla_status=("breached" if i in (4, 7) else "on_track"))
+                    for p in ps:
+                        OrderItem.objects.create(order=o, part=p, quantity=(i % 3) + 1,
+                                                 unit_price=p.price)
+                    Order.objects.filter(id=o.id).update(
+                        created_at=_now2 - timedelta(days=14 * i + 1))
+                    st["seller_orders"] += 1
+                except Exception:
+                    pass
+
         return (f"уведомлений {st['notif']}, KYB {st['kyb']}, рекламаций "
                 f"{st['claims']}, КП {st['quotes']}, чертежей {st['drawings']}, "
-                f"заказов-в-пайплайне {st['pipe']}, RFQ-глубина {st['rfqs_depth']}")
+                f"заказов-в-пайплайне {st['pipe']}, RFQ-глубина {st['rfqs_depth']}, "
+                f"заказов-продавцам {st['seller_orders']}")
