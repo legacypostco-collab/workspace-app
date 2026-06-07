@@ -434,6 +434,51 @@ class Command(BaseCommand):
             except Exception:
                 pass
 
+        # 5) Глубина срезов: именованным покупателям ≥4 RFQ (блок котировок),
+        #    именованным продавцам — открытая рекламация (блок претензий).
+        from marketplace.models import RFQItem
+        QDEPTH = [("Гидронасос Caterpillar 2W1223", 2), ("Уплотнение 1R0750", 5),
+                  ("Клапан гидрораспределителя", 3), ("Датчик давления 320D", 4),
+                  ("Подшипник ступицы", 6), ("Фильтр гидравлический HF6553", 8)]
+        st["rfqs_depth"] = 0
+        for u in uniq(buyers):
+            if u.username.startswith("client"):
+                continue
+            have = RFQ.objects.filter(created_by=u).count()
+            prof = getattr(u, "userprofile", None) or getattr(u, "profile", None)
+            company = ((getattr(prof, "company_name", "") if prof else "")
+                       or (u.get_full_name() or u.username))
+            for k in range(have, 4):
+                try:
+                    rfq = RFQ.objects.create(
+                        created_by=u, customer_name=(u.get_full_name() or u.username),
+                        customer_email=(u.email or f"{u.username}@chat.local"),
+                        company_name=company, mode=["semi", "auto", "manual"][k % 3],
+                        urgency="standard", notes="Тестовый RFQ — проверка блока котировок")
+                    off = (k * 2) % len(QDEPTH)
+                    for q, qty in QDEPTH[off:off + 2]:
+                        RFQItem.objects.create(rfq=rfq, query=q, quantity=qty)
+                    st["rfqs_depth"] += 1
+                except Exception:
+                    pass
+        cidx = 0
+        for u in uniq(sellers):
+            if u.username.startswith("client"):
+                continue
+            if OrderClaim.objects.filter(order__items__part__seller=u).exists():
+                continue
+            o = Order.objects.filter(items__part__seller=u).distinct().first()
+            if not o:
+                continue
+            try:
+                OrderClaim.objects.create(
+                    order=o, kind=["defect", "missing", "late"][cidx % 3], status="open",
+                    description="Тестовая рекламация: позиция не соответствует спецификации.")
+                st["claims"] += 1
+                cidx += 1
+            except Exception:
+                pass
+
         return (f"уведомлений {st['notif']}, KYB {st['kyb']}, рекламаций "
                 f"{st['claims']}, КП {st['quotes']}, чертежей {st['drawings']}, "
-                f"заказов-в-пайплайне {st['pipe']}")
+                f"заказов-в-пайплайне {st['pipe']}, RFQ-глубина {st['rfqs_depth']}")
