@@ -489,15 +489,18 @@ class Command(BaseCommand):
                  ("in_production", "reserve_paid"), ("delivered", "mid_paid"),
                  ("ready_to_ship", "mid_paid"), ("completed", "full_paid"),
                  ("delivered", "mid_paid"), ("reserve_paid", "reserve_paid")]
+        from django.db.models import Count as _Count
         _bpool = [b for b in uniq(buyers) if not b.username.startswith("client")] or uniq(buyers)
-        for s in uniq(sellers):
-            if s.username.startswith("client") or not _bpool:
+        # ВСЕ продавцы по каталогу (вкл. demo_seller и client*) — аналитика для всех.
+        _seller_users = list(User.objects.annotate(_np=_Count("parts")).filter(_np__gt=0))
+        for s in _seller_users:
+            if not _bpool:
+                break
+            if Order.objects.filter(items__part__seller=s,
+                                    status__in=("delivered", "completed")).distinct().count() >= 6:
                 continue
             sparts = list(Part.objects.filter(seller=s, is_active=True)[:4])
             if not sparts:
-                continue
-            if Order.objects.filter(items__part__seller=s,
-                                    status__in=("delivered", "completed")).distinct().count() >= 6:
                 continue
             for i, (st_status, pst) in enumerate(_PLAN):
                 ps = sparts[(i % len(sparts)):(i % len(sparts)) + 2] or sparts[:1]
