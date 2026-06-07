@@ -6827,7 +6827,20 @@
       + '.pill-undo.show{opacity:1;transform:translate(-50%,0)}'
       + '.pill-undo .pu-txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}'
       + '.pill-undo .pu-btn{border:none;background:transparent;color:#7dd3fc;font:inherit;font-weight:700;cursor:pointer;padding:4px 6px;white-space:nowrap}'
-      + '.pill-undo .pu-btn:hover{color:#bae6fd}';
+      + '.pill-undo .pu-btn:hover{color:#bae6fd}'
+      // ── dark-mode: модал/строки/инпуты были белыми (белое-на-белом) ──
+      + 'body.dark-mode .pm-box{background:#1f1f1f;color:#f0f0f0}'
+      + 'body.dark-mode .pm-row{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.10)}'
+      + 'body.dark-mode .pm-form{border-color:rgba(255,255,255,.18)}'
+      + 'body.dark-mode .pm-form input,body.dark-mode .pm-form select,body.dark-mode .pm-search{background:#2a2a2a;color:#f0f0f0;border-color:rgba(255,255,255,.16)}'
+      + 'body.dark-mode .pm-reset{background:rgba(255,255,255,.06);color:#f0f0f0;border-color:rgba(255,255,255,.16)}'
+      + 'body.dark-mode .pm-reset:hover{background:rgba(255,255,255,.12)}'
+      + 'body.dark-mode .pm-x,body.dark-mode .pm-act{background:rgba(255,255,255,.08);color:#f0f0f0}'
+      + 'body.dark-mode .pm-act:hover{background:rgba(255,255,255,.16)}'
+      + 'body.dark-mode .pm-src{border-color:rgba(255,255,255,.18)}'
+      + 'body.dark-mode .pill-add{background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.28)}'
+      + 'body.dark-mode .pill-add:hover{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.5)}'
+      + 'body.dark-mode .pill-placeholder{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.2)}';
     document.head.appendChild(s);
   }
   window.__openPillMaster = function () {
@@ -7018,7 +7031,12 @@
       + '.uip-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}'
       + '.uip-btn{padding:9px 18px;border-radius:9px;border:none;font:inherit;cursor:pointer}'
       + '.uip-cancel{background:rgba(0,0,0,.07);color:#1a1a1a}.uip-cancel:hover{background:rgba(0,0,0,.12)}'
-      + '.uip-ok{background:#2563eb;color:#fff}.uip-ok:hover{opacity:.92}';
+      + '.uip-ok{background:#2563eb;color:#fff}.uip-ok:hover{opacity:.92}'
+      // ── dark-mode: был белый модал/инпут (белое-на-белом) ──
+      + 'body.dark-mode .uip-box{background:#1f1f1f;color:#f0f0f0}'
+      + 'body.dark-mode .uip-input{background:#2a2a2a;color:#f0f0f0;border-color:rgba(255,255,255,.18)}'
+      + 'body.dark-mode .uip-cancel{background:rgba(255,255,255,.08);color:#f0f0f0}'
+      + 'body.dark-mode .uip-cancel:hover{background:rgba(255,255,255,.14)}';
     document.head.appendChild(s);
   }
   window.uiPrompt = function(opts) {

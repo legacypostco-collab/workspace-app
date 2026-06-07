@@ -944,6 +944,20 @@
     body.dark-mode .qf-cancel:hover{background:rgba(255,255,255,0.06);color:#fff;}
     body.dark-mode .qf-submit{background:#fff;color:#0a0a0a;}
     body.dark-mode .qf-submit:hover{background:#e5e5e5;}
+    /* ── Dark-mode контраст-фиксы (аудит 06.2026): светлые фоны/фокусы/ховеры,
+          у которых остался #fff → белое-на-белом / невидимые кнопки ── */
+    body.dark-mode .qf-actions{background:#161616;}
+    body.dark-mode .sg-chip{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.85);border-color:rgba(255,255,255,0.12);}
+    body.dark-mode .sg-chip:hover{background:rgba(255,255,255,0.16);color:#fff;border-color:rgba(255,255,255,0.24);}
+    body.dark-mode .fm-input:focus,
+    body.dark-mode .pl-ai-input:focus,
+    body.dark-mode .sq-country:focus,
+    body.dark-mode .sq-city:focus,
+    body.dark-mode .sq-input:focus{background:#2e2e2e;color:#f0f0f0;}
+    body.dark-mode .im-secondary:hover,
+    body.dark-mode .im-copy-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.28);color:#fff;}
+    body.dark-mode .of-btn:hover{background:rgba(255,255,255,0.10);border-color:rgba(255,255,255,0.40);color:#fff;}
+    body.dark-mode .tk-div-btn{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.16);color:#f0f0f0;}
 
     /* ── Seller status card (KYB + рейтинг + метрики) ────────── */
     .ss-card{padding:0;background:rgba(255,255,255,0.85);backdrop-filter:blur(10px);border:1px solid rgba(0,0,0,0.08);border-radius:14px;overflow:hidden;color:#0a0a0a;}
