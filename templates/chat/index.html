@@ -954,8 +954,10 @@
     body.dark-mode .sq-country:focus,
     body.dark-mode .sq-city:focus,
     body.dark-mode .sq-input:focus{background:#2e2e2e;color:#f0f0f0;}
+    body.dark-mode .im-secondary,
+    body.dark-mode .im-copy-btn{background:rgba(255,255,255,0.10);color:#f0f0f0;border-color:rgba(255,255,255,0.18);}
     body.dark-mode .im-secondary:hover,
-    body.dark-mode .im-copy-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.28);color:#fff;}
+    body.dark-mode .im-copy-btn:hover{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.32);color:#fff;}
     body.dark-mode .of-btn:hover{background:rgba(255,255,255,0.10);border-color:rgba(255,255,255,0.40);color:#fff;}
     body.dark-mode .tk-div-btn{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.16);color:#f0f0f0;}
 
@@ -3322,6 +3324,37 @@
     body.dark-mode .im-st-default{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.70);}
     body.dark-mode .im-desc{color:rgba(255,255,255,0.78);}
     body.dark-mode .im-hint{color:rgba(255,255,255,0.65);}
+    /* recommended-карточка (напр. Google-таблица) имела светлый фон → текст,
+       переопределённый на светлый, становился невидимым. Делаем фон тёмным. */
+    body.dark-mode .im-card:has(.im-st-recommended){background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.35);}
+    body.dark-mode .im-features li{background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.78);border-color:rgba(255,255,255,0.08);}
+    body.dark-mode .im-form .im-input{background:rgba(255,255,255,0.06);color:#f0f0f0;border-color:rgba(255,255,255,0.16);}
+    body.dark-mode .im-icon{background:rgba(255,255,255,0.08);}
+    body.dark-mode .im-st-soon{background:rgba(255,255,255,0.08);color:#fb923c;}
+    /* ── Dark-mode 2-й проход: светлые rgba-чипы/кнопки/контейнеры ── */
+    body.dark-mode .ctx-btn{background:rgba(255,255,255,0.10);color:rgba(255,255,255,0.85);border-color:rgba(255,255,255,0.14);}
+    body.dark-mode .wh-bar{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.10);}
+    body.dark-mode .wh-chip{background:rgba(255,255,255,0.08);color:#f0f0f0;border-color:rgba(255,255,255,0.14);}
+    body.dark-mode .oc-scroll,body.dark-mode .tp-scroll{background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.08);}
+    body.dark-mode .fm-select{background-color:#2a2a2a;color:#f0f0f0;}
+    body.dark-mode #dndOverlay .dnd-box{background:#1f1f1f;border-color:rgba(255,255,255,0.30);color:#f0f0f0;}
+    body.dark-mode .working{background:rgba(255,255,255,0.06);}
+    body.dark-mode .sq-chip{background:rgba(255,255,255,0.08);color:#f0f0f0;border-color:rgba(255,255,255,0.16);}
+    body.dark-mode .pl-ai-review-hdr{background:#1b1b1b;color:rgba(255,255,255,0.85);}
+    body.dark-mode .pl-ai-table th{background:#1b1b1b;color:rgba(255,255,255,0.55);border-bottom-color:rgba(255,255,255,0.10);}
+    /* Большие карточки прайс-листа/импорта/smart-q: фон + светлый текст детей */
+    body.dark-mode .pl-defaults-card,body.dark-mode .import-explain,body.dark-mode .import-intro,
+    body.dark-mode .pl-ai-progress-card,body.dark-mode .smart-q-card,body.dark-mode .sq-card-done{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.10);color:#e8e8e8;}
+    body.dark-mode .tp-foot,body.dark-mode .pl-from-profile,body.dark-mode .pl-defaults-summary,
+    body.dark-mode .pl-df-label,body.dark-mode .pl-ship-combo-hint,body.dark-mode .pl-ai-estimate-status,
+    body.dark-mode .ie-sub,body.dark-mode .ie-label,body.dark-mode .ie-hint,body.dark-mode .ie-rule,
+    body.dark-mode .ii-sub,body.dark-mode .ii-hint,body.dark-mode .ii-rules{color:rgba(255,255,255,0.72);}
+    body.dark-mode .pl-defaults-summary:hover,body.dark-mode .pl-defaults-details[open] .pl-defaults-summary,
+    body.dark-mode .pl-ship-flabel,body.dark-mode .ie-title,body.dark-mode .ie-value,body.dark-mode .ie-value b,
+    body.dark-mode .ie-rule b,body.dark-mode .ii-title,body.dark-mode .ii-step > div,body.dark-mode .ii-rules b{color:#f0f0f0;}
+    body.dark-mode .ie-rule,body.dark-mode .ii-rules,body.dark-mode .pl-df-note{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.08);}
+    body.dark-mode .pl-clear-profile{color:#f0f0f0;border-color:rgba(255,255,255,0.20);}
+    body.dark-mode .pl-ai-start-btn{background:rgba(255,255,255,0.10);color:#f0f0f0;border-color:rgba(255,255,255,0.18);}
 
     /* Top-suppliers table */
     body.dark-mode .tp-table th{background:rgba(255,255,255,0.05);color:#fff;border-bottom-color:rgba(255,255,255,0.10);}
