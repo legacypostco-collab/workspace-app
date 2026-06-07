@@ -78,6 +78,7 @@ class Command(BaseCommand):
         wallet_amount = Decimal(str(opts.get("wallet") or 0))
         created_rows, updated_rows = [], []
         sellers, buyers, operators, kam_links = [], [], [], []
+        kams = []  # KAM-менеджеры (operator_role="manager") для привязки клиентов
 
         def ensure_user(username, *, display, role, operator_role="",
                         is_admin=False, company=""):
@@ -134,6 +135,7 @@ class Command(BaseCommand):
                 sellers.append(accts["seller"])
                 operators.append(accts["operator"])
                 if role == "operator" and op_role == "manager":
+                    kams.append(personal)
                     cust, _ = Customer.objects.get_or_create(
                         owner=personal, inn=f"TEST{personal.id:04d}1",
                         defaults={"name": f"{display} — клиент (тест)",
@@ -155,6 +157,24 @@ class Command(BaseCommand):
                         sellers.append(a)
                     else:
                         operators.append(a)
+
+            # KAM закрепляется за КАЖДЫМ тест-покупателем (round-robin),
+            # чтобы блок «мой персональный менеджер» был заполнен у всех.
+            if kams:
+                for idx, b in enumerate({bu.id: bu for bu in buyers}.values()):
+                    if Customer.objects.filter(user=b, owner__in=kams,
+                                               is_active=True).exists():
+                        continue
+                    kam = kams[idx % len(kams)]
+                    Customer.objects.get_or_create(
+                        owner=kam, inn=f"77{b.id:08d}",
+                        defaults={"name": (b.first_name or b.username),
+                                  "country": "RU",
+                                  "legal_address": "г. Москва, Тестовая ул., 1",
+                                  "contact_name": (b.first_name or b.username),
+                                  "phone": "+7 (495) 000-00-00",
+                                  "user": b, "is_active": True,
+                                  "note": "seed: KAM ведёт закупки клиента"})
 
         data_msg = enrich_msg = "пропущены (--no-data)"
         if not opts.get("no_data"):

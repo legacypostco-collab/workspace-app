@@ -5796,6 +5796,19 @@
         }, 700);
       }
     } catch (e) {}
+    // Поиск с лендинга: /chat/?q=<парт-номера> → заполнить hero и запустить поиск.
+    const q = p.get('q');
+    if (q && q.trim()) {
+      history.replaceState(null, '', window.location.pathname);
+      setTimeout(() => {
+        try {
+          const inp = $('heroInput');
+          if (inp) { inp.value = q; if (typeof updateHeroIcon === 'function') updateHeroIcon(); }
+          send(true);
+        } catch (e) { console.warn('q search trigger failed', e); }
+      }, 450);
+      return;
+    }
     const a = p.get('action');
     if (!a) return;
     // Очищаем query чтобы при перезагрузке action не запускался повторно.

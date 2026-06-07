@@ -100,6 +100,7 @@ _BUYER_ACTIONS = [
     "invite_customer", "accept_customer_invite", "accept_referral",  # инвайт/реферал (для всех ролей)
     "my_referrals",  # мои реферальные награды ($100 за приведённого)
     "my_kam", "change_manager",  # клиент: его менеджер + право сменить (удержание)
+    "kam_message", "kam_reattach", "kam_request",  # клиент: написать / вернуть / подобрать KAM
     # Решение по консолидации vs split shipment
     "consolidate_wait", "split_shipment", "set_supplier_decision",
     "get_budget", "get_analytics", "get_supply_report", "get_sla_report",

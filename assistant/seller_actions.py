@@ -3383,49 +3383,264 @@ def op_escalate_to_kam(params, user, role):
     )
 
 
+def _kam_pool():
+    """Список пользователей-KAM (operator_role='manager')."""
+    from marketplace.models import UserProfile
+    return [p.user for p in UserProfile.objects.filter(operator_role="manager")
+            .select_related("user")]
+
+
+def _assign_kam(user, *, avoid_id=None):
+    """Закрепить за клиентом менеджера из пула (наименее загруженного).
+
+    Деактивирует прочие активные привязки, переиспользует существующую запись
+    к этому KAM либо создаёт новую. Возвращает назначенного KAM (User) или None.
+    """
+    from marketplace.models import Customer
+    pool = _kam_pool()
+    if not pool:
+        return None
+    cand = [k for k in pool if k.id != avoid_id] or pool
+    kam = min(cand, key=lambda k: Customer.objects.filter(owner=k, is_active=True).count())
+    Customer.objects.filter(user=user, is_active=True).update(is_active=False)
+    link = Customer.objects.filter(user=user, owner=kam).order_by("-updated_at").first()
+    if link:
+        link.is_active = True
+        link.save(update_fields=["is_active"])
+    else:
+        name = user.get_full_name() or user.username
+        Customer.objects.create(
+            owner=kam, inn=f"77{user.id:08d}", name=name, country="RU",
+            legal_address="г. Москва, Тестовая ул., 1",
+            contact_name=name, phone="+7 (495) 000-00-00",
+            user=user, is_active=True, note="self-assign: KAM ведёт закупки клиента")
+    return kam
+
+
+@register("kam_request")
+def kam_request(params, user, role):
+    """Подобрать персонального менеджера (KAM) клиенту без закреплённого."""
+    from marketplace.models import Customer
+    if not (user and getattr(user, "is_authenticated", False)):
+        return ActionResult(text="Войдите, чтобы подобрать менеджера.",
+                            actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+    active = (Customer.objects.filter(user=user, is_active=True)
+              .select_related("owner").first())
+    if active and active.owner_id:
+        mgr = active.owner.get_full_name() or active.owner.username
+        return ActionResult(
+            text=f"За вами уже закреплён персональный менеджер — {mgr}.",
+            actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
+                     {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+    kam = _assign_kam(user)
+    if not kam:
+        return ActionResult(
+            text="Сейчас нет свободного менеджера — мы подберём и сообщим вам.",
+            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}])
+    mgr = kam.get_full_name() or kam.username
+    return ActionResult(
+        text=f"✅ Ваш персональный менеджер — {mgr}. Он берёт ваши закупки на себя: "
+             "подбор поставщиков, сроки, цена.",
+        actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
+                 {"label": "💬 Написать менеджеру", "action": "kam_message", "params": {}},
+                 {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+
+
 @register("my_kam")
 def my_kam(params, user, role):
-    """Кабинет клиента: кто его ведёт (KAM) + право сменить менеджера."""
+    """Кабинет клиента: кто его ведёт (KAM) + диалог, заказы, смена менеджера."""
     from marketplace.models import Customer
     if not (user and getattr(user, "is_authenticated", False)):
         return ActionResult(text="Войдите, чтобы увидеть вашего персонального менеджера.",
                             actions=[{"label": "Войти", "action": "start_login", "params": {}}])
-    recs = list(Customer.objects.filter(user=user, is_active=True).select_related("owner"))
-    if not recs:
+    c = (Customer.objects.filter(user=user, is_active=True)
+         .select_related("owner").order_by("-updated_at").first())
+    if not c:
         return ActionResult(
             text="За вами пока не закреплён персональный менеджер (KAM). Хотите — подберём: "
                  "специалист по закупкам возьмёт ваши заявки на себя.",
-            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}])
-    rows = []
-    for c in recs:
-        mgr = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "—"
-        rows.append({
-            "title": f"Ваш менеджер (KAM): {mgr}",
-            "subtitle": "Ведёт ваши закупки на платформе. Не подходит? Нажмите → сменить менеджера.",
-            "action": "change_manager", "params": {"id": str(c.id)},
-        })
+            actions=[{"label": "🙋 Подобрать менеджера", "action": "kam_request", "params": {}},
+                     {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+    mgr = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "—"
+    rows = [{
+        "title": f"Ваш менеджер (KAM): {mgr}",
+        "subtitle": "Ведёт ваши закупки: сроки, цены, выгода. Нажмите → напишите ему.",
+        "action": "kam_message", "params": {"id": str(c.id)},
+    }]
     return ActionResult(
         text="👤 Ваш персональный менеджер (KAM) — отвечает за ваши закупки, сроки и выгоду.",
         cards=[{"type": "list", "data": {"title": "Менеджер", "rows": rows}}],
-        actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}],
+        actions=[
+            {"label": "💬 Написать менеджеру", "action": "kam_message", "params": {"id": str(c.id)}},
+            {"label": "📦 Мои заказы", "action": "get_orders", "params": {}},
+            {"label": "🔄 Сменить менеджера", "action": "change_manager", "params": {"id": str(c.id)}},
+            {"label": "🏠 Главная", "action": "go_home", "params": {}},
+        ],
+    )
+
+
+@register("kam_message")
+def kam_message(params, user, role):
+    """Диалог покупателя со своим персональным менеджером (KAM).
+
+    Phase 1 — форма сообщения. Phase 2 (confirmed) — доставка в чат менеджера.
+    """
+    from marketplace.models import Customer
+    from .models import Conversation, Message
+    if not (user and getattr(user, "is_authenticated", False)):
+        return ActionResult(text="Войдите, чтобы написать менеджеру.",
+                            actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+    cid = params.get("id")
+    qs = Customer.objects.filter(user=user, is_active=True).select_related("owner")
+    c = (qs.filter(id=cid).first() if cid else qs.order_by("-updated_at").first())
+    if not c or not c.owner_id:
+        return ActionResult(
+            text="У вас пока нет закреплённого менеджера, которому можно написать.",
+            actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
+                     {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+    kam = c.owner
+    mgr = kam.get_full_name() or kam.username
+    text = (params.get("text") or "").strip()
+
+    if not params.get("confirmed"):
+        return ActionResult(
+            text=f"💬 Напишите вашему менеджеру — {mgr} получит сообщение и ответит здесь.",
+            cards=[{"type": "form", "data": {
+                "title": f"💬 Сообщение менеджеру ({mgr})",
+                "submit_action": "kam_message", "submit_label": "📨 Отправить",
+                "fields": [{"name": "text", "label": "Сообщение", "type": "textarea",
+                            "required": True,
+                            "placeholder": "Вопрос по заказу, срокам, цене или подбору поставщика…"}],
+                "fixed_params": {"confirmed": True, "id": str(c.id)},
+            }}],
+            actions=[{"label": "← К менеджеру", "action": "my_kam", "params": {}}],
+        )
+
+    if not text:
+        return ActionResult(text="⚠️ Сообщение пустое — напишите текст.",
+                            actions=[{"label": "← Назад", "action": "kam_message",
+                                      "params": {"id": str(c.id)}}])
+
+    delivered = False
+    try:
+        conv = Conversation.objects.filter(
+            user=kam, category="support", title="Сообщения клиентов",
+            is_active=True).order_by("-updated_at").first()
+        if not conv:
+            conv = Conversation.objects.create(
+                user=kam, role="operator", category="support",
+                title="Сообщения клиентов")
+        buyer_name = user.get_full_name() or user.username
+        Message.objects.create(
+            conversation=conv, role=Message.Role.SYSTEM,
+            content=f"💬 Клиент {buyer_name} (@{user.username}): {text[:1500]}",
+            actions=[{"action": "admin_user_detail", "label": "👤 Профиль клиента",
+                      "params": {"user_id": user.id}}],
+        )
+        delivered = True
+        try:
+            from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
+            layer = get_channel_layer()
+            if layer:
+                async_to_sync(layer.group_send)(
+                    f"notif_user_{kam.id}",
+                    {"type": "operator_alert", "event": "kam_message",
+                     "rfq_id": None, "order_id": None, "claim_id": None})
+        except Exception:
+            pass
+    except Exception:
+        logger.exception("kam_message: deliver failed")
+
+    if not delivered:
+        return ActionResult(
+            text="⚠️ Не удалось отправить сообщение. Попробуйте ещё раз.",
+            actions=[{"label": "🔁 Повторить", "action": "kam_message", "params": {"id": str(c.id)}},
+                     {"label": "← К менеджеру", "action": "my_kam", "params": {}}])
+    return ActionResult(
+        text=f"✅ Сообщение отправлено менеджеру ({mgr}). Он получит его в чате и ответит вам.",
+        actions=[
+            {"label": "✍️ Написать ещё", "action": "kam_message", "params": {"id": str(c.id)}},
+            {"label": "← К менеджеру", "action": "my_kam", "params": {}},
+            {"label": "🏠 Главная", "action": "go_home", "params": {}},
+        ],
     )
 
 
 @register("change_manager")
 def change_manager(params, user, role):
-    """Клиент открепляется от KAM → заявка возвращается в пул (назначат нового)."""
+    """Клиент открепляется от KAM (с подтверждением) → заявка возвращается в пул."""
     from marketplace.models import Customer
     cid = params.get("id")
-    c = Customer.objects.filter(id=cid, user=user, is_active=True).first()
+    c = (Customer.objects.filter(id=cid, user=user, is_active=True)
+         .select_related("owner").first())
     if not c:
-        return ActionResult(text="Привязка не найдена или уже снята.")
-    c.is_active = False
-    c.save(update_fields=["is_active"])
+        return ActionResult(
+            text="Привязка не найдена или уже снята.",
+            actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
+                     {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+    mgr = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "менеджер"
+
+    if not params.get("confirmed"):
+        return ActionResult(
+            text=(f"Сменить менеджера ({mgr})? Мы назначим вам другого персонального "
+                  "менеджера из пула. Ваши заказы и история сохранятся."),
+            actions=[
+                {"label": "🔄 Да, сменить", "action": "change_manager",
+                 "params": {"id": str(c.id), "confirmed": True}},
+                {"label": "← Оставить", "action": "my_kam", "params": {}},
+            ],
+        )
+
+    cur_id = c.owner_id
+    new_kam = _assign_kam(user, avoid_id=cur_id)
+    if not new_kam:
+        c.is_active = False
+        c.save(update_fields=["is_active"])
+        return ActionResult(
+            text=f"Вы откреплены от менеджера ({mgr}). Сейчас нет другого свободного — "
+                 "можно вернуть прежнего или подобрать позже.",
+            actions=[
+                {"label": "↩️ Вернуть менеджера", "action": "kam_reattach", "params": {"id": str(c.id)}},
+                {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+    newmgr = new_kam.get_full_name() or new_kam.username
     return ActionResult(
-        text="✅ Вы откреплены от менеджера. Ваша заявка вернулась в пул — мы назначим нового "
-             "персонального менеджера, который продолжит вести ваши закупки.",
-        actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}],
+        text=f"✅ Назначен новый персональный менеджер — {newmgr}. Прежний ({mgr}) откреплён; "
+             "ваши заказы и история сохранены.",
+        actions=[
+            {"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
+            {"label": "💬 Написать менеджеру", "action": "kam_message", "params": {}},
+            {"label": "🏠 Главная", "action": "go_home", "params": {}}],
     )
+
+
+@register("kam_reattach")
+def kam_reattach(params, user, role):
+    """Отмена открепления — вернуть только что снятого менеджера (undo)."""
+    from marketplace.models import Customer
+    if not (user and getattr(user, "is_authenticated", False)):
+        return ActionResult(text="Войдите, чтобы вернуть менеджера.",
+                            actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+    if Customer.objects.filter(user=user, is_active=True).exists():
+        return ActionResult(text="За вами уже закреплён менеджер.",
+                            actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}}])
+    cid = params.get("id")
+    c = (Customer.objects.filter(id=cid, user=user)
+         .select_related("owner").order_by("-updated_at").first()) if cid else None
+    if not c:
+        c = (Customer.objects.filter(user=user, is_active=False)
+             .select_related("owner").order_by("-updated_at").first())
+    if not c:
+        return ActionResult(
+            text="Не нашёл, какого менеджера вернуть.",
+            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}])
+    c.is_active = True
+    c.save(update_fields=["is_active"])
+    mgr = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "менеджер"
+    return ActionResult(
+        text=f"✅ Менеджер {mgr} снова закреплён за вами.",
+        actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
+                 {"label": "🏠 Главная", "action": "go_home", "params": {}}])
 
 
 @register("my_referrals")

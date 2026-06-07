@@ -1226,6 +1226,26 @@
   }
   .search-box .ex-sku{ color: rgba(255,255,255,0.55); }
   .search-box .ex-qty{ color: rgba(255,255,255,0.42); }
+  .search-box .search-input{
+    width: 100%;
+    background: transparent;
+    border: 0;
+    outline: none;
+    resize: none;
+    color: rgba(255,255,255,0.92);
+    font-family: 'JetBrains Mono','SF Mono', Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.85;
+    padding: 0;
+    margin-bottom: 12px;
+    min-height: 52px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .search-box .search-input::placeholder{
+    color: rgba(255,255,255,0.40);
+    white-space: pre;
+  }
   .search-box .search-toolbar{
     display: flex; align-items: center;
     border-top: 1px solid rgba(255,255,255,0.07);
@@ -1686,6 +1706,19 @@ html[dir="rtl"] .theme-fab{right:auto!important;left:14px!important;}
       document.documentElement.classList.toggle('dark-mode', on);  // фон overscroll-зоны
       try { localStorage.setItem('cf_dark_mode', on ? '1' : '0'); } catch(e){}
     };
+    // Поиск запчастей с лендинга: НЕ уводим в чат по пустому клику.
+    // Переходим в чат только когда введены парт-номера и нажат поиск/Enter —
+    // и сразу со старта поиска (/chat/?q=… прогоняет search на новой странице).
+    window.landingGoSearch = function(){
+      var el = document.getElementById('landingSearch');
+      var t = (el && el.value || '').trim();
+      if (!t){ if (el) el.focus(); return; }
+      window.location = '/chat/?q=' + encodeURIComponent(t);
+    };
+    window.landingKey = function(e){
+      if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); window.landingGoSearch(); }
+    };
+    window.landingChat = function(){ window.location = '/chat/?new=1'; };
   })();
 </script>
 <div class="page">
@@ -1824,29 +1857,28 @@ html[dir="rtl"] .theme-fab{right:auto!important;left:14px!important;}
       <p class="search-lead">{% trans "Загрузите спецификацию в Excel или опишите словами — соберу предложения от" %} <b>{% trans "200+ поставщиков" %}</b>.</p>
       </div>
 
-      <a class="search-box" tabindex="0" href="/chat/?new=1" style="text-decoration:none;color:inherit;display:block;">
+      <div class="search-box" onclick="if(event.target===this){document.getElementById('landingSearch').focus();}">
         <div class="examples-tag">{% trans "ПРИМЕРЫ:" %}</div>
-        <div class="examples-grid">
-          <span class="ex-sku">2W1223</span><span class="ex-qty">1</span>
-          <span class="ex-sku">1R0750</span><span class="ex-qty">2</span>
-        </div>
+        <textarea id="landingSearch" class="search-input" rows="2" autocomplete="off" spellcheck="false"
+                  placeholder="2W1223  1&#10;1R0750  2"
+                  onkeydown="landingKey(event)"></textarea>
         <div class="search-toolbar">
           <div class="tools-left">
-            <button class="tool-btn" type="button" aria-label="{% trans 'Прикрепить файл' %}" onclick="event.preventDefault();window.location='/chat/?new=1'">
+            <button class="tool-btn" type="button" aria-label="{% trans 'Прикрепить файл' %}" onclick="landingChat()">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 17.93 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             </button>
-            <button class="tool-btn" type="button" aria-label="{% trans 'Сфотографировать деталь' %}" onclick="event.preventDefault();window.location='/chat/?new=1'">
+            <button class="tool-btn" type="button" aria-label="{% trans 'Сфотографировать деталь' %}" onclick="landingChat()">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/></svg>
             </button>
-            <button class="tool-btn" type="button" aria-label="{% trans 'Поиск по каталогу' %}" onclick="event.preventDefault();window.location='/chat/?new=1'">
+            <button class="tool-btn" type="button" aria-label="{% trans 'Поиск по каталогу' %}" onclick="landingGoSearch()">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             </button>
           </div>
-          <button class="mic-btn" type="button" aria-label="{% trans 'Голосовой ввод' %}" onclick="event.preventDefault();window.location='/chat/?new=1'">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          <button class="mic-btn" type="button" aria-label="{% trans 'Найти' %}" onclick="landingGoSearch()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           </button>
         </div>
-      </a>
+      </div>
 
       <div class="drop-hint">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
