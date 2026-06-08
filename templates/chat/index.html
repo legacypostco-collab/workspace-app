@@ -3937,8 +3937,7 @@
       </div>
 
       <div class="pills" id="welcomePills">
-        {# Пилюли по роли (серверно) — чтобы продавец/оператор не видели покупательские
-           при загрузке. JS applyRoleWelcome() перерисует их же под текущим языком. #}
+        {% comment %}Пилюли по роли (серверно) — продавец/оператор не видят покупательские при загрузке; JS applyRoleWelcome() перерисует их под текущим языком.{% endcomment %}
         {% for p in welcome_pills %}
         <button class="pill" type="button" onclick="quickAction('{{ p.action|escapejs }}', {})"><span class="pill-txt">{{ p.emoji }} {{ p.label }}</span></button>
         {% endfor %}
