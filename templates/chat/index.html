@@ -2645,10 +2645,13 @@
     .conv-retry:hover, .notif-retry:hover { background:#000; }
 
     /* ── Прогресс-бар при загрузке файла (uploadSpec) ── */
-    .upl-bar { margin-top:6px; height:4px; background:rgba(0,0,0,0.06); border-radius:4px; overflow:hidden; }
-    .upl-bar-fill { height:100%; background:#64B5F6; width:0%; transition:width .2s ease; }
-    .upl-pct { font-weight:600; color:#64B5F6; margin-left:6px; }
+    .upl-bar { margin-top:6px; height:4px; background:rgba(0,0,0,0.10); border-radius:4px; overflow:hidden; }
+    /* Светлая тема: тёмно-синий (контраст на sunrise-фоне); тёмная — светло-синий. */
+    .upl-bar-fill { height:100%; background:#1565C0; width:0%; transition:width .2s ease; }
+    .upl-pct { font-weight:700; color:#1565C0; margin-left:6px; }
     body.dark-mode .upl-bar { background:rgba(255,255,255,0.08); }
+    body.dark-mode .upl-bar-fill { background:#64B5F6; }
+    body.dark-mode .upl-pct { color:#64B5F6; }
 
     .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
     .act-btn{padding:9px 16px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;}
