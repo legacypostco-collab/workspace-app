@@ -1366,7 +1366,7 @@
     // выполнения: платёж/заказ/импорт) и без abort'а — одна попытка.
     const method = (opts.method || 'GET').toUpperCase();
     const idempotent = (method === 'GET' || method === 'HEAD');
-    const attempts = idempotent ? 3 : 1;
+    const attempts = 3;  // и GET, и POST: до 3 попыток (POST ретраим только на 52x, см. ниже)
     let lastErr;
     for (let i = 0; i < attempts; i++) {
       const ctrl = (idempotent && window.AbortController) ? new AbortController() : null;
@@ -1381,18 +1381,25 @@
       } catch (e) {
         if (timer) clearTimeout(timer);
         lastErr = e;
+        // GET — ретраим обрыв канала; POST — нет (запрос мог дойти и выполниться).
         if (idempotent && i < attempts - 1) { await new Promise(r => setTimeout(r, 500 + i*700)); continue; }
         throw e;
       }
       if (timer) clearTimeout(timer);
       if (res.ok) return res.json();
-      // 5xx — транзиент: ретраим (idempotent). 4xx — сразу наверх.
-      if (res.status >= 500 && idempotent && i < attempts - 1) {
+      // 52x от Cloudflare = origin НЕдостижим → запрос вообще не дошёл до приложения,
+      // поэтому ретрай безопасен ДАЖЕ для POST (двойного выполнения быть не может).
+      // Прочие 5xx (500/502/503) для POST неоднозначны — ретраим только idempotent.
+      const cfUnreachable = (res.status >= 520 && res.status <= 524);
+      const canRetry = cfUnreachable || (idempotent && res.status >= 500);
+      if (canRetry && i < attempts - 1) {
         lastErr = new Error(`${path} → ${res.status}`);
-        await new Promise(r => setTimeout(r, 500 + i*700));
+        await new Promise(r => setTimeout(r, 600 + i*900));
         continue;
       }
-      throw new Error(`${path} → ${res.status}`);
+      const err = new Error(`${path} → ${res.status}`);
+      err.status = res.status;
+      throw err;
     }
     throw lastErr;
   }
@@ -5742,13 +5749,14 @@
     } catch(err) {
       if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
-      // Сетевой сбой (обрыв канала браузер↔Cloudflare) — частый при
-      // нестабильной сети. POST не авто-ретраим (действие могло быть пишущим
-      // → риск двойного выполнения), но даём понятное сообщение + кнопку
-      // «Повторить» (один клик повторяет то же действие).
-      const _net = /Failed to fetch|NetworkError|network|load failed/i.test(
-        (err && err.message) || '');
-      if (_net) {
+      // Транзиентный сбой: обрыв канала ИЛИ 5xx/52x (Cloudflare не достучался до
+      // origin / upstream-сбой). Действие при этом не выполнилось — показываем
+      // понятное сообщение + «Повторить» вместо сырого «/api/... → 521».
+      const _msg = (err && err.message) || '';
+      const _net = /Failed to fetch|NetworkError|network|load failed/i.test(_msg);
+      const _status = (err && err.status) || 0;
+      const _transient = _net || _status >= 500 || /→ 5\d\d$/.test(_msg);
+      if (_transient) {
         addMessage('assistant',
           '⚠️ Соединение прервалось — нажмите «Повторить».',
           [], [{action: action, params: params, label: '🔄 Повторить'}]);
