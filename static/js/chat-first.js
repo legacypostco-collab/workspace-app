@@ -1746,6 +1746,7 @@
   // State transitions: WELCOME ↔ CONV
   // ══════════════════════════════════════════════════════════
   function showConv() {
+    document.documentElement.classList.remove('cf-restoring'); // разговор готов — снимаем спиннер/анти-мелькание
     $('welcomeStage').classList.add('hidden');
     $('convStage').classList.remove('hidden');
     // Юзер в conv-стейдже — снимаем sticky welcome, чтобы F5 возвращал
@@ -1753,6 +1754,7 @@
     try { sessionStorage.removeItem('cf_on_welcome'); } catch(_){}
   }
   function showWelcome() {
+    document.documentElement.classList.remove('cf-restoring'); // показываем welcome — анти-мелькание больше не нужно
     $('welcomeStage').classList.remove('hidden');
     $('convStage').classList.add('hidden');
     $('streamInner').innerHTML = '';
@@ -10270,6 +10272,9 @@
         }
         return;
       }
+      // Сюда дошли = разговор не восстанавливаем, остаёмся на welcome → раскрываем
+      // его (анти-мелькание было нужно только на время попытки восстановления).
+      document.documentElement.classList.remove('cf-restoring');
       // Welcome stage — но если ?run= задан, тоже выполняем
       const runAction = params.get('run');
       if (runAction) {
@@ -10285,7 +10290,7 @@
         updateHeroIcon();
         return;
       }
-    } catch(e){ console.warn('conv resolve failed', e); }
+    } catch(e){ console.warn('conv resolve failed', e); document.documentElement.classList.remove('cf-restoring'); }
     connectWS();
     setTimeout(() => $('heroInput').focus(), 200);
     updateHeroIcon();

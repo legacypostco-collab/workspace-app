@@ -3596,7 +3596,34 @@
   // Auth flag для chat-first.js (anon → "Продавец" tab открывает регистрацию)
   window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
   window.__INITIAL_ROLE = "{{ initial_role|default:'buyer'|escapejs }}";  // серверная роль — против мелькания welcome
+  // Анти-мелькание при F5: сервер рисует welcome-home для первого кадра, но если
+  // юзер был в открытом разговоре/кабинете (cf_active_conv) — init() восстановит
+  // его только после widget-config+loadConvList (1-2 сек на медленной сети), и всё
+  // это время виден домашний экран. Прячем welcome сразу (показываем спиннер),
+  // init() снимет класс через showConv()/showWelcome().
+  (function(){
+    try {
+      var p = new URLSearchParams(location.search);
+      if (p.get('new') === '1') return;                              // явный welcome
+      if (sessionStorage.getItem('cf_on_welcome') === '1') return;   // sticky welcome
+      if (p.get('conv') || sessionStorage.getItem('cf_active_conv')) {
+        document.documentElement.classList.add('cf-restoring');
+        // Подстраховка от залипания на пустом экране, если init не снимет класс.
+        setTimeout(function(){ document.documentElement.classList.remove('cf-restoring'); }, 5000);
+      }
+    } catch(_){}
+  })();
 </script>
+<style>
+  /* Пока восстанавливаем разговор после F5 — welcome-home скрыт, по центру спиннер. */
+  html.cf-restoring #welcomeStage{display:none!important;}
+  html.cf-restoring::after{
+    content:"";position:fixed;top:50%;left:50%;width:32px;height:32px;margin:-16px 0 0 -16px;
+    border:3px solid rgba(127,127,127,0.22);border-top-color:rgba(127,127,127,0.75);
+    border-radius:50%;animation:cfRestoreSpin .8s linear infinite;z-index:6;pointer-events:none;
+  }
+  @keyframes cfRestoreSpin{to{transform:rotate(360deg);}}
+</style>
 <div class="app">
 
   <!-- Sidebar -->
@@ -3953,7 +3980,7 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=4"></script>
-<script src="{% static 'js/chat-first.js' %}?v=96"></script>
+<script src="{% static 'js/chat-first.js' %}?v=97"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>
