@@ -2902,7 +2902,28 @@
     kpi_grid(d) {
       // KPI-ячейка может быть кликабельной если у item есть `action`/`params` или `url`.
       // Visually: добавляем класс `.kpi-cell-clickable` + cursor:pointer + handler.
+      // Авто-навигация по подписи ячейки (роль-зависимо), если backend не задал
+      // явный action/url → KPI-карточки кликабельны во всём проекте.
+      const _krole = String(window.__pillRole || 'buyer').replace(/^operator.*/, 'operator');
+      const _KPI_NAV = {
+        seller: [[/каталог|товар/i,'seller_warehouses'],[/sla|поведенческ/i,'get_sla_report'],
+          [/заказ|сделк|выполнен|отгруз/i,'get_orders'],[/депозит|баланс/i,'get_balance'],
+          [/оборот|выручк|средн|чек|рейтинг/i,'seller_analytics_hub'],[/рекламац|претенз/i,'get_claims'],
+          [/rfq|запрос|срочн/i,'seller_inbox'],[/внешн|верифик|kyb|оценк/i,'start_onboarding']],
+        buyer: [[/заказ|сделк|поставк/i,'get_orders'],[/депозит|баланс/i,'get_balance'],
+          [/rfq|запрос|котиров/i,'get_my_deals'],[/скидк|эконом/i,'get_buyer_discount'],
+          [/менеджер|kam/i,'my_kam'],[/рекламац|претенз/i,'get_claims']],
+        operator: [[/очеред|queue/i,'op_queue'],[/sla|просроч|срыв/i,'op_sla_breach'],
+          [/рекламац|претенз|claim/i,'get_claims'],[/kyb|верифик/i,'op_kyb_queue'],
+          [/платеж|эскроу|escrow/i,'op_payments_dashboard'],[/таможн|customs/i,'op_customs_dashboard'],
+          [/логист|доставк/i,'op_logistics_stats'],[/поставщик|supplier/i,'op_my_suppliers']],
+      };
+      const _navFor = (label) => {
+        for (const [re, act] of (_KPI_NAV[_krole] || [])) if (re.test(label || '')) return act;
+        return null;
+      };
       const items = (d.kpis || d.items || []).map(k => {
+        if (!k.action && !k.url) { const _a = _navFor(k.label); if (_a) k.action = _a; }
         const inner = `
           <div class="kpi-value">${esc(String(k.value ?? '—'))}</div>
           <div class="kpi-label">${esc(k.label || '')}</div>

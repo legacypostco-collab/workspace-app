@@ -151,21 +151,28 @@ def start_onboarding(params, user, role):
         else:
             tier, tier_tone, next_tier = "Рисковый", "bad", (60, "Песочница", 60 - score)
 
+        # Каждая ячейка кликабельна → ведёт на релевантный детальный экран.
         kpi_items = [
             {"label": "Рейтинг", "value": f"{score}/100", "tone": tier_tone,
+             "action": "seller_analytics_hub", "params": {},
              "sub": tier + (f" · до «{next_tier[1]}»: +{next_tier[2]}" if next_tier else " · максимум")},
             {"label": "Внешняя оценка (60%)", "value": f"{external_score}/100",
              "tone": "ok" if external_score >= 80 else "warn" if external_score >= 60 else "bad",
+             "action": "start_onboarding", "params": {},
              "sub": "Контур/СПАРК · юр.статус, финансы"},
             {"label": "Поведенческая (40%)", "value": f"{round(behavioral_score)}/100",
              "tone": "ok" if behavioral_score >= 80 else "warn" if behavioral_score >= 60 else "bad",
+             "action": "get_sla_report", "params": {},
              "sub": "SLA · сделки · рекламации"},
             {"label": "SLA", "value": f"{sla_pct:.0f}%" if n_total else "—",
              "tone": "ok" if sla_pct >= 95 else "warn" if sla_pct >= 80 else "bad" if n_total else "info",
+             "action": "get_sla_report", "params": {},
              "sub": f"{n_breached} наруш. из {n_total}" if n_total else "Нет завершённых сделок"},
             {"label": "Заказов выполнено", "value": str(n_delivered),
+             "action": "get_orders", "params": {},
              "sub": f"в работе: {n_in_flight}" if n_in_flight else None},
             {"label": "Каталог", "value": f"{catalog_n:,} поз.",
+             "action": "seller_warehouses", "params": {},
              "tone": "ok" if catalog_n >= 100 else "warn" if catalog_n > 0 else "info"},
         ]
 
