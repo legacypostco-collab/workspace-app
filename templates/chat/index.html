@@ -362,12 +362,6 @@
     body.dark-mode .pill-sub{color:rgba(255,255,255,0.62);}
     .pill:hover{background:rgba(255,255,255,0.75);border-color:rgba(255,255,255,0.85);}
     .pill svg{flex-shrink:0;color:rgba(0,0,0,0.55);}
-    /* Кнопка-меню «+» (кружок) — статически, чтобы не мигала при F5 до загрузки JS (_ensurePillCSS). */
-    .pill-add{width:40px;height:40px;border-radius:50%;border:1px dashed rgba(0,0,0,.28);background:rgba(255,255,255,.45);font-size:22px;line-height:1;color:rgba(0,0,0,.5);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0;transition:background .15s,border-color .15s,color .15s,transform .1s;}
-    .pill-add:hover{background:#fff;border-color:rgba(0,0,0,.45);color:#000;}
-    .pill-add:active{transform:scale(.92);}
-    body.dark-mode .pill-add{background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.28);}
-    body.dark-mode .pill-add:hover{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.5);}
 
     /* ── Conversation state ── */
     .conv{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-top:60px;}
@@ -3593,24 +3587,9 @@
     /* В чат-инпуте кнопки tool-spacer на конце — auto-flip. */
 
   </style>
-  <style>
-    /* Тёмный фон применяем НА УРОВНЕ html с первого кадра (до парсинга body),
-       чтобы при F5 не мелькал светлый фон, пока JS не применил тему. */
-    html.dark-mode-pre{background:#1a1a1a;}
-    html.dark-mode-pre body{background:#1a1a1a;}
-    html.dark-mode-pre body::before{
-      background:radial-gradient(ellipse 70% 55% at 50% 20%, rgba(255,255,255,0.30), transparent 65%),
-                 linear-gradient(180deg,#555 0%,#3a3a3a 35%,#181818 65%,#050505 100%) !important;
-    }
-  </style>
   <script>
-    // Тему применяем ДО первого кадра: явный выбор (cf_dark_mode) или, если не задан,
-    // системная тёмная (prefers-color-scheme). Иначе при F5 мелькает светлый фон.
-    try {
-      var __dm = localStorage.getItem('cf_dark_mode');
-      var __wantDark = (__dm === '1') || (__dm === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      if (__wantDark) document.documentElement.classList.add('dark-mode-pre');
-    } catch(e){}
+    // Apply dark-mode before paint to avoid flash
+    try { if (localStorage.getItem('cf_dark_mode') === '1') document.documentElement.classList.add('dark-mode-pre'); } catch(e){}
   </script>
 </head>
 <body class="{% if request.COOKIES.cf_dark_mode_pre %}{% endif %}">
@@ -3619,59 +3598,16 @@
   if (document.documentElement.classList.contains('dark-mode-pre')) document.body.classList.add('dark-mode');
   // Auth flag для chat-first.js (anon → "Продавец" tab открывает регистрацию)
   window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
-  window.__INITIAL_ROLE = "{{ initial_role|default:'buyer'|escapejs }}";  // серверная роль — против мелькания welcome
-  // Анти-мелькание welcome-home при загрузке кабинета. У залогиненного юзера init()
-  // почти всегда открывает разговор — сохранённый (cf_active_conv) ИЛИ последний из
-  // списка (fallback). Но рисование происходит только после загрузки 583КБ JS +
-  // widget-config + списка чатов (~1-2 сек, плюс ~1с фриз главного потока на парсинге
-  // JS), и всё это время виден домашний экран, который потом сменяется кабинетом.
-  // Поэтому прячем welcome-home сразу для ЛЮБОЙ авторизованной загрузки, кроме явного
-  // welcome (?new=1) и «липкого» welcome (юзер сам был на главной). Класс снимается в
-  // showConv()/showWelcome()/ветке init(), есть и таймаут-подстраховка.
-  (function(){
-    try {
-      if (!window.IS_AUTHENTICATED) return;                          // аноним → welcome сразу
-      var p = new URLSearchParams(location.search);
-      if (p.get('new') === '1') return;                              // явный «новый чат» → welcome
-      if (sessionStorage.getItem('cf_on_welcome') === '1') return;   // был на главной → остаёмся (welcome сразу, без спиннера)
-      document.documentElement.classList.add('cf-restoring');
-      setTimeout(function(){ document.documentElement.classList.remove('cf-restoring'); }, 6000);
-    } catch(_){}
-  })();
-  // Сайдбар (вкладки ролей + чаты) — применяем сохранённое «открыт» состояние СРАЗУ, до
-  // загрузки JS. Иначе при F5 на главной кабинет ~0.8с виден без сайдбара и вкладок ролей
-  // (welcome во весь экран) — выглядит как страница неавторизованного. Класс вешаем на
-  // <html> (#sidebar ещё не распарсен); applyDefaultSidebar() снимет его и станет истиной.
-  (function(){
-    try {
-      if (!window.IS_AUTHENTICATED) return;            // аноним — как раньше
-      if (window.innerWidth <= 768) return;            // мобайл — сайдбар закрыт по умолчанию
-      if (localStorage.getItem('cf_sidebar_open') === '0') return; // юзер сам закрыл — уважаем
-      document.documentElement.classList.add('cf-sb-open');
-    } catch(_){}
-  })();
 </script>
-<style>
-  /* Пока грузится/восстанавливается кабинет — welcome-home скрыт, по центру спиннер. */
-  html.cf-restoring #welcomeStage{display:none!important;}
-  html.cf-restoring .app::after{
-    content:"";position:fixed;top:0;right:0;bottom:0;left:0;margin:auto;width:34px;height:34px;
-    border:3px solid rgba(127,127,127,0.22);border-top-color:rgba(127,127,127,0.8);
-    border-radius:50%;animation:cfRestoreSpin .8s linear infinite;z-index:4;pointer-events:none;
-  }
-  @keyframes cfRestoreSpin{to{transform:rotate(360deg);}}
-  /* Сайдбар открыт с первого кадра (до JS) — против «гостевого» вида при F5 на главной. */
-  html.cf-sb-open .sidebar{width:280px;}
-</style>
 <div class="app">
 
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
       <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
-        <button type="button" class="role-tab{% if welcome_role_ui == 'buyer' %} active{% endif %}" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
-        <button type="button" class="role-tab{% if welcome_role_ui == 'seller' %} active{% endif %}" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
-        <button type="button" class="role-tab{% if welcome_role_ui == 'operator' %} active{% endif %}" data-role="operator" role="tab">{% trans "Оператор" %}</button>
+        <button type="button" class="role-tab" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
+        <button type="button" class="role-tab" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
+        <button type="button" class="role-tab" data-role="operator" role="tab">{% trans "Оператор" %}</button>
       </div>
       <button class="side-new-btn" onclick="newChat()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -3716,10 +3652,10 @@
       </div>
 
       <div class="side-foot">
-        <div class="side-avatar" id="sideAvatar">{{ user_initial|default:"M" }}</div>
+        <div class="side-avatar" id="sideAvatar">M</div>
         <div class="side-user">
-          <div class="side-user-name" id="sideUserName">{{ user_name|default:"Пользователь" }}</div>
-          <div class="side-user-role" id="sideUserRole">{{ user_role_label|default:"—" }}</div>
+          <div class="side-user-name" id="sideUserName">{% trans "Пользователь" %}</div>
+          <div class="side-user-role" id="sideUserRole">—</div>
         </div>
         <button class="side-settings" onclick="toggleSettingsPanel()" title="{% trans 'Настройки' %}" aria-label="{% trans 'Настройки' %}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 008.51 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H2a2 2 0 010-4h.09A1.65 1.65 0 004.6 8.51a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V2a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H22a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -3886,7 +3822,7 @@
           <div class="top-avatar" id="topAvatar"
                role="button" tabindex="0"
                aria-label="{% trans 'Профиль и настройки' %}"
-               title="{% trans 'Профиль и настройки' %}">{{ user_initial|default:"?" }}</div>
+               title="{% trans 'Профиль и настройки' %}">?</div>
         {% else %}
           <!-- Anonymous: триггерят chat-action прямо в чате, без редиректов -->
           <button type="button" class="top-icon"
@@ -3915,8 +3851,8 @@
         <img src="{% static 'brand/logo-icon-white.svg' %}" alt="Consolidator" width="120" height="120" style="filter:drop-shadow(0 4px 12px rgba(0,0,0,0.12));">
       </div>
       <div class="welcome-text">
-        <h1 id="welcomeTitle" data-i18n="{{ welcome_title_key|default:'welcome.h1' }}">{{ welcome_title|default:"Какую запчасть найти?" }}</h1>
-        <p id="welcomeSubtitle">{{ welcome_subtitle|default:"Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>."|safe }}</p>
+        <h1 id="welcomeTitle" data-i18n="welcome.h1">{% trans "Какую запчасть найти?" %}</h1>
+        <p id="welcomeSubtitle" data-i18n="welcome.p">{% trans "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от" %} <strong>{% trans "200+ поставщиков" %}</strong>.</p>
       </div>
 
       <div class="hero-input" id="heroInputCard">
@@ -3946,7 +3882,7 @@
       </div>
 
       <div class="pills" id="welcomePills">
-        {# Кнопки заполняются из JS на основе роли (после авторизации) — fallback ниже для no-JS #}
+        {# Кнопки заполняются из JS на основе роли — fallback ниже для no-JS #}
         <button class="pill" onclick="quickAction('get_orders', {})" title="{% trans 'Купил — едет' %}">📦 {% trans "Мои заказы" %} <span class="pill-sub">{% trans "купил, едет" %}</span></button>
         <button class="pill" onclick="quickAction('get_rfq_status', {})" title="{% trans 'Жду котировок от поставщиков' %}">📋 {% trans "Открытые RFQ" %} <span class="pill-sub">{% trans "жду котировок" %}</span></button>
       </div>
@@ -4019,7 +3955,7 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=4"></script>
-<script src="{% static 'js/chat-first.js' %}?v=106"></script>
+<script src="{% static 'js/chat-first.js' %}?v=108"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>

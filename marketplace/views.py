@@ -6463,75 +6463,7 @@ def chat_first_view(request):
                                         ensure_ascii=False)
     except Exception:
         pass
-    # Роль определяем на сервере и отдаём синхронно → фронт сразу рисует welcome
-    # нужной роли, без мелькания дефолтного (buyer) экрана на 1-2 сек при загрузке.
-    initial_role = "buyer"
-    try:
-        from assistant.permissions import detect_user_role
-        if request.user.is_authenticated:
-            initial_role = detect_user_role(request.user, request=request) or "buyer"
-    except Exception:
-        pass
-    # Серверный рендер welcome (заголовок/подзаголовок/активная вкладка роли) —
-    # чтобы ПЕРВЫЙ paint был уже правильным даже до загрузки chat-first.js (583 КБ).
-    # Источник истины строк — static/js/i18n.js (welcome.<role>.title/subtitle);
-    # здесь дублируем ru-вариант только для первого кадра, дальше JS i18n синхронит.
-    base_role = ("operator" if initial_role.startswith("operator")
-                 else ("seller" if initial_role == "seller" else "buyer"))
-    _WELCOME = {
-        "buyer": ("welcome.buyer.title", "Какую запчасть найти?",
-                  "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>."),
-        "seller": ("welcome.seller.title", "Что в работе сегодня?",
-                   "Срочные задачи, входящие RFQ и отгрузки. Каталог, финансы и команда — по запросу."),
-        "operator": ("welcome.operator.title", "Что в работе на платформе?",
-                     "Вы — <strong>дирижёр всей сделки</strong>: ведёте заказ от оплаты до доставки, координируете логистов, таможенных брокеров и контролируете платежи."),
-    }
-    _wt_key, _wt_txt, _ws_txt = _WELCOME[base_role]
-    # Пилюли welcome по роли — серверно, чтобы продавец/оператор НЕ видели ~1с
-    # покупательские пилюли (раньше были захардкожены). Совпадает с ROLE_WELCOME в JS.
-    _PILLS = {
-        "buyer": [("📦", "Мои сделки", "get_my_deals"), ("👤", "Мой менеджер", "my_kam"),
-                  ("📐", "Чертежи", "seller_drawings"), ("💰", "Депозит", "get_balance"),
-                  ("🎯", "Auto-discount", "get_buyer_discount"), ("🎧", "Поддержка", "support_home")],
-        "seller": [("🔥", "Срочное", "seller_inbox"), ("📤", "Загрузить прайс", "upload_pricelist"),
-                   ("📦", "Мои товары", "seller_warehouses"), ("📐", "Чертежи", "seller_drawings"),
-                   ("💰", "Депозит", "get_balance"), ("🛡", "Верификация", "start_onboarding"),
-                   ("📊", "Аналитика", "seller_analytics_hub"), ("🎧", "Поддержка", "support_home")],
-        "operator": [("🎛", "Сводка", "op_dashboard"), ("📋", "Очередь заказов", "op_queue"),
-                     ("⏱", "SLA-нарушения", "op_sla_breach"), ("💰", "Платежи / Эскроу", "op_payments_dashboard"),
-                     ("🛂", "Таможня", "op_customs_dashboard"), ("🚚", "Логистика", "op_logistics_stats"),
-                     ("🏭", "Мои поставщики", "op_my_suppliers"), ("🧾", "Рекламации", "get_claims"),
-                     ("📊", "Аналитика", "op_analytics_hub"), ("🎧", "Поддержка", "support_home")],
-    }
-    welcome_pills = [{"emoji": e, "label": l, "action": a} for (e, l, a) in _PILLS[base_role]]
-    # Идентичность юзера — серверно (тот же источник, что widget-config: get_full_name
-    # or username). Иначе ~1с до загрузки JS аватар показывает «?», а имя «Пользователь»
-    # — выглядит как неавторизованный гость. Рендерим сразу аватар-инициал, имя, роль.
-    user_name = ""
-    user_initial = ""
-    user_role_label = ""
-    if request.user.is_authenticated:
-        user_name = (request.user.get_full_name() or request.user.username or "").strip()
-        user_initial = (user_name[:1].upper() if user_name else "")
-        user_role_label = initial_role.replace("operator_", "").replace("_", " ")
-    resp = render(request, "chat/index.html", {
-        "role_actions_json": role_actions_json,
-        "initial_role": initial_role,
-        "welcome_role_ui": base_role,
-        "welcome_title_key": _wt_key,
-        "welcome_title": _wt_txt,
-        "welcome_subtitle": _ws_txt,
-        "user_name": user_name,
-        "user_initial": user_initial,
-        "user_role_label": user_role_label,
-        "welcome_pills": welcome_pills,
-    })
-    # HTML кабинета зависит от юзера (аватар/имя/роль/welcome рендерятся серверно) и
-    # не должен кэшироваться браузером — иначе при F5 отдаётся СТАРЫЙ HTML без анти-flash
-    # фиксов и виден «гостевой» кадр. no-store → каждый раз свежий HTML.
-    resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-    resp["Pragma"] = "no-cache"
-    return resp
+    return render(request, "chat/index.html", {"role_actions_json": role_actions_json})
 
 
 def invite_redirect(request, code):

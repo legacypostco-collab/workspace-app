@@ -10218,28 +10218,14 @@
   // Init
   // ══════════════════════════════════════════════════════════
   async function init() {
-    // Мгновенно применяем серверную роль (инжектится в шаблоне) → welcome рисуется
-    // сразу нужной роли, без 1-2 сек мелькания дефолтного (buyer) экрана при загрузке.
-    try {
-      if (window.IS_AUTHENTICATED && window.__INITIAL_ROLE) applyRoleWelcome(window.__INITIAL_ROLE);
-    } catch (e) {}
     try {
       state.config = await api('/api/assistant/widget-config/');
-      // Аноним: НЕ показываем фейковый «Гость / buyer» в футере — вместо него «Войти».
-      const anon = !!state.config.anonymous;
-      const name = anon ? 'Войти' : (state.config.user_name || 'User');
-      const initial = anon ? '→' : (name[0] || '?').toUpperCase();
+      const name = state.config.user_name || 'User';
+      const initial = name[0].toUpperCase();
       $('sideUserName').textContent = name;
-      $('sideUserRole').textContent = anon ? '' : (state.config.role || '').replace('operator_', '').replace(/_/g, ' ');
+      $('sideUserRole').textContent = (state.config.role || '').replace('operator_', '').replace(/_/g, ' ');
       $('sideAvatar').textContent = initial;
-      const _topAv = $('topAvatar'); if (_topAv) _topAv.textContent = anon ? '?' : initial;  // у анонима topAvatar нет (в шапке «Войти/Регистрация»)
-      if (anon) {
-        const _foot = document.querySelector('.side-foot');
-        if (_foot && !_foot.__loginWired) {
-          _foot.__loginWired = true; _foot.style.cursor = 'pointer';
-          _foot.addEventListener('click', function(e){ if (e.target.closest('.side-settings')) return; try { quickAction('start_login', {}); } catch(_){} });
-        }
-      }
+      $('topAvatar').textContent = initial;
       // Активная вкладка role-toggle
       const r = state.config.role || 'buyer';
       const uiRole = r.startsWith('operator') ? 'operator' : (r === 'seller' ? 'seller' : 'buyer');
