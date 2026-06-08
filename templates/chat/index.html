@@ -3605,9 +3605,9 @@
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
       <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
-        <button type="button" class="role-tab" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
-        <button type="button" class="role-tab" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
-        <button type="button" class="role-tab" data-role="operator" role="tab">{% trans "Оператор" %}</button>
+        <button type="button" class="role-tab{% if auth_base_role == 'buyer' %} active{% endif %}" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
+        <button type="button" class="role-tab{% if auth_base_role == 'seller' %} active{% endif %}" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
+        <button type="button" class="role-tab{% if auth_base_role == 'operator' %} active{% endif %}" data-role="operator" role="tab">{% trans "Оператор" %}</button>
       </div>
       <button class="side-new-btn" onclick="newChat()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -3652,10 +3652,10 @@
       </div>
 
       <div class="side-foot">
-        <div class="side-avatar" id="sideAvatar">M</div>
+        <div class="side-avatar" id="sideAvatar">{{ auth_user_initial|default:"M" }}</div>
         <div class="side-user">
-          <div class="side-user-name" id="sideUserName">{% trans "Пользователь" %}</div>
-          <div class="side-user-role" id="sideUserRole">—</div>
+          <div class="side-user-name" id="sideUserName">{{ auth_user_name|default:"Пользователь" }}</div>
+          <div class="side-user-role" id="sideUserRole">{{ auth_user_role_label|default:"—" }}</div>
         </div>
         <button class="side-settings" onclick="toggleSettingsPanel()" title="{% trans 'Настройки' %}" aria-label="{% trans 'Настройки' %}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 008.51 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H2a2 2 0 010-4h.09A1.65 1.65 0 004.6 8.51a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V2a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H22a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -3822,7 +3822,7 @@
           <div class="top-avatar" id="topAvatar"
                role="button" tabindex="0"
                aria-label="{% trans 'Профиль и настройки' %}"
-               title="{% trans 'Профиль и настройки' %}">?</div>
+               title="{% trans 'Профиль и настройки' %}">{{ auth_user_initial|default:"?" }}</div>
         {% else %}
           <!-- Anonymous: триггерят chat-action прямо в чате, без редиректов -->
           <button type="button" class="top-icon"
@@ -3851,8 +3851,13 @@
         <img src="{% static 'brand/logo-icon-white.svg' %}" alt="Consolidator" width="120" height="120" style="filter:drop-shadow(0 4px 12px rgba(0,0,0,0.12));">
       </div>
       <div class="welcome-text">
+        {% if auth_welcome_title %}
+        <h1 id="welcomeTitle" data-i18n="{{ auth_welcome_title_key }}">{{ auth_welcome_title }}</h1>
+        <p id="welcomeSubtitle">{{ auth_welcome_subtitle|safe }}</p>
+        {% else %}
         <h1 id="welcomeTitle" data-i18n="welcome.h1">{% trans "Какую запчасть найти?" %}</h1>
         <p id="welcomeSubtitle" data-i18n="welcome.p">{% trans "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от" %} <strong>{% trans "200+ поставщиков" %}</strong>.</p>
+        {% endif %}
       </div>
 
       <div class="hero-input" id="heroInputCard">
@@ -3882,9 +3887,12 @@
       </div>
 
       <div class="pills" id="welcomePills">
-        {# Кнопки заполняются из JS на основе роли — fallback ниже для no-JS #}
+        {# Залогиненному пилюли отдаёт JS по его роли (пусто здесь → нет «чужих» пилюль
+           до загрузки JS). Аноним: статичный fallback ниже (в т.ч. для no-JS). #}
+        {% if not auth_role %}
         <button class="pill" onclick="quickAction('get_orders', {})" title="{% trans 'Купил — едет' %}">📦 {% trans "Мои заказы" %} <span class="pill-sub">{% trans "купил, едет" %}</span></button>
         <button class="pill" onclick="quickAction('get_rfq_status', {})" title="{% trans 'Жду котировок от поставщиков' %}">📋 {% trans "Открытые RFQ" %} <span class="pill-sub">{% trans "жду котировок" %}</span></button>
+        {% endif %}
       </div>
     </div>
 

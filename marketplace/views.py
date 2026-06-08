@@ -6463,7 +6463,50 @@ def chat_first_view(request):
                                         ensure_ascii=False)
     except Exception:
         pass
-    return render(request, "chat/index.html", {"role_actions_json": role_actions_json})
+    ctx = {"role_actions_json": role_actions_json}
+    # Анти-мелькание ТОЛЬКО для залогиненного: серверно отдаём его роль/идентичность/
+    # welcome, чтобы первый кадр при F5 был уже его кабинетом, а не дефолтным (buyer)
+    # экраном. На проде 600КБ chat-first.js + widget-config грузятся ~1-2с — всё это
+    # время иначе виден «гостевой/покупательский» welcome (на локалке незаметно).
+    # Для АНОНИМА ctx остаётся пустым → шаблон рендерит исходный гостевой вид
+    # (ветки {% else %} / default-фильтры) — ровно как было, ничего лишнего.
+    if request.user.is_authenticated:
+        try:
+            from assistant.permissions import detect_user_role
+            initial_role = detect_user_role(request.user, request=request) or "buyer"
+        except Exception:
+            initial_role = "buyer"
+        base_role = ("operator" if initial_role.startswith("operator")
+                     else ("seller" if initial_role == "seller" else "buyer"))
+        # Дублируем ru-строки welcome только для первого кадра; дальше JS-i18n синхронит.
+        _WELCOME = {
+            "buyer": ("welcome.buyer.title", "Какую запчасть найти?"),
+            "seller": ("welcome.seller.title", "Что в работе сегодня?"),
+            "operator": ("welcome.operator.title", "Что в работе на платформе?"),
+        }
+        _SUB = {
+            "buyer": "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>.",
+            "seller": "Срочные задачи, входящие RFQ и отгрузки. Каталог, финансы и команда — по запросу.",
+            "operator": "Вы — <strong>дирижёр всей сделки</strong>: ведёте заказ от оплаты до доставки, координируете логистов, таможенных брокеров и контролируете платежи.",
+        }
+        _wt_key, _wt = _WELCOME[base_role]
+        uname = (request.user.get_full_name() or request.user.username or "").strip()
+        ctx.update({
+            "auth_role": initial_role,
+            "auth_base_role": base_role,
+            "auth_welcome_title_key": _wt_key,
+            "auth_welcome_title": _wt,
+            "auth_welcome_subtitle": _SUB[base_role],
+            "auth_user_name": uname,
+            "auth_user_initial": (uname[:1].upper() if uname else ""),
+            "auth_user_role_label": initial_role.replace("operator_", "").replace("_", " "),
+        })
+    resp = render(request, "chat/index.html", ctx)
+    # Auth-зависимый HTML (шапка/роль/идентичность) НЕ кэшируем — ни CF, ни браузер,
+    # ни bfcache — иначе залогиненному может отдаться гостевой кадр. Статика (JS) при
+    # этом кэшируется отдельно по хэшу имени, так что no-store на лёгком HTML дёшев.
+    resp["Cache-Control"] = "private, no-store"
+    return resp
 
 
 def invite_redirect(request, code):
