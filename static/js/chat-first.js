@@ -7050,6 +7050,8 @@
       + '.uip-box{background:#fff;color:#1a1a1a;width:min(92vw,420px);border-radius:14px;padding:18px;box-shadow:0 14px 44px rgba(0,0,0,.38);animation:uippop .14s ease}'
       + '@keyframes uippop{from{transform:translateY(6px) scale(.98);opacity:.6}to{transform:none;opacity:1}}'
       + '.uip-title{font-weight:700;font-size:16px;margin-bottom:4px}'
+      + '.uip-note{font-size:12.5px;line-height:1.5;color:#374151;background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.14);border-radius:9px;padding:9px 11px;margin:8px 0 2px}'
+      + 'body.dark-mode .uip-note{color:#cbd5e1;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}'
       + '.uip-label{font-size:12px;opacity:.6;margin:6px 0 4px}'
       + '.uip-input{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;border:1px solid rgba(0,0,0,.18);background:#fff;color:#1a1a1a;font:inherit;outline:none;margin-top:6px}'
       + '.uip-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}'
@@ -7073,6 +7075,7 @@
       ov.innerHTML =
         '<div class="uip-box" role="dialog" aria-modal="true">'
         + '<div class="uip-title"></div>'
+        + (opts.note ? '<div class="uip-note"></div>' : '')
         + (opts.label ? '<div class="uip-label"></div>' : '')
         + '<input class="uip-input" type="text" autocomplete="off"/>'
         + '<div class="uip-actions">'
@@ -7080,6 +7083,7 @@
         + '<button type="button" class="uip-btn uip-ok"></button>'
         + '</div></div>';
       ov.querySelector('.uip-title').textContent = opts.title || 'Введите значение';
+      if (opts.note) ov.querySelector('.uip-note').textContent = opts.note;
       if (opts.label) ov.querySelector('.uip-label').textContent = opts.label;
       const inp = ov.querySelector('.uip-input');
       inp.placeholder = opts.placeholder || '';
@@ -7108,10 +7112,27 @@
   };
 
   // «+ Новый проект» в сайдбаре → аккуратная модалка → POST → reload → переход.
+  // Памятка «зачем проект» — по роли (покупатель/продавец/оператор).
+  function _projectCreateHint() {
+    var r = (state.config && state.config.role) || 'buyer';
+    var base = r.indexOf('operator') === 0 ? 'operator' : (r === 'seller' ? 'seller' : 'buyer');
+    var NOTE = {
+      buyer: '📦 Проект — это ваша закупка под технику или объект. Загрузите парк техники, историю закупок и чертежи — AI точнее подберёт запчасти и соберёт RFQ в контексте проекта.',
+      seller: '🏷 Проект — это ваше товарное направление (сегмент). Соберите прайс, чертежи, сертификаты и фото по нему — быстрее формируете КП по входящим RFQ, и покупатель больше доверяет.',
+      operator: '🎛 Проект — это сделка / консолидированная поставка. Соберите контракты, таможенные и логистические документы, платежи — вся поставка от RFQ до доставки в одном месте, видны обе стороны.',
+    };
+    var PH = {
+      buyer: 'Напр. Парк Komatsu — Ковдор',
+      seller: 'Напр. Ходовка Komatsu',
+      operator: 'Напр. Сделка Урал Q3',
+    };
+    return {note: NOTE[base], placeholder: PH[base]};
+  }
   async function createProjectFromSidebar() {
+    const hint = _projectCreateHint();
     const name = await window.uiPrompt({
-      title: 'Новый проект', label: 'Название проекта',
-      placeholder: 'Напр. EuroChem Kovdor', okLabel: 'Создать',
+      title: 'Новый проект', note: hint.note, label: 'Название проекта',
+      placeholder: hint.placeholder, okLabel: 'Создать',
     });
     if (!name) return;
     try {

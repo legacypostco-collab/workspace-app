@@ -144,7 +144,16 @@
 
   // «+ Новый проект» в сайдбаре project.html: prompt → POST → переход на новую страницу.
   async function createProjectFromSidebar() {
-    const name = (window.prompt('Название проекта:', '') || '').trim();
+    // Памятка «зачем проект» по роли (как в /chat/).
+    const r = window.__role || 'buyer';
+    const base = r.indexOf('operator') === 0 ? 'operator' : (r === 'seller' ? 'seller' : 'buyer');
+    const NOTE = {
+      buyer: '📦 Проект — это ваша закупка под технику/объект. Загрузите парк техники, историю и чертежи — AI точнее подберёт и соберёт RFQ в контексте проекта.',
+      seller: '🏷 Проект — это ваше товарное направление. Соберите прайс, чертежи, сертификаты и фото по сегменту — быстрее КП и больше доверия покупателя.',
+      operator: '🎛 Проект — это сделка / консолидированная поставка. Контракты, таможня, логистика, платежи — вся поставка от RFQ до доставки в одном месте.',
+    };
+    const PH = {buyer: 'напр. Парк Komatsu — Ковдор', seller: 'напр. Ходовка Komatsu', operator: 'напр. Сделка Урал Q3'};
+    const name = (window.prompt(NOTE[base] + '\n\nНазвание проекта (' + PH[base] + '):', '') || '').trim();
     if (!name) return;
     try {
       const r = await fetch('/api/assistant/projects/', {
@@ -560,6 +569,7 @@
   async function loadConfig() {
     try {
       const cfg = await api('/api/assistant/widget-config/');
+      window.__role = cfg.role || 'buyer';
       const name = cfg.user_name || 'User';
       const initial = (name[0] || '?').toUpperCase();
       $('sideUserName').textContent = name;
