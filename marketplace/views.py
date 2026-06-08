@@ -6487,6 +6487,16 @@ def chat_first_view(request):
                      "Вы — <strong>дирижёр всей сделки</strong>: ведёте заказ от оплаты до доставки, координируете логистов, таможенных брокеров и контролируете платежи."),
     }
     _wt_key, _wt_txt, _ws_txt = _WELCOME[base_role]
+    # Идентичность юзера — серверно (тот же источник, что widget-config: get_full_name
+    # or username). Иначе ~1с до загрузки JS аватар показывает «?», а имя «Пользователь»
+    # — выглядит как неавторизованный гость. Рендерим сразу аватар-инициал, имя, роль.
+    user_name = ""
+    user_initial = ""
+    user_role_label = ""
+    if request.user.is_authenticated:
+        user_name = (request.user.get_full_name() or request.user.username or "").strip()
+        user_initial = (user_name[:1].upper() if user_name else "")
+        user_role_label = initial_role.replace("operator_", "").replace("_", " ")
     return render(request, "chat/index.html", {
         "role_actions_json": role_actions_json,
         "initial_role": initial_role,
@@ -6494,6 +6504,9 @@ def chat_first_view(request):
         "welcome_title_key": _wt_key,
         "welcome_title": _wt_txt,
         "welcome_subtitle": _ws_txt,
+        "user_name": user_name,
+        "user_initial": user_initial,
+        "user_role_label": user_role_label,
     })
 
 
