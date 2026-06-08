@@ -587,6 +587,10 @@
     .ib-section-count{font-size:11px;font-weight:600;color:#fff;background:rgba(0,0,0,0.5);border-radius:10px;padding:1px 8px;}
     .ib-row{background:rgba(255,255,255,0.5);border:1px solid rgba(0,0,0,0.04);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px;}
     .ib-row:last-child{margin-bottom:0;}
+    /* Кликабельная строка inbox — вся строка открывает действие. */
+    .ib-row-click{cursor:pointer;transition:background .12s,border-color .12s;}
+    .ib-row-click:hover{background:rgba(255,255,255,0.85);border-color:rgba(0,0,0,0.12);}
+    body.dark-mode .ib-row-click:hover{background:rgba(255,255,255,0.10);border-color:rgba(255,255,255,0.18);}
     .ib-title{font-size:12px;font-weight:600;color:#1a1a1a;}
     .ib-sub{font-size:11px;color:rgba(0,0,0,0.55);margin-top:2px;}
     .ib-card .ib-btn,
@@ -3977,7 +3981,7 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=4"></script>
-<script src="{% static 'js/chat-first.js' %}?v=111"></script>
+<script src="{% static 'js/chat-first.js' %}?v=112"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>

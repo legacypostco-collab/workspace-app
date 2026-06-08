@@ -2173,7 +2173,12 @@
           const btn = a
             ? `<button class="act-btn ib-btn" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(a.label)}">${esc(a.label)}</button>`
             : '';
-          return `<div class="ib-row">
+          // Вся строка кликабельна (не только кнопка) — открывает то же действие.
+          // Клик по кнопке обрабатывается её ближайшим [data-action] (без дабл-триггера).
+          const rowClick = a
+            ? ` data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(r.title || a.label || '')}" role="button" tabindex="0"`
+            : '';
+          return `<div class="ib-row${a ? ' ib-row-click' : ''}"${rowClick}>
             <div class="ib-main">
               <div class="ib-title">${esc(r.title || '')}</div>
               <div class="ib-sub">${esc(r.subtitle || '')}</div>
