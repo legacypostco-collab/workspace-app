@@ -1358,6 +1358,21 @@
     return sym + Number(v).toLocaleString('en-US', {maximumFractionDigits:0});
   };
 
+  // Read-only действия (дашборды/очереди/списки/детали/аналитика) — их безопасно
+  // авто-ретраить при обрыве канала: они ничего не пишут, задвоиться нечему.
+  // Сюда НЕ входят мутации (pay_/ship_/advance_/respond_/upload_/confirm_/create_…).
+  // Если действия тут нет — оно просто НЕ авто-ретраится (безопасная деградация).
+  const READONLY_ACTIONS = new Set([
+    'op_dashboard','op_queue','op_sla_breach','op_payments_dashboard','op_payments_stats',
+    'op_customs_dashboard','op_logistics_stats','op_my_suppliers','op_kyb_queue','op_my_user_chats',
+    'op_drawings_by_part','op_analytics_hub','op_hs_lookup','op_sanctions_check','op_my_suppliers',
+    'seller_inbox','seller_pipeline','seller_dashboard','seller_warehouses','seller_drawings',
+    'seller_analytics_hub','seller_catalog','seller_customers','seller_revenue',
+    'get_orders','get_order_detail','get_my_deals','get_rfq_status','get_claims','get_balance',
+    'get_buyer_discount','get_demand_report','get_analytics','track_order','my_kam','my_accruals',
+    'kam_deals','support_home',
+  ]);
+
   async function api(path, opts={}) {
     // Канал браузер↔origin (РФ) нестабилен: ~10-15% запросов рвутся ИЛИ
     // зависают (без таймаута UI крутит спиннер вечно). Для idempotent
@@ -1366,10 +1381,14 @@
     // выполнения: платёж/заказ/импорт) и без abort'а — одна попытка.
     const method = (opts.method || 'GET').toUpperCase();
     const idempotent = (method === 'GET' || method === 'HEAD');
-    const attempts = 3;  // и GET, и POST: до 3 попыток (POST ретраим только на 52x, см. ниже)
+    // retryNet: можно ли ретраить ПРИ ОБРЫВЕ КАНАЛА/5xx. GET/HEAD — всегда; POST —
+    // только если вызывающий явно пометил действие read-only (opts.retryNetwork),
+    // т.к. для read-only задвоиться нечему. Мутации (pay/ship/respond/upload) — нет.
+    const retryNet = idempotent || !!opts.retryNetwork;
+    const attempts = 3;
     let lastErr;
     for (let i = 0; i < attempts; i++) {
-      const ctrl = (idempotent && window.AbortController) ? new AbortController() : null;
+      const ctrl = (retryNet && window.AbortController) ? new AbortController() : null;
       const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : null;
       let res;
       try {
@@ -1381,17 +1400,18 @@
       } catch (e) {
         if (timer) clearTimeout(timer);
         lastErr = e;
-        // GET — ретраим обрыв канала; POST — нет (запрос мог дойти и выполниться).
-        if (idempotent && i < attempts - 1) { await new Promise(r => setTimeout(r, 500 + i*700)); continue; }
+        // Обрыв канала: ретраим GET и read-only POST; мутирующий POST — нет
+        // (запрос мог дойти и выполниться → риск двойного выполнения).
+        if (retryNet && i < attempts - 1) { await new Promise(r => setTimeout(r, 500 + i*700)); continue; }
         throw e;
       }
       if (timer) clearTimeout(timer);
       if (res.ok) return res.json();
       // 52x от Cloudflare = origin НЕдостижим → запрос вообще не дошёл до приложения,
-      // поэтому ретрай безопасен ДАЖЕ для POST (двойного выполнения быть не может).
-      // Прочие 5xx (500/502/503) для POST неоднозначны — ретраим только idempotent.
+      // поэтому ретрай безопасен ДАЖЕ для мутирующего POST (двойного выполнения нет).
+      // Прочие 5xx (500/502/503) — ретраим GET и read-only POST.
       const cfUnreachable = (res.status >= 520 && res.status <= 524);
-      const canRetry = cfUnreachable || (idempotent && res.status >= 500);
+      const canRetry = cfUnreachable || (retryNet && res.status >= 500);
       if (canRetry && i < attempts - 1) {
         lastErr = new Error(`${path} → ${res.status}`);
         await new Promise(r => setTimeout(r, 600 + i*900));
@@ -5714,6 +5734,8 @@
       const r = await api('/api/assistant/action/', {
         method:'POST',
         body: JSON.stringify({conversation_id: state.convId, action, params}),
+        // read-only действие → можно авто-ретраить обрыв канала (не задвоится).
+        retryNetwork: READONLY_ACTIONS.has(action),
       });
       if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
