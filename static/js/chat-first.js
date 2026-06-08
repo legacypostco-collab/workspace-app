@@ -2034,7 +2034,7 @@
           <div class="sr-stat-lbl">${esc(s.label || '')}</div>
           <div class="sr-stat-val ${cls}">${esc(s.value || '')}</div>
           <div class="sr-stat-hint">${esc(s.sub || '')}</div>`;
-        if (s.details_rows && s.details_rows.length) {
+        if (Array.isArray(s.details_rows)) {  // даже пустой → раскрываемый тайл (покажет «записей нет»), а не мёртвый статик
           const rowsHtml = s.details_rows.slice(0, 30).map(r => {
             const params = JSON.stringify(r.params || {});
             const click = r.action ? `data-action="${esc(r.action)}" data-params='${esc(params)}' role="button" tabindex="0" style="cursor:pointer"` : '';

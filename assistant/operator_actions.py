@@ -3677,7 +3677,8 @@ def op_payments_dashboard(params, user, role):
         op_stats.append({
             "label": "Возвраты",
             "value": "$0",
-            "sub":   "нет за 30 дней"})
+            "sub":   "нет за 30 дней",
+            "action": "op_queue", "params": {"filter": "refund"}})
     # Четвёртый тайл — рекламации (если есть за 30д)
     if claims_30 > 0:
         op_stats.append({
