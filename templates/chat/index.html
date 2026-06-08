@@ -3609,7 +3609,8 @@
       if (!window.IS_AUTHENTICATED) return;                          // аноним → welcome сразу
       var p = new URLSearchParams(location.search);
       if (p.get('new') === '1') return;                              // явный «новый чат» → welcome
-      if (sessionStorage.getItem('cf_on_welcome') === '1') return;   // был на welcome → остаёмся
+      // ВАЖНО: даже на главной (cf_on_welcome) прячем welcome — при F5 восстанавливаем
+      // последний разговор, чтобы не «вылезала» главная (выглядит как гостевой экран).
       document.documentElement.classList.add('cf-restoring');
       setTimeout(function(){ document.documentElement.classList.remove('cf-restoring'); }, 6000);
     } catch(_){}
@@ -3995,7 +3996,7 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=4"></script>
-<script src="{% static 'js/chat-first.js' %}?v=99"></script>
+<script src="{% static 'js/chat-first.js' %}?v=100"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>
