@@ -368,6 +368,9 @@
     .pill{position:relative;}
     .pill-txt{display:inline-flex;align-items:center;gap:8px;}
     .pill-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:rgba(70,70,70,.5);color:#fff;font-size:13px;line-height:17px;text-align:center;font-weight:600;opacity:0;transform:scale(.4);pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:4;}
+    /* Бейдж «требует действия» (непрочитанные уведомления раздела пилюли). */
+    .pill-badge{position:absolute;top:-7px;right:-7px;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:9px;background:#e0245e;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.35);z-index:5;pointer-events:none;}
+    .pills-editing .pill-badge{display:none;}
     .pill-add{width:40px;height:40px;border-radius:50%;border:1px dashed rgba(0,0,0,.28);background:rgba(255,255,255,.45);font-size:22px;line-height:1;color:rgba(0,0,0,.5);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0;transition:background .15s,border-color .15s,color .15s,transform .1s;}
     .pill-add:hover{background:#fff;border-color:rgba(0,0,0,.45);color:#000;}
     .pill-add:active{transform:scale(.92);}
@@ -3974,7 +3977,7 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=4"></script>
-<script src="{% static 'js/chat-first.js' %}?v=108"></script>
+<script src="{% static 'js/chat-first.js' %}?v=109"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>

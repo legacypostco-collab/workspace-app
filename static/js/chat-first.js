@@ -1531,7 +1531,35 @@
   }
 
   // ── Notification bell + dropdown ──────────────────────────────
-  const notif = { items: [], unread: 0, loaded: false, open: false };
+  const notif = { items: [], unread: 0, loaded: false, open: false, byKind: {} };
+
+  // Какой kind уведомления «требует действия» в каком разделе (пилюле).
+  // Бейдж на пилюле = сумма непрочитанных уведомлений сопоставленных kind'ов.
+  const PILL_NOTIF_KINDS = {
+    // покупатель
+    get_my_deals: ['order'], get_orders: ['order'], get_rfq_status: ['rfq'], get_balance: ['payment'],
+    // продавец
+    seller_inbox: ['rfq', 'order', 'sla'], seller_warehouses: ['order'],
+    // оператор / суброли
+    op_queue: ['order', 'rfq'], op_sla_breach: ['sla'], op_payments_dashboard: ['payment'],
+    op_payments_stats: ['payment'], op_customs_dashboard: ['sla'], get_claims: ['claim'],
+    op_dashboard: ['sla', 'order'], op_my_user_chats: ['rfq', 'order'],
+    // КАМ
+    kam_deals: ['order'], seller_customers: ['rfq'],
+  };
+  function pillActionBadge(action) {
+    const kinds = PILL_NOTIF_KINDS[action];
+    if (!kinds) return 0;
+    let n = 0;
+    for (let i = 0; i < kinds.length; i++) n += (notif.byKind[kinds[i]] || 0);
+    return n;
+  }
+  // HTML бейджа «требует действия» для пилюли (cls = pill-badge | pm-badge). Пусто, если 0.
+  function pillBadgeHtml(action, cls) {
+    const c = pillActionBadge(action);
+    if (c <= 0) return '';
+    return '<span class="' + cls + '" title="Требует действия">' + (c > 99 ? '99+' : c) + '</span>';
+  }
 
   function setBellBadge(n) {
     notif.unread = Math.max(0, n|0);
@@ -1582,13 +1610,17 @@
     if (!payload || !payload.id) return;
     // Drop existing copy by id (in case server replays)
     notif.items = (notif.items || []).filter(x => x.id !== payload.id);
+    const _k = payload.kind || 'info';
     notif.items.unshift({
-      id: payload.id, kind: payload.kind || 'info',
+      id: payload.id, kind: _k,
       title: payload.title || '', body: payload.body || '',
       url: payload.url || '', is_read: false,
       created_at: new Date().toISOString(),
     });
     if (notif.items.length > 50) notif.items.length = 50;
+    // Живой бейдж «требует действия» на пилюлях: +1 к kind, перерисовать пилюли.
+    notif.byKind[_k] = (notif.byKind[_k] || 0) + 1;
+    try { refreshPills(); } catch (_) {}
     if (notif.open) renderNotifList();
   }
 
@@ -1602,8 +1634,11 @@
       const data = await api('/api/assistant/notifications/?limit=20');
       notif.items = data.items || [];
       notif.loaded = true;
+      notif.byKind = data.unread_by_kind || {};
       setBellBadge(data.unread_count || 0);
       renderNotifList();
+      // Пилюли уже отрисованы в init() ДО загрузки уведомлений — перерисуем с бейджами.
+      try { refreshPills(); } catch (_) {}
     } catch (e) {
       console.warn('loadNotifications failed', e);
       if (list) {
@@ -1646,7 +1681,12 @@
     try {
       const r = await api('/api/assistant/notifications/' + id + '/read/', {method:'POST', body: JSON.stringify({})});
       const it = notif.items.find(x => x.id === id);
-      if (it) it.is_read = true;
+      if (it && !it.is_read) {
+        it.is_read = true;
+        const k = it.kind || 'info';
+        notif.byKind[k] = Math.max(0, (notif.byKind[k] || 0) - 1);
+        try { refreshPills(); } catch (_) {}
+      }
       setBellBadge(r.unread_count || 0);
       renderNotifList();
     } catch (e) { console.warn('markNotifRead', e); }
@@ -1656,7 +1696,9 @@
     try {
       await api('/api/assistant/notifications/read-all/', {method:'POST', body: JSON.stringify({})});
       notif.items.forEach(x => x.is_read = true);
+      notif.byKind = {};
       setBellBadge(0);
+      try { refreshPills(); } catch (_) {}
       renderNotifList();
     } catch (e) { console.warn('markAllNotifsRead', e); }
   };
@@ -6533,10 +6575,12 @@
     const html = pills.map(b => {
       const label = `${b.emoji} ${b.text}`;
       const params = { ...(b.params || {}), _label: label };
+      // Бейдж «требует действия»: непрочитанные уведомления раздела этой пилюли.
+      const _badge = pillBadgeHtml(b.action, 'pill-badge');
       // «×» скрыт; проявляется только в режиме редактирования (долгое нажатие).
       return `<button class="pill" type="button" data-pid="${esc(b.id)}"
         onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(params)})'>
-        <span class="pill-del" aria-label="Убрать" title="Убрать">×</span>
+        <span class="pill-del" aria-label="Убрать" title="Убрать">×</span>${_badge}
         <span class="pill-txt">${esc(label)}</span>
       </button>`;
     }).join('');
@@ -6830,6 +6874,7 @@
       + '.pm-emoji{font-size:15px;width:20px;text-align:center}'
       + '.pm-lbl{flex:1;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
       + '.pm-src{font-size:10px;opacity:.45;border:1px solid rgba(0,0,0,.14);border-radius:6px;padding:1px 5px;white-space:nowrap}'
+      + '.pm-badge{min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:#e0245e;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}'
       + '.pm-act{border:none;background:rgba(0,0,0,.06);border-radius:7px;min-width:28px;height:28px;cursor:pointer;font-size:13px;padding:0 7px}'
       + '.pm-act:hover{background:rgba(0,0,0,.12)}.pm-act.danger:hover{background:rgba(220,38,38,.16)}'
       + '.pm-act.pin{background:rgba(37,99,235,.1)}.pm-act.pin:hover{background:rgba(37,99,235,.2)}'
@@ -6895,7 +6940,7 @@
       + `<div class="pm-hint">Похоже, вот это вы убирали — нажмите «Вернуть».</div>`
       + missingDefaults.map(p => `<div class="pm-row pm-missing">
           <span class="pm-emoji">${esc(p.emoji)}</span>
-          <span class="pm-lbl">${esc(p.text)}</span>
+          <span class="pm-lbl">${esc(p.text)}</span>${pillBadgeHtml(p.action, 'pm-badge')}
           <button class="pm-act pin" data-pm="pin" data-pid="${esc(p.id)}" title="Вернуть">＋ Вернуть</button>
         </div>`).join('')
     ) : '';
@@ -6914,7 +6959,7 @@
       return `<div class="pm-row" draggable="true" data-pid="${esc(p.id)}">
         <span class="pm-grip" title="Перетащите, чтобы переставить">⠿</span>
         <span class="pm-emoji">${esc(p.emoji)}</span>
-        <span class="pm-lbl">${esc(p.text)}</span>
+        <span class="pm-lbl">${esc(p.text)}</span>${pillBadgeHtml(p.action, 'pm-badge')}
         ${del}
       </div>`;
     }).join('') || `<div class="pm-empty">Нет закреплённых пилюль</div>`;
@@ -6922,7 +6967,7 @@
     const availRows = st.avail.map(p => `
       <div class="pm-row pm-avail-row" data-text="${esc((p.emoji + ' ' + p.text).toLowerCase())}">
         <span class="pm-emoji">${esc(p.emoji)}</span>
-        <span class="pm-lbl">${esc(p.text)}</span>
+        <span class="pm-lbl">${esc(p.text)}</span>${pillBadgeHtml(p.action, 'pm-badge')}
         ${p.srcRole && p.srcRole !== role ? `<span class="pm-src">${esc(ROLE_RU[p.srcRole] || p.srcRole)}</span>` : ''}
         <button class="pm-act pin" data-pm="pin" data-pid="${esc(p.id)}" title="Закрепить">＋</button>
       </div>`).join('') || `<div class="pm-empty">Все пилюли уже на экране</div>`;

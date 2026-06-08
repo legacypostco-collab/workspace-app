@@ -1682,9 +1682,18 @@ class NotificationListView(APIView):
         if unread_only:
             qs = qs.filter(is_read=False)
         items = list(qs.order_by("-created_at")[:limit])
-        unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+        unread_qs = Notification.objects.filter(user=request.user, is_read=False)
+        unread_count = unread_qs.count()
+        # Непрочитанные по kind → фронт вешает бейдж «требует действия» на
+        # соответствующую пилюлю (rfq/order/payment/sla/claim → её раздел).
+        from django.db.models import Count as _Count
+        unread_by_kind = {
+            row["kind"]: row["c"]
+            for row in unread_qs.values("kind").annotate(c=_Count("id"))
+        }
         return Response({
             "unread_count": unread_count,
+            "unread_by_kind": unread_by_kind,
             "items": [
                 {
                     "id": n.id,
