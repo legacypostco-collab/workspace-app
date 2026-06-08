@@ -1259,14 +1259,15 @@ class ProjectDetailView(APIView):
         participants = []  # только для оператора (видит обе стороны сделки)
 
         if is_operator:
+            # Единый набор полей сделки — фронт показывает свой срез под подроль
+            # (КАМ/менеджер, логист, таможня, платежи).
             stats = {
-                # positions.awaiting — позиции, ждущие действия оператора (подбор/согласование)
                 "positions": {"count": 12, "awaiting": 3},
-                # logistics — отгрузки, из них на таможне + ближайший ETA
-                "logistics": {"count": 4, "at_customs": 1, "earliest_eta": _eta_label(request, days=30)},
-                # payments — удержано в эскроу + сколько ждут выплаты продавцу
-                "payments": {"escrow_usd": 142800, "awaiting_payout": 2},
-                # deal_turnover — оборот сделки + маржа
+                "logistics": {"count": 4, "in_transit": 3, "at_customs": 1,
+                              "earliest_eta": _eta_label(request, days=4), "delays": 1},
+                "customs": {"at_customs": 1, "hs_pending": 2, "declarations": 3, "sanctions_risk": 0},
+                "payments": {"escrow_usd": 142800, "awaiting_payout": 2,
+                             "paid_by_buyer_usd": 168400, "margin_pct": 11},
                 "deal_turnover": {"value_usd": 168400, "margin_pct": 11},
             }
             rfqs = [

@@ -144,16 +144,26 @@
 
   // «+ Новый проект» в сайдбаре project.html: prompt → POST → переход на новую страницу.
   async function createProjectFromSidebar() {
-    // Памятка «зачем проект» по роли (как в /chat/).
+    // Памятка «зачем проект» по роли/подроли (как в /chat/).
     const r = window.__role || 'buyer';
-    const base = r.indexOf('operator') === 0 ? 'operator' : (r === 'seller' ? 'seller' : 'buyer');
-    const NOTE = {
-      buyer: '📦 Проект — это ваша закупка под технику/объект. Загрузите парк техники, историю и чертежи — AI точнее подберёт и соберёт RFQ в контексте проекта.',
-      seller: '🏷 Проект — это ваше товарное направление. Соберите прайс, чертежи, сертификаты и фото по сегменту — быстрее КП и больше доверия покупателя.',
-      operator: '🎛 Проект — это сделка / консолидированная поставка. Контракты, таможня, логистика, платежи — вся поставка от RFQ до доставки в одном месте.',
-    };
-    const PH = {buyer: 'напр. Парк Komatsu — Ковдор', seller: 'напр. Ходовка Komatsu', operator: 'напр. Сделка Урал Q3'};
-    const name = (window.prompt(NOTE[base] + '\n\nНазвание проекта (' + PH[base] + '):', '') || '').trim();
+    let note, ph;
+    if (r.indexOf('operator') === 0) {
+      const sub = r.replace('operator_', '').replace('operator', 'manager') || 'manager';
+      const ON = {
+        manager: '🎛 Проект — это сделка / консолидированная поставка. Контракты, таможня, логистика, платежи — вся поставка от RFQ до доставки.',
+        logist:  '🚚 Проект — поставка с фокусом на доставке. Логистика (BL/CMR, маршрут) и статус таможни — все отгрузки сделки под контролем.',
+        customs: '🛂 Проект — поставка с фокусом на растаможке. Декларации, HS-коды, инвойсы, сертификаты — таможня по всей сделке.',
+        payment: '💳 Проект — поставка с фокусом на финансах. Инвойсы, эскроу, акты, выплаты — деньги по сделке.',
+      };
+      note = ON[sub] || ON.manager; ph = 'напр. Сделка Урал Q3';
+    } else if (r === 'seller') {
+      note = '🏷 Проект — это ваше товарное направление. Соберите прайс, чертежи, сертификаты и фото по сегменту — быстрее КП и больше доверия покупателя.';
+      ph = 'напр. Ходовка Komatsu';
+    } else {
+      note = '📦 Проект — это ваша закупка под технику/объект. Загрузите парк техники, историю и чертежи — AI точнее подберёт и соберёт RFQ в контексте проекта.';
+      ph = 'напр. Парк Komatsu — Ковдор';
+    }
+    const name = (window.prompt(note + '\n\nНазвание проекта (' + ph + '):', '') || '').trim();
     if (!name) return;
     try {
       const r = await fetch('/api/assistant/projects/', {
@@ -599,6 +609,8 @@
     const role = (p.role || 'buyer');
     const isSeller = role === 'seller';
     const isOperator = role.indexOf('operator') === 0;
+    // Подроль оператора: manager(КАМ) / logist / customs / payment. Общий operator → manager.
+    const opSub = isOperator ? (role.replace('operator_', '').replace('operator', 'manager') || 'manager') : '';
     const tags = (p.tags && p.tags.length) ? p.tags.join(' · ') : '';
     const deadlineStr = p.deadline ? `Дедлайн: <span class="pj-meta-strong">${esc(p.deadline)}</span>` : '';
     const customer = p.customer ? `<span class="pj-meta-strong">${esc(p.customer)}</span>` : '';
@@ -643,8 +655,8 @@
       L.sec_rfqs = 'Входящие RFQ по направлению';
       L.sec_orders = 'Заказы в работе';
     } else if (isOperator) {
-      // Лейблы секций для оператора (сделка).
-      L.sec_rfqs = 'Позиции и подбор';
+      // Лейблы секций под подроль оператора.
+      L.sec_rfqs = (opSub === 'customs') ? 'Позиции на таможне' : 'Позиции и подбор';
       L.sec_orders = 'Отгрузки и этапы';
     }
     // KPI cards. Подписи под цифрами объясняют ЧТО за число.
@@ -681,34 +693,47 @@
         </div>
       `;
     } else if (isOperator) {
-      // Оператор: Позиции в работе / Логистика и таможня / Платежи·эскроу / Оборот сделки.
+      // Оператор: 4 KPI под подроль (manager/logist/customs/payment).
       const pos = stats.positions || {};
       const log = stats.logistics || {};
+      const cus = stats.customs || {};
       const pay = stats.payments || {};
       const deal = stats.deal_turnover || {};
       const md = deal.margin_pct ?? 0;
-      kpiHTML = `
-        <div class="kpi" ${kpiClick('sec-rfqs')} title="К разделу позиций">
-          <div class="kpi-label">Позиции в работе</div>
-          <div class="kpi-value"><div class="kpi-num">${pos.count || 0}</div></div>
-          ${pos.awaiting ? `<div class="kpi-sub"><span class="kpi-warn">${pos.awaiting}</span> ждут вашего действия</div>` : ''}
-        </div>
-        <div class="kpi" ${kpiClick('sec-orders')} title="Логистика и таможня">
-          <div class="kpi-label">Логистика и таможня</div>
-          <div class="kpi-value"><div class="kpi-num">${log.count || 0}</div></div>
-          <div class="kpi-sub">${log.at_customs ? `<span class="kpi-warn">${log.at_customs}</span> на таможне · ` : ''}ETA ${esc(log.earliest_eta || '—')}</div>
-        </div>
-        <div class="kpi" ${kpiClick('sec-orders')} title="Платежи и эскроу">
-          <div class="kpi-label">Платежи · эскроу</div>
-          <div class="kpi-value"><div class="kpi-num">${fmtMoney(pay.escrow_usd)}</div></div>
-          ${pay.awaiting_payout ? `<div class="kpi-sub"><span class="kpi-warn">${pay.awaiting_payout}</span> ждут выплаты продавцу</div>` : ''}
-        </div>
-        <div class="kpi" ${kpiClick('sec-orders')} title="Оборот сделки">
-          <div class="kpi-label">Оборот сделки</div>
-          <div class="kpi-value"><div class="kpi-num">${fmtMoney(deal.value_usd)}</div></div>
-          <div class="kpi-sub">маржа <span class="${md >= 0 ? 'kpi-good' : 'kpi-warn'}">${md >= 0 ? '+' : ''}${md}%</span></div>
-        </div>
-      `;
+      const warn = (n) => `<span class="kpi-warn">${n}</span>`;
+      const good = (n) => `<span class="kpi-good">${n}</span>`;
+      const card = (id, label, num, sub) =>
+        `<div class="kpi" ${id ? kpiClick(id) : ''}>
+          <div class="kpi-label">${label}</div>
+          <div class="kpi-value"><div class="kpi-num">${num}</div></div>
+          ${sub ? `<div class="kpi-sub">${sub}</div>` : ''}
+        </div>`;
+      if (opSub === 'logist') {
+        kpiHTML =
+          card('sec-orders', 'В пути', log.in_transit || 0, 'отгрузок в дороге') +
+          card('sec-orders', 'На таможне', log.at_customs || 0, log.at_customs ? 'ждут растаможки' : 'всё прошло') +
+          card('sec-orders', 'Ближайший ETA', esc(log.earliest_eta || '—'), 'следующая доставка') +
+          card('sec-orders', 'Задержки', log.delays || 0, log.delays ? warn(log.delays) + ' риск SLA' : 'в графике');
+      } else if (opSub === 'customs') {
+        kpiHTML =
+          card('sec-rfqs', 'На таможне', cus.at_customs || 0, 'позиций оформляется') +
+          card('sec-rfqs', 'Ждут HS-кода', cus.hs_pending || 0, cus.hs_pending ? warn(cus.hs_pending) + ' проставьте код' : 'все коды есть') +
+          card('sec-rfqs', 'Декларации', cus.declarations || 0, 'в работе') +
+          card('', 'Проверка санкций', cus.sanctions_risk || 0, cus.sanctions_risk ? warn(cus.sanctions_risk) + ' требует проверки' : good('чисто') + ' рисков нет');
+      } else if (opSub === 'payment') {
+        kpiHTML =
+          card('sec-orders', 'В эскроу', fmtMoney(pay.escrow_usd), 'удержано до поставки') +
+          card('sec-orders', 'Ждут выплаты', pay.awaiting_payout || 0, pay.awaiting_payout ? warn(pay.awaiting_payout) + ' продавцам' : 'выплачено') +
+          card('', 'Оплачено покупателем', fmtMoney(pay.paid_by_buyer_usd), 'по сделке') +
+          card('', 'Маржа сделки', (md >= 0 ? '+' : '') + md + '%', 'комиссия платформы');
+      } else {
+        // manager / КАМ / общий оператор — полная картина
+        kpiHTML =
+          card('sec-rfqs', 'Позиции в работе', pos.count || 0, pos.awaiting ? warn(pos.awaiting) + ' ждут вашего действия' : '') +
+          card('sec-orders', 'Логистика и таможня', log.count || 0, (log.at_customs ? warn(log.at_customs) + ' на таможне · ' : '') + 'ETA ' + esc(log.earliest_eta || '—')) +
+          card('sec-orders', 'Платежи · эскроу', fmtMoney(pay.escrow_usd), pay.awaiting_payout ? warn(pay.awaiting_payout) + ' ждут выплаты' : '') +
+          card('sec-orders', 'Оборот сделки', fmtMoney(deal.value_usd), 'маржа ' + (md >= 0 ? good('+' + md + '%') : warn(md + '%')));
+      }
     } else {
       const semiCount = stats.open_rfqs?.semi || 0;  // RFQ ждущие подбора оператора
       kpiHTML = `
@@ -745,20 +770,28 @@
 
     // Documents — empty-state карточка (0 docs) или категоризованные слоты (есть docs)
     const docs = p.documents || [];
-    const DOC_SLOTS = isOperator ? [
-      {key: "contract",  icon: "📑", label: "Контракты и условия",
-       descShort: "Договоры покупатель/продавцы и Incoterms — основа сделки",
-       descFull: "PDF: договоры, спецификации, Incoterm"},
-      {key: "customs",   icon: "🛂", label: "Таможенные документы",
-       descShort: "Декларации, HS-коды, инвойсы, сертификаты — таможня проходит без задержек",
-       descFull: "Декларации, HS, инвойсы, сертификаты происхождения"},
-      {key: "logistics", icon: "🚚", label: "Логистика",
-       descShort: "BL/CMR, упаковочные листы, маршрут — отгрузки под контролем",
-       descFull: "BL/CMR, packing list, маршрут, трекинг"},
-      {key: "payment",   icon: "💳", label: "Платежи",
-       descShort: "Инвойсы, эскроу, акты, выплаты — финансовая часть сделки",
-       descFull: "Инвойсы, эскроу, акты, payout продавцам"},
-    ] : isSeller ? [
+    const DOC_SLOTS = isOperator ? (function(){
+      const OS = {
+        contract:  {key: "contract",  icon: "📑", label: "Контракты и условия",
+          descShort: "Договоры покупатель/продавцы и Incoterms — основа сделки",
+          descFull: "PDF: договоры, спецификации, Incoterm"},
+        customs:   {key: "customs",   icon: "🛂", label: "Таможенные документы",
+          descShort: "Декларации, HS-коды, инвойсы, сертификаты — таможня проходит без задержек",
+          descFull: "Декларации, HS, инвойсы, сертификаты происхождения"},
+        logistics: {key: "logistics", icon: "🚚", label: "Логистика",
+          descShort: "BL/CMR, упаковочные листы, маршрут — отгрузки под контролем",
+          descFull: "BL/CMR, packing list, маршрут, трекинг"},
+        payment:   {key: "payment",   icon: "💳", label: "Платежи",
+          descShort: "Инвойсы, эскроу, акты, выплаты — финансовая часть сделки",
+          descFull: "Инвойсы, эскроу, акты, payout продавцам"},
+      };
+      // Фокус-документ подроли — первым.
+      const order = opSub === 'logist'  ? ['logistics', 'customs', 'contract', 'payment']
+                  : opSub === 'customs' ? ['customs', 'logistics', 'contract', 'payment']
+                  : opSub === 'payment' ? ['payment', 'contract', 'customs', 'logistics']
+                  : ['contract', 'customs', 'logistics', 'payment'];
+      return order.map(function(k){ return OS[k]; });
+    })() : isSeller ? [
       {key: "pricelist",   icon: "📤", label: "Прайс-лист направления",
        descShort: "Цены по этой группе — оператор и AI быстрее формируют КП по входящим RFQ",
        descFull: "Excel/CSV: артикул, цена, наличие, срок"},
@@ -927,6 +960,23 @@
         </div>
       </div>`).join('');
 
+    // Секции списков — для логиста «Отгрузки» выше «Позиций».
+    const rfqsSection = `
+      <div class="sec-title" id="sec-rfqs">
+        <h2>${L.sec_rfqs}</h2>
+        <span class="sec-title-count">${rfqs.length}</span>
+      </div>
+      <div class="rfq-list">${rfqsHTML}</div>`;
+    const ordersSection = `
+      <div class="sec-title" id="sec-orders">
+        <h2>${L.sec_orders}</h2>
+        <span class="sec-title-count">${orders.length}</span>
+      </div>
+      <div class="po-list">${ordersHTML}</div>`;
+    const listsSection = (isOperator && opSub === 'logist')
+      ? (ordersSection + rfqsSection)
+      : (rfqsSection + ordersSection);
+
     return `
       <div class="crumbs">
         <a href="/chat/">Проекты</a>
@@ -966,17 +1016,7 @@
         <span>AI использует <strong>все эти документы</strong> как контекст для ответов в чатах этого проекта</span>
       </div>
 
-      <div class="sec-title" id="sec-rfqs">
-        <h2>${L.sec_rfqs}</h2>
-        <span class="sec-title-count">${rfqs.length}</span>
-      </div>
-      <div class="rfq-list">${rfqsHTML}</div>
-
-      <div class="sec-title" id="sec-orders">
-        <h2>${L.sec_orders}</h2>
-        <span class="sec-title-count">${orders.length}</span>
-      </div>
-      <div class="po-list">${ordersHTML}</div>
+      ${listsSection}
 
       ${isOperator && participants.length ? `
       <div class="sec-title">
