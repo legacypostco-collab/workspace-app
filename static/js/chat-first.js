@@ -10171,6 +10171,11 @@
   // Init
   // ══════════════════════════════════════════════════════════
   async function init() {
+    // Мгновенно применяем серверную роль (инжектится в шаблоне) → welcome рисуется
+    // сразу нужной роли, без 1-2 сек мелькания дефолтного (buyer) экрана при загрузке.
+    try {
+      if (window.IS_AUTHENTICATED && window.__INITIAL_ROLE) applyRoleWelcome(window.__INITIAL_ROLE);
+    } catch (e) {}
     try {
       state.config = await api('/api/assistant/widget-config/');
       const name = state.config.user_name || 'User';

@@ -6463,7 +6463,19 @@ def chat_first_view(request):
                                         ensure_ascii=False)
     except Exception:
         pass
-    return render(request, "chat/index.html", {"role_actions_json": role_actions_json})
+    # Роль определяем на сервере и отдаём синхронно → фронт сразу рисует welcome
+    # нужной роли, без мелькания дефолтного (buyer) экрана на 1-2 сек при загрузке.
+    initial_role = "buyer"
+    try:
+        from assistant.permissions import detect_user_role
+        if request.user.is_authenticated:
+            initial_role = detect_user_role(request.user, request=request) or "buyer"
+    except Exception:
+        pass
+    return render(request, "chat/index.html", {
+        "role_actions_json": role_actions_json,
+        "initial_role": initial_role,
+    })
 
 
 def invite_redirect(request, code):

@@ -3595,6 +3595,7 @@
   if (document.documentElement.classList.contains('dark-mode-pre')) document.body.classList.add('dark-mode');
   // Auth flag для chat-first.js (anon → "Продавец" tab открывает регистрацию)
   window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
+  window.__INITIAL_ROLE = "{{ initial_role|default:'buyer'|escapejs }}";  // серверная роль — против мелькания welcome
 </script>
 <div class="app">
 
@@ -3952,7 +3953,7 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=4&t={% now 'U' %}"></script>
-<script src="{% static 'js/chat-first.js' %}?v=90&t={% now 'U' %}"></script>
+<script src="{% static 'js/chat-first.js' %}?v=95&t={% now 'U' %}"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>
