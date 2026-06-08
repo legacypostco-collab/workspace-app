@@ -3946,12 +3946,9 @@
       </div>
 
       <div class="pills" id="welcomePills">
-        {% comment %}Пилюли по роли (серверно) — продавец/оператор не видят покупательские при загрузке; JS applyRoleWelcome() перерисует их под текущим языком.{% endcomment %}
-        {% for p in welcome_pills %}
-        <button class="pill" type="button" onclick="quickAction('{{ p.action|escapejs }}', {})"><span class="pill-txt">{{ p.emoji }} {{ p.label }}</span></button>
-        {% endfor %}
-        {# Кнопка-меню «+» — серверно, чтобы не мигала при F5 (JS перерисует ту же) #}
-        <button class="pill-add" type="button" aria-label="{% trans 'Добавить пилюлю' %}" title="{% trans 'Меню пилюль: добавить, закрепить, переставить' %}" onclick="window.__openPillMaster&&window.__openPillMaster()">+</button>
+        {# Кнопки заполняются из JS на основе роли (после авторизации) — fallback ниже для no-JS #}
+        <button class="pill" onclick="quickAction('get_orders', {})" title="{% trans 'Купил — едет' %}">📦 {% trans "Мои заказы" %} <span class="pill-sub">{% trans "купил, едет" %}</span></button>
+        <button class="pill" onclick="quickAction('get_rfq_status', {})" title="{% trans 'Жду котировок от поставщиков' %}">📋 {% trans "Открытые RFQ" %} <span class="pill-sub">{% trans "жду котировок" %}</span></button>
       </div>
     </div>
 
