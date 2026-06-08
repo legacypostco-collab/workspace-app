@@ -3887,8 +3887,7 @@
       </div>
 
       <div class="pills" id="welcomePills">
-        {# Залогиненному пилюли отдаёт JS по его роли (пусто здесь → нет «чужих» пилюль
-           до загрузки JS). Аноним: статичный fallback ниже (в т.ч. для no-JS). #}
+        {# Залогиненному пилюли отдаёт JS по роли (пусто); анониму fallback ниже. #}
         {% if not auth_role %}
         <button class="pill" onclick="quickAction('get_orders', {})" title="{% trans 'Купил — едет' %}">📦 {% trans "Мои заказы" %} <span class="pill-sub">{% trans "купил, едет" %}</span></button>
         <button class="pill" onclick="quickAction('get_rfq_status', {})" title="{% trans 'Жду котировок от поставщиков' %}">📋 {% trans "Открытые RFQ" %} <span class="pill-sub">{% trans "жду котировок" %}</span></button>
