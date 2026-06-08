@@ -362,6 +362,12 @@
     body.dark-mode .pill-sub{color:rgba(255,255,255,0.62);}
     .pill:hover{background:rgba(255,255,255,0.75);border-color:rgba(255,255,255,0.85);}
     .pill svg{flex-shrink:0;color:rgba(0,0,0,0.55);}
+    /* Кнопка-меню «+» (кружок) — статически, чтобы не мигала при F5 до загрузки JS (_ensurePillCSS). */
+    .pill-add{width:40px;height:40px;border-radius:50%;border:1px dashed rgba(0,0,0,.28);background:rgba(255,255,255,.45);font-size:22px;line-height:1;color:rgba(0,0,0,.5);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0;transition:background .15s,border-color .15s,color .15s,transform .1s;}
+    .pill-add:hover{background:#fff;border-color:rgba(0,0,0,.45);color:#000;}
+    .pill-add:active{transform:scale(.92);}
+    body.dark-mode .pill-add{background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.28);}
+    body.dark-mode .pill-add:hover{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.5);}
 
     /* ── Conversation state ── */
     .conv{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-top:60px;}
