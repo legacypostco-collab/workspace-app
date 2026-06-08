@@ -584,9 +584,11 @@
   const FILE_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>`;
 
   function renderProject(p) {
-    // Роль: у покупателя проект = закупочный; у продавца = ТОВАРНОЕ НАПРАВЛЕНИЕ.
+    // Роль: покупатель → закупочный проект; продавец → ТОВАРНОЕ НАПРАВЛЕНИЕ;
+    // оператор → СДЕЛКА / консолидированная поставка (видит обе стороны).
     const role = (p.role || 'buyer');
     const isSeller = role === 'seller';
+    const isOperator = role.indexOf('operator') === 0;
     const tags = (p.tags && p.tags.length) ? p.tags.join(' · ') : '';
     const deadlineStr = p.deadline ? `Дедлайн: <span class="pj-meta-strong">${esc(p.deadline)}</span>` : '';
     const customer = p.customer ? `<span class="pj-meta-strong">${esc(p.customer)}</span>` : '';
@@ -630,6 +632,10 @@
       // Лейблы секций для продавца (товарное направление).
       L.sec_rfqs = 'Входящие RFQ по направлению';
       L.sec_orders = 'Заказы в работе';
+    } else if (isOperator) {
+      // Лейблы секций для оператора (сделка).
+      L.sec_rfqs = 'Позиции и подбор';
+      L.sec_orders = 'Отгрузки и этапы';
     }
     // KPI cards. Подписи под цифрами объясняют ЧТО за число.
     const stats = p.stats || {};
@@ -662,6 +668,35 @@
           <div class="kpi-label">Выручка за месяц</div>
           <div class="kpi-value"><div class="kpi-num">${fmtMoney(rev.value_usd)}</div></div>
           <div class="kpi-sub"><span class="${rd >= 0 ? 'kpi-good' : 'kpi-warn'}">${rd >= 0 ? '+' : ''}${rd}%</span> ${L.vs_prev_month}</div>
+        </div>
+      `;
+    } else if (isOperator) {
+      // Оператор: Позиции в работе / Логистика и таможня / Платежи·эскроу / Оборот сделки.
+      const pos = stats.positions || {};
+      const log = stats.logistics || {};
+      const pay = stats.payments || {};
+      const deal = stats.deal_turnover || {};
+      const md = deal.margin_pct ?? 0;
+      kpiHTML = `
+        <div class="kpi" ${kpiClick('sec-rfqs')} title="К разделу позиций">
+          <div class="kpi-label">Позиции в работе</div>
+          <div class="kpi-value"><div class="kpi-num">${pos.count || 0}</div></div>
+          ${pos.awaiting ? `<div class="kpi-sub"><span class="kpi-warn">${pos.awaiting}</span> ждут вашего действия</div>` : ''}
+        </div>
+        <div class="kpi" ${kpiClick('sec-orders')} title="Логистика и таможня">
+          <div class="kpi-label">Логистика и таможня</div>
+          <div class="kpi-value"><div class="kpi-num">${log.count || 0}</div></div>
+          <div class="kpi-sub">${log.at_customs ? `<span class="kpi-warn">${log.at_customs}</span> на таможне · ` : ''}ETA ${esc(log.earliest_eta || '—')}</div>
+        </div>
+        <div class="kpi" ${kpiClick('sec-orders')} title="Платежи и эскроу">
+          <div class="kpi-label">Платежи · эскроу</div>
+          <div class="kpi-value"><div class="kpi-num">${fmtMoney(pay.escrow_usd)}</div></div>
+          ${pay.awaiting_payout ? `<div class="kpi-sub"><span class="kpi-warn">${pay.awaiting_payout}</span> ждут выплаты продавцу</div>` : ''}
+        </div>
+        <div class="kpi" ${kpiClick('sec-orders')} title="Оборот сделки">
+          <div class="kpi-label">Оборот сделки</div>
+          <div class="kpi-value"><div class="kpi-num">${fmtMoney(deal.value_usd)}</div></div>
+          <div class="kpi-sub">маржа <span class="${md >= 0 ? 'kpi-good' : 'kpi-warn'}">${md >= 0 ? '+' : ''}${md}%</span></div>
         </div>
       `;
     } else {
@@ -700,7 +735,20 @@
 
     // Documents — empty-state карточка (0 docs) или категоризованные слоты (есть docs)
     const docs = p.documents || [];
-    const DOC_SLOTS = isSeller ? [
+    const DOC_SLOTS = isOperator ? [
+      {key: "contract",  icon: "📑", label: "Контракты и условия",
+       descShort: "Договоры покупатель/продавцы и Incoterms — основа сделки",
+       descFull: "PDF: договоры, спецификации, Incoterm"},
+      {key: "customs",   icon: "🛂", label: "Таможенные документы",
+       descShort: "Декларации, HS-коды, инвойсы, сертификаты — таможня проходит без задержек",
+       descFull: "Декларации, HS, инвойсы, сертификаты происхождения"},
+      {key: "logistics", icon: "🚚", label: "Логистика",
+       descShort: "BL/CMR, упаковочные листы, маршрут — отгрузки под контролем",
+       descFull: "BL/CMR, packing list, маршрут, трекинг"},
+      {key: "payment",   icon: "💳", label: "Платежи",
+       descShort: "Инвойсы, эскроу, акты, выплаты — финансовая часть сделки",
+       descFull: "Инвойсы, эскроу, акты, payout продавцам"},
+    ] : isSeller ? [
       {key: "pricelist",   icon: "📤", label: "Прайс-лист направления",
        descShort: "Цены по этой группе — оператор и AI быстрее формируют КП по входящим RFQ",
        descFull: "Excel/CSV: артикул, цена, наличие, срок"},
@@ -731,10 +779,12 @@
     // Documents: единый layout (прогресс-бар + 5 слотов). При 0 docs прогресс показывает
     // tagline «Чем больше данных — тем точнее аналитика» вместо счётчика, и слоты пустые.
     const SLOTS_WITH_OTHER = [...DOC_SLOTS, {key:"other", icon:"📦", label:"Другое",
-      descShort: isSeller
+      descShort: isOperator
+        ? "Прочие документы по сделке — переписка, доп.соглашения, фото — AI учитывает в ответах"
+        : isSeller
         ? "Гарантии, условия поставки, прайс-история — AI учитывает их в ответах по направлению"
         : "Контракты и условия поставки — AI учитывает их при формировании заказа",
-      descFull: isSeller ? "Гарантии, Incoterm, прайс-история" : "Контракты, условия Incoterm"}];
+      descFull: isOperator ? "Доп.соглашения, переписка, фото" : (isSeller ? "Гарантии, Incoterm, прайс-история" : "Контракты, условия Incoterm")}];
     const docsByType = {};
     docs.forEach(d => {
       const k = d.doctype || "other";
@@ -856,6 +906,17 @@
       </a>`;
     }).join('') : `<div class="chat" style="cursor:default;"><div class="chat-info"><div class="chat-preview">Нет чатов в этом проекте</div></div></div>`;
 
+    // Участники сделки — только оператор (видит обе стороны). Используем стиль строки .rfq.
+    const participants = p.participants || [];
+    const participantsHTML = participants.map(pt => `
+      <div class="rfq" style="cursor:default;">
+        <span class="rfq-num">${esc(pt.role)}</span>
+        <div class="rfq-info">
+          <div class="rfq-title">${esc(pt.name)}</div>
+          <div class="rfq-meta">${esc(pt.meta || '')}</div>
+        </div>
+      </div>`).join('');
+
     return `
       <div class="crumbs">
         <a href="/chat/">Проекты</a>
@@ -906,6 +967,14 @@
         <span class="sec-title-count">${orders.length}</span>
       </div>
       <div class="po-list">${ordersHTML}</div>
+
+      ${isOperator && participants.length ? `
+      <div class="sec-title">
+        <h2>Участники сделки</h2>
+        <span class="sec-title-count">${participants.length}</span>
+      </div>
+      <div class="rfq-list">${participantsHTML}</div>
+      ` : ''}
 
       <div class="sec-title">
         <h2>Чаты по проекту</h2>

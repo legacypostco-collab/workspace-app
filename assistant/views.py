@@ -1096,7 +1096,7 @@ class ProjectDocumentUploadView(APIView):
         # иначе угадываем по расширению.
         explicit_doctype = (request.data.get("doctype") or "").strip().lower()
         ALLOWED = ("fleet", "spec", "regulation", "drawing", "conditions", "contract", "invoice",
-                   "pricelist", "certificate", "photo", "other")
+                   "pricelist", "certificate", "photo", "customs", "logistics", "payment", "other")
         doctype = explicit_doctype if explicit_doctype in ALLOWED else _by_ext.get(ext, "other")
         try:
             from .models import ProjectDocument
@@ -1255,8 +1255,51 @@ class ProjectDetailView(APIView):
         # (входящие RFQ по сегменту / заказы в работе / каталог / выручка).
         role = detect_user_role(request.user, request=request)
         is_seller = (role == "seller")
+        is_operator = role.startswith("operator")
+        participants = []  # только для оператора (видит обе стороны сделки)
 
-        if is_seller:
+        if is_operator:
+            stats = {
+                # positions.awaiting — позиции, ждущие действия оператора (подбор/согласование)
+                "positions": {"count": 12, "awaiting": 3},
+                # logistics — отгрузки, из них на таможне + ближайший ETA
+                "logistics": {"count": 4, "at_customs": 1, "earliest_eta": _eta_label(request, days=30)},
+                # payments — удержано в эскроу + сколько ждут выплаты продавцу
+                "payments": {"escrow_usd": 142800, "awaiting_payout": 2},
+                # deal_turnover — оборот сделки + маржа
+                "deal_turnover": {"value_usd": 168400, "margin_pct": 11},
+            }
+            rfqs = [
+                {"number": "RFQ-4421", "title": "Spec Q2 — основной микс", "tag": "AUTO",
+                 "meta": "39 позиций · сматчены с каталогом",
+                 "best_so_far": 47890, "best_label": "сумма по подбору"},
+                {"number": "RFQ-4418", "title": "Track shoes D8T — нужен аналог", "tag": "SEMI",
+                 "meta": "2 позиции · подберите аналог",
+                 "best_so_far": 7440, "best_label": "ориентир по каталогу"},
+                {"number": "RFQ-4407", "title": "Гидрофильтры — пополнение", "tag": "AUTO",
+                 "meta": "1 позиция · 12 шт · сматчена",
+                 "best_so_far": 2112, "best_label": "сумма по подбору"},
+            ]
+            orders = [
+                {"number": "PO-22841", "title": "Spec Q2 partial — 14 позиций",
+                 "status": "НА ТАМОЖНЕ", "status_color": "amber",
+                 "stages": [True, True, True, True, False],
+                 "stage_labels": ["RFQ", "Заказ", "Производство", "Таможня", "Доставлен"],
+                 "seller": "XCMG", "operator": "",
+                 "eta": "ETA " + _eta_label(request, days=4), "amount": 28640},
+                {"number": "PO-22829", "title": "Гидрофильтры — 12 шт",
+                 "status": "В ПУТИ", "status_color": "green",
+                 "stages": [True, True, True, False, False],
+                 "stage_labels": ["RFQ", "Заказ", "Производство", "Таможня", "Доставлен"],
+                 "seller": "Caterpillar Eurasia", "operator": "",
+                 "eta": "ETA " + _eta_label(request, days=2), "amount": 2112},
+            ]
+            participants = [
+                {"role": "Покупатель", "name": "СтройМонтаж-Урал", "meta": "клиент · 3 RFQ в сделке"},
+                {"role": "Продавец", "name": "XCMG", "meta": "14 позиций · отгрузка"},
+                {"role": "Продавец", "name": "Caterpillar Eurasia", "meta": "12 шт · в пути"},
+            ]
+        elif is_seller:
             stats = {
                 # incoming_rfqs.awaiting — RFQ по направлению, ждущие вашего КП
                 "incoming_rfqs": {"count": 4, "awaiting": 2},
@@ -1342,6 +1385,7 @@ class ProjectDetailView(APIView):
             "stats": stats,
             "rfqs": rfqs,
             "orders": orders,
+            "participants": participants,
         })
 
 

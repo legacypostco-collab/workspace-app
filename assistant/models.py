@@ -218,6 +218,10 @@ class ProjectDocument(models.Model):
         ("pricelist", "Прайс-лист"),
         ("certificate", "Сертификат"),
         ("photo", "Фото товара"),
+        # Operator (сделка/консолидированная поставка):
+        ("customs", "Таможенный документ"),
+        ("logistics", "Логистика"),
+        ("payment", "Платёжный документ"),
         ("other", "Другое"),
     ]
     STATUS = [
