@@ -3941,6 +3941,8 @@
         {% for p in welcome_pills %}
         <button class="pill" type="button" onclick="quickAction('{{ p.action|escapejs }}', {})"><span class="pill-txt">{{ p.emoji }} {{ p.label }}</span></button>
         {% endfor %}
+        {# Кнопка-меню «+» — серверно, чтобы не мигала при F5 (JS перерисует ту же) #}
+        <button class="pill-add" type="button" aria-label="{% trans 'Добавить пилюлю' %}" title="{% trans 'Меню пилюль: добавить, закрепить, переставить' %}" onclick="window.__openPillMaster&&window.__openPillMaster()">+</button>
       </div>
     </div>
 
