@@ -6575,12 +6575,11 @@
     const html = pills.map(b => {
       const label = `${b.emoji} ${b.text}`;
       const params = { ...(b.params || {}), _label: label };
-      // Бейдж «требует действия»: непрочитанные уведомления раздела этой пилюли.
-      const _badge = pillBadgeHtml(b.action, 'pill-badge');
+      // Бейдж «требует действия» на ГЛАВНОЙ не показываем — только в меню пилюль.
       // «×» скрыт; проявляется только в режиме редактирования (долгое нажатие).
       return `<button class="pill" type="button" data-pid="${esc(b.id)}"
         onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(params)})'>
-        <span class="pill-del" aria-label="Убрать" title="Убрать">×</span>${_badge}
+        <span class="pill-del" aria-label="Убрать" title="Убрать">×</span>
         <span class="pill-txt">${esc(label)}</span>
       </button>`;
     }).join('');
