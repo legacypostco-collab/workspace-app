@@ -7725,10 +7725,11 @@
     showConv();
     addMessage('user', '📎 ' + file.name + ' (' + Math.round(file.size/1024) + ' KB)');
     // Сообщение-плейсхолдер с прогресс-баром (обновляется по ходу загрузки).
-    const pending = addMessage(
-      'assistant',
-      'Загружаю файл… <span class="upl-pct">0%</span><div class="upl-bar"><div class="upl-bar-fill" style="width:0%"></div></div>',
-    );
+    // HTML задаём напрямую в .msg-content — addMessage экранирует контент (linkifyEntities).
+    const pending = addMessage('assistant', 'Загружаю файл…');
+    const _spEl = pending && pending.querySelector && pending.querySelector('.msg-content');
+    if (_spEl) _spEl.innerHTML =
+      'Загружаю файл… <span class="upl-pct">0%</span><div class="upl-bar"><div class="upl-bar-fill" style="width:0%"></div></div>';
     const fd = new FormData();
     fd.append('file', file);
     if (state.convId) fd.append('conversation_id', state.convId);
@@ -10013,11 +10014,13 @@
     // Живой прогресс-бар с процентами (как при загрузке спеки) — большой PDF грузится
     // долго, без индикатора кажется, что всё зависло.
     const sizeKb = file.size ? ' · ' + Math.round(file.size / 1024) + ' KB' : '';
-    const pending = addMessage(
-      'assistant',
+    const pending = addMessage('assistant', '📐 Загружаю чертёж…');
+    // addMessage прогоняет текст через linkifyEntities (экранирует HTML), поэтому
+    // прогресс-бар задаём innerHTML напрямую в .msg-content — иначе теги видны текстом.
+    const _cEl = pending && pending.querySelector && pending.querySelector('.msg-content');
+    if (_cEl) _cEl.innerHTML =
       '📐 Загружаю чертёж «' + esc(file.name) + '»' + sizeKb + ' <span class="upl-pct">0%</span>'
-      + '<div class="upl-bar"><div class="upl-bar-fill" style="width:0%"></div></div>',
-    );
+      + '<div class="upl-bar"><div class="upl-bar-fill" style="width:0%"></div></div>';
     const fd = new FormData();
     fd.append('file', file);
     _uploadWithProgress('/api/assistant/drawings/upload/', fd, {
