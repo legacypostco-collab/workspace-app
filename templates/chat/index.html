@@ -3626,6 +3626,28 @@
       document.documentElement.classList.add('cf-sb-open');
     } catch(_){}
   })();
+  // [TEMP diag2] полный таймлайн первой отрисовки — снести.
+  (function(){ try {
+    var tl=[], t0=performance.now();
+    function snap(tag){
+      var ws=document.getElementById('welcomeStage'), sb=document.getElementById('sidebar');
+      var wt=document.getElementById('welcomeTitle'), av=document.getElementById('topAvatar');
+      var voiti=false, bs=document.querySelectorAll('button,.top-icon');
+      for(var i=0;i<bs.length;i++){ if(/Войти|Регистрац/.test(bs[i].textContent)){voiti=true;break;} }
+      var actTab=null, tabs=document.querySelectorAll('#roleToggle .role-tab');
+      for(var j=0;j<tabs.length;j++){ if(tabs[j].classList.contains('active')) actTab=tabs[j].getAttribute('data-role'); }
+      tl.push({t:Math.round(performance.now()-t0),tag:tag||'',rs:document.readyState,
+        wsShown: ws?(!ws.classList.contains('hidden')&&getComputedStyle(ws).display!=='none'):null,
+        wTitle: wt?(wt.textContent||'').slice(0,26):null,
+        sbW: sb?getComputedStyle(sb).width:null, sbOpen: sb?sb.classList.contains('open'):null,
+        htmlSbOpen: document.documentElement.classList.contains('cf-sb-open'),
+        roleTabsVisible: tabs.length>0 && sb && getComputedStyle(sb).width!=='0px',
+        actTab: actTab, avatar: av?av.textContent:null, voiti:voiti});
+      try{ sessionStorage.setItem('__cf_tl2', JSON.stringify(tl)); }catch(_){}
+    }
+    var iv=setInterval(function(){ snap('iv'); if(performance.now()-t0>5000) clearInterval(iv); },30);
+    document.addEventListener('DOMContentLoaded',function(){snap('DCL');});
+  } catch(_){} })();
 </script>
 <style>
   /* Пока грузится/восстанавливается кабинет — welcome-home скрыт, по центру спиннер. */
