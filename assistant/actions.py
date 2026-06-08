@@ -2423,7 +2423,7 @@ def get_orders(params, user, role):
             "payment_status": o.payment_status,
             "total": float(o.total_amount or 0),
             "currency": "USD",
-            "customer": o.customer_name or (o.buyer.get_full_name() if o.buyer else "—"),
+            "customer": (o.customer_name or (o.buyer.get_full_name() if o.buyer else "—")) if role != "seller" else "Покупатель",
             "created_at": o.created_at.strftime("%d.%m.%Y"),
             # Можно отменить если резерв ещё не списан и заказ свежий
             "can_cancel": (role == "buyer" and o.payment_status == "awaiting_reserve"),
@@ -2591,7 +2591,7 @@ def get_order_detail(params, user, role):
         {"label": "Статус",     "value": o.get_status_display()},
         {"label": "Оплата",     "value": o.get_payment_status_display()},
         {"label": "Сумма",      "value": f"${float(o.total_amount or 0):,.2f}"},
-        {"label": "Покупатель", "value": o.customer_name or "—"},
+        {"label": "Покупатель", "value": (o.customer_name or "—") if role != "seller" else "Покупатель"},
         {"label": "Создан",     "value": o.created_at.strftime("%d.%m.%Y %H:%M") if o.created_at else "—"},
     ]
     # PIVOT 2026-05-27: sub-order контекст
@@ -2863,7 +2863,7 @@ def get_order_detail(params, user, role):
         {"label": "Оплата",           "value": o.get_payment_status_display()},
         {"label": "Сумма",            "value": f"${(o.total_amount or 0):,.2f}",            "primary": True},
         {"label": "Создан",           "value": o.created_at.strftime("%d.%m.%Y %H:%M") if o.created_at else "—"},
-        {"label": "Покупатель",       "value": o.customer_name or "—"},
+        {"label": "Покупатель",       "value": (o.customer_name or "—") if role != "seller" else "Покупатель"},
     ]
     if o.logistics_cost:
         rows.append({"label": "Логистика", "value": f"${o.logistics_cost:,.2f}"})
@@ -3324,7 +3324,7 @@ def get_my_deals(params, user, role):
             "quotes_count": 0,
             "kind":         "rfq",
             # Имя клиента нужно только seller/operator (buyer видит «себя»).
-            "customer_name": ((r.customer_name if hasattr(r, "customer_name") else "") or "") if role != "buyer" else "",
+            "customer_name": ((r.customer_name if hasattr(r, "customer_name") else "") or "") if role not in ("buyer", "seller") else "",
             "date_str":     r.created_at.strftime("%d.%m.%Y") if r.created_at else "",
             "amount":       float(getattr(r, "estimated_total", 0) or 0) or None,
             "_sort":        -int(r.created_at.timestamp() if r.created_at else 0),
@@ -3373,7 +3373,7 @@ def get_my_deals(params, user, role):
             "items_count":  o.items.count() if hasattr(o, "items") else 0,
             "quotes_count": 0,
             "kind":         "order_pending" if ps == "awaiting_reserve" else "order",
-            "customer_name": (o.customer_name or "") if role != "buyer" else "",
+            "customer_name": (o.customer_name or "") if role not in ("buyer", "seller") else "",
             "date_str":     o.created_at.strftime("%d.%m.%Y") if o.created_at else "",
             "amount":       float(o.total_amount or 0),
             "_sort":        -int(o.created_at.timestamp() if o.created_at else 0),
@@ -4083,7 +4083,7 @@ def get_supply_report(params, user, role):
                 "warn" if o.sla_status == "at_risk" else "ok")
             items_n = OrderItem.objects.filter(order=o).count()
             st_rows.append({
-                "title": f"ORD-{o.id} · {o.customer_name or o.buyer.username}",
+                "title": f"ORD-{o.id} · {'Покупатель' if role == 'seller' else (o.customer_name or o.buyer.username)}",
                 "subtitle": (
                     f"{items_n} поз · ${float(o.total_amount or 0):,.0f} · "
                     f"ETA ~{eta} ({days_left}д)"
@@ -5063,7 +5063,7 @@ def get_sla_report(params, user, role):
     stuck.sort(key=lambda x: -x[1])
     if stuck:
         items_stuck = [{
-            "title":    f"Заказ #{o.id} · {o.customer_name[:30]}",
+            "title":    f"Заказ #{o.id} · {'Покупатель' if role == 'seller' else (o.customer_name or '')[:30]}",
             "subtitle": (f"в статусе «{STAGE_LABELS.get(o.status, o.status)}» уже {age} дн "
                          f"(норматив {sla} дн)"),
             "badge":    {"label": f"+{age - sla}д", "tone": "bad"},
@@ -5358,7 +5358,7 @@ def get_claims(params, user, role):
     def _row(c, age_d, *, sla_bad=False):
         order = c.order
         order_tag = f"#{order.id}"
-        who = (order.buyer.username if order.buyer_id else (order.customer_name or "—"))[:24]
+        who = "Покупатель" if role == "seller" else (order.buyer.username if order.buyer_id else (order.customer_name or "—"))[:24]
         money = f" · возврат ${int(c.refund_amount):,}".replace(",", " ") if c.refund_amount else ""
         return {
             "title": c.title[:60] or KIND_LABEL.get(c.kind, c.kind),
@@ -8523,7 +8523,8 @@ def seller_pipeline(params, user, role):
                 triggers_done["payment_received"] = "backfill|auto"
             g["orders"][oid] = {
                 "id": oid,
-                "buyer": order.customer_name or (order.buyer.username if order.buyer else "—"),
+                # Продавец не видит покупателя (анти-сговор) — обезличено.
+                "buyer": "Покупатель",
                 "items": [],
                 "subtotal": Decimal("0"),
                 "payment_status": order.payment_status,
@@ -8862,7 +8863,7 @@ def ship_order(params, user, role):
     if not tracking:
         return ActionResult(
             text=(
-                f"Отгрузка заказа #{order.id} ({order.customer_name}) "
+                f"Отгрузка заказа #{order.id} "
                 f"на сумму ${order.total_amount:,.0f}.\n"
                 f"Заполните данные перевозчика — они уйдут оператору платформы "
                 f"и сохранятся в audit-логе заказа. Прямые контакты юзеру "

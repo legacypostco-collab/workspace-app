@@ -546,7 +546,7 @@ def generate_qr(params, user, role):
                 "title": f"QR · Заказ #{order.id}",
                 "payload": payload,
                 "image_url": qr_url,
-                "subtitle": f"{order.customer_name or '—'} · ${order.total_amount:,.0f}",
+                "subtitle": f"Покупатель · ${order.total_amount:,.0f}",
             },
         }],
         actions=[
@@ -1248,7 +1248,7 @@ def seller_inbox(params, user, role):
         for o in to_ship:
             inc, inc_hint = _incoterm_chip(o)
             rows.append({
-                "title": f"Заказ #{o.id} · {o.customer_name}",
+                "title": f"Заказ #{o.id} · Покупатель",
                 "subtitle": (
                     f"${o.total_amount:,.0f} · базис {inc} · "
                     f"оплачен {(o.final_paid_at or o.created_at).strftime('%d.%m.%Y')}\n"
@@ -1268,7 +1268,7 @@ def seller_inbox(params, user, role):
         for o in to_confirm:
             inc, inc_hint = _incoterm_chip(o)
             rows.append({
-                "title": f"Заказ #{o.id} · {o.customer_name}",
+                "title": f"Заказ #{o.id} · Покупатель",
                 "subtitle": (
                     f"${o.total_amount:,.0f} · базис {inc} · резерв 10% оплачен\n"
                     f"{inc_hint}"
@@ -1294,7 +1294,7 @@ def seller_inbox(params, user, role):
             "icon": "📋", "title": "Новые RFQ — ответить ценой",
             "rows": [
                 {
-                    "title": f"RFQ #{r.id} · {r.customer_name}",
+                    "title": f"RFQ #{r.id} · Покупатель",
                     "subtitle": _rfq_subtitle(r),
                     "action": {"label": "💬 Ответить",
                                "action": "respond_rfq_form",
@@ -1307,7 +1307,7 @@ def seller_inbox(params, user, role):
             "icon": "⏱", "title": "SLA-нарушения — нужно объяснить покупателю",
             "rows": [
                 {
-                    "title": f"Заказ #{o.id} · {o.customer_name}",
+                    "title": f"Заказ #{o.id} · Покупатель",
                     "subtitle": f"Просрочка · {o.get_status_display()}",
                     "action": {"label": "📦 Открыть",
                                "action": "track_order",
@@ -1506,7 +1506,7 @@ def seller_qr(params, user, role):
         .distinct().order_by("-created_at")[:10]
     )
     rows = [{
-        "title": f"Заказ #{o.id} · {o.customer_name}",
+        "title": f"Заказ #{o.id} · Покупатель",
         "subtitle": f"Сумма ${o.total_amount:,.0f} · {o.get_status_display()}",
         "badge": "QR",
         "url": f"/seller/qr/?order={o.id}",
@@ -1563,7 +1563,7 @@ def seller_logistics(params, user, role):
         if tracking:
             sub += f" · {carrier}: {tracking}"
         rows.append({
-            "title": f"Заказ #{o.id} · {o.customer_name}",
+            "title": f"Заказ #{o.id} · Покупатель",
             "subtitle": sub,
             "badge": "Трекинг",
         })
@@ -1592,7 +1592,7 @@ def seller_negotiations(params, user, role):
             actions=[{"label": "📋 Все RFQ", "action": "get_rfq_status", "params": {}}],
         )
     rows = [{
-        "title": f"RFQ #{r.id} · {r.customer_name or '—'}",
+        "title": f"RFQ #{r.id} · Покупатель",
         "subtitle": f"{r.get_status_display()} · {r.created_at.strftime('%d.%m.%Y')}",
         "badge": "Открыть",
     } for r in qs]
@@ -2425,7 +2425,7 @@ def rfq_detail(params, user, role):
     text = (
         f"📋 RFQ #{rfq.id} · {rfq.get_status_display()}\n"
         f"{badge_line}"
-        f"От: {rfq.customer_name or rfq.created_by.username}\n"
+        f"От: Покупатель\n"
         f"Создан: {rfq.created_at.strftime('%d.%m.%Y %H:%M')}\n"
         f"Позиций: {len(items)}\n\n"
         f"Список:\n{items_text}"
