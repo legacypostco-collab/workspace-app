@@ -10247,6 +10247,9 @@
       } else if (urlConv && validIds.has(urlConv)) {
         target = urlConv;
         try { sessionStorage.removeItem('cf_on_welcome'); } catch(_){}
+      } else if (stickyWelcome) {
+        // Был на главной → при F5 остаёмся на главной (а не уходим в last conv).
+        target = null;
       } else if (storedConv && validIds.has(storedConv)) {
         // F5 в conv → возвращаемся в эту же conv.
         target = storedConv;
