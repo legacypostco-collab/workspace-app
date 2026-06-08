@@ -1719,6 +1719,9 @@
   };
 
   function applyDefaultSidebar(hasHistory) {
+    // Снимаем ранний html-класс (он открывал сайдбар до загрузки JS против мелькания);
+    // дальше источник истины — класс .open на самом #sidebar.
+    document.documentElement.classList.remove('cf-sb-open');
     if (isMobile()) {
       // Mobile: always closed by default
       $('sidebar').classList.remove('open');

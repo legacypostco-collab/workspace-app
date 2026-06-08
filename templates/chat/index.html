@@ -3614,6 +3614,18 @@
       setTimeout(function(){ document.documentElement.classList.remove('cf-restoring'); }, 6000);
     } catch(_){}
   })();
+  // Сайдбар (вкладки ролей + чаты) — применяем сохранённое «открыт» состояние СРАЗУ, до
+  // загрузки JS. Иначе при F5 на главной кабинет ~0.8с виден без сайдбара и вкладок ролей
+  // (welcome во весь экран) — выглядит как страница неавторизованного. Класс вешаем на
+  // <html> (#sidebar ещё не распарсен); applyDefaultSidebar() снимет его и станет истиной.
+  (function(){
+    try {
+      if (!window.IS_AUTHENTICATED) return;            // аноним — как раньше
+      if (window.innerWidth <= 768) return;            // мобайл — сайдбар закрыт по умолчанию
+      if (localStorage.getItem('cf_sidebar_open') === '0') return; // юзер сам закрыл — уважаем
+      document.documentElement.classList.add('cf-sb-open');
+    } catch(_){}
+  })();
 </script>
 <style>
   /* Пока грузится/восстанавливается кабинет — welcome-home скрыт, по центру спиннер. */
@@ -3624,6 +3636,8 @@
     border-radius:50%;animation:cfRestoreSpin .8s linear infinite;z-index:4;pointer-events:none;
   }
   @keyframes cfRestoreSpin{to{transform:rotate(360deg);}}
+  /* Сайдбар открыт с первого кадра (до JS) — против «гостевого» вида при F5 на главной. */
+  html.cf-sb-open .sidebar{width:280px;}
 </style>
 <div class="app">
 
@@ -3981,7 +3995,7 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=4"></script>
-<script src="{% static 'js/chat-first.js' %}?v=98"></script>
+<script src="{% static 'js/chat-first.js' %}?v=99"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>
