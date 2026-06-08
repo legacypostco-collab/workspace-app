@@ -362,6 +362,17 @@
     body.dark-mode .pill-sub{color:rgba(255,255,255,0.62);}
     .pill:hover{background:rgba(255,255,255,0.75);border-color:rgba(255,255,255,0.85);}
     .pill svg{flex-shrink:0;color:rgba(0,0,0,0.55);}
+    /* Серверные пилюли роли (залогиненный) рисуются ДО загрузки JS (_ensurePillCSS),
+       поэтому нужные стили дублируем статически: «×» (pill-del) скрыт по умолчанию,
+       кнопка-меню «+» (pill-add) — кружок. JS позже переинжектит те же правила. */
+    .pill{position:relative;}
+    .pill-txt{display:inline-flex;align-items:center;gap:8px;}
+    .pill-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:rgba(70,70,70,.5);color:#fff;font-size:13px;line-height:17px;text-align:center;font-weight:600;opacity:0;transform:scale(.4);pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:4;}
+    .pill-add{width:40px;height:40px;border-radius:50%;border:1px dashed rgba(0,0,0,.28);background:rgba(255,255,255,.45);font-size:22px;line-height:1;color:rgba(0,0,0,.5);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;padding:0;transition:background .15s,border-color .15s,color .15s,transform .1s;}
+    .pill-add:hover{background:#fff;border-color:rgba(0,0,0,.45);color:#000;}
+    .pill-add:active{transform:scale(.92);}
+    body.dark-mode .pill-add{background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.28);}
+    body.dark-mode .pill-add:hover{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.5);}
 
     /* ── Conversation state ── */
     .conv{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-top:60px;}
@@ -3887,8 +3898,9 @@
       </div>
 
       <div class="pills" id="welcomePills">
-        {# Залогиненному пилюли отдаёт JS по роли (пусто); анониму fallback ниже. #}
-        {% if not auth_role %}
+        {% if auth_pills %}{# Залогиненный: пилюли его роли серверно (совпадают с ROLE_WELCOME в JS) — нет «пустой» главной до JS. #}
+        {% for p in auth_pills %}<button class="pill" type="button" onclick='quickAction("{{ p.action }}", {{ p.params|safe }})'><span class="pill-del" aria-label="{% trans 'Убрать' %}" title="{% trans 'Убрать' %}">×</span><span class="pill-txt">{{ p.emoji }} {{ p.label }}</span></button>{% endfor %}<button class="pill-add" type="button" aria-label="{% trans 'Добавить пилюлю' %}" title="{% trans 'Меню пилюль' %}" onclick="window.__openPillMaster&&window.__openPillMaster()">+</button>
+        {% else %}{# Аноним: статичный fallback (в т.ч. для no-JS). #}
         <button class="pill" onclick="quickAction('get_orders', {})" title="{% trans 'Купил — едет' %}">📦 {% trans "Мои заказы" %} <span class="pill-sub">{% trans "купил, едет" %}</span></button>
         <button class="pill" onclick="quickAction('get_rfq_status', {})" title="{% trans 'Жду котировок от поставщиков' %}">📋 {% trans "Открытые RFQ" %} <span class="pill-sub">{% trans "жду котировок" %}</span></button>
         {% endif %}

@@ -6491,6 +6491,41 @@ def chat_first_view(request):
         }
         _wt_key, _wt = _WELCOME[base_role]
         uname = (request.user.get_full_name() or request.user.username or "").strip()
+        # Пилюли роли — серверно, чтобы у залогиненного welcome был сразу С пилюлями
+        # (иначе ~1-2с видна «пустая» главная до загрузки JS). ДЕРЖАТЬ В СИНХРОНЕ с
+        # ROLE_WELCOME в static/js/chat-first.js (тот же набор/порядок/emoji/action).
+        # Подписи — ru из i18n.js (pill.*). params (для onclick) → JSON.
+        import json as _json2
+        _e = _json2.dumps  # короткий алиас для params → JSON
+        _PILLS = {
+            "buyer": [("📦", "Мои сделки", "get_my_deals", {}), ("👤", "Мой менеджер", "my_kam", {}),
+                      ("📐", "Чертежи", "seller_drawings", {}), ("💰", "Депозит", "get_balance", {}),
+                      ("🎯", "Auto-discount", "get_buyer_discount", {}), ("🎧", "Поддержка", "support_home", {})],
+            "seller": [("🔥", "Срочное", "seller_inbox", {}), ("📤", "Загрузить прайс", "upload_pricelist", {}),
+                       ("📦", "Мои товары", "seller_warehouses", {}), ("📐", "Чертежи", "seller_drawings", {}),
+                       ("💰", "Депозит", "get_balance", {}), ("🛡", "Верификация", "start_onboarding", {}),
+                       ("📊", "Аналитика", "seller_analytics_hub", {}), ("🎧", "Поддержка", "support_home", {})],
+            "operator": [("🎛", "Сводка", "op_dashboard", {}), ("📋", "Очередь заказов", "op_queue", {}),
+                         ("⏱", "SLA-нарушения", "op_sla_breach", {}), ("💰", "Платежи / Эскроу", "op_payments_dashboard", {}),
+                         ("🛂", "Таможня", "op_customs_dashboard", {}), ("🚚", "Логистика", "op_logistics_stats", {}),
+                         ("🏭", "Мои поставщики", "op_my_suppliers", {}), ("🛡", "KYB поставщиков", "op_kyb_queue", {}),
+                         ("🧾", "Рекламации", "get_claims", {}), ("📂", "Мои диалоги", "op_my_user_chats", {}),
+                         ("📐", "Чертежи", "op_drawings_by_part", {}), ("📊", "Аналитика", "op_analytics_hub", {}),
+                         ("🎧", "Поддержка", "support_home", {})],
+            "operator_manager": [("👥", "Заказчики", "seller_customers", {}), ("📋", "Мои сделки", "kam_deals", {}),
+                                 ("💰", "Начисления", "my_accruals", {}), ("📨", "Пригласить", "invite_customer", {}),
+                                 ("📊", "Аналитика", "op_analytics_hub", {}), ("📂", "Мои диалоги", "op_my_user_chats", {}),
+                                 ("🎧", "Поддержка", "support_home", {})],
+            "operator_logist": [("🚚", "Логистика", "op_logistics_stats", {}), ("🎛", "Сводка", "op_dashboard", {}),
+                                ("📋", "Очередь заказов", "op_queue", {"filter": "open"}), ("⏱", "SLA-нарушения", "op_sla_breach", {})],
+            "operator_customs": [("🛂", "Сводка таможни", "op_customs_dashboard", {}), ("🔎", "ТН ВЭД", "op_hs_lookup", {}),
+                                 ("🚫", "Санкции", "op_sanctions_check", {}), ("📋", "На таможне", "op_queue", {"filter": "open"})],
+            "operator_payment": [("💰", "Эскроу", "op_payments_dashboard", {}), ("💳", "Аналитика", "op_payments_stats", {}),
+                                 ("⏳", "Ожидают резерва", "op_queue", {"filter": "awaiting_reserve"}),
+                                 ("💸", "Возвраты", "op_queue", {"filter": "refund"})],
+        }
+        _plist = _PILLS.get(initial_role) or _PILLS.get(base_role) or _PILLS["buyer"]
+        auth_pills = [{"emoji": e, "label": l, "action": a, "params": _e(p)} for (e, l, a, p) in _plist]
         ctx.update({
             "auth_role": initial_role,
             "auth_base_role": base_role,
@@ -6500,6 +6535,7 @@ def chat_first_view(request):
             "auth_user_name": uname,
             "auth_user_initial": (uname[:1].upper() if uname else ""),
             "auth_user_role_label": initial_role.replace("operator_", "").replace("_", " "),
+            "auth_pills": auth_pills,
         })
     resp = render(request, "chat/index.html", ctx)
     # Auth-зависимый HTML (шапка/роль/идентичность) НЕ кэшируем — ни CF, ни браузер,
