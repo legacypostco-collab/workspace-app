@@ -214,6 +214,10 @@ class ProjectDocument(models.Model):
         ("conditions", "Условия"),
         ("contract", "Договор"),
         ("invoice", "Счёт"),
+        # Seller (товарное направление):
+        ("pricelist", "Прайс-лист"),
+        ("certificate", "Сертификат"),
+        ("photo", "Фото товара"),
         ("other", "Другое"),
     ]
     STATUS = [

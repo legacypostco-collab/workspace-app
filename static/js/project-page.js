@@ -584,6 +584,9 @@
   const FILE_ICON = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>`;
 
   function renderProject(p) {
+    // Роль: у покупателя проект = закупочный; у продавца = ТОВАРНОЕ НАПРАВЛЕНИЕ.
+    const role = (p.role || 'buyer');
+    const isSeller = role === 'seller';
     const tags = (p.tags && p.tags.length) ? p.tags.join(' · ') : '';
     const deadlineStr = p.deadline ? `Дедлайн: <span class="pj-meta-strong">${esc(p.deadline)}</span>` : '';
     const customer = p.customer ? `<span class="pj-meta-strong">${esc(p.customer)}</span>` : '';
@@ -623,11 +626,47 @@
            sec_orders: '进行中的订单'},
     };
     const L = LBL[lang] || LBL.ru;
+    if (isSeller) {
+      // Лейблы секций для продавца (товарное направление).
+      L.sec_rfqs = 'Входящие RFQ по направлению';
+      L.sec_orders = 'Заказы в работе';
+    }
     // KPI cards. Подписи под цифрами объясняют ЧТО за число.
     const stats = p.stats || {};
-    const semiCount = stats.open_rfqs?.semi || 0;  // RFQ ждущие подбора оператора
     const kpiClick = (id) => `onclick="window.__projScrollTo&amp;&amp;window.__projScrollTo('${id}')" style="cursor:pointer"`;
-    const kpiHTML = `
+    let kpiHTML;
+    if (isSeller) {
+      // Продавец: Входящие RFQ / Заказы в работе / Товаров в каталоге / Выручка за месяц.
+      const awaiting = stats.incoming_rfqs?.awaiting || 0;
+      const toShip = stats.active_orders?.to_ship || 0;
+      const withDr = stats.catalog_items?.with_drawing || 0;
+      const rev = stats.revenue_mtd || {};
+      const rd = rev.delta_pct ?? 0;
+      kpiHTML = `
+        <div class="kpi" ${kpiClick('sec-rfqs')} title="К разделу входящих RFQ">
+          <div class="kpi-label">Входящие RFQ</div>
+          <div class="kpi-value"><div class="kpi-num">${stats.incoming_rfqs?.count || 0}</div></div>
+          ${awaiting ? `<div class="kpi-sub"><span class="kpi-warn">${awaiting}</span> ждут вашего КП</div>` : ''}
+        </div>
+        <div class="kpi" ${kpiClick('sec-orders')} title="К разделу заказов">
+          <div class="kpi-label">Заказы в работе</div>
+          <div class="kpi-value"><div class="kpi-num">${stats.active_orders?.count || 0}</div></div>
+          <div class="kpi-sub">${fmtMoney(stats.active_orders?.value_usd)}${toShip ? ` · <span class="kpi-warn">${toShip}</span> к отгрузке` : ''}</div>
+        </div>
+        <div class="kpi" title="Товары направления в каталоге">
+          <div class="kpi-label">Товаров в каталоге</div>
+          <div class="kpi-value"><div class="kpi-num">${stats.catalog_items?.count || 0}</div></div>
+          <div class="kpi-sub">из них <span class="kpi-good">${withDr}</span> с чертежом/фото</div>
+        </div>
+        <div class="kpi" ${kpiClick('sec-orders')} title="Выручка по направлению">
+          <div class="kpi-label">Выручка за месяц</div>
+          <div class="kpi-value"><div class="kpi-num">${fmtMoney(rev.value_usd)}</div></div>
+          <div class="kpi-sub"><span class="${rd >= 0 ? 'kpi-good' : 'kpi-warn'}">${rd >= 0 ? '+' : ''}${rd}%</span> ${L.vs_prev_month}</div>
+        </div>
+      `;
+    } else {
+      const semiCount = stats.open_rfqs?.semi || 0;  // RFQ ждущие подбора оператора
+      kpiHTML = `
       <div class="kpi" ${kpiClick('sec-rfqs')} title="К разделу RFQ">
         <div class="kpi-label">${L.open_rfqs}</div>
         <div class="kpi-value">
@@ -657,10 +696,24 @@
         <div class="kpi-sub"><span class="${stats.spend_mtd?.delta_pct >= 0 ? 'kpi-good' : 'kpi-warn'}">${stats.spend_mtd?.delta_pct >= 0 ? '+' : ''}${stats.spend_mtd?.delta_pct ?? 0}%</span> ${L.vs_prev_month}</div>
       </div>
     `;
+    }
 
     // Documents — empty-state карточка (0 docs) или категоризованные слоты (есть docs)
     const docs = p.documents || [];
-    const DOC_SLOTS = [
+    const DOC_SLOTS = isSeller ? [
+      {key: "pricelist",   icon: "📤", label: "Прайс-лист направления",
+       descShort: "Цены по этой группе — оператор и AI быстрее формируют КП по входящим RFQ",
+       descFull: "Excel/CSV: артикул, цена, наличие, срок"},
+      {key: "drawing",     icon: "📐", label: "Чертежи и спецификации",
+       descShort: "Покупатель сразу видит, что вы предлагаете — котировка проходит за часы",
+       descFull: "DWG/PDF сборок, ведомости узлов"},
+      {key: "certificate", icon: "🛡", label: "Сертификаты и паспорта",
+       descShort: "Качество и происхождение — проходит проверку оператора без задержек",
+       descFull: "PDF: сертификаты качества, паспорта, происхождение"},
+      {key: "photo",       icon: "🖼", label: "Фото и описания товаров",
+       descShort: "Карточки товаров с фото — больше доверия и выше конверсия в заказ",
+       descFull: "JPG/PNG + описания, габариты, аналоги"},
+    ] : [
       {key: "fleet",      icon: "🚜", label: "Парк техники",
        descShort: "Точные подборы запчастей по моделям и серийникам — без перепросов",
        descFull: "Excel/CSV: модель, S/N, год, моточасы"},
@@ -678,8 +731,10 @@
     // Documents: единый layout (прогресс-бар + 5 слотов). При 0 docs прогресс показывает
     // tagline «Чем больше данных — тем точнее аналитика» вместо счётчика, и слоты пустые.
     const SLOTS_WITH_OTHER = [...DOC_SLOTS, {key:"other", icon:"📦", label:"Другое",
-      descShort:"Контракты и условия поставки — AI учитывает их при формировании заказа",
-      descFull:"Контракты, условия Incoterm"}];
+      descShort: isSeller
+        ? "Гарантии, условия поставки, прайс-история — AI учитывает их в ответах по направлению"
+        : "Контракты и условия поставки — AI учитывает их при формировании заказа",
+      descFull: isSeller ? "Гарантии, Incoterm, прайс-история" : "Контракты, условия Incoterm"}];
     const docsByType = {};
     docs.forEach(d => {
       const k = d.doctype || "other";
