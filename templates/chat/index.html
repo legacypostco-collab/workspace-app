@@ -2325,6 +2325,8 @@
     .sr-stat{padding:12px 18px;display:flex;flex-direction:column;gap:2px;text-align:left;background:transparent;border:none;color:inherit;font-family:inherit;}
     .sr-stat + .sr-stat{border-left:1px solid rgba(0,0,0,0.06);}
     .sr-stat-clickable{cursor:pointer;transition:background 0.12s;position:relative;}
+    .sr-stat.card-clickable:hover{background:rgba(0,0,0,0.04);}
+    body.dark-mode .sr-stat.card-clickable:hover{background:rgba(255,255,255,0.05);}
     .sr-stat-clickable:hover{background:rgba(0,0,0,0.025);}
     .sr-stat-clickable::after{content:'→';position:absolute;top:10px;right:10px;font-size:12px;color:rgba(0,0,0,0.25);opacity:0;transition:opacity 0.12s;}
     .sr-stat-clickable:hover::after{opacity:1;}
