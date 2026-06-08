@@ -3613,6 +3613,27 @@
       }
     } catch(_){}
   })();
+  // [TEMP diag tl] покадровый таймлайн видимости welcome/conv во время загрузки.
+  (function(){
+    try {
+      var tl=[], t0=performance.now();
+      function snap(tag){
+        var ws=document.getElementById('welcomeStage'), cs=document.getElementById('convStage');
+        var voiti=false; var bs=document.querySelectorAll('button,.top-icon');
+        for (var i=0;i<bs.length;i++){ if(/Войти|Регистрац/.test(bs[i].textContent)){voiti=true;break;} }
+        tl.push({t:Math.round(performance.now()-t0),tag:tag||'',rs:document.readyState,
+          cf:document.documentElement.classList.contains('cf-restoring'),
+          wsShown: ws?(!ws.classList.contains('hidden')&&getComputedStyle(ws).display!=='none'):null,
+          wTitle: ws?((document.getElementById('welcomeTitle')||{}).textContent||'').slice(0,28):null,
+          cvShown: cs?(!cs.classList.contains('hidden')):null, voiti:voiti});
+        try{ sessionStorage.setItem('__cf_tl', JSON.stringify(tl)); }catch(_){}
+      }
+      function raf(){ snap('raf'); if(performance.now()-t0<3500) requestAnimationFrame(raf); }
+      requestAnimationFrame(raf);
+      document.addEventListener('DOMContentLoaded',function(){snap('DCL');});
+      window.addEventListener('load',function(){snap('load');});
+    } catch(_){}
+  })();
 </script>
 <style>
   /* Пока восстанавливаем разговор после F5 — welcome-home скрыт, по центру спиннер. */
