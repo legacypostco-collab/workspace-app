@@ -1746,7 +1746,6 @@
   // State transitions: WELCOME ↔ CONV
   // ══════════════════════════════════════════════════════════
   function showConv() {
-    document.documentElement.classList.remove('cf-restoring'); // разговор готов — снимаем спиннер/анти-мелькание
     $('welcomeStage').classList.add('hidden');
     $('convStage').classList.remove('hidden');
     // Юзер в conv-стейдже — снимаем sticky welcome, чтобы F5 возвращал
@@ -7607,6 +7606,9 @@
         addMessage(m.role, m.content, m.cards, m.actions, m.context_refs);
       });
     } catch(e){}
+    // Контент разговора отрисован — только теперь снимаем спиннер/анти-мелькание,
+    // чтобы между спиннером и кабинетом не было пустого тёмного экрана.
+    document.documentElement.classList.remove('cf-restoring');
     connectWS();
     renderConvList($('convSearch').value);
     if (isMobile()) toggleSidebar(false);
