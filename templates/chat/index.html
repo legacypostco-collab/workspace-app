@@ -3596,49 +3596,45 @@
   // Auth flag для chat-first.js (anon → "Продавец" tab открывает регистрацию)
   window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
   window.__INITIAL_ROLE = "{{ initial_role|default:'buyer'|escapejs }}";  // серверная роль — против мелькания welcome
-  // Анти-мелькание при F5: сервер рисует welcome-home для первого кадра, но если
-  // юзер был в открытом разговоре/кабинете (cf_active_conv) — init() восстановит
-  // его только после widget-config+loadConvList (1-2 сек на медленной сети), и всё
-  // это время виден домашний экран. Прячем welcome сразу (показываем спиннер),
-  // init() снимет класс через showConv()/showWelcome().
+  // Анти-мелькание welcome-home при загрузке кабинета. У залогиненного юзера init()
+  // почти всегда открывает разговор — сохранённый (cf_active_conv) ИЛИ последний из
+  // списка (fallback). Но рисование происходит только после загрузки 583КБ JS +
+  // widget-config + списка чатов (~1-2 сек, плюс ~1с фриз главного потока на парсинге
+  // JS), и всё это время виден домашний экран, который потом сменяется кабинетом.
+  // Поэтому прячем welcome-home сразу для ЛЮБОЙ авторизованной загрузки, кроме явного
+  // welcome (?new=1) и «липкого» welcome (юзер сам был на главной). Класс снимается в
+  // showConv()/showWelcome()/ветке init(), есть и таймаут-подстраховка.
   (function(){
     try {
+      if (!window.IS_AUTHENTICATED) return;                          // аноним → welcome сразу
       var p = new URLSearchParams(location.search);
-      if (p.get('new') === '1') return;                              // явный welcome
-      if (sessionStorage.getItem('cf_on_welcome') === '1') return;   // sticky welcome
-      if (p.get('conv') || sessionStorage.getItem('cf_active_conv')) {
-        document.documentElement.classList.add('cf-restoring');
-        // Подстраховка от залипания на пустом экране, если init не снимет класс.
-        setTimeout(function(){ document.documentElement.classList.remove('cf-restoring'); }, 5000);
-      }
+      if (p.get('new') === '1') return;                              // явный «новый чат» → welcome
+      if (sessionStorage.getItem('cf_on_welcome') === '1') return;   // был на welcome → остаёмся
+      document.documentElement.classList.add('cf-restoring');
+      setTimeout(function(){ document.documentElement.classList.remove('cf-restoring'); }, 6000);
     } catch(_){}
   })();
-  // [TEMP diag tl] покадровый таймлайн видимости welcome/conv во время загрузки.
-  (function(){
-    try {
-      var tl=[], t0=performance.now();
-      function snap(tag){
-        var ws=document.getElementById('welcomeStage'), cs=document.getElementById('convStage');
-        tl.push({t:Math.round(performance.now()-t0),tag:tag||'',rs:document.readyState,
-          cf: document.documentElement.classList.contains('cf-restoring'),
-          wsShown: ws?(!ws.classList.contains('hidden')&&getComputedStyle(ws).display!=='none'):null,
-          cvShown: cs?(!cs.classList.contains('hidden')):null,
-          stream: (document.getElementById('streamInner')||{children:[]}).children.length});
-        try{ sessionStorage.setItem('__cf_tl', JSON.stringify(tl)); }catch(_){}
-      }
-      var iv=setInterval(function(){ snap('iv'); if(performance.now()-t0>6000) clearInterval(iv); }, 40);
-      document.addEventListener('DOMContentLoaded',function(){snap('DCL');});
-      window.addEventListener('load',function(){snap('load');});
-    } catch(_){}
-  })();
+  // [TEMP diag tl] верификация — снести следующим коммитом.
+  (function(){ try {
+    var tl=[], t0=performance.now();
+    function snap(tag){ var ws=document.getElementById('welcomeStage'), cs=document.getElementById('convStage');
+      tl.push({t:Math.round(performance.now()-t0),tag:tag||'',
+        cf:document.documentElement.classList.contains('cf-restoring'),
+        wsShown: ws?(!ws.classList.contains('hidden')&&getComputedStyle(ws).display!=='none'):null,
+        cvShown: cs?(!cs.classList.contains('hidden')):null,
+        stream:(document.getElementById('streamInner')||{children:[]}).children.length});
+      try{ sessionStorage.setItem('__cf_tl', JSON.stringify(tl)); }catch(_){} }
+    var iv=setInterval(function(){ snap('iv'); if(performance.now()-t0>6000) clearInterval(iv); },40);
+    document.addEventListener('DOMContentLoaded',function(){snap('DCL');});
+  } catch(_){} })();
 </script>
 <style>
-  /* Пока восстанавливаем разговор после F5 — welcome-home скрыт, по центру спиннер. */
+  /* Пока грузится/восстанавливается кабинет — welcome-home скрыт, по центру спиннер. */
   html.cf-restoring #welcomeStage{display:none!important;}
-  html.cf-restoring::after{
-    content:"";position:fixed;top:50%;left:50%;width:32px;height:32px;margin:-16px 0 0 -16px;
-    border:3px solid rgba(127,127,127,0.22);border-top-color:rgba(127,127,127,0.75);
-    border-radius:50%;animation:cfRestoreSpin .8s linear infinite;z-index:6;pointer-events:none;
+  html.cf-restoring .app::after{
+    content:"";position:fixed;top:0;right:0;bottom:0;left:0;margin:auto;width:34px;height:34px;
+    border:3px solid rgba(127,127,127,0.22);border-top-color:rgba(127,127,127,0.8);
+    border-radius:50%;animation:cfRestoreSpin .8s linear infinite;z-index:4;pointer-events:none;
   }
   @keyframes cfRestoreSpin{to{transform:rotate(360deg);}}
 </style>
