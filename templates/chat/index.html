@@ -2260,8 +2260,10 @@
     .wal-head-ccy{font-size:18px;font-weight:500;color:rgba(0,0,0,0.42);margin-right:1px;}
     .wal-head-dec{font-size:18px;font-weight:500;color:rgba(0,0,0,0.42);}
     .wal-head-curr{font-size:11px;font-weight:600;color:rgba(0,0,0,0.42);margin-left:8px;letter-spacing:0.06em;vertical-align:middle;}
-    /* Ops dashboard — наследует frosted-glass `.card` стиль чата */
-    .opd-card{padding:0!important;overflow:hidden;}
+    /* (устар.) старый ops-dashboard-hero больше не рендерится; класс .opd-card
+       теперь у карточки поиска чертежей оператора — паддинг задаёт JS
+       (_ensureDrawingsCSS: .opd-card{padding:16px 18px 18px}). Тут только overflow. */
+    .opd-card{overflow:hidden;}
     /* HERO — без статус-плашки. Только тонкая цветная полоса сверху
        (если есть проблема) + summary текстом + крупные KPI */
     .opd-hero{padding:0;position:relative;}
