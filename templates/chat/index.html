@@ -3584,9 +3584,24 @@
     /* В чат-инпуте кнопки tool-spacer на конце — auto-flip. */
 
   </style>
+  <style>
+    /* Тёмный фон применяем НА УРОВНЕ html с первого кадра (до парсинга body),
+       чтобы при F5 не мелькал светлый фон, пока JS не применил тему. */
+    html.dark-mode-pre{background:#1a1a1a;}
+    html.dark-mode-pre body{background:#1a1a1a;}
+    html.dark-mode-pre body::before{
+      background:radial-gradient(ellipse 70% 55% at 50% 20%, rgba(255,255,255,0.30), transparent 65%),
+                 linear-gradient(180deg,#555 0%,#3a3a3a 35%,#181818 65%,#050505 100%) !important;
+    }
+  </style>
   <script>
-    // Apply dark-mode before paint to avoid flash
-    try { if (localStorage.getItem('cf_dark_mode') === '1') document.documentElement.classList.add('dark-mode-pre'); } catch(e){}
+    // Тему применяем ДО первого кадра: явный выбор (cf_dark_mode) или, если не задан,
+    // системная тёмная (prefers-color-scheme). Иначе при F5 мелькает светлый фон.
+    try {
+      var __dm = localStorage.getItem('cf_dark_mode');
+      var __wantDark = (__dm === '1') || (__dm === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (__wantDark) document.documentElement.classList.add('dark-mode-pre');
+    } catch(e){}
   </script>
 </head>
 <body class="{% if request.COOKIES.cf_dark_mode_pre %}{% endif %}">
@@ -3625,38 +3640,6 @@
       if (localStorage.getItem('cf_sidebar_open') === '0') return; // юзер сам закрыл — уважаем
       document.documentElement.classList.add('cf-sb-open');
     } catch(_){}
-  })();
-  // [TEMP diag-overlay] ?diag=1 — записать таймлайн первой отрисовки и показать на экране.
-  (function(){
-    try {
-      if (location.search.indexOf('diag=1') === -1) return;
-      var tl=[], t0=performance.now();
-      function snap(){
-        var b=document.body, ws=document.getElementById('welcomeStage');
-        var av=document.getElementById('topAvatar'), nm=document.getElementById('sideUserName');
-        var voiti=false, bs=document.querySelectorAll('button,.top-icon');
-        for(var i=0;i<bs.length;i++){ if(/Войти|Регистрац/.test(bs[i].textContent)){voiti=true;break;} }
-        var sb=document.getElementById('sidebar');
-        tl.push({t:Math.round(performance.now()-t0),
-          dark: b?b.classList.contains('dark-mode'):null,
-          bg: b?getComputedStyle(b).backgroundColor:null,
-          ws: ws?(!ws.classList.contains('hidden')&&getComputedStyle(ws).display!=='none'):null,
-          title: ws&&document.getElementById('welcomeTitle')?(document.getElementById('welcomeTitle').textContent||'').slice(0,22):null,
-          av: av?av.textContent:null, name: nm?(nm.textContent||'').slice(0,20):null,
-          voiti: voiti, sb: sb?getComputedStyle(sb).width:null});
-      }
-      var iv=setInterval(snap, 50);
-      setTimeout(function(){
-        clearInterval(iv); snap();
-        var out=[], prev=null;
-        for(var i=0;i<tl.length;i++){var s=tl[i];var k=[s.dark,s.bg,s.ws,s.title,s.av,s.name,s.voiti,s.sb].join('|');if(k!==prev){out.push(s);prev=k;}}
-        var html='<b>ТАЙМЛАЙН ЗАГРУЗКИ (пришли скрин):</b><br>';
-        out.forEach(function(s){ html+= s.t+'ms: dark='+s.dark+' bg='+s.bg+' welcome='+s.ws+' "'+s.title+'" avatar='+s.av+' name="'+s.name+'" Войти='+s.voiti+' sidebar='+s.sb+'<br>'; });
-        var d=document.createElement('div');
-        d.style.cssText='position:fixed;inset:10px;z-index:99999;background:#000;color:#0f0;font:13px/1.6 monospace;padding:16px;overflow:auto;border:2px solid #0f0;';
-        d.innerHTML=html; document.body.appendChild(d);
-      }, 2800);
-    } catch(e){}
   })();
 </script>
 <style>
@@ -3954,9 +3937,11 @@
       </div>
 
       <div class="pills" id="welcomePills">
-        {# Кнопки заполняются из JS на основе роли — fallback ниже для no-JS #}
-        <button class="pill" onclick="quickAction('get_orders', {})" title="{% trans 'Купил — едет' %}">📦 {% trans "Мои заказы" %} <span class="pill-sub">{% trans "купил, едет" %}</span></button>
-        <button class="pill" onclick="quickAction('get_rfq_status', {})" title="{% trans 'Жду котировок от поставщиков' %}">📋 {% trans "Открытые RFQ" %} <span class="pill-sub">{% trans "жду котировок" %}</span></button>
+        {# Пилюли по роли (серверно) — чтобы продавец/оператор не видели покупательские
+           при загрузке. JS applyRoleWelcome() перерисует их же под текущим языком. #}
+        {% for p in welcome_pills %}
+        <button class="pill" type="button" onclick="quickAction('{{ p.action|escapejs }}', {})"><span class="pill-txt">{{ p.emoji }} {{ p.label }}</span></button>
+        {% endfor %}
       </div>
     </div>
 

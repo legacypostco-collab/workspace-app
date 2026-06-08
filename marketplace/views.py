@@ -6487,6 +6487,23 @@ def chat_first_view(request):
                      "Вы — <strong>дирижёр всей сделки</strong>: ведёте заказ от оплаты до доставки, координируете логистов, таможенных брокеров и контролируете платежи."),
     }
     _wt_key, _wt_txt, _ws_txt = _WELCOME[base_role]
+    # Пилюли welcome по роли — серверно, чтобы продавец/оператор НЕ видели ~1с
+    # покупательские пилюли (раньше были захардкожены). Совпадает с ROLE_WELCOME в JS.
+    _PILLS = {
+        "buyer": [("📦", "Мои сделки", "get_my_deals"), ("👤", "Мой менеджер", "my_kam"),
+                  ("📐", "Чертежи", "seller_drawings"), ("💰", "Депозит", "get_balance"),
+                  ("🎯", "Auto-discount", "get_buyer_discount"), ("🎧", "Поддержка", "support_home")],
+        "seller": [("🔥", "Срочное", "seller_inbox"), ("📤", "Загрузить прайс", "upload_pricelist"),
+                   ("📦", "Мои товары", "seller_warehouses"), ("📐", "Чертежи", "seller_drawings"),
+                   ("💰", "Депозит", "get_balance"), ("🛡", "Верификация", "start_onboarding"),
+                   ("📊", "Аналитика", "seller_analytics_hub"), ("🎧", "Поддержка", "support_home")],
+        "operator": [("🎛", "Сводка", "op_dashboard"), ("📋", "Очередь заказов", "op_queue"),
+                     ("⏱", "SLA-нарушения", "op_sla_breach"), ("💰", "Платежи / Эскроу", "op_payments_dashboard"),
+                     ("🛂", "Таможня", "op_customs_dashboard"), ("🚚", "Логистика", "op_logistics_stats"),
+                     ("🏭", "Мои поставщики", "op_my_suppliers"), ("🧾", "Рекламации", "get_claims"),
+                     ("📊", "Аналитика", "op_analytics_hub"), ("🎧", "Поддержка", "support_home")],
+    }
+    welcome_pills = [{"emoji": e, "label": l, "action": a} for (e, l, a) in _PILLS[base_role]]
     # Идентичность юзера — серверно (тот же источник, что widget-config: get_full_name
     # or username). Иначе ~1с до загрузки JS аватар показывает «?», а имя «Пользователь»
     # — выглядит как неавторизованный гость. Рендерим сразу аватар-инициал, имя, роль.
@@ -6507,6 +6524,7 @@ def chat_first_view(request):
         "user_name": user_name,
         "user_initial": user_initial,
         "user_role_label": user_role_label,
+        "welcome_pills": welcome_pills,
     })
     # HTML кабинета зависит от юзера (аватар/имя/роль/welcome рендерятся серверно) и
     # не должен кэшироваться браузером — иначе при F5 отдаётся СТАРЫЙ HTML без анти-flash
