@@ -580,12 +580,14 @@
     try {
       const cfg = await api('/api/assistant/widget-config/');
       window.__role = cfg.role || 'buyer';
-      const name = cfg.user_name || 'User';
-      const initial = (name[0] || '?').toUpperCase();
+      // Аноним: «Войти» вместо фейкового «Гость / buyer».
+      const anon = !!cfg.anonymous;
+      const name = anon ? 'Войти' : (cfg.user_name || 'User');
+      const initial = anon ? '→' : (name[0] || '?').toUpperCase();
       $('sideUserName').textContent = name;
-      $('sideUserRole').textContent = (cfg.role || '').replace('operator_', '').replace(/_/g, ' ');
+      $('sideUserRole').textContent = anon ? '' : (cfg.role || '').replace('operator_', '').replace(/_/g, ' ');
       $('sideAvatar').textContent = initial;
-      $('topAvatar').textContent = initial;
+      const _topAv = $('topAvatar'); if (_topAv) _topAv.textContent = anon ? '?' : initial;
     } catch(e){}
   }
 
