@@ -6472,9 +6472,28 @@ def chat_first_view(request):
             initial_role = detect_user_role(request.user, request=request) or "buyer"
     except Exception:
         pass
+    # Серверный рендер welcome (заголовок/подзаголовок/активная вкладка роли) —
+    # чтобы ПЕРВЫЙ paint был уже правильным даже до загрузки chat-first.js (583 КБ).
+    # Источник истины строк — static/js/i18n.js (welcome.<role>.title/subtitle);
+    # здесь дублируем ru-вариант только для первого кадра, дальше JS i18n синхронит.
+    base_role = ("operator" if initial_role.startswith("operator")
+                 else ("seller" if initial_role == "seller" else "buyer"))
+    _WELCOME = {
+        "buyer": ("welcome.buyer.title", "Какую запчасть найти?",
+                  "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>."),
+        "seller": ("welcome.seller.title", "Что в работе сегодня?",
+                   "Срочные задачи, входящие RFQ и отгрузки. Каталог, финансы и команда — по запросу."),
+        "operator": ("welcome.operator.title", "Что в работе на платформе?",
+                     "Вы — <strong>дирижёр всей сделки</strong>: ведёте заказ от оплаты до доставки, координируете логистов, таможенных брокеров и контролируете платежи."),
+    }
+    _wt_key, _wt_txt, _ws_txt = _WELCOME[base_role]
     return render(request, "chat/index.html", {
         "role_actions_json": role_actions_json,
         "initial_role": initial_role,
+        "welcome_role_ui": base_role,
+        "welcome_title_key": _wt_key,
+        "welcome_title": _wt_txt,
+        "welcome_subtitle": _ws_txt,
     })
 
 

@@ -3603,9 +3603,9 @@
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
       <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
-        <button type="button" class="role-tab" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
-        <button type="button" class="role-tab" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
-        <button type="button" class="role-tab" data-role="operator" role="tab">{% trans "Оператор" %}</button>
+        <button type="button" class="role-tab{% if welcome_role_ui == 'buyer' %} active{% endif %}" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
+        <button type="button" class="role-tab{% if welcome_role_ui == 'seller' %} active{% endif %}" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
+        <button type="button" class="role-tab{% if welcome_role_ui == 'operator' %} active{% endif %}" data-role="operator" role="tab">{% trans "Оператор" %}</button>
       </div>
       <button class="side-new-btn" onclick="newChat()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -3849,8 +3849,8 @@
         <img src="{% static 'brand/logo-icon-white.svg' %}" alt="Consolidator" width="120" height="120" style="filter:drop-shadow(0 4px 12px rgba(0,0,0,0.12));">
       </div>
       <div class="welcome-text">
-        <h1 id="welcomeTitle" data-i18n="welcome.h1">{% trans "Какую запчасть найти?" %}</h1>
-        <p id="welcomeSubtitle" data-i18n="welcome.p">{% trans "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от" %} <strong>{% trans "200+ поставщиков" %}</strong>.</p>
+        <h1 id="welcomeTitle" data-i18n="{{ welcome_title_key|default:'welcome.h1' }}">{{ welcome_title|default:"Какую запчасть найти?" }}</h1>
+        <p id="welcomeSubtitle">{{ welcome_subtitle|default:"Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>."|safe }}</p>
       </div>
 
       <div class="hero-input" id="heroInputCard">
@@ -3952,8 +3952,8 @@
 
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
-<script src="{% static 'js/i18n.js' %}?v=4&t={% now 'U' %}"></script>
-<script src="{% static 'js/chat-first.js' %}?v=95&t={% now 'U' %}"></script>
+<script src="{% static 'js/i18n.js' %}?v=4"></script>
+<script src="{% static 'js/chat-first.js' %}?v=96"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>
