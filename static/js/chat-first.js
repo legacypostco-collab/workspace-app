@@ -10008,37 +10008,48 @@
   }
 
   // Загрузка чертежа продавцом → POST /api/assistant/drawings/upload/ (multipart).
-  async function uploadDrawing(file) {
+  function uploadDrawing(file) {
     showConv();
-    // Без нативного prompt(): грузим сразу, позицию привязываем красиво через 🔗
-    // в карточке «Мои чертежи» (умный поиск).
-    const pending = addMessage('assistant', '📐 Загружаю чертёж «' + file.name + '»…');
+    // Живой прогресс-бар с процентами (как при загрузке спеки) — большой PDF грузится
+    // долго, без индикатора кажется, что всё зависло.
+    const sizeKb = file.size ? ' · ' + Math.round(file.size / 1024) + ' KB' : '';
+    const pending = addMessage(
+      'assistant',
+      '📐 Загружаю чертёж «' + esc(file.name) + '»' + sizeKb + ' <span class="upl-pct">0%</span>'
+      + '<div class="upl-bar"><div class="upl-bar-fill" style="width:0%"></div></div>',
+    );
     const fd = new FormData();
     fd.append('file', file);
-    try {
-      const res = await fetch('/api/assistant/drawings/upload/', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': csrf() },
-        credentials: 'same-origin',
-        body: fd,
-      });
-      const data = await res.json();
-      if (pending && pending.parentNode) pending.remove();
-      if (!res.ok || !data.ok) {
-        addMessage('assistant', '⚠️ Не удалось загрузить чертёж: '
-          + (data.error || ('HTTP ' + res.status)));
-        return;
-      }
-      addMessage('assistant', '✅ Чертёж «' + (data.title || file.name) + '» загружен ('
-        + (data.file_format || '').toUpperCase() + '). Он в разделе «Без папки» — '
-        + 'привяжите позицию через 🔗 и при желании перетащите в папку. '
-        + '🛡 Статус: на модерации у оператора.');
-      // Показать обновлённую карточку чертежей (новый — в «Без папки»).
-      if (window.quickAction) window.quickAction('seller_drawings', {});
-    } catch (err) {
-      if (pending && pending.parentNode) pending.remove();
-      addMessage('assistant', '⚠️ Не удалось загрузить чертёж: ' + (err.message || err));
-    }
+    _uploadWithProgress('/api/assistant/drawings/upload/', fd, {
+      onProgress: (pct) => {
+        if (!pending) return;
+        const txtEl = pending.querySelector('.upl-pct');
+        const barEl = pending.querySelector('.upl-bar-fill');
+        if (txtEl) txtEl.textContent = pct + '%';
+        if (barEl) barEl.style.width = pct + '%';
+        if (pct >= 100) {
+          const tEl = pending.querySelector('.msg-content') || pending;
+          if (tEl) tEl.innerHTML = '📐 Обрабатываю чертёж…';
+        }
+      },
+      onSuccess: (data) => {
+        if (pending && pending.parentNode) pending.remove();
+        if (!data || !data.ok) {
+          addMessage('assistant', '⚠️ Не удалось загрузить чертёж: ' + ((data && data.error) || 'ошибка'));
+          return;
+        }
+        addMessage('assistant', '✅ Чертёж «' + (data.title || file.name) + '» загружен ('
+          + (data.file_format || '').toUpperCase() + '). Он в разделе «Без папки» — '
+          + 'привяжите позицию через 🔗 и при желании перетащите в папку. '
+          + '🛡 Статус: на модерации у оператора.');
+        // Показать обновлённую карточку чертежей (новый — в «Без папки»).
+        if (window.quickAction) window.quickAction('seller_drawings', {});
+      },
+      onError: (err) => {
+        if (pending && pending.parentNode) pending.remove();
+        addMessage('assistant', '⚠️ Не удалось загрузить чертёж: ' + (err.message || err));
+      },
+    });
   }
 
   // Drag-n-drop файла прямо в окно чата (без необходимости жать скрепку)
