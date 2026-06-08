@@ -3614,19 +3614,6 @@
       setTimeout(function(){ document.documentElement.classList.remove('cf-restoring'); }, 6000);
     } catch(_){}
   })();
-  // [TEMP diag tl] верификация — снести следующим коммитом.
-  (function(){ try {
-    var tl=[], t0=performance.now();
-    function snap(tag){ var ws=document.getElementById('welcomeStage'), cs=document.getElementById('convStage');
-      tl.push({t:Math.round(performance.now()-t0),tag:tag||'',
-        cf:document.documentElement.classList.contains('cf-restoring'),
-        wsShown: ws?(!ws.classList.contains('hidden')&&getComputedStyle(ws).display!=='none'):null,
-        cvShown: cs?(!cs.classList.contains('hidden')):null,
-        stream:(document.getElementById('streamInner')||{children:[]}).children.length});
-      try{ sessionStorage.setItem('__cf_tl', JSON.stringify(tl)); }catch(_){} }
-    var iv=setInterval(function(){ snap('iv'); if(performance.now()-t0>6000) clearInterval(iv); },40);
-    document.addEventListener('DOMContentLoaded',function(){snap('DCL');});
-  } catch(_){} })();
 </script>
 <style>
   /* Пока грузится/восстанавливается кабинет — welcome-home скрыт, по центру спиннер. */
