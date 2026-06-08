@@ -6497,7 +6497,7 @@ def chat_first_view(request):
         user_name = (request.user.get_full_name() or request.user.username or "").strip()
         user_initial = (user_name[:1].upper() if user_name else "")
         user_role_label = initial_role.replace("operator_", "").replace("_", " ")
-    return render(request, "chat/index.html", {
+    resp = render(request, "chat/index.html", {
         "role_actions_json": role_actions_json,
         "initial_role": initial_role,
         "welcome_role_ui": base_role,
@@ -6508,6 +6508,12 @@ def chat_first_view(request):
         "user_initial": user_initial,
         "user_role_label": user_role_label,
     })
+    # HTML кабинета зависит от юзера (аватар/имя/роль/welcome рендерятся серверно) и
+    # не должен кэшироваться браузером — иначе при F5 отдаётся СТАРЫЙ HTML без анти-flash
+    # фиксов и виден «гостевой» кадр. no-store → каждый раз свежий HTML.
+    resp["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp["Pragma"] = "no-cache"
+    return resp
 
 
 def invite_redirect(request, code):
