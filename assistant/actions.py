@@ -358,6 +358,42 @@ def register(name: str):
     return decorator
 
 
+try:  # типы запроса для защиты от утечки в JSON
+    from django.http import HttpRequest as _HttpRequest
+    from rest_framework.request import Request as _DRFRequest
+    _REQUEST_TYPES = (_HttpRequest, _DRFRequest)
+except Exception:  # pragma: no cover
+    _REQUEST_TYPES = ()
+
+
+def _scrub_internal(obj, _depth: int = 0):
+    """Рекурсивно вырезает несериализуемые внутренние данные из payload'а
+    ответа (actions/cards/...), прежде всего инжектированный `_request`
+    (HttpRequest/DRF Request).
+
+    Зачем: ActionView кладёт `_request` в params для handler'ов (login/session).
+    Любой handler, копирующий `{**params, ...}` в возвращаемые actions/cards
+    (например confirmed-gate в quick_order), иначе утащил бы Request в JSON-
+    ответ и в Message.actions (JSONField) → `Object of type Request is not JSON
+    serializable` → 500, который на фронте маскируется под «Соединение
+    прервалось». Чистим в единой точке диспетчера, чтобы покрыть все handler'ы.
+    """
+    if _depth > 10:
+        return obj
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            if k == "_request":
+                continue
+            if _REQUEST_TYPES and isinstance(v, _REQUEST_TYPES):
+                continue
+            out[k] = _scrub_internal(v, _depth + 1)
+        return out
+    if isinstance(obj, (list, tuple)):
+        return [_scrub_internal(v, _depth + 1) for v in obj]
+    return obj
+
+
 def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
     """Run an action. Returns ActionResult."""
     if not can_execute(action_name, role):
@@ -404,10 +440,18 @@ def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
     if not handler:
         return ActionResult(text=f"⚠️ Действие '{action_name}' не зарегистрировано")
     try:
-        return handler(params=params or {}, user=user, role=role)
+        result = handler(params=params or {}, user=user, role=role)
     except Exception as e:
         logger.exception(f"Action {action_name} failed")
         return ActionResult(text=f"⚠️ Ошибка выполнения: {e}")
+    # JSON-safety: убираем инжектированный `_request` (и любые Request-объекты),
+    # которые handler мог скопировать в actions/cards через `{**params, ...}`.
+    # Без этого Response/JSONField падают 500-кой → «Соединение прервалось».
+    result.actions = _scrub_internal(result.actions or [])
+    result.cards = _scrub_internal(result.cards or [])
+    result.contextual_actions = _scrub_internal(result.contextual_actions or [])
+    result.suggestions = _scrub_internal(result.suggestions or [])
+    return result
 
 
 def list_actions(role: str) -> list[str]:
