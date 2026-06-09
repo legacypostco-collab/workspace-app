@@ -5479,7 +5479,17 @@
         loadConvList();
       } catch(e) {
         removeTyping();
-        addMessage('assistant', '⚠️ ' + e.message);
+        // Транзиент (обрыв канала / 5xx / 52x от Cloudflare) — действие не выполнилось,
+        // показываем понятное сообщение + «Повторить» (re-send того же текста), а не сырое «→ 521».
+        const _m = (e && e.message) || '';
+        const _transient = /Failed to fetch|NetworkError|network|load failed/i.test(_m)
+          || (e && e.status >= 500) || /→ 5\d\d$/.test(_m);
+        if (_transient) {
+          addMessage('assistant', '⚠️ Соединение прервалось — нажмите «Повторить».',
+            [], [{action: '__resend_chat', params: {text: text}, label: '🔄 Повторить'}]);
+        } else {
+          addMessage('assistant', '⚠️ ' + e.message);
+        }
         state.streaming = false;
         $('sendBtn').disabled = false;
         $('heroSendBtn').disabled = false;
@@ -5636,6 +5646,11 @@
   window.quickAction = async (action, params) => {
     params = params || {};
     params._label = params._label || action;
+    // Повторная отправка сообщения после обрыва канала (кнопка «Повторить» под чат-ошибкой).
+    if (action === '__resend_chat') {
+      try { const _i = $('input') || $('heroInput'); if (_i) { _i.value = params.text || ''; send(!!($('heroInput') && !$('input'))); } } catch (_) {}
+      return;
+    }
     // Spec-action: open OS file picker → multipart POST → re-render KYB doc card.
     // Не уходит на чат-endpoint — это локальная операция загрузки.
     if (action === '_upload_kyb_file') {
