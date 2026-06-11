@@ -30,6 +30,49 @@ from .actions import ActionResult, register
 logger = logging.getLogger(__name__)
 
 
+# ── Шрифты: Helvetica (дефолт reportlab) НЕ содержит кириллицу — имена
+# покупателей, статусы и русские названия рендерились квадратами ■■■.
+# Регистрируем кириллический DejaVu (бандл в assistant/fonts/, fallback на
+# системный Linux-путь). Если не вышло — деградируем на Helvetica (латиница).
+_FONTS_DIR = os.path.join(os.path.dirname(__file__), "fonts")
+# Фирменный знак (PNG из brand-SVG) для шапки документов.
+_BRAND_LOGO = os.path.join(os.path.dirname(__file__), "brand", "logo-mark-black.png")
+FONT_REGULAR = "Helvetica"
+FONT_BOLD = "Helvetica-Bold"
+FONT_OBLIQUE = "Helvetica-Oblique"
+_fonts_ready = False
+
+
+def _ensure_fonts():
+    """Регистрирует DejaVu в reportlab один раз (idempotent, потокобезопасно
+    достаточно для наших целей)."""
+    global _fonts_ready, FONT_REGULAR, FONT_BOLD, FONT_OBLIQUE
+    if _fonts_ready:
+        return
+    _fonts_ready = True
+    try:
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        for name, fname in (
+            ("DejaVuSans", "DejaVuSans.ttf"),
+            ("DejaVuSans-Bold", "DejaVuSans-Bold.ttf"),
+            ("DejaVuSans-Oblique", "DejaVuSans-Oblique.ttf"),
+        ):
+            path = os.path.join(_FONTS_DIR, fname)
+            if not os.path.exists(path):
+                path = f"/usr/share/fonts/truetype/dejavu/{fname}"
+            pdfmetrics.registerFont(TTFont(name, path))
+        pdfmetrics.registerFontFamily(
+            "DejaVuSans", normal="DejaVuSans", bold="DejaVuSans-Bold",
+            italic="DejaVuSans-Oblique", boldItalic="DejaVuSans-Bold")
+        FONT_REGULAR, FONT_BOLD, FONT_OBLIQUE = (
+            "DejaVuSans", "DejaVuSans-Bold", "DejaVuSans-Oblique")
+    except Exception:
+        logger.exception("DejaVu registration failed — fallback to Helvetica (no Cyrillic)")
+        FONT_REGULAR, FONT_BOLD, FONT_OBLIQUE = (
+            "Helvetica", "Helvetica-Bold", "Helvetica-Oblique")
+
+
 # ── PDF helpers (reportlab) ──────────────────────────────────
 
 def _pdf_canvas(title: str):
@@ -37,6 +80,7 @@ def _pdf_canvas(title: str):
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas
 
+    _ensure_fonts()
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
     c.setTitle(title)
@@ -50,47 +94,57 @@ def _draw_header(c, title: str, doc_no: str | int):
     from reportlab.lib.units import mm
     width, height = A4
 
-    # Логотип-плашка слева
-    c.setFillColor(colors.HexColor("#0f172a"))
-    c.rect(20 * mm, height - 30 * mm, 8 * mm, 8 * mm, fill=1, stroke=0)
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawCentredString(24 * mm, height - 25.5 * mm, "C")
+    # Фирменный логотип (знак + лого-надпись). Fallback — плашка «C» + текст.
+    logo_drawn = False
+    try:
+        if os.path.exists(_BRAND_LOGO):
+            c.drawImage(_BRAND_LOGO, 20 * mm, height - 30.5 * mm,
+                        width=33 * mm, height=8.7 * mm,
+                        preserveAspectRatio=True, anchor="sw", mask="auto")
+            logo_drawn = True
+    except Exception:
+        logger.exception("brand logo draw failed — fallback to text")
+    if not logo_drawn:
+        c.setFillColor(colors.HexColor("#0f172a"))
+        c.rect(20 * mm, height - 30 * mm, 8 * mm, 8 * mm, fill=1, stroke=0)
+        c.setFillColor(colors.white)
+        c.setFont(FONT_BOLD, 11)
+        c.drawCentredString(24 * mm, height - 25.5 * mm, "C")
+        c.setFillColor(colors.HexColor("#0f172a"))
+        c.setFont(FONT_BOLD, 16)
+        c.drawString(32 * mm, height - 24 * mm, "CONSOLIDATOR PARTS")
 
-    # Название компании
-    c.setFillColor(colors.HexColor("#0f172a"))
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(32 * mm, height - 24 * mm, "CONSOLIDATOR PARTS")
-    c.setFont("Helvetica", 8)
+    # Реквизиты под логотипом
+    c.setFont(FONT_REGULAR, 8)
     c.setFillColor(colors.HexColor("#475569"))
-    c.drawString(32 * mm, height - 28.5 * mm,
+    c.drawString(20 * mm, height - 35 * mm,
                   "B2B Heavy Equipment Spare Parts Marketplace")
-    c.drawString(32 * mm, height - 32 * mm,
+    c.drawString(20 * mm, height - 38.5 * mm,
                   "marketplace@consolidator.parts · +7 (495) 123-45-67")
 
     # Номер документа + дата справа
     c.setFillColor(colors.black)
-    c.setFont("Helvetica-Bold", 11)
+    c.setFont(FONT_BOLD, 11)
     c.drawRightString(width - 20 * mm, height - 24 * mm, str(doc_no))
-    c.setFont("Helvetica", 8)
+    c.setFont(FONT_REGULAR, 8)
     c.setFillColor(colors.HexColor("#475569"))
     c.drawRightString(width - 20 * mm, height - 28.5 * mm,
                        timezone.now().strftime("Date: %Y-%m-%d %H:%M UTC"))
 
     # Заголовок документа на отдельной полосе
     c.setFillColor(colors.HexColor("#0f172a"))
-    c.rect(20 * mm, height - 46 * mm, width - 40 * mm, 8 * mm, fill=1, stroke=0)
+    c.rect(20 * mm, height - 49 * mm, width - 40 * mm, 8 * mm, fill=1, stroke=0)
     c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(24 * mm, height - 43 * mm, title)
+    c.setFont(FONT_BOLD, 12)
+    c.drawString(24 * mm, height - 46 * mm, title)
 
     c.setFillColor(colors.black)
-    return height - 54 * mm  # y-cursor
+    return height - 57 * mm  # y-cursor
 
 
 def _draw_kv_block(c, y, rows: list[tuple[str, str]]):
     from reportlab.lib.units import mm
-    c.setFont("Helvetica", 10)
+    c.setFont(FONT_REGULAR, 10)
     for label, value in rows:
         c.drawString(20 * mm, y, f"{label}:")
         c.drawString(70 * mm, y, str(value))
@@ -109,7 +163,7 @@ def _draw_table(c, y, header: list[str], rows: list[list], widths: list[int]):
     c.setFillColor(colors.HexColor("#1f2937"))
     c.rect(x0, y - row_h + 1.5 * mm, sum(widths), row_h, fill=1, stroke=0)
     c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont(FONT_BOLD, 9)
     x = x0
     for i, h in enumerate(header):
         c.drawString(x + 2 * mm, y - row_h + 4 * mm, h)
@@ -117,7 +171,7 @@ def _draw_table(c, y, header: list[str], rows: list[list], widths: list[int]):
     y -= row_h
     # rows
     c.setFillColor(colors.black)
-    c.setFont("Helvetica", 9)
+    c.setFont(FONT_REGULAR, 9)
     for row in rows:
         x = x0
         for i, cell in enumerate(row):
@@ -134,7 +188,7 @@ def _draw_footer(c):
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
     width, _ = A4
-    c.setFont("Helvetica-Oblique", 7)
+    c.setFont(FONT_OBLIQUE, 7)
     c.setFillGray(0.4)
     c.drawCentredString(
         width / 2, 10 * mm,
@@ -159,11 +213,22 @@ def _save_pdf(order, doc_type: str, title: str, buf: io.BytesIO,
 
 
 def _doc_url(doc) -> str:
-    """URL для download. Если file_obj.url доступен — берём его, иначе fallback."""
+    """URL для просмотра/скачивания документа заказа.
+
+    Ведём на авторизованную Django-вьюху (assistant-order-doc-file), а НЕ на
+    сырой file_obj.url (/media/...): на проде /media/order_documents/ не
+    раздаётся (SERVE_MEDIA=False) → счёт открывался с 404. Вьюха стримит файл
+    сама и работает в обоих контурах (local + prod).
+    """
+    try:
+        if doc.file_obj and doc.order_id:
+            return f"/api/assistant/orders/{doc.order_id}/documents/{doc.id}/file/"
+    except Exception:
+        pass
     try:
         return doc.file_obj.url
     except Exception:
-        return doc.file_url or f"/media/order_documents/{doc.id}.pdf"
+        return doc.file_url or ""
 
 
 # ── Save proforma PDF (нет Order — пишем напрямую в media) ──
@@ -196,12 +261,12 @@ def _draw_parties_block(c, y, buyer_name, buyer_email, seller_name, seller_label
     c.setFillColor(colors.HexColor("#f1f5f9"))
     c.rect(20 * mm, y - 28 * mm, col_w, 28 * mm, fill=1, stroke=0)
     c.setFillColor(colors.HexColor("#475569"))
-    c.setFont("Helvetica-Bold", 8)
+    c.setFont(FONT_BOLD, 8)
     c.drawString(22 * mm, y - 5 * mm, "BILL TO / BUYER")
     c.setFillColor(colors.black)
-    c.setFont("Helvetica-Bold", 10)
+    c.setFont(FONT_BOLD, 10)
     c.drawString(22 * mm, y - 11 * mm, (buyer_name or "—")[:48])
-    c.setFont("Helvetica", 9)
+    c.setFont(FONT_REGULAR, 9)
     c.drawString(22 * mm, y - 17 * mm, (buyer_email or "—")[:48])
 
     # Seller колонка
@@ -209,12 +274,12 @@ def _draw_parties_block(c, y, buyer_name, buyer_email, seller_name, seller_label
     c.setFillColor(colors.HexColor("#f1f5f9"))
     c.rect(sx, y - 28 * mm, col_w, 28 * mm, fill=1, stroke=0)
     c.setFillColor(colors.HexColor("#475569"))
-    c.setFont("Helvetica-Bold", 8)
+    c.setFont(FONT_BOLD, 8)
     c.drawString(sx + 2 * mm, y - 5 * mm, "SUPPLIER / SELLER")
     c.setFillColor(colors.black)
-    c.setFont("Helvetica-Bold", 10)
+    c.setFont(FONT_BOLD, 10)
     c.drawString(sx + 2 * mm, y - 11 * mm, seller_label[:48])
-    c.setFont("Helvetica", 9)
+    c.setFont(FONT_REGULAR, 9)
     c.drawString(sx + 2 * mm, y - 17 * mm, "via Consolidator Parts")
 
     return y - 32 * mm
@@ -289,7 +354,7 @@ def _build_proforma_invoice_pdf(rfq, quote, logistics_cost: Decimal,
     c.setFillColor(colors.HexColor("#f1f5f9"))
     c.rect(box_x, y - 36 * mm, 70 * mm, 36 * mm, fill=1, stroke=0)
     c.setFillColor(colors.black)
-    c.setFont("Helvetica", 9)
+    c.setFont(FONT_REGULAR, 9)
 
     rows_t = [
         ("Goods total",           f"${parts_total:,.2f}"),
@@ -301,16 +366,16 @@ def _build_proforma_invoice_pdf(rfq, quote, logistics_cost: Decimal,
     yy = y - 5 * mm
     for label, value in rows_t:
         if "INVOICE" in label or "Reserve" in label:
-            c.setFont("Helvetica-Bold", 10)
+            c.setFont(FONT_BOLD, 10)
         else:
-            c.setFont("Helvetica", 9)
+            c.setFont(FONT_REGULAR, 9)
         c.drawString(box_x + 2 * mm, yy, label)
         c.drawRightString(box_x + 68 * mm, yy, value)
         yy -= 6 * mm
     y = yy - 4 * mm
 
     # Сноски
-    c.setFont("Helvetica-Oblique", 8)
+    c.setFont(FONT_OBLIQUE, 8)
     c.setFillColor(colors.HexColor("#475569"))
     c.drawString(20 * mm, y - 4 * mm,
                   "This is a PRO-FORMA invoice — used for client review and "
@@ -425,7 +490,7 @@ def _build_packing_list_pdf(order) -> io.BytesIO:
     )
 
     y -= 6 * mm
-    c.setFont("Helvetica", 10)
+    c.setFont(FONT_REGULAR, 10)
     c.drawString(20 * mm, y, "Inspector signature: ________________________")
     y -= 8 * mm
     c.drawString(20 * mm, y, "Date: ________________________")
@@ -464,10 +529,10 @@ def _build_qc_report_pdf(order) -> io.BytesIO:
     )
 
     y -= 8 * mm
-    c.setFont("Helvetica-Bold", 10)
+    c.setFont(FONT_BOLD, 10)
     c.drawString(20 * mm, y, "Conclusion: All positions inspected and approved for shipment.")
     y -= 12 * mm
-    c.setFont("Helvetica", 10)
+    c.setFont(FONT_REGULAR, 10)
     c.drawString(20 * mm, y, "QC Inspector: ________________________   Signature: ___________________")
 
     _draw_footer(c)

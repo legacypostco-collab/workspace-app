@@ -2767,7 +2767,7 @@ def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
     # Базовое intro
     rows_label = f"{total_rows} позиций" if total_rows else f"{len(headers)} колонок"
     if questions:
-        intro = (f"📋 Я распознал в файле **{rows_label}**. "
+        intro = (f"📋 Я распознал в файле {rows_label}. "
                  f"Уточню {len(questions)} "
                  f"{'деталь' if len(questions) == 1 else 'детали' if 2 <= len(questions) <= 4 else 'деталей'}"
                  f" чтобы корректно заполнить карточки товара:")

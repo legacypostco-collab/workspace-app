@@ -289,7 +289,7 @@ def _stub_response(query: str, chunks) -> str:
         f"Найдено {len(chunks)} релевантных источников по запросу «{query}»:\n",
     ]
     for i, c in enumerate(chunks, 1):
-        parts.append(f"{i}. **{c.title}** ({c.get_source_type_display()})")
+        parts.append(f"{i}. {c.title} ({c.get_source_type_display()})")
         if c.content:
             parts.append(f"   {c.content[:200]}")
     return "\n".join(parts)

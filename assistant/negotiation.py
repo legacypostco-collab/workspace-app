@@ -348,6 +348,66 @@ def send_rfq_to_suppliers(params, user, role):
 
 
 # ══════════════════════════════════════════════════════════
+# Разбор свободного запроса покупателя на OEM-артикул + название
+# ══════════════════════════════════════════════════════════
+def _split_query_oem_name(query):
+    """Из строки запроса («Датчик давления 320D») вытащить OEM-токен
+    («320D») и человекочитаемое название («Датчик давления»).
+
+    Возвращает (oem, name). Если OEM-токен не найден — ("", query).
+    Если строка состоит только из кода — (query, "")."""
+    import re
+
+    q = (query or "").strip()
+    if not q:
+        return "", ""
+    tokens = q.split()
+    # OEM-подобный токен: латиница/цифры/разделители, есть цифра, длина ≥ 4.
+    oem_re = re.compile(r"^[A-Za-z0-9][A-Za-z0-9\-/.]{3,}$")
+    oem_token = ""
+    for tok in tokens:
+        t = tok.strip(".,;:()[]")
+        if oem_re.match(t) and any(c.isdigit() for c in t):
+            oem_token = t  # берём последний подходящий (OEM обычно в конце)
+    if oem_token:
+        name = " ".join(
+            tok for tok in tokens if tok.strip(".,;:()[]") != oem_token
+        ).strip()
+        return oem_token, name
+    # Один токен и в нём есть цифра — это, скорее всего, чистый код без названия.
+    if len(tokens) == 1 and any(c.isdigit() for c in q):
+        return q, ""
+    return "", q
+
+
+def _seller_catalog_match(seller_parts_qs, rfq_item, oem=None, name=None):
+    """Найти позицию из каталога ПРОДАВЦА, подходящую под строку RFQ.
+
+    Нужно, чтобы продавец прямо в карточке котировки видел: есть ли товар у
+    него, по какой цене и сколько на складе — и мог принять решение сразу.
+    Приоритет: его же matched_part → точный OEM → вхождение названия.
+    Возвращает Part или None.
+    """
+    mp = rfq_item.matched_part
+    if mp is not None and getattr(mp, "seller_id", None) and \
+            seller_parts_qs.filter(id=mp.id).exists():
+        return mp
+    if oem is None or name is None:
+        oem, name = _split_query_oem_name(rfq_item.query)
+    if oem:
+        p = (seller_parts_qs.filter(oem_number__iexact=oem)
+             .select_related("brand", "category").first())
+        if p is not None:
+            return p
+    if name and len(name) >= 4:
+        p = (seller_parts_qs.filter(title__icontains=name[:40])
+             .select_related("brand", "category").first())
+        if p is not None:
+            return p
+    return None
+
+
+# ══════════════════════════════════════════════════════════
 # 1. submit_quote — продавец создаёт котировку
 # ══════════════════════════════════════════════════════════
 
@@ -403,34 +463,101 @@ def submit_quote(params, user, role):
         from .rfq_mode_badge import mode_badge, mode_hint_for_seller
         items_for_card = []
         suggested_total = Decimal("0")
+        can_fulfill = 0
+
+        # Каталог самого продавца — чтобы прямо в карточке подставить его цену,
+        # остаток и отметку «есть/нет в каталоге» (решение принимается на месте).
+        seller_parts_qs = None
+        if role == "seller":
+            from marketplace.models import Part
+            seller_parts_qs = Part.objects.filter(seller=user)
+
+        _COND_RU = {"oem": "OEM", "aftermarket": "Аналог", "used": "Б/У", "new": "Новый"}
         for it in rfq_items:
             base = suggested.get(it.id, {})
+            # Артикул/название: при матче — канонический OEM + title детали;
+            # без матча — разбор свободного запроса на OEM-токен + название.
+            _oem, _name = _split_query_oem_name(it.query)
+            article = _oem
+            part_title = _name
+            brand_name = ""
+            currency = "USD"
+            condition_lbl = ""
+            weight_kg = 0.0
+            category_name = ""
+            origin = ""
+            in_catalog = False
+            stock_qty = 0
+            avail_label = ""
+
+            # Источник данных позиции: приоритет — каталог самого продавца
+            # (он отвечает СВОИМ товаром), затем общий matched_part.
+            cat_part = None
+            if seller_parts_qs is not None:
+                cat_part = _seller_catalog_match(seller_parts_qs, it, _oem, _name)
+                if cat_part is not None:
+                    in_catalog = True
+                    can_fulfill += 1
+            src = cat_part or it.matched_part
+
+            if src is not None:
+                part_title = (src.title or "")[:80] or _name
+                brand_name = src.brand.name if src.brand_id else ""
+                currency = src.currency or "USD"
+                condition_lbl = _COND_RU.get((src.condition or "").lower(), src.condition or "")
+                weight_kg = float(src.gross_weight_kg or 0)
+                category_name = src.category.name if src.category_id else ""
+                origin = src.country_of_origin or ""
+                article = src.oem_number or _oem
+                if in_catalog:
+                    stock_qty = int(src.stock_quantity or 0)
+                    avail_label = src.get_availability_display() if hasattr(src, "get_availability_display") else ""
+
+            # Цена-подсказка: params.items → каталог продавца → matched_part.
             default_price = base.get("unit_price")
+            if default_price is None and in_catalog:
+                default_price = float(src.price or 0)
             if default_price is None and it.matched_part:
                 default_price = float(it.matched_part.price or 0)
             try:
                 price_d = Decimal(str(default_price)) if default_price else Decimal("0")
             except Exception:
                 price_d = Decimal("0")
-            qty_d = Decimal(str(it.quantity or 0))
-            suggested_total += (price_d * qty_d)
+            suggested_total += (price_d * Decimal(str(it.quantity or 0)))
 
-            part_title = ""
-            brand_name = ""
-            currency = "USD"
-            if it.matched_part:
-                part_title = (it.matched_part.title or "")[:80]
-                brand_name = it.matched_part.brand.name if it.matched_part.brand_id else ""
-                currency = it.matched_part.currency or "USD"
             items_for_card.append({
-                "rfq_item_id": it.id,
-                "article":     it.query,
-                "title":       part_title,
-                "brand":       brand_name,
-                "quantity":    int(it.quantity or 0),
-                "unit_price":  float(price_d),
-                "currency":    currency,
+                "rfq_item_id":  it.id,
+                "article":      article,
+                "title":        part_title,
+                "brand":        brand_name,
+                "quantity":     int(it.quantity or 0),
+                "unit_price":   float(price_d),
+                "currency":     currency,
+                "condition":    condition_lbl,
+                "weight":       weight_kg,
+                "category":     category_name,
+                "origin":       origin,
+                "in_catalog":   in_catalog,
+                "stock":        stock_qty,
+                "availability": avail_label,
             })
+
+        # Бейдж надёжности самого продавца — в колонку «Поставщик», как
+        # «Надёжный · 91.6» в карточке заказа (а не просто «Вы»).
+        _BADGE_RU = {"trusted": "Надёжный", "sandbox": "Песочница",
+                     "risky": "Рисковый", "rejected": "Исключён"}
+        seller_status = "trusted"
+        seller_rating = 90.0
+        try:
+            from marketplace.models import UserProfile
+            _prof = (UserProfile.objects.filter(user=user)
+                     .only("supplier_status", "rating").first())
+            if _prof:
+                seller_status = _prof.supplier_status or "trusted"
+                seller_rating = float(_prof.rating or 90.0)
+        except Exception:
+            pass
+        seller_badge = f"{_BADGE_RU.get(seller_status, 'Надёжный')} · {round(seller_rating, 1)}"
 
         badge = mode_badge(rfq.mode)
         hint  = mode_hint_for_seller(rfq.mode) if role == "seller" else ""
@@ -438,6 +565,17 @@ def submit_quote(params, user, role):
             "bad"  if rfq.urgency == "critical" else
             "warn" if rfq.urgency == "urgent"   else "info"
         )
+
+        # Код покупателя: продавцу показываем присвоенный анонимный код (узнаёт
+        # повторных клиентов), но НЕ имя. Стабилен на одного покупателя.
+        import hashlib as _hl
+        _seed = str(getattr(rfq, "created_by_id", None) or rfq.customer_email or rfq.id)
+        buyer_code = "B-" + _hl.md5(_seed.encode()).hexdigest()[:5].upper()
+        # Способ доставки (тест: морем по умолчанию; реальный выбирается при
+        # оформлении заказа) + место назначения.
+        ship_mode = "sea"
+        ship_mode_ru = {"sea": "морем", "air": "авиа", "auto": "авто"}.get(ship_mode, "")
+        dest_port = {"sea": "морской порт", "air": "аэропорт", "auto": "терминал"}.get(ship_mode, "порт")
 
         return ActionResult(
             text=(f"💬 Котировка по RFQ #{rfq.id}"
@@ -450,10 +588,25 @@ def submit_quote(params, user, role):
                     "mode_badge":      badge or "",
                     "urgency_label":   rfq.get_urgency_display(),
                     "urgency_tone":    urgency_tone,
-                    "customer_name":   rfq.customer_name or "—",
-                    "company_name":    rfq.company_name or "",
+                    # ПРИВАТНОСТЬ: продавец видит присвоенный КОД покупателя,
+                    # но НИКОГДА имя/компанию. Оператор/админ — реальное имя.
+                    "customer_name":   (f"Покупатель {buyer_code}" if role == "seller"
+                                        else (rfq.customer_name or "—")),
+                    "company_name":    ("" if role == "seller" else (rfq.company_name or "")),
+                    "buyer_code":      buyer_code,
                     "request_text":    (rfq.notes or "")[:200],
+                    # «Куда» = место назначения (страна · порт) + способ доставки.
+                    "destination":     f"🇷🇺 Россия (импорт) · {dest_port} · {ship_mode_ru}",
+                    "shipping_mode":   ship_mode,
                     "items":           items_for_card,
+                    # Доп. инфо для шапки/таблицы как в карточке заказа.
+                    "created_at":      rfq.created_at.strftime("%d.%m.%Y %H:%M") if rfq.created_at else "",
+                    "seller_status":   seller_status,
+                    "seller_badge":    seller_badge,
+                    # Сводка для решения «прямо в карточке» (только для продавца).
+                    "seller_view":     role == "seller",
+                    "can_fulfill":     can_fulfill,
+                    "total_items":     len(items_for_card),
                     "delivery_days":   int(delivery_days),
                     "valid_days":      int(valid_days),
                     "message":         message,

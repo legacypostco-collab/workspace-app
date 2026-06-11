@@ -625,9 +625,6 @@ def seller_analytics_hub(params, user, role):
         {"title":    "🚚 Отчёт по поставкам",
          "subtitle": "Воронка статусов · ваши заказы по этапам pipeline · ETA доставки",
          "action":   "get_supply_report", "params": {}},
-        {"title":    "⏱ SLA по заказам",
-         "subtitle": "Соблюдение сроков · среднее время на каждом этапе · застрявшие заказы",
-         "action":   "get_sla_report", "params": {}},
         {"title":    "📊 Аналитика заказов",
          "subtitle": "Распределение по статусам · динамика по месяцам · средний чек",
          "action":   "get_analytics", "params": {}},
@@ -747,7 +744,6 @@ def seller_executive_report(params, user, role):
         ],
         actions=[
             {"label": "📈 Спрос на рынке",     "action": "get_demand_report", "params": {}},
-            {"label": "⏱ SLA-отчёт",           "action": "get_sla_report",   "params": {}},
             {"label": "📊 Аналитика по месяцам","action": "get_analytics",    "params": {}},
             {"label": "📊 Назад в Аналитика",  "action": "seller_analytics_hub", "params": {}},
         ],
@@ -932,6 +928,43 @@ def audit_log(params, user, role):
     """
     from marketplace.models import Order, OrderEvent, OrderItem
     order_id = params.get("order_id")
+    rfq_id = params.get("rfq_id")
+    # «История изменений» по RFQ: у RFQ нет заказа-аудита (заказ может ещё не
+    # существовать), поэтому показываем историю самого RFQ.
+    if not order_id and rfq_id:
+        from marketplace.models import RFQ
+        try:
+            rfq = RFQ.objects.get(id=rfq_id)
+        except RFQ.DoesNotExist:
+            return ActionResult(text=f"RFQ #{rfq_id} не найден.")
+        if not (role.startswith("operator") or role == "admin"
+                or (role == "buyer" and getattr(rfq, "created_by_id", None) == getattr(user, "id", None))):
+            return ActionResult(text=f"Нет прав на просмотр истории RFQ #{rfq_id}.")
+
+        def _disp(obj, field):
+            m = getattr(obj, f"get_{field}_display", None)
+            return m() if callable(m) else (getattr(obj, field, "") or "")
+
+        rows = [{
+            "title": f"🆕 RFQ создан · режим {_disp(rfq, 'mode') or (rfq.mode or '').upper()}",
+            "subtitle": rfq.created_at.strftime("%d.%m.%Y %H:%M") if getattr(rfq, "created_at", None) else "—",
+        }]
+        _urg = getattr(rfq, "urgency", "standard") or "standard"
+        if _urg != "standard":
+            rows.append({"title": f"⚡ Срочность: {_disp(rfq, 'urgency') or _urg}",
+                         "subtitle": "приоритет запроса"})
+        if getattr(rfq, "discount_percent", 0):
+            rows.append({"title": f"💰 Скидка {rfq.discount_percent}%",
+                         "subtitle": (getattr(rfq, "discount_note", "") or "").strip() or "применена к RFQ"})
+        rows.append({"title": f"📊 Статус: {_disp(rfq, 'status') or rfq.status}",
+                     "subtitle": "текущее состояние запроса"})
+        return ActionResult(
+            text=(f"📋 История RFQ #{rfq.id}. Полный аудит-лог по заказу появится "
+                  f"после оформления заказа (оплаты резерва 10%)."),
+            cards=[{"type": "list", "data": {"title": f"История RFQ #{rfq.id}", "rows": rows}}],
+            actions=[{"label": "📄 Открыть RFQ", "action": "get_rfq_status",
+                      "params": {"rfq_id": rfq.id}}],
+        )
     if not order_id:
         return ActionResult(text="Не указан заказ.")
     try:
@@ -1180,176 +1213,17 @@ def kb_search(params, user, role):
 
 @register("seller_inbox")
 def seller_inbox(params, user, role):
-    """Что нужно сделать прямо сейчас: новые RFQ без ответа, заказы оплаченные
-    и ждущие отгрузки, заказы на этапе подтверждения, истёкшие SLA.
+    """Объединён с «Мои сделки» в единый экран продавца.
+
+    Раньше это был отдельный триаж-список «что горит». Теперь весь рабочий
+    поток продавца — на одном экране get_my_deals (_seller_deals): сверху новые
+    входящие RFQ-лиды и отправленные КП, ниже — вся воронка заказов по этапам.
+
+    Оставлен как тонкий редирект, чтобы все прежние точки входа (онбординг,
+    футер-кнопки «🔥 Срочные задачи», подсказки) вели на тот же единый экран.
     """
-    from datetime import timedelta
-
-    from marketplace.models import RFQ, Order, OrderItem
-
-    user = _effective_seller(user)
-    now = timezone.now()
-    seller_part_ids = list(
-        OrderItem.objects.filter(part__seller=user)
-        .values_list("part_id", flat=True).distinct()
-    )
-
-    # 1. RFQ без ответа за последние 14 дней (входящие)
-    two_weeks = now - timedelta(days=14)
-    new_rfqs = RFQ.objects.filter(
-        status__in=["new", "processing"], created_at__gte=two_weeks,
-    ).order_by("-created_at")[:5]
-
-    # 2. Заказы готовые и оплаченные — нужно отгружать
-    to_ship = (
-        Order.objects.filter(items__part__seller=user,
-                             status="ready_to_ship", payment_status="paid")
-        .distinct().order_by("-created_at")[:5]
-    )
-
-    # 3. Заказы новые с резервом — нужно подтвердить
-    to_confirm = (
-        Order.objects.filter(items__part__seller=user, status="reserve_paid")
-        .distinct().order_by("-created_at")[:5]
-    )
-
-    # 4. SLA-нарушения
-    sla_breaches = (
-        Order.objects.filter(items__part__seller=user, sla_status="breached")
-        .distinct().order_by("-created_at")[:3]
-    )
-
-    # Описания Incoterms — что значит для продавца
-    _INCOTERM_HINT = {
-        "EXW": "EXW — самовывоз со склада продавца",
-        "FCA": "FCA — продавец грузит на перевозчика покупателя",
-        "FAS": "FAS — груз на причал у борта судна",
-        "FOB": "FOB — погрузка на борт судна, далее перевозчик покупателя",
-        "CFR": "CFR — продавец оплачивает фрахт до порта назначения",
-        "CIF": "CIF — продавец оплачивает фрахт + страховку",
-        "CPT": "CPT — продавец оплачивает доставку до согласованного пункта",
-        "CIP": "CIP — то же что CPT + страховка",
-        "DAP": "DAP — доставка до места назначения",
-        "DPU": "DPU — доставка с разгрузкой в терминале",
-        "DDP": "DDP — продавец платит таможенные пошлины и налоги",
-    }
-
-    def _incoterm_chip(o):
-        inc = (o.incoterm or "FOB").upper()
-        hint = _INCOTERM_HINT.get(inc, inc)
-        # Убираем дубль "FOB — погрузка..." → "погрузка..."
-        if hint.startswith(inc):
-            hint = hint[len(inc):].lstrip(" —-").strip()
-        return inc, hint
-
-    sections = []
-    if to_ship:
-        rows = []
-        for o in to_ship:
-            inc, inc_hint = _incoterm_chip(o)
-            rows.append({
-                "title": f"Заказ #{o.id} · Покупатель",
-                "subtitle": (
-                    f"${o.total_amount:,.0f} · базис {inc} · "
-                    f"оплачен {(o.final_paid_at or o.created_at).strftime('%d.%m.%Y')}\n"
-                    f"{inc_hint}"
-                ),
-                "badge": {"label": inc, "tone": "info"},
-                "action": {"label": "🚚 Отгрузить",
-                           "action": "ship_order",
-                           "params": {"order_id": o.id}},
-            })
-        sections.append({
-            "icon": "🚚", "title": "К отгрузке (оплачено покупателем)",
-            "rows": rows,
-        })
-    if to_confirm:
-        rows = []
-        for o in to_confirm:
-            inc, inc_hint = _incoterm_chip(o)
-            rows.append({
-                "title": f"Заказ #{o.id} · Покупатель",
-                "subtitle": (
-                    f"${o.total_amount:,.0f} · базис {inc} · резерв 10% оплачен\n"
-                    f"{inc_hint}"
-                ),
-                "badge": {"label": inc, "tone": "info"},
-                "action": {"label": "▶️ Подтвердить",
-                           "action": "advance_order",
-                           "params": {"order_id": o.id}},
-            })
-        sections.append({
-            "icon": "✅", "title": "Новые заказы — подтвердить и в производство",
-            "rows": rows,
-        })
-    if new_rfqs:
-        def _rfq_subtitle(r):
-            # Бейдж режима впереди — продавец сразу видит срочность.
-            # MANUAL = адресная рассылка, ответ приоритетный.
-            badge = mode_badge_with_sla(r.mode)
-            badge_part = f"{badge} · " if badge else ""
-            return (f"{badge_part}Создан {r.created_at.strftime('%d.%m.%Y')} · "
-                    f"{r.get_status_display()}")
-        sections.append({
-            "icon": "📋", "title": "Новые RFQ — ответить ценой",
-            "rows": [
-                {
-                    "title": f"RFQ #{r.id} · Покупатель",
-                    "subtitle": _rfq_subtitle(r),
-                    "action": {"label": "💬 Ответить",
-                               "action": "respond_rfq_form",
-                               "params": {"rfq_id": r.id}},
-                } for r in new_rfqs
-            ],
-        })
-    if sla_breaches:
-        sections.append({
-            "icon": "⏱", "title": "SLA-нарушения — нужно объяснить покупателю",
-            "rows": [
-                {
-                    "title": f"Заказ #{o.id} · Покупатель",
-                    "subtitle": f"Просрочка · {o.get_status_display()}",
-                    "action": {"label": "📦 Открыть",
-                               "action": "track_order",
-                               "params": {"order_id": o.id}},
-                } for o in sla_breaches
-            ],
-        })
-
-    if not sections:
-        return ActionResult(
-            text="🟢 Срочных задач нет — все RFQ обработаны, отгрузки идут по графику, SLA в норме.",
-            actions=[
-                {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
-                {"label": "📈 Спрос на рынке", "action": "get_demand_report", "params": {}},
-            ],
-        )
-
-    total = sum(len(s["rows"]) for s in sections)
-    return ActionResult(
-        text=(
-            f"🔥 Срочные задачи: {total} {'действие' if total==1 else 'действий'} "
-            f"требует внимания. Это новые заказы для подтверждения, оплаченные "
-            f"заказы готовые к отгрузке, RFQ без ответа и заказы с просрочкой SLA."
-        ),
-        cards=[{
-            "type": "inbox",
-            "data": {
-                "title": "Срочные задачи",
-                "sections": sections,
-            },
-        }],
-        actions=[
-            {"label": "📊 Дашборд",  "action": "seller_dashboard", "params": {}},
-            {"label": "📋 Все RFQ", "action": "get_rfq_status",   "params": {}},
-            {"label": "🚚 К отгрузке", "action": "seller_pipeline","params": {}},
-        ],
-        suggestions=[
-            {"label": "🚚 Что отгрузить?",  "action": "get_supply_report", "params": {}},
-            {"label": "📋 Какие RFQ срочные?", "action": "get_rfq_status",  "params": {}},
-            {"label": "📊 Аналитика",       "action": "seller_analytics_hub", "params": {}},
-        ],
-    )
+    from .actions import get_my_deals
+    return get_my_deals(params, user, "seller")
 
 
 # ══════════════════════════════════════════════════════════

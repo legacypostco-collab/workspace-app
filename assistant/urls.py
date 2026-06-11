@@ -26,6 +26,8 @@ urlpatterns = [
     path("projects/<uuid:project_id>/update/", views.ProjectUpdateView.as_view(), name="assistant-project-update"),
     path("projects/<uuid:project_id>/documents/", views.ProjectDocumentUploadView.as_view(), name="assistant-project-doc-upload"),
     path("projects/<uuid:project_id>/documents/<uuid:doc_id>/file/", views.ProjectDocumentFileView.as_view(), name="assistant-project-doc-file"),
+    # Order document file (invoice/packing/QC PDF) — стримим через Django, т.к. /media/ на проде не раздаётся
+    path("orders/<int:order_id>/documents/<int:doc_id>/file/", views.OrderDocumentFileView.as_view(), name="assistant-order-doc-file"),
     # KYB document upload (dealership certificate, bank requisites — file fields в CompanyVerification)
     path("kyb/doc/<str:kind>/", views.KYBDocUploadView.as_view(), name="assistant-kyb-doc-upload"),
     # RFQ detail (for chat-first /chat/rfq/<id>/ page)

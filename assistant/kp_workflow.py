@@ -24,7 +24,7 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from .actions import ActionResult, _notify, register
+from .actions import ActionResult, _full_order_cards, _notify, register
 
 logger = logging.getLogger(__name__)
 
@@ -380,7 +380,7 @@ def confirm_kp_and_reserve(params, user, role):
             f"Резерв 10% (${reserve:,.2f}) списан · остаток депозита ${wallet.balance:,.2f}\n"
             f"Чат теперь — сделка. Commercial Invoice выставлен."
         ),
-        cards=[{"type": "order", "data": {
+        cards=_full_order_cards(order, user, role, fallback={"type": "order", "data": {
             "id": str(order.id),
             "number": order.id,
             "status": "reserve_paid",
@@ -390,7 +390,7 @@ def confirm_kp_and_reserve(params, user, role):
             "payment_status": "reserve_paid",
             "payment_status_label": f"Резерв ${reserve:,.0f} удержан",
             "invoice_url": invoice_url,
-        }}],
+        }}),
         actions=actions,
     )
 
@@ -580,15 +580,39 @@ def op_compose_kp(params, user, role):
             return ActionResult(text="Выбранная котировка не найдена.")
     else:
         chosen = qs.order_by("total_amount").first()
+        if not chosen:
+            # Котировок поставщиков ещё нет — формируем КП прямо из каталога
+            # (тот же механизм, что в AUTO). Так «Подтвердить КП» реально
+            # работает, а не упирается в тупик «подтвердите аналоги вручную».
+            try:
+                from django.contrib.auth import get_user_model
+
+                from marketplace.models import Part
+
+                from .negotiation import auto_generate_quotes_from_catalog
+                _oems = [it.query for it in rfq.items.all() if it.query]
+                _sids = set(Part.objects.filter(
+                    is_active=True, price__gt=0, oem_number__in=_oems,
+                ).values_list("seller_id", flat=True))
+                _recipients = list(get_user_model().objects.filter(id__in=_sids))
+                if _recipients:
+                    auto_generate_quotes_from_catalog(rfq, _recipients)
+                    chosen = qs.order_by("total_amount").first()
+            except Exception:
+                logger.exception("op_compose_kp: catalog auto-quote failed RFQ #%s", rfq.id)
     if not chosen:
         return ActionResult(
             text=(
-                "По этому RFQ нет позиций с актуальной ценой в каталоге.\n"
-                "Откройте RFQ и подтвердите аналоги вручную."
+                f"По RFQ #{rfq.id} не получилось собрать КП автоматически: ни один "
+                "поставщик не покрывает все позиции одним предложением (или нет "
+                "актуальных цен в каталоге). Нужны котировки поставщиков или "
+                "разбор по позициям."
             ),
             actions=[
                 {"label": "Открыть RFQ", "action": "rfq_detail",
-                 "params": {"rfq_id": params.get("rfq_id")}},
+                 "params": {"rfq_id": rfq.id}},
+                {"label": "Спросить у клиента", "action": "ask_about_rfq",
+                 "params": {"rfq_id": rfq.id}},
             ],
         )
 

@@ -325,6 +325,8 @@ def op_queue(params, user, role):
         qs = qs.filter(sla_status="breached")
     elif flt == "at_risk":
         qs = qs.filter(sla_status="at_risk")
+    elif flt == "overdue":
+        qs = qs.filter(sla_status__in=("at_risk", "breached"))
     elif flt == "refund":
         qs = qs.filter(payment_status="refund_pending")
     elif flt == "awaiting_reserve":
@@ -404,6 +406,7 @@ def op_queue(params, user, role):
         now = _tz.now()
         pending_rfqs = list(
             RFQ.objects.filter(mode="semi", status__in=("new", "processing", "matched"))
+                       .prefetch_related("items__matched_part")
                        .order_by("created_at")[:50]
         )
         if pending_rfqs:
@@ -425,9 +428,15 @@ def op_queue(params, user, role):
                 else:
                     sla_str = f"осталось {left} мин из 15"
                     tone = "ok"
+                # Оценочная сумма КП (по ценам сматченных позиций) — чтобы строка
+                # RFQ была так же информативна, как строка заказа (там есть $).
+                _its = list(r.items.all())
+                _est = sum(float(it.matched_part.price or 0) * (it.quantity or 0)
+                           for it in _its if it.matched_part)
+                _amt = f" · ~${_est:,.0f}" if _est else ""
                 rfq_items.append({
                     "title":    f"RFQ #{r.id} · {r.customer_name or '—'}",
-                    "subtitle": f"{r.items.count()} позиций · {sla_str}",
+                    "subtitle": f"{len(_its)} позиций{_amt} · {sla_str}",
                     "tone":     tone,
                     "badge":    {"label": "Ждёт подтверждения", "tone": "warn"},
                     "action":   "op_approve_kp",
@@ -488,26 +497,26 @@ def op_queue(params, user, role):
         return ActionResult(
             text=f"Очередь · фильтр «{flt}» · пусто.",
             cards=[{"type": "list", "data": {
-                "title": "📋 Очередь",
+                "title": "📋 Список заказов",
                 "items": [{"title": "Пусто", "subtitle": "Под этот фильтр ничего не попадает"}],
             }}],
         )
 
     filter_label = {
         "all": "все этапы", "breached": "только SLA нарушено",
-        "at_risk": "только под угрозой", "refund": "только возвраты",
+        "at_risk": "только под угрозой", "overdue": "только просрочки",
+        "refund": "только возвраты",
         "awaiting_reserve": "только ждут резерв",
     }.get(flt, flt)
 
     return ActionResult(
-        text=(f"📋 Очередь заказов · {filter_label} · {total_count} заказов на "
+        text=(f"📋 Список заказов · {filter_label} · {total_count} заказов на "
               f"{len(cards)} этапах. Под каждым — что делать оператору."),
         cards=cards,
         contextual_actions=[
-            {"action": "op_queue", "label": "Все этапы",        "params": {"filter": "all"}},
-            {"action": "op_queue", "label": "SLA нарушено",     "params": {"filter": "breached"}},
-            {"action": "op_queue", "label": "Под угрозой",      "params": {"filter": "at_risk"}},
-            {"action": "op_queue", "label": "Возвраты",         "params": {"filter": "refund"}},
+            {"action": "op_queue", "label": "Все этапы",   "params": {"filter": "all"}},
+            {"action": "op_queue", "label": "⏱ Просрочки", "params": {"filter": "overdue"}},
+            {"action": "op_queue", "label": "Возвраты",    "params": {"filter": "refund"}},
             {"action": "op_dashboard", "label": "← Дашборд"},
         ],
     )
@@ -846,7 +855,7 @@ def op_sla_breach(params, user, role):
 
     contextual = [
         {"action": "op_analytics_hub", "label": "← Аналитика"},
-        {"action": "op_queue", "label": "Очередь заказов", "params": {"filter": "all"}},
+        {"action": "op_queue", "label": "Список заказов", "params": {"filter": "all"}},
         {"action": "op_logistics_stats", "label": "Сводка логистики", "params": {}},
         {"action": "op_payments_dashboard", "label": "Платежи", "params": {}},
         {"action": "get_claims", "label": "Рекламации", "params": {}},
@@ -919,7 +928,11 @@ def op_order_detail(params, user, role):
         "order_cancelled_by_buyer":    "Покупатель отменил заказ",
         "order_cancelled_by_seller":   "Продавец отменил заказ",
         "reserve_paid":                "Резерв 10% оплачен",
+        "mid_payment_paid":            "Промежуточный платёж",
+        "customs_payment_paid":        "Таможенный платёж",
         "final_payment_paid":          "Финальная оплата 90%",
+        "quality_confirmed":           "Качество подтверждено",
+        "claim_status_changed":        "Рекламация — обновление",
         "status_changed":              "Статус заказа",
         "sla_status_changed":          "SLA",
         "trigger_completed":           "Триггер выполнен",
@@ -958,7 +971,8 @@ def op_order_detail(params, user, role):
             tid = m.get("trigger_id") or ""
             if tid:
                 detail = f": {tid}"
-        elif e.event_type == "reserve_paid" or e.event_type == "final_payment_paid":
+        elif e.event_type in ("reserve_paid", "mid_payment_paid",
+                               "customs_payment_paid", "final_payment_paid"):
             amt = m.get("amount")
             if amt:
                 detail = f": ${float(amt):,.0f}"
@@ -972,8 +986,9 @@ def op_order_detail(params, user, role):
     # Превращаем в timeline-формат (для отдельного renderer'а audit_timeline):
     # цвет/иконка по типу события, color-code по актёру (buyer/seller/operator/system).
     EVENT_ICON = {
-        "status_changed": "▶", "sla_status_changed": "⏱", "trigger_completed": "✅",
-        "reserve_paid": "💰", "final_payment_paid": "💰",
+        "status_changed": "🔄", "sla_status_changed": "⏱", "trigger_completed": "✅",
+        "reserve_paid": "💰", "mid_payment_paid": "💰", "customs_payment_paid": "💰",
+        "final_payment_paid": "💰", "quality_confirmed": "✅", "claim_status_changed": "⚠️",
         "invoice_opened": "📄", "invoice_paid": "💰",
         "tracking_updated": "📍", "document_uploaded": "📎",
         "order_created": "🆕", "order_cancelled_by_buyer": "🗑", "order_cancelled_by_seller": "🗑",
@@ -982,7 +997,9 @@ def op_order_detail(params, user, role):
     }
     EVENT_TONE = {
         "status_changed": "blue", "sla_status_changed": "red", "trigger_completed": "green",
-        "reserve_paid": "green", "final_payment_paid": "green",
+        "reserve_paid": "green", "mid_payment_paid": "green",
+        "customs_payment_paid": "green", "final_payment_paid": "green",
+        "quality_confirmed": "green", "claim_status_changed": "orange",
         "order_created": "blue", "order_cancelled_by_buyer": "gray",
         "order_cancelled_by_seller": "gray", "payment_deadline_set": "orange",
         "claim_opened": "red", "claim_resolved": "green",
@@ -1006,7 +1023,8 @@ def op_order_detail(params, user, role):
             after = SLA_RU.get(m.get("to", ""), m.get("to", ""))
         elif e.event_type == "trigger_completed":
             delta_text = m.get("trigger_id") or ""
-        elif e.event_type in ("reserve_paid", "final_payment_paid"):
+        elif e.event_type in ("reserve_paid", "mid_payment_paid",
+                               "customs_payment_paid", "final_payment_paid"):
             if m.get("amount"):
                 delta_text = f"${float(m['amount']):,.0f}"
         timeline_items.append({
@@ -1128,24 +1146,23 @@ def op_order_detail(params, user, role):
 
     # Универсальный builder строки документа: title, есть/нет, краткая инфо
     def _doc_row(title: str, present: bool, extra: str = "", required: bool = True):
+        # Без row-tone — в разделе «Документы» убраны цветные левые полоски;
+        # статус виден по бейджу ЕСТЬ/НЕТ/—.
         if present:
             return {
                 "title": f"✅ {title}",
                 "subtitle": extra or "Загружен / подтверждён",
-                "tone": "ok",
                 "badge": {"label": "ЕСТЬ", "tone": "ok"},
             }
         if not required:
             return {
                 "title": f"⬜ {title}",
                 "subtitle": extra or "Не обязателен",
-                "tone": "info",
                 "badge": {"label": "—", "tone": "info"},
             }
         return {
             "title": f"⬜ {title}",
             "subtitle": extra or "Не загружен — требуется",
-            "tone": "warn",
             "badge": {"label": "НЕТ", "tone": "warn"},
         }
 
@@ -1280,7 +1297,7 @@ def op_order_detail(params, user, role):
              "label": ("🚚 " + ("Сменить" if order.carrier_name else "Назначить")
                         + " перевозчика"),
              "params": {"order_id": order.id}},
-            {"action": "track_order", "label": "📦 Трекинг", "params": {"order_id": order.id}},
+            {"action": "track_shipment", "label": "📦 Трекинг", "params": {"order_id": order.id}},
             {"action": "op_resolve_dispute", "label": "⚖️ Закрыть спор", "params": {"order_id": order.id}},
             {"action": "get_claims", "label": "🧾 Рекламации", "params": {}},
             {"action": "op_escalate_to_kam", "label": "⚠️ Эскалировать KAM", "params": {"order_id": order.id}},
@@ -1312,23 +1329,23 @@ def op_assign(params, user, role):
     if not confirmed or to_role not in OP_SUBROLES:
         current = _latest_assignment(order)
         current_line = (
-            f"📌 Сейчас назначен: **{current['to_role']}** (by {current['by']}, "
+            f"📌 Сейчас назначен: {current['to_role']} (by {current['by']}, "
             f"{current['at'][:10]})"
             if current else "📌 Сейчас никто не отвечает — заказ в общей очереди"
         )
         return ActionResult(
             text=(
-                f"**Кому назначить заказ #{order.id}?**\n\n"
+                f"Кому назначить заказ #{order.id}?\n\n"
                 f"Назначение передаёт ответственность за этот заказ конкретному "
                 f"специалисту-оператору. Он получит уведомление, увидит заказ "
                 f"в своей персональной очереди и будет следить за SLA. Дирижирует "
                 f"процессом дальше — он, но за итог отвечает старший оператор.\n\n"
                 f"{current_line}\n\n"
-                f"**Когда назначать:**\n"
-                f"• 🚚 **Логист** — груз застрял в транзите / нужно дозвонится до перевозчика\n"
-                f"• 🛂 **Таможня** — проблемы с растаможкой, документами, кодами ТН ВЭД\n"
-                f"• 💰 **Платежи** — задержка оплаты, возврат, эскроу-вопрос\n"
-                f"• 👤 **Менеджер** — общая координация / VIP-клиент / эскалация"
+                f"Когда назначать:\n"
+                f"• 🚚 Логист — груз застрял в транзите / нужно дозвонится до перевозчика\n"
+                f"• 🛂 Таможня — проблемы с растаможкой, документами, кодами ТН ВЭД\n"
+                f"• 💰 Платежи — задержка оплаты, возврат, эскроу-вопрос\n"
+                f"• 👤 Менеджер — общая координация / VIP-клиент / эскалация"
             ),
             cards=[{
                 "type": "form",
@@ -1540,13 +1557,13 @@ def op_assign_carrier(params, user, role):
             order, "carrier_assigned",
             actor=user,
             text=(
-                f"🚚 Назначен перевозчик: **{carrier_name}** · "
+                f"🚚 Назначен перевозчик: {carrier_name} · "
                 f"трек-номер `{tracking_number}`."
                 + (f"\nURL: {tracking_url}" if tracking_url else "")
                 + (f"\nТелефон: {carrier_phone}" if carrier_phone else "")
             ),
             extra_actions=[
-                {"action": "track_order", "label": "📦 Открыть трекинг",
+                {"action": "track_shipment", "label": "📦 Открыть трекинг",
                  "params": {"order_id": order.id}},
             ] + ([
                 {"action": "open_url", "label": f"🔗 {carrier_name}",
@@ -1567,7 +1584,7 @@ def op_assign_carrier(params, user, role):
         contextual_actions=[
             {"action": "op_order_detail", "label": "← К заказу",
              "params": {"order_id": order.id}},
-            {"action": "track_order", "label": "📦 Открыть трекинг",
+            {"action": "track_shipment", "label": "📦 Открыть трекинг",
              "params": {"order_id": order.id}},
         ],
     )
@@ -2218,7 +2235,7 @@ def op_customs_dashboard(params, user, role):
         ],
         contextual_actions=[
             {"action": "op_analytics_hub", "label": "← Аналитика"},
-            {"action": "op_queue", "label": "📋 Очередь оператора", "params": {"filter": "open"}},
+            {"action": "op_queue", "label": "📋 Список заказов", "params": {"filter": "open"}},
             {"action": "go_home", "label": "🏠 Главная"},
         ],
     )

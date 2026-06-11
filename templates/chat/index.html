@@ -84,6 +84,15 @@
     .card .spec-row-num,.card .spec-foot-info,.card .sm-inc-sub{
       color:rgba(0,0,0,0.72) !important;
     }
+    /* DARK: те же приглушённые тексты — светлыми, иначе «чёрным по чёрному»
+       (код порта CNPOZ в «Составе» наследовал форсированный чёрный). */
+    body.dark-mode .card .sm-hint,body.dark-mode .card .ob-hint,body.dark-mode .card .df-hint,
+    body.dark-mode .card .as-title,body.dark-mode .card .as-hint,body.dark-mode .card .ob-c-ports,
+    body.dark-mode .card .ob-c-stat,body.dark-mode .card .ob-it-meta,
+    body.dark-mode .card .spec-row-num,body.dark-mode .card .spec-foot-info,body.dark-mode .card .sm-inc-sub{
+      color:rgba(255,255,255,0.72) !important;
+    }
+    body.dark-mode .card .ob-port,body.dark-mode .card .ob-port-code{color:rgba(255,255,255,0.92);}
     code{background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;font-family:'SF Mono',Menlo,monospace;font-size:12px;}
     ::-webkit-scrollbar{width:6px;height:6px;}
     ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.15);border-radius:3px;}
@@ -916,6 +925,46 @@
     .qf-c-title{}
     .qf-title{font-size:13px;color:#0a0a0a;font-weight:500;line-height:1.35;}
     .qf-brand{font-size:11.5px;color:rgba(0,0,0,0.55);margin-top:2px;letter-spacing:0.02em;text-transform:uppercase;}
+    .qf-meta{font-size:11px;color:rgba(0,0,0,0.5);margin-top:3px;line-height:1.3;}
+    body.dark-mode .qf-meta{color:rgba(255,255,255,0.55);}
+    .qf-art-none{font-family:-apple-system,sans-serif;font-size:11px;font-style:italic;color:rgba(0,0,0,0.32);}
+    body.dark-mode .qf-art-none{color:rgba(255,255,255,0.34);}
+    /* Наличие позиции в каталоге продавца (решение прямо в карточке) */
+    .qf-avail{display:inline-block;font-size:11px;font-weight:600;margin-top:4px;padding:1px 7px;border-radius:5px;line-height:1.5;}
+    .qf-avail-yes{color:#1b7a3d;background:rgba(46,160,87,0.12);}
+    .qf-avail-no{color:#9a5512;background:rgba(232,140,13,0.12);font-weight:500;}
+    body.dark-mode .qf-avail-yes{color:#7ee2a3;background:rgba(46,160,87,0.18);}
+    body.dark-mode .qf-avail-no{color:#f0b86e;background:rgba(232,140,13,0.16);}
+    /* Сводка «закроете N из M позиций» в шапке котировки */
+    .qf-fulfill{font-size:12px;font-weight:600;margin-top:6px;padding:3px 10px;border-radius:6px;display:inline-block;}
+    .qf-fulfill-all{color:#1b7a3d;background:rgba(46,160,87,0.12);}
+    .qf-fulfill-part{color:#9a5512;background:rgba(232,140,13,0.12);}
+    .qf-fulfill-none{color:rgba(0,0,0,0.5);background:rgba(0,0,0,0.05);}
+    body.dark-mode .qf-fulfill-all{color:#7ee2a3;background:rgba(46,160,87,0.18);}
+    body.dark-mode .qf-fulfill-part{color:#f0b86e;background:rgba(232,140,13,0.16);}
+    body.dark-mode .qf-fulfill-none{color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.06);}
+    /* Полные колонки таблицы котировки (как в карточке заказа) */
+    .qf-c-stock{width:90px;font-size:11.5px;vertical-align:top;line-height:1.3;}
+    .qf-stock-yes{color:#1b7a3d;font-weight:600;}
+    .qf-stock-no{color:rgba(0,0,0,0.32);font-size:11px;}
+    body.dark-mode .qf-stock-yes{color:#7ee2a3;}
+    body.dark-mode .qf-stock-no{color:rgba(255,255,255,0.34);}
+    .qf-c-brand{font-size:12px;color:rgba(0,0,0,0.62);vertical-align:top;max-width:170px;}
+    body.dark-mode .qf-c-brand{color:rgba(255,255,255,0.6);}
+    .qf-c-wt{width:74px;font-size:12px;color:rgba(0,0,0,0.55);font-variant-numeric:tabular-nums;vertical-align:top;white-space:nowrap;}
+    body.dark-mode .qf-c-wt{color:rgba(255,255,255,0.55);}
+    .qf-c-art,.qf-c-title{vertical-align:top;}
+    .qf-dest{font-size:12px;color:rgba(0,0,0,0.6);margin-top:5px;}
+    body.dark-mode .qf-dest{color:rgba(255,255,255,0.6);}
+    /* Котировка на вёрстке заказа (spec-tbl): редактируемая цена + сумма в ячейках */
+    /* Фиксированная раскладка колонок (colgroup) — ровные отступы как в заказе,
+       без растягивания пустых ячеек («—»). */
+    .qf-spec-tbl{table-layout:fixed;}
+    .qf-spec-tbl td{vertical-align:middle;overflow:hidden;text-overflow:ellipsis;}
+    .qf-spec-tbl .spec-name,.qf-spec-tbl td{word-break:break-word;}
+    .qf-spec-tbl .qf-price-wrap{display:flex;padding:3px 6px;gap:4px;}
+    .qf-spec-tbl .qf-price-input{flex:1;width:auto;min-width:0;}
+    .qf-spec-tbl .qf-currency{font-size:10px;}
     .qf-c-qty{width:70px;text-align:center;font-variant-numeric:tabular-nums;color:#0a0a0a;font-weight:600;}
     .qf-c-price{width:170px;}
     .qf-price-wrap{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid rgba(0,0,0,0.15);border-radius:6px;padding:4px 8px;transition:border-color .12s;}
@@ -1057,11 +1106,11 @@
     .tp-hero-amount{font-size:24px;font-weight:700;letter-spacing:-0.015em;color:#0a0a0a;line-height:1.1;font-variant-numeric:tabular-nums;}
     /* Progress bar */
     .tp-progress{padding:16px 22px;border-bottom:1px solid rgba(0,0,0,0.06);}
-    .tp-progress-head{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:#0a0a0a;font-weight:600;margin-bottom:8px;font-variant-numeric:tabular-nums;}
-    .tp-progress-target{color:rgba(0,0,0,0.55);font-weight:500;}
+    .tp-progress-head{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;color:#0a0a0a;font-weight:700;margin-bottom:8px;font-variant-numeric:tabular-nums;}
+    .tp-progress-target{color:rgba(0,0,0,0.68);font-weight:600;}
     .tp-bar{height:6px;background:rgba(0,0,0,0.06);border-radius:3px;overflow:hidden;}
     .tp-bar-fill{height:100%;background:linear-gradient(90deg,#64b5f6 0%,#1a1a1a 100%);border-radius:3px;transition:width .35s ease;}
-    .tp-progress-foot{font-size:12px;color:rgba(0,0,0,0.65);margin-top:8px;font-weight:400;}
+    .tp-progress-foot{font-size:13px;color:rgba(0,0,0,0.78);margin-top:8px;font-weight:500;}
     .tp-progress-foot b{color:#0a0a0a;font-weight:600;}
     /* Tiers ladder */
     .tp-tiers{padding:16px 22px 8px;}
@@ -1070,8 +1119,8 @@
     .tp-tier:last-child{border-bottom:none;}
     .tp-tier-mark{font-size:14px;color:rgba(0,0,0,0.30);text-align:center;line-height:1;}
     .tp-tier-name{font-size:13.5px;color:rgba(0,0,0,0.55);font-weight:500;}
-    .tp-tier-disc{font-size:13.5px;color:rgba(0,0,0,0.55);font-weight:600;font-variant-numeric:tabular-nums;}
-    .tp-tier-thr{font-size:12.5px;color:rgba(0,0,0,0.50);font-weight:400;font-variant-numeric:tabular-nums;min-width:64px;text-align:right;}
+    .tp-tier-disc{font-size:15px;color:rgba(0,0,0,0.74);font-weight:700;font-variant-numeric:tabular-nums;}
+    .tp-tier-thr{font-size:14px;color:rgba(0,0,0,0.66);font-weight:600;font-variant-numeric:tabular-nums;min-width:64px;text-align:right;}
     .tp-tier-current{background:rgba(100,181,246,0.07);margin:0 -22px;padding-left:22px;padding-right:22px;border-bottom-color:transparent;border-top:1px solid rgba(100,181,246,0.20);}
     .tp-tier-current + .tp-tier{border-top:1px solid rgba(100,181,246,0.20);}
     .tp-tier-current .tp-tier-mark{color:#1a73d4;font-weight:700;}
@@ -1093,13 +1142,13 @@
     body.dark-mode .tp-head-label,
     body.dark-mode .tp-hero-cap,
     body.dark-mode .tp-hero-tier,
-    body.dark-mode .tp-progress-target,
-    body.dark-mode .tp-progress-foot,
     body.dark-mode .tp-tiers-cap,
     body.dark-mode .tp-tier-name,
+    body.dark-mode .tp-footer{color:rgba(255,255,255,0.65);}
     body.dark-mode .tp-tier-disc,
     body.dark-mode .tp-tier-thr,
-    body.dark-mode .tp-footer{color:rgba(255,255,255,0.65);}
+    body.dark-mode .tp-progress-target,
+    body.dark-mode .tp-progress-foot{color:rgba(255,255,255,0.90);}
     body.dark-mode .tp-hero-pct,
     body.dark-mode .tp-hero-amount,
     body.dark-mode .tp-progress-head,
@@ -2249,8 +2298,25 @@
     body.dark-mode .rcard-cta-ghost:hover{background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.35);}
 
     .stages{display:flex;justify-content:space-between;margin-top:12px;gap:4px;}
-    .stage{flex:1;padding:6px 4px;text-align:center;border-radius:6px;background:rgba(20,20,30,0.06);font-size:10px;color:rgba(0,0,0,0.66);}
-    .stage.done{background:rgba(34,197,94,0.2);color:#15803d;font-weight:600;}
+    .stage{flex:1;padding:10px 5px;text-align:center;border-radius:6px;background:rgba(20,20,30,0.06);font-size:11px;color:rgba(0,0,0,0.7);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;}
+    .stage.done{background:rgba(34,197,94,0.16);}
+    .stage-plan{font-size:11px;font-weight:500;color:rgba(0,0,0,0.6);letter-spacing:.01em;font-variant-numeric:tabular-nums;}
+    .stage-fact{font-size:11.5px;font-weight:700;letter-spacing:.02em;font-variant-numeric:tabular-nums;}
+    .stage-fact-ok{color:#16a34a;}
+    .stage-fact-over{color:#e8920d;}
+    .stage-fact-cur{color:#1a73d4;}
+    .stage-fact-none{color:rgba(0,0,0,0.38);font-weight:500;}
+    body.dark-mode .stage-plan{color:rgba(255,255,255,0.74);}
+    body.dark-mode .stage-name{color:rgba(255,255,255,0.9);}
+    body.dark-mode .stage.done .stage-name{color:#4ade80;}
+    body.dark-mode .stage-fact-none{color:rgba(255,255,255,0.42);}
+    body.dark-mode .stage-fact-ok{color:#4ade80;}
+    body.dark-mode .stage-fact-over{color:#fbbf24;}
+    body.dark-mode .stage-fact-cur{color:#64b5f6;}
+    /* План/факт — два отдельных ряда карточек, разделённых реальным отступом. */
+    .stage-name{font-size:11px;font-weight:600;color:rgba(0,0,0,0.85);line-height:1.3;}
+    .stage.done .stage-name{color:#15803d;}
+    .stages-fact{margin-top:6px;}
 
     /* Wallet — финансовый ledger в фирменном frosted-glass стиле */
     .wal-card{padding:0!important;overflow:hidden;}
@@ -2494,6 +2560,15 @@
 
     .spec-tbl-wrap{overflow-x:auto;}
     .spec-tbl{width:100%;border-collapse:collapse;font-size:13.5px;}
+    /* Фиксированные ширины колонок (colgroup) — одинаковая раскладка у заказа и
+       котировки независимо от содержимого; длинный текст переносится. */
+    .spec-tbl-fixed{table-layout:fixed;}
+    .spec-tbl-fixed td{overflow:hidden;word-break:break-word;}
+    /* Заголовки не переносим (иначе «📦 Доставка» ломается на 2 строки) */
+    .spec-tbl-fixed th{white-space:nowrap;overflow:visible;}
+    .spec-tbl-fixed th:last-child,.spec-tbl-fixed td:last-child{padding-right:10px;}
+    .spec-tbl-fixed .qf-price-wrap{display:flex;padding:3px 6px;gap:4px;}
+    .spec-tbl-fixed .qf-price-input{flex:1;width:auto;min-width:0;text-align:right;}
     .spec-tbl th{text-align:left;color:rgba(0,0,0,0.62);font-weight:700;padding:10px 8px;background:rgba(0,0,0,0.03);font-size:11.5px;letter-spacing:0.04em;text-transform:uppercase;border-bottom:1px solid rgba(0,0,0,0.06);}
     .spec-tbl td{padding:10px 8px;border-bottom:1px solid rgba(0,0,0,0.04);vertical-align:middle;color:#1a1a1a;}
     .spec-tbl tr:last-child td{border-bottom:none;}
@@ -3839,10 +3914,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
             <span class="bell-badge" id="bellBadge" style="display:none;">0</span>
           </button>
-          <div class="top-avatar" id="topAvatar"
-               role="button" tabindex="0"
-               aria-label="{% trans 'Профиль и настройки' %}"
-               title="{% trans 'Профиль и настройки' %}">{{ auth_user_initial|default:"?" }}</div>
+          {# Верхний аватар убран: был нефункциональным дублем (личность — снизу, смена роли — вкладками сверху). #}
         {% else %}
           <!-- Anonymous: триггерят chat-action прямо в чате, без редиректов -->
           <button type="button" class="top-icon"
@@ -3982,8 +4054,8 @@
 
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
-<script src="{% static 'js/i18n.js' %}?v=4"></script>
-<script src="{% static 'js/chat-first.js' %}?v=115"></script>
+<script src="{% static 'js/i18n.js' %}?v=6"></script>
+<script src="{% static 'js/chat-first.js' %}?v=157"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>

@@ -37,7 +37,7 @@ def check_min_order(total_usd: Decimal | float | int):
         from .order_limits import check_min_order
         block = check_min_order(landed_total)
         if block:
-            return ActionResult(**block)
+            return ActionResult(block)
         # ...создаём Order
     """
     try:
@@ -50,8 +50,8 @@ def check_min_order(total_usd: Decimal | float | int):
     shortage = limit - total
     return {
         "text": (
-            f"⚠️ Минимальная сумма заказа на платформе — **${limit:,.0f}**.\n"
-            f"Сейчас в корзине ${total:,.2f} · не хватает **${shortage:,.2f}**.\n\n"
+            f"⚠️ Минимальная сумма заказа на платформе — ${limit:,.0f}.\n"
+            f"Сейчас в корзине ${total:,.2f} · не хватает ${shortage:,.2f}.\n\n"
             f"Добавьте позиции в спецификацию — экономика консолидации "
             f"работает на партиях от ${limit:,.0f}: фиксированные расходы "
             f"на логистику, таможню и операторов перекрывают маржу на меньших объёмах."

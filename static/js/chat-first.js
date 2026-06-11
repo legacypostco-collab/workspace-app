@@ -2561,94 +2561,65 @@
       // }
       const items = d.items || [];
       const rfqId = String(d.rfq_id || '');
-      const itemRows = items.map((it, idx) => {
-        const qty = Number(it.quantity || 0);
-        const price = Number(it.unit_price || 0);
-        const lineTotal = qty * price;
-        return `<tr class="qf-row" data-line-idx="${idx}">
-          <td class="qf-c-art">${esc(String(it.article || ''))}</td>
-          <td class="qf-c-title">
-            <div class="qf-title">${esc(String(it.title || ''))}</div>
-            ${it.brand ? `<div class="qf-brand">${esc(String(it.brand))}</div>` : ''}
-          </td>
-          <td class="qf-c-qty">${qty}</td>
-          <td class="qf-c-price">
-            <div class="qf-price-wrap">
-              <span class="qf-currency">${esc(String(it.currency || 'USD'))}</span>
-              <input class="qf-price-input"
-                     type="number" step="0.01" min="0"
-                     name="price_${esc(String(it.rfq_item_id))}"
-                     data-qty="${qty}"
-                     value="${price.toFixed(2)}" />
-            </div>
-          </td>
-          <td class="qf-c-total" data-line-total>${lineTotal.toFixed(2)}</td>
-        </tr>`;
-      }).join('');
-      const initialTotal = items.reduce((s, it) =>
-        s + Number(it.quantity || 0) * Number(it.unit_price || 0), 0);
-      const urgencyTone = String(d.urgency_tone || 'info');
-      return `<div class="card qf-card" data-rfq-id="${esc(rfqId)}"
-          data-parent-quote-id="${esc(String(d.parent_quote_id || ''))}"
-          data-direction="${esc(String(d.direction || 'seller_to_buyer'))}">
-        <div class="qf-head">
-          <div class="qf-head-l">
-            <div class="qf-head-title">💬 Котировка по RFQ #${esc(rfqId)}</div>
-            <div class="qf-head-meta">
-              <span class="qf-customer">${esc(String(d.customer_name || ''))}</span>
-              ${d.mode_badge ? `<span class="qf-mode">${esc(String(d.mode_badge))}</span>` : ''}
-              ${d.urgency_label ? `<span class="qf-urg qf-urg-${esc(urgencyTone)}">${esc(String(d.urgency_label))}</span>` : ''}
-            </div>
-            ${d.request_text ? `<div class="qf-request">${esc(String(d.request_text))}</div>` : ''}
-          </div>
-        </div>
-
-        <div class="qf-total-band">
-          <div>
-            <div class="qf-total-label">ИТОГО ПО КОТИРОВКЕ</div>
-            <div class="qf-total-hint">${items.length} позиций · обновляется при редактировании цен</div>
-          </div>
-          <div class="qf-total-amount" data-total>$${initialTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-        </div>
-
-        <div class="qf-table-wrap">
-          <table class="qf-table">
-            <thead>
-              <tr>
-                <th class="qf-c-art">Артикул</th>
-                <th class="qf-c-title">Товар</th>
-                <th class="qf-c-qty">Кол-во</th>
-                <th class="qf-c-price">Цена за шт.</th>
-                <th class="qf-c-total">Сумма</th>
-              </tr>
-            </thead>
-            <tbody>${itemRows}</tbody>
-          </table>
-        </div>
-
-        <div class="qf-aux">
-          <div class="qf-aux-row">
-            <label>Срок поставки (дней)</label>
-            <input class="qf-aux-input" name="delivery_days" type="number" min="1" value="${esc(String(d.delivery_days || 14))}" />
-          </div>
-          <div class="qf-aux-row">
-            <label>Котировка действует (дней)</label>
-            <input class="qf-aux-input" name="valid_days" type="number" min="1" value="${esc(String(d.valid_days || 7))}" />
-          </div>
-          <div class="qf-aux-row qf-aux-row-wide">
-            <label>Комментарий покупателю (необязательно)</label>
-            <textarea class="qf-aux-textarea" name="message" rows="2"
-              placeholder="Например: позиция X заменена на аналог Y — то же качество, в наличии"></textarea>
-          </div>
-        </div>
-
-        <div class="qf-actions">
-          <button class="qf-cancel" type="button" data-action="seller_inbox" data-params="{}">Отмена</button>
-          <button class="qf-submit" type="button" data-rfq-id="${esc(rfqId)}">
-            📨 Отправить котировку · <span data-submit-count>${items.length}</span> поз · <span data-submit-total>$${initialTotal.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
-          </button>
-        </div>
-      </div>`;
+      const sv = !!d.seller_view;
+      // Бейдж надёжности продавца «Надёжный · 90.0» → label + рейтинг отдельно.
+      const _bp = String(d.seller_badge || 'Надёжный · 90').split(' · ');
+      const supBadge = _bp[0] || 'Надёжный', supRating = _bp[1] || '';
+      // Позиции в форме данных карточки заказа (spec_results).
+      const specItems = items.map((it) => ({
+        // status НЕ 'not_found' — иначе строка без OEM рендерится как
+        // «— нет предложений —». Наличие задаём через stock_label/class.
+        status: 'in_stock',
+        stock_label: it.in_catalog ? 'В наличии' : 'нет в каталоге',
+        stock_class: it.in_catalog ? 'in' : 'no',
+        id: it.article || '',
+        name: it.title || '',
+        brand: it.brand || '',
+        price: Number(it.unit_price || 0),
+        qty: Number(it.quantity || 0),
+        weight: (+it.weight) ? ((+it.weight).toFixed(3).replace(/0+$/, '').replace(/\.$/, '')) + ' кг' : '',
+        currency: it.currency || 'USD',
+        supplier_status: sv ? (d.seller_status || 'trusted') : '',
+        supplier_status_badge: sv ? supBadge : '',
+        supplier_rating: sv ? supRating : '',
+        ship_mode: d.shipping_mode || '',   // способ доставки → колонка «Доставка»
+        rfq_item_id: it.rfq_item_id,
+      }));
+      const nCat = items.filter((it) => it.in_catalog).length;
+      const total = items.reduce((s, it) => s + Number(it.quantity || 0) * Number(it.unit_price || 0), 0);
+      const meta = [
+        {label: 'RFQ', value: '#' + rfqId},
+        {label: 'Режим', value: String(d.mode_badge || 'Стандарт')},
+        {label: 'Срочность', value: String(d.urgency_label || 'Standard')},
+        {label: 'Покупатель', value: String(d.customer_name || 'Покупатель')},
+        {label: 'Куда', value: String(d.destination || '\u{1F1F7}\u{1F1FA} Россия (импорт)')},
+        {label: 'Котировка действует', value: (d.valid_days || 7) + ' дн'},
+      ];
+      if (d.created_at) meta.push({label: 'Создан', value: String(d.created_at)});
+      // Рендерим ТЕМ ЖЕ рендером, что и заказ (spec_results) — гарантированно
+      // одинаковая вёрстка; единственное отличие — колонка Price редактируемая.
+      return this.spec_results({
+        title: '\u{1F4AC} Котировка по RFQ #' + rfqId,
+        title_meta: items.length + ' позиций' + (d.request_text ? ' · ' + d.request_text : ''),
+        meta: meta,
+        found: nCat,
+        analogue: items.length,
+        not_found: items.length - nCat,
+        kpi_labels: sv ? ['В каталоге', 'Всего', 'Нет в каталоге'] : null,
+        items: specItems,
+        shipping_mode: d.shipping_mode || '',
+        total: total,
+        currency: 'USD',
+        foot_info: items.length + ' позиций · обновляется при редактировании цен',
+        editable_price: true,
+        qf: {
+          rfq_id: rfqId,
+          delivery_days: d.delivery_days || 14,
+          valid_days: d.valid_days || 7,
+          parent_quote_id: d.parent_quote_id || '',
+          direction: d.direction || 'seller_to_buyer',
+        },
+      });
     },
     smart_question(d) {
       // Безопасный рендер questionnaire-вопроса. Все значения экранируются.
@@ -3452,8 +3423,10 @@
       })[d.payment_status];
       const cls = payCls || ({pending:'orange', shipped:'green', completed:'green', cancelled:'gray'})[d.status_code] || '';
       const oid = d.id || d.number;
+      // Единый вид: клик по любой order-карточке открывает ПОЛНУЮ карточку
+      // заказа (таблица позиций) через get_order_detail, а не трекинг.
       const clickAttrs = oid
-        ? ` data-action="track_order" data-params='${esc(JSON.stringify({order_id: parseInt(String(oid).replace(/\D/g, ''), 10) || oid}))}' role="button" tabindex="0" title="Открыть заказ"`
+        ? ` data-action="get_order_detail" data-params='${esc(JSON.stringify({order_id: parseInt(String(oid).replace(/\D/g, ''), 10) || oid}))}' role="button" tabindex="0" title="Открыть заказ"`
         : '';
       // Состав отправки по странам — показываем после выбора способа доставки
       const ob = d.origin_breakdown || [];
@@ -3804,9 +3777,22 @@
       </div>`;
     },
     shipment(d) {
-      const stages = (d.stages || []).map(s =>
-        `<div class="stage${s.done ? ' done' : ''}">${esc(s.label)}</div>`
-      ).join('');
+      // Два ряда карточек: сверху «план», снизу «факт» (разделены отступом).
+      const planRow = (d.stages || []).map(s => {
+        const plan = (typeof s.days === 'number' && s.days > 0) ? `план ${s.days}д` : '—';
+        return `<div class="stage${s.done ? ' done' : ''}"><span class="stage-name">${esc(s.label)}</span><span class="stage-plan">${plan}</span></div>`;
+      }).join('');
+      const factRow = (d.stages || []).map(s => {
+        let txt, cls;
+        if (s.actual != null) {
+          const over = (typeof s.days === 'number') && s.actual > s.days;
+          cls = over ? 'stage-fact-over' : (s.state === 'current' ? 'stage-fact-cur' : 'stage-fact-ok');
+          txt = (s.state === 'current' ? 'идёт ' : 'факт ') + s.actual + 'д';
+        } else { cls = 'stage-fact-none'; txt = 'факт —'; }
+        return `<div class="stage stage-fact-cell"><span class="stage-fact ${cls}">${esc(txt)}</span></div>`;
+      }).join('');
+      const stagesBlock = (d.stages && d.stages.length)
+        ? `<div class="stages stages-plan">${planRow}</div><div class="stages stages-fact">${factRow}</div>` : '';
       const fmt = (v) => (Number(v)||0).toLocaleString('en-US', {maximumFractionDigits: 0});
       // Метаблок «важной информации» — деньги, оплата, ETA, кто держит мяч,
       // перевозчик/трек-номер (последние два — только оператор).
@@ -3820,8 +3806,12 @@
       if (typeof d.days_in_stage === 'number') {
         meta.push({lbl:'В текущей стадии', val:`${d.days_in_stage} дн`});
       }
+      if (d.deadline) {
+        const planTxt = d.total_planned_days ? ` · план ${d.total_planned_days} дн` : '';
+        meta.push({lbl:'Крайняя дата', val:`${esc(d.deadline)}${planTxt}`});
+      }
       if (d.sla_label) {
-        meta.push({lbl:'SLA', val:esc(d.sla_label)});
+        meta.push({lbl:'Срок этапа', val:esc(d.sla_label)});
       }
       if (d.eta) meta.push({lbl:'ETA', val:esc(d.eta)});
       if (d.carrier) meta.push({lbl:'Перевозчик', val:esc(d.carrier)});
@@ -3856,7 +3846,7 @@
         ${metaHtml}
         ${actorHtml}
         ${partsHtml}
-        ${stages ? `<div class="stages">${stages}</div>` : ''}
+        ${stagesBlock}
       </div>`;
     },
     wallet(d) {
@@ -4013,6 +4003,10 @@
       // Для buyer бэк не присылает supplier_status_badge — скрываем колонку
       // «Поставщик» полностью (для оператора/админа она показывается).
       const showSupplierCol = (d.items || []).some(it => it.supplier_status_badge);
+      // Иконка колонки «Доставка» по способу перевозки: море 🚢 / авиа ✈️ / авто 🚚.
+      // (Раньше всегда был грузовик — даже когда груз идёт морем.)
+      const _shipMode = d.shipping_mode || ((d.items || []).find(it => it.ship_mode) || {}).ship_mode || '';
+      const shipIcon = {sea: '🚢', air: '✈️', auto: '🚚'}[_shipMode] || '📦';
       const rows = (d.items || []).map((it, idx) => {
         if (it.status === 'not_found' && !it.id) {
           return `<tr><td><span class="spec-stk no"><span class="spec-stk-dot"></span>—</span></td>
@@ -4105,12 +4099,14 @@
         const freshHint = (it.is_fresh === false && it.freshness_days != null)
           ? ` <span class="spec-stale" title="Данные устарели на ${it.freshness_days} дн — попадает в SEMI">⏰${it.freshness_days}д</span>` : '';
         return `<tr${rowAttrs}>
-          <td><span class="spec-stk ${stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(stkLabel(it.status))}</span></td>
+          <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
           <td class="spec-row-num">${modeDot}${idx+1}</td>
           <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
           <td><div class="spec-name-cell"><span class="spec-name">${esc(it.name || '')}</span>${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
           <td>${esc(it.brand || '')}</td>
-          <td class="spec-price">${fmtMoney(it.price, it.currency || 'USD')}</td>
+          <td class="spec-price">${(d.editable_price && it.rfq_item_id != null)
+            ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" value="${Number(it.price || 0).toFixed(2)}" /></div>`
+            : fmtMoney(it.price, it.currency || 'USD')}</td>
           <td>${esc(it.qty || '')}</td>
           <td>${esc(it.weight || '')}</td>
           ${showSupplierCol ? `<td>${supplierCell}</td>` : ''}
@@ -4152,23 +4148,32 @@
         <div class="spec-meta">
           ${d.meta.map(m => `<div class="spec-meta-item"><span class="spec-meta-lbl">${esc(m.label||'')}</span><span class="spec-meta-val">${esc(m.value||'')}</span></div>`).join('')}
         </div>` : '';
-      return `<div class="card spec">
+      // Котировка (d.qf) рендерится этим же рендером: добавляем класс qf-card,
+      // дата-атрибуты RFQ, кастомные подписи KPI и подвал-форму с кнопкой.
+      const _kpiL = d.kpi_labels || ['Found', 'Analogue', 'Not found'];
+      const _qfAttrs = d.qf
+        ? ` data-rfq-id="${esc(String(d.qf.rfq_id || ''))}" data-parent-quote-id="${esc(String(d.qf.parent_quote_id || ''))}" data-direction="${esc(String(d.qf.direction || 'seller_to_buyer'))}"`
+        : '';
+      return `<div class="card spec${d.qf ? ' qf-card' : ''}"${_qfAttrs}>
         <div class="spec-head">
           <div class="spec-head-row">
             <div class="spec-title">${esc(d.title || tr('card.match_results'))} ${modeBadge}</div>
-            <div class="spec-title-meta">${esc(subParts.join(' · '))} ${modeBreakdown}</div>
+            <div class="spec-title-meta">${d.title_meta != null ? esc(String(d.title_meta)) : esc(subParts.join(' · '))} ${modeBreakdown}</div>
           </div>
         </div>
         ${metaRows}
         <div class="spec-kpis">
-          <div class="spec-kpi"><div class="spec-kpi-num green">${found}</div><div class="spec-kpi-label">Found</div></div>
-          <div class="spec-kpi"><div class="spec-kpi-num amber">${analogue}</div><div class="spec-kpi-label">Analogue</div></div>
-          <div class="spec-kpi"><div class="spec-kpi-num red">${notFound}</div><div class="spec-kpi-label">Not found</div></div>
+          <div class="spec-kpi"><div class="spec-kpi-num green">${found}</div><div class="spec-kpi-label">${esc(_kpiL[0])}</div></div>
+          <div class="spec-kpi"><div class="spec-kpi-num amber">${analogue}</div><div class="spec-kpi-label">${esc(_kpiL[1])}</div></div>
+          <div class="spec-kpi"><div class="spec-kpi-num red">${notFound}</div><div class="spec-kpi-label">${esc(_kpiL[2])}</div></div>
         </div>
         <div class="spec-tbl-wrap">
-          <table class="spec-tbl">
+          <table class="spec-tbl spec-tbl-fixed">
+            <colgroup>${showSupplierCol
+              ? '<col style="width:9%"><col style="width:3%"><col style="width:12%"><col style="width:11%"><col style="width:16%"><col style="width:11%"><col style="width:5%"><col style="width:8%"><col style="width:13%"><col style="width:12%">'
+              : '<col style="width:9%"><col style="width:3%"><col style="width:13%"><col style="width:13%"><col style="width:20%"><col style="width:11%"><col style="width:6%"><col style="width:9%"><col style="width:16%">'}</colgroup>
             <thead><tr>
-              <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Price</th><th>Qty</th><th>Weight</th>${showSupplierCol ? '<th>Поставщик</th>' : ''}<th>🚚 Доставка${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>
+              <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Price</th><th>Qty</th><th>Weight</th>${showSupplierCol ? '<th>Поставщик</th>' : ''}<th>${shipIcon} Доставка${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -4177,9 +4182,10 @@
         ${moreLink}
         <div class="spec-foot">
           <div class="spec-foot-info">${esc(d.foot_info || '')}${d.shipping_matrix ? ' · доставка ↓' : ''}</div>
-          <div class="spec-foot-total">${d.total != null ? fmtMoney(d.total, d.currency || 'USD') : ''}</div>
+          <div class="spec-foot-total"${d.qf ? ' data-total' : ''}>${d.total != null ? fmtMoney(d.total, d.currency || 'USD') : ''}</div>
         </div>
         ${renderShippingMatrix(d)}
+        ${d.qf ? _qfFooter(d) : ''}
       </div>`;
     },
 
@@ -4295,7 +4301,7 @@
   // Fallback renderer for unknown/broken card types — dumps key-value pairs
   // Виджет матрицы 3 mode × 3 incoterm внутри карточки spec_results.
   // По клику на вариант формируется quick_order с выбранными params.
-  // Форма ввода адреса доставки и порта прибытия для CIP/DDP.
+  // Форма ввода адреса доставки и места прибытия для CIP/DDP.
   // Без этих данных нельзя корректно посчитать пошлину/НДС/last-mile.
   function renderDeliveryForm(d) {
     if (!d.product_ids && !d.orig_articles) return '';
@@ -4303,38 +4309,68 @@
     // search_parts не найдёт позиции — ID не равны OEM.
     const articlesJson = esc(JSON.stringify(d.orig_articles || d.product_ids.map(String)));
     const qtyJson = d.product_quantities ? esc(JSON.stringify(d.product_quantities)) : '';
-    // Популярные порты прибытия. Страна выводится автоматом из префикса
-    // ISO-кода порта (RUMOW → RU, KZALA → KZ).
-    const arrivalPorts = [
-      'RUMOW — Москва (auto/air)',
-      'RULED — Санкт-Петербург (sea/auto)',
-      'RUNVS — Новосибирск (auto/air)',
-      'RUEKB — Екатеринбург (auto/air)',
-      'RUKZN — Казань (auto)',
-      'RUVVO — Владивосток (sea)',
-      'RUKGD — Калининград (sea)',
-      'KZALA — Алматы (auto/air)',
-      'KZAST — Астана (auto/air)',
-      'BYMSQ — Минск (auto)',
-      'AMEVN — Ереван (auto/air)',
+    // Страны прибытия (ЕАЭС/СНГ) → города. Сначала выбираем СТРАНУ, затем город.
+    // Страна для расчёта пошлины/НДС берётся из префикса кода (RUMOW → RU), а если
+    // город вписан вручную без кода — из явно выбранной страны (select).
+    const arrivalByCountry = {
+      RU: {flag:'🇷🇺', name:'Россия', cities:['RUMOW — Москва','RULED — Санкт-Петербург','RUARH — Архангельск','RUMMK — Мурманск','RUKGD — Калининград','RUNVS — Новороссийск','RUROV — Ростов-на-Дону','RUKRR — Краснодар','RUAER — Сочи','RUKZN — Казань','RUUFA — Уфа','RUKUF — Самара','RUGOJ — Нижний Новгород','RUEKB — Екатеринбург','RUPEE — Пермь','RUOVB — Новосибирск','RUKJA — Красноярск','RUIKT — Иркутск','RUVVO — Владивосток','RUKHV — Хабаровск']},
+      KZ: {flag:'🇰🇿', name:'Казахстан', cities:['KZALA — Алматы','KZAST — Астана','KZKGF — Караганда','KZCIT — Шымкент']},
+      BY: {flag:'🇧🇾', name:'Беларусь', cities:['BYMSQ — Минск','BYGME — Гомель','BYBQT — Брест']},
+      AM: {flag:'🇦🇲', name:'Армения', cities:['AMEVN — Ереван','AMLWN — Гюмри']},
+      KG: {flag:'🇰🇬', name:'Киргизия', cities:['KGFRU — Бишкек','KGOSS — Ош']},
+      UZ: {flag:'🇺🇿', name:'Узбекистан', cities:['UZTAS — Ташкент','UZSKD — Самарканд']},
+    };
+    // Прочие страны (помимо ЕАЭС): название → ISO-2. Города — свободный ввод.
+    const otherCountries = [
+      ['AZ','Азербайджан'],['GE','Грузия'],['TJ','Таджикистан'],['TM','Туркменистан'],['MD','Молдова'],['UA','Украина'],
+      ['CN','Китай'],['TR','Турция'],['AE','ОАЭ'],['IR','Иран'],['IN','Индия'],['PK','Пакистан'],['MN','Монголия'],
+      ['KR','Южная Корея'],['JP','Япония'],['VN','Вьетнам'],['TH','Таиланд'],['ID','Индонезия'],['MY','Малайзия'],['SG','Сингапур'],
+      ['DE','Германия'],['FR','Франция'],['IT','Италия'],['ES','Испания'],['GB','Великобритания'],['PL','Польша'],['NL','Нидерланды'],
+      ['CZ','Чехия'],['FI','Финляндия'],['SE','Швеция'],['RS','Сербия'],['BG','Болгария'],['RO','Румыния'],['HU','Венгрия'],['GR','Греция'],['AT','Австрия'],
+      ['US','США'],['CA','Канада'],['BR','Бразилия'],['MX','Мексика'],
+      ['EG','Египет'],['ZA','ЮАР'],['SA','Саудовская Аравия'],['IL','Израиль'],['QA','Катар'],['KW','Кувейт'],['OM','Оман'],['BH','Бахрейн'],['IQ','Ирак'],['JO','Иордания'],
+      ['AU','Австралия'],
     ];
-    const portOpts = arrivalPorts.map(p => `<option value="${esc(p)}"/>`).join('');
-    const curPort = d.arrival_port ? `value="${esc(d.arrival_port)}"` : '';
+    const order = ['RU','KZ','BY','AM','KG','UZ'];
+    // Полный список стран для автоподсказки + маппинг название→ISO-2.
+    const nameToCC = {};
+    const countryEntries = []; // [cc, flag, name]
+    order.forEach(cc => { const c = arrivalByCountry[cc]; countryEntries.push([cc, c.flag, c.name]); nameToCC[c.name.toLowerCase()] = cc; });
+    otherCountries.forEach(([cc, name]) => { countryEntries.push([cc, '', name]); nameToCC[name.toLowerCase()] = cc; });
+    const countryOpts = countryEntries.map(([cc, flag, name]) =>
+      `<option value="${esc(name)}">${flag ? flag + ' ' : ''}${esc(name)}</option>`).join('');
+    const curPortVal = d.arrival_port || '';
+    const curCC = (curPortVal.match(/^([A-Z]{2})/) || [])[1] || 'RU';
+    const curCountryName = (countryEntries.find(e => e[0] === curCC) || [null, '', 'Россия'])[2];
+    const cityList = (arrivalByCountry[curCC] || {cities: []}).cities;
+    const portOpts = cityList.map(p => `<option value="${esc(p)}"></option>`).join('');
+    const curPort = curPortVal ? `value="${esc(curPortVal)}"` : '';
     const curAddr = d.delivery_address ? esc(d.delivery_address) : '';
-    return `<div class="df-block" data-articles='${articlesJson}' ${qtyJson ? `data-qty='${qtyJson}'` : ''}>
+    const uid = (window.__dfUid = (window.__dfUid || 0) + 1);
+    const dlId = 'df-port-list-' + uid;
+    const ccId = 'df-country-list-' + uid;
+    const mapJson = esc(JSON.stringify(arrivalByCountry));
+    const nameMapJson = esc(JSON.stringify(nameToCC));
+    return `<div class="df-block" data-articles='${articlesJson}' ${qtyJson ? `data-qty='${qtyJson}'` : ''} data-arrival='${mapJson}' data-countries='${nameMapJson}'>
       <div class="df-title">📍 Куда доставить?</div>
-      <div class="df-hint">FOB (самовывоз из порта поставщика) уже посчитан — без доплат. Для CIP укажите свой порт прибытия, для DDP — ещё и адрес до двери.</div>
+      <div class="df-hint">Укажите <b>страну и город</b> → в таблице выше появятся цены <b>CIP и DDP</b>. Полный адрес до двери нужен только для <b>DDP</b> — попросим при выборе.</div>
       <div class="df-row">
-        <label class="df-lbl">Порт прибытия <span class="df-opt">(для CIP/DDP)</span></label>
-        <input class="df-input df-port" type="text" list="df-port-list" placeholder="Напр.: RUMOW — Москва" ${curPort} />
-        <datalist id="df-port-list">${portOpts}</datalist>
+        <label class="df-lbl">Страна <span class="df-opt">(для CIP/DDP)</span></label>
+        <input class="df-input df-country" type="text" list="${ccId}" value="${esc(curCountryName)}" placeholder="Начните вводить страну…" autocomplete="off" oninput="window.dfCountryChange && window.dfCountryChange(this, false)" onchange="window.dfCountryChange && window.dfCountryChange(this, true)" />
+        <datalist id="${ccId}">${countryOpts}</datalist>
       </div>
       <div class="df-row">
-        <label class="df-lbl">Полный адрес доставки <span class="df-opt">(только для DDP)</span></label>
-        <textarea class="df-input df-addr" rows="2" placeholder="Напр.: 117485, Москва, ул. Профсоюзная 84, корп. 5">${curAddr}</textarea>
+        <label class="df-lbl">Город / место прибытия <span class="df-opt">(для CIP/DDP)</span></label>
+        <input class="df-input df-port" type="text" list="${dlId}" placeholder="Напр.: Москва" ${curPort} onkeydown="if(event.key==='Enter'){event.preventDefault(); var b=this.closest('.df-block').querySelector('.df-submit'); b&&b.click();}" />
+        <datalist id="${dlId}">${portOpts}</datalist>
       </div>
-      <button class="df-submit act-btn" type="button" onclick="window.calcShipping && window.calcShipping(this)">
-        🧮 Пересчитать CIP / DDP
+      <div class="df-row">
+        <label class="df-lbl">Адрес доставки <span class="df-opt">(улица, дом · для DDP)</span></label>
+        <textarea class="df-input df-addr" rows="2" placeholder="Напр.: ул. Профсоюзная 84, корп. 5, офис 12">${curAddr}</textarea>
+      </div>
+      <div class="df-hint" style="margin:2px 0 8px;">Заполнили поля? Нажмите кнопку — цены <b>CIP/DDP</b> сразу появятся в таблице выше ↑</div>
+      <button class="df-submit act-btn" type="button" onclick="window.calcShipping && window.calcShipping(this)" style="background:rgba(232,92,13,0.16);border:1px solid rgba(232,92,13,0.55);font-weight:600;">
+        🧮 Рассчитать цены CIP / DDP →
       </button>
     </div>`;
   }
@@ -4358,14 +4394,27 @@
     const rows = (d.shipping_matrix || []).map(m => {
       const cells = m.options.map(opt => {
         if (opt.available === false) {
-          const hint = opt.incoterm === 'CIP'
-            ? 'укажите порт прибытия'
-            : (opt.incoterm === 'DDP'
-                ? (d.cip_available ? 'укажите адрес' : 'укажите порт и адрес')
-                : 'недоступно');
-          return `<td class="sm-cell sm-cell-disabled" title="${esc(hint)}">
+          // Различаем ДВЕ причины недоступности:
+          //  1) место/адрес ещё не указаны → подсказываем заполнить форму (клик ↓);
+          //  2) место указано (cip/ddp_available), но по направлению нет тарифа на
+          //     фрахт → честно пишем «нет тарифа», иначе после расчёта кажется,
+          //     что ничего не изменилось (всё ещё «укажите место прибытия»).
+          let hint, needForm = false;
+          if (opt.incoterm === 'CIP') {
+            if (!d.cip_available) { hint = 'укажите место прибытия'; needForm = true; }
+            else hint = 'нет тарифа на фрахт';
+          } else if (opt.incoterm === 'DDP') {
+            if (!d.cip_available) { hint = 'укажите место прибытия'; needForm = true; }
+            else hint = 'нет тарифа на фрахт';
+          } else {
+            hint = 'недоступно';
+          }
+          const clickAttr = needForm
+            ? ' onclick="window.dfFocus && window.dfFocus(this)" style="cursor:pointer;"'
+            : '';
+          return `<td class="sm-cell sm-cell-disabled" title="${esc(hint)}"${clickAttr}>
             <div class="sm-landed sm-na-mark">—</div>
-            <div class="sm-ship">${esc(hint)}</div>
+            <div class="sm-ship">${esc(hint)}${needForm ? ' ↓' : ''}</div>
           </td>`;
         }
         const params = {
@@ -4379,7 +4428,13 @@
         const shipBadge = opt.incoterm === 'FOB'
           ? '<div class="sm-ship">самовывоз · $0</div>'
           : `<div class="sm-ship">+${fmtMoney(opt.ship, 'USD')} ship</div>`;
-        return `<td class="sm-cell" data-action="quick_order" data-params='${esc(JSON.stringify(params))}' data-label="Купить ${esc(m.mode_label)} ${opt.incoterm}">
+        // DDP (до двери) при заказе требует полный адрес — клик идёт через
+        // dfPickDDP: если адрес не заполнен, просим его, иначе оформляем.
+        // FOB/CIP адрес до двери не нужен — обычный quick_order.
+        const cellAttrs = opt.incoterm === 'DDP'
+          ? `data-params='${esc(JSON.stringify(params))}' data-label="Купить ${esc(m.mode_label)} DDP" onclick="window.dfPickDDP && window.dfPickDDP(this)" style="cursor:pointer;"`
+          : `data-action="quick_order" data-params='${esc(JSON.stringify(params))}' data-label="Купить ${esc(m.mode_label)} ${opt.incoterm}"`;
+        return `<td class="sm-cell" ${cellAttrs}>
           <div class="sm-landed">${fmtMoney(opt.landed, d.currency || 'USD')}</div>
           ${shipBadge}
         </td>`;
@@ -4469,7 +4524,7 @@
         <div class="sm-legend-row"><b>CIP</b> — Carriage & Insurance Paid: ${esc(descs.CIP || '')}</div>
         <div class="sm-legend-row"><b>DDP</b> — Delivered Duty Paid: ${esc(descs.DDP || '')}</div>
       </div>
-      <div class="sm-hint">Клик по доступной ячейке = создать заказ с выбранным базисом.</div>
+      <div class="sm-hint">Клик по ячейке = выбрать базис и оформить. Для <b>CIP/DDP</b> сначала укажите страну и город ниже ↓ (для DDP попросим адрес до двери).</div>
       ${form}
     </div>`;
   }
@@ -4788,23 +4843,45 @@
       ${chips}
     </div>`;
   }
+  // ── Quote form (qf-card): подвал-форма (срок/действует/коммент + submit) ──
+  function _qfFooter(d) {
+    const q = d.qf || {};
+    const n = (d.items || []).length;
+    const totRound = '$' + Number(d.total || 0).toLocaleString('en-US', {maximumFractionDigits: 0});
+    return `<div class="qf-aux">
+        <div class="qf-aux-row"><label>Срок поставки (дней)</label>
+          <input class="qf-aux-input" name="delivery_days" type="number" min="1" value="${esc(String(q.delivery_days || 14))}" /></div>
+        <div class="qf-aux-row"><label>Котировка действует (дней)</label>
+          <input class="qf-aux-input" name="valid_days" type="number" min="1" value="${esc(String(q.valid_days || 7))}" /></div>
+        <div class="qf-aux-row qf-aux-row-wide"><label>Комментарий покупателю (необязательно)</label>
+          <textarea class="qf-aux-textarea" name="message" rows="2" placeholder="Например: позиция X заменена на аналог Y — то же качество, в наличии"></textarea></div>
+      </div>
+      <div class="qf-actions">
+        <button class="qf-cancel" type="button" data-action="seller_inbox" data-params="{}">Отмена</button>
+        <button class="qf-submit" type="button" data-rfq-id="${esc(String(q.rfq_id || ''))}">
+          📨 Отправить котировку · <span data-submit-count>${n}</span> поз · <span data-submit-total>${totRound}</span>
+        </button>
+      </div>`;
+  }
   // ── Quote form (qf-card): live-total + submit ────────────────
   function _qfRecalc(card) {
     let total = 0;
     let cnt = 0;
-    card.querySelectorAll('.qf-row').forEach(row => {
-      const inp = row.querySelector('.qf-price-input');
-      if (!inp) return;
+    // Считаем по полям ввода напрямую (строки рендерятся как у заказа, без .qf-row).
+    card.querySelectorAll('.qf-price-input').forEach(inp => {
       const qty = Number(inp.dataset.qty || 0);
       const price = Number(inp.value || 0);
       const lineTotal = qty * price;
       cnt += 1;
       total += lineTotal;
-      const tdTotal = row.querySelector('[data-line-total]');
+      const row = inp.closest('tr');
+      const tdTotal = row && row.querySelector('[data-line-total]');
       if (tdTotal) tdTotal.textContent = lineTotal.toFixed(2);
     });
-    const totalEl = card.querySelector('[data-total]');
-    if (totalEl) totalEl.textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    // Обновляем ВСЕ [data-total] (живая «Сумма» в мете + подвал).
+    card.querySelectorAll('[data-total]').forEach(el => {
+      el.textContent = '$' + total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    });
     const sCount = card.querySelector('[data-submit-count]');
     if (sCount) sCount.textContent = cnt;
     const sTotal = card.querySelector('[data-submit-total]');
@@ -4957,18 +5034,97 @@
     });
   };
 
+  // Смена страны прибытия → перезаполняем список городов под выбранную страну
+  // и чистим поле города. «Другая страна» → пустой список (свободный ввод).
+  // Клик по неактивной ячейке CIP/DDP («укажите место прибытия ↓») — прокрутить
+  // к форме адреса и сфокусировать поле страны. Интуитивно: увидел цены →
+  // выбрал CIP/DDP → появилась/подсветилась форма «Куда доставить?».
+  window.dfFocus = (cell) => {
+    const block = cell.closest('.sm-block');
+    const form = block && block.querySelector('.df-block');
+    if (!form) return;
+    try { form.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    const inp = form.querySelector('.df-country') || form.querySelector('.df-port');
+    if (inp) setTimeout(() => { try { inp.focus(); } catch (e) {} }, 350);
+  };
+
+  // Клик по DDP-ячейке (доставка до двери). Цена уже посчитана, но для оформления
+  // нужен полный адрес. Нет адреса → прокрутить к форме, сфокусировать поле адреса
+  // и попросить вписать. Есть адрес → оформляем заказ (quick_order) с ним.
+  window.dfPickDDP = (cell) => {
+    let params = {};
+    try { params = JSON.parse(cell.dataset.params || '{}'); } catch (e) {}
+    const smBlock = cell.closest('.sm-block');
+    const form = smBlock && smBlock.querySelector('.df-block');
+    if (!form) return;
+    const addrEl = form.querySelector('.df-addr');
+    const addr = (addrEl && addrEl.value || '').trim();
+    const order = (a) => { params.delivery_address = a; window.quickAction && window.quickAction('quick_order', params); };
+    // Адрес уже есть → оформляем сразу (без повторного выбора базиса/пересчёта).
+    if (addr) { order(addr); return; }
+    // Адреса нет → финализация прямо в форме: фокус на поле адреса + зелёная
+    // кнопка «Оформить DDP». Базис заново выбирать НЕ нужно — цена уже известна.
+    try { form.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+    if (addrEl) setTimeout(() => { try { addrEl.focus(); } catch (e) {} }, 350);
+    let btn = form.querySelector('.df-ddp-finalize');
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'df-submit act-btn df-ddp-finalize';
+      btn.style.cssText = 'background:rgba(46,160,67,0.18);border:1px solid rgba(46,160,67,0.6);font-weight:600;margin-top:8px;display:block;';
+      const calcBtn = form.querySelector('.df-submit:not(.df-ddp-finalize)');
+      if (calcBtn && calcBtn.parentNode) calcBtn.parentNode.insertBefore(btn, calcBtn.nextSibling);
+      else form.appendChild(btn);
+    }
+    const landed = (cell.querySelector('.sm-landed') && cell.querySelector('.sm-landed').textContent || '').trim();
+    btn.textContent = '✅ Оформить DDP до двери' + (landed ? ' · ' + landed : '');
+    btn.onclick = () => {
+      const a = (addrEl && addrEl.value || '').trim();
+      if (!a) { window.toast && window.toast('🚪 Впишите адрес доставки до двери', 3000); addrEl && addrEl.focus(); return; }
+      order(a);
+    };
+    window.toast && window.toast('🚪 Впишите адрес и нажмите «Оформить DDP» — базис менять не нужно', 4000);
+  };
+
+  window.dfCountryChange = (inp, commit) => {
+    const block = inp.closest('.df-block');
+    if (!block) return;
+    let nameMap = {}, cityMap = {};
+    try { nameMap = JSON.parse(block.dataset.countries || '{}'); } catch (e) {}
+    try { cityMap = JSON.parse(block.dataset.arrival || '{}'); } catch (e) {}
+    const cc = nameMap[(inp.value || '').trim().toLowerCase()] || '';
+    const cities = (cityMap[cc] || {}).cities || [];
+    const cityInp = block.querySelector('.df-port');
+    const dl = cityInp ? document.getElementById(cityInp.getAttribute('list')) : null;
+    if (dl) dl.innerHTML = cities.map(c => `<option value="${esc(c)}"></option>`).join('');
+    // commit (выбор из списка / blur) — чистим город и обновляем подсказку-placeholder.
+    // oninput (печать) — только обновляем список городов, не трогаем поле.
+    if (cityInp && commit) {
+      cityInp.value = '';
+      const firstCity = cities[0] ? (cities[0].split('—')[1] || '').trim() : '';
+      cityInp.placeholder = cities.length ? ('Напр.: ' + (firstCity || 'город')) : 'Город прибытия';
+    }
+  };
+
   window.calcShipping = (btn) => {
     const block = btn.closest('.df-block');
     if (!block) return;
     const port = (block.querySelector('.df-port')?.value || '').trim();
     const addr = (block.querySelector('.df-addr')?.value || '').trim();
     if (!port) {
-      window.toast && window.toast('⚠️ Укажите порт прибытия для расчёта CIP/DDP', 3000);
+      window.toast && window.toast('⚠️ Укажите место прибытия для расчёта CIP/DDP', 3000);
       return;
     }
-    // Страна выводится из префикса порта: "RUMOW — Москва" → "RU".
+    // Страна: приоритет — явно выбранная страна (название → ISO-2 по карте),
+    // затем префикс кода города ("RUMOW — Москва" → "RU").
     const head = port.split(/\s+/)[0] || '';
-    const country = (head.length >= 2 && /^[A-Za-z]{2}/.test(head)) ? head.slice(0,2).toUpperCase() : '';
+    const fromPrefix = (head.length >= 2 && /^[A-Za-z]{2}/.test(head)) ? head.slice(0,2).toUpperCase() : '';
+    let nameMap = {};
+    try { nameMap = JSON.parse(block.dataset.countries || '{}'); } catch (e) {}
+    const countryRaw = (block.querySelector('.df-country')?.value || '').trim();
+    const selCC = nameMap[countryRaw.toLowerCase()]
+      || (/^[A-Za-z]{2}$/.test(countryRaw) ? countryRaw.toUpperCase() : '');
+    const country = selCC || fromPrefix || '';
     let articles = []; let qty = null;
     try { articles = JSON.parse(block.dataset.articles || '[]'); } catch(e){}
     try { qty = block.dataset.qty ? JSON.parse(block.dataset.qty) : null; } catch(e){}
@@ -5651,6 +5807,12 @@
       try { const _i = $('input') || $('heroInput'); if (_i) { _i.value = params.text || ''; send(!!($('heroInput') && !$('input'))); } } catch (_) {}
       return;
     }
+    // Старт уточняющих вопросов по товарам — ТОЛЬКО после того как юзер
+    // заполнил общие поля поставщика и нажал «Продолжить». Последовательно.
+    if (action === '__pl_start_questions') {
+      try { const _qs = window.__pendingSmartQs || []; if (_qs.length && typeof showNextSmartQuestion === 'function') showNextSmartQuestion(_qs, 0); } catch (_) {}
+      return;
+    }
     // Spec-action: open OS file picker → multipart POST → re-render KYB doc card.
     // Не уходит на чат-endpoint — это локальная операция загрузки.
     if (action === '_upload_kyb_file') {
@@ -5834,7 +5996,10 @@
   // никогда не был пустым в конце ответа.
   function ensureSuggestions(sugs) {
     if (Array.isArray(sugs) && sugs.length) return sugs;
-    return ['Покажи мои заказы', 'Создать RFQ', 'Аналитика за месяц', 'Список поставщиков'];
+    // «Покажи мои заказы» — прямой action на get_orders (полные карточки ORD-348),
+    // чтобы не зависеть от ИИ-роутинга свободного текста.
+    return [{label: 'Покажи мои заказы', action: 'get_orders', params: {}},
+            'Создать RFQ', 'Аналитика за месяц', 'Список поставщиков'];
   }
   // Special action handler: go_home — без round-trip к серверу
   // + reload_page (после регистрации/логина в чате — перезагрузка).
@@ -6434,12 +6599,10 @@
       titleKey: 'welcome.buyer.title',
       subKey:   'welcome.buyer.subtitle',
       pills: [
-        {tkey:'pill.my_orders',     emoji:'📦', action:'get_my_deals',   params:{}},
-        {tkey:'pill.my_kam',        emoji:'👤', action:'my_kam',         params:{}},
-        {tkey:'pill.drawings',      emoji:'📐', action:'seller_drawings', params:{}},
-        {tkey:'pill.deposit',       emoji:'💰', action:'get_balance',    params:{}},
+        {tkey:'pill.my_orders',     emoji:'📦', action:'get_my_deals',       params:{}},
+        {tkey:'pill.deposit',       emoji:'💰', action:'get_balance',        params:{}},
         {tkey:'pill.auto_discount', emoji:'🎯', action:'get_buyer_discount', params:{}},
-        {tkey:'pill.support',        emoji:'🎧', action:'support_home',  params:{}},
+        {tkey:'pill.support',       emoji:'🎧', action:'support_home',       params:{}},
       ],
     },
     seller: {
@@ -6449,7 +6612,8 @@
         // Главная пилюля — единый inbox (вкл. RFQ, отгрузки, подтверждения, SLA).
         // Дубли «🚚 К отгрузке» и «📋 Новые RFQ» убраны — клик на секцию внутри
         // 🔥 Срочного раскрывает полный список соответствующей категории.
-        {tkey:'pill.urgent',           emoji:'🔥', action:'seller_inbox',      params:{}},
+        // «🔥 Срочное» объединено в «📋 Мои сделки» (лиды + воронка на одном экране).
+        {tkey:'pill.my_deals',         emoji:'📋', action:'get_my_deals',      params:{}},
         {tkey:'pill.upload_price',     emoji:'📤', action:'upload_pricelist',  params:{}},
         {tkey:'pill.my_products',      emoji:'📦', action:'seller_warehouses', params:{}},
         {tkey:'pill.drawings',         emoji:'📐', action:'seller_drawings',   params:{}},
@@ -6467,7 +6631,6 @@
         // Единая очередь сделок (RFQ + Order). RFQ-специфичная очередь
         // (op_rfq_queue) убрана — это была дублирующая навигация.
         {tkey:'pill.queue',            emoji:'📋', action:'op_queue',              params:{}},
-        {tkey:'pill.sla_breach',       emoji:'⏱',  action:'op_sla_breach',         params:{}},
         {tkey:'pill.payments_escrow',  emoji:'💰', action:'op_payments_dashboard', params:{}},
         {tkey:'pill.customs',          emoji:'🛂', action:'op_customs_dashboard',  params:{}},
         {tkey:'pill.logistics',        emoji:'🚚', action:'op_logistics_stats',    params:{}},
@@ -6489,7 +6652,6 @@
         {tkey:'pill.logistics',  emoji:'🚚', action:'op_logistics_stats', params:{}},
         {tkey:'pill.overview',   emoji:'🎛', action:'op_dashboard',       params:{}},
         {tkey:'pill.queue',      emoji:'📋', action:'op_queue',           params:{filter:'open'}},
-        {tkey:'pill.sla_breach', emoji:'⏱',  action:'op_sla_breach',      params:{}},
       ],
     },
     operator_customs: {
@@ -6552,7 +6714,9 @@
     operator_manager: 'KAM', operator_logist: 'Логист',
     operator_customs: 'Таможня', operator_payment: 'Платежи', admin: 'Администратор',
   };
-  const PILL_KEY = (role) => `pillPrefs:v1:${role}`;
+  // v2: после объединения «🔥 Срочное» → «📋 Мои сделки» сбрасываем старый
+  // сохранённый порядок пилюль (иначе «Мои сделки» уезжает в конец списка).
+  const PILL_KEY = (role) => `pillPrefs:v3:${role}`;
   function loadPillPrefs(role) {
     try { return JSON.parse(localStorage.getItem(PILL_KEY(role))) || {}; } catch (e) { return {}; }
   }
@@ -6576,6 +6740,12 @@
       action: b.action, params: b.params || {}, srcRole: srcRole || null,
     };
   }
+  // Опциональные пилюли: не входят в стандартный набор, но доступны для закрепа
+  // через «Все пилюли». Напр. «Мой менеджер» убран из дефолта покупателя,
+  // но его можно вернуть (иначе он бы исчез из каталога совсем).
+  const EXTRA_PILLS = [
+    {tkey:'pill.my_kam', emoji:'👤', action:'my_kam', params:{}, _src:'buyer'},
+  ];
   // Полный каталог пилюль по ВСЕМ кабинетам (дедуп по action+params).
   function globalPillCatalog() {
     const seen = {}, out = [];
@@ -6583,6 +6753,10 @@
       const p = _normPill(b, r);
       if (seen[p.id]) return; seen[p.id] = 1; out.push(p);
     }));
+    EXTRA_PILLS.forEach(b => {
+      const p = _normPill(b, b._src || null);
+      if (seen[p.id]) return; seen[p.id] = 1; out.push(p);
+    });
     return out;
   }
   // Каталог пилюль для роли = её дефолтные + пользовательские (custom).
@@ -8604,10 +8778,21 @@
           var stream = document.getElementById('stream');
           var savedScroll = stream ? stream.scrollTop : 0;
           var qs = sq.questions || [];
-          if (sq.intro) addMessage('assistant', sq.intro, [], []);
           if (qs.length) {
-            showNextSmartQuestion(qs, 0);
+            // СНАЧАЛА общие поля поставщика (карточка выше), ПОТОМ уточнения по
+            // товарам. Не заваливаем юзера вопросами сразу — стартуем их только
+            // по кнопке «Продолжить», чтобы поток был последовательным.
+            window.__pendingSmartQs = qs;
+            var nWord = (qs.length === 1 ? 'деталь'
+                        : (qs.length >= 2 && qs.length <= 4 ? 'детали' : 'деталей'));
+            addMessage('assistant',
+              '👆 Сначала заполните **общие поля поставщика** выше — страна, склад, морпорт/аэропорт. '
+              + 'Это одно на весь прайс. Готово — нажмите кнопку, и я уточню ещё ' + qs.length + ' ' + nWord + ' по товарам.',
+              [], [
+              {action: '__pl_start_questions', label: '✅ Общие поля готовы — продолжить →'},
+            ]);
           } else {
+            if (sq.intro) addMessage('assistant', sq.intro, [], []);
             addMessage('assistant', '✨ Готово, можно загружать.', [], [
               {action: '__pricelist_commit', label: '📥 Загрузить',
                params: {import_id: data.import_id}},
@@ -10319,7 +10504,7 @@
       $('sideUserName').textContent = name;
       $('sideUserRole').textContent = (state.config.role || '').replace('operator_', '').replace(/_/g, ' ');
       $('sideAvatar').textContent = initial;
-      $('topAvatar').textContent = initial;
+      { const _ta = $('topAvatar'); if (_ta) _ta.textContent = initial; }
       // Активная вкладка role-toggle
       const r = state.config.role || 'buyer';
       const uiRole = r.startsWith('operator') ? 'operator' : (r === 'seller' ? 'seller' : 'buyer');

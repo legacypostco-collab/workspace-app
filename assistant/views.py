@@ -1162,6 +1162,45 @@ class ProjectDocumentFileView(APIView):
             return Response({"error": "файл не найден"}, status=404)
 
 
+class OrderDocumentFileView(APIView):
+    """GET → стримит PDF/файл документа заказа (инвойс, packing list, QC и т.д.).
+
+    Зачем отдельная вьюха, а не сырой /media/-URL: на проде user-media по
+    /media/order_documents/ НЕ раздаётся (SERVE_MEDIA=False, nginx/WhiteNoise
+    отдают только /static/), поэтому ссылка на счёт возвращала 404. Здесь файл
+    стримится самим Django + проверкой доступа — работает и локально, и на проде.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, order_id, doc_id):
+        from django.http import FileResponse
+        from marketplace.models import Order, OrderDocument, OrderItem
+        order = get_object_or_404(Order, id=order_id)
+        # Доступ: покупатель-владелец, продавец с позициями в заказе, оператор/staff.
+        # ВАЖНО: операторы у нас is_staff=False — роль лежит в profile.role. Без этой
+        # проверки оператор мог СОЗДАТЬ документ (доступ по роли в action), но получал
+        # 403 при открытии PDF («не открывается»).
+        _role = getattr(getattr(request.user, "profile", None), "role", None)
+        allowed = (
+            request.user.is_staff
+            or _role in ("operator", "admin")
+            or order.buyer_id == request.user.id
+            or OrderItem.objects.filter(order=order, part__seller=request.user).exists()
+        )
+        if not allowed:
+            return Response({"error": "нет доступа"}, status=403)
+        doc = get_object_or_404(OrderDocument, id=doc_id, order=order)
+        if not doc.file_obj:
+            return Response({"error": "файл не найден"}, status=404)
+        try:
+            return FileResponse(
+                doc.file_obj.open("rb"), as_attachment=False,
+                filename=(doc.title or f"ORD-{order_id}-document") + ".pdf",
+            )
+        except Exception:
+            return Response({"error": "файл не найден"}, status=404)
+
+
 def _eta_label(request, days=30):
     """ETA-дата через N дней, локализованная: «30 апр» / «Apr 30» / «4月30日»."""
     from django.utils import translation, timezone

@@ -2780,6 +2780,30 @@ class DocumentGeneratorTests(TestCase):
         self.assertIsNotNone(doc)
         self.assertGreater(doc.file_obj.size, 1000)  # PDF должен быть >1KB
 
+    def test_order_document_file_view_serves_and_gates(self):
+        """Регресс: счёт-PDF отдаётся через Django-вьюху, а не /media/ (на проде
+        /media/order_documents/ не раздаётся → раньше счёт открывался с 404).
+        URL ведёт на вьюху; доступ закрыт для чужих и анонимов."""
+        from marketplace.models import OrderDocument
+
+        from .documents import _doc_url, generate_invoice_pdf
+        generate_invoice_pdf({"order_id": self.order.id}, self.buyer, "buyer")
+        doc = OrderDocument.objects.filter(order=self.order, doc_type="invoice").first()
+        url = _doc_url(doc)
+        self.assertEqual(
+            url, f"/api/assistant/orders/{self.order.id}/documents/{doc.id}/file/")
+        # владелец-покупатель → 200 + PDF
+        self.client.force_login(self.buyer)
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("application/pdf", resp.get("Content-Type", ""))
+        # чужой → 403
+        self.client.force_login(self.outsider)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        # аноним → 401/403 (IsAuthenticated)
+        self.client.logout()
+        self.assertIn(self.client.get(url).status_code, (401, 403))
+
     def test_generate_packing_list_pdf(self):
         from marketplace.models import OrderDocument
 
