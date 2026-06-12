@@ -3086,6 +3086,9 @@ class PricelistAiEstimateView(APIView):
     PARALLEL_WORKERS = 20  # параллельные Claude calls (rate limit 50 RPM)
 
     def post(self, request, import_id):
+        from . import ai_credits as _aic
+        if not _aic.rate_ok(request.user, "ai_estimate", 12, 3600):
+            return Response({"error": "Слишком частые AI-оценки прайса. Подождите немного."}, status=429)
         from marketplace.models import PricelistImport
         try:
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)
@@ -3450,6 +3453,9 @@ class PricelistSmartQuestionsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, import_id):
+        from . import ai_credits as _aic
+        if not _aic.rate_ok(request.user, "smart_questions", 40, 3600):
+            return Response({"intro": "", "questions": []}, status=200)
         from marketplace.models import PricelistImport
         try:
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)

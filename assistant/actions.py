@@ -347,6 +347,33 @@ def kyb_gate(action_name: str, role: str, user) -> str | None:
     return None
 
 
+_OP_ROLES_ALL = {"operator", "operator_logist", "operator_customs",
+                 "operator_payment", "operator_manager", "admin"}
+
+
+def _user_can_access_order(o, user, role) -> bool:
+    """Право видеть/менять конкретный заказ. Защита от IDOR: действие получает
+    order_id из params (его шлёт фронт/AI), поэтому КАЖДЫЙ обработчик, достающий
+    Order по id, обязан проверить владельца.
+
+      • оператор/админ (внутренние) — все заказы;
+      • продавец — только если в заказе есть ЕГО товары;
+      • покупатель (и все прочие) — только свой заказ.
+    """
+    try:
+        if role in _OP_ROLES_ALL or getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
+            return True
+        if role == "seller":
+            from .seller_actions import _effective_seller
+            from marketplace.models import OrderItem
+            eff = _effective_seller(user)
+            return OrderItem.objects.filter(order_id=o.id, part__seller=eff).exists()
+        return getattr(o, "buyer_id", None) == getattr(user, "id", None)
+    except Exception:
+        logger.exception("order access check failed")
+        return False
+
+
 # ── Registry ───────────────────────────────────────────────
 _REGISTRY: dict[str, Callable] = {}
 
@@ -3194,6 +3221,9 @@ def track_shipment(params, user, role):
     try:
         o = Order.objects.get(id=oid)
     except Order.DoesNotExist:
+        return ActionResult(text=f"⚠️ Заказ #{oid} не найден")
+    if not _user_can_access_order(o, user, role):
+        # Не подтверждаем существование чужого заказа — то же сообщение.
         return ActionResult(text=f"⚠️ Заказ #{oid} не найден")
 
     # ── Важные поля для шапки: ETA, кто держит мяч, перевозчик ──
@@ -11732,6 +11762,8 @@ def consolidate_wait(params, user, role):
         o = Order.objects.get(id=oid)
     except Order.DoesNotExist:
         return ActionResult(text=f"Заказ #{oid} не найден.")
+    if not _user_can_access_order(o, user, role):
+        return ActionResult(text=f"Заказ #{oid} не найден.")
     lm = dict(o.logistics_meta or {})
     lm["shipment_decision"] = "consolidate"
     lm["shipment_decision_by"] = user.username
@@ -11758,6 +11790,8 @@ def split_shipment(params, user, role):
     try:
         o = Order.objects.get(id=oid)
     except Order.DoesNotExist:
+        return ActionResult(text=f"Заказ #{oid} не найден.")
+    if not _user_can_access_order(o, user, role):
         return ActionResult(text=f"Заказ #{oid} не найден.")
     STAGE_ORDER = ["awaiting_reserve", "reserve_paid", "confirmed", "in_production",
                    "ready_to_ship", "transit_abroad", "customs", "transit_rf",
@@ -11830,6 +11864,8 @@ def set_supplier_decision(params, user, role):
     try:
         o = Order.objects.get(id=oid)
     except Order.DoesNotExist:
+        return ActionResult(text=f"Заказ #{oid} не найден.")
+    if not _user_can_access_order(o, user, role):
         return ActionResult(text=f"Заказ #{oid} не найден.")
     lm = dict(o.logistics_meta or {})
     per = dict(lm.get("per_supplier") or {})

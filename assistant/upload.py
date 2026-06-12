@@ -185,6 +185,9 @@ class RecognizePhotoView(APIView):
     parser_classes = [MultiPartParser]
 
     def post(self, request):
+        from . import ai_credits as _aic
+        if not _aic.rate_ok(request.user, "recognize_photo", 40, 3600):
+            return Response({"error": "Слишком частое распознавание фото. Подождите немного."}, status=429)
         photo = request.FILES.get("photo")
         if not photo:
             return Response({"error": "photo is required"}, status=400)

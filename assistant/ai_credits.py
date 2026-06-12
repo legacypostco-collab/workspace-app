@@ -113,6 +113,32 @@ def grant_on_purchase(user, amount=PURCHASE_GRANT):
         logger.exception("ai_credits grant failed")
 
 
+def rate_ok(user, bucket, limit, window_s):
+    """Грубый per-user лимит вызовов тяжёлых AI-эндпоинтов (защита от
+    «сжигания» токенов циклом). Fixed-window через cache. fail-open при ошибке.
+
+    Гейтит ВСЕХ (в т.ч. продавцов/операторов, которых ai_credits не лимитирует),
+    т.к. дорогие вызовы (vision, прайс-оценка) есть и у не-покупателей.
+    Возвращает True, пока в окне меньше `limit` вызовов.
+    """
+    try:
+        from django.core.cache import cache
+        uid = getattr(user, "id", None) or "anon"
+        key = f"airl:{bucket}:{uid}"
+        # add создаёт счётчик с TTL только при первом вызове в окне
+        if cache.add(key, 1, window_s):
+            return True
+        try:
+            return cache.incr(key) <= limit
+        except ValueError:
+            # ключ истёк между add и incr — начинаем окно заново
+            cache.set(key, 1, window_s)
+            return True
+    except Exception:
+        logger.exception("rate_ok failed — fail-open")
+        return True
+
+
 def limit_message():
     """Сообщение + действия, когда лимит исчерпан. Навигация/оплата — кнопками
     (они НЕ зовут AI), так что купить можно всегда."""
