@@ -394,6 +394,87 @@ def _scrub_internal(obj, _depth: int = 0):
     return obj
 
 
+_INFO_ORDER_ACTIONS = {"get_order_detail", "track_shipment", "track_order"}
+
+
+def _bump_session_seen(params, key):
+    """Счётчик инфо-обращений в рамках сессии. Возвращает, сколько раз (включая
+    текущее) пользователь обращался к ключу. Для «страховки»: на 2-м+ обращении к
+    тому же заказу/отчёту предлагаем человека (с первого раза мог найти ответ сам)."""
+    req = (params or {}).get("_request")
+    sess = getattr(req, "session", None)
+    if sess is None:
+        return 1
+    try:
+        seen = dict(sess.get("_info_seen") or {})
+        n = int(seen.get(key, 0)) + 1
+        seen[key] = n
+        sess["_info_seen"] = seen
+        sess.modified = True
+        return n
+    except Exception:
+        return 1
+
+
+def _apply_safety_contact(action_name, params, role, result):
+    """Пост-обработка вторичных действий ПОКУПАТЕЛЯ на карточках заказа:
+    (1) «Оценить поставщика» переносим из кнопок (contextual) в чипы (suggestions)
+        как action-chip (действие create_claim сохраняется) — связь с человеком
+        важнее, поэтому «поменяли местами» по UX;
+    (2) «страховка»: на 2-м+ обращении к заказу (детали/трекинг/отчёт) или
+        повторном поиске добавляем КНОПКОЙ связь с человеком (менеджер, если у
+        заказа есть KAM, иначе оператор) — первой среди contextual. На первом
+        обращении не навязываемся. Оператору/продавцу — ничего не трогаем."""
+    try:
+        if role != "buyer":
+            return result
+        order_info = action_name in _INFO_ORDER_ACTIONS
+        oid = (((params or {}).get("order_id") or (params or {}).get("id"))
+               if order_info else None)
+
+        # (1) «Оценить поставщика»: кнопка → чип (action-chip {label,action,params}).
+        if order_info:
+            ctx = list(result.contextual_actions or [])
+            rate = [a for a in ctx if isinstance(a, dict)
+                    and "Оценить поставщика" in str(a.get("label", ""))]
+            if rate:
+                result.contextual_actions = [a for a in ctx if a not in rate]
+                sugg = list(result.suggestions or [])
+                for a in rate:
+                    if not any(isinstance(s, dict) and s.get("action") == a.get("action")
+                               for s in sugg):
+                        sugg.append(a)
+                result.suggestions = sugg
+
+        # (2) «Страховка» связью с человеком — КНОПКОЙ, только на повторе.
+        if order_info and oid:
+            if _bump_session_seen(params, f"order:{oid}") < 2:
+                return result
+            from marketplace.models import Order
+            has_kam = (Order.objects.filter(id=oid)
+                       .values_list("assigned_kam_id", flat=True).first())
+            btn = ({"action": "kam_message", "label": "Связаться с менеджером",
+                    "params": {"order_id": oid}} if has_kam
+                   else {"action": "contact_operator", "label": "Связаться с оператором",
+                         "params": {"order_id": oid}})
+        elif action_name == "search_parts":
+            if _bump_session_seen(params, "search") < 2:
+                return result
+            btn = {"action": "contact_operator",
+                   "label": "Связаться с оператором", "params": {}}
+        else:
+            return result
+        ctx = list(result.contextual_actions or [])
+        if not any(isinstance(a, dict)
+                   and a.get("action") in ("kam_message", "contact_operator")
+                   for a in ctx):
+            ctx.insert(0, btn)   # самое заметное вторичное действие — первым
+            result.contextual_actions = ctx
+    except Exception:
+        logger.exception("safety-contact post-process failed")
+    return result
+
+
 def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
     """Run an action. Returns ActionResult."""
     if not can_execute(action_name, role):
@@ -451,6 +532,9 @@ def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
     result.cards = _scrub_internal(result.cards or [])
     result.contextual_actions = _scrub_internal(result.contextual_actions or [])
     result.suggestions = _scrub_internal(result.suggestions or [])
+    # «Страховка»: на 2-м+ обращении покупателя к инфо о заказе/повторном поиске —
+    # вторичной подсказкой предложить связаться с человеком (не на первом).
+    _apply_safety_contact(action_name, params, role, result)
     return result
 
 
@@ -2435,11 +2519,11 @@ def create_rfq(params, user, role):
 
 @register("get_orders")
 def get_orders(params, user, role):
-    """Список «Мои заказы» — КАЖДЫЙ заказ полной карточкой (spec_results с
-    таблицей всех позиций), как в открытой карточке заказа. params: {status?, limit?}
+    """Список «Мои заказы» — КОРОТКИЕ карточки-сводки (type "order": номер ·
+    сумма · статус · дата). Полная спецификация заказа разворачивается ТОЛЬКО по
+    клику (карточка кликабельна → get_order_detail). params: {status?, limit?}
 
-    Полные карточки тяжёлые (по заказу — позиции, поставщики, доставка), поэтому
-    показываем порцию (с пометкой «N из M») + фильтры по статусу для остального.
+    Компактный список быстрее (не рендерим спецификацию каждого заказа) и читабельнее.
     """
     from marketplace.models import Order
     limit = min(int(params.get("limit") or 6), 10)
@@ -2455,6 +2539,12 @@ def get_orders(params, user, role):
 
     if params.get("status") == "awaiting_reserve":
         qs = qs.filter(payment_status="awaiting_reserve")
+    elif params.get("status") == "paid":
+        # «Только оплаченные» — это про статус ОПЛАТЫ, а не заказа: заказа со
+        # status="paid" не существует, поэтому фильтруем по payment_status (внесён
+        # резерв и далее). Иначе фильтр всегда возвращал пусто.
+        qs = qs.filter(payment_status__in=["reserve_paid", "mid_paid",
+                                           "customs_paid", "paid"])
     elif params.get("status"):
         qs = qs.filter(status=params["status"])
 
@@ -2466,13 +2556,13 @@ def get_orders(params, user, role):
             suggestions=["Найти запчасть", "Создать RFQ"],
         )
 
-    # Каждый заказ — полной карточкой spec_results (берём только её, без
-    # под-карточек таймлайна/поставщиков — чтобы список не разрастался).
+    # Короткие карточки-сводки (type "order"): номер · сумма · статус · дата.
+    # Кликабельны (рендерер ставит data-action="get_order_detail") → полная
+    # спецификация заказа разворачивается ТОЛЬКО по клику. Не дёргаем
+    # get_order_detail на каждый заказ — список лёгкий и быстрый.
     cards = []
     for o in orders:
-        det = get_order_detail({"order_id": o.id}, user, role)
-        spec = next((c for c in (det.cards or []) if c.get("type") == "spec_results"), None)
-        cards.append(spec or {
+        cards.append({
             "type": "order",
             "data": {
                 "id": str(o.id), "number": f"ORD-{o.id}",
@@ -2481,6 +2571,7 @@ def get_orders(params, user, role):
                 "total": float(o.total_amount or 0), "currency": "USD",
                 "customer": "Покупатель" if role == "seller" else (o.customer_name or "—"),
                 "created_at": o.created_at.strftime("%d.%m.%Y"),
+                "can_cancel": (role == "buyer" and o.payment_status == "awaiting_reserve"),
             },
         })
 
@@ -3028,20 +3119,20 @@ def get_order_detail(params, user, role):
     suggestions = []
     if o.status == "cancelled" or o.payment_status == "refunded":
         next_step_hint = "Заказ отменён. Если нужно повторить — создайте новый RFQ."
-        suggestions = ["Создать RFQ", "Связаться с оператором", "Все мои заказы"]
+        suggestions = ["Создать RFQ", "Все мои заказы"]
     elif o.payment_status == "awaiting_reserve":
         next_step_hint = (
             f"⏳ Дальше: оплатите резерв 10% (${float(o.reserve_amount or 0):,.0f}) — "
             f"после этого продавец подтвердит и запустит производство. "
             f"Срок без оплаты: 7 дней, потом авто-отмена."
         )
-        suggestions = ["Оплатить резерв", "Спросить оператора", "Отменить заказ"]
+        suggestions = ["Оплатить резерв", "Отменить заказ"]
     elif o.status == "reserve_paid":
         next_step_hint = (
             "✓ Резерв оплачен. Дальше: продавец подтверждает заказ и запускает "
             "производство (SLA 24 ч). Следите за статусом — придёт уведомление."
         )
-        suggestions = ["Трекинг отгрузки", "Спросить оператора", "Все мои заказы"]
+        suggestions = ["Трекинг отгрузки", "Все мои заказы"]
     elif o.status == "in_production":
         next_step_hint = (
             "🏭 В производстве. Дальше: готовность к отгрузке (срок по контракту "
@@ -3052,13 +3143,13 @@ def get_order_detail(params, user, role):
         next_step_hint = (
             "📦 Готов к отгрузке. Дальше: оплата остатка 90% → выход груза с базиса."
         )
-        suggestions = ["Оплатить остаток 90%", "Документы", "Спросить оператора"]
+        suggestions = ["Оплатить остаток 90%", "Документы"]
     elif o.status in ("transit_abroad", "customs", "transit_rf", "issuing"):
         next_step_hint = (
             f"🚚 В пути ({o.get_status_display()}). ETA можно посмотреть в трекинге. "
             f"Документы (BL, инвойс, упаковочный лист) уже сформированы."
         )
-        suggestions = ["Трекинг отгрузки", "Все документы", "Связаться с оператором"]
+        suggestions = ["Трекинг отгрузки", "Все документы"]
     elif o.status == "delivered":
         next_step_hint = (
             "✓ Доставлен. Дальше: подтвердите приёмку — после этого деньги уйдут "
@@ -3072,7 +3163,8 @@ def get_order_detail(params, user, role):
     # Оператор/админ — это сам оператор: подсказки «Спросить/Связаться с оператором»
     # для него бессмысленны. Чистим self-referential пункты.
     if role in ("operator", "admin"):
-        suggestions = [s for s in suggestions if "оператор" not in s.lower()]
+        suggestions = [s for s in suggestions
+                       if "оператор" not in s.lower() and "менеджер" not in s.lower()]
 
     text = f"Заказ ORD-{o.id} · {o.get_status_display()} · ${o.total_amount:,.2f}"
     if next_step_hint:
@@ -8323,6 +8415,14 @@ def pay_reserve(params, user, role):
     try:
         from . import referral as _ref
         _ref.on_order_reserve_paid(order)
+    except Exception:
+        pass
+
+    # AI-кредиты: покупка (оплаченный резерв) обновляет лимит бесплатных
+    # AI-запросов покупателя — «совершил покупку → лимит пополнился».
+    try:
+        from . import ai_credits as _aic
+        _aic.grant_on_purchase(user)
     except Exception:
         pass
 

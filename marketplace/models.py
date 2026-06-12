@@ -944,6 +944,14 @@ class UserProfile(models.Model):
     # KAM = operator_role="manager".
     operator_role = models.CharField(max_length=20, choices=OPERATOR_ROLE_CHOICES,
                                      blank=True, default="")
+    # AI-кредиты: лимит бесплатных AI-запросов. Гейтим только ПОКУПАТЕЛЕЙ
+    # (операторы/продавцы — без лимита). Пополняется при оплате заказа +
+    # мягкий ежемесячный долив. Логика — в assistant/ai_credits.py.
+    ai_credits = models.IntegerField(
+        default=25,
+        help_text="Остаток бесплатных AI-запросов (для покупателей). "
+                  "Пополняется при оплате заказа.")
+    ai_credits_refilled_at = models.DateTimeField(null=True, blank=True)
     company_name = models.CharField(max_length=255, blank=True)
     language = models.CharField(
         max_length=10,

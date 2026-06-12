@@ -382,6 +382,24 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
                 "message_id": str(assistant_msg.id),
             }
 
+    # 3. Slow-path: Claude tool-use — это ПЛАТНЫЙ вызов. Списываем AI-кредит
+    # покупателя (операторы/продавцы — без лимита). Лимит исчерпан → не зовём
+    # Claude, показываем «оформите заказ». fast-path/кэш выше — бесплатны.
+    from . import ai_credits as _aic
+    _ok, _left = _aic.try_consume(user, conversation.role)
+    if not _ok:
+        _m = _aic.limit_message()
+        assistant_msg = Message.objects.create(
+            conversation=conversation, role=Message.Role.ASSISTANT,
+            content=_m["text"], cards=[], actions=_m["actions"],
+            context_refs=[], tokens_used=0,
+        )
+        return {
+            "text": _m["text"], "cards": [], "actions": _m["actions"],
+            "context_refs": [], "contextual_actions": [],
+            "suggestions": _m["suggestions"], "message_id": str(assistant_msg.id),
+        }
+
     # 3. Slow-path: Claude tool-use for everything else
     language = _detect_language(user_message)
     context_chunks = _search_context(user_message, conversation.role, language)
@@ -706,6 +724,23 @@ def process_query_stream(conversation: Conversation, user_message: str):
                 conversation.save(update_fields=["title", "updated_at"])
             yield {"type": "done", "tokens": 0, "refs": []}
             return
+
+    # Slow-path = ПЛАТНЫЙ Claude. Лимит AI-кредитов покупателя (см. sync-путь).
+    from . import ai_credits as _aic
+    _ok, _left = _aic.try_consume(conversation.user, conversation.role)
+    if not _ok:
+        _m = _aic.limit_message()
+        yield {"type": "token", "text": _m["text"]}
+        yield {"type": "cards", "cards": [], "actions": _m["actions"],
+               "text": _m["text"], "contextual_actions": [],
+               "suggestions": _m["suggestions"]}
+        Message.objects.create(
+            conversation=conversation, role=Message.Role.ASSISTANT,
+            content=_m["text"], cards=[], actions=_m["actions"],
+            context_refs=[], tokens_used=0,
+        )
+        yield {"type": "done", "tokens": 0, "refs": []}
+        return
 
     language = _detect_language(user_message)
     context_chunks = _search_context(user_message, conversation.role, language)

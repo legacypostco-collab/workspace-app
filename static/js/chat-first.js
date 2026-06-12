@@ -4170,8 +4170,8 @@
         <div class="spec-tbl-wrap">
           <table class="spec-tbl spec-tbl-fixed">
             <colgroup>${showSupplierCol
-              ? '<col style="width:9%"><col style="width:3%"><col style="width:12%"><col style="width:11%"><col style="width:16%"><col style="width:11%"><col style="width:5%"><col style="width:8%"><col style="width:13%"><col style="width:12%">'
-              : '<col style="width:9%"><col style="width:3%"><col style="width:13%"><col style="width:13%"><col style="width:20%"><col style="width:11%"><col style="width:6%"><col style="width:9%"><col style="width:16%">'}</colgroup>
+              ? '<col style="width:12%"><col style="width:3%"><col style="width:12%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:5%"><col style="width:8%"><col style="width:13%"><col style="width:12%">'
+              : '<col style="width:12%"><col style="width:3%"><col style="width:13%"><col style="width:13%"><col style="width:17%"><col style="width:11%"><col style="width:6%"><col style="width:9%"><col style="width:16%">'}</colgroup>
             <thead><tr>
               <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Price</th><th>Qty</th><th>Weight</th>${showSupplierCol ? '<th>Поставщик</th>' : ''}<th>${shipIcon} Доставка${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>
             </tr></thead>
@@ -4353,7 +4353,7 @@
     const nameMapJson = esc(JSON.stringify(nameToCC));
     return `<div class="df-block" data-articles='${articlesJson}' ${qtyJson ? `data-qty='${qtyJson}'` : ''} data-arrival='${mapJson}' data-countries='${nameMapJson}'>
       <div class="df-title">📍 Куда доставить?</div>
-      <div class="df-hint">Укажите <b>страну и город</b> → в таблице выше появятся цены <b>CIP и DDP</b>. Полный адрес до двери нужен только для <b>DDP</b> — попросим при выборе.</div>
+      <div class="df-hint">Укажите <b>страну и город</b> → в таблице ниже появятся цены <b>CIP и DDP</b>. Полный адрес до двери нужен только для <b>DDP</b> — попросим при выборе.</div>
       <div class="df-row">
         <label class="df-lbl">Страна <span class="df-opt">(для CIP/DDP)</span></label>
         <input class="df-input df-country" type="text" list="${ccId}" value="${esc(curCountryName)}" placeholder="Начните вводить страну…" autocomplete="off" oninput="window.dfCountryChange && window.dfCountryChange(this, false)" onchange="window.dfCountryChange && window.dfCountryChange(this, true)" />
@@ -4368,7 +4368,7 @@
         <label class="df-lbl">Адрес доставки <span class="df-opt">(улица, дом · для DDP)</span></label>
         <textarea class="df-input df-addr" rows="2" placeholder="Напр.: ул. Профсоюзная 84, корп. 5, офис 12">${curAddr}</textarea>
       </div>
-      <div class="df-hint" style="margin:2px 0 8px;">Заполнили поля? Нажмите кнопку — цены <b>CIP/DDP</b> сразу появятся в таблице выше ↑</div>
+      <div class="df-hint" style="margin:2px 0 8px;">Заполнили поля? Нажмите кнопку — цены <b>CIP/DDP</b> сразу появятся в таблице ниже ↓</div>
       <button class="df-submit act-btn" type="button" onclick="window.calcShipping && window.calcShipping(this)" style="background:rgba(232,92,13,0.16);border:1px solid rgba(232,92,13,0.55);font-weight:600;">
         🧮 Рассчитать цены CIP / DDP →
       </button>
@@ -4414,7 +4414,7 @@
             : '';
           return `<td class="sm-cell sm-cell-disabled" title="${esc(hint)}"${clickAttr}>
             <div class="sm-landed sm-na-mark">—</div>
-            <div class="sm-ship">${esc(hint)}${needForm ? ' ↓' : ''}</div>
+            <div class="sm-ship">${esc(hint)}${needForm ? ' ↑' : ''}</div>
           </td>`;
         }
         const params = {
@@ -4515,6 +4515,7 @@
       <div class="sm-title">${title}</div>
       ${routeLine}
       ${originTable}
+      ${form}
       <table class="sm-table">
         <thead><tr><th>Способ / срок</th>${headerCells}</tr></thead>
         <tbody>${rows}</tbody>
@@ -4524,8 +4525,7 @@
         <div class="sm-legend-row"><b>CIP</b> — Carriage & Insurance Paid: ${esc(descs.CIP || '')}</div>
         <div class="sm-legend-row"><b>DDP</b> — Delivered Duty Paid: ${esc(descs.DDP || '')}</div>
       </div>
-      <div class="sm-hint">Клик по ячейке = выбрать базис и оформить. Для <b>CIP/DDP</b> сначала укажите страну и город ниже ↓ (для DDP попросим адрес до двери).</div>
-      ${form}
+      <div class="sm-hint">Клик по ячейке = выбрать базис и оформить. Для <b>CIP/DDP</b> сначала укажите страну и город выше ↑ (для DDP попросим адрес до двери).</div>
     </div>`;
   }
 
