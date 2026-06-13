@@ -470,7 +470,7 @@ CLAIM_SLA_DAYS = {
 }
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-20250514").strip()
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6").strip()  # sonnet-4-20250514 выводится 2026-06-15
 # Haiku 4.5 для простых запросов (buyer-chat). 12× дешевле Sonnet.
 ANTHROPIC_FAST_MODEL = os.getenv("ANTHROPIC_FAST_MODEL", "claude-haiku-4-5-20251001").strip()
 # Если 1 — все роли используют FAST_MODEL (dev / R&D). По умолчанию 0:
