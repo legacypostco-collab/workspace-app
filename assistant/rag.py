@@ -116,7 +116,10 @@ def _get_anthropic_client():
         return None
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
+        # timeout: запрос через релей (Москва→Амстердам→Anthropic) иногда
+        # подвисает — без таймаута SDK ждёт ~10 мин и чат «висит». 60с/вызов
+        # + 1 ретрай на транзиентную сетевую ошибку.
+        client = anthropic.Anthropic(api_key=api_key, timeout=60.0, max_retries=1)
         model = getattr(settings, "ANTHROPIC_MODEL", DEFAULT_MODEL)
         logger.info(f"AI Assistant: Anthropic client ready (model={model}, tool-use enabled)")
         _ANTHROPIC_CLIENT_CACHE["client"] = client
@@ -272,6 +275,36 @@ def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple
 
         msgs.append({"role": "user", "content": tool_results})
         # Continue loop — Claude will see tool results and either call more tools or finalize.
+
+    # Витки исчерпаны, но Claude всё время звал инструменты и не дал текст →
+    # final_text был бы ПУСТЫМ, и юзер видит «нет ответа» / вечный спиннер.
+    # Добиваем одним вызовом с tool_choice=none — Claude обязан ответить
+    # текстом по уже собранным результатам.
+    if not any((t or "").strip() for t in final_text_parts):
+        try:
+            fin_kwargs = {
+                "model": model,
+                "max_tokens": MAX_RESPONSE_TOKENS,
+                "system": system_blocks,
+                "messages": msgs,
+            }
+            if tools_with_cache:
+                fin_kwargs["tools"] = tools_with_cache
+                fin_kwargs["tool_choice"] = {"type": "none"}
+            finalize = client.messages.create(**fin_kwargs)
+            ft = "".join(
+                b.text for b in finalize.content
+                if getattr(b, "type", None) == "text"
+            )
+            if ft.strip():
+                final_text_parts.append(ft)
+        except Exception:
+            logger.exception("finalize call (tool_choice=none) failed")
+        if not any((t or "").strip() for t in final_text_parts):
+            final_text_parts.append(
+                "Собрал данные по запросу — смотри карточки выше. "
+                "Уточни, что показать подробнее?"
+            )
 
     final_text = "\n\n".join(t for t in final_text_parts if t).strip()
     return final_text, tokens_total, accumulated_cards, accumulated_actions
