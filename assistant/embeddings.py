@@ -188,7 +188,10 @@ def search_similar_chunks(
     scored = []
     for c in chunks:
         emb_score = 0.0
-        if c.embedding:
+        # c.embedding может быть None, list или numpy-массивом (pgvector).
+        # `if c.embedding:` на numpy-массиве >1 элемента бросает ValueError
+        # ("truth value of an array is ambiguous") — проверяем явно.
+        if c.embedding is not None and len(c.embedding) > 0:
             emb = c.embedding if isinstance(c.embedding, list) else list(c.embedding)
             emb_score = cosine_similarity(embedding, emb)
         kw_score = _keyword_score(query_text, c.title + " " + c.content) if query_text else 0
