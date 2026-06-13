@@ -3644,6 +3644,10 @@
 
     /* Working text */
     body.dark-mode .working-text{color:rgba(255,255,255,0.85);}
+    /* Лого-звезда чёрная (для светлой темы) → на тёмной делаем белой,
+       иначе сливается с тёмным фоном индикатора загрузки и аватара бота. */
+    body.dark-mode .working-logo svg polygon,
+    body.dark-mode .msg-avatar-bot svg polygon{fill:#fff;}
 
     /* msg-cards force light text inside cards */
     body.dark-mode .msg-cards{color:#f5f5f5;}
