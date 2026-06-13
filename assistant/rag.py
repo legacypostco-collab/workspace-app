@@ -24,7 +24,7 @@ MAX_CONTEXT_CHUNKS = 5
 MIN_SIMILARITY_SCORE = 0.6
 MAX_RESPONSE_TOKENS = 2048
 MAX_TOOL_TURNS = 6
-DEFAULT_MODEL = "claude-sonnet-4-20250514"
+DEFAULT_MODEL = "claude-sonnet-4-6"  # sonnet-4-20250514 выводится 2026-06-15 → мигрировали
 FAST_MODEL    = "claude-haiku-4-5-20251001"  # 12× дешевле для простых запросов
 
 # Какие роли получают Haiku (простой intent → action). Sonnet остаётся для
