@@ -3824,7 +3824,10 @@
             </a>
           </div>
         </details>
-        <form method="post" action="{% url 'logout' %}" style="margin:0;">
+        <form method="post" action="{% url 'logout' %}" style="margin:0;"
+              onsubmit="var m=document.cookie.match(/(?:^|; )csrftoken=([^;]+)/); if(m&&this.csrfmiddlewaretoken){this.csrfmiddlewaretoken.value=decodeURIComponent(m[1]);}">
+          {# токен берём из живой csrftoken-куки на сабмите: в долгоживущем SPA #}
+          {# запечённый {% csrf_token %} устаревает после ротации куки (логин) #}
           {% csrf_token %}
           <button type="submit" class="settings-row" style="width:100%;border:none;background:transparent;cursor:pointer;text-align:left;font:inherit;color:#b91c1c;">
             <span>🚪 <span data-i18n="settings.logout">{% trans "Выйти" %}</span></span>
