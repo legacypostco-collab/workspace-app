@@ -105,6 +105,13 @@ CSRF_TRUSTED_ORIGINS = _env_list(
     "CSRF_TRUSTED_ORIGINS",
     "http://127.0.0.1,http://127.0.0.1:8001,http://localhost,http://localhost:8001",
 )
+# Прод-домен ВСЕГДА доверенный для CSRF Origin-проверки POST-форм (например
+# /logout/). После ухода с Cloudflare на прямой ориджин POST падал с «Ошибка
+# проверки CSRF» — Origin «https://consolidatorparts.com» не совпадал с тем,
+# что Django вычислял (схема из X-Forwarded-Proto). Идемпотентно.
+for _o in ("https://consolidatorparts.com", "https://www.consolidatorparts.com"):
+    if _o not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_o)
 
 INSTALLED_APPS = [
     # Daphne MUST come before django.contrib.staticfiles to provide ASGI runserver
