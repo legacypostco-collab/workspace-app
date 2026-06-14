@@ -5996,8 +5996,16 @@
   // никогда не был пустым в конце ответа.
   function ensureSuggestions(sugs) {
     if (Array.isArray(sugs) && sugs.length) return sugs;
-    // «Покажи мои заказы» — прямой action на get_orders (полные карточки ORD-348),
-    // чтобы не зависеть от ИИ-роутинга свободного текста.
+    const role = String(window.__pillRole || 'buyer');
+    // Подсказки по бизнес-логике роли (прямые action'ы — не зависят от ИИ-роутинга).
+    if (role === 'seller') {
+      // Уникальные AI-инсайты, которых НЕТ в основном меню: рыночный спрос,
+      // рейтинг, скорость по SLA. Помогают зарабатывать больше и расти.
+      return [{label: '📊 Спрос на рынке', action: 'get_demand_report', params: {}},
+              {label: '⭐ Мой рейтинг', action: 'seller_rating', params: {}},
+              {label: '⚡ Моя скорость', action: 'get_sla_report', params: {}}];
+    }
+    // Покупатель и оператор: заказы → создать RFQ → аналитика → поставщики.
     return [{label: 'Покажи мои заказы', action: 'get_orders', params: {}},
             'Создать RFQ', 'Аналитика за месяц', 'Список поставщиков'];
   }

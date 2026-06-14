@@ -135,6 +135,23 @@ def _my_rfqs(msg: str, lower: str) -> tuple[str, dict] | None:
     return None
 
 
+@rule("create_rfq_prompt")
+def _create_rfq_prompt(msg: str, lower: str) -> tuple[str, dict] | None:
+    """Голая команда «Создать RFQ» (чип-подсказка) без детали → не создаём
+    пустой RFQ, а зовём create_rfq с пустыми params: его guard вернёт
+    уточняющий вопрос «что запросить?». Матчим ТОЛЬКО точную мета-команду,
+    чтобы «создать rfq на фильтр Komatsu» ушло в обычный разбор."""
+    s = lower.strip().strip(".!?…").strip()
+    meta = {
+        "создать rfq", "создать новый rfq", "создание нового rfq", "создание rfq",
+        "новый rfq", "rfq", "создать запрос котировок", "новый запрос котировок",
+        "оформить rfq", "сделать rfq", "создать запрос", "create rfq", "new rfq",
+    }
+    if s in meta:
+        return ("create_rfq", {})
+    return None
+
+
 @rule("show_orders")
 def _my_orders(msg: str, lower: str) -> tuple[str, dict] | None:
     """«мои заказы», «статус заказов», «show orders»"""

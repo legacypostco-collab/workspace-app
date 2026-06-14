@@ -502,6 +502,32 @@ def _apply_safety_contact(action_name, params, role, result):
     return result
 
 
+def _strip_seller_rfq_create(result, role):
+    """Продавец RFQ не создаёт (он отвечает котировками). Убираем «Создать RFQ»
+    из подсказок и действий любого ответа продавцу — чтобы нигде не предлагалось."""
+    if role != "seller":
+        return
+
+    def _is_rfq_create(item):
+        if isinstance(item, dict):
+            return item.get("action") == "create_rfq"
+        if isinstance(item, str):
+            return _is_meta_rfq_query(item)
+        return False
+
+    try:
+        if result.suggestions:
+            result.suggestions = [s for s in result.suggestions if not _is_rfq_create(s)]
+        if result.actions:
+            result.actions = [a for a in result.actions if not _is_rfq_create(a)]
+        if result.contextual_actions:
+            result.contextual_actions = [
+                a for a in result.contextual_actions if not _is_rfq_create(a)
+            ]
+    except Exception:
+        logger.exception("strip seller rfq create failed")
+
+
 def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
     """Run an action. Returns ActionResult."""
     if not can_execute(action_name, role):
@@ -559,6 +585,9 @@ def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
     result.cards = _scrub_internal(result.cards or [])
     result.contextual_actions = _scrub_internal(result.contextual_actions or [])
     result.suggestions = _scrub_internal(result.suggestions or [])
+    # Продавец RFQ не создаёт (он отвечает котировками) → убираем «Создать RFQ»
+    # из подсказок/действий в любом ответе.
+    _strip_seller_rfq_create(result, role)
     # «Страховка»: на 2-м+ обращении покупателя к инфо о заказе/повторном поиске —
     # вторичной подсказкой предложить связаться с человеком (не на первом).
     _apply_safety_contact(action_name, params, role, result)
@@ -1244,6 +1273,22 @@ def generate_proposal(params, user, role):
             # RFQ показывается inline-карточкой через get_rfq_status.
         ],
     )
+
+
+_META_RFQ_QUERIES = {
+    "создать rfq", "создать новый rfq", "создание нового rfq", "создание rfq",
+    "новый rfq", "rfq", "rfq из чата", "новый запрос котировок",
+    "создать запрос", "создать запрос котировок", "оформить rfq", "сделать rfq",
+    "запрос котировок", "create rfq", "new rfq", "make rfq",
+}
+
+
+def _is_meta_rfq_query(q: str) -> bool:
+    """True если query — это мета-команда («Создать RFQ», «Создание нового RFQ»),
+    а не описание реальной детали. Тогда RFQ не создаём — просим уточнить, что
+    нужно (иначе плодим пустые RFQ с фейковой позицией и спамим поставщиков)."""
+    s = (q or "").strip().lower().strip(".!?…").strip()
+    return (not s) or (s in _META_RFQ_QUERIES)
 
 
 def _extract_articles(text: str) -> list[str]:
@@ -2319,7 +2364,7 @@ def create_rfq(params, user, role):
             )
             items_to_add.append((art, quantity, p, _match_confidence(art, p)))
 
-    elif params.get("query"):
+    elif params.get("query") and not _is_meta_rfq_query(params["query"]):
         q = params["query"]
         articles = _extract_articles(q)
         if articles:
@@ -2335,7 +2380,19 @@ def create_rfq(params, user, role):
             items_to_add.append((q[:255], quantity, None, 0))
 
     if not items_to_add:
-        items_to_add = [("RFQ из чата", quantity, None, 0)]
+        # Нет ни артикула, ни названия — пустой RFQ бессмысленен (поставщикам
+        # нечего котировать). Не создаём его и не спамим поставщиков, а просим
+        # уточнить, что нужно. Как только пользователь напишет деталь —
+        # create_rfq вызовется уже с query и сделает реальный запрос.
+        return ActionResult(
+            text=(
+                "Что запросить у поставщиков? Напишите артикул или название детали "
+                "— можно с брендом и количеством.\n"
+                "Например: «фильтр масляный Komatsu 600-211-1340, 10 шт» или "
+                "«тормозные колодки на CAT 320»."
+            ),
+            suggestions=["Список поставщиков", "Покажи мои заказы"],
+        )
 
     # Mode определяется классификатором согласно ТЗ §7.1/§7.2.
     # Критерии: matched_count, supplier_status (trusted/sandbox/risky),
