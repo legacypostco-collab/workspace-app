@@ -157,10 +157,13 @@ def limit_message(role=None):
         return {
             "text": (
                 "🔒 Бесплатные AI-запросы закончились.\n"
-                "Завершите продажу — начислим +50 запросов. "
+                "Завершите продажу (+50 запросов) или купите пакет с депозита. "
                 "Каталог, сделки и выплаты работают как обычно."
             ),
-            "actions": [{"label": "💼 Мои сделки", "action": "get_my_deals", "params": {}}],
+            "actions": [
+                {"label": "💳 Купить запросы", "action": "buy_ai_requests", "params": {}},
+                {"label": "💼 Мои сделки", "action": "get_my_deals", "params": {}},
+            ],
             "suggestions": [],
         }
     if r.startswith("operator"):
@@ -175,9 +178,12 @@ def limit_message(role=None):
     return {
         "text": (
             "🔒 Бесплатные AI-запросы закончились.\n"
-            "Оформите заказ — начислим +50 запросов. "
+            "Оформите заказ (+50 запросов) или купите пакет с депозита. "
             "Каталог, цены, заказы и оплата работают как обычно."
         ),
-        "actions": [{"label": "📦 Мои заказы", "action": "get_orders", "params": {}}],
+        "actions": [
+            {"label": "💳 Купить запросы", "action": "buy_ai_requests", "params": {}},
+            {"label": "📦 Мои заказы", "action": "get_orders", "params": {}},
+        ],
         "suggestions": [],
     }

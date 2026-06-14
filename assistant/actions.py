@@ -129,7 +129,7 @@ _BUYER_ACTIONS = [
     # покупка и депозит
     "quick_order", "pay_reserve", "pay_final",
     "shipping_choose", "shipping_apply",
-    "get_balance", "topup_wallet", "link_card", "withdraw_wallet", "transfer_wallet",
+    "get_balance", "topup_wallet", "buy_ai_requests", "link_card", "withdraw_wallet", "transfer_wallet",
     # Production deposit top-up flow
     "start_topup", "submit_topup", "confirm_topup_paid", "cancel_topup", "list_topups",
     # приёмка собственного заказа после доставки
@@ -11355,6 +11355,94 @@ def transfer_wallet(params, user, role):
         actions=[
             {"label": "💬 Написать оператору", "action": "ask_operator", "params": {}},
         ],
+    )
+
+
+_AI_PACKS = (50, 100)  # пакеты AI-запросов для покупки с депозита
+
+
+@register("buy_ai_requests")
+def buy_ai_requests(params, user, role):
+    """Покупка AI-запросов с депозита (кошелька). Без count → меню пакетов;
+    с count (50/100) → атомарно списываем стоимость и начисляем запросы.
+    Цена — settings.AI_REQUEST_PRICE_USD (≈ себестоимость). Для покупателя и
+    продавца (у обоих есть Wallet); операторам недоступно (нет депозита)."""
+    from decimal import Decimal
+
+    from django.conf import settings
+    from django.db import transaction
+    from django.db.models import F
+
+    from marketplace.models import UserProfile
+
+    from .models import Wallet, WalletTx
+
+    price = Decimal(str(getattr(settings, "AI_REQUEST_PRICE_USD", 0.04)))
+
+    try:
+        Wallet.for_user(user)
+        balance0 = Wallet.objects.get(user=user).balance
+    except Exception:
+        balance0 = Decimal("0")
+
+    def _menu():
+        acts = []
+        for n in _AI_PACKS:
+            c = (price * n).quantize(Decimal("0.01"))
+            acts.append({"label": f"Купить {n} (${c:,.2f})",
+                         "action": "buy_ai_requests", "params": {"count": n}})
+        acts.append({"label": "💰 Пополнить депозит", "action": "topup_wallet", "params": {}})
+        return ActionResult(
+            text=("💳 Покупка AI-запросов с депозита.\n"
+                  f"Цена — ${price:.2f} за запрос (по себестоимости). "
+                  f"Остаток депозита: ${balance0:,.2f}."),
+            actions=acts,
+        )
+
+    count = params.get("count")
+    if not count:
+        return _menu()
+    try:
+        count = int(count)
+    except (TypeError, ValueError):
+        return _menu()
+    if count not in _AI_PACKS:
+        return _menu()
+
+    cost = (price * count).quantize(Decimal("0.01"))
+    p = getattr(user, "profile", None)
+    if p is None:
+        return ActionResult(text="Профиль не найден.")
+
+    try:
+        with transaction.atomic():
+            Wallet.for_user(user)
+            wallet = Wallet.objects.select_for_update().get(user=user)
+            if wallet.balance < cost:
+                return ActionResult(
+                    text=(f"На депозите ${wallet.balance:,.2f}, а нужно ${cost:,.2f} "
+                          f"за {count} запросов. Пополните депозит."),
+                    actions=[{"label": "💰 Пополнить депозит",
+                              "action": "topup_wallet", "params": {}}],
+                )
+            wallet.balance = wallet.balance - cost
+            wallet.save(update_fields=["balance", "updated_at"])
+            WalletTx.objects.create(
+                wallet=wallet, kind="debit", amount=cost,
+                description=f"Покупка {count} AI-запросов",
+                balance_after=wallet.balance,
+            )
+            UserProfile.objects.filter(pk=p.pk).update(ai_credits=F("ai_credits") + count)
+    except Exception:
+        logger.exception("buy_ai_requests failed")
+        return ActionResult(text="⚠️ Не удалось купить запросы. Попробуйте позже.")
+
+    p.refresh_from_db(fields=["ai_credits"])
+    wallet.refresh_from_db(fields=["balance"])
+    return ActionResult(
+        text=(f"✓ Куплено {count} AI-запросов за ${cost:,.2f}.\n"
+              f"AI-баланс: {p.ai_credits} запросов · остаток депозита: ${wallet.balance:,.2f}."),
+        actions=[{"label": "💬 Продолжить", "action": "go_home", "params": {}}],
     )
 
 
