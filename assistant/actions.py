@@ -10694,6 +10694,12 @@ def confirm_delivery(params, user, role):
                     seller, event_type="delivery_on_time",
                     meta={"order_id": order.id, "amount": float(s["amount"])},
                 )
+                # AI-кредиты: продавцу +50 запросов за завершённую продажу
+                try:
+                    from . import ai_credits as _aic
+                    _aic.grant_on_sale(seller)
+                except Exception:
+                    logger.exception("ai_credits grant_on_sale failed")
         if released_total > 0:
             n = len(splits)
             release_summary = (

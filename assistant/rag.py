@@ -421,7 +421,7 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
     from . import ai_credits as _aic
     _ok, _left = _aic.try_consume(user, conversation.role)
     if not _ok:
-        _m = _aic.limit_message()
+        _m = _aic.limit_message(conversation.role)
         assistant_msg = Message.objects.create(
             conversation=conversation, role=Message.Role.ASSISTANT,
             content=_m["text"], cards=[], actions=_m["actions"],
@@ -762,7 +762,7 @@ def process_query_stream(conversation: Conversation, user_message: str):
     from . import ai_credits as _aic
     _ok, _left = _aic.try_consume(conversation.user, conversation.role)
     if not _ok:
-        _m = _aic.limit_message()
+        _m = _aic.limit_message(conversation.role)
         yield {"type": "token", "text": _m["text"]}
         yield {"type": "cards", "cards": [], "actions": _m["actions"],
                "text": _m["text"], "contextual_actions": [],

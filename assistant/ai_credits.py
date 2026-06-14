@@ -16,9 +16,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-START_GRANT = 25       # стартовый грант новому покупателю (default поля в модели)
-PURCHASE_GRANT = 50    # пополнение за каждый оплаченный заказ (резерв)
-MONTHLY_REFILL = 10    # мягкий ежемесячный долив до этого минимума
+START_GRANT = 25       # стартовый грант новому пользователю (default поля в модели)
+PURCHASE_GRANT = 50    # +запросов за оплаченный заказ (покупатель) / завершённую продажу (продавец)
+MONTHLY_REFILL = 10    # мягкий ежемесячный долив покупателю/продавцу (до этого минимума)
+OPERATOR_MONTHLY = 100 # ежемесячный долив оператору (внутренний сотрудник, депозита нет)
 
 
 def _profile(user):
@@ -26,24 +27,28 @@ def _profile(user):
 
 
 def is_gated(user, role=None):
-    """True только для реальных покупателей. Операторы/продавцы/staff/аноним — нет."""
+    """True для покупателей, продавцов И операторов — лимитируем всех.
+    НЕ гейтим: аноним (slow-path ему и так недоступен), суперюзер (владелец
+    платформы), роль admin."""
     if user is None or not getattr(user, "is_authenticated", False):
         return False
-    if getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
-        return False
-    if role and role != "buyer":
+    if getattr(user, "is_superuser", False):
         return False
     p = _profile(user)
     if p is None:
         return False
-    if getattr(p, "role", "buyer") in ("operator", "seller"):
+    eff_role = role or getattr(p, "role", "buyer")
+    if eff_role == "admin":
         return False
     return True
 
 
 def _maybe_monthly_refill(p):
-    """Раз в ~30 дней доводим баланс минимум до MONTHLY_REFILL (не суммируем)."""
-    if MONTHLY_REFILL <= 0:
+    """Раз в ~30 дней доводим баланс до минимума (не суммируем). Оператору —
+    до OPERATOR_MONTHLY (у него нет депозита, пополнять нечем), покупателю/
+    продавцу — до MONTHLY_REFILL (мягкая страховка от вечной блокировки)."""
+    target = OPERATOR_MONTHLY if getattr(p, "role", "") == "operator" else MONTHLY_REFILL
+    if target <= 0:
         return
     try:
         from django.utils import timezone
@@ -51,7 +56,7 @@ def _maybe_monthly_refill(p):
         now = timezone.now()
         last = p.ai_credits_refilled_at
         if last is None or (now - last).days >= 30:
-            new_credits = max(int(p.ai_credits or 0), MONTHLY_REFILL)
+            new_credits = max(int(p.ai_credits or 0), target)
             UserProfile.objects.filter(pk=p.pk).update(
                 ai_credits=new_credits, ai_credits_refilled_at=now)
             p.ai_credits = new_credits
@@ -98,8 +103,8 @@ def try_consume(user, role=None, n=1):
         return True, -1
 
 
-def grant_on_purchase(user, amount=PURCHASE_GRANT):
-    """Пополнить баланс при оплате заказа (покупка = обновление лимита)."""
+def grant_on_purchase(user, amount=PURCHASE_GRANT, reason="purchase"):
+    """Начислить запросы (покупателю за оплату заказа / продавцу за продажу)."""
     p = _profile(user)
     if p is None:
         return
@@ -107,10 +112,15 @@ def grant_on_purchase(user, amount=PURCHASE_GRANT):
         from django.db.models import F
         from marketplace.models import UserProfile
         UserProfile.objects.filter(pk=p.pk).update(ai_credits=F("ai_credits") + amount)
-        logger.info("ai_credits +%s granted to user %s (purchase)", amount,
-                    getattr(user, "id", "?"))
+        logger.info("ai_credits +%s granted to user %s (%s)", amount,
+                    getattr(user, "id", "?"), reason)
     except Exception:
         logger.exception("ai_credits grant failed")
+
+
+def grant_on_sale(user, amount=PURCHASE_GRANT):
+    """Начислить продавцу запросы за завершённую продажу (эскроу освобождён)."""
+    return grant_on_purchase(user, amount, reason="sale")
 
 
 def rate_ok(user, bucket, limit, window_s):
@@ -139,18 +149,35 @@ def rate_ok(user, bucket, limit, window_s):
         return True
 
 
-def limit_message():
-    """Сообщение + действия, когда лимит исчерпан. Навигация/оплата — кнопками
-    (они НЕ зовут AI), так что купить можно всегда."""
+def limit_message(role=None):
+    """Сообщение + действия при исчерпании лимита, по роли. Навигация/оплата —
+    кнопками (они НЕ зовут AI), так что работать с платформой можно всегда."""
+    r = role or "buyer"
+    if r == "seller":
+        return {
+            "text": (
+                "🔒 Бесплатные AI-запросы закончились.\n"
+                "Завершите продажу — начислим +50 запросов. "
+                "Каталог, сделки и выплаты работают как обычно."
+            ),
+            "actions": [{"label": "💼 Мои сделки", "action": "get_my_deals", "params": {}}],
+            "suggestions": [],
+        }
+    if r.startswith("operator"):
+        return {
+            "text": (
+                "🔒 Лимит AI-запросов на этот месяц исчерпан.\n"
+                "Он обновится автоматически в начале следующего месяца."
+            ),
+            "actions": [],
+            "suggestions": [],
+        }
     return {
         "text": (
-            "🔒 Лимит бесплатных AI-запросов исчерпан.\n"
-            "Оформите заказ — и помощник снова станет доступен. "
-            "Каталог, цены, ваши заказы и оплата работают как обычно."
+            "🔒 Бесплатные AI-запросы закончились.\n"
+            "Оформите заказ — начислим +50 запросов. "
+            "Каталог, цены, заказы и оплата работают как обычно."
         ),
-        "actions": [
-            {"label": "📦 Мои заказы", "action": "get_orders", "params": {}},
-            {"label": "💼 Мои сделки", "action": "get_my_deals", "params": {}},
-        ],
+        "actions": [{"label": "📦 Мои заказы", "action": "get_orders", "params": {}}],
         "suggestions": [],
     }
