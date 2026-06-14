@@ -15,6 +15,12 @@
 
   const SB_KEY = 'cf_sidebar_open';
   const CONV_KEY = 'cf_active_conv';
+  // Вход через поиск с главной (/chat/?q=...). Захватываем ДО очистки URL
+  // (history.replaceState) — нужно для дефолта сайдбара (см. applyDefaultSidebar).
+  const _ENTRY_SEARCH = (() => {
+    try { return new URLSearchParams(window.location.search).has('q'); }
+    catch (e) { return false; }
+  })();
 
   // Подсказки для smart-вопросов pricelist (warehouse_address/sea_port/
   // air_port). Browser-side datalist фильтрует по введённым символам —
@@ -1801,7 +1807,11 @@
     let open;
     if (saved === '1') open = true;
     else if (saved === '0') open = false;
-    else open = hasHistory;  // first visit: open if history exists
+    // Нет явной настройки (новый визит / переход с главной): по умолчанию
+    // РАЗВЁРНУТ — чтобы был виден переключатель ролей Покупатель/Продавец/Оператор
+    // и было понятно, как войти как продавец. Исключение — вход через поиск с
+    // главной (/chat/?q=...): там нужно место под результаты, оставляем по истории.
+    else open = _ENTRY_SEARCH ? hasHistory : true;
     $('sidebar').classList.toggle('open', open);
   }
 
@@ -2909,7 +2919,10 @@
             <div class="iv-ref-cap">PAYMENT REFERENCE</div>
             <div class="iv-ref-code">${esc(d.ref)}</div>
           </div>
-          <button class="iv-ref-copy" type="button" data-copy="${esc(d.ref)}" title="Скопировать">Копировать</button>
+          <div class="iv-ref-btns" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">
+            <button class="iv-ref-copy" type="button" data-copy="${esc(d.ref)}" title="Скопировать">Копировать</button>
+            ${d.pdf_url ? `<a class="iv-ref-copy iv-ref-dl" href="${esc(d.pdf_url)}" download title="Скачать инвойс в PDF" style="text-decoration:none;">⬇ Скачать</a>` : ''}
+          </div>
           ${d.ref_warning ? `<div class="iv-ref-warn">⚠️ ${esc(d.ref_warning)}</div>` : ''}
         </div>` : ''}
         ${sectionsHtml}

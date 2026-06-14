@@ -1,7 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from . import auth_views, erp_views, pricelist, qr_scan, tg_views, upload, views
+from . import auth_views, documents, erp_views, pricelist, qr_scan, tg_views, upload, views
 
 router = DefaultRouter()
 router.register(r"conversations", views.ConversationViewSet, basename="conversation")
@@ -28,6 +28,8 @@ urlpatterns = [
     path("projects/<uuid:project_id>/documents/<uuid:doc_id>/file/", views.ProjectDocumentFileView.as_view(), name="assistant-project-doc-file"),
     # Order document file (invoice/packing/QC PDF) — стримим через Django, т.к. /media/ на проде не раздаётся
     path("orders/<int:order_id>/documents/<int:doc_id>/file/", views.OrderDocumentFileView.as_view(), name="assistant-order-doc-file"),
+    # Топап-инвойс PDF (инструкции по оплате депозита) — генерится на лету
+    path("topup/<str:ref>/invoice.pdf", documents.TopupInvoicePdfView.as_view(), name="assistant-topup-pdf"),
     # KYB document upload (dealership certificate, bank requisites — file fields в CompanyVerification)
     path("kyb/doc/<str:kind>/", views.KYBDocUploadView.as_view(), name="assistant-kyb-doc-upload"),
     # RFQ detail (for chat-first /chat/rfq/<id>/ page)

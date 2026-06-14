@@ -25,6 +25,9 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.utils import timezone
 
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+
 from .actions import ActionResult, register
 
 logger = logging.getLogger(__name__)
@@ -560,6 +563,113 @@ def _get_order(params, user, role):
     if OrderItem.objects.filter(order=order, part__seller=user).exists():
         return order, None
     return None, ActionResult(text="Нет доступа к этому заказу.")
+
+
+def _build_topup_pdf(topup, details) -> io.BytesIO:
+    """PDF с инструкциями по оплате заявки на пополнение депозита (bank wire):
+    сумма, payment reference, бенефициар, банковские реквизиты, назначение."""
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.utils import simpleSplit
+
+    c, buf = _pdf_canvas(f"Invoice {topup.reference_code}")
+    _draw_header(c, "DEPOSIT TOP-UP — PAYMENT INSTRUCTIONS", f"INV-{topup.id:06d}")
+    width, height = A4
+    x = 20 * mm
+    y = height - 58 * mm
+
+    c.setFillColor(colors.black)
+    c.setFont(FONT_BOLD, 15)
+    c.drawString(x, y, f"К оплате: {details['amount']}")
+    c.setFont(FONT_REGULAR, 8)
+    c.setFillColor(colors.HexColor("#64748b"))
+    c.drawRightString(width - 20 * mm, y, "Срок оплаты: 7 дней")
+    y -= 8 * mm
+
+    # Payment reference — выделенная плашка
+    c.setFillColor(colors.HexColor("#fff7ed"))
+    c.rect(x, y - 9 * mm, width - 40 * mm, 12 * mm, fill=1, stroke=0)
+    c.setFillColor(colors.HexColor("#9a3412"))
+    c.setFont(FONT_BOLD, 7.5)
+    c.drawString(x + 3 * mm, y - 2 * mm, "PAYMENT REFERENCE — обязательно в назначении платежа:")
+    c.setFont(FONT_BOLD, 12)
+    c.setFillColor(colors.black)
+    c.drawString(x + 3 * mm, y - 7 * mm, details["reference_code"])
+    y -= 17 * mm
+
+    def section(title):
+        nonlocal y
+        c.setFillColor(colors.HexColor("#0f172a"))
+        c.setFont(FONT_BOLD, 9)
+        c.drawString(x, y, title.upper())
+        y -= 6 * mm
+
+    def row(label, value):
+        nonlocal y
+        c.setFont(FONT_REGULAR, 8)
+        c.setFillColor(colors.HexColor("#64748b"))
+        c.drawString(x, y, label)
+        c.setFillColor(colors.black)
+        for ln in simpleSplit(str(value), FONT_REGULAR, 8, width - 20 * mm - 62 * mm):
+            c.drawString(x + 42 * mm, y, ln)
+            y -= 4.6 * mm
+        y -= 1.2 * mm
+
+    section("Получатель (Beneficiary)")
+    row("Компания", details["beneficiary"])
+    row("Адрес", details["beneficiary_address"])
+    row("Trade License", details["trade_license"])
+    row("Tax Reg No.", details["tax_no"])
+    y -= 2 * mm
+    section("Банковские реквизиты")
+    row("Банк", details["bank_name"])
+    row("SWIFT / BIC", details["swift"])
+    row("IBAN", details["iban"])
+    row("Account No.", details["account"])
+    row("Branch Code", details["branch_code"])
+    row("Валюта счёта", details["account_currency"])
+    y -= 2 * mm
+    section("Назначение платежа")
+    row("Payment purpose", details["purpose"])
+    y -= 2 * mm
+    section("Контакт по платежу")
+    row("Ответственный", details["contact_name"])
+    row("Телефон", details["contact_phone"])
+    row("Email", details["contact_email"])
+
+    c.setFont(FONT_REGULAR, 7)
+    c.setFillColor(colors.HexColor("#94a3b8"))
+    c.drawString(x, 16 * mm, "Consolidator Parts · реквизиты выданы для конкретной заявки — не пересылайте третьим лицам.")
+    c.showPage()
+    c.save()
+    buf.seek(0)
+    return buf
+
+
+class TopupInvoicePdfView(APIView):
+    """GET /api/assistant/topup/<ref>/invoice.pdf — инвойс заявки на пополнение
+    депозита (bank wire), генерится на лету, без хранения. Только свой ref."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, ref):
+        from django.http import Http404, HttpResponse
+
+        from .actions import _bank_wire_details
+        from .models import WalletTopupRequest
+        topup = WalletTopupRequest.objects.filter(
+            reference_code=ref, user=request.user).first()
+        if not topup:
+            raise Http404("topup not found")
+        details = _bank_wire_details(topup.amount, topup.currency, topup.reference_code)
+        try:
+            buf = _build_topup_pdf(topup, details)
+        except Exception:
+            logger.exception("topup pdf build failed")
+            return HttpResponse("PDF generation failed", status=500)
+        resp = HttpResponse(buf.getvalue(), content_type="application/pdf")
+        resp["Content-Disposition"] = f'attachment; filename="invoice-{ref}.pdf"'
+        return resp
 
 
 @register("generate_invoice_pdf")

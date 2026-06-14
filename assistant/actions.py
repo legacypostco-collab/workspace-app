@@ -11586,6 +11586,7 @@ def submit_topup(params, user, role):
             "expires_text":  "Срок оплаты: 7 дней",
             "amount_text":   f"${amount:,.2f} USD",
             "ref":           ref,
+            "pdf_url":       f"/api/assistant/topup/{ref}/invoice.pdf",
             "ref_warning":   "Этот код ОБЯЗАТЕЛЬНО указать в назначении платежа. Без него деньги невозможно сопоставить с вашим аккаунтом и зачисление задержится.",
             "sections": [
                 {
