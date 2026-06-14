@@ -1056,12 +1056,13 @@ def home(request: HttpRequest) -> HttpResponse:
 
 
 def landing_view(request: HttpRequest) -> HttpResponse:
-    """Алиас на главную для обратной совместимости (/landing/).
-    Поведение идентично home: залогиненный → /chat/, гость → landing.
+    """Главная-маркетинг (/landing/) — показывается ВСЕМ, включая залогиненных.
+
+    Это явный маршрут «вернуться на главную»: на него ведёт логотип в шапке чата.
+    В отличие от home (/), который для залогиненного редиректит в /chat/ (вход в
+    приложение = chat-first), здесь редиректа нет — продавец/покупатель может
+    открыть лендинг и оттуда уйти куда нужно. Все CTA лендинга и так ведут в /chat/.
     """
-    if request.user.is_authenticated:
-        from django.shortcuts import redirect
-        return redirect("/chat/")
     return render(request, "landing.html", _landing_context())
 
 

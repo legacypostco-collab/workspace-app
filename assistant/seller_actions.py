@@ -1313,12 +1313,13 @@ def edit_product(params, user, role):
     except Part.DoesNotExist:
         return ActionResult(text="Товар не найден или не ваш.")
 
-    new_price = params.get("price")
-    new_qty = params.get("stock_qty")
-    new_title = params.get("title")
-    new_brand = params.get("brand")
-
-    if all(v in (None, "") for v in [new_price, new_qty, new_title, new_brand]):
+    # Все редактируемые поля (inline-редактор каталога шлёт их через data-field).
+    # «Продано»/оборот не редактируем — считаются из заказов.
+    EDITABLE = ("oem_number", "cross_numbers", "title", "brand", "manufacturer",
+                "condition", "availability", "currency", "price", "stock_qty",
+                "price_fob_sea", "price_fob_air", "sea_port", "air_port",
+                "warehouse_address", "weight")
+    if all(params.get(k) in (None, "") for k in EDITABLE):
         return ActionResult(
             text=f"Редактирование товара {p.oem_number} ({p.title}).",
             cards=[{
@@ -1342,23 +1343,74 @@ def edit_product(params, user, role):
             }],
         )
 
-    if new_title is not None and new_title.strip():
-        p.title = new_title.strip()
-    if new_price is not None:
-        try: p.price = Decimal(str(new_price))
-        except Exception: pass
-    if new_qty is not None:
-        try: p.stock_quantity = int(new_qty)
-        except Exception: pass
-    if new_brand is not None and new_brand.strip():
-        b, _ = Brand.objects.get_or_create(name=new_brand.strip())
-        p.brand = b
-    p.save()
+    changed = 0
+
+    def _txt(field, attr, required=False, maxlen=None):
+        nonlocal changed
+        v = params.get(field)
+        if v is None:
+            return
+        v = str(v).strip()
+        if maxlen:
+            v = v[:maxlen]   # уважаем max_length модели (иначе 500 на Postgres)
+        if required and not v:
+            return
+        if getattr(p, attr) != v:
+            setattr(p, attr, v); changed += 1
+
+    def _num(field, attr, integer=False):
+        nonlocal changed
+        v = params.get(field)
+        if v in (None, ""):
+            return
+        try:
+            nv = int(v) if integer else Decimal(str(v))
+        except Exception:
+            return
+        if getattr(p, attr) != nv:
+            setattr(p, attr, nv); changed += 1
+
+    def _choice(field, attr, allowed):
+        nonlocal changed
+        v = params.get(field)
+        if v is None:
+            return
+        v = str(v).strip().lower()
+        if v in allowed and getattr(p, attr) != v:
+            setattr(p, attr, v); changed += 1
+
+    _txt("oem_number", "oem_number", required=True, maxlen=100)
+    _txt("title", "title", required=True, maxlen=255)
+    _txt("cross_numbers", "cross_numbers", maxlen=500)
+    _txt("manufacturer", "manufacturer", maxlen=200)
+    _txt("sea_port", "sea_port", maxlen=120)
+    _txt("air_port", "air_port", maxlen=120)
+    _txt("warehouse_address", "warehouse_address", maxlen=255)
+    _num("price", "price")
+    _num("stock_qty", "stock_quantity", integer=True)
+    _num("price_fob_sea", "price_fob_sea")
+    _num("price_fob_air", "price_fob_air")
+    _num("weight", "gross_weight_kg")
+    _choice("condition", "condition", {"oem", "aftermarket", "reman"})
+    _choice("availability", "availability", {"in_stock", "backorder"})
+
+    cur = params.get("currency")
+    if cur and str(cur).strip().upper() in {"USD", "EUR", "RUB", "CNY", "GBP", "JPY", "TRY"}:
+        nc = str(cur).strip().upper()
+        if p.currency != nc:
+            p.currency = nc; changed += 1
+
+    nb = params.get("brand")
+    if nb is not None and str(nb).strip():
+        b, _ = Brand.objects.get_or_create(name=str(nb).strip())
+        if p.brand_id != b.id:
+            p.brand = b; changed += 1
+
+    if changed:
+        p.save()
     return ActionResult(
-        text=f"✓ Товар {p.oem_number} обновлён.",
+        text=(f"✓ Товар {p.oem_number} обновлён." if changed else "Изменений нет."),
         actions=[
-            {"label": "📦 Карточка", "action": "product_detail",
-             "params": {"part_id": p.id}},
             {"label": "📋 Каталог", "action": "seller_catalog", "params": {}},
         ],
     )
@@ -2319,18 +2371,12 @@ def rfq_detail(params, user, role):
         })
     actions_list.append({"label": "📋 Все RFQ", "action": "get_rfq_status", "params": {}})
 
+    # НЕ отдаём карточку type:"rfq" — это покупательский трекер заявки (сколько
+    # поставщиков ответило, бюджет, ЛУЧШАЯ КОТИРОВКА = цены конкурентов, кнопка
+    # «Оператору»). Продавцу она бессмысленна и потенциально утечка чужих цен.
+    # Продавцу хватает текстовой сводки выше + кнопок «Ответить ценой / Отклонить».
     return ActionResult(
         text=text,
-        cards=[{
-            "type": "rfq",
-            "data": {
-                "id": str(rfq.id), "number": rfq.id,
-                "status": rfq.get_status_display(),
-                "description": rfq.notes[:200] if rfq.notes else "",
-                "quantity": sum(it.quantity for it in items),
-                "created_at": rfq.created_at.strftime("%d.%m.%Y %H:%M"),
-            },
-        }],
         actions=actions_list,
         suggestions=["Ответить ценой", "Все RFQ", "Спрос на маркетплейсе"],
     )

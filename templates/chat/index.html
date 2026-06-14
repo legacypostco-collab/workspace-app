@@ -640,6 +640,20 @@
     .cat-dl{color:rgba(0,0,0,0.66);font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;min-width:110px;}
     .cat-details code{font-family:'SF Mono',Menlo,monospace;font-size:11px;background:rgba(0,0,0,0.04);padding:1px 5px;border-radius:4px;}
     .cat-empty-v{color:rgba(0,0,0,0.35);font-style:italic;}
+    /* Inline-редактирование полей товара прямо в карточке каталога */
+    .cat-edit-field{padding:3px 7px;border-radius:6px;border:1px solid rgba(0,0,0,0.18);background:rgba(0,0,0,0.03);color:inherit;font-size:13px;font-family:inherit;}
+    .cat-edit-field:focus{outline:none;border-color:#2D7A3E;}
+    input.cat-edit-field:not([type=number]){flex:1;min-width:150px;font-weight:600;}
+    input.cat-edit-field[type=number]{width:100px;flex:none;font-weight:600;}
+    select.cat-edit-field{flex:none;font-weight:600;cursor:pointer;}
+    .cat-edit-hint{font-size:10.5px;color:rgba(0,0,0,0.45);}
+    .cat-edit-actions{margin:6px 0 2px;gap:12px !important;}
+    .cat-save-edit{background:#2D7A3E;color:#fff;border:none;padding:6px 15px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+    .cat-save-edit:hover{background:#256634;}
+    .cat-save-edit:disabled{opacity:0.6;cursor:default;}
+    .cat-edit-note{font-size:10.5px;color:rgba(0,0,0,0.5);font-style:italic;}
+    body.dark-mode .cat-edit-field{border-color:rgba(255,255,255,0.18);background:rgba(255,255,255,0.05);}
+    body.dark-mode .cat-edit-hint,body.dark-mode .cat-edit-note{color:rgba(255,255,255,0.45);}
 
     /* ── Shipping matrix внутри spec_results ── */
     .sm-block{margin-top:14px;padding:12px 14px;background:rgba(255,255,255,0.5);border-radius:10px;border:1px solid rgba(0,0,0,0.06);}
@@ -971,6 +985,9 @@
     .qf-price-wrap:focus-within{border-color:#1a1a1a;box-shadow:0 0 0 3px rgba(0,0,0,0.05);}
     .qf-currency{font-size:11px;color:rgba(0,0,0,0.50);font-weight:600;text-transform:uppercase;}
     .qf-price-input{flex:1;border:none;outline:none;font-family:'SF Mono','Menlo',monospace;font-size:13px;font-weight:600;color:#0a0a0a;text-align:right;background:transparent;padding:2px 0;font-variant-numeric:tabular-nums;width:100%;}
+    /* Срок поставки per-позиция: spinner-стрелки ВСЕГДА видны (по умолчанию WebKit
+       показывает их только на hover) — чтобы сразу было понятно, что дни можно менять. */
+    .qf-lead::-webkit-inner-spin-button,.qf-lead::-webkit-outer-spin-button{-webkit-appearance:inner-spin-button;opacity:1;}
     .qf-c-total{width:140px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:#0a0a0a;font-size:13.5px;font-family:'SF Mono','Menlo',monospace;}
     /* Aux row (delivery / valid / message) */
     .qf-aux{padding:16px 22px;display:grid;grid-template-columns:1fr 1fr;gap:14px 20px;border-top:1px solid rgba(0,0,0,0.06);background:#fafafa;}
@@ -987,6 +1004,21 @@
     .qf-submit{background:#1a1a1a;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .12s;}
     .qf-submit:hover{background:#000;}
     .qf-submit:disabled{cursor:default;}
+    /* Подсказки котировки: рыночный ориентир · чип аналога */
+    .qf-mkt{font-size:10px;color:rgba(0,0,0,0.5);margin-top:3px;line-height:1.25;text-align:right;}
+    .qf-analog-chip{display:block;width:fit-content;max-width:100%;margin-top:6px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:11px;border:1px solid rgba(232,150,13,0.5);background:rgba(232,150,13,0.12);color:#a85a00;cursor:pointer;font-family:inherit;line-height:1.3;text-align:left;white-space:normal;}
+    .qf-analog-chip:hover{background:rgba(232,150,13,0.22);}
+    .qf-analog-applied{border-color:rgba(34,160,80,0.55);background:rgba(34,160,80,0.14);color:#1c7a3e;cursor:default;}
+    body.dark-mode .qf-mkt{color:rgba(255,255,255,0.45);}
+    body.dark-mode .qf-analog-chip{color:#ffb74d;border-color:rgba(232,150,13,0.5);background:rgba(232,150,13,0.16);}
+    body.dark-mode .qf-analog-applied{color:#81c784;border-color:rgba(34,160,80,0.5);background:rgba(34,160,80,0.18);}
+    /* Полоса скорости ответа (честная метрика) */
+    .qf-speed{padding:11px 22px;border-top:1px solid rgba(0,0,0,0.06);background:rgba(100,181,246,0.06);}
+    .qf-speed-line{font-size:12.5px;font-weight:600;color:#1565c0;}
+    .qf-speed-note{font-size:11px;color:rgba(0,0,0,0.55);margin-top:3px;line-height:1.3;}
+    body.dark-mode .qf-speed{background:rgba(100,181,246,0.08);border-color:rgba(255,255,255,0.07);}
+    body.dark-mode .qf-speed-line{color:#90caf9;}
+    body.dark-mode .qf-speed-note{color:rgba(255,255,255,0.55);}
     /* Dark mode */
     body.dark-mode .qf-card{background:#161616;border-color:rgba(255,255,255,0.07);color:#f0f0f0;}
     body.dark-mode .qf-head,
@@ -3879,27 +3911,16 @@
               data-i18n-title="topbar.menu" data-i18n-aria-label="topbar.menu">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
-      <a href="/" class="top-brand"
+      {% comment %}Логотип → /landing/ (главная-маркетинг). Именно /landing/, а НЕ /,
+        потому что / для залогиненного редиректит обратно в /chat/ — и клик по логотипу
+        «возвращал в чат». /landing/ показывает главную всем.{% endcomment %}
+      <a href="/landing/" class="top-brand"
          title="{% trans 'Перейти на сайт' %}"
          aria-label="{% trans 'Перейти на сайт' %}">
         <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}"
              alt="Consolidator Parts" loading="lazy" width="24" height="24">
         Consolidator Parts
       </a>
-      <script>
-      (function(){
-        var el = document.getElementById('topBrandLink');
-        if (!el) return;
-        el.addEventListener('click', function(ev){
-          ev.preventDefault();
-          ev.stopPropagation();
-          try { window.onbeforeunload = null; } catch(e){}
-          try { document.body.onbeforeunload = null; } catch(e){}
-          // setTimeout чтобы обойти любые синхронные onbeforeunload-handlers
-          setTimeout(function(){ window.location.replace('/'); }, 0);
-        }, true);
-      })();
-      </script>
       <div class="top-right">
         <!-- 🏠 Home — возврат к welcome stage чата (не путать с /). -->
         <button class="top-home" id="topHome" onclick="goHome()"
@@ -4062,7 +4083,7 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=6"></script>
-<script src="{% static 'js/chat-first.js' %}?v=165"></script>
+<script src="{% static 'js/chat-first.js' %}?v=176"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>

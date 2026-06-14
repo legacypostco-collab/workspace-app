@@ -531,10 +531,23 @@ class QuoteItem(models.Model):
     quantity = models.PositiveIntegerField(default=1)
     unit_price = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     notes = models.CharField(max_length=400, blank=True)
+    # Per-позиционные характеристики (продавец задаёт по каждой позиции).
+    delivery_days = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Срок поставки этой позиции (дни). Пусто → берём общий Quote.delivery_days")
+    CONDITION_CHOICES = [("oem", "OEM"), ("analog", "Аналог")]
+    condition = models.CharField(
+        max_length=20, choices=CONDITION_CHOICES, default="oem",
+        help_text="Тип позиции: оригинал (OEM) или аналог")
 
     @property
     def line_total(self):
         return self.unit_price * self.quantity
+
+    @property
+    def eff_delivery_days(self):
+        """Эффективный срок позиции: свой, иначе общий по котировке."""
+        return self.delivery_days if self.delivery_days is not None else self.quote.delivery_days
 
 
 class Order(models.Model):
@@ -1063,6 +1076,7 @@ class SupplierRatingEvent(models.Model):
     EVENT_CHOICES = [
         ("rfq_response", "RFQ Response"),
         ("rfq_response_late", "RFQ Response Late"),
+        ("terms_worsened", "Terms Worsened"),
         ("data_mismatch", "Data Mismatch"),
         ("delivery_delay", "Delivery Delay"),
         ("delivery_on_time", "Delivery On Time"),

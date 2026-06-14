@@ -2235,8 +2235,8 @@
         const status = r.is_active ? 'cat-active' : 'cat-archived';
         const ccy = r.currency || 'USD';
         const stockBadge = r.stock_qty > 0
-          ? `<span class="cat-chip cat-chip-green">${r.stock_qty} шт</span>`
-          : '<span class="cat-chip cat-chip-gray">нет в наличии</span>';
+          ? `<span class="cat-chip cat-chip-green cat-stock-badge">${r.stock_qty} шт</span>`
+          : '<span class="cat-chip cat-chip-gray cat-stock-badge">нет в наличии</span>';
         const sold = r.sold_qty
           ? `<span class="cat-chip cat-chip-blue">${r.sold_qty} продано</span>`
           : '';
@@ -2247,27 +2247,30 @@
         // Раскрываемая «портянка» с полными данными позиции.
         // Все поля показываем, даже пустые (с «—»), чтобы продавец видел
         // что есть в карточке, а что надо дозаполнить.
-        const fobBits = [];
-        fobBits.push(`SEA ${r.price_fob_sea ? fmtMoney(r.price_fob_sea, ccy) : '—'}`);
-        fobBits.push(`AIR ${r.price_fob_air ? fmtMoney(r.price_fob_air, ccy) : '—'}`);
-        const dim = (r.weight_kg) ? `${r.weight_kg} кг` : '—';
-        const dash = v => v ? esc(v) : '<span class="cat-empty-v">—</span>';
+        // Все поля детали редактируемые (data-field → имя параметра edit_product).
+        // «Продано»/оборот — read-only (считается из заказов).
+        const ti = (field, val) => `<input class="cat-edit-field" data-field="${field}" value="${esc(val != null && val !== '—' ? String(val) : '')}" />`;
+        const ni = (field, val, step) => `<input class="cat-edit-field" type="number" min="0" step="${step || '0.01'}" data-field="${field}" value="${val != null ? esc(String(val)) : ''}" />`;
+        const opts = (map, sel) => Object.keys(map).map(v => `<option value="${v}"${sel === v ? ' selected' : ''}>${esc(map[v])}</option>`).join('');
+        const sel = (field, map, val) => `<select class="cat-edit-field" data-field="${field}">${opts(map, val)}</select>`;
+        const CCY = {USD: 'USD', EUR: 'EUR', RUB: 'RUB', CNY: 'CNY', GBP: 'GBP'};
         const details = `
           <div class="cat-details">
-            <div><span class="cat-dl">Артикул (OEM):</span> <code>${esc(r.article || '')}</code></div>
-            <div><span class="cat-dl">Кросс-номера:</span> ${r.cross_numbers ? `<code>${esc(r.cross_numbers)}</code>` : '<span class="cat-empty-v">—</span>'}</div>
-            <div><span class="cat-dl">Название:</span> ${dash(r.title)}</div>
-            <div><span class="cat-dl">Бренд:</span> ${dash(r.brand)}</div>
-            <div><span class="cat-dl">Завод-производитель:</span> ${dash(r.manufacturer)}</div>
-            <div><span class="cat-dl">Состояние:</span> ${dash(r.condition)}</div>
-            <div><span class="cat-dl">Наличие:</span> ${dash(r.availability)}</div>
-            <div><span class="cat-dl">Остаток:</span> ${r.stock_qty || 0} шт</div>
-            <div><span class="cat-dl">Цена EXW:</span> ${fmtMoney(r.price, ccy)}</div>
-            <div><span class="cat-dl">Цена FOB:</span> ${fobBits.join(' · ')}</div>
-            <div><span class="cat-dl">Морпорт:</span> ${dash(r.sea_port)}</div>
-            <div><span class="cat-dl">Аэропорт:</span> ${dash(r.air_port)}</div>
-            <div><span class="cat-dl">Адрес склада:</span> ${dash(r.warehouse)}</div>
-            <div><span class="cat-dl">Вес:</span> ${dim}</div>
+            <div><span class="cat-dl">Артикул (OEM):</span> ${ti('oem_number', r.article)}</div>
+            <div><span class="cat-dl">Кросс-номера:</span> ${ti('cross_numbers', r.cross_numbers)}</div>
+            <div><span class="cat-dl">Название:</span> ${ti('title', r.title)}</div>
+            <div><span class="cat-dl">Бренд:</span> ${ti('brand', r.brand)}</div>
+            <div><span class="cat-dl">Завод-производитель:</span> ${ti('manufacturer', r.manufacturer)}</div>
+            <div><span class="cat-dl">Состояние:</span> ${sel('condition', {oem: 'OEM', aftermarket: 'Aftermarket', reman: 'REMAN'}, r.condition || 'oem')}</div>
+            <div><span class="cat-dl">Наличие:</span> ${sel('availability', {in_stock: 'В наличии', backorder: 'Под заказ'}, r.availability || 'in_stock')}</div>
+            <div class="cat-edit-line"><span class="cat-dl">Остаток:</span> <input class="cat-edit-field cat-edit-stock" type="number" min="0" step="1" data-field="stock_qty" value="${r.stock_qty || 0}" /> шт <span class="cat-edit-hint">&gt; 0 — в наличии</span></div>
+            <div class="cat-edit-line"><span class="cat-dl">Цена EXW:</span> ${sel('currency', CCY, r.currency || 'USD')} <input class="cat-edit-field cat-edit-price" type="number" min="0" step="0.01" data-field="price" value="${r.price != null ? r.price : ''}" /></div>
+            <div class="cat-edit-line"><span class="cat-dl">Цена FOB:</span> SEA ${ni('price_fob_sea', r.price_fob_sea)} · AIR ${ni('price_fob_air', r.price_fob_air)}</div>
+            <div><span class="cat-dl">Морпорт:</span> ${ti('sea_port', r.sea_port)}</div>
+            <div><span class="cat-dl">Аэропорт:</span> ${ti('air_port', r.air_port)}</div>
+            <div><span class="cat-dl">Адрес склада:</span> ${ti('warehouse_address', r.warehouse)}</div>
+            <div class="cat-edit-line"><span class="cat-dl">Вес:</span> ${ni('weight', r.weight_kg, '0.001')} кг</div>
+            <div class="cat-edit-actions"><button class="cat-save-edit" data-part-id="${r.id}" data-ccy="${esc(ccy)}">💾 Сохранить</button> <span class="cat-edit-note">меняется вручную, на ваше усмотрение</span></div>
             <div><span class="cat-dl">Продано:</span> ${r.sold_qty || 0} шт · оборот ${fmtMoney(r.revenue || 0, ccy)}</div>
           </div>`;
 
@@ -2594,6 +2597,12 @@
         supplier_rating: sv ? supRating : '',
         ship_mode: d.shipping_mode || '',   // способ доставки → колонка «Доставка»
         rfq_item_id: it.rfq_item_id,
+        // Подсказки котировки: рыночный ориентир, цена из каталога, аналог.
+        market_usd: it.market_usd,
+        market_lo: it.market_lo,
+        market_hi: it.market_hi,
+        catalog_usd: it.catalog_usd,
+        analog: it.analog || null,
       }));
       const nCat = items.filter((it) => it.in_catalog).length;
       const total = items.reduce((s, it) => s + Number(it.quantity || 0) * Number(it.unit_price || 0), 0);
@@ -2628,6 +2637,8 @@
           valid_days: d.valid_days || 7,
           parent_quote_id: d.parent_quote_id || '',
           direction: d.direction || 'seller_to_buyer',
+          speed: d.seller_speed || null,   // честная метрика скорости ответа
+          rfq_age: d.rfq_age || '',
         },
       });
     },
@@ -4020,6 +4031,10 @@
       // (Раньше всегда был грузовик — даже когда груз идёт морем.)
       const _shipMode = d.shipping_mode || ((d.items || []).find(it => it.ship_mode) || {}).ship_mode || '';
       const shipIcon = {sea: '🚢', air: '✈️', auto: '🚚'}[_shipMode] || '📦';
+      // Режим котировки: продавец заполняет цену/тип/срок. Тогда у таблицы свой
+      // компактный набор колонок (Тип и Срок — отдельными колонками, без Weight/
+      // Поставщик/Доставка), чтобы Name не сжимался и ничего не «ехало».
+      const qfMode = !!d.editable_price;
       const rows = (d.items || []).map((it, idx) => {
         if (it.status === 'not_found' && !it.id) {
           return `<tr><td><span class="spec-stk no"><span class="spec-stk-dot"></span>—</span></td>
@@ -4111,6 +4126,42 @@
         const modeDot = MODE_DOT[it.item_mode] || '';
         const freshHint = (it.is_fresh === false && it.freshness_days != null)
           ? ` <span class="spec-stale" title="Данные устарели на ${it.freshness_days} дн — попадает в SEMI">⏰${it.freshness_days}д</span>` : '';
+        // Per-позиционные поля котировки (только когда форма редактируемая)
+        const qfEditable = d.editable_price && it.rfq_item_id != null;
+        const condSel = qfEditable
+          ? `<select class="qf-item-input qf-cond" name="cond_${esc(String(it.rfq_item_id))}" title="OEM или аналог" style="width:90px;max-width:100%;font-size:13px;font-weight:700;padding:4px 5px;border-radius:5px;"><option value="oem"${(it.condition||'oem')==='oem'?' selected':''}>OEM</option><option value="analog"${it.condition==='analog'?' selected':''}>Аналог</option></select>`
+          : '';
+        const leadInp = qfEditable
+          ? `<input class="qf-item-input qf-lead" type="number" min="1" name="lead_${esc(String(it.rfq_item_id))}" placeholder="дней" value="${it.delivery_days!=null?esc(String(it.delivery_days)):''}" title="Срок поставки этой позиции (дн)" style="width:82px;max-width:100%;font-size:13px;font-weight:700;padding:4px 5px;border-radius:5px;" />`
+          : '';
+        // Рыночный ориентир по OEM — под полем цены (продавцу: не продешевить).
+        const qfMktHint = (it.market_usd != null)
+          ? `<div class="qf-mkt" title="Ориентир рыночной цены по этому OEM из каталога">рынок ≈ $${esc(String(it.market_usd))}${(it.market_lo != null && it.market_hi != null && it.market_hi > it.market_lo) ? ` · ${esc(String(it.market_lo))}–${esc(String(it.market_hi))}` : ''}</div>`
+          : '';
+        const priceCellQf = (d.editable_price && it.rfq_item_id != null)
+          ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" value="${Number(it.price || 0).toFixed(2)}" /></div>${qfMktHint}`
+          : fmtMoney(it.price, it.currency || 'USD');
+        // Чип «аналог из вашего каталога» — для позиций, которых нет как OEM.
+        const qfAnalogChip = (it.analog && it.analog.price_usd != null)
+          ? `<button type="button" class="qf-analog-chip" data-analog-price="${esc(String(it.analog.price_usd))}" data-analog-article="${esc(it.analog.article || '')}" title="Ваш аналог ${esc(it.analog.article || '')} в наличии — подставить цену и тип «Аналог»">🔄 аналог: ${esc(it.analog.article || '—')} · $${esc(String(Math.round(it.analog.price_usd)))}</button>`
+          : '';
+        if (qfMode) {
+          // Форма котировки: Тип (OEM/Аналог) и Срок — отдельными колонками.
+          // Weight / Поставщик / Доставка убраны (продавец сам поставщик, вес — из
+          // спеки покупателя, способ доставки общий) → Name получает много места.
+          const condFallback = it.condition === 'analog' ? 'Аналог' : (it.condition === 'oem' ? 'OEM' : '—');
+          return `<tr${rowAttrs}>
+            <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
+            <td class="spec-row-num">${modeDot}${idx+1}</td>
+            <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
+            <td><div class="spec-name-cell"><span class="spec-name">${esc(it.name || '')}</span>${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div>${qfAnalogChip}</td>
+            <td>${esc(it.brand || '')}</td>
+            <td class="qf-cond-cell">${condSel || condFallback}</td>
+            <td class="spec-price">${priceCellQf}</td>
+            <td>${esc(it.qty || '')}</td>
+            <td class="spec-ship qf-lead-cell">${leadInp || (it.delivery_days != null ? esc(String(it.delivery_days)) + ' дн' : '—')}</td>
+          </tr>${detailRow}`;
+        }
         return `<tr${rowAttrs}>
           <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
           <td class="spec-row-num">${modeDot}${idx+1}</td>
@@ -4123,7 +4174,7 @@
           <td>${esc(it.qty || '')}</td>
           <td>${esc(it.weight || '')}</td>
           ${showSupplierCol ? `<td>${supplierCell}</td>` : ''}
-          <td class="spec-ship">${shipCell}</td>
+          <td class="spec-ship">${shipCell}${leadInp}</td>
         </tr>${detailRow}`;
       }).join('');
       const detailBlocks = '';
@@ -4182,11 +4233,14 @@
         </div>
         <div class="spec-tbl-wrap">
           <table class="spec-tbl spec-tbl-fixed">
-            <colgroup>${showSupplierCol
+            <colgroup>${qfMode
+              ? '<col style="width:11%"><col style="width:4%"><col style="width:13%"><col style="width:19%"><col style="width:12%"><col style="width:10%"><col style="width:13%"><col style="width:6%"><col style="width:12%">'
+              : (showSupplierCol
               ? '<col style="width:12%"><col style="width:3%"><col style="width:12%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:5%"><col style="width:8%"><col style="width:13%"><col style="width:12%">'
-              : '<col style="width:12%"><col style="width:3%"><col style="width:13%"><col style="width:13%"><col style="width:17%"><col style="width:11%"><col style="width:6%"><col style="width:9%"><col style="width:16%">'}</colgroup>
-            <thead><tr>
-              <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Price</th><th>Qty</th><th>Weight</th>${showSupplierCol ? '<th>Поставщик</th>' : ''}<th>${shipIcon} Доставка${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>
+              : '<col style="width:12%"><col style="width:3%"><col style="width:13%"><col style="width:13%"><col style="width:17%"><col style="width:11%"><col style="width:6%"><col style="width:9%"><col style="width:16%">')}</colgroup>
+            <thead><tr>${qfMode
+              ? '<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Тип</th><th>Price</th><th>Qty</th><th>Срок</th>'
+              : `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Price</th><th>Qty</th><th>Weight</th>${showSupplierCol ? '<th>Поставщик</th>' : ''}<th>${shipIcon} Доставка${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>`}
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -4279,6 +4333,55 @@
   window.__catalogSearch = function(inp, warehouseId) {
     return window.__catalogLiveSearch(inp, warehouseId, true);
   };
+
+  // Inline-сохранение цены/остатка товара из карточки каталога (edit_product).
+  // Наличие управляется остатком: > 0 → «в наличии». IDOR-safe — бэкенд фильтрует
+  // Part по seller=user. Сводку строки обновляем на месте (без перерисовки списка).
+  document.addEventListener('click', function(e) {
+    var btn = e.target && e.target.closest && e.target.closest('.cat-save-edit');
+    if (!btn) return;
+    e.preventDefault();
+    var row = btn.closest('.cat-row');
+    if (!row) return;
+    var params = { part_id: btn.dataset.partId };
+    row.querySelectorAll('.cat-edit-field').forEach(function(inp){
+      if (inp.dataset.field) params[inp.dataset.field] = inp.value;
+    });
+    btn.disabled = true; btn.textContent = '⏳ Сохраняю…';
+    fetch('/api/assistant/action/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+      credentials: 'same-origin',
+      body: JSON.stringify({ action: 'edit_product', params: params }),
+    }).then(function(r){ return r.json(); }).then(function(resp){
+      btn.disabled = false;
+      if (resp && resp.error) { btn.textContent = '💾 Сохранить'; if (window.toast) window.toast('❌ ' + resp.error, 3000); return; }
+      // Обновляем сводку строки на месте: артикул / название / цена / наличие.
+      var setTxt = function(s, v){ var el = row.querySelector(s); if (el && v != null && v !== '') el.textContent = v; };
+      setTxt('.cat-art', params.oem_number);
+      setTxt('.cat-name', params.title);
+      var ccy = params.currency || btn.dataset.ccy || 'USD';
+      var nPrice = parseFloat(params.price);
+      var sym = ({USD:'$', EUR:'€', RUB:'₽', CNY:'¥', GBP:'£'})[ccy] || '';
+      var money = isNaN(nPrice) ? '—'
+        : (sym ? sym + Math.round(nPrice).toLocaleString('en-US')
+               : Math.round(nPrice).toLocaleString('en-US') + ' ' + ccy);
+      var priceEl = row.querySelector('.cat-price');
+      if (priceEl) priceEl.textContent = money;
+      var nStock = Math.max(0, parseInt(params.stock_qty, 10) || 0);
+      var badge = row.querySelector('.cat-stock-badge');
+      if (badge) {
+        if (nStock > 0) { badge.className = 'cat-chip cat-chip-green cat-stock-badge'; badge.textContent = nStock + ' шт'; }
+        else { badge.className = 'cat-chip cat-chip-gray cat-stock-badge'; badge.textContent = 'нет в наличии'; }
+      }
+      btn.textContent = '✓ Сохранено';
+      setTimeout(function(){ btn.textContent = '💾 Сохранить'; }, 1500);
+      if (window.toast) window.toast('✓ Сохранено', 2000);
+    }).catch(function(){
+      btn.disabled = false; btn.textContent = '💾 Сохранить';
+      if (window.toast) window.toast('Ошибка сохранения', 3000);
+    });
+  });
 
   // S3 — whitelist допустимых типов карточек. Источник истины: ключи `renderers`.
   // Любой неизвестный тип (включая случай когда AI/бэкенд вернул мусор) —
@@ -4861,7 +4964,19 @@
     const q = d.qf || {};
     const n = (d.items || []).length;
     const totRound = '$' + Number(d.total || 0).toLocaleString('en-US', {maximumFractionDigits: 0});
-    return `<div class="qf-aux">
+    // Честная полоса скорости: возраст RFQ + реальная медиана/перцентиль продавца.
+    // Без фальшивых наград — посыл «ответь, пока запрос активен».
+    const sp = q.speed || null;
+    const speedBits = [];
+    if (q.rfq_age) speedBits.push('⏱ ' + esc(q.rfq_age));
+    if (sp && sp.median_min != null) {
+      speedBits.push('ваша скорость ответа ' + esc(sp.median_label)
+        + (sp.faster_than_pct != null ? ' · быстрее ' + esc(String(sp.faster_than_pct)) + '% продавцов' : ''));
+    }
+    const speedStrip = (speedBits.length)
+      ? `<div class="qf-speed"><div class="qf-speed-line">${speedBits.join(' · ')}</div><div class="qf-speed-note">Ответ в течение 1 ч поднимает ваш рейтинг, а рейтинг влияет на ранжирование предложений — и на продажи. Ответ позже 24 ч снижает рейтинг.</div></div>`
+      : '';
+    return `${speedStrip}<div class="qf-aux">
         <div class="qf-aux-row"><label>Срок поставки (дней)</label>
           <input class="qf-aux-input" name="delivery_days" type="number" min="1" value="${esc(String(q.delivery_days || 14))}" /></div>
         <div class="qf-aux-row"><label>Котировка действует (дней)</label>
@@ -4928,7 +5043,30 @@
     card.querySelectorAll('.qf-aux-input, .qf-aux-textarea').forEach(inp => {
       params[inp.name] = inp.value;
     });
+    // Per-позиционные: срок (lead_<id>) + тип OEM/аналог (cond_<id>)
+    card.querySelectorAll('.qf-item-input').forEach(inp => {
+      if (inp.value !== '' && inp.value != null) params[inp.name] = inp.value;
+    });
     if (typeof quickAction === 'function') quickAction('submit_quote', params);
+  });
+
+  // Применить аналог из каталога продавца к позиции (чип «🔄 аналог»).
+  document.addEventListener('click', (e) => {
+    const chip = e.target && e.target.closest && e.target.closest('.qf-analog-chip');
+    if (!chip) return;
+    e.preventDefault();
+    const card = chip.closest('.qf-card');
+    const row = chip.closest('tr');
+    if (!row) return;
+    const price = Number(chip.dataset.analogPrice || 0);
+    const priceInp = row.querySelector('.qf-price-input');
+    if (priceInp && price > 0) priceInp.value = price.toFixed(2);
+    const condSel = row.querySelector('.qf-cond');
+    if (condSel) condSel.value = 'analog';
+    if (card) _qfRecalc(card);
+    chip.classList.add('qf-analog-applied');
+    chip.textContent = '✓ аналог применён: ' + (chip.dataset.analogArticle || '');
+    if (window.toast) window.toast('🔄 Аналог подставлен · тип «Аналог»', 2400);
   });
 
   // Делегированный обработчик copy-кнопок (invoice card)

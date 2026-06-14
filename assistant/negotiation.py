@@ -407,6 +407,54 @@ def _seller_catalog_match(seller_parts_qs, rfq_item, oem=None, name=None):
     return None
 
 
+def _market_price_usd(oem):
+    """Ориентир рыночной цены по OEM из общего каталога → (median, lo, hi) в USD
+    (целые). Помогает продавцу не продешевить и не вылететь из конкурса.
+
+    Точный матч по oem_number (использует индекс — быстро на 900К+ позиций).
+    Кап 300 строк. Fail-soft: любая проблема → (None, None, None), форма не падает.
+    """
+    if not oem:
+        return (None, None, None)
+    try:
+        from statistics import median
+        from marketplace.models import Part
+        from marketplace.fx import to_usd_float
+        rows = list(Part.objects.filter(
+            oem_number=oem, is_active=True, price__gt=0,
+        ).values_list("price", "currency")[:300])
+        usd = []
+        for price, ccy in rows:
+            v = to_usd_float(price, ccy or "USD")
+            if v and v > 0:
+                usd.append(v)
+        if not usd:
+            return (None, None, None)
+        return (int(round(median(usd))), int(round(min(usd))), int(round(max(usd))))
+    except Exception:
+        return (None, None, None)
+
+
+def _seller_analog(seller_parts_qs, oem):
+    """Аналог ИЗ КАТАЛОГА ПРОДАВЦА для запрошенного OEM: его позиция, у которой
+    этот OEM указан в кросс-номерах, но сам oem_number другой (т.е. это аналог,
+    а не тот же оригинал). → Part | None. Fail-soft.
+
+    Ищем только по каталогу самого продавца (seller_parts_qs уже отфильтрован по
+    seller) — это и быстро (малый набор), и корректно: продавец может предложить
+    лишь то, что у него реально есть.
+    """
+    if not oem or seller_parts_qs is None:
+        return None
+    try:
+        return (seller_parts_qs
+                .filter(cross_numbers__icontains=oem, is_active=True)
+                .exclude(oem_number__iexact=oem)
+                .select_related("brand").first())
+    except Exception:
+        return None
+
+
 # ══════════════════════════════════════════════════════════
 # 1. submit_quote — продавец создаёт котировку
 # ══════════════════════════════════════════════════════════
@@ -525,6 +573,25 @@ def submit_quote(params, user, role):
                 price_d = Decimal("0")
             suggested_total += (price_d * Decimal(str(it.quantity or 0)))
 
+            # ── Подсказки продавцу в момент котировки ──
+            # A) рыночный ориентир по OEM, B) своя цена из каталога (для кнопки
+            # автозаполнения), C) аналог из своего каталога (если оригинала нет).
+            from marketplace.fx import to_usd_float as _to_usd
+            mkt_med, mkt_lo, mkt_hi = _market_price_usd(article)
+            catalog_usd = None
+            if in_catalog and src is not None:
+                catalog_usd = _to_usd(src.price, src.currency or "USD")
+            analog = None
+            if not in_catalog and seller_parts_qs is not None:
+                _ap = _seller_analog(seller_parts_qs, article)
+                if _ap is not None:
+                    analog = {
+                        "article":   _ap.oem_number or "",
+                        "title":     (_ap.title or "")[:60],
+                        "price_usd": _to_usd(_ap.price, _ap.currency or "USD"),
+                        "stock":     int(_ap.stock_quantity or 0),
+                    }
+
             items_for_card.append({
                 "rfq_item_id":  it.id,
                 "article":      article,
@@ -540,6 +607,12 @@ def submit_quote(params, user, role):
                 "in_catalog":   in_catalog,
                 "stock":        stock_qty,
                 "availability": avail_label,
+                # Новые подсказки (фронт: рынок под ценой / «Из каталога» / чип аналога)
+                "market_usd":   mkt_med,
+                "market_lo":    mkt_lo,
+                "market_hi":    mkt_hi,
+                "catalog_usd":  float(catalog_usd) if catalog_usd is not None else None,
+                "analog":       analog,
             })
 
         # Бейдж надёжности самого продавца — в колонку «Поставщик», как
@@ -577,6 +650,18 @@ def submit_quote(params, user, role):
         ship_mode_ru = {"sea": "морем", "air": "авиа", "auto": "авто"}.get(ship_mode, "")
         dest_port = {"sea": "морской порт", "air": "аэропорт", "auto": "терминал"}.get(ship_mode, "порт")
 
+        # Скорость ответа продавца — РЕАЛЬНАЯ метрика (медиана + перцентиль) и
+        # возраст RFQ. Честный посыл «отвечай, пока запрос активен». Только продавцу.
+        seller_speed = None
+        rfq_age = ""
+        if role == "seller":
+            try:
+                from .seller_speed import rfq_age_label, seller_speed_standing
+                seller_speed = seller_speed_standing(user)
+                rfq_age = rfq_age_label(rfq)
+            except Exception:
+                seller_speed = None
+
         return ActionResult(
             text=(f"💬 Котировка по RFQ #{rfq.id}"
                   + (f" · ответ на counter (раунд {_next_round(rfq, user.id)})" if parent_quote_id else "")
@@ -612,12 +697,15 @@ def submit_quote(params, user, role):
                     "message":         message,
                     "parent_quote_id": parent_quote_id or "",
                     "direction":       direction,
+                    # Скорость ответа (честная метрика) + возраст запроса.
+                    "seller_speed":    seller_speed,
+                    "rfq_age":         rfq_age,
                 },
             }],
-            actions=[
-                {"label": "📦 Открыть RFQ #" + str(rfq.id), "action": "rfq_detail",
-                 "params": {"rfq_id": rfq.id}},
-            ],
+            # «Открыть RFQ #N» убрана: вела на текстовый пересказ RFQ, который
+            # полностью дублирует форму котировки выше (позиции, код покупателя,
+            # режим, «куда»). Продавцу это ничего не давало — лишний клик.
+            actions=[],
             contextual_actions=[
                 {"action": "seller_inbox", "label": "← Срочные задачи"},
             ],
@@ -633,10 +721,21 @@ def submit_quote(params, user, role):
             price = Decimal(str(raw))
         except Exception:
             continue
+        # Per-позиционные: срок поставки (lead_<id>) и тип OEM/Аналог (cond_<id>)
+        lead_raw = params.get(f"lead_{it.id}")
+        try:
+            lead = int(lead_raw) if lead_raw not in (None, "") else None
+        except (TypeError, ValueError):
+            lead = None
+        cond = params.get(f"cond_{it.id}")
+        if cond not in ("oem", "analog"):
+            cond = "oem"
         item_data.append({
             "rfq_item": it,
             "unit_price": price,
             "quantity": it.quantity,
+            "delivery_days": lead,
+            "condition": cond,
         })
 
     if not item_data:
@@ -671,6 +770,8 @@ def submit_quote(params, user, role):
             title_snapshot=d["rfq_item"].query[:300],
             quantity=d["quantity"],
             unit_price=d["unit_price"],
+            delivery_days=d.get("delivery_days"),
+            condition=d.get("condition", "oem"),
         )
 
     # Состояние RFQ
@@ -710,15 +811,48 @@ def submit_quote(params, user, role):
             url=f"/chat/?rfq={rfq.id}",
         )
 
-    # Rating event: +1 за быстрый ответ на RFQ (ТЗ §8)
-    try:
-        from .rating import record_rating_event
-        record_rating_event(
-            user, event_type="rfq_response",
-            meta={"rfq_id": rfq.id, "quote_id": quote.id, "round": round_number},
-        )
-    except Exception:
-        logger.exception("rating event on submit_quote failed")
+    # Rating event: скорость ПЕРВОГО ответа реально влияет на рейтинг
+    # (быстрый +1 / поздний −2 / средний — нейтрально), а рейтинг — на ранжирование
+    # предложений в _rank_offers, т.е. на продажи (ТЗ §8). Только round 1:
+    # counter-раунды — это переторжка, а не «скорость ответа».
+    if round_number == 1:
+        try:
+            from .rating import record_rating_event
+            from .seller_speed import response_event_for
+            ev_type, resp_min = response_event_for(rfq, quote)
+            if ev_type:
+                record_rating_event(
+                    user, event_type=ev_type,
+                    meta={"rfq_id": rfq.id, "quote_id": quote.id,
+                          "response_minutes": resp_min},
+                )
+        except Exception:
+            logger.exception("rating event on submit_quote failed")
+
+    # Ухудшение условий на переторжке (round>1): поднял цену / удлинил срок поставки
+    # / сократил срок действия КП → мягкий −1 к рейтингу (не перегибаем). Хорошие
+    # изменения (снизил цену) НЕ штрафуются. Сравниваем с прошлой котировкой продавца.
+    elif round_number > 1:
+        try:
+            prev = (Quote.objects.filter(rfq=rfq, seller=user, direction="seller_to_buyer")
+                    .exclude(id=quote.id).order_by("-round_number", "-created_at").first())
+            if prev is not None:
+                worse = {}
+                if (quote.total_amount is not None and prev.total_amount is not None
+                        and quote.total_amount > prev.total_amount):
+                    worse["price_up"] = f"{prev.total_amount}->{quote.total_amount}"
+                if (quote.delivery_days or 0) > (prev.delivery_days or 0):
+                    worse["delivery_up"] = f"{prev.delivery_days}->{quote.delivery_days}"
+                if prev.valid_until and quote.valid_until and quote.valid_until < prev.valid_until:
+                    worse["validity_down"] = True
+                if worse:
+                    from .rating import record_rating_event
+                    record_rating_event(
+                        user, event_type="terms_worsened",
+                        meta={"rfq_id": rfq.id, "quote_id": quote.id, **worse},
+                    )
+        except Exception:
+            logger.exception("terms_worsened rating event failed")
 
     # Если это counter-respond — пометить parent как countered → submitted (он ответил)
     if parent and parent.direction == "buyer_to_seller":

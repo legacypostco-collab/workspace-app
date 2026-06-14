@@ -13,6 +13,7 @@
   rfq_response_quick     +1   ответил на запрос быстро
   rfq_response_late      −2   ответил после нормативного срока
   no_response            −5   не ответил вовсе
+  terms_worsened         −1   ухудшил условия на переторжке (поднял цену/срок)
   data_mismatch          −5   подтвердил наличие, по факту нет
   delivery_on_time       +2   успел в срок
   delivery_delay         −5   просрочил отгрузку
@@ -41,6 +42,7 @@ _DEFAULT_IMPACTS = {
     "rfq_response":         Decimal("1"),    # quick response (positive default)
     "rfq_response_late":    Decimal("-2"),
     "no_response":          Decimal("-5"),
+    "terms_worsened":       Decimal("-1"),   # поднял цену/срок на переторжке (мягко)
     "data_mismatch":        Decimal("-5"),
     "delivery_on_time":     Decimal("2"),
     "delivery_delay":       Decimal("-5"),

@@ -5806,6 +5806,30 @@ def get_sla_report(params, user, role):
     if stuck:
         text_parts.append(f"🔴 {len(stuck)} заказов застряли — превысили норматив этапа более чем вдвое.")
 
+    # ── Скорость ответа на запросы — реальная метрика (только продавцу) ──
+    # Та же цифра, что в форме котировки: медиана RFQ.created→Quote.created + перцентиль.
+    if role == "seller":
+        try:
+            from .seller_speed import seller_speed_standing
+            sp = seller_speed_standing(user)
+            if sp.get("median_min") is not None:
+                line = f"⚡ Скорость ответа на запросы: медиана {sp['median_label']}"
+                if sp.get("faster_than_pct") is not None:
+                    line += f" · быстрее {sp['faster_than_pct']}% продавцов"
+                text_parts.insert(0, line + f" (по {sp['count']} котировкам).")
+                rows_sp = [{"title": "Медиана времени ответа", "subtitle": sp["median_label"]}]
+                if sp.get("faster_than_pct") is not None:
+                    rows_sp.append({"title": "Среди продавцов платформы",
+                                    "subtitle": f"быстрее {sp['faster_than_pct']}% поставщиков"})
+                rows_sp.append({"title": "Выборка", "subtitle": f"{sp['count']} последних котировок"})
+                cards.insert(0, {"type": "list", "data": {
+                    "title": "⚡ Ваша скорость ответа на запросы", "items": rows_sp}})
+            else:
+                text_parts.insert(0, "⚡ Скорость ответа на запросы: пока мало данных "
+                                     "(посчитаем с 3-й котировки).")
+        except Exception:
+            pass
+
     return ActionResult(
         text="\n".join(text_parts),
         cards=cards,
