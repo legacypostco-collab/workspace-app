@@ -3754,12 +3754,42 @@ def _seller_deals(user, params):
         from django.utils import timezone as _tz
         from .rfq_mode_badge import mode_badge_with_sla
         two_weeks = _tz.now() - timedelta(days=14)
-        lead_rfqs = list(
+        # РЕЛЕВАНТНОСТЬ: показываем RFQ продавцу ТОЛЬКО если у него есть ≥1 позиция
+        # из запроса — в каталоге по OEM ИЛИ как аналог (кросс-номер). Раньше слали
+        # ВСЕМ (broadcast) → продавец видел RFQ, где у него нет ни одной позиции (спам).
+        from marketplace.models import Part as _Part
+        from .negotiation import _split_query_oem_name as _split_oem
+        _candidates = list(
             RFQ.objects.filter(status__in=("new", "processing"),
                                created_at__gte=two_weeks)
                        .exclude(quotes__seller=user)
-                       .order_by("-created_at")[:12]
+                       .prefetch_related("items__matched_part")
+                       .order_by("-created_at")[:60]
         )
+        _rfq_oems = {}
+        _all_oems = set()
+        for _r in _candidates:
+            _s = set()
+            for _it in _r.items.all():
+                _oem = (_it.matched_part.oem_number if _it.matched_part_id
+                        else (_split_oem(_it.query)[0] or "")) or ""
+                _oem = _oem.strip()
+                if _oem:
+                    _s.add(_oem)
+            _rfq_oems[_r.id] = _s
+            _all_oems |= _s
+        # Точный матч по OEM (индекс part_seller_oem_idx → быстро даже на каталоге
+        # 900К+). Кросс-номера/аналоги для маршрутизации НЕ используем: icontains без
+        # индекса = полный скан, на большом каталоге это дорого. Аналог продавец всё
+        # равно предложит уже в форме котировки (для RFQ, куда его привёл OEM-матч).
+        _present = set()
+        if _all_oems:
+            _present = set(
+                _Part.objects.filter(seller=user, is_active=True,
+                                     oem_number__in=list(_all_oems))
+                .values_list("oem_number", flat=True)
+            )
+        lead_rfqs = [_r for _r in _candidates if _rfq_oems[_r.id] & _present][:12]
         if lead_rfqs:
             n_leads = len(lead_rfqs)
             lrows = []
