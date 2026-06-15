@@ -1378,6 +1378,12 @@
     'get_buyer_discount','get_demand_report','get_analytics','track_order','my_kam','my_accruals',
     'kam_deals','support_home',
   ]);
+  // Auth-формы: показ формы (БЕЗ confirmed) = read-only → таймаут+ретрай безопасны
+  // (иначе зависший POST на РФ-канале крутит спиннер вечно — «стать поставщиком» не
+  // грузилась). С confirmed=true это мутация (создание акк/логин) — НЕ ретраим.
+  const AUTH_DISPLAY_ACTIONS = new Set([
+    'start_registration', 'start_login', 'start_onboarding', 'switch_role_login',
+  ]);
 
   async function api(path, opts={}) {
     // Канал браузер↔origin (РФ) нестабилен: ~10-15% запросов рвутся ИЛИ
@@ -5809,7 +5815,7 @@
         // Транзиент (обрыв канала / 5xx / 52x от Cloudflare) — действие не выполнилось,
         // показываем понятное сообщение + «Повторить» (re-send того же текста), а не сырое «→ 521».
         const _m = (e && e.message) || '';
-        const _transient = /Failed to fetch|NetworkError|network|load failed/i.test(_m)
+        const _transient = /Failed to fetch|NetworkError|network|load failed|abort/i.test(_m)
           || (e && e.status >= 500) || /→ 5\d\d$/.test(_m);
         if (_transient) {
           addMessage('assistant', '⚠️ Соединение прервалось — нажмите «Повторить».',
@@ -6083,7 +6089,10 @@
         method:'POST',
         body: JSON.stringify({conversation_id: state.convId, action, params}),
         // read-only действие → можно авто-ретраить обрыв канала (не задвоится).
-        retryNetwork: READONLY_ACTIONS.has(action),
+        // Auth-формы без confirmed — тоже показ формы (read-only) → ретраим, чтобы
+        // зависший POST не крутил спиннер вечно.
+        retryNetwork: READONLY_ACTIONS.has(action)
+          || (AUTH_DISPLAY_ACTIONS.has(action) && !params.confirmed),
       });
       if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
@@ -6128,7 +6137,7 @@
       // origin / upstream-сбой). Действие при этом не выполнилось — показываем
       // понятное сообщение + «Повторить» вместо сырого «/api/... → 521».
       const _msg = (err && err.message) || '';
-      const _net = /Failed to fetch|NetworkError|network|load failed/i.test(_msg);
+      const _net = /Failed to fetch|NetworkError|network|load failed|abort/i.test(_msg);
       const _status = (err && err.status) || 0;
       const _transient = _net || _status >= 500 || /→ 5\d\d$/.test(_msg);
       if (_transient) {
