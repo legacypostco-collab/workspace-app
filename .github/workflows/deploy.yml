@@ -1,74 +1,57 @@
-name: Deploy
+name: Deploy to production
+
+# Авто-деплой на прод (consolidatorparts.com, Timeweb VPS) при пуше в main.
+# Раннер GitHub находится ВНЕ РФ → до московского IP достукивается стабильно
+# (ТСПУ режет путь РФ-юзер→сервер, а не inbound из-за рубежа). Это снимает
+# ручной деплой через консоль Timeweb и зависимость от нестабильного SSH с Mac.
+#
+# Требуется один секрет репозитория:
+#   DEPLOY_SSH_KEY — приватный ed25519-ключ (его публичная часть в authorized_keys сервера).
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      target:
-        description: "Target environment"
-        required: true
-        default: "staging"
-        type: choice
-        options: [staging, production]
+  workflow_dispatch: {}        # + ручной запуск кнопкой во вкладке Actions
 
 concurrency:
-  group: deploy-${{ github.event.inputs.target || 'staging' }}
-  cancel-in-progress: false
+  group: deploy-prod
+  cancel-in-progress: false    # не отменяем идущий деплой при новом пуше — дожидаемся
+
+env:
+  DEPLOY_HOST: 72.56.234.89
+  DEPLOY_USER: root
+  APP_DIR: /var/www/workspace-app
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.target || 'staging' }}
-      url: ${{ vars.DEPLOY_URL }}
-
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
-
-      - name: Add server to known_hosts
+      - name: Setup SSH key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ vars.DEPLOY_HOST }} >> ~/.ssh/known_hosts
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -t ed25519,rsa "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Rsync code to server
+      - name: Deploy (git pull + collectstatic + migrate + check + restart)
         run: |
-          rsync -avz --delete \
-            --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' \
-            --exclude='.venv' --exclude='node_modules' \
-            --exclude='db.sqlite3' --exclude='media/' \
-            ./ ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }}:${{ vars.DEPLOY_PATH }}/
-
-      - name: Run remote deploy commands
-        run: |
-          ssh ${{ vars.DEPLOY_USER }}@${{ vars.DEPLOY_HOST }} bash <<'REMOTE'
-            set -euxo pipefail
-            cd ${{ vars.DEPLOY_PATH }}
-            source .venv/bin/activate
-            pip install --upgrade pip
-            pip install -r requirements.txt
-            python manage.py migrate --noinput
-            python manage.py collectstatic --noinput
-            python manage.py compilemessages
-            sudo systemctl restart consolidator.service
-            sudo systemctl restart consolidator-celery.service || true
-            sudo systemctl restart consolidator-celery-beat.service || true
-            # Smoke test
-            sleep 3
-            curl -fsS -o /dev/null https://${{ vars.DEPLOY_DOMAIN }}/login/
+          ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /var/www/workspace-app
+          git pull origin main
+          source venv/bin/activate
+          python manage.py collectstatic --noinput
+          python manage.py migrate --noinput
+          python manage.py check
+          systemctl restart gunicorn daphne
+          sleep 2
+          systemctl is-active gunicorn daphne
+          # Smoke: ориджин отдаёт 200 на /chat/ (curl с самого сервера — надёжно)
+          curl -fsS -o /dev/null -w 'smoke /chat/ -> HTTP %{http_code}\n' \
+            -k -H 'Host: consolidatorparts.com' https://127.0.0.1/chat/
+          echo "DEPLOY OK: $(git rev-parse --short HEAD)"
           REMOTE
-
-      - name: Notify Sentry of release
-        if: vars.SENTRY_ORG != ''
-        uses: getsentry/action-release@v1
-        env:
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
-        with:
-          environment: ${{ github.event.inputs.target || 'staging' }}
