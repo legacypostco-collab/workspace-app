@@ -5718,6 +5718,19 @@
     };
   }
 
+  // Ждём открытия WS до ms миллисекунд (для устойчивой отправки первого сообщения:
+  // WS стримит чанками и реже рвётся на РФ-канале, чем длинный одиночный HTTP-POST).
+  function _waitWsOpen(ms) {
+    return new Promise(resolve => {
+      if (state.ws && state.ws.readyState === 1) return resolve(true);
+      const t0 = Date.now();
+      const iv = setInterval(() => {
+        if (state.ws && state.ws.readyState === 1) { clearInterval(iv); resolve(true); }
+        else if (Date.now() - t0 > ms) { clearInterval(iv); resolve(false); }
+      }, 80);
+    });
+  }
+
   // ══════════════════════════════════════════════════════════
   // Send & actions
   // ══════════════════════════════════════════════════════════
@@ -5763,11 +5776,18 @@
     // Fast-path детекция: чистая вставка OEM — минимальный индикатор.
     const minimalTyping = isFastPathOemPaste(text);
 
+    addTyping(intent, minimalTyping);
+    // Первое сообщение после загрузки часто застаёт WS ещё не открытым → раньше
+    // падало в длинный HTTP-POST, который рвётся на нестабильном РФ-канале
+    // («Соединение прервалось — Повторить»). Ждём WS до 2.5с (стримит чанками —
+    // устойчивее), и только если не поднялся — HTTP-fallback.
+    if (!(state.ws && state.ws.readyState === 1)) {
+      if (!state.ws || state.ws.readyState >= 2) connectWS();
+      await _waitWsOpen(2500);
+    }
     if (state.ws && state.ws.readyState === 1) {
-      addTyping(intent, minimalTyping);
       state.ws.send(JSON.stringify({type:'message', content:text}));
     } else {
-      addTyping(intent, minimalTyping);
       try {
         const r = await api('/api/assistant/chat/', {
           method:'POST',
