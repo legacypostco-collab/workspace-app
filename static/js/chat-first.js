@@ -1330,6 +1330,7 @@
     wsRetry: 0,
     streaming: false,
     currentBubble: null,
+    _wsPending: null,   // in-flight текст при WS-отправке (для recovery при обрыве)
     config: null,
     convs: [],
     _lastCards: [],
@@ -1397,11 +1398,14 @@
     // только если вызывающий явно пометил действие read-only (opts.retryNetwork),
     // т.к. для read-only задвоиться нечему. Мутации (pay/ship/respond/upload) — нет.
     const retryNet = idempotent || !!opts.retryNetwork;
+    // Таймаут на попытку: дефолт 8с (быстрые read-only). Для длинных AI-ответов
+    // вызывающий передаёт opts.timeoutMs побольше (релейный путь идёт дольше).
+    const timeoutMs = opts.timeoutMs || 8000;
     const attempts = 3;
     let lastErr;
     for (let i = 0; i < attempts; i++) {
       const ctrl = (retryNet && window.AbortController) ? new AbortController() : null;
-      const timer = ctrl ? setTimeout(() => ctrl.abort(), 8000) : null;
+      const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
       let res;
       try {
         res = await fetch(path, {
@@ -5726,6 +5730,7 @@
           state._lastSuggestions = d.suggestions || [];
           state._lastText = d.text;
         } else if (d.type === 'done') {
+          state._wsPending = null;   // ответ дошёл целиком — восстанавливать нечего
           // Auto-attach «← Назад» + «🏠 Главная» если backend не дал свою навигацию
           // + дефолтные suggestions если бэкенд вернул пустой список
           const ctxActs = ensureHomeNav(state._lastCtxActions || []);
@@ -5734,6 +5739,7 @@
           state._lastCards = []; state._lastActions = []; state._lastRefs = []; state._lastText = null;
           state._lastCtxActions = []; state._lastSuggestions = [];
         } else if (d.type === 'error') {
+          state._wsPending = null;   // серверная ошибка, не обрыв — не до-запрашиваем
           finishStream([], []);
           addMessage('assistant', '⚠️ ' + d.message);
         } else if (d.type === 'notification') {
@@ -5770,10 +5776,59 @@
     };
     state.ws.onclose = (ev) => {
       if (ev.code === 4401) return;
+      // Обрыв WS ПОСРЕДИ ответа (не дошёл 'done'): иначе остался бы зависший
+      // индикатор + заблокированная кнопка. Тихо до-запрашиваем тот же текст
+      // по HTTP (api сам ретраит обрыв) — пользователь обрыва не видит.
+      if (state.streaming && state._wsPending) {
+        const _t = state._wsPending; state._wsPending = null;
+        _recoverInterruptedStream(_t);
+      }
       state.wsRetry++;
       const delay = Math.min(1000 * Math.pow(2, state.wsRetry), 30000);
       setTimeout(connectWS, delay);
     };
+  }
+
+  // Навигация/teardown ВО ВРЕМЯ активного стрима (открыли другой чат, новый чат,
+  // сменили роль, загрузили файл): осознанно бросаем in-flight сообщение —
+  // сбрасываем флаги, снимаем индикатор, разблокируем ввод. КРИТИЧНО: без сброса
+  // _wsPending отложенный onclose старого сокета запустил бы ложный recovery и
+  // влепил бы устаревший ответ в уже другой чат (+ перетёр convId).
+  function _abandonStream() {
+    state._wsPending = null;
+    state.streaming = false;
+    state.currentBubble = null;
+    try { removeTyping(); } catch (_) {}
+    const sb = $('sendBtn'), hb = $('heroSendBtn');
+    if (sb) sb.disabled = false;
+    if (hb) hb.disabled = false;
+  }
+
+  // Обрыв WS на полпути → сносим частичный пузырь/индикатор и тихо повторяем
+  // запрос по устойчивому HTTP-пути (api ретраит обрыв, 30с под медленный AI).
+  // Карточку «Соединение прервалось» показываем ТОЛЬКО если и HTTP не вытянул.
+  async function _recoverInterruptedStream(text) {
+    removeTyping();
+    if (state.currentBubble) { try { state.currentBubble.remove(); } catch(_){} state.currentBubble = null; }
+    try {
+      const r = await api('/api/assistant/chat/', {
+        method: 'POST',
+        body: JSON.stringify({conversation_id: state.convId, message: text}),
+        retryNetwork: true, timeoutMs: 30000,
+      });
+      setConvId(r.conversation_id);
+      const _ctx = ensureHomeNav(r.contextual_actions || []);
+      const _sugs = ensureSuggestions(r.suggestions || []);
+      addMessage('assistant', r.response, r.cards, r.actions, r.context_refs || [], r.message_id || null, _sugs, _ctx);
+      loadConvList();
+    } catch (e) {
+      addMessage('assistant', '⚠️ Соединение прервалось — нажмите «Повторить».',
+        [], [{action: '__resend_chat', params: {text: text}, label: '🔄 Повторить'}]);
+    } finally {
+      state.streaming = false;
+      $('sendBtn').disabled = false;
+      $('heroSendBtn').disabled = false;
+    }
   }
 
   // Ждём открытия WS до ms миллисекунд (для устойчивой отправки первого сообщения:
@@ -5844,12 +5899,24 @@
       await _waitWsOpen(2500);
     }
     if (state.ws && state.ws.readyState === 1) {
+      // Запоминаем in-flight текст: если WS оборвётся ДО 'done', onclose тихо
+      // до-запросит этот же текст по HTTP (без зависшего спиннера).
+      state._wsPending = text;
       state.ws.send(JSON.stringify({type:'message', content:text}));
     } else {
       try {
         const r = await api('/api/assistant/chat/', {
           method:'POST',
           body: JSON.stringify({conversation_id: state.convId, message: text}),
+          // Повтор чат-сообщения безопасен: реальные мутации (заказ/платёж/RFQ)
+          // идут НЕ из чат-текста, а по клику на отдельную action-кнопку, и
+          // защищены серверным confirmed-гейтом (LLM их сам не проставляет) —
+          // повтор максимум прогонит read-only preview AI-петлю. → тихо ретраим
+          // обрыв канала ВНУТРИ api() (до 3 попыток с backoff) вместо мгновенной
+          // карточки «Соединение прервалось». 30с под медленный AI-ответ через
+          // релей (8с-дефолт его бы рубил). Дубль turn в истории — косметика.
+          retryNetwork: true,
+          timeoutMs: 30000,
         });
         removeTyping();
         setConvId(r.conversation_id);
@@ -6787,6 +6854,7 @@
   async function setRole(newRole) {
     try { setConvId(null); } catch (_) {}
     try { showWelcome(); } catch (_) {}
+    _abandonStream();   // бросаем in-flight стрим: иначе onclose даст ложный recovery
     if (state.ws) { try { state.ws.close(); } catch(e){} }
     try {
       await window.quickAction('switch_role_login', {role: newRole});
@@ -8110,6 +8178,7 @@
     setConvId(id);
     showConv();
     $('streamInner').innerHTML = '';
+    _abandonStream();   // бросаем in-flight стрим: иначе onclose даст ложный recovery
     if (state.ws) { try { state.ws.close(); } catch(e){} }
     try {
       const data = await api('/api/assistant/conversations/' + id + '/');
@@ -8176,6 +8245,7 @@
   window.newChat = () => {
     setConvId(null);
     showWelcome();
+    _abandonStream();   // бросаем in-flight стрим: иначе onclose даст ложный recovery
     if (state.ws) { try { state.ws.close(); } catch(e){} }
     connectWS();
     renderConvList();
@@ -8313,6 +8383,7 @@
         }
         if (data.conversation_id) {
           setConvId(data.conversation_id);
+          _abandonStream();   // бросаем in-flight стрим: иначе onclose даст ложный recovery
           if (state.ws) { try { state.ws.close(); } catch(e){} }
           connectWS();
         }
