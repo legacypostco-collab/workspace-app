@@ -385,6 +385,12 @@
     .pill-add:active{transform:scale(.92);}
     body.dark-mode .pill-add{background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.28);}
     body.dark-mode .pill-add:hover{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.5);}
+    /* Гостевой welcome-экран: обе пилюли одной ширины, контент по центру, пара симметрично; «+» скрыт.
+       .pills — флекс-элемент в .welcome (сжимается по контенту), поэтому ширину фиксируем у самих пилюль. */
+    .pills.wp-guest{justify-content:center;}
+    .pills.wp-guest .pill{flex:0 0 auto;width:256px;justify-content:center;}
+    .pills.wp-guest .pill-txt{white-space:nowrap;}
+    .pills.wp-guest .pill-add{display:none;}
 
     /* ── Conversation state ── */
     .conv{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-top:60px;}
@@ -1013,6 +1019,14 @@
     body.dark-mode .qf-analog-chip{color:#ffb74d;border-color:rgba(232,150,13,0.5);background:rgba(232,150,13,0.16);}
     body.dark-mode .qf-analog-applied{color:#81c784;border-color:rgba(34,160,80,0.5);background:rgba(34,160,80,0.18);}
     /* Полоса скорости ответа (честная метрика) */
+    /* «Только мои позиции» — кнопка + приглушение исключённых строк */
+    .qf-keep-mine{margin-right:auto;background:rgba(45,122,62,0.12);color:#2D7A3E;border:1px solid rgba(45,122,62,0.4);padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;}
+    .qf-keep-mine:hover{background:rgba(45,122,62,0.2);}
+    .qf-keep-mine-on{background:#2D7A3E;color:#fff;border-color:#2D7A3E;}
+    .qf-keep-mine-on:hover{background:#256634;}
+    .qf-row-excluded{opacity:0.4;}
+    .qf-row-excluded .spec-name{text-decoration:line-through;}
+    body.dark-mode .qf-keep-mine{background:rgba(45,122,62,0.18);color:#81c784;border-color:rgba(45,122,62,0.45);}
     .qf-speed{padding:11px 22px;border-top:1px solid rgba(0,0,0,0.06);background:rgba(100,181,246,0.06);}
     .qf-speed-line{font-size:12.5px;font-weight:600;color:#1565c0;}
     .qf-speed-note{font-size:11px;color:rgba(0,0,0,0.55);margin-top:3px;line-height:1.3;}
@@ -4006,7 +4020,7 @@
         <span>{% trans "перетащите" %} <code>.xlsx</code>, <code>.pdf</code> {% trans "или фото прямо сюда" %}</span>
       </div>
 
-      <div class="pills" id="welcomePills">
+      <div class="pills{% if not auth_pills %} wp-guest{% endif %}" id="welcomePills">
         {% if auth_pills %}{# Залогиненный: пилюли его роли серверно (совпадают с ROLE_WELCOME в JS) — нет «пустой» главной до JS. #}
         {% for p in auth_pills %}<button class="pill" type="button" onclick='quickAction("{{ p.action }}", {{ p.params|safe }})'><span class="pill-del" aria-label="{% trans 'Убрать' %}" title="{% trans 'Убрать' %}">×</span><span class="pill-txt">{{ p.emoji }} {{ p.label }}</span></button>{% endfor %}<button class="pill-add" type="button" aria-label="{% trans 'Добавить пилюлю' %}" title="{% trans 'Меню пилюль' %}" onclick="window.__openPillMaster&&window.__openPillMaster()">+</button>
         {% else %}{# Аноним: статичный fallback (в т.ч. для no-JS). #}
@@ -4083,7 +4097,7 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=6"></script>
-<script src="{% static 'js/chat-first.js' %}?v=178"></script>
+<script src="{% static 'js/chat-first.js' %}?v=188"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>

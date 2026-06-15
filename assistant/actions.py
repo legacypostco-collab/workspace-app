@@ -528,6 +528,25 @@ def _strip_seller_rfq_create(result, role):
         logger.exception("strip seller rfq create failed")
 
 
+def _is_anon(user) -> bool:
+    """True если пользователь не залогинен (AnonymousUser или None)."""
+    return not (user and getattr(user, "is_authenticated", False))
+
+
+def _anon_register_result() -> "ActionResult":
+    """Карточка «зарегистрируйтесь» — та же копия, что в
+    views._registration_required_response(). Возвращается, когда аноним
+    дёргает действие, требующее аккаунта (user-specific запрос к БД)."""
+    return ActionResult(
+        text=("🔒 Чтобы продолжить — зарегистрируйтесь прямо здесь, в чате.\n"
+              "Это займёт 20 секунд."),
+        actions=[
+            {"action": "start_registration", "label": "🚀 Зарегистрироваться"},
+            {"action": "start_login",        "label": "У меня есть аккаунт"},
+        ],
+    )
+
+
 def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
     """Run an action. Returns ActionResult."""
     if not can_execute(action_name, role):
@@ -577,6 +596,11 @@ def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
         result = handler(params=params or {}, user=user, role=role)
     except Exception as e:
         logger.exception(f"Action {action_name} failed")
+        # Аноним дёрнул действие, которому нужен аккаунт: user-specific запрос
+        # упал на AnonymousUser (нет числового id). Вместо сырого repr-объекта
+        # (некрасиво + утечка внутренностей) — мягко ведём на регистрацию.
+        if _is_anon(user) and ("AnonymousUser" in str(e) or "expected a number" in str(e)):
+            return _anon_register_result()
         return ActionResult(text=f"⚠️ Ошибка выполнения: {e}")
     # JSON-safety: убираем инжектированный `_request` (и любые Request-объекты),
     # которые handler мог скопировать в actions/cards через `{**params, ...}`.
@@ -3782,11 +3806,12 @@ def _seller_deals(user, params):
         # 900К+). Кросс-номера/аналоги для маршрутизации НЕ используем: icontains без
         # индекса = полный скан, на большом каталоге это дорого. Аналог продавец всё
         # равно предложит уже в форме котировки (для RFQ, куда его привёл OEM-матч).
+        # БЕЗ is_active: позиция, что была в каталоге, но сейчас скрыта — тоже «его»
+        # (по той же логике — продавец её знает и может вернуть/поставить).
         _present = set()
         if _all_oems:
             _present = set(
-                _Part.objects.filter(seller=user, is_active=True,
-                                     oem_number__in=list(_all_oems))
+                _Part.objects.filter(seller=user, oem_number__in=list(_all_oems))
                 .values_list("oem_number", flat=True)
             )
         lead_rfqs = [_r for _r in _candidates if _rfq_oems[_r.id] & _present][:12]
@@ -4224,8 +4249,14 @@ def get_rfq_status(params, user, role):
         # AuthZ: только создатель, операторы и админы могут видеть конкретный RFQ.
         # Бага CRITICAL: раньше любой buyer мог открыть чужой RFQ по ID.
         is_op_or_admin = bool(role and (role.startswith("operator") or role == "admin"))
-        if not is_op_or_admin and getattr(user, "is_authenticated", False):
-            if rfq.created_by_id and rfq.created_by_id != user.id:
+        if not is_op_or_admin:
+            if _is_anon(user):
+                # Аноним может смотреть ТОЛЬКО анонимный RFQ (created_by=None,
+                # созданный в гостевом флоу). Чужой RFQ зарегистрированного
+                # пользователя по угаданному id — закрыто (IDOR).
+                if rfq.created_by_id is not None:
+                    return ActionResult(text=f"⚠️ RFQ #{rfq_id} не найден")
+            elif rfq.created_by_id and rfq.created_by_id != user.id:
                 return ActionResult(text=f"⚠️ RFQ #{rfq_id} не найден")
         # ── RFQ инлайн — переиспользуем готовую spec_results карточку ─────
         # Это та же визуалка что у analyze_spec / upload_parts_list:
@@ -4463,6 +4494,12 @@ def get_rfq_status(params, user, role):
     # 0/0/— на каждой бесполезно. Теперь одна таблица-список: id · название ·
     # статус · позиций · котировок. Клик по строке → разворачивает в полный
     # spec_results той же ручкой get_rfq_status(rfq_id).
+    # Аноним: «списка моих RFQ» нет — RFQ создаются с created_by=None и общим
+    # placeholder-email, разделить запросы разных гостей нельзя. Ведём на
+    # регистрацию (после неё анонимные RFQ привяжутся к аккаунту). Без этого
+    # qs.filter(created_by=AnonymousUser) падает «expected a number».
+    if _is_anon(user):
+        return _anon_register_result()
     from marketplace.models import Quote as _Quote2
     # Скрываем терминальные статусы — юзер не должен утопать в архиве.
     qs = RFQ.objects.exclude(status__in=("cancelled", "closed", "declined"))\

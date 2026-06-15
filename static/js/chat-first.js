@@ -2591,6 +2591,7 @@
         status: 'in_stock',
         stock_label: it.in_catalog ? 'В наличии' : 'нет в каталоге',
         stock_class: it.in_catalog ? 'in' : 'no',
+        in_catalog: !!it.in_catalog,   // для кнопки «Только мои позиции»
         id: it.article || '',
         name: it.title || '',
         brand: it.brand || '',
@@ -4145,7 +4146,7 @@
           ? `<div class="qf-mkt" title="Ориентир рыночной цены по этому OEM из каталога">рынок ≈ $${esc(String(it.market_usd))}${(it.market_lo != null && it.market_hi != null && it.market_hi > it.market_lo) ? ` · ${esc(String(it.market_lo))}–${esc(String(it.market_hi))}` : ''}</div>`
           : '';
         const priceCellQf = (d.editable_price && it.rfq_item_id != null)
-          ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" value="${Number(it.price || 0).toFixed(2)}" /></div>${qfMktHint}`
+          ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" data-in-catalog="${it.in_catalog ? '1' : '0'}" value="${Number(it.price || 0).toFixed(2)}" /></div>${qfMktHint}`
           : fmtMoney(it.price, it.currency || 'USD');
         // Чип «аналог из вашего каталога» — для позиций, которых нет как OEM.
         const qfAnalogChip = (it.analog && it.analog.price_usd != null)
@@ -4254,7 +4255,11 @@
         <div class="spec-details-host">${detailBlocks}</div>
         ${moreLink}
         <div class="spec-foot">
-          <div class="spec-foot-info">${esc(d.foot_info || '')}${d.shipping_matrix ? ' · доставка ↓' : ''}</div>
+          <div class="spec-foot-info">${
+            (d.editable_price && (d.items || []).some(it => it.in_catalog) && (d.items || []).some(it => !it.in_catalog))
+              ? `<button class="qf-keep-mine" type="button" title="Оставить только позиции из вашего каталога — у остальных очистится цена; нажмите ещё раз, чтобы вернуть">📦 Только мои позиции</button>`
+              : (esc(d.foot_info || '') + (d.shipping_matrix ? ' · доставка ↓' : ''))
+          }</div>
           <div class="spec-foot-total"${d.qf ? ' data-total' : ''}>${d.total != null ? fmtMoney(d.total, d.currency || 'USD') : ''}</div>
         </div>
         ${renderShippingMatrix(d)}
@@ -4951,17 +4956,20 @@
     //   2. {label, action, params} → action-chip (прямой /action/, без LLM).
     //                Для случаев под карточкой сущности — контекст однозначен,
     //                ответ детерминирован.
+    // Линия подсказок — без эмодзи: срезаем ведущие emoji/символы у каждого чипа.
+    const stripEmoji = (s) => String(s == null ? '' : s)
+      .replace(/^(?:[\p{Extended_Pictographic}←-⇿⬀-⯿️‍]\s*)+/u, '').trim();
     const chips = suggestions.map(s => {
       if (s && typeof s === 'object' && s.action) {
         const paramsJson = JSON.stringify(s.params || {});
         return `<button class="sg-chip sg-chip-action" type="button"
           data-action="${esc(s.action)}"
-          data-params='${esc(paramsJson)}'>${esc(s.label || s.action)}</button>`;
+          data-params='${esc(paramsJson)}'>${esc(stripEmoji(s.label || s.action))}</button>`;
       }
-      return `<button class="sg-chip" type="button" data-text="${esc(s)}">${esc(s)}</button>`;
+      return `<button class="sg-chip" type="button" data-text="${esc(s)}">${esc(stripEmoji(s))}</button>`;
     }).join('');
     return `<div class="sg-row">
-      <span class="sg-label">💡 Также можете:</span>
+      <span class="sg-label">Также можете:</span>
       ${chips}
     </div>`;
   }
@@ -4987,8 +4995,6 @@
           <input class="qf-aux-input" name="delivery_days" type="number" min="1" value="${esc(String(q.delivery_days || 14))}" /></div>
         <div class="qf-aux-row"><label>Котировка действует (дней)</label>
           <input class="qf-aux-input" name="valid_days" type="number" min="1" value="${esc(String(q.valid_days || 7))}" /></div>
-        <div class="qf-aux-row qf-aux-row-wide"><label>Комментарий покупателю (необязательно)</label>
-          <textarea class="qf-aux-textarea" name="message" rows="2" placeholder="Например: позиция X заменена на аналог Y — то же качество, в наличии"></textarea></div>
       </div>
       <div class="qf-actions">
         <button class="qf-cancel" type="button" data-action="seller_inbox" data-params="{}">Отмена</button>
@@ -5024,8 +5030,54 @@
   document.addEventListener('input', (e) => {
     const inp = e.target && e.target.closest && e.target.closest('.qf-price-input');
     if (!inp) return;
+    // Вернул цену исключённой позиции → снимаем приглушение (можно дать цену на остальные).
+    const _row = inp.closest('tr');
+    if (_row && _row.classList.contains('qf-row-excluded') && inp.value !== '') _row.classList.remove('qf-row-excluded');
     const card = inp.closest('.qf-card');
     if (card) _qfRecalc(card);
+  });
+  // «📦 Только мои позиции»: очистить цену у позиций НЕ из каталога продавца → они
+  // не уйдут в котировку (submit пропускает пустые). Свои остаются с ценой (она уже
+  // подставлена из каталога при рендере). Цену исключённым можно вернуть вручную.
+  document.addEventListener('click', (e) => {
+    const btn = e.target && e.target.closest && e.target.closest('.qf-keep-mine');
+    if (!btn) return;
+    e.preventDefault();
+    const card = btn.closest('.qf-card');
+    if (!card) return;
+    // Тогл: первое нажатие — очистить не-мои позиции (запомнив цены), повторное —
+    // вернуть всё обратно.
+    if (btn.dataset.active !== '1') {
+      let cleared = 0, kept = 0;
+      card.querySelectorAll('.qf-price-input').forEach(inp => {
+        if (inp.dataset.inCatalog === '0') {
+          inp.dataset.origPrice = inp.value;   // запомним для возврата
+          inp.value = '';
+          const row = inp.closest('tr');
+          if (row) row.classList.add('qf-row-excluded');
+          cleared += 1;
+        } else { kept += 1; }
+      });
+      btn.dataset.active = '1';
+      btn.classList.add('qf-keep-mine-on');
+      _qfRecalc(card);
+      if (window.toast) window.toast('📦 Оставлено ваших: ' + kept + ' · исключено: ' + cleared + ' (нажмите ещё раз — вернуть)', 2800);
+    } else {
+      let restored = 0;
+      card.querySelectorAll('.qf-price-input').forEach(inp => {
+        const row = inp.closest('tr');
+        // Возвращаем только те, что всё ещё исключены (если юзер вписал цену вручную — не трогаем).
+        if (inp.dataset.inCatalog === '0' && row && row.classList.contains('qf-row-excluded')) {
+          if (inp.dataset.origPrice != null) inp.value = inp.dataset.origPrice;
+          row.classList.remove('qf-row-excluded');
+          restored += 1;
+        }
+      });
+      btn.dataset.active = '0';
+      btn.classList.remove('qf-keep-mine-on');
+      _qfRecalc(card);
+      if (window.toast) window.toast('↩ Возвращено позиций: ' + restored, 2000);
+    }
   });
   document.addEventListener('click', (e) => {
     const btn = e.target && e.target.closest && e.target.closest('.qf-submit');
@@ -6793,6 +6845,17 @@
         {tkey:'pill.support',       emoji:'🎧', action:'support_home',       params:{}},
       ],
     },
+    // Гость (аноним): исходные 2 пилюли главной — «Мои заказы» и «Открытые RFQ».
+    // Совпадают со статичным fallback в index.html (no-JS) — нет «прыжка» состава
+    // при загрузке. Клик у анонима ведёт на логин (заказов/RFQ ещё нет).
+    guest: {
+      titleKey: 'welcome.h1',
+      subKey:   'welcome.buyer.subtitle',
+      pills: [
+        {label: 'Мои заказы',   sub: 'купил, едет',   emoji: '📦', action: 'get_orders',     params: {}},
+        {label: 'Открытые RFQ', sub: 'жду котировок', emoji: '📋', action: 'get_rfq_status', params: {}},
+      ],
+    },
     seller: {
       titleKey: 'welcome.seller.title',
       subKey:   'welcome.seller.subtitle',
@@ -6925,6 +6988,7 @@
       id: pillId(b.action, b.params),
       emoji: b.emoji || '•',
       text: (b.label != null ? b.label : (b.tkey ? tr(b.tkey) : b.action)),
+      sub: (b.sub != null ? b.sub : (b.subKey ? tr(b.subKey) : '')),
       action: b.action, params: b.params || {}, srcRole: srcRole || null,
     };
   }
@@ -6937,7 +7001,10 @@
   // Полный каталог пилюль по ВСЕМ кабинетам (дедуп по action+params).
   function globalPillCatalog() {
     const seen = {}, out = [];
-    Object.keys(ROLE_WELCOME).forEach(r => (ROLE_WELCOME[r].pills || []).forEach(b => {
+    // 'guest' — псевдороль анонимной главной (Мои заказы/Открытые RFQ); её пилюли
+    // НЕ должны протекать в каталог «Все пилюли» залогиненных (там источник 'guest'
+    // непереведён + лишние дубликаты). Гостю мастер-меню всё равно не показывается.
+    Object.keys(ROLE_WELCOME).filter(r => r !== 'guest').forEach(r => (ROLE_WELCOME[r].pills || []).forEach(b => {
       const p = _normPill(b, r);
       if (seen[p.id]) return; seen[p.id] = 1; out.push(p);
     }));
@@ -6977,25 +7044,32 @@
 
   function applyRoleWelcome(role) {
     _ensurePillCSS();
+    // Гость (аноним) на дефолтном экране покупателя → урезанный guest-набор.
+    // Вкладки «Продавец»/«Оператор» по-прежнему показывают превью своих кабинетов.
+    if (!window.IS_AUTHENTICATED && (role === 'buyer' || !role)) role = 'guest';
     const cfg = ROLE_WELCOME[role] || ROLE_WELCOME.buyer;
     const t = $('welcomeTitle'), s = $('welcomeSubtitle'), p = $('welcomePills');
     if (t) t.textContent = tr(cfg.titleKey);
     if (s) s.innerHTML = tr(cfg.subKey);
     if (!p) return;
     window.__pillRole = role;
+    // Гостевой экран: равные по ширине пилюли по центру, без «+» (анониму нечего настраивать).
+    const isGuest = (role === 'guest');
+    p.classList.toggle('wp-guest', isGuest);
     const pills = pillState(role).visible;
     const html = pills.map(b => {
       const label = `${b.emoji} ${b.text}`;
       const params = { ...(b.params || {}), _label: label };
+      const subHtml = b.sub ? ` <span class="pill-sub">${esc(b.sub)}</span>` : '';
       // Бейдж «требует действия» на ГЛАВНОЙ не показываем — только в меню пилюль.
       // «×» скрыт; проявляется только в режиме редактирования (долгое нажатие).
       return `<button class="pill" type="button" data-pid="${esc(b.id)}"
         onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(params)})'>
         <span class="pill-del" aria-label="Убрать" title="Убрать">×</span>
-        <span class="pill-txt">${esc(label)}</span>
+        <span class="pill-txt">${esc(label)}${subHtml}</span>
       </button>`;
     }).join('');
-    const master = `<button class="pill-add" type="button" aria-label="Добавить пилюлю"
+    const master = isGuest ? '' : `<button class="pill-add" type="button" aria-label="Добавить пилюлю"
         title="Меню пилюль: добавить, закрепить, переставить"
         onclick="window.__openPillMaster&&window.__openPillMaster()">+</button>`;
     p.innerHTML = html + master;
