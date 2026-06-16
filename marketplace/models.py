@@ -165,6 +165,10 @@ class Part(models.Model):
     ]
 
     title = models.CharField(max_length=255)
+    # Русское название из детерминированного словаря (assistant.part_naming).
+    # Оригинал (title) НЕ трогаем — он нужен для заказа/таможни/сверки с поставщиком.
+    # Пусто = перевода нет (фронт покажет оригинал). Заполняется backfill-командой.
+    title_ru = models.CharField(max_length=255, blank=True, default="")
     slug = models.SlugField(max_length=280, unique=True)
     oem_number = models.CharField(max_length=100, db_index=True)
     description = models.TextField(blank=True)

@@ -1618,6 +1618,9 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 # _clean_title: убирает CJK-иероглифы (中文/日本/한국),
                 # чтобы UI не пугал пользователя смешанными скриптами.
                 "name": _clean_title(p.title) or "—",
+                # Русское имя из словаря (фронт покажет его только при ru-локали,
+                # оригинал — мелким снизу). Пусто = перевода нет.
+                "name_ru": p.title_ru or "",
                 "brand": p.brand.name if p.brand else "—",
                 "condition": "oem",
                 "price": price,
@@ -7776,6 +7779,7 @@ def quick_order(params, user, role):
                 "status": "in_stock",
                 "id": p.oem_number or f"#{p.id}",
                 "name": _clean_title(p.title or "") or "—",
+                "name_ru": p.title_ru or "",
                 "brand": (p.brand.name if p.brand_id else "—"),
                 "condition": p.condition or "oem",
                 "price": float(p.price or 0),

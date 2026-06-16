@@ -1359,6 +1359,19 @@
   const $ = id => document.getElementById(id);
   const csrf = () => document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*=\s*([^;]*).*$)|^.*$/, '$1');
   const esc = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  // Выбран ли русский интерфейс (выставляется и сервером в <html lang>, и setLanguage).
+  const _isRuUI = () => (document.documentElement.getAttribute('lang') || 'ru').toLowerCase().slice(0, 2) === 'ru';
+  // Имя позиции для колонки NAME. Только при ru-локали И наличии name_ru показываем
+  // русское сверху + оригинал мелким снизу. Иначе — оригинал как есть.
+  function specNameHtml(it) {
+    const orig = esc(it.name || '');
+    const ru = it.name_ru ? esc(it.name_ru) : '';
+    if (ru && _isRuUI()) {
+      return '<span class="spec-name">' + ru + '</span>'
+        + '<span class="spec-name-oem" style="display:block;font-size:11px;color:#8a8a8a;font-family:ui-monospace,monospace;margin-top:1px;">' + orig + '</span>';
+    }
+    return '<span class="spec-name">' + orig + '</span>';
+  }
   const fmtMoney = (v, c='USD') => {
     if (!v && v !== 0) return '—';
     const sym = {USD:'$', EUR:'€', RUB:'₽', CNY:'¥'}[c] || '';
@@ -4167,7 +4180,7 @@
             <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
             <td class="spec-row-num">${modeDot}${idx+1}</td>
             <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
-            <td><div class="spec-name-cell"><span class="spec-name">${esc(it.name || '')}</span>${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div>${qfAnalogChip}</td>
+            <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div>${qfAnalogChip}</td>
             <td>${esc(it.brand || '')}</td>
             <td class="qf-cond-cell">${condSel || condFallback}</td>
             <td class="spec-price">${priceCellQf}</td>
@@ -4179,7 +4192,7 @@
           <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
           <td class="spec-row-num">${modeDot}${idx+1}</td>
           <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
-          <td><div class="spec-name-cell"><span class="spec-name">${esc(it.name || '')}</span>${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
+          <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
           <td>${esc(it.brand || '')}</td>
           <td class="spec-price">${(d.editable_price && it.rfq_item_id != null)
             ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" value="${Number(it.price || 0).toFixed(2)}" /></div>`
