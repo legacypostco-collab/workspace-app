@@ -11,7 +11,6 @@ admin — с платформой в целом.
   admin_user_detail     — детали юзера (заказы, KYB, wallet, статус)
   admin_ban_user        — заблокировать (DraftCard → User.is_active=False)
   admin_unban_user      — разблокировать
-  admin_change_role     — buyer ↔ seller
   admin_moderation_queue — единая очередь требующих внимания
   admin_catalog_review  — каталог: новые товары, подозрительные записи
   admin_platform_settings — read-only снэпшот env / config
@@ -369,9 +368,6 @@ def admin_user_detail(params, user, role):
     elif not u.is_active:
         actions.append({"action": "admin_unban_user", "label": "✓ Разблокировать",
                         "params": {"user_id": u.id}})
-    if not u.is_superuser:
-        actions.append({"action": "admin_change_role", "label": "🔄 Сменить роль",
-                        "params": {"user_id": u.id}})
 
     # Кликабельные ссылки на сами заявки пользователя (заказы + RFQ), чтобы
     # админ мог открыть и проверить позиции — а не только видеть счётчик.
@@ -495,67 +491,7 @@ def admin_unban_user(params, user, role):
 
 
 # ══════════════════════════════════════════════════════════
-# 6. Change role — buyer ↔ seller
-# ══════════════════════════════════════════════════════════
-
-@register("admin_change_role")
-def admin_change_role(params, user, role):
-    err = _ensure_admin(role)
-    if err: return err
-    from django.contrib.auth import get_user_model
-
-    from marketplace.models import UserProfile
-    U = get_user_model()
-    try:
-        target = U.objects.get(id=int(params.get("user_id") or 0))
-    except (U.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Пользователь не найден.")
-    if target.is_superuser:
-        return ActionResult(text="⚠️ Менять роль админу нельзя.")
-
-    new_role = (params.get("new_role") or "").strip().lower()
-    confirmed = bool(params.get("confirmed"))
-
-    if new_role not in ("buyer", "seller") or not confirmed:
-        prof = getattr(target, "profile", None)
-        cur = (prof.role if prof else "buyer") or "buyer"
-        return ActionResult(
-            text=f"Сменить роль для {target.username} (сейчас: {cur})?",
-            cards=[{"type": "form", "data": {
-                "title": f"🔄 Роль · {target.username}",
-                "submit_action": "admin_change_role",
-                "fields": [{
-                    "name": "new_role", "label": "Новая роль",
-                    "type": "select", "required": True,
-                    "options": [
-                        {"value": "buyer",  "label": "buyer (покупатель)"},
-                        {"value": "seller", "label": "seller (продавец)"},
-                    ],
-                    "value": cur,
-                }],
-                "fixed_params": {"user_id": target.id, "confirmed": True},
-            }}],
-        )
-
-    profile, _ = UserProfile.objects.get_or_create(user=target)
-    old_role = profile.role
-    profile.role = new_role
-    profile.save(update_fields=["role"])
-    _notify(target, kind="system",
-            title=f"Роль изменена: {old_role} → {new_role}",
-            body="Администратор платформы изменил вашу роль.",
-            url="/chat/")
-    return ActionResult(
-        text=f"✓ {target.username}: {old_role} → {new_role}.",
-        contextual_actions=[
-            {"action": "admin_user_detail", "label": "← Профиль",
-             "params": {"user_id": target.id}},
-        ],
-    )
-
-
-# ══════════════════════════════════════════════════════════
-# 7. Moderation queue — единая
+# 6. Moderation queue — единая
 # ══════════════════════════════════════════════════════════
 
 @register("admin_moderation_queue")

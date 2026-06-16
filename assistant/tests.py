@@ -2377,24 +2377,6 @@ class AdminActionsTests(TestCase):
         self.buyer.refresh_from_db()
         self.assertTrue(self.buyer.is_active)
 
-    def test_change_role_buyer_to_seller(self):
-        from .admin_actions import admin_change_role
-        r = admin_change_role({"user_id": self.buyer.id, "new_role": "seller",
-                                "confirmed": True}, self.admin, "admin")
-        self.assertIn("buyer → seller", r.text)
-        self.buyer.profile.refresh_from_db()
-        self.assertEqual(self.buyer.profile.role, "seller")
-
-    def test_change_role_invalid(self):
-        from .admin_actions import admin_change_role
-        # Step 1: form
-        r = admin_change_role({"user_id": self.buyer.id, "new_role": "bogus",
-                                "confirmed": True}, self.admin, "admin")
-        # invalid роль → возвращает форму, не пишет
-        self.assertTrue(any(c["type"] == "form" for c in r.cards))
-        self.buyer.profile.refresh_from_db()
-        self.assertEqual(self.buyer.profile.role, "buyer")
-
     # --- moderation queue ---
     def test_moderation_queue_returns_list(self):
         from .admin_actions import admin_moderation_queue

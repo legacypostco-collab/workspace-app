@@ -303,7 +303,7 @@ ROLE_ACTIONS = {
 # Подмножество actions, специфичных только для admin (вне operator/seller/buyer)
 _ADMIN_ONLY = [
     "admin_dashboard", "admin_gmv", "admin_users", "admin_user_detail",
-    "admin_ban_user", "admin_unban_user", "admin_change_role",
+    "admin_ban_user", "admin_unban_user",
     "admin_moderation_queue", "admin_catalog_review", "admin_platform_settings",
     "admin_revenue_breakdown", "admin_activity_feed",
 ]
@@ -1156,14 +1156,6 @@ TOOL_SCHEMAS = {
         "input_schema": {
             "type": "object",
             "properties": {"user_id": _INT, "confirmed": _BOOL},
-            "required": ["user_id"],
-        },
-    },
-    "admin_change_role": {
-        "description": "Сменить роль пользователя (buyer ↔ seller). Шаг 1 — select; шаг 2 — запись.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"user_id": _INT, "new_role": _STR, "confirmed": _BOOL},
             "required": ["user_id"],
         },
     },

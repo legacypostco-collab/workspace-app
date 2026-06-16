@@ -6090,7 +6090,7 @@
     'pay_reserve', 'pay_final', 'confirm_delivery',
     'op_assign', 'op_add_note', 'op_resolve_dispute',
     'op_hs_assign', 'op_cert_upload', 'op_customs_release',
-    'admin_ban_user', 'admin_unban_user', 'admin_change_role',
+    'admin_ban_user', 'admin_unban_user',
     'create_api_token', 'revoke_api_token',
     'setup_2fa', 'verify_2fa', 'disable_2fa',
     'submit_quote', 'respond_to_counter', 'mark_quote_final',
