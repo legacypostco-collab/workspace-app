@@ -1401,6 +1401,24 @@ def search_parts(params, user, role):
     if params.get("category"):
         qs = qs.filter(category__name__icontains=params["category"])
 
+    # ── Фильтр по диаметру: чипы стандартных размеров из названий ──
+    # Диаметр у спец-товаров (буровые коронки и т.п.) зашит в названии
+    # («… 152.4 mm …»). Собираем доступные размеры из выборки → отдаём чипами;
+    # клик по чипу пере-ищет с diameter=value (комбинируется с названием-запросом).
+    import re as _re_dia
+    def _dia_mm(t):
+        m = _re_dia.search(r"(\d+(?:[.,]\d+)?)\s*mm", (t or ""), _re_dia.I)
+        return float(m.group(1).replace(",", ".")) if m else None
+    _dia_avail = set()
+    for _t in qs.values_list("title", flat=True)[:300]:
+        _d = _dia_mm(_t)
+        if _d is not None:
+            _dia_avail.add(_d)
+    _dia_chips = sorted(_dia_avail)[:12]
+    _dia_sel = (params.get("diameter") or "").strip() if isinstance(params.get("diameter"), str) else params.get("diameter")
+    if _dia_sel:
+        qs = qs.filter(title__icontains=f"{_dia_sel} mm")
+
     parts = list(qs[:limit])
     from marketplace.fx import to_usd_float  # покупатель ВСЕГДА видит USD по бирж. курсу
     cards = [{
@@ -1427,8 +1445,22 @@ def search_parts(params, user, role):
             suggestions=["Найти аналог", "Загрузить список артикулов"],
         )
 
+    # Чипы фильтра по диаметру — показываем когда в выдаче несколько размеров.
+    _dia_ctx = []
+    if len(_dia_chips) > 1:
+        if _dia_sel:
+            _dia_ctx.append({"action": "search_parts", "label": "⌀ все размеры",
+                             "params": {"query": query}})
+        for _d in _dia_chips:
+            _p = {"query": query, "diameter": f"{_d:g}"}
+            if params.get("brand"):
+                _p["brand"] = params["brand"]
+            _mark = " ✓" if (_dia_sel and f"{_d:g}" == str(_dia_sel)) else ""
+            _dia_ctx.append({"action": "search_parts",
+                             "label": f"⌀ {_d:g} мм{_mark}", "params": _p})
+    _sel_suffix = f" · ⌀ {_dia_sel} мм" if _dia_sel else ""
     return ActionResult(
-        text=f"Найдено {len(cards)} позиций по запросу «{query}»:",
+        text=f"Найдено {len(cards)} позиций по запросу «{query}»{_sel_suffix}:",
         cards=cards,
         actions=[
             {"label": "Создать RFQ на все", "action": "create_rfq",
@@ -1436,6 +1468,7 @@ def search_parts(params, user, role):
             {"label": "Сравнить", "action": "compare_products",
              "params": {"product_ids": [c["data"]["id"] for c in cards]}},
         ],
+        contextual_actions=_dia_ctx,
         suggestions=["Показать ещё", "Фильтр по бренду", "История цен"],
     )
 
