@@ -34,8 +34,10 @@ DIVISORS = {
 #
 # DDP (Delivered Duty Paid):
 #   до двери, all-in. Поверх CIP добавляются:
-#     • импортная пошлина (~10% от cargo, реальный диапазон 3-20% по HS-коду);
-#     • НДС 20% от (cargo + duty + freight + insurance + last_mile);
+#     • импортная пошлина (~5% от cargo — реалистичный дефолт для запчастей
+#       спецтехники по ЕАЭС; диапазон 0-15% по HS-коду. HS-кодов в каталоге нет,
+#       поэтому используем единый дефолт, а не плоские 10% — те завышали DDP);
+#     • НДС 20% от (cargo + duty + freight + insurance + last_mile) — закон РФ;
 #     • last-mile авто внутри страны (~5% от cargo).
 INCOTERM_RULES = {
     "FOB": dict(include_freight=False, insurance_pct=Decimal("0"),
@@ -45,7 +47,7 @@ INCOTERM_RULES = {
                 duty_pct=Decimal("0"),  vat_pct=Decimal("0"),
                 last_mile_pct=Decimal("0")),
     "DDP": dict(include_freight=True,  insurance_pct=Decimal("0.015"),
-                duty_pct=Decimal("0.10"), vat_pct=Decimal("0.20"),
+                duty_pct=Decimal("0.05"), vat_pct=Decimal("0.20"),
                 last_mile_pct=Decimal("0.05")),
 }
 
