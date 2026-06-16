@@ -5296,15 +5296,18 @@
     try { form.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
     if (addrEl) setTimeout(() => { try { addrEl.focus(); } catch (e) {} }, 350);
     let btn = form.querySelector('.df-ddp-finalize');
+    const calcBtn = form.querySelector('.df-submit:not(.df-ddp-finalize)');
     if (!btn) {
       btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'df-submit act-btn df-ddp-finalize';
       btn.style.cssText = 'background:rgba(46,160,67,0.18);border:1px solid rgba(46,160,67,0.6);font-weight:600;margin-top:8px;display:block;';
-      const calcBtn = form.querySelector('.df-submit:not(.df-ddp-finalize)');
       if (calcBtn && calcBtn.parentNode) calcBtn.parentNode.insertBefore(btn, calcBtn.nextSibling);
       else form.appendChild(btn);
     }
+    // После выбора DDP кнопка «Рассчитать/Считаем…» избыточна (цена уже известна)
+    // и путает — видны две кнопки. Прячем её, оставляя одну CTA «Оформить DDP».
+    if (calcBtn) calcBtn.style.display = 'none';
     const landed = (cell.querySelector('.sm-landed') && cell.querySelector('.sm-landed').textContent || '').trim();
     btn.textContent = '✅ Оформить DDP до двери' + (landed ? ' · ' + landed : '');
     btn.onclick = () => {
@@ -5364,8 +5367,12 @@
       arrival_port: port,
     };
     if (qty) params.quantities = qty;
+    const _origText = btn.textContent;
     btn.disabled = true; btn.textContent = '⏳ Считаем…';
     quickAction('search_parts', params);
+    // Результат приходит НОВОЙ карточкой со свежей формой; эту (старую) кнопку
+    // возвращаем в исходный вид, чтобы она не зависала на «⏳ Считаем…».
+    setTimeout(() => { try { btn.disabled = false; btn.textContent = _origText; } catch (e) {} }, 2500);
   };
 
   // Inline-выполнение триггера: без новых сообщений в чате и скролла.
