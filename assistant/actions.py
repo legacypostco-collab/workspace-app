@@ -1267,6 +1267,16 @@ def generate_proposal(params, user, role):
             rfq = RFQ.objects.get(id=rfq_id)
         except RFQ.DoesNotExist:
             return ActionResult(text=f"⚠️ RFQ #{rfq_id} не найден")
+        # AuthZ (IDOR): только создатель, операторы и админы могут формировать
+        # КП по конкретному RFQ. Та же проверка, что в get_rfq_status.
+        is_op_or_admin = bool(role and (role.startswith("operator") or role == "admin"))
+        if not is_op_or_admin:
+            if _is_anon(user):
+                # Аноним — только анонимный RFQ (created_by=None).
+                if rfq.created_by_id is not None:
+                    return ActionResult(text=f"⚠️ RFQ #{rfq_id} не найден")
+            elif rfq.created_by_id and rfq.created_by_id != user.id:
+                return ActionResult(text=f"⚠️ RFQ #{rfq_id} не найден")
 
     items_count = rfq.items.count()
     total = sum(
@@ -2469,6 +2479,15 @@ def create_rfq(params, user, role):
                        else "needs_review" if matched_part else "new"),
                 confidence=confidence,
             )
+        # Аноним: запоминаем id RFQ в сессии, чтобы безопасно перепривязать его
+        # к user при регистрации (а не угадывать чужой id). Ключ — "anon_rfq_ids".
+        if is_anon:
+            req = params.get("_request")
+            if req is not None and hasattr(req, "session"):
+                ids = list(req.session.get("anon_rfq_ids") or [])
+                ids.append(rfq.id)
+                req.session["anon_rfq_ids"] = ids
+                req.session.modified = True
     except Exception as e:
         logger.exception("create_rfq failed")
         return ActionResult(text=f"⚠️ Не удалось создать RFQ: {e}")
@@ -9844,6 +9863,12 @@ def track_order(params, user, role):
     order_id = params.get("order_id") or params.get("id")
     if not order_id:
         return ActionResult(text="Не указан ID заказа.")
+    # Нечисловой order_id → не валим int()-кастом в seller-ветке (OrderItem.filter
+    # вне try). Покрываем buyer/seller/operator единой проверкой до ветвления.
+    try:
+        order_id = int(order_id)
+    except (ValueError, TypeError):
+        return ActionResult(text=f"Заказ #{order_id} не найден.")
     # Buyer видит только свой заказ; seller — заказы с его товарами; operator — все
     qs = Order.objects.select_related("buyer")
     if role == "buyer":

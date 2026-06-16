@@ -291,6 +291,29 @@ def confirm_kp_and_reserve(params, user, role):
         ])
 
     with transaction.atomic():
+        # FIX (БАГ 1): double-click/гонка — re-check под блокировкой.
+        # Проверка статуса выше (q.status not in ...) идёт вне транзакции, поэтому
+        # два одновременных клика проходят её одновременно и создают два Order +
+        # два резерва (idempotency платёжного слоя не ловит — create_payment_intent
+        # генерит новый uuid каждый раз). Зеркалим pay_reserve (actions.py).
+        q = Quote.objects.select_for_update().get(id=q.id)
+        if q.status == "accepted":
+            return ActionResult(text="Заказ по этой котировке уже создан.")
+        # Кошелёк тоже под блокировкой + перепроверка баланса.
+        wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+        if wallet.balance < reserve:
+            return ActionResult(text=(
+                f"❌ Недостаточно средств для резерва (перепроверка).\n"
+                f"Нужно: ${reserve:,.2f} · на счёте: ${wallet.balance:,.2f}."
+            ))
+        # FIX (БАГ 2): не создаём Order из 0 позиций — ниже цикл OrderItem
+        # пропускает qi с part is None, и при пустом КП получался Order без
+        # позиций, но с реальным списанием резерва. Проверяем заранее.
+        if not any(qi.part_id for qi in q.items.all()):
+            return ActionResult(text=(
+                "В котировке нет позиций с привязанной запчастью — "
+                "заказ не создан, резерв не списан."
+            ))
         # 1. Order
         order = Order.objects.create(
             customer_name=user.get_full_name() or user.username,

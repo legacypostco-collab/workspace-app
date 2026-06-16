@@ -20,7 +20,9 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from .actions import ActionResult, _log_event, _notify, register
+from .actions import (
+    ActionResult, _anon_register_result, _is_anon, _log_event, _notify, register,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -893,6 +895,10 @@ def view_rfq_quotes(params, user, role):
     except (RFQ.DoesNotExist, ValueError, TypeError):
         return ActionResult(text="RFQ не найден.")
 
+    # IDOR-гейт: аноним не должен видеть чужие анон-RFQ (None==None обходил owner-check)
+    if _is_anon(user):
+        return _anon_register_result()
+
     # Только владелец RFQ или оператор/admin
     if rfq.created_by_id != user.id and not (role and role.startswith("operator")) and role != "admin":
         return ActionResult(text="Просматривать котировки может только заказчик RFQ или оператор.")
@@ -991,6 +997,10 @@ def view_quote(params, user, role):
     except (Quote.DoesNotExist, ValueError, TypeError):
         return ActionResult(text="Котировка не найдена.")
 
+    # IDOR-гейт: аноним не должен видеть чужие котировки (None==None обходил owner-check)
+    if _is_anon(user):
+        return _anon_register_result()
+
     is_buyer = (q.rfq.created_by_id == user.id)
     is_seller = (q.seller_id == user.id)
     if not (is_buyer or is_seller or (role and role.startswith("operator")) or role == "admin"):
@@ -1074,10 +1084,22 @@ def accept_quote(params, user, role):
     except (Quote.DoesNotExist, ValueError, TypeError):
         return ActionResult(text="Котировка не найдена.")
 
+    # IDOR-гейт: аноним не должен принимать чужие котировки (None==None обходил owner-check)
+    if _is_anon(user):
+        return _anon_register_result()
+
     if q.rfq.created_by_id != user.id:
         return ActionResult(text="Принять котировку может только заказчик RFQ.")
     if q.status not in ("submitted", "finalized"):
         return ActionResult(text=f"Эту котировку нельзя принять (статус: {q.get_status_display()}).")
+
+    # Срок действия КП: протухшую котировку принимать нельзя (valid_until nullable)
+    from django.utils import timezone as _tz
+    if q.valid_until and _tz.now() > q.valid_until:
+        return ActionResult(text=(
+            "Котировка истекла " + q.valid_until.strftime("%d.%m.%Y %H:%M")
+            + ". Запросите у поставщика новое КП."
+        ))
 
     # Бизнес-правило: минимальная сумма заказа. Блокируем И на preview,
     # И на confirm — buyer должен сразу понять что котировку нельзя принять.
@@ -1123,6 +1145,14 @@ def accept_quote(params, user, role):
                 "cancel_label": "Отмена",
             }}],
         )
+
+    # Защита от «пустого» заказа: позиции без part пропускаются в цикле ниже,
+    # поэтому если матча по каталогу нет НИ У ОДНОЙ — Order вышел бы из 0 позиций,
+    # а резерв списался бы с полной суммы. Не создаём Order, отдаём на матч/оператора.
+    if not q.items.filter(part__isnull=False).exists():
+        return ActionResult(text=(
+            "По этой котировке нет позиций для оформления — нужен матч по каталогу или оператор."
+        ))
 
     # Шаг 2: создаём Order
     reserve_pct = Decimal("10.00")
@@ -1257,16 +1287,20 @@ def auto_accept_and_pay_reserve(params, user, role):
         # accept_quote вернул ошибку — пробрасываем как есть
         return res_accept
 
-    # Достаём id созданного Order'а из лог-события
-    from marketplace.models import Order
-    order = (Order.objects.filter(buyer=user)
-             .order_by("-id").first())
-    if not order:
-        return ActionResult(text="⚠️ Не удалось создать заказ.")
+    # Берём order_id напрямую из action="pay_reserve" в ответе accept_quote
+    # (надёжнее эвристики «последний заказ buyer'а» при гонках/нескольких заказах).
+    order_id = None
+    for act in (res_accept.actions or []):
+        if act.get("action") == "pay_reserve":
+            order_id = (act.get("params") or {}).get("order_id")
+            break
+    if not order_id:
+        # accept_quote не дал заказ (например, защитный гейт) — отдаём его ответ
+        return res_accept
 
     # Шаг 3: pay_reserve inline (если хватает денег на депозите)
     res_pay = _pay_reserve(
-        {"order_id": order.id, "confirmed": True}, user, role,
+        {"order_id": order_id, "confirmed": True}, user, role,
     )
     # res_pay сам вернёт error-текст с кнопкой topup_wallet если денег нет
     return res_pay

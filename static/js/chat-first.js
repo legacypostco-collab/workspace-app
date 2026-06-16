@@ -2263,7 +2263,8 @@
         const ni = (field, val, step) => `<input class="cat-edit-field" type="number" min="0" step="${step || '0.01'}" data-field="${field}" value="${val != null ? esc(String(val)) : ''}" />`;
         const opts = (map, sel) => Object.keys(map).map(v => `<option value="${v}"${sel === v ? ' selected' : ''}>${esc(map[v])}</option>`).join('');
         const sel = (field, map, val) => `<select class="cat-edit-field" data-field="${field}">${opts(map, val)}</select>`;
-        const CCY = {USD: 'USD', EUR: 'EUR', RUB: 'RUB', CNY: 'CNY', GBP: 'GBP'};
+        // GBP убран: бэкенд-FX знает только эти 4 валюты, иначе цена конвертится 1:1.
+        const CCY = {USD: 'USD', EUR: 'EUR', RUB: 'RUB', CNY: 'CNY'};
         const details = `
           <div class="cat-details">
             <div><span class="cat-dl">Артикул (OEM):</span> ${ti('oem_number', r.article)}</div>
@@ -5804,24 +5805,55 @@
     if (hb) hb.disabled = false;
   }
 
-  // Обрыв WS на полпути → сносим частичный пузырь/индикатор и тихо повторяем
-  // запрос по устойчивому HTTP-пути (api ретраит обрыв, 30с под медленный AI).
-  // Карточку «Соединение прервалось» показываем ТОЛЬКО если и HTTP не вытянул.
+  // Обрыв WS на полпути. КРИТИЧНО: consumers.py материализует генератор ЦЕЛИКОМ
+  // ДО стрима, поэтому к моменту обрыва ответ (вкл. возможный create_rfq) УЖЕ
+  // сохранён в БД. Раньше recovery делал повторный POST /chat/ → ЗАНОВО гнал
+  // AI-пайплайн → второй create_rfq, второй AI-кредит, дубль user+assistant.
+  // Теперь: сначала ПЕРЕЗАГРУЖАЕМ разговор (GET, idempotent, api сам ретраит),
+  // и если ответ уже в БД — рендерим его БЕЗ повторного запуска пайплайна.
   async function _recoverInterruptedStream(text) {
+    // Сразу показываем индикатор: чинит «зависший пустой экран» на ~90с,
+    // пока GET тянет сохранённый ответ (intent — как при отправке).
     removeTyping();
     if (state.currentBubble) { try { state.currentBubble.remove(); } catch(_){} state.currentBubble = null; }
+    addTyping(state._intent || null);
     try {
+      // Перезагружаем разговор. Если последняя пара = user(text) → assistant,
+      // значит ответ уже сохранён — рендерим его и выходим БЕЗ POST.
+      const conv = await api('/api/assistant/conversations/' + state.convId + '/');
+      const msgs = (conv && conv.messages) || [];
+      const last = msgs[msgs.length - 1];
+      const prev = msgs[msgs.length - 2];
+      const saved = last && last.role === 'assistant'
+        && prev && prev.role === 'user'
+        && (prev.content || '').trim() === text.trim();
+      if (saved) {
+        removeTyping();
+        // Сериализатор сообщений отдаёт id/role/content/cards/actions/context_refs
+        // (suggestions/contextual_actions в нём нет — как и в openConv), поэтому
+        // навигацию/подсказки достраиваем дефолтами, как при обычной загрузке.
+        const _ctx = ensureHomeNav(last.contextual_actions || []);
+        const _sugs = ensureSuggestions(last.suggestions || []);
+        addMessage('assistant', last.content, last.cards || [], last.actions || [],
+          last.context_refs || [], last.id || last.message_id || null, _sugs, _ctx);
+        loadConvList();
+        return;
+      }
+      // Ответа в БД нет (редкий ранний обрыв — до материализации генератора):
+      // тогда безопасно до-запросить по HTTP (пайплайн ещё не отработал).
       const r = await api('/api/assistant/chat/', {
         method: 'POST',
         body: JSON.stringify({conversation_id: state.convId, message: text}),
         retryNetwork: true, timeoutMs: 30000,
       });
+      removeTyping();
       setConvId(r.conversation_id);
       const _ctx = ensureHomeNav(r.contextual_actions || []);
       const _sugs = ensureSuggestions(r.suggestions || []);
       addMessage('assistant', r.response, r.cards, r.actions, r.context_refs || [], r.message_id || null, _sugs, _ctx);
       loadConvList();
     } catch (e) {
+      removeTyping();
       addMessage('assistant', '⚠️ Соединение прервалось — нажмите «Повторить».',
         [], [{action: '__resend_chat', params: {text: text}, label: '🔄 Повторить'}]);
     } finally {
@@ -5908,13 +5940,14 @@
         const r = await api('/api/assistant/chat/', {
           method:'POST',
           body: JSON.stringify({conversation_id: state.convId, message: text}),
-          // Повтор чат-сообщения безопасен: реальные мутации (заказ/платёж/RFQ)
-          // идут НЕ из чат-текста, а по клику на отдельную action-кнопку, и
-          // защищены серверным confirmed-гейтом (LLM их сам не проставляет) —
-          // повтор максимум прогонит read-only preview AI-петлю. → тихо ретраим
-          // обрыв канала ВНУТРИ api() (до 3 попыток с backoff) вместо мгновенной
-          // карточки «Соединение прервалось». 30с под медленный AI-ответ через
-          // релей (8с-дефолт его бы рубил). Дубль turn в истории — косметика.
+          // Этот POST — ПЕРВИЧНАЯ отправка (WS не поднялся), а не recovery: ответа
+          // в БД ещё нет, ретрай обрыва канала здесь корректен (до 3 попыток с
+          // backoff внутри api()) — иначе на нестабильном РФ-канале мгновенно
+          // вылетала бы карточка «Соединение прервалось». ВНИМАНИЕ: чат-текст МОЖЕТ
+          // мутировать (create_rfq материализует RFQ прямо из текста), поэтому
+          // ретрай тут безопасен лишь до первого успешного ответа сервера — обрыв
+          // на этапе fetch означает, что пайплайн ещё не отработал. 30с под
+          // медленный AI-ответ через релей (8с-дефолт его бы рубил).
           retryNetwork: true,
           timeoutMs: 30000,
         });

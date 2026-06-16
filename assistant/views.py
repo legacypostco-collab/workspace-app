@@ -307,19 +307,20 @@ def _handle_start_registration(request, params):
 
 
 def _attach_anonymous_rfqs_to_user(request, user):
-    """После регистрации привязываем anon-RFQ к новому user'у.
-    Логика поиска: RFQ.created_by=None И customer_email=anon@chat.local
-    созданные в течение текущей session (по session_key).
+    """После регистрации/входа привязываем anon-RFQ к новому user'у.
+    Скоуп: только те RFQ, чьи id записаны в session (anon_rfq_ids создаёт
+    create_rfq в actions.py) — иначе была бы cross-tenant утечка чужих
+    гостевых заявок. created_by__isnull=True оставлен как доп. защита.
     """
     from marketplace.models import RFQ
-    # Безопасный фильтр: только anon-RFQ за последние 24ч (защита от случайного захвата)
-    from django.utils import timezone
-    from datetime import timedelta
-    recent = timezone.now() - timedelta(hours=24)
+    # Берём только id из текущей сессии — не трогаем чужие анон-RFQ
+    anon_ids = (request.session.pop("anon_rfq_ids", []) if hasattr(request, "session") else [])
+    if not anon_ids:
+        return
     qs = RFQ.objects.filter(
+        id__in=anon_ids,
         created_by__isnull=True,
         customer_email="anon@chat.local",
-        created_at__gte=recent,
     )
     updated = qs.update(
         created_by=user,

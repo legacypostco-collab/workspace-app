@@ -3618,7 +3618,12 @@ def rfq_proposal(request: HttpRequest, rfq_id: int) -> HttpResponse:
     if role == "seller" and not request.user.is_superuser:
         messages.error(request, "КП доступно для клиента.")
         return redirect("rfq_detail", rfq_id=rfq.id)
-    if rfq.created_by_id and rfq.created_by_id != request.user.id and not request.user.is_superuser:
+    # Анон-RFQ (created_by_id is None) — только админу, иначе IDOR
+    if rfq.created_by_id is None:
+        if not request.user.is_superuser:
+            messages.error(request, "Нет доступа к этому RFQ.")
+            return redirect("rfq_list")
+    elif rfq.created_by_id != request.user.id and not request.user.is_superuser:
         messages.error(request, "Нет доступа к этому RFQ.")
         return redirect("rfq_list")
 
@@ -3689,7 +3694,11 @@ def rfq_logistics_estimate(request: HttpRequest, rfq_id: int) -> JsonResponse:
     role = _role_for(request.user)
     if role == "seller" and not request.user.is_superuser:
         return JsonResponse({"ok": False, "error": "forbidden"}, status=403)
-    if rfq.created_by_id and rfq.created_by_id != request.user.id and not request.user.is_superuser:
+    # Анон-RFQ (created_by_id is None) — только админу, иначе IDOR
+    if rfq.created_by_id is None:
+        if not request.user.is_superuser:
+            return JsonResponse({"ok": False, "error": "forbidden"}, status=403)
+    elif rfq.created_by_id != request.user.id and not request.user.is_superuser:
         return JsonResponse({"ok": False, "error": "forbidden"}, status=403)
 
     payload = {
@@ -3714,7 +3723,12 @@ def rfq_proposal_pdf(request: HttpRequest, rfq_id: int) -> HttpResponse:
     if role == "seller" and not request.user.is_superuser:
         messages.error(request, "КП доступно для клиента.")
         return redirect("rfq_detail", rfq_id=rfq.id)
-    if rfq.created_by_id and rfq.created_by_id != request.user.id and not request.user.is_superuser:
+    # Анон-RFQ (created_by_id is None) — только админу, иначе IDOR
+    if rfq.created_by_id is None:
+        if not request.user.is_superuser:
+            messages.error(request, "Нет доступа к этому RFQ.")
+            return redirect("rfq_list")
+    elif rfq.created_by_id != request.user.id and not request.user.is_superuser:
         messages.error(request, "Нет доступа к этому RFQ.")
         return redirect("rfq_list")
 
@@ -3841,7 +3855,12 @@ def rfq_checkout(request: HttpRequest, rfq_id: int) -> HttpResponse:
     if role == "seller" and not request.user.is_superuser:
         messages.error(request, "Оформление из RFQ доступно только buyer.")
         return redirect("rfq_detail", rfq_id=rfq.id)
-    if rfq.created_by_id and rfq.created_by_id != request.user.id and not request.user.is_superuser:
+    # Анон-RFQ (created_by_id is None) — только админу, иначе IDOR
+    if rfq.created_by_id is None:
+        if not request.user.is_superuser:
+            messages.error(request, "Нет доступа к этому RFQ.")
+            return redirect("rfq_list")
+    elif rfq.created_by_id != request.user.id and not request.user.is_superuser:
         messages.error(request, "Нет доступа к этому RFQ.")
         return redirect("rfq_list")
 

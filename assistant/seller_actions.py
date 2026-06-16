@@ -1364,7 +1364,9 @@ def edit_product(params, user, role):
         if v in (None, ""):
             return
         try:
-            nv = int(v) if integer else Decimal(str(v))
+            # клампим целочисленные поля снизу: stock_quantity — PositiveIntegerField,
+            # отрицательное значение → IntegrityError на Postgres
+            nv = max(0, int(v)) if integer else Decimal(str(v))
         except Exception:
             return
         if getattr(p, attr) != nv:
@@ -1395,7 +1397,8 @@ def edit_product(params, user, role):
     _choice("availability", "availability", {"in_stock", "backorder"})
 
     cur = params.get("currency")
-    if cur and str(cur).strip().upper() in {"USD", "EUR", "RUB", "CNY", "GBP", "JPY", "TRY"}:
+    # только валюты с реальным курсом в marketplace/fx.py; прочие → молчаливый 1:1 USD
+    if cur and str(cur).strip().upper() in {"USD", "EUR", "RUB", "CNY"}:
         nc = str(cur).strip().upper()
         if p.currency != nc:
             p.currency = nc; changed += 1
