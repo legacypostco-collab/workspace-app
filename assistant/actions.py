@@ -1471,6 +1471,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
         _country_from_port,
         _volumetric_kg,
         calc_incoterm_breakdown,
+        clearance_fee,
     )
     from marketplace.models import LogisticsTariff
     delivery_address = (delivery_address or "").strip()
@@ -1494,7 +1495,8 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
     matrix_ships = {(m, i): Decimal("0") for m in ("sea","air","auto") for i in ("FOB","CIP","DDP")}
     matrix_breakdown = {(m, i): {"freight": Decimal("0"), "insurance": Decimal("0"),
                                    "carriage_ext": Decimal("0"), "duty": Decimal("0"),
-                                   "vat": Decimal("0"), "last_mile": Decimal("0")}
+                                   "vat": Decimal("0"), "last_mile": Decimal("0"),
+                                   "clearance": Decimal("0")}
                           for m in ("sea","air","auto") for i in ("FOB","CIP","DDP")}
     matrix_days  = {("sea","FOB"): 0, ("air","FOB"): 0, ("auto","FOB"): 0}
     matrix_avail = {"sea": False, "air": False, "auto": False}
@@ -1813,6 +1815,12 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                     matrix_ships[(m, inc)] = bd["total"]
                     for k in ("freight", "insurance", "carriage_ext", "duty", "vat", "last_mile"):
                         matrix_breakdown[(m, inc)][k] = bd[k]
+                    # Таможенное оформление — фикс-сбор ОДИН раз на отправку (не
+                    # на позицию), только DDP. matrix считает колонку целиком, так
+                    # что добавляем один раз здесь.
+                    cl = clearance_fee(dest, inc)
+                    matrix_breakdown[(m, inc)]["clearance"] = cl
+                    matrix_ships[(m, inc)] += cl
 
         # Заполняем per-line ship_cost (используем самый дешёвый режим)
         if per_mode_freight:
@@ -2082,6 +2090,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                                 "duty": float(matrix_breakdown[(m, inc)]["duty"]),
                                 "vat": float(matrix_breakdown[(m, inc)]["vat"]),
                                 "last_mile": float(matrix_breakdown[(m, inc)]["last_mile"]),
+                                "clearance": float(matrix_breakdown[(m, inc)]["clearance"]),
                             },
                         }
                         for inc in ("FOB", "CIP", "DDP")
@@ -2092,7 +2101,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             "incoterm_descs": {
                 "FOB": "самовывоз из порта поставщика — без доплат к EXW",
                 "CIP": "port-to-port фрахт + страховка груза (1.5%). Таможня — покупателя",
-                "DDP": "all-in до двери: фрахт + страховка + пошлина (~5%) + НДС 22% + last-mile (~5%)",
+                "DDP": "all-in до двери: фрахт + страховка + пошлина (~5%) + НДС 22% + last-mile (~5%) + таможенное оформление",
             },
             "cip_available": cip_available,
             "origin_breakdown": origin_breakdown,
@@ -7828,6 +7837,7 @@ def quick_order(params, user, role):
         _volumetric_kg,
         calc_incoterm_breakdown,
         calc_logistics,
+        clearance_fee,
     )
     from marketplace.models import LogisticsTariff
     dest_country = (params.get("dest_country") or "RU").upper()[:2]
@@ -7839,7 +7849,8 @@ def quick_order(params, user, role):
     ship_breakdown = []
     ship_components = {"freight": Decimal("0"), "insurance": Decimal("0"),
                         "carriage_ext": Decimal("0"), "duty": Decimal("0"),
-                        "vat": Decimal("0"), "last_mile": Decimal("0")}
+                        "vat": Decimal("0"), "last_mile": Decimal("0"),
+                        "clearance": Decimal("0")}
     ship_missing = 0
     for p in parts:
         best = None
@@ -7860,6 +7871,13 @@ def quick_order(params, user, role):
             ship_breakdown.append((p.oem_number, best["mode"], bd["total"], best["transit_days"]))
         else:
             ship_missing += 1
+    # Таможенное оформление — ОДИН фикс-сбор на отправку (брокер+терминал),
+    # только DDP и только если есть что отправлять.
+    if ship_total > 0:
+        cl = clearance_fee(dest_country, chosen_inc)
+        if cl > 0:
+            ship_components["clearance"] += cl
+            ship_total += cl
     landed_total = (total + ship_total).quantize(Decimal("0.01"))
 
     # Origin breakdown — состав отправки по странам для выбранного mode.
@@ -8119,6 +8137,7 @@ def quick_order(params, user, role):
                         "duty":         float(ship_components.get("duty",         Decimal("0"))),
                         "vat":          float(ship_components.get("vat",          Decimal("0"))),
                         "last_mile":    float(ship_components.get("last_mile",    Decimal("0"))),
+                        "clearance":    float(ship_components.get("clearance",    Decimal("0"))),
                     },
                 },
             },

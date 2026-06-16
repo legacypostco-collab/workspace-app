@@ -88,6 +88,25 @@ class CustomsDataTests(TestCase):
         self.assertIn("broker", f)
         self.assertIn("terminal", f)
 
+    # ── Таможенное оформление (clearance: брокер + терминал) ────
+    def test_clearance_fee_ddp(self):
+        from .logistics import clearance_fee
+        # DDP в РФ: брокер $250 + терминал $180 = $430, фикс на отправку
+        self.assertEqual(clearance_fee("RU", "DDP"), Decimal("430.00"))
+
+    def test_clearance_fee_only_ddp(self):
+        from .logistics import clearance_fee
+        # FOB/CIP — покупатель растамаживает сам, сбора нет
+        self.assertEqual(clearance_fee("RU", "FOB"), Decimal("0"))
+        self.assertEqual(clearance_fee("RU", "CIP"), Decimal("0"))
+
+    def test_clearance_not_in_breakdown(self):
+        from .logistics import calc_incoterm_breakdown
+        # clearance НЕ внутри пер-позиционной разбивки (=0), чтобы не множиться
+        # на число позиций — его прибавляет вызывающий код один раз на отправку.
+        bd = calc_incoterm_breakdown(Decimal("800"), Decimal("10000"), "DDP")
+        self.assertEqual(bd["clearance"], Decimal("0"))
+
     # ── Сертификаты ────────────────────────────────────────────
     def test_required_certs_pumps(self):
         certs = required_certs_for("8413.50")

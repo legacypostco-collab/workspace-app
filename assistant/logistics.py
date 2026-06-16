@@ -38,17 +38,21 @@ DIVISORS = {
 #       спецтехники по ЕАЭС; диапазон 0-15% по HS-коду. HS-кодов в каталоге нет,
 #       поэтому используем единый дефолт, а не плоские 10% — те завышали DDP);
 #     • НДС 22% от (cargo + duty + freight + insurance + last_mile) — закон РФ (с 2026);
-#     • last-mile авто внутри страны (~5% от cargo).
+#     • last-mile авто внутри страны (~5% от cargo);
+#     • таможенное оформление: брокер + терминальная обработка (THC) — ФИКС-сбор
+#       на одну декларацию (НЕ % и НЕ на каждую позицию), ставки COUNTRY_FEES.
+#       Только DDP — в FOB/CIP покупатель растамаживает сам. В базу НДС не входит
+#       (это услуги внутри РФ, к таможенной стоимости импорта не относятся).
 INCOTERM_RULES = {
     "FOB": dict(include_freight=False, insurance_pct=Decimal("0"),
                 duty_pct=Decimal("0"),  vat_pct=Decimal("0"),
-                last_mile_pct=Decimal("0")),
+                last_mile_pct=Decimal("0"), clearance=False),
     "CIP": dict(include_freight=True,  insurance_pct=Decimal("0.015"),
                 duty_pct=Decimal("0"),  vat_pct=Decimal("0"),
-                last_mile_pct=Decimal("0")),
+                last_mile_pct=Decimal("0"), clearance=False),
     "DDP": dict(include_freight=True,  insurance_pct=Decimal("0.015"),
                 duty_pct=Decimal("0.05"), vat_pct=Decimal("0.22"),
-                last_mile_pct=Decimal("0.05")),
+                last_mile_pct=Decimal("0.05"), clearance=True),
 }
 
 
@@ -74,9 +78,28 @@ def calc_incoterm_breakdown(freight: Decimal, cargo_value: Decimal,
         "freight": freight_used, "insurance": insurance,
         "carriage_ext": Decimal("0"), "duty": duty,
         "vat": vat, "last_mile": last_mile,
+        # clearance — ПЕР-ОТПРАВКА фикс-сбор, его прибавляет вызывающий код
+        # один раз на декларацию (см. clearance_fee). Здесь всегда 0, чтобы
+        # пер-позиционное суммирование не множило сбор на число позиций.
+        "clearance": Decimal("0"),
         "total": total.quantize(Decimal("0.01")),
         "incoterm": incoterm,
     }
+
+
+def clearance_fee(dest_country: str = "RU", incoterm: str = "DDP") -> Decimal:
+    """Фикс-сбор за таможенное оформление: брокер + терминальная обработка (THC).
+
+    Берётся ОДИН РАЗ на отправку (одну декларацию), не на каждую позицию, и
+    только для DDP — в FOB/CIP покупатель растамаживает сам. Ставки — COUNTRY_FEES
+    (customs_data). В базу импортного НДС не входит.
+    """
+    rules = INCOTERM_RULES.get(incoterm, {})
+    if not rules.get("clearance"):
+        return Decimal("0")
+    from .customs_data import fees_for
+    f = fees_for(dest_country)
+    return (Decimal(f["broker"]) + Decimal(f["terminal"])).quantize(Decimal("0.01"))
 
 
 # Legacy alias — старый коэффициент для совместимости

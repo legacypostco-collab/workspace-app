@@ -3539,6 +3539,7 @@
             ${advBd.duty > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· Пошлина</span><span>${fmtMoney(advBd.duty, 'USD')}</span></div>` : ''}
             ${advBd.vat > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· НДС 22%</span><span>${fmtMoney(advBd.vat, 'USD')}</span></div>` : ''}
             ${advBd.last_mile > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· Доставка до двери</span><span>${fmtMoney(advBd.last_mile, 'USD')}</span></div>` : ''}
+            ${advBd.clearance > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· Таможенное оформление</span><span>${fmtMoney(advBd.clearance, 'USD')}</span></div>` : ''}
             ${adv.shipping_missing ? `<div class="oc-adv-row oc-adv-warn">⚠ Доставка не рассчитана для ${adv.shipping_missing} поз.</div>` : ''}
           </div>
         </details>
