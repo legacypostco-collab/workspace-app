@@ -29,7 +29,14 @@
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Шрифты грузим НЕ блокируя рендер: РФ-ТСПУ душит fonts.googleapis.com, и
+       render-blocking <link rel=stylesheet> вешал страницу на минуты до таймаута.
+       media=print → не применяется к экрану (не блокирует); onload → включаем.
+       Заблокирован — страница рендерится на системном фолбэке, без зависания. -->
+  <link rel="stylesheet" media="print" onload="this.media='all'"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap">
+  <noscript><link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap"></noscript>
   {% comment %}javascript-catalog — defer чтобы не блокировал FCP. Глобал gettext() не нужен
      для первичного рендера, чат-first.js использует его позже.{% endcomment %}
   <script src="{% url 'javascript-catalog' %}" defer></script>
