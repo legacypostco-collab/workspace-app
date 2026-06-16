@@ -373,12 +373,27 @@ def admin_user_detail(params, user, role):
         actions.append({"action": "admin_change_role", "label": "🔄 Сменить роль",
                         "params": {"user_id": u.id}})
 
+    # Кликабельные ссылки на сами заявки пользователя (заказы + RFQ), чтобы
+    # админ мог открыть и проверить позиции — а не только видеть счётчик.
+    from marketplace.models import RFQ
+    open_btns = []
+    for oid in (Order.objects.filter(buyer=u).order_by("-created_at")
+                .values_list("id", flat=True)[:6]):
+        open_btns.append({"action": "get_order_detail",
+                          "label": f"📦 Заказ ORD-{oid}",
+                          "params": {"order_id": oid}})
+    for rid in (RFQ.objects.filter(created_by=u).order_by("-created_at")
+                .values_list("id", flat=True)[:6]):
+        open_btns.append({"action": "get_rfq_status",
+                          "label": f"📋 RFQ #{rid}",
+                          "params": {"rfq_id": rid}})
+
     return ActionResult(
         text=f"👤 {u.username} · {u.email or 'нет email'}",
         cards=[{"type": "draft", "data": {"title": f"Профиль · {u.username}",
                                            "rows": rows, "confirm_label": "—"}}],
         actions=actions,
-        contextual_actions=[
+        contextual_actions=open_btns + [
             {"action": "admin_users", "label": "← К списку"},
         ],
     )

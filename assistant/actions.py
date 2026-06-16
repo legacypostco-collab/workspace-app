@@ -2798,7 +2798,9 @@ def get_order_detail(params, user, role):
         it.part and it.part.seller_id == user.id for it in o.items.all()
     ))
     is_buyer = (o.buyer_id == user.id)
-    is_op = role.startswith("operator") or user.is_staff
+    # operator/admin/staff/superuser видят любой заказ (контроль платформы).
+    is_op = (role.startswith("operator") or role == "admin"
+             or getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
     if not (is_buyer or is_seller or is_op):
         return ActionResult(text="Нет доступа к этому заказу.")
 
