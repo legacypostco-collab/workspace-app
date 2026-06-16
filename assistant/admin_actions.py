@@ -211,7 +211,7 @@ def admin_users(params, user, role):
     U = get_user_model()
 
     flt = (params.get("filter") or "all").strip().lower()
-    qs = U.objects.all()
+    qs = U.objects.select_related("profile", "kyb")
     if flt == "active":
         qs = qs.filter(is_active=True)
     elif flt == "banned":
@@ -220,16 +220,30 @@ def admin_users(params, user, role):
         qs = qs.filter(profile__role="buyer")
     elif flt == "sellers":
         qs = qs.filter(profile__role="seller")
+    elif flt == "operators":
+        qs = qs.filter(profile__role__startswith="operator")
     elif flt == "kyb_pending":
         qs = qs.filter(kyb__status="pending")
     elif flt == "verified":
         qs = qs.filter(kyb__status="verified")
     elif flt == "new":
         qs = qs.filter(date_joined__gte=timezone.now() - timedelta(days=7))
-    qs = qs.exclude(username="__platform_escrow__").order_by("-date_joined")[:30]
+    qs = qs.exclude(username="__platform_escrow__").order_by("-date_joined")[:300]
 
-    rows = []
-    for u in qs:
+    def _group_of(u):
+        if u.is_superuser:
+            return "admin"
+        prof = getattr(u, "profile", None)
+        r = ((prof.role if prof else "") or "").lower()
+        if r.startswith("operator"):
+            return "operator"
+        if r == "seller":
+            return "seller"
+        if getattr(u, "is_staff", False):
+            return "operator"
+        return "buyer"
+
+    def _row(u):
         prof = getattr(u, "profile", None)
         kyb_obj = getattr(u, "kyb", None)
         kyb_label = kyb_obj.get_status_display() if kyb_obj else "—"
@@ -238,25 +252,47 @@ def admin_users(params, user, role):
         if u.is_superuser: flags.append("⚡admin")
         if not u.is_active: flags.append("🚫 ban")
         if kyb_obj and kyb_obj.status == "verified": flags.append("✓ KYB")
-        rows.append({
+        return {
             "title": f"{u.username} · {role_label}",
-            "subtitle": (
-                f"{u.email or '—'} · KYB: {kyb_label}"
-                + (" · " + " ".join(flags) if flags else "")
-            ),
+            "subtitle": (f"{u.email or '—'} · KYB: {kyb_label}"
+                         + (" · " + " ".join(flags) if flags else "")),
             "action": "admin_user_detail", "params": {"user_id": u.id},
-        })
+        }
+
+    # Делим по сущностям (ролям) — отдельная секция на каждую.
+    GROUPS = [("buyer", "👤 Покупатели"), ("seller", "🏭 Продавцы"),
+              ("operator", "🛠 Операторы"), ("admin", "⚡ Админы")]
+    PER = 40
+    buckets = {k: [] for k, _ in GROUPS}
+    for u in qs:
+        buckets[_group_of(u)].append(u)
+
+    cards = []
+    total = 0
+    for key, title in GROUPS:
+        bucket = buckets[key]
+        if not bucket:
+            continue
+        total += len(bucket)
+        items = [_row(u) for u in bucket[:PER]]
+        if len(bucket) > PER:
+            items.append({"title": f"… ещё {len(bucket) - PER} (показаны первые {PER})"})
+        cards.append({"type": "list", "data": {
+            "title": f"{title} · {len(bucket)}", "items": items}})
+    if not cards:
+        cards = [{"type": "list", "data": {"title": "👥 Пользователи",
+                                            "items": [{"title": "Пусто"}]}}]
 
     return ActionResult(
-        text=f"👥 Пользователи · фильтр «{flt}» · {len(rows)} найдено.",
-        cards=[{"type": "list", "data": {"title": f"👥 Пользователи · {flt}",
-                                          "items": rows or [{"title": "Пусто"}]}}],
+        text=f"👥 Пользователи · фильтр «{flt}» · {total} в {len(cards)} группах.",
+        cards=cards,
         contextual_actions=[
             {"action": "admin_users", "label": "Все",       "params": {"filter": "all"}},
             {"action": "admin_users", "label": "Активные",  "params": {"filter": "active"}},
             {"action": "admin_users", "label": "Заблокир.", "params": {"filter": "banned"}},
-            {"action": "admin_users", "label": "Покупатели","params": {"filter": "buyers"}},
-            {"action": "admin_users", "label": "Продавцы",  "params": {"filter": "sellers"}},
+            {"action": "admin_users", "label": "👤 Покупатели","params": {"filter": "buyers"}},
+            {"action": "admin_users", "label": "🏭 Продавцы",  "params": {"filter": "sellers"}},
+            {"action": "admin_users", "label": "🛠 Операторы", "params": {"filter": "operators"}},
             {"action": "admin_users", "label": "KYB pending","params": {"filter": "kyb_pending"}},
         ],
     )
