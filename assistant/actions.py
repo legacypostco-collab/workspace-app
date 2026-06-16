@@ -7433,7 +7433,9 @@ def leave_review(params, user, role):
         fixed = {"confirmed": True}
         if order:
             fixed["order_id"] = order.id
-        claim_params = {"order_id": order.id} if order else {}
+        # Рекламацию здесь НЕ предлагаем: она — альтернатива приёмке и даётся
+        # один раз на карточке «Подтвердить приёмку». Если покупатель принял
+        # заказ, повторно навязывать жалобу в форме отзыва не нужно.
         return ActionResult(
             text="⭐ Отзыв о сделке",
             cards=[{"type": "form", "data": {
@@ -7444,8 +7446,6 @@ def leave_review(params, user, role):
                 "fixed_params": fixed,
             }}],
             contextual_actions=[
-                {"action": "create_claim", "label": "🧾 Что-то не так? Открыть рекламацию",
-                 "params": claim_params},
                 {"action": "go_home", "label": "🏠 Главная"},
             ],
         )
@@ -7477,12 +7477,13 @@ def leave_review(params, user, role):
         )
 
     if stars <= 2:
+        # Рекламацию здесь НЕ навязываем: она даётся один раз на приёмке.
+        # Низкая оценка и так понижает рейтинг поставщика.
         return ActionResult(
-            text=(f"Спасибо за честную оценку ({stars}★). Если есть конкретная "
-                  f"проблема по заказу — оформите рекламацию, оператор разберётся."),
+            text=(f"Спасибо за честную оценку ({stars}★) — она учтётся в рейтинге "
+                  f"поставщика."),
             contextual_actions=[
-                {"action": "create_claim", "label": "🧾 Открыть рекламацию",
-                 "params": {"order_id": order.id}},
+                {"action": "get_orders", "label": "📦 Мои заказы"},
                 {"action": "go_home", "label": "🏠 Главная"},
             ],
         )
@@ -11206,8 +11207,6 @@ def confirm_delivery(params, user, role):
         actions=[
             {"label": "Все мои заказы", "action": "get_orders", "params": {}},
             {"label": "Оставить отзыв", "action": "leave_review",
-             "params": {"order_id": order.id}},
-            {"label": "Открыть рекламацию", "action": "create_claim",
              "params": {"order_id": order.id}},
         ],
         suggestions=["Что заказать ещё?"],
