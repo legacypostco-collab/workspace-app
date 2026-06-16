@@ -174,12 +174,20 @@ def _brand_origin(brand: str) -> str:
 
 
 def fallback_origin_country(part) -> str:
-    """Страна отправления-источник для позиции без порта (ISO-2).
+    """Страна отправления-источник для позиции (ISO-2).
 
-    Порядок: country_of_origin (реальная страна) → бренд → DEFAULT_ORIGIN.
-    Используется в calc_logistics и в матрице доставки, когда у Part пуст
-    и sea_port, и air_port.
+    Порядок: морской порт (UN/LOCODE) → country_of_origin (реальная страна) →
+    бренд → DEFAULT_ORIGIN. Морской порт первым, чтобы air-режим с IATA-кодом
+    (ONQ, PKX…), который не резолвится в ISO 2-символьной эвристикой, наследовал
+    ту же страну, что и морской порт детали. Используется в calc_logistics и в
+    матрице доставки.
     """
+    # 0) морской порт — UN/LOCODE, первые 2 буквы = надёжный ISO страны
+    sp = (getattr(part, "sea_port", "") or "").strip()
+    if sp:
+        cc = _country_from_port(sp.split()[0])
+        if cc:
+            return cc
     coo = (getattr(part, "country_of_origin", "") or "").strip().lower()
     if coo and coo not in ("unknown", "n/a", "na", "-", "—", "не указано"):
         iso = COUNTRY_NAME_ISO.get(coo)
@@ -300,6 +308,18 @@ def calc_logistics(part, dest_country: str, mode: str = "sea") -> dict:
             origin_port__iexact=origin_country,
             dest_country=dest_country, mode=mode, is_active=True,
         ).first()
+    if not tariff:
+        # Порт-код не дал тарифа (напр. IATA ONQ→«ON», которого нет) —
+        # наследуем страну детали (морской порт/coo/бренд) и пробуем ещё раз.
+        fb = fallback_origin_country(part)
+        if fb and fb not in (origin_code, origin_country):
+            tariff = LogisticsTariff.objects.filter(
+                origin_port__iexact=fb,
+                dest_country=dest_country, mode=mode, is_active=True,
+            ).first()
+            if tariff:
+                origin_code = fb
+                base["origin_port"] = fb
     if not tariff:
         base["error"] = "no_tariff"
         return base

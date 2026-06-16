@@ -1822,10 +1822,15 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 origin_code = origin.split()[0] if origin else ""
                 if not origin_code:
                     # Порт не указан → fallback на страну-источник, чтобы фрахт
-                    # (и CIP/DDP) считался по тарифу страна→страна. Если тарифа
-                    # для (страна, режим, dest) нет — группа отсеется ниже в
-                    # _lookup_tariff, как и раньше.
+                    # (и CIP/DDP) считался по тарифу страна→страна.
                     origin_code = fallback_origin_country(p)
+                elif not _lookup_tariff(origin_code, m):
+                    # Порт указан, но тарифа (ни по порту, ни по его стране) нет —
+                    # напр. IATA-код аэропорта ONQ→«ON». Наследуем страну детали
+                    # (морской порт/coo/бренд), если по ней тариф есть.
+                    fb = fallback_origin_country(p)
+                    if _lookup_tariff(fb, m):
+                        origin_code = fb
                 ch = max(
                     Decimal(p.gross_weight_kg or 0),
                     _volumetric_kg(p.length_cm, p.width_cm, p.height_cm, m),
