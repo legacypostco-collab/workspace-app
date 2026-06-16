@@ -4501,7 +4501,7 @@
         <textarea class="df-input df-addr" rows="2" placeholder="Напр.: ул. Профсоюзная 84, корп. 5, офис 12">${curAddr}</textarea>
       </div>
       <div class="df-hint" style="margin:2px 0 8px;">Заполнили поля? Нажмите кнопку — цены <b>CIP/DDP</b> сразу появятся в таблице ниже ↓</div>
-      <button class="df-submit act-btn" type="button" onclick="window.calcShipping && window.calcShipping(this)" style="background:rgba(232,92,13,0.16);border:1px solid rgba(232,92,13,0.55);font-weight:600;">
+      <button class="df-submit act-btn" type="button" onclick="window.calcShipping && window.calcShipping(this)">
         🧮 Рассчитать цены CIP / DDP →
       </button>
     </div>`;
