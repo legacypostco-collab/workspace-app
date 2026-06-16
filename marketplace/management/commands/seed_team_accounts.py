@@ -380,19 +380,59 @@ class Command(BaseCommand):
             except Exception:
                 pass
 
-        # 4) КП (Quote) — продавцы отвечают на существующие RFQ
-        rfqs = list(RFQ.objects.order_by("-id")[:30])
-        for s in uniq(sellers):
-            if not rfqs or Quote.objects.filter(seller=s).exists():
+        # 4) КП (Quote) — каждый продавец отвечает на RFQ, СОСТАВЛЕННЫЙ ИЗ ЕГО
+        #    позиций. Раньше брали топ-2 свежих RFQ подряд (а это pool из Komatsu
+        #    KM-*, которых у продавца нет — у него каталог DEMO-*-<id>) → «КП
+        #    отправлен» по запросу с 0 позиций в каталоге (репорт пользователя:
+        #    «как могла прийти заявка, где ни одной позиции нет на складе?»).
+        from django.contrib.auth import get_user_model as _gum
+        from marketplace.models import RFQItem as _RFQItem
+        demo_buyer = (uniq(buyers) or [None])[0]
+        # Кто ДОЛЖЕН иметь демо-КП: управляемые этой командой продавцы ∪ те, у
+        # кого уже были seed-КП (интенция демо в т.ч. из других сидов — demo_seller
+        # и пр.). Так чиним и аккаунты вне списка команды.
+        intended_ids = {s.id for s in uniq(sellers)}
+        intended_ids |= set(
+            Quote.objects.filter(rfq__notes__icontains="seed:")
+                 .values_list("seller_id", flat=True))
+        # (a) ГЛОБАЛЬНАЯ самокоррекция: сносим ВСЕ нерелевантные seed-КП — на
+        # запросах, где НИ ОДНА позиция не из каталога продавца. Сам seed-RFQ не
+        # трогаем (легитимный запрос покупателя), убираем лишь бессмысленный КП.
+        for q in list(Quote.objects.filter(
+                rfq__notes__icontains="seed:").select_related("rfq")):
+            if not _RFQItem.objects.filter(
+                    rfq=q.rfq, matched_part__seller=q.seller).exists():
+                q.delete()
+        # (b) Каждому intended-продавцу — когерентный seed-КП (RFQ из ЕГО позиций).
+        for s in _gum().objects.filter(id__in=intended_ids):
+            if Quote.objects.filter(seller=s, rfq__notes__icontains="seed:",
+                                    rfq__items__matched_part__seller=s).exists():
                 continue
-            for rfq in rfqs[:2]:
-                try:
-                    Quote.objects.create(rfq=rfq, seller=s,
-                                         total_amount=Decimal("1850.00"),
-                                         delivery_days=12, status="submitted")
-                    st["quotes"] += 1
-                except Exception:
-                    pass
+            s_parts = list(Part.objects.filter(seller=s, is_active=True)[:3])
+            if not demo_buyer or not s_parts:
+                continue
+            try:
+                rfq = RFQ.objects.create(
+                    created_by=demo_buyer,
+                    customer_name=demo_buyer.first_name or demo_buyer.username,
+                    customer_email=demo_buyer.email or f"{demo_buyer.username}@chat.local",
+                    mode="auto", urgency="standard", status="quoted",
+                    notes="seed: тестовый запрос")
+                total = Decimal("0")
+                for i, p in enumerate(s_parts):
+                    _RFQItem.objects.create(
+                        rfq=rfq, query=p.oem_number, quantity=i + 1,
+                        matched_part=p, state="auto_matched",
+                        confidence=Decimal("92.00"), decision_reason="seed",
+                        recommended_supplier_status="trusted")
+                    total += (p.price or Decimal("0")) * (i + 1)
+                Quote.objects.create(
+                    rfq=rfq, seller=s,
+                    total_amount=(total or Decimal("1850.00")).quantize(Decimal("0.01")),
+                    delivery_days=12, status="submitted")
+                st["quotes"] += 1
+            except Exception:
+                pass
 
         # 5) Чертежи — покупателям и продавцам
         for u in uniq(buyers + sellers):
