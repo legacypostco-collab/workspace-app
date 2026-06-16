@@ -4509,6 +4509,12 @@
 
   function renderShippingMatrix(d) {
     if (!d.shipping_matrix || !d.product_ids) return '';
+    // По шагам: пока не ввели адрес (страну+город) и не посчитали — показываем
+    // ТОЛЬКО форму «Куда доставить?», без заголовка «Выберите базис» и без
+    // матрицы FOB/CIP/DDP. Базисы появляются после расчёта (cip_available).
+    if (!d.cip_available) {
+      return `<div class="sm-block">${renderDeliveryForm(d)}</div>`;
+    }
     const dest = d.dest_country || '';
     const descs = d.incoterm_descs || {};
     const incoterms = ['FOB', 'CIP', 'DDP'];
