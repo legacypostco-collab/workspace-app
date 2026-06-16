@@ -82,6 +82,15 @@ def admin_dashboard(params, user, role):
         sla_status="breached", created_at__gte=cutoff_7d,
     ).count()
 
+    # Загрузки прайс-листов продавцами (каталог) за 7 дней + импортировано позиций.
+    from django.db.models import Sum
+
+    from marketplace.models import PricelistImport
+    pl_uploads_7d = PricelistImport.objects.filter(created_at__gte=cutoff_7d).count()
+    pl_positions_7d = (PricelistImport.objects
+                       .filter(status="imported", created_at__gte=cutoff_7d)
+                       .aggregate(n=Sum("imported_rows"))["n"] or 0)
+
     return ActionResult(
         text=(
             f"🛡 Платформа · {users_total} активных юзеров (+{users_new_7d} за неделю) · "
@@ -112,6 +121,11 @@ def admin_dashboard(params, user, role):
                  "action": "admin_moderation_queue", "params": {}},
                 {"label": "KYB verified", "value": str(kyb_verified),
                  "action": "admin_users", "params": {"filter": "verified"}},
+                {"label": "Загрузки прайса 7д", "value": str(pl_uploads_7d),
+                 "tone": "info", "action": "admin_activity_feed",
+                 "params": {"kind": "pricelist"}},
+                {"label": "Позиций 7д", "value": f"{pl_positions_7d:,}",
+                 "action": "admin_activity_feed", "params": {"kind": "pricelist"}},
             ]}},
         ],
         contextual_actions=[
