@@ -1125,6 +1125,7 @@ class SupplierRatingEvent(models.Model):
         ("risky_selected", "Risky Selected"),
         ("manual_oem_escalation", "Manual OEM Escalation"),
         ("claim_confirmed", "Claim Confirmed"),
+        ("buyer_review", "Buyer Review"),
     ]
 
     supplier = models.ForeignKey(User, on_delete=models.CASCADE, related_name="supplier_rating_events")

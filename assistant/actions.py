@@ -122,6 +122,7 @@ _BUYER_ACTIONS = [
     # go_home обычно перехватывается фронтом, но допускаем и на бэке (stale JS)
     "go_home",
     "get_claims", "create_claim", "open_claim", "claim_detail",
+    "leave_review",  # позитивный отзыв о сделке (оценка→рейтинг поставщика)
     # Communication with operator (support/escalation)
     "ask_operator", "ask_about_rfq",
     "cancel_rfq",
@@ -7357,6 +7358,144 @@ def create_claim(params, user, role):
     )
 
 
+@register("leave_review")
+def leave_review(params, user, role):
+    """Buyer: позитивный отзыв о завершённой сделке (оценка-звёзды + комментарий).
+
+    По умолчанию — ХОРОШИЙ отзыв (5★). Влияет на рейтинг поставщика через
+    SupplierRatingEvent. Рекламация (брак/компенсация) — отдельное действие
+    create_claim, отзыв её НЕ подменяет.
+
+    Phase 1 (нет rating / not confirmed) → форма (дефолт 5★ + комментарий).
+    Phase 2 (confirmed + rating)        → событие рейтинга на продавца(ов) +
+      сохранение комментария в meta + благодарность. Оценка ≤2★ мягко
+      предлагает открыть рекламацию.
+    """
+    from decimal import Decimal
+
+    from marketplace.models import Order, OrderItem
+
+    if role != "buyer":
+        return ActionResult(text="Отзыв оставляет покупатель по своему заказу.")
+
+    confirmed = bool(params.get("confirmed"))
+    order_id = params.get("order_id")
+    rating_raw = str(params.get("rating") or "").strip()
+    comment = (params.get("comment") or "").strip()
+
+    order = None
+    if order_id:
+        try:
+            oid = int(order_id)
+        except (ValueError, TypeError):
+            return ActionResult(text="Неверный ID заказа.")
+        order = Order.objects.filter(id=oid, buyer=user).first()
+        if not order:
+            return ActionResult(text=f"Заказ #{order_id} не найден или не принадлежит вам.")
+
+    REVIEW_OK = ("delivered", "completed")
+
+    # ── Phase 1: форма ─────────────────────────────────────────
+    if not confirmed or not rating_raw:
+        order_options = []
+        if not order:
+            qs = Order.objects.filter(buyer=user, status__in=REVIEW_OK).order_by("-id")[:20]
+            order_options = [{"value": str(o.id),
+                              "label": f"ORD-{o.id} · {o.customer_name or ''} · "
+                                       f"${float(o.total_amount or 0):,.0f}"} for o in qs]
+            if not order_options:
+                return ActionResult(
+                    text="Пока нет завершённых заказов, по которым можно оставить отзыв.",
+                    contextual_actions=[{"action": "go_home", "label": "🏠 Главная"}],
+                )
+        rating_choices = [
+            {"value": "5", "label": "★★★★★ Отлично"},
+            {"value": "4", "label": "★★★★ Хорошо"},
+            {"value": "3", "label": "★★★ Нормально"},
+            {"value": "2", "label": "★★ Плохо"},
+            {"value": "1", "label": "★ Очень плохо"},
+        ]
+        fields = []
+        if order:
+            fields.append({"name": "_order_label", "label": "Заказ",
+                            "value": f"ORD-{order.id} · {order.customer_name or ''}",
+                            "readonly": True})
+        else:
+            fields.append({"name": "order_id", "label": "Заказ",
+                            "type": "select", "required": True, "options": order_options})
+        fields.extend([
+            {"name": "rating", "label": "Ваша оценка", "type": "select",
+             "required": True, "options": rating_choices, "value": rating_raw or "5"},
+            {"name": "comment", "label": "Что понравилось? (необязательно)",
+             "type": "textarea", "value": comment,
+             "placeholder": "Быстрая отгрузка, всё в комплекте, поставщик на связи…"},
+        ])
+        fixed = {"confirmed": True}
+        if order:
+            fixed["order_id"] = order.id
+        claim_params = {"order_id": order.id} if order else {}
+        return ActionResult(
+            text="⭐ Отзыв о сделке",
+            cards=[{"type": "form", "data": {
+                "title": "⭐ Как прошла сделка?" + (f" по ORD-{order.id}" if order else ""),
+                "submit_action": "leave_review",
+                "submit_label": "Отправить отзыв",
+                "fields": fields,
+                "fixed_params": fixed,
+            }}],
+            contextual_actions=[
+                {"action": "create_claim", "label": "🧾 Что-то не так? Открыть рекламацию",
+                 "params": claim_params},
+                {"action": "go_home", "label": "🏠 Главная"},
+            ],
+        )
+
+    # ── Phase 2: сохранение ───────────────────────────────────
+    if not order:
+        return ActionResult(text="Не указан заказ.")
+    try:
+        stars = int(rating_raw)
+    except (ValueError, TypeError):
+        stars = 5
+    stars = max(1, min(5, stars))
+    # Звёзды → impact на рейтинг поставщика (baseline 60, окно 90д).
+    star_impact = {5: Decimal("3"), 4: Decimal("1"), 3: Decimal("0"),
+                   2: Decimal("-2"), 1: Decimal("-4")}
+    impact = star_impact.get(stars, Decimal("0"))
+
+    sellers = set()
+    for it in OrderItem.objects.filter(order=order).select_related("part__seller"):
+        s = getattr(getattr(it, "part", None), "seller", None)
+        if s:
+            sellers.add(s)
+    from .rating import record_rating_event
+    for s in sellers:
+        record_rating_event(
+            s, event_type="buyer_review", impact_score=impact,
+            meta={"order_id": order.id, "stars": stars,
+                  "comment": comment[:1000], "buyer_id": user.id},
+        )
+
+    if stars <= 2:
+        return ActionResult(
+            text=(f"Спасибо за честную оценку ({stars}★). Если есть конкретная "
+                  f"проблема по заказу — оформите рекламацию, оператор разберётся."),
+            contextual_actions=[
+                {"action": "create_claim", "label": "🧾 Открыть рекламацию",
+                 "params": {"order_id": order.id}},
+                {"action": "go_home", "label": "🏠 Главная"},
+            ],
+        )
+    return ActionResult(
+        text=(f"Спасибо за отзыв! Ваша оценка ({stars}★) учтётся в рейтинге "
+              f"поставщика и поможет другим покупателям."),
+        contextual_actions=[
+            {"action": "get_orders", "label": "📦 Мои заказы"},
+            {"action": "go_home", "label": "🏠 Главная"},
+        ],
+    )
+
+
 @register("upload_parts_list")
 def upload_parts_list(params, user, role):
     """Buyer: вставить список артикулов (текстом или CSV) → распарсить → поиск.
@@ -8931,11 +9070,11 @@ def _build_contextual_actions(order, role: str, user) -> list:
             items.append({"label": "⚡ Запросить ускорение",
                           "action": "create_claim",
                           "params": {"order_id": order.id, "kind": "delay"}})
-    # Buyer на этапе delivered → отзыв о поставщике
+    # Buyer на этапе delivered → отзыв о поставщике (позитивный, не рекламация)
     if role == "buyer" and order.status == "delivered":
         items.append({"label": "⭐ Оценить поставщика",
-                      "action": "create_claim",
-                      "params": {"order_id": order.id, "kind": "feedback"}})
+                      "action": "leave_review",
+                      "params": {"order_id": order.id}})
     # Seller на этапе ready_to_ship — документы для отгрузки
     if role == "seller" and order.status == "ready_to_ship":
         items.append({"label": "📄 Документы для отгрузки",
@@ -11066,10 +11205,12 @@ def confirm_delivery(params, user, role):
         }),
         actions=[
             {"label": "Все мои заказы", "action": "get_orders", "params": {}},
-            {"label": "Оставить отзыв", "action": "create_claim",
-             "params": {"order_id": order.id, "kind": "feedback"}},
+            {"label": "Оставить отзыв", "action": "leave_review",
+             "params": {"order_id": order.id}},
+            {"label": "Открыть рекламацию", "action": "create_claim",
+             "params": {"order_id": order.id}},
         ],
-        suggestions=["Открыть отзыв", "Что заказать ещё?"],
+        suggestions=["Что заказать ещё?"],
     )
 
 
