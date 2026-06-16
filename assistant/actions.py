@@ -3152,7 +3152,11 @@ def get_order_detail(params, user, role):
             _stages_pills = []
             for _pl_lbl, _pl_pd, _pl_dcode, _pl_fs, _pl_fe in shipment_flow(getattr(o, "incoterm", "") or "DDP"):
                 if _pl_dcode == "pay":
-                    _pl_done = worst not in ("awaiting_reserve", "pending", "")
+                    # Источник истины — payment_status заказа (как в shipment-карточке),
+                    # а не агрегат статусов позиций: у отменённого заказа worst=
+                    # 'cancelled' ложно давал «резерв оплачен».
+                    _pl_done = o.payment_status not in (
+                        "awaiting_reserve", "pending", "", "cancelled", "refunded")
                 else:
                     _pl_done = TRACKING_INDEX.get(worst, 0) >= TRACKING_INDEX.get(_pl_dcode, 99)
                 _stages_pills.append({"label": _pl_lbl, "done": _pl_done})
