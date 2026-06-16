@@ -58,7 +58,10 @@ STD_FIELDS = [
     # (key, label, required, enum_values_or_None, default_value_or_None)
     # required=True — поле ОБЯЗАТЕЛЬНО должно быть в файле или указано явно.
     # Остальные поля заполняются дефолтами автоматически если не замаплены.
-    ("oem_number",        "Артикул (PartNumber)",   True,  None, None),
+    # oem_number необязателен: если в прайсе нет настоящего артикула (только
+    # название — напр. буровые коронки «PDC bit 152.4 mm»), он генерится из
+    # названия (см. _gen_oem_from_title), чтобы каждая позиция была уникальной.
+    ("oem_number",        "Артикул (PartNumber)",   False, None, None),
     ("cross_number",      "Кросс-номер (CrossNumber)", False, None, ""),
     ("brand",             "Бренд",                   False, [
         "Caterpillar", "Komatsu", "Hitachi", "Liebherr", "TEREX",
@@ -96,6 +99,20 @@ REQUIRED_FIELDS = [k for k, _, req, _, _ in STD_FIELDS if req]
 
 # Дефолты для незамапленных полей
 FIELD_DEFAULTS = {k: d for k, _, _, _, d in STD_FIELDS if d is not None}
+
+
+def _gen_oem_from_title(title: str) -> str:
+    """Стабильный синтетический артикул из названия — для прайсов без настоящего
+    OEM (товар идентифицируется названием, напр. «PDC bit 152.4 mm 4 wings»).
+
+    Детерминирован: повторная загрузка того же названия → тот же артикул (апсерт
+    не плодит дубли). Префикс GEN- помечает синтетику. Хвост-хэш разводит
+    названия, схлопывающиеся в одинаковый slug.
+    """
+    import hashlib
+    base = slugify(title or "").upper()[:48].strip("-")
+    h = hashlib.md5((title or "").strip().lower().encode("utf-8")).hexdigest()[:6].upper()
+    return (f"GEN-{base}-{h}" if base else f"GEN-{h}")[:100]
 
 # Известные бренды-аналоги — реальные изготовители деталей. Поле
 # `manufacturer` = бренд-аналога. Видимость для покупателя считается
@@ -1326,7 +1343,11 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             # и сопоставления с конкурентами. Если уже ASCII — fast-path.
             if title:
                 title = _translate_to_en(title)
-            if not oem or not title or price_exw is None or price_exw <= 0:
+            # OEM необязателен: нет настоящего артикула → генерим из названия,
+            # чтобы каждая позиция была уникальной (товар опознаётся названием).
+            if not oem and title:
+                oem = _gen_oem_from_title(title)
+            if not title or price_exw is None or price_exw <= 0:
                 failed += 1
                 if len(errors) < 50:
                     # Человекочитаемый комментарий: что не так + название
@@ -1336,16 +1357,11 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                         if i is not None and headers and i < len(headers):
                             return str(headers[i]).strip()
                         return ""
-                    if not oem:
-                        reason = "no oem"
-                        col = _src_col("oem_number") or "PartNumber"
-                        val = ""
-                        problem = "Артикул пустой — заполните"
-                    elif not title:
+                    if not title:
                         reason = "no title"
                         col = _src_col("title") or "Description"
                         val = ""
-                        problem = "Название пустое — заполните"
+                        problem = "Название пустое — заполните (артикул необязателен)"
                     else:
                         reason = "bad price_exw"
                         col = _src_col("price_exw") or "Unitprice"
@@ -1626,10 +1642,12 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
     from datetime import datetime
 
     from django.db import connection
+
+    from assistant.part_naming import translate_title
     now = datetime.now(tz=UTC)
 
     insert_cols = [
-        "title", "slug", "oem_number", "description", "price", "stock_quantity",
+        "title", "title_ru", "slug", "oem_number", "description", "price", "stock_quantity",
         "condition", "image_url", "seller_id", "brand_id", "category_id",
         "availability", "availability_status", "currency", "incoterm", "moq",
         "production_lead_days", "prep_to_ship_days", "shipping_lead_days",
@@ -1664,7 +1682,8 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             rows = []
             for f in to_create_payloads:
                 rows.append((
-                    f.get("title") or "", f.get("slug") or "",
+                    f.get("title") or "", translate_title(f.get("title") or ""),
+                    f.get("slug") or "",
                     f.get("oem_number"), "",
                     f.get("price"), f.get("stock_quantity") or 0,
                     f.get("condition") or "oem", "",
@@ -1714,7 +1733,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             # совпадает (мы матчим по seller+oem_number). Обновление slug
             # ловит UNIQUE constraint если он отличается от исходного.
             upd_cols = [
-                "title", "price", "currency", "stock_quantity", "condition",
+                "title", "title_ru", "price", "currency", "stock_quantity", "condition",
                 "availability", "manufacturer", "manufacturer_visible",
                 "cross_numbers", "price_fob_sea", "price_fob_air",
                 "warehouse_address", "sea_port", "air_port",
@@ -1729,7 +1748,8 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             upd_rows = []
             for pid, f in to_update_payloads:
                 upd_rows.append((
-                    f.get("title") or "", f.get("price"),
+                    f.get("title") or "", translate_title(f.get("title") or ""),
+                    f.get("price"),
                     f.get("currency") or "USD",
                     f.get("stock_quantity") or 0, f.get("condition") or "oem",
                     f.get("availability") or "in_stock",
