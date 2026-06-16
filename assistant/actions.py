@@ -3111,14 +3111,14 @@ def get_order_detail(params, user, role):
                     _meta.append({"lbl": "Партия", "val": "⚠ ушёл без оформления"})
                 else:
                     _meta.append({"lbl": "Партия", "val": "ещё у поставщика"})
-            # Stages-пилюли (5 шагов как в shipment)
-            _stages_pills = [
-                {"label": "Резерв оплачен", "done": worst not in ("awaiting_reserve",)},
-                {"label": "В производстве", "done": worst in ("in_production","ready_to_ship","transit_abroad","customs","transit_rf","issuing","delivered","completed")},
-                {"label": "Транзит",        "done": worst in ("customs","transit_rf","issuing","delivered","completed")},
-                {"label": "Таможня",        "done": worst in ("transit_rf","issuing","delivered","completed")},
-                {"label": "Доставлен",      "done": worst in ("delivered","completed")},
-            ]
+            # Stages-пилюли — ПО БАЗИСУ поставки (FOB/CIP/DDP), а не общий DDP-цикл.
+            _stages_pills = []
+            for _pl_lbl, _pl_pd, _pl_dcode, _pl_fs, _pl_fe in shipment_flow(getattr(o, "incoterm", "") or "DDP"):
+                if _pl_dcode == "pay":
+                    _pl_done = worst not in ("awaiting_reserve", "pending", "")
+                else:
+                    _pl_done = TRACKING_INDEX.get(worst, 0) >= TRACKING_INDEX.get(_pl_dcode, 99)
+                _stages_pills.append({"label": _pl_lbl, "done": _pl_done})
             # Per-supplier decision: «ждать всех» vs «отправлять отдельно».
             # Показываем только когда выбор ещё имеет смысл — поставщик не уехал.
             # Сохранённое предпочтение читаем из logistics_meta.per_supplier.
@@ -3509,16 +3509,9 @@ def track_shipment(params, user, role):
             else:
                 _agg_label = _STAGE_LABEL_RU.get(_agg_status, _agg_status)
 
-    # Плановые дни на каждый из 5 укрупнённых этапов отгрузки (из TRACKING_STAGES).
-    _off = {c: d for c, _, d in TRACKING_STAGES}
-    _stage_days = [
-        _off["reserve_paid"],                            # оформление + резерв
-        _off["ready_to_ship"] - _off["reserve_paid"],    # производство
-        _off["customs"] - _off["ready_to_ship"],         # транзит за рубеж
-        _off["transit_rf"] - _off["customs"],            # таможня
-        _off["delivered"] - _off["transit_rf"],          # доставка по РФ
-    ]
-    # Фактическое время по этапам — из меток переходов (OrderEvent).
+    # Этапы отгрузки — ПО БАЗИСУ поставки (FOB/CIP/DDP): показываем только то,
+    # что реально ведёт платформа. FOB — до передачи в порту, CIP — до прибытия
+    # в порт назначения, DDP — полный цикл до двери.
     from datetime import timedelta as _td
 
     from django.utils import timezone as _tz
@@ -3537,20 +3530,24 @@ def track_shipment(params, user, role):
             if _code:
                 _entry.setdefault(_code, _ev.created_at)
     _now = _tz.now()
-    _bounds = [("pending", "reserve_paid"), ("reserve_paid", "ready_to_ship"),
-               ("ready_to_ship", "customs"), ("customs", "transit_rf"),
-               ("transit_rf", "delivered")]
-    _stage_fact = []  # (actual_days|None, state)  state: done|current|future
-    for _start, _end in _bounds:
-        _st, _en = _entry.get(_start), _entry.get(_end)
-        if _st and _en:
-            _stage_fact.append((max(0, (_en - _st).days), "done"))
-        elif _st and o.status != "cancelled":
-            _stage_fact.append((max(0, (_now - _st).days), "current"))
+    _flow = shipment_flow(getattr(o, "incoterm", "") or "DDP")
+    _stages_out = []
+    _plan_total = 0
+    for _label, _pd, _dcode, _fs, _fe in _flow:
+        _plan_total += _pd
+        if _dcode == "pay":
+            _done = o.payment_status not in ("awaiting_reserve", "pending", "")
         else:
-            _stage_fact.append((None, "future"))
-    # Плановый срок поставки и крайняя (плановая) дата.
-    _plan_total = _off["delivered"]
+            _done = TRACKING_INDEX.get(_agg_status, 0) >= TRACKING_INDEX.get(_dcode, 99)
+        _st, _en = _entry.get(_fs), _entry.get(_fe)
+        if _st and _en:
+            _actual, _state = max(0, (_en - _st).days), "done"
+        elif _st and o.status != "cancelled":
+            _actual, _state = max(0, (_now - _st).days), "current"
+        else:
+            _actual, _state = None, "future"
+        _stages_out.append({"label": _label, "days": _pd, "actual": _actual,
+                            "state": _state, "done": _done})
     _deadline = (o.created_at + _td(days=_plan_total)).strftime("%d.%m.%Y")
 
     return ActionResult(
@@ -3584,13 +3581,7 @@ def track_shipment(params, user, role):
                 # C ещё в производстве).
                 "total_planned_days": _plan_total,
                 "deadline": _deadline,
-                "stages": [
-                    {"label": "Резерв оплачен", "days": _stage_days[0], "actual": _stage_fact[0][0], "state": _stage_fact[0][1], "done": o.payment_status not in ("awaiting_reserve", "pending", "")},
-                    {"label": "В производстве", "days": _stage_days[1], "actual": _stage_fact[1][0], "state": _stage_fact[1][1], "done": _agg_status in ("in_production", "ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "shipped", "delivered", "completed")},
-                    {"label": "Транзит",        "days": _stage_days[2], "actual": _stage_fact[2][0], "state": _stage_fact[2][1], "done": _agg_status in ("customs", "transit_rf", "issuing", "shipped", "delivered", "completed")},
-                    {"label": "Таможня",        "days": _stage_days[3], "actual": _stage_fact[3][0], "state": _stage_fact[3][1], "done": _agg_status in ("transit_rf", "issuing", "shipped", "delivered", "completed")},
-                    {"label": "Доставлен",      "days": _stage_days[4], "actual": _stage_fact[4][0], "state": _stage_fact[4][1], "done": _agg_status in ("delivered", "completed")},
-                ],
+                "stages": _stages_out,
             },
         }],
         actions=_build_track_shipment_actions(o, role, user),
@@ -8710,6 +8701,42 @@ TRACKING_STAGES = [
     ("completed",      "Завершён",                          30),
 ]
 TRACKING_INDEX = {code: i for i, (code, _, _) in enumerate(TRACKING_STAGES)}
+
+
+def shipment_flow(incoterm: str):
+    """Этапы отгрузки, которые РЕАЛЬНО ведёт платформа по базису поставки.
+
+    FOB — до передачи в порту отгрузки (дальше транзит/таможню/доставку
+    организует сам покупатель); CIP — до прибытия в порт назначения (таможня
+    и последняя миля — покупатель); DDP — полный цикл до двери.
+
+    Каждый этап: (label, plan_days, done_code, fact_start, fact_end).
+    done_code == "pay" → готов по оплате резерва; иначе этап done, когда индекс
+    статуса заказа >= индекса done_code в TRACKING_STAGES.
+    """
+    off = {c: d for c, _, d in TRACKING_STAGES}
+    inc = (incoterm or "DDP").upper()
+    if inc == "FOB":
+        return [
+            ("Резерв оплачен",  off["reserve_paid"],                        "pay",            "pending",       "reserve_paid"),
+            ("В производстве",  off["ready_to_ship"] - off["reserve_paid"], "in_production",  "reserve_paid",  "ready_to_ship"),
+            ("Передан в порту", 2,                                          "transit_abroad", "ready_to_ship", "transit_abroad"),
+        ]
+    if inc == "CIP":
+        return [
+            ("Резерв оплачен",  off["reserve_paid"],                          "pay",            "pending",        "reserve_paid"),
+            ("В производстве",  off["ready_to_ship"] - off["reserve_paid"],   "in_production",  "reserve_paid",   "ready_to_ship"),
+            ("Транзит",         off["transit_abroad"] - off["ready_to_ship"], "transit_abroad", "ready_to_ship",  "transit_abroad"),
+            ("Прибыл в порт",   off["customs"] - off["transit_abroad"],       "customs",        "transit_abroad", "customs"),
+        ]
+    # DDP (и дефолт) — полный цикл до двери
+    return [
+        ("Резерв оплачен", off["reserve_paid"],                        "pay",          "pending",       "reserve_paid"),
+        ("В производстве", off["ready_to_ship"] - off["reserve_paid"], "in_production","reserve_paid", "ready_to_ship"),
+        ("Транзит",        off["customs"] - off["ready_to_ship"],      "customs",      "ready_to_ship", "customs"),
+        ("Таможня",        off["transit_rf"] - off["customs"],         "transit_rf",   "customs",       "transit_rf"),
+        ("Доставлен",      off["delivered"] - off["transit_rf"],       "delivered",    "transit_rf",    "delivered"),
+    ]
 
 
 def _log_event(order, event_type: str, actor=None, source="system", meta=None):
