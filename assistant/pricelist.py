@@ -2404,6 +2404,22 @@ class PricelistCommitView(APIView):
             "current": 0, "total": 0, "phase": "writing", "running": True,
         }, 600)
 
+        # Лента важных событий админа: загрузка прайса продавцом + IP/кабинет.
+        try:
+            from assistant.actions import _log_activity
+            _xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+            _ip = (_xff.split(",")[0].strip() if _xff
+                   else request.META.get("REMOTE_ADDR", ""))[:64]
+            _log_activity(
+                "pricelist", actor=request.user, ip=_ip,
+                title=f"Загрузка прайса #{imp.id} · {imp.total_rows} строк · "
+                      f"{imp.filename or 'файл'}",
+                meta={"import_id": imp.id, "n_rows": imp.total_rows,
+                      "filename": imp.filename or "",
+                      "seller": request.user.username})
+        except Exception:
+            logging.getLogger("pricelist").exception("activity log (pricelist) failed")
+
         # В тестах / sync-режиме импорт идёт ИНЛАЙН (Celery-воркер не видит
         # транзакцию тестовой БД; существующие тесты ждут синхронный 200).
         if getattr(settings, "TESTING", False) or getattr(settings, "PRICELIST_IMPORT_SYNC", False):

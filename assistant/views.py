@@ -677,6 +677,16 @@ class ActionView(APIView):
         if not action:
             return Response({"error": "action required"}, status=400)
 
+        # Клиентский IP (XFF-aware) для ленты важных событий админа: экшены
+        # создания заказа/RFQ читают params['_client_ip'] и пишут его в
+        # ActivityEvent. Underscore-ключ = UI/meta-параметр (как _label/_url).
+        if isinstance(params, dict):
+            _xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+            params["_client_ip"] = (
+                _xff.split(",")[0].strip() if _xff
+                else request.META.get("REMOTE_ADDR", "")
+            )[:64]
+
         # ── Anon gate ────────────────────────────────────────
         if not request.user.is_authenticated:
             # start_registration / start_login обрабатываем тут (им нужен

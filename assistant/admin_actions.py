@@ -116,6 +116,7 @@ def admin_dashboard(params, user, role):
             ]}},
         ],
         contextual_actions=[
+            {"action": "admin_activity_feed", "label": "🛰 Лента событий"},
             {"action": "admin_gmv", "label": "📈 GMV-разбивка"},
             {"action": "admin_moderation_queue", "label": "🚨 Модерация"},
             {"action": "admin_users", "label": "👥 Пользователи"},
@@ -244,6 +245,75 @@ def admin_users(params, user, role):
             {"action": "admin_users", "label": "Покупатели","params": {"filter": "buyers"}},
             {"action": "admin_users", "label": "Продавцы",  "params": {"filter": "sellers"}},
             {"action": "admin_users", "label": "KYB pending","params": {"filter": "kyb_pending"}},
+        ],
+    )
+
+
+# ══════════════════════════════════════════════════════════
+# 3b. Лента важных событий — контроль/безопасность
+# ══════════════════════════════════════════════════════════
+
+_ACTIVITY_EMOJI = {"order": "🛒", "rfq": "📋", "pricelist": "📦"}
+_ACTIVITY_LABEL = {"order": "Заказ", "rfq": "RFQ", "pricelist": "Загрузка прайса"}
+
+
+@register("admin_activity_feed")
+def admin_activity_feed(params, user, role):
+    """Сквозная лента важных событий: новая сделка / RFQ / загрузка прайса —
+    с кабинетом (кто), IP (откуда) и позициями (что). Не дублирует разделы —
+    это аудит-поток для контроля."""
+    err = _ensure_admin(role)
+    if err: return err
+    from marketplace.models import ActivityEvent
+
+    flt = (params.get("kind") or "all").strip().lower()
+    qs = ActivityEvent.objects.select_related("actor").all()
+    if flt in ("order", "rfq", "pricelist"):
+        qs = qs.filter(kind=flt)
+    qs = qs[:40]
+
+    rows = []
+    for ev in qs:
+        m = ev.meta or {}
+        actor_name = ev.actor.username if ev.actor else "гость / аноним"
+        role_lbl = ev.actor_role or ("—" if ev.actor else "anon")
+        when = timezone.localtime(ev.created_at).strftime("%d.%m %H:%M")
+        ip = ev.ip or "—"
+        # Превью позиций (что именно в событии)
+        items = m.get("items") or []
+        names = []
+        for it in items[:4]:
+            names.append(it.get("name") or it.get("query") or it.get("oem") or "")
+        pos_preview = ", ".join(n for n in names if n)
+        if len(items) > 4:
+            pos_preview += f" … (+{len(items) - 4})"
+        title = f"{_ACTIVITY_EMOJI.get(ev.kind, '•')} {ev.title or _ACTIVITY_LABEL.get(ev.kind, ev.kind)}"
+        subtitle = f"{when} · 👤 {actor_name} ({role_lbl}) · 🌐 {ip}"
+        if pos_preview:
+            subtitle += f" · {pos_preview}"
+        # Drill-in: заказ → детали заказа, RFQ → статус, загрузка → кабинет продавца
+        if ev.kind == "order" and m.get("order_id"):
+            click = {"action": "get_order_detail", "params": {"order_id": m["order_id"]}}
+        elif ev.kind == "rfq" and m.get("rfq_id"):
+            click = {"action": "get_rfq_status", "params": {"rfq_id": m["rfq_id"]}}
+        elif ev.actor_id:
+            click = {"action": "admin_user_detail", "params": {"user_id": ev.actor_id}}
+        else:
+            click = {}
+        rows.append({"title": title, "subtitle": subtitle, **click})
+
+    return ActionResult(
+        text=f"🛰 Лента событий · фильтр «{flt}» · {len(rows)} последних.",
+        cards=[{"type": "list", "data": {
+            "title": "🛰 Важные события (сделки · RFQ · загрузки)",
+            "items": rows or [{"title": "Пока событий нет"}],
+        }}],
+        contextual_actions=[
+            {"action": "admin_activity_feed", "label": "🔄 Обновить", "params": {"kind": flt}},
+            {"action": "admin_activity_feed", "label": "Все",       "params": {"kind": "all"}},
+            {"action": "admin_activity_feed", "label": "🛒 Заказы",  "params": {"kind": "order"}},
+            {"action": "admin_activity_feed", "label": "📋 RFQ",      "params": {"kind": "rfq"}},
+            {"action": "admin_activity_feed", "label": "📦 Прайсы",   "params": {"kind": "pricelist"}},
         ],
     )
 

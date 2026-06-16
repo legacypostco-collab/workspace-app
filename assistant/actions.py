@@ -305,7 +305,7 @@ _ADMIN_ONLY = [
     "admin_dashboard", "admin_gmv", "admin_users", "admin_user_detail",
     "admin_ban_user", "admin_unban_user", "admin_change_role",
     "admin_moderation_queue", "admin_catalog_review", "admin_platform_settings",
-    "admin_revenue_breakdown",
+    "admin_revenue_breakdown", "admin_activity_feed",
 ]
 
 
@@ -1119,6 +1119,10 @@ TOOL_SCHEMAS = {
     "admin_dashboard": {
         "description": "Платформенная сводка для админа: GMV 7d, юзеры, заказы, KYB, SLA.",
         "input_schema": {"type": "object", "properties": {}},
+    },
+    "admin_activity_feed": {
+        "description": "Лента важных событий: новые сделки/RFQ/загрузки прайса с кабинетом, IP и позициями. Фильтр kind=all|order|rfq|pricelist.",
+        "input_schema": {"type": "object", "properties": {"kind": _STR}},
     },
     "admin_gmv": {
         "description": "Платформенный GMV по периодам (24h/7d/30d/90d) + топ категорий.",
@@ -2491,6 +2495,13 @@ def create_rfq(params, user, role):
                        else "needs_review" if matched_part else "new"),
                 confidence=confidence,
             )
+        # Лента важных событий админа: новый RFQ + IP/кабинет/позиции.
+        _log_activity("rfq", actor=rfq_creator, ip=params.get("_client_ip", ""),
+                      title=f"RFQ #{rfq.id} · {len(items_to_add)} поз · {mode}",
+                      meta={"rfq_id": rfq.id, "n_items": len(items_to_add), "mode": mode,
+                            "items": [{"query": str(q)[:80], "qty": qn,
+                                       "oem": (mp.oem_number if mp else "")}
+                                      for (q, qn, mp, cf) in items_to_add[:20]]})
         # Аноним: запоминаем id RFQ в сессии, чтобы безопасно перепривязать его
         # к user при регистрации (а не угадывать чужой id). Ключ — "anon_rfq_ids".
         if is_anon:
@@ -7994,6 +8005,15 @@ def quick_order(params, user, role):
         )
     _log_event(order, "order_created", actor=user, source="buyer",
                meta={"items": len(parts), "total": float(total)})
+    # Лента важных событий админа: новая сделка + IP/кабинет/позиции.
+    _log_activity("order", actor=user, ip=params.get("_client_ip", ""),
+                  title=f"Заказ #{order.id} · {len(parts)} поз · ${float(landed_total):,.0f}",
+                  meta={"order_id": order.id, "n_items": len(parts),
+                        "amount": float(landed_total), "currency": "USD",
+                        "items": [{"oem": p.oem_number,
+                                   "name": _clean_title(p.title) or p.oem_number,
+                                   "qty": quantity, "price": float(p.price or 0)}
+                                  for p in parts[:20]]})
 
     # PIVOT 2026-05-27: split на sub-orders по operator-ownership.
     # Parent сохраняет ВСЕ items (видим покупателю как один заказ).
@@ -8707,6 +8727,46 @@ def _log_event(order, event_type: str, actor=None, source="system", meta=None):
         )
     except Exception:
         logger.exception("OrderEvent create failed")
+
+
+def _log_activity(kind: str, *, actor=None, ip: str = "", title: str = "", meta=None):
+    """Лента важных событий админа (контроль/безопасность): пишет ActivityEvent
+    + лёгкий realtime WS-пуш онлайн-админам.
+
+    НЕ шлёт email/telegram (это поток событий, а не алерт). Best-effort: ошибка
+    логирования НЕ ломает основную операцию (заказ/RFQ/импорт).
+    """
+    from marketplace.models import ActivityEvent
+    role = ""
+    try:
+        role = getattr(getattr(actor, "userprofile", None)
+                       or getattr(actor, "profile", None), "role", "") or ""
+    except Exception:
+        role = ""
+    act = actor if (actor is not None and getattr(actor, "is_authenticated", False)) else None
+    try:
+        ActivityEvent.objects.create(
+            kind=kind, actor=act, actor_role=role,
+            ip=(ip or "")[:64], title=(title or "")[:255], meta=meta or {},
+        )
+    except Exception:
+        logger.exception("ActivityEvent create failed")
+        return
+    # Realtime: лёгкий WS-бейдж онлайн-админам (= суперюзеры). Без email/telegram.
+    try:
+        from django.contrib.auth import get_user_model
+        from .consumers import push_notification_to_user
+        admin_ids = list(get_user_model().objects
+                         .filter(is_superuser=True, is_active=True)
+                         .values_list("id", flat=True)[:20])
+        for aid in admin_ids:
+            push_notification_to_user(aid, {
+                "kind": "activity",
+                "title": ("🆕 " + (title or "Новое событие"))[:120],
+                "body": "", "url": "",
+            })
+    except Exception:
+        logger.exception("activity admin push failed")
 
 
 def _notify(user, *, kind: str, title: str, body: str = "", url: str = ""):

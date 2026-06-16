@@ -801,6 +801,41 @@ class OrderEvent(models.Model):
         return f"Order #{self.order_id} {self.event_type}"
 
 
+class ActivityEvent(models.Model):
+    """Лента важных событий платформы для админа (контроль/безопасность).
+
+    Не дублирует разделы кабинета — это сквозной аудит-поток: кто (actor +
+    кабинет/роль), откуда (ip), что (kind + meta: позиции/сумма/id), когда.
+    Пишется в момент создания сделки/RFQ/загрузки прайса (IP берётся из запроса
+    через ActionView → params['_client_ip'], либо напрямую во вьюхе загрузки).
+    """
+    KIND_CHOICES = [
+        ("order", "Заказ"),
+        ("rfq", "RFQ"),
+        ("pricelist", "Загрузка прайса"),
+    ]
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, db_index=True)
+    actor = models.ForeignKey(
+        "auth.User", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="activity_events")
+    actor_role = models.CharField(max_length=20, blank=True, default="")
+    ip = models.CharField(max_length=64, blank=True, default="")
+    title = models.CharField(max_length=255, blank=True, default="")
+    # meta: {n_items, amount, currency, order_id, rfq_id, import_id, items:[...]}
+    meta = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["kind", "-created_at"], name="actev_kind_created_idx"),
+            models.Index(fields=["actor", "-created_at"], name="actev_actor_created_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"ActivityEvent {self.kind} by {self.actor_id} @ {self.created_at:%Y-%m-%d %H:%M}"
+
+
 class OrderDocument(models.Model):
     DOC_TYPE_CHOICES = [
         ("invoice", "Invoice"),
