@@ -278,7 +278,8 @@ def admin_users(params, user, role):
         if len(bucket) > PER:
             items.append({"title": f"… ещё {len(bucket) - PER} (показаны первые {PER})"})
         cards.append({"type": "list", "data": {
-            "title": f"{title} · {len(bucket)}", "items": items}})
+            "title": f"{title} · {len(bucket)}", "items": items,
+            "collapsible": True}})   # изначально свёрнуто, раскрытие по клику
     if not cards:
         cards = [{"type": "list", "data": {"title": "👥 Пользователи",
                                             "items": [{"title": "Пусто"}]}}]
