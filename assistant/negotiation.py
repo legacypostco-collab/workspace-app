@@ -514,6 +514,7 @@ def submit_quote(params, user, role):
         items_for_card = []
         suggested_total = Decimal("0")
         can_fulfill = 0
+        has_analog = False  # есть ли у продавца аналог хоть на одну позицию
 
         # Каталог самого продавца — чтобы прямо в карточке подставить его цену,
         # остаток и отметку «есть/нет в каталоге» (решение принимается на месте).
@@ -587,6 +588,7 @@ def submit_quote(params, user, role):
             if not in_catalog and seller_parts_qs is not None:
                 _ap = _seller_analog(seller_parts_qs, article)
                 if _ap is not None:
+                    has_analog = True
                     analog = {
                         "article":   _ap.oem_number or "",
                         "title":     (_ap.title or "")[:60],
@@ -616,6 +618,24 @@ def submit_quote(params, user, role):
                 "catalog_usd":  float(catalog_usd) if catalog_usd is not None else None,
                 "analog":       analog,
             })
+
+        # Релевантность: нет смысла показывать продавцу форму котировки по RFQ,
+        # где у него НИ ОДНОЙ позиции — ни в каталоге, ни как аналог. Инбокс
+        # лидов (_seller_deals) это уже фильтрует по OEM-матчу, но форму можно
+        # открыть и в обход списка (старый чат / прямая ссылка / seed-данные) —
+        # закрываем ту же дыру и здесь. Оператор/админ не ограничиваются.
+        if role == "seller" and can_fulfill == 0 and not has_analog:
+            return ActionResult(
+                text=(f"🧩 RFQ #{rfq.id} — не по вашему каталогу. Ни одной из "
+                      f"{len(rfq_items)} позиций нет у вас ни в наличии, ни как "
+                      f"аналог — котировать нечего.\nЗагрузите подходящие позиции "
+                      f"или смотрите релевантные лиды (там только запросы по "
+                      f"вашему каталогу)."),
+                actions=[
+                    {"label": "🔥 Срочные задачи", "action": "seller_inbox", "params": {}},
+                ],
+                contextual_actions=[{"action": "go_home", "label": "🏠 Главная"}],
+            )
 
         # Бейдж надёжности самого продавца — в колонку «Поставщик», как
         # «Надёжный · 91.6» в карточке заказа (а не просто «Вы»).
