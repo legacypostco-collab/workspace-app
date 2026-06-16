@@ -391,26 +391,126 @@ def admin_user_detail(params, user, role):
     kyb = getattr(u, "kyb", None)
     wallet = Wallet.objects.filter(user=u).first()
 
+    from django.db.models import Sum
+
+    from marketplace.models import RFQ, PricelistImport, OrderClaim, ActivityEvent
+    from .models import WalletTopupRequest
+
+    def _dt(d, fmt="%Y-%m-%d %H:%M"):
+        return d.strftime(fmt) if d else "—"
+
+    # Заказы / заявки
     orders_n = Order.objects.filter(buyer=u).count()
     orders_paid = Order.objects.filter(buyer=u, payment_status="paid").count()
+    paid_sum = (Order.objects.filter(buyer=u, payment_status="paid")
+                .aggregate(s=Sum("total_amount"))["s"] or 0)
     sales_orders = Order.objects.filter(items__part__seller=u).distinct().count()
+    rfq_n = RFQ.objects.filter(created_by=u).count()
 
-    rows = [
+    # Финансы
+    topups = WalletTopupRequest.objects.filter(user=u).order_by("-created_at")
+    topups_n = topups.count()
+    last_topup = topups.first()
+
+    # Продавец
+    pl_qs = PricelistImport.objects.filter(seller=u)
+    pl_n = pl_qs.count()
+    pl_positions = (pl_qs.filter(status="imported")
+                    .aggregate(s=Sum("imported_rows"))["s"] or 0)
+
+    # Активность / безопасность
+    claims_n = OrderClaim.objects.filter(opened_by=u).count()
+    ev_n = ActivityEvent.objects.filter(actor=u).count()
+    uniq_ips = []
+    for ip in (ActivityEvent.objects.filter(actor=u).exclude(ip="")
+               .order_by("-created_at").values_list("ip", flat=True)[:30]):
+        if ip not in uniq_ips:
+            uniq_ips.append(ip)
+
+    role_val = (prof.role if prof else "—") or "—"
+    if prof and getattr(prof, "operator_role", ""):
+        role_val += f" ({prof.operator_role})"
+    priv = "⚡ admin" if u.is_superuser else ("staff" if u.is_staff else "user")
+
+    groups = []
+    groups.append({"title": "👤 Аккаунт", "rows": [
         {"label": "Username", "value": u.username, "primary": True},
         {"label": "Email", "value": u.email or "—"},
-        {"label": "Роль", "value": (prof.role if prof else "—") or "—"},
+        {"label": "Роль", "value": role_val},
         {"label": "Статус", "value": "🚫 Заблокирован" if not u.is_active else "✓ Активен",
          "primary": not u.is_active},
-        {"label": "Зарегистрирован", "value": u.date_joined.strftime("%Y-%m-%d")},
-        {"label": "Последний вход", "value":
-            u.last_login.strftime("%Y-%m-%d %H:%M") if u.last_login else "—"},
-        {"label": "KYB", "value": (kyb.get_status_display() if kyb else "не подавалась")},
-        {"label": "Wallet", "value": f"${wallet.balance:,.2f} {wallet.currency}" if wallet else "—"},
-        {"label": "Заказов как buyer", "value": f"{orders_paid} оплачено / {orders_n} всего"},
-        {"label": "Заказов как seller", "value": str(sales_orders)},
-        {"label": "Привилегии", "value":
-            ("⚡ admin" if u.is_superuser else ("staff" if u.is_staff else "user"))},
+        {"label": "Привилегии", "value": priv},
+        {"label": "Зарегистрирован", "value": _dt(u.date_joined, "%Y-%m-%d")},
+        {"label": "Последний вход", "value": _dt(u.last_login)},
+        {"label": "Язык", "value": (getattr(prof, "language", "") or "—") if prof else "—"},
+        {"label": "AI-кредиты", "value": str(getattr(prof, "ai_credits", "—")) if prof else "—"},
+    ]})
+    if prof:
+        groups.append({"title": "📇 Контакты", "rows": [
+            {"label": "Контактное лицо", "value": prof.contact_name or "—"},
+            {"label": "Должность", "value": prof.position or "—"},
+            {"label": "Телефон", "value": prof.phone_e164 or "—"},
+            {"label": "Компания", "value": prof.company_name or "—"},
+            {"label": "Мессенджер", "value": (f"{prof.messenger_kind}: {prof.messenger_handle}"
+                                              if prof.messenger_handle else "—")},
+            {"label": "Уведомления", "value": "email " + ("✓" if prof.notif_email_enabled else "✗")
+                + " · TG " + ("✓" if prof.notif_telegram_enabled else "✗")},
+        ]})
+    if kyb:
+        docs = " · ".join(filter(None, [
+            "Устав" if kyb.doc_charter else "", "ЕГРЮЛ" if kyb.doc_egrul else "",
+            "Паспорт" if kyb.doc_passport else ""])) or "нет"
+        groups.append({"title": "🏢 Компания / KYB", "rows": [
+            {"label": "Статус KYB", "value": kyb.get_status_display()},
+            {"label": "Юр. название", "value": kyb.legal_name or "—"},
+            {"label": "Страна", "value": kyb.country or "—"},
+            {"label": "ИНН", "value": kyb.inn or "—"},
+            {"label": "КПП", "value": kyb.kpp or "—"},
+            {"label": "ОГРН", "value": kyb.ogrn or "—"},
+            {"label": "VAT", "value": kyb.vat_number or "—"},
+            {"label": "Директор", "value": kyb.director_name or "—"},
+            {"label": "Банк", "value": kyb.bank_name or "—"},
+            {"label": "Документы", "value": docs},
+        ]})
+    else:
+        groups.append({"title": "🏢 Компания / KYB",
+                       "rows": [{"label": "KYB", "value": "не подавалась"}]})
+    fin_rows = [
+        {"label": "Баланс кошелька",
+         "value": f"${wallet.balance:,.2f} {wallet.currency}" if wallet else "—"},
+        {"label": "Оплачено заказов", "value": f"${float(paid_sum):,.2f}"},
+        {"label": "Пополнений", "value": str(topups_n)},
     ]
+    if last_topup:
+        fin_rows.append({"label": "Последнее пополнение",
+                         "value": f"${last_topup.amount:,.0f} · {last_topup.get_status_display()} · "
+                                  f"{_dt(last_topup.created_at, '%Y-%m-%d')}"})
+    groups.append({"title": "💰 Финансы", "rows": fin_rows})
+    groups.append({"title": "📦 Заказы и заявки", "rows": [
+        {"label": "Как покупатель", "value": f"{orders_paid} оплачено / {orders_n} всего"},
+        {"label": "Как продавец (продажи)", "value": str(sales_orders)},
+        {"label": "RFQ создано", "value": str(rfq_n)},
+    ]})
+    if prof and (role_val.startswith("seller") or pl_n or sales_orders):
+        flags = []
+        if getattr(prof, "bankruptcy_flag", False): flags.append("⚠ банкротство")
+        if getattr(prof, "liquidation_flag", False): flags.append("⚠ ликвидация")
+        groups.append({"title": "🏭 Продавец-метрики", "rows": [
+            {"label": "Статус поставщика", "value": prof.supplier_status or "—"},
+            {"label": "Рейтинг", "value": f"{float(prof.rating_score):.1f}"
+                if prof.rating_score is not None else "—"},
+            {"label": "Внешний / поведенческий",
+             "value": f"{float(prof.external_score or 0):.0f} / {float(prof.behavioral_score or 0):.0f}"},
+            {"label": "Флаги", "value": " · ".join(flags) if flags else "—"},
+            {"label": "Загрузок прайса", "value": str(pl_n)},
+            {"label": "Позиций импортировано", "value": f"{pl_positions:,}"},
+        ]})
+    groups.append({"title": "🛰 Активность / безопасность", "rows": [
+        {"label": "IP (последние)", "value": ", ".join(uniq_ips[:3]) or "—"},
+        {"label": "Событий в ленте", "value": str(ev_n)},
+        {"label": "Претензий открыто", "value": str(claims_n)},
+        {"label": "Admin-заметка", "value": (getattr(prof, "admin_note", "") or "—") if prof else "—"},
+    ]})
 
     actions = []
     if u.is_active and not u.is_superuser:
@@ -438,7 +538,7 @@ def admin_user_detail(params, user, role):
     return ActionResult(
         text=f"👤 {u.username} · {u.email or 'нет email'}",
         cards=[{"type": "draft", "data": {"title": f"Профиль · {u.username}",
-                                           "rows": rows, "confirm_label": "—"}}],
+                                           "groups": groups, "confirm_label": "—"}}],
         actions=actions,
         contextual_actions=open_btns + [
             {"action": "admin_users", "label": "← К списку"},

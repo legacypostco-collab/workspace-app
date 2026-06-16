@@ -2333,11 +2333,13 @@ class AdminActionsTests(TestCase):
     def test_admin_user_detail_shows_status(self):
         from .admin_actions import admin_user_detail
         r = admin_user_detail({"user_id": self.buyer.id}, self.admin, "admin")
-        # Статус row с "Активен"
-        rows = r.cards[0]["data"]["rows"]
-        labels_values = {row["label"]: row["value"] for row in rows}
+        # Карточка теперь секциями (groups) — флэтим все строки.
+        groups = r.cards[0]["data"]["groups"]
+        labels_values = {row["label"]: row["value"]
+                         for g in groups for row in g["rows"]}
         self.assertIn("Username", labels_values)
         self.assertEqual(labels_values["Username"], "t_buy")
+        self.assertIn("Статус", labels_values)
 
     # --- write actions ---
     def test_ban_user_two_step(self):
