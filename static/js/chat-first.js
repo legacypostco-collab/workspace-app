@@ -5283,9 +5283,18 @@
       window.quickAction && window.quickAction('quick_order', params);
       return;
     }
+    // Адрес уже известен (введён ранее → при cip_available && delivery_address
+    // форма доставки скрыта) → оформляем сразу, форму не ищем. Без этого клик по
+    // DDP «проваливался»: формы нет → dfPickDDP молча выходил, доставка «не выбиралась».
+    if (params.delivery_address) {
+      window.quickAction && window.quickAction('quick_order', params);
+      return;
+    }
     const smBlock = cell.closest('.sm-block');
     const form = smBlock && smBlock.querySelector('.df-block');
-    if (!form) return;
+    // Формы нет и адреса нет — клик не должен быть «мёртвым»: уходим в quick_order
+    // (бэкенд запросит адрес до двери для DDP / покажет нужный экран).
+    if (!form) { window.quickAction && window.quickAction('quick_order', params); return; }
     const addrEl = form.querySelector('.df-addr');
     const addr = (addrEl && addrEl.value || '').trim();
     const order = (a) => { params.delivery_address = a; window.quickAction && window.quickAction('quick_order', params); };
