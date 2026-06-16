@@ -1505,6 +1505,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
         _volumetric_kg,
         calc_incoterm_breakdown,
         clearance_fee,
+        fallback_origin_country,
     )
     from marketplace.models import LogisticsTariff
     delivery_address = (delivery_address or "").strip()
@@ -1594,7 +1595,9 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
         best_rating = ranked[0]["rating"] if ranked else 60.0
         alt_offers_count = max(0, len(ranked) - 1)
         if p:
-            origin_cc = _country_from_port(p.sea_port or p.air_port or "")
+            # Нет порта → предполагаемая страна-источник (country_of_origin/бренд/CN),
+            # чтобы карточка показывала «Откуда» и работал фильтр «только из страны X».
+            origin_cc = _country_from_port(p.sea_port or p.air_port or "") or fallback_origin_country(p)
             sea_code = (p.sea_port or "").split()[0] if p.sea_port else ""
             air_code = (p.air_port or "").split()[0] if p.air_port else ""
             # Фильтр по origin: 2 chars = country code (AE), 3+ = port code (AEFJR).
@@ -1738,7 +1741,9 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
     }
     def _country_from_port_str(port_str: str, port_code: str) -> str:
         if not port_str:
-            return ""
+            # Fallback-группа (беспортовая позиция): строки порта нет, но
+            # port_code — это уже ISO-код страны-источника (CN/JP/…).
+            return _country_from_port(port_code) or port_code[:2].upper()
         for flag, cc in _FLAG_TO_CC.items():
             if flag in port_str:
                 return cc
@@ -1753,6 +1758,11 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             # каждая позиция вносится дважды (если у партии оба порта указаны).
             sea_code = (p.sea_port or "").split()[0] if p.sea_port else ""
             air_code = (p.air_port or "").split()[0] if p.air_port else ""
+            if not sea_code and not air_code:
+                # Беспортовая позиция → группируем по fallback-стране (та же,
+                # что во фрахт-цикле), чтобы «Состав» origin_breakdown совпадал
+                # с посчитанным фрахтом, а не висел отдельной пустой группой.
+                sea_code = air_code = fallback_origin_country(p)
             ch = max(
                 Decimal(p.gross_weight_kg or 0),
                 _volumetric_kg(p.length_cm, p.width_cm, p.height_cm, "sea"),
@@ -1811,7 +1821,11 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 origin = ((getattr(p, port_field, "") or "").strip())
                 origin_code = origin.split()[0] if origin else ""
                 if not origin_code:
-                    continue
+                    # Порт не указан → fallback на страну-источник, чтобы фрахт
+                    # (и CIP/DDP) считался по тарифу страна→страна. Если тарифа
+                    # для (страна, режим, dest) нет — группа отсеется ниже в
+                    # _lookup_tariff, как и раньше.
+                    origin_code = fallback_origin_country(p)
                 ch = max(
                     Decimal(p.gross_weight_kg or 0),
                     _volumetric_kg(p.length_cm, p.width_cm, p.height_cm, m),

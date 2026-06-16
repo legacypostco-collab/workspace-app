@@ -119,6 +119,86 @@ def _country_from_port(port_string: str) -> str:
     return ""
 
 
+# ─── Fallback origin для позиций без порта отправления ──────────────────────
+# 82% сид-каталога (Komatsu/Epiroc bulk-импорт) загружены БЕЗ sea_port/air_port,
+# поэтому фрахт (а с ним CIP/DDP) не считался — покупатель видел «нет тарифа».
+# Если порт не указан, выводим страну отправления-источник в порядке:
+#   country_of_origin (если реальная страна) → бренд → дефолт CN (китайский хаб).
+# Это ОЦЕНКА для матрицы/витрины; продавец подтверждает реальный порт в заказе.
+DEFAULT_ORIGIN = "CN"
+
+# Свободный текст country_of_origin (EN/RU) → ISO-2. Только реальные страны;
+# 'Unknown'/'' пропускаем (упадём в бренд-фолбэк).
+COUNTRY_NAME_ISO = {
+    "china": "CN", "p.r. china": "CN", "prc": "CN", "китай": "CN",
+    "japan": "JP", "япония": "JP",
+    "germany": "DE", "deutschland": "DE", "германия": "DE",
+    "usa": "US", "u.s.a.": "US", "united states": "US", "сша": "US",
+    "korea": "KR", "south korea": "KR", "republic of korea": "KR", "корея": "KR",
+    "italy": "IT", "италия": "IT",
+    "spain": "ES", "испания": "ES",
+    "india": "IN", "индия": "IN",
+    "turkey": "TR", "türkiye": "TR", "турция": "TR",
+    "uae": "AE", "united arab emirates": "AE", "оаэ": "AE",
+    "netherlands": "NL", "holland": "NL", "нидерланды": "NL",
+    "pakistan": "PK", "пакистан": "PK",
+    "russia": "RU", "russian federation": "RU", "россия": "RU", "рф": "RU",
+}
+
+# Бренд (подстрока, lower) → страна отправления-источник (ISO-2 с тарифом до RU).
+# Уверенные сопоставления; остальные бренды (Epiroc/Atlas Copco/Sandvik и пр.)
+# падают в DEFAULT_ORIGIN=CN (китайские производственные хабы + тарифы есть).
+BRAND_ORIGIN = {
+    "komatsu": "JP", "hitachi": "JP", "kobelco": "JP", "kubota": "JP",
+    "yanmar": "JP", "isuzu": "JP", "nachi": "JP", "kayaba": "JP", "kyb": "JP",
+    "liebherr": "DE", "bomag": "DE", "deutz": "DE", "bosch": "DE",
+    "rexroth": "DE", "wirtgen": "DE", "hamm": "DE", "putzmeister": "DE",
+    "mahle": "DE", "wabco": "DE",
+    "caterpillar": "US", "cummins": "US", "john deere": "US", "terex": "US",
+    "doosan": "KR", "hyundai": "KR",
+    "carraro": "IT", "berco": "IT", "new holland": "IT", "fpt": "IT",
+    "xcmg": "CN", "sany": "CN", "zoomlion": "CN", "shantui": "CN",
+    "liugong": "CN", "sdlg": "CN", "weichai": "CN", "shacman": "CN",
+    "sinotruk": "CN", "howo": "CN", "lonking": "CN", "lovol": "CN",
+}
+
+
+def _brand_origin(brand: str) -> str:
+    b = (brand or "").strip().lower()
+    if not b:
+        return ""
+    for key, iso in BRAND_ORIGIN.items():
+        if key in b:
+            return iso
+    return ""
+
+
+def fallback_origin_country(part) -> str:
+    """Страна отправления-источник для позиции без порта (ISO-2).
+
+    Порядок: country_of_origin (реальная страна) → бренд → DEFAULT_ORIGIN.
+    Используется в calc_logistics и в матрице доставки, когда у Part пуст
+    и sea_port, и air_port.
+    """
+    coo = (getattr(part, "country_of_origin", "") or "").strip().lower()
+    if coo and coo not in ("unknown", "n/a", "na", "-", "—", "не указано"):
+        iso = COUNTRY_NAME_ISO.get(coo)
+        if iso:
+            return iso
+    iso = _brand_origin(getattr(getattr(part, "brand", None), "name", "") or "")
+    if iso:
+        return iso
+    return DEFAULT_ORIGIN
+
+
+def resolve_origin_code(part, mode: str) -> str:
+    """Эффективный origin-код позиции для режима mode: порт, иначе fallback-страна."""
+    port_field = "sea_port" if mode == "sea" else "air_port" if mode == "air" else "sea_port"
+    origin = (getattr(part, port_field, "") or "").strip()
+    code = origin.split()[0] if origin else ""
+    return code or fallback_origin_country(part)
+
+
 def _volumetric_kg(length_cm, width_cm, height_cm, mode: str) -> Decimal:
     """Объёмный вес в кг по габаритам в см."""
     try:
@@ -174,6 +254,10 @@ def calc_logistics(part, dest_country: str, mode: str = "sea") -> dict:
     port_field = "sea_port" if mode == "sea" else "air_port"
     origin = (getattr(part, port_field, "") or "").strip()
     origin_code = (origin.split()[0] if origin else "")
+    # Порт не указан → fallback на страну-источник (country_of_origin/бренд/CN),
+    # чтобы посчитать фрахт по тарифу страна→страна, а не падать в no_origin_port.
+    if not origin_code:
+        origin_code = fallback_origin_country(part)
     dest_country = (dest_country or "").upper()[:2]
 
     actual = Decimal(part.gross_weight_kg or 0)
