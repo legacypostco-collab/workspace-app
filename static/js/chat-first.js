@@ -3537,7 +3537,7 @@
             ${advBd.freight > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· Фрахт</span><span>${fmtMoney(advBd.freight, 'USD')}</span></div>` : ''}
             ${advBd.insurance > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· Страховка</span><span>${fmtMoney(advBd.insurance, 'USD')}</span></div>` : ''}
             ${advBd.duty > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· Пошлина</span><span>${fmtMoney(advBd.duty, 'USD')}</span></div>` : ''}
-            ${advBd.vat > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· НДС 20%</span><span>${fmtMoney(advBd.vat, 'USD')}</span></div>` : ''}
+            ${advBd.vat > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· НДС 22%</span><span>${fmtMoney(advBd.vat, 'USD')}</span></div>` : ''}
             ${advBd.last_mile > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· Доставка до двери</span><span>${fmtMoney(advBd.last_mile, 'USD')}</span></div>` : ''}
             ${adv.shipping_missing ? `<div class="oc-adv-row oc-adv-warn">⚠ Доставка не рассчитана для ${adv.shipping_missing} поз.</div>` : ''}
           </div>

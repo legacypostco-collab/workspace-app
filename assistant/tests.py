@@ -65,15 +65,15 @@ class CustomsDataTests(TestCase):
 
     # ── НДС / сборы ────────────────────────────────────────────
     def test_vat_rate_known_country(self):
-        self.assertEqual(vat_rate_for("RU"), Decimal("20.0"))
+        self.assertEqual(vat_rate_for("RU"), Decimal("22.0"))
         self.assertEqual(vat_rate_for("KZ"), Decimal("12.0"))
 
     def test_vat_rate_lowercase(self):
-        self.assertEqual(vat_rate_for("ru"), Decimal("20.0"))
+        self.assertEqual(vat_rate_for("ru"), Decimal("22.0"))
 
     def test_vat_rate_unknown(self):
         self.assertEqual(vat_rate_for("XX"), VAT_DEFAULT)
-        # Пустая строка → дефолт RU=20
+        # Пустая строка → дефолт RU=22
         self.assertEqual(vat_rate_for(""), VAT_DEFAULT)
 
     def test_country_fees(self):
@@ -508,9 +508,9 @@ class CustomsActionsTests(TestCase):
         self.assertIn("✓", r1.text)
         r2 = op_calc_duty({"order_id": self.order.id}, self.op, "operator_customs")
         self.assertIn("ИТОГО", r2.text)
-        # 1000 * 5% (8421) = 50 пошлина; 1050 * 20% (RU) = 210 НДС;
-        # 250 broker + 180 terminal → ИТОГО 690
-        self.assertIn("$690.00", r2.text)
+        # 1000 * 5% (8421) = 50 пошлина; 1050 * 22% (RU) = 231 НДС;
+        # 250 broker + 180 terminal → ИТОГО 711
+        self.assertIn("$711.00", r2.text)
 
     def test_release_blocks_without_certs(self):
         from .operator_actions import op_customs_release, op_hs_assign

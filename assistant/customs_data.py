@@ -72,13 +72,13 @@ DUTY_DEFAULT = Decimal("5.0")
 
 # ── НДС по странам импорта (для нашего демо — РФ) ────────────
 VAT_RATES = {
-    "RU": Decimal("20.0"),
+    "RU": Decimal("22.0"),   # с 2026 ставка НДС РФ — 22%
     "BY": Decimal("20.0"),
     "KZ": Decimal("12.0"),
     "AM": Decimal("20.0"),
     "KG": Decimal("12.0"),
 }
-VAT_DEFAULT = Decimal("20.0")
+VAT_DEFAULT = Decimal("22.0")
 
 
 # ── Фикс-сборы (broker, terminal) ────────────────────────────

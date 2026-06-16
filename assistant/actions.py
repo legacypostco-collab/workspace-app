@@ -2092,7 +2092,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             "incoterm_descs": {
                 "FOB": "самовывоз из порта поставщика — без доплат к EXW",
                 "CIP": "port-to-port фрахт + страховка груза (1.5%). Таможня — покупателя",
-                "DDP": "all-in до двери: фрахт + страховка + пошлина (~10%) + НДС 20% + last-mile (~5%)",
+                "DDP": "all-in до двери: фрахт + страховка + пошлина (~5%) + НДС 22% + last-mile (~5%)",
             },
             "cip_available": cip_available,
             "origin_breakdown": origin_breakdown,
