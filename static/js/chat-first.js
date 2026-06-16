@@ -5274,6 +5274,14 @@
   window.dfPickDDP = (cell) => {
     let params = {};
     try { params = JSON.parse(cell.dataset.params || '{}'); } catch (e) {}
+    // Гость не может оформить без аккаунта → сразу к контекстной регистрации
+    // (quick_order у анона = карточка «создать аккаунт и оплатить» + resume).
+    // Адрес до двери соберём после входа — гостю заполнять его рано. Иначе
+    // dfPickDDP прокручивал вверх к форме, и клик выглядел «без действия».
+    if (!window.IS_AUTHENTICATED) {
+      window.quickAction && window.quickAction('quick_order', params);
+      return;
+    }
     const smBlock = cell.closest('.sm-block');
     const form = smBlock && smBlock.querySelector('.df-block');
     if (!form) return;

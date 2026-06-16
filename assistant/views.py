@@ -198,6 +198,10 @@ ANON_BLOCKED_PAYMENT_ACTIONS: set[str] = {
     "pay_reserve", "pay_final", "pay_remaining",
     "confirm_kp_and_reserve", "auto_accept_and_pay_reserve",
     "submit_topup", "create_payment_intent",
+    # quick_order — это оформление заказа (клик по базису доставки): аноним
+    # должен получить контекстный close «создать аккаунт и оплатить» + resume
+    # после регистрации, а не обобщённую карточку.
+    "quick_order",
 }
 
 
