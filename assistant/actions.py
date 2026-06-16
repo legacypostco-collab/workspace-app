@@ -1385,11 +1385,15 @@ def search_parts(params, user, role):
             oem_q |= Q(oem_number__iexact=c)
         if clean_candidates:
             oem_q |= Q(oem_clean__in=clean_candidates)
-        # Fallback: icontains (для частичных «707-99» + title/description-поиск)
+        # Fallback: icontains (для частичных «707-99» + поиск по тексту).
+        # title_ru — русское имя из словаря (покупатель ищет «коронка»);
+        # cross_numbers — кросс-ссылки/резьба (напр. «3 1/2 REG») у товаров без OEM.
         qs = qs.filter(
             oem_q
             | Q(oem_number__icontains=query)
             | Q(title__icontains=query)
+            | Q(title_ru__icontains=query)
+            | Q(cross_numbers__icontains=query)
             | Q(description__icontains=query)
         )
     if params.get("brand"):
