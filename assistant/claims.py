@@ -563,9 +563,35 @@ def claim_detail(params, user, role):
         except Exception:
             pass
 
+    # ── Контекст рекламации: состав заказа + стандартный «Отчёт по поставке» ──
+    # Оператору/владельцу важно видеть, ЧТО в заказе и как прошла поставка,
+    # не уходя из рекламации. Берём КАНОНИЧЕСКИЕ карточки:
+    #   • spec_results (состав) — из детального вида заказа;
+    #   • tracking      (Отчёт по поставке / трекинг) — из track_order.
+    # tracking читает ЖИВЫЕ данные о партиях/shipments — поэтому если по итогу
+    # рекламации оформят замену (новая партия), отчёт обновится сам, без
+    # отдельной заморозки истории.
+    context_cards = []
+    try:
+        from .actions import get_order_detail as _detail, track_order as _track
+        _od = _detail({"order_id": claim.order_id}, user, role)
+        for c in (_od.cards or []):
+            if c.get("type") == "spec_results":
+                context_cards.append(c)
+                break
+        _tr = _track({"order_id": claim.order_id}, user, role)
+        for c in (_tr.cards or []):
+            if c.get("type") == "tracking":
+                context_cards.append(c)
+                break
+    except Exception:
+        logger.exception("claim_detail: контекст заказа не построился")
+        context_cards = []
+
     return ActionResult(
         text=f"📋 Рекламация #{claim.id} · {claim.get_status_display()}",
         cards=[{"type": "draft", "data": {"title": f"Рекламация #{claim.id}",
-                                           "rows": rows, "confirm_label": "—"}}],
+                                           "rows": rows, "confirm_label": "—"}}]
+              + context_cards,
         actions=actions,
     )

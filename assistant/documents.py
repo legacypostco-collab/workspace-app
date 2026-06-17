@@ -215,6 +215,31 @@ def _save_pdf(order, doc_type: str, title: str, buf: io.BytesIO,
     return doc
 
 
+def _regenerate_signed_pdf(doc) -> bool:
+    """Перегенерирует PDF документа С ВПЕЧАТАННЫМ блоком подписей и
+    перезаписывает file_obj — чтобы открытый PDF уже содержал подписи."""
+    builders = {
+        "invoice": _build_invoice_pdf,
+        "packing_list": _build_packing_list_pdf,
+        "quality_report": _build_qc_report_pdf,
+    }
+    builder = builders.get(doc.doc_type)
+    if not builder:
+        return False
+    try:
+        sigs = list(doc.signatures.all())
+        buf = builder(doc.order, signatures=sigs)
+        buf.seek(0)
+        fn = (doc.file_obj.name.rsplit("/", 1)[-1]
+              if doc.file_obj and doc.file_obj.name
+              else f"ORD-{doc.order_id}-{doc.doc_type}-signed.pdf")
+        doc.file_obj.save(fn, ContentFile(buf.read()), save=True)
+        return True
+    except Exception:
+        logger.exception("regenerate signed pdf failed for doc %s", doc.id)
+        return False
+
+
 def _doc_url(doc) -> str:
     """URL для просмотра/скачивания документа заказа.
 
@@ -392,11 +417,46 @@ def _build_proforma_invoice_pdf(rfq, quote, logistics_cost: Decimal,
 
     _draw_footer(c)
     c.showPage()
+    if signatures:
+        _draw_signatures(c, signatures, order)
     c.save()
     return buf
 
 
-def _build_invoice_pdf(order) -> io.BytesIO:
+_SIG_ROLE_RU = {"buyer": "Покупатель / Buyer", "seller": "Продавец / Seller",
+                "operator": "Оператор / Operator", "admin": "Оператор / Operator"}
+
+
+def _draw_signatures(c, signatures, order):
+    """Страница «Подписи / Signatures» — впечатывает ПЭП-подписи в сам PDF
+    (кто/роль/когда/IP + SHA-256 подписанного содержимого)."""
+    from reportlab.lib.units import mm
+    y = _draw_header(c, "ПОДПИСИ / SIGNATURES", f"ORD-{order.id}")
+    c.setFont(FONT_REGULAR, 10)
+    c.drawString(20 * mm, y, "Документ подписан простой электронной подписью (ПЭП), ст. 6 ФЗ-63.")
+    y -= 11 * mm
+    for s in signatures:
+        role = _SIG_ROLE_RU.get(s.signer_role, s.signer_role or "—")
+        mark = "✓" if s.method == "ep" else "📎"
+        c.setFont(FONT_BOLD, 11)
+        c.drawString(22 * mm, y, f"{mark} {role}: {s.signer_name or '—'}")
+        y -= 6 * mm
+        c.setFont(FONT_REGULAR, 9)
+        when = s.signed_at.strftime("%d.%m.%Y %H:%M") if s.signed_at else "—"
+        kind = "ПЭП в платформе" if s.method == "ep" else "загружен подписанный скан"
+        c.drawString(26 * mm, y, f"{kind} · {when} · IP {s.ip or '—'}")
+        y -= 5 * mm
+        if s.doc_sha256:
+            c.setFont(FONT_REGULAR, 8)
+            c.drawString(26 * mm, y, f"SHA-256: {s.doc_sha256}")
+            y -= 9 * mm
+        else:
+            y -= 4 * mm
+    _draw_footer(c)
+    c.showPage()
+
+
+def _build_invoice_pdf(order, signatures=None) -> io.BytesIO:
     """Commercial Invoice — официальный документ на оплату по Order."""
     from reportlab.lib.units import mm
     c, buf = _pdf_canvas(f"Invoice ORD-{order.id}")
@@ -454,11 +514,13 @@ def _build_invoice_pdf(order) -> io.BytesIO:
 
     _draw_footer(c)
     c.showPage()
+    if signatures:
+        _draw_signatures(c, signatures, order)
     c.save()
     return buf
 
 
-def _build_packing_list_pdf(order) -> io.BytesIO:
+def _build_packing_list_pdf(order, signatures=None) -> io.BytesIO:
     from reportlab.lib.units import mm
     c, buf = _pdf_canvas(f"Packing List ORD-{order.id}")
     y = _draw_header(c, "PACKING LIST", f"ORD-{order.id}")
@@ -500,11 +562,13 @@ def _build_packing_list_pdf(order) -> io.BytesIO:
 
     _draw_footer(c)
     c.showPage()
+    if signatures:
+        _draw_signatures(c, signatures, order)
     c.save()
     return buf
 
 
-def _build_qc_report_pdf(order) -> io.BytesIO:
+def _build_qc_report_pdf(order, signatures=None) -> io.BytesIO:
     from reportlab.lib.units import mm
     c, buf = _pdf_canvas(f"QC Report ORD-{order.id}")
     y = _draw_header(c, "QUALITY CONTROL REPORT", f"ORD-{order.id}")
@@ -540,6 +604,8 @@ def _build_qc_report_pdf(order) -> io.BytesIO:
 
     _draw_footer(c)
     c.showPage()
+    if signatures:
+        _draw_signatures(c, signatures, order)
     c.save()
     return buf
 
@@ -699,6 +765,8 @@ def generate_invoice_pdf(params, user, role):
         }}],
         actions=[
             {"action": "open_url", "label": "📄 Открыть PDF", "params": {"_url": url}},
+            {"action": "sign_document", "label": "✍️ Подписать и отправить",
+             "params": {"document_id": doc.id}},
             {"action": "list_order_documents", "label": "Все документы заказа",
              "params": {"order_id": order.id}},
         ],
@@ -724,7 +792,11 @@ def generate_packing_list_pdf(params, user, role):
             "id": str(doc.id), "title": doc.title, "kind": "packing_list",
             "url": url,
         }}],
-        actions=[{"action": "open_url", "label": "📄 Открыть PDF", "params": {"_url": url}}],
+        actions=[
+            {"action": "open_url", "label": "📄 Открыть PDF", "params": {"_url": url}},
+            {"action": "sign_document", "label": "✍️ Подписать и отправить",
+             "params": {"document_id": doc.id}},
+        ],
     )
 
 
@@ -747,7 +819,11 @@ def generate_qc_report_pdf(params, user, role):
             "id": str(doc.id), "title": doc.title, "kind": "qc_report",
             "url": url,
         }}],
-        actions=[{"action": "open_url", "label": "📄 Открыть PDF", "params": {"_url": url}}],
+        actions=[
+            {"action": "open_url", "label": "📄 Открыть PDF", "params": {"_url": url}},
+            {"action": "sign_document", "label": "✍️ Подписать и отправить",
+             "params": {"document_id": doc.id}},
+        ],
     )
 
 
@@ -757,7 +833,8 @@ def list_order_documents(params, user, role):
     order, err = _get_order(params, user, role)
     if err:
         return err
-    docs = order.documents.all().order_by("-created_at")
+    docs = list(order.documents.all().order_by("-created_at")
+                .prefetch_related("signatures"))
     if not docs:
         return ActionResult(
             text=f"По заказу ORD-{order.id} пока нет документов.",
@@ -770,22 +847,155 @@ def list_order_documents(params, user, role):
                  "params": {"order_id": order.id}},
             ],
         )
-    cards = [{"type": "doc", "data": {
-        "id": str(d.id),
-        "title": d.title,
-        "kind": d.doc_type,
-        "url": _doc_url(d),
-        "created_at": d.created_at.strftime("%Y-%m-%d %H:%M") if d.created_at else "",
-    }} for d in docs]
+    _ROLE_RU = {"buyer": "Покупатель", "seller": "Продавец",
+                "operator": "Оператор", "admin": "Оператор"}
+    is_op_view = bool(role and (role.startswith("operator") or role == "admin"))
+    cards = []
+    lines = []
+    sign_actions = []
+    hidden_drafts = 0
+    for d in docs:
+        sigs = list(d.signatures.all())
+        creator_id = d.uploaded_by_id
+        # Документ «отправлен» (виден контрагенту), когда его СОЗДАТЕЛЬ подписал.
+        creator_signed = (creator_id is None) or any(
+            s.signer_id == creator_id and s.method == "ep" for s in sigs)
+        is_creator = (creator_id == user.id)
+        # Черновик (создатель ещё не подписал) виден только автору и оператору.
+        if not creator_signed and not is_creator and not is_op_view:
+            hidden_drafts += 1
+            continue
+        if sigs:
+            parts = [f"{_ROLE_RU.get(s.signer_role, s.signer_role or '—')} "
+                     f"{'✓' if s.method == 'ep' else '📎'}" for s in sigs]
+            status = "подписи: " + ", ".join(parts)
+        elif is_creator and not creator_signed:
+            status = "черновик — подпишите, чтобы отправить"
+        else:
+            status = "не подписан"
+        lines.append(f"• {d.title} — {status}")
+        cards.append({"type": "doc", "data": {
+            "id": str(d.id),
+            "title": d.title,
+            "kind": d.doc_type,
+            "url": _doc_url(d),
+            "created_at": d.created_at.strftime("%Y-%m-%d %H:%M") if d.created_at else "",
+            "sign_status": status,
+        }})
+        if not any(s.signer_id == user.id and s.method == "ep" for s in sigs):
+            sign_actions.append({"action": "sign_document",
+                                  "label": f"✍️ Подписать и отправить: {d.title[:16]}",
+                                  "params": {"document_id": d.id}})
+    gen_actions = [
+        {"action": "generate_invoice_pdf", "label": "+ Счёт на оплату",
+         "params": {"order_id": order.id}},
+        {"action": "generate_packing_list_pdf", "label": "+ Упаковочный лист",
+         "params": {"order_id": order.id}},
+        {"action": "generate_qc_report_pdf", "label": "+ Акт качества",
+         "params": {"order_id": order.id}},
+    ]
+    if not cards:
+        return ActionResult(
+            text=(f"По заказу ORD-{order.id} пока нет отправленных документов "
+                  f"(контрагент ещё не подписал и не отправил)."),
+            actions=gen_actions,
+        )
+    foot = "\n\nПодпись (ПЭП) фиксирует кто/когда/IP + хэш документа."
+    if hidden_drafts:
+        foot += f"\nЕщё {hidden_drafts} в черновиках у контрагента (не отправлены)."
     return ActionResult(
-        text=f"📄 Документы по заказу ORD-{order.id} ({len(cards)}):",
+        text=(f"📄 Документы по заказу ORD-{order.id} ({len(cards)}):\n"
+              + "\n".join(lines) + foot),
         cards=cards,
+        actions=sign_actions[:6] + gen_actions,
+    )
+
+
+@register("sign_document")
+def sign_document(params, user, role):
+    """ПЭП: участник сделки подписывает документ заказа (Этап 1).
+
+    Фиксируем подпись (кто/роль/когда/IP) + SHA-256 файла на момент подписи —
+    tamper-evident. Доступ — только участникам заказа (через _get_order).
+    """
+    import hashlib
+
+    from marketplace.models import DocumentSignature, OrderDocument
+    doc_id = params.get("document_id") or params.get("doc_id")
+    if not doc_id:
+        return ActionResult(text="⚠️ Не указан документ.")
+    doc = OrderDocument.objects.filter(id=doc_id).select_related("order").first()
+    if not doc:
+        return ActionResult(text="Документ не найден.")
+    # Доступ — тот же гейт, что у списка документов (участник заказа).
+    _order, err = _get_order({"order_id": doc.order_id}, user, role)
+    if err:
+        return ActionResult(text="Нет доступа к этому документу.")
+    if DocumentSignature.objects.filter(document=doc, signer=user, method="ep").exists():
+        return ActionResult(text=f"Вы уже подписали «{doc.title}».")
+    # Хэш файла на момент подписи (tamper-evident).
+    sha = ""
+    try:
+        if doc.file_obj and doc.file_obj.name:
+            h = hashlib.sha256()
+            with doc.file_obj.open("rb") as f:
+                for chunk in iter(lambda: f.read(65536), b""):
+                    h.update(chunk)
+            sha = h.hexdigest()
+    except Exception:
+        logger.exception("sign_document hash failed for doc %s", doc.id)
+    DocumentSignature.objects.create(
+        document=doc, signer=user, signer_role=role or "",
+        signer_name=(user.get_full_name() or user.username)[:200],
+        method="ep", doc_sha256=sha, ip=(params.get("_client_ip") or "")[:64])
+    # Впечатываем подпись в сам PDF (перегенерация с блоком «Подписи»).
+    _regenerate_signed_pdf(doc)
+    # Маршрутизация: уведомляем ОСТАЛЬНЫХ участников сделки (покупатель,
+    # продавцы, оператор) — документ подписан, дальше их очередь смотреть/
+    # подписывать. Оператор платформы — центральный контроль сделки.
+    notified = []
+    try:
+        from marketplace.models import OrderItem
+
+        from .actions import _notify
+        order = doc.order
+        recipients = {}  # id -> (user, role_label)
+        if order.buyer_id and order.buyer:
+            recipients[order.buyer_id] = (order.buyer, "Покупатель")
+        if order.assigned_operator_id and order.assigned_operator:
+            recipients[order.assigned_operator_id] = (order.assigned_operator, "Оператор")
+        for it in OrderItem.objects.filter(order=order).select_related("part__seller"):
+            if it.part and it.part.seller_id and it.part.seller:
+                recipients.setdefault(it.part.seller_id, (it.part.seller, "Продавец"))
+        signer_ru = _SIG_ROLE_RU.get(role, role or "").split(" / ")[0] or "участник"
+        for rid, (rcp, label) in recipients.items():
+            if rid == user.id:
+                continue
+            notified.append(label)
+            _notify(rcp, kind="order",
+                    title=f"📄 Подпись по ORD-{order.id}",
+                    body=(f"«{doc.title}» подписан ({signer_ru}). "
+                          f"Откройте «Все документы» по заказу — посмотреть/подписать."),
+                    url="/chat/")
+    except Exception:
+        logger.exception("sign_document routing notify failed")
+    sent_line = ((" Отправлено — уведомлены: "
+                  + ", ".join(dict.fromkeys(notified)) + ".") if notified else "")
+    sigs = list(doc.signatures.all())
+    status = ", ".join(
+        f"{_SIG_ROLE_RU.get(s.signer_role, s.signer_role or '—').split(' / ')[0]} "
+        f"{'✓' if s.method == 'ep' else '📎'}" for s in sigs)
+    url = _doc_url(doc)
+    return ActionResult(
+        text=(f"✅ Вы подписали «{doc.title}» (ПЭП). Подпись впечатана в PDF."
+              + sent_line + f"\nПодписи: {status}"),
+        cards=[{"type": "doc", "data": {
+            "id": str(doc.id), "title": doc.title, "kind": doc.doc_type,
+            "url": url, "sign_status": "подписи: " + status}}],
         actions=[
-            {"action": "generate_invoice_pdf", "label": "+ Счёт на оплату",
-             "params": {"order_id": order.id}},
-            {"action": "generate_packing_list_pdf", "label": "+ Упаковочный лист",
-             "params": {"order_id": order.id}},
-            {"action": "generate_qc_report_pdf", "label": "+ Акт качества",
-             "params": {"order_id": order.id}},
+            {"action": "open_url", "label": "📄 Открыть подписанный PDF",
+             "params": {"_url": url}},
+            {"action": "list_order_documents", "label": "Все документы",
+             "params": {"order_id": doc.order_id}},
         ],
     )

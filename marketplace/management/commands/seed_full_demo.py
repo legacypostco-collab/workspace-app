@@ -289,7 +289,10 @@ class Command(BaseCommand):
             "Не соответствует описанию",
             "Гарантийный случай — течь уплотнителя",
         ]
-        for o in random.sample(orders, min(12, len(orders))):
+        # Рекламация возможна только на доставленный/завершённый заказ
+        # (до отгрузки жаловаться не на что — open_claim это гейтит).
+        claimable = [o for o in orders if o.status in ("delivered", "completed")]
+        for o in random.sample(claimable, min(12, len(claimable))):
             OrderClaim.objects.create(
                 order=o,
                 title=random.choice(claim_titles),

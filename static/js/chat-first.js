@@ -3807,6 +3807,11 @@
         const stagesHtml = (it.stages || []).map(s =>
           `<div class="stage${s.done ? ' done' : ''}">${esc(s.label)}</div>`
         ).join('');
+        // Кнопки по партии (напр. «📦 Состав партии») — позиции этого поставщика.
+        const actionsHtml = (it.actions || []).map(a => {
+          const pj = JSON.stringify(a.params || {}).replace(/"/g, '&quot;');
+          return `<button class="st-dec-btn act-btn" data-action="${esc(a.action)}" data-params="${pj}" data-label="${esc(a.label)}">${esc(a.label)}</button>`;
+        }).join('');
         return `<div class="st-block">
           <div class="card-row st-block-head">
             <div class="card-emoji">📦</div>
@@ -3818,6 +3823,7 @@
           ${metaHtml ? `<div class="spec-meta">${metaHtml}</div>` : ''}
           ${actorHtml}
           ${stagesHtml ? `<div class="stages">${stagesHtml}</div>` : ''}
+          ${actionsHtml ? `<div class="st-decision st-decision-row"><div class="st-dec-row">${actionsHtml}</div></div>` : ''}
           ${renderDecision(it.decision)}
         </div>`;
       }).join('');
@@ -6381,7 +6387,16 @@
               {label: '⭐ Мой рейтинг', action: 'seller_rating', params: {}},
               {label: '⚡ Моя скорость', action: 'get_sla_report', params: {}}];
     }
-    // Покупатель и оператор: заказы → создать RFQ → аналитика → поставщики.
+    // Оператор (вкл. суб-роли operator_logist/customs/payment/manager):
+    // оркестратор сделок — очередь, SLA, рекламации, аналитика. RFQ поднимает
+    // покупатель, поэтому «Создать RFQ» оператору здесь не предлагаем.
+    if (/^operator/.test(role)) {
+      return [{label: 'Очередь сделок', action: 'op_queue',         params: {}},
+              {label: 'Нарушения SLA',  action: 'op_sla_breach',    params: {}},
+              {label: 'Рекламации',     action: 'get_claims',       params: {}},
+              {label: 'Аналитика',      action: 'op_analytics_hub', params: {}}];
+    }
+    // Покупатель: заказы → создать RFQ → аналитика → поставщики.
     return [{label: 'Покажи мои заказы', action: 'get_orders', params: {}},
             'Создать RFQ', 'Аналитика за месяц', 'Список поставщиков'];
   }
@@ -7036,7 +7051,7 @@
         {tkey:'pill.my_user_chats',    emoji:'📂', action:'op_my_user_chats',     params:{}},
         {tkey:'pill.drawings', emoji:'📐', action:'op_drawings_by_part',   params:{}},
         {tkey:'pill.analytics',        emoji:'📊', action:'op_analytics_hub',     params:{}},
-        {tkey:'pill.support',          emoji:'🎧', action:'support_home',          params:{}},
+        // «Поддержка» убрана: оператор САМ — поддержка, ему не нужен контакт в саппорт.
       ],
     },
     // Суб-роли оператора: УРЕЗАННЫЙ набор — только свой профиль + базовая навигация.

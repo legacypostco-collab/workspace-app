@@ -954,6 +954,11 @@ def view_rfq_quotes(params, user, role):
             ],
         )
 
+    # Один КП → сразу показываем составом (spec_results, как состав заказа),
+    # а не тонким списком «поставщик — сумма». Делегируем в view_quote.
+    if len(latest) == 1:
+        return view_quote({"quote_id": latest[0].id}, user, role)
+
     # Anonymize seller имена для buyer'а (раскрываются после accept_quote)
     is_buyer_view = (rfq.created_by_id == user.id) and role == "buyer"
 
@@ -1053,11 +1058,53 @@ def view_quote(params, user, role):
     if q.message:
         rows.append({"label": "Комментарий", "value": q.message[:200]})
 
-    line_items = [
-        {"title": (qi.title_snapshot or (qi.part.title if qi.part else "—"))[:60],
-         "subtitle": f"{qi.quantity} × ${qi.unit_price:,.2f} = ${qi.line_total:,.2f}"}
-        for qi in q.items.all()
-    ]
+    # КП показываем В ТОМ ЖЕ ВИДЕ, что и состав заказа — таблица spec_results
+    # (позиции + цена поставщика построчно), а не тонкий list.
+    _BADGE_RU = {"trusted": "Надёжный", "sandbox": "Песочница",
+                 "risky": "Рисковый", "rejected": "Исключён"}
+    _sup_status, _sup_rating = "trusted", 90.0
+    try:
+        from marketplace.models import UserProfile as _UP
+        _p = _UP.objects.filter(user_id=q.seller_id).only("supplier_status", "rating").first()
+        if _p:
+            _sup_status = _p.supplier_status or "trusted"
+            _sup_rating = float(_p.rating or 90.0)
+    except Exception:
+        pass
+    # Бейдж = ТОЛЬКО статус. Рейтинг идёт отдельным полем supplier_rating —
+    # фронт склеивает «Надёжный · 90.0». Иначе рейтинг дублировался (× 90.0).
+    _badge = _BADGE_RU.get(_sup_status, "Надёжный")
+    spec_items = []
+    _qsum = 0.0
+    for qi in q.items.all():
+        p = qi.part
+        price = float(qi.unit_price or 0)
+        qty = qi.quantity or 1
+        _qsum += price * qty
+        spec_items.append({
+            "status": "in_stock",
+            "id": (p.oem_number if p else "") or "—",
+            "name": ((qi.title_snapshot or (p.title if p else "")) or "—")[:80],
+            "brand": (p.brand.name if (p and p.brand_id) else "—"),
+            "price": price,
+            "qty": qty,
+            "supplier_status": _sup_status,
+            "supplier_status_badge": _badge,
+            "supplier_rating": round(_sup_rating, 1),
+        })
+    _valid = (q.valid_until.strftime("%d.%m.%Y") if q.valid_until else "—")
+    spec_card = {"type": "spec_results", "data": {
+        "title": f"КП · RFQ #{q.rfq_id} · {seller_label}",
+        "meta": rows,
+        "found": len(spec_items), "analogue": 0, "not_found": 0,
+        "items": spec_items,
+        "offers_count": len(spec_items), "sellers_count": 1,
+        "total": int(_qsum) if _qsum else int(q.total_amount or 0),
+        "best_mix": int(_qsum) if _qsum else int(q.total_amount or 0),
+        "currency": q.currency or "USD",
+        "foot_info": (f"{len(spec_items)} позиций · доставка {q.delivery_days} дн · "
+                      f"действует до {_valid} · {q.get_status_display()}"),
+    }}
 
     actions = []
     if is_buyer and q.status in ("submitted",) and q.direction == "seller_to_buyer":
@@ -1082,11 +1129,7 @@ def view_quote(params, user, role):
 
     return ActionResult(
         text=f"💬 Котировка #{q.id} · ${q.total_amount:,.2f} · {q.delivery_days} дн.",
-        cards=[
-            {"type": "draft", "data": {"title": f"Котировка #{q.id}", "rows": rows,
-                                       "confirm_label": "—"}},
-            {"type": "list", "data": {"title": "Позиции", "items": line_items or [{"title": "—"}]}},
-        ],
+        cards=[spec_card],
         actions=actions,
     )
 

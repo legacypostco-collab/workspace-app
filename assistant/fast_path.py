@@ -78,6 +78,25 @@ def rule(name: str):
     return deco
 
 
+@rule("find_order")
+def _find_order(msg: str, lower: str) -> tuple[str, dict] | None:
+    """Быстрый поиск заказа по ЯВНОМУ маркеру: «#645», «ORD-645», «заказ 645»,
+    «заказа 645», «сделка 645», «order 645» → открыть карточку заказа.
+
+    ВЫШЕ multi_article, иначе «ORD-645» уйдёт в OEM-поиск. Матчим только когда
+    ВСЯ строка — ссылка на заказ (fullmatch), чтобы «заказать 645 штук» не
+    распозналось как заказ. Голый номер (без маркера) ловит find_order_num ниже.
+    """
+    s = lower.strip().strip(".,!?… ").strip()
+    m = re.fullmatch(
+        r"(?:(?:покажи|показать|открой|открыть|найди|найти|глянь|show|open|go to)\s+)?"
+        r"(?:ord[-\s]?|order\s*#?\s*|заказ[а]?\s*#?\s*|сделк[аи]\s*#?\s*|#)\s*0*(\d{1,7})",
+        s)
+    if m:
+        return ("get_order_detail", {"order_id": int(m.group(1))})
+    return None
+
+
 @rule("multi_article_paste")
 def _multi_article(msg: str, lower: str) -> tuple[str, dict] | None:
     """User pasted OEM article numbers → search_parts (БЕЗ LLM, мгновенно).
@@ -149,6 +168,17 @@ def _create_rfq_prompt(msg: str, lower: str) -> tuple[str, dict] | None:
     }
     if s in meta:
         return ("create_rfq", {})
+    return None
+
+
+@rule("find_order_num")
+def _find_order_num(msg: str, lower: str) -> tuple[str, dict] | None:
+    """Голый номер заказа: всё сообщение = цифры (≤7) → открыть карточку.
+    Стоит ПОСЛЕ multi_article: длинные чисто-цифровые OEM (Komatsu/Sandvik,
+    3128316557) уже перехвачены выше; сюда доходят только короткие номера."""
+    s = lower.strip().strip(".,!?…# ").strip()
+    if re.fullmatch(r"\d{1,7}", s):
+        return ("get_order_detail", {"order_id": int(s)})
     return None
 
 

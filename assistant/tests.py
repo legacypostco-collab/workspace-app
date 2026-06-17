@@ -2055,13 +2055,13 @@ class NegotiationFlowTests(TestCase):
         q = Quote.objects.filter(rfq=self.rfq).first()
         # Buyer видит «Поставщик №…»
         r_buyer = view_quote({"quote_id": q.id}, self.buyer, "buyer")
-        rows = r_buyer.cards[0]["data"]["rows"]
+        rows = r_buyer.cards[0]["data"]["meta"]
         seller_row = next(r for r in rows if r["label"] == "Продавец")
         assert seller_row["value"].startswith("Поставщик №"), \
             f"buyer should see anon, got {seller_row['value']!r}"
         # Seller (автор) видит свой username
         r_seller = view_quote({"quote_id": q.id}, self.seller_a, "seller")
-        seller_row2 = next(r for r in r_seller.cards[0]["data"]["rows"] if r["label"] == "Продавец")
+        seller_row2 = next(r for r in r_seller.cards[0]["data"]["meta"] if r["label"] == "Продавец")
         assert seller_row2["value"] == self.seller_a.username
 
     def test_buyer_anonymity_revealed_after_accept(self):
@@ -2077,7 +2077,7 @@ class NegotiationFlowTests(TestCase):
         accept_quote({"quote_id": q.id, "confirmed": True}, self.buyer, "buyer")
         # После accepted — имя раскрыто
         r = view_quote({"quote_id": q.id}, self.buyer, "buyer")
-        rows = r.cards[0]["data"]["rows"]
+        rows = r.cards[0]["data"]["meta"]
         seller_row = next(r for r in rows if r["label"] == "Продавец")
         assert seller_row["value"] == self.seller_a.username, \
             f"after accept buyer should see real username, got {seller_row['value']!r}"

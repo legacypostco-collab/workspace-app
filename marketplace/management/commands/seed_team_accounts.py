@@ -368,7 +368,11 @@ class Command(BaseCommand):
         for j, b in enumerate(uniq(buyers)):
             if OrderClaim.objects.filter(opened_by=b).exists():
                 continue
-            o = Order.objects.filter(buyer=b).order_by("-id").first()
+            # Рекламацию можно открыть ТОЛЬКО на доставленный/завершённый заказ
+            # (open_claim гейтит delivered/completed): до отгрузки жаловаться не
+            # на что. Берём такой; если у покупателя их нет — пропускаем.
+            o = (Order.objects.filter(buyer=b, status__in=("delivered", "completed"))
+                 .order_by("-id").first())
             if not o:
                 continue
             kind, title, desc = CLAIMS[j % len(CLAIMS)]
@@ -403,6 +407,20 @@ class Command(BaseCommand):
             if not _RFQItem.objects.filter(
                     rfq=q.rfq, matched_part__seller=q.seller).exists():
                 q.delete()
+        # (a2) Бэкфилл строк: у существующих seed-КП без QuoteItem создаём их из
+        # позиций RFQ, принадлежащих продавцу — чтобы КП открывался составом.
+        from django.db.models import Count as _Count
+        from marketplace.models import QuoteItem as _QI0
+        for q in (Quote.objects.filter(rfq__notes__icontains="seed:")
+                  .annotate(_n=_Count("items")).filter(_n=0)):
+            for ri in _RFQItem.objects.filter(
+                    rfq=q.rfq, matched_part__seller=q.seller).select_related("matched_part"):
+                p = ri.matched_part
+                _QI0.objects.create(
+                    quote=q, rfq_item=ri, part=p,
+                    title_snapshot=(p.title or "")[:300], quantity=ri.quantity or 1,
+                    unit_price=(p.price or Decimal("0")), condition="oem")
+
         # (b) Каждому intended-продавцу — когерентный seed-КП (RFQ из ЕГО позиций).
         for s in _gum().objects.filter(id__in=intended_ids):
             if Quote.objects.filter(seller=s, rfq__notes__icontains="seed:",
@@ -412,6 +430,7 @@ class Command(BaseCommand):
             if not demo_buyer or not s_parts:
                 continue
             try:
+                from marketplace.models import QuoteItem as _QI
                 rfq = RFQ.objects.create(
                     created_by=demo_buyer,
                     customer_name=demo_buyer.first_name or demo_buyer.username,
@@ -419,17 +438,26 @@ class Command(BaseCommand):
                     mode="auto", urgency="standard", status="quoted",
                     notes="seed: тестовый запрос")
                 total = Decimal("0")
+                made = []
                 for i, p in enumerate(s_parts):
-                    _RFQItem.objects.create(
+                    ri = _RFQItem.objects.create(
                         rfq=rfq, query=p.oem_number, quantity=i + 1,
                         matched_part=p, state="auto_matched",
                         confidence=Decimal("92.00"), decision_reason="seed",
                         recommended_supplier_status="trusted")
+                    made.append((ri, p, i + 1))
                     total += (p.price or Decimal("0")) * (i + 1)
-                Quote.objects.create(
+                quote = Quote.objects.create(
                     rfq=rfq, seller=s,
                     total_amount=(total or Decimal("1850.00")).quantize(Decimal("0.01")),
                     delivery_days=12, status="submitted")
+                # QuoteItem — поценовые строки, чтобы КП открывался составом
+                # (spec_results), а не пустым «Позиции: —».
+                for ri, p, qty in made:
+                    _QI.objects.create(
+                        quote=quote, rfq_item=ri, part=p,
+                        title_snapshot=(p.title or "")[:300], quantity=qty,
+                        unit_price=(p.price or Decimal("0")), condition="oem")
                 st["quotes"] += 1
             except Exception:
                 pass
@@ -507,7 +535,11 @@ class Command(BaseCommand):
                 continue
             if OrderClaim.objects.filter(order__items__part__seller=u).exists():
                 continue
-            o = Order.objects.filter(items__part__seller=u).distinct().first()
+            # Только доставленный/завершённый заказ — рекламация «на базисе
+            # отгрузки», а не на этапе формирования/производства.
+            o = (Order.objects.filter(items__part__seller=u,
+                                      status__in=("delivered", "completed"))
+                 .distinct().first())
             if not o:
                 continue
             try:

@@ -95,7 +95,7 @@ class ActionResult:
 # как обычный покупатель).
 _BUYER_ACTIONS = [
     "search_parts", "create_rfq", "get_rfq_status", "get_my_deals",
-    "get_orders", "get_order_detail", "track_order", "track_shipment",
+    "get_orders", "get_order_detail", "order_batch_items", "track_order", "track_shipment",
     "cancel_order",
     "invite_customer", "accept_customer_invite", "accept_referral",  # инвайт/реферал (для всех ролей)
     "my_referrals",  # мои реферальные награды ($100 за приведённого)
@@ -153,7 +153,7 @@ _BUYER_ACTIONS = [
     "upload_competitor_offer",
     # PDF documents (§12.2): invoice/packing/QC — все доступны buyer'у
     "generate_invoice_pdf", "generate_packing_list_pdf",
-    "generate_qc_report_pdf", "list_order_documents",
+    "generate_qc_report_pdf", "list_order_documents", "sign_document",
     # Notification preferences (durable channels)
     "notif_prefs", "notif_set_email", "notif_set_kinds", "notif_link_telegram",
     # Auth — 2FA + API tokens (всем доступно)
@@ -255,7 +255,7 @@ _OPERATOR_CORE = [
     "op_help_supplier", "op_help_send_reminder", "op_help_escalate",
     # Document generators (operator может создавать любые)
     "generate_invoice_pdf", "generate_packing_list_pdf",
-    "generate_qc_report_pdf", "list_order_documents",
+    "generate_qc_report_pdf", "list_order_documents", "sign_document",
 ]
 
 # KAM (Key Account Manager) — коммерческий/аккаунт-набор. Эксклюзив роли:
@@ -3212,6 +3212,11 @@ def get_order_detail(params, user, role):
                 "meta": _meta,
                 "stages": _stages_pills,
                 "decision": _row_decision,
+                # Кнопка «состав этой партии» — позиции конкретного поставщика.
+                "actions": [
+                    {"label": "📦 Состав партии", "action": "order_batch_items",
+                     "params": {"order_id": o.id, "seller_id": sid}},
+                ],
             })
 
     # Позиции (legacy compact rows для draft-сводки) — с именем поставщика
@@ -3276,7 +3281,12 @@ def get_order_detail(params, user, role):
     # Счёт на оплату — это артефакт продавца/оператора, и только пока оплата не закрыта.
     # Покупателю «создать счёт самому себе» не нужно; после full_paid тоже бессмысленно.
     if (is_seller or is_op) and o.payment_status in ("awaiting_reserve", "reserve_paid", "awaiting_final"):
-        actions.append({"label": "Создать счёт на оплату",
+        # Готов к отгрузке: нумеруем шаги отгрузочного пакета по порядку —
+        # 1.счёт → 2.упаковочный → 3.акт качества → Отгрузить (правая, без цифры).
+        _inv_lbl = ("1. Создать счёт на оплату"
+                    if (is_seller and o.status == "ready_to_ship")
+                    else "Создать счёт на оплату")
+        actions.append({"label": _inv_lbl,
                          "action": "generate_invoice_pdf",
                          "params": {"order_id": o.id}})
     # Seller-кнопки: pipeline
@@ -3294,14 +3304,16 @@ def get_order_detail(params, user, role):
                              "action": "advance_order",
                              "params": {"order_id": o.id}})
         elif o.status == "ready_to_ship":
-            actions.append({"label": "🚚 Отгрузить",
-                             "action": "ship_order",
-                             "params": {"order_id": o.id}})
-            actions.append({"label": "Создать упаковочный лист",
+            # Порядок слева направо: 1.счёт (выше) → 2.упаковочный → 3.акт →
+            # «Отгрузить» самой правой, без цифры.
+            actions.append({"label": "2. Создать упаковочный лист",
                              "action": "generate_packing_list_pdf",
                              "params": {"order_id": o.id}})
-            actions.append({"label": "Создать акт качества",
+            actions.append({"label": "3. Создать акт качества",
                              "action": "generate_qc_report_pdf",
+                             "params": {"order_id": o.id}})
+            actions.append({"label": "🚚 Отгрузить",
+                             "action": "ship_order",
                              "params": {"order_id": o.id}})
         elif o.status in ("transit_abroad", "customs", "transit_rf", "issuing"):
             actions.append({"label": "▶️ Следующий этап",
@@ -3386,6 +3398,98 @@ def get_order_detail(params, user, role):
         cards=_cards,
         actions=actions,
         suggestions=suggestions,
+    )
+
+
+@register("order_batch_items")
+def order_batch_items(params, user, role):
+    """Состав ОДНОЙ партии (позиции конкретного поставщика) внутри заказа —
+    таблица spec_results, как состав всего заказа. Зовётся кнопкой «📦 Состав
+    партии» из карточки «По поставщикам»."""
+    from marketplace.models import Order, UserProfile
+    oid = params.get("order_id") or params.get("id")
+    sid = params.get("seller_id")
+    if not oid or sid in (None, ""):
+        return ActionResult(text="⚠️ Не указан заказ или поставщик.")
+    try:
+        sid = int(sid)
+    except (ValueError, TypeError):
+        return ActionResult(text="Неверный поставщик.")
+    o = (Order.objects.select_related("buyer")
+         .prefetch_related("items__part__brand").filter(id=oid).first())
+    if not o:
+        return ActionResult(text=f"⚠️ Заказ ORD-{oid} не найден.")
+
+    is_buyer = (o.buyer_id == user.id)
+    is_op = (role.startswith("operator") or role == "admin"
+             or getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+    is_this_seller = (role == "seller" and user.id == sid and any(
+        it.part and it.part.seller_id == sid for it in o.items.all()))
+    if not (is_buyer or is_op or is_this_seller):
+        return ActionResult(text="Нет доступа к этому заказу.")
+
+    # Бейдж поставщика — как в составе всего заказа (get_order_detail): там
+    # показывается «Надёжный · 91.6» (дефолт), держим тот же вид для
+    # консистентности внутри одного заказа.
+    sup_status, sup_rating = "trusted", 91.6
+    badge = "Надёжный"
+
+    spec_items = []
+    total = 0.0
+    # Суммы по поставщикам — чтобы анонимный лейбл «Поставщик A/B/C» совпадал
+    # с карточкой «По поставщикам» (порядок по сумме, по убыванию).
+    by_amt = {}
+    for it in o.items.all():
+        if it.part and it.part.seller_id:
+            by_amt[it.part.seller_id] = by_amt.get(it.part.seller_id, 0.0) \
+                + float(it.unit_price or 0) * (it.quantity or 0)
+        if not it.part or it.part.seller_id != sid:
+            continue
+        mp = it.part
+        price = float(it.unit_price or 0)
+        qty = it.quantity or 1
+        total += price * qty
+        spec_items.append({
+            "status": "in_stock",
+            "id": mp.oem_number or "—",
+            "name": (_clean_title(mp.title or "") or "—")[:80],
+            "brand": mp.brand.name if mp.brand_id else "—",
+            "price": price, "qty": qty,
+            "supplier_status": sup_status,
+            "supplier_status_badge": badge,
+            "supplier_rating": round(sup_rating, 1),
+        })
+    if not spec_items:
+        return ActionResult(text="В этой партии нет позиций.")
+
+    if is_buyer and role == "buyer":
+        order_sids = [s for s, _ in sorted(by_amt.items(), key=lambda kv: -kv[1])]
+        try:
+            sup_label = f"Поставщик {chr(ord('A') + order_sids.index(sid))}"
+        except ValueError:
+            sup_label = "Поставщик"
+    else:
+        _su = next((it.part.seller for it in o.items.all()
+                    if it.part and it.part.seller_id == sid and it.part.seller), None)
+        sup_label = (_su.username if _su else "Поставщик")
+
+    spec_card = {"type": "spec_results", "data": {
+        "title": f"Партия · {sup_label} · ORD-{o.id}",
+        "found": len(spec_items), "analogue": 0, "not_found": 0,
+        "items": spec_items,
+        "offers_count": len(spec_items), "sellers_count": 1,
+        "total": int(total) if total else None,
+        "best_mix": int(total) if total else None,
+        "currency": "USD",
+        "foot_info": f"{len(spec_items)} позиций · ${total:,.0f}",
+    }}
+    return ActionResult(
+        text=f"📦 Состав партии {sup_label} · заказ ORD-{o.id}",
+        cards=[spec_card],
+        contextual_actions=[
+            {"action": "get_order_detail", "label": "← Весь заказ",
+             "params": {"order_id": o.id}},
+        ],
     )
 
 
@@ -3983,7 +4087,7 @@ def _buyer_deals(user, params):
         ("kp_ready",    "📋", "КП готовы — выбрать и оплатить",   "📋 Открыть КП →",      "quotes", "decide"),
         ("rfq_wait",    "⏳", "В подборе / у оператора",          "📦 Открыть",           "rfq",    "active"),
         ("production",  "⚙️", "В работе у поставщика",            "📦 Открыть",           "order",  "active"),
-        ("transit",     "🚢", "В пути / на таможне",             "📍 Трекинг",           "track",  "active"),
+        ("transit",     "🚢", "В пути / на таможне",             "📦 Открыть",           "order",  "active"),
         ("done",        "🏁", "Завершённые",                     "📦 Открыть",           "order",  "done"),
     ]
     DECIDE = {"pay_reserve", "pay_final", "confirm", "kp_ready"}
@@ -7138,7 +7242,6 @@ def op_my_user_chats(params, user, role):
             ),
             actions=[
                 {"label": "📋 Мои поставщики", "action": "op_my_suppliers", "params": {}},
-                {"label": "📥 Inbox поддержки", "action": "support_home", "params": {}},
             ],
         )
     rows = []
@@ -7161,9 +7264,6 @@ def op_my_user_chats(params, user, role):
             "title": "📂 Мои диалоги с пользователями",
             "items": rows,
         }}],
-        actions=[
-            {"label": "📥 Inbox поддержки", "action": "support_home", "params": {}},
-        ],
     )
 
 

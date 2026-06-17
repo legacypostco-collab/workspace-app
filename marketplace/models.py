@@ -861,6 +861,40 @@ class OrderDocument(models.Model):
         return f"Order #{self.order_id} {self.title}"
 
 
+class DocumentSignature(models.Model):
+    """Подпись участника сделки на документе заказа (Этап 1: ПЭП + загрузка).
+
+    ПЭП (ст. 6 ФЗ-63) — простая электронная подпись: фиксируем кто/когда/IP +
+    SHA-256 документа на момент подписи (tamper-evident). Либо участник
+    загружает подписанный/с печатью скан (method=upload). Юр. значимость для
+    B2B обеспечивается офертой платформы (стороны принимают ПЭП).
+    """
+    METHOD_CHOICES = [
+        ("ep", "ПЭП (в платформе)"),
+        ("upload", "Загружен подписанный"),
+    ]
+    document = models.ForeignKey(OrderDocument, on_delete=models.CASCADE,
+                                 related_name="signatures")
+    signer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name="document_signatures")
+    signer_role = models.CharField(max_length=20, blank=True)   # buyer/seller/operator
+    signer_name = models.CharField(max_length=200, blank=True)  # снимок имени
+    method = models.CharField(max_length=10, choices=METHOD_CHOICES, default="ep")
+    doc_sha256 = models.CharField(max_length=64, blank=True,
+                                  help_text="SHA-256 документа на момент подписи")
+    ip = models.CharField(max_length=64, blank=True)
+    signed_file = models.FileField(upload_to="signed_documents/%Y/%m/%d", blank=True,
+                                   help_text="Загруженный подписанный скан (method=upload)")
+    note = models.CharField(max_length=300, blank=True)
+    signed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["signed_at"]
+
+    def __str__(self) -> str:
+        return f"sig doc#{self.document_id} by {self.signer_id} ({self.method})"
+
+
 class OrderClaim(models.Model):
     """ТЗ §5.4: рекламация по заказу с полным flow 6 статусов.
 

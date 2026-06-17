@@ -314,11 +314,16 @@ def op_queue(params, user, role):
     # PIVOT 2026-05-27: оператор видит только заказы/sub-orders своих
     # поставщиков. Лиды (is_staff=True) — всё. Параметр `all_ops=1` СНИМАЕТ
     # фильтр ТОЛЬКО ДЛЯ STAFF — обычный оператор не может им bypass'нуть PIVOT.
-    show_all = user.is_staff  # обычный operator (is_staff=False) ВСЕГДА ограничен своими
+    show_all = user.is_staff  # лид (is_staff=True) видит всё
     if not show_all:
-        # Sub-orders с assigned_operator=user + non-sub orders без split (single-op)
-        # где assigned_operator=user
-        qs = qs.filter(assigned_operator=user)
+        # Оператор видит СВОИ заказы (assigned_operator=user) И ещё не
+        # распределённые (assigned_operator пуст). Это согласуется с правилом
+        # доступа в op_order_detail (чужой назначенный заказ закрыт, ничей —
+        # открыт) и с глобальной аналитикой op_dashboard / op_logistics_stats.
+        # Раньше был жёсткий =user → у нераспределённых заказов (а в сиде их
+        # 100%) очередь и ВСЕ drill-down из логистики были пусты.
+        from django.db.models import Q as _Q
+        qs = qs.filter(_Q(assigned_operator=user) | _Q(assigned_operator__isnull=True))
     # Скрываем parent-orders (для оператора они избыточны: их sub-orders уже в выдаче)
     qs = qs.filter(sub_orders__isnull=True) if not show_all else qs
     if flt == "breached":
@@ -338,8 +343,29 @@ def op_queue(params, user, role):
         qs = qs.filter(status__in=("transit_abroad", "customs", "transit_rf", "issuing"))
     elif flt == "customs":
         qs = qs.filter(status="customs")
+    elif flt in ("transit_abroad", "transit_rf", "issuing"):
+        # Drill-down с карточки «По этапам» — конкретный логистический статус.
+        qs = qs.filter(status=flt)
     elif flt == "transit":
         qs = qs.filter(status__in=("transit_abroad", "transit_rf", "issuing"))
+
+    # Доп. срезы — комбинируются с любым filter. Drill-down с аналитических
+    # карточек op_logistics_stats (моды / перевозчики / маршруты).
+    _mode = (params.get("mode") or "").strip().lower()
+    if _mode in ("sea", "air", "auto", "rail"):
+        qs = qs.filter(shipping_mode=_mode)
+    _provider = (params.get("provider") or "").strip()
+    if _provider:
+        qs = qs.filter(logistics_provider=_provider)
+    _origin = (params.get("origin") or "").strip()
+    _dest = (params.get("dest") or "").strip()
+    if _origin:
+        from django.db.models import Q as _Q
+        qs = qs.filter(_Q(logistics_meta__origin=_origin)
+                       | _Q(logistics_meta__origin_country=_origin))
+    if _dest:
+        qs = qs.filter(logistics_meta__customs__country=_dest)
+
     if flt == "delivered":
         # Доставленные за 90 дней — единственный фильтр, который НЕ исключает
         # completed (это и есть его суть). Показываем как есть.
@@ -507,7 +533,22 @@ def op_queue(params, user, role):
         "at_risk": "только под угрозой", "overdue": "только просрочки",
         "refund": "только возвраты",
         "awaiting_reserve": "только ждут резерв",
+        "live": "в работе сейчас", "customs": "на таможне",
+        "transit": "в транзите", "transit_abroad": "транзит за рубеж",
+        "transit_rf": "транзит по РФ", "issuing": "выдача / приёмка",
+        "delivered": "доставлено за 90 дней",
     }.get(flt, flt)
+    # Доп. срезы (мода / перевозчик / маршрут) дописываем в подпись.
+    _extra = []
+    if _mode:
+        _extra.append({"sea": "Море", "air": "Авиа", "auto": "Авто",
+                       "rail": "ЖД"}.get(_mode, _mode))
+    if _provider:
+        _extra.append(f"перевозчик {_provider}")
+    if _origin or _dest:
+        _extra.append(f"{_origin or '—'}→{_dest or '—'}")
+    if _extra:
+        filter_label += " · " + " · ".join(_extra)
 
     return ActionResult(
         text=(f"📋 Список заказов · {filter_label} · {total_count} заказов на "
@@ -1251,6 +1292,22 @@ def op_order_detail(params, user, role):
                 "badge": {"label": (d.file_format or "").upper() or "—", "tone": "info"},
             })
 
+    # Состав заказа — СВЕРХУ и в СТАНДАРТНОМ виде (spec_results, как у
+    # покупателя/продавца), чтобы оператор сначала видел заказ «как все», а
+    # операторские блоки (платежи/чертежи/маршрут/документы/история) — ниже.
+    std_spec_card = None
+    try:
+        from .actions import get_order_detail as _god
+        _std = _god({"order_id": order.id}, user, role)
+        std_spec_card = next((c for c in (_std.cards or [])
+                              if c.get("type") == "spec_results"), None)
+    except Exception:
+        std_spec_card = None
+    composition_card = std_spec_card or {"type": "list", "data": {
+        "title": f"📦 Состав заказа · {len(composition_rows)} поз. · ${(order.total_amount or 0):,.0f}",
+        "items": composition_rows or [{"title": "Нет позиций"}],
+    }}
+
     return ActionResult(
         text=(
             f"Заказ #{order.id} · {order.customer_name}\n"
@@ -1258,14 +1315,11 @@ def op_order_detail(params, user, role):
             f"${(order.total_amount or 0):,.0f} · {len(composition_rows)} поз."
         ),
         cards=[
+            # ── Состав заказа (стандартный вид) — первым ──
+            composition_card,
             {"type": "kpi_grid", "data": {
                 "title": "💰 Поток платежей по заказу",
                 "items": milestones,
-            }},
-            # ── Состав заказа — что внутри ──
-            {"type": "list", "data": {
-                "title": f"📦 Состав заказа · {len(composition_rows)} поз. · ${(order.total_amount or 0):,.0f}",
-                "items": composition_rows or [{"title": "Нет позиций"}],
             }},
             # ── 📐 Чертежи сделки (сверка покупатель↔продавец → точность поставки) ──
             {"type": "list", "data": {
@@ -2749,6 +2803,8 @@ def op_logistics_stats(params, user, role):
                           + " · ".join(parts)),
             "tone": tone,
             "badge": {"label": f"{live_n} в пути", "tone": tone},
+            "action": "op_queue",
+            "params": {"filter": "all", "mode": mcode},
         })
 
     # ── Аналитика по маршрутам (origin → dest) ──
@@ -2786,10 +2842,13 @@ def op_logistics_stats(params, user, role):
         if avg_cost is not None:
             parts.append(f"ср. стоимость ${avg_cost:,.0f}")
         parts.append(f"чаще всего {MODE_LABEL.get(top_mode, top_mode)}")
+        _o, _, _d = key.partition("→")
         route_rows_analytics.append({
             "title": key,
             "subtitle": f"{s['n']} заказов за 90д · " + " · ".join(parts),
             "tone": "info",
+            "action": "op_queue",
+            "params": {"filter": "all", "origin": _o, "dest": _d},
         })
 
     # ── Аналитика по перевозчикам: ср.срок, % SLA-нарушений, средняя стоимость ──
