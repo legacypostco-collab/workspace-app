@@ -214,7 +214,12 @@ def release_to_seller(*, order, seller, amount=None) -> dict:
 @transaction.atomic
 def _wallet_release_to_seller(*, order, seller, amount: Decimal) -> dict:
     """Wallet-engine реализация: эскроу → seller wallet."""
-    plat = get_platform_wallet()
+    # P0 (гонка-деньги): кошельки берём под select_for_update. Без блокировки
+    # два параллельных релиза делают read-modify-write по plat.balance с потерей
+    # обновления → переплата из общего эскроу. Платформенный кошелёк лочим
+    # ВСЕГДА первым (единый общий ресурс) → порядок блокировок детерминирован,
+    # дедлоков нет.
+    plat = Wallet.objects.select_for_update().get(pk=get_platform_wallet().pk)
     if amount is None:
         amount = escrow_balance_for_order(order.id)
     amount = Decimal(str(amount))
@@ -223,7 +228,7 @@ def _wallet_release_to_seller(*, order, seller, amount: Decimal) -> dict:
     if plat.balance < amount:
         raise InsufficientEscrow(f"escrow has ${plat.balance}, need ${amount}")
 
-    seller_wallet = Wallet.for_user(seller)
+    seller_wallet = Wallet.objects.select_for_update().get(pk=Wallet.for_user(seller).pk)
     plat.balance -= amount
     plat.save(update_fields=["balance", "updated_at"])
     seller_wallet.balance += amount
@@ -255,11 +260,13 @@ def refund_to_buyer(*, order, buyer, amount=None) -> dict:
 
 @transaction.atomic
 def _wallet_refund_to_buyer(*, order, buyer, amount: Decimal) -> dict:
-    plat = get_platform_wallet()
+    # P0 (гонка-деньги): кошельки под select_for_update (платформенный первым) —
+    # иначе конкурентные возвраты теряют обновление баланса / возвращают дважды.
+    plat = Wallet.objects.select_for_update().get(pk=get_platform_wallet().pk)
     if plat.balance < amount:
         raise InsufficientEscrow(f"escrow has ${plat.balance}, need ${amount}")
 
-    buyer_wallet = Wallet.for_user(buyer)
+    buyer_wallet = Wallet.objects.select_for_update().get(pk=Wallet.for_user(buyer).pk)
     plat.balance -= amount
     plat.save(update_fields=["balance", "updated_at"])
     buyer_wallet.balance += amount

@@ -2158,7 +2158,18 @@ def op_customs_dashboard(params, user, role):
     from marketplace.models import OrderEvent
 
     now = timezone.now()
-    on_customs = list(Order.objects.filter(status="customs"))
+    on_customs = list(Order.objects.filter(status="customs")[:1000])
+    # PERF: батч-префетч «когда заказ вошёл в customs» одним запросом вместо
+    # N+1 (OrderEvent.first() на каждый заказ). order_by(-created_at)+setdefault
+    # → берём последний переход на заказ.
+    _cust_ids = [o.id for o in on_customs]
+    _entered_customs = {}
+    for _e in (OrderEvent.objects
+               .filter(order_id__in=_cust_ids, event_type="status_changed",
+                       meta__to="customs")
+               .order_by("order_id", "-created_at")
+               .values("order_id", "created_at")):
+        _entered_customs.setdefault(_e["order_id"], _e["created_at"])
     awaiting_docs = 0
     ready_to_release = 0
     overdue_3d = 0
@@ -2173,11 +2184,9 @@ def op_customs_dashboard(params, user, role):
             awaiting_docs += 1
         else:
             ready_to_release += 1
-        ev = OrderEvent.objects.filter(
-            order=o, event_type="status_changed", meta__to="customs",
-        ).order_by("-created_at").first()
-        if ev:
-            days = (now - ev.created_at).days
+        _ev_created = _entered_customs.get(o.id)
+        if _ev_created:
+            days = (now - _ev_created).days
             stuck_days.append(days)
             if days >= 3:
                 overdue_3d += 1
@@ -2481,50 +2490,10 @@ def op_logistics_stats(params, user, role):
         "ship_deadline" if "ship_deadline" in [f.name for f in Order._meta.fields] else "-created_at"
     )[:30]
 
-    route_rows = []
-    for o in live_qs:
-        actor, tone = STAGE_META.get(o.status, (o.get_status_display(), "info"))
-        meta = (o.logistics_meta or {}) if isinstance(o.logistics_meta, dict) else {}
-        tracking = meta.get("tracking_number") or meta.get("tracking") or ""
-        carrier = o.logistics_provider or "—"
-        mode = MODE_LABEL.get(o.shipping_mode, o.shipping_mode or "—")
-        # Маршрут: origin (из meta.customs.country или meta.origin) → destination
-        origin = meta.get("origin") or meta.get("origin_country") or "CN"
-        customs = meta.get("customs") or {}
-        dest = customs.get("country") or "RU"
-        # Сколько дней на текущем стейдже — берём последний status_changed.to == cur status
-        days_in_stage = None
-        ev = OrderEvent.objects.filter(
-            order=o, event_type="status_changed", meta__to=o.status,
-        ).order_by("-created_at").first()
-        if ev:
-            days_in_stage = round((now - ev.created_at).total_seconds() / 86400, 1)
-
-        # SLA-маркер: если SLA breached → tone=bad, at_risk → tone=warn
-        if o.sla_status == "breached":
-            tone = "bad"
-        elif o.sla_status == "at_risk" and tone != "bad":
-            tone = "warn"
-
-        subtitle_parts = [
-            actor,
-            mode,
-            f"{origin}→{dest}",
-        ]
-        if tracking:
-            subtitle_parts.append(tracking)
-        if days_in_stage is not None:
-            subtitle_parts.append(f"{days_in_stage}д на этапе")
-        subtitle_parts.append(f"${float(o.total_amount or 0):,.0f}")
-
-        route_rows.append({
-            "title": f"ORD-{o.id} · {o.customer_name or o.buyer.username if o.buyer else 'N/A'}",
-            "subtitle": " · ".join(subtitle_parts),
-            "tone": tone,
-            "badge": {"label": _carrier_label(carrier)[:24], "tone": tone},
-            "action": "op_order_detail",
-            "params": {"order_id": o.id},
-        })
+    # PERF: ранее здесь был первый проход route_rows (с OrderEvent-запросом на
+    # каждый live-заказ) — его результат тут же перезаписывался блоком
+    # routes_by_stage ниже (route_rows = [...] на следующей секции) и нигде не
+    # использовался. Мёртвый код + лишние N запросов под нагрузкой — удалён.
 
     # Группируем маршруты по этапу — по одной list-карточке на этап.
     # Так оператору сразу видно «12 на таможне», «6 на выдаче» и т.д.

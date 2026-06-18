@@ -4875,17 +4875,21 @@ def get_analytics(params, user, role):
     else:
         qs = Order.objects.filter(buyer=user)
 
+    from django.db.models import Count, Sum
     total_orders = qs.count()
     in_flight = qs.exclude(status__in=("delivered", "completed", "cancelled")).count()
     delivered = qs.filter(status__in=("delivered", "completed")).count()
     cancelled = qs.filter(status="cancelled").count()
-    total_gmv = float(sum((o.total_amount or 0) for o in qs))
+    # PERF/OOM: GMV — агрегатом в БД, без материализации всей таблицы Order в Python.
+    total_gmv = float(qs.aggregate(_s=Sum("total_amount"))["_s"] or 0)
     avg_check = (total_gmv / total_orders) if total_orders else 0
 
-    # Распределение по статусам
+    # Распределение по статусам — GROUP BY в БД, без второго полного прохода по qs.
+    _status_disp = dict(Order._meta.get_field("status").choices)
     by_status = defaultdict(int)
-    for o in qs:
-        by_status[o.get_status_display() if o.status else "—"] += 1
+    for _row in qs.values("status").annotate(_c=Count("id")):
+        _lbl = _status_disp.get(_row["status"], _row["status"] or "—")
+        by_status[_lbl] += _row["_c"]
     status_items = sorted(by_status.items(), key=lambda x: -x[1])[:6]
     max_val = max((v for _, v in status_items), default=1)
 
@@ -4902,8 +4906,8 @@ def get_analytics(params, user, role):
     last_30 = qs.filter(created_at__gte=now - timedelta(days=30))
     prev_30 = qs.filter(created_at__gte=now - timedelta(days=60),
                          created_at__lt=now - timedelta(days=30))
-    gmv_last = float(sum((o.total_amount or 0) for o in last_30))
-    gmv_prev = float(sum((o.total_amount or 0) for o in prev_30))
+    gmv_last = float(last_30.aggregate(_s=Sum("total_amount"))["_s"] or 0)
+    gmv_prev = float(prev_30.aggregate(_s=Sum("total_amount"))["_s"] or 0)
     n_last = last_30.count()
     if gmv_prev:
         gmv_delta_pct = int((gmv_last - gmv_prev) * 100 / gmv_prev)
@@ -11237,8 +11241,18 @@ def confirm_delivery(params, user, role):
             ],
         )
 
-    order.status = "completed"
-    order.save(update_fields=["status"])
+    # P0 (гонка-деньги): перезабираем заказ под select_for_update и
+    # перепроверяем статус ВНУТРИ транзакции. Без этого два параллельных
+    # confirm_delivery оба проходят guard `status != delivered` и дважды
+    # высвобождают эскроу продавцу. Конкурент, дождавшись блокировки, увидит
+    # уже «completed» и выйдет здесь — до цикла релиза.
+    from django.db import transaction as _txn
+    with _txn.atomic():
+        order = Order.objects.select_for_update().get(id=order.id, buyer=user)
+        if order.status != "delivered":
+            return ActionResult(text=f"Заказ #{order.id} уже закрыт.")
+        order.status = "completed"
+        order.save(update_fields=["status"])
     _log_event(order, "status_changed", actor=user, source="buyer",
                meta={"from": "delivered", "to": "completed", "kind": "buyer_accepted"})
 

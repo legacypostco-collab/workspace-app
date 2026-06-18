@@ -409,26 +409,36 @@ def apply_settlement(params, user, role):
     except Exception:
         refund_amount = Decimal("0")
 
-    if resolution == "full_refund":
-        refund_amount = Decimal(str(claim.order.total_amount or 0))
+    # P0 (гонка-деньги): claim под select_for_update + re-check статуса ВНУТРИ
+    # транзакции. Без этого два параллельных apply_settlement оба проходят guard
+    # `status != approved` и дважды зовут refund_to_buyer → двойной возврат.
+    from django.db import transaction as _txn
+    with _txn.atomic():
+        claim = (OrderClaim.objects.select_for_update()
+                 .select_related("order", "order__buyer").get(id=claim.id))
+        if claim.status != "approved":
+            return ActionResult(text=f"Уже обработано — статус {claim.get_status_display()}.")
 
-    # Эскроу → buyer; если эскроу пуст — пропускаем (claim всё равно
-    # переходит в financial_settlement для аудита, операторы потом разберутся
-    # как вернуть напрямую через банк)
-    if claim.order.buyer and refund_amount > 0:
-        try:
-            res = _pay.refund_to_buyer(order=claim.order, buyer=claim.order.buyer,
-                                        amount=refund_amount)
-        except _pay.InsufficientEscrow:
-            res = {"ok": False, "reason": "Эскроу пуст — возврат внешним способом"}
-            logger.info("apply_settlement: escrow empty for order #%s", claim.order_id)
-    else:
-        res = {"ok": False}
+        if resolution == "full_refund":
+            refund_amount = Decimal(str(claim.order.total_amount or 0))
 
-    claim.status = "financial_settlement"
-    claim.resolution_kind = resolution
-    claim.refund_amount = refund_amount
-    claim.save(update_fields=["status", "resolution_kind", "refund_amount", "updated_at"])
+        # Эскроу → buyer; если эскроу пуст — пропускаем (claim всё равно
+        # переходит в financial_settlement для аудита, операторы потом разберутся
+        # как вернуть напрямую через банк)
+        if claim.order.buyer and refund_amount > 0:
+            try:
+                res = _pay.refund_to_buyer(order=claim.order, buyer=claim.order.buyer,
+                                            amount=refund_amount)
+            except _pay.InsufficientEscrow:
+                res = {"ok": False, "reason": "Эскроу пуст — возврат внешним способом"}
+                logger.info("apply_settlement: escrow empty for order #%s", claim.order_id)
+        else:
+            res = {"ok": False}
+
+        claim.status = "financial_settlement"
+        claim.resolution_kind = resolution
+        claim.refund_amount = refund_amount
+        claim.save(update_fields=["status", "resolution_kind", "refund_amount", "updated_at"])
     # FIX (HIGH): синхронизируем Order.payment_status — иначе финансовая сверка
     # не находит возвраты. resolution=full_refund → 'refunded', partial → 'refund_pending'.
     try:
