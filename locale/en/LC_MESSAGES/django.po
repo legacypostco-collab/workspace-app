@@ -17154,7 +17154,7 @@ msgstr "Starter (preventive maintenance)"
 #: assistant/seller_actions.py:308 assistant/seller_actions.py:309
 #| msgid "Код"
 msgid "КР"
-msgstr "KR"
+msgstr "Overhaul"
 
 #: assistant/seller_actions.py:309
 msgid "Гусеничная цепь (профилактика)"

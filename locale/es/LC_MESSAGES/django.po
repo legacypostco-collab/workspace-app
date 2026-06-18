@@ -15238,7 +15238,7 @@ msgstr "🚚 Transportista · ORD-%(p0)s"
 
 #: assistant/operator_actions.py:1578
 msgid "Maersk · DHL · СДЭК · Деловые Линии"
-msgstr "Maersk · DHL · СДЭК · Деловые Линии"
+msgstr "Maersk · DHL · CDEK · Delovye Linii"
 
 #: assistant/operator_actions.py:1582
 msgid "URL трекинга (опц.)"
@@ -17270,7 +17270,7 @@ msgstr "Motor de arranque (mantenimiento preventivo)"
 #: assistant/seller_actions.py:308 assistant/seller_actions.py:309
 #| msgid "Код"
 msgid "КР"
-msgstr "KR"
+msgstr "Reparación general"
 
 #: assistant/seller_actions.py:309
 msgid "Гусеничная цепь (профилактика)"
@@ -31993,7 +31993,7 @@ msgstr "CRM · Embudo de ventas, análisis de transacciones"
 #: templates/seller/analytics/list.html:674
 #: templates/seller/integrations/list.html:121
 msgid "1С:Предприятие"
-msgstr "1C:Empresa"
+msgstr "1C:Enterprise"
 
 #: templates/seller/analytics/list.html:675
 msgid "ERP · Выгрузка накладных, сверка остатков"

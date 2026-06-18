@@ -15032,7 +15032,7 @@ msgstr "🚚 الناقل · ORD-%(p0)s"
 
 #: assistant/operator_actions.py:1578
 msgid "Maersk · DHL · СДЭК · Деловые Линии"
-msgstr "Maersk · DHL · СДЭК · Деловые Линии"
+msgstr "Maersk · DHL · CDEK · Delovye Linii"
 
 #: assistant/operator_actions.py:1582
 msgid "URL трекинга (опц.)"
@@ -17035,7 +17035,7 @@ msgstr "بادئ التشغيل (صيانة وقائية)"
 #: assistant/seller_actions.py:308 assistant/seller_actions.py:309
 #| msgid "Код"
 msgid "КР"
-msgstr "KR"
+msgstr "إصلاح شامل"
 
 #: assistant/seller_actions.py:309
 msgid "Гусеничная цепь (профилактика)"
@@ -31596,7 +31596,7 @@ msgstr "CRM · قمع المبيعات، تحليلات الصفقات"
 #: templates/seller/analytics/list.html:674
 #: templates/seller/integrations/list.html:121
 msgid "1С:Предприятие"
-msgstr "1С:Предприятие"
+msgstr "1C:Enterprise"
 
 #: templates/seller/analytics/list.html:675
 msgid "ERP · Выгрузка накладных, сверка остатков"
