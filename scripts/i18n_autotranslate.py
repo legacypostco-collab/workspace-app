@@ -106,7 +106,8 @@ def main():
         po = polib.pofile(po_path)
         todo = [e for e in po
                 if not e.obsolete and not e.msgid_plural
-                and (args.retranslate or not e.msgstr) and CYR.search(e.msgid)]
+                and (args.retranslate or not e.msgstr or "fuzzy" in e.flags)
+                and CYR.search(e.msgid)]
         if args.limit:
             todo = todo[: args.limit]
         print(f"[{lc}] к переводу: {len(todo)}")
