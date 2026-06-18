@@ -96,15 +96,15 @@ FEES_DEFAULT = {"broker": Decimal("250"), "terminal": Decimal("180")}
 # флагов с уровнями риска (high/medium/low/none) и пометкой.
 SANCTIONS = {
     # countries
-    "country:KP": {"level": "high", "reason": "OFAC: КНДР · полные санкции"},
-    "country:IR": {"level": "high", "reason": "OFAC: Иран · вторичные санкции"},
-    "country:SY": {"level": "high", "reason": "OFAC: Сирия"},
-    "country:CU": {"level": "medium", "reason": "OFAC: Куба · ограничения"},
+    "country:KP": {"level": "high", "reason": _("OFAC: КНДР · полные санкции")},
+    "country:IR": {"level": "high", "reason": _("OFAC: Иран · вторичные санкции")},
+    "country:SY": {"level": "high", "reason": _("OFAC: Сирия")},
+    "country:CU": {"level": "medium", "reason": _("OFAC: Куба · ограничения")},
     # entities (примеры известных дилеров под санкциями — синтетика)
-    "entity:rostec": {"level": "high", "reason": "OFAC SDN: Ростех group"},
+    "entity:rostec": {"level": "high", "reason": _("OFAC SDN: Ростех group")},
     "entity:wagner": {"level": "high", "reason": "OFAC SDN"},
     # dual-use markers
-    "category:dual_use_chip": {"level": "medium", "reason": "EAR: dual-use чипы"},
+    "category:dual_use_chip": {"level": "medium", "reason": _("EAR: dual-use чипы")},
 }
 
 
@@ -179,4 +179,4 @@ def sanctions_check(*, country: str = "", entity: str = "", category: str = "") 
     if not hits:
         return {"level": "none", "reasons": []}
     top = max(hits, key=lambda x: levels_order[x["level"]])
-    return {"level": top["level"], "reasons": [h["reason"] for h in hits]}
+    return {"level": top["level"], "reasons": [_(h["reason"]) for h in hits]}

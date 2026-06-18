@@ -184,10 +184,10 @@ def present_kp_to_buyer(params, user, role):
         {"label": _("Запчасти"),   "value": f"${parts_total:,.2f}"},
         {"label": _('Логистика (%(p0)s, %(p1)s кг)') % {"p0": f"{logi['method']}", "p1": f"{logi['weight_kg']:.1f}"},
          "value": f"${logi['cost']:,.2f}"},
-        {"label": "ИНВОЙС 100%", "value": f"${full_invoice:,.2f}", "primary": True},
+        {"label": _("ИНВОЙС 100%"), "value": f"${full_invoice:,.2f}", "primary": True},
         {"label": _("Срок поставки"),  "value": f"{best.delivery_days} дней"},
         {"label": _("Условия оплаты"), "value": "10% резерв сейчас · 90% перед отгрузкой"},
-        {"label": "Резерв 10%",     "value": f"${reserve:,.2f}", "primary": True},
+        {"label": _("Резерв 10%"),     "value": f"${reserve:,.2f}", "primary": True},
         {"label": _("К оплате после готовности"), "value": f"${full_invoice - reserve:,.2f}"},
     ]
     actions = []
@@ -491,7 +491,7 @@ def op_approve_kp(params, user, role):
     _notify(
         rfq.created_by, kind="rfq",
         title=_('📋 КП по RFQ #%(p0)s готово к рассмотрению') % {"p0": f'{rfq.id}'},
-        body="Оператор одобрил расчёт. Откройте, чтобы подтвердить и зарезервировать 10%.",
+        body=_("Оператор одобрил расчёт. Откройте, чтобы подтвердить и зарезервировать 10%."),
         url=f"/chat/rfq/{rfq.id}/?source=kp-ready",
     )
 

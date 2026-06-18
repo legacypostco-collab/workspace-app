@@ -86,7 +86,7 @@ _FIXTURES: dict[tuple[str, str], dict[str, Any]] = {
         "vies": {
             "valid": False, "vat_number": "AE100123456700003",
             "name": None,
-            "reason": "VAT не активен в реестре EU VIES (компания вне ЕС, нужна ручная сверка TRN UAE)",
+            "reason": _("VAT не активен в реестре EU VIES (компания вне ЕС, нужна ручная сверка TRN UAE)"),
         },
     },
     # ── ПУТЬ C: Российская компания на грани ликвидации + санкции —
@@ -214,7 +214,7 @@ def check_vies(vat_number: str, country: str) -> dict:
         # Для не-EU стран VIES не применим — это yellow (требует ручной
         # сверки локального tax-ID), не red (не автоотказ).
         level = "red" if country in EU_COUNTRIES else "yellow"
-        signals.append({"level": level, "msg": fx.get("reason", _("VAT не подтверждён"))})
+        signals.append({"level": level, "msg": _(fx["reason"]) if fx.get("reason") else _("VAT не подтверждён")})
     return _wrap("vies", True, fx, signals)
 
 

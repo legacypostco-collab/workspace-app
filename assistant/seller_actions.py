@@ -2796,7 +2796,7 @@ def customer_detail(params, user, role):
         "title": _("📊 Инсайты по заказчику"),
         "kpis": [
             {"value": _money(ins["gmv"]), "label": _("GMV по клиенту"),
-             "sub": f"{ins['n']} {_plural(ins['n'], 'сделка', 'сделки', 'сделок')}"},
+             "sub": _("%(n)s сделок") % {"n": ins['n']}},
             {"value": _money(ins["avg"]), "label": _("Средний чек")},
             {"value": ins["active_ship"], "label": _("В работе"), "sub": _("активных отгрузок")},
             {"value": len(proj_rows), "label": _("Проектов"), "sub": _('активных: %(p0)s') % {"p0": f"{ins['active_proj']}"}},
@@ -2933,7 +2933,7 @@ def _referral_reward_card(role):
     role = role or ""
     if role == "operator_manager":  # KAM — комиссия, не флэт
         rows = [
-            {"title": "0.02% со сделок приведённых клиентов", "subtitle": _("пока они покупают на платформе — резидуально")},
+            {"title": _("0.02% со сделок приведённых клиентов"), "subtitle": _("пока они покупают на платформе — резидуально")},
             {"title": _("+ бонус с «дожатых» отказных сделок"), "subtitle": _("вернули отказника к покупке → доля ваша")},
         ]
         title = "💰 Ваша награда (KAM)"
@@ -4640,7 +4640,7 @@ def open_project(params, user, role):
     ).order_by("-updated_at")[:10])
 
     return ActionResult(
-        text=f"📁 Проект «{p.name}»" + (f" · {p.customer}" if p.customer else ""),
+        text=(_("📁 Проект «%(name)s»") % {"name": p.name}) + (f" · {p.customer}" if p.customer else ""),
         cards=[{
             "type": "project_summary",
             "data": {

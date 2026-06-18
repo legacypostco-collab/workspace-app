@@ -5170,8 +5170,8 @@ def compare_suppliers(params, user, role):
     else:
         rows = [[s.get_full_name() or s.username, s.email or "—"] for s in sellers]
     return ActionResult(
-        text=f"Топ поставщиков ({len(sellers)}):" + (
-            "\n💡 Имена скрыты — раскрываются после принятия котировки." if _is_buyer_view(role) else ""
+        text=(_("Топ поставщиков (%(n)s):") % {"n": len(sellers)}) + (
+            _("\n💡 Имена скрыты — раскрываются после принятия котировки.") if _is_buyer_view(role) else ""
         ),
         cards=[{
             "type": "comparison",
@@ -10569,7 +10569,7 @@ def track_order(params, user, role):
     # перевозчика и иметь URL для прямого контакта.
     if order.tracking_url and is_real_operator:
         actions_list.insert(0, {
-            "label": f"🔗 Открыть трекинг {order.carrier_name or ''}".strip(),
+            "label": (_("🔗 Открыть трекинг %(c)s") % {"c": order.carrier_name or ''}).strip(),
             "action": "open_url",
             "params": {"url": order.tracking_url},
         })
@@ -11173,7 +11173,7 @@ def confirm_delivery(params, user, role):
         logger.exception("notify_order_event in confirm_delivery failed")
 
     return ActionResult(
-        text=f"✓ Заказ #{order.id} закрыт. Спасибо за приёмку!" + release_summary,
+        text=(_("✓ Заказ #%(id)s закрыт. Спасибо за приёмку!") % {"id": order.id}) + release_summary,
         cards=_full_order_cards(order, user, role, fallback={
             "type": "order",
             "data": {

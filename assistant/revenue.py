@@ -109,7 +109,7 @@ def generate_revenue_lines(
         lines.append(PlatformRevenueLine.objects.create(
             order=order, kind="rf_agent",
             amount=rf_fee, pct=RF_AGENT_PCT,
-            note="РФ-агент 2% (оплата в RUB)",
+            note=_("РФ-агент 2% (оплата в RUB)"),
         ))
 
     # 5. Customs $300 фиксированный
