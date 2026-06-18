@@ -2344,6 +2344,17 @@ def rfq_detail(params, user, role):
     except RFQ.DoesNotExist:
         return ActionResult(text=f"RFQ #{rfq_id} не найден.")
 
+    # IDOR-гейт: продавец видит RFQ только если он ему РЕЛЕВАНТЕН — есть его
+    # котировка ИЛИ позиции RFQ сматчены на его каталог. Иначе чужой запрос
+    # (позиции, qty, срочность) ему недоступен.
+    if role == "seller":
+        from marketplace.models import Quote as _Quote
+        eff = _effective_seller(user)
+        relevant = (_Quote.objects.filter(rfq=rfq, seller=eff).exists()
+                    or RFQItem.objects.filter(rfq=rfq, matched_part__seller=eff).exists())
+        if not relevant:
+            return ActionResult(text=f"RFQ #{rfq_id} вам недоступен.")
+
     items = list(RFQItem.objects.filter(rfq=rfq).select_related("matched_part"))
     items_text = "\n".join(
         f"  • {it.query} × {it.quantity}" for it in items[:8]

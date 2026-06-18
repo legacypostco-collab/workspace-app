@@ -796,10 +796,14 @@ def submit_quote(params, user, role):
             condition=d.get("condition", "oem"),
         )
 
-    # Состояние RFQ
-    if rfq.status == "new":
-        rfq.status = "quoted"
-        rfq.save(update_fields=["status"])
+    # Состояние RFQ — под блокировкой, только если ещё new (идемпотентно).
+    from django.db import transaction as _txn
+    with _txn.atomic():
+        from marketplace.models import RFQ as _RFQ
+        _r = _RFQ.objects.select_for_update().get(id=rfq.id)
+        if _r.status == "new":
+            _r.status = "quoted"
+            _r.save(update_fields=["status"])
 
     # Anti-collusion: если seller написал в message email/phone/messenger
     # с offplatform-намёком — флаг оператору (audit_log + admin-chat alert).

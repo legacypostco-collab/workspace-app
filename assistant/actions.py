@@ -2846,8 +2846,12 @@ def get_order_detail(params, user, role):
         )
 
     # Доступ
+    _seller_uid = user.id
+    if role == "seller":
+        from .seller_actions import _effective_seller as _eff_s
+        _seller_uid = _eff_s(user).id  # сотрудник (TeamMember) видит заказы своего продавца
     is_seller = (role == "seller" and any(
-        it.part and it.part.seller_id == user.id for it in o.items.all()
+        it.part and it.part.seller_id == _seller_uid for it in o.items.all()
     ))
     is_buyer = (o.buyer_id == user.id)
     # operator/admin/staff/superuser видят любой заказ (контроль платформы).
@@ -11121,10 +11125,18 @@ def advance_order(params, user, role):
             suggestions=["Что отгрузить?", "Очередь продавца"],
         )
 
-    old_status = order.status
-    new_status, label = transitions[order.status]
-    order.status = new_status
-    order.save(update_fields=["status"])
+    # Гонка: lock + re-check, иначе два параллельных advance двигают заказ
+    # дважды (двойные нотификации/эффекты на следующем этапе).
+    from django.db import transaction as _txn
+    with _txn.atomic():
+        order = Order.objects.select_for_update().get(id=order.id)
+        if order.status not in transitions:
+            return ActionResult(
+                text=f"Заказ #{order.id} уже продвинут (статус «{order.get_status_display()}»).")
+        old_status = order.status
+        new_status, label = transitions[order.status]
+        order.status = new_status
+        order.save(update_fields=["status"])
     # FIX (HIGH): source=role а не hardcoded "buyer" — advance_order вызывается
     # buyer/seller/operator, audit-trail должен показывать настоящего actor'a.
     _log_event(order, "status_changed", actor=user, source=role or "buyer",
@@ -12494,11 +12506,15 @@ def consolidate_wait(params, user, role):
         return ActionResult(text=f"Заказ #{oid} не найден.")
     if not _user_can_access_order(o, user, role):
         return ActionResult(text=f"Заказ #{oid} не найден.")
-    lm = dict(o.logistics_meta or {})
-    lm["shipment_decision"] = "consolidate"
-    lm["shipment_decision_by"] = user.username
-    o.logistics_meta = lm
-    o.save(update_fields=["logistics_meta"])
+    # Гонка: read-modify-write logistics_meta под блокировкой заказа.
+    from django.db import transaction as _txn
+    with _txn.atomic():
+        o = Order.objects.select_for_update().get(id=o.id)
+        lm = dict(o.logistics_meta or {})
+        lm["shipment_decision"] = "consolidate"
+        lm["shipment_decision_by"] = user.username
+        o.logistics_meta = lm
+        o.save(update_fields=["logistics_meta"])
     return ActionResult(
         text=(f"✓ Решение по ORD-{o.id}: ждём готовности всех поставщиков для "
               f"единой отправки. Готовые позиции остаются на складе платформы. "
@@ -12545,26 +12561,31 @@ def split_shipment(params, user, role):
     for it, st in ahead_items:
         sid = it.part.seller_id if it.part else 0
         groups[(sid, st)].append(it)
+    # Гонка: под блокировкой заказа — иначе два параллельных split создают
+    # дублирующиеся Shipment'ы + теряют обновление logistics_meta.
+    from django.db import transaction as _txn
     created = []
-    for (sid, st), its in groups.items():
-        # Если у этого Shipment уже есть запись — не плодим дубли
-        existing = o.shipments.filter(kind="split", status=st,
-                                      items__in=its).distinct().first()
-        if existing:
-            continue
-        sh = Shipment.objects.create(
-            order=o, kind="split", status=st,
-            shipping_mode=getattr(o, "shipping_mode", "") or "",
-            notes=f"split-by {user.username}",
-        )
-        sh.items.set(its)
-        created.append(sh)
-    lm = dict(o.logistics_meta or {})
-    lm["shipment_decision"] = "split"
-    lm["shipment_decision_by"] = user.username
-    lm["shipments_split_count"] = (lm.get("shipments_split_count", 0) + len(created))
-    o.logistics_meta = lm
-    o.save(update_fields=["logistics_meta"])
+    with _txn.atomic():
+        o = Order.objects.select_for_update().get(id=o.id)
+        for (sid, st), its in groups.items():
+            # Если у этого Shipment уже есть запись — не плодим дубли
+            existing = o.shipments.filter(kind="split", status=st,
+                                          items__in=its).distinct().first()
+            if existing:
+                continue
+            sh = Shipment.objects.create(
+                order=o, kind="split", status=st,
+                shipping_mode=getattr(o, "shipping_mode", "") or "",
+                notes=f"split-by {user.username}",
+            )
+            sh.items.set(its)
+            created.append(sh)
+        lm = dict(o.logistics_meta or {})
+        lm["shipment_decision"] = "split"
+        lm["shipment_decision_by"] = user.username
+        lm["shipments_split_count"] = (lm.get("shipments_split_count", 0) + len(created))
+        o.logistics_meta = lm
+        o.save(update_fields=["logistics_meta"])
     summary = "\n".join(
         f"  • Shipment #{sh.id}: {sh.items.count()} поз · "
         f"${float(sh.total_amount):,.0f} · {sh.get_status_display()}"

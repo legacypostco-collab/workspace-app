@@ -121,16 +121,22 @@ def start_claim_review(params, user, role):
     if not _is_operator(role) and role != "admin":
         return ActionResult(text="Доступно только оператору.")
     from marketplace.models import OrderClaim
+    from django.db import transaction as _txn
     try:
-        claim = OrderClaim.objects.get(id=int(params.get("claim_id") or 0))
-    except (OrderClaim.DoesNotExist, ValueError, TypeError):
+        _cid = int(params.get("claim_id") or 0)
+    except (ValueError, TypeError):
         return ActionResult(text="Рекламация не найдена.")
-    if claim.status != "open":
-        return ActionResult(text=f"Нельзя взять в работу — текущий статус: {claim.get_status_display()}.")
-
-    claim.status = "in_review"
-    claim.reviewed_by = user
-    claim.save(update_fields=["status", "reviewed_by", "updated_at"])
+    # Гонка: lock + re-check статуса, чтобы два оператора не взяли одну в работу.
+    with _txn.atomic():
+        try:
+            claim = OrderClaim.objects.select_for_update().get(id=_cid)
+        except OrderClaim.DoesNotExist:
+            return ActionResult(text="Рекламация не найдена.")
+        if claim.status != "open":
+            return ActionResult(text=f"Нельзя взять в работу — текущий статус: {claim.get_status_display()}.")
+        claim.status = "in_review"
+        claim.reviewed_by = user
+        claim.save(update_fields=["status", "reviewed_by", "updated_at"])
     _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
                meta={"claim_id": claim.id, "from": "open", "to": "in_review"})
     if claim.opened_by:
@@ -217,23 +223,31 @@ def approve_claim(params, user, role):
             contextual_actions=ctx_actions,
         )
 
-    claim.status = "approved"
-    claim.reviewed_by = user
-    claim.save(update_fields=["status", "reviewed_by", "updated_at"])
-    _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
-               meta={"claim_id": claim.id, "from": "in_review", "to": "approved"})
+    # Гонка: lock + re-check, иначе два параллельных approve дважды ставят
+    # approved и дважды штрафуют рейтинг продавца (-7).
+    from django.db import transaction as _txn
+    with _txn.atomic():
+        claim = OrderClaim.objects.select_for_update().select_related("order").get(id=claim.id)
+        if claim.status not in ("open", "in_review"):
+            return ActionResult(
+                text=f"Рекламация #{claim.id} уже обработана ({claim.get_status_display()}).")
+        claim.status = "approved"
+        claim.reviewed_by = user
+        claim.save(update_fields=["status", "reviewed_by", "updated_at"])
+        _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
+                   meta={"claim_id": claim.id, "from": "in_review", "to": "approved"})
 
-    # Rating: claim_confirmed (-7) для всех продавцов заказа
-    try:
-        from .rating import record_rating_event
-        sellers = list({oi.part.seller for oi in
-                        OrderItem.objects.filter(order=claim.order).select_related("part__seller")
-                        if oi.part and oi.part.seller})
-        for s in sellers:
-            record_rating_event(s, event_type="claim_confirmed",
-                                meta={"claim_id": claim.id, "order_id": claim.order_id})
-    except Exception:
-        logger.exception("rating on claim approve failed")
+        # Rating: claim_confirmed (-7) для всех продавцов заказа
+        try:
+            from .rating import record_rating_event
+            sellers = list({oi.part.seller for oi in
+                            OrderItem.objects.filter(order=claim.order).select_related("part__seller")
+                            if oi.part and oi.part.seller})
+            for s in sellers:
+                record_rating_event(s, event_type="claim_confirmed",
+                                    meta={"claim_id": claim.id, "order_id": claim.order_id})
+        except Exception:
+            logger.exception("rating on claim approve failed")
 
     if claim.opened_by:
         _notify(claim.opened_by, kind="claim",
@@ -294,12 +308,18 @@ def reject_claim(params, user, role):
             }}],
         )
 
-    claim.status = "rejected"
-    claim.reviewed_by = user
-    claim.rejection_reason = reason
-    claim.save(update_fields=["status", "reviewed_by", "rejection_reason", "updated_at"])
-    _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
-               meta={"claim_id": claim.id, "from": "in_review", "to": "rejected", "reason": reason[:200]})
+    from django.db import transaction as _txn
+    with _txn.atomic():
+        claim = OrderClaim.objects.select_for_update().select_related("order").get(id=claim.id)
+        if claim.status not in ("open", "in_review"):
+            return ActionResult(
+                text=f"Рекламация #{claim.id} уже обработана ({claim.get_status_display()}).")
+        claim.status = "rejected"
+        claim.reviewed_by = user
+        claim.rejection_reason = reason
+        claim.save(update_fields=["status", "reviewed_by", "rejection_reason", "updated_at"])
+        _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
+                   meta={"claim_id": claim.id, "from": "in_review", "to": "rejected", "reason": reason[:200]})
     if claim.opened_by:
         _notify(claim.opened_by, kind="claim",
                 title=f"✗ Рекламация #{claim.id} отклонена",
@@ -343,12 +363,18 @@ def apply_corrective(params, user, role):
             }}],
         )
 
-    claim.status = "corrective_actions"
-    claim.resolution_kind = resolution
-    claim.save(update_fields=["status", "resolution_kind", "updated_at"])
-    _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
-               meta={"claim_id": claim.id, "from": "approved", "to": "corrective_actions",
-                     "resolution": resolution})
+    from django.db import transaction as _txn
+    with _txn.atomic():
+        claim = OrderClaim.objects.select_for_update().select_related("order").get(id=claim.id)
+        if claim.status != "approved":
+            return ActionResult(
+                text=f"Рекламация #{claim.id} уже обработана ({claim.get_status_display()}).")
+        claim.status = "corrective_actions"
+        claim.resolution_kind = resolution
+        claim.save(update_fields=["status", "resolution_kind", "updated_at"])
+        _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
+                   meta={"claim_id": claim.id, "from": "approved", "to": "corrective_actions",
+                         "resolution": resolution})
     if claim.opened_by:
         _notify(claim.opened_by, kind="claim",
                 title=f"🔧 Рекламация #{claim.id} → корректирующие действия",
@@ -437,6 +463,9 @@ def apply_settlement(params, user, role):
 
         claim.status = "financial_settlement"
         claim.resolution_kind = resolution
+        # refund_amount = РЕШЕНИЕ о возврате (обязательство). Даже при пустом
+        # эскроу claim переходит в financial_settlement, операторы возвращают
+        # внешне — поэтому фиксируем полную решённую сумму, а не факт перевода.
         claim.refund_amount = refund_amount
         claim.save(update_fields=["status", "resolution_kind", "refund_amount", "updated_at"])
     # FIX (HIGH): синхронизируем Order.payment_status — иначе финансовая сверка
@@ -476,21 +505,26 @@ def apply_settlement(params, user, role):
 @register("close_claim")
 def close_claim(params, user, role):
     from marketplace.models import OrderClaim
+    from django.db import transaction as _txn
     try:
-        claim = OrderClaim.objects.get(id=int(params.get("claim_id") or 0))
-    except (OrderClaim.DoesNotExist, ValueError, TypeError):
+        _cid = int(params.get("claim_id") or 0)
+    except (ValueError, TypeError):
         return ActionResult(text="Рекламация не найдена.")
-    if claim.status == "closed":
-        return ActionResult(text=f"Рекламация #{claim.id} уже закрыта.")
-
-    # Любой статус (включая rejected) → closed
-    prev = claim.status
-    claim.status = "closed"
-    claim.resolved_by = user
-    claim.closed_at = timezone.now()
-    claim.save(update_fields=["status", "resolved_by", "closed_at", "updated_at"])
-    _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
-               meta={"claim_id": claim.id, "from": prev, "to": "closed"})
+    with _txn.atomic():
+        try:
+            claim = OrderClaim.objects.select_for_update().select_related("order").get(id=_cid)
+        except OrderClaim.DoesNotExist:
+            return ActionResult(text="Рекламация не найдена.")
+        if claim.status == "closed":
+            return ActionResult(text=f"Рекламация #{claim.id} уже закрыта.")
+        # Любой статус (включая rejected) → closed
+        prev = claim.status
+        claim.status = "closed"
+        claim.resolved_by = user
+        claim.closed_at = timezone.now()
+        claim.save(update_fields=["status", "resolved_by", "closed_at", "updated_at"])
+        _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
+                   meta={"claim_id": claim.id, "from": prev, "to": "closed"})
     return ActionResult(
         text=f"🔒 Рекламация #{claim.id} закрыта (предыдущий статус: {prev}).",
     )

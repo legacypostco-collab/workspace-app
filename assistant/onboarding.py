@@ -1612,11 +1612,16 @@ def op_kyb_reject(params, user, role):
             }}],
         )
 
-    kyb.status = "rejected"
-    kyb.rejection_reason = reason
-    kyb.reviewed_at = timezone.now()
-    kyb.reviewed_by = user
-    kyb.save(update_fields=["status", "rejection_reason", "reviewed_at", "reviewed_by"])
+    from django.db import transaction as _txn
+    with _txn.atomic():
+        kyb = CompanyVerification.objects.select_for_update().get(pk=kyb.pk)
+        if kyb.status != "pending":
+            return ActionResult(text=f"Анкета уже обработана ({kyb.get_status_display()}).")
+        kyb.status = "rejected"
+        kyb.rejection_reason = reason
+        kyb.reviewed_at = timezone.now()
+        kyb.reviewed_by = user
+        kyb.save(update_fields=["status", "rejection_reason", "reviewed_at", "reviewed_by"])
 
     _notify(
         kyb.user, kind="system",
