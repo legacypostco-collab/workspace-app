@@ -2894,10 +2894,10 @@ def get_order_detail(params, user, role):
             try:
                 from marketplace.models import UserProfile as _UP
                 _p = _UP.objects.filter(user_id=sup_id).only(
-                    "supplier_status", "rating", "user").first()
+                    "supplier_status", "rating_score", "user").first()
                 if _p:
                     sup_status = _p.supplier_status or "trusted"
-                    sup_rating = float(_p.rating or 90.0)
+                    sup_rating = float(_p.rating_score or 90.0)
                     try:
                         if _p.user and _p.user.username:
                             sup_username = _p.user.username
@@ -3429,11 +3429,21 @@ def order_batch_items(params, user, role):
     if not (is_buyer or is_op or is_this_seller):
         return ActionResult(text="Нет доступа к этому заказу.")
 
-    # Бейдж поставщика — как в составе всего заказа (get_order_detail): там
-    # показывается «Надёжный · 91.6» (дефолт), держим тот же вид для
-    # консистентности внутри одного заказа.
-    sup_status, sup_rating = "trusted", 91.6
-    badge = "Надёжный"
+    # Бейдж поставщика партии — РЕАЛЬНЫЙ статус/рейтинг продавца (sid) из
+    # профиля (поле rating_score; property `rating` не существует — раньше
+    # чтение тихо падало в дефолт 91.6).
+    _BADGE_RU = {"trusted": "Надёжный", "sandbox": "Песочница",
+                 "risky": "Рисковый", "rejected": "Исключён"}
+    sup_status, sup_rating = "trusted", 90.0
+    try:
+        from marketplace.models import UserProfile as _UP
+        _p = _UP.objects.filter(user_id=sid).only("supplier_status", "rating_score").first()
+        if _p:
+            sup_status = _p.supplier_status or "trusted"
+            sup_rating = float(_p.rating_score or 90.0)
+    except Exception:
+        pass
+    badge = _BADGE_RU.get(sup_status, "Надёжный")
 
     spec_items = []
     total = 0.0
@@ -4481,10 +4491,10 @@ def get_rfq_status(params, user, role):
                     try:
                         from marketplace.models import UserProfile as _UP
                         _p = _UP.objects.filter(user_id=mp.seller_id).only(
-                            "supplier_status", "rating", "user").first()
+                            "supplier_status", "rating_score", "user").first()
                         if _p:
                             sup_status_code = _p.supplier_status or "trusted"
-                            sup_rating = float(_p.rating or 90.0)
+                            sup_rating = float(_p.rating_score or 90.0)
                             try:
                                 sup_username = _p.user.username
                             except Exception:
