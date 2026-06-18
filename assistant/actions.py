@@ -10199,23 +10199,30 @@ def ship_order(params, user, role):
         "shipped_at":      timezone.now().isoformat(),
         "shipped_by":      user.username,
     })
-    update_fields = ["status", "logistics_meta", "logistics_provider"]
-    order.status = "transit_abroad"
-    order.logistics_meta = meta
-    order.logistics_provider = carrier or order.logistics_provider
-    # Order.* поля (только если есть в модели — гарды на случай если поля
-    # ещё не мигрированы или удалены).
-    if hasattr(order, "tracking_number"):
-        order.tracking_number = tracking; update_fields.append("tracking_number")
-    if hasattr(order, "tracking_url") and tracking_url:
-        order.tracking_url = tracking_url; update_fields.append("tracking_url")
-    if hasattr(order, "carrier_name"):
-        order.carrier_name = carrier; update_fields.append("carrier_name")
-    if hasattr(order, "carrier_phone") and carrier_phone:
-        order.carrier_phone = carrier_phone; update_fields.append("carrier_phone")
-    if hasattr(order, "carrier_email") and carrier_email:
-        order.carrier_email = carrier_email; update_fields.append("carrier_email")
-    order.save(update_fields=update_fields)
+    # Под блокировкой: re-check статуса + сама отгрузка, чтобы два параллельных
+    # ship_order не отгрузили заказ дважды (двойной лог/нотификации/эффекты).
+    from django.db import transaction as _txn
+    with _txn.atomic():
+        order = Order.objects.select_for_update().get(id=order.id)
+        if order.status != "ready_to_ship":
+            return ActionResult(text=f"Заказ #{order.id} уже отгружен или изменён.")
+        update_fields = ["status", "logistics_meta", "logistics_provider"]
+        order.status = "transit_abroad"
+        order.logistics_meta = meta
+        order.logistics_provider = carrier or order.logistics_provider
+        # Order.* поля (только если есть в модели — гарды на случай если поля
+        # ещё не мигрированы или удалены).
+        if hasattr(order, "tracking_number"):
+            order.tracking_number = tracking; update_fields.append("tracking_number")
+        if hasattr(order, "tracking_url") and tracking_url:
+            order.tracking_url = tracking_url; update_fields.append("tracking_url")
+        if hasattr(order, "carrier_name"):
+            order.carrier_name = carrier; update_fields.append("carrier_name")
+        if hasattr(order, "carrier_phone") and carrier_phone:
+            order.carrier_phone = carrier_phone; update_fields.append("carrier_phone")
+        if hasattr(order, "carrier_email") and carrier_email:
+            order.carrier_email = carrier_email; update_fields.append("carrier_email")
+        order.save(update_fields=update_fields)
     _log_event(order, "status_changed", actor=user, source="seller",
                meta={"from": "ready_to_ship", "to": "transit_abroad",
                      "tracking_number": tracking,
@@ -10928,7 +10935,12 @@ def pay_final(params, user, role):
         intent = _pay.create_payment_intent(final_amount, order_id=order.id, payer=user, kind="final")
         intent = _pay.confirm_payment_intent(intent, user)
         order.payment_status = "paid"
-        order.status = "ready_to_ship"
+        # FIX (стейт-машина): не откатываем уже отгруженный/доставленный заказ.
+        # Статус двигаем в ready_to_ship ТОЛЬКО если заказ ещё не вышел на
+        # отгрузку — иначе финальная оплата возвращала бы его назад.
+        if order.status not in ("transit_abroad", "customs", "transit_rf",
+                                "issuing", "delivered", "completed", "cancelled"):
+            order.status = "ready_to_ship"
         order.final_paid_at = timezone.now()
         order.save(update_fields=["payment_status", "status", "final_paid_at"])
     wallet.refresh_from_db(fields=["balance"])
@@ -11030,7 +11042,10 @@ def advance_order(params, user, role):
         "customs":        ("transit_rf",     "Транзит (РФ)"),
         "transit_rf":     ("issuing",        "Выдача"),
         "issuing":        ("delivered",      "Доставлен"),
-        "delivered":      ("completed",      "Завершён"),
+        # FIX (CRITICAL): delivered→completed УБРАН. Завершение заказа — только
+        # через confirm_delivery (подтверждение приёмки покупателем), которое
+        # релизит эскроу продавцу, генерирует revenue-строки и рейтинг. Через
+        # advance_order заказ закрывался бы мимо них — деньги навсегда в эскроу.
     }
 
     if order.status not in transitions:
@@ -11275,9 +11290,16 @@ def confirm_delivery(params, user, role):
         meta = order.logistics_meta or {}
         basis = (meta.get("customs", {}) or {}).get("basis") or "DDP"
         we_clear = bool((meta.get("customs", {}) or {}).get("hs_code"))  # если HS присвоен — мы оформляем
+        # FIX (финансы): success_fee 5% считается от СУММЫ ПОСТАВЩИКУ (товары),
+        # а не от total (с логистикой/пошлинами). Без supplier_payable revenue.py
+        # брал total → завышение success-fee.
+        from decimal import Decimal as _D
+        _supplier_payable = sum(
+            (_D(str(it.unit_price or 0)) * (it.quantity or 0)) for it in order.items.all()
+        )
         generate_revenue_lines(
             order, basis=basis, payment_currency="USD",
-            we_clear_customs=we_clear,
+            we_clear_customs=we_clear, supplier_payable=_supplier_payable,
         )
     except Exception:
         logger.exception("generate_revenue_lines on confirm_delivery failed")

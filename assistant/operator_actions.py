@@ -2214,18 +2214,27 @@ def op_customs_dashboard(params, user, role):
     arrow = "↑" if flow_delta > 0 else ("↓" if flow_delta < 0 else "→")
 
     # Среднее время на таможне (по выпущенным за 30д)
-    released_qs = OrderEvent.objects.filter(
+    released_qs = list(OrderEvent.objects.filter(
         event_type="status_changed", meta__from="customs", meta__to="transit_rf",
         created_at__gte=cutoff_30,
-    )[:200]
+    )[:200])
+    # PERF: батч «когда вошёл в customs» по всем заказам одним запросом + bisect
+    # (latest entry <= release) — вместо N+1 (OrderEvent.first() на каждое событие).
+    import bisect as _bis_c
+    from collections import defaultdict as _dd_c
+    _cust_entries = _dd_c(list)
+    for _e in (OrderEvent.objects
+               .filter(order_id__in=[ev.order_id for ev in released_qs],
+                       event_type="status_changed", meta__to="customs")
+               .order_by("order_id", "created_at").values("order_id", "created_at")):
+        _cust_entries[_e["order_id"]].append(_e["created_at"])
     release_times = []
     for ev in released_qs:
-        entered = OrderEvent.objects.filter(
-            order_id=ev.order_id, event_type="status_changed", meta__to="customs",
-            created_at__lte=ev.created_at,
-        ).order_by("-created_at").first()
-        if entered:
-            release_times.append((ev.created_at - entered.created_at).total_seconds() / 86400)
+        _lst = _cust_entries.get(ev.order_id)
+        if _lst:
+            _i = _bis_c.bisect_right(_lst, ev.created_at) - 1
+            if _i >= 0:
+                release_times.append((ev.created_at - _lst[_i]).total_seconds() / 86400)
     avg_release_days = (sum(release_times) / len(release_times)) if release_times else None
 
     rows = []
@@ -3323,12 +3332,19 @@ def op_my_suppliers(params, user, role):
     rows = []
     _STATUS_RU = {"trusted": "Надёжный", "sandbox": "Песочница",
                   "risky": "Рисковый", "rejected": "Исключён"}
+    # PERF: активные сделки по ВСЕМ поставщикам одним group-by вместо .count()
+    # на каждого профиля (было до 25 запросов).
+    from django.db.models import Count
+    _active_counts = dict(
+        Order.objects.filter(assigned_operator=user,
+                             items__part__seller__in=[p.user_id for p in profiles])
+        .exclude(status__in=("delivered", "completed", "cancelled"))
+        .values("items__part__seller")
+        .annotate(_n=Count("id", distinct=True))
+        .values_list("items__part__seller", "_n")
+    )
     for p in profiles:
-        # активные sub-orders по этому поставщику
-        active_n = Order.objects.filter(
-            assigned_operator=user,
-            items__part__seller=p.user,
-        ).exclude(status__in=("delivered", "completed", "cancelled")).distinct().count()
+        active_n = _active_counts.get(p.user_id, 0)
         rows.append({
             "title": f"{p.user.username}",
             "subtitle": (f"{_STATUS_RU.get(p.supplier_status, p.supplier_status or '—')} · "

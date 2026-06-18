@@ -923,18 +923,14 @@ def view_rfq_quotes(params, user, role):
     if rfq.created_by_id != user.id and not (role and role.startswith("operator")) and role != "admin":
         return ActionResult(text="Просматривать котировки может только заказчик RFQ или оператор.")
 
-    # Берём ПОСЛЕДНЮЮ котировку каждого продавца (макс. round_number)
-    seller_ids = (
-        Quote.objects.filter(rfq=rfq, direction="seller_to_buyer")
-        .values_list("seller_id", flat=True).distinct()
-    )
-    latest = []
-    for sid in seller_ids:
-        q = (Quote.objects.filter(rfq=rfq, seller_id=sid, direction="seller_to_buyer")
-             .order_by("-round_number").first())
-        if q:
-            latest.append(q)
-    latest.sort(key=lambda q: q.total_amount)
+    # Берём ПОСЛЕДНЮЮ котировку каждого продавца (макс. round_number).
+    # PERF: один запрос + dedup в Python вместо N+1 (запрос на каждого продавца).
+    latest_map = {}
+    for q in (Quote.objects.filter(rfq=rfq, direction="seller_to_buyer")
+              .select_related("seller").order_by("seller_id", "-round_number")):
+        if q.seller_id not in latest_map:
+            latest_map[q.seller_id] = q
+    latest = sorted(latest_map.values(), key=lambda q: q.total_amount)
 
     if not latest:
         # PIVOT 2026-05-26: не предлагаем «разослать поставщикам».
@@ -1217,40 +1213,49 @@ def accept_quote(params, user, role):
             "По этой котировке нет позиций для оформления — нужен матч по каталогу или оператор."
         ))
 
-    # Шаг 2: создаём Order
+    # Шаг 2: создаём Order — ПОД БЛОКИРОВКОЙ котировки + re-check статуса, чтобы
+    # два параллельных accept_quote не создали два заказа с двойным резервом.
+    from django.db import transaction as _txn
     reserve_pct = Decimal("10.00")
     reserve_amount = (q.total_amount * reserve_pct / Decimal("100")).quantize(Decimal("0.01"))
-    order = Order.objects.create(
-        customer_name=user.get_full_name() or user.username,
-        customer_email=user.email or f"{user.username}@chat.local",
-        customer_phone="",
-        delivery_address="—",
-        buyer=user,
-        status="pending",
-        payment_status="awaiting_reserve",
-        payment_scheme="simple",
-        reserve_percent=reserve_pct,
-        reserve_amount=reserve_amount,
-        total_amount=q.total_amount,
-    )
-    items_count = 0
-    for qi in q.items.all():
-        if not qi.part:
-            continue
-        OrderItem.objects.create(
-            order=order, part=qi.part,
-            quantity=qi.quantity, unit_price=qi.unit_price,
+    with _txn.atomic():
+        q = (Quote.objects.select_for_update()
+             .select_related("rfq", "seller").get(id=q.id))
+        if q.status not in ("submitted", "finalized"):
+            return ActionResult(
+                text=f"Котировка уже обработана (статус: {q.get_status_display()}).",
+            )
+        order = Order.objects.create(
+            customer_name=user.get_full_name() or user.username,
+            customer_email=user.email or f"{user.username}@chat.local",
+            customer_phone="",
+            delivery_address="—",
+            buyer=user,
+            status="pending",
+            payment_status="awaiting_reserve",
+            payment_scheme="simple",
+            reserve_percent=reserve_pct,
+            reserve_amount=reserve_amount,
+            total_amount=q.total_amount,
         )
-        items_count += 1
+        items_count = 0
+        for qi in q.items.all():
+            if not qi.part:
+                continue
+            OrderItem.objects.create(
+                order=order, part=qi.part,
+                quantity=qi.quantity, unit_price=qi.unit_price,
+            )
+            items_count += 1
 
-    q.status = "accepted"
-    q.save(update_fields=["status"])
-    # Все остальные котировки этого RFQ от других продавцов → declined (auto)
-    Quote.objects.filter(rfq=q.rfq).exclude(id=q.id).filter(
-        status__in=("submitted", "finalized", "countered"),
-    ).update(status="declined")
-    q.rfq.status = "quoted"
-    q.rfq.save(update_fields=["status"])
+        q.status = "accepted"
+        q.save(update_fields=["status"])
+        # Все остальные котировки этого RFQ от других продавцов → declined (auto)
+        Quote.objects.filter(rfq=q.rfq).exclude(id=q.id).filter(
+            status__in=("submitted", "finalized", "countered"),
+        ).update(status="declined")
+        q.rfq.status = "quoted"
+        q.rfq.save(update_fields=["status"])
 
     _log_event(order, "order_created", actor=user, source="buyer",
                meta={"items": items_count, "total": float(q.total_amount),
