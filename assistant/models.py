@@ -8,6 +8,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext as _
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -64,7 +65,7 @@ class Conversation(models.Model):
     role = models.CharField(max_length=30, choices=ROLE_CHOICES, default="buyer")
     category = models.CharField(
         max_length=20, choices=CATEGORY_CHOICES, default="general", db_index=True,
-        help_text="Группа для reuse чата по типу задачи (admin/purchase/support/general)",
+        help_text=_("Группа для reuse чата по типу задачи (admin/purchase/support/general)"),
     )
     title = models.CharField(max_length=200, blank=True)
     is_active = models.BooleanField(default=True)
@@ -187,9 +188,9 @@ class Project(models.Model):
     customer_ref = models.ForeignKey(
         "marketplace.Customer", on_delete=models.SET_NULL,
         null=True, blank=True, related_name="projects",
-        help_text="Заказчик из CRM продавца (если проект заведён под конкретного заказчика)")
+        help_text=_("Заказчик из CRM продавца (если проект заведён под конкретного заказчика)"))
     tags = models.JSONField(default=list, blank=True,
-                              help_text='Free-form tags: ["квартальная закупка","CAT 988H","793F"]')
+                              help_text=_('Free-form tags: ["квартальная закупка","CAT 988H","793F"]'))
     deadline = models.DateField(null=True, blank=True)
     description = models.TextField(blank=True)
     dot_color = models.CharField(max_length=10, choices=DOT_COLORS, default="green")
@@ -342,7 +343,7 @@ class WalletTopupRequest(models.Model):
     )
     confirmed_at  = models.DateTimeField(null=True, blank=True)
     user_claim_at = models.DateTimeField(null=True, blank=True,
-                                          help_text="Когда юзер кликнул «Я оплатил»")
+                                          help_text=_("Когда юзер кликнул «Я оплатил»"))
     cancelled_at  = models.DateTimeField(null=True, blank=True)
     note          = models.CharField(max_length=400, blank=True)
     created_at    = models.DateTimeField(default=timezone.now)

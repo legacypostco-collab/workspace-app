@@ -23,6 +23,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .actions import ActionResult, _full_order_cards, _notify, register
 
@@ -127,10 +128,10 @@ def present_kp_to_buyer(params, user, role):
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="RFQ не найден.")
+        return ActionResult(text=_("RFQ не найден."))
 
     if rfq.created_by_id != user.id:
-        return ActionResult(text="Просматривать КП может только заказчик.")
+        return ActionResult(text=_("Просматривать КП может только заказчик."))
 
     best = (Quote.objects.filter(
         rfq=rfq, direction="seller_to_buyer",
@@ -173,41 +174,37 @@ def present_kp_to_buyer(params, user, role):
 
     # «Шапка» официального инвойса для UI-карточки
     rows = [
-        {"label": "Документ",   "value": f"PRO-{rfq.id}/{best.id} · Pro-forma Invoice"},
-        {"label": "Покупатель", "value": user.get_full_name() or user.username},
-        {"label": "Поставщик",  "value": "Поставщик №1 (имя раскрывается после подтверждения)"},
-        {"label": "Режим",      "value": {"auto": "AUTO", "semi": "SEMI",
+        {"label": _("Документ"),   "value": f"PRO-{rfq.id}/{best.id} · Pro-forma Invoice"},
+        {"label": _("Покупатель"), "value": user.get_full_name() or user.username},
+        {"label": _("Поставщик"),  "value": "Поставщик №1 (имя раскрывается после подтверждения)"},
+        {"label": _("Режим"),      "value": {"auto": "AUTO", "semi": "SEMI",
                                             "manual": "MANUAL",
                                             "manual_oem": "MANUAL"}.get(rfq.mode, rfq.mode)},
-        {"label": "Позиций",    "value": str(rfq.items.count())},
-        {"label": "Запчасти",   "value": f"${parts_total:,.2f}"},
-        {"label": f"Логистика ({logi['method']}, {logi['weight_kg']:.1f} кг)",
+        {"label": _("Позиций"),    "value": str(rfq.items.count())},
+        {"label": _("Запчасти"),   "value": f"${parts_total:,.2f}"},
+        {"label": _('Логистика (%(p0)s, %(p1)s кг)') % {"p0": f"{logi['method']}", "p1": f"{logi['weight_kg']:.1f}"},
          "value": f"${logi['cost']:,.2f}"},
         {"label": "ИНВОЙС 100%", "value": f"${full_invoice:,.2f}", "primary": True},
-        {"label": "Срок поставки",  "value": f"{best.delivery_days} дней"},
-        {"label": "Условия оплаты", "value": "10% резерв сейчас · 90% перед отгрузкой"},
+        {"label": _("Срок поставки"),  "value": f"{best.delivery_days} дней"},
+        {"label": _("Условия оплаты"), "value": "10% резерв сейчас · 90% перед отгрузкой"},
         {"label": "Резерв 10%",     "value": f"${reserve:,.2f}", "primary": True},
-        {"label": "К оплате после готовности", "value": f"${full_invoice - reserve:,.2f}"},
+        {"label": _("К оплате после готовности"), "value": f"${full_invoice - reserve:,.2f}"},
     ]
     actions = []
     if proforma_url:
         actions.append({
             "action": "open_url",
-            "label": "📄 Открыть Pro-forma Invoice (PDF)",
+            "label": _("📄 Открыть Pro-forma Invoice (PDF)"),
             "params": {"_url": proforma_url},
         })
     actions.append({
-        "action": "view_rfq_quotes", "label": "📊 Сравнить все КП",
+        "action": "view_rfq_quotes", "label": _("📊 Сравнить все КП"),
         "params": {"rfq_id": rfq.id},
     })
 
     return ActionResult(
         text=(
-            f"📋 Pro-forma Invoice PRO-{rfq.id}/{best.id} готов.\n"
-            f"Сумма: ${full_invoice:,.2f} (запчасти ${parts_total:,.0f} + "
-            f"логистика ${logi['cost']:,.0f}).\n"
-            f"Нажмите «Подтвердить» — заблокируем 10% (${reserve:,.0f}) "
-            f"с депозита, после готовности — остаток 90%."
+            _('📋 Pro-forma Invoice PRO-%(p0)s/%(p1)s готов.\nСумма: $%(p2)s (запчасти $%(p3)s + логистика $%(p4)s).\nНажмите «Подтвердить» — заблокируем 10%% ($%(p5)s) с депозита, после готовности — остаток 90%%.') % {"p0": f'{rfq.id}', "p1": f'{best.id}', "p2": f'{full_invoice:,.2f}', "p3": f'{parts_total:,.0f}', "p4": f"{logi['cost']:,.0f}", "p5": f'{reserve:,.0f}'}
         ),
         cards=[{"type": "draft", "data": {
             "title": f"📋 PRO-{rfq.id}/{best.id} · ${full_invoice:,.2f}",
@@ -218,12 +215,12 @@ def present_kp_to_buyer(params, user, role):
                 "Остальные котировки по этому RFQ автоматически отклоняются.",
             ],
             "confirm_action": "confirm_kp_and_reserve",
-            "confirm_label": f"✓ Подтвердить и зарезервировать ${reserve:,.0f}",
+            "confirm_label": _('✓ Подтвердить и зарезервировать $%(p0)s') % {"p0": f'{reserve:,.0f}'},
             "confirm_params": {
                 "rfq_id": rfq.id, "quote_id": best.id,
                 "logistics_cost": float(logi["cost"]),
             },
-            "cancel_label": "Сравнить все КП",
+            "cancel_label": _("Сравнить все КП"),
         }}],
         actions=actions,
     )
@@ -246,22 +243,21 @@ def confirm_kp_and_reserve(params, user, role):
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
         q = Quote.objects.select_related("seller").get(id=int(params.get("quote_id") or 0))
     except (RFQ.DoesNotExist, Quote.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="RFQ или котировка не найдены.")
+        return ActionResult(text=_("RFQ или котировка не найдены."))
 
     if rfq.created_by_id != user.id:
-        return ActionResult(text="Подтвердить КП может только заказчик.")
+        return ActionResult(text=_("Подтвердить КП может только заказчик."))
     if q.rfq_id != rfq.id:
-        return ActionResult(text="Котировка не относится к этому RFQ.")
+        return ActionResult(text=_("Котировка не относится к этому RFQ."))
     if q.status not in ("submitted", "finalized"):
-        return ActionResult(text=f"Эту котировку нельзя принять (статус: {q.get_status_display()}).")
+        return ActionResult(text=_('Эту котировку нельзя принять (статус: %(p0)s).') % {"p0": f'{q.get_status_display()}'})
 
     # FIX (HIGH): проверка срока действия котировки. Раньше можно было принять
     # просроченное КП (valid_until заносится при auto_generate, но не проверялось).
     from django.utils import timezone as _tz
     if q.valid_until and _tz.now() > q.valid_until:
         return ActionResult(text=(
-            f"Котировка истекла {q.valid_until.strftime('%d.%m.%Y %H:%M')}. "
-            f"Запросите у поставщика новое КП."
+            _('Котировка истекла %(p0)s. Запросите у поставщика новое КП.') % {"p0": f"{q.valid_until.strftime('%d.%m.%Y %H:%M')}"}
         ))
 
     # Полная сумма = запчасти + логистика
@@ -281,11 +277,9 @@ def confirm_kp_and_reserve(params, user, role):
     if wallet.balance < reserve:
         shortage = reserve - wallet.balance
         return ActionResult(text=(
-            f"❌ Недостаточно средств для резерва.\n"
-            f"Нужно: ${reserve:,.2f} · на счёте: ${wallet.balance:,.2f} · "
-            f"не хватает: ${shortage:,.2f}."
+            _('❌ Недостаточно средств для резерва.\nНужно: $%(p0)s · на счёте: $%(p1)s · не хватает: $%(p2)s.') % {"p0": f'{reserve:,.2f}', "p1": f'{wallet.balance:,.2f}', "p2": f'{shortage:,.2f}'}
         ), actions=[
-            {"label": f"Пополнить депозит на ${max(shortage * 2, 10000):,.0f}",
+            {"label": _('Пополнить депозит на $%(p0)s') % {"p0": f'{max(shortage * 2, 10000):,.0f}'},
              "action": "topup_wallet",
              "params": {"amount": float(max(shortage * 2, 10000))}},
         ])
@@ -298,13 +292,12 @@ def confirm_kp_and_reserve(params, user, role):
         # генерит новый uuid каждый раз). Зеркалим pay_reserve (actions.py).
         q = Quote.objects.select_for_update().get(id=q.id)
         if q.status == "accepted":
-            return ActionResult(text="Заказ по этой котировке уже создан.")
+            return ActionResult(text=_("Заказ по этой котировке уже создан."))
         # Кошелёк тоже под блокировкой + перепроверка баланса.
         wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
         if wallet.balance < reserve:
             return ActionResult(text=(
-                f"❌ Недостаточно средств для резерва (перепроверка).\n"
-                f"Нужно: ${reserve:,.2f} · на счёте: ${wallet.balance:,.2f}."
+                _('❌ Недостаточно средств для резерва (перепроверка).\nНужно: $%(p0)s · на счёте: $%(p1)s.') % {"p0": f'{reserve:,.2f}', "p1": f'{wallet.balance:,.2f}'}
             ))
         # FIX (БАГ 2): не создаём Order из 0 позиций — ниже цикл OrderItem
         # пропускает qi с part is None, и при пустом КП получался Order без
@@ -363,8 +356,8 @@ def confirm_kp_and_reserve(params, user, role):
 
     if q.seller:
         _notify(q.seller, kind="order",
-                title=f"✅ КП #{q.id} принято — ORD-{order.id}",
-                body=f"Резерв ${reserve:,.0f} удержан. Можно запускать в производство.",
+                title=_('✅ КП #%(p0)s принято — ORD-%(p1)s') % {"p0": f'{q.id}', "p1": f'{order.id}'},
+                body=_('Резерв $%(p0)s удержан. Можно запускать в производство.') % {"p0": f'{reserve:,.0f}'},
                 url=f"/chat/?order={order.id}")
 
     # 4. Переключаем чат calc → shipment + системное сообщение
@@ -384,24 +377,21 @@ def confirm_kp_and_reserve(params, user, role):
 
     wallet.refresh_from_db()
     actions = [
-        {"action": "track_order", "label": "📦 Трекинг",
+        {"action": "track_order", "label": _("📦 Трекинг"),
          "params": {"order_id": order.id}},
         {"action": "pay_final",
-         "label": f"💳 Оплатить остаток ${full_invoice - reserve:,.0f}",
+         "label": _('💳 Оплатить остаток $%(p0)s') % {"p0": f'{full_invoice - reserve:,.0f}'},
          "params": {"order_id": order.id}},
     ]
     if invoice_url:
         actions.insert(0, {
             "action": "open_url",
-            "label": "📄 Скачать Commercial Invoice (PDF)",
+            "label": _("📄 Скачать Commercial Invoice (PDF)"),
             "params": {"_url": invoice_url},
         })
     return ActionResult(
         text=(
-            f"✅ КП подтверждено — сделка перешла в работу.\n"
-            f"Заказ ORD-{order.id} · инвойс ${full_invoice:,.2f}\n"
-            f"Резерв 10% (${reserve:,.2f}) списан · остаток депозита ${wallet.balance:,.2f}\n"
-            f"Чат теперь — сделка. Commercial Invoice выставлен."
+            _('✅ КП подтверждено — сделка перешла в работу.\nЗаказ ORD-%(p0)s · инвойс $%(p1)s\nРезерв 10%% ($%(p2)s) списан · остаток депозита $%(p3)s\nЧат теперь — сделка. Commercial Invoice выставлен.') % {"p0": f'{order.id}', "p1": f'{full_invoice:,.2f}', "p2": f'{reserve:,.2f}', "p3": f'{wallet.balance:,.2f}'}
         ),
         cards=_full_order_cards(order, user, role, fallback={"type": "order", "data": {
             "id": str(order.id),
@@ -433,14 +423,14 @@ def op_approve_kp(params, user, role):
     """
     from marketplace.models import RFQ, Quote
     if not (role or "").startswith("operator") and not user.is_staff:
-        return ActionResult(text="Только оператор может подтверждать КП в SEMI-режиме.")
+        return ActionResult(text=_("Только оператор может подтверждать КП в SEMI-режиме."))
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="RFQ не найден.")
+        return ActionResult(text=_("RFQ не найден."))
 
     if rfq.mode != "semi":
-        return ActionResult(text=f"RFQ #{rfq.id} не в SEMI-режиме (mode={rfq.mode}).")
+        return ActionResult(text=_('RFQ #%(p0)s не в SEMI-режиме (mode=%(p1)s).') % {"p0": f'{rfq.id}', "p1": f'{rfq.mode}'})
 
     quotes = Quote.objects.filter(rfq=rfq, direction="seller_to_buyer", status="submitted")
     if not quotes.exists():
@@ -450,14 +440,13 @@ def op_approve_kp(params, user, role):
         spec_result = _grs({"rfq_id": rfq.id}, user, role)
         return ActionResult(
             text=(
-                f"RFQ #{rfq.id} · подтвердите позиции и зафиксируйте КП. "
-                "Спорные строки можно заменить аналогом или пометить «нет в каталоге»."
+                _('RFQ #%(p0)s · подтвердите позиции и зафиксируйте КП. Спорные строки можно заменить аналогом или пометить «нет в каталоге».') % {"p0": f'{rfq.id}'}
             ),
             cards=spec_result.cards,
             actions=[
-                {"label": "Подтвердить КП", "action": "op_compose_kp",
+                {"label": _("Подтвердить КП"), "action": "op_compose_kp",
                  "params": {"rfq_id": rfq.id}},
-                {"label": "Спросить у клиента", "action": "ask_about_rfq",
+                {"label": _("Спросить у клиента"), "action": "ask_about_rfq",
                  "params": {"rfq_id": rfq.id}},
             ],
         )
@@ -472,23 +461,21 @@ def op_approve_kp(params, user, role):
         best = quotes.order_by("total_amount").first()
         return ActionResult(
             text=(
-                f"📋 SEMI: одобрить КП по RFQ #{rfq.id}?\n"
-                f"Лучшее предложение #{best.id} от {best.seller.username if best.seller else '—'} — "
-                f"${best.total_amount:,.0f}. {sla_status}."
+                _('📋 SEMI: одобрить КП по RFQ #%(p0)s?\nЛучшее предложение #%(p1)s от %(p2)s — $%(p3)s. %(p4)s.') % {"p0": f'{rfq.id}', "p1": f'{best.id}', "p2": f"{(best.seller.username if best.seller else '—')}", "p3": f'{best.total_amount:,.0f}', "p4": f'{sla_status}'}
             ),
             cards=[{"type": "draft", "data": {
-                "title": f"Подтвердить КП по RFQ #{rfq.id}",
+                "title": _('Подтвердить КП по RFQ #%(p0)s') % {"p0": f'{rfq.id}'},
                 "rows": [
-                    {"label": "Заказчик", "value": rfq.customer_name},
-                    {"label": "Позиций", "value": str(rfq.items.count())},
-                    {"label": "КП от продавцов", "value": str(quotes.count())},
-                    {"label": "Лучшее", "value": f"${best.total_amount:,.0f}", "primary": True},
+                    {"label": _("Заказчик"), "value": rfq.customer_name},
+                    {"label": _("Позиций"), "value": str(rfq.items.count())},
+                    {"label": _("КП от продавцов"), "value": str(quotes.count())},
+                    {"label": _("Лучшее"), "value": f"${best.total_amount:,.0f}", "primary": True},
                     {"label": "SLA", "value": sla_status},
                 ],
                 "confirm_action": "op_approve_kp",
-                "confirm_label": "✓ Одобрить и отправить клиенту",
+                "confirm_label": _("✓ Одобрить и отправить клиенту"),
                 "confirm_params": {"rfq_id": rfq.id, "confirmed": True},
-                "cancel_label": "Отклонить",
+                "cancel_label": _("Отклонить"),
             }}],
         )
 
@@ -503,15 +490,14 @@ def op_approve_kp(params, user, role):
     # Уведомляем buyer'а — КП готово
     _notify(
         rfq.created_by, kind="rfq",
-        title=f"📋 КП по RFQ #{rfq.id} готово к рассмотрению",
+        title=_('📋 КП по RFQ #%(p0)s готово к рассмотрению') % {"p0": f'{rfq.id}'},
         body="Оператор одобрил расчёт. Откройте, чтобы подтвердить и зарезервировать 10%.",
         url=f"/chat/rfq/{rfq.id}/?source=kp-ready",
     )
 
     return ActionResult(
         text=(
-            f"✓ КП по RFQ #{rfq.id} одобрено и отправлено клиенту.\n"
-            f"Клиент видит инвойс с кнопкой «Подтвердить и зарезервировать 10%»."
+            _('✓ КП по RFQ #%(p0)s одобрено и отправлено клиенту.\nКлиент видит инвойс с кнопкой «Подтвердить и зарезервировать 10%%».') % {"p0": f'{rfq.id}'}
         ),
     )
 
@@ -531,14 +517,14 @@ def op_dispatch_manual_rfq(params, user, role):
     """
     from marketplace.models import RFQ
     if not (role or "").startswith("operator") and not user.is_staff:
-        return ActionResult(text="Только оператор может работать с MANUAL-RFQ.")
+        return ActionResult(text=_("Только оператор может работать с MANUAL-RFQ."))
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="RFQ не найден.")
+        return ActionResult(text=_("RFQ не найден."))
 
     if rfq.mode not in ("manual", "manual_oem"):
-        return ActionResult(text=f"RFQ #{rfq.id} не в MANUAL-режиме (mode={rfq.mode}).")
+        return ActionResult(text=_('RFQ #%(p0)s не в MANUAL-режиме (mode=%(p1)s).') % {"p0": f'{rfq.id}', "p1": f'{rfq.mode}'})
 
     # Используем стандартный send_rfq_to_suppliers — но фиксируем deadline
     from .negotiation import send_rfq_to_suppliers
@@ -557,8 +543,8 @@ def op_dispatch_manual_rfq(params, user, role):
     # Buyer'а уведомляем что в работе
     _notify(
         rfq.created_by, kind="rfq",
-        title=f"🔍 RFQ #{rfq.id} — оператор собирает предложения",
-        body=f"Срок сбора КП: 48ч до {deadline.strftime('%d.%m %H:%M')}. Вы получите готовое КП.",
+        title=_('🔍 RFQ #%(p0)s — оператор собирает предложения') % {"p0": f'{rfq.id}'},
+        body=_('Срок сбора КП: 48ч до %(p0)s. Вы получите готовое КП.') % {"p0": f"{deadline.strftime('%d.%m %H:%M')}"},
         url=f"/chat/rfq/{rfq.id}/?source=manual-collecting",
     )
 
@@ -570,9 +556,9 @@ def op_dispatch_manual_rfq(params, user, role):
             + (res.text or "")
         ),
         actions=[
-            {"action": "op_compose_kp", "label": "📋 Сформировать КП клиенту",
+            {"action": "op_compose_kp", "label": _("📋 Сформировать КП клиенту"),
              "params": {"rfq_id": rfq.id}},
-            {"action": "view_rfq_quotes", "label": "📊 Полученные КП",
+            {"action": "view_rfq_quotes", "label": _("📊 Полученные КП"),
              "params": {"rfq_id": rfq.id}},
         ],
     )
@@ -589,18 +575,18 @@ def op_compose_kp(params, user, role):
     """
     from marketplace.models import RFQ, Quote
     if not (role or "").startswith("operator") and not user.is_staff:
-        return ActionResult(text="Только оператор формирует MANUAL-КП.")
+        return ActionResult(text=_("Только оператор формирует MANUAL-КП."))
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="RFQ не найден.")
+        return ActionResult(text=_("RFQ не найден."))
 
     qs = Quote.objects.filter(rfq=rfq, direction="seller_to_buyer", status="submitted")
     if params.get("quote_id"):
         try:
             chosen = qs.get(id=int(params["quote_id"]))
         except Quote.DoesNotExist:
-            return ActionResult(text="Выбранная котировка не найдена.")
+            return ActionResult(text=_("Выбранная котировка не найдена."))
     else:
         chosen = qs.order_by("total_amount").first()
         if not chosen:
@@ -626,15 +612,12 @@ def op_compose_kp(params, user, role):
     if not chosen:
         return ActionResult(
             text=(
-                f"По RFQ #{rfq.id} не получилось собрать КП автоматически: ни один "
-                "поставщик не покрывает все позиции одним предложением (или нет "
-                "актуальных цен в каталоге). Нужны котировки поставщиков или "
-                "разбор по позициям."
+                _('По RFQ #%(p0)s не получилось собрать КП автоматически: ни один поставщик не покрывает все позиции одним предложением (или нет актуальных цен в каталоге). Нужны котировки поставщиков или разбор по позициям.') % {"p0": f'{rfq.id}'}
             ),
             actions=[
-                {"label": "Открыть RFQ", "action": "rfq_detail",
+                {"label": _("Открыть RFQ"), "action": "rfq_detail",
                  "params": {"rfq_id": rfq.id}},
-                {"label": "Спросить у клиента", "action": "ask_about_rfq",
+                {"label": _("Спросить у клиента"), "action": "ask_about_rfq",
                  "params": {"rfq_id": rfq.id}},
             ],
         )
@@ -649,15 +632,13 @@ def op_compose_kp(params, user, role):
 
     _notify(
         rfq.created_by, kind="rfq",
-        title=f"📋 КП по RFQ #{rfq.id} сформировано",
-        body=f"Оператор сформировал инвойс на ${chosen.total_amount:,.0f}. "
-             f"Откройте, чтобы подтвердить и зарезервировать 10%.",
+        title=_('📋 КП по RFQ #%(p0)s сформировано') % {"p0": f'{rfq.id}'},
+        body=_('Оператор сформировал инвойс на $%(p0)s. Откройте, чтобы подтвердить и зарезервировать 10%%.') % {"p0": f'{chosen.total_amount:,.0f}'},
         url=f"/chat/rfq/{rfq.id}/?source=kp-ready",
     )
 
     return ActionResult(
         text=(
-            f"✓ КП #{chosen.id} (${chosen.total_amount:,.0f}) "
-            f"отправлено клиенту по RFQ #{rfq.id}."
+            _('✓ КП #%(p0)s ($%(p1)s) отправлено клиенту по RFQ #%(p2)s.') % {"p0": f'{chosen.id}', "p1": f'{chosen.total_amount:,.0f}', "p2": f'{rfq.id}'}
         ),
     )

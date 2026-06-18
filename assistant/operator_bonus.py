@@ -72,7 +72,7 @@ def create_bonus_on_release(order) -> "OperatorBonusLine | None":
         amount=amount,
         status="pending",
         release_at=timezone.now() + timedelta(days=14),
-        note=f"Авто-начисление при release заказа #{order.id}",
+        note=_('Авто-начисление при release заказа #%(p0)s') % {"p0": f'{order.id}'},
     )
 
 

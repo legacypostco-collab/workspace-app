@@ -42,6 +42,8 @@ from django.core.files.base import ContentFile
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.text import slugify
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _lazy
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -61,9 +63,9 @@ STD_FIELDS = [
     # oem_number необязателен: если в прайсе нет настоящего артикула (только
     # название — напр. буровые коронки «PDC bit 152.4 mm»), он генерится из
     # названия (см. _gen_oem_from_title), чтобы каждая позиция была уникальной.
-    ("oem_number",        "Артикул (PartNumber)",   False, None, None),
-    ("cross_number",      "Кросс-номер (CrossNumber)", False, None, ""),
-    ("brand",             "Бренд",                   False, [
+    ("oem_number",        _lazy("Артикул (PartNumber)"),   False, None, None),
+    ("cross_number",      _lazy("Кросс-номер (CrossNumber)"), False, None, ""),
+    ("brand",             _lazy("Бренд"),                   False, [
         "Caterpillar", "Komatsu", "Hitachi", "Liebherr", "TEREX",
         "New Holland", "Wirtgen", "Iveco", "HBM-Nobas", "John Deere",
         "Volvo", "JCB", "Bobcat", "BOMAG",
@@ -76,23 +78,23 @@ STD_FIELDS = [
         "Lincoln", "Berco", "ITR", "ETP",
         "Generic",
     ], "Generic"),
-    ("title",             "Название",                True,  None, None),
-    ("stock",             "Остаток (Quantity)",      False, None, "1"),
-    ("condition",         "Тип товара",              False, ["OEM", "AFTERMARKET", "REMAN"], "OEM"),
-    ("availability",      "Наличие",                 False, ["IN_STOCK", "BACKORDER"], "IN_STOCK"),
-    ("manufacturer",      "Завод-производитель",     False, None, ""),
-    ("manufacturer_visible", "Показывать завод",     False, ["Да", "Нет"], "Да"),
-    ("price_exw",         "Цена EXW",                True,  None, None),
-    ("warehouse_address", "Адрес склада EXW",        False, None, ""),
-    ("price_fob_sea",     "Цена FOB SEA",            False, None, "0"),
-    ("price_fob_air",     "Цена FOB AIR",            False, None, "0"),
-    ("sea_port",          "Морпорт отправления",     False, None, ""),
-    ("air_port",          "Аэропорт отправления",    False, None, ""),
-    ("weight_kg",         "Вес, кг",                 False, None, "0.5"),
-    ("length_cm",         "Длина, см",               False, None, "1"),
-    ("width_cm",          "Ширина, см",              False, None, "1"),
-    ("height_cm",         "Высота, см",              False, None, "1"),
-    ("currency",          "Валюта",                  False, ["USD", "EUR", "RUB", "CNY"], "USD"),
+    ("title",             _lazy("Название"),                True,  None, None),
+    ("stock",             _lazy("Остаток (Quantity)"),      False, None, "1"),
+    ("condition",         _lazy("Тип товара"),              False, ["OEM", "AFTERMARKET", "REMAN"], "OEM"),
+    ("availability",      _lazy("Наличие"),                 False, ["IN_STOCK", "BACKORDER"], "IN_STOCK"),
+    ("manufacturer",      _lazy("Завод-производитель"),     False, None, ""),
+    ("manufacturer_visible", _lazy("Показывать завод"),     False, ["Да", "Нет"], "Да"),
+    ("price_exw",         _lazy("Цена EXW"),                True,  None, None),
+    ("warehouse_address", _lazy("Адрес склада EXW"),        False, None, ""),
+    ("price_fob_sea",     _lazy("Цена FOB SEA"),            False, None, "0"),
+    ("price_fob_air",     _lazy("Цена FOB AIR"),            False, None, "0"),
+    ("sea_port",          _lazy("Морпорт отправления"),     False, None, ""),
+    ("air_port",          _lazy("Аэропорт отправления"),    False, None, ""),
+    ("weight_kg",         _lazy("Вес, кг"),                 False, None, "0.5"),
+    ("length_cm",         _lazy("Длина, см"),               False, None, "1"),
+    ("width_cm",          _lazy("Ширина, см"),              False, None, "1"),
+    ("height_cm",         _lazy("Высота, см"),              False, None, "1"),
+    ("currency",          _lazy("Валюта"),                  False, ["USD", "EUR", "RUB", "CNY"], "USD"),
 ]
 
 REQUIRED_FIELDS = [k for k, _, req, _, _ in STD_FIELDS if req]
@@ -771,18 +773,18 @@ def _ai_resolve_unknowns(unknown_headers: list[str], sample_rows: list[list[str]
                         "properties": {
                             "source_header": {
                                 "type": "string",
-                                "description": "Оригинальный заголовок колонки из файла",
+                                "description": _("Оригинальный заголовок колонки из файла"),
                             },
                             "canonical_key": {
                                 "type": "string",
                                 "enum": allowed_canonicals,
-                                "description": "Каноническое поле платформы",
+                                "description": _("Каноническое поле платформы"),
                             },
                             "confidence": {
                                 "type": "number",
                                 "minimum": 0,
                                 "maximum": 1,
-                                "description": "Уверенность в маппинге (0-1)",
+                                "description": _("Уверенность в маппинге (0-1)"),
                             },
                         },
                         "required": ["source_header", "canonical_key", "confidence"],
@@ -791,7 +793,7 @@ def _ai_resolve_unknowns(unknown_headers: list[str], sample_rows: list[list[str]
                 "unmapped": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "Заголовки, которые не подходят ни под один ключ",
+                    "description": _("Заголовки, которые не подходят ни под один ключ"),
                 },
                 "questions": {
                     "type": "array",
@@ -808,7 +810,7 @@ def _ai_resolve_unknowns(unknown_headers: list[str], sample_rows: list[list[str]
                         },
                         "required": ["field", "question"],
                     },
-                    "description": "Вопросы оператору для уточнения",
+                    "description": _("Вопросы оператору для уточнения"),
                 },
             },
             "required": ["mappings"],
@@ -1821,30 +1823,31 @@ class PricelistUploadView(APIView):
 
         f = request.FILES.get("file")
         if not f:
-            return Response({"error": "Файл не передан."}, status=400)
+            return Response({"error": _("Файл не передан.")}, status=400)
         if f.size > MAX_FILE_BYTES:
             mb = MAX_FILE_BYTES // 1024 // 1024
             return Response(
-                {"error": f"Файл слишком большой ({f.size // 1024 // 1024} МБ). Максимум {mb} МБ."},
+                {"error": _("Файл слишком большой (%(size)s МБ). Максимум %(max)s МБ.") % {
+                    "size": f.size // 1024 // 1024, "max": mb}},
                 status=400,
             )
         blob = f.read()
         try:
             headers, sample = _read_preview(f.name, blob)
         except Exception as e:
-            return Response({"error": f"Не удалось прочитать файл: {e}"}, status=400)
+            return Response({"error": _("Не удалось прочитать файл: %(err)s") % {"err": e}}, status=400)
         if not headers or not any(str(h).strip() for h in headers):
-            return Response({"error": "Первая строка пустая — нет заголовков."}, status=400)
+            return Response({"error": _("Первая строка пустая — нет заголовков.")}, status=400)
         non_empty = [h for h in headers if str(h).strip()]
         if len(non_empty) < MIN_COLUMNS:
             return Response({"error": (
-                f"В файле слишком мало колонок ({len(non_empty)}). "
-                f"Минимум {MIN_COLUMNS}."
+                _("В файле слишком мало колонок (%(n)s). Минимум %(min)s.") % {
+                    "n": len(non_empty), "min": MIN_COLUMNS}
             )}, status=400)
         if len(headers) > MAX_COLUMNS:
             return Response({"error": (
-                f"В файле слишком много колонок ({len(headers)}). "
-                f"Максимум {MAX_COLUMNS}."
+                _("В файле слишком много колонок (%(n)s). Максимум %(max)s.") % {
+                    "n": len(headers), "max": MAX_COLUMNS}
             )}, status=400)
 
         # 1. Ищем сохранённый профиль по fingerprint заголовков
@@ -1976,7 +1979,7 @@ class PricelistUploadView(APIView):
             if req and key not in suggested and key not in constants:
                 q: dict[str, Any] = {
                     "field": key,
-                    "question": f"Укажите значение для «{label}»",
+                    "question": _("Укажите значение для «%(label)s»") % {"label": label},
                     "type": "select" if enum_v else "text",
                 }
                 if enum_v:
@@ -2130,12 +2133,12 @@ def _execute_import_job(import_id, mapping, transform_rules, constants,
 
         # Категоризация незаполненных полей (mandatory / rating_bonus / optional)
         FIELD_LABELS = {
-            "weight_kg": "вес", "length_cm": "длина", "width_cm": "ширина",
-            "height_cm": "высота", "stock": "остаток",
+            "weight_kg": _("вес"), "length_cm": _("длина"), "width_cm": _("ширина"),
+            "height_cm": _("высота"), "stock": _("остаток"),
             "price_fob_sea": "FOB SEA", "price_fob_air": "FOB AIR",
-            "warehouse_address": "адрес склада",
-            "sea_port": "морпорт", "air_port": "аэропорт",
-            "cross_number": "кросс-номер",
+            "warehouse_address": _("адрес склада"),
+            "sea_port": _("морпорт"), "air_port": _("аэропорт"),
+            "cross_number": _("кросс-номер"),
         }
         MANDATORY = {"warehouse_address", "sea_port", "air_port"}
         RATING_BONUS = {"length_cm", "width_cm", "height_cm", "cross_number"}
@@ -2334,7 +2337,7 @@ class PricelistCommitView(APIView):
         if not _has_value("warehouse_address"):
             return Response({
                 "error": "warehouse_address_required",
-                "message": (
+                "message": _(
                     "Укажите адрес склада отгрузки — обязательное поле. "
                     "В колонке WarehouseAddress нет данных или она не заполнена — "
                     "впишите адрес в форме «📎 общих полей поставщика»."
@@ -2343,7 +2346,7 @@ class PricelistCommitView(APIView):
         if not _has_value("sea_port"):
             return Response({
                 "error": "sea_port_required",
-                "message": (
+                "message": _(
                     "Укажите ближайший к складу морпорт отгрузки — обязательное "
                     "поле для расчёта FOB SEA. Впишите в вопросе мастера или в "
                     "форме «📎 общих полей поставщика»."
@@ -2352,7 +2355,7 @@ class PricelistCommitView(APIView):
         if not _has_value("air_port"):
             return Response({
                 "error": "air_port_required",
-                "message": (
+                "message": _(
                     "Укажите ближайший к складу аэропорт отгрузки — обязательное "
                     "поле для расчёта FOB AIR. Впишите в вопросе мастера или в "
                     "форме «📎 общих полей поставщика»."
@@ -2372,7 +2375,7 @@ class PricelistCommitView(APIView):
             if not any(b in fname_clean for b in known):
                 return Response({
                     "error": "brand_required",
-                    "message": (
+                    "message": _(
                         "Не удалось определить бренд: колонка Brand пуста, "
                         "имя файла не содержит известного бренда. "
                         "Укажите бренд в смарт-вопросе или назовите файл "
@@ -2432,8 +2435,9 @@ class PricelistCommitView(APIView):
                    else request.META.get("REMOTE_ADDR", ""))[:64]
             _log_activity(
                 "pricelist", actor=request.user, ip=_ip,
-                title=f"Загрузка прайса #{imp.id} · {imp.total_rows} строк · "
-                      f"{imp.filename or 'файл'}",
+                title=_("Загрузка прайса #%(id)s · %(rows)s строк · %(file)s") % {
+                    "id": imp.id, "rows": imp.total_rows,
+                    "file": imp.filename or _("файл")},
                 meta={"import_id": imp.id, "n_rows": imp.total_rows,
                       "filename": imp.filename or "",
                       "seller": request.user.username})
@@ -2639,8 +2643,8 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
     from html import escape as _h
     headers_html = "".join(f"<th>{_h(label)}</th>" for label, _ in OUTPUT_COLS)
     truncated = written > PREVIEW_LIMIT
-    note = (f'<div class="opx-note">Показаны первые {PREVIEW_LIMIT} '
-             f'из {written} строк</div>') if truncated else ""
+    note = (_('<div class="opx-note">Показаны первые %(limit)s из %(total)s строк</div>') % {
+        "limit": PREVIEW_LIMIT, "total": written}) if truncated else ""
     preview_html = (
         '<style>'
         'body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#fff;}'
@@ -2667,34 +2671,34 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
 HARDCODED_QUESTIONS = [
     {
         "field": "brand",
-        "question": "Бренд / производитель?",
+        "question": _lazy("Бренд / производитель?"),
         "options": ["Epiroc", "Caterpillar", "Komatsu", "Hitachi", "Sandvik"],
         "default": "",
-        "placeholder": "Или впишите свой бренд",
+        "placeholder": _lazy("Или впишите свой бренд"),
         "apply_as": "constant",
     },
     {
         "field": "condition",
-        "question": "Тип товара (Condition)?",
+        "question": _lazy("Тип товара (Condition)?"),
         "options": ["OEM", "AFTERMARKET", "REMAN"],
         "default": "OEM",
         "apply_as": "constant",
     },
     {
         "field": "availability",
-        "question": "Наличие?",
+        "question": _lazy("Наличие?"),
         "options": ["IN_STOCK", "BACKORDER"],
         "default": "IN_STOCK",
         "apply_as": "constant",
     },
     {
         "field": "manufacturer",
-        "question": "Кто производитель детали?",
-        "hint": "Узнаваемый бренд повышает рейтинг в выдаче и снимает вопросы покупателей. Нет в списке — впишите свой (частную марку скроем).",
+        "question": _lazy("Кто производитель детали?"),
+        "hint": _lazy("Узнаваемый бренд повышает рейтинг в выдаче и снимает вопросы покупателей. Нет в списке — впишите свой (частную марку скроем)."),
         "options": MANUFACTURER_SELECT_OPTIONS,
         "render": "select",
         "default": "",
-        "placeholder": "Кликните или начните вводить — появится список брендов",
+        "placeholder": _lazy("Кликните или начните вводить — появится список брендов"),
         "apply_as": "constant",
         "skippable": True,
     },
@@ -2707,14 +2711,14 @@ HARDCODED_QUESTIONS = [
     # из формы.
     {
         "field": "price_fob_sea",
-        "question": "Наценка FOB SEA (доставка до морпорта) к цене EXW?",
+        "question": _lazy("Наценка FOB SEA (доставка до морпорта) к цене EXW?"),
         "options": ["+0%", "+2%", "+4%"],
         "default": "+2%",
         "apply_as": "formula",
     },
     {
         "field": "price_fob_air",
-        "question": "Наценка FOB AIR (доставка до аэропорта) к цене EXW?",
+        "question": _lazy("Наценка FOB AIR (доставка до аэропорта) к цене EXW?"),
         "options": ["+1%", "+3%", "+5%"],
         "default": "+3%",
         "apply_as": "formula",
@@ -2801,15 +2805,19 @@ def _ai_smart_questions(headers: list[str], sample_rows: list[list[str]],
         questions.append(q_copy)
 
     # Базовое intro
-    rows_label = f"{total_rows} позиций" if total_rows else f"{len(headers)} колонок"
+    rows_label = (_("%(n)s позиций") % {"n": total_rows} if total_rows
+                  else _("%(n)s колонок") % {"n": len(headers)})
     if questions:
-        intro = (f"📋 Я распознал в файле {rows_label}. "
-                 f"Уточню {len(questions)} "
-                 f"{'деталь' if len(questions) == 1 else 'детали' if 2 <= len(questions) <= 4 else 'деталей'}"
-                 f" чтобы корректно заполнить карточки товара:")
+        _nq = len(questions)
+        _detail_word = (_("деталь") if _nq == 1
+                        else _("детали") if 2 <= _nq <= 4 else _("деталей"))
+        intro = (_("📋 Я распознал в файле %(rows)s. "
+                   "Уточню %(n)s %(word)s"
+                   " чтобы корректно заполнить карточки товара:") % {
+                       "rows": rows_label, "n": _nq, "word": _detail_word})
     else:
-        intro = (f"📋 Файл распознан полностью ({rows_label}). "
-                 f"Уточнять нечего — все колонки на месте.")
+        intro = (_("📋 Файл распознан полностью (%(rows)s). "
+                   "Уточнять нечего — все колонки на месте.") % {"rows": rows_label})
 
     return {"intro": intro, "questions": questions}
 
@@ -2834,7 +2842,7 @@ def _ai_smart_questions_legacy_AI(headers: list[str], sample_rows: list[list[str
     mapped_from_file = [k for k, v in mapping.items()
                          if v and not v.startswith("fix:")]
     missing_keys = []
-    for k, label, req, _, _ in STD_FIELDS:
+    for k, label, req, _a, _b in STD_FIELDS:
         if k not in mapping or mapping[k].startswith("fix:"):
             if k not in mapped_from_file:
                 missing_keys.append(k)
@@ -2875,7 +2883,7 @@ def _ai_smart_questions_legacy_AI(headers: list[str], sample_rows: list[list[str
                             "options": {
                                 "type": "array",
                                 "items": {"type": "string"},
-                                "description": "Chip-кнопки (3-5 вариантов)",
+                                "description": _("Chip-кнопки (3-5 вариантов)"),
                             },
                             "default": {"type": "string"},
                             "placeholder": {"type": "string"},
@@ -3124,7 +3132,7 @@ class PricelistAiEstimateView(APIView):
     def post(self, request, import_id):
         from . import ai_credits as _aic
         if not _aic.rate_ok(request.user, "ai_estimate", 12, 3600):
-            return Response({"error": "Слишком частые AI-оценки прайса. Подождите немного."}, status=429)
+            return Response({"error": _("Слишком частые AI-оценки прайса. Подождите немного.")}, status=429)
         from marketplace.models import PricelistImport
         try:
             imp = PricelistImport.objects.get(id=import_id, seller=request.user)
@@ -3139,16 +3147,16 @@ class PricelistAiEstimateView(APIView):
         desc_col = mapping.get("description")
         if not oem_col or not title_col:
             return Response(
-                {"error": "Нужен маппинг oem_number и title для AI-оценки."},
+                {"error": _("Нужен маппинг oem_number и title для AI-оценки.")},
                 status=400,
             )
         if oem_col.startswith("fix:") or title_col.startswith("fix:"):
             return Response(
-                {"error": "oem_number и title должны быть из файла, не fix."},
+                {"error": _("oem_number и title должны быть из файла, не fix.")},
                 status=400,
             )
         if oem_col not in imp.headers or title_col not in imp.headers:
-            return Response({"error": "колонки не найдены в headers"}, status=400)
+            return Response({"error": _("колонки не найдены в headers")}, status=400)
         oem_idx = imp.headers.index(oem_col)
         title_idx = imp.headers.index(title_col)
         desc_idx = (imp.headers.index(desc_col) if desc_col
@@ -3180,11 +3188,11 @@ class PricelistAiEstimateView(APIView):
             items.append(item)
 
         if not items:
-            return Response({"error": "Не нашёл валидных строк для оценки."}, status=400)
+            return Response({"error": _("Не нашёл валидных строк для оценки.")}, status=400)
 
         if not getattr(settings, "ANTHROPIC_API_KEY", ""):
             return Response({
-                "error": "AI-оценка недоступна (ANTHROPIC_API_KEY не настроен на сервере).",
+                "error": _("AI-оценка недоступна (ANTHROPIC_API_KEY не настроен на сервере)."),
             }, status=503)
 
         chunks = [items[i:i + self.BATCH_SIZE]
@@ -3397,8 +3405,8 @@ class PricelistOutputPreviewView(APIView):
             pass
 
         truncated = total > self.PREVIEW_ROWS
-        more_note = (f'<div class="opx-note">Показаны первые {self.PREVIEW_ROWS} '
-                      f'из {total} строк</div>') if truncated else ""
+        more_note = (_('<div class="opx-note">Показаны первые %(rows)s из %(total)s строк</div>') % {
+            "rows": self.PREVIEW_ROWS, "total": total}) if truncated else ""
 
         html = (
             '<!doctype html><html><head><meta charset="utf-8">'
@@ -3622,25 +3630,25 @@ def pricelist_show_errors(params, user, role):
             id=int(params.get("import_id") or 0), seller=user,
         )
     except (PricelistImport.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Импорт не найден.")
+        return ActionResult(text=_("Импорт не найден."))
     if not imp.error_details:
-        return ActionResult(text="Ошибок нет 🎉")
+        return ActionResult(text=_("Ошибок нет 🎉"))
     # Понятный комментарий вместо технического reason (bad price_exw и т.п.).
     # comment пишется при импорте; для старых записей — fallback по reason.
     _REASON_HINT = {
-        "bad price_exw": "Цена пустая, 0 или не число — позиция пропущена",
-        "no oem": "Не указан артикул (PartNumber) — позиция пропущена",
-        "no title": "Не указано название (Description) — позиция пропущена",
-        "price_conflict": "Артикул-дубль с разными ценами",
-        "duplicate": "Дубль строки",
-        "no price": "Не указана цена — позиция пропущена",
+        "bad price_exw": _("Цена пустая, 0 или не число — позиция пропущена"),
+        "no oem": _("Не указан артикул (PartNumber) — позиция пропущена"),
+        "no title": _("Не указано название (Description) — позиция пропущена"),
+        "price_conflict": _("Артикул-дубль с разными ценами"),
+        "duplicate": _("Дубль строки"),
+        "no price": _("Не указана цена — позиция пропущена"),
     }
     def _reason_text(e):
         if e.get("comment"):
             return e["comment"]
         r = e.get("reason", "")
         return _REASON_HINT.get(r) or (
-            "Строка пропущена: " + r if r else "Строка пропущена")
+            _("Строка пропущена: %(reason)s") % {"reason": r} if r else _("Строка пропущена"))
     # Таблица: Строка | Артикул | Колонка | Значение | Проблема.
     # Для старых записей без структурных полей — fallback из comment.
     table_rows = []
@@ -3671,19 +3679,18 @@ def pricelist_show_errors(params, user, role):
               + "\n\nИсправьте эти строки в своём файле и загрузите заново — "
               + "обновление не задвоит уже загруженные позиции.") if hint_lines else ""
     return ActionResult(
-        text=f"❌ Ошибки импорта #{imp.id}: {imp.failed_rows} строк не загружено "
-             f"(остальные — в каталоге).\n\n{how_to}",
+        text=_('❌ Ошибки импорта #%(p0)s: %(p1)s строк не загружено (остальные — в каталоге).\n\n%(p2)s') % {"p0": f'{imp.id}', "p1": f'{imp.failed_rows}', "p2": f'{how_to}'},
         cards=[{"type": "table_preview", "data": {
-            "title": f"Ошибки импорта (показаны первые {len(table_rows)})",
+            "title": _('Ошибки импорта (показаны первые %(p0)s)') % {"p0": f'{len(table_rows)}'},
             "headers": ["Строка", "Артикул", "Колонка", "Значение", "Проблема"],
             "rows": table_rows,
         }}],
         actions=[
-            {"action": "__download_url", "label": "📥 Скачать список ошибок (.csv)",
+            {"action": "__download_url", "label": _("📥 Скачать список ошибок (.csv)"),
              "params": {"url": f"/api/assistant/upload-pricelist/{imp.id}/errors.csv"}},
-            {"action": "upload_pricelist", "label": "📤 Загрузить исправленный файл",
+            {"action": "upload_pricelist", "label": _("📤 Загрузить исправленный файл"),
              "params": {}},
-            {"action": "seller_warehouses", "label": "📦 Мои товары",
+            {"action": "seller_warehouses", "label": _("📦 Мои товары"),
              "params": {}},
         ],
         # Экран исправления ошибок — не место для рекомендаций «Создать RFQ /
@@ -3725,8 +3732,8 @@ def pricelist_history(params, user, role):
     items = PricelistImport.objects.filter(seller=user).order_by("-created_at")[:10]
     if not items:
         return ActionResult(
-            text="Прайс ещё не загружали.",
-            actions=[{"action": "upload_pricelist", "label": "📤 Загрузить",
+            text=_("Прайс ещё не загружали."),
+            actions=[{"action": "upload_pricelist", "label": _("📤 Загрузить"),
                       "params": {}}],
         )
     rows = [{
@@ -3737,11 +3744,11 @@ def pricelist_history(params, user, role):
         ),
     } for i in items]
     return ActionResult(
-        text=f"📋 История загрузок ({len(items)})",
+        text=_('📋 История загрузок (%(p0)s)') % {"p0": f'{len(items)}'},
         cards=[{"type": "draft", "data": {
-            "title": "История импортов прайса", "rows": rows,
+            "title": _("История импортов прайса"), "rows": rows,
         }}],
-        actions=[{"action": "upload_pricelist", "label": "📤 Новая загрузка",
+        actions=[{"action": "upload_pricelist", "label": _("📤 Новая загрузка"),
                   "params": {}}],
     )
 

@@ -27,6 +27,8 @@ import logging
 import os
 from decimal import Decimal
 
+from django.utils.translation import gettext as _
+
 logger = logging.getLogger(__name__)
 
 
@@ -47,7 +49,7 @@ def fetch_external_rating(inn: str) -> dict:
     inn = (inn or "").strip()
     if not inn:
         return {"score": 50.0, "bankruptcy": False, "liquidation": False,
-                "reason": "ИНН не указан", "source": "error"}
+                "reason": _("ИНН не указан"), "source": "error"}
 
     api_key = os.getenv("KONTUR_FOCUS_API_KEY", "").strip()
     if api_key:
@@ -76,7 +78,7 @@ def _fetch_kontur(inn: str, api_key: str) -> dict:
     data = r.json()
     if not isinstance(data, list) or not data:
         return {"score": 50.0, "bankruptcy": False, "liquidation": False,
-                "reason": f"ИНН {inn} не найден", "source": "live"}
+                "reason": _("ИНН %(inn)s не найден") % {"inn": inn}, "source": "live"}
 
     company = data[0]
     status_raw = (company.get("status") or {}).get("statusString", "").lower()
@@ -94,13 +96,13 @@ def _fetch_kontur(inn: str, api_key: str) -> dict:
 
     if bankruptcy or liquidation:
         score = 0.0
-        reason = "банкротство" if bankruptcy else "ликвидация"
+        reason = _("банкротство") if bankruptcy else _("ликвидация")
     elif arb_count > 20:
-        reason = f"много судебных дел ({arb_count})"
+        reason = _("много судебных дел (%(count)s)") % {"count": arb_count}
     elif base_score < 50:
-        reason = "слабый финансовый индекс"
+        reason = _("слабый финансовый индекс")
     else:
-        reason = f"активна, индекс {base_score:.0f}, дел {arb_count}"
+        reason = _("активна, индекс %(idx).0f, дел %(count)s") % {"idx": base_score, "count": arb_count}
 
     return {
         "score": min(100.0, score),
@@ -115,11 +117,11 @@ def _demo_external_rating(inn: str) -> dict:
     """Детерминированный stub по hash(INN)."""
     if inn.startswith("00"):
         return {"score": 0.0, "bankruptcy": True, "liquidation": False,
-                "reason": "demo: ИНН '00…' → банкротство (тестовая ветка)",
+                "reason": _("demo: ИНН '00…' → банкротство (тестовая ветка)"),
                 "source": "demo"}
     if inn.startswith("99"):
         return {"score": 0.0, "bankruptcy": False, "liquidation": True,
-                "reason": "demo: ИНН '99…' → ликвидация (тестовая ветка)",
+                "reason": _("demo: ИНН '99…' → ликвидация (тестовая ветка)"),
                 "source": "demo"}
     h = int(hashlib.md5(inn.encode()).hexdigest(), 16)
     score = 40 + (h % 60)  # 40-99 диапазон
@@ -127,7 +129,7 @@ def _demo_external_rating(inn: str) -> dict:
         "score": float(score),
         "bankruptcy": False,
         "liquidation": False,
-        "reason": f"demo · hash-based score {score}",
+        "reason": _("demo · hash-based score %(score)s") % {"score": score},
         "source": "demo",
     }
 
@@ -151,7 +153,7 @@ def refresh_external_rating(seller) -> dict | None:
         kyb = CompanyVerification.objects.filter(user=seller).first()
         inn = (kyb.inn if kyb else "") or ""
         if not inn:
-            return {"score": None, "reason": "ИНН не указан в KYB",
+            return {"score": None, "reason": _("ИНН не указан в KYB"),
                     "source": "skip"}
         data = fetch_external_rating(inn)
         profile = UserProfile.objects.filter(user=seller).first()

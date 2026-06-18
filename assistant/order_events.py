@@ -22,12 +22,14 @@ buyer'а системное сообщение + карточку «order_timeli
 from __future__ import annotations
 
 import logging
+from django.utils.translation import gettext as _
 from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
 
 from django.utils.translation import gettext
+from django.utils.translation import gettext_lazy as _lazy
 
 # Pipeline этапы для timeline-карточки. (status, label, who_acts_next)
 # Лейблы — функции (lambda), чтобы вычислялись на каждом рендере под текущим
@@ -205,13 +207,13 @@ def _event_text_seller(code: str) -> str | None:
 _EVENT_TEXTS_BUYER = {}    # deprecated, see _event_text_buyer()
 _EVENT_TEXTS_SELLER = {}   # deprecated, see _event_text_seller()
 _EVENT_TEXTS_OPERATOR = {
-    "sla_semi_overdue":   "⚠️ SEMI RFQ #{rfq_id} — просрочен 15-минутный SLA. Approve или эскалация.",
-    "sla_manual_overdue": "⚠️ MANUAL RFQ #{rfq_id} — собирается КП >48ч. Эскалация.",
-    "sla_breach":         "⚠️ ORD-{id}: SLA breach (статус {status}). Нужна реакция.",
-    "claim_opened":       "🛡 ORD-{id}: открыта рекламация. Требуется review.",
-    "claim_escalated":    "🚨 ЭСКАЛАЦИЯ · рекламация открыта >7 дней без решения.",
-    "user_registered":    "👤 Новый пользователь: {username} · {role} · {email}",
-    "kyb_submitted":      "🛡 {username} отправил KYB на проверку — компания «{legal_name}».",
+    "sla_semi_overdue":   _lazy("⚠️ SEMI RFQ #{rfq_id} — просрочен 15-минутный SLA. Approve или эскалация."),
+    "sla_manual_overdue": _lazy("⚠️ MANUAL RFQ #{rfq_id} — собирается КП >48ч. Эскалация."),
+    "sla_breach":         _lazy("⚠️ ORD-{id}: SLA breach (статус {status}). Нужна реакция."),
+    "claim_opened":       _lazy("🛡 ORD-{id}: открыта рекламация. Требуется review."),
+    "claim_escalated":    _lazy("🚨 ЭСКАЛАЦИЯ · рекламация открыта >7 дней без решения."),
+    "user_registered":    _lazy("👤 Новый пользователь: {username} · {role} · {email}"),
+    "kyb_submitted":      _lazy("🛡 {username} отправил KYB на проверку — компания «{legal_name}»."),
 }
 
 
@@ -315,28 +317,28 @@ def notify_operator_alert(*, rfq=None, order=None, claim=None, user_obj=None,
     if order:
         cards.append(_build_timeline_card(order))
         title_prefix = f"Сделка ORD-{order.id}"
-        actions.append({"action": "get_order_detail", "label": "📋 Открыть заказ",
+        actions.append({"action": "get_order_detail", "label": gettext("📋 Открыть заказ"),
                           "params": {"order_id": order.id}})
     elif rfq:
         title_prefix = f"RFQ #{rfq.id}"
         if event == "sla_semi_overdue":
-            actions.append({"action": "op_approve_kp", "label": "▶️ Approve КП",
+            actions.append({"action": "op_approve_kp", "label": gettext("▶️ Approve КП"),
                               "params": {"rfq_id": rfq.id}})
         if event == "sla_manual_overdue":
             actions.append({"action": "op_dispatch_manual_rfq",
-                              "label": "▶️ Сформировать КП",
+                              "label": gettext("▶️ Сформировать КП"),
                               "params": {"rfq_id": rfq.id}})
     elif claim:
         title_prefix = f"Рекламация #{claim.id}"
-        actions.append({"action": "claim_detail", "label": "📋 Открыть",
+        actions.append({"action": "claim_detail", "label": gettext("📋 Открыть"),
                           "params": {"claim_id": claim.id}})
     elif user_obj:
         title_prefix = f"@{user_obj.username}"
         if event == "user_registered":
-            actions.append({"action": "admin_user_detail", "label": "👤 Открыть профиль",
+            actions.append({"action": "admin_user_detail", "label": gettext("👤 Открыть профиль"),
                               "params": {"user_id": user_obj.id}})
         elif event == "kyb_submitted":
-            actions.append({"action": "op_kyb_review", "label": "🛡 Проверить KYB",
+            actions.append({"action": "op_kyb_review", "label": gettext("🛡 Проверить KYB"),
                               "params": {"user_id": user_obj.id}})
 
     for op in _operator_users():
@@ -350,7 +352,7 @@ def notify_operator_alert(*, rfq=None, order=None, claim=None, user_obj=None,
         if not conv:
             conv = Conversation.objects.create(
                 user=op, role="operator", category="support",
-                title="Алерты оператора",
+                title=_("Алерты оператора"),
             )
         Message.objects.create(
             conversation=conv,

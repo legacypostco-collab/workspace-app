@@ -22,6 +22,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .actions import ActionResult, _notify, register
 
@@ -35,7 +36,7 @@ def _is_admin(role: str) -> bool:
 def _ensure_admin(role: str):
     if not _is_admin(role):
         return ActionResult(
-            text="🔒 Только администратор платформы может выполнять это действие.",
+            text=_("🔒 Только администратор платформы может выполнять это действие."),
         )
     return None
 
@@ -91,48 +92,51 @@ def admin_dashboard(params, user, role):
                        .filter(status="imported", created_at__gte=cutoff_7d)
                        .aggregate(n=Sum("imported_rows"))["n"] or 0)
 
+    gmv_7d_fmt = f"{gmv_7d:,.0f}"
     return ActionResult(
         text=(
-            f"🛡 Платформа · {users_total} активных юзеров (+{users_new_7d} за неделю) · "
-            f"{orders_total} заказов всего · GMV за 7 дней ${gmv_7d:,.0f}."
+            _("🛡 Платформа · %(users)s активных юзеров (+%(new)s за неделю) · "
+              "%(orders)s заказов всего · GMV за 7 дней $%(gmv)s.")
+            % {"users": users_total, "new": users_new_7d,
+               "orders": orders_total, "gmv": gmv_7d_fmt}
         ),
         cards=[
-            {"type": "kpi_grid", "data": {"title": "🛡 Admin · Сводка", "items": [
-                {"label": "Активных юзеров", "value": str(users_total), "tone": "info",
+            {"type": "kpi_grid", "data": {"title": _("🛡 Admin · Сводка"), "items": [
+                {"label": _("Активных юзеров"), "value": str(users_total), "tone": "info",
                  "action": "admin_users", "params": {}},
-                {"label": "Новых за 7 дней", "value": f"+{users_new_7d}",
+                {"label": _("Новых за 7 дней"), "value": f"+{users_new_7d}",
                  "tone": "ok" if users_new_7d else "warn",
                  "action": "admin_users", "params": {"filter": "new"}},
-                {"label": "Заказов всего", "value": str(orders_total),
+                {"label": _("Заказов всего"), "value": str(orders_total),
                  "action": "admin_gmv", "params": {}},
-                {"label": "За 24 часа", "value": str(orders_24h),
+                {"label": _("За 24 часа"), "value": str(orders_24h),
                  "action": "admin_gmv", "params": {}},
-                {"label": "В работе", "value": str(open_orders), "tone": "info",
+                {"label": _("В работе"), "value": str(open_orders), "tone": "info",
                  "action": "admin_gmv", "params": {}},
                 {"label": "GMV 7d", "value": f"${gmv_7d:,.0f}", "tone": "ok",
                  "action": "admin_revenue_breakdown", "params": {}},
                 {"label": "SLA breach 7d", "value": str(sla_breached_7d),
                  "tone": "bad" if sla_breached_7d > 0 else "ok",
                  "action": "admin_moderation_queue", "params": {}},
-                {"label": "RFQ за 24ч", "value": str(rfq_24h),
+                {"label": _("RFQ за 24ч"), "value": str(rfq_24h),
                  "action": "admin_market_twin", "params": {}},
                 {"label": "KYB pending", "value": str(kyb_pending),
                  "tone": "warn" if kyb_pending else "ok",
                  "action": "admin_moderation_queue", "params": {}},
                 {"label": "KYB verified", "value": str(kyb_verified),
                  "action": "admin_users", "params": {"filter": "verified"}},
-                {"label": "Загрузки прайса 7д", "value": str(pl_uploads_7d),
+                {"label": _("Загрузки прайса 7д"), "value": str(pl_uploads_7d),
                  "tone": "info", "action": "admin_activity_feed",
                  "params": {"kind": "pricelist"}},
-                {"label": "Позиций 7д", "value": f"{pl_positions_7d:,}",
+                {"label": _("Позиций 7д"), "value": f"{pl_positions_7d:,}",
                  "action": "admin_activity_feed", "params": {"kind": "pricelist"}},
             ]}},
         ],
         contextual_actions=[
-            {"action": "admin_activity_feed", "label": "🛰 Лента событий"},
-            {"action": "admin_gmv", "label": "📈 GMV-разбивка"},
-            {"action": "admin_moderation_queue", "label": "🚨 Модерация"},
-            {"action": "admin_users", "label": "👥 Пользователи"},
+            {"action": "admin_activity_feed", "label": _("🛰 Лента событий")},
+            {"action": "admin_gmv", "label": _("📈 GMV-разбивка")},
+            {"action": "admin_moderation_queue", "label": _("🚨 Модерация")},
+            {"action": "admin_users", "label": _("👥 Пользователи")},
         ],
     )
 
@@ -151,10 +155,10 @@ def admin_gmv(params, user, role):
 
     now = timezone.now()
     windows = [
-        ("24 часа", timedelta(hours=24)),
-        ("7 дней", timedelta(days=7)),
-        ("30 дней", timedelta(days=30)),
-        ("90 дней", timedelta(days=90)),
+        (_("24 часа"), timedelta(hours=24)),
+        (_("7 дней"), timedelta(days=7)),
+        (_("30 дней"), timedelta(days=30)),
+        (_("90 дней"), timedelta(days=90)),
     ]
     items = []
     for label, td in windows:
@@ -165,7 +169,9 @@ def admin_gmv(params, user, role):
         ).aggregate(gmv=Sum("total_amount"), n=Count("id"))
         gmv = agg["gmv"] or Decimal("0")
         n = agg["n"] or 0
-        items.append({"label": label, "value": f"${gmv:,.0f} · {n} заказ.",
+        gmv_fmt = f"{gmv:,.0f}"
+        items.append({"label": label,
+                       "value": _("$%(gmv)s · %(n)s заказ.") % {"gmv": gmv_fmt, "n": n},
                        "tone": "ok" if gmv > 0 else "warn",
                        "action": "admin_revenue_breakdown", "params": {}})
 
@@ -185,16 +191,16 @@ def admin_gmv(params, user, role):
 
     return ActionResult(
         text=(
-            "📈 Платформенный GMV (только paid/refunded, без отменённых)."
+            _("📈 Платформенный GMV (только paid/refunded, без отменённых).")
         ),
         cards=[
-            {"type": "kpi_grid", "data": {"title": "💰 GMV по периодам", "items": items}},
-            {"type": "list", "data": {"title": "🏆 Топ категорий по GMV",
-                                       "items": cat_rows or [{"title": "Нет данных"}]}},
+            {"type": "kpi_grid", "data": {"title": _("💰 GMV по периодам"), "items": items}},
+            {"type": "list", "data": {"title": _("🏆 Топ категорий по GMV"),
+                                       "items": cat_rows or [{"title": _("Нет данных")}]}},
         ],
         contextual_actions=[
-            {"action": "admin_dashboard", "label": "← Сводка"},
-            {"action": "op_payments_dashboard", "label": "💰 Эскроу"},
+            {"action": "admin_dashboard", "label": _("← Сводка")},
+            {"action": "op_payments_dashboard", "label": _("💰 Эскроу")},
         ],
     )
 
@@ -260,10 +266,10 @@ def admin_users(params, user, role):
         }
 
     # Делим по сущностям (ролям) — отдельная секция на каждую.
-    GROUPS = [("buyer", "👤 Покупатели"), ("seller", "🏭 Продавцы"),
-              ("operator", "🛠 Операторы"), ("admin", "⚡ Админы")]
+    GROUPS = [("buyer", _("👤 Покупатели")), ("seller", _("🏭 Продавцы")),
+              ("operator", _("🛠 Операторы")), ("admin", _("⚡ Админы"))]
     PER = 40
-    buckets = {k: [] for k, _ in GROUPS}
+    buckets = {k: [] for k, _label in GROUPS}
     for u in qs:
         buckets[_group_of(u)].append(u)
 
@@ -276,24 +282,26 @@ def admin_users(params, user, role):
         total += len(bucket)
         items = [_row(u) for u in bucket[:PER]]
         if len(bucket) > PER:
-            items.append({"title": f"… ещё {len(bucket) - PER} (показаны первые {PER})"})
+            items.append({"title": _("… ещё %(rest)s (показаны первые %(per)s)")
+                          % {"rest": len(bucket) - PER, "per": PER}})
         cards.append({"type": "list", "data": {
             "title": f"{title} · {len(bucket)}", "items": items,
             "collapsible": True}})   # изначально свёрнуто, раскрытие по клику
     if not cards:
-        cards = [{"type": "list", "data": {"title": "👥 Пользователи",
-                                            "items": [{"title": "Пусто"}]}}]
+        cards = [{"type": "list", "data": {"title": _("👥 Пользователи"),
+                                            "items": [{"title": _("Пусто")}]}}]
 
     return ActionResult(
-        text=f"👥 Пользователи · фильтр «{flt}» · {total} в {len(cards)} группах.",
+        text=_("👥 Пользователи · фильтр «%(flt)s» · %(total)s в %(groups)s группах.")
+             % {"flt": flt, "total": total, "groups": len(cards)},
         cards=cards,
         contextual_actions=[
-            {"action": "admin_users", "label": "Все",       "params": {"filter": "all"}},
-            {"action": "admin_users", "label": "Активные",  "params": {"filter": "active"}},
-            {"action": "admin_users", "label": "Заблокир.", "params": {"filter": "banned"}},
-            {"action": "admin_users", "label": "👤 Покупатели","params": {"filter": "buyers"}},
-            {"action": "admin_users", "label": "🏭 Продавцы",  "params": {"filter": "sellers"}},
-            {"action": "admin_users", "label": "🛠 Операторы", "params": {"filter": "operators"}},
+            {"action": "admin_users", "label": _("Все"),       "params": {"filter": "all"}},
+            {"action": "admin_users", "label": _("Активные"),  "params": {"filter": "active"}},
+            {"action": "admin_users", "label": _("Заблокир."), "params": {"filter": "banned"}},
+            {"action": "admin_users", "label": _("👤 Покупатели"),"params": {"filter": "buyers"}},
+            {"action": "admin_users", "label": _("🏭 Продавцы"),  "params": {"filter": "sellers"}},
+            {"action": "admin_users", "label": _("🛠 Операторы"), "params": {"filter": "operators"}},
             {"action": "admin_users", "label": "KYB pending","params": {"filter": "kyb_pending"}},
         ],
     )
@@ -304,7 +312,7 @@ def admin_users(params, user, role):
 # ══════════════════════════════════════════════════════════
 
 _ACTIVITY_EMOJI = {"order": "🛒", "rfq": "📋", "pricelist": "📦"}
-_ACTIVITY_LABEL = {"order": "Заказ", "rfq": "RFQ", "pricelist": "Загрузка прайса"}
+_ACTIVITY_LABEL = {"order": _("Заказ"), "rfq": "RFQ", "pricelist": _("Загрузка прайса")}
 
 
 @register("admin_activity_feed")
@@ -325,7 +333,7 @@ def admin_activity_feed(params, user, role):
     rows = []
     for ev in qs:
         m = ev.meta or {}
-        actor_name = ev.actor.username if ev.actor else "гость / аноним"
+        actor_name = ev.actor.username if ev.actor else _("гость / аноним")
         role_lbl = ev.actor_role or ("—" if ev.actor else "anon")
         when = timezone.localtime(ev.created_at).strftime("%d.%m %H:%M")
         ip = ev.ip or "—"
@@ -353,17 +361,18 @@ def admin_activity_feed(params, user, role):
         rows.append({"title": title, "subtitle": subtitle, **click})
 
     return ActionResult(
-        text=f"🛰 Лента событий · фильтр «{flt}» · {len(rows)} последних.",
+        text=_("🛰 Лента событий · фильтр «%(flt)s» · %(n)s последних.")
+             % {"flt": flt, "n": len(rows)},
         cards=[{"type": "list", "data": {
-            "title": "🛰 Важные события (сделки · RFQ · загрузки)",
-            "items": rows or [{"title": "Пока событий нет"}],
+            "title": _("🛰 Важные события (сделки · RFQ · загрузки)"),
+            "items": rows or [{"title": _("Пока событий нет")}],
         }}],
         contextual_actions=[
-            {"action": "admin_activity_feed", "label": "🔄 Обновить", "params": {"kind": flt}},
-            {"action": "admin_activity_feed", "label": "Все",       "params": {"kind": "all"}},
-            {"action": "admin_activity_feed", "label": "🛒 Заказы",  "params": {"kind": "order"}},
+            {"action": "admin_activity_feed", "label": _("🔄 Обновить"), "params": {"kind": flt}},
+            {"action": "admin_activity_feed", "label": _("Все"),       "params": {"kind": "all"}},
+            {"action": "admin_activity_feed", "label": _("🛒 Заказы"),  "params": {"kind": "order"}},
             {"action": "admin_activity_feed", "label": "📋 RFQ",      "params": {"kind": "rfq"}},
-            {"action": "admin_activity_feed", "label": "📦 Прайсы",   "params": {"kind": "pricelist"}},
+            {"action": "admin_activity_feed", "label": _("📦 Прайсы"),   "params": {"kind": "pricelist"}},
         ],
     )
 
@@ -385,7 +394,7 @@ def admin_user_detail(params, user, role):
     try:
         u = U.objects.get(id=int(params.get("user_id") or 0))
     except (U.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Пользователь не найден.")
+        return ActionResult(text=_("Пользователь не найден."))
 
     prof = getattr(u, "profile", None)
     kyb = getattr(u, "kyb", None)
@@ -433,91 +442,96 @@ def admin_user_detail(params, user, role):
     priv = "⚡ admin" if u.is_superuser else ("staff" if u.is_staff else "user")
 
     groups = []
-    groups.append({"title": "👤 Аккаунт", "rows": [
+    groups.append({"title": _("👤 Аккаунт"), "rows": [
         {"label": "Username", "value": u.username, "primary": True},
         {"label": "Email", "value": u.email or "—"},
-        {"label": "Роль", "value": role_val},
-        {"label": "Статус", "value": "🚫 Заблокирован" if not u.is_active else "✓ Активен",
+        {"label": _("Роль"), "value": role_val},
+        {"label": _("Статус"), "value": _("🚫 Заблокирован") if not u.is_active else _("✓ Активен"),
          "primary": not u.is_active},
-        {"label": "Привилегии", "value": priv},
-        {"label": "Зарегистрирован", "value": _dt(u.date_joined, "%Y-%m-%d")},
-        {"label": "Последний вход", "value": _dt(u.last_login)},
-        {"label": "Язык", "value": (getattr(prof, "language", "") or "—") if prof else "—"},
-        {"label": "AI-кредиты", "value": str(getattr(prof, "ai_credits", "—")) if prof else "—"},
+        {"label": _("Привилегии"), "value": priv},
+        {"label": _("Зарегистрирован"), "value": _dt(u.date_joined, "%Y-%m-%d")},
+        {"label": _("Последний вход"), "value": _dt(u.last_login)},
+        {"label": _("Язык"), "value": (getattr(prof, "language", "") or "—") if prof else "—"},
+        {"label": _("AI-кредиты"), "value": str(getattr(prof, "ai_credits", "—")) if prof else "—"},
     ]})
     if prof:
-        groups.append({"title": "📇 Контакты", "rows": [
-            {"label": "Контактное лицо", "value": prof.contact_name or "—"},
-            {"label": "Должность", "value": prof.position or "—"},
-            {"label": "Телефон", "value": prof.phone_e164 or "—"},
-            {"label": "Компания", "value": prof.company_name or "—"},
-            {"label": "Мессенджер", "value": (f"{prof.messenger_kind}: {prof.messenger_handle}"
+        groups.append({"title": _("📇 Контакты"), "rows": [
+            {"label": _("Контактное лицо"), "value": prof.contact_name or "—"},
+            {"label": _("Должность"), "value": prof.position or "—"},
+            {"label": _("Телефон"), "value": prof.phone_e164 or "—"},
+            {"label": _("Компания"), "value": prof.company_name or "—"},
+            {"label": _("Мессенджер"), "value": (f"{prof.messenger_kind}: {prof.messenger_handle}"
                                               if prof.messenger_handle else "—")},
-            {"label": "Уведомления", "value": "email " + ("✓" if prof.notif_email_enabled else "✗")
+            {"label": _("Уведомления"), "value": "email " + ("✓" if prof.notif_email_enabled else "✗")
                 + " · TG " + ("✓" if prof.notif_telegram_enabled else "✗")},
         ]})
     if kyb:
         docs = " · ".join(filter(None, [
-            "Устав" if kyb.doc_charter else "", "ЕГРЮЛ" if kyb.doc_egrul else "",
-            "Паспорт" if kyb.doc_passport else ""])) or "нет"
-        groups.append({"title": "🏢 Компания / KYB", "rows": [
-            {"label": "Статус KYB", "value": kyb.get_status_display()},
-            {"label": "Юр. название", "value": kyb.legal_name or "—"},
-            {"label": "Страна", "value": kyb.country or "—"},
-            {"label": "ИНН", "value": kyb.inn or "—"},
-            {"label": "КПП", "value": kyb.kpp or "—"},
-            {"label": "ОГРН", "value": kyb.ogrn or "—"},
+            _("Устав") if kyb.doc_charter else "", _("ЕГРЮЛ") if kyb.doc_egrul else "",
+            _("Паспорт") if kyb.doc_passport else ""])) or _("нет")
+        groups.append({"title": _("🏢 Компания / KYB"), "rows": [
+            {"label": _("Статус KYB"), "value": kyb.get_status_display()},
+            {"label": _("Юр. название"), "value": kyb.legal_name or "—"},
+            {"label": _("Страна"), "value": kyb.country or "—"},
+            {"label": _("ИНН"), "value": kyb.inn or "—"},
+            {"label": _("КПП"), "value": kyb.kpp or "—"},
+            {"label": _("ОГРН"), "value": kyb.ogrn or "—"},
             {"label": "VAT", "value": kyb.vat_number or "—"},
-            {"label": "Директор", "value": kyb.director_name or "—"},
-            {"label": "Банк", "value": kyb.bank_name or "—"},
-            {"label": "Документы", "value": docs},
+            {"label": _("Директор"), "value": kyb.director_name or "—"},
+            {"label": _("Банк"), "value": kyb.bank_name or "—"},
+            {"label": _("Документы"), "value": docs},
         ]})
     else:
-        groups.append({"title": "🏢 Компания / KYB",
-                       "rows": [{"label": "KYB", "value": "не подавалась"}]})
+        groups.append({"title": _("🏢 Компания / KYB"),
+                       "rows": [{"label": "KYB", "value": _("не подавалась")}]})
     fin_rows = [
-        {"label": "Баланс кошелька",
+        {"label": _("Баланс кошелька"),
          "value": f"${wallet.balance:,.2f} {wallet.currency}" if wallet else "—"},
-        {"label": "Оплачено заказов", "value": f"${float(paid_sum):,.2f}"},
-        {"label": "Пополнений", "value": str(topups_n)},
+        {"label": _("Оплачено заказов"), "value": f"${float(paid_sum):,.2f}"},
+        {"label": _("Пополнений"), "value": str(topups_n)},
     ]
     if last_topup:
-        fin_rows.append({"label": "Последнее пополнение",
-                         "value": f"${last_topup.amount:,.0f} · {last_topup.get_status_display()} · "
-                                  f"{_dt(last_topup.created_at, '%Y-%m-%d')}"})
-    groups.append({"title": "💰 Финансы", "rows": fin_rows})
-    groups.append({"title": "📦 Заказы и заявки", "rows": [
-        {"label": "Как покупатель", "value": f"{orders_paid} оплачено / {orders_n} всего"},
-        {"label": "Как продавец (продажи)", "value": str(sales_orders)},
-        {"label": "RFQ создано", "value": str(rfq_n)},
+        topup_amount = f"{last_topup.amount:,.0f}"
+        fin_rows.append({"label": _("Последнее пополнение"),
+                         "value": _("$%(amount)s · %(status)s · %(date)s")
+                                  % {"amount": topup_amount,
+                                     "status": last_topup.get_status_display(),
+                                     "date": _dt(last_topup.created_at, '%Y-%m-%d')}})
+    groups.append({"title": _("💰 Финансы"), "rows": fin_rows})
+    groups.append({"title": _("📦 Заказы и заявки"), "rows": [
+        {"label": _("Как покупатель"),
+         "value": _("%(paid)s оплачено / %(total)s всего")
+                  % {"paid": orders_paid, "total": orders_n}},
+        {"label": _("Как продавец (продажи)"), "value": str(sales_orders)},
+        {"label": _("RFQ создано"), "value": str(rfq_n)},
     ]})
     if prof and (role_val.startswith("seller") or pl_n or sales_orders):
         flags = []
-        if getattr(prof, "bankruptcy_flag", False): flags.append("⚠ банкротство")
-        if getattr(prof, "liquidation_flag", False): flags.append("⚠ ликвидация")
-        groups.append({"title": "🏭 Продавец-метрики", "rows": [
-            {"label": "Статус поставщика", "value": prof.supplier_status or "—"},
-            {"label": "Рейтинг", "value": f"{float(prof.rating_score):.1f}"
+        if getattr(prof, "bankruptcy_flag", False): flags.append(_("⚠ банкротство"))
+        if getattr(prof, "liquidation_flag", False): flags.append(_("⚠ ликвидация"))
+        groups.append({"title": _("🏭 Продавец-метрики"), "rows": [
+            {"label": _("Статус поставщика"), "value": prof.supplier_status or "—"},
+            {"label": _("Рейтинг"), "value": f"{float(prof.rating_score):.1f}"
                 if prof.rating_score is not None else "—"},
-            {"label": "Внешний / поведенческий",
+            {"label": _("Внешний / поведенческий"),
              "value": f"{float(prof.external_score or 0):.0f} / {float(prof.behavioral_score or 0):.0f}"},
-            {"label": "Флаги", "value": " · ".join(flags) if flags else "—"},
-            {"label": "Загрузок прайса", "value": str(pl_n)},
-            {"label": "Позиций импортировано", "value": f"{pl_positions:,}"},
+            {"label": _("Флаги"), "value": " · ".join(flags) if flags else "—"},
+            {"label": _("Загрузок прайса"), "value": str(pl_n)},
+            {"label": _("Позиций импортировано"), "value": f"{pl_positions:,}"},
         ]})
-    groups.append({"title": "🛰 Активность / безопасность", "rows": [
-        {"label": "IP (последние)", "value": ", ".join(uniq_ips[:3]) or "—"},
-        {"label": "Событий в ленте", "value": str(ev_n)},
-        {"label": "Претензий открыто", "value": str(claims_n)},
-        {"label": "Admin-заметка", "value": (getattr(prof, "admin_note", "") or "—") if prof else "—"},
+    groups.append({"title": _("🛰 Активность / безопасность"), "rows": [
+        {"label": _("IP (последние)"), "value": ", ".join(uniq_ips[:3]) or "—"},
+        {"label": _("Событий в ленте"), "value": str(ev_n)},
+        {"label": _("Претензий открыто"), "value": str(claims_n)},
+        {"label": _("Admin-заметка"), "value": (getattr(prof, "admin_note", "") or "—") if prof else "—"},
     ]})
 
     actions = []
     if u.is_active and not u.is_superuser:
-        actions.append({"action": "admin_ban_user", "label": "🚫 Заблокировать",
+        actions.append({"action": "admin_ban_user", "label": _("🚫 Заблокировать"),
                         "params": {"user_id": u.id}})
     elif not u.is_active:
-        actions.append({"action": "admin_unban_user", "label": "✓ Разблокировать",
+        actions.append({"action": "admin_unban_user", "label": _("✓ Разблокировать"),
                         "params": {"user_id": u.id}})
 
     # Кликабельные ссылки на сами заявки пользователя (заказы + RFQ), чтобы
@@ -527,7 +541,7 @@ def admin_user_detail(params, user, role):
     for oid in (Order.objects.filter(buyer=u).order_by("-created_at")
                 .values_list("id", flat=True)[:6]):
         open_btns.append({"action": "get_order_detail",
-                          "label": f"📦 Заказ ORD-{oid}",
+                          "label": _("📦 Заказ ORD-%(id)s") % {"id": oid},
                           "params": {"order_id": oid}})
     for rid in (RFQ.objects.filter(created_by=u).order_by("-created_at")
                 .values_list("id", flat=True)[:6]):
@@ -536,12 +550,13 @@ def admin_user_detail(params, user, role):
                           "params": {"rfq_id": rid}})
 
     return ActionResult(
-        text=f"👤 {u.username} · {u.email or 'нет email'}",
-        cards=[{"type": "draft", "data": {"title": f"Профиль · {u.username}",
+        text=_("👤 %(username)s · %(email)s")
+             % {"username": u.username, "email": u.email or _("нет email")},
+        cards=[{"type": "draft", "data": {"title": _("Профиль · %(username)s") % {"username": u.username},
                                            "groups": groups, "confirm_label": "—"}}],
         actions=actions,
         contextual_actions=open_btns + [
-            {"action": "admin_users", "label": "← К списку"},
+            {"action": "admin_users", "label": _("← К списку")},
         ],
     )
 
@@ -559,25 +574,26 @@ def admin_ban_user(params, user, role):
     try:
         target = U.objects.get(id=int(params.get("user_id") or 0))
     except (U.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Пользователь не найден.")
+        return ActionResult(text=_("Пользователь не найден."))
 
     if target.id == user.id:
-        return ActionResult(text="⚠️ Нельзя заблокировать самого себя.")
+        return ActionResult(text=_("⚠️ Нельзя заблокировать самого себя."))
     if target.is_superuser:
-        return ActionResult(text="⚠️ Заблокировать админа нельзя.")
+        return ActionResult(text=_("⚠️ Заблокировать админа нельзя."))
     if not target.is_active:
-        return ActionResult(text=f"Пользователь {target.username} уже заблокирован.")
+        return ActionResult(text=_("Пользователь %(username)s уже заблокирован.")
+                                 % {"username": target.username})
 
     reason = (params.get("reason") or "").strip()
     confirmed = bool(params.get("confirmed"))
     if not confirmed or not reason:
         return ActionResult(
-            text=f"Заблокировать {target.username}?",
+            text=_("Заблокировать %(username)s?") % {"username": target.username},
             cards=[{"type": "form", "data": {
-                "title": f"🚫 Заблокировать · {target.username}",
+                "title": _("🚫 Заблокировать · %(username)s") % {"username": target.username},
                 "submit_action": "admin_ban_user",
                 "fields": [
-                    {"name": "reason", "label": "Причина (для аудита и нотификации)",
+                    {"name": "reason", "label": _("Причина (для аудита и нотификации)"),
                      "type": "textarea", "required": True},
                 ],
                 "fixed_params": {"user_id": target.id, "confirmed": True},
@@ -587,15 +603,17 @@ def admin_ban_user(params, user, role):
     target.is_active = False
     target.save(update_fields=["is_active"])
     _notify(target, kind="system",
-            title="Аккаунт заблокирован",
-            body=f"Платформа заблокировала ваш аккаунт. Причина: {reason[:200]}",
+            title=_("Аккаунт заблокирован"),
+            body=_("Платформа заблокировала ваш аккаунт. Причина: %(reason)s")
+                 % {"reason": reason[:200]},
             url="")
     return ActionResult(
-        text=f"🚫 {target.username} заблокирован. Причина: {reason[:120]}",
+        text=_("🚫 %(username)s заблокирован. Причина: %(reason)s")
+             % {"username": target.username, "reason": reason[:120]},
         contextual_actions=[
-            {"action": "admin_user_detail", "label": "← Профиль",
+            {"action": "admin_user_detail", "label": _("← Профиль"),
              "params": {"user_id": target.id}},
-            {"action": "admin_users", "label": "Все юзеры"},
+            {"action": "admin_users", "label": _("Все юзеры")},
         ],
     )
 
@@ -609,33 +627,34 @@ def admin_unban_user(params, user, role):
     try:
         target = U.objects.get(id=int(params.get("user_id") or 0))
     except (U.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Пользователь не найден.")
+        return ActionResult(text=_("Пользователь не найден."))
     if target.is_active:
-        return ActionResult(text=f"{target.username} не заблокирован.")
+        return ActionResult(text=_("%(username)s не заблокирован.")
+                                 % {"username": target.username})
 
     if not bool(params.get("confirmed")):
         return ActionResult(
-            text=f"Разблокировать {target.username}?",
+            text=_("Разблокировать %(username)s?") % {"username": target.username},
             cards=[{"type": "draft", "data": {
-                "title": f"✓ Разблокировать · {target.username}",
-                "rows": [{"label": "Юзер", "value": target.username, "primary": True}],
+                "title": _("✓ Разблокировать · %(username)s") % {"username": target.username},
+                "rows": [{"label": _("Юзер"), "value": target.username, "primary": True}],
                 "confirm_action": "admin_unban_user",
-                "confirm_label": "✓ Разблокировать",
+                "confirm_label": _("✓ Разблокировать"),
                 "confirm_params": {"user_id": target.id, "confirmed": True},
-                "cancel_label": "Отмена",
+                "cancel_label": _("Отмена"),
             }}],
         )
 
     target.is_active = True
     target.save(update_fields=["is_active"])
     _notify(target, kind="system",
-            title="Аккаунт разблокирован",
-            body="Платформа восстановила доступ к вашему аккаунту.",
+            title=_("Аккаунт разблокирован"),
+            body=_("Платформа восстановила доступ к вашему аккаунту."),
             url="")
     return ActionResult(
-        text=f"✓ {target.username} разблокирован.",
+        text=_("✓ %(username)s разблокирован.") % {"username": target.username},
         contextual_actions=[
-            {"action": "admin_user_detail", "label": "← Профиль",
+            {"action": "admin_user_detail", "label": _("← Профиль"),
              "params": {"user_id": target.id}},
         ],
     )
@@ -657,31 +676,31 @@ def admin_moderation_queue(params, user, role):
     quotes_countered = Quote.objects.filter(status="countered").count()
 
     items = [
-        {"title": f"KYB на проверке · {kyb_pending}",
-         "subtitle": "Анкеты ждут верификации — нажмите", "tone": "warn",
+        {"title": _("KYB на проверке · %(n)s") % {"n": kyb_pending},
+         "subtitle": _("Анкеты ждут верификации — нажмите"), "tone": "warn",
          "action": "op_kyb_queue", "params": {}} if kyb_pending else None,
-        {"title": f"Возвраты в обработке · {refunds}",
-         "subtitle": "Заказы на возврат — нажмите", "tone": "warn",
+        {"title": _("Возвраты в обработке · %(n)s") % {"n": refunds},
+         "subtitle": _("Заказы на возврат — нажмите"), "tone": "warn",
          "action": "op_queue", "params": {"filter": "refund"}} if refunds else None,
-        {"title": f"SLA нарушены · {sla_breached}",
-         "subtitle": "Просрочки по этапам — нажмите", "tone": "bad",
+        {"title": _("SLA нарушены · %(n)s") % {"n": sla_breached},
+         "subtitle": _("Просрочки по этапам — нажмите"), "tone": "bad",
          "action": "op_sla_breach", "params": {}} if sla_breached else None,
-        {"title": f"Контр-офферы ждут ответа · {quotes_countered}",
-         "subtitle": "Переторжка по КП — нажмите", "tone": "info",
+        {"title": _("Контр-офферы ждут ответа · %(n)s") % {"n": quotes_countered},
+         "subtitle": _("Переторжка по КП — нажмите"), "tone": "info",
          "action": "op_queue", "params": {}} if quotes_countered else None,
     ]
     items = [x for x in items if x]
     if not items:
-        items = [{"title": "✓ Очередь пуста", "subtitle": "Всё под контролем"}]
+        items = [{"title": _("✓ Очередь пуста"), "subtitle": _("Всё под контролем")}]
 
     return ActionResult(
-        text="🚨 Платформенная очередь модерации",
-        cards=[{"type": "list", "data": {"title": "🚨 Модерация платформы",
+        text=_("🚨 Платформенная очередь модерации"),
+        cards=[{"type": "list", "data": {"title": _("🚨 Модерация платформы"),
                                           "items": items}}],
         contextual_actions=[
             {"action": "op_kyb_queue", "label": "🛡 KYB"},
-            {"action": "op_queue", "label": "📋 Заказы (operator)"},
-            {"action": "admin_dashboard", "label": "← Сводка"},
+            {"action": "op_queue", "label": _("📋 Заказы (operator)")},
+            {"action": "admin_dashboard", "label": _("← Сводка")},
         ],
     )
 
@@ -710,7 +729,7 @@ def admin_catalog_review(params, user, role):
     ]
     no_seller_rows = [
         {"title": f"#{p.id} {p.title[:50]}",
-         "subtitle": "нет seller'а — orphan record"}
+         "subtitle": _("нет seller'а — orphan record")}
         for p in no_seller
     ]
     recent_rows = [
@@ -721,19 +740,21 @@ def admin_catalog_review(params, user, role):
 
     return ActionResult(
         text=(
-            f"📦 Каталог · {len(susp_rows)} с ценой $0 · {len(no_seller_rows)} без продавца "
-            f"· {len(recent_rows)} новых."
+            _("📦 Каталог · %(susp)s с ценой $0 · %(noseller)s без продавца "
+              "· %(recent)s новых.")
+            % {"susp": len(susp_rows), "noseller": len(no_seller_rows),
+               "recent": len(recent_rows)}
         ),
         cards=[
-            {"type": "list", "data": {"title": "⚠️ Цена = $0",
-                "items": susp_rows or [{"title": "Чисто"}]}},
-            {"type": "list", "data": {"title": "⚠️ Без продавца",
-                "items": no_seller_rows or [{"title": "Чисто"}]}},
-            {"type": "list", "data": {"title": "🆕 Последние добавленные",
+            {"type": "list", "data": {"title": _("⚠️ Цена = $0"),
+                "items": susp_rows or [{"title": _("Чисто")}]}},
+            {"type": "list", "data": {"title": _("⚠️ Без продавца"),
+                "items": no_seller_rows or [{"title": _("Чисто")}]}},
+            {"type": "list", "data": {"title": _("🆕 Последние добавленные"),
                 "items": recent_rows or [{"title": "—"}]}},
         ],
         contextual_actions=[
-            {"action": "admin_dashboard", "label": "← Сводка"},
+            {"action": "admin_dashboard", "label": _("← Сводка")},
         ],
     )
 
@@ -759,7 +780,7 @@ def admin_revenue_breakdown(params, user, role):
     from marketplace.models import PlatformRevenueLine
 
     now = timezone.now()
-    windows = [("24 часа", 1), ("7 дней", 7), ("30 дней", 30), ("90 дней", 90)]
+    windows = [(_("24 часа"), 1), (_("7 дней"), 7), (_("30 дней"), 30), (_("90 дней"), 90)]
     KIND_LABELS = dict(PlatformRevenueLine.KIND_CHOICES)
 
     results = []
@@ -774,7 +795,7 @@ def admin_revenue_breakdown(params, user, role):
 
     main_window = results[1]  # 7d
     items = [
-        {"label": "За 7 дней TOTAL", "value": f"${main_window['total']:,.0f}",
+        {"label": _("За 7 дней TOTAL"), "value": f"${main_window['total']:,.0f}",
          "tone": "info", "action": "admin_gmv", "params": {}},
     ]
     for kind, lbl in PlatformRevenueLine.KIND_CHOICES:
@@ -784,25 +805,27 @@ def admin_revenue_breakdown(params, user, role):
 
     period_rows = []
     for r in results:
+        period_total = f"{r['total']:,.0f}"
         period_rows.append({
             "title": f"{r['label']}",
-            "subtitle": f"${r['total']:,.0f} · {r['n']} строк",
+            "subtitle": _("$%(total)s · %(n)s строк") % {"total": period_total, "n": r['n']},
             "action": "admin_gmv", "params": {},
         })
 
+    main_total_fmt = f"{main_window['total']:,.0f}"
     return ActionResult(
         text=(
-            f"💰 Декомпозиция дохода группы (ТЗ §15)\n"
-            f"За 7 дней · ${main_window['total']:,.0f}"
+            _("💰 Декомпозиция дохода группы (ТЗ §15)\n"
+              "За 7 дней · $%(total)s") % {"total": main_total_fmt}
         ),
         cards=[
-            {"type": "kpi_grid", "data": {"title": "💰 Структура дохода (7d)",
+            {"type": "kpi_grid", "data": {"title": _("💰 Структура дохода (7d)"),
                                             "items": items}},
-            {"type": "list", "data": {"title": "📊 По периодам",
+            {"type": "list", "data": {"title": _("📊 По периодам"),
                                         "items": period_rows}},
         ],
         contextual_actions=[
-            {"action": "admin_dashboard", "label": "← Сводка"},
+            {"action": "admin_dashboard", "label": _("← Сводка")},
             {"action": "admin_gmv", "label": "📈 GMV"},
         ],
     )
@@ -835,10 +858,10 @@ def admin_platform_settings(params, user, role):
          "value": "in-memory" if os.getenv("CHANNELS_INMEMORY") else "redis"},
     ]
     return ActionResult(
-        text="🛠 Платформенные настройки (read-only).",
+        text=_("🛠 Платформенные настройки (read-only)."),
         cards=[{"type": "kpi_grid", "data": {"title": "🛠 Settings", "items": items}}],
         contextual_actions=[
-            {"action": "admin_dashboard", "label": "← Сводка"},
+            {"action": "admin_dashboard", "label": _("← Сводка")},
         ],
     )
 
@@ -890,72 +913,74 @@ def admin_market_twin(params, user, role):
     def cov(n, rich):
         return "🟢" if n >= rich else ("🟡" if n > 0 else "⚪️")
 
-    kpi = {"type": "kpi_grid", "data": {"title": "🌐 Цифровой слепок рынка", "kpis": [
-        {"value": _n(parts), "label": "Артикулы (OEM)", "action": "admin_catalog_review", "params": {}},
-        {"value": _n(partrefs), "label": "Кросс-ссылки", "sub": "граф аналогов", "action": "admin_catalog_review", "params": {}},
-        {"value": _n(draw), "label": "Чертежи", "action": "op_drawings_by_part", "params": {}},
-        {"value": _n(orders), "label": "Сделки", "sub": _m(gmv) + " GMV", "action": "admin_gmv", "params": {}},
-        {"value": _n(custs), "label": "Заказчики", "action": "admin_customers", "params": {}},
-        {"value": _n(projs), "label": "Парки техники", "action": "admin_fleets", "params": {}},
+    kpi = {"type": "kpi_grid", "data": {"title": _("🌐 Цифровой слепок рынка"), "kpis": [
+        {"value": _n(parts), "label": _("Артикулы (OEM)"), "action": "admin_catalog_review", "params": {}},
+        {"value": _n(partrefs), "label": _("Кросс-ссылки"), "sub": _("граф аналогов"), "action": "admin_catalog_review", "params": {}},
+        {"value": _n(draw), "label": _("Чертежи"), "action": "op_drawings_by_part", "params": {}},
+        {"value": _n(orders), "label": _("Сделки"), "sub": _m(gmv) + " GMV", "action": "admin_gmv", "params": {}},
+        {"value": _n(custs), "label": _("Заказчики"), "action": "admin_customers", "params": {}},
+        {"value": _n(projs), "label": _("Парки техники"), "action": "admin_fleets", "params": {}},
     ]}}
 
     # Активы рынка: что копится, источник, покрытие. Каждый → в свой раздел.
-    assets = {"type": "list", "data": {"title": "📦 Активы данных (что копится) — нажмите", "rows": [
-        {"title": f"{cov(parts, 100000)} Артикулы / OEM · {_n(parts)}",
-         "subtitle": "спрос+предложение, цены, наличие · источник: продавцы (каталоги) + покупатели (поиск/RFQ)",
+    assets = {"type": "list", "data": {"title": _("📦 Активы данных (что копится) — нажмите"), "rows": [
+        {"title": _("%(cov)s Артикулы / OEM · %(n)s") % {"cov": cov(parts, 100000), "n": _n(parts)},
+         "subtitle": _("спрос+предложение, цены, наличие · источник: продавцы (каталоги) + покупатели (поиск/RFQ)"),
          "action": "admin_catalog_review", "params": {}},
-        {"title": f"{cov(partrefs, 10000)} Кросс-ссылки аналогов · {_n(partrefs)}",
-         "subtitle": "граф «оригинал↔аналог» · источник: импорт + привязки операторов/KAM",
+        {"title": _("%(cov)s Кросс-ссылки аналогов · %(n)s") % {"cov": cov(partrefs, 10000), "n": _n(partrefs)},
+         "subtitle": _("граф «оригинал↔аналог» · источник: импорт + привязки операторов/KAM"),
          "action": "admin_catalog_review", "params": {}},
-        {"title": f"{cov(draw, 1000)} Чертежи · {_n(draw)}",
-         "subtitle": "тех. идентификация детали → точность поставки · источник: покупатели + продавцы + админ",
+        {"title": _("%(cov)s Чертежи · %(n)s") % {"cov": cov(draw, 1000), "n": _n(draw)},
+         "subtitle": _("тех. идентификация детали → точность поставки · источник: покупатели + продавцы + админ"),
          "action": "op_drawings_by_part", "params": {}},
-        {"title": f"{cov(orders, 1000)} Цены / маршруты / сроки · {_n(orders)} сделок",
-         "subtitle": "реальные цены, логистика, таможня · источник: транзакции (самые ценные данные)",
+        {"title": _("%(cov)s Цены / маршруты / сроки · %(n)s сделок") % {"cov": cov(orders, 1000), "n": _n(orders)},
+         "subtitle": _("реальные цены, логистика, таможня · источник: транзакции (самые ценные данные)"),
          "action": "admin_gmv", "params": {}},
-        {"title": f"{cov(custs, 100)} Заказчики + контакты · {_n(custs)}",
-         "subtitle": "кто покупает, контакты ЛПР · источник: KAM (привлечение) + регистрации",
+        {"title": _("%(cov)s Заказчики + контакты · %(n)s") % {"cov": cov(custs, 100), "n": _n(custs)},
+         "subtitle": _("кто покупает, контакты ЛПР · источник: KAM (привлечение) + регистрации"),
          "action": "admin_customers", "params": {}},
-        {"title": f"{cov(projs, 100)} Парки техники + периодичность · {_n(projs)}",
-         "subtitle": "что у клиента в эксплуатации + как часто закупает · источник: проекты/RFQ покупателей",
+        {"title": _("%(cov)s Парки техники + периодичность · %(n)s") % {"cov": cov(projs, 100), "n": _n(projs)},
+         "subtitle": _("что у клиента в эксплуатации + как часто закупает · источник: проекты/RFQ покупателей"),
          "action": "admin_fleets", "params": {}},
-        {"title": f"{cov(customs, 1000)} Таможенная аналитика · {_n(customs)} ({_m(customs_val)})",
-         "subtitle": "реальные цены/объёмы ввоза по HS/странам · источник: ваш ручной засев",
+        {"title": _("%(cov)s Таможенная аналитика · %(n)s (%(val)s)") % {"cov": cov(customs, 1000), "n": _n(customs), "val": _m(customs_val)},
+         "subtitle": _("реальные цены/объёмы ввоза по HS/странам · источник: ваш ручной засев"),
          "action": "admin_customs", "params": {}},
     ]}}
 
-    sources = {"type": "list", "data": {"title": "🔌 Источники обогащения — нажмите", "rows": [
-        {"title": "👤 Покупатели", "subtitle": "RFQ, поиск, заказы, чертежи, парки техники — основной поток спроса",
+    sources = {"type": "list", "data": {"title": _("🔌 Источники обогащения — нажмите"), "rows": [
+        {"title": _("👤 Покупатели"), "subtitle": _("RFQ, поиск, заказы, чертежи, парки техники — основной поток спроса"),
          "action": "admin_users", "params": {"filter": "buyers"}},
-        {"title": "🏭 Продавцы", "subtitle": "каталоги, цены, наличие, чертежи — основной поток предложения",
+        {"title": _("🏭 Продавцы"), "subtitle": _("каталоги, цены, наличие, чертежи — основной поток предложения"),
          "action": "admin_users", "params": {"filter": "sellers"}},
-        {"title": "🛡 Операторы / KAM", "subtitle": "KYB, HS-коды, привязки аналогов, контакты, верификация",
+        {"title": _("🛡 Операторы / KAM"), "subtitle": _("KYB, HS-коды, привязки аналогов, контакты, верификация"),
          "action": "admin_moderation_queue", "params": {}},
-        {"title": "🗂 Админ (вы)", "subtitle": "таможенная аналитика, чертежи, парт-номера — ручной засев",
+        {"title": _("🗂 Админ (вы)"), "subtitle": _("таможенная аналитика, чертежи, парт-номера — ручной засев"),
          "action": "admin_customs", "params": {}},
     ]}}
 
     geo = list(Customer.objects.values("country").annotate(c=Count("id")).order_by("-c")[:10])
-    geo_rows = [{"title": (g["country"] or "—"), "subtitle": f"{g['c']} заказчиков",
+    geo_rows = [{"title": (g["country"] or "—"), "subtitle": _("%(c)s заказчиков") % {"c": g['c']},
                  "action": "admin_customers", "params": {}} for g in geo] or \
-               [{"title": "Пока нет данных по странам", "subtitle": "наполнится с заказчиками"}]
-    geography = {"type": "list", "data": {"title": "🗺 География (по странам)", "rows": geo_rows}}
+               [{"title": _("Пока нет данных по странам"), "subtitle": _("наполнится с заказчиками")}]
+    geography = {"type": "list", "data": {"title": _("🗺 География (по странам)"), "rows": geo_rows}}
 
-    roadmap = {"type": "list", "data": {"title": "🧭 Заложить под наполнение (архитектура)", "rows": [
-        {"title": "Таможенная аналитика (импорт)", "subtitle": "HS-коды, объёмы, цены ввоза — отдельная модель + загрузчик", "tone": "info"},
-        {"title": "История цен по артикулу", "subtitle": "цена/время/поставщик/регион → тренды и бенчмарк", "tone": "info"},
-        {"title": "Структурный парк техники", "subtitle": "модель/серийник/наработка → предиктивный спрос", "tone": "info"},
-        {"title": "Контакты ключевых поставщиков", "subtitle": "рейтинг надёжности, сроки, ниши", "tone": "info"},
+    roadmap = {"type": "list", "data": {"title": _("🧭 Заложить под наполнение (архитектура)"), "rows": [
+        {"title": _("Таможенная аналитика (импорт)"), "subtitle": _("HS-коды, объёмы, цены ввоза — отдельная модель + загрузчик"), "tone": "info"},
+        {"title": _("История цен по артикулу"), "subtitle": _("цена/время/поставщик/регион → тренды и бенчмарк"), "tone": "info"},
+        {"title": _("Структурный парк техники"), "subtitle": _("модель/серийник/наработка → предиктивный спрос"), "tone": "info"},
+        {"title": _("Контакты ключевых поставщиков"), "subtitle": _("рейтинг надёжности, сроки, ниши"), "tone": "info"},
     ]}}
 
     return ActionResult(
-        text=(f"🌐 Цифровой слепок рынка. Артикулы {_n(parts)}, кросс-ссылки {_n(partrefs)}, "
-              f"чертежи {_n(draw)}, сделки {_n(orders)} ({_m(gmv)} GMV). Это и есть конечный "
-              "продукт: рынок копится из действий пользователей; вы засеваете таможню/чертежи/парт-номера."),
+        text=(_("🌐 Цифровой слепок рынка. Артикулы %(parts)s, кросс-ссылки %(refs)s, "
+                "чертежи %(draw)s, сделки %(orders)s (%(gmv)s GMV). Это и есть конечный "
+                "продукт: рынок копится из действий пользователей; вы засеваете таможню/чертежи/парт-номера.")
+              % {"parts": _n(parts), "refs": _n(partrefs), "draw": _n(draw),
+                 "orders": _n(orders), "gmv": _m(gmv)}),
         cards=[kpi, assets, sources, geography, roadmap],
         contextual_actions=[
-            {"action": "admin_dashboard", "label": "← Сводка"},
-            {"action": "admin_catalog_review", "label": "📦 Каталог"},
+            {"action": "admin_dashboard", "label": _("← Сводка")},
+            {"action": "admin_catalog_review", "label": _("📦 Каталог")},
         ],
     )
 
@@ -984,39 +1009,42 @@ def admin_customs(params, user, role):
     def _m(v):
         return ("$" + f"{float(v):,.0f}").replace(",", " ")
 
-    add_btn = {"action": "admin_customs_add", "label": "➕ Добавить запись", "params": {}}
+    add_btn = {"action": "admin_customs_add", "label": _("➕ Добавить запись"), "params": {}}
     if not total:
         return ActionResult(
-            text="🛂 Таможенная аналитика пуста. Засейте первую запись — это уникальный пласт "
-                 "данных (реальные цены/объёмы ввоза), которого нет у пользователей.",
-            contextual_actions=[add_btn, {"action": "admin_market_twin", "label": "← Слепок рынка"}],
+            text=_("🛂 Таможенная аналитика пуста. Засейте первую запись — это уникальный пласт "
+                   "данных (реальные цены/объёмы ввоза), которого нет у пользователей."),
+            contextual_actions=[add_btn, {"action": "admin_market_twin", "label": _("← Слепок рынка")}],
         )
     top_hs = list(qs.values("hs_code").annotate(c=Count("id"), v=Sum("customs_value_usd")).order_by("-v")[:8])
     top_co = list(qs.values("origin_country").annotate(c=Count("id"), v=Sum("customs_value_usd")).order_by("-v")[:8])
     recent = list(qs[:15])
 
-    kpi = {"type": "kpi_grid", "data": {"title": "🛂 Таможенная аналитика", "kpis": [
-        {"value": _n(total), "label": "Записей"},
-        {"value": _m(value), "label": "Стоимость ввоза"},
-        {"value": _n(weight) + " кг", "label": "Вес"},
-        {"value": _n(linked), "label": "С парт-номером", "sub": "связь с графом"},
+    kpi = {"type": "kpi_grid", "data": {"title": _("🛂 Таможенная аналитика"), "kpis": [
+        {"value": _n(total), "label": _("Записей")},
+        {"value": _m(value), "label": _("Стоимость ввоза")},
+        {"value": _n(weight) + " кг", "label": _("Вес")},
+        {"value": _n(linked), "label": _("С парт-номером"), "sub": _("связь с графом")},
     ]}}
-    hs_rows = [{"title": f"HS {h['hs_code']}", "subtitle": f"{h['c']} записей · {_m(h['v'])}"} for h in top_hs]
-    co_rows = [{"title": (c["origin_country"] or "—"), "subtitle": f"{c['c']} записей · {_m(c['v'])}"} for c in top_co]
+    hs_rows = [{"title": f"HS {h['hs_code']}",
+                "subtitle": _("%(c)s записей · %(v)s") % {"c": h['c'], "v": _m(h['v'])}} for h in top_hs]
+    co_rows = [{"title": (c["origin_country"] or "—"),
+                "subtitle": _("%(c)s записей · %(v)s") % {"c": c['c'], "v": _m(c['v'])}} for c in top_co]
     rec_rows = [{
         "title": f"HS {r.hs_code} · {r.origin_country or '—'}→{r.dest_country}",
         "subtitle": (f"{r.commodity or ''} · {_m(r.customs_value_usd)}"
                      + (f" · OEM {r.oem_number}" if r.oem_number else "")),
     } for r in recent]
     return ActionResult(
-        text=f"🛂 Таможенная аналитика: {_n(total)} записей, {_m(value)} ввоза, {_n(linked)} с парт-номером.",
+        text=_("🛂 Таможенная аналитика: %(total)s записей, %(value)s ввоза, %(linked)s с парт-номером.")
+             % {"total": _n(total), "value": _m(value), "linked": _n(linked)},
         cards=[
             kpi,
-            {"type": "list", "data": {"title": "📊 Топ HS-кодов по стоимости", "rows": hs_rows}},
-            {"type": "list", "data": {"title": "🗺 Топ стран происхождения", "rows": co_rows}},
-            {"type": "list", "data": {"title": "🕒 Последние записи", "rows": rec_rows}},
+            {"type": "list", "data": {"title": _("📊 Топ HS-кодов по стоимости"), "rows": hs_rows}},
+            {"type": "list", "data": {"title": _("🗺 Топ стран происхождения"), "rows": co_rows}},
+            {"type": "list", "data": {"title": _("🕒 Последние записи"), "rows": rec_rows}},
         ],
-        contextual_actions=[add_btn, {"action": "admin_market_twin", "label": "← Слепок рынка"}],
+        contextual_actions=[add_btn, {"action": "admin_market_twin", "label": _("← Слепок рынка")}],
     )
 
 
@@ -1030,22 +1058,22 @@ def admin_customs_add(params, user, role):
     hs = (params.get("hs_code") or "").strip()
     if not hs:
         return ActionResult(
-            text="Добавьте запись таможенной аналитики. Привяжите парт-номер (OEM) — "
-                 "тогда реальная цена ввоза попадёт в граф рынка по этому артикулу.",
+            text=_("Добавьте запись таможенной аналитики. Привяжите парт-номер (OEM) — "
+                   "тогда реальная цена ввоза попадёт в граф рынка по этому артикулу."),
             cards=[{"type": "form", "data": {
-                "title": "🛂 Новая запись таможни",
+                "title": _("🛂 Новая запись таможни"),
                 "submit_action": "admin_customs_add",
-                "submit_label": "Добавить",
+                "submit_label": _("Добавить"),
                 "fields": [
-                    {"name": "hs_code", "label": "ТН ВЭД / HS", "type": "text", "required": True, "placeholder": "8431499900"},
-                    {"name": "commodity", "label": "Товар", "type": "text", "placeholder": "Башмак гусеницы CAT"},
-                    {"name": "oem_number", "label": "Парт-номер (OEM)", "type": "text", "placeholder": "1R-0750 (опц., связь с графом)"},
-                    {"name": "origin_country", "label": "Страна происхождения (2 буквы)", "type": "text", "placeholder": "CN"},
-                    {"name": "supplier", "label": "Поставщик/отправитель", "type": "text", "placeholder": "опц."},
-                    {"name": "importer", "label": "Импортёр", "type": "text", "placeholder": "опц."},
-                    {"name": "qty", "label": "Кол-во", "type": "text", "placeholder": "0"},
-                    {"name": "net_weight_kg", "label": "Вес, кг", "type": "text", "placeholder": "0"},
-                    {"name": "customs_value_usd", "label": "Стоимость ввоза, USD", "type": "text", "placeholder": "0"},
+                    {"name": "hs_code", "label": _("ТН ВЭД / HS"), "type": "text", "required": True, "placeholder": "8431499900"},
+                    {"name": "commodity", "label": _("Товар"), "type": "text", "placeholder": _("Башмак гусеницы CAT")},
+                    {"name": "oem_number", "label": _("Парт-номер (OEM)"), "type": "text", "placeholder": _("1R-0750 (опц., связь с графом)")},
+                    {"name": "origin_country", "label": _("Страна происхождения (2 буквы)"), "type": "text", "placeholder": "CN"},
+                    {"name": "supplier", "label": _("Поставщик/отправитель"), "type": "text", "placeholder": _("опц.")},
+                    {"name": "importer", "label": _("Импортёр"), "type": "text", "placeholder": _("опц.")},
+                    {"name": "qty", "label": _("Кол-во"), "type": "text", "placeholder": "0"},
+                    {"name": "net_weight_kg", "label": _("Вес, кг"), "type": "text", "placeholder": "0"},
+                    {"name": "customs_value_usd", "label": _("Стоимость ввоза, USD"), "type": "text", "placeholder": "0"},
                 ],
                 "fixed_params": {},
             }}],
@@ -1068,14 +1096,14 @@ def admin_customs_add(params, user, role):
         customs_value_usd=_num("customs_value_usd"),
         source="manual", created_by=user,
     )
-    msg = f"✅ Запись добавлена: HS {rec.hs_code}"
+    msg = _("✅ Запись добавлена: HS %(hs)s") % {"hs": rec.hs_code}
     if rec.oem_number:
-        msg += f" · привязана к OEM {rec.oem_number} (обогатила граф)"
+        msg += _(" · привязана к OEM %(oem)s (обогатила граф)") % {"oem": rec.oem_number}
     return ActionResult(
         text=msg + ".",
         contextual_actions=[
-            {"action": "admin_customs_add", "label": "➕ Ещё запись", "params": {}},
-            {"action": "admin_customs", "label": "🛂 К таможне", "params": {}},
+            {"action": "admin_customs_add", "label": _("➕ Ещё запись"), "params": {}},
+            {"action": "admin_customs", "label": _("🛂 К таможне"), "params": {}},
         ],
     )
 
@@ -1092,16 +1120,17 @@ def admin_customers(params, user, role):
     rows = []
     for c in qs:
         kam = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "—"
-        confirmed = "✅ подтв." if c.user_id else "⚪️ лид"
-        contact = " · ".join([x for x in [c.contact_name, c.phone] if x]) or "контактов нет"
-        rows.append({"title": f"{c.name} · ИНН {c.inn}",
+        confirmed = _("✅ подтв.") if c.user_id else _("⚪️ лид")
+        contact = " · ".join([x for x in [c.contact_name, c.phone] if x]) or _("контактов нет")
+        rows.append({"title": _("%(name)s · ИНН %(inn)s") % {"name": c.name, "inn": c.inn},
                      "subtitle": f"{confirmed} · KAM {kam} · {contact}",
                      "action": "customer_detail", "params": {"id": str(c.id)}})
     return ActionResult(
-        text=f"👥 Заказчики платформы: {total}. Контакты ЛПР, привязка к KAM, статус закрепления.",
-        cards=[{"type": "list", "data": {"title": f"Заказчики ({total})",
-                "rows": rows or [{"title": "Пока нет заказчиков", "subtitle": "появятся с привлечением KAM"}]}}],
-        contextual_actions=[{"action": "admin_market_twin", "label": "← Слепок рынка"}],
+        text=_("👥 Заказчики платформы: %(total)s. Контакты ЛПР, привязка к KAM, статус закрепления.")
+             % {"total": total},
+        cards=[{"type": "list", "data": {"title": _("Заказчики (%(total)s)") % {"total": total},
+                "rows": rows or [{"title": _("Пока нет заказчиков"), "subtitle": _("появятся с привлечением KAM")}]}}],
+        contextual_actions=[{"action": "admin_market_twin", "label": _("← Слепок рынка")}],
     )
 
 
@@ -1118,11 +1147,14 @@ def admin_fleets(params, user, role):
     for p in qs:
         owner = (p.owner.get_full_name() or p.owner.username) if p.owner_id else "—"
         tags = ", ".join((p.tags or [])[:6]) if p.tags else "—"
-        rows.append({"title": p.name, "subtitle": f"парк/теги: {tags} · владелец {owner}",
+        rows.append({"title": p.name,
+                     "subtitle": _("парк/теги: %(tags)s · владелец %(owner)s")
+                                 % {"tags": tags, "owner": owner},
                      "url": f"/chat/project/{p.id}/"})
     return ActionResult(
-        text=f"🚜 Парки техники / проекты: {total}. Что у клиентов в эксплуатации → предиктивный спрос.",
-        cards=[{"type": "list", "data": {"title": f"Парки / проекты ({total})",
-                "rows": rows or [{"title": "Пока нет", "subtitle": "появятся из проектов покупателей"}]}}],
-        contextual_actions=[{"action": "admin_market_twin", "label": "← Слепок рынка"}],
+        text=_("🚜 Парки техники / проекты: %(total)s. Что у клиентов в эксплуатации → предиктивный спрос.")
+             % {"total": total},
+        cards=[{"type": "list", "data": {"title": _("Парки / проекты (%(total)s)") % {"total": total},
+                "rows": rows or [{"title": _("Пока нет"), "subtitle": _("появятся из проектов покупателей")}]}}],
+        contextual_actions=[{"action": "admin_market_twin", "label": _("← Слепок рынка")}],
     )

@@ -34,6 +34,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.utils.translation import gettext as _
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
@@ -69,7 +70,7 @@ class MagicLinkRequestView(View):
             logger.info("magic-link sent for user_id=%s", user.id)
 
         return JsonResponse({"ok": True, "message":
-            "Если этот email зарегистрирован, мы отправили на него ссылку."})
+            _("Если этот email зарегистрирован, мы отправили на него ссылку.")})
 
     def _send_email(self, user, token: str, request) -> None:
         try:
@@ -81,16 +82,16 @@ class MagicLinkRequestView(View):
                 or f"http://{request.get_host()}"
             )
             link = f"{site.rstrip('/')}/api/assistant/auth/magic-link/{token}/"
-            subject = "[Consolidator] Ваша ссылка для входа"
+            subject = _("[Consolidator] Ваша ссылка для входа")
             text = (
-                f"Перейдите по ссылке для входа в Consolidator:\n\n{link}\n\n"
-                f"Ссылка действует 15 минут.\n"
-                f"Если вы не запрашивали — просто проигнорируйте письмо."
+                _("Перейдите по ссылке для входа в Consolidator:\n\n%(link)s\n\n"
+                  "Ссылка действует 15 минут.\n"
+                  "Если вы не запрашивали — просто проигнорируйте письмо.") % {"link": link}
             )
             html = (
-                f"<p>Перейдите по ссылке для входа в Consolidator:</p>"
-                f"<p><a href='{link}'>Войти</a></p>"
-                f"<p>Ссылка действует 15 минут. Если вы не запрашивали — проигнорируйте.</p>"
+                _("<p>Перейдите по ссылке для входа в Consolidator:</p>"
+                  "<p><a href='%(link)s'>Войти</a></p>"
+                  "<p>Ссылка действует 15 минут. Если вы не запрашивали — проигнорируйте.</p>") % {"link": link}
             )
             msg = EmailMultiAlternatives(
                 subject=subject, body=text,
@@ -165,7 +166,8 @@ class OAuthLoginView(View):
         client_id = os.getenv(cfg["client_id_env"], "")
         if not client_id:
             return JsonResponse({"ok": False,
-                "error": f"OAuth для {provider} не настроен (нужен {cfg['client_id_env']} в env)",
+                "error": _("OAuth для %(provider)s не настроен (нужен %(env)s в env)")
+                         % {"provider": provider, "env": cfg["client_id_env"]},
             }, status=503)
         # Сохраним state в сессии для CSRF-защиты
         state = secrets.token_urlsafe(24)
@@ -203,8 +205,10 @@ class OAuthCallbackView(View):
         # Реализуется когда клиент-секрет конкретного провайдера известен.
         return JsonResponse({"ok": False,
             "error": (
-                f"OAuth callback для {provider} получен (code={code[:8]}…), "
-                f"но exchange не реализован. Нужны реальные {cfg['client_id_env']} "
-                f"и {cfg['client_secret_env']} в env."
+                _("OAuth callback для %(provider)s получен (code=%(code)s…), "
+                  "но exchange не реализован. Нужны реальные %(id_env)s "
+                  "и %(secret_env)s в env.")
+                % {"provider": provider, "code": code[:8],
+                   "id_env": cfg["client_id_env"], "secret_env": cfg["client_secret_env"]}
             ),
         }, status=501)

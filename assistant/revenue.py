@@ -16,6 +16,7 @@ Hook: confirm_delivery (когда деньги уходят продавцу) �
 from __future__ import annotations
 
 import logging
+from django.utils.translation import gettext as _
 from decimal import Decimal
 
 logger = logging.getLogger(__name__)
@@ -79,7 +80,7 @@ def generate_revenue_lines(
     lines.append(PlatformRevenueLine.objects.create(
         order=order, kind="basis_fee",
         amount=basis_fee, pct=basis_pct, basis=basis,
-        note=f"IT-Платформа {basis} {basis_pct}% от ${total:,.0f}",
+        note=_('IT-Платформа %(p0)s %(p1)s%% от $%(p2)s') % {"p0": f'{basis}', "p1": f'{basis_pct}', "p2": f'{total:,.0f}'},
     ))
 
     # 2. Логистическая маржа 3-7% (по правилам портов из ТЗ §16)
@@ -89,7 +90,7 @@ def generate_revenue_lines(
     lines.append(PlatformRevenueLine.objects.create(
         order=order, kind="logistics_margin",
         amount=logistics_margin, pct=logistics_pct,
-        note=f"Логистическая маржа {logistics_pct}%",
+        note=_('Логистическая маржа %(p0)s%%') % {"p0": f'{logistics_pct}'},
     ))
 
     # 3. Success fee 5% от поставщика
@@ -99,7 +100,7 @@ def generate_revenue_lines(
     lines.append(PlatformRevenueLine.objects.create(
         order=order, kind="success_fee",
         amount=success_fee, pct=SUCCESS_FEE_PCT,
-        note=f"5% от ${supplier_payable:,.0f} payable to supplier",
+        note=_('5%% от $%(p0)s payable to supplier') % {"p0": f'{supplier_payable:,.0f}'},
     ))
 
     # 4. РФ-агент 2% если RUB
@@ -116,7 +117,7 @@ def generate_revenue_lines(
         lines.append(PlatformRevenueLine.objects.create(
             order=order, kind="customs_fee",
             amount=CUSTOMS_FEE_USD, pct=Decimal("0"),
-            note="Customs handling $300 (наша таможня)",
+            note=_("Customs handling $300 (наша таможня)"),
         ))
 
     # 6. Минусуем volume_discount (если применился) — buyer_volume_discount
@@ -129,7 +130,7 @@ def generate_revenue_lines(
                 lines.append(PlatformRevenueLine.objects.create(
                     order=order, kind="volume_discount",
                     amount=disc_amount, pct=disc_pct,
-                    note=f"Auto-discount {disc_pct}% (по обороту)",
+                    note=_('Auto-discount %(p0)s%% (по обороту)') % {"p0": f'{disc_pct}'},
                 ))
     except Exception:
         logger.exception("volume_discount line failed")

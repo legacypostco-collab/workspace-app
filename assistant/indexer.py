@@ -28,7 +28,7 @@ def _part_to_text(part) -> str:
 def index_part(part) -> KnowledgeChunk:
     content = _part_to_text(part)
     embedding = get_embedding(content)
-    chunk, _ = KnowledgeChunk.objects.update_or_create(
+    chunk, _created = KnowledgeChunk.objects.update_or_create(
         source_type=KnowledgeChunk.SourceType.PRODUCT,
         source_id=str(part.id),
         defaults={
@@ -97,11 +97,11 @@ def index_order(order) -> KnowledgeChunk:
     if hasattr(order, "seller_id") and order.seller_id:
         access_roles.append("seller")
 
-    chunk, _ = KnowledgeChunk.objects.update_or_create(
+    chunk, _created = KnowledgeChunk.objects.update_or_create(
         source_type=KnowledgeChunk.SourceType.ORDER,
         source_id=str(order.id),
         defaults={
-            "title": f"Заказ #{order.id} — {order.get_status_display() if hasattr(order, 'get_status_display') else order.status}",
+            "title": _('Заказ #%(p0)s — %(p1)s') % {"p0": f'{order.id}', "p1": f"{(order.get_status_display() if hasattr(order, 'get_status_display') else order.status)}"},
             "content": content,
             "embedding": embedding,
             "metadata": {
@@ -154,7 +154,7 @@ def _rfq_to_text(rfq) -> str:
 def index_rfq(rfq) -> KnowledgeChunk:
     content = _rfq_to_text(rfq)
     embedding = get_embedding(content)
-    chunk, _ = KnowledgeChunk.objects.update_or_create(
+    chunk, _created = KnowledgeChunk.objects.update_or_create(
         source_type=KnowledgeChunk.SourceType.RFQ,
         source_id=str(rfq.id),
         defaults={

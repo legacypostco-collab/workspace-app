@@ -23,6 +23,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.files.base import ContentFile
+from django.utils.translation import gettext as _
 from django.utils import timezone
 
 from rest_framework.permissions import IsAuthenticated
@@ -619,7 +620,7 @@ def _get_order(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return None, ActionResult(text="Заказ не найден.")
+        return None, ActionResult(text=_("Заказ не найден."))
     # Доступ: buyer = автор; seller = у заказа есть его part'ы; operator = всегда
     if role.startswith("operator") or user.is_staff:
         return order, None
@@ -628,7 +629,7 @@ def _get_order(params, user, role):
     # seller: проверяем что у него есть part'ы в этом заказе
     if OrderItem.objects.filter(order=order, part__seller=user).exists():
         return order, None
-    return None, ActionResult(text="Нет доступа к этому заказу.")
+    return None, ActionResult(text=_("Нет доступа к этому заказу."))
 
 
 def _build_topup_pdf(topup, details) -> io.BytesIO:
@@ -749,12 +750,11 @@ def generate_invoice_pdf(params, user, role):
         doc = _save_pdf(order, "invoice", f"Счёт на оплату ORD-{order.id}", buf, user)
     except Exception as e:
         logger.exception("invoice PDF generation failed")
-        return ActionResult(text=f"⚠️ Не удалось создать счёт: {e}")
+        return ActionResult(text=_('⚠️ Не удалось создать счёт: %(p0)s') % {"p0": f'{e}'})
     url = _doc_url(doc)
     return ActionResult(
         text=(
-            f"Счёт на оплату создан.\n"
-            f"Заказ ORD-{order.id} · ${order.total_amount:,.2f}"
+            _('Счёт на оплату создан.\nЗаказ ORD-%(p0)s · $%(p1)s') % {"p0": f'{order.id}', "p1": f'{order.total_amount:,.2f}'}
         ),
         cards=[{"type": "doc", "data": {
             "id": str(doc.id),
@@ -764,10 +764,10 @@ def generate_invoice_pdf(params, user, role):
             "size_kb": (doc.file_obj.size // 1024) if doc.file_obj else None,
         }}],
         actions=[
-            {"action": "open_url", "label": "📄 Открыть PDF", "params": {"_url": url}},
-            {"action": "sign_document", "label": "✍️ Подписать и отправить",
+            {"action": "open_url", "label": _("📄 Открыть PDF"), "params": {"_url": url}},
+            {"action": "sign_document", "label": _("✍️ Подписать и отправить"),
              "params": {"document_id": doc.id}},
-            {"action": "list_order_documents", "label": "Все документы заказа",
+            {"action": "list_order_documents", "label": _("Все документы заказа"),
              "params": {"order_id": order.id}},
         ],
     )
@@ -784,17 +784,17 @@ def generate_packing_list_pdf(params, user, role):
         doc = _save_pdf(order, "packing_list", f"Упаковочный лист ORD-{order.id}", buf, user)
     except Exception as e:
         logger.exception("packing list PDF generation failed")
-        return ActionResult(text=f"⚠️ Не удалось создать упаковочный лист: {e}")
+        return ActionResult(text=_('⚠️ Не удалось создать упаковочный лист: %(p0)s') % {"p0": f'{e}'})
     url = _doc_url(doc)
     return ActionResult(
-        text=f"Упаковочный лист по заказу ORD-{order.id} готов.",
+        text=_('Упаковочный лист по заказу ORD-%(p0)s готов.') % {"p0": f'{order.id}'},
         cards=[{"type": "doc", "data": {
             "id": str(doc.id), "title": doc.title, "kind": "packing_list",
             "url": url,
         }}],
         actions=[
-            {"action": "open_url", "label": "📄 Открыть PDF", "params": {"_url": url}},
-            {"action": "sign_document", "label": "✍️ Подписать и отправить",
+            {"action": "open_url", "label": _("📄 Открыть PDF"), "params": {"_url": url}},
+            {"action": "sign_document", "label": _("✍️ Подписать и отправить"),
              "params": {"document_id": doc.id}},
         ],
     )
@@ -811,17 +811,17 @@ def generate_qc_report_pdf(params, user, role):
         doc = _save_pdf(order, "quality_report", f"Акт контроля качества ORD-{order.id}", buf, user)
     except Exception as e:
         logger.exception("QC report PDF generation failed")
-        return ActionResult(text=f"⚠️ Не удалось создать акт качества: {e}")
+        return ActionResult(text=_('⚠️ Не удалось создать акт качества: %(p0)s') % {"p0": f'{e}'})
     url = _doc_url(doc)
     return ActionResult(
-        text=f"Акт контроля качества по заказу ORD-{order.id} готов.",
+        text=_('Акт контроля качества по заказу ORD-%(p0)s готов.') % {"p0": f'{order.id}'},
         cards=[{"type": "doc", "data": {
             "id": str(doc.id), "title": doc.title, "kind": "qc_report",
             "url": url,
         }}],
         actions=[
-            {"action": "open_url", "label": "📄 Открыть PDF", "params": {"_url": url}},
-            {"action": "sign_document", "label": "✍️ Подписать и отправить",
+            {"action": "open_url", "label": _("📄 Открыть PDF"), "params": {"_url": url}},
+            {"action": "sign_document", "label": _("✍️ Подписать и отправить"),
              "params": {"document_id": doc.id}},
         ],
     )
@@ -837,13 +837,13 @@ def list_order_documents(params, user, role):
                 .prefetch_related("signatures"))
     if not docs:
         return ActionResult(
-            text=f"По заказу ORD-{order.id} пока нет документов.",
+            text=_('По заказу ORD-%(p0)s пока нет документов.') % {"p0": f'{order.id}'},
             actions=[
-                {"action": "generate_invoice_pdf", "label": "Создать счёт на оплату",
+                {"action": "generate_invoice_pdf", "label": _("Создать счёт на оплату"),
                  "params": {"order_id": order.id}},
-                {"action": "generate_packing_list_pdf", "label": "Создать упаковочный лист",
+                {"action": "generate_packing_list_pdf", "label": _("Создать упаковочный лист"),
                  "params": {"order_id": order.id}},
-                {"action": "generate_qc_report_pdf", "label": "Создать акт качества",
+                {"action": "generate_qc_report_pdf", "label": _("Создать акт качества"),
                  "params": {"order_id": order.id}},
             ],
         )
@@ -884,20 +884,19 @@ def list_order_documents(params, user, role):
         }})
         if not any(s.signer_id == user.id and s.method == "ep" for s in sigs):
             sign_actions.append({"action": "sign_document",
-                                  "label": f"✍️ Подписать и отправить: {d.title[:16]}",
+                                  "label": _('✍️ Подписать и отправить: %(p0)s') % {"p0": f'{d.title[:16]}'},
                                   "params": {"document_id": d.id}})
     gen_actions = [
-        {"action": "generate_invoice_pdf", "label": "+ Счёт на оплату",
+        {"action": "generate_invoice_pdf", "label": _("+ Счёт на оплату"),
          "params": {"order_id": order.id}},
-        {"action": "generate_packing_list_pdf", "label": "+ Упаковочный лист",
+        {"action": "generate_packing_list_pdf", "label": _("+ Упаковочный лист"),
          "params": {"order_id": order.id}},
-        {"action": "generate_qc_report_pdf", "label": "+ Акт качества",
+        {"action": "generate_qc_report_pdf", "label": _("+ Акт качества"),
          "params": {"order_id": order.id}},
     ]
     if not cards:
         return ActionResult(
-            text=(f"По заказу ORD-{order.id} пока нет отправленных документов "
-                  f"(контрагент ещё не подписал и не отправил)."),
+            text=(_('По заказу ORD-%(p0)s пока нет отправленных документов (контрагент ещё не подписал и не отправил).') % {"p0": f'{order.id}'}),
             actions=gen_actions,
         )
     foot = "\n\nПодпись (ПЭП) фиксирует кто/когда/IP + хэш документа."
@@ -923,16 +922,16 @@ def sign_document(params, user, role):
     from marketplace.models import DocumentSignature, OrderDocument
     doc_id = params.get("document_id") or params.get("doc_id")
     if not doc_id:
-        return ActionResult(text="⚠️ Не указан документ.")
+        return ActionResult(text=_("⚠️ Не указан документ."))
     doc = OrderDocument.objects.filter(id=doc_id).select_related("order").first()
     if not doc:
-        return ActionResult(text="Документ не найден.")
+        return ActionResult(text=_("Документ не найден."))
     # Доступ — тот же гейт, что у списка документов (участник заказа).
     _order, err = _get_order({"order_id": doc.order_id}, user, role)
     if err:
-        return ActionResult(text="Нет доступа к этому документу.")
+        return ActionResult(text=_("Нет доступа к этому документу."))
     if DocumentSignature.objects.filter(document=doc, signer=user, method="ep").exists():
-        return ActionResult(text=f"Вы уже подписали «{doc.title}».")
+        return ActionResult(text=_('Вы уже подписали «%(p0)s».') % {"p0": f'{doc.title}'})
     # Хэш файла на момент подписи (tamper-evident).
     sha = ""
     try:
@@ -973,9 +972,8 @@ def sign_document(params, user, role):
                 continue
             notified.append(label)
             _notify(rcp, kind="order",
-                    title=f"📄 Подпись по ORD-{order.id}",
-                    body=(f"«{doc.title}» подписан ({signer_ru}). "
-                          f"Откройте «Все документы» по заказу — посмотреть/подписать."),
+                    title=_('📄 Подпись по ORD-%(p0)s') % {"p0": f'{order.id}'},
+                    body=(_('«%(p0)s» подписан (%(p1)s). Откройте «Все документы» по заказу — посмотреть/подписать.') % {"p0": f'{doc.title}', "p1": f'{signer_ru}'}),
                     url="/chat/")
     except Exception:
         logger.exception("sign_document routing notify failed")
@@ -993,9 +991,9 @@ def sign_document(params, user, role):
             "id": str(doc.id), "title": doc.title, "kind": doc.doc_type,
             "url": url, "sign_status": "подписи: " + status}}],
         actions=[
-            {"action": "open_url", "label": "📄 Открыть подписанный PDF",
+            {"action": "open_url", "label": _("📄 Открыть подписанный PDF"),
              "params": {"_url": url}},
-            {"action": "list_order_documents", "label": "Все документы",
+            {"action": "list_order_documents", "label": _("Все документы"),
              "params": {"order_id": doc.order_id}},
         ],
     )

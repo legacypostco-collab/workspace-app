@@ -19,6 +19,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .actions import (
     ActionResult, _anon_register_result, _is_anon, _log_event, _notify, register,
@@ -111,7 +112,7 @@ def auto_generate_quotes_from_catalog(rfq, recipients) -> int:
                 status="submitted",
                 delivery_days=delivery_days,
                 total_amount=total.quantize(Decimal("0.01")),
-                message="Автоматическая котировка из каталога (AUTO mode)",
+                message=_("Автоматическая котировка из каталога (AUTO mode)"),
                 valid_until=timezone.now() + timedelta(days=7),
             )
             for it, p, qty, unit in items_data:
@@ -156,14 +157,14 @@ def send_rfq_to_suppliers(params, user, role):
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="RFQ не найден.")
+        return ActionResult(text=_("RFQ не найден."))
 
     # Авторы RFQ + операторы/админы могут рассылать
     is_operator = bool(role and (role.startswith("operator") or role == "admin"))
     if rfq.created_by_id != user.id and not is_operator:
-        return ActionResult(text="Разослать RFQ может только его автор или оператор.")
+        return ActionResult(text=_("Разослать RFQ может только его автор или оператор."))
     if rfq.status == "cancelled":
-        return ActionResult(text=f"RFQ #{rfq.id} отменён — нельзя рассылать.")
+        return ActionResult(text=_("RFQ #%(id)s отменён — нельзя рассылать.") % {"id": rfq.id})
 
     User = get_user_model()
     min_trusted = int(params.get("min_trusted") or 3)
@@ -175,7 +176,7 @@ def send_rfq_to_suppliers(params, user, role):
         .exclude(username="__platform_escrow__")[:50]
     )
     if not all_sellers:
-        return ActionResult(text="⚠️ В системе пока нет активных поставщиков.")
+        return ActionResult(text=_("⚠️ В системе пока нет активных поставщиков."))
 
     # Группировка по supplier_status (свежее чтение)
     status_map = {}
@@ -210,8 +211,9 @@ def send_rfq_to_suppliers(params, user, role):
 
     if not recipients:
         return ActionResult(text=(
-            "⚠️ Нет поставщиков для рассылки. "
-            "Trusted=0, sandbox=0, risky=" + ("включены" if include_risky else "выключены") + "."
+            _("⚠️ Нет поставщиков для рассылки. "
+              "Trusted=0, sandbox=0, risky=%(risky)s.")
+            % {"risky": (_("включены") if include_risky else _("выключены"))}
         ))
 
     verified_seller_ids = set(
@@ -224,34 +226,35 @@ def send_rfq_to_suppliers(params, user, role):
     if not confirmed:
         items_count = rfq.items.count()
         warnings = [
-            "Каждый получит уведомление (in-app + email/telegram если включены).",
-            "Котировки будут приходить — следите за вкладкой RFQ.",
+            _("Каждый получит уведомление (in-app + email/telegram если включены)."),
+            _("Котировки будут приходить — следите за вкладкой RFQ."),
         ]
         if n_risky_in > 0:
             warnings.insert(0,
-                f"⚠️ В рассылке {n_risky_in} «рисковых» поставщиков (ТЗ §3.1) — "
-                f"включены явно по решению оператора. Решение зафиксируется в журнале."
+                _("⚠️ В рассылке %(n)s «рисковых» поставщиков (ТЗ §3.1) — "
+                  "включены явно по решению оператора. Решение зафиксируется в журнале.")
+                % {"n": n_risky_in}
             )
         return ActionResult(
-            text=f"📨 Разослать RFQ #{rfq.id} поставщикам?",
+            text=_("📨 Разослать RFQ #%(id)s поставщикам?") % {"id": rfq.id},
             cards=[{"type": "draft", "data": {
-                "title": f"📨 Рассылка RFQ #{rfq.id}",
+                "title": _("📨 Рассылка RFQ #%(id)s") % {"id": rfq.id},
                 "rows": [
-                    {"label": "Позиций", "value": str(items_count), "primary": True},
-                    {"label": "Trusted (надёжных)", "value": str(n_trusted_in), "primary": True},
-                    {"label": "Sandbox (песочница)", "value": str(n_sandbox_in)},
-                    {"label": "Risky (рисковых)", "value": str(n_risky_in)},
-                    {"label": "KYB verified", "value": f"{n_verified} из {len(recipients)}"},
-                    {"label": "Всего получателей", "value": f"{len(recipients)} поставщиков"},
+                    {"label": _("Позиций"), "value": str(items_count), "primary": True},
+                    {"label": _("Trusted (надёжных)"), "value": str(n_trusted_in), "primary": True},
+                    {"label": _("Sandbox (песочница)"), "value": str(n_sandbox_in)},
+                    {"label": _("Risky (рисковых)"), "value": str(n_risky_in)},
+                    {"label": _("KYB verified"), "value": _("%(n)s из %(total)s") % {"n": n_verified, "total": len(recipients)}},
+                    {"label": _("Всего получателей"), "value": _("%(n)s поставщиков") % {"n": len(recipients)}},
                 ],
                 "warnings": warnings,
                 "confirm_action": "send_rfq_to_suppliers",
-                "confirm_label": f"📨 Разослать {len(recipients)} поставщикам",
+                "confirm_label": _("📨 Разослать %(n)s поставщикам") % {"n": len(recipients)},
                 "confirm_params": {
                     "rfq_id": rfq.id, "confirmed": True,
                     "include_risky": include_risky, "min_trusted": min_trusted,
                 },
-                "cancel_label": "Отмена",
+                "cancel_label": _("Отмена"),
             }}],
         )
 
@@ -261,8 +264,8 @@ def send_rfq_to_suppliers(params, user, role):
         try:
             _notify(
                 seller, kind="rfq",
-                title=f"Новый RFQ #{rfq.id} от {rfq.customer_name or rfq.created_by.username}",
-                body=f"{rfq.items.count()} позиций · {rfq.urgency or 'standard'}. Откройте чтобы ответить котировкой.",
+                title=_("Новый RFQ #%(id)s от %(who)s") % {"id": rfq.id, "who": rfq.customer_name or rfq.created_by.username},
+                body=_("%(n)s позиций · %(urg)s. Откройте чтобы ответить котировкой.") % {"n": rfq.items.count(), "urg": rfq.urgency or 'standard'},
                 url=f"/chat/rfq/{rfq.id}/?source=invite",
             )
             sent += 1
@@ -281,8 +284,8 @@ def send_rfq_to_suppliers(params, user, role):
             if auto_quotes > 0:
                 _notify(
                     rfq.created_by, kind="rfq",
-                    title=f"🤖 {auto_quotes} котировок по RFQ #{rfq.id}",
-                    body="AUTO mode: продавцы автоматически выставили КП из каталога.",
+                    title=_("🤖 %(n)s котировок по RFQ #%(id)s") % {"n": auto_quotes, "id": rfq.id},
+                    body=_("AUTO mode: продавцы автоматически выставили КП из каталога."),
                     url=f"/chat/rfq/{rfq.id}/?source=auto-quote",
                 )
         except Exception:
@@ -313,8 +316,9 @@ def send_rfq_to_suppliers(params, user, role):
             reserve_amount = (best_quote.total_amount * Decimal("0.10")).quantize(Decimal("0.01"))
 
     auto_q_line = (
-        f"\n🤖 AUTO: {auto_quotes} продавцов сразу выставили КП из каталога."
-        + (f"\n🎯 Лучшее: ${best_quote.total_amount:,.0f} · резерв ${reserve_amount:,.0f}"
+        _("\n🤖 AUTO: %(n)s продавцов сразу выставили КП из каталога.") % {"n": auto_quotes}
+        + (_("\n🎯 Лучшее: $%(amt)s · резерв $%(res)s")
+           % {"amt": f"{best_quote.total_amount:,.0f}", "res": f"{reserve_amount:,.0f}"}
            if best_quote else "")
         if rfq.mode == "auto" and auto_quotes > 0 else ""
     )
@@ -323,27 +327,28 @@ def send_rfq_to_suppliers(params, user, role):
     if best_quote:
         actions.append({
             "action": "auto_accept_and_pay_reserve",
-            "label": f"✓ Принять лучшее и оплатить резерв ${reserve_amount:,.0f}",
+            "label": _("✓ Принять лучшее и оплатить резерв $%(res)s") % {"res": f"{reserve_amount:,.0f}"},
             "params": {"rfq_id": rfq.id},
         })
     actions.append({
-        "action": "view_rfq_quotes", "label": "📊 Все котировки",
+        "action": "view_rfq_quotes", "label": _("📊 Все котировки"),
         "params": {"rfq_id": rfq.id},
     })
 
     return ActionResult(
         text=(
-            f"✓ RFQ #{rfq.id} разослан {sent} поставщикам · "
-            f"trusted {n_trusted_in} · sandbox {n_sandbox_in}"
-            + (f" · risky {n_risky_in}" if n_risky_in else "")
-            + ".\nКотировки будут приходить — следите за уведомлениями."
+            _("✓ RFQ #%(id)s разослан %(sent)s поставщикам · "
+              "trusted %(tr)s · sandbox %(sb)s")
+            % {"id": rfq.id, "sent": sent, "tr": n_trusted_in, "sb": n_sandbox_in}
+            + (_(" · risky %(n)s") % {"n": n_risky_in} if n_risky_in else "")
+            + _(".\nКотировки будут приходить — следите за уведомлениями.")
             + auto_q_line
         ),
         actions=actions,
         contextual_actions=[
             # «Назад к RFQ» → inline-карточка через get_rfq_status
             # (отдельная страница /chat/rfq/<id>/ упразднена).
-            {"action": "get_rfq_status", "label": "← Назад к RFQ",
+            {"action": "get_rfq_status", "label": _("← Назад к RFQ"),
              "params": {"rfq_id": rfq.id}},
         ],
     )
@@ -482,13 +487,13 @@ def submit_quote(params, user, role):
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="RFQ не найден.")
+        return ActionResult(text=_("RFQ не найден."))
 
     # KYB-gate (selling-action)
     if role == "seller" and kyb_required_for_seller(user):
         return ActionResult(
-            text="🛡 Котировки доступны только верифицированным продавцам.",
-            actions=[{"action": "start_onboarding", "label": "🚀 Начать верификацию"}],
+            text=_("🛡 Котировки доступны только верифицированным продавцам."),
+            actions=[{"action": "start_onboarding", "label": _("🚀 Начать верификацию")}],
         )
 
     delivery_days = int(params.get("delivery_days") or 14)
@@ -523,7 +528,7 @@ def submit_quote(params, user, role):
             from marketplace.models import Part
             seller_parts_qs = Part.objects.filter(seller=user)
 
-        _COND_RU = {"oem": "OEM", "aftermarket": "Аналог", "used": "Б/У", "new": "Новый"}
+        _COND_RU = {"oem": "OEM", "aftermarket": _("Аналог"), "used": _("Б/У"), "new": _("Новый")}
         for it in rfq_items:
             base = suggested.get(it.id, {})
             # Артикул/название: при матче — канонический OEM + title детали;
@@ -626,21 +631,21 @@ def submit_quote(params, user, role):
         # закрываем ту же дыру и здесь. Оператор/админ не ограничиваются.
         if role == "seller" and can_fulfill == 0 and not has_analog:
             return ActionResult(
-                text=(f"🧩 RFQ #{rfq.id} — не по вашему каталогу. Ни одной из "
-                      f"{len(rfq_items)} позиций нет у вас ни в наличии, ни как "
-                      f"аналог — котировать нечего.\nЗагрузите подходящие позиции "
-                      f"или смотрите релевантные лиды (там только запросы по "
-                      f"вашему каталогу)."),
+                text=(_("🧩 RFQ #%(id)s — не по вашему каталогу. Ни одной из "
+                        "%(n)s позиций нет у вас ни в наличии, ни как "
+                        "аналог — котировать нечего.\nЗагрузите подходящие позиции "
+                        "или смотрите релевантные лиды (там только запросы по "
+                        "вашему каталогу).") % {"id": rfq.id, "n": len(rfq_items)}),
                 actions=[
-                    {"label": "🔥 Срочные задачи", "action": "seller_inbox", "params": {}},
+                    {"label": _("🔥 Срочные задачи"), "action": "seller_inbox", "params": {}},
                 ],
-                contextual_actions=[{"action": "go_home", "label": "🏠 Главная"}],
+                contextual_actions=[{"action": "go_home", "label": _("🏠 Главная")}],
             )
 
         # Бейдж надёжности самого продавца — в колонку «Поставщик», как
         # «Надёжный · 91.6» в карточке заказа (а не просто «Вы»).
-        _BADGE_RU = {"trusted": "Надёжный", "sandbox": "Песочница",
-                     "risky": "Рисковый", "rejected": "Исключён"}
+        _BADGE_RU = {"trusted": _("Надёжный"), "sandbox": _("Песочница"),
+                     "risky": _("Рисковый"), "rejected": _("Исключён")}
         seller_status = "trusted"
         seller_rating = 90.0
         try:
@@ -652,7 +657,7 @@ def submit_quote(params, user, role):
                 seller_rating = float(_prof.rating or 90.0)
         except Exception:
             pass
-        seller_badge = f"{_BADGE_RU.get(seller_status, 'Надёжный')} · {round(seller_rating, 1)}"
+        seller_badge = f"{_BADGE_RU.get(seller_status, _('Надёжный'))} · {round(seller_rating, 1)}"
 
         badge = mode_badge(rfq.mode)
         hint  = mode_hint_for_seller(rfq.mode) if role == "seller" else ""
@@ -669,8 +674,8 @@ def submit_quote(params, user, role):
         # Способ доставки (тест: морем по умолчанию; реальный выбирается при
         # оформлении заказа) + место назначения.
         ship_mode = "sea"
-        ship_mode_ru = {"sea": "морем", "air": "авиа", "auto": "авто"}.get(ship_mode, "")
-        dest_port = {"sea": "морской порт", "air": "аэропорт", "auto": "терминал"}.get(ship_mode, "порт")
+        ship_mode_ru = {"sea": _("морем"), "air": _("авиа"), "auto": _("авто")}.get(ship_mode, "")
+        dest_port = {"sea": _("морской порт"), "air": _("аэропорт"), "auto": _("терминал")}.get(ship_mode, _("порт"))
 
         # Скорость ответа продавца — РЕАЛЬНАЯ метрика (медиана + перцентиль) и
         # возраст RFQ. Честный посыл «отвечай, пока запрос активен». Только продавцу.
@@ -685,8 +690,8 @@ def submit_quote(params, user, role):
                 seller_speed = None
 
         return ActionResult(
-            text=(f"💬 Котировка по RFQ #{rfq.id}"
-                  + (f" · ответ на counter (раунд {_next_round(rfq, user.id)})" if parent_quote_id else "")
+            text=(_("💬 Котировка по RFQ #%(id)s") % {"id": rfq.id}
+                  + (_(" · ответ на counter (раунд %(r)s)") % {"r": _next_round(rfq, user.id)} if parent_quote_id else "")
                   + (f"\n{hint}" if hint else "")),
             cards=[{
                 "type": "quote_form",
@@ -697,13 +702,13 @@ def submit_quote(params, user, role):
                     "urgency_tone":    urgency_tone,
                     # ПРИВАТНОСТЬ: продавец видит присвоенный КОД покупателя,
                     # но НИКОГДА имя/компанию. Оператор/админ — реальное имя.
-                    "customer_name":   (f"Покупатель {buyer_code}" if role == "seller"
+                    "customer_name":   (_("Покупатель %(code)s") % {"code": buyer_code} if role == "seller"
                                         else (rfq.customer_name or "—")),
                     "company_name":    ("" if role == "seller" else (rfq.company_name or "")),
                     "buyer_code":      buyer_code,
                     "request_text":    (rfq.notes or "")[:200],
                     # «Куда» = место назначения (страна · порт) + способ доставки.
-                    "destination":     f"🇷🇺 Россия (импорт) · {dest_port} · {ship_mode_ru}",
+                    "destination":     _("🇷🇺 Россия (импорт) · %(port)s · %(mode)s") % {"port": dest_port, "mode": ship_mode_ru},
                     "shipping_mode":   ship_mode,
                     "items":           items_for_card,
                     # Доп. инфо для шапки/таблицы как в карточке заказа.
@@ -729,7 +734,7 @@ def submit_quote(params, user, role):
             # режим, «куда»). Продавцу это ничего не давало — лишний клик.
             actions=[],
             contextual_actions=[
-                {"action": "seller_inbox", "label": "← Срочные задачи"},
+                {"action": "seller_inbox", "label": _("← Срочные задачи")},
             ],
         )
 
@@ -761,7 +766,7 @@ def submit_quote(params, user, role):
         })
 
     if not item_data:
-        return ActionResult(text="⚠️ Не указано ни одной цены — котировка не создана.")
+        return ActionResult(text=_("⚠️ Не указано ни одной цены — котировка не создана."))
 
     # parent linking
     parent = None
@@ -814,10 +819,11 @@ def submit_quote(params, user, role):
             notify_operator_alert(
                 user_obj=user, event="user_registered",
                 text=(
-                    f"⚠️ ANTI-COLLUSION FLAG · Quote от @{user.username}\n"
-                    f"RFQ #{rfq.id} · Quote #{quote.id} · "
-                    f"в message обнаружены off-platform контакты:\n"
-                    f"«{message[:200]}»"
+                    _("⚠️ ANTI-COLLUSION FLAG · Quote от @%(user)s\n"
+                      "RFQ #%(rfq)s · Quote #%(quote)s · "
+                      "в message обнаружены off-platform контакты:\n"
+                      "«%(msg)s»")
+                    % {"user": user.username, "rfq": rfq.id, "quote": quote.id, "msg": message[:200]}
                 ),
                 extra={"role": "seller"},
             )
@@ -832,8 +838,8 @@ def submit_quote(params, user, role):
     if rfq.created_by:
         _notify(
             rfq.created_by, kind="rfq",
-            title=f"Котировка по RFQ #{rfq.id}",
-            body=f"{user.username}: ${total:,.0f} · доставка {delivery_days} дн.",
+            title=_("Котировка по RFQ #%(id)s") % {"id": rfq.id},
+            body=_("%(user)s: $%(amt)s · доставка %(d)s дн.") % {"user": user.username, "amt": f"{total:,.0f}", "d": delivery_days},
             url=f"/chat/?rfq={rfq.id}",
         )
 
@@ -887,11 +893,12 @@ def submit_quote(params, user, role):
 
     return ActionResult(
         text=(
-            f"✓ Котировка #{quote.id} отправлена · ${total:,.2f} · доставка {delivery_days} дн."
-            + (f" (раунд {round_number})" if round_number > 1 else "")
+            _("✓ Котировка #%(id)s отправлена · $%(amt)s · доставка %(d)s дн.")
+            % {"id": quote.id, "amt": f"{total:,.2f}", "d": delivery_days}
+            + (_(" (раунд %(r)s)") % {"r": round_number} if round_number > 1 else "")
         ),
         contextual_actions=[
-            {"action": "view_rfq_quotes", "label": "📊 Все котировки", "params": {"rfq_id": rfq.id}},
+            {"action": "view_rfq_quotes", "label": _("📊 Все котировки"), "params": {"rfq_id": rfq.id}},
         ],
     )
 
@@ -917,7 +924,7 @@ def view_rfq_quotes(params, user, role):
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="RFQ не найден.")
+        return ActionResult(text=_("RFQ не найден."))
 
     # IDOR-гейт: аноним не должен видеть чужие анон-RFQ (None==None обходил owner-check)
     if _is_anon(user):
@@ -925,7 +932,7 @@ def view_rfq_quotes(params, user, role):
 
     # Только владелец RFQ или оператор/admin
     if rfq.created_by_id != user.id and not (role and role.startswith("operator")) and role != "admin":
-        return ActionResult(text="Просматривать котировки может только заказчик RFQ или оператор.")
+        return ActionResult(text=_("Просматривать котировки может только заказчик RFQ или оператор."))
 
     # Берём ПОСЛЕДНЮЮ котировку каждого продавца (макс. round_number).
     # PERF: один запрос + dedup в Python вместо N+1 (запрос на каждого продавца).
@@ -942,15 +949,16 @@ def view_rfq_quotes(params, user, role):
         # (фиксируется в аналитику спроса).
         return ActionResult(
             text=(
-                f"По RFQ #{rfq.id} КП ещё не сформирован.\n"
-                "Откройте RFQ и проверьте/подтвердите позиции из каталога."
+                _("По RFQ #%(id)s КП ещё не сформирован.\n"
+                  "Откройте RFQ и проверьте/подтвердите позиции из каталога.")
+                % {"id": rfq.id}
             ),
             actions=[
-                {"label": "Открыть RFQ", "action": "rfq_detail",
+                {"label": _("Открыть RFQ"), "action": "rfq_detail",
                  "params": {"rfq_id": rfq.id}},
             ],
             contextual_actions=[
-                {"action": "get_rfq_status", "label": "Все RFQ"},
+                {"action": "get_rfq_status", "label": _("Все RFQ")},
             ],
         )
 
@@ -965,46 +973,49 @@ def view_rfq_quotes(params, user, role):
     items = []
     for idx, q in enumerate(latest):
         if is_buyer_view:
-            seller_name = f"Поставщик №{idx + 1}"
+            seller_name = _("Поставщик №%(n)s") % {"n": idx + 1}
         else:
             seller_name = q.seller.username if q.seller else "—"
         flags = []
-        if q.is_final: flags.append("🔒 финальная")
-        if q.round_number > 1: flags.append(f"раунд {q.round_number}")
+        if q.is_final: flags.append(_("🔒 финальная"))
+        if q.round_number > 1: flags.append(_("раунд %(r)s") % {"r": q.round_number})
         flag_str = " · " + " · ".join(flags) if flags else ""
         items.append({
             "title": f"{seller_name} — ${q.total_amount:,.2f}",
-            "subtitle": f"Доставка {q.delivery_days} дн{flag_str}",
+            "subtitle": _("Доставка %(d)s дн%(flags)s") % {"d": q.delivery_days, "flags": flag_str},
             "id": q.id,
         })
 
     # Suggest accept на самую дешёвую (если она финальная — не предлагаем counter)
     cheapest = latest[0]
-    cheapest_label = "Поставщик №1" if is_buyer_view else (
+    cheapest_label = _("Поставщик №1") if is_buyer_view else (
         cheapest.seller.username if cheapest.seller else "?"
     )
     actions = []
     if cheapest.is_final:
-        actions.append({"action": "accept_quote", "label": f"✓ Принять самую дешёвую (${cheapest.total_amount:,.0f})",
+        actions.append({"action": "accept_quote",
+                        "label": _("✓ Принять самую дешёвую ($%(amt)s)") % {"amt": f"{cheapest.total_amount:,.0f}"},
                         "params": {"quote_id": cheapest.id}})
     else:
         actions.extend([
-            {"action": "accept_quote", "label": f"✓ Принять — {cheapest_label}",
+            {"action": "accept_quote", "label": _("✓ Принять — %(label)s") % {"label": cheapest_label},
              "params": {"quote_id": cheapest.id}},
-            {"action": "counter_offer", "label": "↩ Контр-оффер",
+            {"action": "counter_offer", "label": _("↩ Контр-оффер"),
              "params": {"quote_id": cheapest.id}},
         ])
 
     return ActionResult(
         text=(
-            f"📊 По RFQ #{rfq.id} — {len(latest)} котировок · "
-            f"диапазон ${latest[0].total_amount:,.0f}–${latest[-1].total_amount:,.0f}."
+            _("📊 По RFQ #%(id)s — %(n)s котировок · "
+              "диапазон $%(lo)s–$%(hi)s.")
+            % {"id": rfq.id, "n": len(latest),
+               "lo": f"{latest[0].total_amount:,.0f}", "hi": f"{latest[-1].total_amount:,.0f}"}
         ),
-        cards=[{"type": "list", "data": {"title": f"💬 Котировки · RFQ #{rfq.id}",
+        cards=[{"type": "list", "data": {"title": _("💬 Котировки · RFQ #%(id)s") % {"id": rfq.id},
                                           "items": items}}],
         actions=actions,
         contextual_actions=[
-            {"action": "view_quote", "label": "Открыть лучшую",
+            {"action": "view_quote", "label": _("Открыть лучшую"),
              "params": {"quote_id": cheapest.id}},
         ],
     )
@@ -1020,7 +1031,7 @@ def view_quote(params, user, role):
     try:
         q = Quote.objects.select_related("rfq", "seller").get(id=int(params.get("quote_id") or 0))
     except (Quote.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Котировка не найдена.")
+        return ActionResult(text=_("Котировка не найдена."))
 
     # IDOR-гейт: аноним не должен видеть чужие котировки (None==None обходил owner-check)
     if _is_anon(user):
@@ -1029,7 +1040,7 @@ def view_quote(params, user, role):
     is_buyer = (q.rfq.created_by_id == user.id)
     is_seller = (q.seller_id == user.id)
     if not (is_buyer or is_seller or (role and role.startswith("operator")) or role == "admin"):
-        return ActionResult(text="Доступ к котировке ограничен.")
+        return ActionResult(text=_("Доступ к котировке ограничен."))
 
     # Buyer видит «Поставщик №N» (по порядку round_number в данном RFQ);
     # accepted-котировки раскрывают имя — buyer уже выбрал и теперь нужны контакты.
@@ -1040,28 +1051,28 @@ def view_quote(params, user, role):
                       .order_by("total_amount").values_list("seller_id", flat=True))
         try:
             rank = ranked.index(q.seller_id) + 1 if q.seller_id else None
-            seller_label = f"Поставщик №{rank}" if rank else "Поставщик"
+            seller_label = _("Поставщик №%(n)s") % {"n": rank} if rank else _("Поставщик")
         except ValueError:
-            seller_label = "Поставщик"
+            seller_label = _("Поставщик")
     else:
         seller_label = q.seller.username if q.seller else "—"
 
     rows = [
-        {"label": "RFQ", "value": f"#{q.rfq_id}"},
-        {"label": "Продавец", "value": seller_label},
-        {"label": "Раунд", "value": str(q.round_number)},
-        {"label": "Сумма", "value": f"${q.total_amount:,.2f} {q.currency}", "primary": True},
-        {"label": "Доставка (дн)", "value": str(q.delivery_days)},
-        {"label": "Статус", "value": q.get_status_display()},
-        {"label": "Действует до", "value": q.valid_until.strftime("%d.%m.%Y %H:%M") if q.valid_until else "—"},
+        {"label": _("RFQ"), "value": f"#{q.rfq_id}"},
+        {"label": _("Продавец"), "value": seller_label},
+        {"label": _("Раунд"), "value": str(q.round_number)},
+        {"label": _("Сумма"), "value": f"${q.total_amount:,.2f} {q.currency}", "primary": True},
+        {"label": _("Доставка (дн)"), "value": str(q.delivery_days)},
+        {"label": _("Статус"), "value": q.get_status_display()},
+        {"label": _("Действует до"), "value": q.valid_until.strftime("%d.%m.%Y %H:%M") if q.valid_until else "—"},
     ]
     if q.message:
-        rows.append({"label": "Комментарий", "value": q.message[:200]})
+        rows.append({"label": _("Комментарий"), "value": q.message[:200]})
 
     # КП показываем В ТОМ ЖЕ ВИДЕ, что и состав заказа — таблица spec_results
     # (позиции + цена поставщика построчно), а не тонкий list.
-    _BADGE_RU = {"trusted": "Надёжный", "sandbox": "Песочница",
-                 "risky": "Рисковый", "rejected": "Исключён"}
+    _BADGE_RU = {"trusted": _("Надёжный"), "sandbox": _("Песочница"),
+                 "risky": _("Рисковый"), "rejected": _("Исключён")}
     _sup_status, _sup_rating = "trusted", 90.0
     try:
         from marketplace.models import UserProfile as _UP
@@ -1073,7 +1084,7 @@ def view_quote(params, user, role):
         pass
     # Бейдж = ТОЛЬКО статус. Рейтинг идёт отдельным полем supplier_rating —
     # фронт склеивает «Надёжный · 90.0». Иначе рейтинг дублировался (× 90.0).
-    _badge = _BADGE_RU.get(_sup_status, "Надёжный")
+    _badge = _BADGE_RU.get(_sup_status, _("Надёжный"))
     spec_items = []
     _qsum = 0.0
     for qi in q.items.all():
@@ -1094,7 +1105,7 @@ def view_quote(params, user, role):
         })
     _valid = (q.valid_until.strftime("%d.%m.%Y") if q.valid_until else "—")
     spec_card = {"type": "spec_results", "data": {
-        "title": f"КП · RFQ #{q.rfq_id} · {seller_label}",
+        "title": _("КП · RFQ #%(id)s · %(seller)s") % {"id": q.rfq_id, "seller": seller_label},
         "meta": rows,
         "found": len(spec_items), "analogue": 0, "not_found": 0,
         "items": spec_items,
@@ -1102,33 +1113,36 @@ def view_quote(params, user, role):
         "total": int(_qsum) if _qsum else int(q.total_amount or 0),
         "best_mix": int(_qsum) if _qsum else int(q.total_amount or 0),
         "currency": q.currency or "USD",
-        "foot_info": (f"{len(spec_items)} позиций · доставка {q.delivery_days} дн · "
-                      f"действует до {_valid} · {q.get_status_display()}"),
+        "foot_info": (_("%(n)s позиций · доставка %(d)s дн · "
+                        "действует до %(valid)s · %(st)s")
+                      % {"n": len(spec_items), "d": q.delivery_days,
+                         "valid": _valid, "st": q.get_status_display()}),
     }}
 
     actions = []
     if is_buyer and q.status in ("submitted",) and q.direction == "seller_to_buyer":
         if not q.is_final:
             actions.extend([
-                {"action": "accept_quote",  "label": "✓ Принять",         "params": {"quote_id": q.id}},
-                {"action": "counter_offer", "label": "↩ Контр-оффер",     "params": {"quote_id": q.id}},
-                {"action": "decline_quote", "label": "✗ Отклонить",       "params": {"quote_id": q.id}},
+                {"action": "accept_quote",  "label": _("✓ Принять"),         "params": {"quote_id": q.id}},
+                {"action": "counter_offer", "label": _("↩ Контр-оффер"),     "params": {"quote_id": q.id}},
+                {"action": "decline_quote", "label": _("✗ Отклонить"),       "params": {"quote_id": q.id}},
             ])
         else:
             actions.extend([
-                {"action": "accept_quote",  "label": "✓ Принять",         "params": {"quote_id": q.id}},
-                {"action": "decline_quote", "label": "✗ Отклонить",       "params": {"quote_id": q.id}},
+                {"action": "accept_quote",  "label": _("✓ Принять"),         "params": {"quote_id": q.id}},
+                {"action": "decline_quote", "label": _("✗ Отклонить"),       "params": {"quote_id": q.id}},
             ])
     if is_seller and q.status == "submitted" and q.direction == "seller_to_buyer" and not q.is_final:
-        actions.append({"action": "mark_quote_final", "label": "🔒 Зафиксировать как финальную",
+        actions.append({"action": "mark_quote_final", "label": _("🔒 Зафиксировать как финальную"),
                         "params": {"quote_id": q.id}})
     if is_seller and q.direction == "buyer_to_seller" and q.status == "submitted":
         # Это buyer-counter — продавец должен ответить новой котировкой
-        actions.append({"action": "respond_to_counter", "label": "💬 Ответить на counter",
+        actions.append({"action": "respond_to_counter", "label": _("💬 Ответить на counter"),
                         "params": {"quote_id": q.id}})
 
     return ActionResult(
-        text=f"💬 Котировка #{q.id} · ${q.total_amount:,.2f} · {q.delivery_days} дн.",
+        text=_("💬 Котировка #%(id)s · $%(amt)s · %(d)s дн.")
+             % {"id": q.id, "amt": f"{q.total_amount:,.2f}", "d": q.delivery_days},
         cards=[spec_card],
         actions=actions,
     )
@@ -1145,23 +1159,23 @@ def accept_quote(params, user, role):
     try:
         q = Quote.objects.select_related("rfq", "seller").get(id=int(params.get("quote_id") or 0))
     except (Quote.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Котировка не найдена.")
+        return ActionResult(text=_("Котировка не найдена."))
 
     # IDOR-гейт: аноним не должен принимать чужие котировки (None==None обходил owner-check)
     if _is_anon(user):
         return _anon_register_result()
 
     if q.rfq.created_by_id != user.id:
-        return ActionResult(text="Принять котировку может только заказчик RFQ.")
+        return ActionResult(text=_("Принять котировку может только заказчик RFQ."))
     if q.status not in ("submitted", "finalized"):
-        return ActionResult(text=f"Эту котировку нельзя принять (статус: {q.get_status_display()}).")
+        return ActionResult(text=_("Эту котировку нельзя принять (статус: %(st)s).") % {"st": q.get_status_display()})
 
     # Срок действия КП: протухшую котировку принимать нельзя (valid_until nullable)
     from django.utils import timezone as _tz
     if q.valid_until and _tz.now() > q.valid_until:
         return ActionResult(text=(
-            "Котировка истекла " + q.valid_until.strftime("%d.%m.%Y %H:%M")
-            + ". Запросите у поставщика новое КП."
+            _("Котировка истекла %(when)s. Запросите у поставщика новое КП.")
+            % {"when": q.valid_until.strftime("%d.%m.%Y %H:%M")}
         ))
 
     # Бизнес-правило: минимальная сумма заказа. Блокируем И на preview,
@@ -1181,31 +1195,31 @@ def accept_quote(params, user, role):
                 rank = ranked.index(q.seller_id) + 1 if q.seller_id else None
             except ValueError:
                 rank = None
-            seller_label = f"Поставщик №{rank}" if rank else "Поставщик"
-            extra_warn = "После принятия имя поставщика и контакты будут раскрыты для оформления заказа."
+            seller_label = _("Поставщик №%(n)s") % {"n": rank} if rank else _("Поставщик")
+            extra_warn = _("После принятия имя поставщика и контакты будут раскрыты для оформления заказа.")
         else:
             seller_label = q.seller.username if q.seller else "—"
             extra_warn = ""
         warnings = [
-            "После принятия будет создан заказ. Остальные котировки автоматически отклонятся.",
+            _("После принятия будет создан заказ. Остальные котировки автоматически отклонятся."),
         ]
         if extra_warn:
             warnings.append(extra_warn)
         return ActionResult(
-            text=f"Принять котировку #{q.id} от {seller_label}?",
+            text=_("Принять котировку #%(id)s от %(seller)s?") % {"id": q.id, "seller": seller_label},
             cards=[{"type": "draft", "data": {
-                "title": f"✓ Принять котировку #{q.id}",
+                "title": _("✓ Принять котировку #%(id)s") % {"id": q.id},
                 "rows": [
-                    {"label": "Продавец", "value": seller_label},
-                    {"label": "Сумма", "value": f"${q.total_amount:,.2f}", "primary": True},
-                    {"label": "Доставка", "value": f"{q.delivery_days} дней"},
-                    {"label": "Резерв 10%", "value": f"${(q.total_amount * Decimal('0.10')):,.2f}"},
+                    {"label": _("Продавец"), "value": seller_label},
+                    {"label": _("Сумма"), "value": f"${q.total_amount:,.2f}", "primary": True},
+                    {"label": _("Доставка"), "value": _("%(d)s дней") % {"d": q.delivery_days}},
+                    {"label": _("Резерв 10%"), "value": f"${(q.total_amount * Decimal('0.10')):,.2f}"},
                 ],
                 "warnings": warnings,
                 "confirm_action": "accept_quote",
-                "confirm_label": "✓ Принять и создать заказ",
+                "confirm_label": _("✓ Принять и создать заказ"),
                 "confirm_params": {"quote_id": q.id, "confirmed": True},
-                "cancel_label": "Отмена",
+                "cancel_label": _("Отмена"),
             }}],
         )
 
@@ -1214,7 +1228,7 @@ def accept_quote(params, user, role):
     # а резерв списался бы с полной суммы. Не создаём Order, отдаём на матч/оператора.
     if not q.items.filter(part__isnull=False).exists():
         return ActionResult(text=(
-            "По этой котировке нет позиций для оформления — нужен матч по каталогу или оператор."
+            _("По этой котировке нет позиций для оформления — нужен матч по каталогу или оператор.")
         ))
 
     # Шаг 2: создаём Order — ПОД БЛОКИРОВКОЙ котировки + re-check статуса, чтобы
@@ -1227,7 +1241,7 @@ def accept_quote(params, user, role):
              .select_related("rfq", "seller").get(id=q.id))
         if q.status not in ("submitted", "finalized"):
             return ActionResult(
-                text=f"Котировка уже обработана (статус: {q.get_status_display()}).",
+                text=_("Котировка уже обработана (статус: %(st)s).") % {"st": q.get_status_display()},
             )
         order = Order.objects.create(
             customer_name=user.get_full_name() or user.username,
@@ -1266,19 +1280,20 @@ def accept_quote(params, user, role):
                      "from_quote": q.id, "rfq_id": q.rfq_id})
     if q.seller:
         _notify(q.seller, kind="order",
-                title=f"Котировка #{q.id} принята — заказ #{order.id}",
-                body=f"Покупатель оформил заказ на ${q.total_amount:,.2f}. Можно начинать.",
+                title=_("Котировка #%(qid)s принята — заказ #%(oid)s") % {"qid": q.id, "oid": order.id},
+                body=_("Покупатель оформил заказ на $%(amt)s. Можно начинать.") % {"amt": f"{q.total_amount:,.2f}"},
                 url=f"/chat/?order={order.id}")
 
     return ActionResult(
         text=(
-            f"✓ Котировка #{q.id} принята · создан заказ #{order.id} на ${q.total_amount:,.2f}.\n"
-            f"Следующий шаг — оплатить резерв 10% (${reserve_amount:,.0f})."
+            _("✓ Котировка #%(qid)s принята · создан заказ #%(oid)s на $%(amt)s.\n"
+              "Следующий шаг — оплатить резерв 10%% ($%(res)s).")
+            % {"qid": q.id, "oid": order.id, "amt": f"{q.total_amount:,.2f}", "res": f"{reserve_amount:,.0f}"}
         ),
         actions=[
-            {"action": "pay_reserve", "label": f"💳 Оплатить резерв ${reserve_amount:,.0f}",
+            {"action": "pay_reserve", "label": _("💳 Оплатить резерв $%(res)s") % {"res": f"{reserve_amount:,.0f}"},
              "params": {"order_id": order.id}},
-            {"action": "track_order", "label": "📦 Трекинг", "params": {"order_id": order.id}},
+            {"action": "track_order", "label": _("📦 Трекинг"), "params": {"order_id": order.id}},
         ],
     )
 
@@ -1304,10 +1319,10 @@ def auto_accept_and_pay_reserve(params, user, role):
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="RFQ не найден.")
+        return ActionResult(text=_("RFQ не найден."))
 
     if rfq.created_by_id != user.id:
-        return ActionResult(text="Принять КП может только заказчик RFQ.")
+        return ActionResult(text=_("Принять КП может только заказчик RFQ."))
 
     # Выбираем самое дешёвое submitted/finalized КП
     best = (Quote.objects.filter(rfq=rfq, direction="seller_to_buyer",
@@ -1315,7 +1330,7 @@ def auto_accept_and_pay_reserve(params, user, role):
             .order_by("total_amount").select_related("seller").first())
     if not best:
         return ActionResult(text=(
-            "По этому RFQ ещё нет котировок. Подождите рассылки или измените режим."
+            _("По этому RFQ ещё нет котировок. Подождите рассылки или измените режим.")
         ))
 
     reserve_amount = (best.total_amount * Decimal("0.10")).quantize(Decimal("0.01"))
@@ -1324,29 +1339,30 @@ def auto_accept_and_pay_reserve(params, user, role):
     if not confirmed:
         return ActionResult(
             text=(
-                f"🎯 Лучшее КП по RFQ #{rfq.id}\n"
-                f"Принимаем котировку #{best.id} и сразу списываем резерв 10%."
+                _("🎯 Лучшее КП по RFQ #%(id)s\n"
+                  "Принимаем котировку #%(qid)s и сразу списываем резерв 10%%.")
+                % {"id": rfq.id, "qid": best.id}
             ),
             cards=[{"type": "draft", "data": {
-                "title": f"🎯 AUTO: принять #{best.id} и оплатить резерв",
+                "title": _("🎯 AUTO: принять #%(qid)s и оплатить резерв") % {"qid": best.id},
                 "rows": [
-                    {"label": "RFQ", "value": f"#{rfq.id} · {rfq.items.count()} позиций"},
-                    {"label": "Поставщик", "value": "🥇 Лучший по цене (имя раскроется)"},
-                    {"label": "Сумма заказа", "value": f"${best.total_amount:,.2f}", "primary": True},
-                    {"label": "Срок поставки", "value": f"{best.delivery_days} дней"},
-                    {"label": "Резерв 10%", "value": f"${reserve_amount:,.2f}", "primary": True},
+                    {"label": _("RFQ"), "value": _("#%(id)s · %(n)s позиций") % {"id": rfq.id, "n": rfq.items.count()}},
+                    {"label": _("Поставщик"), "value": _("🥇 Лучший по цене (имя раскроется)")},
+                    {"label": _("Сумма заказа"), "value": f"${best.total_amount:,.2f}", "primary": True},
+                    {"label": _("Срок поставки"), "value": _("%(d)s дней") % {"d": best.delivery_days}},
+                    {"label": _("Резерв 10%"), "value": f"${reserve_amount:,.2f}", "primary": True},
                 ],
                 "warnings": [
-                    "После клика будет создан Order, остальные котировки автоматически отклоняются.",
-                    f"С депозита спишется ${reserve_amount:,.2f}, удерживается в эскроу платформы.",
+                    _("После клика будет создан Order, остальные котировки автоматически отклоняются."),
+                    _("С депозита спишется $%(res)s, удерживается в эскроу платформы.") % {"res": f"{reserve_amount:,.2f}"},
                 ],
                 "confirm_action": "auto_accept_and_pay_reserve",
-                "confirm_label": f"✓ Принять и списать ${reserve_amount:,.0f}",
+                "confirm_label": _("✓ Принять и списать $%(res)s") % {"res": f"{reserve_amount:,.0f}"},
                 "confirm_params": {"rfq_id": rfq.id, "confirmed": True},
-                "cancel_label": "Сравнить все КП",
+                "cancel_label": _("Сравнить все КП"),
             }}],
             actions=[
-                {"action": "view_rfq_quotes", "label": "📊 Все котировки",
+                {"action": "view_rfq_quotes", "label": _("📊 Все котировки"),
                  "params": {"rfq_id": rfq.id}},
             ],
         )
@@ -1384,17 +1400,17 @@ def counter_offer(params, user, role):
     try:
         q = Quote.objects.select_related("rfq", "seller").get(id=int(params.get("quote_id") or 0))
     except (Quote.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Котировка не найдена.")
+        return ActionResult(text=_("Котировка не найдена."))
 
     if q.rfq.created_by_id != user.id:
-        return ActionResult(text="Контр-оффер может предлагать только заказчик RFQ.")
+        return ActionResult(text=_("Контр-оффер может предлагать только заказчик RFQ."))
     if q.is_final:
         return ActionResult(text=(
-            f"Котировка #{q.id} помечена как финальная — переторжка невозможна. "
-            f"Только принять или отклонить."
+            _("Котировка #%(id)s помечена как финальная — переторжка невозможна. "
+              "Только принять или отклонить.") % {"id": q.id}
         ))
     if q.status not in ("submitted",):
-        return ActionResult(text=f"Контр-оффер невозможен (статус: {q.get_status_display()}).")
+        return ActionResult(text=_("Контр-оффер невозможен (статус: %(st)s).") % {"st": q.get_status_display()})
 
     # Шаг 1: форма с текущими ценами + полем для каждой
     if not confirmed:
@@ -1402,17 +1418,17 @@ def counter_offer(params, user, role):
         for qi in q.items.all():
             fields.append({
                 "name": f"price_{qi.id}",
-                "label": f"{qi.title_snapshot[:60]} (текущая ${qi.unit_price:,.2f})",
+                "label": _("%(title)s (текущая $%(price)s)") % {"title": qi.title_snapshot[:60], "price": f"{qi.unit_price:,.2f}"},
                 "type": "number", "required": True,
                 "value": str(qi.unit_price),
             })
-        fields.append({"name": "message", "label": "Сообщение продавцу", "type": "textarea"})
+        fields.append({"name": "message", "label": _("Сообщение продавцу"), "type": "textarea"})
         return ActionResult(
-            text=f"↩ Контр-оффер на котировку #{q.id}",
+            text=_("↩ Контр-оффер на котировку #%(id)s") % {"id": q.id},
             cards=[{"type": "form", "data": {
-                "title": f"↩ Контр-оффер · #{q.id}",
+                "title": _("↩ Контр-оффер · #%(id)s") % {"id": q.id},
                 "submit_action": "counter_offer",
-                "submit_label": "Отправить контр-оффер",
+                "submit_label": _("Отправить контр-оффер"),
                 "fields": fields,
                 "fixed_params": {"quote_id": q.id, "confirmed": True},
             }}],
@@ -1432,7 +1448,7 @@ def counter_offer(params, user, role):
         items_data.append({"qi": qi, "unit_price": new_price})
 
     if not items_data:
-        return ActionResult(text="⚠️ Не указано ни одной новой цены.")
+        return ActionResult(text=_("⚠️ Не указано ни одной новой цены."))
 
     new_total = sum(
         (d["unit_price"] * d["qi"].quantity for d in items_data), Decimal("0")
@@ -1466,17 +1482,18 @@ def counter_offer(params, user, role):
 
     if q.seller:
         _notify(q.seller, kind="rfq",
-                title=f"Контр-оффер по RFQ #{q.rfq_id}",
-                body=f"Покупатель предлагает ${new_total:,.0f} (было ${q.total_amount:,.0f}).",
+                title=_("Контр-оффер по RFQ #%(id)s") % {"id": q.rfq_id},
+                body=_("Покупатель предлагает $%(new)s (было $%(old)s).") % {"new": f"{new_total:,.0f}", "old": f"{q.total_amount:,.0f}"},
                 url=f"/chat/?rfq={q.rfq_id}")
 
     return ActionResult(
         text=(
-            f"✓ Контр-оффер #{counter_q.id} отправлен продавцу · ${new_total:,.2f} "
-            f"(раунд {new_round})."
+            _("✓ Контр-оффер #%(id)s отправлен продавцу · $%(amt)s "
+              "(раунд %(r)s).")
+            % {"id": counter_q.id, "amt": f"{new_total:,.2f}", "r": new_round}
         ),
         contextual_actions=[
-            {"action": "view_rfq_quotes", "label": "📊 Все котировки", "params": {"rfq_id": q.rfq_id}},
+            {"action": "view_rfq_quotes", "label": _("📊 Все котировки"), "params": {"rfq_id": q.rfq_id}},
         ],
     )
 
@@ -1492,9 +1509,9 @@ def respond_to_counter(params, user, role):
     try:
         q = Quote.objects.select_related("rfq").get(id=int(params.get("quote_id") or 0))
     except (Quote.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Котировка не найдена.")
+        return ActionResult(text=_("Котировка не найдена."))
     if q.direction != "buyer_to_seller":
-        return ActionResult(text="Это не контр-оффер.")
+        return ActionResult(text=_("Это не контр-оффер."))
 
     # Делегируем в submit_quote с parent_quote_id
     return submit_quote({
@@ -1514,21 +1531,21 @@ def mark_quote_final(params, user, role):
     try:
         q = Quote.objects.get(id=int(params.get("quote_id") or 0))
     except (Quote.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Котировка не найдена.")
+        return ActionResult(text=_("Котировка не найдена."))
     if q.seller_id != user.id:
-        return ActionResult(text="Зафиксировать может только автор котировки.")
+        return ActionResult(text=_("Зафиксировать может только автор котировки."))
     if q.status != "submitted" or q.direction != "seller_to_buyer":
-        return ActionResult(text="Эту котировку нельзя зафиксировать в текущем состоянии.")
+        return ActionResult(text=_("Эту котировку нельзя зафиксировать в текущем состоянии."))
     q.is_final = True
     q.status = "finalized"
     q.save(update_fields=["is_final", "status"])
     if q.rfq.created_by:
         _notify(q.rfq.created_by, kind="rfq",
-                title=f"🔒 Финальная котировка по RFQ #{q.rfq_id}",
-                body=f"{user.username}: ${q.total_amount:,.0f}. Переторжка невозможна — принять или отклонить.",
+                title=_("🔒 Финальная котировка по RFQ #%(id)s") % {"id": q.rfq_id},
+                body=_("%(user)s: $%(amt)s. Переторжка невозможна — принять или отклонить.") % {"user": user.username, "amt": f"{q.total_amount:,.0f}"},
                 url=f"/chat/?rfq={q.rfq_id}")
     return ActionResult(
-        text=f"🔒 Котировка #{q.id} зафиксирована как финальная. Покупатель может только принять или отклонить.",
+        text=_("🔒 Котировка #%(id)s зафиксирована как финальная. Покупатель может только принять или отклонить.") % {"id": q.id},
     )
 
 
@@ -1542,16 +1559,16 @@ def decline_quote(params, user, role):
     try:
         q = Quote.objects.get(id=int(params.get("quote_id") or 0))
     except (Quote.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Котировка не найдена.")
+        return ActionResult(text=_("Котировка не найдена."))
     if q.rfq.created_by_id != user.id:
-        return ActionResult(text="Отклонить может только заказчик RFQ.")
+        return ActionResult(text=_("Отклонить может только заказчик RFQ."))
     if q.status not in ("submitted", "finalized", "countered"):
-        return ActionResult(text=f"Котировка уже не активна (статус: {q.get_status_display()}).")
+        return ActionResult(text=_("Котировка уже не активна (статус: %(st)s).") % {"st": q.get_status_display()})
     q.status = "declined"
     q.save(update_fields=["status"])
     if q.seller:
         _notify(q.seller, kind="rfq",
-                title=f"Котировка #{q.id} отклонена",
-                body=f"Покупатель не выбрал ваш вариант по RFQ #{q.rfq_id}.",
+                title=_("Котировка #%(id)s отклонена") % {"id": q.id},
+                body=_("Покупатель не выбрал ваш вариант по RFQ #%(id)s.") % {"id": q.rfq_id},
                 url=f"/chat/?rfq={q.rfq_id}")
-    return ActionResult(text=f"✓ Котировка #{q.id} отклонена.")
+    return ActionResult(text=_("✓ Котировка #%(id)s отклонена.") % {"id": q.id})

@@ -18,6 +18,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from django.conf import settings
+from django.utils.translation import gettext as _
 
 
 def min_order_usd() -> Decimal:
@@ -48,28 +49,32 @@ def check_min_order(total_usd: Decimal | float | int):
     if total >= limit:
         return None
     shortage = limit - total
+    limit_str = f"{limit:,.0f}"
+    total_str = f"{total:,.2f}"
+    shortage_str = f"{shortage:,.2f}"
     return {
         "text": (
-            f"⚠️ Минимальная сумма заказа на платформе — ${limit:,.0f}.\n"
-            f"Сейчас в корзине ${total:,.2f} · не хватает ${shortage:,.2f}.\n\n"
-            f"Добавьте позиции в спецификацию — экономика консолидации "
-            f"работает на партиях от ${limit:,.0f}: фиксированные расходы "
-            f"на логистику, таможню и операторов перекрывают маржу на меньших объёмах."
+            _("⚠️ Минимальная сумма заказа на платформе — $%(limit)s.\n"
+              "Сейчас в корзине $%(total)s · не хватает $%(shortage)s.\n\n"
+              "Добавьте позиции в спецификацию — экономика консолидации "
+              "работает на партиях от $%(limit)s: фиксированные расходы "
+              "на логистику, таможню и операторов перекрывают маржу на меньших объёмах.")
+            % {"limit": limit_str, "total": total_str, "shortage": shortage_str}
         ),
         "cards": [{
             "type": "kpi_grid",
             "data": {
-                "title": "💰 Сумма заказа",
+                "title": _("💰 Сумма заказа"),
                 "items": [
-                    {"label": "Сейчас",  "value": f"${total:,.0f}",  "tone": "warn"},
-                    {"label": "Минимум", "value": f"${limit:,.0f}",  "tone": "info"},
-                    {"label": "Добрать", "value": f"${shortage:,.0f}", "tone": "bad"},
+                    {"label": _("Сейчас"),  "value": f"${total:,.0f}",  "tone": "warn"},
+                    {"label": _("Минимум"), "value": f"${limit:,.0f}",  "tone": "info"},
+                    {"label": _("Добрать"), "value": f"${shortage:,.0f}", "tone": "bad"},
                 ],
             },
         }],
         "actions": [
-            {"action": "search_parts", "label": "🔍 Добавить позиции"},
-            {"action": "upload_parts_list", "label": "📎 Загрузить спецификацию"},
+            {"action": "search_parts", "label": _("🔍 Добавить позиции")},
+            {"action": "upload_parts_list", "label": _("📎 Загрузить спецификацию")},
         ],
         "suggestions": [],
         "contextual_actions": [],

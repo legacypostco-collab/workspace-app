@@ -57,8 +57,9 @@ def open_claim(params, user, role):
 
     if order.status not in ("delivered", "completed"):
         return ActionResult(text=(
-            f"Открыть рекламацию можно только после доставки. "
-            f"Текущий статус: {order.get_status_display()}"
+            _("Открыть рекламацию можно только после доставки. "
+              "Текущий статус: %(status)s")
+            % {"status": order.get_status_display()}
         ))
 
     kind = (params.get("kind") or "").strip()
@@ -67,9 +68,9 @@ def open_claim(params, user, role):
 
     if not confirmed or not kind or not title:
         return ActionResult(
-            text=f"⚠️ Открыть рекламацию по заказу #{order.id}",
+            text=_("⚠️ Открыть рекламацию по заказу #%(id)s") % {"id": order.id},
             cards=[{"type": "form", "data": {
-                "title": f"⚠️ Рекламация · #{order.id}",
+                "title": _("⚠️ Рекламация · #%(id)s") % {"id": order.id},
                 "submit_action": "open_claim",
                 "fields": [
                     {"name": "kind", "label": _("Тип проблемы"), "required": True,
@@ -101,14 +102,15 @@ def open_claim(params, user, role):
         from django.contrib.auth import get_user_model
         for op in get_user_model().objects.filter(username__icontains="operator")[:5]:
             _notify(op, kind="claim",
-                    title=f"Новая рекламация по #{order.id}",
-                    body=f"{kind} · {title[:120]}",
+                    title=_("Новая рекламация по #%(id)s") % {"id": order.id},
+                    body=_("%(kind)s · %(title)s") % {"kind": kind, "title": title[:120]},
                     url="/chat/")
     except Exception:
         logger.exception("notify operator on open_claim failed")
 
     return ActionResult(
-        text=f"✓ Рекламация #{claim.id} открыта · {claim.get_kind_display()}.\nОператор скоро возьмёт в работу.",
+        text=_("✓ Рекламация #%(id)s открыта · %(kind)s.\nОператор скоро возьмёт в работу.")
+             % {"id": claim.id, "kind": claim.get_kind_display()},
         contextual_actions=[
             {"action": "track_order", "label": _("📦 Трекинг"), "params": {"order_id": order.id}},
         ],
@@ -134,7 +136,8 @@ def start_claim_review(params, user, role):
         except OrderClaim.DoesNotExist:
             return ActionResult(text=_("Рекламация не найдена."))
         if claim.status != "open":
-            return ActionResult(text=f"Нельзя взять в работу — текущий статус: {claim.get_status_display()}.")
+            return ActionResult(text=_("Нельзя взять в работу — текущий статус: %(status)s.")
+                                     % {"status": claim.get_status_display()})
         claim.status = "in_review"
         claim.reviewed_by = user
         claim.save(update_fields=["status", "reviewed_by", "updated_at"])
@@ -142,8 +145,8 @@ def start_claim_review(params, user, role):
                meta={"claim_id": claim.id, "from": "open", "to": "in_review"})
     if claim.opened_by:
         _notify(claim.opened_by, kind="claim",
-                title=f"Рекламация #{claim.id} взята в работу",
-                body=f"Оператор {user.username} рассматривает.",
+                title=_("Рекламация #%(id)s взята в работу") % {"id": claim.id},
+                body=_("Оператор %(user)s рассматривает.") % {"user": user.username},
                 url=f"/chat/?order={claim.order_id}")
     ctx_actions = [
         {"action": "approve_claim", "label": _("✓ Подтвердить"), "params": {"claim_id": claim.id}},
@@ -152,12 +155,13 @@ def start_claim_review(params, user, role):
     if claim.opened_by:
         ctx_actions.append({
             "action": "ask_operator",
-            "label": f"💬 Чат с покупателем ({claim.opened_by.username})",
+            "label": _("💬 Чат с покупателем (%(user)s)") % {"user": claim.opened_by.username},
             "params": {"to_user_id": claim.opened_by.id,
-                        "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+                        "context": _("Рекламация #%(id)s по заказу #%(oid)s")
+                                   % {"id": claim.id, "oid": claim.order_id}},
         })
     return ActionResult(
-        text=f"✓ Рекламация #{claim.id} → в работу.",
+        text=_("✓ Рекламация #%(id)s → в работу.") % {"id": claim.id},
         contextual_actions=ctx_actions,
     )
 
@@ -175,7 +179,8 @@ def approve_claim(params, user, role):
     except (OrderClaim.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Рекламация не найдена."))
     if claim.status not in ("open", "in_review"):
-        return ActionResult(text=f"Нельзя подтвердить — статус {claim.get_status_display()}.")
+        return ActionResult(text=_("Нельзя подтвердить — статус %(status)s.")
+                                 % {"status": claim.get_status_display()})
 
     if not confirmed:
         # contextual_actions: чат с покупателем (опционально), чат с продавцом
@@ -183,9 +188,10 @@ def approve_claim(params, user, role):
         if claim.opened_by:
             ctx_actions.append({
                 "action": "ask_operator",
-                "label": f"💬 Чат с покупателем ({claim.opened_by.username})",
+                "label": _("💬 Чат с покупателем (%(user)s)") % {"user": claim.opened_by.username},
                 "params": {"to_user_id": claim.opened_by.id,
-                            "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+                            "context": _("Рекламация #%(id)s по заказу #%(oid)s")
+                                       % {"id": claim.id, "oid": claim.order_id}},
             })
         # Чат с продавцом по этому заказу
         try:
@@ -197,24 +203,25 @@ def approve_claim(params, user, role):
             for s in sellers[:1]:  # один основной seller
                 ctx_actions.append({
                     "action": "ask_operator",
-                    "label": f"💬 Чат с продавцом ({s.username})",
+                    "label": _("💬 Чат с продавцом (%(user)s)") % {"user": s.username},
                     "params": {"to_user_id": s.id,
-                                "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+                                "context": _("Рекламация #%(id)s по заказу #%(oid)s")
+                                           % {"id": claim.id, "oid": claim.order_id}},
                 })
         except Exception:
             pass
         return ActionResult(
-            text=f"Подтвердить рекламацию #{claim.id}?",
+            text=_("Подтвердить рекламацию #%(id)s?") % {"id": claim.id},
             cards=[{"type": "draft", "data": {
-                "title": f"✓ Подтвердить рекламацию #{claim.id}",
+                "title": _("✓ Подтвердить рекламацию #%(id)s") % {"id": claim.id},
                 "rows": [
                     {"label": _("Заказ"), "value": f"#{claim.order_id}"},
                     {"label": _("Тип"), "value": claim.get_kind_display()},
                     {"label": _("Описание"), "value": claim.title[:120], "primary": True},
                 ],
                 "warnings": [
-                    "Дальше выберите путь: корректирующие действия или финансовое урегулирование.",
-                    "Рейтинг продавца получит штраф (-7) за подтверждённую рекламацию.",
+                    _("Дальше выберите путь: корректирующие действия или финансовое урегулирование."),
+                    _("Рейтинг продавца получит штраф (-7) за подтверждённую рекламацию."),
                 ],
                 "confirm_action": "approve_claim",
                 "confirm_label": _("✓ Подтвердить"),
@@ -231,7 +238,8 @@ def approve_claim(params, user, role):
         claim = OrderClaim.objects.select_for_update().select_related("order").get(id=claim.id)
         if claim.status not in ("open", "in_review"):
             return ActionResult(
-                text=f"Рекламация #{claim.id} уже обработана ({claim.get_status_display()}).")
+                text=_("Рекламация #%(id)s уже обработана (%(status)s).")
+                     % {"id": claim.id, "status": claim.get_status_display()})
         claim.status = "approved"
         claim.reviewed_by = user
         claim.save(update_fields=["status", "reviewed_by", "updated_at"])
@@ -252,8 +260,9 @@ def approve_claim(params, user, role):
 
     if claim.opened_by:
         _notify(claim.opened_by, kind="claim",
-                title=f"✓ Рекламация #{claim.id} подтверждена",
-                body=f"Дальше: {claim.get_kind_display()} → выберите способ урегулирования.",
+                title=_("✓ Рекламация #%(id)s подтверждена") % {"id": claim.id},
+                body=_("Дальше: %(kind)s → выберите способ урегулирования.")
+                     % {"kind": claim.get_kind_display()},
                 url=f"/chat/?order={claim.order_id}")
 
     # Дополнительно — кнопка чата с покупателем (часто нужен для уточнений
@@ -269,12 +278,13 @@ def approve_claim(params, user, role):
     if claim.opened_by:
         post_actions.append({
             "action": "ask_operator",
-            "label": f"💬 Чат с покупателем ({claim.opened_by.username})",
+            "label": _("💬 Чат с покупателем (%(user)s)") % {"user": claim.opened_by.username},
             "params": {"to_user_id": claim.opened_by.id,
-                        "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+                        "context": _("Рекламация #%(id)s по заказу #%(oid)s")
+                                   % {"id": claim.id, "oid": claim.order_id}},
         })
     return ActionResult(
-        text=f"✓ Рекламация #{claim.id} подтверждена. Выберите путь:",
+        text=_("✓ Рекламация #%(id)s подтверждена. Выберите путь:") % {"id": claim.id},
         contextual_actions=post_actions,
     )
 
@@ -291,15 +301,16 @@ def reject_claim(params, user, role):
     except (OrderClaim.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Рекламация не найдена."))
     if claim.status not in ("open", "in_review"):
-        return ActionResult(text=f"Нельзя отклонить — статус {claim.get_status_display()}.")
+        return ActionResult(text=_("Нельзя отклонить — статус %(status)s.")
+                                 % {"status": claim.get_status_display()})
 
     reason = (params.get("reason") or "").strip()
     confirmed = bool(params.get("confirmed"))
     if not confirmed or not reason:
         return ActionResult(
-            text=f"Отклонить рекламацию #{claim.id}?",
+            text=_("Отклонить рекламацию #%(id)s?") % {"id": claim.id},
             cards=[{"type": "form", "data": {
-                "title": f"✗ Отклонить рекламацию #{claim.id}",
+                "title": _("✗ Отклонить рекламацию #%(id)s") % {"id": claim.id},
                 "submit_action": "reject_claim",
                 "fields": [
                     {"name": "reason", "label": _("Причина (видна заявителю)"),
@@ -314,7 +325,8 @@ def reject_claim(params, user, role):
         claim = OrderClaim.objects.select_for_update().select_related("order").get(id=claim.id)
         if claim.status not in ("open", "in_review"):
             return ActionResult(
-                text=f"Рекламация #{claim.id} уже обработана ({claim.get_status_display()}).")
+                text=_("Рекламация #%(id)s уже обработана (%(status)s).")
+                     % {"id": claim.id, "status": claim.get_status_display()})
         claim.status = "rejected"
         claim.reviewed_by = user
         claim.rejection_reason = reason
@@ -323,8 +335,8 @@ def reject_claim(params, user, role):
                    meta={"claim_id": claim.id, "from": "in_review", "to": "rejected", "reason": reason[:200]})
     if claim.opened_by:
         _notify(claim.opened_by, kind="claim",
-                title=f"✗ Рекламация #{claim.id} отклонена",
-                body=f"Причина: {reason[:160]}",
+                title=_("✗ Рекламация #%(id)s отклонена") % {"id": claim.id},
+                body=_("Причина: %(reason)s") % {"reason": reason[:160]},
                 url=f"/chat/?order={claim.order_id}")
     # Rejected → автоматически closed
     return close_claim({"claim_id": claim.id, "confirmed": True}, user, role)
@@ -342,15 +354,16 @@ def apply_corrective(params, user, role):
     except (OrderClaim.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Рекламация не найдена."))
     if claim.status != "approved":
-        return ActionResult(text=f"Нельзя — статус {claim.get_status_display()}.")
+        return ActionResult(text=_("Нельзя — статус %(status)s.")
+                                 % {"status": claim.get_status_display()})
 
     resolution = (params.get("resolution_kind") or "").strip()
     confirmed = bool(params.get("confirmed"))
     if not confirmed or resolution not in ("repair", "reproduce"):
         return ActionResult(
-            text=f"🔧 Корректирующие действия по #{claim.id}",
+            text=_("🔧 Корректирующие действия по #%(id)s") % {"id": claim.id},
             cards=[{"type": "form", "data": {
-                "title": f"🔧 Корректирующие действия · #{claim.id}",
+                "title": _("🔧 Корректирующие действия · #%(id)s") % {"id": claim.id},
                 "submit_action": "apply_corrective",
                 "fields": [{
                     "name": "resolution_kind", "label": _("Способ"), "required": True,
@@ -369,7 +382,8 @@ def apply_corrective(params, user, role):
         claim = OrderClaim.objects.select_for_update().select_related("order").get(id=claim.id)
         if claim.status != "approved":
             return ActionResult(
-                text=f"Рекламация #{claim.id} уже обработана ({claim.get_status_display()}).")
+                text=_("Рекламация #%(id)s уже обработана (%(status)s).")
+                     % {"id": claim.id, "status": claim.get_status_display()})
         claim.status = "corrective_actions"
         claim.resolution_kind = resolution
         claim.save(update_fields=["status", "resolution_kind", "updated_at"])
@@ -378,12 +392,13 @@ def apply_corrective(params, user, role):
                          "resolution": resolution})
     if claim.opened_by:
         _notify(claim.opened_by, kind="claim",
-                title=f"🔧 Рекламация #{claim.id} → корректирующие действия",
-                body=f"Решение: {claim.get_resolution_kind_display()}.",
+                title=_("🔧 Рекламация #%(id)s → корректирующие действия") % {"id": claim.id},
+                body=_("Решение: %(res)s.") % {"res": claim.get_resolution_kind_display()},
                 url=f"/chat/?order={claim.order_id}")
 
     return ActionResult(
-        text=f"✓ Корректирующие действия запущены ({claim.get_resolution_kind_display()}). После выполнения закройте рекламацию.",
+        text=_("✓ Корректирующие действия запущены (%(res)s). После выполнения закройте рекламацию.")
+             % {"res": claim.get_resolution_kind_display()},
         contextual_actions=[
             {"action": "close_claim", "label": _("🔒 Закрыть рекламацию"),
              "params": {"claim_id": claim.id}},
@@ -405,7 +420,8 @@ def apply_settlement(params, user, role):
     except (OrderClaim.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Рекламация не найдена."))
     if claim.status != "approved":
-        return ActionResult(text=f"Нельзя — статус {claim.get_status_display()}.")
+        return ActionResult(text=_("Нельзя — статус %(status)s.")
+                                 % {"status": claim.get_status_display()})
 
     resolution = (params.get("resolution_kind") or "").strip()
     refund_raw = params.get("refund_amount") or "0"
@@ -413,9 +429,9 @@ def apply_settlement(params, user, role):
 
     if not confirmed or resolution not in ("partial_refund", "full_refund"):
         return ActionResult(
-            text=f"💸 Финансовое урегулирование #{claim.id}",
+            text=_("💸 Финансовое урегулирование #%(id)s") % {"id": claim.id},
             cards=[{"type": "form", "data": {
-                "title": f"💸 Финансовое урегулирование · #{claim.id}",
+                "title": _("💸 Финансовое урегулирование · #%(id)s") % {"id": claim.id},
                 "submit_action": "apply_settlement",
                 "fields": [
                     {"name": "resolution_kind", "label": _("Тип возврата"), "required": True,
@@ -444,7 +460,8 @@ def apply_settlement(params, user, role):
         claim = (OrderClaim.objects.select_for_update()
                  .select_related("order", "order__buyer").get(id=claim.id))
         if claim.status != "approved":
-            return ActionResult(text=f"Уже обработано — статус {claim.get_status_display()}.")
+            return ActionResult(text=_("Уже обработано — статус %(status)s.")
+                                     % {"status": claim.get_status_display()})
 
         if resolution == "full_refund":
             refund_amount = Decimal(str(claim.order.total_amount or 0))
@@ -483,16 +500,18 @@ def apply_settlement(params, user, role):
     _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
                meta={"claim_id": claim.id, "from": "approved", "to": "financial_settlement",
                      "resolution": resolution, "amount": float(refund_amount)})
+    _amount_fmt = f"{refund_amount:,.2f}"
     if claim.opened_by:
         _notify(claim.opened_by, kind="claim",
-                title=f"💸 Рекламация #{claim.id} — возврат ${refund_amount:,.2f}",
-                body=f"{claim.get_resolution_kind_display()} применён.",
+                title=_("💸 Рекламация #%(id)s — возврат $%(amount)s")
+                      % {"id": claim.id, "amount": _amount_fmt},
+                body=_("%(res)s применён.") % {"res": claim.get_resolution_kind_display()},
                 url=f"/chat/?order={claim.order_id}")
 
     return ActionResult(
         text=(
-            f"✓ Финансовое урегулирование: {claim.get_resolution_kind_display()} "
-            f"${refund_amount:,.2f} → buyer."
+            _("✓ Финансовое урегулирование: %(res)s $%(amount)s → buyer.")
+            % {"res": claim.get_resolution_kind_display(), "amount": _amount_fmt}
         ),
         contextual_actions=[
             {"action": "close_claim", "label": _("🔒 Закрыть рекламацию"),
@@ -517,7 +536,7 @@ def close_claim(params, user, role):
         except OrderClaim.DoesNotExist:
             return ActionResult(text=_("Рекламация не найдена."))
         if claim.status == "closed":
-            return ActionResult(text=f"Рекламация #{claim.id} уже закрыта.")
+            return ActionResult(text=_("Рекламация #%(id)s уже закрыта.") % {"id": claim.id})
         # Любой статус (включая rejected) → closed
         prev = claim.status
         claim.status = "closed"
@@ -527,7 +546,8 @@ def close_claim(params, user, role):
         _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
                    meta={"claim_id": claim.id, "from": prev, "to": "closed"})
     return ActionResult(
-        text=f"🔒 Рекламация #{claim.id} закрыта (предыдущий статус: {prev}).",
+        text=_("🔒 Рекламация #%(id)s закрыта (предыдущий статус: %(prev)s).")
+             % {"id": claim.id, "prev": prev},
     )
 
 
@@ -588,9 +608,10 @@ def claim_detail(params, user, role):
     if is_op and claim.opened_by:
         actions.append({
             "action": "ask_operator",
-            "label": f"💬 Чат с покупателем ({claim.opened_by.username})",
+            "label": _("💬 Чат с покупателем (%(user)s)") % {"user": claim.opened_by.username},
             "params": {"to_user_id": claim.opened_by.id,
-                        "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+                        "context": _("Рекламация #%(id)s по заказу #%(oid)s")
+                                   % {"id": claim.id, "oid": claim.order_id}},
         })
         try:
             from marketplace.models import OrderItem
@@ -601,9 +622,10 @@ def claim_detail(params, user, role):
             for s in sellers[:1]:
                 actions.append({
                     "action": "ask_operator",
-                    "label": f"💬 Чат с продавцом ({s.username})",
+                    "label": _("💬 Чат с продавцом (%(user)s)") % {"user": s.username},
                     "params": {"to_user_id": s.id,
-                                "context": f"Рекламация #{claim.id} по заказу #{claim.order_id}"},
+                                "context": _("Рекламация #%(id)s по заказу #%(oid)s")
+                                           % {"id": claim.id, "oid": claim.order_id}},
                 })
         except Exception:
             pass
@@ -634,8 +656,9 @@ def claim_detail(params, user, role):
         context_cards = []
 
     return ActionResult(
-        text=f"📋 Рекламация #{claim.id} · {claim.get_status_display()}",
-        cards=[{"type": "draft", "data": {"title": f"Рекламация #{claim.id}",
+        text=_("📋 Рекламация #%(id)s · %(status)s")
+             % {"id": claim.id, "status": claim.get_status_display()},
+        cards=[{"type": "draft", "data": {"title": _("Рекламация #%(id)s") % {"id": claim.id},
                                            "rows": rows, "confirm_label": "—"}}]
               + context_cards,
         actions=actions,

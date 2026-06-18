@@ -28,6 +28,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .models import Wallet, WalletTx
 
@@ -131,12 +132,14 @@ def _wallet_confirm_intent(intent: dict, payer) -> dict:
 
     WalletTx.objects.create(
         wallet=payer_wallet, kind="escrow_hold", amount=amount,
-        description=f"Эскроу-холд {kind_label} #{order_id} (intent {intent_id})",
+        description=_("Эскроу-холд %(kind)s #%(order)s (intent %(intent)s)")
+                    % {"kind": kind_label, "order": order_id, "intent": intent_id},
         order_id=order_id, balance_after=payer_wallet.balance,
     )
     WalletTx.objects.create(
         wallet=plat, kind="escrow_hold", amount=amount,
-        description=f"Эскроу-приём {kind_label} #{order_id} (intent {intent_id})",
+        description=_("Эскроу-приём %(kind)s #%(order)s (intent %(intent)s)")
+                    % {"kind": kind_label, "order": order_id, "intent": intent_id},
         order_id=order_id, balance_after=plat.balance,
     )
 
@@ -206,7 +209,7 @@ def release_to_seller(*, order, seller, amount=None) -> dict:
         amount = escrow_balance_for_order(order.id)
     amount = Decimal(str(amount))
     if amount <= 0:
-        return {"ok": False, "reason": "ничего не удержано", "amount": 0}
+        return {"ok": False, "reason": _("ничего не удержано"), "amount": 0}
     from .payments_engines import get_engine
     return get_engine().release_to_seller(order=order, seller=seller, amount=amount)
 
@@ -224,7 +227,7 @@ def _wallet_release_to_seller(*, order, seller, amount: Decimal) -> dict:
         amount = escrow_balance_for_order(order.id)
     amount = Decimal(str(amount))
     if amount <= 0:
-        return {"ok": False, "reason": "ничего не удержано", "amount": 0}
+        return {"ok": False, "reason": _("ничего не удержано"), "amount": 0}
     if plat.balance < amount:
         raise InsufficientEscrow(f"escrow has ${plat.balance}, need ${amount}")
 
@@ -236,12 +239,12 @@ def _wallet_release_to_seller(*, order, seller, amount: Decimal) -> dict:
 
     WalletTx.objects.create(
         wallet=plat, kind="escrow_release", amount=amount,
-        description=f"Перевод продавцу по заказу #{order.id}",
+        description=_("Перевод продавцу по заказу #%(id)s") % {"id": order.id},
         order_id=order.id, balance_after=plat.balance,
     )
     WalletTx.objects.create(
         wallet=seller_wallet, kind="escrow_release", amount=amount,
-        description=f"Поступление по заказу #{order.id}",
+        description=_("Поступление по заказу #%(id)s") % {"id": order.id},
         order_id=order.id, balance_after=seller_wallet.balance,
     )
     return {"ok": True, "amount": float(amount), "to": seller.username}
@@ -253,7 +256,7 @@ def refund_to_buyer(*, order, buyer, amount=None) -> dict:
         amount = escrow_balance_for_order(order.id)
     amount = Decimal(str(amount))
     if amount <= 0:
-        return {"ok": False, "reason": "ничего не удержано", "amount": 0}
+        return {"ok": False, "reason": _("ничего не удержано"), "amount": 0}
     from .payments_engines import get_engine
     return get_engine().refund_to_buyer(order=order, buyer=buyer, amount=amount)
 
@@ -274,12 +277,12 @@ def _wallet_refund_to_buyer(*, order, buyer, amount: Decimal) -> dict:
 
     WalletTx.objects.create(
         wallet=plat, kind="escrow_refund", amount=amount,
-        description=f"Возврат покупателю по заказу #{order.id}",
+        description=_("Возврат покупателю по заказу #%(id)s") % {"id": order.id},
         order_id=order.id, balance_after=plat.balance,
     )
     WalletTx.objects.create(
         wallet=buyer_wallet, kind="escrow_refund", amount=amount,
-        description=f"Возврат по заказу #{order.id}",
+        description=_("Возврат по заказу #%(id)s") % {"id": order.id},
         order_id=order.id, balance_after=buyer_wallet.balance,
     )
     return {"ok": True, "amount": float(amount), "to": buyer.username}

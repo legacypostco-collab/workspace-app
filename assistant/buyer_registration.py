@@ -24,33 +24,35 @@ import logging
 import re
 from typing import Any
 
+from django.utils.translation import gettext as _
+
 logger = logging.getLogger(__name__)
 
 # ── Справочные списки ──────────────────────────────────────────
 COUNTRY_CHOICES = [
-    {"value": "RU", "label": "🇷🇺 Россия"},
-    {"value": "BY", "label": "🇧🇾 Беларусь"},
-    {"value": "KZ", "label": "🇰🇿 Казахстан"},
-    {"value": "UZ", "label": "🇺🇿 Узбекистан"},
-    {"value": "KG", "label": "🇰🇬 Кыргызстан"},
-    {"value": "AM", "label": "🇦🇲 Армения"},
-    {"value": "AE", "label": "🇦🇪 ОАЭ"},
-    {"value": "TR", "label": "🇹🇷 Турция"},
-    {"value": "CN", "label": "🇨🇳 Китай"},
-    {"value": "DE", "label": "🇩🇪 Германия"},
-    {"value": "OTHER", "label": "🌍 Другая страна"},
+    {"value": "RU", "label": _("🇷🇺 Россия")},
+    {"value": "BY", "label": _("🇧🇾 Беларусь")},
+    {"value": "KZ", "label": _("🇰🇿 Казахстан")},
+    {"value": "UZ", "label": _("🇺🇿 Узбекистан")},
+    {"value": "KG", "label": _("🇰🇬 Кыргызстан")},
+    {"value": "AM", "label": _("🇦🇲 Армения")},
+    {"value": "AE", "label": _("🇦🇪 ОАЭ")},
+    {"value": "TR", "label": _("🇹🇷 Турция")},
+    {"value": "CN", "label": _("🇨🇳 Китай")},
+    {"value": "DE", "label": _("🇩🇪 Германия")},
+    {"value": "OTHER", "label": _("🌍 Другая страна")},
 ]
 POSITION_CHOICES = [
-    {"value": "buyer",      "label": "Закупщик"},
-    {"value": "director",   "label": "Директор"},
-    {"value": "owner",      "label": "Владелец"},
-    {"value": "engineer",   "label": "Инженер / технолог"},
-    {"value": "logist",     "label": "Логист"},
-    {"value": "other",      "label": "Иное"},
+    {"value": "buyer",      "label": _("Закупщик")},
+    {"value": "director",   "label": _("Директор")},
+    {"value": "owner",      "label": _("Владелец")},
+    {"value": "engineer",   "label": _("Инженер / технолог")},
+    {"value": "logist",     "label": _("Логист")},
+    {"value": "other",      "label": _("Иное")},
 ]
 MESSENGER_CHOICES = [
-    {"value": "telegram", "label": "Telegram (@username)"},
-    {"value": "whatsapp", "label": "WhatsApp (+номер)"},
+    {"value": "telegram", "label": _("Telegram (@username)")},
+    {"value": "whatsapp", "label": _("WhatsApp (+номер)")},
 ]
 
 # Простой regex для базового формата (не RFC-полный — для UX достаточно).
@@ -64,7 +66,7 @@ _PHONE_RE = re.compile(r"^\+\d{8,15}$")
 def _check_email(email: str) -> tuple[bool, str]:
     """Format + MX. MX делаем best-effort: если dnspython нет, fallback на format."""
     if not _EMAIL_RE.match(email):
-        return False, "неверный формат e-mail"
+        return False, _("неверный формат e-mail")
     domain = email.rsplit("@", 1)[1].lower()
     # MX через dnspython (опционально). На бете и без него — допустимо.
     try:
@@ -72,9 +74,9 @@ def _check_email(email: str) -> tuple[bool, str]:
         try:
             answers = dns.resolver.resolve(domain, "MX", lifetime=2.5)
             if not list(answers):
-                return False, f"у домена {domain} нет MX-записей — почта не дойдёт"
+                return False, _("у домена %(domain)s нет MX-записей — почта не дойдёт") % {"domain": domain}
         except Exception:
-            return False, f"не удалось проверить MX для {domain}"
+            return False, _("не удалось проверить MX для %(domain)s") % {"domain": domain}
     except ImportError:
         pass  # без dnspython — пропускаем MX-чек (доступ всё равно даём)
     return True, ""
@@ -85,7 +87,7 @@ def _check_phone(phone: str) -> tuple[bool, str]:
     if not cleaned.startswith("+"):
         cleaned = "+" + cleaned.lstrip("0")
     if not _PHONE_RE.match(cleaned):
-        return False, "телефон должен быть в формате +7XXXXXXXXXX (8–15 цифр)"
+        return False, _("телефон должен быть в формате +7XXXXXXXXXX (8–15 цифр)")
     return True, cleaned  # возвращаем нормализованный
 
 
@@ -101,7 +103,7 @@ def _check_messenger(kind: str, handle: str, phone_e164: str) -> tuple[bool, str
     # check_messengers возвращает signals — yellow если канала нет
     sigs = [s for s in (r.get("signals") or []) if s.get("level") in ("red", "yellow")]
     if sigs:
-        return False, sigs[0].get("msg", "канал связи не подтверждён")
+        return False, sigs[0].get("msg", _("канал связи не подтверждён"))
     return True, ""
 
 
@@ -123,10 +125,11 @@ def _resolve_company_name(country: str, tax_id: str) -> str:
             # ЕГРЮЛ-запрос, мы дёрнем поле «полное_наименование».
             if country == "RU":
                 ogrn = data.get("ogrn") or ""
-                return f"ИНН {tax_id}" + (f" · ОГРН {ogrn}" if ogrn else "")
+                return (_("ИНН %(inn)s") % {"inn": tax_id}) + (
+                    _(" · ОГРН %(ogrn)s") % {"ogrn": ogrn} if ogrn else "")
     except Exception:
         logger.exception("company_name lookup failed for %s/%s", country, tax_id)
-    return f"ИНН/Tax ID {tax_id}" if tax_id else ""
+    return _("ИНН/Tax ID %(tax)s") % {"tax": tax_id} if tax_id else ""
 
 
 # ── Form rendering / decision ──────────────────────────────────
@@ -140,55 +143,55 @@ def _form_card(values: dict | None = None, errors: dict | None = None) -> dict:
         return errors.get(name) or ""
 
     fields = [
-        {"name": "country", "label": "Страна", "type": "select",
+        {"name": "country", "label": _("Страна"), "type": "select",
          "required": True, "options": COUNTRY_CHOICES,
          "value": values.get("country", "RU"), "error": err("country")},
-        {"name": "tax_id", "label": "Регистрационный номер (ИНН / Tax ID)",
+        {"name": "tax_id", "label": _("Регистрационный номер (ИНН / Tax ID)"),
          "required": True, "placeholder": "7708123456",
          "value": values.get("tax_id", ""),
-         "help": "Название и адрес подтянутся автоматически.",
+         "help": _("Название и адрес подтянутся автоматически."),
          "error": err("tax_id")},
-        {"name": "contact_name", "label": "ФИО контактного лица",
-         "required": True, "placeholder": "Иванов Иван Иванович",
+        {"name": "contact_name", "label": _("ФИО контактного лица"),
+         "required": True, "placeholder": _("Иванов Иван Иванович"),
          "value": values.get("contact_name", ""), "error": err("contact_name")},
-        {"name": "position", "label": "Должность", "type": "select",
+        {"name": "position", "label": _("Должность"), "type": "select",
          "required": True, "options": POSITION_CHOICES,
          "value": values.get("position", "buyer"), "error": err("position")},
-        {"name": "email", "label": "Рабочий e-mail", "type": "email",
+        {"name": "email", "label": _("Рабочий e-mail"), "type": "email",
          "required": True, "placeholder": "ivanov@company.ru",
          "value": values.get("email", ""), "error": err("email")},
-        {"name": "phone_e164", "label": "Телефон (с кодом страны)",
+        {"name": "phone_e164", "label": _("Телефон (с кодом страны)"),
          "required": True, "placeholder": "+79261234567",
          "value": values.get("phone_e164", ""), "error": err("phone_e164")},
-        {"name": "messenger_kind", "label": "Мессенджер для связи",
+        {"name": "messenger_kind", "label": _("Мессенджер для связи"),
          "type": "select", "required": True, "options": MESSENGER_CHOICES,
          "value": values.get("messenger_kind", "telegram"),
          "error": err("messenger_kind")},
-        {"name": "messenger_handle", "label": "Username / номер в мессенджере",
+        {"name": "messenger_handle", "label": _("Username / номер в мессенджере"),
          "required": True, "placeholder": "@ivanov  /  +79261234567",
          "value": values.get("messenger_handle", ""),
          "error": err("messenger_handle")},
-        {"name": "equipment_fleet", "label": "Парк техники (бренды и модели)",
+        {"name": "equipment_fleet", "label": _("Парк техники (бренды и модели)"),
          "type": "textarea", "required": True,
          "placeholder": "Komatsu PC400, CAT 336, Hitachi ZX350 …",
          "value": values.get("equipment_fleet", ""),
-         "help": "Под какие машины закупаете запчасти.",
+         "help": _("Под какие машины закупаете запчасти."),
          "error": err("equipment_fleet")},
-        {"name": "username", "label": "Логин для входа",
+        {"name": "username", "label": _("Логин для входа"),
          "required": True, "placeholder": "ivanov",
          "value": values.get("username", ""), "error": err("username")},
-        {"name": "password1", "label": "Пароль", "type": "password",
+        {"name": "password1", "label": _("Пароль"), "type": "password",
          "required": True, "minlength": 8, "error": err("password1")},
-        {"name": "password2", "label": "Повторите пароль", "type": "password",
+        {"name": "password2", "label": _("Повторите пароль"), "type": "password",
          "required": True, "minlength": 8, "error": err("password2")},
     ]
     return {
         "type": "form",
         "data": {
-            "title": "🛒 Регистрация покупателя",
-            "subtitle": "8 полей · проверка контактов · доступ за 5 минут.",
+            "title": _("🛒 Регистрация покупателя"),
+            "subtitle": _("8 полей · проверка контактов · доступ за 5 минут."),
             "submit_action": "start_registration",
-            "submit_label": "Создать аккаунт и войти →",
+            "submit_label": _("Создать аккаунт и войти →"),
             "fields": fields,
             "fixed_params": {"confirmed": True, "role": "buyer"},
         },
@@ -198,9 +201,9 @@ def _form_card(values: dict | None = None, errors: dict | None = None) -> dict:
 def render_form(params: dict | None = None) -> dict:
     """Phase 1: показать форму (вместе с возможными ошибками после попытки сабмита)."""
     return {
-        "text": "Заполните 8 полей — после автопроверки сразу получите доступ.",
+        "text": _("Заполните 8 полей — после автопроверки сразу получите доступ."),
         "cards": [_form_card(params or {})],
-        "actions": [{"action": "start_login", "label": "У меня уже есть аккаунт"}],
+        "actions": [{"action": "start_login", "label": _("У меня уже есть аккаунт")}],
         "suggestions": [], "contextual_actions": [],
     }
 
@@ -236,7 +239,7 @@ def attempt_register(request, params: dict) -> dict:
               "phone_e164", "messenger_kind", "messenger_handle",
               "equipment_fleet", "username", "password1"):
         if not v[f]:
-            errors[f] = "обязательное поле"
+            errors[f] = _("обязательное поле")
 
     # ── Авто-проверки (ТЗ §2) ───────────────────────────────
     if v["email"] and "email" not in errors:
@@ -260,7 +263,7 @@ def attempt_register(request, params: dict) -> dict:
     if errors:
         # ТЗ §3: «проблемы с контактами → запрос уточнений»
         return {"ok": False, "user": None, "response": {
-            "text": "⚠️ Проверьте поля и попробуйте снова:\n"
+            "text": _("⚠️ Проверьте поля и попробуйте снова:") + "\n"
                     + "\n".join(f"• {f}: {m}" for f, m in errors.items()),
             "cards": [_form_card(v, errors)],
             "actions": [],
@@ -286,7 +289,7 @@ def attempt_register(request, params: dict) -> dict:
                 errors[fname if fname in v else "username"] = str(e)
                 msg_lines.append(f"• {fname}: {e}")
         return {"ok": False, "user": None, "response": {
-            "text": "⚠️ Не получилось создать аккаунт:\n" + "\n".join(msg_lines),
+            "text": _("⚠️ Не получилось создать аккаунт:") + "\n" + "\n".join(msg_lines),
             "cards": [_form_card(v, errors)],
             "actions": [],
             "suggestions": [], "contextual_actions": [],
@@ -307,19 +310,19 @@ def attempt_register(request, params: dict) -> dict:
     )
 
     # ── ТЗ §3: «все проверки пройдены → доступ автоматически» ─
+    greeting = (_(", %(company)s") % {"company": company_name}) if company_name else ""
     return {"ok": True, "user": user, "response": {
         "text": (
-            f"✅ Аккаунт создан и проверен. Добро пожаловать"
-            + (f", {company_name}" if company_name else "") + "!\n"
-            f"• E-mail проверен · телефон проверен · мессенджер на связи.\n"
-            f"• Реквизиты компании подтянулись автоматически.\n\n"
-            f"Юридический адрес, банк и подписанта попросим при первой сделке "
-            f"(не сейчас — экономим ваше время)."
+            _("✅ Аккаунт создан и проверен. Добро пожаловать%(greeting)s!\n"
+              "• E-mail проверен · телефон проверен · мессенджер на связи.\n"
+              "• Реквизиты компании подтянулись автоматически.\n\n"
+              "Юридический адрес, банк и подписанта попросим при первой сделке "
+              "(не сейчас — экономим ваше время).") % {"greeting": greeting}
         ),
         "cards": [],
-        "actions": [{"action": "reload_page", "label": "🚀 Открыть кабинет"}],
-        "suggestions": ["Найди мне гусеничную цепь Komatsu",
-                         "Покажи поставщиков с лучшим SLA"],
+        "actions": [{"action": "reload_page", "label": _("🚀 Открыть кабинет")}],
+        "suggestions": [_("Найди мне гусеничную цепь Komatsu"),
+                         _("Покажи поставщиков с лучшим SLA")],
         "contextual_actions": [],
         "_post_action": "reload",
     }}

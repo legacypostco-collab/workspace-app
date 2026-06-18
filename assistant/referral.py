@@ -20,6 +20,7 @@ from decimal import Decimal
 
 from django.db import transaction
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 
 # Роли, у которых реферал = $100 с первой покупки приглашённого.
@@ -55,13 +56,13 @@ def record_referral(referrer, referred, referrer_role: str):
     if role == "buyer":
         kind = "buyer_discount"
         # buyer_discount — один на пригласившего; referred не входит в uniq-ключ.
-        obj, _ = ReferralReward.objects.get_or_create(
+        obj, _created = ReferralReward.objects.get_or_create(
             referrer=referrer, kind="buyer_discount",
             defaults={
                 "referred": referred,
                 "referrer_role": role,
                 "amount": Decimal(ReferralReward.FLAT_AMOUNT_USD),
-                "note": "−$100 на первый заказ — зачёт при пополнении депозита",
+                "note": _("−$100 на первый заказ — зачёт при пополнении депозита"),
             },
         )
         return obj
@@ -85,12 +86,12 @@ def record_referral(referrer, referred, referrer_role: str):
         return existing if existing.referrer_id == referrer.id else None
     if Order.objects.filter(buyer=referred, payment_status__in=_PAID).exists():
         return None
-    obj, _ = ReferralReward.objects.get_or_create(
+    obj, _created = ReferralReward.objects.get_or_create(
         referrer=referrer, referred=referred, kind="flat_first_order",
         defaults={
             "referrer_role": role,
             "amount": Decimal(ReferralReward.FLAT_AMOUNT_USD),
-            "note": "$100 с первой покупки приглашённого",
+            "note": _("$100 с первой покупки приглашённого"),
         },
     )
     return obj
@@ -134,7 +135,7 @@ def on_order_reserve_paid(order) -> int:
         for rw in rows:
             _credit_wallet(
                 rw.referrer, rw.amount,
-                description=f"Реферальный бонус: первый заказ приглашённого (#{order.id})",
+                description=_("Реферальный бонус: первый заказ приглашённого (#%(id)s)") % {"id": order.id},
                 order_id=order.id,
             )
             rw.status = "credited"
@@ -152,7 +153,7 @@ def on_order_reserve_paid(order) -> int:
         for rw in bd:
             _credit_wallet(
                 rw.referrer, rw.amount,
-                description=f"Реферальная скидка −$100 (приглашённый оформил первый заказ #{order.id})",
+                description=_("Реферальная скидка −$100 (приглашённый оформил первый заказ #%(id)s)") % {"id": order.id},
                 order_id=order.id,
             )
             rw.status = "credited"
@@ -185,7 +186,7 @@ def on_deposit_funded(user) -> int:
                 continue  # приглашённый ещё не настоящий клиент — скидка ждёт
             _credit_wallet(
                 rw.referrer, rw.amount,
-                description="Реферальная скидка −$100 на первый заказ (зачёт при пополнении)",
+                description=_("Реферальная скидка −$100 на первый заказ (зачёт при пополнении)"),
             )
             rw.status = "credited"
             rw.credited_at = timezone.now()

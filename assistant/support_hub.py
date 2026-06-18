@@ -24,6 +24,7 @@ import logging
 from datetime import timedelta
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .actions import ActionResult, register
 
@@ -99,14 +100,14 @@ def support_home(params, user, role):
         cards = []
 
         cards.append({"type": "kpi_grid", "data": {
-            "title": "📥 Inbox поддержки",
+            "title": _("📥 Inbox поддержки"),
             "items": [
-                {"label": "Обращений к оператору", "value": str(len(ticket_convs)),
+                {"label": _("Обращений к оператору"), "value": str(len(ticket_convs)),
                  "tone": "warn" if ticket_convs else None,
-                 "sub": "с реальным вопросом за 14 дней"},
-                {"label": "Жалоб на платформу",   "value": str(complaints.count()),
+                 "sub": _("с реальным вопросом за 14 дней")},
+                {"label": _("Жалоб на платформу"),   "value": str(complaints.count()),
                  "tone": "bad" if complaints.count() else None,
-                 "sub": "поданных через форму за 14 дней"},
+                 "sub": _("поданных через форму за 14 дней")},
             ],
         }})
 
@@ -124,7 +125,7 @@ def support_home(params, user, role):
                     "params":   {"conversation_id": str(c.id)},
                 })
             cards.append({"type": "list", "data": {
-                "title": f"💬 Обращения к оператору · {len(ticket_convs)}",
+                "title": _('💬 Обращения к оператору · %(p0)s') % {"p0": f'{len(ticket_convs)}'},
                 "items": rows,
             }})
 
@@ -155,15 +156,15 @@ def support_home(params, user, role):
                     "params":   {"conversation_id": str(m.conversation_id)},
                 })
             cards.append({"type": "list", "data": {
-                "title": f"🚨 Жалобы на платформу · {len(rows)}",
+                "title": _('🚨 Жалобы на платформу · %(p0)s') % {"p0": f'{len(rows)}'},
                 "items": rows,
             }})
 
         if not (ticket_convs or complaints):
             cards.append({"type": "list", "data": {
-                "title": "📥 Inbox поддержки",
-                "items": [{"title": "✅ Очередь поддержки пуста",
-                            "subtitle": "Нет новых обращений и жалоб"}],
+                "title": _("📥 Inbox поддержки"),
+                "items": [{"title": _("✅ Очередь поддержки пуста"),
+                            "subtitle": _("Нет новых обращений и жалоб")}],
             }})
 
         return ActionResult(
@@ -171,31 +172,31 @@ def support_home(params, user, role):
                   "Рекламации по заказам — в отдельной вкладке «Рекламации»."),
             cards=cards,
             actions=[
-                {"label": "📂 Мои диалоги с пользователями",
+                {"label": _("📂 Мои диалоги с пользователями"),
                  "action": "op_my_user_chats", "params": {}},
-                {"label": "📋 База знаний (FAQ)",   "action": "kb_faq",       "params": {}},
-                {"label": "🎨 Цветовая памятка",    "action": "color_legend", "params": {}},
-                {"label": "🧾 Рекламации",          "action": "get_claims",   "params": {}},
-                {"label": "🎛 Дашборд",             "action": "op_dashboard", "params": {}},
+                {"label": _("📋 База знаний (FAQ)"),   "action": "kb_faq",       "params": {}},
+                {"label": _("🎨 Цветовая памятка"),    "action": "color_legend", "params": {}},
+                {"label": _("🧾 Рекламации"),          "action": "get_claims",   "params": {}},
+                {"label": _("🎛 Дашборд"),             "action": "op_dashboard", "params": {}},
             ],
         )
 
     # ── Buyer/Seller: классический support-home ────────────
     actions = [
-        {"action": "kb_faq",           "label": "❓ Частые вопросы (FAQ)"},
-        {"action": "color_legend",     "label": "🎨 Цветовая памятка"},
-        {"action": "my_verifications", "label": "🛡 Статус моих проверок"},
-        {"action": "contact_operator", "label": "💬 Связаться с оператором"},
-        {"action": "open_complaint",   "label": "🚨 Пожаловаться (на платформу/оператора)"},
+        {"action": "kb_faq",           "label": _("❓ Частые вопросы (FAQ)")},
+        {"action": "color_legend",     "label": _("🎨 Цветовая памятка")},
+        {"action": "my_verifications", "label": _("🛡 Статус моих проверок")},
+        {"action": "contact_operator", "label": _("💬 Связаться с оператором")},
+        {"action": "open_complaint",   "label": _("🚨 Пожаловаться (на платформу/оператора)")},
     ]
     if is_buyer:
         actions.insert(1, {"action": "my_bonuses",
-                            "label": "🎁 Мои бонусы и скидки"})
+                            "label": _("🎁 Мои бонусы и скидки")})
         actions.insert(0, {"action": "get_claims",
-                            "label": "🧾 Мои рекламации (по заказам)"})
+                            "label": _("🧾 Мои рекламации (по заказам)")})
     elif is_seller:
         actions.insert(0, {"action": "start_onboarding",
-                            "label": "🚀 KYB-верификация"})
+                            "label": _("🚀 KYB-верификация")})
 
     return ActionResult(
         text=(
@@ -228,54 +229,54 @@ def color_legend(params, user, role):
         ),
         cards=[
             {"type": "list", "data": {
-                "title": "Шкала цветов (единая по всей платформе)",
+                "title": _("Шкала цветов (единая по всей платформе)"),
                 "items": [
-                    {"title":    "Критично",
-                     "subtitle": "Красная линия. Нарушено / просрочено / требует немедленных действий.",
+                    {"title":    _("Критично"),
+                     "subtitle": _("Красная линия. Нарушено / просрочено / требует немедленных действий."),
                      "tone":     "bad"},
-                    {"title":    "Под угрозой",
-                     "subtitle": "Оранжевая линия. Приближается дедлайн или есть риск срыва — требует внимания.",
+                    {"title":    _("Под угрозой"),
+                     "subtitle": _("Оранжевая линия. Приближается дедлайн или есть риск срыва — требует внимания."),
                      "tone":     "warn"},
-                    {"title":    "В работе",
-                     "subtitle": "Голубая линия. Нейтральное состояние, идёт по плану.",
+                    {"title":    _("В работе"),
+                     "subtitle": _("Голубая линия. Нейтральное состояние, идёт по плану."),
                      "tone":     "info"},
-                    {"title":    "В норме",
-                     "subtitle": "Зелёная линия. Цель достигнута, всё хорошо, контроль не нужен.",
+                    {"title":    _("В норме"),
+                     "subtitle": _("Зелёная линия. Цель достигнута, всё хорошо, контроль не нужен."),
                      "tone":     "ok"},
                 ],
             }},
             {"type": "faq", "data": {
-                "title": "Где применяется (раскрыть для деталей)",
+                "title": _("Где применяется (раскрыть для деталей)"),
                 "items": [
                     {"q": "SLA-нарушения и риски",
                      "rows": [
-                        {"title": "Красная", "subtitle": "SLA уже нарушен, дедлайн просрочен"},
-                        {"title": "Оранжевая", "subtitle": "SLA под угрозой, осталось <50% времени"},
-                        {"title": "Голубая", "subtitle": "SLA соблюдается, времени достаточно"},
+                        {"title": _("Красная"), "subtitle": _("SLA уже нарушен, дедлайн просрочен")},
+                        {"title": _("Оранжевая"), "subtitle": "SLA под угрозой, осталось <50% времени"},
+                        {"title": _("Голубая"), "subtitle": _("SLA соблюдается, времени достаточно")},
                      ]},
                     {"q": "Платежи и эскроу",
                      "rows": [
-                        {"title": "Красная", "subtitle": "Возврат, спор, refund_pending"},
-                        {"title": "Оранжевая", "subtitle": "Ждёт резерв 10%, ждёт оплату"},
-                        {"title": "Зелёная", "subtitle": "Оплачено / переведено продавцу"},
+                        {"title": _("Красная"), "subtitle": _("Возврат, спор, refund_pending")},
+                        {"title": _("Оранжевая"), "subtitle": "Ждёт резерв 10%, ждёт оплату"},
+                        {"title": _("Зелёная"), "subtitle": _("Оплачено / переведено продавцу")},
                      ]},
                     {"q": "Рейтинг и тиры (для seller)",
                      "rows": [
-                        {"title": "Красная", "subtitle": "Рейтинг 0–59 (Рисковый)"},
-                        {"title": "Оранжевая", "subtitle": "Рейтинг 60–79 (Песочница)"},
-                        {"title": "Зелёная", "subtitle": "Рейтинг 80–100 (Надёжный)"},
+                        {"title": _("Красная"), "subtitle": _("Рейтинг 0–59 (Рисковый)")},
+                        {"title": _("Оранжевая"), "subtitle": _("Рейтинг 60–79 (Песочница)")},
+                        {"title": _("Зелёная"), "subtitle": _("Рейтинг 80–100 (Надёжный)")},
                      ]},
                     {"q": "RFQ-режимы",
                      "rows": [
-                        {"title": "Красная", "subtitle": "SLA-сроки оператора нарушены (15 мин / 48 ч)"},
-                        {"title": "Оранжевая", "subtitle": "В работе у оператора, идёт обратный отсчёт"},
-                        {"title": "Голубая", "subtitle": "AUTO-режим, контроль не нужен"},
+                        {"title": _("Красная"), "subtitle": _("SLA-сроки оператора нарушены (15 мин / 48 ч)")},
+                        {"title": _("Оранжевая"), "subtitle": _("В работе у оператора, идёт обратный отсчёт")},
+                        {"title": _("Голубая"), "subtitle": _("AUTO-режим, контроль не нужен")},
                      ]},
                 ],
             }},
         ],
         contextual_actions=[
-            {"action": "support_home", "label": "← Поддержка"},
+            {"action": "support_home", "label": _("← Поддержка")},
         ],
     )
 
@@ -288,7 +289,7 @@ def view_support_ticket(params, user, role):
     и увидеть KYB-данные / email / phone других пользователей.
     """
     if not ((role or "").startswith("operator") or role == "admin"):
-        return ActionResult(text="Доступно только оператору поддержки.")
+        return ActionResult(text=_("Доступно только оператору поддержки."))
     """Карточка тикета поддержки для оператора.
 
     Структура (что важно при разборе обращения):
@@ -303,11 +304,11 @@ def view_support_ticket(params, user, role):
 
     conv_id = params.get("conversation_id")
     if not conv_id:
-        return ActionResult(text="Не указан тикет.")
+        return ActionResult(text=_("Не указан тикет."))
     try:
         conv = Conversation.objects.select_related("user").get(id=conv_id)
     except Conversation.DoesNotExist:
-        return ActionResult(text="Тикет не найден.")
+        return ActionResult(text=_("Тикет не найден."))
 
     target = conv.user
     target_name = target.username if target else "—"
@@ -331,10 +332,10 @@ def view_support_ticket(params, user, role):
     cat_label = CATEGORY_LBL.get(conv.category, conv.category or "Общее")
 
     summary_rows = [
-        {"label": "Пользователь", "value": target_name, "primary": True},
-        {"label": "Категория",   "value": cat_label},
-        {"label": "Сообщений",   "value": str(total_msgs)},
-        {"label": "Последняя активность", "value": last_activity},
+        {"label": _("Пользователь"), "value": target_name, "primary": True},
+        {"label": _("Категория"),   "value": cat_label},
+        {"label": _("Сообщений"),   "value": str(total_msgs)},
+        {"label": _("Последняя активность"), "value": last_activity},
     ]
 
     # ── 2) Контакты (из KYB если есть) ─────────────────────
@@ -345,14 +346,14 @@ def view_support_ticket(params, user, role):
             from marketplace.models import CompanyVerification
             kyb = CompanyVerification.objects.filter(user=target).first()
             if kyb:
-                if kyb.legal_name: contact_rows.append({"label": "Компания", "value": kyb.legal_name})
-                if kyb.country:    contact_rows.append({"label": "Страна", "value": kyb.country})
-                if kyb.phone:      contact_rows.append({"label": "Телефон", "value": kyb.phone})
+                if kyb.legal_name: contact_rows.append({"label": _("Компания"), "value": kyb.legal_name})
+                if kyb.country:    contact_rows.append({"label": _("Страна"), "value": kyb.country})
+                if kyb.phone:      contact_rows.append({"label": _("Телефон"), "value": kyb.phone})
                 if kyb.whatsapp or kyb.telegram:
                     parts = []
                     if kyb.whatsapp: parts.append(f"WA {kyb.whatsapp}")
                     if kyb.telegram: parts.append(f"TG {kyb.telegram}")
-                    contact_rows.append({"label": "Мессенджеры", "value": " · ".join(parts)})
+                    contact_rows.append({"label": _("Мессенджеры"), "value": " · ".join(parts)})
         except Exception:
             pass
 
@@ -365,9 +366,9 @@ def view_support_ticket(params, user, role):
                 status__in=("delivered", "completed", "cancelled")).count()
             total_orders = Order.objects.filter(buyer=target).count()
             context_rows.append({
-                "label": "Заказов в работе",
+                "label": _("Заказов в работе"),
                 "value": str(active_orders),
-                "sub": f"{total_orders} всего за всё время",
+                "sub": _('%(p0)s всего за всё время') % {"p0": f'{total_orders}'},
                 "tone": "warn" if active_orders > 0 else "info",
             })
         except Exception:
@@ -377,7 +378,7 @@ def view_support_ticket(params, user, role):
             w = Wallet.objects.filter(user=target).first()
             if w:
                 context_rows.append({
-                    "label": "Депозит",
+                    "label": _("Депозит"),
                     "value": f"${float(w.balance or 0):,.0f}",
                     "tone": "info",
                 })
@@ -391,7 +392,7 @@ def view_support_ticket(params, user, role):
                                 "verified": "Верифицирована", "rejected": "Отклонена"}
                 tone_map = {"verified": "ok", "pending": "warn", "rejected": "bad", "none": "info"}
                 context_rows.append({
-                    "label": "KYB-статус",
+                    "label": _("KYB-статус"),
                     "value": STATUS_LBL.get(kyb.status, kyb.status),
                     "tone": tone_map.get(kyb.status, "info"),
                 })
@@ -480,21 +481,21 @@ def view_support_ticket(params, user, role):
     if ticket_kind != "browsing":
         if contact_rows:
             cards.append({"type": "draft", "data": {
-                "title": "📇 Контакты", "rows": contact_rows, "confirm_label": "—",
+                "title": _("📇 Контакты"), "rows": contact_rows, "confirm_label": "—",
             }})
         if context_rows:
             cards.append({"type": "kpi_grid", "data": {
-                "title": "📊 Контекст пользователя", "items": context_rows,
+                "title": _("📊 Контекст пользователя"), "items": context_rows,
             }})
         if last_user_text:
             cards.append({"type": "draft", "data": {
-                "title": "💬 Последний вопрос пользователя",
-                "rows": [{"label": "Текст", "value": last_user_text, "wide": True, "primary": True}],
+                "title": _("💬 Последний вопрос пользователя"),
+                "rows": [{"label": _("Текст"), "value": last_user_text, "wide": True, "primary": True}],
                 "confirm_label": "—",
             }})
         if topic_set:
             cards.append({"type": "list", "data": {
-                "title": "🧭 Темы, которые искал",
+                "title": _("🧭 Темы, которые искал"),
                 "items": [{"title": t, "tone": "info"} for t in topic_set],
             }})
 
@@ -517,7 +518,7 @@ def view_support_ticket(params, user, role):
             "params": {"to_user_id": target.id, "context": ctx_label},
         })
     actions.append({
-        "label": "← Inbox поддержки",
+        "label": _("← Inbox поддержки"),
         "action": "support_home", "params": {},
     })
 
@@ -530,129 +531,129 @@ def view_support_ticket(params, user, role):
 # Phase 2. Сейчас этого достаточно: покрывает 80% обращений за первый месяц.
 FAQ_ENTRIES = [
     {
-        "category": "Регистрация",
-        "q": "Какие данные нужны для регистрации покупателя?",
-        "a": ("8 полей: страна, ИНН/Tax ID, ФИО контактного лица, должность, "
+        "category": _("Регистрация"),
+        "q": _("Какие данные нужны для регистрации покупателя?"),
+        "a": (_("8 полей: страна, ИНН/Tax ID, ФИО контактного лица, должность, "
               "рабочий e-mail, телефон с кодом страны, мессенджер "
               "(WhatsApp или Telegram), парк техники.\n\n"
               "Название и юр.адрес компании платформа подтянет автоматически "
               "по ИНН. Банковские реквизиты и ФИО подписанта запросим только "
-              "перед первой сделкой, не на этапе регистрации."),
+              "перед первой сделкой, не на этапе регистрации.")),
     },
     {
-        "category": "Регистрация",
-        "q": "Как зарегистрироваться поставщиком?",
-        "a": ("На лендинге кнопка «стать поставщиком» → форма из 4 полей "
+        "category": _("Регистрация"),
+        "q": _("Как зарегистрироваться поставщиком?"),
+        "a": (_("На лендинге кнопка «стать поставщиком» → форма из 4 полей "
               "(логин, e-mail, пароль). После создания аккаунта откроется "
               "KYB-анкета (5 шагов): реквизиты, юр.адрес, банк, директор, "
               "отправка на проверку. До завершения KYB seller не может "
-              "отвечать на RFQ и принимать заказы."),
+              "отвечать на RFQ и принимать заказы.")),
     },
     {
-        "category": "KYB / Верификация",
-        "q": "Сколько занимает проверка поставщика?",
-        "a": ("Авто-проверки — мгновенно (ИНН, ОГРН/EGRUL, OpenSanctions, "
+        "category": _("KYB / Верификация"),
+        "q": _("Сколько занимает проверка поставщика?"),
+        "a": (_("Авто-проверки — мгновенно (ИНН, ОГРН/EGRUL, OpenSanctions, "
               "VIES для EU, OpenCorporates для зарубежных, MX-записи e-mail, "
               "регистрация в WhatsApp/Telegram).\n\n"
               "Решение оператора — до 24 часов в рабочий день. После approve — "
-              "сразу доступны RFQ-ответы и приём заказов."),
+              "сразу доступны RFQ-ответы и приём заказов.")),
     },
     {
-        "category": "KYB / Верификация",
-        "q": "Что именно проверяет платформа автоматически?",
-        "a": ("• ЕГРЮЛ: статус активности, ликвидация, налоговая недоимка\n"
+        "category": _("KYB / Верификация"),
+        "q": _("Что именно проверяет платформа автоматически?"),
+        "a": (_("• ЕГРЮЛ: статус активности, ликвидация, налоговая недоимка\n"
               "• OpenSanctions: директор и компания в санкционных списках\n"
               "• VIES: валидность VAT для контрагентов ЕС\n"
               "• OpenCorporates: статус компании в иностранных реестрах\n"
               "• MX-записи: реальность домена e-mail\n"
-              "• WhatsApp/Telegram: зарегистрирован ли указанный номер"),
+              "• WhatsApp/Telegram: зарегистрирован ли указанный номер")),
     },
     {
-        "category": "Заказы и оплата",
-        "q": "Какая минимальная сумма заказа?",
-        "a": ("Минимум $7,000 USD. Меньший заказ платформа не примет — экономика "
+        "category": _("Заказы и оплата"),
+        "q": _("Какая минимальная сумма заказа?"),
+        "a": (_("Минимум $7,000 USD. Меньший заказ платформа не примет — экономика "
               "консолидации (фиксированные расходы на логистику, таможню, "
               "операторов) не окупается на меньших объёмах.\n\n"
               "Если в корзине меньше $7,000 — система покажет «не хватает $N» "
-              "и предложит добавить позиции."),
+              "и предложит добавить позиции.")),
     },
     {
-        "category": "Заказы и оплата",
-        "q": "Какая схема оплаты?",
-        "a": ("Двухэтапная через эскроу:\n\n"
+        "category": _("Заказы и оплата"),
+        "q": _("Какая схема оплаты?"),
+        "a": (_("Двухэтапная через эскроу:\n\n"
               "1. 10% резерв при подтверждении КП — замораживается "
               "на депозите покупателя, поставщик видит подтверждение "
               "и запускает заказ в работу.\n\n"
               "2. 90% остаток перед отгрузкой — оплачивается когда "
               "поставщик помечает «готов к отгрузке». Деньги уходят "
-              "поставщику только после подтверждения приёмки покупателем."),
+              "поставщику только после подтверждения приёмки покупателем.")),
     },
     {
-        "category": "Заказы и оплата",
-        "q": "Можно ли отменить заказ?",
-        "a": ("До оплаты резерва — да, в один клик из карточки заказа.\n\n"
+        "category": _("Заказы и оплата"),
+        "q": _("Можно ли отменить заказ?"),
+        "a": (_("До оплаты резерва — да, в один клик из карточки заказа.\n\n"
               "После оплаты резерва (10%) — только через оператора. "
               "Если поставщик уже запустил производство, может быть удержание "
               "резерва. Откройте обращение в «Поддержка» → «Связаться с "
-              "оператором» — рассмотрим индивидуально."),
+              "оператором» — рассмотрим индивидуально.")),
     },
     {
-        "category": "Доставка и сроки",
-        "q": "Как отследить заказ?",
-        "a": ("В чате наберите «трекинг 82» или «когда отгрузят 82» (где 82 — "
+        "category": _("Доставка и сроки"),
+        "q": _("Как отследить заказ?"),
+        "a": (_("В чате наберите «трекинг 82» или «когда отгрузят 82» (где 82 — "
               "ID заказа). Карточка покажет:\n\n"
               "• Текущий этап (производство → отгрузка → таможня → выдача)\n"
               "• ETA выдачи в днях\n"
               "• Перевозчика (DHL/СДЭК/Maersk и т.д.) с контактами\n"
-              "• Трек-номер + прямую ссылку на сайт перевозчика"),
+              "• Трек-номер + прямую ссылку на сайт перевозчика")),
     },
     {
-        "category": "Доставка и сроки",
-        "q": "Какие используются базисы поставки (Incoterms)?",
-        "a": ("По умолчанию FOB — поставщик довозит до порта отгрузки, "
+        "category": _("Доставка и сроки"),
+        "q": _("Какие используются базисы поставки (Incoterms)?"),
+        "a": (_("По умолчанию FOB — поставщик довозит до порта отгрузки, "
               "дальше платформа берёт логистику на себя.\n\n"
               "На больших партиях доступны EXW (со склада поставщика) "
               "и CIF (морем со страховкой). Выбор базиса — на этапе расчёта "
-              "КП в чате."),
+              "КП в чате.")),
     },
     {
-        "category": "Рекламации",
-        "q": "Как открыть рекламацию на заказ?",
-        "a": ("В карточке заказа кнопка «🧾 Открыть рекламацию», либо в чате "
+        "category": _("Рекламации"),
+        "q": _("Как открыть рекламацию на заказ?"),
+        "a": (_("В карточке заказа кнопка «🧾 Открыть рекламацию», либо в чате "
               "«рекламация по заказу 82». Форма из 4 полей:\n\n"
               "• Вид: брак, не та деталь, повреждение при доставке, "
               "просрочка, не пришла, иное\n"
               "• Заголовок\n"
               "• Описание (что произошло, фото если есть)\n"
               "• Желаемая компенсация ($, опционально)\n\n"
-              "Оператор уведомляется сразу, по SLA — отвечает в течение 24 ч."),
+              "Оператор уведомляется сразу, по SLA — отвечает в течение 24 ч.")),
     },
     {
-        "category": "Рекламации",
-        "q": "Сколько времени рассматривается рекламация?",
-        "a": ("SLA зависит от вида (защищает от затягивания):\n\n"
+        "category": _("Рекламации"),
+        "q": _("Сколько времени рассматривается рекламация?"),
+        "a": (_("SLA зависит от вида (защищает от затягивания):\n\n"
               "• Не пришла → 2 дня\n"
               "• Брак / Повреждение при доставке → 3 дня\n"
               "• Просрочка поставки → 5 дней\n"
               "• Не та деталь / Иное → 7 дней\n\n"
               "Если оператор не реагирует в срок — рекламация автоматически "
-              "эскалируется супервайзеру и в Telegram on-call оператора."),
+              "эскалируется супервайзеру и в Telegram on-call оператора.")),
     },
     {
-        "category": "Рекламации",
-        "q": "Какие варианты решения по рекламации?",
-        "a": ("• Полный возврат денег с депозита\n"
+        "category": _("Рекламации"),
+        "q": _("Какие варианты решения по рекламации?"),
+        "a": (_("• Полный возврат денег с депозита\n"
               "• Частичный возврат (компенсация за дефект)\n"
               "• Бесплатная замена позиции\n"
               "• Доплата за повреждённую упаковку\n"
               "• Кредит на следующий заказ\n\n"
               "Оператор согласует решение с обеими сторонами и зафиксирует "
-              "в системе. Все этапы сохраняются в audit-log."),
+              "в системе. Все этапы сохраняются в audit-log.")),
     },
     {
-        "category": "Связь со сторонами",
-        "q": "Можно ли договариваться напрямую с поставщиком?",
-        "a": ("Нет, никогда. Платформа намеренно не раскрывает контакты "
+        "category": _("Связь со сторонами"),
+        "q": _("Можно ли договариваться напрямую с поставщиком?"),
+        "a": (_("Нет, никогда. Платформа намеренно не раскрывает контакты "
               "поставщика покупателю. Вся переписка идёт через оператора:\n\n"
               "• Покупатель видит «Поставщик №1, №2…» — анонимная нумерация\n"
               "• Любой вопрос / уточнение / спор — через чат-форму\n"
@@ -661,35 +662,35 @@ FAQ_ENTRIES = [
               "эскроу, у поставщика — гарантия оплаты и нет потери комиссии. "
               "Попытки обменяться контактами через сообщения чата автоматически "
               "флагуются оператору и могут привести к снижению рейтинга "
-              "или блокировке."),
+              "или блокировке.")),
     },
     {
-        "category": "Связь со сторонами",
-        "q": "А как тогда уточнить детали по заказу?",
-        "a": ("Все вопросы — через оператора платформы:\n\n"
+        "category": _("Связь со сторонами"),
+        "q": _("А как тогда уточнить детали по заказу?"),
+        "a": (_("Все вопросы — через оператора платформы:\n\n"
               "1. В карточке заказа нажмите «💬 Связаться с оператором» "
               "(или в чате напишите «связаться с оператором»)\n"
               "2. Опишите вопрос (заказ, что нужно уточнить)\n"
               "3. Оператор переадресует продавцу/логисту и вернёт ответ\n\n"
               "Среднее время реакции оператора — 4 рабочих часа. "
-              "Все обращения сохраняются."),
+              "Все обращения сохраняются.")),
     },
     {
-        "category": "Бонусы",
-        "q": "Есть ли скидки за объём?",
-        "a": ("Да, auto-discount применяется автоматически по обороту за 12 мес:\n\n"
+        "category": _("Бонусы"),
+        "q": _("Есть ли скидки за объём?"),
+        "a": (_("Да, auto-discount применяется автоматически по обороту за 12 мес:\n\n"
               "• От $50,000 → Bronze (комиссия −1%)\n"
               "• От $200,000 → Silver (−2%)\n"
               "• От $500,000 → Gold (−3%)\n"
               "• От $1,000,000 → Platinum (−5% + персональный менеджер)\n\n"
               "Текущий тир — в меню «Поддержка» → «🎁 Мои бонусы». "
               "Скидка применяется к новым заказам автоматически — "
-              "ничего активировать не нужно."),
+              "ничего активировать не нужно.")),
     },
     {
-        "category": "Платформа",
-        "q": "Какие AI-возможности есть в чате?",
-        "a": ("• OEM-нормализатор: 707-99-58030, 7079958030, CAT-265-0235 — "
+        "category": _("Платформа"),
+        "q": _("Какие AI-возможности есть в чате?"),
+        "a": (_("• OEM-нормализатор: 707-99-58030, 7079958030, CAT-265-0235 — "
               "находит одну и ту же деталь под любым написанием\n"
               "• Загрузка спецификации: drag-and-drop xlsx/csv/pdf, "
               "AI-маппинг колонок (название, ОЕМ, кол-во)\n"
@@ -697,21 +698,21 @@ FAQ_ENTRIES = [
               "разными SLA — система выбирает по сложности запроса\n"
               "• Расчёт landed cost: цена + доставка + таможня по "
               "incoterm в один клик\n"
-              "• Трекинг с прогнозом: текущий этап + ETA выдачи по дням"),
+              "• Трекинг с прогнозом: текущий этап + ETA выдачи по дням")),
     },
     {
-        "category": "Платформа",
-        "q": "Где посмотреть статус моих проверок?",
-        "a": ("В чате: «Поддержка» → «🛡 Статус моих проверок».\n\n"
+        "category": _("Платформа"),
+        "q": _("Где посмотреть статус моих проверок?"),
+        "a": (_("В чате: «Поддержка» → «🛡 Статус моих проверок».\n\n"
               "Показывает: верификация e-mail, телефон, мессенджер, "
               "KYB-статус (для поставщика), реквизиты компании, рейтинг, "
               "лимиты по бюджету. Если что-то не так — отправьте обращение "
-              "оператору с указанием поля, поправим."),
+              "оператору с указанием поля, поправим.")),
     },
     {
-        "category": "Поддержка",
-        "q": "Как связаться с поддержкой?",
-        "a": ("В чате слева — pill «Поддержка». Внутри:\n\n"
+        "category": _("Поддержка"),
+        "q": _("Как связаться с поддержкой?"),
+        "a": (_("В чате слева — pill «Поддержка». Внутри:\n\n"
               "• ❓ База знаний (этот раздел)\n"
               "• 🛡 Статус моих проверок\n"
               "• 🎁 Мои бонусы и скидки\n"
@@ -719,7 +720,7 @@ FAQ_ENTRIES = [
               "• 💬 Связаться с оператором — форма ticket'а\n"
               "• 🚨 Пожаловаться на платформу/оператора/поставщика\n\n"
               "Среднее время ответа — 4 рабочих часа. Critical (блок "
-              "аккаунта, потеря денег) — в течение часа."),
+              "аккаунта, потеря денег) — в течение часа.")),
     },
 ]
 
@@ -798,11 +799,10 @@ def kb_faq(params, user, role):
 
     if not matched:
         return ActionResult(
-            text=(f"❓ По запросу «{query}» в FAQ ничего не найдено.\n"
-                  f"Напишите оператору — добавим в базу."),
+            text=(_('❓ По запросу «%(p0)s» в FAQ ничего не найдено.\nНапишите оператору — добавим в базу.') % {"p0": f'{query}'}),
             actions=[{"action": "contact_operator",
-                       "label": "💬 Спросить оператора"}],
-            contextual_actions=[{"action": "support_home", "label": "← Назад"}],
+                       "label": _("💬 Спросить оператора")}],
+            contextual_actions=[{"action": "support_home", "label": _("← Назад")}],
         )
 
     # Группировка по категории — в faq-аккордеоне category выводим как title группы
@@ -826,7 +826,7 @@ def kb_faq(params, user, role):
         cards=[{
             "type": "faq",
             "data": {
-                "title": f"FAQ · {len(matched)} ответов",
+                "title": _('FAQ · %(p0)s ответов') % {"p0": f'{len(matched)}'},
                 "items": faq_items[:60],
             },
         }],
@@ -835,8 +835,8 @@ def kb_faq(params, user, role):
             "Когда раскрываются контакты", "Как работают бонусы",
         ],
         contextual_actions=[
-            {"action": "support_home", "label": "← Поддержка"},
-            {"action": "contact_operator", "label": "💬 Спросить оператора"},
+            {"action": "support_home", "label": _("← Поддержка")},
+            {"action": "contact_operator", "label": _("💬 Спросить оператора")},
         ],
     )
 
@@ -850,21 +850,21 @@ def my_verifications(params, user, role):
 
     p = UserProfile.objects.filter(user=user).first()
     rows = [
-        {"label": "Логин",     "value": user.username},
+        {"label": _("Логин"),     "value": user.username},
         {"label": "Email",     "value": user.email or "—",
          "tone": "ok" if user.email else "warn"},
-        {"label": "Аккаунт",   "value": "Активен" if user.is_active else "Заблокирован",
+        {"label": _("Аккаунт"),   "value": "Активен" if user.is_active else "Заблокирован",
          "tone": "ok" if user.is_active else "bad"},
-        {"label": "Роль",      "value": (p.role if p else "—").upper()},
+        {"label": _("Роль"),      "value": (p.role if p else "—").upper()},
     ]
     if p:
         rows.extend([
-            {"label": "Страна",        "value": p.country or "—"},
-            {"label": "ИНН / Tax ID",  "value": p.tax_id or "—"},
-            {"label": "Контактное лицо", "value": p.contact_name or "—"},
-            {"label": "Телефон",       "value": p.phone_e164 or "—",
+            {"label": _("Страна"),        "value": p.country or "—"},
+            {"label": _("ИНН / Tax ID"),  "value": p.tax_id or "—"},
+            {"label": _("Контактное лицо"), "value": p.contact_name or "—"},
+            {"label": _("Телефон"),       "value": p.phone_e164 or "—",
              "tone": "ok" if p.phone_e164 else "warn"},
-            {"label": "Мессенджер",    "value": (
+            {"label": _("Мессенджер"),    "value": (
                 f"{p.get_messenger_kind_display()}: {p.messenger_handle}"
                 if p.messenger_kind and p.messenger_handle else "—"),
              "tone": "ok" if (p.messenger_kind and p.messenger_handle) else "warn"},
@@ -874,13 +874,13 @@ def my_verifications(params, user, role):
             if kyb:
                 tone = {"verified": "ok", "pending": "warn",
                         "rejected": "bad", "draft": "info"}.get(kyb.status, "info")
-                rows.append({"label": "KYB-статус",
+                rows.append({"label": _("KYB-статус"),
                              "value": kyb.get_status_display(), "tone": tone})
                 if kyb.rejection_reason:
-                    rows.append({"label": "Причина отклонения",
+                    rows.append({"label": _("Причина отклонения"),
                                  "value": kyb.rejection_reason[:200], "tone": "bad"})
             else:
-                rows.append({"label": "KYB-статус", "value": "Не заполнен",
+                rows.append({"label": _("KYB-статус"), "value": "Не заполнен",
                              "tone": "warn"})
 
     next_actions = []
@@ -889,23 +889,21 @@ def my_verifications(params, user, role):
         kyb = CompanyVerification.objects.filter(user=user, status="verified").first()
         if not kyb:
             next_actions.append({"action": "start_onboarding",
-                                 "label": "🚀 Пройти KYB"})
+                                 "label": _("🚀 Пройти KYB")})
 
     return ActionResult(
         text=(
-            f"🛡 Статус проверок аккаунта {user.username}.\n"
-            f"Все данные — из вашего профиля. Что неверно — отправьте "
-            f"оператору жалобу, поправим."
+            _('🛡 Статус проверок аккаунта %(p0)s.\nВсе данные — из вашего профиля. Что неверно — отправьте оператору жалобу, поправим.') % {"p0": f'{user.username}'}
         ),
         cards=[{
             "type": "kpi_grid",
-            "data": {"title": "🛡 Проверки и реквизиты",
+            "data": {"title": _("🛡 Проверки и реквизиты"),
                      "items": rows[:15]},
         }],
         actions=next_actions,
         contextual_actions=[
-            {"action": "support_home",      "label": "← Поддержка"},
-            {"action": "contact_operator",  "label": "💬 Спросить оператора"},
+            {"action": "support_home",      "label": _("← Поддержка")},
+            {"action": "contact_operator",  "label": _("💬 Спросить оператора")},
         ],
     )
 
@@ -917,8 +915,8 @@ def my_bonuses(params, user, role):
     """Текущие бонусы и скидки покупателя."""
     if role != "buyer":
         return ActionResult(
-            text="🎁 Бонусы доступны только в кабинете покупателя.",
-            contextual_actions=[{"action": "support_home", "label": "← Назад"}],
+            text=_("🎁 Бонусы доступны только в кабинете покупателя."),
+            contextual_actions=[{"action": "support_home", "label": _("← Назад")}],
         )
 
     from marketplace.models import BuyerVolumeYearly, Order
@@ -950,9 +948,9 @@ def my_bonuses(params, user, role):
             next_tier = (threshold, name, perk)
 
     rows = [
-        {"label": "Оборот за 12 мес", "value": f"${gmv_12m:,.0f}", "tone": "info"},
-        {"label": "Заказов за 12 мес", "value": str(cnt_12m)},
-        {"label": "Текущий статус",
+        {"label": _("Оборот за 12 мес"), "value": f"${gmv_12m:,.0f}", "tone": "info"},
+        {"label": _("Заказов за 12 мес"), "value": str(cnt_12m)},
+        {"label": _("Текущий статус"),
          "value": current_tier[1] if current_tier else "—",
          "sub": current_tier[2] if current_tier else "Заказы от $50k → Bronze",
          "tone": "ok" if current_tier else "warn"},
@@ -960,23 +958,22 @@ def my_bonuses(params, user, role):
     if next_tier:
         shortage = next_tier[0] - gmv_12m
         rows.append({
-            "label": f"До {next_tier[1]}",
+            "label": _('До %(p0)s') % {"p0": f'{next_tier[1]}'},
             "value": f"${shortage:,.0f}",
             "sub": next_tier[2], "tone": "info",
         })
 
     return ActionResult(
         text=(
-            f"🎁 Ваши бонусы. Auto-discount работает автоматически — "
-            f"скидка применяется к новым заказам по факту достижения тира."
+            _('🎁 Ваши бонусы. Auto-discount работает автоматически — скидка применяется к новым заказам по факту достижения тира.')
         ),
         cards=[
             {"type": "kpi_grid",
-             "data": {"title": "🎁 Бонусная программа", "items": rows}},
+             "data": {"title": _("🎁 Бонусная программа"), "items": rows}},
             {"type": "list", "data": {
-                "title": "📊 Тиры скидок",
+                "title": _("📊 Тиры скидок"),
                 "items": [
-                    {"title": f"{name}", "subtitle": f"от ${thr:,.0f} · {perk}",
+                    {"title": f"{name}", "subtitle": _('от $%(p0)s · %(p1)s') % {"p0": f'{thr:,.0f}', "p1": f'{perk}'},
                      "tone": "ok" if gmv_12m >= thr else "info"}
                     for thr, name, perk in tiers
                 ],
@@ -985,13 +982,13 @@ def my_bonuses(params, user, role):
         actions=[
             # Аналитика и отчёты по сделкам — все pure-DB action'ы
             {"label": "🎯 Auto-discount",   "action": "get_buyer_discount", "params": {}},
-            {"label": "💸 Экономия",        "action": "get_savings",        "params": {}},
-            {"label": "📊 Аналитика заказов","action": "get_analytics",     "params": {}},
-            {"label": "📦 Отчёт по поставкам","action": "get_supply_report","params": {}},
+            {"label": _("💸 Экономия"),        "action": "get_savings",        "params": {}},
+            {"label": _("📊 Аналитика заказов"),"action": "get_analytics",     "params": {}},
+            {"label": _("📦 Отчёт по поставкам"),"action": "get_supply_report","params": {}},
         ],
         contextual_actions=[
-            {"action": "support_home",     "label": "← Поддержка"},
-            {"action": "contact_operator", "label": "💬 Спросить оператора"},
+            {"action": "support_home",     "label": _("← Поддержка")},
+            {"action": "contact_operator", "label": _("💬 Спросить оператора")},
         ],
     )
 
@@ -1011,35 +1008,35 @@ def contact_operator(params, user, role):
 
     if not confirmed:
         return ActionResult(
-            text="💬 Опишите проблему — оператор получит ticket в свой админ-чат.",
+            text=_("💬 Опишите проблему — оператор получит ticket в свой админ-чат."),
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": "💬 Связаться с оператором",
+                    "title": _("💬 Связаться с оператором"),
                     "submit_action": "contact_operator",
                     "submit_label": "📨 Отправить",
                     "fields": [
-                        {"name": "topic", "label": "Тема", "type": "select",
+                        {"name": "topic", "label": _("Тема"), "type": "select",
                          "required": True, "options": [
-                            {"value": "billing",      "label": "💰 Оплата / комиссия"},
-                            {"value": "verification", "label": "🛡 Верификация / KYB"},
-                            {"value": "order",        "label": "📦 Заказ / доставка"},
-                            {"value": "complaint",    "label": "🚨 Жалоба"},
-                            {"value": "feature",      "label": "💡 Предложение"},
-                            {"value": "other",        "label": "❓ Другое"},
+                            {"value": "billing",      "label": _("💰 Оплата / комиссия")},
+                            {"value": "verification", "label": _("🛡 Верификация / KYB")},
+                            {"value": "order",        "label": _("📦 Заказ / доставка")},
+                            {"value": "complaint",    "label": _("🚨 Жалоба")},
+                            {"value": "feature",      "label": _("💡 Предложение")},
+                            {"value": "other",        "label": _("❓ Другое")},
                          ]},
-                        {"name": "text", "label": "Опишите проблему",
+                        {"name": "text", "label": _("Опишите проблему"),
                          "type": "textarea", "required": True,
-                         "placeholder": "Что произошло, в каком заказе/RFQ, что хотите получить"},
+                         "placeholder": _("Что произошло, в каком заказе/RFQ, что хотите получить")},
                     ],
                     "fixed_params": {"confirmed": True},
                 },
             }],
-            contextual_actions=[{"action": "support_home", "label": "← Назад"}],
+            contextual_actions=[{"action": "support_home", "label": _("← Назад")}],
         )
 
     if not text:
-        return ActionResult(text="⚠️ Описание обязательно.")
+        return ActionResult(text=_("⚠️ Описание обязательно."))
 
     # Anti-collusion: проверяем нет ли в тексте попытки обмена off-platform контактами.
     flagged = _detect_offplatform_contact(text)
@@ -1056,10 +1053,7 @@ def contact_operator(params, user, role):
         notify_operator_alert(
             user_obj=user, event="user_registered",  # переиспользуем event для рендера
             text=(
-                f"💬 ОБРАЩЕНИЕ от @{user.username} ({role})\n"
-                f"Тема: {topic_label}\n"
-                f"Текст: {text[:500]}{'…' if len(text) > 500 else ''}"
-                f"{flag_note}"
+                _('💬 ОБРАЩЕНИЕ от @%(p0)s (%(p1)s)\nТема: %(p2)s\nТекст: %(p3)s%(p4)s%(p5)s') % {"p0": f'{user.username}', "p1": f'{role}', "p2": f'{topic_label}', "p3": f'{text[:500]}', "p4": f"{('…' if len(text) > 500 else '')}", "p5": f'{flag_note}'}
             ),
             extra={"role": role},
         )
@@ -1081,7 +1075,7 @@ def contact_operator(params, user, role):
     return ActionResult(
         text=response_text,
         contextual_actions=[
-            {"action": "support_home", "label": "← Поддержка"},
+            {"action": "support_home", "label": _("← Поддержка")},
         ],
     )
 
@@ -1101,34 +1095,34 @@ def open_complaint(params, user, role):
 
     if not confirmed:
         return ActionResult(
-            text="🚨 Жалоба фиксируется в audit-log и эскалируется супервайзеру.",
+            text=_("🚨 Жалоба фиксируется в audit-log и эскалируется супервайзеру."),
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": "🚨 Жалоба на платформу",
+                    "title": _("🚨 Жалоба на платформу"),
                     "submit_action": "open_complaint",
                     "submit_label": "🚨 Подать жалобу",
                     "fields": [
-                        {"name": "against", "label": "На кого", "type": "select",
+                        {"name": "against", "label": _("На кого"), "type": "select",
                          "required": True, "options": [
-                            {"value": "platform", "label": "Платформа в целом"},
-                            {"value": "operator", "label": "Оператор / поддержка"},
-                            {"value": "seller",   "label": "Поставщик (требует order_id)"},
-                            {"value": "buyer",    "label": "Покупатель (для seller)"},
-                            {"value": "other",    "label": "Другое"},
+                            {"value": "platform", "label": _("Платформа в целом")},
+                            {"value": "operator", "label": _("Оператор / поддержка")},
+                            {"value": "seller",   "label": _("Поставщик (требует order_id)")},
+                            {"value": "buyer",    "label": _("Покупатель (для seller)")},
+                            {"value": "other",    "label": _("Другое")},
                          ]},
-                        {"name": "text", "label": "Подробное описание",
+                        {"name": "text", "label": _("Подробное описание"),
                          "type": "textarea", "required": True,
-                         "placeholder": "Что произошло, когда, какие доказательства"},
+                         "placeholder": _("Что произошло, когда, какие доказательства")},
                     ],
                     "fixed_params": {"confirmed": True},
                 },
             }],
-            contextual_actions=[{"action": "support_home", "label": "← Назад"}],
+            contextual_actions=[{"action": "support_home", "label": _("← Назад")}],
         )
 
     if not text:
-        return ActionResult(text="⚠️ Описание обязательно.")
+        return ActionResult(text=_("⚠️ Описание обязательно."))
 
     flagged = _detect_offplatform_contact(text)
     try:
@@ -1141,10 +1135,7 @@ def open_complaint(params, user, role):
         notify_operator_alert(
             user_obj=user, event="user_registered",
             text=(
-                f"🚨🚨 ЖАЛОБА от @{user.username} ({role})\n"
-                f"Против: {against_label}\n"
-                f"Текст: {text[:500]}{'…' if len(text) > 500 else ''}"
-                f"{(chr(10) + '⚠️ Обнаружены off-platform контакты') if flagged else ''}"
+                _('🚨🚨 ЖАЛОБА от @%(p0)s (%(p1)s)\nПротив: %(p2)s\nТекст: %(p3)s%(p4)s%(p5)s') % {"p0": f'{user.username}', "p1": f'{role}', "p2": f'{against_label}', "p3": f'{text[:500]}', "p4": f"{('…' if len(text) > 500 else '')}", "p5": f"{(chr(10) + '⚠️ Обнаружены off-platform контакты' if flagged else '')}"}
             ),
             extra={"role": role},
         )
@@ -1158,7 +1149,7 @@ def open_complaint(params, user, role):
             "За false-flag жалобы платформа оставляет право снижать рейтинг."
         ),
         contextual_actions=[
-            {"action": "support_home", "label": "← Поддержка"},
+            {"action": "support_home", "label": _("← Поддержка")},
         ],
     )
 

@@ -30,6 +30,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,10 @@ def send_email(user, *, kind: str, title: str, body: str = "", url: str = "") ->
     subject = f"[Consolidator] {title}"
     text_body = f"{body}\n\n{full_url}" if full_url else body
     html_body = (
-        f"<p>{body}</p>" + (f"<p><a href='{full_url}'>Открыть в Consolidator</a></p>" if full_url else "")
+        f"<p>{body}</p>" + (
+            _("<p><a href='%(url)s'>Открыть в Consolidator</a></p>") % {"url": full_url}
+            if full_url else ""
+        )
     )
     try:
         msg = EmailMultiAlternatives(
@@ -135,14 +139,14 @@ def _build_inline_keyboard(url: str, kind: str) -> list[list[dict]] | None:
     if not abs_url.startswith("http"):
         return None  # TG требует абсолютные URL для url-кнопок
 
-    primary = {"text": "🔗 Открыть в чате", "url": abs_url}
+    primary = {"text": _("🔗 Открыть в чате"), "url": abs_url}
     secondary = {
-        "order":   {"text": "📦 Все заказы",      "url": _build_email_link("/chat/")},
-        "payment": {"text": "💰 Депозит",         "url": _build_email_link("/chat/")},
-        "rfq":     {"text": "📋 Мои RFQ",         "url": _build_email_link("/chat/")},
-        "claim":   {"text": "🧾 Все рекламации",  "url": _build_email_link("/chat/")},
-        "kyb":     {"text": "🛡 Статус KYB",      "url": _build_email_link("/chat/")},
-        "sla":     {"text": "⏱ Очередь SLA",     "url": _build_email_link("/chat/")},
+        "order":   {"text": _("📦 Все заказы"),      "url": _build_email_link("/chat/")},
+        "payment": {"text": _("💰 Депозит"),         "url": _build_email_link("/chat/")},
+        "rfq":     {"text": _("📋 Мои RFQ"),         "url": _build_email_link("/chat/")},
+        "claim":   {"text": _("🧾 Все рекламации"),  "url": _build_email_link("/chat/")},
+        "kyb":     {"text": _("🛡 Статус KYB"),      "url": _build_email_link("/chat/")},
+        "sla":     {"text": _("⏱ Очередь SLA"),     "url": _build_email_link("/chat/")},
     }.get(kind)
     rows = [[primary]]
     if secondary:
@@ -260,8 +264,8 @@ def send_digest(user) -> bool:
     for it in items:
         by_kind.setdefault(it.kind, []).append(it)
 
-    text_parts = [f"За последние 24 часа у вас {n_total} непрочитанных уведомлений:"]
-    html_parts = [f"<p>За последние 24 часа у вас <b>{n_total}</b> непрочитанных уведомлений:</p><ul>"]
+    text_parts = [_("За последние 24 часа у вас %(n)s непрочитанных уведомлений:") % {"n": n_total}]
+    html_parts = [_("<p>За последние 24 часа у вас <b>%(n)s</b> непрочитанных уведомлений:</p><ul>") % {"n": n_total}]
     for kind, ks in by_kind.items():
         text_parts.append(f"\n[{kind.upper()}]")
         html_parts.append(f"<li><b>{kind.upper()}</b><ul>")
@@ -272,14 +276,14 @@ def send_digest(user) -> bool:
                 text_parts.append(f"    {it.body[:120]}")
             if full_url:
                 text_parts.append(f"    {full_url}")
-            html_link = f" — <a href='{full_url}'>открыть</a>" if full_url else ""
+            html_link = (_(" — <a href='%(url)s'>открыть</a>") % {"url": full_url}) if full_url else ""
             html_parts.append(f"<li>{it.title}{html_link}<br><small>{it.body[:120]}</small></li>")
         html_parts.append("</ul></li>")
     html_parts.append("</ul>")
 
     try:
         msg = EmailMultiAlternatives(
-            subject=f"[Consolidator] Сводка · {n_total} новых уведомлений",
+            subject=_("[Consolidator] Сводка · %(n)s новых уведомлений") % {"n": n_total},
             body="\n".join(text_parts),
             from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "noreply@consolidator.local"),
             to=[user.email],

@@ -14,6 +14,7 @@ import logging
 from decimal import Decimal
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .actions import ActionResult, _log_event, _notify, register
 
@@ -38,7 +39,7 @@ def _is_operator(role: str) -> bool:
 def _ensure_operator(role: str):
     # admin (superuser) проходит операторские гарды — видит всё.
     if not _is_operator(role) and role != "admin":
-        return ActionResult(text="Это действие доступно только оператору.")
+        return ActionResult(text=_("Это действие доступно только оператору."))
     return None
 
 
@@ -60,30 +61,36 @@ def op_drawings_by_part(params, user, role):
     if len(q) >= 2:
         items = list(Drawing.objects.filter(oem_number__icontains=q)
                      .select_related("seller").order_by("oem_number", "side", "-created_at")[:60])
-        _SIDE = {"need": "🛒 нужно", "offer": "🏭 предлагают"}
+        _SIDE = {"need": _("🛒 нужно"), "offer": _("🏭 предлагают")}
         need, offer, other = [], [], []
         for d in items:
             who = getattr(d.seller, "username", None) or "—"
             row = {
-                "title": f"{(d.title or f'Чертёж #{d.id}')} · {d.oem_number or '—'}",
-                "subtitle": f"{(d.file_format or '').upper()} · {_SIDE.get(d.side, '—')} · {who} · {d.created_at.strftime('%d.%m.%Y')}",
+                "title": _("%(name)s · %(oem)s") % {
+                    "name": (d.title or _("Чертёж #%(id)s") % {"id": d.id}),
+                    "oem": d.oem_number or "—"},
+                "subtitle": _("%(fmt)s · %(side)s · %(who)s · %(date)s") % {
+                    "fmt": (d.file_format or "").upper(),
+                    "side": _SIDE.get(d.side, "—"), "who": who,
+                    "date": d.created_at.strftime('%d.%m.%Y')},
                 "url": f"/api/assistant/drawings/{d.id}/file/",
             }
             (need if d.side == "need" else offer if d.side == "offer" else other).append(row)
         total_need, total_offer = len(need), len(offer)
         if need:
-            groups.append({"label": "🛒 Что нужно покупателям", "rows": need})
+            groups.append({"label": _("🛒 Что нужно покупателям"), "rows": need})
         if offer:
-            groups.append({"label": "🏭 Что предлагают продавцы", "rows": offer})
+            groups.append({"label": _("🏭 Что предлагают продавцы"), "rows": offer})
         if other:
-            groups.append({"label": "Прочие", "rows": other})
-    text = (f"📐 Чертежи по «{q}»: {total_need} нужно · {total_offer} предлагают."
+            groups.append({"label": _("Прочие"), "rows": other})
+    text = (_("📐 Чертежи по «%(q)s»: %(need)s нужно · %(offer)s предлагают.") % {
+                "q": q, "need": total_need, "offer": total_offer}
             if len(q) >= 2 else
-            "🔎 Введите артикул — покажу что нужно покупателям и что предлагают продавцы.")
+            _("🔎 Введите артикул — покажу что нужно покупателям и что предлагают продавцы."))
     return ActionResult(
         text=text,
         cards=[{"type": "op_drawings", "data": {"q": q, "searched": len(q) >= 2, "groups": groups}}],
-        actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}],
+        actions=[{"label": _("🏠 Главная"), "action": "go_home", "params": {}}],
     )
 
 
@@ -162,8 +169,8 @@ def op_dashboard(params, user, role):
     for rfq in semi_pending.order_by("created_at")[:5]:
         sub, tone = sla_countdown_for_operator("semi", rfq.created_at)
         todo_rows.append({
-            "title": f"SEMI RFQ #{rfq.id} · {rfq.customer_name}",
-            "subtitle": f"approve КП · {sub}",
+            "title": _("SEMI RFQ #%(id)s · %(name)s") % {"id": rfq.id, "name": rfq.customer_name},
+            "subtitle": _("approve КП · %(sub)s") % {"sub": sub},
             "tone": tone,
             "action": "op_approve_kp",
             "params": {"rfq_id": rfq.id},
@@ -171,8 +178,8 @@ def op_dashboard(params, user, role):
     for rfq in manual_pending.order_by("created_at")[:5]:
         sub, tone = sla_countdown_for_operator("manual", rfq.created_at)
         todo_rows.append({
-            "title": f"MANUAL RFQ #{rfq.id} · {rfq.customer_name}",
-            "subtitle": f"собрать КП · {sub}",
+            "title": _("MANUAL RFQ #%(id)s · %(name)s") % {"id": rfq.id, "name": rfq.customer_name},
+            "subtitle": _("собрать КП · %(sub)s") % {"sub": sub},
             "tone": tone,
             "action": "op_dispatch_manual_rfq",
             "params": {"rfq_id": rfq.id},
@@ -180,14 +187,16 @@ def op_dashboard(params, user, role):
     # Hot orders (SLA at_risk/breached)
     for o in hot:
         todo_rows.append({
-            "title": f"ORD-{o.id} · {o.customer_name}",
-            "subtitle": f"{o.get_status_display()} · SLA {o.sla_status} · ${float(o.total_amount or 0):,.0f}",
+            "title": _("ORD-%(id)s · %(name)s") % {"id": o.id, "name": o.customer_name},
+            "subtitle": _("%(st)s · SLA %(sla)s · $%(amt)s") % {
+                "st": o.get_status_display(), "sla": o.sla_status,
+                "amt": f"{float(o.total_amount or 0):,.0f}"},
             "action": "get_order_detail",
             "params": {"order_id": o.id},
         })
     if not todo_rows:
-        todo_rows = [{"title": "✅ Очередь пуста",
-                       "subtitle": "Все SEMI/MANUAL обработаны, SLA в норме"}]
+        todo_rows = [{"title": _("✅ Очередь пуста"),
+                       "subtitle": _("Все SEMI/MANUAL обработаны, SLA в норме")}]
 
     # Группировки заказов по логистическим стадиям — оператор контролирует
     # каждую (зарубежная логистика, таможня, РФ-логистика).
@@ -204,94 +213,95 @@ def op_dashboard(params, user, role):
 
     return ActionResult(
         text=(
-            f"Оператор — дирижёр платформы.\n"
-            f"В работе: {in_flight} заказов на ${total_usd:,.0f}."
+            _("Оператор — дирижёр платформы.\n"
+              "В работе: %(n)s заказов на $%(usd)s.") % {
+                "n": in_flight, "usd": f"{total_usd:,.0f}"}
         ),
         cards=[
             # 1. Платежи
             {"type": "kpi_grid", "data": {
-                "title": "💰 Платежи / Эскроу",
+                "title": _("💰 Платежи / Эскроу"),
                 "items": [
-                    {"label": "Ждут резерв 10%", "value": str(awaiting_reserve),
+                    {"label": _("Ждут резерв 10%"), "value": str(awaiting_reserve),
                      "tone": ("warn" if awaiting_reserve else None),
                      "action": "op_queue", "params": {"filter": "awaiting_reserve"}},
-                    {"label": "В эскроу", "value": str(paid_in_escrow),
+                    {"label": _("В эскроу"), "value": str(paid_in_escrow),
                      "action": "op_payments_dashboard"},
-                    {"label": "Возвраты", "value": str(refund_pending),
+                    {"label": _("Возвраты"), "value": str(refund_pending),
                      "tone": ("warn" if refund_pending else None),
                      "action": "op_queue", "params": {"filter": "refund"}},
                 ],
             }},
             # 2. Логистика
             {"type": "kpi_grid", "data": {
-                "title": "🚚 Логистика",
+                "title": _("🚚 Логистика"),
                 "items": [
-                    {"label": "Зарубежная", "value": str(in_foreign),
-                     "sub": "морем / авто / авиа",
+                    {"label": _("Зарубежная"), "value": str(in_foreign),
+                     "sub": _("морем / авто / авиа"),
                      "action": "op_queue", "params": {"filter": "transit_abroad"}},
-                    {"label": "Таможня", "value": str(in_customs),
-                     "sub": "растаможка",
+                    {"label": _("Таможня"), "value": str(in_customs),
+                     "sub": _("растаможка"),
                      "action": "op_customs_dashboard"},
-                    {"label": "По РФ + выдача", "value": str(in_rf),
-                     "sub": "до получателя",
+                    {"label": _("По РФ + выдача"), "value": str(in_rf),
+                     "sub": _("до получателя"),
                      "action": "op_queue", "params": {"filter": "transit_rf"}},
                 ],
             }},
             # 3. RFQ
             {"type": "kpi_grid", "data": {
-                "title": "📋 RFQ — формирование КП",
+                "title": _("📋 RFQ — формирование КП"),
                 "items": [
-                    {"label": "AUTO", "value": str(auto_active),
-                     "sub": "без оператора",
+                    {"label": _("AUTO"), "value": str(auto_active),
+                     "sub": _("без оператора"),
                      "action": "op_rfq_queue", "params": {"mode": "auto"}},
-                    {"label": "SEMI · approve", "value": str(semi_active),
+                    {"label": _("SEMI · approve"), "value": str(semi_active),
                      "tone": ("bad" if semi_overdue else ("warn" if semi_active else None)),
                      "sub": (
-                         f"{semi_overdue} просрочено · SLA 15 мин"
+                         _("%(n)s просрочено · SLA 15 мин") % {"n": semi_overdue}
                          if semi_overdue else
-                         f"SLA 15 мин" if semi_active else "пусто"
+                         _("SLA 15 мин") if semi_active else _("пусто")
                      ),
                      "action": "op_rfq_queue", "params": {"mode": "semi"}},
-                    {"label": "MANUAL", "value": str(manual_active),
+                    {"label": _("MANUAL"), "value": str(manual_active),
                      "tone": ("bad" if manual_overdue else ("warn" if manual_active else None)),
                      "sub": (
-                         f"{manual_overdue} > 48ч · SLA 48 ч"
+                         _("%(n)s > 48ч · SLA 48 ч") % {"n": manual_overdue}
                          if manual_overdue else
-                         f"SLA 48 ч" if manual_active else "пусто"
+                         _("SLA 48 ч") if manual_active else _("пусто")
                      ),
                      "action": "op_rfq_queue", "params": {"mode": "manual"}},
                 ],
             }},
             # 4. Только проблемы — SLA + рекламации в одной строке
             {"type": "kpi_grid", "data": {
-                "title": "⚠️ Требуют внимания",
+                "title": _("⚠️ Требуют внимания"),
                 "items": [
-                    {"label": "SLA под угрозой", "value": str(at_risk),
+                    {"label": _("SLA под угрозой"), "value": str(at_risk),
                      "tone": ("warn" if at_risk else None),
                      "action": "op_sla_breach", "params": {"filter": "at_risk"}},
-                    {"label": "SLA нарушено", "value": str(breached),
+                    {"label": _("SLA нарушено"), "value": str(breached),
                      "tone": ("bad" if breached else None),
                      "action": "op_sla_breach", "params": {"filter": "breached"}},
-                    {"label": "Открытые рекламации", "value": str(open_claims),
+                    {"label": _("Открытые рекламации"), "value": str(open_claims),
                      "tone": ("warn" if open_claims else None),
                      "action": "get_claims"},
                 ],
             }},
             {"type": "list", "data": {
-                "title": "🔥 Требует действия",
+                "title": _("🔥 Требует действия"),
                 "rows": todo_rows,
             }},
         ],
         contextual_actions=[
-            {"action": "op_queue", "label": "Все заказы в работе", "params": {"filter": "all"}},
-            {"action": "op_sla_breach", "label": "Нарушения SLA"},
-            {"action": "get_claims", "label": "Рекламации"},
-            {"action": "get_analytics", "label": "📈 Аналитика"},
+            {"action": "op_queue", "label": _("Все заказы в работе"), "params": {"filter": "all"}},
+            {"action": "op_sla_breach", "label": _("Нарушения SLA")},
+            {"action": "get_claims", "label": _("Рекламации")},
+            {"action": "get_analytics", "label": _("📈 Аналитика")},
         ],
         suggestions=[
-            "Покажи очередь нарушений SLA",
-            "Какие SEMI просрочены",
-            "Открытые claim'ы",
+            _("Покажи очередь нарушений SLA"),
+            _("Какие SEMI просрочены"),
+            _("Открытые claim'ы"),
         ],
     )
 
@@ -382,26 +392,26 @@ def op_queue(params, user, role):
     # ── Группировка по этапу + что делать оператору на каждом ──
     # (порядок · title · действия оператора)
     STAGE_META = {
-        "awaiting_reserve": ("Ждут оплату резерва 10%",
-                              "Мониторить — при таймауте отменить заказ или связаться с покупателем"),
-        "reserve_paid":     ("Резерв оплачен — ждём подтверждение продавца",
-                              "Дождаться подтверждения seller'а. Если затягивает — связаться"),
-        "confirmed":        ("Подтверждено — в производстве",
-                              "Контроль состава заказа, готовности к отгрузке"),
-        "in_production":    ("В производстве",
-                              "Если SLA рискует — связаться с продавцом, ускорить"),
-        "ready_to_ship":    ("Готовы к отгрузке (ждём 90% или старт)",
-                              "Подтвердить выход на отгрузку. Если 90% не оплачены — напомнить покупателю"),
-        "transit_abroad":   ("Транзит за рубеж",
-                              "Координировать логиста: трек-номер, ETA до РФ"),
-        "customs":          ("На таможне РФ",
-                              "Брокер: документы, оплатить пошлины, релиз груза"),
-        "transit_rf":       ("Транзит по РФ",
-                              "Мониторить ETA, договориться с получателем"),
-        "issuing":          ("Выдача / приёмка",
-                              "Проверить приёмку покупателем, разблокировать эскроу"),
-        "delivered":        ("Доставлен — финал",
-                              "Закрыть заказ, выплатить продавцу из эскроу"),
+        "awaiting_reserve": (_("Ждут оплату резерва 10%"),
+                              _("Мониторить — при таймауте отменить заказ или связаться с покупателем")),
+        "reserve_paid":     (_("Резерв оплачен — ждём подтверждение продавца"),
+                              _("Дождаться подтверждения seller'а. Если затягивает — связаться")),
+        "confirmed":        (_("Подтверждено — в производстве"),
+                              _("Контроль состава заказа, готовности к отгрузке")),
+        "in_production":    (_("В производстве"),
+                              _("Если SLA рискует — связаться с продавцом, ускорить")),
+        "ready_to_ship":    (_("Готовы к отгрузке (ждём 90% или старт)"),
+                              _("Подтвердить выход на отгрузку. Если 90% не оплачены — напомнить покупателю")),
+        "transit_abroad":   (_("Транзит за рубеж"),
+                              _("Координировать логиста: трек-номер, ETA до РФ")),
+        "customs":          (_("На таможне РФ"),
+                              _("Брокер: документы, оплатить пошлины, релиз груза")),
+        "transit_rf":       (_("Транзит по РФ"),
+                              _("Мониторить ETA, договориться с получателем")),
+        "issuing":          (_("Выдача / приёмка"),
+                              _("Проверить приёмку покупателем, разблокировать эскроу")),
+        "delivered":        (_("Доставлен — финал"),
+                              _("Закрыть заказ, выплатить продавцу из эскроу")),
     }
 
     # Группируем
@@ -410,13 +420,13 @@ def op_queue(params, user, role):
         groups[o.status].append(o)
 
     PAY_TONE = {
-        "awaiting_reserve": ("warn", "Ждёт резерв"),
-        "reserve_paid":     ("ok",   "Резерв оплачен"),
-        "mid_paid":         ("ok",   "Подтверждение"),
-        "customs_paid":     ("ok",   "Таможня оплачена"),
-        "paid":             ("info", "Оплачен"),
-        "refund_pending":   ("bad",  "Возврат"),
-        "refunded":         ("bad",  "Возвращён"),
+        "awaiting_reserve": ("warn", _("Ждёт резерв")),
+        "reserve_paid":     ("ok",   _("Резерв оплачен")),
+        "mid_paid":         ("ok",   _("Подтверждение")),
+        "customs_paid":     ("ok",   _("Таможня оплачена")),
+        "paid":             ("info", _("Оплачен")),
+        "refund_pending":   ("bad",  _("Возврат")),
+        "refunded":         ("bad",  _("Возвращён")),
     }
 
     cards = []
@@ -437,46 +447,47 @@ def op_queue(params, user, role):
         )
         if pending_rfqs:
             rfq_items = [{
-                "title":    "Этап: Ждут подтверждения оператора (SEMI)",
-                "subtitle": "Действие оператора: проверить позиции, утвердить КП клиенту или запросить уточнение (SLA 15 мин)",
+                "title":    _("Этап: Ждут подтверждения оператора (SEMI)"),
+                "subtitle": _("Действие оператора: проверить позиции, утвердить КП клиенту или запросить уточнение (SLA 15 мин)"),
             }]
             n_breach = 0
             for r in pending_rfqs[:10]:
                 age_min = int((now - r.created_at).total_seconds() // 60) if r.created_at else 0
                 left = 15 - age_min
                 if left < 0:
-                    sla_str = f"SLA нарушен {abs(left)} мин назад"
+                    sla_str = _("SLA нарушен %(n)s мин назад") % {"n": abs(left)}
                     tone = "bad"
                     n_breach += 1
                 elif left < 5:
-                    sla_str = f"осталось {left} мин"
+                    sla_str = _("осталось %(n)s мин") % {"n": left}
                     tone = "warn"
                 else:
-                    sla_str = f"осталось {left} мин из 15"
+                    sla_str = _("осталось %(n)s мин из 15") % {"n": left}
                     tone = "ok"
                 # Оценочная сумма КП (по ценам сматченных позиций) — чтобы строка
                 # RFQ была так же информативна, как строка заказа (там есть $).
                 _its = list(r.items.all())
                 _est = sum(float(it.matched_part.price or 0) * (it.quantity or 0)
                            for it in _its if it.matched_part)
-                _amt = f" · ~${_est:,.0f}" if _est else ""
+                _amt = (_(" · ~$%(est)s") % {"est": f"{_est:,.0f}"}) if _est else ""
                 rfq_items.append({
-                    "title":    f"RFQ #{r.id} · {r.customer_name or '—'}",
-                    "subtitle": f"{len(_its)} позиций{_amt} · {sla_str}",
+                    "title":    _("RFQ #%(id)s · %(name)s") % {"id": r.id, "name": r.customer_name or "—"},
+                    "subtitle": _("%(n)s позиций%(amt)s · %(sla)s") % {
+                        "n": len(_its), "amt": _amt, "sla": sla_str},
                     "tone":     tone,
-                    "badge":    {"label": "Ждёт подтверждения", "tone": "warn"},
+                    "badge":    {"label": _("Ждёт подтверждения"), "tone": "warn"},
                     "action":   "op_approve_kp",
                     "params":   {"rfq_id": r.id},
                 })
             n_total_rfq = len(pending_rfqs)
             total_count += n_total_rfq
-            meta_bits_rfq = [f"{n_total_rfq} RFQ"]
+            meta_bits_rfq = [_("%(n)s RFQ") % {"n": n_total_rfq}]
             if n_breach:
-                meta_bits_rfq.append(f"{n_breach} SLA нарушен")
+                meta_bits_rfq.append(_("%(n)s SLA нарушен") % {"n": n_breach})
             cards.append({"type": "list", "data": {
-                "title": f"Ждут подтверждения оператора · {' · '.join(meta_bits_rfq)}",
+                "title": _("Ждут подтверждения оператора · %(bits)s") % {"bits": " · ".join(meta_bits_rfq)},
                 "items": rfq_items
-                          + ([{"title": f"… ещё {n_total_rfq - 10} RFQ", "subtitle": "—"}]
+                          + ([{"title": _("… ещё %(n)s RFQ") % {"n": n_total_rfq - 10}, "subtitle": "—"}]
                               if n_total_rfq > 10 else []),
             }})
 
@@ -493,8 +504,9 @@ def op_queue(params, user, role):
         for o in orders[:10]:
             tone, badge_label = PAY_TONE.get(o.payment_status, (None, None))
             items.append({
-                "title": f"#{o.id} · {o.customer_name}",
-                "subtitle": f"SLA {o.sla_status} · ${(o.total_amount or 0):,.0f}",
+                "title": _("#%(id)s · %(name)s") % {"id": o.id, "name": o.customer_name},
+                "subtitle": _("SLA %(sla)s · $%(amt)s") % {
+                    "sla": o.sla_status, "amt": f"{(o.total_amount or 0):,.0f}"},
                 "tone": tone,
                 "badge": ({"label": badge_label, "tone": tone} if badge_label else None),
                 "action": "get_order_detail",
@@ -504,61 +516,62 @@ def op_queue(params, user, role):
         n_breached = sum(1 for o in orders if o.sla_status == "breached")
         n_at_risk  = sum(1 for o in orders if o.sla_status == "at_risk")
         total_count += n_total
-        meta_bits = [f"{n_total} заказ"]
-        if n_breached: meta_bits.append(f"{n_breached} SLA нарушен")
-        if n_at_risk:  meta_bits.append(f"{n_at_risk} под угрозой")
+        meta_bits = [_("%(n)s заказ") % {"n": n_total}]
+        if n_breached: meta_bits.append(_("%(n)s SLA нарушен") % {"n": n_breached})
+        if n_at_risk:  meta_bits.append(_("%(n)s под угрозой") % {"n": n_at_risk})
         # Header-item стилизованный — это первая строка с подзаголовком
         header = {
-            "title":    f"Этап: {stage_title}",
-            "subtitle": "Действие оператора: " + op_action,
+            "title":    _("Этап: %(stage)s") % {"stage": stage_title},
+            "subtitle": _("Действие оператора: %(act)s") % {"act": op_action},
         }
         cards.append({"type": "list", "data": {
-            "title":   f"{stage_title} · {' · '.join(meta_bits)}",
+            "title":   _("%(stage)s · %(bits)s") % {"stage": stage_title, "bits": " · ".join(meta_bits)},
             "items":   [header] + items
-                        + ([{"title": f"… ещё {n_total - 10} заказов", "subtitle": "—"}]
+                        + ([{"title": _("… ещё %(n)s заказов") % {"n": n_total - 10}, "subtitle": "—"}]
                            if n_total > 10 else []),
         }})
 
     if not cards:
         return ActionResult(
-            text=f"Очередь · фильтр «{flt}» · пусто.",
+            text=_("Очередь · фильтр «%(flt)s» · пусто.") % {"flt": flt},
             cards=[{"type": "list", "data": {
-                "title": "📋 Список заказов",
-                "items": [{"title": "Пусто", "subtitle": "Под этот фильтр ничего не попадает"}],
+                "title": _("📋 Список заказов"),
+                "items": [{"title": _("Пусто"), "subtitle": _("Под этот фильтр ничего не попадает")}],
             }}],
         )
 
     filter_label = {
-        "all": "все этапы", "breached": "только SLA нарушено",
-        "at_risk": "только под угрозой", "overdue": "только просрочки",
-        "refund": "только возвраты",
-        "awaiting_reserve": "только ждут резерв",
-        "live": "в работе сейчас", "customs": "на таможне",
-        "transit": "в транзите", "transit_abroad": "транзит за рубеж",
-        "transit_rf": "транзит по РФ", "issuing": "выдача / приёмка",
-        "delivered": "доставлено за 90 дней",
+        "all": _("все этапы"), "breached": _("только SLA нарушено"),
+        "at_risk": _("только под угрозой"), "overdue": _("только просрочки"),
+        "refund": _("только возвраты"),
+        "awaiting_reserve": _("только ждут резерв"),
+        "live": _("в работе сейчас"), "customs": _("на таможне"),
+        "transit": _("в транзите"), "transit_abroad": _("транзит за рубеж"),
+        "transit_rf": _("транзит по РФ"), "issuing": _("выдача / приёмка"),
+        "delivered": _("доставлено за 90 дней"),
     }.get(flt, flt)
     # Доп. срезы (мода / перевозчик / маршрут) дописываем в подпись.
     _extra = []
     if _mode:
-        _extra.append({"sea": "Море", "air": "Авиа", "auto": "Авто",
-                       "rail": "ЖД"}.get(_mode, _mode))
+        _extra.append({"sea": _("Море"), "air": _("Авиа"), "auto": _("Авто"),
+                       "rail": _("ЖД")}.get(_mode, _mode))
     if _provider:
-        _extra.append(f"перевозчик {_provider}")
+        _extra.append(_("перевозчик %(p)s") % {"p": _provider})
     if _origin or _dest:
         _extra.append(f"{_origin or '—'}→{_dest or '—'}")
     if _extra:
         filter_label += " · " + " · ".join(_extra)
 
     return ActionResult(
-        text=(f"📋 Список заказов · {filter_label} · {total_count} заказов на "
-              f"{len(cards)} этапах. Под каждым — что делать оператору."),
+        text=(_("📋 Список заказов · %(flt)s · %(n)s заказов на "
+                "%(cards)s этапах. Под каждым — что делать оператору.") % {
+                "flt": filter_label, "n": total_count, "cards": len(cards)}),
         cards=cards,
         contextual_actions=[
-            {"action": "op_queue", "label": "Все этапы",   "params": {"filter": "all"}},
-            {"action": "op_queue", "label": "⏱ Просрочки", "params": {"filter": "overdue"}},
-            {"action": "op_queue", "label": "Возвраты",    "params": {"filter": "refund"}},
-            {"action": "op_dashboard", "label": "← Дашборд"},
+            {"action": "op_queue", "label": _("Все этапы"),   "params": {"filter": "all"}},
+            {"action": "op_queue", "label": _("⏱ Просрочки"), "params": {"filter": "overdue"}},
+            {"action": "op_queue", "label": _("Возвраты"),    "params": {"filter": "refund"}},
+            {"action": "op_dashboard", "label": _("← Дашборд")},
         ],
     )
 
@@ -599,9 +612,9 @@ def op_rfq_queue(params, user, role):
         for r in rfqs:
             sub, tone = sla_countdown_for_operator(r.mode, r.created_at)
             if not sub:
-                sub = f"Создан {r.created_at.strftime('%d.%m %H:%M')}"
+                sub = _("Создан %(date)s") % {"date": r.created_at.strftime('%d.%m %H:%M')}
             items.append({
-                "title":    f"RFQ #{r.id} · {r.customer_name}",
+                "title":    _("RFQ #%(id)s · %(name)s") % {"id": r.id, "name": r.customer_name},
                 "subtitle": sub,
                 "tone":     tone,
                 "action":   next_action,
@@ -615,28 +628,29 @@ def op_rfq_queue(params, user, role):
         items, total = _build_items(mk, limit=30)
         badge = mode_badge(mk)
         sla_meta = {
-            "auto":   "Без оператора · ≈1 сек",
-            "semi":   "Оператор подтверждает · SLA 15 мин",
-            "manual": "Адресный поиск · SLA 48 ч",
+            "auto":   _("Без оператора · ≈1 сек"),
+            "semi":   _("Оператор подтверждает · SLA 15 мин"),
+            "manual": _("Адресный поиск · SLA 48 ч"),
         }[mk]
         hint_meta = {
-            "auto":   "Контроль не нужен — авто-подбор уже отдал результат. Открывайте для аудита.",
-            "semi":   "approve КП → RFQ уходит покупателю.",
-            "manual": "Собрать КП: рассылка по поставщикам, дождаться ответов, выбрать исполнителя.",
+            "auto":   _("Контроль не нужен — авто-подбор уже отдал результат. Открывайте для аудита."),
+            "semi":   _("approve КП → RFQ уходит покупателю."),
+            "manual": _("Собрать КП: рассылка по поставщикам, дождаться ответов, выбрать исполнителя."),
         }[mk]
-        header = [{"title": f"📍 Режим: {badge}", "subtitle": f"{sla_meta} · {hint_meta}"}]
+        header = [{"title": _("📍 Режим: %(badge)s") % {"badge": badge},
+                   "subtitle": _("%(sla)s · %(hint)s") % {"sla": sla_meta, "hint": hint_meta}}]
         cards = [{"type": "list", "data": {
-            "title": f"{badge} · {total} RFQ",
+            "title": _("%(badge)s · %(n)s RFQ") % {"badge": badge, "n": total},
             "items": header + (items if items else [
-                {"title": "✅ Очередь пуста", "subtitle": "Нет открытых RFQ в этом режиме"},
+                {"title": _("✅ Очередь пуста"), "subtitle": _("Нет открытых RFQ в этом режиме")},
             ]),
         }}]
         return ActionResult(
-            text=f"{badge} очередь · {total} RFQ в работе.",
+            text=_("%(badge)s очередь · %(n)s RFQ в работе.") % {"badge": badge, "n": total},
             cards=cards,
             contextual_actions=[
-                {"action": "op_rfq_queue", "label": "Все режимы"},
-                {"action": "op_dashboard", "label": "← Дашборд"},
+                {"action": "op_rfq_queue", "label": _("Все режимы")},
+                {"action": "op_dashboard", "label": _("← Дашборд")},
             ],
         )
 
@@ -645,26 +659,27 @@ def op_rfq_queue(params, user, role):
     totals = {}
     # PIVOT 2026-05-26: убран MANUAL — только AUTO + SEMI
     for mk, label_prefix, sla_hint in [
-        ("semi",   "Оператор подтверждает", "SLA 15 мин"),
-        ("auto",   "Без оператора",          "≈1 сек"),
+        ("semi",   _("Оператор подтверждает"), _("SLA 15 мин")),
+        ("auto",   _("Без оператора"),          _("≈1 сек")),
     ]:
         items, total = _build_items(mk, limit=8)
         totals[mk] = total
         badge = mode_badge(mk)
         action_hint = {
-            "auto":   "Авто-подбор. Открывайте только для аудита, контроль не нужен.",
-            "semi":   "Действие: approve КП → RFQ уходит покупателю.",
-            "manual": "Действие: собрать КП — рассылка по поставщикам, выбрать исполнителя.",
+            "auto":   _("Авто-подбор. Открывайте только для аудита, контроль не нужен."),
+            "semi":   _("Действие: approve КП → RFQ уходит покупателю."),
+            "manual": _("Действие: собрать КП — рассылка по поставщикам, выбрать исполнителя."),
         }[mk]
         # Заголовок секции (badge + total + SLA-намёк) — в data.title,
         # подсказка про действие — в data.subtitle. Не дублируем в rows.
-        rows = items if items else [{"title": "✅ Очередь пуста", "subtitle": "—"}]
+        rows = items if items else [{"title": _("✅ Очередь пуста"), "subtitle": "—"}]
         cards.append({"type": "list", "data": {
-            "title": f"{badge} · {total} RFQ",
-            "subtitle": f"{label_prefix} · {sla_hint} · {action_hint}",
+            "title": _("%(badge)s · %(n)s RFQ") % {"badge": badge, "n": total},
+            "subtitle": _("%(prefix)s · %(hint)s · %(act)s") % {
+                "prefix": label_prefix, "hint": sla_hint, "act": action_hint},
             "items": rows
-                      + ([{"title": f"… ещё {total - 8} RFQ",
-                            "subtitle": "Открыть полный список",
+                      + ([{"title": _("… ещё %(n)s RFQ") % {"n": total - 8},
+                            "subtitle": _("Открыть полный список"),
                             "action": "op_rfq_queue", "params": {"mode": mk}}]
                           if total > 8 else []),
         }})
@@ -672,15 +687,17 @@ def op_rfq_queue(params, user, role):
     # PIVOT 2026-05-26: Ручная рассылка (MANUAL) удалена как класс.
     # Показываем только Автоподбор и SEMI (подтверждения оператора).
     return ActionResult(
-        text=(f"Очередь RFQ · {totals.get('semi',0)+totals.get('auto',0)} в работе.\n"
-              f"Нужно подтвердить: {totals.get('semi',0)} (15 мин) · "
-              f"Автоподбор: {totals.get('auto',0)}."),
+        text=(_("Очередь RFQ · %(total)s в работе.\n"
+                "Нужно подтвердить: %(semi)s (15 мин) · "
+                "Автоподбор: %(auto)s.") % {
+                "total": totals.get('semi',0)+totals.get('auto',0),
+                "semi": totals.get('semi',0), "auto": totals.get('auto',0)}),
         cards=[c for c in cards if not (c.get('data',{}).get('title','').startswith('Ручная'))],
         contextual_actions=[
-            {"action": "op_analytics_hub", "label": "← Аналитика"},
-            {"action": "op_rfq_queue", "label": "Нужно подтвердить",  "params": {"mode": "semi"}},
-            {"action": "op_rfq_queue", "label": "Автоподбор",         "params": {"mode": "auto"}},
-            {"action": "op_dashboard", "label": "← Дашборд"},
+            {"action": "op_analytics_hub", "label": _("← Аналитика")},
+            {"action": "op_rfq_queue", "label": _("Нужно подтвердить"),  "params": {"mode": "semi"}},
+            {"action": "op_rfq_queue", "label": _("Автоподбор"),         "params": {"mode": "auto"}},
+            {"action": "op_dashboard", "label": _("← Дашборд")},
         ],
     )
 
@@ -705,17 +722,17 @@ def op_sla_breach(params, user, role):
 
     # Кто отвечает за этап + название этапа (без emoji — одно эмодзи на карточку)
     STAGE_OWNER = {
-        "pending":        ("Покупатель",          "Оплата резерва"),
-        "reserve_paid":   ("Поставщик",           "Подтвердить состав"),
-        "confirmed":      ("Поставщик",           "Запустить производство"),
-        "in_production":  ("Поставщик / склад",   "Готовность к отгрузке"),
-        "ready_to_ship":  ("Поставщик",           "Сдача в FOB-порт"),
-        "transit_abroad": ("Зарубежный логист",   "Транзит за рубеж"),
-        "customs":        ("Таможенный брокер",   "Растаможка"),
-        "transit_rf":     ("РФ-логист",           "Транзит по РФ"),
-        "issuing":        ("Пункт выдачи",        "Выдача покупателю"),
-        "shipped":        ("Зарубежный логист",   "Транзит"),
-        "delivered":      ("Покупатель",          "Приёмка"),
+        "pending":        (_("Покупатель"),          _("Оплата резерва")),
+        "reserve_paid":   (_("Поставщик"),           _("Подтвердить состав")),
+        "confirmed":      (_("Поставщик"),           _("Запустить производство")),
+        "in_production":  (_("Поставщик / склад"),   _("Готовность к отгрузке")),
+        "ready_to_ship":  (_("Поставщик"),           _("Сдача в FOB-порт")),
+        "transit_abroad": (_("Зарубежный логист"),   _("Транзит за рубеж")),
+        "customs":        (_("Таможенный брокер"),   _("Растаможка")),
+        "transit_rf":     (_("РФ-логист"),           _("Транзит по РФ")),
+        "issuing":        (_("Пункт выдачи"),        _("Выдача покупателю")),
+        "shipped":        (_("Зарубежный логист"),   _("Транзит")),
+        "delivered":      (_("Покупатель"),          _("Приёмка")),
     }
 
     breached_rows: list[dict] = []
@@ -723,26 +740,27 @@ def op_sla_breach(params, user, role):
     stuck_at = Counter()
     for o in qs:
         dl = o.ship_deadline
-        delta_label = "дедлайн не задан"
+        delta_label = _("дедлайн не задан")
         if dl:
             delta_hours = int((now - dl).total_seconds()) // 3600
             if delta_hours > 0:
                 if delta_hours >= 24:
-                    delta_label = f"+{delta_hours // 24}д {delta_hours % 24}ч просрочки"
+                    delta_label = _("+%(d)sд %(h)sч просрочки") % {
+                        "d": delta_hours // 24, "h": delta_hours % 24}
                 else:
-                    delta_label = f"+{delta_hours}ч просрочки"
+                    delta_label = _("+%(h)sч просрочки") % {"h": delta_hours}
             else:
-                delta_label = f"{-delta_hours}ч до дедлайна"
+                delta_label = _("%(h)sч до дедлайна") % {"h": -delta_hours}
         owner, stage_label = STAGE_OWNER.get(o.status, ("—", o.get_status_display()))
         stuck_at[o.status] += 1
         is_breached = (o.sla_status == "breached")
 
         row = {
-            "title": f"#{o.id} · {o.customer_name} · ${(o.total_amount or 0):,.0f}",
+            "title": _("#%(id)s · %(name)s · $%(amt)s") % {
+                "id": o.id, "name": o.customer_name, "amt": f"{(o.total_amount or 0):,.0f}"},
             "subtitle": (
-                f"Этап: {stage_label} · "
-                f"Ответственный: {owner} · "
-                f"{delta_label}"
+                _("Этап: %(stage)s · Ответственный: %(owner)s · %(delta)s") % {
+                    "stage": stage_label, "owner": owner, "delta": delta_label}
             ),
             "tone":   "bad" if is_breached else "warn",
             "action": "op_order_detail",
@@ -806,22 +824,22 @@ def op_sla_breach(params, user, role):
     if avg_overdue is None:
         _avg_val = "—"
     elif avg_overdue < 48:
-        _avg_val = f"{avg_overdue:.0f} ч"
+        _avg_val = _("%(h)s ч") % {"h": f"{avg_overdue:.0f}"}
     else:
-        _avg_val = f"{avg_overdue / 24:.1f} дн"
+        _avg_val = _("%(d)s дн") % {"d": f"{avg_overdue / 24:.1f}"}
 
     # Этап с наибольшей задержкой: короткое слово в значение (чтобы плитка не
     # переносилась на 2 строки), число задержек — в подпись.
     _SHORT_STAGE = {
-        "pending": "Оплата", "reserve_paid": "Подтверждение",
-        "confirmed": "Производство", "in_production": "Производство",
-        "ready_to_ship": "Отгрузка", "transit_abroad": "Транзит",
-        "customs": "Таможня", "transit_rf": "Транзит РФ",
-        "issuing": "Выдача", "shipped": "Транзит", "delivered": "Приёмка",
+        "pending": _("Оплата"), "reserve_paid": _("Подтверждение"),
+        "confirmed": _("Производство"), "in_production": _("Производство"),
+        "ready_to_ship": _("Отгрузка"), "transit_abroad": _("Транзит"),
+        "customs": _("Таможня"), "transit_rf": _("Транзит РФ"),
+        "issuing": _("Выдача"), "shipped": _("Транзит"), "delivered": _("Приёмка"),
     }
     if top_stage_label:
         _stage_val = _SHORT_STAGE.get(top_stage_code, top_stage_label)
-        _stage_sub = f"задержек: {top_stage_n}"
+        _stage_sub = _("задержек: %(n)s") % {"n": top_stage_n}
     else:
         _stage_val = "—"
         _stage_sub = None
@@ -833,22 +851,22 @@ def op_sla_breach(params, user, role):
         return {"action": "op_queue", "params": {"filter": flt}}
 
     kpi_items = [
-        {"label": "В срок", "value": str(_n_on_time),
-         "sub": f"{sla_health}% заказов", "tone": "ok",
+        {"label": _("В срок"), "value": str(_n_on_time),
+         "sub": _("%(p)s%% заказов") % {"p": sla_health}, "tone": "ok",
          **(_q("open") if _n_on_time else {})},
-        {"label": "Под угрозой", "value": str(_n_at_risk),
+        {"label": _("Под угрозой"), "value": str(_n_at_risk),
          "tone": "warn" if _n_at_risk else "ok",
          **(_q("at_risk") if _n_at_risk else {})},
-        {"label": "В просрочке", "value": str(_n_breached),
+        {"label": _("В просрочке"), "value": str(_n_breached),
          "tone": "bad" if _n_breached else "ok",
          **(_q("breached") if _n_breached else {})},
-        {"label": "Средняя просрочка", "value": _avg_val,
+        {"label": _("Средняя просрочка"), "value": _avg_val,
          "tone": "bad" if (avg_overdue and avg_overdue > 48) else ("warn" if avg_overdue else "ok"),
          **(_q("breached") if _n_breached else {})},
-        {"label": "Деньги под риском", "value": f"${money_at_risk:,.0f}",
+        {"label": _("Деньги под риском"), "value": f"${money_at_risk:,.0f}",
          "tone": "warn" if money_at_risk else "ok",
          **(_q("breached") if money_at_risk else {})},
-        {"label": "Где больше всего задержек",
+        {"label": _("Где больше всего задержек"),
          "value": _stage_val, "sub": _stage_sub,
          "tone": "bad" if top_stage_label else "ok",
          **(_q("breached") if top_stage_label else {})},
@@ -856,57 +874,58 @@ def op_sla_breach(params, user, role):
 
     # Actionable инсайт
     if len(breached_rows) and top_stage_label:
-        intro = (f"Самый медленный этап: {top_stage_label} ({top_stage_n} нарушений). "
-                 f"Начните с эскалации {top_owner}.")
+        intro = (_("Самый медленный этап: %(stage)s (%(n)s нарушений). "
+                   "Начните с эскалации %(owner)s.") % {
+                    "stage": top_stage_label, "n": top_stage_n, "owner": top_owner})
     elif sla_health < 70:
-        intro = f"В срок укладываются всего {sla_health}% заказов — критическая зона. Нужны срочные действия."
+        intro = _("В срок укладываются всего %(p)s%% заказов — критическая зона. Нужны срочные действия.") % {"p": sla_health}
     elif breach_trend > 20:
-        intro = (f"За 30 дней рост SLA-нарушений на {breach_trend}% — "
-                 f"проверьте, что изменилось в процессе.")
+        intro = (_("За 30 дней рост SLA-нарушений на %(p)s%% — "
+                   "проверьте, что изменилось в процессе.") % {"p": breach_trend})
     elif len(qs) == 0:
-        intro = "Все заказы укладываются в SLA."
+        intro = _("Все заказы укладываются в SLA.")
     else:
-        intro = f"Под контролем {len(qs)} заказов, узких мест нет."
+        intro = _("Под контролем %(n)s заказов, узких мест нет.") % {"n": len(qs)}
 
     cards = []
     if kpi_items:
         cards.append({"type": "kpi_grid", "data": {
-            "title": "📊 Аналитика SLA",
+            "title": _("📊 Аналитика SLA"),
             "items": kpi_items,
             # Монохромная линия-прогресс (% заказов в срок). Цвета — из CSS (ЧБ).
             "progress": {"value": sla_health, "center": f"{sla_health}%",
-                         "label": "заказов в срок"},
+                         "label": _("заказов в срок")},
         }})
 
     if breached_rows:
         cards.append({"type": "list", "data": {
-            "title": f"Нарушено · {len(breached_rows)}",
+            "title": _("Нарушено · %(n)s") % {"n": len(breached_rows)},
             "items": breached_rows,
         }})
     if at_risk_rows:
         cards.append({"type": "list", "data": {
-            "title": f"Под угрозой · {len(at_risk_rows)}",
+            "title": _("Под угрозой · %(n)s") % {"n": len(at_risk_rows)},
             "items": at_risk_rows,
         }})
     if not cards:
         cards.append({"type": "list", "data": {
-            "title": "SLA · всё в норме",
-            "items": [{"title": "✅ Нет нарушений", "subtitle": "Все заказы укладываются в дедлайны"}],
+            "title": _("SLA · всё в норме"),
+            "items": [{"title": _("✅ Нет нарушений"), "subtitle": _("Все заказы укладываются в дедлайны")}],
         }})
 
     contextual = [
-        {"action": "op_analytics_hub", "label": "← Аналитика"},
-        {"action": "op_queue", "label": "Список заказов", "params": {"filter": "all"}},
-        {"action": "op_logistics_stats", "label": "Сводка логистики", "params": {}},
-        {"action": "op_payments_dashboard", "label": "Платежи", "params": {}},
-        {"action": "get_claims", "label": "Рекламации", "params": {}},
+        {"action": "op_analytics_hub", "label": _("← Аналитика")},
+        {"action": "op_queue", "label": _("Список заказов"), "params": {"filter": "all"}},
+        {"action": "op_logistics_stats", "label": _("Сводка логистики"), "params": {}},
+        {"action": "op_payments_dashboard", "label": _("Платежи"), "params": {}},
+        {"action": "get_claims", "label": _("Рекламации"), "params": {}},
     ]
 
     return ActionResult(
         text=intro,
         cards=cards,
         contextual_actions=contextual,
-        suggestions=["Кто отвечает за #1?", "Эскалировать #1", "Сводка логистики"],
+        suggestions=[_("Кто отвечает за #1?"), _("Эскалировать #1"), _("Сводка логистики")],
     )
 
 
@@ -939,7 +958,7 @@ def op_order_detail(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     # FIX (HIGH, IDOR): обычный оператор открывает только свои назначенные
     # заказы и ещё не распределённые (ничьи) — чужой назначенный закрыт.
@@ -947,57 +966,57 @@ def op_order_detail(params, user, role):
     # (:1666). Только staff (lead-operator) видит любой заказ по ID.
     if (not user.is_staff and order.assigned_operator_id
             and order.assigned_operator_id != user.id):
-        return ActionResult(text="Этот заказ не назначен на вас — обратитесь к старшему оператору.")
+        return ActionResult(text=_("Этот заказ не назначен на вас — обратитесь к старшему оператору."))
 
     events = OrderEvent.objects.filter(order=order).order_by("-created_at")[:15]
 
     # Человекочитаемые названия событий + расшифровка статусов
     STATUS_RU = {
-        "pending":        "Ожидание оплаты",
-        "reserve_paid":   "Резерв оплачен",
-        "confirmed":      "Подтверждён",
-        "in_production":  "В производстве",
-        "ready_to_ship":  "Готов к отгрузке",
-        "transit_abroad": "Транзит за рубеж",
-        "customs":        "На таможне",
-        "transit_rf":     "Транзит по РФ",
-        "issuing":        "На выдаче",
-        "shipped":        "Отгружен",
-        "delivered":      "Доставлен",
-        "completed":      "Завершён",
-        "cancelled":      "Отменён",
+        "pending":        _("Ожидание оплаты"),
+        "reserve_paid":   _("Резерв оплачен"),
+        "confirmed":      _("Подтверждён"),
+        "in_production":  _("В производстве"),
+        "ready_to_ship":  _("Готов к отгрузке"),
+        "transit_abroad": _("Транзит за рубеж"),
+        "customs":        _("На таможне"),
+        "transit_rf":     _("Транзит по РФ"),
+        "issuing":        _("На выдаче"),
+        "shipped":        _("Отгружен"),
+        "delivered":      _("Доставлен"),
+        "completed":      _("Завершён"),
+        "cancelled":      _("Отменён"),
     }
     SLA_RU = {
-        "on_track": "✓ в норме", "at_risk": "🟠 под угрозой", "breached": "🔴 нарушен",
+        "on_track": _("✓ в норме"), "at_risk": _("🟠 под угрозой"), "breached": _("🔴 нарушен"),
     }
     # Без префикс-emoji в названиях — иконка уже идёт отдельной колонкой
     # слева (EVENT_ICON), чтобы не было «двойных стрелочек».
     EVENT_RU = {
-        "order_created":               "Заказ создан",
-        "order_cancelled_by_buyer":    "Покупатель отменил заказ",
-        "order_cancelled_by_seller":   "Продавец отменил заказ",
-        "reserve_paid":                "Резерв 10% оплачен",
-        "mid_payment_paid":            "Промежуточный платёж",
-        "customs_payment_paid":        "Таможенный платёж",
-        "final_payment_paid":          "Финальная оплата 90%",
-        "quality_confirmed":           "Качество подтверждено",
-        "claim_status_changed":        "Рекламация — обновление",
-        "status_changed":              "Статус заказа",
-        "sla_status_changed":          "SLA",
-        "trigger_completed":           "Триггер выполнен",
-        "payment_deadline_set":        "Дедлайн оплаты установлен",
-        "operator_action":             "Действие оператора",
-        "shipment_created":            "Отгрузка создана",
-        "claim_opened":                "Открыта рекламация",
-        "claim_resolved":              "Рекламация закрыта",
-        "invoice_opened":              "Счёт открыт покупателю",
-        "invoice_paid":                "Счёт оплачен",
-        "tracking_updated":            "Обновление трекинга",
-        "document_uploaded":           "Документ загружен",
+        "order_created":               _("Заказ создан"),
+        "order_cancelled_by_buyer":    _("Покупатель отменил заказ"),
+        "order_cancelled_by_seller":   _("Продавец отменил заказ"),
+        "reserve_paid":                _("Резерв 10% оплачен"),
+        "mid_payment_paid":            _("Промежуточный платёж"),
+        "customs_payment_paid":        _("Таможенный платёж"),
+        "final_payment_paid":          _("Финальная оплата 90%"),
+        "quality_confirmed":           _("Качество подтверждено"),
+        "claim_status_changed":        _("Рекламация — обновление"),
+        "status_changed":              _("Статус заказа"),
+        "sla_status_changed":          _("SLA"),
+        "trigger_completed":           _("Триггер выполнен"),
+        "payment_deadline_set":        _("Дедлайн оплаты установлен"),
+        "operator_action":             _("Действие оператора"),
+        "shipment_created":            _("Отгрузка создана"),
+        "claim_opened":                _("Открыта рекламация"),
+        "claim_resolved":              _("Рекламация закрыта"),
+        "invoice_opened":              _("Счёт открыт покупателю"),
+        "invoice_paid":                _("Счёт оплачен"),
+        "tracking_updated":            _("Обновление трекинга"),
+        "document_uploaded":           _("Документ загружен"),
     }
     SOURCE_RU = {
-        "buyer": "покупатель", "seller": "продавец", "operator": "оператор",
-        "system": "система", "logist": "логист",
+        "buyer": _("покупатель"), "seller": _("продавец"), "operator": _("оператор"),
+        "system": _("система"), "logist": _("логист"),
     }
 
     audit_rows = []
@@ -1025,7 +1044,7 @@ def op_order_detail(params, user, role):
             amt = m.get("amount")
             if amt:
                 detail = f": ${float(amt):,.0f}"
-        actor = e.actor.username if e.actor else "система"
+        actor = e.actor.username if e.actor else _("система")
         source = SOURCE_RU.get(e.source, e.source or "—")
         audit_rows.append({
             "title": f"{evt_label}{detail}",
@@ -1083,7 +1102,7 @@ def op_order_detail(params, user, role):
             "before": before,
             "after": after,
             "delta": delta_text,
-            "actor": e.actor.username if e.actor else "система",
+            "actor": e.actor.username if e.actor else _("система"),
             "actor_role": e.source or "system",
             "actor_color": ACTOR_COLOR.get(e.source, "gray"),
             "actor_role_label": SOURCE_RU.get(e.source, e.source or "—"),
@@ -1121,18 +1140,20 @@ def op_order_detail(params, user, role):
         if current: return "⏳"
         return "○"
     milestones = [
-        {"label": f"Клиент оплачивает · ${total:,.0f}",
+        {"label": _("Клиент оплачивает · $%(amt)s") % {"amt": f"{total:,.0f}"},
          "value": _mark(client_paid, st == "pending"),
-         "sub": f"FOB ${fob_value:,.0f} + сервис {int(service_pct*100)}% (${service_fee:,.0f})"},
-        {"label": f"Выплата поставщику · ${seller_at_shipment:,.0f}",
+         "sub": _("FOB $%(fob)s + сервис %(pct)s%% ($%(fee)s)") % {
+             "fob": f"{fob_value:,.0f}", "pct": int(service_pct*100),
+             "fee": f"{service_fee:,.0f}"}},
+        {"label": _("Выплата поставщику · $%(amt)s") % {"amt": f"{seller_at_shipment:,.0f}"},
          "value": _mark(shipped, client_paid and not shipped),
-         "sub": f"FOB-цена минус депозит 10% (${deposit_10:,.0f})"},
-        {"label": f"Депозит у платформы · ${deposit_10:,.0f}",
+         "sub": _("FOB-цена минус депозит 10%% ($%(dep)s)") % {"dep": f"{deposit_10:,.0f}"}},
+        {"label": _("Депозит у платформы · $%(amt)s") % {"amt": f"{deposit_10:,.0f}"},
          "value": _mark(shipped, False),
-         "sub": "Удерживается до приёмки + 14 дней"},
-        {"label": "Через 14 дней после приёмки",
+         "sub": _("Удерживается до приёмки + 14 дней")},
+        {"label": _("Через 14 дней после приёмки"),
          "value": _mark(deposit_settled, delivered and not deposit_settled),
-         "sub": f"+5% поставщику (${deposit_return_5:,.0f}), 5% платформе (SLA-сбор)"},
+         "sub": _("+5%% поставщику ($%(ret)s), 5%% платформе (SLA-сбор)") % {"ret": f"{deposit_return_5:,.0f}"}},
     ]
 
     # ── Состав заказа (OrderItem'ы) — что именно везём ──
@@ -1144,15 +1165,18 @@ def op_order_detail(params, user, role):
         if not p:
             composition_rows.append({
                 "title": f"× {it.quantity}",
-                "subtitle": f"${float(it.unit_price):,.2f} за шт · ${float(it.total_price):,.2f}",
+                "subtitle": _("$%(unit)s за шт · $%(total)s") % {
+                    "unit": f"{float(it.unit_price):,.2f}",
+                    "total": f"{float(it.total_price):,.2f}"},
             })
             continue
         brand = (p.brand.name if p.brand_id else "")
         composition_rows.append({
             "title": f"{p.oem_number} · {p.title[:60]}",
-            "subtitle": (f"{brand + ' · ' if brand else ''}"
-                         f"кол-во {it.quantity} × ${float(it.unit_price):,.2f} = "
-                         f"${float(it.total_price):,.2f}"),
+            "subtitle": (_("%(brand)sкол-во %(qty)s × $%(unit)s = $%(total)s") % {
+                "brand": (brand + ' · ' if brand else ''),
+                "qty": it.quantity, "unit": f"{float(it.unit_price):,.2f}",
+                "total": f"{float(it.total_price):,.2f}"}),
             "badge": {"label": (p.condition or "OEM").upper(),
                       "tone": "ok" if (p.condition or "oem") == "oem" else "info"},
         })
@@ -1163,13 +1187,13 @@ def op_order_detail(params, user, role):
     cm_country = customs_meta.get("country") or "RU"
     tracking = meta.get("tracking_number") or "—"
     carrier = order.logistics_provider or "—"
-    mode = {"sea": "🚢 Море", "air": "✈️ Авиа", "auto": "🚚 Авто", "rail": "🚂 ЖД"} \
+    mode = {"sea": _("🚢 Море"), "air": _("✈️ Авиа"), "auto": _("🚚 Авто"), "rail": _("🚂 ЖД")} \
         .get(order.shipping_mode, order.shipping_mode or "—")
     route_rows = [
-        {"title": f"Маршрут: {origin} → {cm_country}",
+        {"title": _("Маршрут: %(origin)s → %(dest)s") % {"origin": origin, "dest": cm_country},
          "subtitle": f"{mode} · {carrier}"},
-        {"title": f"Трекинг: {tracking}",
-         "subtitle": f"Адрес доставки: {(order.delivery_address or '—')[:80]}"},
+        {"title": _("Трекинг: %(tracking)s") % {"tracking": tracking},
+         "subtitle": _("Адрес доставки: %(addr)s") % {"addr": (order.delivery_address or '—')[:80]}},
     ]
 
     # ── Документы по заказу (✅ есть / ⬜ нет) ──
@@ -1197,45 +1221,50 @@ def op_order_detail(params, user, role):
     def _doc_row(title: str, present: bool, extra: str = "", required: bool = True):
         # Без row-tone — в разделе «Документы» убраны цветные левые полоски;
         # статус виден по бейджу ЕСТЬ/НЕТ/—.
+        # `_state` — стабильный логический маркер (не отображается), по нему
+        # считаем docs_present/docs_missing независимо от языка бейджа.
         if present:
             return {
                 "title": f"✅ {title}",
-                "subtitle": extra or "Загружен / подтверждён",
-                "badge": {"label": "ЕСТЬ", "tone": "ok"},
+                "subtitle": extra or _("Загружен / подтверждён"),
+                "badge": {"label": _("ЕСТЬ"), "tone": "ok"},
+                "_state": "present",
             }
         if not required:
             return {
                 "title": f"⬜ {title}",
-                "subtitle": extra or "Не обязателен",
+                "subtitle": extra or _("Не обязателен"),
                 "badge": {"label": "—", "tone": "info"},
+                "_state": "optional",
             }
         return {
             "title": f"⬜ {title}",
-            "subtitle": extra or "Не загружен — требуется",
-            "badge": {"label": "НЕТ", "tone": "warn"},
+            "subtitle": extra or _("Не загружен — требуется"),
+            "badge": {"label": _("НЕТ"), "tone": "warn"},
+            "_state": "missing",
         }
 
     docs_rows = [
         _doc_row(
-            "Коммерческий инвойс",
+            _("Коммерческий инвойс"),
             bool(uploaded.get("invoice")),
-            f"{len(uploaded.get('invoice', []))} файл(ов)" if uploaded.get("invoice") else "",
+            _("%(n)s файл(ов)") % {"n": len(uploaded.get('invoice', []))} if uploaded.get("invoice") else "",
         ),
         _doc_row(
-            "Упаковочный лист (Packing List)",
+            _("Упаковочный лист (Packing List)"),
             bool(uploaded.get("packing_list")),
-            f"{len(uploaded.get('packing_list', []))} файл(ов)" if uploaded.get("packing_list") else "",
+            _("%(n)s файл(ов)") % {"n": len(uploaded.get('packing_list', []))} if uploaded.get("packing_list") else "",
         ),
         _doc_row(
-            "ТН ВЭД код",
+            _("ТН ВЭД код"),
             bool(hs_code),
-            f"{hs_code} (страна {cm_country})" if hs_code else "Не присвоен — нужен для растаможки",
+            _("%(hs)s (страна %(country)s)") % {"hs": hs_code, "country": cm_country} if hs_code else _("Не присвоен — нужен для растаможки"),
         ),
         _doc_row(
-            "Таможенная декларация",
+            _("Таможенная декларация"),
             declaration_done,
-            "Триггер закрыт оператором" if declaration_done
-            else "Ожидается от брокера",
+            _("Триггер закрыт оператором") if declaration_done
+            else _("Ожидается от брокера"),
             required=(order.status in ("customs", "transit_rf", "issuing", "delivered", "completed")),
         ),
     ]
@@ -1243,36 +1272,36 @@ def op_order_detail(params, user, role):
     if required_certs_list:
         for cert_code in required_certs_list:
             docs_rows.append(_doc_row(
-                f"Сертификат {cert_code}",
+                _("Сертификат %(code)s") % {"code": cert_code},
                 cert_code in have_certs_codes,
-                f"По ТН ВЭД {hs_code}",
+                _("По ТН ВЭД %(hs)s") % {"hs": hs_code},
                 required=True,
             ))
     else:
         docs_rows.append(_doc_row(
-            "Сертификаты соответствия",
+            _("Сертификаты соответствия"),
             bool(uploaded.get("certificate")),
-            "Перечень определится после присвоения ТН ВЭД",
+            _("Перечень определится после присвоения ТН ВЭД"),
             required=False,
         ))
     docs_rows.extend([
         _doc_row(
-            "ТТН (товарно-транспортная)",
+            _("ТТН (товарно-транспортная)"),
             ttn_done,
-            "Загружена при передаче РФ-логисту" if ttn_done
-            else "Нужна при транзите по РФ",
+            _("Загружена при передаче РФ-логисту") if ttn_done
+            else _("Нужна при транзите по РФ"),
             required=(order.status in ("transit_rf", "issuing", "delivered", "completed")),
         ),
         _doc_row(
-            "Отчёт о качестве / QC",
+            _("Отчёт о качестве / QC"),
             bool(uploaded.get("quality_report")),
-            "Опционально, но желателен для рекламаций",
+            _("Опционально, но желателен для рекламаций"),
             required=False,
         ),
     ])
 
-    docs_present = sum(1 for r in docs_rows if r["badge"]["label"] == "ЕСТЬ")
-    docs_missing = sum(1 for r in docs_rows if r["badge"]["label"] == "НЕТ")
+    docs_present = sum(1 for r in docs_rows if r.get("_state") == "present")
+    docs_missing = sum(1 for r in docs_rows if r.get("_state") == "missing")
 
     # ── 📐 Чертежи сделки (сверка оператором → точность поставки) ──
     # Оператор видит ОБА: «что нужно» (от покупателя) и «что предлагают» (от
@@ -1282,20 +1311,24 @@ def op_order_detail(params, user, role):
     from marketplace.models import Drawing
     _oems = [o for o in OrderItem.objects.filter(order=order)
              .values_list("part__oem_number", flat=True) if o]
-    _DST = {"draft": "черновик", "on_review": "на проверке", "approved": "✓ одобрен",
-            "rejected": "✗ отклонён", "archived": "архив"}
+    _DST = {"draft": _("черновик"), "on_review": _("на проверке"), "approved": _("✓ одобрен"),
+            "rejected": _("✗ отклонён"), "archived": _("архив")}
     drawing_rows = []
     if _oems:
         _buyer_id = getattr(order, "buyer_id", None)
         for d in (Drawing.objects
                   .filter(_Qd(oem_number__in=_oems) | _Qd(part__oem_number__in=_oems))
                   .select_related("seller", "part").order_by("-created_at")[:30]):
-            who = "🛒 покупатель" if (_buyer_id and d.seller_id == _buyer_id) else "🏭 продавец"
+            who = _("🛒 покупатель") if (_buyer_id and d.seller_id == _buyer_id) else _("🏭 продавец")
             oem = d.oem_number or (d.part.oem_number if d.part_id else "—")
             drawing_rows.append({
-                "title": f"{who} · {(d.title or 'Чертёж')[:50]} · ред. {d.revision or 'A'}",
-                "subtitle": (f"арт. {oem} · {(d.file_format or '').upper()} · "
-                             f"{_DST.get(d.status, d.status or '')} · {d.created_at:%d.%m.%Y}"),
+                "title": _("%(who)s · %(name)s · ред. %(rev)s") % {
+                    "who": who, "name": (d.title or _("Чертёж"))[:50],
+                    "rev": d.revision or 'A'},
+                "subtitle": (_("арт. %(oem)s · %(fmt)s · %(st)s · %(date)s") % {
+                    "oem": oem, "fmt": (d.file_format or "").upper(),
+                    "st": _DST.get(d.status, d.status or ''),
+                    "date": f"{d.created_at:%d.%m.%Y}"}),
                 "url": d.file_url or None,
                 "badge": {"label": (d.file_format or "").upper() or "—", "tone": "info"},
             })
@@ -1312,58 +1345,55 @@ def op_order_detail(params, user, role):
     except Exception:
         std_spec_card = None
     composition_card = std_spec_card or {"type": "list", "data": {
-        "title": f"📦 Состав заказа · {len(composition_rows)} поз. · ${(order.total_amount or 0):,.0f}",
-        "items": composition_rows or [{"title": "Нет позиций"}],
+        "title": _('📦 Состав заказа · %(p0)s поз. · $%(p1)s') % {"p0": f'{len(composition_rows)}', "p1": f'{order.total_amount or 0:,.0f}'},
+        "items": composition_rows or [{"title": _("Нет позиций")}],
     }}
 
     return ActionResult(
         text=(
-            f"Заказ #{order.id} · {order.customer_name}\n"
-            f"{order.get_status_display()} · {order.get_payment_status_display()} · SLA {SLA_RU.get(order.sla_status, order.sla_status)}\n"
-            f"${(order.total_amount or 0):,.0f} · {len(composition_rows)} поз."
+            _('Заказ #%(p0)s · %(p1)s\n%(p2)s · %(p3)s · SLA %(p4)s\n$%(p5)s · %(p6)s поз.') % {"p0": f'{order.id}', "p1": f'{order.customer_name}', "p2": f'{order.get_status_display()}', "p3": f'{order.get_payment_status_display()}', "p4": f'{SLA_RU.get(order.sla_status, order.sla_status)}', "p5": f'{order.total_amount or 0:,.0f}', "p6": f'{len(composition_rows)}'}
         ),
         cards=[
             # ── Состав заказа (стандартный вид) — первым ──
             composition_card,
             {"type": "kpi_grid", "data": {
-                "title": "💰 Поток платежей по заказу",
+                "title": _("💰 Поток платежей по заказу"),
                 "items": milestones,
             }},
             # ── 📐 Чертежи сделки (сверка покупатель↔продавец → точность поставки) ──
             {"type": "list", "data": {
-                "title": f"📐 Чертежи сделки · {len(drawing_rows)} (сверка → точность поставки)",
+                "title": _('📐 Чертежи сделки · %(p0)s (сверка → точность поставки)') % {"p0": f'{len(drawing_rows)}'},
                 "items": drawing_rows or [{
-                    "title": "Чертежей нет",
-                    "subtitle": "Стороны не приложили чертежи к артикулам этого заказа."}],
+                    "title": _("Чертежей нет"),
+                    "subtitle": _("Стороны не приложили чертежи к артикулам этого заказа.")}],
             }},
             # ── Маршрут и логистика ──
             {"type": "list", "data": {
-                "title": "🚚 Маршрут и логистика",
+                "title": _("🚚 Маршрут и логистика"),
                 "items": route_rows,
             }},
             # ── Документы по заказу: что есть / чего нет ──
             {"type": "list", "data": {
-                "title": (f"📑 Документы · ✅ {docs_present} есть · "
-                          f"⬜ {docs_missing} не хватает"),
+                "title": (_('📑 Документы · ✅ %(p0)s есть · ⬜ %(p1)s не хватает') % {"p0": f'{docs_present}', "p1": f'{docs_missing}'}),
                 "items": docs_rows,
             }},
             {"type": "audit_timeline", "data": {
-                "title": f"📜 История заказа #{order.id}",
+                "title": _('📜 История заказа #%(p0)s') % {"p0": f'{order.id}'},
                 "events": timeline_items,
             }},
         ],
         contextual_actions=[
-            {"action": "op_add_note", "label": "📝 Заметка", "params": {"order_id": order.id}},
+            {"action": "op_add_note", "label": _("📝 Заметка"), "params": {"order_id": order.id}},
             # Назначение/смена перевозчика — приоритетная кнопка если заказ в transit
             {"action": "op_assign_carrier",
              "label": ("🚚 " + ("Сменить" if order.carrier_name else "Назначить")
                         + " перевозчика"),
              "params": {"order_id": order.id}},
-            {"action": "track_shipment", "label": "📦 Трекинг", "params": {"order_id": order.id}},
-            {"action": "op_resolve_dispute", "label": "⚖️ Закрыть спор", "params": {"order_id": order.id}},
-            {"action": "get_claims", "label": "🧾 Рекламации", "params": {}},
-            {"action": "op_escalate_to_kam", "label": "⚠️ Эскалировать KAM", "params": {"order_id": order.id}},
-            {"action": "go_home", "label": "🏠 Главная"},
+            {"action": "track_shipment", "label": _("📦 Трекинг"), "params": {"order_id": order.id}},
+            {"action": "op_resolve_dispute", "label": _("⚖️ Закрыть спор"), "params": {"order_id": order.id}},
+            {"action": "get_claims", "label": _("🧾 Рекламации"), "params": {}},
+            {"action": "op_escalate_to_kam", "label": _("⚠️ Эскалировать KAM"), "params": {"order_id": order.id}},
+            {"action": "go_home", "label": _("🏠 Главная")},
         ],
     )
 
@@ -1382,7 +1412,7 @@ def op_assign(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     to_role = (params.get("to_role") or "").strip().lower()
     confirmed = bool(params.get("confirmed"))
@@ -1397,35 +1427,25 @@ def op_assign(params, user, role):
         )
         return ActionResult(
             text=(
-                f"Кому назначить заказ #{order.id}?\n\n"
-                f"Назначение передаёт ответственность за этот заказ конкретному "
-                f"специалисту-оператору. Он получит уведомление, увидит заказ "
-                f"в своей персональной очереди и будет следить за SLA. Дирижирует "
-                f"процессом дальше — он, но за итог отвечает старший оператор.\n\n"
-                f"{current_line}\n\n"
-                f"Когда назначать:\n"
-                f"• 🚚 Логист — груз застрял в транзите / нужно дозвонится до перевозчика\n"
-                f"• 🛂 Таможня — проблемы с растаможкой, документами, кодами ТН ВЭД\n"
-                f"• 💰 Платежи — задержка оплаты, возврат, эскроу-вопрос\n"
-                f"• 👤 Менеджер — общая координация / VIP-клиент / эскалация"
+                _('Кому назначить заказ #%(p0)s?\n\nНазначение передаёт ответственность за этот заказ конкретному специалисту-оператору. Он получит уведомление, увидит заказ в своей персональной очереди и будет следить за SLA. Дирижирует процессом дальше — он, но за итог отвечает старший оператор.\n\n%(p1)s\n\nКогда назначать:\n• 🚚 Логист — груз застрял в транзите / нужно дозвонится до перевозчика\n• 🛂 Таможня — проблемы с растаможкой, документами, кодами ТН ВЭД\n• 💰 Платежи — задержка оплаты, возврат, эскроу-вопрос\n• 👤 Менеджер — общая координация / VIP-клиент / эскалация') % {"p0": f'{order.id}', "p1": f'{current_line}'}
             ),
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": f"👥 Назначить заказ #{order.id} специалисту",
+                    "title": _('👥 Назначить заказ #%(p0)s специалисту') % {"p0": f'{order.id}'},
                     "submit_action": "op_assign",
                     "fields": [
                         {
-                            "name": "to_role", "label": "Кому передать ответственность",
+                            "name": "to_role", "label": _("Кому передать ответственность"),
                             "required": True, "type": "select",
                             "options": [
-                                {"value": "manager",  "label": "👤 Менеджер — общая координация"},
-                                {"value": "logist",   "label": "🚚 Логист — транзит и доставка"},
-                                {"value": "customs",  "label": "🛂 Таможня — растаможка, документы"},
-                                {"value": "payments", "label": "💰 Платежи — оплаты, эскроу, возвраты"},
+                                {"value": "manager",  "label": _("👤 Менеджер — общая координация")},
+                                {"value": "logist",   "label": _("🚚 Логист — транзит и доставка")},
+                                {"value": "customs",  "label": _("🛂 Таможня — растаможка, документы")},
+                                {"value": "payments", "label": _("💰 Платежи — оплаты, эскроу, возвраты")},
                             ],
                         },
-                        {"name": "comment", "label": "Причина / контекст (видно назначенному)"},
+                        {"name": "comment", "label": _("Причина / контекст (видно назначенному)")},
                     ],
                     "fixed_params": {"order_id": order.id, "confirmed": True},
                 },
@@ -1449,18 +1469,18 @@ def op_assign(params, user, role):
         if target:
             _notify(
                 target, kind="order",
-                title=f"Вам назначен заказ #{order.id}",
-                body=f"{user.username} назначил роль «{to_role}» по заказу {order.customer_name}.",
+                title=_('Вам назначен заказ #%(p0)s') % {"p0": f'{order.id}'},
+                body=_('%(p0)s назначил роль «%(p1)s» по заказу %(p2)s.') % {"p0": f'{user.username}', "p1": f'{to_role}', "p2": f'{order.customer_name}'},
                 url=f"/chat/?order={order.id}",
             )
     except Exception:
         logger.exception("op_assign notify failed")
 
     return ActionResult(
-        text=f"✓ Заказ #{order.id} назначен на «{to_role}».",
+        text=_('✓ Заказ #%(p0)s назначен на «%(p1)s».') % {"p0": f'{order.id}', "p1": f'{to_role}'},
         contextual_actions=[
-            {"action": "op_order_detail", "label": "Открыть заказ", "params": {"order_id": order.id}},
-            {"action": "op_dashboard", "label": "← Сводка"},
+            {"action": "op_order_detail", "label": _("Открыть заказ"), "params": {"order_id": order.id}},
+            {"action": "op_dashboard", "label": _("← Сводка")},
         ],
     )
 
@@ -1479,21 +1499,21 @@ def op_add_note(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     text = (params.get("text") or "").strip()
     confirmed = bool(params.get("confirmed"))
 
     if not confirmed or not text:
         return ActionResult(
-            text=f"Заметка к заказу #{order.id}",
+            text=_('Заметка к заказу #%(p0)s') % {"p0": f'{order.id}'},
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": f"📝 Заметка · #{order.id}",
+                    "title": _('📝 Заметка · #%(p0)s') % {"p0": f'{order.id}'},
                     "submit_action": "op_add_note",
                     "fields": [
-                        {"name": "text", "label": "Текст", "type": "textarea", "required": True},
+                        {"name": "text", "label": _("Текст"), "type": "textarea", "required": True},
                     ],
                     "fixed_params": {"order_id": order.id, "confirmed": True},
                 },
@@ -1505,9 +1525,9 @@ def op_add_note(params, user, role):
         meta={"kind": "note", "text": text, "by": user.username},
     )
     return ActionResult(
-        text=f"✓ Заметка к #{order.id} сохранена.",
+        text=_('✓ Заметка к #%(p0)s сохранена.') % {"p0": f'{order.id}'},
         contextual_actions=[
-            {"action": "op_order_detail", "label": "Открыть заказ", "params": {"order_id": order.id}},
+            {"action": "op_order_detail", "label": _("Открыть заказ"), "params": {"order_id": order.id}},
         ],
     )
 
@@ -1531,7 +1551,7 @@ def op_assign_carrier(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     confirmed = bool(params.get("confirmed"))
     carrier_name    = (params.get("carrier_name") or "").strip()[:120]
@@ -1544,31 +1564,28 @@ def op_assign_carrier(params, user, role):
         # Phase 1: форма с предзаполнением (если уже что-то было)
         return ActionResult(
             text=(
-                f"🚚 Назначение перевозчика для ORD-{order.id} "
-                f"(текущий статус: {order.get_status_display()}).\n"
-                f"После сохранения покупатель сразу увидит карточку логиста "
-                f"и получит уведомление."
+                _('🚚 Назначение перевозчика для ORD-%(p0)s (текущий статус: %(p1)s).\nПосле сохранения покупатель сразу увидит карточку логиста и получит уведомление.') % {"p0": f'{order.id}', "p1": f'{order.get_status_display()}'}
             ),
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": f"🚚 Перевозчик · ORD-{order.id}",
+                    "title": _('🚚 Перевозчик · ORD-%(p0)s') % {"p0": f'{order.id}'},
                     "submit_action": "op_assign_carrier",
                     "submit_label": "✓ Назначить и уведомить покупателя",
                     "fields": [
-                        {"name": "carrier_name", "label": "Перевозчик",
+                        {"name": "carrier_name", "label": _("Перевозчик"),
                          "required": True, "value": order.carrier_name or "",
-                         "placeholder": "Maersk · DHL · СДЭК · Деловые Линии"},
-                        {"name": "tracking_number", "label": "Трек-номер",
+                         "placeholder": _("Maersk · DHL · СДЭК · Деловые Линии")},
+                        {"name": "tracking_number", "label": _("Трек-номер"),
                          "required": True, "value": order.tracking_number or "",
                          "placeholder": "MAEU1234567"},
-                        {"name": "tracking_url", "label": "URL трекинга (опц.)",
+                        {"name": "tracking_url", "label": _("URL трекинга (опц.)"),
                          "value": order.tracking_url or "",
                          "placeholder": "https://www.maersk.com/tracking/MAEU1234567"},
-                        {"name": "carrier_phone", "label": "Телефон (опц.)",
+                        {"name": "carrier_phone", "label": _("Телефон (опц.)"),
                          "value": order.carrier_phone or "",
                          "placeholder": "+7 800 100-25-15"},
-                        {"name": "carrier_email", "label": "Email (опц.)",
+                        {"name": "carrier_email", "label": _("Email (опц.)"),
                          "type": "email", "value": order.carrier_email or "",
                          "placeholder": "support@carrier.com"},
                     ],
@@ -1576,13 +1593,13 @@ def op_assign_carrier(params, user, role):
                 },
             }],
             contextual_actions=[
-                {"action": "op_order_detail", "label": "← К заказу",
+                {"action": "op_order_detail", "label": _("← К заказу"),
                  "params": {"order_id": order.id}},
             ],
         )
 
     if not carrier_name or not tracking_number:
-        return ActionResult(text="⚠️ Перевозчик и трек-номер обязательны.")
+        return ActionResult(text=_("⚠️ Перевозчик и трек-номер обязательны."))
 
     # Сохраняем
     prev_carrier = order.carrier_name
@@ -1625,7 +1642,7 @@ def op_assign_carrier(params, user, role):
                 + (f"\nТелефон: {carrier_phone}" if carrier_phone else "")
             ),
             extra_actions=[
-                {"action": "track_shipment", "label": "📦 Открыть трекинг",
+                {"action": "track_shipment", "label": _("📦 Открыть трекинг"),
                  "params": {"order_id": order.id}},
             ] + ([
                 {"action": "open_url", "label": f"🔗 {carrier_name}",
@@ -1638,15 +1655,12 @@ def op_assign_carrier(params, user, role):
 
     return ActionResult(
         text=(
-            f"✅ Перевозчик для ORD-{order.id} назначен.\n"
-            f"• Перевозчик: {carrier_name}\n"
-            f"• Трек: {tracking_number}\n"
-            f"Покупатель и поставщик получили уведомление в свои чаты."
+            _('✅ Перевозчик для ORD-%(p0)s назначен.\n• Перевозчик: %(p1)s\n• Трек: %(p2)s\nПокупатель и поставщик получили уведомление в свои чаты.') % {"p0": f'{order.id}', "p1": f'{carrier_name}', "p2": f'{tracking_number}'}
         ),
         contextual_actions=[
-            {"action": "op_order_detail", "label": "← К заказу",
+            {"action": "op_order_detail", "label": _("← К заказу"),
              "params": {"order_id": order.id}},
-            {"action": "track_shipment", "label": "📦 Открыть трекинг",
+            {"action": "track_shipment", "label": _("📦 Открыть трекинг"),
              "params": {"order_id": order.id}},
         ],
     )
@@ -1666,13 +1680,13 @@ def op_resolve_dispute(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     # FIX (HIGH): обычный оператор может resolve dispute только по своим
     # назначенным заказам (PIVOT 2026-05-27). Только staff (lead-operator)
     # может закрыть любой спор.
     if not user.is_staff and order.assigned_operator_id and order.assigned_operator_id != user.id:
-        return ActionResult(text="Этот спор не назначен на вас — обратитесь к старшему оператору.")
+        return ActionResult(text=_("Этот спор не назначен на вас — обратитесь к старшему оператору."))
 
     resolution = (params.get("resolution") or "").strip().lower()
     refund_amount_raw = params.get("refund_amount") or "0"
@@ -1680,25 +1694,25 @@ def op_resolve_dispute(params, user, role):
 
     if not confirmed or resolution not in DISPUTE_RESOLUTIONS:
         return ActionResult(
-            text=f"Резолюция по спору · #{order.id}",
+            text=_('Резолюция по спору · #%(p0)s') % {"p0": f'{order.id}'},
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": f"⚖️ Закрыть спор · #{order.id}",
+                    "title": _('⚖️ Закрыть спор · #%(p0)s') % {"p0": f'{order.id}'},
                     "submit_action": "op_resolve_dispute",
                     "fields": [
                         {
-                            "name": "resolution", "label": "Решение", "required": True,
+                            "name": "resolution", "label": _("Решение"), "required": True,
                             "type": "select",
                             "options": [
-                                {"value": "refund", "label": "Полный возврат"},
-                                {"value": "partial_refund", "label": "Частичный возврат"},
-                                {"value": "release", "label": "Выпустить платёж продавцу"},
-                                {"value": "no_action", "label": "Закрыть без действий"},
+                                {"value": "refund", "label": _("Полный возврат")},
+                                {"value": "partial_refund", "label": _("Частичный возврат")},
+                                {"value": "release", "label": _("Выпустить платёж продавцу")},
+                                {"value": "no_action", "label": _("Закрыть без действий")},
                             ],
                         },
-                        {"name": "refund_amount", "label": "Сумма возврата ($)", "type": "number"},
-                        {"name": "reason", "label": "Обоснование", "type": "textarea", "required": True},
+                        {"name": "refund_amount", "label": _("Сумма возврата ($)"), "type": "number"},
+                        {"name": "reason", "label": _("Обоснование"), "type": "textarea", "required": True},
                     ],
                     "fixed_params": {"order_id": order.id, "confirmed": True},
                 },
@@ -1789,8 +1803,8 @@ def op_resolve_dispute(params, user, role):
     if order.buyer:
         _notify(
             order.buyer, kind="payment",
-            title=f"Спор по заказу #{order.id} закрыт",
-            body=f"Решение: {resolution}.{money_moved} {reason[:120]}",
+            title=_('Спор по заказу #%(p0)s закрыт') % {"p0": f'{order.id}'},
+            body=_('Решение: %(p0)s.%(p1)s %(p2)s') % {"p0": f'{resolution}', "p1": f'{money_moved}', "p2": f'{reason[:120]}'},
             url=f"/chat/?order={order.id}",
         )
 
@@ -1801,8 +1815,8 @@ def op_resolve_dispute(params, user, role):
             + "."
         ),
         contextual_actions=[
-            {"action": "op_order_detail", "label": "Открыть заказ", "params": {"order_id": order.id}},
-            {"action": "op_dashboard", "label": "← Сводка"},
+            {"action": "op_order_detail", "label": _("Открыть заказ"), "params": {"order_id": order.id}},
+            {"action": "op_dashboard", "label": _("← Сводка")},
         ],
     )
 
@@ -1836,31 +1850,31 @@ def op_hs_lookup(params, user, role):
     query = (params.get("query") or "").strip()
     if not query:
         return ActionResult(
-            text="Введите описание детали или артикул для поиска ТН ВЭД.",
+            text=_("Введите описание детали или артикул для поиска ТН ВЭД."),
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": "🔎 Поиск ТН ВЭД",
+                    "title": _("🔎 Поиск ТН ВЭД"),
                     "submit_action": "op_hs_lookup",
-                    "fields": [{"name": "query", "label": "Описание / артикул", "required": True}],
+                    "fields": [{"name": "query", "label": _("Описание / артикул"), "required": True}],
                 },
             }],
         )
     hits = find_hs_codes(query, limit=5)
     if not hits:
         return ActionResult(
-            text=f"Не нашёл ТН ВЭД для «{query}». Попробуйте другие ключевые слова.",
+            text=_('Не нашёл ТН ВЭД для «%(p0)s». Попробуйте другие ключевые слова.') % {"p0": f'{query}'},
             suggestions=["насос", "фильтр", "подшипник", "гидроцилиндр", "шестерня"],
         )
     return ActionResult(
-        text=f"Найдено {len(hits)} ТН ВЭД-кодов по запросу «{query}».",
+        text=_('Найдено %(p0)s ТН ВЭД-кодов по запросу «%(p1)s».') % {"p0": f'{len(hits)}', "p1": f'{query}'},
         cards=[{
             "type": "list",
             "data": {
-                "title": "🔎 Кандидаты ТН ВЭД",
+                "title": _("🔎 Кандидаты ТН ВЭД"),
                 "items": [
                     {"title": f"{h['code']} · {h['title']}",
-                     "subtitle": "Ключевые слова: " + ", ".join(h["keywords"][:4])}
+                     "subtitle": _("Ключевые слова: ") + ", ".join(h["keywords"][:4])}
                     for h in hits
                 ],
             },
@@ -1879,7 +1893,7 @@ def op_hs_assign(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     hs_code = (params.get("hs_code") or "").strip()
     country = (params.get("country") or "RU").strip().upper()
@@ -1888,16 +1902,16 @@ def op_hs_assign(params, user, role):
     if not confirmed or not hs_code:
         cur = _customs_meta(order)
         return ActionResult(
-            text=f"Присвоить ТН ВЭД заказу #{order.id}",
+            text=_('Присвоить ТН ВЭД заказу #%(p0)s') % {"p0": f'{order.id}'},
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": f"📋 ТН ВЭД · #{order.id}",
+                    "title": _('📋 ТН ВЭД · #%(p0)s') % {"p0": f'{order.id}'},
                     "submit_action": "op_hs_assign",
                     "fields": [
-                        {"name": "hs_code", "label": "Код ТН ВЭД (например 8413.50)",
+                        {"name": "hs_code", "label": _("Код ТН ВЭД (например 8413.50)"),
                          "required": True, "value": cur.get("hs_code", "")},
-                        {"name": "country", "label": "Страна импорта (ISO-2, RU/BY/KZ/AM/KG)",
+                        {"name": "country", "label": _("Страна импорта (ISO-2, RU/BY/KZ/AM/KG)"),
                          "value": cur.get("country", "RU")},
                     ],
                     "fixed_params": {"order_id": order.id, "confirmed": True},
@@ -1913,10 +1927,10 @@ def op_hs_assign(params, user, role):
         meta={"kind": "customs_hs_assigned", "hs_code": hs_code, "country": country},
     )
     return ActionResult(
-        text=f"✓ Заказу #{order.id} присвоен ТН ВЭД {hs_code} (страна {country}).",
+        text=_('✓ Заказу #%(p0)s присвоен ТН ВЭД %(p1)s (страна %(p2)s).') % {"p0": f'{order.id}', "p1": f'{hs_code}', "p2": f'{country}'},
         contextual_actions=[
-            {"action": "op_calc_duty", "label": "💰 Рассчитать пошлину", "params": {"order_id": order.id}},
-            {"action": "op_certs_check", "label": "📑 Проверить сертификаты", "params": {"order_id": order.id}},
+            {"action": "op_calc_duty", "label": _("💰 Рассчитать пошлину"), "params": {"order_id": order.id}},
+            {"action": "op_certs_check", "label": _("📑 Проверить сертификаты"), "params": {"order_id": order.id}},
         ],
     )
 
@@ -1934,16 +1948,16 @@ def op_calc_duty(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     customs = _customs_meta(order)
     hs_code = (params.get("hs_code") or customs.get("hs_code") or "").strip()
     country = (params.get("country") or customs.get("country") or "RU").upper()
     if not hs_code:
         return ActionResult(
-            text=f"Сначала присвойте ТН ВЭД заказу #{order.id}.",
+            text=_('Сначала присвойте ТН ВЭД заказу #%(p0)s.') % {"p0": f'{order.id}'},
             contextual_actions=[
-                {"action": "op_hs_assign", "label": "📋 Присвоить ТН ВЭД", "params": {"order_id": order.id}},
+                {"action": "op_hs_assign", "label": _("📋 Присвоить ТН ВЭД"), "params": {"order_id": order.id}},
             ],
         )
 
@@ -1973,28 +1987,25 @@ def op_calc_duty(params, user, role):
 
     return ActionResult(
         text=(
-            f"Пошлина по заказу #{order.id} ({hs_code} → {country})\n"
-            f"База: ${base:,.2f} · пошлина {duty_pct}% = ${duty:,.2f} · "
-            f"НДС {vat_pct}% = ${vat:,.2f}\n"
-            f"Брокер ${broker} · терминал ${terminal} · ИТОГО ${total:,.2f}"
+            _('Пошлина по заказу #%(p0)s (%(p1)s → %(p2)s)\nБаза: $%(p3)s · пошлина %(p4)s%% = $%(p5)s · НДС %(p6)s%% = $%(p7)s\nБрокер $%(p8)s · терминал $%(p9)s · ИТОГО $%(p10)s') % {"p0": f'{order.id}', "p1": f'{hs_code}', "p2": f'{country}', "p3": f'{base:,.2f}', "p4": f'{duty_pct}', "p5": f'{duty:,.2f}', "p6": f'{vat_pct}', "p7": f'{vat:,.2f}', "p8": f'{broker}', "p9": f'{terminal}', "p10": f'{total:,.2f}'}
         ),
         cards=[{
             "type": "kpi_grid",
             "data": {
-                "title": f"💰 Расчёт пошлины · #{order.id}",
+                "title": _('💰 Расчёт пошлины · #%(p0)s') % {"p0": f'{order.id}'},
                 "items": [
-                    {"label": "База", "value": f"${base:,.2f}"},
-                    {"label": f"Пошлина {duty_pct}%", "value": f"${duty:,.2f}"},
-                    {"label": f"НДС {vat_pct}%", "value": f"${vat:,.2f}"},
-                    {"label": "Брокер", "value": f"${broker}"},
-                    {"label": "Терминал", "value": f"${terminal}"},
-                    {"label": "ИТОГО", "value": f"${total:,.2f}", "tone": "info"},
+                    {"label": _("База"), "value": f"${base:,.2f}"},
+                    {"label": _('Пошлина %(p0)s%%') % {"p0": f'{duty_pct}'}, "value": f"${duty:,.2f}"},
+                    {"label": _('НДС %(p0)s%%') % {"p0": f'{vat_pct}'}, "value": f"${vat:,.2f}"},
+                    {"label": _("Брокер"), "value": f"${broker}"},
+                    {"label": _("Терминал"), "value": f"${terminal}"},
+                    {"label": _("ИТОГО"), "value": f"${total:,.2f}", "tone": "info"},
                 ],
             },
         }],
         contextual_actions=[
-            {"action": "op_certs_check", "label": "📑 Сертификаты", "params": {"order_id": order.id}},
-            {"action": "op_customs_release", "label": "🚚 Выпустить с таможни", "params": {"order_id": order.id}},
+            {"action": "op_certs_check", "label": _("📑 Сертификаты"), "params": {"order_id": order.id}},
+            {"action": "op_customs_release", "label": _("🚚 Выпустить с таможни"), "params": {"order_id": order.id}},
         ],
     )
 
@@ -2012,7 +2023,7 @@ def op_certs_check(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     customs = _customs_meta(order)
     hs_code = customs.get("hs_code", "")
@@ -2031,11 +2042,11 @@ def op_certs_check(params, user, role):
 
     return ActionResult(
         text=text,
-        cards=[{"type": "kpi_grid", "data": {"title": f"📑 Сертификаты #{order.id}", "items": items}}],
+        cards=[{"type": "kpi_grid", "data": {"title": _('📑 Сертификаты #%(p0)s') % {"p0": f'{order.id}'}, "items": items}}],
         contextual_actions=(
-            [{"action": "op_cert_upload", "label": f"⬆ Загрузить {missing[0]}",
+            [{"action": "op_cert_upload", "label": _('⬆ Загрузить %(p0)s') % {"p0": f'{missing[0]}'},
               "params": {"order_id": order.id, "cert": missing[0]}}] if missing else
-            [{"action": "op_customs_release", "label": "🚚 Выпустить с таможни",
+            [{"action": "op_customs_release", "label": _("🚚 Выпустить с таможни"),
               "params": {"order_id": order.id}}]
         ),
     )
@@ -2052,7 +2063,7 @@ def op_cert_upload(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     cert = (params.get("cert") or "").strip()
     number = (params.get("number") or "").strip()
@@ -2060,16 +2071,16 @@ def op_cert_upload(params, user, role):
 
     if not confirmed or not cert:
         return ActionResult(
-            text=f"Загрузка сертификата · #{order.id}",
+            text=_('Загрузка сертификата · #%(p0)s') % {"p0": f'{order.id}'},
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": f"⬆ Сертификат · #{order.id}",
+                    "title": _('⬆ Сертификат · #%(p0)s') % {"p0": f'{order.id}'},
                     "submit_action": "op_cert_upload",
                     "fields": [
-                        {"name": "cert", "label": "Тип (EAC, ТР ТС 010/2011, ...)", "required": True,
+                        {"name": "cert", "label": _("Тип (EAC, ТР ТС 010/2011, ...)"), "required": True,
                          "value": cert},
-                        {"name": "number", "label": "Номер документа"},
+                        {"name": "number", "label": _("Номер документа")},
                     ],
                     "fixed_params": {"order_id": order.id, "confirmed": True},
                 },
@@ -2087,9 +2098,9 @@ def op_cert_upload(params, user, role):
                meta={"kind": "customs_cert_uploaded", "cert": cert, "number": number})
 
     return ActionResult(
-        text=f"✓ Сертификат «{cert}» добавлен к заказу #{order.id}.",
+        text=_('✓ Сертификат «%(p0)s» добавлен к заказу #%(p1)s.') % {"p0": f'{cert}', "p1": f'{order.id}'},
         contextual_actions=[
-            {"action": "op_certs_check", "label": "📑 Проверить", "params": {"order_id": order.id}},
+            {"action": "op_certs_check", "label": _("📑 Проверить"), "params": {"order_id": order.id}},
         ],
     )
 
@@ -2107,16 +2118,16 @@ def op_sanctions_check(params, user, role):
     category = (params.get("category") or "").strip()
     if not (country or entity or category):
         return ActionResult(
-            text="Что проверить на санкции?",
+            text=_("Что проверить на санкции?"),
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": "🚫 Санкционная проверка",
+                    "title": _("🚫 Санкционная проверка"),
                     "submit_action": "op_sanctions_check",
                     "fields": [
-                        {"name": "country", "label": "Страна (ISO-2, например IR)"},
-                        {"name": "entity", "label": "Контрагент / организация"},
-                        {"name": "category", "label": "Категория (dual_use_chip)"},
+                        {"name": "country", "label": _("Страна (ISO-2, например IR)")},
+                        {"name": "entity", "label": _("Контрагент / организация")},
+                        {"name": "category", "label": _("Категория (dual_use_chip)")},
                     ],
                 },
             }],
@@ -2126,19 +2137,19 @@ def op_sanctions_check(params, user, role):
     icon = {"high": "🚫", "medium": "⚠️", "low": "ℹ️", "none": "✓"}[level]
     label = {"high": "Запрещено", "medium": "Под контролем", "low": "Серая зона", "none": "Чисто"}[level]
     items = [
-        {"label": "Уровень", "value": label,
+        {"label": _("Уровень"), "value": label,
          "tone": {"high": "bad", "medium": "warn", "low": "warn", "none": "ok"}[level]},
     ]
-    if country:  items.append({"label": "Страна", "value": country.upper()})
-    if entity:   items.append({"label": "Контрагент", "value": entity})
-    if category: items.append({"label": "Категория", "value": category})
+    if country:  items.append({"label": _("Страна"), "value": country.upper()})
+    if entity:   items.append({"label": _("Контрагент"), "value": entity})
+    if category: items.append({"label": _("Категория"), "value": category})
 
     text_lines = [f"{icon} Санкционная проверка: {label}."]
     text_lines.extend("• " + r for r in (res["reasons"] or ["Нет совпадений в списках."]))
 
     return ActionResult(
         text="\n".join(text_lines),
-        cards=[{"type": "kpi_grid", "data": {"title": "🚫 Санкции", "items": items}}],
+        cards=[{"type": "kpi_grid", "data": {"title": _("🚫 Санкции"), "items": items}}],
     )
 
 
@@ -2247,8 +2258,7 @@ def op_customs_dashboard(params, user, role):
         badge_label = "К выпуску" if has_docs else "Нет доков"
         rows.append({
             "title": f"#{o.id} · {o.customer_name}",
-            "subtitle": f"{o.get_status_display()} · ТН ВЭД {hs} · "
-                        f"${float(o.total_amount or 0):,.0f}",
+            "subtitle": _('%(p0)s · ТН ВЭД %(p1)s · $%(p2)s') % {"p0": f'{o.get_status_display()}', "p1": f'{hs}', "p2": f'{float(o.total_amount or 0):,.0f}'},
             "tone": tone,
             "badge": {"label": badge_label, "tone": tone},
             "action": "op_order_detail",
@@ -2260,32 +2270,32 @@ def op_customs_dashboard(params, user, role):
         return {"action": "op_queue", "params": {"filter": flt}}
 
     kpi_items = [
-        {"label": "Доля готовых к выпуску",
+        {"label": _("Доля готовых к выпуску"),
          "value": f"{docs_completeness}%",
          "tone": "ok" if docs_completeness >= 80 else ("warn" if docs_completeness >= 50 else "bad"),
          **(_qc("customs") if total else {})},
-        {"label": "Средний срок на таможне",
+        {"label": _("Средний срок на таможне"),
          "value": f"{avg_stuck:.1f} дн",
          "tone": "bad" if avg_stuck > 5 else ("warn" if avg_stuck > 3 else "ok"),
          **(_qc("customs") if total else {})},
-        {"label": "Просрочены >3 дн",
+        {"label": _("Просрочены >3 дн"),
          "value": str(overdue_3d),
          "tone": "bad" if overdue_3d else "ok",
          **(_qc("customs") if overdue_3d else {})},
-        {"label": "Сумма на таможне",
+        {"label": _("Сумма на таможне"),
          "value": f"${money_stuck:,.0f}", "tone": "info",
          **(_qc("customs") if total else {})},
     ]
     if avg_release_days is not None:
         kpi_items.append({
-            "label": "Ср. срок выпуска (30д)",
+            "label": _("Ср. срок выпуска (30д)"),
             "value": f"{avg_release_days:.1f} дн",
             "tone": "ok" if avg_release_days <= 3 else "warn",
             **_qc("transit"),
         })
     if released_30 or released_prev:
         kpi_items.append({
-            "label": "Поток через таможню 30д",
+            "label": _("Поток через таможню 30д"),
             "value": f"{arrow} {abs(flow_delta)}% ({released_30} шт)",
             "tone": "ok" if flow_delta >= 0 else "warn",
             **_qc("transit"),
@@ -2309,14 +2319,14 @@ def op_customs_dashboard(params, user, role):
     return ActionResult(
         text=cust_insight,
         cards=[
-            {"type": "kpi_grid", "data": {"title": "🛂 Скорость и качество прохождения", "items": kpi_items}},
-            {"type": "list", "data": {"title": f"На таможне сейчас ({total})",
-                "items": rows or [{"title": "Нет грузов на таможне"}]}},
+            {"type": "kpi_grid", "data": {"title": _("🛂 Скорость и качество прохождения"), "items": kpi_items}},
+            {"type": "list", "data": {"title": _('На таможне сейчас (%(p0)s)') % {"p0": f'{total}'},
+                "items": rows or [{"title": _("Нет грузов на таможне")}]}},
         ],
         contextual_actions=[
-            {"action": "op_analytics_hub", "label": "← Аналитика"},
-            {"action": "op_queue", "label": "📋 Список заказов", "params": {"filter": "open"}},
-            {"action": "go_home", "label": "🏠 Главная"},
+            {"action": "op_analytics_hub", "label": _("← Аналитика")},
+            {"action": "op_queue", "label": _("📋 Список заказов"), "params": {"filter": "open"}},
+            {"action": "go_home", "label": _("🏠 Главная")},
         ],
     )
 
@@ -2334,7 +2344,7 @@ def op_customs_release(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0))
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     confirmed = bool(params.get("confirmed"))
     customs = _customs_meta(order)
@@ -2352,24 +2362,24 @@ def op_customs_release(params, user, role):
         elif not customs.get("duty_total"):
             warn = "ℹ️ Пошлина не рассчитана."
         return ActionResult(
-            text=f"Выпустить груз #{order.id} с таможни?\n{warn}",
+            text=_('Выпустить груз #%(p0)s с таможни?\n%(p1)s') % {"p0": f'{order.id}', "p1": f'{warn}'},
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": f"🚚 Выпуск с таможни · #{order.id}",
+                    "title": _('🚚 Выпуск с таможни · #%(p0)s') % {"p0": f'{order.id}'},
                     "submit_action": "op_customs_release",
                     "fields": [
-                        {"name": "comment", "label": "Комментарий (необязательно)"},
+                        {"name": "comment", "label": _("Комментарий (необязательно)")},
                     ],
                     "fixed_params": {"order_id": order.id, "confirmed": True},
                 },
             }],
             contextual_actions=(
-                [{"action": "op_hs_assign", "label": "📋 Присвоить ТН ВЭД",
+                [{"action": "op_hs_assign", "label": _("📋 Присвоить ТН ВЭД"),
                   "params": {"order_id": order.id}}] if not hs_code else
-                [{"action": "op_certs_check", "label": "📑 Проверить сертификаты",
+                [{"action": "op_certs_check", "label": _("📑 Проверить сертификаты"),
                   "params": {"order_id": order.id}}] if missing else
-                [{"action": "op_calc_duty", "label": "💰 Рассчитать пошлину",
+                [{"action": "op_calc_duty", "label": _("💰 Рассчитать пошлину"),
                   "params": {"order_id": order.id}}] if not customs.get("duty_total") else []
             ),
         )
@@ -2382,9 +2392,9 @@ def op_customs_release(params, user, role):
         blockers.append("не хватает сертификатов: " + ", ".join(missing))
     if blockers:
         return ActionResult(
-            text="⚠️ Нельзя выпустить: " + "; ".join(blockers) + ".",
+            text=_("⚠️ Нельзя выпустить: ") + "; ".join(blockers) + ".",
             contextual_actions=[
-                {"action": "op_customs_release", "label": "Открыть форму выпуска",
+                {"action": "op_customs_release", "label": _("Открыть форму выпуска"),
                  "params": {"order_id": order.id}},
             ],
         )
@@ -2401,15 +2411,15 @@ def op_customs_release(params, user, role):
 
     if order.buyer:
         _notify(order.buyer, kind="order",
-                title=f"Груз #{order.id} выпущен с таможни",
-                body="Едет к вам · следите за трекингом.",
+                title=_('Груз #%(p0)s выпущен с таможни') % {"p0": f'{order.id}'},
+                body=_("Едет к вам · следите за трекингом."),
                 url=f"/chat/?order={order.id}")
 
     return ActionResult(
-        text=f"✓ Заказ #{order.id} выпущен с таможни → транзит РФ.",
+        text=_('✓ Заказ #%(p0)s выпущен с таможни → транзит РФ.') % {"p0": f'{order.id}'},
         contextual_actions=[
-            {"action": "op_customs_dashboard", "label": "← Сводка таможни"},
-            {"action": "op_order_detail", "label": "Открыть заказ", "params": {"order_id": order.id}},
+            {"action": "op_customs_dashboard", "label": _("← Сводка таможни")},
+            {"action": "op_order_detail", "label": _("Открыть заказ"), "params": {"order_id": order.id}},
         ],
     )
 
@@ -2649,7 +2659,7 @@ def op_logistics_stats(params, user, role):
     # отфильтрованный список заказов.
     # 1) ЧТО СЕЙЧАС НА КОНТРОЛЕ ── главная ячейка
     items.append({
-        "label": "Активных отгрузок",
+        "label": _("Активных отгрузок"),
         "value": f"{live_total}",
         "sub": (f"на ${live_value:,.0f}" if live_value else "ни одной в работе"),
         "tone": "info",
@@ -2666,7 +2676,7 @@ def op_logistics_stats(params, user, role):
         if sla_atrisk_n:
             sub_parts.append(f"{sla_atrisk_n} под угрозой")
         items.append({
-            "label": "Требуют внимания",
+            "label": _("Требуют внимания"),
             "value": f"{risk_total}",
             "sub": " · ".join(sub_parts),
             "tone": "bad" if sla_breached_n else "warn",
@@ -2678,7 +2688,7 @@ def op_logistics_stats(params, user, role):
     if on_customs:
         customs_avg = stage_avg_days.get("customs")
         items.append({
-            "label": "Сейчас на таможне",
+            "label": _("Сейчас на таможне"),
             "value": f"{on_customs}",
             "sub": (f"в среднем {customs_avg:.0f} дн на этапе"
                     if customs_avg else "контроль брокера"),
@@ -2690,9 +2700,9 @@ def op_logistics_stats(params, user, role):
     # 4) В транзите
     if in_transit:
         items.append({
-            "label": "В пути",
+            "label": _("В пути"),
             "value": f"{in_transit}",
-            "sub": "транзит + приёмка",
+            "sub": _("транзит + приёмка"),
             "tone": "info",
             "action": "op_queue",
             "params": {"filter": "transit"},
@@ -2701,9 +2711,9 @@ def op_logistics_stats(params, user, role):
     # 5) Производительность — только если есть delivered за 90д
     if avg_days is not None and delivered_n_90d:
         items.append({
-            "label": "Доставлено за 90 дней",
+            "label": _("Доставлено за 90 дней"),
             "value": f"{delivered_n_90d}",
-            "sub": f"средний срок {avg_days:.0f} дн",
+            "sub": _('средний срок %(p0)s дн') % {"p0": f'{avg_days:.0f}'},
             "tone": "ok" if avg_days <= 30 else ("warn" if avg_days <= 45 else "bad"),
             "action": "op_queue",
             "params": {"filter": "delivered"},
@@ -2718,9 +2728,9 @@ def op_logistics_stats(params, user, role):
             "customs":        "customs",
         }
         items.append({
-            "label": "Самый медленный этап",
+            "label": _("Самый медленный этап"),
             "value": stage_lbl[slowest[0]],
-            "sub": f"в среднем {slowest[1]:.1f} дн на нём",
+            "sub": _('в среднем %(p0)s дн на нём') % {"p0": f'{slowest[1]:.1f}'},
             "tone": "warn" if slowest[1] >= 10 else "info",
             "action": "op_queue",
             "params": {"filter": stage_filter_map.get(slowest[0], "live")},
@@ -2730,25 +2740,25 @@ def op_logistics_stats(params, user, role):
     if abs(days_delta) >= 1:
         if days_delta < 0:
             items.append({
-                "label": "Стали возить быстрее",
+                "label": _("Стали возить быстрее"),
                 "value": f"на {abs(days_delta):.0f} дн",
-                "sub": f"было {lead_prev:.0f} → стало {lead_30:.0f} дн",
+                "sub": _('было %(p0)s → стало %(p1)s дн') % {"p0": f'{lead_prev:.0f}', "p1": f'{lead_30:.0f}'},
                 "tone": "ok",
             })
         else:
             items.append({
-                "label": "Стали возить медленнее",
+                "label": _("Стали возить медленнее"),
                 "value": f"на {days_delta:.0f} дн",
-                "sub": f"было {lead_prev:.0f} → стало {lead_30:.0f} дн",
+                "sub": _('было %(p0)s → стало %(p1)s дн') % {"p0": f'{lead_prev:.0f}', "p1": f'{lead_30:.0f}'},
                 "tone": "bad" if days_delta >= 5 else "warn",
             })
 
     # 8) Если совсем пусто (нет ни активных, ни данных) — единственная карточка
     if not items or (len(items) == 1 and live_total == 0):
         items = [{
-            "label": "Логистика простаивает",
+            "label": _("Логистика простаивает"),
             "value": "0",
-            "sub": "нет ни активных отгрузок, ни доставленных за 90 дней",
+            "sub": _("нет ни активных отгрузок, ни доставленных за 90 дней"),
             "tone": "info",
         }]
 
@@ -2809,7 +2819,7 @@ def op_logistics_stats(params, user, role):
             "subtitle": (f"{s['n']} доставлено за 90д · {live_n} активно сейчас · "
                           + " · ".join(parts)),
             "tone": tone,
-            "badge": {"label": f"{live_n} в пути", "tone": tone},
+            "badge": {"label": _('%(p0)s в пути') % {"p0": f'{live_n}'}, "tone": tone},
             "action": "op_queue",
             "params": {"filter": "all", "mode": mcode},
         })
@@ -2848,7 +2858,7 @@ def op_logistics_stats(params, user, role):
         if avg_cost is not None:
             parts.append(f"ср. стоимость ${avg_cost:,.0f}")
         parts.append(f"чаще всего {MODE_LABEL.get(top_mode, top_mode)}")
-        _o, _, _d = key.partition("→")
+        _o, _sep, _d = key.partition("→")
         route_rows_analytics.append({
             "title": key,
             "subtitle": f"{s['n']} заказов за 90д · " + " · ".join(parts),
@@ -2904,7 +2914,7 @@ def op_logistics_stats(params, user, role):
             "subtitle": (f"{s['n']} доставлено за 90д · {live_n} активно · " + " · ".join(parts)),
             "tone": tone,
             "badge": ({"label": f"{breach_pct}% SLA", "tone": tone} if s["n"] else
-                      {"label": f"{live_n} в пути", "tone": "info"}),
+                      {"label": _('%(p0)s в пути') % {"p0": f'{live_n}'}, "tone": "info"}),
             "action": "op_queue",
             "params": {"filter": "all", "provider": p or ""},
         })
@@ -2940,7 +2950,7 @@ def op_logistics_stats(params, user, role):
             "title": stage_lbl.get(st, st),
             "subtitle": f"{n_live} активно · " + (" · ".join(parts) if parts else "—"),
             "tone": tone,
-            "badge": {"label": f"{n_live} шт", "tone": tone},
+            "badge": {"label": _('%(p0)s шт') % {"p0": f'{n_live}'}, "tone": tone},
             "action": "op_queue",
             "params": {"filter": st},
         })
@@ -2966,36 +2976,36 @@ def op_logistics_stats(params, user, role):
     # В отчёт идёт ТОЛЬКО аналитика. Индивидуальные заказы доступны через
     # «📋 Очередь» и карточки заказа — здесь дублировать незачем.
     cards_out = [
-        {"type": "kpi_grid", "data": {"title": "🚚 Логистика — что под контролем сейчас", "items": items}},
+        {"type": "kpi_grid", "data": {"title": _("🚚 Логистика — что под контролем сейчас"), "items": items}},
     ]
     if mode_rows:
         cards_out.append({"type": "list", "data": {
-            "title": "🚢 По модам доставки (90д)",
+            "title": _("🚢 По модам доставки (90д)"),
             "items": mode_rows,
         }})
     if route_rows_analytics:
         cards_out.append({"type": "list", "data": {
-            "title": f"🗺 По маршрутам — топ {len(route_rows_analytics)} (90д)",
+            "title": _('🗺 По маршрутам — топ %(p0)s (90д)') % {"p0": f'{len(route_rows_analytics)}'},
             "items": route_rows_analytics,
         }})
     if stage_rows_analytics:
         cards_out.append({"type": "list", "data": {
-            "title": "⏱ По этапам — где задерживаются",
+            "title": _("⏱ По этапам — где задерживаются"),
             "items": stage_rows_analytics,
         }})
     cards_out.append({"type": "list", "data": {
-        "title": "🚛 По перевозчикам — качество и стоимость (90д)",
-        "items": provider_rows or [{"title": "Нет данных"}],
+        "title": _("🚛 По перевозчикам — качество и стоимость (90д)"),
+        "items": provider_rows or [{"title": _("Нет данных")}],
     }})
 
     return ActionResult(
         text=log_insight,
         cards=cards_out,
         contextual_actions=[
-            {"action": "op_analytics_hub", "label": "← Аналитика"},
-            {"action": "op_sla_breach", "label": "⏱ SLA-нарушения"},
-            {"action": "op_customs_dashboard", "label": "🛂 Таможня"},
-            {"action": "op_queue", "label": "📋 Очередь", "params": {"filter": "open"}},
+            {"action": "op_analytics_hub", "label": _("← Аналитика")},
+            {"action": "op_sla_breach", "label": _("⏱ SLA-нарушения")},
+            {"action": "op_customs_dashboard", "label": _("🛂 Таможня")},
+            {"action": "op_queue", "label": _("📋 Очередь"), "params": {"filter": "open"}},
         ],
     )
 
@@ -3061,30 +3071,30 @@ def op_payments_stats(params, user, role):
     arrow = "↑" if trend_pct > 0 else ("↓" if trend_pct < 0 else "→")
 
     items = [
-        {"label": "Конверсия в оплату",
+        {"label": _("Конверсия в оплату"),
          "value": f"{payment_conv}%",
          "tone": "ok" if payment_conv >= 80 else ("warn" if payment_conv >= 60 else "bad")},
-        {"label": "Резерв → финал (30д)",
+        {"label": _("Резерв → финал (30д)"),
          "value": f"{final_conv}%",
          "tone": "ok" if final_conv >= 70 else "warn"},
-        {"label": "Средний чек",
+        {"label": _("Средний чек"),
          "value": f"${avg_check:,.0f}", "tone": "info"},
         {"label": "Refund rate",
          "value": f"{refund_rate:.1f}%",
          "tone": "bad" if refund_rate > 5 else ("warn" if refund_rate > 2 else "ok")},
-        {"label": "Тренд выручки 30д",
+        {"label": _("Тренд выручки 30д"),
          "value": f"{arrow} {abs(trend_pct)}%",
          "tone": "bad" if trend_pct < -15 else ("ok" if trend_pct > 0 else "warn")},
     ]
     if avg_pay_hours is not None:
         items.append({
-            "label": "Средний срок оплаты",
+            "label": _("Средний срок оплаты"),
             "value": (f"{avg_pay_hours:.0f} ч" if avg_pay_hours < 48 else f"{avg_pay_hours/24:.1f} дн"),
             "tone": "ok" if avg_pay_hours <= 24 else ("warn" if avg_pay_hours <= 72 else "bad"),
         })
     if pending:
         items.append({
-            "label": "Сумма к получению",
+            "label": _("Сумма к получению"),
             "value": f"${sum(b['total'] or 0 for b in by_status if b['payment_status'] in ('pending','partial')):,.0f}",
             "tone": "warn",
         })
@@ -3092,7 +3102,7 @@ def op_payments_stats(params, user, role):
     payment_labels = {k: str(v) for k, v in Order.PAYMENT_STATUS_CHOICES}
     rows = [
         {"title": payment_labels.get(b["payment_status"], b["payment_status"]),
-         "subtitle": f"{b['n']} заказов · ${(b['total'] or 0):,.0f}"}
+         "subtitle": _('%(p0)s заказов · $%(p1)s') % {"p0": f"{b['n']}", "p1": f"{b['total'] or 0:,.0f}"}}
         for b in by_status
     ]
 
@@ -3113,13 +3123,13 @@ def op_payments_stats(params, user, role):
     return ActionResult(
         text=insight,
         cards=[
-            {"type": "kpi_grid", "data": {"title": "💳 Качество платёжной воронки", "items": items}},
-            {"type": "list", "data": {"title": "По статусам оплаты", "items": rows}},
+            {"type": "kpi_grid", "data": {"title": _("💳 Качество платёжной воронки"), "items": items}},
+            {"type": "list", "data": {"title": _("По статусам оплаты"), "items": rows}},
         ],
         contextual_actions=[
-            {"action": "op_analytics_hub", "label": "← Аналитика"},
-            {"action": "op_payments_dashboard", "label": "💰 Эскроу"},
-            {"action": "op_queue", "label": "💸 Возвраты", "params": {"filter": "refund"}},
+            {"action": "op_analytics_hub", "label": _("← Аналитика")},
+            {"action": "op_payments_dashboard", "label": _("💰 Эскроу")},
+            {"action": "op_queue", "label": _("💸 Возвраты"), "params": {"filter": "refund"}},
         ],
     )
 
@@ -3173,26 +3183,26 @@ def op_analytics_hub(params, user, role):
     claim_rate = (claims_30 * 100 // delivered_30) if delivered_30 >= 5 else None
 
     reports = [
-        {"title": "📊 Заказы и GMV", "action": "get_analytics", "params": {},
-         "subtitle": "Динамика по месяцам · средний чек · распределение по статусам"},
-        {"title": "💰 Финансы и эскроу", "action": "op_payments_dashboard", "params": {},
-         "subtitle": "Деньги на платформе · поток за всё время · удержания и выплаты"},
-        {"title": "⏱ SLA и узкие места", "action": "op_sla_breach", "params": {},
-         "subtitle": "Нарушения · риски · где застревают заказы"},
-        {"title": "🚚 Логистика", "action": "op_logistics_stats", "params": {},
-         "subtitle": "Активные маршруты · перевозчики · среднее время доставки"},
-        {"title": "📈 Спрос на рынке", "action": "get_demand_report", "params": {},
-         "subtitle": "Топ-бренды · топ-OEM · динамика RFQ по неделям"},
-        {"title": "📋 Очередь RFQ по режимам", "action": "op_rfq_queue", "params": {},
-         "subtitle": "AUTO · SEMI (15 мин) · MANUAL (48 ч) — конверсия и SLA"},
-        {"title": "🧾 Рекламации", "action": "get_claims", "params": {},
-         "subtitle": "Активные · по причинам · среднее время разбора"},
-        {"title": "🛡 KYB очередь", "action": "op_kyb_queue", "params": {},
-         "subtitle": "Кандидаты на верификацию · риск-индикаторы · решения"},
-        {"title": "🛂 Таможня", "action": "op_customs_dashboard", "params": {},
-         "subtitle": "Грузы на оформлении · HS-коды · пошлины · просрочки"},
-        {"title": "📑 Платёжная статистика", "action": "op_payments_stats", "params": {},
-         "subtitle": "Конверсия резерв → финал · средние сроки оплат"},
+        {"title": _("📊 Заказы и GMV"), "action": "get_analytics", "params": {},
+         "subtitle": _("Динамика по месяцам · средний чек · распределение по статусам")},
+        {"title": _("💰 Финансы и эскроу"), "action": "op_payments_dashboard", "params": {},
+         "subtitle": _("Деньги на платформе · поток за всё время · удержания и выплаты")},
+        {"title": _("⏱ SLA и узкие места"), "action": "op_sla_breach", "params": {},
+         "subtitle": _("Нарушения · риски · где застревают заказы")},
+        {"title": _("🚚 Логистика"), "action": "op_logistics_stats", "params": {},
+         "subtitle": _("Активные маршруты · перевозчики · среднее время доставки")},
+        {"title": _("📈 Спрос на рынке"), "action": "get_demand_report", "params": {},
+         "subtitle": _("Топ-бренды · топ-OEM · динамика RFQ по неделям")},
+        {"title": _("📋 Очередь RFQ по режимам"), "action": "op_rfq_queue", "params": {},
+         "subtitle": _("AUTO · SEMI (15 мин) · MANUAL (48 ч) — конверсия и SLA")},
+        {"title": _("🧾 Рекламации"), "action": "get_claims", "params": {},
+         "subtitle": _("Активные · по причинам · среднее время разбора")},
+        {"title": _("🛡 KYB очередь"), "action": "op_kyb_queue", "params": {},
+         "subtitle": _("Кандидаты на верификацию · риск-индикаторы · решения")},
+        {"title": _("🛂 Таможня"), "action": "op_customs_dashboard", "params": {},
+         "subtitle": _("Грузы на оформлении · HS-коды · пошлины · просрочки")},
+        {"title": _("📑 Платёжная статистика"), "action": "op_payments_stats", "params": {},
+         "subtitle": _("Конверсия резерв → финал · средние сроки оплат")},
     ]
 
     # Текст — конкретные приоритеты для оператора (не CEO-уровень).
@@ -3226,7 +3236,7 @@ def op_analytics_hub(params, user, role):
         if sla_breached: sub_parts.append(f"{sla_breached} просрочено")
         if sla_at_risk:  sub_parts.append(f"{sla_at_risk} под угрозой")
         health_items.append({
-            "label": "Срочно: SLA",
+            "label": _("Срочно: SLA"),
             "value": str(risk_total),
             "sub": " · ".join(sub_parts),
             "tone": "bad" if sla_breached else "warn",
@@ -3234,25 +3244,25 @@ def op_analytics_hub(params, user, role):
 
     # 2) Активная нагрузка — всегда показываем
     health_items.append({
-        "label": "В работе сейчас",
+        "label": _("В работе сейчас"),
         "value": str(active),
-        "sub": f"{new_7d} новых за последние 7 дней",
+        "sub": _('%(p0)s новых за последние 7 дней') % {"p0": f'{new_7d}'},
         "tone": "info",
         "action": "op_queue", "params": {"filter": "open"}})
 
     # 3) Таможня — главное узкое место в трансгран логистике
     if on_customs:
         health_items.append({
-            "label": "На таможне",
+            "label": _("На таможне"),
             "value": str(on_customs),
-            "sub": "требуют контроля брокера",
+            "sub": _("требуют контроля брокера"),
             "tone": "warn" if on_customs >= 3 else "info",
             "action": "op_queue", "params": {"filter": "customs"}})
 
     # 4) Рекламации в работе — операторский фронт
     if open_claims:
         health_items.append({
-            "label": "Рекламации в разборе",
+            "label": _("Рекламации в разборе"),
             "value": str(open_claims),
             "sub": "open + in_review",
             "tone": "warn" if open_claims >= 5 else "info",
@@ -3261,18 +3271,18 @@ def op_analytics_hub(params, user, role):
     # 5) KYB-очередь — оператор одобряет новых поставщиков
     if kyb_pending:
         health_items.append({
-            "label": "KYB на проверке",
+            "label": _("KYB на проверке"),
             "value": str(kyb_pending),
-            "sub": "анкеты поставщиков ждут решения",
+            "sub": _("анкеты поставщиков ждут решения"),
             "tone": "warn" if kyb_pending >= 5 else "info",
             "action": "op_kyb_queue", "params": {}})
 
     # Если ничего срочного — лаконичная зелёная ячейка
     if not health_items or (len(health_items) == 1 and active == 0):
         health_items = [{
-            "label": "Платформа в покое",
+            "label": _("Платформа в покое"),
             "value": "0",
-            "sub": "нет активных заказов, SLA-нарушений и открытых рекламаций",
+            "sub": _("нет активных заказов, SLA-нарушений и открытых рекламаций"),
             "tone": "ok",
         }]
 
@@ -3301,16 +3311,16 @@ def op_analytics_hub(params, user, role):
         text=insight,
         cards=[
             {"type": "kpi_grid", "data": {
-                "title": "📊 Что требует внимания сейчас",
+                "title": _("📊 Что требует внимания сейчас"),
                 "items": health_items,
             }},
             {"type": "list", "data": {
-                "title": "📈 Доступные отчёты — кликните для деталей",
+                "title": _("📈 Доступные отчёты — кликните для деталей"),
                 "items": reports,
             }},
         ],
         contextual_actions=[
-            {"action": "op_dashboard", "label": "← Главный дашборд"},
+            {"action": "op_dashboard", "label": _("← Главный дашборд")},
         ],
     )
 
@@ -3347,8 +3357,7 @@ def op_my_suppliers(params, user, role):
         active_n = _active_counts.get(p.user_id, 0)
         rows.append({
             "title": f"{p.user.username}",
-            "subtitle": (f"{_STATUS_RU.get(p.supplier_status, p.supplier_status or '—')} · "
-                          f"рейтинг {float(p.rating_score or 0):.1f} · {active_n} активных сделок"),
+            "subtitle": (_('%(p0)s · рейтинг %(p1)s · %(p2)s активных сделок') % {"p0": f"{_STATUS_RU.get(p.supplier_status, p.supplier_status or '—')}", "p1": f'{float(p.rating_score or 0):.1f}', "p2": f'{active_n}'}),
             "tone": {"trusted": "ok", "sandbox": "warn",
                      "risky": "bad", "rejected": "bad"}.get(p.supplier_status),
             "action": "contact_supplier",
@@ -3367,14 +3376,14 @@ def op_my_suppliers(params, user, role):
         ),
         cards=[{"type": "list", "data": {
             "title": title,
-            "items": rows or [{"title": "Поставщиков нет",
-                                "subtitle": "Одобрите KYB-анкеты — они закрепятся за вами автоматически"}],
+            "items": rows or [{"title": _("Поставщиков нет"),
+                                "subtitle": _("Одобрите KYB-анкеты — они закрепятся за вами автоматически")}],
         }}],
         actions=[
-            {"label": "Очередь KYB", "action": "op_kyb_queue", "params": {}},
+            {"label": _("Очередь KYB"), "action": "op_kyb_queue", "params": {}},
         ],
         contextual_actions=[
-            {"action": "op_dashboard", "label": "← Дашборд"},
+            {"action": "op_dashboard", "label": _("← Дашборд")},
         ],
     )
 
@@ -3407,19 +3416,19 @@ def op_my_bonuses(params, user, role):
                        "withheld": "удержано", "reduced": "−50% вина"}.get(l.status, l.status)
         rows.append({
             "title": f"#{l.order_id} · {l.basis} {l.rate_pct}% · {status_lbl}",
-            "subtitle": f"+${float(l.amount):,.2f} · база ${float(l.base_amount):,.0f} · {l.created_at:%d.%m.%Y}",
+            "subtitle": _('+$%(p0)s · база $%(p1)s · %(p2)s') % {"p0": f'{float(l.amount):,.2f}', "p1": f'{float(l.base_amount):,.0f}', "p2": f'{l.created_at:%d.%m.%Y}'},
             "action": "op_order_detail",
             "params": {"order_id": l.order_id},
         })
     return ActionResult(
-        text=f"{title} · итого ${total:,.2f}",
+        text=_('%(p0)s · итого $%(p1)s') % {"p0": f'{title}', "p1": f'{total:,.2f}'},
         cards=[{"type": "list", "data": {
             "title": title,
-            "items": rows or [{"title": "Бонусов нет",
-                                "subtitle": "По выбранному фильтру пока пусто"}],
+            "items": rows or [{"title": _("Бонусов нет"),
+                                "subtitle": _("По выбранному фильтру пока пусто")}],
         }}],
         contextual_actions=[
-            {"action": "op_payments_dashboard", "label": "← Финансы"},
+            {"action": "op_payments_dashboard", "label": _("← Финансы")},
         ],
     )
 
@@ -3512,7 +3521,7 @@ def op_payments_dashboard(params, user, role):
                 continue  # деньги уже не в работе — скрываем из списка активных
             rows.append({
                 "title": f"#{oid} · {o.customer_name}",
-                "subtitle": f"💰 ${amt:,.2f} лежит на платформе · {o.get_status_display()} · {o.get_payment_status_display()}",
+                "subtitle": _('💰 $%(p0)s лежит на платформе · %(p1)s · %(p2)s') % {"p0": f'{amt:,.2f}', "p1": f'{o.get_status_display()}', "p2": f'{o.get_payment_status_display()}'},
                 "action": "op_order_detail",
                 "params": {"order_id": oid},
             })
@@ -3539,12 +3548,12 @@ def op_payments_dashboard(params, user, role):
     # ── Условия оплаты от клиента ──
     payment_terms_items = [
         {"title": "10% — резерв (предоплата)",
-         "subtitle": "Клиент вносит после подтверждения КП. Запускает производство/закупку. При отказе клиента — невозвратный."},
+         "subtitle": _("Клиент вносит после подтверждения КП. Запускает производство/закупку. При отказе клиента — невозвратный.")},
         {"title": "80% — основной платёж",
-         "subtitle": "Перед отгрузкой со склада поставщика. Без оплаты груз не выходит в путь."},
+         "subtitle": _("Перед отгрузкой со склада поставщика. Без оплаты груз не выходит в путь.")},
         {"title": "10% — финальный платёж",
-         "subtitle": "При приёмке клиентом. После закрытия — деньги уходят на эскроу-распределение."},
-        {"title": "Эскроу-холд",
+         "subtitle": _("При приёмке клиентом. После закрытия — деньги уходят на эскроу-распределение.")},
+        {"title": _("Эскроу-холд"),
          "subtitle": "Все 100% удерживаются на платформе до факта приёмки. Только потом распределяются: поставщику / в депозит / возврат."},
     ]
 
@@ -3553,20 +3562,20 @@ def op_payments_dashboard(params, user, role):
         {"title": "При отгрузке: FOB-цена − 10% депозита",
          "subtitle": "Платформа выплачивает 90% FOB-стоимости товара. 10% удерживается как гарантия за SLA, качество и приёмку."},
         {"title": "Через 14 дней после приёмки клиентом: +5% возврата",
-         "subtitle": "Половина депозита возвращается поставщику. Условие — нет открытых рекламаций и претензий по качеству."},
+         "subtitle": _("Половина депозита возвращается поставщику. Условие — нет открытых рекламаций и претензий по качеству.")},
         {"title": "Финальное удержание: 5% остаётся платформе",
-         "subtitle": "Гарантийный сбор за контроль SLA, качества и поддержку. Не возвращается."},
+         "subtitle": _("Гарантийный сбор за контроль SLA, качества и поддержку. Не возвращается.")},
         {"title": "Полный возврат депозита (10%) — если",
-         "subtitle": "Поставщик весь год работал без рекламаций и SLA-нарушений. Платформа возвращает накопленный депозит по итогам года."},
+         "subtitle": _("Поставщик весь год работал без рекламаций и SLA-нарушений. Платформа возвращает накопленный депозит по итогам года.")},
         {"title": "Удержание депозита (списание 5–10%)",
-         "subtitle": "При подтверждённой рекламации по вине поставщика — депозит закрывает ущерб клиенту."},
+         "subtitle": _("При подтверждённой рекламации по вине поставщика — депозит закрывает ущерб клиенту.")},
     ]
 
     tier_items = [
-        {"title": "Standard",  "subtitle": "оборот до 100M ₽ · стандартный тариф"},
-        {"title": "Silver",    "subtitle": "100–200M ₽ · −1 п.п. от сервисного сбора"},
-        {"title": "Gold",      "subtitle": "200–400M ₽ · −2 п.п."},
-        {"title": "Platinum",  "subtitle": "400M+ ₽ · индивидуальные условия + персональный менеджер"},
+        {"title": "Standard",  "subtitle": _("оборот до 100M ₽ · стандартный тариф")},
+        {"title": "Silver",    "subtitle": _("100–200M ₽ · −1 п.п. от сервисного сбора")},
+        {"title": "Gold",      "subtitle": _("200–400M ₽ · −2 п.п.")},
+        {"title": "Platinum",  "subtitle": _("400M+ ₽ · индивидуальные условия + персональный менеджер")},
     ]
 
     # ── Раздел правил — разворачивающийся блок (faq-card) со структурными rows.
@@ -3575,7 +3584,7 @@ def op_payments_dashboard(params, user, role):
     rules_faq = {
         "type": "faq",
         "data": {
-            "title": "📋 Правила и тарифы платформы (раскрыть)",
+            "title": _("📋 Правила и тарифы платформы (раскрыть)"),
             "items": [
                 {"q":    "Что платит клиент (по базису поставки)",
                  "rows": pricing_items},
@@ -3619,36 +3628,36 @@ def op_payments_dashboard(params, user, role):
     action_tiles = []
     if not reconciliation_ok:
         action_tiles.append({
-            "label": "Расхождение с банком",
+            "label": _("Расхождение с банком"),
             "value": f"⚠ ${reconciliation_diff:,.0f}",
-            "sub": "срочная сверка",
+            "sub": _("срочная сверка"),
             "tone": "bad",
             "action": "op_payments_reconciliation",
             "params": {},
         })
     if stuck_count > 0:
         action_tiles.append({
-            "label": "Заказы застряли >30 дней",
+            "label": _("Заказы застряли >30 дней"),
             "value": str(stuck_count),
-            "sub": f"${stuck_amount:,.0f} зависло · нужно разобрать",
+            "sub": _('$%(p0)s зависло · нужно разобрать') % {"p0": f'{stuck_amount:,.0f}'},
             "tone": "bad" if stuck_count >= 5 else "warn",
             "action": "op_sla_breach",
             "params": {},
         })
     if pending_refunds_count > 0:
         action_tiles.append({
-            "label": "Возвраты в обработке",
+            "label": _("Возвраты в обработке"),
             "value": str(pending_refunds_count),
-            "sub": f"${pending_refunds_amount:,.0f} к возврату",
+            "sub": _('$%(p0)s к возврату') % {"p0": f'{pending_refunds_amount:,.0f}'},
             "tone": "warn",
             "action": "op_payments_refunds",
             "params": {},
         })
     if claims_30 > 0:
         action_tiles.append({
-            "label": "Рекламации за 30 дней",
+            "label": _("Рекламации за 30 дней"),
             "value": str(claims_30),
-            "sub": "к разбору",
+            "sub": _("к разбору"),
             "tone": "warn" if claims_30 < 5 else "bad",
             "action": "get_claims",
             "params": {},
@@ -3656,14 +3665,14 @@ def op_payments_dashboard(params, user, role):
 
     # ── Health-метрики (для понимания общей картины) ──
     main_tiles = [
-        {"label": "Удерживается до выплаты продавцам",
+        {"label": _("Удерживается до выплаты продавцам"),
          "value": f"${s['outstanding_balance']:,.0f}",
-         "sub": f"{len(active_orders)} {'заказ' if len(active_orders)==1 else 'заказов' if len(active_orders) >= 5 else 'заказа'} в эскроу"},
-        {"label": "Средняя сумма заказа",
+         "sub": _('%(p0)s %(p1)s в эскроу') % {"p0": f'{len(active_orders)}', "p1": f"{('заказ' if len(active_orders) == 1 else 'заказов' if len(active_orders) >= 5 else 'заказа')}"}},
+        {"label": _("Средняя сумма заказа"),
          "value": f"${avg_hold:,.0f}",
-         "sub": "по активным эскроу",
+         "sub": _("по активным эскроу"),
          "tone": "info"},
-        {"label": "Средний возраст",
+        {"label": _("Средний возраст"),
          "value": f"{avg_hold_age:.0f} дн",
          "sub": ("ок" if avg_hold_age <= 30 else "застревают" if avg_hold_age <= 45 else "много старых"),
          "tone": "bad" if avg_hold_age > 45 else ("warn" if avg_hold_age > 30 else "ok")},
@@ -3733,45 +3742,45 @@ def op_payments_dashboard(params, user, role):
     )
 
     op_stats = [
-        {"label": "Оборот за 30 дней",
+        {"label": _("Оборот за 30 дней"),
          "value": f"${inflow_30:,.0f}",
          "sub":   trend_str,
          "action": "get_orders", "params": {"status": "paid"}},
-        {"label": "Выплачено продавцам",
+        {"label": _("Выплачено продавцам"),
          "value": f"${payouts_30:,.0f}",
-         "sub":   f"{payout_share}% от оборота · {paid_orders_30} заказов",
+         "sub":   _('%(p0)s%% от оборота · %(p1)s заказов') % {"p0": f'{payout_share}', "p1": f'{paid_orders_30}'},
          "tone":  "ok",
          "action": "get_orders", "params": {"status": "delivered"}},
     ]
     # Третий тайл: проблема (если есть) или нейтральная статистика
     if stuck_count > 0:
         op_stats.append({
-            "label": "Застряли >30 дней",
+            "label": _("Застряли >30 дней"),
             "value": str(stuck_count),
-            "sub":   f"${stuck_amount:,.0f} · самый старый {oldest_age}д",
+            "sub":   _('$%(p0)s · самый старый %(p1)sд') % {"p0": f'{stuck_amount:,.0f}', "p1": f'{oldest_age}'},
             "tone":  "bad",
             "action": "op_sla_breach", "params": {},
         })
     elif refund_share > 0:
         op_stats.append({
-            "label": "Возвраты",
+            "label": _("Возвраты"),
             "value": f"${refunded_30:,.0f}",
-            "sub":   f"{refund_share:.1f}% от оборота",
+            "sub":   _('%(p0)s%% от оборота') % {"p0": f'{refund_share:.1f}'},
             "tone":  "bad" if refund_share > 5 else ("warn" if refund_share > 2 else None),
             "action": "op_queue", "params": {"filter": "refund"},
         })
     else:
         op_stats.append({
-            "label": "Возвраты",
+            "label": _("Возвраты"),
             "value": "$0",
-            "sub":   "нет за 30 дней",
+            "sub":   _("нет за 30 дней"),
             "action": "op_queue", "params": {"filter": "refund"}})
     # Четвёртый тайл — рекламации (если есть за 30д)
     if claims_30 > 0:
         op_stats.append({
-            "label": "Рекламации",
+            "label": _("Рекламации"),
             "value": str(claims_30),
-            "sub":   f"открыто за 30 дней",
+            "sub":   _('открыто за 30 дней'),
             "tone":  "warn" if claims_30 < 5 else "bad",
             "action": "get_claims", "params": {},
         })
@@ -3844,18 +3853,18 @@ def op_payments_dashboard(params, user, role):
             "hero_value": float(my_wallet.balance or 0),
             "currency":   my_wallet.currency,
             "stats": [
-                {"label": "В холде (14 дней)",
+                {"label": _("В холде (14 дней)"),
                  "value": f"${my_pending:,.0f}",
-                 "sub":   "ждут release",
+                 "sub":   _("ждут release"),
                  "details_rows": pending_rows,
                  "details_empty": "Нет бонусов в холде"},
-                {"label": "За 30 дней",
+                {"label": _("За 30 дней"),
                  "value": f"${my_30d:,.0f}",
-                 "sub":   f"{my_closed_30} сделок",
+                 "sub":   _('%(p0)s сделок') % {"p0": f'{my_closed_30}'},
                  "tone":  "ok",
                  "details_rows": released_rows,
                  "details_empty": "За 30 дней нет зачислений"},
-                {"label": "Заработано всего",
+                {"label": _("Заработано всего"),
                  "value": f"${my_lifetime:,.0f}",
                  "sub":   "life-time",
                  "details_rows": all_rows,
@@ -3893,12 +3902,12 @@ def op_payments_dashboard(params, user, role):
     # ── Условия оплаты от клиента ──
     payment_terms_items = [
         {"title": "10% — резерв (предоплата)",
-         "subtitle": "Клиент вносит после подтверждения КП. Запускает производство/закупку. При отказе клиента — невозвратный."},
+         "subtitle": _("Клиент вносит после подтверждения КП. Запускает производство/закупку. При отказе клиента — невозвратный.")},
         {"title": "80% — основной платёж",
-         "subtitle": "Перед отгрузкой со склада поставщика. Без оплаты груз не выходит в путь."},
+         "subtitle": _("Перед отгрузкой со склада поставщика. Без оплаты груз не выходит в путь.")},
         {"title": "10% — финальный платёж",
-         "subtitle": "При приёмке клиентом. После закрытия — деньги уходят на эскроу-распределение."},
-        {"title": "Эскроу-холд",
+         "subtitle": _("При приёмке клиентом. После закрытия — деньги уходят на эскроу-распределение.")},
+        {"title": _("Эскроу-холд"),
          "subtitle": "Все 100% удерживаются на платформе до факта приёмки. Только потом распределяются: поставщику / в депозит / возврат."},
     ]
 
@@ -3907,20 +3916,20 @@ def op_payments_dashboard(params, user, role):
         {"title": "При отгрузке: FOB-цена − 10% депозита",
          "subtitle": "Платформа выплачивает 90% FOB-стоимости товара. 10% удерживается как гарантия за SLA, качество и приёмку."},
         {"title": "Через 14 дней после приёмки клиентом: +5% возврата",
-         "subtitle": "Половина депозита возвращается поставщику. Условие — нет открытых рекламаций и претензий по качеству."},
+         "subtitle": _("Половина депозита возвращается поставщику. Условие — нет открытых рекламаций и претензий по качеству.")},
         {"title": "Финальное удержание: 5% остаётся платформе",
-         "subtitle": "Гарантийный сбор за контроль SLA, качества и поддержку. Не возвращается."},
+         "subtitle": _("Гарантийный сбор за контроль SLA, качества и поддержку. Не возвращается.")},
         {"title": "Полный возврат депозита (10%) — если",
-         "subtitle": "Поставщик весь год работал без рекламаций и SLA-нарушений. Платформа возвращает накопленный депозит по итогам года."},
+         "subtitle": _("Поставщик весь год работал без рекламаций и SLA-нарушений. Платформа возвращает накопленный депозит по итогам года.")},
         {"title": "Удержание депозита (списание 5–10%)",
-         "subtitle": "При подтверждённой рекламации по вине поставщика — депозит закрывает ущерб клиенту."},
+         "subtitle": _("При подтверждённой рекламации по вине поставщика — депозит закрывает ущерб клиенту.")},
     ]
 
     tier_items = [
-        {"title": "Standard",  "subtitle": "оборот до 100M ₽ · стандартный тариф"},
-        {"title": "Silver",    "subtitle": "100–200M ₽ · −1 п.п. от сервисного сбора"},
-        {"title": "Gold",      "subtitle": "200–400M ₽ · −2 п.п."},
-        {"title": "Platinum",  "subtitle": "400M+ ₽ · индивидуальные условия + персональный менеджер"},
+        {"title": "Standard",  "subtitle": _("оборот до 100M ₽ · стандартный тариф")},
+        {"title": "Silver",    "subtitle": _("100–200M ₽ · −1 п.п. от сервисного сбора")},
+        {"title": "Gold",      "subtitle": _("200–400M ₽ · −2 п.п.")},
+        {"title": "Platinum",  "subtitle": _("400M+ ₽ · индивидуальные условия + персональный менеджер")},
     ]
 
     # ── Раздел правил — разворачивающийся блок (faq-card) со структурными rows.
@@ -3929,7 +3938,7 @@ def op_payments_dashboard(params, user, role):
     rules_faq = {
         "type": "faq",
         "data": {
-            "title": "📋 Правила и тарифы платформы (раскрыть)",
+            "title": _("📋 Правила и тарифы платформы (раскрыть)"),
             "items": [
                 {"q":    "Что платит клиент (по базису поставки)",
                  "rows": pricing_items},
@@ -3965,15 +3974,15 @@ def op_payments_dashboard(params, user, role):
         text=esc_insight,
         cards=cards,
         actions=[
-            {"label": "Возвраты в обработке",
+            {"label": _("Возвраты в обработке"),
              "action": "op_queue", "params": {"filter": "refund"}},
             {"label": "Ждут резерв 10%",
              "action": "op_queue", "params": {"filter": "awaiting_reserve"}},
-            {"label": "Платёжная статистика",
+            {"label": _("Платёжная статистика"),
              "action": "op_payments_stats", "params": {}},
         ],
         contextual_actions=[
-            {"action": "op_analytics_hub", "label": "← Аналитика"},
+            {"action": "op_analytics_hub", "label": _("← Аналитика")},
         ],
     )
 
@@ -3986,7 +3995,7 @@ def op_payments_dashboard(params, user, role):
 def op_refresh_external_rating(params, user, role):
     """Принудительно обновить external_score продавца из Kontur/СПАРК (ТЗ §1)."""
     if not _is_operator(role) and role != "admin":
-        return ActionResult(text="Доступно только оператору / админу.")
+        return ActionResult(text=_("Доступно только оператору / админу."))
     from django.contrib.auth import get_user_model
 
     from .external_rating import refresh_external_rating
@@ -3995,22 +4004,21 @@ def op_refresh_external_rating(params, user, role):
     try:
         seller = U.objects.get(id=int(params.get("user_id") or 0))
     except (U.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Продавец не найден.")
+        return ActionResult(text=_("Продавец не найден."))
 
     data = refresh_external_rating(seller)
     if not data:
-        return ActionResult(text="⚠️ Не удалось получить external rating.")
+        return ActionResult(text=_("⚠️ Не удалось получить external rating."))
     if data.get("source") == "skip":
         return ActionResult(
-            text=f"⚠️ {data.get('reason', 'нет данных')} · сначала пройдите KYB.",
+            text=_('⚠️ %(p0)s · сначала пройдите KYB.') % {"p0": f"{data.get('reason', 'нет данных')}"},
         )
 
     from marketplace.models import UserProfile
     p = UserProfile.objects.filter(user=seller).first()
     return ActionResult(
         text=(
-            f"✓ External rating обновлён для {seller.username} · "
-            f"score={data['score']:.0f} · {data['source']}"
+            _('✓ External rating обновлён для %(p0)s · score=%(p1)s · %(p2)s') % {"p0": f'{seller.username}', "p1": f"{data['score']:.0f}", "p2": f"{data['source']}"}
         ),
         cards=[{"type": "kpi_grid", "data": {
             "title": f"📊 External rating · {seller.username}",
@@ -4018,24 +4026,24 @@ def op_refresh_external_rating(params, user, role):
                 {"label": "External score", "value": f"{float(data['score']):.1f}",
                  "tone": ("ok" if data['score'] >= 80 else
                           "warn" if data['score'] >= 60 else "bad")},
-                {"label": "Источник", "value": data['source']},
-                {"label": "Причина", "value": data['reason'][:80]},
+                {"label": _("Источник"), "value": data['source']},
+                {"label": _("Причина"), "value": data['reason'][:80]},
                 {"label": "Bankruptcy", "value": "🚫" if data['bankruptcy'] else "✓",
                  "tone": "bad" if data['bankruptcy'] else "ok"},
                 {"label": "Liquidation", "value": "🚫" if data['liquidation'] else "✓",
                  "tone": "bad" if data['liquidation'] else "ok"},
                 {"label": "Behavioral score",
                  "value": f"{float(p.behavioral_score):.1f}" if p else "—"},
-                {"label": "Итоговый рейтинг",
+                {"label": _("Итоговый рейтинг"),
                  "value": f"{float(p.rating_score):.1f}" if p else "—",
                  "tone": "info"},
-                {"label": "Статус", "value": p.get_supplier_status_display() if p else "—",
+                {"label": _("Статус"), "value": p.get_supplier_status_display() if p else "—",
                  "tone": ("ok" if (p and p.supplier_status == "trusted") else
                           "warn" if (p and p.supplier_status == "sandbox") else "bad")},
             ],
         }}],
         contextual_actions=[
-            {"action": "admin_user_detail", "label": "← Профиль",
+            {"action": "admin_user_detail", "label": _("← Профиль"),
              "params": {"user_id": seller.id}},
         ],
     )
@@ -4056,12 +4064,12 @@ def op_topup_queue(params, user, role):
           .order_by("status", "-created_at")[:100])
     if not qs:
         return ActionResult(
-            text="✓ Очередь пополнений пуста — все заявки обработаны.",
+            text=_("✓ Очередь пополнений пуста — все заявки обработаны."),
             actions=[
-                {"label": "📥 Поддержка",  "action": "support_home", "params": {}},
-                {"label": "💰 Эскроу",     "action": "op_payments_dashboard", "params": {}},
+                {"label": _("📥 Поддержка"),  "action": "support_home", "params": {}},
+                {"label": _("💰 Эскроу"),     "action": "op_payments_dashboard", "params": {}},
             ],
-            contextual_actions=[{"action": "op_analytics_hub", "label": "← Аналитика"}],
+            contextual_actions=[{"action": "op_analytics_hub", "label": _("← Аналитика")}],
         )
 
     rows = []
@@ -4081,12 +4089,12 @@ def op_topup_queue(params, user, role):
         })
 
     return ActionResult(
-        text=f"💰 Заявки на пополнение в работе · {len(rows)}",
+        text=_('💰 Заявки на пополнение в работе · %(p0)s') % {"p0": f'{len(rows)}'},
         cards=[{
             "type": "list",
             "data": {"title": "Pending top-up requests", "items": rows},
         }],
-        contextual_actions=[{"action": "op_analytics_hub", "label": "← Аналитика"}],
+        contextual_actions=[{"action": "op_analytics_hub", "label": _("← Аналитика")}],
     )
 
 
@@ -4097,23 +4105,21 @@ def op_confirm_topup(params, user, role):
     from assistant.models import WalletTopupRequest
 
     if not (user.is_staff or user.is_superuser):
-        return ActionResult(text="⚠️ Действие доступно только сотрудникам.")
+        return ActionResult(text=_("⚠️ Действие доступно только сотрудникам."))
 
     topup_id = params.get("topup_id")
     try:
         req = WalletTopupRequest.objects.get(id=int(topup_id))
     except (WalletTopupRequest.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заявка не найдена.")
+        return ActionResult(text=_("Заявка не найдена."))
 
     if req.status == "paid":
         return ActionResult(
-            text=f"Заявка {req.reference_code} уже подтверждена ранее "
-                 f"({req.confirmed_at.strftime('%d.%m %H:%M')}).",
+            text=_('Заявка %(p0)s уже подтверждена ранее (%(p1)s).') % {"p0": f'{req.reference_code}', "p1": f"{req.confirmed_at.strftime('%d.%m %H:%M')}"},
         )
     if req.status in ("cancelled", "failed", "expired"):
         return ActionResult(
-            text=f"Заявка {req.reference_code} в статусе "
-                 f"«{req.get_status_display()}» — зачисление невозможно.",
+            text=_('Заявка %(p0)s в статусе «%(p1)s» — зачисление невозможно.') % {"p0": f'{req.reference_code}', "p1": f'{req.get_status_display()}'},
         )
 
     tx = req.mark_paid(by_user=user)
@@ -4133,11 +4139,10 @@ def op_confirm_topup(params, user, role):
 
     return ActionResult(
         text=(
-            f"✓ Заявка {req.reference_code} подтверждена. "
-            f"Депозит пополнен на ${req.amount:,.2f} для {req.user.username}."
+            _('✓ Заявка %(p0)s подтверждена. Депозит пополнен на $%(p1)s для %(p2)s.') % {"p0": f'{req.reference_code}', "p1": f'{req.amount:,.2f}', "p2": f'{req.user.username}'}
         ),
         actions=[
-            {"label": "📋 Назад в очередь", "action": "op_topup_queue", "params": {}},
+            {"label": _("📋 Назад в очередь"), "action": "op_topup_queue", "params": {}},
         ],
     )
 
@@ -4150,18 +4155,18 @@ def op_reject_topup(params, user, role):
     from assistant.models import WalletTopupRequest
 
     if not (user.is_staff or user.is_superuser):
-        return ActionResult(text="⚠️ Действие доступно только сотрудникам.")
+        return ActionResult(text=_("⚠️ Действие доступно только сотрудникам."))
 
     topup_id = params.get("topup_id")
     reason = (params.get("reason") or "").strip()[:400]
     try:
         req = WalletTopupRequest.objects.get(id=int(topup_id))
     except (WalletTopupRequest.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заявка не найдена.")
+        return ActionResult(text=_("Заявка не найдена."))
 
     if req.status in ("paid", "cancelled", "failed", "expired"):
         return ActionResult(
-            text=f"Заявка в статусе «{req.get_status_display()}» — изменить нельзя.",
+            text=_('Заявка в статусе «%(p0)s» — изменить нельзя.') % {"p0": f'{req.get_status_display()}'},
         )
 
     req.status = "failed"
@@ -4177,4 +4182,4 @@ def op_reject_topup(params, user, role):
                 f"{reason or 'свяжитесь с финансовым отделом'}.")
     except Exception:
         pass
-    return ActionResult(text=f"✓ Заявка {req.reference_code} отклонена.")
+    return ActionResult(text=_('✓ Заявка %(p0)s отклонена.') % {"p0": f'{req.reference_code}'})

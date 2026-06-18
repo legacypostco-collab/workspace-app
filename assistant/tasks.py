@@ -96,8 +96,8 @@ def kyb_weekly_monitor():
                     from django.contrib.auth import get_user_model
                     for op in get_user_model().objects.filter(is_staff=True)[:5]:
                         _notify(op, kind="system",
-                                title=f"⚠️ KYB исключён: {kyb.legal_name}",
-                                body=f"Мониторинг выявил red signals: {reasons[0] if reasons else '?'}",
+                                title=_('⚠️ KYB исключён: %(p0)s') % {"p0": f'{kyb.legal_name}'},
+                                body=_('Мониторинг выявил red signals: %(p0)s') % {"p0": f"{(reasons[0] if reasons else '?')}"},
                                 url="/chat/")
                 except Exception:
                     pass

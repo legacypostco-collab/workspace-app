@@ -38,6 +38,7 @@ import hashlib
 from typing import Any
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 # ──────────────────────────────────────────────────────────────────────
 # Deterministic fixture lookup — every test company is identified by its
@@ -153,19 +154,20 @@ def check_ru_aggregator(inn: str, country: str = "RU") -> dict:
 
     signals = []
     if fx["status"] == "liquidation":
-        signals.append({"level": "red", "msg": "Компания в стадии ликвидации"})
+        signals.append({"level": "red", "msg": _("Компания в стадии ликвидации")})
     if fx["status"] == "bankruptcy":
-        signals.append({"level": "red", "msg": "Компания в стадии банкротства"})
+        signals.append({"level": "red", "msg": _("Компания в стадии банкротства")})
     if fx.get("egrul_unreliable"):
-        signals.append({"level": "red", "msg": "Запись о недостоверности сведений ЕГРЮЛ"})
+        signals.append({"level": "red", "msg": _("Запись о недостоверности сведений ЕГРЮЛ")})
     if fx.get("mass_director_flag"):
-        signals.append({"level": "yellow", "msg": "Массовый директор"})
+        signals.append({"level": "yellow", "msg": _("Массовый директор")})
     if fx.get("mass_address_flag"):
-        signals.append({"level": "yellow", "msg": "Массовый юридический адрес"})
+        signals.append({"level": "yellow", "msg": _("Массовый юридический адрес")})
     if fx.get("tax_debt", 0) > 100_000:
-        signals.append({"level": "yellow", "msg": f"Налоговая недоимка ${fx['tax_debt']:,}"})
+        _tax_debt = f"{fx['tax_debt']:,}"
+        signals.append({"level": "yellow", "msg": _("Налоговая недоимка $%(debt)s") % {"debt": _tax_debt}})
     if fx.get("court_cases", 0) > 5:
-        signals.append({"level": "yellow", "msg": f"{fx['court_cases']} судебных дел"})
+        signals.append({"level": "yellow", "msg": _("%(count)s судебных дел") % {"count": fx['court_cases']}})
     # Финальный risk-индикатор — берём из API; если есть red signals → red
     has_red = any(s["level"] == "red" for s in signals)
     if has_red:
@@ -180,7 +182,7 @@ def check_ru_aggregator(inn: str, country: str = "RU") -> dict:
 def check_opencorporates(company_number: str, country: str) -> dict:
     if country == "RU":
         return _wrap("opencorporates", False, None,
-                     [{"level": "info", "msg": "Использовать ru-aggregator для РФ"}])
+                     [{"level": "info", "msg": _("Использовать ru-aggregator для РФ")}])
     fx = _FIXTURES.get((country, company_number), {}).get("opencorporates")
     if fx is None:
         fx = {"status": "active", "registered_at": "2020-01-01",
@@ -189,7 +191,7 @@ def check_opencorporates(company_number: str, country: str) -> dict:
               "directors": []}
     signals = []
     if fx["status"] in ("dissolved", "struck_off"):
-        signals.append({"level": "red", "msg": f"Компания {fx['status']}"})
+        signals.append({"level": "red", "msg": _("Компания %(status)s") % {"status": fx['status']}})
     return _wrap("opencorporates", True, fx, signals)
 
 
@@ -212,7 +214,7 @@ def check_vies(vat_number: str, country: str) -> dict:
         # Для не-EU стран VIES не применим — это yellow (требует ручной
         # сверки локального tax-ID), не red (не автоотказ).
         level = "red" if country in EU_COUNTRIES else "yellow"
-        signals.append({"level": level, "msg": fx.get("reason", "VAT не подтверждён")})
+        signals.append({"level": level, "msg": fx.get("reason", _("VAT не подтверждён"))})
     return _wrap("vies", True, fx, signals)
 
 
@@ -237,10 +239,12 @@ def check_sanctions(company_name: str, directors: list[str], country: str = "",
     for m in fx.get("matches", []):
         if m.get("match_score", 0) >= 0.85:
             signals.append({"level": "red",
-                             "msg": f"Совпадение в {m['list']} ({m['name']}, score={m['match_score']:.2f})"})
+                             "msg": _("Совпадение в %(list)s (%(name)s, score=%(score).2f)") % {
+                                 "list": m['list'], "name": m['name'], "score": m['match_score']}})
         else:
             signals.append({"level": "yellow",
-                             "msg": f"Возможное совпадение в {m['list']} ({m['name']})"})
+                             "msg": _("Возможное совпадение в %(list)s (%(name)s)") % {
+                                 "list": m['list'], "name": m['name']}})
     return _wrap("opensanctions", True, fx, signals)
 
 
@@ -271,9 +275,9 @@ def check_address(address: str, country: str = "RU") -> dict:
     }
     signals = []
     if not address:
-        signals.append({"level": "yellow", "msg": "Адрес не указан"})
+        signals.append({"level": "yellow", "msg": _("Адрес не указан")})
     elif kind == "residential":
-        signals.append({"level": "yellow", "msg": "Адрес склада — жилой дом"})
+        signals.append({"level": "yellow", "msg": _("Адрес склада — жилой дом")})
     return _wrap("yandex-maps", True, data, signals)
 
 
@@ -286,7 +290,7 @@ def check_website(url: str) -> dict:
     signals = []
     data = {"reachable": ok, "url": url, "http_status": 200 if ok else None}
     if not ok:
-        signals.append({"level": "yellow", "msg": "Сайт не указан или не валиден"})
+        signals.append({"level": "yellow", "msg": _("Сайт не указан или не валиден")})
     return _wrap("http-probe", True, data, signals)
 
 
@@ -300,7 +304,7 @@ def check_messengers(whatsapp: str, telegram: str, phone: str) -> dict:
     signals = []
     if not has_any:
         signals.append({"level": "yellow",
-                         "msg": "Не указан ни один мессенджер для оперативной связи"})
+                         "msg": _("Не указан ни один мессенджер для оперативной связи")})
     return _wrap("messenger-api", True, data, signals)
 
 
@@ -320,7 +324,7 @@ def run_all_checks(kyb) -> dict:
     aggregator = check_ru_aggregator(kyb.inn, country)
     opencorp = check_opencorporates(kyb.inn, country)
     vies = check_vies(kyb.vat_number, country) if kyb.vat_number else \
-           _wrap("vies", False, None, [{"level": "info", "msg": "VAT не указан"}])
+           _wrap("vies", False, None, [{"level": "info", "msg": _("VAT не указан")}])
     director_names = []
     for snap in (aggregator, opencorp):
         if snap.get("ok") and snap.get("data") and isinstance(snap["data"].get("directors"), list):

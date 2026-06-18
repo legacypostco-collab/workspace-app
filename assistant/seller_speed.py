@@ -10,6 +10,8 @@
 """
 import logging
 
+from django.utils.translation import gettext as _
+
 logger = logging.getLogger(__name__)
 
 _BENCH_WINDOW_DAYS = 120   # окно выборки для бенчмарка платформы
@@ -60,12 +62,12 @@ def _fmt_duration(minutes):
         return ""
     m = int(round(minutes))
     if m < 60:
-        return f"{m} мин"
+        return _("%(m)s мин") % {"m": m}
     if m < 1440:
         h, mm = divmod(m, 60)
-        return f"{h} ч {mm} мин" if mm else f"{h} ч"
+        return _("%(h)s ч %(mm)s мин") % {"h": h, "mm": mm} if mm else _("%(h)s ч") % {"h": h}
     d = m // 1440
-    return f"{d} дн"
+    return _("%(d)s дн") % {"d": d}
 
 
 def rfq_age_label(rfq):
@@ -73,7 +75,7 @@ def rfq_age_label(rfq):
     try:
         from django.utils import timezone
         secs = max(0.0, (timezone.now() - rfq.created_at).total_seconds())
-        return "открыт " + _fmt_duration(secs / 60) + " назад"
+        return _("открыт %(dur)s назад") % {"dur": _fmt_duration(secs / 60)}
     except Exception:
         return ""
 
@@ -133,13 +135,13 @@ def seller_speed_standing(seller_user):
     """Честная сводка скорости для UI.
 
     → {median_min, median_label, count, faster_than_pct, label}.
-      • мало данных → median_min=None, label='мало данных'.
+      • мало данных → median_min=None, label=_('мало данных').
       • faster_than_pct=None, если бенчмарка ещё нет (один продавец и т.п.).
     """
     med, n = seller_response_median_seconds(seller_user)
     if med is None:
         return {"median_min": None, "median_label": "", "count": n,
-                "faster_than_pct": None, "label": "мало данных"}
+                "faster_than_pct": None, "label": _("мало данных")}
     median_min = int(round(med / 60))
     dur = _fmt_duration(median_min)
     faster_pct = None
@@ -147,6 +149,6 @@ def seller_speed_standing(seller_user):
     if bench and len(bench) >= 3:
         slower = sum(1 for m in bench if m > med)   # сколько продавцов медленнее нас
         faster_pct = int(round(100 * slower / len(bench)))
-    label = f"быстрее {faster_pct}% продавцов" if faster_pct is not None else dur
+    label = (_("быстрее %(pct)s%% продавцов") % {"pct": faster_pct}) if faster_pct is not None else dur
     return {"median_min": median_min, "median_label": dur, "count": n,
             "faster_than_pct": faster_pct, "label": label}

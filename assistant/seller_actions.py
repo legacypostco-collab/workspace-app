@@ -9,6 +9,7 @@ import logging
 from decimal import Decimal
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .actions import ActionResult, register
 from .rfq_mode_badge import mode_badge_with_sla
@@ -99,11 +100,11 @@ def referral_program(params, user, role):
     pending = 0
 
     text = (
-        f"🤝 Реферальная программа\n"
-        f"Ваш код: {code}\n"
-        f"Условия: 2% от первого заказа приглашённого клиента (до $5,000), "
-        f"далее — 0.5% от всех его заказов в течение года. Партнёрам "
-        f"(дилерам и инженерам по сервису) — отдельный тариф 5%."
+        _("🤝 Реферальная программа\n"
+          "Ваш код: %(code)s\n"
+          "Условия: 2%% от первого заказа приглашённого клиента (до $5,000), "
+          "далее — 0.5%% от всех его заказов в течение года. Партнёрам "
+          "(дилерам и инженерам по сервису) — отдельный тариф 5%%.") % {"code": code}
     )
 
     return ActionResult(
@@ -111,36 +112,36 @@ def referral_program(params, user, role):
         cards=[{
             "type": "kpi_grid",
             "data": {
-                "title": "Реферальная программа",
+                "title": _("Реферальная программа"),
                 "kpis": [
-                    {"label": "Ваш код",      "value": code,       "sub": "копируйте и шлите"},
-                    {"label": "Приглашено",   "value": invited,    "sub": "регистраций по коду"},
-                    {"label": "Конверсия",    "value": converted,  "sub": "сделали заказ"},
-                    {"label": "Заработано",   "value": f"${earned:,.0f}", "sub": "выплачено"},
-                    {"label": "В ожидании",   "value": f"${pending:,.0f}", "sub": "после закрытия сделок"},
-                    {"label": "Ставка",       "value": "2%",       "sub": "от 1-го заказа клиента"},
+                    {"label": _("Ваш код"),      "value": code,       "sub": _("копируйте и шлите")},
+                    {"label": _("Приглашено"),   "value": invited,    "sub": _("регистраций по коду")},
+                    {"label": _("Конверсия"),    "value": converted,  "sub": _("сделали заказ")},
+                    {"label": _("Заработано"),   "value": f"${earned:,.0f}", "sub": _("выплачено")},
+                    {"label": _("В ожидании"),   "value": f"${pending:,.0f}", "sub": _("после закрытия сделок")},
+                    {"label": _("Ставка"),       "value": "2%",       "sub": _("от 1-го заказа клиента")},
                 ],
             },
         }, {
             "type": "list",
             "data": {
-                "title": "Как поделиться",
+                "title": _("Как поделиться"),
                 "rows": [
-                    {"title": "Личная ссылка", "subtitle": link, "badge": "Копировать"},
-                    {"title": "Email-приглашение",
-                     "subtitle": "Шаблон с описанием платформы и ссылкой",
-                     "badge": "Шаблон"},
-                    {"title": "QR-код для визитки",
-                     "subtitle": "Сгенерируем QR с вашей ссылкой", "badge": "QR"},
+                    {"title": _("Личная ссылка"), "subtitle": link, "badge": _("Копировать")},
+                    {"title": _("Email-приглашение"),
+                     "subtitle": _("Шаблон с описанием платформы и ссылкой"),
+                     "badge": _("Шаблон")},
+                    {"title": _("QR-код для визитки"),
+                     "subtitle": _("Сгенерируем QR с вашей ссылкой"), "badge": "QR"},
                 ],
             },
         }],
         actions=[
-            {"label": "Условия программы", "action": "kb_search",
+            {"label": _("Условия программы"), "action": "kb_search",
              "params": {"query": "реферальная программа"}},
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+            {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
         ],
-        suggestions=["Сколько мне начислили?", "Кого можно приглашать?"],
+        suggestions=[_("Сколько мне начислили?"), _("Кого можно приглашать?")],
     )
 
 
@@ -163,26 +164,26 @@ def mfg_configurator(params, user, role):
     material = (params.get("material") or "steel").lower()
     if not params.get("mass_kg") or not params.get("qty"):
         return ActionResult(
-            text="Конфигуратор производства: рассчитаю заводскую себестоимость и срок.",
+            text=_("Конфигуратор производства: рассчитаю заводскую себестоимость и срок."),
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": "🏭 Конфигуратор производства",
+                    "title": _("🏭 Конфигуратор производства"),
                     "submit_action": "mfg_configurator",
-                    "submit_label": "Рассчитать",
+                    "submit_label": _("Рассчитать"),
                     "fields": [
-                        {"name": "material", "label": "Материал",
+                        {"name": "material", "label": _("Материал"),
                          "placeholder": "steel/stainless/bronze/aluminum/cast_iron",
                          "default": "steel"},
-                        {"name": "mass_kg", "label": "Масса детали, кг",
+                        {"name": "mass_kg", "label": _("Масса детали, кг"),
                          "type": "number", "required": True,
                          "placeholder": "5"},
-                        {"name": "tolerance_class", "label": "Класс точности (IT7/9/11/14)",
+                        {"name": "tolerance_class", "label": _("Класс точности (IT7/9/11/14)"),
                          "default": "IT11"},
-                        {"name": "qty", "label": "Серия (количество, шт)",
+                        {"name": "qty", "label": _("Серия (количество, шт)"),
                          "type": "number", "required": True,
                          "placeholder": "100"},
-                        {"name": "complexity", "label": "Сложность (simple/medium/complex)",
+                        {"name": "complexity", "label": _("Сложность (simple/medium/complex)"),
                          "default": "medium"},
                     ],
                     "fixed_params": {},
@@ -194,7 +195,7 @@ def mfg_configurator(params, user, role):
         mass = D(str(params["mass_kg"]))
         qty = int(params["qty"])
     except Exception:
-        return ActionResult(text="Некорректные параметры.")
+        return ActionResult(text=_("Некорректные параметры."))
 
     # ── Стоимость материала ──
     MATERIAL_COST = {  # USD/kg (заготовка)
@@ -237,40 +238,45 @@ def mfg_configurator(params, user, role):
     total_days = setup_days + prod_days
 
     text = (
-        f"🏭 Расчёт производства\n"
-        f"Материал: {material} · масса {mass} кг · точность "
-        f"{params.get('tolerance_class','IT11')} · серия {qty} шт.\n"
-        f"Себестоимость: ${unit_cost} за шт, ${total_cost} за серию. "
-        f"Срок: {total_days} раб. дней (подготовка {setup_days} + производство {prod_days})."
+        _("🏭 Расчёт производства\n"
+          "Материал: %(material)s · масса %(mass)s кг · точность "
+          "%(tol)s · серия %(qty)s шт.\n"
+          "Себестоимость: $%(unit)s за шт, $%(total)s за серию. "
+          "Срок: %(days)s раб. дней (подготовка %(setup)s + производство %(prod)s).") % {
+            "material": material, "mass": mass,
+            "tol": params.get('tolerance_class', 'IT11'), "qty": qty,
+            "unit": unit_cost, "total": total_cost,
+            "days": total_days, "setup": setup_days, "prod": prod_days,
+        }
     )
     return ActionResult(
         text=text,
         cards=[{
             "type": "kpi_grid",
             "data": {
-                "title": f"Производство · {material} · {qty} шт",
+                "title": _("Производство · %(material)s · %(qty)s шт") % {"material": material, "qty": qty},
                 "kpis": [
-                    {"label": "За шт.",         "value": f"${unit_cost}"},
-                    {"label": "За серию",       "value": f"${total_cost:,.0f}"},
-                    {"label": "Срок, дней",     "value": total_days,
-                     "sub": f"+{setup_days} подготовка"},
-                    {"label": "Материал",       "value": f"${material_cost}",
-                     "sub": f"{mass} кг × ${mat_cost_per_kg}"},
-                    {"label": "Обработка",      "value": f"${machining_per_unit:.2f}",
-                     "sub": f"{hours} ч × {tol_mult}×"},
-                    {"label": "Скидка серии",   "value": f"−{int((1-float(series_disc))*100)}%"},
+                    {"label": _("За шт."),         "value": f"${unit_cost}"},
+                    {"label": _("За серию"),       "value": f"${total_cost:,.0f}"},
+                    {"label": _("Срок, дней"),     "value": total_days,
+                     "sub": _("+%(setup)s подготовка") % {"setup": setup_days}},
+                    {"label": _("Материал"),       "value": f"${material_cost}",
+                     "sub": _('%(p0)s кг × $%(p1)s') % {"p0": f'{mass}', "p1": f'{mat_cost_per_kg}'}},
+                    {"label": _("Обработка"),      "value": f"${machining_per_unit:.2f}",
+                     "sub": _('%(p0)s ч × %(p1)s×') % {"p0": f'{hours}', "p1": f'{tol_mult}'}},
+                    {"label": _("Скидка серии"),   "value": f"−{int((1-float(series_disc))*100)}%"},
                 ],
             },
         }],
         actions=[
-            {"label": "Пересчитать", "action": "mfg_configurator", "params": {}},
-            {"label": "💰 Цена для клиента", "action": "price_quote",
+            {"label": _("Пересчитать"), "action": "mfg_configurator", "params": {}},
+            {"label": _("💰 Цена для клиента"), "action": "price_quote",
              "params": {"base_price": float(unit_cost)}},
         ],
         suggestions=[
-            "А если серия 1000?",
-            "Что в стоимости?",
-            "Ускорить срок — варианты",
+            _("А если серия 1000?"),
+            _("Что в стоимости?"),
+            _("Ускорить срок — варианты"),
         ],
     )
 
@@ -294,13 +300,13 @@ def forecast_demand(params, user, role):
     # Стандартные интервалы (см. KB regulation maintenance_intervals)
     schedule = [
         # (название, интервал в моточасах, тип, ср. цена за ед.)
-        ("Масло гидравлическое (фильтр + замена)", 500,  "ТО",   180),
-        ("Топливный фильтр",                       250,  "ТО",   45),
-        ("Воздушный фильтр",                       500,  "ТО",   60),
-        ("Моторное масло (фильтр + замена)",       250,  "ТО",   220),
-        ("Гидроцилиндр (РТИ + сальники)",          2000, "ТО-2", 380),
-        ("Стартер (профилактика)",                 5000, "КР",   650),
-        ("Гусеничная цепь (профилактика)",         8000, "КР",   12000),
+        (_("Масло гидравлическое (фильтр + замена)"), 500,  _("ТО"),   180),
+        (_("Топливный фильтр"),                       250,  _("ТО"),   45),
+        (_("Воздушный фильтр"),                       500,  _("ТО"),   60),
+        (_("Моторное масло (фильтр + замена)"),       250,  _("ТО"),   220),
+        (_("Гидроцилиндр (РТИ + сальники)"),          2000, _("ТО-2"), 380),
+        (_("Стартер (профилактика)"),                 5000, _("КР"),   650),
+        (_("Гусеничная цепь (профилактика)"),         8000, _("КР"),   12000),
     ]
 
     rows = []
@@ -313,34 +319,40 @@ def forecast_demand(params, user, role):
         total_cost += cost
         rows.append({
             "title": f"{name}",
-            "subtitle": (f"~{cycles} раз(а) за период · ${unit_price}/шт · "
-                         f"интервал {interval} ч · {kind}"),
+            "subtitle": (_("~%(cycles)s раз(а) за период · $%(price)s/шт · "
+                           "интервал %(interval)s ч · %(kind)s") % {
+                             "cycles": cycles, "price": unit_price,
+                             "interval": interval, "kind": kind}),
             "badge": f"${cost:,.0f}",
         })
 
     text = (
-        f"📈 Прогноз потребности на {months_ahead} мес.\n"
-        f"Парк: {machines} единиц(а) · наработка ~{hours_per_month} ч/мес → "
-        f"итого {total_hours} мото-часов.\n"
-        f"Ожидаемые расходы на ТО и КР: примерно ${total_cost:,.0f}."
+        _("📈 Прогноз потребности на %(months)s мес.\n"
+          "Парк: %(machines)s единиц(а) · наработка ~%(hpm)s ч/мес → "
+          "итого %(total_hours)s мото-часов.\n"
+          "Ожидаемые расходы на ТО и КР: примерно $%(cost)s.") % {
+            "months": months_ahead, "machines": machines,
+            "hpm": hours_per_month, "total_hours": total_hours,
+            "cost": f"{total_cost:,.0f}",
+        }
     )
 
     return ActionResult(
         text=text,
         cards=[{
             "type": "list",
-            "data": {"title": f"План потребности · {months_ahead} мес", "rows": rows},
+            "data": {"title": _("План потребности · %(months)s мес") % {"months": months_ahead}, "rows": rows},
         }],
         actions=[
-            {"label": "📦 Создать RFQ на список",
+            {"label": _("📦 Создать RFQ на список"),
              "action": "create_rfq",
              "params": {"query": ", ".join(r["title"] for r in rows[:10])}},
-            {"label": "Пересчитать", "action": "forecast_demand", "params": {}},
+            {"label": _("Пересчитать"), "action": "forecast_demand", "params": {}},
         ],
         suggestions=[
-            "А если 300 ч/мес?",
-            "Прогноз на год",
-            "Только критичные узлы",
+            _("А если 300 ч/мес?"),
+            _("Прогноз на год"),
+            _("Только критичные узлы"),
         ],
     )
 
@@ -387,10 +399,12 @@ def sync_1c(params, user, role):
 
     if is_demo:
         log_lines = [
-            "▸ ONEC_ENDPOINT не настроен — обмен в demo-режиме (без реального запроса).",
-            f"  Платформа → 1С: {push_orders} заказа(ов) и {push_statuses} статусов за {since_days} дн.",
-            f"  1С → Платформа: {pull_parts} позиций для синхронизации остатков и цен.",
-            "▸ Чтобы включить реальный обмен, задайте ONEC_ENDPOINT, ONEC_USER, ONEC_PASSWORD.",
+            _("▸ ONEC_ENDPOINT не настроен — обмен в demo-режиме (без реального запроса)."),
+            _("  Платформа → 1С: %(orders)s заказа(ов) и %(statuses)s статусов за %(days)s дн.") % {
+                "orders": push_orders, "statuses": push_statuses, "days": since_days},
+            _("  1С → Платформа: %(parts)s позиций для синхронизации остатков и цен.") % {
+                "parts": pull_parts},
+            _("▸ Чтобы включить реальный обмен, задайте ONEC_ENDPOINT, ONEC_USER, ONEC_PASSWORD."),
         ]
     else:
         # Реальный обмен через OData (минимальный stub — серверу нужен 1С со схемой)
@@ -399,43 +413,45 @@ def sync_1c(params, user, role):
             ok_push, ok_pull = 0, 0
             if direction in ("push", "both"):
                 # Здесь должен быть POST в 1С OData с заказами
-                log_lines.append(f"▸ Push в 1С: отправил {push_orders} заказа(ов) и {push_statuses} статусов.")
+                log_lines.append(_("▸ Push в 1С: отправил %(orders)s заказа(ов) и %(statuses)s статусов.") % {
+                    "orders": push_orders, "statuses": push_statuses})
                 ok_push = push_orders
             if direction in ("pull", "both"):
                 # GET с остатками и ценами
-                log_lines.append(f"▸ Pull из 1С: обновил остатки и цены по {pull_parts} позициям.")
+                log_lines.append(_("▸ Pull из 1С: обновил остатки и цены по %(parts)s позициям.") % {
+                    "parts": pull_parts})
                 ok_pull = pull_parts
-            log_lines.append(f"▸ Эндпоинт: {endpoint}")
+            log_lines.append(_("▸ Эндпоинт: %(endpoint)s") % {"endpoint": endpoint})
         except Exception as exc:
-            log_lines = [f"⚠️ Ошибка обмена с 1С: {exc}"]
+            log_lines = [_("⚠️ Ошибка обмена с 1С: %(exc)s") % {"exc": exc}]
 
-    text = "🔄 Синхронизация с 1С / ERP\n" + "\n".join(log_lines)
+    text = _("🔄 Синхронизация с 1С / ERP\n") + "\n".join(log_lines)
     return ActionResult(
         text=text,
         cards=[{
             "type": "kpi_grid",
             "data": {
-                "title": "Обмен с 1С",
+                "title": _("Обмен с 1С"),
                 "kpis": [
-                    {"label": "Push заказов",  "value": push_orders,
-                     "sub": f"за {since_days} дн."},
-                    {"label": "Push статусов", "value": push_statuses,
-                     "sub": "активные отгрузки"},
-                    {"label": "Pull остатков", "value": pull_parts,
-                     "sub": "позиций каталога"},
-                    {"label": "Режим",         "value": ("Demo" if is_demo else "Live"),
-                     "sub": ("Без эндпоинта" if is_demo else endpoint[:24])},
+                    {"label": _("Push заказов"),  "value": push_orders,
+                     "sub": _("за %(days)s дн.") % {"days": since_days}},
+                    {"label": _("Push статусов"), "value": push_statuses,
+                     "sub": _("активные отгрузки")},
+                    {"label": _("Pull остатков"), "value": pull_parts,
+                     "sub": _("позиций каталога")},
+                    {"label": _("Режим"),         "value": ("Demo" if is_demo else "Live"),
+                     "sub": (_("Без эндпоинта") if is_demo else endpoint[:24])},
                 ],
             },
         }],
         actions=[
-            {"label": "Только push", "action": "sync_1c",
+            {"label": _("Только push"), "action": "sync_1c",
              "params": {"direction": "push"}},
-            {"label": "Только pull", "action": "sync_1c",
+            {"label": _("Только pull"), "action": "sync_1c",
              "params": {"direction": "pull"}},
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+            {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
         ],
-        suggestions=["Что в 1С прилетит?", "Как настроить?", "Расписание обмена"],
+        suggestions=[_("Что в 1С прилетит?"), _("Как настроить?"), _("Расписание обмена")],
     )
 
 
@@ -456,16 +472,16 @@ def notifications(params, user, role):
     unread = Notification.objects.filter(user=user, is_read=False).count()
     # Кнопка «Дашборд» — роль-зависимая (buyer ≠ seller ≠ operator).
     if role == "seller":
-        dash_action = {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}}
+        dash_action = {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}}
     elif role and role.startswith("operator"):
-        dash_action = {"label": "📊 Дашборд", "action": "op_dashboard", "params": {}}
+        dash_action = {"label": _("📊 Дашборд"), "action": "op_dashboard", "params": {}}
     else:
-        dash_action = {"label": "📦 Мои заказы", "action": "get_orders", "params": {}}
+        dash_action = {"label": _("📦 Мои заказы"), "action": "get_orders", "params": {}}
     if not items:
         return ActionResult(
-            text=("🔕 Уведомлений нет — на сегодня ничего не пропустили."
+            text=(_("🔕 Уведомлений нет — на сегодня ничего не пропустили.")
                   if unread == 0 else
-                  f"Без новых, всего непрочитанных в системе: {unread}."),
+                  _("Без новых, всего непрочитанных в системе: %(unread)s.") % {"unread": unread}),
             actions=[dash_action],
         )
 
@@ -481,11 +497,11 @@ def notifications(params, user, role):
     Notification.objects.filter(user=user, is_read=False).update(is_read=True)
 
     return ActionResult(
-        text=(f"🔔 Уведомления: {len(items)} (непрочитанных было {unread})."
-              if unread else f"🔔 Все уведомления — {len(items)}."),
-        cards=[{"type": "list", "data": {"title": "Уведомления", "rows": rows}}],
+        text=(_("🔔 Уведомления: %(n)s (непрочитанных было %(unread)s).") % {"n": len(items), "unread": unread}
+              if unread else _("🔔 Все уведомления — %(n)s.") % {"n": len(items)}),
+        cards=[{"type": "list", "data": {"title": _("Уведомления"), "rows": rows}}],
         actions=[dash_action],
-        suggestions=["Что новенького?", "Только непрочитанные"],
+        suggestions=[_("Что новенького?"), _("Только непрочитанные")],
     )
 
 
@@ -499,19 +515,19 @@ def generate_qr(params, user, role):
     from marketplace.models import Order, OrderItem
     order_id = params.get("order_id")
     if not order_id:
-        return ActionResult(text="Не указан заказ.")
+        return ActionResult(text=_("Не указан заказ."))
     try:
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
-        return ActionResult(text=f"Заказ #{order_id} не найден.")
+        return ActionResult(text=_("Заказ #%(id)s не найден.") % {"id": order_id})
 
     # Права: владелец-buyer или seller-участник
     if role == "buyer" and order.buyer_id != user.id:
-        return ActionResult(text="Не ваш заказ.")
+        return ActionResult(text=_("Не ваш заказ."))
     if role == "seller" and not OrderItem.objects.filter(
         order=order, part__seller=user
     ).exists():
-        return ActionResult(text="В заказе нет ваших товаров.")
+        return ActionResult(text=_("В заказе нет ваших товаров."))
 
     # Генерируем токен и сохраняем в logistics_meta
     meta = dict(order.logistics_meta or {})
@@ -536,24 +552,24 @@ def generate_qr(params, user, role):
     )
     return ActionResult(
         text=(
-            f"QR для заказа #{order.id} готов. Распечатайте и приклейте на упаковку. "
-            f"Скан → откроется страница с кнопками действий (отгружено/принято) → "
-            f"событие пишется в audit-log + меняется статус заказа."
+            _("QR для заказа #%(id)s готов. Распечатайте и приклейте на упаковку. "
+              "Скан → откроется страница с кнопками действий (отгружено/принято) → "
+              "событие пишется в audit-log + меняется статус заказа.") % {"id": order.id}
         ),
         cards=[{
             "type": "qr",
             "data": {
-                "title": f"QR · Заказ #{order.id}",
+                "title": _("QR · Заказ #%(id)s") % {"id": order.id},
                 "payload": payload,
                 "image_url": qr_url,
-                "subtitle": f"Покупатель · ${order.total_amount:,.0f}",
+                "subtitle": _("Покупатель · $%(amt)s") % {"amt": f"{order.total_amount:,.0f}"},
             },
         }],
         actions=[
-            {"label": "📦 Трекинг", "action": "track_order", "params": {"order_id": order.id}},
-            {"label": "📋 Аудит", "action": "audit_log", "params": {"order_id": order.id}},
+            {"label": _("📦 Трекинг"), "action": "track_order", "params": {"order_id": order.id}},
+            {"label": _("📋 Аудит"), "action": "audit_log", "params": {"order_id": order.id}},
         ],
-        suggestions=["Сгенерировать ещё", "Где сканировать?"],
+        suggestions=[_("Сгенерировать ещё"), _("Где сканировать?")],
     )
 
 
@@ -598,19 +614,19 @@ def seller_analytics_hub(params, user, role):
     wallet = Wallet.for_user(seller)
 
     hero = [
-        {"label": f"Оборот {year}", "value": f"${revenue_year:,.0f}",
+        {"label": _("Оборот %(year)s") % {"year": year}, "value": f"${revenue_year:,.0f}",
          "tone": "ok" if revenue_year > 0 else "info",
-         "sub":  f"за 30 дней: ${revenue_30:,.0f}"},
+         "sub":  _("за 30 дней: $%(rev)s") % {"rev": f"{revenue_30:,.0f}"}},
         {"label": "SLA", "value": f"{sla_pct:.0f}%" if n_total else "—",
          "tone": "ok" if sla_pct >= 95 else "warn" if sla_pct >= 80 else "bad" if n_total else "info",
-         "sub": f"{n_breached} наруш. из {n_total}" if n_total else "нет сделок"},
-        {"label": "Заказы", "value": str(n_total),
-         "sub": f"{n_delivered} закрыто · {n_in_flight} в работе"},
-        {"label": "Депозит", "value": f"${float(wallet.balance):,.0f}",
+         "sub": _("%(breached)s наруш. из %(total)s") % {"breached": n_breached, "total": n_total} if n_total else _("нет сделок")},
+        {"label": _("Заказы"), "value": str(n_total),
+         "sub": _("%(delivered)s закрыто · %(inflight)s в работе") % {"delivered": n_delivered, "inflight": n_in_flight}},
+        {"label": _("Депозит"), "value": f"${float(wallet.balance):,.0f}",
          "tone": "ok" if wallet.balance > 0 else "info"},
-        {"label": "Каталог", "value": f"{catalog_n:,} поз.",
+        {"label": _("Каталог"), "value": _("%(n)s поз.") % {"n": f"{catalog_n:,}"},
          "tone": "ok" if catalog_n >= 100 else "warn" if catalog_n > 0 else "info"},
-        {"label": "Активные рекламации", "value": str(active_claims),
+        {"label": _("Активные рекламации"), "value": str(active_claims),
          "tone": "bad" if active_claims > 0 else "ok"},
     ]
 
@@ -619,48 +635,51 @@ def seller_analytics_hub(params, user, role):
     # «История действий» (recent_activity) — здесь не дублируем,
     # это аналитика, а не оперативный inbox.
     reports = [
-        {"title":    "📈 Спрос на рынке",
-         "subtitle": "Что покупатели запрашивают, где у вас дыры в каталоге, динамика по неделям",
+        {"title":    _("📈 Спрос на рынке"),
+         "subtitle": _("Что покупатели запрашивают, где у вас дыры в каталоге, динамика по неделям"),
          "action":   "get_demand_report", "params": {}},
-        {"title":    "🚚 Отчёт по поставкам",
-         "subtitle": "Воронка статусов · ваши заказы по этапам pipeline · ETA доставки",
+        {"title":    _("🚚 Отчёт по поставкам"),
+         "subtitle": _("Воронка статусов · ваши заказы по этапам pipeline · ETA доставки"),
          "action":   "get_supply_report", "params": {}},
-        {"title":    "📊 Аналитика заказов",
-         "subtitle": "Распределение по статусам · динамика по месяцам · средний чек",
+        {"title":    _("📊 Аналитика заказов"),
+         "subtitle": _("Распределение по статусам · динамика по месяцам · средний чек"),
          "action":   "get_analytics", "params": {}},
-        {"title":    "🛡 Рейтинг и статус поставщика",
-         "subtitle": "Как считается рейтинг · что повысит · план роста · преимущества тиров",
+        {"title":    _("🛡 Рейтинг и статус поставщика"),
+         "subtitle": _("Как считается рейтинг · что повысит · план роста · преимущества тиров"),
          "action":   "kyb_status", "params": {}},
-        {"title":    "💰 Финансы и движения по депозиту",
-         "subtitle": "Баланс · выплаты эскроу · история транзакций",
+        {"title":    _("💰 Финансы и движения по депозиту"),
+         "subtitle": _("Баланс · выплаты эскроу · история транзакций"),
          "action":   "get_balance", "params": {}},
-        {"title":    "📑 Executive summary (для руководства)",
-         "subtitle": "Сводный отчёт: ключевые метрики на одной странице — для топ-менеджмента",
+        {"title":    _("📑 Executive summary (для руководства)"),
+         "subtitle": _("Сводный отчёт: ключевые метрики на одной странице — для топ-менеджмента"),
          "action":   "seller_executive_report", "params": {}},
     ]
 
     return ActionResult(
         text=(
-            f"📊 Аналитика — все отчёты в одной точке.\n"
-            f"Кратко: оборот за {year} · ${revenue_year:,.0f}, "
-            f"SLA {sla_pct:.0f}%, "
-            f"{n_total} сделок ({n_delivered} закрыто), "
-            f"открытых RFQ на рынке: {open_rfq}."
+            _("📊 Аналитика — все отчёты в одной точке.\n"
+              "Кратко: оборот за %(year)s · $%(rev)s, "
+              "SLA %(sla).0f%%, "
+              "%(total)s сделок (%(delivered)s закрыто), "
+              "открытых RFQ на рынке: %(rfq)s.") % {
+                "year": year, "rev": f"{revenue_year:,.0f}", "sla": sla_pct,
+                "total": n_total, "delivered": n_delivered, "rfq": open_rfq,
+            }
         ),
         cards=[
             {"type": "kpi_grid", "data": {
-                "title": "📊 Сводка по поставщику",
+                "title": _("📊 Сводка по поставщику"),
                 "items": hero,
             }},
             {"type": "list", "data": {
-                "title": "📈 Развёрнутые отчёты — кликните для деталей",
+                "title": _("📈 Развёрнутые отчёты — кликните для деталей"),
                 "items": reports,
             }},
         ],
         actions=[
-            {"label": "📤 Загрузить прайс",     "action": "upload_pricelist",  "params": {}},
-            {"label": "🔥 Срочные задачи",      "action": "seller_inbox",      "params": {}},
-            {"label": "💬 Связаться с менеджером", "action": "contact_operator", "params": {"topic": "analytics"}},
+            {"label": _("📤 Загрузить прайс"),     "action": "upload_pricelist",  "params": {}},
+            {"label": _("🔥 Срочные задачи"),      "action": "seller_inbox",      "params": {}},
+            {"label": _("💬 Связаться с менеджером"), "action": "contact_operator", "params": {"topic": "analytics"}},
         ],
     )
 
@@ -700,37 +719,42 @@ def seller_executive_report(params, user, role):
     wallet = Wallet.for_user(seller)
 
     kpis = [
-        {"label": f"Оборот {year}", "value": f"${rev_now:,.0f}", "tone": "ok",
-         "sub": f"vs {prev_year}: " + (f"+{growth:.0f}%" if growth >= 0 else f"{growth:.0f}%")},
-        {"label": "Средний чек", "value": f"${avg_check:,.0f}",
-         "sub": f"{n_delivered} закрытых сделок"},
+        {"label": _("Оборот %(year)s") % {"year": year}, "value": f"${rev_now:,.0f}", "tone": "ok",
+         "sub": _("vs %(prev)s: ") % {"prev": prev_year} + (f"+{growth:.0f}%" if growth >= 0 else f"{growth:.0f}%")},
+        {"label": _("Средний чек"), "value": f"${avg_check:,.0f}",
+         "sub": _("%(n)s закрытых сделок") % {"n": n_delivered}},
         {"label": "SLA",
          "value": f"{sla_pct:.0f}%" if n_year else "—",
          "tone": "ok" if sla_pct >= 95 else "warn" if sla_pct >= 80 else "bad" if n_year else "info"},
-        {"label": "Открытые рекламации", "value": str(n_claims),
+        {"label": _("Открытые рекламации"), "value": str(n_claims),
          "tone": "bad" if n_claims > 0 else "ok"},
-        {"label": "Каталог", "value": f"{catalog:,} поз."},
-        {"label": "Депозит на платформе", "value": f"${float(wallet.balance):,.0f}"},
+        {"label": _("Каталог"), "value": _("%(n)s поз.") % {"n": f"{catalog:,}"}},
+        {"label": _("Депозит на платформе"), "value": f"${float(wallet.balance):,.0f}"},
     ]
 
     # Текст-инсайты для руководства
     insights = []
     if growth >= 20:
-        insights.append(f"📈 Рост оборота год к году: +{growth:.0f}%")
+        insights.append(_("📈 Рост оборота год к году: +%(growth).0f%%") % {"growth": growth})
     elif growth <= -20 and rev_prev:
-        insights.append(f"📉 Падение оборота год к году: {growth:.0f}% — требует анализа")
+        insights.append(_("📉 Падение оборота год к году: %(growth).0f%% — требует анализа") % {"growth": growth})
     if sla_pct >= 95:
-        insights.append("✅ SLA в зелёной зоне ≥95%")
+        insights.append(_("✅ SLA в зелёной зоне ≥95%"))
     elif sla_pct < 80 and n_year:
-        insights.append(f"⚠️ SLA {sla_pct:.0f}% — ниже целевого порога 80%, риск понижения статуса")
+        insights.append(_("⚠️ SLA %(sla).0f%% — ниже целевого порога 80%%, риск понижения статуса") % {"sla": sla_pct})
     if n_claims > 5:
-        insights.append(f"⚠️ {n_claims} активных рекламаций — нужна работа с поддержкой клиентов")
+        insights.append(_("⚠️ %(n)s активных рекламаций — нужна работа с поддержкой клиентов") % {"n": n_claims})
 
+    trend = (_("устойчивый рост") if growth >= 20 else _("стабильный темп") if growth >= 0 else _("снижение"))
     text = (
-        f"📑 Executive Summary · {year}\n\n"
-        f"Поставщик демонстрирует {'устойчивый рост' if growth >= 20 else 'стабильный темп' if growth >= 0 else 'снижение'} "
-        f"({n_delivered} закрытых сделок на ${rev_now:,.0f}, средний чек ${avg_check:,.0f}).\n"
-        f"Качество исполнения: SLA {sla_pct:.0f}%, открытых рекламаций {n_claims}.\n"
+        _("📑 Executive Summary · %(year)s\n\n"
+          "Поставщик демонстрирует %(trend)s "
+          "(%(delivered)s закрытых сделок на $%(rev)s, средний чек $%(avg)s).\n"
+          "Качество исполнения: SLA %(sla).0f%%, открытых рекламаций %(claims)s.\n") % {
+            "year": year, "trend": trend, "delivered": n_delivered,
+            "rev": f"{rev_now:,.0f}", "avg": f"{avg_check:,.0f}",
+            "sla": sla_pct, "claims": n_claims,
+        }
         + (("\n" + "\n".join(insights)) if insights else "")
     )
 
@@ -738,14 +762,14 @@ def seller_executive_report(params, user, role):
         text=text,
         cards=[
             {"type": "kpi_grid", "data": {
-                "title": f"📑 Ключевые метрики {year}",
+                "title": _("📑 Ключевые метрики %(year)s") % {"year": year},
                 "items": kpis,
             }},
         ],
         actions=[
-            {"label": "📈 Спрос на рынке",     "action": "get_demand_report", "params": {}},
-            {"label": "📊 Аналитика по месяцам","action": "get_analytics",    "params": {}},
-            {"label": "📊 Назад в Аналитика",  "action": "seller_analytics_hub", "params": {}},
+            {"label": _("📈 Спрос на рынке"),     "action": "get_demand_report", "params": {}},
+            {"label": _("📊 Аналитика по месяцам"),"action": "get_analytics",    "params": {}},
+            {"label": _("📊 Назад в Аналитика"),  "action": "seller_analytics_hub", "params": {}},
         ],
     )
 
@@ -794,16 +818,17 @@ def recent_activity(params, user, role):
         }
         icon = icon_map.get(e.event_type, "•")
         if e.event_type == "status_changed":
-            label = f"Заказ #{e.order_id} → {meta.get('to', '—')}"
+            label = _("Заказ #%(id)s → %(to)s") % {"id": e.order_id, "to": meta.get('to', '—')}
         elif e.event_type in ("reserve_paid", "final_payment_paid", "mid_payment_paid"):
             amt = meta.get("amount")
-            label = f"Заказ #{e.order_id}: оплата ${float(amt):,.0f}" if amt else f"Заказ #{e.order_id}: платёж"
+            label = (_("Заказ #%(id)s: оплата $%(amt)s") % {"id": e.order_id, "amt": f"{float(amt):,.0f}"}
+                     if amt else _("Заказ #%(id)s: платёж") % {"id": e.order_id})
         elif e.event_type == "claim_opened":
-            label = f"Заказ #{e.order_id}: открыта рекламация"
+            label = _("Заказ #%(id)s: открыта рекламация") % {"id": e.order_id}
         elif e.event_type == "order_created":
-            label = f"Заказ #{e.order_id} создан"
+            label = _("Заказ #%(id)s создан") % {"id": e.order_id}
         else:
-            label = f"Заказ #{e.order_id}: {e.event_type}"
+            label = _("Заказ #%(id)s: %(et)s") % {"id": e.order_id, "et": e.event_type}
         actor = e.actor.username if e.actor else "system"
         events.append({
             "ts":      e.created_at,
@@ -821,8 +846,8 @@ def recent_activity(params, user, role):
             events.append({
                 "ts":     q.created_at,
                 "icon":   "💬",
-                "label":  f"Котировка по RFQ #{q.rfq_id} · ${float(q.total_amount or 0):,.0f}",
-                "sub":    f"раунд {q.round_number} · {q.get_status_display() if hasattr(q, 'get_status_display') else q.status}",
+                "label":  _("Котировка по RFQ #%(id)s · $%(amt)s") % {"id": q.rfq_id, "amt": f"{float(q.total_amount or 0):,.0f}"},
+                "sub":    _("раунд %(round)s · %(status)s") % {"round": q.round_number, "status": (q.get_status_display() if hasattr(q, 'get_status_display') else q.status)},
                 "action": "rfq_detail",
                 "params": {"rfq_id": q.rfq_id},
             })
@@ -845,8 +870,8 @@ def recent_activity(params, user, role):
                 events.append({
                     "ts":     tx.created_at,
                     "icon":   kind_icon.get(tx.kind, "•"),
-                    "label":  f"Депозит {sign}${float(tx.amount or 0):,.0f}",
-                    "sub":    f"{tx.get_kind_display()} · остаток ${float(tx.balance_after or 0):,.0f}",
+                    "label":  _("Депозит %(sign)s$%(amt)s") % {"sign": sign, "amt": f"{float(tx.amount or 0):,.0f}"},
+                    "sub":    _("%(kind)s · остаток $%(bal)s") % {"kind": tx.get_kind_display(), "bal": f"{float(tx.balance_after or 0):,.0f}"},
                     "action": "get_balance",
                     "params": {},
                 })
@@ -862,7 +887,7 @@ def recent_activity(params, user, role):
             events.append({
                 "ts":     r.created_at,
                 "icon":   status_icon,
-                "label":  f"Заявка {r.reference_code} · ${float(r.amount):,.0f}",
+                "label":  _("Заявка %(code)s · $%(amt)s") % {"code": r.reference_code, "amt": f"{float(r.amount):,.0f}"},
                 "sub":    f"{r.get_method_display()} · {r.get_status_display()}",
                 "action": "list_topups",
                 "params": {},
@@ -874,8 +899,8 @@ def recent_activity(params, user, role):
 
     if not events:
         return ActionResult(
-            text="📋 История действий пока пуста.",
-            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}],
+            text=_("📋 История действий пока пуста."),
+            actions=[{"label": _("🏠 Главная"), "action": "go_home", "params": {}}],
         )
 
     # Группируем по дням
@@ -887,16 +912,16 @@ def recent_activity(params, user, role):
     for e in events:
         d = e["ts"].date()
         if d == today_str:
-            key = "Сегодня"
+            key = _("Сегодня")
         elif (today_str - d).days == 1:
-            key = "Вчера"
+            key = _("Вчера")
         else:
             key = d.strftime("%d.%m.%Y")
         by_day[key].append(e)
 
     rows = []
     for day, items in by_day.items():
-        rows.append({"title": day, "subtitle": f"{len(items)} действий"})
+        rows.append({"title": day, "subtitle": _("%(n)s действий") % {"n": len(items)}})
         for e in items:
             rows.append({
                 "title":    f"{e['icon']} {e['label']}",
@@ -906,16 +931,16 @@ def recent_activity(params, user, role):
             })
 
     return ActionResult(
-        text=f"📋 История действий — {len(events)} за последний период.",
+        text=_("📋 История действий — %(n)s за последний период.") % {"n": len(events)},
         cards=[{
             "type": "list",
-            "data": {"title": "Последние действия", "items": rows},
+            "data": {"title": _("Последние действия"), "items": rows},
         }],
         actions=[
-            {"label": "📦 Все мои заказы", "action": "get_orders", "params": {}},
+            {"label": _("📦 Все мои заказы"), "action": "get_orders", "params": {}},
         ] + (
-            [{"label": "💰 Баланс", "action": "get_balance", "params": {}}] if role == "buyer" else
-            [{"label": "🔥 Срочное", "action": "seller_inbox", "params": {}}] if role == "seller" else
+            [{"label": _("💰 Баланс"), "action": "get_balance", "params": {}}] if role == "buyer" else
+            [{"label": _("🔥 Срочное"), "action": "seller_inbox", "params": {}}] if role == "seller" else
             []
         ),
     )
@@ -936,41 +961,41 @@ def audit_log(params, user, role):
         try:
             rfq = RFQ.objects.get(id=rfq_id)
         except RFQ.DoesNotExist:
-            return ActionResult(text=f"RFQ #{rfq_id} не найден.")
+            return ActionResult(text=_("RFQ #%(id)s не найден.") % {"id": rfq_id})
         if not (role.startswith("operator") or role == "admin"
                 or (role == "buyer" and getattr(rfq, "created_by_id", None) == getattr(user, "id", None))):
-            return ActionResult(text=f"Нет прав на просмотр истории RFQ #{rfq_id}.")
+            return ActionResult(text=_("Нет прав на просмотр истории RFQ #%(id)s.") % {"id": rfq_id})
 
         def _disp(obj, field):
             m = getattr(obj, f"get_{field}_display", None)
             return m() if callable(m) else (getattr(obj, field, "") or "")
 
         rows = [{
-            "title": f"🆕 RFQ создан · режим {_disp(rfq, 'mode') or (rfq.mode or '').upper()}",
+            "title": _("🆕 RFQ создан · режим %(mode)s") % {"mode": _disp(rfq, 'mode') or (rfq.mode or '').upper()},
             "subtitle": rfq.created_at.strftime("%d.%m.%Y %H:%M") if getattr(rfq, "created_at", None) else "—",
         }]
         _urg = getattr(rfq, "urgency", "standard") or "standard"
         if _urg != "standard":
-            rows.append({"title": f"⚡ Срочность: {_disp(rfq, 'urgency') or _urg}",
-                         "subtitle": "приоритет запроса"})
+            rows.append({"title": _("⚡ Срочность: %(urg)s") % {"urg": _disp(rfq, 'urgency') or _urg},
+                         "subtitle": _("приоритет запроса")})
         if getattr(rfq, "discount_percent", 0):
-            rows.append({"title": f"💰 Скидка {rfq.discount_percent}%",
-                         "subtitle": (getattr(rfq, "discount_note", "") or "").strip() or "применена к RFQ"})
-        rows.append({"title": f"📊 Статус: {_disp(rfq, 'status') or rfq.status}",
-                     "subtitle": "текущее состояние запроса"})
+            rows.append({"title": _("💰 Скидка %(pct)s%%") % {"pct": rfq.discount_percent},
+                         "subtitle": (getattr(rfq, "discount_note", "") or "").strip() or _("применена к RFQ")})
+        rows.append({"title": _("📊 Статус: %(status)s") % {"status": _disp(rfq, 'status') or rfq.status},
+                     "subtitle": _("текущее состояние запроса")})
         return ActionResult(
-            text=(f"📋 История RFQ #{rfq.id}. Полный аудит-лог по заказу появится "
-                  f"после оформления заказа (оплаты резерва 10%)."),
-            cards=[{"type": "list", "data": {"title": f"История RFQ #{rfq.id}", "rows": rows}}],
-            actions=[{"label": "📄 Открыть RFQ", "action": "get_rfq_status",
+            text=(_("📋 История RFQ #%(id)s. Полный аудит-лог по заказу появится "
+                    "после оформления заказа (оплаты резерва 10%%).") % {"id": rfq.id}),
+            cards=[{"type": "list", "data": {"title": _("История RFQ #%(id)s") % {"id": rfq.id}, "rows": rows}}],
+            actions=[{"label": _("📄 Открыть RFQ"), "action": "get_rfq_status",
                       "params": {"rfq_id": rfq.id}}],
         )
     if not order_id:
-        return ActionResult(text="Не указан заказ.")
+        return ActionResult(text=_("Не указан заказ."))
     try:
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
-        return ActionResult(text=f"Заказ #{order_id} не найден.")
+        return ActionResult(text=_("Заказ #%(id)s не найден.") % {"id": order_id})
 
     # Проверка прав
     can_view = False
@@ -983,29 +1008,29 @@ def audit_log(params, user, role):
     ).exists():
         can_view = True
     if not can_view:
-        return ActionResult(text=f"Нет прав на просмотр аудита заказа #{order_id}.")
+        return ActionResult(text=_("Нет прав на просмотр аудита заказа #%(id)s.") % {"id": order_id})
 
     events = OrderEvent.objects.filter(order=order).order_by("created_at")[:200]
     if not events:
         return ActionResult(
-            text=f"По заказу #{order.id} аудит-лог пока пуст.",
-            actions=[{"label": "📦 Трекинг", "action": "track_order",
+            text=_("По заказу #%(id)s аудит-лог пока пуст.") % {"id": order.id},
+            actions=[{"label": _("📦 Трекинг"), "action": "track_order",
                       "params": {"order_id": order.id}}],
         )
 
     EVENT_LABELS = {
-        "order_created":         "🆕 Создан",
-        "status_changed":        "🔁 Статус",
-        "sla_status_changed":    "⏱ SLA",
-        "invoice_opened":        "🧾 Инвойс открыт",
-        "reserve_paid":          "💳 Резерв 10% оплачен",
-        "mid_payment_paid":      "💳 Промежуточный платёж",
-        "customs_payment_paid":  "💳 Таможенный платёж",
-        "final_payment_paid":    "💳 Остаток 90% оплачен",
-        "quality_confirmed":     "✅ Качество подтверждено",
-        "document_uploaded":     "📄 Документ",
-        "claim_opened":          "⚠️ Рекламация открыта",
-        "claim_status_changed":  "⚠️ Рекламация — статус",
+        "order_created":         _("🆕 Создан"),
+        "status_changed":        _("🔁 Статус"),
+        "sla_status_changed":    _("⏱ SLA"),
+        "invoice_opened":        _("🧾 Инвойс открыт"),
+        "reserve_paid":          _("💳 Резерв 10% оплачен"),
+        "mid_payment_paid":      _("💳 Промежуточный платёж"),
+        "customs_payment_paid":  _("💳 Таможенный платёж"),
+        "final_payment_paid":    _("💳 Остаток 90% оплачен"),
+        "quality_confirmed":     _("✅ Качество подтверждено"),
+        "document_uploaded":     _("📄 Документ"),
+        "claim_opened":          _("⚠️ Рекламация открыта"),
+        "claim_status_changed":  _("⚠️ Рекламация — статус"),
     }
     rows = []
     for e in events:
@@ -1027,16 +1052,16 @@ def audit_log(params, user, role):
 
     return ActionResult(
         text=(
-            f"📋 Аудит-лог заказа #{order.id}: {len(rows)} событий. "
-            f"Все действия фиксируются с источником и автором — это первичная "
-            f"сущность по ТЗ, статусы — отображение цепочки событий."
+            _("📋 Аудит-лог заказа #%(id)s: %(n)s событий. "
+              "Все действия фиксируются с источником и автором — это первичная "
+              "сущность по ТЗ, статусы — отображение цепочки событий.") % {"id": order.id, "n": len(rows)}
         ),
-        cards=[{"type": "list", "data": {"title": f"События #{order.id}", "rows": rows}}],
+        cards=[{"type": "list", "data": {"title": _("События #%(id)s") % {"id": order.id}, "rows": rows}}],
         actions=[
-            {"label": "📦 Трекинг", "action": "track_order",
+            {"label": _("📦 Трекинг"), "action": "track_order",
              "params": {"order_id": order.id}},
         ],
-        suggestions=["Где задержка?", "Кто менял статус?"],
+        suggestions=[_("Где задержка?"), _("Кто менял статус?")],
     )
 
 
@@ -1059,29 +1084,29 @@ def price_quote(params, user, role):
     base = params.get("base_price")
     if base is None:
         return ActionResult(
-            text="Конфигуратор цены: рассчитаю финальную стоимость клиенту по правилам платформы.",
+            text=_("Конфигуратор цены: рассчитаю финальную стоимость клиенту по правилам платформы."),
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": "💰 Конфигуратор цены",
+                    "title": _("💰 Конфигуратор цены"),
                     "submit_action": "price_quote",
-                    "submit_label": "Рассчитать",
+                    "submit_label": _("Рассчитать"),
                     "fields": [
-                        {"name": "base_price", "label": "Цена поставщика, USD",
+                        {"name": "base_price", "label": _("Цена поставщика, USD"),
                          "type": "number", "required": True,
-                         "placeholder": "например, 1250"},
-                        {"name": "basis", "label": "Базис (FOB / CIF / DDP / EXW / CIP)",
+                         "placeholder": _("например, 1250")},
+                        {"name": "basis", "label": _("Базис (FOB / CIF / DDP / EXW / CIP)"),
                          "default": "FOB"},
-                        {"name": "currency", "label": "Валюта оплаты (USD/RUB)",
+                        {"name": "currency", "label": _("Валюта оплаты (USD/RUB)"),
                          "default": "USD"},
-                        {"name": "we_handle_customs", "label": "Мы оформляем таможню? (yes/no)",
+                        {"name": "we_handle_customs", "label": _("Мы оформляем таможню? (yes/no)"),
                          "default": "no"},
-                        {"name": "countries", "label": "Страны поставщиков (через запятую)",
+                        {"name": "countries", "label": _("Страны поставщиков (через запятую)"),
                          "default": "CN"},
-                        {"name": "ports", "label": "Порты отправки (через запятую)",
+                        {"name": "ports", "label": _("Порты отправки (через запятую)"),
                          "default": "Qingdao"},
                         {"name": "annual_turnover",
-                         "label": "Годовой оборот клиента, USD (для скидки)",
+                         "label": _("Годовой оборот клиента, USD (для скидки)"),
                          "type": "number", "default": "0"},
                     ],
                     "fixed_params": {},
@@ -1092,7 +1117,7 @@ def price_quote(params, user, role):
     try:
         base_d = D(str(base))
     except Exception:
-        return ActionResult(text="Некорректная базовая цена.")
+        return ActionResult(text=_("Некорректная базовая цена."))
     basis = (params.get("basis") or "FOB").upper()
     currency = (params.get("currency") or "USD").upper()
     raw_customs = str(params.get("we_handle_customs") or "no").lower()
@@ -1111,17 +1136,21 @@ def price_quote(params, user, role):
         annual_turnover_usd=turnover,
     )
 
+    markup_pct = ((q.total - base_d) / base_d * 100)
     text = (
-        f"Рассчитал цену для клиента: {currency} {q.total:,.2f}\n"
-        f"Базис {basis} · поставщик {base_d:,.2f} → клиент {q.total:,.2f} "
-        f"(наценка {((q.total - base_d) / base_d * 100):.1f}%)."
+        _("Рассчитал цену для клиента: %(currency)s %(total)s\n"
+          "Базис %(basis)s · поставщик %(base)s → клиент %(total)s "
+          "(наценка %(markup).1f%%).") % {
+            "currency": currency, "total": f"{q.total:,.2f}", "basis": basis,
+            "base": f"{base_d:,.2f}", "markup": markup_pct,
+        }
     )
     return ActionResult(
         text=text,
         cards=[{
             "type": "price_breakdown",
             "data": {
-                "title": f"Расчёт цены · {basis} · {currency}",
+                "title": _("Расчёт цены · %(basis)s · %(currency)s") % {"basis": basis, "currency": currency},
                 "lines": [{"label": l.label, "amount": float(l.amount)} for l in q.lines],
                 "total": float(q.total),
                 "currency": currency,
@@ -1129,13 +1158,13 @@ def price_quote(params, user, role):
             },
         }],
         actions=[
-            {"label": "Пересчитать", "action": "price_quote", "params": {}},
-            {"label": "Создать RFQ", "action": "create_rfq", "params": {}},
+            {"label": _("Пересчитать"), "action": "price_quote", "params": {}},
+            {"label": _("Создать RFQ"), "action": "create_rfq", "params": {}},
         ],
         suggestions=[
-            "А если базис DDP?",
-            "Сколько при обороте $1M?",
-            "Логистика дешевле — как?",
+            _("А если базис DDP?"),
+            _("Сколько при обороте $1M?"),
+            _("Логистика дешевле — как?"),
         ],
     )
 
@@ -1153,10 +1182,10 @@ def kb_search(params, user, role):
     limit = min(int(params.get("limit") or 8), 20)
     if not query:
         return ActionResult(
-            text="📚 База знаний по запчастям: кросс-номера, OEM-каталоги, регламенты, "
-                 "таможенные коды, логистические маршруты. Введите запрос — найду.",
+            text=_("📚 База знаний по запчастям: кросс-номера, OEM-каталоги, регламенты, "
+                   "таможенные коды, логистические маршруты. Введите запрос — найду."),
             actions=[
-                {"label": "Что есть в базе?", "action": "kb_search",
+                {"label": _("Что есть в базе?"), "action": "kb_search",
                  "params": {"query": "обзор"}},
             ],
         )
@@ -1185,11 +1214,11 @@ def kb_search(params, user, role):
     if not chunks:
         return ActionResult(
             text=(
-                f"По запросу «{query}» в базе знаний пока ничего нет. "
-                f"Попробуйте поиск по каталогу — возможно, артикул есть как товар."
+                _("По запросу «%(query)s» в базе знаний пока ничего нет. "
+                  "Попробуйте поиск по каталогу — возможно, артикул есть как товар.") % {"query": query}
             ),
             actions=[
-                {"label": "Поиск в каталоге", "action": "search_parts",
+                {"label": _("Поиск в каталоге"), "action": "search_parts",
                  "params": {"query": query}},
             ],
         )
@@ -1201,13 +1230,13 @@ def kb_search(params, user, role):
     } for c in chunks]
 
     return ActionResult(
-        text=f"Нашёл {len(chunks)} записей в базе знаний по «{query}».",
-        cards=[{"type": "list", "data": {"title": "База знаний", "rows": rows}}],
+        text=_("Нашёл %(n)s записей в базе знаний по «%(query)s».") % {"n": len(chunks), "query": query},
+        cards=[{"type": "list", "data": {"title": _("База знаний"), "rows": rows}}],
         actions=[
-            {"label": "Поиск в каталоге", "action": "search_parts",
+            {"label": _("Поиск в каталоге"), "action": "search_parts",
              "params": {"query": query}},
         ],
-        suggestions=[f"Найди аналог {query}", "Что ещё про этот узел?"],
+        suggestions=[_("Найди аналог %(query)s") % {"query": query}, _("Что ещё про этот узел?")],
     )
 
 
@@ -1241,15 +1270,15 @@ def product_detail(params, user, role):
 
     pid = params.get("part_id") or params.get("id")
     if not pid:
-        return ActionResult(text="Не указан ID товара.")
+        return ActionResult(text=_("Не указан ID товара."))
     try:
         p = Part.objects.select_related("brand", "category").get(id=pid)
     except Part.DoesNotExist:
-        return ActionResult(text=f"Товар #{pid} не найден.")
+        return ActionResult(text=_("Товар #%(id)s не найден.") % {"id": pid})
 
     # Доступ: для seller — только свой товар
     if role == "seller" and p.seller_id != user.id:
-        return ActionResult(text=f"Товар #{pid} не ваш.")
+        return ActionResult(text=_("Товар #%(id)s не ваш.") % {"id": pid})
 
     now = timezone.now()
     month_ago = now - timedelta(days=30)
@@ -1264,39 +1293,44 @@ def product_detail(params, user, role):
         n=Count("id"), q=Sum("quantity"), r=Sum("unit_price"))
 
     text = (
-        f"⚙️ {p.oem_number} — {p.title}\n"
-        f"Бренд: {p.brand.name if p.brand else '—'} · Цена: ${p.price:,.2f} USD · "
-        f"Остаток: {p.stock_quantity} шт · {'активен' if p.is_active else 'архив'}"
+        _("⚙️ %(oem)s — %(title)s\n"
+          "Бренд: %(brand)s · Цена: $%(price)s USD · "
+          "Остаток: %(stock)s шт · %(state)s") % {
+            "oem": p.oem_number, "title": p.title,
+            "brand": (p.brand.name if p.brand else '—'),
+            "price": f"{p.price:,.2f}", "stock": p.stock_quantity,
+            "state": (_("активен") if p.is_active else _("архив")),
+        }
     )
 
     actions_list = [
-        {"label": "✏️ Редактировать", "action": "edit_product",
+        {"label": _("✏️ Редактировать"), "action": "edit_product",
          "params": {"part_id": p.id}},
-        {"label": ("🚫 Скрыть" if p.is_active else "✓ Активировать"),
+        {"label": (_("🚫 Скрыть") if p.is_active else _("✓ Активировать")),
          "action": "toggle_product", "params": {"part_id": p.id}},
-        {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
+        {"label": _("📦 Каталог"), "action": "seller_catalog", "params": {}},
     ]
     return ActionResult(
         text=text,
         cards=[{
             "type": "kpi_grid",
             "data": {
-                "title": f"{p.oem_number} · 30 / 90 / 365 дней",
+                "title": _("%(oem)s · 30 / 90 / 365 дней") % {"oem": p.oem_number},
                 "kpis": [
-                    {"label": "Заказов 30д", "value": sold_30["n"] or 0,
-                     "sub": f"{int(sold_30['q'] or 0)} шт"},
-                    {"label": "Заказов 90д", "value": sold_90["n"] or 0,
-                     "sub": f"{int(sold_90['q'] or 0)} шт"},
-                    {"label": "Заказов 365д","value": sold_365["n"] or 0,
-                     "sub": f"{int(sold_365['q'] or 0)} шт"},
-                    {"label": "Выручка 30д", "value": f"${float(sold_30['r'] or 0):,.0f}"},
-                    {"label": "Выручка 90д", "value": f"${float(sold_90['r'] or 0):,.0f}"},
-                    {"label": "Выручка 365д","value": f"${float(sold_365['r'] or 0):,.0f}"},
+                    {"label": _("Заказов 30д"), "value": sold_30["n"] or 0,
+                     "sub": _("%(n)s шт") % {"n": int(sold_30['q'] or 0)}},
+                    {"label": _("Заказов 90д"), "value": sold_90["n"] or 0,
+                     "sub": _("%(n)s шт") % {"n": int(sold_90['q'] or 0)}},
+                    {"label": _("Заказов 365д"),"value": sold_365["n"] or 0,
+                     "sub": _("%(n)s шт") % {"n": int(sold_365['q'] or 0)}},
+                    {"label": _("Выручка 30д"), "value": f"${float(sold_30['r'] or 0):,.0f}"},
+                    {"label": _("Выручка 90д"), "value": f"${float(sold_90['r'] or 0):,.0f}"},
+                    {"label": _("Выручка 365д"),"value": f"${float(sold_365['r'] or 0):,.0f}"},
                 ],
             },
         }],
         actions=actions_list,
-        suggestions=["Изменить цену", "История продаж", "Скрыть позицию"],
+        suggestions=[_("Изменить цену"), _("История продаж"), _("Скрыть позицию")],
     )
 
 
@@ -1307,11 +1341,11 @@ def edit_product(params, user, role):
     from marketplace.models import Brand, Part
     pid = params.get("part_id")
     if not pid:
-        return ActionResult(text="Не указан товар.")
+        return ActionResult(text=_("Не указан товар."))
     try:
         p = Part.objects.select_related("brand").get(id=pid, seller=user)
     except Part.DoesNotExist:
-        return ActionResult(text="Товар не найден или не ваш.")
+        return ActionResult(text=_("Товар не найден или не ваш."))
 
     # Все редактируемые поля (inline-редактор каталога шлёт их через data-field).
     # «Продано»/оборот не редактируем — считаются из заказов.
@@ -1321,7 +1355,7 @@ def edit_product(params, user, role):
                 "warehouse_address", "weight")
     if all(params.get(k) in (None, "") for k in EDITABLE):
         return ActionResult(
-            text=f"Редактирование товара {p.oem_number} ({p.title}).",
+            text=_('Редактирование товара %(p0)s (%(p1)s).') % {"p0": f'{p.oem_number}', "p1": f'{p.title}'},
             cards=[{
                 "type": "form",
                 "data": {
@@ -1329,13 +1363,13 @@ def edit_product(params, user, role):
                     "submit_action": "edit_product",
                     "submit_label": "Сохранить",
                     "fields": [
-                        {"name": "title", "label": "Наименование",
+                        {"name": "title", "label": _("Наименование"),
                          "default": p.title or ""},
-                        {"name": "price", "label": "Цена, USD", "type": "number",
+                        {"name": "price", "label": _("Цена, USD"), "type": "number",
                          "default": str(p.price or 0)},
-                        {"name": "stock_qty", "label": "Остаток на складе",
+                        {"name": "stock_qty", "label": _("Остаток на складе"),
                          "type": "number", "default": str(p.stock_quantity or 0)},
-                        {"name": "brand", "label": "Бренд",
+                        {"name": "brand", "label": _("Бренд"),
                          "default": p.brand.name if p.brand else ""},
                     ],
                     "fixed_params": {"part_id": p.id},
@@ -1405,7 +1439,7 @@ def edit_product(params, user, role):
 
     nb = params.get("brand")
     if nb is not None and str(nb).strip():
-        b, _ = Brand.objects.get_or_create(name=str(nb).strip())
+        b, _created = Brand.objects.get_or_create(name=str(nb).strip())
         if p.brand_id != b.id:
             p.brand = b; changed += 1
 
@@ -1414,7 +1448,7 @@ def edit_product(params, user, role):
     return ActionResult(
         text=(f"✓ Товар {p.oem_number} обновлён." if changed else "Изменений нет."),
         actions=[
-            {"label": "📋 Каталог", "action": "seller_catalog", "params": {}},
+            {"label": _("📋 Каталог"), "action": "seller_catalog", "params": {}},
         ],
     )
 
@@ -1435,8 +1469,8 @@ def seller_qr(params, user, role):
         .distinct().order_by("-created_at")[:10]
     )
     rows = [{
-        "title": f"Заказ #{o.id} · Покупатель",
-        "subtitle": f"Сумма ${o.total_amount:,.0f} · {o.get_status_display()}",
+        "title": _('Заказ #%(p0)s · Покупатель') % {"p0": f'{o.id}'},
+        "subtitle": _('Сумма $%(p0)s · %(p1)s') % {"p0": f'{o.total_amount:,.0f}', "p1": f'{o.get_status_display()}'},
         "badge": "QR",
         "url": f"/seller/qr/?order={o.id}",
     } for o in qs]
@@ -1445,18 +1479,18 @@ def seller_qr(params, user, role):
             text=("🔍 Сейчас нет заказов на этапе отгрузки — QR-сканирование "
                   "понадобится, когда заказ будет готов к отправке."),
             actions=[
-                {"label": "🚚 К отгрузке", "action": "seller_pipeline", "params": {}},
+                {"label": _("🚚 К отгрузке"), "action": "seller_pipeline", "params": {}},
             ],
         )
     return ActionResult(
-        text=f"🔍 QR-контроль: {len(rows)} заказа(ов) можно сканировать перед отгрузкой.",
+        text=_('🔍 QR-контроль: %(p0)s заказа(ов) можно сканировать перед отгрузкой.') % {"p0": f'{len(rows)}'},
         cards=[{
             "type": "list",
-            "data": {"title": "QR-контроль", "rows": rows},
+            "data": {"title": _("QR-контроль"), "rows": rows},
         }],
         actions=[
-            {"label": "🚚 К отгрузке", "action": "seller_pipeline", "params": {}},
-            {"label": "📊 Дашборд",   "action": "seller_dashboard", "params": {}},
+            {"label": _("🚚 К отгрузке"), "action": "seller_pipeline", "params": {}},
+            {"label": _("📊 Дашборд"),   "action": "seller_dashboard", "params": {}},
         ],
         suggestions=["Как сделать QR?", "Что отгружать?"],
     )
@@ -1477,10 +1511,10 @@ def seller_logistics(params, user, role):
     )
     if not qs:
         return ActionResult(
-            text="🚚 Сейчас в пути нет ваших заказов.",
+            text=_("🚚 Сейчас в пути нет ваших заказов."),
             actions=[
-                {"label": "🚚 К отгрузке", "action": "seller_pipeline", "params": {}},
-                {"label": "📊 Дашборд",   "action": "seller_dashboard", "params": {}},
+                {"label": _("🚚 К отгрузке"), "action": "seller_pipeline", "params": {}},
+                {"label": _("📊 Дашборд"),   "action": "seller_dashboard", "params": {}},
             ],
         )
     rows = []
@@ -1492,19 +1526,19 @@ def seller_logistics(params, user, role):
         if tracking:
             sub += f" · {carrier}: {tracking}"
         rows.append({
-            "title": f"Заказ #{o.id} · Покупатель",
+            "title": _('Заказ #%(p0)s · Покупатель') % {"p0": f'{o.id}'},
             "subtitle": sub,
             "badge": "Трекинг",
         })
     return ActionResult(
-        text=f"🚛 Активных отгрузок: {len(qs)}.",
+        text=_('🚛 Активных отгрузок: %(p0)s.') % {"p0": f'{len(qs)}'},
         cards=[{
             "type": "list",
-            "data": {"title": "Логистика", "rows": rows},
+            "data": {"title": _("Логистика"), "rows": rows},
         }],
         actions=[
-            {"label": "🚚 К отгрузке", "action": "seller_pipeline", "params": {}},
-            {"label": "📊 Дашборд",   "action": "seller_dashboard", "params": {}},
+            {"label": _("🚚 К отгрузке"), "action": "seller_pipeline", "params": {}},
+            {"label": _("📊 Дашборд"),   "action": "seller_dashboard", "params": {}},
         ],
         suggestions=["Где заказ #N?", "Кто на таможне?"],
     )
@@ -1517,20 +1551,20 @@ def seller_negotiations(params, user, role):
     qs = RFQ.objects.filter(status__in=["new", "processing"]).order_by("-created_at")[:15]
     if not qs:
         return ActionResult(
-            text="💬 Активных переговоров нет. Все RFQ обработаны.",
-            actions=[{"label": "📋 Все RFQ", "action": "get_rfq_status", "params": {}}],
+            text=_("💬 Активных переговоров нет. Все RFQ обработаны."),
+            actions=[{"label": _("📋 Все RFQ"), "action": "get_rfq_status", "params": {}}],
         )
     rows = [{
-        "title": f"RFQ #{r.id} · Покупатель",
+        "title": _('RFQ #%(p0)s · Покупатель') % {"p0": f'{r.id}'},
         "subtitle": f"{r.get_status_display()} · {r.created_at.strftime('%d.%m.%Y')}",
         "badge": "Открыть",
     } for r in qs]
     return ActionResult(
-        text=f"💬 Активных переговоров: {len(rows)}. Откройте, чтобы ответить ценой.",
-        cards=[{"type": "list", "data": {"title": "Переговоры", "rows": rows}}],
+        text=_('💬 Активных переговоров: %(p0)s. Откройте, чтобы ответить ценой.') % {"p0": f'{len(rows)}'},
+        cards=[{"type": "list", "data": {"title": _("Переговоры"), "rows": rows}}],
         actions=[
-            {"label": "📋 Все RFQ", "action": "get_rfq_status", "params": {}},
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+            {"label": _("📋 Все RFQ"), "action": "get_rfq_status", "params": {}},
+            {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
         ],
         suggestions=["Открыть RFQ #N", "Спрос за неделю"],
     )
@@ -1573,7 +1607,7 @@ def upload_pricelist(params, user, role):
                 "вы проверите и подтвердите."
             ),
             cards=[{"type": "int_methods", "data": {
-                "title": "Способы интеграции",
+                "title": _("Способы интеграции"),
                 "methods": [
                     {
                         "icon": "📋",
@@ -1585,7 +1619,7 @@ def upload_pricelist(params, user, role):
                             "(раз в час)."
                         ),
                         "secondary": {
-                            "label": "📥 Создать копию шаблона",
+                            "label": _("📥 Создать копию шаблона"),
                             # Публичный Google Sheet с прайс-шаблоном
                             # Consolidator (16 колонок: PartNumber, CrossNumber,
                             # Brand, Name, Quantity, Condition, Price_EXW, …).
@@ -1594,20 +1628,20 @@ def upload_pricelist(params, user, role):
                             "url": "https://docs.google.com/spreadsheets/d/"
                                    "1RPZuoDgAd7mh4iuvC7HvmoTY9bTCPwWzPAwOEEiYhas/copy",
                         },
-                        "hint": "Заполните → откройте доступ → вставьте ссылку ниже",
+                        "hint": _("Заполните → откройте доступ → вставьте ссылку ниже"),
                         "input": {
                             "name": "gsheet_url", "type": "url",
                             "placeholder": "https://docs.google.com/spreadsheets/d/...",
                         },
                         "primary": {
-                            "label": "Подключить",
+                            "label": _("Подключить"),
                             "action": "connect_gsheet",
                             "params": {},
                         },
                     },
                     {
                         "icon": "🧠",
-                        "title": "Загрузить файл (Excel / CSV)",
+                        "title": _("Загрузить файл (Excel / CSV)"),
                         "status": "recommended",
                         "description": (
                             "Разовая загрузка. Система распознаёт заголовки "
@@ -1616,14 +1650,14 @@ def upload_pricelist(params, user, role):
                             "без дубликатов."
                         ),
                         "primary": {
-                            "label": "📂 Выбрать файл",
+                            "label": _("📂 Выбрать файл"),
                             "action": "__open_file_picker",
                             "params": {"accept": ".xlsx,.xls,.csv,.tsv,.txt"},
                         },
                     },
                     {
                         "icon": "📥",
-                        "title": "Скачать шаблон",
+                        "title": _("Скачать шаблон"),
                         "status": "active",
                         "description": (
                             "Excel-шаблон с инструкцией внутри: пошаговое "
@@ -1631,7 +1665,7 @@ def upload_pricelist(params, user, role):
                             "три примера строк."
                         ),
                         "primary": {
-                            "label": "Скачать .xlsx",
+                            "label": _("Скачать .xlsx"),
                             "url": "/api/assistant/pricelist-template.xlsx",
                         },
                     },
@@ -1648,7 +1682,7 @@ def upload_pricelist(params, user, role):
                 ],
             }}],
             actions=[
-                {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
+                {"label": _("📦 Каталог"), "action": "seller_catalog", "params": {}},
             ],
             suggestions=[
                 "Что делать если в прайсе нет валюты?",
@@ -1700,12 +1734,10 @@ def upload_pricelist(params, user, role):
         } for r in rows[:8]]
         return ActionResult(
             text=(
-                f"📋 Превью импорта · {len(rows)} строк "
-                f"(к импорту), {len(failed_lines)} ошибок.\n"
-                f"Подтверди — обновлю существующие и создам новые."
+                _('📋 Превью импорта · %(p0)s строк (к импорту), %(p1)s ошибок.\nПодтверди — обновлю существующие и создам новые.') % {"p0": f'{len(rows)}', "p1": f'{len(failed_lines)}'}
             ),
             cards=[{"type": "draft", "data": {
-                "title": f"Импорт прайса: {len(rows)} позиций",
+                "title": _('Импорт прайса: %(p0)s позиций') % {"p0": f'{len(rows)}'},
                 "rows": preview_rows + (
                     [{"label": "…", "value": f"и ещё {len(rows) - 8} строк"}]
                     if len(rows) > 8 else []
@@ -1715,9 +1747,9 @@ def upload_pricelist(params, user, role):
                     if failed_lines else []
                 ),
                 "confirm_action": "upload_pricelist",
-                "confirm_label": f"✓ Импортировать {len(rows)} позиций",
+                "confirm_label": _('✓ Импортировать %(p0)s позиций') % {"p0": f'{len(rows)}'},
                 "confirm_params": {"csv_data": csv_data, "confirmed": True},
-                "cancel_label": "Отмена",
+                "cancel_label": _("Отмена"),
             }}],
         )
 
@@ -1748,14 +1780,11 @@ def upload_pricelist(params, user, role):
 
     return ActionResult(
         text=(
-            f"✅ Прайс импортирован.\n"
-            f"  • Новых позиций: {created}\n"
-            f"  • Обновлено: {updated}\n"
-            f"  • Пропущено (формат): {len(failed_lines)}"
+            _('✅ Прайс импортирован.\n  • Новых позиций: %(p0)s\n  • Обновлено: %(p1)s\n  • Пропущено (формат): %(p2)s') % {"p0": f'{created}', "p1": f'{updated}', "p2": f'{len(failed_lines)}'}
         ),
         actions=[
-            {"label": "📦 Открыть каталог", "action": "seller_catalog", "params": {}},
-            {"label": "📊 Спрос на маркетплейсе", "action": "get_demand_report", "params": {}},
+            {"label": _("📦 Открыть каталог"), "action": "seller_catalog", "params": {}},
+            {"label": _("📊 Спрос на маркетплейсе"), "action": "get_demand_report", "params": {}},
         ],
     )
 
@@ -1779,23 +1808,23 @@ def import_pricelist_preview(params, user, role):
         cards=[{
             "type": "list",
             "data": {
-                "title": "Способы импорта",
+                "title": _("Способы импорта"),
                 "rows": [
-                    {"title": "Скачать шаблон CSV",
-                     "subtitle": "Готовый файл с примером", "badge": "CSV",
+                    {"title": _("Скачать шаблон CSV"),
+                     "subtitle": _("Готовый файл с примером"), "badge": "CSV",
                      "url": "/seller/upload/template.csv"},
-                    {"title": "Загрузить через bulk",
-                     "subtitle": "Старый интерфейс, поддерживает Excel/Google Sheets",
+                    {"title": _("Загрузить через bulk"),
+                     "subtitle": _("Старый интерфейс, поддерживает Excel/Google Sheets"),
                      "badge": "Bulk", "url": "/seller/upload/"},
-                    {"title": "Перетащить в чат",
-                     "subtitle": "Файл .xlsx/.csv прямо в окно чата (для buyer'а)",
+                    {"title": _("Перетащить в чат"),
+                     "subtitle": _("Файл .xlsx/.csv прямо в окно чата (для buyer'а)"),
                      "badge": "Drop", "url": None},
                 ],
             },
         }],
         actions=[
-            {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
-            {"label": "➕ По одному", "action": "add_product", "params": {}},
+            {"label": _("📦 Каталог"), "action": "seller_catalog", "params": {}},
+            {"label": _("➕ По одному"), "action": "add_product", "params": {}},
         ],
         suggestions=["Скачать шаблон", "Добавить товар по одному"],
     )
@@ -1831,7 +1860,7 @@ def seller_warehouses(params, user, role):
         try:
             w = SellerWarehouse.objects.get(id=int(wid), seller=user)
         except (SellerWarehouse.DoesNotExist, ValueError, TypeError):
-            return ActionResult(text="Склад не найден.")
+            return ActionResult(text=_("Склад не найден."))
         name = w.name
         # Bulk UPDATE Part.warehouse_id = NULL для всех позиций склада
         with connection.cursor() as cur:
@@ -1845,7 +1874,7 @@ def seller_warehouses(params, user, role):
         return ActionResult(
             text=(f"✓ Склад «{name}» удалён." +
                   (f" {unlinked} позиций переведены в «без склада»." if unlinked else "")),
-            actions=[{"label": "📦 К каталогу",
+            actions=[{"label": _("📦 К каталогу"),
                        "action": "seller_catalog", "params": {}}],
         )
 
@@ -1854,12 +1883,12 @@ def seller_warehouses(params, user, role):
         try:
             w = SellerWarehouse.objects.get(id=int(wid), seller=user)
         except (SellerWarehouse.DoesNotExist, ValueError, TypeError):
-            return ActionResult(text="Склад не найден.")
+            return ActionResult(text=_("Склад не найден."))
         w.name = rename_to[:120]
         w.save(update_fields=["name", "updated_at"])
         return ActionResult(
-            text=f"✓ Склад переименован в «{w.name}».",
-            actions=[{"label": "📦 К каталогу",
+            text=_('✓ Склад переименован в «%(p0)s».') % {"p0": f'{w.name}'},
+            actions=[{"label": _("📦 К каталогу"),
                        "action": "seller_catalog", "params": {}}],
         )
 
@@ -1886,8 +1915,8 @@ def seller_warehouses(params, user, role):
 
     if not warehouses and not orphans_count:
         return ActionResult(
-            text="У вас пока нет складов. Каждая загрузка прайса создаст склад автоматически.",
-            actions=[{"label": "📤 Загрузить прайс",
+            text=_("У вас пока нет складов. Каждая загрузка прайса создаст склад автоматически."),
+            actions=[{"label": _("📤 Загрузить прайс"),
                        "action": "upload_pricelist", "params": {}}],
         )
 
@@ -1952,15 +1981,15 @@ def seller_warehouses(params, user, role):
         cards=[{
             "type": "warehouses",
             "data": {
-                "title": "Мои товары — выберите склад",
+                "title": _("Мои товары — выберите склад"),
                 "rows": rows,
                 "refreshed_at": refreshed_at,
             },
         }],
         actions=[
-            {"label": "🔄 Обновить",     "action": "seller_warehouses", "params": {}},
-            {"label": "📤 Новая загрузка", "action": "upload_pricelist", "params": {}},
-            {"label": "📦 Все товары",    "action": "seller_catalog", "params": {}},
+            {"label": _("🔄 Обновить"),     "action": "seller_warehouses", "params": {}},
+            {"label": _("📤 Новая загрузка"), "action": "upload_pricelist", "params": {}},
+            {"label": _("📦 Все товары"),    "action": "seller_catalog", "params": {}},
         ],
         suggestions=["Переименовать склад", "Удалить пустой склад"],
     )
@@ -2033,8 +2062,8 @@ def seller_catalog(params, user, role):
             text=("В каталоге пока нет товаров." if not q else
                   f"По запросу «{q}» товаров не найдено."),
             actions=[
-                {"label": "➕ Добавить товар", "action": "add_product", "params": {}},
-                {"label": "📤 Загрузить прайс", "action": "upload_pricelist", "params": {}},
+                {"label": _("➕ Добавить товар"), "action": "add_product", "params": {}},
+                {"label": _("📤 Загрузить прайс"), "action": "upload_pricelist", "params": {}},
             ],
         )
 
@@ -2100,16 +2129,16 @@ def seller_catalog(params, user, role):
         intro += "."
 
     actions = [
-        {"label": "➕ Добавить товар", "action": "add_product", "params": {}},
-        {"label": "📤 Загрузить прайс", "action": "upload_pricelist", "params": {}},
+        {"label": _("➕ Добавить товар"), "action": "add_product", "params": {}},
+        {"label": _("📤 Загрузить прайс"), "action": "upload_pricelist", "params": {}},
         {"label": ("📁 Архив" if status == "active" else "📂 Активные"),
          "action": "seller_catalog",
          "params": {"status": "archived" if status == "active" else "active"}},
-        {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+        {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
     ]
     if shown_end < total_count:
         actions.insert(0, {
-            "label": f"⬇️ Показать ещё {min(limit, total_count - shown_end)}",
+            "label": _('⬇️ Показать ещё %(p0)s') % {"p0": f'{min(limit, total_count - shown_end)}'},
             "action": "seller_catalog",
             "params": {"q": q, "status": status, "limit": limit,
                        "offset": shown_end,
@@ -2118,14 +2147,14 @@ def seller_catalog(params, user, role):
     if warehouse_id:
         # При фильтре по складу — кнопка возврата самой первой, чтобы
         # пользователь сразу видел путь назад в «Мои товары».
-        actions.insert(0, {"label": "📦 Мои товары",
+        actions.insert(0, {"label": _("📦 Мои товары"),
                             "action": "seller_warehouses", "params": {}})
 
     cards = []
     cards.append({
         "type": "catalog",
         "data": {
-            "title": "Каталог" + (warehouse_label if warehouse_label else " — все позиции"),
+            "title": _("Каталог") + (warehouse_label if warehouse_label else " — все позиции"),
             "rows": rows,
             "total_count": total_count,
             "offset": offset,
@@ -2206,7 +2235,7 @@ def _build_warehouses_card(user, active_id=None) -> dict | None:
     return {
         "type": "warehouses",
         "data": {
-            "title": f"📁 Склады ({len(warehouses)})",
+            "title": _('📁 Склады (%(p0)s)') % {"p0": f'{len(warehouses)}'},
             "rows": rows,
             "compact": True,  # горизонтальные чипы вместо больших карточек
             "active_id": active_id,  # подсветить активный фильтр
@@ -2220,21 +2249,20 @@ def toggle_product(params, user, role):
     from marketplace.models import Part
     pid = params.get("part_id")
     if not pid:
-        return ActionResult(text="Не указан ID товара.")
+        return ActionResult(text=_("Не указан ID товара."))
     try:
         p = Part.objects.get(id=pid, seller=user)
     except Part.DoesNotExist:
-        return ActionResult(text=f"Товар #{pid} не найден или не ваш.")
+        return ActionResult(text=_('Товар #%(p0)s не найден или не ваш.') % {"p0": f'{pid}'})
     new_state = params.get("active")
     if new_state is None:
         new_state = not p.is_active
     p.is_active = bool(new_state)
     p.save(update_fields=["is_active"])
     return ActionResult(
-        text=(f"✓ Товар «{p.title}» ({p.oem_number}) "
-              f"{'активирован' if p.is_active else 'скрыт из каталога'}."),
+        text=(_('✓ Товар «%(p0)s» (%(p1)s) %(p2)s.') % {"p0": f'{p.title}', "p1": f'{p.oem_number}', "p2": f"{('активирован' if p.is_active else 'скрыт из каталога')}"}),
         actions=[
-            {"label": "Каталог", "action": "seller_catalog", "params": {}},
+            {"label": _("Каталог"), "action": "seller_catalog", "params": {}},
         ],
     )
 
@@ -2253,23 +2281,23 @@ def add_product(params, user, role):
     price = params.get("price")
     if not (article and title and price is not None):
         return ActionResult(
-            text="Добавление товара в каталог.",
+            text=_("Добавление товара в каталог."),
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": "➕ Новый товар",
+                    "title": _("➕ Новый товар"),
                     "submit_action": "add_product",
                     "submit_label": "Добавить",
                     "fields": [
-                        {"name": "article", "label": "OEM-артикул",
+                        {"name": "article", "label": _("OEM-артикул"),
                          "placeholder": "C306-3673", "required": True},
-                        {"name": "title", "label": "Наименование",
+                        {"name": "title", "label": _("Наименование"),
                          "placeholder": "Voltage Regulator (FAW)", "required": True},
-                        {"name": "price", "label": "Цена, USD",
+                        {"name": "price", "label": _("Цена, USD"),
                          "type": "number", "placeholder": "96", "required": True},
-                        {"name": "stock_qty", "label": "Остаток на складе",
+                        {"name": "stock_qty", "label": _("Остаток на складе"),
                          "type": "number", "placeholder": "10", "default": "1"},
-                        {"name": "brand", "label": "Бренд",
+                        {"name": "brand", "label": _("Бренд"),
                          "placeholder": "FAW / Komatsu / Bosch"},
                     ],
                     "fixed_params": {},
@@ -2280,16 +2308,16 @@ def add_product(params, user, role):
     try:
         price_d = Decimal(str(price))
     except Exception:
-        return ActionResult(text="Некорректная цена.")
+        return ActionResult(text=_("Некорректная цена."))
 
     brand_name = (params.get("brand") or "").strip()
     brand = None
     if brand_name:
-        brand, _ = Brand.objects.get_or_create(name=brand_name)
+        brand, _created = Brand.objects.get_or_create(name=brand_name)
     category = Category.objects.first()  # дефолтная категория
 
     if Part.objects.filter(seller=user, oem_number=article).exists():
-        return ActionResult(text=f"⚠️ Товар с артикулом {article} у вас уже есть.")
+        return ActionResult(text=_('⚠️ Товар с артикулом %(p0)s у вас уже есть.') % {"p0": f'{article}'})
 
     p = Part.objects.create(
         seller=user,
@@ -2302,7 +2330,7 @@ def add_product(params, user, role):
         is_active=True,
     )
     return ActionResult(
-        text=f"✓ Товар «{p.title}» ({p.oem_number}) добавлен в каталог.",
+        text=_('✓ Товар «%(p0)s» (%(p1)s) добавлен в каталог.') % {"p0": f'{p.title}', "p1": f'{p.oem_number}'},
         cards=[{
             "type": "product",
             "data": {
@@ -2312,8 +2340,8 @@ def add_product(params, user, role):
             },
         }],
         actions=[
-            {"label": "📋 Каталог", "action": "seller_catalog", "params": {}},
-            {"label": "➕ Ещё товар", "action": "add_product", "params": {}},
+            {"label": _("📋 Каталог"), "action": "seller_catalog", "params": {}},
+            {"label": _("➕ Ещё товар"), "action": "add_product", "params": {}},
         ],
     )
 
@@ -2338,11 +2366,11 @@ def rfq_detail(params, user, role):
     from marketplace.models import RFQ, RFQItem
     rfq_id = params.get("rfq_id")
     if not rfq_id:
-        return ActionResult(text="Не указан ID RFQ.")
+        return ActionResult(text=_("Не указан ID RFQ."))
     try:
         rfq = RFQ.objects.select_related("created_by").get(id=rfq_id)
     except RFQ.DoesNotExist:
-        return ActionResult(text=f"RFQ #{rfq_id} не найден.")
+        return ActionResult(text=_('RFQ #%(p0)s не найден.') % {"p0": f'{rfq_id}'})
 
     # IDOR-гейт: продавец видит RFQ только если он ему РЕЛЕВАНТЕН — есть его
     # котировка ИЛИ позиции RFQ сматчены на его каталог. Иначе чужой запрос
@@ -2353,7 +2381,7 @@ def rfq_detail(params, user, role):
         relevant = (_Quote.objects.filter(rfq=rfq, seller=eff).exists()
                     or RFQItem.objects.filter(rfq=rfq, matched_part__seller=eff).exists())
         if not relevant:
-            return ActionResult(text=f"RFQ #{rfq_id} вам недоступен.")
+            return ActionResult(text=_('RFQ #%(p0)s вам недоступен.') % {"p0": f'{rfq_id}'})
 
     items = list(RFQItem.objects.filter(rfq=rfq).select_related("matched_part"))
     items_text = "\n".join(
@@ -2374,16 +2402,16 @@ def rfq_detail(params, user, role):
     actions_list = []
     if role == "seller" and rfq.status in ("new", "processing"):
         actions_list.append({
-            "label": "💬 Ответить ценой",
+            "label": _("💬 Ответить ценой"),
             "action": "respond_rfq_form",
             "params": {"rfq_id": rfq.id},
         })
         actions_list.append({
-            "label": "❌ Отклонить",
+            "label": _("❌ Отклонить"),
             "action": "respond_rfq",
             "params": {"rfq_id": rfq.id, "decline": True},
         })
-    actions_list.append({"label": "📋 Все RFQ", "action": "get_rfq_status", "params": {}})
+    actions_list.append({"label": _("📋 Все RFQ"), "action": "get_rfq_status", "params": {}})
 
     # НЕ отдаём карточку type:"rfq" — это покупательский трекер заявки (сколько
     # поставщиков ответило, бюджет, ЛУЧШАЯ КОТИРОВКА = цены конкурентов, кнопка
@@ -2414,8 +2442,8 @@ def seller_customers(params, user, role):
     from marketplace.models import Customer
     owner = _effective_seller(user)
     custs = list(Customer.objects.filter(owner=owner, is_active=True))
-    add_btn = {"label": "➕ Завести заказчика", "action": "add_customer", "params": {}}
-    home_btn = {"label": "🏠 Главная", "action": "go_home", "params": {}}
+    add_btn = {"label": _("➕ Завести заказчика"), "action": "add_customer", "params": {}}
+    home_btn = {"label": _("🏠 Главная"), "action": "go_home", "params": {}}
     if not custs:
         return ActionResult(
             text=("👥 Заказчиков пока нет. Заведите первого по ИНН — он попадёт в вашу "
@@ -2456,7 +2484,7 @@ def seller_customers(params, user, role):
     head += ". 🟢 закреплён · 🟡 под вопросом · ⚪️ лид."
     return ActionResult(
         text=head,
-        cards=[{"type": "list", "data": {"title": "Заказчики", "rows": rows}}],
+        cards=[{"type": "list", "data": {"title": _("Заказчики"), "rows": rows}}],
         actions=[add_btn, home_btn],
         suggestions=["Завести заказчика"],
     )
@@ -2471,16 +2499,16 @@ def add_customer(params, user, role):
     name = (params.get("name") or "").strip()
     if not inn or not name:
         return ActionResult(
-            text="Заведите заказчика: ИНН и название. КПП и юр.адрес подтянем автоматически.",
+            text=_("Заведите заказчика: ИНН и название. КПП и юр.адрес подтянем автоматически."),
             cards=[{"type": "form", "data": {
-                "title": "👥 Новый заказчик",
+                "title": _("👥 Новый заказчик"),
                 "submit_action": "add_customer",
                 "submit_label": "Завести",
                 "fields": [
-                    {"name": "inn", "label": "ИНН", "type": "text", "required": True, "placeholder": "7707083893"},
-                    {"name": "name", "label": "Название", "type": "text", "required": True, "placeholder": "ООО «Норильск-Снаб»"},
-                    {"name": "contact_name", "label": "Контактное лицо", "type": "text", "placeholder": "Иван Петров (опц.)"},
-                    {"name": "phone", "label": "Телефон", "type": "text", "placeholder": "+7… (опц.)"},
+                    {"name": "inn", "label": _("ИНН"), "type": "text", "required": True, "placeholder": "7707083893"},
+                    {"name": "name", "label": _("Название"), "type": "text", "required": True, "placeholder": _("ООО «Норильск-Снаб»")},
+                    {"name": "contact_name", "label": _("Контактное лицо"), "type": "text", "placeholder": _("Иван Петров (опц.)")},
+                    {"name": "phone", "label": _("Телефон"), "type": "text", "placeholder": _("+7… (опц.)")},
                 ],
                 "fixed_params": {},
             }}],
@@ -2488,8 +2516,8 @@ def add_customer(params, user, role):
     existing = Customer.objects.filter(owner=owner, inn=inn).first()
     if existing:
         return ActionResult(
-            text=f"👥 Заказчик с ИНН {inn} уже есть: «{existing.name}».",
-            actions=[{"label": "← К заказчикам", "action": "seller_customers", "params": {}}],
+            text=_('👥 Заказчик с ИНН %(p0)s уже есть: «%(p1)s».') % {"p0": f'{inn}', "p1": f'{existing.name}'},
+            actions=[{"label": _("← К заказчикам"), "action": "seller_customers", "params": {}}],
         )
     # Резолв КПП/юр.адреса по ИНН (RU) — переиспользуем KYB-агрегатор.
     kpp, addr = "", ""
@@ -2512,9 +2540,9 @@ def add_customer(params, user, role):
               + ". Заведения мало — отправьте инвайт: когда клиент подтвердит, "
               "он закрепится за вами и начнёт приносить начисления."),
         actions=[
-            {"label": "📨 Пригласить — подтвердить", "action": "invite_customer", "params": {"id": str(c.id)}},
-            {"label": "📂 Открыть карточку", "action": "customer_detail", "params": {"id": str(c.id)}},
-            {"label": "➕ Ещё заказчик", "action": "add_customer", "params": {}},
+            {"label": _("📨 Пригласить — подтвердить"), "action": "invite_customer", "params": {"id": str(c.id)}},
+            {"label": _("📂 Открыть карточку"), "action": "customer_detail", "params": {"id": str(c.id)}},
+            {"label": _("➕ Ещё заказчик"), "action": "add_customer", "params": {}},
         ],
     )
 
@@ -2653,7 +2681,7 @@ def _customer_insights(c, projects, orders):
             oems = (Drawing.objects.filter(project_id__in=pids)
                     .exclude(oem_number="").exclude(oem_number__isnull=True)
                     .values_list("oem_number", flat=True))
-            oem_demand = [o for o, _ in Counter(oems).most_common(3)]
+            oem_demand = [o for o, _cnt in Counter(oems).most_common(3)]
     except Exception:
         pass
 
@@ -2691,20 +2719,20 @@ def customer_detail(params, user, role):
     c = _get_customer(user, params)
     if not c:
         return ActionResult(
-            text="Заказчик не найден.",
-            actions=[{"label": "← К заказчикам", "action": "seller_customers", "params": {}}],
+            text=_("Заказчик не найден."),
+            actions=[{"label": _("← К заказчикам"), "action": "seller_customers", "params": {}}],
         )
     # Точная привязка по ИНН (идемпотентно) — до сбора отгрузок.
     _autolink_orders(c)
 
     # --- Реквизиты ---
-    info_rows = [{"title": "ИНН", "subtitle": c.inn}]
+    info_rows = [{"title": _("ИНН"), "subtitle": c.inn}]
     if c.kpp:
-        info_rows.append({"title": "КПП", "subtitle": c.kpp})
+        info_rows.append({"title": _("КПП"), "subtitle": c.kpp})
     if c.legal_address:
-        info_rows.append({"title": "Юр. адрес", "subtitle": c.legal_address})
+        info_rows.append({"title": _("Юр. адрес"), "subtitle": c.legal_address})
     if c.contact_name or c.phone:
-        info_rows.append({"title": "Контакт",
+        info_rows.append({"title": _("Контакт"),
                           "subtitle": " · ".join([x for x in [c.contact_name, c.phone] if x])})
 
     # --- Проекты заказчика ---
@@ -2728,7 +2756,7 @@ def customer_detail(params, user, role):
         if amt:
             extra.append(amt)
         row = {
-            "title": f"Заказ #{o.id}",
+            "title": _('Заказ #%(p0)s') % {"p0": f'{o.id}'},
             "subtitle": " · ".join(extra) or "—",
             "badge": {"label": st, "tone": tone},
             "tone": tone,
@@ -2765,14 +2793,14 @@ def customer_detail(params, user, role):
 
     bonus_sub = ("начислено " + _money(ins["bonus_accrued"])) if ins["bonus_accrued"] else "расчётно · нажмите"
     insights_card = {"type": "kpi_grid", "data": {
-        "title": "📊 Инсайты по заказчику",
+        "title": _("📊 Инсайты по заказчику"),
         "kpis": [
-            {"value": _money(ins["gmv"]), "label": "GMV по клиенту",
+            {"value": _money(ins["gmv"]), "label": _("GMV по клиенту"),
              "sub": f"{ins['n']} {_plural(ins['n'], 'сделка', 'сделки', 'сделок')}"},
-            {"value": _money(ins["avg"]), "label": "Средний чек"},
-            {"value": ins["active_ship"], "label": "В работе", "sub": "активных отгрузок"},
-            {"value": len(proj_rows), "label": "Проектов", "sub": f"активных: {ins['active_proj']}"},
-            {"value": _money(ins["commission"]), "label": "💰 Бонус с покупок",
+            {"value": _money(ins["avg"]), "label": _("Средний чек")},
+            {"value": ins["active_ship"], "label": _("В работе"), "sub": _("активных отгрузок")},
+            {"value": len(proj_rows), "label": _("Проектов"), "sub": _('активных: %(p0)s') % {"p0": f"{ins['active_proj']}"}},
+            {"value": _money(ins["commission"]), "label": _("💰 Бонус с покупок"),
              "sub": bonus_sub, "action": "customer_bonuses", "params": {"id": str(c.id)}},
         ],
     }}
@@ -2780,23 +2808,23 @@ def customer_detail(params, user, role):
     cards = [insights_card]
     cards.append({"type": "list", "data": {"title": f"👤 {c.name}", "rows": info_rows}})
     cards.append({"type": "list", "data": {
-        "title": f"📁 Проекты ({len(proj_rows)})",
-        "rows": proj_rows or [{"title": "Проектов пока нет",
-                               "subtitle": "Создайте первый проект по этому заказчику"}],
+        "title": _('📁 Проекты (%(p0)s)') % {"p0": f'{len(proj_rows)}'},
+        "rows": proj_rows or [{"title": _("Проектов пока нет"),
+                               "subtitle": _("Создайте первый проект по этому заказчику")}],
     }})
     cards.append({"type": "list", "data": {
-        "title": f"📦 Отгрузки ({len(ship_rows)})",
-        "rows": ship_rows or [{"title": "Отгрузок пока нет",
-                               "subtitle": "Привязанные заказы появятся здесь (авто по ИНН покупателя)"}],
+        "title": _('📦 Отгрузки (%(p0)s)') % {"p0": f'{len(ship_rows)}'},
+        "rows": ship_rows or [{"title": _("Отгрузок пока нет"),
+                               "subtitle": _("Привязанные заказы появятся здесь (авто по ИНН покупателя)")}],
     }})
     if cand_rows:
         cards.append({"type": "list", "data": {
-            "title": f"🔗 Возможно этого заказчика ({len(cand_rows)})",
+            "title": _('🔗 Возможно этого заказчика (%(p0)s)') % {"p0": f'{len(cand_rows)}'},
             "rows": cand_rows,
         }})
     # Умные подсказки менеджеру (инсайты → действия).
     cards.append({"type": "list", "data": {
-        "title": "💡 Подсказки KAM",
+        "title": _("💡 Подсказки KAM"),
         "rows": [{"title": t, "subtitle": "", "tone": "info"} for t in ins["tips"]],
     }})
 
@@ -2805,15 +2833,15 @@ def customer_detail(params, user, role):
     acts = []
     if is_lead:
         # Лид: главное действие — пригласить, чтобы клиент ПОДТВЕРДИЛ закрепление.
-        acts.append({"label": "📨 Пригласить — подтвердить клиента",
+        acts.append({"label": _("📨 Пригласить — подтвердить клиента"),
                      "action": "invite_customer", "params": {"id": str(c.id)}})
     acts += [
-        {"label": "➕ Создать проект", "action": "create_project_for_customer", "params": {"id": str(c.id)}},
-        {"label": "💰 Начисления", "action": "customer_bonuses", "params": {"id": str(c.id)}},
+        {"label": _("➕ Создать проект"), "action": "create_project_for_customer", "params": {"id": str(c.id)}},
+        {"label": _("💰 Начисления"), "action": "customer_bonuses", "params": {"id": str(c.id)}},
     ]
     if not is_lead:
-        acts.append({"label": "📨 Пригласить", "action": "invite_customer", "params": {"id": str(c.id)}})
-    acts.append({"label": "← К заказчикам", "action": "seller_customers", "params": {}})
+        acts.append({"label": _("📨 Пригласить"), "action": "invite_customer", "params": {"id": str(c.id)}})
+    acts.append({"label": _("← К заказчикам"), "action": "seller_customers", "params": {}})
     return ActionResult(
         text=(flash or (f"Карточка заказчика «{c.name}». ⚪️ Это ЛИД — отправьте инвайт, "
                         "клиент подтвердит, и он закрепится за вами." if is_lead
@@ -2831,8 +2859,8 @@ def link_order_to_customer(params, user, role):
     c = _get_customer(user, params)
     if not c:
         return ActionResult(
-            text="Заказчик не найден.",
-            actions=[{"label": "← К заказчикам", "action": "seller_customers", "params": {}}],
+            text=_("Заказчик не найден."),
+            actions=[{"label": _("← К заказчикам"), "action": "seller_customers", "params": {}}],
         )
     oid = params.get("order_id")
     o = Order.objects.filter(id=oid).first()
@@ -2854,21 +2882,21 @@ def create_project_for_customer(params, user, role):
     c = _get_customer(user, params)
     if not c:
         return ActionResult(
-            text="Заказчик не найден — не могу привязать проект.",
-            actions=[{"label": "← К заказчикам", "action": "seller_customers", "params": {}}],
+            text=_("Заказчик не найден — не могу привязать проект."),
+            actions=[{"label": _("← К заказчикам"), "action": "seller_customers", "params": {}}],
         )
     name = (params.get("name") or "").strip()
     if not name:
         return ActionResult(
-            text=f"Назовите проект для «{c.name}» — он попадёт в общий раздел проектов и будет привязан к заказчику.",
+            text=_('Назовите проект для «%(p0)s» — он попадёт в общий раздел проектов и будет привязан к заказчику.') % {"p0": f'{c.name}'},
             cards=[{"type": "form", "data": {
-                "title": f"📁 Новый проект · {c.name}",
+                "title": _('📁 Новый проект · %(p0)s') % {"p0": f'{c.name}'},
                 "submit_action": "create_project_for_customer",
                 "submit_label": "Создать проект",
                 "fields": [
-                    {"name": "name", "label": "Название проекта", "type": "text", "required": True,
-                     "placeholder": "Ходовка Komatsu D155 — Q3"},
-                    {"name": "code", "label": "Код (опц.)", "type": "text", "placeholder": "KOM-Q3"},
+                    {"name": "name", "label": _("Название проекта"), "type": "text", "required": True,
+                     "placeholder": _("Ходовка Komatsu D155 — Q3")},
+                    {"name": "code", "label": _("Код (опц.)"), "type": "text", "placeholder": "KOM-Q3"},
                 ],
                 "fixed_params": {"id": str(c.id)},
             }}],
@@ -2878,9 +2906,9 @@ def create_project_for_customer(params, user, role):
         customer=c.name[:200], customer_ref=c,
     )
     return ActionResult(
-        text=f"✅ Проект «{p.name}» создан и привязан к заказчику «{c.name}».",
+        text=_('✅ Проект «%(p0)s» создан и привязан к заказчику «%(p1)s».') % {"p0": f'{p.name}', "p1": f'{c.name}'},
         cards=[{"type": "list", "data": {
-            "title": "📁 Проект готов",
+            "title": _("📁 Проект готов"),
             "rows": [{
                 "title": p.name,
                 "subtitle": (p.code or "проект") + " · открыть страницу проекта →",
@@ -2888,8 +2916,8 @@ def create_project_for_customer(params, user, role):
             }],
         }}],
         actions=[
-            {"label": "👤 Карточка заказчика", "action": "customer_detail", "params": {"id": str(c.id)}},
-            {"label": "➕ Ещё проект", "action": "create_project_for_customer", "params": {"id": str(c.id)}},
+            {"label": _("👤 Карточка заказчика"), "action": "customer_detail", "params": {"id": str(c.id)}},
+            {"label": _("➕ Ещё проект"), "action": "create_project_for_customer", "params": {"id": str(c.id)}},
         ],
     )
 
@@ -2905,18 +2933,18 @@ def _referral_reward_card(role):
     role = role or ""
     if role == "operator_manager":  # KAM — комиссия, не флэт
         rows = [
-            {"title": "0.02% со сделок приведённых клиентов", "subtitle": "пока они покупают на платформе — резидуально"},
-            {"title": "+ бонус с «дожатых» отказных сделок", "subtitle": "вернули отказника к покупке → доля ваша"},
+            {"title": "0.02% со сделок приведённых клиентов", "subtitle": _("пока они покупают на платформе — резидуально")},
+            {"title": _("+ бонус с «дожатых» отказных сделок"), "subtitle": _("вернули отказника к покупке → доля ваша")},
         ]
         title = "💰 Ваша награда (KAM)"
     elif role == "buyer":
         rows = [
-            {"title": "−$100 на ваш первый заказ", "subtitle": "зачтём при пополнении депозита по этому приглашению"},
+            {"title": _("−$100 на ваш первый заказ"), "subtitle": _("зачтём при пополнении депозита по этому приглашению")},
         ]
         title = "💰 Ваша награда за приглашение"
     else:  # продавец, оператор и все прочие, кроме KAM
         rows = [
-            {"title": "$100 с первой покупки приглашённого", "subtitle": "зачислим, как только он сделает первый заказ"},
+            {"title": _("$100 с первой покупки приглашённого"), "subtitle": _("зачислим, как только он сделает первый заказ")},
         ]
         title = "💰 Ваша награда за приглашение"
     return {"type": "list", "data": {"title": title, "rows": rows}}
@@ -2930,7 +2958,7 @@ def accept_referral(params, user, role):
     from marketplace.models import Customer
     code = (params.get("code") or params.get("ref") or "").strip()
     if not code:
-        return ActionResult(text="Реф-ссылка недействительна.")
+        return ActionResult(text=_("Реф-ссылка недействительна."))
     # Резолвим: сначала короткий код (новые ссылки /i/CODE), иначе старый
     # подписанный токен (обратная совместимость с уже разосланными ссылками).
     from marketplace.models import ReferralCode
@@ -2942,20 +2970,19 @@ def accept_referral(params, user, role):
         try:
             ref_uid = signing.loads(code, salt="kam-ref")
         except Exception:
-            return ActionResult(text="Реф-ссылка повреждена или устарела.")
+            return ActionResult(text=_("Реф-ссылка повреждена или устарела."))
     if not (user and getattr(user, "is_authenticated", False)):
         return ActionResult(
-            text="Вас пригласили на платформу запчастей. Войдите или зарегистрируйтесь — "
-                 "приглашение применится автоматически, и вами займётся персональный менеджер.",
-            actions=[{"label": "Войти / регистрация", "action": "start_login", "params": {}}],
+            text=_("Вас пригласили на платформу запчастей. Войдите или зарегистрируйтесь — " "приглашение применится автоматически, и вами займётся персональный менеджер."),
+            actions=[{"label": _("Войти / регистрация"), "action": "start_login", "params": {}}],
         )
     if int(user.id) == int(ref_uid):
-        return ActionResult(text="Это ваша собственная ссылка — поделитесь ею с контрагентом.",
-                            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}])
+        return ActionResult(text=_("Это ваша собственная ссылка — поделитесь ею с контрагентом."),
+                            actions=[{"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
     User = get_user_model()
     ref = User.objects.filter(id=ref_uid).first()
     if not ref:
-        return ActionResult(text="Пригласивший не найден.")
+        return ActionResult(text=_("Пригласивший не найден."))
     # Роль пригласившего определяет механику: KAM → CRM-привязка клиента;
     # остальные роли (покупатель/продавец/оператор) → реферальная награда $100
     # (без CRM-заказчика — это не аккаунт KAM).
@@ -2968,14 +2995,14 @@ def accept_referral(params, user, role):
             text=("✅ Приглашение принято! Добро пожаловать на платформу запчастей. "
                   "Пригласивший получит свою награду, когда вы оформите первый заказ, "
                   "а вам доступны все возможности маркетплейса."),
-            actions=[{"label": "🏠 В кабинет", "action": "go_home", "params": {}}],
+            actions=[{"label": _("🏠 В кабинет"), "action": "go_home", "params": {}}],
         )
     # Владелец заказчика — тот же «эффективный продавец», что видит CRM-кабинет
     # пригласившего (учитывает demo-фолбэк), чтобы новый заказчик появился у него.
     owner = _effective_seller(ref)
     if Customer.objects.filter(owner=owner, user=user).exists():
-        return ActionResult(text="✅ Вы уже закреплены за вашим менеджером (KAM). Спасибо!",
-                            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}])
+        return ActionResult(text=_("✅ Вы уже закреплены за вашим менеджером (KAM). Спасибо!"),
+                            actions=[{"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
     # ИНН из KYB, иначе плейсхолдер (уникален в рамках owner).
     inn = ""
     try:
@@ -3000,10 +3027,10 @@ def accept_referral(params, user, role):
             cust.save(update_fields=["user"])
     else:
         Customer.objects.create(owner=owner, inn=inn[:20], name=name[:255], user=user,
-                                note="Привязан по реф-ссылке")
+                                note=_("Привязан по реф-ссылке"))
     return ActionResult(
-        text="✅ Готово! Вы закреплены за вашим персональным менеджером (KAM) — он ведёт вас на платформе.",
-        actions=[{"label": "🏠 В кабинет", "action": "go_home", "params": {}}],
+        text=_("✅ Готово! Вы закреплены за вашим персональным менеджером (KAM) — он ведёт вас на платформе."),
+        actions=[{"label": _("🏠 В кабинет"), "action": "go_home", "params": {}}],
     )
 
 
@@ -3018,8 +3045,8 @@ def invite_customer(params, user, role):
         # Реферальный инвайт (для всех ролей): ссылка с ПОДПИСАННЫМ токеном
         # пригласившего. Кто зарегистрируется по ней — привяжется к вам.
         if not (user and getattr(user, "is_authenticated", False)):
-            return ActionResult(text="Чтобы создать реф-ссылку, войдите в аккаунт.",
-                                actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+            return ActionResult(text=_("Чтобы создать реф-ссылку, войдите в аккаунт."),
+                                actions=[{"label": _("Войти"), "action": "start_login", "params": {}}])
         link = f"{base}/i/{_ref_code(user)}"
         is_kam = (role == "operator_manager")
         if is_kam:
@@ -3031,21 +3058,21 @@ def invite_customer(params, user, role):
                    "зарегистрируется по ней и сделает первый заказ, вы получите вашу награду (ниже).")
         ref_acts = []
         if is_kam:
-            ref_acts.append({"label": "👥 Мои заказчики", "action": "seller_customers", "params": {}})
+            ref_acts.append({"label": _("👥 Мои заказчики"), "action": "seller_customers", "params": {}})
         else:
-            ref_acts.append({"label": "📨 Мои награды", "action": "my_referrals", "params": {}})
-        ref_acts.append({"label": "🏠 Главная", "action": "go_home", "params": {}})
+            ref_acts.append({"label": _("📨 Мои награды"), "action": "my_referrals", "params": {}})
+        ref_acts.append({"label": _("🏠 Главная"), "action": "go_home", "params": {}})
         return ActionResult(
             text=txt,
             cards=[
-                {"type": "copy_link", "data": {"title": "📨 Ваша реферальная ссылка",
+                {"type": "copy_link", "data": {"title": _("📨 Ваша реферальная ссылка"),
                     "url": link, "share_text": "Приглашаю на платформу запчастей Consolidator Parts",
-                    "hint": "Привязка отслеживается автоматически."}},
+                    "hint": _("Привязка отслеживается автоматически.")}},
                 _referral_reward_card(role),
             ],
             actions=ref_acts or [
-                {"label": "👥 Мои заказчики", "action": "seller_customers", "params": {}},
-                {"label": "🏠 Главная", "action": "go_home", "params": {}},
+                {"label": _("👥 Мои заказчики"), "action": "seller_customers", "params": {}},
+                {"label": _("🏠 Главная"), "action": "go_home", "params": {}},
             ],
         )
     if not c.invite_token:
@@ -3055,17 +3082,15 @@ def invite_customer(params, user, role):
     link = f"{base}/chat/?invite_customer={c.invite_token}"
     status = "✅ привязан" if c.user_id else "ожидает принятия"
     return ActionResult(
-        text=(f"📨 Приглашение для «{c.name}» готово ({status}). Отправьте ссылку — "
-              f"заказчик войдёт/зарегистрируется и привяжется к вам; его заказы "
-              f"попадут в ваши отгрузки и начисления:\n{link}"),
+        text=(_('📨 Приглашение для «%(p0)s» готово (%(p1)s). Отправьте ссылку — заказчик войдёт/зарегистрируется и привяжется к вам; его заказы попадут в ваши отгрузки и начисления:\n%(p2)s') % {"p0": f'{c.name}', "p1": f'{status}', "p2": f'{link}'}),
         cards=[
-            {"type": "copy_link", "data": {"title": "📨 Ссылка-приглашение заказчика",
+            {"type": "copy_link", "data": {"title": _("📨 Ссылка-приглашение заказчика"),
                 "url": link, "share_text": f"Приглашаю вас в закупки через Consolidator Parts",
-                "hint": "Отправьте заказчику — он войдёт и привяжется к вам."}},
+                "hint": _("Отправьте заказчику — он войдёт и привяжется к вам.")}},
         ],
         actions=[
-            {"label": "👤 Карточка заказчика", "action": "customer_detail", "params": {"id": str(c.id)}},
-            {"label": "👥 К заказчикам", "action": "seller_customers", "params": {}},
+            {"label": _("👤 Карточка заказчика"), "action": "customer_detail", "params": {"id": str(c.id)}},
+            {"label": _("👥 К заказчикам"), "action": "seller_customers", "params": {}},
         ],
     )
 
@@ -3076,22 +3101,20 @@ def accept_customer_invite(params, user, role):
     from marketplace.models import Customer
     token = (params.get("token") or "").strip()
     if not token:
-        return ActionResult(text="Ссылка-приглашение недействительна.")
+        return ActionResult(text=_("Ссылка-приглашение недействительна."))
     c = Customer.objects.filter(invite_token=token).first()
     if not c:
-        return ActionResult(text="Приглашение не найдено или уже отозвано.")
+        return ActionResult(text=_("Приглашение не найдено или уже отозвано."))
     if not (user and getattr(user, "is_authenticated", False)):
         return ActionResult(
-            text=f"Чтобы принять приглашение «{c.name}», войдите или зарегистрируйтесь — "
-                 "после входа вы автоматически привяжетесь к вашему персональному менеджеру (KAM).",
-            actions=[{"label": "Войти / регистрация", "action": "start_login", "params": {}}],
+            text=_('Чтобы принять приглашение «%(p0)s», войдите или зарегистрируйтесь — после входа вы автоматически привяжетесь к вашему персональному менеджеру (KAM).') % {"p0": f'{c.name}'},
+            actions=[{"label": _("Войти / регистрация"), "action": "start_login", "params": {}}],
         )
     c.user = user
     c.save(update_fields=["user"])
     return ActionResult(
-        text=(f"✅ Готово! Вы привязаны как заказчик «{c.name}». Ваши заказы теперь "
-              "видны вашему KAM, а сопровождение идёт через платформу."),
-        actions=[{"label": "🏠 В кабинет", "action": "go_home", "params": {}}],
+        text=(_('✅ Готово! Вы привязаны как заказчик «%(p0)s». Ваши заказы теперь видны вашему KAM, а сопровождение идёт через платформу.') % {"p0": f'{c.name}'}),
+        actions=[{"label": _("🏠 В кабинет"), "action": "go_home", "params": {}}],
     )
 
 
@@ -3102,8 +3125,8 @@ def customer_bonuses(params, user, role):
     c = _get_customer(user, params)
     if not c:
         return ActionResult(
-            text="Заказчик не найден.",
-            actions=[{"label": "← К заказчикам", "action": "seller_customers", "params": {}}],
+            text=_("Заказчик не найден."),
+            actions=[{"label": _("← К заказчикам"), "action": "seller_customers", "params": {}}],
         )
     _autolink_orders(c)
     orders = list(Order.objects.filter(customer_ref=c).order_by("-created_at"))
@@ -3117,23 +3140,23 @@ def customer_bonuses(params, user, role):
         tone = ("ok" if ln["status"] == "released"
                 else ("info" if ln["status"] == "estimate" else "warn"))
         rows.append({
-            "title": f"Заказ #{ln['order_id']} · +{_m(ln['amount'])}",
-            "subtitle": f"{ln['basis']} {ln['rate']}% · база {_m(ln['base'])}",
+            "title": _('Заказ #%(p0)s · +%(p1)s') % {"p0": f"{ln['order_id']}", "p1": f"{_m(ln['amount'])}"},
+            "subtitle": _('%(p0)s %(p1)s%% · база %(p2)s') % {"p0": f"{ln['basis']}", "p1": f"{ln['rate']}", "p2": f"{_m(ln['base'])}"},
             "badge": {"label": _BONUS_STLBL.get(ln["status"], ln["status"]), "tone": tone},
             "tone": tone,
         })
     kpi = {"type": "kpi_grid", "data": {
-        "title": f"💰 Бонус с покупок · {c.name}",
+        "title": _('💰 Бонус с покупок · %(p0)s') % {"p0": f'{c.name}'},
         "kpis": [
-            {"value": _m(summ["accrued"]), "label": "Начислено", "sub": "реальные строки"},
-            {"value": _m(summ["estimated"]), "label": "Расчётно", "sub": "при закрытии сделок"},
-            {"value": _m(summ["total"]), "label": "Всего по клиенту"},
+            {"value": _m(summ["accrued"]), "label": _("Начислено"), "sub": _("реальные строки")},
+            {"value": _m(summ["estimated"]), "label": _("Расчётно"), "sub": _("при закрытии сделок")},
+            {"value": _m(summ["total"]), "label": _("Всего по клиенту")},
         ],
     }}
     cards = [kpi, {"type": "list", "data": {
-        "title": f"Начисления по заказам ({len(rows)})",
-        "rows": rows or [{"title": "Пока нет покупок",
-                          "subtitle": "Начисления появятся с заказами заказчика"}],
+        "title": _('Начисления по заказам (%(p0)s)') % {"p0": f'{len(rows)}'},
+        "rows": rows or [{"title": _("Пока нет покупок"),
+                          "subtitle": _("Начисления появятся с заказами заказчика")}],
     }}]
     return ActionResult(
         text=(f"💰 По «{c.name}»: начислено {_m(summ['accrued'])}"
@@ -3141,8 +3164,8 @@ def customer_bonuses(params, user, role):
               + ". FOB 0.4% / CIP 0.5% / DDP 0.7%, min $50 / max $5000 на сделку."),
         cards=cards,
         actions=[
-            {"label": "👤 Карточка заказчика", "action": "customer_detail", "params": {"id": str(c.id)}},
-            {"label": "💰 Все начисления", "action": "my_accruals", "params": {}},
+            {"label": _("👤 Карточка заказчика"), "action": "customer_detail", "params": {"id": str(c.id)}},
+            {"label": _("💰 Все начисления"), "action": "my_accruals", "params": {}},
         ],
     )
 
@@ -3168,28 +3191,27 @@ def my_accruals(params, user, role):
         if orders:
             rows.append({
                 "title": c.name,
-                "subtitle": (f"начислено {_m(s['accrued'])} · расчётно {_m(s['estimated'])} · "
-                             f"{len(orders)} {_plural(len(orders), 'заказ', 'заказа', 'заказов')}"),
+                "subtitle": (_('начислено %(p0)s · расчётно %(p1)s · %(p2)s %(p3)s') % {"p0": f"{_m(s['accrued'])}", "p1": f"{_m(s['estimated'])}", "p2": f'{len(orders)}', "p3": f"{_plural(len(orders), 'заказ', 'заказа', 'заказов')}"}),
                 "action": "customer_bonuses", "params": {"id": str(c.id)},
             })
     kpi = {"type": "kpi_grid", "data": {
-        "title": "💰 Мои начисления",
+        "title": _("💰 Мои начисления"),
         "kpis": [
-            {"value": _m(tot_accr), "label": "Начислено", "sub": "по всем клиентам"},
-            {"value": _m(tot_est), "label": "Расчётно", "sub": "при закрытии сделок"},
-            {"value": len(rows), "label": "Активных клиентов"},
+            {"value": _m(tot_accr), "label": _("Начислено"), "sub": _("по всем клиентам")},
+            {"value": _m(tot_est), "label": _("Расчётно"), "sub": _("при закрытии сделок")},
+            {"value": len(rows), "label": _("Активных клиентов")},
         ],
     }}
     return ActionResult(
-        text=f"💰 Ваши начисления: начислено {_m(tot_accr)}, расчётно {_m(tot_est)}.",
+        text=_('💰 Ваши начисления: начислено %(p0)s, расчётно %(p1)s.') % {"p0": f'{_m(tot_accr)}', "p1": f'{_m(tot_est)}'},
         cards=[kpi, {"type": "list", "data": {
-            "title": "По заказчикам",
-            "rows": rows or [{"title": "Пока нет начислений",
-                              "subtitle": "Появятся с заказами ваших заказчиков"}],
+            "title": _("По заказчикам"),
+            "rows": rows or [{"title": _("Пока нет начислений"),
+                              "subtitle": _("Появятся с заказами ваших заказчиков")}],
         }}],
         actions=[
-            {"label": "👥 Заказчики", "action": "seller_customers", "params": {}},
-            {"label": "🏠 Главная", "action": "go_home", "params": {}},
+            {"label": _("👥 Заказчики"), "action": "seller_customers", "params": {}},
+            {"label": _("🏠 Главная"), "action": "go_home", "params": {}},
         ],
     )
 
@@ -3228,7 +3250,7 @@ def kam_deals(params, user, role):
         if hoff == "escalation" and o.kam_handoff_note:
             sub.append("⚠️ " + o.kam_handoff_note)
         row = {
-            "title": f"Заказ #{o.id} · {cname}",
+            "title": _('Заказ #%(p0)s · %(p1)s') % {"p0": f'{o.id}', "p1": f'{cname}'},
             "subtitle": " · ".join(sub),
             "badge": {"label": st, "tone": tone}, "tone": tone,
         }
@@ -3237,10 +3259,10 @@ def kam_deals(params, user, role):
             row["params"] = {"id": str(o.customer_ref_id)}
         rows.append(row)
 
-    kpi = {"type": "kpi_grid", "data": {"title": "📋 Мои сделки (KAM)", "kpis": [
-        {"value": total, "label": "Всего сделок"},
-        {"value": active, "label": "В работе"},
-        {"value": esc, "label": "⚠️ Эскалаций"},
+    kpi = {"type": "kpi_grid", "data": {"title": _("📋 Мои сделки (KAM)"), "kpis": [
+        {"value": total, "label": _("Всего сделок")},
+        {"value": active, "label": _("В работе")},
+        {"value": esc, "label": _("⚠️ Эскалаций")},
         {"value": _m(gmv), "label": "GMV"},
     ]}}
     return ActionResult(
@@ -3248,12 +3270,12 @@ def kam_deals(params, user, role):
               + (f", эскалаций {esc}" if esc else "") + "). Сделки ведёт оператор — это "
               "ваша видимость для комиссии и активации. 🔴 эскалация = оператор просит "
               "вас связаться с клиентом."),
-        cards=[kpi, {"type": "list", "data": {"title": "Сделки",
-                "rows": rows or [{"title": "Сделок пока нет",
-                                  "subtitle": "Появятся с заказами ваших заказчиков"}]}}],
+        cards=[kpi, {"type": "list", "data": {"title": _("Сделки"),
+                "rows": rows or [{"title": _("Сделок пока нет"),
+                                  "subtitle": _("Появятся с заказами ваших заказчиков")}]}}],
         actions=[
-            {"label": "👥 Заказчики", "action": "seller_customers", "params": {}},
-            {"label": "💰 Начисления", "action": "my_accruals", "params": {}},
+            {"label": _("👥 Заказчики"), "action": "seller_customers", "params": {}},
+            {"label": _("💰 Начисления"), "action": "my_accruals", "params": {}},
         ],
     )
 
@@ -3267,16 +3289,15 @@ def kam_handoff_to_operator(params, user, role):
     oid = params.get("order_id")
     o = Order.objects.filter(id=oid, assigned_kam=owner).first()
     if not o:
-        return ActionResult(text="Сделка не найдена среди ваших.",
-                            actions=[{"label": "📋 Мои сделки", "action": "kam_deals", "params": {}}])
+        return ActionResult(text=_("Сделка не найдена среди ваших."),
+                            actions=[{"label": _("📋 Мои сделки"), "action": "kam_deals", "params": {}}])
     o.kam_handoff = "operator"
     o.kam_handoff_note = ""
     o.kam_handoff_at = _tz.now()
     o.save(update_fields=["kam_handoff", "kam_handoff_note", "kam_handoff_at"])
     return ActionResult(
-        text=(f"✅ Заказ #{o.id} передан оператору на исполнение. Вы остаётесь на аккаунте "
-              "(read-only по исполнению); вернётся к вам при исключении."),
-        actions=[{"label": "📋 Мои сделки", "action": "kam_deals", "params": {}}],
+        text=(_('✅ Заказ #%(p0)s передан оператору на исполнение. Вы остаётесь на аккаунте (read-only по исполнению); вернётся к вам при исключении.') % {"p0": f'{o.id}'}),
+        actions=[{"label": _("📋 Мои сделки"), "action": "kam_deals", "params": {}}],
     )
 
 
@@ -3289,15 +3310,15 @@ def op_escalate_to_kam(params, user, role):
     reason = (params.get("reason") or params.get("note") or "").strip()
     o = Order.objects.filter(id=oid).first()
     if not o:
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
     if not reason:
         return ActionResult(
-            text=f"Эскалация заказа #{o.id} к KAM — укажите причину.",
+            text=_('Эскалация заказа #%(p0)s к KAM — укажите причину.') % {"p0": f'{o.id}'},
             cards=[{"type": "form", "data": {
-                "title": f"⚠️ Эскалация #{o.id} → KAM",
+                "title": _('⚠️ Эскалация #%(p0)s → KAM') % {"p0": f'{o.id}'},
                 "submit_action": "op_escalate_to_kam", "submit_label": "Эскалировать",
-                "fields": [{"name": "reason", "label": "Причина", "type": "text", "required": True,
-                            "placeholder": "Срыв SLA / брак / перерасход — коротко"}],
+                "fields": [{"name": "reason", "label": _("Причина"), "type": "text", "required": True,
+                            "placeholder": _("Срыв SLA / брак / перерасход — коротко")}],
                 "fixed_params": {"order_id": oid},
             }}],
         )
@@ -3308,11 +3329,10 @@ def op_escalate_to_kam(params, user, role):
     who = ((o.assigned_kam.get_full_name() or o.assigned_kam.username)
            if o.assigned_kam_id else "KAM не назначен")
     return ActionResult(
-        text=(f"⚠️ Заказ #{o.id} эскалирован к KAM ({who}): {reason}. "
-              "KAM свяжется с клиентом; исполнение остаётся за вами."),
+        text=(_('⚠️ Заказ #%(p0)s эскалирован к KAM (%(p1)s): %(p2)s. KAM свяжется с клиентом; исполнение остаётся за вами.') % {"p0": f'{o.id}', "p1": f'{who}', "p2": f'{reason}'}),
         actions=[
-            {"label": "← К заказу", "action": "op_order_detail", "params": {"order_id": oid}},
-            {"label": "📋 Очередь", "action": "op_queue", "params": {}},
+            {"label": _("← К заказу"), "action": "op_order_detail", "params": {"order_id": oid}},
+            {"label": _("📋 Очередь"), "action": "op_queue", "params": {}},
         ],
     )
 
@@ -3347,7 +3367,7 @@ def _assign_kam(user, *, avoid_id=None):
             owner=kam, inn=f"77{user.id:08d}", name=name, country="RU",
             legal_address="г. Москва, Тестовая ул., 1",
             contact_name=name, phone="+7 (495) 000-00-00",
-            user=user, is_active=True, note="self-assign: KAM ведёт закупки клиента")
+            user=user, is_active=True, note=_("self-assign: KAM ведёт закупки клиента"))
     return kam
 
 
@@ -3356,28 +3376,27 @@ def kam_request(params, user, role):
     """Подобрать персонального менеджера (KAM) клиенту без закреплённого."""
     from marketplace.models import Customer
     if not (user and getattr(user, "is_authenticated", False)):
-        return ActionResult(text="Войдите, чтобы подобрать менеджера.",
-                            actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+        return ActionResult(text=_("Войдите, чтобы подобрать менеджера."),
+                            actions=[{"label": _("Войти"), "action": "start_login", "params": {}}])
     active = (Customer.objects.filter(user=user, is_active=True)
               .select_related("owner").first())
     if active and active.owner_id:
         mgr = active.owner.get_full_name() or active.owner.username
         return ActionResult(
-            text=f"За вами уже закреплён персональный менеджер — {mgr}.",
-            actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
-                     {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+            text=_('За вами уже закреплён персональный менеджер — %(p0)s.') % {"p0": f'{mgr}'},
+            actions=[{"label": _("👤 Мой менеджер"), "action": "my_kam", "params": {}},
+                     {"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
     kam = _assign_kam(user)
     if not kam:
         return ActionResult(
-            text="Сейчас нет свободного менеджера — мы подберём и сообщим вам.",
-            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}])
+            text=_("Сейчас нет свободного менеджера — мы подберём и сообщим вам."),
+            actions=[{"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
     mgr = kam.get_full_name() or kam.username
     return ActionResult(
-        text=f"✅ Ваш персональный менеджер — {mgr}. Он берёт ваши закупки на себя: "
-             "подбор поставщиков, сроки, цена.",
-        actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
-                 {"label": "💬 Написать менеджеру", "action": "kam_message", "params": {}},
-                 {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+        text=_('✅ Ваш персональный менеджер — %(p0)s. Он берёт ваши закупки на себя: подбор поставщиков, сроки, цена.') % {"p0": f'{mgr}'},
+        actions=[{"label": _("👤 Мой менеджер"), "action": "my_kam", "params": {}},
+                 {"label": _("💬 Написать менеджеру"), "action": "kam_message", "params": {}},
+                 {"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
 
 
 @register("my_kam")
@@ -3385,30 +3404,29 @@ def my_kam(params, user, role):
     """Кабинет клиента: кто его ведёт (KAM) + диалог, заказы, смена менеджера."""
     from marketplace.models import Customer
     if not (user and getattr(user, "is_authenticated", False)):
-        return ActionResult(text="Войдите, чтобы увидеть вашего персонального менеджера.",
-                            actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+        return ActionResult(text=_("Войдите, чтобы увидеть вашего персонального менеджера."),
+                            actions=[{"label": _("Войти"), "action": "start_login", "params": {}}])
     c = (Customer.objects.filter(user=user, is_active=True)
          .select_related("owner").order_by("-updated_at").first())
     if not c:
         return ActionResult(
-            text="За вами пока не закреплён персональный менеджер (KAM). Хотите — подберём: "
-                 "специалист по закупкам возьмёт ваши заявки на себя.",
-            actions=[{"label": "🙋 Подобрать менеджера", "action": "kam_request", "params": {}},
-                     {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+            text=_("За вами пока не закреплён персональный менеджер (KAM). Хотите — подберём: " "специалист по закупкам возьмёт ваши заявки на себя."),
+            actions=[{"label": _("🙋 Подобрать менеджера"), "action": "kam_request", "params": {}},
+                     {"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
     mgr = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "—"
     rows = [{
-        "title": f"Ваш менеджер (KAM): {mgr}",
-        "subtitle": "Ведёт ваши закупки: сроки, цены, выгода. Нажмите → напишите ему.",
+        "title": _('Ваш менеджер (KAM): %(p0)s') % {"p0": f'{mgr}'},
+        "subtitle": _("Ведёт ваши закупки: сроки, цены, выгода. Нажмите → напишите ему."),
         "action": "kam_message", "params": {"id": str(c.id)},
     }]
     return ActionResult(
-        text="👤 Ваш персональный менеджер (KAM) — отвечает за ваши закупки, сроки и выгоду.",
-        cards=[{"type": "list", "data": {"title": "Менеджер", "rows": rows}}],
+        text=_("👤 Ваш персональный менеджер (KAM) — отвечает за ваши закупки, сроки и выгоду."),
+        cards=[{"type": "list", "data": {"title": _("Менеджер"), "rows": rows}}],
         actions=[
-            {"label": "💬 Написать менеджеру", "action": "kam_message", "params": {"id": str(c.id)}},
-            {"label": "📦 Мои заказы", "action": "get_orders", "params": {}},
-            {"label": "🔄 Сменить менеджера", "action": "change_manager", "params": {"id": str(c.id)}},
-            {"label": "🏠 Главная", "action": "go_home", "params": {}},
+            {"label": _("💬 Написать менеджеру"), "action": "kam_message", "params": {"id": str(c.id)}},
+            {"label": _("📦 Мои заказы"), "action": "get_orders", "params": {}},
+            {"label": _("🔄 Сменить менеджера"), "action": "change_manager", "params": {"id": str(c.id)}},
+            {"label": _("🏠 Главная"), "action": "go_home", "params": {}},
         ],
     )
 
@@ -3422,53 +3440,53 @@ def kam_message(params, user, role):
     from marketplace.models import Customer
     from .models import Conversation, Message
     if not (user and getattr(user, "is_authenticated", False)):
-        return ActionResult(text="Войдите, чтобы написать менеджеру.",
-                            actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+        return ActionResult(text=_("Войдите, чтобы написать менеджеру."),
+                            actions=[{"label": _("Войти"), "action": "start_login", "params": {}}])
     cid = params.get("id")
     qs = Customer.objects.filter(user=user, is_active=True).select_related("owner")
     c = (qs.filter(id=cid).first() if cid else qs.order_by("-updated_at").first())
     if not c or not c.owner_id:
         return ActionResult(
-            text="У вас пока нет закреплённого менеджера, которому можно написать.",
-            actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
-                     {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+            text=_("У вас пока нет закреплённого менеджера, которому можно написать."),
+            actions=[{"label": _("👤 Мой менеджер"), "action": "my_kam", "params": {}},
+                     {"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
     kam = c.owner
     mgr = kam.get_full_name() or kam.username
     text = (params.get("text") or "").strip()
 
     if not params.get("confirmed"):
         return ActionResult(
-            text=f"💬 Напишите вашему менеджеру — {mgr} получит сообщение и ответит здесь.",
+            text=_('💬 Напишите вашему менеджеру — %(p0)s получит сообщение и ответит здесь.') % {"p0": f'{mgr}'},
             cards=[{"type": "form", "data": {
-                "title": f"💬 Сообщение менеджеру ({mgr})",
+                "title": _('💬 Сообщение менеджеру (%(p0)s)') % {"p0": f'{mgr}'},
                 "submit_action": "kam_message", "submit_label": "📨 Отправить",
-                "fields": [{"name": "text", "label": "Сообщение", "type": "textarea",
+                "fields": [{"name": "text", "label": _("Сообщение"), "type": "textarea",
                             "required": True,
-                            "placeholder": "Вопрос по заказу, срокам, цене или подбору поставщика…"}],
+                            "placeholder": _("Вопрос по заказу, срокам, цене или подбору поставщика…")}],
                 "fixed_params": {"confirmed": True, "id": str(c.id)},
             }}],
-            actions=[{"label": "← К менеджеру", "action": "my_kam", "params": {}}],
+            actions=[{"label": _("← К менеджеру"), "action": "my_kam", "params": {}}],
         )
 
     if not text:
-        return ActionResult(text="⚠️ Сообщение пустое — напишите текст.",
-                            actions=[{"label": "← Назад", "action": "kam_message",
+        return ActionResult(text=_("⚠️ Сообщение пустое — напишите текст."),
+                            actions=[{"label": _("← Назад"), "action": "kam_message",
                                       "params": {"id": str(c.id)}}])
 
     delivered = False
     try:
         conv = Conversation.objects.filter(
-            user=kam, category="support", title="Сообщения клиентов",
+            user=kam, category="support", title=_("Сообщения клиентов"),
             is_active=True).order_by("-updated_at").first()
         if not conv:
             conv = Conversation.objects.create(
                 user=kam, role="operator", category="support",
-                title="Сообщения клиентов")
+                title=_("Сообщения клиентов"))
         buyer_name = user.get_full_name() or user.username
         Message.objects.create(
             conversation=conv, role=Message.Role.SYSTEM,
             content=f"💬 Клиент {buyer_name} (@{user.username}): {text[:1500]}",
-            actions=[{"action": "admin_user_detail", "label": "👤 Профиль клиента",
+            actions=[{"action": "admin_user_detail", "label": _("👤 Профиль клиента"),
                       "params": {"user_id": user.id}}],
         )
         delivered = True
@@ -3488,15 +3506,15 @@ def kam_message(params, user, role):
 
     if not delivered:
         return ActionResult(
-            text="⚠️ Не удалось отправить сообщение. Попробуйте ещё раз.",
-            actions=[{"label": "🔁 Повторить", "action": "kam_message", "params": {"id": str(c.id)}},
-                     {"label": "← К менеджеру", "action": "my_kam", "params": {}}])
+            text=_("⚠️ Не удалось отправить сообщение. Попробуйте ещё раз."),
+            actions=[{"label": _("🔁 Повторить"), "action": "kam_message", "params": {"id": str(c.id)}},
+                     {"label": _("← К менеджеру"), "action": "my_kam", "params": {}}])
     return ActionResult(
-        text=f"✅ Сообщение отправлено менеджеру ({mgr}). Он получит его в чате и ответит вам.",
+        text=_('✅ Сообщение отправлено менеджеру (%(p0)s). Он получит его в чате и ответит вам.') % {"p0": f'{mgr}'},
         actions=[
-            {"label": "✍️ Написать ещё", "action": "kam_message", "params": {"id": str(c.id)}},
-            {"label": "← К менеджеру", "action": "my_kam", "params": {}},
-            {"label": "🏠 Главная", "action": "go_home", "params": {}},
+            {"label": _("✍️ Написать ещё"), "action": "kam_message", "params": {"id": str(c.id)}},
+            {"label": _("← К менеджеру"), "action": "my_kam", "params": {}},
+            {"label": _("🏠 Главная"), "action": "go_home", "params": {}},
         ],
     )
 
@@ -3510,19 +3528,18 @@ def change_manager(params, user, role):
          .select_related("owner").first())
     if not c:
         return ActionResult(
-            text="Привязка не найдена или уже снята.",
-            actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
-                     {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+            text=_("Привязка не найдена или уже снята."),
+            actions=[{"label": _("👤 Мой менеджер"), "action": "my_kam", "params": {}},
+                     {"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
     mgr = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "менеджер"
 
     if not params.get("confirmed"):
         return ActionResult(
-            text=(f"Сменить менеджера ({mgr})? Мы назначим вам другого персонального "
-                  "менеджера из пула. Ваши заказы и история сохранятся."),
+            text=(_('Сменить менеджера (%(p0)s)? Мы назначим вам другого персонального менеджера из пула. Ваши заказы и история сохранятся.') % {"p0": f'{mgr}'}),
             actions=[
-                {"label": "🔄 Да, сменить", "action": "change_manager",
+                {"label": _("🔄 Да, сменить"), "action": "change_manager",
                  "params": {"id": str(c.id), "confirmed": True}},
-                {"label": "← Оставить", "action": "my_kam", "params": {}},
+                {"label": _("← Оставить"), "action": "my_kam", "params": {}},
             ],
         )
 
@@ -3532,19 +3549,17 @@ def change_manager(params, user, role):
         c.is_active = False
         c.save(update_fields=["is_active"])
         return ActionResult(
-            text=f"Вы откреплены от менеджера ({mgr}). Сейчас нет другого свободного — "
-                 "можно вернуть прежнего или подобрать позже.",
+            text=_('Вы откреплены от менеджера (%(p0)s). Сейчас нет другого свободного — можно вернуть прежнего или подобрать позже.') % {"p0": f'{mgr}'},
             actions=[
-                {"label": "↩️ Вернуть менеджера", "action": "kam_reattach", "params": {"id": str(c.id)}},
-                {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+                {"label": _("↩️ Вернуть менеджера"), "action": "kam_reattach", "params": {"id": str(c.id)}},
+                {"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
     newmgr = new_kam.get_full_name() or new_kam.username
     return ActionResult(
-        text=f"✅ Назначен новый персональный менеджер — {newmgr}. Прежний ({mgr}) откреплён; "
-             "ваши заказы и история сохранены.",
+        text=_('✅ Назначен новый персональный менеджер — %(p0)s. Прежний (%(p1)s) откреплён; ваши заказы и история сохранены.') % {"p0": f'{newmgr}', "p1": f'{mgr}'},
         actions=[
-            {"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
-            {"label": "💬 Написать менеджеру", "action": "kam_message", "params": {}},
-            {"label": "🏠 Главная", "action": "go_home", "params": {}}],
+            {"label": _("👤 Мой менеджер"), "action": "my_kam", "params": {}},
+            {"label": _("💬 Написать менеджеру"), "action": "kam_message", "params": {}},
+            {"label": _("🏠 Главная"), "action": "go_home", "params": {}}],
     )
 
 
@@ -3553,11 +3568,11 @@ def kam_reattach(params, user, role):
     """Отмена открепления — вернуть только что снятого менеджера (undo)."""
     from marketplace.models import Customer
     if not (user and getattr(user, "is_authenticated", False)):
-        return ActionResult(text="Войдите, чтобы вернуть менеджера.",
-                            actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+        return ActionResult(text=_("Войдите, чтобы вернуть менеджера."),
+                            actions=[{"label": _("Войти"), "action": "start_login", "params": {}}])
     if Customer.objects.filter(user=user, is_active=True).exists():
-        return ActionResult(text="За вами уже закреплён менеджер.",
-                            actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}}])
+        return ActionResult(text=_("За вами уже закреплён менеджер."),
+                            actions=[{"label": _("👤 Мой менеджер"), "action": "my_kam", "params": {}}])
     cid = params.get("id")
     c = (Customer.objects.filter(id=cid, user=user)
          .select_related("owner").order_by("-updated_at").first()) if cid else None
@@ -3566,32 +3581,31 @@ def kam_reattach(params, user, role):
              .select_related("owner").order_by("-updated_at").first())
     if not c:
         return ActionResult(
-            text="Не нашёл, какого менеджера вернуть.",
-            actions=[{"label": "🏠 Главная", "action": "go_home", "params": {}}])
+            text=_("Не нашёл, какого менеджера вернуть."),
+            actions=[{"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
     c.is_active = True
     c.save(update_fields=["is_active"])
     mgr = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "менеджер"
     return ActionResult(
-        text=f"✅ Менеджер {mgr} снова закреплён за вами.",
-        actions=[{"label": "👤 Мой менеджер", "action": "my_kam", "params": {}},
-                 {"label": "🏠 Главная", "action": "go_home", "params": {}}])
+        text=_('✅ Менеджер %(p0)s снова закреплён за вами.') % {"p0": f'{mgr}'},
+        actions=[{"label": _("👤 Мой менеджер"), "action": "my_kam", "params": {}},
+                 {"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
 
 
 @register("my_referrals")
 def my_referrals(params, user, role):
     """Мои реферальные награды — кого пригласил и сколько начислено (не-KAM роли)."""
     if not (user and getattr(user, "is_authenticated", False)):
-        return ActionResult(text="Войдите, чтобы увидеть ваши реферальные награды.",
-                            actions=[{"label": "Войти", "action": "start_login", "params": {}}])
+        return ActionResult(text=_("Войдите, чтобы увидеть ваши реферальные награды."),
+                            actions=[{"label": _("Войти"), "action": "start_login", "params": {}}])
     # KAM — резидуальная модель: его «реферал» = CRM-клиенты + начисления.
     if role == "operator_manager":
         return ActionResult(
-            text="У KAM реферальная мотивация — резидуальная: приглашённые клиенты "
-                 "закрепляются за вами, а вознаграждение идёт со сделок (0.02% + дожатые "
-                 "отказные). Смотрите в начислениях и заказчиках.",
+            text=_("У KAM реферальная мотивация — резидуальная: приглашённые клиенты " "закрепляются за вами, а вознаграждение идёт со сделок (0.02% + дожатые "
+                 "отказные). Смотрите в начислениях и заказчиках."),
             actions=[
-                {"label": "💰 Мои начисления", "action": "my_accruals", "params": {}},
-                {"label": "👥 Мои заказчики", "action": "seller_customers", "params": {}},
+                {"label": _("💰 Мои начисления"), "action": "my_accruals", "params": {}},
+                {"label": _("👥 Мои заказчики"), "action": "seller_customers", "params": {}},
             ],
         )
     from . import referral as _ref
@@ -3612,22 +3626,22 @@ def my_referrals(params, user, role):
             "subtitle": (r.note or "") + (f" · заказ #{r.trigger_order_id}" if r.trigger_order_id else ""),
             "badge": {"label": lbl, "tone": tone}, "tone": tone,
         })
-    kpi = {"type": "kpi_grid", "data": {"title": "📨 Мои приглашения", "kpis": [
-        {"value": _m(summ["credited"]), "label": "Зачислено"},
-        {"value": _m(summ["pending"]), "label": "В ожидании", "sub": "при первом заказе/пополнении"},
-        {"value": summ["count"], "label": "Приглашений"},
+    kpi = {"type": "kpi_grid", "data": {"title": _("📨 Мои приглашения"), "kpis": [
+        {"value": _m(summ["credited"]), "label": _("Зачислено")},
+        {"value": _m(summ["pending"]), "label": _("В ожидании"), "sub": _("при первом заказе/пополнении")},
+        {"value": summ["count"], "label": _("Приглашений")},
     ]}}
     return ActionResult(
         text=(f"📨 Реферальные награды: зачислено {_m(summ['credited'])}, "
               f"в ожидании {_m(summ['pending'])}." if summ["rows"]
               else "Пока нет приглашений. Отправьте реф-ссылку — за первый заказ "
                    "приглашённого получите награду."),
-        cards=[kpi, {"type": "list", "data": {"title": "Начисления",
-                "rows": rows or [{"title": "Пока пусто",
-                                  "subtitle": "Награда появится, когда приглашённый оформит первый заказ"}]}}],
+        cards=[kpi, {"type": "list", "data": {"title": _("Начисления"),
+                "rows": rows or [{"title": _("Пока пусто"),
+                                  "subtitle": _("Награда появится, когда приглашённый оформит первый заказ")}]}}],
         actions=[
-            {"label": "📨 Пригласить", "action": "invite_customer", "params": {}},
-            {"label": "🏠 Главная", "action": "go_home", "params": {}},
+            {"label": _("📨 Пригласить"), "action": "invite_customer", "params": {}},
+            {"label": _("🏠 Главная"), "action": "go_home", "params": {}},
         ],
     )
 
@@ -3647,7 +3661,7 @@ def _drawing_row(d):
     """Строка списка для чертежа: клик открывает файл через access-controlled
     эндпоинт (не сырой /media/ — приватность)."""
     return {
-        "title": f"{(getattr(d, 'title', None) or f'Чертёж #{d.id}')} · ред. {d.revision or 'A'}",
+        "title": _('%(p0)s · ред. %(p1)s') % {"p0": f"{getattr(d, 'title', None) or f'Чертёж #{d.id}'}", "p1": f"{d.revision or 'A'}"},
         "subtitle": (
             f"{(d.file_format or '').upper()} · "
             + (f"арт. {d.oem_number}" if d.oem_number
@@ -3721,14 +3735,14 @@ def _drawings_view(user, role, note=None):
     return ActionResult(
         text=text,
         cards=[{"type": "drawings", "data": {
-            "title": "Мои чертежи",
+            "title": _("Мои чертежи"),
             "folders": folders_data,
             "ungrouped": ungrouped_data,
             "total": total,
         }}],
         actions=[
-            {"label": "📤 Загрузить чертёж", "action": "upload_drawing", "params": {}},
-            {"label": "🏠 Главная", "action": "go_home", "params": {}},
+            {"label": _("📤 Загрузить чертёж"), "action": "upload_drawing", "params": {}},
+            {"label": _("🏠 Главная"), "action": "go_home", "params": {}},
         ],
         suggestions=["Загрузить чертёж"],
     )
@@ -3749,8 +3763,8 @@ def drawing_folder(params, user, role):
     try:
         folder = DrawingFolder.objects.get(id=params.get("folder_id"), owner=owner)
     except (DrawingFolder.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Папка не найдена.",
-            actions=[{"label": "← Все чертежи", "action": "seller_drawings", "params": {}}])
+        return ActionResult(text=_("Папка не найдена."),
+            actions=[{"label": _("← Все чертежи"), "action": "seller_drawings", "params": {}}])
     items = list(Drawing.objects.filter(seller=owner, folder=folder)
                  .select_related("part").order_by("-created_at"))
     cards = ([{"type": "list", "data": {"title": folder.name,
@@ -3762,9 +3776,9 @@ def drawing_folder(params, user, role):
         text=text,
         cards=cards,
         actions=[
-            {"label": "➕ Добавить чертежи", "action": "add_to_folder", "params": {"folder_id": folder.id}},
-            {"label": "🗑 Удалить папку", "action": "delete_drawing_folder", "params": {"folder_id": folder.id}},
-            {"label": "← Все чертежи", "action": "seller_drawings", "params": {}},
+            {"label": _("➕ Добавить чертежи"), "action": "add_to_folder", "params": {"folder_id": folder.id}},
+            {"label": _("🗑 Удалить папку"), "action": "delete_drawing_folder", "params": {"folder_id": folder.id}},
+            {"label": _("← Все чертежи"), "action": "seller_drawings", "params": {}},
         ],
     )
 
@@ -3791,31 +3805,31 @@ def add_to_folder(params, user, role):
     try:
         folder = DrawingFolder.objects.get(id=params.get("folder_id"), owner=owner)
     except (DrawingFolder.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Папка не найдена.",
-            actions=[{"label": "← Все чертежи", "action": "seller_drawings", "params": {}}])
+        return ActionResult(text=_("Папка не найдена."),
+            actions=[{"label": _("← Все чертежи"), "action": "seller_drawings", "params": {}}])
     cand = list(Drawing.objects.filter(seller=owner).exclude(folder=folder)
                 .select_related("part", "folder").order_by("-created_at")[:50])
     if not cand:
         return ActionResult(
-            text=f"Нет чертежей для добавления в «{folder.name}». Сначала загрузите чертёж.",
+            text=_('Нет чертежей для добавления в «%(p0)s». Сначала загрузите чертёж.') % {"p0": f'{folder.name}'},
             actions=[
-                {"label": "📤 Загрузить чертёж", "action": "upload_drawing", "params": {}},
-                {"label": f"← Назад в «{folder.name}»", "action": "drawing_folder", "params": {"folder_id": folder.id}},
+                {"label": _("📤 Загрузить чертёж"), "action": "upload_drawing", "params": {}},
+                {"label": _('← Назад в «%(p0)s»') % {"p0": f'{folder.name}'}, "action": "drawing_folder", "params": {"folder_id": folder.id}},
             ],
         )
     rows = []
     for d in cand:
         loc = f" · сейчас в «{d.folder.name}»" if d.folder_id else ""
         rows.append({
-            "title": f"{(d.title or f'Чертёж #{d.id}')} · ред. {d.revision or 'A'}",
-            "subtitle": f"{(d.file_format or '').upper()}{loc} — нажмите, чтобы положить сюда",
+            "title": _('%(p0)s · ред. %(p1)s') % {"p0": f"{d.title or f'Чертёж #{d.id}'}", "p1": f"{d.revision or 'A'}"},
+            "subtitle": _('%(p0)s%(p1)s — нажмите, чтобы положить сюда') % {"p0": f"{(d.file_format or '').upper()}", "p1": f'{loc}'},
             "action": "move_drawing",
             "params": {"drawing_id": d.id, "folder_id": folder.id},
         })
     return ActionResult(
-        text=f"Выберите чертёж — он переедет в папку «{folder.name}».",
-        cards=[{"type": "list", "data": {"title": f"Добавить в «{folder.name}»", "rows": rows}}],
-        actions=[{"label": f"← Назад в «{folder.name}»", "action": "drawing_folder", "params": {"folder_id": folder.id}}],
+        text=_('Выберите чертёж — он переедет в папку «%(p0)s».') % {"p0": f'{folder.name}'},
+        cards=[{"type": "list", "data": {"title": _('Добавить в «%(p0)s»') % {"p0": f'{folder.name}'}, "rows": rows}}],
+        actions=[{"label": _('← Назад в «%(p0)s»') % {"p0": f'{folder.name}'}, "action": "drawing_folder", "params": {"folder_id": folder.id}}],
     )
 
 
@@ -3877,7 +3891,7 @@ def link_drawing(params, user, role):
                 break
     cur = (f"Сейчас: {d.oem_number}" if d.oem_number else "Сейчас: без привязки")
     return ActionResult(
-        text=f"🔗 Привязать «{d.title or ('Чертёж #'+str(d.id))}» к позиции. {cur}",
+        text=_('🔗 Привязать «%(p0)s» к позиции. %(p1)s') % {"p0": f"{d.title or 'Чертёж #' + str(d.id)}", "p1": f'{cur}'},
         cards=[{"type": "drawing_link", "data": {
             "drawing_id": d.id,
             "title": d.title or f"Чертёж #{d.id}",
@@ -3886,8 +3900,8 @@ def link_drawing(params, user, role):
             "searched": len(q) >= 2,
         }}],
         actions=[
-            {"label": "✖ Снять привязку", "action": "bind_drawing", "params": {"drawing_id": d.id, "oem": ""}},
-            {"label": "← Все чертежи", "action": "seller_drawings", "params": {}},
+            {"label": _("✖ Снять привязку"), "action": "bind_drawing", "params": {"drawing_id": d.id, "oem": ""}},
+            {"label": _("← Все чертежи"), "action": "seller_drawings", "params": {}},
         ],
     )
 
@@ -3936,13 +3950,13 @@ def delete_drawing_folder(params, user, role):
     try:
         folder = DrawingFolder.objects.get(id=params.get("folder_id"), owner=owner)
     except (DrawingFolder.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Папка не найдена.",
-            actions=[{"label": "← Все чертежи", "action": "seller_drawings", "params": {}}])
+        return ActionResult(text=_("Папка не найдена."),
+            actions=[{"label": _("← Все чертежи"), "action": "seller_drawings", "params": {}}])
     nm = folder.name
     folder.delete()
     return ActionResult(
-        text=f"🗑 Папка «{nm}» удалена. Чертежи из неё сохранены (теперь без папки).",
-        actions=[{"label": "← Все чертежи", "action": "seller_drawings", "params": {}}],
+        text=_('🗑 Папка «%(p0)s» удалена. Чертежи из неё сохранены (теперь без папки).') % {"p0": f'{nm}'},
+        actions=[{"label": _("← Все чертежи"), "action": "seller_drawings", "params": {}}],
     )
 
 
@@ -3953,7 +3967,7 @@ def go_home(params, user, role):
     (устаревший кэш JS, реплей истории) — отдаём дружелюбный экран вместо
     «Нет прав». Доступно всем ролям."""
     return ActionResult(
-        text="🏠 Главный экран. Чем помочь?",
+        text=_("🏠 Главный экран. Чем помочь?"),
         suggestions=["Мои заказы", "Поиск запчастей", "Создать RFQ", "Чертежи"],
     )
 
@@ -3972,23 +3986,22 @@ def upload_drawing(params, user, role):
             "приватный: его видите только вы и оператор."
         ),
         cards=[{"type": "int_methods", "data": {
-            "title": "Загрузить чертёж",
+            "title": _("Загрузить чертёж"),
             "methods": [{
                 "icon": "📂",
-                "title": "Выбрать файл чертежа",
+                "title": _("Выбрать файл чертежа"),
                 "status": "recommended",
-                "description": "PDF / DWG / DXF / STEP / IGES / STL / PNG / JPG, до 50 МБ. "
-                               "Можно указать артикул для привязки к товару.",
-                "primary": {"label": "📂 Выбрать файл",
+                "description": _("PDF / DWG / DXF / STEP / IGES / STL / PNG / JPG, до 50 МБ. " "Можно указать артикул для привязки к товару."),
+                "primary": {"label": _("📂 Выбрать файл"),
                             "action": "__open_drawing_picker", "params": {}},
             }],
         }}],
         actions=[
-            {"label": "📐 Мои чертежи", "action": "seller_drawings", "params": {}},
+            {"label": _("📐 Мои чертежи"), "action": "seller_drawings", "params": {}},
             # «Каталог» — seller-only; покупателю даём поиск товара вместо него.
-            ({"label": "🔎 Найти товар", "action": "search_parts", "params": {}}
+            ({"label": _("🔎 Найти товар"), "action": "search_parts", "params": {}}
              if (role or "").startswith("buyer")
-             else {"label": "📦 Каталог", "action": "seller_catalog", "params": {}}),
+             else {"label": _("📦 Каталог"), "action": "seller_catalog", "params": {}}),
         ],
         suggestions=["Мои чертежи", "Зачем чертежи покупателю?"],
     )
@@ -4083,7 +4096,7 @@ def seller_team(params, user, role):
 
     rows = [{
         "title": "👑 " + (owner.get_full_name() or owner.username),
-        "subtitle": "Руководитель компании" + (" · вы" if user.id == owner.id else ""),
+        "subtitle": _("Руководитель компании") + (" · вы" if user.id == owner.id else ""),
     }]
     _st_label = {"invited": "приглашён — ждёт принятия", "disabled": "отключён", "active": "активен"}
     for m in members:
@@ -4100,16 +4113,16 @@ def seller_team(params, user, role):
 
     actions = []
     if can_manage:
-        actions.append({"label": "➕ Пригласить сотрудника", "action": "invite_team_member", "params": {}})
+        actions.append({"label": _("➕ Пригласить сотрудника"), "action": "invite_team_member", "params": {}})
     actions += [
-        {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
-        {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+        {"label": _("📦 Каталог"), "action": "seller_catalog", "params": {}},
+        {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
     ]
     head = (f"👥 Команда компании{(' «' + company + '»') if company else ''}: "
             f"{len(members)} + руководитель." if can_manage else "👥 Команда вашей компании.")
     return ActionResult(
         text=head,
-        cards=[{"type": "list", "data": {"title": "Команда компании", "rows": rows}}],
+        cards=[{"type": "list", "data": {"title": _("Команда компании"), "rows": rows}}],
         actions=actions,
         suggestions=(["Пригласить менеджера", "Пригласить логиста"] if can_manage else []),
     )
@@ -4123,7 +4136,7 @@ def invite_team_member(params, user, role):
     from marketplace.models import TeamMember
 
     if not _can_manage_team(user):
-        return ActionResult(text="Приглашать сотрудников может только руководитель компании или администратор.")
+        return ActionResult(text=_("Приглашать сотрудников может только руководитель компании или администратор."))
 
     email = (params.get("email") or "").strip().lower()
     role_in = (params.get("role") or "manager").strip().lower()
@@ -4133,17 +4146,17 @@ def invite_team_member(params, user, role):
 
     if not email:
         return ActionResult(
-            text="Пригласить сотрудника в компанию. Он получит ссылку и доступ к данным компании.",
+            text=_("Пригласить сотрудника в компанию. Он получит ссылку и доступ к данным компании."),
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": "👥 Пригласить сотрудника в компанию",
+                    "title": _("👥 Пригласить сотрудника в компанию"),
                     "submit_action": "invite_team_member",
                     "submit_label": "Создать приглашение",
                     "fields": [
-                        {"name": "email", "label": "Email сотрудника", "type": "email",
+                        {"name": "email", "label": _("Email сотрудника"), "type": "email",
                          "required": True, "placeholder": "ivanov@company.com"},
-                        {"name": "role", "label": "Права доступа", "type": "select",
+                        {"name": "role", "label": _("Права доступа"), "type": "select",
                          "default": "manager",
                          "options": [
                              {"value": k, "label": f"{TEAM_ROLE_LABELS[k]} — {TEAM_ROLE_HINT[k]}"}
@@ -4172,12 +4185,10 @@ def invite_team_member(params, user, role):
     link = f"{_invite_base_url()}/chat/?join_team={token}"
     rlabel = TEAM_ROLE_LABELS.get(role_in, role_in)
     return ActionResult(
-        text=(f"✓ Приглашение для {email} ({rlabel}) создано.\n"
-              f"Отправьте сотруднику ссылку — действует {TEAM_INVITE_TTL_DAYS} дней:\n{link}\n\n"
-              f"Он откроет ссылку, войдёт или зарегистрируется и получит доступ к данным компании."),
+        text=(_('✓ Приглашение для %(p0)s (%(p1)s) создано.\nОтправьте сотруднику ссылку — действует %(p2)s дней:\n%(p3)s\n\nОн откроет ссылку, войдёт или зарегистрируется и получит доступ к данным компании.') % {"p0": f'{email}', "p1": f'{rlabel}', "p2": f'{TEAM_INVITE_TTL_DAYS}', "p3": f'{link}'}),
         actions=[
-            {"label": "👥 К команде", "action": "seller_team", "params": {}},
-            {"label": "➕ Ещё приглашение", "action": "invite_team_member", "params": {}},
+            {"label": _("👥 К команде"), "action": "seller_team", "params": {}},
+            {"label": _("➕ Ещё приглашение"), "action": "invite_team_member", "params": {}},
         ],
     )
 
@@ -4191,30 +4202,30 @@ def accept_team_invite(params, user, role):
 
     token = (params.get("token") or params.get("join_team") or "").strip()
     if not token:
-        return ActionResult(text="Ссылка-приглашение недействительна (нет токена).")
+        return ActionResult(text=_("Ссылка-приглашение недействительна (нет токена)."))
 
     tm = TeamMember.objects.filter(invite_token=token).select_related("owner").first()
     if not tm or tm.status == "disabled":
-        return ActionResult(text="Приглашение не найдено или отозвано. Попросите руководителя выслать новое.")
+        return ActionResult(text=_("Приглашение не найдено или отозвано. Попросите руководителя выслать новое."))
     if tm.invited_at and tm.invited_at < _tz.now() - timedelta(days=TEAM_INVITE_TTL_DAYS):
-        return ActionResult(text=f"Срок действия приглашения истёк ({TEAM_INVITE_TTL_DAYS} дней). Попросите руководителя выслать новое.")
+        return ActionResult(text=_('Срок действия приглашения истёк (%(p0)s дней). Попросите руководителя выслать новое.') % {"p0": f'{TEAM_INVITE_TTL_DAYS}'})
 
     if not getattr(user, "is_authenticated", False):
         return ActionResult(
-            text="Чтобы принять приглашение в команду, войдите или зарегистрируйтесь — затем снова откройте ссылку из письма.",
-            actions=[{"label": "Войти / зарегистрироваться", "action": "start_login", "params": {}}],
+            text=_("Чтобы принять приглашение в команду, войдите или зарегистрируйтесь — затем снова откройте ссылку из письма."),
+            actions=[{"label": _("Войти / зарегистрироваться"), "action": "start_login", "params": {}}],
         )
 
     if tm.status == "active" and tm.user_id == user.id:
-        return ActionResult(text="Вы уже в команде этой компании.",
-                            actions=[{"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}}])
+        return ActionResult(text=_("Вы уже в команде этой компании."),
+                            actions=[{"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}}])
 
     tm.user = user
     tm.status = "active"
     tm.accepted_at = _tz.now()
     tm.save(update_fields=["user", "status", "accepted_at"])
 
-    prof, _ = UserProfile.objects.get_or_create(user=user, defaults={"role": "seller"})
+    prof, _created = UserProfile.objects.get_or_create(user=user, defaults={"role": "seller"})
     if prof.role != "seller":
         prof.role = "seller"
         prof.save(update_fields=["role"])
@@ -4223,11 +4234,10 @@ def accept_team_invite(params, user, role):
     company = _company_name_of(tm.owner)
     rlabel = TEAM_ROLE_LABELS.get(tm.role, tm.role)
     return ActionResult(
-        text=(f"✅ Вы присоединились к команде компании{(' «' + company + '»') if company else ''} как {rlabel}.\n"
-              f"Теперь у вас доступ к данным компании: каталог, заказы, КП."),
+        text=(_('✅ Вы присоединились к команде компании%(p0)s как %(p1)s.\nТеперь у вас доступ к данным компании: каталог, заказы, КП.') % {"p0": f"{(' «' + company + '»' if company else '')}", "p1": f'{rlabel}'}),
         actions=[
-            {"label": "📊 Дашборд продавца", "action": "seller_dashboard", "params": {}},
-            {"label": "📦 Каталог", "action": "seller_catalog", "params": {}},
+            {"label": _("📊 Дашборд продавца"), "action": "seller_dashboard", "params": {}},
+            {"label": _("📦 Каталог"), "action": "seller_catalog", "params": {}},
         ],
     )
 
@@ -4237,15 +4247,15 @@ def team_member(params, user, role):
     """Карточка сотрудника + управление (для руководителя/админа)."""
     from marketplace.models import TeamMember
     if not _can_manage_team(user):
-        return ActionResult(text="Управление командой доступно руководителю или администратору.")
+        return ActionResult(text=_("Управление командой доступно руководителю или администратору."))
     owner = _company_owner(user)
     try:
         mid = int(params.get("member_id"))
     except (TypeError, ValueError):
-        return ActionResult(text="Сотрудник не найден.")
+        return ActionResult(text=_("Сотрудник не найден."))
     tm = TeamMember.objects.filter(id=mid, owner=owner).select_related("user").first()
     if not tm:
-        return ActionResult(text="Сотрудник не найден в вашей компании.")
+        return ActionResult(text=_("Сотрудник не найден в вашей компании."))
 
     u = tm.user
     name = (u.get_full_name() if u else "") or (u.username if u else "") or tm.invited_email
@@ -4255,39 +4265,39 @@ def team_member(params, user, role):
     if tm.status == "invited":
         link = f"{_invite_base_url()}/chat/?join_team={tm.invite_token}"
         return ActionResult(
-            text=f"👤 {name}\nРоль: {rlabel} · статус: {st}\n\nСсылка-приглашение (7 дней):\n{link}",
-            actions=[{"label": "👥 К команде", "action": "seller_team", "params": {}}],
+            text=_('👤 %(p0)s\nРоль: %(p1)s · статус: %(p2)s\n\nСсылка-приглашение (7 дней):\n%(p3)s') % {"p0": f'{name}', "p1": f'{rlabel}', "p2": f'{st}', "p3": f'{link}'},
+            actions=[{"label": _("👥 К команде"), "action": "seller_team", "params": {}}],
         )
 
     acts = []
     if tm.status == "active":
-        acts.append({"label": "🚫 Отключить доступ", "action": "team_disable", "params": {"member_id": tm.id}})
+        acts.append({"label": _("🚫 Отключить доступ"), "action": "team_disable", "params": {"member_id": tm.id}})
     elif tm.status == "disabled":
-        acts.append({"label": "✅ Включить доступ", "action": "team_enable", "params": {"member_id": tm.id}})
+        acts.append({"label": _("✅ Включить доступ"), "action": "team_enable", "params": {"member_id": tm.id}})
     for rk in ("manager", "ved", "logist", "finance", "admin", "viewer"):
         if rk != tm.role:
-            acts.append({"label": f"Роль → {TEAM_ROLE_LABELS[rk]}", "action": "team_set_role",
+            acts.append({"label": _('Роль → %(p0)s') % {"p0": f'{TEAM_ROLE_LABELS[rk]}'}, "action": "team_set_role",
                          "params": {"member_id": tm.id, "role": rk}})
-    acts.append({"label": "👥 К команде", "action": "seller_team", "params": {}})
-    return ActionResult(text=f"👤 {name}\nРоль: {rlabel} · статус: {st}\nПрава: {TEAM_ROLE_HINT.get(tm.role, '')}",
+    acts.append({"label": _("👥 К команде"), "action": "seller_team", "params": {}})
+    return ActionResult(text=_('👤 %(p0)s\nРоль: %(p1)s · статус: %(p2)s\nПрава: %(p3)s') % {"p0": f'{name}', "p1": f'{rlabel}', "p2": f'{st}', "p3": f"{TEAM_ROLE_HINT.get(tm.role, '')}"},
                         actions=acts)
 
 
 def _team_set_status(params, user, status, msg):
     from marketplace.models import TeamMember
     if not _can_manage_team(user):
-        return ActionResult(text="Недостаточно прав.")
+        return ActionResult(text=_("Недостаточно прав."))
     owner = _company_owner(user)
     try:
         mid = int(params.get("member_id"))
     except (TypeError, ValueError):
-        return ActionResult(text="Сотрудник не найден.")
+        return ActionResult(text=_("Сотрудник не найден."))
     tm = TeamMember.objects.filter(id=mid, owner=owner).first()
     if not tm:
-        return ActionResult(text="Сотрудник не найден.")
+        return ActionResult(text=_("Сотрудник не найден."))
     tm.status = status
     tm.save(update_fields=["status"])
-    return ActionResult(text=f"✓ {msg}", actions=[{"label": "👥 К команде", "action": "seller_team", "params": {}}])
+    return ActionResult(text=f"✓ {msg}", actions=[{"label": _("👥 К команде"), "action": "seller_team", "params": {}}])
 
 
 @register("team_disable")
@@ -4304,24 +4314,24 @@ def team_enable(params, user, role):
 def team_set_role(params, user, role):
     from marketplace.models import TeamMember, UserProfile
     if not _can_manage_team(user):
-        return ActionResult(text="Недостаточно прав.")
+        return ActionResult(text=_("Недостаточно прав."))
     owner = _company_owner(user)
     try:
         mid = int(params.get("member_id"))
     except (TypeError, ValueError):
-        return ActionResult(text="Сотрудник не найден.")
+        return ActionResult(text=_("Сотрудник не найден."))
     new_role = _TEAM_ROLE_SYNONYMS.get((params.get("role") or "").strip().lower(), (params.get("role") or "").strip().lower())
     if new_role not in TEAM_ROLE_LABELS:
-        return ActionResult(text="Неизвестная роль.")
+        return ActionResult(text=_("Неизвестная роль."))
     tm = TeamMember.objects.filter(id=mid, owner=owner).first()
     if not tm:
-        return ActionResult(text="Сотрудник не найден.")
+        return ActionResult(text=_("Сотрудник не найден."))
     tm.role = new_role
     tm.save(update_fields=["role"])
     if tm.user_id:
         UserProfile.objects.filter(user_id=tm.user_id).update(can_manage_team=(new_role == "admin"))
-    return ActionResult(text=f"✓ Роль изменена на «{TEAM_ROLE_LABELS[new_role]}».",
-                        actions=[{"label": "👥 К команде", "action": "seller_team", "params": {}}])
+    return ActionResult(text=_('✓ Роль изменена на «%(p0)s».') % {"p0": f'{TEAM_ROLE_LABELS[new_role]}'},
+                        actions=[{"label": _("👥 К команде"), "action": "seller_team", "params": {}}])
 
 
 # ══════════════════════════════════════════════════════════
@@ -4333,18 +4343,18 @@ def seller_integrations(params, user, role):
     """Список доступных интеграций со статусом."""
     integrations = [
         {"key": "1c",       "name": "1С:Управление торговлей",
-         "desc": "Синхронизация остатков и заказов",
+         "desc": _("Синхронизация остатков и заказов"),
          "status": "available"},
         {"key": "bitrix",   "name": "Битрикс24",
-         "desc": "RFQ в CRM, авто-сделки", "status": "available"},
+         "desc": _("RFQ в CRM, авто-сделки"), "status": "available"},
         {"key": "email",    "name": "Email-уведомления",
-         "desc": "Новые RFQ и заказы на почту",
+         "desc": _("Новые RFQ и заказы на почту"),
          "status": "active"},
         {"key": "telegram", "name": "Telegram-бот",
-         "desc": "Алерты по новым заказам",
+         "desc": _("Алерты по новым заказам"),
          "status": "available"},
         {"key": "api",      "name": "REST API + webhooks",
-         "desc": "Свои интеграции через API-ключ",
+         "desc": _("Свои интеграции через API-ключ"),
          "status": "available"},
     ]
     rows = [{
@@ -4354,13 +4364,13 @@ def seller_integrations(params, user, role):
     } for i in integrations]
 
     return ActionResult(
-        text="🔌 Интеграции с внешними системами. Подключите нужное в один клик.",
+        text=_("🔌 Интеграции с внешними системами. Подключите нужное в один клик."),
         cards=[{
             "type": "list",
-            "data": {"title": "Интеграции", "rows": rows},
+            "data": {"title": _("Интеграции"), "rows": rows},
         }],
         actions=[
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+            {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
         ],
         suggestions=["Подключить 1С", "Настроить Telegram-бота"],
     )
@@ -4375,15 +4385,15 @@ def seller_reports(params, user, role):
     """Доступные отчёты для скачивания."""
     reports = [
         {"key": "sales_csv",     "name": "Продажи (CSV, 30д)",
-         "desc": "Все продажи за последние 30 дней"},
+         "desc": _("Все продажи за последние 30 дней")},
         {"key": "catalog_xlsx",  "name": "Каталог (Excel)",
-         "desc": "Полный каталог с остатками"},
+         "desc": _("Полный каталог с остатками")},
         {"key": "rfq_csv",       "name": "RFQ-история (CSV)",
-         "desc": "Все RFQ и ответы"},
+         "desc": _("Все RFQ и ответы")},
         {"key": "sla_pdf",       "name": "SLA-отчёт (PDF)",
-         "desc": "Отчёт о выполнении SLA"},
+         "desc": _("Отчёт о выполнении SLA")},
         {"key": "rating_pdf",    "name": "Рейтинг и отзывы (PDF)",
-         "desc": "Сертификат рейтинга"},
+         "desc": _("Сертификат рейтинга")},
     ]
     rows = [{
         "title": r["name"],
@@ -4391,13 +4401,13 @@ def seller_reports(params, user, role):
         "badge": "Скачать",
     } for r in reports]
     return ActionResult(
-        text="📑 Отчёты по вашей деятельности. Любой можно сгенерировать сейчас.",
+        text=_("📑 Отчёты по вашей деятельности. Любой можно сгенерировать сейчас."),
         cards=[{
             "type": "list",
-            "data": {"title": "Отчёты", "rows": rows},
+            "data": {"title": _("Отчёты"), "rows": rows},
         }],
         actions=[
-            {"label": "📊 Дашборд", "action": "seller_dashboard", "params": {}},
+            {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
         ],
         suggestions=["Выгрузить продажи", "Скачать каталог"],
     )
@@ -4432,9 +4442,9 @@ def connect_gsheet(params, user, role):
     if not url:
         # Phase 1: показываем форму для ввода ссылки (вместо «пустая ссылка» error)
         return ActionResult(
-            text="Подключите Google Sheets как источник прайс-листа.",
+            text=_("Подключите Google Sheets как источник прайс-листа."),
             cards=[{"type": "form", "data": {
-                "title": "📊 Подключить Google Sheets",
+                "title": _("📊 Подключить Google Sheets"),
                 "intent": (
                     "Откройте таблицу → Поделиться → 'Все, у кого есть ссылка' → "
                     "Просмотр. Затем скопируйте URL и вставьте сюда. "
@@ -4443,14 +4453,14 @@ def connect_gsheet(params, user, role):
                 "submit_action": "connect_gsheet",
                 "submit_label": "Подключить →",
                 "fields": [
-                    {"name": "gsheet_url", "label": "Ссылка на таблицу",
+                    {"name": "gsheet_url", "label": _("Ссылка на таблицу"),
                      "type": "url", "required": True,
                      "placeholder": "https://docs.google.com/spreadsheets/d/.../edit#gid=0",
-                     "hint": "URL должен быть с правами 'у кого есть ссылка'"},
+                     "hint": _("URL должен быть с правами 'у кого есть ссылка'")},
                 ],
             }}],
             actions=[
-                {"label": "← Назад в интеграции", "action": "seller_integrations", "params": {}},
+                {"label": _("← Назад в интеграции"), "action": "seller_integrations", "params": {}},
             ],
         )
     m = _re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", url)
@@ -4470,7 +4480,7 @@ def connect_gsheet(params, user, role):
         import requests
         resp = requests.get(csv_url, timeout=20, allow_redirects=True)
     except Exception as e:
-        return ActionResult(text=f"⚠️ Не удалось скачать таблицу: {e}")
+        return ActionResult(text=_('⚠️ Не удалось скачать таблицу: %(p0)s') % {"p0": f'{e}'})
     if resp.status_code == 401 or resp.status_code == 403:
         return ActionResult(text=(
             "⚠️ Таблица не доступна публично. Откройте доступ "
@@ -4479,26 +4489,24 @@ def connect_gsheet(params, user, role):
         ))
     if resp.status_code != 200:
         return ActionResult(text=(
-            f"⚠️ Google вернул HTTP {resp.status_code}. Проверьте ссылку "
-            f"и доступ."
+            _('⚠️ Google вернул HTTP %(p0)s. Проверьте ссылку и доступ.') % {"p0": f'{resp.status_code}'}
         ))
     blob = resp.content
     if len(blob) > MAX_FILE_BYTES:
         return ActionResult(text=(
-            f"⚠️ Таблица слишком большая ({len(blob) // 1024 // 1024} МБ). "
-            f"Максимум {MAX_FILE_BYTES // 1024 // 1024} МБ."
+            _('⚠️ Таблица слишком большая (%(p0)s МБ). Максимум %(p1)s МБ.') % {"p0": f'{len(blob) // 1024 // 1024}', "p1": f'{MAX_FILE_BYTES // 1024 // 1024}'}
         ))
     try:
         headers, sample = _read_preview("gsheet.csv", blob)
     except Exception as e:
-        return ActionResult(text=f"⚠️ Не удалось прочитать таблицу: {e}")
+        return ActionResult(text=_('⚠️ Не удалось прочитать таблицу: %(p0)s') % {"p0": f'{e}'})
     if not headers or len(headers) < MIN_COLUMNS:
         return ActionResult(text=(
-            f"⚠️ В таблице меньше {MIN_COLUMNS} колонок. Нечего импортировать."
+            _('⚠️ В таблице меньше %(p0)s колонок. Нечего импортировать.') % {"p0": f'{MIN_COLUMNS}'}
         ))
     if len(headers) > MAX_COLUMNS:
         return ActionResult(text=(
-            f"⚠️ Колонок слишком много ({len(headers)}). Максимум {MAX_COLUMNS}."
+            _('⚠️ Колонок слишком много (%(p0)s). Максимум %(p1)s.') % {"p0": f'{len(headers)}', "p1": f'{MAX_COLUMNS}'}
         ))
 
     # Smart mapping: словарь + AI fallback
@@ -4526,7 +4534,7 @@ def connect_gsheet(params, user, role):
     imp.file_obj.save(f"gsheet-{imp.id}.csv", ContentFile(blob), save=True)
 
     # Сохраняем URL для авто-синхронизации
-    pm2, _ = PricelistMapping.objects.get_or_create(seller=user)
+    pm2, _created = PricelistMapping.objects.get_or_create(seller=user)
     cur = dict(pm2.mapping or {})
     cur["_gsheet_url"] = url
     pm2.mapping = cur
@@ -4536,43 +4544,41 @@ def connect_gsheet(params, user, role):
     rows = [{
         "label": "🔗 URL", "value": url[:60] + ("…" if len(url) > 60 else ""),
     }, {
-        "label": "Колонок", "value": str(len(headers)),
+        "label": _("Колонок"), "value": str(len(headers)),
     }, {
-        "label": "Маппинг готов", "value": (
+        "label": _("Маппинг готов"), "value": (
             "по словарю + AI" if ai_called else
             "по сохранённому маппингу" if pm and pm.mapping else
             "по словарю"
         ),
     }, {
-        "label": "─── Распознанные поля ───", "value": "",
+        "label": _("─── Распознанные поля ───"), "value": "",
     }]
     for std, src in (suggested or {}).items():
         rows.append({"label": std, "value": str(src)})
 
     return ActionResult(
         text=(
-            f"✅ Google Sheet подключён · {len(headers)} колонок прочитано.\n"
-            f"Подтвердите маппинг ниже — после импорта URL сохранится для "
-            f"авто-синхронизации (раз в час)."
+            _('✅ Google Sheet подключён · %(p0)s колонок прочитано.\nПодтвердите маппинг ниже — после импорта URL сохранится для авто-синхронизации (раз в час).') % {"p0": f'{len(headers)}'}
         ),
         cards=[
             {"type": "draft", "data": {
-                "title": "Google Sheet · превью",
+                "title": _("Google Sheet · превью"),
                 "rows": rows,
             }},
             {"type": "table_preview", "data": {
-                "title": "Как ляжет в базу (первые 5 строк)",
+                "title": _("Как ляжет в базу (первые 5 строк)"),
                 "headers": mapped_preview["headers"],
                 "rows": mapped_preview["rows"],
             }},
         ],
         actions=[
-            {"action": "__pricelist_commit", "label": "📥 Импортировать",
+            {"action": "__pricelist_commit", "label": _("📥 Импортировать"),
              "params": dict(
                  {"import_id": imp.id},
                  **{f"col__{k}": v for k, v in (suggested or {}).items()},
              )},
-            {"action": "__pricelist_cancel", "label": "Отменить",
+            {"action": "__pricelist_cancel", "label": _("Отменить"),
              "params": {"import_id": imp.id}},
         ],
     )
@@ -4592,10 +4598,9 @@ def list_projects(params, user, role):
     qs = Project.objects.filter(owner=user, is_active=True).order_by("-updated_at")[:30]
     if not qs.exists():
         return ActionResult(
-            text="Активных проектов нет. Создайте первый — он автоматически объединит "
-                  "связанные чаты, RFQ и заказы.",
+            text=_("Активных проектов нет. Создайте первый — он автоматически объединит " "связанные чаты, RFQ и заказы."),
             actions=[
-                {"label": "+ Создать проект", "action": "create_project", "params": {}},
+                {"label": _("+ Создать проект"), "action": "create_project", "params": {}},
             ],
         )
     rows = []
@@ -4613,8 +4618,8 @@ def list_projects(params, user, role):
             "params": {"project_id": str(p.id)},
         })
     return ActionResult(
-        text=f"📁 Ваши проекты · {qs.count()}",
-        cards=[{"type": "list", "data": {"title": "📁 Проекты", "items": rows}}],
+        text=_('📁 Ваши проекты · %(p0)s') % {"p0": f'{qs.count()}'},
+        cards=[{"type": "list", "data": {"title": _("📁 Проекты"), "items": rows}}],
     )
 
 
@@ -4624,11 +4629,11 @@ def open_project(params, user, role):
     from .models import Conversation, Project
     project_id = params.get("project_id") or ""
     if not project_id:
-        return ActionResult(text="Проект не указан.")
+        return ActionResult(text=_("Проект не указан."))
     try:
         p = Project.objects.get(id=project_id, owner=user, is_active=True)
     except (Project.DoesNotExist, ValueError):
-        return ActionResult(text="Проект не найден.")
+        return ActionResult(text=_("Проект не найден."))
 
     chats = list(Conversation.objects.filter(
         user=user, project=p, is_active=True,
@@ -4652,8 +4657,8 @@ def open_project(params, user, role):
             },
         }],
         actions=[
-            {"label": "📦 Заказы по проекту", "action": "get_orders", "params": {"project_id": str(p.id)}},
-            {"label": "📋 Открытые RFQ", "action": "get_rfq_status", "params": {"project_id": str(p.id)}},
+            {"label": _("📦 Заказы по проекту"), "action": "get_orders", "params": {"project_id": str(p.id)}},
+            {"label": _("📋 Открытые RFQ"), "action": "get_rfq_status", "params": {"project_id": str(p.id)}},
         ],
         suggestions=["Открытые RFQ по проекту", "Активные заказы", "Покажи документы"],
     )

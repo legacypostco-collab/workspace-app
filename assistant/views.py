@@ -1,6 +1,8 @@
 import logging
 
 from django.shortcuts import get_object_or_404
+from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy as _lazy
 from rest_framework import status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -87,7 +89,7 @@ class ChatView(APIView):
                 # уточнить запрос примерами OEM/RFQ
                 return Response({
                     "conversation_id": None,
-                    "response": (
+                    "response": _(
                         "Я не понял запрос. Попробуйте:\n"
                         "• Вставьте список артикулов (по одному на строке)\n"
                         "• Загрузите файл (.xlsx/.pdf) с позициями\n"
@@ -96,8 +98,8 @@ class ChatView(APIView):
                     ),
                     "cards": [],
                     "actions": [
-                        {"action": "start_registration", "label": "🚀 Зарегистрироваться"},
-                        {"action": "start_login",        "label": "Войти"},
+                        {"action": "start_registration", "label": _("🚀 Зарегистрироваться")},
+                        {"action": "start_login",        "label": _("Войти")},
                     ],
                     "contextual_actions": [], "context_refs": [],
                     "suggestions": [], "message_id": None,
@@ -212,13 +214,13 @@ def _registration_required_response():
     прямо в текущем чате (без редиректа на отдельную страницу).
     """
     return {
-        "text": (
+        "text": _(
             "🔒 Чтобы продолжить — зарегистрируйтесь прямо здесь, в чате.\n"
             "Это займёт 20 секунд."
         ),
         "actions": [
-            {"action": "start_registration", "label": "🚀 Зарегистрироваться"},
-            {"action": "start_login",        "label": "У меня есть аккаунт"},
+            {"action": "start_registration", "label": _("🚀 Зарегистрироваться")},
+            {"action": "start_login",        "label": _("У меня есть аккаунт")},
         ],
         "cards": [], "suggestions": [], "contextual_actions": [],
     }
@@ -232,7 +234,7 @@ def _payment_requires_registration_response(action_name: str, params: dict):
     регистрации фронт его сам replays.
     """
     return {
-        "text": (
+        "text": _(
             "💳 Чтобы оформить оплату — нужен аккаунт.\n"
             "Это нужно для:\n"
             "• приёма и возврата средств (резерв 10%)\n"
@@ -242,9 +244,9 @@ def _payment_requires_registration_response(action_name: str, params: dict):
             "RFQ, выбранная котировка — сохранятся."
         ),
         "actions": [
-            {"action": "start_registration", "label": "🚀 Создать аккаунт и оплатить",
+            {"action": "start_registration", "label": _("🚀 Создать аккаунт и оплатить"),
              "params": {"role": "buyer", "_resume": action_name}},
-            {"action": "start_login",        "label": "У меня уже есть аккаунт",
+            {"action": "start_login",        "label": _("У меня уже есть аккаунт"),
              "params": {"role": "buyer", "_resume": action_name}},
         ],
         "cards": [], "suggestions": [], "contextual_actions": [],
@@ -298,10 +300,10 @@ def _handle_start_registration(request, params):
             # Возвращаем resume-карточку: фронт сам кликнет action в чате
             return {
                 "text": (result["response"].get("text", "") + "\n\n"
-                         "▶ Продолжаю оформление заказа..."),
+                         + _("▶ Продолжаю оформление заказа...")),
                 "actions": [{
                     "action": pending["action"],
-                    "label": "▶ Продолжить",
+                    "label": _("▶ Продолжить"),
                     "params": pending.get("params", {}),
                 }],
                 "cards": [], "suggestions": [], "contextual_actions": [],
@@ -348,7 +350,7 @@ def _handle_seller_quick_registration(request, params):
     confirmed = bool(params.get("confirmed"))
     if not confirmed:
         return {
-            "text": (
+            "text": _(
                 "🏭 Регистрация поставщика — 2 шага.\n\n"
                 "▸ Шаг 1 (сейчас): только аккаунт — логин, e-mail, пароль. "
                 "Это нужно, чтобы вы могли сохранять прогресс.\n"
@@ -360,23 +362,23 @@ def _handle_seller_quick_registration(request, params):
             "cards": [{
                 "type": "form",
                 "data": {
-                    "title": "🏭 Шаг 1 из 2 · Аккаунт поставщика",
+                    "title": _("🏭 Шаг 1 из 2 · Аккаунт поставщика"),
                     "submit_action": "start_registration",
-                    "submit_label": "Шаг 2: к KYB-анкете →",
+                    "submit_label": _("Шаг 2: к KYB-анкете →"),
                     "fields": [
-                        {"name": "username", "label": "Логин",
+                        {"name": "username", "label": _("Логин"),
                          "required": True, "placeholder": "myshop_2026"},
-                        {"name": "email", "label": "E-mail",
+                        {"name": "email", "label": _("E-mail"),
                          "type": "email", "required": True},
-                        {"name": "password1", "label": "Пароль",
+                        {"name": "password1", "label": _("Пароль"),
                          "type": "password", "required": True, "minlength": 8},
-                        {"name": "password2", "label": "Повторите пароль",
+                        {"name": "password2", "label": _("Повторите пароль"),
                          "type": "password", "required": True, "minlength": 8},
                     ],
                     "fixed_params": {"confirmed": True, "role": "seller"},
                 },
             }],
-            "actions": [{"action": "start_login", "label": "У меня уже есть аккаунт",
+            "actions": [{"action": "start_login", "label": _("У меня уже есть аккаунт"),
                           "params": {"role": "seller"}}],
             "suggestions": [], "contextual_actions": [],
         }
@@ -392,8 +394,8 @@ def _handle_seller_quick_registration(request, params):
     if not form.is_valid():
         errs = "\n".join(f"• {f}: {e[0]}" for f, e in form.errors.items())
         return {
-            "text": "⚠️ Не получилось создать аккаунт:\n" + errs,
-            "actions": [{"action": "start_registration", "label": "🔄 Попробовать снова",
+            "text": _("⚠️ Не получилось создать аккаунт:\n") + errs,
+            "actions": [{"action": "start_registration", "label": _("🔄 Попробовать снова"),
                          "params": {"role": "seller"}}],
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
@@ -411,12 +413,12 @@ def _handle_seller_quick_registration(request, params):
     except Exception:
         logger.exception("notify_operator_alert user_registered failed")
     return {
-        "text": (f"✅ Аккаунт создан · {user.username}\n"
-                 f"Сейчас откроем KYB-анкету — нужны реквизиты компании, "
-                 f"банк и директор. После проверки оператором (≤24ч) сможете "
-                 f"отвечать на RFQ и принимать заказы."),
+        "text": (_("✅ Аккаунт создан · %(u)s\n"
+                   "Сейчас откроем KYB-анкету — нужны реквизиты компании, "
+                   "банк и директор. После проверки оператором (≤24ч) сможете "
+                   "отвечать на RFQ и принимать заказы.") % {"u": user.username}),
         "cards": [],
-        "actions": [{"action": "reload_page", "label": "🚀 Перейти к KYB"}],
+        "actions": [{"action": "reload_page", "label": _("🚀 Перейти к KYB")}],
         "suggestions": [], "contextual_actions": [],
         "_post_action": "reload",
     }
@@ -439,14 +441,14 @@ def _handle_switch_role_login(request, params):
         "operator": "demo_operator",
     }
     if role not in DEMO_USERNAMES:
-        return {"text": f"⚠️ Неизвестная роль: {role}",
+        return {"text": _("⚠️ Неизвестная роль: %(r)s") % {"r": role},
                 "cards": [], "actions": [], "suggestions": [], "contextual_actions": []}
     suggested_username = DEMO_USERNAMES[role]
 
     ROLE_META = {
-        "buyer":    ("👋 Войти как Покупатель", "Введите логин и пароль аккаунта покупателя."),
-        "seller":   ("🏭 Войти как Поставщик",  "Введите логин и пароль аккаунта поставщика."),
-        "operator": ("🛡 Войти как Оператор",   "Введите логин и пароль операторского аккаунта."),
+        "buyer":    (_("👋 Войти как Покупатель"), _("Введите логин и пароль аккаунта покупателя.")),
+        "seller":   (_("🏭 Войти как Поставщик"),  _("Введите логин и пароль аккаунта поставщика.")),
+        "operator": (_("🛡 Войти как Оператор"),   _("Введите логин и пароль операторского аккаунта.")),
     }
     title, greeting = ROLE_META[role]
     confirmed = bool(params.get("confirmed"))
@@ -457,15 +459,15 @@ def _handle_switch_role_login(request, params):
         reg_actions = []
         if role == "buyer":
             reg_actions.append({"action": "start_registration",
-                                "label": "📝 Создать аккаунт покупателя",
+                                "label": _("📝 Создать аккаунт покупателя"),
                                 "params": {"role": "buyer"}})
         elif role == "seller":
             reg_actions.append({"action": "start_registration",
-                                "label": "🏭 Создать аккаунт поставщика",
+                                "label": _("🏭 Создать аккаунт поставщика"),
                                 "params": {"role": "seller"}})
         elif role == "operator":
             reg_actions.append({"action": "contact_operator",
-                                "label": "📨 Запросить операторский доступ у админа",
+                                "label": _("📨 Запросить операторский доступ у админа"),
                                 "params": {"topic": "operator_access"}})
         return {
             "text": greeting,
@@ -473,21 +475,21 @@ def _handle_switch_role_login(request, params):
                 "type": "form",
                 "data": {
                     "title": title,
-                    "intent": (
+                    "intent": _(
                         "Каждая роль = отдельный аккаунт. Текущая сессия будет переключена. "
                         "Если аккаунта нет — создайте его кнопкой ниже формы."
                     ),
                     "submit_action": "switch_role_login",
-                    "submit_label": "Войти →",
+                    "submit_label": _("Войти →"),
                     "fields": [
-                        {"name": "username", "label": "Логин или e-mail",
+                        {"name": "username", "label": _("Логин или e-mail"),
                          "value": suggested_username,
                          "placeholder": "ivanov / you@company.ru",
                          "required": True,
-                         "hint": f"Подставлен demo-аккаунт. Если у вас свой — замените."},
-                        {"name": "password", "label": "Пароль",
+                         "hint": _("Подставлен demo-аккаунт. Если у вас свой — замените.")},
+                        {"name": "password", "label": _("Пароль"),
                          "type": "password", "required": True,
-                         "placeholder": "Введите пароль"},
+                         "placeholder": _("Введите пароль")},
                     ],
                     "fixed_params": {"confirmed": True, "role": role},
                 },
@@ -508,9 +510,9 @@ def _handle_switch_role_login(request, params):
             raw = u.username
     if not raw:
         return {
-            "text": "❌ Логин не указан.",
+            "text": _("❌ Логин не указан."),
             "actions": [{"action": "switch_role_login",
-                         "label": "🔄 Попробовать ещё раз",
+                         "label": _("🔄 Попробовать ещё раз"),
                          "params": {"role": role}}],
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
@@ -522,25 +524,25 @@ def _handle_switch_role_login(request, params):
             reg_btn = []
             if role == "buyer":
                 reg_btn.append({"action": "start_registration",
-                                "label": "📝 Создать аккаунт покупателя",
+                                "label": _("📝 Создать аккаунт покупателя"),
                                 "params": {"role": "buyer"}})
             elif role == "seller":
                 reg_btn.append({"action": "start_registration",
-                                "label": "🏭 Создать аккаунт поставщика",
+                                "label": _("🏭 Создать аккаунт поставщика"),
                                 "params": {"role": "seller"}})
             return {
-                "text": f"⚠️ Аккаунт «{raw}» не найден. Зарегистрируйтесь или укажите другой логин.",
+                "text": _("⚠️ Аккаунт «%(u)s» не найден. Зарегистрируйтесь или укажите другой логин.") % {"u": raw},
                 "actions": reg_btn + [
                     {"action": "switch_role_login",
-                     "label": "🔄 Ввести другой логин",
+                     "label": _("🔄 Ввести другой логин"),
                      "params": {"role": role}},
                 ],
                 "cards": [], "suggestions": [], "contextual_actions": [],
             }
         return {
-            "text": f"❌ Неверный пароль для «{raw}». Попробуйте ещё раз.",
+            "text": _("❌ Неверный пароль для «%(u)s». Попробуйте ещё раз.") % {"u": raw},
             "actions": [{"action": "switch_role_login",
-                         "label": "🔄 Войти снова",
+                         "label": _("🔄 Войти снова"),
                          "params": {"role": role}}],
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
@@ -549,10 +551,11 @@ def _handle_switch_role_login(request, params):
     actual_norm = "operator" if actual_role.startswith("operator") else actual_role
     if actual_norm != role:
         return {
-            "text": (f"⚠️ Аккаунт «{user.username}» имеет роль «{actual_norm}», "
-                     f"а вы пытались войти как «{role}». Войдите под другим логином."),
+            "text": (_("⚠️ Аккаунт «%(u)s» имеет роль «%(actual)s», "
+                       "а вы пытались войти как «%(role)s». Войдите под другим логином.")
+                     % {"u": user.username, "actual": actual_norm, "role": role}),
             "actions": [{"action": "switch_role_login",
-                         "label": "🔄 Ввести другой логин",
+                         "label": _("🔄 Ввести другой логин"),
                          "params": {"role": role}}],
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
@@ -560,8 +563,8 @@ def _handle_switch_role_login(request, params):
     request.session.pop("assistant_role_override", None)
     login(request, user)
     return {
-        "text": f"✅ Вы вошли как «{user.username}». Перезагружаю кабинет...",
-        "actions": [{"action": "reload_page", "label": "🚀 Открыть кабинет"}],
+        "text": _("✅ Вы вошли как «%(u)s». Перезагружаю кабинет...") % {"u": user.username},
+        "actions": [{"action": "reload_page", "label": _("🚀 Открыть кабинет")}],
         "cards": [], "suggestions": [], "contextual_actions": [],
         "_post_action": "reload",
     }
@@ -578,9 +581,9 @@ def _handle_start_login(request, params):
     role = (params.get("role") or "buyer").lower()
 
     LOGIN_META = {
-        "buyer":    ("👋 Вход покупателя", "С возвращением. Введите логин или e-mail."),
-        "seller":   ("🏭 Вход поставщика", "Войдите в кабинет поставщика."),
-        "operator": ("🛡 Вход оператора",  "Войдите в операторский кабинет."),
+        "buyer":    (_("👋 Вход покупателя"), _("С возвращением. Введите логин или e-mail.")),
+        "seller":   (_("🏭 Вход поставщика"), _("Войдите в кабинет поставщика.")),
+        "operator": (_("🛡 Вход оператора"),  _("Войдите в операторский кабинет.")),
     }
     title, greeting = LOGIN_META.get(role, LOGIN_META["buyer"])
 
@@ -591,11 +594,11 @@ def _handle_start_login(request, params):
             pass
         elif role == "seller":
             actions.append({"action": "start_registration",
-                             "label": "Создать аккаунт поставщика",
+                             "label": _("Создать аккаунт поставщика"),
                              "params": {"role": "seller"}})
         else:
             actions.append({"action": "start_registration",
-                             "label": "Создать новый аккаунт"})
+                             "label": _("Создать новый аккаунт")})
         return {
             "text": greeting,
             "cards": [{
@@ -603,11 +606,11 @@ def _handle_start_login(request, params):
                 "data": {
                     "title": title,
                     "submit_action": "start_login",
-                    "submit_label": "Войти →",
+                    "submit_label": _("Войти →"),
                     "fields": [
-                        {"name": "username", "label": "Логин или e-mail",
+                        {"name": "username", "label": _("Логин или e-mail"),
                          "required": True, "placeholder": "ivanov / you@company.ru"},
-                        {"name": "password", "label": "Пароль",
+                        {"name": "password", "label": _("Пароль"),
                          "type": "password", "required": True},
                     ],
                     "fixed_params": {"confirmed": True, "role": role},
@@ -629,8 +632,8 @@ def _handle_start_login(request, params):
     user = authenticate(request, username=raw, password=pwd)
     if not user:
         return {
-            "text": "❌ Неверный логин или пароль. Попробуйте ещё раз.",
-            "actions": [{"action": "start_login", "label": "🔄 Войти снова"}],
+            "text": _("❌ Неверный логин или пароль. Попробуйте ещё раз."),
+            "actions": [{"action": "start_login", "label": _("🔄 Войти снова")}],
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
     login(request, user)
@@ -642,18 +645,18 @@ def _handle_start_login(request, params):
     pending = request.session.pop("pending_action", None)
     if pending and pending.get("action"):
         return {
-            "text": f"✅ Вы вошли как «{user.username}». ▶ Продолжаю оформление заказа...",
+            "text": _("✅ Вы вошли как «%(u)s». ▶ Продолжаю оформление заказа...") % {"u": user.username},
             "actions": [{
                 "action": pending["action"],
-                "label": "▶ Продолжить оформление",
+                "label": _("▶ Продолжить оформление"),
                 "params": pending.get("params", {}),
             }],
             "cards": [], "suggestions": [], "contextual_actions": [],
             "_post_action": "auto_resume",
         }
     return {
-        "text": f"✅ Привет, {user.username}! Перезагружу чат — увидите свои данные.",
-        "actions": [{"action": "reload_page", "label": "🚀 Открыть кабинет"}],
+        "text": _("✅ Привет, %(u)s! Перезагружу чат — увидите свои данные.") % {"u": user.username},
+        "actions": [{"action": "reload_page", "label": _("🚀 Открыть кабинет")}],
         "cards": [], "suggestions": [], "contextual_actions": [],
         "_post_action": "reload",
     }
@@ -810,41 +813,41 @@ class SuggestView(APIView):
 
     SUGGESTIONS = {
         "buyer": [
-            "Покажи мои активные RFQ",
-            "Какие гусеничные цепи есть для Komatsu?",
-            "Статус моих заказов за последний месяц",
-            "Сравни поставщиков по SLA",
+            _lazy("Покажи мои активные RFQ"),
+            _lazy("Какие гусеничные цепи есть для Komatsu?"),
+            _lazy("Статус моих заказов за последний месяц"),
+            _lazy("Сравни поставщиков по SLA"),
         ],
         "seller": [
-            "Новые RFQ за сегодня",
-            "Какие запчасти ищут чаще всего?",
-            "Мои просроченные заказы",
-            "KPI за этот месяц",
+            _lazy("Новые RFQ за сегодня"),
+            _lazy("Какие запчасти ищут чаще всего?"),
+            _lazy("Мои просроченные заказы"),
+            _lazy("KPI за этот месяц"),
         ],
         "operator_logist": [
-            "Какие отгрузки сейчас в пути?",
-            "Есть ли нарушения SLA?",
-            "Контейнеры на таможне",
+            _lazy("Какие отгрузки сейчас в пути?"),
+            _lazy("Есть ли нарушения SLA?"),
+            _lazy("Контейнеры на таможне"),
         ],
         "operator_customs": [
-            "Грузы ожидающие растаможки",
-            "Документы для контейнера",
-            "Просроченные декларации",
+            _lazy("Грузы ожидающие растаможки"),
+            _lazy("Документы для контейнера"),
+            _lazy("Просроченные декларации"),
         ],
         "operator_payment": [
-            "Неоплаченные инвойсы",
-            "Просроченные платежи",
-            "Эскроу-счета по заказам",
+            _lazy("Неоплаченные инвойсы"),
+            _lazy("Просроченные платежи"),
+            _lazy("Эскроу-счета по заказам"),
         ],
         "operator_manager": [
-            "Конверсия RFQ → заказ за месяц",
-            "Топ покупатели по выручке",
-            "Неактивные клиенты",
+            _lazy("Конверсия RFQ → заказ за месяц"),
+            _lazy("Топ покупатели по выручке"),
+            _lazy("Неактивные клиенты"),
         ],
         "admin": [
-            "Метрики платформы за неделю",
-            "Поставщики на верификации",
-            "Просроченные SLA",
+            _lazy("Метрики платформы за неделю"),
+            _lazy("Поставщики на верификации"),
+            _lazy("Просроченные SLA"),
         ],
     }
 
@@ -871,7 +874,7 @@ class WidgetConfigView(APIView):
             return Response({
                 "role": "buyer",
                 "role_override": None,
-                "user_name": "Гость",
+                "user_name": _("Гость"),
                 "suggestions": SuggestView.SUGGESTIONS.get("buyer", []),
                 "latest_conversation_id": None,
                 "anonymous": True,
@@ -952,7 +955,7 @@ class RoleSwitchView(APIView):
         target_user = authenticate(request, username=target_username, password=password)
         if not target_user:
             return Response({
-                "error": "Неверный пароль",
+                "error": _("Неверный пароль"),
                 "target_username": target_username,
                 "target_role": norm,
             }, status=403)
@@ -997,7 +1000,7 @@ class ProjectListView(APIView):
         data = request.data
         p = Project.objects.create(
             owner=request.user,
-            name=data.get("name", "Новый проект")[:200],
+            name=data.get("name", _("Новый проект"))[:200],
             code=data.get("code", "")[:50],
             customer=data.get("customer", "")[:200],
             tags=data.get("tags", []),
@@ -1017,7 +1020,7 @@ class ProjectUpdateView(APIView):
         allowed = ("name", "code", "customer", "description", "dot_color")
         for f in allowed:
             if f in data:
-                setattr(p, f, (data.get(f) or "")[:500] if f != "name" else (data.get(f) or "Новый проект")[:200])
+                setattr(p, f, (data.get(f) or "")[:500] if f != "name" else (data.get(f) or _("Новый проект"))[:200])
         if "tags" in data and isinstance(data.get("tags"), list):
             p.tags = data["tags"]
         p.save()
@@ -1036,18 +1039,18 @@ class KYBDocUploadView(APIView):
 
     def post(self, request, kind):
         if kind not in self.KIND_FIELD:
-            return Response({"error": f"Неизвестный тип документа: {kind}"}, status=400)
+            return Response({"error": _("Неизвестный тип документа: %(kind)s") % {"kind": kind}}, status=400)
         f = request.FILES.get("file")
         if not f:
-            return Response({"error": "Файл не приложен"}, status=400)
+            return Response({"error": _("Файл не приложен")}, status=400)
         # Базовая валидация: размер ≤10MB, разрешённые расширения
         MAX_SIZE = 10 * 1024 * 1024
         if (f.size or 0) > MAX_SIZE:
-            return Response({"error": f"Файл слишком большой ({f.size // 1024} КБ, лимит 10 МБ)"}, status=400)
+            return Response({"error": _("Файл слишком большой (%(kb)s КБ, лимит 10 МБ)") % {"kb": f.size // 1024}}, status=400)
         name = f.name or "document"
         ext = (name.rsplit(".", 1)[-1] if "." in name else "").lower()
         if ext not in ("pdf", "png", "jpg", "jpeg", "heic"):
-            return Response({"error": f"Неподдерживаемое расширение «.{ext}». Используйте PDF, PNG или JPG."},
+            return Response({"error": _("Неподдерживаемое расширение «.%(ext)s». Используйте PDF, PNG или JPG.") % {"ext": ext}},
                              status=400)
         # FIX (HIGH): magic-byte валидация — защита от .exe, переименованных в .pdf.
         # Проверяем первые байты файла на соответствие реальному формату.
@@ -1061,14 +1064,14 @@ class KYBDocUploadView(APIView):
             )
             if not valid_magic:
                 return Response({
-                    "error": f"Содержимое файла не соответствует расширению .{ext}. "
-                             f"Возможно, файл переименован — отправьте оригинал."
+                    "error": _("Содержимое файла не соответствует расширению .%(ext)s. "
+                               "Возможно, файл переименован — отправьте оригинал.") % {"ext": ext}
                 }, status=400)
         except Exception:
-            return Response({"error": "Не удалось проверить содержимое файла."}, status=400)
+            return Response({"error": _("Не удалось проверить содержимое файла.")}, status=400)
         try:
             from marketplace.models import CompanyVerification
-            kyb, _ = CompanyVerification.objects.get_or_create(user=request.user)
+            kyb, _created = CompanyVerification.objects.get_or_create(user=request.user)
             field_name = self.KIND_FIELD[kind]
             setattr(kyb, field_name, f)
             kyb.save(update_fields=[field_name])
@@ -1097,7 +1100,7 @@ class ProjectDocumentUploadView(APIView):
         p = get_object_or_404(Project, id=project_id, owner=request.user, is_active=True)
         f = request.FILES.get("file")
         if not f:
-            return Response({"error": "Файл не приложен"}, status=400)
+            return Response({"error": _("Файл не приложен")}, status=400)
         # Простая эвристика типа по расширению
         name = f.name or "document"
         ext = (name.rsplit(".", 1)[-1] if "." in name else "").lower()
@@ -1169,12 +1172,12 @@ class ProjectDocumentFileView(APIView):
         p = get_object_or_404(Project, id=project_id, owner=request.user)
         doc = get_object_or_404(ProjectDocument, id=doc_id, project=p)
         if not doc.file:
-            return Response({"error": "файл не найден"}, status=404)
+            return Response({"error": _("файл не найден")}, status=404)
         try:
             return FileResponse(doc.file.open("rb"), as_attachment=False,
                                 filename=doc.name or "document")
         except Exception:
-            return Response({"error": "файл не найден"}, status=404)
+            return Response({"error": _("файл не найден")}, status=404)
 
 
 class OrderDocumentFileView(APIView):
@@ -1203,17 +1206,17 @@ class OrderDocumentFileView(APIView):
             or OrderItem.objects.filter(order=order, part__seller=request.user).exists()
         )
         if not allowed:
-            return Response({"error": "нет доступа"}, status=403)
+            return Response({"error": _("нет доступа")}, status=403)
         doc = get_object_or_404(OrderDocument, id=doc_id, order=order)
         if not doc.file_obj:
-            return Response({"error": "файл не найден"}, status=404)
+            return Response({"error": _("файл не найден")}, status=404)
         try:
             return FileResponse(
                 doc.file_obj.open("rb"), as_attachment=False,
                 filename=(doc.title or f"ORD-{order_id}-document") + ".pdf",
             )
         except Exception:
-            return Response({"error": "файл не найден"}, status=404)
+            return Response({"error": _("файл не найден")}, status=404)
 
 
 def _eta_label(request, days=30):
@@ -1325,34 +1328,34 @@ class ProjectDetailView(APIView):
                 "deal_turnover": {"value_usd": 168400, "margin_pct": 11},
             }
             rfqs = [
-                {"number": "RFQ-4421", "title": "Spec Q2 — основной микс", "tag": "AUTO",
-                 "meta": "39 позиций · сматчены с каталогом",
-                 "best_so_far": 47890, "best_label": "сумма по подбору"},
-                {"number": "RFQ-4418", "title": "Track shoes D8T — нужен аналог", "tag": "SEMI",
-                 "meta": "2 позиции · подберите аналог",
-                 "best_so_far": 7440, "best_label": "ориентир по каталогу"},
-                {"number": "RFQ-4407", "title": "Гидрофильтры — пополнение", "tag": "AUTO",
-                 "meta": "1 позиция · 12 шт · сматчена",
-                 "best_so_far": 2112, "best_label": "сумма по подбору"},
+                {"number": "RFQ-4421", "title": _("Spec Q2 — основной микс"), "tag": "AUTO",
+                 "meta": _("39 позиций · сматчены с каталогом"),
+                 "best_so_far": 47890, "best_label": _("сумма по подбору")},
+                {"number": "RFQ-4418", "title": _("Track shoes D8T — нужен аналог"), "tag": "SEMI",
+                 "meta": _("2 позиции · подберите аналог"),
+                 "best_so_far": 7440, "best_label": _("ориентир по каталогу")},
+                {"number": "RFQ-4407", "title": _("Гидрофильтры — пополнение"), "tag": "AUTO",
+                 "meta": _("1 позиция · 12 шт · сматчена"),
+                 "best_so_far": 2112, "best_label": _("сумма по подбору")},
             ]
             orders = [
-                {"number": "PO-22841", "title": "Spec Q2 partial — 14 позиций",
-                 "status": "НА ТАМОЖНЕ", "status_color": "amber",
+                {"number": "PO-22841", "title": _("Spec Q2 partial — 14 позиций"),
+                 "status": _("НА ТАМОЖНЕ"), "status_color": "amber",
                  "stages": [True, True, True, True, False],
-                 "stage_labels": ["RFQ", "Заказ", "Производство", "Таможня", "Доставлен"],
+                 "stage_labels": ["RFQ", _("Заказ"), _("Производство"), _("Таможня"), _("Доставлен")],
                  "seller": "XCMG", "operator": "",
-                 "eta": "ETA " + _eta_label(request, days=4), "amount": 28640},
-                {"number": "PO-22829", "title": "Гидрофильтры — 12 шт",
-                 "status": "В ПУТИ", "status_color": "green",
+                 "eta": _("ETA ") + _eta_label(request, days=4), "amount": 28640},
+                {"number": "PO-22829", "title": _("Гидрофильтры — 12 шт"),
+                 "status": _("В ПУТИ"), "status_color": "green",
                  "stages": [True, True, True, False, False],
-                 "stage_labels": ["RFQ", "Заказ", "Производство", "Таможня", "Доставлен"],
+                 "stage_labels": ["RFQ", _("Заказ"), _("Производство"), _("Таможня"), _("Доставлен")],
                  "seller": "Caterpillar Eurasia", "operator": "",
-                 "eta": "ETA " + _eta_label(request, days=2), "amount": 2112},
+                 "eta": _("ETA ") + _eta_label(request, days=2), "amount": 2112},
             ]
             participants = [
-                {"role": "Покупатель", "name": "СтройМонтаж-Урал", "meta": "клиент · 3 RFQ в сделке"},
-                {"role": "Продавец", "name": "XCMG", "meta": "14 позиций · отгрузка"},
-                {"role": "Продавец", "name": "Caterpillar Eurasia", "meta": "12 шт · в пути"},
+                {"role": _("Покупатель"), "name": "СтройМонтаж-Урал", "meta": _("клиент · 3 RFQ в сделке")},
+                {"role": _("Продавец"), "name": "XCMG", "meta": _("14 позиций · отгрузка")},
+                {"role": _("Продавец"), "name": "Caterpillar Eurasia", "meta": _("12 шт · в пути")},
             ]
         elif is_seller:
             stats = {
@@ -1366,25 +1369,25 @@ class ProjectDetailView(APIView):
                 "revenue_mtd": {"value_usd": 73250, "delta_pct": 9},
             }
             rfqs = [
-                {"number": "RFQ-5102", "title": "Ходовая Komatsu PC200 — запрос", "tag": "AUTO",
+                {"number": "RFQ-5102", "title": _("Ходовая Komatsu PC200 — запрос"), "tag": "AUTO",
                  "meta": "6 позиций · сматчены с вашим каталогом",
                  "best_so_far": 18400, "best_label": "потенциал по подбору"},
-                {"number": "RFQ-5098", "title": "Катки опорные — аналог", "tag": "SEMI",
+                {"number": "RFQ-5098", "title": _("Катки опорные — аналог"), "tag": "SEMI",
                  "meta": "2 позиции · оператор уточняет аналог",
                  "best_so_far": 5200, "best_label": "ориентир по каталогу"},
-                {"number": "RFQ-5077", "title": "Сегменты ведущей звезды — пополнение", "tag": "AUTO",
+                {"number": "RFQ-5077", "title": _("Сегменты ведущей звезды — пополнение"), "tag": "AUTO",
                  "meta": "1 позиция · 8 шт · сматчена с каталогом",
                  "best_so_far": 3100, "best_label": "потенциал по подбору"},
             ]
             orders = [
-                {"number": "PO-30122", "title": "Катки опорные Komatsu — 14 шт",
+                {"number": "PO-30122", "title": _("Катки опорные Komatsu — 14 шт"),
                  "status": "К ОТГРУЗКЕ", "status_color": "amber",
                  "stages": [True, True, True, False, False],
                  "stage_labels": ["RFQ", "Заказ", "Производство", "Отгрузка", "Доставлен"],
                  "seller": "", "operator": "",
                  "eta": "Отгрузка до " + _eta_label(request, days=4),
                  "amount": 28640},
-                {"number": "PO-30119", "title": "Сегменты ведущей звезды — 8 шт",
+                {"number": "PO-30119", "title": _("Сегменты ведущей звезды — 8 шт"),
                  "status": "В ПУТИ", "status_color": "green",
                  "stages": [True, True, True, True, False],
                  "stage_labels": ["RFQ", "Заказ", "Производство", "Отгрузка", "Доставлен"],
@@ -1400,24 +1403,24 @@ class ProjectDetailView(APIView):
                 "spend_mtd": {"value_usd": 124500, "delta_pct": 12},
             }
             rfqs = [
-                {"number": "RFQ-4421", "title": "Spec Q2 — основной микс", "tag": "AUTO",
+                {"number": "RFQ-4421", "title": _("Spec Q2 — основной микс"), "tag": "AUTO",
                  "meta": "39 позиций · сматчены с каталогом",
                  "best_so_far": 47890, "best_label": "сумма по подбору"},
-                {"number": "RFQ-4418", "title": "Track shoes D8T — аналоги", "tag": "SEMI",
+                {"number": "RFQ-4418", "title": _("Track shoes D8T — аналоги"), "tag": "SEMI",
                  "meta": "2 позиции · оператор подбирает аналог",
                  "best_so_far": 7440, "best_label": "ориентир по каталогу"},
-                {"number": "RFQ-4407", "title": "Гидрофильтры — пополнение", "tag": "AUTO",
+                {"number": "RFQ-4407", "title": _("Гидрофильтры — пополнение"), "tag": "AUTO",
                  "meta": "1 позиция · 12 шт · сматчена с каталогом",
                  "best_so_far": 2112, "best_label": "сумма по подбору"},
             ]
             orders = [
-                {"number": "PO-22841", "title": "Spec Q2 partial — 14 позиций",
+                {"number": "PO-22841", "title": _("Spec Q2 partial — 14 позиций"),
                  "status": "НА ТАМОЖНЕ", "status_color": "amber",
                  "stages": [True, True, True, True, False],
                  "stage_labels": ["RFQ", "Заказ", "Производство", "Таможня", "Доставлен"],
                  "seller": "XCMG", "operator": "",
                  "eta": "ETA " + _eta_label(request, days=4), "amount": 28640},
-                {"number": "PO-22829", "title": "Гидрофильтры — 12 шт",
+                {"number": "PO-22829", "title": _("Гидрофильтры — 12 шт"),
                  "status": "В ПУТИ", "status_color": "green",
                  "stages": [True, True, True, False, False],
                  "stage_labels": ["RFQ", "Заказ", "Производство", "Таможня", "Доставлен"],

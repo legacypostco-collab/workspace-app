@@ -14,6 +14,8 @@ fail-open: любая ошибка учёта НЕ блокирует польз
 """
 import logging
 
+from django.utils.translation import gettext as _
+
 logger = logging.getLogger(__name__)
 
 START_GRANT = 25       # стартовый грант новому пользователю (default поля в модели)
@@ -155,20 +157,20 @@ def limit_message(role=None):
     r = role or "buyer"
     if r == "seller":
         return {
-            "text": (
+            "text": _(
                 "🔒 Бесплатные AI-запросы закончились.\n"
                 "Завершите продажу (+50 запросов) или купите пакет с депозита. "
                 "Каталог, сделки и выплаты работают как обычно."
             ),
             "actions": [
-                {"label": "💳 Купить запросы", "action": "buy_ai_requests", "params": {}},
-                {"label": "💼 Мои сделки", "action": "get_my_deals", "params": {}},
+                {"label": _("💳 Купить запросы"), "action": "buy_ai_requests", "params": {}},
+                {"label": _("💼 Мои сделки"), "action": "get_my_deals", "params": {}},
             ],
             "suggestions": [],
         }
     if r.startswith("operator"):
         return {
-            "text": (
+            "text": _(
                 "🔒 Лимит AI-запросов на этот месяц исчерпан.\n"
                 "Он обновится автоматически в начале следующего месяца."
             ),
@@ -176,14 +178,14 @@ def limit_message(role=None):
             "suggestions": [],
         }
     return {
-        "text": (
+        "text": _(
             "🔒 Бесплатные AI-запросы закончились.\n"
             "Оформите заказ (+50 запросов) или купите пакет с депозита. "
             "Каталог, цены, заказы и оплата работают как обычно."
         ),
         "actions": [
-            {"label": "💳 Купить запросы", "action": "buy_ai_requests", "params": {}},
-            {"label": "📦 Мои заказы", "action": "get_orders", "params": {}},
+            {"label": _("💳 Купить запросы"), "action": "buy_ai_requests", "params": {}},
+            {"label": _("📦 Мои заказы"), "action": "get_orders", "params": {}},
         ],
         "suggestions": [],
     }

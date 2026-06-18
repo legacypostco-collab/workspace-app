@@ -11,6 +11,7 @@ import os
 import re
 
 from django.shortcuts import get_object_or_404
+from django.utils.translation import gettext as _
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -187,19 +188,19 @@ class RecognizePhotoView(APIView):
     def post(self, request):
         from . import ai_credits as _aic
         if not _aic.rate_ok(request.user, "recognize_photo", 40, 3600):
-            return Response({"error": "Слишком частое распознавание фото. Подождите немного."}, status=429)
+            return Response({"error": _("Слишком частое распознавание фото. Подождите немного.")}, status=429)
         photo = request.FILES.get("photo")
         if not photo:
             return Response({"error": "photo is required"}, status=400)
         if photo.size > 10 * 1024 * 1024:
-            return Response({"error": "файл > 10 МБ"}, status=400)
+            return Response({"error": _("файл > 10 МБ")}, status=400)
 
         api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
         if not api_key:
             return Response({
                 "text": "",
-                "error": ("Распознавание фото не настроено (нет ANTHROPIC_API_KEY). "
-                          "Опишите деталь словами или загрузите Excel/CSV со списком."),
+                "error": _("Распознавание фото не настроено (нет ANTHROPIC_API_KEY). "
+                           "Опишите деталь словами или загрузите Excel/CSV со списком."),
             }, status=200)
 
         try:
@@ -228,7 +229,7 @@ class RecognizePhotoView(APIView):
                         {"type": "image", "source": {
                             "type": "base64", "media_type": media_type, "data": b64,
                         }},
-                        {"type": "text", "text": "Распознай шильду / деталь."},
+                        {"type": "text", "text": _("Распознай шильду / деталь.")},
                     ],
                 }],
             )
@@ -254,13 +255,13 @@ class TranscribeAudioView(APIView):
         if not audio:
             return Response({"error": "audio is required"}, status=400)
         if audio.size > 20 * 1024 * 1024:
-            return Response({"error": "файл > 20 МБ"}, status=400)
+            return Response({"error": _("файл > 20 МБ")}, status=400)
 
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
         if not api_key:
             return Response({
                 "text": "",
-                "error": "Серверная расшифровка не настроена (нет OPENAI_API_KEY). Используется встроенный Web Speech API в браузере.",
+                "error": _("Серверная расшифровка не настроена (нет OPENAI_API_KEY). Используется встроенный Web Speech API в браузере."),
             }, status=200)
 
         # Реальный вызов Whisper
@@ -296,7 +297,7 @@ class UploadSpecView(APIView):
             return Response({"error": "file is required"}, status=400)
         if upload.size > MAX_FILE_BYTES:
             return Response(
-                {"error": f"файл слишком большой (>{MAX_FILE_BYTES // (1024*1024)} МБ)"},
+                {"error": _("файл слишком большой (>%(mb)s МБ)") % {"mb": MAX_FILE_BYTES // (1024*1024)}},
                 status=400,
             )
 
@@ -348,12 +349,11 @@ class UploadSpecView(APIView):
                 "filename": upload.name,
                 "articles_found": 0,
                 "text": (
-                    f"В файле «{upload.name}» не нашлось артикулов в распознаваемом формате.\n"
-                    "Проверьте, что артикулы в отдельной колонке и содержат цифры (например, AB-1234, 12345-XY)."
+                    _('В файле «%(p0)s» не нашлось артикулов в распознаваемом формате.\nПроверьте, что артикулы в отдельной колонке и содержат цифры (например, AB-1234, 12345-XY).') % {"p0": f'{upload.name}'}
                 ),
                 "cards": [],
                 "actions": [
-                    {"label": "Загрузить другой файл", "action": "upload_spec", "params": {}},
+                    {"label": _("Загрузить другой файл"), "action": "upload_spec", "params": {}},
                 ],
                 "suggestions": ["Создать RFQ вручную", "Поиск по бренду"],
             })
