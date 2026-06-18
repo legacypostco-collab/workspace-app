@@ -47,7 +47,10 @@ class AssistantConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         self.user = self.scope["user"]
-        if not self.user or not self.user.is_authenticated:
+        # P1 (resilience): проверяем is_active на КАЖДОМ (ре)коннекте —
+        # деактивированный пользователь с ещё живой сессией не должен держать WS.
+        if (not self.user or not self.user.is_authenticated
+                or not getattr(self.user, "is_active", False)):
             await self.close(code=4401)
             return
 
@@ -73,7 +76,10 @@ class AssistantConsumer(AsyncWebsocketConsumer):
             try:
                 await self.channel_layer.group_discard(self.notif_group, self.channel_name)
             except Exception:
-                pass
+                # P1: не глушим молча — иначе при сбое Redis консьюмер навсегда
+                # остаётся в группе (утечка нотификаций на recycled-сокеты).
+                logger.warning("WS group_discard failed for %s", self.notif_group,
+                               exc_info=True)
 
     async def notify(self, event):
         """Получено push-уведомление из канала. Шлём клиенту."""

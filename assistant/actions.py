@@ -1389,13 +1389,16 @@ def search_parts(params, user, role):
         # Fallback: icontains (для частичных «707-99» + поиск по тексту).
         # title_ru — русское имя из словаря (покупатель ищет «коронка»);
         # cross_numbers — кросс-ссылки/резьба (напр. «3 1/2 REG») у товаров без OEM.
+        # PERF (916K каталог): ищем по индексируемым полям. description убран из
+        # OR — он самый тяжёлый и наименее точный для поиска запчастей, а любая
+        # неиндексируемая ветка в OR форсит seq-scan всей таблицы. Эти 4 поля
+        # покрыты GIN-trigram индексами (миграция 0091) → icontains идёт по индексу.
         qs = qs.filter(
             oem_q
             | Q(oem_number__icontains=query)
             | Q(title__icontains=query)
             | Q(title_ru__icontains=query)
             | Q(cross_numbers__icontains=query)
-            | Q(description__icontains=query)
         )
     if params.get("brand"):
         qs = qs.filter(brand__name__icontains=params["brand"])

@@ -2434,14 +2434,43 @@ def op_logistics_stats(params, user, role):
 
     # Средний срок «создан → доставлен» по уже завершённым (за последние 90 дней)
     cutoff = timezone.now() - timedelta(days=90)
+    # PERF: один проход по событиям статусов → dict вместо N+1 (OrderEvent.first()
+    # в каждом цикле ниже). _entered_ev(oid, status) = «когда заказ вошёл в статус»
+    # (последнее событие) объектом с .created_at — usage-код не меняется.
+    import bisect as _bisect
+    from collections import defaultdict as _dd_ev
+    from collections import namedtuple as _nt_ev
+    _EvStub = _nt_ev("_EvStub", ["created_at"])
+    _entered_latest, _entries_sorted, _exits_by_status = {}, _dd_ev(list), _dd_ev(list)
+    for _oid, _ts, _m in (OrderEvent.objects.filter(event_type="status_changed")
+                          .order_by("created_at")
+                          .values_list("order_id", "created_at", "meta")):
+        _m = _m or {}
+        _to, _fr = _m.get("to"), _m.get("from")
+        if _to:
+            _entered_latest[(_oid, _to)] = _ts
+            _entries_sorted[(_oid, _to)].append(_ts)
+        if _fr:
+            _exits_by_status[_fr].append((_oid, _ts))
+
+    def _entered_ev(order_id, status):
+        _t = _entered_latest.get((order_id, status))
+        return _EvStub(_t) if _t else None
+
+    def _entry_before(order_id, status, before_ts):
+        _lst = _entries_sorted.get((order_id, status))
+        if not _lst:
+            return None
+        _i = _bisect.bisect_right(_lst, before_ts) - 1
+        return _lst[_i] if _i >= 0 else None
+
     delivered_orders = Order.objects.filter(status__in=("delivered", "completed"),
                                              created_at__gte=cutoff)
     avg_days = None
     if delivered_orders.exists():
         deltas = []
         for o in delivered_orders[:200]:
-            ev = OrderEvent.objects.filter(order=o, event_type="status_changed",
-                                            meta__to="delivered").order_by("-created_at").first()
+            ev = _entered_ev(o.id, "delivered")
             if ev and o.created_at:
                 deltas.append((ev.created_at - o.created_at).total_seconds() / 86400)
         if deltas:
@@ -2519,9 +2548,7 @@ def op_logistics_stats(params, user, role):
         customs = meta.get("customs") or {}
         dest = customs.get("country") or "RU"
         days_in_stage = None
-        ev = OrderEvent.objects.filter(
-            order=o, event_type="status_changed", meta__to=o.status,
-        ).order_by("-created_at").first()
+        ev = _entered_ev(o.id, o.status)
         if ev:
             days_in_stage = round((now - ev.created_at).total_seconds() / 86400, 1)
         if o.sla_status == "breached":
@@ -2557,17 +2584,13 @@ def op_logistics_stats(params, user, role):
     # Среднее время в каждом этапе (по последним переходам)
     stage_avg_days = {}
     for st in ("transit_abroad", "customs", "transit_rf", "issuing"):
-        evs = list(OrderEvent.objects.filter(
-            event_type="status_changed", meta__from=st, created_at__gte=cutoff,
-        ).order_by("-created_at")[:200])
+        _exits = sorted((p for p in _exits_by_status.get(st, []) if p[1] >= cutoff),
+                        key=lambda p: p[1], reverse=True)[:200]
         durations = []
-        for ev in evs:
-            entered = OrderEvent.objects.filter(
-                order_id=ev.order_id, event_type="status_changed", meta__to=st,
-                created_at__lte=ev.created_at,
-            ).order_by("-created_at").first()
-            if entered:
-                durations.append((ev.created_at - entered.created_at).total_seconds() / 86400)
+        for _oid, _exit_ts in _exits:
+            _entry_ts = _entry_before(_oid, st, _exit_ts)
+            if _entry_ts:
+                durations.append((_exit_ts - _entry_ts).total_seconds() / 86400)
         if durations:
             stage_avg_days[st] = sum(durations) / len(durations)
 
@@ -2594,8 +2617,7 @@ def op_logistics_stats(params, user, role):
                                    created_at__gte=start, created_at__lt=end)[:300]
         deltas = []
         for o in qs:
-            ev = OrderEvent.objects.filter(order=o, event_type="status_changed",
-                                            meta__to="delivered").order_by("-created_at").first()
+            ev = _entered_ev(o.id, "delivered")
             if ev and o.created_at:
                 deltas.append((ev.created_at - o.created_at).total_seconds() / 86400)
         return sum(deltas) / len(deltas) if deltas else None
@@ -2731,8 +2753,7 @@ def op_logistics_stats(params, user, role):
         m = o.shipping_mode or "—"
         s = mode_stats.setdefault(m, {"n": 0, "leads": [], "costs": [], "ratios": []})
         s["n"] += 1
-        ev = OrderEvent.objects.filter(order=o, event_type="status_changed",
-                                         meta__to="delivered").order_by("-created_at").first()
+        ev = _entered_ev(o.id, "delivered")
         if ev and o.created_at:
             s["leads"].append((ev.created_at - o.created_at).total_seconds() / 86400)
         if o.logistics_cost:
@@ -2798,8 +2819,7 @@ def op_logistics_stats(params, user, role):
         m = o.shipping_mode or "—"
         s["modes"][m] = s["modes"].get(m, 0) + 1
         if o.status in ("delivered", "completed"):
-            ev = OrderEvent.objects.filter(order=o, event_type="status_changed",
-                                             meta__to="delivered").order_by("-created_at").first()
+            ev = _entered_ev(o.id, "delivered")
             if ev and o.created_at:
                 s["leads"].append((ev.created_at - o.created_at).total_seconds() / 86400)
         if o.logistics_cost:
@@ -2838,8 +2858,7 @@ def op_logistics_stats(params, user, role):
         p = o.logistics_provider or "—"
         s = provider_stats.setdefault(p, {"n": 0, "leads": [], "costs": [], "breaches": 0})
         s["n"] += 1
-        ev = OrderEvent.objects.filter(order=o, event_type="status_changed",
-                                         meta__to="delivered").order_by("-created_at").first()
+        ev = _entered_ev(o.id, "delivered")
         if ev and o.created_at:
             s["leads"].append((ev.created_at - o.created_at).total_seconds() / 86400)
         if o.logistics_cost:
@@ -2892,8 +2911,7 @@ def op_logistics_stats(params, user, role):
         # Самый старый заказ на этапе (для подсказки оператору)
         oldest_days = None
         for o in live_in_stage[:50]:
-            ev = OrderEvent.objects.filter(order=o, event_type="status_changed",
-                                             meta__to=st).order_by("-created_at").first()
+            ev = _entered_ev(o.id, st)
             if ev:
                 d = (now - ev.created_at).days
                 if oldest_days is None or d > oldest_days:
