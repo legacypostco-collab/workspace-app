@@ -27127,9 +27127,8 @@ msgstr "Abrir chat"
 #, python-format
 msgid "Найден %(cnt)s ответ по запросу"
 msgid_plural "Найдено %(cnt)s ответов по запросу"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
+msgstr[0] "Se encontró %(cnt)s respuesta para la consulta"
+msgstr[1] "Se encontraron %(cnt)s respuestas para la consulta"
 
 #: templates/marketplace/help.html:108
 msgid ""

@@ -26763,12 +26763,12 @@ msgstr "فتح الدردشة"
 #, python-format
 msgid "Найден %(cnt)s ответ по запросу"
 msgid_plural "Найдено %(cnt)s ответов по запросу"
-msgstr[0] ""
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
-msgstr[4] ""
-msgstr[5] ""
+msgstr[0] "تم العثور على %(cnt)s نتيجة للاستعلام"
+msgstr[1] "تم العثور على %(cnt)s نتيجة للاستعلام"
+msgstr[2] "تم العثور على %(cnt)s نتيجتين للاستعلام"
+msgstr[3] "تم العثور على %(cnt)s نتائج للاستعلام"
+msgstr[4] "تم العثور على %(cnt)s نتيجة للاستعلام"
+msgstr[5] "تم العثور على %(cnt)s نتيجة للاستعلام"
 
 #: templates/marketplace/help.html:108
 msgid ""
