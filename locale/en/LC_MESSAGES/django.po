@@ -26916,8 +26916,8 @@ msgstr "Open chat"
 #| msgid "Комментарий к запросу..."
 msgid "Найден %(cnt)s ответ по запросу"
 msgid_plural "Найдено %(cnt)s ответов по запросу"
-msgstr[0] "Request comment..."
-msgstr[1] "Request comment..."
+msgstr[0] ""
+msgstr[1] ""
 
 #: templates/marketplace/help.html:108
 msgid ""

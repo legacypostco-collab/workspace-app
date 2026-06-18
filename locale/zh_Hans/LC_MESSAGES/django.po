@@ -26298,8 +26298,8 @@ msgstr "打开聊天"
 #| msgid "Комментарий к запросу..."
 msgid "Найден %(cnt)s ответ по запросу"
 msgid_plural "Найдено %(cnt)s ответов по запросу"
-msgstr[0] "请求备注..."
-msgstr[1] "请求备注..."
+msgstr[0] ""
+msgstr[1] ""
 
 #: templates/marketplace/help.html:108
 msgid ""
