@@ -1358,7 +1358,11 @@
   // ── Helpers ──────────────────────────────────────────────
   const $ = id => document.getElementById(id);
   const csrf = () => document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*=\s*([^;]*).*$)|^.*$/, '$1');
-  const esc = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const _escRaw = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  // i18n: переводим значение через словарь (ключ = русская строка). window.t()
+  // возвращает оригинал, если перевода нет → данные, бэкенд-строки (уже на языке)
+  // и HTML-разметка не страдают; переводятся только известные UI-литералы.
+  const esc = s => _escRaw(window.t ? window.t(s == null ? '' : String(s)) : s);
   // Выбран ли русский интерфейс (выставляется и сервером в <html lang>, и setLanguage).
   const _isRuUI = () => (document.documentElement.getAttribute('lang') || 'ru').toLowerCase().slice(0, 2) === 'ru';
   // Имя позиции для колонки NAME. Только при ru-локали И наличии name_ru показываем
@@ -7012,8 +7016,8 @@
       titleKey: 'welcome.h1',
       subKey:   'welcome.buyer.subtitle',
       pills: [
-        {label: 'Мои заказы',   sub: 'купил, едет',   emoji: '📦', action: 'get_orders',     params: {}},
-        {label: 'Открытые RFQ', sub: 'жду котировок', emoji: '📋', action: 'get_rfq_status', params: {}},
+        {tkey: 'pill.my_orders', sub: 'купил, едет',   emoji: '📦', action: 'get_orders',     params: {}},
+        {tkey: 'pill.open_rfq',  sub: 'жду котировок', emoji: '📋', action: 'get_rfq_status', params: {}},
       ],
     },
     seller: {
@@ -7918,7 +7922,7 @@
     const clearBtn = $('clearHistoryBtn');
     if (clearBtn) clearBtn.style.display = (state.convs && state.convs.length) ? '' : 'none';
     if (!list.length) {
-      $('convList').innerHTML = '<div class="side-item-stack"><div class="side-item-stack-meta">Нет чатов</div></div>';
+      $('convList').innerHTML = '<div class="side-item-stack"><div class="side-item-stack-meta">' + tr('Нет чатов') + '</div></div>';
       return;
     }
     const now = new Date();
