@@ -25,6 +25,7 @@ import logging
 from decimal import Decimal
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 from .actions import ActionResult, _log_event, _notify, register
 
@@ -52,7 +53,7 @@ def open_claim(params, user, role):
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0), buyer=user)
     except (Order.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Заказ не найден.")
+        return ActionResult(text=_("Заказ не найден."))
 
     if order.status not in ("delivered", "completed"):
         return ActionResult(text=(
@@ -71,18 +72,18 @@ def open_claim(params, user, role):
                 "title": f"⚠️ Рекламация · #{order.id}",
                 "submit_action": "open_claim",
                 "fields": [
-                    {"name": "kind", "label": "Тип проблемы", "required": True,
+                    {"name": "kind", "label": _("Тип проблемы"), "required": True,
                      "type": "select",
                      "options": [
-                         {"value": "defect",      "label": "Брак"},
-                         {"value": "wrong_part",  "label": "Не та деталь"},
-                         {"value": "missing",     "label": "Не пришла"},
-                         {"value": "damage",      "label": "Повреждение при доставке"},
-                         {"value": "late",        "label": "Просрочка поставки"},
-                         {"value": "other",       "label": "Другое"},
+                         {"value": "defect",      "label": _("Брак")},
+                         {"value": "wrong_part",  "label": _("Не та деталь")},
+                         {"value": "missing",     "label": _("Не пришла")},
+                         {"value": "damage",      "label": _("Повреждение при доставке")},
+                         {"value": "late",        "label": _("Просрочка поставки")},
+                         {"value": "other",       "label": _("Другое")},
                      ]},
-                    {"name": "title", "label": "Краткое описание", "required": True},
-                    {"name": "description", "label": "Подробности", "type": "textarea",
+                    {"name": "title", "label": _("Краткое описание"), "required": True},
+                    {"name": "description", "label": _("Подробности"), "type": "textarea",
                      "required": True},
                 ],
                 "fixed_params": {"order_id": order.id, "confirmed": True},
@@ -109,7 +110,7 @@ def open_claim(params, user, role):
     return ActionResult(
         text=f"✓ Рекламация #{claim.id} открыта · {claim.get_kind_display()}.\nОператор скоро возьмёт в работу.",
         contextual_actions=[
-            {"action": "track_order", "label": "📦 Трекинг", "params": {"order_id": order.id}},
+            {"action": "track_order", "label": _("📦 Трекинг"), "params": {"order_id": order.id}},
         ],
     )
 
@@ -119,19 +120,19 @@ def open_claim(params, user, role):
 @register("start_claim_review")
 def start_claim_review(params, user, role):
     if not _is_operator(role) and role != "admin":
-        return ActionResult(text="Доступно только оператору.")
+        return ActionResult(text=_("Доступно только оператору."))
     from marketplace.models import OrderClaim
     from django.db import transaction as _txn
     try:
         _cid = int(params.get("claim_id") or 0)
     except (ValueError, TypeError):
-        return ActionResult(text="Рекламация не найдена.")
+        return ActionResult(text=_("Рекламация не найдена."))
     # Гонка: lock + re-check статуса, чтобы два оператора не взяли одну в работу.
     with _txn.atomic():
         try:
             claim = OrderClaim.objects.select_for_update().get(id=_cid)
         except OrderClaim.DoesNotExist:
-            return ActionResult(text="Рекламация не найдена.")
+            return ActionResult(text=_("Рекламация не найдена."))
         if claim.status != "open":
             return ActionResult(text=f"Нельзя взять в работу — текущий статус: {claim.get_status_display()}.")
         claim.status = "in_review"
@@ -145,8 +146,8 @@ def start_claim_review(params, user, role):
                 body=f"Оператор {user.username} рассматривает.",
                 url=f"/chat/?order={claim.order_id}")
     ctx_actions = [
-        {"action": "approve_claim", "label": "✓ Подтвердить", "params": {"claim_id": claim.id}},
-        {"action": "reject_claim",  "label": "✗ Отклонить",  "params": {"claim_id": claim.id}},
+        {"action": "approve_claim", "label": _("✓ Подтвердить"), "params": {"claim_id": claim.id}},
+        {"action": "reject_claim",  "label": _("✗ Отклонить"),  "params": {"claim_id": claim.id}},
     ]
     if claim.opened_by:
         ctx_actions.append({
@@ -166,13 +167,13 @@ def start_claim_review(params, user, role):
 @register("approve_claim")
 def approve_claim(params, user, role):
     if not _is_operator(role) and role != "admin":
-        return ActionResult(text="Доступно только оператору.")
+        return ActionResult(text=_("Доступно только оператору."))
     from marketplace.models import OrderClaim, OrderItem
     confirmed = bool(params.get("confirmed"))
     try:
         claim = OrderClaim.objects.get(id=int(params.get("claim_id") or 0))
     except (OrderClaim.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Рекламация не найдена.")
+        return ActionResult(text=_("Рекламация не найдена."))
     if claim.status not in ("open", "in_review"):
         return ActionResult(text=f"Нельзя подтвердить — статус {claim.get_status_display()}.")
 
@@ -207,18 +208,18 @@ def approve_claim(params, user, role):
             cards=[{"type": "draft", "data": {
                 "title": f"✓ Подтвердить рекламацию #{claim.id}",
                 "rows": [
-                    {"label": "Заказ", "value": f"#{claim.order_id}"},
-                    {"label": "Тип", "value": claim.get_kind_display()},
-                    {"label": "Описание", "value": claim.title[:120], "primary": True},
+                    {"label": _("Заказ"), "value": f"#{claim.order_id}"},
+                    {"label": _("Тип"), "value": claim.get_kind_display()},
+                    {"label": _("Описание"), "value": claim.title[:120], "primary": True},
                 ],
                 "warnings": [
                     "Дальше выберите путь: корректирующие действия или финансовое урегулирование.",
                     "Рейтинг продавца получит штраф (-7) за подтверждённую рекламацию.",
                 ],
                 "confirm_action": "approve_claim",
-                "confirm_label": "✓ Подтвердить",
+                "confirm_label": _("✓ Подтвердить"),
                 "confirm_params": {"claim_id": claim.id, "confirmed": True},
-                "cancel_label": "Отмена",
+                "cancel_label": _("Отмена"),
             }}],
             contextual_actions=ctx_actions,
         )
@@ -259,10 +260,10 @@ def approve_claim(params, user, role):
     # перед выбором пути урегулирования).
     post_actions = [
         {"action": "apply_corrective",
-         "label": "🔧 Корректирующие действия",
+         "label": _("🔧 Корректирующие действия"),
          "params": {"claim_id": claim.id}},
         {"action": "apply_settlement",
-         "label": "💸 Финансовое урегулирование",
+         "label": _("💸 Финансовое урегулирование"),
          "params": {"claim_id": claim.id}},
     ]
     if claim.opened_by:
@@ -283,12 +284,12 @@ def approve_claim(params, user, role):
 @register("reject_claim")
 def reject_claim(params, user, role):
     if not _is_operator(role) and role != "admin":
-        return ActionResult(text="Доступно только оператору.")
+        return ActionResult(text=_("Доступно только оператору."))
     from marketplace.models import OrderClaim
     try:
         claim = OrderClaim.objects.get(id=int(params.get("claim_id") or 0))
     except (OrderClaim.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Рекламация не найдена.")
+        return ActionResult(text=_("Рекламация не найдена."))
     if claim.status not in ("open", "in_review"):
         return ActionResult(text=f"Нельзя отклонить — статус {claim.get_status_display()}.")
 
@@ -301,7 +302,7 @@ def reject_claim(params, user, role):
                 "title": f"✗ Отклонить рекламацию #{claim.id}",
                 "submit_action": "reject_claim",
                 "fields": [
-                    {"name": "reason", "label": "Причина (видна заявителю)",
+                    {"name": "reason", "label": _("Причина (видна заявителю)"),
                      "type": "textarea", "required": True},
                 ],
                 "fixed_params": {"claim_id": claim.id, "confirmed": True},
@@ -334,12 +335,12 @@ def reject_claim(params, user, role):
 @register("apply_corrective")
 def apply_corrective(params, user, role):
     if not _is_operator(role) and role != "admin":
-        return ActionResult(text="Доступно только оператору.")
+        return ActionResult(text=_("Доступно только оператору."))
     from marketplace.models import OrderClaim
     try:
         claim = OrderClaim.objects.get(id=int(params.get("claim_id") or 0))
     except (OrderClaim.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Рекламация не найдена.")
+        return ActionResult(text=_("Рекламация не найдена."))
     if claim.status != "approved":
         return ActionResult(text=f"Нельзя — статус {claim.get_status_display()}.")
 
@@ -352,11 +353,11 @@ def apply_corrective(params, user, role):
                 "title": f"🔧 Корректирующие действия · #{claim.id}",
                 "submit_action": "apply_corrective",
                 "fields": [{
-                    "name": "resolution_kind", "label": "Способ", "required": True,
+                    "name": "resolution_kind", "label": _("Способ"), "required": True,
                     "type": "select",
                     "options": [
-                        {"value": "repair",    "label": "Замена/ремонт"},
-                        {"value": "reproduce", "label": "Повторно произвести"},
+                        {"value": "repair",    "label": _("Замена/ремонт")},
+                        {"value": "reproduce", "label": _("Повторно произвести")},
                     ],
                 }],
                 "fixed_params": {"claim_id": claim.id, "confirmed": True},
@@ -384,7 +385,7 @@ def apply_corrective(params, user, role):
     return ActionResult(
         text=f"✓ Корректирующие действия запущены ({claim.get_resolution_kind_display()}). После выполнения закройте рекламацию.",
         contextual_actions=[
-            {"action": "close_claim", "label": "🔒 Закрыть рекламацию",
+            {"action": "close_claim", "label": _("🔒 Закрыть рекламацию"),
              "params": {"claim_id": claim.id}},
         ],
     )
@@ -395,14 +396,14 @@ def apply_corrective(params, user, role):
 @register("apply_settlement")
 def apply_settlement(params, user, role):
     if not _is_operator(role) and role != "admin":
-        return ActionResult(text="Доступно только оператору.")
+        return ActionResult(text=_("Доступно только оператору."))
     from marketplace.models import OrderClaim
 
     from . import payments as _pay
     try:
         claim = OrderClaim.objects.get(id=int(params.get("claim_id") or 0))
     except (OrderClaim.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Рекламация не найдена.")
+        return ActionResult(text=_("Рекламация не найдена."))
     if claim.status != "approved":
         return ActionResult(text=f"Нельзя — статус {claim.get_status_display()}.")
 
@@ -417,13 +418,13 @@ def apply_settlement(params, user, role):
                 "title": f"💸 Финансовое урегулирование · #{claim.id}",
                 "submit_action": "apply_settlement",
                 "fields": [
-                    {"name": "resolution_kind", "label": "Тип возврата", "required": True,
+                    {"name": "resolution_kind", "label": _("Тип возврата"), "required": True,
                      "type": "select",
                      "options": [
-                         {"value": "full_refund",    "label": "Полный возврат"},
-                         {"value": "partial_refund", "label": "Частичный возврат"},
+                         {"value": "full_refund",    "label": _("Полный возврат")},
+                         {"value": "partial_refund", "label": _("Частичный возврат")},
                      ]},
-                    {"name": "refund_amount", "label": "Сумма возврата ($)",
+                    {"name": "refund_amount", "label": _("Сумма возврата ($)"),
                      "type": "number"},
                 ],
                 "fixed_params": {"claim_id": claim.id, "confirmed": True},
@@ -456,7 +457,7 @@ def apply_settlement(params, user, role):
                 res = _pay.refund_to_buyer(order=claim.order, buyer=claim.order.buyer,
                                             amount=refund_amount)
             except _pay.InsufficientEscrow:
-                res = {"ok": False, "reason": "Эскроу пуст — возврат внешним способом"}
+                res = {"ok": False, "reason": _("Эскроу пуст — возврат внешним способом")}
                 logger.info("apply_settlement: escrow empty for order #%s", claim.order_id)
         else:
             res = {"ok": False}
@@ -494,7 +495,7 @@ def apply_settlement(params, user, role):
             f"${refund_amount:,.2f} → buyer."
         ),
         contextual_actions=[
-            {"action": "close_claim", "label": "🔒 Закрыть рекламацию",
+            {"action": "close_claim", "label": _("🔒 Закрыть рекламацию"),
              "params": {"claim_id": claim.id}},
         ],
     )
@@ -509,12 +510,12 @@ def close_claim(params, user, role):
     try:
         _cid = int(params.get("claim_id") or 0)
     except (ValueError, TypeError):
-        return ActionResult(text="Рекламация не найдена.")
+        return ActionResult(text=_("Рекламация не найдена."))
     with _txn.atomic():
         try:
             claim = OrderClaim.objects.select_for_update().select_related("order").get(id=_cid)
         except OrderClaim.DoesNotExist:
-            return ActionResult(text="Рекламация не найдена.")
+            return ActionResult(text=_("Рекламация не найдена."))
         if claim.status == "closed":
             return ActionResult(text=f"Рекламация #{claim.id} уже закрыта.")
         # Любой статус (включая rejected) → closed
@@ -540,46 +541,46 @@ def claim_detail(params, user, role):
             id=int(params.get("claim_id") or 0),
         )
     except (OrderClaim.DoesNotExist, ValueError, TypeError):
-        return ActionResult(text="Рекламация не найдена.")
+        return ActionResult(text=_("Рекламация не найдена."))
 
     is_owner = claim.opened_by_id == user.id
     is_op = _is_operator(role) or role == "admin"
     if not (is_owner or is_op):
-        return ActionResult(text="Доступ к рекламации ограничен.")
+        return ActionResult(text=_("Доступ к рекламации ограничен."))
 
     rows = [
-        {"label": "Заказ", "value": f"#{claim.order_id}"},
-        {"label": "Тип", "value": claim.get_kind_display(), "primary": True},
-        {"label": "Статус", "value": claim.get_status_display()},
-        {"label": "Описание", "value": claim.title[:120]},
+        {"label": _("Заказ"), "value": f"#{claim.order_id}"},
+        {"label": _("Тип"), "value": claim.get_kind_display(), "primary": True},
+        {"label": _("Статус"), "value": claim.get_status_display()},
+        {"label": _("Описание"), "value": claim.title[:120]},
     ]
     if claim.resolution_kind != "none":
-        rows.append({"label": "Решение", "value": claim.get_resolution_kind_display()})
+        rows.append({"label": _("Решение"), "value": claim.get_resolution_kind_display()})
     if claim.refund_amount and claim.refund_amount > 0:
-        rows.append({"label": "Возврат", "value": f"${claim.refund_amount:,.2f}"})
+        rows.append({"label": _("Возврат"), "value": f"${claim.refund_amount:,.2f}"})
     if claim.rejection_reason:
-        rows.append({"label": "Причина отклонения", "value": claim.rejection_reason[:200]})
-    rows.append({"label": "Открыта", "value": claim.created_at.strftime("%d.%m.%Y %H:%M")})
+        rows.append({"label": _("Причина отклонения"), "value": claim.rejection_reason[:200]})
+    rows.append({"label": _("Открыта"), "value": claim.created_at.strftime("%d.%m.%Y %H:%M")})
 
     actions = []
     if is_op:
         if claim.status == "open":
-            actions.append({"action": "start_claim_review", "label": "→ В работу",
+            actions.append({"action": "start_claim_review", "label": _("→ В работу"),
                             "params": {"claim_id": claim.id}})
         elif claim.status == "in_review":
             actions.extend([
-                {"action": "approve_claim", "label": "✓ Подтвердить", "params": {"claim_id": claim.id}},
-                {"action": "reject_claim",  "label": "✗ Отклонить",  "params": {"claim_id": claim.id}},
+                {"action": "approve_claim", "label": _("✓ Подтвердить"), "params": {"claim_id": claim.id}},
+                {"action": "reject_claim",  "label": _("✗ Отклонить"),  "params": {"claim_id": claim.id}},
             ])
         elif claim.status == "approved":
             actions.extend([
-                {"action": "apply_corrective", "label": "🔧 Корректирующие",
+                {"action": "apply_corrective", "label": _("🔧 Корректирующие"),
                  "params": {"claim_id": claim.id}},
-                {"action": "apply_settlement", "label": "💸 Финансовое урегулирование",
+                {"action": "apply_settlement", "label": _("💸 Финансовое урегулирование"),
                  "params": {"claim_id": claim.id}},
             ])
         elif claim.status in ("corrective_actions", "financial_settlement"):
-            actions.append({"action": "close_claim", "label": "🔒 Закрыть",
+            actions.append({"action": "close_claim", "label": _("🔒 Закрыть"),
                             "params": {"claim_id": claim.id}})
 
     # Чаты с участниками — всегда доступны (для оператора с покупателем И продавцом,
