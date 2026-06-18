@@ -3416,7 +3416,8 @@ def order_batch_items(params, user, role):
     except (ValueError, TypeError):
         return ActionResult(text="Неверный поставщик.")
     o = (Order.objects.select_related("buyer")
-         .prefetch_related("items__part__brand").filter(id=oid).first())
+         .prefetch_related("items__part__brand", "items__part__seller")
+         .filter(id=oid).first())
     if not o:
         return ActionResult(text=f"⚠️ Заказ ORD-{oid} не найден.")
 

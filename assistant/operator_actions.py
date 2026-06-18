@@ -941,6 +941,14 @@ def op_order_detail(params, user, role):
     except (Order.DoesNotExist, ValueError, TypeError):
         return ActionResult(text="Заказ не найден.")
 
+    # FIX (HIGH, IDOR): обычный оператор открывает только свои назначенные
+    # заказы и ещё не распределённые (ничьи) — чужой назначенный закрыт.
+    # Согласовано с правилом видимости op_queue (:318-326) и op_resolve_dispute
+    # (:1666). Только staff (lead-operator) видит любой заказ по ID.
+    if (not user.is_staff and order.assigned_operator_id
+            and order.assigned_operator_id != user.id):
+        return ActionResult(text="Этот заказ не назначен на вас — обратитесь к старшему оператору.")
+
     events = OrderEvent.objects.filter(order=order).order_by("-created_at")[:15]
 
     # Человекочитаемые названия событий + расшифровка статусов
