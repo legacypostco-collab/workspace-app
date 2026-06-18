@@ -5656,7 +5656,10 @@ def get_demand_report(params, user, role):
     if seller:
         my_brands = set(
             Part.objects.filter(seller=seller, is_active=True, brand__isnull=False)
-            .values_list("brand__name", flat=True).distinct()
+            # PERF: .order_by() сбрасывает дефолтный ordering Part (по created_at).
+            # Без него DISTINCT включает created_at → дедуп брендов ломается и
+            # сканируются ВСЕ парты продавца (~0.5с). С ним — DISTINCT brand.name.
+            .order_by().values_list("brand__name", flat=True).distinct()
         )
         missing_demand = [(b, v) for b, v in top_brands if b not in my_brands and b != "Без бренда"]
         for b, v in missing_demand[:5]:
@@ -5819,6 +5822,11 @@ def get_sla_report(params, user, role):
     if _single_oid:
         qs = qs.filter(id=_single_oid)
         scope_label = f"по заказу ORD-{_single_oid}"
+
+    # PERF: материализуем id заказов scope ОДИН раз → дальше qs дешёвый (id__in),
+    # без повторного join items__part__seller + distinct на каждом .count()/.filter()
+    # (в seller-scope это давало десятки лишних запросов).
+    qs = Order.objects.filter(id__in=list(qs.values_list("id", flat=True)[:2000]))
 
     # Реальный пересчёт SLA на лету: дни в текущей стадии vs норматив.
     # Поле Order.sla_status не доверяем — оно ниоткуда автоматически
