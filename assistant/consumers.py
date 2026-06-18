@@ -160,8 +160,20 @@ class AssistantConsumer(AsyncWebsocketConsumer):
 
     async def _stream_response(self, message):
         """Wrap sync generator process_query_stream into async."""
+        # i18n keystone: WebSocket НЕ проходит Django LocaleMiddleware, поэтому
+        # явно активируем язык пользователя (UserProfile.language) на время
+        # генерации ответа — иначе gettext-строки ассистента всегда по-русски.
+        def _run():
+            from django.utils import translation
+            try:
+                lang = (getattr(self.user, "profile", None)
+                        and self.user.profile.language) or "ru"
+            except Exception:
+                lang = "ru"
+            with translation.override(lang):
+                return list(process_query_stream(self.conversation, message))
         # Convert sync generator → async via database_sync_to_async pulls
-        gen = await database_sync_to_async(lambda: list(process_query_stream(self.conversation, message)))()
+        gen = await database_sync_to_async(_run)()
         for ev in gen:
             # Map internal event → WS protocol
             if ev["type"] == "token":
