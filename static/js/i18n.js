@@ -1351,6 +1351,85 @@
     if (DICT.ru[k] == null) DICT.ru[k] = k;
   });
 
+  // Аддендум 2: строки клиентских карточек/форм (форма доставки, навигация, метки).
+  const _ADDENDUM2 = {
+    en: {
+      '📍 Куда доставить?': '📍 Where to deliver?', 'Страна': 'Country',
+      '(для CIP/DDP)': '(for CIP/DDP)', 'Город / место прибытия': 'City / arrival point',
+      'Адрес доставки': 'Delivery address', '(улица, дом · для DDP)': '(street, building · for DDP)',
+      'Начните вводить страну…': 'Start typing a country…', 'Напр.: Москва': 'e.g.: Moscow',
+      'Напр.: ул. Профсоюзная 84, корп. 5, офис 12': 'e.g.: 84 Profsoyuznaya St., bldg 5, office 12',
+      '🧮 Рассчитать цены CIP / DDP →': '🧮 Calculate CIP / DDP prices →',
+      '🚚 ДОСТАВКА': '🚚 DELIVERY', 'Назад': 'Back', 'Главная': 'Home',
+      '← Назад': '← Back', '🏠 Главная': '🏠 Home', '💡 Также можете:': '💡 You can also:',
+      'Морской порт': 'Sea port', 'Город прибытия': 'Arrival city', 'Страна отправления': 'Country of departure',
+      'до вашего порта': 'to your port', 'самовывоз из порта': 'self-pickup from the port',
+      'Связаться с поставщиком': 'Contact the supplier', 'Список поставщиков': 'Supplier list',
+      'Стать поставщиком': 'Become a supplier', 'По поставщикам': 'By suppliers',
+      '🚚 Выберите базис (FOB — самовывоз без доплат)': '🚚 Choose terms (FOB — self-pickup, no surcharge)',
+      'Откуда': 'From', 'до двери, all-in': 'to the door, all-in', 'недоступно': 'unavailable',
+      'укажите место прибытия': 'specify the arrival point', 'нет тарифа на фрахт': 'no freight rate',
+    },
+    'zh-hans': {
+      '📍 Куда доставить?': '📍 送货至何处？', 'Страна': '国家',
+      '(для CIP/DDP)': '（用于 CIP/DDP）', 'Город / место прибытия': '城市 / 到货地点',
+      'Адрес доставки': '送货地址', '(улица, дом · для DDP)': '（街道、门牌 · 用于 DDP）',
+      'Начните вводить страну…': '开始输入国家…', 'Напр.: Москва': '例如：莫斯科',
+      'Напр.: ул. Профсоюзная 84, корп. 5, офис 12': '例如：Profsoyuznaya 街 84 号 5 栋 12 室',
+      '🧮 Рассчитать цены CIP / DDP →': '🧮 计算 CIP / DDP 价格 →',
+      '🚚 ДОСТАВКА': '🚚 配送', 'Назад': '返回', 'Главная': '首页',
+      '← Назад': '← 返回', '🏠 Главная': '🏠 首页', '💡 Также можете:': '💡 您还可以：',
+      'Морской порт': '海港', 'Город прибытия': '到货城市', 'Страна отправления': '发货国',
+      'до вашего порта': '至您的港口', 'самовывоз из порта': '从港口自提',
+      'Связаться с поставщиком': '联系供应商', 'Список поставщиков': '供应商列表',
+      'Стать поставщиком': '成为供应商', 'По поставщикам': '按供应商',
+      '🚚 Выберите базис (FOB — самовывоз без доплат)': '🚚 选择贸易术语（FOB — 自提，无附加费）',
+      'Откуда': '出发地', 'до двери, all-in': '门到门，全包', 'недоступно': '不可用',
+      'укажите место прибытия': '请填写到货地点', 'нет тарифа на фрахт': '无运费报价',
+    },
+    es: {
+      '📍 Куда доставить?': '📍 ¿A dónde entregar?', 'Страна': 'País',
+      '(для CIP/DDP)': '(para CIP/DDP)', 'Город / место прибытия': 'Ciudad / lugar de llegada',
+      'Адрес доставки': 'Dirección de entrega', '(улица, дом · для DDP)': '(calle, número · para DDP)',
+      'Начните вводить страну…': 'Empiece a escribir un país…', 'Напр.: Москва': 'P. ej.: Moscú',
+      'Напр.: ул. Профсоюзная 84, корп. 5, офис 12': 'P. ej.: calle Profsoyuznaya 84, bloque 5, oficina 12',
+      '🧮 Рассчитать цены CIP / DDP →': '🧮 Calcular precios CIP / DDP →',
+      '🚚 ДОСТАВКА': '🚚 ENTREGA', 'Назад': 'Atrás', 'Главная': 'Inicio',
+      '← Назад': '← Atrás', '🏠 Главная': '🏠 Inicio', '💡 Также можете:': '💡 También puede:',
+      'Морской порт': 'Puerto marítimo', 'Город прибытия': 'Ciudad de llegada', 'Страна отправления': 'País de origen',
+      'до вашего порта': 'hasta su puerto', 'самовывоз из порта': 'recogida en el puerto',
+      'Связаться с поставщиком': 'Contactar con el proveedor', 'Список поставщиков': 'Lista de proveedores',
+      'Стать поставщиком': 'Hacerse proveedor', 'По поставщикам': 'Por proveedores',
+      '🚚 Выберите базис (FOB — самовывоз без доплат)': '🚚 Elija el incoterm (FOB — recogida, sin recargo)',
+      'Откуда': 'Origen', 'до двери, all-in': 'puerta a puerta, todo incluido', 'недоступно': 'no disponible',
+      'укажите место прибытия': 'indique el lugar de llegada', 'нет тарифа на фрахт': 'sin tarifa de flete',
+    },
+    ar: {
+      '📍 Куда доставить?': '📍 إلى أين التسليم؟', 'Страна': 'الدولة',
+      '(для CIP/DDP)': '(لـ CIP/DDP)', 'Город / место прибытия': 'المدينة / مكان الوصول',
+      'Адрес доставки': 'عنوان التسليم', '(улица, дом · для DDP)': '(الشارع، المبنى · لـ DDP)',
+      'Начните вводить страну…': 'ابدأ كتابة الدولة…', 'Напр.: Москва': 'مثال: موسكو',
+      'Напр.: ул. Профсоюзная 84, корп. 5, офис 12': 'مثال: شارع Profsoyuznaya 84، مبنى 5، مكتب 12',
+      '🧮 Рассчитать цены CIP / DDP →': '🧮 احسب أسعار CIP / DDP ←',
+      '🚚 ДОСТАВКА': '🚚 التسليم', 'Назад': 'رجوع', 'Главная': 'الرئيسية',
+      '← Назад': '← رجوع', '🏠 Главная': '🏠 الرئيسية', '💡 Также можете:': '💡 يمكنك أيضاً:',
+      'Морской порт': 'ميناء بحري', 'Город прибытия': 'مدينة الوصول', 'Страна отправления': 'دولة المغادرة',
+      'до вашего порта': 'حتى مينائك', 'самовывоз из порта': 'استلام ذاتي من الميناء',
+      'Связаться с поставщиком': 'التواصل مع المورّد', 'Список поставщиков': 'قائمة الموردين',
+      'Стать поставщиком': 'كن مورّداً', 'По поставщикам': 'حسب الموردين',
+      '🚚 Выберите базис (FOB — самовывоз без доплат)': '🚚 اختر الأساس (FOB — استلام ذاتي بدون رسوم)',
+      'Откуда': 'من', 'до двери, all-in': 'حتى الباب، شامل الكل', 'недоступно': 'غير متاح',
+      'укажите место прибытия': 'حدّد مكان الوصول', 'нет тарифа на фрахт': 'لا توجد تعرفة شحن',
+    },
+  };
+  Object.keys(_ADDENDUM2).forEach(function (l) {
+    DICT[l] = DICT[l] || {};
+    Object.assign(DICT[l], _ADDENDUM2[l]);
+  });
+  Object.keys(_ADDENDUM2.en).forEach(function (k) {
+    if (DICT.ru[k] == null) DICT.ru[k] = k;
+  });
+
   // ── Состояние ────────────────────────────────────────────────────────
   function detectLang() {
     const htmlLang = (document.documentElement.getAttribute('lang') || '').toLowerCase();
@@ -1448,10 +1527,77 @@
     return (lang || currentLang) === 'ar';
   };
 
+  // ── DOM-перевод динамики ─────────────────────────────────────────────
+  // chat-first.js рендерит часть UI русскими литералами прямо в HTML (мимо esc()).
+  // localizeNode переводит ТЕКСТОВЫЕ УЗЛЫ и placeholder/title по ТОЧНОМУ совпадению
+  // с DICT[currentLang] (ключ = русская строка). Данные, числа и составные строки
+  // без точного ключа не трогаются. Под 'ru' — no-op.
+  const _SKIP_TAGS = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, CODE: 1, PRE: 1, OPTION: 0 };
+  function _trVal(s) {
+    const k = (s == null ? '' : String(s)).trim();
+    if (!k) return null;
+    const d = DICT[currentLang];
+    if (!d) return null;
+    const v = d[k];
+    return (v != null && v !== k) ? v : null;
+  }
+  function _applyTextTr(node) {
+    const tr = _trVal(node.nodeValue);
+    if (tr == null) return;
+    const m = node.nodeValue.match(/^(\s*)([\s\S]*?)(\s*)$/);
+    node.nodeValue = (m ? m[1] : '') + tr + (m ? m[3] : '');
+  }
+  function localizeNode(root) {
+    if (currentLang === 'ru' || !root) return;
+    try {
+      if (root.nodeType === 3) { _applyTextTr(root); return; }
+      if (root.nodeType !== 1) return;
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: function (n) {
+          const p = n.parentNode;
+          if (!p || _SKIP_TAGS[p.nodeName]) return NodeFilter.FILTER_REJECT;
+          if (p.closest && p.closest('[data-no-i18n],[contenteditable="true"]')) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      });
+      const nodes = [];
+      let n;
+      while ((n = walker.nextNode())) nodes.push(n);
+      nodes.forEach(_applyTextTr);
+      root.querySelectorAll && root.querySelectorAll('[placeholder]').forEach(function (el) {
+        const tr = _trVal(el.getAttribute('placeholder'));
+        if (tr != null) el.setAttribute('placeholder', tr);
+      });
+      root.querySelectorAll && root.querySelectorAll('[title]').forEach(function (el) {
+        const tr = _trVal(el.getAttribute('title'));
+        if (tr != null) el.setAttribute('title', tr);
+      });
+    } catch (e) { /* no-op */ }
+  }
+  window.localizeNode = localizeNode;
+
+  function _startObserver() {
+    if (currentLang === 'ru' || typeof MutationObserver === 'undefined') return;
+    try {
+      const obs = new MutationObserver(function (muts) {
+        for (let i = 0; i < muts.length; i++) {
+          const added = muts[i].addedNodes;
+          for (let j = 0; added && j < added.length; j++) localizeNode(added[j]);
+        }
+      });
+      obs.observe(document.body, { childList: true, subtree: true });
+    } catch (e) { /* no-op */ }
+  }
+
   // ── Авто-применение при загрузке ─────────────────────────────────────
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { applyI18n(); });
-  } else {
+  function _initI18n() {
     applyI18n();
+    localizeNode(document.body);
+    _startObserver();
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _initI18n);
+  } else {
+    _initI18n();
   }
 })();
