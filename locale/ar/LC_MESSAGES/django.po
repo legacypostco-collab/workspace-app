@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-19 14:24+0300\n"
+"POT-Creation-Date: 2026-06-19 14:32+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -14442,9 +14442,38 @@ msgstr "سجل عمليات استيراد قائمة الأسعار"
 msgid "📤 Новая загрузка"
 msgstr "📤 رفع جديد"
 
+#: assistant/rag.py:191
+#, python-format
+msgid "⚠️ Дневной AI-лимит исчерпан (-$%(spent)s из $%(limit)s). Возобновится завтра или попробуйте без AI-режима."
+msgstr "⚠️ تم بلوغ الحد اليومي للذكاء الاصطناعي (-$%(spent)s من $%(limit)s). يُعاد ضبطه غدًا، أو جرّب بدون وضع الذكاء الاصطناعي."
+
+#: assistant/rag.py:306
+msgid "Собрал данные по запросу — смотри карточки выше. Уточни, что показать подробнее?"
+msgstr "تم جمع البيانات لطلبك — راجع البطاقات أعلاه. ماذا تريد أن أعرض بمزيد من التفصيل؟"
+
+#: assistant/rag.py:318
+#, python-format
+msgid ""
+"ℹ️ AI ассистент недоступен (ANTHROPIC_API_KEY не настроен).\n"
+"\n"
+"По вашему вопросу «%(query)s» — релевантного контекста не найдено."
+msgstr ""
+"ℹ️ مساعد الذكاء الاصطناعي غير متاح (لم يتم ضبط ANTHROPIC_API_KEY).\n"
+"\n"
+"لم يُعثر على سياق ذي صلة باستعلامك «%(query)s»."
+
+#: assistant/rag.py:322
+msgid "ℹ️ AI ассистент работает в режиме без LLM (ANTHROPIC_API_KEY не настроен)."
+msgstr "ℹ️ يعمل مساعد الذكاء الاصطناعي في وضع بدون LLM (لم يتم ضبط ANTHROPIC_API_KEY)."
+
+#: assistant/rag.py:323
+#, python-format
+#| msgid "Найдено %(p0)s ТН ВЭД-кодов по запросу «%(p1)s»."
+msgid "Найдено %(n)s релевантных источников по запросу «%(query)s»:\n"
+msgstr "تم العثور على %(n)s مصدرًا ذا صلة بالاستعلام «%(query)s»:\n"
+
 #: assistant/rag.py:467 assistant/rag.py:812
 #, python-format
-#| msgid "⚠️ Ошибка выполнения: %(e)s"
 msgid "⚠️ Ошибка API: %(e)s"
 msgstr "⚠️ خطأ في API: %(e)s"
 

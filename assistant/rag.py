@@ -188,9 +188,9 @@ def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple
             logger.warning("AI budget exceeded for user %s: $%.4f >= $%.2f",
                             e.user_id, e.spent_usd, e.limit_usd)
             final_text_parts.append(
-                f"⚠️ Дневной AI-лимит исчерпан "
-                f"(${e.spent_usd:.2f} из ${e.limit_usd:.2f}). "
-                f"Возобновится завтра или попробуйте без AI-режима."
+                _("⚠️ Дневной AI-лимит исчерпан (-$%(spent)s из $%(limit)s). "
+                  "Возобновится завтра или попробуйте без AI-режима.")
+                % {"spent": f"{e.spent_usd:.2f}", "limit": f"{e.limit_usd:.2f}"}
             )
             break
         resp = client.messages.create(**kwargs)
@@ -303,8 +303,8 @@ def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple
             logger.exception("finalize call (tool_choice=none) failed")
         if not any((t or "").strip() for t in final_text_parts):
             final_text_parts.append(
-                "Собрал данные по запросу — смотри карточки выше. "
-                "Уточни, что показать подробнее?"
+                _("Собрал данные по запросу — смотри карточки выше. "
+                  "Уточни, что показать подробнее?")
             )
 
     final_text = "\n\n".join(t for t in final_text_parts if t).strip()
@@ -315,12 +315,12 @@ def _stub_response(query: str, chunks) -> str:
     """Fallback when no Anthropic API key configured. Lists relevant chunks."""
     if not chunks:
         return (
-            "ℹ️ AI ассистент недоступен (ANTHROPIC_API_KEY не настроен).\n\n"
-            f"По вашему вопросу «{query}» — релевантного контекста не найдено."
+            _("ℹ️ AI ассистент недоступен (ANTHROPIC_API_KEY не настроен).\n\n"
+              "По вашему вопросу «%(query)s» — релевантного контекста не найдено.") % {"query": query}
         )
     parts = [
-        "ℹ️ AI ассистент работает в режиме без LLM (ANTHROPIC_API_KEY не настроен).",
-        f"Найдено {len(chunks)} релевантных источников по запросу «{query}»:\n",
+        _("ℹ️ AI ассистент работает в режиме без LLM (ANTHROPIC_API_KEY не настроен)."),
+        _("Найдено %(n)s релевантных источников по запросу «%(query)s»:\n") % {"n": len(chunks), "query": query},
     ]
     for i, c in enumerate(chunks, 1):
         parts.append(f"{i}. {c.title} ({c.get_source_type_display()})")

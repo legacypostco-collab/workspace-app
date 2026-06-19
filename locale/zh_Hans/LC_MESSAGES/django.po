@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-19 14:24+0300\n"
+"POT-Creation-Date: 2026-06-19 14:32+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -14443,9 +14443,38 @@ msgstr "价目表导入历史"
 msgid "📤 Новая загрузка"
 msgstr "📤 新上传"
 
+#: assistant/rag.py:191
+#, python-format
+msgid "⚠️ Дневной AI-лимит исчерпан (-$%(spent)s из $%(limit)s). Возобновится завтра или попробуйте без AI-режима."
+msgstr "⚠️ 已达每日 AI 限额（-$%(spent)s / $%(limit)s）。明天重置，或尝试不使用 AI 模式。"
+
+#: assistant/rag.py:306
+msgid "Собрал данные по запросу — смотри карточки выше. Уточни, что показать подробнее?"
+msgstr "已根据您的查询收集数据 — 请见上方卡片。需要我详细展示什么？"
+
+#: assistant/rag.py:318
+#, python-format
+msgid ""
+"ℹ️ AI ассистент недоступен (ANTHROPIC_API_KEY не настроен).\n"
+"\n"
+"По вашему вопросу «%(query)s» — релевантного контекста не найдено."
+msgstr ""
+"ℹ️ AI 助手不可用（未设置 ANTHROPIC_API_KEY）。\n"
+"\n"
+"未找到与您的查询「%(query)s」相关的内容。"
+
+#: assistant/rag.py:322
+msgid "ℹ️ AI ассистент работает в режиме без LLM (ANTHROPIC_API_KEY не настроен)."
+msgstr "ℹ️ AI 助手在无 LLM 模式下运行（未设置 ANTHROPIC_API_KEY）。"
+
+#: assistant/rag.py:323
+#, python-format
+#| msgid "Найдено %(p0)s ТН ВЭД-кодов по запросу «%(p1)s»."
+msgid "Найдено %(n)s релевантных источников по запросу «%(query)s»:\n"
+msgstr "找到与查询「%(query)s」相关的 %(n)s 个来源：\n"
+
 #: assistant/rag.py:467 assistant/rag.py:812
 #, python-format
-#| msgid "⚠️ Ошибка выполнения: %(e)s"
 msgid "⚠️ Ошибка API: %(e)s"
 msgstr "⚠️ API 错误：%(e)s"
 
