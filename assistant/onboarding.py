@@ -336,8 +336,8 @@ def start_onboarding(params, user, role):
                         "title": _("Верификация компании"),
                         "current": 5,
                         "total": 5,
-                        "current_label": "Проверено",
-                        "status": "✓ Верифицирована",
+                        "current_label": _("Проверено"),
+                        "status": _("✓ Верифицирована"),
                         "steps": steps_data,
                     },
                 },
@@ -381,7 +381,7 @@ def start_onboarding(params, user, role):
                 _('⏳ Анкета отправлена на проверку оператору (%(p0)s).\nОбычно проверка занимает до 24 часов. Дождитесь решения — мы пришлём нотификацию.') % {"p0": f"{(kyb.submitted_at.strftime('%d.%m.%Y %H:%M') if kyb.submitted_at else 'недавно')}"}
             ),
             cards=[{"type": "kpi_grid", "data": {"title": _("🛡 Статус KYB"), "items": [
-                {"label": _("Статус"), "value": "На проверке", "tone": "info"},
+                {"label": _("Статус"), "value": _("На проверке"), "tone": "info"},
                 {"label": _("Компания"), "value": kyb.legal_name or "—"},
                 {"label": _("ИНН"), "value": kyb.inn or "—"},
             ]}}],
@@ -398,20 +398,20 @@ def start_onboarding(params, user, role):
 
     cur, total = _step_progress(step)
     next_action = {
-        "company_info":     ("submit_company_info",  "Реквизиты компании"),
-        "legal_address":    ("submit_legal_address", "Юридический адрес"),
-        "bank":             ("submit_bank",          "Банковские реквизиты"),
-        "director":         ("submit_director",      "Директор"),
-        "ready_for_review": ("submit_for_review",    "Отправить на проверку"),
+        "company_info":     ("submit_company_info",  _("Реквизиты компании")),
+        "legal_address":    ("submit_legal_address", _("Юридический адрес")),
+        "bank":             ("submit_bank",          _("Банковские реквизиты")),
+        "director":         ("submit_director",      _("Директор")),
+        "ready_for_review": ("submit_for_review",    _("Отправить на проверку")),
     }[step]
 
     # Полный список шагов с маркером текущего/пройденных
     STEPS = [
-        ("company_info",     "Реквизиты компании"),
-        ("legal_address",    "Юридический адрес"),
-        ("bank",             "Банковские реквизиты"),
-        ("director",         "Директор"),
-        ("ready_for_review", "Отправить на проверку"),
+        ("company_info",     _("Реквизиты компании")),
+        ("legal_address",    _("Юридический адрес")),
+        ("bank",             _("Банковские реквизиты")),
+        ("director",         _("Директор")),
+        ("ready_for_review", _("Отправить на проверку")),
     ]
     steps_data = []
     for i, (key, label) in enumerate(STEPS, start=1):
@@ -434,16 +434,16 @@ def start_onboarding(params, user, role):
                 "current": cur,
                 "total": total,
                 "current_label": next_action[1],
-                "status": "Черновик",
+                "status": _("Черновик"),
                 "steps": steps_data,
             },
         }],
         actions=[
-            {"action": next_action[0], "label": f"➡ {next_action[1]}"},
+            {"action": next_action[0], "label": _("➡ %(label)s") % {"label": next_action[1]}},
         ],
         suggestions=[
-            "Сколько времени занимает верификация?",
-            "Какие документы нужны?",
+            _("Сколько времени занимает верификация?"),
+            _("Какие документы нужны?"),
         ],
     )
 
@@ -554,9 +554,9 @@ def submit_company_info(params, user, role):
             text=_("📋 Шаг 1/5 · Страна регистрации компании"),
             cards=[{"type": "form", "data": {
                 "title": _("📋 Шаг 1/5 · Где зарегистрирована компания?"),
-                "intent": "В зависимости от страны мы попросим разные реквизиты: ИНН для РФ, Trade License для ОАЭ, USCC для Китая, и т.д.",
+                "intent": _("В зависимости от страны мы попросим разные реквизиты: ИНН для РФ, Trade License для ОАЭ, USCC для Китая, и т.д."),
                 "submit_action": "submit_company_info",
-                "submit_label": "Далее →",
+                "submit_label": _("Далее →"),
                 "fields": [
                     {"name": "country", "label": _("Страна"), "type": "select",
                      "required": True, "options": _COUNTRY_OPTIONS,
@@ -573,7 +573,7 @@ def submit_company_info(params, user, role):
         form_fields = [
             {"name": "legal_name",
              "label": _("Полное наименование компании") if country != "RU"
-                       else "Полное наименование (как в ЕГРЮЛ)",
+                       else _("Полное наименование (как в ЕГРЮЛ)"),
              "required": True, "value": kyb.legal_name},
         ]
         for f in fields_spec:
@@ -588,7 +588,7 @@ def submit_company_info(params, user, role):
             text=_('📋 Шаг 1/5 · Реквизиты компании · %(p0)s') % {"p0": f'{country_label}'},
             cards=[{"type": "form", "data": {
                 "title":         _('📋 Шаг 1/5 · Реквизиты компании · %(p0)s') % {"p0": f'{country_label}'},
-                "intent":        "Поля помечены звёздочкой — обязательны. Остальное можно заполнить позже.",
+                "intent":        _("Поля помечены звёздочкой — обязательны. Остальное можно заполнить позже."),
                 "submit_action": "submit_company_info",
                 "fields":        form_fields,
                 "fixed_params":  {"confirmed": True, "country": country},
@@ -605,11 +605,11 @@ def submit_company_info(params, user, role):
     for f in fields_spec:
         val = (params.get(f["name"]) or "").strip()
         if f.get("required") and not val:
-            errors.append(f"{f['label']} — обязательное поле")
+            errors.append(_("%(label)s — обязательное поле") % {"label": f['label']})
             continue
         pattern = f.get("pattern")
         if val and pattern and not _re.match(pattern, val):
-            errors.append(f"{f['label']}: формат не подходит ({f.get('hint','')})")
+            errors.append(_("%(label)s: формат не подходит (%(hint)s)") % {"label": f['label'], "hint": f.get('hint','')})
     if errors:
         return ActionResult(
             text=_("⚠️ Проверьте данные:\n• ") + "\n• ".join(errors),
@@ -728,9 +728,9 @@ def submit_bank(params, user, role):
         country_label = next((c["label"] for c in _COUNTRY_OPTIONS if c["value"] == country), country)
         # Подсказка про SWIFT vs БИК для не-RU
         intent = (
-            "Для российских банков указываем БИК (9 цифр) и 20-значный расчётный счёт."
+            _("Для российских банков указываем БИК (9 цифр) и 20-значный расчётный счёт.")
             if country == "RU" else
-            "Для международного перевода нужны SWIFT/BIC код банка и IBAN (или локальный номер счёта)."
+            _("Для международного перевода нужны SWIFT/BIC код банка и IBAN (или локальный номер счёта).")
         )
         form_fields = []
         for f in fields_spec:
@@ -764,7 +764,7 @@ def submit_bank(params, user, role):
         val = normalized.get(f["name"], "")
         pattern = f.get("pattern")
         if val and pattern and not _re.match(pattern, val):
-            errors.append(f"{f['label']}: формат не подходит ({f.get('hint','')})")
+            errors.append(_("%(label)s: формат не подходит (%(hint)s)") % {"label": f['label'], "hint": f.get('hint','')})
     if errors:
         return ActionResult(
             text=_("⚠️ Проверьте данные:\n• ") + "\n• ".join(errors),
@@ -847,8 +847,8 @@ def submit_for_review(params, user, role):
                     {"label": _("Директор"), "value": kyb.director_name},
                 ],
                 "warnings": [
-                    "После отправки данные нельзя редактировать до решения оператора.",
-                    "Проверка обычно занимает до 24 часов.",
+                    _("После отправки данные нельзя редактировать до решения оператора."),
+                    _("Проверка обычно занимает до 24 часов."),
                 ],
                 "confirm_action": "submit_for_review",
                 "confirm_label": _("📨 Отправить на проверку"),
@@ -989,20 +989,20 @@ def update_kyb_contacts(params, user, role):
 
     if not confirmed:
         focus_titles = {
-            "website":   "🌐 Сайт компании",
-            "messenger": "💬 Подключить мессенджер",
-            "email":     "📧 Контактный email",
-            "phone":     "📞 Телефон компании",
-            "warehouse": "📍 Адрес склада",
-            "categories": "🏷 Бренды и категории",
+            "website":   _("🌐 Сайт компании"),
+            "messenger": _("💬 Подключить мессенджер"),
+            "email":     _("📧 Контактный email"),
+            "phone":     _("📞 Телефон компании"),
+            "warehouse": _("📍 Адрес склада"),
+            "categories": _("🏷 Бренды и категории"),
         }
-        title = focus_titles.get(focus, "📝 Дополнительные данные компании")
+        title = focus_titles.get(focus, _("📝 Дополнительные данные компании"))
         intent = (
-            "Поле повышает рейтинг и доверие покупателей. После сохранения "
-            "вернётесь к статусу — можете заполнить остальные позже."
+            _("Поле повышает рейтинг и доверие покупателей. После сохранения "
+            "вернётесь к статусу — можете заполнить остальные позже.")
             if focus else
-            "Заполните доступные поля — каждое повышает доверие покупателей "
-            "и рейтинг. Можно заполнить только то, что нужно сейчас."
+            _("Заполните доступные поля — каждое повышает доверие покупателей "
+            "и рейтинг. Можно заполнить только то, что нужно сейчас.")
         )
         # Выбираем поля по focus (или все, если focus пустой)
         field_keys = _FOCUS_FIELDS.get(focus)
@@ -1025,7 +1025,7 @@ def update_kyb_contacts(params, user, role):
                 "title":         title,
                 "intent":        intent,
                 "submit_action": "update_kyb_contacts",
-                "submit_label":  "Сохранить",
+                "submit_label":  _("Сохранить"),
                 "fields":        fields,
                 "fixed_params":  {"confirmed": True, "focus": focus},
             }}],
@@ -1048,8 +1048,8 @@ def update_kyb_contacts(params, user, role):
         kyb.save(update_fields=changed + (["updated_at"] if hasattr(kyb, "updated_at") else []))
 
     return ActionResult(
-        text=(f"✓ Сохранено {len(changed)} {'поле' if len(changed)==1 else 'поля'}."
-              if changed else "Изменений нет."),
+        text=(f"✓ Сохранено {len(changed)} {_('поле') if len(changed)==1 else _('поля')}."
+              if changed else _("Изменений нет.")),
         actions=[
             {"label": _("🛡 Вернуться к статусу"), "action": "kyb_status", "params": {}},
         ],
@@ -1074,13 +1074,13 @@ def upload_kyb_doc(params, user, role):
             "title": _("📜 Сертификаты дилерства"),
             "field": "doc_dealership",
             "hint": (
-                "Документы, подтверждающие что вы официальный дилер брендов "
+                _("Документы, подтверждающие что вы официальный дилер брендов "
                 "(CAT, Komatsu, Volvo CE и т.д.). После загрузки оператор "
                 "проверит и выдаст бейдж «Официальный дилер» — это сильно "
-                "повышает доверие покупателей и приоритет в подборе."
+                "повышает доверие покупателей и приоритет в подборе.")
             ),
             "accept": ".pdf,.png,.jpg,.jpeg,.heic",
-            "badge_on_approve": "Официальный дилер",
+            "badge_on_approve": _("Официальный дилер"),
         },
         "bank": {
             "title": _("🏦 Банковские реквизиты"),
@@ -1099,13 +1099,13 @@ def upload_kyb_doc(params, user, role):
         try:
             fname = current_file.name.split("/")[-1]
             size_kb = round((current_file.size or 0) / 1024, 1)
-            status_text = f"✓ Загружен · {fname} · {size_kb} КБ"
+            status_text = _("✓ Загружен · %(name)s · %(size)s КБ") % {"name": fname, "size": size_kb}
             status_tone = "ok"
         except Exception:
-            status_text = "✓ Загружен"
+            status_text = _("✓ Загружен")
             status_tone = "ok"
     else:
-        status_text = "Не загружен"
+        status_text = _("Не загружен")
         status_tone = "info"
 
     rows = [
@@ -1113,7 +1113,7 @@ def upload_kyb_doc(params, user, role):
         {"label": _("Статус"),     "value": status_text, "tone": status_tone},
     ]
     if meta.get("badge_on_approve"):
-        rows.append({"label": _("После одобрения"), "value": f"Бейдж «{meta['badge_on_approve']}»", "tone": "info"})
+        rows.append({"label": _("После одобрения"), "value": _("Бейдж «%(badge)s»") % {"badge": meta['badge_on_approve']}, "tone": "info"})
 
     return ActionResult(
         text=meta["title"],
@@ -1124,7 +1124,7 @@ def upload_kyb_doc(params, user, role):
             # Особый confirm_action — JS подхватит и откроет file-picker,
             # затем сделает multipart POST на endpoint
             "confirm_action": "_upload_kyb_file",
-            "confirm_label": ("📤 Заменить файл" if current_file else "📤 Загрузить файл"),
+            "confirm_label": (_("📤 Заменить файл") if current_file else _("📤 Загрузить файл")),
             "confirm_params": {"kind": kind, "accept": meta["accept"]},
             "cancel_label": _("Назад"),
         }}],
@@ -1156,14 +1156,14 @@ def op_kyb_queue(params, user, role):
     pending = list(CompanyVerification.objects.filter(status="pending").select_related("user").order_by("submitted_at")[:20])
     # Группировка по risk_indicator для приоритизации
     RISK_BADGE = {
-        "green":  ("Низкий риск",   "ok"),
-        "yellow": ("Средний риск",  "warn"),
-        "red":    ("Высокий риск",  "bad"),
+        "green":  (_("Низкий риск"),   "ok"),
+        "yellow": (_("Средний риск"),  "warn"),
+        "red":    (_("Высокий риск"),  "bad"),
     }
     rows = []
     for kyb in pending:
         risk = kyb.risk_indicator or "unknown"
-        badge_label, tone = RISK_BADGE.get(risk, ("Не проверено", "info"))
+        badge_label, tone = RISK_BADGE.get(risk, (_("Не проверено"), "info"))
         # Кратко: сколько сигналов в каждой категории
         api = kyb.api_results or {}
         n_red = sum(1 for s in (api.get("aggregator", {}).get("signals") or [])
@@ -1173,9 +1173,9 @@ def op_kyb_queue(params, user, role):
         n_yellow = sum(1 for snap in api.values() if isinstance(snap, dict)
                         for s in (snap.get("signals") or []) if s.get("level") == "yellow")
         flags = []
-        if n_red:    flags.append(f"{n_red} красных")
-        if n_yellow: flags.append(f"{n_yellow} жёлтых")
-        flags_str = " · ".join(flags) if flags else "чисто"
+        if n_red:    flags.append(_("%(n)s красных") % {"n": n_red})
+        if n_yellow: flags.append(_("%(n)s жёлтых") % {"n": n_yellow})
+        flags_str = " · ".join(flags) if flags else _("чисто")
         submitted_str = (kyb.submitted_at.strftime('%d.%m %H:%M')
                           if kyb.submitted_at else '—')
         rows.append({
@@ -1215,7 +1215,7 @@ def op_kyb_review(params, user, role):
         return ActionResult(text=_("Анкета не найдена."))
 
     # ── 1) Данные формы (§2 ТЗ) — сгруппированы по смыслу ──────────
-    RISK_RU = {"green": "Низкий", "yellow": "Средний", "red": "Высокий"}
+    RISK_RU = {"green": _("Низкий"), "yellow": _("Средний"), "red": _("Высокий")}
     company_rows = [
         {"label": _("Компания"), "value": kyb.legal_name or "—", "primary": True, "wide": True},
         {"label": _("Страна"),   "value": kyb.country or "RU"},
@@ -1243,7 +1243,7 @@ def op_kyb_review(params, user, role):
     ]
     status_rows = [
         {"label": _("Статус"), "value": kyb.get_status_display()},
-        {"label": "Risk", "value": RISK_RU.get(kyb.risk_indicator, "Не определён")},
+        {"label": "Risk", "value": RISK_RU.get(kyb.risk_indicator, _("Не определён"))},
     ]
     if kyb.submitted_at:
         status_rows.append({"label": _("Подана"), "value": kyb.submitted_at.strftime("%d.%m.%Y %H:%M")})
@@ -1262,13 +1262,13 @@ def op_kyb_review(params, user, role):
 
     # ── 2) Авто-API панель (§3 ТЗ) ──────────────────────────────
     SOURCE_LABELS = {
-        "aggregator":     "Контур.Фокус (РФ-агрегатор)",
+        "aggregator":     _("Контур.Фокус (РФ-агрегатор)"),
         "opencorporates": "OpenCorporates (зарубежные)",
-        "vies":           "VIES (VAT в ЕС)",
+        "vies":           _("VIES (VAT в ЕС)"),
         "sanctions":      "OpenSanctions",
-        "maps":           "Яндекс/Google Maps",
-        "site":           "Сайт",
-        "messenger":      "Мессенджеры",
+        "maps":           _("Яндекс/Google Maps"),
+        "site":           _("Сайт"),
+        "messenger":      _("Мессенджеры"),
     }
     api_rows = []
     for src_key, label in SOURCE_LABELS.items():
@@ -1276,7 +1276,7 @@ def op_kyb_review(params, user, role):
         signals = snap.get("signals") or []
         if not snap.get("ok"):
             api_rows.append({"title": label,
-                             "subtitle": (signals[0]["msg"] if signals else "не применимо"),
+                             "subtitle": (signals[0]["msg"] if signals else _("не применимо")),
                              "tone": "info"})
             continue
         if not signals:
@@ -1295,20 +1295,20 @@ def op_kyb_review(params, user, role):
 
     # ── 3) Чеклист оператора (§4 ТЗ — глазами 2-3 минуты) ──────
     checklist_items = [
-        ("streetview_ok",     "Склад в Street View — реальное здание, не жилой дом"),
-        ("reviews_ok",        "Отзывы на картах и в сети — нет массовых жалоб"),
-        ("site_ok",           "Сайт — рабочий магазин запчастей, не пустой лендинг"),
-        ("bank_ok",           "Реквизиты счёта — страна совпадает, без посредников"),
-        ("certs_ok",          "Сертификаты дилерства выглядят настоящими (если заявлены)"),
-        ("messenger_test_ok", "Мессенджер отвечает (тестовое сообщение)"),
+        ("streetview_ok",     _("Склад в Street View — реальное здание, не жилой дом")),
+        ("reviews_ok",        _("Отзывы на картах и в сети — нет массовых жалоб")),
+        ("site_ok",           _("Сайт — рабочий магазин запчастей, не пустой лендинг")),
+        ("bank_ok",           _("Реквизиты счёта — страна совпадает, без посредников")),
+        ("certs_ok",          _("Сертификаты дилерства выглядят настоящими (если заявлены)")),
+        ("messenger_test_ok", _("Мессенджер отвечает (тестовое сообщение)")),
     ]
     checklist_state = kyb.operator_checklist or {}
     # Чеклист: используем спец-флаг `checkbox: True` чтобы фронт нарисовал
     # настоящий чекбокс вместо символов.
     checklist_rows = [
         {"title": lbl,
-         "subtitle": ("Проверено" if checklist_state.get(k)
-                       else "Кликнуть → отметить как проверено"),
+         "subtitle": (_("Проверено") if checklist_state.get(k)
+                       else _("Кликнуть → отметить как проверено")),
          "checkbox": True,
          "checked": bool(checklist_state.get(k)),
          "action": "op_kyb_check",
@@ -1406,7 +1406,7 @@ def op_kyb_clarify(params, user, role):
                 "fields": [
                     {"name": "note", "label": _("Что запросить"),
                      "type": "textarea", "required": True,
-                     "value": "Просим прислать фото склада с вывеской и копию сертификата дилерства."},
+                     "value": _("Просим прислать фото склада с вывеской и копию сертификата дилерства.")},
                 ],
                 "fixed_params": {"user_id": kyb.user_id, "confirmed": True},
             }}],
@@ -1446,12 +1446,12 @@ def op_kyb_approve(params, user, role):
 
     # Проверка чеклиста — все пункты должны быть отмечены до одобрения
     REQUIRED_CHECKS = [
-        ("streetview_ok",     "Склад в Street View"),
-        ("reviews_ok",        "Отзывы на картах"),
-        ("site_ok",           "Сайт — рабочий магазин"),
-        ("bank_ok",           "Реквизиты счёта"),
-        ("certs_ok",          "Сертификаты дилерства"),
-        ("messenger_test_ok", "Мессенджер отвечает"),
+        ("streetview_ok",     _("Склад в Street View")),
+        ("reviews_ok",        _("Отзывы на картах")),
+        ("site_ok",           _("Сайт — рабочий магазин")),
+        ("bank_ok",           _("Реквизиты счёта")),
+        ("certs_ok",          _("Сертификаты дилерства")),
+        ("messenger_test_ok", _("Мессенджер отвечает")),
     ]
     state = kyb.operator_checklist or {}
     missing = [lbl for (k, lbl) in REQUIRED_CHECKS if not state.get(k)]
@@ -1463,12 +1463,12 @@ def op_kyb_approve(params, user, role):
             {"label": _("Компания"), "value": kyb.legal_name, "primary": True},
             {"label": _("ИНН"), "value": kyb.inn},
             {"label": _("Пользователь"), "value": kyb.user.username},
-            {"label": _("Чеклист"), "value": f"{len(REQUIRED_CHECKS)-len(missing)} / {len(REQUIRED_CHECKS)} отмечено"},
+            {"label": _("Чеклист"), "value": _("%(done)s / %(total)s отмечено") % {"done": len(REQUIRED_CHECKS)-len(missing), "total": len(REQUIRED_CHECKS)}},
         ]
         warnings = [
-            f"Не отмечено в чеклисте ({len(missing)}): " +
+            (_("Не отмечено в чеклисте (%(n)s): ") % {"n": len(missing)}) +
             ", ".join(missing[:3]) + ("…" if len(missing) > 3 else ""),
-            "Рекомендуется завершить все пункты перед одобрением.",
+            _("Рекомендуется завершить все пункты перед одобрением."),
         ]
         return ActionResult(
             text=_('Чеклист не завершён — одобрить всё равно?'),
@@ -1547,10 +1547,10 @@ def op_kyb_approve(params, user, role):
 
     # Итоговая карточка одобрения с рейтингом
     SUPPLIER_STATUS_RU = {
-        "trusted":  "Надёжный",
-        "sandbox":  "Песочница (новичок)",
-        "risky":    "Рисковый",
-        "rejected": "Исключён",
+        "trusted":  _("Надёжный"),
+        "sandbox":  _("Песочница (новичок)"),
+        "risky":    _("Рисковый"),
+        "rejected": _("Исключён"),
     }
     result_rows = [
         {"label": _("Компания"), "value": kyb.legal_name, "primary": True},
@@ -1564,7 +1564,7 @@ def op_kyb_approve(params, user, role):
     if final_status:
         result_rows.append({"label": _("Статус продавца"), "value": SUPPLIER_STATUS_RU.get(final_status, final_status)})
     if missing:
-        result_rows.append({"label": _("Не отмечено в чеклисте"), "value": f"{len(missing)} пунктов"})
+        result_rows.append({"label": _("Не отмечено в чеклисте"), "value": _("%(n)s пунктов") % {"n": len(missing)}})
 
     return ActionResult(
         text=_('KYB одобрен · «%(p0)s» (ИНН %(p1)s). Уведомление отправлено.') % {"p0": f'{kyb.legal_name}', "p1": f'{kyb.inn}'},

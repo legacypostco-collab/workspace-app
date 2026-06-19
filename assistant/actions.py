@@ -2918,7 +2918,7 @@ def get_order_detail(params, user, role):
         {"label": _('Статус'),     "value": o.get_status_display()},
         {"label": _('Оплата'),     "value": o.get_payment_status_display()},
         {"label": _('Сумма'),      "value": f"${float(o.total_amount or 0):,.2f}"},
-        {"label": _('Покупатель'), "value": (o.customer_name or "—") if role != "seller" else "Покупатель"},
+        {"label": _('Покупатель'), "value": (o.customer_name or "—") if role != "seller" else _('Покупатель')},
         {"label": _('Создан'),     "value": o.created_at.strftime("%d.%m.%Y %H:%M") if o.created_at else "—"},
     ]
     # PIVOT 2026-05-27: sub-order контекст
@@ -3218,7 +3218,7 @@ def get_order_detail(params, user, role):
         {"label": _('Оплата'),           "value": o.get_payment_status_display()},
         {"label": _('Сумма'),            "value": f"${(o.total_amount or 0):,.2f}",            "primary": True},
         {"label": _('Создан'),           "value": o.created_at.strftime("%d.%m.%Y %H:%M") if o.created_at else "—"},
-        {"label": _('Покупатель'),       "value": (o.customer_name or "—") if role != "seller" else "Покупатель"},
+        {"label": _('Покупатель'),       "value": (o.customer_name or "—") if role != "seller" else _('Покупатель')},
     ]
     if o.logistics_cost:
         rows.append({"label": _('Логистика'), "value": f"${o.logistics_cost:,.2f}"})
@@ -6323,7 +6323,7 @@ def get_claims(params, user, role):
     def _row(c, age_d, *, sla_bad=False):
         order = c.order
         order_tag = f"#{order.id}"
-        who = "Покупатель" if role == "seller" else (order.buyer.username if order.buyer_id else (order.customer_name or "—"))[:24]
+        who = _('Покупатель') if role == "seller" else (order.buyer.username if order.buyer_id else (order.customer_name or "—"))[:24]
         money = f" · возврат ${int(c.refund_amount):,}".replace(",", " ") if c.refund_amount else ""
         return {
             "title": c.title[:60] or KIND_LABEL.get(c.kind, c.kind),

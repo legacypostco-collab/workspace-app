@@ -1386,8 +1386,8 @@ def op_order_detail(params, user, role):
             {"action": "op_add_note", "label": _("📝 Заметка"), "params": {"order_id": order.id}},
             # Назначение/смена перевозчика — приоритетная кнопка если заказ в transit
             {"action": "op_assign_carrier",
-             "label": ("🚚 " + ("Сменить" if order.carrier_name else "Назначить")
-                        + " перевозчика"),
+             "label": ("🚚 " + (_("Сменить") if order.carrier_name else _("Назначить"))
+                        + _(" перевозчика")),
              "params": {"order_id": order.id}},
             {"action": "track_shipment", "label": _("📦 Трекинг"), "params": {"order_id": order.id}},
             {"action": "op_resolve_dispute", "label": _("⚖️ Закрыть спор"), "params": {"order_id": order.id}},
@@ -1421,9 +1421,8 @@ def op_assign(params, user, role):
     if not confirmed or to_role not in OP_SUBROLES:
         current = _latest_assignment(order)
         current_line = (
-            f"📌 Сейчас назначен: {current['to_role']} (by {current['by']}, "
-            f"{current['at'][:10]})"
-            if current else "📌 Сейчас никто не отвечает — заказ в общей очереди"
+            _("📌 Сейчас назначен: %(role)s (by %(by)s, %(at)s)") % {"role": current['to_role'], "by": current['by'], "at": current['at'][:10]}
+            if current else _("📌 Сейчас никто не отвечает — заказ в общей очереди")
         )
         return ActionResult(
             text=(
@@ -1571,7 +1570,7 @@ def op_assign_carrier(params, user, role):
                 "data": {
                     "title": _('🚚 Перевозчик · ORD-%(p0)s') % {"p0": f'{order.id}'},
                     "submit_action": "op_assign_carrier",
-                    "submit_label": "✓ Назначить и уведомить покупателя",
+                    "submit_label": _("✓ Назначить и уведомить покупателя"),
                     "fields": [
                         {"name": "carrier_name", "label": _("Перевозчик"),
                          "required": True, "value": order.carrier_name or "",
@@ -1636,10 +1635,9 @@ def op_assign_carrier(params, user, role):
             order, "carrier_assigned",
             actor=user,
             text=(
-                f"🚚 Назначен перевозчик: {carrier_name} · "
-                f"трек-номер `{tracking_number}`."
+                _("🚚 Назначен перевозчик: %(carrier)s · трек-номер `%(tracking)s`.") % {"carrier": carrier_name, "tracking": tracking_number}
                 + (f"\nURL: {tracking_url}" if tracking_url else "")
-                + (f"\nТелефон: {carrier_phone}" if carrier_phone else "")
+                + (_("\nТелефон: %(phone)s") % {"phone": carrier_phone} if carrier_phone else "")
             ),
             extra_actions=[
                 {"action": "track_shipment", "label": _("📦 Открыть трекинг"),
@@ -1747,7 +1745,7 @@ def op_resolve_dispute(params, user, role):
         if resolution == "refund":
             res = _pay.refund_to_buyer(order=order, buyer=order.buyer)
             if res.get("ok"):
-                money_moved = f" · возврат ${res['amount']:,.2f} → покупатель"
+                money_moved = _(" · возврат $%(amount)s → покупатель") % {"amount": f"{res['amount']:,.2f}"}
             new_payment_status = "refunded"
             # Rating: refund → claim_confirmed (-7) для всех продавцов заказа
             for s in sellers_in_order:
@@ -1758,7 +1756,7 @@ def op_resolve_dispute(params, user, role):
             if refund_amount > 0 and order.buyer:
                 res = _pay.refund_to_buyer(order=order, buyer=order.buyer, amount=refund_amount)
                 if res.get("ok"):
-                    money_moved = f" · возврат ${res['amount']:,.2f} → покупатель"
+                    money_moved = _(" · возврат $%(amount)s → покупатель") % {"amount": f"{res['amount']:,.2f}"}
             new_payment_status = "refund_pending"
             # Rating: partial_refund → return (-5) для всех продавцов заказа
             for s in sellers_in_order:
@@ -1775,8 +1773,8 @@ def op_resolve_dispute(params, user, role):
             if released_total > 0:
                 n = len(splits)
                 money_moved = (
-                    f" · выплата ${released_total:,.2f} → продавц"
-                    + ("ам" if n > 1 else "у")
+                    _(" · выплата $%(amount)s → продавц") % {"amount": f"{released_total:,.2f}"}
+                    + (_("ам") if n > 1 else _("у"))
                 )
             new_payment_status = "paid"
             # release → нейтрально для рейтинга (споp закрыт в пользу продавца)
@@ -1810,8 +1808,8 @@ def op_resolve_dispute(params, user, role):
 
     return ActionResult(
         text=(
-            f"✓ Спор по #{order.id} закрыт · решение «{resolution}»"
-            + (f" · возврат ${refund_amount:,.0f}" if refund_amount else "")
+            _("✓ Спор по #%(id)s закрыт · решение «%(resolution)s»") % {"id": order.id, "resolution": resolution}
+            + (_(" · возврат $%(amount)s") % {"amount": f"{refund_amount:,.0f}"} if refund_amount else "")
             + "."
         ),
         contextual_actions=[
@@ -1864,7 +1862,7 @@ def op_hs_lookup(params, user, role):
     if not hits:
         return ActionResult(
             text=_('Не нашёл ТН ВЭД для «%(p0)s». Попробуйте другие ключевые слова.') % {"p0": f'{query}'},
-            suggestions=["насос", "фильтр", "подшипник", "гидроцилиндр", "шестерня"],
+            suggestions=[_("насос"), _("фильтр"), _("подшипник"), _("гидроцилиндр"), _("шестерня")],
         )
     return ActionResult(
         text=_('Найдено %(p0)s ТН ВЭД-кодов по запросу «%(p1)s».') % {"p0": f'{len(hits)}', "p1": f'{query}'},
@@ -1879,7 +1877,7 @@ def op_hs_lookup(params, user, role):
                 ],
             },
         }],
-        suggestions=[f"присвой {hits[0]['code']} заказу" if hits else "уточни запрос"],
+        suggestions=[_("присвой %(code)s заказу") % {"code": hits[0]['code']} if hits else _("уточни запрос")],
     )
 
 
@@ -2032,10 +2030,8 @@ def op_certs_check(params, user, role):
     missing = [c for c in required if c not in have]
 
     text = (
-        f"Сертификаты по заказу #{order.id} (ТН ВЭД {hs_code or '—'})\n"
-        f"Требуется: {', '.join(required) or '—'}\n"
-        f"В наличии: {', '.join(have) or 'нет'}\n"
-        + (f"❗ Не хватает: {', '.join(missing)}" if missing else "✓ Все сертификаты на месте")
+        _("Сертификаты по заказу #%(id)s (ТН ВЭД %(hs)s)\nТребуется: %(req)s\nВ наличии: %(have)s\n") % {"id": order.id, "hs": hs_code or '—', "req": ', '.join(required) or '—', "have": ', '.join(have) or _('нет')}
+        + (_("❗ Не хватает: %(missing)s") % {"missing": ', '.join(missing)} if missing else _("✓ Все сертификаты на месте"))
     )
     items = [{"label": c, "value": "✓" if c in have else "✗",
               "tone": "ok" if c in have else "warn"} for c in required]
@@ -2135,7 +2131,7 @@ def op_sanctions_check(params, user, role):
     res = sanctions_check(country=country, entity=entity, category=category)
     level = res["level"]
     icon = {"high": "🚫", "medium": "⚠️", "low": "ℹ️", "none": "✓"}[level]
-    label = {"high": "Запрещено", "medium": "Под контролем", "low": "Серая зона", "none": "Чисто"}[level]
+    label = {"high": _("Запрещено"), "medium": _("Под контролем"), "low": _("Серая зона"), "none": _("Чисто")}[level]
     items = [
         {"label": _("Уровень"), "value": label,
          "tone": {"high": "bad", "medium": "warn", "low": "warn", "none": "ok"}[level]},
@@ -2144,8 +2140,8 @@ def op_sanctions_check(params, user, role):
     if entity:   items.append({"label": _("Контрагент"), "value": entity})
     if category: items.append({"label": _("Категория"), "value": category})
 
-    text_lines = [f"{icon} Санкционная проверка: {label}."]
-    text_lines.extend("• " + r for r in (res["reasons"] or ["Нет совпадений в списках."]))
+    text_lines = [_("%(icon)s Санкционная проверка: %(label)s.") % {"icon": icon, "label": label}]
+    text_lines.extend("• " + r for r in (res["reasons"] or [_("Нет совпадений в списках.")]))
 
     return ActionResult(
         text="\n".join(text_lines),
@@ -2255,7 +2251,7 @@ def op_customs_dashboard(params, user, role):
         certs = cm.get("certs") or []
         has_docs = bool(hs and hs != "—" and certs)
         tone = "ok" if has_docs else "warn"
-        badge_label = "К выпуску" if has_docs else "Нет доков"
+        badge_label = _("К выпуску") if has_docs else _("Нет доков")
         rows.append({
             "title": f"#{o.id} · {o.customer_name}",
             "subtitle": _('%(p0)s · ТН ВЭД %(p1)s · $%(p2)s') % {"p0": f'{o.get_status_display()}', "p1": f'{hs}', "p2": f'{float(o.total_amount or 0):,.0f}'},
@@ -2303,18 +2299,15 @@ def op_customs_dashboard(params, user, role):
 
     # Actionable инсайт
     if overdue_3d:
-        cust_insight = (f"{overdue_3d} грузов застряли на таможне >3 дн — "
-                         f"проверьте состояние оформления.")
+        cust_insight = (_("%(n)s грузов застряли на таможне >3 дн — проверьте состояние оформления.") % {"n": overdue_3d})
     elif docs_completeness < 50 and total:
-        cust_insight = (f"Только {docs_completeness}% грузов готовы к выпуску — "
-                         f"загрузите ТН ВЭД и сертификаты в красные карточки.")
+        cust_insight = (_("Только %(p)s%% грузов готовы к выпуску — загрузите ТН ВЭД и сертификаты в красные карточки.") % {"p": docs_completeness})
     elif flow_delta < -20 and released_prev:
-        cust_insight = (f"Поток через таможню упал на {abs(flow_delta)}% — "
-                         f"возможны проблемы у брокера.")
+        cust_insight = (_("Поток через таможню упал на %(p)s%% — возможны проблемы у брокера.") % {"p": abs(flow_delta)})
     elif total == 0:
-        cust_insight = "Нет грузов на таможне."
+        cust_insight = _("Нет грузов на таможне.")
     else:
-        cust_insight = f"На таможне {total} грузов, поток в норме."
+        cust_insight = _("На таможне %(n)s грузов, поток в норме.") % {"n": total}
 
     return ActionResult(
         text=cust_insight,
@@ -2356,11 +2349,11 @@ def op_customs_release(params, user, role):
     if not confirmed:
         warn = ""
         if not hs_code:
-            warn = "❗ ТН ВЭД не присвоен."
+            warn = _("❗ ТН ВЭД не присвоен.")
         elif missing:
-            warn = f"❗ Нет сертификатов: {', '.join(missing)}"
+            warn = _("❗ Нет сертификатов: %(missing)s") % {"missing": ', '.join(missing)}
         elif not customs.get("duty_total"):
-            warn = "ℹ️ Пошлина не рассчитана."
+            warn = _("ℹ️ Пошлина не рассчитана.")
         return ActionResult(
             text=_('Выпустить груз #%(p0)s с таможни?\n%(p1)s') % {"p0": f'{order.id}', "p1": f'{warn}'},
             cards=[{
@@ -2387,9 +2380,9 @@ def op_customs_release(params, user, role):
     # Жёсткая проверка перед записью
     blockers = []
     if not hs_code:
-        blockers.append("нет ТН ВЭД")
+        blockers.append(_("нет ТН ВЭД"))
     if missing:
-        blockers.append("не хватает сертификатов: " + ", ".join(missing))
+        blockers.append(_("не хватает сертификатов: ") + ", ".join(missing))
     if blockers:
         return ActionResult(
             text=_("⚠️ Нельзя выпустить: ") + "; ".join(blockers) + ".",
@@ -2499,12 +2492,12 @@ def op_logistics_stats(params, user, role):
     # Это самое важное для оператора: за этими подрядчиками нужно следить.
     LIVE_STATUSES = ("transit_abroad", "customs", "transit_rf", "issuing")
     STAGE_META = {
-        "transit_abroad": ("Зарубежная логистика", "info"),
-        "customs":        ("Таможенный брокер",   "warn"),
-        "transit_rf":     ("РФ-логист",             "info"),
-        "issuing":        ("Пункт выдачи",          "ok"),
+        "transit_abroad": (_("Зарубежная логистика"), "info"),
+        "customs":        (_("Таможенный брокер"),   "warn"),
+        "transit_rf":     (_("РФ-логист"),             "info"),
+        "issuing":        (_("Пункт выдачи"),          "ok"),
     }
-    MODE_LABEL = {"sea": "Море", "air": "Авиа", "auto": "Авто", "rail": "ЖД"}
+    MODE_LABEL = {"sea": _("Море"), "air": _("Авиа"), "auto": _("Авто"), "rail": _("ЖД")}
 
     # Локализация технических carrier-значений.
     # Реальные бренды (MAERSK, DHL, COSCO …) — proper nouns, не переводятся.
@@ -2515,10 +2508,10 @@ def op_logistics_stats(params, user, role):
         key = (raw or "").strip().upper()
         TRANS = {
             "ru": {
-                "SELF":              "Своими силами",
-                "INTERNAL_FALLBACK": "Внутр. перевозка",
-                "PLATFORM":          "Платформа",
-                "UNKNOWN":           "Не указан",
+                "SELF":              _("Своими силами"),
+                "INTERNAL_FALLBACK": _("Внутр. перевозка"),
+                "PLATFORM":          _("Платформа"),
+                "UNKNOWN":           _("Не указан"),
                 "":                  "—",
                 "—":                 "—",
             },
@@ -2549,10 +2542,10 @@ def op_logistics_stats(params, user, role):
     routes_by_stage: dict = _dd(list)
     stage_order = ["transit_abroad", "customs", "transit_rf", "issuing"]
     stage_titles = {
-        "transit_abroad": "Транзит за рубеж",
-        "customs":        "На таможне",
-        "transit_rf":     "Транзит по РФ",
-        "issuing":        "Выдача / приёмка",
+        "transit_abroad": _("Транзит за рубеж"),
+        "customs":        _("На таможне"),
+        "transit_rf":     _("Транзит по РФ"),
+        "issuing":        _("Выдача / приёмка"),
     }
     # Передадим route_rows + status в каждой строке для группировки.
     # Перегенерируем чтобы захватить статус.
@@ -2576,7 +2569,7 @@ def op_logistics_stats(params, user, role):
             tone = "warn"
         sub_parts = [mode, f"{origin}→{dest}"]
         if tracking: sub_parts.append(tracking)
-        if days_in_stage is not None: sub_parts.append(f"{days_in_stage}д на этапе")
+        if days_in_stage is not None: sub_parts.append(_("%(d)sд на этапе") % {"d": days_in_stage})
         sub_parts.append(f"${float(o.total_amount or 0):,.0f}")
         routes_by_stage[o.status].append({
             "title": f"ORD-{o.id} · {o.customer_name or (o.buyer.username if o.buyer else 'N/A')}",
@@ -2614,8 +2607,8 @@ def op_logistics_stats(params, user, role):
             stage_avg_days[st] = sum(durations) / len(durations)
 
     # Самый медленный этап
-    stage_lbl = {"transit_abroad": "Транзит", "customs": "Таможня",
-                  "transit_rf": "По РФ", "issuing": "Выдача"}
+    stage_lbl = {"transit_abroad": _("Транзит"), "customs": _("Таможня"),
+                  "transit_rf": _("По РФ"), "issuing": _("Выдача")}
     if stage_avg_days:
         slowest = max(stage_avg_days.items(), key=lambda x: x[1])
         slowest_label = f"{stage_lbl[slowest[0]]} ({slowest[1]:.1f}д)"
@@ -2661,7 +2654,7 @@ def op_logistics_stats(params, user, role):
     items.append({
         "label": _("Активных отгрузок"),
         "value": f"{live_total}",
-        "sub": (f"на ${live_value:,.0f}" if live_value else "ни одной в работе"),
+        "sub": (_("на $%(v)s") % {"v": f"{live_value:,.0f}"} if live_value else _("ни одной в работе")),
         "tone": "info",
         "action": "op_queue" if live_total else None,
         "params": {"filter": "live"} if live_total else None,
@@ -2672,9 +2665,9 @@ def op_logistics_stats(params, user, role):
         risk_total = sla_breached_n + sla_atrisk_n
         sub_parts = []
         if sla_breached_n:
-            sub_parts.append(f"{sla_breached_n} просрочено")
+            sub_parts.append(_("%(n)s просрочено") % {"n": sla_breached_n})
         if sla_atrisk_n:
-            sub_parts.append(f"{sla_atrisk_n} под угрозой")
+            sub_parts.append(_("%(n)s под угрозой") % {"n": sla_atrisk_n})
         items.append({
             "label": _("Требуют внимания"),
             "value": f"{risk_total}",
@@ -2690,8 +2683,8 @@ def op_logistics_stats(params, user, role):
         items.append({
             "label": _("Сейчас на таможне"),
             "value": f"{on_customs}",
-            "sub": (f"в среднем {customs_avg:.0f} дн на этапе"
-                    if customs_avg else "контроль брокера"),
+            "sub": (_("в среднем %(d)s дн на этапе") % {"d": f"{customs_avg:.0f}"}
+                    if customs_avg else _("контроль брокера")),
             "tone": "warn" if on_customs > 3 else "info",
             "action": "op_queue",
             "params": {"filter": "customs"},
@@ -2799,13 +2792,13 @@ def op_logistics_stats(params, user, role):
 
         parts = []
         if avg_lead is not None:
-            parts.append(f"ср. срок {avg_lead:.1f} дн")
+            parts.append(_("ср. срок %(d)s дн") % {"d": f"{avg_lead:.1f}"})
         if avg_cost is not None:
-            parts.append(f"ср. стоимость ${avg_cost:,.0f}")
+            parts.append(_("ср. стоимость $%(c)s") % {"c": f"{avg_cost:,.0f}"})
         if avg_ratio is not None:
-            parts.append(f"{avg_ratio:.1f}% от груза")
+            parts.append(_("%(r)s%% от груза") % {"r": f"{avg_ratio:.1f}"})
         if not parts:
-            parts = ["нет завершённых отгрузок за 90д"]
+            parts = [_("нет завершённых отгрузок за 90д")]
 
         # Тон по скорости: bad если медленнее эталона
         norm = {"sea": 35, "air": 7, "auto": 14, "rail": 20}.get(mcode, 30)
@@ -2816,7 +2809,7 @@ def op_logistics_stats(params, user, role):
 
         mode_rows.append({
             "title": MODE_LABEL.get(mcode, mcode),
-            "subtitle": (f"{s['n']} доставлено за 90д · {live_n} активно сейчас · "
+            "subtitle": (_("%(n)s доставлено за 90д · %(live)s активно сейчас · ") % {"n": s['n'], "live": live_n}
                           + " · ".join(parts)),
             "tone": tone,
             "badge": {"label": _('%(p0)s в пути') % {"p0": f'{live_n}'}, "tone": tone},
@@ -2854,10 +2847,10 @@ def op_logistics_stats(params, user, role):
         top_mode = max(s["modes"].items(), key=lambda x: x[1])[0] if s["modes"] else "—"
         parts = []
         if avg_lead is not None:
-            parts.append(f"ср. срок {avg_lead:.1f} дн")
+            parts.append(_("ср. срок %(d)s дн") % {"d": f"{avg_lead:.1f}"})
         if avg_cost is not None:
-            parts.append(f"ср. стоимость ${avg_cost:,.0f}")
-        parts.append(f"чаще всего {MODE_LABEL.get(top_mode, top_mode)}")
+            parts.append(_("ср. стоимость $%(c)s") % {"c": f"{avg_cost:,.0f}"})
+        parts.append(_("чаще всего %(mode)s") % {"mode": MODE_LABEL.get(top_mode, top_mode)})
         _o, _sep, _d = key.partition("→")
         route_rows_analytics.append({
             "title": key,
@@ -2902,16 +2895,16 @@ def op_logistics_stats(params, user, role):
         if avg_cost is not None:
             parts.append(f"ср. стоимость ${avg_cost:,.0f}")
         if s["n"]:
-            parts.append(f"SLA-нарушений {breach_pct}%")
+            parts.append(_("SLA-нарушений %(p)s%%") % {"p": breach_pct})
         if not parts:
-            parts = ["нет завершённых отгрузок"]
+            parts = [_("нет завершённых отгрузок")]
 
         tone = ("bad" if breach_pct >= 30 else
                 ("warn" if breach_pct >= 10 else
                  ("ok" if s["n"] else "info")))
         provider_rows.append({
             "title": _carrier_label(p),
-            "subtitle": (f"{s['n']} доставлено за 90д · {live_n} активно · " + " · ".join(parts)),
+            "subtitle": (_("%(n)s доставлено за 90д · %(live)s активно · ") % {"n": s['n'], "live": live_n} + " · ".join(parts)),
             "tone": tone,
             "badge": ({"label": f"{breach_pct}% SLA", "tone": tone} if s["n"] else
                       {"label": _('%(p0)s в пути') % {"p0": f'{live_n}'}, "tone": "info"}),
@@ -2938,9 +2931,9 @@ def op_logistics_stats(params, user, role):
 
         parts = []
         if avg_stage is not None:
-            parts.append(f"ср. срок {avg_stage:.1f} дн")
+            parts.append(_("ср. срок %(d)s дн") % {"d": f"{avg_stage:.1f}"})
         if oldest_days is not None:
-            parts.append(f"самый давний {oldest_days} дн")
+            parts.append(_("самый давний %(d)s дн") % {"d": oldest_days})
         if breached_in_stage:
             parts.append(f"{breached_in_stage} SLA")
         tone = ("bad" if breached_in_stage else
@@ -2957,21 +2950,17 @@ def op_logistics_stats(params, user, role):
 
     # Actionable инсайт
     if sla_breached_n:
-        log_insight = (f"{sla_breached_n} маршрутов уже нарушили SLA — "
-                       f"откройте SLA-отчёт и переподнимите подрядчиков.")
+        log_insight = (_("%(n)s маршрутов уже нарушили SLA — откройте SLA-отчёт и переподнимите подрядчиков.") % {"n": sla_breached_n})
     elif slowest and slowest[1] > 14 and slowest[0] == "customs":
-        log_insight = (f"Таможня — узкое место: средние {slowest[1]:.1f} дн. "
-                       f"Проверьте сертификаты и HS-коды.")
+        log_insight = (_("Таможня — узкое место: средние %(d)s дн. Проверьте сертификаты и HS-коды.") % {"d": f"{slowest[1]:.1f}"})
     elif slowest and slowest[1] > 20:
-        log_insight = f"Самый медленный этап: {slowest_label}. Есть смысл сменить подрядчика."
+        log_insight = _("Самый медленный этап: %(label)s. Есть смысл сменить подрядчика.") % {"label": slowest_label}
     elif days_delta >= 5:
-        log_insight = (f"Стали возить на {days_delta:.0f} дн дольше "
-                       f"(было {lead_prev:.0f} → стало {lead_30:.0f}). Проверьте причину.")
+        log_insight = (_("Стали возить на %(d)s дн дольше (было %(prev)s → стало %(now)s). Проверьте причину.") % {"d": f"{days_delta:.0f}", "prev": f"{lead_prev:.0f}", "now": f"{lead_30:.0f}"})
     elif days_delta <= -3:
-        log_insight = (f"Доставка ускорилась на {abs(days_delta):.0f} дн "
-                       f"(было {lead_prev:.0f} → стало {lead_30:.0f}) — хорошая динамика.")
+        log_insight = (_("Доставка ускорилась на %(d)s дн (было %(prev)s → стало %(now)s) — хорошая динамика.") % {"d": f"{abs(days_delta):.0f}", "prev": f"{lead_prev:.0f}", "now": f"{lead_30:.0f}"})
     else:
-        log_insight = "Логистика в норме."
+        log_insight = _("Логистика в норме.")
 
     # В отчёт идёт ТОЛЬКО аналитика. Индивидуальные заказы доступны через
     # «📋 Очередь» и карточки заказа — здесь дублировать незачем.
@@ -3108,17 +3097,15 @@ def op_payments_stats(params, user, role):
 
     # Текст — actionable инсайт
     if refund_rate > 5:
-        insight = f"Высокий refund rate {refund_rate:.1f}% — проверьте качество и поставщиков."
+        insight = _("Высокий refund rate %(r)s%% — проверьте качество и поставщиков.") % {"r": f"{refund_rate:.1f}"}
     elif final_conv < 50 and reserved_30:
-        insight = (f"Только {final_conv}% резервов доходят до финальной оплаты — "
-                   f"много залипших на partial. Свяжитесь с покупателями.")
+        insight = (_("Только %(c)s%% резервов доходят до финальной оплаты — много залипших на partial. Свяжитесь с покупателями.") % {"c": final_conv})
     elif avg_pay_hours and avg_pay_hours > 72:
-        insight = (f"Средний срок оплаты {avg_pay_hours/24:.1f} дн — выше нормы 3д. "
-                   f"Стоит подключить напоминания.")
+        insight = (_("Средний срок оплаты %(d)s дн — выше нормы 3д. Стоит подключить напоминания.") % {"d": f"{avg_pay_hours/24:.1f}"})
     elif trend_pct < -15:
-        insight = f"Выручка за 30д упала на {abs(trend_pct)}% — посмотрите воронку RFQ→Order."
+        insight = _("Выручка за 30д упала на %(p)s%% — посмотрите воронку RFQ→Order.") % {"p": abs(trend_pct)}
     else:
-        insight = "Платёжная воронка в норме."
+        insight = _("Платёжная воронка в норме.")
 
     return ActionResult(
         text=insight,
@@ -3233,8 +3220,8 @@ def op_analytics_hub(params, user, role):
     if sla_breached or sla_at_risk:
         risk_total = sla_breached + sla_at_risk
         sub_parts = []
-        if sla_breached: sub_parts.append(f"{sla_breached} просрочено")
-        if sla_at_risk:  sub_parts.append(f"{sla_at_risk} под угрозой")
+        if sla_breached: sub_parts.append(_("%(n)s просрочено") % {"n": sla_breached})
+        if sla_at_risk:  sub_parts.append(_("%(n)s под угрозой") % {"n": sla_at_risk})
         health_items.append({
             "label": _("Срочно: SLA"),
             "value": str(risk_total),
@@ -3288,24 +3275,19 @@ def op_analytics_hub(params, user, role):
 
     # Operational insight — приоритизируем для оператора (не CEO).
     if sla_breached:
-        insight = (f"{sla_breached} заказов уже нарушили SLA. Это первая задача — "
-                   f"откройте «Срочно: SLA» и эскалируйте.")
+        insight = (_("%(n)s заказов уже нарушили SLA. Это первая задача — откройте «Срочно: SLA» и эскалируйте.") % {"n": sla_breached})
     elif sla_at_risk >= 3:
-        insight = (f"{sla_at_risk} заказов под угрозой SLA. Свяжитесь с подрядчиками "
-                   f"чтобы успели — пока не дошло до нарушения.")
+        insight = (_("%(n)s заказов под угрозой SLA. Свяжитесь с подрядчиками чтобы успели — пока не дошло до нарушения.") % {"n": sla_at_risk})
     elif open_claims >= 5:
-        insight = (f"{open_claims} рекламаций в разборе. Разгребите очередь, чтобы "
-                   f"не копились.")
+        insight = (_("%(n)s рекламаций в разборе. Разгребите очередь, чтобы не копились.") % {"n": open_claims})
     elif kyb_pending >= 5:
-        insight = (f"{kyb_pending} KYB-анкет ждут решения. Откройте очередь — "
-                   f"поставщики простаивают без верификации.")
+        insight = (_("%(n)s KYB-анкет ждут решения. Откройте очередь — поставщики простаивают без верификации.") % {"n": kyb_pending})
     elif on_customs >= 5:
-        insight = (f"{on_customs} грузов на таможне — проверьте, не застряли ли "
-                   f"какие-то дольше 3 дней.")
+        insight = (_("%(n)s грузов на таможне — проверьте, не застряли ли какие-то дольше 3 дней.") % {"n": on_customs})
     elif active == 0:
-        insight = "Платформа в покое — активной работы нет."
+        insight = _("Платформа в покое — активной работы нет.")
     else:
-        insight = f"{active} заказов в работе. Срочных проблем нет."
+        insight = _("%(n)s заказов в работе. Срочных проблем нет.") % {"n": active}
 
     return ActionResult(
         text=insight,
@@ -3340,8 +3322,8 @@ def op_my_suppliers(params, user, role):
     profiles = list(UserProfile.objects.filter(assigned_operator=user)
                      .select_related("user").order_by("supplier_status", "user__username"))
     rows = []
-    _STATUS_RU = {"trusted": "Надёжный", "sandbox": "Песочница",
-                  "risky": "Рисковый", "rejected": "Исключён"}
+    _STATUS_RU = {"trusted": _("Надёжный"), "sandbox": _("Песочница"),
+                  "risky": _("Рисковый"), "rejected": _("Исключён")}
     # PERF: активные сделки по ВСЕМ поставщикам одним group-by вместо .count()
     # на каждого профиля (было до 25 запросов).
     from django.db.models import Count
@@ -3365,14 +3347,14 @@ def op_my_suppliers(params, user, role):
         })
     cap = len(profiles)
     capacity_label = f"{cap} / {MAX}"
-    title = f"Мои поставщики · {capacity_label}"
+    title = _("Мои поставщики · %(cap)s") % {"cap": capacity_label}
     if cap >= MAX:
-        title += " · ЛИМИТ"
+        title += _(" · ЛИМИТ")
     return ActionResult(
         text=(
-            f"Закреплено {cap} из {MAX} поставщиков. "
-            + ("Свободных слотов нет — освободите место перед KYB-approve нового." if cap >= MAX
-                else f"Свободно {MAX - cap} слотов.")
+            _("Закреплено %(cap)s из %(max)s поставщиков. ") % {"cap": cap, "max": MAX}
+            + (_("Свободных слотов нет — освободите место перед KYB-approve нового.") if cap >= MAX
+                else _("Свободно %(n)s слотов.") % {"n": MAX - cap})
         ),
         cards=[{"type": "list", "data": {
             "title": title,
@@ -3401,19 +3383,19 @@ def op_my_bonuses(params, user, role):
     qs = OperatorBonusLine.objects.filter(operator=user).select_related("order")
     if flt == "pending":
         qs = qs.filter(status="pending")
-        title = f"💼 Бонусы в холде (14 дней)"
+        title = _("💼 Бонусы в холде (14 дней)")
     elif flt == "released_30d":
         cutoff = timezone.now() - timedelta(days=30)
         qs = qs.filter(status="released", released_at__gte=cutoff)
-        title = f"💼 Зачислено за 30 дней"
+        title = _("💼 Зачислено за 30 дней")
     else:
-        title = f"💼 Все мои бонусы (life-time)"
+        title = _("💼 Все мои бонусы (life-time)")
     rows = []
     total = 0.0
     for l in qs.order_by("-created_at")[:50]:
         total += float(l.amount or 0)
-        status_lbl = {"pending": "в холде", "released": "зачислено",
-                       "withheld": "удержано", "reduced": "−50% вина"}.get(l.status, l.status)
+        status_lbl = {"pending": _("в холде"), "released": _("зачислено"),
+                       "withheld": _("удержано"), "reduced": _("−50% вина")}.get(l.status, l.status)
         rows.append({
             "title": f"#{l.order_id} · {l.basis} {l.rate_pct}% · {status_lbl}",
             "subtitle": _('+$%(p0)s · база $%(p1)s · %(p2)s') % {"p0": f'{float(l.amount):,.2f}', "p1": f'{float(l.base_amount):,.0f}', "p2": f'{l.created_at:%d.%m.%Y}'},
@@ -3674,7 +3656,7 @@ def op_payments_dashboard(params, user, role):
          "tone": "info"},
         {"label": _("Средний возраст"),
          "value": f"{avg_hold_age:.0f} дн",
-         "sub": ("ок" if avg_hold_age <= 30 else "застревают" if avg_hold_age <= 45 else "много старых"),
+         "sub": (_("ок") if avg_hold_age <= 30 else _("застревают") if avg_hold_age <= 45 else _("много старых")),
          "tone": "bad" if avg_hold_age > 45 else ("warn" if avg_hold_age > 30 else "ok")},
     ]
 
@@ -3731,7 +3713,7 @@ def op_payments_dashboard(params, user, role):
         trend_arrow = "↑" if trend_pct >= 0 else "↓"
         trend_str = f"{trend_arrow} {abs(trend_pct)}% к прошлому"
     else:
-        trend_str = f"{orders_30} {'заказ' if orders_30 == 1 else 'заказов'}"
+        trend_str = _("%(n)s заказов") % {"n": orders_30} if orders_30 != 1 else _("%(n)s заказ") % {"n": orders_30}
     # Доля выплат от оборота (cash conversion)
     payout_share = int(round(payouts_30 * 100 / inflow_30)) if inflow_30 > 0 else 0
     # Самый старый застрявший заказ
@@ -3829,8 +3811,8 @@ def op_payments_dashboard(params, user, role):
     def _bonus_rows(qs):
         out = []
         for l in qs.select_related("order").order_by("-created_at")[:30]:
-            status_lbl = {"pending": "в холде", "released": "✓ зачислено",
-                           "withheld": "удержано", "reduced": "−50% вина"}.get(l.status, l.status)
+            status_lbl = {"pending": _("в холде"), "released": _("✓ зачислено"),
+                           "withheld": _("удержано"), "reduced": _("−50% вина")}.get(l.status, l.status)
             out.append({
                 "left":   f"#{l.order_id}",
                 "title":  f"{l.basis} {l.rate_pct}% · {status_lbl}",
@@ -3849,7 +3831,7 @@ def op_payments_dashboard(params, user, role):
     cards = [
         # ── Карточка 1: МОЙ БОНУС (что заработал лично) ──
         {"type": "ops_dashboard", "data": {
-            "hero_label": "Мой бонус · на счёте",
+            "hero_label": _("Мой бонус · на счёте"),
             "hero_value": float(my_wallet.balance or 0),
             "currency":   my_wallet.currency,
             "stats": [
@@ -3857,27 +3839,27 @@ def op_payments_dashboard(params, user, role):
                  "value": f"${my_pending:,.0f}",
                  "sub":   _("ждут release"),
                  "details_rows": pending_rows,
-                 "details_empty": "Нет бонусов в холде"},
+                 "details_empty": _("Нет бонусов в холде")},
                 {"label": _("За 30 дней"),
                  "value": f"${my_30d:,.0f}",
                  "sub":   _('%(p0)s сделок') % {"p0": f'{my_closed_30}'},
                  "tone":  "ok",
                  "details_rows": released_rows,
-                 "details_empty": "За 30 дней нет зачислений"},
+                 "details_empty": _("За 30 дней нет зачислений")},
                 {"label": _("Заработано всего"),
                  "value": f"${my_lifetime:,.0f}",
                  "sub":   "life-time",
                  "details_rows": all_rows,
-                 "details_empty": "Бонусов пока не было"},
+                 "details_empty": _("Бонусов пока не было")},
             ],
         }},
         # ── Карточка 2: ПЛАТФОРМА (контекст и проблемы) ──
         {"type": "ops_dashboard", "data": {
-            "hero_label": "Платформа · деньги в эскроу",
+            "hero_label": _("Платформа · деньги в эскроу"),
             "hero_value": s['outstanding_balance'],
             "currency":   "USD",
             "stats":      op_stats,
-            "rows_title": f"Активные заказы · топ-{len(simple_rows)}",
+            "rows_title": _("Активные заказы · топ-%(n)s") % {"n": len(simple_rows)},
             "rows":       simple_rows,
         }},
     ]
@@ -3954,20 +3936,16 @@ def op_payments_dashboard(params, user, role):
 
     # Actionable инсайт
     if refund_share > 5:
-        esc_insight = (f"Возвраты съели {refund_share:.1f}% от принятого — "
-                       f"высокий уровень. Проверьте качество и SLA.")
+        esc_insight = (_("Возвраты съели %(r)s%% от принятого — высокий уровень. Проверьте качество и SLA.") % {"r": f"{refund_share:.1f}"})
     elif avg_hold_age > 30:
-        esc_insight = (f"Средний возраст активного холда {avg_hold_age:.0f} дн — "
-                       f"много залипших заказов. Откройте топ-холды.")
+        esc_insight = (_("Средний возраст активного холда %(d)s дн — много залипших заказов. Откройте топ-холды.") % {"d": f"{avg_hold_age:.0f}"})
     elif s['platform_balance'] != s['outstanding_balance']:
         diff = s['platform_balance'] - s['outstanding_balance']
-        esc_insight = (f"⚠️ Расхождение баланс vs холды: ${diff:,.0f}. "
-                       f"Нужна сверка.")
+        esc_insight = (_("⚠️ Расхождение баланс vs холды: $%(diff)s. Нужна сверка.") % {"diff": f"{diff:,.0f}"})
     elif payout_pct < 80 and s['total_held_ever']:
-        esc_insight = (f"Только {payout_pct:.0f}% завершённого цикла дошло до продавцов — "
-                       f"проверьте задержки выплат.")
+        esc_insight = (_("Только %(p)s%% завершённого цикла дошло до продавцов — проверьте задержки выплат.") % {"p": f"{payout_pct:.0f}"})
     else:
-        esc_insight = "Эскроу-поток в норме."
+        esc_insight = _("Эскроу-поток в норме.")
 
     # Основной дашборд — живые метрики + аналитика + холды + правила.
     return ActionResult(
@@ -4077,9 +4055,8 @@ def op_topup_queue(params, user, role):
         rows.append({
             "title": f"{r.reference_code} · ${r.amount:,.2f} · {r.user.username}",
             "subtitle": (
-                f"{r.get_method_display()} · {r.get_status_display()} · "
-                f"создана {r.created_at.strftime('%d.%m %H:%M')}"
-                + (f" · юзер сообщил {r.user_claim_at.strftime('%d.%m %H:%M')}"
+                _("%(method)s · %(status)s · создана %(created)s") % {"method": r.get_method_display(), "status": r.get_status_display(), "created": r.created_at.strftime('%d.%m %H:%M')}
+                + (_(" · юзер сообщил %(claimed)s") % {"claimed": r.user_claim_at.strftime('%d.%m %H:%M')}
                    if r.user_claim_at else "")
             ),
             "action": "op_confirm_topup",
@@ -4132,8 +4109,7 @@ def op_confirm_topup(params, user, role):
     # Уведомление покупателю — через стандартный нотификатор.
     try:
         _notify(req.user, "topup_paid",
-                f"💰 Депозит пополнен на ${req.amount:,.2f} "
-                f"(заявка {req.reference_code}).")
+                _("💰 Депозит пополнен на $%(amount)s (заявка %(ref)s).") % {"amount": f"{req.amount:,.2f}", "ref": req.reference_code})
     except Exception:
         pass
 
@@ -4178,8 +4154,7 @@ def op_reject_topup(params, user, role):
                {"topup_id": req.id, "ref": req.reference_code, "reason": reason})
     try:
         _notify(req.user, "topup_failed",
-                f"⚠️ Заявка {req.reference_code} отклонена: "
-                f"{reason or 'свяжитесь с финансовым отделом'}.")
+                _("⚠️ Заявка %(ref)s отклонена: %(reason)s.") % {"ref": req.reference_code, "reason": reason or _('свяжитесь с финансовым отделом')})
     except Exception:
         pass
     return ActionResult(text=_('✓ Заявка %(p0)s отклонена.') % {"p0": f'{req.reference_code}'})

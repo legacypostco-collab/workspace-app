@@ -1,6 +1,5 @@
 // AUTO-GENERATED: переводы фронт-литералов chat-first.js (en/zh-hans/es/ar).
 // Русские строки = ключи; применяются DOM-переводчиком i18n.js (registerI18n).
-// Источники: UI-литералы + страны/порты + форма доставки + курируемые композиты.
 (function(){
   if (typeof window.registerI18n !== 'function') return;
   window.registerI18n(
@@ -399,12 +398,12 @@
   "en": "Analyzing the file…",
   "zh-hans": "正在分析文件…",
   "es": "Analizando el archivo…",
-  "ar": "جارٍ تحليل الملف…"
+  "ar": "يتم تحليل الملف…"
  },
  "Аналог": {
-  "en": "Aftermarket",
-  "zh-hans": "副厂",
-  "es": "Alternativo",
+  "en": "Analog",
+  "zh-hans": "替代件",
+  "es": "Análogo",
   "ar": "بديل"
  },
  "Ангилья": {
@@ -608,13 +607,13 @@
  "Бюджет (estimate)": {
   "en": "Budget (estimate)",
   "zh-hans": "预算（估算）",
-  "es": "Presupuesto (estimación)",
-  "ar": "الميزانية (تقدير)"
+  "es": "Presupuesto (estimado)",
+  "ar": "الميزانية (تقديرية)"
  },
  "В работе": {
   "en": "In progress",
-  "zh-hans": "处理中",
-  "es": "En proceso",
+  "zh-hans": "进行中",
+  "es": "En curso",
   "ar": "قيد التنفيذ"
  },
  "ВМТП, Восточный, Усть-Луга… — начните набирать": {
@@ -642,9 +641,9 @@
   "ar": "البديل الخاص بك"
  },
  "Введите артикул или название": {
-  "en": "Enter part number or name",
-  "zh-hans": "输入零件号或名称",
-  "es": "Introduzca el número de pieza o el nombre",
+  "en": "Enter a part number or name",
+  "zh-hans": "输入货号或名称",
+  "es": "Introduzca el número o el nombre",
   "ar": "أدخل رقم القطعة أو الاسم"
  },
  "Великобритания": {
@@ -666,10 +665,10 @@
   "ar": "فنزويلا"
  },
  "Вернуть": {
-  "en": "Return",
-  "zh-hans": "退回",
-  "es": "Devolver",
-  "ar": "إرجاع"
+  "en": "Restore",
+  "zh-hans": "恢复",
+  "es": "Restaurar",
+  "ar": "استرجاع"
  },
  "Вес:": {
   "en": "Weight:",
@@ -789,7 +788,7 @@
   "en": "Annual turnover",
   "zh-hans": "年营业额",
   "es": "Facturación anual",
-  "ar": "حجم الأعمال السنوي"
+  "ar": "حجم التداول السنوي"
  },
  "Гондурас": {
   "en": "Honduras",
@@ -908,7 +907,7 @@
  "Ждём оплату": {
   "en": "Awaiting payment",
   "zh-hans": "等待付款",
-  "es": "Esperando el pago",
+  "es": "Esperando pago",
   "ar": "بانتظار الدفع"
  },
  "Завод-производитель:": {
@@ -921,7 +920,7 @@
   "en": "Loading preview…",
   "zh-hans": "正在加载预览…",
   "es": "Cargando vista previa…",
-  "ar": "جارٍ تحميل المعاينة…"
+  "ar": "يتم تحميل المعاينة…"
  },
  "Загрузите документы и QR-сканы перед переходом": {
   "en": "Upload documents and QR scans before proceeding",
@@ -1047,13 +1046,13 @@
   "en": "Payable (on account)",
   "zh-hans": "应付（账户内）",
   "es": "Por pagar (en cuenta)",
-  "ar": "مستحق الدفع (في الحساب)"
+  "ar": "المستحق (في الحساب)"
  },
  "К доплате позже": {
-  "en": "Surcharge payable later",
+  "en": "To pay later",
   "zh-hans": "稍后补付",
-  "es": "A pagar más adelante",
-  "ar": "مبلغ إضافي يُدفع لاحقًا"
+  "es": "A pagar después",
+  "ar": "يُدفع لاحقاً"
  },
  "Кабо-Верде": {
   "en": "Cabo Verde",
@@ -1225,9 +1224,9 @@
  },
  "Лестница тиров": {
   "en": "Tier ladder",
-  "zh-hans": "梯度阶梯",
+  "zh-hans": "等级阶梯",
   "es": "Escala de niveles",
-  "ar": "سُلّم المستويات"
+  "ar": "سلّم المستويات"
  },
  "Либерия": {
   "en": "Liberia",
@@ -1405,13 +1404,13 @@
  },
  "На депозите": {
   "en": "On deposit",
-  "zh-hans": "存入金额",
+  "zh-hans": "存款余额",
   "es": "En depósito",
   "ar": "في الإيداع"
  },
  "Название пилюли": {
   "en": "Pill name",
-  "zh-hans": "胶囊名称",
+  "zh-hans": "按钮名称",
   "es": "Nombre de la píldora",
   "ar": "اسم الزر"
  },
@@ -1434,15 +1433,15 @@
   "ar": "ناميبيا"
  },
  "Напр.: Москва": {
-  "en": "e.g.: Moscow",
+  "en": "E.g.: Moscow",
   "zh-hans": "例如：莫斯科",
-  "es": "p. ej.: Madrid",
+  "es": "P. ej.: Moscú",
   "ar": "مثال: موسكو"
  },
  "Напр.: ул. Профсоюзная 84, корп. 5, офис 12": {
-  "en": "e.g.: 84 Profsoyuznaya St., bldg. 5, office 12",
+  "en": "E.g.: 84 Profsoyuznaya St., bldg. 5, office 12",
   "zh-hans": "例如：工会街 84 号 5 栋 12 室",
-  "es": "p. ej.: c/ Profsoyuznaya 84, edif. 5, oficina 12",
+  "es": "P. ej.: c/ Profsoyuznaya 84, edif. 5, of. 12",
   "ar": "مثال: شارع بروفسويوزنايا 84، مبنى 5، مكتب 12"
  },
  "Науру": {
@@ -1455,7 +1454,7 @@
   "en": "Start typing a country…",
   "zh-hans": "开始输入国家…",
   "es": "Empiece a escribir un país…",
-  "ar": "ابدأ بكتابة اسم الدولة…"
+  "ar": "ابدأ بكتابة الدولة…"
  },
  "Непал": {
   "en": "Nepal",
@@ -1464,16 +1463,16 @@
   "ar": "نيبال"
  },
  "Несколько шагов — и ваш файл превратится в готовые карточки маркетплейса.": {
-  "en": "A few steps and your file becomes ready-made marketplace listings.",
-  "zh-hans": "只需几步，您的文件就会变成现成的市场商品卡片。",
-  "es": "Unos pocos pasos y su archivo se convierte en fichas de marketplace listas.",
-  "ar": "بضع خطوات ويتحوّل ملفك إلى بطاقات منتجات جاهزة في السوق."
+  "en": "A few steps and your file turns into ready marketplace cards.",
+  "zh-hans": "只需几步，您的文件就会变成可用的市场商品卡片。",
+  "es": "Unos pasos y su archivo se convierte en fichas listas del marketplace.",
+  "ar": "بضع خطوات ويتحوّل ملفك إلى بطاقات جاهزة في السوق."
  },
  "Нет доступных вариантов доставки": {
   "en": "No shipping options available",
-  "zh-hans": "没有可用的配送方式",
+  "zh-hans": "暂无可用的运输方式",
   "es": "No hay opciones de envío disponibles",
-  "ar": "لا توجد خيارات شحن متاحة"
+  "ar": "لا تتوفر خيارات شحن"
  },
  "Нигер": {
   "en": "Niger",
@@ -1501,9 +1500,9 @@
  },
  "Ничего не найдено": {
   "en": "Nothing found",
-  "zh-hans": "未找到任何结果",
+  "zh-hans": "未找到任何内容",
   "es": "No se encontró nada",
-  "ar": "لم يُعثر على شيء"
+  "ar": "لم يتم العثور على شيء"
  },
  "Новая Зеландия": {
   "en": "New Zealand",
@@ -1545,13 +1544,13 @@
   "en": "Main",
   "zh-hans": "主要",
   "es": "Principales",
-  "ar": "الأساسية"
+  "ar": "الرئيسية"
  },
  "Остаток": {
-  "en": "Balance",
-  "zh-hans": "余额",
-  "es": "Saldo",
-  "ar": "الرصيد"
+  "en": "Stock",
+  "zh-hans": "库存",
+  "es": "Existencias",
+  "ar": "المخزون"
  },
  "Остаток:": {
   "en": "Balance:",
@@ -1591,8 +1590,8 @@
  },
  "Откуда": {
   "en": "From",
-  "zh-hans": "出发地",
-  "es": "Desde",
+  "zh-hans": "来源",
+  "es": "Origen",
   "ar": "من"
  },
  "Отмена": {
@@ -1674,10 +1673,10 @@
   "ar": "البند"
  },
  "Поиск пилюли по всем кабинетам…": {
-  "en": "Search for a pill across all workspaces…",
-  "zh-hans": "在所有工作区中搜索胶囊…",
-  "es": "Buscar una píldora en todos los espacios…",
-  "ar": "البحث عن زر في جميع لوحات التحكم…"
+  "en": "Search pills across all workspaces…",
+  "zh-hans": "在所有工作区中搜索按钮…",
+  "es": "Buscar píldoras en todos los espacios…",
+  "ar": "ابحث عن الأزرار في كل المساحات…"
  },
  "Покупатель:": {
   "en": "Buyer:",
@@ -1692,10 +1691,10 @@
   "ar": "بولندا"
  },
  "Поправьте если что-то не так — мы запомним. AI оценил по описанию, но человек точнее.": {
-  "en": "Correct anything that’s wrong — we’ll remember it. AI estimated from the description, but a human is more accurate.",
-  "zh-hans": "如有错误请更正——我们会记住。AI 是根据描述估算的，但人工更准确。",
-  "es": "Corrija lo que esté mal: lo recordaremos. La IA estimó a partir de la descripción, pero una persona es más precisa.",
-  "ar": "صحّح أي خطأ — سنتذكّره. قدّر الذكاء الاصطناعي بناءً على الوصف، لكن البشر أكثر دقة."
+  "en": "Fix anything that's wrong — we'll remember it. The AI estimated from the description, but a human is more accurate.",
+  "zh-hans": "如有不对请修正——我们会记住。AI 根据描述评估，但人工更准确。",
+  "es": "Corrija lo que esté mal — lo recordaremos. La IA estimó por la descripción, pero una persona es más precisa.",
+  "ar": "صحّح ما هو خاطئ — سنتذكّره. قدّر الذكاء الاصطناعي بناءً على الوصف، لكن الإنسان أدقّ."
  },
  "Португалия": {
   "en": "Portugal",
@@ -1705,15 +1704,15 @@
  },
  "Последние операции": {
   "en": "Recent transactions",
-  "zh-hans": "最近的交易",
-  "es": "Operaciones recientes",
+  "zh-hans": "最近交易",
+  "es": "Últimas operaciones",
   "ar": "آخر العمليات"
  },
  "Последние поступления": {
   "en": "Recent receipts",
-  "zh-hans": "最近的入账",
-  "es": "Ingresos recientes",
-  "ar": "آخر الواردات"
+  "zh-hans": "最近收款",
+  "es": "Últimos ingresos",
+  "ar": "آخر الإيرادات"
  },
  "Поставщик": {
   "en": "Supplier",
@@ -1824,10 +1823,10 @@
   "ar": "المملكة العربية السعودية"
  },
  "Сводка перед записью в базу. Проверьте и подтвердите.": {
-  "en": "Summary before saving to the database. Review and confirm.",
-  "zh-hans": "写入数据库前的摘要。请检查并确认。",
+  "en": "Summary before writing to the database. Review and confirm.",
+  "zh-hans": "写入数据库前的汇总。请检查并确认。",
   "es": "Resumen antes de guardar en la base de datos. Revise y confirme.",
-  "ar": "ملخص قبل الحفظ في قاعدة البيانات. راجع وأكّد."
+  "ar": "ملخّص قبل الكتابة في قاعدة البيانات. راجع وأكّد."
  },
  "Связаться с поставщиком": {
   "en": "Contact the supplier",
@@ -1849,9 +1848,9 @@
  },
  "Сейчас списано": {
   "en": "Charged now",
-  "zh-hans": "当前已扣款",
-  "es": "Cargado ahora",
-  "ar": "تم الخصم الآن"
+  "zh-hans": "现已扣款",
+  "es": "Cobrado ahora",
+  "ar": "المخصوم الآن"
  },
  "Сейшельские Острова": {
   "en": "Seychelles",
@@ -2016,10 +2015,10 @@
   "ar": "السودان"
  },
  "Сумма": {
-  "en": "Amount",
+  "en": "Total",
   "zh-hans": "金额",
   "es": "Importe",
-  "ar": "المبلغ"
+  "ar": "الإجمالي"
  },
  "Суринам": {
   "en": "Suriname",
@@ -2064,10 +2063,10 @@
   "ar": "الخصم الحالي"
  },
  "Технические детали (для оператора) ▾": {
-  "en": "Technical details (for the operator) ▾",
-  "zh-hans": "技术详情（供操作员查看）▾",
+  "en": "Technical details (for operator) ▾",
+  "zh-hans": "技术细节（供操作员）▾",
   "es": "Detalles técnicos (para el operador) ▾",
-  "ar": "التفاصيل الفنية (للمشغّل) ▾"
+  "ar": "التفاصيل التقنية (للمشغّل) ▾"
  },
  "Товары (EXW)": {
   "en": "Goods (EXW)",
@@ -2178,7 +2177,7 @@
   "ar": "أوروغواي"
  },
  "Условие": {
-  "en": "Condition",
+  "en": "Terms",
   "zh-hans": "条件",
   "es": "Condición",
   "ar": "الشرط"
@@ -2406,10 +2405,10 @@
   "ar": "متوفر — إدراج السعر والنوع «بديل»"
  },
  "город (или впишите свой)": {
-  "en": "city (or enter your own)",
-  "zh-hans": "城市（或填写自定义）",
+  "en": "city (or type your own)",
+  "zh-hans": "城市（或自行输入）",
   "es": "ciudad (o escriba la suya)",
-  "ar": "المدينة (أو أدخل مدينتك)"
+  "ar": "المدينة (أو اكتب مدينتك)"
  },
  "дн — попадает в SEMI": {
   "en": "days — falls into SEMI",
@@ -2526,20 +2525,20 @@
   "ar": "تم البيع"
  },
  "проект": {
-  "en": "draft",
-  "zh-hans": "草稿",
-  "es": "borrador",
-  "ar": "مسودة"
+  "en": "project",
+  "zh-hans": "项目",
+  "es": "proyecto",
+  "ar": "مشروع"
  },
  "распознаю заголовки и тип данных": {
   "en": "recognizing headers and data type",
   "zh-hans": "正在识别表头和数据类型",
   "es": "reconociendo encabezados y tipo de datos",
-  "ar": "جارٍ التعرّف على العناوين ونوع البيانات"
+  "ar": "يتم التعرّف على العناوين ونوع البيانات"
  },
  "резерв оплачен, ждём 90%": {
-  "en": "deposit paid, awaiting 90%",
-  "zh-hans": "已支付预付款，等待 90%",
+  "en": "reserve paid, awaiting 90%",
+  "zh-hans": "已付定金，等待 90%",
   "es": "reserva pagada, esperando 90%",
   "ar": "تم دفع الحجز، بانتظار 90%"
  },
@@ -2571,7 +2570,7 @@
   "en": "— select a country —",
   "zh-hans": "— 选择国家 —",
   "es": "— seleccionar país —",
-  "ar": "— اختر بلدًا —"
+  "ar": "— اختر دولة —"
  },
  "— иначе строка без OEM рендерится как // «— нет предложений —». Наличие задаём через stock_label/class. status:": {
   "en": "— otherwise a row without OEM is rendered as // \"— no offers —\". We set availability via stock_label/class. status:",
@@ -2629,9 +2628,9 @@
  },
  "⚠️ Что важно знать": {
   "en": "⚠️ What's important to know",
-  "zh-hans": "⚠️ 需要了解的重要事项",
+  "zh-hans": "⚠️ 须知事项",
   "es": "⚠️ Qué es importante saber",
-  "ar": "⚠️ ما المهم معرفته"
+  "ar": "⚠️ ما يجب معرفته"
  },
  "⚡ Триггер": {
   "en": "⚡ Trigger",
@@ -2664,10 +2663,10 @@
   "ar": "⬇ تنزيل"
  },
  "🌍 Страна отправления": {
-  "en": "🌍 Country of dispatch",
+  "en": "🌍 Country of origin",
   "zh-hans": "🌍 发货国家",
-  "es": "🌍 País de expedición",
-  "ar": "🌍 بلد الإرسال"
+  "es": "🌍 País de origen",
+  "ar": "🌍 بلد الشحن"
  },
  "🌍 Страна отправления, адрес склада, морпорт и аэропорт. ' + 'Подсказки с международными кодами UN/LOCODE.": {
   "en": "🌍 Country of dispatch, warehouse address, sea port and airport. ' + 'Hints with international UN/LOCODE codes.",
@@ -2730,22 +2729,22 @@
   "ar": "📋 الحقول العامة للمورّد"
  },
  "📋 Что попадёт в каталог": {
-  "en": "📋 What goes into the catalog",
-  "zh-hans": "📋 哪些内容会进入目录",
-  "es": "📋 Qué entra en el catálogo",
-  "ar": "📋 ما سيُضاف إلى الكتالوج"
+  "en": "📋 What will go into the catalog",
+  "zh-hans": "📋 将导入目录的内容",
+  "es": "📋 Qué entrará en el catálogo",
+  "ar": "📋 ما الذي سيُدرَج في الكتالوج"
  },
  "📍 Статус и срок": {
-  "en": "📍 Status and deadline",
-  "zh-hans": "📍 状态与期限",
+  "en": "📍 Status and timing",
+  "zh-hans": "📍 状态与时限",
   "es": "📍 Estado y plazo",
-  "ar": "📍 الحالة والموعد"
+  "ar": "📍 الحالة والمدة"
  },
  "📍 Трекинг": {
   "en": "📍 Tracking",
   "zh-hans": "📍 跟踪",
   "es": "📍 Seguimiento",
-  "ar": "📍 التتبع"
+  "ar": "📍 التتبّع"
  },
  "📎 ' + supplierWideFields.length + ' общих полей поставщика — нажмите чтобы изменить": {
   "en": "📎 ' + supplierWideFields.length + ' common supplier fields — click to edit",
@@ -2760,10 +2759,10 @@
   "ar": "📐 الرسومات"
  },
  "📘 Как работает загрузка прайса": {
-  "en": "📘 How price list upload works",
-  "zh-hans": "📘 价目表上传如何工作",
+  "en": "📘 How price-list upload works",
+  "zh-hans": "📘 价目表上传的工作原理",
   "es": "📘 Cómo funciona la carga de la lista de precios",
-  "ar": "📘 كيف يعمل تحميل قائمة الأسعار"
+  "ar": "📘 كيف يعمل رفع قائمة الأسعار"
  },
  "📥 Загрузка в каталог": {
   "en": "📥 Upload to catalog",
@@ -2779,9 +2778,9 @@
  },
  "📦 Только мои позиции": {
   "en": "📦 Only my items",
-  "zh-hans": "📦 仅我的项目",
-  "es": "📦 Solo mis artículos",
-  "ar": "📦 بنودي فقط"
+  "zh-hans": "📦 仅我的商品",
+  "es": "📦 Solo mis posiciones",
+  "ar": "📦 عناصري فقط"
  },
  "🔍 Найти": {
   "en": "🔍 Find",
@@ -2802,10 +2801,10 @@
   "ar": "🔍 تحقق من تقديرات الذكاء الاصطناعي' + (lowConfCount > 0 ? ' ·"
  },
  "🔍 Распознаём колонки в вашем файле": {
-  "en": "🔍 Recognizing columns in your file",
-  "zh-hans": "🔍 正在识别您文件中的列",
-  "es": "🔍 Reconociendo columnas en su archivo",
-  "ar": "🔍 جارٍ التعرّف على الأعمدة في ملفك"
+  "en": "🔍 We recognize the columns in your file",
+  "zh-hans": "🔍 我们识别您文件中的列",
+  "es": "🔍 Reconocemos las columnas de su archivo",
+  "ar": "🔍 نتعرّف على الأعمدة في ملفك"
  },
  "🗑 Отменить": {
   "en": "🗑 Cancel",
@@ -3211,9 +3210,9 @@
  },
  "📍 Куда доставить?": {
   "en": "📍 Where to deliver?",
-  "zh-hans": "📍 送货到哪里？",
-  "es": "📍 ¿A dónde entregar?",
-  "ar": "📍 إلى أين نوصل؟"
+  "zh-hans": "📍 配送到哪里？",
+  "es": "📍 ¿Adónde entregar?",
+  "ar": "📍 إلى أين التوصيل؟"
  },
  "Страна": {
   "en": "Country",
@@ -3222,28 +3221,28 @@
   "ar": "الدولة"
  },
  "Город / место прибытия": {
-  "en": "City / arrival point",
-  "zh-hans": "城市 / 到达地点",
+  "en": "City / point of arrival",
+  "zh-hans": "城市 / 到货地点",
   "es": "Ciudad / lugar de llegada",
   "ar": "المدينة / مكان الوصول"
  },
  "Адрес доставки": {
   "en": "Delivery address",
-  "zh-hans": "送货地址",
+  "zh-hans": "配送地址",
   "es": "Dirección de entrega",
-  "ar": "عنوان التسليم"
+  "ar": "عنوان التوصيل"
  },
  "(для CIP/DDP)": {
   "en": "(for CIP/DDP)",
-  "zh-hans": "(用于 CIP/DDP)",
+  "zh-hans": "（用于 CIP/DDP）",
   "es": "(para CIP/DDP)",
   "ar": "(لـ CIP/DDP)"
  },
  "(улица, дом · для DDP)": {
-  "en": "(street, building · for DDP)",
-  "zh-hans": "(街道、门牌号 · 用于 DDP)",
-  "es": "(calle, número · para DDP)",
-  "ar": "(الشارع، رقم المبنى · لـ DDP)"
+  "en": "(street, house · for DDP)",
+  "zh-hans": "（街道、门牌 · 用于 DDP）",
+  "es": "(calle, n.º · para DDP)",
+  "ar": "(الشارع، المنزل · لـ DDP)"
  },
  "🧮 Рассчитать цены CIP / DDP →": {
   "en": "🧮 Calculate CIP / DDP prices →",
@@ -3255,17 +3254,17 @@
   "en": "{n} offers",
   "zh-hans": "{n} 个报价",
   "es": "{n} ofertas",
-  "ar": "{n} عرض"
+  "ar": "{n} عروض"
  },
  "{n} поставщиков": {
   "en": "{n} suppliers",
   "zh-hans": "{n} 家供应商",
   "es": "{n} proveedores",
-  "ar": "{n} مورّد"
+  "ar": "{n} موردين"
  },
  "доставка ↓": {
   "en": "shipping ↓",
-  "zh-hans": "运输 ↓",
+  "zh-hans": "运费 ↓",
   "es": "envío ↓",
   "ar": "الشحن ↓"
  },
@@ -3273,7 +3272,7 @@
   "en": " min",
   "zh-hans": " 分钟",
   "es": " min",
-  "ar": " دقيقة"
+  "ar": " د"
  },
  " ч": {
   "en": " h",
@@ -3291,19 +3290,19 @@
   "en": " min ago",
   "zh-hans": " 分钟前",
   "es": " min atrás",
-  "ar": " دقيقة مضت"
+  "ar": " د مضت"
  },
  " ч назад": {
   "en": " h ago",
   "zh-hans": " 小时前",
   "es": " h atrás",
-  "ar": " ساعة مضت"
+  "ar": " س مضت"
  },
  " дн назад": {
   "en": " d ago",
   "zh-hans": " 天前",
-  "es": " días atrás",
-  "ar": " يوم مضى"
+  "es": " d atrás",
+  "ar": " ي مضت"
  },
  "только что": {
   "en": "just now",
@@ -3316,6 +3315,1158 @@
   "zh-hans": "📦 运输",
   "es": "📦 Envío",
   "ar": "📦 الشحن"
+ },
+ "Пропустить": {
+  "en": "Skip",
+  "zh-hans": "跳过",
+  "es": "Omitir",
+  "ar": "تخطّي"
+ },
+ "Найти": {
+  "en": "Search",
+  "zh-hans": "查找",
+  "es": "Buscar",
+  "ar": "بحث"
+ },
+ "Скопировать": {
+  "en": "Copy",
+  "zh-hans": "复制",
+  "es": "Copiar",
+  "ar": "نسخ"
+ },
+ "Создать": {
+  "en": "Create",
+  "zh-hans": "创建",
+  "es": "Crear",
+  "ar": "إنشاء"
+ },
+ "Сохранить": {
+  "en": "Save",
+  "zh-hans": "保存",
+  "es": "Guardar",
+  "ar": "حفظ"
+ },
+ "Сохранено": {
+  "en": "Saved",
+  "zh-hans": "已保存",
+  "es": "Guardado",
+  "ar": "تم الحفظ"
+ },
+ "✓ Сохранено": {
+  "en": "✓ Saved",
+  "zh-hans": "✓ 已保存",
+  "es": "✓ Guardado",
+  "ar": "✓ تم الحفظ"
+ },
+ "⏳ Сохраняю…": {
+  "en": "⏳ Saving…",
+  "zh-hans": "⏳ 正在保存…",
+  "es": "⏳ Guardando…",
+  "ar": "⏳ يتم الحفظ…"
+ },
+ "Скопировано": {
+  "en": "Copied",
+  "zh-hans": "已复制",
+  "es": "Copiado",
+  "ar": "تم النسخ"
+ },
+ "Ссылка скопирована": {
+  "en": "Link copied",
+  "zh-hans": "链接已复制",
+  "es": "Enlace copiado",
+  "ar": "تم نسخ الرابط"
+ },
+ "Не удалось скопировать": {
+  "en": "Failed to copy",
+  "zh-hans": "复制失败",
+  "es": "No se pudo copiar",
+  "ar": "تعذّر النسخ"
+ },
+ "Ошибка сохранения": {
+  "en": "Save error",
+  "zh-hans": "保存出错",
+  "es": "Error al guardar",
+  "ar": "خطأ في الحفظ"
+ },
+ "или впишите свой вариант...": {
+  "en": "or type your own...",
+  "zh-hans": "或自行输入…",
+  "es": "o escriba su propia opción...",
+  "ar": "أو اكتب خيارك..."
+ },
+ "улица, № дома": {
+  "en": "street, house no.",
+  "zh-hans": "街道、门牌号",
+  "es": "calle, n.º",
+  "ar": "الشارع، رقم المنزل"
+ },
+ "— выберите страну —": {
+  "en": "— select a country —",
+  "zh-hans": "— 选择国家 —",
+  "es": "— seleccione un país —",
+  "ar": "— اختر دولة —"
+ },
+ "введите страну": {
+  "en": "enter a country",
+  "zh-hans": "输入国家",
+  "es": "introduzca un país",
+  "ar": "أدخل الدولة"
+ },
+ "Город прибытия": {
+  "en": "Arrival city",
+  "zh-hans": "到达城市",
+  "es": "Ciudad de llegada",
+  "ar": "مدينة الوصول"
+ },
+ "нет в наличии": {
+  "en": "out of stock",
+  "zh-hans": "无库存",
+  "es": "sin existencias",
+  "ar": "غير متوفر"
+ },
+ "нет в каталоге": {
+  "en": "not in catalog",
+  "zh-hans": "目录中没有",
+  "es": "no está en el catálogo",
+  "ar": "غير موجود في الكتالوج"
+ },
+ "В наличии": {
+  "en": "In stock",
+  "zh-hans": "有库存",
+  "es": "En existencias",
+  "ar": "متوفر"
+ },
+ "Под заказ": {
+  "en": "Backorder",
+  "zh-hans": "可订购",
+  "es": "Bajo pedido",
+  "ar": "حسب الطلب"
+ },
+ "Пусто": {
+  "en": "Empty",
+  "zh-hans": "空",
+  "es": "Vacío",
+  "ar": "فارغ"
+ },
+ "Нет предложений": {
+  "en": "No offers",
+  "zh-hans": "暂无报价",
+  "es": "Sin ofertas",
+  "ar": "لا توجد عروض"
+ },
+ "Поставщиков нет": {
+  "en": "No suppliers",
+  "zh-hans": "暂无供应商",
+  "es": "Sin proveedores",
+  "ar": "لا يوجد موردون"
+ },
+ "Складов нет": {
+  "en": "No warehouses",
+  "zh-hans": "暂无仓库",
+  "es": "Sin almacenes",
+  "ar": "لا توجد مستودعات"
+ },
+ "Нет уведомлений": {
+  "en": "No notifications",
+  "zh-hans": "暂无通知",
+  "es": "Sin notificaciones",
+  "ar": "لا توجد إشعارات"
+ },
+ "Нет проектов": {
+  "en": "No projects",
+  "zh-hans": "暂无项目",
+  "es": "Sin proyectos",
+  "ar": "لا توجد مشاريع"
+ },
+ "Очередь пуста.": {
+  "en": "Queue is empty.",
+  "zh-hans": "队列为空。",
+  "es": "La cola está vacía.",
+  "ar": "قائمة الانتظار فارغة."
+ },
+ "Событий пока нет": {
+  "en": "No events yet",
+  "zh-hans": "暂无事件",
+  "es": "Aún no hay eventos",
+  "ar": "لا توجد أحداث بعد"
+ },
+ "Введите артикул или название позиции": {
+  "en": "Enter a part number or item name",
+  "zh-hans": "输入货号或商品名称",
+  "es": "Introduzca el número de pieza o el nombre",
+  "ar": "أدخل رقم القطعة أو اسمها"
+ },
+ "Введите артикул или название позиции — напр. 6D102": {
+  "en": "Enter a part number or item name — e.g. 6D102",
+  "zh-hans": "输入货号或商品名称——例如 6D102",
+  "es": "Introduzca el número o nombre de la pieza — p. ej. 6D102",
+  "ar": "أدخل رقم القطعة أو اسمها — مثل 6D102"
+ },
+ "Артикул или название позиции — напр. 6D102": {
+  "en": "Part number or item name — e.g. 6D102",
+  "zh-hans": "货号或商品名称——例如 6D102",
+  "es": "Número o nombre de la pieza — p. ej. 6D102",
+  "ar": "رقم القطعة أو اسمها — مثل 6D102"
+ },
+ "Артикул или название — напр. 6D102 или коленвал": {
+  "en": "Part number or name — e.g. 6D102 or crankshaft",
+  "zh-hans": "货号或名称——例如 6D102 或曲轴",
+  "es": "Número o nombre — p. ej. 6D102 o cigüeñal",
+  "ar": "رقم القطعة أو اسمها — مثل 6D102 أو عمود المرفق"
+ },
+ "Артикул (OEM) — напр. 6D102 или 5243": {
+  "en": "Part number (OEM) — e.g. 6D102 or 5243",
+  "zh-hans": "货号 (OEM)——例如 6D102 或 5243",
+  "es": "Número (OEM) — p. ej. 6D102 o 5243",
+  "ar": "رقم القطعة (OEM) — مثل 6D102 أو 5243"
+ },
+ "Новая папка — напр. Ходовка Komatsu": {
+  "en": "New folder — e.g. Komatsu undercarriage",
+  "zh-hans": "新建文件夹——例如 Komatsu 行走部",
+  "es": "Nueva carpeta — p. ej. Tren de rodaje Komatsu",
+  "ar": "مجلد جديد — مثل هيكل سير Komatsu"
+ },
+ "🔎 Поиск по артикулу / названию — фильтрует при наборе…": {
+  "en": "🔎 Search by part number / name — filters as you type…",
+  "zh-hans": "🔎 按货号/名称搜索——输入时即时筛选…",
+  "es": "🔎 Buscar por número / nombre — filtra al escribir…",
+  "ar": "🔎 ابحث بالرقم / الاسم — يُصفّى أثناء الكتابة…"
+ },
+ "Мои чертежи": {
+  "en": "My drawings",
+  "zh-hans": "我的图纸",
+  "es": "Mis planos",
+  "ar": "رسوماتي"
+ },
+ "Пусто — перетащите сюда чертёж": {
+  "en": "Empty — drag a drawing here",
+  "zh-hans": "空——将图纸拖到此处",
+  "es": "Vacío — arrastre un plano aquí",
+  "ar": "فارغ — اسحب رسماً هنا"
+ },
+ "Введите артикул — покажу, что нужно покупателям и что предлагают продавцы.": {
+  "en": "Enter a part number — I'll show what buyers need and what sellers offer.",
+  "zh-hans": "输入货号——我会显示买家需要什么以及卖家提供什么。",
+  "es": "Introduzca un número — le mostraré qué necesitan los compradores y qué ofrecen los vendedores.",
+  "ar": "أدخل رقم القطعة — سأعرض ما يحتاجه المشترون وما يعرضه البائعون."
+ },
+ "Сейчас в эскроу": {
+  "en": "Currently in escrow",
+  "zh-hans": "当前托管中",
+  "es": "Actualmente en depósito",
+  "ar": "حالياً في الضمان"
+ },
+ "Активные заказы": {
+  "en": "Active orders",
+  "zh-hans": "活跃订单",
+  "es": "Pedidos activos",
+  "ar": "الطلبات النشطة"
+ },
+ "Депозит на счёте": {
+  "en": "Deposit on account",
+  "zh-hans": "账户内存款",
+  "es": "Depósito en cuenta",
+  "ar": "الإيداع في الحساب"
+ },
+ "К ОПЛАТЕ": {
+  "en": "AMOUNT DUE",
+  "zh-hans": "应付金额",
+  "es": "A PAGAR",
+  "ar": "المبلغ المستحق"
+ },
+ "Технические детали": {
+  "en": "Technical details",
+  "zh-hans": "技术细节",
+  "es": "Detalles técnicos",
+  "ar": "التفاصيل التقنية"
+ },
+ "Скрыть/показать": {
+  "en": "Hide/show",
+  "zh-hans": "隐藏/显示",
+  "es": "Ocultar/mostrar",
+  "ar": "إخفاء/إظهار"
+ },
+ "📊 Спрос на рынке": {
+  "en": "📊 Market demand",
+  "zh-hans": "📊 市场需求",
+  "es": "📊 Demanda del mercado",
+  "ar": "📊 الطلب في السوق"
+ },
+ "⭐ Мой рейтинг": {
+  "en": "⭐ My rating",
+  "zh-hans": "⭐ 我的评分",
+  "es": "⭐ Mi calificación",
+  "ar": "⭐ تقييمي"
+ },
+ "⚡ Моя скорость": {
+  "en": "⚡ My speed",
+  "zh-hans": "⚡ 我的响应速度",
+  "es": "⚡ Mi velocidad",
+  "ar": "⚡ سرعتي"
+ },
+ "Очередь сделок": {
+  "en": "Deal queue",
+  "zh-hans": "交易队列",
+  "es": "Cola de operaciones",
+  "ar": "قائمة الصفقات"
+ },
+ "Нарушения SLA": {
+  "en": "SLA breaches",
+  "zh-hans": "SLA 违规",
+  "es": "Incumplimientos de SLA",
+  "ar": "خروقات SLA"
+ },
+ "Рекламации": {
+  "en": "Claims",
+  "zh-hans": "索赔",
+  "es": "Reclamaciones",
+  "ar": "المطالبات"
+ },
+ "Аналитика": {
+  "en": "Analytics",
+  "zh-hans": "分析",
+  "es": "Analítica",
+  "ar": "التحليلات"
+ },
+ "Также можете:": {
+  "en": "You can also:",
+  "zh-hans": "您还可以：",
+  "es": "También puede:",
+  "ar": "يمكنك أيضاً:"
+ },
+ "Пилюли": {
+  "en": "Pills",
+  "zh-hans": "快捷按钮",
+  "es": "Píldoras",
+  "ar": "الأزرار"
+ },
+ "Своя пилюля": {
+  "en": "Custom pill",
+  "zh-hans": "自定义按钮",
+  "es": "Píldora propia",
+  "ar": "زر مخصّص"
+ },
+ "➕ Своя пилюля": {
+  "en": "➕ Custom pill",
+  "zh-hans": "➕ 自定义按钮",
+  "es": "➕ Píldora propia",
+  "ar": "➕ زر مخصّص"
+ },
+ "— действие пилюли —": {
+  "en": "— pill action —",
+  "zh-hans": "— 按钮动作 —",
+  "es": "— acción de la píldora —",
+  "ar": "— إجراء الزر —"
+ },
+ "Добавить на экран": {
+  "en": "Add to screen",
+  "zh-hans": "添加到界面",
+  "es": "Añadir a la pantalla",
+  "ar": "إضافة إلى الشاشة"
+ },
+ "Стандартный набор": {
+  "en": "Default set",
+  "zh-hans": "默认组合",
+  "es": "Conjunto estándar",
+  "ar": "المجموعة الافتراضية"
+ },
+ "↺ Восстановить стандартный набор": {
+  "en": "↺ Restore default set",
+  "zh-hans": "↺ 恢复默认组合",
+  "es": "↺ Restaurar conjunto estándar",
+  "ar": "↺ استعادة المجموعة الافتراضية"
+ },
+ "Случайно убрали пилюлю? Верните её в разделе ниже или восстановите стандартный набор.": {
+  "en": "Accidentally removed a pill? Bring it back in the section below or restore the default set.",
+  "zh-hans": "误删了按钮？在下方区域恢复它，或还原默认组合。",
+  "es": "¿Quitó una píldora por error? Recupérela en la sección de abajo o restaure el conjunto estándar.",
+  "ar": "أزلت زراً بالخطأ؟ استرجعه من القسم أدناه أو استعد المجموعة الافتراضية."
+ },
+ "Нет закреплённых пилюль": {
+  "en": "No pinned pills",
+  "zh-hans": "没有已固定的按钮",
+  "es": "No hay píldoras fijadas",
+  "ar": "لا توجد أزرار مثبّتة"
+ },
+ "Все пилюли уже на экране": {
+  "en": "All pills are already on screen",
+  "zh-hans": "所有按钮都已在界面上",
+  "es": "Todas las píldoras ya están en pantalla",
+  "ar": "كل الأزرار موجودة بالفعل على الشاشة"
+ },
+ "Похоже, вот это вы убирали — нажмите «Вернуть».": {
+  "en": "Looks like you removed these — tap “Restore”.",
+  "zh-hans": "看起来这些是您移除的——点击“恢复”。",
+  "es": "Parece que quitó estos — pulse «Restaurar».",
+  "ar": "يبدو أنك أزلت هذه — اضغط «استرجاع»."
+ },
+ "Удалить?": {
+  "en": "Delete?",
+  "zh-hans": "删除？",
+  "es": "¿Eliminar?",
+  "ar": "حذف؟"
+ },
+ "Введите значение": {
+  "en": "Enter a value",
+  "zh-hans": "输入值",
+  "es": "Introduzca un valor",
+  "ar": "أدخل قيمة"
+ },
+ "Новый проект": {
+  "en": "New project",
+  "zh-hans": "新建项目",
+  "es": "Nuevo proyecto",
+  "ar": "مشروع جديد"
+ },
+ "Название проекта": {
+  "en": "Project name",
+  "zh-hans": "项目名称",
+  "es": "Nombre del proyecto",
+  "ar": "اسم المشروع"
+ },
+ "Бросьте файл сюда": {
+  "en": "Drop the file here",
+  "zh-hans": "将文件拖到此处",
+  "es": "Suelte el archivo aquí",
+  "ar": "أفلت الملف هنا"
+ },
+ "Загружаю файл…": {
+  "en": "Uploading file…",
+  "zh-hans": "正在上传文件…",
+  "es": "Subiendo archivo…",
+  "ar": "يتم رفع الملف…"
+ },
+ "Готово.": {
+  "en": "Done.",
+  "zh-hans": "完成。",
+  "es": "Listo.",
+  "ar": "تم."
+ },
+ "Импорт отменён.": {
+  "en": "Import cancelled.",
+  "zh-hans": "导入已取消。",
+  "es": "Importación cancelada.",
+  "ar": "تم إلغاء الاستيراد."
+ },
+ "Файл": {
+  "en": "File",
+  "zh-hans": "文件",
+  "es": "Archivo",
+  "ar": "ملف"
+ },
+ "Из файла": {
+  "en": "From file",
+  "zh-hans": "来自文件",
+  "es": "Del archivo",
+  "ar": "من الملف"
+ },
+ "Распознаю шильду…": {
+  "en": "Reading the nameplate…",
+  "zh-hans": "正在识别铭牌…",
+  "es": "Reconociendo la placa…",
+  "ar": "يتم قراءة لوحة البيانات…"
+ },
+ "Читаю файл": {
+  "en": "Reading the file",
+  "zh-hans": "正在读取文件",
+  "es": "Leyendo el archivo",
+  "ar": "يتم قراءة الملف"
+ },
+ "Сопоставляю с базой": {
+  "en": "Matching against the database",
+  "zh-hans": "正在与数据库匹配",
+  "es": "Cotejando con la base de datos",
+  "ar": "يتم المطابقة مع قاعدة البيانات"
+ },
+ "Записываю в каталог": {
+  "en": "Writing to catalog",
+  "zh-hans": "正在写入目录",
+  "es": "Escribiendo en el catálogo",
+  "ar": "يتم الكتابة في الكتالوج"
+ },
+ "Импортирую прайс": {
+  "en": "Importing price list",
+  "zh-hans": "正在导入价目表",
+  "es": "Importando la lista de precios",
+  "ar": "يتم استيراد قائمة الأسعار"
+ },
+ "Читаю файл и подбираю маппинг колонок…": {
+  "en": "Reading the file and matching column mapping…",
+  "zh-hans": "正在读取文件并匹配列映射…",
+  "es": "Leyendo el archivo y eligiendo el mapeo de columnas…",
+  "ar": "يتم قراءة الملف وتحديد تعيين الأعمدة…"
+ },
+ "💭 Подбираю уточняющие вопросы…": {
+  "en": "💭 Preparing clarifying questions…",
+  "zh-hans": "💭 正在准备补充问题…",
+  "es": "💭 Preparando preguntas aclaratorias…",
+  "ar": "💭 يتم إعداد أسئلة توضيحية…"
+ },
+ "✨ Готово, можно загружать.": {
+  "en": "✨ Done, ready to upload.",
+  "zh-hans": "✨ 完成，可以上传了。",
+  "es": "✨ Listo, puede cargar.",
+  "ar": "✨ تم، جاهز للرفع."
+ },
+ "🔧 Готовлю файл в формате маркетплейса…": {
+  "en": "🔧 Preparing the file in marketplace format…",
+  "zh-hans": "🔧 正在准备符合市场格式的文件…",
+  "es": "🔧 Preparando el archivo en formato de marketplace…",
+  "ar": "🔧 يتم إعداد الملف بصيغة السوق…"
+ },
+ "Готовлю файл в формате маркетплейса…": {
+  "en": "Preparing the file in marketplace format…",
+  "zh-hans": "正在准备符合市场格式的文件…",
+  "es": "Preparando el archivo en formato de marketplace…",
+  "ar": "يتم إعداد الملف بصيغة السوق…"
+ },
+ "Генерирую файл…": {
+  "en": "Generating the file…",
+  "zh-hans": "正在生成文件…",
+  "es": "Generando el archivo…",
+  "ar": "يتم إنشاء الملف…"
+ },
+ "🧠 запускаю AI...": {
+  "en": "🧠 starting AI...",
+  "zh-hans": "🧠 正在启动 AI…",
+  "es": "🧠 iniciando IA...",
+  "ar": "🧠 يتم تشغيل الذكاء الاصطناعي..."
+ },
+ "🧠 AI оценивает...": {
+  "en": "🧠 AI is estimating...",
+  "zh-hans": "🧠 AI 正在评估…",
+  "es": "🧠 La IA está evaluando...",
+  "ar": "🧠 الذكاء الاصطناعي يُقيّم..."
+ },
+ "❌ Сетевая ошибка": {
+  "en": "❌ Network error",
+  "zh-hans": "❌ 网络错误",
+  "es": "❌ Error de red",
+  "ar": "❌ خطأ في الشبكة"
+ },
+ "Парсю файл и ищу артикулы в каталоге…": {
+  "en": "Parsing the file and looking up part numbers in the catalog…",
+  "zh-hans": "正在解析文件并在目录中查找货号…",
+  "es": "Analizando el archivo y buscando números de pieza en el catálogo…",
+  "ar": "يتم تحليل الملف والبحث عن أرقام القطع في الكتالوج…"
+ },
+ "город": {
+  "en": "city",
+  "zh-hans": "城市",
+  "es": "ciudad",
+  "ar": "المدينة"
+ },
+ "название…": {
+  "en": "name…",
+  "zh-hans": "名称…",
+  "es": "nombre…",
+  "ar": "الاسم…"
+ },
+ "бренд": {
+  "en": "brand",
+  "zh-hans": "品牌",
+  "es": "marca",
+  "ar": "العلامة التجارية"
+ },
+ "модель техники": {
+  "en": "machine model",
+  "zh-hans": "设备型号",
+  "es": "modelo del equipo",
+  "ar": "طراز المعدّة"
+ },
+ "Откуда: {x}": {
+  "en": "From: {x}",
+  "zh-hans": "来源：{x}",
+  "es": "Origen: {x}",
+  "ar": "من: {x}"
+ },
+ "фильтр: только {x}": {
+  "en": "filter: only {x}",
+  "zh-hans": "筛选：仅 {x}",
+  "es": "filtro: solo {x}",
+  "ar": "تصفية: فقط {x}"
+ },
+ "Дальше:": {
+  "en": "Next:",
+  "zh-hans": "下一步：",
+  "es": "Siguiente:",
+  "ar": "التالي:"
+ },
+ "Покупатель: {x}": {
+  "en": "Buyer: {x}",
+  "zh-hans": "买家：{x}",
+  "es": "Comprador: {x}",
+  "ar": "المشتري: {x}"
+ },
+ "Заказ #{n}": {
+  "en": "Order #{n}",
+  "zh-hans": "订单 #{n}",
+  "es": "Pedido n.º{n}",
+  "ar": "الطلب رقم {n}"
+ },
+ "⚡ Триггеры этапа ({n}/{x}):": {
+  "en": "⚡ Stage triggers ({n}/{x}):",
+  "zh-hans": "⚡ 阶段触发器（{n}/{x}）：",
+  "es": "⚡ Disparadores de la etapa ({n}/{x}):",
+  "ar": "⚡ مُحفّزات المرحلة ({n}/{x}):"
+ },
+ "📦 Состав отправки · {x}": {
+  "en": "📦 Shipment contents · {x}",
+  "zh-hans": "📦 发货内容 · {x}",
+  "es": "📦 Contenido del envío · {x}",
+  "ar": "📦 محتويات الشحنة · {x}"
+ },
+ "✓ Заказ #{n} принят": {
+  "en": "✓ Order #{n} accepted",
+  "zh-hans": "✓ 订单 #{n} 已受理",
+  "es": "✓ Pedido n.º{n} aceptado",
+  "ar": "✓ تم قبول الطلب رقم {n}"
+ },
+ "{n} позиций · доставка {x} · базис {y}": {
+  "en": "{n} items · shipping {x} · terms {y}",
+  "zh-hans": "{n} 项 · 运输 {x} · 条款 {y}",
+  "es": "{n} posiciones · envío {x} · base {y}",
+  "ar": "{n} عنصراً · الشحن {x} · الأساس {y}"
+ },
+ "Срок {x}: {y}": {
+  "en": "Term {x}: {y}",
+  "zh-hans": "周期 {x}：{y}",
+  "es": "Plazo {x}: {y}",
+  "ar": "المدة {x}: {y}"
+ },
+ "недостаточно": {
+  "en": "insufficient",
+  "zh-hans": "不足",
+  "es": "insuficiente",
+  "ar": "غير كافٍ"
+ },
+ "{n} из {x}": {
+  "en": "{n} of {x}",
+  "zh-hans": "{n} / {x}",
+  "es": "{n} de {x}",
+  "ar": "{n} من {x}"
+ },
+ "Позиции ({n})": {
+  "en": "Items ({n})",
+  "zh-hans": "项目（{n}）",
+  "es": "Posiciones ({n})",
+  "ar": "العناصر ({n})"
+ },
+ "📊 Сравнить котировки ({n})": {
+  "en": "📊 Compare quotes ({n})",
+  "zh-hans": "📊 比较报价（{n}）",
+  "es": "📊 Comparar cotizaciones ({n})",
+  "ar": "📊 قارن العروض ({n})"
+ },
+ "📥 КП в PDF": {
+  "en": "📥 Quote as PDF",
+  "zh-hans": "📥 PDF 报价单",
+  "es": "📥 Oferta en PDF",
+  "ar": "📥 عرض السعر بصيغة PDF"
+ },
+ "💬 Оператору": {
+  "en": "💬 Ask operator",
+  "zh-hans": "💬 联系操作员",
+  "es": "💬 Al operador",
+  "ar": "💬 إلى المشغّل"
+ },
+ "Поз.": {
+  "en": "Items",
+  "zh-hans": "项",
+  "es": "Pos.",
+  "ar": "عناصر"
+ },
+ "Вес": {
+  "en": "Weight",
+  "zh-hans": "重量",
+  "es": "Peso",
+  "ar": "الوزن"
+ },
+ "Цена": {
+  "en": "Price",
+  "zh-hans": "价格",
+  "es": "Precio",
+  "ar": "السعر"
+ },
+ "Кол-во": {
+  "en": "Qty",
+  "zh-hans": "数量",
+  "es": "Cant.",
+  "ar": "الكمية"
+ },
+ "Способ / срок": {
+  "en": "Method / time",
+  "zh-hans": "方式 / 时限",
+  "es": "Método / plazo",
+  "ar": "الطريقة / المدة"
+ },
+ "🚚 Выберите способ и базис{x}": {
+  "en": "🚚 Choose method and terms{x}",
+  "zh-hans": "🚚 选择方式和条款{x}",
+  "es": "🚚 Elija método y base{x}",
+  "ar": "🚚 اختر الطريقة والأساس{x}"
+ },
+ "🚚 Выберите базис (FOB — самовывоз без доплат)": {
+  "en": "🚚 Choose terms (FOB — pickup, no surcharges)",
+  "zh-hans": "🚚 选择条款（FOB — 自提，无附加费）",
+  "es": "🚚 Elija base (FOB — recogida sin recargos)",
+  "ar": "🚚 اختر الأساس (FOB — استلام دون رسوم إضافية)"
+ },
+ "Показать позиции ▾": {
+  "en": "Show items ▾",
+  "zh-hans": "显示项目 ▾",
+  "es": "Mostrar posiciones ▾",
+  "ar": "إظهار العناصر ▾"
+ },
+ "⏳ Считаем…": {
+  "en": "⏳ Calculating…",
+  "zh-hans": "⏳ 计算中…",
+  "es": "⏳ Calculando…",
+  "ar": "⏳ يتم الحساب…"
+ },
+ "✅ Оформить DDP до двери{x}": {
+  "en": "✅ Place DDP to door{x}",
+  "zh-hans": "✅ 办理 DDP 到门{x}",
+  "es": "✅ Tramitar DDP a puerta{x}",
+  "ar": "✅ تنفيذ DDP حتى الباب{x}"
+ },
+ "Срочные задачи": {
+  "en": "Urgent tasks",
+  "zh-hans": "紧急任务",
+  "es": "Tareas urgentes",
+  "ar": "المهام العاجلة"
+ },
+ "📨 Отправить котировку · {n} поз · {x}": {
+  "en": "📨 Send quote · {n} items · {x}",
+  "zh-hans": "📨 发送报价 · {n} 项 · {x}",
+  "es": "📨 Enviar cotización · {n} pos · {x}",
+  "ar": "📨 إرسال العرض · {n} عنصر · {x}"
+ },
+ "Срок поставки (дней)": {
+  "en": "Lead time (days)",
+  "zh-hans": "交货期（天）",
+  "es": "Plazo de entrega (días)",
+  "ar": "مدة التسليم (أيام)"
+ },
+ "Котировка действует (дней)": {
+  "en": "Quote valid (days)",
+  "zh-hans": "报价有效期（天）",
+  "es": "Cotización válida (días)",
+  "ar": "صلاحية العرض (أيام)"
+ },
+ "Ответ в течение 1 ч поднимает ваш рейтинг, а рейтинг влияет на ранжирование предложений — и на продажи. Ответ позже 24 ч снижает рейтинг.": {
+  "en": "Replying within 1 h raises your rating, and your rating affects offer ranking — and sales. Replying after 24 h lowers your rating.",
+  "zh-hans": "1 小时内回复可提升您的评分，评分会影响报价排名以及销量。超过 24 小时回复会降低评分。",
+  "es": "Responder en 1 h sube su calificación, y la calificación influye en el ranking de ofertas y en las ventas. Responder después de 24 h baja la calificación.",
+  "ar": "الرد خلال ساعة يرفع تقييمك، والتقييم يؤثّر على ترتيب العروض وعلى المبيعات. الرد بعد 24 ساعة يخفض التقييم."
+ },
+ "📦 Оставлено ваших: {n} · исключено: {x} (нажмите ещё раз — вернуть)": {
+  "en": "📦 Kept yours: {n} · excluded: {x} (tap again to restore)",
+  "zh-hans": "📦 已保留您的：{n} · 已排除：{x}（再次点击可恢复）",
+  "es": "📦 Tuyos conservados: {n} · excluidos: {x} (pulse de nuevo para restaurar)",
+  "ar": "📦 تم الإبقاء على عناصرك: {n} · تم الاستبعاد: {x} (اضغط مرة أخرى للاسترجاع)"
+ },
+ "↩ Возвращено позиций: {n}": {
+  "en": "↩ Items restored: {n}",
+  "zh-hans": "↩ 已恢复项目：{n}",
+  "es": "↩ Posiciones restauradas: {n}",
+  "ar": "↩ العناصر المسترجعة: {n}"
+ },
+ "🔄 Аналог подставлен · тип «Аналог»": {
+  "en": "🔄 Analog applied · type “Analog”",
+  "zh-hans": "🔄 已套用替代件 · 类型为“替代件”",
+  "es": "🔄 Análogo aplicado · tipo «Análogo»",
+  "ar": "🔄 تم تطبيق البديل · النوع «بديل»"
+ },
+ "🚪 Впишите адрес доставки до двери": {
+  "en": "🚪 Enter the door delivery address",
+  "zh-hans": "🚪 请填写到门配送地址",
+  "es": "🚪 Indique la dirección de entrega a puerta",
+  "ar": "🚪 أدخل عنوان التوصيل حتى الباب"
+ },
+ "🚪 Впишите адрес и нажмите «Оформить DDP» — базис менять не нужно": {
+  "en": "🚪 Enter the address and tap “Place DDP” — no need to change the terms",
+  "zh-hans": "🚪 填写地址并点击“办理 DDP”——无需更改条款",
+  "es": "🚪 Indique la dirección y pulse «Tramitar DDP» — no hace falta cambiar la base",
+  "ar": "🚪 أدخل العنوان واضغط «تنفيذ DDP» — لا حاجة لتغيير الأساس"
+ },
+ "⚠️ Укажите место прибытия для расчёта CIP/DDP": {
+  "en": "⚠️ Specify the arrival point to calculate CIP/DDP",
+  "zh-hans": "⚠️ 请指定到货地点以计算 CIP/DDP",
+  "es": "⚠️ Indique el lugar de llegada para calcular CIP/DDP",
+  "ar": "⚠️ حدّد مكان الوصول لحساب CIP/DDP"
+ },
+ "Напр.: {x}": {
+  "en": "E.g.: {x}",
+  "zh-hans": "例如：{x}",
+  "es": "P. ej.: {x}",
+  "ar": "مثال: {x}"
+ },
+ "⚠️ Соединение прервалось — нажмите «Повторить».": {
+  "en": "⚠️ Connection lost — tap “Retry”.",
+  "zh-hans": "⚠️ 连接中断——请点击“重试”。",
+  "es": "⚠️ Se perdió la conexión — pulse «Reintentar».",
+  "ar": "⚠️ انقطع الاتصال — اضغط «إعادة المحاولة»."
+ },
+ "🔄 Повторить": {
+  "en": "🔄 Retry",
+  "zh-hans": "🔄 重试",
+  "es": "🔄 Reintentar",
+  "ar": "🔄 إعادة المحاولة"
+ },
+ "✓ Заказ #{n} → {x}": {
+  "en": "✓ Order #{n} → {x}",
+  "zh-hans": "✓ 订单 #{n} → {x}",
+  "es": "✓ Pedido n.º{n} → {x}",
+  "ar": "✓ الطلب رقم {n} ← {x}"
+ },
+ "следующий этап": {
+  "en": "next stage",
+  "zh-hans": "下一阶段",
+  "es": "siguiente etapa",
+  "ar": "المرحلة التالية"
+ },
+ "Отменить заказ #{n}?": {
+  "en": "Cancel order #{n}?",
+  "zh-hans": "取消订单 #{n}？",
+  "es": "¿Cancelar el pedido n.º{n}?",
+  "ar": "إلغاء الطلب رقم {n}؟"
+ },
+ "Заказ на ${x} будет удалён. Покупатель получит уведомление об отмене. Это используют если резерв не был оплачен в срок.": {
+  "en": "The order for ${x} will be deleted. The buyer will be notified of the cancellation. This is used when the reserve wasn't paid on time.",
+  "zh-hans": "金额为 ${x} 的订单将被删除。买家会收到取消通知。当预留款未按时支付时使用此操作。",
+  "es": "El pedido por ${x} se eliminará. El comprador recibirá una notificación de cancelación. Se usa cuando la reserva no se pagó a tiempo.",
+  "ar": "سيُحذف الطلب البالغ ${x}. سيتلقّى المشتري إشعاراً بالإلغاء. يُستخدم هذا عندما لا يُدفع الحجز في الوقت المحدّد."
+ },
+ "🗑 Отменить заказ": {
+  "en": "🗑 Cancel order",
+  "zh-hans": "🗑 取消订单",
+  "es": "🗑 Cancelar pedido",
+  "ar": "🗑 إلغاء الطلب"
+ },
+ "✓ Заказ #{n} отменён": {
+  "en": "✓ Order #{n} cancelled",
+  "zh-hans": "✓ 订单 #{n} 已取消",
+  "es": "✓ Pedido n.º{n} cancelado",
+  "ar": "✓ تم إلغاء الطلب رقم {n}"
+ },
+ "❗ Без логистики загрузку продолжить нельзя. Заполните: {x}. Это в блоке «📎 общих полей поставщика» сверху.": {
+  "en": "❗ The upload can't continue without logistics. Fill in: {x}. It's in the “📎 supplier-wide fields” block above.",
+  "zh-hans": "❗ 缺少物流信息无法继续上传。请填写：{x}。位于上方“📎 供应商通用字段”区块。",
+  "es": "❗ No se puede continuar la carga sin logística. Complete: {x}. Está en el bloque «📎 campos generales del proveedor» de arriba.",
+  "ar": "❗ لا يمكن متابعة الرفع دون اللوجستيات. املأ: {x}. توجد في كتلة «📎 الحقول العامة للمورّد» في الأعلى."
+ },
+ "страна отправления": {
+  "en": "country of origin",
+  "zh-hans": "发货国家",
+  "es": "país de origen",
+  "ar": "بلد الشحن"
+ },
+ "адрес склада EXW": {
+  "en": "EXW warehouse address",
+  "zh-hans": "EXW 仓库地址",
+  "es": "dirección del almacén EXW",
+  "ar": "عنوان مستودع EXW"
+ },
+ "морпорт отправления": {
+  "en": "departure sea port",
+  "zh-hans": "起运海港",
+  "es": "puerto marítimo de salida",
+  "ar": "ميناء المغادرة البحري"
+ },
+ "аэропорт отправления": {
+  "en": "departure airport",
+  "zh-hans": "起运机场",
+  "es": "aeropuerto de salida",
+  "ar": "مطار المغادرة"
+ },
+ "📥 Импортирую прайс… 0 строк": {
+  "en": "📥 Importing price list… 0 rows",
+  "zh-hans": "📥 正在导入价目表…0 行",
+  "es": "📥 Importando lista de precios… 0 filas",
+  "ar": "📥 يتم استيراد قائمة الأسعار… 0 صف"
+ },
+ "📥 {x}… {n}{y} строк": {
+  "en": "📥 {x}… {n}{y} rows",
+  "zh-hans": "📥 {x}… {n}{y} 行",
+  "es": "📥 {x}… {n}{y} filas",
+  "ar": "📥 {x}… {n}{y} صف"
+ },
+ "✅ Загрузка прошла успешно!": {
+  "en": "✅ Upload completed successfully!",
+  "zh-hans": "✅ 上传成功！",
+  "es": "✅ ¡Carga completada con éxito!",
+  "ar": "✅ تم الرفع بنجاح!"
+ },
+ "✅ Создано {n}": {
+  "en": "✅ Created {n}",
+  "zh-hans": "✅ 已创建 {n}",
+  "es": "✅ Creados {n}",
+  "ar": "✅ تم إنشاء {n}"
+ },
+ "🔄 Обновлено {n}": {
+  "en": "🔄 Updated {n}",
+  "zh-hans": "🔄 已更新 {n}",
+  "es": "🔄 Actualizados {n}",
+  "ar": "🔄 تم تحديث {n}"
+ },
+ "📦 Все позиции уже в разделе «Мои товары».": {
+  "en": "📦 All items are already in the “My products” section.",
+  "zh-hans": "📦 所有商品已在“我的商品”板块中。",
+  "es": "📦 Todas las posiciones ya están en la sección «Mis productos».",
+  "ar": "📦 جميع العناصر موجودة بالفعل في قسم «منتجاتي»."
+ },
+ "📂 Ваш файл · {n} колонок{x}": {
+  "en": "📂 Your file · {n} columns{x}",
+  "zh-hans": "📂 您的文件 · {n} 列{x}",
+  "es": "📂 Su archivo · {n} columnas{x}",
+  "ar": "📂 ملفك · {n} عمود{x}"
+ },
+ "Код или название порта": {
+  "en": "Port code or name",
+  "zh-hans": "港口代码或名称",
+  "es": "Código o nombre del puerto",
+  "ar": "رمز الميناء أو اسمه"
+ },
+ "Например: Shanghai, Стамбул…": {
+  "en": "E.g.: Shanghai, Istanbul…",
+  "zh-hans": "例如：Shanghai、伊斯坦布尔…",
+  "es": "P. ej.: Shanghái, Estambul…",
+  "ar": "مثال: شنغهاي، إسطنبول…"
+ },
+ "Одна страна на всю загрузку. Порты и склад фильтруются по выбранной стране.": {
+  "en": "One country per upload. Ports and warehouse are filtered by the selected country.",
+  "zh-hans": "每次上传一个国家。港口和仓库按所选国家筛选。",
+  "es": "Un país por carga. Los puertos y el almacén se filtran por el país seleccionado.",
+  "ar": "دولة واحدة لكل عملية رفع. تُصفّى الموانئ والمستودع حسب الدولة المختارة."
+ },
+ "📥 Подтвердить и загрузить": {
+  "en": "📥 Confirm and upload",
+  "zh-hans": "📥 确认并上传",
+  "es": "📥 Confirmar y cargar",
+  "ar": "📥 تأكيد ورفع"
+ },
+ "Отменить": {
+  "en": "Cancel",
+  "zh-hans": "取消",
+  "es": "Cancelar",
+  "ar": "إلغاء"
+ },
+ "📥 Загрузить": {
+  "en": "📥 Upload",
+  "zh-hans": "📥 上传",
+  "es": "📥 Cargar",
+  "ar": "📥 رفع"
+ },
+ "✅ Общие поля готовы — продолжить →": {
+  "en": "✅ Common fields ready — continue →",
+  "zh-hans": "✅ 通用字段已就绪——继续 →",
+  "es": "✅ Campos comunes listos — continuar →",
+  "ar": "✅ الحقول العامة جاهزة — متابعة ←"
+ },
+ "📥 Загрузить в каталог": {
+  "en": "📥 Upload to catalog",
+  "zh-hans": "📥 上传到目录",
+  "es": "📥 Cargar al catálogo",
+  "ar": "📥 رفع إلى الكتالوج"
+ },
+ "✨ Готово! Я подготовил файл в формате маркетплейса.": {
+  "en": "✨ Done! I've prepared the file in marketplace format.",
+  "zh-hans": "✨ 完成！我已准备好符合市场格式的文件。",
+  "es": "✨ ¡Listo! He preparado el archivo en formato de marketplace.",
+  "ar": "✨ تم! لقد أعددت الملف بصيغة السوق."
+ },
+ "обработано {n} строк": {
+  "en": "processed {n} rows",
+  "zh-hans": "已处理 {n} 行",
+  "es": "procesadas {n} filas",
+  "ar": "تمت معالجة {n} صف"
+ },
+ "🔍 Проверьте оценки AI": {
+  "en": "🔍 Review the AI estimates",
+  "zh-hans": "🔍 请检查 AI 评估结果",
+  "es": "🔍 Revise las estimaciones de la IA",
+  "ar": "🔍 راجع تقديرات الذكاء الاصطناعي"
+ },
+ "✅ AI оценил {n} позиций": {
+  "en": "✅ AI estimated {n} items",
+  "zh-hans": "✅ AI 已评估 {n} 项",
+  "es": "✅ La IA estimó {n} posiciones",
+  "ar": "✅ قدّر الذكاء الاصطناعي {n} عنصراً"
+ },
+ "📐 Загружаю чертёж…": {
+  "en": "📐 Uploading drawing…",
+  "zh-hans": "📐 正在上传图纸…",
+  "es": "📐 Subiendo plano…",
+  "ar": "📐 يتم رفع الرسم…"
+ },
+ "📐 Обрабатываю чертёж…": {
+  "en": "📐 Processing drawing…",
+  "zh-hans": "📐 正在处理图纸…",
+  "es": "📐 Procesando plano…",
+  "ar": "📐 يتم معالجة الرسم…"
+ },
+ "Своё: {x}": {
+  "en": "Custom: {x}",
+  "zh-hans": "自定义：{x}",
+  "es": "Propio: {x}",
+  "ar": "مخصّص: {x}"
+ },
+ "Бренд: {x}": {
+  "en": "Brand: {x}",
+  "zh-hans": "品牌：{x}",
+  "es": "Marca: {x}",
+  "ar": "العلامة التجارية: {x}"
+ },
+ "Модель: {x}": {
+  "en": "Model: {x}",
+  "zh-hans": "型号：{x}",
+  "es": "Modelo: {x}",
+  "ar": "الطراز: {x}"
+ },
+ "Артикул: {x}": {
+  "en": "Part number: {x}",
+  "zh-hans": "货号：{x}",
+  "es": "Número de pieza: {x}",
+  "ar": "رقم القطعة: {x}"
+ },
+ "Серийный: {x}": {
+  "en": "Serial: {x}",
+  "zh-hans": "序列号：{x}",
+  "es": "Serie: {x}",
+  "ar": "الرقم التسلسلي: {x}"
+ },
+ "🔍 Найти {x}": {
+  "en": "🔍 Find {x}",
+  "zh-hans": "🔍 查找 {x}",
+  "es": "🔍 Buscar {x}",
+  "ar": "🔍 ابحث عن {x}"
+ },
+ ".xlsx · .csv · .pdf · до 20 МБ": {
+  "en": ".xlsx · .csv · .pdf · up to 20 MB",
+  "zh-hans": ".xlsx · .csv · .pdf · 最大 20 MB",
+  "es": ".xlsx · .csv · .pdf · hasta 20 MB",
+  "ar": ".xlsx · .csv · .pdf · حتى 20 ميغابايت"
+ },
+ "Кабинет: {x} · перетащите ⠿ чтобы переставить · «−» чтобы убрать": {
+  "en": "Workspace: {x} · drag ⠿ to reorder · “−” to remove",
+  "zh-hans": "工作区：{x} · 拖动 ⠿ 重新排序 · “−” 移除",
+  "es": "Espacio: {x} · arrastre ⠿ para reordenar · «−» para quitar",
+  "ar": "المساحة: {x} · اسحب ⠿ لإعادة الترتيب · «−» للإزالة"
+ },
+ "Пилюля «{x}» убрана": {
+  "en": "Pill “{x}” removed",
+  "zh-hans": "已移除按钮“{x}”",
+  "es": "Píldora «{x}» quitada",
+  "ar": "تمت إزالة الزر «{x}»"
+ },
+ "Убрано из стандартных ({n})": {
+  "en": "Removed from defaults ({n})",
+  "zh-hans": "已从默认组合移除（{n}）",
+  "es": "Quitadas del estándar ({n})",
+  "ar": "أُزيلت من الافتراضية ({n})"
+ },
+ "На экране ({n})": {
+  "en": "On screen ({n})",
+  "zh-hans": "界面上（{n}）",
+  "es": "En pantalla ({n})",
+  "ar": "على الشاشة ({n})"
+ },
+ "Все пилюли — закрепить ({n})": {
+  "en": "All pills — pin ({n})",
+  "zh-hans": "全部按钮——固定（{n}）",
+  "es": "Todas las píldoras — fijar ({n})",
+  "ar": "كل الأزرار — تثبيت ({n})"
+ },
+ "Удалить «{x}»?\nЧат и его история будут скрыты.": {
+  "en": "Delete “{x}”?\nThe chat and its history will be hidden.",
+  "zh-hans": "删除“{x}”？\n该对话及其历史记录将被隐藏。",
+  "es": "¿Eliminar «{x}»?\nEl chat y su historial se ocultarán.",
+  "ar": "حذف «{x}»؟\nسيُخفى المحادثة وسجلّها."
+ },
+ "Удалить всю историю поисков ({n} чатов)?\nЭто действие нельзя отменить.": {
+  "en": "Delete the entire search history ({n} chats)?\nThis action cannot be undone.",
+  "zh-hans": "删除全部搜索历史（{n} 个对话）？\n此操作无法撤销。",
+  "es": "¿Eliminar todo el historial de búsquedas ({n} chats)?\nEsta acción no se puede deshacer.",
+  "ar": "حذف كامل سجلّ عمليات البحث ({n} محادثة)؟\nلا يمكن التراجع عن هذا الإجراء."
+ },
+ "Удалить проект «{x}»?": {
+  "en": "Delete project “{x}”?",
+  "zh-hans": "删除项目“{x}”？",
+  "es": "¿Eliminar el proyecto «{x}»?",
+  "ar": "حذف المشروع «{x}»؟"
+ },
+ "Заказ ORD-{n}": {
+  "en": "Order ORD-{n}",
+  "zh-hans": "订单 ORD-{n}",
+  "es": "Pedido ORD-{n}",
+  "ar": "الطلب ORD-{n}"
+ },
+ "{n} активных заказа(ов)": {
+  "en": "{n} active orders",
+  "zh-hans": "{n} 个活跃订单",
+  "es": "{n} pedidos activos",
+  "ar": "{n} طلبات نشطة"
+ },
+ "📤 Уже отгружено": {
+  "en": "📤 Already shipped",
+  "zh-hans": "📤 已发货",
+  "es": "📤 Ya enviado",
+  "ar": "📤 تم الشحن بالفعل"
+ },
+ "Покупатель": {
+  "en": "Buyer",
+  "zh-hans": "买家",
+  "es": "Comprador",
+  "ar": "المشتري"
+ },
+ "Режим": {
+  "en": "Mode",
+  "zh-hans": "模式",
+  "es": "Modo",
+  "ar": "الوضع"
+ },
+ "Срочность": {
+  "en": "Urgency",
+  "zh-hans": "紧急程度",
+  "es": "Urgencia",
+  "ar": "الأولوية"
+ },
+ "Куда": {
+  "en": "To",
+  "zh-hans": "目的地",
+  "es": "Adónde",
+  "ar": "إلى"
+ },
+ "Котировка действует": {
+  "en": "Quote valid",
+  "zh-hans": "报价有效期",
+  "es": "Cotización válida",
+  "ar": "العرض ساري"
+ },
+ "Создан": {
+  "en": "Created",
+  "zh-hans": "创建于",
+  "es": "Creado",
+  "ar": "أُنشئ"
+ },
+ "💬 Котировка по RFQ #{n}": {
+  "en": "💬 Quote for RFQ #{n}",
+  "zh-hans": "💬 RFQ #{n} 的报价",
+  "es": "💬 Cotización para RFQ n.º{n}",
+  "ar": "💬 عرض سعر لـ RFQ رقم {n}"
+ },
+ "🚫 Скрыть": {
+  "en": "🚫 Hide",
+  "zh-hans": "🚫 隐藏",
+  "es": "🚫 Ocultar",
+  "ar": "🚫 إخفاء"
+ },
+ "✓ Активировать": {
+  "en": "✓ Activate",
+  "zh-hans": "✓ 激活",
+  "es": "✓ Activar",
+  "ar": "✓ تفعيل"
  }
 }
   );

@@ -3670,19 +3670,19 @@ def pricelist_show_errors(params, user, role):
     by_reason = Counter(e.get("reason", "?") for e in imp.error_details)
     hint_lines = []
     if by_reason.get("bad price_exw"):
-        hint_lines.append(f"• {by_reason['bad price_exw']} с проблемной ценой → впишите цену (или удалите строку, если позиции нет)")
+        hint_lines.append(_("• %(count)s с проблемной ценой → впишите цену (или удалите строку, если позиции нет)") % {"count": by_reason['bad price_exw']})
     if by_reason.get("no oem"):
-        hint_lines.append(f"• {by_reason['no oem']} без артикула → заполните PartNumber")
+        hint_lines.append(_("• %(count)s без артикула → заполните PartNumber") % {"count": by_reason['no oem']})
     if by_reason.get("no title"):
-        hint_lines.append(f"• {by_reason['no title']} без названия → заполните Description")
-    how_to = ("Как исправить:\n" + "\n".join(hint_lines)
-              + "\n\nИсправьте эти строки в своём файле и загрузите заново — "
-              + "обновление не задвоит уже загруженные позиции.") if hint_lines else ""
+        hint_lines.append(_("• %(count)s без названия → заполните Description") % {"count": by_reason['no title']})
+    how_to = (_("Как исправить:") + "\n" + "\n".join(hint_lines)
+              + "\n\n" + _("Исправьте эти строки в своём файле и загрузите заново — "
+              "обновление не задвоит уже загруженные позиции.")) if hint_lines else ""
     return ActionResult(
         text=_('❌ Ошибки импорта #%(p0)s: %(p1)s строк не загружено (остальные — в каталоге).\n\n%(p2)s') % {"p0": f'{imp.id}', "p1": f'{imp.failed_rows}', "p2": f'{how_to}'},
         cards=[{"type": "table_preview", "data": {
             "title": _('Ошибки импорта (показаны первые %(p0)s)') % {"p0": f'{len(table_rows)}'},
-            "headers": ["Строка", "Артикул", "Колонка", "Значение", "Проблема"],
+            "headers": [_("Строка"), _("Артикул"), _("Колонка"), _("Значение"), _("Проблема")],
             "rows": table_rows,
         }}],
         actions=[
@@ -3716,7 +3716,7 @@ class PricelistErrorsCsvView(APIView):
             return Response({"error": "not found"}, status=404)
         out = io.StringIO()
         w = csv.writer(out)
-        w.writerow(["Строка", "Артикул", "Проблема"])
+        w.writerow([_("Строка"), _("Артикул"), _("Проблема")])
         for e in (imp.error_details or []):
             w.writerow([e.get("row", ""), e.get("oem", ""),
                         e.get("comment") or e.get("reason", "")])

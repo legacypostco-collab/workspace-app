@@ -151,7 +151,7 @@ def support_home(params, user, role):
                     "title":    f"🚨 {uname}",
                     "subtitle": (f"{when} · «{snippet}…»" if len(complaint_text) > 90
                                    else (f"{when} · «{snippet}»" if snippet
-                                            else f"{when} · жалоба подана через форму")),
+                                            else _("%(when)s · жалоба подана через форму") % {"when": when})),
                     "action":   "view_support_ticket",
                     "params":   {"conversation_id": str(m.conversation_id)},
                 })
@@ -168,7 +168,7 @@ def support_home(params, user, role):
             }})
 
         return ActionResult(
-            text=("📥 Поддержка — входящие обращения и жалобы от пользователей. "
+            text=_("📥 Поддержка — входящие обращения и жалобы от пользователей. "
                   "Рекламации по заказам — в отдельной вкладке «Рекламации»."),
             cards=cards,
             actions=[
@@ -200,15 +200,15 @@ def support_home(params, user, role):
 
     return ActionResult(
         text=(
-            "Чем помочь? Выберите раздел ниже — ответим по вашим заказам и "
-            "данным. Любой вопрос дойдёт до оператора."
+            _("Чем помочь? Выберите раздел ниже — ответим по вашим заказам и "
+            "данным. Любой вопрос дойдёт до оператора.")
         ),
         actions=actions,
         suggestions=[
-            "Как открыть рекламацию?",
-            "Когда раскрываются контакты поставщика?",
-            "Что входит в комиссию платформы?",
-            "Можно ли договариваться напрямую с поставщиком?",
+            _("Как открыть рекламацию?"),
+            _("Когда раскрываются контакты поставщика?"),
+            _("Что входит в комиссию платформы?"),
+            _("Можно ли договариваться напрямую с поставщиком?"),
         ],
     )
 
@@ -223,9 +223,9 @@ def color_legend(params, user, role):
     """
     return ActionResult(
         text=(
-            "Цветовая кодировка в интерфейсе платформы — единая для всех экранов.\n"
+            _("Цветовая кодировка в интерфейсе платформы — единая для всех экранов.\n"
             "Линия слева у карточки, цвет KPI-значения и плашки-бейджа подчиняются "
-            "одной шкале."
+            "одной шкале.")
         ),
         cards=[
             {"type": "list", "data": {
@@ -248,25 +248,25 @@ def color_legend(params, user, role):
             {"type": "faq", "data": {
                 "title": _("Где применяется (раскрыть для деталей)"),
                 "items": [
-                    {"q": "SLA-нарушения и риски",
+                    {"q": _("SLA-нарушения и риски"),
                      "rows": [
                         {"title": _("Красная"), "subtitle": _("SLA уже нарушен, дедлайн просрочен")},
                         {"title": _("Оранжевая"), "subtitle": _("SLA под угрозой, осталось <50% времени")},
                         {"title": _("Голубая"), "subtitle": _("SLA соблюдается, времени достаточно")},
                      ]},
-                    {"q": "Платежи и эскроу",
+                    {"q": _("Платежи и эскроу"),
                      "rows": [
                         {"title": _("Красная"), "subtitle": _("Возврат, спор, refund_pending")},
                         {"title": _("Оранжевая"), "subtitle": _("Ждёт резерв 10%, ждёт оплату")},
                         {"title": _("Зелёная"), "subtitle": _("Оплачено / переведено продавцу")},
                      ]},
-                    {"q": "Рейтинг и тиры (для seller)",
+                    {"q": _("Рейтинг и тиры (для seller)"),
                      "rows": [
                         {"title": _("Красная"), "subtitle": _("Рейтинг 0–59 (Рисковый)")},
                         {"title": _("Оранжевая"), "subtitle": _("Рейтинг 60–79 (Песочница)")},
                         {"title": _("Зелёная"), "subtitle": _("Рейтинг 80–100 (Надёжный)")},
                      ]},
-                    {"q": "RFQ-режимы",
+                    {"q": _("RFQ-режимы"),
                      "rows": [
                         {"title": _("Красная"), "subtitle": _("SLA-сроки оператора нарушены (15 мин / 48 ч)")},
                         {"title": _("Оранжевая"), "subtitle": _("В работе у оператора, идёт обратный отсчёт")},
@@ -321,15 +321,15 @@ def view_support_ticket(params, user, role):
     if minutes_ago is None:
         last_activity = "—"
     elif minutes_ago < 60:
-        last_activity = f"{minutes_ago} мин назад"
+        last_activity = _("%(minutes)s мин назад") % {"minutes": minutes_ago}
     elif minutes_ago < 1440:
-        last_activity = f"{minutes_ago // 60} ч назад"
+        last_activity = _("%(hours)s ч назад") % {"hours": minutes_ago // 60}
     else:
-        last_activity = f"{minutes_ago // 1440} дн назад"
+        last_activity = _("%(days)s дн назад") % {"days": minutes_ago // 1440}
 
-    CATEGORY_LBL = {"support": "Поддержка", "purchase": "Покупки",
-                      "admin": "Админ", "general": "Общее"}
-    cat_label = CATEGORY_LBL.get(conv.category, conv.category or "Общее")
+    CATEGORY_LBL = {"support": _("Поддержка"), "purchase": _("Покупки"),
+                      "admin": _("Админ"), "general": _("Общее")}
+    cat_label = CATEGORY_LBL.get(conv.category, conv.category or _("Общее"))
 
     summary_rows = [
         {"label": _("Пользователь"), "value": target_name, "primary": True},
@@ -388,8 +388,8 @@ def view_support_ticket(params, user, role):
             from marketplace.models import CompanyVerification
             kyb = CompanyVerification.objects.filter(user=target).first()
             if kyb:
-                STATUS_LBL = {"none": "Не подавалась", "pending": "На проверке",
-                                "verified": "Верифицирована", "rejected": "Отклонена"}
+                STATUS_LBL = {"none": _("Не подавалась"), "pending": _("На проверке"),
+                                "verified": _("Верифицирована"), "rejected": _("Отклонена")}
                 tone_map = {"verified": "ok", "pending": "warn", "rejected": "bad", "none": "info"}
                 context_rows.append({
                     "label": _("KYB-статус"),
@@ -457,18 +457,18 @@ def view_support_ticket(params, user, role):
 
     # ── Заголовок и intro зависят от типа активности ──
     if ticket_kind == "browsing":
-        card_title = f"👁 Просмотр поддержки · {target_name}"
-        intro = (f"Реального обращения нет. Пользователь {target_name} "
-                 f"просто просматривал FAQ/Поддержку, не задавал вопросов "
-                 f"и не жаловался. Последний вход: {last_activity}.")
+        card_title = _("👁 Просмотр поддержки · %(name)s") % {"name": target_name}
+        intro = (_("Реального обращения нет. Пользователь %(name)s "
+                 "просто просматривал FAQ/Поддержку, не задавал вопросов "
+                 "и не жаловался. Последний вход: %(activity)s.") % {"name": target_name, "activity": last_activity})
     elif ticket_kind == "complaint":
-        card_title = f"🚨 Жалоба · {target_name}"
-        intro = (f"Пользователь {target_name} подал жалобу через поддержку. "
-                 f"Требует разбора. Последняя активность: {last_activity}.")
+        card_title = _("🚨 Жалоба · %(name)s") % {"name": target_name}
+        intro = (_("Пользователь %(name)s подал жалобу через поддержку. "
+                 "Требует разбора. Последняя активность: %(activity)s.") % {"name": target_name, "activity": last_activity})
     else:  # question
-        card_title = f"💬 Вопрос в поддержку · {target_name}"
-        intro = (f"Пользователь {target_name} задал {user_msg_count} вопрос(а/ов) "
-                 f"в поддержку. Последняя активность: {last_activity}.")
+        card_title = _("💬 Вопрос в поддержку · %(name)s") % {"name": target_name}
+        intro = (_("Пользователь %(name)s задал %(count)s вопрос(а/ов) "
+                 "в поддержку. Последняя активность: %(activity)s.") % {"name": target_name, "count": user_msg_count, "activity": last_activity})
 
     # ── Собираем карточки ──
     cards = [
@@ -501,17 +501,17 @@ def view_support_ticket(params, user, role):
 
     # Кнопка «Связаться» — авто-доставка контекста через ask_operator
     if ticket_kind == "browsing":
-        ctx_label = f"Просмотр поддержки · просто проверка наличия проблем"
+        ctx_label = _("Просмотр поддержки · просто проверка наличия проблем")
     elif ticket_kind == "complaint":
-        ctx_label = f"Жалоба пользователя в поддержку"
+        ctx_label = _("Жалоба пользователя в поддержку")
     else:
-        ctx_label = f"Вопрос в поддержку · «{last_user_text[:80]}»" if last_user_text else "Вопрос в поддержку"
+        ctx_label = (_("Вопрос в поддержку · «%(text)s»") % {"text": last_user_text[:80]}) if last_user_text else _("Вопрос в поддержку")
 
     actions = []
     if target:
-        action_label = (f"💬 Написать {target_name} (профилактика)"
+        action_label = (_("💬 Написать %(name)s (профилактика)") % {"name": target_name}
                           if ticket_kind == "browsing"
-                          else f"💬 Связаться с {target_name}")
+                          else _("💬 Связаться с %(name)s") % {"name": target_name})
         actions.append({
             "label": action_label,
             "action": "ask_operator",
@@ -726,16 +726,16 @@ FAQ_ENTRIES = [
 
 
 _CATEGORY_LABEL = {
-    "registration":   "Регистрация",
-    "kyb":            "KYB / Верификация",
-    "payment":        "Заказы и оплата",
-    "delivery":       "Доставка и сроки",
-    "claims":         "Рекламации",
-    "contacts":       "Связь со сторонами",
-    "bonuses":        "Бонусы",
-    "platform":       "Платформа",
-    "support":        "Поддержка",
-    "other":          "Другое",
+    "registration":   _("Регистрация"),
+    "kyb":            _("KYB / Верификация"),
+    "payment":        _("Заказы и оплата"),
+    "delivery":       _("Доставка и сроки"),
+    "claims":         _("Рекламации"),
+    "contacts":       _("Связь со сторонами"),
+    "bonuses":        _("Бонусы"),
+    "platform":       _("Платформа"),
+    "support":        _("Поддержка"),
+    "other":          _("Другое"),
 }
 
 
@@ -761,7 +761,7 @@ def _load_entries_from_db(query: str | None):
                     views=F("views") + 1,
                 )
         return [{
-            "category": _CATEGORY_LABEL.get(e.category, "❓ Другое"),
+            "category": _CATEGORY_LABEL.get(e.category, _("❓ Другое")),
             "q": e.question,
             "a": e.answer,
             "id": e.id,
@@ -820,9 +820,9 @@ def kb_faq(params, user, role):
             })
 
     return ActionResult(
-        text=(f"📚 База знаний · {len(matched)} ответов"
-              + (f" по «{query}»" if query else "")
-              + (" · из админки" if source == "db" else " · встроенная")),
+        text=(_("📚 База знаний · %(count)s ответов") % {"count": len(matched)}
+              + ((_(" по «%(query)s»") % {"query": query}) if query else "")
+              + (_(" · из админки") if source == "db" else _(" · встроенная"))),
         cards=[{
             "type": "faq",
             "data": {
@@ -831,8 +831,8 @@ def kb_faq(params, user, role):
             },
         }],
         suggestions=[
-            "Как открыть рекламацию?", "Минимальная сумма заказа",
-            "Когда раскрываются контакты", "Как работают бонусы",
+            _("Как открыть рекламацию?"), _("Минимальная сумма заказа"),
+            _("Когда раскрываются контакты"), _("Как работают бонусы"),
         ],
         contextual_actions=[
             {"action": "support_home", "label": _("← Поддержка")},
@@ -853,7 +853,7 @@ def my_verifications(params, user, role):
         {"label": _("Логин"),     "value": user.username},
         {"label": "Email",     "value": user.email or "—",
          "tone": "ok" if user.email else "warn"},
-        {"label": _("Аккаунт"),   "value": "Активен" if user.is_active else "Заблокирован",
+        {"label": _("Аккаунт"),   "value": _("Активен") if user.is_active else _("Заблокирован"),
          "tone": "ok" if user.is_active else "bad"},
         {"label": _("Роль"),      "value": (p.role if p else "—").upper()},
     ]
@@ -880,7 +880,7 @@ def my_verifications(params, user, role):
                     rows.append({"label": _("Причина отклонения"),
                                  "value": kyb.rejection_reason[:200], "tone": "bad"})
             else:
-                rows.append({"label": _("KYB-статус"), "value": "Не заполнен",
+                rows.append({"label": _("KYB-статус"), "value": _("Не заполнен"),
                              "tone": "warn"})
 
     next_actions = []
@@ -934,10 +934,10 @@ def my_bonuses(params, user, role):
 
     # Discount тиры (как в auto_discount)
     tiers = [
-        (50_000,  "🥉 Bronze", "1% скидка"),
-        (200_000, "🥈 Silver", "2% скидка"),
-        (500_000, "🥇 Gold",   "3% скидка"),
-        (1_000_000, "💎 Platinum", "5% скидка + персональный менеджер"),
+        (50_000,  "🥉 Bronze", _("1%% скидка")),
+        (200_000, "🥈 Silver", _("2%% скидка")),
+        (500_000, "🥇 Gold",   _("3%% скидка")),
+        (1_000_000, "💎 Platinum", _("5%% скидка + персональный менеджер")),
     ]
     current_tier = None
     next_tier = None
@@ -952,7 +952,7 @@ def my_bonuses(params, user, role):
         {"label": _("Заказов за 12 мес"), "value": str(cnt_12m)},
         {"label": _("Текущий статус"),
          "value": current_tier[1] if current_tier else "—",
-         "sub": current_tier[2] if current_tier else "Заказы от $50k → Bronze",
+         "sub": current_tier[2] if current_tier else _("Заказы от $50k → Bronze"),
          "tone": "ok" if current_tier else "warn"},
     ]
     if next_tier:
@@ -1014,7 +1014,7 @@ def contact_operator(params, user, role):
                 "data": {
                     "title": _("💬 Связаться с оператором"),
                     "submit_action": "contact_operator",
-                    "submit_label": "📨 Отправить",
+                    "submit_label": _("📨 Отправить"),
                     "fields": [
                         {"name": "topic", "label": _("Тема"), "type": "select",
                          "required": True, "options": [
@@ -1061,15 +1061,15 @@ def contact_operator(params, user, role):
         logger.exception("contact_operator: notify_operator_alert failed")
 
     response_text = (
-        f"✅ Обращение отправлено оператору.\n"
-        f"Тема: {topic_label}\n"
-        f"Среднее время реакции: 4 рабочих часа."
+        _("✅ Обращение отправлено оператору.\n"
+        "Тема: %(topic)s\n"
+        "Среднее время реакции: 4 рабочих часа.") % {"topic": topic_label}
     )
     if flagged:
         response_text += (
-            "\n\n⚠️ В вашем сообщении обнаружены контактные данные "
+            _("\n\n⚠️ В вашем сообщении обнаружены контактные данные "
             "(email/телефон/мессенджер). Все коммуникации должны идти через "
-            "платформу — это защищает обе стороны. Оператор увидит флаг."
+            "платформу — это защищает обе стороны. Оператор увидит флаг.")
         )
 
     return ActionResult(
@@ -1101,7 +1101,7 @@ def open_complaint(params, user, role):
                 "data": {
                     "title": _("🚨 Жалоба на платформу"),
                     "submit_action": "open_complaint",
-                    "submit_label": "🚨 Подать жалобу",
+                    "submit_label": _("🚨 Подать жалобу"),
                     "fields": [
                         {"name": "against", "label": _("На кого"), "type": "select",
                          "required": True, "options": [
@@ -1144,9 +1144,9 @@ def open_complaint(params, user, role):
 
     return ActionResult(
         text=(
-            "✅ Жалоба зафиксирована в audit-log. Эскалирована супервайзеру.\n"
+            _("✅ Жалоба зафиксирована в audit-log. Эскалирована супервайзеру.\n"
             "Ответ — в течение 24 ч в рабочий день. "
-            "За false-flag жалобы платформа оставляет право снижать рейтинг."
+            "За false-flag жалобы платформа оставляет право снижать рейтинг.")
         ),
         contextual_actions=[
             {"action": "support_home", "label": _("← Поддержка")},

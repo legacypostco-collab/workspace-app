@@ -2269,7 +2269,7 @@
           : '';
         const rev = r.revenue ? `<span class="cat-chip cat-chip-gray">${fmtMoney(r.revenue, ccy)}</span>` : '';
         const condBadge = r.condition ? `<span class="cat-chip cat-chip-gray">${esc(r.condition)}</span>` : '';
-        const toggle = `<button class="act-btn cat-btn-mini" data-action="toggle_product" data-params='${esc(JSON.stringify({part_id: r.id}))}' data-label="Скрыть/показать">${r.is_active ? '🚫 Скрыть' : '✓ Активировать'}</button>`;
+        const toggle = `<button class="act-btn cat-btn-mini" data-action="toggle_product" data-params='${esc(JSON.stringify({part_id: r.id}))}' data-label="Скрыть/показать">${r.is_active ? tr('🚫 Скрыть') : tr('✓ Активировать')}</button>`;
 
         // Раскрываемая «портянка» с полными данными позиции.
         // Все поля показываем, даже пустые (с «—»), чтобы продавец видел
@@ -2469,10 +2469,10 @@
         <div class="oc-legend">🟢 Надёжный · 🟡 Песочница · 🟠 Рисковый — рейтинг 0–100 · Доставка считается по весу/габаритам · Landed = EXW + лучшая доставка</div>
         <div class="oc-scroll"><table class="oc-table">
           <thead><tr>
-            <th>#</th><th>Поставщик</th><th>Рейтинг</th><th>EXW</th>
-            <th>🚢 Доставка</th><th>✈️ Доставка</th>
+            <th>#</th><th>${tr('Поставщик')}</th><th>${tr('Рейтинг')}</th><th>EXW</th>
+            <th>${tr('🚢 Доставка')}</th><th>${tr('✈️ Доставка')}</th>
             <th>Landed</th>
-            <th>Условие</th><th>Остаток</th><th>Score</th>
+            <th>${tr('Условие')}</th><th>${tr('Остаток')}</th><th>Score</th>
           </tr></thead>
           <tbody>${rows || '<tr><td colspan="10" class="cat-empty">Поставщиков нет</td></tr>'}</tbody>
         </table></div>
@@ -2637,17 +2637,17 @@
       const total = items.reduce((s, it) => s + Number(it.quantity || 0) * Number(it.unit_price || 0), 0);
       const meta = [
         {label: 'RFQ', value: '#' + rfqId},
-        {label: 'Режим', value: String(d.mode_badge || 'Стандарт')},
-        {label: 'Срочность', value: String(d.urgency_label || 'Standard')},
-        {label: 'Покупатель', value: String(d.customer_name || 'Покупатель')},
-        {label: 'Куда', value: String(d.destination || '\u{1F1F7}\u{1F1FA} Россия (импорт)')},
-        {label: 'Котировка действует', value: (d.valid_days || 7) + ' дн'},
+        {label: tr('Режим'), value: String(d.mode_badge || tr('Стандарт'))},
+        {label: tr('Срочность'), value: String(d.urgency_label || 'Standard')},
+        {label: tr('Покупатель'), value: String(d.customer_name || tr('Покупатель'))},
+        {label: tr('Куда'), value: String(d.destination || '\u{1F1F7}\u{1F1FA} ' + tr('Россия (импорт)'))},
+        {label: tr('Котировка действует'), value: (d.valid_days || 7) + ' ' + tr('дн')},
       ];
-      if (d.created_at) meta.push({label: 'Создан', value: String(d.created_at)});
+      if (d.created_at) meta.push({label: tr('Создан'), value: String(d.created_at)});
       // Рендерим ТЕМ ЖЕ рендером, что и заказ (spec_results) — гарантированно
       // одинаковая вёрстка; единственное отличие — колонка Price редактируемая.
       return this.spec_results({
-        title: '\u{1F4AC} Котировка по RFQ #' + rfqId,
+        title: window.t('💬 Котировка по RFQ #{n}', {n: rfqId}),
         title_meta: items.length + ' позиций' + (d.request_text ? ' · ' + d.request_text : ''),
         meta: meta,
         found: nCat,
@@ -2751,8 +2751,8 @@
           + '>— выберите страну —</option>';
         countryHtml = '<select class="sq-country">'
           + placeholderOpt
-          + '<optgroup label="Основные">' + optTop + '</optgroup>'
-          + '<optgroup label="Все остальные">' + optAll + '</optgroup>'
+          + '<optgroup label="' + tr('Основные') + '">' + optTop + '</optgroup>'
+          + '<optgroup label="' + tr('Все остальные') + '">' + optAll + '</optgroup>'
           + '</select>';
         // City — combobox (input + datalist). Юзер либо выбирает из подсказок,
         // либо свободно вписывает свой город. При смене страны datalist
@@ -3268,7 +3268,7 @@
             return esc(c || '');
           };
           const items = `<div class="spec-tbl-wrap"><table class="spec-tbl"><thead><tr>
-            <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Condition</th><th>Цена</th><th>Кол-во</th><th>Вес</th><th>Сумма</th>
+            <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Condition</th><th>${tr('Цена')}</th><th>${tr('Кол-во')}</th><th>${tr('Вес')}</th><th>${tr('Сумма')}</th>
           </tr></thead><tbody>${(o.items || []).map((it, idx) => `
             <tr>
               <td><span class="spec-stk in"><span class="spec-stk-dot"></span>${it.stock > 0 ? tr('stock.in_stock') : tr('stock.on_order')}</span></td>
@@ -3327,7 +3327,7 @@
               <span class="sq-order-actions">${advBtn}${cancelBtn}${openBtn}</span>
             </summary>
             <div class="sq-order-body">
-              <div class="sq-buyer">Покупатель: ${esc(o.buyer || '—')}</div>
+              <div class="sq-buyer">${window.t('Покупатель: {x}', {x: esc(o.buyer || '—')})}</div>
               ${o.stage_meta && (o.stage_meta.trigger || o.stage_meta.actor || o.stage_meta.sla) ? `<div class="sq-stage-info" style="margin-bottom:10px;">
                 ${o.stage_meta.trigger ? `<div class="sq-stage-row"><span class="sq-stage-tag">⚡ Триггер</span> ${esc(o.stage_meta.trigger)}</div>` : ''}
                 ${o.stage_meta.actor ? `<div class="sq-stage-row"><span class="sq-stage-tag">👤 Вы</span> ${esc(o.stage_meta.actor)}</div>` : ''}
@@ -3335,7 +3335,7 @@
                 ${o.stage_meta.next_actor ? `<div class="sq-stage-row"><span class="sq-stage-tag">▶ Дальше</span> ${esc(o.stage_meta.next_actor)}</div>` : ''}
               </div>` : ''}
               ${checklist.length ? `<div class="sq-checklist">
-                <div class="sq-checklist-title">⚡ Триггеры этапа (${doneIds.size}/${checklist.length}):</div>
+                <div class="sq-checklist-title">${window.t('⚡ Триггеры этапа ({n}/{x}):', {n: doneIds.size, x: checklist.length})}</div>
                 ${checklist.map(t => {
                   const done = doneIds.has(t.id);
                   const isAuto = t.type === 'auto';
@@ -3397,14 +3397,14 @@
       }).join('');
       const archiveBlock = (d.archive_sections && d.archive_sections.length)
         ? `<div class="sq-archive-wrap">
-            <div class="sq-archive-title">${esc(d.archive_title || '📤 Уже отгружено')}</div>
+            <div class="sq-archive-title">${esc(d.archive_title || tr('📤 Уже отгружено'))}</div>
             ${archiveSections}
           </div>`
         : '';
       return `<div class="card sq-card">
         <div class="sq-head">
           <div class="card-title">📦 ${esc(d.title || tr('card.seller_queue'))}</div>
-          <div class="sq-total">${d.total_orders} активных заказа(ов)</div>
+          <div class="sq-total">${window.t('{n} активных заказа(ов)', {n: d.total_orders})}</div>
         </div>
         ${sections || '<div class="sq-empty">Очередь пуста.</div>'}
         ${archiveBlock}
@@ -3495,9 +3495,9 @@
             <td class="ob-num">${o.freight > 0 ? '$' + Math.round(o.freight).toLocaleString() : '—'}<div class="ob-days">${o.days ? '~'+o.days+'д' : ''}</div></td>
           </tr>`).join('');
         originBlock = `<div class="ob-block">
-          <div class="ob-title">📦 Состав отправки · ${esc(modeLabel)} · ${esc(d.incoterm || '')}</div>
+          <div class="ob-title">${window.t('📦 Состав отправки', {})} · ${esc(modeLabel)} · ${esc(d.incoterm || '')}</div>
           <table class="ob-table">
-            <thead><tr><th>Откуда</th><th>Поз.</th><th>Вес</th><th>Cargo</th><th>Фрахт</th></tr></thead>
+            <thead><tr><th>${tr('Откуда')}</th><th>${tr('Поз.')}</th><th>${tr('Вес')}</th><th>Cargo</th><th>${tr('Фрахт')}</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
           ${ob.length >= 2
@@ -3564,34 +3564,34 @@
       return `<div class="card oc-card">
         <div class="oc-head">
           <div class="oc-head-left">
-            <div class="oc-head-num">✓ Заказ #${esc(d.number || d.id)} принят</div>
-            <div class="oc-head-meta">${esc(d.items_count || 0)} позиций · доставка ${esc(d.shipping_mode_label || '—')} · базис ${esc(d.incoterm || '—')}</div>
+            <div class="oc-head-num">${window.t('✓ Заказ #{n} принят', {n: esc(d.number || d.id)})}</div>
+            <div class="oc-head-meta">${window.t('{n} позиций · доставка {x} · базис {y}', {n: esc(d.items_count || 0), x: esc(d.shipping_mode_label || '—'), y: esc(d.incoterm || '—')})}</div>
           </div>
           <div class="oc-head-total">${fmtMoney(d.total, d.currency || 'USD')}</div>
         </div>
 
         <div class="oc-section">
-          <div class="oc-section-title">💰 Деньги</div>
+          <div class="oc-section-title">${tr('💰 Деньги')}</div>
           <div class="oc-money">
             <div class="oc-money-row oc-money-now">
-              <div class="oc-money-lbl">Сейчас списано</div>
+              <div class="oc-money-lbl">${tr('Сейчас списано')}</div>
               <div class="oc-money-val">${fmtMoney(m.reserve_now, 'USD')}<span class="oc-money-pct">${m.reserve_pct || 10}% резерв</span></div>
             </div>
             <div class="oc-money-row">
-              <div class="oc-money-lbl">На депозите</div>
+              <div class="oc-money-lbl">${tr('На депозите')}</div>
               <div class="oc-money-val oc-money-${moneyOK ? 'ok' : 'bad'}">${fmtMoney(m.wallet_balance, 'USD')}${moneyOK ? '' : ' <span class="oc-money-warn">недостаточно</span>'}</div>
             </div>
             <div class="oc-money-row">
-              <div class="oc-money-lbl">К доплате позже</div>
+              <div class="oc-money-lbl">${tr('К доплате позже')}</div>
               <div class="oc-money-val">${fmtMoney(m.remaining_to_pay, 'USD')}<span class="oc-money-pct">${esc(m.remaining_when || 'после отгрузки')}</span></div>
             </div>
           </div>
         </div>
 
         <div class="oc-section">
-          <div class="oc-section-title">📍 Статус и срок</div>
+          <div class="oc-section-title">${tr('📍 Статус и срок')}</div>
           <div class="oc-steps">${stepsHtml}</div>
-          ${d.eta_min_days ? `<div class="oc-eta">Срок ${esc(d.eta_label || 'до доставки')}: <b>${esc(d.eta_min_days)}–${esc(d.eta_max_days)} ${(d.eta_max_days === 1 ? 'день' : (d.eta_max_days < 5 ? 'дня' : 'дней'))}</b></div>` : ''}
+          ${d.eta_min_days ? `<div class="oc-eta">${window.t('Срок {x}:', {x: esc(d.eta_label || tr('до доставки'))})} <b>${esc(d.eta_min_days)}–${esc(d.eta_max_days)} ${(d.eta_max_days === 1 ? tr('день') : (d.eta_max_days < 5 ? tr('дня') : tr('дней')))}</b></div>` : ''}
         </div>
 
         ${advHtml}
@@ -3706,19 +3706,19 @@
         <div class="rcard-progress">
           <div class="rcard-bar-row">
             <div class="rcard-bar-lbl">
-              <span>Ответили поставщиков</span>
-              <span class="rcard-bar-val ${quoteHasOne ? 'rcard-bar-val-good' : ''}">${esc(d.quotes_count ?? 0)} из ${esc(d.sent_count ?? 0)}</span>
+              <span>${tr('Ответили поставщиков')}</span>
+              <span class="rcard-bar-val ${quoteHasOne ? 'rcard-bar-val-good' : ''}">${window.t('{n} из {x}', {n: esc(d.quotes_count ?? 0), x: esc(d.sent_count ?? 0)})}</span>
             </div>
             <div class="rcard-bar"><div class="rcard-bar-fill ${quoteHasOne ? 'rcard-bar-fill-good' : ''}" style="width:${esc(d.quoting_pct ?? 0)}%"></div></div>
           </div>
           <div class="rcard-money">
             <div class="rcard-money-cell">
-              <div class="rcard-money-lbl">Бюджет (estimate)</div>
+              <div class="rcard-money-lbl">${tr('Бюджет (estimate)')}</div>
               <div class="rcard-money-val">${fmtMoney(d.budget_usd)}</div>
             </div>
             <div class="rcard-money-arrow">${d.best_quote_usd != null ? '→' : ''}</div>
             <div class="rcard-money-cell ${d.best_quote_usd != null ? 'rcard-money-best' : 'rcard-money-empty'}">
-              <div class="rcard-money-lbl">Лучшая котировка</div>
+              <div class="rcard-money-lbl">${tr('Лучшая котировка')}</div>
               <div class="rcard-money-val">${d.best_quote_usd != null ? fmtMoney(d.best_quote_usd) : '—'} ${deltaText ? `<span class="rcard-delta ${deltaTone}">${deltaText}</span>` : ''}</div>
             </div>
           </div>
@@ -3732,7 +3732,7 @@
       const itemsTable = (d.items_preview && d.items_preview.length) ? `
         <div class="rcard-items">
           <div class="rcard-items-head">
-            <span>Позиции (${esc(d.items_count ?? d.items_preview.length)})</span>
+            <span>${window.t('Позиции ({n})', {n: esc(d.items_count ?? d.items_preview.length)})}</span>
           </div>
           <div class="rcard-items-list">
             ${d.items_preview.map(it => {
@@ -3766,12 +3766,12 @@
 
       // ── CTAs ──
       const ctaCompare = (d.quotes_count > 0)
-        ? `<button class="rcard-cta act-btn" data-action="compare_quotes" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Сравнить котировки">📊 Сравнить котировки (${d.quotes_count})</button>`
+        ? `<button class="rcard-cta act-btn" data-action="compare_quotes" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Сравнить котировки">${window.t('📊 Сравнить котировки ({n})', {n: d.quotes_count})}</button>`
         : '';
       const ctaProposal = (d.quotes_count > 0)
-        ? `<button class="rcard-cta-ghost act-btn" data-action="generate_proposal" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Скачать КП">📥 КП в PDF</button>`
+        ? `<button class="rcard-cta-ghost act-btn" data-action="generate_proposal" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Скачать КП">${tr('📥 КП в PDF')}</button>`
         : '';
-      const ctaAsk = `<button class="rcard-cta-ghost act-btn" data-action="ask_about_rfq" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Спросить оператора">💬 Оператору</button>`;
+      const ctaAsk = `<button class="rcard-cta-ghost act-btn" data-action="ask_about_rfq" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Спросить оператора">${tr('💬 Оператору')}</button>`;
 
       return `<div class="card rcard">
         <div class="rcard-head">
@@ -3899,7 +3899,7 @@
         <div class="card-row">
           <div class="card-emoji">🚢</div>
           <div class="card-info">
-            <div class="card-title">Заказ ORD-${esc(d.order_id)}</div>
+            <div class="card-title">${window.t('Заказ ORD-{n}', {n: esc(d.order_id)})}</div>
             <div class="card-sub">${esc(d.status_label || d.status || '')}</div>
           </div>
         </div>
@@ -4508,25 +4508,25 @@
     const mapJson = esc(JSON.stringify(arrivalByCountry));
     const nameMapJson = esc(JSON.stringify(nameToCC));
     return `<div class="df-block" data-articles='${articlesJson}' ${qtyJson ? `data-qty='${qtyJson}'` : ''} data-arrival='${mapJson}' data-countries='${nameMapJson}'>
-      <div class="df-title">📍 Куда доставить?</div>
+      <div class="df-title">${tr('📍 Куда доставить?')}</div>
       <div class="df-hint">${tr('Укажите <b>страну и город</b> → в таблице ниже появятся цены <b>CIP и DDP</b>. Полный адрес до двери нужен только для <b>DDP</b> — попросим при выборе.')}</div>
       <div class="df-row">
-        <label class="df-lbl">Страна <span class="df-opt">(для CIP/DDP)</span></label>
+        <label class="df-lbl">${tr('Страна')} <span class="df-opt">${tr('(для CIP/DDP)')}</span></label>
         <input class="df-input df-country" type="text" list="${ccId}" value="${esc(curCountryName)}" placeholder="Начните вводить страну…" autocomplete="off" oninput="window.dfCountryChange && window.dfCountryChange(this, false)" onchange="window.dfCountryChange && window.dfCountryChange(this, true)" />
         <datalist id="${ccId}">${countryOpts}</datalist>
       </div>
       <div class="df-row">
-        <label class="df-lbl">Город / место прибытия <span class="df-opt">(для CIP/DDP)</span></label>
-        <input class="df-input df-port" type="text" list="${dlId}" placeholder="Напр.: Москва" ${curPort} onkeydown="if(event.key==='Enter'){event.preventDefault(); var b=this.closest('.df-block').querySelector('.df-submit'); b&&b.click();}" />
+        <label class="df-lbl">${tr('Город / место прибытия')} <span class="df-opt">${tr('(для CIP/DDP)')}</span></label>
+        <input class="df-input df-port" type="text" list="${dlId}" placeholder="${tr('Напр.: Москва')}" ${curPort} onkeydown="if(event.key==='Enter'){event.preventDefault(); var b=this.closest('.df-block').querySelector('.df-submit'); b&&b.click();}" />
         <datalist id="${dlId}">${portOpts}</datalist>
       </div>
       <div class="df-row">
-        <label class="df-lbl">Адрес доставки <span class="df-opt">(улица, дом · для DDP)</span></label>
-        <textarea class="df-input df-addr" rows="2" placeholder="Напр.: ул. Профсоюзная 84, корп. 5, офис 12">${curAddr}</textarea>
+        <label class="df-lbl">${tr('Адрес доставки')} <span class="df-opt">${tr('(улица, дом · для DDP)')}</span></label>
+        <textarea class="df-input df-addr" rows="2" placeholder="${tr('Напр.: ул. Профсоюзная 84, корп. 5, офис 12')}">${curAddr}</textarea>
       </div>
       <div class="df-hint" style="margin:2px 0 8px;">${tr('Заполнили поля? Нажмите кнопку — цены <b>CIP/DDP</b> сразу появятся в таблице ниже ↓')}</div>
       <button class="df-submit act-btn" type="button" onclick="window.calcShipping && window.calcShipping(this)">
-        🧮 Рассчитать цены CIP / DDP →
+        ${tr('🧮 Рассчитать цены CIP / DDP →')}
       </button>
     </div>`;
   }
@@ -4613,7 +4613,7 @@
     const ob = d.origin_breakdown || [];
     const expandable = ob.length >= 1;
     const routeLine = originsBadge
-      ? `<div class="sm-route${expandable ? ' sm-route-expandable' : ''}"${expandable ? ` onclick="this.classList.toggle('sm-route-open'); const t=this.nextElementSibling; if(t&&t.classList.contains('ob-block')) t.style.display = t.style.display==='block'?'none':'block';"` : ''}>${expandable ? '<span class="sm-chev">▸</span> ' : ''}Откуда: ${originsBadge}${arrow}${d.filter_origin ? ` <span class="sm-filter-badge">фильтр: только ${esc(d.filter_origin)}</span>` : ''}</div>`
+      ? `<div class="sm-route${expandable ? ' sm-route-expandable' : ''}"${expandable ? ` onclick="this.classList.toggle('sm-route-open'); const t=this.nextElementSibling; if(t&&t.classList.contains('ob-block')) t.style.display = t.style.display==='block'?'none':'block';"` : ''}>${expandable ? '<span class="sm-chev">▸</span> ' : ''}${tr('Откуда:')} ${originsBadge}${arrow}${d.filter_origin ? ` <span class="sm-filter-badge">${window.t('фильтр: только {x}', {x: esc(d.filter_origin)})}</span>` : ''}</div>`
       : '';
     // Разворачиваемая таблица по странам — скрыта до клика на "Откуда".
     // Каждая страна — отдельный <details>, чтобы можно было раскрыть
@@ -4657,7 +4657,7 @@
             <span class="ob-c-stat">${o.weight_kg.toFixed(1)} кг</span>
             <span class="ob-c-stat">${fmtMoney(o.cargo, 'USD')}</span>
             ${o.freight_sea > 0 ? `<span class="ob-c-stat">$${Math.round(o.freight_sea).toLocaleString()} sea${o.days_sea ? ` · ~${o.days_sea}д` : ''}</span>` : ''}
-            <span class="ob-c-expand">Показать позиции ▾</span>
+            <span class="ob-c-expand">${tr('Показать позиции ▾')}</span>
           </summary>
           ${itemsList ? `<ul class="ob-items">${itemsList}</ul>` : ''}
         </details>`;
@@ -4670,8 +4670,8 @@
       </div>`;
     }
     const title = dest
-      ? `🚚 Выберите способ и базис${arrow}`
-      : '🚚 Выберите базис (FOB — самовывоз без доплат)';
+      ? window.t('🚚 Выберите способ и базис{x}', {x: arrow})
+      : tr('🚚 Выберите базис (FOB — самовывоз без доплат)');
     const form = (!d.cip_available || !d.delivery_address) ? renderDeliveryForm(d) : '';
     return `<div class="sm-block">
       <div class="sm-title">${title}</div>
@@ -4679,7 +4679,7 @@
       ${originTable}
       ${form}
       <table class="sm-table">
-        <thead><tr><th>Способ / срок</th>${headerCells}</tr></thead>
+        <thead><tr><th>${tr('Способ / срок')}</th>${headerCells}</tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <div class="sm-legend">
@@ -5023,18 +5023,18 @@
         + (sp.faster_than_pct != null ? ' · быстрее ' + esc(String(sp.faster_than_pct)) + '% продавцов' : ''));
     }
     const speedStrip = (speedBits.length)
-      ? `<div class="qf-speed"><div class="qf-speed-line">${speedBits.join(' · ')}</div><div class="qf-speed-note">Ответ в течение 1 ч поднимает ваш рейтинг, а рейтинг влияет на ранжирование предложений — и на продажи. Ответ позже 24 ч снижает рейтинг.</div></div>`
+      ? `<div class="qf-speed"><div class="qf-speed-line">${speedBits.join(' · ')}</div><div class="qf-speed-note">${tr('Ответ в течение 1 ч поднимает ваш рейтинг, а рейтинг влияет на ранжирование предложений — и на продажи. Ответ позже 24 ч снижает рейтинг.')}</div></div>`
       : '';
     return `${speedStrip}<div class="qf-aux">
-        <div class="qf-aux-row"><label>Срок поставки (дней)</label>
+        <div class="qf-aux-row"><label>${tr('Срок поставки (дней)')}</label>
           <input class="qf-aux-input" name="delivery_days" type="number" min="1" value="${esc(String(q.delivery_days || 14))}" /></div>
-        <div class="qf-aux-row"><label>Котировка действует (дней)</label>
+        <div class="qf-aux-row"><label>${tr('Котировка действует (дней)')}</label>
           <input class="qf-aux-input" name="valid_days" type="number" min="1" value="${esc(String(q.valid_days || 7))}" /></div>
       </div>
       <div class="qf-actions">
         <button class="qf-cancel" type="button" data-action="seller_inbox" data-params="{}">Отмена</button>
         <button class="qf-submit" type="button" data-rfq-id="${esc(String(q.rfq_id || ''))}">
-          📨 Отправить котировку · <span data-submit-count>${n}</span> поз · <span data-submit-total>${totRound}</span>
+          ${window.t('📨 Отправить котировку · {n} поз · {x}', {n: '<span data-submit-count>' + n + '</span>', x: '<span data-submit-total>' + totRound + '</span>'})}
         </button>
       </div>`;
   }
@@ -5096,7 +5096,7 @@
       btn.dataset.active = '1';
       btn.classList.add('qf-keep-mine-on');
       _qfRecalc(card);
-      if (window.toast) window.toast('📦 Оставлено ваших: ' + kept + ' · исключено: ' + cleared + ' (нажмите ещё раз — вернуть)', 2800);
+      if (window.toast) window.toast(window.t('📦 Оставлено ваших: {n} · исключено: {x} (нажмите ещё раз — вернуть)', {n: kept, x: cleared}), 2800);
     } else {
       let restored = 0;
       card.querySelectorAll('.qf-price-input').forEach(inp => {
@@ -5111,7 +5111,7 @@
       btn.dataset.active = '0';
       btn.classList.remove('qf-keep-mine-on');
       _qfRecalc(card);
-      if (window.toast) window.toast('↩ Возвращено позиций: ' + restored, 2000);
+      if (window.toast) window.toast(window.t('↩ Возвращено позиций: {n}', {n: restored}), 2000);
     }
   });
   document.addEventListener('click', (e) => {
@@ -5159,7 +5159,7 @@
     if (card) _qfRecalc(card);
     chip.classList.add('qf-analog-applied');
     chip.textContent = '✓ аналог применён: ' + (chip.dataset.analogArticle || '');
-    if (window.toast) window.toast('🔄 Аналог подставлен · тип «Аналог»', 2400);
+    if (window.toast) window.toast(tr('🔄 Аналог подставлен · тип «Аналог»'), 2400);
   });
 
   // Делегированный обработчик copy-кнопок (invoice card)
@@ -5341,13 +5341,13 @@
     // и путает — видны две кнопки. Прячем её, оставляя одну CTA «Оформить DDP».
     if (calcBtn) calcBtn.style.display = 'none';
     const landed = (cell.querySelector('.sm-landed') && cell.querySelector('.sm-landed').textContent || '').trim();
-    btn.textContent = '✅ Оформить DDP до двери' + (landed ? ' · ' + landed : '');
+    btn.textContent = window.t('✅ Оформить DDP до двери{x}', {x: landed ? ' · ' + landed : ''});
     btn.onclick = () => {
       const a = (addrEl && addrEl.value || '').trim();
-      if (!a) { window.toast && window.toast('🚪 Впишите адрес доставки до двери', 3000); addrEl && addrEl.focus(); return; }
+      if (!a) { window.toast && window.toast(tr('🚪 Впишите адрес доставки до двери'), 3000); addrEl && addrEl.focus(); return; }
       order(a);
     };
-    window.toast && window.toast('🚪 Впишите адрес и нажмите «Оформить DDP» — базис менять не нужно', 4000);
+    window.toast && window.toast(tr('🚪 Впишите адрес и нажмите «Оформить DDP» — базис менять не нужно'), 4000);
   };
 
   window.dfCountryChange = (inp, commit) => {
@@ -5366,7 +5366,7 @@
     if (cityInp && commit) {
       cityInp.value = '';
       const firstCity = cities[0] ? (cities[0].split('—')[1] || '').trim() : '';
-      cityInp.placeholder = cities.length ? ('Напр.: ' + (firstCity || 'город')) : 'Город прибытия';
+      cityInp.placeholder = cities.length ? window.t('Напр.: {x}', {x: (firstCity || tr('город'))}) : tr('Город прибытия');
     }
   };
 
@@ -5376,7 +5376,7 @@
     const port = (block.querySelector('.df-port')?.value || '').trim();
     const addr = (block.querySelector('.df-addr')?.value || '').trim();
     if (!port) {
-      window.toast && window.toast('⚠️ Укажите место прибытия для расчёта CIP/DDP', 3000);
+      window.toast && window.toast(tr('⚠️ Укажите место прибытия для расчёта CIP/DDP'), 3000);
       return;
     }
     // Страна: приоритет — явно выбранная страна (название → ISO-2 по карте),
@@ -5400,7 +5400,7 @@
     };
     if (qty) params.quantities = qty;
     const _origText = btn.textContent;
-    btn.disabled = true; btn.textContent = '⏳ Считаем…';
+    btn.disabled = true; btn.textContent = tr('⏳ Считаем…');
     quickAction('search_parts', params);
     // Результат приходит НОВОЙ карточкой со свежей формой; эту (старую) кнопку
     // возвращаем в исходный вид, чтобы она не зависала на «⏳ Считаем…».
@@ -5479,7 +5479,7 @@
         window.toast && window.toast('❌ ' + (j.error || (j.text || '').slice(0, 100) || 'Ошибка'), 4000);
         return;
       }
-      const status = (j.text || '').match(/«([^»]+)»/)?.[1] || 'следующий этап';
+      const status = (j.text || '').match(/«([^»]+)»/)?.[1] || tr('следующий этап');
       // Получаем свежую версию pipeline и перерисовываем КОНКРЕТНУЮ карточку
       const r2 = await fetch('/api/assistant/action/', {
         method:'POST', credentials:'same-origin',
@@ -5503,7 +5503,7 @@
       // Возвращаем скролл (renderers могли изменить высоту)
       if (streamScroll != null) document.getElementById('stream').scrollTop = streamScroll;
       else window.scrollTo(0, scrollY);
-      window.toast && window.toast(`✓ Заказ #${orderId} → ${status}`, 2500);
+      window.toast && window.toast(window.t('✓ Заказ #{n} → {x}', {n: orderId, x: status}), 2500);
     } catch(e) {
       btn.disabled = false; btn.textContent = origText;
       window.toast && window.toast('❌ Сетевая ошибка', 3000);
@@ -5526,8 +5526,8 @@
   // Продавец отменяет неоплаченный заказ (если резерв не пришёл)
   window.sellerCancelPending = async (orderId, total) => {
     const ok = await window.appConfirm({
-      title: `Отменить заказ #${orderId}?`,
-      message: `Заказ на $${Number(total).toLocaleString('en-US')} будет удалён. Покупатель получит уведомление об отмене. Это используют если резерв не был оплачен в срок.`,
+      title: window.t('Отменить заказ #{n}?', {n: orderId}),
+      message: window.t('Заказ на ${x} будет удалён. Покупатель получит уведомление об отмене. Это используют если резерв не был оплачен в срок.', {x: '$' + Number(total).toLocaleString('en-US')}),
       danger: true,
       okLabel: '🗑 Отменить заказ',
       cancelLabel: tr('common.do_not_cancel'),
@@ -5555,7 +5555,7 @@
           setTimeout(() => det.remove(), 250);
         }
       });
-      window.toast && window.toast(`✓ Заказ #${orderId} отменён`, 2000);
+      window.toast && window.toast(window.t('✓ Заказ #{n} отменён', {n: orderId}), 2000);
     } catch(e) {
       window.toast && window.toast('❌ Сетевая ошибка', 3000);
     }
@@ -6169,7 +6169,7 @@
       let lastInboxEl = null;
       allMsgs.forEach(el => {
         const txt = el.textContent || '';
-        if (txt.includes('Срочные задачи') || txt.includes('К отгрузке (оплачено')
+        if (txt.includes(tr('Срочные задачи')) || txt.includes(tr('К отгрузке (оплачено'))
             || el.querySelector('.sq-section') || el.querySelector('.ls-card')) {
           lastInboxEl = el;
         }
@@ -7456,7 +7456,7 @@
     __hidePillUndo();
     const bar = document.createElement('div');
     bar.id = 'pill-undo'; bar.className = 'pill-undo';
-    bar.innerHTML = `<span class="pu-txt">Пилюля «${esc(name || '')}» убрана</span>`
+    bar.innerHTML = `<span class="pu-txt">${window.t('Пилюля «{x}» убрана', {x: esc(name || '')})}</span>`
       + `<button type="button" class="pu-btn">Вернуть</button>`;
     bar.querySelector('.pu-btn').onclick = () => __pillRestoreLast();
     document.body.appendChild(bar);
@@ -7585,7 +7585,7 @@
     const missingDefaults = (ROLE_WELCOME[role] || ROLE_WELCOME.buyer).pills
       .map(b => _normPill(b, role)).filter(p => !visIds.has(p.id));
     const missingBlock = missingDefaults.length ? (
-      `<div class="pm-sec">Убрано из стандартных (${missingDefaults.length})</div>`
+      window.t('<div class="pm-sec">Убрано из стандартных ({n})</div>', {n: missingDefaults.length})
       + `<div class="pm-hint">Похоже, вот это вы убирали — нажмите «Вернуть».</div>`
       + missingDefaults.map(p => `<div class="pm-row pm-missing">
           <span class="pm-emoji">${esc(p.emoji)}</span>
@@ -7642,13 +7642,13 @@
         <div class="pm-title">Пилюли</div>
         <button class="pm-x" data-pm="close" title="Закрыть">✕</button>
       </div>
-      <div class="pm-sub">Кабинет: ${esc(roleName)} · перетащите ⠿ чтобы переставить · «−» чтобы убрать</div>
+      <div class="pm-sub">${window.t('Кабинет: {x} · перетащите ⠿ чтобы переставить · «−» чтобы убрать', {x: esc(roleName)})}</div>
       <div class="pm-hint">Случайно убрали пилюлю? Верните её в разделе ниже или восстановите стандартный набор.</div>
       ${missingBlock}
-      <div class="pm-sec">На экране (${st.visible.length})</div>
+      <div class="pm-sec">${window.t('На экране ({n})', {n: st.visible.length})}</div>
       <div id="pm-pinned">${pinnedRows}</div>
       ${addForm}
-      <div class="pm-sec">Все пилюли — закрепить (${st.avail.length})</div>
+      <div class="pm-sec">${window.t('Все пилюли — закрепить ({n})', {n: st.avail.length})}</div>
       <input class="pm-search" id="pm-search" placeholder="Поиск пилюли по всем кабинетам…">
       <div id="pm-avail">${availRows}</div>
       <div class="pm-sec">Стандартный набор</div>
@@ -7866,7 +7866,7 @@
   // конкуренцию click-handler'ов с <a href> в разных браузерах.
   window.__deleteProject = async function(pid, name) {
     if (!pid) return;
-    if (!window.confirm(`Удалить проект «${name || 'проект'}»?`)) return;
+    if (!window.confirm(window.t('Удалить проект «{x}»?', {x: name || tr('проект')}))) return;
     try {
       const r = await fetch('/api/assistant/projects/' + pid + '/', {
         method: 'DELETE',
@@ -8202,7 +8202,7 @@
   // Удаление одного чата (soft delete)
   window.deleteConv = async (id, title) => {
     const t = (title || '').trim() || 'этот чат';
-    if (!confirm(`Удалить «${t}»?\nЧат и его история будут скрыты.`)) return;
+    if (!confirm(window.t('Удалить «{x}»?\nЧат и его история будут скрыты.', {x: t}))) return;
     try {
       const res = await fetch('/api/assistant/conversations/' + id + '/', {
         method: 'DELETE',
@@ -8233,7 +8233,7 @@
   window.clearAllHistory = async () => {
     const n = (state.convs || []).length;
     if (!n) return;
-    if (!confirm(`Удалить всю историю поисков (${n} чатов)?\nЭто действие нельзя отменить.`)) return;
+    if (!confirm(window.t('Удалить всю историю поисков ({n} чатов)?\nЭто действие нельзя отменить.', {n: n}))) return;
     const ids = state.convs.map(c => c.id);
     let failed = 0;
     await Promise.all(ids.map(async (id) => {
@@ -8843,9 +8843,7 @@
             }).join('');
             return '<tr>' + cells + '</tr>';
           }).join('');
-          var noteHtml = '<div class="opx-note">📂 Ваш файл · '
-            + hdrs.length + ' колонок'
-            + (data.total_rows ? ' · ' + data.total_rows + ' позиций' : '')
+          var noteHtml = '<div class="opx-note">' + window.t('📂 Ваш файл · {n} колонок{x}', {n: hdrs.length, x: (data.total_rows ? ' · ' + data.total_rows + ' ' + tr('позиций') : '')})
             + '</div>';
           spBody.innerHTML = noteHtml
             + '<table><thead><tr>' + headerHtml + '</tr></thead>'
@@ -8930,11 +8928,11 @@
       // ключевые правила сразу: одна страна, Q=1, AI оценка, и т.п.
       cards.push({type:'raw_html', data:{html:
         '<div class="card import-intro">'
-        + '<div class="ii-title">📘 Как работает загрузка прайса</div>'
-        + '<div class="ii-sub">Несколько шагов — и ваш файл превратится в готовые карточки маркетплейса.</div>'
+        + '<div class="ii-title">' + tr('📘 Как работает загрузка прайса') + '</div>'
+        + '<div class="ii-sub">' + tr('Несколько шагов — и ваш файл превратится в готовые карточки маркетплейса.') + '</div>'
         + '<div class="ii-steps">'
         +   '<div class="ii-step"><span class="ii-n">1</span>'
-        +     '<div><b>🔍 Распознаём колонки в вашем файле</b><br>'
+        +     '<div><b>' + tr('🔍 Распознаём колонки в вашем файле') + '</b><br>'
         +       '<span class="ii-hint">Системный словарь поддерживает заголовки на 5 языках. '
         +       'Если что-то непонятное — подключаем AI.</span></div></div>'
         +   '<div class="ii-step"><span class="ii-n">2</span>'
@@ -8954,7 +8952,7 @@
         +       'что взято из файла, что вы указали, какие правила применены.</span></div></div>'
         + '</div>'
         + '<div class="ii-rules">'
-        +   '<div class="ii-rule-title">⚠️ Что важно знать</div>'
+        +   '<div class="ii-rule-title">' + tr('⚠️ Что важно знать') + '</div>'
         +   '<ul>'
         +     '<li><b>Одна загрузка — одна страна отправления.</b> '
         +     'Для разных стран — отдельные файлы.</li>'
@@ -9080,7 +9078,7 @@
               + '" data-ac-kind="' + (f.key === 'sea_port' ? 'sea' : 'air') + '"'
               + ' type="search" value="' + esc(val) + '" autocomplete="off"'
               + ' autocorrect="off" spellcheck="false" data-lpignore="true" readonly'
-              + ' placeholder="Код или название порта"/>';
+              + ' placeholder="' + tr('Код или название порта') + '"/>';
           } else if (f.key === 'warehouse_address') {
             // Адрес склада EXW — улица + № дома. Город указывается отдельно
             // выше (см. cityRowHtml), на commit мы склеиваем
@@ -9135,7 +9133,7 @@
         var cityNameSalt = 'pl_field_' + Math.random().toString(36).slice(2, 10);
         var countryFieldHtml =
           '<div class="pl-ship-field">'
-          + '<label class="pl-ship-flabel" for="shipment_country">🌍 Страна отправления</label>'
+          + '<label class="pl-ship-flabel" for="shipment_country">' + tr('🌍 Страна отправления') + '</label>'
           + '<select class="pl-df-input pl-ship-country" id="shipment_country">'
           +   topCountryOpts
           + '</select>'
@@ -9144,7 +9142,7 @@
           '<div class="pl-ship-field">'
           + '<label class="pl-ship-flabel">Город</label>'
           + '<input class="pl-df-input pl-city-input pl-ac" type="search"'
-          +   ' data-ac-kind="city" placeholder="Например: Shanghai, Стамбул…"'
+          +   ' data-ac-kind="city" placeholder="' + tr('Например: Shanghai, Стамбул…') + '"'
           +   ' name="' + cityNameSalt + '" autocomplete="off" autocorrect="off"'
           +   ' spellcheck="false" data-lpignore="true" data-form-type="other" readonly/>'
           + '</div>';
@@ -9153,8 +9151,7 @@
           + (needsCountrySelector ? countryFieldHtml : '')
           + cityFieldHtml
           + '</div>'
-          + '<div class="pl-ship-combo-hint">Одна страна на всю загрузку. '
-          + 'Порты и склад фильтруются по выбранной стране.</div>';
+          + '<div class="pl-ship-combo-hint">' + tr('Одна страна на всю загрузку. Порты и склад фильтруются по выбранной стране.') + '</div>';
         cards.push({type:'raw_html', data:{
           html: '<div class="card pl-defaults-card">'
             + '<details class="pl-defaults-details" open>'
@@ -9167,7 +9164,7 @@
       }
 
       var actions = [
-        {action: '__pricelist_commit', label: '📥 Подтвердить и загрузить',
+        {action: '__pricelist_commit', label: tr('📥 Подтвердить и загрузить'),
          params: {import_id: data.import_id, _has_questions: questions.length > 0 ? '1' : '0'}},
         {action: '__pricelist_cancel', label: 'Отменить',
          params: {import_id: data.import_id}},
@@ -9198,7 +9195,7 @@
             bigMsg.scrollIntoView({block:'start', behavior:'smooth'});
           }
         }, 100);
-        var thinking = addMessage('assistant', '💭 Подбираю уточняющие вопросы…', [], []);
+        var thinking = addMessage('assistant', tr('💭 Подбираю уточняющие вопросы…'), [], []);
         fetch('/api/assistant/upload-pricelist/' + data.import_id + '/smart-questions/', {
           credentials: 'same-origin',
         }).then(function(r){ return r.json(); }).then(function(sq){
@@ -9218,7 +9215,7 @@
               '👆 Сначала заполните **общие поля поставщика** выше — страна, склад, морпорт/аэропорт. '
               + 'Это одно на весь прайс. Готово — нажмите кнопку, и я уточню ещё ' + qs.length + ' ' + nWord + ' по товарам.',
               [], [
-              {action: '__pl_start_questions', label: '✅ Общие поля готовы — продолжить →'},
+              {action: '__pl_start_questions', label: tr('✅ Общие поля готовы — продолжить →')},
             ]);
           } else {
             if (sq.intro) addMessage('assistant', sq.intro, [], []);
@@ -9344,16 +9341,15 @@
     var _sea = _fixVal('sea_port');
     var _air = _fixVal('air_port');
     var missingSW = [];
-    if (!_countryName) missingSW.push('страна отправления');
-    if (!_city)        missingSW.push('город');
-    if (!_street)      missingSW.push('адрес склада EXW');
-    if (!_sea)         missingSW.push('морпорт отправления');
-    if (!_air)         missingSW.push('аэропорт отправления');
+    if (!_countryName) missingSW.push(tr('страна отправления'));
+    if (!_city)        missingSW.push(tr('город'));
+    if (!_street)      missingSW.push(tr('адрес склада EXW'));
+    if (!_sea)         missingSW.push(tr('морпорт отправления'));
+    if (!_air)         missingSW.push(tr('аэропорт отправления'));
     if (missingSW.length) {
       lockedBtns.forEach(b => { b.disabled = false; b.style.opacity = ''; b.style.cursor = ''; });
       addMessage('assistant',
-        '❗ Без логистики загрузку продолжить нельзя. Заполните: ' + missingSW.join(', ') +
-        '. Это в блоке «📎 общих полей поставщика» сверху.');
+        window.t('❗ Без логистики загрузку продолжить нельзя. Заполните: {x}. Это в блоке «📎 общих полей поставщика» сверху.', {x: missingSW.join(', ')}));
       return;
     }
 
@@ -9377,7 +9373,7 @@
     });
 
     showConv();
-    var pending = addMessage('assistant', '📥 Импортирую прайс… 0 строк');
+    var pending = addMessage('assistant', tr('📥 Импортирую прайс… 0 строк'));
 
     // Импорт идёт в ФОНЕ на сервере: commit отвечает 202 сразу, иначе длинный
     // запрос (100K+ строк) рвёт Cloudflare на ~100s → «Failed to fetch».
@@ -9406,7 +9402,7 @@
             };
             var phase = phaseMap[pdata.phase] || 'Импортирую прайс';
             var totalPart = pdata.total ? (' / ' + pdata.total) : '';
-            cEl.textContent = '📥 ' + phase + '… ' + pdata.current + totalPart + ' строк';
+            cEl.textContent = window.t('📥 {x}… {n}{y} строк', {x: phase, n: pdata.current, y: totalPart});
           }
         }
         // Завершение фонового импорта → резолвим/реджектим промис.
@@ -9462,16 +9458,16 @@
       var aiCount = data.ai_estimated_count || 0;
 
       var parts = [];
-      if (created) parts.push('✅ Создано ' + created);
-      if (updated) parts.push('🔄 Обновлено ' + updated);
+      if (created) parts.push(window.t('✅ Создано {n}', {n: created}));
+      if (updated) parts.push(window.t('🔄 Обновлено {n}', {n: updated}));
       // Заголовок об успехе — только если что-то реально загрузилось.
       var msg = '';
       if (created || updated) {
-        msg = '✅ Загрузка прошла успешно!\n';
+        msg = tr('✅ Загрузка прошла успешно!') + '\n';
       }
       msg += parts.join(' · ') + ' позиций.';
       if (created || updated) {
-        msg += '\n📦 Все позиции уже в разделе «Мои товары».';
+        msg += '\n' + tr('📦 Все позиции уже в разделе «Мои товары».');
       }
       if (failed) {
         // Это НЕ поломка импорта — успешные строки уже в базе.
@@ -9613,7 +9609,7 @@
       clearInterval(pollTimer);
       if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
       setProgress(data.estimated, data.total);
-      var msg = '✅ AI оценил ' + data.estimated + ' позиций';
+      var msg = window.t('✅ AI оценил {n} позиций', {n: data.estimated});
       if (data.truncated) msg += ' (первые ' + data.total + ', остальные с дефолтами)';
       if (statusEl) {
         statusEl.textContent = msg;
@@ -9732,8 +9728,8 @@
     }).join('');
 
     return '<div class="card import-explain">'
-      + '<div class="ie-title">📋 Что попадёт в каталог</div>'
-      + '<div class="ie-sub">Сводка перед записью в базу. Проверьте и подтвердите.</div>'
+      + '<div class="ie-title">' + tr('📋 Что попадёт в каталог') + '</div>'
+      + '<div class="ie-sub">' + tr('Сводка перед записью в базу. Проверьте и подтвердите.') + '</div>'
       + rows
       + '<div class="ie-rule">'
       + '⚠️ <b>Правило:</b> одна загрузка — одна страна отправления. '
@@ -9846,7 +9842,7 @@
       // Пояснительная записка — что именно произойдёт по правилам
       var explanationHtml = buildImportExplanation(imp, data);
       addMessage('assistant',
-        '✨ Готово! Я подготовил файл в формате маркетплейса.',
+        tr('✨ Готово! Я подготовил файл в формате маркетплейса.'),
         [
           {type:'output_file', data:{
             filename: data.filename,
@@ -9897,7 +9893,7 @@
   window.updateSidePreviewLoading = function(current) {
     var counter = document.getElementById('opxGenCounter');
     var fill = document.getElementById('opxGenFill');
-    if (counter) counter.textContent = 'обработано ' + current.toLocaleString('ru') + ' строк';
+    if (counter) counter.textContent = window.t('обработано {n} строк', {n: current.toLocaleString('ru')});
     if (fill) {
       // Псевдо-прогресс: чем больше current — тем ближе к 95% (никогда не 100%
       // пока не пришёл финальный ответ).
@@ -10164,11 +10160,11 @@
     var existing = card.querySelector('.pl-ai-review');
     if (existing) existing.remove();
 
-    var hdr = '<div class="pl-ai-review-hdr">🔍 Проверьте оценки AI'
+    var hdr = '<div class="pl-ai-review-hdr">' + tr('🔍 Проверьте оценки AI')
       + (lowConfCount > 0
           ? ' · <span class="pl-ai-lowconf">⚠️ ' + lowConfCount + ' с низкой уверенностью</span>'
           : '')
-      + '<div class="pl-ai-review-sub">Поправьте если что-то не так — мы запомним. AI оценил по описанию, но человек точнее.</div>'
+      + '<div class="pl-ai-review-sub">' + tr('Поправьте если что-то не так — мы запомним. AI оценил по описанию, но человек точнее.') + '</div>'
       + '</div>';
     var rows = sampleItems.map(function(it) {
       var lowCls = it.confidence < 0.6 ? ' pl-ai-row-lowconf' : '';
@@ -10748,7 +10744,7 @@
     // Живой прогресс-бар с процентами (как при загрузке спеки) — большой PDF грузится
     // долго, без индикатора кажется, что всё зависло.
     const sizeKb = file.size ? ' · ' + Math.round(file.size / 1024) + ' KB' : '';
-    const pending = addMessage('assistant', '📐 Загружаю чертёж…');
+    const pending = addMessage('assistant', tr('📐 Загружаю чертёж…'));
     // addMessage прогоняет текст через linkifyEntities (экранирует HTML), поэтому
     // прогресс-бар задаём innerHTML напрямую в .msg-content — иначе теги видны текстом.
     const _cEl = pending && pending.querySelector && pending.querySelector('.msg-content');
@@ -10766,7 +10762,7 @@
         if (barEl) barEl.style.width = pct + '%';
         if (pct >= 100) {
           const tEl = pending.querySelector('.msg-content') || pending;
-          if (tEl) tEl.innerHTML = '📐 Обрабатываю чертёж…';
+          if (tEl) tEl.innerHTML = tr('📐 Обрабатываю чертёж…');
         }
       },
       onSuccess: (data) => {
@@ -10803,8 +10799,8 @@
     ov.innerHTML = `
       <div class="dnd-box">
         <div class="dnd-icon">📎</div>
-        <div class="dnd-title">Бросьте файл сюда</div>
-        <div class="dnd-sub">.xlsx · .csv · .pdf · до 20 МБ</div>
+        <div class="dnd-title">${tr('Бросьте файл сюда')}</div>
+        <div class="dnd-sub">${tr('.xlsx · .csv · .pdf · до 20 МБ')}</div>
       </div>`;
     document.body.appendChild(ov);
   }
@@ -10861,7 +10857,7 @@
         if (!custom) {
           custom = document.createElement('option');
           custom.value = val;
-          custom.textContent = 'Своё: ' + v.trim();
+          custom.textContent = window.t('Своё: {x}', {x: v.trim()});
           sel.appendChild(custom);
         }
         sel.value = val;
@@ -10874,7 +10870,7 @@
   async function recognizePhoto(file) {
     showConv();
     addMessage('user', '📷 ' + file.name);
-    const pending = addMessage('assistant', 'Распознаю шильду…');
+    const pending = addMessage('assistant', tr('Распознаю шильду…'));
     try {
       const fd = new FormData();
       fd.append('photo', file);
@@ -10894,16 +10890,16 @@
       try {
         const j = JSON.parse(t.replace(/^```json\s*/, '').replace(/```$/, ''));
         const parts = [];
-        if (j.brand) parts.push('Бренд: ' + j.brand);
-        if (j.model) parts.push('Модель: ' + j.model);
-        if (j.part_number) parts.push('Артикул: ' + j.part_number);
-        if (j.serial) parts.push('Серийный: ' + j.serial);
+        if (j.brand) parts.push(window.t('Бренд: {x}', {x: j.brand}));
+        if (j.model) parts.push(window.t('Модель: {x}', {x: j.model}));
+        if (j.part_number) parts.push(window.t('Артикул: {x}', {x: j.part_number}));
+        if (j.serial) parts.push(window.t('Серийный: {x}', {x: j.serial}));
         if (j.notes) parts.push(j.notes);
         recognized = parts.join('\n') || t;
         // Если есть артикул — сразу предложим search_parts
         if (j.part_number) {
-          addMessage('assistant', '✓ Распознал:\n' + recognized,
-            [], [{label: '🔍 Найти ' + j.part_number, action: 'search_parts',
+          addMessage('assistant', tr('✓ Распознал:') + '\n' + recognized,
+            [], [{label: window.t('🔍 Найти {x}', {x: j.part_number}), action: 'search_parts',
                   params: {query: j.part_number}}]);
           return;
         }

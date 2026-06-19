@@ -68,9 +68,7 @@ def _switch_conv_to_shipment(conv, order):
         conversation=conv,
         role=Message.Role.SYSTEM,
         content=(
-            f"✅ КП подтверждено — сделка перешла в работу.\n"
-            f"Заказ ORD-{order.id} · ${order.total_amount:,.2f} · "
-            f"резерв 10% (${order.reserve_amount:,.2f}) удержан в эскроу."
+            _('✅ КП подтверждено — сделка перешла в работу.\nЗаказ ORD-%(p0)s · $%(p1)s · резерв 10%% ($%(p2)s) удержан в эскроу.') % {"p0": f'{order.id}', "p1": f'{order.total_amount:,.2f}', "p2": f'{order.reserve_amount:,.2f}'}
         ),
         cards=[{
             "type": "order",
@@ -139,7 +137,7 @@ def present_kp_to_buyer(params, user, role):
     ).select_related("seller").order_by("total_amount").first())
     if not best:
         return ActionResult(text=(
-            "По RFQ ещё нет готовых котировок. Дождитесь сбора КП."
+            _("По RFQ ещё нет готовых котировок. Дождитесь сбора КП.")
         ))
 
     # Логистика — суммируем по items
@@ -176,7 +174,7 @@ def present_kp_to_buyer(params, user, role):
     rows = [
         {"label": _("Документ"),   "value": f"PRO-{rfq.id}/{best.id} · Pro-forma Invoice"},
         {"label": _("Покупатель"), "value": user.get_full_name() or user.username},
-        {"label": _("Поставщик"),  "value": "Поставщик №1 (имя раскрывается после подтверждения)"},
+        {"label": _("Поставщик"),  "value": _("Поставщик №1 (имя раскрывается после подтверждения)")},
         {"label": _("Режим"),      "value": {"auto": "AUTO", "semi": "SEMI",
                                             "manual": "MANUAL",
                                             "manual_oem": "MANUAL"}.get(rfq.mode, rfq.mode)},
@@ -186,7 +184,7 @@ def present_kp_to_buyer(params, user, role):
          "value": f"${logi['cost']:,.2f}"},
         {"label": _("ИНВОЙС 100%"), "value": f"${full_invoice:,.2f}", "primary": True},
         {"label": _("Срок поставки"),  "value": f"{best.delivery_days} дней"},
-        {"label": _("Условия оплаты"), "value": "10% резерв сейчас · 90% перед отгрузкой"},
+        {"label": _("Условия оплаты"), "value": _("10% резерв сейчас · 90% перед отгрузкой")},
         {"label": _("Резерв 10%"),     "value": f"${reserve:,.2f}", "primary": True},
         {"label": _("К оплате после готовности"), "value": f"${full_invoice - reserve:,.2f}"},
     ]
@@ -211,8 +209,8 @@ def present_kp_to_buyer(params, user, role):
             "rows": rows,
             "doc_url": proforma_url,
             "warnings": [
-                "После подтверждения чат переключится в режим сделки (shipment).",
-                "Остальные котировки по этому RFQ автоматически отклоняются.",
+                _("После подтверждения чат переключится в режим сделки (shipment)."),
+                _("Остальные котировки по этому RFQ автоматически отклоняются."),
             ],
             "confirm_action": "confirm_kp_and_reserve",
             "confirm_label": _('✓ Подтвердить и зарезервировать $%(p0)s') % {"p0": f'{reserve:,.0f}'},
@@ -304,8 +302,8 @@ def confirm_kp_and_reserve(params, user, role):
         # позиций, но с реальным списанием резерва. Проверяем заранее.
         if not any(qi.part_id for qi in q.items.all()):
             return ActionResult(text=(
-                "В котировке нет позиций с привязанной запчастью — "
-                "заказ не создан, резерв не списан."
+                _("В котировке нет позиций с привязанной запчастью — "
+                "заказ не создан, резерв не списан.")
             ))
         # 1. Order
         order = Order.objects.create(
@@ -397,11 +395,11 @@ def confirm_kp_and_reserve(params, user, role):
             "id": str(order.id),
             "number": order.id,
             "status": "reserve_paid",
-            "status_label": "Заказ оформлен",
+            "status_label": _("Заказ оформлен"),
             "total": float(full_invoice),
             "currency": "USD",
             "payment_status": "reserve_paid",
-            "payment_status_label": f"Резерв ${reserve:,.0f} удержан",
+            "payment_status_label": _('Резерв $%(p0)s удержан') % {"p0": f'{reserve:,.0f}'},
             "invoice_url": invoice_url,
         }}),
         actions=actions,
@@ -455,8 +453,8 @@ def op_approve_kp(params, user, role):
         elapsed = timezone.now() - rfq.created_at
         sla_left = timedelta(minutes=SLA_OPERATOR_APPROVE_MINUTES) - elapsed
         sla_status = (
-            f"⏱ SLA: {int(sla_left.total_seconds() // 60)} мин"
-            if sla_left.total_seconds() > 0 else "⚠️ SLA нарушен"
+            _('⏱ SLA: %(p0)s мин') % {"p0": int(sla_left.total_seconds() // 60)}
+            if sla_left.total_seconds() > 0 else _("⚠️ SLA нарушен")
         )
         best = quotes.order_by("total_amount").first()
         return ActionResult(
@@ -550,9 +548,7 @@ def op_dispatch_manual_rfq(params, user, role):
 
     return ActionResult(
         text=(
-            f"✓ MANUAL-RFQ #{rfq.id} разослан.\n"
-            f"⏱ Дедлайн сбора КП: {deadline.strftime('%d.%m %H:%M')} (48 часов).\n"
-            f"После сбора — op_compose_kp чтобы сформировать инвойс клиенту.\n\n"
+            _('✓ MANUAL-RFQ #%(p0)s разослан.\n⏱ Дедлайн сбора КП: %(p1)s (48 часов).\nПосле сбора — op_compose_kp чтобы сформировать инвойс клиенту.\n\n') % {"p0": f'{rfq.id}', "p1": f"{deadline.strftime('%d.%m %H:%M')}"}
             + (res.text or "")
         ),
         actions=[

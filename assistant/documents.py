@@ -424,8 +424,8 @@ def _build_proforma_invoice_pdf(rfq, quote, logistics_cost: Decimal,
     return buf
 
 
-_SIG_ROLE_RU = {"buyer": "Покупатель / Buyer", "seller": "Продавец / Seller",
-                "operator": "Оператор / Operator", "admin": "Оператор / Operator"}
+_SIG_ROLE_RU = {"buyer": _("Покупатель / Buyer"), "seller": _("Продавец / Seller"),
+                "operator": _("Оператор / Operator"), "admin": _("Оператор / Operator")}
 
 
 def _draw_signatures(c, signatures, order):
@@ -847,8 +847,8 @@ def list_order_documents(params, user, role):
                  "params": {"order_id": order.id}},
             ],
         )
-    _ROLE_RU = {"buyer": "Покупатель", "seller": "Продавец",
-                "operator": "Оператор", "admin": "Оператор"}
+    _ROLE_RU = {"buyer": _("Покупатель"), "seller": _("Продавец"),
+                "operator": _("Оператор"), "admin": _("Оператор")}
     is_op_view = bool(role and (role.startswith("operator") or role == "admin"))
     cards = []
     lines = []
@@ -868,11 +868,11 @@ def list_order_documents(params, user, role):
         if sigs:
             parts = [f"{_ROLE_RU.get(s.signer_role, s.signer_role or '—')} "
                      f"{'✓' if s.method == 'ep' else '📎'}" for s in sigs]
-            status = "подписи: " + ", ".join(parts)
+            status = _("подписи: ") + ", ".join(parts)
         elif is_creator and not creator_signed:
-            status = "черновик — подпишите, чтобы отправить"
+            status = _("черновик — подпишите, чтобы отправить")
         else:
-            status = "не подписан"
+            status = _("не подписан")
         lines.append(f"• {d.title} — {status}")
         cards.append({"type": "doc", "data": {
             "id": str(d.id),
@@ -899,11 +899,11 @@ def list_order_documents(params, user, role):
             text=(_('По заказу ORD-%(p0)s пока нет отправленных документов (контрагент ещё не подписал и не отправил).') % {"p0": f'{order.id}'}),
             actions=gen_actions,
         )
-    foot = "\n\nПодпись (ПЭП) фиксирует кто/когда/IP + хэш документа."
+    foot = _("\n\nПодпись (ПЭП) фиксирует кто/когда/IP + хэш документа.")
     if hidden_drafts:
-        foot += f"\nЕщё {hidden_drafts} в черновиках у контрагента (не отправлены)."
+        foot += _("\nЕщё %(count)s в черновиках у контрагента (не отправлены).") % {"count": hidden_drafts}
     return ActionResult(
-        text=(f"📄 Документы по заказу ORD-{order.id} ({len(cards)}):\n"
+        text=(_("📄 Документы по заказу ORD-%(order_id)s (%(count)s):\n") % {"order_id": order.id, "count": len(cards)}
               + "\n".join(lines) + foot),
         cards=cards,
         actions=sign_actions[:6] + gen_actions,
@@ -960,13 +960,13 @@ def sign_document(params, user, role):
         order = doc.order
         recipients = {}  # id -> (user, role_label)
         if order.buyer_id and order.buyer:
-            recipients[order.buyer_id] = (order.buyer, "Покупатель")
+            recipients[order.buyer_id] = (order.buyer, _("Покупатель"))
         if order.assigned_operator_id and order.assigned_operator:
-            recipients[order.assigned_operator_id] = (order.assigned_operator, "Оператор")
+            recipients[order.assigned_operator_id] = (order.assigned_operator, _("Оператор"))
         for it in OrderItem.objects.filter(order=order).select_related("part__seller"):
             if it.part and it.part.seller_id and it.part.seller:
-                recipients.setdefault(it.part.seller_id, (it.part.seller, "Продавец"))
-        signer_ru = _SIG_ROLE_RU.get(role, role or "").split(" / ")[0] or "участник"
+                recipients.setdefault(it.part.seller_id, (it.part.seller, _("Продавец")))
+        signer_ru = _SIG_ROLE_RU.get(role, role or "").split(" / ")[0] or _("участник")
         for rid, (rcp, label) in recipients.items():
             if rid == user.id:
                 continue
@@ -977,7 +977,7 @@ def sign_document(params, user, role):
                     url="/chat/")
     except Exception:
         logger.exception("sign_document routing notify failed")
-    sent_line = ((" Отправлено — уведомлены: "
+    sent_line = ((_(" Отправлено — уведомлены: ")
                   + ", ".join(dict.fromkeys(notified)) + ".") if notified else "")
     sigs = list(doc.signatures.all())
     status = ", ".join(
@@ -985,11 +985,11 @@ def sign_document(params, user, role):
         f"{'✓' if s.method == 'ep' else '📎'}" for s in sigs)
     url = _doc_url(doc)
     return ActionResult(
-        text=(f"✅ Вы подписали «{doc.title}» (ПЭП). Подпись впечатана в PDF."
-              + sent_line + f"\nПодписи: {status}"),
+        text=(_("✅ Вы подписали «%(title)s» (ПЭП). Подпись впечатана в PDF.") % {"title": doc.title}
+              + sent_line + _("\nПодписи: %(status)s") % {"status": status}),
         cards=[{"type": "doc", "data": {
             "id": str(doc.id), "title": doc.title, "kind": doc.doc_type,
-            "url": url, "sign_status": "подписи: " + status}}],
+            "url": url, "sign_status": _("подписи: ") + status}}],
         actions=[
             {"action": "open_url", "label": _("📄 Открыть подписанный PDF"),
              "params": {"_url": url}},
