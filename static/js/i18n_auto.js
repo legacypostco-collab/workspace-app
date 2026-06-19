@@ -1,5 +1,4 @@
-// AUTO-GENERATED: переводы фронт-литералов chat-first.js (en/zh-hans/es/ar).
-// Русские строки = ключи; применяются DOM-переводчиком i18n.js (registerI18n).
+// AUTO-GENERATED i18n dict.
 (function(){
   if (typeof window.registerI18n !== 'function') return;
   window.registerI18n(
@@ -4467,6 +4466,18 @@
   "zh-hans": "✓ 激活",
   "es": "✓ Activar",
   "ar": "✓ تفعيل"
+ },
+ "⚠️ Ошибка: ": {
+  "en": "⚠️ Error: ",
+  "zh-hans": "⚠️ 错误：",
+  "es": "⚠️ Error: ",
+  "ar": "⚠️ خطأ: "
+ },
+ "⚠️ Ошибка распознавания: ": {
+  "en": "⚠️ Recognition error: ",
+  "zh-hans": "⚠️ 识别错误：",
+  "es": "⚠️ Error de reconocimiento: ",
+  "ar": "⚠️ خطأ في التعرّف: "
  }
 }
   );

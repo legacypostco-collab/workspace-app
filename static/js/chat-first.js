@@ -10564,7 +10564,7 @@
       var match = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
       body.innerHTML = match ? match[1] : html;
     } catch (e) {
-      body.innerHTML = '<div class="opx-gen-loading"><div class="opx-gen-message">⚠️ Ошибка: ' + (e.message || e) + '</div></div>';
+      body.innerHTML = '<div class="opx-gen-loading"><div class="opx-gen-message">' + tr('⚠️ Ошибка: ') + esc(e.message || e) + '</div></div>';
     }
   };
   window.closeSidePreview = function() {
@@ -10907,7 +10907,7 @@
       addMessage('assistant', '✓ Распознал:\n' + recognized);
     } catch(err) {
       if (pending && pending.parentNode) pending.remove();
-      addMessage('assistant', '⚠️ Ошибка распознавания: ' + (err.message || err));
+      addMessage('assistant', tr('⚠️ Ошибка распознавания: ') + (err.message || err));
     }
   }
 

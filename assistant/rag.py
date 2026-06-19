@@ -10,6 +10,7 @@ import logging
 import os
 
 from django.conf import settings
+from django.utils.translation import gettext as _
 
 from . import actions as action_executor
 from .card_renderer import parse_cards_from_text
@@ -463,7 +464,7 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
             )
         except Exception as e:
             logger.exception("Anthropic API error")
-            full_response = f"⚠️ Ошибка API: {e}"
+            full_response = _("⚠️ Ошибка API: %(e)s") % {"e": e}
     else:
         full_response = _stub_with_action(user_message, context_chunks, conversation.role, user)
 
@@ -808,7 +809,7 @@ def process_query_stream(conversation: Conversation, user_message: str):
             yield {"type": "token", "text": full_response}
         except Exception as e:
             logger.exception("Anthropic streaming error")
-            err = f"⚠️ Ошибка API: {e}"
+            err = _("⚠️ Ошибка API: %(e)s") % {"e": e}
             yield {"type": "token", "text": err}
             full_response = err
     else:

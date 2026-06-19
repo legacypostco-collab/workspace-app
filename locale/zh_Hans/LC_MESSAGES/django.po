@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-19 14:20+0300\n"
+"POT-Creation-Date: 2026-06-19 14:24+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -13625,17 +13625,14 @@ msgid "📋 Правила и тарифы платформы (раскрыть)
 msgstr "📋 平台规则与费率（展开）"
 
 #: assistant/operator_actions.py:3571 assistant/operator_actions.py:3925
-#| msgid "Добро пожаловать в кабинет поставщика!"
 msgid "Что платит клиент (по базису поставки)"
 msgstr "客户支付内容（按交付条件）"
 
 #: assistant/operator_actions.py:3573 assistant/operator_actions.py:3927
-#| msgid "Условия оплаты"
 msgid "Условия оплаты клиентом (10 / 80 / 10)"
 msgstr "客户付款条件（10 / 80 / 10）"
 
 #: assistant/operator_actions.py:3575 assistant/operator_actions.py:3929
-#| msgid "Триггеры закрывает поставщик / оператор."
 msgid "Что получает поставщик и как работает депозит"
 msgstr "供应商获得什么以及保证金如何运作"
 
@@ -14445,6 +14442,12 @@ msgstr "价目表导入历史"
 #: assistant/pricelist.py:3751 assistant/seller_actions.py:1991
 msgid "📤 Новая загрузка"
 msgstr "📤 新上传"
+
+#: assistant/rag.py:467 assistant/rag.py:812
+#, python-format
+#| msgid "⚠️ Ошибка выполнения: %(e)s"
+msgid "⚠️ Ошибка API: %(e)s"
+msgstr "⚠️ API 错误：%(e)s"
 
 #: assistant/referral.py:65
 msgid "−$100 на первый заказ — зачёт при пополнении депозита"
