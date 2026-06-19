@@ -1,6 +1,14 @@
 """
-Custom middleware: applies the authenticated user's preferred language
-(stored in UserProfile.language) to the current request.
+Custom middleware: applies the authenticated user's preferred language.
+
+Приоритет:
+  1. cookie `django_language` (явный выбор пользователя — его уже активировал
+     LocaleMiddleware). Профиль подлечивается под cookie, чтобы не расходились.
+  2. UserProfile.language (если cookie нет — напр. свежий вход с устройства).
+
+Раньше middleware безусловно форсил profile.language поверх cookie → если POST
+`/api/set-language/` не сохранил профиль (CSRF/ошибка), возникал split-brain
+(cookie=en, profile=ru) и страница оставалась русской при выбранном English.
 
 Anonymous users fall back to the session-stored or Accept-Language value
 that Django's LocaleMiddleware already resolved.
@@ -8,6 +16,7 @@ that Django's LocaleMiddleware already resolved.
 Must run AFTER `django.middleware.locale.LocaleMiddleware` and AFTER
 `AuthenticationMiddleware` so `request.user` is populated.
 """
+from django.conf import settings
 from django.http import HttpResponseRedirect
 from django.utils import translation
 
@@ -79,13 +88,34 @@ class UserLanguageMiddleware:
     def __call__(self, request):
         user = getattr(request, "user", None)
         if user is not None and getattr(user, "is_authenticated", False):
+            cookie_name = getattr(settings, "LANGUAGE_COOKIE_NAME", "django_language") or "django_language"
+            cookie_lang = (request.COOKIES.get(cookie_name) or "").strip().lower()
+            allowed = {code for code, _label in settings.LANGUAGES}
             try:
-                lang = getattr(getattr(user, "profile", None), "language", None)
+                profile = getattr(user, "profile", None)
             except Exception:
-                lang = None
-            if lang:
-                translation.activate(lang)
-                request.LANGUAGE_CODE = lang
+                profile = None
+            prof_lang = (getattr(profile, "language", None) or "").strip().lower()
+
+            if cookie_lang in allowed:
+                # Явный выбор языка в cookie `django_language` — главный.
+                # LocaleMiddleware его уже активировал; свежий выбор НЕ должен
+                # перебиваться устаревшим profile.language (раньше был split-brain:
+                # cookie=en, profile=ru → форсился ru, и страница оставалась русской).
+                translation.activate(cookie_lang)
+                request.LANGUAGE_CODE = cookie_lang
+                # Подлечиваем профиль, чтобы preference не расходился (нужно для
+                # входа с другого устройства без cookie). Один раз на расхождение.
+                if profile is not None and prof_lang != cookie_lang:
+                    try:
+                        profile.language = cookie_lang
+                        profile.save(update_fields=["language"])
+                    except Exception:
+                        pass
+            elif prof_lang in allowed:
+                # Cookie нет (напр. свежий вход) — берём язык из профиля.
+                translation.activate(prof_lang)
+                request.LANGUAGE_CODE = prof_lang
         response = self.get_response(request)
         translation.deactivate()
         return response
