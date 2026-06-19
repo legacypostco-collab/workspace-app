@@ -2641,7 +2641,7 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
 
     # Кэшируем preview HTML в БД — мгновенный показ без openpyxl re-parse
     from html import escape as _h
-    headers_html = "".join(f"<th>{_h(label)}</th>" for label, _ in OUTPUT_COLS)
+    headers_html = "".join(f"<th>{_h(label)}</th>" for label, _u1 in OUTPUT_COLS)
     truncated = written > PREVIEW_LIMIT
     note = (_('<div class="opx-note">Показаны первые %(limit)s из %(total)s строк</div>') % {
         "limit": PREVIEW_LIMIT, "total": written}) if truncated else ""
@@ -3263,7 +3263,7 @@ class PricelistAiEstimateView(APIView):
                 "height_cm": est["height_cm"],
                 "confidence": conf,
             })
-        low_conf_count = sum(1 for c, _, _, _ in scored if c < 0.6)
+        low_conf_count = sum(1 for c, _u1, _u2, _u3 in scored if c < 0.6)
 
         return Response({
             "ok": True,

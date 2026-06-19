@@ -816,7 +816,7 @@ def process_query_stream(conversation: Conversation, user_message: str):
         # Stub mode — heuristic action call. Stream ONLY the clean text (no :::blocks),
         # then deliver cards/actions through the structured event below.
         full_response = _stub_with_action(user_message, context_chunks, conversation.role, conversation.user)
-        clean_for_stream, _, _ = parse_cards_from_text(full_response)
+        clean_for_stream, _u1, _u2 = parse_cards_from_text(full_response)
         # Strip [card:type] markers from the streamed text (they were placeholders)
         import re as _re
         clean_for_stream = _re.sub(r"\[card:\w+\]\s*", "", clean_for_stream).strip()

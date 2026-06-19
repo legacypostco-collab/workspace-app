@@ -66,7 +66,7 @@ def setup_2fa(params, user, role):
     secret = pyotp.random_base32()
     twofa.secret = secret
     # Backup codes — 8 одноразовых, разделённых запятой
-    backup = [secrets.token_hex(4) for _ in range(8)]
+    backup = [secrets.token_hex(4) for _u1 in range(8)]
     twofa.backup_codes = ",".join(backup)
     twofa.save(update_fields=["secret", "backup_codes"])
 

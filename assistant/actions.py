@@ -1872,7 +1872,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             for it in items:
                 if it["status"] != "in_stock":
                     continue
-                p_match = next((p for p, q, _, _ in resolved_parts if p.oem_number == it["id"]), None)
+                p_match = next((p for p, q, _u1, _u2 in resolved_parts if p.oem_number == it["id"]), None)
                 if p_match and p_match.id in line_map:
                     s = line_map[p_match.id]
                     it["ship_cost"] = s
@@ -1907,7 +1907,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                       for it in items if it.get("item_mode") == "auto" and it.get("price"))
     semi_ids = [str(it.get("part_id") or "") for it in items if it.get("item_mode") == "semi" and it.get("part_id")]
     manual_arts = [it["id"] for it in items if it.get("item_mode") == "manual" and it.get("id")]
-    qty_param = {pid: q for pid, q in matched_qty_pairs} if any(q != 1 for _, q in matched_qty_pairs) else None
+    qty_param = {pid: q for pid, q in matched_qty_pairs} if any(q != 1 for _u1, q in matched_qty_pairs) else None
     # Pre-считаем счётчики для labels (агрегация card_mode идёт позже,
     # но нам нужно знать «есть ли другие режимы» уже здесь).
     _auto_n = len(auto_ids)
@@ -2157,7 +2157,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             ],
             "product_ids": matched_ids,
             "product_quantities": ({pid: q for pid, q in matched_qty_pairs}
-                                    if any(q != 1 for _, q in matched_qty_pairs) else None),
+                                    if any(q != 1 for _u1, q in matched_qty_pairs) else None),
         },
     }
 
@@ -2376,7 +2376,7 @@ def _classify_rfq_mode(items_to_add, user, params) -> tuple[str, str]:
             _('semi · недостаточно предложений (<%(min_offers)s) по %(insufficient_offers)s позициям (§5.2)') % {'min_offers': min_offers, 'insufficient_offers': len(insufficient_offers)}
         )
     if untrusted_executor:
-        kinds = ",".join(sorted(set(s for _, s in untrusted_executor)))
+        kinds = ",".join(sorted(set(s for _u1, s in untrusted_executor)))
         return "semi", (
             _('semi · исполнитель не trusted (%(kinds)s) · требуется подтверждение оператора (§6.2)') % {'kinds': kinds}
         )
@@ -3433,7 +3433,7 @@ def order_batch_items(params, user, role):
         return ActionResult(text=_('В этой партии нет позиций.'))
 
     if is_buyer and role == "buyer":
-        order_sids = [s for s, _ in sorted(by_amt.items(), key=lambda kv: -kv[1])]
+        order_sids = [s for s, _u1 in sorted(by_amt.items(), key=lambda kv: -kv[1])]
         try:
             sup_label = _('Поставщик %(sid)s') % {'sid': chr(ord('A') + order_sids.index(sid))}
         except ValueError:
@@ -4842,7 +4842,7 @@ def get_analytics(params, user, role):
         _lbl = _status_disp.get(_row["status"], _row["status"] or "—")
         by_status[_lbl] += _row["_c"]
     status_items = sorted(by_status.items(), key=lambda x: -x[1])[:6]
-    max_val = max((v for _, v in status_items), default=1)
+    max_val = max((v for _u1, v in status_items), default=1)
 
     # Динамика по месяцам (последние 6)
     months = []
@@ -5165,7 +5165,7 @@ def compare_suppliers(params, user, role):
         # Для buyer — анонимизируем: только rank + рейтинг, без имени и email
         rows = [
             [f"Поставщик №{i + 1}", "—"]
-            for i, _ in enumerate(sellers)
+            for i, _u1 in enumerate(sellers)
         ]
     else:
         rows = [[s.get_full_name() or s.username, s.email or "—"] for s in sellers]
@@ -5582,7 +5582,7 @@ def get_demand_report(params, user, role):
                   if it.matched_part_id and it.matched_part.brand_id else "Без бренда")
         brand_counter[brand] += it.quantity or 1
     top_brands = brand_counter.most_common(8)
-    max_brand_val = max((v for _, v in top_brands), default=1)
+    max_brand_val = max((v for _u1, v in top_brands), default=1)
 
     # ── Топ-OEM (артикулы) ──────────────────────────────────
     oem_counter = Counter()
@@ -5630,10 +5630,10 @@ def get_demand_report(params, user, role):
     # Концентрация спроса: какая доля у топ-3 брендов
     top3_share = 0
     if top_brands:
-        total_brand_v = sum(v for _, v in top_brands) or 1
-        top3_share = int(sum(v for _, v in top_brands[:3]) * 100 / total_brand_v)
+        total_brand_v = sum(v for _u1, v in top_brands) or 1
+        top3_share = int(sum(v for _u1, v in top_brands[:3]) * 100 / total_brand_v)
     # Доля повторных OEM (повторяемость) — индикатор регулярного спроса
-    repeat_oem = sum(1 for _, c in oem_counter.items() if c > 1)
+    repeat_oem = sum(1 for _u1, c in oem_counter.items() if c > 1)
     repeat_pct = int(repeat_oem * 100 / max(unique_oem, 1))
     # Coverage gap (для seller)
     gap_n = len(coverage_lines) if seller else 0
@@ -5677,7 +5677,7 @@ def get_demand_report(params, user, role):
     if top_brands:
         brand_items = [{
             "title":    _('%(b)s · %(v)s позиций') % {'b': b, 'v': v},
-            "subtitle": _('доля %(top_brands)s%% от спроса') % {'top_brands': round(v/sum(c for _,c in top_brands)*100)},
+            "subtitle": _('доля %(top_brands)s%% от спроса') % {'top_brands': round(v/sum(c for _u1,c in top_brands)*100)},
             "badge":    {"label": str(v), "tone": "info"},
         } for b, v in top_brands]
         cards.append({"type": "list", "data": {
@@ -6346,7 +6346,7 @@ def get_claims(params, user, role):
         }})
 
     # 2. Активные (не просроченные)
-    overdue_ids = {c.id for c, _ in overdue}
+    overdue_ids = {c.id for c, _u1 in overdue}
     active_rows = []
     for c in all_claims:
         if c.id in overdue_ids:
@@ -7833,7 +7833,7 @@ def top_suppliers(params, user, role):
             _('Топ-3 поставщика по вашей спеке. Имена скрыты — раскрываются после принятия котировки. Создать RFQ всем?')
         )
         # Используем индексы вместо имён в action params
-        compare_ids = [f"supplier_{i + 1}" for i, _ in enumerate(suppliers)]
+        compare_ids = [f"supplier_{i + 1}" for i, _u1 in enumerate(suppliers)]
     else:
         intro = (
             _('Рекомендую разослать всем трём — Caterpillar Eurasia может не покрыть 7 позиций, остальные дадут конкуренцию по цене. Создать RFQ?')
@@ -8238,7 +8238,7 @@ def quick_order(params, user, role):
     if ship_breakdown:
         # Самый частый mode среди позиций
         from collections import Counter
-        default_mode = Counter(m for _, m, _, _ in ship_breakdown).most_common(1)[0][0]
+        default_mode = Counter(m for _u1, m, _u2, _u3 in ship_breakdown).most_common(1)[0][0]
     order.shipping_mode = chosen_mode or default_mode or "sea"
     order.incoterm = chosen_inc
     order.logistics_cost = ship_total
@@ -8919,7 +8919,7 @@ def shipment_flow(incoterm: str):
     done_code == "pay" → готов по оплате резерва; иначе этап done, когда индекс
     статуса заказа >= индекса done_code в TRACKING_STAGES.
     """
-    off = {c: d for c, _, d in TRACKING_STAGES}
+    off = {c: d for c, _u1, d in TRACKING_STAGES}
     inc = (incoterm or "DDP").upper()
     if inc == "FOB":
         return [
@@ -10175,7 +10175,7 @@ def track_order(params, user, role):
     parts_data = []
     total_amt = float(order.total_amount or 0) or 1.0
     is_real_op = role in ("operator", "admin") and getattr(user, "is_staff", False)
-    _ORDER_CODES = [c for c, _, _ in TRACKING_STAGES]
+    _ORDER_CODES = [c for c, _u1, _u2 in TRACKING_STAGES]
 
     shipments = list(order.shipments.prefetch_related("items__part__seller").all()) \
                 if hasattr(order, "shipments") else []

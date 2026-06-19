@@ -1204,7 +1204,7 @@ def op_order_detail(params, user, role):
     from .customs_data import required_certs_for as _req_certs
 
     # 1. Загруженные документы — OrderDocument с группировкой по типу
-    uploaded = {dt: [] for dt, _ in OrderDocument.DOC_TYPE_CHOICES}
+    uploaded = {dt: [] for dt, _u1 in OrderDocument.DOC_TYPE_CHOICES}
     for d in OrderDocument.objects.filter(order=order):
         uploaded.setdefault(d.doc_type, []).append(d)
 

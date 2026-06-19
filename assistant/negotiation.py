@@ -101,7 +101,7 @@ def auto_generate_quotes_from_catalog(rfq, recipients) -> int:
         delivery_days = max(
             (int(p.production_lead_days or 0) + int(p.prep_to_ship_days or 0)
              + int(p.shipping_lead_days or 0))
-            for _, p, _, _ in items_data
+            for _u1, p, _u2, _u3 in items_data
         ) or 14
 
         try:
