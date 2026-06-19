@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-19 13:59+0300\n"
+"POT-Creation-Date: 2026-06-19 14:20+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -899,7 +899,7 @@ msgstr "Aún no tiene pedidos."
 msgid "Найти запчасть"
 msgstr "Buscar una pieza"
 
-#: assistant/actions.py:2733 assistant/actions.py:2921 assistant/actions.py:3068 assistant/actions.py:3077 assistant/actions.py:3221 assistant/actions.py:3483 assistant/actions.py:3492 assistant/actions.py:5031 assistant/actions.py:5959 assistant/actions.py:6009 assistant/actions.py:9646 assistant/actions.py:10491 assistant/actions.py:10503 assistant/actions.py:10521 assistant/actions.py:11079 assistant/documents.py:850 assistant/documents.py:963 assistant/kp_workflow.py:176 assistant/models.py:32 assistant/operator_actions.py:725 assistant/operator_actions.py:735 assistant/views.py:1356 templates/admin_panel/analytics.html:78 templates/admin_panel/finance.html:113 templates/admin_panel/moderation.html:126 templates/admin_panel/orders.html:63 templates/admin_panel/rfq.html:57 templates/admin_panel/user_detail.html:40 templates/admin_panel/user_detail.html:123 templates/admin_panel/user_detail.html:247 templates/admin_panel/users.html:79 templates/chat/index.html:3761 templates/chat/project.html:421 templates/operator/logist/shipments.html:47 templates/operator/manager/analytics.html:181 templates/operator/manager/clients.html:32 templates/operator/manager/clients.html:47 templates/operator/manager/clients.html:62 templates/operator/manager/clients.html:77 templates/operator/manager/clients.html:92 templates/operator/manager/clients.html:250 templates/operator/manager/dashboard.html:116 templates/operator/manager/negotiations.html:163 templates/operator/manager/negotiations.html:183 templates/operator/manager/negotiations.html:244 templates/operator/manager/negotiations.html:282 templates/operator/manager/orders.html:28 templates/operator/manager/shipments.html:39 templates/operator/payments/analytics.html:126 templates/operator/payments/dashboard.html:42 templates/operator/payments/escrow.html:36 templates/operator/payments/invoices.html:38 templates/operator/payments/reconciliation.html:38 templates/seller/negotiations/list.html:385 templates/seller/negotiations/list.html:456
+#: assistant/actions.py:2733 assistant/actions.py:2921 assistant/actions.py:3068 assistant/actions.py:3077 assistant/actions.py:3221 assistant/actions.py:3483 assistant/actions.py:3492 assistant/actions.py:5031 assistant/actions.py:5959 assistant/actions.py:6009 assistant/actions.py:6326 assistant/actions.py:9646 assistant/actions.py:10491 assistant/actions.py:10503 assistant/actions.py:10521 assistant/actions.py:11079 assistant/documents.py:850 assistant/documents.py:963 assistant/kp_workflow.py:176 assistant/models.py:32 assistant/operator_actions.py:725 assistant/operator_actions.py:735 assistant/views.py:1356 templates/admin_panel/analytics.html:78 templates/admin_panel/finance.html:113 templates/admin_panel/moderation.html:126 templates/admin_panel/orders.html:63 templates/admin_panel/rfq.html:57 templates/admin_panel/user_detail.html:40 templates/admin_panel/user_detail.html:123 templates/admin_panel/user_detail.html:247 templates/admin_panel/users.html:79 templates/chat/index.html:3761 templates/chat/project.html:421 templates/operator/logist/shipments.html:47 templates/operator/manager/analytics.html:181 templates/operator/manager/clients.html:32 templates/operator/manager/clients.html:47 templates/operator/manager/clients.html:62 templates/operator/manager/clients.html:77 templates/operator/manager/clients.html:92 templates/operator/manager/clients.html:250 templates/operator/manager/dashboard.html:116 templates/operator/manager/negotiations.html:163 templates/operator/manager/negotiations.html:183 templates/operator/manager/negotiations.html:244 templates/operator/manager/negotiations.html:282 templates/operator/manager/orders.html:28 templates/operator/manager/shipments.html:39 templates/operator/payments/analytics.html:126 templates/operator/payments/dashboard.html:42 templates/operator/payments/escrow.html:36 templates/operator/payments/invoices.html:38 templates/operator/payments/reconciliation.html:38 templates/seller/negotiations/list.html:385 templates/seller/negotiations/list.html:456
 msgid "Покупатель"
 msgstr "Comprador"
 
@@ -2183,7 +2183,6 @@ msgstr "Proveedor n.º%(idx)s"
 
 #: assistant/actions.py:5173
 #, python-format
-#| msgid "Топ поставщиков"
 msgid "Топ поставщиков (%(n)s):"
 msgstr "Principales proveedores (%(n)s):"
 
@@ -5029,7 +5028,6 @@ msgstr "🚚 Transportista / Logístico"
 
 #: assistant/actions.py:10572
 #, python-format
-#| msgid "📦 Открыть трекинг"
 msgid "🔗 Открыть трекинг %(c)s"
 msgstr "🔗 Abrir seguimiento %(c)s"
 
@@ -5344,7 +5342,6 @@ msgstr "El comprador confirmó la recepción — $%(amount)s abonados a la cuent
 
 #: assistant/actions.py:11176
 #, python-format
-#| msgid "✓ Заказ закрыт. Эскроу освобождён."
 msgid "✓ Заказ #%(id)s закрыт. Спасибо за приёмку!"
 msgstr "✓ Pedido #%(id)s cerrado. ¡Gracias por la aceptación!"
 
@@ -8110,7 +8107,6 @@ msgid "Управление"
 msgstr "Gestión"
 
 #: assistant/conv_category.py:102 assistant/support_hub.py:330
-#| msgid "Покупка"
 msgid "Покупки"
 msgstr "Compras"
 
@@ -8119,7 +8115,6 @@ msgid "Поддержка"
 msgstr "Soporte"
 
 #: assistant/conv_category.py:116
-#| msgid "📦 Мои товары"
 msgid "Мои товары"
 msgstr "Mis productos"
 
@@ -8132,67 +8127,54 @@ msgid "Интеграции"
 msgstr "Integraciones"
 
 #: assistant/conv_category.py:120
-#| msgid "Аналитика спроса"
 msgid "Аналитика продавца"
 msgstr "Analítica del vendedor"
 
 #: assistant/conv_category.py:121
-#| msgid "RFQ и котировки"
 msgid "Мои котировки"
 msgstr "Mis cotizaciones"
 
 #: assistant/conv_category.py:122
-#| msgid "📤 Запрос выплаты"
 msgid "Запрос оплаты"
 msgstr "Solicitud de pago"
 
 #: assistant/conv_category.py:123
-#| msgid "Отменить заказ"
 msgid "Отмена ожидающего заказа"
 msgstr "Cancelar pedido pendiente"
 
 #: assistant/conv_category.py:124
-#| msgid "Сравнить котировки"
 msgid "Отправить котировку"
 msgstr "Enviar cotización"
 
 #: assistant/conv_category.py:128
-#| msgid "Отслеживание"
 msgid "Отслеживание заказа"
 msgstr "Seguimiento del pedido"
 
 #: assistant/conv_category.py:129
-#| msgid "Отслеживание истории"
 msgid "Отслеживание доставки"
 msgstr "Seguimiento del envío"
 
 #: assistant/conv_category.py:130
-#| msgid "Статус RFQ"
 msgid "Статусы RFQ"
 msgstr "Estados de RFQ"
 
 #: assistant/conv_category.py:131
-#| msgid "Детали "
 msgid "Детали RFQ"
 msgstr "Detalles de RFQ"
 
 #: assistant/conv_category.py:133
-#| msgid "Нет запчастей"
 msgid "Поиск запчастей"
 msgstr "Búsqueda de repuestos"
 
 #: assistant/conv_category.py:134
-#| msgid "Сравнение %(parts)s товаров:"
 msgid "Сравнение товаров"
 msgstr "Comparación de productos"
 
 #: assistant/conv_category.py:135
-#| msgid "Сравнить поставщиков"
 msgid "Сравнение поставщиков"
 msgstr "Comparación de proveedores"
 
 #: assistant/conv_category.py:136
-#| msgid "Топ поставщиков"
 msgid "Топ-поставщиков"
 msgstr "Mejores proveedores"
 
@@ -8205,7 +8187,6 @@ msgid "Аналитика"
 msgstr "Analítica"
 
 #: assistant/conv_category.py:139
-#| msgid "Ожидает покупателя"
 msgid "Скидка покупателя"
 msgstr "Descuento del comprador"
 
@@ -8214,7 +8195,6 @@ msgid "Экономия"
 msgstr "Ahorros"
 
 #: assistant/conv_category.py:141
-#| msgid "Расчёт и закупка"
 msgid "Быстрая покупка"
 msgstr "Compra rápida"
 
@@ -8235,12 +8215,10 @@ msgid "Рекламации"
 msgstr "Reclamaciones"
 
 #: assistant/conv_category.py:149
-#| msgid "Нет рекламаций"
 msgid "Детали рекламации"
 msgstr "Detalles de la reclamación"
 
 #: assistant/conv_category.py:152
-#| msgid "Входящие"
 msgid "Вход"
 msgstr "Iniciar sesión"
 
@@ -8249,37 +8227,30 @@ msgid "Регистрация"
 msgstr "Registro"
 
 #: assistant/conv_category.py:154
-#| msgid "Верификация компании"
 msgid "Верификация · Начало"
 msgstr "Verificación · Inicio"
 
 #: assistant/conv_category.py:155
-#| msgid "Верификация компании"
 msgid "Верификация · Компания"
 msgstr "Verificación · Empresa"
 
 #: assistant/conv_category.py:156
-#| msgid "🛡 Верификация / KYB"
 msgid "Верификация · Адрес"
 msgstr "Verificación · Dirección"
 
 #: assistant/conv_category.py:157
-#| msgid "Верификация компании"
 msgid "Верификация · Реквизиты"
 msgstr "Verificación · Datos bancarios"
 
 #: assistant/conv_category.py:158
-#| msgid "Верификация компании"
 msgid "Верификация · Директор"
 msgstr "Verificación · Director"
 
 #: assistant/conv_category.py:159
-#| msgid "Верификация компании"
 msgid "Верификация · Отправка"
 msgstr "Verificación · Envío"
 
 #: assistant/conv_category.py:160
-#| msgid "Статус интеграции"
 msgid "Статус верификации"
 msgstr "Estado de verificación"
 
@@ -8288,7 +8259,6 @@ msgid "Настройки"
 msgstr "Ajustes"
 
 #: assistant/conv_category.py:164
-#| msgid "🔔 Настройки уведомлений"
 msgid "Настройки уведомлений"
 msgstr "Ajustes de notificaciones"
 
@@ -8297,27 +8267,22 @@ msgid "Двухфакторная аутентификация"
 msgstr "Autenticación de dos factores"
 
 #: assistant/conv_category.py:167
-#| msgid "без оператора"
 msgid "Дашборд оператора"
 msgstr "Panel del operador"
 
 #: assistant/conv_category.py:168
-#| msgid "Очередь платежей"
 msgid "Очередь пополнений"
 msgstr "Cola de recargas"
 
 #: assistant/conv_category.py:169
-#| msgid "Очередь KYB"
 msgid "Очередь RFQ"
 msgstr "Cola de RFQ"
 
 #: assistant/conv_category.py:170
-#| msgid "Аналитика спроса"
 msgid "Аналитика оператора"
 msgstr "Analítica del operador"
 
 #: assistant/conv_category.py:171
-#| msgid "Отчёт"
 msgid "Отчёт по SLA"
 msgstr "Informe de SLA"
 
@@ -8326,7 +8291,6 @@ msgid "База знаний"
 msgstr "Base de conocimientos"
 
 #: assistant/conv_category.py:174
-#| msgid "История действий"
 msgid "Журнал действий"
 msgstr "Registro de actividad"
 
@@ -8339,7 +8303,6 @@ msgid "QR-код"
 msgstr "Código QR"
 
 #: assistant/conv_category.py:178
-#| msgid "Калькулятор"
 msgid "Калькулятор цены"
 msgstr "Calculadora de precios"
 
@@ -8408,7 +8371,6 @@ msgid "OFAC: КНДР · полные санкции"
 msgstr "OFAC: Corea del Norte · sanciones totales"
 
 #: assistant/customs_data.py:100
-#| msgid "Что проверить на санкции?"
 msgid "OFAC: Иран · вторичные санкции"
 msgstr "OFAC: Irán · sanciones secundarias"
 
@@ -8417,7 +8379,6 @@ msgid "OFAC: Сирия"
 msgstr "OFAC: Siria"
 
 #: assistant/customs_data.py:102
-#| msgid "С ограничениями"
 msgid "OFAC: Куба · ограничения"
 msgstr "OFAC: Cuba · restricciones"
 
@@ -8430,7 +8391,6 @@ msgid "EAR: dual-use чипы"
 msgstr "EAR: chips de doble uso"
 
 #: assistant/documents.py:427
-#| msgid "Покупатель "
 msgid "Покупатель / Buyer"
 msgstr "Comprador / Buyer"
 
@@ -8514,17 +8474,14 @@ msgid "Оператор"
 msgstr "Operador"
 
 #: assistant/documents.py:871 assistant/documents.py:992
-#| msgid "подписку"
 msgid "подписи: "
 msgstr "firmas: "
 
 #: assistant/documents.py:873
-#| msgid "✍️ Подписать и отправить"
 msgid "черновик — подпишите, чтобы отправить"
 msgstr "borrador — firme para enviar"
 
 #: assistant/documents.py:875
-#| msgid "Не подобрана"
 msgid "не подписан"
 msgstr "sin firmar"
 
@@ -8592,7 +8549,6 @@ msgid "Вы уже подписали «%(p0)s»."
 msgstr "Usted ya ha firmado «%(p0)s»."
 
 #: assistant/documents.py:969
-#| msgid "Топ участников"
 msgid "участник"
 msgstr "participante"
 
@@ -8607,7 +8563,6 @@ msgid "«%(p0)s» подписан (%(p1)s). Откройте «Все доку�
 msgstr "«%(p0)s» firmado (%(p1)s). Abra «Todos los documentos» del pedido para ver/firmar."
 
 #: assistant/documents.py:980
-#| msgid "Доставлено сегодня"
 msgid " Отправлено — уведомлены: "
 msgstr " Enviado — notificados: "
 
@@ -8618,7 +8573,6 @@ msgstr "✅ Ha firmado «%(title)s» (firma electrónica simple). La firma está
 
 #: assistant/documents.py:989
 #, python-format
-#| msgid "Компания %(status)s"
 msgid ""
 "\n"
 "Подписи: %(status)s"
@@ -8689,11 +8643,6 @@ msgstr "Pedido #%(p0)s — %(p1)s"
 
 #: assistant/kp_workflow.py:71
 #, python-format
-#| msgid ""
-#| "✅ КП подтверждено — сделка перешла в работу.\n"
-#| "Заказ ORD-%(p0)s · инвойс $%(p1)s\n"
-#| "Резерв 10%% ($%(p2)s) списан · остаток депозита $%(p3)s\n"
-#| "Чат теперь — сделка. Commercial Invoice выставлен."
 msgid ""
 "✅ КП подтверждено — сделка перешла в работу.\n"
 "Заказ ORD-%(p0)s · $%(p1)s · резерв 10%% ($%(p2)s) удержан в эскроу."
@@ -8710,7 +8659,6 @@ msgid "Просматривать КП может только заказчик.
 msgstr "Solo el cliente puede ver la cotización."
 
 #: assistant/kp_workflow.py:140
-#| msgid "По этому RFQ ещё нет котировок. Подождите рассылки или измените режим."
 msgid "По RFQ ещё нет готовых котировок. Дождитесь сбора КП."
 msgstr "Todavía no hay cotizaciones listas para esta RFQ. Espere a que se recopilen las cotizaciones."
 
@@ -8719,7 +8667,6 @@ msgid "Документ"
 msgstr "Documento"
 
 #: assistant/kp_workflow.py:177
-#| msgid "Стамбул → Москва · ожидает подтверждения"
 msgid "Поставщик №1 (имя раскрывается после подтверждения)"
 msgstr "Vendedor n.º 1 (el nombre se revela tras la confirmación)"
 
@@ -8784,7 +8731,6 @@ msgid "После подтверждения чат переключится в 
 msgstr "Tras la confirmación, el chat cambiará al modo de operación (shipment)."
 
 #: assistant/kp_workflow.py:213
-#| msgid "После клика будет создан Order, остальные котировки автоматически отклоняются."
 msgid "Остальные котировки по этому RFQ автоматически отклоняются."
 msgstr "Las demás cotizaciones de esta RFQ se rechazan automáticamente."
 
@@ -8888,7 +8834,6 @@ msgstr "Pedido realizado"
 
 #: assistant/kp_workflow.py:402
 #, python-format
-#| msgid "Резерв 10% оплачен"
 msgid "Резерв $%(p0)s удержан"
 msgstr "Reserva de $%(p0)s retenida"
 
@@ -8916,12 +8861,10 @@ msgstr "Preguntar al cliente"
 
 #: assistant/kp_workflow.py:456
 #, python-format
-#| msgid "%(m)s мин"
 msgid "⏱ SLA: %(p0)s мин"
 msgstr "⏱ SLA: %(p0)s min"
 
 #: assistant/kp_workflow.py:457
-#| msgid "SLA нарушено"
 msgid "⚠️ SLA нарушен"
 msgstr "⚠️ SLA incumplido"
 
@@ -8965,7 +8908,6 @@ msgid "📋 КП по RFQ #%(p0)s готово к рассмотрению"
 msgstr "📋 La oferta del RFQ #%(p0)s está lista para revisión"
 
 #: assistant/kp_workflow.py:492
-#| msgid "Оператор сформировал инвойс на $%(p0)s. Откройте, чтобы подтвердить и зарезервировать 10%%."
 msgid "Оператор одобрил расчёт. Откройте, чтобы подтвердить и зарезервировать 10%."
 msgstr "El operador aprobó el cálculo. Abra para confirmar y reservar el 10%."
 
@@ -10197,12 +10139,10 @@ msgid "Верификация компании"
 msgstr "Verificación de la empresa"
 
 #: assistant/onboarding.py:339 assistant/onboarding.py:1310
-#| msgid "Проверен"
 msgid "Проверено"
 msgstr "Comprobado"
 
 #: assistant/onboarding.py:340
-#| msgid "Верифицирована"
 msgid "✓ Верифицирована"
 msgstr "✓ Verificada"
 
@@ -10271,12 +10211,10 @@ msgid "➡ %(label)s"
 msgstr "➡ %(label)s"
 
 #: assistant/onboarding.py:445
-#| msgid "Сколько времени рассматривается рекламация?"
 msgid "Сколько времени занимает верификация?"
 msgstr "¿Cuánto tarda la verificación?"
 
 #: assistant/onboarding.py:446
-#| msgid "Все документы загружены"
 msgid "Какие документы нужны?"
 msgstr "¿Qué documentos se necesitan?"
 
@@ -10401,7 +10339,6 @@ msgid "В зависимости от страны мы попросим раз�
 msgstr "Según el país, solicitaremos datos diferentes: INN para Rusia, Trade License para los EAU, USCC para China, etc."
 
 #: assistant/onboarding.py:559
-#| msgid "Далее"
 msgid "Далее →"
 msgstr "Siguiente →"
 
@@ -10410,7 +10347,6 @@ msgid "Полное наименование компании"
 msgstr "Nombre completo de la empresa"
 
 #: assistant/onboarding.py:576
-#| msgid "Полное наименование компании"
 msgid "Полное наименование (как в ЕГРЮЛ)"
 msgstr "Denominación completa (como en el registro mercantil)"
 
@@ -10429,7 +10365,6 @@ msgstr "← Cambiar país"
 
 #: assistant/onboarding.py:608
 #, python-format
-#| msgid "обязательное поле"
 msgid "%(label)s — обязательное поле"
 msgstr "%(label)s — campo obligatorio"
 
@@ -10524,7 +10459,6 @@ msgid "Для российских банков указываем БИК (9 ц�
 msgstr "Para bancos rusos, indique el BIK (9 dígitos) y la cuenta corriente de 20 dígitos."
 
 #: assistant/onboarding.py:733
-#| msgid "IBAN если страна его поддерживает, иначе локальный номер счёта"
 msgid "Для международного перевода нужны SWIFT/BIC код банка и IBAN (или локальный номер счёта)."
 msgstr "Para una transferencia internacional se necesitan el código SWIFT/BIC del banco y el IBAN (o número de cuenta local)."
 
@@ -10587,7 +10521,6 @@ msgid "Счёт"
 msgstr "Factura"
 
 #: assistant/onboarding.py:850
-#| msgid "Эту котировку нельзя зафиксировать в текущем состоянии."
 msgid "После отправки данные нельзя редактировать до решения оператора."
 msgstr "Tras el envío, los datos no podrán editarse hasta que el operador tome una decisión."
 
@@ -10683,37 +10616,30 @@ msgid "По чему вас будут искать в каталоге плат
 msgstr "Cómo le encontrarán en el catálogo de la plataforma"
 
 #: assistant/onboarding.py:992
-#| msgid "Сайт компании"
 msgid "🌐 Сайт компании"
 msgstr "🌐 Sitio web de la empresa"
 
 #: assistant/onboarding.py:993
-#| msgid "🙋 Подобрать менеджера"
 msgid "💬 Подключить мессенджер"
 msgstr "💬 Conectar un mensajero"
 
 #: assistant/onboarding.py:994
-#| msgid "Контактный email"
 msgid "📧 Контактный email"
 msgstr "📧 Correo de contacto"
 
 #: assistant/onboarding.py:995
-#| msgid "Телефон компании"
 msgid "📞 Телефон компании"
 msgstr "📞 Teléfono de la empresa"
 
 #: assistant/onboarding.py:996
-#| msgid "адрес склада"
 msgid "📍 Адрес склада"
 msgstr "📍 Dirección del almacén"
 
 #: assistant/onboarding.py:997
-#| msgid "Бренды и категории запчастей"
 msgid "🏷 Бренды и категории"
 msgstr "🏷 Marcas y categorías"
 
 #: assistant/onboarding.py:999
-#| msgid "Полное наименование компании"
 msgid "📝 Дополнительные данные компании"
 msgstr "📝 Datos adicionales de la empresa"
 
@@ -10742,7 +10668,6 @@ msgid "поля"
 msgstr "campos"
 
 #: assistant/onboarding.py:1052
-#| msgid "Изменение"
 msgid "Изменений нет."
 msgstr "Sin cambios."
 
@@ -10759,7 +10684,6 @@ msgid "Документы, подтверждающие что вы официа
 msgstr "Documentos que confirman que eres distribuidor oficial de las marcas (CAT, Komatsu, Volvo CE, etc.). Tras la carga, el operador los verificará y otorgará la insignia «Distribuidor oficial»: esto aumenta mucho la confianza de los compradores y la prioridad en el emparejamiento."
 
 #: assistant/onboarding.py:1083
-#| msgid "Официальный"
 msgid "Официальный дилер"
 msgstr "Distribuidor oficial"
 
@@ -10777,12 +10701,10 @@ msgid "✓ Загружен · %(name)s · %(size)s КБ"
 msgstr "✓ Cargado · %(name)s · %(size)s KB"
 
 #: assistant/onboarding.py:1105
-#| msgid "Загружен"
 msgid "✓ Загружен"
 msgstr "✓ Cargado"
 
 #: assistant/onboarding.py:1108
-#| msgid " загружен: "
 msgid "Не загружен"
 msgstr "Sin cargar"
 
@@ -10792,17 +10714,14 @@ msgstr "Tras la aprobación"
 
 #: assistant/onboarding.py:1116
 #, python-format
-#| msgid "📍 Режим: %(badge)s"
 msgid "Бейдж «%(badge)s»"
 msgstr "Insignia «%(badge)s»"
 
 #: assistant/onboarding.py:1127
-#| msgid "Загрузить файл"
 msgid "📤 Заменить файл"
 msgstr "📤 Reemplazar archivo"
 
 #: assistant/onboarding.py:1127
-#| msgid "Загрузить файл"
 msgid "📤 Загрузить файл"
 msgstr "📤 Subir archivo"
 
@@ -10811,12 +10730,10 @@ msgid "Назад"
 msgstr "Atrás"
 
 #: assistant/onboarding.py:1159
-#| msgid "Деньги под риском"
 msgid "Низкий риск"
 msgstr "Riesgo bajo"
 
 #: assistant/onboarding.py:1160
-#| msgid "Средний срок"
 msgid "Средний риск"
 msgstr "Riesgo medio"
 
@@ -10825,24 +10742,20 @@ msgid "Высокий риск"
 msgstr "Riesgo alto"
 
 #: assistant/onboarding.py:1166
-#| msgid "На проверке"
 msgid "Не проверено"
 msgstr "Sin comprobar"
 
 #: assistant/onboarding.py:1176
 #, python-format
-#| msgid "+%(n)s новых"
 msgid "%(n)s красных"
 msgstr "%(n)s en rojo"
 
 #: assistant/onboarding.py:1177
 #, python-format
-#| msgid "+%(n)s новых"
 msgid "%(n)s жёлтых"
 msgstr "%(n)s en amarillo"
 
 #: assistant/onboarding.py:1178
-#| msgid "Чисто"
 msgid "чисто"
 msgstr "sin observaciones"
 
@@ -10907,7 +10820,6 @@ msgid "БИК"
 msgstr "BIC"
 
 #: assistant/onboarding.py:1246
-#| msgid "Не обязателен"
 msgid "Не определён"
 msgstr "Sin determinar"
 
@@ -10936,12 +10848,10 @@ msgid "VIES (VAT в ЕС)"
 msgstr "VIES (VAT en la UE)"
 
 #: assistant/onboarding.py:1269
-#| msgid "Яндекс"
 msgid "Яндекс/Google Maps"
 msgstr "Yandex/Google Maps"
 
 #: assistant/onboarding.py:1279
-#| msgid "По имени"
 msgid "не применимо"
 msgstr "no aplicable"
 
@@ -10966,17 +10876,14 @@ msgid "Реквизиты счёта — страна совпадает, без
 msgstr "Datos de la cuenta: el país coincide, sin intermediarios"
 
 #: assistant/onboarding.py:1302
-#| msgid "📜 Сертификат дилерства · бейдж «Официальный дилер» (+10 внешней)"
 msgid "Сертификаты дилерства выглядят настоящими (если заявлены)"
 msgstr "Los certificados de distribución parecen auténticos (si se declaran)"
 
 #: assistant/onboarding.py:1303
-#| msgid "Несоответствие описанию"
 msgid "Мессенджер отвечает (тестовое сообщение)"
 msgstr "El mensajero responde (mensaje de prueba)"
 
 #: assistant/onboarding.py:1311
-#| msgid "Отправить на проверку"
 msgid "Кликнуть → отметить как проверено"
 msgstr "Hacer clic → marcar como comprobado"
 
@@ -11066,27 +10973,22 @@ msgid "Склад в Street View"
 msgstr "Almacén en Street View"
 
 #: assistant/onboarding.py:1450
-#| msgid "Ответить на запрос"
 msgid "Отзывы на картах"
 msgstr "Reseñas en mapas"
 
 #: assistant/onboarding.py:1451
-#| msgid "Скорость обработки заказов"
 msgid "Сайт — рабочий магазин"
 msgstr "Sitio web: una tienda en funcionamiento"
 
 #: assistant/onboarding.py:1452
-#| msgid "Реквизиты"
 msgid "Реквизиты счёта"
 msgstr "Datos de la cuenta"
 
 #: assistant/onboarding.py:1453
-#| msgid "📜 Сертификаты дилерства"
 msgid "Сертификаты дилерства"
 msgstr "Certificados de distribución"
 
 #: assistant/onboarding.py:1454
-#| msgid "Мессенджер для связи"
 msgid "Мессенджер отвечает"
 msgstr "El mensajero responde"
 
@@ -11096,13 +10998,11 @@ msgstr "Lista de control"
 
 #: assistant/onboarding.py:1466
 #, python-format
-#| msgid "%(on_track)s/%(total)s в норме"
 msgid "%(done)s / %(total)s отмечено"
 msgstr "%(done)s / %(total)s marcados"
 
 #: assistant/onboarding.py:1469
 #, python-format
-#| msgid "Не отмечено в чеклисте"
 msgid "Не отмечено в чеклисте (%(n)s): "
 msgstr "Sin marcar en la lista (%(n)s): "
 
@@ -11154,7 +11054,6 @@ msgid "Все возможности платформы теперь досту�
 msgstr "Todas las funciones de la plataforma están ahora disponibles: puede responder a RFQ, gestionar pedidos y administrar el catálogo."
 
 #: assistant/onboarding.py:1551
-#| msgid "Песочница"
 msgid "Песочница (новичок)"
 msgstr "Sandbox (novato)"
 
@@ -11172,7 +11071,6 @@ msgstr "No marcado en la lista de control"
 
 #: assistant/onboarding.py:1567
 #, python-format
-#| msgid "%(n)s поставщиков"
 msgid "%(n)s пунктов"
 msgstr "%(n)s puntos"
 
@@ -12455,7 +12353,6 @@ msgid "📌 Сейчас назначен: %(role)s (by %(by)s, %(at)s)"
 msgstr "📌 Asignado actualmente: %(role)s (por %(by)s, %(at)s)"
 
 #: assistant/operator_actions.py:1425
-#| msgid "🚚 Сейчас в пути нет ваших заказов."
 msgid "📌 Сейчас никто не отвечает — заказ в общей очереди"
 msgstr "📌 Nadie está asignado ahora — el pedido está en la cola común"
 
@@ -12568,7 +12465,6 @@ msgid "🚚 Перевозчик · ORD-%(p0)s"
 msgstr "🚚 Transportista · ORD-%(p0)s"
 
 #: assistant/operator_actions.py:1573
-#| msgid "📝 Создать аккаунт покупателя"
 msgid "✓ Назначить и уведомить покупателя"
 msgstr "✓ Asignar y notificar al Comprador"
 
@@ -12650,13 +12546,11 @@ msgstr "Justificación"
 
 #: assistant/operator_actions.py:1748 assistant/operator_actions.py:1759
 #, python-format
-#| msgid "Возвращено покупателям"
 msgid " · возврат $%(amount)s → покупатель"
 msgstr " · reembolso $%(amount)s → Comprador"
 
 #: assistant/operator_actions.py:1776
 #, python-format
-#| msgid " · быстрее %(faster_than_pct)s%% продавцов"
 msgid " · выплата $%(amount)s → продавц"
 msgstr " · pago $%(amount)s → Vendedor"
 
@@ -12687,7 +12581,6 @@ msgstr "✓ Disputa sobre #%(id)s cerrada · resolución «%(resolution)s»"
 
 #: assistant/operator_actions.py:1812
 #, python-format
-#| msgid "💳 Списать $%(amount)s"
 msgid " · возврат $%(amount)s"
 msgstr " · reembolso $%(amount)s"
 
@@ -12713,17 +12606,14 @@ msgid "насос"
 msgstr "bomba"
 
 #: assistant/operator_actions.py:1865
-#| msgid "Фильтры"
 msgid "фильтр"
 msgstr "filtro"
 
 #: assistant/operator_actions.py:1865
-#| msgid "Подшипники"
 msgid "подшипник"
 msgstr "rodamiento"
 
 #: assistant/operator_actions.py:1865
-#| msgid "Гидроцилиндры"
 msgid "гидроцилиндр"
 msgstr "cilindro hidráulico"
 
@@ -12746,12 +12636,10 @@ msgstr "Palabras clave: "
 
 #: assistant/operator_actions.py:1880
 #, python-format
-#| msgid "по %(total)s заказам"
 msgid "присвой %(code)s заказу"
 msgstr "asignar %(code)s al pedido"
 
 #: assistant/operator_actions.py:1880
-#| msgid "Отменить запрос"
 msgid "уточни запрос"
 msgstr "refina la consulta"
 
@@ -12859,7 +12747,6 @@ msgid "❗ Не хватает: %(missing)s"
 msgstr "❗ Faltan: %(missing)s"
 
 #: assistant/operator_actions.py:2034
-#| msgid "📜 Сертификаты дилерства"
 msgid "✓ Все сертификаты на месте"
 msgstr "✓ Todos los certificados están presentes"
 
@@ -12921,17 +12808,14 @@ msgid "Категория (dual_use_chip)"
 msgstr "Categoría (dual_use_chip)"
 
 #: assistant/operator_actions.py:2134
-#| msgid "Запрошено"
 msgid "Запрещено"
 msgstr "Prohibido"
 
 #: assistant/operator_actions.py:2134
-#| msgid "всё под контролем"
 msgid "Под контролем"
 msgstr "Bajo control"
 
 #: assistant/operator_actions.py:2134
-#| msgid "Новая задача"
 msgid "Серая зона"
 msgstr "Zona gris"
 
@@ -12945,12 +12829,10 @@ msgstr "Contraparte"
 
 #: assistant/operator_actions.py:2143
 #, python-format
-#| msgid "🚫 Санкционная проверка"
 msgid "%(icon)s Санкционная проверка: %(label)s."
 msgstr "%(icon)s Verificación de sanciones: %(label)s."
 
 #: assistant/operator_actions.py:2144
-#| msgid "Подтверждение сверки"
 msgid "Нет совпадений в списках."
 msgstr "Sin coincidencias en las listas."
 
@@ -12959,12 +12841,10 @@ msgid "🚫 Санкции"
 msgstr "🚫 Sanciones"
 
 #: assistant/operator_actions.py:2254
-#| msgid "К выплате"
 msgid "К выпуску"
 msgstr "Listo para liberar"
 
 #: assistant/operator_actions.py:2254
-#| msgid "Нет проектов"
 msgid "Нет доков"
 msgstr "Sin documentos"
 
@@ -13013,13 +12893,11 @@ msgid "Поток через таможню упал на %(p)s%% — возмо
 msgstr "El flujo a través de aduana cayó un %(p)s%% — puede haber problemas con el agente."
 
 #: assistant/operator_actions.py:2308
-#| msgid "Нет грузов на таможне"
 msgid "Нет грузов на таможне."
 msgstr "No hay envíos en aduana."
 
 #: assistant/operator_actions.py:2310
 #, python-format
-#| msgid "В работе %(in_work)s рекламаций, SLA в норме."
 msgid "На таможне %(n)s грузов, поток в норме."
 msgstr "%(n)s envíos en aduana, el flujo es normal."
 
@@ -13037,18 +12915,15 @@ msgid "Нет грузов на таможне"
 msgstr "No hay carga en aduana"
 
 #: assistant/operator_actions.py:2352
-#| msgid "Файл не приложен"
 msgid "❗ ТН ВЭД не присвоен."
 msgstr "❗ Código HS no asignado."
 
 #: assistant/operator_actions.py:2354
 #, python-format
-#| msgid "Загрузка сертификата · #%(p0)s"
 msgid "❗ Нет сертификатов: %(missing)s"
 msgstr "❗ Faltan certificados: %(missing)s"
 
 #: assistant/operator_actions.py:2356
-#| msgid "Пошлина увеличена с 01.04"
 msgid "ℹ️ Пошлина не рассчитана."
 msgstr "ℹ️ Arancel no calculado."
 
@@ -13071,12 +12946,10 @@ msgid "Комментарий (необязательно)"
 msgstr "Comentario (opcional)"
 
 #: assistant/operator_actions.py:2383
-#| msgid "Код ТН ВЭД"
 msgid "нет ТН ВЭД"
 msgstr "sin código HS"
 
 #: assistant/operator_actions.py:2385
-#| msgid "Запрос сертификата"
 msgid "не хватает сертификатов: "
 msgstr "faltan certificados: "
 
@@ -13107,7 +12980,6 @@ msgid "← Сводка таможни"
 msgstr "← Resumen de aduana"
 
 #: assistant/operator_actions.py:2495
-#| msgid "Зарубежный логист"
 msgid "Зарубежная логистика"
 msgstr "Logística internacional"
 
@@ -13116,7 +12988,6 @@ msgid "Своими силами"
 msgstr "Por cuenta propia"
 
 #: assistant/operator_actions.py:2512
-#| msgid "Сайт перевозчика"
 msgid "Внутр. перевозка"
 msgstr "Transporte interno"
 
@@ -13125,7 +12996,6 @@ msgid "Платформа"
 msgstr "Plataforma"
 
 #: assistant/operator_actions.py:2514
-#| msgid "VAT не указан"
 msgid "Не указан"
 msgstr "No indicado"
 
@@ -13135,7 +13005,6 @@ msgid "%(d)sд на этапе"
 msgstr "%(d)s d en esta etapa"
 
 #: assistant/operator_actions.py:2611
-#| msgid "По России"
 msgid "По РФ"
 msgstr "Nacional"
 
@@ -13149,13 +13018,11 @@ msgid "на $%(v)s"
 msgstr "por $%(v)s"
 
 #: assistant/operator_actions.py:2657
-#| msgid "ничего в работе"
 msgid "ни одной в работе"
 msgstr "ninguno en curso"
 
 #: assistant/operator_actions.py:2668 assistant/operator_actions.py:3223
 #, python-format
-#| msgid "просрочено"
 msgid "%(n)s просрочено"
 msgstr "%(n)s vencidos"
 
@@ -13169,12 +13036,10 @@ msgstr "Actualmente en aduana"
 
 #: assistant/operator_actions.py:2686
 #, python-format
-#| msgid "в среднем %(p0)s дн на нём"
 msgid "в среднем %(d)s дн на этапе"
 msgstr "en promedio %(d)s días en esta etapa"
 
 #: assistant/operator_actions.py:2687
-#| msgid "требуют контроля брокера"
 msgid "контроль брокера"
 msgstr "control del agente"
 
@@ -13223,30 +13088,25 @@ msgstr "no hay envíos activos ni entregados en 90 días"
 
 #: assistant/operator_actions.py:2795 assistant/operator_actions.py:2850 assistant/operator_actions.py:2934
 #, python-format
-#| msgid "средний срок %(p0)s дн"
 msgid "ср. срок %(d)s дн"
 msgstr "plazo prom. %(d)s días"
 
 #: assistant/operator_actions.py:2797 assistant/operator_actions.py:2852
 #, python-format
-#| msgid "Ср. стоимость"
 msgid "ср. стоимость $%(c)s"
 msgstr "costo prom. $%(c)s"
 
 #: assistant/operator_actions.py:2799
 #, python-format
-#| msgid "%(p0)s%% от оборота"
 msgid "%(r)s%% от груза"
 msgstr "%(r)s%% del valor de la carga"
 
 #: assistant/operator_actions.py:2801
-#| msgid "Нет завершённых сделок"
 msgid "нет завершённых отгрузок за 90д"
 msgstr "sin envíos completados en 90 d"
 
 #: assistant/operator_actions.py:2812
 #, python-format
-#| msgid "доставлено за 90 дней"
 msgid "%(n)s доставлено за 90д · %(live)s активно сейчас · "
 msgstr "%(n)s entregados en 90 d · %(live)s activos ahora · "
 
@@ -13257,42 +13117,35 @@ msgstr "%(p0)s en tránsito"
 
 #: assistant/operator_actions.py:2853
 #, python-format
-#| msgid "Что чаще всего ищут?"
 msgid "чаще всего %(mode)s"
 msgstr "con más frecuencia %(mode)s"
 
 #: assistant/operator_actions.py:2857
 #, python-format
-#| msgid "%(p0)s заказов · $%(p1)s"
 msgid "%(n)s заказов за 90д · "
 msgstr "%(n)s pedidos en 90d · "
 
 #: assistant/operator_actions.py:2898
 #, python-format
-#| msgid "SLA-нарушений"
 msgid "SLA-нарушений %(p)s%%"
 msgstr "violaciones de SLA %(p)s%%"
 
 #: assistant/operator_actions.py:2900
-#| msgid "Нет завершённых сделок"
 msgid "нет завершённых отгрузок"
 msgstr "sin envíos completados"
 
 #: assistant/operator_actions.py:2907
 #, python-format
-#| msgid "доставлено за 90 дней"
 msgid "%(n)s доставлено за 90д · %(live)s активно · "
 msgstr "%(n)s entregados en 90 d · %(live)s activos · "
 
 #: assistant/operator_actions.py:2936
 #, python-format
-#| msgid "средний срок %(p0)s дн"
 msgid "самый давний %(d)s дн"
 msgstr "el más antiguo %(d)s días"
 
 #: assistant/operator_actions.py:2944
 #, python-format
-#| msgid "Активно"
 msgid "%(n)s активно · "
 msgstr "%(n)s activos · "
 
@@ -13313,7 +13166,6 @@ msgstr "La aduana es el cuello de botella: promedio %(d)s días. Revise los cert
 
 #: assistant/operator_actions.py:2957
 #, python-format
-#| msgid "Самый медленный этап: %(stage)s (%(n)s нарушений). Начните с эскалации %(owner)s."
 msgid "Самый медленный этап: %(label)s. Есть смысл сменить подрядчика."
 msgstr "Etapa más lenta: %(label)s. Conviene cambiar de contratista."
 
@@ -13328,7 +13180,6 @@ msgid "Доставка ускорилась на %(d)s дн (было %(prev)s 
 msgstr "La entrega se aceleró en %(d)s días (era %(prev)s → ahora %(now)s) — buena tendencia."
 
 #: assistant/operator_actions.py:2963
-#| msgid "Логистика (Зарубеж)"
 msgid "Логистика в норме."
 msgstr "La logística está normal."
 
@@ -13392,7 +13243,6 @@ msgstr "%(p0)s pedidos · $%(p1)s"
 
 #: assistant/operator_actions.py:3100
 #, python-format
-#| msgid "За 30 дней рост рекламаций на %(delta_pct)s%% — проверьте качество поставок."
 msgid "Высокий refund rate %(r)s%% — проверьте качество и поставщиков."
 msgstr "Tasa de reembolso alta %(r)s%% — revise la calidad y los proveedores."
 
@@ -13412,7 +13262,6 @@ msgid "Выручка за 30д упала на %(p)s%% — посмотрите
 msgstr "Los ingresos cayeron %(p)s%% en 30 d — revise el embudo RFQ→Order."
 
 #: assistant/operator_actions.py:3108
-#| msgid "Платформа в покое"
 msgid "Платёжная воронка в норме."
 msgstr "El embudo de pagos está normal."
 
@@ -13559,7 +13408,6 @@ msgid "%(n)s грузов на таможне — проверьте, не за�
 msgstr "%(n)s envíos en aduana — verifique si alguno lleva atascado más de 3 días."
 
 #: assistant/operator_actions.py:3288
-#| msgid "Поставщик %(username)s — нет активной работы."
 msgid "Платформа в покое — активной работы нет."
 msgstr "La plataforma está inactiva — no hay trabajo activo."
 
@@ -13587,7 +13435,6 @@ msgstr "%(p0)s · valoración %(p1)s · %(p2)s tratos activos"
 
 #: assistant/operator_actions.py:3350
 #, python-format
-#| msgid "← Мои поставщики"
 msgid "Мои поставщики · %(cap)s"
 msgstr "Mis proveedores · %(cap)s"
 
@@ -13597,7 +13444,6 @@ msgstr " · LÍMITE"
 
 #: assistant/operator_actions.py:3355
 #, python-format
-#| msgid "Подтверждение поставщика"
 msgid "Закреплено %(cap)s из %(max)s поставщиков. "
 msgstr "%(cap)s de %(max)s proveedores asignados. "
 
@@ -13607,7 +13453,6 @@ msgstr "No hay cupos libres — libere espacio antes de aprobar un nuevo KYB."
 
 #: assistant/operator_actions.py:3357
 #, python-format
-#| msgid "Свободный текст запроса"
 msgid "Свободно %(n)s слотов."
 msgstr "%(n)s cupos libres."
 
@@ -13624,12 +13469,10 @@ msgid "Очередь KYB"
 msgstr "Cola KYB"
 
 #: assistant/operator_actions.py:3386
-#| msgid "В холде (14 дней)"
 msgid "💼 Бонусы в холде (14 дней)"
 msgstr "💼 Bonos en retención (14 días)"
 
 #: assistant/operator_actions.py:3390
-#| msgid "Зачислено за 30 дней"
 msgid "💼 Зачислено за 30 дней"
 msgstr "💼 Acreditado en 30 días"
 
@@ -13681,7 +13524,6 @@ msgid "Товар + 18% сервис + фрахт + $300 фикс на тамо�
 msgstr "Mercancía + 18% de servicio + flete + $300 fijos por despacho aduanero. Llave en mano hasta la puerta del destinatario, todos los aranceles incluidos en el precio."
 
 #: assistant/operator_actions.py:3526 assistant/operator_actions.py:3880
-#| msgid "Транзит РФ"
 msgid "+ 2% агент РФ"
 msgstr "+ 2% agente Rusia"
 
@@ -13690,7 +13532,6 @@ msgid "Дополнительно если оплата в рублях (вал�
 msgstr "Adicional si el pago es en rublos (control de divisas, contrato de agencia). En la línea logística se oculta ~25% del margen del grupo — una palanca para los gastos operativos."
 
 #: assistant/operator_actions.py:3532 assistant/operator_actions.py:3886
-#| msgid "предоплата"
 msgid "10% — резерв (предоплата)"
 msgstr "10% — reserva (pago anticipado)"
 
@@ -13699,7 +13540,6 @@ msgid "Клиент вносит после подтверждения КП. З�
 msgstr "El cliente paga tras confirmar la oferta. Inicia la producción/compra. Si el cliente desiste — no reembolsable."
 
 #: assistant/operator_actions.py:3534 assistant/operator_actions.py:3888
-#| msgid "Spec Q2 — основной микс"
 msgid "80% — основной платёж"
 msgstr "80% — pago principal"
 
@@ -13708,7 +13548,6 @@ msgid "Перед отгрузкой со склада поставщика. Б�
 msgstr "Antes del envío desde el almacén del proveedor. Sin pago la carga no parte."
 
 #: assistant/operator_actions.py:3536 assistant/operator_actions.py:3890
-#| msgid "Финальная оплата"
 msgid "10% — финальный платёж"
 msgstr "10% — pago final"
 
@@ -13725,7 +13564,6 @@ msgid "Все 100% удерживаются на платформе до фак�
 msgstr "El 100% se retiene en la plataforma hasta la recepción. Solo después se distribuye: al proveedor / a depósito / reembolso."
 
 #: assistant/operator_actions.py:3544 assistant/operator_actions.py:3898
-#| msgid "Пополнение депозита"
 msgid "При отгрузке: FOB-цена − 10% депозита"
 msgstr "Al enviar: precio FOB − 10% de depósito"
 
@@ -13734,7 +13572,6 @@ msgid "Платформа выплачивает 90% FOB-стоимости то
 msgstr "La plataforma paga el 90% del valor FOB de la mercancía. Se retiene el 10% como garantía de SLA, calidad y recepción."
 
 #: assistant/operator_actions.py:3546 assistant/operator_actions.py:3900
-#| msgid "Через 14 дней после приёмки"
 msgid "Через 14 дней после приёмки клиентом: +5% возврата"
 msgstr "14 días después de la aceptación por el cliente: +5% de reembolso"
 
@@ -13743,7 +13580,6 @@ msgid "Половина депозита возвращается поставщ
 msgstr "La mitad del depósito se devuelve al proveedor. Condición: sin reclamaciones abiertas ni quejas de calidad."
 
 #: assistant/operator_actions.py:3548 assistant/operator_actions.py:3902
-#| msgid "Дебиторка, выплаты, удержания, комиссия платформы, баланс"
 msgid "Финальное удержание: 5% остаётся платформе"
 msgstr "Retención final: 5% se queda en la plataforma"
 
@@ -13752,7 +13588,6 @@ msgid "Гарантийный сбор за контроль SLA, качеств
 msgstr "Tarifa de garantía por control de SLA, calidad y soporte. No reembolsable."
 
 #: assistant/operator_actions.py:3550 assistant/operator_actions.py:3904
-#| msgid "Полный возврат + пересылка"
 msgid "Полный возврат депозита (10%) — если"
 msgstr "Reembolso completo del depósito (10%) — si"
 
@@ -13787,6 +13622,25 @@ msgstr "400M+ ₽ · condiciones a medida + gerente personal"
 #: assistant/operator_actions.py:3569 assistant/operator_actions.py:3923
 msgid "📋 Правила и тарифы платформы (раскрыть)"
 msgstr "📋 Reglas y tarifas de la plataforma (desplegar)"
+
+#: assistant/operator_actions.py:3571 assistant/operator_actions.py:3925
+#| msgid "Добро пожаловать в кабинет поставщика!"
+msgid "Что платит клиент (по базису поставки)"
+msgstr "Qué paga el cliente (según las condiciones de entrega)"
+
+#: assistant/operator_actions.py:3573 assistant/operator_actions.py:3927
+#| msgid "Условия оплаты"
+msgid "Условия оплаты клиентом (10 / 80 / 10)"
+msgstr "Condiciones de pago del cliente (10 / 80 / 10)"
+
+#: assistant/operator_actions.py:3575 assistant/operator_actions.py:3929
+#| msgid "Триггеры закрывает поставщик / оператор."
+msgid "Что получает поставщик и как работает депозит"
+msgstr "Qué recibe el proveedor y cómo funciona el depósito"
+
+#: assistant/operator_actions.py:3577 assistant/operator_actions.py:3931
+msgid "🏆 Тарифные уровни (скидка по обороту)"
+msgstr "🏆 Niveles de tarifa (descuento por volumen)"
 
 #: assistant/operator_actions.py:3613
 msgid "Расхождение с банком"
@@ -13844,23 +13698,19 @@ msgid "Средний возраст"
 msgstr "Edad media"
 
 #: assistant/operator_actions.py:3659
-#| msgid "Срок"
 msgid "ок"
 msgstr "ok"
 
 #: assistant/operator_actions.py:3659
-#| msgid "Встречная"
 msgid "застревают"
 msgstr "se atascan"
 
 #: assistant/operator_actions.py:3659
-#| msgid "Обновить статус"
 msgid "много старых"
 msgstr "muchos antiguos"
 
 #: assistant/operator_actions.py:3716
 #, python-format
-#| msgid "%(p)s%% заказов"
 msgid "%(n)s заказов"
 msgstr "%(n)s pedidos"
 
@@ -13900,7 +13750,6 @@ msgid "открыто за 30 дней"
 msgstr "abierto en 30 días"
 
 #: assistant/operator_actions.py:3814
-#| msgid "зачислено"
 msgid "✓ зачислено"
 msgstr "✓ acreditado"
 
@@ -13909,7 +13758,6 @@ msgid "Мой бонус · на счёте"
 msgstr "Mi bono · en la cuenta"
 
 #: assistant/operator_actions.py:3842
-#| msgid "Нет пользователей"
 msgid "Нет бонусов в холде"
 msgstr "Sin bonos en retención"
 
@@ -13923,23 +13771,19 @@ msgid "%(p0)s сделок"
 msgstr "%(p0)s operaciones"
 
 #: assistant/operator_actions.py:3848
-#| msgid "Пока нет начислений"
 msgid "За 30 дней нет зачислений"
 msgstr "Sin acreditaciones en 30 días"
 
 #: assistant/operator_actions.py:3853
-#| msgid "Проектов пока нет"
 msgid "Бонусов пока не было"
 msgstr "Aún no hay bonos"
 
 #: assistant/operator_actions.py:3858
-#| msgid "Платёжный агент — Эскроу"
 msgid "Платформа · деньги в эскроу"
 msgstr "Plataforma · fondos en depósito"
 
 #: assistant/operator_actions.py:3862
 #, python-format
-#| msgid "Активные заказы"
 msgid "Активные заказы · топ-%(n)s"
 msgstr "Pedidos activos · top-%(n)s"
 
@@ -13964,7 +13808,6 @@ msgid "Только %(p)s%% завершённого цикла дошло до 
 msgstr "Solo el %(p)s%% del ciclo completado llegó a los Vendedores — revise los retrasos de pago."
 
 #: assistant/operator_actions.py:3948
-#| msgid "Эскроу-холд"
 msgid "Эскроу-поток в норме."
 msgstr "El flujo de depósito en garantía está normal."
 
@@ -14008,13 +13851,11 @@ msgstr "📥 Soporte"
 
 #: assistant/operator_actions.py:4058
 #, python-format
-#| msgid "%(get_method_display)s · %(get_status_display)s · создана %(M)s"
 msgid "%(method)s · %(status)s · создана %(created)s"
 msgstr "%(method)s · %(status)s · creada %(created)s"
 
 #: assistant/operator_actions.py:4059
 #, python-format
-#| msgid "перевозчик %(carrier)s"
 msgid " · юзер сообщил %(claimed)s"
 msgstr " · el usuario informó %(claimed)s"
 
@@ -14039,9 +13880,6 @@ msgstr "La solicitud %(p0)s está en estado «%(p1)s» — no es posible el abon
 
 #: assistant/operator_actions.py:4112
 #, python-format
-#| msgid ""
-#| "✓ [DEMO] Депозит пополнен на $%(amount)s.\n"
-#| "Текущий остаток: $%(balance)s %(currency)s."
 msgid "💰 Депозит пополнен на $%(amount)s (заявка %(ref)s)."
 msgstr "💰 Depósito recargado en $%(amount)s (solicitud %(ref)s)."
 
@@ -14061,12 +13899,10 @@ msgstr "La solicitud está en estado «%(p0)s» — no se puede modificar."
 
 #: assistant/operator_actions.py:4157
 #, python-format
-#| msgid "✓ Заявка %(p0)s отклонена."
 msgid "⚠️ Заявка %(ref)s отклонена: %(reason)s."
 msgstr "⚠️ Solicitud %(ref)s rechazada: %(reason)s."
 
 #: assistant/operator_actions.py:4157
-#| msgid "слабый финансовый индекс"
 msgid "свяжитесь с финансовым отделом"
 msgstr "contacte al departamento de finanzas"
 
@@ -14541,7 +14377,6 @@ msgid "• %(count)s без названия → заполните Description"
 msgstr "• %(count)s sin nombre → rellene Description"
 
 #: assistant/pricelist.py:3678
-#| msgid "Что исправить:"
 msgid "Как исправить:"
 msgstr "Cómo corregir:"
 
@@ -14570,12 +14405,10 @@ msgid "Строка"
 msgstr "Fila"
 
 #: assistant/pricelist.py:3685
-#| msgid "Колонок"
 msgid "Колонка"
 msgstr "Columna"
 
 #: assistant/pricelist.py:3685
-#| msgid "Заключение"
 msgid "Значение"
 msgstr "Valor"
 
@@ -14650,7 +14483,6 @@ msgid "5%% от $%(p0)s payable to supplier"
 msgstr "5%% de $%(p0)s payable to supplier"
 
 #: assistant/revenue.py:112
-#| msgid "Заказы и оплата"
 msgid "РФ-агент 2% (оплата в RUB)"
 msgstr "Agente Rusia 2% (pago en RUB)"
 
@@ -16003,7 +15835,6 @@ msgstr "GMV por cliente"
 
 #: assistant/seller_actions.py:2799
 #, python-format
-#| msgid "%(p0)s сделок"
 msgid "%(n)s сделок"
 msgstr "%(n)s operaciones"
 
@@ -16119,7 +15950,6 @@ msgid "➕ Ещё проект"
 msgstr "➕ Otro proyecto"
 
 #: assistant/seller_actions.py:2936
-#| msgid "Активных клиентов"
 msgid "0.02% со сделок приведённых клиентов"
 msgstr "0.02% de las operaciones de clientes referidos"
 
@@ -17010,7 +16840,6 @@ msgstr "Proyecto no encontrado."
 
 #: assistant/seller_actions.py:4643
 #, python-format
-#| msgid "📁 Проекты (%(p0)s)"
 msgid "📁 Проект «%(name)s»"
 msgstr "📁 Proyecto «%(name)s»"
 
@@ -17069,7 +16898,6 @@ msgstr "💬 Consultas al operador · %(p0)s"
 
 #: assistant/support_hub.py:154
 #, python-format
-#| msgid "🚨 Жалоба на платформу"
 msgid "%(when)s · жалоба подана через форму"
 msgstr "%(when)s · reclamación enviada mediante formulario"
 
@@ -17135,17 +16963,14 @@ msgid "Чем помочь? Выберите раздел ниже — отве�
 msgstr "¿En qué podemos ayudar? Elija una sección abajo — responderemos sobre sus pedidos y datos. Cualquier pregunta llegará al Operator."
 
 #: assistant/support_hub.py:208 assistant/support_hub.py:834
-#| msgid "Открыть рекламацию"
 msgid "Как открыть рекламацию?"
 msgstr "¿Cómo abro una reclamación?"
 
 #: assistant/support_hub.py:209
-#| msgid "Когда выплата поставщику?"
 msgid "Когда раскрываются контакты поставщика?"
 msgstr "¿Cuándo se revelan los contactos del proveedor?"
 
 #: assistant/support_hub.py:210
-#| msgid "Какая комиссия платформы?"
 msgid "Что входит в комиссию платформы?"
 msgstr "¿Qué incluye la comisión de la plataforma?"
 
@@ -17194,7 +17019,6 @@ msgid "Где применяется (раскрыть для деталей)"
 msgstr "Dónde se aplica (desplegar para detalles)"
 
 #: assistant/support_hub.py:251
-#| msgid "SLA-нарушений"
 msgid "SLA-нарушения и риски"
 msgstr "Violaciones de SLA y riesgos"
 
@@ -17223,7 +17047,6 @@ msgid "SLA соблюдается, времени достаточно"
 msgstr "SLA cumplido, queda tiempo suficiente"
 
 #: assistant/support_hub.py:257
-#| msgid "💰 Платежи / Эскроу"
 msgid "Платежи и эскроу"
 msgstr "Pagos y depósito en garantía"
 
@@ -17232,7 +17055,6 @@ msgid "Возврат, спор, refund_pending"
 msgstr "Devolución, disputa, refund_pending"
 
 #: assistant/support_hub.py:260
-#| msgid "Ждёт резерв 10%"
 msgid "Ждёт резерв 10%, ждёт оплату"
 msgstr "Esperando reserva del 10%, esperando pago"
 
@@ -17245,7 +17067,6 @@ msgid "Оплачено / переведено продавцу"
 msgstr "Pagado / transferido al vendedor"
 
 #: assistant/support_hub.py:263
-#| msgid "Покупатель (для seller)"
 msgid "Рейтинг и тиры (для seller)"
 msgstr "Calificación y niveles (para Seller)"
 
@@ -17262,7 +17083,6 @@ msgid "Рейтинг 80–100 (Надёжный)"
 msgstr "Calificación 80–100 (De confianza)"
 
 #: assistant/support_hub.py:269
-#| msgid "AI-режим"
 msgid "RFQ-режимы"
 msgstr "Modos RFQ"
 
@@ -17292,19 +17112,16 @@ msgstr "Ticket no encontrado."
 
 #: assistant/support_hub.py:324
 #, python-format
-#| msgid "мин назад"
 msgid "%(minutes)s мин назад"
 msgstr "hace %(minutes)s min"
 
 #: assistant/support_hub.py:326
 #, python-format
-#| msgid "ч назад"
 msgid "%(hours)s ч назад"
 msgstr "hace %(hours)s h"
 
 #: assistant/support_hub.py:328
 #, python-format
-#| msgid "дн назад"
 msgid "%(days)s дн назад"
 msgstr "hace %(days)s d"
 
@@ -17347,7 +17164,6 @@ msgstr "Estado KYB"
 
 #: assistant/support_hub.py:460
 #, python-format
-#| msgid "Помощь поставщику %(username)s"
 msgid "👁 Просмотр поддержки · %(name)s"
 msgstr "👁 Vista de soporte · %(name)s"
 
@@ -17358,7 +17174,6 @@ msgstr "No hay una solicitud real. El usuario %(name)s solo estaba navegando por
 
 #: assistant/support_hub.py:465
 #, python-format
-#| msgid "🚨 Жалоба"
 msgid "🚨 Жалоба · %(name)s"
 msgstr "🚨 Queja · %(name)s"
 
@@ -17369,7 +17184,6 @@ msgstr "El usuario %(name)s presentó una queja a través de soporte. Requiere r
 
 #: assistant/support_hub.py:469
 #, python-format
-#| msgid "💰 Бонус с покупок · %(p0)s"
 msgid "💬 Вопрос в поддержку · %(name)s"
 msgstr "💬 Consulta de soporte · %(name)s"
 
@@ -17395,7 +17209,6 @@ msgid "Просмотр поддержки · просто проверка на
 msgstr "Vista de soporte · solo comprobando si hay problemas"
 
 #: assistant/support_hub.py:506
-#| msgid "Пользователь не найден."
 msgid "Жалоба пользователя в поддержку"
 msgstr "Queja del usuario a soporte"
 
@@ -17405,19 +17218,16 @@ msgid "Вопрос в поддержку · «%(text)s»"
 msgstr "Consulta de soporte · «%(text)s»"
 
 #: assistant/support_hub.py:508
-#| msgid "Оператор / поддержка"
 msgid "Вопрос в поддержку"
 msgstr "Consulta de soporte"
 
 #: assistant/support_hub.py:512
 #, python-format
-#| msgid "📨 Разослать %(n)s поставщикам"
 msgid "💬 Написать %(name)s (профилактика)"
 msgstr "💬 Escribir a %(name)s (preventivo)"
 
 #: assistant/support_hub.py:514
 #, python-format
-#| msgid "💬 Связаться от себя"
 msgid "💬 Связаться с %(name)s"
 msgstr "💬 Contactar a %(name)s"
 
@@ -17796,7 +17606,6 @@ msgstr "📋 Base de conocimiento (FAQ)"
 
 #: assistant/support_hub.py:824
 #, python-format
-#| msgid "Запрос: %(query)s"
 msgid " по «%(query)s»"
 msgstr " para «%(query)s»"
 
@@ -17805,7 +17614,6 @@ msgid " · из админки"
 msgstr " · desde el panel de administración"
 
 #: assistant/support_hub.py:825
-#| msgid "Не настроен"
 msgid " · встроенная"
 msgstr " · integrada"
 
@@ -17815,17 +17623,14 @@ msgid "FAQ · %(p0)s ответов"
 msgstr "FAQ · %(p0)s respuestas"
 
 #: assistant/support_hub.py:834
-#| msgid "Какая минимальная сумма заказа?"
 msgid "Минимальная сумма заказа"
 msgstr "Importe mínimo del pedido"
 
 #: assistant/support_hub.py:835
-#| msgid "Когда выплата поставщику?"
 msgid "Когда раскрываются контакты"
 msgstr "Cuándo se revelan los contactos"
 
 #: assistant/support_hub.py:835
-#| msgid "Как считается бонус?"
 msgid "Как работают бонусы"
 msgstr "Cómo funcionan las bonificaciones"
 
@@ -17850,7 +17655,6 @@ msgid "ИНН / Tax ID"
 msgstr "NIF / Tax ID"
 
 #: assistant/support_hub.py:883
-#| msgid "Неаполь"
 msgid "Не заполнен"
 msgstr "Sin completar"
 
@@ -18018,7 +17822,6 @@ msgid "🚨 Жалоба на платформу"
 msgstr "🚨 Queja sobre la plataforma"
 
 #: assistant/support_hub.py:1104
-#| msgid "📝 Создать запрос"
 msgid "🚨 Подать жалобу"
 msgstr "🚨 Enviar queja"
 

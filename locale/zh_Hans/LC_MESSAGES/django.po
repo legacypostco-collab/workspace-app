@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-19 13:59+0300\n"
+"POT-Creation-Date: 2026-06-19 14:20+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -898,7 +898,7 @@ msgstr "您暂无订单。"
 msgid "Найти запчасть"
 msgstr "查找零件"
 
-#: assistant/actions.py:2733 assistant/actions.py:2921 assistant/actions.py:3068 assistant/actions.py:3077 assistant/actions.py:3221 assistant/actions.py:3483 assistant/actions.py:3492 assistant/actions.py:5031 assistant/actions.py:5959 assistant/actions.py:6009 assistant/actions.py:9646 assistant/actions.py:10491 assistant/actions.py:10503 assistant/actions.py:10521 assistant/actions.py:11079 assistant/documents.py:850 assistant/documents.py:963 assistant/kp_workflow.py:176 assistant/models.py:32 assistant/operator_actions.py:725 assistant/operator_actions.py:735 assistant/views.py:1356 templates/admin_panel/analytics.html:78 templates/admin_panel/finance.html:113 templates/admin_panel/moderation.html:126 templates/admin_panel/orders.html:63 templates/admin_panel/rfq.html:57 templates/admin_panel/user_detail.html:40 templates/admin_panel/user_detail.html:123 templates/admin_panel/user_detail.html:247 templates/admin_panel/users.html:79 templates/chat/index.html:3761 templates/chat/project.html:421 templates/operator/logist/shipments.html:47 templates/operator/manager/analytics.html:181 templates/operator/manager/clients.html:32 templates/operator/manager/clients.html:47 templates/operator/manager/clients.html:62 templates/operator/manager/clients.html:77 templates/operator/manager/clients.html:92 templates/operator/manager/clients.html:250 templates/operator/manager/dashboard.html:116 templates/operator/manager/negotiations.html:163 templates/operator/manager/negotiations.html:183 templates/operator/manager/negotiations.html:244 templates/operator/manager/negotiations.html:282 templates/operator/manager/orders.html:28 templates/operator/manager/shipments.html:39 templates/operator/payments/analytics.html:126 templates/operator/payments/dashboard.html:42 templates/operator/payments/escrow.html:36 templates/operator/payments/invoices.html:38 templates/operator/payments/reconciliation.html:38 templates/seller/negotiations/list.html:385 templates/seller/negotiations/list.html:456
+#: assistant/actions.py:2733 assistant/actions.py:2921 assistant/actions.py:3068 assistant/actions.py:3077 assistant/actions.py:3221 assistant/actions.py:3483 assistant/actions.py:3492 assistant/actions.py:5031 assistant/actions.py:5959 assistant/actions.py:6009 assistant/actions.py:6326 assistant/actions.py:9646 assistant/actions.py:10491 assistant/actions.py:10503 assistant/actions.py:10521 assistant/actions.py:11079 assistant/documents.py:850 assistant/documents.py:963 assistant/kp_workflow.py:176 assistant/models.py:32 assistant/operator_actions.py:725 assistant/operator_actions.py:735 assistant/views.py:1356 templates/admin_panel/analytics.html:78 templates/admin_panel/finance.html:113 templates/admin_panel/moderation.html:126 templates/admin_panel/orders.html:63 templates/admin_panel/rfq.html:57 templates/admin_panel/user_detail.html:40 templates/admin_panel/user_detail.html:123 templates/admin_panel/user_detail.html:247 templates/admin_panel/users.html:79 templates/chat/index.html:3761 templates/chat/project.html:421 templates/operator/logist/shipments.html:47 templates/operator/manager/analytics.html:181 templates/operator/manager/clients.html:32 templates/operator/manager/clients.html:47 templates/operator/manager/clients.html:62 templates/operator/manager/clients.html:77 templates/operator/manager/clients.html:92 templates/operator/manager/clients.html:250 templates/operator/manager/dashboard.html:116 templates/operator/manager/negotiations.html:163 templates/operator/manager/negotiations.html:183 templates/operator/manager/negotiations.html:244 templates/operator/manager/negotiations.html:282 templates/operator/manager/orders.html:28 templates/operator/manager/shipments.html:39 templates/operator/payments/analytics.html:126 templates/operator/payments/dashboard.html:42 templates/operator/payments/escrow.html:36 templates/operator/payments/invoices.html:38 templates/operator/payments/reconciliation.html:38 templates/seller/negotiations/list.html:385 templates/seller/negotiations/list.html:456
 msgid "Покупатель"
 msgstr "买方"
 
@@ -2182,7 +2182,6 @@ msgstr "供应商 №%(idx)s"
 
 #: assistant/actions.py:5173
 #, python-format
-#| msgid "Топ поставщиков"
 msgid "Топ поставщиков (%(n)s):"
 msgstr "顶级供应商（%(n)s）："
 
@@ -5028,7 +5027,6 @@ msgstr "🚚 承运商 / 物流专员"
 
 #: assistant/actions.py:10572
 #, python-format
-#| msgid "📦 Открыть трекинг"
 msgid "🔗 Открыть трекинг %(c)s"
 msgstr "🔗 打开跟踪 %(c)s"
 
@@ -5343,7 +5341,6 @@ msgstr "采购商已确认验收 — 账户已入账 $%(amount)s。"
 
 #: assistant/actions.py:11176
 #, python-format
-#| msgid "✓ Заказ закрыт. Эскроу освобождён."
 msgid "✓ Заказ #%(id)s закрыт. Спасибо за приёмку!"
 msgstr "✓ 订单 #%(id)s 已关闭。感谢您的验收！"
 
@@ -8109,7 +8106,6 @@ msgid "Управление"
 msgstr "管理"
 
 #: assistant/conv_category.py:102 assistant/support_hub.py:330
-#| msgid "Покупка"
 msgid "Покупки"
 msgstr "采购"
 
@@ -8118,7 +8114,6 @@ msgid "Поддержка"
 msgstr "支持"
 
 #: assistant/conv_category.py:116
-#| msgid "📦 Мои товары"
 msgid "Мои товары"
 msgstr "我的商品"
 
@@ -8131,67 +8126,54 @@ msgid "Интеграции"
 msgstr "集成"
 
 #: assistant/conv_category.py:120
-#| msgid "Аналитика спроса"
 msgid "Аналитика продавца"
 msgstr "卖家分析"
 
 #: assistant/conv_category.py:121
-#| msgid "RFQ и котировки"
 msgid "Мои котировки"
 msgstr "我的报价"
 
 #: assistant/conv_category.py:122
-#| msgid "📤 Запрос выплаты"
 msgid "Запрос оплаты"
 msgstr "付款请求"
 
 #: assistant/conv_category.py:123
-#| msgid "Отменить заказ"
 msgid "Отмена ожидающего заказа"
 msgstr "取消待处理订单"
 
 #: assistant/conv_category.py:124
-#| msgid "Сравнить котировки"
 msgid "Отправить котировку"
 msgstr "发送报价"
 
 #: assistant/conv_category.py:128
-#| msgid "Отслеживание поставок"
 msgid "Отслеживание заказа"
 msgstr "订单跟踪"
 
 #: assistant/conv_category.py:129
-#| msgid "Отслеживание поставок"
 msgid "Отслеживание доставки"
 msgstr "运输跟踪"
 
 #: assistant/conv_category.py:130
-#| msgid "Статус RFQ"
 msgid "Статусы RFQ"
 msgstr "RFQ 状态"
 
 #: assistant/conv_category.py:131
-#| msgid "Детали "
 msgid "Детали RFQ"
 msgstr "RFQ 详情"
 
 #: assistant/conv_category.py:133
-#| msgid "Топ запчастей"
 msgid "Поиск запчастей"
 msgstr "零件搜索"
 
 #: assistant/conv_category.py:134
-#| msgid "Сравнение %(parts)s товаров:"
 msgid "Сравнение товаров"
 msgstr "商品对比"
 
 #: assistant/conv_category.py:135
-#| msgid "Сравнить поставщиков"
 msgid "Сравнение поставщиков"
 msgstr "供应商对比"
 
 #: assistant/conv_category.py:136
-#| msgid "Топ поставщиков"
 msgid "Топ-поставщиков"
 msgstr "顶级供应商"
 
@@ -8204,7 +8186,6 @@ msgid "Аналитика"
 msgstr "分析"
 
 #: assistant/conv_category.py:139
-#| msgid "Ожидает покупателя"
 msgid "Скидка покупателя"
 msgstr "买家折扣"
 
@@ -8213,7 +8194,6 @@ msgid "Экономия"
 msgstr "节省"
 
 #: assistant/conv_category.py:141
-#| msgid "Расчёт и закупка"
 msgid "Быстрая покупка"
 msgstr "快速下单"
 
@@ -8234,7 +8214,6 @@ msgid "Рекламации"
 msgstr "索赔"
 
 #: assistant/conv_category.py:149
-#| msgid "Нет рекламаций"
 msgid "Детали рекламации"
 msgstr "索赔详情"
 
@@ -8247,37 +8226,30 @@ msgid "Регистрация"
 msgstr "注册"
 
 #: assistant/conv_category.py:154
-#| msgid "Верификация компании"
 msgid "Верификация · Начало"
 msgstr "验证 · 开始"
 
 #: assistant/conv_category.py:155
-#| msgid "Верификация компании"
 msgid "Верификация · Компания"
 msgstr "验证 · 公司"
 
 #: assistant/conv_category.py:156
-#| msgid "🛡 Верификация / KYB"
 msgid "Верификация · Адрес"
 msgstr "验证 · 地址"
 
 #: assistant/conv_category.py:157
-#| msgid "Верификация компании"
 msgid "Верификация · Реквизиты"
 msgstr "验证 · 银行信息"
 
 #: assistant/conv_category.py:158
-#| msgid "Верификация компании"
 msgid "Верификация · Директор"
 msgstr "验证 · 负责人"
 
 #: assistant/conv_category.py:159
-#| msgid "Верификация компании"
 msgid "Верификация · Отправка"
 msgstr "验证 · 提交"
 
 #: assistant/conv_category.py:160
-#| msgid "Статус интеграции"
 msgid "Статус верификации"
 msgstr "验证状态"
 
@@ -8286,7 +8258,6 @@ msgid "Настройки"
 msgstr "设置"
 
 #: assistant/conv_category.py:164
-#| msgid "🔔 Настройки уведомлений"
 msgid "Настройки уведомлений"
 msgstr "通知设置"
 
@@ -8295,27 +8266,22 @@ msgid "Двухфакторная аутентификация"
 msgstr "双因素认证"
 
 #: assistant/conv_category.py:167
-#| msgid "без оператора"
 msgid "Дашборд оператора"
 msgstr "操作员仪表盘"
 
 #: assistant/conv_category.py:168
-#| msgid "Очередь платежей"
 msgid "Очередь пополнений"
 msgstr "充值队列"
 
 #: assistant/conv_category.py:169
-#| msgid "Очередь KYB"
 msgid "Очередь RFQ"
 msgstr "RFQ 队列"
 
 #: assistant/conv_category.py:170
-#| msgid "Аналитика спроса"
 msgid "Аналитика оператора"
 msgstr "操作员分析"
 
 #: assistant/conv_category.py:171
-#| msgid "Отчёт"
 msgid "Отчёт по SLA"
 msgstr "SLA 报告"
 
@@ -8324,7 +8290,6 @@ msgid "База знаний"
 msgstr "知识库"
 
 #: assistant/conv_category.py:174
-#| msgid "История действий"
 msgid "Журнал действий"
 msgstr "操作日志"
 
@@ -8337,7 +8302,6 @@ msgid "QR-код"
 msgstr "二维码"
 
 #: assistant/conv_category.py:178
-#| msgid "Калькулятор"
 msgid "Калькулятор цены"
 msgstr "价格计算器"
 
@@ -8406,7 +8370,6 @@ msgid "OFAC: КНДР · полные санкции"
 msgstr "OFAC：朝鲜 · 全面制裁"
 
 #: assistant/customs_data.py:100
-#| msgid "Что проверить на санкции?"
 msgid "OFAC: Иран · вторичные санкции"
 msgstr "OFAC：伊朗 · 次级制裁"
 
@@ -8415,7 +8378,6 @@ msgid "OFAC: Сирия"
 msgstr "OFAC：叙利亚"
 
 #: assistant/customs_data.py:102
-#| msgid "С ограничениями"
 msgid "OFAC: Куба · ограничения"
 msgstr "OFAC：古巴 · 限制"
 
@@ -8428,7 +8390,6 @@ msgid "EAR: dual-use чипы"
 msgstr "EAR：双用途芯片"
 
 #: assistant/documents.py:427
-#| msgid "Покупатель "
 msgid "Покупатель / Buyer"
 msgstr "买方 / Buyer"
 
@@ -8512,17 +8473,14 @@ msgid "Оператор"
 msgstr "操作员"
 
 #: assistant/documents.py:871 assistant/documents.py:992
-#| msgid "подписку"
 msgid "подписи: "
 msgstr "签名： "
 
 #: assistant/documents.py:873
-#| msgid "✍️ Подписать и отправить"
 msgid "черновик — подпишите, чтобы отправить"
 msgstr "草稿 — 签名后发送"
 
 #: assistant/documents.py:875
-#| msgid "Не подобрана"
 msgid "не подписан"
 msgstr "未签名"
 
@@ -8590,7 +8548,6 @@ msgid "Вы уже подписали «%(p0)s»."
 msgstr "您已签署「%(p0)s」。"
 
 #: assistant/documents.py:969
-#| msgid "Топ участников"
 msgid "участник"
 msgstr "参与方"
 
@@ -8605,7 +8562,6 @@ msgid "«%(p0)s» подписан (%(p1)s). Откройте «Все доку�
 msgstr "「%(p0)s」已签署（%(p1)s）。打开订单的「所有文件」即可查看/签署。"
 
 #: assistant/documents.py:980
-#| msgid "Добавлено в корзину: "
 msgid " Отправлено — уведомлены: "
 msgstr " 已发送 — 已通知： "
 
@@ -8616,7 +8572,6 @@ msgstr "✅ 您已签署《%(title)s》（简单电子签名）。签名已嵌�
 
 #: assistant/documents.py:989
 #, python-format
-#| msgid "Компания %(status)s"
 msgid ""
 "\n"
 "Подписи: %(status)s"
@@ -8687,11 +8642,6 @@ msgstr "订单 #%(p0)s — %(p1)s"
 
 #: assistant/kp_workflow.py:71
 #, python-format
-#| msgid ""
-#| "✅ КП подтверждено — сделка перешла в работу.\n"
-#| "Заказ ORD-%(p0)s · инвойс $%(p1)s\n"
-#| "Резерв 10%% ($%(p2)s) списан · остаток депозита $%(p3)s\n"
-#| "Чат теперь — сделка. Commercial Invoice выставлен."
 msgid ""
 "✅ КП подтверждено — сделка перешла в работу.\n"
 "Заказ ORD-%(p0)s · $%(p1)s · резерв 10%% ($%(p2)s) удержан в эскроу."
@@ -8708,7 +8658,6 @@ msgid "Просматривать КП может только заказчик.
 msgstr "只有客户可以查看报价。"
 
 #: assistant/kp_workflow.py:140
-#| msgid "По этому RFQ ещё нет котировок. Подождите рассылки или измените режим."
 msgid "По RFQ ещё нет готовых котировок. Дождитесь сбора КП."
 msgstr "该 RFQ 暂无现成的报价。请等待报价收集完成。"
 
@@ -8717,7 +8666,6 @@ msgid "Документ"
 msgstr "文档"
 
 #: assistant/kp_workflow.py:177
-#| msgid "Стамбул → Москва · ожидает подтверждения"
 msgid "Поставщик №1 (имя раскрывается после подтверждения)"
 msgstr "供应商 #1（名称将在确认后公开）"
 
@@ -8782,7 +8730,6 @@ msgid "После подтверждения чат переключится в 
 msgstr "确认后，聊天将切换到交易模式（shipment）。"
 
 #: assistant/kp_workflow.py:213
-#| msgid "После клика будет создан Order, остальные котировки автоматически отклоняются."
 msgid "Остальные котировки по этому RFQ автоматически отклоняются."
 msgstr "该 RFQ 的其他报价将被自动拒绝。"
 
@@ -8886,7 +8833,6 @@ msgstr "订单已下达"
 
 #: assistant/kp_workflow.py:402
 #, python-format
-#| msgid "Возврат удержания"
 msgid "Резерв $%(p0)s удержан"
 msgstr "保证金 $%(p0)s 已冻结"
 
@@ -8914,12 +8860,10 @@ msgstr "询问客户"
 
 #: assistant/kp_workflow.py:456
 #, python-format
-#| msgid "%(m)s мин"
 msgid "⏱ SLA: %(p0)s мин"
 msgstr "⏱ SLA：%(p0)s 分钟"
 
 #: assistant/kp_workflow.py:457
-#| msgid "SLA нарушено"
 msgid "⚠️ SLA нарушен"
 msgstr "⚠️ SLA 已违反"
 
@@ -8963,7 +8907,6 @@ msgid "📋 КП по RFQ #%(p0)s готово к рассмотрению"
 msgstr "📋 RFQ #%(p0)s 的报价已可供审核"
 
 #: assistant/kp_workflow.py:492
-#| msgid "Оператор сформировал инвойс на $%(p0)s. Откройте, чтобы подтвердить и зарезервировать 10%%."
 msgid "Оператор одобрил расчёт. Откройте, чтобы подтвердить и зарезервировать 10%."
 msgstr "操作员已批准计算。打开以确认并预留 10%。"
 
@@ -10195,12 +10138,10 @@ msgid "Верификация компании"
 msgstr "公司验证"
 
 #: assistant/onboarding.py:339 assistant/onboarding.py:1310
-#| msgid "Проверен"
 msgid "Проверено"
 msgstr "已检查"
 
 #: assistant/onboarding.py:340
-#| msgid "Верифицирована"
 msgid "✓ Верифицирована"
 msgstr "✓ 已核验"
 
@@ -10269,12 +10210,10 @@ msgid "➡ %(label)s"
 msgstr "➡ %(label)s"
 
 #: assistant/onboarding.py:445
-#| msgid "Сколько времени рассматривается рекламация?"
 msgid "Сколько времени занимает верификация?"
 msgstr "核验需要多长时间？"
 
 #: assistant/onboarding.py:446
-#| msgid "Все документы загружены"
 msgid "Какие документы нужны?"
 msgstr "需要哪些文件？"
 
@@ -10399,7 +10338,6 @@ msgid "В зависимости от страны мы попросим раз�
 msgstr "我们会根据国家要求不同的信息：俄罗斯为 INN，阿联酋为 Trade License，中国为 USCC，等等。"
 
 #: assistant/onboarding.py:559
-#| msgid "Далее"
 msgid "Далее →"
 msgstr "下一步 →"
 
@@ -10408,7 +10346,6 @@ msgid "Полное наименование компании"
 msgstr "公司全称"
 
 #: assistant/onboarding.py:576
-#| msgid "Полное наименование компании"
 msgid "Полное наименование (как в ЕГРЮЛ)"
 msgstr "完整法定名称（如登记册所示）"
 
@@ -10427,7 +10364,6 @@ msgstr "← 更改国家"
 
 #: assistant/onboarding.py:608
 #, python-format
-#| msgid "обязательное поле"
 msgid "%(label)s — обязательное поле"
 msgstr "%(label)s — 必填字段"
 
@@ -10522,7 +10458,6 @@ msgid "Для российских банков указываем БИК (9 ц�
 msgstr "对于俄罗斯银行，请填写 BIK（9 位）和 20 位的结算账户。"
 
 #: assistant/onboarding.py:733
-#| msgid "IBAN если страна его поддерживает, иначе локальный номер счёта"
 msgid "Для международного перевода нужны SWIFT/BIC код банка и IBAN (или локальный номер счёта)."
 msgstr "国际汇款需要银行的 SWIFT/BIC 代码和 IBAN（或本地账号）。"
 
@@ -10585,7 +10520,6 @@ msgid "Счёт"
 msgstr "账单"
 
 #: assistant/onboarding.py:850
-#| msgid "Эту котировку нельзя зафиксировать в текущем состоянии."
 msgid "После отправки данные нельзя редактировать до решения оператора."
 msgstr "提交后，在操作员作出决定之前数据不可编辑。"
 
@@ -10681,37 +10615,30 @@ msgid "По чему вас будут искать в каталоге плат
 msgstr "在平台目录中如何被搜索到"
 
 #: assistant/onboarding.py:992
-#| msgid "Сайт компании"
 msgid "🌐 Сайт компании"
 msgstr "🌐 公司网站"
 
 #: assistant/onboarding.py:993
-#| msgid "🙋 Подобрать менеджера"
 msgid "💬 Подключить мессенджер"
 msgstr "💬 接入即时通讯工具"
 
 #: assistant/onboarding.py:994
-#| msgid "Контактный email"
 msgid "📧 Контактный email"
 msgstr "📧 联系邮箱"
 
 #: assistant/onboarding.py:995
-#| msgid "Телефон компании"
 msgid "📞 Телефон компании"
 msgstr "📞 公司电话"
 
 #: assistant/onboarding.py:996
-#| msgid "адрес склада"
 msgid "📍 Адрес склада"
 msgstr "📍 仓库地址"
 
 #: assistant/onboarding.py:997
-#| msgid "Бренды и категории запчастей"
 msgid "🏷 Бренды и категории"
 msgstr "🏷 品牌与类别"
 
 #: assistant/onboarding.py:999
-#| msgid "Полное наименование компании"
 msgid "📝 Дополнительные данные компании"
 msgstr "📝 公司补充信息"
 
@@ -10740,7 +10667,6 @@ msgid "поля"
 msgstr "字段"
 
 #: assistant/onboarding.py:1052
-#| msgid "Изменение"
 msgid "Изменений нет."
 msgstr "无更改。"
 
@@ -10757,7 +10683,6 @@ msgid "Документы, подтверждающие что вы официа
 msgstr "证明您是相关品牌（CAT、Komatsu、Volvo CE 等）官方经销商的文件。上传后，操作员将进行核验并授予「官方经销商」徽章——这将大幅提升买家信任度和匹配优先级。"
 
 #: assistant/onboarding.py:1083
-#| msgid "Официальный"
 msgid "Официальный дилер"
 msgstr "官方经销商"
 
@@ -10775,12 +10700,10 @@ msgid "✓ Загружен · %(name)s · %(size)s КБ"
 msgstr "✓ 已上传 · %(name)s · %(size)s KB"
 
 #: assistant/onboarding.py:1105
-#| msgid "Загружен"
 msgid "✓ Загружен"
 msgstr "✓ 已上传"
 
 #: assistant/onboarding.py:1108
-#| msgid " загружен: "
 msgid "Не загружен"
 msgstr "未上传"
 
@@ -10790,17 +10713,14 @@ msgstr "批准后"
 
 #: assistant/onboarding.py:1116
 #, python-format
-#| msgid "📍 Режим: %(badge)s"
 msgid "Бейдж «%(badge)s»"
 msgstr "「%(badge)s」徽章"
 
 #: assistant/onboarding.py:1127
-#| msgid "Загрузить файл"
 msgid "📤 Заменить файл"
 msgstr "📤 替换文件"
 
 #: assistant/onboarding.py:1127
-#| msgid "Загрузить файл"
 msgid "📤 Загрузить файл"
 msgstr "📤 上传文件"
 
@@ -10809,12 +10729,10 @@ msgid "Назад"
 msgstr "返回"
 
 #: assistant/onboarding.py:1159
-#| msgid "Деньги под риском"
 msgid "Низкий риск"
 msgstr "低风险"
 
 #: assistant/onboarding.py:1160
-#| msgid "Средний срок"
 msgid "Средний риск"
 msgstr "中等风险"
 
@@ -10823,24 +10741,20 @@ msgid "Высокий риск"
 msgstr "高风险"
 
 #: assistant/onboarding.py:1166
-#| msgid "На проверке"
 msgid "Не проверено"
 msgstr "未检查"
 
 #: assistant/onboarding.py:1176
 #, python-format
-#| msgid "+%(n)s новых"
 msgid "%(n)s красных"
 msgstr "%(n)s 个红色"
 
 #: assistant/onboarding.py:1177
 #, python-format
-#| msgid "+%(n)s новых"
 msgid "%(n)s жёлтых"
 msgstr "%(n)s 个黄色"
 
 #: assistant/onboarding.py:1178
-#| msgid "Чисто"
 msgid "чисто"
 msgstr "无异常"
 
@@ -10905,7 +10819,6 @@ msgid "БИК"
 msgstr "BIK"
 
 #: assistant/onboarding.py:1246
-#| msgid "Не обязателен"
 msgid "Не определён"
 msgstr "未确定"
 
@@ -10934,12 +10847,10 @@ msgid "VIES (VAT в ЕС)"
 msgstr "VIES（欧盟 VAT）"
 
 #: assistant/onboarding.py:1269
-#| msgid "Яндекс"
 msgid "Яндекс/Google Maps"
 msgstr "Yandex/Google 地图"
 
 #: assistant/onboarding.py:1279
-#| msgid "По имени"
 msgid "не применимо"
 msgstr "不适用"
 
@@ -10964,17 +10875,14 @@ msgid "Реквизиты счёта — страна совпадает, без
 msgstr "账户信息——国家一致，无中间方"
 
 #: assistant/onboarding.py:1302
-#| msgid "📜 Сертификат дилерства · бейдж «Официальный дилер» (+10 внешней)"
 msgid "Сертификаты дилерства выглядят настоящими (если заявлены)"
 msgstr "经销商证书看起来真实（如已声明）"
 
 #: assistant/onboarding.py:1303
-#| msgid "Несоответствие описанию"
 msgid "Мессенджер отвечает (тестовое сообщение)"
 msgstr "即时通讯工具有回应（测试消息）"
 
 #: assistant/onboarding.py:1311
-#| msgid "Отправить на проверку"
 msgid "Кликнуть → отметить как проверено"
 msgstr "点击 → 标记为已检查"
 
@@ -11064,27 +10972,22 @@ msgid "Склад в Street View"
 msgstr "街景中的仓库"
 
 #: assistant/onboarding.py:1450
-#| msgid "Ответить на запрос"
 msgid "Отзывы на картах"
 msgstr "地图上的评价"
 
 #: assistant/onboarding.py:1451
-#| msgid "Скорость обработки заказов"
 msgid "Сайт — рабочий магазин"
 msgstr "网站——正常运营的商店"
 
 #: assistant/onboarding.py:1452
-#| msgid "Реквизиты"
 msgid "Реквизиты счёта"
 msgstr "账户信息"
 
 #: assistant/onboarding.py:1453
-#| msgid "📜 Сертификаты дилерства"
 msgid "Сертификаты дилерства"
 msgstr "经销商证书"
 
 #: assistant/onboarding.py:1454
-#| msgid "Мессенджер для связи"
 msgid "Мессенджер отвечает"
 msgstr "即时通讯工具有回应"
 
@@ -11094,13 +10997,11 @@ msgstr "清单"
 
 #: assistant/onboarding.py:1466
 #, python-format
-#| msgid "%(on_track)s/%(total)s в норме"
 msgid "%(done)s / %(total)s отмечено"
 msgstr "已勾选 %(done)s / %(total)s"
 
 #: assistant/onboarding.py:1469
 #, python-format
-#| msgid "Не отмечено в чеклисте"
 msgid "Не отмечено в чеклисте (%(n)s): "
 msgstr "清单中未勾选（%(n)s）："
 
@@ -11152,7 +11053,6 @@ msgid "Все возможности платформы теперь досту�
 msgstr "平台的全部功能现已开放：可以回复 RFQ、下订单、管理目录。"
 
 #: assistant/onboarding.py:1551
-#| msgid "Песочница"
 msgid "Песочница (новичок)"
 msgstr "沙盒（新手）"
 
@@ -11170,7 +11070,6 @@ msgstr "清单中未勾选"
 
 #: assistant/onboarding.py:1567
 #, python-format
-#| msgid "%(n)s поставщиков"
 msgid "%(n)s пунктов"
 msgstr "%(n)s 项"
 
@@ -12453,7 +12352,6 @@ msgid "📌 Сейчас назначен: %(role)s (by %(by)s, %(at)s)"
 msgstr "📌 当前负责人：%(role)s（由 %(by)s，%(at)s）"
 
 #: assistant/operator_actions.py:1425
-#| msgid "🚚 Сейчас в пути нет ваших заказов."
 msgid "📌 Сейчас никто не отвечает — заказ в общей очереди"
 msgstr "📌 当前无人负责 — 订单在公共队列中"
 
@@ -12566,7 +12464,6 @@ msgid "🚚 Перевозчик · ORD-%(p0)s"
 msgstr "🚚 承运商 · ORD-%(p0)s"
 
 #: assistant/operator_actions.py:1573
-#| msgid "📝 Создать аккаунт покупателя"
 msgid "✓ Назначить и уведомить покупателя"
 msgstr "✓ 指派并通知买方"
 
@@ -12648,13 +12545,11 @@ msgstr "理由"
 
 #: assistant/operator_actions.py:1748 assistant/operator_actions.py:1759
 #, python-format
-#| msgid "Возвращено покупателям"
 msgid " · возврат $%(amount)s → покупатель"
 msgstr " · 退款 $%(amount)s → 买方"
 
 #: assistant/operator_actions.py:1776
 #, python-format
-#| msgid " · быстрее %(faster_than_pct)s%% продавцов"
 msgid " · выплата $%(amount)s → продавц"
 msgstr " · 付款 $%(amount)s → 卖方"
 
@@ -12687,7 +12582,6 @@ msgstr "✓ 关于 #%(id)s 的争议已关闭 · 裁决「%(resolution)s」"
 
 #: assistant/operator_actions.py:1812
 #, python-format
-#| msgid "💳 Списать $%(amount)s"
 msgid " · возврат $%(amount)s"
 msgstr " · 退款 $%(amount)s"
 
@@ -12713,17 +12607,14 @@ msgid "насос"
 msgstr "泵"
 
 #: assistant/operator_actions.py:1865
-#| msgid "Фильтры"
 msgid "фильтр"
 msgstr "滤芯"
 
 #: assistant/operator_actions.py:1865
-#| msgid "Подшипники"
 msgid "подшипник"
 msgstr "轴承"
 
 #: assistant/operator_actions.py:1865
-#| msgid "Гидроцилиндры"
 msgid "гидроцилиндр"
 msgstr "液压缸"
 
@@ -12746,12 +12637,10 @@ msgstr "关键词： "
 
 #: assistant/operator_actions.py:1880
 #, python-format
-#| msgid "по %(total)s заказам"
 msgid "присвой %(code)s заказу"
 msgstr "将 %(code)s 分配给订单"
 
 #: assistant/operator_actions.py:1880
-#| msgid "Отменить запрос"
 msgid "уточни запрос"
 msgstr "细化查询"
 
@@ -12859,7 +12748,6 @@ msgid "❗ Не хватает: %(missing)s"
 msgstr "❗ 缺少：%(missing)s"
 
 #: assistant/operator_actions.py:2034
-#| msgid "📜 Сертификаты дилерства"
 msgid "✓ Все сертификаты на месте"
 msgstr "✓ 所有证书齐全"
 
@@ -12921,17 +12809,14 @@ msgid "Категория (dual_use_chip)"
 msgstr "类别（dual_use_chip）"
 
 #: assistant/operator_actions.py:2134
-#| msgid "Запрошено"
 msgid "Запрещено"
 msgstr "禁止"
 
 #: assistant/operator_actions.py:2134
-#| msgid "всё под контролем"
 msgid "Под контролем"
 msgstr "受管控"
 
 #: assistant/operator_actions.py:2134
-#| msgid "Новая задача"
 msgid "Серая зона"
 msgstr "灰色地带"
 
@@ -12945,12 +12830,10 @@ msgstr "交易对方"
 
 #: assistant/operator_actions.py:2143
 #, python-format
-#| msgid "🚫 Санкционная проверка"
 msgid "%(icon)s Санкционная проверка: %(label)s."
 msgstr "%(icon)s 制裁检查：%(label)s。"
 
 #: assistant/operator_actions.py:2144
-#| msgid "Подтверждение сверки"
 msgid "Нет совпадений в списках."
 msgstr "列表中无匹配项。"
 
@@ -12959,12 +12842,10 @@ msgid "🚫 Санкции"
 msgstr "🚫 制裁"
 
 #: assistant/operator_actions.py:2254
-#| msgid "К выплате"
 msgid "К выпуску"
 msgstr "待放行"
 
 #: assistant/operator_actions.py:2254
-#| msgid "Нет проектов"
 msgid "Нет доков"
 msgstr "无单据"
 
@@ -13013,13 +12894,11 @@ msgid "Поток через таможню упал на %(p)s%% — возмо
 msgstr "海关通关量下降 %(p)s%% — 报关行可能存在问题。"
 
 #: assistant/operator_actions.py:2308
-#| msgid "Нет грузов на таможне"
 msgid "Нет грузов на таможне."
 msgstr "海关无货物。"
 
 #: assistant/operator_actions.py:2310
 #, python-format
-#| msgid "В работе %(in_work)s рекламаций, SLA в норме."
 msgid "На таможне %(n)s грузов, поток в норме."
 msgstr "海关有 %(n)s 批货物，通关正常。"
 
@@ -13037,18 +12916,15 @@ msgid "Нет грузов на таможне"
 msgstr "海关无货物"
 
 #: assistant/operator_actions.py:2352
-#| msgid "Файл не приложен"
 msgid "❗ ТН ВЭД не присвоен."
 msgstr "❗ 未分配 HS 编码。"
 
 #: assistant/operator_actions.py:2354
 #, python-format
-#| msgid "Загрузка сертификата · #%(p0)s"
 msgid "❗ Нет сертификатов: %(missing)s"
 msgstr "❗ 缺少证书：%(missing)s"
 
 #: assistant/operator_actions.py:2356
-#| msgid "Пошлина увеличена с 01.04"
 msgid "ℹ️ Пошлина не рассчитана."
 msgstr "ℹ️ 未计算关税。"
 
@@ -13071,12 +12947,10 @@ msgid "Комментарий (необязательно)"
 msgstr "备注（可选）"
 
 #: assistant/operator_actions.py:2383
-#| msgid "Код ТН ВЭД"
 msgid "нет ТН ВЭД"
 msgstr "无 HS 编码"
 
 #: assistant/operator_actions.py:2385
-#| msgid "Запрос сертификата"
 msgid "не хватает сертификатов: "
 msgstr "缺少证书："
 
@@ -13107,7 +12981,6 @@ msgid "← Сводка таможни"
 msgstr "← 海关摘要"
 
 #: assistant/operator_actions.py:2495
-#| msgid "Зарубежный логист"
 msgid "Зарубежная логистика"
 msgstr "海外物流"
 
@@ -13116,7 +12989,6 @@ msgid "Своими силами"
 msgstr "自行运输"
 
 #: assistant/operator_actions.py:2512
-#| msgid "Сайт перевозчика"
 msgid "Внутр. перевозка"
 msgstr "内部运输"
 
@@ -13125,7 +12997,6 @@ msgid "Платформа"
 msgstr "平台"
 
 #: assistant/operator_actions.py:2514
-#| msgid "VAT не указан"
 msgid "Не указан"
 msgstr "未指定"
 
@@ -13135,7 +13006,6 @@ msgid "%(d)sд на этапе"
 msgstr "在此阶段 %(d)s 天"
 
 #: assistant/operator_actions.py:2611
-#| msgid "По России"
 msgid "По РФ"
 msgstr "境内"
 
@@ -13149,13 +13019,11 @@ msgid "на $%(v)s"
 msgstr "价值 $%(v)s"
 
 #: assistant/operator_actions.py:2657
-#| msgid "ничего в работе"
 msgid "ни одной в работе"
 msgstr "无进行中"
 
 #: assistant/operator_actions.py:2668 assistant/operator_actions.py:3223
 #, python-format
-#| msgid "просрочено"
 msgid "%(n)s просрочено"
 msgstr "%(n)s 项逾期"
 
@@ -13169,12 +13037,10 @@ msgstr "当前在海关"
 
 #: assistant/operator_actions.py:2686
 #, python-format
-#| msgid "в среднем %(p0)s дн на нём"
 msgid "в среднем %(d)s дн на этапе"
 msgstr "该阶段平均 %(d)s 天"
 
 #: assistant/operator_actions.py:2687
-#| msgid "требуют контроля брокера"
 msgid "контроль брокера"
 msgstr "报关行监管"
 
@@ -13223,30 +13089,25 @@ msgstr "近 90 天既无在途货运，也无已交付"
 
 #: assistant/operator_actions.py:2795 assistant/operator_actions.py:2850 assistant/operator_actions.py:2934
 #, python-format
-#| msgid "средний срок %(p0)s дн"
 msgid "ср. срок %(d)s дн"
 msgstr "平均周期 %(d)s 天"
 
 #: assistant/operator_actions.py:2797 assistant/operator_actions.py:2852
 #, python-format
-#| msgid "Ср. стоимость"
 msgid "ср. стоимость $%(c)s"
 msgstr "平均费用 $%(c)s"
 
 #: assistant/operator_actions.py:2799
 #, python-format
-#| msgid "%(p0)s%% от оборота"
 msgid "%(r)s%% от груза"
 msgstr "占货值 %(r)s%%"
 
 #: assistant/operator_actions.py:2801
-#| msgid "Нет завершённых сделок"
 msgid "нет завершённых отгрузок за 90д"
 msgstr "90 天内无已完成发货"
 
 #: assistant/operator_actions.py:2812
 #, python-format
-#| msgid "доставлено за 90 дней"
 msgid "%(n)s доставлено за 90д · %(live)s активно сейчас · "
 msgstr "90 天内交付 %(n)s · 当前活跃 %(live)s · "
 
@@ -13257,42 +13118,35 @@ msgstr "%(p0)s 运输中"
 
 #: assistant/operator_actions.py:2853
 #, python-format
-#| msgid "Что чаще всего ищут?"
 msgid "чаще всего %(mode)s"
 msgstr "最常用 %(mode)s"
 
 #: assistant/operator_actions.py:2857
 #, python-format
-#| msgid "%(p0)s заказов · $%(p1)s"
 msgid "%(n)s заказов за 90д · "
 msgstr "90 天内 %(n)s 个订单 · "
 
 #: assistant/operator_actions.py:2898
 #, python-format
-#| msgid "SLA-нарушений"
 msgid "SLA-нарушений %(p)s%%"
 msgstr "SLA 违约 %(p)s%%"
 
 #: assistant/operator_actions.py:2900
-#| msgid "Нет завершённых сделок"
 msgid "нет завершённых отгрузок"
 msgstr "无已完成发货"
 
 #: assistant/operator_actions.py:2907
 #, python-format
-#| msgid "доставлено за 90 дней"
 msgid "%(n)s доставлено за 90д · %(live)s активно · "
 msgstr "90 天内交付 %(n)s · 活跃 %(live)s · "
 
 #: assistant/operator_actions.py:2936
 #, python-format
-#| msgid "средний срок %(p0)s дн"
 msgid "самый давний %(d)s дн"
 msgstr "最久 %(d)s 天"
 
 #: assistant/operator_actions.py:2944
 #, python-format
-#| msgid "Активно"
 msgid "%(n)s активно · "
 msgstr "%(n)s 个活跃 · "
 
@@ -13313,7 +13167,6 @@ msgstr "海关是瓶颈：平均 %(d)s 天。请检查证书和 HS 编码。"
 
 #: assistant/operator_actions.py:2957
 #, python-format
-#| msgid "Самый медленный этап: %(stage)s (%(n)s нарушений). Начните с эскалации %(owner)s."
 msgid "Самый медленный этап: %(label)s. Есть смысл сменить подрядчика."
 msgstr "最慢阶段：%(label)s。建议更换承包商。"
 
@@ -13328,7 +13181,6 @@ msgid "Доставка ускорилась на %(d)s дн (было %(prev)s 
 msgstr "运输加快了 %(d)s 天（原 %(prev)s → 现 %(now)s）— 趋势良好。"
 
 #: assistant/operator_actions.py:2963
-#| msgid "Логистика (Зарубеж)"
 msgid "Логистика в норме."
 msgstr "物流正常。"
 
@@ -13392,7 +13244,6 @@ msgstr "%(p0)s 个订单 · $%(p1)s"
 
 #: assistant/operator_actions.py:3100
 #, python-format
-#| msgid "За 30 дней рост рекламаций на %(delta_pct)s%% — проверьте качество поставок."
 msgid "Высокий refund rate %(r)s%% — проверьте качество и поставщиков."
 msgstr "退款率偏高 %(r)s%% — 请检查质量和供应商。"
 
@@ -13412,7 +13263,6 @@ msgid "Выручка за 30д упала на %(p)s%% — посмотрите
 msgstr "30 天营收下降 %(p)s%% — 请查看 RFQ→Order 漏斗。"
 
 #: assistant/operator_actions.py:3108
-#| msgid "Платформа в покое"
 msgid "Платёжная воронка в норме."
 msgstr "支付漏斗正常。"
 
@@ -13559,7 +13409,6 @@ msgid "%(n)s грузов на таможне — проверьте, не за�
 msgstr "%(n)s 批货物在海关 — 请检查是否有滞留超过 3 天的。"
 
 #: assistant/operator_actions.py:3288
-#| msgid "Поставщик %(username)s — нет активной работы."
 msgid "Платформа в покое — активной работы нет."
 msgstr "平台空闲 — 无活跃工作。"
 
@@ -13587,7 +13436,6 @@ msgstr "%(p0)s · 评分 %(p1)s · %(p2)s 笔活跃交易"
 
 #: assistant/operator_actions.py:3350
 #, python-format
-#| msgid "← Мои поставщики"
 msgid "Мои поставщики · %(cap)s"
 msgstr "我的供应商 · %(cap)s"
 
@@ -13597,7 +13445,6 @@ msgstr " · 已满"
 
 #: assistant/operator_actions.py:3355
 #, python-format
-#| msgid "Подтверждение поставщика"
 msgid "Закреплено %(cap)s из %(max)s поставщиков. "
 msgstr "已关联 %(cap)s/%(max)s 家供应商。"
 
@@ -13607,7 +13454,6 @@ msgstr "无空闲名额 — 在 KYB 批准新供应商前请先腾出空间。"
 
 #: assistant/operator_actions.py:3357
 #, python-format
-#| msgid "Свободный текст запроса"
 msgid "Свободно %(n)s слотов."
 msgstr "剩余 %(n)s 个名额。"
 
@@ -13624,12 +13470,10 @@ msgid "Очередь KYB"
 msgstr "KYB 队列"
 
 #: assistant/operator_actions.py:3386
-#| msgid "В холде (14 дней)"
 msgid "💼 Бонусы в холде (14 дней)"
 msgstr "💼 冻结中的奖金（14 天）"
 
 #: assistant/operator_actions.py:3390
-#| msgid "Зачислено за 30 дней"
 msgid "💼 Зачислено за 30 дней"
 msgstr "💼 30 天内已入账"
 
@@ -13681,7 +13525,6 @@ msgid "Товар + 18% сервис + фрахт + $300 фикс на тамо�
 msgstr "货物 + 18% 服务费 + 运费 + $300 固定清关费。门到门一站式，所有关税包含在价格内。"
 
 #: assistant/operator_actions.py:3526 assistant/operator_actions.py:3880
-#| msgid "Транзит РФ"
 msgid "+ 2% агент РФ"
 msgstr "+ 2% 俄罗斯代理"
 
@@ -13690,7 +13533,6 @@ msgid "Дополнительно если оплата в рублях (вал�
 msgstr "如以卢布支付则额外收取（外汇管制、代理协议）。物流费用中隐含约 25% 的集团利润——这是调节运营成本的杠杆。"
 
 #: assistant/operator_actions.py:3532 assistant/operator_actions.py:3886
-#| msgid "предоплата"
 msgid "10% — резерв (предоплата)"
 msgstr "10% — 预留金（预付款）"
 
@@ -13699,7 +13541,6 @@ msgid "Клиент вносит после подтверждения КП. З�
 msgstr "客户在确认报价后支付。启动生产/采购。客户取消时不可退还。"
 
 #: assistant/operator_actions.py:3534 assistant/operator_actions.py:3888
-#| msgid "Spec Q2 — основной микс"
 msgid "80% — основной платёж"
 msgstr "80% — 主付款"
 
@@ -13708,7 +13549,6 @@ msgid "Перед отгрузкой со склада поставщика. Б�
 msgstr "在供应商仓库发货前。未付款货物不发运。"
 
 #: assistant/operator_actions.py:3536 assistant/operator_actions.py:3890
-#| msgid "Финальная оплата"
 msgid "10% — финальный платёж"
 msgstr "10% — 尾款"
 
@@ -13725,7 +13565,6 @@ msgid "Все 100% удерживаются на платформе до фак�
 msgstr "全部 100% 在平台保管直至验收。之后才分配：给供应商 / 入押金 / 退款。"
 
 #: assistant/operator_actions.py:3544 assistant/operator_actions.py:3898
-#| msgid "Пополнение депозита"
 msgid "При отгрузке: FOB-цена − 10% депозита"
 msgstr "发货时：FOB 价格 − 10% 押金"
 
@@ -13734,7 +13573,6 @@ msgid "Платформа выплачивает 90% FOB-стоимости то
 msgstr "平台支付货物 FOB 价值的 90%。保留 10% 作为 SLA、质量和验收的保证金。"
 
 #: assistant/operator_actions.py:3546 assistant/operator_actions.py:3900
-#| msgid "Через 14 дней после приёмки"
 msgid "Через 14 дней после приёмки клиентом: +5% возврата"
 msgstr "客户验收 14 天后：+5% 退款"
 
@@ -13743,7 +13581,6 @@ msgid "Половина депозита возвращается поставщ
 msgstr "一半押金退还给供应商。条件——无未结投诉和质量索赔。"
 
 #: assistant/operator_actions.py:3548 assistant/operator_actions.py:3902
-#| msgid "Дебиторка, выплаты, удержания, комиссия платформы, баланс"
 msgid "Финальное удержание: 5% остаётся платформе"
 msgstr "最终扣留：5% 留给平台"
 
@@ -13752,7 +13589,6 @@ msgid "Гарантийный сбор за контроль SLA, качеств
 msgstr "用于SLA、质量管控和支持的保证金。不予退还。"
 
 #: assistant/operator_actions.py:3550 assistant/operator_actions.py:3904
-#| msgid "Полный возврат + пересылка"
 msgid "Полный возврат депозита (10%) — если"
 msgstr "全额退还押金（10%）— 如果"
 
@@ -13787,6 +13623,25 @@ msgstr "4 亿+ ₽ · 定制条款 + 专属经理"
 #: assistant/operator_actions.py:3569 assistant/operator_actions.py:3923
 msgid "📋 Правила и тарифы платформы (раскрыть)"
 msgstr "📋 平台规则与费率（展开）"
+
+#: assistant/operator_actions.py:3571 assistant/operator_actions.py:3925
+#| msgid "Добро пожаловать в кабинет поставщика!"
+msgid "Что платит клиент (по базису поставки)"
+msgstr "客户支付内容（按交付条件）"
+
+#: assistant/operator_actions.py:3573 assistant/operator_actions.py:3927
+#| msgid "Условия оплаты"
+msgid "Условия оплаты клиентом (10 / 80 / 10)"
+msgstr "客户付款条件（10 / 80 / 10）"
+
+#: assistant/operator_actions.py:3575 assistant/operator_actions.py:3929
+#| msgid "Триггеры закрывает поставщик / оператор."
+msgid "Что получает поставщик и как работает депозит"
+msgstr "供应商获得什么以及保证金如何运作"
+
+#: assistant/operator_actions.py:3577 assistant/operator_actions.py:3931
+msgid "🏆 Тарифные уровни (скидка по обороту)"
+msgstr "🏆 费率等级（按交易量折扣）"
 
 #: assistant/operator_actions.py:3613
 msgid "Расхождение с банком"
@@ -13844,23 +13699,19 @@ msgid "Средний возраст"
 msgstr "平均账龄"
 
 #: assistant/operator_actions.py:3659
-#| msgid "Срок"
 msgid "ок"
 msgstr "正常"
 
 #: assistant/operator_actions.py:3659
-#| msgid "Встречная"
 msgid "застревают"
 msgstr "出现滞留"
 
 #: assistant/operator_actions.py:3659
-#| msgid "Обновить статус"
 msgid "много старых"
 msgstr "多为陈旧项"
 
 #: assistant/operator_actions.py:3716
 #, python-format
-#| msgid "%(p)s%% заказов"
 msgid "%(n)s заказов"
 msgstr "%(n)s 个订单"
 
@@ -13900,7 +13751,6 @@ msgid "открыто за 30 дней"
 msgstr "30 天内开启"
 
 #: assistant/operator_actions.py:3814
-#| msgid "зачислено"
 msgid "✓ зачислено"
 msgstr "✓ 已入账"
 
@@ -13909,7 +13759,6 @@ msgid "Мой бонус · на счёте"
 msgstr "我的奖金 · 账户中"
 
 #: assistant/operator_actions.py:3842
-#| msgid "Нет пользователей"
 msgid "Нет бонусов в холде"
 msgstr "无冻结奖金"
 
@@ -13923,23 +13772,19 @@ msgid "%(p0)s сделок"
 msgstr "%(p0)s 笔交易"
 
 #: assistant/operator_actions.py:3848
-#| msgid "Пока нет начислений"
 msgid "За 30 дней нет зачислений"
 msgstr "30 天内无入账"
 
 #: assistant/operator_actions.py:3853
-#| msgid "Проектов пока нет"
 msgid "Бонусов пока не было"
 msgstr "暂无奖金"
 
 #: assistant/operator_actions.py:3858
-#| msgid "Платёжный агент — Эскроу"
 msgid "Платформа · деньги в эскроу"
 msgstr "平台 · 托管资金"
 
 #: assistant/operator_actions.py:3862
 #, python-format
-#| msgid "Активные заказы"
 msgid "Активные заказы · топ-%(n)s"
 msgstr "活跃订单 · 前 %(n)s"
 
@@ -13964,7 +13809,6 @@ msgid "Только %(p)s%% завершённого цикла дошло до 
 msgstr "仅 %(p)s%% 的完成周期到达卖方 — 请检查付款延迟。"
 
 #: assistant/operator_actions.py:3948
-#| msgid "Эскроу-холд"
 msgid "Эскроу-поток в норме."
 msgstr "托管资金流正常。"
 
@@ -14008,13 +13852,11 @@ msgstr "📥 支持"
 
 #: assistant/operator_actions.py:4058
 #, python-format
-#| msgid "%(get_method_display)s · %(get_status_display)s · создана %(M)s"
 msgid "%(method)s · %(status)s · создана %(created)s"
 msgstr "%(method)s · %(status)s · 创建于 %(created)s"
 
 #: assistant/operator_actions.py:4059
 #, python-format
-#| msgid "перевозчик %(carrier)s"
 msgid " · юзер сообщил %(claimed)s"
 msgstr " · 用户已告知 %(claimed)s"
 
@@ -14039,9 +13881,6 @@ msgstr "申请 %(p0)s 处于「%(p1)s」状态 — 无法入账。"
 
 #: assistant/operator_actions.py:4112
 #, python-format
-#| msgid ""
-#| "✓ [DEMO] Депозит пополнен на $%(amount)s.\n"
-#| "Текущий остаток: $%(balance)s %(currency)s."
 msgid "💰 Депозит пополнен на $%(amount)s (заявка %(ref)s)."
 msgstr "💰 押金已充值 $%(amount)s（申请 %(ref)s）。"
 
@@ -14061,12 +13900,10 @@ msgstr "申请处于「%(p0)s」状态 — 无法修改。"
 
 #: assistant/operator_actions.py:4157
 #, python-format
-#| msgid "✓ Заявка %(p0)s отклонена."
 msgid "⚠️ Заявка %(ref)s отклонена: %(reason)s."
 msgstr "⚠️ 申请 %(ref)s 已被拒绝：%(reason)s。"
 
 #: assistant/operator_actions.py:4157
-#| msgid "слабый финансовый индекс"
 msgid "свяжитесь с финансовым отделом"
 msgstr "请联系财务部门"
 
@@ -14541,7 +14378,6 @@ msgid "• %(count)s без названия → заполните Description"
 msgstr "• %(count)s 条缺少名称 → 请填写 Description"
 
 #: assistant/pricelist.py:3678
-#| msgid "Что исправить:"
 msgid "Как исправить:"
 msgstr "如何修复："
 
@@ -14570,12 +14406,10 @@ msgid "Строка"
 msgstr "行"
 
 #: assistant/pricelist.py:3685
-#| msgid "Колонок"
 msgid "Колонка"
 msgstr "列"
 
 #: assistant/pricelist.py:3685
-#| msgid "Заключение"
 msgid "Значение"
 msgstr "值"
 
@@ -14650,7 +14484,6 @@ msgid "5%% от $%(p0)s payable to supplier"
 msgstr "$%(p0)s 的 5%% payable to supplier"
 
 #: assistant/revenue.py:112
-#| msgid "Заказы и оплата"
 msgid "РФ-агент 2% (оплата в RUB)"
 msgstr "俄罗斯代理 2%（以 RUB 付款）"
 
@@ -16003,7 +15836,6 @@ msgstr "按客户 GMV"
 
 #: assistant/seller_actions.py:2799
 #, python-format
-#| msgid "%(p0)s сделок"
 msgid "%(n)s сделок"
 msgstr "%(n)s 笔交易"
 
@@ -16119,7 +15951,6 @@ msgid "➕ Ещё проект"
 msgstr "➕ 再加项目"
 
 #: assistant/seller_actions.py:2936
-#| msgid "Активных клиентов"
 msgid "0.02% со сделок приведённых клиентов"
 msgstr "推荐客户交易的 0.02%"
 
@@ -17010,7 +16841,6 @@ msgstr "未找到项目。"
 
 #: assistant/seller_actions.py:4643
 #, python-format
-#| msgid "📁 Проекты (%(p0)s)"
 msgid "📁 Проект «%(name)s»"
 msgstr "📁 项目「%(name)s」"
 
@@ -17069,7 +16899,6 @@ msgstr "💬 致操作员的咨询 · %(p0)s"
 
 #: assistant/support_hub.py:154
 #, python-format
-#| msgid "🚨 Жалоба на платформу"
 msgid "%(when)s · жалоба подана через форму"
 msgstr "%(when)s · 通过表单提交的投诉"
 
@@ -17135,17 +16964,14 @@ msgid "Чем помочь? Выберите раздел ниже — отве�
 msgstr "需要什么帮助？请在下方选择一个版块 — 我们将就您的订单和数据进行解答。任何问题都会转达给 Operator。"
 
 #: assistant/support_hub.py:208 assistant/support_hub.py:834
-#| msgid "Открыть рекламацию"
 msgid "Как открыть рекламацию?"
 msgstr "如何提出索赔？"
 
 #: assistant/support_hub.py:209
-#| msgid "Когда выплата поставщику?"
 msgid "Когда раскрываются контакты поставщика?"
 msgstr "供应商的联系方式何时公开？"
 
 #: assistant/support_hub.py:210
-#| msgid "Какая комиссия платформы?"
 msgid "Что входит в комиссию платформы?"
 msgstr "平台佣金包含哪些内容？"
 
@@ -17194,7 +17020,6 @@ msgid "Где применяется (раскрыть для деталей)"
 msgstr "适用场景（展开查看详情）"
 
 #: assistant/support_hub.py:251
-#| msgid "SLA-нарушений"
 msgid "SLA-нарушения и риски"
 msgstr "SLA 违规与风险"
 
@@ -17223,7 +17048,6 @@ msgid "SLA соблюдается, времени достаточно"
 msgstr "SLA 达标，时间充足"
 
 #: assistant/support_hub.py:257
-#| msgid "💰 Платежи / Эскроу"
 msgid "Платежи и эскроу"
 msgstr "付款与第三方托管"
 
@@ -17232,7 +17056,6 @@ msgid "Возврат, спор, refund_pending"
 msgstr "退货、争议、refund_pending"
 
 #: assistant/support_hub.py:260
-#| msgid "Ждёт резерв 10%"
 msgid "Ждёт резерв 10%, ждёт оплату"
 msgstr "等待 10% 预留金，等待付款"
 
@@ -17245,7 +17068,6 @@ msgid "Оплачено / переведено продавцу"
 msgstr "已付 / 已转给卖家"
 
 #: assistant/support_hub.py:263
-#| msgid "Покупатель (для seller)"
 msgid "Рейтинг и тиры (для seller)"
 msgstr "评级与等级（面向 Seller）"
 
@@ -17262,7 +17084,6 @@ msgid "Рейтинг 80–100 (Надёжный)"
 msgstr "评分 80–100（可信）"
 
 #: assistant/support_hub.py:269
-#| msgid "AI-режим"
 msgid "RFQ-режимы"
 msgstr "RFQ 模式"
 
@@ -17292,19 +17113,16 @@ msgstr "未找到工单。"
 
 #: assistant/support_hub.py:324
 #, python-format
-#| msgid "мин назад"
 msgid "%(minutes)s мин назад"
 msgstr "%(minutes)s 分钟前"
 
 #: assistant/support_hub.py:326
 #, python-format
-#| msgid "ч назад"
 msgid "%(hours)s ч назад"
 msgstr "%(hours)s 小时前"
 
 #: assistant/support_hub.py:328
 #, python-format
-#| msgid "дн назад"
 msgid "%(days)s дн назад"
 msgstr "%(days)s 天前"
 
@@ -17347,7 +17165,6 @@ msgstr "KYB 状态"
 
 #: assistant/support_hub.py:460
 #, python-format
-#| msgid "Помощь и поддержка"
 msgid "👁 Просмотр поддержки · %(name)s"
 msgstr "👁 支持查看 · %(name)s"
 
@@ -17358,7 +17175,6 @@ msgstr "没有真正的请求。用户 %(name)s 只是浏览了 FAQ/支持，没
 
 #: assistant/support_hub.py:465
 #, python-format
-#| msgid "🚨 Жалоба"
 msgid "🚨 Жалоба · %(name)s"
 msgstr "🚨 投诉 · %(name)s"
 
@@ -17369,7 +17185,6 @@ msgstr "用户 %(name)s 通过支持提交了投诉。需要处理。最近活�
 
 #: assistant/support_hub.py:469
 #, python-format
-#| msgid "💰 Бонус с покупок · %(p0)s"
 msgid "💬 Вопрос в поддержку · %(name)s"
 msgstr "💬 支持咨询 · %(name)s"
 
@@ -17395,30 +17210,25 @@ msgid "Просмотр поддержки · просто проверка на
 msgstr "支持查看 · 仅检查是否有问题"
 
 #: assistant/support_hub.py:506
-#| msgid "Пользователь не найден."
 msgid "Жалоба пользователя в поддержку"
 msgstr "用户向支持提出的投诉"
 
 #: assistant/support_hub.py:508
 #, python-format
-#| msgid "Помощь и поддержка"
 msgid "Вопрос в поддержку · «%(text)s»"
 msgstr "支持咨询 · 「%(text)s」"
 
 #: assistant/support_hub.py:508
-#| msgid "Помощь и поддержка"
 msgid "Вопрос в поддержку"
 msgstr "支持咨询"
 
 #: assistant/support_hub.py:512
 #, python-format
-#| msgid "📨 Разослать %(n)s поставщикам"
 msgid "💬 Написать %(name)s (профилактика)"
 msgstr "💬 给 %(name)s 发消息（主动跟进）"
 
 #: assistant/support_hub.py:514
 #, python-format
-#| msgid "💬 Связаться от себя"
 msgid "💬 Связаться с %(name)s"
 msgstr "💬 联系 %(name)s"
 
@@ -17797,7 +17607,6 @@ msgstr "📋 知识库（FAQ）"
 
 #: assistant/support_hub.py:824
 #, python-format
-#| msgid "Запрос: %(query)s"
 msgid " по «%(query)s»"
 msgstr " 关于「%(query)s」"
 
@@ -17806,7 +17615,6 @@ msgid " · из админки"
 msgstr " · 来自后台管理"
 
 #: assistant/support_hub.py:825
-#| msgid "Не настроен"
 msgid " · встроенная"
 msgstr " · 内置"
 
@@ -17816,17 +17624,14 @@ msgid "FAQ · %(p0)s ответов"
 msgstr "常见问题 · %(p0)s 条回答"
 
 #: assistant/support_hub.py:834
-#| msgid "Какая минимальная сумма заказа?"
 msgid "Минимальная сумма заказа"
 msgstr "最低订单金额"
 
 #: assistant/support_hub.py:835
-#| msgid "Когда выплата поставщику?"
 msgid "Когда раскрываются контакты"
 msgstr "联系方式何时公开"
 
 #: assistant/support_hub.py:835
-#| msgid "Как считается бонус?"
 msgid "Как работают бонусы"
 msgstr "奖励如何运作"
 
@@ -17851,7 +17656,6 @@ msgid "ИНН / Tax ID"
 msgstr "纳税人识别号 / Tax ID"
 
 #: assistant/support_hub.py:883
-#| msgid "Неаполь"
 msgid "Не заполнен"
 msgstr "未填写"
 
@@ -18019,7 +17823,6 @@ msgid "🚨 Жалоба на платформу"
 msgstr "🚨 平台投诉"
 
 #: assistant/support_hub.py:1104
-#| msgid "📝 Создать запрос"
 msgid "🚨 Подать жалобу"
 msgstr "🚨 提交投诉"
 
