@@ -37080,3 +37080,28 @@ msgstr "Send invitation"
 
 #~ msgid "ETA · 30 апр · по графику"
 #~ msgstr "ETA · Apr 30 · on schedule"
+
+#: assistant/actions.py:1893
+#, python-format
+msgid "Проверил %(articles)s артикулов: %(found_n)s найдено, %(not_found_n)s нет в каталоге. "
+msgstr "Checked %(articles)s articles: %(found_n)s found, %(not_found_n)s not in catalog. "
+
+#: assistant/actions.py:1893
+#, python-format
+msgid "Сумма по найденным — $%(total)s. Выберите способ и базис ниже."
+msgstr "Total for found items — $%(total)s. Choose a method and basis below."
+
+#: assistant/actions.py:1893
+#, python-format
+msgid "Можно создать RFQ — поставщики поищут аналоги."
+msgstr "You can create an RFQ — suppliers will search for analogs."
+
+#: assistant/actions.py:2100
+#, python-format
+msgid "%(found_n)s из %(total)s priced"
+msgstr "%(found_n)s of %(total)s priced"
+
+#: assistant/actions.py:2100
+#, python-format
+msgid " · доставка $%(ship)s"
+msgstr " · shipping $%(ship)s"

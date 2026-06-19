@@ -164,12 +164,27 @@ class AssistantConsumer(AsyncWebsocketConsumer):
         # явно активируем язык пользователя (UserProfile.language) на время
         # генерации ответа — иначе gettext-строки ассистента всегда по-русски.
         def _run():
+            from django.conf import settings
             from django.utils import translation
+            # Приоритет — у явного выбора в cookie `django_language` (как в
+            # UserLanguageMiddleware): профиль может отставать, если POST
+            # /api/set-language не сохранил его. WS-scope содержит cookies
+            # (AuthMiddlewareStack → CookieMiddleware).
+            lang = None
             try:
-                lang = (getattr(self.user, "profile", None)
-                        and self.user.profile.language) or "ru"
+                allowed = {c for c, _lbl in settings.LANGUAGES}
+                cookies = self.scope.get("cookies") or {}
+                cl = (cookies.get("django_language") or "").strip().lower()
+                if cl in allowed:
+                    lang = cl
             except Exception:
-                lang = "ru"
+                lang = None
+            if not lang:
+                try:
+                    lang = (getattr(self.user, "profile", None)
+                            and self.user.profile.language) or "ru"
+                except Exception:
+                    lang = "ru"
             with translation.override(lang):
                 return list(process_query_stream(self.conversation, message))
         # Convert sync generator → async via database_sync_to_async pulls

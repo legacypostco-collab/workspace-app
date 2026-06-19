@@ -36246,3 +36246,28 @@ msgstr "发送邀请"
 
 #~ msgid "ETA · 30 апр · по графику"
 #~ msgstr "ETA · 4月30日 · 按计划"
+
+#: assistant/actions.py:1893
+#, python-format
+msgid "Проверил %(articles)s артикулов: %(found_n)s найдено, %(not_found_n)s нет в каталоге. "
+msgstr "已检查 %(articles)s 个货号：%(found_n)s 个已找到，%(not_found_n)s 个不在目录中。 "
+
+#: assistant/actions.py:1893
+#, python-format
+msgid "Сумма по найденным — $%(total)s. Выберите способ и базис ниже."
+msgstr "已找到项目总额 — $%(total)s。请在下方选择运输方式和价格条款。"
+
+#: assistant/actions.py:1893
+#, python-format
+msgid "Можно создать RFQ — поставщики поищут аналоги."
+msgstr "可以创建 RFQ — 供应商将寻找替代品。"
+
+#: assistant/actions.py:2100
+#, python-format
+msgid "%(found_n)s из %(total)s priced"
+msgstr "%(found_n)s/%(total)s 已报价"
+
+#: assistant/actions.py:2100
+#, python-format
+msgid " · доставка $%(ship)s"
+msgstr " · 运输 $%(ship)s"

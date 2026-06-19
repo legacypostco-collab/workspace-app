@@ -1639,10 +1639,10 @@
     try {
       const t = new Date(iso).getTime();
       const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
-      if (s < 60) return 'только что';
-      if (s < 3600) return Math.floor(s/60) + ' мин';
-      if (s < 86400) return Math.floor(s/3600) + ' ч';
-      return Math.floor(s/86400) + ' д';
+      if (s < 60) return tr('только что');
+      if (s < 3600) return Math.floor(s/60) + tr(' мин');
+      if (s < 86400) return Math.floor(s/3600) + tr(' ч');
+      return Math.floor(s/86400) + tr(' д');
     } catch(e) { return ''; }
   }
 
@@ -2740,12 +2740,12 @@
         const optTop = COUNTRIES_TOP.map(c =>
           '<option value="' + esc(c.code) + '"'
           + (c.code === selectedCountry ? ' selected' : '')
-          + '>' + esc(c.flag + ' ' + c.name) + '</option>'
+          + '>' + esc(c.flag + ' ' + tr(c.name)) + '</option>'
         ).join('');
         const optAll = COUNTRIES_ALL.map(c =>
           '<option value="' + esc(c.code) + '"'
           + (c.code === selectedCountry ? ' selected' : '')
-          + '>' + esc(c.flag + ' ' + c.name) + '</option>'
+          + '>' + esc(c.flag + ' ' + tr(c.name)) + '</option>'
         ).join('');
         const placeholderOpt = '<option value=""' + (selectedCountry ? '' : ' selected')
           + '>— выберите страну —</option>';
@@ -4227,8 +4227,8 @@
       const bestMix = d.best_mix;
 
       const subParts = [];
-      if (offers != null) subParts.push(`${offers} предложений`);
-      if (sellers != null) subParts.push(`${sellers} поставщиков`);
+      if (offers != null) subParts.push(window.t('{n} предложений', {n: offers}));
+      if (sellers != null) subParts.push(window.t('{n} поставщиков', {n: sellers}));
       if (bestMix != null) subParts.push(`best mix ${fmtMoney(bestMix, d.currency || 'USD')}`);
 
       // ── Бейдж режима подбора (ТЗ §4) ──
@@ -4287,7 +4287,7 @@
           <div class="spec-foot-info">${
             (d.editable_price && (d.items || []).some(it => it.in_catalog) && (d.items || []).some(it => !it.in_catalog))
               ? `<button class="qf-keep-mine" type="button" title="Оставить только позиции из вашего каталога — у остальных очистится цена; нажмите ещё раз, чтобы вернуть">📦 Только мои позиции</button>`
-              : (esc(d.foot_info || '') + (d.shipping_matrix ? ' · доставка ↓' : ''))
+              : (esc(d.foot_info || '') + (d.shipping_matrix ? (' · ' + tr('доставка ↓')) : ''))
           }</div>
           <div class="spec-foot-total"${d.qf ? ' data-total' : ''}>${d.total != null ? fmtMoney(d.total, d.currency || 'USD') : ''}</div>
         </div>
@@ -4509,7 +4509,7 @@
     const nameMapJson = esc(JSON.stringify(nameToCC));
     return `<div class="df-block" data-articles='${articlesJson}' ${qtyJson ? `data-qty='${qtyJson}'` : ''} data-arrival='${mapJson}' data-countries='${nameMapJson}'>
       <div class="df-title">📍 Куда доставить?</div>
-      <div class="df-hint">Укажите <b>страну и город</b> → в таблице ниже появятся цены <b>CIP и DDP</b>. Полный адрес до двери нужен только для <b>DDP</b> — попросим при выборе.</div>
+      <div class="df-hint">${tr('Укажите <b>страну и город</b> → в таблице ниже появятся цены <b>CIP и DDP</b>. Полный адрес до двери нужен только для <b>DDP</b> — попросим при выборе.')}</div>
       <div class="df-row">
         <label class="df-lbl">Страна <span class="df-opt">(для CIP/DDP)</span></label>
         <input class="df-input df-country" type="text" list="${ccId}" value="${esc(curCountryName)}" placeholder="Начните вводить страну…" autocomplete="off" oninput="window.dfCountryChange && window.dfCountryChange(this, false)" onchange="window.dfCountryChange && window.dfCountryChange(this, true)" />
@@ -4524,7 +4524,7 @@
         <label class="df-lbl">Адрес доставки <span class="df-opt">(улица, дом · для DDP)</span></label>
         <textarea class="df-input df-addr" rows="2" placeholder="Напр.: ул. Профсоюзная 84, корп. 5, офис 12">${curAddr}</textarea>
       </div>
-      <div class="df-hint" style="margin:2px 0 8px;">Заполнили поля? Нажмите кнопку — цены <b>CIP/DDP</b> сразу появятся в таблице ниже ↓</div>
+      <div class="df-hint" style="margin:2px 0 8px;">${tr('Заполнили поля? Нажмите кнопку — цены <b>CIP/DDP</b> сразу появятся в таблице ниже ↓')}</div>
       <button class="df-submit act-btn" type="button" onclick="window.calcShipping && window.calcShipping(this)">
         🧮 Рассчитать цены CIP / DDP →
       </button>
@@ -8258,11 +8258,11 @@
   function relativeTime(date) {
     const now = new Date();
     const diff = (now - date) / 1000;
-    if (diff < 60) return 'только что';
-    if (diff < 3600) return Math.floor(diff/60) + ' мин назад';
-    if (diff < 86400) return Math.floor(diff/3600) + ' ч назад';
-    if (diff < 604800) return Math.floor(diff/86400) + ' дн назад';
-    return date.toLocaleDateString('ru-RU', {day:'2-digit', month:'short'});
+    if (diff < 60) return tr('только что');
+    if (diff < 3600) return Math.floor(diff/60) + tr(' мин назад');
+    if (diff < 86400) return Math.floor(diff/3600) + tr(' ч назад');
+    if (diff < 604800) return Math.floor(diff/86400) + tr(' дн назад');
+    return date.toLocaleDateString(document.documentElement.lang || 'ru-RU', {day:'2-digit', month:'short'});
   }
 
   window.filterConvs = renderConvList;

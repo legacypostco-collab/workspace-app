@@ -1,6 +1,6 @@
 // AUTO-GENERATED: переводы фронт-литералов chat-first.js (en/zh-hans/es/ar).
-// Источник — русские строки как ключи; применяются DOM-переводчиком i18n.js.
-// Регенерация: scripts subagent-перевод -> merge. НЕ редактировать вручную точечно.
+// Русские строки = ключи; применяются DOM-переводчиком i18n.js (registerI18n).
+// Источники: UI-литералы + страны/порты + форма доставки + курируемые композиты.
 (function(){
   if (typeof window.registerI18n !== 'function') return;
   window.registerI18n(
@@ -894,10 +894,10 @@
   "ar": "التوصيل"
  },
  "Доставка (логистика)": {
-  "en": "Delivery (logistics)",
-  "zh-hans": "配送（物流）",
-  "es": "Entrega (logística)",
-  "ar": "التوصيل (اللوجستيات)"
+  "en": "Shipping (logistics)",
+  "zh-hans": "运输（物流）",
+  "es": "Envío (logística)",
+  "ar": "الشحن (اللوجستيات)"
  },
  "Египет": {
   "en": "Egypt",
@@ -1434,16 +1434,16 @@
   "ar": "ناميبيا"
  },
  "Напр.: Москва": {
-  "en": "E.g.: Moscow",
+  "en": "e.g.: Moscow",
   "zh-hans": "例如：莫斯科",
-  "es": "Ej.: Moscú",
+  "es": "p. ej.: Madrid",
   "ar": "مثال: موسكو"
  },
  "Напр.: ул. Профсоюзная 84, корп. 5, офис 12": {
-  "en": "E.g.: Profsoyuznaya St. 84, bldg. 5, office 12",
-  "zh-hans": "例如：Profsoyuznaya 街 84 号，5 栋，12 室",
-  "es": "Ej.: c/ Profsoyuznaya 84, edif. 5, oficina 12",
-  "ar": "مثال: شارع Profsoyuznaya 84، مبنى 5، مكتب 12"
+  "en": "e.g.: 84 Profsoyuznaya St., bldg. 5, office 12",
+  "zh-hans": "例如：工会街 84 号 5 栋 12 室",
+  "es": "p. ej.: c/ Profsoyuznaya 84, edif. 5, oficina 12",
+  "ar": "مثال: شارع بروفسويوزنايا 84، مبنى 5، مكتب 12"
  },
  "Науру": {
   "en": "Nauru",
@@ -2640,8 +2640,8 @@
   "ar": "⚡ مُشغّل"
  },
  "✈️ Доставка": {
-  "en": "✈️ Delivery",
-  "zh-hans": "✈️ 运送",
+  "en": "✈️ Shipping",
+  "zh-hans": "✈️ 运输",
   "es": "✈️ Envío",
   "ar": "✈️ الشحن"
  },
@@ -2814,8 +2814,8 @@
   "ar": "🗑 إلغاء"
  },
  "🚢 Доставка": {
-  "en": "🚢 Delivery",
-  "zh-hans": "🚢 运送",
+  "en": "🚢 Shipping",
+  "zh-hans": "🚢 运输",
   "es": "🚢 Envío",
   "ar": "🚢 الشحن"
  },
@@ -2824,6 +2824,498 @@
   "zh-hans": "🟢 可靠 · 🟡 沙盒 · 🟠 高风险 — 评分 0–100 · 运费按重量/尺寸计算 · 到岸价 = EXW + 最优运费",
   "es": "🟢 Fiable · 🟡 Sandbox · 🟠 De riesgo — calificación 0–100 · El envío se calcula por peso/dimensiones · Landed = EXW + mejor envío",
   "ar": "🟢 موثوق · 🟡 صندوق رمل · 🟠 محفوف بالمخاطر — تقييم 0–100 · يُحسب الشحن حسب الوزن/الأبعاد · السعر الواصل = EXW + أفضل شحن"
+ },
+ "Архангельск": {
+  "en": "Arkhangelsk",
+  "zh-hans": "阿尔汉格尔斯克",
+  "es": "Arjángelsk",
+  "ar": "أرخانجيلسك"
+ },
+ "Балтийск": {
+  "en": "Baltiysk",
+  "zh-hans": "波罗的斯克",
+  "es": "Baltiysk",
+  "ar": "بالتيسك"
+ },
+ "Большой Камень": {
+  "en": "Bolshoy Kamen",
+  "zh-hans": "大卡缅",
+  "es": "Bolshoy Kamen",
+  "ar": "بولشوي كامين"
+ },
+ "Большой порт": {
+  "en": "Big Port",
+  "zh-hans": "大港",
+  "es": "Puerto Grande",
+  "ar": "الميناء الكبير"
+ },
+ "Бронка": {
+  "en": "Bronka",
+  "zh-hans": "布隆卡",
+  "es": "Bronka",
+  "ar": "برونكا"
+ },
+ "ВКТ (контейнерный)": {
+  "en": "VKT (container)",
+  "zh-hans": "VKT（集装箱）",
+  "es": "VKT (contenedor)",
+  "ar": "VKT (الحاويات)"
+ },
+ "ВМРП (рыбный)": {
+  "en": "VMRP (fishing)",
+  "zh-hans": "VMRP（渔业）",
+  "es": "VMRP (pesquero)",
+  "ar": "VMRP (الأسماك)"
+ },
+ "ВМТП": {
+  "en": "VMTP",
+  "zh-hans": "VMTP",
+  "es": "VMTP",
+  "ar": "VMTP"
+ },
+ "Ванино": {
+  "en": "Vanino",
+  "zh-hans": "瓦尼诺",
+  "es": "Vanino",
+  "ar": "فانينو"
+ },
+ "Владивосток": {
+  "en": "Vladivostok",
+  "zh-hans": "符拉迪沃斯托克",
+  "es": "Vladivostok",
+  "ar": "فلاديفوستوك"
+ },
+ "Внуково": {
+  "en": "Vnukovo",
+  "zh-hans": "伏努科沃",
+  "es": "Vnukovo",
+  "ar": "فنوكوفو"
+ },
+ "Восточный": {
+  "en": "Vostochny",
+  "zh-hans": "东方港",
+  "es": "Vostochny",
+  "ar": "فوستوتشني"
+ },
+ "Гана": {
+  "en": "Ghana",
+  "zh-hans": "加纳",
+  "es": "Ghana",
+  "ar": "غانا"
+ },
+ "Гуам": {
+  "en": "Guam",
+  "zh-hans": "关岛",
+  "es": "Guam",
+  "ar": "غوام"
+ },
+ "Домодедово": {
+  "en": "Domodedovo",
+  "zh-hans": "多莫杰多沃",
+  "es": "Domodédovo",
+  "ar": "دوموديدوفو"
+ },
+ "Емельяново": {
+  "en": "Yemelyanovo",
+  "zh-hans": "叶梅利亚诺沃",
+  "es": "Yemelyanovo",
+  "ar": "يميليانوفو"
+ },
+ "Зарубино": {
+  "en": "Zarubino",
+  "zh-hans": "扎鲁比诺",
+  "es": "Zarubino",
+  "ar": "زاروبينو"
+ },
+ "Ирак": {
+  "en": "Iraq",
+  "zh-hans": "伊拉克",
+  "es": "Irak",
+  "ar": "العراق"
+ },
+ "Иран": {
+  "en": "Iran",
+  "zh-hans": "伊朗",
+  "es": "Irán",
+  "ar": "إيران"
+ },
+ "КМТП": {
+  "en": "KMTP",
+  "zh-hans": "KMTP",
+  "es": "KMTP",
+  "ar": "KMTP"
+ },
+ "КНДР": {
+  "en": "North Korea",
+  "zh-hans": "朝鲜",
+  "es": "Corea del Norte",
+  "ar": "كوريا الشمالية"
+ },
+ "Кавказ": {
+  "en": "Kavkaz",
+  "zh-hans": "高加索港",
+  "es": "Kavkaz",
+  "ar": "كافكاز"
+ },
+ "Казань": {
+  "en": "Kazan",
+  "zh-hans": "喀山",
+  "es": "Kazán",
+  "ar": "قازان"
+ },
+ "Кандалакша": {
+  "en": "Kandalaksha",
+  "zh-hans": "坎达拉克沙",
+  "es": "Kandalaksha",
+  "ar": "كاندالاكشا"
+ },
+ "Кипр": {
+  "en": "Cyprus",
+  "zh-hans": "塞浦路斯",
+  "es": "Chipre",
+  "ar": "قبرص"
+ },
+ "Кольцово": {
+  "en": "Koltsovo",
+  "zh-hans": "科利佐沃",
+  "es": "Koltsovo",
+  "ar": "كولتسوفو"
+ },
+ "Куба": {
+  "en": "Cuba",
+  "zh-hans": "古巴",
+  "es": "Cuba",
+  "ar": "كوبا"
+ },
+ "Курык (мультимодальный)": {
+  "en": "Kuryk (multimodal)",
+  "zh-hans": "库雷克（多式联运）",
+  "es": "Kuryk (multimodal)",
+  "ar": "كوريك (متعدد الوسائط)"
+ },
+ "Лаос": {
+  "en": "Laos",
+  "zh-hans": "老挝",
+  "es": "Laos",
+  "ar": "لاوس"
+ },
+ "ММТП": {
+  "en": "MMTP",
+  "zh-hans": "MMTP",
+  "es": "MMTP",
+  "ar": "MMTP"
+ },
+ "Мали": {
+  "en": "Mali",
+  "zh-hans": "马里",
+  "es": "Malí",
+  "ar": "مالي"
+ },
+ "Морской торговый порт": {
+  "en": "Sea Commercial Port",
+  "zh-hans": "海运商港",
+  "es": "Puerto Comercial Marítimo",
+  "ar": "الميناء التجاري البحري"
+ },
+ "НМТП": {
+  "en": "NMTP",
+  "zh-hans": "NMTP",
+  "es": "NMTP",
+  "ar": "NMTP"
+ },
+ "НУТЭП": {
+  "en": "NUTEP",
+  "zh-hans": "NUTEP",
+  "es": "NUTEP",
+  "ar": "NUTEP"
+ },
+ "Ниуэ": {
+  "en": "Niue",
+  "zh-hans": "纽埃",
+  "es": "Niue",
+  "ar": "نيوي"
+ },
+ "ОАЭ": {
+  "en": "United Arab Emirates",
+  "zh-hans": "阿拉伯联合酋长国",
+  "es": "Emiratos Árabes Unidos",
+  "ar": "الإمارات العربية المتحدة"
+ },
+ "Оман": {
+  "en": "Oman",
+  "zh-hans": "阿曼",
+  "es": "Omán",
+  "ar": "عُمان"
+ },
+ "ПКТ (контейнерный)": {
+  "en": "PKT (container)",
+  "zh-hans": "PKT（集装箱）",
+  "es": "PKT (contenedor)",
+  "ar": "PKT (الحاويات)"
+ },
+ "Первомайский терминал": {
+  "en": "Pervomaysky Terminal",
+  "zh-hans": "佩尔沃马伊斯基码头",
+  "es": "Terminal Pervomaysky",
+  "ar": "محطة بيرفومايسكي"
+ },
+ "Перу": {
+  "en": "Peru",
+  "zh-hans": "秘鲁",
+  "es": "Perú",
+  "ar": "بيرو"
+ },
+ "Петролеспорт": {
+  "en": "Petrolesport",
+  "zh-hans": "彼得罗列斯港",
+  "es": "Petrolesport",
+  "ar": "بيتروليسبورت"
+ },
+ "Порт Тамань": {
+  "en": "Port Taman",
+  "zh-hans": "塔曼港",
+  "es": "Puerto Taman",
+  "ar": "ميناء تامان"
+ },
+ "Посьет": {
+  "en": "Posyet",
+  "zh-hans": "波谢特",
+  "es": "Posyet",
+  "ar": "بوسييت"
+ },
+ "Пулково": {
+  "en": "Pulkovo",
+  "zh-hans": "普尔科沃",
+  "es": "Púlkovo",
+  "ar": "بولكوفو"
+ },
+ "Ростов-на-Дону": {
+  "en": "Rostov-on-Don",
+  "zh-hans": "顿河畔罗斯托夫",
+  "es": "Rostov del Don",
+  "ar": "روستوف على نهر الدون"
+ },
+ "США": {
+  "en": "United States",
+  "zh-hans": "美国",
+  "es": "Estados Unidos",
+  "ar": "الولايات المتحدة"
+ },
+ "Славянка": {
+  "en": "Slavyanka",
+  "zh-hans": "斯拉夫扬卡",
+  "es": "Slavyanka",
+  "ar": "سلافيانكا"
+ },
+ "Советская Гавань": {
+  "en": "Sovetskaya Gavan",
+  "zh-hans": "苏维埃港",
+  "es": "Sovetskaya Gavan",
+  "ar": "سوفيتسكايا غافان"
+ },
+ "Сочи": {
+  "en": "Sochi",
+  "zh-hans": "索契",
+  "es": "Sochi",
+  "ar": "سوتشي"
+ },
+ "Темрюк": {
+  "en": "Temryuk",
+  "zh-hans": "捷姆留克",
+  "es": "Temryuk",
+  "ar": "تيمريوك"
+ },
+ "Того": {
+  "en": "Togo",
+  "zh-hans": "多哥",
+  "es": "Togo",
+  "ar": "توغو"
+ },
+ "Толмачёво": {
+  "en": "Tolmachevo",
+  "zh-hans": "托尔马乔沃",
+  "es": "Tolmachevo",
+  "ar": "تولماتشيوفو"
+ },
+ "Туапсе": {
+  "en": "Tuapse",
+  "zh-hans": "图阿普谢",
+  "es": "Tuapse",
+  "ar": "توابسي"
+ },
+ "Усть-Луга": {
+  "en": "Ust-Luga",
+  "zh-hans": "乌斯季-卢加",
+  "es": "Ust-Luga",
+  "ar": "أوست-لوغا"
+ },
+ "Усть-Луга ЮГ-2": {
+  "en": "Ust-Luga YUG-2",
+  "zh-hans": "乌斯季-卢加 YUG-2",
+  "es": "Ust-Luga YUG-2",
+  "ar": "أوست-لوغا YUG-2"
+ },
+ "Хабаровск": {
+  "en": "Khabarovsk",
+  "zh-hans": "哈巴罗夫斯克",
+  "es": "Jabárovsk",
+  "ar": "خاباروفسك"
+ },
+ "Чад": {
+  "en": "Chad",
+  "zh-hans": "乍得",
+  "es": "Chad",
+  "ar": "تشاد"
+ },
+ "Чили": {
+  "en": "Chile",
+  "zh-hans": "智利",
+  "es": "Chile",
+  "ar": "تشيلي"
+ },
+ "Шереметьево": {
+  "en": "Sheremetyevo",
+  "zh-hans": "谢列梅捷沃",
+  "es": "Sheremétyevo",
+  "ar": "شيريميتيفو"
+ },
+ "Шесхарис": {
+  "en": "Sheskharis",
+  "zh-hans": "舍斯哈里斯",
+  "es": "Sheskharis",
+  "ar": "شيسخاريس"
+ },
+ "ЮАР": {
+  "en": "South Africa",
+  "zh-hans": "南非",
+  "es": "Sudáfrica",
+  "ar": "جنوب أفريقيا"
+ },
+ "о-в Мэн": {
+  "en": "Isle of Man",
+  "zh-hans": "马恩岛",
+  "es": "Isla de Man",
+  "ar": "جزيرة مان"
+ },
+ "Укажите <b>страну и город</b> → в таблице ниже появятся цены <b>CIP и DDP</b>. Полный адрес до двери нужен только для <b>DDP</b> — попросим при выборе.": {
+  "en": "Specify the <b>country and city</b> → <b>CIP and DDP</b> prices will appear in the table below. A full door-to-door address is only needed for <b>DDP</b> — we'll ask when you select it.",
+  "zh-hans": "填写<b>国家和城市</b> → 下方表格中将显示 <b>CIP 和 DDP</b> 价格。完整的送货上门地址仅 <b>DDP</b> 需要 — 选择时我们会询问。",
+  "es": "Indique el <b>país y la ciudad</b> → en la tabla de abajo aparecerán los precios <b>CIP y DDP</b>. La dirección completa hasta la puerta solo se necesita para <b>DDP</b> — se la pediremos al seleccionarlo.",
+  "ar": "حدّد <b>الدولة والمدينة</b> ← ستظهر أسعار <b>CIP و DDP</b> في الجدول أدناه. العنوان الكامل حتى الباب مطلوب فقط لـ <b>DDP</b> — سنطلبه عند الاختيار."
+ },
+ "Заполнили поля? Нажмите кнопку — цены <b>CIP/DDP</b> сразу появятся в таблице ниже ↓": {
+  "en": "Filled in the fields? Click the button — <b>CIP/DDP</b> prices will appear right away in the table below ↓",
+  "zh-hans": "已填写好字段？点击按钮 — <b>CIP/DDP</b> 价格将立即显示在下方表格中 ↓",
+  "es": "¿Completó los campos? Pulse el botón — los precios <b>CIP/DDP</b> aparecerán de inmediato en la tabla de abajo ↓",
+  "ar": "هل أكملت تعبئة الحقول؟ اضغط الزر — ستظهر أسعار <b>CIP/DDP</b> فورًا في الجدول أدناه ↓"
+ },
+ "📍 Куда доставить?": {
+  "en": "📍 Where to deliver?",
+  "zh-hans": "📍 送货到哪里？",
+  "es": "📍 ¿A dónde entregar?",
+  "ar": "📍 إلى أين نوصل؟"
+ },
+ "Страна": {
+  "en": "Country",
+  "zh-hans": "国家",
+  "es": "País",
+  "ar": "الدولة"
+ },
+ "Город / место прибытия": {
+  "en": "City / arrival point",
+  "zh-hans": "城市 / 到达地点",
+  "es": "Ciudad / lugar de llegada",
+  "ar": "المدينة / مكان الوصول"
+ },
+ "Адрес доставки": {
+  "en": "Delivery address",
+  "zh-hans": "送货地址",
+  "es": "Dirección de entrega",
+  "ar": "عنوان التسليم"
+ },
+ "(для CIP/DDP)": {
+  "en": "(for CIP/DDP)",
+  "zh-hans": "(用于 CIP/DDP)",
+  "es": "(para CIP/DDP)",
+  "ar": "(لـ CIP/DDP)"
+ },
+ "(улица, дом · для DDP)": {
+  "en": "(street, building · for DDP)",
+  "zh-hans": "(街道、门牌号 · 用于 DDP)",
+  "es": "(calle, número · para DDP)",
+  "ar": "(الشارع، رقم المبنى · لـ DDP)"
+ },
+ "🧮 Рассчитать цены CIP / DDP →": {
+  "en": "🧮 Calculate CIP / DDP prices →",
+  "zh-hans": "🧮 计算 CIP / DDP 价格 →",
+  "es": "🧮 Calcular precios CIP / DDP →",
+  "ar": "🧮 احسب أسعار CIP / DDP ←"
+ },
+ "{n} предложений": {
+  "en": "{n} offers",
+  "zh-hans": "{n} 个报价",
+  "es": "{n} ofertas",
+  "ar": "{n} عرض"
+ },
+ "{n} поставщиков": {
+  "en": "{n} suppliers",
+  "zh-hans": "{n} 家供应商",
+  "es": "{n} proveedores",
+  "ar": "{n} مورّد"
+ },
+ "доставка ↓": {
+  "en": "shipping ↓",
+  "zh-hans": "运输 ↓",
+  "es": "envío ↓",
+  "ar": "الشحن ↓"
+ },
+ " мин": {
+  "en": " min",
+  "zh-hans": " 分钟",
+  "es": " min",
+  "ar": " دقيقة"
+ },
+ " ч": {
+  "en": " h",
+  "zh-hans": " 小时",
+  "es": " h",
+  "ar": " س"
+ },
+ " д": {
+  "en": " d",
+  "zh-hans": " 天",
+  "es": " d",
+  "ar": " ي"
+ },
+ " мин назад": {
+  "en": " min ago",
+  "zh-hans": " 分钟前",
+  "es": " min atrás",
+  "ar": " دقيقة مضت"
+ },
+ " ч назад": {
+  "en": " h ago",
+  "zh-hans": " 小时前",
+  "es": " h atrás",
+  "ar": " ساعة مضت"
+ },
+ " дн назад": {
+  "en": " d ago",
+  "zh-hans": " 天前",
+  "es": " días atrás",
+  "ar": " يوم مضى"
+ },
+ "только что": {
+  "en": "just now",
+  "zh-hans": "刚刚",
+  "es": "ahora mismo",
+  "ar": "الآن"
+ },
+ "📦 Доставка": {
+  "en": "📦 Shipping",
+  "zh-hans": "📦 运输",
+  "es": "📦 Envío",
+  "ar": "📦 الشحن"
  }
 }
   );

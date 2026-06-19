@@ -1890,12 +1890,12 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             _('Проверил %(articles)s артикулов: %(found_n)s найдено, %(not_found_n)s нет в каталоге. Сумма EXW — $%(total)s. FOB и CIP до %(or)s рассчитаны. Для DDP добавьте адрес доставки.') % {'articles': len(articles), 'found_n': found_n, 'not_found_n': not_found_n, 'total': f"{total:,.0f}", 'or': dest or 'порта'}
         )
     else:
-        intro = (
-            f"Проверил {len(articles)} артикулов: {found_n} найдено, "
-            f"{not_found_n} нет в каталоге. "
-            + (f"Сумма по найденным — ${total:,.0f}. Выберите способ и базис ниже."
-               if found_n else "Можно создать RFQ — поставщики поищут аналоги.")
-        )
+        intro = _('Проверил %(articles)s артикулов: %(found_n)s найдено, %(not_found_n)s нет в каталоге. ') % {
+            'articles': len(articles), 'found_n': found_n, 'not_found_n': not_found_n}
+        if found_n:
+            intro += _('Сумма по найденным — $%(total)s. Выберите способ и базис ниже.') % {'total': f"{total:,.0f}"}
+        else:
+            intro += _('Можно создать RFQ — поставщики поищут аналоги.')
 
     # ── Кнопки по группам режимов (ТЗ §4–7) ──────────────────────
     # Вместо одной «Купить всё» — разделяем по auto/semi/manual,
@@ -2097,8 +2097,8 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             "landed_total": int(landed_total) if landed_total else None,
             "dest_country": dest,
             "currency": "USD",
-            "foot_info": f"{found_n} из {len(articles)} priced" +
-                          (f" · доставка ${ship_total:,.0f}" if ship_total else ""),
+            "foot_info": (_('%(found_n)s из %(total)s priced') % {'found_n': found_n, 'total': len(articles)}) +
+                          ((_(' · доставка $%(ship)s') % {'ship': f"{ship_total:,.0f}"}) if ship_total else ""),
             # Матрица 3 mode × 3 incoterm — для виджета выбора базиса.
             # Матрица всегда видна: FOB-колонка работает без dest/адреса
             # (клиент сам забирает в порту отгрузки). CIP/DDP — гейтятся
