@@ -1578,6 +1578,27 @@
     return (lang || currentLang) === 'ar';
   };
 
+  // ── Регистрация внешнего словаря ─────────────────────────────────────
+  // i18n_auto.js (сгенерированные переводы фронт-литералов chat-first.js)
+  // вызывает это с объектом { "русская строка": {en, "zh-hans", es, ar}, … }.
+  // Не перезатираем уже существующие (курируемые) записи. Добавляем ru-идентичность,
+  // чтобы под 'ru' не срабатывал en-фолбэк.
+  window.registerI18n = function (addendum) {
+    if (!addendum || typeof addendum !== 'object') return 0;
+    let n = 0;
+    Object.keys(addendum).forEach(function (ru) {
+      const tr = addendum[ru];
+      if (!tr || typeof tr !== 'object') return;
+      Object.keys(tr).forEach(function (lang) {
+        if (!DICT[lang]) DICT[lang] = {};
+        if (DICT[lang][ru] == null && tr[lang] != null) DICT[lang][ru] = tr[lang];
+      });
+      if (DICT.ru[ru] == null) DICT.ru[ru] = ru;
+      n++;
+    });
+    return n;
+  };
+
   // ── DOM-перевод динамики ─────────────────────────────────────────────
   // chat-first.js рендерит часть UI русскими литералами прямо в HTML (мимо esc()).
   // localizeNode переводит ТЕКСТОВЫЕ УЗЛЫ и placeholder/title по ТОЧНОМУ совпадению
