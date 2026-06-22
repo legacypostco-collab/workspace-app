@@ -1,5 +1,5 @@
-{% load static i18n %}<!DOCTYPE html>
-<html lang="ru">
+{% load static i18n %}{% get_current_language as CURRENT_LANG %}{% get_current_language_bidi as LANG_BIDI %}<!DOCTYPE html>
+<html lang="{{ CURRENT_LANG|default:'ru' }}" dir="{% if LANG_BIDI %}rtl{% else %}ltr{% endif %}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
@@ -513,6 +513,7 @@
   window.PROJECT_ID = "{{ project_id }}";
 </script>
 <script src="{% static 'js/i18n.js' %}?v=1&t={% now 'U' %}" defer></script>
+<script src="{% static 'js/i18n_auto.js' %}?v=8" defer></script>
 <script src="{% static 'js/project-page.js' %}?v=6" defer></script>
 </body>
 </html>
