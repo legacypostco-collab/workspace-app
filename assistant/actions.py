@@ -3803,32 +3803,32 @@ def _seller_deals(user, params):
     # status → (иконка, заголовок этапа, кнопка действия, action-обработчик)
     # Порядок = приоритет внимания: сначала то, где ждут продавца.
     STAGE_META = [
-        ("reserve_paid",   "✅", "Новые заказы — подтвердить и в производство",
-         "▶️ Подтвердить", "advance_order"),
-        ("ready_to_ship",  "🚚", "Готовы к отгрузке",
-         "🚚 Отгрузить", "ship_order"),
-        ("confirmed",      "🏭", "Подтверждены — формирование заказа",
-         "📦 Открыть", "get_order_detail"),
-        ("in_production",  "⚙️", "В производстве",
-         "📦 Открыть", "get_order_detail"),
-        ("transit_abroad", "🚢", "Транзит за рубеж",
-         "📦 Открыть", "get_order_detail"),
-        ("shipped_abroad", "🚢", "Отгружены за рубеж",
-         "📦 Открыть", "get_order_detail"),
-        ("shipped",        "📦", "Отгружены",
-         "📦 Открыть", "get_order_detail"),
-        ("customs",        "🛃", "На таможне РФ",
-         "📦 Открыть", "get_order_detail"),
-        ("transit_rf",     "🚛", "Транзит по РФ",
-         "📦 Открыть", "get_order_detail"),
-        ("issuing",        "📬", "Выдача / приёмка",
-         "📦 Открыть", "get_order_detail"),
-        ("pending",        "⏳", "Ждут оплату резерва покупателем",
-         "📦 Открыть", "get_order_detail"),
-        ("delivered",      "🏁", "Доставлены — оплата из эскроу",
-         "📦 Открыть", "get_order_detail"),
-        ("completed",      "🏁", "Завершённые",
-         "📦 Открыть", "get_order_detail"),
+        ("reserve_paid",   "✅", _("Новые заказы — подтвердить и в производство"),
+         _("▶️ Подтвердить"), "advance_order"),
+        ("ready_to_ship",  "🚚", _("Готовы к отгрузке"),
+         _("🚚 Отгрузить"), "ship_order"),
+        ("confirmed",      "🏭", _("Подтверждены — формирование заказа"),
+         _("📦 Открыть"), "get_order_detail"),
+        ("in_production",  "⚙️", _("В производстве"),
+         _("📦 Открыть"), "get_order_detail"),
+        ("transit_abroad", "🚢", _("Транзит за рубеж"),
+         _("📦 Открыть"), "get_order_detail"),
+        ("shipped_abroad", "🚢", _("Отгружены за рубеж"),
+         _("📦 Открыть"), "get_order_detail"),
+        ("shipped",        "📦", _("Отгружены"),
+         _("📦 Открыть"), "get_order_detail"),
+        ("customs",        "🛃", _("На таможне РФ"),
+         _("📦 Открыть"), "get_order_detail"),
+        ("transit_rf",     "🚛", _("Транзит по РФ"),
+         _("📦 Открыть"), "get_order_detail"),
+        ("issuing",        "📬", _("Выдача / приёмка"),
+         _("📦 Открыть"), "get_order_detail"),
+        ("pending",        "⏳", _("Ждут оплату резерва покупателем"),
+         _("📦 Открыть"), "get_order_detail"),
+        ("delivered",      "🏁", _("Доставлены — оплата из эскроу"),
+         _("📦 Открыть"), "get_order_detail"),
+        ("completed",      "🏁", _("Завершённые"),
+         _("📦 Открыть"), "get_order_detail"),
     ]
     ATTENTION = {"reserve_paid", "ready_to_ship"}
     TRANSIT   = {"transit_abroad", "shipped_abroad", "shipped", "customs", "transit_rf", "issuing"}
@@ -3934,7 +3934,7 @@ def _seller_deals(user, params):
         if quoted_rfqs:
             rrows = [{
                 "title":    _('RFQ #%(id)s · Покупатель') % {'id': r.id},
-                "subtitle": _('%(count)s %(count2)s · КП отправлен, ждём ответа') % {'count': r.items.count(), 'count2': _plural_ru(r.items.count(), 'позиция', 'позиции', 'позиций')},
+                "subtitle": ngettext('%(n)s позиция · КП отправлен, ждём ответа', '%(n)s позиций · КП отправлен, ждём ответа', r.items.count()) % {'n': r.items.count()},
                 "action":   {"label": _('💬 Открыть КП'), "action": "respond_rfq_form",
                              "params": {"rfq_id": r.id}},
             } for r in quoted_rfqs]
@@ -3993,7 +3993,7 @@ def _seller_deals(user, params):
                 bp = f"{badge} · " if badge else ""
                 lrows.append({
                     "title":    _('RFQ #%(id)s · Покупатель') % {'id': r.id},
-                    "subtitle": (_('%(bp)s%(count)s %(count2)s · создан %(Y)s') % {'bp': bp, 'count': r.items.count(), 'count2': _plural_ru(r.items.count(), 'позиция', 'позиции', 'позиций'), 'Y': r.created_at.strftime('%d.%m.%Y')}),
+                    "subtitle": (bp + ngettext('%(n)s позиция · создан %(Y)s', '%(n)s позиций · создан %(Y)s', r.items.count()) % {'n': r.items.count(), 'Y': r.created_at.strftime('%d.%m.%Y')}),
                     "action":   {"label": _('💬 Ответить'), "action": "respond_rfq_form",
                                  "params": {"rfq_id": r.id}},
                 })

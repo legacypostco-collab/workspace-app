@@ -31492,3 +31492,47 @@ msgstr[5] "%(n)s تجاوزات SLA"
 #, python-format
 msgid "📦 Заказ #%(id)s · %(current_label)s\nСумма: $%(total_amount)s · оплата: %(get_payment_status_d)s\nОжидаемая доставка: %(eta_delivery)s (%(days_left)s дн.)"
 msgstr "📦 طلب #%(id)s · %(current_label)s\nالمبلغ: $%(total_amount)s · الدفع: %(get_payment_status_d)s\nالتسليم المتوقع: %(eta_delivery)s (%(days_left)s ي.)"
+
+msgid "Новые заказы — подтвердить и в производство"
+msgstr "طلبات جديدة — تأكيد وبدء الإنتاج"
+
+msgid "▶️ Подтвердить"
+msgstr "▶️ تأكيد"
+
+msgid "Готовы к отгрузке"
+msgstr "جاهز للشحن"
+
+msgid "Подтверждены — формирование заказа"
+msgstr "تم التأكيد — تشكيل الطلب"
+
+msgid "Отгружены за рубеж"
+msgstr "تم شحنها للخارج"
+
+msgid "Отгружены"
+msgstr "تم الشحن"
+
+msgid "Ждут оплату резерва покупателем"
+msgstr "بانتظار دفع الاحتياطي من المشتري"
+
+msgid "Доставлены — оплата из эскроу"
+msgstr "تم التسليم — دفع من الضمان"
+
+#, python-format
+msgid "%(n)s позиция · КП отправлен, ждём ответа"
+msgid_plural "%(n)s позиций · КП отправлен, ждём ответа"
+msgstr[0] "لا توجد عناصر · تم إرسال العرض"
+msgstr[1] "%(n)s عنصر · تم إرسال العرض"
+msgstr[2] "عنصران · تم إرسال العرض"
+msgstr[3] "%(n)s عناصر · تم إرسال العرض"
+msgstr[4] "%(n)s عناصر · تم إرسال العرض"
+msgstr[5] "%(n)s عناصر · تم إرسال العرض"
+
+#, python-format
+msgid "%(n)s позиция · создан %(Y)s"
+msgid_plural "%(n)s позиций · создан %(Y)s"
+msgstr[0] "لا عناصر · أُنشئ %(Y)s"
+msgstr[1] "%(n)s عنصر · أُنشئ %(Y)s"
+msgstr[2] "عنصران · أُنشئ %(Y)s"
+msgstr[3] "%(n)s عناصر · أُنشئ %(Y)s"
+msgstr[4] "%(n)s عناصر · أُنشئ %(Y)s"
+msgstr[5] "%(n)s عناصر · أُنشئ %(Y)s"

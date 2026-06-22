@@ -32445,3 +32445,39 @@ msgstr[1] "%(n)s 项SLA逾期"
 #, python-format
 msgid "📦 Заказ #%(id)s · %(current_label)s\nСумма: $%(total_amount)s · оплата: %(get_payment_status_d)s\nОжидаемая доставка: %(eta_delivery)s (%(days_left)s дн.)"
 msgstr "📦 订单 #%(id)s · %(current_label)s\n金额：$%(total_amount)s · 付款：%(get_payment_status_d)s\n预计交货：%(eta_delivery)s（%(days_left)s天）"
+
+msgid "Новые заказы — подтвердить и в производство"
+msgstr "新订单 — 确认并投入生产"
+
+msgid "▶️ Подтвердить"
+msgstr "▶️ 确认"
+
+msgid "Готовы к отгрузке"
+msgstr "准备发货"
+
+msgid "Подтверждены — формирование заказа"
+msgstr "已确认 — 组织订单"
+
+msgid "Отгружены за рубеж"
+msgstr "已发往境外"
+
+msgid "Отгружены"
+msgstr "已发货"
+
+msgid "Ждут оплату резерва покупателем"
+msgstr "等待买家支付预留款"
+
+msgid "Доставлены — оплата из эскроу"
+msgstr "已送达 — 释放托管款"
+
+#, python-format
+msgid "%(n)s позиция · КП отправлен, ждём ответа"
+msgid_plural "%(n)s позиций · КП отправлен, ждём ответа"
+msgstr[0] "%(n)s 项 · 报价已发送，等待回复"
+msgstr[1] "%(n)s 项 · 报价已发送，等待回复"
+
+#, python-format
+msgid "%(n)s позиция · создан %(Y)s"
+msgid_plural "%(n)s позиций · создан %(Y)s"
+msgstr[0] "%(n)s 项 · 创建于 %(Y)s"
+msgstr[1] "%(n)s 项 · 创建于 %(Y)s"
