@@ -4057,14 +4057,14 @@ def _buyer_deals(user, params):
     #   тип-действия: order=get_order_detail · track=track_order ·
     #                 quotes=view_rfq_quotes · rfq=get_rfq_status
     SECTIONS = [
-        ("pay_reserve", "💳", "Оплатить резерв 10%",            "💳 Оплатить резерв →", "order",  "decide"),
-        ("pay_final",   "💳", "Оплатить остаток 90%",           "💳 Оплатить остаток →", "order", "decide"),
-        ("confirm",     "📦", "Доставлены — подтвердите приёмку", "✅ Принять заказ →",   "order",  "decide"),
-        ("kp_ready",    "📋", "КП готовы — выбрать и оплатить",   "📋 Открыть КП →",      "quotes", "decide"),
-        ("rfq_wait",    "⏳", "В подборе / у оператора",          "📦 Открыть",           "rfq",    "active"),
-        ("production",  "⚙️", "В работе у поставщика",            "📦 Открыть",           "order",  "active"),
-        ("transit",     "🚢", "В пути / на таможне",             "📦 Открыть",           "order",  "active"),
-        ("done",        "🏁", "Завершённые",                     "📦 Открыть",           "order",  "done"),
+        ("pay_reserve", "💳", _("Оплатить резерв 10%"),             _("💳 Оплатить резерв →"), "order",  "decide"),
+        ("pay_final",   "💳", _("Оплатить остаток 90%"),            _("💳 Оплатить остаток →"), "order", "decide"),
+        ("confirm",     "📦", _("Доставлены — подтвердите приёмку"), _("✅ Принять заказ →"),    "order",  "decide"),
+        ("kp_ready",    "📋", _("КП готовы — выбрать и оплатить"),   _("📋 Открыть КП →"),       "quotes", "decide"),
+        ("rfq_wait",    "⏳", _("В подборе / у оператора"),          _("📦 Открыть"),            "rfq",    "active"),
+        ("production",  "⚙️", _("В работе у поставщика"),            _("📦 Открыть"),            "order",  "active"),
+        ("transit",     "🚢", _("В пути / на таможне"),              _("📦 Открыть"),            "order",  "active"),
+        ("done",        "🏁", _("Завершённые"),                      _("📦 Открыть"),            "order",  "done"),
     ]
     DECIDE = {"pay_reserve", "pay_final", "confirm", "kp_ready"}
     _ACT = {"order": "get_order_detail", "track": "track_order",
@@ -4116,7 +4116,7 @@ def _buyer_deals(user, params):
         by_bucket[bucket].append({
             "kind": "rfq", "id": r.id,
             "title": f"RFQ #{r.id}",
-            "subtitle": (_('%(else)s · %(n_pos)s %(n_pos2)s') % {'else': r.created_at.strftime('%d.%m.%Y') if r.created_at else '', 'n_pos': n_pos, 'n_pos2': _plural_ru(n_pos, 'позиция', 'позиции', 'позиций')}),
+            "subtitle": (_('%(else)s · %(n_pos)s %(n_pos2)s') % {'else': r.created_at.strftime('%d.%m.%Y') if r.created_at else '', 'n_pos': n_pos, 'n_pos2': _plural_ru(n_pos, _('позиция'), _('позиции'), _('позиций'))}),
         })
 
     sections = []

@@ -29,14 +29,6 @@ msgstr "联系经理"
 msgid "Связаться с оператором"
 msgstr "联系操作员"
 
-#: assistant/actions.py:541 assistant/views.py:218
-msgid ""
-"🔒 Чтобы продолжить — зарегистрируйтесь прямо здесь, в чате.\n"
-"Это займёт 20 секунд."
-msgstr ""
-"🔒 要继续——请直接在此聊天中注册。\n"
-"仅需 20 秒。"
-
 #: assistant/actions.py:543 assistant/views.py:101 assistant/views.py:222
 msgid "🚀 Зарегистрироваться"
 msgstr "🚀 注册"
@@ -88,15 +80,6 @@ msgstr "订单按阶段推进"
 #: assistant/actions.py:565
 msgid "загрузка прайс-листа"
 msgstr "价目表上传"
-
-#: assistant/actions.py:572
-#, python-format
-msgid ""
-"🔁 «%(hint)s» — это раздел продавца, а вы сейчас в роли «Покупатель».\n"
-"Переключите роль в шапке (Покупатель ↔ Продавец) или нажмите кнопку ниже."
-msgstr ""
-"🔁「%(hint)s」是卖家板块，而您当前处于「买家」角色。\n"
-"请在顶部切换角色（买家 ↔ 卖家）或点击下方按钮。"
 
 #: assistant/actions.py:575
 msgid "🔁 Переключиться на «Продавец»"
@@ -779,14 +762,6 @@ msgstr "semi · 执行方非 trusted（%(kinds)s）· 需要操作员确认（§
 msgid "auto · %(matched_count)s/%(total)s matched · ≥%(min_offers)s предложений · trusted-исполнитель · buyer verified"
 msgstr "auto · 匹配 %(matched_count)s/%(total)s · ≥%(min_offers)s 个报价 · trusted 执行方 · 买方已验证"
 
-#: assistant/actions.py:2461
-msgid ""
-"Что запросить у поставщиков? Напишите артикул или название детали — можно с брендом и количеством.\n"
-"Например: «фильтр масляный Komatsu 600-211-1340, 10 шт» или «тормозные колодки на CAT 320»."
-msgstr ""
-"向供应商查询什么？请填写品号或零件名称——可附上品牌和数量。\n"
-"例如：「机油滤清器 Komatsu 600-211-1340，10 件」或「CAT 320 刹车片」。"
-
 #: assistant/actions.py:2463
 msgid "Список поставщиков"
 msgstr "供应商列表"
@@ -833,33 +808,6 @@ msgstr "买方 %(rfq_customer_name)s 创建了 SEMI-RFQ。请审核报价并批�
 #, python-format
 msgid "%(matched_count)s из %(items_to_add)s позиций сматчены с каталогом"
 msgstr "%(items_to_add)s 项中有 %(matched_count)s 项与目录匹配"
-
-#: assistant/actions.py:2591
-#, python-format
-msgid ""
-"RFQ #%(id)s создан · %(items_to_add)s позиций. %(summary)s.\n"
-"Котировка от %(auto_sent_count)s поставщиков готовится автоматически — откройте чтобы подтвердить и зарезервировать 10%%."
-msgstr ""
-"RFQ #%(id)s 已创建 · %(items_to_add)s 项。%(summary)s。\n"
-"正在自动准备来自 %(auto_sent_count)s 家供应商的报价——请打开以确认并预留 10%%。"
-
-#: assistant/actions.py:2596
-#, python-format
-msgid ""
-"RFQ #%(id)s создан · %(items_to_add)s позиций.\n"
-"Ни одна позиция не найдена в каталоге. Оператор предложит аналоги в течение 15 минут или сообщит об отсутствии. Запрошенные OEM записаны в аналитику для развития каталога."
-msgstr ""
-"RFQ #%(id)s 已创建 · %(items_to_add)s 项。\n"
-"目录中未找到任何项目。操作员将在 15 分钟内提供替代件或告知缺货。所查询的 OEM 已记入分析以完善目录。"
-
-#: assistant/actions.py:2600
-#, python-format
-msgid ""
-"RFQ #%(id)s создан · %(items_to_add)s позиций. %(summary)s.\n"
-"По %(matched_count)s позициям оператор подтвердит аналог или цену в течение 15 минут."
-msgstr ""
-"RFQ #%(id)s 已创建 · %(items_to_add)s 项。%(summary)s。\n"
-"操作员将在 15 分钟内对 %(matched_count)s 项确认替代件或价格。"
 
 #: assistant/actions.py:2611
 msgid "📋 Открыть КП и подтвердить"
@@ -917,15 +865,6 @@ msgstr "您商品的订单 · 显示 %(total)s 中的 %(cards)s："
 msgid "Ваши заказы · показано %(cards)s из %(total)s:"
 msgstr "您的订单 · 显示 %(total)s 中的 %(cards)s："
 
-#: assistant/actions.py:2745
-#, python-format
-msgid ""
-"\n"
-"Остальные %(cards)s — уточните статус фильтрами ниже."
-msgstr ""
-"\n"
-"其余 %(cards)s 个——请用下方筛选器查询状态。"
-
 #: assistant/actions.py:2751
 msgid "Только в работе"
 msgstr "仅进行中"
@@ -945,15 +884,6 @@ msgstr "💰 月度预算"
 #: assistant/actions.py:2788
 msgid "⚠️ Не указан ID заказа"
 msgstr "⚠️ 未指定订单 ID"
-
-#: assistant/actions.py:2796
-#, python-format
-msgid ""
-"⚠️ Заказ ORD-%(oid)s не найден или был удалён.\n"
-"Возможно, ссылка устарела (старая запись кошелька)."
-msgstr ""
-"⚠️ 订单 ORD-%(oid)s 未找到或已被删除。\n"
-"链接可能已过期（旧的钱包记录）。"
 
 #: assistant/actions.py:2798 assistant/actions.py:7509 assistant/actions.py:7516 assistant/actions.py:9362 assistant/actions.py:11584 assistant/actions.py:11671 assistant/ai_credits.py:188 assistant/seller_actions.py:479 assistant/seller_actions.py:3427
 msgid "📦 Мои заказы"
@@ -1881,42 +1811,10 @@ msgstr "📊 %(decide_rfq)s 个 RFQ 等待您决策 · 其余正在处理"
 msgid "Все в работе — ждём ответы поставщиков."
 msgstr "全部进行中 — 等待供应商回复。"
 
-#: assistant/actions.py:4753
-msgid ""
-"У вас нет открытых RFQ.\n"
-"\n"
-"💡 RFQ — это «жду котировок от поставщиков» (создаётся когда цены ещё нет: запрос на ненайденные позиции, торг)."
-msgstr ""
-"您没有进行中的 RFQ。\n"
-"\n"
-"💡 RFQ 即「等待供应商报价」（在尚无价格时创建：针对未找到项目的请求、议价）。"
-
-#: assistant/actions.py:4758
-#, python-format
-msgid ""
-"\n"
-"\n"
-"📦 Зато есть %(pending_orders)s %(else)s без оплаты резерва — смотрите в «Мои заказы», нужно подтвердить."
-msgstr ""
-"\n"
-"\n"
-"📦 但有 %(pending_orders)s %(else)s 未支付预留金——请查看「我的订单」，需要确认。"
-
 #: assistant/actions.py:4761
 #, python-format
 msgid "📦 Открыть заказы без оплаты (%(pending_orders)s)"
 msgstr "📦 打开未支付预留金的订单 (%(pending_orders)s)"
-
-#: assistant/actions.py:4767
-#, python-format
-msgid ""
-"\n"
-"\n"
-"📦 У вас %(active_orders)s активных заказов в работе."
-msgstr ""
-"\n"
-"\n"
-"📦 您有 %(active_orders)s 个处理中的活跃订单。"
 
 #: assistant/actions.py:4769
 #, python-format
@@ -2199,14 +2097,6 @@ msgstr "供应商 №%(idx)s"
 msgid "Топ поставщиков (%(n)s):"
 msgstr "顶级供应商（%(n)s）："
 
-#: assistant/actions.py:5174
-#, fuzzy
-#| msgid "Топ-3 поставщика по вашей спеке. Имена скрыты — раскрываются после принятия котировки. Создать RFQ всем?"
-msgid ""
-"\n"
-"💡 Имена скрыты — раскрываются после принятия котировки."
-msgstr "按您的规格排名前三的供应商。名称已隐藏——在接受报价后显示。是否向所有供应商创建 RFQ？"
-
 #: assistant/actions.py:5204
 msgid "🟢 Надёжный"
 msgstr "🟢 可信"
@@ -2254,14 +2144,6 @@ msgstr "🔍 该项目的所有供应商"
 msgid "🛒 Топ %(offers)s предложений по «%(query)s» (ранжировано по цене + рейтингу поставщика)"
 msgstr "🛒 「%(query)s」热门 %(offers)s 条报价（按价格 + 供应商评分排序）"
 
-#: assistant/actions.py:5354
-msgid ""
-"\n"
-"💡 Имена скрыты до принятия котировки — виден только рейтинг."
-msgstr ""
-"\n"
-"💡 接受报价前供应商名称隐藏——仅显示评分。"
-
 #: assistant/actions.py:5361
 msgid "Лучшие предложения"
 msgstr "最优报价"
@@ -2288,14 +2170,6 @@ msgstr "💰 最低价：%(supplier_label)s · %(price)s %(currency)s · %(statu
 #, python-format
 msgid "🛡️ Самый надёжный: %(supplier_label)s · %(price)s %(else)s · %(status_badge)s (рейтинг %(rating)s)"
 msgstr "🛡️ 最可靠：%(supplier_label)s · %(price)s %(else)s · %(status_badge)s（评分 %(rating)s）"
-
-#: assistant/actions.py:5476
-msgid ""
-"\n"
-"💡 Имена скрыты — виден только рейтинг и статус."
-msgstr ""
-"\n"
-"💡 名称已隐藏——仅显示评分和状态。"
 
 #: assistant/actions.py:5483
 #, python-format
@@ -3239,59 +3113,10 @@ msgstr "未找到收件人。"
 msgid "Связь с пользователем доступна только operator_manager/admin. Эскалируйте задачу старшему оператору."
 msgstr "仅 operator_manager/admin 可联系用户。请将任务升级给高级操作员。"
 
-#: assistant/actions.py:7071
-#, python-format
-msgid ""
-"📋 Оператор %(username)s (%(role)s) открыл с вами диалог.\n"
-"\n"
-"Контекст: %(ctx)s\n"
-"\n"
-"Дождитесь сообщения оператора — он сейчас напишет. Если хотите ответить заранее — пишите ниже. Если это спам или ошибка — нажмите «Пожаловаться»."
-msgstr ""
-"📋 操作员 %(username)s（%(role)s）已与您开启对话。\n"
-"\n"
-"背景：%(ctx)s\n"
-"\n"
-"请等待操作员的消息 — 他即将发送。如想提前回复 — 请在下方输入。如属垃圾信息或错误 — 请点击「举报」。"
-
 #: assistant/actions.py:7079
 #, python-format
 msgid "Оператор %(username)s открыл диалог"
 msgstr "操作员 %(username)s 已开启对话"
-
-#: assistant/actions.py:7100
-#, python-format
-msgid ""
-"📂 Диалог с %(username)s\n"
-"\n"
-"Контекст: %(ctx)s\n"
-"\n"
-"Сообщения, которые вы здесь напишете, увидит %(username2)s в их support-чате. Их ответы появятся у них же — оператор видит их в этом разделе.\n"
-"\n"
-"Все ваши диалоги с пользователями можно увидеть в действии «op_my_user_chats»."
-msgstr ""
-"📂 与 %(username)s 的对话\n"
-"\n"
-"背景：%(ctx)s\n"
-"\n"
-"您在此处输入的消息将在 %(username2)s 的支持聊天中显示。他们的回复将出现在他们那里 — 操作员可在本区块查看。\n"
-"\n"
-"您与用户的所有对话可在操作「op_my_user_chats」中查看。"
-
-#: assistant/actions.py:7106
-#, python-format
-msgid ""
-"✅ Контекст доставлен %(username)s: у него в чате появилось системное сообщение со ссылкой и notification на email/Telegram (если подключены).\n"
-"\n"
-"Этот диалог сохранён в вашем сайдбаре как «💬 → %(username2)s» — открыть позже через раздел «Мои диалоги с пользователями».\n"
-"\n"
-"Пишите ваше сообщение ниже — оно отправится в этот же поток."
-msgstr ""
-"✅ 背景已送达 %(username)s：其聊天中出现了带链接的系统消息，并发送了邮件/Telegram 通知（如已连接）。\n"
-"\n"
-"该对话已保存在您的侧边栏，名为「💬 → %(username2)s」— 之后可通过「我与用户的对话」区块打开。\n"
-"\n"
-"请在下方输入您的消息 — 它将发送到同一对话流。"
 
 #: assistant/actions.py:7109 assistant/actions.py:7191 assistant/support_hub.py:175
 msgid "📂 Мои диалоги с пользователями"
@@ -3317,31 +3142,6 @@ msgstr "订单 #%(order_id)s"
 #: assistant/actions.py:7135
 msgid "общий вопрос"
 msgstr "一般问题"
-
-#: assistant/actions.py:7143
-#, python-format
-msgid ""
-"💬 Связь с оператором (%(ctx_label)s)\n"
-"\n"
-"Напишите ваш вопрос в чате ниже — оператор Consolidator Parts ответит в течение рабочего времени (обычно 15–30 минут). AI пока поможет ответить на типовые вопросы быстрее.\n"
-"\n"
-"Если вопрос срочный — упомяните «срочно» в сообщении."
-msgstr ""
-"💬 联系客服（%(ctx_label)s）\n"
-"\n"
-"请在下方聊天中输入您的问题——Consolidator Parts 客服将在工作时间内回复（通常 15–30 分钟）。AI 可先帮您更快解答常见问题。\n"
-"\n"
-"如属紧急问题，请在消息中注明「紧急」。"
-
-#: assistant/actions.py:7168
-msgid ""
-"У вас нет открытых диалогов с пользователями.\n"
-"\n"
-"Диалог с покупателем или поставщиком открывается через карточку поставщика / рекламацию / тикет поддержки — кнопкой «💬 Чат с …». После открытия он появится здесь."
-msgstr ""
-"您当前没有与用户的进行中的对话。\n"
-"\n"
-"与买家或供应商的对话通过供应商卡片 / 索赔 / 支持工单中的「💬 与…聊天」按钮开启。开启后将显示在此处。"
 
 #: assistant/actions.py:7183
 #, python-format
@@ -3392,14 +3192,6 @@ msgstr "订单 #%(order_id)s 不包含您的商品。"
 #, python-format
 msgid "Заказ #%(order_id)s не найден или не принадлежит вам."
 msgstr "未找到订单 #%(order_id)s 或不属于您。"
-
-#: assistant/actions.py:7302
-msgid ""
-"🧾 У вас нет заказов, по которым можно открыть рекламацию.\n"
-"Рекламация открывается на доставленные / в пути / готовые к отгрузке заказы."
-msgstr ""
-"🧾 您没有可开具索赔的订单。\n"
-"索赔可针对已送达 / 运输中 / 待发货的订单开启。"
 
 #: assistant/actions.py:7307
 msgid "🔧 Брак"
@@ -3469,15 +3261,6 @@ msgstr "未指定订单。"
 #, python-format
 msgid "Открыта рекламация по ORD-%(id)s: %(title)s"
 msgstr "已就 ORD-%(id)s 开启索赔：%(title)s"
-
-#: assistant/actions.py:7375
-#, python-format
-msgid ""
-"✓ Рекламация #%(id)s открыта по ORD-%(id2)s.\n"
-"Тип: %(get_kind_display)s. Оператор уведомлён, свяжется с продавцом в течение 24 часов."
-msgstr ""
-"✓ 索赔 #%(id)s 已针对 ORD-%(id2)s 开启。\n"
-"类型：%(get_kind_display)s。客服已收到通知，将在 24 小时内联系卖家。"
 
 #: assistant/actions.py:7378
 msgid "🧾 Мои рекламации"
@@ -3565,18 +3348,6 @@ msgstr "🔎 在目录中查找"
 msgid "OEM-номера (по одному в строке, можно с количеством)"
 msgstr "OEM 编号（每行一个，可附数量）"
 
-#: assistant/actions.py:7542
-msgid ""
-"Примеры:\n"
-"2W1223  1\n"
-"1R0750  2\n"
-"14Y-22-37470 5"
-msgstr ""
-"示例：\n"
-"2W1223  1\n"
-"1R0750  2\n"
-"14Y-22-37470 5"
-
 #: assistant/actions.py:7573
 msgid "Не удалось распознать ни одного артикула."
 msgstr "未能识别任何零件号。"
@@ -3600,18 +3371,6 @@ msgstr "✓ 导入"
 #: assistant/actions.py:7608
 msgid "CSV-строки (минимум: OEM, цена)"
 msgstr "CSV 行（至少：OEM、价格）"
-
-#: assistant/actions.py:7609
-msgid ""
-"Формат:\n"
-"OEM,Название,Бренд,Цена,Кол-во,Состояние\n"
-"2W1223,Уплотнение гидроцилиндра,Caterpillar,180,15,oem\n"
-"1R0750,Фильтр масла,Caterpillar,42,40,oem"
-msgstr ""
-"格式：\n"
-"OEM,名称,品牌,价格,数量,状态\n"
-"2W1223,液压缸密封,Caterpillar,180,15,oem\n"
-"1R0750,机油滤清器,Caterpillar,42,40,oem"
 
 #: assistant/actions.py:7621 assistant/kp_workflow.py:182 assistant/seller_actions.py:1757 templates/admin_panel/catalog.html:79 templates/admin_panel/moderation.html:11
 msgid "Запчасти"
@@ -3916,15 +3675,6 @@ msgstr "至目的港，含运费+保险"
 msgid "до двери, всё включено (фрахт, страховка, таможня)"
 msgstr "至门到门，全包（运费、保险、清关）"
 
-#: assistant/actions.py:8467 assistant/actions.py:8633
-#, python-format
-msgid ""
-"🚚 Выберите способ доставки и базис для заказа #%(id)s\n"
-"Базовая стоимость товаров: $%(base_items_total)s"
-msgstr ""
-"🚚 请为订单 #%(id)s 选择配送方式和贸易术语\n"
-"货物基础价格：$%(base_items_total)s"
-
 #: assistant/actions.py:8473 assistant/actions.py:8639
 msgid "Варианты доставки"
 msgstr "配送选项"
@@ -3967,15 +3717,6 @@ msgstr "未找到订单 #%(order_id)s。"
 #, python-format
 msgid "По заказу #%(id)s резерв уже списан (%(get_payment_status_d)s)."
 msgstr "订单 #%(id)s 的预留款已扣除（%(get_payment_status_d)s）。"
-
-#: assistant/actions.py:8761
-#, python-format
-msgid ""
-"❌ Недостаточно средств для списания резерва.\n"
-"Нужно: $%(amount)s · на счёте: $%(balance)s · не хватает: $%(shortage)s."
-msgstr ""
-"❌ 余额不足，无法扣除预留款。\n"
-"所需：$%(amount)s · 账户余额：$%(balance)s · 缺口：$%(shortage)s。"
 
 #: assistant/actions.py:8764
 #, python-format
@@ -4040,17 +3781,6 @@ msgstr "订单 #%(id)s 的预留款已支付"
 #, python-format
 msgid "Покупатель оплатил резерв $%(amount)s. Можно подтверждать и запускать в производство."
 msgstr "买家已支付预留款 $%(amount)s。可确认并投入生产。"
-
-#: assistant/actions.py:8864
-#, python-format
-msgid ""
-"✓ Списано $%(amount)s с депозита по заказу #%(id)s.\n"
-"Остаток на счёте: $%(balance)s %(currency)s.\n"
-"Заказ передан поставщику в производство. Следующий платёж — после готовности к отгрузке."
-msgstr ""
-"✓ 已从押金中扣除订单 #%(id)s 的 $%(amount)s。\n"
-"账户余额：$%(balance)s %(currency)s。\n"
-"订单已转交供应商投入生产。下一笔款项——在可发货后支付。"
 
 #: assistant/actions.py:8876
 #, python-format
@@ -4245,15 +3975,6 @@ msgstr "⏰ 订单 #%(id)s 的付款截止时间"
 msgid "Продавец установил дедлайн 24 часа на оплату резерва $%(reserve_amount)s. После %(M)s заказ может быть отменён."
 msgstr "卖家设定了 24 小时付款期限以支付 $%(reserve_amount)s 的预付金。超过 %(M)s 后订单可能被取消。"
 
-#: assistant/actions.py:9264
-#, python-format
-msgid ""
-"⏰ Установлен дедлайн оплаты по заказу #%(id)s: %(M)s (24 часа).\n"
-"Покупатель уведомлён. Если резерв не придёт — отмените вручную."
-msgstr ""
-"⏰ 订单 #%(id)s 的付款截止时间已设定：%(M)s（24 小时）。\n"
-"买家已收到通知。若未收到预付金，请手动取消。"
-
 #: assistant/actions.py:9291
 #, python-format
 msgid "❌ Заказ #%(id)s уже оплачен — отмена через спор."
@@ -4278,35 +3999,9 @@ msgstr "✓ 订单 %(order_num)s（$%(total)s）已取消。"
 msgid "❌ Отмена заказа доступна только покупателю."
 msgstr "❌ 只有采购商可以取消订单。"
 
-#: assistant/actions.py:9346
-#, python-format
-msgid ""
-"❌ Заказ #%(id)s нельзя отменить — резерв уже списан (%(get_payment_status_d)s).\n"
-"Для возврата — создайте спор или рекламацию."
-msgstr ""
-"❌ 订单 #%(id)s 无法取消——预付金已扣除（%(get_payment_status_d)s）。\n"
-"如需退款，请发起争议或索赔。"
-
 #: assistant/actions.py:9363
 msgid "🔍 Новый поиск"
 msgstr "🔍 新搜索"
-
-#: assistant/actions.py:9426
-#, python-format
-msgid ""
-"📊 Сводка продавца за неделю\n"
-"\n"
-"• Активных заказов: %(active_orders)s (в производстве: %(in_production)s, готовы к отгрузке: %(ready_to_ship)s, в пути: %(in_transit)s)\n"
-"• Новых RFQ за неделю: %(new_rfqs)s, всего открытых: %(open_rfqs)s\n"
-"• Выручка за 30 дней: $%(revenue_month)s\n"
-"• Каталог: %(catalog_size)s позиций · SLA: %(sla_pct)s%% on-track · Рейтинг: %(rating)s"
-msgstr ""
-"📊 卖家周报\n"
-"\n"
-"• 活跃订单：%(active_orders)s（生产中：%(in_production)s，待发货：%(ready_to_ship)s，在途：%(in_transit)s）\n"
-"• 本周新增 RFQ：%(new_rfqs)s，开放总数：%(open_rfqs)s\n"
-"• 30 天营收：$%(revenue_month)s\n"
-"• 目录：%(catalog_size)s 项 · SLA：%(sla_pct)s%% 达标 · 评分：%(rating)s"
 
 #: assistant/actions.py:9432 assistant/actions.py:9548 assistant/actions.py:10126 assistant/actions.py:10939 assistant/actions.py:11001 assistant/seller_actions.py:1482 assistant/seller_actions.py:1492 assistant/seller_actions.py:1516 assistant/seller_actions.py:1540
 msgid "🚚 К отгрузке"
@@ -4419,27 +4114,6 @@ msgstr "本周需求"
 msgid "Финансовая сводка"
 msgstr "财务摘要"
 
-#: assistant/actions.py:9524
-#, python-format
-msgid ""
-"💰 Финансы\n"
-"\n"
-"• Выручка за 7 дней: $%(rev_week)s\n"
-"• Выручка за 30 дней: $%(rev_month)s\n"
-"• К получению (в пути / готов к отгрузке): $%(pending_rev)s\n"
-"• В производстве (ещё не отгружено): $%(in_production_rev)s\n"
-"• Завершённые продажи (доставленные): $%(completed_rev)s\n"
-"• Депозит на счёте: $%(balance)s %(currency)s"
-msgstr ""
-"💰 财务\n"
-"\n"
-"• 7 天营收：$%(rev_week)s\n"
-"• 30 天营收：$%(rev_month)s\n"
-"• 应收（在途 / 待发货）：$%(pending_rev)s\n"
-"• 生产中（尚未发货）：$%(in_production_rev)s\n"
-"• 已完成销售（已交付）：$%(completed_rev)s\n"
-"• 账户存款：$%(balance)s %(currency)s"
-
 #: assistant/actions.py:9532
 msgid "Финансы продавца"
 msgstr "卖家财务"
@@ -4487,25 +4161,6 @@ msgstr "何时付款？"
 #: assistant/actions.py:9551
 msgid "Выручка по месяцам"
 msgstr "月度营收"
-
-#: assistant/actions.py:9578
-#, python-format
-msgid ""
-"⭐ Рейтинг продавца\n"
-"\n"
-"• Сводный балл: %(else)s\n"
-"• Статус: %(supplier_status)s\n"
-"• Внешний скоринг: %(else2)s\n"
-"• Поведенческий: %(else3)s\n"
-"• Жалоб всего: %(claims_n)s · SLA-нарушений: %(breaches)s"
-msgstr ""
-"⭐ 卖家评分\n"
-"\n"
-"• 综合得分：%(else)s\n"
-"• 状态：%(supplier_status)s\n"
-"• 外部评分：%(else2)s\n"
-"• 行为评分：%(else3)s\n"
-"• 投诉总数：%(claims_n)s · SLA 违规：%(breaches)s"
 
 #: assistant/actions.py:9585
 msgid "Рейтинг продавца"
@@ -4695,15 +4350,6 @@ msgstr "提货点 / 俄罗斯物流向采购商交付"
 msgid "Покупатель принял груз — гарантия активна (рекламации → оператор)"
 msgstr "买家已收货——质保已生效（索赔 → 运营方）"
 
-#: assistant/actions.py:9877
-#, python-format
-msgid ""
-"🔧 В вашей очереди — %(total_orders)s заказа(ов).\n"
-"Ваша зона: довезти от склада до FOB-порта + передать пакет документов. Дальше всю цепочку (зарубежный логист → таможня → РФ-логист → пункт выдачи) координирует оператор маркетплейса. После приёмки покупателем — вы отвечаете только за качество, комплектность и гарантию. Рекламации идут через оператора."
-msgstr ""
-"🔧 您的队列中有 %(total_orders)s 个订单。\n"
-"您的职责：将货物从仓库运至 FOB 港口 + 移交单据包。之后整条链路（境外物流商 → 海关 → 俄罗斯物流商 → 提货点）由平台运营方协调。买家收货后——您仅负责质量、完整性和质保。索赔通过运营方处理。"
-
 #: assistant/actions.py:9891 assistant/seller_actions.py:680 assistant/seller_actions.py:1919 assistant/seller_actions.py:2066 assistant/seller_actions.py:2133
 msgid "📤 Загрузить прайс"
 msgstr "📤 上传价目表"
@@ -4746,15 +4392,6 @@ msgstr "无法发货订单 #%(id)s——其状态为「%(get_status_display)s」
 #, python-format
 msgid "Заказ #%(id)s не может быть отгружен: остаток 90%% ещё не оплачен покупателем."
 msgstr "订单 #%(id)s 无法发货：买家尚未支付剩余 90%%。"
-
-#: assistant/actions.py:9978
-#, python-format
-msgid ""
-"Отгрузка заказа #%(id)s на сумму $%(total_amount)s.\n"
-"Заполните данные перевозчика — они уйдут оператору платформы и сохранятся в audit-логе заказа. Прямые контакты юзеру не раскрываются (анти-сговор) — связь только через оператора."
-msgstr ""
-"发货订单 #%(id)s，金额 $%(total_amount)s。\n"
-"请填写承运人信息——信息将发送给平台运营方并保存在订单审计日志中。买家无法获知直接联系方式（防止串通）——仅通过运营方沟通。"
 
 #: assistant/actions.py:9983
 #, python-format
@@ -4857,32 +4494,10 @@ msgstr "订单 #%(id)s 已发货"
 msgid "Tracking %(tracking)s · перевозчик %(carrier)s. В транзите за рубеж."
 msgstr "Tracking %(tracking)s · 承运商 %(carrier)s。境外运输中。"
 
-#: assistant/actions.py:10088
-#, python-format
-msgid ""
-"🚚 Заказ ORD-%(id)s отгружен!\n"
-"Tracking: %(tracking)s · Перевозчик: %(carrier)s.\n"
-"В транзите за рубеж."
-msgstr ""
-"🚚 订单 ORD-%(id)s 已发货！\n"
-"Tracking：%(tracking)s · 承运商：%(carrier)s。\n"
-"境外运输中。"
-
 #: assistant/actions.py:10113
 #, python-format
 msgid "Транзит · %(carrier)s · %(tracking)s"
 msgstr "运输中 · %(carrier)s · %(tracking)s"
-
-#: assistant/actions.py:10120
-#, python-format
-msgid ""
-"🚚 Заказ #%(id)s отгружен.\n"
-"Tracking: %(tracking)s · Перевозчик: %(carrier)s.\n"
-"Покупатель уведомлён, статус — «Транзит (зарубеж)»."
-msgstr ""
-"🚚 订单 #%(id)s 已发货。\n"
-"Tracking：%(tracking)s · 承运商：%(carrier)s。\n"
-"买家已收到通知，状态为「运输中（境外）」。"
 
 #: assistant/actions.py:10128
 msgid "Что отгружать дальше?"
@@ -4950,26 +4565,6 @@ msgstr "📄 文档已上传"
 #: assistant/actions.py:10345
 msgid "⚠️ Открыта рекламация"
 msgstr "⚠️ 已开启索赔"
-
-#: assistant/actions.py:10368
-#, python-format
-msgid ""
-"📦 Заказ #%(id)s · %(current_label)s\n"
-"Сумма: $%(total_amount)s · оплата: %(get_payment_status_d)s\n"
-"Ожидаемая доставка: %(eta_delivery)s (%(days_left)s дн.)"
-msgstr ""
-"📦 订单 #%(id)s · %(current_label)s\n"
-"金额：$%(total_amount)s · 付款：%(get_payment_status_d)s\n"
-"预计送达：%(eta_delivery)s（%(days_left)s 天）"
-
-#: assistant/actions.py:10374
-#, python-format
-msgid ""
-"\n"
-"⏳ Ожидаем от покупателя оплату остатка $%(rem)s (90%%) — отгрузка после поступления денег в эскроу."
-msgstr ""
-"\n"
-"⏳ 等待买家支付尾款 $%(rem)s（90%%）——资金进入托管后即发货。"
 
 #: assistant/actions.py:10406
 msgid "📋 Скопируйте и проверьте на сайте перевозчика"
@@ -5106,15 +4701,6 @@ msgstr "💳 扣除保证金 $%(reserve_amount)s"
 msgid "По заказу нет остатка к оплате."
 msgstr "该订单无应付余款。"
 
-#: assistant/actions.py:10679
-#, python-format
-msgid ""
-"❌ Недостаточно средств для оплаты остатка по заказу #%(id)s.\n"
-"Нужно: $%(final_amount)s · на счёте: $%(balance)s · не хватает: $%(shortage)s."
-msgstr ""
-"❌ 余额不足，无法支付订单 #%(id)s 的尾款。\n"
-"需要：$%(final_amount)s · 账户余额：$%(balance)s · 缺少：$%(shortage)s。"
-
 #: assistant/actions.py:10682
 #, python-format
 msgid "Пополнить депозит на $%(Decimal)s"
@@ -5186,17 +4772,6 @@ msgstr "取消"
 #, python-format
 msgid "Заказ #%(id)s уже оплачен (перепроверка)."
 msgstr "订单 #%(id)s 已付款（复核）。"
-
-#: assistant/actions.py:10795
-#, python-format
-msgid ""
-"✓ Списано $%(final_amount)s с депозита — остаток по заказу #%(id)s оплачен.\n"
-"Депозит: $%(balance)s %(currency)s.\n"
-"Заказ переведён в статус «готов к отгрузке»."
-msgstr ""
-"✓ 已从押金扣除 $%(final_amount)s——订单 #%(id)s 的尾款已支付。\n"
-"押金：$%(balance)s %(currency)s。\n"
-"订单已转入「可发货」状态。"
 
 #: assistant/actions.py:10803 assistant/actions.py:10862 assistant/operator_actions.py:979 assistant/order_events.py:41 assistant/seller_actions.py:2554 marketplace/models.py:563
 msgid "Готов к отгрузке"
@@ -5308,28 +4883,10 @@ msgstr "▶️ 确认送达"
 msgid "▶️ Закрыть заказ"
 msgstr "▶️ 关闭订单"
 
-#: assistant/actions.py:10988
-#, python-format
-msgid ""
-"\n"
-"Чтобы запустить отгрузку, оплатите остаток $%(final_amount)s (90%%) — деньги уйдут с депозита в эскроу."
-msgstr ""
-"\n"
-"要启动发货，请支付尾款 $%(final_amount)s（90%%）——资金将从押金转入托管。"
-
 #: assistant/actions.py:10991
 #, python-format
 msgid "💳 Оплатить остаток $%(final_amount)s"
 msgstr "💳 支付剩余 $%(final_amount)s"
-
-#: assistant/actions.py:10998
-#, python-format
-msgid ""
-"\n"
-"Ожидаем от покупателя остаток $%(final_amount)s (90%%). Как только эскроу пополнится — сможете отгружать."
-msgstr ""
-"\n"
-"等待买家支付余款 $%(final_amount)s（90%%）。一旦托管账户到账，即可发货。"
 
 #: assistant/actions.py:11032
 #, python-format
@@ -5345,17 +4902,6 @@ msgstr "订单 #%(id)s 已关闭。"
 #, python-format
 msgid "Закрыть заказ #%(id)s можно только после статуса «Доставлен». Сейчас — «%(get_status_display)s». Отгрузку и доставку подтверждает поставщик."
 msgstr "订单 #%(id)s 只能在状态为「已送达」后关闭。当前为「%(get_status_display)s」。发货与送达由供应商确认。"
-
-#: assistant/actions.py:11074
-#, python-format
-msgid ""
-"📦 Подтвердить приёмку заказа #%(id)s?\n"
-"\n"
-"После подтверждения: эскроу-холд перейдёт продавцу, платформа выставит revenue-lines, рейтинг продавца обновится. Действие необратимо."
-msgstr ""
-"📦 确认接收订单 #%(id)s？\n"
-"\n"
-"确认后：托管款将转给卖家，平台将生成 revenue-lines，卖家评级将更新。此操作不可撤销。"
 
 #: assistant/actions.py:11083
 msgid "✓ Подтверждаю приёмку"
@@ -5603,36 +5149,9 @@ msgstr "💸 账户无可提取资金。"
 msgid "Мои заказы"
 msgstr "我的订单"
 
-#: assistant/actions.py:11689
-#, python-format
-msgid ""
-"📤 Запрос выплаты (доступно: $%(balance)s)\n"
-"\n"
-"Финансист платформы зачислит средства на ваш банковский счёт в течение 1-2 рабочих дней. Минимальная сумма — $500.\n"
-"\n"
-"Напишите оператору сумму и реквизиты — оформим выплату вручную (скоро добавим автоматический вывод через банк)."
-msgstr ""
-"📤 提现请求（可用：$%(balance)s）\n"
-"\n"
-"平台财务将在 1-2 个工作日内将资金转入您的银行账户。最低金额为 $500。\n"
-"\n"
-"请将金额和账户信息发送给操作员——我们将手动处理提现（即将支持通过银行自动提现）。"
-
 #: assistant/actions.py:11693
 msgid "💰 Мой баланс"
 msgstr "💰 我的余额"
-
-#: assistant/actions.py:11707
-msgid ""
-"💳 Привязка карты\n"
-"\n"
-"Скоро добавим автоматическую привязку через Stripe / Тинькофф Эквайринг.\n"
-"Пока — напишите оператору, и он привяжет карту вручную (1-2 часа)."
-msgstr ""
-"💳 绑定银行卡\n"
-"\n"
-"即将支持通过 Stripe / Tinkoff Acquiring 自动绑定。\n"
-"目前请联系操作员，他将手动绑定银行卡（1-2 小时）。"
 
 #: assistant/actions.py:11711
 msgid "💵 Пополнить без карты"
@@ -5650,34 +5169,9 @@ msgstr "操作历史"
 msgid "💸 На балансе нет средств для вывода."
 msgstr "💸 余额无可提取资金。"
 
-#: assistant/actions.py:11727
-#, python-format
-msgid ""
-"💸 Вывод средств (доступно: $%(balance)s)\n"
-"\n"
-"Доступно для вывода: средства не зарезервированные под открытые заказы.\n"
-"Напишите оператору сумму и реквизиты — выводим в течение 1 рабочего дня."
-msgstr ""
-"💸 提现（可用：$%(balance)s）\n"
-"\n"
-"可提现资金：未被未结订单冻结的资金。\n"
-"请将金额和账户信息发送给操作员——我们将在 1 个工作日内完成提现。"
-
 #: assistant/actions.py:11731
 msgid "📊 Мой баланс"
 msgstr "📊 我的余额"
-
-#: assistant/actions.py:11741
-msgid ""
-"↗ Перевод средств\n"
-"\n"
-"Внутренние переводы между счетами Consolidator пока недоступны.\n"
-"Скоро добавим перевод бонусов и кредит-нот между связанными аккаунтами."
-msgstr ""
-"↗ 资金转账\n"
-"\n"
-"Consolidator 账户间的内部转账暂不可用。\n"
-"即将支持关联账户间的奖金及信用票据转账。"
 
 #: assistant/actions.py:11780
 #, python-format
@@ -5687,15 +5181,6 @@ msgstr "购买 %(n)s 个 ($%(c)s)"
 #: assistant/actions.py:11782 assistant/actions.py:11810 assistant/actions.py:12251
 msgid "💰 Пополнить депозит"
 msgstr "💰 充值押金"
-
-#: assistant/actions.py:11784
-#, python-format
-msgid ""
-"💳 Покупка AI-запросов с депозита.\n"
-"Цена — $%(price)s за запрос (по себестоимости). Остаток депозита: $%(balance0)s."
-msgstr ""
-"💳 用存款购买 AI 请求。\n"
-"价格——每个请求 $%(price)s（按成本价）。存款余额：$%(balance0)s。"
 
 #: assistant/actions.py:11801
 msgid "Профиль не найден."
@@ -5715,15 +5200,6 @@ msgstr "购买 %(count)s 次 AI 请求"
 msgid "⚠️ Не удалось купить запросы. Попробуйте позже."
 msgstr "⚠️ 购买请求失败。请稍后再试。"
 
-#: assistant/actions.py:11828
-#, python-format
-msgid ""
-"✓ Куплено %(count)s AI-запросов за $%(cost)s.\n"
-"AI-баланс: %(ai_credits)s запросов · остаток депозита: $%(balance)s."
-msgstr ""
-"✓ 已以 $%(cost)s 购买 %(count)s 个 AI 请求。\n"
-"AI 余额：%(ai_credits)s 个请求 · 存款余额：$%(balance)s。"
-
 #: assistant/actions.py:11829
 msgid "💬 Продолжить"
 msgstr "💬 继续"
@@ -5739,26 +5215,6 @@ msgstr "金额必须大于零。"
 #: assistant/actions.py:11874
 msgid "Пополнение депозита (DEMO MODE)"
 msgstr "充值存款（DEMO MODE）"
-
-#: assistant/actions.py:11888
-#, python-format
-msgid ""
-"✓ [DEMO] Депозит пополнен на $%(amount)s.\n"
-"Текущий остаток: $%(balance)s %(currency)s."
-msgstr ""
-"✓ [DEMO] 存款已充值 $%(amount)s。\n"
-"当前余额：$%(balance)s %(currency)s。"
-
-#: assistant/actions.py:11898
-#, python-format
-msgid ""
-"\n"
-"\n"
-"💼 Заказ #%(id)s ждёт оплату резерва $%(reserve)s — теперь хватает, можно продолжить покупку."
-msgstr ""
-"\n"
-"\n"
-"💼 订单 #%(id)s 等待支付预留金 $%(reserve)s——现在余额充足，可继续购买。"
 
 #: assistant/actions.py:11901
 #, python-format
@@ -5986,21 +5442,6 @@ msgstr "未找到申请。"
 msgid "Заявка %(reference_code)s в статусе «%(get_status_display)s» — подтверждение уже невозможно."
 msgstr "申请 %(reference_code)s 处于「%(get_status_display)s」状态——已无法确认。"
 
-#: assistant/actions.py:12205
-#, python-format
-msgid ""
-"✓ Спасибо! Заявка %(reference_code)s помечена как «оплачена».\n"
-"\n"
-"Финансовый отдел проверит поступление средств и зачислит депозит. Обычно это занимает 1–2 рабочих дня для банковского перевода и 10–30 минут для USDT.\n"
-"\n"
-"Вы получите уведомление, когда депозит будет пополнен."
-msgstr ""
-"✓ 谢谢！申请 %(reference_code)s 已标记为「已付款」。\n"
-"\n"
-"财务部门将核查款项到账并存入押金。银行转账通常需要 1–2 个工作日，USDT 需要 10–30 分钟。\n"
-"\n"
-"押金充值完成后，您将收到通知。"
-
 #: assistant/actions.py:12208
 msgid "📋 Все мои заявки"
 msgstr "📋 我的所有申请"
@@ -6058,19 +5499,6 @@ msgstr "ORD-%(id)s 没有任何项目提前——无需 split。所有项目 ≤
 #: assistant/actions.py:12375
 msgid "  (новых партий не создано — уже были)"
 msgstr "  （未创建新批次——已存在）"
-
-#: assistant/actions.py:12377
-#, python-format
-msgid ""
-"✓ Split shipment по ORD-%(id)s: создано %(created)s партий.\n"
-"%(summary)s\n"
-"\n"
-"Каждая теперь — отдельный коносамент, ETA, таможня."
-msgstr ""
-"✓ ORD-%(id)s 拆分发货：已创建 %(created)s 个批次。\n"
-"%(summary)s\n"
-"\n"
-"现在每个都是独立的提单、ETA 和清关。"
 
 #: assistant/actions.py:12395
 msgid "Не указаны параметры решения."
@@ -6664,15 +6092,6 @@ msgstr "7 天合计"
 msgid "$%(total)s · %(n)s строк"
 msgstr "$%(total)s · %(n)s 行"
 
-#: assistant/admin_actions.py:818
-#, python-format
-msgid ""
-"💰 Декомпозиция дохода группы (ТЗ §15)\n"
-"За 7 дней · $%(total)s"
-msgstr ""
-"💰 组收入分解（技术规范 §15）\n"
-"近 7 天 · $%(total)s"
-
 #: assistant/admin_actions.py:822
 msgid "💰 Структура дохода (7d)"
 msgstr "💰 收入结构（7 天）"
@@ -7064,14 +6483,6 @@ msgstr "暂无"
 msgid "появятся из проектов покупателей"
 msgstr "将来自采购商的项目"
 
-#: assistant/ai_credits.py:161
-msgid ""
-"🔒 Бесплатные AI-запросы закончились.\n"
-"Завершите продажу (+50 запросов) или купите пакет с депозита. Каталог, сделки и выплаты работают как обычно."
-msgstr ""
-"🔒 免费AI请求已用完。\n"
-"完成一笔销售（+50次请求）或用存款购买套餐。目录、交易和付款照常使用。"
-
 #: assistant/ai_credits.py:166 assistant/ai_credits.py:187
 msgid "💳 Купить запросы"
 msgstr "💳 购买请求"
@@ -7079,22 +6490,6 @@ msgstr "💳 购买请求"
 #: assistant/ai_credits.py:167
 msgid "💼 Мои сделки"
 msgstr "💼 我的交易"
-
-#: assistant/ai_credits.py:174
-msgid ""
-"🔒 Лимит AI-запросов на этот месяц исчерпан.\n"
-"Он обновится автоматически в начале следующего месяца."
-msgstr ""
-"🔒 本月AI请求额度已用完。\n"
-"将在下月初自动刷新。"
-
-#: assistant/ai_credits.py:182
-msgid ""
-"🔒 Бесплатные AI-запросы закончились.\n"
-"Оформите заказ (+50 запросов) или купите пакет с депозита. Каталог, цены, заказы и оплата работают как обычно."
-msgstr ""
-"🔒 免费AI请求已用完。\n"
-"下单（+50次请求）或用存款购买套餐。目录、价格、订单和付款照常使用。"
 
 #: assistant/auth_actions.py:54
 msgid "⚠️ pyotp не установлен. pip install pyotp."
@@ -7107,14 +6502,6 @@ msgstr "🔐 2FA已启用。可通过 disable_2fa 关闭。"
 #: assistant/auth_actions.py:61 assistant/auth_actions.py:171
 msgid "🔓 Выключить 2FA"
 msgstr "🔓 关闭双重认证"
-
-#: assistant/auth_actions.py:83
-msgid ""
-"🔐 Setup 2FA · отсканируйте QR в Google Authenticator / Authy / 1Password.\n"
-"После добавления — введите 6-значный код из приложения через verify_2fa."
-msgstr ""
-"🔐 设置2FA · 用 Google Authenticator / Authy / 1Password 扫描二维码。\n"
-"添加后 — 通过 verify_2fa 输入应用中的6位代码。"
 
 #: assistant/auth_actions.py:88
 msgid "🔐 TOTP setup"
@@ -7221,23 +6608,6 @@ msgstr "读+写 · 标准"
 msgid "admin · полный доступ"
 msgstr "管理员 · 完全访问"
 
-#: assistant/auth_actions.py:232
-#, python-format
-msgid ""
-"✓ Токен создан · ID #%(id)s\n"
-"\n"
-"⚠️ Сохраните токен — больше не увидите:\n"
-"`%(full)s`\n"
-"\n"
-"Использование: `Authorization: Bearer %(full)s` в HTTP-заголовке."
-msgstr ""
-"✓ 令牌已创建 · ID #%(id)s\n"
-"\n"
-"⚠️ 请保存令牌 — 不会再显示：\n"
-"`%(full)s`\n"
-"\n"
-"用法：在HTTP头中 `Authorization: Bearer %(full)s`。"
-
 #: assistant/auth_actions.py:239
 #, python-format
 msgid "🔑 API-токен · %(label)s"
@@ -7323,23 +6693,6 @@ msgstr "如果该邮箱已注册，我们已向其发送链接。"
 #: assistant/auth_views.py:85
 msgid "[Consolidator] Ваша ссылка для входа"
 msgstr "[Consolidator] 您的登录链接"
-
-#: assistant/auth_views.py:87
-#, python-format
-msgid ""
-"Перейдите по ссылке для входа в Consolidator:\n"
-"\n"
-"%(link)s\n"
-"\n"
-"Ссылка действует 15 минут.\n"
-"Если вы не запрашивали — просто проигнорируйте письмо."
-msgstr ""
-"请点击链接登录 Consolidator：\n"
-"\n"
-"%(link)s\n"
-"\n"
-"链接有效期为 15 分钟。\n"
-"如非本人请求，请忽略此邮件。"
 
 #: assistant/auth_views.py:92
 #, python-format
@@ -7550,21 +6903,6 @@ msgstr "⚠️ 无法创建账户："
 msgid ", %(company)s"
 msgstr ", %(company)s"
 
-#: assistant/buyer_registration.py:316
-#, python-format
-msgid ""
-"✅ Аккаунт создан и проверен. Добро пожаловать%(greeting)s!\n"
-"• E-mail проверен · телефон проверен · мессенджер на связи.\n"
-"• Реквизиты компании подтянулись автоматически.\n"
-"\n"
-"Юридический адрес, банк и подписанта попросим при первой сделке (не сейчас — экономим ваше время)."
-msgstr ""
-"✅ 账户已创建并验证。欢迎%(greeting)s！\n"
-"• 邮箱已验证 · 电话已验证 · 即时通讯已连接。\n"
-"• 公司信息已自动填充。\n"
-"\n"
-"法定地址、银行和签署人将在首次交易时索取（现在不需要 — 为您节省时间）。"
-
 #: assistant/buyer_registration.py:323 assistant/views.py:567 assistant/views.py:659
 msgid "🚀 Открыть кабинет"
 msgstr "🚀 打开后台"
@@ -7690,15 +7028,6 @@ msgstr "针对 #%(id)s 的新索赔"
 #, python-format
 msgid "%(kind)s · %(title)s"
 msgstr "%(kind)s · %(title)s"
-
-#: assistant/claims.py:112
-#, python-format
-msgid ""
-"✓ Рекламация #%(id)s открыта · %(kind)s.\n"
-"Оператор скоро возьмёт в работу."
-msgstr ""
-"✓ 索赔 #%(id)s 已提交 · %(kind)s。\n"
-"操作员将很快处理。"
 
 #: assistant/claims.py:131 assistant/claims.py:137 assistant/claims.py:180 assistant/claims.py:302 assistant/claims.py:355 assistant/claims.py:421 assistant/claims.py:532 assistant/claims.py:537 assistant/claims.py:564
 msgid "Рекламация не найдена."
@@ -8025,17 +7354,6 @@ msgstr "📄 针对询价 #%(rfq)s 的竞争报价"
 msgid "%(comp)s: $%(their)s (вы: $%(yours)s, разница %(gap)s%%). Можете снизить?"
 msgstr "%(comp)s：$%(their)s（您：$%(yours)s，差异 %(gap)s%%）。能否降价？"
 
-#: assistant/competitor_offers.py:100
-#, python-format
-msgid ""
-"✓ Конкурентное предложение #%(id)s загружено.\n"
-"%(comp)s: $%(their)s · %(days)s дн.\n"
-"Поставщик уведомлён — посмотрит и сможет ответить."
-msgstr ""
-"✓ 竞争报价 #%(id)s 已上传。\n"
-"%(comp)s：$%(their)s · %(days)s 天\n"
-"供应商已收到通知——将查看并可回复。"
-
 #: assistant/competitor_offers.py:106 assistant/negotiation.py:334 assistant/negotiation.py:901 assistant/negotiation.py:1365 assistant/negotiation.py:1496
 msgid "📊 Все котировки"
 msgstr "📊 所有报价"
@@ -8056,19 +7374,6 @@ msgstr "已处理（状态：%(st)s）。"
 #: assistant/competitor_offers.py:139
 msgid "Комментарий buyer: "
 msgstr "采购商备注： "
-
-#: assistant/competitor_offers.py:142
-#, python-format
-msgid ""
-"📄 Конкурентное предложение по RFQ #%(rfq)s\n"
-"Конкурент: %(comp)s — $%(their)s\n"
-"Ваша цена: $%(yours)s (разница %(gap)s%%)\n"
-"%(comment)s"
-msgstr ""
-"📄 RFQ #%(rfq)s 的竞争报价\n"
-"竞争对手：%(comp)s — $%(their)s\n"
-"您的价格：$%(yours)s（差异 %(gap)s%%）\n"
-"%(comment)s"
 
 #: assistant/competitor_offers.py:150
 #, python-format
@@ -8123,15 +7428,6 @@ msgstr "竞争报价折扣 %(pct)s%%"
 #, python-format
 msgid "Новая цена: $%(new)s (было $%(was)s)"
 msgstr "新价格：$%(new)s（原 $%(was)s）"
-
-#: assistant/competitor_offers.py:236
-#, python-format
-msgid ""
-"✓ Скидка %(pct)s%% применена. Новая цена $%(new)s\n"
-"Создана новая котировка #%(qid)s (раунд %(rnd)s)."
-msgstr ""
-"✓ 已应用 %(pct)s%% 折扣。新价格 $%(new)s\n"
-"已创建新报价 #%(qid)s（第 %(rnd)s 轮）。"
 
 #: assistant/competitor_offers.py:241
 msgid "Открыть новую котировку"
@@ -8442,15 +7738,6 @@ msgstr "操作员"
 msgid "⚠️ Не удалось создать счёт: %(p0)s"
 msgstr "⚠️ 无法创建账单：%(p0)s"
 
-#: assistant/documents.py:757
-#, python-format
-msgid ""
-"Счёт на оплату создан.\n"
-"Заказ ORD-%(p0)s · $%(p1)s"
-msgstr ""
-"付款发票已创建。\n"
-"订单 ORD-%(p0)s · $%(p1)s"
-
 #: assistant/documents.py:767 assistant/documents.py:796 assistant/documents.py:823
 msgid "📄 Открыть PDF"
 msgstr "📄 打开 PDF"
@@ -8538,25 +7825,6 @@ msgstr "+ 质量证书"
 msgid "По заказу ORD-%(p0)s пока нет отправленных документов (контрагент ещё не подписал и не отправил)."
 msgstr "订单 ORD-%(p0)s 暂无已发送的文件（对方尚未签署并发送）。"
 
-#: assistant/documents.py:902
-msgid ""
-"\n"
-"\n"
-"Подпись (ПЭП) фиксирует кто/когда/IP + хэш документа."
-msgstr ""
-"\n"
-"\n"
-"签名（简单电子签名）记录签名人/时间/IP + 文档哈希值。"
-
-#: assistant/documents.py:904
-#, python-format
-msgid ""
-"\n"
-"Ещё %(count)s в черновиках у контрагента (не отправлены)."
-msgstr ""
-"\n"
-"对方草稿中还有 %(count)s 份（未发送）。"
-
 #: assistant/documents.py:906
 #, python-format
 msgid "📄 Документы по заказу ORD-%(order_id)s (%(count)s):\n"
@@ -8601,15 +7869,6 @@ msgstr " 已发送 — 已通知： "
 #, python-format
 msgid "✅ Вы подписали «%(title)s» (ПЭП). Подпись впечатана в PDF."
 msgstr "✅ 您已签署《%(title)s》（简单电子签名）。签名已嵌入 PDF。"
-
-#: assistant/documents.py:989
-#, python-format
-msgid ""
-"\n"
-"Подписи: %(status)s"
-msgstr ""
-"\n"
-"签名： %(status)s"
 
 #: assistant/documents.py:994
 msgid "📄 Открыть подписанный PDF"
@@ -8672,15 +7931,6 @@ msgstr "KYB 中未填写纳税人识别号"
 msgid "Заказ #%(p0)s — %(p1)s"
 msgstr "订单 #%(p0)s — %(p1)s"
 
-#: assistant/kp_workflow.py:71
-#, python-format
-msgid ""
-"✅ КП подтверждено — сделка перешла в работу.\n"
-"Заказ ORD-%(p0)s · $%(p1)s · резерв 10%% ($%(p2)s) удержан в эскроу."
-msgstr ""
-"✅ 报价已确认——交易已进入处理阶段。\n"
-"订单 ORD-%(p0)s · $%(p1)s · 10%% 保证金（$%(p2)s）已托管冻结。"
-
 #: assistant/kp_workflow.py:129 assistant/kp_workflow.py:428 assistant/kp_workflow.py:522 assistant/kp_workflow.py:578 assistant/negotiation.py:160 assistant/negotiation.py:490 assistant/negotiation.py:927 assistant/negotiation.py:1322
 msgid "RFQ не найден."
 msgstr "未找到询价。"
@@ -8742,17 +7992,6 @@ msgstr "📄 打开形式发票（PDF）"
 msgid "📊 Сравнить все КП"
 msgstr "📊 比较所有报价"
 
-#: assistant/kp_workflow.py:205
-#, python-format
-msgid ""
-"📋 Pro-forma Invoice PRO-%(p0)s/%(p1)s готов.\n"
-"Сумма: $%(p2)s (запчасти $%(p3)s + логистика $%(p4)s).\n"
-"Нажмите «Подтвердить» — заблокируем 10%% ($%(p5)s) с депозита, после готовности — остаток 90%%."
-msgstr ""
-"📋 形式发票 PRO-%(p0)s/%(p1)s 已就绪。\n"
-"金额：$%(p2)s（配件 $%(p3)s + 物流 $%(p4)s）。\n"
-"点击「确认」——将从押金中冻结 10%%（$%(p5)s），备货完成后支付剩余 90%%。"
-
 #: assistant/kp_workflow.py:212
 msgid "После подтверждения чат переключится в режим сделки (shipment)."
 msgstr "确认后，聊天将切换到交易模式（shipment）。"
@@ -8792,15 +8031,6 @@ msgstr "无法接受此报价（状态：%(p0)s）。"
 msgid "Котировка истекла %(p0)s. Запросите у поставщика новое КП."
 msgstr "报价已于 %(p0)s 过期。请向供应商索取新报价。"
 
-#: assistant/kp_workflow.py:278
-#, python-format
-msgid ""
-"❌ Недостаточно средств для резерва.\n"
-"Нужно: $%(p0)s · на счёте: $%(p1)s · не хватает: $%(p2)s."
-msgstr ""
-"❌ 预留款余额不足。\n"
-"需要：$%(p0)s · 账户：$%(p1)s · 差额：$%(p2)s。"
-
 #: assistant/kp_workflow.py:280
 #, python-format
 msgid "Пополнить депозит на $%(p0)s"
@@ -8809,15 +8039,6 @@ msgstr "充值押金 $%(p0)s"
 #: assistant/kp_workflow.py:293
 msgid "Заказ по этой котировке уже создан."
 msgstr "该报价的订单已创建。"
-
-#: assistant/kp_workflow.py:298
-#, python-format
-msgid ""
-"❌ Недостаточно средств для резерва (перепроверка).\n"
-"Нужно: $%(p0)s · на счёте: $%(p1)s."
-msgstr ""
-"❌ 预留款余额不足（复核）。\n"
-"需要：$%(p0)s · 账户：$%(p1)s。"
 
 #: assistant/kp_workflow.py:305
 msgid "В котировке нет позиций с привязанной запчастью — заказ не создан, резерв не списан."
@@ -8841,19 +8062,6 @@ msgstr "💳 支付剩余 $%(p0)s"
 #: assistant/kp_workflow.py:387
 msgid "📄 Скачать Commercial Invoice (PDF)"
 msgstr "📄 下载商业发票（PDF）"
-
-#: assistant/kp_workflow.py:392
-#, python-format
-msgid ""
-"✅ КП подтверждено — сделка перешла в работу.\n"
-"Заказ ORD-%(p0)s · инвойс $%(p1)s\n"
-"Резерв 10%% ($%(p2)s) списан · остаток депозита $%(p3)s\n"
-"Чат теперь — сделка. Commercial Invoice выставлен."
-msgstr ""
-"✅ 报价已确认——交易已进入执行阶段。\n"
-"订单 ORD-%(p0)s · 发票 $%(p1)s\n"
-"已扣除 10%% 预留金（$%(p2)s）· 押金余额 $%(p3)s\n"
-"聊天现已转为交易。商业发票已开具。"
 
 #: assistant/kp_workflow.py:398 templates/buyer/rfq/list.html:140 templates/buyer/rfq/list.html:237 templates/buyer/rfq/list.html:246 templates/buyer/rfq/list.html:264 templates/buyer/rfq/list.html:273 templates/buyer/rfq/list.html:291
 msgid "Заказ оформлен"
@@ -8895,15 +8103,6 @@ msgstr "⏱ SLA：%(p0)s 分钟"
 msgid "⚠️ SLA нарушен"
 msgstr "⚠️ SLA 已违反"
 
-#: assistant/kp_workflow.py:462
-#, python-format
-msgid ""
-"📋 SEMI: одобрить КП по RFQ #%(p0)s?\n"
-"Лучшее предложение #%(p1)s от %(p2)s — $%(p3)s. %(p4)s."
-msgstr ""
-"📋 SEMI：批准 RFQ #%(p0)s 的报价？\n"
-"最佳报价 #%(p1)s 来自 %(p2)s——$%(p3)s。%(p4)s。"
-
 #: assistant/kp_workflow.py:465
 #, python-format
 msgid "Подтвердить КП по RFQ #%(p0)s"
@@ -8938,15 +8137,6 @@ msgstr "📋 RFQ #%(p0)s 的报价已可供审核"
 msgid "Оператор одобрил расчёт. Откройте, чтобы подтвердить и зарезервировать 10%."
 msgstr "操作员已批准计算。打开以确认并预留 10%。"
 
-#: assistant/kp_workflow.py:498
-#, python-format
-msgid ""
-"✓ КП по RFQ #%(p0)s одобрено и отправлено клиенту.\n"
-"Клиент видит инвойс с кнопкой «Подтвердить и зарезервировать 10%%»."
-msgstr ""
-"✓ RFQ #%(p0)s 的报价已批准并发送给客户。\n"
-"客户可看到带「确认并预留 10%%」按钮的发票。"
-
 #: assistant/kp_workflow.py:518
 msgid "Только оператор может работать с MANUAL-RFQ."
 msgstr "只有操作员可处理 MANUAL-RFQ。"
@@ -8965,19 +8155,6 @@ msgstr "🔍 RFQ #%(p0)s——操作员正在汇集报价"
 #, python-format
 msgid "Срок сбора КП: 48ч до %(p0)s. Вы получите готовое КП."
 msgstr "报价收集期限：48 小时，截至 %(p0)s。您将收到已完成的报价。"
-
-#: assistant/kp_workflow.py:551
-#, python-format
-msgid ""
-"✓ MANUAL-RFQ #%(p0)s разослан.\n"
-"⏱ Дедлайн сбора КП: %(p1)s (48 часов).\n"
-"После сбора — op_compose_kp чтобы сформировать инвойс клиенту.\n"
-"\n"
-msgstr ""
-"✓ 手动 RFQ #%(p0)s 已发送。\n"
-"⏱ 报价收集截止时间：%(p1)s（48 小时）。\n"
-"收集完成后——使用 op_compose_kp 为客户生成发票。\n"
-"\n"
 
 #: assistant/kp_workflow.py:555
 msgid "📋 Сформировать КП клиенту"
@@ -9283,24 +8460,6 @@ msgstr "🤖 询价 #%(id)s 的 %(n)s 条报价"
 msgid "AUTO mode: продавцы автоматически выставили КП из каталога."
 msgstr "AUTO 模式：供应商已根据目录自动出价。"
 
-#: assistant/negotiation.py:319
-#, python-format
-msgid ""
-"\n"
-"🤖 AUTO: %(n)s продавцов сразу выставили КП из каталога."
-msgstr ""
-"\n"
-"🤖 AUTO：%(n)s 位卖家已直接从目录提交报价。"
-
-#: assistant/negotiation.py:320
-#, python-format
-msgid ""
-"\n"
-"🎯 Лучшее: $%(amt)s · резерв $%(res)s"
-msgstr ""
-"\n"
-"🎯 最优：$%(amt)s · 保证金 $%(res)s"
-
 #: assistant/negotiation.py:330
 #, python-format
 msgid "✓ Принять лучшее и оплатить резерв $%(res)s"
@@ -9315,14 +8474,6 @@ msgstr "✓ 询价 #%(id)s 已发送给 %(sent)s 家供应商 · trusted %(tr)s 
 #, python-format
 msgid " · risky %(n)s"
 msgstr " · 风险 %(n)s"
-
-#: assistant/negotiation.py:344
-msgid ""
-".\n"
-"Котировки будут приходить — следите за уведомлениями."
-msgstr ""
-".\n"
-"报价将陆续到达——请留意通知。"
 
 #: assistant/negotiation.py:351
 msgid "← Назад к RFQ"
@@ -9343,15 +8494,6 @@ msgstr "二手"
 #: assistant/negotiation.py:531 templates/admin_panel/rfq.html:84 templates/operator/manager/orders.html:11 templates/seller/reports/list.html:440
 msgid "Новый"
 msgstr "新建"
-
-#: assistant/negotiation.py:634
-#, python-format
-msgid ""
-"🧩 RFQ #%(id)s — не по вашему каталогу. Ни одной из %(n)s позиций нет у вас ни в наличии, ни как аналог — котировать нечего.\n"
-"Загрузите подходящие позиции или смотрите релевантные лиды (там только запросы по вашему каталогу)."
-msgstr ""
-"🧩 询价 #%(id)s — 不在您的目录中。%(n)s 项中没有任何一项在您处有现货或可作为替代品——无可报价。\n"
-"请上传匹配的商品或查看相关线索（那里仅包含与您目录相关的询价）。"
 
 #: assistant/negotiation.py:640 assistant/seller_actions.py:681
 msgid "🔥 Срочные задачи"
@@ -9389,17 +8531,6 @@ msgstr "← 紧急任务"
 msgid "⚠️ Не указано ни одной цены — котировка не создана."
 msgstr "⚠️ 未填写任何价格——未创建报价。"
 
-#: assistant/negotiation.py:822
-#, python-format
-msgid ""
-"⚠️ ANTI-COLLUSION FLAG · Quote от @%(user)s\n"
-"RFQ #%(rfq)s · Quote #%(quote)s · в message обнаружены off-platform контакты:\n"
-"«%(msg)s»"
-msgstr ""
-"⚠️ ANTI-COLLUSION FLAG · 来自 @%(user)s 的报价\n"
-"询价 #%(rfq)s · 报价 #%(quote)s · 在 message 中发现平台外联系方式：\n"
-"「%(msg)s」"
-
 #: assistant/negotiation.py:841
 #, python-format
 msgid "Котировка по RFQ #%(id)s"
@@ -9423,15 +8554,6 @@ msgstr "（第 %(r)s 轮）"
 #: assistant/negotiation.py:935
 msgid "Просматривать котировки может только заказчик RFQ или оператор."
 msgstr "只有询价的下单方或操作员可查看报价。"
-
-#: assistant/negotiation.py:952
-#, python-format
-msgid ""
-"По RFQ #%(id)s КП ещё не сформирован.\n"
-"Откройте RFQ и проверьте/подтвердите позиции из каталога."
-msgstr ""
-"询价 #%(id)s 的报价尚未生成。\n"
-"请打开询价并检查/确认目录中的商品。"
 
 #: assistant/negotiation.py:961
 msgid "Все RFQ"
@@ -9595,15 +8717,6 @@ msgstr "报价 #%(qid)s 已接受——订单 #%(oid)s"
 msgid "Покупатель оформил заказ на $%(amt)s. Можно начинать."
 msgstr "采购商已下单 $%(amt)s。可以开始。"
 
-#: assistant/negotiation.py:1289
-#, python-format
-msgid ""
-"✓ Котировка #%(qid)s принята · создан заказ #%(oid)s на $%(amt)s.\n"
-"Следующий шаг — оплатить резерв 10%% ($%(res)s)."
-msgstr ""
-"✓ 报价 #%(qid)s 已接受 · 已创建订单 #%(oid)s，金额 $%(amt)s。\n"
-"下一步——支付 10%% 保证金（$%(res)s）。"
-
 #: assistant/negotiation.py:1294
 #, python-format
 msgid "💳 Оплатить резерв $%(res)s"
@@ -9616,15 +8729,6 @@ msgstr "只有询价的下单方可接受报价。"
 #: assistant/negotiation.py:1333
 msgid "По этому RFQ ещё нет котировок. Подождите рассылки или измените режим."
 msgstr "此询价尚无报价。请等待发送或更改模式。"
-
-#: assistant/negotiation.py:1342
-#, python-format
-msgid ""
-"🎯 Лучшее КП по RFQ #%(id)s\n"
-"Принимаем котировку #%(qid)s и сразу списываем резерв 10%%."
-msgstr ""
-"🎯 询价 #%(id)s 的最优报价\n"
-"接受报价 #%(qid)s 并立即扣除 10%% 保证金。"
 
 #: assistant/negotiation.py:1347
 #, python-format
@@ -9869,21 +8973,6 @@ msgstr "⚠️ 未识别任何类型。可用：%(kinds)s"
 msgid "✓ Будут приходить: %(kinds)s."
 msgstr "✓ 将接收：%(kinds)s。"
 
-#: assistant/notif_settings.py:218
-#, python-format
-msgid ""
-"✈️ Подключение Telegram\n"
-"\n"
-"1. Откройте бота: @%(bot)s\n"
-"2. Отправьте /start\n"
-"3. Бот ответит вашим chat_id — вставьте сюда"
-msgstr ""
-"✈️ 连接 Telegram\n"
-"\n"
-"1. 打开机器人：@%(bot)s\n"
-"2. 发送 /start\n"
-"3. 机器人会回复您的 chat_id——粘贴到此处"
-
 #: assistant/notif_settings.py:225
 msgid "✈️ Telegram chat_id"
 msgstr "✈️ Telegram chat_id"
@@ -9916,14 +9005,6 @@ msgstr "🛡 公司验证面向卖家——以便在平台上发布商品。如�
 #: assistant/onboarding.py:92
 msgid "🔍 Найти запчасть"
 msgstr "🔍 查找零件"
-
-#: assistant/onboarding.py:100
-msgid ""
-"🛡 Самостоятельная верификация временно недоступна.\n"
-"Свяжитесь с менеджером: support@consolidator.parts — пройдём проверку вместе за 1-2 рабочих дня."
-msgstr ""
-"🛡 自助验证暂时不可用。\n"
-"请联系经理：support@consolidator.parts——我们将在 1-2 个工作日内一起完成验证。"
 
 #: assistant/onboarding.py:114 assistant/onboarding.py:401 assistant/onboarding.py:410
 msgid "Реквизиты компании"
@@ -10152,15 +9233,6 @@ msgstr "距「%(tier)s」：+%(pts)s 分。"
 msgid "Максимальный тир — поддерживайте качество."
 msgstr "最高等级 — 请保持质量。"
 
-#: assistant/onboarding.py:326
-#, python-format
-msgid ""
-"✓ Компания «%(name)s» верифицирована · %(tier)s · %(score)s/100.\n"
-"%(next)s"
-msgstr ""
-"✓ 公司「%(name)s」已验证 · %(tier)s · %(score)s/100。\n"
-"%(next)s"
-
 #: assistant/onboarding.py:336 assistant/onboarding.py:433 templates/components/kyb_form.html:3
 msgid "Верификация компании"
 msgstr "公司验证"
@@ -10194,31 +9266,9 @@ msgstr "📝 更新信息"
 msgid "📦 Мой каталог"
 msgstr "📦 我的目录"
 
-#: assistant/onboarding.py:381
-#, python-format
-msgid ""
-"⏳ Анкета отправлена на проверку оператору (%(p0)s).\n"
-"Обычно проверка занимает до 24 часов. Дождитесь решения — мы пришлём нотификацию."
-msgstr ""
-"⏳ 问卷已提交给操作员审核（%(p0)s）。\n"
-"审核通常需要 24 小时以内。请等待结果——我们会发送通知。"
-
 #: assistant/onboarding.py:384 assistant/support_hub.py:391 marketplace/models.py:324 marketplace/models.py:1308 templates/admin_panel/rfq.html:11 templates/admin_panel/rfq.html:86 templates/components/kyb_form.html:22 templates/operator/customs/documents.html:79 templates/operator/customs/documents.html:106 templates/operator/customs/documents.html:151 templates/operator/logist/analytics.html:194 templates/operator/manager/analytics.html:219 templates/operator/payments/reconciliation.html:105 templates/seller/drawings/list.html:268 templates/seller/drawings/list.html:292
 msgid "На проверке"
 msgstr "审核中"
-
-#: assistant/onboarding.py:392
-#, python-format
-msgid ""
-"❌ Анкета отклонена оператором.\n"
-"Причина: %(p0)s\n"
-"\n"
-"Исправьте данные и отправьте повторно."
-msgstr ""
-"❌ 问卷已被操作员驳回。\n"
-"原因：%(p0)s\n"
-"\n"
-"请修改信息后重新提交。"
 
 #: assistant/onboarding.py:395
 msgid "🔄 Начать заново"
@@ -10400,14 +9450,6 @@ msgstr "%(label)s — 必填字段"
 msgid "%(label)s: формат не подходит (%(hint)s)"
 msgstr "%(label)s：格式不正确（%(hint)s）"
 
-#: assistant/onboarding.py:615 assistant/onboarding.py:770
-msgid ""
-"⚠️ Проверьте данные:\n"
-"• "
-msgstr ""
-"⚠️ 请检查数据：\n"
-"• "
-
 #: assistant/onboarding.py:629
 #, python-format
 msgid "✓ Шаг 1/5 готов · %(p0)s (%(p1)s)."
@@ -10568,15 +9610,6 @@ msgstr "新的 KYB 申请：%(p0)s"
 #, python-format
 msgid "ИНН %(p0)s · от %(p1)s. Проверьте и одобрите/отклоните."
 msgstr "纳税人识别号 %(p0)s · 来自 %(p1)s。请审核并批准/拒绝。"
-
-#: assistant/onboarding.py:913
-#, python-format
-msgid ""
-"✓ Анкета «%(p0)s» отправлена на проверку.\n"
-"Мы пришлём нотификацию когда оператор примет решение (обычно в течение 24 часов)."
-msgstr ""
-"✓ 问卷《%(p0)s》已提交审核。\n"
-"操作员作出决定后我们会发送通知（通常在 24 小时内）。"
 
 #: assistant/onboarding.py:916
 msgid "Статус анкеты"
@@ -10924,15 +9957,6 @@ msgstr "❓ 请求澄清"
 msgid "🔄 Пересмотреть → одобрить"
 msgstr "🔄 重新审核 → 批准"
 
-#: assistant/onboarding.py:1342
-#, python-format
-msgid ""
-"🛡 KYB · %(p0)s\n"
-"Авто-проверка: %(p1)s · решение системы: %(p2)s"
-msgstr ""
-"🛡 KYB · %(p0)s\n"
-"自动检查：%(p1)s · 系统决定：%(p2)s"
-
 #: assistant/onboarding.py:1346
 #, python-format
 msgid "Анкета · %(p0)s"
@@ -11051,15 +10075,6 @@ msgstr "仍然批准"
 #: assistant/onboarding.py:1482
 msgid "Вернуться"
 msgstr "返回"
-
-#: assistant/onboarding.py:1495
-#, python-format
-msgid ""
-"⚠️ Превышен лимит подопечных поставщиков (%(p0)s/%(p1)s).\n"
-"Освободите слот (передайте поставщика коллеге через лида) или попросите лида одобрить эту анкету вместо вас."
-msgstr ""
-"⚠️ 已超出受管供应商上限（%(p0)s/%(p1)s）。\n"
-"请释放一个名额（通过线索将供应商转交同事），或请线索负责人代您批准此问卷。"
 
 #: assistant/onboarding.py:1498 assistant/onboarding.py:1577 assistant/onboarding.py:1631
 msgid "← Очередь"
@@ -11223,15 +10238,6 @@ msgstr "✅ 队列为空"
 #: assistant/operator_actions.py:199
 msgid "Все SEMI/MANUAL обработаны, SLA в норме"
 msgstr "所有 SEMI/MANUAL 已处理，SLA 正常"
-
-#: assistant/operator_actions.py:216
-#, python-format
-msgid ""
-"Оператор — дирижёр платформы.\n"
-"В работе: %(n)s заказов на $%(usd)s."
-msgstr ""
-"操作员是平台的指挥者。\n"
-"处理中：%(n)s 笔订单，共 $%(usd)s。"
 
 #: assistant/operator_actions.py:223
 msgid "💰 Платежи / Эскроу"
@@ -11741,15 +10747,6 @@ msgstr "%(prefix)s · %(hint)s · %(act)s"
 #: assistant/operator_actions.py:682
 msgid "Открыть полный список"
 msgstr "打开完整列表"
-
-#: assistant/operator_actions.py:690
-#, python-format
-msgid ""
-"Очередь RFQ · %(total)s в работе.\n"
-"Нужно подтвердить: %(semi)s (15 мин) · Автоподбор: %(auto)s."
-msgstr ""
-"RFQ 队列 · %(total)s 处理中。\n"
-"需确认：%(semi)s（15 分钟）· 自动选型：%(auto)s。"
 
 #: assistant/operator_actions.py:698
 msgid "Нужно подтвердить"
@@ -12292,17 +11289,6 @@ msgstr "📦 订单内容 · %(p0)s 项 · $%(p1)s"
 msgid "Нет позиций"
 msgstr "无项目"
 
-#: assistant/operator_actions.py:1354
-#, python-format
-msgid ""
-"Заказ #%(p0)s · %(p1)s\n"
-"%(p2)s · %(p3)s · SLA %(p4)s\n"
-"$%(p5)s · %(p6)s поз."
-msgstr ""
-"订单 #%(p0)s · %(p1)s\n"
-"%(p2)s · %(p3)s · SLA %(p4)s\n"
-"$%(p5)s · %(p6)s 项"
-
 #: assistant/operator_actions.py:1360
 msgid "💰 Поток платежей по заказу"
 msgstr "💰 订单支付流"
@@ -12371,33 +11357,6 @@ msgstr "📌 当前负责人：%(role)s（由 %(by)s，%(at)s）"
 msgid "📌 Сейчас никто не отвечает — заказ в общей очереди"
 msgstr "📌 当前无人负责 — 订单在公共队列中"
 
-#: assistant/operator_actions.py:1429
-#, python-format
-msgid ""
-"Кому назначить заказ #%(p0)s?\n"
-"\n"
-"Назначение передаёт ответственность за этот заказ конкретному специалисту-оператору. Он получит уведомление, увидит заказ в своей персональной очереди и будет следить за SLA. Дирижирует процессом дальше — он, но за итог отвечает старший оператор.\n"
-"\n"
-"%(p1)s\n"
-"\n"
-"Когда назначать:\n"
-"• 🚚 Логист — груз застрял в транзите / нужно дозвонится до перевозчика\n"
-"• 🛂 Таможня — проблемы с растаможкой, документами, кодами ТН ВЭД\n"
-"• 💰 Платежи — задержка оплаты, возврат, эскроу-вопрос\n"
-"• 👤 Менеджер — общая координация / VIP-клиент / эскалация"
-msgstr ""
-"将订单 #%(p0)s 指派给谁？\n"
-"\n"
-"指派会将该订单的责任移交给具体的操作专员。他将收到通知，在个人队列中看到该订单，并跟踪 SLA。后续由他主导流程，但最终结果由高级操作员负责。\n"
-"\n"
-"%(p1)s\n"
-"\n"
-"何时指派：\n"
-"• 🚚 物流员 — 货物滞留在途 / 需联系承运商\n"
-"• 🛂 海关 — 清关、文件、HS 编码问题\n"
-"• 💰 支付 — 付款延迟、退款、托管问题\n"
-"• 👤 经理 — 总体协调 / VIP 客户 / 升级处理"
-
 #: assistant/operator_actions.py:1434
 #, python-format
 msgid "👥 Назначить заказ #%(p0)s специалисту"
@@ -12465,15 +11424,6 @@ msgstr "文本"
 msgid "✓ Заметка к #%(p0)s сохранена."
 msgstr "✓ #%(p0)s 的备注已保存。"
 
-#: assistant/operator_actions.py:1566
-#, python-format
-msgid ""
-"🚚 Назначение перевозчика для ORD-%(p0)s (текущий статус: %(p1)s).\n"
-"После сохранения покупатель сразу увидит карточку логиста и получит уведомление."
-msgstr ""
-"🚚 为 ORD-%(p0)s 指派承运商（当前状态：%(p1)s）。\n"
-"保存后买方将立即看到物流卡片并收到通知。"
-
 #: assistant/operator_actions.py:1571
 #, python-format
 msgid "🚚 Перевозчик · ORD-%(p0)s"
@@ -12511,27 +11461,6 @@ msgstr "⚠️ 承运商和追踪单号为必填项。"
 #, python-format
 msgid "🚚 Назначен перевозчик: %(carrier)s · трек-номер `%(tracking)s`."
 msgstr "🚚 已指派承运商：%(carrier)s · 运单号 `%(tracking)s`。"
-
-#: assistant/operator_actions.py:1640
-#, fuzzy, python-format
-#| msgid "Телефон:"
-msgid ""
-"\n"
-"Телефон: %(phone)s"
-msgstr "电话："
-
-#: assistant/operator_actions.py:1656
-#, python-format
-msgid ""
-"✅ Перевозчик для ORD-%(p0)s назначен.\n"
-"• Перевозчик: %(p1)s\n"
-"• Трек: %(p2)s\n"
-"Покупатель и поставщик получили уведомление в свои чаты."
-msgstr ""
-"✅ 已为 ORD-%(p0)s 指派承运商。\n"
-"• 承运商：%(p1)s\n"
-"• 单号：%(p2)s\n"
-"买方和供应商已在各自聊天中收到通知。"
 
 #: assistant/operator_actions.py:1687
 msgid "Этот спор не назначен на вас — обратитесь к старшему оператору."
@@ -12696,17 +11625,6 @@ msgstr "请先为订单 #%(p0)s 指定 HS 编码。"
 msgid "📋 Присвоить ТН ВЭД"
 msgstr "📋 指定 HS 编码"
 
-#: assistant/operator_actions.py:1988
-#, python-format
-msgid ""
-"Пошлина по заказу #%(p0)s (%(p1)s → %(p2)s)\n"
-"База: $%(p3)s · пошлина %(p4)s%% = $%(p5)s · НДС %(p6)s%% = $%(p7)s\n"
-"Брокер $%(p8)s · терминал $%(p9)s · ИТОГО $%(p10)s"
-msgstr ""
-"订单 #%(p0)s 关税（%(p1)s → %(p2)s）\n"
-"基数：$%(p3)s · 关税 %(p4)s%% = $%(p5)s · 增值税 %(p6)s%% = $%(p7)s\n"
-"报关行 $%(p8)s · 码头 $%(p9)s · 合计 $%(p10)s"
-
 #: assistant/operator_actions.py:1993
 #, python-format
 msgid "💰 Расчёт пошлины · #%(p0)s"
@@ -12745,14 +11663,6 @@ msgstr "📑 证书"
 #: assistant/operator_actions.py:2006 assistant/operator_actions.py:2045
 msgid "🚚 Выпустить с таможни"
 msgstr "🚚 从海关放行"
-
-#: assistant/operator_actions.py:2033
-#, python-format
-msgid ""
-"Сертификаты по заказу #%(id)s (ТН ВЭД %(hs)s)\n"
-"Требуется: %(req)s\n"
-"В наличии: %(have)s\n"
-msgstr ""
 
 #: assistant/operator_actions.py:2034
 #, python-format
@@ -12939,15 +11849,6 @@ msgstr "❗ 缺少证书：%(missing)s"
 #: assistant/operator_actions.py:2356
 msgid "ℹ️ Пошлина не рассчитана."
 msgstr "ℹ️ 未计算关税。"
-
-#: assistant/operator_actions.py:2358
-#, python-format
-msgid ""
-"Выпустить груз #%(p0)s с таможни?\n"
-"%(p1)s"
-msgstr ""
-"放行货物 #%(p0)s 出海关？\n"
-"%(p1)s"
 
 #: assistant/operator_actions.py:2362
 #, python-format
@@ -14088,19 +12989,6 @@ msgstr "🛡 检查 KYB"
 msgid "Алерты оператора"
 msgstr "操作员提醒"
 
-#: assistant/order_limits.py:57
-#, python-format
-msgid ""
-"⚠️ Минимальная сумма заказа на платформе — $%(limit)s.\n"
-"Сейчас в корзине $%(total)s · не хватает $%(shortage)s.\n"
-"\n"
-"Добавьте позиции в спецификацию — экономика консолидации работает на партиях от $%(limit)s: фиксированные расходы на логистику, таможню и операторов перекрывают маржу на меньших объёмах."
-msgstr ""
-"⚠️ 平台最低订单金额为 $%(limit)s。\n"
-"当前购物车 $%(total)s · 还差 $%(shortage)s。\n"
-"\n"
-"请向规格清单中添加项目——整合经济效益从 $%(limit)s 起的批量开始生效：物流、清关和操作员的固定成本在更小批量上会超过利润。"
-
 #: assistant/order_limits.py:67
 msgid "💰 Сумма заказа"
 msgstr "💰 订单金额"
@@ -14394,17 +13282,6 @@ msgstr "如何修复："
 msgid "Исправьте эти строки в своём файле и загрузите заново — обновление не задвоит уже загруженные позиции."
 msgstr "请在文件中修正这些行后重新上传——更新不会重复已加载的条目。"
 
-#: assistant/pricelist.py:3682
-#, python-format
-msgid ""
-"❌ Ошибки импорта #%(p0)s: %(p1)s строк не загружено (остальные — в каталоге).\n"
-"\n"
-"%(p2)s"
-msgstr ""
-"❌ 导入错误 #%(p0)s：%(p1)s 行未加载（其余已入目录）。\n"
-"\n"
-"%(p2)s"
-
 #: assistant/pricelist.py:3684
 #, python-format
 msgid "Ошибки импорта (показаны первые %(p0)s)"
@@ -14463,17 +13340,6 @@ msgstr "⚠️ 已达每日 AI 限额（-$%(spent)s / $%(limit)s）。明天重�
 #: assistant/rag.py:306
 msgid "Собрал данные по запросу — смотри карточки выше. Уточни, что показать подробнее?"
 msgstr "已根据您的查询收集数据 — 请见上方卡片。需要我详细展示什么？"
-
-#: assistant/rag.py:318
-#, python-format
-msgid ""
-"ℹ️ AI ассистент недоступен (ANTHROPIC_API_KEY не настроен).\n"
-"\n"
-"По вашему вопросу «%(query)s» — релевантного контекста не найдено."
-msgstr ""
-"ℹ️ AI 助手不可用（未设置 ANTHROPIC_API_KEY）。\n"
-"\n"
-"未找到与您的查询「%(query)s」相关的内容。"
 
 #: assistant/rag.py:322
 msgid "ℹ️ AI ассистент работает в режиме без LLM (ANTHROPIC_API_KEY не настроен)."
@@ -14538,17 +13404,6 @@ msgstr "Customs handling $300（我方清关）"
 #, python-format
 msgid "Auto-discount %(p0)s%% (по обороту)"
 msgstr "Auto-discount %(p0)s%%（按营业额）"
-
-#: assistant/seller_actions.py:103
-#, python-format
-msgid ""
-"🤝 Реферальная программа\n"
-"Ваш код: %(code)s\n"
-"Условия: 2%% от первого заказа приглашённого клиента (до $5,000), далее — 0.5%% от всех его заказов в течение года. Партнёрам (дилерам и инженерам по сервису) — отдельный тариф 5%%."
-msgstr ""
-"🤝 推荐计划\n"
-"您的代码：%(code)s\n"
-"条款：受邀客户首单的 2%%（最高 $5,000），之后为其全年所有订单的 0.5%%。合作伙伴（经销商及服务工程师）——单独费率 5%%。"
 
 #: assistant/seller_actions.py:115
 msgid "Реферальная программа"
@@ -14687,17 +13542,6 @@ msgstr "难度（simple/medium/complex）"
 msgid "Некорректные параметры."
 msgstr "参数无效。"
 
-#: assistant/seller_actions.py:241
-#, python-format
-msgid ""
-"🏭 Расчёт производства\n"
-"Материал: %(material)s · масса %(mass)s кг · точность %(tol)s · серия %(qty)s шт.\n"
-"Себестоимость: $%(unit)s за шт, $%(total)s за серию. Срок: %(days)s раб. дней (подготовка %(setup)s + производство %(prod)s)."
-msgstr ""
-"🏭 生产核算\n"
-"材料：%(material)s · 重量 %(mass)s 公斤 · 精度 %(tol)s · 批量 %(qty)s 件\n"
-"成本：每件 $%(unit)s，整批 $%(total)s。工期：%(days)s 个工作日（准备 %(setup)s + 生产 %(prod)s）。"
-
 #: assistant/seller_actions.py:257
 #, python-format
 msgid "Производство · %(material)s · %(qty)s шт"
@@ -14802,17 +13646,6 @@ msgstr "履带链（预防性维护）"
 #, python-format
 msgid "~%(cycles)s раз(а) за период · $%(price)s/шт · интервал %(interval)s ч · %(kind)s"
 msgstr "周期内约 %(cycles)s 次 · $%(price)s/件 · 间隔 %(interval)s 小时 · %(kind)s"
-
-#: assistant/seller_actions.py:330
-#, python-format
-msgid ""
-"📈 Прогноз потребности на %(months)s мес.\n"
-"Парк: %(machines)s единиц(а) · наработка ~%(hpm)s ч/мес → итого %(total_hours)s мото-часов.\n"
-"Ожидаемые расходы на ТО и КР: примерно $%(cost)s."
-msgstr ""
-"📈 %(months)s 个月需求预测\n"
-"车队：%(machines)s 台 · 运行约 %(hpm)s 小时/月 → 合计 %(total_hours)s 工时。\n"
-"预计保养与大修费用：约 $%(cost)s。"
 
 #: assistant/seller_actions.py:344
 #, python-format
@@ -15056,15 +13889,6 @@ msgstr "📑 行政摘要（供管理层）"
 msgid "Сводный отчёт: ключевые метрики на одной странице — для топ-менеджмента"
 msgstr "汇总报告：关键指标一页呈现 — 供高管使用"
 
-#: assistant/seller_actions.py:660
-#, python-format
-msgid ""
-"📊 Аналитика — все отчёты в одной точке.\n"
-"Кратко: оборот за %(year)s · $%(rev)s, SLA %(sla).0f%%, %(total)s сделок (%(delivered)s закрыто), открытых RFQ на рынке: %(rfq)s."
-msgstr ""
-"📊 分析 — 所有报表汇集一处。\n"
-"概览：%(year)s 营业额 · $%(rev)s，SLA %(sla).0f%%，%(total)s 笔交易（%(delivered)s 已完成），市场未结 RFQ：%(rfq)s。"
-
 #: assistant/seller_actions.py:671
 msgid "📊 Сводка по поставщику"
 msgstr "📊 供应商摘要"
@@ -15122,19 +13946,6 @@ msgstr "稳定节奏"
 #: assistant/seller_actions.py:748
 msgid "снижение"
 msgstr "下降"
-
-#: assistant/seller_actions.py:750
-#, python-format
-msgid ""
-"📑 Executive Summary · %(year)s\n"
-"\n"
-"Поставщик демонстрирует %(trend)s (%(delivered)s закрытых сделок на $%(rev)s, средний чек $%(avg)s).\n"
-"Качество исполнения: SLA %(sla).0f%%, открытых рекламаций %(claims)s.\n"
-msgstr ""
-"📑 行政摘要 · %(year)s\n"
-"\n"
-"供应商呈现%(trend)s（%(delivered)s 笔已完成交易，金额 $%(rev)s，平均客单价 $%(avg)s）。\n"
-"执行质量：SLA %(sla).0f%%，未结投诉 %(claims)s。\n"
 
 #: assistant/seller_actions.py:765
 #, python-format
@@ -15390,15 +14201,6 @@ msgstr "客户年营业额，USD（用于折扣）"
 msgid "Некорректная базовая цена."
 msgstr "基础价格无效。"
 
-#: assistant/seller_actions.py:1141
-#, python-format
-msgid ""
-"Рассчитал цену для клиента: %(currency)s %(total)s\n"
-"Базис %(basis)s · поставщик %(base)s → клиент %(total)s (наценка %(markup).1f%%)."
-msgstr ""
-"已为客户计算价格：%(currency)s %(total)s\n"
-"术语 %(basis)s · 供应商 %(base)s → 客户 %(total)s（加价 %(markup).1f%%）。"
-
 #: assistant/seller_actions.py:1153
 #, python-format
 msgid "Расчёт цены · %(basis)s · %(currency)s"
@@ -15465,15 +14267,6 @@ msgstr "未找到商品 #%(id)s。"
 #, python-format
 msgid "Товар #%(id)s не ваш."
 msgstr "商品 #%(id)s 不属于您。"
-
-#: assistant/seller_actions.py:1296
-#, python-format
-msgid ""
-"⚙️ %(oem)s — %(title)s\n"
-"Бренд: %(brand)s · Цена: $%(price)s USD · Остаток: %(stock)s шт · %(state)s"
-msgstr ""
-"⚙️ %(oem)s — %(title)s\n"
-"品牌：%(brand)s · 价格：$%(price)s USD · 库存：%(stock)s 件 · %(state)s"
 
 #: assistant/seller_actions.py:1302 assistant/seller_actions.py:4101 assistant/seller_actions.py:4263
 msgid "активен"
@@ -15648,15 +14441,6 @@ msgstr "下载模板"
 msgid "Скачать .xlsx"
 msgstr "下载 .xlsx"
 
-#: assistant/seller_actions.py:1737
-#, python-format
-msgid ""
-"📋 Превью импорта · %(p0)s строк (к импорту), %(p1)s ошибок.\n"
-"Подтверди — обновлю существующие и создам новые."
-msgstr ""
-"📋 导入预览 · %(p0)s 行（待导入），%(p1)s 个错误。\n"
-"确认后——我将更新现有项并创建新项。"
-
 #: assistant/seller_actions.py:1740
 #, python-format
 msgid "Импорт прайса: %(p0)s позиций"
@@ -15666,19 +14450,6 @@ msgstr "价目表导入：%(p0)s 项"
 #, python-format
 msgid "✓ Импортировать %(p0)s позиций"
 msgstr "✓ 导入 %(p0)s 项"
-
-#: assistant/seller_actions.py:1783
-#, python-format
-msgid ""
-"✅ Прайс импортирован.\n"
-"  • Новых позиций: %(p0)s\n"
-"  • Обновлено: %(p1)s\n"
-"  • Пропущено (формат): %(p2)s"
-msgstr ""
-"✅ 价格表已导入。\n"
-"  • 新增条目：%(p0)s\n"
-"  • 已更新：%(p1)s\n"
-"  • 已跳过（格式）：%(p2)s"
 
 #: assistant/seller_actions.py:1786
 msgid "📦 Открыть каталог"
@@ -16206,15 +14977,6 @@ msgstr "关联将自动追踪。"
 #| msgid "✖ Снять привязку"
 msgid "✅ привязан"
 msgstr "✅ 已关联"
-
-#: assistant/seller_actions.py:3085
-#, python-format
-msgid ""
-"📨 Приглашение для «%(p0)s» готово (%(p1)s). Отправьте ссылку — заказчик войдёт/зарегистрируется и привяжется к вам; его заказы попадут в ваши отгрузки и начисления:\n"
-"%(p2)s"
-msgstr ""
-"📨 「%(p0)s」的邀请已就绪（%(p1)s）。请发送链接——客户登录/注册后将绑定至您；其订单将计入您的发货与结算：\n"
-"%(p2)s"
 
 #: assistant/seller_actions.py:3087
 msgid "📨 Ссылка-приглашение заказчика"
@@ -16799,21 +15561,6 @@ msgstr "员工邮箱"
 msgid "Права доступа"
 msgstr "访问权限"
 
-#: assistant/seller_actions.py:4188
-#, python-format
-msgid ""
-"✓ Приглашение для %(p0)s (%(p1)s) создано.\n"
-"Отправьте сотруднику ссылку — действует %(p2)s дней:\n"
-"%(p3)s\n"
-"\n"
-"Он откроет ссылку, войдёт или зарегистрируется и получит доступ к данным компании."
-msgstr ""
-"✓ 已为 %(p0)s（%(p1)s）创建邀请。\n"
-"请将链接发送给员工——有效期 %(p2)s 天：\n"
-"%(p3)s\n"
-"\n"
-"他打开链接，登录或注册后即可获得公司数据访问权限。"
-
 #: assistant/seller_actions.py:4190 assistant/seller_actions.py:4269 assistant/seller_actions.py:4281 assistant/seller_actions.py:4300 assistant/seller_actions.py:4334
 msgid "👥 К команде"
 msgstr "👥 返回团队"
@@ -16847,15 +15594,6 @@ msgstr "登录 / 注册"
 msgid "Вы уже в команде этой компании."
 msgstr "您已在该公司团队中。"
 
-#: assistant/seller_actions.py:4237
-#, python-format
-msgid ""
-"✅ Вы присоединились к команде компании%(p0)s как %(p1)s.\n"
-"Теперь у вас доступ к данным компании: каталог, заказы, КП."
-msgstr ""
-"✅ 您已作为 %(p1)s 加入公司%(p0)s团队。\n"
-"现在您可访问公司数据：目录、订单、报价单。"
-
 #: assistant/seller_actions.py:4239
 msgid "📊 Дашборд продавца"
 msgstr "📊 卖家仪表盘"
@@ -16877,21 +15615,6 @@ msgstr "在贵公司未找到该员工。"
 msgid "приглашён"
 msgstr "已邀请"
 
-#: assistant/seller_actions.py:4268
-#, python-format
-msgid ""
-"👤 %(p0)s\n"
-"Роль: %(p1)s · статус: %(p2)s\n"
-"\n"
-"Ссылка-приглашение (7 дней):\n"
-"%(p3)s"
-msgstr ""
-"👤 %(p0)s\n"
-"角色：%(p1)s · 状态：%(p2)s\n"
-"\n"
-"邀请链接（7 天）：\n"
-"%(p3)s"
-
 #: assistant/seller_actions.py:4274
 msgid "🚫 Отключить доступ"
 msgstr "🚫 禁用访问"
@@ -16904,17 +15627,6 @@ msgstr "✅ 启用访问"
 #, python-format
 msgid "Роль → %(p0)s"
 msgstr "角色 → %(p0)s"
-
-#: assistant/seller_actions.py:4282
-#, python-format
-msgid ""
-"👤 %(p0)s\n"
-"Роль: %(p1)s · статус: %(p2)s\n"
-"Права: %(p3)s"
-msgstr ""
-"👤 %(p0)s\n"
-"角色：%(p1)s · 状态：%(p2)s\n"
-"权限：%(p3)s"
 
 #: assistant/seller_actions.py:4289 assistant/seller_actions.py:4317
 msgid "Недостаточно прав."
@@ -17095,15 +15807,6 @@ msgstr "映射已就绪"
 msgid "─── Распознанные поля ───"
 msgstr "─── 已识别字段 ───"
 
-#: assistant/seller_actions.py:4562
-#, python-format
-msgid ""
-"✅ Google Sheet подключён · %(p0)s колонок прочитано.\n"
-"Подтвердите маппинг ниже — после импорта URL сохранится для авто-синхронизации (раз в час)."
-msgstr ""
-"✅ Google Sheet 已接入 · 已读取 %(p0)s 列。\n"
-"请在下方确认映射——导入后将保存 URL 以自动同步（每小时一次）。"
-
 #: assistant/seller_actions.py:4566
 msgid "Google Sheet · превью"
 msgstr "Google Sheet · 预览"
@@ -17280,14 +15983,6 @@ msgstr "平台佣金包含哪些内容？"
 #: assistant/support_hub.py:211 assistant/support_hub.py:655
 msgid "Можно ли договариваться напрямую с поставщиком?"
 msgstr "可以直接与供应商协商吗？"
-
-#: assistant/support_hub.py:226
-msgid ""
-"Цветовая кодировка в интерфейсе платформы — единая для всех экранов.\n"
-"Линия слева у карточки, цвет KPI-значения и плашки-бейджа подчиняются одной шкале."
-msgstr ""
-"平台界面的颜色编码在所有屏幕上统一。\n"
-"卡片左侧的色条、KPI 数值的颜色以及徽章标牌都遵循同一套配色规则。"
 
 #: assistant/support_hub.py:232
 msgid "Шкала цветов (единая по всей платформе)"
@@ -17542,16 +16237,6 @@ msgstr "← 支持收件箱"
 msgid "Какие данные нужны для регистрации покупателя?"
 msgstr "注册采购商需要哪些数据？"
 
-#: assistant/support_hub.py:536
-msgid ""
-"8 полей: страна, ИНН/Tax ID, ФИО контактного лица, должность, рабочий e-mail, телефон с кодом страны, мессенджер (WhatsApp или Telegram), парк техники.\n"
-"\n"
-"Название и юр.адрес компании платформа подтянет автоматически по ИНН. Банковские реквизиты и ФИО подписанта запросим только перед первой сделкой, не на этапе регистрации."
-msgstr ""
-"8 个字段：国家、税号/Tax ID、联系人姓名、职务、工作邮箱、带国家代码的电话、即时通讯（WhatsApp 或 Telegram）、设备车队。\n"
-"\n"
-"平台将根据税号自动获取公司名称和法定地址。银行账户信息和签署人姓名仅在首次交易前索取，注册阶段不需要。"
-
 #: assistant/support_hub.py:545
 msgid "Как зарегистрироваться поставщиком?"
 msgstr "如何注册成为供应商？"
@@ -17568,35 +16253,9 @@ msgstr "KYB / 验证"
 msgid "Сколько занимает проверка поставщика?"
 msgstr "供应商审核需要多长时间？"
 
-#: assistant/support_hub.py:555
-msgid ""
-"Авто-проверки — мгновенно (ИНН, ОГРН/EGRUL, OpenSanctions, VIES для EU, OpenCorporates для зарубежных, MX-записи e-mail, регистрация в WhatsApp/Telegram).\n"
-"\n"
-"Решение оператора — до 24 часов в рабочий день. После approve — сразу доступны RFQ-ответы и приём заказов."
-msgstr ""
-"自动核查——即时（税号、注册号/EGRUL、OpenSanctions、欧盟 VIES、境外 OpenCorporates、邮箱 MX 记录、WhatsApp/Telegram 注册）。\n"
-"\n"
-"操作员决定——工作日 24 小时内。审批通过后即可回复 RFQ 和接受订单。"
-
 #: assistant/support_hub.py:563
 msgid "Что именно проверяет платформа автоматически?"
 msgstr "平台自动检查哪些内容？"
-
-#: assistant/support_hub.py:564
-msgid ""
-"• ЕГРЮЛ: статус активности, ликвидация, налоговая недоимка\n"
-"• OpenSanctions: директор и компания в санкционных списках\n"
-"• VIES: валидность VAT для контрагентов ЕС\n"
-"• OpenCorporates: статус компании в иностранных реестрах\n"
-"• MX-записи: реальность домена e-mail\n"
-"• WhatsApp/Telegram: зарегистрирован ли указанный номер"
-msgstr ""
-"• EGRUL：经营状态、清算、税务欠款\n"
-"• OpenSanctions：负责人和公司是否在制裁名单中\n"
-"• VIES：欧盟交易方 VAT 有效性\n"
-"• OpenCorporates：公司在境外登记处的状态\n"
-"• MX 记录：邮箱域名真实性\n"
-"• WhatsApp/Telegram：所填号码是否已注册"
 
 #: assistant/support_hub.py:572 assistant/support_hub.py:581 assistant/support_hub.py:592 assistant/support_hub.py:731
 msgid "Заказы и оплата"
@@ -17606,47 +16265,13 @@ msgstr "订单与付款"
 msgid "Какая минимальная сумма заказа?"
 msgstr "最低订单金额是多少？"
 
-#: assistant/support_hub.py:574
-msgid ""
-"Минимум $7,000 USD. Меньший заказ платформа не примет — экономика консолидации (фиксированные расходы на логистику, таможню, операторов) не окупается на меньших объёмах.\n"
-"\n"
-"Если в корзине меньше $7,000 — система покажет «не хватает $N» и предложит добавить позиции."
-msgstr ""
-"最低 $7,000 USD。平台不接受更小的订单——整合经济性（物流、海关、操作员的固定成本）在较小批量下无法收回。\n"
-"\n"
-"如果购物车不足 $7,000——系统将显示「还差 $N」并建议添加货物。"
-
 #: assistant/support_hub.py:582
 msgid "Какая схема оплаты?"
 msgstr "付款方案是怎样的？"
 
-#: assistant/support_hub.py:583
-msgid ""
-"Двухэтапная через эскроу:\n"
-"\n"
-"1. 10% резерв при подтверждении КП — замораживается на депозите покупателя, поставщик видит подтверждение и запускает заказ в работу.\n"
-"\n"
-"2. 90% остаток перед отгрузкой — оплачивается когда поставщик помечает «готов к отгрузке». Деньги уходят поставщику только после подтверждения приёмки покупателем."
-msgstr ""
-"通过托管的两阶段付款：\n"
-"\n"
-"1. 确认报价时预留 10%——冻结在买方押金账户，供应商看到确认后启动订单。\n"
-"\n"
-"2. 发货前支付剩余 90%——供应商标记「准备发货」时支付。资金仅在买方确认验收后才转给供应商。"
-
 #: assistant/support_hub.py:593
 msgid "Можно ли отменить заказ?"
 msgstr "可以取消订单吗？"
-
-#: assistant/support_hub.py:594
-msgid ""
-"До оплаты резерва — да, в один клик из карточки заказа.\n"
-"\n"
-"После оплаты резерва (10%) — только через оператора. Если поставщик уже запустил производство, может быть удержание резерва. Откройте обращение в «Поддержка» → «Связаться с оператором» — рассмотрим индивидуально."
-msgstr ""
-"支付预留款前——可以，在订单卡片中一键操作。\n"
-"\n"
-"支付预留款（10%）后——只能通过操作员处理。如果供应商已开始生产，可能扣除预留款。请在「支持」→「联系操作员」中提交申请——我们将单独处理。"
 
 #: assistant/support_hub.py:601 assistant/support_hub.py:611 assistant/support_hub.py:732
 msgid "Доставка и сроки"
@@ -17656,149 +16281,29 @@ msgstr "交付与时限"
 msgid "Как отследить заказ?"
 msgstr "最近订单"
 
-#: assistant/support_hub.py:603
-msgid ""
-"В чате наберите «трекинг 82» или «когда отгрузят 82» (где 82 — ID заказа). Карточка покажет:\n"
-"\n"
-"• Текущий этап (производство → отгрузка → таможня → выдача)\n"
-"• ETA выдачи в днях\n"
-"• Перевозчика (DHL/СДЭК/Maersk и т.д.) с контактами\n"
-"• Трек-номер + прямую ссылку на сайт перевозчика"
-msgstr ""
-"在聊天中输入「跟踪 82」或「82 何时发货」（其中 82 为订单 ID）。卡片将显示：\n"
-"\n"
-"• 当前阶段（生产 → 发货 → 海关 → 交付）\n"
-"• 交付 ETA（天数）\n"
-"• 承运商（DHL/CDEK/Maersk 等）及联系方式\n"
-"• 跟踪号 + 承运商网站直链"
-
 #: assistant/support_hub.py:612
 msgid "Какие используются базисы поставки (Incoterms)?"
 msgstr "使用哪些交付术语（Incoterms）？"
-
-#: assistant/support_hub.py:613
-msgid ""
-"По умолчанию FOB — поставщик довозит до порта отгрузки, дальше платформа берёт логистику на себя.\n"
-"\n"
-"На больших партиях доступны EXW (со склада поставщика) и CIF (морем со страховкой). Выбор базиса — на этапе расчёта КП в чате."
-msgstr ""
-"默认 FOB——供应商运至装运港，之后由平台负责物流。\n"
-"\n"
-"大批量可选 EXW（供应商仓库自提）和 CIF（含保险海运）。术语选择——在聊天中报价计算阶段。"
 
 #: assistant/support_hub.py:621
 msgid "Как открыть рекламацию на заказ?"
 msgstr "如何对订单提起索赔？"
 
-#: assistant/support_hub.py:622
-msgid ""
-"В карточке заказа кнопка «🧾 Открыть рекламацию», либо в чате «рекламация по заказу 82». Форма из 4 полей:\n"
-"\n"
-"• Вид: брак, не та деталь, повреждение при доставке, просрочка, не пришла, иное\n"
-"• Заголовок\n"
-"• Описание (что произошло, фото если есть)\n"
-"• Желаемая компенсация ($, опционально)\n"
-"\n"
-"Оператор уведомляется сразу, по SLA — отвечает в течение 24 ч."
-msgstr ""
-"在订单卡片中点击「🧾 发起索赔」，或在聊天中输入「订单 82 索赔」。表单含 4 个字段：\n"
-"\n"
-"• 类型：缺陷、零件错误、运输损坏、逾期、未送达、其他\n"
-"• 标题\n"
-"• 描述（发生了什么，如有照片）\n"
-"• 期望赔偿（$，可选）\n"
-"\n"
-"操作员将立即收到通知，按 SLA——24 小时内回复。"
-
 #: assistant/support_hub.py:633
 msgid "Сколько времени рассматривается рекламация?"
 msgstr "索赔处理需要多长时间？"
-
-#: assistant/support_hub.py:634
-msgid ""
-"SLA зависит от вида (защищает от затягивания):\n"
-"\n"
-"• Не пришла → 2 дня\n"
-"• Брак / Повреждение при доставке → 3 дня\n"
-"• Просрочка поставки → 5 дней\n"
-"• Не та деталь / Иное → 7 дней\n"
-"\n"
-"Если оператор не реагирует в срок — рекламация автоматически эскалируется супервайзеру и в Telegram on-call оператора."
-msgstr ""
-"SLA 取决于类型（防止拖延）：\n"
-"\n"
-"• 未送达 → 2 天\n"
-"• 缺陷 / 运输损坏 → 3 天\n"
-"• 交付逾期 → 5 天\n"
-"• 零件错误 / 其他 → 7 天\n"
-"\n"
-"如果操作员未在期限内响应——索赔将自动升级至主管和操作员 Telegram on-call。"
 
 #: assistant/support_hub.py:644
 msgid "Какие варианты решения по рекламации?"
 msgstr "索赔有哪些解决方案？"
 
-#: assistant/support_hub.py:645
-msgid ""
-"• Полный возврат денег с депозита\n"
-"• Частичный возврат (компенсация за дефект)\n"
-"• Бесплатная замена позиции\n"
-"• Доплата за повреждённую упаковку\n"
-"• Кредит на следующий заказ\n"
-"\n"
-"Оператор согласует решение с обеими сторонами и зафиксирует в системе. Все этапы сохраняются в audit-log."
-msgstr ""
-"• 从押金全额退款\n"
-"• 部分退款（缺陷赔偿）\n"
-"• 免费更换货物\n"
-"• 包装损坏补付\n"
-"• 下一单抵用额度\n"
-"\n"
-"操作员将与双方协商决定并记录在系统中。所有环节均保存在 audit-log。"
-
 #: assistant/support_hub.py:654 assistant/support_hub.py:668 assistant/support_hub.py:734
 msgid "Связь со сторонами"
 msgstr "与各方的沟通"
 
-#: assistant/support_hub.py:656
-msgid ""
-"Нет, никогда. Платформа намеренно не раскрывает контакты поставщика покупателю. Вся переписка идёт через оператора:\n"
-"\n"
-"• Покупатель видит «Поставщик №1, №2…» — анонимная нумерация\n"
-"• Любой вопрос / уточнение / спор — через чат-форму\n"
-"• Оператор передаёт между сторонами и фиксирует переписку\n"
-"\n"
-"Это защищает обе стороны: у покупателя есть audit-log и эскроу, у поставщика — гарантия оплаты и нет потери комиссии. Попытки обменяться контактами через сообщения чата автоматически флагуются оператору и могут привести к снижению рейтинга или блокировке."
-msgstr ""
-"不，永不。平台有意不向买方披露供应商联系方式。所有沟通通过操作员进行：\n"
-"\n"
-"• 买方看到「供应商 №1、№2…」——匿名编号\n"
-"• 任何疑问 / 澄清 / 争议——通过聊天表单\n"
-"• 操作员在双方间传递并记录沟通\n"
-"\n"
-"这保护双方：买方有 audit-log 和托管，供应商有付款保障且不损失佣金。试图通过聊天消息交换联系方式将自动标记给操作员，可能导致评级下降或封禁。"
-
 #: assistant/support_hub.py:669
 msgid "А как тогда уточнить детали по заказу?"
 msgstr "那如何澄清订单细节呢？"
-
-#: assistant/support_hub.py:670
-msgid ""
-"Все вопросы — через оператора платформы:\n"
-"\n"
-"1. В карточке заказа нажмите «💬 Связаться с оператором» (или в чате напишите «связаться с оператором»)\n"
-"2. Опишите вопрос (заказ, что нужно уточнить)\n"
-"3. Оператор переадресует продавцу/логисту и вернёт ответ\n"
-"\n"
-"Среднее время реакции оператора — 4 рабочих часа. Все обращения сохраняются."
-msgstr ""
-"所有问题——通过平台操作员：\n"
-"\n"
-"1. 在订单卡片中点击「💬 联系操作员」（或在聊天中输入「联系操作员」）\n"
-"2. 描述问题（订单、需要澄清什么）\n"
-"3. 操作员将转发给卖家/物流并返回答复\n"
-"\n"
-"操作员平均响应时间——4 个工作小时。所有申请均保存。"
 
 #: assistant/support_hub.py:679 assistant/support_hub.py:735
 msgid "Бонусы"
@@ -17808,94 +16313,17 @@ msgstr "奖励"
 msgid "Есть ли скидки за объём?"
 msgstr "有批量折扣吗？"
 
-#: assistant/support_hub.py:681
-msgid ""
-"Да, auto-discount применяется автоматически по обороту за 12 мес:\n"
-"\n"
-"• От $50,000 → Bronze (комиссия −1%)\n"
-"• От $200,000 → Silver (−2%)\n"
-"• От $500,000 → Gold (−3%)\n"
-"• От $1,000,000 → Platinum (−5% + персональный менеджер)\n"
-"\n"
-"Текущий тир — в меню «Поддержка» → «🎁 Мои бонусы». Скидка применяется к новым заказам автоматически — ничего активировать не нужно."
-msgstr ""
-"有，auto-discount 根据 12 个月营业额自动应用：\n"
-"\n"
-"• 满 $50,000 → Bronze（佣金 −1%）\n"
-"• 满 $200,000 → Silver（−2%）\n"
-"• 满 $500,000 → Gold（−3%）\n"
-"• 满 $1,000,000 → Platinum（−5% + 专属经理）\n"
-"\n"
-"当前等级——在「支持」→「🎁 我的奖励」菜单。折扣自动应用于新订单——无需激活。"
-
 #: assistant/support_hub.py:692
 msgid "Какие AI-возможности есть в чате?"
 msgstr "聊天中有哪些 AI 功能？"
-
-#: assistant/support_hub.py:693
-msgid ""
-"• OEM-нормализатор: 707-99-58030, 7079958030, CAT-265-0235 — находит одну и ту же деталь под любым написанием\n"
-"• Загрузка спецификации: drag-and-drop xlsx/csv/pdf, AI-маппинг колонок (название, ОЕМ, кол-во)\n"
-"• Авто-подбор поставщиков: AUTO/SEMI/MANUAL режимы с разными SLA — система выбирает по сложности запроса\n"
-"• Расчёт landed cost: цена + доставка + таможня по incoterm в один клик\n"
-"• Трекинг с прогнозом: текущий этап + ETA выдачи по дням"
-msgstr ""
-"• OEM 标准化器：707-99-58030、7079958030、CAT-265-0235——以任意写法找到同一零件\n"
-"• 上传规格：拖放 xlsx/csv/pdf，AI 列映射（名称、OEM、数量）\n"
-"• 供应商自动匹配：AUTO/SEMI/MANUAL 模式及不同 SLA——系统按请求复杂度选择\n"
-"• landed cost 计算：价格 + 运费 + 按 incoterm 的关税，一键搞定\n"
-"• 带预测的跟踪：当前阶段 + 按天的交付 ETA"
 
 #: assistant/support_hub.py:705
 msgid "Где посмотреть статус моих проверок?"
 msgstr "在哪里查看我的核查状态？"
 
-#: assistant/support_hub.py:706
-msgid ""
-"В чате: «Поддержка» → «🛡 Статус моих проверок».\n"
-"\n"
-"Показывает: верификация e-mail, телефон, мессенджер, KYB-статус (для поставщика), реквизиты компании, рейтинг, лимиты по бюджету. Если что-то не так — отправьте обращение оператору с указанием поля, поправим."
-msgstr ""
-"在聊天中：「支持」→「🛡 我的核查状态」。\n"
-"\n"
-"显示：邮箱验证、电话、即时通讯、KYB 状态（供应商）、公司账户信息、评级、预算限额。如有异常——向操作员提交申请并注明字段，我们将更正。"
-
 #: assistant/support_hub.py:714
 msgid "Как связаться с поддержкой?"
 msgstr "如何联系支持？"
-
-#: assistant/support_hub.py:715
-msgid ""
-"В чате слева — pill «Поддержка». Внутри:\n"
-"\n"
-"• ❓ База знаний (этот раздел)\n"
-"• 🛡 Статус моих проверок\n"
-"• 🎁 Мои бонусы и скидки\n"
-"• 🧾 Мои рекламации\n"
-"• 💬 Связаться с оператором — форма ticket'а\n"
-"• 🚨 Пожаловаться на платформу/оператора/поставщика\n"
-"\n"
-"Среднее время ответа — 4 рабочих часа. Critical (блок аккаунта, потеря денег) — в течение часа."
-msgstr ""
-"聊天左侧——「支持」pill。内含：\n"
-"\n"
-"• ❓ 知识库（本部分）\n"
-"• 🛡 我的核查状态\n"
-"• 🎁 我的奖励和折扣\n"
-"• 🧾 我的索赔\n"
-"• 💬 联系操作员——工单表单\n"
-"• 🚨 投诉平台/操作员/供应商\n"
-"\n"
-"平均响应时间——4 个工作小时。Critical（账户封禁、资金损失）——1 小时内。"
-
-#: assistant/support_hub.py:802
-#, python-format
-msgid ""
-"❓ По запросу «%(p0)s» в FAQ ничего не найдено.\n"
-"Напишите оператору — добавим в базу."
-msgstr ""
-"❓ FAQ 中未找到与「%(p0)s」相关的内容。\n"
-"请联系操作员——我们会将其加入知识库。"
 
 #: assistant/support_hub.py:804 assistant/support_hub.py:839 assistant/support_hub.py:906 assistant/support_hub.py:991
 msgid "💬 Спросить оператора"
@@ -17963,15 +16391,6 @@ msgstr "未填写"
 #: assistant/support_hub.py:892
 msgid "🚀 Пройти KYB"
 msgstr "🚀 完成 KYB"
-
-#: assistant/support_hub.py:896
-#, python-format
-msgid ""
-"🛡 Статус проверок аккаунта %(p0)s.\n"
-"Все данные — из вашего профиля. Что неверно — отправьте оператору жалобу, поправим."
-msgstr ""
-"🛡 账户 %(p0)s 的审核状态。\n"
-"所有数据均来自您的资料。如有错误，请向操作员提交申诉，我们将更正。"
 
 #: assistant/support_hub.py:900
 msgid "🛡 Проверки и реквизиты"
@@ -18079,38 +16498,6 @@ msgstr "发生了什么、在哪个订单/RFQ、您希望得到什么"
 msgid "⚠️ Описание обязательно."
 msgstr "⚠️ 描述为必填项。"
 
-#: assistant/support_hub.py:1056
-#, python-format
-msgid ""
-"💬 ОБРАЩЕНИЕ от @%(p0)s (%(p1)s)\n"
-"Тема: %(p2)s\n"
-"Текст: %(p3)s%(p4)s%(p5)s"
-msgstr ""
-"💬 来自 @%(p0)s（%(p1)s）的咨询\n"
-"主题：%(p2)s\n"
-"内容：%(p3)s%(p4)s%(p5)s"
-
-#: assistant/support_hub.py:1064
-#, python-format
-msgid ""
-"✅ Обращение отправлено оператору.\n"
-"Тема: %(topic)s\n"
-"Среднее время реакции: 4 рабочих часа."
-msgstr ""
-"✅ 请求已发送给 Operator。\n"
-"主题：%(topic)s\n"
-"平均响应时间：4 个工作小时。"
-
-#: assistant/support_hub.py:1070
-msgid ""
-"\n"
-"\n"
-"⚠️ В вашем сообщении обнаружены контактные данные (email/телефон/мессенджер). Все коммуникации должны идти через платформу — это защищает обе стороны. Оператор увидит флаг."
-msgstr ""
-"\n"
-"\n"
-"⚠️ 在您的消息中检测到联系信息（电子邮件/电话/即时通讯）。所有沟通都必须通过平台进行 — 这能保护双方。Operator 将会看到该标记。"
-
 #: assistant/support_hub.py:1098
 msgid "🚨 Жалоба фиксируется в audit-log и эскалируется супервайзеру."
 msgstr "🚨 投诉已记录在审计日志中并升级至主管。"
@@ -18146,25 +16533,6 @@ msgstr "采购商（对卖家）"
 #: assistant/support_hub.py:1116
 msgid "Что произошло, когда, какие доказательства"
 msgstr "发生了什么、何时、有哪些证据"
-
-#: assistant/support_hub.py:1138
-#, python-format
-msgid ""
-"🚨🚨 ЖАЛОБА от @%(p0)s (%(p1)s)\n"
-"Против: %(p2)s\n"
-"Текст: %(p3)s%(p4)s%(p5)s"
-msgstr ""
-"🚨🚨 来自 @%(p0)s 的投诉（%(p1)s）\n"
-"针对：%(p2)s\n"
-"内容：%(p3)s%(p4)s%(p5)s"
-
-#: assistant/support_hub.py:1147
-msgid ""
-"✅ Жалоба зафиксирована в audit-log. Эскалирована супервайзеру.\n"
-"Ответ — в течение 24 ч в рабочий день. За false-flag жалобы платформа оставляет право снижать рейтинг."
-msgstr ""
-"✅ 投诉已记入审计日志。已上报给主管。\n"
-"答复 — 工作日内 24 小时。对于虚假标记的投诉，平台保留下调评级的权利。"
 
 #: assistant/tasks.py:99
 #, python-format
@@ -18205,52 +16573,9 @@ msgstr "服务器转录未配置（缺少 OPENAI_API_KEY）。使用浏览器内
 msgid "файл слишком большой (>%(mb)s МБ)"
 msgstr "文件过大（>%(mb)s MB）"
 
-#: assistant/upload.py:352
-#, python-format
-msgid ""
-"В файле «%(p0)s» не нашлось артикулов в распознаваемом формате.\n"
-"Проверьте, что артикулы в отдельной колонке и содержат цифры (например, AB-1234, 12345-XY)."
-msgstr ""
-"在文件「%(p0)s」中未找到可识别格式的零件号。\n"
-"请确认零件号位于单独的列中且包含数字（例如 AB-1234、12345-XY）。"
-
 #: assistant/upload.py:356
 msgid "Загрузить другой файл"
 msgstr "上传其他文件"
-
-#: assistant/views.py:93
-msgid ""
-"Я не понял запрос. Попробуйте:\n"
-"• Вставьте список артикулов (по одному на строке)\n"
-"• Загрузите файл (.xlsx/.pdf) с позициями\n"
-"• Нажмите «Создать RFQ» или «Открытые RFQ»\n"
-"\n"
-"Если хотите вести историю чата — зарегистрируйтесь."
-msgstr ""
-"我没有理解请求。请尝试：\n"
-"• 粘贴货号清单（每行一个）\n"
-"• 上传含货物的文件（.xlsx/.pdf）\n"
-"• 点击「创建 RFQ」或「开放的 RFQ」\n"
-"\n"
-"如需保存聊天记录——请注册。"
-
-#: assistant/views.py:238
-msgid ""
-"💳 Чтобы оформить оплату — нужен аккаунт.\n"
-"Это нужно для:\n"
-"• приёма и возврата средств (резерв 10%)\n"
-"• юридического оформления заказа\n"
-"• трекинга вашей доставки в личном кабинете\n"
-"\n"
-"Регистрация в чате — 30 секунд. Все данные что вы ввели — RFQ, выбранная котировка — сохранятся."
-msgstr ""
-"💳 要完成付款——需要账户。\n"
-"这是为了：\n"
-"• 收款和退款（预留 10%）\n"
-"• 订单的法律手续\n"
-"• 在个人中心跟踪您的配送\n"
-"\n"
-"聊天中注册——30 秒。您输入的所有数据——RFQ、所选报价——都将保存。"
 
 #: assistant/views.py:247
 msgid "🚀 Создать аккаунт и оплатить"
@@ -18263,18 +16588,6 @@ msgstr "▶ 正在继续下单……"
 #: assistant/views.py:306
 msgid "▶ Продолжить"
 msgstr "▶ 继续"
-
-#: assistant/views.py:354
-msgid ""
-"🏭 Регистрация поставщика — 2 шага.\n"
-"\n"
-"▸ Шаг 1 (сейчас): только аккаунт — логин, e-mail, пароль. Это нужно, чтобы вы могли сохранять прогресс.\n"
-"▸ Шаг 2 (после): KYB-анкета — реквизиты компании, ИНН/ОГРН, юр.адрес, банковский счёт, директор, сертификаты. После проверки оператором (≤24ч) сможете отвечать на RFQ и принимать заказы."
-msgstr ""
-"🏭 供应商注册——2 步。\n"
-"\n"
-"▸ 第 1 步（现在）：仅账户——登录名、邮箱、密码。这是为了让您能保存进度。\n"
-"▸ 第 2 步（之后）：KYB 问卷——公司账户信息、税号/注册号、法定地址、银行账户、负责人、证书。经操作员审核（≤24 小时）后，您即可回复 RFQ 和接受订单。"
 
 #: assistant/views.py:365
 msgid "🏭 Шаг 1 из 2 · Аккаунт поставщика"
@@ -18295,15 +16608,6 @@ msgstr "⚠️ 无法创建账户：\n"
 #: assistant/views.py:398
 msgid "🔄 Попробовать снова"
 msgstr "🔄 再试一次"
-
-#: assistant/views.py:416
-#, python-format
-msgid ""
-"✅ Аккаунт создан · %(u)s\n"
-"Сейчас откроем KYB-анкету — нужны реквизиты компании, банк и директор. После проверки оператором (≤24ч) сможете отвечать на RFQ и принимать заказы."
-msgstr ""
-"✅ 账户已创建 · %(u)s\n"
-"现在将打开 KYB 问卷——需要公司账户信息、银行和负责人。经操作员审核（≤24 小时）后，您即可回复 RFQ 和接受订单。"
 
 #: assistant/views.py:421
 msgid "🚀 Перейти к KYB"
@@ -22590,17 +20894,6 @@ msgstr "此处将显示有关新订单、RFQ和付款的通知"
 #: templates/components/team_accept.html:3 templates/components/team_accept.html:5
 msgid "Приглашение в команду"
 msgstr "团队邀请"
-
-#: templates/components/team_accept.html:7
-#, python-format
-msgid ""
-"\n"
-"  <strong>%(name)s</strong> приглашает вас присоединиться к команде в роли <strong>%(role)s</strong>.\n"
-"  "
-msgstr ""
-"\n"
-"  <strong>%(name)s</strong> 邀请您以 <strong>%(role)s</strong> 身份加入团队。\n"
-"  "
 
 #: templates/components/team_accept.html:11
 msgid "Чтобы принять приглашение — войдите в свой аккаунт или зарегистрируйтесь с этим email:"
@@ -26891,35 +25184,6 @@ msgstr "我们已发送修改密码链接。请查看邮件并点击链接。"
 #: templates/registration/password_reset_done.html:7
 msgid "Если письма нет — проверьте «Спам» или подождите 1-2 минуты."
 msgstr "如未收到邮件，请检查「垃圾邮件」或等待1-2分钟。"
-
-#: templates/registration/password_reset_email.txt:1
-#, python-format
-msgid ""
-"Здравствуйте, %(username)s!\n"
-"\n"
-"Вы (или кто-то от вашего имени) запросили смену пароля на платформе %(site)s.\n"
-"\n"
-"Для установки нового пароля перейдите по ссылке:"
-msgstr ""
-"您好，%(username)s！\n"
-"\n"
-"您（或以您名义的某人）在平台 %(site)s 上请求了修改密码。\n"
-"\n"
-"请点击以下链接设置新密码："
-
-#: templates/registration/password_reset_email.txt:9
-msgid ""
-"Если вы не запрашивали смену пароля — просто проигнорируйте это письмо.\n"
-"\n"
-"Ссылка действительна 24 часа.\n"
-"\n"
-"— Consolidator Parts"
-msgstr ""
-"如果您未请求修改密码，请忽略此邮件。\n"
-"\n"
-"链接有效期为24小时。\n"
-"\n"
-"— Consolidator Parts"
 
 #: templates/registration/password_reset_form.html:6
 msgid "Введите email — пришлём ссылку для смены пароля."
@@ -34023,3 +32287,42 @@ msgstr "已连接"
 
 msgid "Доступно"
 msgstr "可用"
+
+msgid "💳 Оплатить резерв →"
+msgstr "💳 支付预付款 →"
+
+msgid "Оплатить остаток 90%"
+msgstr "支付余款 90%"
+
+msgid "💳 Оплатить остаток →"
+msgstr "💳 支付余款 →"
+
+msgid "Доставлены — подтвердите приёмку"
+msgstr "已送达 — 确认收货"
+
+msgid "✅ Принять заказ →"
+msgstr "✅ 确认收货 →"
+
+msgid "КП готовы — выбрать и оплатить"
+msgstr "报价已就绪 — 选择并付款"
+
+msgid "📋 Открыть КП →"
+msgstr "📋 查看报价 →"
+
+msgid "В подборе / у оператора"
+msgstr "处理中 / 运营商审核"
+
+msgid "📦 Открыть"
+msgstr "📦 打开"
+
+msgid "В работе у поставщика"
+msgstr "供应商生产中"
+
+msgid "В пути / на таможне"
+msgstr "运输中 / 清关中"
+
+msgid "позиция"
+msgstr "件"
+
+msgid "позиции"
+msgstr "件"
