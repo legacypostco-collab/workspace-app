@@ -31489,3 +31489,6 @@ msgstr[2] "%(n)s تجاوزا SLA"
 msgstr[3] "%(n)s تجاوزات SLA"
 msgstr[4] "%(n)s تجاوزات SLA"
 msgstr[5] "%(n)s تجاوزات SLA"
+#, python-format
+msgid "📦 Заказ #%(id)s · %(current_label)s\nСумма: $%(total_amount)s · оплата: %(get_payment_status_d)s\nОжидаемая доставка: %(eta_delivery)s (%(days_left)s дн.)"
+msgstr "📦 طلب #%(id)s · %(current_label)s\nالمبلغ: $%(total_amount)s · الدفع: %(get_payment_status_d)s\nالتسليم المتوقع: %(eta_delivery)s (%(days_left)s ي.)"

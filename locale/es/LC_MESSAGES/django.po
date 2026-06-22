@@ -31477,3 +31477,6 @@ msgid_plural "%(n)s с просрочкой SLA"
 msgstr[0] "%(n)s SLA vencido"
 msgstr[1] "%(n)s SLA vencidos"
 msgstr[2] "%(n)s SLA vencidos"
+#, python-format
+msgid "📦 Заказ #%(id)s · %(current_label)s\nСумма: $%(total_amount)s · оплата: %(get_payment_status_d)s\nОжидаемая доставка: %(eta_delivery)s (%(days_left)s дн.)"
+msgstr "📦 Pedido #%(id)s · %(current_label)s\nImporte: $%(total_amount)s · pago: %(get_payment_status_d)s\nEntrega prevista: %(eta_delivery)s (%(days_left)s d.)"

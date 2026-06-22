@@ -10358,7 +10358,8 @@ def track_order(params, user, role):
         meta = ev.meta or {}
         text = EVENT_LABELS.get(ev.event_type, ev.event_type)
         if ev.event_type == "status_changed" and meta.get("to"):
-            text = f"🔁 → {meta['to']}"
+            _st_lbl = {code: lbl for code, lbl, _ in TRACKING_STAGES}.get(meta['to'], meta['to'])
+            text = f"🗒 → {_(str(_st_lbl))}"
         timeline.append({
             "when": when.strftime("%d.%m %H:%M"),
             "text": text,

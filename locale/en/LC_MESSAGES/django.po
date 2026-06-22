@@ -32441,3 +32441,7 @@ msgid "%(n)s просрочка SLA"
 msgid_plural "%(n)s с просрочкой SLA"
 msgstr[0] "%(n)s SLA overdue"
 msgstr[1] "%(n)s SLA overdue"
+
+#, python-format
+msgid "📦 Заказ #%(id)s · %(current_label)s\nСумма: $%(total_amount)s · оплата: %(get_payment_status_d)s\nОжидаемая доставка: %(eta_delivery)s (%(days_left)s дн.)"
+msgstr "📦 Order #%(id)s · %(current_label)s\nAmount: $%(total_amount)s · payment: %(get_payment_status_d)s\nExpected delivery: %(eta_delivery)s (%(days_left)s d.)"

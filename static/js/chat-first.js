@@ -3196,7 +3196,7 @@
       const pct = d.progress_pct || 0;
       const totalLine = d.total ? `${fmtMoney(d.total, d.currency)}` : '';
       const reserveLine = d.reserve_amount
-        ? ` · резерв ${fmtMoney(d.reserve_amount, d.currency)}`
+        ? ` · ${tr('резерв')} ${fmtMoney(d.reserve_amount, d.currency)}`
         : '';
 
       return `<div class="card tl-card">
