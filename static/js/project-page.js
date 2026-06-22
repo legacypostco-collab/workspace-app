@@ -628,38 +628,128 @@
            value: 'сумма', earliest_eta: 'ближайший ETA',
            vs_prev_month: 'к прошлому месяцу',
            sec_rfqs: 'Подбор — ждут вашего решения',
-           sec_orders: 'Заказы в работе'},
+           sec_orders: 'Заказы в работе',
+           sec_rfqs_op: 'Позиции и подбор', sec_rfqs_customs: 'Позиции на таможне',
+           sec_orders_op: 'Отгрузки и этапы', sec_rfqs_seller: 'Входящие RFQ по направлению',
+           op_pos:'Позиции в работе', op_log:'Логистика и таможня',
+           op_pay:'Платежи · эскроу', op_deal:'Оборот сделки',
+           op_at_customs:'На таможне', op_nearest_eta:'Ближайший ETA',
+           op_delays:'Задержки', op_hs:'Ждут HS-кода',
+           op_declarations:'Декларации', op_sanctions:'Проверка санкций',
+           op_escrow:'В эскроу', op_awaiting_payout:'Ждут выплаты',
+           op_paid_buyer:'Оплачено покупателем', op_margin_deal:'Маржа сделки',
+           sub_shipments:'отгрузок в дороге', sub_cleared:'всё прошло',
+           sub_next_del:'следующая доставка', sub_on_sched:'в графике',
+           sub_clearing:'позиций оформляется', sub_all_codes:'все коды есть',
+           sub_in_work:'в работе', sub_no_risk:'рисков нет',
+           sub_held:'удержано до поставки', sub_paid_out:'выплачено',
+           sub_for_deal:'по сделке', sub_fee:'комиссия платформы',
+           sub_await_cus:'ждут растаможки', sub_await_act:'ждут вашего действия',
+           sub_await_pay:'ждут выплаты', sub_margin:'маржа',
+           sub_risk_sla:'риск SLA', sub_set_code:'проставьте код',
+           sub_check:'требует проверки', sub_sellers:'продавцам'},
       en: {open_rfqs: 'Open RFQs', active_orders: 'Active Orders',
            in_transit: 'In Transit', spend_mtd: 'Spend MTD',
            awaiting_op: 'awaiting operator',
            value: 'value', earliest_eta: 'earliest ETA',
            vs_prev_month: 'vs previous month',
            sec_rfqs: 'Matches — awaiting your decision',
-           sec_orders: 'Orders in progress'},
+           sec_orders: 'Orders in progress',
+           sec_rfqs_op: 'Positions and sourcing', sec_rfqs_customs: 'Positions in customs',
+           sec_orders_op: 'Shipments and stages', sec_rfqs_seller: 'Incoming RFQs by category',
+           op_pos:'Positions in progress', op_log:'Logistics and customs',
+           op_pay:'Payments · escrow', op_deal:'Deal volume',
+           op_at_customs:'In customs', op_nearest_eta:'Nearest ETA',
+           op_delays:'Delays', op_hs:'Awaiting HS code',
+           op_declarations:'Declarations', op_sanctions:'Sanctions check',
+           op_escrow:'In escrow', op_awaiting_payout:'Awaiting payout',
+           op_paid_buyer:'Paid by buyer', op_margin_deal:'Deal margin',
+           sub_shipments:'shipments on the way', sub_cleared:'all cleared',
+           sub_next_del:'next delivery', sub_on_sched:'on schedule',
+           sub_clearing:'positions clearing', sub_all_codes:'all codes set',
+           sub_in_work:'in progress', sub_no_risk:'no risks',
+           sub_held:'held until delivery', sub_paid_out:'paid out',
+           sub_for_deal:'for the deal', sub_fee:'platform commission',
+           sub_await_cus:'awaiting customs', sub_await_act:'awaiting action',
+           sub_await_pay:'awaiting payout', sub_margin:'margin',
+           sub_risk_sla:'SLA risk', sub_set_code:'set the code',
+           sub_check:'needs review', sub_sellers:'sellers'},
       es: {open_rfqs: 'RFQ abiertos', active_orders: 'Pedidos activos',
            in_transit: 'En tránsito', spend_mtd: 'Gasto del mes',
            awaiting_op: 'esperan operador',
            value: 'valor', earliest_eta: 'ETA más cercano',
            vs_prev_month: 'vs mes anterior',
            sec_rfqs: 'Coincidencias — esperan su decisión',
-           sec_orders: 'Pedidos en curso'},
+           sec_orders: 'Pedidos en curso',
+           sec_rfqs_op: 'Posiciones y selección', sec_rfqs_customs: 'Posiciones en aduana',
+           sec_orders_op: 'Envíos y etapas', sec_rfqs_seller: 'RFQ entrantes por categoría',
+           op_pos:'Posiciones en curso', op_log:'Logística y aduana',
+           op_pay:'Pagos · depósito', op_deal:'Volumen del trato',
+           op_at_customs:'En aduana', op_nearest_eta:'ETA más próximo',
+           op_delays:'Retrasos', op_hs:'Esperando código HS',
+           op_declarations:'Declaraciones', op_sanctions:'Verificación de sanciones',
+           op_escrow:'En depósito', op_awaiting_payout:'Esperando pago',
+           op_paid_buyer:'Pagado por comprador', op_margin_deal:'Margen del trato',
+           sub_shipments:'envíos en camino', sub_cleared:'todo despachado',
+           sub_next_del:'siguiente entrega', sub_on_sched:'en calendario',
+           sub_clearing:'posiciones en trámite', sub_all_codes:'todos los códigos OK',
+           sub_in_work:'en curso', sub_no_risk:'sin riesgos',
+           sub_held:'retenido hasta entrega', sub_paid_out:'pagado',
+           sub_for_deal:'del trato', sub_fee:'comisión plataforma',
+           sub_await_cus:'en espera de aduana', sub_await_act:'esperan acción',
+           sub_await_pay:'esperan pago', sub_margin:'margen',
+           sub_risk_sla:'riesgo SLA', sub_set_code:'asigne el código',
+           sub_check:'requiere revisión', sub_sellers:'proveedores'},
       zh: {open_rfqs: '待处理 RFQ', active_orders: '活动订单',
            in_transit: '运输中', spend_mtd: '本月支出',
            awaiting_op: '等待操作员',
            value: '总额', earliest_eta: '最早预计',
            vs_prev_month: '环比上月',
            sec_rfqs: '匹配 — 等待您的决定',
-           sec_orders: '进行中的订单'},
+           sec_orders: '进行中的订单',
+           sec_rfqs_op: '头寸与采购', sec_rfqs_customs: '清关中的头寸',
+           sec_orders_op: '发货与阶段', sec_rfqs_seller: '按类别的入库询价',
+           op_pos:'在途头寸', op_log:'物流与海关',
+           op_pay:'付款 · 托管', op_deal:'交易额',
+           op_at_customs:'清关中', op_nearest_eta:'最近预计到达',
+           op_delays:'延误', op_hs:'等待HS编码',
+           op_declarations:'申报单', op_sanctions:'制裁检查',
+           op_escrow:'托管中', op_awaiting_payout:'等待付款',
+           op_paid_buyer:'买方已付', op_margin_deal:'交易利润',
+           sub_shipments:'发货在途', sub_cleared:'全部通关',
+           sub_next_del:'下次交货', sub_on_sched:'按时',
+           sub_clearing:'头寸清关中', sub_all_codes:'所有编码齐全',
+           sub_in_work:'进行中', sub_no_risk:'无风险',
+           sub_held:'待交货释放', sub_paid_out:'已支付',
+           sub_for_deal:'本次交易', sub_fee:'平台佣金',
+           sub_await_cus:'等待清关', sub_await_act:'等待处理',
+           sub_await_pay:'等待付款', sub_margin:'利润',
+           sub_risk_sla:'SLA风险', sub_set_code:'设置编码',
+           sub_check:'需要审查', sub_sellers:'供应商',
+           sel_inc_rfqs:'入库询价', sub_await_kp:'等待您的报价',
+           sel_orders_work:'在途订单', sub_to_ship:'待发货',
+           sel_catalog:'目录中产品', sub_with_draw:'含图纸/照片',
+           sub_from_total:'其中', sel_revenue:'月收入'},
     };
+    LBL.ru.sel_inc_rfqs='Входящие RFQ'; LBL.ru.sub_await_kp='ждут вашего КП';
+    LBL.ru.sel_orders_work='Заказы в работе'; LBL.ru.sub_to_ship='к отгрузке';
+    LBL.ru.sel_catalog='Товаров в каталоге'; LBL.ru.sub_with_draw='с чертежом/фото';
+    LBL.ru.sub_from_total='из них'; LBL.ru.sel_revenue='Выручка за месяц';
+    LBL.en.sel_inc_rfqs='Incoming RFQs'; LBL.en.sub_await_kp='awaiting your quote';
+    LBL.en.sel_orders_work='Orders in progress'; LBL.en.sub_to_ship='to ship';
+    LBL.en.sel_catalog='Products in catalog'; LBL.en.sub_with_draw='with drawing/photo';
+    LBL.en.sub_from_total='of which'; LBL.en.sel_revenue='Revenue MTD';
+    LBL.es.sel_inc_rfqs='RFQ entrantes'; LBL.es.sub_await_kp='esperan su oferta';
+    LBL.es.sel_orders_work='Pedidos en curso'; LBL.es.sub_to_ship='a enviar';
+    LBL.es.sel_catalog='Productos en catálogo'; LBL.es.sub_with_draw='con plano/foto';
+    LBL.es.sub_from_total='de los cuales'; LBL.es.sel_revenue='Ingreso del mes';
     const L = LBL[lang] || LBL.ru;
     if (isSeller) {
-      // Лейблы секций для продавца (товарное направление).
-      L.sec_rfqs = 'Входящие RFQ по направлению';
-      L.sec_orders = 'Заказы в работе';
+      L.sec_rfqs = L.sec_rfqs_seller;
+      L.sec_orders = L.sec_orders;
     } else if (isOperator) {
-      // Лейблы секций под подроль оператора.
-      L.sec_rfqs = (opSub === 'customs') ? 'Позиции на таможне' : 'Позиции и подбор';
-      L.sec_orders = 'Отгрузки и этапы';
+      L.sec_rfqs = (opSub === 'customs') ? L.sec_rfqs_customs : L.sec_rfqs_op;
+      L.sec_orders = L.sec_orders_op;
     }
     // KPI cards. Подписи под цифрами объясняют ЧТО за число.
     const stats = p.stats || {};
@@ -674,22 +764,22 @@
       const rd = rev.delta_pct ?? 0;
       kpiHTML = `
         <div class="kpi" ${kpiClick('sec-rfqs')} title="К разделу входящих RFQ">
-          <div class="kpi-label">Входящие RFQ</div>
+          <div class="kpi-label">${L.sel_inc_rfqs}</div>
           <div class="kpi-value"><div class="kpi-num">${stats.incoming_rfqs?.count || 0}</div></div>
-          ${awaiting ? `<div class="kpi-sub"><span class="kpi-warn">${awaiting}</span> ждут вашего КП</div>` : ''}
+          ${awaiting ? `<div class="kpi-sub"><span class="kpi-warn">${awaiting}</span> ${L.sub_await_kp}</div>` : ''}
         </div>
         <div class="kpi" ${kpiClick('sec-orders')} title="К разделу заказов">
-          <div class="kpi-label">Заказы в работе</div>
+          <div class="kpi-label">${L.sel_orders_work}</div>
           <div class="kpi-value"><div class="kpi-num">${stats.active_orders?.count || 0}</div></div>
-          <div class="kpi-sub">${fmtMoney(stats.active_orders?.value_usd)}${toShip ? ` · <span class="kpi-warn">${toShip}</span> к отгрузке` : ''}</div>
+          <div class="kpi-sub">${fmtMoney(stats.active_orders?.value_usd)}${toShip ? ` · <span class="kpi-warn">${toShip}</span> ${L.sub_to_ship}` : ''}</div>
         </div>
         <div class="kpi" title="Товары направления в каталоге">
-          <div class="kpi-label">Товаров в каталоге</div>
+          <div class="kpi-label">${L.sel_catalog}</div>
           <div class="kpi-value"><div class="kpi-num">${stats.catalog_items?.count || 0}</div></div>
-          <div class="kpi-sub">из них <span class="kpi-good">${withDr}</span> с чертежом/фото</div>
+          <div class="kpi-sub">${L.sub_from_total} <span class="kpi-good">${withDr}</span> ${L.sub_with_draw}</div>
         </div>
         <div class="kpi" ${kpiClick('sec-orders')} title="Выручка по направлению">
-          <div class="kpi-label">Выручка за месяц</div>
+          <div class="kpi-label">${L.sel_revenue}</div>
           <div class="kpi-value"><div class="kpi-num">${fmtMoney(rev.value_usd)}</div></div>
           <div class="kpi-sub"><span class="${rd >= 0 ? 'kpi-good' : 'kpi-warn'}">${rd >= 0 ? '+' : ''}${rd}%</span> ${L.vs_prev_month}</div>
         </div>
@@ -712,29 +802,29 @@
         </div>`;
       if (opSub === 'logist') {
         kpiHTML =
-          card('sec-orders', 'В пути', log.in_transit || 0, 'отгрузок в дороге') +
-          card('sec-orders', 'На таможне', log.at_customs || 0, log.at_customs ? 'ждут растаможки' : 'всё прошло') +
-          card('sec-orders', 'Ближайший ETA', esc(log.earliest_eta || '—'), 'следующая доставка') +
-          card('sec-orders', 'Задержки', log.delays || 0, log.delays ? warn(log.delays) + ' риск SLA' : 'в графике');
+          card('sec-orders', L.in_transit, log.in_transit || 0, L.sub_shipments) +
+          card('sec-orders', L.op_at_customs, log.at_customs || 0, log.at_customs ? L.sub_await_cus : L.sub_cleared) +
+          card('sec-orders', L.op_nearest_eta, esc(log.earliest_eta || '—'), L.sub_next_del) +
+          card('sec-orders', L.op_delays, log.delays || 0, log.delays ? warn(log.delays) + ' ' + L.sub_risk_sla : L.sub_on_sched);
       } else if (opSub === 'customs') {
         kpiHTML =
-          card('sec-rfqs', 'На таможне', cus.at_customs || 0, 'позиций оформляется') +
-          card('sec-rfqs', 'Ждут HS-кода', cus.hs_pending || 0, cus.hs_pending ? warn(cus.hs_pending) + ' проставьте код' : 'все коды есть') +
-          card('sec-rfqs', 'Декларации', cus.declarations || 0, 'в работе') +
-          card('', 'Проверка санкций', cus.sanctions_risk || 0, cus.sanctions_risk ? warn(cus.sanctions_risk) + ' требует проверки' : good('чисто') + ' рисков нет');
+          card('sec-rfqs', L.op_at_customs, cus.at_customs || 0, L.sub_clearing) +
+          card('sec-rfqs', L.op_hs, cus.hs_pending || 0, cus.hs_pending ? warn(cus.hs_pending) + ' ' + L.sub_set_code : L.sub_all_codes) +
+          card('sec-rfqs', L.op_declarations, cus.declarations || 0, L.sub_in_work) +
+          card('', L.op_sanctions, cus.sanctions_risk || 0, cus.sanctions_risk ? warn(cus.sanctions_risk) + ' ' + L.sub_check : good('✓') + ' ' + L.sub_no_risk);
       } else if (opSub === 'payment') {
         kpiHTML =
-          card('sec-orders', 'В эскроу', fmtMoney(pay.escrow_usd), 'удержано до поставки') +
-          card('sec-orders', 'Ждут выплаты', pay.awaiting_payout || 0, pay.awaiting_payout ? warn(pay.awaiting_payout) + ' продавцам' : 'выплачено') +
-          card('', 'Оплачено покупателем', fmtMoney(pay.paid_by_buyer_usd), 'по сделке') +
-          card('', 'Маржа сделки', (md >= 0 ? '+' : '') + md + '%', 'комиссия платформы');
+          card('sec-orders', L.op_escrow, fmtMoney(pay.escrow_usd), L.sub_held) +
+          card('sec-orders', L.op_awaiting_payout, pay.awaiting_payout || 0, pay.awaiting_payout ? warn(pay.awaiting_payout) + ' ' + L.sub_sellers : L.sub_paid_out) +
+          card('', L.op_paid_buyer, fmtMoney(pay.paid_by_buyer_usd), L.sub_for_deal) +
+          card('', L.op_margin_deal, (md >= 0 ? '+' : '') + md + '%', L.sub_fee);
       } else {
         // manager / КАМ / общий оператор — полная картина
         kpiHTML =
-          card('sec-rfqs', 'Позиции в работе', pos.count || 0, pos.awaiting ? warn(pos.awaiting) + ' ждут вашего действия' : '') +
-          card('sec-orders', 'Логистика и таможня', log.count || 0, (log.at_customs ? warn(log.at_customs) + ' на таможне · ' : '') + 'ETA ' + esc(log.earliest_eta || '—')) +
-          card('sec-orders', 'Платежи · эскроу', fmtMoney(pay.escrow_usd), pay.awaiting_payout ? warn(pay.awaiting_payout) + ' ждут выплаты' : '') +
-          card('sec-orders', 'Оборот сделки', fmtMoney(deal.value_usd), 'маржа ' + (md >= 0 ? good('+' + md + '%') : warn(md + '%')));
+          card('sec-rfqs', L.op_pos, pos.count || 0, pos.awaiting ? warn(pos.awaiting) + ' ' + L.sub_await_act : '') +
+          card('sec-orders', L.op_log, log.count || 0, (log.at_customs ? warn(log.at_customs) + ' ' + L.op_at_customs.toLowerCase() + ' · ' : '') + 'ETA ' + esc(log.earliest_eta || '—')) +
+          card('sec-orders', L.op_pay, fmtMoney(pay.escrow_usd), pay.awaiting_payout ? warn(pay.awaiting_payout) + ' ' + L.sub_await_pay : '') +
+          card('sec-orders', L.op_deal, fmtMoney(deal.value_usd), L.sub_margin + ' ' + (md >= 0 ? good('+' + md + '%') : warn(md + '%')));
       }
     } else {
       const semiCount = stats.open_rfqs?.semi || 0;  // RFQ ждущие подбора оператора
