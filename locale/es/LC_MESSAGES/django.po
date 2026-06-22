@@ -31400,3 +31400,12 @@ msgstr ".\nLas cotizaciones llegarán — esté atento a las notificaciones."
 msgid "🛡 KYB · %(p0)s\nАвто-проверка: %(p1)s · решение системы: %(p2)s"
 msgstr "🛡 KYB · %(p0)s\nVerificación automática: %(p1)s · decisión del sistema: %(p2)s"
 
+
+#, python-format
+msgid "на %(n)s больше"
+msgstr "%(n)s más"
+
+#, python-format
+msgid "на %(n)s меньше"
+msgstr "%(n)s menos"
+

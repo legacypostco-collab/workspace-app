@@ -32365,3 +32365,12 @@ msgstr ".\nQuotes will arrive — watch for notifications."
 msgid "🛡 KYB · %(p0)s\nАвто-проверка: %(p1)s · решение системы: %(p2)s"
 msgstr "🛡 KYB · %(p0)s\nAuto-check: %(p1)s · system decision: %(p2)s"
 
+
+#, python-format
+msgid "на %(n)s больше"
+msgstr "%(n)s more"
+
+#, python-format
+msgid "на %(n)s меньше"
+msgstr "%(n)s fewer"
+

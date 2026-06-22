@@ -32365,3 +32365,12 @@ msgstr "。\n报价将陆续到达——请关注通知。"
 msgid "🛡 KYB · %(p0)s\nАвто-проверка: %(p1)s · решение системы: %(p2)s"
 msgstr "🛡 KYB · %(p0)s\n自动检查：%(p1)s · 系统决定：%(p2)s"
 
+
+#, python-format
+msgid "на %(n)s больше"
+msgstr "增加 %(n)s"
+
+#, python-format
+msgid "на %(n)s меньше"
+msgstr "减少 %(n)s"
+

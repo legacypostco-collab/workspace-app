@@ -31403,3 +31403,12 @@ msgstr ".\nستصل عروض الأسعار — تابع الإشعارات."
 msgid "🛡 KYB · %(p0)s\nАвто-проверка: %(p1)s · решение системы: %(p2)s"
 msgstr "🛡 KYB · %(p0)s\nالتحقق التلقائي: %(p1)s · قرار النظام: %(p2)s"
 
+
+#, python-format
+msgid "на %(n)s больше"
+msgstr "%(n)s أكثر"
+
+#, python-format
+msgid "на %(n)s меньше"
+msgstr "%(n)s أقل"
+

@@ -6266,7 +6266,7 @@ def get_claims(params, user, role):
         if diff < 0:
             kpi_items.append({
                 "label": _('Жалоб стало меньше'),
-                "value": f"на {abs(diff)} меньше",
+                "value": _("на %(n)s меньше") % {'n': abs(diff)},
                 "sub": _('было %(prev_30)s → стало %(last_30)s за месяц') % {'prev_30': prev_30, 'last_30': last_30},
                 "tone": "ok",
                 "action": "get_claims",
@@ -6275,7 +6275,7 @@ def get_claims(params, user, role):
         else:
             kpi_items.append({
                 "label": _('Жалоб стало больше'),
-                "value": f"на {diff} больше",
+                "value": _("на %(n)s больше") % {'n': diff},
                 "sub": _('было %(prev_30)s → стало %(last_30)s за месяц') % {'prev_30': prev_30, 'last_30': last_30},
                 "tone": "bad" if diff >= 3 else "warn",
                 "action": "get_claims",
