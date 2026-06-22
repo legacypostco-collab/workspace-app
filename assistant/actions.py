@@ -4844,7 +4844,7 @@ def get_analytics(params, user, role):
     _status_disp = dict(Order._meta.get_field("status").choices)
     by_status = defaultdict(int)
     for _row in qs.values("status").annotate(_c=Count("id")):
-        _lbl = _status_disp.get(_row["status"], _row["status"] or "—")
+        _lbl = str(_status_disp.get(_row["status"], _row["status"] or "—"))
         by_status[_lbl] += _row["_c"]
     status_items = sorted(by_status.items(), key=lambda x: -x[1])[:6]
     max_val = max((v for _u1, v in status_items), default=1)
