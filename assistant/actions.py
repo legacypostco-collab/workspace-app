@@ -15,7 +15,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from django.db.models import Q
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext as _, ngettext
 
 logger = logging.getLogger(__name__)
 
@@ -3880,9 +3880,9 @@ def _seller_deals(user, params):
         # SLA-предупреждение спереди (только для активных — на архиве это история).
         if not is_done:
             if o.sla_status == "breached":
-                sub = "Просрочка SLA · " + sub
+                sub = _("Просрочка SLA") + " · " + sub
             elif o.sla_status == "at_risk":
-                sub = "SLA под угрозой · " + sub
+                sub = _("SLA под угрозой") + " · " + sub
         return sub
 
     sections = []
@@ -4017,9 +4017,9 @@ def _seller_deals(user, params):
     # Заголовок-резюме
     if flt == "active":
         bits = []
-        if n_leads:          bits.append(_('%(n_leads)s %(n_leads2)s') % {'n_leads': n_leads, 'n_leads2': _plural_ru(n_leads, 'новый лид', 'новых лида', 'новых лидов')})
-        if n_action:         bits.append(_('%(n_action)s %(n_action2)s действия') % {'n_action': n_action, 'n_action2': _plural_ru(n_action, 'требует', 'требуют', 'требуют')})
-        if n_breached_total: bits.append(_('%(n_breached_total)s с просрочкой SLA') % {'n_breached_total': n_breached_total})
+        if n_leads:          bits.append(ngettext('%(n)s новый лид', '%(n)s лидов', n_leads) % {'n': n_leads})
+        if n_action:         bits.append(ngettext('%(n)s требует действия', '%(n)s требуют действия', n_action) % {'n': n_action})
+        if n_breached_total: bits.append(ngettext('%(n)s просрочка SLA', '%(n)s с просрочкой SLA', n_breached_total) % {'n': n_breached_total})
         summary = " · ".join(bits) if bits else _('всё под контролем')
     else:
         label = {"action": _("требуют действия"), "transit": _('в пути'), "done": _('завершённые')}.get(flt, flt)
@@ -4155,7 +4155,7 @@ def _buyer_deals(user, params):
         )
 
     if flt == "active":
-        summary = _('%(n_action)s %(n_action2)s действия') % {'n_action': n_action, 'n_action2': _plural_ru(n_action, 'требует', 'требуют', 'требуют')} if n_action else _('всё под контролем')
+        summary = ngettext('%(n)s требует действия', '%(n)s требуют действия', n_action) % {'n': n_action} if n_action else _('всё под контролем')
     else:
         summary = {"action": _("требуют действия"), "transit": _('в пути'), "done": _('завершённые')}.get(flt, flt)
 

@@ -5008,7 +5008,9 @@
  "факт": {"en": "actual", "zh-hans": "实际", "es": "real", "ar": "فعلي"},
  "шт": {"en": "pcs", "zh-hans": "件", "es": "pcs", "ar": "قطعة"},
  "кг": {"en": "kg", "zh-hans": "千克", "es": "kg", "ar": "كغ"},
- "По партиям / поставщикам": {"en": "By batches / suppliers", "zh-hans": "按批次/供应商", "es": "Por lotes / proveedores", "ar": "بالدفعات / الموردين"}
+ "По партиям / поставщикам": {"en": "By batches / suppliers", "zh-hans": "按批次/供应商", "es": "Por lotes / proveedores", "ar": "بالدفعات / الموردين"},
+ "дн": {"en": "d", "zh-hans": "天", "es": "d", "ar": "ي"},
+ "поз": {"en": "items", "zh-hans": "项", "es": "artículos", "ar": "عناصر"}
 }
   );
 

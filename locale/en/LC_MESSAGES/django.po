@@ -32421,3 +32421,23 @@ msgstr "deadline soon · %(d)s d"
 #, python-format
 msgid "в срок · ещё %(d)s дн"
 msgstr "on time · %(d)s d left"
+
+msgid "Просрочка SLA"
+msgstr "SLA Overdue"
+
+msgid "%(n)s новый лид"
+msgid_plural "%(n)s лидов"
+msgstr[0] "%(n)s new lead"
+msgstr[1] "%(n)s new leads"
+
+#, python-format
+msgid "%(n)s требует действия"
+msgid_plural "%(n)s требуют действия"
+msgstr[0] "%(n)s requires action"
+msgstr[1] "%(n)s require action"
+
+#, python-format
+msgid "%(n)s просрочка SLA"
+msgid_plural "%(n)s с просрочкой SLA"
+msgstr[0] "%(n)s SLA overdue"
+msgstr[1] "%(n)s SLA overdue"

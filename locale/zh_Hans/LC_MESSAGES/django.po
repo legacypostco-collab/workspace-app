@@ -32421,3 +32421,23 @@ msgstr "即将截止 · %(d)s天"
 #, python-format
 msgid "в срок · ещё %(d)s дн"
 msgstr "按时 · 还剩%(d)s天"
+
+msgid "Просрочка SLA"
+msgstr "SLA已逾期"
+
+msgid "%(n)s новый лид"
+msgid_plural "%(n)s лидов"
+msgstr[0] "%(n)s 个新线索"
+msgstr[1] "%(n)s 个新线索"
+
+#, python-format
+msgid "%(n)s требует действия"
+msgid_plural "%(n)s требуют действия"
+msgstr[0] "%(n)s 项需要处理"
+msgstr[1] "%(n)s 项需要处理"
+
+#, python-format
+msgid "%(n)s просрочка SLA"
+msgid_plural "%(n)s с просрочкой SLA"
+msgstr[0] "%(n)s 项SLA逾期"
+msgstr[1] "%(n)s 项SLA逾期"

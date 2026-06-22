@@ -31456,3 +31456,24 @@ msgstr "fecha límite pronto · %(d)s d"
 #, python-format
 msgid "в срок · ещё %(d)s дн"
 msgstr "a tiempo · quedan %(d)s d"
+
+msgid "Просрочка SLA"
+msgstr "SLA vencido"
+
+msgid "%(n)s новый лид"
+msgid_plural "%(n)s лидов"
+msgstr[0] "%(n)s nuevo lead"
+msgstr[1] "%(n)s nuevos leads"
+msgstr[2] "%(n)s nuevos leads"
+#, python-format
+msgid "%(n)s требует действия"
+msgid_plural "%(n)s требуют действия"
+msgstr[0] "%(n)s requiere acción"
+msgstr[1] "%(n)s requieren acción"
+msgstr[2] "%(n)s requieren acción"
+#, python-format
+msgid "%(n)s просрочка SLA"
+msgid_plural "%(n)s с просрочкой SLA"
+msgstr[0] "%(n)s SLA vencido"
+msgstr[1] "%(n)s SLA vencidos"
+msgstr[2] "%(n)s SLA vencidos"
