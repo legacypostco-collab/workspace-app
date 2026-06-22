@@ -32342,3 +32342,9 @@ msgstr "norm %(s)sd"
 
 msgid "ответственный: %(a)s"
 msgstr "responsible: %(a)s"
+
+msgid "не определено"
+msgstr "not determined"
+
+msgid "unknown"
+msgstr "unknown"

@@ -31380,3 +31380,9 @@ msgstr "معيار %(s)s يوم"
 
 msgid "ответственный: %(a)s"
 msgstr "المسؤول: %(a)s"
+
+msgid "не определено"
+msgstr "غير محدد"
+
+msgid "unknown"
+msgstr "غير معروف"

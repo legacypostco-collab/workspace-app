@@ -1339,7 +1339,7 @@ def op_kyb_review(params, user, role):
 
     return ActionResult(
         text=(
-            _('🛡 KYB · %(p0)s\nАвто-проверка: %(p1)s · решение системы: %(p2)s') % {"p0": f"{kyb.legal_name or '—'}", "p1": f"{kyb.risk_indicator or 'unknown'}", "p2": f"{kyb.auto_decision or 'не определено'}"}
+            _('🛡 KYB · %(p0)s\nАвто-проверка: %(p1)s · решение системы: %(p2)s') % {"p0": f"{kyb.legal_name or '—'}", "p1": f"{kyb.risk_indicator or _('unknown')}", "p2": f"{kyb.auto_decision or _('не определено')}"}
         ),
         cards=[
             {"type": "draft", "data": {

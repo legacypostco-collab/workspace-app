@@ -4940,7 +4940,26 @@
  "типов подключено · начните с любого": {"en": "types connected · start with any", "zh-hans": "类型已连接 · 从任意开始", "es": "tipos conectados · empiece con cualquiera", "ar": "أنواع متصلة · ابدأ بأي منها"},
  "типов подключено · загрузите ещё для полного контекста": {"en": "types connected · upload more for full context", "zh-hans": "类型已连接 · 上传更多以获取完整上下文", "es": "tipos conectados · sube más para contexto completo", "ar": "أنواع متصلة · رفع المزيد للحصول على سياق كامل"},
  "типов подключено · всё подключено": {"en": "types connected · all connected", "zh-hans": "类型已连接 · 全部已连接", "es": "tipos conectados · todo conectado", "ar": "أنواع متصلة · كل شيء متصل"},
- "Настройки": {"en": "Settings", "zh-hans": "设置", "es": "Ajustes", "ar": "الإعدادات"}
+ "Настройки": {"en": "Settings", "zh-hans": "设置", "es": "Ajustes", "ar": "الإعدادات"},
+ "Проверено": {"en": "Verified", "zh-hans": "已检查", "es": "Verificado", "ar": "تم التحقق"},
+ "Кликнуть → отметить как проверено": {"en": "Click → mark as verified", "zh-hans": "点击 → 标记为已检查", "es": "Clic → marcar como verificado", "ar": "انقر → اضبط كمُتحقق"},
+ "не применимо": {"en": "not applicable", "zh-hans": "不适用", "es": "no aplicable", "ar": "غير قابل للتطبيق"},
+ "Без замечаний": {"en": "No issues", "zh-hans": "无问题", "es": "Sin observaciones", "ar": "لا ملاحظات"},
+ "Авто-проверки (5–7 API за 10 сек)": {"en": "Auto-checks (5–7 APIs in 10 sec)", "zh-hans": "自动检查（10秒内5-7个API）", "es": "Auto-verificaciones (5–7 APIs en 10 seg)", "ar": "التحقق التلقائي (5-7 واجهات API في 10 ثوانٍ)"},
+ "Авто-проверки не запускались": {"en": "Auto-checks not yet run", "zh-hans": "自动检查尚未运行", "es": "Auto-verificaciones no ejecutadas aún", "ar": "لم يتم تشغيل التحقق التلقائي بعد"},
+ "Использовать submit_for_review для запуска": {"en": "Use submit_for_review to run", "zh-hans": "使用submit_for_review运行", "es": "Usar submit_for_review para ejecutar", "ar": "استخدم submit_for_review للتشغيل"},
+ "Что проверить глазами (2–3 минуты)": {"en": "Manual review (2–3 minutes)", "zh-hans": "需人工核查项（2-3 分钟）", "es": "Revisión manual (2–3 minutos)", "ar": "المراجعة اليدوية (2-3 دقائق)"},
+ "не определено": {"en": "not determined", "zh-hans": "未确定", "es": "no determinado", "ar": "غير محدد"},
+ "KYB на модерации": {"en": "KYB under review", "zh-hans": "KYB审核中", "es": "KYB en moderación", "ar": "KYB قيد المراجعة"},
+ "← Очередь KYB": {"en": "← KYB queue", "zh-hans": "← KYB 队列", "es": "← Cola KYB", "ar": "← قائمة KYB"},
+ "✓ Одобрить → Песочница": {"en": "✓ Approve → Sandbox", "zh-hans": "✓ 批准 → 沙盒", "es": "✓ Aprobar → Sandbox", "ar": "✓ موافقة → وضع الاختبار"},
+ "❓ Запросить уточнения": {"en": "❓ Request clarification", "zh-hans": "？请求澄清", "es": "❓ Solicitar aclaración", "ar": "❓ طلب توضيح"},
+ "✗ Отклонить": {"en": "✗ Reject", "zh-hans": "× 拒绝", "es": "✗ Rechazar", "ar": "✗ رفض"},
+ "🔄 Пересмотреть → одобрить": {"en": "🔄 Reconsider → approve", "zh-hans": "🔄 重新考虑 → 批准", "es": "🔄 Reconsiderar → aprobar", "ar": "🔄 إعادة النظر → الموافقة"},
+ "таможня": {"en": "customs", "zh-hans": "海关", "es": "aduana", "ar": "الجمارك"},
+ "логистика": {"en": "logistics", "zh-hans": "物流", "es": "logística", "ar": "اللوجستيات"},
+ "платежи": {"en": "payments", "zh-hans": "付款", "es": "pagos", "ar": "المدفوعات"},
+ "Авто-проверка: unknown · решение системы: не определено": {"en": "Auto-check: unknown · system decision: not determined", "zh-hans": "自动检查：未知 · 系统决定：未确定", "es": "Auto-verificación: desconocido · decisión del sistema: no determinado", "ar": "التحقق التلقائي: غير معروف · قرار النظام: غير محدد"}
 }
   );
 })();
