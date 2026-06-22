@@ -31429,3 +31429,18 @@ msgstr "💡 Solo %(pct)s%% de los pedidos con descuento — gran potencial de c
 #, python-format
 msgid "💸 Экономия за %(year)s: $%(saved)s (средняя скидка %(disc)s%%)."
 msgstr "💸 Ahorro para %(year)s: $%(saved)s (descuento promedio %(disc)s%%)."
+
+msgid "15 минут"
+msgstr "15 min"
+
+msgid "оператор подтверждает КП"
+msgstr "el operador confirma la cotización"
+
+msgid "Ручная рассылка"
+msgstr "Consulta manual"
+
+msgid "48 часов"
+msgstr "48 horas"
+
+msgid "оператор рассылает поставщикам"
+msgstr "el operador contacta proveedores"

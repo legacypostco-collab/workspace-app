@@ -32394,3 +32394,18 @@ msgstr "💡 仅%(pct)s%%的订单享有折扣 — 节省增长潜力巨大。"
 #, python-format
 msgid "💸 Экономия за %(year)s: $%(saved)s (средняя скидка %(disc)s%%)."
 msgstr "💸 %(year)s节省：$%(saved)s（平均折扣%(disc)s%%）。"
+
+msgid "15 минут"
+msgstr "15分钟"
+
+msgid "оператор подтверждает КП"
+msgstr "操作员确认报价"
+
+msgid "Ручная рассылка"
+msgstr "人工询价"
+
+msgid "48 часов"
+msgstr "48小时"
+
+msgid "оператор рассылает поставщикам"
+msgstr "操作员联系供应商"

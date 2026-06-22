@@ -32394,3 +32394,18 @@ msgstr "💡 Only %(pct)s%% of orders with discount — great savings growth pot
 #, python-format
 msgid "💸 Экономия за %(year)s: $%(saved)s (средняя скидка %(disc)s%%)."
 msgstr "💸 Savings for %(year)s: $%(saved)s (average discount %(disc)s%%)."
+
+msgid "15 минут"
+msgstr "15 min"
+
+msgid "оператор подтверждает КП"
+msgstr "operator confirms quote"
+
+msgid "Ручная рассылка"
+msgstr "Manual outreach"
+
+msgid "48 часов"
+msgstr "48 hours"
+
+msgid "оператор рассылает поставщикам"
+msgstr "operator reaches out to suppliers"

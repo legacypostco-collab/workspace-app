@@ -2611,7 +2611,7 @@
         // status НЕ 'not_found' — иначе строка без OEM рендерится как
         // «— нет предложений —». Наличие задаём через stock_label/class.
         status: 'in_stock',
-        stock_label: it.in_catalog ? 'В наличии' : 'нет в каталоге',
+        stock_label: it.in_catalog ? tr('В наличии') : tr('нет в каталоге'),
         stock_class: it.in_catalog ? 'in' : 'no',
         in_catalog: !!it.in_catalog,   // для кнопки «Только мои позиции»
         id: it.article || '',
@@ -2648,17 +2648,17 @@
       // одинаковая вёрстка; единственное отличие — колонка Price редактируемая.
       return this.spec_results({
         title: window.t('💬 Котировка по RFQ #{n}', {n: rfqId}),
-        title_meta: items.length + ' позиций' + (d.request_text ? ' · ' + d.request_text : ''),
+        title_meta: items.length + ' ' + tr('позиций') + (d.request_text ? ' · ' + d.request_text : ''),
         meta: meta,
         found: nCat,
         analogue: items.length,
         not_found: items.length - nCat,
-        kpi_labels: sv ? ['В каталоге', 'Всего', 'Нет в каталоге'] : null,
+        kpi_labels: sv ? [tr('В каталоге'), tr('Всего'), tr('Нет в каталоге')] : null,
         items: specItems,
         shipping_mode: d.shipping_mode || '',
         total: total,
         currency: 'USD',
-        foot_info: items.length + ' позиций · обновляется при редактировании цен',
+        foot_info: items.length + ' ' + tr('позиций') + ' · ' + tr('обновляется при редактировании цен'),
         editable_price: true,
         qf: {
           rfq_id: rfqId,
@@ -4183,7 +4183,7 @@
           : '';
         // Рыночный ориентир по OEM — под полем цены (продавцу: не продешевить).
         const qfMktHint = (it.market_usd != null)
-          ? `<div class="qf-mkt" title="Ориентир рыночной цены по этому OEM из каталога">рынок ≈ $${esc(String(it.market_usd))}${(it.market_lo != null && it.market_hi != null && it.market_hi > it.market_lo) ? ` · ${esc(String(it.market_lo))}–${esc(String(it.market_hi))}` : ''}</div>`
+          ? `<div class="qf-mkt" title="${tr('Ориентир рыночной цены по этому OEM из каталога')}">${tr('рынок')} ≈ $${esc(String(it.market_usd))}${(it.market_lo != null && it.market_hi != null && it.market_hi > it.market_lo) ? ` · ${esc(String(it.market_lo))}–${esc(String(it.market_hi))}` : ''}</div>`
           : '';
         const priceCellQf = (d.editable_price && it.rfq_item_id != null)
           ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" data-in-catalog="${it.in_catalog ? '1' : '0'}" value="${Number(it.price || 0).toFixed(2)}" /></div>${qfMktHint}`
@@ -6398,9 +6398,9 @@
     if (role === 'seller') {
       // Уникальные AI-инсайты, которых НЕТ в основном меню: рыночный спрос,
       // рейтинг, скорость по SLA. Помогают зарабатывать больше и расти.
-      return [{label: '📊 Спрос на рынке', action: 'get_demand_report', params: {}},
-              {label: '⭐ Мой рейтинг', action: 'seller_rating', params: {}},
-              {label: '⚡ Моя скорость', action: 'get_sla_report', params: {}}];
+      return [{label: tr('📊 Спрос на рынке'), action: 'get_demand_report', params: {}},
+              {label: tr('⭐ Мой рейтинг'), action: 'seller_rating', params: {}},
+              {label: tr('⚡ Моя скорость'), action: 'get_sla_report', params: {}}];
     }
     // Оператор (вкл. суб-роли operator_logist/customs/payment/manager):
     // оркестратор сделок — очередь, SLA, рекламации, аналитика. RFQ поднимает

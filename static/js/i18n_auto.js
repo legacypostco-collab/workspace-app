@@ -4987,7 +4987,14 @@
  "Событий пока нет.": {"en": "No events yet.", "zh-hans": "暂无事件。", "es": "Sin eventos aún.", "ar": "لا توجد أحداث حتى الآن."},
  "Очередь пуста.": {"en": "Queue is empty.", "zh-hans": "队列为空。", "es": "Cola vacía.", "ar": "الطابور فارغ."},
  "зак.": {"en": "orders", "zh-hans": "订单", "es": "pedidos", "ar": "طلبات"},
- "поз.": {"en": "items", "zh-hans": "项", "es": "artículos", "ar": "عناصر"}
+ "поз.": {"en": "items", "zh-hans": "项", "es": "artículos", "ar": "عناصر"},
+ "В каталоге": {"en": "In catalog", "zh-hans": "已入库", "es": "En catálogo", "ar": "في الكتالوج"},
+ "Всего": {"en": "Total", "zh-hans": "合计", "es": "Total", "ar": "الإجمالي"},
+ "Нет в каталоге": {"en": "Not in catalog", "zh-hans": "不在库", "es": "No en catálogo", "ar": "غير موجود في الكتالوج"},
+ "позиций": {"en": "items", "zh-hans": "项", "es": "artículos", "ar": "عناصر"},
+ "обновляется при редактировании цен": {"en": "updates when editing prices", "zh-hans": "编辑价格时更新", "es": "se actualiza al editar precios", "ar": "يتحدث عند تعديل الأسعار"},
+ "рынок": {"en": "market", "zh-hans": "市场", "es": "mercado", "ar": "سوق"},
+ "Ориентир рыночной цены по этому OEM из каталога": {"en": "Market price reference for this OEM from catalog", "zh-hans": "此OEM件的目录市场参考价", "es": "Precio de referencia de mercado para este OEM del catálogo", "ar": "سعر السوق المرجعي لهذا OEM من الكتالوج"}
 }
   );
 

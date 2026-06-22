@@ -11,6 +11,7 @@
 именно его) выглядел как массовый AUTO — приоритет терялся.
 """
 from __future__ import annotations
+from django.utils.translation import gettext as _
 
 # (emoji, short_label, sla_hint, priority_for_seller)
 # Без эмодзи и без англо-аббревиатур — понятные русские названия
@@ -28,7 +29,7 @@ def mode_badge(mode: str | None) -> str:
     if not meta:
         return ""
     _emoji, label, _, _ = meta
-    return label
+    return _(label)
 
 
 def mode_badge_with_sla(mode: str | None) -> str:
@@ -37,7 +38,7 @@ def mode_badge_with_sla(mode: str | None) -> str:
     if not meta:
         return ""
     _emoji, label, sla, _ = meta
-    return f"{label} · {sla}"
+    return f"{_(label)} · {_(sla)}"
 
 
 def sla_countdown_for_operator(mode: str, created_at) -> tuple[str, str]:
@@ -84,9 +85,8 @@ def mode_hint_for_seller(mode: str | None) -> str:
         return ""
     emoji, label, sla, hint = meta
     if label == "MANUAL":
-        return (f"{emoji} {label} · {sla} — оператор выбрал именно вас. "
-                f"Ответ приоритетный.")
+        return (f"{emoji} {_(label)} · {_(sla)} — {_('оператор выбрал именно вас.')} "
+                f"{_('Ответ приоритетный.')}")
     if label == "SEMI":
-        return (f"{emoji} {label} · {sla} — оператор ждёт вашу цену "
-                f"перед сборкой КП.")
-    return f"{emoji} {label} · {sla} — {hint}."
+        return (f"{emoji} {_(label)} · {_(sla)} — {_('оператор ждёт вашу цену перед сборкой КП.')}")
+    return f"{emoji} {_(label)} · {_(sla)} — {_(hint)}."
