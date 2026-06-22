@@ -947,7 +947,7 @@
           <a href="#" class="doc-slot-add" onclick="event.stopPropagation();window.__uploadProjectDoc&amp;&amp;window.__uploadProjectDoc('${slot.key}');return false;">${addLabel}</a>
         </div>
         <div class="doc-slot-desc-short">${esc(slot.descShort)}</div>
-        <div class="doc-slot-desc">↓ ${esc(slot.descFull)}</div>
+        <div class="doc-slot-desc">↓ <span>${esc(slot.descFull)}</span></div>
         ${filled ? `<div style="margin-top:8px;font-size:12.5px;font-weight:600;opacity:.7">📂 Открыть папку (${slotDocs.length}) ›</div>` : ''}
       </div>`;
     };

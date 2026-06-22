@@ -4920,7 +4920,27 @@
  "риск SLA": {"en": "SLA risk", "zh-hans": "SLA风险", "es": "riesgo SLA", "ar": "مخاطر مستوى الخدمة"},
  "проставьте код": {"en": "set the code", "zh-hans": "设置编码", "es": "asigne el código", "ar": "عيّن الرمز"},
  "требует проверки": {"en": "needs review", "zh-hans": "需要审查", "es": "requiere revisión", "ar": "يحتاج مراجعة"},
- "Заказчик": {"en": "Customer", "zh-hans": "客户", "es": "Cliente", "ar": "العميل"}
+ "Заказчик": {"en": "Customer", "zh-hans": "客户", "es": "Cliente", "ar": "العميل"},
+ "Логистика": {"en": "Logistics", "zh-hans": "物流", "es": "Logística", "ar": "اللوجستيات"},
+ "Платежи": {"en": "Payments", "zh-hans": "付款", "es": "Pagos", "ar": "المدفوعات"},
+ "AI работает в контексте вашего проекта — получите подборы, прогнозы и сравнения за секунды.": {"en": "AI works in the context of your project — get matches, forecasts and comparisons in seconds.", "zh-hans": "AI在您项目的上下文中运作 — 秒级获取匹配、预测和比较。", "es": "La IA trabaja en el contexto de tu proyecto — obtén selecciones, pronósticos y comparativas en segundos.", "ar": "يعمل الذكاء الاصطناعي في سياق مشروعك — احصل على مطابقات وتوقعات ومقارنات في ثوانٍ."},
+ "типов подключено": {"en": "types connected", "zh-hans": "类型已连接", "es": "tipos conectados", "ar": "أنواع متصلة"},
+ "· начните с любого": {"en": "· start with any", "zh-hans": "· 从任意开始", "es": "· empiece con cualquiera", "ar": "· ابدأ بأي منها"},
+ "· загрузите ещё для полного контекста": {"en": "· upload more for full context", "zh-hans": "· 上传更多以获取完整上下文", "es": "· sube más para contexto completo", "ar": "· رفع المزيد للحصول على سياق كامل"},
+ "· всё подключено": {"en": "· all connected", "zh-hans": "· 全部已连接", "es": "· todo conectado", "ar": "· كل شيء متصل"},
+ "PDF / Excel / DWG · до 25 МБ": {"en": "PDF / Excel / DWG · up to 25 MB", "zh-hans": "PDF / Excel / DWG · 最大25MB", "es": "PDF / Excel / DWG · hasta 25 MB", "ar": "PDF / Excel / DWG · حتى 25 ميغابايت"},
+ "📂 Открыть папку": {"en": "📂 Open folder", "zh-hans": "📂 打开文件夹", "es": "📂 Abrir carpeta", "ar": "📂 فتح المجلد"},
+ "Проекты": {"en": "Projects", "zh-hans": "项目", "es": "Proyectos", "ar": "المشاريع"},
+ "+ Новый чат": {"en": "+ New chat", "zh-hans": "+ 新建聊天", "es": "+ Nuevo chat", "ar": "+ محادثة جديدة"},
+ "+ Загрузить": {"en": "+ Upload", "zh-hans": "+ 上传", "es": "+ Subir", "ar": "+ تحميل"},
+ "+ Добавить": {"en": "+ Add", "zh-hans": "+ 添加", "es": "+ Agregar", "ar": "+ إضافة"},
+ "AI использует": {"en": "AI uses", "zh-hans": "AI使用", "es": "La IA usa", "ar": "يستخدم الذكاء الاصطناعي"},
+ "все эти документы": {"en": "all these documents", "zh-hans": "所有这些文件", "es": "todos estos documentos", "ar": "كل هذه الوثائق"},
+ "как контекст для ответов в чатах этого проекта": {"en": "as context for responses in this project's chats", "zh-hans": "作为此项目聊天回复的上下文", "es": "como contexto para las respuestas en los chats de este proyecto", "ar": "كسياق للردود في محادثات هذا المشروع"},
+ "типов подключено · начните с любого": {"en": "types connected · start with any", "zh-hans": "类型已连接 · 从任意开始", "es": "tipos conectados · empiece con cualquiera", "ar": "أنواع متصلة · ابدأ بأي منها"},
+ "типов подключено · загрузите ещё для полного контекста": {"en": "types connected · upload more for full context", "zh-hans": "类型已连接 · 上传更多以获取完整上下文", "es": "tipos conectados · sube más para contexto completo", "ar": "أنواع متصلة · رفع المزيد للحصول على سياق كامل"},
+ "типов подключено · всё подключено": {"en": "types connected · all connected", "zh-hans": "类型已连接 · 全部已连接", "es": "tipos conectados · todo conectado", "ar": "أنواع متصلة · كل شيء متصل"},
+ "Настройки": {"en": "Settings", "zh-hans": "设置", "es": "Ajustes", "ar": "الإعدادات"}
 }
   );
 })();
