@@ -28,7 +28,7 @@ def mode_badge(mode: str | None) -> str:
     meta = _MODE_META.get((mode or "").strip().lower())
     if not meta:
         return ""
-    _emoji, label, _, _ = meta
+    _emoji, label, _sla, _hint = meta
     return _(label)
 
 
@@ -37,7 +37,7 @@ def mode_badge_with_sla(mode: str | None) -> str:
     meta = _MODE_META.get((mode or "").strip().lower())
     if not meta:
         return ""
-    _emoji, label, sla, _ = meta
+    _emoji, label, sla, _hint = meta
     return f"{_(label)} · {_(sla)}"
 
 
