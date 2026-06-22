@@ -1,8 +1,4 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
+
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
@@ -13215,10 +13211,6 @@ msgstr "AI evaluation unavailable (ANTHROPIC_API_KEY is not configured on the se
 
 #: assistant/pricelist.py:3408
 #, python-format
-msgid "<div class=\"opx-note\">Показаны первые %(rows)s из %(total)s строк</div>"
-msgstr "<div class=\"opx-note\">Showing first %(rows)s of %(total)s rows</div>"
-
-#: assistant/pricelist.py:3633
 msgid "Импорт не найден."
 msgstr "Import not found."
 
@@ -32326,3 +32318,27 @@ msgstr "item"
 
 msgid "позиции"
 msgstr "items"
+
+msgid "У вас нет открытых диалогов с пользователями.\n\nДиалог с покупателем или поставщиком открывается через карточку поставщика / рекламацию / тикет поддержки — кнопкой «💬 Чат с …». После открытия он появится здесь."
+msgstr "You have no open chats with users.\n\nA chat with a buyer or supplier is opened via the supplier card / claim / support ticket — using the «💬 Chat with…» button. Once opened, it will appear here."
+
+msgid "У вас нет открытых диалогов с пользователями."
+msgstr "You have no open chats with users."
+
+msgid "+ %(d)sд просрочка"
+msgstr "+%(d)sd overdue"
+
+msgid "осталось %(d)sд"
+msgstr "%(d)sd left"
+
+msgid "%(d)sд до лимита"
+msgstr "%(d)sd to limit"
+
+msgid "здесь %(d)s дн"
+msgstr "here %(d)s d"
+
+msgid "норматив %(s)sд"
+msgstr "norm %(s)sd"
+
+msgid "ответственный: %(a)s"
+msgstr "responsible: %(a)s"

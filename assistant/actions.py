@@ -5954,11 +5954,11 @@ def get_sla_report(params, user, role):
         if not sla:
             tone, badge_lbl = "info", "—"
         elif days_here > sla:
-            tone, badge_lbl = "bad",  f"+{days_here - sla}д просрочка"
+            tone, badge_lbl = "bad",  _("+ %(d)sд просрочка") % {'d': days_here - sla}
         elif days_here >= sla * 0.8:
-            tone, badge_lbl = "warn", f"осталось {max(0, sla - days_here)}д"
+            tone, badge_lbl = "warn", _("осталось %(d)sд") % {'d': max(0, sla - days_here)}
         else:
-            tone, badge_lbl = "ok",   f"{sla - days_here}д до лимита"
+            tone, badge_lbl = "ok",   _("%(d)sд до лимита") % {'d': sla - days_here}
         # «Ответственный» — по фазе
         actor_by_stage = {
             "awaiting_reserve": _('Покупатель'),
@@ -5977,9 +5977,12 @@ def get_sla_report(params, user, role):
         amount = f"${float(o.total_amount or 0):,.0f}"
         per_order_rows.append({
             "title":    _('Заказ #%(id)s · %(amount)s') % {'id': o.id, 'amount': amount},
-            "subtitle": (f"{stage_label} · здесь {days_here} дн"
-                         + (f" / норматив {sla}д" if sla else "")
-                         + f" · ответственный: {actor}"),
+            "subtitle": (
+                f"{stage_label} · "
+                + (_("здесь %(d)s дн") % {'d': days_here})
+                + ((" / " + (_("норматив %(s)sд") % {'s': sla})) if sla else "")
+                + (" · " + (_("ответственный: %(a)s") % {'a': actor}))
+            ),
             "badge":    {"label": badge_lbl, "tone": tone},
             "action":   "get_order_detail",
             "params":   {"order_id": o.id},

@@ -1,9 +1,4 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
-#, fuzzy
+
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
@@ -13216,10 +13211,6 @@ msgstr "تقييم AI غير متاح (لم يتم ضبط ANTHROPIC_API_KEY عل
 
 #: assistant/pricelist.py:3408
 #, python-format
-msgid "<div class=\"opx-note\">Показаны первые %(rows)s из %(total)s строк</div>"
-msgstr "<div class=\"opx-note\">عرض أول %(rows)s من %(total)s صف</div>"
-
-#: assistant/pricelist.py:3633
 msgid "Импорт не найден."
 msgstr "الاستيراد غير موجود."
 
@@ -31365,3 +31356,27 @@ msgstr "عنصر"
 
 msgid "позиции"
 msgstr "عناصر"
+
+msgid "У вас нет открытых диалогов с пользователями.\n\nДиалог с покупателем или поставщиком открывается через карточку поставщика / рекламацию / тикет поддержки — кнопкой «💬 Чат с …». После открытия он появится здесь."
+msgstr "ليس لديك محادثات مفتوحة مع المستخدمين.\n\nتُفتح المحادثة مع المشتري أو المورد عبر بطاقة المورد / المطالبة / تذكرة الدعم — بزر «💬 دردشة مع…». بعد الفتح ستظهر هنا."
+
+msgid "У вас нет открытых диалогов с пользователями."
+msgstr "ليس لديك محادثات مفتوحة مع المستخدمين."
+
+msgid "+ %(d)sд просрочка"
+msgstr "+%(d)s يوم تأخير"
+
+msgid "осталось %(d)sд"
+msgstr "متبقي %(d)s يوم"
+
+msgid "%(d)sд до лимита"
+msgstr "%(d)s يوم للحد"
+
+msgid "здесь %(d)s дн"
+msgstr "هنا %(d)s يوم"
+
+msgid "норматив %(s)sд"
+msgstr "معيار %(s)s يوم"
+
+msgid "ответственный: %(a)s"
+msgstr "المسؤول: %(a)s"

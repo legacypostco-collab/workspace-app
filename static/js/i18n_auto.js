@@ -4574,6 +4574,234 @@
   "zh-hans": "我的交易",
   "es": "Mis tratos",
   "ar": "صفقاتي"
+ },
+ "📥 Inbox поддержки": {
+  "en": "📥 Support inbox",
+  "zh-hans": "📥 支持收件箱",
+  "es": "📥 Bandeja de soporte",
+  "ar": "📥 صندوق وارد الدعم"
+ },
+ "Обращений к оператору": {
+  "en": "Inquiries to the operator",
+  "zh-hans": "致操作员的咨询",
+  "es": "Consultas al operador",
+  "ar": "الاستفسارات إلى المشغّل"
+ },
+ "с реальным вопросом за 14 дней": {
+  "en": "with a real question in 14 days",
+  "zh-hans": "14 天内有实际问题",
+  "es": "con una pregunta real en 14 días",
+  "ar": "بسؤال حقيقي خلال 14 يوماً"
+ },
+ "Жалоб на платформу": {
+  "en": "Platform complaints",
+  "zh-hans": "平台投诉",
+  "es": "Quejas sobre la plataforma",
+  "ar": "شكاوى المنصة"
+ },
+ "поданных через форму за 14 дней": {
+  "en": "submitted via form in 14 days",
+  "zh-hans": "14 天内通过表单提交",
+  "es": "presentados mediante el formulario en 14 días",
+  "ar": "المقدَّمة عبر النموذج خلال 14 يومًا"
+ },
+ "📂 Мои диалоги с пользователями": {
+  "en": "📂 My dialogs with users",
+  "zh-hans": "📂 我与用户的对话",
+  "es": "📂 Mis diálogos con usuarios",
+  "ar": "📂 محادثاتي مع المستخدمين"
+ },
+ "📋 База знаний (FAQ)": {
+  "en": "📋 Knowledge base (FAQ)",
+  "zh-hans": "📋 知识库（FAQ）",
+  "es": "📋 Base de conocimiento (FAQ)",
+  "ar": "📋 قاعدة المعرفة (FAQ)"
+ },
+ "🎨 Цветовая памятка": {
+  "en": "🎨 Color guide",
+  "zh-hans": "🎨 颜色说明",
+  "es": "🎨 Guía de colores",
+  "ar": "🎨 مفتاح الألوان"
+ },
+ "🧾 Рекламации": {
+  "en": "🧾 Claims",
+  "zh-hans": "🧾 索赔",
+  "es": "🧾 Reclamaciones",
+  "ar": "🧾 المطالبات"
+ },
+ "🎛 Дашборд": {
+  "en": "🎛 Dashboard",
+  "zh-hans": "🎛 仪表盘",
+  "es": "🎛 Panel",
+  "ar": "🎛 اللوحة"
+ },
+ "✅ Очередь поддержки пуста": {
+  "en": "✅ The support queue is empty",
+  "zh-hans": "✅ 支持队列为空",
+  "es": "✅ La cola de soporte está vacía",
+  "ar": "✅ طابور الدعم فارغ"
+ },
+ "Нет новых обращений и жалоб": {
+  "en": "No new inquiries or complaints",
+  "zh-hans": "无新的咨询和投诉",
+  "es": "No hay nuevas consultas ni quejas",
+  "ar": "لا توجد استفسارات أو شكاوى جديدة"
+ },
+ "У вас нет открытых диалогов с пользователями.": {
+  "en": "You have no open chats with users.",
+  "zh-hans": "您没有与用户的开放对话。",
+  "es": "No tiene chats abiertos con usuarios.",
+  "ar": "ليس لديك محادثات مفتوحة مع المستخدمين."
+ },
+ "📋 Мои поставщики": {
+  "en": "📋 My suppliers",
+  "zh-hans": "📋 我的供应商",
+  "es": "📋 Mis proveedores",
+  "ar": "📋 موردوي"
+ },
+ "💬 Обращения к оператору": {
+  "en": "💬 Inquiries to the operator",
+  "zh-hans": "💬 致操作员的咨询",
+  "es": "💬 Consultas al operador",
+  "ar": "💬 الاستفسارات إلى المشغّل"
+ },
+ "🚨 Жалобы на платформу": {
+  "en": "🚨 Platform complaints",
+  "zh-hans": "🚨 平台投诉",
+  "es": "🚨 Quejas sobre la plataforma",
+  "ar": "🚨 شكاوى المنصة"
+ },
+ "Таможня": {
+  "en": "Customs",
+  "zh-hans": "海关",
+  "es": "Aduana",
+  "ar": "الجمارك"
+ },
+ "Платёжная статистика": {
+  "en": "Payment statistics",
+  "zh-hans": "支付统计",
+  "es": "Estadísticas de pago",
+  "ar": "إحصائيات الدفع"
+ },
+ "Конверсия резерв → финал · средние сроки оплат": {
+  "en": "Reserve → final conversion · avg payment timelines",
+  "zh-hans": "预付→尾款转化率·平均付款周期",
+  "es": "Conversión reserva → final · plazos medios de pago",
+  "ar": "تحويل العربون ← النهائي · متوسط مواعيد الدفع"
+ },
+ "Кандидаты на верификацию · риск-индикаторы · решения": {
+  "en": "Verification candidates · risk indicators · decisions",
+  "zh-hans": "验证候选人·风险指标·决策",
+  "es": "Candidatos a verificación · indicadores de riesgo · decisiones",
+  "ar": "مرشحو التحقق · مؤشرات المخاطر · القرارات"
+ },
+ "Грузы на оформлении · HS-коды · пошлины · просрочки": {
+  "en": "Cargo in processing · HS codes · duties · delays",
+  "zh-hans": "在途货物·HS编码·关税·延误",
+  "es": "Carga en trámite · códigos HS · aranceles · retrasos",
+  "ar": "البضائع قيد المعالجة · رموز HS · الرسوم · التأخيرات"
+ },
+ "📊 Заказы и GMV": {
+  "en": "📊 Orders and GMV",
+  "zh-hans": "📊 订单与 GMV",
+  "es": "📊 Pedidos y GMV",
+  "ar": "📊 الطلبات وGMV"
+ },
+ "💰 Финансы и эскроу": {
+  "en": "💰 Finance and escrow",
+  "zh-hans": "💰 财务与托管",
+  "es": "💰 Finanzas y depósito en garantía",
+  "ar": "💰 المالية والضمان"
+ },
+ "⏱ SLA и узкие места": {
+  "en": "⏱ SLA and bottlenecks",
+  "zh-hans": "⏱ SLA 与瓶颈",
+  "es": "⏱ SLA y cuellos de botella",
+  "ar": "⏱ SLA والاختناقات"
+ },
+ "🚛 Логистика": {
+  "en": "🚛 Logistics",
+  "zh-hans": "🚛 物流",
+  "es": "🚛 Logística",
+  "ar": "🚛 اللوجستيات"
+ },
+ "📈 Спрос на рынке": {
+  "en": "📈 Market demand",
+  "zh-hans": "📈 市场需求",
+  "es": "📈 Demanda en el mercado",
+  "ar": "📈 الطلب في السوق"
+ },
+ "📋 Очередь RFQ по режимам": {
+  "en": "📋 RFQ queue by mode",
+  "zh-hans": "📋 按模式的询价队列",
+  "es": "📋 Cola de RFQ por modo",
+  "ar": "📋 طابور طلبات العروض حسب الوضع"
+ },
+ "🛃 Таможня": {
+  "en": "🛃 Customs",
+  "zh-hans": "🛃 海关",
+  "es": "🛃 Aduana",
+  "ar": "🛃 الجمارك"
+ },
+ "🔍 KYB очередь": {
+  "en": "🔍 KYB queue",
+  "zh-hans": "🔍 KYB 队列",
+  "es": "🔍 Cola KYB",
+  "ar": "🔍 طابور KYB"
+ },
+ "💳 Платёжная статистика": {
+  "en": "💳 Payment statistics",
+  "zh-hans": "💳 支付统计",
+  "es": "💳 Estadísticas de pago",
+  "ar": "💳 إحصائيات الدفع"
+ },
+ "Динамика по месяцам · средний чек · распределение по статусам": {
+  "en": "Monthly trend · average ticket · distribution by status",
+  "zh-hans": "按月动态 · 平均客单价 · 按状态分布",
+  "es": "Dinámica por meses · ticket medio · distribución por estados",
+  "ar": "الديناميكية الشهرية · متوسط الفاتورة · التوزيع حسب الحالات"
+ },
+ "Деньги на платформе · поток за всё время · удержания и выплаты": {
+  "en": "Funds on platform · all-time flow · holds and payouts",
+  "zh-hans": "平台资金 · 全周期流水 · 扣留与支付",
+  "es": "Dinero en la plataforma · flujo de todo el tiempo · retenciones y pagos",
+  "ar": "الأموال على المنصة · التدفق طوال الوقت · الاستقطاعات والمدفوعات"
+ },
+ "Нарушения · риски · где застревают заказы": {
+  "en": "Violations · risks · where orders get stuck",
+  "zh-hans": "违规 · 风险 · 订单卡在何处",
+  "es": "Infracciones · riesgos · dónde se atascan los pedidos",
+  "ar": "المخالفات · المخاطر · أين تعلق الطلبات"
+ },
+ "Активные маршруты · перевозчики · среднее время доставки": {
+  "en": "Active routes · carriers · average delivery time",
+  "zh-hans": "活跃路线 · 承运商 · 平均送达时间",
+  "es": "Rutas activas · transportistas · tiempo medio de entrega",
+  "ar": "المسارات النشطة · الناقلون · متوسط وقت التسليم"
+ },
+ "Топ-бренды · топ-OEM · динамика RFQ по неделям": {
+  "en": "Top brands · top OEM · RFQ trend by week",
+  "zh-hans": "热门品牌 · 热门 OEM · 按周 RFQ 动态",
+  "es": "Top marcas · top OEM · dinámica de RFQ por semanas",
+  "ar": "أفضل العلامات · أفضل OEM · ديناميكية RFQ أسبوعيًا"
+ },
+ "AUTO · SEMI (15 мин) · MANUAL (48 ч) — конверсия и SLA": {
+  "en": "AUTO · SEMI (15 min) · MANUAL (48 h) — conversion and SLA",
+  "zh-hans": "AUTO · SEMI（15 分钟）· MANUAL（48 小时）— 转化率与 SLA",
+  "es": "AUTO · SEMI (15 min) · MANUAL (48 h) — conversión y SLA",
+  "ar": "AUTO · SEMI (15 دقيقة) · MANUAL (48 ساعة) — التحويل وSLA"
+ },
+ "Активные · по причинам · среднее время разбора": {
+  "en": "Active · by reason · average resolution time",
+  "zh-hans": "活跃 · 按原因 · 平均处理时间",
+  "es": "Activos · por motivos · tiempo medio de resolución",
+  "ar": "النشطة · حسب الأسباب · متوسط وقت المعالجة"
+ },
+ "У вас нет открытых диалогов с пользователями.\n\nДиалог с покупателем или поставщиком открывается через карточку поставщика / рекламацию / тикет поддержки — кнопкой «💬 Чат с …». После открытия он появится здесь.": {
+  "en": "You have no open chats with users.\n\nA chat with a buyer or supplier is opened via the supplier card / claim / support ticket — using the «💬 Chat with…» button. Once opened, it will appear here.",
+  "zh-hans": "您没有与用户的开放对话。\n\n通过供应商卡片/投诉/支持工单打开与买家或供应商的聊天 — 使用「💬 与…聊天」按钮。打开后将显示在此处。",
+  "es": "No tiene chats abiertos con usuarios.\n\nEl chat con un comprador o proveedor se abre desde la ficha del proveedor / reclamación / ticket de soporte — con el botón «💬 Chat con…». Una vez abierto, aparecerá aquí.",
+  "ar": "ليس لديك محادثات مفتوحة مع المستخدمين.\n\nتُفتح المحادثة مع المشتري أو المورد عبر بطاقة المورد / المطالبة / تذكرة الدعم — بزر «💬 دردشة مع…». بعد الفتح ستظهر هنا."
  }
 }
   );
