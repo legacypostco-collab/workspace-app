@@ -2396,7 +2396,7 @@
               ${staleBadge ? `<div class="wh-staleness">${staleBadge}</div>` : ''}
             </div>
             <div class="wh-stats">
-              <span class="wh-count">${r.parts_count} поз.</span>
+              <span class="wh-count">${r.parts_count} ${tr('поз.')}</span>
               ${r.currency ? `<span class="wh-ccy">${esc(r.currency)}</span>` : ''}
               ${refreshIcon}${renameIcon}${deleteIcon}
             </div>
@@ -3322,7 +3322,7 @@
               <span class="sq-order-num">Заказ #${esc(o.id)}</span>
               <span class="sq-status-chip">${esc(s.short_label || s.label.replace(/^[^a-zа-я]+/i, '').split('—')[0].trim())}${deadlineChip}</span>
               ${o.incoterm ? `<span class="sq-incoterm sq-incoterm-${esc(o.incoterm.toLowerCase())}" title="Базис поставки ${esc(o.incoterm)}">${esc(o.incoterm)}</span>` : ''}
-              <span class="sq-order-items">${o.items.length} поз.</span>
+              <span class="sq-order-items">${o.items.length} ${tr('поз.')}</span>
               <span class="sq-order-sub">${fmtMoney(o.subtotal, 'USD')}</span>
               <span class="sq-order-actions">${advBtn}${cancelBtn}${openBtn}</span>
             </summary>
@@ -3368,7 +3368,7 @@
           <summary class="sq-section-head">
             <span class="sq-chev">▸</span>
             <span class="sq-section-label">${esc(s.label)}</span>
-            <span class="sq-section-meta">${s.orders_count} зак. · ${s.items_count} поз. · ${fmtMoney(s.amount, 'USD')}</span>
+            <span class="sq-section-meta">${s.orders_count} ${tr('зак.')} · ${s.items_count} ${tr('поз.')} · ${fmtMoney(s.amount, 'USD')}</span>
           </summary>
           ${stageInfo}
           ${orders}
@@ -3382,7 +3382,7 @@
             <span class="sq-status-chip">${esc(s.short_label || '')}</span>
             ${o.incoterm ? `<span class="sq-incoterm sq-incoterm-${esc(o.incoterm.toLowerCase())}">${esc(o.incoterm)}</span>` : ''}
             <span class="sq-arc-actor">📍 ${esc(o.current_actor || '')}</span>
-            <span class="sq-order-items">${o.items.length} поз.</span>
+            <span class="sq-order-items">${o.items.length} ${tr('поз.')}</span>
             <span class="sq-order-sub">${fmtMoney(o.subtotal, 'USD')}</span>
             <button class="act-btn sq-btn sq-open" type="button" onclick="event.stopPropagation();event.preventDefault();window.quickAction&&window.quickAction('track_order',{order_id:${o.id}});">📍 Трекинг</button>
           </div>`).join('');
@@ -3390,7 +3390,7 @@
           <summary class="sq-section-head sq-archive-head">
             <span class="sq-chev">▸</span>
             <span class="sq-section-label">${esc(s.label)}</span>
-            <span class="sq-section-meta">${s.orders_count} зак. · ${fmtMoney(s.amount, 'USD')}</span>
+            <span class="sq-section-meta">${s.orders_count} ${tr('зак.')} · ${fmtMoney(s.amount, 'USD')}</span>
           </summary>
           <div class="sq-arc-list">${rows}</div>
         </details>`;
@@ -3406,7 +3406,7 @@
           <div class="card-title">📦 ${esc(d.title || tr('card.seller_queue'))}</div>
           <div class="sq-total">${window.t('{n} активных заказа(ов)', {n: d.total_orders})}</div>
         </div>
-        ${sections || '<div class="sq-empty">Очередь пуста.</div>'}
+        ${sections || `<div class="sq-empty">${tr('Очередь пуста.')}</div>`}
         ${archiveBlock}
       </div>`;
     },
@@ -3422,7 +3422,7 @@
       }).join('');
       const tl = (d.timeline || []).map(t =>
         `<div class="tk-event"><span class="tk-when">${esc(t.when)}</span><span class="tk-text">${esc(t.text)}</span></div>`
-      ).join('') || '<div class="tk-empty">Событий пока нет.</div>';
+      ).join('') || `<div class="tk-empty">${tr('Событий пока нет.')}</div>`;
       const trackingLine = d.tracking_number
         ? `<div class="tk-tracking">📍 ${esc(d.carrier || tr('common.carrier'))} · <span class="tk-track-num">${esc(d.tracking_number)}</span></div>`
         : '';
@@ -3432,7 +3432,7 @@
       return `<div class="card tk-card">
         <div class="tk-head">
           <div>
-            <div class="card-title">${esc(d.title || ('Заказ #' + d.order_id))}</div>
+            <div class="card-title">${esc(d.title || (tr('Заказ') + ' #' + d.order_id))}</div>
             <div class="card-sub">${esc(d.current_label || '')}</div>
             ${trackingLine}
           </div>
@@ -3442,8 +3442,8 @@
         <div class="tk-progress-wrap">
           <div class="tk-progress"><div class="tk-progress-fill" style="width:${Math.max(0, Math.min(100, Number(d.progress_pct) || 0))}%"></div></div>
           <div class="tk-progress-meta">
-            <span>${(Number(d.current_idx) || 0) + 1} из ${Number(d.total_stages) || 0}</span>
-            <span>ETA: <b>${esc(d.eta_delivery || '—')}</b> · ${Number(d.days_left) || 0} дн.</span>
+            <span>${(Number(d.current_idx) || 0) + 1} ${tr('из')} ${Number(d.total_stages) || 0}</span>
+            <span>ETA: <b>${esc(d.eta_delivery || '—')}</b> · ${Number(d.days_left) || 0} ${tr('дн.')}</span>
           </div>
         </div>
         ${(() => {
@@ -3461,7 +3461,7 @@
           </div>`;
         })()}
         <div class="tk-stages">${stages}</div>
-        <div class="tk-tl-head">История</div>
+        <div class="tk-tl-head">${tr('История')}</div>
         <div class="tk-timeline">${tl}</div>
       </div>`;
     },
@@ -3557,7 +3557,7 @@
             ${advBd.vat > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· НДС 22%</span><span>${fmtMoney(advBd.vat, 'USD')}</span></div>` : ''}
             ${advBd.last_mile > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· Доставка до двери</span><span>${fmtMoney(advBd.last_mile, 'USD')}</span></div>` : ''}
             ${advBd.clearance > 0 ? `<div class="oc-adv-row oc-adv-sub"><span>· Таможенное оформление</span><span>${fmtMoney(advBd.clearance, 'USD')}</span></div>` : ''}
-            ${adv.shipping_missing ? `<div class="oc-adv-row oc-adv-warn">⚠ Доставка не рассчитана для ${adv.shipping_missing} поз.</div>` : ''}
+            ${adv.shipping_missing ? `<div class="oc-adv-row oc-adv-warn">⚠ Доставка не рассчитана для ${adv.shipping_missing} ${tr('поз.')}</div>` : ''}
           </div>
         </details>
       ` : '';
@@ -4664,7 +4664,7 @@
             <span class="ob-c-flag">${o.flag}</span>
             <span class="ob-c-name">${esc(o.name)}</span>
             <span class="ob-c-ports">${portsRendered}</span>
-            <span class="ob-c-stat"><b>${o.count}</b> поз.</span>
+            <span class="ob-c-stat"><b>${o.count}</b> ${tr('поз.')}</span>
             <span class="ob-c-stat">${o.weight_kg.toFixed(1)} кг</span>
             <span class="ob-c-stat">${fmtMoney(o.cargo, 'USD')}</span>
             ${o.freight_sea > 0 ? `<span class="ob-c-stat">$${Math.round(o.freight_sea).toLocaleString()} sea${o.days_sea ? ` · ~${o.days_sea}д` : ''}</span>` : ''}

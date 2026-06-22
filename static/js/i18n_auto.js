@@ -4971,7 +4971,23 @@
  "Только мои позиции": {"en": "My items only", "zh-hans": "仅我的商品", "es": "Solo mis artículos", "ar": "عناصري فقط"},
  "Оставить только позиции из вашего каталога — у остальных очистится цена; нажмите ещё раз, чтобы вернуть": {"en": "Keep only catalog items — others will have price cleared; click again to restore", "zh-hans": "只保留目录中的商品 — 其余商品价格将被清除；再次点击可恢复", "es": "Conservar solo artículos del catálogo — los demás perderán el precio; haga clic de nuevo para restaurar", "ar": "احتفظ فقط بعناصر الكتالوج — ستُمسح أسعار الباقية؛ انقر مرة أخرى للاسترداد"},
  "📥 Поддержка — входящие обращения и жалобы от пользователей. Рекламации по заказам — в отдельной вкладке «Рекламации».": {"en": "📥 Support — incoming requests and complaints from users. Order claims are in the separate «Claims» tab.", "zh-hans": "📥 支持 — 来自用户的来件请求和投诉。订单的索赔在单独的「Claims」标签页中。", "es": "📥 Soporte — solicitudes y quejas entrantes de los usuarios. Las reclamaciones de pedidos están en la pestaña «Claims».", "ar": "📥 الدعم — الطلبات والشكاوى الواردة من المستخدمين. مطالبات الطلبات موجودة في تبويب «المطالبات» المنفصل."},
- "Платформа в покое — активной работы нет.": {"en": "The platform is idle — no active work.", "zh-hans": "平台空闲 — 无活跃工作。", "es": "La plataforma está inactiva — no hay trabajo activo.", "ar": "المنصّة خاملة — لا يوجد عمل نشِط."}
+ "Платформа в покое — активной работы нет.": {"en": "The platform is idle — no active work.", "zh-hans": "平台空闲 — 无活跃工作。", "es": "La plataforma está inactiva — no hay trabajo activo.", "ar": "المنصّة خاملة — لا يوجد عمل نشِط."},
+ "Создан · ожидает оплаты резерва": {"en": "Created · awaiting reserve payment", "zh-hans": "已创建 · 等待预付款", "es": "Creado · esperando pago de reserva", "ar": "تم الإنشاء · بانتظار دفع الاحتياطي"},
+ "Резерв оплачен": {"en": "Reserve Paid", "zh-hans": "预付款已支付", "es": "Reserva Pagada", "ar": "تم دفع الاحتياطي"},
+ "Подтверждён поставщиком": {"en": "Confirmed by Supplier", "zh-hans": "供应商已确认", "es": "Confirmado por el Proveedor", "ar": "تم التأكيد من قبل المورد"},
+ "В производстве": {"en": "In Production", "zh-hans": "生产中", "es": "En Producción", "ar": "في الإنتاج"},
+ "Готов к отгрузке": {"en": "Ready to Ship", "zh-hans": "准备发货", "es": "Listo para Envío", "ar": "جاهز للشحن"},
+ "Транзит (зарубеж)": {"en": "Transit (Abroad)", "zh-hans": "运输中（国际）", "es": "Tránsito (Extranjero)", "ar": "العبور (الخارج)"},
+ "Транзит (РФ)": {"en": "Transit (Russia)", "zh-hans": "运输中（俄罗斯）", "es": "Tránsito (Rusia)", "ar": "العبور (روسيا)"},
+ "Выдача": {"en": "Issuance", "zh-hans": "提货", "es": "Entrega", "ar": "الإصدار"},
+ "Доставлен": {"en": "Delivered", "zh-hans": "已送达", "es": "Entregado", "ar": "تم التسليم"},
+ "Завершён": {"en": "Completed", "zh-hans": "已完成", "es": "Completado", "ar": "مكتمل"},
+ "из": {"en": "of", "zh-hans": "/", "es": "de", "ar": "من"},
+ "дн.": {"en": "d.", "zh-hans": "天", "es": "d.", "ar": "يوم"},
+ "Событий пока нет.": {"en": "No events yet.", "zh-hans": "暂无事件。", "es": "Sin eventos aún.", "ar": "لا توجد أحداث حتى الآن."},
+ "Очередь пуста.": {"en": "Queue is empty.", "zh-hans": "队列为空。", "es": "Cola vacía.", "ar": "الطابور فارغ."},
+ "зак.": {"en": "orders", "zh-hans": "订单", "es": "pedidos", "ar": "طلبات"},
+ "поз.": {"en": "items", "zh-hans": "项", "es": "artículos", "ar": "عناصر"}
 }
   );
 
