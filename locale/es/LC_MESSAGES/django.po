@@ -31409,3 +31409,23 @@ msgstr "%(n)s más"
 msgid "на %(n)s меньше"
 msgstr "%(n)s menos"
 
+
+#, python-format
+msgid "⚠️ Auto-discount не активен: ни один заказ не прошёл со скидкой. Достигните Уровня 1 ($1.1M оборота за год) для авто-3%."
+msgstr "⚠️ Auto-descuento inactivo: ningún pedido ha recibido descuento. Alcance el Nivel 1 ($1.1M de facturación anual) para auto-3%."
+
+#, python-format
+msgid "📉 Экономия упала: %(arrow)s%(pct)s%% к %(year)s ($%(cur)s vs $%(prev)s)."
+msgstr "📉 El ahorro cayó: %(arrow)s%(pct)s%% vs %(year)s ($%(cur)s vs $%(prev)s)."
+
+#, python-format
+msgid "📈 Экономия выросла: %(arrow)s%(pct)s%% к %(year)s — продолжайте набирать оборот."
+msgstr "📈 El ahorro creció: %(arrow)s%(pct)s%% vs %(year)s — siga aumentando su facturación."
+
+#, python-format
+msgid "💡 Только %(pct)s%% заказов со скидкой — большой потенциал роста экономии."
+msgstr "💡 Solo %(pct)s%% de los pedidos con descuento — gran potencial de crecimiento de ahorro."
+
+#, python-format
+msgid "💸 Экономия за %(year)s: $%(saved)s (средняя скидка %(disc)s%%)."
+msgstr "💸 Ahorro para %(year)s: $%(saved)s (descuento promedio %(disc)s%%)."

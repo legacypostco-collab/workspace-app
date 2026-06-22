@@ -11415,16 +11415,19 @@ def get_savings(params, user, role):
 
     # Текст-инсайт по приоритету
     if cur["orders_with_discount"] == 0:
-        text_lines = ["⚠️ Auto-discount не активен: ни один заказ не прошёл со скидкой. "
-                       "Достигните Уровня 1 ($1.1M оборота за год) для авто-3%."]
+        text_lines = [_("⚠️ Auto-discount не активен: ни один заказ не прошёл со скидкой. Достигните Уровня 1 ($1.1M оборота за год) для авто-3%.")]
     elif yoy_pct <= -25 and prev["saved"] > 0:
-        text_lines = [f"📉 Экономия упала: {yoy_arrow}{abs(yoy_pct)}% к {prev_year} (${float(cur['saved']):,.0f} vs ${float(prev['saved']):,.0f})."]
+        text_lines = [_("📉 Экономия упала: %(arrow)s%(pct)s%% к %(year)s ($%(cur)s vs $%(prev)s).") % {
+            'arrow': yoy_arrow, 'pct': abs(yoy_pct), 'year': prev_year,
+            'cur': f"{float(cur['saved']):,.0f}", 'prev': f"{float(prev['saved']):,.0f}"}]
     elif yoy_pct >= 25:
-        text_lines = [f"📈 Экономия выросла: {yoy_arrow}{yoy_pct}% к {prev_year} — продолжайте набирать оборот."]
+        text_lines = [_("📈 Экономия выросла: %(arrow)s%(pct)s%% к %(year)s — продолжайте набирать оборот.") % {
+            'arrow': yoy_arrow, 'pct': yoy_pct, 'year': prev_year}]
     elif coverage_pct < 30 and cur["orders"] >= 5:
-        text_lines = [f"💡 Только {coverage_pct}% заказов со скидкой — большой потенциал роста экономии."]
+        text_lines = [_("💡 Только %(pct)s%% заказов со скидкой — большой потенциал роста экономии.") % {'pct': coverage_pct}]
     else:
-        text_lines = [f"💸 Экономия за {this_year}: ${float(cur['saved']):,.0f} (средняя скидка {float(cur['avg_disc_pct']):.2f}%)."]
+        text_lines = [_("💸 Экономия за %(year)s: $%(saved)s (средняя скидка %(disc)s%%).") % {
+            'year': this_year, 'saved': f"{float(cur['saved']):,.0f}", 'disc': f"{float(cur['avg_disc_pct']):.2f}"}]
 
     return ActionResult(
         text="\n".join(text_lines),

@@ -32374,3 +32374,23 @@ msgstr "增加 %(n)s"
 msgid "на %(n)s меньше"
 msgstr "减少 %(n)s"
 
+
+#, python-format
+msgid "⚠️ Auto-discount не активен: ни один заказ не прошёл со скидкой. Достигните Уровня 1 ($1.1M оборота за год) для авто-3%."
+msgstr "⚠️ 自动折扣未激活：没有订单享受到折扣。达到等级1（年营业额$1.1M）可获得自动3%折扣。"
+
+#, python-format
+msgid "📉 Экономия упала: %(arrow)s%(pct)s%% к %(year)s ($%(cur)s vs $%(prev)s)."
+msgstr "📉 节省下降：%(arrow)s%(pct)s%% 相比%(year)s（$%(cur)s vs $%(prev)s）。"
+
+#, python-format
+msgid "📈 Экономия выросла: %(arrow)s%(pct)s%% к %(year)s — продолжайте набирать оборот."
+msgstr "📈 节省增长：%(arrow)s%(pct)s%% 相比%(year)s — 继续扩大营业额。"
+
+#, python-format
+msgid "💡 Только %(pct)s%% заказов со скидкой — большой потенциал роста экономии."
+msgstr "💡 仅%(pct)s%%的订单享有折扣 — 节省增长潜力巨大。"
+
+#, python-format
+msgid "💸 Экономия за %(year)s: $%(saved)s (средняя скидка %(disc)s%%)."
+msgstr "💸 %(year)s节省：$%(saved)s（平均折扣%(disc)s%%）。"
