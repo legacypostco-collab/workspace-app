@@ -4959,7 +4959,17 @@
  "таможня": {"en": "customs", "zh-hans": "海关", "es": "aduana", "ar": "الجمارك"},
  "логистика": {"en": "logistics", "zh-hans": "物流", "es": "logística", "ar": "اللوجستيات"},
  "платежи": {"en": "payments", "zh-hans": "付款", "es": "pagos", "ar": "المدفوعات"},
- "Авто-проверка: unknown · решение системы: не определено": {"en": "Auto-check: unknown · system decision: not determined", "zh-hans": "自动检查：未知 · 系统决定：未确定", "es": "Auto-verificación: desconocido · decisión del sistema: no determinado", "ar": "التحقق التلقائي: غير معروف · قرار النظام: غير محدد"}
+ "Авто-проверка: unknown · решение системы: не определено": {"en": "Auto-check: unknown · system decision: not determined", "zh-hans": "自动检查：未知 · 系统决定：未确定", "es": "Auto-verificación: desconocido · decisión del sistema: no determinado", "ar": "التحقق التلقائي: غير معروف · قرار النظام: غير محدد"},
+ "Тип": {"en": "Type", "zh-hans": "类型", "es": "Tipo", "ar": "النوع"},
+ "Срок": {"en": "Lead", "zh-hans": "交期", "es": "Plazo", "ar": "المدة"},
+ "д": {"en": "d", "zh-hans": "天", "es": "d", "ar": "ي"},
+ "— нет предложений —": {"en": "— no offers —", "zh-hans": "— 无报价 —", "es": "— sin ofertas —", "ar": "— لا عروض —"},
+ "Клик — открыть трекинг отгрузки": {"en": "Click to open shipment tracking", "zh-hans": "点击打开货物追踪", "es": "Clic para abrir seguimiento de envío", "ar": "انقر لفتح تتبع الشحنة"},
+ "клик по строке для сравнения": {"en": "click row to compare", "zh-hans": "点击行进行比较", "es": "clic en fila para comparar", "ar": "انقر في الصف للمقارنة"},
+ "Нет доступных вариантов доставки": {"en": "No shipping options available", "zh-hans": "无可用运输选项", "es": "Sin opciones de envío disponibles", "ar": "لا توجد خيارات شحن متاحة"},
+ "ср. лидтайм": {"en": "avg. lead", "zh-hans": "平均交期", "es": "plazo prom.", "ar": "متوسط المهلة"},
+ "Только мои позиции": {"en": "My items only", "zh-hans": "仅我的商品", "es": "Solo mis artículos", "ar": "عناصري فقط"},
+ "Оставить только позиции из вашего каталога — у остальных очистится цена; нажмите ещё раз, чтобы вернуть": {"en": "Keep only catalog items — others will have price cleared; click again to restore", "zh-hans": "只保留目录中的商品 — 其余商品价格将被清除；再次点击可恢复", "es": "Conservar solo artículos del catálogo — los demás perderán el precio; haga clic de nuevo para restaurar", "ar": "احتفظ فقط بعناصر الكتالوج — ستُمسح أسعار الباقية؛ انقر مرة أخرى للاسترداد"}
 }
   );
 })();

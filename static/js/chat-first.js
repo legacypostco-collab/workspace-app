@@ -3264,7 +3264,7 @@
           // Колонки для продавца: Stock | # | ID | Name | Brand | Cond | Цена | Кол-во | Вес | Сумма
           const condLabel = (c) => {
             if (c === 'oem') return '<span class="spec-cond-oem">OEM</span>';
-            if (c === 'analogue') return '<span class="spec-cond-an">Аналог</span>';
+            if (c === 'analogue') return `<span class="spec-cond-an">${tr('Аналог')}</span>`;
             return esc(c || '');
           };
           const items = `<div class="spec-tbl-wrap"><table class="spec-tbl"><thead><tr>
@@ -4038,18 +4038,18 @@
           <div class="so-head">
             <span class="so-mode">${esc(r.mode_label)}</span>
             <span class="so-inc">${esc(r.incoterm)}</span>
-            ${r.selected ? '<span class="so-active-tag">текущий</span>' : ''}
+            ${r.selected ? `<span class="so-active-tag">${tr('текущий')}</span>` : ''}
           </div>
           <div class="so-desc">${esc(r.incoterm_desc)}</div>
           <div class="so-meta">
-            <span class="so-ship">Доставка: ${fmtMoney(r.shipping, d.currency || 'USD')}${r.days ? ` · ~${r.days}д` : ''}</span>
+            <span class="so-ship">${tr('Доставка')}: ${fmtMoney(r.shipping, d.currency || 'USD')}${r.days ? ` · ~${r.days}${tr('д')}` : ''}</span>
             <span class="so-landed">Landed: <b>${fmtMoney(r.landed, d.currency || 'USD')}</b></span>
           </div>
         </div>`;
       }).join('');
       return `<div class="card so-card">
         <div class="card-title">${esc(d.title || tr('card.shipping'))}</div>
-        <div class="so-rows">${rows || '<div class="cat-empty">Нет доступных вариантов доставки</div>'}</div>
+        <div class="so-rows">${rows || `<div class="cat-empty">${tr('Нет доступных вариантов доставки')}</div>`}</div>
       </div>`;
     },
     spec_results(d) {
@@ -4057,7 +4057,7 @@
       const stkLabel = (s) => ({in_stock:tr('stock.in_stock'), backorder:'Backorder', not_found:'—'})[s] || s;
       const condLabel = (c) => {
         if (c === 'oem') return '<span class="spec-cond-oem">OEM</span>';
-        if (c === 'analogue') return '<span class="spec-cond-an">Аналог</span>';
+        if (c === 'analogue') return `<span class="spec-cond-an">${tr('Аналог')}</span>`;
         return esc(c || '');
       };
       // Для buyer бэк не присылает supplier_status_badge — скрываем колонку
@@ -4075,22 +4075,33 @@
         if (it.status === 'not_found' && !it.id) {
           return `<tr><td><span class="spec-stk no"><span class="spec-stk-dot"></span>—</span></td>
             <td class="spec-row-num">${idx+1}</td>
-            <td colspan="5" class="spec-empty-row" style="text-align:left;">— нет предложений —</td>
+            <td colspan="5" class="spec-empty-row" style="text-align:left;">${tr('— нет предложений —')}</td>
             <td>${esc(it.qty || '')}</td><td></td><td></td><td></td></tr>`;
         }
         // Доставка: текстовые лейблы, не эмодзи. Клик → таймлайн отгрузки
         // (track_shipment) — оператор сразу видит где груз и что дальше.
         let shipCell = '—';
         if (it.ship_cost || it.ship_mode || it.ship_days) {
-          const modeLbl = {sea: 'море', air: 'авиа', auto: 'авто'}[it.ship_mode] || '';
+          const _lang = (window.getCurrentLanguage && window.getCurrentLanguage()) || 'ru';
+          const _shipModes = {
+            ru: {sea:'море',air:'авиа',auto:'авто'},
+            en: {sea:'sea', air:'air', auto:'land'},
+            es: {sea:'mar', air:'aire',auto:'tierra'},
+            zh: {sea:'海运',air:'空运',auto:'陆运'},
+            'zh-hans': {sea:'海运',air:'空运',auto:'陆运'},
+            ar: {sea:'بحر',air:'جوي', auto:'بري'},
+          };
+          const _dayLbl = {ru:'д',en:'d',es:'d',zh:'天','zh-hans':'天',ar:'ي'}[_lang] || 'd';
+          const _modes = _shipModes[_lang] || _shipModes.ru;
+          const modeLbl = _modes[it.ship_mode] || '';
           const cost = it.ship_cost ? ` ${fmtMoney(it.ship_cost, 'USD')}` : '';
-          const days = it.ship_days ? ` · ~${it.ship_days}д` : '';
+          const days = it.ship_days ? ` · ~${it.ship_days}${_dayLbl}` : '';
           const inner = `${modeLbl}${cost}${days}`.trim() || '—';
           if (it.order_id) {
             const p = esc(JSON.stringify({order_id: it.order_id}));
             shipCell = `<button type="button" class="ship-link"
-              data-action="track_shipment" data-params='${p}' data-label="Открыть таймлайн"
-              title="Клик — открыть трекинг отгрузки">${inner}</button>`;
+              data-action="track_shipment" data-params='${p}' data-label="${tr('Открыть таймлайн')}"
+              title="${tr('Клик — открыть трекинг отгрузки')}">${inner}</button>`;
           } else {
             shipCell = inner;
           }
@@ -4104,10 +4115,10 @@
           if (it.supplier_id) {
             const pAttr = esc(JSON.stringify({seller_id: it.supplier_id, seller_username: it.supplier_username || ''}));
             supplierCell = `<button type="button" class="sp-badge sp-badge-clickable ${statusCls}"
-              data-action="contact_supplier" data-params='${pAttr}' data-label="Связаться с поставщиком"
-              title="Клик — связаться с поставщиком ${esc(it.supplier_username || '')}">${badgeInner}</button>`;
+              data-action="contact_supplier" data-params='${pAttr}' data-label="${tr('Связаться с поставщиком')}"
+              title="${tr('Связаться с поставщиком')}: ${esc(it.supplier_username || '')}">${badgeInner}</button>`;
           } else {
-            supplierCell = `<span class="sp-badge ${statusCls}" title="Рейтинг ${it.supplier_rating}/100${it.alt_offers > 0 ? ' · клик по строке для сравнения' : ''}">${badgeInner}</span>`;
+            supplierCell = `<span class="sp-badge ${statusCls}" title="${tr('Рейтинг')} ${it.supplier_rating}/100${it.alt_offers > 0 ? ' · ' + tr('клик по строке для сравнения') : ''}">${badgeInner}</span>`;
           }
         } else {
           supplierCell = '—';
@@ -4275,8 +4286,8 @@
               ? '<col style="width:12%"><col style="width:3%"><col style="width:12%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:5%"><col style="width:8%"><col style="width:13%"><col style="width:12%">'
               : '<col style="width:12%"><col style="width:3%"><col style="width:13%"><col style="width:13%"><col style="width:17%"><col style="width:11%"><col style="width:6%"><col style="width:9%"><col style="width:16%">')}</colgroup>
             <thead><tr>${qfMode
-              ? '<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Тип</th><th>Price</th><th>Qty</th><th>Срок</th>'
-              : `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Price</th><th>Qty</th><th>Weight</th>${showSupplierCol ? '<th>Поставщик</th>' : ''}<th>${shipIcon} Доставка${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>`}
+              ? `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>${tr('Тип')}</th><th>Price</th><th>Qty</th><th>${tr('Срок')}</th>`
+              : `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Price</th><th>Qty</th><th>Weight</th>${showSupplierCol ? `<th>${tr('Поставщик')}</th>` : ''}<th>${shipIcon} ${tr('Доставка')}${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>`}
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -4286,7 +4297,7 @@
         <div class="spec-foot">
           <div class="spec-foot-info">${
             (d.editable_price && (d.items || []).some(it => it.in_catalog) && (d.items || []).some(it => !it.in_catalog))
-              ? `<button class="qf-keep-mine" type="button" title="Оставить только позиции из вашего каталога — у остальных очистится цена; нажмите ещё раз, чтобы вернуть">📦 Только мои позиции</button>`
+              ? `<button class="qf-keep-mine" type="button" title="${tr('Оставить только позиции из вашего каталога — у остальных очистится цена; нажмите ещё раз, чтобы вернуть')}">📦 ${tr('Только мои позиции')}</button>`
               : (esc(d.foot_info || '') + (d.shipping_matrix ? (' · ' + tr('доставка ↓')) : ''))
           }</div>
           <div class="spec-foot-total"${d.qf ? ' data-total' : ''}>${d.total != null ? fmtMoney(d.total, d.currency || 'USD') : ''}</div>
@@ -4305,7 +4316,7 @@
           <div class="stop-rank ${rankClass}">${idx+1}</div>
           <div class="stop-info">
             <div><span class="stop-name">${esc(s.name)}</span>${stars}</div>
-            <div class="stop-meta">${esc(s.coverage || '')}${s.lead_time ? ' · ср. лидтайм ' + esc(s.lead_time) : ''}${s.note ? ' · ' + esc(s.note) : ''}</div>
+            <div class="stop-meta">${esc(s.coverage || '')}${s.lead_time ? ' · ' + tr('ср. лидтайм') + ' ' + esc(s.lead_time) : ''}${s.note ? ' · ' + esc(s.note) : ''}</div>
           </div>
           <div>
             <div class="stop-price-label">${esc(s.price_label || 'total')}</div>
