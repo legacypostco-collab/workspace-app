@@ -186,7 +186,7 @@ class AssistantConsumer(AsyncWebsocketConsumer):
                 except Exception:
                     lang = "ru"
             with translation.override(lang):
-                return list(process_query_stream(self.conversation, message))
+                return list(process_query_stream(self.conversation, message, ui_lang=lang))
         # Convert sync generator → async via database_sync_to_async pulls
         gen = await database_sync_to_async(_run)()
         for ev in gen:

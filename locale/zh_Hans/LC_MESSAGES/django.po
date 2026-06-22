@@ -34017,3 +34017,9 @@ msgstr "拖动调整宽度"
 
 msgid "Просмотр кабинета <strong>%(username)s</strong> — изменения сохраняются от лица поставщика. Действуйте осторожно."
 msgstr "正在查看 <strong>%(username)s</strong> 的账户 — 更改以供应商身份保存。请谨慎操作。"
+
+msgid "Подключено"
+msgstr "已连接"
+
+msgid "Доступно"
+msgstr "可用"

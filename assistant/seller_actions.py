@@ -4360,7 +4360,7 @@ def seller_integrations(params, user, role):
     rows = [{
         "title": i["name"],
         "subtitle": i["desc"],
-        "badge": ("Подключено" if i["status"] == "active" else "Доступно"),
+        "badge": (_("Подключено") if i["status"] == "active" else _("Доступно")),
     } for i in integrations]
 
     return ActionResult(

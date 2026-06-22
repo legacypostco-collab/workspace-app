@@ -153,7 +153,8 @@ class ChatView(APIView):
             )
 
         try:
-            result = process_query_sync(conv, message, request.user)
+            result = process_query_sync(conv, message, request.user,
+                                       ui_lang=getattr(request, "LANGUAGE_CODE", "ru"))
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

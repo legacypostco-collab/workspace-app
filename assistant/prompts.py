@@ -210,7 +210,16 @@ BUYER_PRIVACY_RULES = """
 """
 
 
-def get_system_prompt(role: str, context_chunks=None, available_actions: list = None) -> str:
+_LANG_NAMES = {
+    "ru":      "Russian (Русский)",
+    "en":      "English",
+    "zh-hans": "Chinese Simplified (中文)",
+    "es":      "Spanish (Español)",
+    "ar":      "Arabic (العربية)",
+}
+
+def get_system_prompt(role: str, context_chunks=None, available_actions: list = None,
+                      ui_lang: str = "ru") -> str:
     """Build full system prompt with role + RAG context + action whitelist."""
     prompt = BASE_SYSTEM_PROMPT
     # Privacy rules для buyer — ДО role prompt, чтобы LLM видел их первыми.
@@ -218,6 +227,17 @@ def get_system_prompt(role: str, context_chunks=None, available_actions: list = 
         prompt += "\n\n" + BUYER_PRIVACY_RULES
     role_prompt = ROLE_PROMPTS.get(role, ROLE_PROMPTS["buyer"])
     prompt += "\n\n" + role_prompt
+
+    if ui_lang and ui_lang != "ru":
+        lang_name = _LANG_NAMES.get(ui_lang, ui_lang)
+        prompt += (
+            f"\n\n═══ INTERFACE LANGUAGE ═══\n"
+            f"The user has selected **{lang_name}** as their interface language. "
+            f"You MUST respond exclusively in {lang_name}. "
+            f"Do not respond in Russian even if the user writes in Russian. "
+            f"All text you produce — chat messages, card titles, action labels, "
+            f"suggestions — must be in {lang_name}."
+        )
 
     if available_actions:
         prompt += f"\n\nДЛЯ ВАШЕЙ РОЛИ ДОСТУПНЫ: {', '.join(available_actions)}"

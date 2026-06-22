@@ -34017,3 +34017,9 @@ msgstr "Drag to resize"
 
 msgid "Просмотр кабинета <strong>%(username)s</strong> — изменения сохраняются от лица поставщика. Действуйте осторожно."
 msgstr "Viewing cabinet of <strong>%(username)s</strong> — changes are saved on behalf of the supplier. Proceed with caution."
+
+msgid "Подключено"
+msgstr "Connected"
+
+msgid "Доступно"
+msgstr "Available"

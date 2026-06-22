@@ -424,7 +424,7 @@ def _answer_cache_key(user_id, role, message: str) -> str:
     return f"ai_answer:{user_id}:{role}:{h}"
 
 
-def process_query_sync(conversation: Conversation, user_message: str, user=None):
+def process_query_sync(conversation: Conversation, user_message: str, user=None, ui_lang: str = "ru"):
     """Sync RAG pipeline. Returns dict with text/cards/actions/refs.
 
     Hybrid execution:
@@ -527,7 +527,7 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
     context_chunks = _search_context(user_message, conversation.role, language)
     context_refs = _build_context_refs(context_chunks)
     available = action_executor.list_actions(conversation.role)
-    system_prompt = get_system_prompt(conversation.role, context_chunks, available)
+    system_prompt = get_system_prompt(conversation.role, context_chunks, available, ui_lang=ui_lang)
     history = _get_history(conversation)
     if history and history[-1]["role"] == "user" and history[-1]["content"] == user_message:
         history.pop()
@@ -797,7 +797,7 @@ def _stub_with_action(user_message: str, chunks, role: str, user) -> str:
     return _stub_response(user_message, chunks)
 
 
-def process_query_stream(conversation: Conversation, user_message: str):
+def process_query_stream(conversation: Conversation, user_message: str, ui_lang: str = "ru"):
     """Streaming RAG pipeline. Yields {"type": "...", "data": ...} dicts.
 
     Events:
@@ -873,7 +873,7 @@ def process_query_stream(conversation: Conversation, user_message: str):
     context_refs = _build_context_refs(context_chunks)
     yield {"type": "context", "refs": context_refs}
 
-    system_prompt = get_system_prompt(conversation.role, context_chunks)
+    system_prompt = get_system_prompt(conversation.role, context_chunks, ui_lang=ui_lang)
     history = _get_history(conversation)
     if history and history[-1]["role"] == "user" and history[-1]["content"] == user_message:
         history.pop()

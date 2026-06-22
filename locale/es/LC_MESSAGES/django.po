@@ -33053,3 +33053,9 @@ msgstr "Arrastrar para redimensionar"
 
 msgid "Просмотр кабинета <strong>%(username)s</strong> — изменения сохраняются от лица поставщика. Действуйте осторожно."
 msgstr "Viendo el panel de <strong>%(username)s</strong> — los cambios se guardan a nombre del proveedor. Proceda con precaución."
+
+msgid "Подключено"
+msgstr "Conectado"
+
+msgid "Доступно"
+msgstr "Disponible"
