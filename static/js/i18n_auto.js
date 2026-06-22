@@ -5020,6 +5020,13 @@
         es: '$1 pedidos en curso. Sin problemas urgentes.',
         ar: '$1 طلبات قيد التنفيذ. لا توجد مشكلات عاجلة.',
       },
+      {
+        ru: /^Авто-проверка: (.+) · решение системы: (.+)$/,
+        en: 'Auto-check: $1 · system decision: $2',
+        'zh-hans': '自动检查：$1 · 系统决定：$2',
+        es: 'Verificación automática: $1 · decisión del sistema: $2',
+        ar: 'التحقق التلقائي: $1 · قرار النظام: $2',
+      },
     ]);
     if (typeof window.applyI18n === 'function') window.applyI18n();
   }

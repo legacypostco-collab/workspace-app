@@ -31395,3 +31395,8 @@ msgstr "✓ MANUAL-RFQ #%(p0)s enviado.\n⏱ Plazo de recopilación KP: %(p1)s (
 msgid ".\nКотировки будут приходить — следите за уведомлениями."
 msgstr ".\nLas cotizaciones llegarán — esté atento a las notificaciones."
 
+
+#, python-format
+msgid "🛡 KYB · %(p0)s\nАвто-проверка: %(p1)s · решение системы: %(p2)s"
+msgstr "🛡 KYB · %(p0)s\nVerificación automática: %(p1)s · decisión del sistema: %(p2)s"
+

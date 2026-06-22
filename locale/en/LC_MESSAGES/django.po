@@ -32360,3 +32360,8 @@ msgstr "✓ MANUAL-RFQ #%(p0)s dispatched.\n⏱ KP deadline: %(p1)s (48 hours).\
 msgid ".\nКотировки будут приходить — следите за уведомлениями."
 msgstr ".\nQuotes will arrive — watch for notifications."
 
+
+#, python-format
+msgid "🛡 KYB · %(p0)s\nАвто-проверка: %(p1)s · решение системы: %(p2)s"
+msgstr "🛡 KYB · %(p0)s\nAuto-check: %(p1)s · system decision: %(p2)s"
+
