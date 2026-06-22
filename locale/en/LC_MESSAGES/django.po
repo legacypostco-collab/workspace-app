@@ -32409,3 +32409,15 @@ msgstr "48 hours"
 
 msgid "оператор рассылает поставщикам"
 msgstr "operator reaches out to suppliers"
+
+#, python-format
+msgid "просрочка · +%(d)s дн"
+msgstr "overdue · +%(d)s d"
+
+#, python-format
+msgid "скоро дедлайн · %(d)s дн"
+msgstr "deadline soon · %(d)s d"
+
+#, python-format
+msgid "в срок · ещё %(d)s дн"
+msgstr "on time · %(d)s d left"

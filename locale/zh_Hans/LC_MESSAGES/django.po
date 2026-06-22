@@ -32409,3 +32409,15 @@ msgstr "48小时"
 
 msgid "оператор рассылает поставщикам"
 msgstr "操作员联系供应商"
+
+#, python-format
+msgid "просрочка · +%(d)s дн"
+msgstr "逾期 · +%(d)s天"
+
+#, python-format
+msgid "скоро дедлайн · %(d)s дн"
+msgstr "即将截止 · %(d)s天"
+
+#, python-format
+msgid "в срок · ещё %(d)s дн"
+msgstr "按时 · 还剩%(d)s天"

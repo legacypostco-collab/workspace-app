@@ -31447,3 +31447,15 @@ msgstr "٤٨ ساعة"
 
 msgid "оператор рассылает поставщикам"
 msgstr "المشغل يتواصل مع الموردين"
+
+#, python-format
+msgid "просрочка · +%(d)s дн"
+msgstr "متأخر · +%(d)s ي"
+
+#, python-format
+msgid "скоро дедлайн · %(d)s дн"
+msgstr "الموعد قريب · %(d)s ي"
+
+#, python-format
+msgid "в срок · ещё %(d)s дн"
+msgstr "في الموعد · %(d)s ي متبقية"

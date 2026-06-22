@@ -31444,3 +31444,15 @@ msgstr "48 horas"
 
 msgid "оператор рассылает поставщикам"
 msgstr "el operador contacta proveedores"
+
+#, python-format
+msgid "просрочка · +%(d)s дн"
+msgstr "vencido · +%(d)s d"
+
+#, python-format
+msgid "скоро дедлайн · %(d)s дн"
+msgstr "fecha límite pronto · %(d)s d"
+
+#, python-format
+msgid "в срок · ещё %(d)s дн"
+msgstr "a tiempo · quedan %(d)s d"

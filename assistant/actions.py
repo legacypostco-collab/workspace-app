@@ -3523,11 +3523,11 @@ def track_shipment(params, user, role):
     _sla = _STAGE_SLA.get(o.status, 0)
     if _sla:
         if _days_here > _sla:
-            _sla_label, _sla_tone = f"просрочка · +{_days_here - _sla} дн", "bad"
+            _sla_label, _sla_tone = _("просрочка · +%(d)s дн") % {'d': _days_here - _sla}, "bad"
         elif _days_here >= _sla * 0.8:
-            _sla_label, _sla_tone = f"скоро дедлайн · {_sla - _days_here} дн", "warn"
+            _sla_label, _sla_tone = _("скоро дедлайн · %(d)s дн") % {'d': _sla - _days_here}, "warn"
         else:
-            _sla_label, _sla_tone = f"в срок · ещё {_sla - _days_here} дн", "ok"
+            _sla_label, _sla_tone = _("в срок · ещё %(d)s дн") % {'d': _sla - _days_here}, "ok"
     else:
         _sla_label, _sla_tone = "", "info"
     # Прогресс оплаты

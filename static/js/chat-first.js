@@ -3832,14 +3832,14 @@
         </div>`;
       }).join('');
       return `<div class="card st-card">
-        <div class="card-title st-card-title">${esc(d.title || 'По поставщикам')}</div>
+        <div class="card-title st-card-title">${esc(d.title || tr('По поставщикам'))}</div>
         <div class="st-blocks">${blocks}</div>
       </div>`;
     },
     shipment(d) {
       // Два ряда карточек: сверху «план», снизу «факт» (разделены отступом).
       const planRow = (d.stages || []).map(s => {
-        const plan = (typeof s.days === 'number' && s.days > 0) ? `план ${s.days}д` : '—';
+        const plan = (typeof s.days === 'number' && s.days > 0) ? `${tr('план')} ${s.days}${tr('д')}` : '—';
         return `<div class="stage${s.done ? ' done' : ''}"><span class="stage-name">${esc(s.label)}</span><span class="stage-plan">${plan}</span></div>`;
       }).join('');
       const factRow = (d.stages || []).map(s => {
@@ -3847,8 +3847,8 @@
         if (s.actual != null) {
           const over = (typeof s.days === 'number') && s.actual > s.days;
           cls = over ? 'stage-fact-over' : (s.state === 'current' ? 'stage-fact-cur' : 'stage-fact-ok');
-          txt = (s.state === 'current' ? 'идёт ' : 'факт ') + s.actual + 'д';
-        } else { cls = 'stage-fact-none'; txt = 'факт —'; }
+          txt = (s.state === 'current' ? tr('идёт') + ' ' : tr('факт') + ' ') + s.actual + tr('д');
+        } else { cls = 'stage-fact-none'; txt = tr('факт') + ' —'; }
         return `<div class="stage stage-fact-cell"><span class="stage-fact ${cls}">${esc(txt)}</span></div>`;
       }).join('');
       const stagesBlock = (d.stages && d.stages.length)
@@ -3857,32 +3857,32 @@
       // Метаблок «важной информации» — деньги, оплата, ETA, кто держит мяч,
       // перевозчик/трек-номер (последние два — только оператор).
       const meta = [];
-      if (d.total) meta.push({lbl:'Сумма', val:`$${fmt(d.total)}`});
-      if (d.payment_status_label) meta.push({lbl:'Оплата', val:esc(d.payment_status_label)});
+      if (d.total) meta.push({lbl:tr('Сумма'), val:`$${fmt(d.total)}`});
+      if (d.payment_status_label) meta.push({lbl:tr('Оплата'), val:esc(d.payment_status_label)});
       if (d.positions) {
-        const wPart = d.weight_kg ? ` · ${d.weight_kg} кг` : '';
-        meta.push({lbl:'Состав', val:`${d.positions} поз · ${d.qty_total||0} шт${wPart}`});
+        const wPart = d.weight_kg ? ` · ${d.weight_kg} ${tr('кг')}` : '';
+        meta.push({lbl:tr('Состав'), val:`${d.positions} ${tr('поз')} · ${d.qty_total||0} ${tr('шт')}${wPart}`});
       }
       if (typeof d.days_in_stage === 'number') {
-        meta.push({lbl:'В текущей стадии', val:`${d.days_in_stage} дн`});
+        meta.push({lbl:tr('В текущей стадии'), val:`${d.days_in_stage} ${tr('дн')}`});
       }
       if (d.deadline) {
-        const planTxt = d.total_planned_days ? ` · план ${d.total_planned_days} дн` : '';
-        meta.push({lbl:'Крайняя дата', val:`${esc(d.deadline)}${planTxt}`});
+        const planTxt = d.total_planned_days ? ` · ${tr('план')} ${d.total_planned_days} ${tr('дн')}` : '';
+        meta.push({lbl:tr('Крайняя дата'), val:`${esc(d.deadline)}${planTxt}`});
       }
       if (d.sla_label) {
-        meta.push({lbl:'Срок этапа', val:esc(d.sla_label)});
+        meta.push({lbl:tr('Срок этапа'), val:esc(d.sla_label)});
       }
       if (d.eta) meta.push({lbl:'ETA', val:esc(d.eta)});
-      if (d.carrier) meta.push({lbl:'Перевозчик', val:esc(d.carrier)});
-      if (d.tracking_number) meta.push({lbl:'Трек', val:esc(d.tracking_number)});
+      if (d.carrier) meta.push({lbl:tr('Перевозчик'), val:esc(d.carrier)});
+      if (d.tracking_number) meta.push({lbl:tr('Трек'), val:esc(d.tracking_number)});
       const metaHtml = meta.length
         ? `<div class="spec-meta">${meta.map(m =>
             `<div class="spec-meta-item"><div class="spec-meta-lbl">${m.lbl}</div><div class="spec-meta-val">${m.val}</div></div>`
           ).join('')}</div>` : '';
       const actorHtml = d.next_actor && d.next_actor !== '—' ? `
         <div class="ship-next">
-          <span class="ship-next-lbl">Дальше:</span>
+          <span class="ship-next-lbl">${tr('Дальше:')}</span>
           <b>${esc(d.next_actor)}</b> ${esc(d.next_event || '')}
         </div>` : '';
       const partsRows = (d.parts || []).map(p =>
@@ -3893,7 +3893,7 @@
         </div>`
       ).join('');
       const partsHtml = (d.parts && d.parts.length >= 2)
-        ? `<div class="sh-parts-head">📦 По партиям / поставщикам — ${d.parts.length}</div>
+        ? `<div class="sh-parts-head">📦 ${tr('По партиям / поставщикам')} — ${d.parts.length}</div>
            <div class="sh-parts">${partsRows}</div>` : '';
       return `<div class="card">
         <div class="card-row">

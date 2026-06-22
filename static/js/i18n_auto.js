@@ -4994,7 +4994,21 @@
  "позиций": {"en": "items", "zh-hans": "项", "es": "artículos", "ar": "عناصر"},
  "обновляется при редактировании цен": {"en": "updates when editing prices", "zh-hans": "编辑价格时更新", "es": "se actualiza al editar precios", "ar": "يتحدث عند تعديل الأسعار"},
  "рынок": {"en": "market", "zh-hans": "市场", "es": "mercado", "ar": "سوق"},
- "Ориентир рыночной цены по этому OEM из каталога": {"en": "Market price reference for this OEM from catalog", "zh-hans": "此OEM件的目录市场参考价", "es": "Precio de referencia de mercado para este OEM del catálogo", "ar": "سعر السوق المرجعي لهذا OEM من الكتالوج"}
+ "Ориентир рыночной цены по этому OEM из каталога": {"en": "Market price reference for this OEM from catalog", "zh-hans": "此OEM件的目录市场参考价", "es": "Precio de referencia de mercado para este OEM del catálogo", "ar": "سعر السوق المرجعي لهذا OEM من الكتالوج"},
+ "Оплата": {"en": "Payment", "zh-hans": "付款", "es": "Pago", "ar": "الدفع"},
+ "Состав": {"en": "Composition", "zh-hans": "构成", "es": "Composición", "ar": "التركيب"},
+ "В текущей стадии": {"en": "In current stage", "zh-hans": "当前阶段", "es": "Etapa actual", "ar": "المرحلة الحالية"},
+ "Крайняя дата": {"en": "Deadline", "zh-hans": "截止日期", "es": "Fecha límite", "ar": "الموعد النهائي"},
+ "Срок этапа": {"en": "Stage deadline", "zh-hans": "阶段期限", "es": "Plazo de etapa", "ar": "أجل المرحلة"},
+ "Перевозчик": {"en": "Carrier", "zh-hans": "承运商", "es": "Transportista", "ar": "الناقل"},
+ "Трек": {"en": "Tracking", "zh-hans": "跟踪号", "es": "Seguimiento", "ar": "التتبع"},
+ "план": {"en": "plan", "zh-hans": "计划", "es": "plan", "ar": "خطة"},
+ "д": {"en": "d", "zh-hans": "天", "es": "d", "ar": "ي"},
+ "идёт": {"en": "running", "zh-hans": "进行中", "es": "en curso", "ar": "جاري"},
+ "факт": {"en": "actual", "zh-hans": "实际", "es": "real", "ar": "فعلي"},
+ "шт": {"en": "pcs", "zh-hans": "件", "es": "pcs", "ar": "قطعة"},
+ "кг": {"en": "kg", "zh-hans": "千克", "es": "kg", "ar": "كغ"},
+ "По партиям / поставщикам": {"en": "By batches / suppliers", "zh-hans": "按批次/供应商", "es": "Por lotes / proveedores", "ar": "بالدفعات / الموردين"}
 }
   );
 
