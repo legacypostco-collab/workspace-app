@@ -31383,3 +31383,15 @@ msgstr "no determinado"
 
 msgid "unknown"
 msgstr "desconocido"
+
+#, python-format
+msgid "Оператор — дирижёр платформы.\nВ работе: %(n)s заказов на $%(usd)s."
+msgstr "Operador — director de la plataforma.\nEn curso: %(n)s pedidos por $%(usd)s."
+
+#, python-format
+msgid "✓ MANUAL-RFQ #%(p0)s разослан.\n⏱ Дедлайн сбора КП: %(p1)s (48 часов).\nПосле сбора — op_compose_kp чтобы сформировать инвойс клиенту.\n\n"
+msgstr "✓ MANUAL-RFQ #%(p0)s enviado.\n⏱ Plazo de recopilación KP: %(p1)s (48 horas).\nTras la recopilación — op_compose_kp para generar factura al cliente.\n\n"
+
+msgid ".\nКотировки будут приходить — следите за уведомлениями."
+msgstr ".\nLas cotizaciones llegarán — esté atento a las notificaciones."
+

@@ -32348,3 +32348,15 @@ msgstr "not determined"
 
 msgid "unknown"
 msgstr "unknown"
+
+#, python-format
+msgid "Оператор — дирижёр платформы.\nВ работе: %(n)s заказов на $%(usd)s."
+msgstr "Operator — platform conductor.\nIn progress: %(n)s orders totaling $%(usd)s."
+
+#, python-format
+msgid "✓ MANUAL-RFQ #%(p0)s разослан.\n⏱ Дедлайн сбора КП: %(p1)s (48 часов).\nПосле сбора — op_compose_kp чтобы сформировать инвойс клиенту.\n\n"
+msgstr "✓ MANUAL-RFQ #%(p0)s dispatched.\n⏱ KP deadline: %(p1)s (48 hours).\nAfter collection — op_compose_kp to generate client invoice.\n\n"
+
+msgid ".\nКотировки будут приходить — следите за уведомлениями."
+msgstr ".\nQuotes will arrive — watch for notifications."
+

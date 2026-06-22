@@ -32348,3 +32348,15 @@ msgstr "未确定"
 
 msgid "unknown"
 msgstr "未知"
+
+#, python-format
+msgid "Оператор — дирижёр платформы.\nВ работе: %(n)s заказов на $%(usd)s."
+msgstr "运营商——平台指挥官。\n进行中：%(n)s 笔订单，总计 $%(usd)s。"
+
+#, python-format
+msgid "✓ MANUAL-RFQ #%(p0)s разослан.\n⏱ Дедлайн сбора КП: %(p1)s (48 часов).\nПосле сбора — op_compose_kp чтобы сформировать инвойс клиенту.\n\n"
+msgstr "✓ MANUAL-RFQ #%(p0)s 已发送。\n⏱ 报价收集截止：%(p1)s（48小时）。\n收集后 — 使用 op_compose_kp 为客户生成发票。\n\n"
+
+msgid ".\nКотировки будут приходить — следите за уведомлениями."
+msgstr "。\n报价将陆续到达——请关注通知。"
+
