@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-19 14:32+0300\n"
+"POT-Creation-Date: 2026-06-22 05:37+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -684,11 +684,11 @@ msgstr "%(found_n)s of %(total)s priced"
 msgid " · доставка $%(ship)s"
 msgstr " · shipping $%(ship)s"
 
-#: assistant/actions.py:2109 assistant/actions.py:8454 assistant/actions.py:8620
+#: assistant/actions.py:2109 assistant/actions.py:8454 assistant/actions.py:8536 assistant/actions.py:8620 assistant/actions.py:8702
 msgid "🚢 Морем"
 msgstr "🚢 By sea"
 
-#: assistant/actions.py:2109 assistant/actions.py:8454 assistant/actions.py:8620 assistant/operator_actions.py:1190
+#: assistant/actions.py:2109 assistant/actions.py:5532 assistant/actions.py:8454 assistant/actions.py:8536 assistant/actions.py:8620 assistant/actions.py:8702 assistant/operator_actions.py:1190
 msgid "✈️ Авиа"
 msgstr "✈️ Air"
 
@@ -1527,6 +1527,11 @@ msgstr "💬 Reply"
 msgid "Новые RFQ — ответить ценой"
 msgstr "New RFQs — reply with a price"
 
+#: assistant/actions.py:4001
+#| msgid "История всех ваших заказов с трекингом доставки."
+msgid "Сейчас нет заказов, требующих вашего действия."
+msgstr "No orders need your action right now."
+
 #: assistant/actions.py:4002 assistant/actions.py:4143
 msgid "Нет заказов в пути."
 msgstr "No orders in transit."
@@ -1572,6 +1577,11 @@ msgid "всё под контролем"
 msgstr "everything under control"
 
 #: assistant/actions.py:4020 assistant/actions.py:4155
+#| msgid "Требуют действия"
+msgid "требуют действия"
+msgstr "need action"
+
+#: assistant/actions.py:4020 assistant/actions.py:4155
 msgid "в пути"
 msgstr "in transit"
 
@@ -1611,6 +1621,10 @@ msgstr ""
 msgid "… ещё %(rws)s"
 msgstr "… %(rws)s more"
 
+#: assistant/actions.py:4142
+msgid "Сейчас нет сделок, требующих оплаты или приёмки."
+msgstr "No deals need payment or acceptance right now."
+
 #: assistant/actions.py:4147
 #, python-format
 msgid "📋 Мои сделки — %(hint)s"
@@ -1628,7 +1642,7 @@ msgstr "📝 Create a request"
 msgid "🚢 В пути"
 msgstr "🚢 In transit"
 
-#: assistant/actions.py:4283 assistant/actions.py:4292 templates/buyer/analytics/list.html:167 templates/buyer/analytics/list.html:190 templates/buyer/analytics/list.html:212 templates/buyer/analytics/list.html:234 templates/buyer/analytics/list.html:256 templates/buyer/analytics/list.html:278 templates/buyer/rfq/list.html:174 templates/buyer/rfq/list.html:183 templates/buyer/rfq/list.html:192 templates/buyer/rfq/list.html:201 templates/buyer/rfq/list.html:210 templates/buyer/rfq/list.html:240 templates/buyer/rfq/list.html:249 templates/buyer/rfq/list.html:258 templates/buyer/rfq/list.html:267 templates/buyer/rfq/list.html:276 templates/buyer/rfq/list.html:285 templates/buyer/rfq/list.html:294 templates/seller/finance/list.html:455 templates/seller/products/detail.html:158 templates/seller/reports/list.html:291 templates/seller/reports/list.html:313 templates/seller/reports/list.html:359 templates/seller/reports/list.html:392 templates/seller/reports/list.html:409 templates/seller/reports/list.html:426 templates/seller/reports/list.html:494 templates/seller/reports/list.html:511 templates/seller/reports/list.html:545 templates/seller/reports/list.html:578 templates/seller/reports/list.html:595 templates/seller/reports/list.html:632
+#: assistant/actions.py:4283 assistant/actions.py:4292 assistant/seller_actions.py:1560 templates/buyer/analytics/list.html:167 templates/buyer/analytics/list.html:190 templates/buyer/analytics/list.html:212 templates/buyer/analytics/list.html:234 templates/buyer/analytics/list.html:256 templates/buyer/analytics/list.html:278 templates/buyer/rfq/list.html:174 templates/buyer/rfq/list.html:183 templates/buyer/rfq/list.html:192 templates/buyer/rfq/list.html:201 templates/buyer/rfq/list.html:210 templates/buyer/rfq/list.html:240 templates/buyer/rfq/list.html:249 templates/buyer/rfq/list.html:258 templates/buyer/rfq/list.html:267 templates/buyer/rfq/list.html:276 templates/buyer/rfq/list.html:285 templates/buyer/rfq/list.html:294 templates/seller/finance/list.html:455 templates/seller/products/detail.html:158 templates/seller/reports/list.html:291 templates/seller/reports/list.html:313 templates/seller/reports/list.html:359 templates/seller/reports/list.html:392 templates/seller/reports/list.html:409 templates/seller/reports/list.html:426 templates/seller/reports/list.html:494 templates/seller/reports/list.html:511 templates/seller/reports/list.html:545 templates/seller/reports/list.html:578 templates/seller/reports/list.html:595 templates/seller/reports/list.html:632
 msgid "Открыть"
 msgstr "Open"
 
@@ -2325,6 +2339,10 @@ msgstr "No data on the item's weight/dimensions"
 msgid "Тариф для маршрута → %(dest)s не настроен"
 msgstr "Rate for route → %(dest)s is not configured"
 
+#: assistant/actions.py:5532 assistant/operator_actions.py:1190
+msgid "🚢 Море"
+msgstr "🚢 Sea"
+
 #: assistant/actions.py:5537
 #, python-format
 msgid "%(m_label)s: $%(cost)s · %(chargeable_kg)s кг (%(actual_kg)s факт / %(volumetric_kg)s объём) · ~%(transit_days)s дн."
@@ -2831,15 +2849,15 @@ msgstr "%(sku_count)s SKU · avg price $%(or)s"
 msgid "Ждёт резерв 10%"
 msgstr "Awaiting 10% reserve"
 
-#: assistant/actions.py:6517 assistant/actions.py:8872 assistant/actions.py:8926 assistant/actions.py:8932 assistant/actions.py:8939 assistant/operator_actions.py:424 assistant/operator_actions.py:976 assistant/order_events.py:38 marketplace/models.py:560 marketplace/models.py:575 templates/admin_panel/finance.html:37
+#: assistant/actions.py:6517 assistant/actions.py:8872 assistant/actions.py:8926 assistant/actions.py:8932 assistant/actions.py:8939 assistant/operator_actions.py:424 assistant/operator_actions.py:976 assistant/order_events.py:38 assistant/seller_actions.py:2552 marketplace/models.py:560 marketplace/models.py:575 templates/admin_panel/finance.html:37
 msgid "Резерв оплачен"
-msgstr "Deposit paid"
+msgstr "Reserve paid"
 
 #: assistant/actions.py:6518 assistant/operator_actions.py:977 templates/admin_panel/order_detail.html:20
 msgid "Подтверждён"
 msgstr "Confirmed"
 
-#: assistant/actions.py:6519 assistant/actions.py:8927 assistant/actions.py:8933 assistant/actions.py:8940 assistant/actions.py:10861 assistant/operator_actions.py:401 assistant/operator_actions.py:978 assistant/order_events.py:40 marketplace/models.py:562 templates/buyer/orders/list.html:166 templates/buyer/orders/list.html:201 templates/buyer/orders/list.html:214 templates/buyer/suppliers/list.html:172
+#: assistant/actions.py:6519 assistant/actions.py:8927 assistant/actions.py:8933 assistant/actions.py:8940 assistant/actions.py:10861 assistant/operator_actions.py:401 assistant/operator_actions.py:978 assistant/order_events.py:40 assistant/seller_actions.py:2553 marketplace/models.py:562 templates/buyer/orders/list.html:166 templates/buyer/orders/list.html:201 templates/buyer/orders/list.html:214 templates/buyer/suppliers/list.html:172
 msgid "В производстве"
 msgstr "In production"
 
@@ -2851,7 +2869,7 @@ msgstr "To ship"
 msgid "Транзит"
 msgstr "Transit"
 
-#: assistant/actions.py:6522 assistant/actions.py:8942 assistant/actions.py:10864 assistant/operator_actions.py:242 assistant/operator_actions.py:837 assistant/operator_actions.py:2610 assistant/views.py:1345 assistant/views.py:1351 marketplace/models.py:565 marketplace/views.py:2444 marketplace/views.py:2788 templates/admin_panel/order_detail.html:24 templates/buyer/orders/list.html:281 templates/buyer/shipments/list.html:197 templates/buyer/shipments/list.html:266 templates/buyer/shipments/list.html:337 templates/operator/base_operator.html:214 templates/operator/logist/dashboard.html:71 templates/operator/logist/shipments.html:27 templates/operator/logist/shipments.html:77 templates/operator/logist/shipments.html:84 templates/operator/logist/shipments.html:91 templates/operator/logist/shipments.html:103 templates/operator/logist/shipments.html:129 templates/operator/logist/shipments.html:155 templates/operator/logist/shipments.html:181 templates/operator/logist/shipments.html:207 templates/operator/logist/shipments.html:261 templates/operator/manager/dashboard.html:157 templates/operator/manager/shipments.html:108 templates/seller/analytics/list.html:1111 templates/seller/logistics/list.html:413
+#: assistant/actions.py:6522 assistant/actions.py:8942 assistant/actions.py:10864 assistant/operator_actions.py:242 assistant/operator_actions.py:837 assistant/operator_actions.py:2610 assistant/seller_actions.py:2555 assistant/views.py:1345 assistant/views.py:1351 marketplace/models.py:565 marketplace/views.py:2444 marketplace/views.py:2788 templates/admin_panel/order_detail.html:24 templates/buyer/orders/list.html:281 templates/buyer/shipments/list.html:197 templates/buyer/shipments/list.html:266 templates/buyer/shipments/list.html:337 templates/operator/base_operator.html:214 templates/operator/logist/dashboard.html:71 templates/operator/logist/shipments.html:27 templates/operator/logist/shipments.html:77 templates/operator/logist/shipments.html:84 templates/operator/logist/shipments.html:91 templates/operator/logist/shipments.html:103 templates/operator/logist/shipments.html:129 templates/operator/logist/shipments.html:155 templates/operator/logist/shipments.html:181 templates/operator/logist/shipments.html:207 templates/operator/logist/shipments.html:261 templates/operator/manager/dashboard.html:157 templates/operator/manager/shipments.html:108 templates/seller/analytics/list.html:1111 templates/seller/logistics/list.html:413
 msgid "Таможня"
 msgstr "Customs"
 
@@ -3595,6 +3613,10 @@ msgstr ""
 "2W1223,Hydraulic cylinder seal,Caterpillar,180,15,oem\n"
 "1R0750,Oil filter,Caterpillar,42,40,oem"
 
+#: assistant/actions.py:7621 assistant/kp_workflow.py:182 assistant/seller_actions.py:1757 templates/admin_panel/catalog.html:79 templates/admin_panel/moderation.html:11
+msgid "Запчасти"
+msgstr "Parts"
+
 #: assistant/actions.py:7630
 #, python-format
 msgid "стр.%(line_num)s: мало колонок (%(line)s)"
@@ -3691,6 +3713,10 @@ msgstr "35 of 39"
 #: assistant/actions.py:7824
 msgid "10 дней"
 msgstr "10 days"
+
+#: assistant/actions.py:7825
+msgid "Уралмаш-Маркет"
+msgstr "Uralmash-Market"
 
 #: assistant/actions.py:7826
 msgid "38 из 39"
@@ -4051,7 +4077,7 @@ msgstr "Handed over at the port"
 msgid "Прибыл в порт"
 msgstr "Arrived at the port"
 
-#: assistant/actions.py:8943 assistant/actions.py:10867 assistant/operator_actions.py:985 assistant/order_events.py:46 assistant/views.py:1345 assistant/views.py:1351 marketplace/models.py:569 marketplace/views.py:2205 marketplace/views.py:2432 marketplace/views.py:2447 marketplace/views.py:2791 templates/admin_panel/order_detail.html:27 templates/buyer/orders/list.html:169 templates/buyer/orders/list.html:300 templates/buyer/orders/list.html:328 templates/buyer/suppliers/list.html:173 templates/buyer/suppliers/list.html:174 templates/buyer/suppliers/list.html:241 templates/buyer/suppliers/list.html:242 templates/buyer/suppliers/list.html:309 templates/buyer/suppliers/list.html:375 templates/buyer/suppliers/list.html:376 templates/buyer/suppliers/list.html:377
+#: assistant/actions.py:8943 assistant/actions.py:10867 assistant/operator_actions.py:985 assistant/order_events.py:46 assistant/seller_actions.py:2556 assistant/views.py:1345 assistant/views.py:1351 marketplace/models.py:569 marketplace/views.py:2205 marketplace/views.py:2432 marketplace/views.py:2447 marketplace/views.py:2791 templates/admin_panel/order_detail.html:27 templates/buyer/orders/list.html:169 templates/buyer/orders/list.html:300 templates/buyer/orders/list.html:328 templates/buyer/suppliers/list.html:173 templates/buyer/suppliers/list.html:174 templates/buyer/suppliers/list.html:241 templates/buyer/suppliers/list.html:242 templates/buyer/suppliers/list.html:309 templates/buyer/suppliers/list.html:375 templates/buyer/suppliers/list.html:376 templates/buyer/suppliers/list.html:377
 msgid "Доставлен"
 msgstr "Delivered"
 
@@ -4739,7 +4765,7 @@ msgstr "🚚 Shipment of order #%(id)s"
 msgid "Контакты перевозчика нужны оператору, чтобы оперативно решать вопросы по доставке (задержки, повреждения, таможня)."
 msgstr "The carrier contacts are needed by the operator to promptly resolve delivery issues (delays, damage, customs)."
 
-#: assistant/actions.py:9986 assistant/support_hub.py:1017
+#: assistant/actions.py:9986 assistant/seller_actions.py:3462 assistant/support_hub.py:1017
 msgid "📨 Отправить"
 msgstr "📨 Send"
 
@@ -4953,9 +4979,19 @@ msgstr "📋 Copy and check on the carrier's website"
 msgid "Связь с перевозчиком"
 msgstr "Contact with the carrier"
 
+#: assistant/actions.py:10425
+#| msgid "Оператор платформы"
+msgid "Через оператора платформы"
+msgstr "Via the platform operator"
+
 #: assistant/actions.py:10426
 msgid "Прямые контакты доступны только оператору."
 msgstr "Direct contacts are available to the operator only."
+
+#: assistant/actions.py:10431
+#| msgid "Перевозчик (название компании)"
+msgid "Перевозчик ещё не назначен оператором"
+msgstr "Carrier not yet assigned by the operator"
 
 #: assistant/actions.py:10433
 msgid "Связаться с оператором — поможет ускорить."
@@ -5162,9 +5198,9 @@ msgstr ""
 "Deposit: $%(balance)s %(currency)s.\n"
 "Order moved to “ready to ship” status."
 
-#: assistant/actions.py:10803 assistant/actions.py:10862 assistant/operator_actions.py:979 assistant/order_events.py:41 marketplace/models.py:563
+#: assistant/actions.py:10803 assistant/actions.py:10862 assistant/operator_actions.py:979 assistant/order_events.py:41 assistant/seller_actions.py:2554 marketplace/models.py:563
 msgid "Готов к отгрузке"
-msgstr "Ready for shipment"
+msgstr "Ready to ship"
 
 #: assistant/actions.py:10807
 #, python-format
@@ -5344,7 +5380,7 @@ msgstr "The buyer confirmed acceptance — $%(amount)s credited to the account."
 msgid "✓ Заказ #%(id)s закрыт. Спасибо за приёмку!"
 msgstr "✓ Order #%(id)s closed. Thank you for the acceptance!"
 
-#: assistant/actions.py:11181 assistant/operator_actions.py:986 assistant/order_events.py:47 marketplace/models.py:570 templates/admin_panel/order_detail.html:28 templates/operator/customs/requests.html:188 templates/operator/customs/requests.html:205 templates/operator/customs/requests.html:222 templates/operator/manager/orders.html:16 templates/operator/manager/orders.html:200 templates/operator/manager/orders.html:208
+#: assistant/actions.py:11181 assistant/operator_actions.py:986 assistant/order_events.py:47 assistant/seller_actions.py:2556 marketplace/models.py:570 templates/admin_panel/order_detail.html:28 templates/operator/customs/requests.html:188 templates/operator/customs/requests.html:205 templates/operator/customs/requests.html:222 templates/operator/manager/orders.html:16 templates/operator/manager/orders.html:200 templates/operator/manager/orders.html:208
 msgid "Завершён"
 msgstr "Completed"
 
@@ -5467,11 +5503,11 @@ msgstr "🎯 Tier ladder"
 msgid "в холде"
 msgstr "on hold"
 
-#: assistant/actions.py:11465 assistant/operator_actions.py:3397
+#: assistant/actions.py:11465 assistant/operator_actions.py:3397 assistant/seller_actions.py:2609
 msgid "зачислено"
 msgstr "credited"
 
-#: assistant/actions.py:11466 assistant/operator_actions.py:3398 assistant/operator_actions.py:3815
+#: assistant/actions.py:11466 assistant/operator_actions.py:3398 assistant/operator_actions.py:3815 assistant/seller_actions.py:2610
 msgid "удержано"
 msgstr "withheld"
 
@@ -6900,7 +6936,7 @@ msgstr "Add a customs analytics record. Link a part number (OEM) — then the re
 msgid "🛂 Новая запись таможни"
 msgstr "🛂 New customs record"
 
-#: assistant/admin_actions.py:1066 templates/admin_panel/tariffs.html:156 templates/buyer/catalog/list.html:388 templates/seller/analytics/list.html:834
+#: assistant/admin_actions.py:1066 assistant/seller_actions.py:2290 templates/admin_panel/tariffs.html:156 templates/buyer/catalog/list.html:388 templates/seller/analytics/list.html:834
 msgid "Добавить"
 msgstr "Add"
 
@@ -7372,9 +7408,9 @@ msgstr "Owner"
 msgid "Инженер / технолог"
 msgstr "Engineer / process specialist"
 
-#: assistant/buyer_registration.py:50 assistant/models.py:34 marketplace/models.py:1240 templates/operator/base_operator.html:178 templates/operator/manager/shipments.html:64 templates/operator/manager/shipments.html:83 templates/operator/select_role.html:78 templates/seller/team/list.html:737
+#: assistant/buyer_registration.py:50 assistant/models.py:34 assistant/seller_actions.py:4018 marketplace/models.py:1240 templates/operator/base_operator.html:178 templates/operator/manager/shipments.html:64 templates/operator/manager/shipments.html:83 templates/operator/select_role.html:78 templates/seller/team/list.html:737
 msgid "Логист"
-msgstr "Logistics"
+msgstr "Logistician"
 
 #: assistant/buyer_registration.py:51
 msgid "Иное"
@@ -7913,9 +7949,9 @@ msgstr "Claim access restricted."
 msgid "Решение"
 msgstr "Resolution"
 
-#: assistant/claims.py:580 assistant/operator_actions.py:428
+#: assistant/claims.py:580 assistant/operator_actions.py:428 assistant/seller_actions.py:2557
 msgid "Возврат"
-msgstr "Refund"
+msgstr "Return"
 
 #: assistant/claims.py:582 assistant/support_hub.py:880 templates/admin_panel/import_detail.html:120
 msgid "Причина отклонения"
@@ -8677,10 +8713,6 @@ msgstr "Mode"
 msgid "Позиций"
 msgstr "Items"
 
-#: assistant/kp_workflow.py:182 templates/admin_panel/catalog.html:79 templates/admin_panel/moderation.html:11
-msgid "Запчасти"
-msgstr "Parts"
-
 #: assistant/kp_workflow.py:183
 #, python-format
 msgid "Логистика (%(p0)s, %(p1)s кг)"
@@ -9076,7 +9108,7 @@ msgstr "Payment Agent"
 msgid "Менеджер по продажам"
 msgstr "Sales Manager"
 
-#: assistant/models.py:38 marketplace/models.py:1237 templates/admin_panel/user_detail.html:38
+#: assistant/models.py:38 assistant/seller_actions.py:4015 marketplace/models.py:1237 templates/admin_panel/user_detail.html:38
 msgid "Администратор"
 msgstr "Administrator"
 
@@ -10650,7 +10682,7 @@ msgstr "This field raises your rating and buyer trust. After saving you will ret
 msgid "Заполните доступные поля — каждое повышает доверие покупателей и рейтинг. Можно заполнить только то, что нужно сейчас."
 msgstr "Fill in the available fields — each one increases buyer trust and your rating. You can fill in only what you need right now."
 
-#: assistant/onboarding.py:1028 templates/admin_panel/settings.html:42 templates/admin_panel/settings.html:69 templates/admin_panel/settings.html:108 templates/admin_panel/settings.html:131 templates/admin_panel/tariffs.html:127 templates/buyer/catalog/list.html:402 templates/registration/password_reset_confirm.html:10
+#: assistant/onboarding.py:1028 assistant/seller_actions.py:1364 templates/admin_panel/settings.html:42 templates/admin_panel/settings.html:69 templates/admin_panel/settings.html:108 templates/admin_panel/settings.html:131 templates/admin_panel/tariffs.html:127 templates/buyer/catalog/list.html:402 templates/registration/password_reset_confirm.html:10
 msgid "Сохранить"
 msgstr "Save"
 
@@ -11928,7 +11960,7 @@ msgstr "Escalate #1"
 msgid "Этот заказ не назначен на вас — обратитесь к старшему оператору."
 msgstr "This order is not assigned to you — contact the senior operator."
 
-#: assistant/operator_actions.py:975 marketplace/models.py:559 marketplace/views.py:2145
+#: assistant/operator_actions.py:975 assistant/seller_actions.py:2552 marketplace/models.py:559 marketplace/views.py:2145
 msgid "Ожидание оплаты"
 msgstr "Awaiting payment"
 
@@ -11940,7 +11972,7 @@ msgstr "At customs"
 msgid "Отгружен"
 msgstr "Shipped"
 
-#: assistant/operator_actions.py:987 marketplace/models.py:571 templates/admin_panel/orders.html:85 templates/admin_panel/rfq.html:87 templates/buyer/orders/list.html:170
+#: assistant/operator_actions.py:987 assistant/seller_actions.py:2556 marketplace/models.py:571 templates/admin_panel/orders.html:85 templates/admin_panel/rfq.html:87 templates/buyer/orders/list.html:170
 msgid "Отменён"
 msgstr "Cancelled"
 
@@ -12101,10 +12133,6 @@ msgid "%(brand)sкол-во %(qty)s × $%(unit)s = $%(total)s"
 msgstr "%(brand)sqty %(qty)s × $%(unit)s = $%(total)s"
 
 #: assistant/operator_actions.py:1190
-msgid "🚢 Море"
-msgstr "🚢 Sea"
-
-#: assistant/operator_actions.py:1190
 msgid "🚂 ЖД"
 msgstr "🚂 Rail"
 
@@ -12219,23 +12247,23 @@ msgstr "Quality / QC report"
 msgid "Опционально, но желателен для рекламаций"
 msgstr "Optional, but recommended for claims"
 
-#: assistant/operator_actions.py:1314
+#: assistant/operator_actions.py:1314 assistant/seller_actions.py:3656
 msgid "черновик"
 msgstr "draft"
 
-#: assistant/operator_actions.py:1314
+#: assistant/operator_actions.py:1314 assistant/seller_actions.py:3656
 msgid "на проверке"
 msgstr "under review"
 
-#: assistant/operator_actions.py:1314
+#: assistant/operator_actions.py:1314 assistant/seller_actions.py:3656
 msgid "✓ одобрен"
 msgstr "✓ approved"
 
-#: assistant/operator_actions.py:1315
+#: assistant/operator_actions.py:1315 assistant/seller_actions.py:3657
 msgid "✗ отклонён"
 msgstr "✗ rejected"
 
-#: assistant/operator_actions.py:1315 assistant/seller_actions.py:1302
+#: assistant/operator_actions.py:1315 assistant/seller_actions.py:1302 assistant/seller_actions.py:3657
 msgid "архив"
 msgstr "archive"
 
@@ -13044,7 +13072,7 @@ msgstr "on average %(d)s days at this stage"
 msgid "контроль брокера"
 msgstr "broker oversight"
 
-#: assistant/operator_actions.py:2696 templates/buyer/components/_sidebar.html:121 templates/buyer/orders/list.html:167 templates/buyer/orders/list.html:234 templates/buyer/orders/list.html:249 templates/buyer/orders/list.html:356 templates/buyer/shipments/list.html:127 templates/buyer/shipments/list.html:185 templates/buyer/shipments/list.html:252 templates/buyer/suppliers/list.html:240 templates/operator/logist/dashboard.html:14 templates/operator/logist/dashboard.html:54 templates/operator/logist/dashboard.html:64 templates/operator/logist/dashboard.html:88 templates/operator/logist/dashboard.html:98 templates/operator/logist/dashboard.html:139 templates/operator/logist/dashboard.html:149 templates/operator/logist/shipments.html:26 templates/operator/logist/shipments.html:37 templates/operator/logist/shipments.html:58 templates/operator/logist/shipments.html:65 templates/operator/logist/shipments.html:76 templates/operator/logist/shipments.html:102 templates/operator/logist/shipments.html:110 templates/operator/logist/shipments.html:117 templates/operator/logist/shipments.html:128 templates/operator/logist/shipments.html:154 templates/operator/logist/shipments.html:180 templates/operator/logist/shipments.html:188 templates/operator/logist/shipments.html:206 templates/operator/logist/shipments.html:261 templates/operator/manager/shipments.html:14 templates/operator/manager/shipments.html:29 templates/operator/manager/shipments.html:94 templates/operator/manager/shipments.html:122 templates/operator/select_role.html:87 templates/seller/logistics/list.html:266
+#: assistant/operator_actions.py:2696 assistant/seller_actions.py:2554 assistant/seller_actions.py:2555 templates/buyer/components/_sidebar.html:121 templates/buyer/orders/list.html:167 templates/buyer/orders/list.html:234 templates/buyer/orders/list.html:249 templates/buyer/orders/list.html:356 templates/buyer/shipments/list.html:127 templates/buyer/shipments/list.html:185 templates/buyer/shipments/list.html:252 templates/buyer/suppliers/list.html:240 templates/operator/logist/dashboard.html:14 templates/operator/logist/dashboard.html:54 templates/operator/logist/dashboard.html:64 templates/operator/logist/dashboard.html:88 templates/operator/logist/dashboard.html:98 templates/operator/logist/dashboard.html:139 templates/operator/logist/dashboard.html:149 templates/operator/logist/shipments.html:26 templates/operator/logist/shipments.html:37 templates/operator/logist/shipments.html:58 templates/operator/logist/shipments.html:65 templates/operator/logist/shipments.html:76 templates/operator/logist/shipments.html:102 templates/operator/logist/shipments.html:110 templates/operator/logist/shipments.html:117 templates/operator/logist/shipments.html:128 templates/operator/logist/shipments.html:154 templates/operator/logist/shipments.html:180 templates/operator/logist/shipments.html:188 templates/operator/logist/shipments.html:206 templates/operator/logist/shipments.html:261 templates/operator/manager/shipments.html:14 templates/operator/manager/shipments.html:29 templates/operator/manager/shipments.html:94 templates/operator/manager/shipments.html:122 templates/operator/select_role.html:87 templates/seller/logistics/list.html:266
 msgid "В пути"
 msgstr "In transit"
 
@@ -14469,7 +14497,6 @@ msgstr "ℹ️ AI assistant runs in no-LLM mode (ANTHROPIC_API_KEY not set)."
 
 #: assistant/rag.py:323
 #, python-format
-#| msgid "Найдено %(p0)s ТН ВЭД-кодов по запросу «%(p1)s»."
 msgid "Найдено %(n)s релевантных источников по запросу «%(query)s»:\n"
 msgstr "Found %(n)s relevant sources for query «%(query)s»:\n"
 
@@ -14482,9 +14509,9 @@ msgstr "⚠️ API Error: %(e)s"
 msgid "−$100 на первый заказ — зачёт при пополнении депозита"
 msgstr "−$100 on first order — credited when topping up deposit"
 
-#: assistant/referral.py:94 assistant/seller_actions.py:2947
+#: assistant/referral.py:94 assistant/seller_actions.py:2947 assistant/seller_actions.py:3619
 msgid "$100 с первой покупки приглашённого"
-msgstr "$100 from invitee's first purchase"
+msgstr "$100 from the invitee’s first purchase"
 
 #: assistant/referral.py:138
 #, python-format
@@ -14626,6 +14653,11 @@ msgstr "We'll generate a QR with your link"
 #: assistant/seller_actions.py:140
 msgid "Условия программы"
 msgstr "Program terms"
+
+#: assistant/seller_actions.py:141
+#| msgid "Реферальная программа"
+msgid "реферальная программа"
+msgstr "referral program"
 
 #: assistant/seller_actions.py:144
 msgid "Сколько мне начислили?"
@@ -15408,6 +15440,11 @@ msgstr "📚 Parts knowledge base: cross-references, OEM catalogs, regulations, 
 msgid "Что есть в базе?"
 msgstr "What's in the database?"
 
+#: assistant/seller_actions.py:1189
+#| msgid "Обзор"
+msgid "обзор"
+msgstr "overview"
+
 #: assistant/seller_actions.py:1217
 #, python-format
 msgid "По запросу «%(query)s» в базе знаний пока ничего нет. Попробуйте поиск по каталогу — возможно, артикул есть как товар."
@@ -15454,7 +15491,7 @@ msgstr ""
 "⚙️ %(oem)s — %(title)s\n"
 "Brand: %(brand)s · Price: $%(price)s USD · Stock: %(stock)s pcs · %(state)s"
 
-#: assistant/seller_actions.py:1302
+#: assistant/seller_actions.py:1302 assistant/seller_actions.py:4101 assistant/seller_actions.py:4263
 msgid "активен"
 msgstr "active"
 
@@ -15563,6 +15600,10 @@ msgstr "QR Control"
 #: assistant/seller_actions.py:1514
 msgid "🚚 Сейчас в пути нет ваших заказов."
 msgstr "🚚 None of your orders are in transit right now."
+
+#: assistant/seller_actions.py:1531 templates/buyer/shipments/list.html:299
+msgid "Трекинг"
+msgstr "Tracking"
 
 #: assistant/seller_actions.py:1534
 #, python-format
@@ -15712,6 +15753,15 @@ msgstr "✓ Warehouse renamed to «%(p0)s»."
 msgid "У вас пока нет складов. Каждая загрузка прайса создаст склад автоматически."
 msgstr "You don't have any warehouses yet. Each price list upload will create a warehouse automatically."
 
+#: assistant/seller_actions.py:1966 assistant/seller_actions.py:2230
+#| msgid "Ожидают загрузки"
+msgid "📦 Без склада (старые загрузки)"
+msgstr "📦 No warehouse (legacy uploads)"
+
+#: assistant/seller_actions.py:1969 assistant/seller_actions.py:2232
+msgid "Позиции загруженные до системы складов — без логистического базиса."
+msgstr "Items uploaded before the warehouse system — without a logistics basis."
+
 #: assistant/seller_actions.py:1984
 msgid "Мои товары — выберите склад"
 msgstr "My products — choose a warehouse"
@@ -15723,6 +15773,16 @@ msgstr "📦 All products"
 #: assistant/seller_actions.py:2065 assistant/seller_actions.py:2132
 msgid "➕ Добавить товар"
 msgstr "➕ Add product"
+
+#: assistant/seller_actions.py:2134
+#| msgid "Архив"
+msgid "📁 Архив"
+msgstr "📁 Archive"
+
+#: assistant/seller_actions.py:2134
+#| msgid "🔄 Активные"
+msgid "📂 Активные"
+msgstr "📂 Active"
 
 #: assistant/seller_actions.py:2141
 #, python-format
@@ -15800,6 +15860,10 @@ msgstr "❌ Reject"
 msgid "➕ Завести заказчика"
 msgstr "➕ Add a client"
 
+#: assistant/seller_actions.py:2484
+msgid ". 🟢 закреплён · 🟡 под вопросом · ⚪️ лид."
+msgstr ". 🟢 confirmed · 🟡 tentative · ⚪️ lead."
+
 #: assistant/seller_actions.py:2502
 msgid "Заведите заказчика: ИНН и название. КПП и юр.адрес подтянем автоматически."
 msgstr "Add a client: TIN and name. We'll fill in the KPP and legal address automatically."
@@ -15807,6 +15871,11 @@ msgstr "Add a client: TIN and name. We'll fill in the KPP and legal address auto
 #: assistant/seller_actions.py:2504
 msgid "👥 Новый заказчик"
 msgstr "👥 New client"
+
+#: assistant/seller_actions.py:2506
+#| msgid "Завершён"
+msgid "Завести"
+msgstr "Create"
 
 #: assistant/seller_actions.py:2509 templates/admin_panel/catalog.html:134 templates/admin_panel/import_detail.html:65 templates/admin_panel/moderation.html:65 templates/admin_panel/order_detail.html:115 templates/admin_panel/settings.html:103 templates/admin_panel/tariffs.html:106 templates/admin_panel/tariffs.html:138 templates/admin_panel/user_detail.html:101 templates/admin_panel/user_detail.html:167 templates/buyer/catalog/list.html:158 templates/operator/customs/documents.html:54 templates/seller/drawings/list.html:312 templates/seller/drawings/list.html:403 templates/seller/products/catalog.html:547
 msgid "Название"
@@ -15845,6 +15914,51 @@ msgstr "📂 Open the card"
 msgid "➕ Ещё заказчик"
 msgstr "➕ Another client"
 
+#: assistant/seller_actions.py:2553 marketplace/views.py:2442 marketplace/views.py:2786
+msgid "Формирование"
+msgstr "Forming"
+
+#: assistant/seller_actions.py:2555
+#| msgid "Прибытие"
+msgid "Прибыл"
+msgstr "Arrived"
+
+#: assistant/seller_actions.py:2557 templates/operator/payments/escrow.html:18 templates/operator/payments/escrow.html:75 templates/operator/payments/escrow.html:81 templates/operator/payments/escrow.html:173
+msgid "Спор"
+msgstr "Dispute"
+
+#: assistant/seller_actions.py:2609
+#| msgid "В холде (14 дней)"
+msgid "в холде (14 дн)"
+msgstr "on hold (14 days)"
+
+#: assistant/seller_actions.py:2610
+#| msgid "−50% вина"
+msgid "−50% (вина)"
+msgstr "−50% (fault)"
+
+#: assistant/seller_actions.py:2610
+#| msgid "Расчётно"
+msgid "расчётно"
+msgstr "estimated"
+
+#: assistant/seller_actions.py:2691
+msgid "📁 Есть активные проекты без заказов — возможность допродажи: отправьте КП."
+msgstr "📁 There are active projects without orders — an upsell opportunity: send a quote."
+
+#: assistant/seller_actions.py:2696
+#| msgid "Повторите пароль"
+msgid "🔁 Повторный спрос: "
+msgstr "🔁 Repeat demand: "
+
+#: assistant/seller_actions.py:2702
+msgid "🆕 Новый клиент без активности — заведите первый проект и отправьте КП."
+msgstr "🆕 New client with no activity — create the first project and send a quote."
+
+#: assistant/seller_actions.py:2704
+msgid "✅ По клиенту всё в норме — продолжайте сопровождение."
+msgstr "✅ Everything is fine with the client — continue support."
+
 #: assistant/seller_actions.py:2722 assistant/seller_actions.py:2862 assistant/seller_actions.py:3128
 msgid "Заказчик не найден."
 msgstr "Client not found."
@@ -15857,6 +15971,11 @@ msgstr "Contact"
 #, python-format
 msgid "Заказ #%(p0)s"
 msgstr "Order #%(p0)s"
+
+#: assistant/seller_actions.py:2765
+#| msgid "📊 Инсайты по заказчику"
+msgid "  ·  🔗 привязать к заказчику"
+msgstr "  ·  🔗 link to customer"
 
 #: assistant/seller_actions.py:2796
 msgid "📊 Инсайты по заказчику"
@@ -15939,6 +16058,11 @@ msgstr "💰 Charges"
 msgid "📨 Пригласить"
 msgstr "📨 Invite"
 
+#: assistant/seller_actions.py:2868
+#| msgid "Запчасти не найдены — возможно, удалены из каталога."
+msgid "Заказ не найден — возможно, уже привязан."
+msgstr "Order not found — it may already be linked."
+
 #: assistant/seller_actions.py:2885
 msgid "Заказчик не найден — не могу привязать проект."
 msgstr "Client not found — can't link the project."
@@ -15952,6 +16076,11 @@ msgstr "Name the project for «%(p0)s» — it will appear in the shared project
 #, python-format
 msgid "📁 Новый проект · %(p0)s"
 msgstr "📁 New project · %(p0)s"
+
+#: assistant/seller_actions.py:2895
+#| msgid "+ Создать проект"
+msgid "Создать проект"
+msgstr "Create project"
 
 #: assistant/seller_actions.py:2897
 msgid "Название проекта"
@@ -15998,6 +16127,11 @@ msgstr "+ bonus on «recovered» rejected deals"
 msgid "вернули отказника к покупке → доля ваша"
 msgstr "recovered a declining customer to purchase → the share is yours"
 
+#: assistant/seller_actions.py:2939
+#| msgid "📨 Мои награды"
+msgid "💰 Ваша награда (KAM)"
+msgstr "💰 Your reward (KAM)"
+
 #: assistant/seller_actions.py:2942
 msgid "−$100 на ваш первый заказ"
 msgstr "−$100 on your first order"
@@ -16005,6 +16139,11 @@ msgstr "−$100 on your first order"
 #: assistant/seller_actions.py:2942
 msgid "зачтём при пополнении депозита по этому приглашению"
 msgstr "we'll credit it when topping up the deposit for this invitation"
+
+#: assistant/seller_actions.py:2944 assistant/seller_actions.py:2949
+#| msgid "Отправить приглашение"
+msgid "💰 Ваша награда за приглашение"
+msgstr "💰 Your referral reward"
 
 #: assistant/seller_actions.py:2947
 msgid "зачислим, как только он сделает первый заказ"
@@ -16070,9 +16209,19 @@ msgstr "📨 My rewards"
 msgid "📨 Ваша реферальная ссылка"
 msgstr "📨 Your referral link"
 
+#: assistant/seller_actions.py:3069
+#| msgid "Приглашение в команду на Consolidator Parts"
+msgid "Приглашаю на платформу запчастей Consolidator Parts"
+msgstr "Join me on the Consolidator Parts spare-parts platform"
+
 #: assistant/seller_actions.py:3070
 msgid "Привязка отслеживается автоматически."
 msgstr "The link is tracked automatically."
+
+#: assistant/seller_actions.py:3083
+#| msgid "✖ Снять привязку"
+msgid "✅ привязан"
+msgstr "✅ linked"
 
 #: assistant/seller_actions.py:3085
 #, python-format
@@ -16203,6 +16352,16 @@ msgstr "Will appear with your clients' orders"
 msgid "👥 Заказчики"
 msgstr "👥 Clients"
 
+#: assistant/seller_actions.py:3235
+#| msgid "📨 Пригласить — подтвердить клиента"
+msgid "🔴 эскалация — связаться с клиентом"
+msgstr "🔴 escalation — contact the client"
+
+#: assistant/seller_actions.py:3249
+#| msgid "🛡 Вход оператора"
+msgid "🔵 ведёт оператор"
+msgstr "🔵 handled by operator"
+
 #: assistant/seller_actions.py:3253
 #, python-format
 msgid "Заказ #%(p0)s · %(p1)s"
@@ -16246,6 +16405,10 @@ msgstr "Escalate order #%(p0)s to KAM — specify the reason."
 #, python-format
 msgid "⚠️ Эскалация #%(p0)s → KAM"
 msgstr "⚠️ Escalation #%(p0)s → KAM"
+
+#: assistant/seller_actions.py:3319 templates/operator/manager/dashboard.html:49 templates/operator/manager/dashboard.html:66 templates/operator/manager/orders.html:50 templates/operator/payments/dashboard.html:94 templates/operator/payments/invoices.html:111
+msgid "Эскалировать"
+msgstr "Escalate"
 
 #: assistant/seller_actions.py:3321
 msgid "Срыв SLA / брак / перерасход — коротко"
@@ -16311,7 +16474,7 @@ msgstr "Handles your procurement: timelines, prices, savings. Tap → write to t
 msgid "👤 Ваш персональный менеджер (KAM) — отвечает за ваши закупки, сроки и выгоду."
 msgstr "👤 Your personal manager (KAM) — responsible for your procurement, timelines and savings."
 
-#: assistant/seller_actions.py:3424 marketplace/models.py:1238 templates/operator/base_operator.html:235 templates/operator/manager/shipments.html:45 templates/seller/team/list.html:264 templates/seller/team/list.html:270 templates/seller/team/list.html:338 templates/seller/team/list.html:346 templates/seller/team/list.html:658
+#: assistant/seller_actions.py:3424 assistant/seller_actions.py:4016 marketplace/models.py:1238 templates/operator/base_operator.html:235 templates/operator/manager/shipments.html:45 templates/seller/team/list.html:264 templates/seller/team/list.html:270 templates/seller/team/list.html:338 templates/seller/team/list.html:346 templates/seller/team/list.html:658
 msgid "Менеджер"
 msgstr "Manager"
 
@@ -16434,6 +16597,11 @@ msgstr "Sign in to see your referral rewards."
 msgid "У KAM реферальная мотивация — резидуальная: приглашённые клиенты закрепляются за вами, а вознаграждение идёт со сделок (0.02% + дожатые отказные). Смотрите в начислениях и заказчиках."
 msgstr "KAM referral motivation is residual: invited clients are assigned to you, and the reward comes from their deals (0.02% + recovered rejected ones). See it in charges and clients."
 
+#: assistant/seller_actions.py:3620
+#| msgid "−$100 на первый заказ — зачёт при пополнении депозита"
+msgid "−$100 на ваш первый заказ (при пополнении)"
+msgstr "−$100 on your first order (on top-up)"
+
 #: assistant/seller_actions.py:3629
 msgid "📨 Мои приглашения"
 msgstr "📨 My invitations"
@@ -16554,13 +16722,69 @@ msgstr "📐 My drawings"
 msgid "🔎 Найти товар"
 msgstr "🔎 Find a product"
 
+#: assistant/seller_actions.py:4017 marketplace/models.py:1239
+msgid "Менеджер ВЭД"
+msgstr "Foreign-trade manager"
+
+#: assistant/seller_actions.py:4019 marketplace/models.py:1241
+msgid "Финансист"
+msgstr "Financier"
+
+#: assistant/seller_actions.py:4020 marketplace/models.py:1242
+msgid "Только просмотр"
+msgstr "View only"
+
+#: assistant/seller_actions.py:4023
+#| msgid "Управление заказами"
+msgid "всё + управление командой"
+msgstr "everything + team management"
+
+#: assistant/seller_actions.py:4024
+#| msgid "Каталог запчастей"
+msgid "каталог, заказы, КП"
+msgstr "catalog, orders, quotes"
+
+#: assistant/seller_actions.py:4025
+msgid "поставщики, прайс-листы, импорт, таможня"
+msgstr "suppliers, price lists, import, customs"
+
+#: assistant/seller_actions.py:4026
+#| msgid "Логистика и отгрузки"
+msgid "логистика, отгрузки, документы"
+msgstr "logistics, shipments, documents"
+
+#: assistant/seller_actions.py:4027
+#| msgid "Платежи — Аналитика"
+msgid "платежи, инвойсы, финансы"
+msgstr "payments, invoices, finance"
+
+#: assistant/seller_actions.py:4028
+#| msgid "Только просмотр"
+msgid "только просмотр"
+msgstr "view only"
+
 #: assistant/seller_actions.py:4099
 msgid "Руководитель компании"
 msgstr "Company head"
 
+#: assistant/seller_actions.py:4101
+#| msgid "до вашего порта прибытия"
+msgid "приглашён — ждёт принятия"
+msgstr "invited — awaiting acceptance"
+
+#: assistant/seller_actions.py:4101 assistant/seller_actions.py:4263
+#| msgid "Отключён"
+msgid "отключён"
+msgstr "disabled"
+
 #: assistant/seller_actions.py:4116
 msgid "➕ Пригласить сотрудника"
 msgstr "➕ Invite an employee"
+
+#: assistant/seller_actions.py:4122
+#| msgid "Команда компании"
+msgid "👥 Команда вашей компании."
+msgstr "👥 Your company’s team."
 
 #: assistant/seller_actions.py:4125 templates/chat/index.html:3847
 msgid "Команда компании"
@@ -16577,6 +16801,11 @@ msgstr "Invite an employee to the company. They will receive a link and access t
 #: assistant/seller_actions.py:4153
 msgid "👥 Пригласить сотрудника в компанию"
 msgstr "👥 Invite an employee to the company"
+
+#: assistant/seller_actions.py:4155
+#| msgid "Отправить приглашение"
+msgid "Создать приглашение"
+msgstr "Create invitation"
 
 #: assistant/seller_actions.py:4157
 msgid "Email сотрудника"
@@ -16659,6 +16888,11 @@ msgstr "Employee not found."
 msgid "Сотрудник не найден в вашей компании."
 msgstr "Employee not found in your company."
 
+#: assistant/seller_actions.py:4263
+#| msgid "Приглашён"
+msgid "приглашён"
+msgstr "invited"
+
 #: assistant/seller_actions.py:4268
 #, python-format
 msgid ""
@@ -16711,17 +16945,35 @@ msgstr "Unknown role."
 msgid "✓ Роль изменена на «%(p0)s»."
 msgstr "✓ Role changed to «%(p0)s»."
 
+#: assistant/seller_actions.py:4345
+#| msgid "Управление отгрузками"
+msgid "1С:Управление торговлей"
+msgstr "1C:Trade Management"
+
 #: assistant/seller_actions.py:4346
 msgid "Синхронизация остатков и заказов"
 msgstr "Stock and order synchronization"
+
+#: assistant/seller_actions.py:4348 templates/seller/analytics/list.html:654 templates/seller/integrations/list.html:208
+msgid "Битрикс24"
+msgstr "Bitrix24"
 
 #: assistant/seller_actions.py:4349
 msgid "RFQ в CRM, авто-сделки"
 msgstr "RFQs in CRM, auto-deals"
 
+#: assistant/seller_actions.py:4350
+#| msgid "📧 Email-уведомления"
+msgid "Email-уведомления"
+msgstr "Email notifications"
+
 #: assistant/seller_actions.py:4351
 msgid "Новые RFQ и заказы на почту"
 msgstr "New RFQs and orders by email"
+
+#: assistant/seller_actions.py:4353
+msgid "Telegram-бот"
+msgstr "Telegram bot"
 
 #: assistant/seller_actions.py:4354
 msgid "Алерты по новым заказам"
@@ -16735,25 +16987,54 @@ msgstr "Your own integrations via API key"
 msgid "🔌 Интеграции с внешними системами. Подключите нужное в один клик."
 msgstr "🔌 Integrations with external systems. Connect what you need in one click."
 
+#: assistant/seller_actions.py:4387
+#| msgid "Продажи"
+msgid "Продажи (CSV, 30д)"
+msgstr "Sales (CSV, 30d)"
+
 #: assistant/seller_actions.py:4388
 msgid "Все продажи за последние 30 дней"
 msgstr "All sales in the last 30 days"
+
+#: assistant/seller_actions.py:4389
+#| msgid "Каталог"
+msgid "Каталог (Excel)"
+msgstr "Catalog (Excel)"
 
 #: assistant/seller_actions.py:4390
 msgid "Полный каталог с остатками"
 msgstr "Full catalog with stock"
 
+#: assistant/seller_actions.py:4391
+#| msgid "История (7)"
+msgid "RFQ-история (CSV)"
+msgstr "RFQ history (CSV)"
+
 #: assistant/seller_actions.py:4392
 msgid "Все RFQ и ответы"
 msgstr "All RFQs and responses"
+
+#: assistant/seller_actions.py:4393
+#| msgid "SLA-отчёт"
+msgid "SLA-отчёт (PDF)"
+msgstr "SLA report (PDF)"
 
 #: assistant/seller_actions.py:4394
 msgid "Отчёт о выполнении SLA"
 msgstr "SLA compliance report"
 
+#: assistant/seller_actions.py:4395
+#| msgid "Рейтинг и тиры (для seller)"
+msgid "Рейтинг и отзывы (PDF)"
+msgstr "Rating and reviews (PDF)"
+
 #: assistant/seller_actions.py:4396
 msgid "Сертификат рейтинга"
 msgstr "Rating certificate"
+
+#: assistant/seller_actions.py:4401 templates/operator/customs/declarations.html:240 templates/operator/customs/documents.html:71 templates/operator/customs/documents.html:98 templates/operator/customs/documents.html:116 templates/operator/customs/documents.html:125 templates/operator/customs/documents.html:134 templates/operator/customs/documents.html:143 templates/operator/customs/documents.html:161 templates/operator/customs/documents.html:170 templates/operator/logist/documents.html:99 templates/operator/logist/documents.html:108 templates/operator/logist/documents.html:153 templates/operator/logist/documents.html:162 templates/operator/logist/documents.html:180 templates/seller/drawings/list.html:352 templates/seller/reports/list.html:290 templates/seller/reports/list.html:312 templates/seller/reports/list.html:334 templates/seller/reports/list.html:358 templates/seller/reports/list.html:391 templates/seller/reports/list.html:408 templates/seller/reports/list.html:425 templates/seller/reports/list.html:442 templates/seller/reports/list.html:459 templates/seller/reports/list.html:493 templates/seller/reports/list.html:510 templates/seller/reports/list.html:527 templates/seller/reports/list.html:544 templates/seller/reports/list.html:577 templates/seller/reports/list.html:594 templates/seller/reports/list.html:612 templates/seller/reports/list.html:631 templates/seller/reports/list.html:795 templates/seller/reports/list.html:814 templates/seller/reports/list.html:823 templates/seller/reports/list.html:832 templates/seller/reports/list.html:850
+msgid "Скачать"
+msgstr "Download"
 
 #: assistant/seller_actions.py:4404
 msgid "📑 Отчёты по вашей деятельности. Любой можно сгенерировать сейчас."
@@ -16770,6 +17051,11 @@ msgstr "Connect Google Sheets as a price-list source."
 #: assistant/seller_actions.py:4447
 msgid "📊 Подключить Google Sheets"
 msgstr "📊 Connect Google Sheets"
+
+#: assistant/seller_actions.py:4454
+#| msgid "Подключить"
+msgid "Подключить →"
+msgstr "Connect →"
 
 #: assistant/seller_actions.py:4456
 msgid "Ссылка на таблицу"
@@ -18671,18 +18957,6 @@ msgstr "Claim"
 msgid "Система"
 msgstr "System"
 
-#: marketplace/models.py:1239
-msgid "Менеджер ВЭД"
-msgstr "Foreign trade manager"
-
-#: marketplace/models.py:1241
-msgid "Финансист"
-msgstr "Finance officer"
-
-#: marketplace/models.py:1242
-msgid "Только просмотр"
-msgstr "View only"
-
 #: marketplace/models.py:1246 templates/components/team_page.html:64
 msgid "Приглашён"
 msgstr "Invited"
@@ -18869,10 +19143,6 @@ msgstr "QR scan on order receipt"
 #: marketplace/views.py:2441 marketplace/views.py:2785 templates/admin_panel/order_detail.html:18 templates/seller/logistics/list.html:309 templates/seller/logistics/list.html:316
 msgid "Ожидание"
 msgstr "Pending"
-
-#: marketplace/views.py:2442 marketplace/views.py:2786
-msgid "Формирование"
-msgstr "Generating"
 
 #: marketplace/views.py:2443 marketplace/views.py:2787
 msgid "Зарубеж"
@@ -21846,10 +22116,6 @@ msgstr "March 28, 2026"
 msgid "Гуанчжоу &rarr; Москва (авиа)"
 msgstr "Guangzhou &rarr; Moscow (air)"
 
-#: templates/buyer/shipments/list.html:299
-msgid "Трекинг"
-msgstr "Tracking"
-
 #: templates/buyer/shipments/list.html:304
 msgid "86 кг / 0.3 CBM"
 msgstr "86 kg / 0.3 CBM"
@@ -23664,10 +23930,6 @@ msgstr "PDF · View document"
 #: templates/operator/customs/declarations.html:240
 msgid "Скачивание..."
 msgstr "Downloading..."
-
-#: templates/operator/customs/declarations.html:240 templates/operator/customs/documents.html:71 templates/operator/customs/documents.html:98 templates/operator/customs/documents.html:116 templates/operator/customs/documents.html:125 templates/operator/customs/documents.html:134 templates/operator/customs/documents.html:143 templates/operator/customs/documents.html:161 templates/operator/customs/documents.html:170 templates/operator/logist/documents.html:99 templates/operator/logist/documents.html:108 templates/operator/logist/documents.html:153 templates/operator/logist/documents.html:162 templates/operator/logist/documents.html:180 templates/seller/drawings/list.html:352 templates/seller/reports/list.html:290 templates/seller/reports/list.html:312 templates/seller/reports/list.html:334 templates/seller/reports/list.html:358 templates/seller/reports/list.html:391 templates/seller/reports/list.html:408 templates/seller/reports/list.html:425 templates/seller/reports/list.html:442 templates/seller/reports/list.html:459 templates/seller/reports/list.html:493 templates/seller/reports/list.html:510 templates/seller/reports/list.html:527 templates/seller/reports/list.html:544 templates/seller/reports/list.html:577 templates/seller/reports/list.html:594 templates/seller/reports/list.html:612 templates/seller/reports/list.html:631 templates/seller/reports/list.html:795 templates/seller/reports/list.html:814 templates/seller/reports/list.html:823 templates/seller/reports/list.html:832 templates/seller/reports/list.html:850
-msgid "Скачать"
-msgstr "Download"
 
 #: templates/operator/customs/declarations.html:300
 msgid "Декларация создана: "
@@ -25517,10 +25779,6 @@ msgstr "Buyer #1042 has not paid the advance on time. Deadline expired Mar 22."
 msgid "Запросить информацию"
 msgstr "Request Information"
 
-#: templates/operator/manager/dashboard.html:49 templates/operator/manager/dashboard.html:66 templates/operator/manager/orders.html:50 templates/operator/payments/dashboard.html:94 templates/operator/payments/invoices.html:111
-msgid "Эскалировать"
-msgstr "Escalate"
-
 #: templates/operator/manager/dashboard.html:52 templates/operator/manager/dashboard.html:69 templates/operator/manager/dashboard.html:99 templates/operator/manager/orders.html:75 templates/operator/manager/orders.html:123 templates/operator/manager/orders.html:185
 msgid "Введите текст запроса..."
 msgstr "Enter request text..."
@@ -26351,10 +26609,6 @@ msgstr "Held in accounts"
 msgid "Выпущено за месяц"
 msgstr "Released this month"
 
-#: templates/operator/payments/escrow.html:18 templates/operator/payments/escrow.html:75 templates/operator/payments/escrow.html:81 templates/operator/payments/escrow.html:173
-msgid "Спор"
-msgstr "Dispute"
-
 #: templates/operator/payments/escrow.html:24
 msgid "Активных счетов"
 msgstr "Active accounts"
@@ -27008,10 +27262,6 @@ msgstr "Official Account · Reports for China partners"
 #: templates/seller/analytics/list.html:647
 msgid "CRM / ERP системы"
 msgstr "CRM / ERP systems"
-
-#: templates/seller/analytics/list.html:654 templates/seller/integrations/list.html:208
-msgid "Битрикс24"
-msgstr "Bitrix24"
 
 #: templates/seller/analytics/list.html:655
 msgid "CRM · Синхронизация сделок и контактов"

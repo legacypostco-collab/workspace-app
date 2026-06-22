@@ -3998,7 +3998,7 @@ def _seller_deals(user, params):
 
     if not sections:
         filter_hint = {
-            "action":  "Сейчас нет заказов, требующих вашего действия.",
+            "action":  _("Сейчас нет заказов, требующих вашего действия."),
             "transit": _('Нет заказов в пути.'),
             "done":    _('Завершённых сделок пока нет.'),
         }.get(flt, _('У вас пока нет активных сделок.'))
@@ -4017,7 +4017,7 @@ def _seller_deals(user, params):
         if n_breached_total: bits.append(_('%(n_breached_total)s с просрочкой SLA') % {'n_breached_total': n_breached_total})
         summary = " · ".join(bits) if bits else _('всё под контролем')
     else:
-        label = {"action": "требуют действия", "transit": _('в пути'), "done": _('завершённые')}.get(flt, flt)
+        label = {"action": _("требуют действия"), "transit": _('в пути'), "done": _('завершённые')}.get(flt, flt)
         summary = label
 
     total = sum(len(s["rows"]) for s in sections)
@@ -4139,7 +4139,7 @@ def _buyer_deals(user, params):
 
     if not sections:
         hint = {
-            "action":  "Сейчас нет сделок, требующих оплаты или приёмки.",
+            "action":  _("Сейчас нет сделок, требующих оплаты или приёмки."),
             "transit": _('Нет заказов в пути.'),
             "done":    _('Завершённых сделок пока нет.'),
         }.get(flt, _('У вас пока нет активных сделок.'))
@@ -4152,7 +4152,7 @@ def _buyer_deals(user, params):
     if flt == "active":
         summary = _('%(n_action)s %(n_action2)s действия') % {'n_action': n_action, 'n_action2': _plural_ru(n_action, 'требует', 'требуют', 'требуют')} if n_action else _('всё под контролем')
     else:
-        summary = {"action": "требуют действия", "transit": _('в пути'), "done": _('завершённые')}.get(flt, flt)
+        summary = {"action": _("требуют действия"), "transit": _('в пути'), "done": _('завершённые')}.get(flt, flt)
 
     return ActionResult(
         text=_('📋 Мои сделки — %(summary)s.') % {'summary': summary},
@@ -5529,7 +5529,7 @@ def calc_part_logistics(params, user, role):
     }
     lines = [f"🚚 Расчёт доставки {p.oem_number} ({p.title[:40]}) → {dest}"]
     for m, r in results.items():
-        m_label = "🚢 Море" if m == "sea" else "✈️ Авиа"
+        m_label = _("🚢 Море") if m == "sea" else _("✈️ Авиа")
         if r["cost"] is None:
             lines.append(f"{m_label}: — ({err_map.get(r['error'], r['error'])})")
         else:
@@ -7618,7 +7618,7 @@ def upload_pricelist(params, user, role):
     created, updated, errors = 0, 0, []
     default_category = Category.objects.first()
     if not default_category:
-        default_category = Category.objects.create(name="Запчасти")
+        default_category = Category.objects.create(name=_("Запчасти"))
 
     for line_num, line in enumerate(raw_csv.splitlines(), 1):
         line = line.strip()
@@ -7822,7 +7822,7 @@ def top_suppliers(params, user, role):
          "coverage": _('32 из 39 позиций'), "lead_time": _('9 дней'), "currency": "USD"},
         {"name": "Heavy Equipment Spares", "rating": "4.7", "total": 48720,
          "coverage": _('35 из 39'), "lead_time": _('10 дней'), "currency": "USD"},
-        {"name": "Уралмаш-Маркет", "rating": "4.8", "total": 48410,
+        {"name": _("Уралмаш-Маркет"), "rating": "4.8", "total": 48410,
          "coverage": _('38 из 39'), "lead_time": _('11 дней'), "note": _('включая аналоги'),
          "currency": "USD"},
     ]
@@ -8533,7 +8533,7 @@ def shipping_apply(params, user, role):
     wallet = Wallet.for_user(user)
     enough = wallet.balance >= reserve
 
-    mode_label = "🚢 Морем" if mode == "sea" else "✈️ Авиа"
+    mode_label = _("🚢 Морем") if mode == "sea" else _("✈️ Авиа")
     return ActionResult(
         text=(
             f"✓ Базис заказа #{order.id} обновлён: {mode_label} · {inc}\n"
@@ -8699,7 +8699,7 @@ def shipping_apply(params, user, role):
     wallet = Wallet.for_user(user)
     enough = wallet.balance >= reserve
 
-    mode_label = "🚢 Морем" if mode == "sea" else "✈️ Авиа"
+    mode_label = _("🚢 Морем") if mode == "sea" else _("✈️ Авиа")
     return ActionResult(
         text=(
             f"✓ Базис заказа #{order.id} обновлён: {mode_label} · {inc}\n"
@@ -10422,13 +10422,13 @@ def track_order(params, user, role):
         elif order.carrier_phone or order.carrier_email:
             carrier_items.append({
                 "label": _('Связь с перевозчиком'),
-                "value": "Через оператора платформы",
+                "value": _("Через оператора платформы"),
                 "sub": _('Прямые контакты доступны только оператору.'),
             })
         if not (order.carrier_name or order.tracking_number):
             carrier_items.append({
                 "label": _('Статус'),
-                "value": "Перевозчик ещё не назначен оператором",
+                "value": _("Перевозчик ещё не назначен оператором"),
                 "tone": "warn",
                 "sub": _('Связаться с оператором — поможет ускорить.'),
             })

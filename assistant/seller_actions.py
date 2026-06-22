@@ -138,7 +138,7 @@ def referral_program(params, user, role):
         }],
         actions=[
             {"label": _("Условия программы"), "action": "kb_search",
-             "params": {"query": "реферальная программа"}},
+             "params": {"query": _("реферальная программа")}},
             {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
         ],
         suggestions=[_("Сколько мне начислили?"), _("Кого можно приглашать?")],
@@ -1186,7 +1186,7 @@ def kb_search(params, user, role):
                    "таможенные коды, логистические маршруты. Введите запрос — найду."),
             actions=[
                 {"label": _("Что есть в базе?"), "action": "kb_search",
-                 "params": {"query": "обзор"}},
+                 "params": {"query": _("обзор")}},
             ],
         )
 
@@ -1361,7 +1361,7 @@ def edit_product(params, user, role):
                 "data": {
                     "title": f"✏️ {p.oem_number}",
                     "submit_action": "edit_product",
-                    "submit_label": "Сохранить",
+                    "submit_label": _("Сохранить"),
                     "fields": [
                         {"name": "title", "label": _("Наименование"),
                          "default": p.title or ""},
@@ -1528,7 +1528,7 @@ def seller_logistics(params, user, role):
         rows.append({
             "title": _('Заказ #%(p0)s · Покупатель') % {"p0": f'{o.id}'},
             "subtitle": sub,
-            "badge": "Трекинг",
+            "badge": _("Трекинг"),
         })
     return ActionResult(
         text=_('🚛 Активных отгрузок: %(p0)s.') % {"p0": f'{len(qs)}'},
@@ -1557,7 +1557,7 @@ def seller_negotiations(params, user, role):
     rows = [{
         "title": _('RFQ #%(p0)s · Покупатель') % {"p0": f'{r.id}'},
         "subtitle": f"{r.get_status_display()} · {r.created_at.strftime('%d.%m.%Y')}",
-        "badge": "Открыть",
+        "badge": _("Открыть"),
     } for r in qs]
     return ActionResult(
         text=_('💬 Активных переговоров: %(p0)s. Откройте, чтобы ответить ценой.') % {"p0": f'{len(rows)}'},
@@ -1754,7 +1754,7 @@ def upload_pricelist(params, user, role):
         )
 
     # Реальный импорт
-    cat = Category.objects.first() or Category.objects.create(name="Запчасти", slug="parts")
+    cat = Category.objects.first() or Category.objects.create(name=_("Запчасти"), slug="parts")
     brand = Brand.objects.filter(name__iexact="Generic").first() or Brand.objects.create(
         name="Generic", slug="generic",
     )
@@ -1963,10 +1963,10 @@ def seller_warehouses(params, user, role):
     if orphans_count:
         rows.append({
             "id": 0,
-            "name": "📦 Без склада (старые загрузки)",
+            "name": _("📦 Без склада (старые загрузки)"),
             "country_code": "",
             "sea_port": "", "air_port": "",
-            "address": "Позиции загруженные до системы складов — без логистического базиса.",
+            "address": _("Позиции загруженные до системы складов — без логистического базиса."),
             "currency": "",
             "parts_count": orphans_count,
             "created_at": "",
@@ -2131,7 +2131,7 @@ def seller_catalog(params, user, role):
     actions = [
         {"label": _("➕ Добавить товар"), "action": "add_product", "params": {}},
         {"label": _("📤 Загрузить прайс"), "action": "upload_pricelist", "params": {}},
-        {"label": ("📁 Архив" if status == "active" else "📂 Активные"),
+        {"label": (_("📁 Архив") if status == "active" else _("📂 Активные")),
          "action": "seller_catalog",
          "params": {"status": "archived" if status == "active" else "active"}},
         {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
@@ -2227,9 +2227,9 @@ def _build_warehouses_card(user, active_id=None) -> dict | None:
         })
     if orphans_count:
         rows.append({
-            "id": 0, "name": "📦 Без склада (старые загрузки)",
+            "id": 0, "name": _("📦 Без склада (старые загрузки)"),
             "country_code": "", "sea_port": "", "air_port": "",
-            "address": "Позиции загруженные до системы складов — без логистического базиса.",
+            "address": _("Позиции загруженные до системы складов — без логистического базиса."),
             "currency": "", "parts_count": orphans_count, "is_orphan": True,
         })
     return {
@@ -2287,7 +2287,7 @@ def add_product(params, user, role):
                 "data": {
                     "title": _("➕ Новый товар"),
                     "submit_action": "add_product",
-                    "submit_label": "Добавить",
+                    "submit_label": _("Добавить"),
                     "fields": [
                         {"name": "article", "label": _("OEM-артикул"),
                          "placeholder": "C306-3673", "required": True},
@@ -2481,7 +2481,7 @@ def seller_customers(params, user, role):
     head = f"👥 Ваши заказчики: {len(custs)}"
     if leads:
         head += f" · ⚪️ {leads} лид(ов) ждут подтверждения — отправьте инвайт"
-    head += ". 🟢 закреплён · 🟡 под вопросом · ⚪️ лид."
+    head += _(". 🟢 закреплён · 🟡 под вопросом · ⚪️ лид.")
     return ActionResult(
         text=head,
         cards=[{"type": "list", "data": {"title": _("Заказчики"), "rows": rows}}],
@@ -2503,7 +2503,7 @@ def add_customer(params, user, role):
             cards=[{"type": "form", "data": {
                 "title": _("👥 Новый заказчик"),
                 "submit_action": "add_customer",
-                "submit_label": "Завести",
+                "submit_label": _("Завести"),
                 "fields": [
                     {"name": "inn", "label": _("ИНН"), "type": "text", "required": True, "placeholder": "7707083893"},
                     {"name": "name", "label": _("Название"), "type": "text", "required": True, "placeholder": _("ООО «Норильск-Снаб»")},
@@ -2549,12 +2549,12 @@ def add_customer(params, user, role):
 
 # Метки статусов заказа (для блока отгрузок).
 _ORDER_STATUS_RU = {
-    "pending": "Ожидание оплаты", "reserve_paid": "Резерв оплачен",
-    "confirmed": "Формирование", "in_production": "В производстве",
-    "ready_to_ship": "Готов к отгрузке", "shipped": "В пути",
-    "in_transit": "В пути", "customs": "Таможня", "arrived": "Прибыл",
-    "delivered": "Доставлен", "completed": "Завершён", "cancelled": "Отменён",
-    "disputed": "Спор", "refunded": "Возврат",
+    "pending": _("Ожидание оплаты"), "reserve_paid": _("Резерв оплачен"),
+    "confirmed": _("Формирование"), "in_production": _("В производстве"),
+    "ready_to_ship": _("Готов к отгрузке"), "shipped": _("В пути"),
+    "in_transit": _("В пути"), "customs": _("Таможня"), "arrived": _("Прибыл"),
+    "delivered": _("Доставлен"), "completed": _("Завершён"), "cancelled": _("Отменён"),
+    "disputed": _("Спор"), "refunded": _("Возврат"),
 }
 
 
@@ -2606,8 +2606,8 @@ def _plural(n, one, few, many):
 # нет — показываем расчёт по FOB 0.4% (начислится при закрытии сделки).
 _BONUS_RATE = {"FOB": 0.40, "CIP": 0.50, "DDP": 0.70}
 _BONUS_MIN, _BONUS_MAX = 50.0, 5000.0
-_BONUS_STLBL = {"pending": "в холде (14 дн)", "released": "зачислено",
-                "withheld": "удержано", "reduced": "−50% (вина)", "estimate": "расчётно"}
+_BONUS_STLBL = {"pending": _("в холде (14 дн)"), "released": _("зачислено"),
+                "withheld": _("удержано"), "reduced": _("−50% (вина)"), "estimate": _("расчётно")}
 
 
 def _order_bonus(order):
@@ -2688,20 +2688,20 @@ def _customer_insights(c, projects, orders):
     # Умные подсказки (инсайты) — что менеджеру сделать дальше.
     tips = []
     if active_proj and n == 0:
-        tips.append("📁 Есть активные проекты без заказов — возможность допродажи: отправьте КП.")
+        tips.append(_("📁 Есть активные проекты без заказов — возможность допродажи: отправьте КП."))
     if active_ship:
         tips.append(f"🚚 {active_ship} {_plural(active_ship, 'отгрузка', 'отгрузки', 'отгрузок')} "
                     "в работе — держите клиента в курсе статусов.")
     if oem_demand:
-        tips.append("🔁 Повторный спрос: " + ", ".join(oem_demand)
+        tips.append(_("🔁 Повторный спрос: ") + ", ".join(oem_demand)
                     + " — предложите рамочный контракт / складскую программу.")
     if n >= 3:
         tips.append(f"⭐ {n} {_plural(n, 'сделка', 'сделки', 'сделок')} — лояльный клиент: "
                     "зафиксируйте индивидуальные условия и наценку.")
     if not orders and not projects:
-        tips.append("🆕 Новый клиент без активности — заведите первый проект и отправьте КП.")
+        tips.append(_("🆕 Новый клиент без активности — заведите первый проект и отправьте КП."))
     if not tips:
-        tips.append("✅ По клиенту всё в норме — продолжайте сопровождение.")
+        tips.append(_("✅ По клиенту всё в норме — продолжайте сопровождение."))
 
     return {
         "gmv": gmv, "n": n, "avg": avg, "active_ship": active_ship, "done": done,
@@ -2762,7 +2762,7 @@ def customer_detail(params, user, role):
             "tone": tone,
         }
         if link_action:
-            row["subtitle"] = (row["subtitle"] + "  ·  🔗 привязать к заказчику").strip(" ·")
+            row["subtitle"] = (row["subtitle"] + _("  ·  🔗 привязать к заказчику")).strip(" ·")
             row["action"] = "link_order_to_customer"
             row["params"] = {"id": str(c.id), "order_id": o.id}
         return row
@@ -2865,7 +2865,7 @@ def link_order_to_customer(params, user, role):
     oid = params.get("order_id")
     o = Order.objects.filter(id=oid).first()
     if not o:
-        return customer_detail({"id": str(c.id), "flash": "Заказ не найден — возможно, уже привязан."}, user, role)
+        return customer_detail({"id": str(c.id), "flash": _("Заказ не найден — возможно, уже привязан.")}, user, role)
     o.customer_ref = c
     o.assigned_kam_id = c.owner_id
     o.save(update_fields=["customer_ref", "assigned_kam"])
@@ -2892,7 +2892,7 @@ def create_project_for_customer(params, user, role):
             cards=[{"type": "form", "data": {
                 "title": _('📁 Новый проект · %(p0)s') % {"p0": f'{c.name}'},
                 "submit_action": "create_project_for_customer",
-                "submit_label": "Создать проект",
+                "submit_label": _("Создать проект"),
                 "fields": [
                     {"name": "name", "label": _("Название проекта"), "type": "text", "required": True,
                      "placeholder": _("Ходовка Komatsu D155 — Q3")},
@@ -2936,17 +2936,17 @@ def _referral_reward_card(role):
             {"title": _("0.02% со сделок приведённых клиентов"), "subtitle": _("пока они покупают на платформе — резидуально")},
             {"title": _("+ бонус с «дожатых» отказных сделок"), "subtitle": _("вернули отказника к покупке → доля ваша")},
         ]
-        title = "💰 Ваша награда (KAM)"
+        title = _("💰 Ваша награда (KAM)")
     elif role == "buyer":
         rows = [
             {"title": _("−$100 на ваш первый заказ"), "subtitle": _("зачтём при пополнении депозита по этому приглашению")},
         ]
-        title = "💰 Ваша награда за приглашение"
+        title = _("💰 Ваша награда за приглашение")
     else:  # продавец, оператор и все прочие, кроме KAM
         rows = [
             {"title": _("$100 с первой покупки приглашённого"), "subtitle": _("зачислим, как только он сделает первый заказ")},
         ]
-        title = "💰 Ваша награда за приглашение"
+        title = _("💰 Ваша награда за приглашение")
     return {"type": "list", "data": {"title": title, "rows": rows}}
 
 
@@ -3066,7 +3066,7 @@ def invite_customer(params, user, role):
             text=txt,
             cards=[
                 {"type": "copy_link", "data": {"title": _("📨 Ваша реферальная ссылка"),
-                    "url": link, "share_text": "Приглашаю на платформу запчастей Consolidator Parts",
+                    "url": link, "share_text": _("Приглашаю на платформу запчастей Consolidator Parts"),
                     "hint": _("Привязка отслеживается автоматически.")}},
                 _referral_reward_card(role),
             ],
@@ -3080,7 +3080,7 @@ def invite_customer(params, user, role):
     c.invited_at = _tz.now()
     c.save(update_fields=["invite_token", "invited_at"])
     link = f"{base}/chat/?invite_customer={c.invite_token}"
-    status = "✅ привязан" if c.user_id else "ожидает принятия"
+    status = _("✅ привязан") if c.user_id else "ожидает принятия"
     return ActionResult(
         text=(_('📨 Приглашение для «%(p0)s» готово (%(p1)s). Отправьте ссылку — заказчик войдёт/зарегистрируется и привяжется к вам; его заказы попадут в ваши отгрузки и начисления:\n%(p2)s') % {"p0": f'{c.name}', "p1": f'{status}', "p2": f'{link}'}),
         cards=[
@@ -3232,7 +3232,7 @@ def kam_deals(params, user, role):
     active = sum(1 for o in orders if o.status in ACTIVE)
     esc = sum(1 for o in orders if o.kam_handoff == "escalation")
     gmv = sum(float(o.total_amount or 0) for o in orders)
-    HOFF = {"escalation": "🔴 эскалация — связаться с клиентом"}  # сделку ведёт оператор
+    HOFF = {"escalation": _("🔴 эскалация — связаться с клиентом")}  # сделку ведёт оператор
 
     def _m(v):
         return ("$" + f"{float(v):,.0f}").replace(",", " ")
@@ -3246,7 +3246,7 @@ def kam_deals(params, user, role):
                       else ("warn" if o.status in ACTIVE else "info")))
         cname = o.customer_ref.name if o.customer_ref_id else (o.customer_name or "—")
         sub = [(_m(o.total_amount) if o.total_amount else "—"),
-               HOFF.get(hoff, "🔵 ведёт оператор")]
+               HOFF.get(hoff, _("🔵 ведёт оператор"))]
         if hoff == "escalation" and o.kam_handoff_note:
             sub.append("⚠️ " + o.kam_handoff_note)
         row = {
@@ -3316,7 +3316,7 @@ def op_escalate_to_kam(params, user, role):
             text=_('Эскалация заказа #%(p0)s к KAM — укажите причину.') % {"p0": f'{o.id}'},
             cards=[{"type": "form", "data": {
                 "title": _('⚠️ Эскалация #%(p0)s → KAM') % {"p0": f'{o.id}'},
-                "submit_action": "op_escalate_to_kam", "submit_label": "Эскалировать",
+                "submit_action": "op_escalate_to_kam", "submit_label": _("Эскалировать"),
                 "fields": [{"name": "reason", "label": _("Причина"), "type": "text", "required": True,
                             "placeholder": _("Срыв SLA / брак / перерасход — коротко")}],
                 "fixed_params": {"order_id": oid},
@@ -3459,7 +3459,7 @@ def kam_message(params, user, role):
             text=_('💬 Напишите вашему менеджеру — %(p0)s получит сообщение и ответит здесь.') % {"p0": f'{mgr}'},
             cards=[{"type": "form", "data": {
                 "title": _('💬 Сообщение менеджеру (%(p0)s)') % {"p0": f'{mgr}'},
-                "submit_action": "kam_message", "submit_label": "📨 Отправить",
+                "submit_action": "kam_message", "submit_label": _("📨 Отправить"),
                 "fields": [{"name": "text", "label": _("Сообщение"), "type": "textarea",
                             "required": True,
                             "placeholder": _("Вопрос по заказу, срокам, цене или подбору поставщика…")}],
@@ -3616,8 +3616,8 @@ def my_referrals(params, user, role):
 
     _ST = {"pending": ("в ожидании", "info"), "credited": ("✓ зачислено", "ok"),
            "cancelled": ("отменено", "warn")}
-    _KIND = {"flat_first_order": "$100 с первой покупки приглашённого",
-             "buyer_discount": "−$100 на ваш первый заказ (при пополнении)"}
+    _KIND = {"flat_first_order": _("$100 с первой покупки приглашённого"),
+             "buyer_discount": _("−$100 на ваш первый заказ (при пополнении)")}
     rows = []
     for r in summ["rows"]:
         lbl, tone = _ST.get(r.status, (r.status, "info"))
@@ -3653,8 +3653,8 @@ def _drawing_owner(user, role):
     return user if (role or "").startswith("buyer") else _effective_seller(user)
 
 
-_DRAWING_ST = {"draft": "черновик", "on_review": "на проверке", "approved": "✓ одобрен",
-               "rejected": "✗ отклонён", "archived": "архив"}
+_DRAWING_ST = {"draft": _("черновик"), "on_review": _("на проверке"), "approved": _("✓ одобрен"),
+               "rejected": _("✗ отклонён"), "archived": _("архив")}
 
 
 def _drawing_row(d):
@@ -4012,20 +4012,20 @@ def upload_drawing(params, user, role):
 # ══════════════════════════════════════════════════════════
 
 TEAM_ROLE_LABELS = {
-    "admin": "Администратор",
-    "manager": "Менеджер",
-    "ved": "Менеджер ВЭД",
-    "logist": "Логист",
-    "finance": "Финансист",
-    "viewer": "Только просмотр",
+    "admin": _("Администратор"),
+    "manager": _("Менеджер"),
+    "ved": _("Менеджер ВЭД"),
+    "logist": _("Логист"),
+    "finance": _("Финансист"),
+    "viewer": _("Только просмотр"),
 }
 TEAM_ROLE_HINT = {
-    "admin": "всё + управление командой",
-    "manager": "каталог, заказы, КП",
-    "ved": "поставщики, прайс-листы, импорт, таможня",
-    "logist": "логистика, отгрузки, документы",
-    "finance": "платежи, инвойсы, финансы",
-    "viewer": "только просмотр",
+    "admin": _("всё + управление командой"),
+    "manager": _("каталог, заказы, КП"),
+    "ved": _("поставщики, прайс-листы, импорт, таможня"),
+    "logist": _("логистика, отгрузки, документы"),
+    "finance": _("платежи, инвойсы, финансы"),
+    "viewer": _("только просмотр"),
 }
 TEAM_INVITE_TTL_DAYS = 7
 _TEAM_ROLE_SYNONYMS = {
@@ -4098,7 +4098,7 @@ def seller_team(params, user, role):
         "title": "👑 " + (owner.get_full_name() or owner.username),
         "subtitle": _("Руководитель компании") + (" · вы" if user.id == owner.id else ""),
     }]
-    _st_label = {"invited": "приглашён — ждёт принятия", "disabled": "отключён", "active": "активен"}
+    _st_label = {"invited": _("приглашён — ждёт принятия"), "disabled": _("отключён"), "active": _("активен")}
     for m in members:
         u = m.user
         name = (u.get_full_name() if u else "") or (u.username if u else "") or m.invited_email
@@ -4119,7 +4119,7 @@ def seller_team(params, user, role):
         {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
     ]
     head = (f"👥 Команда компании{(' «' + company + '»') if company else ''}: "
-            f"{len(members)} + руководитель." if can_manage else "👥 Команда вашей компании.")
+            f"{len(members)} + руководитель." if can_manage else _("👥 Команда вашей компании."))
     return ActionResult(
         text=head,
         cards=[{"type": "list", "data": {"title": _("Команда компании"), "rows": rows}}],
@@ -4152,7 +4152,7 @@ def invite_team_member(params, user, role):
                 "data": {
                     "title": _("👥 Пригласить сотрудника в компанию"),
                     "submit_action": "invite_team_member",
-                    "submit_label": "Создать приглашение",
+                    "submit_label": _("Создать приглашение"),
                     "fields": [
                         {"name": "email", "label": _("Email сотрудника"), "type": "email",
                          "required": True, "placeholder": "ivanov@company.com"},
@@ -4260,7 +4260,7 @@ def team_member(params, user, role):
     u = tm.user
     name = (u.get_full_name() if u else "") or (u.username if u else "") or tm.invited_email
     rlabel = TEAM_ROLE_LABELS.get(tm.role, tm.role)
-    st = {"invited": "приглашён", "disabled": "отключён", "active": "активен"}.get(tm.status, tm.status)
+    st = {"invited": _("приглашён"), "disabled": _("отключён"), "active": _("активен")}.get(tm.status, tm.status)
 
     if tm.status == "invited":
         link = f"{_invite_base_url()}/chat/?join_team={tm.invite_token}"
@@ -4342,15 +4342,15 @@ def team_set_role(params, user, role):
 def seller_integrations(params, user, role):
     """Список доступных интеграций со статусом."""
     integrations = [
-        {"key": "1c",       "name": "1С:Управление торговлей",
+        {"key": "1c",       "name": _("1С:Управление торговлей"),
          "desc": _("Синхронизация остатков и заказов"),
          "status": "available"},
-        {"key": "bitrix",   "name": "Битрикс24",
+        {"key": "bitrix",   "name": _("Битрикс24"),
          "desc": _("RFQ в CRM, авто-сделки"), "status": "available"},
-        {"key": "email",    "name": "Email-уведомления",
+        {"key": "email",    "name": _("Email-уведомления"),
          "desc": _("Новые RFQ и заказы на почту"),
          "status": "active"},
-        {"key": "telegram", "name": "Telegram-бот",
+        {"key": "telegram", "name": _("Telegram-бот"),
          "desc": _("Алерты по новым заказам"),
          "status": "available"},
         {"key": "api",      "name": "REST API + webhooks",
@@ -4384,21 +4384,21 @@ def seller_integrations(params, user, role):
 def seller_reports(params, user, role):
     """Доступные отчёты для скачивания."""
     reports = [
-        {"key": "sales_csv",     "name": "Продажи (CSV, 30д)",
+        {"key": "sales_csv",     "name": _("Продажи (CSV, 30д)"),
          "desc": _("Все продажи за последние 30 дней")},
-        {"key": "catalog_xlsx",  "name": "Каталог (Excel)",
+        {"key": "catalog_xlsx",  "name": _("Каталог (Excel)"),
          "desc": _("Полный каталог с остатками")},
-        {"key": "rfq_csv",       "name": "RFQ-история (CSV)",
+        {"key": "rfq_csv",       "name": _("RFQ-история (CSV)"),
          "desc": _("Все RFQ и ответы")},
-        {"key": "sla_pdf",       "name": "SLA-отчёт (PDF)",
+        {"key": "sla_pdf",       "name": _("SLA-отчёт (PDF)"),
          "desc": _("Отчёт о выполнении SLA")},
-        {"key": "rating_pdf",    "name": "Рейтинг и отзывы (PDF)",
+        {"key": "rating_pdf",    "name": _("Рейтинг и отзывы (PDF)"),
          "desc": _("Сертификат рейтинга")},
     ]
     rows = [{
         "title": r["name"],
         "subtitle": r["desc"],
-        "badge": "Скачать",
+        "badge": _("Скачать"),
     } for r in reports]
     return ActionResult(
         text=_("📑 Отчёты по вашей деятельности. Любой можно сгенерировать сейчас."),
@@ -4451,7 +4451,7 @@ def connect_gsheet(params, user, role):
                     "Платформа скачает CSV-экспорт и прогонит через smart-mapping."
                 ),
                 "submit_action": "connect_gsheet",
-                "submit_label": "Подключить →",
+                "submit_label": _("Подключить →"),
                 "fields": [
                     {"name": "gsheet_url", "label": _("Ссылка на таблицу"),
                      "type": "url", "required": True,
