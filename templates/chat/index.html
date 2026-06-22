@@ -692,9 +692,9 @@
     .sm-hint{font-size:12.5px;color:rgba(0,0,0,0.7);margin-top:10px;line-height:1.5;}
     .sm-filter-badge{background:rgba(232,92,13,0.18);color:#7a3a00;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:600;}
     .sm-route-expandable{cursor:pointer;user-select:none;}
-    .sm-route-expandable::after{content:'Состав ▾';margin-left:4px;font-size:10.5px;font-weight:600;color:#fff;background:#1a1a1a;padding:3px 9px;border-radius:999px;letter-spacing:0.2px;transition:background 0.12s;}
+    .sm-route-expandable::after{content:'{% trans "Состав ▾" %}';margin-left:4px;font-size:10.5px;font-weight:600;color:#fff;background:#1a1a1a;padding:3px 9px;border-radius:999px;letter-spacing:0.2px;transition:background 0.12s;}
     .sm-route-expandable:hover::after{background:#000;}
-    .sm-route-open.sm-route-expandable::after{content:'Скрыть ▴';background:rgba(0,0,0,0.55);}
+    .sm-route-open.sm-route-expandable::after{content:'{% trans "Скрыть ▴" %}';background:rgba(0,0,0,0.55);}
     .sm-chev{display:none;}
 
     /* ── Origin breakdown (разбивка по странам отправления) ── */
@@ -716,7 +716,7 @@
     .ob-c-expand{margin-left:14px;padding:2px 0;font-size:11.5px;font-weight:600;color:rgba(0,0,0,0.70);white-space:nowrap;text-decoration:underline;text-decoration-color:rgba(0,0,0,0.20);text-underline-offset:3px;transition:color 0.12s,text-decoration-color 0.12s;}
     .ob-country summary:hover .ob-c-expand{color:rgba(0,0,0,0.92);text-decoration-color:rgba(0,0,0,0.45);}
     .ob-country[open] .ob-c-expand{font-size:0;}
-    .ob-country[open] .ob-c-expand::before{content:'Скрыть позиции ▴';font-size:11.5px;}
+    .ob-country[open] .ob-c-expand::before{content:'{% trans "Скрыть позиции ▴" %}';font-size:11.5px;}
     body.dark-mode .ob-c-expand{color:rgba(255,255,255,0.70);text-decoration-color:rgba(255,255,255,0.25);}
     body.dark-mode .ob-country summary:hover .ob-c-expand{color:#fff;text-decoration-color:rgba(255,255,255,0.55);}
     .ob-country summary:hover{background:rgba(0,0,0,0.03);}
@@ -3897,9 +3897,9 @@
     <!-- View-as banner: оператор смотрит кабинет поставщика -->
     <div id="viewAsBanner" style="background:linear-gradient(90deg,#f59e0b,#eab308);color:#1a1a1a;padding:9px 16px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;border-bottom:1px solid rgba(0,0,0,0.12);box-shadow:0 2px 8px rgba(0,0,0,0.10);position:relative;z-index:50;flex-wrap:wrap;">
       <span style="font-size:16px;">🔍</span>
-      <span style="flex:1;min-width:200px;">Просмотр кабинета <strong>{{ request.user.username }}</strong> — изменения сохраняются от лица поставщика. Действуйте осторожно.</span>
-      <button type="button" onclick="viewAsHelp()" style="background:#1a1a1a;color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">🤝 Чем помочь</button>
-      <button type="button" onclick="exitViewAs()" style="background:rgba(26,26,26,0.85);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">🚪 Выйти</button>
+      <span style="flex:1;min-width:200px;">{% blocktrans with username=request.user.username %}Просмотр кабинета <strong>{{ username }}</strong> — изменения сохраняются от лица поставщика. Действуйте осторожно.{% endblocktrans %}</span>
+      <button type="button" onclick="viewAsHelp()" style="background:#1a1a1a;color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">🤝 {% trans "Чем помочь" %}</button>
+      <button type="button" onclick="exitViewAs()" style="background:rgba(26,26,26,0.85);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;">🚪 {% trans "Выйти" %}</button>
     </div>
     <script>
       // Универсальный action-call с reload, если backend попросил.
@@ -4087,14 +4087,14 @@
 <!-- Side preview panel (как у claude.ai) — слайдит справа при клике на файл -->
 <div id="sidePreview" class="side-preview" hidden>
   <!-- Ручка для изменения ширины — drag слева-направо -->
-  <div id="sidePreviewResizer" class="side-preview-resizer" title="Тяните чтобы изменить ширину"></div>
+  <div id="sidePreviewResizer" class="side-preview-resizer" title="{% trans 'Тяните чтобы изменить ширину' %}"></div>
   <div class="side-preview-head">
     <div class="side-preview-title">
-      <span id="sidePreviewName">Файл</span>
+      <span id="sidePreviewName" data-i18n="card.file">{% trans "Файл" %}</span>
       <span id="sidePreviewMeta" class="side-preview-meta">XLSX</span>
     </div>
     <div class="side-preview-actions">
-      <a id="sidePreviewDownload" class="side-preview-btn" download>⬇ Скачать</a>
+      <a id="sidePreviewDownload" class="side-preview-btn" download>⬇ <span data-i18n="btn.download">{% trans "Скачать" %}</span></a>
       <button class="side-preview-btn side-preview-close" onclick="window.closeSidePreview && closeSidePreview()">✕</button>
     </div>
   </div>

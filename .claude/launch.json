@@ -1,17 +1,1 @@
-{
-  "version": "0.0.1",
-  "configurations": [
-    {
-      "name": "Django Dev Server",
-      "runtimeExecutable": "/Users/kosta/Dev/workspace-app/.venv/bin/python",
-      "runtimeArgs": ["manage.py", "runserver", "127.0.0.1:8001", "--noreload"],
-      "port": 8001
-    },
-    {
-      "name": "Celery Worker",
-      "runtimeExecutable": "celery",
-      "runtimeArgs": ["-A", "consolidator_site", "worker", "-l", "info"],
-      "port": null
-    }
-  ]
-}
+{"version":"0.0.1","configurations":[{"name":"Django Dev Server","autoPort":false,"runtimeExecutable":"/usr/bin/env","runtimeArgs":["DB_ENGINE=django.db.backends.sqlite3","DATABASE_URL=sqlite:////Users/kosta/Dev/workspace-app/db.sqlite3","SECURE_SSL_REDIRECT=False","SESSION_COOKIE_SECURE=False","CSRF_COOKIE_SECURE=False","DEBUG_MODE=True","SERVE_MEDIA=True","ALLOWED_HOSTS=*","CELERY_BROKER_URL=memory://","CELERY_TASK_ALWAYS_EAGER=True","/opt/homebrew/bin/python3.14","manage.py","runserver","127.0.0.1:8001","--noreload"],"port":8001}]}

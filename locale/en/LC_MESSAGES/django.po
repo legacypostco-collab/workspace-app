@@ -1560,7 +1560,7 @@ msgstr "✅ Completed"
 #: assistant/actions.py:4015
 #, python-format
 msgid "%(n_leads)s %(n_leads2)s"
-msgstr ""
+msgstr "%(n_leads)s %(n_leads2)s"
 
 #: assistant/actions.py:4016 assistant/actions.py:4153
 #, python-format
@@ -1614,7 +1614,7 @@ msgstr "Order #%(id)s"
 #: assistant/actions.py:4114
 #, python-format
 msgid "%(else)s · %(n_pos)s %(n_pos2)s"
-msgstr ""
+msgstr "%(else)s · %(n_pos)s %(n_pos2)s"
 
 #: assistant/actions.py:4137
 #, python-format
@@ -2081,7 +2081,7 @@ msgstr "📬 Issuance"
 #: assistant/actions.py:5031
 #, python-format
 msgid "ORD-%(id)s · %(username)s"
-msgstr ""
+msgstr "ORD-%(id)s · %(username)s"
 
 #: assistant/actions.py:5033
 #, python-format
@@ -2894,7 +2894,7 @@ msgstr "deadline in %(days_left)s d"
 #: assistant/actions.py:6537
 #, python-format
 msgid "ORD-%(id)s · %(or)s"
-msgstr ""
+msgstr "ORD-%(id)s · %(or)s"
 
 #: assistant/actions.py:6537 assistant/operator_actions.py:1018
 msgid "покупатель"
@@ -6387,7 +6387,7 @@ msgstr "Last top-up"
 #: assistant/admin_actions.py:496
 #, python-format
 msgid "$%(amount)s · %(status)s · %(date)s"
-msgstr ""
+msgstr "$%(amount)s · %(status)s · %(date)s"
 
 #: assistant/admin_actions.py:501
 msgid "📦 Заказы и заявки"
@@ -6478,7 +6478,7 @@ msgstr "📦 Order ORD-%(id)s"
 #: assistant/admin_actions.py:553
 #, python-format
 msgid "👤 %(username)s · %(email)s"
-msgstr ""
+msgstr "👤 %(username)s · %(email)s"
 
 #: assistant/admin_actions.py:554
 msgid "нет email"
@@ -7118,12 +7118,12 @@ msgstr ""
 
 #: assistant/auth_actions.py:88
 msgid "🔐 TOTP setup"
-msgstr ""
+msgstr "🔐 TOTP setup"
 
 #: assistant/auth_actions.py:90
 #, python-format
 msgid "Issuer: %(issuer)s · Account: %(label)s"
-msgstr ""
+msgstr "Issuer: %(issuer)s · Account: %(label)s"
 
 #: assistant/auth_actions.py:95
 msgid "🔑 Backup-коды (одноразовые)"
@@ -7418,7 +7418,7 @@ msgstr "Other"
 
 #: assistant/buyer_registration.py:54
 msgid "Telegram (@username)"
-msgstr ""
+msgstr "Telegram (@username)"
 
 #: assistant/buyer_registration.py:55
 msgid "WhatsApp (+номер)"
@@ -7548,7 +7548,7 @@ msgstr "⚠️ Failed to create the account:"
 #: assistant/buyer_registration.py:313
 #, python-format
 msgid ", %(company)s"
-msgstr ""
+msgstr ", %(company)s"
 
 #: assistant/buyer_registration.py:316
 #, python-format
@@ -7689,7 +7689,7 @@ msgstr "New claim for #%(id)s"
 #: assistant/claims.py:106
 #, python-format
 msgid "%(kind)s · %(title)s"
-msgstr ""
+msgstr "%(kind)s · %(title)s"
 
 #: assistant/claims.py:112
 #, python-format
@@ -8430,14 +8430,10 @@ msgid "Покупатель / Buyer"
 msgstr "Buyer / Buyer"
 
 #: assistant/documents.py:427
-#, fuzzy
-#| msgid "Продавец"
 msgid "Продавец / Seller"
 msgstr "Seller"
 
 #: assistant/documents.py:428
-#, fuzzy
-#| msgid "Оператор"
 msgid "Оператор / Operator"
 msgstr "Operator"
 
@@ -8665,7 +8661,7 @@ msgstr "demo: TIN '99…' → liquidation (test branch)"
 #: assistant/external_rating.py:132
 #, python-format
 msgid "demo · hash-based score %(score)s"
-msgstr ""
+msgstr "demo · hash-based score %(score)s"
 
 #: assistant/external_rating.py:156
 msgid "ИНН не указан в KYB"
@@ -9166,7 +9162,7 @@ msgstr "Regulation"
 
 #: assistant/models.py:127
 msgid "FAQ"
-msgstr ""
+msgstr "FAQ"
 
 #: assistant/models.py:191
 msgid "Заказчик из CRM продавца (если проект заведён под конкретного заказчика)"
@@ -9247,7 +9243,7 @@ msgstr "Risky"
 
 #: assistant/negotiation.py:247
 msgid "KYB verified"
-msgstr ""
+msgstr "KYB verified"
 
 #: assistant/negotiation.py:247
 #, python-format
@@ -9318,7 +9314,7 @@ msgstr "✓ RFQ #%(id)s sent to %(sent)s suppliers · trusted %(tr)s · sandbox 
 #: assistant/negotiation.py:343
 #, python-format
 msgid " · risky %(n)s"
-msgstr ""
+msgstr " · risky %(n)s"
 
 #: assistant/negotiation.py:344
 msgid ""
@@ -9890,7 +9886,7 @@ msgstr ""
 
 #: assistant/notif_settings.py:225
 msgid "✈️ Telegram chat_id"
-msgstr ""
+msgstr "✈️ Telegram chat_id"
 
 #: assistant/notif_settings.py:229
 msgid "Числовой chat_id из ответа бота"
@@ -10821,14 +10817,12 @@ msgid "Низкий"
 msgstr "Low"
 
 #: assistant/onboarding.py:1218
-#, fuzzy
-#| msgid "Среднее"
 msgid "Средний"
 msgstr "Average"
 
 #: assistant/onboarding.py:1218
 msgid "Высокий"
-msgstr ""
+msgstr "High"
 
 #: assistant/onboarding.py:1222
 msgid "ИНН/Tax ID"
@@ -11159,7 +11153,7 @@ msgstr "🏭 offer"
 #: assistant/operator_actions.py:69
 #, python-format
 msgid "%(name)s · %(oem)s"
-msgstr ""
+msgstr "%(name)s · %(oem)s"
 
 #: assistant/operator_actions.py:70
 #, python-format
@@ -11169,7 +11163,7 @@ msgstr "Drawing #%(id)s"
 #: assistant/operator_actions.py:72
 #, python-format
 msgid "%(fmt)s · %(side)s · %(who)s · %(date)s"
-msgstr ""
+msgstr "%(fmt)s · %(side)s · %(who)s · %(date)s"
 
 #: assistant/operator_actions.py:81
 msgid "🛒 Что нужно покупателям"
@@ -11195,7 +11189,7 @@ msgstr "🔎 Enter a part number — I'll show what buyers need and what sellers
 #: assistant/operator_actions.py:172
 #, python-format
 msgid "SEMI RFQ #%(id)s · %(name)s"
-msgstr ""
+msgstr "SEMI RFQ #%(id)s · %(name)s"
 
 #: assistant/operator_actions.py:173
 #, python-format
@@ -11205,7 +11199,7 @@ msgstr "approve quote · %(sub)s"
 #: assistant/operator_actions.py:181
 #, python-format
 msgid "MANUAL RFQ #%(id)s · %(name)s"
-msgstr ""
+msgstr "MANUAL RFQ #%(id)s · %(name)s"
 
 #: assistant/operator_actions.py:182
 #, python-format
@@ -11215,12 +11209,12 @@ msgstr "build quote · %(sub)s"
 #: assistant/operator_actions.py:190
 #, python-format
 msgid "ORD-%(id)s · %(name)s"
-msgstr ""
+msgstr "ORD-%(id)s · %(name)s"
 
 #: assistant/operator_actions.py:191
 #, python-format
 msgid "%(st)s · SLA %(sla)s · $%(amt)s"
-msgstr ""
+msgstr "%(st)s · SLA %(sla)s · $%(amt)s"
 
 #: assistant/operator_actions.py:198 assistant/operator_actions.py:645 assistant/operator_actions.py:675
 msgid "✅ Очередь пуста"
@@ -11285,7 +11279,7 @@ msgstr "📋 RFQ — quote generation"
 
 #: assistant/operator_actions.py:254
 msgid "AUTO"
-msgstr ""
+msgstr "AUTO"
 
 #: assistant/operator_actions.py:255
 msgid "без оператора"
@@ -11293,7 +11287,7 @@ msgstr "without an operator"
 
 #: assistant/operator_actions.py:257
 msgid "SEMI · approve"
-msgstr ""
+msgstr "SEMI · approve"
 
 #: assistant/operator_actions.py:260
 #, python-format
@@ -11310,7 +11304,7 @@ msgstr "empty"
 
 #: assistant/operator_actions.py:265
 msgid "MANUAL"
-msgstr ""
+msgstr "MANUAL"
 
 #: assistant/operator_actions.py:268
 #, python-format
@@ -11479,12 +11473,12 @@ msgstr "%(n)s of 15 min left"
 #: assistant/operator_actions.py:472
 #, python-format
 msgid " · ~$%(est)s"
-msgstr ""
+msgstr " · ~$%(est)s"
 
 #: assistant/operator_actions.py:474 assistant/operator_actions.py:617
 #, python-format
 msgid "RFQ #%(id)s · %(name)s"
-msgstr ""
+msgstr "RFQ #%(id)s · %(name)s"
 
 #: assistant/operator_actions.py:475
 #, python-format
@@ -11498,7 +11492,7 @@ msgstr "Awaiting confirmation"
 #: assistant/operator_actions.py:484
 #, python-format
 msgid "%(n)s RFQ"
-msgstr ""
+msgstr "%(n)s RFQ"
 
 #: assistant/operator_actions.py:486 assistant/operator_actions.py:520
 #, python-format
@@ -11518,12 +11512,12 @@ msgstr "… %(n)s more RFQ"
 #: assistant/operator_actions.py:507
 #, python-format
 msgid "#%(id)s · %(name)s"
-msgstr ""
+msgstr "#%(id)s · %(name)s"
 
 #: assistant/operator_actions.py:508
 #, python-format
 msgid "SLA %(sla)s · $%(amt)s"
-msgstr ""
+msgstr "SLA %(sla)s · $%(amt)s"
 
 #: assistant/operator_actions.py:519 assistant/operator_actions.py:3716
 #, python-format
@@ -11548,7 +11542,7 @@ msgstr "Operator action: %(act)s"
 #: assistant/operator_actions.py:528
 #, python-format
 msgid "%(stage)s · %(bits)s"
-msgstr ""
+msgstr "%(stage)s · %(bits)s"
 
 #: assistant/operator_actions.py:530
 #, python-format
@@ -11695,12 +11689,12 @@ msgstr "📍 Mode: %(badge)s"
 #: assistant/operator_actions.py:641
 #, python-format
 msgid "%(sla)s · %(hint)s"
-msgstr ""
+msgstr "%(sla)s · %(hint)s"
 
 #: assistant/operator_actions.py:643 assistant/operator_actions.py:677
 #, python-format
 msgid "%(badge)s · %(n)s RFQ"
-msgstr ""
+msgstr "%(badge)s · %(n)s RFQ"
 
 #: assistant/operator_actions.py:645
 msgid "Нет открытых RFQ в этом режиме"
@@ -11742,7 +11736,7 @@ msgstr "Action: build the quote — broadcast to suppliers, select the contracto
 #: assistant/operator_actions.py:678
 #, python-format
 msgid "%(prefix)s · %(hint)s · %(act)s"
-msgstr ""
+msgstr "%(prefix)s · %(hint)s · %(act)s"
 
 #: assistant/operator_actions.py:682
 msgid "Открыть полный список"
@@ -11827,7 +11821,7 @@ msgstr "%(h)sh until deadline"
 #: assistant/operator_actions.py:759
 #, python-format
 msgid "#%(id)s · %(name)s · $%(amt)s"
-msgstr ""
+msgstr "#%(id)s · %(name)s · $%(amt)s"
 
 #: assistant/operator_actions.py:762
 #, python-format
@@ -12345,22 +12339,16 @@ msgid "📝 Заметка"
 msgstr "📝 Note"
 
 #: assistant/operator_actions.py:1389
-#, fuzzy
-#| msgid "Отменить"
 msgid "Сменить"
-msgstr "Cancel"
+msgstr "Change"
 
 #: assistant/operator_actions.py:1389
-#, fuzzy
-#| msgid "Подключить"
 msgid "Назначить"
-msgstr "Connect"
+msgstr "Assign"
 
 #: assistant/operator_actions.py:1390
-#, fuzzy
-#| msgid "Email перевозчика"
 msgid " перевозчика"
-msgstr "Carrier email"
+msgstr " carrier"
 
 #: assistant/operator_actions.py:1393
 msgid "⚖️ Закрыть спор"
@@ -12582,16 +12570,12 @@ msgid " · выплата $%(amount)s → продавц"
 msgstr " · payout $%(amount)s → Seller"
 
 #: assistant/operator_actions.py:1777
-#, fuzzy
-#| msgid "Имя"
 msgid "ам"
-msgstr "Name"
+msgstr "s"
 
 #: assistant/operator_actions.py:1777
-#, fuzzy
-#| msgid "Иу"
 msgid "у"
-msgstr "Yiwu"
+msgstr ""
 
 #: assistant/operator_actions.py:1804
 #, python-format
@@ -15092,7 +15076,7 @@ msgstr "📈 Detailed reports — click for details"
 #: assistant/seller_actions.py:723
 #, python-format
 msgid "vs %(prev)s: "
-msgstr ""
+msgstr "vs %(prev)s: "
 
 #: assistant/seller_actions.py:725
 #, python-format
@@ -15330,7 +15314,7 @@ msgstr "🔁 Status"
 
 #: assistant/seller_actions.py:1024
 msgid "⏱ SLA"
-msgstr ""
+msgstr "⏱ SLA"
 
 #: assistant/seller_actions.py:1031
 msgid "📄 Документ"
@@ -17918,10 +17902,9 @@ msgid "💬 Спросить оператора"
 msgstr "💬 Ask the operator"
 
 #: assistant/support_hub.py:823
-#, fuzzy, python-format
-#| msgid "📋 База знаний (FAQ)"
+#, python-format
 msgid "📚 База знаний · %(count)s ответов"
-msgstr "📋 Knowledge base (FAQ)"
+msgstr "📚 Knowledge base · %(count)s answers"
 
 #: assistant/support_hub.py:824
 #, python-format
@@ -17999,28 +17982,24 @@ msgid "🎁 Бонусы доступны только в кабинете по�
 msgstr "🎁 Bonuses are available only in the buyer cabinet."
 
 #: assistant/support_hub.py:937
-#, fuzzy, python-format
-#| msgid "Ср. скидка"
+#, python-format
 msgid "1%% скидка"
-msgstr "Avg. discount"
+msgstr "1%% discount"
 
 #: assistant/support_hub.py:938
-#, fuzzy, python-format
-#| msgid "Ср. скидка"
+#, python-format
 msgid "2%% скидка"
-msgstr "Avg. discount"
+msgstr "2%% discount"
 
 #: assistant/support_hub.py:939
-#, fuzzy, python-format
-#| msgid "Ср. скидка"
+#, python-format
 msgid "3%% скидка"
-msgstr "Avg. discount"
+msgstr "3%% discount"
 
 #: assistant/support_hub.py:940
-#, fuzzy, python-format
-#| msgid "Персональный менеджер"
+#, python-format
 msgid "5%% скидка + персональный менеджер"
-msgstr "Personal manager"
+msgstr "5%% discount + personal manager"
 
 #: assistant/support_hub.py:951
 msgid "Оборот за 12 мес"
@@ -18307,7 +18286,7 @@ msgstr "Step 2: to the KYB form →"
 
 #: assistant/views.py:371
 msgid "E-mail"
-msgstr ""
+msgstr "E-mail"
 
 #: assistant/views.py:397
 msgid "⚠️ Не получилось создать аккаунт:\n"
@@ -18563,7 +18542,7 @@ msgstr "AT CUSTOMS"
 
 #: assistant/views.py:1347 assistant/views.py:1353
 msgid "ETA "
-msgstr ""
+msgstr "ETA "
 
 #: assistant/views.py:1348 assistant/views.py:1423
 msgid "Гидрофильтры — 12 шт"
@@ -23937,7 +23916,7 @@ msgstr "Declaration created: "
 
 #: templates/operator/customs/declarations.html:324
 msgid "</span><span style=\\"
-msgstr ""
+msgstr "</span><span style=\\"
 
 #: templates/operator/customs/declarations.html:327
 msgid "Загружено файлов: "
@@ -24805,7 +24784,7 @@ msgstr "Receipt confirmed"
 
 #: templates/operator/logist/dashboard.html:241 templates/operator/logist/dashboard.html:266 templates/operator/payments/dashboard.html:186 templates/operator/payments/dashboard.html:204 templates/operator/payments/dashboard.html:205
 msgid "<button onclick=\\"
-msgstr ""
+msgstr "<button onclick=\\"
 
 #: templates/operator/logist/dashboard.html:249
 msgid " загружен</div>"
@@ -25381,7 +25360,7 @@ msgstr "Ural Terminal · Rail Hub"
 
 #: templates/operator/logist/ports.html:154 templates/operator/logist/ports.html:156 templates/operator/manager/clients.html:275 templates/operator/manager/clients.html:279
 msgid "<span class=\\"
-msgstr ""
+msgstr "<span class=\\"
 
 #: templates/operator/logist/routes.html:3
 msgid "Логист — Маршруты"
@@ -25757,11 +25736,11 @@ msgstr "Supplier "
 
 #: templates/operator/manager/clients.html:256 templates/operator/manager/clients.html:260 templates/operator/manager/clients.html:264
 msgid "<div style=\\"
-msgstr ""
+msgstr "<div style=\\"
 
 #: templates/operator/manager/clients.html:271
 msgid "<div class=\\"
-msgstr ""
+msgstr "<div class=\\"
 
 #: templates/operator/manager/dashboard.html:3
 msgid "Менеджер — Дашборд"
@@ -25949,7 +25928,7 @@ msgstr "✗ Rejected"
 
 #: templates/operator/manager/dashboard.html:326 templates/operator/payments/dashboard.html:185
 msgid "<textarea placeholder=\\"
-msgstr ""
+msgstr "<textarea placeholder=\\"
 
 #: templates/operator/manager/dashboard.html:337
 msgid "Заметка сохранена"
@@ -26575,7 +26554,7 @@ msgstr "INV-8820 - possible duplicate"
 
 #: templates/operator/payments/dashboard.html:184
 msgid "<select style=\\"
-msgstr ""
+msgstr "<select style=\\"
 
 #: templates/operator/payments/dashboard.html:194
 msgid "Расхождение закрыто"
@@ -26583,7 +26562,7 @@ msgstr "Discrepancy closed"
 
 #: templates/operator/payments/dashboard.html:203
 msgid "<span style=\\"
-msgstr ""
+msgstr "<span style=\\"
 
 #: templates/operator/payments/dashboard.html:213
 msgid "Дубликат подтверждён, платёж отмечен"
@@ -26691,7 +26670,7 @@ msgstr "Details opened\\"
 
 #: templates/operator/payments/escrow.html:185 templates/operator/payments/invoices.html:200
 msgid ")\\"
-msgstr ""
+msgstr ")\\"
 
 #: templates/operator/payments/escrow.html:186
 msgid "Эскроу выпущен"
@@ -34020,3 +33999,21 @@ msgstr "Send invitation"
 
 #~ msgid "ETA · 30 апр · по графику"
 #~ msgstr "ETA · Apr 30 · on schedule"
+
+msgid "Состав ▾"
+msgstr "Items ▾"
+
+msgid "Скрыть ▴"
+msgstr "Hide ▴"
+
+msgid "Скрыть позиции ▴"
+msgstr "Hide items ▴"
+
+msgid "Чем помочь"
+msgstr "How can I help"
+
+msgid "Тяните чтобы изменить ширину"
+msgstr "Drag to resize"
+
+msgid "Просмотр кабинета <strong>%(username)s</strong> — изменения сохраняются от лица поставщика. Действуйте осторожно."
+msgstr "Viewing cabinet of <strong>%(username)s</strong> — changes are saved on behalf of the supplier. Proceed with caution."
