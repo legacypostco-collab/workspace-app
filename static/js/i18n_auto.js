@@ -4478,6 +4478,102 @@
   "zh-hans": "⚠️ 识别错误：",
   "es": "⚠️ Error de reconocimiento: ",
   "ar": "⚠️ خطأ في التعرّف: "
+ },
+ "Оплатить резерв 10%": {
+  "en": "Pay reserve 10%",
+  "zh-hans": "支付预付款 10%",
+  "es": "Pagar reserva 10%",
+  "ar": "دفع العربون 10%"
+ },
+ "💳 Оплатить резерв →": {
+  "en": "💳 Pay reserve →",
+  "zh-hans": "💳 支付预付款 →",
+  "es": "💳 Pagar reserva →",
+  "ar": "💳 دفع العربون →"
+ },
+ "Оплатить остаток 90%": {
+  "en": "Pay remaining 90%",
+  "zh-hans": "支付余款 90%",
+  "es": "Pagar saldo 90%",
+  "ar": "دفع الرصيد 90%"
+ },
+ "💳 Оплатить остаток →": {
+  "en": "💳 Pay remaining →",
+  "zh-hans": "💳 支付余款 →",
+  "es": "💳 Pagar saldo →",
+  "ar": "💳 دفع الرصيد →"
+ },
+ "Доставлены — подтвердите приёмку": {
+  "en": "Delivered — confirm receipt",
+  "zh-hans": "已送达 — 确认收货",
+  "es": "Entregado — confirmar recepción",
+  "ar": "تم التسليم — تأكيد الاستلام"
+ },
+ "✅ Принять заказ →": {
+  "en": "✅ Accept order →",
+  "zh-hans": "✅ 确认收货 →",
+  "es": "✅ Aceptar pedido →",
+  "ar": "✅ قبول الطلب →"
+ },
+ "КП готовы — выбрать и оплатить": {
+  "en": "Quotes ready — select and pay",
+  "zh-hans": "报价已就绪 — 选择并付款",
+  "es": "Presupuestos listos — elegir y pagar",
+  "ar": "العروض جاهزة — اختر وادفع"
+ },
+ "📋 Открыть КП →": {
+  "en": "📋 Open quote →",
+  "zh-hans": "📋 查看报价 →",
+  "es": "📋 Abrir presupuesto →",
+  "ar": "📋 فتح العرض →"
+ },
+ "В подборе / у оператора": {
+  "en": "Processing / with operator",
+  "zh-hans": "处理中 / 运营商审核",
+  "es": "En proceso / con operador",
+  "ar": "قيد المعالجة / مع المشغل"
+ },
+ "📦 Открыть": {
+  "en": "📦 Open",
+  "zh-hans": "📦 打开",
+  "es": "📦 Abrir",
+  "ar": "📦 فتح"
+ },
+ "В работе у поставщика": {
+  "en": "In production",
+  "zh-hans": "供应商生产中",
+  "es": "En producción",
+  "ar": "قيد الإنتاج"
+ },
+ "В пути / на таможне": {
+  "en": "In transit / customs",
+  "zh-hans": "运输中 / 清关中",
+  "es": "En tránsito / aduana",
+  "ar": "في الطريق / الجمارك"
+ },
+ "Завершённые": {
+  "en": "Completed",
+  "zh-hans": "已完成",
+  "es": "Completados",
+  "ar": "مكتملة"
+ },
+ "Подключено": {
+  "en": "Connected",
+  "zh-hans": "已连接",
+  "es": "Conectado",
+  "ar": "متصل"
+ },
+ "Доступно": {
+  "en": "Available",
+  "zh-hans": "可用",
+  "es": "Disponible",
+  "ar": "متاح"
+ },
+ "Моя сделки": {
+  "en": "My deals",
+  "zh-hans": "我的交易",
+  "es": "Mis tratos",
+  "ar": "صفقاتي"
  }
 }
   );
