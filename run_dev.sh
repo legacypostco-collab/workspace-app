@@ -5,7 +5,7 @@
 cd "$(dirname "$0")"
 
 DB_ENGINE=django.db.backends.sqlite3 \
-DB_NAME='' \
+DB_NAME="$(dirname "$0")/db.sqlite3" \
 SECURE_SSL_REDIRECT=False \
 SESSION_COOKIE_SECURE=False \
 CSRF_COOKIE_SECURE=False \
