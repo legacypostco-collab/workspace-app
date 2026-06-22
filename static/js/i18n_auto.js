@@ -4969,7 +4969,58 @@
  "Нет доступных вариантов доставки": {"en": "No shipping options available", "zh-hans": "无可用运输选项", "es": "Sin opciones de envío disponibles", "ar": "لا توجد خيارات شحن متاحة"},
  "ср. лидтайм": {"en": "avg. lead", "zh-hans": "平均交期", "es": "plazo prom.", "ar": "متوسط المهلة"},
  "Только мои позиции": {"en": "My items only", "zh-hans": "仅我的商品", "es": "Solo mis artículos", "ar": "عناصري فقط"},
- "Оставить только позиции из вашего каталога — у остальных очистится цена; нажмите ещё раз, чтобы вернуть": {"en": "Keep only catalog items — others will have price cleared; click again to restore", "zh-hans": "只保留目录中的商品 — 其余商品价格将被清除；再次点击可恢复", "es": "Conservar solo artículos del catálogo — los demás perderán el precio; haga clic de nuevo para restaurar", "ar": "احتفظ فقط بعناصر الكتالوج — ستُمسح أسعار الباقية؛ انقر مرة أخرى للاسترداد"}
+ "Оставить только позиции из вашего каталога — у остальных очистится цена; нажмите ещё раз, чтобы вернуть": {"en": "Keep only catalog items — others will have price cleared; click again to restore", "zh-hans": "只保留目录中的商品 — 其余商品价格将被清除；再次点击可恢复", "es": "Conservar solo artículos del catálogo — los demás perderán el precio; haga clic de nuevo para restaurar", "ar": "احتفظ فقط بعناصر الكتالوج — ستُمسح أسعار الباقية؛ انقر مرة أخرى للاسترداد"},
+ "📥 Поддержка — входящие обращения и жалобы от пользователей. Рекламации по заказам — в отдельной вкладке «Рекламации».": {"en": "📥 Support — incoming requests and complaints from users. Order claims are in the separate «Claims» tab.", "zh-hans": "📥 支持 — 来自用户的来件请求和投诉。订单的索赔在单独的「Claims」标签页中。", "es": "📥 Soporte — solicitudes y quejas entrantes de los usuarios. Las reclamaciones de pedidos están en la pestaña «Claims».", "ar": "📥 الدعم — الطلبات والشكاوى الواردة من المستخدمين. مطالبات الطلبات موجودة في تبويب «المطالبات» المنفصل."},
+ "Платформа в покое — активной работы нет.": {"en": "The platform is idle — no active work.", "zh-hans": "平台空闲 — 无活跃工作。", "es": "La plataforma está inactiva — no hay trabajo activo.", "ar": "المنصّة خاملة — لا يوجد عمل نشِط."}
 }
   );
+
+  // Паттерны для динамических строк (содержат числа из БД)
+  if (typeof window.registerPatterns === 'function') {
+    window.registerPatterns([
+      {
+        ru: /^(\d+) заказов уже нарушили SLA\. Это первая задача — откройте «Срочно: SLA» и эскалируйте\.$/,
+        en: '$1 orders have already breached SLA. This is the first task — open «Urgent: SLA» and escalate.',
+        'zh-hans': '$1 个订单已违反 SLA。这是首要任务 — 请打开「紧急：SLA」并升级。',
+        es: '$1 pedidos ya incumplieron el SLA. Esta es la primera tarea — abra «Urgente: SLA» y escale.',
+        ar: '$1 طلبات انتهكت SLA بالفعل. هذه هي المهمّة الأولى — افتح «عاجل: SLA» وصعّد.',
+      },
+      {
+        ru: /^(\d+) заказов под угрозой SLA\. Свяжитесь с подрядчиками чтобы успели — пока не дошло до нарушения\.$/,
+        en: '$1 orders are at SLA risk. Contact the contractors so they make it — before it turns into a breach.',
+        'zh-hans': '$1 个订单存在 SLA 风险。请联系承包商以便按时完成 — 趁尚未违约。',
+        es: '$1 pedidos están en riesgo de SLA. Contacte a los contratistas para que lleguen a tiempo — antes de que se convierta en incumplimiento.',
+        ar: '$1 طلبات معرّضة لخطر SLA. تواصل مع المتعاقدين كي يلتزموا — قبل أن يتحوّل الأمر إلى انتهاك.',
+      },
+      {
+        ru: /^(\d+) рекламаций в разборе\. Разгребите очередь, чтобы не копились\.$/,
+        en: '$1 claims under review. Clear the queue so they don\'t pile up.',
+        'zh-hans': '$1 项索赔正在处理。请清理队列以免积压。',
+        es: '$1 reclamaciones en revisión. Despeje la cola para que no se acumulen.',
+        ar: '$1 مطالبات قيد المراجعة. صفِّ قائمة الانتظار حتى لا تتراكم.',
+      },
+      {
+        ru: /^(\d+) KYB-анкет ждут решения\. Откройте очередь — поставщики простаивают без верификации\.$/,
+        en: '$1 KYB forms await a decision. Open the queue — suppliers are idle without verification.',
+        'zh-hans': '$1 份 KYB 表单待裁定。请打开队列 — 供应商因未验证而闲置。',
+        es: '$1 formularios KYB esperan una decisión. Abra la cola — los proveedores están inactivos sin verificación.',
+        ar: '$1 نماذج KYB بانتظار القرار. افتح قائمة الانتظار — الموردون متوقّفون دون تحقّق.',
+      },
+      {
+        ru: /^(\d+) грузов на таможне — проверьте, не застряли ли какие-то дольше 3 дней\.$/,
+        en: '$1 shipments in customs — check whether any have been stuck longer than 3 days.',
+        'zh-hans': '$1 批货物在海关 — 请检查是否有滞留超过 3 天的。',
+        es: '$1 envíos en aduana — verifique si alguno lleva atascado más de 3 días.',
+        ar: '$1 شحنات في الجمارك — تحقّق ممّا إذا كانت أيّ منها عالقة أكثر من 3 أيام.',
+      },
+      {
+        ru: /^(\d+) заказов в работе\. Срочных проблем нет\.$/,
+        en: '$1 orders in progress. No urgent issues.',
+        'zh-hans': '$1 个订单进行中。无紧急问题。',
+        es: '$1 pedidos en curso. Sin problemas urgentes.',
+        ar: '$1 طلبات قيد التنفيذ. لا توجد مشكلات عاجلة.',
+      },
+    ]);
+    if (typeof window.applyI18n === 'function') window.applyI18n();
+  }
 })();

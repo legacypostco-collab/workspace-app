@@ -1630,9 +1630,27 @@
   }
   function _applyTextTr(node) {
     const tr = _trVal(node.nodeValue);
-    if (tr == null) return;
+    if (tr == null) { _applyPatternTr(node); return; }
     const m = node.nodeValue.match(/^(\s*)([\s\S]*?)(\s*)$/);
     node.nodeValue = (m ? m[1] : '') + tr + (m ? m[3] : '');
+  }
+  var _PATTERNS = [];
+  window.registerPatterns = function(patterns) { _PATTERNS = _PATTERNS.concat(patterns || []); };
+  function _applyPatternTr(node) {
+    if (!_PATTERNS.length || currentLang === 'ru') return;
+    const text = (node.nodeValue || '').trim();
+    if (!text) return;
+    for (let i = 0; i < _PATTERNS.length; i++) {
+      const p = _PATTERNS[i];
+      const m = text.match(p.ru);
+      if (m && p[currentLang]) {
+        let out = p[currentLang];
+        for (let g = 1; g < m.length; g++) out = out.replace(new RegExp('\\$' + g, 'g'), m[g]);
+        const ws = node.nodeValue.match(/^(\s*)([\s\S]*?)(\s*)$/);
+        node.nodeValue = (ws ? ws[1] : '') + out + (ws ? ws[3] : '');
+        return;
+      }
+    }
   }
   function localizeNode(root) {
     if (currentLang === 'ru' || !root) return;
