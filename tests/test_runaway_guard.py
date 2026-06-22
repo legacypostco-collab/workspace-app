@@ -90,6 +90,38 @@ def test_runaway_tool_loop_is_capped():
 
 
 @pytest.mark.django_db
+def test_precheck_heavy_query_gates():
+    from assistant import rag
+
+    def _mk(answer):
+        class _M:
+            @staticmethod
+            def create(**kw):
+                assert kw["max_tokens"] == 256  # лёгкий pre-check
+                return _Resp([_Block("text", text=answer)], "end_turn")
+
+        class _C:
+            messages = _M
+        return _C
+
+    # тяжёлый запрос + SUMMARY → директива «режим сводки»
+    d = rag._precheck_heavy_query(_mk("SUMMARY"), "топ худших поставщиков", "operator", None)
+    assert "СВОДКИ" in d
+    # тяжёлый + DETAIL → без директивы
+    assert rag._precheck_heavy_query(_mk("DETAIL"), "топ поставщиков", "operator", None) == ""
+    # не тяжёлый запрос → даже не зовём модель, пустая строка
+    assert rag._precheck_heavy_query(_mk("SUMMARY"), "покажи мой заказ #5", "operator", None) == ""
+
+    # ошибка клиента → graceful '' (не валит чат)
+    class _CErr:
+        class messages:
+            @staticmethod
+            def create(**kw):
+                raise RuntimeError("api down")
+    assert rag._precheck_heavy_query(_CErr, "все заказы", "operator", None) == ""
+
+
+@pytest.mark.django_db
 def test_max_tokens_tiers():
     from assistant.rag import (_max_out_tokens, MAX_TOKENS_CHAT,
                                MAX_TOKENS_TOOL, MAX_TOKENS_ANALYTICS)

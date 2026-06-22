@@ -52,6 +52,51 @@ def _max_out_tokens(query: str) -> int:
     if _HEAVY_QUERY_RE.search(q):
         return MAX_TOKENS_TOOL
     return MAX_TOKENS_CHAT
+
+
+def _precheck_heavy_query(client, query: str, role: str, user=None) -> str:
+    """ТЗ §5 — токен-гейт перед дорогим запросом.
+
+    Для «тяжёлых» формулировок (самый/топ/все/рейтинг/сравни всех) делаем
+    ЛЁГКИЙ pre-check на Haiku (max_tokens=256): нужен ли полный список или
+    достаточно агрегированной сводки. При SUMMARY возвращаем директиву для
+    system-промпта основного цикла — модель отдаст топ-10 вместо «всех объектов»
+    и не уйдёт в дорогой многовитковый обход. Любая ошибка → '' (без гейта).
+    """
+    if not query or not _HEAVY_QUERY_RE.search(query):
+        return ""
+    try:
+        from .ai_budget import record_usage
+        resp = client.messages.create(
+            model=getattr(settings, "ANTHROPIC_FAST_MODEL", FAST_MODEL),
+            max_tokens=256,
+            system=(
+                "Ты — лёгкий роутер запросов. Пользователь задал широкий или "
+                "рейтинговый вопрос. Ответь РОВНО одним словом: SUMMARY — если "
+                "достаточно агрегированной сводки/топ-списка (≤10 записей); "
+                "DETAIL — если нужен один конкретный объект."),
+            messages=[{"role": "user", "content": (query or "")[:500]}],
+        )
+        ans = "".join(
+            b.text for b in resp.content if getattr(b, "type", "") == "text"
+        ).strip().upper()
+        try:
+            u = getattr(resp, "usage", None)
+            if u is not None:
+                record_usage(user, input_tokens=getattr(u, "input_tokens", 0),
+                             output_tokens=getattr(u, "output_tokens", 0))
+        except Exception:
+            pass
+        if ans.startswith("SUMMARY"):
+            logger.info("heavy-query precheck → SUMMARY mode for role=%s query=%r",
+                        role, (query or "")[:80])
+            return (
+                "\n\n[РЕЖИМ СВОДКИ] Запрос широкий/рейтинговый — верни КОМПАКТНУЮ "
+                "агрегированную сводку: максимум 10 записей (топ/худшие), без "
+                "полных списков. Сделай не более 1–2 вызовов инструментов.")
+    except Exception:
+        logger.warning("heavy-query precheck failed (non-fatal)", exc_info=True)
+    return ""
 DEFAULT_MODEL = "claude-sonnet-4-6"  # sonnet-4-20250514 выводится 2026-06-15 → мигрировали
 FAST_MODEL    = "claude-haiku-4-5-20251001"  # 12× дешевле для простых запросов
 
@@ -490,6 +535,9 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
     messages = history + [{"role": "user", "content": user_message}]
 
     client = _get_anthropic_client()
+    if client:
+        # ТЗ §5 — токен-гейт перед дорогим запросом (для широких/рейтинговых).
+        system_prompt += _precheck_heavy_query(client, user_message, conversation.role, user)
     full_response = ""
     tokens_used = 0
 
@@ -832,6 +880,10 @@ def process_query_stream(conversation: Conversation, user_message: str):
     messages = history + [{"role": "user", "content": user_message}]
 
     client = _get_anthropic_client()
+    if client:
+        # ТЗ §5 — токен-гейт перед дорогим запросом (для широких/рейтинговых).
+        system_prompt += _precheck_heavy_query(client, user_message, conversation.role,
+                                               conversation.user)
     full_response = ""
     tokens_used = 0
     extra_cards: list = []
