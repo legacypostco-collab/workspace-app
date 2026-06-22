@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 from django.conf import settings
 from django.utils.translation import gettext as _
@@ -24,7 +25,33 @@ MAX_HISTORY_MESSAGES = 20
 MAX_CONTEXT_CHUNKS = 5
 MIN_SIMILARITY_SCORE = 0.6
 MAX_RESPONSE_TOKENS = 2048
-MAX_TOOL_TURNS = 6
+MAX_TOOL_TURNS = 5  # hard cap на агентные витки (ТЗ §4 — runaway tool loop)
+
+# ── Runaway-защита агентного цикла (ТЗ: один вопрос дал 110k токенов) ──
+# §1 — каждый tool_result обрезается до этого размера перед отправкой Claude
+# (иначе большие выборки раздувают input на каждом витке).
+MAX_TOOL_RESULT_CHARS = 3000
+# §3 — потолок output по типу запроса (вместо единого 2048 на всё):
+MAX_TOKENS_CHAT = 1024       # обычный чат
+MAX_TOKENS_TOOL = 2048       # запрос с данными / tool-calls
+MAX_TOKENS_ANALYTICS = 4096  # явная аналитика / отчёт
+# Явная аналитика → больше output. «Тяжёлые» формулировки (самый/топ/все/рейтинг/
+# сравни всех) — это §5-кандидаты, держим их на TOOL-потолке, не раздуваем до 4096.
+_ANALYTICS_RE = re.compile(
+    r"(аналитик|отч[её]т|статистик|дашборд|report|analytics|dashboard)", re.IGNORECASE)
+_HEAVY_QUERY_RE = re.compile(
+    r"(сам(ый|ым|ая|ого)|худш|лучш|\bтоп\b|\bвсе[хй]?\b|список\s+всех|рейтинг|сравни)",
+    re.IGNORECASE)
+
+
+def _max_out_tokens(query: str) -> int:
+    """ТЗ §3 — потолок output-токенов по типу запроса."""
+    q = query or ""
+    if _ANALYTICS_RE.search(q):
+        return MAX_TOKENS_ANALYTICS
+    if _HEAVY_QUERY_RE.search(q):
+        return MAX_TOKENS_TOOL
+    return MAX_TOKENS_CHAT
 DEFAULT_MODEL = "claude-sonnet-4-6"  # sonnet-4-20250514 выводится 2026-06-15 → мигрировали
 FAST_MODEL    = "claude-haiku-4-5-20251001"  # 12× дешевле для простых запросов
 
@@ -130,7 +157,7 @@ def _get_anthropic_client():
         return None
 
 
-def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple[str, int, list, list]:
+def _run_claude_with_tools(client, system_prompt, messages, role, user, user_query: str = "") -> tuple[str, int, list, list]:
     """Agentic loop: Claude calls tools (= our actions) until it produces a final answer.
 
     Returns: (final_text, tokens_used, accumulated_cards, accumulated_actions)
@@ -141,6 +168,7 @@ def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple
 
     tools = action_executor.get_tool_definitions(role)
     model = _pick_model(role)
+    out_cap = _max_out_tokens(user_query)  # ТЗ §3 — потолок output по типу запроса
 
     # Mutable working copy — we'll append assistant turns and tool_result turns to it
     msgs = [dict(m) for m in messages]
@@ -173,7 +201,7 @@ def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple
     for turn in range(MAX_TOOL_TURNS):
         kwargs = {
             "model": model,
-            "max_tokens": MAX_RESPONSE_TOKENS,
+            "max_tokens": out_cap,
             "system": system_blocks,
             "messages": msgs,
         }
@@ -239,6 +267,13 @@ def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple
         if resp.stop_reason != "tool_use" or not tool_uses:
             break
 
+        # ТЗ §4 — достигнут жёсткий потолок витков, а Claude всё ещё зовёт
+        # инструменты: дальше не крутим, ниже будет один finalize-вызов.
+        if turn == MAX_TOOL_TURNS - 1:
+            logger.warning(
+                "MAX_TOOL_TURNS (%d) reached — forcing finalize. role=%s query=%r",
+                MAX_TOOL_TURNS, role, (user_query or "")[:80])
+
         # Append assistant message with text+tool_use as the canonical content blocks
         msgs.append({
             "role": "assistant",
@@ -268,10 +303,18 @@ def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple
                 # Include compact data preview so Claude can reason about it
                 for c in result.cards[:3]:
                     summary_lines.append(_json.dumps(c.get("data", {}), ensure_ascii=False)[:600])
+            content = "\n".join(s for s in summary_lines if s).strip() or "OK"
+            # ТЗ §1 — обрезаем большой tool_result до лимита, иначе на каждом витке
+            # он целиком уходит в input и раздувает расход (так и получилось 110k).
+            if len(content) > MAX_TOOL_RESULT_CHARS:
+                shown = min(3, len(result.cards or []))
+                content = content[:MAX_TOOL_RESULT_CHARS].rstrip() + (
+                    f"\n... [данные обрезаны, показаны первые {shown} записей]"
+                    if shown else "\n... [данные обрезаны]")
             tool_results.append({
                 "type": "tool_result",
                 "tool_use_id": tu.id,
-                "content": "\n".join(s for s in summary_lines if s).strip() or "OK",
+                "content": content,
             })
 
         msgs.append({"role": "user", "content": tool_results})
@@ -285,7 +328,7 @@ def _run_claude_with_tools(client, system_prompt, messages, role, user) -> tuple
         try:
             fin_kwargs = {
                 "model": model,
-                "max_tokens": MAX_RESPONSE_TOKENS,
+                "max_tokens": out_cap,
                 "system": system_blocks,
                 "messages": msgs,
             }
@@ -461,6 +504,7 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None)
                 messages=messages,
                 role=conversation.role,
                 user=user,
+                user_query=user_message,
             )
         except Exception as e:
             logger.exception("Anthropic API error")
@@ -805,6 +849,7 @@ def process_query_stream(conversation: Conversation, user_message: str):
                 messages=messages,
                 role=conversation.role,
                 user=conversation.user,
+                user_query=user_message,
             )
             yield {"type": "token", "text": full_response}
         except Exception as e:

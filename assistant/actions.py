@@ -19,6 +19,11 @@ from django.utils.translation import gettext as _
 
 logger = logging.getLogger(__name__)
 
+# ТЗ §2 (runaway tool loop): аналитические/рейтинговые запросы
+# («самый плохой/лучший/топ поставщик/заказ/клиент») возвращают НЕ БОЛЕЕ стольких
+# записей из БД — иначе большой результат раздувает tool_result и расход токенов.
+MAX_ANALYTICS_RECORDS = 10
+
 
 # ──────────────────────────────────────────────────────────────────────
 # Status label translation helper.
@@ -2687,7 +2692,7 @@ def get_orders(params, user, role):
     Компактный список быстрее (не рендерим спецификацию каждого заказа) и читабельнее.
     """
     from marketplace.models import Order
-    limit = min(int(params.get("limit") or 6), 10)
+    limit = min(int(params.get("limit") or 6), MAX_ANALYTICS_RECORDS)
     qs = Order.objects.select_related("buyer").order_by("-created_at")
 
     # Scope by role
