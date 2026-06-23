@@ -1689,13 +1689,14 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 "fields": {
                     "title": title[:255],
                     "oem_number": oem[:100],
-                    # Slug включает склад: один OEM (парт-номер) часто совпадает
-                    # у РАЗНЫХ заводов — это одна деталь, но цены разные. Чтобы
-                    # позиции не схлопывались, slug уникален per (oem, seller,
-                    # склад-завод). См. также матчинг existing по складу ниже.
+                    # Slug уникален per (oem, seller, склад-завод, СОСТОЯНИЕ).
+                    # Один OEM (парт-номер) совпадает у разных заводов и в разных
+                    # состояниях (оригинал/аналог/восстановленный) — это разные
+                    # предложения, не должны схлопываться. См. матчинг ниже.
                     "slug": slugify(
                         f"{oem}-{seller.username}"
                         + (f"-w{warehouse.id}" if warehouse else "")
+                        + f"-{condition}"
                     )[:280],
                     "price": price_exw,
                     "currency": currency,
@@ -1735,8 +1736,12 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
     oem_variant_n: dict[str, int] = {}
     for pl in payloads:
         oem = pl["oem"].lower()
+        cond = pl["fields"].get("condition") or "oem"
         price = pl["fields"].get("price")
-        key = oem + "|" + str(price)
+        # Ключ включает состояние: один OEM как оригинал и как аналог —
+        # разные предложения, не сливаем.
+        oc = oem + "|" + cond
+        key = oc + "|" + str(price)
         if key in merged_payloads:
             # Тот же oem И та же цена → одна позиция, Qty=MAX.
             ex = merged_payloads[key]
@@ -1746,15 +1751,15 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             )
             merged_count += 1
             continue
-        n = oem_variant_n.get(oem, 0)
+        n = oem_variant_n.get(oc, 0)
         if n > 0:
-            # 2-й+ вариант цены для этого артикула → уникализируем slug
-            # и помечаем как отдельную позицию (всегда create, не update).
+            # 2-й+ вариант цены для этого артикула+состояния → уникализируем
+            # slug и помечаем как отдельную позицию (всегда create, не update).
             base = pl["fields"].get("slug", "")
             pl["fields"]["slug"] = (base + "-v" + str(n + 1))[:280]
             pl["_force_create"] = True
             price_variants += 1
-        oem_variant_n[oem] = n + 1
+        oem_variant_n[oc] = n + 1
         merged_payloads[key] = pl
     payloads = list(merged_payloads.values())
     if merged_count:
@@ -1773,7 +1778,9 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
     # ID существующей записи. values_list в 5-10× быстрее .objects.filter().
     # С составным индексом (seller_id, oem_number) чанк в 900 — почти O(1).
     oems = [p["oem"] for p in payloads]
-    existing_id_by_oem: dict[str, int] = {}
+    # Ключ матчинга — (oem_lower, condition): один OEM в разных состояниях
+    # (оригинал/аналог/восстановленный) = разные предложения.
+    existing_id_by_oem: dict[tuple, int] = {}
     CHUNK = 900
     if oems:
         cache.set(progress_key, {
@@ -1790,8 +1797,8 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             _q = Part.objects.filter(seller_id=seller_id, oem_number__in=batch)
             if warehouse is not None:
                 _q = _q.filter(warehouse=warehouse)
-            for pid, oem in _q.values_list("id", "oem_number"):
-                existing_id_by_oem[oem.lower()] = pid
+            for pid, oem, cond in _q.values_list("id", "oem_number", "condition"):
+                existing_id_by_oem[(oem.lower(), cond or "oem")] = pid
             # Прогресс каждый ~10k OEM — чаще чем раньше (раз в 9k → 5k),
             # пользователь видит непрерывное движение, нет «зависов».
             if (i - last_progress) >= 5000:
@@ -1839,7 +1846,8 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
     to_create_payloads: list = []
     to_update_payloads: list = []  # (part_id, fields_dict)
     for pl in payloads:
-        pid = existing_id_by_oem.get(pl["oem"].lower())
+        pid = existing_id_by_oem.get(
+            (pl["oem"].lower(), pl["fields"].get("condition") or "oem"))
         # Ценовые варианты (2-й+ с уникальным slug) всегда создаём отдельно,
         # иначе все варианты одного oem перезапишут одну запись.
         if pid and not pl.get("_force_create"):
