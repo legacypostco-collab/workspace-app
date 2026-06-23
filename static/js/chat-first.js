@@ -9045,9 +9045,10 @@
         .filter(function(f) { return !!f; });
       var perPartCount = defaultFields.length - supplierWideFields.length;
 
-      // Селектор страны нужен ТОЛЬКО для фильтрации портов в form'е.
-      // Если оба порта (sea_port и air_port) уже заполнены — страна
-      // выводится из ISO-кода порта и селектор лишний шум.
+      // Селектор страны показываем ВСЕГДА, когда в форме есть порты — он
+      // главный по правилу «одна загрузка = одна страна» и нужен, чтобы
+      // поставщик мог исправить страну даже если порты предзаполнены из
+      // профиля/файла (напр. мультистрановый прайс с неверным дефолтом).
       function hasPortValue(key) {
         // Уже заполнено через колонку файла (есть данные)?
         var src = sug[key] || '';
@@ -9059,7 +9060,7 @@
         return false;
       }
       var portsReady = hasPortValue('sea_port') && hasPortValue('air_port');
-      var needsCountrySelector = !portsReady && supplierWideFields.some(function(f){
+      var needsCountrySelector = supplierWideFields.some(function(f){
         return f.key === 'sea_port' || f.key === 'air_port';
       });
       if (supplierWideFields.length > 0) {
