@@ -4280,7 +4280,7 @@
           const condFallback = it.condition === 'analog' ? 'Аналог' : (it.condition === 'oem' ? 'OEM' : '—');
           return `<tr${rowAttrs}>
             <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}">${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
-            <td class="spec-row-num">${modeDot}${idx+1}</td>
+            <td class="spec-row-num">${idx+1}</td>
             <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
             <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div>${qfAnalogChip}</td>
             <td>${esc(it.brand || '')}</td>
@@ -4299,7 +4299,7 @@
           : '';
         return `<tr${rowAttrs}>
           <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}">${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
-          <td class="spec-row-num">${modeDot}${idx+1}</td>
+          <td class="spec-row-num">${idx+1}</td>
           <td><a class="spec-id-link">${esc(it.id || '')}</a>${altCue}</td>
           <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
           <td>${esc(it.brand || '')}</td>
