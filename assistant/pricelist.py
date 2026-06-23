@@ -490,11 +490,32 @@ def _read_preview(filename: str, blob: bytes) -> tuple[list[str], list[list[str]
     if not rows:
         raise ValueError("File is empty")
     hidx = _find_header_idx(rows)
-    headers = list(rows[hidx])
-    while headers and not str(headers[-1]).strip():
+    header_row = list(rows[hidx])
+    # Ширина таблицы = max(заголовок, строки данных). Некоторые расценки имеют
+    # колонку БЕЗ названия, но с данными (напр. цена в Запрос_17_12) — нельзя
+    # её терять, иначе пропадёт цена/артикул.
+    data_rows = [list(r) for r in rows[hidx + 1:hidx + 6]]
+
+    def _cell(row, i):
+        return (str(row[i]).strip() if i < len(row) and row[i] is not None else "")
+
+    width = len(header_row)
+    for r in data_rows:
+        width = max(width, len(r))
+    headers = []
+    for i in range(width):
+        h = _cell(header_row, i)
+        if not h:
+            # пустой заголовок: синтетическое имя, ТОЛЬКО если в колонке
+            # реально есть данные (иначе это пустой разделитель).
+            if any(_cell(r, i) for r in data_rows):
+                h = f"Колонка {i + 1}"
+        headers.append(h)
+    # обрезаем хвост: колонки без заголовка И без данных
+    while headers and not headers[-1]:
         headers.pop()
     n_cols = len(headers)
-    sample = [list(r)[:n_cols] for r in rows[hidx + 1:hidx + 4]]
+    sample = [(list(r) + [""] * n_cols)[:n_cols] for r in rows[hidx + 1:hidx + 4]]
     return headers, sample
 
 
