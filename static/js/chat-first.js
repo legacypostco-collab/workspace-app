@@ -3352,7 +3352,7 @@
             <th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Condition</th><th>${tr('Цена')}</th><th>${tr('Кол-во')}</th><th>${tr('Вес')}</th><th>${tr('Сумма')}</th>
           </tr></thead><tbody>${(o.items || []).map((it, idx) => `
             <tr>
-              <td><span class="spec-stk in"><span class="spec-stk-dot"></span>${it.stock > 0 ? tr('stock.in_stock') : tr('stock.on_order')}</span></td>
+              <td><span class="spec-stk in">${it.stock > 0 ? tr('stock.in_stock') : tr('stock.on_order')}</span></td>
               <td class="spec-row-num">${idx+1}</td>
               <td><a class="spec-id-link">${esc(it.article)}</a></td>
               <td><div class="spec-name-cell"><span class="spec-name">${esc(it.name)}</span></div></td>
@@ -4154,7 +4154,7 @@
       const qfMode = !!d.editable_price;
       const rows = (d.items || []).map((it, idx) => {
         if (it.status === 'not_found' && !it.id) {
-          return `<tr><td><span class="spec-stk no"><span class="spec-stk-dot"></span>—</span></td>
+          return `<tr><td><span class="spec-stk no">—</span></td>
             <td class="spec-row-num">${idx+1}</td>
             <td colspan="5" class="spec-empty-row" style="text-align:left;">${tr('— нет предложений —')}</td>
             <td>${esc(it.qty || '')}</td><td></td><td></td><td></td></tr>`;
@@ -4279,7 +4279,7 @@
           // спеки покупателя, способ доставки общий) → Name получает много места.
           const condFallback = it.condition === 'analog' ? 'Аналог' : (it.condition === 'oem' ? 'OEM' : '—');
           return `<tr${rowAttrs}>
-            <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
+            <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}">${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
             <td class="spec-row-num">${modeDot}${idx+1}</td>
             <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
             <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div>${qfAnalogChip}</td>
@@ -4298,7 +4298,7 @@
           ? `<span class="spec-alt-cue" title="${tr('Клик — все предложения по позиции')}" style="margin-left:6px;font-size:11px;color:#64b5f6;white-space:nowrap;">▾ ${window.t('{n} цен', {n: it.alt_suppliers.length})}</span>`
           : '';
         return `<tr${rowAttrs}>
-          <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
+          <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}">${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
           <td class="spec-row-num">${modeDot}${idx+1}</td>
           <td><a class="spec-id-link">${esc(it.id || '')}</a>${altCue}</td>
           <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
