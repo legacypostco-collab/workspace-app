@@ -31597,3 +31597,29 @@ msgid_plural "%(n)s архивных"
 msgstr[0] "%(n)s archivado"
 msgstr[1] "%(n)s archivados"
 msgstr[2] "%(n)s archivados"
+
+msgid "Поддерживаются файлы Excel (.xlsx) и CSV. После загрузки AI прочитает заголовки и предложит маппинг колонок — вы проверите и подтвердите."
+msgstr "Se admiten archivos Excel (.xlsx) y CSV. Tras la carga, la IA leerá los encabezados y sugerirá el mapeo de columnas — usted revisa y confirma."
+
+msgid "Разовая загрузка. Система распознаёт заголовки на 5 языках, AI помогает с нестандартными колонками. Повторная загрузка обновляет цены без дубликатов."
+msgstr "Carga única. El sistema reconoce encabezados en 5 idiomas, la IA ayuda con columnas no estándar. Recargar actualiza precios sin duplicados."
+
+msgid "Excel-шаблон с инструкцией внутри: пошаговое руководство, описание 16 колонок, частые ошибки и три примера строк."
+msgstr "Plantilla Excel con instrucciones: guía paso a paso, descripción de 16 columnas, errores frecuentes y tres filas de ejemplo."
+
+msgid "Прямая интеграция через API: обновлять цены, остатки и статусы из ERP / 1С / ТОиР."
+msgstr "Integración directa vía API: actualizar precios, stock y estados desde ERP / 1C / GMAO."
+
+msgid "Что делать если в прайсе нет валюты?"
+msgstr "¿Qué hacer si la lista de precios no tiene moneda?"
+
+msgid "Как часто можно обновлять прайс?"
+msgstr "¿Con qué frecuencia se puede actualizar la lista de precios?"
+
+msgid "Чем отличается ORIGINAL от OEM?"
+msgstr "¿En qué se diferencia ORIGINAL de OEM?"
+
+#, python-format
+#, python-format
+msgid "✓ Компания «%(name)s» верифицирована · %(tier)s · %(score)s/100.\n%(next)s"
+msgstr "✓ Empresa «%(name)s» verificada · %(tier)s · %(score)s/100.\n%(next)s"

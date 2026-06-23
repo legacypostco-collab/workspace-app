@@ -5045,7 +5045,12 @@
  "Зачислено всего": {"en": "Total credited", "zh-hans": "累计到账", "es": "Total acreditado", "ar": "إجمالي المُحوَّل"},
  "за всё время": {"en": "all time", "zh-hans": "历史总计", "es": "de todo el tiempo", "ar": "منذ البداية"},
  "Последние поступления": {"en": "Recent receipts", "zh-hans": "最近收款", "es": "Ingresos recientes", "ar": "المقبوضات الأخيرة"},
- "Поступлений пока не было.": {"en": "No receipts yet.", "zh-hans": "暂无收款记录。", "es": "Aún no hay ingresos.", "ar": "لا توجد مقبوضات حتى الآن."}
+ "Поступлений пока не было.": {"en": "No receipts yet.", "zh-hans": "暂无收款记录。", "es": "Aún no hay ingresos.", "ar": "لا توجد مقبوضات حتى الآن."},
+ "Контур/СПАРК · юр.статус, финансы": {"en": "Kontur/SPARK · legal status, finance", "zh-hans": "Контур/СПАРК · 法律状态、财务", "es": "Kontur/SPARK · estado legal, finanzas", "ar": "Kontur/SPARK · الوضع القانوني، المالية"},
+ "Что делать если в прайсе нет валюты?": {"en": "What if the price list has no currency?", "zh-hans": "价目表中没有货币怎么办？", "es": "¿Qué hacer si no hay moneda en la lista?", "ar": "ماذا أفعل إذا لم تكن هناك عملة؟"},
+ "Как часто можно обновлять прайс?": {"en": "How often can I update the price list?", "zh-hans": "价目表可以多久更新一次？", "es": "¿Con qué frecuencia puedo actualizar la lista?", "ar": "كم مرة يمكن تحديث قائمة الأسعار؟"},
+ "Чем отличается ORIGINAL от OEM?": {"en": "What is the difference between ORIGINAL and OEM?", "zh-hans": "ORIGINAL 和 OEM 有什么区别？", "es": "¿Cuál es la diferencia entre ORIGINAL y OEM?", "ar": "ما الفرق بين ORIGINAL و OEM؟"},
+ "Загрузить чертёж": {"en": "Upload drawing", "zh-hans": "上传图纸", "es": "Subir plano", "ar": "رفع رسم"}
 }
   );
 

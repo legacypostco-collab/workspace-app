@@ -32557,3 +32557,29 @@ msgid "%(n)s архивная"
 msgid_plural "%(n)s архивных"
 msgstr[0] "%(n)s archived"
 msgstr[1] "%(n)s archived"
+
+msgid "Поддерживаются файлы Excel (.xlsx) и CSV. После загрузки AI прочитает заголовки и предложит маппинг колонок — вы проверите и подтвердите."
+msgstr "Excel (.xlsx) and CSV files are supported. After upload, AI will read the headers and suggest a column mapping — you review and confirm."
+
+msgid "Разовая загрузка. Система распознаёт заголовки на 5 языках, AI помогает с нестандартными колонками. Повторная загрузка обновляет цены без дубликатов."
+msgstr "One-time upload. The system recognizes headers in 5 languages, AI helps with non-standard columns. Re-uploading updates prices without duplicates."
+
+msgid "Excel-шаблон с инструкцией внутри: пошаговое руководство, описание 16 колонок, частые ошибки и три примера строк."
+msgstr "Excel template with built-in instructions: step-by-step guide, 16-column description, common mistakes and three example rows."
+
+msgid "Прямая интеграция через API: обновлять цены, остатки и статусы из ERP / 1С / ТОиР."
+msgstr "Direct API integration: update prices, stock and statuses from ERP / 1C / CMMS."
+
+msgid "Что делать если в прайсе нет валюты?"
+msgstr "What to do if the price list has no currency?"
+
+msgid "Как часто можно обновлять прайс?"
+msgstr "How often can I update the price list?"
+
+msgid "Чем отличается ORIGINAL от OEM?"
+msgstr "What is the difference between ORIGINAL and OEM?"
+
+#, python-format
+#, python-format
+msgid "✓ Компания «%(name)s» верифицирована · %(tier)s · %(score)s/100.\n%(next)s"
+msgstr "✓ Company «%(name)s» verified · %(tier)s · %(score)s/100.\n%(next)s"

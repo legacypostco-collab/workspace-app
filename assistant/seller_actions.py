@@ -1601,7 +1601,7 @@ def upload_pricelist(params, user, role):
     # Шаг 1: инструктивная карточка с тремя действиями
     if not csv_data:
         return ActionResult(
-            text=(
+            text=_(
                 "Поддерживаются файлы Excel (.xlsx) и CSV. После загрузки "
                 "AI прочитает заголовки и предложит маппинг колонок — "
                 "вы проверите и подтвердите."
@@ -1643,7 +1643,7 @@ def upload_pricelist(params, user, role):
                         "icon": "🧠",
                         "title": _("Загрузить файл (Excel / CSV)"),
                         "status": "recommended",
-                        "description": (
+                        "description": _(
                             "Разовая загрузка. Система распознаёт заголовки "
                             "на 5 языках, AI помогает с нестандартными "
                             "колонками. Повторная загрузка обновляет цены "
@@ -1659,7 +1659,7 @@ def upload_pricelist(params, user, role):
                         "icon": "📥",
                         "title": _("Скачать шаблон"),
                         "status": "active",
-                        "description": (
+                        "description": _(
                             "Excel-шаблон с инструкцией внутри: пошаговое "
                             "руководство, описание 16 колонок, частые ошибки и "
                             "три примера строк."
@@ -1673,7 +1673,7 @@ def upload_pricelist(params, user, role):
                         "icon": "🔌",
                         "title": "REST API",
                         "status": "soon",
-                        "description": (
+                        "description": _(
                             "Прямая интеграция через API: обновлять цены, "
                             "остатки и статусы из ERP / 1С / ТОиР."
                         ),
@@ -1685,9 +1685,9 @@ def upload_pricelist(params, user, role):
                 {"label": _("📦 Каталог"), "action": "seller_catalog", "params": {}},
             ],
             suggestions=[
-                "Что делать если в прайсе нет валюты?",
-                "Как часто можно обновлять прайс?",
-                "Чем отличается ORIGINAL от OEM?",
+                _("Что делать если в прайсе нет валюты?"),
+                _("Как часто можно обновлять прайс?"),
+                _("Чем отличается ORIGINAL от OEM?"),
             ],
         )
 
@@ -3746,7 +3746,7 @@ def _drawings_view(user, role, note=None):
             {"label": _("📤 Загрузить чертёж"), "action": "upload_drawing", "params": {}},
             {"label": _("🏠 Главная"), "action": "go_home", "params": {}},
         ],
-        suggestions=["Загрузить чертёж"],
+        suggestions=[_("Загрузить чертёж")],
     )
 
 

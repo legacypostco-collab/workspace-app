@@ -3030,7 +3030,7 @@
         const inner = `
           <div class="kpi-value">${esc(String(k.value ?? '—'))}</div>
           <div class="kpi-label">${esc(k.label || '')}</div>
-          ${k.sub ? `<div class="kpi-sub">${esc(k.sub)}</div>` : ''}`;
+          ${k.sub ? `<div class="kpi-sub">${tr(k.sub)}</div>` : ''}`;
         if (k.action) {
           // S4 fix: action/params могут содержать апострофы → ломали inline onclick='…'
           // и открывали XSS. Кладём в data-* атрибуты с esc(); делегированный
