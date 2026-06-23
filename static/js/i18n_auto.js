@@ -5173,7 +5173,27 @@
  "Марокко": {"en": "Morocco", "zh-hans": "摩洛哥", "es": "Marruecos", "ar": "المغرب"},
  "Нигерия": {"en": "Nigeria", "zh-hans": "尼日利亚", "es": "Nigeria", "ar": "نيجيريا"},
  "Кения": {"en": "Kenya", "zh-hans": "肯尼亚", "es": "Kenia", "ar": "كينيا"},
- "Россия (импорт)": {"en": "Russia (import)", "zh-hans": "俄罗斯（进口）", "es": "Rusia (importación)", "ar": "روسيا (استيراد)"}
+ "Россия (импорт)": {"en": "Russia (import)", "zh-hans": "俄罗斯（进口）", "es": "Rusia (importación)", "ar": "روسيا (استيراد)"},
+ "Колонки": {"en": "Columns", "zh-hans": "列", "es": "Columnas", "ar": "الأعمدة"},
+ "Бренд": {"en": "Brand", "zh-hans": "品牌", "es": "Marca", "ar": "العلامة التجارية"},
+ "Тип товара": {"en": "Item type", "zh-hans": "商品类型", "es": "Tipo de artículo", "ar": "نوع العنصر"},
+ "Завод": {"en": "Factory", "zh-hans": "生产厂商", "es": "Fabricante", "ar": "المصنع"},
+ "известный бренд — виден покупателю": {"en": "well-known brand — visible to buyer", "zh-hans": "知名品牌 — 买家可见", "es": "marca conocida — visible al comprador", "ar": "علامة معروفة — مرئية للمشتري"},
+ "известный бренд покажем покупателю, частную марку скроем": {"en": "recognized brand shown to buyer, private label hidden", "zh-hans": "知名品牌对买家显示，私有品牌隐藏", "es": "marca reconocida visible, etiqueta privada oculta", "ar": "العلامة المعروفة تظهر للمشتري، العلامة الخاصة مخفية"},
+ "Ваши ответы": {"en": "Your answers", "zh-hans": "您的答案", "es": "Sus respuestas", "ar": "إجاباتك"},
+ "Наценки FOB": {"en": "FOB markups", "zh-hans": "FOB 附加费", "es": "Recargos FOB", "ar": "هوامش FOB"},
+ "Страна отправления": {"en": "Shipping country", "zh-hans": "发货国家", "es": "País de origen", "ar": "بلد الشحن"},
+ "порты и склад из этой страны": {"en": "ports and warehouse from this country", "zh-hans": "来自该国的港口和仓库", "es": "puertos y almacén de este país", "ar": "موانئ ومستودع من هذا البلد"},
+ "AI оценил": {"en": "AI estimated", "zh-hans": "AI 评估", "es": "Estimado por AI", "ar": "قدّر الذكاء الاصطناعي"},
+ "позиций — вес и габариты по описанию": {"en": "items — weight and dimensions from description", "zh-hans": "条目 — 根据描述估算重量和尺寸", "es": "artículos — peso y dimensiones según descripción", "ar": "عناصر — الوزن والأبعاد من الوصف"},
+ "Количество (Quantity)": {"en": "Quantity", "zh-hans": "数量 (Quantity)", "es": "Cantidad", "ar": "الكمية"},
+ "По умолчанию": {"en": "Default", "zh-hans": "默认", "es": "Por defecto", "ar": "الافتراضي"},
+ "если в файле нет, считаем цену за единицу": {"en": "if not in file, price per unit assumed", "zh-hans": "文件中若无，默认按单价计算", "es": "si no está en el archivo, se asume precio por unidad", "ar": "إذا لم يكن في الملف، يُفترض السعر للوحدة"},
+ "Пустые значения": {"en": "Empty values", "zh-hans": "空值", "es": "Valores vacíos", "ar": "القيم الفارغة"},
+ "Если в источнике пусто или 0 — оставляем пусто. Можно дозаполнить позже в каталоге.": {"en": "If source is empty or 0 — we leave it empty. Can be filled in the catalog later.", "zh-hans": "若来源为空或0 — 保持空白，稍后可在目录中填写。", "es": "Si el origen está vacío o es 0 — lo dejamos vacío. Se puede completar en el catálogo después.", "ar": "إذا كان المصدر فارغاً أو 0 — نتركه فارغاً. يمكن ملؤه في الكتالوج لاحقاً."},
+ "⚠️ Правило: одна загрузка — одна страна отправления. Если у вас прайсы из разных стран, загружайте их отдельными файлами.": {"en": "⚠️ Rule: one upload — one shipping country. If you have price lists from different countries, upload them as separate files.", "zh-hans": "⚠️ 规则：一次上传 — 一个发货国家。如果您有来自不同国家的价格表，请分别上传。", "es": "⚠️ Regla: una carga — un país de origen. Si tiene listas de precios de diferentes países, cárguelas como archivos separados.", "ar": "⚠️ القاعدة: رفع واحد — بلد شحن واحد. إذا كانت لديك قوائم أسعار من بلدان مختلفة، ارفعها كملفات منفصلة."},
+ "⚠️ Не удалось сгенерировать файл": {"en": "⚠️ Failed to generate file", "zh-hans": "⚠️ 生成文件失败", "es": "⚠️ Error al generar el archivo", "ar": "⚠️ فشل توليد الملف"},
+ "📥 Подтвердить и загрузить": {"en": "📥 Confirm and upload", "zh-hans": "📥 确认并上传", "es": "📥 Confirmar y cargar", "ar": "📥 تأكيد ورفع"}
 }
   );
 

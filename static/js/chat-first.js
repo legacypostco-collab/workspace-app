@@ -3239,8 +3239,8 @@
         +   '<div class="of-name">' + name + '</div>'
         +   '<div class="of-meta">Spreadsheet · XLSX' + (size ? ' · ' + size : '') + '</div>'
         + '</div>'
-        + '<a class="of-btn of-btn-primary" href="' + url + '" download="' + name + '" target="_blank" rel="noopener">⬇ Скачать</a>'
-        + '<button class="of-btn of-open-preview">↗ Открыть</button>'
+        + '<a class="of-btn of-btn-primary" href="' + url + '" download="' + name + '" target="_blank" rel="noopener">' + tr('⬇ Скачать') + '</a>'
+        + '<button class="of-btn of-open-preview">' + tr('↗ Открыть') + '</button>'
         + '</div>';
     },
     table_preview(d) {
@@ -9659,8 +9659,8 @@
 
     var items = [];
 
-    items.push({icon: '📂', label: 'Из файла', value:
-      'Колонки: <b>' + fromFile.join(', ') + '</b>'
+    items.push({icon: '📂', label: tr('Из файла'), value:
+      tr('Колонки') + ': <b>' + fromFile.join(', ') + '</b>'
     });
 
     var brand = _val('brand');
@@ -9669,22 +9669,22 @@
     var manuf = _val('manufacturer');
     if (brand || cond || avail || manuf) {
       var ansParts = [];
-      if (brand) ansParts.push('Бренд — <b>' + esc(brand) + '</b>');
-      if (cond) ansParts.push('Тип товара — <b>' + esc(cond) + '</b>');
-      if (avail) ansParts.push('Наличие — <b>' + esc(avail) + '</b>');
+      if (brand) ansParts.push(tr('Бренд') + ' — <b>' + esc(brand) + '</b>');
+      if (cond) ansParts.push(tr('Тип товара') + ' — <b>' + esc(cond) + '</b>');
+      if (avail) ansParts.push(tr('Наличие') + ' — <b>' + esc(avail) + '</b>');
       if (manuf) {
         var _known = KNOWN_ANALOG_BRANDS_JS[manuf.trim().toLowerCase()];
-        ansParts.push('Завод — <b>' + esc(manuf) + '</b>'
-          + (_known ? ' (известный бренд — виден покупателю)'
-                    : ' (известный бренд покажем покупателю, частную марку скроем)'));
+        ansParts.push(tr('Завод') + ' — <b>' + esc(manuf) + '</b>'
+          + (_known ? ' (' + tr('известный бренд — виден покупателю') + ')'
+                    : ' (' + tr('известный бренд покажем покупателю, частную марку скроем') + ')'));
       }
-      items.push({icon: '✋', label: 'Ваши ответы', value: ansParts.join(' · ')});
+      items.push({icon: '✋', label: tr('Ваши ответы'), value: ansParts.join(' · ')});
     }
 
     var seaPct = _formulaPct('price_fob_sea');
     var airPct = _formulaPct('price_fob_air');
     if (seaPct || airPct) {
-      items.push({icon: '📐', label: 'Наценки FOB', value:
+      items.push({icon: '📐', label: tr('Наценки FOB'), value:
         (seaPct ? 'SEA = EXW × (1 ' + esc(seaPct) + ')' : '')
         + (seaPct && airPct ? ' · ' : '')
         + (airPct ? 'AIR = EXW × (1 ' + esc(airPct) + ')' : '')
@@ -9693,24 +9693,24 @@
 
     if (country) {
       var c = PORTS_BY_COUNTRY[country];
-      items.push({icon: '🌍', label: 'Страна отправления', value:
-        (c ? c.flag + ' ' + c.name : country)
-        + ' <span class="ie-hint">— порты и склад из этой страны</span>'
+      items.push({icon: '🌍', label: tr('Страна отправления'), value:
+        (c ? c.flag + ' ' + tr(c.name) : country)
+        + ' <span class="ie-hint">— ' + tr('порты и склад из этой страны') + '</span>'
       });
     }
 
     var aiCount = (imp.ai_estimates_count || (window.__lastAiEstimateCount || 0));
     if (aiCount > 0) {
-      items.push({icon: '🤖', label: 'AI оценил',
-        value: '<b>' + aiCount + '</b> позиций — вес и габариты по описанию'});
+      items.push({icon: '🤖', label: tr('AI оценил'),
+        value: '<b>' + aiCount + '</b> ' + tr('позиций — вес и габариты по описанию')});
     }
 
-    items.push({icon: '⚙️', label: 'Количество (Quantity)', value:
-      'По умолчанию <b>1</b> — если в файле нет, считаем цену за единицу'
+    items.push({icon: '⚙️', label: tr('Количество (Quantity)'), value:
+      tr('По умолчанию') + ' <b>1</b> — ' + tr('если в файле нет, считаем цену за единицу')
     });
 
-    items.push({icon: '📭', label: 'Пустые значения', value:
-      'Если в источнике пусто или 0 — оставляем пусто. Можно дозаполнить позже в каталоге.'
+    items.push({icon: '📭', label: tr('Пустые значения'), value:
+      tr('Если в источнике пусто или 0 — оставляем пусто. Можно дозаполнить позже в каталоге.')
     });
 
     var rows = items.map(function(it) {
@@ -9728,8 +9728,7 @@
       + '<div class="ie-sub">' + tr('Сводка перед записью в базу. Проверьте и подтвердите.') + '</div>'
       + rows
       + '<div class="ie-rule">'
-      + '⚠️ <b>Правило:</b> одна загрузка — одна страна отправления. '
-      + 'Если у вас прайсы из разных стран, загружайте их отдельными файлами.'
+      + tr('⚠️ Правило: одна загрузка — одна страна отправления. Если у вас прайсы из разных стран, загружайте их отдельными файлами.')
       + '</div>'
       + '</div>';
   }
@@ -9743,7 +9742,7 @@
 
     // Открываем side panel сразу с loading-индикатором,
     // фоном поллим прогресс генерации.
-    showSidePreviewLoading('Готовлю файл в формате маркетплейса…');
+    showSidePreviewLoading(tr('Готовлю файл в формате маркетплейса…'));
     var progressPoller = setInterval(async function() {
       try {
         var pr = await fetch('/api/assistant/upload-pricelist/' + imp.import_id + '/generate-output-progress/', {
@@ -9755,7 +9754,7 @@
       } catch(e) {}
     }, 400);
 
-    var thinking = addMessage('assistant', '🔧 Готовлю файл в формате маркетплейса…', [], []);
+    var thinking = addMessage('assistant', '🔧 ' + tr('Готовлю файл в формате маркетплейса…'), [], []);
     try {
       // Подтягиваем все ответы пользователя
       var constants = Object.assign({}, imp.constants || {});
@@ -9848,7 +9847,7 @@
           {type:'raw_html', data:{html: explanationHtml}},
         ],
         [
-          {action: '__pricelist_commit', label: '📥 Загрузить в каталог',
+          {action: '__pricelist_commit', label: tr('📥 Загрузить в каталог'),
            params: {import_id: imp.import_id}},
           {action: '__pricelist_cancel', label: tr('Отменить'),
            params: {import_id: imp.import_id}},
@@ -9858,9 +9857,9 @@
       clearInterval(progressPoller);
       if (thinking && thinking.parentNode) thinking.remove();
       closeSidePreview();
-      addMessage('assistant', '⚠️ Не удалось сгенерировать файл: ' + (err.message || err),
+      addMessage('assistant', tr('⚠️ Не удалось сгенерировать файл') + ': ' + (err.message || err),
         [], [
-        {action: '__pricelist_commit', label: '📥 Загрузить в каталог',
+        {action: '__pricelist_commit', label: tr('📥 Загрузить в каталог'),
          params: {import_id: imp.import_id}},
       ]);
     }
