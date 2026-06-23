@@ -31653,3 +31653,12 @@ msgstr "¿Recargo FOB SEA (al puerto marítimo) sobre precio EXW?"
 
 msgid "Наценка FOB AIR (доставка до аэропорта) к цене EXW?"
 msgstr "¿Recargo FOB AIR (al aeropuerto) sobre precio EXW?"
+
+msgid "Артикул (PartNumber)"
+msgstr "Número de pieza (OEM)"
+
+msgid "Цена EXW"
+msgstr "Precio EXW"
+
+msgid "Подключи Google-таблицу — цены будут синхронизироваться автоматически по расписанию (раз в час)."
+msgstr "Conecta una hoja de Google — los precios se sincronizarán automáticamente según el horario (una vez por hora)."

@@ -32613,3 +32613,12 @@ msgstr "FOB SEA surcharge (to sea port) on EXW price?"
 
 msgid "Наценка FOB AIR (доставка до аэропорта) к цене EXW?"
 msgstr "FOB AIR surcharge (to airport) on EXW price?"
+
+msgid "Артикул (PartNumber)"
+msgstr "Part Number (OEM)"
+
+msgid "Цена EXW"
+msgstr "Price EXW"
+
+msgid "Подключи Google-таблицу — цены будут синхронизироваться автоматически по расписанию (раз в час)."
+msgstr "Connect a Google Sheet — prices will sync automatically on schedule (once per hour)."

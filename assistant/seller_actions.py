@@ -1613,7 +1613,7 @@ def upload_pricelist(params, user, role):
                         "icon": "📋",
                         "title": "Google Sheets",
                         "status": "active",
-                        "description": (
+                        "description": _(
                             "Подключи Google-таблицу — цены будут "
                             "синхронизироваться автоматически по расписанию "
                             "(раз в час)."
