@@ -8913,13 +8913,13 @@
         var srcLabel = '';
         var st = '';
         if (src && src.startsWith('fix:')) {
-          srcLabel = '= ' + src.slice(4);
+          srcLabel = '= ' + tr(src.slice(4));
           st = '·';
           fromDefault++;
           defaultFields.push(f);
         } else if (src && headers.includes(src)
                     && (SUPPLIER_WIDE_KEYS.indexOf(f.key) < 0 || columnHasData(src))) {
-          srcLabel = '← ' + src;
+          srcLabel = '← ' + tr(src);
           st = '✓';
           fromFile++;
         } else if (f.required) {
@@ -9811,9 +9811,11 @@
       }
       var _gSea = String(constants.sea_port || '').trim();
       var _gAir = String(constants.air_port || '').trim();
+      // Город НЕ обязателен (сервер его не требует — валидирует только
+      // warehouse_address/sea_port/air_port). Не блокируем им генерацию,
+      // иначе мультистрановые прайсы с адресом-но-без-города застревают.
       var _gMissing = [];
       if (!_gCountry) _gMissing.push(tr('страна отправления'));
-      if (!_gCity)    _gMissing.push(tr('город'));
       if (!_gStreet)  _gMissing.push(tr('адрес склада EXW'));
       if (!_gSea)     _gMissing.push(tr('морпорт отправления'));
       if (!_gAir)     _gMissing.push(tr('аэропорт отправления'));

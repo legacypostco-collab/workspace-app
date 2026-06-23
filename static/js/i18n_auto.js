@@ -5213,7 +5213,13 @@
  "Если в файле нет колонки Quantity, считаем цену за единицу.": {"en": "If the file has no Quantity column, we treat the price as per unit.", "zh-hans": "如果文件中没有 Quantity 列，我们按单价计算。", "es": "Si el archivo no tiene columna Quantity, consideramos el precio por unidad.", "ar": "إذا لم يكن في الملف عمود الكمية، نعتبر السعر للوحدة الواحدة."},
  "Мы не угадываем — что отсутствует в источнике, можно дозаполнить позже в каталоге.": {"en": "We don't guess — what's missing in the source can be filled in later in the catalog.", "zh-hans": "我们不会猜测 — 源文件中缺失的内容可稍后在目录中补充。", "es": "No adivinamos — lo que falta en la fuente se puede completar después en el catálogo.", "ar": "نحن لا نخمّن — ما هو مفقود في المصدر يمكن استكماله لاحقاً في الكتالوج."},
  "При следующей загрузке такого же файла мы спросим меньше.": {"en": "Next time you upload a similar file, we'll ask less.", "zh-hans": "下次上传相同文件时，我们会减少询问。", "es": "La próxima vez que subas un archivo similar, preguntaremos menos.", "ar": "في المرة القادمة التي ترفع فيها ملفاً مماثلاً، سنسأل أقل."},
- "✅ Как ляжет в базу (первые строки)": {"en": "✅ How it will be saved (first rows)", "zh-hans": "✅ 如何写入数据库（前几行）", "es": "✅ Cómo quedará en la base (primeras filas)", "ar": "✅ كيف سيُحفظ في قاعدة البيانات (الصفوف الأولى)"}
+ "✅ Как ляжет в базу (первые строки)": {"en": "✅ How it will be saved (first rows)", "zh-hans": "✅ 如何写入数据库（前几行）", "es": "✅ Cómo quedará en la base (primeras filas)", "ar": "✅ كيف سيُحفظ في قاعدة البيانات (الصفوف الأولى)"},
+ "Артикул": {"en": "Part number", "zh-hans": "零件号", "es": "Número de pieza", "ar": "رقم القطعة"},
+ "Наименование": {"en": "Name", "zh-hans": "名称", "es": "Nombre", "ar": "الاسم"},
+ "Наличие": {"en": "Availability", "zh-hans": "库存", "es": "Disponibilidad", "ar": "التوفر"},
+ "Кросс-номер": {"en": "Cross number", "zh-hans": "交叉号", "es": "Número cruzado", "ar": "الرقم البديل"},
+ "Вал.": {"en": "Curr.", "zh-hans": "币种", "es": "Mon.", "ar": "العملة"},
+ "Упак.": {"en": "Pack.", "zh-hans": "包装", "es": "Emb.", "ar": "التعبئة"}
 }
   );
 
