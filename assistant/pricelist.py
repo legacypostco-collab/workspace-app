@@ -1689,7 +1689,14 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 "fields": {
                     "title": title[:255],
                     "oem_number": oem[:100],
-                    "slug": slugify(f"{oem}-{seller.username}")[:280],
+                    # Slug включает склад: один OEM (парт-номер) часто совпадает
+                    # у РАЗНЫХ заводов — это одна деталь, но цены разные. Чтобы
+                    # позиции не схлопывались, slug уникален per (oem, seller,
+                    # склад-завод). См. также матчинг existing по складу ниже.
+                    "slug": slugify(
+                        f"{oem}-{seller.username}"
+                        + (f"-w{warehouse.id}" if warehouse else "")
+                    )[:280],
                     "price": price_exw,
                     "currency": currency,
                     "stock_quantity": stock,
@@ -1777,9 +1784,13 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
         last_progress = 0
         for i in range(0, len(oems), CHUNK):
             batch = oems[i:i + CHUNK]
-            for pid, oem in (Part.objects
-                              .filter(seller_id=seller_id, oem_number__in=batch)
-                              .values_list("id", "oem_number")):
+            # Матчим существующие В ПРЕДЕЛАХ ТЕКУЩЕГО СКЛАДА: один OEM от
+            # разных заводов = разные позиции (одна деталь, цены разных
+            # поставщиков). Повторная загрузка того же завода → обновление.
+            _q = Part.objects.filter(seller_id=seller_id, oem_number__in=batch)
+            if warehouse is not None:
+                _q = _q.filter(warehouse=warehouse)
+            for pid, oem in _q.values_list("id", "oem_number"):
                 existing_id_by_oem[oem.lower()] = pid
             # Прогресс каждый ~10k OEM — чаще чем раньше (раз в 9k → 5k),
             # пользователь видит непрерывное движение, нет «зависов».
