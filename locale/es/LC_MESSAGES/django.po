@@ -31623,3 +31623,33 @@ msgstr "¿En qué se diferencia ORIGINAL de OEM?"
 #, python-format
 msgid "✓ Компания «%(name)s» верифицирована · %(tier)s · %(score)s/100.\n%(next)s"
 msgstr "✓ Empresa «%(name)s» verificada · %(tier)s · %(score)s/100.\n%(next)s"
+
+msgid "Адрес склада EXW"
+msgstr "Dirección del almacén EXW"
+
+msgid "Морпорт отправления"
+msgstr "Puerto marítimo de salida"
+
+msgid "Аэропорт отправления"
+msgstr "Aeropuerto de salida"
+
+msgid "Тип товара (Condition)?"
+msgstr "Tipo de artículo (Condition)?"
+
+msgid "Наличие?"
+msgstr "¿Disponibilidad?"
+
+msgid "Кто производитель детали?"
+msgstr "¿Quién fabrica la pieza?"
+
+msgid "Узнаваемый бренд повышает рейтинг в выдаче и снимает вопросы покупателей. Нет в списке — впишите свой (частную марку скроем)."
+msgstr "Una marca reconocida mejora el ranking y reduce las preguntas de los compradores. No está en la lista — ingrese la suya (la marca privada se ocultará)."
+
+msgid "Кликните или начните вводить — появится список брендов"
+msgstr "Haga clic o empiece a escribir — aparecerá la lista de marcas"
+
+msgid "Наценка FOB SEA (доставка до морпорта) к цене EXW?"
+msgstr "¿Recargo FOB SEA (al puerto marítimo) sobre precio EXW?"
+
+msgid "Наценка FOB AIR (доставка до аэропорта) к цене EXW?"
+msgstr "¿Recargo FOB AIR (al aeropuerto) sobre precio EXW?"

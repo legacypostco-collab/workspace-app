@@ -2768,19 +2768,19 @@
           ).join('');
         }
         cityHtml = '<input class="sq-city" type="text" list="' + esc(cityDlId)
-          + '" placeholder="город (или впишите свой)"/>'
+          + '" placeholder="' + tr('город (или впишите свой)') + '"/>'
           + '<datalist id="' + esc(cityDlId) + '">' + cityDlOpts + '</datalist>';
         // Когда city picker есть — основное поле это улица, datalist не нужен.
         streetInputDl = '';
-        useCustomPlaceholder = 'улица, № дома';
+        useCustomPlaceholder = tr('улица, № дома');
       }
       return `<div class="smart-q-card card"
           data-q-idx="${esc(String(idx))}"
           data-field="${esc(String(d.field || ''))}"
           data-apply-as="${esc(String(d.apply_as || 'constant'))}">
         <div class="sq-step">${idx + 1} / ${total}</div>
-        <div class="sq-q">${esc(String(d.question || ''))}</div>
-        ${d.hint ? `<div class="sq-hint" style="font-size:13px;line-height:1.4;opacity:.72;margin:-2px 0 10px;">${esc(String(d.hint))}</div>` : ''}
+        <div class="sq-q">${tr(String(d.question || ''))}</div>
+        ${d.hint ? `<div class="sq-hint" style="font-size:13px;line-height:1.4;opacity:.72;margin:-2px 0 10px;">${tr(String(d.hint))}</div>` : ''}
         ${chips ? `<div class="sq-chips">${chips}</div>` : ''}
         <div class="sq-input-row">
           ${countryHtml}
@@ -2788,7 +2788,7 @@
           <input class="sq-input${comboClass}" type="text" placeholder="${esc(dynamicPlaceholder || useCustomPlaceholder)}" value="${esc(defVal)}"${streetInputDl}${comboExtra}/>
           ${d.country_picker ? '' : dlHtml}
           <button class="sq-submit" type="button">→</button>
-          ${d.skippable ? '<button class="sq-skip" type="button">Пропустить</button>' : ''}
+          ${d.skippable ? `<button class="sq-skip" type="button">${tr('Пропустить')}</button>` : ''}
         </div>
       </div>`;
     },
@@ -8998,22 +8998,22 @@
       // Базовое короткое приветствие — мгновенно после upload.
       // AI-разговорный intro подтянется async через smart-questions.
       var intro;
-      var rowsInfo = data.total_rows ? data.total_rows + ' позиций' : (headers.length + ' колонок');
+      var rowsInfo = data.total_rows ? data.total_rows + ' ' + tr('позиций') : (headers.length + ' ' + tr('колонок'));
       if (data.from_profile) {
-        intro = '📋 Файл прочитан · ' + rowsInfo + '\n🧠 Профиль: ' + (data.profile_name || 'auto');
+        intro = '📋 ' + tr('Файл прочитан') + ' · ' + rowsInfo + '\n🧠 ' + tr('Профиль') + ': ' + (data.profile_name || 'auto');
       } else {
-        intro = '📋 Файл прочитан · ' + rowsInfo + ' · ' + fromFile + ' полей из файла';
+        intro = '📋 ' + tr('Файл прочитан') + ' · ' + rowsInfo + ' · ' + fromFile + ' ' + tr('полей из файла');
       }
       if (unmapped.length) {
-        intro += '\n⚠️ Не найдено: ' + unmapped.join(', ');
+        intro += '\n⚠️ ' + tr('Не найдено') + ': ' + unmapped.join(', ');
       }
       // Бренды из колонки — подтверждение что мультибренд-прайс распознан.
       var brands = data.detected_brands || [];
       if (brands.length) {
         var shown = brands.slice(0, 12).join(', ');
-        intro += '\n🏷 Бренды из колонки (' + brands.length + '): ' + shown
-               + (brands.length > 12 ? ' и др.' : '')
-               + ' — берём для каждой позиции свой, спрашивать не буду.';
+        intro += '\n🏷 ' + tr('Бренды из колонки') + ' (' + brands.length + '): ' + shown
+               + (brands.length > 12 ? ' ' + tr('и др.') : '')
+               + ' — ' + tr('берём для каждой позиции свой, спрашивать не буду.');
       }
 
       // 3. Раскрываемая секция supplier-wide дефолтов.
@@ -9167,7 +9167,7 @@
         cards.push({type:'raw_html', data:{
           html: '<div class="card pl-defaults-card">'
             + '<details class="pl-defaults-details" open>'
-            + '<summary class="pl-defaults-summary">📎 ' + supplierWideFields.length + ' общих полей поставщика — нажмите чтобы изменить</summary>'
+            + '<summary class="pl-defaults-summary">📎 ' + window.t('{n} общих полей поставщика — нажмите чтобы изменить', {n: supplierWideFields.length}) + '</summary>'
             + comboHtml
             + '<div class="pl-df-grid">' + dfHtml + '</div>'
             + perPartNote
@@ -9178,7 +9178,7 @@
       var actions = [
         {action: '__pricelist_commit', label: tr('📥 Подтвердить и загрузить'),
          params: {import_id: data.import_id, _has_questions: questions.length > 0 ? '1' : '0'}},
-        {action: '__pricelist_cancel', label: 'Отменить',
+        {action: '__pricelist_cancel', label: tr('Отменить'),
          params: {import_id: data.import_id}},
       ];
 
@@ -9224,15 +9224,14 @@
             var nWord = (qs.length === 1 ? 'деталь'
                         : (qs.length >= 2 && qs.length <= 4 ? 'детали' : 'деталей'));
             addMessage('assistant',
-              '👆 Сначала заполните **общие поля поставщика** выше — страна, склад, морпорт/аэропорт. '
-              + 'Это одно на весь прайс. Готово — нажмите кнопку, и я уточню ещё ' + qs.length + ' ' + nWord + ' по товарам.',
+              window.t('👆 Сначала заполните **общие поля поставщика** выше — страна, склад, морпорт/аэропорт. Это одно на весь прайс. Готово — нажмите кнопку, и я уточню ещё {n} деталей по товарам.', {n: qs.length}),
               [], [
               {action: '__pl_start_questions', label: tr('✅ Общие поля готовы — продолжить →')},
             ]);
           } else {
             if (sq.intro) addMessage('assistant', sq.intro, [], []);
-            addMessage('assistant', '✨ Готово, можно загружать.', [], [
-              {action: '__pricelist_commit', label: '📥 Загрузить',
+            addMessage('assistant', tr('✨ Готово, можно загружать.'), [], [
+              {action: '__pricelist_commit', label: tr('📥 Загрузить'),
                params: {import_id: data.import_id}},
             ]);
           }
@@ -9244,8 +9243,8 @@
           if (thinking && thinking.parentNode) thinking.remove();
           var stream = document.getElementById('stream');
           var savedScroll = stream ? stream.scrollTop : 0;
-          addMessage('assistant', '✨ Готово, можно загружать.', [], [
-            {action: '__pricelist_commit', label: '📥 Загрузить',
+          addMessage('assistant', tr('✨ Готово, можно загружать.'), [], [
+            {action: '__pricelist_commit', label: tr('📥 Загрузить'),
              params: {import_id: data.import_id}},
           ]);
           if (stream) setTimeout(function(){ stream.scrollTop = savedScroll; }, 10);
@@ -9800,20 +9799,19 @@
       var _gSea = String(constants.sea_port || '').trim();
       var _gAir = String(constants.air_port || '').trim();
       var _gMissing = [];
-      if (!_gCountry) _gMissing.push('страна отправления');
-      if (!_gCity)    _gMissing.push('город');
-      if (!_gStreet)  _gMissing.push('адрес склада EXW');
-      if (!_gSea)     _gMissing.push('морпорт отправления');
-      if (!_gAir)     _gMissing.push('аэропорт отправления');
+      if (!_gCountry) _gMissing.push(tr('страна отправления'));
+      if (!_gCity)    _gMissing.push(tr('город'));
+      if (!_gStreet)  _gMissing.push(tr('адрес склада EXW'));
+      if (!_gSea)     _gMissing.push(tr('морпорт отправления'));
+      if (!_gAir)     _gMissing.push(tr('аэропорт отправления'));
       if (_gMissing.length) {
         clearInterval(progressPoller);
         if (thinking && thinking.parentNode) thinking.remove();
         try { closeSidePreview(); } catch(e) {}
         // Кнопка повтора: юзер дозаполняет блок логистики сверху и жмёт её.
         addMessage('assistant',
-          '❗ Без логистики продолжить нельзя. Заполните в блоке «📎 общих полей '
-          + 'поставщика» сверху: ' + _gMissing.join(', ') + '. Потом нажмите «Сгенерировать файл».',
-          [], [{action: '__pricelist_retry_generate', label: '🔄 Сгенерировать файл'}]);
+          window.t('❗ Без логистики продолжить нельзя. Заполните в блоке «📎 общих полей поставщика» сверху: {fields}. Потом нажмите «Сгенерировать файл».', {fields: _gMissing.join(', ')}),
+          [], [{action: '__pricelist_retry_generate', label: tr('🔄 Сгенерировать файл')}]);
         return;
       }
       // Все поля есть → склейка полного warehouse_address.
@@ -9867,7 +9865,7 @@
         [
           {action: '__pricelist_commit', label: '📥 Загрузить в каталог',
            params: {import_id: imp.import_id}},
-          {action: '__pricelist_cancel', label: 'Отменить',
+          {action: '__pricelist_cancel', label: tr('Отменить'),
            params: {import_id: imp.import_id}},
         ],
       );
