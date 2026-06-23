@@ -9395,6 +9395,7 @@
     });
     var importSettled = false;
     var importPollCount = 0;
+    var importStartTime = Date.now();
     var IMPORT_TIMEOUT_POLLS = 240; // 240 × 500ms = 2 минуты
 
     // Polling прогресса импорта каждые 500ms (+ детект завершения)
@@ -9406,17 +9407,24 @@
         });
         if (!pr.ok) return;
         var pdata = await pr.json();
-        if (pending && pdata.current !== undefined && !pdata.done) {
+        if (pending && !pdata.done) {
           var cEl = pending.querySelector('.msg-content');
           if (cEl) {
+            var elapsed = Math.round((Date.now() - importStartTime) / 1000);
+            var elapsedStr = elapsed > 3 ? ' (' + elapsed + ' ' + tr('сек') + ')' : '';
             var phaseMap = {
               parsing: tr('Читаю файл'),
               matching: tr('Сопоставляю с базой'),
               writing: tr('Записываю в каталог'),
             };
             var phase = phaseMap[pdata.phase] || tr('Импортирую прайс');
+            var n = pdata.current || 0;
             var totalPart = pdata.total ? (' / ' + pdata.total) : '';
-            cEl.textContent = '📥 ' + window.t('{x}… {n}{y} {rows}', {x: phase, n: pdata.current, y: totalPart, rows: tr('строк')});
+            if (n === 0 && elapsed < 5) {
+              cEl.textContent = '📥 ' + tr('Начинаю импорт') + '…' + elapsedStr;
+            } else {
+              cEl.textContent = '📥 ' + window.t('{x}… {n}{y} {rows}', {x: phase, n: n, y: totalPart, rows: tr('строк')}) + elapsedStr;
+            }
           }
         }
         // Завершение фонового импорта → резолвим/реджектим промис.
