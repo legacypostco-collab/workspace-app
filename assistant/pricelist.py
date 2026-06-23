@@ -1255,13 +1255,16 @@ def _supplier_wide_value(key: str, mapping: dict, constants: dict | None) -> str
 
 def _resolve_warehouse_for_import(seller, mapping: dict, constants: dict | None,
                                     filename: str = ""):
-    """Создаёт НОВЫЙ виртуальный склад на каждую загрузку прайса.
+    """Возвращает склад для загрузки, ПЕРЕИСПОЛЬЗУЯ существующий с такой же
+    логистикой (страна + морпорт + аэропорт + валюта).
 
-    Правило: «один импорт — один склад». Даже если ports+address совпадают
-    с существующим складом — это отдельная загрузка, отдельная папка.
-    Продавец сам может потом переименовать или объединить.
+    Модель: склад = точка отгрузки, а НЕ событие загрузки. Иначе при 200 КП
+    в месяц копится 200 одинаковых папок «Китай · Шанхай» и продавец тонет.
+    Все расценки из одного origin (напр. Китай→Шанхай, USD) ложатся в ОДИН
+    склад — позиции апсёртятся по seller+oem. Разные страна/порт/валюта →
+    отдельный склад.
 
-    Возвращает SellerWarehouse (никогда None — всегда создаёт папку).
+    Возвращает SellerWarehouse (никогда None).
     """
     from marketplace.models import SellerWarehouse
     sea = _supplier_wide_value("sea_port", mapping, constants)
@@ -1277,6 +1280,22 @@ def _resolve_warehouse_for_import(seller, mapping: dict, constants: dict | None,
             if len(head) >= 2 and head[:2].isalpha():
                 cc = head[:2].upper()
                 break
+
+    # ── ДЕДУП: уже есть склад с такой же логистикой? Переиспользуем.
+    # Ключ — страна + порты + валюта (физическая точка отгрузки). Сработает
+    # только если логистика реально задана (иначе не сливаем всё в одну кучу).
+    if cc or sea or air:
+        existing = SellerWarehouse.objects.filter(
+            seller=seller, country_code=cc[:2],
+            sea_port=sea[:120], air_port=air[:120],
+            currency=(currency[:3] or "USD"),
+        ).order_by("id").first()
+        if existing:
+            # Дозаполняем адрес, если у склада его не было, но не перетираем.
+            if addr and not (existing.address or "").strip():
+                existing.address = addr[:1000]
+                existing.save(update_fields=["address"])
+            return existing
 
     # Автоимя: «Склад #N · Страна · Город» либо «Склад #N · <filename>»
     idx = SellerWarehouse.objects.filter(seller=seller).count() + 1
