@@ -4224,7 +4224,7 @@
               <td><span class="sp-badge ${statusCls}">${esc(s.status_badge)}</span></td>
               <td class="as-num">${s.rating}</td>
               <td class="as-num as-price">${fmtMoney(s.price, s.currency)}</td>
-              <td class="as-cond">${esc(s.condition || '')}</td>
+              <td class="as-cond">${esc(({oem:'OEM',aftermarket:'Aftermarket',analog:'Aftermarket',reman:'REMAN'})[s.condition] || s.condition || '')}</td>
               <td class="as-num">${s.stock || '—'}</td>
               <td class="as-wh" title="${esc(s.warehouse || '')}">${esc(s.warehouse || '—')}</td>
               <td class="as-num as-score">${s.score != null ? s.score : '—'}</td>
@@ -4290,9 +4290,9 @@
             <td class="spec-ship qf-lead-cell">${leadInp || (it.delivery_days != null ? esc(String(it.delivery_days)) + ' дн' : '—')}</td>
           </tr>${detailRow}`;
         }
-        const _CONDL = {oem:'Оригинал', aftermarket:'Аналог', analog:'Аналог', reman:'Восстановленный'};
+        const _CONDL = {oem:'OEM', aftermarket:'Aftermarket', analog:'Aftermarket', reman:'REMAN'};
         const condBadge = it.condition
-          ? `<span class="spec-cond-badge" style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;background:rgba(100,181,246,0.18);white-space:nowrap;">${esc(tr(_CONDL[it.condition] || it.condition))}</span>`
+          ? `<span class="spec-cond-badge" style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;background:rgba(100,181,246,0.18);white-space:nowrap;">${esc(_CONDL[it.condition] || it.condition)}</span>`
           : '—';
         const altCue = (clickable && (it.alt_suppliers || []).length > 0)
           ? `<span class="spec-alt-cue" title="${tr('Клик — все предложения по позиции')}" style="margin-left:6px;font-size:11px;color:#64b5f6;white-space:nowrap;">▾ ${window.t('{n} цен', {n: it.alt_suppliers.length})}</span>`

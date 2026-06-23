@@ -5304,8 +5304,8 @@ def buyer_best_offers(params, user, role):
     # каждом состоянии. Покупатель видит лучшую цену по оригиналу / аналогу /
     # восстановленному отдельно, чтобы выбрать. Drill-down (buyer_offer_compare)
     # раскрывает всех поставщиков с рейтингами.
-    COND_LABEL = {"oem": _("Оригинал"), "aftermarket": _("Аналог"),
-                   "reman": _("Восстановленный")}
+    # Короткие коды состояния (как в каталоге): OEM / Aftermarket / REMAN.
+    COND_LABEL = {"oem": "OEM", "aftermarket": "Aftermarket", "reman": "REMAN"}
     by_key: dict[tuple, dict] = {}
     from marketplace.fx import to_usd_float  # покупатель ВСЕГДА видит USD по бирж. курсу
     for p in parts:
