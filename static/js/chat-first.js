@@ -1353,6 +1353,57 @@
     if (mode === 'kp') { var n = card.querySelector('.pl-sup-name'); if (n) n.focus(); }
   };
 
+  // Подгрузка известных поставщиков (из ранее созданных kp-складов) →
+  // быстрый повторный импорт с подстановкой реквизитов и логистики.
+  window.__plLoadKnownSuppliers = function() {
+    var sels = document.querySelectorAll('.pl-sup-known:not([data-loaded])');
+    if (!sels.length) return;
+    fetch('/api/assistant/my-suppliers/', {credentials: 'same-origin'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var sup = (d && d.suppliers) || [];
+        sels.forEach(function(sel){
+          sel.setAttribute('data-loaded', '1');
+          var row = sel.closest('.pl-known-row');
+          if (!sup.length) { if (row) row.style.display = 'none'; return; }
+          sup.forEach(function(s, i){
+            var o = document.createElement('option');
+            o.value = String(i);
+            o.textContent = (s.supplier_name || s.supplier_tax_id || '—')
+              + (s.supplier_tax_id ? (' · ' + s.supplier_tax_id) : '');
+            o.setAttribute('data-sup', JSON.stringify(s));
+            sel.appendChild(o);
+          });
+          if (row) row.style.display = '';
+        });
+      }).catch(function(){});
+  };
+  window.__plPickSupplier = function(sel) {
+    var opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.getAttribute('data-sup')) return;
+    var s = {};
+    try { s = JSON.parse(opt.getAttribute('data-sup')); } catch(e) { return; }
+    var card = sel.closest('.pl-defaults-card'); if (!card) return;
+    var kpBtn = card.querySelector('.pl-mode-btn[data-mode="kp"]');
+    if (kpBtn) window.__plSetMode(kpBtn, 'kp');
+    function setF(field, val) {
+      var el = card.querySelector('[data-field="' + field + '"]');
+      if (el && val != null && val !== '') el.value = val;
+    }
+    setF('supplier_name', s.supplier_name);
+    setF('supplier_tax_id', s.supplier_tax_id);
+    setF('supplier_country', s.supplier_country);
+    setF('sea_port', s.sea_port);
+    setF('air_port', s.air_port);
+    setF('warehouse_address', s.warehouse_address);
+    setF('currency', s.currency);
+    // Страна отгрузки (фильтр портов) — из ЛОГИСТИКИ склада, не из страны
+    // поставщика (завод может быть из одной страны, отгружать из другой).
+    var cs = card.querySelector('#shipment_country, .pl-ship-country');
+    if (cs && (s.country_code || s.supplier_country)) cs.value = s.country_code || s.supplier_country;
+    if (typeof opToast === 'function') opToast(tr('Реквизиты поставщика подставлены'), 1800, 'success');
+  };
+
   let state = {
     convId: null,
     ws: null,
@@ -9204,6 +9255,12 @@
           + '<button type="button" class="pl-mode-btn" data-mode="pricelist" onclick="window.__plSetMode(this,\'pricelist\')" style="' + _mbtn + 'background:#1a1a1a;color:#fff;font-weight:600;">📦 ' + tr('Мой прайс') + '</button>'
           + '<button type="button" class="pl-mode-btn" data-mode="kp" onclick="window.__plSetMode(this,\'kp\')" style="' + _mbtn + 'background:transparent;">🏭 ' + tr('Прайс / КП поставщика') + '</button>'
           + '</div>';
+        // Быстрый выбор уже известного поставщика (заполняется async из БД).
+        var knownHtml =
+          '<div class="pl-known-row" style="margin-bottom:10px;display:none;">'
+          + '<select class="pl-sup-known" onchange="window.__plPickSupplier(this)" style="width:100%;padding:8px 10px;border:1px solid rgba(128,128,128,0.35);border-radius:8px;font-size:13px;background:rgba(128,128,128,0.06);color:inherit;">'
+          + '<option value="">' + tr('↻ Уже загружали от поставщика — подставить…') + '</option>'
+          + '</select></div>';
         // Страны поставщика — те же, что в портах, + пустой дефолт.
         var supCountryOpts = '<option value="">' + tr('— страна —') + '</option>'
           + Object.keys(PORTS_BY_COUNTRY).map(function(cc){
@@ -9230,6 +9287,7 @@
             + '<details class="pl-defaults-details" open>'
             + '<summary class="pl-defaults-summary">📎 ' + window.t('{n} общих полей поставщика — нажмите чтобы изменить', {n: supplierWideFields.length}) + '</summary>'
             + modeHtml
+            + knownHtml
             + supplierHtml
             + '<div class="pl-logistics-block">'
             +   comboHtml
@@ -9263,6 +9321,8 @@
         // Без явного false security-check (FRONTEND_ONLY_TYPES) тихо
         // дропает raw_html-карты (intro + supplier-wide form).
         var bigMsg = addMessage('assistant', intro, cards, [], [], null, [], [], false);
+        // Подтянуть известных поставщиков для быстрой подстановки.
+        setTimeout(function(){ window.__plLoadKnownSuppliers && window.__plLoadKnownSuppliers(); }, 150);
         // Кастомный AC сам подтягивает список при фокусе на инпут —
         // bootstrap datalist'ов больше не нужен.
         // Скроллим к НАЧАЛУ нового сообщения чтобы юзер увидел

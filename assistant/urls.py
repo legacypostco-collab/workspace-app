@@ -56,6 +56,7 @@ urlpatterns = [
     path("erp/sync/orders/<int:order_id>/ack/", erp_views.sync_order_ack, name="erp-sync-order-ack"),
     path("erp/sync/orders/<int:order_id>/status/", erp_views.sync_order_status, name="erp-sync-order-status"),
     # Pricelist upload в чате (ТЗ: AI-маппинг колонок)
+    path("my-suppliers/", pricelist.MySuppliersView.as_view(), name="my-suppliers"),
     path("upload-pricelist/", pricelist.PricelistUploadView.as_view(), name="pricelist-upload"),
     path("upload-pricelist/<int:import_id>/commit/", pricelist.PricelistCommitView.as_view(), name="pricelist-commit"),
     path("upload-pricelist/<int:import_id>/cancel/", pricelist.PricelistCancelView.as_view(), name="pricelist-cancel"),

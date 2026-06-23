@@ -2003,6 +2003,39 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
 
 # ── HTTP views ───────────────────────────────────────────────────
 
+class MySuppliersView(APIView):
+    """GET /api/assistant/my-suppliers/
+
+    Список заводов-поставщиков продавца (из ранее созданных kp-складов) с их
+    реквизитами и логистикой — для быстрой повторной загрузки с подстановкой.
+    Группируем по supplier_tax_id (иначе по имени), берём последний склад.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from marketplace.models import SellerWarehouse
+        seen = {}
+        qs = (SellerWarehouse.objects
+              .filter(seller=request.user, kind="kp", is_active=True)
+              .order_by("-id"))
+        for w in qs:
+            key = (w.supplier_tax_id or "").strip().lower() or \
+                  ("name:" + (w.supplier_name or "").strip().lower())
+            if not key or key in seen:
+                continue
+            seen[key] = {
+                "supplier_name": w.supplier_name,
+                "supplier_tax_id": w.supplier_tax_id,
+                "supplier_country": w.supplier_country or w.country_code,
+                "country_code": w.country_code,  # страна ОТГРУЗКИ (логистика)
+                "sea_port": w.sea_port,
+                "air_port": w.air_port,
+                "warehouse_address": w.address,
+                "currency": w.currency,
+            }
+        return Response({"suppliers": list(seen.values())})
+
+
 class PricelistUploadView(APIView):
     """POST /api/assistant/upload-pricelist/  (multipart, field 'file')
 
