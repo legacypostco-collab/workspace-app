@@ -1274,23 +1274,39 @@ def _resolve_warehouse_for_import(seller, mapping: dict, constants: dict | None,
     sup_name = (_supplier_wide_value("supplier_name", mapping, constants) or "").strip()
     sup_tax = (_supplier_wide_value("supplier_tax_id", mapping, constants) or "").strip()
     sup_cc = (_supplier_wide_value("supplier_country", mapping, constants) or "").strip().upper()
+    sup_full = str(_supplier_wide_value("supplier_full_catalog", mapping, constants) or "").strip().lower() in ("1", "true", "yes", "on")
 
-    # ── РЕЖИМ КП: указан поставщик/завод → папка по заводу (ключ — ИНН/код).
+    # ── ЧУЖОЙ ПРАЙС: указан поставщик/завод → папка с реквизитами завода.
+    #   • КП (по умолчанию) — копится в ОДНУ папку завода (дедуп по ИНН/коду),
+    #     чтобы 200 КП не плодили 200 папок.
+    #   • Полный каталог (sup_full) — ОТДЕЛЬНАЯ папка на каждую загрузку
+    #     («Завод X · каталог #N»), чтобы версии каталога не смешивались.
     if sup_tax or sup_name:
-        flt = {"seller": seller, "kind": "kp"}
-        if sup_tax:
-            flt["supplier_tax_id"] = sup_tax[:40]
-        else:
-            flt["supplier_name"] = sup_name[:200]
-        existing = SellerWarehouse.objects.filter(**flt).order_by("id").first()
-        if existing:
-            return existing
         label = sup_name or sup_tax
-        wh_name = f"Завод: {label}"
-        if sup_tax:
-            wh_name += f" ({'ИНН' if sup_cc in ('', 'RU') else 'код'} {sup_tax})"
+        id_label = ("ИНН" if sup_cc in ("", "RU") else "код")
+        if not sup_full:
+            flt = {"seller": seller, "kind": "kp", "is_full_catalog": False}
+            if sup_tax:
+                flt["supplier_tax_id"] = sup_tax[:40]
+            else:
+                flt["supplier_name"] = sup_name[:200]
+            existing = SellerWarehouse.objects.filter(**flt).order_by("id").first()
+            if existing:
+                return existing
+            wh_name = f"Завод: {label}"
+            if sup_tax:
+                wh_name += f" ({id_label} {sup_tax})"
+        else:
+            # Полный каталог — новая папка всегда, с порядковым номером версии.
+            seq = SellerWarehouse.objects.filter(
+                seller=seller, kind="kp", is_full_catalog=True,
+                **({"supplier_tax_id": sup_tax[:40]} if sup_tax
+                   else {"supplier_name": sup_name[:200]})
+            ).count() + 1
+            wh_name = f"Завод: {label} · каталог #{seq}"
         return SellerWarehouse.objects.create(
             seller=seller, kind="kp", name=wh_name[:120],
+            is_full_catalog=sup_full,
             supplier_name=sup_name[:200], supplier_tax_id=sup_tax[:40],
             supplier_country=sup_cc[:2],
             country_code=sup_cc[:2], currency=currency[:3] or "USD",

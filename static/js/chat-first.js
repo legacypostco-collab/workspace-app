@@ -9199,9 +9199,10 @@
         //   Прайс → склад по логистике (страна/порты). КП → склад по заводу.
         var _mbtn = 'flex:1;padding:8px 10px;border:1px solid rgba(128,128,128,0.35);border-radius:8px;font-size:13px;cursor:pointer;';
         var modeHtml =
-          '<div class="pl-mode-row" style="display:flex;gap:8px;margin-bottom:10px;">'
-          + '<button type="button" class="pl-mode-btn" data-mode="pricelist" onclick="window.__plSetMode(this,\'pricelist\')" style="' + _mbtn + 'background:#1a1a1a;color:#fff;font-weight:600;">📚 ' + tr('Прайс (каталог)') + '</button>'
-          + '<button type="button" class="pl-mode-btn" data-mode="kp" onclick="window.__plSetMode(this,\'kp\')" style="' + _mbtn + 'background:transparent;">🏭 ' + tr('Расценка / КП') + '</button>'
+          '<div class="pl-mode-q" style="font-weight:600;margin-bottom:6px;">' + tr('Чей это прайс?') + '</div>'
+          + '<div class="pl-mode-row" style="display:flex;gap:8px;margin-bottom:10px;">'
+          + '<button type="button" class="pl-mode-btn" data-mode="pricelist" onclick="window.__plSetMode(this,\'pricelist\')" style="' + _mbtn + 'background:#1a1a1a;color:#fff;font-weight:600;">📦 ' + tr('Мой прайс') + '</button>'
+          + '<button type="button" class="pl-mode-btn" data-mode="kp" onclick="window.__plSetMode(this,\'kp\')" style="' + _mbtn + 'background:transparent;">🏭 ' + tr('Прайс / КП поставщика') + '</button>'
           + '</div>';
         // Страны поставщика — те же, что в портах, + пустой дефолт.
         var supCountryOpts = '<option value="">' + tr('— страна —') + '</option>'
@@ -9218,7 +9219,11 @@
           +   '<input class="pl-df-input" data-field="supplier_tax_id" type="text" autocomplete="off" placeholder="' + tr('ИНН (РФ) · 统一信用代码 (Китай) · VAT/рег.№') + '"/></div>'
           + '<div class="pl-df-row"><span class="pl-df-label">' + tr('Страна поставщика') + '</span>'
           +   '<select class="pl-df-input" data-field="supplier_country">' + supCountryOpts + '</select></div>'
-          + '<div class="pl-ship-combo-hint">' + tr('Позиции лягут в папку этого завода (группировка по ИНН/коду). Для обычного прайса переключите на «Прайс».') + '</div>'
+          + '<label class="pl-sup-fullcat" style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-size:13px;">'
+          +   '<input type="checkbox" class="pl-sup-fullcat-cb" style="width:16px;height:16px;"/>'
+          +   '<span>' + tr('Полный каталог завода — отдельная папка на эту загрузку') + '</span>'
+          + '</label>'
+          + '<div class="pl-ship-combo-hint">' + tr('Без галочки — КП: позиции копятся в одну папку этого завода (по ИНН/коду). С галочкой — каждый каталог в своей папке «Завод · каталог #N».') + '</div>'
           + '</div>';
         cards.push({type:'raw_html', data:{
           html: '<div class="card pl-defaults-card">'
@@ -9841,6 +9846,9 @@
         var f = el.dataset.field; var v = el.value;
         if (f && v !== undefined) constants[f] = v;
       });
+      // Чекбокс «полный каталог» (не .pl-df-input — читаем .checked отдельно).
+      var _fc = document.querySelector('.pl-sup-fullcat-cb');
+      constants.supplier_full_catalog = (_fc && _fc.checked) ? '1' : '';
       // Режим выводится из данных: заполнен завод → это КП (склад по заводу,
       // логистика необязательна). Иначе обычный прайс (логистика обязательна).
       var _isKP = !!String(constants.supplier_name || '').trim();

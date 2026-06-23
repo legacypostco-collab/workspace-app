@@ -73,6 +73,9 @@ class SellerWarehouse(models.Model):
         help_text="ИНН/USCC/VAT поставщика — ключ группировки КП")
     supplier_country = models.CharField(max_length=2, blank=True,
         help_text="Юрисдикция поставщика (для типа налогового ID)")
+    is_full_catalog = models.BooleanField(default=False, db_index=True,
+        help_text="КП-папка: полный каталог завода (отдельная на загрузку) "
+                  "vs накопительная папка КП (дедуп по заводу)")
     is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
