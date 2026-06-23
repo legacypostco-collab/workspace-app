@@ -4195,7 +4195,7 @@
         const statusCls = {trusted:'sp-trusted', sandbox:'sp-sandbox', risky:'sp-risky'}[it.supplier_status] || '';
         let supplierCell;
         if (it.supplier_status_badge) {
-          const badgeInner = `${esc(_noBall(it.supplier_status_badge))} · ${it.supplier_rating}${it.alt_offers > 0 ? ` <span class="sp-alt">+${it.alt_offers}</span>` : ''}`;
+          const badgeInner = `${esc(_noBall(it.supplier_status_badge))} · ${it.supplier_rating}`;
           // Если operator (есть supplier_id) — делаем кликабельным «связаться»
           if (it.supplier_id) {
             const pAttr = esc(JSON.stringify({seller_id: it.supplier_id, seller_username: it.supplier_username || ''}));
@@ -4301,8 +4301,12 @@
         const altCue = (clickable && (it.alt_suppliers || []).length > 0)
           ? `<span class="spec-alt-cue" title="${tr('Клик — все предложения по позиции')}" style="margin-left:6px;font-size:11px;color:#64b5f6;white-space:nowrap;">▾ ${window.t('{n} цен', {n: it.alt_suppliers.length})}</span>`
           : '';
+        const _stkLabelTxt = it.stock_label != null ? it.stock_label : stkLabel(it.status);
+        const _stkCell = it.status === 'in_stock'
+          ? `<span class="spec-stk in" title="${esc(_stkLabelTxt)}" style="font-weight:700;">✓</span>`
+          : `<span class="spec-stk ${it.stock_class || stkClass(it.status)}">${esc(_stkLabelTxt)}</span>`;
         return `<tr${rowAttrs}>
-          <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}">${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
+          <td>${_stkCell}</td>
           <td class="spec-row-num">${idx+1}</td>
           <td><a class="spec-id-link">${esc(it.id || '')}</a>${altCue}</td>
           <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
@@ -4343,7 +4347,10 @@
         mixed:  {label: '🔀 MIXED',         cls: 'spec-mode-mixed',  hint: 'часть позиций auto, часть требует операторской работы'},
       };
       const mb = MODE_BADGE[d.card_mode] || null;
-      const modeBadge = mb ? `<span class="spec-mode-badge ${mb.cls}" title="${esc(mb.hint)}">${esc(mb.label)}</span>` : '';
+      // Бейдж маршрутизации (AUTO/SEMI/MANUAL) — внутренний, показываем только
+      // в форме котировки/заказе оператора, не в покупательском подборе.
+      const _showMode = !!(d.editable_price || d.qf || (d.meta && d.meta.length));
+      const modeBadge = (mb && _showMode) ? `<span class="spec-mode-badge ${mb.cls}" title="${esc(mb.hint)}">${esc(mb.label)}</span>` : '';
       const modeBreakdown = d.card_mode === 'mixed'
         ? `<span class="spec-mode-mini">${d.auto_count||0} auto · ${d.semi_count||0} semi · ${d.manual_count||0} manual</span>`
         : '';
