@@ -267,7 +267,6 @@ LANGUAGES = [
     ("ru", "Русский"),
     ("en", "English"),
     ("zh-hans", "中文"),
-    ("es", "Español"),
     ("ar", "العربية"),
 ]
 # RTL languages — used by template / middleware to set <html dir="rtl">

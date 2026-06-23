@@ -5203,7 +5203,9 @@
  "Бренд / производитель?": {"en": "Brand / manufacturer?", "zh-hans": "品牌 / 制造商？", "es": "¿Marca / fabricante?", "ar": "العلامة التجارية / الشركة المصنعة؟"},
  "Или впишите свой бренд": {"en": "Or type your own brand", "zh-hans": "或输入您自己的品牌", "es": "O escribe tu propia marca", "ar": "أو اكتب علامتك التجارية"},
  "или впишите свой вариант...": {"en": "or type your own...", "zh-hans": "或输入您自己的内容…", "es": "o escribe tu propia opción...", "ar": "أو اكتب خيارك الخاص..."},
- "Россия": {"en": "Russia", "zh-hans": "俄罗斯", "es": "Rusia", "ar": "روسيا"}
+ "Россия": {"en": "Russia", "zh-hans": "俄罗斯", "es": "Rusia", "ar": "روسيا"},
+ "Склад": {"en": "Warehouse", "zh-hans": "仓库", "es": "Almacén", "ar": "مستودع"},
+ "Все товары": {"en": "All products", "zh-hans": "所有商品", "es": "Todos los productos", "ar": "كل المنتجات"}
 }
   );
 

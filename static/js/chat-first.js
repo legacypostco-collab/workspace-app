@@ -1324,6 +1324,15 @@
   // Назван `tr`, чтобы не конфликтовать с локальными `const t = ...` внутри функций.
   const tr = (key, fallback) => (typeof window.t === 'function' ? window.t(key) : (fallback != null ? fallback : key));
 
+  // Имя склада хранится в БД русским композитом «Склад #N · Страна · Город ·
+  // адрес» (см. _create_warehouse). На лету переводим токены: «Склад» + страна
+  // + город через DICT, номер/адрес оставляем как есть.
+  const trWhName = (name) => String(name || '').split(' · ').map(function(p) {
+    const m = p.match(/^Склад\s+(#\d+)$/);
+    if (m) return tr('Склад') + ' ' + m[1];
+    return tr(p);
+  }).join(' · ');
+
   let state = {
     convId: null,
     ws: null,
@@ -2355,14 +2364,14 @@
             ? `<span class="wh-chip-stale wh-stale-${r.staleness}"></span>` : '';
           return `<button class="wh-chip${r.is_orphan ? ' wh-chip-orphan' : ''}${isActive ? ' wh-chip-active' : ''}" data-action="seller_catalog" data-params='${esc(JSON.stringify({warehouse_id: wid}))}' data-label="Открыть склад">
             <span class="wh-chip-flag">${flag}</span>
-            <span class="wh-chip-name">${esc(r.name)}</span>
+            <span class="wh-chip-name">${esc(trWhName(r.name))}</span>
             <span class="wh-chip-n">${r.parts_count}</span>
             ${stale}
           </button>`;
         }).join('');
         const allActive = (active == null);
-        const allBtn = `<button class="wh-chip wh-chip-all${allActive ? ' wh-chip-active' : ''}" data-action="seller_catalog" data-params='${esc(JSON.stringify({}))}' data-label="Все товары">
-          <span class="wh-chip-flag">📦</span><span class="wh-chip-name">Все товары</span>
+        const allBtn = `<button class="wh-chip wh-chip-all${allActive ? ' wh-chip-active' : ''}" data-action="seller_catalog" data-params='${esc(JSON.stringify({}))}' data-label="${esc(tr('Все товары'))}">
+          <span class="wh-chip-flag">📦</span><span class="wh-chip-name">${esc(tr('Все товары'))}</span>
         </button>`;
         return `<div class="wh-bar">
           <div class="wh-bar-label">${esc(d.title || tr('card.warehouses'))}</div>
@@ -2392,7 +2401,7 @@
           <div class="wh-head">
             <span class="wh-flag">${flag}</span>
             <div class="wh-main">
-              <div class="wh-name">${esc(r.name)}</div>
+              <div class="wh-name">${esc(trWhName(r.name))}</div>
               <div class="wh-meta">${esc(ports)}${r.address ? ' · ' + esc(r.address.slice(0,80)) : ''}</div>
               ${staleBadge ? `<div class="wh-staleness">${staleBadge}</div>` : ''}
             </div>

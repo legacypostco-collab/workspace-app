@@ -1585,7 +1585,6 @@
       { code: 'ru',      label: 'Русский',  rtl: false },
       { code: 'en',      label: 'English',  rtl: false },
       { code: 'zh-hans', label: '中文',     rtl: false },
-      { code: 'es',      label: 'Español',  rtl: false },
       { code: 'ar',      label: 'العربية', rtl: true  },
     ];
   };
