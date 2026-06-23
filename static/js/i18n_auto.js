@@ -5239,6 +5239,8 @@
  "Оригинал": {"en": "Original (OEM)", "zh-hans": "原厂 (OEM)", "es": "Original (OEM)", "ar": "أصلي (OEM)"},
  "Аналог": {"en": "Aftermarket", "zh-hans": "副厂件", "es": "Alternativo", "ar": "بديل"},
  "Восстановленный": {"en": "Remanufactured", "zh-hans": "再制造", "es": "Remanufacturado", "ar": "مُعاد تصنيعه"},
+ "{n} цен": {"en": "{n} prices", "zh-hans": "{n} 个报价", "es": "{n} precios", "ar": "{n} أسعار"},
+ "Клик — все предложения по позиции": {"en": "Click — all offers for this item", "zh-hans": "点击 — 查看该商品的所有报价", "es": "Clic — todas las ofertas de la posición", "ar": "انقر — كل العروض لهذا الصنف"},
  "Заказ": {"en": "Order", "zh-hans": "订单", "es": "Pedido", "ar": "طلب"},
  "К отгрузке (оплачено": {"en": "To ship (paid", "zh-hans": "待发货（已付款", "es": "Para envío (pagado", "ar": "للشحن (مدفوع"},
  "Нет чатов": {"en": "No chats", "zh-hans": "暂无对话", "es": "Sin chats", "ar": "لا توجد محادثات"},

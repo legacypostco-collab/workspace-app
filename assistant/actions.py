@@ -1651,7 +1651,8 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 # оригинал — мелким снизу). Пусто = перевода нет.
                 "name_ru": p.title_ru or "",
                 "brand": p.brand.name if p.brand else "—",
-                "condition": "oem",
+                # Состояние ЛУЧШЕГО оффера (не хардкод): оригинал/аналог/реман.
+                "condition": (ranked[0]["part"].condition if ranked else "oem"),
                 "price": price,
                 "qty": qty,
                 "weight": _('%(gross_weight_kg)s кг') % {'gross_weight_kg': p.gross_weight_kg} if p.gross_weight_kg else "—",
@@ -2178,9 +2179,13 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
     # вести (Надёжный → авто, Песочница → к оператору и т.п.).
     if (role or "buyer") == "buyer":
         for it in card["data"]["items"]:
-            for k in ("supplier_status", "supplier_status_badge",
-                       "supplier_rating", "alt_offers", "alt_suppliers",
-                       "item_mode", "is_fresh", "has_reliable", "freshness_days"):
+            # Покупателю показываем АНОНИМНЫЕ конкурентные предложения с
+            # рейтингами и состояниями (как в buyer_offer_compare) — чтобы он
+            # выбрал лучшую цену по нужному состоянию. Скрываем только реальные
+            # имена (alt_suppliers уже анонимны: «Поставщик #S###») и внутреннюю
+            # маршрутизацию AUTO/SEMI/MANUAL.
+            for k in ("supplier_status", "item_mode", "is_fresh",
+                       "has_reliable", "freshness_days"):
                 it.pop(k, None)
         # Card-level режим тоже не нужен юзеру
         for k in ("card_mode", "auto_count", "semi_count", "manual_count"):

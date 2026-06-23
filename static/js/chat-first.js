@@ -4290,11 +4290,18 @@
             <td class="spec-ship qf-lead-cell">${leadInp || (it.delivery_days != null ? esc(String(it.delivery_days)) + ' дн' : '—')}</td>
           </tr>${detailRow}`;
         }
+        const _CONDL = {oem:'Оригинал', aftermarket:'Аналог', analog:'Аналог', reman:'Восстановленный'};
+        const condBadge = it.condition
+          ? `<span class="spec-cond-badge" style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;background:rgba(100,181,246,0.18);margin-left:6px;white-space:nowrap;">${esc(tr(_CONDL[it.condition] || it.condition))}</span>`
+          : '';
+        const altCue = (clickable && (it.alt_suppliers || []).length > 0)
+          ? `<span class="spec-alt-cue" title="${tr('Клик — все предложения по позиции')}" style="margin-left:6px;font-size:11px;color:#64b5f6;white-space:nowrap;">▾ ${window.t('{n} цен', {n: it.alt_suppliers.length})}</span>`
+          : '';
         return `<tr${rowAttrs}>
           <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
           <td class="spec-row-num">${modeDot}${idx+1}</td>
-          <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
-          <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
+          <td><a class="spec-id-link">${esc(it.id || '')}</a>${altCue}</td>
+          <td><div class="spec-name-cell">${specNameHtml(it)}${condBadge}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
           <td>${esc(it.brand || '')}</td>
           <td class="spec-price">${(d.editable_price && it.rfq_item_id != null)
             ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" value="${Number(it.price || 0).toFixed(2)}" /></div>`
