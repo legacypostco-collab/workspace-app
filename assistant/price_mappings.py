@@ -31,8 +31,9 @@ COLUMN_MAP: dict[str, list[str]] = {
         "sku", "article",
         # RU
         "артикул", "номер детали", "код товара",
-        # ZH
-        "件号", "零件号", "零件编号",
+        "каталожный номер", "каталожный №", "каталожный",
+        # ZH — 编码 (код), 编号 (номер), 物料编码 (код материала)
+        "件号", "零件号", "零件编号", "编码", "编号", "物料编码", "图号",
         # DE
         "artikelnummer", "artikel-nr", "teilenummer",
         # ES
@@ -205,6 +206,7 @@ COLUMN_MAP: dict[str, list[str]] = {
     "cross_number": [
         "cross number", "crossnumber", "cross-number", "cross ref", "alternative",
         "кросс-номер", "кросс", "аналог",
+        "каталожный номер 2", "编码2",
         "交叉号", "替代件号", "关联件号", "关联零件号",
         "kreuzreferenz",
         "número alternativo", "referencia cruzada",
@@ -266,6 +268,21 @@ def _build_lookup() -> dict[str, str]:
 _LOOKUP: dict[str, str] = _build_lookup()
 
 
+# Заголовки-«мусор»: порядковый номер строки, примечания. Их НЕ нужно
+# маппить ни в одно поле (иначе «№ п/п» 1,2,3… уходит в вес/наличие), но и
+# в AI слать не нужно — возвращаем спец-канон "_ignore" (нет в
+# CANONICAL_TO_STD → данные отбрасываются, но колонка считается «известной»).
+_IGNORE_HEADERS: frozenset[str] = frozenset({
+    normalize(x) for x in (
+        "№", "№ п/п", "п/п", "пп", "no", "no.", "n", "n.", "#",
+        "порядковый номер", "порядковый", "номер строки", "строка",
+        "row", "row no", "sr no", "sl no", "s/n", "seq", "item no.",
+        "序号", "行号", "примечание", "备注", "note", "notes", "коммент",
+        "комментарий", "remark", "remarks",
+    )
+})
+
+
 def match_header(header: str, learned: dict[str, str] | None = None) -> str | None:
     """Возвращает канонический ключ для заголовка или None.
 
@@ -280,6 +297,8 @@ def match_header(header: str, learned: dict[str, str] | None = None) -> str | No
         return None
     if learned and n in learned:
         return learned[n]
+    if n in _IGNORE_HEADERS:
+        return "_ignore"
     if n in _LOOKUP:
         return _LOOKUP[n]
     # «Бренд аналога» / «brand of analog» — это бренд АНАЛОГА (кросс-бренд),

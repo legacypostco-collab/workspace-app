@@ -34,6 +34,7 @@ import io
 import json
 import logging
 import os
+import re
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -478,6 +479,19 @@ def _find_header_idx(rows: list) -> int:
     return 0
 
 
+def _looks_like_data_row(row) -> bool:
+    """True если строка похожа на ДАННЫЕ, а не на заголовки. Эвристика:
+    у заголовков почти нет чисто-числовых ячеек, у строки данных их ≥2
+    (напр. «159 | Шкив | 127100523 | шт. | 1 | 352»). Нужно для расценок,
+    где над таблицей только титул, а строки заголовков нет вообще."""
+    cells = [str(c).strip() for c in (row or []) if c is not None and str(c).strip()]
+    if len(cells) < 2:
+        return False
+    numeric = sum(1 for c in cells
+                  if re.fullmatch(r"-?\d[\d.,]*", c.replace(" ", "")))
+    return numeric >= 2
+
+
 def _read_preview(filename: str, blob: bytes) -> tuple[list[str], list[list[str]]]:
     """Возвращает (headers, sample_rows[3]). Автоматически пропускает
     шапку прайса и находит реальную строку заголовков."""
@@ -490,11 +504,16 @@ def _read_preview(filename: str, blob: bytes) -> tuple[list[str], list[list[str]
     if not rows:
         raise ValueError("File is empty")
     hidx = _find_header_idx(rows)
-    header_row = list(rows[hidx])
+    # Файл БЕЗ строки заголовков (только титул сверху + сразу данные): выбранная
+    # «строка заголовков» на деле — данные. Тогда не съедаем её как заголовок
+    # (иначе теряем первый товар), а даём синтетические имена «Колонка N».
+    headerless = _looks_like_data_row(rows[hidx])
+    data_start = hidx if headerless else hidx + 1
+    header_row = [] if headerless else list(rows[hidx])
     # Ширина таблицы = max(заголовок, строки данных). Некоторые расценки имеют
     # колонку БЕЗ названия, но с данными (напр. цена в Запрос_17_12) — нельзя
     # её терять, иначе пропадёт цена/артикул.
-    data_rows = [list(r) for r in rows[hidx + 1:hidx + 6]]
+    data_rows = [list(r) for r in rows[data_start:data_start + 6]]
 
     def _cell(row, i):
         return (str(row[i]).strip() if i < len(row) and row[i] is not None else "")
@@ -515,7 +534,7 @@ def _read_preview(filename: str, blob: bytes) -> tuple[list[str], list[list[str]
     while headers and not headers[-1]:
         headers.pop()
     n_cols = len(headers)
-    sample = [(list(r) + [""] * n_cols)[:n_cols] for r in rows[hidx + 1:hidx + 4]]
+    sample = [(list(r) + [""] * n_cols)[:n_cols] for r in rows[data_start:data_start + 3]]
     return headers, sample
 
 
@@ -532,8 +551,12 @@ def _read_all(filename: str, blob: bytes):
         except StopIteration:
             break
     hidx = _find_header_idx(buf)
-    # отдаём строки ПОСЛЕ заголовков: остаток буфера + хвост итератора
-    for row in buf[hidx + 1:]:
+    # headerless (только титул + данные): первая «строка заголовков» — на деле
+    # данные, её НЕ пропускаем (иначе теряется первый товар). Должно совпадать
+    # с логикой _read_preview.
+    data_start = hidx if (buf and _looks_like_data_row(buf[hidx])) else hidx + 1
+    # отдаём строки данных: остаток буфера + хвост итератора
+    for row in buf[data_start:]:
         yield row
     for row in it:
         yield row
@@ -556,7 +579,8 @@ def _ai_calls_used_today(seller) -> int:
 
 
 def _detect_by_values(headers: list[str], sample_rows: list[list[str]],
-                       already_mapped: set[str]) -> dict[str, str]:
+                       already_mapped: set[str],
+                       skip_headers: set[str] | None = None) -> dict[str, str]:
     """Детекция канонических полей по СОДЕРЖИМОМУ колонок (sample rows).
 
     Работает когда заголовки непонятные (PRO_ID, ABCD123, etc):
@@ -613,22 +637,55 @@ def _detect_by_values(headers: list[str], sample_rows: list[list[str]],
         if not non_empty:
             continue
         header = headers[i] if i < len(headers) else f"col{i}"
+        # Колонка уже размечена словарём — не трогаем (иначе её значения
+        # перехватывают канон-слот: «Кол-во» 12,8,16 → price, и реальная
+        # цена остаётся без слота).
+        if skip_headers and header in skip_headers:
+            continue
 
-        # Стрипуем единицы измерения для числовых проверок
-        decimals = []
-        for v in non_empty:
-            m = _re.search(r"-?\d+[.,]?\d*", v.replace(" ", ""))
-            if m:
+        # Число ТОЛЬКО если ячейка ЦЕЛИКОМ число (с валютным символом и одним
+        # хвостовым юнитом). 'KOMATSU D375A-6' / OEM '01010-62045' → НЕ число
+        # (раньше _re.search вытаскивал «375» и колонку модели считало ценой).
+        def _num(v):
+            s = str(v).strip().replace(" ", " ")
+            if not s:
+                return None
+            s = _re.sub(r"^[¥$€₽£]\s*", "", s)
+            s = _re.sub(r"\s*(usd|eur|cny|rmb|rub|руб\.?|юань|元|¥|\$|€)\s*$", "", s, flags=_re.I)
+            s = _re.sub(r"\s*(шт\.?|pcs|kg|кг|mm|мм|ea|ед\.?)\s*$", "", s, flags=_re.I)
+            s = s.strip()
+            if s.count(",") == 1 and "." not in s:
+                s = s.replace(",", ".")
+            else:
+                s = s.replace(",", "")
+            s = s.replace(" ", "")
+            if _re.fullmatch(r"-?\d+(?:\.\d+)?", s):
                 try:
-                    decimals.append(float(m.group(0).replace(",", ".")))
+                    return float(s)
                 except ValueError:
-                    pass
+                    return None
+            return None
 
-        # Считаем характеристики
-        all_decimal_ratio = len(decimals) / len(non_empty)
+        nums = [x for x in (_num(v) for v in non_empty) if x is not None]
+        num_ratio = len(nums) / len(non_empty)
         avg_len = sum(len(v) for v in non_empty) / len(non_empty)
         has_spaces = sum(1 for v in non_empty if " " in v) / len(non_empty)
         has_dashes = sum(1 for v in non_empty if "-" in v) / len(non_empty)
+        has_decimal = (sum(1 for v in non_empty if _num(v) is not None and "." in v)
+                        / max(len(nums), 1))
+        # ID-колонка: длинные целые без дробной части (OEM-коды) — НЕ цена/вес.
+        looks_like_id = (num_ratio >= 0.8 and avg_len >= 7
+                          and bool(nums) and all(n == int(n) for n in nums)
+                          and has_decimal < 0.1)
+
+        # ── номер строки (1,2,3… или 159,160,161) — служебная колонка.
+        # Помечаем _ignore, чтобы не уехала в цену/вес/наличие (частая беда
+        # headerless-расценок, где первый столбец — нумерация позиций).
+        if "_ignore" not in used_canonical and num_ratio >= 0.9 and nums:
+            if all(n == int(n) for n in nums) and len(nums) >= 2:
+                srt = sorted(int(n) for n in nums)
+                if len(set(srt)) == len(srt) and srt[-1] - srt[0] == len(srt) - 1:
+                    detected[header] = "_ignore"; used_canonical.add("_ignore"); continue
 
         # ── currency
         if "currency" not in used_canonical:
@@ -645,23 +702,21 @@ def _detect_by_values(headers: list[str], sample_rows: list[list[str]],
             if all(v.lower() in KNOWN_BRANDS for v in non_empty):
                 detected[header] = "brand"; used_canonical.add("brand"); continue
 
-        # ── price_exw — все числа, среднее > 1
-        if "price" not in used_canonical and all_decimal_ratio >= 0.9:
-            avg_dec = sum(decimals) / max(len(decimals), 1)
-            if avg_dec > 1 and max(decimals) > 1:
+        # ── price_exw — колонка ЦЕЛИКОМ числовая, среднее > 1, не ID-коды
+        if "price" not in used_canonical and num_ratio >= 0.9 and not looks_like_id:
+            if nums and sum(nums) / len(nums) > 1 and max(nums) > 1:
                 detected[header] = "price"
                 used_canonical.add("price"); continue
 
-        # ── weight (decimals < 100 in average)
-        if "weight" not in used_canonical and all_decimal_ratio >= 0.9:
-            avg_dec = sum(decimals) / max(len(decimals), 1)
-            if avg_dec < 100:
+        # ── weight — дробные числа < 100 в среднем
+        if "weight" not in used_canonical and num_ratio >= 0.9 and not looks_like_id:
+            if nums and sum(nums) / len(nums) < 100:
                 detected[header] = "weight"
                 used_canonical.add("weight"); continue
 
-        # ── stock — целые числа
-        if "stock" not in used_canonical and all_decimal_ratio >= 0.9:
-            if all(d == int(d) and 0 <= d < 10000 for d in decimals):
+        # ── stock — целые числа в разумном диапазоне
+        if "stock" not in used_canonical and num_ratio >= 0.9:
+            if nums and all(n == int(n) and 0 <= n < 10000 for n in nums):
                 detected[header] = "stock"; used_canonical.add("stock"); continue
 
         # ── part_number — alphanumeric codes (дефисы/точки, короткие)
@@ -669,8 +724,8 @@ def _detect_by_values(headers: list[str], sample_rows: list[list[str]],
             if has_dashes >= 0.5 and avg_len <= 25 and has_spaces < 0.3:
                 detected[header] = "part_number"
                 used_canonical.add("part_number"); continue
-            # Числовые коды (Komatsu OEM)
-            if all_decimal_ratio >= 0.8 and avg_len >= 6 and has_spaces < 0.2:
+            # Числовые коды (Komatsu OEM) — длинные целые
+            if looks_like_id and has_spaces < 0.2:
                 detected[header] = "part_number"
                 used_canonical.add("part_number"); continue
 
@@ -708,16 +763,22 @@ def _smart_mapping(headers: list[str], sample_rows: list[list[str]],
     # Value-based fallback для нераспознанных через словарь
     if unknown_headers and sample_rows:
         already = set(canonical_map.keys())
-        by_values = _detect_by_values(headers, sample_rows, already)
+        by_values = _detect_by_values(headers, sample_rows, already,
+                                       skip_headers=set(canonical_map.values()))
         for header, canonical in by_values.items():
             if canonical not in canonical_map and header in unknown_headers:
                 canonical_map[canonical] = header
                 unknown_headers.remove(header)
-                # Learn для будущих импортов
-                try:
-                    learn_synonym(canonical, header, source="value-detect")
-                except Exception:
-                    pass
+                # Learn для будущих импортов — НО не синтетические «Колонка N»
+                # (позиционные имена бессмысленны и отравляют словарь: «колонка 6»
+                # в одном файле цена, в другом вес) и не служебный _ignore.
+                _synthetic = re.match(r"(?i)^\s*(колонка|column|col)\s*\d+\s*$",
+                                      str(header))
+                if canonical != "_ignore" and not _synthetic:
+                    try:
+                        learn_synonym(canonical, header, source="value-detect")
+                    except Exception:
+                        pass
 
     ai_called = False
     status = "ok"
