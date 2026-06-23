@@ -4231,7 +4231,7 @@
             </tr>`;
           }).join('');
           detailRow = `<tr class="spec-detail-row" data-detail-for="${idx}" style="display:none;">
-            <td colspan="10" class="spec-detail-cell">
+            <td colspan="12" class="spec-detail-cell">
               <div class="as-block">
                 <div class="as-title">🔍 ${suppliers.length} поставщик${suppliers.length === 1 ? '' : (suppliers.length < 5 ? 'а' : 'ов')} по OEM <b>${esc(it.id)}</b></div>
                 <table class="as-table">
@@ -4292,8 +4292,8 @@
         }
         const _CONDL = {oem:'Оригинал', aftermarket:'Аналог', analog:'Аналог', reman:'Восстановленный'};
         const condBadge = it.condition
-          ? `<span class="spec-cond-badge" style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;background:rgba(100,181,246,0.18);margin-left:6px;white-space:nowrap;">${esc(tr(_CONDL[it.condition] || it.condition))}</span>`
-          : '';
+          ? `<span class="spec-cond-badge" style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;background:rgba(100,181,246,0.18);white-space:nowrap;">${esc(tr(_CONDL[it.condition] || it.condition))}</span>`
+          : '—';
         const altCue = (clickable && (it.alt_suppliers || []).length > 0)
           ? `<span class="spec-alt-cue" title="${tr('Клик — все предложения по позиции')}" style="margin-left:6px;font-size:11px;color:#64b5f6;white-space:nowrap;">▾ ${window.t('{n} цен', {n: it.alt_suppliers.length})}</span>`
           : '';
@@ -4301,8 +4301,9 @@
           <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}"><span class="spec-stk-dot"></span>${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
           <td class="spec-row-num">${modeDot}${idx+1}</td>
           <td><a class="spec-id-link">${esc(it.id || '')}</a>${altCue}</td>
-          <td><div class="spec-name-cell">${specNameHtml(it)}${condBadge}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
+          <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
           <td>${esc(it.brand || '')}</td>
+          <td class="spec-cond-cell">${condBadge}</td>
           <td class="spec-price">${(d.editable_price && it.rfq_item_id != null)
             ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" value="${Number(it.price || 0).toFixed(2)}" /></div>`
             : fmtMoney(it.price, it.currency || 'USD')}</td>
@@ -4371,11 +4372,11 @@
             <colgroup>${qfMode
               ? '<col style="width:11%"><col style="width:4%"><col style="width:13%"><col style="width:19%"><col style="width:12%"><col style="width:10%"><col style="width:13%"><col style="width:6%"><col style="width:12%">'
               : (showSupplierCol
-              ? '<col style="width:12%"><col style="width:3%"><col style="width:12%"><col style="width:11%"><col style="width:13%"><col style="width:11%"><col style="width:5%"><col style="width:8%"><col style="width:13%"><col style="width:12%">'
-              : '<col style="width:12%"><col style="width:3%"><col style="width:13%"><col style="width:13%"><col style="width:17%"><col style="width:11%"><col style="width:6%"><col style="width:9%"><col style="width:16%">')}</colgroup>
+              ? '<col style="width:10%"><col style="width:3%"><col style="width:11%"><col style="width:12%"><col style="width:10%"><col style="width:9%"><col style="width:9%"><col style="width:4%"><col style="width:7%"><col style="width:13%"><col style="width:12%">'
+              : '<col style="width:10%"><col style="width:3%"><col style="width:12%"><col style="width:15%"><col style="width:11%"><col style="width:9%"><col style="width:10%"><col style="width:5%"><col style="width:8%"><col style="width:17%">')}</colgroup>
             <thead><tr>${qfMode
               ? `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>${tr('Тип')}</th><th>Price</th><th>Qty</th><th>${tr('Срок')}</th>`
-              : `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>Price</th><th>Qty</th><th>Weight</th>${showSupplierCol ? `<th>${tr('Поставщик')}</th>` : ''}<th>${shipIcon} ${tr('Доставка')}${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>`}
+              : `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>${tr('Состояние')}</th><th>Price</th><th>Qty</th><th>Weight</th>${showSupplierCol ? `<th>${tr('Поставщик')}</th>` : ''}<th>${shipIcon} ${tr('Доставка')}${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>`}
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
