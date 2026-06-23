@@ -1346,10 +1346,10 @@
       b.style.color = on ? '#fff' : 'inherit';
       b.style.fontWeight = on ? '600' : '400';
     });
+    // Секция поставщика — только для «Поставщика». Логистика (страна/порты/
+    // адрес) нужна ВСЕГДА, в обоих режимах — её не прячем.
     var sup = card.querySelector('.pl-supplier-section');
-    var log = card.querySelector('.pl-logistics-block');
     if (sup) sup.style.display = (mode === 'kp') ? '' : 'none';
-    if (log) log.style.display = (mode === 'kp') ? 'none' : '';
     if (mode === 'kp') { var n = card.querySelector('.pl-sup-name'); if (n) n.focus(); }
   };
 
@@ -9849,50 +9849,46 @@
       // Чекбокс «полный каталог» (не .pl-df-input — читаем .checked отдельно).
       var _fc = document.querySelector('.pl-sup-fullcat-cb');
       constants.supplier_full_catalog = (_fc && _fc.checked) ? '1' : '';
-      // Режим выводится из данных: заполнен завод → это КП (склад по заводу,
-      // логистика необязательна). Иначе обычный прайс (логистика обязательна).
+      // Режим «Поставщика» (заполнен завод). Логистика обязательна В ЛЮБОМ
+      // случае — без страны/портов/адреса не рассчитать фрахт.
       var _isKP = !!String(constants.supplier_name || '').trim();
-      if (_isKP) {
-        // КП: единственное требование — название завода (оно уже есть).
-        // Логистику не форсим — склад группируется по ИНН/коду поставщика.
-        // ИНН пустой допустим (группировка по названию), но предупредим.
-      } else {
-        // ── Обязательная логистика (та же проверка что в commit) ─────────
-        // Без полного блока НЕ генерируем файл — иначе WarehouseAddress
-        // заполнится placeholder'ом «— выбрать страну —».
-        var _gCityInp = document.querySelector('.pl-city-input');
-        var _gCountrySel = document.querySelector('.pl-ship-country, #shipment_country');
-        var _gStreet = String(constants.warehouse_address || '').trim();
-        var _gCity = _gCityInp ? String(_gCityInp.value || '').trim() : '';
-        var _gCountry = '';
-        if (_gCountrySel) {
-          if (_gCountrySel.tagName === 'SELECT') {
-            var _gOpt = _gCountrySel.options[_gCountrySel.selectedIndex];
-            _gCountry = (_gOpt && _gOpt.value) ? (_gOpt.text || '').replace(/^[\s\S]*?\s/, '') : '';
-          } else {
-            _gCountry = String(_gCountrySel.value || '').trim();
-          }
+      // ── Обязательная логистика (та же проверка что в commit) ─────────
+      var _gCityInp = document.querySelector('.pl-city-input');
+      var _gCountrySel = document.querySelector('.pl-ship-country, #shipment_country');
+      var _gStreet = String(constants.warehouse_address || '').trim();
+      var _gCity = _gCityInp ? String(_gCityInp.value || '').trim() : '';
+      var _gCountry = '';
+      if (_gCountrySel) {
+        if (_gCountrySel.tagName === 'SELECT') {
+          var _gOpt = _gCountrySel.options[_gCountrySel.selectedIndex];
+          _gCountry = (_gOpt && _gOpt.value) ? (_gOpt.text || '').replace(/^[\s\S]*?\s/, '') : '';
+        } else {
+          _gCountry = String(_gCountrySel.value || '').trim();
         }
-        var _gSea = String(constants.sea_port || '').trim();
-        var _gAir = String(constants.air_port || '').trim();
-        var _gMissing = [];
-        if (!_gCountry) _gMissing.push(tr('страна отправления'));
-        if (!_gStreet)  _gMissing.push(tr('адрес склада EXW'));
-        if (!_gSea)     _gMissing.push(tr('морпорт отправления'));
-        if (!_gAir)     _gMissing.push(tr('аэропорт отправления'));
-        if (_gMissing.length) {
-          clearInterval(progressPoller);
-          if (thinking && thinking.parentNode) thinking.remove();
-          try { closeSidePreview(); } catch(e) {}
-          addMessage('assistant',
-            window.t('❗ Без логистики продолжить нельзя. Заполните в блоке «📎 общих полей поставщика» сверху: {fields}. Потом нажмите «Сгенерировать файл».', {fields: _gMissing.join(', ')}),
-            [], [{action: '__pricelist_retry_generate', label: tr('🔄 Сгенерировать файл')}]);
-          return;
-        }
-        // Все поля есть → склейка полного warehouse_address.
-        constants.warehouse_address = [_gStreet, _gCity, _gCountry]
-          .filter(function(p){ return p; }).join(', ');
       }
+      var _gSea = String(constants.sea_port || '').trim();
+      var _gAir = String(constants.air_port || '').trim();
+      var _gMissing = [];
+      // В режиме «Поставщика» сначала требуем название завода.
+      var _cardMode = (document.querySelector('.pl-defaults-card[data-upload-mode]') || {}).getAttribute
+        ? document.querySelector('.pl-defaults-card[data-upload-mode]').getAttribute('data-upload-mode') : '';
+      if (_cardMode === 'kp' && !_isKP) _gMissing.push(tr('название завода-поставщика'));
+      if (!_gCountry) _gMissing.push(tr('страна отправления'));
+      if (!_gStreet)  _gMissing.push(tr('адрес склада EXW'));
+      if (!_gSea)     _gMissing.push(tr('морпорт отправления'));
+      if (!_gAir)     _gMissing.push(tr('аэропорт отправления'));
+      if (_gMissing.length) {
+        clearInterval(progressPoller);
+        if (thinking && thinking.parentNode) thinking.remove();
+        try { closeSidePreview(); } catch(e) {}
+        addMessage('assistant',
+          window.t('❗ Без логистики продолжить нельзя. Заполните в блоке «📎 общих полей поставщика» сверху: {fields}. Потом нажмите «Сгенерировать файл».', {fields: _gMissing.join(', ')}),
+          [], [{action: '__pricelist_retry_generate', label: tr('🔄 Сгенерировать файл')}]);
+        return;
+      }
+      // Все поля есть → склейка полного warehouse_address.
+      constants.warehouse_address = [_gStreet, _gCity, _gCountry]
+        .filter(function(p){ return p; }).join(', ');
       var aiOverrides = {};
       document.querySelectorAll('.pl-ai-row').forEach(function(row) {
         var oem = row.dataset.oem;

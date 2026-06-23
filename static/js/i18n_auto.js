@@ -5233,6 +5233,7 @@
  "— страна —": {"en": "— country —", "zh-hans": "— 国家 —", "es": "— país —", "ar": "— البلد —"},
  "Позиции лягут в папку этого завода (группировка по ИНН/коду). Для обычного прайса переключите на «Прайс».": {"en": "Items will go into this factory's folder (grouped by tax ID/code). For a regular price list switch to «Price list».", "zh-hans": "商品将归入该工厂的文件夹（按税号/代码分组）。普通价目表请切换到「价目表」。", "es": "Los artículos irán a la carpeta de esta fábrica (agrupados por NIF/código). Para una lista de precios normal cambia a «Lista de precios».", "ar": "ستوضع العناصر في مجلد هذا المصنع (مجمّعة حسب الرقم الضريبي/الرمز). لقائمة أسعار عادية بدّل إلى «قائمة الأسعار»."},
  "Чей это прайс?": {"en": "Whose price list is this?", "zh-hans": "这是谁的价目表？", "es": "¿De quién es esta lista de precios?", "ar": "لمن قائمة الأسعار هذه؟"},
+ "название завода-поставщика": {"en": "supplier factory name", "zh-hans": "供应商工厂名称", "es": "nombre de la fábrica proveedora", "ar": "اسم مصنع المورّد"},
  "Мой прайс": {"en": "My price list", "zh-hans": "我的价目表", "es": "Mi lista de precios", "ar": "قائمة أسعاري"},
  "Прайс / КП поставщика": {"en": "Supplier price list / quote", "zh-hans": "供应商价目表 / 报价", "es": "Lista / cotización del proveedor", "ar": "قائمة أسعار / تسعيرة المورّد"},
  "Полный каталог завода — отдельная папка на эту загрузку": {"en": "Full factory catalog — separate folder for this upload", "zh-hans": "工厂完整目录 — 本次上传单独建文件夹", "es": "Catálogo completo de la fábrica — carpeta separada para esta carga", "ar": "كتالوج المصنع الكامل — مجلد منفصل لهذا التحميل"},

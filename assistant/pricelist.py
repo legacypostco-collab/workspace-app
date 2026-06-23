@@ -1276,6 +1276,15 @@ def _resolve_warehouse_for_import(seller, mapping: dict, constants: dict | None,
     sup_cc = (_supplier_wide_value("supplier_country", mapping, constants) or "").strip().upper()
     sup_full = str(_supplier_wide_value("supplier_full_catalog", mapping, constants) or "").strip().lower() in ("1", "true", "yes", "on")
 
+    # Страна отгрузки выводится из ISO-кода в начале портового кода (TRMER → TR).
+    cc = ""
+    for src in (sea, air):
+        if src and len(src) >= 2:
+            head = src.split()[0]
+            if len(head) >= 2 and head[:2].isalpha():
+                cc = head[:2].upper()
+                break
+
     # ── ЧУЖОЙ ПРАЙС: указан поставщик/завод → папка с реквизитами завода.
     #   • КП (по умолчанию) — копится в ОДНУ папку завода (дедуп по ИНН/коду),
     #     чтобы 200 КП не плодили 200 папок.
@@ -1309,17 +1318,11 @@ def _resolve_warehouse_for_import(seller, mapping: dict, constants: dict | None,
             is_full_catalog=sup_full,
             supplier_name=sup_name[:200], supplier_tax_id=sup_tax[:40],
             supplier_country=sup_cc[:2],
-            country_code=sup_cc[:2], currency=currency[:3] or "USD",
+            # Логистика заполнена и для прайса поставщика — храним для фрахта.
+            country_code=(cc or sup_cc)[:2],
+            sea_port=sea[:120], air_port=air[:120], address=addr[:1000],
+            currency=currency[:3] or "USD",
         )
-
-    # Страна выводится из ISO-кода в начале портового кода (TRMER → TR)
-    cc = ""
-    for src in (sea, air):
-        if src and len(src) >= 2:
-            head = src.split()[0]
-            if len(head) >= 2 and head[:2].isalpha():
-                cc = head[:2].upper()
-                break
 
     # ── ДЕДУП: уже есть склад с такой же логистикой? Переиспользуем.
     # Ключ — страна + порты + валюта (физическая точка отгрузки). Сработает
@@ -2530,16 +2533,9 @@ class PricelistCommitView(APIView):
                         return True
             return False
 
-        # Режим КП: указан поставщик/завод → склад группируется по нему,
-        # логистика (адрес/порты) необязательна. Пропускаем жёсткие чеки.
-        _is_kp = bool(
-            (constants or {}).get("supplier_name")
-            or (constants or {}).get("supplier_tax_id")
-            or str(mapping.get("supplier_name", "")).startswith("fix:")
-            and mapping.get("supplier_name", "")[4:].strip()
-        )
-
-        if not _is_kp and not _has_value("warehouse_address"):
+        # Логистика обязательна ВСЕГДА (и для своего прайса, и для прайса
+        # поставщика) — без страны/портов/адреса не рассчитать фрахт.
+        if not _has_value("warehouse_address"):
             return Response({
                 "error": "warehouse_address_required",
                 "message": _(
@@ -2548,7 +2544,7 @@ class PricelistCommitView(APIView):
                     "впишите адрес в форме «📎 общих полей поставщика»."
                 ),
             }, status=400)
-        if not _is_kp and not _has_value("sea_port"):
+        if not _has_value("sea_port"):
             return Response({
                 "error": "sea_port_required",
                 "message": _(
@@ -2557,7 +2553,7 @@ class PricelistCommitView(APIView):
                     "форме «📎 общих полей поставщика»."
                 ),
             }, status=400)
-        if not _is_kp and not _has_value("air_port"):
+        if not _has_value("air_port"):
             return Response({
                 "error": "air_port_required",
                 "message": _(
