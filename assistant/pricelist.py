@@ -2446,17 +2446,36 @@ class PricelistCommitView(APIView):
 
         # В тестах / sync-режиме импорт идёт ИНЛАЙН (Celery-воркер не видит
         # транзакцию тестовой БД; существующие тесты ждут синхронный 200).
-        if getattr(settings, "TESTING", False) or getattr(settings, "PRICELIST_IMPORT_SYNC", False):
+        # Для маленьких файлов (≤ SMALL_INLINE_THRESHOLD строк) тоже ИНЛАЙН:
+        # при отсутствии живого Celery-воркера delay() не бросает исключение
+        # (задача уходит в очередь Redis, но никто не забирает), и импорт
+        # зависал бы навсегда. Для малых файлов latency ≪ 1s — daphne выдержит.
+        # Малые файлы (< 5 МБ) гоним ИНЛАЙН: при отсутствии живого Celery-
+        # воркера delay() не бросает исключение — задача уходит в Redis, но
+        # никто не забирает, и импорт зависал бы навсегда. total_rows при
+        # загрузке не считаем (дорого), поэтому ориентируемся на размер файла.
+        SMALL_FILE_BYTES = 5 * 1024 * 1024  # 5 МБ
+        try:
+            _file_size = imp.file_obj.size if imp.file_obj else 0
+        except Exception:
+            _file_size = 0
+        use_inline = (
+            getattr(settings, "TESTING", False)
+            or getattr(settings, "PRICELIST_IMPORT_SYNC", False)
+            or _file_size <= SMALL_FILE_BYTES
+        )
+        if use_inline:
             result = _execute_import_job(
                 imp.id, mapping, transform_rules, constants, save_profile, warehouse_id,
             )
             if result.get("ok"):
+                # 200 + полный result → клиент читает через поллер (DB fallback).
                 return Response(result)
             return Response(
                 {"error": result.get("error") or "import failed"}, status=500)
 
-        # Прод — фоновая Celery-задача. Если брокер недоступен — fallback инлайн
-        # (хуже для UX на больших файлах, но импорт не теряется).
+        # Прод — фоновая Celery-задача для больших файлов (> 5000 строк).
+        # Если брокер недоступен — fallback инлайн (импорт не теряется).
         try:
             from assistant.tasks import run_pricelist_import
             run_pricelist_import.delay(
