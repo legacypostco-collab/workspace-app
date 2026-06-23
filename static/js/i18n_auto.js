@@ -5195,7 +5195,9 @@
  "⚠️ Не удалось сгенерировать файл": {"en": "⚠️ Failed to generate file", "zh-hans": "⚠️ 生成文件失败", "es": "⚠️ Error al generar el archivo", "ar": "⚠️ فشل توليد الملف"},
  "📥 Подтвердить и загрузить": {"en": "📥 Confirm and upload", "zh-hans": "📥 确认并上传", "es": "📥 Confirmar y cargar", "ar": "📥 تأكيد ورفع"},
  "Укажите адрес склада отгрузки.": {"en": "Please specify the shipping warehouse address.", "zh-hans": "请填写发货仓库地址。", "es": "Especifique la dirección del almacén de envío.", "ar": "يرجى تحديد عنوان مستودع الشحن."},
- "Не удалось определить бренд.": {"en": "Could not determine the brand.", "zh-hans": "无法确定品牌。", "es": "No se pudo determinar la marca.", "ar": "تعذّر تحديد العلامة التجارية."}
+ "Не удалось определить бренд.": {"en": "Could not determine the brand.", "zh-hans": "无法确定品牌。", "es": "No se pudo determinar la marca.", "ar": "تعذّر تحديد العلامة التجارية."},
+ "ошибка импорта на сервере": {"en": "server import error", "zh-hans": "服务器导入错误", "es": "error de importación en el servidor", "ar": "خطأ في الاستيراد على الخادم"},
+ "Импорт занял слишком долго. Проверьте позже в разделе «Мои товары» — товары могут появиться позже.": {"en": "Import is taking too long. Check «My products» later — items may appear there eventually.", "zh-hans": "导入耗时过长。请稍后在「我的商品」中查看 — 商品可能稍后出现。", "es": "La importación tarda demasiado. Consulta «Mis productos» más tarde — los artículos pueden aparecer allí.", "ar": "الاستيراد يستغرق وقتاً طويلاً. تحقق من «منتجاتي» لاحقاً — قد تظهر العناصر هناك لاحقاً."}
 }
   );
 

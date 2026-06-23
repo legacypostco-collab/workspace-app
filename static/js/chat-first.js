@@ -9394,10 +9394,13 @@
       importResultResolve = rs; importResultReject = rj;
     });
     var importSettled = false;
+    var importPollCount = 0;
+    var IMPORT_TIMEOUT_POLLS = 240; // 240 × 500ms = 2 минуты
 
     // Polling прогресса импорта каждые 500ms (+ детект завершения)
     var importPollTimer = setInterval(async function() {
       try {
+        importPollCount++;
         var pr = await fetch('/api/assistant/upload-pricelist/' + importId + '/import-progress/', {
           credentials: 'same-origin',
         });
@@ -9422,10 +9425,17 @@
           clearInterval(importPollTimer);
           var rd = pdata.result || {};
           if (rd.ok === false || pdata.status === 'failed') {
-            importResultReject(new Error(rd.error || 'ошибка импорта на сервере'));
+            importResultReject(new Error(rd.error || tr('ошибка импорта на сервере')));
           } else {
             importResultResolve(rd);
           }
+        }
+        // Таймаут: если за 2 минуты статус не изменился — скорее всего
+        // Celery-воркер не подхватил задачу или файл недоступен.
+        if (!importSettled && importPollCount >= IMPORT_TIMEOUT_POLLS) {
+          importSettled = true;
+          clearInterval(importPollTimer);
+          importResultReject(new Error(tr('Импорт занял слишком долго. Проверьте позже в разделе «Мои товары» — товары могут появиться позже.')));
         }
       } catch(e) {}
     }, 500);
