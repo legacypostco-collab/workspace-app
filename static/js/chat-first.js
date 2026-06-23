@@ -1327,6 +1327,10 @@
   // Имя склада хранится в БД русским композитом «Склад #N · Страна · Город ·
   // адрес» (см. _create_warehouse). На лету переводим токены: «Склад» + страна
   // + город через DICT, номер/адрес оставляем как есть.
+  // Убирает ведущий эмодзи-«шарик» статуса (🟢/🟡/🔴) из бейджа поставщика,
+  // оставляя только текст («Надёжный»). Цвет несёт CSS-класс sp-*.
+  const _noBall = (s) => String(s == null ? '' : s).replace(/^[^\p{L}\d]+/u, '').trim();
+
   const trWhName = (name) => String(name || '').split(' · ').map(function(p) {
     const m = p.match(/^Склад\s+(#\d+)$/);
     if (m) return tr('Склад') + ' ' + m[1];
@@ -2493,7 +2497,7 @@
       const rows = (d.rows || []).map((r, idx) => {
         const ccy = r.currency || 'USD';
         const rank = `<span class="bo-rank">${idx + 1}</span>`;
-        const ratingBadge = `<span class="bo-rating bo-status-${r.status}" title="Статус: ${esc(r.status_badge)}">${esc(r.status_badge)} · ${(r.rating || 0).toFixed(0)}</span>`;
+        const ratingBadge = `<span class="bo-rating bo-status-${r.status}" title="Статус: ${esc(r.status_badge)}">${esc(_noBall(r.status_badge))} · ${(r.rating || 0).toFixed(0)}</span>`;
         const fobBits = [];
         if (r.price_fob_sea) fobBits.push(`SEA ${fmtMoney(r.price_fob_sea, ccy)}`);
         if (r.price_fob_air) fobBits.push(`AIR ${fmtMoney(r.price_fob_air, ccy)}`);
@@ -2534,7 +2538,7 @@
         const bestMode = r.ship_best_mode === 'air' ? '✈️' : (r.ship_best_mode === 'sea' ? '🚢' : '');
         return `<tr class="oc-row oc-status-${r.status}">
           <td class="oc-rank">${idx + 1}</td>
-          <td class="oc-supplier">${esc(r.supplier_label)}<br><span class="oc-status">${esc(r.status_badge)}</span></td>
+          <td class="oc-supplier">${esc(r.supplier_label)}<br><span class="oc-status">${esc(_noBall(r.status_badge))}</span></td>
           <td class="oc-rating">${(r.rating || 0).toFixed(0)}</td>
           <td class="oc-price">${fmtMoney(r.price, ccy)}</td>
           <td>${shipSea}</td>
@@ -4191,7 +4195,7 @@
         const statusCls = {trusted:'sp-trusted', sandbox:'sp-sandbox', risky:'sp-risky'}[it.supplier_status] || '';
         let supplierCell;
         if (it.supplier_status_badge) {
-          const badgeInner = `${esc(it.supplier_status_badge)} · ${it.supplier_rating}${it.alt_offers > 0 ? ` <span class="sp-alt">+${it.alt_offers}</span>` : ''}`;
+          const badgeInner = `${esc(_noBall(it.supplier_status_badge))} · ${it.supplier_rating}${it.alt_offers > 0 ? ` <span class="sp-alt">+${it.alt_offers}</span>` : ''}`;
           // Если operator (есть supplier_id) — делаем кликабельным «связаться»
           if (it.supplier_id) {
             const pAttr = esc(JSON.stringify({seller_id: it.supplier_id, seller_username: it.supplier_username || ''}));
@@ -4221,7 +4225,7 @@
             return `<tr class="${s.is_primary ? 'as-row as-primary' : 'as-row'}">
               <td class="as-rank">${i + 1}</td>
               <td class="as-label">${esc(s.label)}</td>
-              <td><span class="sp-badge ${statusCls}">${esc(s.status_badge)}</span></td>
+              <td><span class="sp-badge ${statusCls}">${esc(_noBall(s.status_badge))}</span></td>
               <td class="as-num">${s.rating}</td>
               <td class="as-num as-price">${fmtMoney(s.price, s.currency)}</td>
               <td class="as-cond">${esc(({oem:'OEM',aftermarket:'Aftermarket',analog:'Aftermarket',reman:'REMAN'})[s.condition] || s.condition || '')}</td>
