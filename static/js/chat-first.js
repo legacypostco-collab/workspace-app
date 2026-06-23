@@ -9448,8 +9448,8 @@
         clearInterval(importPollTimer);
         if (pending && pending.parentNode) pending.remove();
         var blockingErrors = {
-          warehouse_address_required: 'Укажите адрес склада отгрузки.',
-          brand_required: 'Не удалось определить бренд.',
+          warehouse_address_required: tr('Укажите адрес склада отгрузки.'),
+          brand_required: tr('Не удалось определить бренд.'),
         };
         if (blockingErrors[startData.error]) {
           addMessage('assistant',

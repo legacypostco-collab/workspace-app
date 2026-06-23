@@ -5193,7 +5193,9 @@
  "Если в источнике пусто или 0 — оставляем пусто. Можно дозаполнить позже в каталоге.": {"en": "If source is empty or 0 — we leave it empty. Can be filled in the catalog later.", "zh-hans": "若来源为空或0 — 保持空白，稍后可在目录中填写。", "es": "Si el origen está vacío o es 0 — lo dejamos vacío. Se puede completar en el catálogo después.", "ar": "إذا كان المصدر فارغاً أو 0 — نتركه فارغاً. يمكن ملؤه في الكتالوج لاحقاً."},
  "⚠️ Правило: одна загрузка — одна страна отправления. Если у вас прайсы из разных стран, загружайте их отдельными файлами.": {"en": "⚠️ Rule: one upload — one shipping country. If you have price lists from different countries, upload them as separate files.", "zh-hans": "⚠️ 规则：一次上传 — 一个发货国家。如果您有来自不同国家的价格表，请分别上传。", "es": "⚠️ Regla: una carga — un país de origen. Si tiene listas de precios de diferentes países, cárguelas como archivos separados.", "ar": "⚠️ القاعدة: رفع واحد — بلد شحن واحد. إذا كانت لديك قوائم أسعار من بلدان مختلفة، ارفعها كملفات منفصلة."},
  "⚠️ Не удалось сгенерировать файл": {"en": "⚠️ Failed to generate file", "zh-hans": "⚠️ 生成文件失败", "es": "⚠️ Error al generar el archivo", "ar": "⚠️ فشل توليد الملف"},
- "📥 Подтвердить и загрузить": {"en": "📥 Confirm and upload", "zh-hans": "📥 确认并上传", "es": "📥 Confirmar y cargar", "ar": "📥 تأكيد ورفع"}
+ "📥 Подтвердить и загрузить": {"en": "📥 Confirm and upload", "zh-hans": "📥 确认并上传", "es": "📥 Confirmar y cargar", "ar": "📥 تأكيد ورفع"},
+ "Укажите адрес склада отгрузки.": {"en": "Please specify the shipping warehouse address.", "zh-hans": "请填写发货仓库地址。", "es": "Especifique la dirección del almacén de envío.", "ar": "يرجى تحديد عنوان مستودع الشحن."},
+ "Не удалось определить бренд.": {"en": "Could not determine the brand.", "zh-hans": "无法确定品牌。", "es": "No se pudo determinar la marca.", "ar": "تعذّر تحديد العلامة التجارية."}
 }
   );
 
