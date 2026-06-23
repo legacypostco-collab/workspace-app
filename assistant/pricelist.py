@@ -479,6 +479,29 @@ def _find_header_idx(rows: list) -> int:
     return 0
 
 
+def _cell_to_number(v):
+    """float, ТОЛЬКО если ячейка ЦЕЛИКОМ число (с валютным символом и одним
+    хвостовым юнитом). 'KOMATSU D375A-6' / OEM '01010-62045' → None."""
+    s = str(v).strip()
+    if not s:
+        return None
+    s = re.sub(r"^[¥$€₽£]\s*", "", s)
+    s = re.sub(r"\s*(usd|eur|cny|rmb|rub|руб\.?|юань|元|¥|\$|€)\s*$", "", s, flags=re.I)
+    s = re.sub(r"\s*(шт\.?|pcs|kg|кг|mm|мм|ea|ед\.?)\s*$", "", s, flags=re.I)
+    s = s.strip()
+    if s.count(",") == 1 and "." not in s:
+        s = s.replace(",", ".")
+    else:
+        s = s.replace(",", "")
+    s = s.replace(" ", "")
+    if re.fullmatch(r"-?\d+(?:\.\d+)?", s):
+        try:
+            return float(s)
+        except ValueError:
+            return None
+    return None
+
+
 def _looks_like_data_row(row) -> bool:
     """True если строка похожа на ДАННЫЕ, а не на заголовки. Эвристика:
     у заголовков почти нет чисто-числовых ячеек, у строки данных их ≥2
@@ -630,6 +653,39 @@ def _detect_by_values(headers: list[str], sample_rows: list[list[str]],
     detected: dict[str, str] = {}
     used_canonical = set(already_mapped)
 
+    def _is_seq(nl):
+        """Колонка-нумератор: ≥2 различных последовательных целых (1,2,3…)."""
+        if len(nl) < 2 or not all(n == int(n) for n in nl):
+            return False
+        srt = sorted(int(n) for n in nl)
+        return len(set(srt)) == len(srt) and srt[-1] - srt[0] == len(srt) - 1
+
+    # Пред-проход: ЦЕНА = свободная числовая колонка с НАИБОЛЬШИМ средним
+    # значением (не ID-код, не нумератор). Иначе в headerless-расценке
+    # qty(10) перехватывает слот цены у price(7546) просто потому что идёт
+    # раньше по столбцам.
+    price_idx = -1
+    if "price" not in used_canonical:
+        best_avg = -1.0
+        for _i in range(n_cols):
+            _ne = [v for v in cols[_i] if v]
+            if not _ne:
+                continue
+            _h = headers[_i] if _i < len(headers) else f"col{_i}"
+            if skip_headers and _h in skip_headers:
+                continue
+            _cn = [x for x in (_cell_to_number(v) for v in _ne) if x is not None]
+            if not _cn or len(_cn) / len(_ne) < 0.9:
+                continue
+            _al = sum(len(v) for v in _ne) / len(_ne)
+            _hd = sum(1 for v in _ne if _cell_to_number(v) is not None and "." in v) / max(len(_cn), 1)
+            _is_id = (_al >= 7 and all(n == int(n) for n in _cn) and _hd < 0.1)
+            if _is_id or _is_seq(_cn):
+                continue
+            _avg = sum(_cn) / len(_cn)
+            if _avg > 1 and max(_cn) > 1 and _avg > best_avg:
+                best_avg = _avg; price_idx = _i
+
     for i, vals in enumerate(cols):
         if not vals:
             continue
@@ -702,11 +758,10 @@ def _detect_by_values(headers: list[str], sample_rows: list[list[str]],
             if all(v.lower() in KNOWN_BRANDS for v in non_empty):
                 detected[header] = "brand"; used_canonical.add("brand"); continue
 
-        # ── price_exw — колонка ЦЕЛИКОМ числовая, среднее > 1, не ID-коды
-        if "price" not in used_canonical and num_ratio >= 0.9 and not looks_like_id:
-            if nums and sum(nums) / len(nums) > 1 and max(nums) > 1:
-                detected[header] = "price"
-                used_canonical.add("price"); continue
+        # ── price_exw — лучшая числовая колонка по макс. среднему (пред-проход)
+        if "price" not in used_canonical and i == price_idx:
+            detected[header] = "price"
+            used_canonical.add("price"); continue
 
         # ── weight — дробные числа < 100 в среднем
         if "weight" not in used_canonical and num_ratio >= 0.9 and not looks_like_id:
