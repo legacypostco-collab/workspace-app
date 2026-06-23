@@ -5011,7 +5011,24 @@
  "По партиям / поставщикам": {"en": "By batches / suppliers", "zh-hans": "按批次/供应商", "es": "Por lotes / proveedores", "ar": "بالدفعات / الموردين"},
  "дн": {"en": "d", "zh-hans": "天", "es": "d", "ar": "ي"},
  "поз": {"en": "items", "zh-hans": "项", "es": "artículos", "ar": "عناصر"},
- "резерв": {"en": "reserve", "zh-hans": "预付", "es": "reserva", "ar": "احتياطي"}
+ "резерв": {"en": "reserve", "zh-hans": "预付", "es": "reserva", "ar": "احتياطي"},
+ "Новые заказы — подтвердить и в производство": {"en": "New orders — confirm and into production", "zh-hans": "新订单 — 确认并投入生产", "es": "Nuevos pedidos — confirmar y a producción", "ar": "طلبات جديدة — تأكيد وبدء الإنتاج"},
+ "Готовы к отгрузке": {"en": "Ready to ship", "zh-hans": "准备发货", "es": "Listos para envío", "ar": "جاهز للشحن"},
+ "Подтверждены — формирование заказа": {"en": "Confirmed — forming order", "zh-hans": "已确认 — 组织订单", "es": "Confirmados — formando pedido", "ar": "تم التأكيد — تشكيل الطلب"},
+ "В производстве": {"en": "In production", "zh-hans": "生产中", "es": "En producción", "ar": "في الإنتاج"},
+ "Транзит за рубеж": {"en": "Transit abroad", "zh-hans": "国际运输中", "es": "Tránsito al extranjero", "ar": "عبور إلى الخارج"},
+ "Отгружены за рубеж": {"en": "Shipped abroad", "zh-hans": "已发往境外", "es": "Enviados al extranjero", "ar": "تم شحنها للخارج"},
+ "На таможне РФ": {"en": "At Russia customs", "zh-hans": "俄罗斯海关", "es": "En aduana de Rusia", "ar": "في جمارك روسيا"},
+ "Транзит по РФ": {"en": "Domestic transit", "zh-hans": "俄罗斯境内运输", "es": "Tránsito en Rusia", "ar": "عبور داخل روسيا"},
+ "Выдача / приёмка": {"en": "Issuance / receipt", "zh-hans": "提货 / 验收", "es": "Entrega / recepción", "ar": "الإصدار / الاستلام"},
+ "Ждут оплату резерва покупателем": {"en": "Awaiting buyer's deposit", "zh-hans": "等待买家支付预留款", "es": "Esperando pago de reserva", "ar": "بانتظار دفع الاحتياطي"},
+ "Доставлены — оплата из эскроу": {"en": "Delivered — payment from escrow", "zh-hans": "已送达 — 释放托管款", "es": "Entregados — pago desde escrow", "ar": "تم التسليم — دفع من الضمان"},
+ "Завершённые": {"en": "Completed", "zh-hans": "已完成", "es": "Completados", "ar": "مكتملة"},
+ "▶️ Подтвердить": {"en": "▶️ Confirm", "zh-hans": "▶️ 确认", "es": "▶️ Confirmar", "ar": "▶️ تأكيد"},
+ "🚚 Отгрузить": {"en": "🚚 Ship", "zh-hans": "🚚 发货", "es": "🚚 Enviar", "ar": "🚚 شحن"},
+ "📦 Открыть": {"en": "📦 Open", "zh-hans": "📦 打开", "es": "📦 Abrir", "ar": "📦 فتح"},
+ "Мои КП — ждут решения покупателя": {"en": "My quotes — awaiting buyer decision", "zh-hans": "我的报价 — 等待采购商决定", "es": "Mis cotizaciones — esperando decisión del comprador", "ar": "عروضي — بانتظار قرار المشتري"},
+ "Новые RFQ — ответить ценой": {"en": "New RFQs — reply with price", "zh-hans": "新询价 — 回复报价", "es": "Nuevos RFQ — responder con precio", "ar": "طلبات عروض جديدة — الرد بالسعر"}
 }
   );
 

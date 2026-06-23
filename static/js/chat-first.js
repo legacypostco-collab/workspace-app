@@ -2227,13 +2227,14 @@
       const sections = (d.sections || []).map(s => {
         const rows = (s.rows || []).map(r => {
           const a = r.action;
+          const btnLbl = a ? tr(a.label) : '';
           const btn = a
-            ? `<button class="act-btn ib-btn" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(a.label)}">${esc(a.label)}</button>`
+            ? `<button class="act-btn ib-btn" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(btnLbl)}">${esc(btnLbl)}</button>`
             : '';
           // Вся строка кликабельна (не только кнопка) — открывает то же действие.
           // Клик по кнопке обрабатывается её ближайшим [data-action] (без дабл-триггера).
           const rowClick = a
-            ? ` data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(r.title || a.label || '')}" role="button" tabindex="0"`
+            ? ` data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(r.title || btnLbl || '')}" role="button" tabindex="0"`
             : '';
           return `<div class="ib-row${a ? ' ib-row-click' : ''}"${rowClick}>
             <div class="ib-main">
@@ -2246,7 +2247,7 @@
         return `<div class="ib-section">
           <div class="ib-section-head">
             <span class="ib-section-icon">${esc(s.icon || '•')}</span>
-            <span class="ib-section-title">${esc(s.title || '')}</span>
+            <span class="ib-section-title">${tr(s.title || '')}</span>
             <span class="ib-section-count">${(s.rows||[]).length}</span>
           </div>
           ${rows}
