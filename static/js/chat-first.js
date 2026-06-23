@@ -2507,7 +2507,7 @@
               <div class="bo-brand">${esc(r.brand || '')}</div>
             </div>
             <div class="bo-meta">
-              ${r.condition_label ? `<span class="bo-cond-badge" style="display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:6px;background:rgba(100,181,246,0.18);margin-bottom:3px;">${esc(tr(r.condition_label))}</span>` : ''}
+              ${r.condition_label ? `<span class="bo-cond-badge" style="display:inline-block;font-size:11px;font-weight:600;margin-bottom:3px;opacity:.75;">${esc(tr(r.condition_label))}</span>` : ''}
               <span class="bo-price">${fmtMoney(r.price, ccy)}</span>
               ${ratingBadge}
             </div>
@@ -4292,7 +4292,7 @@
         }
         const _CONDL = {oem:'OEM', aftermarket:'Aftermarket', analog:'Aftermarket', reman:'REMAN'};
         const condBadge = it.condition
-          ? `<span class="spec-cond-badge" style="display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:5px;background:rgba(100,181,246,0.18);white-space:nowrap;">${esc(_CONDL[it.condition] || it.condition)}</span>`
+          ? esc(_CONDL[it.condition] || it.condition)
           : '—';
         const altCue = (clickable && (it.alt_suppliers || []).length > 0)
           ? `<span class="spec-alt-cue" title="${tr('Клик — все предложения по позиции')}" style="margin-left:6px;font-size:11px;color:#64b5f6;white-space:nowrap;">▾ ${window.t('{n} цен', {n: it.alt_suppliers.length})}</span>`
