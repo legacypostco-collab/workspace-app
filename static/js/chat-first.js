@@ -2696,7 +2696,7 @@
       const idx = Number(d.q_idx || 0);
       const total = Number(d.total || 1);
       const defVal = d.default != null ? String(d.default) : '';
-      const placeholder = d.placeholder || 'или впишите свой вариант...';
+      const placeholder = tr(d.placeholder || 'или впишите свой вариант...');
       const sugSrc = String(d.suggestions_source || '');
       const selectedCountry = String(d.shipment_country || '');
       // Динамический placeholder для port-вопросов: если страна выбрана и
@@ -8685,8 +8685,8 @@
     for (var cc in PORTS_BY_COUNTRY) {
       var country = PORTS_BY_COUNTRY[cc];
       (country[kind] || []).forEach(function(p) {
-        out.push(p.code + ' · ' + p.name + ' · ' + p.city
-               + ' · ' + country.flag + ' ' + country.name);
+        out.push(p.code + ' · ' + p.name + ' · ' + tr(p.city)
+               + ' · ' + country.flag + ' ' + tr(country.name));
       });
     }
     return out;
@@ -8695,8 +8695,8 @@
     var country = PORTS_BY_COUNTRY[cc];
     if (!country) return _flattenPorts(kind);
     return (country[kind] || []).map(function(p) {
-      return p.code + ' · ' + p.name + ' · ' + p.city
-           + ' · ' + country.flag + ' ' + country.name;
+      return p.code + ' · ' + p.name + ' · ' + tr(p.city)
+           + ' · ' + country.flag + ' ' + tr(country.name);
     });
   };
 
@@ -9135,7 +9135,7 @@
         var topCountryOpts = '<option value="">— выбрать страну —</option>'
           + Object.keys(PORTS_BY_COUNTRY).map(function(cc){
             var c = PORTS_BY_COUNTRY[cc];
-            return '<option value="' + cc + '">' + esc(c.flag + ' ' + c.name) + '</option>';
+            return '<option value="' + cc + '">' + esc(c.flag + ' ' + tr(c.name)) + '</option>';
           }).join('');
         // Страна + Город — в ОДНОЙ строке горизонтально (pl-ship-combo).
         // Город — combobox с кастомным AC (data-ac-kind="city"): поиск по

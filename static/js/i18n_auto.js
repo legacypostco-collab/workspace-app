@@ -5199,7 +5199,11 @@
  "ошибка импорта на сервере": {"en": "server import error", "zh-hans": "服务器导入错误", "es": "error de importación en el servidor", "ar": "خطأ في الاستيراد على الخادم"},
  "Импорт занял слишком долго. Проверьте позже в разделе «Мои товары» — товары могут появиться позже.": {"en": "Import is taking too long. Check «My products» later — items may appear there eventually.", "zh-hans": "导入耗时过长。请稍后在「我的商品」中查看 — 商品可能稍后出现。", "es": "La importación tarda demasiado. Consulta «Mis productos» más tarde — los artículos pueden aparecer allí.", "ar": "الاستيراد يستغرق وقتاً طويلاً. تحقق من «منتجاتي» لاحقاً — قد تظهر العناصر هناك لاحقاً."},
  "Начинаю импорт": {"en": "Starting import", "zh-hans": "开始导入", "es": "Iniciando importación", "ar": "بدء الاستيراد"},
- "сек": {"en": "sec", "zh-hans": "秒", "es": "seg", "ar": "ث"}
+ "сек": {"en": "sec", "zh-hans": "秒", "es": "seg", "ar": "ث"},
+ "Бренд / производитель?": {"en": "Brand / manufacturer?", "zh-hans": "品牌 / 制造商？", "es": "¿Marca / fabricante?", "ar": "العلامة التجارية / الشركة المصنعة؟"},
+ "Или впишите свой бренд": {"en": "Or type your own brand", "zh-hans": "或输入您自己的品牌", "es": "O escribe tu propia marca", "ar": "أو اكتب علامتك التجارية"},
+ "или впишите свой вариант...": {"en": "or type your own...", "zh-hans": "或输入您自己的内容…", "es": "o escribe tu propia opción...", "ar": "أو اكتب خيارك الخاص..."},
+ "Россия": {"en": "Russia", "zh-hans": "俄罗斯", "es": "Rusia", "ar": "روسيا"}
 }
   );
 
