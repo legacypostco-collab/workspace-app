@@ -9539,7 +9539,8 @@
       if (sources.length) msg += '\n\n' + sources.join(' · ') + '.';
 
       var btns = [];
-      if (failed > 0) {
+      var errorsPreview = data.errors_preview || [];
+      if (failed > 0 || (errorsPreview.length > 0 && !created && !updated)) {
         btns.push({action: 'pricelist_show_errors', label: tr('🔎 Показать пропущенные'),
                    params: {import_id: importId}});
       }
