@@ -31536,3 +31536,91 @@ msgstr[2] "عنصران · أُنشئ %(Y)s"
 msgstr[3] "%(n)s عناصر · أُنشئ %(Y)s"
 msgstr[4] "%(n)s عناصر · أُنشئ %(Y)s"
 msgstr[5] "%(n)s عناصر · أُنشئ %(Y)s"
+
+#, python-format
+msgid "свежий (%(d)s дн.)"
+msgstr "جديد (%(d)s ي.)"
+
+#, python-format
+msgid "⚠ обновить (%(d)s дн.)"
+msgstr "⚠ تحديث (%(d)s ي.)"
+
+#, python-format
+msgid "⚠ устарел (%(d)s дн.)"
+msgstr "⚠ قديم (%(d)s ي.)"
+
+#, python-format
+msgid "Обновлено в %(t)s"
+msgstr "تم التحديث في %(t)s"
+
+#, python-format
+msgid "Переименовать склад"
+msgstr "إعادة تسمية المستودع"
+
+#, python-format
+msgid "Удалить пустой склад"
+msgstr "حذف المستودع الفارغ"
+
+#, python-format
+msgid "без склада"
+msgstr "بدون مستودع"
+
+#, python-format
+msgid "со склада «%(name)s»"
+msgstr "من المستودع «%(name)s»"
+
+#, python-format
+msgid "Каталог: %(count)s%(wh)s"
+msgstr "الكتالوج: %(count)s%(wh)s"
+
+#, python-format
+msgid "по запросу «%(q)s»"
+msgstr "بالاستعلام «%(q)s»"
+
+#, python-format
+msgid "Показаны %(a)s–%(b)s, ещё %(c)s."
+msgstr "يُعرض %(a)s–%(b)s، %(c)s إضافي."
+
+#, python-format
+msgid "Что чаще покупают?"
+msgstr "ماذا يُباع أكثر؟"
+
+#, python-format
+#, python-format
+#, python-format
+msgid "📐 Чертежей пока нет. Загрузите чертёж (%(what)s) — оператор сверит его при согласовании сделки. Это повышает точность поставки."
+msgstr "📐 لا توجد رسومات بعد. ارفع رسماً (%(what)s) — سيتحقق منه المشغل عند الموافقة. يحسّن دقة التسليم."
+
+#, python-format
+msgid "📐 Ваши чертежи: %(total)s · папок: %(folders)s. Перетащите чертёж на папку, чтобы разложить. Видны только вам и оператору."
+msgstr "📐 رسوماتك: %(total)s · مجلدات: %(folders)s. اسحب رسماً إلى مجلد للتنظيم. مرئي لك وللمشغل فقط."
+
+#, python-format
+msgid "%(n)s позиция без склада"
+msgid_plural "%(n)s позиций без склада"
+msgstr[0] "لا عناصر بدون مستودع"
+msgstr[1] "%(n)s عنصر بدون مستودع"
+msgstr[2] "عنصران بدون مستودع"
+msgstr[3] "%(n)s عناصر بدون مستودع"
+msgstr[4] "%(n)s عناصر بدون مستودع"
+msgstr[5] "%(n)s عناصر بدون مستودع"
+
+#, python-format
+msgid "%(n)s позиция"
+msgid_plural "%(n)s позиций"
+msgstr[0] "لا عناصر"
+msgstr[1] "%(n)s عنصر"
+msgstr[2] "عنصران"
+msgstr[3] "%(n)s عناصر"
+msgstr[4] "%(n)s عناصر"
+msgstr[5] "%(n)s عناصر"
+
+#, python-format
+msgid "%(n)s архивная"
+msgid_plural "%(n)s архивных"
+msgstr[0] "لا مؤرشف"
+msgstr[1] "%(n)s مؤرشف"
+msgstr[2] "مؤرشفان"
+msgstr[3] "%(n)s مؤرشفات"
+msgstr[4] "%(n)s مؤرشفات"
+msgstr[5] "%(n)s مؤرشفات"

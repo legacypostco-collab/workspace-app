@@ -31518,3 +31518,82 @@ msgid_plural "%(n)s позиций · создан %(Y)s"
 msgstr[0] "%(n)s artículo · creado %(Y)s"
 msgstr[1] "%(n)s artículos · creado %(Y)s"
 msgstr[2] "%(n)s artículos · creado %(Y)s"
+
+#, python-format
+msgid "свежий (%(d)s дн.)"
+msgstr "fresco (%(d)s d.)"
+
+#, python-format
+msgid "⚠ обновить (%(d)s дн.)"
+msgstr "⚠ actualizar (%(d)s d.)"
+
+#, python-format
+msgid "⚠ устарел (%(d)s дн.)"
+msgstr "⚠ desactualizado (%(d)s d.)"
+
+#, python-format
+msgid "Обновлено в %(t)s"
+msgstr "Actualizado a las %(t)s"
+
+#, python-format
+msgid "Переименовать склад"
+msgstr "Renombrar almacén"
+
+#, python-format
+msgid "Удалить пустой склад"
+msgstr "Eliminar almacén vacío"
+
+#, python-format
+msgid "без склада"
+msgstr "sin almacén"
+
+#, python-format
+msgid "со склада «%(name)s»"
+msgstr "del almacén «%(name)s»"
+
+#, python-format
+msgid "Каталог: %(count)s%(wh)s"
+msgstr "Catálogo: %(count)s%(wh)s"
+
+#, python-format
+msgid "по запросу «%(q)s»"
+msgstr "por consulta «%(q)s»"
+
+#, python-format
+msgid "Показаны %(a)s–%(b)s, ещё %(c)s."
+msgstr "Mostrando %(a)s–%(b)s, %(c)s más."
+
+#, python-format
+msgid "Что чаще покупают?"
+msgstr "¿Qué se compra más?"
+
+#, python-format
+#, python-format
+#, python-format
+msgid "📐 Чертежей пока нет. Загрузите чертёж (%(what)s) — оператор сверит его при согласовании сделки. Это повышает точность поставки."
+msgstr "📐 Sin planos aún. Suba un plano (%(what)s) — el operador lo verificará al aprobar el trato. Mejora la precisión de entrega."
+
+#, python-format
+msgid "📐 Ваши чертежи: %(total)s · папок: %(folders)s. Перетащите чертёж на папку, чтобы разложить. Видны только вам и оператору."
+msgstr "📐 Sus planos: %(total)s · carpetas: %(folders)s. Arrastre un plano a una carpeta para organizar. Visibles solo para usted y el operador."
+
+#, python-format
+msgid "%(n)s позиция без склада"
+msgid_plural "%(n)s позиций без склада"
+msgstr[0] "%(n)s artículo sin almacén"
+msgstr[1] "%(n)s artículos sin almacén"
+msgstr[2] "%(n)s artículos sin almacén"
+
+#, python-format
+msgid "%(n)s позиция"
+msgid_plural "%(n)s позиций"
+msgstr[0] "%(n)s artículo"
+msgstr[1] "%(n)s artículos"
+msgstr[2] "%(n)s artículos"
+
+#, python-format
+msgid "%(n)s архивная"
+msgid_plural "%(n)s архивных"
+msgstr[0] "%(n)s archivado"
+msgstr[1] "%(n)s archivados"
+msgstr[2] "%(n)s archivados"

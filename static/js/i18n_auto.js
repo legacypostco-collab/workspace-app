@@ -5028,7 +5028,24 @@
  "🚚 Отгрузить": {"en": "🚚 Ship", "zh-hans": "🚚 发货", "es": "🚚 Enviar", "ar": "🚚 شحن"},
  "📦 Открыть": {"en": "📦 Open", "zh-hans": "📦 打开", "es": "📦 Abrir", "ar": "📦 فتح"},
  "Мои КП — ждут решения покупателя": {"en": "My quotes — awaiting buyer decision", "zh-hans": "我的报价 — 等待采购商决定", "es": "Mis cotizaciones — esperando decisión del comprador", "ar": "عروضي — بانتظار قرار المشتري"},
- "Новые RFQ — ответить ценой": {"en": "New RFQs — reply with price", "zh-hans": "新询价 — 回复报价", "es": "Nuevos RFQ — responder con precio", "ar": "طلبات عروض جديدة — الرد بالسعر"}
+ "Новые RFQ — ответить ценой": {"en": "New RFQs — reply with price", "zh-hans": "新询价 — 回复报价", "es": "Nuevos RFQ — responder con precio", "ar": "طلبات عروض جديدة — الرد بالسعر"},
+ "Переименовать склад": {"en": "Rename warehouse", "zh-hans": "重命名仓库", "es": "Renombrar almacén", "ar": "إعادة تسمية المستودع"},
+ "Удалить пустой склад": {"en": "Delete empty warehouse", "zh-hans": "删除空仓库", "es": "Eliminar almacén vacío", "ar": "حذف المستودع الفارغ"},
+ "Что чаще покупают?": {"en": "What sells more?", "zh-hans": "哪些商品更畅销？", "es": "¿Qué se compra más?", "ar": "ماذا يُباع أكثر؟"},
+ "Добавить товар": {"en": "Add product", "zh-hans": "添加商品", "es": "Agregar producto", "ar": "إضافة منتج"},
+ "Скрыть позицию": {"en": "Hide item", "zh-hans": "隐藏商品", "es": "Ocultar artículo", "ar": "إخفاء العنصر"},
+ "К выплате (на счёте)": {"en": "Available (on account)", "zh-hans": "可提现（账户余额）", "es": "Disponible (en cuenta)", "ar": "متاح (في الحساب)"},
+ "Заказы в работе": {"en": "Orders in progress", "zh-hans": "进行中的订单", "es": "Pedidos en curso", "ar": "الطلبات قيد التنفيذ"},
+ "В работе": {"en": "In progress", "zh-hans": "进行中", "es": "En curso", "ar": "قيد التنفيذ"},
+ "резерв оплачен, ждём 90%": {"en": "deposit paid, awaiting 90%", "zh-hans": "已付定金，等待 90%", "es": "depósito pagado, esperando 90%", "ar": "الدفعة الأولى مدفوعة، ننتظر 90%"},
+ "Заказы, ждём оплату": {"en": "Orders, awaiting payment", "zh-hans": "等待付款的订单", "es": "Pedidos, esperando pago", "ar": "الطلبات المنتظرة للدفع"},
+ "Ждём оплату": {"en": "Awaiting payment", "zh-hans": "等待付款", "es": "Esperando pago", "ar": "بانتظار الدفع"},
+ "зак.": {"en": "ord.", "zh-hans": "单", "es": "ped.", "ar": "طلب"},
+ "Аналитика выручки": {"en": "Revenue analytics", "zh-hans": "收入分析", "es": "Análisis de ingresos", "ar": "تحليل الإيرادات"},
+ "Зачислено всего": {"en": "Total credited", "zh-hans": "累计到账", "es": "Total acreditado", "ar": "إجمالي المُحوَّل"},
+ "за всё время": {"en": "all time", "zh-hans": "历史总计", "es": "de todo el tiempo", "ar": "منذ البداية"},
+ "Последние поступления": {"en": "Recent receipts", "zh-hans": "最近收款", "es": "Ingresos recientes", "ar": "المقبوضات الأخيرة"},
+ "Поступлений пока не было.": {"en": "No receipts yet.", "zh-hans": "暂无收款记录。", "es": "Aún no hay ingresos.", "ar": "لا توجد مقبوضات حتى الآن."}
 }
   );
 

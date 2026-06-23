@@ -9,7 +9,7 @@ import logging
 from decimal import Decimal
 
 from django.utils import timezone
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext as _, ngettext
 
 from .actions import ActionResult, register
 from .rfq_mode_badge import mode_badge_with_sla
@@ -1937,13 +1937,13 @@ def seller_warehouses(params, user, role):
             stale_label = "—"
         elif days < 7:
             staleness = "fresh"
-            stale_label = f"свежий ({days} дн.)"
+            stale_label = _("свежий (%(d)s дн.)") % {"d": days}
         elif days < 30:
             staleness = "stale"
-            stale_label = f"⚠ обновить ({days} дн.)"
+            stale_label = _("⚠ обновить (%(d)s дн.)") % {"d": days}
         else:
             staleness = "old"
-            stale_label = f"⚠ устарел ({days} дн.)"
+            stale_label = _("⚠ устарел (%(d)s дн.)") % {"d": days}
         rows.append({
             "id": w.id,
             "name": w.name,
@@ -1976,8 +1976,8 @@ def seller_warehouses(params, user, role):
     from django.utils import timezone as _tz
     refreshed_at = _tz.now().strftime("%H:%M:%S")
     return ActionResult(
-        text=(f"Обновлено в {refreshed_at}"
-              + (f" · {orphans_count} позиций без склада" if orphans_count else "")),
+        text=(_("Обновлено в %(t)s") % {"t": refreshed_at}
+              + ((" · " + ngettext("%(n)s позиция без склада", "%(n)s позиций без склада", orphans_count) % {"n": orphans_count}) if orphans_count else "")),
         cards=[{
             "type": "warehouses",
             "data": {
@@ -1991,7 +1991,7 @@ def seller_warehouses(params, user, role):
             {"label": _("📤 Новая загрузка"), "action": "upload_pricelist", "params": {}},
             {"label": _("📦 Все товары"),    "action": "seller_catalog", "params": {}},
         ],
-        suggestions=["Переименовать склад", "Удалить пустой склад"],
+        suggestions=[_("Переименовать склад"), _("Удалить пустой склад")],
     )
 
 
@@ -2113,18 +2113,20 @@ def seller_catalog(params, user, role):
     if warehouse_id:
         from marketplace.models import SellerWarehouse
         if warehouse_id == 0:
-            warehouse_label = " (без склада)"
+            warehouse_label = " (" + _("без склада") + ")"
         else:
             try:
                 w = SellerWarehouse.objects.get(id=warehouse_id, seller=user)
-                warehouse_label = f" со склада «{w.name}»"
+                warehouse_label = " " + (_("со склада «%(name)s»") % {"name": w.name})
             except SellerWarehouse.DoesNotExist:
                 pass
-    intro = f"Каталог: {total_count} {'позиций' if status == 'active' else 'архивных'}{warehouse_label}"
+    _pos_word = ngettext("%(n)s позиция", "%(n)s позиций", total_count) % {"n": total_count}
+    _arch_word = ngettext("%(n)s архивная", "%(n)s архивных", total_count) % {"n": total_count}
+    intro = (_("Каталог: %(count)s%(wh)s") % {"count": _pos_word if status == "active" else _arch_word, "wh": warehouse_label})
     if q:
-        intro += f" по запросу «{q}»"
+        intro += " " + (_("по запросу «%(q)s»") % {"q": q})
     if shown_end < total_count:
-        intro += f". Показаны {offset + 1}–{shown_end}, ещё {total_count - shown_end}."
+        intro += ". " + (_("Показаны %(a)s–%(b)s, ещё %(c)s.") % {"a": offset + 1, "b": shown_end, "c": total_count - shown_end})
     else:
         intro += "."
 
@@ -2170,7 +2172,7 @@ def seller_catalog(params, user, role):
         text=intro,
         cards=cards,
         actions=actions,
-        suggestions=["Что чаще покупают?", "Добавить товар", "Скрыть позицию"],
+        suggestions=[_("Что чаще покупают?"), _("Добавить товар"), _("Скрыть позицию")],
     )
 
 
@@ -2208,13 +2210,13 @@ def _build_warehouses_card(user, active_id=None) -> dict | None:
             stale_label = "—"
         elif days < 7:
             staleness = "fresh"
-            stale_label = f"свежий ({days} дн.)"
+            stale_label = _("свежий (%(d)s дн.)") % {"d": days}
         elif days < 30:
             staleness = "stale"
-            stale_label = f"⚠ обновить ({days} дн.)"
+            stale_label = _("⚠ обновить (%(d)s дн.)") % {"d": days}
         else:
             staleness = "old"
-            stale_label = f"⚠ устарел ({days} дн.)"
+            stale_label = _("⚠ устарел (%(d)s дн.)") % {"d": days}
         rows.append({
             "id": w.id, "name": w.name, "country_code": w.country_code,
             "sea_port": w.sea_port, "air_port": w.air_port,
@@ -3726,11 +3728,11 @@ def _drawings_view(user, role, note=None):
     ungrouped_data = [_drawing_item(d) for d in ungrouped]
 
     if total == 0:
-        text = (f"📐 Чертежей пока нет. Загрузите чертёж ({_what}) — оператор "
-                "сверит его при согласовании сделки. Это повышает точность поставки.")
+        text = (_("📐 Чертежей пока нет. Загрузите чертёж (%(what)s) — оператор "
+                "сверит его при согласовании сделки. Это повышает точность поставки.") % {"what": _what})
     else:
-        text = (note or (f"📐 Ваши чертежи: {total} · папок: {len(folders_data)}. "
-                "Перетащите чертёж на папку, чтобы разложить. Видны только вам и оператору."))
+        text = (note or (_("📐 Ваши чертежи: %(total)s · папок: %(folders)s. "
+                "Перетащите чертёж на папку, чтобы разложить. Видны только вам и оператору.") % {"total": total, "folders": len(folders_data)}))
 
     return ActionResult(
         text=text,

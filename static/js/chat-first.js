@@ -2183,18 +2183,18 @@
       }).join('');
       return `<div class="card wal-card">
         <div class="wal-head">
-          <div class="wal-head-lbl">К выплате (на счёте)</div>
+          <div class="wal-head-lbl">${tr('К выплате (на счёте)')}</div>
           <div class="wal-head-amount">
             <span class="wal-head-ccy">$</span>${esc(whole)}<span class="wal-head-dec">.${esc(dec)}</span>
             <span class="wal-head-curr">${esc(d.currency || 'USD')}</span>
           </div>
         </div>
         <div class="sr-stats">
-          <div class="sr-stat card-clickable" data-action="get_orders" data-params='{"filter":"active"}' data-label="Заказы в работе"><div class="sr-stat-lbl">В работе</div><div class="sr-stat-val">${fmt(d.revenue_in_work)}</div><div class="sr-stat-hint">резерв оплачен, ждём 90%</div></div>
-          <div class="sr-stat card-clickable" data-action="get_orders" data-params='{}' data-label="Заказы, ждём оплату"><div class="sr-stat-lbl">Ждём оплату</div><div class="sr-stat-val">${fmt(d.revenue_pending)}</div><div class="sr-stat-hint">${d.open_count} заказов</div></div>
-          <div class="sr-stat card-clickable" data-action="get_analytics" data-params='{}' data-label="Аналитика выручки"><div class="sr-stat-lbl">Зачислено всего</div><div class="sr-stat-val wal-amt-in">${fmt(d.revenue_paid)}</div><div class="sr-stat-hint">за всё время</div></div>
+          <div class="sr-stat card-clickable" data-action="get_orders" data-params='{"filter":"active"}' data-label="${tr('Заказы в работе')}"><div class="sr-stat-lbl">${tr('В работе')}</div><div class="sr-stat-val">${fmt(d.revenue_in_work)}</div><div class="sr-stat-hint">${tr('резерв оплачен, ждём 90%')}</div></div>
+          <div class="sr-stat card-clickable" data-action="get_orders" data-params='{}' data-label="${tr('Заказы, ждём оплату')}"><div class="sr-stat-lbl">${tr('Ждём оплату')}</div><div class="sr-stat-val">${fmt(d.revenue_pending)}</div><div class="sr-stat-hint">${d.open_count} ${tr('зак.')}</div></div>
+          <div class="sr-stat card-clickable" data-action="get_analytics" data-params='{}' data-label="${tr('Аналитика выручки')}"><div class="sr-stat-lbl">${tr('Зачислено всего')}</div><div class="sr-stat-val wal-amt-in">${fmt(d.revenue_paid)}</div><div class="sr-stat-hint">${tr('за всё время')}</div></div>
         </div>
-        ${groupHtml ? `<div class="wal-txs-head">Последние поступления</div>${groupHtml}` : '<div class="wal-empty">Поступлений пока не было.</div>'}
+        ${groupHtml ? `<div class="wal-txs-head">${tr('Последние поступления')}</div>${groupHtml}` : `<div class="wal-empty">${tr('Поступлений пока не было.')}</div>`}
       </div>`;
     },
     onboarding_progress(d) {

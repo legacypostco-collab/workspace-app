@@ -32481,3 +32481,79 @@ msgid "%(n)s позиция · создан %(Y)s"
 msgid_plural "%(n)s позиций · создан %(Y)s"
 msgstr[0] "%(n)s 项 · 创建于 %(Y)s"
 msgstr[1] "%(n)s 项 · 创建于 %(Y)s"
+
+#, python-format
+msgid "свежий (%(d)s дн.)"
+msgstr "新鲜 (%(d)s 天)"
+
+#, python-format
+msgid "⚠ обновить (%(d)s дн.)"
+msgstr "⚠ 需更新 (%(d)s 天)"
+
+#, python-format
+msgid "⚠ устарел (%(d)s дн.)"
+msgstr "⚠ 已过期 (%(d)s 天)"
+
+#, python-format
+msgid "Обновлено в %(t)s"
+msgstr "更新于 %(t)s"
+
+#, python-format
+msgid "Переименовать склад"
+msgstr "重命名仓库"
+
+#, python-format
+msgid "Удалить пустой склад"
+msgstr "删除空仓库"
+
+#, python-format
+msgid "без склада"
+msgstr "无仓库"
+
+#, python-format
+msgid "со склада «%(name)s»"
+msgstr "来自仓库«%(name)s»"
+
+#, python-format
+msgid "Каталог: %(count)s%(wh)s"
+msgstr "目录：%(count)s%(wh)s"
+
+#, python-format
+msgid "по запросу «%(q)s»"
+msgstr "按查询«%(q)s»"
+
+#, python-format
+msgid "Показаны %(a)s–%(b)s, ещё %(c)s."
+msgstr "显示 %(a)s–%(b)s，还有 %(c)s。"
+
+#, python-format
+msgid "Что чаще покупают?"
+msgstr "哪些商品更畅销？"
+
+#, python-format
+#, python-format
+#, python-format
+msgid "📐 Чертежей пока нет. Загрузите чертёж (%(what)s) — оператор сверит его при согласовании сделки. Это повышает точность поставки."
+msgstr "📐 暂无图纸。请上传图纸 (%(what)s) — 操作员将在谈判时核对。这能提高交货准确性。"
+
+#, python-format
+msgid "📐 Ваши чертежи: %(total)s · папок: %(folders)s. Перетащите чертёж на папку, чтобы разложить. Видны только вам и оператору."
+msgstr "📐 您的图纸：%(total)s · 文件夹：%(folders)s。将图纸拖到文件夹中整理。仅您和操作员可见。"
+
+#, python-format
+msgid "%(n)s позиция без склада"
+msgid_plural "%(n)s позиций без склада"
+msgstr[0] "%(n)s 项无仓库"
+msgstr[1] "%(n)s 项无仓库"
+
+#, python-format
+msgid "%(n)s позиция"
+msgid_plural "%(n)s позиций"
+msgstr[0] "%(n)s 项"
+msgstr[1] "%(n)s 项"
+
+#, python-format
+msgid "%(n)s архивная"
+msgid_plural "%(n)s архивных"
+msgstr[0] "%(n)s 已归档"
+msgstr[1] "%(n)s 已归档"

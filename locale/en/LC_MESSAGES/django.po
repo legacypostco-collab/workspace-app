@@ -32481,3 +32481,79 @@ msgid "%(n)s позиция · создан %(Y)s"
 msgid_plural "%(n)s позиций · создан %(Y)s"
 msgstr[0] "%(n)s item · created %(Y)s"
 msgstr[1] "%(n)s items · created %(Y)s"
+
+#, python-format
+msgid "свежий (%(d)s дн.)"
+msgstr "fresh (%(d)s d.)"
+
+#, python-format
+msgid "⚠ обновить (%(d)s дн.)"
+msgstr "⚠ update (%(d)s d.)"
+
+#, python-format
+msgid "⚠ устарел (%(d)s дн.)"
+msgstr "⚠ outdated (%(d)s d.)"
+
+#, python-format
+msgid "Обновлено в %(t)s"
+msgstr "Updated at %(t)s"
+
+#, python-format
+msgid "Переименовать склад"
+msgstr "Rename warehouse"
+
+#, python-format
+msgid "Удалить пустой склад"
+msgstr "Delete empty warehouse"
+
+#, python-format
+msgid "без склада"
+msgstr "without warehouse"
+
+#, python-format
+msgid "со склада «%(name)s»"
+msgstr "from warehouse «%(name)s»"
+
+#, python-format
+msgid "Каталог: %(count)s%(wh)s"
+msgstr "Catalog: %(count)s%(wh)s"
+
+#, python-format
+msgid "по запросу «%(q)s»"
+msgstr "for query «%(q)s»"
+
+#, python-format
+msgid "Показаны %(a)s–%(b)s, ещё %(c)s."
+msgstr "Showing %(a)s–%(b)s, %(c)s more."
+
+#, python-format
+msgid "Что чаще покупают?"
+msgstr "What sells more?"
+
+#, python-format
+#, python-format
+#, python-format
+msgid "📐 Чертежей пока нет. Загрузите чертёж (%(what)s) — оператор сверит его при согласовании сделки. Это повышает точность поставки."
+msgstr "📐 No drawings yet. Upload a drawing (%(what)s) — the operator will check it when approving the deal. This improves delivery accuracy."
+
+#, python-format
+msgid "📐 Ваши чертежи: %(total)s · папок: %(folders)s. Перетащите чертёж на папку, чтобы разложить. Видны только вам и оператору."
+msgstr "📐 Your drawings: %(total)s · folders: %(folders)s. Drag a drawing onto a folder to organize. Visible only to you and the operator."
+
+#, python-format
+msgid "%(n)s позиция без склада"
+msgid_plural "%(n)s позиций без склада"
+msgstr[0] "%(n)s item without warehouse"
+msgstr[1] "%(n)s items without warehouse"
+
+#, python-format
+msgid "%(n)s позиция"
+msgid_plural "%(n)s позиций"
+msgstr[0] "%(n)s item"
+msgstr[1] "%(n)s items"
+
+#, python-format
+msgid "%(n)s архивная"
+msgid_plural "%(n)s архивных"
+msgstr[0] "%(n)s archived"
+msgstr[1] "%(n)s archived"
