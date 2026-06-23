@@ -5221,7 +5221,17 @@
  "Вал.": {"en": "Curr.", "zh-hans": "币种", "es": "Mon.", "ar": "العملة"},
  "Упак.": {"en": "Pack.", "zh-hans": "包装", "es": "Emb.", "ar": "التعبئة"},
  "🌍 Страна отправления, адрес склада, морпорт и аэропорт. Подсказки с международными кодами UN/LOCODE.": {"en": "🌍 Shipping country, warehouse address, sea and air ports. Hints with international UN/LOCODE codes.", "zh-hans": "🌍 发货国家、仓库地址、海港和空港。提供国际 UN/LOCODE 代码提示。", "es": "🌍 País de envío, dirección del almacén, puerto marítimo y aeropuerto. Sugerencias con códigos internacionales UN/LOCODE.", "ar": "🌍 بلد الشحن، عنوان المستودع، الميناء البحري والمطار. تلميحات برموز UN/LOCODE الدولية."},
- "Тестовое пополнение (seed)": {"en": "Test top-up (seed)", "zh-hans": "测试充值（种子数据）", "es": "Recarga de prueba (seed)", "ar": "إيداع تجريبي (seed)"}
+ "Тестовое пополнение (seed)": {"en": "Test top-up (seed)", "zh-hans": "测试充值（种子数据）", "es": "Recarga de prueba (seed)", "ar": "إيداع تجريبي (seed)"},
+ "Прайс (каталог)": {"en": "Price list (catalog)", "zh-hans": "价目表（目录）", "es": "Lista de precios (catálogo)", "ar": "قائمة الأسعار (الكتالوج)"},
+ "Расценка / КП": {"en": "Quote / RFQ", "zh-hans": "报价 / 询价单", "es": "Cotización / KP", "ar": "تسعيرة / عرض سعر"},
+ "Поставщик / завод (для расценки — КП)": {"en": "Supplier / factory (for a quote — KP)", "zh-hans": "供应商 / 工厂（用于报价 — KP）", "es": "Proveedor / fábrica (para cotización — KP)", "ar": "المورّد / المصنع (للتسعيرة — KP)"},
+ "Название завода": {"en": "Factory name", "zh-hans": "工厂名称", "es": "Nombre de la fábrica", "ar": "اسم المصنع"},
+ "напр. XCMG, Komatsu Ltd": {"en": "e.g. XCMG, Komatsu Ltd", "zh-hans": "例如 XCMG、Komatsu Ltd", "es": "p. ej. XCMG, Komatsu Ltd", "ar": "مثل XCMG، Komatsu Ltd"},
+ "ИНН / налоговый код": {"en": "Tax ID / registration code", "zh-hans": "税号 / 统一信用代码", "es": "NIF / código fiscal", "ar": "الرقم الضريبي / رمز التسجيل"},
+ "ИНН (РФ) · 统一信用代码 (Китай) · VAT/рег.№": {"en": "Tax ID (RU) · USCC (China) · VAT/reg.no.", "zh-hans": "ИНН（俄罗斯）· 统一信用代码（中国）· VAT/注册号", "es": "NIF (RU) · USCC (China) · IVA/n.º reg.", "ar": "الرقم الضريبي (روسيا) · USCC (الصين) · ضريبة القيمة المضافة/رقم التسجيل"},
+ "Страна поставщика": {"en": "Supplier country", "zh-hans": "供应商国家", "es": "País del proveedor", "ar": "بلد المورّد"},
+ "— страна —": {"en": "— country —", "zh-hans": "— 国家 —", "es": "— país —", "ar": "— البلد —"},
+ "Позиции лягут в папку этого завода (группировка по ИНН/коду). Для обычного прайса переключите на «Прайс».": {"en": "Items will go into this factory's folder (grouped by tax ID/code). For a regular price list switch to «Price list».", "zh-hans": "商品将归入该工厂的文件夹（按税号/代码分组）。普通价目表请切换到「价目表」。", "es": "Los artículos irán a la carpeta de esta fábrica (agrupados por NIF/código). Para una lista de precios normal cambia a «Lista de precios».", "ar": "ستوضع العناصر في مجلد هذا المصنع (مجمّعة حسب الرقم الضريبي/الرمز). لقائمة أسعار عادية بدّل إلى «قائمة الأسعار»."}
 }
   );
 

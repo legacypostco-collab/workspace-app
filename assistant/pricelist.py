@@ -2514,7 +2514,16 @@ class PricelistCommitView(APIView):
                         return True
             return False
 
-        if not _has_value("warehouse_address"):
+        # Режим КП: указан поставщик/завод → склад группируется по нему,
+        # логистика (адрес/порты) необязательна. Пропускаем жёсткие чеки.
+        _is_kp = bool(
+            (constants or {}).get("supplier_name")
+            or (constants or {}).get("supplier_tax_id")
+            or str(mapping.get("supplier_name", "")).startswith("fix:")
+            and mapping.get("supplier_name", "")[4:].strip()
+        )
+
+        if not _is_kp and not _has_value("warehouse_address"):
             return Response({
                 "error": "warehouse_address_required",
                 "message": _(
@@ -2523,7 +2532,7 @@ class PricelistCommitView(APIView):
                     "впишите адрес в форме «📎 общих полей поставщика»."
                 ),
             }, status=400)
-        if not _has_value("sea_port"):
+        if not _is_kp and not _has_value("sea_port"):
             return Response({
                 "error": "sea_port_required",
                 "message": _(
@@ -2532,7 +2541,7 @@ class PricelistCommitView(APIView):
                     "форме «📎 общих полей поставщика»."
                 ),
             }, status=400)
-        if not _has_value("air_port"):
+        if not _is_kp and not _has_value("air_port"):
             return Response({
                 "error": "air_port_required",
                 "message": _(
