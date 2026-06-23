@@ -6385,8 +6385,8 @@
       || (a.label || '').includes('Главная')
       || (a.label || '').startsWith('🏠')
     );
-    if (!hasBack) ctxActs.push({action: 'go_back', label: '← Назад'});
-    if (!hasHome) ctxActs.push({action: 'go_home', label: '🏠 Главная'});
+    if (!hasBack) ctxActs.push({action: 'go_back', label: '← ' + tr('Назад')});
+    if (!hasHome) ctxActs.push({action: 'go_home', label: '🏠 ' + tr('Главная')});
     return ctxActs;
   }
 
@@ -9407,13 +9407,13 @@
           var cEl = pending.querySelector('.msg-content');
           if (cEl) {
             var phaseMap = {
-              parsing: 'Читаю файл',
-              matching: 'Сопоставляю с базой',
-              writing: 'Записываю в каталог',
+              parsing: tr('Читаю файл'),
+              matching: tr('Сопоставляю с базой'),
+              writing: tr('Записываю в каталог'),
             };
-            var phase = phaseMap[pdata.phase] || 'Импортирую прайс';
+            var phase = phaseMap[pdata.phase] || tr('Импортирую прайс');
             var totalPart = pdata.total ? (' / ' + pdata.total) : '';
-            cEl.textContent = window.t('📥 {x}… {n}{y} строк', {x: phase, n: pdata.current, y: totalPart});
+            cEl.textContent = '📥 ' + window.t('{x}… {n}{y} {rows}', {x: phase, n: pdata.current, y: totalPart, rows: tr('строк')});
           }
         }
         // Завершение фонового импорта → резолвим/реджектим промис.
@@ -9469,35 +9469,27 @@
       var aiCount = data.ai_estimated_count || 0;
 
       var parts = [];
-      if (created) parts.push(window.t('✅ Создано {n}', {n: created}));
-      if (updated) parts.push(window.t('🔄 Обновлено {n}', {n: updated}));
+      if (created) parts.push(window.t('{n} ' + tr('создано'), {n: created}));
+      if (updated) parts.push(window.t('{n} ' + tr('обновлено'), {n: updated}));
       // Заголовок об успехе — только если что-то реально загрузилось.
       var msg = '';
       if (created || updated) {
         msg = tr('✅ Загрузка прошла успешно!') + '\n';
-      }
-      msg += parts.join(' · ') + ' позиций.';
-      if (created || updated) {
+        msg += parts.join(' · ') + ' ' + tr('позиций') + '.';
         msg += '\n' + tr('📦 Все позиции уже в разделе «Мои товары».');
+      } else if (!failed) {
+        msg = tr('⚠️ Файл обработан, но позиции не добавлены. Проверьте маппинг колонок и данные.');
       }
       if (failed) {
-        // Это НЕ поломка импорта — успешные строки уже в базе.
-        // Просто N строк с битыми данными (пустой OEM/название/цена)
-        // пропущены и доступны к просмотру отдельно.
-        msg += '\nℹ️ ' + failed + ' ' + (failed === 1 ? 'строка пропущена' : 'строк пропущено')
-             + ' — битые данные (пустой артикул, название или цена).';
+        msg += (msg ? '\n' : '') + window.t('ℹ️ {n} ' + tr('строк пропущено') + ' — ' + tr('битые данные (пустой артикул, название или цена).'), {n: failed});
       }
       var merged = data.merged_duplicates || 0;
       if (merged) {
-        msg += '\n🧩 Объединено ' + merged + ' дублирующих'
-             + (merged === 1 ? 'ся строки' : ' строк') + ' с одинаковым OEM и ценой — '
-             + 'одна позиция с MAX(Qty).';
+        msg += '\n' + window.t('🧩 ' + tr('Объединено {n} дублей') + ' — ' + tr('одна позиция с MAX(Qty).'), {n: merged});
       }
       var conflicts = data.price_conflicts || 0;
       if (conflicts) {
-        msg += '\nℹ️ ' + conflicts + ' артикул' + (conflicts === 1 ? '' : 'ов')
-             + ' с разными ценами — загружены как отдельные позиции (варианты прайса). '
-             + 'Покупатель увидит оба варианта в каталоге.';
+        msg += '\n' + window.t('ℹ️ {n} ' + tr('артикулов с разными ценами — загружены как варианты прайса.'), {n: conflicts});
       }
 
       // Категоризированный отчёт о незаполненных полях.
@@ -9513,48 +9505,41 @@
       var missBonus = filterAnswered(data.missing_rating_bonus);
       var missOpt   = filterAnswered(data.missing_optional);
 
-      if (smartFields.length) {
-        var smartParts = smartFields.map(function(k){
-          return k + '=' + smartAns[k].value;
-        });
-        msg += '\n\n✨ Применены ваши ответы: ' + smartParts.join(', ') + '.';
-      }
       if (missMand.length) {
-        msg += '\n\n❗ Обязательно заполнить: '
+        msg += '\n\n❗ ' + tr('Обязательно заполнить') + ': '
              + missMand.map(function(m){return m.label;}).join(', ') + '.';
       }
       if (missBonus.length) {
-        msg += '\n\n⭐ Повысит рейтинг карточки: '
+        msg += '\n\n⭐ ' + tr('Повысит рейтинг карточки') + ': '
              + missBonus.map(function(m){return m.label;}).join(', ') + '.';
         if (refCount > 0) {
-          msg += '\n✨ Подтянули ' + refCount + ' позиций из эталонной базы.';
+          msg += '\n' + window.t('✨ ' + tr('Подтянули {n} позиций из эталонной базы.'), {n: refCount});
         } else {
-          msg += '\nЗаполните в каталоге чтобы поднять карточки в выдаче — '
-               + 'или пропустите, можно добавить позже.';
+          msg += '\n' + tr('Заполните в каталоге чтобы поднять карточки в выдаче — или пропустите, можно добавить позже.');
         }
       }
       if (missOpt.length) {
-        msg += '\n\nℹ️ Не пришло из файла: '
-             + missOpt.map(function(m){return m.label;}).join(', ') + '.'
-             + ' Можно дозаполнить позже в каталоге.';
+        msg += '\n\nℹ️ ' + tr('Не пришло из файла') + ': '
+             + missOpt.map(function(m){return m.label;}).join(', ') + '. '
+             + tr('Можно дозаполнить позже в каталоге.');
       }
       var sources = [];
-      if (refCount > 0) sources.push('✨ ' + refCount + ' позиций обогащены из эталонной базы');
-      if (aiCount > 0) sources.push('🤖 ' + aiCount + ' AI-оценкой');
+      if (refCount > 0) sources.push('✨ ' + window.t(tr('{n} позиций обогащено из эталонной базы'), {n: refCount}));
+      if (aiCount > 0) sources.push('🤖 ' + window.t(tr('{n} AI-оценок'), {n: aiCount}));
       if (sources.length) msg += '\n\n' + sources.join(' · ') + '.';
 
       var btns = [];
       if (failed > 0) {
-        btns.push({action: 'pricelist_show_errors', label: '🔎 Показать пропущенные',
+        btns.push({action: 'pricelist_show_errors', label: tr('🔎 Показать пропущенные'),
                    params: {import_id: importId}});
       }
-      btns.push({action: 'seller_warehouses', label: '📦 Мои товары', params: {}});
+      btns.push({action: 'seller_warehouses', label: tr('📦 Мои товары'), params: {}});
       addMessage('assistant', msg, [], btns);
       __pendingImport = null;
     } catch (err) {
       clearInterval(importPollTimer);
       if (pending && pending.parentNode) pending.remove();
-      addMessage('assistant', '⚠️ Не удалось импортировать: ' + (err.message || err));
+      addMessage('assistant', tr('⚠️ Не удалось импортировать') + ': ' + (err.message || err));
     } finally {
       // Отпускаем single-flight lock и разблокируем кнопки
       window.__importInFlight = false;
@@ -10158,7 +10143,7 @@
     var qText = card.querySelector('.sq-q');
     var qHtml = qText ? qText.outerHTML : '';
     card.classList.add('sq-card-done');
-    var label = value && value.trim() ? value : '(пропущено)';
+    var label = value && value.trim() ? value : tr('(пропущено)');
     card.innerHTML = qHtml + '<div class="sq-answer">✓ ' + esc(label) + '</div>';
     setTimeout(function() {
       showNextSmartQuestion(window.__smartQuestions || [], idx + 1);
