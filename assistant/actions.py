@@ -5295,11 +5295,17 @@ def buyer_best_offers(params, user, role):
                        "params": {"query": query, "quantity": 1}}],
         )
 
-    # Группируем: для каждой пары (oem_number, seller) — минимальная цена
+    # Группируем по (oem_number, СОСТОЯНИЕ) — лучшая (минимальная) цена в
+    # каждом состоянии. Покупатель видит лучшую цену по оригиналу / аналогу /
+    # восстановленному отдельно, чтобы выбрать. Drill-down (buyer_offer_compare)
+    # раскрывает всех поставщиков с рейтингами.
+    COND_LABEL = {"oem": _("Оригинал"), "aftermarket": _("Аналог"),
+                   "reman": _("Восстановленный")}
     by_key: dict[tuple, dict] = {}
     from marketplace.fx import to_usd_float  # покупатель ВСЕГДА видит USD по бирж. курсу
     for p in parts:
-        key = ((p.oem_number or "").upper(), p.seller_id)
+        cond = (p.condition or "oem")
+        key = ((p.oem_number or "").upper(), cond)
         price = to_usd_float(p.price, getattr(p, "currency", "USD"))
         existing = by_key.get(key)
         if existing and existing["price"] is not None and price is not None:
@@ -5307,6 +5313,7 @@ def buyer_best_offers(params, user, role):
                 continue
         rating = _seller_rating(p.seller)
         by_key[key] = {
+            "condition_label": str(COND_LABEL.get(cond, cond)),
             "part_id": p.id,
             "oem_number": p.oem_number,
             "title": p.title,

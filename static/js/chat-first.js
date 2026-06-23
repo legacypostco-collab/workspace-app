@@ -2507,6 +2507,7 @@
               <div class="bo-brand">${esc(r.brand || '')}</div>
             </div>
             <div class="bo-meta">
+              ${r.condition_label ? `<span class="bo-cond-badge" style="display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:6px;background:rgba(100,181,246,0.18);margin-bottom:3px;">${esc(tr(r.condition_label))}</span>` : ''}
               <span class="bo-price">${fmtMoney(r.price, ccy)}</span>
               ${ratingBadge}
             </div>
@@ -2515,7 +2516,6 @@
             <span class="bo-supplier">${esc(r.supplier_label)}</span>
             ${fobBits.length ? `<span class="bo-fob">${fobBits.join(' · ')}</span>` : ''}
             ${r.sea_port || r.air_port ? `<span class="bo-port">${esc([r.sea_port, r.air_port].filter(Boolean).join(' / '))}</span>` : ''}
-            ${r.condition ? `<span class="bo-cond">${esc(r.condition)}</span>` : ''}
           </div>
           <div class="bo-actions">${drilldown}</div>
         </div>`;
