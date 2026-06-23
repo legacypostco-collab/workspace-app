@@ -5219,7 +5219,9 @@
  "Наличие": {"en": "Availability", "zh-hans": "库存", "es": "Disponibilidad", "ar": "التوفر"},
  "Кросс-номер": {"en": "Cross number", "zh-hans": "交叉号", "es": "Número cruzado", "ar": "الرقم البديل"},
  "Вал.": {"en": "Curr.", "zh-hans": "币种", "es": "Mon.", "ar": "العملة"},
- "Упак.": {"en": "Pack.", "zh-hans": "包装", "es": "Emb.", "ar": "التعبئة"}
+ "Упак.": {"en": "Pack.", "zh-hans": "包装", "es": "Emb.", "ar": "التعبئة"},
+ "🌍 Страна отправления, адрес склада, морпорт и аэропорт. Подсказки с международными кодами UN/LOCODE.": {"en": "🌍 Shipping country, warehouse address, sea and air ports. Hints with international UN/LOCODE codes.", "zh-hans": "🌍 发货国家、仓库地址、海港和空港。提供国际 UN/LOCODE 代码提示。", "es": "🌍 País de envío, dirección del almacén, puerto marítimo y aeropuerto. Sugerencias con códigos internacionales UN/LOCODE.", "ar": "🌍 بلد الشحن، عنوان المستودع، الميناء البحري والمطار. تلميحات برموز UN/LOCODE الدولية."},
+ "Тестовое пополнение (seed)": {"en": "Test top-up (seed)", "zh-hans": "测试充值（种子数据）", "es": "Recarga de prueba (seed)", "ar": "إيداع تجريبي (seed)"}
 }
   );
 
@@ -5288,6 +5290,13 @@
         'zh-hans': '自动检查：$1 · 系统决定：$2',
         es: 'Verificación automática: $1 · decisión del sistema: $2',
         ar: 'التحقق التلقائي: $1 · قرار النظام: $2',
+      },
+      {
+        ru: /^📊 Аналитика — все отчёты в одной точке\.\s*Кратко: оборот за (\d+) · \$([\d,]+), SLA (\d+)%, (\d+) сделок \((\d+) закрыто\), открытых RFQ на рынке: (\d+)\.$/,
+        en: '📊 Analytics — all reports in one place.\nSummary: turnover for $1 · $$2, SLA $3%, $4 deals ($5 closed), open RFQs on the market: $6.',
+        'zh-hans': '📊 分析 — 所有报告集中在一处。\n概况：$1 年营业额 · $$2，SLA $3%，$4 笔交易（$5 笔已关闭），市场未结 RFQ：$6。',
+        es: '📊 Analítica — todos los informes en un solo lugar.\nResumen: facturación de $1 · $$2, SLA $3%, $4 operaciones ($5 cerradas), RFQ abiertos en el mercado: $6.',
+        ar: '📊 التحليلات — كل التقارير في مكان واحد.\nملخص: حجم الأعمال لعام $1 · $$2، SLA $3%، $4 صفقة ($5 مغلقة)، طلبات عروض أسعار مفتوحة في السوق: $6.',
       },
     ]);
     if (typeof window.applyI18n === 'function') window.applyI18n();
