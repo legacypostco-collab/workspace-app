@@ -46,10 +46,17 @@ class SellerWarehouse(models.Model):
     Имя можно переименовывать в любой момент (например, «Турция-Анкара»
     вместо автогенерированного «Склад #3»).
     """
+    KIND_CHOICES = [
+        ("pricelist", "Прайс — большой каталог, склад по логистике"),
+        ("kp",        "КП/расценка — папка по заводу-поставщику"),
+    ]
     seller = models.ForeignKey(User, on_delete=models.CASCADE,
         related_name="warehouses")
     name = models.CharField(max_length=120,
         help_text="Произвольное имя — продавец может менять")
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES,
+        default="pricelist", db_index=True,
+        help_text="pricelist=прайс (группа по логистике), kp=расценка (группа по заводу)")
     country_code = models.CharField(max_length=2, blank=True, db_index=True,
         help_text="ISO-код страны отгрузки (TR/CN/RU/...)")
     sea_port = models.CharField(max_length=120, blank=True)
@@ -57,6 +64,15 @@ class SellerWarehouse(models.Model):
     address = models.TextField(blank=True,
         help_text="Полный адрес склада (страна, город, улица)")
     currency = models.CharField(max_length=3, default="USD")
+    # Поставщик/завод для КП. Ключ группировки расценок — supplier_tax_id
+    # (ИНН для РФ, USCC/единый код для Китая, VAT/рег.№ для прочих стран).
+    # Название варьируется → ненадёжно; идентификатор стабилен.
+    supplier_name = models.CharField(max_length=200, blank=True,
+        help_text="Название завода-поставщика (для КП)")
+    supplier_tax_id = models.CharField(max_length=40, blank=True, db_index=True,
+        help_text="ИНН/USCC/VAT поставщика — ключ группировки КП")
+    supplier_country = models.CharField(max_length=2, blank=True,
+        help_text="Юрисдикция поставщика (для типа налогового ID)")
     is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -216,6 +232,9 @@ class Part(models.Model):
     backorder_allowed = models.BooleanField(default=False)
     mapping_status = models.CharField(max_length=20, choices=MAPPING_STATUS_CHOICES, default="auto")
     supplier_part_uid = models.CharField(max_length=80, blank=True)
+    source_import_id = models.IntegerField(null=True, blank=True, db_index=True,
+        help_text="Номер загрузки (PricelistImport.id), которая последней "
+                  "записала эту позицию — для истории «Загрузка #N от завода X»")
     data_updated_at = models.DateTimeField(default=timezone.now)
     is_active = models.BooleanField(default=True)
     admin_note = models.TextField(blank=True, help_text="Комментарий администратора (причина блокировки и т.д.)")

@@ -1255,14 +1255,14 @@ def _supplier_wide_value(key: str, mapping: dict, constants: dict | None) -> str
 
 def _resolve_warehouse_for_import(seller, mapping: dict, constants: dict | None,
                                     filename: str = ""):
-    """Возвращает склад для загрузки, ПЕРЕИСПОЛЬЗУЯ существующий с такой же
-    логистикой (страна + морпорт + аэропорт + валюта).
+    """Возвращает склад для загрузки. Две модели в зависимости от типа:
 
-    Модель: склад = точка отгрузки, а НЕ событие загрузки. Иначе при 200 КП
-    в месяц копится 200 одинаковых папок «Китай · Шанхай» и продавец тонет.
-    Все расценки из одного origin (напр. Китай→Шанхай, USD) ложатся в ОДИН
-    склад — позиции апсёртятся по seller+oem. Разные страна/порт/валюта →
-    отдельный склад.
+    1. КП/расценка (указан поставщик/завод) — папка ПО ЗАВОДУ. Ключ
+       группировки = supplier_tax_id (ИНН/USCC/VAT), иначе по названию.
+       Все КП одного завода копятся в один склад, цены обновляются. 200 КП
+       от 20 заводов = 20 папок, а не 200.
+    2. Прайс (поставщик не указан) — папка ПО ЛОГИСТИКЕ (страна+порты+валюта),
+       точка отгрузки. Большой каталог из одного origin = один склад.
 
     Возвращает SellerWarehouse (никогда None).
     """
@@ -1271,6 +1271,30 @@ def _resolve_warehouse_for_import(seller, mapping: dict, constants: dict | None,
     air = _supplier_wide_value("air_port", mapping, constants)
     addr = _supplier_wide_value("warehouse_address", mapping, constants)
     currency = _supplier_wide_value("currency", mapping, constants) or "USD"
+    sup_name = (_supplier_wide_value("supplier_name", mapping, constants) or "").strip()
+    sup_tax = (_supplier_wide_value("supplier_tax_id", mapping, constants) or "").strip()
+    sup_cc = (_supplier_wide_value("supplier_country", mapping, constants) or "").strip().upper()
+
+    # ── РЕЖИМ КП: указан поставщик/завод → папка по заводу (ключ — ИНН/код).
+    if sup_tax or sup_name:
+        flt = {"seller": seller, "kind": "kp"}
+        if sup_tax:
+            flt["supplier_tax_id"] = sup_tax[:40]
+        else:
+            flt["supplier_name"] = sup_name[:200]
+        existing = SellerWarehouse.objects.filter(**flt).order_by("id").first()
+        if existing:
+            return existing
+        label = sup_name or sup_tax
+        wh_name = f"Завод: {label}"
+        if sup_tax:
+            wh_name += f" ({'ИНН' if sup_cc in ('', 'RU') else 'код'} {sup_tax})"
+        return SellerWarehouse.objects.create(
+            seller=seller, kind="kp", name=wh_name[:120],
+            supplier_name=sup_name[:200], supplier_tax_id=sup_tax[:40],
+            supplier_country=sup_cc[:2],
+            country_code=sup_cc[:2], currency=currency[:3] or "USD",
+        )
 
     # Страна выводится из ISO-кода в начале портового кода (TRMER → TR)
     cc = ""
@@ -1286,7 +1310,7 @@ def _resolve_warehouse_for_import(seller, mapping: dict, constants: dict | None,
     # только если логистика реально задана (иначе не сливаем всё в одну кучу).
     if cc or sea or air:
         existing = SellerWarehouse.objects.filter(
-            seller=seller, country_code=cc[:2],
+            seller=seller, kind="pricelist", country_code=cc[:2],
             sea_port=sea[:120], air_port=air[:120],
             currency=(currency[:3] or "USD"),
         ).order_by("id").first()
@@ -1322,7 +1346,7 @@ def _resolve_warehouse_for_import(seller, mapping: dict, constants: dict | None,
     name = " · ".join(name_parts)
 
     return SellerWarehouse.objects.create(
-        seller=seller, name=name[:120],
+        seller=seller, kind="pricelist", name=name[:120],
         country_code=cc[:2], sea_port=sea[:120], air_port=air[:120],
         address=addr[:1000], currency=currency[:3] or "USD",
     )
@@ -1815,7 +1839,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
         "hs_code", "backorder_allowed", "mapping_status", "supplier_part_uid",
         "data_updated_at", "is_active", "admin_note",
         "manufacturer", "manufacturer_visible",
-        "warehouse_id",
+        "warehouse_id", "source_import_id",
         "created_at", "updated_at",
     ]
     table = Part._meta.db_table
@@ -1859,7 +1883,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     now, True, "",
                     f.get("manufacturer") or "",
                     f.get("manufacturer_visible", True),
-                    wh_id,
+                    wh_id, import_obj.id,
                     now, now,  # created_at, updated_at
                 ))
             INS_BATCH = 50000
@@ -1897,7 +1921,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 "warehouse_address", "sea_port", "air_port",
                 "gross_weight_kg", "length_cm", "width_cm", "height_cm",
                 "brand_id", "category_id", "is_active",
-                "warehouse_id",
+                "warehouse_id", "source_import_id",
                 "data_updated_at", "updated_at",
             ]
             update_sql = (f"UPDATE {table} SET "
@@ -1920,7 +1944,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     f.get("gross_weight_kg"), f.get("length_cm"),
                     f.get("width_cm"), f.get("height_cm"),
                     f["brand"].id, f["category"].id, True,
-                    wh_id,
+                    wh_id, import_obj.id,
                     now, now,
                     pid,
                 ))
