@@ -50,12 +50,12 @@ class Command(BaseCommand):
         wh_a, _ = SellerWarehouse.objects.get_or_create(
             seller=seller, name="Склад А — Шэньчжэнь",
             defaults={"kind": "supplier_catalog", "address": "Shenzhen, China",
-                      "sea_port": "Shenzhen", "country": "CN"},
+                      "sea_port": "Shenzhen"},
         )
         wh_b, _ = SellerWarehouse.objects.get_or_create(
             seller=seller, name="Склад Б — Гуанчжоу",
             defaults={"kind": "supplier_catalog", "address": "Guangzhou, China",
-                      "sea_port": "Guangzhou", "country": "CN"},
+                      "sea_port": "Guangzhou"},
         )
 
         created = 0
