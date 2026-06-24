@@ -12741,8 +12741,8 @@ msgid "Кликнуть → отметить как проверено"
 msgstr "点击 → 标记为已检查"
 
 #: assistant/onboarding.py:1324
-msgid "✓ Одобрить → Песочница"
-msgstr "✓ 批准 → 沙盒"
+msgid "✓ Одобрить → Проверка"
+msgstr "✓ 批准 → 审核"
 
 #: assistant/onboarding.py:1327
 msgid "❓ Запросить уточнения"
@@ -13040,7 +13040,7 @@ msgstr "SEMI RFQ #%(id)s · %(name)s"
 #: assistant/operator_actions.py:173
 #, python-format
 msgid "approve КП · %(sub)s"
-msgstr "approve KP · %(sub)s"
+msgstr "审批报价 · %(sub)s"
 
 #: assistant/operator_actions.py:181
 #, python-format
@@ -13050,7 +13050,7 @@ msgstr "MANUAL RFQ #%(id)s · %(name)s"
 #: assistant/operator_actions.py:182
 #, python-format
 msgid "собрать КП · %(sub)s"
-msgstr "整理 KP · %(sub)s"
+msgstr "整理报价 · %(sub)s"
 
 #: assistant/operator_actions.py:190
 #, python-format
@@ -13310,6 +13310,14 @@ msgstr "剩余 %(n)s 分钟"
 #, python-format
 msgid "осталось %(n)s мин из 15"
 msgstr "剩余 %(n)s / 15 分钟"
+
+#, python-format
+msgid "48 ч просрочены на %(h)s ч"
+msgstr "48 小时已超时，逾期 %(h)s 小时"
+
+#, python-format
+msgid "осталось %(h)s ч из 48"
+msgstr "剩余 %(h)s 小时（共 48 小时）"
 
 #: assistant/operator_actions.py:472
 #, python-format

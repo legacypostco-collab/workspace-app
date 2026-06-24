@@ -263,7 +263,7 @@ def color_legend(params, user, role):
                     {"q": _("Рейтинг и тиры (для seller)"),
                      "rows": [
                         {"title": _("Красная"), "subtitle": _("Рейтинг 0–59 (Рисковый)")},
-                        {"title": _("Оранжевая"), "subtitle": _("Рейтинг 60–79 (Песочница)")},
+                        {"title": _("Оранжевая"), "subtitle": _("Рейтинг 60–79 (Проверка)")},
                         {"title": _("Зелёная"), "subtitle": _("Рейтинг 80–100 (Надёжный)")},
                      ]},
                     {"q": _("RFQ-режимы"),
@@ -388,7 +388,7 @@ def view_support_ticket(params, user, role):
             from marketplace.models import CompanyVerification
             kyb = CompanyVerification.objects.filter(user=target).first()
             if kyb:
-                STATUS_LBL = {"none": _("Не подавалась"), "pending": _("На проверке"),
+                STATUS_LBL = {"none": _("Не подавалась"), "pending": _("Проверка"),
                                 "verified": _("Верифицирована"), "rejected": _("Отклонена")}
                 tone_map = {"verified": "ok", "pending": "warn", "rejected": "bad", "none": "info"}
                 context_rows.append({

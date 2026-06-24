@@ -3322,7 +3322,7 @@ def op_my_suppliers(params, user, role):
     profiles = list(UserProfile.objects.filter(assigned_operator=user)
                      .select_related("user").order_by("supplier_status", "user__username"))
     rows = []
-    _STATUS_RU = {"trusted": _("Надёжный"), "sandbox": _("Песочница"),
+    _STATUS_RU = {"trusted": _("Надёжный"), "sandbox": _("Проверка"),
                   "risky": _("Рисковый"), "rejected": _("Исключён")}
     # PERF: активные сделки по ВСЕМ поставщикам одним group-by вместо .count()
     # на каждого профиля (было до 25 запросов).

@@ -765,6 +765,7 @@
     .df-lbl{font-size:13px;color:rgba(0,0,0,0.78);font-weight:600;}
     .df-input{background:#fff;border:1px solid rgba(0,0,0,0.14);border-radius:7px;padding:8px 11px;font-size:13px;font-family:inherit;color:#1a1a1a;outline:none;max-width:520px;width:100%;box-sizing:border-box;transition:border-color 0.12s;}
     .df-input:focus{border-color:#1a1a1a;}
+
     .df-addr{resize:vertical;min-height:54px;line-height:1.4;}
     .df-submit{margin-top:6px;background:#1a1a1a;color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;border:0;cursor:pointer;}
     body.dark-mode .df-submit{background:#64B5F6;color:#1a1a1a;}
@@ -1957,6 +1958,8 @@
     .st-dec-btn.act-btn:hover{background:rgba(0,0,0,0.08);border-color:rgba(0,0,0,0.22);color:#111;}
     .st-dec-btn.st-dec-btn-active.act-btn{background:rgba(34,197,94,0.16);color:#15803d;border-color:rgba(34,197,94,0.42);font-weight:600;}
     .st-dec-btn.st-dec-btn-active.act-btn:hover{background:rgba(34,197,94,0.24);border-color:rgba(34,197,94,0.55);color:#15803d;}
+    .st-sup-link{background:none;border:none;padding:0;cursor:pointer;font-size:inherit;font-weight:600;color:inherit;text-decoration:underline dotted rgba(255,255,255,0.3);}
+    .st-sup-link:hover{color:#93c5fd;text-decoration:underline;}
     .st-dec-check{font-weight:700;font-size:11px;}
     .st-dec-ico{font-size:12px;opacity:0.82;}
     body.dark-mode .st-dec-btn.act-btn{background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.78);border-color:rgba(255,255,255,0.12);}
@@ -2679,6 +2682,13 @@
     .as-table td{padding:5px 8px;border-bottom:1px solid rgba(0,0,0,0.04);vertical-align:middle;}
     .as-table tr:last-child td{border-bottom:none;}
     .as-table tr.as-primary{font-weight:600;}
+    .as-table tr.as-row:hover td{background:rgba(100,181,246,0.22) !important;}
+    .as-table tr.as-primary:hover td{background:rgba(74,222,128,0.18) !important;}
+    .spec-tbl td.spec-ship{color:#67e8f9;text-align:right;}
+    .spec-del-cell{width:22px;padding:0 2px !important;text-align:center;}
+    .spec-del-btn{display:none;width:18px;height:18px;border-radius:3px;font-size:13px;line-height:1;color:rgba(255,255,255,0.4);background:transparent;border:none;cursor:pointer;padding:0;}
+    .spec-del-btn:hover{color:#f87171;background:rgba(248,113,113,0.15);}
+    tr:hover .spec-del-btn{display:inline-flex;align-items:center;justify-content:center;}
     .as-col-rank{width:32px;}
     .as-col-status{width:120px;}
     .as-col-rating{width:72px;}
@@ -3092,6 +3102,7 @@
     body.dark-mode .df-lbl{color:rgba(255,255,255,0.75);}
     body.dark-mode .df-input{background:#181818;color:#fff;border-color:rgba(255,255,255,0.12);}
     body.dark-mode .df-input:focus{border-color:#ffffff;}
+
 
     /* ── Origin breakdown ── */
     body.dark-mode .ob-block{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.06);}
@@ -4103,8 +4114,8 @@
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
 <script src="{% static 'js/i18n.js' %}?v=13"></script>
-<script src="{% static 'js/i18n_auto.js' %}?v=45"></script>
-<script src="{% static 'js/chat-first.js' %}?v=244"></script>
+<script src="{% static 'js/i18n_auto.js' %}?v=66"></script>
+<script src="{% static 'js/chat-first.js' %}?v=279"></script>
 
 {# Плавающая кнопка-жучок убрана — предложения и баги идут через «Поддержка». #}
 </body>

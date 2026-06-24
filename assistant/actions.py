@@ -369,6 +369,9 @@ def _user_can_access_order(o, user, role) -> bool:
         if role in _OP_ROLES_ALL or getattr(user, "is_staff", False) or getattr(user, "is_superuser", False):
             return True
         if role == "seller":
+            # Продавец-покупатель: видит свой заказ (сам купил) ИЛИ заказ с его товарами
+            if getattr(o, "buyer_id", None) == getattr(user, "id", None):
+                return True
             from .seller_actions import _effective_seller
             from marketplace.models import OrderItem
             eff = _effective_seller(user)
@@ -1675,6 +1678,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 "alt_suppliers": [
                     {
                         "label": _('Поставщик #S%(or)s') % {'or': f"{(o['part'].seller_id or 0) % 1000:03d}"},
+                        "part_id": str(o["part"].id),  # для ручного выбора котировки
                         "price": o["price"],
                         "currency": "USD",
                         "rating": round(o["rating"], 1),
@@ -2154,6 +2158,9 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             "arrival_port": arrival_port,
             "dest_country": dest,
             "orig_articles": list(articles),  # для повторного вызова с адресом
+            # OEM-ключи нужны calcShipping: _search_articles_list ожидает {oem: qty}
+            "article_quantities": ({art: int(qmap.get(art, 1) or 1) for art in articles
+                                    if int(qmap.get(art, 1) or 1) != 1} or None),
             # Откуда едет груз — для понимания базиса FOB
             "origins": [
                 {"country_code": cc, "count": n,
@@ -2830,7 +2837,7 @@ def get_order_detail(params, user, role):
 
     # ── Spec_results таблица (единый вид как в RFQ) ──
     spec_items = []
-    _STATUS_BADGE_RU = {"trusted": _('Надёжный'), "sandbox": _('Песочница'),
+    _STATUS_BADGE_RU = {"trusted": _('Надёжный'), "sandbox": _('Проверка'),
                          "risky": _('Рисковый'), "rejected": _('Исключён')}
     # Map статус-кода Order → русский label (для per-item статусов).
     # str(...) обязательно — choices содержат gettext_lazy proxy-объекты,
@@ -3179,6 +3186,8 @@ def get_order_detail(params, user, role):
                 }
             supplier_rows.append({
                 "supplier": display_name,
+                # Оператор видит seller_id → имя поставщика кликабельно (contact_supplier)
+                "seller_id": sid if is_op and sid else None,
                 "stage_label": stage_lbl,
                 "stage_tone": tone,
                 "progress_pct": _pct,
@@ -3401,7 +3410,7 @@ def order_batch_items(params, user, role):
     # Бейдж поставщика партии — РЕАЛЬНЫЙ статус/рейтинг продавца (sid) из
     # профиля (поле rating_score; property `rating` не существует — раньше
     # чтение тихо падало в дефолт 91.6).
-    _BADGE_RU = {"trusted": _('Надёжный'), "sandbox": _('Песочница'),
+    _BADGE_RU = {"trusted": _('Надёжный'), "sandbox": _('Проверка'),
                  "risky": _('Рисковый'), "rejected": _('Исключён')}
     sup_status, sup_rating = "trusted", 90.0
     try:
@@ -4451,7 +4460,7 @@ def get_rfq_status(params, user, role):
                 total_usd += price_usd * qty
                 is_insider = bool(role and (role.startswith("operator") or role == "admin"))
                 # Тянем реальный статус/рейтинг продавца из профиля
-                _STATUS_BADGE = {"trusted": _('Надёжный'), "sandbox": _('Песочница'),
+                _STATUS_BADGE = {"trusted": _('Надёжный'), "sandbox": _('Проверка'),
                                  "risky": _('Рисковый'), "rejected": _('Исключён')}
                 sup_status_code = "trusted"
                 sup_rating = 91.6
@@ -5212,7 +5221,7 @@ def _seller_rating(seller) -> dict:
 def _status_badge(status: str) -> str:
     return {
         "trusted":  _('🟢 Надёжный'),
-        "sandbox":  _('🟡 Песочница'),
+        "sandbox":  _('🟡 Проверка'),
         "risky":    _('🟠 Рисковый'),
         "rejected": _('🔴 Исключён'),
     }.get(status, status)
@@ -6480,7 +6489,7 @@ def contact_supplier(params, user, role):
 
     # Статус и рейтинг — отдельной строкой
     prof = getattr(seller, "profile", None)
-    _STATUS_RU = {"trusted": _('Надёжный'), "sandbox": _('Песочница'),
+    _STATUS_RU = {"trusted": _('Надёжный'), "sandbox": _('Проверка'),
                   "risky": _('Рисковый'), "rejected": _('Исключён')}
     if prof:
         contact_rows.append({"label": _('Статус'), "value": _STATUS_RU.get(prof.supplier_status, prof.supplier_status or "—")})
@@ -7957,6 +7966,7 @@ def quick_order(params, user, role):
 
     product_ids = params.get("product_ids") or []
     quantity = int(params.get("quantity") or 1)
+    product_quantities = params.get("product_quantities") or {}
     # SECURITY: количество должно быть положительным целым
     if quantity <= 0:
         return ActionResult(text=_('Количество должно быть больше 0.'))
@@ -7990,15 +8000,29 @@ def quick_order(params, user, role):
                 if f in port_str:
                     return f
             return "🌍"
+        dest_country = params.get("dest_country") or ""
+        incoterm = params.get("incoterm") or ""
+        ship_mode = params.get("mode") or ""
+        ship_total_param = Decimal(str(params.get("ship_total") or 0))
+
         preview_total = Decimal("0")
         total_weight = Decimal("0")
         max_eta = 0
+        # Первый проход: считаем total_weight для пропорционального распределения доставки
+        weights_map = {}
+        qty_map = {}
+        for p in parts[:30]:
+            pq = int(product_quantities.get(str(p.id), 0) or product_quantities.get(p.id, 0) or quantity)
+            qty_map[p.id] = pq
+            lw = Decimal(str(p.gross_weight_kg or 0)) * pq
+            weights_map[p.id] = lw
+            total_weight += lw
         spec_items = []
         for p in parts[:30]:
-            line_total = Decimal(str(p.price or 0)) * quantity
+            pq = qty_map[p.id]
+            line_total = Decimal(str(p.price or 0)) * pq
             preview_total += line_total
-            line_weight = Decimal(str(p.gross_weight_kg or 0)) * quantity
-            total_weight += line_weight
+            line_weight = weights_map[p.id]
             eta_days = (getattr(p, "production_lead_days", 0) or 0) \
                      + (getattr(p, "prep_to_ship_days", 0) or 0) \
                      + (getattr(p, "shipping_lead_days", 0) or 0)
@@ -8006,6 +8030,10 @@ def quick_order(params, user, role):
                 max_eta = eta_days
             origin_str = p.sea_port or p.air_port or ""
             flag = _flag(origin_str)
+            # Доставка: пропорционально по весу (для CIP/DDP)
+            line_ship = None
+            if ship_total_param > 0 and total_weight > 0 and line_weight > 0:
+                line_ship = float((ship_total_param * line_weight / total_weight).quantize(Decimal("0.01")))
             spec_items.append({
                 "status": "in_stock",
                 "id": p.oem_number or f"#{p.id}",
@@ -8014,20 +8042,35 @@ def quick_order(params, user, role):
                 "brand": (p.brand.name if p.brand_id else "—"),
                 "condition": p.condition or "oem",
                 "price": float(p.price or 0),
-                "qty": quantity,
-                "weight": _('%(line_weight)s кг') % {'line_weight': f"{float(line_weight):.2f}"} if line_weight else "—",
+                "qty": pq,
+                "weight": _('%(w)s кг') % {'w': f"{float(p.gross_weight_kg or 0):.2f}"} if p.gross_weight_kg else "—",
+                "weight_kg": float(p.gross_weight_kg) if p.gross_weight_kg else None,
                 "currency": "USD",
-                # Дополнительные поля для рендера (см. изменения в chat-first.js)
                 "line_total": float(line_total),
                 "origin_flag": flag,
                 "eta_days": eta_days,
+                **({"ship_cost": line_ship, "ship_mode": ship_mode,
+                    "ship_days": {"sea": 30, "air": 7, "auto": 18}.get(ship_mode, 0)} if line_ship else {}),
             })
         reserve = preview_total * Decimal("0.1")
+        landed_total = preview_total + ship_total_param
+        foot_parts = [f"Сумма товара (EXW): ${float(preview_total):,.0f}"]
+        foot_parts_data = [{"ru": "Сумма товара (EXW)", "v": f"${float(preview_total):,.0f}"}]
+        if ship_total_param > 0:
+            foot_parts.append(f"доставка ({incoterm}): +${float(ship_total_param):,.0f}")
+            foot_parts.append(f"итого landed: ${float(landed_total):,.0f}")
+            foot_parts_data.append({"ru": f"доставка ({incoterm})", "v": f"+${float(ship_total_param):,.0f}"})
+            foot_parts_data.append({"ru": "итого landed", "v": f"${float(landed_total):,.0f}"})
+        if total_weight:
+            foot_parts.append(f"вес ~{float(total_weight):.1f} кг")
+            foot_parts_data.append({"ru": "вес", "v": f"~{float(total_weight):.1f}", "unit": "кг"})
+        if max_eta:
+            foot_parts.append(f"срок ~{max_eta} дн")
+            foot_parts_data.append({"ru": "срок", "v": f"~{max_eta}", "unit": "дн"})
         text_lines = [
-            "📦 Подтвердите заказ — это финальная спецификация перед списанием с депозита.",
+            _("📦 Подтвердите заказ — это финальная спецификация перед списанием с депозита."),
             "",
-            f"После клика «Подтвердить»: спишется резерв 10% (${float(reserve):,.0f}), " +
-            "оператор подберёт маршрут доставки, статус заказа → «формируется».",
+            _("После клика «Подтвердить»: спишется резерв %(pct)s%% (%(amt)s), оператор подберёт маршрут доставки, статус заказа → «формируется».") % {'pct': 10, 'amt': f'${float(reserve):,.0f}'},
         ]
         return ActionResult(
             text="\n".join(text_lines),
@@ -8044,11 +8087,9 @@ def quick_order(params, user, role):
                     "best_mix": int(preview_total),
                     "total": int(preview_total),
                     "currency": "USD",
-                    "foot_info": (
-                        f"Сумма товара (EXW): ${float(preview_total):,.0f}"
-                        + (f" · вес ~{float(total_weight):.1f} кг" if total_weight else "")
-                        + (f" · срок ~{max_eta} дн" if max_eta else "")
-                    ),
+                    **({"dest_country": dest_country} if dest_country else {}),
+                    "foot_info": " · ".join(foot_parts),
+                    "foot_parts_data": foot_parts_data,
                 },
             }],
             actions=[
@@ -8060,10 +8101,12 @@ def quick_order(params, user, role):
             ],
         )
 
+    # Per-part qty для подтверждённого пути (product_quantities = {str(id): qty})
+    qty_map_conf = {p.id: int(product_quantities.get(str(p.id), 0) or quantity) for p in parts}
     total = Decimal("0")
     for p in parts:
         if p.price:
-            total += Decimal(str(p.price)) * quantity
+            total += Decimal(str(p.price)) * qty_map_conf[p.id]
 
     # Рассчитываем доставку с учётом выбранных mode + incoterm.
     from assistant.logistics import (
@@ -8097,8 +8140,8 @@ def quick_order(params, user, role):
             if best is None or r["cost"] < best["cost"]:
                 best = r
         if best:
-            cargo_line = Decimal(str(p.price or 0)) * Decimal(quantity)
-            freight_line = best["cost"] * Decimal(quantity)
+            cargo_line = Decimal(str(p.price or 0)) * Decimal(qty_map_conf[p.id])
+            freight_line = best["cost"] * Decimal(qty_map_conf[p.id])
             bd = calc_incoterm_breakdown(freight_line, cargo_line, chosen_inc)
             ship_total += bd["total"]
             for k in ship_components:
@@ -8149,8 +8192,8 @@ def quick_order(params, user, role):
         ch = max(
             Decimal(p.gross_weight_kg or 0),
             _volumetric_kg(p.length_cm, p.width_cm, p.height_cm, eff_mode),
-        ) * Decimal(quantity)
-        cargo_line = Decimal(str(p.price or 0)) * Decimal(quantity)
+        ) * Decimal(qty_map_conf[p.id])
+        cargo_line = Decimal(str(p.price or 0)) * Decimal(qty_map_conf[p.id])
         b = by_cc[cc]
         b["ports"].add(origin_code)
         b["count"] += 1
@@ -8220,7 +8263,7 @@ def quick_order(params, user, role):
         OrderItem.objects.create(
             order=order,
             part=p,
-            quantity=quantity,
+            quantity=qty_map_conf[p.id],
             unit_price=p.price or Decimal("0"),
         )
     _log_event(order, "order_created", actor=user, source="buyer",
@@ -8232,7 +8275,7 @@ def quick_order(params, user, role):
                         "amount": float(landed_total), "currency": "USD",
                         "items": [{"oem": p.oem_number,
                                    "name": _clean_title(p.title) or p.oem_number,
-                                   "qty": quantity, "price": float(p.price or 0)}
+                                   "qty": qty_map_conf[p.id], "price": float(p.price or 0)}
                                   for p in parts[:20]]})
 
     # PIVOT 2026-05-27: split на sub-orders по operator-ownership.
@@ -8306,8 +8349,8 @@ def quick_order(params, user, role):
         eta_label = _('до двери (all-in)')
 
     text_lines = [
-        f"✓ Заказ #{order.id} принят",
-        f"{len(parts)} позиций · доставка {mode_word} · базис {chosen_inc}",
+        _("✓ Заказ #%(id)s принят") % {'id': order.id},
+        _("%(n)s позиций · доставка %(mode)s · базис %(inc)s") % {'n': len(parts), 'mode': mode_word, 'inc': chosen_inc},
     ]
     if not enough:
         text_lines.append(_('⚠️ Недостаточно на депозите — пополните на $%(balance)s.') % {'balance': f"{reserve_amount - wallet.balance:,.0f}"})
@@ -10175,8 +10218,9 @@ def track_order(params, user, role):
         from marketplace.models import OrderItem
 
         from .seller_actions import _effective_seller
-        user = _effective_seller(user)
-        if not OrderItem.objects.filter(order_id=order_id, part__seller=user).exists():
+        eff = _effective_seller(user)
+        is_buyer_of_order = Order.objects.filter(id=order_id, buyer=user).exists()
+        if not is_buyer_of_order and not OrderItem.objects.filter(order_id=order_id, part__seller=eff).exists():
             return ActionResult(text=_('Заказ #%(order_id)s не содержит ваших товаров.') % {'order_id': order_id})
         qs = qs.filter(id=order_id)
     else:
@@ -11565,7 +11609,7 @@ def _seller_revenue_view(params, user, role):
     import re as _re
     def _clean(s):
         s = s or ""
-        s = _re.sub(r"\s*\(intent[^)]*\)", "", s)
+        s = _re.sub(r"\s*[（(]intent[^）)]*[）)]\s*", "", s)
         s = _re.sub(r"\s*\[chat-demo\]", "", s)
         return s.strip()
     tx_rows = []
@@ -11651,7 +11695,7 @@ def get_balance(params, user, role):
     import re as _re
     def _clean_desc(s: str) -> str:
         s = s or ""
-        s = _re.sub(r"\s*\(intent[^)]*\)", "", s)
+        s = _re.sub(r"\s*[（(]intent[^）)]*[）)]\s*", "", s)
         s = _re.sub(r"\s*\[chat-demo\]", "", s)
         return s.strip()
 

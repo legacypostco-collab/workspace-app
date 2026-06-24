@@ -148,9 +148,9 @@ def start_onboarding(params, user, role):
         if score >= 80:
             tier, tier_tone, next_tier = _("Надёжный"), "ok", None
         elif score >= 60:
-            tier, tier_tone, next_tier = _("Песочница"), "warn", (80, _("Надёжный"), 80 - score)
+            tier, tier_tone, next_tier = _("Проверка"), "warn", (80, _("Надёжный"), 80 - score)
         else:
-            tier, tier_tone, next_tier = _("Рисковый"), "bad", (60, _("Песочница"), 60 - score)
+            tier, tier_tone, next_tier = _("Рисковый"), "bad", (60, _("Проверка"), 60 - score)
 
         # Каждая ячейка кликабельна → ведёт на релевантный детальный экран.
         catalog_n_fmt = f"{catalog_n:,}"
@@ -381,7 +381,7 @@ def start_onboarding(params, user, role):
                 _('⏳ Анкета отправлена на проверку оператору (%(p0)s).\nОбычно проверка занимает до 24 часов. Дождитесь решения — мы пришлём нотификацию.') % {"p0": f"{(kyb.submitted_at.strftime('%d.%m.%Y %H:%M') if kyb.submitted_at else 'недавно')}"}
             ),
             cards=[{"type": "kpi_grid", "data": {"title": _("🛡 Статус KYB"), "items": [
-                {"label": _("Статус"), "value": _("На проверке"), "tone": "info"},
+                {"label": _("Статус"), "value": _("Проверка"), "tone": "info"},
                 {"label": _("Компания"), "value": kyb.legal_name or "—"},
                 {"label": _("ИНН"), "value": kyb.inn or "—"},
             ]}}],
@@ -1321,7 +1321,7 @@ def op_kyb_review(params, user, role):
     if kyb.status == "pending":
         actions = [
             {"action": "op_kyb_approve",
-             "label": _("✓ Одобрить → Песочница"),
+             "label": _("✓ Одобрить → Проверка"),
              "params": {"user_id": kyb.user_id}},
             {"action": "op_kyb_clarify",
              "label": _("❓ Запросить уточнения"),
@@ -1548,7 +1548,7 @@ def op_kyb_approve(params, user, role):
     # Итоговая карточка одобрения с рейтингом
     SUPPLIER_STATUS_RU = {
         "trusted":  _("Надёжный"),
-        "sandbox":  _("Песочница (новичок)"),
+        "sandbox":  _("Проверка (новичок)"),
         "risky":    _("Рисковый"),
         "rejected": _("Исключён"),
     }

@@ -58,20 +58,21 @@ def sla_countdown_for_operator(mode: str, created_at) -> tuple[str, str]:
     elapsed = (now - created_at).total_seconds()
     m = (mode or "").lower()
     # Без эмодзи внутри текста — иконка вынесена в title-префикс.
+    from django.utils.translation import gettext as _
     if m == "semi":
         total_sec = 15 * 60
         remaining = total_sec - elapsed
         if remaining < 0:
-            return (f"SLA нарушен {int(-remaining // 60)} мин назад", "bad")
+            return (_("SLA нарушен %(n)s мин назад") % {"n": int(-remaining // 60)}, "bad")
         tone = "warn" if remaining < total_sec * 0.5 else "ok"
-        return (f"осталось {int(remaining // 60)} мин из 15", tone)
+        return (_("осталось %(n)s мин из 15") % {"n": int(remaining // 60)}, tone)
     if m in ("manual", "manual_oem"):
         total_sec = 48 * 3600
         remaining = total_sec - elapsed
         if remaining < 0:
-            return (f"48 ч просрочены на {int(-remaining // 3600)} ч", "bad")
+            return (_("48 ч просрочены на %(h)s ч") % {"h": int(-remaining // 3600)}, "bad")
         tone = "warn" if remaining < total_sec * 0.5 else "ok"
-        return (f"осталось {int(remaining // 3600)} ч из 48", tone)
+        return (_("осталось %(h)s ч из 48") % {"h": int(remaining // 3600)}, tone)
     return ("", "info")
 
 

@@ -101,7 +101,8 @@ def _wallet_confirm_intent(intent: dict, payer) -> dict:
     """
     amount = Decimal(str(intent["amount"]))
     order_id = intent["order_id"]
-    kind_label = intent.get("kind", "payment")
+    _KIND_TR = {"reserve": _("резерв"), "payment": _("оплата"), "mid": _("доплата"), "customs": _("таможня")}
+    kind_label = _KIND_TR.get(intent.get("kind", "payment"), intent.get("kind", "payment"))
     intent_id = intent.get("id")
 
     # Идемпотентность: если этот intent уже подтверждён — выходим.

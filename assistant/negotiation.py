@@ -644,7 +644,7 @@ def submit_quote(params, user, role):
 
         # Бейдж надёжности самого продавца — в колонку «Поставщик», как
         # «Надёжный · 91.6» в карточке заказа (а не просто «Вы»).
-        _BADGE_RU = {"trusted": _("Надёжный"), "sandbox": _("Песочница"),
+        _BADGE_RU = {"trusted": _("Надёжный"), "sandbox": _("Проверка"),
                      "risky": _("Рисковый"), "rejected": _("Исключён")}
         seller_status = "trusted"
         seller_rating = 90.0
@@ -1071,7 +1071,7 @@ def view_quote(params, user, role):
 
     # КП показываем В ТОМ ЖЕ ВИДЕ, что и состав заказа — таблица spec_results
     # (позиции + цена поставщика построчно), а не тонкий list.
-    _BADGE_RU = {"trusted": _("Надёжный"), "sandbox": _("Песочница"),
+    _BADGE_RU = {"trusted": _("Надёжный"), "sandbox": _("Проверка"),
                  "risky": _("Рисковый"), "rejected": _("Исключён")}
     _sup_status, _sup_rating = "trusted", 90.0
     try:

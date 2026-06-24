@@ -2477,7 +2477,7 @@
             <span class="wh-flag">${flag}</span>
             <div class="wh-main">
               <div class="wh-name">${esc(trWhName(r.name))}</div>
-              <div class="wh-meta">${esc(ports)}${r.address ? ' · ' + esc(r.address.slice(0,80)) : ''}</div>
+              <div class="wh-meta">${esc(ports)}${r.address ? ' · <span class="wh-addr">' + esc(r.address.slice(0,80)) + '</span>' : ''}</div>
               ${staleBadge ? `<div class="wh-staleness">${staleBadge}</div>` : ''}
             </div>
             <div class="wh-stats">
@@ -3901,12 +3901,16 @@
           const pj = JSON.stringify(a.params || {}).replace(/"/g, '&quot;');
           return `<button class="st-dec-btn act-btn" data-action="${esc(a.action)}" data-params="${pj}" data-label="${esc(a.label)}">${esc(a.label)}</button>`;
         }).join('');
+        const _supP = esc(JSON.stringify({seller_id: it.seller_id}));
+        const supTitle = it.seller_id
+          ? `<button type="button" class="st-sup-link act-inline-link" data-action="contact_supplier" data-params='${_supP}' data-label="${tr('Карточка поставщика')}" title="${tr('Карточка поставщика')}">${esc(it.supplier||'')}</button>`
+          : `<span>${esc(it.supplier||'')}</span>`;
         return `<div class="st-block">
           <div class="card-row st-block-head">
             <div class="card-emoji">📦</div>
             <div class="card-info">
-              <div class="card-title">${esc(it.supplier||'')}</div>
-              <div class="card-sub">${esc(it.stage_label||'')}</div>
+              <div class="card-title">${supTitle}</div>
+              <div class="card-sub">${tr(it.stage_label||'')}</div>
             </div>
           </div>
           ${metaHtml ? `<div class="spec-meta">${metaHtml}</div>` : ''}
@@ -3943,7 +3947,7 @@
       // перевозчик/трек-номер (последние два — только оператор).
       const meta = [];
       if (d.total) meta.push({lbl:tr('Сумма'), val:`$${fmt(d.total)}`});
-      if (d.payment_status_label) meta.push({lbl:tr('Оплата'), val:esc(d.payment_status_label)});
+      if (d.payment_status_label) meta.push({lbl:tr('Оплата'), val:tr(d.payment_status_label)});
       if (d.positions) {
         const wPart = d.weight_kg ? ` · ${d.weight_kg} ${tr('кг')}` : '';
         meta.push({lbl:tr('Состав'), val:`${d.positions} ${tr('поз')} · ${d.qty_total||0} ${tr('шт')}${wPart}`});
@@ -3973,7 +3977,7 @@
       const partsRows = (d.parts || []).map(p =>
         `<div class="sh-part">
           <div class="sh-part-name">${esc(p.supplier)}</div>
-          <div class="sh-part-stage">${esc(p.stage_label || '')}</div>
+          <div class="sh-part-stage">${tr(p.stage_label || '')}</div>
           <div class="sh-part-amt">$${fmt(p.amount)} <span class="sh-part-pct">· ${p.amount_pct||0}%</span></div>
         </div>`
       ).join('');
@@ -4148,6 +4152,11 @@
       // Для buyer бэк не присылает supplier_status_badge — скрываем колонку
       // «Поставщик» полностью (для оператора/админа она показывается).
       const showSupplierCol = (d.items || []).some(it => it.supplier_status_badge);
+      // Колонку QTY показываем только если есть количества ≠ 1 (иначе столбец
+      // из одних «1» — лишний шум). ДОСТАВКУ — только когда выбран город
+      // назначения (иначе везде «—»). Разгрузка таблицы подбора.
+      const showQty = (d.items || []).some(it => (Number(it.qty) || 1) !== 1);
+      const showShip = !!d.dest_country;
       // Иконка колонки «Доставка» по способу перевозки: море 🚢 / авиа ✈️ / авто 🚚.
       // (Раньше всегда был грузовик — даже когда груз идёт морем.)
       const _shipMode = d.shipping_mode || ((d.items || []).find(it => it.ship_mode) || {}).ship_mode || '';
@@ -4156,6 +4165,25 @@
       // компактный набор колонок (Тип и Срок — отдельными колонками, без Weight/
       // Поставщик/Доставка), чтобы Name не сжимался и ничего не «ехало».
       const qfMode = !!d.editable_price;
+      // Колонки non-qf таблицы списком — чтобы Qty/Доставку убирать чисто
+      // (синхронно colgroup + thead + ячейки строки ниже).
+      const specCols = [
+        {w: 8, th: 'Stock'},
+        {w: 3, th: '#'},
+        {w: 2, th: ''},
+        {w: 11, th: 'ID'},
+        {w: 16, th: 'Name'},
+        {w: 9, th: 'Brand'},
+        {w: 8, th: tr('Состояние')},
+        {w: 4, th: 'Qty', right: true},
+        {w: 9, th: 'Price', right: true},
+        {w: 9, th: 'Weight', right: true},
+        ...(showSupplierCol ? [{w: 6, th: tr('Рейтинг'), right: true}] : []),
+        ...(showShip ? [{w: 10, th: `${shipIcon} ${tr('Доставка')}`, right: true}] : []),
+        ...(showShip ? [] : [{w: 7, th: tr('Котировки'), right: true}]),
+      ];
+      const nonQfColgroup = specCols.map(c => `<col style="width:${c.w}%">`).join('');
+      const nonQfHead = specCols.map(c => `<th${c.right ? ' style="text-align:right;"' : ''}>${c.th}</th>`).join('');
       const rows = (d.items || []).map((it, idx) => {
         if (it.status === 'not_found' && !it.id) {
           return `<tr><td><span class="spec-stk no">—</span></td>
@@ -4180,8 +4208,8 @@
           const _modes = _shipModes[_lang] || _shipModes.ru;
           const modeLbl = _modes[it.ship_mode] || '';
           const cost = it.ship_cost ? ` ${fmtMoney(it.ship_cost, 'USD')}` : '';
-          const days = it.ship_days ? ` · ~${it.ship_days}${_dayLbl}` : '';
-          const inner = `${modeLbl}${cost}${days}`.trim() || '—';
+          const days = it.ship_days ? ` ~${it.ship_days}${_dayLbl}` : '';
+          const inner = `${cost}${cost && days ? ' ·' : ''}${days}`.trim() || modeLbl || '—';
           if (it.order_id) {
             const p = esc(JSON.stringify({order_id: it.order_id}));
             shipCell = `<button type="button" class="ship-link"
@@ -4193,9 +4221,12 @@
         }
         // Поставщик: бейдж статуса + рейтинг + кнопка drill-down (если есть альт-офферы)
         const statusCls = {trusted:'sp-trusted', sandbox:'sp-sandbox', risky:'sp-risky'}[it.supplier_status] || '';
+        // Цвет ТЕКСТА статуса (без плашки): зелёный/оранжевый/красный.
+        const _supColor = {trusted:'#4ade80', sandbox:'#fbbf24', risky:'#f87171'}[it.supplier_status] || 'inherit';
         let supplierCell;
         if (it.supplier_status_badge) {
-          const badgeInner = `${esc(_noBall(it.supplier_status_badge))} · ${Number(it.supplier_rating || 0).toFixed(1)}`;
+          // Только цифра рейтинга — статус передаётся цветом текста.
+          const badgeInner = `${Number(it.supplier_rating || 0).toFixed(1)}`;
           // Если operator (есть supplier_id) — делаем кликабельным «связаться»
           if (it.supplier_id) {
             const pAttr = esc(JSON.stringify({seller_id: it.supplier_id, seller_username: it.supplier_username || ''}));
@@ -4203,7 +4234,7 @@
               data-action="contact_supplier" data-params='${pAttr}' data-label="${tr('Связаться с поставщиком')}"
               title="${tr('Связаться с поставщиком')}: ${esc(it.supplier_username || '')}">${badgeInner}</button>`;
           } else {
-            supplierCell = `<span class="sp-badge ${statusCls}" title="${tr('Рейтинг')} ${it.supplier_rating}/100${it.alt_offers > 0 ? ' · ' + tr('клик по строке для сравнения') : ''}">${badgeInner}</span>`;
+            supplierCell = `<span class="sp-plain ${statusCls}" style="background:transparent;border:0;padding:0;font-weight:600;white-space:nowrap;color:${_supColor};" title="${tr('Рейтинг')} ${it.supplier_rating}/100${it.alt_offers > 0 ? ' · ' + tr('клик по строке для сравнения') : ''}">${badgeInner}</span>`;
           }
         } else {
           supplierCell = '—';
@@ -4221,17 +4252,19 @@
         if (clickable) {
           const suppliers = it.alt_suppliers || [];
           const supRows = suppliers.map((s, i) => {
-            const statusCls = ({trusted:'sp-trusted',sandbox:'sp-sandbox',risky:'sp-risky'})[s.status] || '';
-            return `<tr class="${s.is_primary ? 'as-row as-primary' : 'as-row'}">
+            const _stColor = ({trusted:'#4ade80',sandbox:'#fbbf24',risky:'#f87171'})[s.status] || 'inherit';
+            const _offerData = esc(JSON.stringify({part_id:s.part_id,price:s.price,currency:s.currency||'USD',condition:s.condition,rating:s.rating,status:s.status}));
+            return `<tr class="${s.is_primary ? 'as-row as-primary' : 'as-row'}" data-row-idx="${idx}" data-offer="${_offerData}" style="cursor:pointer;" title="${tr('Выбрать котировку')}">
               <td class="as-rank">${i + 1}</td>
               <td class="as-label">${esc(s.label)}</td>
-              <td><span class="sp-badge ${statusCls}">${esc(_noBall(s.status_badge))}</span></td>
+              <td><span style="color:${_stColor};font-weight:600;">${esc(_noBall(s.status_badge))}</span></td>
               <td class="as-num">${s.rating}</td>
               <td class="as-num as-price">${fmtMoney(s.price, s.currency)}</td>
               <td class="as-cond">${esc(({oem:'OEM',aftermarket:'Aftermarket',analog:'Aftermarket',reman:'REMAN'})[s.condition] || s.condition || '')}</td>
               <td class="as-num">${s.stock || '—'}</td>
               <td class="as-wh" title="${esc(s.warehouse || '')}">${esc(s.warehouse || '—')}</td>
               <td class="as-num as-score">${s.score != null ? s.score : '—'}</td>
+              <td class="as-pick"><button type="button" class="as-pick-btn" style="padding:3px 10px;font-size:12px;border-radius:6px;">${tr('Выбрать')}</button></td>
             </tr>`;
           }).join('');
           detailRow = `<tr class="spec-detail-row" data-detail-for="${idx}" style="display:none;">
@@ -4240,7 +4273,7 @@
                 <div class="as-title">🔍 ${suppliers.length} поставщик${suppliers.length === 1 ? '' : (suppliers.length < 5 ? 'а' : 'ов')} по OEM <b>${esc(it.id)}</b></div>
                 <table class="as-table">
                   <thead><tr>
-                    <th class="as-col-rank">#</th><th class="as-col-label">Поставщик</th><th class="as-col-status">Статус</th><th class="as-col-rating">Рейтинг</th><th class="as-col-price">Цена EXW</th><th class="as-col-cond">Состояние</th><th class="as-col-stock">Остаток</th><th class="as-col-wh">Склад</th><th class="as-col-score">Score</th>
+                    <th class="as-col-rank">#</th><th class="as-col-label">Поставщик</th><th class="as-col-status">Статус</th><th class="as-col-rating">Рейтинг</th><th class="as-col-price">Цена EXW</th><th class="as-col-cond">Состояние</th><th class="as-col-stock">Остаток</th><th class="as-col-wh">Склад</th><th class="as-col-score">Score</th><th class="as-col-pick"></th>
                   </tr></thead>
                   <tbody>${supRows}</tbody>
                 </table>
@@ -4298,23 +4331,27 @@
         const condBadge = it.condition
           ? esc(_CONDL[it.condition] || it.condition)
           : '—';
-        const altCue = (clickable && (it.alt_suppliers || []).length > 0)
-          ? `<span class="spec-alt-cue" title="${tr('Клик — все предложения по позиции')}" style="margin-left:6px;font-size:11px;color:#64b5f6;white-space:nowrap;">▾ ${window.t('{n} цен', {n: it.alt_suppliers.length})}</span>`
-          : '';
-        return `<tr${rowAttrs}>
+        const _quotesN = (it.alt_suppliers || []).length || it.alt_offers || 0;
+        const quotesCell = _quotesN > 0
+          ? `<span title="${tr('Клик — все предложения по позиции')}" style="color:#7f9bb3;">${_quotesN}</span>`
+          : '—';
+        const partId = String(it.part_id || '');
+        return `<tr${rowAttrs} data-part-id="${partId}">
           <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}">${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
           <td class="spec-row-num">${idx+1}</td>
-          <td><a class="spec-id-link">${esc(it.id || '')}</a>${altCue}</td>
+          <td class="spec-del-cell"><button type="button" class="spec-del-btn" title="${tr('Удалить позицию')}" onclick="window.__specDelRow&&window.__specDelRow(this)">×</button></td>
+          <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
           <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
           <td>${esc(it.brand || '')}</td>
           <td class="spec-cond-cell">${condBadge}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${esc(it.qty || '')}</td>
           <td class="spec-price" style="text-align:right;font-variant-numeric:tabular-nums;">${(d.editable_price && it.rfq_item_id != null)
             ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" value="${Number(it.price || 0).toFixed(2)}" /></div>`
-            : fmtMoney(it.price, it.currency || 'USD')}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">${esc(it.qty || '')}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">${esc(it.weight || '')}</td>
-          ${showSupplierCol ? `<td>${supplierCell}</td>` : ''}
-          <td class="spec-ship">${shipCell}${leadInp}</td>
+            : (showShip && it.line_total ? fmtMoney(it.line_total, it.currency || 'USD') : fmtMoney(it.price, it.currency || 'USD'))}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${showShip ? (it.weight_kg ? Number(it.weight_kg).toFixed(2)+' кг' : (it.weight||'')) : esc(it.weight || '')}</td>
+          ${showSupplierCol ? `<td style="text-align:right;font-variant-numeric:tabular-nums;">${supplierCell}</td>` : ''}
+          ${showShip ? `<td class="spec-ship">${shipCell}${leadInp}</td>` : ''}
+          ${showShip ? '' : `<td style="text-align:right;font-variant-numeric:tabular-nums;">${quotesCell}</td>`}
         </tr>${detailRow}`;
       }).join('');
       const detailBlocks = '';
@@ -4378,12 +4415,10 @@
           <table class="spec-tbl spec-tbl-fixed">
             <colgroup>${qfMode
               ? '<col style="width:11%"><col style="width:4%"><col style="width:13%"><col style="width:19%"><col style="width:12%"><col style="width:10%"><col style="width:13%"><col style="width:6%"><col style="width:12%">'
-              : (showSupplierCol
-              ? '<col style="width:10%"><col style="width:3%"><col style="width:11%"><col style="width:12%"><col style="width:10%"><col style="width:9%"><col style="width:9%"><col style="width:4%"><col style="width:7%"><col style="width:13%"><col style="width:12%">'
-              : '<col style="width:10%"><col style="width:3%"><col style="width:12%"><col style="width:15%"><col style="width:11%"><col style="width:9%"><col style="width:10%"><col style="width:5%"><col style="width:8%"><col style="width:17%">')}</colgroup>
+              : nonQfColgroup}</colgroup>
             <thead><tr>${qfMode
               ? `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>${tr('Тип')}</th><th>Price</th><th>Qty</th><th>${tr('Срок')}</th>`
-              : `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>${tr('Состояние')}</th><th style="text-align:right;">Price</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Weight</th>${showSupplierCol ? `<th>${tr('Поставщик')}</th>` : ''}<th>${shipIcon} ${tr('Доставка')}${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>`}
+              : nonQfHead}
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -4394,7 +4429,7 @@
           <div class="spec-foot-info">${
             (d.editable_price && (d.items || []).some(it => it.in_catalog) && (d.items || []).some(it => !it.in_catalog))
               ? `<button class="qf-keep-mine" type="button" title="${tr('Оставить только позиции из вашего каталога — у остальных очистится цена; нажмите ещё раз, чтобы вернуть')}">📦 ${tr('Только мои позиции')}</button>`
-              : (esc(d.foot_info || '') + (d.shipping_matrix ? (' · ' + tr('доставка ↓')) : ''))
+              : ((d.foot_parts_data ? d.foot_parts_data.map(p => tr(p.ru) + ': ' + p.v + (p.unit ? ' ' + tr(p.unit) : '')).join(' · ') : esc(d.foot_info || '')) + (d.shipping_matrix ? (' · ' + tr('доставка ↓')) : ''))
           }</div>
           <div class="spec-foot-total"${d.qf ? ' data-total' : ''}>${d.total != null ? fmtMoney(d.total, d.currency || 'USD') : ''}</div>
         </div>
@@ -4571,7 +4606,8 @@
     // Передаём ОРИГИНАЛЬНЫЕ OEM-артикулы (не Part IDs), иначе повторный
     // search_parts не найдёт позиции — ID не равны OEM.
     const articlesJson = esc(JSON.stringify(d.orig_articles || d.product_ids.map(String)));
-    const qtyJson = d.product_quantities ? esc(JSON.stringify(d.product_quantities)) : '';
+    // article_quantities = {oem: qty} — именно это ожидает _search_articles_list
+    const qtyJson = d.article_quantities ? esc(JSON.stringify(d.article_quantities)) : '';
     // Страны прибытия (ЕАЭС/СНГ) → города. Сначала выбираем СТРАНУ, затем город.
     // Страна для расчёта пошлины/НДС берётся из префикса кода (RUMOW → RU), а если
     // город вписан вручную без кода — из явно выбранной страны (select).
@@ -4596,17 +4632,31 @@
     ];
     const order = ['RU','KZ','BY','AM','KG','UZ'];
     // Полный список стран для автоподсказки + маппинг название→ISO-2.
+    // nameToCC: ru-имя, локализованное, флаг+ru, флаг+локализованное → ISO-2
     const nameToCC = {};
-    const countryEntries = []; // [cc, flag, name]
-    order.forEach(cc => { const c = arrivalByCountry[cc]; countryEntries.push([cc, c.flag, c.name]); nameToCC[c.name.toLowerCase()] = cc; });
-    otherCountries.forEach(([cc, name]) => { countryEntries.push([cc, '', name]); nameToCC[name.toLowerCase()] = cc; });
-    const countryOpts = countryEntries.map(([cc, flag, name]) =>
-      `<option value="${esc(name)}">${flag ? flag + ' ' : ''}${esc(name)}</option>`).join('');
+    const countryEntries = []; // [cc, flag, ruName]
+    const _addCC = (cc, flag, ruName) => {
+      const loc = tr(ruName);
+      nameToCC[ruName.toLowerCase()] = cc;
+      nameToCC[loc.toLowerCase()] = cc;
+      if (flag) { nameToCC[(flag+' '+ruName).toLowerCase()] = cc; nameToCC[(flag+' '+loc).toLowerCase()] = cc; }
+    };
+    order.forEach(cc => { const c = arrivalByCountry[cc]; countryEntries.push([cc, c.flag, c.name]); _addCC(cc, c.flag, c.name); });
+    otherCountries.forEach(([cc, name]) => { countryEntries.push([cc, '', name]); _addCC(cc, '', name); });
     const curPortVal = d.arrival_port || '';
     const curCC = (curPortVal.match(/^([A-Z]{2})/) || [])[1] || 'RU';
-    const curCountryName = (countryEntries.find(e => e[0] === curCC) || [null, '', 'Россия'])[2];
+    const _curEntry = countryEntries.find(e => e[0] === curCC) || [null, '', 'Россия'];
+    const curCountryName = tr(_curEntry[2]);
+    const countryOpts = countryEntries.map(([cc, flag, ruName]) => {
+      const dispName = tr(ruName);
+      return `<option value="${_escRaw(flag ? flag+' '+dispName : dispName)}"></option>`;
+    }).join('');
     const cityList = (arrivalByCountry[curCC] || {cities: []}).cities;
-    const portOpts = cityList.map(p => `<option value="${esc(p)}"></option>`).join('');
+    const portOpts = cityList.map(p => {
+      const sep = p.indexOf(' — ');
+      const disp = sep >= 0 ? p.slice(0, sep+3) + tr(p.slice(sep+3)) : p;
+      return `<option value="${esc(disp)}"></option>`;
+    }).join('');
     const curPort = curPortVal ? `value="${esc(curPortVal)}"` : '';
     const curAddr = d.delivery_address ? esc(d.delivery_address) : '';
     const uid = (window.__dfUid = (window.__dfUid || 0) + 1);
@@ -4619,7 +4669,11 @@
       <div class="df-hint">${tr('Укажите <b>страну и город</b> → в таблице ниже появятся цены <b>CIP и DDP</b>. Полный адрес до двери нужен только для <b>DDP</b> — попросим при выборе.')}</div>
       <div class="df-row">
         <label class="df-lbl">${tr('Страна')} <span class="df-opt">${tr('(для CIP/DDP)')}</span></label>
-        <input class="df-input df-country" type="text" list="${ccId}" value="${esc(curCountryName)}" placeholder="Начните вводить страну…" autocomplete="off" oninput="window.dfCountryChange && window.dfCountryChange(this, false)" onchange="window.dfCountryChange && window.dfCountryChange(this, true)" />
+        <input class="df-input df-country" type="text" list="${ccId}" value="${_escRaw(curCountryName)}" placeholder="${tr('Начните вводить страну…')}" autocomplete="off"
+          onfocus="this.dataset.dfPrev=this.value;this.value='';window.dfCountryChange&&window.dfCountryChange(this,false);"
+          onblur="if(!this.dataset.dfCommit){this.value=this.dataset.dfPrev||'';window.dfCountryChange&&window.dfCountryChange(this,false);}delete this.dataset.dfCommit;"
+          oninput="window.dfCountryChange&&window.dfCountryChange(this,false)"
+          onchange="this.dataset.dfCommit='1';window.dfCountryChange&&window.dfCountryChange(this,true);" />
         <datalist id="${ccId}">${countryOpts}</datalist>
       </div>
       <div class="df-row">
@@ -4694,6 +4748,7 @@
         if (d.delivery_address) params.delivery_address = d.delivery_address;
         if (d.arrival_port) params.arrival_port = d.arrival_port;
         if (d.product_quantities) params.product_quantities = d.product_quantities;
+        if (opt.incoterm !== 'FOB' && opt.ship) params.ship_total = opt.ship;
         const shipBadge = opt.incoterm === 'FOB'
           ? '<div class="sm-ship">самовывоз · $0</div>'
           : `<div class="sm-ship">+${fmtMoney(opt.ship, 'USD')} ship</div>`;
@@ -4794,7 +4849,7 @@
         <div class="sm-legend-row"><b>CIP</b> — Carriage & Insurance Paid: ${esc(descs.CIP || '')}</div>
         <div class="sm-legend-row"><b>DDP</b> — Delivered Duty Paid: ${esc(descs.DDP || '')}</div>
       </div>
-      <div class="sm-hint">Клик по ячейке = выбрать базис и оформить. Для <b>CIP/DDP</b> сначала укажите страну и город выше ↑ (для DDP попросим адрес до двери).</div>
+      <div class="sm-hint">${tr('Клик по ячейке = выбрать базис и оформить. Для CIP/DDP сначала укажите страну и город выше ↑ (для DDP попросим адрес до двери).')}</div>
     </div>`;
   }
 
@@ -5039,6 +5094,8 @@
     html = html.replace(/(?<![\w-])RFQ\s*[#-]?\s*(\d{1,7})\b/gi,
       (full, id) => `<span class="entity-link" data-action="rfq_detail" data-params='{"rfq_id":${id}}'>${full}</span>`);
     // Просто #N — последний фолбек, если идёт сразу после слов «заказ/order» уже обработано
+    // \n → <br> чтобы каждая строка была отдельным text node для localizeNode/i18n
+    html = html.replace(/\r?\n/g, '<br>');
     return html;
   }
 
@@ -5061,6 +5118,75 @@
     }
     e.preventDefault();
     e.stopPropagation();
+  });
+
+  // Удаление строки из спеки: прячем tr, обновляем итог и убираем part_id из params кнопок
+  window.__specDelRow = function(btn) {
+    const tr = btn.closest('tr[data-part-id]');
+    if (!tr) return;
+    const partId = tr.dataset.partId;
+    const card = tr.closest('.card, .msg-ai');
+    tr.style.display = 'none';
+    // Обновляем счётчик "X из Y priced"
+    const tbl = tr.closest('table.spec-tbl');
+    if (tbl) {
+      const visRows = tbl.querySelectorAll('tr[data-part-id]:not([style*="display: none"])').length;
+      const foot = tbl.closest('.spec-block, div')?.querySelector('.spec-foot');
+      // Пересчитываем итог по видимым строкам
+      let newTotal = 0;
+      tbl.querySelectorAll('tr[data-part-id]:not([style*="display: none"]) .spec-price').forEach(td => {
+        const txt = td.textContent.replace(/[^0-9.]/g, '');
+        newTotal += parseFloat(txt) || 0;
+      });
+      // Обновляем все data-params кнопок в карточке: убираем удалённый partId
+      if (card && partId) {
+        card.querySelectorAll('[data-params]').forEach(el => {
+          try {
+            const p = JSON.parse(el.dataset.params);
+            if (Array.isArray(p.product_ids)) {
+              p.product_ids = p.product_ids.filter(id => String(id) !== partId);
+              if (p.product_quantities) delete p.product_quantities[partId];
+              el.dataset.params = JSON.stringify(p);
+            }
+          } catch(e) {}
+        });
+      }
+    }
+  };
+
+  // Выбор котировки из as-table: клик по строке as-row → обновить основную строку spec
+  window.__specSelectQuote = function(rowIdx, offerEl, offer) {
+    const specTbl = offerEl.closest('.spec-detail-cell')?.closest('tr')?.previousElementSibling?.closest('table') ||
+                    offerEl.closest('.card, .msg-ai')?.querySelector('.spec-tbl');
+    if (!specTbl) return;
+    const mainRow = specTbl.querySelector('tr.spec-row-toggle[data-row-idx="'+rowIdx+'"]');
+    if (!mainRow) return;
+    const sym = {USD:'$',EUR:'€',RUB:'₽',CNY:'¥'}[offer.currency]||'';
+    const priceCell = mainRow.querySelector('.spec-price');
+    if (priceCell) priceCell.innerHTML = sym + Number(offer.price||0).toLocaleString('en-US',{maximumFractionDigits:0});
+    const condCell = mainRow.querySelector('.spec-cond-cell');
+    if (condCell) condCell.textContent = ({oem:'OEM',aftermarket:'Aftermarket',analog:'Aftermarket',reman:'REMAN'})[offer.condition]||offer.condition||'—';
+    const spPlain = mainRow.querySelector('.sp-plain');
+    if (spPlain) {
+      spPlain.style.color = ({trusted:'#4ade80',sandbox:'#fbbf24',risky:'#f87171'})[offer.status]||'inherit';
+      spPlain.textContent = Number(offer.rating||0).toFixed(1);
+    }
+    mainRow.style.outline = '2px solid #4ade80';
+    mainRow.style.outlineOffset = '-2px';
+    setTimeout(()=>{ mainRow.style.outline=''; mainRow.style.outlineOffset=''; }, 1600);
+    const tbody = mainRow.parentElement;
+    const detailRow = tbody?.querySelector('tr.spec-detail-row[data-detail-for="'+rowIdx+'"]');
+    if (detailRow) { detailRow.style.display='none'; mainRow.classList.remove('spec-row-open'); }
+  };
+
+  document.addEventListener('click', (e) => {
+    const asRow = e.target.closest('tr.as-row[data-offer]');
+    if (!asRow) return;
+    e.stopPropagation();
+    try {
+      const offer = JSON.parse(asRow.dataset.offer||'{}');
+      window.__specSelectQuote(asRow.dataset.rowIdx, asRow, offer);
+    } catch(_) {}
   });
 
   // Делегируем клик по clickable card → 1) data-href навигация, 2) data-action quickAction
@@ -5463,11 +5589,14 @@
     let nameMap = {}, cityMap = {};
     try { nameMap = JSON.parse(block.dataset.countries || '{}'); } catch (e) {}
     try { cityMap = JSON.parse(block.dataset.arrival || '{}'); } catch (e) {}
-    const cc = nameMap[(inp.value || '').trim().toLowerCase()] || '';
+    const _rawVal = (inp.value || '').trim();
+    // strip leading flag emoji (two regional indicator codepoints U+1F1E0–U+1F1FF) + NBSP/space
+    const _noFlag = _rawVal.replace(/^[\u{1F1E0}-\u{1F1FF}]{2}[\s ]*/u, '').trim();
+    const cc = nameMap[_rawVal.toLowerCase()] || nameMap[_noFlag.toLowerCase()] || '';
     const cities = (cityMap[cc] || {}).cities || [];
     const cityInp = block.querySelector('.df-port');
     const dl = cityInp ? document.getElementById(cityInp.getAttribute('list')) : null;
-    if (dl) dl.innerHTML = cities.map(c => `<option value="${esc(c)}"></option>`).join('');
+    if (dl) dl.innerHTML = cities.map(c => { const sep = c.indexOf(' — '); const disp = sep >= 0 ? c.slice(0, sep+3) + tr(c.slice(sep+3)) : c; return `<option value="${esc(disp)}"></option>`; }).join('');
     // commit (выбор из списка / blur) — чистим город и обновляем подсказку-placeholder.
     // oninput (печать) — только обновляем список городов, не трогаем поле.
     if (cityInp && commit) {
