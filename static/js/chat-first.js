@@ -4195,7 +4195,7 @@
         const statusCls = {trusted:'sp-trusted', sandbox:'sp-sandbox', risky:'sp-risky'}[it.supplier_status] || '';
         let supplierCell;
         if (it.supplier_status_badge) {
-          const badgeInner = `${esc(_noBall(it.supplier_status_badge))} · ${it.supplier_rating}`;
+          const badgeInner = `${esc(_noBall(it.supplier_status_badge))} · ${Number(it.supplier_rating || 0).toFixed(1)}`;
           // Если operator (есть supplier_id) — делаем кликабельным «связаться»
           if (it.supplier_id) {
             const pAttr = esc(JSON.stringify({seller_id: it.supplier_id, seller_username: it.supplier_username || ''}));
@@ -4301,22 +4301,18 @@
         const altCue = (clickable && (it.alt_suppliers || []).length > 0)
           ? `<span class="spec-alt-cue" title="${tr('Клик — все предложения по позиции')}" style="margin-left:6px;font-size:11px;color:#64b5f6;white-space:nowrap;">▾ ${window.t('{n} цен', {n: it.alt_suppliers.length})}</span>`
           : '';
-        const _stkLabelTxt = it.stock_label != null ? it.stock_label : stkLabel(it.status);
-        const _stkCell = it.status === 'in_stock'
-          ? `<span class="spec-stk in" title="${esc(_stkLabelTxt)}" style="font-weight:700;">✓</span>`
-          : `<span class="spec-stk ${it.stock_class || stkClass(it.status)}">${esc(_stkLabelTxt)}</span>`;
         return `<tr${rowAttrs}>
-          <td>${_stkCell}</td>
+          <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}">${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
           <td class="spec-row-num">${idx+1}</td>
           <td><a class="spec-id-link">${esc(it.id || '')}</a>${altCue}</td>
           <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
           <td>${esc(it.brand || '')}</td>
           <td class="spec-cond-cell">${condBadge}</td>
-          <td class="spec-price">${(d.editable_price && it.rfq_item_id != null)
+          <td class="spec-price" style="text-align:right;font-variant-numeric:tabular-nums;">${(d.editable_price && it.rfq_item_id != null)
             ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" value="${Number(it.price || 0).toFixed(2)}" /></div>`
             : fmtMoney(it.price, it.currency || 'USD')}</td>
-          <td>${esc(it.qty || '')}</td>
-          <td>${esc(it.weight || '')}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${esc(it.qty || '')}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums;">${esc(it.weight || '')}</td>
           ${showSupplierCol ? `<td>${supplierCell}</td>` : ''}
           <td class="spec-ship">${shipCell}${leadInp}</td>
         </tr>${detailRow}`;
@@ -4387,7 +4383,7 @@
               : '<col style="width:10%"><col style="width:3%"><col style="width:12%"><col style="width:15%"><col style="width:11%"><col style="width:9%"><col style="width:10%"><col style="width:5%"><col style="width:8%"><col style="width:17%">')}</colgroup>
             <thead><tr>${qfMode
               ? `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>${tr('Тип')}</th><th>Price</th><th>Qty</th><th>${tr('Срок')}</th>`
-              : `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>${tr('Состояние')}</th><th>Price</th><th>Qty</th><th>Weight</th>${showSupplierCol ? `<th>${tr('Поставщик')}</th>` : ''}<th>${shipIcon} ${tr('Доставка')}${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>`}
+              : `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>${tr('Состояние')}</th><th style="text-align:right;">Price</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Weight</th>${showSupplierCol ? `<th>${tr('Поставщик')}</th>` : ''}<th>${shipIcon} ${tr('Доставка')}${d.dest_country ? ' → ' + esc(d.dest_country) : ''}</th>`}
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
