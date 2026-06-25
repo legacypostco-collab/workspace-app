@@ -15,7 +15,7 @@ import logging
 import re
 
 from django.utils import timezone
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext as _, gettext_lazy as _l
 
 from .actions import ActionResult, _notify, register
 
@@ -453,73 +453,73 @@ def start_onboarding(params, user, role):
 # ══════════════════════════════════════════════════════════
 
 _COUNTRY_OPTIONS = [
-    {"value": "RU", "label": _("🇷🇺 Россия")},
-    {"value": "CN", "label": _("🇨🇳 Китай")},
-    {"value": "AE", "label": _("🇦🇪 ОАЭ")},
-    {"value": "TR", "label": _("🇹🇷 Турция")},
-    {"value": "DE", "label": _("🇩🇪 Германия")},
-    {"value": "IT", "label": _("🇮🇹 Италия")},
-    {"value": "JP", "label": _("🇯🇵 Япония")},
-    {"value": "KR", "label": _("🇰🇷 Южная Корея")},
-    {"value": "US", "label": _("🇺🇸 США")},
-    {"value": "GB", "label": _("🇬🇧 Великобритания")},
-    {"value": "IN", "label": _("🇮🇳 Индия")},
-    {"value": "BR", "label": _("🇧🇷 Бразилия")},
-    {"value": "KZ", "label": _("🇰🇿 Казахстан")},
-    {"value": "BY", "label": _("🇧🇾 Беларусь")},
-    {"value": "OTHER", "label": _("🌍 Другая страна")},
+    {"value": "RU", "label": _l("🇷🇺 Россия")},
+    {"value": "CN", "label": _l("🇨🇳 Китай")},
+    {"value": "AE", "label": _l("🇦🇪 ОАЭ")},
+    {"value": "TR", "label": _l("🇹🇷 Турция")},
+    {"value": "DE", "label": _l("🇩🇪 Германия")},
+    {"value": "IT", "label": _l("🇮🇹 Италия")},
+    {"value": "JP", "label": _l("🇯🇵 Япония")},
+    {"value": "KR", "label": _l("🇰🇷 Южная Корея")},
+    {"value": "US", "label": _l("🇺🇸 США")},
+    {"value": "GB", "label": _l("🇬🇧 Великобритания")},
+    {"value": "IN", "label": _l("🇮🇳 Индия")},
+    {"value": "BR", "label": _l("🇧🇷 Бразилия")},
+    {"value": "KZ", "label": _l("🇰🇿 Казахстан")},
+    {"value": "BY", "label": _l("🇧🇾 Беларусь")},
+    {"value": "OTHER", "label": _l("🌍 Другая страна")},
 ]
 
 # Country-specific схемы: (label1, hint1, regex_check), (label2, …) и т.д.
 # Хранятся в одних и тех же полях БД (inn/kpp/ogrn) — это просто разные UI-обёртки.
 _COUNTRY_FIELDS = {
     "RU": [
-        {"name": "inn",  "label": _("ИНН"), "hint": _("10 цифр (юр.лицо) или 12 (ИП)"),
+        {"name": "inn",  "label": _l("ИНН"), "hint": _l("10 цифр (юр.лицо) или 12 (ИП)"),
          "required": True, "pattern": r"^\d{10}(\d{2})?$"},
-        {"name": "kpp",  "label": _("КПП"), "hint": _("9 цифр (только для юр.лица)"),
+        {"name": "kpp",  "label": _l("КПП"), "hint": _l("9 цифр (только для юр.лица)"),
          "pattern": r"^\d{9}$"},
-        {"name": "ogrn", "label": _("ОГРН"), "hint": _("13 цифр (юр) или 15 (ИП)"),
+        {"name": "ogrn", "label": _l("ОГРН"), "hint": _l("13 цифр (юр) или 15 (ИП)"),
          "pattern": r"^\d{13}(\d{2})?$"},
     ],
     "AE": [
-        {"name": "inn",  "label": "Trade License No.", "hint": _("Например 5022051 (RAKEZ / DED / IFZA)"),
+        {"name": "inn",  "label": "Trade License No.", "hint": _l("Например 5022051 (RAKEZ / DED / IFZA)"),
          "required": True},
-        {"name": "ogrn", "label": "Tax Registration No. (TRN)", "hint": _("15 цифр (если зарегистрирован для VAT)"),
+        {"name": "ogrn", "label": "Tax Registration No. (TRN)", "hint": _l("15 цифр (если зарегистрирован для VAT)"),
          "pattern": r"^\d{15}$"},
-        {"name": "kpp",  "label": "Free Zone Authority", "hint": _("RAKEZ, JAFZA, DMCC, IFZA, и т.д.")},
+        {"name": "kpp",  "label": "Free Zone Authority", "hint": _l("RAKEZ, JAFZA, DMCC, IFZA, и т.д.")},
     ],
     "CN": [
         {"name": "inn",  "label": "Unified Social Credit Code (统一社会信用代码)",
-         "hint": _("18 символов: цифры + буквы"),
+         "hint": _l("18 символов: цифры + буквы"),
          "required": True, "pattern": r"^[0-9A-Z]{18}$"},
     ],
     "DE": [
         {"name": "inn",  "label": "Handelsregisternummer (HRB)",
-         "hint": _("Например HRB 12345 + город регистрации"), "required": True},
-        {"name": "kpp",  "label": "Steuernummer", "hint": _("Налоговый номер компании")},
-        {"name": "ogrn", "label": "USt-IdNr (VAT ID)", "hint": _("Формат DE + 9 цифр")},
+         "hint": _l("Например HRB 12345 + город регистрации"), "required": True},
+        {"name": "kpp",  "label": "Steuernummer", "hint": _l("Налоговый номер компании")},
+        {"name": "ogrn", "label": "USt-IdNr (VAT ID)", "hint": _l("Формат DE + 9 цифр")},
     ],
     "TR": [
-        {"name": "inn",  "label": "Vergi Numarası (Tax No.)", "hint": _("10 цифр"),
+        {"name": "inn",  "label": "Vergi Numarası (Tax No.)", "hint": _l("10 цифр"),
          "required": True, "pattern": r"^\d{10}$"},
         {"name": "ogrn", "label": "Ticaret Sicil Numarası", "hint": "Trade Registry Number"},
     ],
     "US": [
-        {"name": "inn",  "label": "EIN (Federal Tax ID)", "hint": _("Формат XX-XXXXXXX"),
+        {"name": "inn",  "label": "EIN (Federal Tax ID)", "hint": _l("Формат XX-XXXXXXX"),
          "required": True, "pattern": r"^\d{2}-?\d{7}$"},
         {"name": "kpp",  "label": "State of Incorporation", "hint": "DE / CA / NY / FL / …"},
     ],
     "GB": [
         {"name": "inn",  "label": "Company Number (Companies House)",
-         "hint": _("8 символов: цифры или 2 буквы + 6 цифр"), "required": True},
-        {"name": "ogrn", "label": "VAT Registration Number", "hint": _("GB + 9 цифр")},
+         "hint": _l("8 символов: цифры или 2 буквы + 6 цифр"), "required": True},
+        {"name": "ogrn", "label": "VAT Registration Number", "hint": _l("GB + 9 цифр")},
     ],
     "KZ": [
-        {"name": "inn",  "label": _("БИН / ИИН"), "hint": _("12 цифр"),
+        {"name": "inn",  "label": _l("БИН / ИИН"), "hint": _l("12 цифр"),
          "required": True, "pattern": r"^\d{12}$"},
     ],
     "BY": [
-        {"name": "inn",  "label": _("УНП"), "hint": _("9 цифр"),
+        {"name": "inn",  "label": _l("УНП"), "hint": _l("9 цифр"),
          "required": True, "pattern": r"^\d{9}$"},
     ],
 }
@@ -527,10 +527,10 @@ _COUNTRY_FIELDS = {
 # Дефолт для CN/IN/BR/IT/JP/KR/OTHER — универсальные поля
 _UNIVERSAL_FIELDS = [
     {"name": "inn",  "label": "Company Registration Number",
-     "hint": _("Регистрационный номер по реестру юр. лиц вашей страны"),
+     "hint": _l("Регистрационный номер по реестру юр. лиц вашей страны"),
      "required": True},
     {"name": "ogrn", "label": "Tax ID / VAT Number",
-     "hint": _("Налоговый идентификатор (если есть)")},
+     "hint": _l("Налоговый идентификатор (если есть)")},
 ]
 
 
@@ -676,34 +676,34 @@ def submit_legal_address(params, user, role):
 # Все прочие → SWIFT/BIC + IBAN (или Account No.). БИК (Russian) ≠ SWIFT/BIC.
 _BANK_FIELDS_BY_COUNTRY = {
     "RU": [
-        {"name": "bank_name",    "label": _("Наименование банка"), "required": True,
-         "hint": _("Например: ПАО Сбербанк, Тинькофф Банк, ВТБ")},
-        {"name": "bik",          "label": _("БИК банка"), "required": True,
-         "hint": _("9 цифр. Это российский Bank Identifier Code, не SWIFT."),
+        {"name": "bank_name",    "label": _l("Наименование банка"), "required": True,
+         "hint": _l("Например: ПАО Сбербанк, Тинькофф Банк, ВТБ")},
+        {"name": "bik",          "label": _l("БИК банка"), "required": True,
+         "hint": _l("9 цифр. Это российский Bank Identifier Code, не SWIFT."),
          "pattern": r"^\d{9}$"},
-        {"name": "bank_account", "label": _("Расчётный счёт"), "required": True,
-         "hint": _("20 цифр (начинается с 4070… для коммерческих организаций)"),
+        {"name": "bank_account", "label": _l("Расчётный счёт"), "required": True,
+         "hint": _l("20 цифр (начинается с 4070… для коммерческих организаций)"),
          "pattern": r"^\d{20}$"},
     ],
     "AE": [
         {"name": "bank_name",    "label": "Bank Name", "required": True,
-         "hint": _("Например: Emirates NBD (Gold & Diamond Park Branch), ADCB, …")},
+         "hint": _l("Например: Emirates NBD (Gold & Diamond Park Branch), ADCB, …")},
         {"name": "bik",          "label": "SWIFT / BIC Code", "required": True,
-         "hint": _("8 или 11 символов, например UNILAEAD"),
+         "hint": _l("8 или 11 символов, например UNILAEAD"),
          "pattern": r"^[A-Z0-9]{8}([A-Z0-9]{3})?$"},
         {"name": "bank_account", "label": "IBAN", "required": True,
-         "hint": _("Например: AE34 0470 0000 0020 0830 094"),
+         "hint": _l("Например: AE34 0470 0000 0020 0830 094"),
          "pattern": r"^AE\d{2}\s?(\d{4}\s?){4}\d{3}$"},
     ],
 }
 _BANK_UNIVERSAL = [
     {"name": "bank_name",    "label": "Bank Name", "required": True,
-     "hint": _("Полное наименование банка-получателя")},
+     "hint": _l("Полное наименование банка-получателя")},
     {"name": "bik",          "label": "SWIFT / BIC", "required": True,
-     "hint": _("8 или 11 символов (международный Bank Identifier Code)"),
+     "hint": _l("8 или 11 символов (международный Bank Identifier Code)"),
      "pattern": r"^[A-Z0-9]{8}([A-Z0-9]{3})?$"},
     {"name": "bank_account", "label": "IBAN / Account No.", "required": True,
-     "hint": _("IBAN если страна его поддерживает, иначе локальный номер счёта")},
+     "hint": _l("IBAN если страна его поддерживает, иначе локальный номер счёта")},
 ]
 
 
@@ -932,39 +932,39 @@ _FOCUS_FIELDS = {
 # Метаданные полей (label/type/placeholder/hint) — единый источник правды
 _FIELD_META = {
     "website": {
-        "label": _("Сайт компании"), "type": "url",
+        "label": _l("Сайт компании"), "type": "url",
         "placeholder": "https://example.com",
-        "hint": _("Покупатели проверят сайт перед сделкой — повышает доверие (+5 баллов внешней оценки)"),
+        "hint": _l("Покупатели проверят сайт перед сделкой — повышает доверие (+5 баллов внешней оценки)"),
     },
     "contact_email": {
-        "label": _("Контактный email"), "type": "email",
+        "label": _l("Контактный email"), "type": "email",
         "placeholder": "sales@example.com",
-        "hint": _("Куда писать по новым запросам"),
+        "hint": _l("Куда писать по новым запросам"),
     },
     "phone": {
-        "label": _("Телефон компании"),
+        "label": _l("Телефон компании"),
         "placeholder": "+971 50 123 4567",
-        "hint": _("Оперативная связь с оператором платформы"),
+        "hint": _l("Оперативная связь с оператором платформы"),
     },
     "whatsapp": {
         "label": "WhatsApp",
         "placeholder": "+971 50 123 4567",
-        "hint": _("Если есть — оператор подтвердит, что номер активен"),
+        "hint": _l("Если есть — оператор подтвердит, что номер активен"),
     },
     "telegram": {
         "label": "Telegram",
-        "placeholder": _("@example_company или +971…"),
-        "hint": _("Альтернатива WhatsApp — выберите удобный канал"),
+        "placeholder": _l("@example_company или +971…"),
+        "hint": _l("Альтернатива WhatsApp — выберите удобный канал"),
     },
     "warehouse_address": {
-        "label": _("Адрес склада (откуда отгружаете)"), "type": "textarea",
-        "placeholder": _("Город, улица, дом, индекс"),
-        "hint": _("Покупатель видит «откуда едет груз» — важно для оценки логистики"),
+        "label": _l("Адрес склада (откуда отгружаете)"), "type": "textarea",
+        "placeholder": _l("Город, улица, дом, индекс"),
+        "hint": _l("Покупатель видит «откуда едет груз» — важно для оценки логистики"),
     },
     "categories": {
-        "label": _("Бренды и категории запчастей"), "type": "textarea",
-        "placeholder": _("Например: CAT, Komatsu, Volvo CE — ходовая, гидравлика, двигатели"),
-        "hint": _("По чему вас будут искать в каталоге платформы"),
+        "label": _l("Бренды и категории запчастей"), "type": "textarea",
+        "placeholder": _l("Например: CAT, Komatsu, Volvo CE — ходовая, гидравлика, двигатели"),
+        "hint": _l("По чему вас будут искать в каталоге платформы"),
     },
 }
 

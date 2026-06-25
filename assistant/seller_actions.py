@@ -2608,8 +2608,8 @@ def _plural(n, one, few, many):
 # нет — показываем расчёт по FOB 0.4% (начислится при закрытии сделки).
 _BONUS_RATE = {"FOB": 0.40, "CIP": 0.50, "DDP": 0.70}
 _BONUS_MIN, _BONUS_MAX = 50.0, 5000.0
-_BONUS_STLBL = {"pending": _("в холде (14 дн)"), "released": _("зачислено"),
-                "withheld": _("удержано"), "reduced": _("−50% (вина)"), "estimate": _("расчётно")}
+_BONUS_STLBL = {"pending": _l("в холде (14 дн)"), "released": _l("зачислено"),
+                "withheld": _l("удержано"), "reduced": _l("−50% (вина)"), "estimate": _l("расчётно")}
 
 
 def _order_bonus(order):

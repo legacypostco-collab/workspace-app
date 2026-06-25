@@ -24,7 +24,7 @@ import logging
 from datetime import timedelta
 
 from django.utils import timezone
-from django.utils.translation import gettext as _
+from django.utils.translation import gettext as _, gettext_lazy as _l
 
 from .actions import ActionResult, register
 
@@ -726,16 +726,16 @@ FAQ_ENTRIES = [
 
 
 _CATEGORY_LABEL = {
-    "registration":   _("Регистрация"),
-    "kyb":            _("KYB / Верификация"),
-    "payment":        _("Заказы и оплата"),
-    "delivery":       _("Доставка и сроки"),
-    "claims":         _("Рекламации"),
-    "contacts":       _("Связь со сторонами"),
-    "bonuses":        _("Бонусы"),
-    "platform":       _("Платформа"),
-    "support":        _("Поддержка"),
-    "other":          _("Другое"),
+    "registration":   _l("Регистрация"),
+    "kyb":            _l("KYB / Верификация"),
+    "payment":        _l("Заказы и оплата"),
+    "delivery":       _l("Доставка и сроки"),
+    "claims":         _l("Рекламации"),
+    "contacts":       _l("Связь со сторонами"),
+    "bonuses":        _l("Бонусы"),
+    "platform":       _l("Платформа"),
+    "support":        _l("Поддержка"),
+    "other":          _l("Другое"),
 }
 
 
