@@ -6066,7 +6066,17 @@
       } catch(e){ console.error(e); }
     };
     state.ws.onclose = (ev) => {
-      if (ev.code === 4401) return;
+      if (ev.code === 4401) {
+        // Сервер отклонил как неавторизованного. Может быть гонка после логина
+        // (сессия ещё не зафиксирована). Ретраим тихо до 4 раз с 1с интервалом;
+        // если после 4 попыток всё ещё 4401 — пользователь реально не авторизован,
+        // WS будет переподключён явным вызовом connectWS() после логина.
+        if (state.wsRetry < 4) {
+          state.wsRetry++;
+          setTimeout(connectWS, 1000);
+        }
+        return;
+      }
       // Обрыв WS ПОСРЕДИ ответа (не дошёл 'done'): иначе остался бы зависший
       // индикатор + заблокированная кнопка. Тихо до-запрашиваем тот же текст
       // по HTTP (api сам ретраит обрыв) — пользователь обрыва не видит.
@@ -6531,10 +6541,13 @@
         method:'POST',
         body: JSON.stringify({conversation_id: state.convId, action, params}),
         // read-only действие → можно авто-ретраить обрыв канала (не задвоится).
-        // Auth-формы без confirmed — тоже показ формы (read-only) → ретраим, чтобы
-        // зависший POST не крутил спиннер вечно.
+        // Auth-формы без confirmed — тоже показ формы (read-only) → ретраим.
+        // start_login / start_registration с confirmed=true — тоже ретраим:
+        // логин идемпотентен (повторный вход в тот же акк безвреден), а без
+        // ретрая пользователь видит «Connection lost» если daphne перезапустился
+        // в момент отправки формы.
         retryNetwork: READONLY_ACTIONS.has(action)
-          || (AUTH_DISPLAY_ACTIONS.has(action) && !params.confirmed),
+          || AUTH_DISPLAY_ACTIONS.has(action),
       });
       if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
