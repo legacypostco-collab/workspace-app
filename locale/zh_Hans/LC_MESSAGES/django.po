@@ -1266,6 +1266,13 @@ msgstr "无权访问此订单。"
 msgid "Надёжный"
 msgstr "可信"
 
+#: assistant/negotiation.py:647 assistant/negotiation.py:1074
+#: assistant/onboarding.py:151 assistant/onboarding.py:153
+#: assistant/onboarding.py:384 assistant/operator_actions.py:3325
+#: assistant/support_hub.py:391
+msgid "Проверка"
+msgstr "标准"
+
 #: assistant/actions.py:2828 assistant/actions.py:3399
 #: assistant/actions.py:4449 assistant/actions.py:6471
 #: assistant/negotiation.py:647 assistant/negotiation.py:1074

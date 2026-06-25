@@ -3537,6 +3537,18 @@
   "es": "Mis planos",
   "ar": "رسوماتي"
  },
+ "Открыть · перетащите в папку": {
+  "en": "Open · drag to folder",
+  "zh-hans": "打开 · 拖入文件夹",
+  "es": "Abrir · arrastrar a carpeta",
+  "ar": "فتح · اسحب إلى المجلد"
+ },
+ "Привязать к позиции каталога": {
+  "en": "Link to catalog item",
+  "zh-hans": "关联到目录项",
+  "es": "Vincular a posición del catálogo",
+  "ar": "ربط بعنصر الكتالوج"
+ },
  "Пусто — перетащите сюда чертёж": {
   "en": "Empty — drag a drawing here",
   "zh-hans": "空——将图纸拖到此处",

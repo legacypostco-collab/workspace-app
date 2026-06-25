@@ -1999,13 +1999,13 @@
       const ungrouped = d.ungrouped || [];
       const itemHtml = (r) => `
         <div class="dw-row" data-drawing-id="${esc(String(r.id))}">
-          <div class="dw-item" draggable="true" data-drawing-id="${esc(String(r.id))}" data-url="${esc(r.url || '')}" title="Открыть · перетащите в папку">
+          <div class="dw-item" draggable="true" data-drawing-id="${esc(String(r.id))}" data-url="${esc(r.url || '')}" title="${tr('Открыть · перетащите в папку')}">
             <span class="dw-grip">⠿</span>
             <span class="dw-ibody">
               <span class="dw-ititle">${esc(r.title || '')}</span>
               <span class="dw-isub">${esc(r.subtitle || '')}</span>
             </span>
-            <span class="dw-link-btn" title="Привязать к позиции каталога">🔗</span>
+            <span class="dw-link-btn" title="${tr('Привязать к позиции каталога')}">🔗</span>
           </div>
           <div class="dw-linkpanel">
             <input class="dw-linkinput" type="text" placeholder="Артикул или название позиции — напр. 6D102" autocomplete="off" oninput="window.__dwLinkInline&&window.__dwLinkInline(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();window.__dwLinkInline&&window.__dwLinkInline(this,true);}"/>

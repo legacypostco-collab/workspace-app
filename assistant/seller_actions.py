@@ -9,7 +9,7 @@ import logging
 from decimal import Decimal
 
 from django.utils import timezone
-from django.utils.translation import gettext as _, ngettext
+from django.utils.translation import gettext as _, gettext_lazy as _l, ngettext
 
 from .actions import ActionResult, register
 from .rfq_mode_badge import mode_badge_with_sla
@@ -3655,8 +3655,8 @@ def _drawing_owner(user, role):
     return user if (role or "").startswith("buyer") else _effective_seller(user)
 
 
-_DRAWING_ST = {"draft": _("черновик"), "on_review": _("на проверке"), "approved": _("✓ одобрен"),
-               "rejected": _("✗ отклонён"), "archived": _("архив")}
+_DRAWING_ST = {"draft": _l("черновик"), "on_review": _l("на проверке"), "approved": _l("✓ одобрен"),
+               "rejected": _l("✗ отклонён"), "archived": _l("архив")}
 
 
 def _drawing_row(d):

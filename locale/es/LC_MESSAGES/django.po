@@ -897,6 +897,13 @@ msgstr "Sin acceso a este pedido."
 msgid "Надёжный"
 msgstr "Fiable"
 
+#: assistant/negotiation.py:647 assistant/negotiation.py:1074
+#: assistant/onboarding.py:151 assistant/onboarding.py:153
+#: assistant/onboarding.py:384 assistant/operator_actions.py:3325
+#: assistant/support_hub.py:391
+msgid "Проверка"
+msgstr "Estándar"
+
 #: assistant/actions.py:2823 assistant/actions.py:3394 assistant/actions.py:4444 assistant/actions.py:6463 assistant/negotiation.py:647 assistant/negotiation.py:1074 assistant/onboarding.py:151 assistant/onboarding.py:153 assistant/operator_actions.py:3325 marketplace/models.py:996 templates/admin_panel/user_detail.html:51 templates/admin_panel/user_detail.html:273
 msgid "Песочница"
 msgstr "Entorno de prueba"
