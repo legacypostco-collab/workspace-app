@@ -1823,7 +1823,7 @@
 
   async function markNotifRead(id) {
     try {
-      const r = await api('/api/assistant/notifications/' + id + '/read/', {method:'POST', body: JSON.stringify({})});
+      const r = await api('/api/assistant/notifications/' + id + '/read/', {method:'POST', body: JSON.stringify({}), retryNetwork: true});
       const it = notif.items.find(x => x.id === id);
       if (it && !it.is_read) {
         it.is_read = true;
@@ -1838,7 +1838,7 @@
 
   window.markAllNotifsRead = async function() {
     try {
-      await api('/api/assistant/notifications/read-all/', {method:'POST', body: JSON.stringify({})});
+      await api('/api/assistant/notifications/read-all/', {method:'POST', body: JSON.stringify({}), retryNetwork: true});
       notif.items.forEach(x => x.is_read = true);
       notif.byKind = {};
       setBellBadge(0);
@@ -4479,12 +4479,11 @@
       if (warehouseId !== null && warehouseId !== undefined && warehouseId !== '') {
         params.warehouse_id = warehouseId;
       }
-      fetch('/api/assistant/action/', {
+      api('/api/assistant/action/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
-        credentials: 'same-origin',
         body: JSON.stringify({ action: 'seller_catalog', params: params }),
-      }).then(function(r){ return r.json(); }).then(function(resp){
+        retryNetwork: true,
+      }).then(function(resp){
         // Гонка: пока ждали ответ, юзер мог изменить запрос — игнорим устаревший.
         if ((inp.value || '').trim() !== q) return;
         var cards = (resp && resp.cards) || [];
@@ -4530,12 +4529,11 @@
       if (inp.dataset.field) params[inp.dataset.field] = inp.value;
     });
     btn.disabled = true; btn.textContent = '⏳ Сохраняю…';
-    fetch('/api/assistant/action/', {
+    api('/api/assistant/action/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
-      credentials: 'same-origin',
       body: JSON.stringify({ action: 'edit_product', params: params }),
-    }).then(function(r){ return r.json(); }).then(function(resp){
+      retryNetwork: true,
+    }).then(function(resp){
       btn.disabled = false;
       if (resp && resp.error) { btn.textContent = '💾 Сохранить'; if (window.toast) window.toast('❌ ' + resp.error, 3000); return; }
       // Обновляем сводку строки на месте: артикул / название / цена / наличие.
@@ -5651,14 +5649,13 @@
     btn.disabled = true;
     btn.dataset._busy = '1';
     try {
-      const r = await fetch('/api/assistant/action/', {
-        method:'POST', credentials:'same-origin',
-        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+      const j = await api('/api/assistant/action/', {
+        method:'POST',
         body: JSON.stringify({action:'complete_trigger',
           params:{order_id: orderId, status, trigger_id: triggerId}}),
+        retryNetwork: true,
       });
-      const j = await r.json();
-      if (!r.ok || j.error) {
+      if (j.error) {
         btn.disabled = false; delete btn.dataset._busy;
         window.toast && window.toast('❌ ' + (j.error || tr('common.error')), 3000);
         return;
@@ -5717,12 +5714,11 @@
       }
       const status = (j.text || '').match(/«([^»]+)»/)?.[1] || tr('следующий этап');
       // Получаем свежую версию pipeline и перерисовываем КОНКРЕТНУЮ карточку
-      const r2 = await fetch('/api/assistant/action/', {
-        method:'POST', credentials:'same-origin',
-        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+      const j2 = await api('/api/assistant/action/', {
+        method:'POST',
         body: JSON.stringify({action:'seller_pipeline', params:{}}),
+        retryNetwork: true,
       });
-      const j2 = await r2.json();
       const cardData = (j2.cards || []).find(c => c.type === 'seller_queue');
       if (cardData && card && typeof window.renderSellerQueueInto === 'function') {
         window.renderSellerQueueInto(card, cardData.data);
@@ -5770,15 +5766,13 @@
     });
     if (!ok) return;
     try {
-      const r = await fetch('/api/assistant/action/', {
+      const j = await api('/api/assistant/action/', {
         method:'POST',
-        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
-        credentials:'same-origin',
         body: JSON.stringify({action:'seller_cancel_pending', params:{order_id: orderId}}),
+        retryNetwork: true,
       });
-      const j = await r.json();
-      if (!r.ok || j.error) {
-        window.toast && window.toast('❌ Ошибка: ' + (j.error || r.status), 3000);
+      if (j.error) {
+        window.toast && window.toast('❌ Ошибка: ' + j.error, 3000);
         return;
       }
       // Убираем строку заказа из DOM
@@ -5807,18 +5801,16 @@
       cancelLabel: tr('common.do_not_cancel'),
     });
     if (!ok) return;
-    // Прямой fetch вместо quickAction — чтобы дождаться ответа и убрать
-    // карточку отменённого заказа из DOM в текущем списке.
+    // api() вместо fetch — чтобы дождаться ответа и убрать карточку отменённого
+    // заказа из DOM в текущем списке; retryNetwork=true т.к. отмена идемпотентна.
     try {
-      const r = await fetch('/api/assistant/action/', {
+      const j = await api('/api/assistant/action/', {
         method:'POST',
-        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
-        credentials:'same-origin',
         body: JSON.stringify({action:'cancel_order', params:{order_id: orderId}}),
+        retryNetwork: true,
       });
-      const j = await r.json();
-      if (!r.ok || j.error) {
-        window.toast && window.toast('❌ Ошибка: ' + (j.error || r.status), 3000);
+      if (j.error) {
+        window.toast && window.toast('❌ Ошибка: ' + j.error, 3000);
         return;
       }
       // Убираем все карточки этого заказа из текущего DOM
@@ -5865,14 +5857,13 @@
     });
     if (!ok) return;
     try {
-      const r = await fetch('/api/assistant/action/', {
+      const j = await api('/api/assistant/action/', {
         method:'POST',
-        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
-        credentials:'same-origin',
         body: JSON.stringify({action:'seller_warehouses',
                               params:{warehouse_id: wid, action: 'delete'}}),
+        retryNetwork: true,
       });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (j && j.error) throw new Error(j.error);
       // Удаляем строку склада из DOM во всех карточках чата, чтобы клик
       // по ней не пытался снова открыть несуществующий склад.
       document.querySelectorAll(`.wh-row[data-params*='"warehouse_id":${wid}']`).forEach(row => {
@@ -5893,14 +5884,12 @@
     const next = prompt(tr('prompt.rename_warehouse'), oldName || '');
     if (!next || !next.trim() || next.trim() === oldName) return;
     try {
-      const r = await fetch('/api/assistant/action/', {
+      const j = await api('/api/assistant/action/', {
         method:'POST',
-        headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
-        credentials:'same-origin',
         body: JSON.stringify({action:'seller_warehouses',
                               params:{warehouse_id: wid, rename_to: next.trim()}}),
+        retryNetwork: true,
       });
-      const j = await r.json();
       addMessage('assistant', j.text || '✓ Переименовано', j.cards || [], j.actions || []);
     } catch(e) {
       addMessage('assistant', '⚠️ Не удалось переименовать: ' + (e.message || e));
@@ -6077,6 +6066,12 @@
         }
         return;
       }
+      // 1001=GoingAway, 1006=Abnormal, 1011=InternalError, 1012=ServiceRestart, 1013=TryAgain
+      // — все означают рестарт сервера. Сбрасываем счётчик чтобы первая попытка
+      // была через 2с, а не через 8-30с накопленного backoff'а.
+      const serverRestart = ev.code === 1001 || ev.code === 1006
+        || ev.code === 1011 || ev.code === 1012 || ev.code === 1013;
+      if (serverRestart) state.wsRetry = 0;
       // Обрыв WS ПОСРЕДИ ответа (не дошёл 'done'): иначе остался бы зависший
       // индикатор + заблокированная кнопка. Тихо до-запрашиваем тот же текст
       // по HTTP (api сам ретраит обрыв) — пользователь обрыва не видит.
@@ -6407,6 +6402,7 @@
       const r = await api('/api/assistant/action/', {
         method: 'POST',
         body: JSON.stringify({conversation_id: state.convId, action: 'seller_inbox', params: {}}),
+        retryNetwork: true,
       });
       // Берём свежие карточки и подменяем содержимое последней msg-cards
       // которая принадлежит ранее-рендеренному seller_inbox.
@@ -6888,6 +6884,7 @@
       const r = await api('/api/assistant/action/', {
         method: 'POST',
         body: JSON.stringify({conversation_id: state.convId, action, params}),
+        retryNetwork: true,
       });
       const card = (r.cards || []).find(c => c.type === 'drawings');
       if (card && dwCard && dwCard.isConnected) {
@@ -6919,6 +6916,7 @@
       api('/api/assistant/action/', {
         method: 'POST',
         body: JSON.stringify({conversation_id: state.convId, action: 'link_drawing', params: {drawing_id: did, q}}),
+        retryNetwork: true,
       }).then(function(resp) {
         if ((inp.value || '').trim() !== q) return; // гонка
         const c = (resp.cards || []).find(x => x.type === 'drawing_link');
@@ -6950,6 +6948,7 @@
       api('/api/assistant/action/', {
         method: 'POST',
         body: JSON.stringify({conversation_id: state.convId, action: 'link_drawing', params: {drawing_id: drawingId, q}}),
+        retryNetwork: true,
       }).then(function(resp) {
         if ((inp.value || '').trim() !== q) return; // гонка
         const c = (resp.cards || []).find(x => x.type === 'drawing_link');
@@ -6976,6 +6975,7 @@
       api('/api/assistant/action/', {
         method: 'POST',
         body: JSON.stringify({conversation_id: state.convId, action: 'op_drawings_by_part', params: {q}}),
+        retryNetwork: true,
       }).then(function(resp) {
         if ((inp.value || '').trim() !== q) return;
         const c = (resp.cards || []).find(x => x.type === 'op_drawings');
