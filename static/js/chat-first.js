@@ -4222,7 +4222,7 @@
         // Поставщик: бейдж статуса + рейтинг + кнопка drill-down (если есть альт-офферы)
         const statusCls = {trusted:'sp-trusted', sandbox:'sp-sandbox', risky:'sp-risky'}[it.supplier_status] || '';
         // Цвет ТЕКСТА статуса (без плашки): зелёный/оранжевый/красный.
-        const _supColor = {trusted:'#16a34a', sandbox:'#d97706', risky:'#dc2626'}[it.supplier_status] || 'inherit';
+        const _supColor = {trusted:'#16a34a', sandbox:'#b45309', risky:'#dc2626'}[it.supplier_status] || 'inherit';
         let supplierCell;
         if (it.supplier_status_badge) {
           // Только цифра рейтинга — статус передаётся цветом текста.
@@ -4252,7 +4252,7 @@
         if (clickable) {
           const suppliers = it.alt_suppliers || [];
           const supRows = suppliers.map((s, i) => {
-            const _stColor = ({trusted:'#16a34a',sandbox:'#d97706',risky:'#dc2626'})[s.status] || 'inherit';
+            const _stColor = ({trusted:'#16a34a',sandbox:'#b45309',risky:'#dc2626'})[s.status] || 'inherit';
             const _offerData = esc(JSON.stringify({part_id:s.part_id,price:s.price,currency:s.currency||'USD',condition:s.condition,rating:s.rating,status:s.status}));
             return `<tr class="${s.is_primary ? 'as-row as-primary' : 'as-row'}" data-row-idx="${idx}" data-offer="${_offerData}" style="cursor:pointer;" title="${tr('Выбрать котировку')}">
               <td class="as-rank">${i + 1}</td>
@@ -5166,7 +5166,7 @@
     if (condCell) condCell.textContent = ({oem:'OEM',aftermarket:'Aftermarket',analog:'Aftermarket',reman:'REMAN'})[offer.condition]||offer.condition||'—';
     const spPlain = mainRow.querySelector('.sp-plain');
     if (spPlain) {
-      spPlain.style.color = ({trusted:'#16a34a',sandbox:'#d97706',risky:'#dc2626'})[offer.status]||'inherit';
+      spPlain.style.color = ({trusted:'#16a34a',sandbox:'#b45309',risky:'#dc2626'})[offer.status]||'inherit';
       spPlain.textContent = Number(offer.rating||0).toFixed(1);
     }
     mainRow.style.outline = '2px solid #4ade80';
