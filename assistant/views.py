@@ -734,6 +734,20 @@ class ActionView(APIView):
             return Response({"conversation_id": None,
                              **_handle_switch_role_login(request, params)})
 
+        # start_login / start_registration для уже аутентифицированного пользователя:
+        # это устаревшие кнопки из stale-сообщений или случайный повторный клик.
+        # Вместо «No permission» предлагаем сменить аккаунт или вернуться домой.
+        if action in ("start_login", "start_registration"):
+            return Response({
+                "conversation_id": None,
+                "text": _("Вы уже авторизованы как «%(u)s». Хотите войти под другим аккаунтом?") % {"u": request.user.username},
+                "actions": [
+                    {"action": "switch_role_login", "label": _("🔄 Сменить аккаунт")},
+                    {"action": "go_home",            "label": _("🏠 На главную")},
+                ],
+                "cards": [], "suggestions": [], "contextual_actions": [],
+            })
+
         conv_id = request.data.get("conversation_id")
 
         from .conv_category import category_for_action, find_or_create_conv, title_for_action
