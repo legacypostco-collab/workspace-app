@@ -4270,7 +4270,7 @@
           detailRow = `<tr class="spec-detail-row" data-detail-for="${idx}" style="display:none;">
             <td colspan="12" class="spec-detail-cell">
               <div class="as-block">
-                <div class="as-title">🔍 ${suppliers.length} поставщик${suppliers.length === 1 ? '' : (suppliers.length < 5 ? 'а' : 'ов')} по OEM <b>${esc(it.id)}</b></div>
+                <div class="as-title">🔍 ${window.t('{n} поставщик(ов) по OEM', {n: suppliers.length})} <b>${esc(it.id)}</b></div>
                 <table class="as-table">
                   <thead><tr>
                     <th class="as-col-rank">#</th><th class="as-col-label">Поставщик</th><th class="as-col-status">Статус</th><th class="as-col-rating">Рейтинг</th><th class="as-col-price">Цена EXW</th><th class="as-col-cond">Состояние</th><th class="as-col-stock">Остаток</th><th class="as-col-wh">Склад</th><th class="as-col-score">Score</th><th class="as-col-pick"></th>
