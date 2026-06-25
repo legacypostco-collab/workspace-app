@@ -5169,7 +5169,7 @@
       spPlain.style.color = ({trusted:'#16a34a',sandbox:'#b45309',risky:'#dc2626'})[offer.status]||'inherit';
       spPlain.textContent = Number(offer.rating||0).toFixed(1);
     }
-    mainRow.style.outline = '2px solid #4ade80';
+    mainRow.style.outline = '2px solid #16a34a';
     mainRow.style.outlineOffset = '-2px';
     setTimeout(()=>{ mainRow.style.outline=''; mainRow.style.outlineOffset=''; }, 1600);
     const tbody = mainRow.parentElement;
