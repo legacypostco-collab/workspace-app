@@ -1461,9 +1461,12 @@
     return '<span class="spec-name">' + orig + '</span>';
   }
   const fmtMoney = (v, c='USD') => {
-    if (!v && v !== 0) return '—';
+    if (v == null || v === '') return '—';
+    const n = Number(v);
+    if (!n) return '—';
     const sym = {USD:'$', EUR:'€', RUB:'₽', CNY:'¥'}[c] || '';
-    return sym + Number(v).toLocaleString('en-US', {maximumFractionDigits:0});
+    const digits = n < 1 ? 2 : 0;
+    return sym + n.toLocaleString('en-US', {minimumFractionDigits:digits, maximumFractionDigits:digits});
   };
 
   // Read-only действия (дашборды/очереди/списки/детали/аналитика) — их безопасно
