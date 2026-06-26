@@ -83,8 +83,15 @@
 
   <!-- Parts -->
   <div data-panel-group="catalog" data-panel-key="parts">
+    {% if current_warehouse and warehouse_label %}
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(100,181,246,0.08);border-radius:8px;margin-bottom:12px;border:1px solid rgba(100,181,246,0.25);">
+      <span style="font-size:13px;color:#64B5F6;font-weight:600;">Склад: {{ warehouse_label }}</span>
+      <a href="/admin-panel/catalog/" style="font-size:11px;color:#919191;text-decoration:none;margin-left:auto;">✕ Снять фильтр</a>
+    </div>
+    {% endif %}
     <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
       <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;flex:1;" id="catalogFilterForm">
+      {% if current_warehouse %}<input type="hidden" name="warehouse" value="{{ current_warehouse }}"/>{% endif %}
       <input type="text" name="q" class="ap-input" placeholder="{% trans "Поиск по OEM или названию..." %}" style="max-width:200px;" value="{{ search }}"/>
       <select name="seller" class="ap-select" onchange="this.form.submit()">
         <option value="">{% trans "Все поставщики" %}</option>
@@ -111,7 +118,7 @@
         <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>{% trans "Неактивные" %}</option>
       </select>
       <button type="submit" class="ap-btn ap-btn-primary">{% trans "Найти" %}</button>
-      {% if current_seller or current_brand or current_category or status_filter or search or show %}
+      {% if current_seller or current_brand or current_category or status_filter or search or show or current_warehouse %}
       <a href="/admin-panel/catalog/" class="ap-btn ap-btn-warn" style="text-decoration:none;">{% trans "Сбросить" %}</a>
       {% endif %}
       </form>

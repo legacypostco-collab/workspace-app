@@ -6135,7 +6135,8 @@ def admin_panel_catalog(request):
     current_seller = request.GET.get("seller", "")
     current_brand = request.GET.get("brand", "")
     current_category = request.GET.get("category", "")
-    show = request.GET.get("show", "parts")
+    current_warehouse = request.GET.get("warehouse", "")
+    show = request.GET.get("show", "")
 
     raw_imports = PricelistImport.objects.select_related("seller").order_by("-created_at")[:10]
     recent_imports = [
@@ -6170,6 +6171,15 @@ def admin_panel_catalog(request):
         qs = qs.filter(brand__name=current_brand)
     if current_category:
         qs = qs.filter(category__name=current_category)
+    if current_warehouse:
+        qs = qs.filter(warehouse_id=current_warehouse)
+
+    # Resolve warehouse name for display
+    warehouse_label = ""
+    if current_warehouse:
+        from marketplace.models import SellerWarehouse as _SW
+        wh = _SW.objects.filter(id=current_warehouse).first()
+        warehouse_label = wh.name if wh else current_warehouse
 
     # POST: bulk actions on parts
     if request.method == "POST":
@@ -6207,6 +6217,7 @@ def admin_panel_catalog(request):
         "sellers_list": User.objects.filter(profile__role="seller").select_related("profile")[:100],
         "search": search, "current_seller": current_seller,
         "current_brand": current_brand, "current_category": current_category,
+        "current_warehouse": current_warehouse, "warehouse_label": warehouse_label,
         "status_filter": status_filter,
         "has_prev": page_obj.has_previous(),
         "has_next": page_obj.has_next(),
