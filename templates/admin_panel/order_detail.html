@@ -117,7 +117,7 @@
           {% for item in items %}
           <tr>
             <td><span style="color:#64B5F6;">{{ item.part.oem_number }}</span></td>
-            <td>{{ item.part.name|truncatechars:35 }}</td>
+            <td>{{ item.part.title|truncatechars:35 }}</td>
             <td class="text-secondary">{{ item.part.brand.name|default:"—" }}</td>
             <td>{{ item.quantity }}</td>
             <td>${{ item.unit_price|floatformat:2 }}</td>
@@ -202,7 +202,7 @@
       {% if documents %}
         {% for doc in documents %}
         <div class="ap-card-elevated" style="margin-bottom:6px;font-size:13px;">
-          {{ doc.get_doc_type_display|default:doc.doc_type }} <span class="text-secondary">{{ doc.uploaded_at|date:"d.m.Y" }}</span>
+          {{ doc.get_doc_type_display|default:doc.doc_type }} — {{ doc.title }} <span class="text-secondary">{{ doc.created_at|date:"d.m.Y" }}</span>
         </div>
         {% endfor %}
       {% else %}

@@ -36,7 +36,7 @@
   <div style="max-height:200px;overflow:auto;">
     {% for err in imp.errors %}
     <div style="font-size:12px;color:#919191;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
-      <span style="color:#E85C0D;">{% blocktrans with err_row_default_?=err.row|default:"?" %}Строка {{ err.row|default:"?" }}:{% endblocktrans %}</span> {{ err.reason|default:err }}
+      <span style="color:#E85C0D;">Строка {{ err.row|default:"?" }}:</span> {{ err.reason|default:err }}
     </div>
     {% endfor %}
   </div>

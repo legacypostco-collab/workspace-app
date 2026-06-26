@@ -6309,6 +6309,217 @@ def admin_panel_moderation(request):
 
 
 @staff_member_required
+def admin_panel_order_detail(request, order_id):
+    from marketplace.models import Order, OrderItem, OrderEvent, OrderDocument, OrderClaim
+
+    order = get_object_or_404(Order.objects.select_related("buyer"), pk=order_id)
+    items = OrderItem.objects.filter(order=order).select_related("part__brand")
+    events = OrderEvent.objects.filter(order=order).order_by("created_at")
+    documents = OrderDocument.objects.filter(order=order).order_by("-created_at")
+    claims = OrderClaim.objects.filter(order=order).order_by("-created_at")
+
+    status_order = ["pending","reserve_paid","confirmed","in_production",
+                    "ready_to_ship","transit_abroad","customs","transit_rf",
+                    "shipped","delivered","completed"]
+    try:
+        current_step = status_order.index(order.status) + 1
+    except ValueError:
+        current_step = 1
+
+    if request.method == "POST":
+        new_status = request.POST.get("new_status")
+        new_payment_status = request.POST.get("new_payment_status")
+        if new_status and new_status in dict(Order.STATUS_CHOICES):
+            order.status = new_status
+            order.save(update_fields=["status"])
+        if new_payment_status and new_payment_status in dict(Order.PAYMENT_STATUS_CHOICES):
+            order.payment_status = new_payment_status
+            order.save(update_fields=["payment_status"])
+        return redirect(f"/admin-panel/orders/{order_id}/")
+
+    return render(request, "admin_panel/order_detail.html", {
+        "admin_active_nav": "orders",
+        "order": order, "items": items, "events": events,
+        "documents": documents, "claims": claims,
+        "current_step": current_step,
+        "status_choices": Order.STATUS_CHOICES,
+        "payment_status_choices": Order.PAYMENT_STATUS_CHOICES,
+    })
+
+
+@staff_member_required
+def admin_panel_rfq_detail(request, rfq_id):
+    from marketplace.models import RFQ, RFQItem
+
+    rfq = get_object_or_404(RFQ.objects.select_related("created_by"), pk=rfq_id)
+    items = RFQItem.objects.filter(rfq=rfq).select_related("matched_part__brand")
+
+    if request.method == "POST":
+        new_status = request.POST.get("new_status")
+        if new_status and new_status in dict(RFQ.STATUS_CHOICES):
+            rfq.status = new_status
+            rfq.save(update_fields=["status"])
+        return redirect(f"/admin-panel/rfq/{rfq_id}/")
+
+    return render(request, "admin_panel/rfq_detail.html", {
+        "admin_active_nav": "rfq",
+        "rfq": rfq, "items": items,
+        "status_choices": RFQ.STATUS_CHOICES,
+    })
+
+
+@staff_member_required
+def admin_panel_imports(request):
+    from marketplace.models import PricelistImport
+    from django.db.models import Sum
+
+    current_seller = request.GET.get("seller", "")
+    qs = PricelistImport.objects.select_related("seller").order_by("-created_at")
+    if current_seller:
+        qs = qs.filter(seller__username=current_seller)
+
+    agg = PricelistImport.objects.aggregate(
+        tc=Sum("created_rows"), tu=Sum("updated_rows")
+    )
+    total_imports = PricelistImport.objects.count()
+    total_created = agg["tc"] or 0
+    total_updated = agg["tu"] or 0
+    total_errors = PricelistImport.objects.filter(status="failed").count()
+
+    imports_list = [
+        {"id": i.id, "seller": i.seller, "seller_id": i.seller_id,
+         "filename": i.filename, "created_count": i.created_rows,
+         "updated_count": i.updated_rows, "error_count": 0,
+         "status": "success" if i.status == "imported" else i.status,
+         "created_at": i.created_at}
+        for i in qs[:100]
+    ]
+
+    sellers_list = User.objects.filter(profile__role="seller").order_by("username")[:100]
+
+    return render(request, "admin_panel/imports.html", {
+        "admin_active_nav": "catalog",
+        "total_imports": total_imports, "total_created": total_created,
+        "total_updated": total_updated, "total_errors": total_errors,
+        "imports": imports_list, "sellers_list": sellers_list,
+        "current_seller": current_seller,
+    })
+
+
+@staff_member_required
+def admin_panel_import_detail(request, import_id):
+    from marketplace.models import PricelistImport, Part
+
+    imp_obj = get_object_or_404(PricelistImport.objects.select_related("seller"), pk=import_id)
+    parts = Part.objects.filter(source_import_id=import_id).select_related("brand").order_by("-created_at")
+    parts_count = parts.count()
+
+    # POST: bulk approve/block
+    if request.method == "POST":
+        action = request.POST.get("action")
+        selected_ids = request.POST.getlist("selected_parts")
+        note = request.POST.get("admin_note", "")
+        if action == "activate_all":
+            parts.update(availability_status="active", is_active=True)
+        elif action == "block_all":
+            parts.update(availability_status="blocked", admin_note=note)
+        elif action == "bulk_activate" and selected_ids:
+            Part.objects.filter(id__in=selected_ids).update(availability_status="active", is_active=True)
+        elif action == "bulk_block" and selected_ids:
+            Part.objects.filter(id__in=selected_ids).update(availability_status="blocked", admin_note=note)
+        return redirect(f"/admin-panel/imports/{import_id}/")
+
+    # Build imp dict for template (which uses imp.created_count etc.)
+    imp_dict = type("Imp", (), {
+        "id": imp_obj.id, "seller": imp_obj.seller, "seller_id": imp_obj.seller_id,
+        "filename": imp_obj.filename, "created_count": imp_obj.created_rows,
+        "updated_count": imp_obj.updated_rows, "error_count": 0,
+        "status": "success" if imp_obj.status == "imported" else imp_obj.status,
+        "created_at": imp_obj.created_at, "errors": [],
+    })()
+
+    return render(request, "admin_panel/import_detail.html", {
+        "admin_active_nav": "catalog",
+        "imp": imp_dict, "parts": parts, "parts_count": parts_count,
+    })
+
+
+@staff_member_required
+def admin_panel_user_block(request, user_id):
+    if request.method == "POST":
+        target = get_object_or_404(User, pk=user_id)
+        if not target.is_superuser:
+            target.is_active = False
+            target.save(update_fields=["is_active"])
+    return redirect(f"/admin-panel/users/{user_id}/")
+
+
+@staff_member_required
+def admin_panel_user_unblock(request, user_id):
+    if request.method == "POST":
+        target = get_object_or_404(User, pk=user_id)
+        target.is_active = True
+        target.save(update_fields=["is_active"])
+    return redirect(f"/admin-panel/users/{user_id}/")
+
+
+@staff_member_required
+def admin_panel_export_csv(request, report_type):
+    import csv as _csv
+    import io as _io
+    from django.http import HttpResponse
+    from marketplace.models import Order, Part, RFQ
+
+    if report_type == "orders":
+        rows = list(Order.objects.select_related("buyer").values_list(
+            "id","status","payment_status","total_amount","customer_name",
+            "customer_email","created_at","buyer__username"
+        ))
+        header = ["ID","Статус","Оплата","Сумма","Клиент","Email","Дата","Аккаунт"]
+    elif report_type == "users":
+        rows = list(User.objects.select_related("profile").values_list(
+            "id","username","email","profile__role","profile__company_name",
+            "is_active","date_joined"
+        ))
+        header = ["ID","Логин","Email","Роль","Компания","Активен","Регистрация"]
+    elif report_type == "parts":
+        rows = list(Part.objects.select_related("brand","seller").values_list(
+            "id","oem_number","title","brand__name","seller__username",
+            "price","currency","stock_quantity","availability_status","is_active"
+        ))
+        header = ["ID","OEM","Название","Бренд","Поставщик","Цена","Валюта","Остаток","Статус","Активна"]
+    elif report_type == "rfq":
+        rows = list(RFQ.objects.values_list(
+            "id","status","mode","urgency","customer_name","customer_email",
+            "company_name","created_at"
+        ))
+        header = ["ID","Статус","Режим","Срочность","Клиент","Email","Компания","Дата"]
+    elif report_type == "finance":
+        rows = list(Order.objects.values_list(
+            "id","payment_status","total_amount","reserve_amount","logistics_cost",
+            "customer_name","created_at"
+        ))
+        header = ["ID","Статус оплаты","Сумма","Резерв","Логистика","Клиент","Дата"]
+    elif report_type in ("events", "rfq_export"):
+        rows = []
+        header = ["Нет данных"]
+    else:
+        rows = []
+        header = []
+
+    buf = _io.StringIO()
+    buf.write("﻿")  # BOM for Excel
+    w = _csv.writer(buf)
+    w.writerow(header)
+    for row in rows:
+        w.writerow([str(v) if v is not None else "" for v in row])
+
+    response = HttpResponse(buf.getvalue(), content_type="text/csv; charset=utf-8-sig")
+    response["Content-Disposition"] = f'attachment; filename="{report_type}.csv"'
+    return response
+
+
+@staff_member_required
 def admin_panel_settings(request):
     import json as _json_mod
     settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")

@@ -48,8 +48,8 @@
         <tbody>
           {% for item in items %}
           <tr>
-            <td><span style="color:#64B5F6;">{{ item.oem_number }}</span></td>
-            <td>{{ item.description|truncatechars:35 }}</td>
+            <td><span style="color:#64B5F6;">{{ item.query }}</span></td>
+            <td class="text-secondary">—</td>
             <td>{{ item.quantity }}</td>
             <td>
               {% if item.matched_part %}
@@ -64,10 +64,10 @@
               {% else %}—{% endif %}
             </td>
             <td>
-              {% if item.decision == 'approved' %}<span class="ap-badge ap-badge-green">{% trans "Одобрено" %}</span>
-              {% elif item.decision == 'rejected' %}<span class="ap-badge ap-badge-orange">{% trans "Отклонено" %}</span>
-              {% elif item.decision %}<span class="ap-badge ap-badge-gray">{{ item.decision }}</span>
-              {% else %}<span class="ap-badge ap-badge-gray">—</span>{% endif %}
+              {% if item.state == 'auto_matched' %}<span class="ap-badge ap-badge-green">Auto</span>
+              {% elif item.state == 'needs_review' %}<span class="ap-badge ap-badge-orange">Review</span>
+              {% elif item.state == 'oem_manual' %}<span class="ap-badge ap-badge-blue">Manual</span>
+              {% else %}<span class="ap-badge ap-badge-gray">{{ item.state }}</span>{% endif %}
             </td>
           </tr>
           {% empty %}
