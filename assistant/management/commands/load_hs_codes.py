@@ -1,10 +1,11 @@
 """
-Загружает HS-коды из CSV и автоматически проставляет hs_code для всех Part.
+Загружает справочник HS-кодов из CSV в модель HSCode.
+
+hs_code на Part заполняется ТОЛЬКО таможенным брокером вручную (hs_verified=True).
+Авто-простановка намеренно отключена — точность <100% неприемлема.
 
 Запуск:
-    python manage.py load_hs_codes          # загрузить справочник
-    python manage.py load_hs_codes --assign # + проставить коды всем Part
-    python manage.py load_hs_codes --assign --only-empty  # только где пусто
+    python manage.py load_hs_codes   # загрузить/обновить справочник HSCode
 """
 from __future__ import annotations
 
@@ -104,18 +105,10 @@ def classify(title: str, brand_name: str | None) -> str | None:
 
 
 class Command(BaseCommand):
-    help = "Загрузить HS-коды и проставить всем Part"
-
-    def add_arguments(self, parser):
-        parser.add_argument("--assign", action="store_true",
-                            help="Проставить hs_code всем Part после загрузки")
-        parser.add_argument("--only-empty", action="store_true",
-                            help="Проставлять только там где hs_code пустой")
+    help = "Загрузить справочник HSCode (hs_code на Part — только брокер вручную)"
 
     def handle(self, *args, **options):
         self._load_csv()
-        if options["assign"]:
-            self._assign_all(options["only_empty"])
 
     # ── Загрузка CSV ──────────────────────────────────────────────────────────
 

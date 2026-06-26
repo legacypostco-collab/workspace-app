@@ -252,7 +252,9 @@ class Part(models.Model):
     air_port = models.CharField(max_length=120, blank=True,
         help_text="Аэропорт отправления")
     hs_code = models.CharField(max_length=20, blank=True, db_index=True,
-        help_text="Код ТН ВЭД / HS Code")
+        help_text="Код ТН ВЭД / HS Code — заполняется только брокером")
+    hs_verified = models.BooleanField(default=False,
+        help_text="True = код подтверждён таможенным брокером")
     backorder_allowed = models.BooleanField(default=False)
     mapping_status = models.CharField(max_length=20, choices=MAPPING_STATUS_CHOICES, default="auto")
     supplier_part_uid = models.CharField(max_length=80, blank=True)
