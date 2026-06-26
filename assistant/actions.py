@@ -1546,7 +1546,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
         # клин-lookup только если точного матча нет (редкий случай).
         candidates = list(
             Part.objects
-            .select_related("brand", "seller", "seller__profile")
+            .select_related("brand", "seller", "seller__profile", "warehouse")
             .filter(is_active=True, oem_number__in=oem_candidates)
         )
         if not candidates:
@@ -1559,7 +1559,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             if clean_candidates:
                 candidates = list(
                     Part.objects
-                    .select_related("brand", "seller", "seller__profile")
+                    .select_related("brand", "seller", "seller__profile", "warehouse")
                     .annotate(oem_clean=Upper(Replace(Replace(Replace(Replace(
                         "oem_number",
                         V("-"), V("")), V("."), V("")), V(" "), V("")), V("/"), V(""))))
@@ -1569,7 +1569,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             # Fallback 2: частичный icontains (limit 20)
             candidates = list(
                 Part.objects
-                .select_related("brand", "seller", "seller__profile")
+                .select_related("brand", "seller", "seller__profile", "warehouse")
                 .filter(is_active=True, oem_number__icontains=art)[:20]
             )
         # Фильтруем исключённых поставщиков
@@ -1678,7 +1678,8 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 "alt_suppliers": [
                     {
                         "label": (
-                            (getattr(getattr(o["part"].seller, "profile", None), "company_name", None)
+                            (getattr(o["part"].warehouse, "supplier_name", None)
+                             or getattr(getattr(o["part"].seller, "profile", None), "company_name", None)
                              or o["part"].seller.get_full_name()
                              or o["part"].seller.username)
                             if role in ("admin",) and o["part"].seller
