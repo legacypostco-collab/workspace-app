@@ -6139,13 +6139,23 @@ def admin_panel_catalog(request):
 
     raw_imports = PricelistImport.objects.select_related("seller").order_by("-created_at")[:10]
     recent_imports = [
-        {"id": i.id, "seller": i.seller,
+        {"id": i.id, "seller": i.seller, "seller_id": i.seller_id,
          "created_count": i.created_rows, "updated_count": i.updated_rows,
-         "created_at": i.created_at, "status": i.status}
+         "created_at": i.created_at,
+         "status": "success" if i.status == "imported" else i.status}
         for i in raw_imports
     ]
 
-    qs = Part.objects.select_related("brand", "seller", "category").order_by("-created_at")
+    # Apply "show" data-quality filters
+    show_qs = Part.objects.select_related("brand", "seller", "category")
+    if show == "no_price":
+        show_qs = show_qs.filter(is_active=True, price=0)
+    elif show == "no_brand":
+        show_qs = show_qs.filter(is_active=True, brand__isnull=True)
+    elif show == "zero_stock":
+        show_qs = show_qs.filter(is_active=True, stock_quantity=0)
+
+    qs = show_qs.order_by("-created_at")
     if search:
         qs = qs.filter(Q(oem_number__icontains=search) | Q(title__icontains=search))
     if status_filter == "blocked":
@@ -6157,13 +6167,32 @@ def admin_panel_catalog(request):
     if current_seller:
         qs = qs.filter(seller__username=current_seller)
     if current_brand:
-        qs = qs.filter(brand__slug=current_brand)
+        qs = qs.filter(brand__name=current_brand)
     if current_category:
-        qs = qs.filter(category__slug=current_category)
+        qs = qs.filter(category__name=current_category)
+
+    # POST: bulk actions on parts
+    if request.method == "POST":
+        action = request.POST.get("action")
+        part_id_single = request.POST.get("part_id")
+        selected_ids = request.POST.getlist("selected_parts")
+        note = request.POST.get("admin_note", "")
+        if action == "activate" and part_id_single:
+            Part.objects.filter(id=part_id_single).update(availability_status="active", is_active=True)
+        elif action == "block" and part_id_single:
+            Part.objects.filter(id=part_id_single).update(availability_status="blocked", admin_note=note)
+        elif action == "bulk_activate" and selected_ids:
+            Part.objects.filter(id__in=selected_ids).update(availability_status="active", is_active=True)
+        elif action == "bulk_block" and selected_ids:
+            Part.objects.filter(id__in=selected_ids).update(availability_status="blocked", admin_note=note)
+        return redirect("/admin-panel/catalog/")
 
     paginator = Paginator(qs, 50)
     page_num = int(request.GET.get("page", 1))
     page_obj = paginator.get_page(page_num)
+
+    categories = Category.objects.annotate(parts_count=Count("parts", filter=Q(parts__is_active=True))).order_by("name")[:50]
+    brands = Brand.objects.annotate(parts_count=Count("parts", filter=Q(parts__is_active=True))).order_by("name")[:100]
 
     return render(request, "admin_panel/catalog.html", {
         "admin_active_nav": "catalog",
@@ -6173,8 +6202,8 @@ def admin_panel_catalog(request):
         "no_price": no_price, "no_brand": no_brand, "zero_stock": zero_stock,
         "show": show, "recent_imports": recent_imports,
         "parts": page_obj,
-        "categories": Category.objects.all()[:50],
-        "brands": Brand.objects.order_by("name")[:100],
+        "categories": categories,
+        "brands": brands,
         "sellers_list": User.objects.filter(profile__role="seller").select_related("profile")[:100],
         "search": search, "current_seller": current_seller,
         "current_brand": current_brand, "current_category": current_category,
@@ -6221,20 +6250,34 @@ def admin_panel_moderation(request):
     sla_count = len(sla_breached)
     total_pending = supplier_count + claims_count + sla_count
 
-    # POST: approve / reject supplier
+    # POST: actions
     if request.method == "POST":
         action = request.POST.get("action")
-        uid = request.POST.get("user_id")
-        if uid and action in ("approve", "reject", "mark_risky"):
-            profile = UserProfile.objects.filter(user_id=uid).first()
-            if profile:
-                if action == "approve":
-                    profile.supplier_status = "trusted"
-                elif action == "reject":
-                    profile.supplier_status = "rejected"
-                elif action == "mark_risky":
-                    profile.supplier_status = "risky"
-                profile.save(update_fields=["supplier_status"])
+        # Supplier
+        pid = request.POST.get("profile_id")
+        if pid and action in ("approve_supplier", "reject_supplier"):
+            profile_obj = UserProfile.objects.filter(id=pid).first()
+            if profile_obj:
+                profile_obj.supplier_status = "trusted" if action == "approve_supplier" else "rejected"
+                profile_obj.save(update_fields=["supplier_status"])
+        # Part
+        part_id = request.POST.get("part_id")
+        if part_id and action == "activate_part":
+            Part.objects.filter(id=part_id).update(availability_status="active")
+        # Claim
+        claim_id_post = request.POST.get("claim_id")
+        if claim_id_post:
+            claim_obj = OrderClaim.objects.filter(id=claim_id_post).first()
+            if claim_obj:
+                if action == "approve_claim":
+                    claim_obj.status = "approved"
+                elif action == "reject_claim":
+                    claim_obj.status = "rejected"
+                elif action == "close_claim":
+                    claim_obj.status = "closed"
+                    claim_obj.closed_at = timezone.now()
+                extra = ["closed_at"] if action == "close_claim" else []
+                claim_obj.save(update_fields=["status"] + extra)
         return redirect("/admin-panel/moderation/")
 
     return render(request, "admin_panel/moderation.html", {
