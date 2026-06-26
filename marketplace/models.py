@@ -6,6 +6,25 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 
+class HSCode(models.Model):
+    """Справочник кодов HS (Harmonized System) — 2/4/6-значные."""
+    LEVEL_CHOICES = [(2, "Глава"), (4, "Группа"), (6, "Субпозиция")]
+
+    section   = models.CharField(max_length=5)
+    hscode    = models.CharField(max_length=10, unique=True, db_index=True)
+    description = models.CharField(max_length=500)
+    parent    = models.ForeignKey("self", null=True, blank=True,
+                    on_delete=models.SET_NULL, related_name="children",
+                    to_field="hscode")
+    level     = models.SmallIntegerField(choices=LEVEL_CHOICES)
+
+    class Meta:
+        ordering = ["hscode"]
+
+    def __str__(self) -> str:
+        return f"{self.hscode} — {self.description[:60]}"
+
+
 class Category(models.Model):
     name = models.CharField(max_length=120, unique=True)
     slug = models.SlugField(max_length=140, unique=True)
