@@ -5796,6 +5796,50 @@ def admin_panel_users(request, user_id=None):
 
 
 @staff_member_required
+def admin_panel_user_detail(request, user_id):
+    import datetime
+    from django.db.models import Sum
+    from marketplace.models import OrderItem, Part, SellerWarehouse, CompanyVerification
+
+    target = get_object_or_404(User.objects.select_related("profile"), pk=user_id)
+    profile = getattr(target, "profile", None)
+    try:
+        kyb = CompanyVerification.objects.get(user=target)
+    except CompanyVerification.DoesNotExist:
+        kyb = None
+
+    warehouses = (
+        SellerWarehouse.objects
+        .filter(seller=target)
+        .annotate(parts_count=Count("parts", filter=Q(parts__is_active=True)))
+        .order_by("-updated_at")
+    )
+
+    total_parts = Part.objects.filter(seller=target, is_active=True).count()
+
+    oi_qs = OrderItem.objects.filter(part__seller=target)
+    total_orders = oi_qs.values("order_id").distinct().count()
+    gmv = oi_qs.aggregate(g=Sum(F("unit_price") * F("quantity")))["g"] or 0
+
+    # Обработка POST: сохранить admin_note
+    if request.method == "POST" and profile:
+        note = request.POST.get("admin_note", "")
+        profile.admin_note = note
+        profile.save(update_fields=["admin_note"])
+
+    return render(request, "admin_panel/user_detail.html", {
+        "admin_active_nav": "users",
+        "u": target,
+        "profile": profile,
+        "kyb": kyb,
+        "warehouses": warehouses,
+        "total_parts": total_parts,
+        "total_orders": total_orders,
+        "gmv": gmv,
+    })
+
+
+@staff_member_required
 def admin_panel_orders(request):
     return render(request, "admin_panel/orders.html", {"admin_active_nav": "orders"})
 
