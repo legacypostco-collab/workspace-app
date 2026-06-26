@@ -1674,11 +1674,18 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 "has_reliable": _has_reliable,
                 "freshness_days": _freshness_days,
                 # Полный ранжированный список поставщиков для inline-раскрытия.
-                # Анонимизирован: только псевдоним #S{id%1000:03d} + бейдж.
+                # Анонимизирован для покупателя; для admin — реальное имя + ссылка.
                 "alt_suppliers": [
                     {
-                        "label": _('Поставщик #S%(or)s') % {'or': f"{(o['part'].seller_id or 0) % 1000:03d}"},
-                        "part_id": str(o["part"].id),  # для ручного выбора котировки
+                        "label": (
+                            (getattr(getattr(o["part"].seller, "profile", None), "company_name", None)
+                             or o["part"].seller.get_full_name()
+                             or o["part"].seller.username)
+                            if role in ("admin",) and o["part"].seller
+                            else _('Поставщик #S%(or)s') % {'or': f"{(o['part'].seller_id or 0) % 1000:03d}"}
+                        ),
+                        "seller_id": o["part"].seller_id if role in ("admin",) else None,
+                        "part_id": str(o["part"].id),
                         "price": o["price"],
                         "currency": "USD",
                         "rating": round(o["rating"], 1),
