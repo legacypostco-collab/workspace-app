@@ -100,6 +100,32 @@ SOURCES = {
 
 BATCH = 2000
 
+# OEM: есть и буква и цифра, ≥5 символов; или ≥8 чистых цифр (каталожный номер)
+_OEM_RE = re.compile(r'(?<!\w)([A-Z0-9][A-Z0-9/\-]{4,})(?!\w)')
+
+
+def _extract_oem(text: str) -> str | None:
+    """Вычленить первый OEM-парт-номер из строки названия."""
+    for m in _OEM_RE.finditer(text.upper()):
+        v = m.group(0)
+        has_let = any(c.isalpha() for c in v)
+        has_dig = any(c.isdigit() for c in v)
+        if has_let and has_dig and len(v) >= 5:
+            return v
+        if has_dig and not has_let and len(v) >= 8:
+            return v
+    return None
+
+
+def _normalize_greenway_sku(sku: str) -> str:
+    """r561692 / sma-120814316 / sma-cr9934 → R561692 / 120814316 / CR9934."""
+    s = sku.strip().lower()
+    for pfx in ("sma-cr-", "sma-cr", "sma-"):
+        if s.startswith(pfx):
+            s = s[len(pfx):]
+            break
+    return s.upper()
+
 
 # ── Парсеры ───────────────────────────────────────────────────────────────────
 
@@ -173,17 +199,25 @@ def _condition(val) -> str:
     return "oem"
 
 
-def _normalize(row: dict, src: dict) -> dict | None:
+def _normalize(key: str, row: dict, src: dict) -> dict | None:
     """Приводим поля любого источника к единой схеме."""
-    oem = (
-        row.get("sku") or row.get("oem") or row.get("part_number") or ""
-    ).strip()
-    if not oem:
-        return None
-
     name = (
         row.get("name") or row.get("product_name") or row.get("title") or ""
     ).strip()
+
+    # OEM — источник-зависимая логика
+    if key == "greenway":
+        raw = (row.get("sku") or "").strip()
+        oem = _normalize_greenway_sku(raw) if raw else ""
+    elif key in ("tractorparts", "fridayparts"):
+        oem = _extract_oem(name) or ""
+    else:
+        oem = (
+            row.get("sku") or row.get("oem") or row.get("part_number") or ""
+        ).strip()
+
+    if not oem:
+        return None
     if not name:
         name = oem
 
@@ -355,7 +389,7 @@ class Command(BaseCommand):
             if processed % 50_000 == 0:
                 self.stdout.write(f"   ... {processed} строк обработано")
 
-            norm = _normalize(row, src)
+            norm = _normalize(key, row, src)
             if not norm:
                 continue
 
