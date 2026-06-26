@@ -1682,10 +1682,10 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                              or getattr(getattr(o["part"].seller, "profile", None), "company_name", None)
                              or o["part"].seller.get_full_name()
                              or o["part"].seller.username)
-                            if role in ("admin",) and o["part"].seller
+                            if not _is_buyer_view(role) and o["part"].seller
                             else _('Поставщик #S%(or)s') % {'or': f"{(o['part'].seller_id or 0) % 1000:03d}"}
                         ),
-                        "seller_id": o["part"].seller_id if role in ("admin",) else None,
+                        "seller_id": o["part"].seller_id if not _is_buyer_view(role) else None,
                         "part_id": str(o["part"].id),
                         "price": o["price"],
                         "currency": "USD",
