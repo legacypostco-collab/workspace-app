@@ -5726,7 +5726,87 @@ def operator_manager_analytics(request):
 
 @staff_member_required
 def admin_panel_dashboard(request):
-    return render(request, "admin_panel/dashboard.html", {"admin_active_nav": "dashboard"})
+    import datetime, json as _json, os as _os
+    from django.db.models import Sum
+    from marketplace.models import (
+        Order, OrderClaim, OrderEvent, Part, RFQ, PricelistImport, UserProfile,
+    )
+    today = timezone.now().date()
+    week_ago = timezone.now() - datetime.timedelta(days=7)
+    month_ago = timezone.now() - datetime.timedelta(days=30)
+
+    orders_qs = Order.objects.all()
+    total_orders = orders_qs.count()
+    active_statuses = ["pending","reserve_paid","confirmed","in_production",
+                       "ready_to_ship","transit_abroad","customs","transit_rf","issuing"]
+    active_orders = orders_qs.filter(status__in=active_statuses).count()
+    total_gmv = orders_qs.aggregate(s=Sum("total_amount"))["s"] or 0
+    month_revenue = orders_qs.filter(created_at__gte=month_ago).aggregate(s=Sum("total_amount"))["s"] or 0
+    avg_order = (total_gmv / total_orders) if total_orders else 0
+    completion_rate = round(
+        orders_qs.filter(status="completed").count() * 100 / total_orders, 1
+    ) if total_orders else 0
+    overdue_orders = orders_qs.filter(sla_status="breached").count()
+    pending_payments = orders_qs.filter(
+        payment_status="awaiting_reserve"
+    ).aggregate(s=Sum("total_amount"))["s"] or 0
+
+    # Today
+    orders_today = orders_qs.filter(created_at__date=today).count()
+    paid_today = orders_qs.filter(
+        payment_status="paid", final_paid_at__date=today
+    ).aggregate(s=Sum("total_amount"))["s"] or 0
+
+    # RFQ
+    rfq_qs = RFQ.objects.all()
+    total_rfq = rfq_qs.count()
+    rfq_today_count = rfq_qs.filter(created_at__date=today).count()
+    rfq_quoted = rfq_qs.filter(status="quoted").count()
+    rfq_conversion = round(rfq_quoted * 100 / total_rfq, 1) if total_rfq else 0
+
+    # Users
+    total_sellers = UserProfile.objects.filter(role="seller").count()
+    total_buyers = UserProfile.objects.filter(role="buyer").count()
+    pending_suppliers = UserProfile.objects.filter(supplier_status="sandbox").count()
+    registrations_today = User.objects.filter(date_joined__date=today).count()
+
+    # Catalog & SLA
+    total_parts = Part.objects.filter(is_active=True).count()
+    blocked_parts = Part.objects.filter(availability_status="blocked").count()
+    sla_ok = orders_qs.filter(status__in=active_statuses, sla_status="on_track").count()
+    sla_rate = round(sla_ok * 100 / active_orders, 1) if active_orders else 100
+
+    # Claims
+    open_claims = OrderClaim.objects.filter(status__in=["open","in_review"]).count()
+
+    # Recent events
+    recent_events = list(OrderEvent.objects.select_related().order_by("-created_at")[:10])
+
+    # Recent imports
+    raw_imports = PricelistImport.objects.select_related("seller").order_by("-created_at")[:5]
+    recent_imports_dash = [
+        {"id": i.id, "seller": i.seller,
+         "created_count": i.created_rows, "updated_count": i.updated_rows,
+         "created_at": i.created_at}
+        for i in raw_imports
+    ]
+
+    return render(request, "admin_panel/dashboard.html", {
+        "admin_active_nav": "dashboard",
+        "total_gmv": total_gmv, "month_revenue": month_revenue,
+        "total_orders": total_orders, "avg_order": avg_order,
+        "rfq_conversion": rfq_conversion, "completion_rate": completion_rate,
+        "total_parts": total_parts, "total_sellers": total_sellers,
+        "total_buyers": total_buyers, "sla_rate": sla_rate,
+        "active_orders": active_orders, "total_rfq": total_rfq,
+        "pending_suppliers": pending_suppliers, "overdue_orders": overdue_orders,
+        "open_claims": open_claims, "blocked_parts": blocked_parts,
+        "pending_payments": pending_payments,
+        "orders_today": orders_today, "paid_today": paid_today,
+        "rfq_today_count": rfq_today_count, "registrations_today": registrations_today,
+        "recent_imports_dash": recent_imports_dash,
+        "recent_events": recent_events,
+    })
 
 
 @staff_member_required
@@ -5841,27 +5921,337 @@ def admin_panel_user_detail(request, user_id):
 
 @staff_member_required
 def admin_panel_orders(request):
-    return render(request, "admin_panel/orders.html", {"admin_active_nav": "orders"})
+    import datetime
+    from django.db.models import Sum
+    from marketplace.models import Order
+
+    week_ago = timezone.now() - datetime.timedelta(days=7)
+    active_statuses = ["pending","reserve_paid","confirmed","in_production",
+                       "ready_to_ship","transit_abroad","customs","transit_rf","issuing"]
+
+    qs = Order.objects.select_related("buyer").all()
+    total = qs.count()
+    active = qs.filter(status__in=active_statuses).count()
+    completed = qs.filter(status="completed").count()
+    cancelled = qs.filter(status="cancelled").count()
+    week_qs = qs.filter(created_at__gte=week_ago)
+    week_orders = week_qs.count()
+    week_revenue = week_qs.aggregate(s=Sum("total_amount"))["s"] or 0
+    problem_count = qs.filter(sla_status="breached").count()
+
+    search = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "")
+    payment_filter = request.GET.get("payment", "")
+    sla_filter = request.GET.get("sla", "")
+    current_sort = request.GET.get("sort", "-created_at")
+
+    if search:
+        qs = qs.filter(Q(id__icontains=search) | Q(customer_name__icontains=search) | Q(buyer__username__icontains=search))
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if payment_filter:
+        qs = qs.filter(payment_status=payment_filter)
+    if sla_filter:
+        qs = qs.filter(sla_status=sla_filter)
+    if current_sort in ("-created_at","created_at","-total_amount","total_amount"):
+        qs = qs.order_by(current_sort)
+
+    # POST: bulk actions
+    if request.method == "POST":
+        action = request.POST.get("action")
+        ids = request.POST.getlist("selected_orders")
+        if ids:
+            if action == "bulk_cancel":
+                Order.objects.filter(id__in=ids).update(status="cancelled")
+            elif action == "bulk_status":
+                new_st = request.POST.get("new_status")
+                if new_st:
+                    Order.objects.filter(id__in=ids).update(status=new_st)
+        return redirect("/admin-panel/orders/")
+
+    paginator = Paginator(qs, 50)
+    page_num = int(request.GET.get("page", 1))
+    page_obj = paginator.get_page(page_num)
+
+    from marketplace.models import Order as _O
+    status_choices = _O.STATUS_CHOICES
+    payment_choices = _O.PAYMENT_STATUS_CHOICES
+
+    return render(request, "admin_panel/orders.html", {
+        "admin_active_nav": "orders",
+        "total": total, "active": active, "completed": completed,
+        "cancelled": cancelled, "week_orders": week_orders,
+        "week_revenue": week_revenue, "problem_count": problem_count,
+        "orders": page_obj, "status_choices": status_choices,
+        "payment_choices": payment_choices,
+        "search": search, "status_filter": status_filter,
+        "payment_filter": payment_filter, "sla_filter": sla_filter,
+        "current_sort": current_sort,
+        "has_prev": page_obj.has_previous(),
+        "has_next": page_obj.has_next(),
+        "page_num": page_num,
+    })
 
 
 @staff_member_required
 def admin_panel_rfq(request):
-    return render(request, "admin_panel/rfq.html", {"admin_active_nav": "rfq"})
+    import datetime
+    from marketplace.models import RFQ
+
+    week_ago = timezone.now() - datetime.timedelta(days=7)
+    qs = RFQ.objects.select_related("created_by").all()
+    total = qs.count()
+    active = qs.filter(status="new").count()
+    quoted = qs.filter(status="quoted").count()
+    needs_review = qs.filter(status="needs_review").count()
+    cancelled = qs.filter(status="cancelled").count()
+    week_rfq = qs.filter(created_at__gte=week_ago).count()
+    conversion = round(quoted * 100 / total, 1) if total else 0
+
+    search = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "")
+    urgency_filter = request.GET.get("urgency", "")
+    mode_filter = request.GET.get("mode", "")
+
+    if search:
+        qs = qs.filter(Q(customer_name__icontains=search) | Q(customer_email__icontains=search) | Q(company_name__icontains=search))
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+    if urgency_filter:
+        qs = qs.filter(urgency=urgency_filter)
+    if mode_filter:
+        qs = qs.filter(mode=mode_filter)
+    qs = qs.order_by("-created_at")
+
+    paginator = Paginator(qs, 50)
+    page_num = int(request.GET.get("page", 1))
+    page_obj = paginator.get_page(page_num)
+
+    return render(request, "admin_panel/rfq.html", {
+        "admin_active_nav": "rfq",
+        "total": total, "active": active, "quoted": quoted,
+        "needs_review": needs_review, "cancelled": cancelled,
+        "week_rfq": week_rfq, "conversion": conversion,
+        "rfqs": page_obj,
+        "status_choices": RFQ.STATUS_CHOICES,
+        "urgency_choices": RFQ.URGENCY_CHOICES,
+        "mode_choices": RFQ.MODE_CHOICES,
+        "search": search, "status_filter": status_filter,
+        "urgency_filter": urgency_filter, "mode_filter": mode_filter,
+        "has_prev": page_obj.has_previous(),
+        "has_next": page_obj.has_next(),
+        "page_num": page_num,
+    })
 
 
 @staff_member_required
 def admin_panel_finance(request):
-    return render(request, "admin_panel/finance.html", {"admin_active_nav": "finance"})
+    import datetime
+    from django.db.models import Sum
+    from marketplace.models import Order
+
+    week_ago = timezone.now() - datetime.timedelta(days=7)
+    month_ago = timezone.now() - datetime.timedelta(days=30)
+
+    qs_all = Order.objects.all()
+    total_revenue = qs_all.aggregate(s=Sum("total_amount"))["s"] or 0
+    month_revenue = qs_all.filter(created_at__gte=month_ago).aggregate(s=Sum("total_amount"))["s"] or 0
+    week_revenue = qs_all.filter(created_at__gte=week_ago).aggregate(s=Sum("total_amount"))["s"] or 0
+    total_logistics = qs_all.aggregate(s=Sum("logistics_cost"))["s"] or 0
+    commission_rate = 10  # default from tariff plans
+    platform_commission = round(float(total_revenue) * commission_rate / 100, 2)
+
+    # Payment funnel
+    pending_qs = qs_all.filter(payment_status="awaiting_reserve")
+    pending_count = pending_qs.count()
+    pending_sum = pending_qs.aggregate(s=Sum("total_amount"))["s"] or 0
+
+    reserve_paid_qs = qs_all.filter(payment_status="reserve_paid")
+    reserve_paid_count = reserve_paid_qs.count()
+    reserve_paid_sum = reserve_paid_qs.aggregate(s=Sum("reserve_amount"))["s"] or 0
+    reserve_collected = qs_all.aggregate(s=Sum("reserve_amount"))["s"] or 0
+
+    # Stuck = reserve paid >7 days ago, not fully paid
+    stuck = qs_all.filter(
+        payment_status="reserve_paid",
+        reserve_paid_at__lte=timezone.now() - datetime.timedelta(days=7)
+    ).count()
+
+    mid_paid_qs = qs_all.filter(payment_status="mid_paid")
+    mid_paid_count = mid_paid_qs.count()
+    mid_paid_sum = mid_paid_qs.aggregate(s=Sum("mid_payment_amount"))["s"] or 0
+
+    fully_paid_qs = qs_all.filter(payment_status="paid")
+    fully_paid_count = fully_paid_qs.count()
+    fully_paid = fully_paid_qs.aggregate(s=Sum("total_amount"))["s"] or 0
+
+    # Table
+    search = request.GET.get("q", "").strip()
+    payment_filter = request.GET.get("payment", "")
+    qs = qs_all.select_related("buyer").order_by("-created_at")
+    if search:
+        qs = qs.filter(Q(id__icontains=search) | Q(customer_name__icontains=search))
+    if payment_filter:
+        qs = qs.filter(payment_status=payment_filter)
+
+    paginator = Paginator(qs, 50)
+    page_num = int(request.GET.get("page", 1))
+    page_obj = paginator.get_page(page_num)
+
+    return render(request, "admin_panel/finance.html", {
+        "admin_active_nav": "finance",
+        "total_revenue": total_revenue, "month_revenue": month_revenue,
+        "week_revenue": week_revenue, "platform_commission": platform_commission,
+        "commission_rate": commission_rate, "total_logistics": total_logistics,
+        "pending_count": pending_count, "pending_sum": pending_sum,
+        "reserve_paid_count": reserve_paid_count, "reserve_paid_sum": reserve_paid_sum,
+        "stuck": stuck, "reserve_collected": reserve_collected,
+        "mid_paid_count": mid_paid_count, "mid_paid_sum": mid_paid_sum,
+        "fully_paid_count": fully_paid_count, "fully_paid": fully_paid,
+        "orders": page_obj, "payment_choices": Order.PAYMENT_STATUS_CHOICES,
+        "search": search, "payment_filter": payment_filter,
+        "has_prev": page_obj.has_previous(),
+        "has_next": page_obj.has_next(),
+        "page_num": page_num,
+    })
 
 
 @staff_member_required
 def admin_panel_catalog(request):
-    return render(request, "admin_panel/catalog.html", {"admin_active_nav": "catalog"})
+    from marketplace.models import Part, Brand, Category, PricelistImport
+
+    parts_count = Part.objects.count()
+    active_count = Part.objects.filter(is_active=True).count()
+    blocked_count = Part.objects.filter(availability_status="blocked").count()
+    brands_count = Brand.objects.count()
+    categories_count = Category.objects.count()
+    sellers_count = User.objects.filter(profile__role="seller").count()
+    no_price = Part.objects.filter(is_active=True, price=0).count()
+    no_brand = Part.objects.filter(is_active=True, brand__isnull=True).count()
+    zero_stock = Part.objects.filter(is_active=True, stock_quantity=0).count()
+
+    search = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "")
+    current_seller = request.GET.get("seller", "")
+    current_brand = request.GET.get("brand", "")
+    current_category = request.GET.get("category", "")
+    show = request.GET.get("show", "parts")
+
+    raw_imports = PricelistImport.objects.select_related("seller").order_by("-created_at")[:10]
+    recent_imports = [
+        {"id": i.id, "seller": i.seller,
+         "created_count": i.created_rows, "updated_count": i.updated_rows,
+         "created_at": i.created_at, "status": i.status}
+        for i in raw_imports
+    ]
+
+    qs = Part.objects.select_related("brand", "seller", "category").order_by("-created_at")
+    if search:
+        qs = qs.filter(Q(oem_number__icontains=search) | Q(title__icontains=search))
+    if status_filter == "blocked":
+        qs = qs.filter(availability_status="blocked")
+    elif status_filter == "inactive":
+        qs = qs.filter(is_active=False)
+    elif status_filter == "active":
+        qs = qs.filter(is_active=True)
+    if current_seller:
+        qs = qs.filter(seller__username=current_seller)
+    if current_brand:
+        qs = qs.filter(brand__slug=current_brand)
+    if current_category:
+        qs = qs.filter(category__slug=current_category)
+
+    paginator = Paginator(qs, 50)
+    page_num = int(request.GET.get("page", 1))
+    page_obj = paginator.get_page(page_num)
+
+    return render(request, "admin_panel/catalog.html", {
+        "admin_active_nav": "catalog",
+        "parts_count": parts_count, "active_count": active_count,
+        "blocked_count": blocked_count, "brands_count": brands_count,
+        "categories_count": categories_count, "sellers_count": sellers_count,
+        "no_price": no_price, "no_brand": no_brand, "zero_stock": zero_stock,
+        "show": show, "recent_imports": recent_imports,
+        "parts": page_obj,
+        "categories": Category.objects.all()[:50],
+        "brands": Brand.objects.order_by("name")[:100],
+        "sellers_list": User.objects.filter(profile__role="seller").select_related("profile")[:100],
+        "search": search, "current_seller": current_seller,
+        "current_brand": current_brand, "current_category": current_category,
+        "status_filter": status_filter,
+        "has_prev": page_obj.has_previous(),
+        "has_next": page_obj.has_next(),
+        "page_num": page_num,
+        "prev_page": page_num - 1, "next_page": page_num + 1,
+    })
 
 
 @staff_member_required
 def admin_panel_moderation(request):
-    return render(request, "admin_panel/moderation.html", {"admin_active_nav": "moderation"})
+    from marketplace.models import Order, OrderClaim, Part, UserProfile
+
+    tab = request.GET.get("tab", "suppliers")
+    active_statuses = ["pending","reserve_paid","confirmed","in_production",
+                       "ready_to_ship","transit_abroad","customs","transit_rf","issuing"]
+
+    sandbox_suppliers = list(
+        UserProfile.objects.filter(supplier_status="sandbox")
+        .select_related("user")
+        .order_by("-user__date_joined")[:20]
+    )
+    blocked_parts = list(
+        Part.objects.filter(availability_status="blocked")
+        .select_related("seller", "brand")
+        .order_by("-moderated_at")[:20]
+    )
+    open_claims = list(
+        OrderClaim.objects.filter(status__in=["open","in_review"])
+        .select_related("order", "order__buyer")
+        .order_by("-created_at")[:20]
+    )
+    sla_breached = list(
+        Order.objects.filter(sla_status="breached", status__in=active_statuses)
+        .select_related("buyer")
+        .order_by("-created_at")[:20]
+    )
+
+    supplier_count = len(sandbox_suppliers)
+    parts_count = len(blocked_parts)
+    claims_count = len(open_claims)
+    sla_count = len(sla_breached)
+    total_pending = supplier_count + claims_count + sla_count
+
+    # POST: approve / reject supplier
+    if request.method == "POST":
+        action = request.POST.get("action")
+        uid = request.POST.get("user_id")
+        if uid and action in ("approve", "reject", "mark_risky"):
+            profile = UserProfile.objects.filter(user_id=uid).first()
+            if profile:
+                if action == "approve":
+                    profile.supplier_status = "trusted"
+                elif action == "reject":
+                    profile.supplier_status = "rejected"
+                elif action == "mark_risky":
+                    profile.supplier_status = "risky"
+                profile.save(update_fields=["supplier_status"])
+        return redirect("/admin-panel/moderation/")
+
+    return render(request, "admin_panel/moderation.html", {
+        "admin_active_nav": "moderation",
+        "total_pending": total_pending,
+        "supplier_count": supplier_count,
+        "parts_count": parts_count,
+        "claims_count": claims_count,
+        "sla_count": sla_count,
+        "tab": tab,
+        "sandbox_suppliers": sandbox_suppliers,
+        "blocked_parts": blocked_parts,
+        "open_claims": open_claims,
+        "sla_breached": sla_breached,
+        "recent_moderated": [],
+        "recent_supplier_events": [],
+    })
 
 
 @staff_member_required
