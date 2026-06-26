@@ -190,6 +190,8 @@ class Part(models.Model):
     title_ru = models.CharField(max_length=255, blank=True, default="")
     slug = models.SlugField(max_length=280, unique=True)
     oem_number = models.CharField(max_length=100, db_index=True)
+    oem_clean = models.CharField(max_length=100, blank=True, default="", db_index=True,
+        help_text="OEM без спецсимволов, uppercase — для кроссреференса")
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=12, decimal_places=2)
     stock_quantity = models.PositiveIntegerField(default=0)
