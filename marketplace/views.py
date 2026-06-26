@@ -5730,8 +5730,69 @@ def admin_panel_dashboard(request):
 
 
 @staff_member_required
-def admin_panel_users(request):
-    return render(request, "admin_panel/users.html", {"admin_active_nav": "users"})
+def admin_panel_users(request, user_id=None):
+    import datetime
+
+    search = request.GET.get("q", "").strip()
+    role_filter = request.GET.get("role", "")
+    status_filter = request.GET.get("status", "")
+    current_sort = request.GET.get("sort", "-date_joined")
+
+    qs = User.objects.select_related("profile").all()
+    if search:
+        qs = qs.filter(
+            Q(username__icontains=search) |
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search) |
+            Q(email__icontains=search) |
+            Q(profile__company_name__icontains=search)
+        )
+    if role_filter == "buyer":
+        qs = qs.filter(profile__role="buyer")
+    elif role_filter == "seller":
+        qs = qs.filter(profile__role="seller")
+    elif role_filter == "admin":
+        qs = qs.filter(is_superuser=True)
+    if status_filter == "active":
+        qs = qs.filter(is_active=True)
+    elif status_filter == "blocked":
+        qs = qs.filter(is_active=False)
+    if current_sort in ("-date_joined", "date_joined", "username"):
+        qs = qs.order_by(current_sort)
+
+    week_ago = timezone.now() - datetime.timedelta(days=7)
+    paginator = Paginator(qs, 50)
+    page_num = int(request.GET.get("page", 1))
+    page_obj = paginator.get_page(page_num)
+
+    # Если открыт конкретный user_id, убедимся что он на нужной странице
+    if user_id and not search:
+        try:
+            target_ids = list(qs.values_list("id", flat=True))
+            if user_id in target_ids:
+                idx = target_ids.index(user_id)
+                page_num = idx // 50 + 1
+                page_obj = paginator.get_page(page_num)
+        except Exception:
+            pass
+
+    return render(request, "admin_panel/users.html", {
+        "admin_active_nav": "users",
+        "open_user_id": user_id,
+        "users": page_obj,
+        "total": User.objects.count(),
+        "buyers": User.objects.filter(profile__role="buyer").count(),
+        "sellers": User.objects.filter(profile__role="seller").count(),
+        "blocked": User.objects.filter(is_active=False).count(),
+        "new_this_week": User.objects.filter(date_joined__gte=week_ago).count(),
+        "search": search,
+        "role_filter": role_filter,
+        "status_filter": status_filter,
+        "current_sort": current_sort,
+        "has_prev": page_obj.has_previous(),
+        "has_next": page_obj.has_next(),
+        "page_num": page_num,
+    })
 
 
 @staff_member_required

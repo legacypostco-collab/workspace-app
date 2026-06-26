@@ -61,7 +61,7 @@
     </thead>
     <tbody>
       {% for u in users %}
-      <tr {% if not u.is_active %}style="opacity:0.6;border-left:3px solid #E85C0D;"{% endif %}>
+      <tr id="user-{{ u.id }}" {% if not u.is_active %}style="opacity:0.6;border-left:3px solid #E85C0D;"{% elif u.id == open_user_id %}style="background:rgba(100,181,246,0.15);border-left:3px solid #64B5F6;"{% endif %}>
         <td><input type="checkbox" name="selected_users" value="{{ u.id }}" class="user-cb" onchange="updateUserBar()" {% if u.is_superuser %}disabled{% endif %}/></td>
         <td>#{{ u.id }}</td>
         <td>
@@ -142,5 +142,11 @@ function bulkUserAction(action) {
   document.getElementById('usersAction').value = action;
   document.getElementById('usersForm').submit();
 }
+{% if open_user_id %}
+document.addEventListener('DOMContentLoaded', function() {
+  var row = document.getElementById('user-{{ open_user_id }}');
+  if (row) { row.scrollIntoView({behavior:'smooth', block:'center'}); }
+});
+{% endif %}
 </script>
 {% endblock %}
