@@ -7378,6 +7378,8 @@
     operator_manager: 'KAM', operator_logist: 'Логист',
     operator_customs: 'Таможня', operator_payment: 'Платежи', admin: 'Администратор',
   };
+  // admin использует тот же welcome/пилюли что и operator
+  ROLE_WELCOME.admin = ROLE_WELCOME.operator;
   // v2: после объединения «🔥 Срочное» → «📋 Мои сделки» сбрасываем старый
   // сохранённый порядок пилюль (иначе «Мои сделки» уезжает в конец списка).
   const PILL_KEY = (role) => `pillPrefs:v3:${role}`;
@@ -11231,7 +11233,7 @@
       { const _ta = $('topAvatar'); if (_ta) _ta.textContent = initial; }
       // Активная вкладка role-toggle
       const r = state.config.role || 'buyer';
-      const uiRole = r.startsWith('operator') ? 'operator' : (r === 'seller' ? 'seller' : 'buyer');
+      const uiRole = (r.startsWith('operator') || r === 'admin') ? 'operator' : (r === 'seller' ? 'seller' : 'buyer');
       paintRoleToggle(uiRole);
       applyRoleWelcome(state.config.role);
       await Promise.all([loadConvList(), loadProjects(), loadNotifications()]);

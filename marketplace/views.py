@@ -6496,7 +6496,7 @@ def chat_first_view(request):
             initial_role = detect_user_role(request.user, request=request) or "buyer"
         except Exception:
             initial_role = "buyer"
-        base_role = ("operator" if initial_role.startswith("operator")
+        base_role = ("operator" if (initial_role.startswith("operator") or initial_role == "admin")
                      else ("seller" if initial_role == "seller" else "buyer"))
         # Дублируем ru-строки welcome только для первого кадра; дальше JS-i18n синхронит.
         _WELCOME = {
