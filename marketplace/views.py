@@ -1617,7 +1617,6 @@ def cart_remove(request: HttpRequest, part_id: int) -> HttpResponse:
     return redirect("cart")
 
 
-@login_required
 def cart_view(request: HttpRequest) -> HttpResponse:
     _seed_if_empty()
     rows, total = _cart_rows(request)

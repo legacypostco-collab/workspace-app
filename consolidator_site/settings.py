@@ -404,29 +404,37 @@ STORAGES = {
 # Defense-in-depth XSS protection. Активируется через django-csp если
 # установлен. Для inline-onclick в chat (~37 шт) пока используем
 # 'unsafe-inline' — TODO мигрировать на event delegation чтобы убрать.
-CSP_DEFAULT_SRC = ("'self'",)
-# FIXME: remove 'unsafe-inline' после миграции onclick
-# unpkg.com + cdnjs — React, Leaflet, QRCode; loaded in seller/buyer dashboard + qr/ + logistics/
-CSP_SCRIPT_SRC = (
-    "'self'", "'unsafe-inline'",
-    "https://unpkg.com",
-    "https://cdnjs.cloudflare.com",
-)
-# unpkg.com — Leaflet CSS
-CSP_STYLE_SRC = (
-    "'self'", "'unsafe-inline'",
-    "https://fonts.googleapis.com",
-    "https://unpkg.com",
-)
-CSP_IMG_SRC = ("'self'", "data:", "https:")     # base64 images в landing
-# cdn.jsdelivr.net — Geist font woff2; google fonts files
-CSP_FONT_SRC = (
-    "'self'", "data:",
-    "https://fonts.gstatic.com",
-    "https://cdn.jsdelivr.net",
-)
-CSP_CONNECT_SRC = ("'self'", "wss:", "https:")  # WebSocket + AI APIs
-CSP_FRAME_ANCESTORS = ("'none'",)               # эквивалент X-Frame-Options: DENY
+# ── Content Security Policy (django-csp 4.0 формат) ──────────────
+# FIXME: убрать 'unsafe-inline' из script/style после миграции inline-onclick
+# на event delegation (~37 мест в chat-first.js + шаблонах).
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        # unpkg.com + cdnjs — React, Leaflet, QRCode (seller/buyer dashboard, qr/, logistics/)
+        "script-src": [
+            "'self'", "'unsafe-inline'",
+            "https://unpkg.com",
+            "https://cdnjs.cloudflare.com",
+        ],
+        # unpkg.com — Leaflet CSS; fonts.googleapis.com — Google Fonts CSS
+        "style-src": [
+            "'self'", "'unsafe-inline'",
+            "https://fonts.googleapis.com",
+            "https://unpkg.com",
+        ],
+        "img-src": ["'self'", "data:", "https:"],
+        # cdn.jsdelivr.net — Geist woff2; fonts.gstatic.com — Google Fonts files
+        "font-src": [
+            "'self'", "data:",
+            "https://fonts.gstatic.com",
+            "https://cdn.jsdelivr.net",
+        ],
+        "connect-src": ["'self'", "wss:", "https:"],  # WebSocket + AI APIs
+        "media-src": ["'self'", "blob:"],
+        "frame-ancestors": ["'none'"],
+        "base-uri": ["'self'"],
+        "form-action": ["'self'"],
+    }
+}
 try:
     import csp  # noqa: F401
     MIDDLEWARE.insert(

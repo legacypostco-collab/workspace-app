@@ -204,7 +204,7 @@ def _draw_footer(c):
 # ── Save PDF buffer → OrderDocument ─────────────────────────
 
 def _save_pdf(order, doc_type: str, title: str, buf: io.BytesIO,
-              uploaded_by) -> OrderDocument:
+              uploaded_by) -> "OrderDocument":
     from marketplace.models import OrderDocument
     filename = f"ORD-{order.id}-{doc_type}-{timezone.now():%Y%m%d-%H%M%S}.pdf"
     buf.seek(0)

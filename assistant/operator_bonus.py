@@ -16,9 +16,13 @@ from __future__ import annotations
 
 from datetime import timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from django.utils import timezone
 from django.utils.translation import gettext as _
+
+if TYPE_CHECKING:
+    from marketplace.models import OperatorBonusLine
 
 
 def compute_bonus_amount(base_amount: Decimal | float, basis: str) -> tuple[Decimal, Decimal]:

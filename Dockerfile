@@ -18,6 +18,13 @@ ENV DJANGO_SETTINGS_MODULE=consolidator_site.settings
 
 EXPOSE 8001
 
-# Daphne — ASGI сервер с поддержкой WebSocket (Django Channels).
-# Gunicorn не поддерживает WebSocket, поэтому используем Daphne.
-CMD ["bash","-lc","python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p 8001 consolidator_site.asgi:application"]
+# Быстрый старт (docker compose):
+#   cp .env.example .env          # заполнить SECRET_KEY + ANTHROPIC_API_KEY
+#   docker compose up --build
+#   # Первый запуск — миграции + суперпользователь:
+#   docker compose exec web python manage.py migrate
+#   docker compose exec web python manage.py createsuperuser
+#   # Сайт: http://localhost:8001
+
+# Daphne — ASGI-сервер с поддержкой WebSocket (Django Channels).
+CMD ["bash","-lc","python manage.py migrate --noinput && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p 8001 consolidator_site.asgi:application"]
