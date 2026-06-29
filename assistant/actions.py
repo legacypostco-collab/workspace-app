@@ -178,15 +178,12 @@ _SELLER_ONLY = [
     "submit_quote", "respond_to_counter", "mark_quote_final",
     # Competitor offer response (§5.2): seller дает скидку или отказывается
     "respond_to_competitor_offer",
-    "get_demand_report", "get_sla_report",
+    "get_demand_report",
     "advance_order", "complete_trigger",
     "seller_demand_payment", "seller_cancel_pending",
     "seller_pipeline", "ship_order",
     "seller_dashboard", "seller_finance", "seller_rating",
     "seller_inbox",
-    # CRM-аккаунт (заказчики, проекты, начисления) — НЕ у продавца: это KAM.
-    # Продавцу/покупателю остаётся только виральный инвайт/реферал.
-    "invite_customer", "accept_customer_invite", "accept_referral",
     "seller_catalog", "seller_warehouses", "toggle_product", "add_product", "edit_product",
     "product_detail", "import_pricelist_preview",
     "rfq_detail", "respond_rfq_form",
@@ -194,9 +191,6 @@ _SELLER_ONLY = [
     "accept_team_invite", "team_member", "team_disable", "team_enable", "team_set_role",
     "seller_integrations", "seller_reports",
     "seller_qr", "seller_logistics", "seller_negotiations",
-    "price_quote", "audit_log", "recent_activity", "generate_qr", "notifications",
-    "support_home", "kb_faq", "my_verifications",
-    "contact_operator", "open_complaint",
     "view_support_ticket", "color_legend",
     "sync_1c",
     # View-as: чтобы оператор в режиме просмотра мог выйти обратно + дёргать помощь
@@ -269,7 +263,7 @@ _OPERATOR_CORE = [
 _KAM_ONLY = [
     "seller_customers", "add_customer", "customer_detail",
     "create_project_for_customer", "link_order_to_customer",
-    "invite_customer", "accept_customer_invite", "accept_referral",
+    # invite_customer/accept_referral/accept_customer_invite уже в _OPERATOR_CORE
     "customer_bonuses", "my_accruals", "kam_deals",
 ]
 
