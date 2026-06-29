@@ -406,9 +406,9 @@ STORAGES = {
 # 'unsafe-inline' — TODO мигрировать на event delegation чтобы убрать.
 CSP_DEFAULT_SRC = ("'self'",)
 CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'")  # FIXME: remove unsafe-inline после миграции onclick
-CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")   # inline <style> в шаблонах
+CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com")  # inline <style> + Google Fonts CSS
 CSP_IMG_SRC = ("'self'", "data:", "https:")     # base64 images в landing
-CSP_FONT_SRC = ("'self'", "data:", "https:")    # google fonts через css
+CSP_FONT_SRC = ("'self'", "data:", "https://fonts.gstatic.com", "https:")  # google fonts files
 CSP_CONNECT_SRC = ("'self'", "wss:", "https:")  # WebSocket + AI APIs
 CSP_FRAME_ANCESTORS = ("'none'",)               # эквивалент X-Frame-Options: DENY
 try:

@@ -6438,6 +6438,20 @@
     // Старт уточняющих вопросов по товарам — ТОЛЬКО после того как юзер
     // заполнил общие поля поставщика и нажал «Продолжить». Последовательно.
     if (action === '__pl_start_questions') {
+      // Проверяем обязательные общие поля ДО старта вопросов
+      var _countrySel2 = document.querySelector('.pl-ship-country, #shipment_country');
+      var _countryVal = _countrySel2 ? (_countrySel2.tagName === 'SELECT'
+        ? (_countrySel2.options[_countrySel2.selectedIndex] && _countrySel2.options[_countrySel2.selectedIndex].value)
+        : _countrySel2.value) : '';
+      var _cityInp2 = document.querySelector('.pl-city-input');
+      var _cityVal = _cityInp2 ? (_cityInp2.value || '').trim() : '';
+      var _missing2 = [];
+      if (!_countryVal) _missing2.push(tr('страна отправления'));
+      if (!_cityVal) _missing2.push(tr('город'));
+      if (_missing2.length) {
+        addMessage('assistant', window.t('❗ Заполните обязательные поля: {x}. Только после этого можно продолжить.', {x: _missing2.join(', ')}));
+        return;
+      }
       try { const _qs = window.__pendingSmartQs || []; if (_qs.length && typeof showNextSmartQuestion === 'function') showNextSmartQuestion(_qs, 0); } catch (_) {}
       return;
     }
@@ -9069,6 +9083,8 @@
           + '<div class="opx-gen-counter">распознаю заголовки и тип данных</div>'
           + '</div>';
         spPanel.hidden = false;
+        var _app = document.querySelector('.app');
+        if (_app) _app.classList.add('side-preview-open');
       }
     } catch(e) {}
 
@@ -10877,6 +10893,8 @@
     panel.hidden = true;
     var body = document.getElementById('sidePreviewBody');
     if (body) body.innerHTML = '';
+    var app = document.querySelector('.app');
+    if (app) app.classList.remove('side-preview-open');
   };
 
   // Drag-to-resize side panel — ручка слева тянется в любую сторону

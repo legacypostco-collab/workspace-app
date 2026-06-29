@@ -1598,7 +1598,6 @@ def part_detail(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 @require_POST
-@login_required
 def cart_add(request: HttpRequest, part_id: int) -> HttpResponse:
     part = get_object_or_404(Part, id=part_id, is_active=True, price__gt=0)
     cart = _get_cart(request)

@@ -16,6 +16,8 @@ COPY . /app
 
 ENV DJANGO_SETTINGS_MODULE=consolidator_site.settings
 
-EXPOSE 8000
+EXPOSE 8001
 
-CMD ["bash","-lc","python manage.py migrate && python manage.py collectstatic --noinput && python manage.py create_admin && gunicorn consolidator_site.wsgi:application --bind 0.0.0.0:8000 --workers ${WEB_CONCURRENCY:-3} --timeout ${GUNICORN_TIMEOUT:-60}"]
+# Daphne — ASGI сервер с поддержкой WebSocket (Django Channels).
+# Gunicorn не поддерживает WebSocket, поэтому используем Daphne.
+CMD ["bash","-lc","python manage.py migrate && python manage.py collectstatic --noinput && daphne -b 0.0.0.0 -p 8001 consolidator_site.asgi:application"]

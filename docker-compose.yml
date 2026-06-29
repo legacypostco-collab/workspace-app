@@ -1,0 +1,76 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: consolidator
+      POSTGRES_USER: consolidator
+      POSTGRES_PASSWORD: consolidator
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U consolidator"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+
+  web:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://consolidator:consolidator@db:5432/consolidator
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CHANNELS_REDIS_URL: redis://redis:6379/1
+      PRICELIST_CACHE_URL: redis://redis:6379/4
+    ports:
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - media:/app/media
+      - static:/app/staticfiles
+
+  worker:
+    build: .
+    command: celery -A consolidator_site worker -l info --concurrency=2
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://consolidator:consolidator@db:5432/consolidator
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - media:/app/media
+
+  beat:
+    build: .
+    command: celery -A consolidator_site beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://consolidator:consolidator@db:5432/consolidator
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  pgdata:
+  redisdata:
+  media:
+  static:

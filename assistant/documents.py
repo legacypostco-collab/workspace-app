@@ -418,8 +418,6 @@ def _build_proforma_invoice_pdf(rfq, quote, logistics_cost: Decimal,
 
     _draw_footer(c)
     c.showPage()
-    if signatures:
-        _draw_signatures(c, signatures, order)
     c.save()
     return buf
 

@@ -1665,7 +1665,10 @@
     .of-btn-primary:hover{background:rgba(45,122,62,1);color:#fff;}
 
     /* Side preview panel (как у claude.ai) — XLSX preview справа */
-    .side-preview{position:fixed;top:0;right:0;width:50vw;min-width:min(320px,100vw);max-width:100vw;height:100vh;background:#1a1a1a;color:#fff;z-index:10000;box-shadow:-8px 0 40px rgba(0,0,0,0.3);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.25s ease;}
+    .app{transition:padding-right 0.25s ease;}
+    .app.side-preview-open{padding-right:min(50vw,640px);}
+    @media(max-width:800px){.app.side-preview-open{padding-right:0;}}
+    .side-preview{position:fixed;top:0;right:0;width:min(50vw,640px);min-width:min(320px,100vw);max-width:100vw;height:100vh;background:#1a1a1a;color:#fff;z-index:10000;box-shadow:-8px 0 40px rgba(0,0,0,0.3);display:flex;flex-direction:column;transform:translateX(100%);transition:transform 0.25s ease;}
     .side-preview.resizing{transition:none;}
     .side-preview:not([hidden]){transform:translateX(0);}
     .side-preview[hidden]{display:flex !important;pointer-events:none;}
@@ -3769,9 +3772,15 @@
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
       <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
-        <button type="button" class="role-tab{% if auth_base_role == 'buyer' %} active{% endif %}" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
-        <button type="button" class="role-tab{% if auth_base_role == 'seller' %} active{% endif %}" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
-        <button type="button" class="role-tab{% if auth_base_role == 'operator' %} active{% endif %}" data-role="operator" role="tab">{% trans "Оператор" %}</button>
+        {% if user.is_authenticated %}
+          <button type="button" class="role-tab active" data-role="{{ auth_base_role }}" role="tab">
+            {% if auth_base_role == 'seller' %}{% trans "Продавец" %}{% elif auth_base_role == 'operator' %}{% trans "Оператор" %}{% else %}{% trans "Покупатель" %}{% endif %}
+          </button>
+        {% else %}
+          <button type="button" class="role-tab{% if auth_base_role == 'buyer' %} active{% endif %}" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
+          <button type="button" class="role-tab{% if auth_base_role == 'seller' %} active{% endif %}" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
+          <button type="button" class="role-tab{% if auth_base_role == 'operator' %} active{% endif %}" data-role="operator" role="tab">{% trans "Оператор" %}</button>
+        {% endif %}
       </div>
       <button class="side-new-btn" onclick="newChat()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
