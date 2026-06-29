@@ -98,7 +98,7 @@
         <span class="ap-badge ap-badge-{% if blocked_parts %}orange{% else %}gray{% endif %}">{% trans "Каталог" %}</span>
       </a>
       <a href="/admin-panel/orders/?payment=awaiting_reserve" class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;text-decoration:none;">
-        <span style="font-size:16px;width:36px;text-align:center;{% if pending_payments %}color:#E85C0D{% else %}color:#5E5E5E{% endif %};">${{ pending_payments|floatformat:0 }}</span>
+        <span style="font-size:13px;min-width:48px;text-align:center;{% if pending_payments %}color:#E85C0D{% else %}color:#5E5E5E{% endif %};">${{ pending_payments|floatformat:0 }}</span>
         <div style="flex:1;">
           <div style="font-size:13px;color:#ECECEC;">{% trans "Ожидают оплаты" %}</div>
           <div style="font-size:11px;color:#919191;">{% trans "Неоплаченные заказы" %}</div>

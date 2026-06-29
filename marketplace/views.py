@@ -35,7 +35,7 @@ from django.views.decorators.http import require_POST
 from dashboard.services import DashboardProjectionBuilder
 from files.models import StoredFile
 from files.storage import read_stored_file_bytes, store_import_source_file
-from imports.models import ImportJob, ImportPreviewSession
+from imports.models import ImportJob, ImportPreviewSession, ImportRow
 from imports.services import ColumnMappingResolver, ImportParser
 from imports.tasks import process_import_job
 from projections.models import DashboardProjection
@@ -2884,9 +2884,9 @@ def seller_drawings(request: HttpRequest) -> HttpResponse:
         qs = qs.filter(file_format=format_filter)
     if search_q:
         qs = qs.filter(
-            models.Q(title__icontains=search_q)
-            | models.Q(oem_number__icontains=search_q)
-            | models.Q(description__icontains=search_q)
+            Q(title__icontains=search_q)
+            | Q(oem_number__icontains=search_q)
+            | Q(description__icontains=search_q)
         )
 
     # Форматы для фильтра

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 
+from django.utils.translation import gettext as _
+
 from .embeddings import get_embedding
 from .models import KnowledgeChunk
 

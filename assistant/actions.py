@@ -1360,19 +1360,11 @@ def search_parts(params, user, role):
         # матчит «265-0235». Lookup идёт двусторонне: и query→БД, и БД→query
         # через SQL `replace()` annotation (убираем разделители из stored OEM,
         # сравниваем с нормализованной формой query).
-        from django.db.models import Value as V
-        from django.db.models.functions import Replace, Upper
-
         from .oem_normalizer import _strip_separators, expand_query_for_db
         candidates = expand_query_for_db(query, params.get("brand"))
         clean_candidates = list({
             _strip_separators(c).upper() for c in candidates if c
         })
-        qs = qs.annotate(
-            oem_clean=Upper(Replace(Replace(Replace(Replace(
-                "oem_number",
-                V("-"), V("")), V("."), V("")), V(" "), V("")), V("/"), V(""))),
-        )
         oem_q = Q()
         for c in candidates:
             oem_q |= Q(oem_number__iexact=c)
@@ -1560,9 +1552,6 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 candidates = list(
                     Part.objects
                     .select_related("brand", "seller", "seller__profile", "warehouse")
-                    .annotate(oem_clean=Upper(Replace(Replace(Replace(Replace(
-                        "oem_number",
-                        V("-"), V("")), V("."), V("")), V(" "), V("")), V("/"), V(""))))
                     .filter(is_active=True, oem_clean__in=clean_candidates)
                 )
         if not candidates:

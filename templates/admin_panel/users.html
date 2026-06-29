@@ -73,8 +73,12 @@
         <td>
           {% if u.is_superuser %}
             <span class="ap-badge ap-badge-orange">{% trans "Админ" %}</span>
+          {% elif u.is_staff and not u.is_superuser %}
+            <span class="ap-badge ap-badge-orange">{% trans "Оператор" %}</span>
           {% elif u.profile and u.profile.role == 'seller' %}
             <span class="ap-badge ap-badge-blue">{% trans "Поставщик" %}</span>
+          {% elif u.profile and u.profile.role == 'operator' %}
+            <span class="ap-badge ap-badge-orange">{% trans "Оператор" %}</span>
           {% else %}
             <span class="ap-badge ap-badge-gray">{% trans "Покупатель" %}</span>
           {% endif %}

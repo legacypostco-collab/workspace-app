@@ -18,6 +18,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.utils import timezone
+from django.utils.translation import gettext as _
 
 
 def compute_bonus_amount(base_amount: Decimal | float, basis: str) -> tuple[Decimal, Decimal]:

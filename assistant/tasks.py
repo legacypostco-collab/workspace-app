@@ -1,5 +1,6 @@
 """Celery tasks for background indexing."""
 from celery import shared_task
+from django.utils.translation import gettext as _
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
