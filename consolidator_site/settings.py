@@ -405,10 +405,26 @@ STORAGES = {
 # установлен. Для inline-onclick в chat (~37 шт) пока используем
 # 'unsafe-inline' — TODO мигрировать на event delegation чтобы убрать.
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", "'unsafe-inline'")  # FIXME: remove unsafe-inline после миграции onclick
-CSP_STYLE_SRC = ("'self'", "'unsafe-inline'", "https://fonts.googleapis.com")  # inline <style> + Google Fonts CSS
+# FIXME: remove 'unsafe-inline' после миграции onclick
+# unpkg.com + cdnjs — React, Leaflet, QRCode; loaded in seller/buyer dashboard + qr/ + logistics/
+CSP_SCRIPT_SRC = (
+    "'self'", "'unsafe-inline'",
+    "https://unpkg.com",
+    "https://cdnjs.cloudflare.com",
+)
+# unpkg.com — Leaflet CSS
+CSP_STYLE_SRC = (
+    "'self'", "'unsafe-inline'",
+    "https://fonts.googleapis.com",
+    "https://unpkg.com",
+)
 CSP_IMG_SRC = ("'self'", "data:", "https:")     # base64 images в landing
-CSP_FONT_SRC = ("'self'", "data:", "https://fonts.gstatic.com", "https:")  # google fonts files
+# cdn.jsdelivr.net — Geist font woff2; google fonts files
+CSP_FONT_SRC = (
+    "'self'", "data:",
+    "https://fonts.gstatic.com",
+    "https://cdn.jsdelivr.net",
+)
 CSP_CONNECT_SRC = ("'self'", "wss:", "https:")  # WebSocket + AI APIs
 CSP_FRAME_ANCESTORS = ("'none'",)               # эквивалент X-Frame-Options: DENY
 try:

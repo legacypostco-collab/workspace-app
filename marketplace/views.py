@@ -1609,7 +1609,6 @@ def cart_add(request: HttpRequest, part_id: int) -> HttpResponse:
 
 
 @require_POST
-@login_required
 def cart_remove(request: HttpRequest, part_id: int) -> HttpResponse:
     cart = _get_cart(request)
     if str(part_id) in cart:
@@ -1637,7 +1636,6 @@ def compare_view(request: HttpRequest) -> HttpResponse:
 
 
 @require_POST
-@login_required
 def compare_add(request: HttpRequest, part_id: int) -> HttpResponse:
     part = get_object_or_404(Part, id=part_id, is_active=True, price__gt=0)
     ids = _get_compare_ids(request)
@@ -1650,7 +1648,6 @@ def compare_add(request: HttpRequest, part_id: int) -> HttpResponse:
 
 
 @require_POST
-@login_required
 def compare_remove(request: HttpRequest, part_id: int) -> HttpResponse:
     ids = _get_compare_ids(request)
     ids = [x for x in ids if x != int(part_id)]
@@ -1659,7 +1656,6 @@ def compare_remove(request: HttpRequest, part_id: int) -> HttpResponse:
 
 
 @require_POST
-@login_required
 def compare_clear(request: HttpRequest) -> HttpResponse:
     _set_compare_ids(request, [])
     return redirect("compare")
