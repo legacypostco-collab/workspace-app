@@ -40,7 +40,7 @@ class ConversationSerializer(serializers.ModelSerializer):
                    "messages", "message_count"]
         read_only_fields = ["id", "created_at", "updated_at", "messages", "message_count"]
 
-    def get_message_count(self, obj):
+    def get_message_count(self, obj) -> int:
         return obj.messages.count()
 
 
@@ -53,10 +53,10 @@ class ConversationListSerializer(serializers.ModelSerializer):
         model = Conversation
         fields = ["id", "role", "category", "title", "created_at", "updated_at", "last_message"]
 
-    def get_title(self, obj):
+    def get_title(self, obj) -> str:
         return _translate_conv_title(obj.title)
 
-    def get_last_message(self, obj):
+    def get_last_message(self, obj) -> dict | None:
         msg = obj.messages.order_by("-created_at").first()
         if not msg:
             return None

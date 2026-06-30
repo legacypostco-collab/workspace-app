@@ -10,6 +10,8 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
+from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
 
 from .models import RFQ, Category, Order, OrderClaim, OrderEvent, Part, RFQItem, WebhookDeliveryLog
 from .serializers import CategorySerializer, OrderSerializer, PartSerializer
@@ -165,6 +167,7 @@ def _serialize_order_claim(claim: OrderClaim) -> dict:
     }
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 @throttle_classes([LookupThrottle])
@@ -173,6 +176,7 @@ def api_categories(_request):
     return Response({"items": CategorySerializer(categories, many=True).data})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 @throttle_classes([LookupThrottle])
@@ -184,6 +188,7 @@ def api_parts(request):
     return Response({"items": PartSerializer(qs.order_by("-created_at")[:200], many=True).data})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 @throttle_classes([LookupThrottle])
@@ -192,6 +197,7 @@ def api_part_detail(_request, part_id: int):
     return Response(PartSerializer(part).data)
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_my_orders(request):
@@ -204,6 +210,7 @@ def api_my_orders(request):
     return Response({"items": OrderSerializer(qs[:100], many=True).data})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_parts(request):
@@ -230,6 +237,7 @@ def api_seller_parts(request):
     return Response({"items": items})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_part_detail(request, part_id: int):
@@ -239,6 +247,7 @@ def api_seller_part_detail(request, part_id: int):
     return Response(_serialize_seller_part(part))
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_part_price_history(request, part_id: int):
@@ -263,6 +272,7 @@ def api_seller_part_price_history(request, part_id: int):
     )
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_part_demand(request, part_id: int):
@@ -272,6 +282,7 @@ def api_seller_part_demand(request, part_id: int):
     return Response({"part_id": part.id, **_part_demand_stats(part)})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_seller_product_bulk_update(request):
@@ -316,6 +327,7 @@ def api_seller_product_bulk_update(request):
     return Response({"ok": True, "updated_count": updated, "action": action})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_product_export(request):
@@ -335,6 +347,7 @@ def api_seller_product_export(request):
     return response
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_requests(request):
@@ -358,6 +371,7 @@ def api_seller_requests(request):
     return Response({"items": items})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_request_detail(request, rfq_id: int):
@@ -367,6 +381,7 @@ def api_seller_request_detail(request, rfq_id: int):
     return Response(_serialize_seller_rfq(rfq, request.user))
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_seller_request_quote(request, rfq_id: int):
@@ -387,6 +402,7 @@ def api_seller_request_quote(request, rfq_id: int):
     return Response({"ok": True, "rfq_id": rfq.id, "status": rfq.status})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_seller_request_decline(request, rfq_id: int):
@@ -407,6 +423,7 @@ def api_seller_request_decline(request, rfq_id: int):
     return Response({"ok": True, "rfq_id": rfq.id, "status": rfq.status})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_seller_request_renegotiate(request, rfq_id: int):
@@ -427,6 +444,7 @@ def api_seller_request_renegotiate(request, rfq_id: int):
     return Response({"ok": True, "rfq_id": rfq.id, "status": rfq.status})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_orders(request):
@@ -453,6 +471,7 @@ def api_seller_orders(request):
     return Response({"items": [_serialize_seller_order(order, request.user) for order in orders[:100]]})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_order_detail(request, order_id: int):
@@ -476,6 +495,7 @@ def api_seller_order_detail(request, order_id: int):
     return Response(payload)
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_order_timeline(request, order_id: int):
@@ -485,6 +505,7 @@ def api_seller_order_timeline(request, order_id: int):
     return Response({"order_id": order.id, "items": [_serialize_order_event(event) for event in order.events.all()[:100]]})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_seller_order_action(request, order_id: int):
@@ -517,6 +538,7 @@ def api_seller_order_action(request, order_id: int):
     return Response({"ok": True, "order_id": order.id, "status": order.status, "sla_status": order.sla_status})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_seller_claims(request):
@@ -534,6 +556,7 @@ def api_seller_claims(request):
     return Response({"items": [_serialize_order_claim(claim) for claim in claims[:100]]})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_seller_claim_respond(request, claim_id: int):
@@ -566,6 +589,7 @@ def api_seller_claim_respond(request, claim_id: int):
     return Response({"ok": True, "claim": _serialize_order_claim(claim)})
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_dashboard_summary(request):
@@ -599,12 +623,14 @@ def api_dashboard_summary(request):
     )
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def api_health(_request):
     return Response({"ok": True, "service": "hybrid_marketplace"}, status=200)
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def api_newsletter_subscribe(request):
@@ -626,6 +652,7 @@ def api_newsletter_subscribe(request):
     return Response({"ok": True, "email": email}, status=200)
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def api_readiness(_request):
@@ -638,6 +665,7 @@ def api_readiness(_request):
     return Response({"ok": True, "database": "up", "time": timezone.now().isoformat()}, status=200)
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_hybrid_analytics(request):
@@ -699,6 +727,7 @@ def api_hybrid_analytics(request):
     return Response(payload, status=200)
 
 
+@extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_hybrid_funnel(request):
