@@ -22,7 +22,8 @@ def index_order_task(self, order_id):
 
     from .indexer import index_order
     try:
-        order = Order.objects.select_related("buyer", "seller").get(id=order_id)
+        # У Order нет поля seller (продавцы — через позиции/товары), только buyer.
+        order = Order.objects.select_related("buyer").get(id=order_id)
     except Order.DoesNotExist:
         return f"Order {order_id} not found"
     chunk = index_order(order)
@@ -71,7 +72,7 @@ def kyb_weekly_monitor():
     from marketplace.models import CompanyVerification
 
     from .kyb_api_checks import evaluate_risk, run_all_checks
-    from .order_events import _notify  # internal notification helper
+    from .actions import _notify  # internal notification helper (правильный модуль)
 
     now = timezone.now()
     excluded = 0

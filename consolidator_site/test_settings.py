@@ -4,6 +4,8 @@ import os
 # Форсируем SQLite до импорта settings, чтобы _load_env_file не перетёр.
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["DB_NAME"] = ""
+# Тесты не прод: не падаем, если django-csp не установлен в окружении.
+os.environ["CSP_STRICT"] = "0"
 
 from consolidator_site.settings import *  # noqa: F401, F403, E402
 

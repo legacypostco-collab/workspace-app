@@ -5987,6 +5987,9 @@
   // WebSocket
   // ══════════════════════════════════════════════════════════
   function connectWS() {
+    // Гость не открывает живое соединение — сервер всё равно отдаёт 403
+    // (WS только для авторизованных). Сокет поднимется после входа.
+    if (typeof window.IS_AUTHENTICATED !== 'undefined' && !window.IS_AUTHENTICATED) return;
     if (state.ws && state.ws.readyState <= 1) return;
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const path = state.convId ? `/ws/assistant/${state.convId}/` : '/ws/assistant/';

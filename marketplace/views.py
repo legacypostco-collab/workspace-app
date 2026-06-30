@@ -1480,7 +1480,10 @@ def login_view(request: HttpRequest) -> HttpResponse:
     return redirect("/chat/?action=start_login")
 
 
+@require_POST
 def logout_view(request: HttpRequest) -> HttpResponse:
+    # Выход меняет состояние сессии → только POST с CSRF-токеном.
+    # GET-ссылка позволяла бы внешнему переходу принудительно разлогинить.
     logout(request)
     messages.info(request, "Вы вышли из системы.")
     return redirect("home")

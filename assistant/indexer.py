@@ -122,7 +122,7 @@ def index_order(order) -> KnowledgeChunk:
 
 def index_all_orders(limit: int = None) -> int:
     from marketplace.models import Order
-    qs = Order.objects.select_related("buyer", "seller").order_by("-created_at")
+    qs = Order.objects.select_related("buyer").order_by("-created_at")
     if limit:
         qs = qs[:limit]
     indexed = 0

@@ -114,7 +114,10 @@
             <a href="{% url 'compare' %}" class="btn btn-top btn-secondary">{{ ui.compare }} ({{ compare_count }})</a>
             {% if user.is_authenticated %}
               <a href="{% url 'dashboard' %}" class="btn btn-top btn-outline">{{ ui.cabinet }}</a>
-              <a href="{% url 'logout' %}" class="btn btn-top btn-outline">{{ ui.logout }}</a>
+              <form method="post" action="{% url 'logout' %}" style="display:inline;margin:0;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-top btn-outline">{{ ui.logout }}</button>
+              </form>
             {% else %}
               <a href="{% url 'register' %}" class="btn btn-top">{{ ui.register }}</a>
               <a href="{% url 'login' %}" class="btn btn-top btn-outline">{{ ui.login }}</a>

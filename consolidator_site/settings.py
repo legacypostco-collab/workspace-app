@@ -441,8 +441,20 @@ try:
         MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1,
         "csp.middleware.CSPMiddleware",
     )
-except ImportError:
-    pass
+except ImportError as exc:
+    # НЕ тихий пропуск: django-csp заявлен в requirements. Если его нет в
+    # боевом окружении — CSP-заголовок молча исчезает (защита «на бумаге»).
+    # Строгий режим (падаем явно) включён в проде; тесты/локалка только warn.
+    _csp_strict = _env_bool("CSP_STRICT", not DEBUG)
+    if _csp_strict:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured(
+            "django-csp заявлен в requirements, но не установлен в окружении — "
+            "CSP-заголовок не будет отдаваться. Установите зависимости: "
+            "pip install -r requirements.txt (или CSP_STRICT=0 чтобы отключить)"
+        ) from exc
+    import warnings
+    warnings.warn("django-csp не установлен — CSP-заголовок отключён (dev/test).")
 
 # ── KYB feature flag ───────────────────────────────────────────────
 # По умолчанию в production выключаем onboarding (мок-API могут автоодобрить
