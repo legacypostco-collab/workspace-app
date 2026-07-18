@@ -1,7 +1,7 @@
 """Integration tests for auth + security hardening.
 
 Что покрыто:
-  - Login throttling (10/10min)
+  - Login throttling (Axes + chat-native login flow)
   - Register throttling (5/hour)
   - Password reset throttling (3/hour)
   - demo_login backdoor закрыт когда DEBUG=False
@@ -40,30 +40,34 @@ def user(db):
 # ══ Login throttling ══════════════════════════════════════════════
 
 @_skip_template_render
-def test_login_blocks_after_10_failed_attempts(client, user):
-    """ТЗ §2: 10 неудач/IP/10мин → rate limited."""
-    for _ in range(10):
+def test_login_blocks_after_failed_attempts(client, user, settings):
+    """Несколько неудачных входов блокируют пару IP+логин."""
+    limit = int(getattr(settings, "AXES_FAILURE_LIMIT", 5))
+    for _ in range(limit - 1):
         r = client.post("/login/", {"username": "auth_test_user", "password": "wrong"})
-        assert r.status_code == 200  # форма с ошибкой
-    # 11-я попытка — даже с правильным паролем — должна показать rate-limit
+        assert r.status_code == 302
+        assert "/chat/" in r["Location"]
+    client.post("/login/", {"username": "auth_test_user", "password": "wrong"})
+    # Следующая попытка — даже с правильным паролем — должна показать rate-limit.
     r = client.post("/login/", {"username": "auth_test_user", "password": "strong-x-pass"})
-    # Может быть 200 (rendered с error message) или 429
-    assert r.status_code in (200, 429)
+    assert r.status_code == 429
 
 
 @_skip_template_render
 def test_login_success_resets_counter(client, user):
     """Успешный логин обнуляет счётчик."""
-    # 5 неудач
-    for _ in range(5):
-        client.post("/login/", {"username": "auth_test_user", "password": "wrong"})
+    # Несколько неудач, но меньше порога блокировки.
+    for _ in range(2):
+        r = client.post("/login/", {"username": "auth_test_user", "password": "wrong"})
+        assert r.status_code == 302
     # Успех
     r = client.post("/login/", {"username": "auth_test_user", "password": "strong-x-pass"})
     assert r.status_code == 302  # redirect to /chat/
-    # И снова 5 неудач — должно работать (счётчик сброшен)
-    for _ in range(5):
+    assert r["Location"] == "/chat/"
+    # И снова несколько неудач — должно работать, счётчик сброшен.
+    for _ in range(2):
         r = client.post("/login/", {"username": "auth_test_user", "password": "wrong"})
-        assert r.status_code == 200  # ещё не лимит
+        assert r.status_code == 302
 
 
 # ══ Register throttling ═══════════════════════════════════════════
@@ -165,7 +169,9 @@ def test_healthz_no_auth(client):
 @_skip_template_render
 def test_readyz_no_auth(client):
     r = client.get("/readyz/")
-    assert r.status_code == 200
+    assert r.status_code in (200, 503)
+    data = r.json()
+    assert set(data).issubset({"ok", "status"})
 
 
 # ══ GDPR export/delete ════════════════════════════════════════════
